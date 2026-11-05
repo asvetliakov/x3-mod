@@ -12,7 +12,7 @@
     "src/renderer/quad_vertex_program_inc.h"
   ],
   "source": {
-    "commit": "47764d79aa4e852a7133e7bc4c1c5cb120010694-dirty",
+    "commit": "bd2ff2b7b8ee211a4f087661837d2afe2d064314-dirty",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -20,17 +20,17 @@
       "src/proxy/engine_plumes_core.h": "80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa",
       "src/proxy/engine_effects_core.h": "52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75",
       "src/renderer/engine_shimmer_pass.h": "17a568d94fa2d2849f070c6efbd28d48232af20caeca6ea105d87274fae8ca86",
-      "src/renderer/engine_shimmer_pass.cpp": "7756992c4a4453d89ce9a91874d9c575c8c6b25ee659d69149bf1b12768c3906",
-      "src/effects/engine_shimmer_ps.hlsl": "8d9b48e643c5b952d0308525b4c3e430ef41e3bac8a7a2b13e3583799294d363",
-      "src/renderer/engine_shimmer_pixel_program_inc.h": "f625329ef09d61432a45dcb368c38ccc311478bce8a8dd24de6e791250129700",
+      "src/renderer/engine_shimmer_pass.cpp": "04662b5041e0d80e98d0cdeded3afadde793c83646b9452e229886c233417ef2",
+      "src/effects/engine_shimmer_ps.hlsl": "8ac0581b857e86e3e5c75c460423273589eb5f8c39e6fef8c00d36a52e1b1814",
+      "src/renderer/engine_shimmer_pixel_program_inc.h": "bb79b97da7d747f5a79d3919165fb126be04c7b3e87c45adf49d25029237e84d",
       "src/renderer/quad_vertex_program.h": "bac269397080f5942b099193dbae1498b94c3ada69f9296f220cc7ac37b59fab",
       "src/renderer/quad_vertex_program_inc.h": "fbf84f4a87bc71d72091e964bbdfd0377bf72011b19d2d5b40d0b6c1346d8415"
     }
   },
   "program": {
     "source": "src/effects/engine_shimmer_ps.hlsl",
-    "word_count": 6178,
-    "bytecode_sha256": "216acef91d2728b46d6588dc3fda2c47f8a94f01f2e2ed75ffa0e5769b0bfc84",
+    "word_count": 6418,
+    "bytecode_sha256": "794618ebc5c0c38a9be2bb3a75572e8bf08015bd3d5dec79b7b6e7b9f2af02e4",
     "target": "ps_3_0"
   },
   "game_launched": false,
@@ -57,12 +57,12 @@
       "verification/probe/engine_shimmer_fixture.cpp",
       "src/renderer/engine_shimmer_pass.cpp",
       "-o",
-      "/home/asvetl/x3-mod/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-ac6c641314defd7e7/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "c930d140bae303fd1f7323fdac8cc37b964ebc71e835284ca891e7f3fbe8b706"
+    "executable_sha256": "e0ffdc3937c2b25e5b8afe62b9f7d908687582610b8747b861feb0a7c24c8d1a"
   },
   "host": {
     "name": "native-windows",
@@ -90,11 +90,11 @@
     "d3dx9_37_dll": null
   },
   "run": {
-    "exit_code": 1,
+    "exit_code": 0,
     "result": {
       "checks": 43,
-      "failures": 1,
-      "verdict": "FAIL"
+      "failures": 0,
+      "verdict": "PASS"
     },
     "log": "verification/probe/build/engine-shimmer/fixture.log"
   },
@@ -106,7 +106,7 @@
         "held": 0,
         "result": 0,
         "reason": "ok",
-        "ps_slots": 1623,
+        "ps_slots": 1687,
         "max_ps_slots": 4096,
         "fp16_filter": 0,
         "references": 3
@@ -225,13 +225,13 @@
         "result": 0,
         "restore": 0,
         "restored": 1,
-        "stream_indices_outside": 0,
+        "stream_indices_outside": 1,
         "own_scene": 1,
         "changed": 36789,
         "reverted": 1,
-        "calls": 97,
+        "calls": 99,
         "vb_same": 1,
-        "offset": 0,
+        "offset": 16,
         "stride": 24,
         "ib_same": 1,
         "tex5_same": 1,
@@ -298,13 +298,13 @@
         "rect_area_share": 0.103,
         "scissor_px": 215602,
         "copy_px": 222880,
-        "fenced_on_ms": 0.0363,
-        "fenced_off_ms": 0.0144,
+        "fenced_on_ms": 0.0384,
+        "fenced_off_ms": 0.0146,
         "submit_ms": 0.0027,
-        "chain_ms": 0.0219,
-        "gpu_ms": 0.0192,
+        "chain_ms": 0.0238,
+        "gpu_ms": 0.0211,
         "samples": 60,
-        "calls": 95,
+        "calls": 97,
         "method": "tail_event_fenced"
       },
       {
@@ -314,13 +314,13 @@
         "rect_area_share": 0.103,
         "scissor_px": 341388,
         "copy_px": 352128,
-        "fenced_on_ms": 0.0761,
-        "fenced_off_ms": 0.0146,
-        "submit_ms": 0.0027,
-        "chain_ms": 0.0615,
-        "gpu_ms": 0.0588,
+        "fenced_on_ms": 0.0772,
+        "fenced_off_ms": 0.0147,
+        "submit_ms": 0.0026,
+        "chain_ms": 0.0625,
+        "gpu_ms": 0.0599,
         "samples": 60,
-        "calls": 95,
+        "calls": 97,
         "method": "tail_event_fenced"
       },
       {
@@ -330,13 +330,13 @@
         "rect_area_share": 0.103,
         "scissor_px": 1525284,
         "copy_px": 1540560,
-        "fenced_on_ms": 0.2216,
-        "fenced_off_ms": 0.0184,
-        "submit_ms": 0.0031,
-        "chain_ms": 0.2032,
-        "gpu_ms": 0.2001,
+        "fenced_on_ms": 0.2255,
+        "fenced_off_ms": 0.0179,
+        "submit_ms": 0.0029,
+        "chain_ms": 0.2076,
+        "gpu_ms": 0.2047,
         "samples": 60,
-        "calls": 95,
+        "calls": 97,
         "method": "tail_event_fenced"
       },
       {
@@ -346,13 +346,13 @@
         "rect_area_share": 0.101,
         "scissor_px": 753420,
         "copy_px": 770784,
-        "fenced_on_ms": 0.062,
-        "fenced_off_ms": 0.0201,
-        "submit_ms": 0.0026,
-        "chain_ms": 0.0419,
-        "gpu_ms": 0.0393,
+        "fenced_on_ms": 0.0656,
+        "fenced_off_ms": 0.0211,
+        "submit_ms": 0.0027,
+        "chain_ms": 0.0445,
+        "gpu_ms": 0.0418,
         "samples": 60,
-        "calls": 95,
+        "calls": 97,
         "method": "tail_event_fenced"
       },
       {
@@ -362,13 +362,13 @@
         "rect_area_share": 0.101,
         "scissor_px": 1198860,
         "copy_px": 1225440,
-        "fenced_on_ms": 0.193,
-        "fenced_off_ms": 0.0242,
-        "submit_ms": 0.0026,
-        "chain_ms": 0.1688,
-        "gpu_ms": 0.1662,
+        "fenced_on_ms": 0.2019,
+        "fenced_off_ms": 0.0246,
+        "submit_ms": 0.0028,
+        "chain_ms": 0.1773,
+        "gpu_ms": 0.1745,
         "samples": 60,
-        "calls": 95,
+        "calls": 97,
         "method": "tail_event_fenced"
       },
       {
@@ -378,13 +378,13 @@
         "rect_area_share": 0.101,
         "scissor_px": 5365932,
         "copy_px": 5398560,
-        "fenced_on_ms": 0.746,
-        "fenced_off_ms": 0.029,
+        "fenced_on_ms": 0.7619,
+        "fenced_off_ms": 0.0308,
         "submit_ms": 0.0039,
-        "chain_ms": 0.717,
-        "gpu_ms": 0.7131,
+        "chain_ms": 0.7311,
+        "gpu_ms": 0.7272,
         "samples": 60,
-        "calls": 95,
+        "calls": 97,
         "method": "tail_event_fenced"
       }
     ],
@@ -463,7 +463,7 @@
       ],
       [
         "state_stream_indices_restored_outside_untouched",
-        false
+        true
       ],
       [
         "state_own_scene_drew",
@@ -564,29 +564,27 @@
     ],
     "result": {
       "checks": 43,
-      "failures": 1,
-      "verdict": "FAIL"
+      "failures": 0,
+      "verdict": "PASS"
     },
     "check_count": 43,
-    "failed_checks": [
-      "state_stream_indices_restored_outside_untouched"
-    ]
+    "failed_checks": []
   },
   "summary": {
     "timing_gpu_ms": {
-      "1920x1080_1": 0.0192,
-      "1920x1080_4": 0.0588,
-      "1920x1080_16": 0.2001,
-      "5120x1440_1": 0.0393,
-      "5120x1440_4": 0.1662,
-      "5120x1440_16": 0.7131
+      "1920x1080_1": 0.0211,
+      "1920x1080_4": 0.0599,
+      "1920x1080_16": 0.2047,
+      "5120x1440_1": 0.0418,
+      "5120x1440_4": 0.1745,
+      "5120x1440_16": 0.7272
     },
     "timing_submit_ms": {
       "1920x1080_1": 0.0027,
-      "1920x1080_4": 0.0027,
-      "1920x1080_16": 0.0031,
-      "5120x1440_1": 0.0026,
-      "5120x1440_4": 0.0026,
+      "1920x1080_4": 0.0026,
+      "1920x1080_16": 0.0029,
+      "5120x1440_1": 0.0027,
+      "5120x1440_4": 0.0028,
       "5120x1440_16": 0.0039
     },
     "displace": {
@@ -618,5 +616,5 @@
       }
     }
   },
-  "passed": false
+  "passed": true
 }
