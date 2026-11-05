@@ -155,7 +155,8 @@ the shield and hull stages. `cdecl`, 2 dwords, plain `ret`, returns 1 (0 when ei
 * No projectile on either side (ship–ship contact): no effect, returns 1 **[m]**.
 
 **Shield or hull.** `0x00449a60` passes no damage information and `0x00413c40` uses one row for both **[m]**: no
-TShields column and no constant. The routine's local **absorbed** flag (`[esp+0x18]` of its frame) is still intact
+TShields column and no constant. Within a row, an `EEDF_HULLDAMAGE` element runs only while the hit object's
+current shield is below 100 points (§9); no referenced impact row has one. The routine's local **absorbed** flag (`[esp+0x18]` of its frame) is still intact
 at the call **[m: the only writers are `0x00449a83` (0), `0x00449b95` (1) and the transient capacity at `0x00449b6c`,
 which `0x00449b95` overwrites on the same path]**. Its exact meaning **[m listing]**:
 
@@ -440,6 +441,92 @@ The drawn-bullet alternative is the `INSTANCE_BULLETS` collection (`0x0046cef0` 
 [effects-engine-remaining-emission.md](effects-engine-remaining-emission.md)), which sees only bullets that are drawn
 this frame **[i]**.
 
+## 9. Victim shield energy and maximum at the impact stub (2026-11-05)
+
+Evidence: [`shield_layout_sites.py`](../../verification/results/weapon-effect-spawn/shield_layout_sites.py) →
+[`shield_layout_sites_out.txt`](../../verification/results/weapon-effect-spawn/shield_layout_sites_out.txt)
+(27/27 instruction checks) and the decompiles of `0x0044ecd0`, `0x0044ee10`, `0x0044ef60`, `0x0043fe50`,
+`0x00427d50`, `0x00414cf0`.
+
+**Which objects have shields [m].** The predicate `0x0043fe50` (and the damage routine's own gate
+`0x00449a76..0x00449a9e`) accepts class 7, class 1, class `0x12` and any object with `obj+0x40 & 0x100000` (bit 20).
+Docks and factories get that bit at creation: class 5 `0x004409bc` and class 6 `0x004407f9` write
+`obj+0x40 = 0x100000`, ships `or` it in at `0x00440621` (cases of the creation switch `0x004400d8`). So **stations keep
+their shields exactly like ships**, in the same list; there is no separate station layout. Whether a script can later
+clear bit 20 is **[u]**.
+
+**Where the energy lives [m].** The installed shields are the class-9 objects in the owner's per-class list at
+`ext+0x6c` (`ext = obj+0x50`; `0x6c = 9·0xc`, the same layout as the class-8 laser list the fire routine walks). The
+list is a chain of object pointers through `node+0`; the node whose `+0` is 0 is the end sentinel, not a shield
+(`0x00449ac7`, `0x0044ecd0`, `0x0044ee10` all stop there). There is no count field: the count is the number of
+nodes before the sentinel. Per shield node:
+
+| field | read | meaning |
+| --- | --- | --- |
+| `node+0x4a` | int16 | TShields index (`0x00449ad9`) |
+| `node+0x50` | pointer | the shield's extension (`0x00449acf`) |
+| `[node+0x50]+4` | int32 | **energy**, a 16.16 fraction of the capacity in thousandths: full is `0x3e80000` (1000.0). A new shield starts full (`0x004402a2`); recharge clamps at `0x3e80000` (`0x0044fa55..0x0044fa5d`); the damage stage subtracts `d·0x3e80000/capacity` (`0x00449b01`, `0x00449b8a`) or writes 0 (`0x00449b4a`) |
+| `node+0x54` | pointer | owner; the damage walk restarts from the head when it differs from the victim (`0x00449ab0`) |
+| TShields `+0x48` | int32 | **capacity** in hull points (col 8; table `*0x00606fdc`, count `*0x0060705c`) (`0x00449ae9`) |
+
+**Current and maximum [m: formulas in the decompiles].** The engine's two getters are
+`0x0044ecd0` (EDX = obj) = **Σ energyᵢ·capacityᵢ / 0x3e80000** (current shield points; collision-damage.md called it
+the maximum, which it is not) and `0x0044ee10` (EAX = obj) = **Σ capacityᵢ** (maximum). There is no cached maximum
+on the object. The shield setter `0x0044ef60` uses the same pair: it clamps to `0x0044ee10` and writes every shield's
+energy as `value·0x3e80000/max`. **The HUD status bars** in `0x00427d50` draw bar 0 from exactly these two calls
+(`0x00427cb0(0x0044ecd0(), 0x0044ee10(), …)`; bar 1 is the hull `obj+0xec` against `0x0044e910`) **[i: role of the
+routine]**. So the shield percentage the player sees is the capacity-weighted sum, not the mean of the per-shield
+fractions.
+
+**Read recipe at the stub `0x00449d85`** (victim = `[esp+4]`, also ESI) **[m offsets; the bounds are the stub's own]**:
+
+```
+cls = *(uint16_t *)(victim + 0x48);
+if (!(cls == 7 || cls == 1 || cls == 0x12 || (*(uint32_t *)(victim + 0x40) & 0x100000))) -> no shields
+ext = *(uint8_t **)(victim + 0x50);            if (!ext) -> no shields
+tab = *(uint8_t **)0x00606fdc;  n = *(int *)0x0060705c;   // TShields
+cur = 0; max = 0;
+for (node = *(uint8_t **)(ext + 0x6c), k = 0; node && *(void **)node && k < 64; node = *(uint8_t **)node, ++k) {
+    int16_t i = *(int16_t *)(node + 0x4a);     if (i < 0 || i >= n) break;
+    int32_t cap = *(int32_t *)(tab + i * 0xdb8 + 0x48);
+    uint8_t *sx = *(uint8_t **)(node + 0x50);   if (!sx) break;
+    cur += (int64_t)*(int32_t *)(sx + 4) * cap / 0x3e80000;   // per shield, truncated like 0x0044ecd0
+    max += cap;
+}
+fraction = max > 0 ? (double)cur / max : 0;   // what the HUD bar shows
+```
+
+The walk is on the game thread with no allocation between the damage stage and the stub, so the list is the one the
+damage stage just walked **[i]**. A node without `+0` next is the sentinel; a NULL head never occurs in the code
+paths read (every reader dereferences it unchecked), but the stub should test it anyway.
+
+**Pre- or post-hit.** The stub runs after the shield stage has stored the new energies (`0x00449b4a`, `0x00449b8a`)
+**[m]**. No instruction of the routine between the stage and `0x00449d85` writes them **[m]**; the two callees in
+between, `0x0044ec10` (hull) and `0x0042c7d0` (cockpit indicator), were read as not touching shields **[i]**. So the
+energy at the stub is **post-hit**. This is the value the HUD bar would show this frame, if it draws after this update
+**[i]**. The recharge `0x0044f7b0` runs from the per-object update, and its order against the collision pass within a
+frame is **[u]**.
+
+**Pre-hit from a register [m].** EBX at the stub holds the shield points this hit removed:
+
+* it is zeroed at `0x00449a74`;
+* each drained shield adds its points (`0x00449b51`) and the absorbing shield adds the remainder it took
+  (`0x00449b8d`);
+* the hull stage adds the hull damage (`0x00449cce`); no instruction between `0x00449cd8` and the call writes EBX.
+
+When absorbed = 1 and the source is not a flag-`0x20` bullet, the hull stage is skipped (`0x00449bce`) and
+**pre-hit shield points = cur + EBX** exactly; the truncation of each term is as in `0x0044ecd0`. When the hull stage
+ran, EBX also contains the hull damage, and pre-hit = cur + EBX overstates by that amount. The shield-damage argument
+is still in its slot (`[esp+0x34]` at the stub) except on the flag-`0xa0` path, which rewrites it at `0x00449bfd`.
+
+**The engine's own shield/hull switch in Effects data [m].** An effect element with `EEDF_HULLDAMAGE`
+(`0x80000`) runs only while the instance's object, which for an impact is the hit object, has `0x0044ecd0() < 100`.
+The gate is `0x00414d98..0x00414daa` in the element update; the element then also plays a random hull-hit sound.
+So the data can split an impact row into shield and hull elements. **No referenced impact row uses it**: in either
+view the only row with such an element is stock 45, which is not an impact row
+([`weapon_effect_census_out.txt`](../../verification/results/weapon-effect-spawn/weapon_effect_census_out.txt),
+"impact rows, EEDF_HULLDAMAGE") **[m data]**. The threshold is 100 shield points, not a percentage.
+
 ## Unknown
 
 - The meaning of node `+0x180` in the contact point, and whether `0x00413c40` sees the true contact or the smaller
@@ -459,6 +546,8 @@ this frame **[i]**.
 - The name of class id 2061 (FL data, 7 M5 rows), and whether the parser error byte `+0x24` set by an unknown
   text id also stops the other column readers.
 - That `0x004596e0` runs every frame for every sector (only the call chain is known).
+- The order of the shield recharge `0x0044f7b0` against the collision pass in a frame, and whether bit 20 of a
+  station's `obj+0x40` can be cleared after creation.
 
 ## Reproduce
 
@@ -474,6 +563,7 @@ for c in "TBullets 436518 436770 55 esi" "TShips 4373e9 437a2c 50 edi" "TDocks 4
 done > $R/type_loader_columns_out.txt      # loops expanded, version branches evaluated (decimal file versions)
 python3 $R/weapon_effect_sites.py /mnt/c/X3/X3AP.exe $L > $R/weapon_effect_sites_out.txt
 python3 $R/weapon_effect_census.py > $R/weapon_effect_census_out.txt
+python3 $R/shield_layout_sites.py $L > $R/shield_layout_sites_out.txt   # §9, 27 checks
 python3 $R/class_id_tables.py /mnt/c/X3/X3AP.exe /mnt/c/X3/X3AP.exe /mnt/c/X3FL/X3FL.exe \
   > $R/class_id_tables_out.txt                          # §8.1: EXE tables, FL anchor table, class columns per view
 # Ghidra (raw output untracked): analyzeHeadless ~/x3-ghidra-research X3Render -process X3AP.exe -noanalysis

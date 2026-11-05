@@ -5,6 +5,7 @@
   col 21 muzzle +0x7c: rows 45, zero 5, distinct non-zero 21 (in Effects 21, missing []), ids [22, 24, 25, 33, 34, 49, 52, 152, 157, 179, 180, 181, 183, 185, 190, 191, 193, 195, 197, 200, 202]
   col 19 flight +0x74: rows 45, zero 42, distinct non-zero 2 (in Effects 2, missing []), ids [170, 172]
   col 24 +0x88: rows 45, zero 19, distinct non-zero 4 (in Effects 0, missing [111, 112, 113, 1156]), ids [111, 112, 113, 1156]
+  impact rows, EEDF_HULLDAMAGE elements / all elements: 15:0/2 16:0/4 17:0/4 18:0/2 19:0/1 23:0/5 50:0/2 53:0/5 57:0/1 58:0/1 69:0/3 70:0/4 151:0/6 155:0/2 156:0/2 178:0/4 180:0/4 182:0/5 184:0/2 186:0/1 189:0/2 192:0/2 194:0/2 196:0/2 198:0/3 199:0/4
   col 23 trail +0x84 (Particles3 ids, not Effects): rows 45, zero 44, ids [1]
   flag 0x100 rows (death explosion = col 20): 9 [('SS_BULLET_MAM', 196), ('SS_BULLET_FLAK_ALPHA', 155), ('SS_BULLET_PSP', 189), ('SS_BULLET_FBL_FRAG', 186), ('SS_BULLET_FLAK_CLUSTER_FRAG', 156), ('SS_BULLET_FLAK_CLUSTER_FRAG_FRAG', 156), ('SS_BULLET_FLAK_ALPHA_FRAG', 15), ('SS_BULLET_MAM_1', 196), ('SS_BULLET_IPG_FRAG', 178)]
   beam-type rows (flags & 0x2006): 18 [('SS_BULLET_IOND', '0x214'), ('SS_BULLET_FLAK_ALPHA', '0x2100'), ('SS_BULLET_FLAK_CLUSTER', '0x3000'), ('SS_BULLET_PAL', '0x2'), ('SS_BULLET_PPC', '0x2000'), ('SS_BULLET_IONC', '0x2600'), ('SS_BULLET_IBL', '0x2800'), ('SS_BULLET_PSP', '0x2100'), ('SS_BULLET_PBC', '0x2'), ('SS_BULLET_TRIBEAM', '0x2'), ('SS_BULLET_FUSIONBEAM', '0x802'), ('SS_BULLET_TUG', '0x2'), ('SS_BULLET_DUMMY1', '0x3000'), ('SS_BULLET_DUMMY2', '0x2'), ('SS_BULLET_KH_ALPHA', '0x2'), ('SS_BULLET_KH_BETA', '0x2'), ('SS_BULLET_KH_GAMMA', '0x2'), ('SS_BULLET_REPAIR', '0xa2')]
@@ -84,6 +85,7 @@
   col 21 muzzle +0x7c: rows 38, zero 1, distinct non-zero 22 (in Effects 21, missing [129]), ids [100, 101, 103, 104, 105, 106, 107, 108, 109, 110, 113, 114, 118, 126, 127, 129, 131, 133, 134, 135, 136, 137]
   col 19 flight +0x74: rows 38, zero 33, distinct non-zero 3 (in Effects 3, missing []), ids [308, 309, 310]
   col 24 +0x88: rows 38, zero 37, distinct non-zero 1 (in Effects 1, missing []), ids [122]
+  impact rows, EEDF_HULLDAMAGE elements / all elements: 200:0/3 201:0/3 202:0/2 203:0/4 206:0/4 207:0/2 210:0/5 215:0/2 224:0/7 230:0/3 233:0/3 235:0/6 236:0/3 237:0/6
   col 23 trail +0x84 (Particles3 ids, not Effects): rows 38, zero 38, ids []
   flag 0x100 rows (death explosion = col 20): 0 []
   beam-type rows (flags & 0x2006): 2 [('SS_BULLET_PBC', '0x2'), ('SS_BULLET_RL', '0xa2')]

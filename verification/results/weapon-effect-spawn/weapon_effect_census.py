@@ -101,6 +101,12 @@ def report(label, a):
             r = refs(eff, [ival(x, col) for x in b])
             print(f'  col {col} {name}: rows {r["rows"]}, zero {r["zero"]}, distinct non-zero {r["distinct"]} '
                   f'(in Effects {r["present"]}, missing {r["missing"]}), ids {r["ids"]}')
+        hd = []   # EEDF_HULLDAMAGE (0x80000) elements run only while the hit object's shield sum is < 100 (0x00414d98)
+        for v in sorted({ival(x, 20) for x in b if ival(x, 20)}):
+            if v in eff:
+                f = element_flags(eff[v])
+                hd.append(f'{v}:{f.get("EEDF_HULLDAMAGE", 0)}/{eff[v]["n"]}')
+        print('  impact rows, EEDF_HULLDAMAGE elements / all elements: ' + ' '.join(hd))
         trail = sorted({ival(x, 23) for x in b if ival(x, 23)})
         print(f'  col 23 trail +0x84 (Particles3 ids, not Effects): rows {len(b)}, zero '
               f'{sum(1 for x in b if not ival(x, 23))}, ids {trail}')

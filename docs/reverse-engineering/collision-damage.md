@@ -97,14 +97,16 @@ flag)` with `M = *0x0060850c`. The flag is 1 for a contact and 0 for the planet 
 * **`0x0044eb90` (EAX = obj): max hull.** It returns 0 when `[obj+0x40] & 0x40000000`, `*0x0057a6d4` for a
   missile without `0x1000000`, and otherwise the table `0x0044e910(subtype)`. That table is the one
   [`0x00450980`](../../tools/analysis/x3ap_function_labels.json) compares with the current hull `[obj+0xec]`.
-* **`0x0044ecd0` (EDX = obj): max shield strength.** By class:
+* **`0x0044ecd0` (EDX = obj): current shield strength** (corrected 2026-11-05: for a shielded object it is
+  Σ energy·capacity/0x3e80000, the current value; the maximum is `0x0044ee10`, Σ capacity,
+  [weapon-effect-spawn.md](weapon-effect-spawn.md) §9). By class:
   * bullet: record `+0x44`;
   * missile: TMissiles `+0x58`;
   * shield ware: its energy;
   * planet or sun: `0x989680` (10,000,000);
   * asteroid and classes 28–31: 0;
   * class 20: 100 or 0 by subtype;
-  * ship and station: the sum over the installed shields (`0x0044edb0` loop).
+  * ship and station: the sum over the installed shields (loop at `0x0044edb0`).
 * **Damage values** are in hull points, the unit of `[obj+0xec]` and of max hull. The shield stage of
   `0x00449a60` converts them to shield energy as `dmg·0x3e80000 / record+0x48` (TShields `*0x00606fdc`). So a
   shield's energy is a 16.16 fraction of its capacity in thousandths, and `+0x48` is its capacity in the same
