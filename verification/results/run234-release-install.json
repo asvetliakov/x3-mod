@@ -1,0 +1,29 @@
+{
+ "run": 234,
+ "what": "release 2.0.1 (AP): stripped DLL from clean main f3301e258 = 2.0.0 source + sky tool fixes (loose star textures marked in place fe4635115, nebula+stars name rule 56a0ae2c4) + version bump; DLL source unchanged in behaviour from Run233",
+ "commit": "f3301e258",
+ "dirty": false,
+ "build_dir": "/home/asvetl/x3m-releases/2.0.1-ap/build-release",
+ "build_type": "RelWithDebInfo stripped (release.py)",
+ "dll_sha256_prefix": "9d00aa7764787b1c",
+ "dll_bytes": 42632971,
+ "installed": {
+  "path": "C:\\X3\\d3d9.dll",
+  "sha256_prefix": "9d00aa7764787b1c"
+ },
+ "previous": "C:\\X3\\rollback-d3d9\\d3d9.dll.run233 (8e2c37df)",
+ "x3m_ini": "header 2.0.0 -> 2.0.1, body unchanged (sky_stars = 1, collision_damage = 0); copy x3m.ini.run233",
+ "x3m_regenerate_exe": {
+  "installed": "C:\\X3\\x3m-regenerate.exe",
+  "sha256_prefix": "f6d4e98e88d5c9b7",
+  "previous_dev": "a7d9de5b (same tool source, already run: 292 marks)"
+ },
+ "zip": {
+  "path": "C:\\Users\\asvet\\Downloads\\x3m-2.0.1-ap.zip",
+  "sha256_prefix": "82bf1f5af23a89e1",
+  "bytes": 60316460
+ },
+ "release_record": "verification/results/release-2.0.1-ap.json",
+ "host_tests": "release.py: generate --check PASS, x87 --edition ap PASS, strip identity PASS, regenerate host+Windows smoke PASS, zip verified",
+ "flown": "Run233 flown 2026-11-05 with the dev regenerate a7d9de5b (292 star textures marked, 228 loose in place): sky_stars status=ready matched=1 in two sectors (keys 524292 map 7,3 and 458756 map 6,3; 5952 and 12864 stars), collision_damage status=applied; pilot: works"
+}

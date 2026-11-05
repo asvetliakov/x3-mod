@@ -1,0 +1,32 @@
+{
+ "run": "fl-run57",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "f3301e258",
+ "dirty": false,
+ "build": "release.py 2.0.1 stripped, 0 warnings, x87 --edition fl PASS, strip identity PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256_prefix": "00f483f0d0f3a3ec",
+  "bytes": 41272686
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run56",
+  "sha256_prefix": "a3ac5ad2a2086095"
+ },
+ "ini": "header 2.0.0 -> 2.0.1 only (copy x3m.ini.run56)",
+ "x3m_regenerate_exe": {
+  "sha256_prefix": "94991046259a90c3",
+  "previous": "x3m-regenerate.exe.2.0.0 (20d8454e)"
+ },
+ "zip": {
+  "path": "C:\\Users\\asvet\\Downloads\\x3m-2.0.1-fl.zip",
+  "sha256_prefix": "29bc2761dc1a6c05",
+  "bytes": 60088890
+ },
+ "exe_sha256_prefix": "e7f3aad8",
+ "evidence": [
+  "verification/results/release-2.0.1-fl.json",
+  "DLL source identical to run 56 apart from the version string; sky tool changes do not alter FL output (67 catalogue marks, no loose files)"
+ ]
+}

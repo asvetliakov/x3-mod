@@ -4,6 +4,15 @@ Player zips built by `tools/release/release.py` (steps in its docstring and in
 [config-file.md](../architecture/config-file.md)). Earlier releases are recorded only in their records:
 [0.8.0](../../verification/results/release-0.8.0.json), [0.9.0](../../verification/results/release-0.9.0.json).
 
+## Release 2.0.1
+
+2026-11-05, `python3 tools/release/release.py --edition <ap|fl> --out /home/asvetl/x3m-releases/2.0.1-<edition>` (both exit 0: AP 120.5 s, FL 111.6 s wall), from clean main `f3301e258`.
+
+- Over 2.0.0, regenerate only (the DLL source is unchanged apart from the version string): **loose star textures are marked in place** (`fe4635115`; an AP mod ships them under `dds\`, loose files beat every catalogue; originals recorded in `<game>\x3m\sky-loose.json`, restorable) and **the star-texture name rule is "stem contains nebula and stars"** with a content check (`56a0ae2c4`; Mayhem's 214 `nebula_litcube<N>_stars_diff.dds` carry no colour token). Cause: AP Run233 logged `sky_stars status=no_mark` (2.0.0 marked 27 of 255 star textures on that install). Verified by the AP flight with the dev regenerate: 292 star textures marked (228 loose), two sectors `status=ready matched=1` (map 7,3 and 6,3), `collision_damage status=applied`.
+- AP: stripped DLL `9d00aa77…` (42,632,971 B; x87 PASS, strip identity PASS; unstripped `cc149de8…`). Installed into `C:\X3` as Run234, rollback `rollback-d3d9\d3d9.dll.run233` (`8e2c37df…`); ini header only; `x3m-regenerate.exe` `f6d4e98e…` (same tool source as the dev binary already run). Zip `x3m-2.0.1-ap.zip` `82bf1f5a…` (60,316,460 B) in Downloads. Record [run234-release-install.json](../../verification/results/run234-release-install.json), [release-2.0.1-ap.json](../../verification/results/release-2.0.1-ap.json).
+- FL: stripped DLL `00f483f0…` (41,272,686 B; x87 PASS, strip identity PASS; unstripped `d09b4450…`). Installed into `C:\X3FL` as FL run 57, rollback `rollback-d3d9\d3d9.dll.run56` (`a3ac5ad2…`); ini header only; `x3m-regenerate.exe` `94991046…` (2.0.0 kept as `.2.0.0`). Zip `x3m-2.0.1-fl.zip` `29bc2761…` (60,088,890 B) in Downloads. Record [fl-run57/candidate.json](../../verification/results/fl-run57/candidate.json), [release-2.0.1-fl.json](../../verification/results/release-2.0.1-fl.json).
+- Open: none required; a smoke launch of each (log header 2.0.1) closes Run234 and FL run 57. The 2.0.0 zips are superseded.
+
 ## Release 2.0.0
 
 2026-11-05, `python3 tools/release/release.py --edition <ap|fl> --out /home/asvetl/x3m-releases/2.0.0-<edition>` (both exit 0: AP 116.3 s wall, dll 62.2 s, regenerate 51.7 s; FL 112.0 s, dll 52.2 s, regenerate 57.3 s), from clean main `28b25c08f`. The first AP attempt stopped at the host regenerate build because the host Python (3.14 after the system upgrade) had no PyInstaller; `pip3 install --user --break-system-packages pyinstaller` (6.22.3) restored it and the rerun passed.
