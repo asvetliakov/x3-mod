@@ -110,7 +110,7 @@ class SkyNebulaTests(unittest.TestCase):
         ini = (ROOT / 'assets/x3m.ini').read_text()
         self.assertEqual(entries['sky_nebula_deband']['builtin'], '1')
         self.assertEqual(entries['sky_nebula_deband']['requires'], ('taa', 'hdr'))
-        self.assertIn(';sky_nebula_deband = 0', ini)
+        self.assertIn(';sky_nebula_deband = 1', ini)
         self.assertTrue(entries['sky_nebula_jitter']['developer'])
         self.assertIn('L"X3M_SKY_NEBULA_JITTER"', capture)
         # The hash rotation: developer, default off (one fixed tap pattern), reaching c200.w through pixel_constants.
