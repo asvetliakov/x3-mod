@@ -545,3 +545,218 @@ adds its `c0-c3` rows as submitted (the background VS `7b6393fe` writes `oPos` f
 [rigid-position-profiles.md](../reverse-engineering/rigid-position-profiles.md)) and the background camera's rotation
 `r`. A ring of the last 64 logged fields keeps the rows one-shot per field. When idle the cost is one compare per draw
 and one per matched draw.
+
+## Decision C: nebula edge banding and stars under the nebula (2026-11-05)
+
+Design note (Fable), after FL runs 52/53. Two pilot requests about the background phase: (1) the edge between black
+space and the nebula shows bands; (2) the stars shine through the nebula at full strength. Nothing here is implemented.
+Measurements: `verification/results/sector-background-textures/sky_dark_steps.py` -> `sky_dark_steps_fl.txt` (this
+section), the `sky_stars_phase_draw` rows of `C:\X3FL\x3m.log` (run 52/53), and the facts above.
+
+**Outcome.** (1) Deband the four nebula part draws at draw time in texture space: swap the engine's SM1.1 pair
+`7b6393fe`/`6109cf64` for an own vs_3_0/ps_3_0 pair that reproduces its documented math and samples the DXT1 part
+with a gradient-aware average (radius in texels, soft threshold, direction from a texel-indexed hash, no dither), writing
+the smooth ramp into the FP16 target; recognised by pair, phase, blend and texture size, no copy, no header mark.
+(2) Draw the star batch at the end of the background phase (in `before_clear` of the depth-only Clear, after
+`restore_bindings()`), Z-tested at the far plane so planets still occlude it, and dim each star by the nebula radiance
+read from a 1/8-size linear `StretchRect` of the HDR target taken just before the batch: `energy x (1 - k x
+saturate(L / L0))`. Dimming off (`k = 0`) keeps today's draw position and takes no copy.
+
+### Diagnosis (measured on the stock FL parts unless marked)
+
+The phase in a four-part family (bluewell at frames 772 and 21296; two fields logged, each 5 draws): the star body
+(`1024x1024`, blend off, 768 primitives), then four `2048x1024` parts with `SRCALPHA/ONE`, Z off, mask 7, 992
+primitives each. The third logged field (frame 29693, a fog-card family) has no parts: the star body, two Z-tested
+Z-writing `1024x1024` draws (a planet, blend off), a `64x64` additive draw and two fog cards (`5/6` and `3/2`). The
+parts' PS returns the sampled RGB and `tex.a x c0.x` (`g_AlphaValue`, 0.996 in the AP captures;
+[background-temporal-coverage.md](../reverse-engineering/background-temporal-coverage.md)); DXT1 alpha is 1, so each
+part adds `0.996 x texel` to the target. The parts are a partition of the sphere (inferred from the 992-primitive pieces
+and the wrap-column statistics; no overlap measured), so the additive blend sums one part per pixel and is not a banding
+source except along the seams.
+
+Where the step comes from. In the bluewell and reddawn parts (8 of 8) the first non-zero luma beside a black texel is 1
+(median and p90; share >= 3 at most 2.1 %): the edge of the nebula is the smallest 8-bit step, not a 565 jump. Inside the
+dark band (luma 1..24, 9-58 % of the texels) the per-channel values are the RGB565 ladder with its DXT1 thirds: R and B
+take `3 5 8 11 13 16 19 21 22 24`, G takes `1 3 4 5 7 8 9 11 12 ...`, so a red or blue step is 2.7/255 where the painting
+had 1/255. Identical-luma runs in the dark band are 2.3-3.0 texels. At the 2.5x magnification of 5120x1440 each run is
+a 6-7 px plateau joined by a 2.5 px bilinear ramp, and the plateaus differ by 1-3/255 in the target's pre-decode domain
+(the engine writes the texel as is; the proxy decodes with gamma 2.2 at display time). The exposure in run 52/53 sat
+at EV +1.23 median, +1.3 p90 and cap (1,208 `hdr_frame` rows), a linear gain of 2.35 that lifts a pre-decode step by
+about 1.47x on the display; the AgX curve then maps the shadows near-linearly. So the bands are the 8-bit source
+quantisation, coarsened 2.7x in R/B by the 565 endpoints, made 6-7 px wide by the magnification and 1.5x taller by the
+exposure. The FP16 target (10-bit mantissa) and the four-part sum contribute nothing; the 8-bit display store
+re-quantises at 1/255 and is a separate, smaller contributor (the writeback dither `X3M_HDR_DITHER`, default off,
+exists for it).
+
+What a remedy must do: reconstruct the slow gradient across several plateaus (a filter radius of at least 3-4 plateaus,
+so 8-16 texels or 20-40 screen px), keep real edges (the nebula filaments, a planet limb, a sun disc), and write the
+result at a precision above 8 bits. A dither alone cannot fix it: the staircase is in the source, not in a
+re-quantisation. Writing into FP16 needs no dither at all; the only re-quantisation left is the 8-bit display store.
+
+### Options
+
+- **(b) Texture-space deband at the part draws (chosen).** The filter sees the original texels and their steps, so
+  the threshold is in texel units (the 565 ladder is at most 3/255 per step) and the radius in texels, independent of
+  FOV and resolution; it touches only the four part draws, never stars, planets, suns or fog cards; no copy, no extra
+  target traffic, 9 DXT1 taps per sky pixel. It needs a replacement program pair (D3D9 requires vs_3_0 with ps_3_0,
+  so both) and a recognition rule for the draws.
+- **(a) Screen-space deband at the phase end.** A copy of the FP16 target (5120x1440x8 B = 59 MB, not 29; read and
+  write about 118 MB, inferred 0.15-0.3 ms) plus one 7.4 Mpx pass with 9-17 taps (inferred 0.3-0.5 ms); the radius must
+  be 20-40 screen px to span the magnified plateaus and scales with resolution; it filters everything the phase drew
+  (planet surfaces, sun halos, fog cards) under one threshold; the stars must be drawn after it (their dim tails,
+  0.01-0.03 pre-decode at the kernel rim, sit under any useful threshold and would be averaged into the black). It is
+  the fallback if the pair swap of (b) is refused by a runtime, and it shares nothing with (2) once (2) uses the
+  1/8-size copy. Loses on cost, scope and resolution dependence.
+- **(c) Offline uncompressed 8-bit re-encode with deband and dither.** Removes the 565 ladder but keeps 8-bit steps
+  at 6-7 px, so it must dither, and Decision B showed a dither at texel scale magnified 1.75-2.5x reads as a dot
+  pattern; 8 MiB per part (32 MiB per sector), a regenerate run for every user, and derived copies for mod parts.
+  Loses on faithfulness and size.
+- **(d) Combination.** (b) plus the existing display dither on (the 8-bit store), plus (2). This is the outcome; (a)
+  is not combined with (b) because the plateaus are gone after (b).
+- *For (2), keep the draw position and accept.* No cost, but the pilot asked. *`INVDESTCOLOR` blending.* No `k`, and
+  negative on an FP16 sum above 1 (a sun disc under a star): rejected in Decision A, still rejected.
+- *For (2), a same-size copy as the radiance source.* 59 MB per frame for a smooth signal; the 1/8-size linear
+  `StretchRect` (640x180, 0.9 MB) averages over an 8x8 block, which is what the dimming wants (no speckle), reads the
+  target once (inferred 0.1 ms) and costs nothing per star beyond four bilinear taps. The downscale is the "cheaper
+  proxy".
+
+### Chosen design
+
+**C1, nebula deband.** `MotionOutput::before_draw` (the star route's hook, one bool test with the setting off): a
+draw matches when the selector is in `Background`, the HDR latch holds (`hdr_state_ == Active`, FP16 target, no
+MSAA), the shadow's pair is `7b6393fe2d3e1d85`/`6109cf64c03529dd` (the fog cards match by pair the same way), blend
+on with `SRCALPHA/ONE`, Z test off, mask 7, only RT0 with a full viewport, stage-0 texture width >= 1024 and not a
+star mark (payload 2). This admits FL's 2048x1024 and 2048x2048 parts and AP's 2048x1024 uncompressed, 2048x2048
+and 1024x512 DXT5 parts, and excludes the 64x64 additive sun draw, the planet (blend off, Z on), the fog cards (other
+pairs) and every UI use of the pair (outside the phase). On a match the route sets its own pair, sets `c255 =
+(jitter x 2/W, -jitter y 2/H, 0, 0)` when `jitter_active_` else 0 (the batch's rule), forwards the draw, and restores
+the pair and c255 (the batch's Get/Set/restore bracket; a failed restore latches `motion_state_lost_`). The engine's
+constants c0-c5 (VS) and c0 (PS) are read as set; the stage-0 sampler state stays the engine's (LIN/LIN, no mip).
+
+*Programs.* `sky_nebula_vs` reproduces the SM1.1 VS: `oPos = pos . c0-c3`, `oT0 = affine(uv, c4, c5)`, plus the
+jitter term `oPos.xy += c255.xy x oPos.w`. `sky_nebula_ps`: centre `c = tex2D(s0, uv)`; for i in 1..2: direction `d`
+from `hash(floor(uv x size) + i)` (texel-indexed, so static in texture space), radius `r_i = radius x i / 2` texels,
+four taps at `uv + r_i x {d, -d, perp d, -perp d} / size`, `m` their mean, `diff = max over the four of
+max_channel |tap - c|`, weight `w = saturate(1 - diff / threshold)`, `c = lerp(c, m, w)`; output `(c.rgb, tex.a x c0.x)`.
+Threshold and radius are ps constants `c200` (a register the SM1 pair cannot touch), set once at attach and on a
+setting change, not per draw. No grain: the result goes to FP16. The texel-indexed hash keeps the residual ripple
+attached to the sky, so the far-plane TAA reprojection follows it (the jittered draw changes the UV per screen pixel
+by less than a texel; `floor` keeps the direction fixed). A per-frame seed would instead leave 0.23x of its amplitude
+as flicker through the 0.9 history (alpha / (2 - alpha)) and is not used. Expected residual: with radius 12 texels
+and plateaus of 2.5, a step's ripple is about 2.5 / (2 x 12) = 0.1 of the step (inferred, fixture-measured).
+
+*Jitter.* The native part draws are unjittered (inferred from the unrouted pair). The replacement VS applies the
+frame's jitter like the batch so stars and nebula move together under TAA and the resolve supersamples the bilinear
+magnification. Developer `sky_nebula_jitter=0` turns it off if the flight shows a sky wobble.
+
+*Display store.* The flight runs with `X3M_HDR_DITHER=1` (existing static +-0.5 code display dither, post-TAA, no
+temporal term). If the pilot accepts C1 with it, its default follows C1's.
+
+**C2, stars under the nebula.** With `sky_stars_nebula_dim > 0` the matched star body is masked as today but the batch
+is not drawn there. In `MotionOutput::before_clear`, after `restore_bindings()` (RT1/RT2 unbound, RT0 the FP16
+target) and before the Clear is forwarded, the route predicts the phase end: `selector_.state() == Background`,
+`flags & D3DCLEAR_ZBUFFER`, `!(flags & D3DCLEAR_TARGET)`, `count == 0`, `pending_.depth == main_depth_`, HDR latched,
+a star body matched this frame and the batch not yet drawn. Then it issues `StretchRect(RT0 surface, nullptr,
+dim surface, nullptr, D3DTEXF_LINEAR)` into the 1/8-size A16B16G16R16F render-target texture created at attach (and
+after Reset; never per frame; `D3DTEXF_POINT` when `StretchRectFilterCaps` lacks `MINFLINEAR`, the copy skipped and
+`k` forced to 0 when both fail), and draws the batch with `ZENABLE TRUE, ZFUNC LESSEQUAL, ZWRITE off` at `z =
+0.99999 w` against the phase's depth (the latching Clear's 1.0, planets written by their Z-writing draws), everything
+else as today. The selector's rule 2 makes a full-viewport depth-only Clear in `Background` either the phase end or a
+rejected frame, so the prediction never draws the batch into a live mid-phase; a frame rejected after the draw is
+unwound as a masked star body in a rejected frame is today. Because every draw between the star body and the phase end
+is additive or opaque-and-Z-written, the deferred sum equals the in-place sum where the planets do not cover
+(FP16 rounding aside) and loses the stars where they do, which is the native order's effect.
+
+*Dimming.* The star PS gets the batch's clip-space centre from the VS (`centre.xy / w x (0.5, -0.5) + 0.5`), takes
+four bilinear taps of the dim texture 1 texel apart (a 16 px neighbourhood on screen), pre-decode luma `L = dot(rgb,
+(0.299, 0.587, 0.114))`, and multiplies the energy by `1 - k x saturate(L / L0)`. `k = sky_stars_nebula_dim`, `L0 =
+sky_stars_nebula_dim_level` in `c250 = (k, 1 / L0, 0, 0)` (joins the c251-c255 bracket: 52 device calls per batch).
+Over black the factor is 1; the brightness law, the peak cap and the twinkle are unchanged (the factor multiplies
+the energy after the cap, so it only lowers peaks). The exposure meter cannot rise (less light). TAA: the factor
+varies with the star's position over the nebula at the sky's own spatial frequency, so a drifting star changes
+smoothly; no per-frame term.
+
+### Invariants to validate
+
+1. *Identity.* With `threshold = 0` the replacement pair's output equals a fixture-authored vs_1_1/ps_1_1 pair of the
+   documented math (`oPos` from c0-c3, affine UV, RGB and `a x c0.x`) on a DXT1 texture at 2.5x magnification:
+   0 differing pixels (native D3D9 fixture). The exact SM1 bytecode semantics (affine form of c4/c5, output
+   registers) are confirmed by disassembling the local 512 B / 304 B programs before the VS is written.
+2. *Banding removed, edges kept.* A synthetic DXT1 part with plateaus of 2-4 texels and 1/255 and 565 steps, rendered
+   at 2.5x: ripple (max second difference along the gradient) <= 0.25/255 and error against the ideal ramp <= 0.5/255
+   after C1; a 12/255 edge keeps its height within 1/255 over the whole radius (no halo); no texel farther than
+   `radius` from a non-black texel becomes non-zero.
+3. *Match scope.* Row `sky_nebula parts=4` per phase in bluewell, `parts=0` in a fog-card family, `outside=0`
+   (pair bound outside the phase is never swapped); AP's uncompressed and 2048x2048 parts match.
+4. *State restore.* The pair and c255 are back after a clean draw, an injected draw failure and an injected restore
+   failure (the star route's `motion_sky_stars_fixture.cpp` pattern, 0 mismatches).
+5. *Cost.* Full-sky frame at 5120x1440: C1 <= 0.5 ms GPU (inferred 0.2-0.3), the dim copy <= 0.2 ms (inferred 0.1),
+   batch CPU <= 1 us as today; no per-frame allocation (attach holds the dim texture; detach releases to 0).
+6. *Commutativity and occlusion.* The deferred batch over additive quads equals the in-place batch within 1 FP16 ulp;
+   against a Z-written disc at depth 0.5 no star pixel is written inside the disc; in flight no stars on a planet disc.
+7. *Prediction.* Row `sky_stars_defer predicted= confirmed=`: `confirmed / predicted >= 0.999` over a flight (the
+   selector's `Background -> Scene` transition in `after_clear` confirms each prediction).
+8. *Dimming law.* Over a flat quad at pre-decode luma L the star energy is `1 - k saturate(L / L0)` of the black-sky
+   energy within 1 %; `k = 0` reproduces today's batch pixels bit for bit at the old draw position.
+9. *TAA.* The fixture's resolve model (60 frames, 0.5 and 10 px/frame pans) over a debanded gradient: per-pixel
+   temporal standard deviation <= 0.1/255; flight: no shimmer or crawling in the nebula under SETA rotation.
+10. *Native.* Both pairs pass the native validator (ps_3_0 slots logged); every call is documented D3D9
+    (`SetVertexShader/SetPixelShader`, `SetVertexShaderConstantF`, `StretchRect` RT to RT texture with
+    `StretchRectFilterCaps` checked, render states); the FL log proves the phase end on FL, the selector note on AP;
+    CrossOver runs the same calls; the user's native flight is the behavioural proof.
+
+### Settings
+
+| Setting | Default | Range | Effect |
+| --- | --- | --- | --- |
+| `sky_nebula_deband` | 0 until flown, then 1 | 0/1 | C1 on; independent of `sky_stars` |
+| `sky_nebula_deband_threshold` | 6 | 1-16 (1/255 units) | soft threshold on the max channel difference of a tap set |
+| `sky_nebula_deband_radius` | 12 | 2-32 texels | outer radius; the inner iteration uses half |
+| `sky_nebula_jitter` (developer) | 1 | 0/1 | TAA jitter on the replaced part draws |
+| `sky_stars_nebula_dim` | 0.5 | 0-1 | `k`; 0 keeps today's draw position and takes no copy (`requires=sky_stars`) |
+| `sky_stars_nebula_dim_level` (developer) | 0.5 | 0.1-2 | `L0`, pre-decode luma of full dimming |
+
+### Cost (inferred unless marked)
+
+C1 per frame: at most four extra `SetVertexShader/SetPixelShader` pairs, one constant Get/Set/restore bracket and the
+match test; GPU 9 DXT1 bilinear taps per sky pixel (the DXT1 parts, 1 MiB each, sit in cache), 0.2-0.3 ms at
+5120x1440 with the sky filling the screen, bounded by invariant 5. C2 per frame: one `StretchRect` reading 59 MB and
+writing 0.9 MB (0.1 ms), four taps per star pixel (<= 100 k pixels at density 2: under 10 us), the batch as before
+(measured 2.2 us upper bound, `draw()` CPU 0.75 us). No per-frame allocation in either. SETA has no bearing.
+
+### Kill criteria
+
+C1: visible halos, smeared filaments or a crawling pattern in the flown sector, not fixed by one threshold/radius
+adjustment, or a fixture cost above 0.5 ms, turns the default off; a second failed adjustment removes the pair swap and
+leaves (a) as the only recorded alternative. C2: stars visible on a planet disc, a brightness pulse of stars crossing
+nebula structure under SETA rotation, or a prediction ratio below 0.999, not fixed by one law/L0 adjustment, sets
+`sky_stars_nebula_dim` default 0 (the old draw position is the `k = 0` path); the dim texture and the deferral code go
+with it.
+
+### Implementation outline (files)
+
+- New `src/proxy/motion_output_sky_nebula_inc.h` (match, swap, bracket, rows `sky_nebula_config`, `sky_nebula parts=
+  outside= swapped= draw= restore=`), `src/renderer/sky_nebula_pass.{h,cpp}` (programs, attach/detach/Reset, constant
+  bracket), `src/effects/sky_nebula_{vs,ps}.hlsl` and `tools/shaders/generate_sky_nebula_programs.py` (as the star
+  generator; native D3DX compile, `*_inc.h` output).
+- `src/proxy/motion_output_sky_stars_inc.h`: `sky_stars_phase_end_draw()` called from `before_clear` after
+  `restore_bindings()` under the prediction; the dim copy; the `k = 0` path unchanged. `src/renderer/sky_stars_pass.{h,cpp}`:
+  dim texture (1/8 size, FP16 RT, created at attach and after Reset), `StretchRect`, Z states, c250; `src/effects/
+  sky_stars_{vs,ps}.hlsl`: centre passthrough and the dim taps. `src/proxy/motion_output.cpp`: one call in `before_clear`,
+  the confirmation counter in `after_clear`; `motion_output.h`: members. `src/config/config_schema_inc.h` and `capture.cpp`:
+  the six settings.
+- Tests: `verification/analysis/test_sky_nebula.py` (hash static in texture space, settings parse), the route fixture
+  `verification/probe/motion_sky_stars_fixture.cpp` (prediction, deferral, k = 0 path, restore faults), the native D3D9
+  fixture under `verification/results/sky-nebula/` (invariants 1, 2, 4, 5, 6, 8, 9) and `native/validate.py` (10).
+- Disassembly before coding: the local bytes of `7b6393fe` (512 B) and `6109cf64` (304 B) for invariant 1 (the
+  `disassemble` agent; findings into `background-temporal-coverage.md`, no bytes tracked).
+- Flight: one FL flight in Argon Prime with `sky_nebula_deband=1`, `X3M_HDR_DITHER=1`, `sky_stars_nebula_dim=0.5`;
+  rows `sky_nebula parts=4`, `sky_stars_defer confirmed=`; pilot: smooth edge, no halos, stars dimmer in the bright
+  nebula, none on a planet disc, no shimmer under SETA.
+
+### Unknown
+
+Whether the parts overlap anywhere (only the seam behaviour depends on it; the first flight's look answers it). The
+exact SM1 program semantics beyond the coverage note (invariant 1's disassembly). Whether `StretchRect` with
+`D3DTEXF_LINEAR` from an FP16 RT is granted on the user's driver (the caps check and the `copy=` row answer it; point
+filtering is the fallback). The GPU figures are inferred until the native fixture measures them.

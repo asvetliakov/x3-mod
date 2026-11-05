@@ -1,0 +1,40 @@
+dds/nebula_bluewell_background_part_01_diff.pck 2048x1024 DXT1 black=61.9% dark(1..24)=34.0%
+  luma levels 1..24 (level:texels): 1:80758 2:19444 3:81414 4:26656 5:9514 6:49708 7:63148 8:17675 9:51796 10:49277 11:26665 12:42737 13:21368 14:20069 15:23732 16:19775 17:15887 18:21286 19:9270 20:16805 21:13731 22:8182 23:10911 24:13682
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 26830 edges): median 1 p90 1 share>=3: 0.4% share>=6: 0.0%
+  mean identical-luma run along x inside 1..24: 2.31 texels
+dds/nebula_bluewell_background_part_02_diff.pck 2048x1024 DXT1 black=68.8% dark(1..24)=29.3%
+  luma levels 1..24 (level:texels): 1:106064 2:33813 3:91699 4:33598 5:13978 6:50712 7:68678 8:18953 9:37981 10:38517 11:13547 12:23113 13:10531 14:8824 15:12067 16:7191 17:5932 18:10778 19:2832 20:6708 21:6076 22:3173 23:5438 24:4439
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 25818 edges): median 1 p90 1 share>=3: 0.3% share>=6: 0.0%
+  mean identical-luma run along x inside 1..24: 2.79 texels
+dds/nebula_bluewell_background_part_03_diff.pck 2048x1024 DXT1 black=90.5% dark(1..24)=9.2%
+  luma levels 1..24 (level:texels): 1:51920 2:10984 3:41974 4:12982 5:1148 6:20271 7:12966 8:5716 9:2320 10:7753 11:1986 12:5506 13:1619 14:1286 15:3849 16:1044 17:885 18:2292 19:916 20:1140 21:1577 22:374 23:1556 24:529
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 18339 edges): median 1 p90 1 share>=3: 1.4% share>=6: 0.1%
+  mean identical-luma run along x inside 1..24: 2.29 texels
+dds/nebula_bluewell_background_part_04_diff.pck 2048x1024 DXT1 black=76.4% dark(1..24)=22.8%
+  luma levels 1..24 (level:texels): 1:88746 2:19873 3:69970 4:20208 5:5759 6:35184 7:43865 8:9463 9:32886 10:26145 11:18749 12:22146 13:11635 14:10846 15:11213 16:9082 17:8175 18:9417 19:2729 20:7083 21:4429 22:3639 23:3361 24:4083
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 14, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 27836 edges): median 1 p90 1 share>=3: 0.6% share>=6: 0.1%
+  mean identical-luma run along x inside 1..24: 2.49 texels
+dds/nebula_reddawn_background_part_01_diff.pck 2048x1024 DXT1 black=63.2% dark(1..24)=33.5%
+  luma levels 1..24 (level:texels): 1:168235 2:81228 3:25336 4:84616 5:59863 6:27187 7:44770 8:19921 9:22092 10:23596 11:17186 12:13309 13:23714 14:9293 15:13833 16:8206 17:6546 18:8948 19:8528 20:6806 21:9864 22:4938 23:8502 24:5405
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 61853 edges): median 1 p90 1 share>=3: 1.0% share>=6: 0.0%
+  mean identical-luma run along x inside 1..24: 2.91 texels
+dds/nebula_reddawn_background_part_02_diff.pck 2048x1024 DXT1 black=50.5% dark(1..24)=35.8%
+  luma levels 1..24 (level:texels): 1:62963 2:53274 3:12427 4:45998 5:24935 6:41996 7:25058 8:34741 9:16362 10:52532 11:38637 12:31498 13:52620 14:21164 15:35477 16:24847 17:17592 18:24890 19:29176 20:15200 21:31877 22:13499 23:28022 24:15002
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 14, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 18071 edges): median 1 p90 1 share>=3: 0.7% share>=6: 0.0%
+  mean identical-luma run along x inside 1..24: 3.00 texels
+dds/nebula_reddawn_background_part_03_diff.pck 2048x1024 DXT1 black=37.9% dark(1..24)=57.5%
+  luma levels 1..24 (level:texels): 1:104995 2:99095 3:49598 4:283876 5:163002 6:73361 7:110633 8:37211 9:44653 10:50859 11:22278 12:25017 13:22966 14:13625 15:19794 16:15478 17:8878 18:13264 19:10264 20:6623 21:11719 22:4132 23:9084 24:4643
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 44497 edges): median 1 p90 2 share>=3: 2.1% share>=6: 0.0%
+  mean identical-luma run along x inside 1..24: 2.67 texels
+dds/nebula_reddawn_background_part_04_diff.pck 2048x1024 DXT1 black=57.0% dark(1..24)=39.8%
+  luma levels 1..24 (level:texels): 1:275497 2:97177 3:37853 4:111425 5:59480 6:40658 7:25475 8:27905 9:16797 10:29843 11:7978 12:8947 13:12768 14:6293 15:10931 16:7604 17:6305 18:6835 19:9924 20:5079 21:11514 22:4882 23:6902 24:7130
+  channel values 1..24 R/G/B: [3, 5, 8, 11, 13, 16, 19, 21, 22, 24] [1, 3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 19, 20, 21, 23, 24] [3, 5, 8, 11, 13, 16, 19, 21, 22, 24]
+  edge step (first non-zero luma beside black, 115824 edges): median 1 p90 2 share>=3: 1.4% share>=6: 0.0%
+  mean identical-luma run along x inside 1..24: 2.82 texels

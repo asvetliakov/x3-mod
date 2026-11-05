@@ -15,3 +15,6 @@ the retained evidence:
 - sky_metrics_noop_check_fl.txt: untouched and nearest-neighbour bakes against the gate.
 
 What remains of the sky group is the star-texture mark (tools/analysis/sky_textures.py, payload 2).
+
+sky_dark_steps.py -> sky_dark_steps_fl.txt (2026-11-05, Decision C): dark-level ladder, edge step and dark-band runs of the
+bluewell and reddawn parts (first non-zero luma beside black is 1; R/B values follow the RGB565 ladder with DXT1 thirds).
