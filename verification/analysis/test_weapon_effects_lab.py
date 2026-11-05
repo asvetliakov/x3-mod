@@ -287,6 +287,16 @@ class GeneratorTest(unittest.TestCase):
         self.assertEqual((st['body_errors'], st['truncated_bodies']), (['objects/v/04262'], ['objects/v/00002']))
         self.assertEqual(st['scene_bodies'], {'cut_fallback_inferred': ['objects/v/00446'], 'scene': []})
 
+    def test_catalogue_inlined(self):
+        cat = dict(weapons=[dict(id='SS_BULLET_X', size='small', textures=['a.tga'], light_rgb=[1, 2, 3],
+                                 lasers=[dict(id='SS_LASER_X', name='X Gun', used_by={'M3': 2}, size='small',
+                                              name_id=8003, shots_per_min=400.0)]),
+                            dict(id='SS_BULLET_ABSENT')])
+        rec = gen.view_record('stock_ap', census_fixture(), manifest_fixture(), cat)
+        self.assertEqual(rec['weapons'][0]['cat'], dict(id='SS_BULLET_X', size='small',
+                                                        lasers=[dict(id='SS_LASER_X', name='X Gun', shots_per_min=400.0)]))
+        self.assertNotIn('cat', gen.view_record('stock_ap', census_fixture(), manifest_fixture())['weapons'][0])
+
     def test_block_render_and_check(self):
         data = {'stock_ap': gen.view_record('stock_ap', census_fixture(), manifest_fixture())}
         hv = gen.header_constants((gen.REPO / 'src/proxy/weapon_effects_core.h').read_text())
@@ -339,6 +349,8 @@ class PageTest(unittest.TestCase):
         for slot in ('muzzle', 'projectile', 'impact', 'death'):
             self.assertIn(f"key: '{slot}'", self.html)
         self.assertIn('renderOurs(rec, state.t)', self.html)
+        self.assertIn('<aside id="wdesc">', self.html)                 # catalogue description panel
+        self.assertIn('function updateDesc()', self.html)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_script_parses(self):

@@ -1,0 +1,3091 @@
+{
+ "view": "stock_ap",
+ "label": "Stock AP (pinned 01-13 + addon/01-04)",
+ "sources": {
+  "TLaser": "addon/01.cat:addon/types/TLaser.pck 0dbf9016032496a3",
+  "TShips": "addon/03.cat:addon/types/TShips.pck 84df8364a12265eb",
+  "TCockpits": "addon/03.cat:addon/types/TCockpits.pck b9e4cc3dbc168109",
+  "TBullets": "addon/02.cat:addon/types/TBullets.pck be762076cdc38b03",
+  "text": [
+   "13.cat:t/0001-L044.pck",
+   "addon/04.cat:addon/t/0001-L044.pck",
+   "addon/02.cat:addon/t/0003-L044.pck",
+   "addon/01.cat:addon/t/0123-L044.pck"
+  ]
+ },
+ "rules": {
+  "size": "size = the smallest tier holding at least 10 % of the tier-class TShips rows that can mount a laser firing the bullet (fewer is treated as an outlier row): small M5/M4/M3; medium M6/M8/TS/TS_PIRATE/TP/TM; big M7/MISSILE_FRIGATE/M2/M1/M0/TL/DRONECARRIER; other = only non-tier classes (drones, satellites, UFO, Kha'ak cluster, ...) mount it; unmounted = no ship mask admits its laser subtype or no TLaser row fires it; the TShips rows SS_SH_TURRET, SS_SH_TLS, SS_SH_TL_P, SS_SH_TL_P2 (a static turret and station-like rows with catch-all masks) are left out",
+  "range": "lifetime_ms x speed / 1000 / 500 m",
+  "rate": "60000 / TLaser col 7 refire interval ms",
+  "mounting": "TShips col 18 | TCockpits col 8 of TShips cols 31,33,..41; bit = SG_LASER value (inferred)"
+ },
+ "counts": {
+  "weapons": 45,
+  "lasers": 39,
+  "laser_names_resolved": 39,
+  "laser_names_unresolved": 0,
+  "weapons_without_laser": 9,
+  "ships": 400,
+  "excluded_ships": 4,
+  "bad_cockpit_refs": 0
+ },
+ "unresolved_names": [],
+ "unknown_subtypes": [],
+ "lasers_without_bullet": [],
+ "weapons": [
+  {
+   "id": "SS_BULLET_KH_ALPHA",
+   "bullet_index": 32,
+   "lasers": [
+    {
+     "index": 32,
+     "id": "SS_LASER_KH_ALPHA",
+     "name": "Alpha Kyon Emitter",
+     "name_id": 4643,
+     "subtype": "SG_LASER_KYON",
+     "refire_ms": 300,
+     "shots_per_min": 200.0,
+     "size": "small",
+     "used_by": {
+      "M1": 4,
+      "M2": 1,
+      "M3": 1,
+      "M4": 1,
+      "M5": 1,
+      "M6": 1
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 1,
+    "M4": 1,
+    "M3": 1,
+    "M6": 1,
+    "M2": 1,
+    "M1": 4
+   },
+   "style": "beam",
+   "body": "objects/v/00525",
+   "elongation": 3.4229,
+   "texture": "id:155",
+   "textures": [
+    "id:155"
+   ],
+   "light": "#8000ff",
+   "light_rgb": [
+    128,
+    0,
+    255
+   ],
+   "speed_mps": 5994.0,
+   "lifetime_ms": 300,
+   "range_m": 1798.2,
+   "damage_shield": 700,
+   "damage_hull": 350,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": null,
+    "flight": null,
+    "impact": {
+     "row": 18,
+     "summary": "2 elements: 10658 [exp_impact_glow_diff] 0.01-0.1 500 ms; 10663 [animation -73] 0.04-0.08 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Alpha Kyon Emitter: small weapon, mountable on M5, M4, M3, M6, M2 and 1 more class; fires a beam (body 00525, texture id:155) lit #8000ff at 5994 m/s over 1798.2 m, 200 shots/min, 700 shield / 350 hull damage per shot; flags beam_gun_tied; impact row 18."
+  },
+  {
+   "id": "SS_BULLET_KH_BETA",
+   "bullet_index": 33,
+   "lasers": [
+    {
+     "index": 33,
+     "id": "SS_LASER_KH_BETA",
+     "name": "Beta Kyon Emitter",
+     "name_id": 4653,
+     "subtype": "SG_LASER_KYON",
+     "refire_ms": 500,
+     "shots_per_min": 120.0,
+     "size": "small",
+     "used_by": {
+      "M1": 4,
+      "M2": 1,
+      "M3": 1,
+      "M4": 1,
+      "M5": 1,
+      "M6": 1
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 1,
+    "M4": 1,
+    "M3": 1,
+    "M6": 1,
+    "M2": 1,
+    "M1": 4
+   },
+   "style": "beam",
+   "body": "objects/v/00526",
+   "elongation": 1.9054,
+   "texture": "id:155",
+   "textures": [
+    "id:155"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 9765.8,
+   "lifetime_ms": 350,
+   "range_m": 3418.0,
+   "damage_shield": 2500,
+   "damage_hull": 1500,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": null,
+    "flight": null,
+    "impact": {
+     "row": 18,
+     "summary": "2 elements: 10658 [exp_impact_glow_diff] 0.01-0.1 500 ms; 10663 [animation -73] 0.04-0.08 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Beta Kyon Emitter: small weapon, mountable on M5, M4, M3, M6, M2 and 1 more class; fires a beam (body 00526, texture id:155) lit #ffffff at 9765.8 m/s over 3418 m, 120 shots/min, 2500 shield / 1500 hull damage per shot; flags beam_gun_tied; impact row 18."
+  },
+  {
+   "id": "SS_BULLET_EMP",
+   "bullet_index": 10,
+   "lasers": [
+    {
+     "index": 10,
+     "id": "SS_LASER_EMP",
+     "name": "Electro-Magnetic Plasma Cannon",
+     "name_id": 8103,
+     "subtype": "SG_LASER_TERRAN_LIGHT",
+     "refire_ms": 382,
+     "shots_per_min": 157.1,
+     "size": "small",
+     "used_by": {
+      "M1": 5,
+      "M2": 6,
+      "M3": 9,
+      "M4": 4,
+      "M5": 2,
+      "M6": 5,
+      "M7": 4,
+      "M8": 1,
+      "OBJ_FIGHTDRONEUSC": 1,
+      "TL": 1,
+      "TM": 1,
+      "TP": 2,
+      "TS": 3
+     }
+    },
+    {
+     "index": 36,
+     "id": "SS_LASER_EMP_1",
+     "name": "Experimental Electro-Magnetic Plasma Cannon",
+     "name_id": 18103,
+     "subtype": "SG_LASER_UNKNOWN1",
+     "refire_ms": 426,
+     "shots_per_min": 140.8,
+     "size": "small",
+     "used_by": {
+      "M1": 1,
+      "M3": 2,
+      "M4": 1,
+      "M5": 1,
+      "M6": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 3,
+    "M4": 4,
+    "M3": 9,
+    "M6": 7,
+    "M8": 1,
+    "TS": 3,
+    "TP": 2,
+    "TM": 1,
+    "M7": 4,
+    "M2": 6,
+    "M1": 6,
+    "TL": 1,
+    "OBJ_FIGHTDRONEUSC": 1
+   },
+   "style": "slug",
+   "body": "objects/v/00517",
+   "elongation": 1.8353,
+   "texture": "380.jpg",
+   "textures": [
+    "380.jpg"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 588.0,
+   "lifetime_ms": 3405,
+   "range_m": 2002.1,
+   "damage_shield": 2000,
+   "damage_hull": 800,
+   "flag_word": "0x800",
+   "flags": [
+    "on_hit_col31_32"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 25,
+     "summary": "2 elements: 04253 0.002-0.026 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 23,
+     "summary": "5 elements: 00587 [id:380] 0.0-0.02 260 ms; 00469 [id:380] 0.0-0.007 210 ms; light 0.002-0.061 650 ms; 00564 [id:383] 0.001-0.14 330 ms; 12000 [animation -98] 0.04-0.12 1440 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Electro-Magnetic Plasma Cannon, Experimental Electro-Magnetic Plasma Cannon: small weapon, mountable on M5, M4, M3, M6, M8 and 8 more classes; fires a slug (body 00517, texture 380) lit #c0c000 at 588 m/s over 2002.1 m, 140.8/157.1 shots/min, 2000 shield / 800 hull damage per shot; flags on_hit_col31_32; muzzle row 25, impact row 23."
+  },
+  {
+   "id": "SS_BULLET_EBC",
+   "bullet_index": 4,
+   "lasers": [
+    {
+     "index": 4,
+     "id": "SS_LASER_EBC",
+     "name": "Energy Bolt Chaingun",
+     "name_id": 8043,
+     "subtype": "SG_LASER_TELADI_LIGHT",
+     "refire_ms": 152,
+     "shots_per_min": 394.7,
+     "size": "small",
+     "used_by": {
+      "M1": 11,
+      "M2": 9,
+      "M3": 43,
+      "M4": 2,
+      "M5": 4,
+      "M6": 18,
+      "M7": 22,
+      "M8": 5,
+      "TL": 12,
+      "TP": 2,
+      "TS": 4,
+      "UFO": 5,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 4,
+    "M4": 2,
+    "M3": 43,
+    "M6": 18,
+    "M8": 5,
+    "TS": 4,
+    "TP": 2,
+    "M7": 22,
+    "M2": 9,
+    "M1": 11,
+    "TL": 12,
+    "UFO": 5,
+    "class_id:0": 2
+   },
+   "style": "slug",
+   "body": "objects/effects/weapons/bullet_energybolt",
+   "elongation": 3.8084,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c010",
+   "light_rgb": [
+    192,
+    192,
+    16
+   ],
+   "speed_mps": 604.0,
+   "lifetime_ms": 4660,
+   "range_m": 2814.6,
+   "damage_shield": 1357,
+   "damage_hull": 217,
+   "flag_word": "0x40",
+   "flags": [
+    "ammunition"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 191,
+     "summary": "3 elements: 04252 0.002-0.026 150 ms; lensflare 25 0.002-0.0075 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 192,
+     "summary": "2 elements: 12005 [animation -103] 0.01-0.11 1680 ms; light 0.002-0.031 150 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Energy Bolt Chaingun: small weapon, mountable on M5, M4, M3, M6, M8 and 8 more classes; fires a slug (body bullet_energybolt, texture fx_bullets2_diff) lit #c0c010 at 604 m/s over 2814.6 m, 394.7 shots/min, 1357 shield / 217 hull damage per shot; flags ammunition; muzzle row 191, impact row 192."
+  },
+  {
+   "id": "SS_BULLET_FBL",
+   "bullet_index": 5,
+   "lasers": [
+    {
+     "index": 5,
+     "id": "SS_LASER_FBL",
+     "name": "Fragmentation Bomb Launcher",
+     "name_id": 8053,
+     "subtype": "SG_LASER_PARANID_LIGHT",
+     "refire_ms": 317,
+     "shots_per_min": 189.3,
+     "size": "small",
+     "used_by": {
+      "M1": 4,
+      "M2": 5,
+      "M3": 35,
+      "M4": 20,
+      "M5": 6,
+      "M6": 14,
+      "M7": 15,
+      "M8": 4,
+      "TL": 3,
+      "TM": 3,
+      "TP": 10,
+      "TS": 9,
+      "UFO": 5,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 6,
+    "M4": 20,
+    "M3": 35,
+    "M6": 14,
+    "M8": 4,
+    "TS": 9,
+    "TP": 10,
+    "TM": 3,
+    "M7": 15,
+    "M2": 5,
+    "M1": 4,
+    "TL": 3,
+    "UFO": 5,
+    "class_id:0": 2
+   },
+   "style": "slug+burst",
+   "body": "objects/effects/weapons/bullet_fragbomb",
+   "elongation": 1.9439,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c010",
+   "light_rgb": [
+    192,
+    192,
+    16
+   ],
+   "speed_mps": 359.0,
+   "lifetime_ms": 5500,
+   "range_m": 1974.5,
+   "damage_shield": 2793,
+   "damage_hull": 471,
+   "flag_word": "0x1000",
+   "flags": [
+    "fragments"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 185,
+     "summary": "2 elements: 04258 0.001-0.027 150 ms; 00447 [id:383] 0.005-0.03 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 184,
+     "summary": "2 elements: 12000 [animation -98] 0.01-0.15 1295 ms; light 0.01-0.06 400 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Fragmentation Bomb Launcher: small weapon, mountable on M5, M4, M3, M6, M8 and 9 more classes; fires a slug+burst (body bullet_fragbomb, texture fx_bullets2_diff) lit #c0c010 at 359 m/s over 1974.5 m, 189.3 shots/min, 2793 shield / 471 hull damage per shot; flags fragments; muzzle row 185, impact row 184."
+  },
+  {
+   "id": "SS_BULLET_KH_GAMMA",
+   "bullet_index": 34,
+   "lasers": [
+    {
+     "index": 34,
+     "id": "SS_LASER_KH_GAMMA",
+     "name": "Gamma Kyon Emitter",
+     "name_id": 4663,
+     "subtype": "SG_LASER_KYON",
+     "refire_ms": 700,
+     "shots_per_min": 85.7,
+     "size": "small",
+     "used_by": {
+      "M1": 4,
+      "M2": 1,
+      "M3": 1,
+      "M4": 1,
+      "M5": 1,
+      "M6": 1
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 1,
+    "M4": 1,
+    "M3": 1,
+    "M6": 1,
+    "M2": 1,
+    "M1": 4
+   },
+   "style": "beam",
+   "body": "objects/v/00527",
+   "elongation": 1.0401,
+   "texture": "id:155",
+   "textures": [
+    "id:155"
+   ],
+   "light": "#ffff00",
+   "light_rgb": [
+    255,
+    255,
+    0
+   ],
+   "speed_mps": 12143.0,
+   "lifetime_ms": 400,
+   "range_m": 4857.2,
+   "damage_shield": 7500,
+   "damage_hull": 4500,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": null,
+    "flight": null,
+    "impact": {
+     "row": 18,
+     "summary": "2 elements: 10658 [exp_impact_glow_diff] 0.01-0.1 500 ms; 10663 [animation -73] 0.04-0.08 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Gamma Kyon Emitter: small weapon, mountable on M5, M4, M3, M6, M2 and 1 more class; fires a beam (body 00527, texture id:155) lit #ffff00 at 12143 m/s over 4857.2 m, 85.7 shots/min, 7500 shield / 4500 hull damage per shot; flags beam_gun_tied; impact row 18."
+  },
+  {
+   "id": "SS_BULLET_HEPT",
+   "bullet_index": 6,
+   "lasers": [
+    {
+     "index": 6,
+     "id": "SS_LASER_HEPT",
+     "name": "High Energy Plasma Thrower",
+     "name_id": 8063,
+     "subtype": "SG_LASER_HEPT",
+     "refire_ms": 212,
+     "shots_per_min": 283.0,
+     "size": "small",
+     "used_by": {
+      "M1": 16,
+      "M2": 11,
+      "M3": 55,
+      "M4": 9,
+      "M5": 3,
+      "M6": 22,
+      "M7": 20,
+      "M8": 6,
+      "TL": 12,
+      "TM": 1,
+      "TP": 1,
+      "TS": 2,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 3,
+    "M4": 9,
+    "M3": 55,
+    "M6": 22,
+    "M8": 6,
+    "TS": 2,
+    "TP": 1,
+    "TM": 1,
+    "M7": 20,
+    "M2": 11,
+    "M1": 16,
+    "TL": 12,
+    "class_id:0": 2
+   },
+   "style": "tracer",
+   "body": "objects/effects/weapons/bullet_pl_alpha",
+   "elongation": 9.4026,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#30c010",
+   "light_rgb": [
+    48,
+    192,
+    16
+   ],
+   "speed_mps": 431.0,
+   "lifetime_ms": 5360,
+   "range_m": 2310.2,
+   "damage_shield": 1995,
+   "damage_hull": 332,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 24,
+     "summary": "3 elements: 04252 0.002-0.031 150 ms; lensflare 25 0.002-0.0075 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 17,
+     "summary": "4 elements: 10659 [exp_pl_imp_diff] 0.01-0.04 500 ms; 00201 [id:376] 0.01-0.06 300 ms; 00201 [id:376] 0.01-0.07 300 ms; light 0.0-0.153 500 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "High Energy Plasma Thrower: small weapon, mountable on M5, M4, M3, M6, M8 and 8 more classes; fires a tracer (body bullet_pl_alpha, texture fx_bullets_diff) lit #30c010 at 431 m/s over 2310.2 m, 283 shots/min, 1995 shield / 332 hull damage per shot; muzzle row 24, impact row 17."
+  },
+  {
+   "id": "SS_BULLET_IRE",
+   "bullet_index": 0,
+   "lasers": [
+    {
+     "index": 0,
+     "id": "SS_LASER_IRE",
+     "name": "Impulse Ray Emitter",
+     "name_id": 8003,
+     "subtype": "SG_LASER_IRE",
+     "refire_ms": 150,
+     "shots_per_min": 400.0,
+     "size": "small",
+     "used_by": {
+      "ASTRONAUT": 2,
+      "M1": 3,
+      "M2": 2,
+      "M3": 57,
+      "M4": 45,
+      "M5": 36,
+      "M6": 22,
+      "M7": 22,
+      "M8": 5,
+      "OBJ_FIGHTDRONE": 1,
+      "OBJ_FIGHTDRONE2": 1,
+      "TL": 18,
+      "TM": 9,
+      "TP": 13,
+      "TS": 28,
+      "UFO": 5,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 36,
+    "M4": 45,
+    "M3": 57,
+    "M6": 22,
+    "M8": 5,
+    "TS": 28,
+    "TP": 13,
+    "TM": 9,
+    "M7": 22,
+    "M2": 2,
+    "M1": 3,
+    "TL": 18,
+    "ASTRONAUT": 2,
+    "OBJ_FIGHTDRONE": 1,
+    "OBJ_FIGHTDRONE2": 1,
+    "UFO": 5,
+    "class_id:0": 2
+   },
+   "style": "tracer",
+   "body": "objects/effects/weapons/bullet_ls_alpha",
+   "elongation": 18.5025,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#3010c0",
+   "light_rgb": [
+    48,
+    16,
+    192
+   ],
+   "speed_mps": 1162.0,
+   "lifetime_ms": 1200,
+   "range_m": 1394.4,
+   "damage_shield": 220,
+   "damage_hull": 21,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 15,
+     "summary": "2 elements: 10663 [animation -73] 0.04-0.06 800 ms; 10661 [exp_glow_diff] 0.01-0.2 250 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Impulse Ray Emitter: small weapon, mountable on M5, M4, M3, M6, M8 and 12 more classes; fires a tracer (body bullet_ls_alpha, texture fx_bullets_diff) lit #3010c0 at 1162 m/s over 1394.4 m, 400 shots/min, 220 shield / 21 hull damage per shot; muzzle row 22, impact row 15."
+  },
+  {
+   "id": "SS_BULLET_IOND",
+   "bullet_index": 7,
+   "lasers": [
+    {
+     "index": 7,
+     "id": "SS_LASER_IOND",
+     "name": "Ion Disruptor",
+     "name_id": 4623,
+     "subtype": "SG_LASER_BORON_LIGHT",
+     "refire_ms": 473,
+     "shots_per_min": 126.8,
+     "size": "small",
+     "used_by": {
+      "M1": 11,
+      "M2": 6,
+      "M3": 19,
+      "M4": 6,
+      "M5": 3,
+      "M6": 8,
+      "M7": 10,
+      "TL": 15,
+      "TM": 4,
+      "TP": 3,
+      "TS": 17,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 3,
+    "M4": 6,
+    "M3": 19,
+    "M6": 8,
+    "TS": 17,
+    "TP": 3,
+    "TM": 4,
+    "M7": 10,
+    "M2": 6,
+    "M1": 11,
+    "TL": 15,
+    "class_id:0": 2
+   },
+   "style": "beam",
+   "body": "objects/v/00300",
+   "elongation": 1.9999,
+   "texture": "id:70",
+   "textures": [
+    "id:70"
+   ],
+   "light": "#3232ff",
+   "light_rgb": [
+    50,
+    50,
+    255
+   ],
+   "speed_mps": 2027.3,
+   "lifetime_ms": 463,
+   "range_m": 938.6,
+   "damage_shield": 1575,
+   "damage_hull": 5,
+   "flag_word": "0x214",
+   "flags": [
+    "beam_kind_b",
+    "unknown_0x10",
+    "on_hit_slow"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 34,
+     "summary": "3 elements: 04261 0.031-0.031 150 ms; lensflare 23 0.002-0.0075 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 57,
+     "summary": "1 element: propagate row 145 x2-4"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Ion Disruptor: small weapon, mountable on M5, M4, M3, M6, TS and 7 more classes; fires a beam (body 00300, texture id:70) lit #3232ff at 2027.3 m/s over 938.6 m, 126.8 shots/min, 1575 shield / 5 hull damage per shot; flags beam_kind_b, unknown_0x10, on_hit_slow; muzzle row 34, impact row 57."
+  },
+  {
+   "id": "SS_BULLET_MASS",
+   "bullet_index": 2,
+   "lasers": [
+    {
+     "index": 2,
+     "id": "SS_LASER_MASS",
+     "name": "Mass Driver",
+     "name_id": 4953,
+     "subtype": "SG_LASER_MASS",
+     "refire_ms": 81,
+     "shots_per_min": 740.7,
+     "size": "small",
+     "used_by": {
+      "M1": 12,
+      "M2": 5,
+      "M3": 26,
+      "M4": 21,
+      "M5": 4,
+      "M6": 11,
+      "M7": 11,
+      "M8": 3,
+      "TL": 9,
+      "TM": 2,
+      "TP": 1,
+      "TS": 6,
+      "UFO": 5,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 4,
+    "M4": 21,
+    "M3": 26,
+    "M6": 11,
+    "M8": 3,
+    "TS": 6,
+    "TP": 1,
+    "TM": 2,
+    "M7": 11,
+    "M2": 5,
+    "M1": 12,
+    "TL": 9,
+    "UFO": 5,
+    "class_id:0": 2
+   },
+   "style": "tracer",
+   "body": "objects/v/10436",
+   "elongation": 6.5514,
+   "texture": "id:282",
+   "textures": [
+    "id:282",
+    "id:36",
+    "id:364",
+    "id:380"
+   ],
+   "light": "#303030",
+   "light_rgb": [
+    48,
+    48,
+    48
+   ],
+   "speed_mps": 739.0,
+   "lifetime_ms": 1350,
+   "range_m": 997.6,
+   "damage_shield": 0,
+   "damage_hull": 45,
+   "flag_word": "0x60",
+   "flags": [
+    "hull_damage_through_shields",
+    "ammunition"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 33,
+     "summary": "2 elements: 04260 0.002-0.031 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 19,
+     "summary": "1 element: 00589 [id:131] 0.0-0.06 600 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Mass Driver: small weapon, mountable on M5, M4, M3, M6, M8 and 9 more classes; fires a tracer (body 10436, texture id:282) lit #303030 at 739 m/s over 997.6 m, 740.7 shots/min, 0 shield / 45 hull damage per shot; flags hull_damage_through_shields, ammunition; muzzle row 33, impact row 19."
+  },
+  {
+   "id": "SS_BULLET_MAM",
+   "bullet_index": 14,
+   "lasers": [
+    {
+     "index": 14,
+     "id": "SS_LASER_MAM",
+     "name": "Matter/Anti-Matter Launcher",
+     "name_id": 8143,
+     "subtype": "SG_LASER_TERRAN_MEDIUM",
+     "refire_ms": 833,
+     "shots_per_min": 72.0,
+     "size": "medium",
+     "used_by": {
+      "M1": 5,
+      "M2": 6,
+      "M6": 3,
+      "M7": 3,
+      "TL": 1
+     }
+    },
+    {
+     "index": 37,
+     "id": "SS_LASER_MAM_1",
+     "name": "Prototype Matter/Anti-Matter Launcher",
+     "name_id": 18143,
+     "subtype": "SG_LASER_UNKNOWN1",
+     "refire_ms": 937,
+     "shots_per_min": 64.0,
+     "size": "small",
+     "used_by": {
+      "M1": 1,
+      "M3": 2,
+      "M4": 1,
+      "M5": 1,
+      "M6": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 1,
+    "M4": 1,
+    "M3": 2,
+    "M6": 5,
+    "M7": 3,
+    "M2": 6,
+    "M1": 6,
+    "TL": 1
+   },
+   "style": "orb+burst",
+   "body": "objects/effects/weapons/bullet_mam",
+   "elongation": 1.2591,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 445.0,
+   "lifetime_ms": 8150,
+   "range_m": 3626.8,
+   "damage_shield": 8350,
+   "damage_hull": 3095,
+   "flag_word": "0x140",
+   "flags": [
+    "ammunition",
+    "area_flak"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 195,
+     "summary": "4 elements: 04253 0.02533-0.1875 925 ms; lensflare 24 0.0005-0.00251 150 ms; light 0.01-0.051 400 ms; 04251 0.02533-0.1275 775 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 196,
+     "summary": "2 elements: 12004 [animation -102] 0.001-0.15 1296 ms; light 0.01-0.11 400 ms"
+    },
+    "death": {
+     "row": 196,
+     "summary": "2 elements: 12004 [animation -102] 0.001-0.15 1296 ms; light 0.01-0.11 400 ms"
+    }
+   },
+   "trail_particles": null,
+   "description": "Matter/Anti-Matter Launcher, Prototype Matter/Anti-Matter Launcher: small weapon, mountable on M5, M4, M3, M6, M7 and 3 more classes; fires a orb+burst (body bullet_mam, texture fx_bullets2_diff) lit #ffffff at 445 m/s over 3626.8 m, 64/72 shots/min, 8350 shield / 3095 hull damage per shot; flags ammunition, area_flak; muzzle row 195, impact row 196, death row 196."
+  },
+  {
+   "id": "SS_BULLET_PAC",
+   "bullet_index": 1,
+   "lasers": [
+    {
+     "index": 1,
+     "id": "SS_LASER_PAC",
+     "name": "Particle Accelerator Cannon",
+     "name_id": 8013,
+     "subtype": "SG_LASER_PAC",
+     "refire_ms": 191,
+     "shots_per_min": 314.1,
+     "size": "small",
+     "used_by": {
+      "M1": 16,
+      "M2": 12,
+      "M3": 57,
+      "M4": 45,
+      "M5": 22,
+      "M6": 23,
+      "M7": 23,
+      "M8": 6,
+      "OBJ_FIGHTDRONE2": 1,
+      "TL": 18,
+      "TM": 9,
+      "TP": 13,
+      "TS": 28,
+      "UFO": 5,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 22,
+    "M4": 45,
+    "M3": 57,
+    "M6": 23,
+    "M8": 6,
+    "TS": 28,
+    "TP": 13,
+    "TM": 9,
+    "M7": 23,
+    "M2": 12,
+    "M1": 16,
+    "TL": 18,
+    "OBJ_FIGHTDRONE2": 1,
+    "UFO": 5,
+    "class_id:0": 2
+   },
+   "style": "tracer",
+   "body": "objects/effects/weapons/bullet_pr_alpha",
+   "elongation": 24.7492,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#6010c0",
+   "light_rgb": [
+    96,
+    16,
+    192
+   ],
+   "speed_mps": 703.0,
+   "lifetime_ms": 2740,
+   "range_m": 1926.2,
+   "damage_shield": 1155,
+   "damage_hull": 143,
+   "flag_word": "0x1",
+   "flags": [
+    "unknown_0x1"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 33,
+     "summary": "2 elements: 04260 0.002-0.031 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 16,
+     "summary": "4 elements: 00564 [id:383] 0.0-0.08 400 ms; 10666 [fx_lightning_diff] 0.001-0.08 600 ms; light 0.0-0.153 2000 ms; propagate row 146 x1-1"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Particle Accelerator Cannon: small weapon, mountable on M5, M4, M3, M6, M8 and 10 more classes; fires a tracer (body bullet_pr_alpha, texture fx_bullets_diff) lit #6010c0 at 703 m/s over 1926.2 m, 314.1 shots/min, 1155 shield / 143 hull damage per shot; flags unknown_0x1; muzzle row 33, impact row 16."
+  },
+  {
+   "id": "SS_BULLET_PRG",
+   "bullet_index": 3,
+   "lasers": [
+    {
+     "index": 3,
+     "id": "SS_LASER_PRG",
+     "name": "Phased Repeater Gun",
+     "name_id": 8033,
+     "subtype": "SG_LASER_ARGON_LIGHT",
+     "refire_ms": 94,
+     "shots_per_min": 638.3,
+     "size": "small",
+     "used_by": {
+      "M1": 15,
+      "M2": 9,
+      "M3": 36,
+      "M4": 20,
+      "M5": 6,
+      "M6": 15,
+      "M7": 17,
+      "M8": 3,
+      "TL": 16,
+      "TM": 5,
+      "TP": 10,
+      "TS": 15,
+      "UFO": 5,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 6,
+    "M4": 20,
+    "M3": 36,
+    "M6": 15,
+    "M8": 3,
+    "TS": 15,
+    "TP": 10,
+    "TM": 5,
+    "M7": 17,
+    "M2": 9,
+    "M1": 15,
+    "TL": 16,
+    "UFO": 5,
+    "class_id:0": 2
+   },
+   "style": "tracer",
+   "body": "objects/effects/weapons/bullet_repeat",
+   "elongation": 7.315,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c010",
+   "light_rgb": [
+    192,
+    192,
+    16
+   ],
+   "speed_mps": 1560.0,
+   "lifetime_ms": 1490,
+   "range_m": 2324.4,
+   "damage_shield": 680,
+   "damage_hull": 72,
+   "flag_word": "0x1",
+   "flags": [
+    "unknown_0x1"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 183,
+     "summary": "4 elements: 08001 0.001-0.031 50 ms; 08001 0.001-0.031 50 ms; 08001 0.001-0.031 100 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 182,
+     "summary": "5 elements: 00589 [id:131] 0.001-0.0254 212 ms; 00589 [id:131] 0.001-0.0254 212 ms; 00589 [id:131] 0.001-0.0254 212 ms; 10663 [animation -73] 0.01-0.08 360 ms; light 0.001-0.031 150 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Phased Repeater Gun: small weapon, mountable on M5, M4, M3, M6, M8 and 9 more classes; fires a tracer (body bullet_repeat, texture fx_bullets2_diff) lit #c0c010 at 1560 m/s over 2324.4 m, 638.3 shots/min, 680 shield / 72 hull damage per shot; flags unknown_0x1; muzzle row 183, impact row 182."
+  },
+  {
+   "id": "SS_BULLET_PD",
+   "bullet_index": 9,
+   "lasers": [
+    {
+     "index": 9,
+     "id": "SS_LASER_PD",
+     "name": "Plasma Burst Generator",
+     "name_id": 8093,
+     "subtype": "SG_LASER_PIRATE_LIGHT",
+     "refire_ms": 1095,
+     "shots_per_min": 54.8,
+     "size": "small",
+     "used_by": {
+      "M3": 43,
+      "M6": 17,
+      "M7": 1,
+      "TP": 1,
+      "TS": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M3": 43,
+    "M6": 17,
+    "TS": 2,
+    "TP": 1,
+    "M7": 1
+   },
+   "style": "wave",
+   "body": "objects/effects/weapons/bullet_flamethrower",
+   "elongation": 1.4626,
+   "texture": "-92.tga",
+   "textures": [
+    "-92.tga",
+    "c:\\program files (x86)\\autodesk\\3ds max 2008\\maps\\none_white.dds"
+   ],
+   "light": "#c880ff",
+   "light_rgb": [
+    200,
+    128,
+    255
+   ],
+   "speed_mps": 375.0,
+   "lifetime_ms": 2100,
+   "range_m": 787.5,
+   "damage_shield": 468,
+   "damage_hull": 120,
+   "flag_word": "0x808",
+   "flags": [
+    "beam_fixed_length",
+    "on_hit_col31_32"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": {
+     "row": 172,
+     "summary": "1 element: particles 39 1.0-10.0 20 ms"
+    },
+    "impact": {
+     "row": 58,
+     "summary": "1 element: propagate row 143 x1-2"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Plasma Burst Generator: small weapon, mountable on M3, M6, TS, TP, M7; fires a wave (body bullet_flamethrower, texture animation -92) lit #c880ff at 375 m/s over 787.5 m, 54.8 shots/min, 468 shield / 120 hull damage per shot; flags beam_fixed_length, on_hit_col31_32; muzzle row 22, flight row 172, impact row 58."
+  },
+  {
+   "id": "SS_BULLET_PBE",
+   "bullet_index": 8,
+   "lasers": [
+    {
+     "index": 8,
+     "id": "SS_LASER_PBE",
+     "name": "Pulsed Beam Emitter",
+     "name_id": 8083,
+     "subtype": "SG_LASER_PBE",
+     "refire_ms": 52,
+     "shots_per_min": 1153.8,
+     "size": "small",
+     "used_by": {
+      "M1": 4,
+      "M2": 6,
+      "M3": 20,
+      "M4": 7,
+      "M5": 3,
+      "M6": 16,
+      "M7": 15,
+      "M8": 2,
+      "TL": 2,
+      "TP": 2,
+      "TS": 1,
+      "class_id:0": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 3,
+    "M4": 7,
+    "M3": 20,
+    "M6": 16,
+    "M8": 2,
+    "TS": 1,
+    "TP": 2,
+    "M7": 15,
+    "M2": 6,
+    "M1": 4,
+    "TL": 2,
+    "class_id:0": 2
+   },
+   "style": "tracer",
+   "body": "objects/v/10458",
+   "elongation": 18.7085,
+   "texture": "id:409",
+   "textures": [
+    "id:409",
+    "id:907"
+   ],
+   "light": "#5b7681",
+   "light_rgb": [
+    91,
+    118,
+    129
+   ],
+   "speed_mps": 6980.0,
+   "lifetime_ms": 140,
+   "range_m": 977.2,
+   "damage_shield": 945,
+   "damage_hull": 35,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 49,
+     "summary": "3 elements: 04437 0.001-0.011 200 ms; lensflare 23 0.002-0.005 200 ms; light 0.002-0.011 200 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 50,
+     "summary": "2 elements: 10653 [exp_small_diff] 0.08-0.12 800 ms; 10661 [exp_glow_diff] 0.01-0.25 250 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Pulsed Beam Emitter: small weapon, mountable on M5, M4, M3, M6, M8 and 7 more classes; fires a tracer (body 10458, texture id:409) lit #5b7681 at 6980 m/s over 977.2 m, 1153.8 shots/min, 945 shield / 35 hull damage per shot; muzzle row 49, impact row 50."
+  },
+  {
+   "id": "SS_BULLET_TERANTIFIGHTER",
+   "bullet_index": 19,
+   "lasers": [
+    {
+     "index": 19,
+     "id": "SS_LASER_TERRANANTIFIGHTER",
+     "name": "Starburst Shockwave Cannon",
+     "name_id": 8193,
+     "subtype": "SG_LASER_TERRAN_AF",
+     "refire_ms": 1579,
+     "shots_per_min": 38.0,
+     "size": "big",
+     "used_by": {
+      "M1": 5,
+      "M2": 5,
+      "M7": 3,
+      "TL": 1
+     }
+    },
+    {
+     "index": 38,
+     "id": "SS_LASER_TERRANANTIFIGHTER_1",
+     "name": "Prototype Starburst Shockwave Cannon",
+     "name_id": 18193,
+     "subtype": "SG_LASER_UNKNOWN1",
+     "refire_ms": 1765,
+     "shots_per_min": 34.0,
+     "size": "small",
+     "used_by": {
+      "M1": 1,
+      "M3": 2,
+      "M4": 1,
+      "M5": 1,
+      "M6": 2
+     }
+    }
+   ],
+   "size": "small",
+   "used_by": {
+    "M5": 1,
+    "M4": 1,
+    "M3": 2,
+    "M6": 2,
+    "M7": 3,
+    "M2": 5,
+    "M1": 6,
+    "TL": 1
+   },
+   "style": "slug",
+   "body": "objects/v/00300",
+   "elongation": 1.9999,
+   "texture": "id:70",
+   "textures": [
+    "id:70"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 2000.0,
+   "lifetime_ms": 1000,
+   "range_m": 2000.0,
+   "damage_shield": 20785,
+   "damage_hull": 3374,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 200,
+     "summary": "3 elements: 04253 0.1-0.1825 925 ms; lensflare 24 0.002-0.011 150 ms; light 0.02-0.22 400 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 199,
+     "summary": "4 elements: 12008 [animation -105] 0.6-0.75 960 ms; 12008 [animation -105] 0.6-0.75 960 ms; 08000 0.012-0.0294 640 ms; light 0.005-0.03 500 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Starburst Shockwave Cannon, Prototype Starburst Shockwave Cannon: small weapon, mountable on M5, M4, M3, M6, M7 and 3 more classes; fires a slug (body 00300, texture id:70) lit #ffffff at 2000 m/s over 2000 m, 34/38 shots/min, 20785 shield / 3374 hull damage per shot; muzzle row 200, impact row 199."
+  },
+  {
+   "id": "SS_BULLET_CIG",
+   "bullet_index": 11,
+   "lasers": [
+    {
+     "index": 11,
+     "id": "SS_LASER_CIG",
+     "name": "Concussion Impulse Generator",
+     "name_id": 7933,
+     "subtype": "SG_LASER_CIG",
+     "refire_ms": 800,
+     "shots_per_min": 75.0,
+     "size": "medium",
+     "used_by": {
+      "M1": 14,
+      "M2": 11,
+      "M6": 18,
+      "M7": 22,
+      "M8": 1,
+      "TL": 12
+     }
+    }
+   ],
+   "size": "medium",
+   "used_by": {
+    "M6": 18,
+    "M8": 1,
+    "M7": 22,
+    "M2": 11,
+    "M1": 14,
+    "TL": 12
+   },
+   "style": "tracer",
+   "body": "objects/effects/weapons/bullet_push",
+   "elongation": 10.5874,
+   "texture": "effects\\weapons\\fx_bullet_push_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullet_push_diff.tga"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 420.0,
+   "lifetime_ms": 8250,
+   "range_m": 3465.0,
+   "damage_shield": 7845,
+   "damage_hull": 2615,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 202,
+     "summary": "4 elements: 04253 0.0133-0.075 925 ms; lensflare 24 0.0002-0.0011 150 ms; light 0.002-0.022 400 ms; 04251 0.0133-0.051 775 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 70,
+     "summary": "4 elements: 04274 0.0025-0.0025 500 ms; 00587 [id:380] 0.0-0.25 550 ms; 00469 [id:380] 0.0-0.05 600 ms; light 0.001-0.03 650 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Concussion Impulse Generator: medium weapon, mountable on M6, M8, M7, M2, M1 and 1 more class; fires a tracer (body bullet_push, texture fx_bullet_push_diff) lit #ffffff at 420 m/s over 3465 m, 75 shots/min, 7845 shield / 2615 hull damage per shot; muzzle row 202, impact row 70."
+  },
+  {
+   "id": "SS_BULLET_IPG",
+   "bullet_index": 12,
+   "lasers": [
+    {
+     "index": 12,
+     "id": "SS_LASER_IPG",
+     "name": "Ion Pulse Generator",
+     "name_id": 8123,
+     "subtype": "SG_LASER_BORON_MEDIUM",
+     "refire_ms": 960,
+     "shots_per_min": 62.5,
+     "size": "medium",
+     "used_by": {
+      "M1": 7,
+      "M2": 9,
+      "M6": 11,
+      "M7": 11,
+      "TL": 10
+     }
+    }
+   ],
+   "size": "medium",
+   "used_by": {
+    "M6": 11,
+    "M7": 11,
+    "M2": 9,
+    "M1": 7,
+    "TL": 10
+   },
+   "style": "tracer+burst",
+   "body": "objects/effects/weapons/bullet_ionpulse",
+   "elongation": 7.2352,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#80c010",
+   "light_rgb": [
+    128,
+    192,
+    16
+   ],
+   "speed_mps": 347.0,
+   "lifetime_ms": 11200,
+   "range_m": 3886.4,
+   "damage_shield": 12563,
+   "damage_hull": 523,
+   "flag_word": "0x1200",
+   "flags": [
+    "on_hit_slow",
+    "fragments"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 179,
+     "summary": "4 elements: 04253 0.01-0.1 675 ms; 00587 [id:380] 0.0-0.03 210 ms; light 0.002-0.0405 650 ms; 00564 [id:383] 0.0001-0.025 330 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 178,
+     "summary": "4 elements: 04791 0.01-0.033 1000 ms; 12001 [animation -96] 0.4-0.41 1440 ms; light 0.02-0.22 400 ms; 00587 [id:380] 0.01-0.18 460 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Ion Pulse Generator: medium weapon, mountable on M6, M7, M2, M1, TL; fires a tracer+burst (body bullet_ionpulse, texture fx_bullets2_diff) lit #80c010 at 347 m/s over 3886.4 m, 62.5 shots/min, 12563 shield / 523 hull damage per shot; flags on_hit_slow, fragments; muzzle row 179, impact row 178."
+  },
+  {
+   "id": "SS_BULLET_ESR",
+   "bullet_index": 13,
+   "lasers": [
+    {
+     "index": 13,
+     "id": "SS_LASER_ESR",
+     "name": "Ion Shard Railgun",
+     "name_id": 8133,
+     "subtype": "SG_LASER_SPLIT_MEDIUM",
+     "refire_ms": 260,
+     "shots_per_min": 230.8,
+     "size": "medium",
+     "used_by": {
+      "M1": 4,
+      "M2": 6,
+      "M6": 11,
+      "M7": 14,
+      "TL": 3
+     }
+    }
+   ],
+   "size": "medium",
+   "used_by": {
+    "M6": 11,
+    "M7": 14,
+    "M2": 6,
+    "M1": 4,
+    "TL": 3
+   },
+   "style": "tracer",
+   "body": "objects/effects/weapons/bullet_electrospike",
+   "elongation": 5.5942,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#80c010",
+   "light_rgb": [
+    128,
+    192,
+    16
+   ],
+   "speed_mps": 498.0,
+   "lifetime_ms": 6700,
+   "range_m": 3336.6,
+   "damage_shield": 2671,
+   "damage_hull": 962,
+   "flag_word": "0x400",
+   "flags": [
+    "on_hit_energy_drain"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 152,
+     "summary": "4 elements: 04437 0.002-0.0151 250 ms; 04252 0.018-0.1521 150 ms; lensflare 25 0.008-0.029 150 ms; light 0.004-0.122 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 151,
+     "summary": "6 elements: bullet_electrospike [fx_bullets2_diff] 0.12-0.12 575 ms; 12005 [animation -103] 0.05-0.17 1680 ms; 10667 [fx_lightning2_diff] 0.05-0.11 300 ms; 10667 [fx_lightning2_diff] 0.05-0.11 300 ms; 10667 [fx_lightning2_diff] 0.05-0.11 300 ms; light 0.0-0.153 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Ion Shard Railgun: medium weapon, mountable on M6, M7, M2, M1, TL; fires a tracer (body bullet_electrospike, texture fx_bullets2_diff) lit #80c010 at 498 m/s over 3336.6 m, 230.8 shots/min, 2671 shield / 962 hull damage per shot; flags on_hit_energy_drain; muzzle row 152, impact row 151."
+  },
+  {
+   "id": "SS_BULLET_MINING",
+   "bullet_index": 28,
+   "lasers": [
+    {
+     "index": 28,
+     "id": "SS_LASER_MINING",
+     "name": "Mobile Drilling System",
+     "name_id": 4633,
+     "subtype": "SG_LASER_SPECIAL",
+     "refire_ms": 20000,
+     "shots_per_min": 3.0,
+     "size": "medium",
+     "used_by": {
+      "ASTRONAUT": 1,
+      "M1": 13,
+      "M6": 21,
+      "M7": 24,
+      "M8": 1,
+      "TL": 19,
+      "TM": 2,
+      "TS": 16
+     }
+    }
+   ],
+   "size": "medium",
+   "used_by": {
+    "M6": 21,
+    "M8": 1,
+    "TS": 16,
+    "TM": 2,
+    "M7": 24,
+    "M1": 13,
+    "TL": 19,
+    "ASTRONAUT": 1
+   },
+   "style": "orb",
+   "body": "objects/v/10678",
+   "elongation": 1.0,
+   "texture": "380.jpg",
+   "textures": [
+    "380.jpg"
+   ],
+   "light": "#6464ff",
+   "light_rgb": [
+    100,
+    100,
+    255
+   ],
+   "speed_mps": 84.0,
+   "lifetime_ms": 57500,
+   "range_m": 4830.0,
+   "damage_shield": 2362,
+   "damage_hull": 6500,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 25,
+     "summary": "2 elements: 04253 0.002-0.026 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 69,
+     "summary": "3 elements: 04274 0.0005-0.002 500 ms; 00587 [id:380] 0.0-0.2 550 ms; 00469 [id:380] 0.0-0.05 600 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Mobile Drilling System: medium weapon, mountable on M6, M8, TS, TM, M7 and 3 more classes; fires a orb (body 10678, texture 380) lit #6464ff at 84 m/s over 4830 m, 3 shots/min, 2362 shield / 6500 hull damage per shot; muzzle row 25, impact row 69."
+  },
+  {
+   "id": "SS_BULLET_REPAIR",
+   "bullet_index": 35,
+   "lasers": [
+    {
+     "index": 35,
+     "id": "SS_LASER_REPAIR",
+     "name": "Repair Laser",
+     "name_id": 6713,
+     "subtype": "SG_LASER_SPECIAL",
+     "refire_ms": 200,
+     "shots_per_min": 300.0,
+     "size": "medium",
+     "used_by": {
+      "ASTRONAUT": 1,
+      "M1": 13,
+      "M6": 21,
+      "M7": 24,
+      "M8": 1,
+      "TL": 19,
+      "TM": 2,
+      "TS": 16
+     }
+    }
+   ],
+   "size": "medium",
+   "used_by": {
+    "M6": 21,
+    "M8": 1,
+    "TS": 16,
+    "TM": 2,
+    "M7": 24,
+    "M1": 13,
+    "TL": 19,
+    "ASTRONAUT": 1
+   },
+   "style": "beam",
+   "body": "objects/effects/weapons/bullet_repair",
+   "elongation": 21.438,
+   "texture": "effects\\weapons\\fx_beams_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_beams_diff.tga"
+   ],
+   "light": "#ff9601",
+   "light_rgb": [
+    255,
+    150,
+    1
+   ],
+   "speed_mps": 4400.0,
+   "lifetime_ms": 500,
+   "range_m": 2200.0,
+   "damage_shield": 0,
+   "damage_hull": 40,
+   "flag_word": "0xa2",
+   "flags": [
+    "beam_gun_tied",
+    "hull_damage_through_shields",
+    "repair"
+   ],
+   "effects": {
+    "muzzle": null,
+    "flight": null,
+    "impact": {
+     "row": 18,
+     "summary": "2 elements: 10658 [exp_impact_glow_diff] 0.01-0.1 500 ms; 10663 [animation -73] 0.04-0.08 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Repair Laser: medium weapon, mountable on M6, M8, TS, TM, M7 and 3 more classes; fires a beam (body bullet_repair, texture fx_beams_diff) lit #ff9601 at 4400 m/s over 2200 m, 300 shots/min, 0 shield / 40 hull damage per shot; flags beam_gun_tied, hull_damage_through_shields, repair; impact row 18."
+  },
+  {
+   "id": "SS_BULLET_TUG",
+   "bullet_index": 29,
+   "lasers": [
+    {
+     "index": 29,
+     "id": "SS_LASER_TUG",
+     "name": "Tractor Beam",
+     "name_id": 6021,
+     "subtype": "SG_LASER_SPECIAL",
+     "refire_ms": 500,
+     "shots_per_min": 120.0,
+     "size": "medium",
+     "used_by": {
+      "ASTRONAUT": 1,
+      "M1": 13,
+      "M6": 21,
+      "M7": 24,
+      "M8": 1,
+      "TL": 19,
+      "TM": 2,
+      "TS": 16
+     }
+    }
+   ],
+   "size": "medium",
+   "used_by": {
+    "M6": 21,
+    "M8": 1,
+    "TS": 16,
+    "TM": 2,
+    "M7": 24,
+    "M1": 13,
+    "TL": 19,
+    "ASTRONAUT": 1
+   },
+   "style": "beam",
+   "body": "objects/v/00525",
+   "elongation": 3.4229,
+   "texture": "id:155",
+   "textures": [
+    "id:155"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 4000.0,
+   "lifetime_ms": 500,
+   "range_m": 2000.0,
+   "damage_shield": 0,
+   "damage_hull": 0,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": null,
+    "flight": null,
+    "impact": {
+     "row": 18,
+     "summary": "2 elements: 10658 [exp_impact_glow_diff] 0.01-0.1 500 ms; 10663 [animation -73] 0.04-0.08 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Tractor Beam: medium weapon, mountable on M6, M8, TS, TM, M7 and 3 more classes; fires a beam (body 00525, texture id:155) lit #ffffff at 4000 m/s over 2000 m, 120 shots/min, 0 shield / 0 hull damage per shot; flags beam_gun_tied; impact row 18."
+  },
+  {
+   "id": "SS_BULLET_FLAK_CLUSTER",
+   "bullet_index": 16,
+   "lasers": [
+    {
+     "index": 16,
+     "id": "SS_LASER_FLAK_CLUSTER",
+     "name": "Cluster Flak Array",
+     "name_id": 8163,
+     "subtype": "SG_LASER_ARGON_AF",
+     "refire_ms": 975,
+     "shots_per_min": 61.5,
+     "size": "big",
+     "used_by": {
+      "M1": 9,
+      "M2": 8,
+      "M7": 6,
+      "TL": 8
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M7": 6,
+    "M2": 8,
+    "M1": 9,
+    "TL": 8
+   },
+   "style": "tracer+burst",
+   "body": "objects/v/10458",
+   "elongation": 18.7085,
+   "texture": "id:409",
+   "textures": [
+    "id:409",
+    "id:907"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 2200.0,
+   "lifetime_ms": 900,
+   "range_m": 1980.0,
+   "damage_shield": 11781,
+   "damage_hull": 1758,
+   "flag_word": "0x3000",
+   "flags": [
+    "fragments",
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 157,
+     "summary": "5 elements: 04251 0.0053-0.55 575 ms; lensflare 23 0.002-0.011 450 ms; 10664 [exp_glow2_diff] 0.0153-0.45 450 ms; light 0.02-0.3 300 ms; 04265 0.0012-0.0128 200 ms"
+    },
+    "flight": {
+     "row": 170,
+     "summary": "3 elements: no body 10.015-30.05 -1 ms; particles 32 1.0-10.0 30000 ms; lensflare 12 0.0-0.04 -1 ms"
+    },
+    "impact": {
+     "row": 156,
+     "summary": "2 elements: 10664 [exp_glow2_diff] 0.18-1.5 1500 ms; propagate row 147 x1-3"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Cluster Flak Array: big weapon, mountable on M7, M2, M1, TL; fires a tracer+burst (body 10458, texture id:409) lit #ffffff at 2200 m/s over 1980 m, 61.5 shots/min, 11781 shield / 1758 hull damage per shot; flags fragments, continuous_beam; muzzle row 157, flight row 170, impact row 156."
+  },
+  {
+   "id": "SS_BULLET_FLAK_ALPHA",
+   "bullet_index": 15,
+   "lasers": [
+    {
+     "index": 15,
+     "id": "SS_LASER_FLAK_ALPHA",
+     "name": "Flak Artillery Array",
+     "name_id": 8153,
+     "subtype": "SG_LASER_TELADI_AF",
+     "refire_ms": 1080,
+     "shots_per_min": 55.6,
+     "size": "big",
+     "used_by": {
+      "M1": 10,
+      "M2": 10,
+      "M7": 19,
+      "TL": 12
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M7": 19,
+    "M2": 10,
+    "M1": 10,
+    "TL": 12
+   },
+   "style": "tracer+burst",
+   "body": "objects/v/10458",
+   "elongation": 18.7085,
+   "texture": "id:409",
+   "textures": [
+    "id:409",
+    "id:907"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 7051.0,
+   "lifetime_ms": 300,
+   "range_m": 2115.3,
+   "damage_shield": 13860,
+   "damage_hull": 2093,
+   "flag_word": "0x2100",
+   "flags": [
+    "area_flak",
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 157,
+     "summary": "5 elements: 04251 0.0053-0.55 575 ms; lensflare 23 0.002-0.011 450 ms; 10664 [exp_glow2_diff] 0.0153-0.45 450 ms; light 0.02-0.3 300 ms; 04265 0.0012-0.0128 200 ms"
+    },
+    "flight": {
+     "row": 170,
+     "summary": "3 elements: no body 10.015-30.05 -1 ms; particles 32 1.0-10.0 30000 ms; lensflare 12 0.0-0.04 -1 ms"
+    },
+    "impact": {
+     "row": 155,
+     "summary": "2 elements: propagate row 147 x1-3; 10664 [exp_glow2_diff] 0.18-1.1 1500 ms"
+    },
+    "death": {
+     "row": 155,
+     "summary": "2 elements: propagate row 147 x1-3; 10664 [exp_glow2_diff] 0.18-1.1 1500 ms"
+    }
+   },
+   "trail_particles": null,
+   "description": "Flak Artillery Array: big weapon, mountable on M7, M2, M1, TL; fires a tracer+burst (body 10458, texture id:409) lit #ffffff at 7051 m/s over 2115.3 m, 55.6 shots/min, 13860 shield / 2093 hull damage per shot; flags area_flak, continuous_beam; muzzle row 157, flight row 170, impact row 155, death row 155."
+  },
+  {
+   "id": "SS_BULLET_GAUSS",
+   "bullet_index": 22,
+   "lasers": [
+    {
+     "index": 22,
+     "id": "SS_LASER_GAUSS",
+     "name": "Gauss Cannon",
+     "name_id": 8223,
+     "subtype": "SG_LASER_TELADI_HEAVY",
+     "refire_ms": 676,
+     "shots_per_min": 88.8,
+     "size": "big",
+     "used_by": {
+      "M1": 2,
+      "M2": 11,
+      "M7": 3
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M7": 3,
+    "M2": 11,
+    "M1": 2
+   },
+   "style": "slug",
+   "body": "objects/effects/weapons/bullet_gausscannon",
+   "elongation": 2.3445,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 353.0,
+   "lifetime_ms": 13560,
+   "range_m": 4786.7,
+   "damage_shield": 28540,
+   "damage_hull": 12130,
+   "flag_word": "0x40",
+   "flags": [
+    "ammunition"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 193,
+     "summary": "3 elements: 04252 0.018-0.321 150 ms; lensflare 25 0.008-0.029 150 ms; light 0.004-0.122 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 194,
+     "summary": "2 elements: 12003 [animation -101] 0.02-0.7 1296 ms; light 0.004-0.062 150 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Gauss Cannon: big weapon, mountable on M7, M2, M1; fires a slug (body bullet_gausscannon, texture fx_bullets2_diff) lit #c0c000 at 353 m/s over 4786.7 m, 88.8 shots/min, 28540 shield / 12130 hull damage per shot; flags ammunition; muzzle row 193, impact row 194."
+  },
+  {
+   "id": "SS_BULLET_IBL",
+   "bullet_index": 23,
+   "lasers": [
+    {
+     "index": 23,
+     "id": "SS_LASER_IBL",
+     "name": "Incendiary Bomb Launcher",
+     "name_id": 8233,
+     "subtype": "SG_LASER_PIRATE_HEAVY",
+     "refire_ms": 1100,
+     "shots_per_min": 54.5,
+     "size": "big",
+     "used_by": {
+      "M1": 13,
+      "M2": 9,
+      "M7": 15,
+      "TL": 12
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M7": 15,
+    "M2": 9,
+    "M1": 13,
+    "TL": 12
+   },
+   "style": "slug",
+   "body": "objects/effects/weapons/bullet_firebomb",
+   "elongation": 1.7347,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 312.0,
+   "lifetime_ms": 16500,
+   "range_m": 5148.0,
+   "damage_shield": 50860,
+   "damage_hull": 9000,
+   "flag_word": "0x2800",
+   "flags": [
+    "on_hit_col31_32",
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 197,
+     "summary": "3 elements: 04253 0.002-0.062 150 ms; lensflare 23 0.001-0.015 150 ms; light 0.002-0.061 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 198,
+     "summary": "3 elements: 12006 [animation -104] 0.01-0.25 2240 ms; light 0.001-0.031 150 ms; 10670 [animation -83] 0.05-0.75 9000 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Incendiary Bomb Launcher: big weapon, mountable on M7, M2, M1, TL; fires a slug (body bullet_firebomb, texture fx_bullets2_diff) lit #c0c000 at 312 m/s over 5148 m, 54.5 shots/min, 50860 shield / 9000 hull damage per shot; flags on_hit_col31_32, continuous_beam; muzzle row 197, impact row 198."
+  },
+  {
+   "id": "SS_BULLET_IONC",
+   "bullet_index": 21,
+   "lasers": [
+    {
+     "index": 21,
+     "id": "SS_LASER_IONC",
+     "name": "Ion Cannon",
+     "name_id": 8213,
+     "subtype": "SG_LASER_BORON_HEAVY",
+     "refire_ms": 1800,
+     "shots_per_min": 33.3,
+     "size": "big",
+     "used_by": {
+      "M1": 1,
+      "M2": 7,
+      "M7": 1
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M7": 1,
+    "M2": 7,
+    "M1": 1
+   },
+   "style": "slug",
+   "body": "objects/effects/weapons/bullet_ioncannon",
+   "elongation": 3.5354,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 387.0,
+   "lifetime_ms": 13250,
+   "range_m": 5127.8,
+   "damage_shield": 119148,
+   "damage_hull": 6840,
+   "flag_word": "0x2600",
+   "flags": [
+    "on_hit_slow",
+    "on_hit_energy_drain",
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 181,
+     "summary": "4 elements: 04253 0.02-0.4 675 ms; 00587 [id:380] 0.0-0.12 210 ms; light 0.003-0.16 650 ms; 00564 [id:383] 0.0002-0.1 330 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 180,
+     "summary": "4 elements: 04274 0.017-0.0324 560 ms; 12001 [animation -96] 0.7-0.85 1440 ms; light 0.2-2.0 700 ms; 00587 [id:380] 0.1-0.4 560 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Ion Cannon: big weapon, mountable on M7, M2, M1; fires a slug (body bullet_ioncannon, texture fx_bullets2_diff) lit #c0c000 at 387 m/s over 5127.8 m, 33.3 shots/min, 119148 shield / 6840 hull damage per shot; flags on_hit_slow, on_hit_energy_drain, continuous_beam; muzzle row 181, impact row 180."
+  },
+  {
+   "id": "SS_BULLET_PAL",
+   "bullet_index": 17,
+   "lasers": [
+    {
+     "index": 17,
+     "id": "SS_LASER_PAL",
+     "name": "Phased Array Laser Cannon",
+     "name_id": 8173,
+     "subtype": "SG_LASER_SPLIT_AF",
+     "refire_ms": 420,
+     "shots_per_min": 142.9,
+     "size": "big",
+     "used_by": {
+      "M1": 1,
+      "M2": 1,
+      "M7": 3
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M7": 3,
+    "M2": 1,
+    "M1": 1
+   },
+   "style": "beam",
+   "body": "objects/v/10385",
+   "elongation": 21.8599,
+   "texture": "id:796",
+   "textures": [
+    "id:796"
+   ],
+   "light": "#c0c0c0",
+   "light_rgb": [
+    192,
+    192,
+    192
+   ],
+   "speed_mps": 2561.0,
+   "lifetime_ms": 2490,
+   "range_m": 6376.9,
+   "damage_shield": 3969,
+   "damage_hull": 2970,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 24,
+     "summary": "3 elements: 04252 0.002-0.031 150 ms; lensflare 25 0.002-0.0075 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 23,
+     "summary": "5 elements: 00587 [id:380] 0.0-0.02 260 ms; 00469 [id:380] 0.0-0.007 210 ms; light 0.002-0.061 650 ms; 00564 [id:383] 0.001-0.14 330 ms; 12000 [animation -98] 0.04-0.12 1440 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Phased Array Laser Cannon: big weapon, mountable on M7, M2, M1; fires a beam (body 10385, texture id:796) lit #c0c0c0 at 2561 m/s over 6376.9 m, 142.9 shots/min, 3969 shield / 2970 hull damage per shot; flags beam_gun_tied; muzzle row 24, impact row 23."
+  },
+  {
+   "id": "SS_BULLET_PSG",
+   "bullet_index": 18,
+   "lasers": [
+    {
+     "index": 18,
+     "id": "SS_LASER_PSG",
+     "name": "Phased Shockwave Generator",
+     "name_id": 8183,
+     "subtype": "SG_LASER_PARANID_AF",
+     "refire_ms": 789,
+     "shots_per_min": 76.0,
+     "size": "big",
+     "used_by": {
+      "M1": 4,
+      "M2": 1,
+      "M7": 4,
+      "M8": 1,
+      "TL": 1
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M8": 1,
+    "M7": 4,
+    "M2": 1,
+    "M1": 4,
+    "TL": 1
+   },
+   "style": "wave",
+   "body": "objects/v/00225",
+   "elongation": 0.8825,
+   "texture": "id:235",
+   "textures": [
+    "id:235"
+   ],
+   "light": "#c880ff",
+   "light_rgb": [
+    200,
+    128,
+    255
+   ],
+   "speed_mps": 254.0,
+   "lifetime_ms": 5682,
+   "range_m": 1443.2,
+   "damage_shield": 1996,
+   "damage_hull": 106,
+   "flag_word": "0x8",
+   "flags": [
+    "beam_fixed_length"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 58,
+     "summary": "1 element: propagate row 143 x1-2"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Phased Shockwave Generator: big weapon, mountable on M8, M7, M2, M1, TL; fires a wave (body 00225, texture id:235) lit #c880ff at 254 m/s over 1443.2 m, 76 shots/min, 1996 shield / 106 hull damage per shot; flags beam_fixed_length; muzzle row 22, impact row 58."
+  },
+  {
+   "id": "SS_BULLET_PPC",
+   "bullet_index": 20,
+   "lasers": [
+    {
+     "index": 20,
+     "id": "SS_LASER_PPC",
+     "name": "Photon Pulse Cannon",
+     "name_id": 8203,
+     "subtype": "SG_LASER_PPC",
+     "refire_ms": 1370,
+     "shots_per_min": 43.8,
+     "size": "big",
+     "used_by": {
+      "M1": 10,
+      "M2": 12,
+      "M6": 2,
+      "M7": 2
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M6": 2,
+    "M7": 2,
+    "M2": 12,
+    "M1": 10
+   },
+   "style": "slug",
+   "body": "objects/v/00518",
+   "elongation": 2.909,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 333.0,
+   "lifetime_ms": 19890,
+   "range_m": 6623.4,
+   "damage_shield": 63778,
+   "damage_hull": 11340,
+   "flag_word": "0x2000",
+   "flags": [
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 52,
+     "summary": "4 elements: 04253 0.133-0.75 925 ms; lensflare 24 0.002-0.011 150 ms; light 0.02-0.22 400 ms; 04251 0.133-0.51 775 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 53,
+     "summary": "5 elements: 04274 0.005-0.005 500 ms; 00587 [id:380] 0.0-0.5 550 ms; 00469 [id:380] 0.0-0.1 600 ms; 00564 [id:383] 0.012-1.25 430 ms; light 0.0303-3.052 900 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Photon Pulse Cannon: big weapon, mountable on M6, M7, M2, M1; fires a slug (body 00518, texture fx_bullets2_diff) lit #c0c000 at 333 m/s over 6623.4 m, 43.8 shots/min, 63778 shield / 11340 hull damage per shot; flags continuous_beam; muzzle row 52, impact row 53."
+  },
+  {
+   "id": "SS_BULLET_PBC",
+   "bullet_index": 25,
+   "lasers": [
+    {
+     "index": 25,
+     "id": "SS_LASER_PBC",
+     "name": "Plasma Beam Cannon",
+     "name_id": 8253,
+     "subtype": "SG_LASER_ARGON_BEAM",
+     "refire_ms": 600,
+     "shots_per_min": 100.0,
+     "size": "big",
+     "used_by": {
+      "M1": 1,
+      "M3": 1,
+      "M6": 1,
+      "M7": 4,
+      "OBJ_ORBITALLASER": 1,
+      "OBJ_ORBITALLASER2": 1,
+      "TL": 8
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M3": 1,
+    "M6": 1,
+    "M7": 4,
+    "M1": 1,
+    "TL": 8,
+    "OBJ_ORBITALLASER": 1,
+    "OBJ_ORBITALLASER2": 1
+   },
+   "style": "beam",
+   "body": "objects/effects/x3ap/weapons/tol_bullet",
+   "elongation": 2.6836,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#c0c0c0",
+   "light_rgb": [
+    192,
+    192,
+    192
+   ],
+   "speed_mps": 10644.0,
+   "lifetime_ms": 550,
+   "range_m": 5854.2,
+   "damage_shield": 14280,
+   "damage_hull": 6500,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 15,
+     "summary": "2 elements: 10663 [animation -73] 0.04-0.06 800 ms; 10661 [exp_glow_diff] 0.01-0.2 250 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Plasma Beam Cannon: big weapon, mountable on M3, M6, M7, M1, TL and 2 more classes; fires a beam (body tol_bullet, texture fx_bullets_diff) lit #c0c0c0 at 10644 m/s over 5854.2 m, 100 shots/min, 14280 shield / 6500 hull damage per shot; flags beam_gun_tied; muzzle row 22, impact row 15."
+  },
+  {
+   "id": "SS_BULLET_PSP",
+   "bullet_index": 24,
+   "lasers": [
+    {
+     "index": 24,
+     "id": "SS_LASER_PSP",
+     "name": "Point Singularity Projector",
+     "name_id": 8243,
+     "subtype": "SG_LASER_TERRAN_HEAVY",
+     "refire_ms": 10000,
+     "shots_per_min": 6.0,
+     "size": "big",
+     "used_by": {
+      "M1": 4,
+      "M2": 6,
+      "M3": 1,
+      "TL": 1
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M3": 1,
+    "M2": 6,
+    "M1": 4,
+    "TL": 1
+   },
+   "style": "orb+burst",
+   "body": "objects/effects/weapons/bullet_pointsing",
+   "elongation": 0.999,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 321.0,
+   "lifetime_ms": 20000,
+   "range_m": 6420.0,
+   "damage_shield": 252310,
+   "damage_hull": 95812,
+   "flag_word": "0x2100",
+   "flags": [
+    "area_flak",
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 190,
+     "summary": "4 elements: 04253 0.0533-0.375 925 ms; lensflare 24 0.001-0.00511 150 ms; light 0.01-0.11 400 ms; 04251 0.0533-0.251 775 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 189,
+     "summary": "2 elements: 12002 [animation -100] 0.24-1.2 1920 ms; light 0.005-0.03 500 ms"
+    },
+    "death": {
+     "row": 189,
+     "summary": "2 elements: 12002 [animation -100] 0.24-1.2 1920 ms; light 0.005-0.03 500 ms"
+    }
+   },
+   "trail_particles": null,
+   "description": "Point Singularity Projector: big weapon, mountable on M3, M2, M1, TL; fires a orb+burst (body bullet_pointsing, texture fx_bullets2_diff) lit #c0c000 at 321 m/s over 6420 m, 6 shots/min, 252310 shield / 95812 hull damage per shot; flags area_flak, continuous_beam; muzzle row 190, impact row 189, death row 189."
+  },
+  {
+   "id": "SS_BULLET_DUMMY1",
+   "bullet_index": 30,
+   "lasers": [
+    {
+     "index": 30,
+     "id": "SS_LASER_DUMMY1",
+     "name": "SPARE LASER 1",
+     "name_id": 8303,
+     "subtype": "SG_LASER_UNKNOWN2",
+     "refire_ms": 975,
+     "shots_per_min": 61.5,
+     "size": "big",
+     "used_by": {
+      "M1": 1
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M1": 1
+   },
+   "style": "slug+burst",
+   "body": "objects/v/10459",
+   "elongation": 3.6672,
+   "texture": "id:282",
+   "textures": [
+    "id:282",
+    "id:36",
+    "id:364",
+    "id:380"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 25000.0,
+   "lifetime_ms": 4000,
+   "range_m": 100000.0,
+   "damage_shield": 11781,
+   "damage_hull": 1758,
+   "flag_word": "0x3000",
+   "flags": [
+    "fragments",
+    "continuous_beam"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 157,
+     "summary": "5 elements: 04251 0.0053-0.55 575 ms; lensflare 23 0.002-0.011 450 ms; 10664 [exp_glow2_diff] 0.0153-0.45 450 ms; light 0.02-0.3 300 ms; 04265 0.0012-0.0128 200 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 156,
+     "summary": "2 elements: 10664 [exp_glow2_diff] 0.18-1.5 1500 ms; propagate row 147 x1-3"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "SPARE LASER 1: big weapon, mountable on M1; fires a slug+burst (body 10459, texture id:282) lit #ffffff at 25000 m/s over 100000 m, 61.5 shots/min, 11781 shield / 1758 hull damage per shot; flags fragments, continuous_beam; muzzle row 157, impact row 156."
+  },
+  {
+   "id": "SS_BULLET_DUMMY2",
+   "bullet_index": 31,
+   "lasers": [
+    {
+     "index": 31,
+     "id": "SS_LASER_DUMMY2",
+     "name": "SPARE LASER 2",
+     "name_id": 8313,
+     "subtype": "SG_LASER_UNKNOWN2",
+     "refire_ms": 300,
+     "shots_per_min": 200.0,
+     "size": "big",
+     "used_by": {
+      "M1": 1
+     }
+    }
+   ],
+   "size": "big",
+   "used_by": {
+    "M1": 1
+   },
+   "style": "beam",
+   "body": "objects/v/00525",
+   "elongation": 3.4229,
+   "texture": "id:155",
+   "textures": [
+    "id:155"
+   ],
+   "light": "#8000ff",
+   "light_rgb": [
+    128,
+    0,
+    255
+   ],
+   "speed_mps": 5994.0,
+   "lifetime_ms": 300,
+   "range_m": 1798.2,
+   "damage_shield": 700,
+   "damage_hull": 350,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 180,
+     "summary": "4 elements: 04274 0.017-0.0324 560 ms; 12001 [animation -96] 0.7-0.85 1440 ms; light 0.2-2.0 700 ms; 00587 [id:380] 0.1-0.4 560 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 18,
+     "summary": "2 elements: 10658 [exp_impact_glow_diff] 0.01-0.1 500 ms; 10663 [animation -73] 0.04-0.08 800 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "SPARE LASER 2: big weapon, mountable on M1; fires a beam (body 00525, texture id:155) lit #8000ff at 5994 m/s over 1798.2 m, 200 shots/min, 700 shield / 350 hull damage per shot; flags beam_gun_tied; muzzle row 180, impact row 18."
+  },
+  {
+   "id": "SS_BULLET_FUSIONBEAM",
+   "bullet_index": 27,
+   "lasers": [
+    {
+     "index": 27,
+     "id": "SS_LASER_FUSIONBEAM",
+     "name": "Fusion Beam Cannon",
+     "name_id": 8273,
+     "subtype": "SG_LASER_TERRAN_BEAM",
+     "refire_ms": 420,
+     "shots_per_min": 142.9,
+     "size": "unmounted",
+     "used_by": {}
+    }
+   ],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "beam",
+   "body": "objects/v/10385",
+   "elongation": 21.8599,
+   "texture": "id:796",
+   "textures": [
+    "id:796"
+   ],
+   "light": "#c0c0c0",
+   "light_rgb": [
+    192,
+    192,
+    192
+   ],
+   "speed_mps": 2660.8,
+   "lifetime_ms": 2493,
+   "range_m": 6633.3,
+   "damage_shield": 3780,
+   "damage_hull": 5400,
+   "flag_word": "0x802",
+   "flags": [
+    "beam_gun_tied",
+    "on_hit_col31_32"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 24,
+     "summary": "3 elements: 04252 0.002-0.031 150 ms; lensflare 25 0.002-0.0075 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 23,
+     "summary": "5 elements: 00587 [id:380] 0.0-0.02 260 ms; 00469 [id:380] 0.0-0.007 210 ms; light 0.002-0.061 650 ms; 00564 [id:383] 0.001-0.14 330 ms; 12000 [animation -98] 0.04-0.12 1440 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Fusion Beam Cannon: no ship row can mount it; fires a beam (body 10385, texture id:796) lit #c0c0c0 at 2660.8 m/s over 6633.3 m, 142.9 shots/min, 3780 shield / 5400 hull damage per shot; flags beam_gun_tied, on_hit_col31_32; muzzle row 24, impact row 23."
+  },
+  {
+   "id": "SS_BULLET_EMP_1",
+   "bullet_index": 41,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "slug",
+   "body": "objects/v/00517",
+   "elongation": 1.8353,
+   "texture": "380.jpg",
+   "textures": [
+    "380.jpg"
+   ],
+   "light": "#c0c000",
+   "light_rgb": [
+    192,
+    192,
+    0
+   ],
+   "speed_mps": 646.0,
+   "lifetime_ms": 3405,
+   "range_m": 2199.6,
+   "damage_shield": 2700,
+   "damage_hull": 1620,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 25,
+     "summary": "2 elements: 04253 0.002-0.026 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 23,
+     "summary": "5 elements: 00587 [id:380] 0.0-0.02 260 ms; 00469 [id:380] 0.0-0.007 210 ms; light 0.002-0.061 650 ms; 00564 [id:383] 0.001-0.14 330 ms; 12000 [animation -98] 0.04-0.12 1440 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_EMP_1 (no TLaser row fires it): no ship row can mount it; fires a slug (body 00517, texture 380) lit #c0c000 at 646 m/s over 2199.6 m, 2700 shield / 1620 hull damage per shot; muzzle row 25, impact row 23."
+  },
+  {
+   "id": "SS_BULLET_FBL_FRAG",
+   "bullet_index": 36,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "tracer+burst",
+   "body": "objects/effects/weapons/bullet_fragbomb_fragment",
+   "elongation": 5.385,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#3010c0",
+   "light_rgb": [
+    48,
+    16,
+    192
+   ],
+   "speed_mps": 500.0,
+   "lifetime_ms": 300,
+   "range_m": 150.0,
+   "damage_shield": 220,
+   "damage_hull": 21,
+   "flag_word": "0x100",
+   "flags": [
+    "area_flak"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 185,
+     "summary": "2 elements: 04258 0.001-0.027 150 ms; 00447 [id:383] 0.005-0.03 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 186,
+     "summary": "1 element: propagate row 184 x1-3"
+    },
+    "death": {
+     "row": 186,
+     "summary": "1 element: propagate row 184 x1-3"
+    }
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_FBL_FRAG (no TLaser row fires it): no ship row can mount it; fires a tracer+burst (body bullet_fragbomb_fragment, texture fx_bullets2_diff) lit #3010c0 at 500 m/s over 150 m, 220 shield / 21 hull damage per shot; flags area_flak; muzzle row 185, impact row 186, death row 186."
+  },
+  {
+   "id": "SS_BULLET_FLAK_ALPHA_FRAG",
+   "bullet_index": 39,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "tracer+burst",
+   "body": "objects/effects/weapons/bullet_ls_alpha",
+   "elongation": 18.5025,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#3010c0",
+   "light_rgb": [
+    48,
+    16,
+    192
+   ],
+   "speed_mps": 1162.0,
+   "lifetime_ms": 1200,
+   "range_m": 1394.4,
+   "damage_shield": 220,
+   "damage_hull": 21,
+   "flag_word": "0x100",
+   "flags": [
+    "area_flak"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 15,
+     "summary": "2 elements: 10663 [animation -73] 0.04-0.06 800 ms; 10661 [exp_glow_diff] 0.01-0.2 250 ms"
+    },
+    "death": {
+     "row": 15,
+     "summary": "2 elements: 10663 [animation -73] 0.04-0.06 800 ms; 10661 [exp_glow_diff] 0.01-0.2 250 ms"
+    }
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_FLAK_ALPHA_FRAG (no TLaser row fires it): no ship row can mount it; fires a tracer+burst (body bullet_ls_alpha, texture fx_bullets_diff) lit #3010c0 at 1162 m/s over 1394.4 m, 220 shield / 21 hull damage per shot; flags area_flak; muzzle row 22, impact row 15, death row 15."
+  },
+  {
+   "id": "SS_BULLET_FLAK_CLUSTER_FRAG",
+   "bullet_index": 37,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "tracer+burst",
+   "body": "objects/effects/weapons/bullet_ls_alpha",
+   "elongation": 18.5025,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#3010c0",
+   "light_rgb": [
+    48,
+    16,
+    192
+   ],
+   "speed_mps": 2100.0,
+   "lifetime_ms": 400,
+   "range_m": 840.0,
+   "damage_shield": 220,
+   "damage_hull": 21,
+   "flag_word": "0x100",
+   "flags": [
+    "area_flak"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 156,
+     "summary": "2 elements: 10664 [exp_glow2_diff] 0.18-1.5 1500 ms; propagate row 147 x1-3"
+    },
+    "death": {
+     "row": 156,
+     "summary": "2 elements: 10664 [exp_glow2_diff] 0.18-1.5 1500 ms; propagate row 147 x1-3"
+    }
+   },
+   "trail_particles": 1,
+   "description": "SS_BULLET_FLAK_CLUSTER_FRAG (no TLaser row fires it): no ship row can mount it; fires a tracer+burst (body bullet_ls_alpha, texture fx_bullets_diff) lit #3010c0 at 2100 m/s over 840 m, 220 shield / 21 hull damage per shot; flags area_flak; muzzle row 22, impact row 156, death row 156."
+  },
+  {
+   "id": "SS_BULLET_FLAK_CLUSTER_FRAG_FRAG",
+   "bullet_index": 38,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "tracer+burst",
+   "body": "objects/effects/weapons/bullet_ls_alpha",
+   "elongation": 18.5025,
+   "texture": "effects\\weapons\\fx_bullets_diff.tga",
+   "textures": [
+    "effects\\weapons\\fx_bullets_alpha8.tga",
+    "effects\\weapons\\fx_bullets_diff.tga"
+   ],
+   "light": "#3010c0",
+   "light_rgb": [
+    48,
+    16,
+    192
+   ],
+   "speed_mps": 1200.0,
+   "lifetime_ms": 200,
+   "range_m": 240.0,
+   "damage_shield": 220,
+   "damage_hull": 21,
+   "flag_word": "0x100",
+   "flags": [
+    "area_flak"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 156,
+     "summary": "2 elements: 10664 [exp_glow2_diff] 0.18-1.5 1500 ms; propagate row 147 x1-3"
+    },
+    "death": {
+     "row": 156,
+     "summary": "2 elements: 10664 [exp_glow2_diff] 0.18-1.5 1500 ms; propagate row 147 x1-3"
+    }
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_FLAK_CLUSTER_FRAG_FRAG (no TLaser row fires it): no ship row can mount it; fires a tracer+burst (body bullet_ls_alpha, texture fx_bullets_diff) lit #3010c0 at 1200 m/s over 240 m, 220 shield / 21 hull damage per shot; flags area_flak; muzzle row 22, impact row 156, death row 156."
+  },
+  {
+   "id": "SS_BULLET_IPG_FRAG",
+   "bullet_index": 44,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "slug+burst",
+   "body": "objects/v/10459",
+   "elongation": 3.6672,
+   "texture": "id:282",
+   "textures": [
+    "id:282",
+    "id:36",
+    "id:364",
+    "id:380"
+   ],
+   "light": "#80c010",
+   "light_rgb": [
+    128,
+    192,
+    16
+   ],
+   "speed_mps": 0.0,
+   "lifetime_ms": 0,
+   "range_m": 0.0,
+   "damage_shield": 12563,
+   "damage_hull": 523,
+   "flag_word": "0x300",
+   "flags": [
+    "area_flak",
+    "on_hit_slow"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 179,
+     "summary": "4 elements: 04253 0.01-0.1 675 ms; 00587 [id:380] 0.0-0.03 210 ms; light 0.002-0.0405 650 ms; 00564 [id:383] 0.0001-0.025 330 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 178,
+     "summary": "4 elements: 04791 0.01-0.033 1000 ms; 12001 [animation -96] 0.4-0.41 1440 ms; light 0.02-0.22 400 ms; 00587 [id:380] 0.01-0.18 460 ms"
+    },
+    "death": {
+     "row": 178,
+     "summary": "4 elements: 04791 0.01-0.033 1000 ms; 12001 [animation -96] 0.4-0.41 1440 ms; light 0.02-0.22 400 ms; 00587 [id:380] 0.01-0.18 460 ms"
+    }
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_IPG_FRAG (no TLaser row fires it): no ship row can mount it; fires a slug+burst (body 10459, texture id:282) lit #80c010 at 0 m/s over 0 m, 12563 shield / 523 hull damage per shot; flags area_flak, on_hit_slow; muzzle row 179, impact row 178, death row 178."
+  },
+  {
+   "id": "SS_BULLET_MAM_1",
+   "bullet_index": 42,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "orb+burst",
+   "body": "objects/effects/weapons/bullet_mam",
+   "elongation": 1.2591,
+   "texture": "effects\\weapons\\fx_bullets2_diff.tga",
+   "textures": [
+    "d:\\x3.5\\shaderfx\\none_white.dds",
+    "effects\\weapons\\fx_bullets2_diff.tga"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 489.0,
+   "lifetime_ms": 8150,
+   "range_m": 3985.3,
+   "damage_shield": 7845,
+   "damage_hull": 2615,
+   "flag_word": "0x140",
+   "flags": [
+    "ammunition",
+    "area_flak"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 195,
+     "summary": "4 elements: 04253 0.02533-0.1875 925 ms; lensflare 24 0.0005-0.00251 150 ms; light 0.01-0.051 400 ms; 04251 0.02533-0.1275 775 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 196,
+     "summary": "2 elements: 12004 [animation -102] 0.001-0.15 1296 ms; light 0.01-0.11 400 ms"
+    },
+    "death": {
+     "row": 196,
+     "summary": "2 elements: 12004 [animation -102] 0.001-0.15 1296 ms; light 0.01-0.11 400 ms"
+    }
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_MAM_1 (no TLaser row fires it): no ship row can mount it; fires a orb+burst (body bullet_mam, texture fx_bullets2_diff) lit #ffffff at 489 m/s over 3985.3 m, 7845 shield / 2615 hull damage per shot; flags ammunition, area_flak; muzzle row 195, impact row 196, death row 196."
+  },
+  {
+   "id": "SS_BULLET_TERRANANTIFIGHTER_1",
+   "bullet_index": 43,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "slug",
+   "body": "objects/v/00300",
+   "elongation": 1.9999,
+   "texture": "id:70",
+   "textures": [
+    "id:70"
+   ],
+   "light": "#ffffff",
+   "light_rgb": [
+    255,
+    255,
+    255
+   ],
+   "speed_mps": 2200.0,
+   "lifetime_ms": 1000,
+   "range_m": 2200.0,
+   "damage_shield": 20785,
+   "damage_hull": 3374,
+   "flag_word": "0x0",
+   "flags": [],
+   "effects": {
+    "muzzle": {
+     "row": 200,
+     "summary": "3 elements: 04253 0.1-0.1825 925 ms; lensflare 24 0.002-0.011 150 ms; light 0.02-0.22 400 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 199,
+     "summary": "4 elements: 12008 [animation -105] 0.6-0.75 960 ms; 12008 [animation -105] 0.6-0.75 960 ms; 08000 0.012-0.0294 640 ms; light 0.005-0.03 500 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_TERRANANTIFIGHTER_1 (no TLaser row fires it): no ship row can mount it; fires a slug (body 00300, texture id:70) lit #ffffff at 2200 m/s over 2200 m, 20785 shield / 3374 hull damage per shot; muzzle row 200, impact row 199."
+  },
+  {
+   "id": "SS_BULLET_TERRANANTIFIGHTER_FRAG",
+   "bullet_index": 40,
+   "lasers": [],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "wave",
+   "body": "objects/v/00225",
+   "elongation": 0.8825,
+   "texture": "id:235",
+   "textures": [
+    "id:235"
+   ],
+   "light": "#3010c0",
+   "light_rgb": [
+    48,
+    16,
+    192
+   ],
+   "speed_mps": 254.0,
+   "lifetime_ms": 1000,
+   "range_m": 254.0,
+   "damage_shield": 220,
+   "damage_hull": 21,
+   "flag_word": "0x8",
+   "flags": [
+    "beam_fixed_length"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 22,
+     "summary": "2 elements: 04251 0.001-0.031 150 ms; light 0.001-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 15,
+     "summary": "2 elements: 10663 [animation -73] 0.04-0.06 800 ms; 10661 [exp_glow_diff] 0.01-0.2 250 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "SS_BULLET_TERRANANTIFIGHTER_FRAG (no TLaser row fires it): no ship row can mount it; fires a wave (body 00225, texture id:235) lit #3010c0 at 254 m/s over 254 m, 220 shield / 21 hull damage per shot; flags beam_fixed_length; muzzle row 22, impact row 15."
+  },
+  {
+   "id": "SS_BULLET_TRIBEAM",
+   "bullet_index": 26,
+   "lasers": [
+    {
+     "index": 26,
+     "id": "SS_LASER_TRIBEAM",
+     "name": "Tri-Beam Cannon",
+     "name_id": 8263,
+     "subtype": "SG_LASER_PARANID_BEAM",
+     "refire_ms": 675,
+     "shots_per_min": 88.9,
+     "size": "unmounted",
+     "used_by": {}
+    }
+   ],
+   "size": "unmounted",
+   "used_by": {},
+   "style": "beam",
+   "body": "objects/v/10385",
+   "elongation": 21.8599,
+   "texture": "id:796",
+   "textures": [
+    "id:796"
+   ],
+   "light": "#c0c0c0",
+   "light_rgb": [
+    192,
+    192,
+    192
+   ],
+   "speed_mps": 5630.0,
+   "lifetime_ms": 1100,
+   "range_m": 6193.0,
+   "damage_shield": 7532,
+   "damage_hull": 5321,
+   "flag_word": "0x2",
+   "flags": [
+    "beam_gun_tied"
+   ],
+   "effects": {
+    "muzzle": {
+     "row": 24,
+     "summary": "3 elements: 04252 0.002-0.031 150 ms; lensflare 25 0.002-0.0075 150 ms; light 0.002-0.031 150 ms"
+    },
+    "flight": null,
+    "impact": {
+     "row": 23,
+     "summary": "5 elements: 00587 [id:380] 0.0-0.02 260 ms; 00469 [id:380] 0.0-0.007 210 ms; light 0.002-0.061 650 ms; 00564 [id:383] 0.001-0.14 330 ms; 12000 [animation -98] 0.04-0.12 1440 ms"
+    },
+    "death": null
+   },
+   "trail_particles": null,
+   "description": "Tri-Beam Cannon: no ship row can mount it; fires a beam (body 10385, texture id:796) lit #c0c0c0 at 5630 m/s over 6193 m, 88.9 shots/min, 7532 shield / 5321 hull damage per shot; flags beam_gun_tied; muzzle row 24, impact row 23."
+  }
+ ]
+}
