@@ -3214,3 +3214,8 @@ ship at speed and confirm hull and shields unchanged while the bounce, sound and
 you; fire a weapon at something and confirm normal damage; `collision_damage_suppressed` rows with `c=`, `v=`, the
 classes and the zeroed values; optional: skim a planet and report what the ship does at the surface. Kill: any
 instability at a collision, or `status=skipped`.
+
+**Flown 2026-11-05 (log, measured):** `collision_damage edition=fl status=applied reason=ok` (FL relocated to base
+`0x00520000`, both writes atomic); three suppressed events, each the player's ship (`player=1`): classes 6/7 twice
+and 7/7 once, zeroed damage 8563 / 7357 / 8798 hull points on both bodies at `c=8000`, relative speeds
+91,970-109,987 (so each bump would have cost about 7-9 k hull in vanilla). Pilot: "looks like working okay". Accepted.
