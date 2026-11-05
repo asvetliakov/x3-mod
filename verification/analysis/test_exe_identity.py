@@ -60,8 +60,9 @@ DELEGATED = {'occlusion_engine_cull.cpp': (('cull_small_parts::site_chainable(',
 # engine_effects.cpp left this set on 2026-10-03: besides the anchored globals it reads the SETA dwords, whose offsets it
 # binds with a whole-instruction compare of the tick at 0x004d1ef0 (memcmp, seta_read).
 # sector_key.cpp (2026-11-05): reads only; compares its whole-instruction windows through sector_key_core.h first_mismatch.
+# collision_damage.cpp (2026-11-05): compares all of its edition's windows through collision_damage_core.h compare_windows.
 SITE_CHECK = re.compile(r'engine_patch::claim\(|engine_patch::claim_call\(|verify_bytes\(|memcmp\(|install_group\(|sites::install\('
-                        r'|core::first_mismatch\(')
+                        r'|core::first_mismatch\(|core::compare_windows\(')
 
 
 def synthetic(laa=False, checksum=0, filler=0x90):

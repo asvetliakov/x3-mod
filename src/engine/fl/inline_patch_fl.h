@@ -3,7 +3,8 @@
 #include <cstring>
 
 // The write / read-back / rollback / restore sequence of an in-place FL instruction patch (no stub, no emitted code),
-// independent of the memory API: src/engine/fl/pause_key_only_fl.cpp (13 bytes) and run_in_background_fl.cpp (2 bytes)
+// independent of the memory API: src/engine/fl/pause_key_only_fl.cpp (13 bytes), run_in_background_fl.cpp (2 bytes) and
+// src/proxy/collision_damage_core.h (both editions: the 7/8-byte contact jump and the planet byte)
 // drive it with VirtualProtect / engine_patch::write_code / FlushInstructionCache, the native fixtures with a fault-
 // injecting buffer. The shape of lod_patch_sites_fl.h's one-byte install(), widened to a span of up to 16 bytes. Ops
 // provides read(at, out, n), protect(at, n, protection, &previous), write(at, bytes, n, &atomic) and `writable`. No

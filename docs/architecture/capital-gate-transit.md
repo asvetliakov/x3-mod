@@ -120,14 +120,15 @@ covered by the rule.
 
 **Ramming.** The engine's contact response is unchanged: the narrow phase and the impulse `slip += w (v_other −
 v_own)`, `w = 2 m_other / (m_own + m_other)` ([sector-collide.md](../reverse-engineering/sector-collide.md) §13,
-**[s]**), then the `"MakeDamage"` notification to the KC. The damage law is script side and **not decoded**: no note
-in this repository quantifies collision damage; it is **[i]** that it scales with the relative speed and the masses,
-as the impulse does. What bounds the risk: (1) the policy only extends what vanilla already does for fighters and
+**[s]**), then the `"MakeDamage"` notification to the KC. The damage itself is native and decoded in
+[collision-damage.md](../reverse-engineering/collision-damage.md): each body takes `max(c·v/100000, c/50)` (ship) with
+`c` the smaller strength `2·maxHull + maxShield` of the pair and `v` the Chebyshev relative speed; the masses weight
+only the impulse, not the damage. What bounds the risk: (1) the policy only extends what vanilla already does for fighters and
 freighters (a capital ignores non-large ships natively) to M6/M8/TM; (2) a small ship under our steering carries both
 the predictive detour and, when unresolved, the engine's own warn (never suppressed on the small side unless it
 resolved the pair with a flyable detour); (3) the hand-back is immediate when the small ship stops being steered;
-(4) the capital's emergency clamp stays for every obstacle it does keep. What settles the damage figure: a KC walk of
-the `MakeDamage` handler in `x3story.obj` (class 2004) with the same symbolic-stack tool as `kc_gate_flow.py`.
+(4) the capital's emergency clamp stays for every obstacle it does keep. The `MakeDamage` notification damages only equipment (stock KC;
+a stub in the Mayhem object) ([collision-damage.md](../reverse-engineering/collision-damage.md), "Answer").
 
 **Fail-safe kept:** option off, class masked, A not in the table, A on 0x12, any field unreadable → 0.
 
@@ -413,8 +414,9 @@ A steered capital no longer reacts to an M6/M8/TM in that state and can ram it. 
 non-"large" ship (fighters, TS, TP), so the new exposure is limited to M6 (≤ 140 m), M8 (≤ 83 m) and TM (≤ 128 m)
 hulls that are stationary in a capital's path. The contact response is the elastic impulse of `0x0045e130`
 ([ship-movement.md](../reverse-engineering/ship-movement.md) §13.2). The small ship takes weight
-`2 m_cap / (m_cap + m_small)` ≈ 2 of the relative velocity, so it is pushed aside **[i]**. The damage law behind
-`"MakeDamage"` is script-side and not decoded **[i]**.
+`2 m_cap / (m_cap + m_small)` ≈ 2 of the relative velocity, so it is pushed aside **[i]**. The collision damage is
+native, not script-side, and does not depend on mass
+([collision-damage.md](../reverse-engineering/collision-damage.md), "Answer").
 
 **Fail-safe.** Option off, A not fresh, A's code unreadable, B's code unreadable, any field unreadable: return 0, and
 the engine's warn test runs as vanilla. (B.4: with `ship_steering_gates_capital` on, A's age no longer gates the small-ship row;
@@ -781,8 +783,9 @@ in adjacent lanes and to (a) two lanes apart. The real widths decide how much of
   With `w_src=inferred` it is unknown **[i]**.
 * A contact between in-lane neighbours would be a graze at up to the along-axis speed difference (≤ 100 m/s). The
   contact impulse is elastic in the relative velocity
-  ([ship-movement.md](../reverse-engineering/ship-movement.md) §13.2). The damage law behind `"MakeDamage"` is not
-  decoded **[i]**.
+  ([ship-movement.md](../reverse-engineering/ship-movement.md) §13.2). The collision damage law is native and decoded in
+  [collision-damage.md](../reverse-engineering/collision-damage.md): it scales with the relative speed and the smaller
+  strength of the pair, not with mass.
 * Vanilla parks capitals of the same size side by side at adjacent grid points for the through-slot wait. That relies
   on the same widths, but at zero relative speed.
 * **Fail-safe:** any read failure, a stale state, an identity mismatch or an uncommitted ship drops the pair to (c).

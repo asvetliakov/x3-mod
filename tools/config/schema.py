@@ -525,6 +525,10 @@ SETTINGS = [
     entry('seta_manual_flight', 'enum', 'engine', 'Steering by hand no longer ends SETA (changing speed by hand still does), and '
           'under SETA the ship turns and strafes as fast as at normal speed. 2 = both, 1 = SETA stays on only, 0 = off. ', '2',
           choices=('0', '1', '2'), launcher='--seta-manual-flight', since='2026-10-24'),
+    entry('collision_damage', 'bool', 'engine', 'Collisions damage ships as in the game (1), or not at all (0): no hull or shield '
+          'damage from bumping or ramming ships, stations and asteroids or from skimming a planet, for your ship and every '
+          'other ship alike. The ships still bounce off and the impact is still heard; weapons and missiles damage as before.',
+          builtin='1', since='2026-11-05'),
     entry('light_map_far_fade', 'float_list', 'engine', 'Fades the lit hull windows on far-away ships and stations, where they would '
           'otherwise shimmer. The first two numbers say how far: how many game units one screen pixel covers at the object where the '
           'fade starts and where it ends (larger = farther away); the third is the brightness left beyond that (up to '
