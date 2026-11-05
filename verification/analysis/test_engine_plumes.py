@@ -17,15 +17,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-# The record is Wine provenance (Run140, 2026-10-09, commit 0cf873a6b); since 2026-10-11 there is no Wine host and these
-# sources changed natively (0cf873a6b..2c3d32ffa). Accepted beside the recorded hash until run_engine_plumes.py reruns on a
-# Wine or native D3D9 fixture host (docs/verification/host-suite.md, "Wine-record-bound tests").
-# Bumped for the FL run 34 diagnostics (probe rows, far-jet counter split; telemetry only, 2026-11-03).
-SOURCES_SHA256_2026_11_03 = {
-    'src/proxy/engine_effects_core.h': '52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75',
-    'src/renderer/fog_transmittance.h': '78f3bccd2d509f173641d7eea145a417f53307d69ed0039a2527073d45c861d6',
-    'src/proxy/engine_plumes_core.h': '80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa',
-}
 sys.path.insert(0, str(ROOT / 'tools/config'))
 import schema  # noqa: E402
 from source_text import source_text  # noqa: E402
@@ -1479,8 +1470,9 @@ class Wiring(unittest.TestCase):
 
 
 class EnginePlumesFixtureRecord(unittest.TestCase):
-    """The tracked Wine record of run_engine_plumes.py, bound to the production sources it exercised."""
-    PATH = ROOT / 'verification/results/bottle-X3/engine-plumes/summary.json'
+    """The tracked native Windows record of run_engine_plumes.py (--host native, 2026-11-05), bound to the production
+    sources it exercised; the Wine record (bottle-X3/engine-plumes/summary.json, Run140) stays as provenance."""
+    PATH = ROOT / 'verification/results/native-windows/engine-plumes/summary.json'
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -1489,7 +1481,8 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         r = self.record
         self.assertTrue(r['passed'])
         self.assertFalse(r['game_launched'])
-        self.assertEqual(r['bottle']['name'], 'X3')
+        self.assertIsNone(r['bottle'])
+        self.assertEqual(r['host']['name'], 'native-windows')
         self.assertEqual(r['report']['failed_checks'], [])
         self.assertEqual(r['build']['warnings'], 0)
         g = r['gates_met']
@@ -1597,8 +1590,8 @@ class EnginePlumesFixtureRecord(unittest.TestCase):
         self.assertRegex(source['commit'], r'^[0-9a-f]{40}(-dirty)?$')
         now = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in runner.PRODUCTION_SOURCES}
         self.assertEqual(set(now), set(source['sha256']))
-        for path, recorded in source['sha256'].items():  # the recorded hash, or the native drift named above
-            self.assertIn(now[path], (recorded, SOURCES_SHA256_2026_11_03.get(path)), path + ': production sources changed since the record: rerun run_engine_plumes.py')
+        for path, recorded in source['sha256'].items():
+            self.assertEqual(now[path], recorded, path + ': production sources changed since the record: rerun run_engine_plumes.py --host native')
 
 
 if __name__ == '__main__':

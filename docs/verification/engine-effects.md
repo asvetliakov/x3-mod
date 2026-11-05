@@ -897,3 +897,54 @@ unchanged: their records are byte-identical in the host fixture. On Mayhem the v
 `engine_stage` from the anchors-only probe walks. Host evidence, expected rows, the flight check and the kill
 criterion: [farnhams-legacy.md](farnhams-legacy.md), "Plumes step 1: hidden emitter anchors, host evidence
 (2026-11-03)".
+
+## Native flow defect: value-noise lattice index under a fused mad (2026-11-05, dirty tree on 47764d79a, not a candidate)
+
+Finding (measured, native host RTX 5070 Ti, driver 32.0.16.2114): the first native run of `run_engine_plumes.py`
+failed 5 of 322 checks, all in the flow case (`flow_world_law_value1500` at 1920 and 5120, `flow_world_law_value10000`
+at 1920, `flow_same_world_speed_600_1500` at both). In `engine_plume_ps.hlsl`'s `vnoise` the lattice index was
+`p - frac(p)`; for the streak field's first octave, `fbm(p * 2.2 + (5, 2, 1))`, fxc folded the integer offset out of
+the `frc` operand (`frc(mul 2.2 p)`) while the subtraction used `mad(p, 2.2, (5, 2, 1))`. NVIDIA fuses the `mad`, so
+the index was off an integer by the last bit wherever 2.2 p and 2.2 p + 5 fall in different binades, and the hash's
+`frac(83521 X Y ...)` turned that into dark columns 1-2 px wide every 4 px (19 % deep at the core). Wine (unfused)
+computed an exact integer. Patching that one instruction alone passed 21/21 flow checks. Diagnosis scripts:
+`verification/results/native-windows/engine-plumes/flow-fma/`.
+
+Fix: `vnoise` takes `i = floor(floor(p) + 0.5)` and `f = p - i`. A value within half a unit of an integer rounds to
+it exactly, because the compiled code takes `frc` and the subtraction from one register (`add 0.5; frc; add -frc`;
+checked in the D3DX disassembly). This holds whatever fxc folds or the driver fuses upstream. The program was
+regenerated on the native host with `tools/shaders/generate_rigid_motion_pixel_native.py --shader engine_plume_ps`,
+which runs the base tool's `compile_one` with compile.exe called directly through WSL interop. The header and record
+are byte for byte what the base tool writes: `--check` on the unchanged source reproduced the Wine-compiled bytecode
+`ceff5ae0…` first. The new program has 4,131 words (4,086 before), bytecode `1502fca7…`. D3DX reports 928 slots
+(916 before); the fixture's `ps_slots` is 936 (924 before).
+
+Outcome (measured; `native-windows/engine-plumes/summary.json` replaced, 2 min 16 s under the lock including the build;
+before/after by `native-windows/engine-plumes/flow-fma/fix_compare.py`, against Wine by `compare_wine.py`): PASS
+322/322 with the same labels as the Wine record, and no verdict differs.
+
+| Flow case | Native before: ratio / peak corr | Native after | Wine (Run140) |
+| --- | --- | --- | --- |
+| 1920, value 1,500 | 0.8533 / 0.9761 | 1.0001 / 0.9991 | 0.9999 / 0.9991 |
+| 1920, value 10,000 | 1.2561 / 0.9635 | 1.0081 / 0.9981 | 1.0003 / 0.9991 |
+| 5120, value 1,500 | 0.8617 / 0.9577 | 1.0001 / 0.9991 | 1.0000 / 0.9991 |
+| 5120, value 10,000 | 0.9569 / 0.9517 | 1.0080 / 0.9980 | 1.0003 / 0.9991 |
+
+Values 100 and 600 are unchanged at four digits. Structural numbers are unchanged: core survival min 0.9781 (Wine
+0.9783), dark trail 0 px, colour error 9e-05. `test_engine_plumes` is now bound to the native record with exact source
+hashes; `SOURCES_SHA256_2026_11_03` is removed for this module only, and the Wine record stays as provenance. Open:
+value 10,000 keeps a residual ratio of 1.008 against Wine's 1.0003, inside the 1 ± 0.05 gate. It is not diagnosed; the
+remaining contracted `mad`s in the hash are the likely cause (inferred).
+
+Other `frac` idioms in `src/effects/` and `src/fog/` (checked in the compiled disassembly, not changed):
+
+- `engine_shimmer_ps.hlsl` `vnoise_gradient` uses the same `p - frac(p)` and hash. Its caller passes no integer
+  offset, and `frc` and the subtraction read one register. It is not exposed today but would break the same way if a
+  caller added an integer offset. It was left alone because the shimmer runner and its records belong to a concurrent
+  native run.
+- `sky_nebula_ps.hlsl` uses `floor(p)` with a Hoskins hash; `frc` and `add` read one `mad` register, and the
+  multipliers are small (0.1031, 33.33).
+- `fog_composite_ps.hlsl` and `fog_density_composite_ps.hlsl` use `floor(pixel * 0.5)`, which is exact. It is a texel
+  index, not a hash.
+- `own_sun_ps.hlsl` hashes integer ray indices, and `sky_stars_vs.hlsl` and `fog_dust_motes_vs.hlsl` take `frac` of
+  per-vertex data. None of them derives a lattice from `frac`.

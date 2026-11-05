@@ -91,9 +91,13 @@ struct Input {
 };
 // Value noise of the mock-up (hash p = frac(p 0.3183099 + (.1, .2, .3)) 17, frac(x y z (x + y + z)); smoothstep
 // trilinear), the eight corners in two float4 batches; the hash's 17^4 is folded into one product.
+// The lattice index is rounded to an exact integer before the hash: fxc folds a caller's integer offset out of floor's
+// frc (frac(2.2 p + (5, 2, 1)) -> frc(2.2 p)) while the subtraction keeps it in a mad, so a fused mad (NVIDIA) left
+// floor(p) off an integer in its last bit and the 83521 product turned that into dark columns (native, 2026-11-05).
+// floor(x + 0.5) of a value within half a unit of an integer is that integer exactly, whatever the contraction.
 float vnoise(float3 p) {
-    float3 f = frac(p);
-    const float3 i = p - f;
+    const float3 i = floor(floor(p) + 0.5);
+    float3 f = p - i;
     const float3 base = i * 0.3183099 + float3(0.1, 0.2, 0.3);
     const float3 a = frac(base), b = frac(base + 0.3183099);
     f = f * f * (3.0 - 2.0 * f);

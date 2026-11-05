@@ -97,7 +97,7 @@ so the records cannot be re-recorded while the sources keep changing natively:
 | Module | Record (Wine run) | Sources drifted |
 | --- | --- | --- |
 | `test_engine_effects` | `engine-effects/summary.json` (cd479d025, 2026-10-09) | 12 of 21 |
-| `test_engine_plumes` | `engine-plumes/summary.json` (0cf873a6b, Run140) | 2 of 11 |
+| `test_engine_plumes` | rebound 2026-11-05 to `native-windows/engine-plumes/summary.json` (exact hashes; Wine record kept as provenance) | none |
 | `test_engine_ribbons` | `engine-ribbons/summary.json` (0cf873a6b, Run140) | 5 of 14 |
 | `test_engine_shimmer` | `engine-shimmer/summary.json` (0cf873a6b, Run140) | 1 of 9 |
 | `test_fov_patch_result` | `fov-patch.json` (ecf0215ee, 2026-09-26) | 1 of 7 |
@@ -182,6 +182,8 @@ CPU build cost in µs is close (100 records: 12.99 → 10.68; 1,024: 140.1 → 1
 The record does not pass, so `test_engine_plumes` stays bound to the Wine record
 and to `SOURCES_SHA256_2026_11_03`. The flow failure at high values is open: it
 is deterministic on this GPU and needs a diagnosis, not a looser gate.
+
+Fixed 2026-11-05: the flow failure was the plume value noise's lattice index under a fused `mad`; with the source fix the native record passes 322/322 and `test_engine_plumes` is bound to it ([engine-effects.md](engine-effects.md), "Native flow defect").
 
 ## Tests that read production source
 
