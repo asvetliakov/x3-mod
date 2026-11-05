@@ -3219,3 +3219,23 @@ instability at a collision, or `status=skipped`.
 `0x00520000`, both writes atomic); three suppressed events, each the player's ship (`player=1`): classes 6/7 twice
 and 7/7 once, zeroed damage 8563 / 7357 / 8798 hull points on both bodies at `c=8000`, relative speeds
 91,970-109,987 (so each bump would have cost about 7-9 k hull in vanilla). Pilot: "looks like working okay". Accepted.
+
+## FL run 55 — nebula deband and stars dimmed under the nebula, Decision C (installed 2026-11-05)
+
+Clean main `8830a808b` (merge of the Decision C branch, five commits, review at high effort with items 1-7 fixed):
+`C:\X3FL\d3d9.dll` = `e58042c4…` (59,629,302 B), rollback `rollback-d3d9\d3d9.dll.run54` = `7f5ed9f4…`; `x3m.ini` =
+run 54 file + `sky_stars_nebula_dim = 0.5` and `sky_nebula_deband = 1` (both builtin 0 until flown; copy
+`x3m.ini.run54`). Record `verification/results/fl-run55/candidate.json`. C1: the four nebula part draws get an own
+vs/ps pair (game pair reproduced word for word, invariant 1: 0 of 921,600 pixels differ), alpha-weighted
+gradient-aware 9-tap average in texture space, hash off; measured on a DXT1 ramp: rms error vs the ideal ramp
+1.03 → 0.46, max 3.89 → 2.49, ripple 1.81 → 1.09 (design bound 0.25 unreachable with this tap set), accepted
+shortfalls edge halo 1.26 (bound 1.0, ceiling 2.0) and fast-pan TAA 0.662 (bound 0.649, ceiling 0.772); full-sky
+GPU +0.029 ms. C2: the star batch moves to `before_clear` of the phase-end depth Clear (exact selector rule), Z-tested
+at the far plane with depth bias zeroed, dimmed by `1 − k·saturate(L/L0)` from a 1/8 StretchRect copy; k = 0
+bit-identical to the in-place path; dimming law within 0.14 %; CPU 2.15 µs per batch (note bound 1 µs, accepted).
+**Open flight check:** rows `sky_nebula … parts=4` per field (`parts` > 4 is the exclusion-match tell),
+`sky_stars_defer` states (predicted/confirmed, no `missed`), the ready row with `deferred=1`. Pilot: nebula edge
+bands softer (compare by toggling `sky_nebula_deband` 0/1 between launches), stars visibly fainter inside bright
+nebula, no stars on top of planets, no pulsing of star brightness near nebula edges under SETA rotation, no
+relative wobble between nebula and the rest of the background, no grain in the nebula. Kill (C1): grain or halos
+worse than the bands; kill (C2): pulsing or stars over planets not fixed by `sky_stars_nebula_dim_level`.

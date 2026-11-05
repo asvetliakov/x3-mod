@@ -1,0 +1,27 @@
+{
+ "run": "fl-run55",
+ "edition": "FL",
+ "installed": "2026-11-05",
+ "commit": "8830a808b4fb63ddff5c5fe11a925be0114d6e08",
+ "dirty": false,
+ "build": "build-fl RelWithDebInfo mingw-i686, 0 warnings, check_no_x87 --edition fl PASS",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "e58042c4cf9e948c1c15532c13534fd093573d0dc69bcf3d6f36289982962b04",
+  "bytes": 59629302
+ },
+ "rollback": {
+  "path": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run54",
+  "sha256_prefix": "7f5ed9f42ca00575"
+ },
+ "ini": "x3m.ini.run54 + 'sky_stars_nebula_dim = 0.5' and 'sky_nebula_deband = 1' after sky_stars = 1 (both builtin 0)",
+ "exe_sha256_prefix": "e7f3aad8",
+ "changes": [
+  "8830a808b merge of Decision C: d398e0d0a C1 deband, c85019775 C2 phase-end batch + dim, 83813d1e1 hash off, 0163023ee warnings, 3c887e4f2 review fixes"
+ ],
+ "evidence": [
+  "verification/results/sky-nebula/fixture_out.txt (21 checks, 2 warnings)",
+  "verification/results/sky-stars/fixture_out.txt (30 checks)",
+  "review high effort: no blocking findings; items 1-7 fixed"
+ ]
+}
