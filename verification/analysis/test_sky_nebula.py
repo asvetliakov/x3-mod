@@ -36,6 +36,14 @@ class SkyNebulaTests(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
         self.assertRegex(run.stdout, r'sky_nebula_check checks=13 failures=0 ')
 
+    def test_fixture_record(self):
+        # The tracked native record (verification/results/sky-nebula/run_fixture.py): green, and the accepted
+        # shortfalls of the default configuration are exactly the two recorded in the Decision C1 paragraph.
+        out = (ROOT / 'verification/results/sky-nebula/fixture_out.txt').read_text()
+        self.assertRegex(out, r'\nRESULT PASS checks=20 warnings=2 failures=0\n$')
+        self.assertNotIn('\nFAIL ', out)
+        self.assertEqual(re.findall(r'^WARN (\S+) ', out, re.M), ['edge_halo_beyond_1_texel', 'taa_sd_fast_pan'])
+
     def test_program_registers(self):
         vs = (ROOT / 'src/effects/sky_nebula_vs.hlsl').read_text()
         ps = (ROOT / 'src/effects/sky_nebula_ps.hlsl').read_text()

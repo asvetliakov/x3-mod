@@ -810,7 +810,9 @@ slots, 9 taps.
   | threshold 10, hash off | 0.439 | 1.62 | 0.78 | 0.000 | 3.04 | 9.3 texels |
   | threshold 16, hash off | 0.439 | 1.62 | 0.78 | 0.000 | 5.13 | 9.3 texels |
 
-  Band means move by at most -0.025. The hash-off default fails two of the fixture's own bounds: the change beyond one
+  Band means move by at most -0.025. Accepted shortfalls pending the flight (fixture `WARN` rows, `checks=20
+  warnings=2 failures=0`): `edge_halo_beyond_1_texel` 1.26 vs the bound 1.0; `taa_sd_fast_pan` 0.662 vs 0.649. The
+  hash-off default misses these two of the fixture's own bounds: the change beyond one
   texel of a 12/255 edge is 1.26 (bound 1.0; the fixed star's diagonal ring keeps a pair whose far tap lands in the
   edge's bilinear texel), and the fast-pan TAA figure below. The note's bounds (ripple <= 0.25, error <= 0.5) are not
   met in any configuration, and the ripple bound is not reachable with this tap set: the output is the centre plus
