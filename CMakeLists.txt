@@ -93,7 +93,7 @@ set(X3M_AP_SOURCES
   src/ownership/finite_buffer_evidence.cpp src/ownership/portable_managed_upload.cpp
   src/proxy/draw_input.cpp src/proxy/object_lifetime.cpp src/proxy/mesh_adjacency_fast.cpp
   src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp
-  src/renderer/own_sun_pass.cpp src/renderer/sky_stars_pass.cpp src/proxy/sector_key.cpp
+  src/renderer/own_sun_pass.cpp src/renderer/sky_stars_pass.cpp src/proxy/sector_key.cpp src/renderer/sky_nebula_pass.cpp
   src/renderer/gpu_sync_timing.cpp src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp src/renderer/occlusion_cull_pass.cpp
   src/renderer/motion_history.cpp src/renderer/rigid_position.cpp src/renderer/shader_population.cpp
   src/renderer/material_motion.cpp src/renderer/linear_material.cpp src/renderer/linear_emission.cpp src/renderer/linear_emission_sm1.cpp src/renderer/linear_emission_pass.cpp src/renderer/motion_row_history.cpp src/proxy/motion_output.cpp
@@ -111,7 +111,7 @@ set(X3M_SHARED_SOURCES
   src/proxy/draw_input.cpp src/proxy/mesh_adjacency_fast.cpp src/renderer/temporal_pass.cpp src/renderer/hdr_pass.cpp
   src/renderer/exposure.cpp src/renderer/material_radiance.cpp src/renderer/engine_plumes_pass.cpp
   src/renderer/engine_ribbons_pass.cpp src/renderer/engine_shimmer_pass.cpp src/renderer/gpu_sync_timing.cpp
-  src/renderer/own_sun_pass.cpp src/renderer/sky_stars_pass.cpp src/proxy/sector_key.cpp
+  src/renderer/own_sun_pass.cpp src/renderer/sky_stars_pass.cpp src/proxy/sector_key.cpp src/renderer/sky_nebula_pass.cpp
   src/renderer/fog_pass.cpp src/fog/fog_density_cache.cpp src/fog/fog_density_generator.cpp
   src/renderer/shadow_replay_pass.cpp src/renderer/sun_shadow_apply_pass.cpp
   src/renderer/occlusion_cull_pass.cpp src/renderer/motion_history.cpp

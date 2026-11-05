@@ -1,0 +1,24 @@
+{
+ "validator": "SysWOW64 d3d9.dll Direct3DShaderValidatorCreate9 (native Windows host, WSL interop, no device)",
+ "harness": "verification/results/hull-widen-native-validator/native_validate.cpp",
+ "slot_counter": "src/renderer/ps3_program_slots.h",
+ "passed": true,
+ "programs": [
+  {
+   "program": "sky_nebula_vs",
+   "words": 118,
+   "messages": [],
+   "end": "00000000",
+   "slots": 10,
+   "source_header": "src/renderer/sky_nebula_vertex_program_inc.h"
+  },
+  {
+   "program": "sky_nebula_ps",
+   "words": 546,
+   "messages": [],
+   "end": "00000000",
+   "slots": 120,
+   "source_header": "src/renderer/sky_nebula_pixel_program_inc.h"
+  }
+ ]
+}

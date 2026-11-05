@@ -113,6 +113,13 @@ public:
             return {};
         return {true, device_, generation_, frame_, pending.sequence, epoch_, main_, depth_};
     }
+    // Called BEFORE the application's Clear: the pending Clear is the background phase's end, by the rule advance()
+    // applies after it (the depth-only Clear of the latched pair, flags ZBUFFER only, no rectangles, z 1, full 0..1
+    // viewport, after a background draw). Its result is unknown (sky stars, Decision C2: the deferred batch's prediction).
+    bool predicts_phase_end(const Event& pending) const {
+        return state_ == BoundaryState::Background && background_draw_ && pending.sequence == sequence_ + 1 &&
+               pending.kind == EventKind::Clear && depth_clear(pending);
+    }
     // Called AFTER the application call. A valid return confirms the same boundary
     // only after Clear succeeds; caller must separately verify its pre-call copy.
     Selection observe(const Event& event) {

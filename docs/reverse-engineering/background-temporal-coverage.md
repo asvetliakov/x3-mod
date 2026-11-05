@@ -91,3 +91,32 @@ transform producer, UV/fade producers and texture lifetime/immutability conditio
 Stardust requires its own vertex/alpha producer evidence before any exemption.
 No runtime classifier, new instrumentation, gameplay request or temporal-policy
 change follows from this study.
+
+## The background pair's bytecode (2026-11-05, Decision C1 invariant 1)
+
+Read from the local FL catalogues (`01.cat`, the first copy of each hash in mount order): `7b6393fe2d3e1d85` is the
+vs_1_1 program of `shader/1_1/adeffects.fb` (512 B), `6109cf64c03529dd` the ps_1_1 program of `shader/1_1/gui2d.fb`
+(304 B); both FNV-1a 64 hashes recomputed over the extracted token streams. Disassembled with the game's
+`d3dx9_37.dll` (`tools/analysis/disassemble_shaders.cpp`, D3DX9 compiler 9.15.779 in the CTAB). Bytes and the full
+listing stay local (scratch extraction through `tools/analysis/index_shaders.py`'s stream walker).
+
+- **Inputs.** `dcl_position v0`, `dcl_texcoord v1` (usage index 0 each); nothing else is read.
+- **Position.** `r0 = v0.xyzx * (1,1,1,0) + (0,0,0,1)`, i.e. `(x, y, z, 1)` whatever the declared w; `oPos.i =
+  dp4(r0, c_i)` for i = 0..3 (`g_mWorldViewProjection`, c0-c3, row dot products, so the engine uploads the rows of the
+  clip transform).
+- **UV.** `r1.xyz = (v1.x, v1.y, 1)`; `oT0.x = dp3(r1, c4)`, `oT0.y = dp3(r1, c5)` (`g_TexMatrix`, float3x2 in c4/c5,
+  the .xyz of each, defaults `(1,0,0)` / `(0,1,0)`), `oT0.z = 0`; oT0.w is not written. So the UV is affine: `u =
+  c4.x u0 + c4.y v0 + c4.z`, `v = c5.x u0 + c5.y v0 + c5.z`. No oFog, no oD0.
+- **Pixel.** `def c1 = (1,0,0,0)`; `tex t0`; `dp3 r0, c1, c0` (= c0.x broadcast, `g_AlphaValue`); `mul r0.w, t0.w,
+  r0.w` co-issued with `mov r0.xyz, t0`. Output `(t0.rgb, t0.a x c0.x)`. SM1 constants are clamped to [-1, 1].
+- **Constants used.** VS c0-c5 (c6 is the program's own `def`), PS c0 (c1 its own `def`). The SM1 pair cannot read
+  VS c255 or PS c200-c201.
+- **Pipeline differences an SM3 replacement must refuse.** ps_1_1 `tex` honours `D3DTTFF_PROJECTED` in stage 0's
+  `D3DTSS_TEXTURETRANSFORMFLAGS` (oT0.w is undefined then); ps_3_0 has no fixed-function fog. The C1 route refuses a
+  part draw with either on (`projected`, `fog`).
+
+A hand-assembled vs_1_1/ps_1_1 pair of exactly this math (the C1 native fixture's reference,
+`verification/probe/sky_nebula_fixture.cpp`) has the same instruction tokens as the game's programs with the CTAB
+comment removed: 51 and 21 words, equal word for word (local scratch comparison). The replacement
+`src/effects/sky_nebula_vs.hlsl` compiles (D3DX 9.37 `D3DXCompileShader`, vs_3_0) to the same `mad` / `dp4` x 4 /
+`mad` / `dp3` x 2 sequence plus one `mad o0.xy, c255, w, xy` for the jitter, which adds an exact 0 when c255 = 0.

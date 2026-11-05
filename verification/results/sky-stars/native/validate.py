@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Native D3D9 validator round trip of the sky-star programs (no device, no window, no game): the embedded words of
-src/renderer/sky_stars_{vertex,pixel}_program_inc.h go through SysWOW64 d3d9.dll!Direct3DShaderValidatorCreate9 via the
+src/renderer/sky_stars_{,dim_}{vertex,pixel}_program_inc.h go through SysWOW64 d3d9.dll!Direct3DShaderValidatorCreate9 via the
 WSL-interop harness verification/results/hull-widen-native-validator/native_validate.cpp, and their instruction slots
 through the production counter src/renderer/ps3_program_slots.h. Writes result.json beside this script (names, sizes,
 slot counts, the validator's End() result and messages only). Usage: python3 validate.py <scratch dir>
@@ -15,7 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[4]
 HARNESS = ROOT / 'verification/results/hull-widen-native-validator/native_validate.cpp'
 PROGRAMS = {'sky_stars_vs': ROOT / 'src/renderer/sky_stars_vertex_program_inc.h',
-            'sky_stars_ps': ROOT / 'src/renderer/sky_stars_pixel_program_inc.h'}
+            'sky_stars_ps': ROOT / 'src/renderer/sky_stars_pixel_program_inc.h',
+            # Decision C2: the deferred batch's twins (SKY_STARS_DIM).
+            'sky_stars_dim_vs': ROOT / 'src/renderer/sky_stars_dim_vertex_program_inc.h',
+            'sky_stars_dim_ps': ROOT / 'src/renderer/sky_stars_dim_pixel_program_inc.h'}
 SLOTS = r'''
 #include "ps3_program_slots.h"
 #include <cstdio>

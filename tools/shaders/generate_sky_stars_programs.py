@@ -28,6 +28,13 @@ PROGRAMS = {
                        provenance=ROOT / 'verification/results/sky-stars-vertex-program.json', target='vs_3_0'),
     'sky_stars_ps': dict(source=ROOT / 'src/effects/sky_stars_ps.hlsl', header=ROOT / 'src/renderer/sky_stars_pixel_program_inc.h',
                        provenance=ROOT / 'verification/results/sky-stars-pixel-program.json', target='ps_3_0'),
+    # Decision C2: the deferred batch's twins (SKY_STARS_DIM through a one-line include of the in-place source).
+    'sky_stars_dim_vs': dict(source=ROOT / 'src/effects/sky_stars_dim_vs.hlsl',
+                           header=ROOT / 'src/renderer/sky_stars_dim_vertex_program_inc.h',
+                           provenance=ROOT / 'verification/results/sky-stars-dim-vertex-program.json', target='vs_3_0'),
+    'sky_stars_dim_ps': dict(source=ROOT / 'src/effects/sky_stars_dim_ps.hlsl',
+                           header=ROOT / 'src/renderer/sky_stars_dim_pixel_program_inc.h',
+                           provenance=ROOT / 'verification/results/sky-stars-dim-pixel-program.json', target='ps_3_0'),
 }
 
 

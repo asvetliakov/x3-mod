@@ -589,6 +589,7 @@ void MotionOutput::release_resources() noexcept {
     release_engine_plumes(); // the plume stage's programs and DEFAULT buffers (motion_output_engine_plumes_inc.h)
     release_own_sun(); // the own sun's programs and declaration (motion_output_own_sun_inc.h)
     release_sky_stars(); // the star batch's programs, declaration and MANAGED buffers (motion_output_sky_stars_inc.h)
+    release_sky_nebula(); // the deband pair (motion_output_sky_nebula_inc.h)
     release_engine_shimmer(); // the heat shimmer's programs, block and scratch (motion_output_engine_shimmer_inc.h)
     fog_density_refused_ = fog_density_prepared_ = fog_density_camera_valid_ = fog_density_config_logged_ =
         false; // a new pass may be refused for another reason
@@ -4269,6 +4270,7 @@ void MotionOutput::before_reset() noexcept {
     // Sky stars: the MANAGED buffers and the programs survive Reset; the stage-0 seed is forgotten (the application
     // rebinds after Reset) and a refusal or three failed batches are retried after it (the own sun's rule).
     sky_stars_before_reset();
+    sky_nebula_before_reset();
     plumes_lane_ = nullptr;
     plumes_armed_ = false;
     engine_scene_camera_last_ = 0; // node-sourced nozzles: the root filter's view is forgotten (a mode or load boundary)
@@ -5597,6 +5599,8 @@ void MotionOutput::before_clear(DWORD count, DWORD flags, float z) noexcept {
     pending_.rect_count = count;
     pending_.clear_z = z;
     pending_valid_ = true;
+    // Decision C2: a deferred star batch is drawn before the predicted phase-end Clear (RT1/RT2 unbound above).
+    if (sky_stars_frame_pending_) sky_stars_phase_end_draw();
     // The latching Clear redirects RT0 to the FP16 target before it runs, so
     // the application's own Clear clears the target; a later Clear with the
     // target flag while redirected clears it too (content pending).
@@ -5640,6 +5644,7 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
         // The engine-side occlusion skip's table for the pass that follows this Clear (occlusion_cull = engine).
         if (occlusion_engine_) occlusion_engine_publish();
         if (sky_stars_requested_) sky_stars_phase_end(); // the frame's sky_stars status (a row on change)
+        if (sky_nebula_requested_) sky_nebula_phase_end(); // the frame's sky_nebula status (a row on change)
     }
     // D3: a multisampled RT0 never latches (the selector's main-target rule
     // requires a single-sampled A8R8G8B8 surface), so a frame whose initial
@@ -5668,6 +5673,7 @@ void MotionOutput::after_clear(HRESULT result) noexcept {
         selector_.state() == renderer::BoundaryState::Background) {
         read_camera(false);
         if (sky_stars_requested_) sky_stars_latch(); // the frame's background-phase record (and the Clear colour)
+        if (sky_nebula_requested_) sky_nebula_latch();
         // The frame's main color/depth pair is latched: own a matching motion
         // target and schedule the sentinel fill for the next draw.
         main_ = pending_.rt;
@@ -6127,6 +6133,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
                              state_field(4) != 0; // slot 4: COLORWRITEENABLE
     evaluate_draw(call, route);
     if (sky_stars_requested_) sky_stars_classify(call, route); // one bool test with the setting off
+    if (sky_nebula_requested_) sky_nebula_classify(call, route); // one bool test with the setting off
     if (route.sun_color_writer && !route.routed)
         arm_sun_stamp(call, route); // unroutable depth writer: see sun_stamp_draw
     // Step B rectangle before step C's admission: an admitted screen draw
@@ -6168,6 +6175,10 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
                 prepare_screen_additive(call, route);
                 screen_additive_window_.apply_failures += screen_additive_failures_ - failures;
             }
+            // Sky nebula deband: the part's pair swap, last, never on a draw another preparation took.
+            if (route.sky_nebula && route.submit && !route.composition && !route.screen_additive &&
+                !route.fog_card_mask.masked)
+                prepare_sky_nebula(route);
         }
     }
     // Source-only gain: a null pointer test when the option is off or the
@@ -9539,6 +9550,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         MotionRoute& route;
         ~RestoreScope() { self.release_restore(route); }
     } restore_scope{*this, route};
+    if (route.sky_nebula_swapped) finish_sky_nebula(route, result); // the engine's pair and constants back first
     if (route.sky_stars) finish_sky_stars(route, result); // its mask back (before the card's finish), then the batch
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
     if (!enabled_ || !route.evaluated) return;
@@ -12976,4 +12988,5 @@ const float* sky_stars_c0_rows(const float (&rows)[motion_matrix_windows_max][16
 }
 } // namespace
 #include "motion_output_sky_stars_inc.h"
+#include "motion_output_sky_nebula_inc.h"
 } // namespace x3m

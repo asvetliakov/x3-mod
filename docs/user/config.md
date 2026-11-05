@@ -117,6 +117,17 @@ the stars into a few dense clouds with some nearly empty patches between them (`
 `0` = evenly spread, as in the first version). The twinkle follows real time, so SETA does not speed it
 up. A value the mod cannot use keeps the default, and the `sky_stars_config` line in `x3m.log` then shows
 `<name>_setting=default`. Stars brighter than white glow only as much as any light that `bloom_source_clamp` caps.
+`sky_stars_nebula_dim` (default `0`, 0 to 1, needs `sky_stars = 1`) lets the stars fade behind bright nebula: at
+`0.5` a star over the brightest nebula shines at half strength, over black space at full strength; planets in front of
+the stars hide them. `0` (the default) keeps the stars at full strength everywhere, drawn exactly as before. The `sky_stars_defer`
+lines in `x3m.log` show how often the stars were drawn this way (`predicted=` and `confirmed=`).
+
+`sky_nebula_deband` (default `off`) smooths the visible bands at the edge of the sector background's nebula, where it
+fades into black space; stars, planets and suns are not touched. `sky_nebula_deband_threshold` (default `6`, 1 to 16,
+in 1/255 brightness steps) is the largest step still treated as a band: larger smooths more but softens faint
+filaments. `sky_nebula_deband_radius` (default `12`, 2 to 32 texels of the nebula texture) is how far the smoothing
+looks. The `sky_nebula_config` line in `x3m.log` shows the values used; the `sky_nebula` lines show how many nebula
+parts were smoothed (`parts=` and `swapped=`).
 
 ## Checking what was loaded
 

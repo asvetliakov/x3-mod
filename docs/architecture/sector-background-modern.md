@@ -713,7 +713,7 @@ smoothly; no per-frame term.
 | `sky_nebula_deband_threshold` | 6 | 1-16 (1/255 units) | soft threshold on the max channel difference of a tap set |
 | `sky_nebula_deband_radius` | 12 | 2-32 texels | outer radius; the inner iteration uses half |
 | `sky_nebula_jitter` (developer) | 1 | 0/1 | TAA jitter on the replaced part draws |
-| `sky_stars_nebula_dim` | 0.5 | 0-1 | `k`; 0 keeps today's draw position and takes no copy (`requires=sky_stars`) |
+| `sky_stars_nebula_dim` | 0 until flown, then 0.5 | 0-1 | `k`; 0 keeps today's draw position and takes no copy (`requires=sky_stars`) |
 | `sky_stars_nebula_dim_level` (developer) | 0.5 | 0.1-2 | `L0`, pre-decode luma of full dimming |
 
 ### Cost (inferred unless marked)
@@ -760,3 +760,153 @@ Whether the parts overlap anywhere (only the seam behaviour depends on it; the f
 exact SM1 program semantics beyond the coverage note (invariant 1's disassembly). Whether `StretchRect` with
 `D3DTEXF_LINEAR` from an FP16 RT is granted on the user's driver (the caps check and the `copy=` row answer it; point
 filtering is the fallback). The GPU figures are inferred until the native fixture measures them.
+
+### Implementation C1 (2026-11-05): nebula part deband
+
+Built, not flown; `sky_nebula_deband` default 0. Evidence: `verification/results/sky-nebula/` (`run_fixture.py` ->
+`fixture_out.txt`, `native/validate.py` -> `native/result.json`); host test `verification/analysis/test_sky_nebula.py`
+(`verification/probe/sky_nebula_check.cpp`, 13 checks). The pair's bytecode is recorded in
+[background-temporal-coverage.md](../reverse-engineering/background-temporal-coverage.md) ("The background pair's
+bytecode").
+
+**Pieces.** `src/proxy/sky_nebula_core.h` (pair, settings, c200-c201/c255 packing, the tap pattern field),
+`src/renderer/sky_nebula_pass.{h,cpp}` (programs; `begin` reads VS/PS, VS c255 and PS c200-c201 before the first write,
+sets them and the pair, undoes a partial write at once; `end` restores in reverse order), `src/proxy/
+motion_output_sky_nebula_inc.h` (match, swap, rows), `src/effects/sky_nebula_{vs,ps}.hlsl` compiled by
+`tools/shaders/generate_sky_nebula_programs.py`. Settings `sky_nebula_deband`, `sky_nebula_deband_threshold`,
+`sky_nebula_deband_radius`, developer `sky_nebula_jitter` and `sky_nebula_deband_hash` (default 0), read once at process start (a refused value keeps the
+default, `<name>_setting=default` in `sky_nebula_config`).
+
+**Match (changed from the design).** As designed, plus two refusals the bytecode made necessary: `FOGENABLE` on (ps_3_0
+has no fixed-function fog) and stage 0 `D3DTTFF_PROJECTED` (honoured by an SM1 `tex`, not by `texld`); `outside=`
+counts pair-and-state matches outside the phase or the latch, never swapped. The texture size is cached per pointer and
+identity. PS c200-c201 are bracketed per draw (Get/Set/restore) instead of set once: the size differs between parts
+(2048x1024, 2048x2048, 1024x512) and no other user of c200 is assumed. 12 device calls per part draw (8 in `begin`, 4 in
+`end`), CPU 0.38 us per bracket, 1.53 us for four parts (measured, `CPU` row).
+
+**Filter (changed from the design).** The note's formula (`diff` = largest tap-minus-centre difference, two sequential
+rings, independent hash per ring) left the synthetic ramps' ripple unchanged (1.81 -> 1.83/255, measured): on a real
+gradient every tap at radius 12 differs from the centre by the gradient times 12, so the outer ring never averages.
+The implemented program is gradient-aware: `diff` is the largest channel difference between the midpoint of an
+opposite tap pair and the centre (0 on any linear gradient, half the height across an edge), over the four pairs of the
+same eight taps (ring 1 at R/2 along d and its perpendicular, ring 2 at R along d rotated 45 degrees); `w =
+saturate(2 (1 - diff / threshold))`; output `lerp(c, m, w)`, m the mean of the centre and eight taps weighted by each sample's alpha (the centre when every alpha is 0; review 2026-11-05: AP's DXT5 and uncompressed parts must not average in the colour of transparent texels; DXT1 alpha is 1, the plain mean). The angle of d is a quarter
+turn times the texel-indexed hash interpolated between the four nearest texel centres (static in texture space,
+continuous in uv) when `sky_nebula_deband_hash = 1`; by default (0, `c200.w = 0`) the star is fixed, d = (1, 0), for
+every texel (follow-up 2026-11-05: the hash's rotation is texel-scale grain, the pilot's visible residual). 120 ps_3_0
+slots, 9 taps.
+
+**Fixture (native D3D9, RTX 5070 Ti, plain D3D9, measured).** Synthetic 2048x1024 DXT1 part, 2.5x magnification:
+- Invariant 1: the reference vs_1_1/ps_1_1 pair has the engine's instruction tokens; threshold 0 against it with a
+  perspective c0-c3, an affine c4/c5 with rotation and offset and a non-black SRCALPHA/ONE target: 0 of 921,600 pixels
+  differ (285,615 written).
+- Invariant 2, radius 12 (ramp interiors, three rows, every channel, 1/255 units; before = the engine pair: rms 1.03,
+  max 3.89, ripple 1.81):
+
+  | Configuration | rms error | max error | ripple | height at +-radius | change beyond 1 texel of an edge | island spread |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | threshold 6, hash off (default) | 0.456 | 2.49 | 1.09 | 0.000 | 1.26 | 9.3 texels, sum -0.03 % |
+  | threshold 6, hash on | 0.428 | 2.36 | 1.98 | 0.000 | 0.67 | 12.9 texels, sum +0.96 % |
+  | threshold 10, hash off | 0.439 | 1.62 | 0.78 | 0.000 | 3.04 | 9.3 texels |
+  | threshold 16, hash off | 0.439 | 1.62 | 0.78 | 0.000 | 5.13 | 9.3 texels |
+
+  Band means move by at most -0.025. Accepted shortfalls pending the flight (fixture `WARN` rows, `checks=21
+  warnings=2 failures=0`): `edge_halo_beyond_1_texel` 1.26 vs the bound 1.0 (hard ceiling 2.0, a failure above it);
+  `taa_sd_fast_pan` 0.662 vs 0.649 (ceiling 1.25 x the engine pair's, 0.772). A 256x256 DXT5 part with an alpha
+  edge (transparent 16/255 beside opaque 8/255): output change against the engine pair 0.000 on the transparent side
+  and 0.49 on the opaque side beyond one texel of the edge (bound 1/255). The
+  hash-off default misses these two of the fixture's own bounds: the change beyond one
+  texel of a 12/255 edge is 1.26 (bound 1.0; the fixed star's diagonal ring keeps a pair whose far tap lands in the
+  edge's bilinear texel), and the fast-pan TAA figure below. The note's bounds (ripple <= 0.25, error <= 0.5) are not
+  met in any configuration, and the ripple bound is not reachable with this tap set: the output is the centre plus
+  eight bilinear taps, so every DXT1 step a tap crosses (up to 3.6/255 at a block boundary in G) moves the result by
+  step / 9 = 0.4/255 over one texel (2.5 px), a second difference of about 0.16 per crossing; on a ramp several taps
+  cross steps at neighbouring pixels and the measured floor at full weight is 0.78 (thresholds 10 and 16 agree).
+  Reaching 0.25 needs about three times as many independent taps or a box prefilter, i.e. a different filter, not a
+  setting. At threshold 6 the weight is partial on the staircase (diff up to about 3/255), which adds the switching
+  between filtered and unfiltered pixels (1.09); the hash adds texel-to-texel pattern jumps (1.98).
+- Invariant 4: programs, VS c255 and PS c200-c201 back after a clean bracket, an injected draw failure, an injected
+  begin fault (undone inside `begin`) and an injected restore fault (reported, every restore still attempted): 0
+  mismatches in each.
+- Invariant 5: full-sky frame at 5120x1440 (four parts, each a quarter of the screen), event-flushed over 100 frames:
+  engine pair 0.060 ms, deband pair 0.089 ms, extra 0.029 ms (bound 0.5 ms; the record of the last run).
+- Invariant 9 (model: history 0.9, exact bilinear reprojection, 3x3 clip, Halton jitter through c255, ramp interiors):
+  per-content-pixel temporal SD, hash off, at 0.5 px/frame 0.056 max (engine pair 0.123); at 10 px/frame 0.662 (engine
+  pair 0.618, the model's own reprojection error; the fixture's bound 1.05 x the engine pair's, 0.649, is missed). With
+  the hash on: 0.041 and 0.639.
+- Invariant 10: `sky_nebula_vs` 118 words / 10 slots, `sky_nebula_ps` 546 words / 120 slots, native validator End()
+  S_OK, 0 messages.
+
+**Rows.** `sky_nebula_config requested= enabled= reason= threshold= threshold_setting= radius= radius_setting= jitter=`
+once; `sky_nebula_device attached= reason= result= vs_slots= ps_slots= max_ps_slots= references=` at attach;
+`sky_nebula_match index= texture=WxH format= fog= target= threshold= radius= jitter= result= c4= c5=` for the first four
+swapped draws per device (c4/c5 when the engine-effects hook shadows them); `sky_nebula status=<none|swapped|partial|
+refused> parts= swapped= reason= draw= restore= outside= frames= swapped_frames= refused= us= us_mean= us_max=
+threshold= radius=` at the depth-only Clear when parts, swapped or the reason changed (at most 1,024 per device); the
+`us` fields are the bracket's CPU cost (invariant 5's CPU side).
+
+**Flight-only.** Invariant 3 (`parts=4` in bluewell, `parts=0` in a fog-card family, AP's parts matched), the look
+(halos, smeared filaments, residual grain at 2.5x, seams), invariant 9 under SETA rotation, and native Windows.
+
+### Implementation C2 (2026-11-05): phase-end star batch with nebula dimming
+
+Built, not flown; `sky_stars_nebula_dim` default 0 until flown (review 2026-11-05; the flight's ini sets 0.5), like
+`sky_nebula_deband`. Evidence:
+`verification/results/sky-stars/` (`run_fixture.py` -> `fixture_out.txt`, section 5; `native/validate.py` ->
+`native/result.json`, now four programs); route fixture `verification/probe/motion_sky_stars_fixture.cpp` (17
+scenarios, 138 checks; `test_motion_sky_stars.py`).
+
+**Pieces.** `src/effects/sky_stars_dim_{vs,ps}.hlsl` are one-line includes of the in-place sources with `SKY_STARS_DIM`
+(the VS passes the centre's UV in the dim copy and the law; the PS takes four bilinear taps half a dim texel around it);
+without the define the in-place programs compile to the same words as before (sha256 `40a8cb78...` / `9ac5e7fe...`,
+unchanged). `SkyStarsPass` gains the dim side (`caps().dim`, checked at attach: `D3DDEVCAPS2_CAN_STRETCHRECT_FROM_TEXTURES`,
+`StretchRectFilterCaps` MINFLINEAR else MINFPOINT, `D3DUSAGE_QUERY_FILTER` on A16B16G16R16F for linear sampling; a refusal
+leaves the pass on and the route keeps the in-place batch), `prepare_dim` (a D3DPOOL_DEFAULT A16B16G16R16F render-target
+texture of ceil(W/8) x ceil(H/8), created at the first deferred batch and again after Reset or a size change, released by
+`before_reset` and `detach`), `copy_dim` (`StretchRect` of the HDR target) and `draw_deferred` (the batch with c250-c255,
+`ZENABLE TRUE`, `ZFUNC LESSEQUAL`, `DEPTHBIAS` and `SLOPESCALEDEPTHBIAS` 0 appended to the touched states, stage-0
+texture and six sampler states saved, set and put back). A dim texture creation that fails without a device loss
+latches `dim_unavailable()` until Reset: no retry per phase end, the in-place batch meanwhile, one `sky_stars_defer
+why=dim_unavailable` row. `draw()` keeps its call sequence (50 calls, measured). Settings `sky_stars_nebula_dim` (k, 0-1) and developer
+`sky_stars_nebula_dim_level` (L0, 0.1-2), both `requires=sky_stars`, tagged in `sky_stars_config`.
+
+**Route.** As designed: with k > 0 and the dim side the matched star body is masked and the batch pends; `before_clear`
+(after `restore_bindings()` and the Clear's bindings) predicts the phase end with the selector's own rule
+(`SceneBoundarySelector::predicts_phase_end`, the `depth_clear` that `advance()` applies: flags exactly
+`D3DCLEAR_ZBUFFER`, no rectangles, z 1, a full 0..1 viewport on the latched pair, after a background draw), then requires
+the phase's depth (`main_depth_`), the latch,
+RT0 only and the matched viewport (else `reason=depth|latch|targets|queries|composition`, no batch). A failed copy draws
+with k = 0 (still Z-tested); a dim texture that cannot be created draws the in-place programs there. Confirmation is
+the Background -> Scene transition (`sky_stars_phase_end`); an open prediction at the next latching Clear is
+`unconfirmed`, a pending batch never drawn `missed`. **Changed from the design:** `c250 = (k, 1/L0, 0.5/dim width,
+0.5/dim height)` (the PS needs the tap offset and has no constant of its own); 72 device calls per deferred batch
+(measured; the design said 52).
+
+**Fixture (native D3D9, RTX 5070 Ti, plain D3D9, measured).**
+- Invariant 8: over a flat copy at L = 0.251 and L = 0.502 (= L0) with k = 0.5, every one of 464 isolated stars carries
+  `1 - k saturate(L / L0)` (0.749, 0.500) of its black-sky energy within 0.14 %. k = 0 in production is the in-place
+  `draw()` itself; the deferred twin at k = 0 over black equals it on all 48,431 lit channels (0 differing).
+- Invariant 6: the deferred batch after six overlapping additive quads against the in-place order: 3,011 channels
+  differ, at most 2 FP16 ulp (the note asked 1; each ONE/ONE blend rounds, so a reordered sum of three or more terms can
+  differ by one ulp per rounding). A disc written at depth 0.5: 0 star pixels inside, 11,237 outside.
+- The copy filter: `D3DTEXF_LINEAR` at the 8x downscale (1024x512 -> 128x64) is a bilinear sample at each 8x8 block's centre, not
+  an 8x8 average (one lit pixel per block at (3,3): every dim texel 0.250, the box mean is 0.0156). The dim factor so
+  sees the central 2x2 of each block; small bright features alias (a flight watch item: a brightness pulse of stars
+  over fine nebula structure under SETA rotation is the kill criterion).
+- Invariant 4: stage-0 texture, the six sampler states, ZENABLE/ZFUNC and c250-c255 back after a clean batch, a draw
+  fault and a restore fault: 0 mismatches.
+- Invariant 5 at 5120x1440: the copy 0.0077 ms, the deferred batch 0.0041 ms (event-flushed upper bounds over 100),
+  `draw_deferred` CPU 2.15 us (72 calls; above the note's 1 us); the dim texture 640x180 is created once; `before_reset` releases it (7 objects held, 9
+  with the texture).
+- Invariant 10: `sky_stars_dim_vs` 197 words / 33 slots, `sky_stars_dim_ps` 165 words / 23 slots, native validator
+  End() S_OK, 0 messages.
+
+**Rows.** `sky_stars_config` gains `nebula_dim= nebula_dim_setting= nebula_dim_level= nebula_dim_level_setting=`;
+`sky_stars_defer why=<first|status|periodic|unconfirmed> predicted= confirmed= ratio= missed= unconfirmed= k= level= dim=
+copy=<linear|point|failed|no_texture|none> copy_hr= dim_texture=WxH dim_linear= dim_reason= copy_us= draw_us=` at the
+first deferral, with each `sky_stars` row, on an unconfirmed prediction and every 4,096 phase ends (at most 1,024 per
+device); the `sky_stars` row's `reason=` names a phase-end refusal.
+
+**Flight-only.** Invariant 7 (`ratio >= 0.999` over a flight), no stars on a planet disc in flight (a planet whose depth
+lies beyond 0.99999 would let stars through), the look of the dimming and its stability under SETA rotation (the bilinear
+copy above), FL and AP phase ends, and native Windows.

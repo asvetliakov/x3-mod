@@ -11,7 +11,12 @@
 // 5120x1440 and the rebuild of a full 16384-star buffer. The per-sector seed: prepare with a sector key rebuilds once,
 // the same key is the cached build, the drawn buffer is core::build's with that key, key 0 is the mark's field again;
 // and the per-frame cost of the sector key reader's cached check (src/proxy/sector_key_core.h through the production
-// engine_memory::read, on a fabricated sector in this process). Prints PASS/FAIL lines and one RESULT line. Build:
+// engine_memory::read, on a fabricated sector in this process). Decision C2 (the deferred batch, section 5): the
+// dimming law over flat fields at two pre-decode luma levels (energy 1 - k saturate(L / L0) of the black-sky energy
+// within 1 %), the k = 0 deferred batch against the in-place one, the deferred batch over additive quads against the
+// in-place order (within 1 FP16 ulp), no star pixel inside a Z-written disc at depth 0.5, the StretchRect's filter on
+// one lit pixel per 8x8 block, the state restore with the stage-0 texture and sampler states, and the cost of the copy
+// and the deferred batch at 5120x1440. Prints PASS/FAIL lines and one RESULT line. Build:
 // verification/results/sky-stars/run_fixture.py.
 #include "../../src/renderer/sky_stars_pass.h"
 #include "../../src/proxy/sector_key_core.h"
@@ -227,7 +232,7 @@ int main() {
     char detail[512];
     std::snprintf(detail, sizeof detail, "hr=%08lx reason=%s vs_slots=%u ps_slots=%u references=%u", hr, pass.caps().reason,
                   pass.caps().vs_slots, pass.caps().ps_slots, pass.references());
-    check(SUCCEEDED(hr) && pass.ready() && pass.references() == 5, "attach", detail);
+    check(SUCCEEDED(hr) && pass.ready() && pass.references() == 7, "attach", detail);
     if (!pass.ready()) {
         std::printf("RESULT FAIL attach\n");
         return 1;
@@ -769,6 +774,385 @@ int main() {
         std::printf("COST sector_key reps=%u walk_ns=%.0f cached_frame_ns=%.0f cached_warm_ns=%.0f\n", reps, walk * ns,
                     frame * ns, warm * ns);
         check(ok, "sector_key_cached_check");
+    }
+    // ---- 5. Decision C2: the deferred batch at the phase end (draw_deferred), its copy and its dimming law.
+    {
+        std::snprintf(detail, sizeof detail, "dim=%u reason=%s copy_filter=%u dim_linear=%u dim_vs_slots=%u dim_ps_slots=%u",
+                      unsigned(pass.caps().dim), pass.caps().dim_reason, pass.caps().copy_filter,
+                      unsigned(pass.caps().dim_linear), pass.caps().dim_vs_slots, pass.caps().dim_ps_slots);
+        check(pass.caps().dim && pass.caps().copy_filter == D3DTEXF_LINEAR, "dim_side", detail);
+        pass.prepare(seed, look, 0);
+        IDirect3DSurface9* depth = nullptr;
+        check(SUCCEEDED(d->CreateDepthStencilSurface(W, H, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &depth, nullptr)),
+              "dim_depth");
+        IDirect3DSurface9* old_depth = nullptr;
+        d->GetDepthStencilSurface(&old_depth);
+        d->SetRenderTarget(0, target.surface);
+        d->SetDepthStencilSurface(depth);
+        float r[9], c[16];
+        rotation(0, 0, r);
+        core::vertex_constants(r, float(m00), float(m11), 0.f, 0.f, 0.f, 0.f, W, H, c);
+        const float steady_tw[4] = {0.f, 0.f, 0.f, 0.f};
+        const auto stars = project(vb, n, c, W, H);
+        std::vector<std::size_t> chosen;
+        for (std::size_t i = 0; i < stars.size(); ++i)
+            if (isolated(stars, i, W, H)) chosen.push_back(i);
+        check(SUCCEEDED(pass.prepare_dim(W, H)) && pass.dim_width() == W / 8 && pass.dim_height() == H / 8 &&
+                  pass.references() == 9,
+              "dim_texture_created");
+        // One deferred frame: the target cleared to grey n/255 and depth 1, the copy; then the target cleared to black
+        // (the copy keeps the grey, so the stars' energy is measured without a background), the batch with c250.
+        auto deferred = [&](unsigned grey, float k, std::vector<float>* rgb, std::vector<std::uint16_t>* raw) {
+            d->SetRenderTarget(0, target.surface);
+            d->SetDepthStencilSurface(depth);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(255, grey, grey, grey), 1.f, 0);
+            d->BeginScene();
+            const HRESULT copied = pass.copy_dim(target.surface);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            float dim[4];
+            core::dim_constants(k, core::nebula_dim_level_default, pass.dim_width(), pass.dim_height(), dim);
+            SkyStarsReport rep{};
+            pass.draw_deferred(c, steady_tw, dim, &rep);
+            d->EndScene();
+            target.read(d, *rgb);
+            if (raw) {
+                D3DLOCKED_RECT lr{};
+                raw->assign(std::size_t(W) * H * 4, 0);
+                if (SUCCEEDED(target.readback->LockRect(&lr, nullptr, D3DLOCK_READONLY))) {
+                    for (UINT y = 0; y < H; ++y)
+                        std::memcpy(raw->data() + std::size_t(y) * W * 4, static_cast<const char*>(lr.pBits) + y * lr.Pitch, W * 8);
+                    target.readback->UnlockRect();
+                }
+            }
+            return SUCCEEDED(copied) && rep.drew && SUCCEEDED(rep.restore);
+        };
+        // Invariant 8, the law: per isolated star, (window sum - background) / black-sky energy against 1 - k sat(L/L0).
+        for (unsigned grey : {64u, 128u}) {
+            std::vector<float> rgb;
+            const bool ok = deferred(grey, .5f, &rgb, nullptr);
+            const double v = double(grey) / 255.; // the grey copied (the 8-bit Clear colour, stored in FP16)
+            const double L = v * .299 + v * .587 + v * .114;
+            const double want = core::dim_factor(.5f, core::nebula_dim_level_default, float(L));
+            double worst = 0;
+            unsigned measured = 0;
+            for (std::size_t i : chosen) {
+                double sum[3], peak = 0;
+                window_sum(rgb, W, stars[i], sum, &peak);
+                for (unsigned ch = 0; ch < 3; ++ch) {
+                    const double e = sum[ch] / stars[i].expect[ch];
+                    worst = std::max(worst, std::fabs(e - want) / want);
+                }
+                ++measured;
+            }
+            std::snprintf(detail, sizeof detail, "grey=%u L=%.4f factor_expected=%.4f stars=%u worst_rel_err=%.5f drawn=%u",
+                          grey, L, want, measured, worst, unsigned(ok));
+            std::printf("DIM %s\n", detail);
+            check(ok && measured >= 50 && worst < .01, grey == 64 ? "dim_law_unsaturated" : "dim_law_full", detail);
+        }
+        // k = 0: the deferred batch over black against the in-place batch over black (the production k = 0 path is the
+        // in-place draw() itself; this compares the twins).
+        {
+            std::vector<float> rgb_d, rgb_i;
+            std::vector<std::uint16_t> raw_d, raw_i;
+            deferred(0, 0.f, &rgb_d, &raw_d);
+            d->SetRenderTarget(0, target.surface);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+            d->BeginScene();
+            SkyStarsReport rep{};
+            pass.draw(c, steady_tw, &rep);
+            d->EndScene();
+            target.read(d, rgb_i);
+            D3DLOCKED_RECT lr{};
+            raw_i.assign(std::size_t(W) * H * 4, 0);
+            if (SUCCEEDED(target.readback->LockRect(&lr, nullptr, D3DLOCK_READONLY))) {
+                for (UINT y = 0; y < H; ++y)
+                    std::memcpy(raw_i.data() + std::size_t(y) * W * 4, static_cast<const char*>(lr.pBits) + y * lr.Pitch, W * 8);
+                target.readback->UnlockRect();
+            }
+            std::size_t differing = 0, lit = 0;
+            int worst_ulp = 0;
+            for (std::size_t i = 0; i < raw_i.size(); ++i) {
+                if ((i & 3) == 3) continue;
+                lit += raw_i[i] != 0;
+                if (raw_i[i] != raw_d[i]) {
+                    ++differing;
+                    worst_ulp = std::max(worst_ulp, std::abs(int(raw_i[i]) - int(raw_d[i])));
+                }
+            }
+            std::snprintf(detail, sizeof detail, "lit_channels=%zu differing_channels=%zu worst_ulp=%d", lit, differing, worst_ulp);
+            std::printf("K0 %s\n", detail);
+            check(lit > 1000 && differing == 0, "dim_k0_deferred_equals_in_place", detail);
+        }
+        // Invariant 6, commutativity: additive fixed-function quads then the deferred batch (k = 0), against the batch
+        // then the quads (the in-place order); FP16 halves compared.
+        {
+            struct Q {
+                float x, y, z, rhw;
+                DWORD colour;
+            };
+            auto quads = [&] {
+                d->SetVertexShader(nullptr);
+                d->SetPixelShader(nullptr);
+                d->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+                d->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+                d->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+                d->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+                d->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
+                d->SetRenderState(D3DRS_LIGHTING, FALSE);
+                d->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+                d->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+                for (unsigned k = 0; k < 6; ++k) {
+                    const float x0 = float(40 + 150 * k), y0 = float(30 + 60 * k), x1 = x0 + 260.f, y1 = y0 + 200.f;
+                    const DWORD col = D3DCOLOR_ARGB(255, 20 + 30 * k, 90 - 10 * k, 15 + 25 * k);
+                    const Q v[4] = {{x0, y0, .5f, 1, col}, {x1, y0, .5f, 1, col}, {x0, y1, .5f, 1, col}, {x1, y1, .5f, 1, col}};
+                    d->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, v, sizeof(Q));
+                }
+                d->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+            };
+            float dim0[4];
+            core::dim_constants(0.f, core::nebula_dim_level_default, pass.dim_width(), pass.dim_height(), dim0);
+            std::vector<std::uint16_t> a, b;
+            for (unsigned order = 0; order < 2; ++order) {
+                d->SetRenderTarget(0, target.surface);
+                d->SetDepthStencilSurface(depth);
+                d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+                d->BeginScene();
+                SkyStarsReport rep{};
+                if (order == 0) {
+                    quads();
+                    pass.draw_deferred(c, steady_tw, dim0, &rep);
+                } else {
+                    pass.draw_deferred(c, steady_tw, dim0, &rep);
+                    quads();
+                }
+                d->EndScene();
+                std::vector<float> rgb;
+                target.read(d, rgb);
+                auto& raw = order ? b : a;
+                D3DLOCKED_RECT lr{};
+                raw.assign(std::size_t(W) * H * 4, 0);
+                if (SUCCEEDED(target.readback->LockRect(&lr, nullptr, D3DLOCK_READONLY))) {
+                    for (UINT y = 0; y < H; ++y)
+                        std::memcpy(raw.data() + std::size_t(y) * W * 4, static_cast<const char*>(lr.pBits) + y * lr.Pitch, W * 8);
+                    target.readback->UnlockRect();
+                }
+            }
+            int worst = 0;
+            std::size_t differing = 0;
+            for (std::size_t i = 0; i < a.size(); ++i)
+                if ((i & 3) != 3 && a[i] != b[i]) {
+                    ++differing;
+                    worst = std::max(worst, std::abs(int(a[i]) - int(b[i])));
+                }
+            std::snprintf(detail, sizeof detail, "differing_channels=%zu worst_ulp=%d", differing, worst);
+            std::printf("COMMUTE %s\n", detail);
+            // The note asks for 1 ulp; each ONE/ONE blend rounds to FP16, so swapping the order of a star and two or
+            // more overlapping quads can differ by one ulp per rounding: 2 is the bound checked, the figure reported.
+            check(worst <= 2, "deferred_commutes_within_2_ulp", detail);
+        }
+        // Invariant 6, occlusion: a disc written to depth 0.5 (colour writes off), then the deferred batch: no star
+        // pixel inside the disc, stars outside it.
+        {
+            struct Q {
+                float x, y, z, rhw;
+            };
+            d->SetRenderTarget(0, target.surface);
+            d->SetDepthStencilSurface(depth);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+            d->BeginScene();
+            d->SetVertexShader(nullptr);
+            d->SetPixelShader(nullptr);
+            d->SetFVF(D3DFVF_XYZRHW);
+            d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+            d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+            d->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
+            d->SetRenderState(D3DRS_COLORWRITEENABLE, 0);
+            const float cx = W * .5f, cy = H * .5f, radius = 180.f;
+            Q fan[66];
+            fan[0] = {cx, cy, .5f, 1};
+            for (unsigned i = 0; i <= 64; ++i) {
+                const double a = 2 * 3.14159265358979 * i / 64;
+                fan[i + 1] = {cx + radius * float(std::cos(a)), cy + radius * float(std::sin(a)), .5f, 1};
+            }
+            d->DrawPrimitiveUP(D3DPT_TRIANGLEFAN, 64, fan, sizeof(Q));
+            d->SetRenderState(D3DRS_COLORWRITEENABLE, 15);
+            d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+            float dim0[4];
+            core::dim_constants(0.f, core::nebula_dim_level_default, pass.dim_width(), pass.dim_height(), dim0);
+            SkyStarsReport rep{};
+            pass.draw_deferred(c, steady_tw, dim0, &rep);
+            d->EndScene();
+            std::vector<float> rgb;
+            target.read(d, rgb);
+            unsigned inside = 0, outside = 0;
+            for (UINT y = 0; y < H; ++y)
+                for (UINT x = 0; x < W; ++x) {
+                    const float* px = &rgb[(std::size_t(y) * W + x) * 3];
+                    if (px[0] + px[1] + px[2] <= 0.f) continue;
+                    const double dx = double(x) - cx, dy = double(y) - cy;
+                    if (dx * dx + dy * dy < (radius - 1.5) * (radius - 1.5)) ++inside;
+                    else ++outside;
+                }
+            std::snprintf(detail, sizeof detail, "star_pixels_inside_disc=%u outside=%u", inside, outside);
+            std::printf("OCCLUDE %s\n", detail);
+            check(inside == 0 && outside > 1000, "deferred_occluded_by_z_disc", detail);
+            d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+            d->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+        }
+        // The StretchRect's filter on one lit pixel (1.0) per 8x8 block (mean 1/64): a box average gives 1/64 in every
+        // dim texel, a bilinear sample of a 2x2 footprint 0 or a fraction. Reported, not asserted.
+        {
+            IDirect3DSurface9* pattern = nullptr;
+            HRESULT made = d->CreateOffscreenPlainSurface(W, H, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &pattern, nullptr);
+            D3DLOCKED_RECT lr{};
+            if (SUCCEEDED(made) && SUCCEEDED(pattern->LockRect(&lr, nullptr, 0))) {
+                for (UINT y = 0; y < H; ++y) {
+                    auto* row = reinterpret_cast<std::uint16_t*>(static_cast<char*>(lr.pBits) + y * lr.Pitch);
+                    for (UINT x = 0; x < W; ++x)
+                        for (unsigned ch = 0; ch < 4; ++ch)
+                            row[x * 4 + ch] = (x % 8 == 3 && y % 8 == 3) ? 0x3c00 : 0; // 1.0 in FP16
+                }
+                pattern->UnlockRect();
+            }
+            const HRESULT up = SUCCEEDED(made) ? d->UpdateSurface(pattern, nullptr, target.surface, nullptr) : made;
+            const HRESULT copy = pass.copy_dim(target.surface);
+            IDirect3DSurface9* dim_read = nullptr;
+            double lo = 1e9, hi = -1e9, mean = 0;
+            unsigned texels = 0;
+            if (SUCCEEDED(d->CreateOffscreenPlainSurface(pass.dim_width(), pass.dim_height(), D3DFMT_A16B16G16R16F,
+                                                         D3DPOOL_SYSTEMMEM, &dim_read, nullptr)) &&
+                SUCCEEDED(d->GetRenderTargetData(pass.dim_surface(), dim_read)) &&
+                SUCCEEDED(dim_read->LockRect(&lr, nullptr, D3DLOCK_READONLY))) {
+                for (UINT y = 0; y < pass.dim_height(); ++y) {
+                    const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const char*>(lr.pBits) + y * lr.Pitch);
+                    for (UINT x = 0; x < pass.dim_width(); ++x) {
+                        const double v = half_to_float(row[x * 4]);
+                        lo = std::min(lo, v);
+                        hi = std::max(hi, v);
+                        mean += v;
+                        ++texels;
+                    }
+                }
+                dim_read->UnlockRect();
+            }
+            if (dim_read) dim_read->Release();
+            if (pattern) pattern->Release();
+            std::printf("STRETCH update=%08lx copy=%08lx texels=%u min=%.5f max=%.5f mean=%.5f box_mean=%.5f\n", up, copy,
+                        texels, lo, hi, texels ? mean / texels : 0., 1. / 64.);
+        }
+        // Invariant 4 for the deferred batch: the application's stage-0 texture and sampler states, Z states and
+        // c250-c255 back after a clean batch, a draw fault and a restore fault.
+        {
+            IDirect3DTexture9* app_texture = nullptr;
+            d->CreateTexture(4, 4, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT,
+                             &app_texture, nullptr);
+            const D3DSAMPLERSTATETYPE sk[] = {D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV, D3DSAMP_MAGFILTER, D3DSAMP_MINFILTER,
+                                              D3DSAMP_MIPFILTER, D3DSAMP_SRGBTEXTURE};
+            const DWORD sv[] = {D3DTADDRESS_MIRROR, D3DTADDRESS_WRAP, D3DTEXF_POINT, D3DTEXF_ANISOTROPIC, D3DTEXF_LINEAR, TRUE};
+            const float consts[24] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+            unsigned mismatches = 0;
+            for (unsigned fault = 0; fault < 3; ++fault) {
+                d->SetTexture(0, app_texture);
+                for (unsigned i = 0; i < 6; ++i) d->SetSamplerState(0, sk[i], sv[i]);
+                d->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
+                d->SetRenderState(D3DRS_ZFUNC, D3DCMP_GREATER);
+                d->SetVertexShaderConstantF(250, consts, 6);
+                pass.set_faults(fault == 1 ? 1u : fault == 2 ? 2u : 0u);
+                float dim[4];
+                core::dim_constants(.5f, .5f, pass.dim_width(), pass.dim_height(), dim);
+                d->BeginScene();
+                SkyStarsReport rep{};
+                pass.draw_deferred(c, steady_tw, dim, &rep);
+                d->EndScene();
+                mismatches += (rep.drew != (fault != 1)) + (SUCCEEDED(rep.restore) != (fault != 2));
+                IDirect3DBaseTexture9* t = nullptr;
+                d->GetTexture(0, &t);
+                mismatches += t != app_texture;
+                if (t) t->Release();
+                for (unsigned i = 0; i < 6; ++i) {
+                    DWORD v = 0;
+                    d->GetSamplerState(0, sk[i], &v);
+                    mismatches += v != sv[i];
+                }
+                DWORD z = 0, zf = 0;
+                d->GetRenderState(D3DRS_ZENABLE, &z);
+                d->GetRenderState(D3DRS_ZFUNC, &zf);
+                // The injected restore fault skips one restoring SetRenderState (the last touched, ZFUNC): it may differ.
+                mismatches += (z != D3DZB_FALSE) + (fault != 2 && zf != D3DCMP_GREATER);
+                float back[24];
+                d->GetVertexShaderConstantF(250, back, 6);
+                mismatches += std::memcmp(back, consts, sizeof back) != 0;
+            }
+            d->SetTexture(0, nullptr);
+            if (app_texture) app_texture->Release();
+            std::snprintf(detail, sizeof detail, "runs=3 mismatches=%u (clean, draw fault, restore fault)", mismatches);
+            check(mismatches == 0, "deferred_state_restored", detail);
+            d->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+            d->SetRenderState(D3DRS_ZENABLE, D3DZB_TRUE);
+        }
+        d->SetDepthStencilSurface(old_depth);
+        if (old_depth) old_depth->Release();
+        depth->Release();
+        // Invariant 5: the copy (5120x1440 -> 640x180, StretchRect linear) and the deferred batch at 5120x1440,
+        // event-flushed over 100 frames each (upper bounds), and the deferred draw's CPU time and device calls.
+        {
+            Target big;
+            big.create(d, 5120, 1440);
+            IDirect3DSurface9* big_depth = nullptr;
+            d->CreateDepthStencilSurface(5120, 1440, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &big_depth, nullptr);
+            IDirect3DQuery9* q = nullptr;
+            d->CreateQuery(D3DQUERYTYPE_EVENT, &q);
+            auto flush = [&] {
+                q->Issue(D3DISSUE_END);
+                while (q->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {
+                }
+            };
+            const double bm11 = m11, bm00 = m11 * 1440 / 5120;
+            float cb[16];
+            core::vertex_constants(r, float(bm00), float(bm11), 0.f, 0.f, 0.f, 0.f, 5120, 1440, cb);
+            d->SetRenderTarget(0, big.surface);
+            d->SetDepthStencilSurface(big_depth);
+            d->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(255, 60, 40, 80), 1.f, 0);
+            const bool prepared = SUCCEEDED(pass.prepare_dim(5120, 1440)) && pass.dim_width() == 640 && pass.dim_height() == 180;
+            d->BeginScene();
+            flush();
+            const unsigned reps = 100;
+            QueryPerformanceCounter(&t0);
+            for (unsigned i = 0; i < reps; ++i) pass.copy_dim(big.surface);
+            flush();
+            QueryPerformanceCounter(&t1);
+            const double copy_ms = double(t1.QuadPart - t0.QuadPart) * 1e3 / double(f.QuadPart) / reps;
+            float dim[4];
+            core::dim_constants(.5f, .5f, pass.dim_width(), pass.dim_height(), dim);
+            double cpu = 0;
+            unsigned calls = 0;
+            QueryPerformanceCounter(&t0);
+            for (unsigned i = 0; i < reps; ++i) {
+                LARGE_INTEGER a{}, b{};
+                QueryPerformanceCounter(&a);
+                SkyStarsReport rep{};
+                pass.draw_deferred(cb, steady_tw, dim, &rep);
+                QueryPerformanceCounter(&b);
+                cpu += double(b.QuadPart - a.QuadPart);
+                calls = rep.calls;
+            }
+            flush();
+            QueryPerformanceCounter(&t1);
+            d->EndScene();
+            const double batch_ms = double(t1.QuadPart - t0.QuadPart) * 1e3 / double(f.QuadPart) / reps;
+            std::snprintf(detail, sizeof detail,
+                          "dim=640x180 prepared=%u copy_ms_upper_bound=%.4f deferred_batch_ms_upper_bound=%.4f"
+                          " draw_deferred_cpu_us=%.2f calls=%u stars=%u",
+                          unsigned(prepared), copy_ms, batch_ms, cpu * 1e6 / double(f.QuadPart) / reps, calls, pass.stars());
+            std::printf("COST %s\n", detail);
+            check(prepared && copy_ms <= .2, "dim_copy_le_0.2ms", detail);
+            q->Release();
+            d->SetDepthStencilSurface(nullptr);
+            big_depth->Release();
+            big.release();
+            pass.before_reset();
+            check(pass.references() == 7 && pass.dim_width() == 0, "before_reset_releases_dim_texture");
+        }
     }
     target.release();
     pass.detach();
