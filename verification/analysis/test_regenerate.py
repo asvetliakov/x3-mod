@@ -119,7 +119,7 @@ class Regenerate(unittest.TestCase):
             self.assertIn('refused model ships/x/badtext: text_parse_error', text)
             self.assertIn('refused model stations/y/good: texel_floor', text)   # production texel floor
             self.assertIn('slot plan: addon/01 2 bodies', text)
-            self.assertIn('sky textures: skipped (the sky group is off for this edition', text)   # AP: --sky auto
+            self.assertIn('sky textures: skipped (no star texture)', text)   # AP: --sky auto = on, no star texture here
             self.assertIn('engine bodies summary: 1 bodies (red 1), 1 listed but not loadable; wrote x3m/engine_bodies.json', text)
             self.assertIn('engine body not loadable: effects\\engines\\gone (not_found)', log)  # log only
             engine = json.loads((game / 'x3m/engine_bodies.json').read_text())
@@ -302,7 +302,7 @@ class Regenerate(unittest.TestCase):
             self.assertIn('refused: the game is running (1 X3FL.exe)', (game / regen.LOG_NAME).read_text())
 
     def test_sky_default(self):
-        """The sky group runs at lod_overlay's default (--sky auto: star marks on FL, off on AP); regenerate has no
+        """The sky group runs at lod_overlay's default (--sky auto: star marks on AP and FL); regenerate has no
         nebula part or preview options any more."""
         a = regen.parse_args([])
         self.assertFalse(any(k.startswith('sky') for k in vars(a)))

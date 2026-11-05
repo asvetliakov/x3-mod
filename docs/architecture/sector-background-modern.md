@@ -244,7 +244,7 @@ What remains of the sky group is the mark that the star pass (A) needs.
   into `dwReserved1[0..2]`. The mark is version 1 with descriptor `slot = fnv1a32(family) & 0xff`,
   `lane = colour class`, `K = bright peaks // 8` and `payload = 2`. A host test round-trips it through
   `lod_texture_mark.h`'s own parser; `lane_of` stays 0, so the strength lane is untouched.
-- **Switch and log.** `lod_overlay.py --batch --sky auto|on|off` (auto: on for FL, off for AP) carries the marks in
+- **Switch and log.** `lod_overlay.py --batch --sky auto|on|off` (auto: on for AP and FL; off switches it off) carries the marks in
   the overlay slot, and the regenerate step logs one row per family.
 - **Reuse.** `inputs_sha256` hashes the whole unpacked source DDS (header and every mip) together with the recipe
   id, because the output is those bytes plus the mark. The group's `tool_sha256` hashes `sky_textures.py` and then

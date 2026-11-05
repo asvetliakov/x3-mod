@@ -134,7 +134,7 @@ class OverlayGroup(unittest.TestCase):
         """--sky on: the marked star texture rides in the overlay slot under its stock name with a marker sky group (the
         nebula part stays stock); --sync reuses it by inputs_sha256; a sky recipe change re-marks it and rebakes no
         body; a body change rebakes that body and re-marks nothing; the candidate check counts the member as a sky
-        override, not a collision; --sky auto on AP writes no group."""
+        override, not a collision; --sky auto on AP writes the group like --sky on, --sky off writes none."""
         sky = BATCH + ['--sky', 'on']
         with tempfile.TemporaryDirectory() as folder:
             game = sky_game(folder)
@@ -177,9 +177,17 @@ class OverlayGroup(unittest.TestCase):
             self.assertIn('built 0 + reused 1', text)
             out5 = Path(folder) / 'out5'
             code, text = run(BATCH + ['--game', str(game), '--out', str(out5)])
-            self.assertIn('sky group off (--sky auto, auto: off on AP)', text)
-            self.assertNotIn('sky', json.loads((out5 / 'addon/02.x3m-lod.json').read_text()))
-            self.assertNotIn(STARS, cat_members(out5 / 'addon/02.cat'))
+            self.assertEqual(code, 0, text)
+            self.assertIn('1 star textures marked in 1 families', text)
+            auto = json.loads((out5 / 'addon/02.x3m-lod.json').read_text())
+            self.assertEqual([r['member'] for r in auto['sky']['rows']], [STARS])
+            self.assertEqual(lod_atlas.read_dds_mark(unpack(cat_members(out5 / 'addon/02.cat')[STARS]))[4],
+                             st.PAYLOAD_SKY_STARS)
+            out6 = Path(folder) / 'out6'
+            code, text = run(BATCH + ['--sky', 'off', '--game', str(game), '--out', str(out6)])
+            self.assertIn('sky group off (--sky off)', text)
+            self.assertNotIn('sky', json.loads((out6 / 'addon/02.x3m-lod.json').read_text()))
+            self.assertNotIn(STARS, cat_members(out6 / 'addon/02.cat'))
 
     def test_sync_drops_part_members_of_an_earlier_version(self, _running):
         """An installed overlay that an earlier version wrote with a nebula part member and its sky row (FL run 49):
