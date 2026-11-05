@@ -116,8 +116,7 @@ of `run_engine_effects.py`, `run_engine_plumes.py`, `run_engine_ribbons.py`,
 `run_engine_shimmer.py` and `run_fov_patch.py`. All five now take `--host native`.
 The plume, ribbons, shimmer, FOV and engine-effects tests are bound to their native records
 (engine-effects re-recorded after the stream-offset fix, since its hashed sources include the shimmer pass).
-None keeps the Wine constants; the Wine records stay as provenance
-passes (below, "Native re-record, 2026-11-05").
+None keeps the Wine constants; the Wine records stay as provenance (below, "Native re-record, 2026-11-05").
 
 ## Native Windows fixture host (2026-11-05)
 
