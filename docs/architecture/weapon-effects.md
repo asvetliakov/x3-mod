@@ -440,6 +440,29 @@ tinted by the weapon (blue-violet IRE, green HEPT, yellow PRG on stock; Mayhem b
 width, ring count, ripple and flash duration, rim power and gain, hex pattern scale and gain, tint mix, calibre gain,
 SETA preview. The agreed values go into the header, the fixture re-pins them, then the flight.
 
+### 5.1.1 Shield-hit look (user decision 2026-11-05, supersedes the full shell of 3.3)
+
+Agreed with the user after the step-1 build (`2fc8762ce`) and before its flight; this is the look the step flies.
+
+- **Geometry.** Not the whole-ship Fresnel shell. A **patch on the same ellipsoid** lit only within a radius of the
+  hit point, so the pattern wraps the hull and covers the hit area and a margin around it. The radius and the hex
+  cell size scale with the victim's **tier** (fighters: small dense cells, small radius; M6/TS: medium; capitals and
+  stations: large cells, large radius). Cell size is fixed in world units per tier, never per screen.
+- **Pattern.** Hexagons, cells lit individually: a small random stagger in brightness and fade rate per cell, edges
+  brighter than the fill. One pattern for every race and class in step 1.
+- **Timing (game time, SETA-scaled).** No hard flash. A small bright core at the hit point for ~0.1 s, one soft ring
+  expanding from the point over ~0.3 s that lights the cells as it passes, then the cells fade over 1.0-1.5 s.
+  Repeated hits re-light cells already lit (accumulation under sustained fire); the 4-hit slots of 3.3 stay.
+- **Colour.** Weapon tint **off by default** (kept as an override). The patch colour follows the victim's **shield
+  percentage**, interpolated smoothly: light blue at >= 75 %, through light yellow near 50 %, to light red below 35 %.
+  The hook reads the current shield energy the damage routine already reads; the maximum needs the shield slots
+  (one disassembly item, section 6). Until that lands the patch is light blue.
+- **Cost.** A patch is a fraction of the full shell (which measured 271.6 us for two shells at 5120x1440 before the
+  winding cull); the 0.2 ms flight target of 5.1 stands and should be met with margin [I].
+- **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, patch radius per tier, ripple speed,
+  core and fade durations, stagger, edge-versus-fill, the three colour bands, the SETA rate, the hit-sequence player.
+- **Later options, not now:** patterns per race or class; weapon tint.
+
 ### 5.2 Step 2: hull hit
 
 Arms `hull_hit` at the same site (no new patch): sparks (16–24 CPU particles, drag, 250–500 ms game time), the
