@@ -1281,8 +1281,8 @@ def main():
     parser.add_argument('--no-music-dock-keep', dest='music_dock_keep', action='store_false', help='Turn the --music-dock-keep launcher default off')
     parser.add_argument('--music-combat-trigger', choices=('engaged', 'vanilla'), default=None, help='When combat music starts (X3M_MUSIC_COMBAT_TRIGGER; default engaged on every modded launch, refused under --vanilla). engaged = a six-byte trampoline at the alert routine\'s level site 0x0042c974 lowers the frame\'s alert level to 0 unless the player is engaged within --music-combat-hold-s game seconds: the player fired at a hostile selected target, the player ship was hit this frame, or a player-owned ship within the game\'s own 2,500,000-unit alert range was hit or holds an attack order on a hostile (docs/architecture/music-combat-trigger.md); the game\'s range stays the precondition. vanilla = nothing patched, combat music whenever a hostile is in range. Exact executable and bytes only, otherwise fails closed to vanilla')
     parser.add_argument('--music-combat-hold-s', type=int, default=None, metavar='N', help='Game seconds the combat music stays after the last engagement event with --music-combat-trigger engaged (X3M_MUSIC_COMBAT_HOLD_S; 1..600, default 20; game time, so SETA shortens the real wait; refused under --vanilla)')
-    parser.add_argument('--ownership', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-ownership = off; not sent under --vanilla] Enable the experimental normal-D3D9 ownership wrapper')
-    parser.add_argument('--no-ownership', dest='ownership', action='store_false', help='Turn the --ownership launcher default off')
+    parser.add_argument('--ownership', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-ownership = off; not sent under --vanilla] Enable the D3D9 ownership wrapper, the prerequisite of the whole renderer: off disables the renderer on every host (the proxy forwards the device unhooked, as vanilla, with one device_hook route=bare refused reason=vtable_copy_unsafe row), and with it every device hook: the text-density filter, the window trace and the cursor re-assert)')
+    parser.add_argument('--no-ownership', dest='ownership', action='store_false', help='Turn the --ownership launcher default off: disables the renderer on every host (see --ownership)')
     parser.add_argument('--object-trace', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch; --no-object-trace = off; not sent under --vanilla] Capture verified engine submission identity (exact executable only)')
     parser.add_argument('--no-object-trace', dest='object_trace', action='store_false', help='Turn the --object-trace launcher default off')
     parser.add_argument('--object-lifetime', action='store_true', default=None, help='[launcher default since 2026-09-25 on every modded launch with --object-trace --ownership; --no-object-lifetime = off; not sent under --vanilla] Observe verified render-registry lifetimes (requires --object-trace --ownership)')
@@ -1685,6 +1685,11 @@ def main():
             else:
                 setattr(args, attribute, 'on')
                 setattr(args, attribute + '_default', True)
+        # Ownership off: the proxy refuses to hook a native device (capture.cpp create_device), so nothing renders
+        # through the mod on any host; one launcher line, never a refusal.
+        if not args.ownership:
+            args.defaults_not_sent.append('ownership off: the renderer is disabled on every host (the device is forwarded '
+                                          'unhooked, as vanilla)')
     if args.taa_sky_history_band_px is not None:
         if not args.taa:
             parser.error('--taa-sky-history-band-px requires --taa.')

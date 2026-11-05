@@ -4256,7 +4256,15 @@ HRESULT WINAPI create_device(IDirect3D9* d, UINT adapter, D3DDEVTYPE type, HWND 
 #endif
     log("create_device_result hr=%08lx", hr);
     if (SUCCEEDED(hr) && out && *out) {
-        hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
+        // Only the ownership wrapper's device is hooked: its table is the proxy's own, of known length. A native device
+        // (X3M_OWNERSHIP=0, or ownership_factory mode=native_fallback) is returned unhooked: Hooks would install a copy
+        // of its 119 documented slots as its vtable pointer, and a C++ runtime calls its own undocumented virtuals
+        // through that pointer (Windows' d3d9.dll SetRenderTarget reads slot 156: past the copy, a fault;
+        // verification/results/native-windows/engine-effects/vtable_copy_repro.txt). The renderer is then off.
+        if (ownership::borrowed_native_device(*out))
+            hook_device(*out, p && p->hDeviceWindow ? p->hDeviceWindow : window, window);
+        else
+            log("device_hook route=bare refused reason=vtable_copy_unsafe ptr=%p", static_cast<void*>(*out));
     }
     // --perf/--debug: the address space right after device creation (address_space.h; the new device's id, frame=0,
     // 200 ms budget).

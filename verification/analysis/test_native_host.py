@@ -3,10 +3,12 @@ version, the fixture's identity rows -> the record's host block, WSLENV forwardi
 fixtures only; nothing runs through interop."""
 import hashlib
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'verification/probe'))
@@ -84,6 +86,23 @@ class NativeHost(unittest.TestCase):
         env = native_host.child_environment({'A': '1', 'B': '2'}, {})
         self.assertEqual((env['WSLENV'], env['A']), ('A:B', '1'))
         self.assertNotIn('WSLENV', native_host.child_environment({}, {}))
+
+    def test_ownership_default_and_override(self):
+        # X3M_OWNERSHIP=1 reaches the Windows process unless the runner sets it; an explicit value (0 included) is kept.
+        seen = []
+
+        def fake_run(command, **kw):
+            seen.append(kw['env'])
+            return subprocess.CompletedProcess(command, 0, b'', b'')
+        with mock.patch.object(native_host.subprocess, 'run', side_effect=fake_run), \
+                mock.patch.dict(native_host.os.environ, {'WSLENV': ''}):
+            native_host.run_native(Path('/tmp/fixture.exe'), [], '/tmp', 1)
+            native_host.run_native(Path('/tmp/fixture.exe'), [], '/tmp', 1, env={'X3M_OWNERSHIP': '0', 'X3M_DEBUG': '1'})
+            native_host.run_native(Path('/tmp/fixture.exe'), [], '/tmp', 1, env={'X3M_DEBUG': '1'})
+        self.assertEqual([e['X3M_OWNERSHIP'] for e in seen], ['1', '0', '1'])
+        for e in seen:
+            self.assertIn('X3M_OWNERSHIP', e['WSLENV'].split(':'))
+        self.assertEqual(native_host.fixture_environment({}), {'X3M_OWNERSHIP': '1'})
 
     def test_refuses_a_game_image(self):
         for name in ('X3AP.exe', 'x3fl.EXE'):

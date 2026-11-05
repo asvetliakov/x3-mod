@@ -1,0 +1,102 @@
+{
+  "host_kind": "native",
+  "commit": "481e610c620bf24197790a680b80337eb514afc9-dirty",
+  "game_launched": false,
+  "build": {
+    "log": "verification/probe/build/bare-device-refusal/build.log",
+    "warnings": 0
+  },
+  "binaries": {
+    "fixture_sha256": "a8f8565d70671fa45f9dd7e061044709849b09622dc70f5a50bd60edc98be953",
+    "dll_sha256": "de1cfae86cf19ed55a7663fc6c6bd5327a3a68d4927381bdcc7f2fba8474f704",
+    "cmake_build": "build",
+    "capture_cpp_sha256": "572425395e04451052536b8bb58573d78b9aac3fe4bf24894e31c02f77d57f07"
+  },
+  "host": {
+    "name": "native-windows",
+    "windows": {
+      "version": "10.0.26300.9818",
+      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+    },
+    "adapter": {
+      "vendor": "0x10de",
+      "device": "0x2c05",
+      "subsys": "0x276219da",
+      "revision": "161",
+      "whql": "0",
+      "driver_version": "32.0.16.2114",
+      "description": "NVIDIA GeForce RTX 5070 Ti",
+      "driver": "nvldumd.dll"
+    },
+    "interop": "/proc/sys/fs/binfmt_misc/WSLInterop",
+    "d3d9_dll": {
+      "path": "C:\\WINDOWS\\system32\\d3d9.dll",
+      "size": 1799736,
+      "sha256": "b5fe0ccd3249270437dc6310b7119d5b807b7d41c0b7a85795cfc46824ffaa2c",
+      "file_version": "10.0.26100.9818"
+    },
+    "d3dx9_37_dll": null
+  },
+  "runs": {
+    "bare": {
+      "exit": 0,
+      "calls": 24,
+      "failed_calls": [],
+      "vtable": "heap",
+      "vtable_after": "heap",
+      "slots": {
+        "SLOTS": {
+          "proxy": 0,
+          "system": 119,
+          "other": 0
+        },
+        "SLOTS_AFTER": {
+          "proxy": 0,
+          "system": 119,
+          "other": 0
+        }
+      },
+      "system_d3d9": "C:\\WINDOWS\\system32\\d3d9.dll",
+      "proxy": "\\\\wsl.localhost\\Ubuntu\\home\\asvetl\\x3-mod\\.claude\\worktrees\\agent-aef8e4e1ba1d62525\\verification\\probe\\build\\bare-device-refusal\\bare-20261105-231351-721144\\d3d9.dll",
+      "refused_rows": 1,
+      "device_hooked_rows": 0,
+      "ownership_factory": [],
+      "result": "PASS failures=0",
+      "exception": null,
+      "session_log_rows": 56,
+      "directory": "verification/probe/build/bare-device-refusal/bare-20261105-231351-721144"
+    },
+    "ownership": {
+      "exit": 0,
+      "calls": 24,
+      "failed_calls": [],
+      "vtable": "heap",
+      "vtable_after": "heap",
+      "slots": {
+        "SLOTS": {
+          "proxy": 119,
+          "system": 0,
+          "other": 0
+        },
+        "SLOTS_AFTER": {
+          "proxy": 119,
+          "system": 0,
+          "other": 0
+        }
+      },
+      "system_d3d9": "C:\\WINDOWS\\system32\\d3d9.dll",
+      "proxy": "\\\\wsl.localhost\\Ubuntu\\home\\asvetl\\x3-mod\\.claude\\worktrees\\agent-aef8e4e1ba1d62525\\verification\\probe\\build\\bare-device-refusal\\ownership-20261105-231353-648892\\d3d9.dll",
+      "refused_rows": 0,
+      "device_hooked_rows": 1,
+      "ownership_factory": [
+        "wrapped"
+      ],
+      "result": "PASS failures=0",
+      "exception": null,
+      "session_log_rows": 81,
+      "directory": "verification/probe/build/bare-device-refusal/ownership-20261105-231353-648892"
+    }
+  },
+  "problems": [],
+  "passed": true
+}

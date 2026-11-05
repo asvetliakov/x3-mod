@@ -581,8 +581,9 @@ SETTINGS = [
 
     # ================================================================ developer: parseable, not in the template
     # Route prerequisites (on in every default launch; off breaks the features above).
-    dev('ownership', 'bool', 'engine', 'The D3D9 ownership wrapper: prerequisite of the TAA history, the thin vote, the sun lane and '
-        'the shadows.', '1', launcher='--ownership'),
+    dev('ownership', 'bool', 'engine', 'The D3D9 ownership wrapper: prerequisite of the whole renderer. 0 disables the renderer on '
+        'every host: the device is forwarded unhooked, as vanilla (one device_hook route=bare refused '
+        'reason=vtable_copy_unsafe log row).', '1', launcher='--ownership'),
     dev('object_trace', 'bool', 'engine', 'Verified submission identity (prerequisite of the TAA history).', '1', launcher='--object-trace'),
     dev('fl_scale_overflow_fix', 'bool', 'engine', 'FL edition: the saturating replacement of the engine\'s fixed-point scaler '
         '(prevents the c0000095 camera-velocity crash); DLL default on, 0 off.', builtin='1'),

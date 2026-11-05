@@ -678,6 +678,8 @@ have no such slot. Native Windows d3d9 is also C++, so the fault applies there t
 documented return value). Only when the caller holds the last reference does it write the backend's own table back,
 forward the Release, and reinstall the copy if the returned count stays above zero. The copies still hold only the
 known slots and are never padded to a backend's private layout, and a live object keeps its hooks throughout.
+Since 2026-11-05 a native device is not hooked at all: Windows' d3d9.dll also calls a private slot (156) from a live
+`SetRenderTarget`, so `create_device` hooks only the ownership wrapper's device ([platform-portability.md](platform-portability.md), "Native D3D9 facts").
 After the fix, both the state-hook benchmark and the backend smoke fixture exit 0 through the proxy on DXVK 1.10.3
 (M, [hdr-scene-path.md](../verification/hdr-scene-path.md) ledger, 2026-10-09).
 

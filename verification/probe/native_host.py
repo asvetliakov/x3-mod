@@ -157,14 +157,27 @@ def child_environment(extra, environ=None):
     return env
 
 
+# Variables every native fixture process gets unless its runner sets them itself. X3M_OWNERSHIP=1: since 2026-11-05 the
+# proxy hooks only the ownership wrapper's device and forwards a native one unhooked (capture.cpp create_device;
+# docs/verification/engine-effects.md, "Bare route refused"), so a runner that never set the variable keeps its device
+# hooks here as it had them under Wine. A runner that passes X3M_OWNERSHIP (0 included) keeps its value.
+NATIVE_DEFAULTS = {'X3M_OWNERSHIP': '1'}
+
+
+def fixture_environment(extra):
+    """The runner's variables over NATIVE_DEFAULTS."""
+    return {**NATIVE_DEFAULTS, **extra}
+
+
 def run_native(exe, args, workdir, timeout, env=None, log=None):
     """Runs a fixture .exe on the Windows side through interop (never the game). `args` are passed as given, so
-    paths in them must already be Windows paths. With `log` (a path stem under verification/probe/build/<fixture>/)
-    stdout goes to <log>.log (CRLF folded) and stderr to <log>.stderr.txt. Returns (CompletedProcess, stdout text)."""
+    paths in them must already be Windows paths. `env` (forwarded through WSLENV) is applied over NATIVE_DEFAULTS. With
+    `log` (a path stem under verification/probe/build/<fixture>/) stdout goes to <log>.log (CRLF folded) and stderr to
+    <log>.stderr.txt. Returns (CompletedProcess, stdout text)."""
     if Path(exe).name.lower() in {name.lower() for name in GAME_IMAGES}:
         raise SystemExit(f'refusing to run a game image: {exe}')
-    done = subprocess.run([str(exe), *args], capture_output=True, cwd=str(workdir), env=child_environment(env or {}),
-                          timeout=timeout)
+    done = subprocess.run([str(exe), *args], capture_output=True, cwd=str(workdir),
+                          env=child_environment(fixture_environment(env or {})), timeout=timeout)
     text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
     if log is not None:
         log = Path(log)

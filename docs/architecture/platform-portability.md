@@ -129,6 +129,23 @@ its `scan`/`scan_log` never raise on log content and report unparsable lines in
   the `frc` operand. Wine does not fuse, so the record passed there. The source fix rounds the index exactly before the
   hash. Generated programs that feed `p - frac(p)` into a large multiplier are exposed in the same way
   ([engine-effects.md](../verification/engine-effects.md), "Native flow defect").
+- **Native D3D9 facts the Wine record hid (measured 2026-11-05, native host, SysWOW64 `d3d9.dll` 10.0.26100.9818).**
+  (1) `IDirect3DStateBlock9::Capture` refreshes a stream's buffer and stride but not its offset; `Apply` writes back the
+  offset recorded (or, for `CreateStateBlock`, the one current at creation). A block kept across runs therefore needs an
+  explicit `GetStreamSource`/`SetStreamSource` per stream around it; `EngineShimmerPass`, `SunShadowApplyPass` and
+  `ShadowReplayPass` do that since bd2ff2b7b / 83b1d11ea ([engine-effects.md](../verification/engine-effects.md),
+  "Native stream offset"). (2) Windows' `d3d9.dll` device is a C++ object that calls its own undocumented virtuals
+  through the object's vtable pointer: `SetRenderTarget(0, surface)` reads slot 156 (`[vtbl+0x270]`), beyond the 119
+  documented `IDirect3DDevice9` slots, and the unhooked device's table lies outside every loaded image. A private copy
+  of the documented slots installed as a native object's vtable pointer is therefore unsafe on Windows, and its
+  required length is unknowable through documented means. Since 2026-11-05 `create_device` (`src/proxy/capture.cpp`)
+  hooks only the ownership wrapper's device, whose table is the proxy's own, and returns any other device unhooked with
+  one `device_hook route=bare refused reason=vtable_copy_unsafe` row. `X3M_OWNERSHIP=0`, and an
+  `ownership_factory mode=native_fallback`, therefore leave the renderer off on every host
+  (`run_bare_device_refusal.py`, `native-windows/bare-device-refusal/summary.json`; engine-effects.md, "Bare route
+  refused"). Still open: the native factory under `X3M_OWNERSHIP=0` keeps its 17-slot copy (`hook_direct3d`; its
+  `CreateDevice`, `GetAdapterIdentifier` and final `Release` pass natively in that fixture, no other method is checked),
+  and the fixture-only `x3m_bloom_lifetime_fixture_bind` still hooks a native Ex device directly.
 - The WMA speech decoder (`<game>/x3m/voice-decoder`, installed by `manage.py voice-decoder --install`; not in the release zip) is a
   CrossOver-only file set; native Windows decodes the voice files itself and never reads the folder. Delivery is
   host-side only: GStreamer reads the Unix environment, so a proxy `SetEnvironmentVariableW` does not reach it

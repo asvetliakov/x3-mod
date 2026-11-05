@@ -129,6 +129,13 @@ filaments. `sky_nebula_deband_radius` (default `12`, 2 to 32 texels of the nebul
 looks. The `sky_nebula_config` line in `x3m.log` shows the values used; the `sky_nebula` lines show how many nebula
 parts were smoothed (`parts=` and `swapped=`).
 
+`ownership` (not in the shipped file; default `1`) is the mod's Direct3D wrapper, which every graphics feature needs.
+`ownership = 0` turns the mod's renderer off on every system, Windows and CrossOver alike: the mod then hands the game
+the graphics device untouched, so the game draws as it does without the mod's graphics features (no anti-aliasing, HDR,
+shadows, engine plumes or sky stars, and none of the mod's other per-device hooks such as the text-density filter or
+the cursor re-assert). `x3m.log` then carries one `device_hook route=bare refused reason=vtable_copy_unsafe` line.
+Before 2026-11-05 this setting kept the renderer through a second route that crashed on Windows; that route is gone.
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

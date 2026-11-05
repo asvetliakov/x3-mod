@@ -241,7 +241,10 @@ a `docs/` table instead: the tier internals (`telemetry`, `frame_timing`, `frame
 `taa_debug`, `profile*`, `own_sun_log` (`sun_occlusion_radius/curve` until 2026-11-02), the capture controls
 (`capture_start`, `capture_dir`), the marker variables (`window_monitor_rect_default`), the ownership and
 motion-output prerequisites (`ownership`, `object_trace`, `object_lifetime`, `motion_output`, `depth_copy`,
-`finite_positions`, `shadow_replay_candidates`, `sun_shadow_lane` stays user-facing as the shadow switch), and
+`finite_positions`, `shadow_replay_candidates`, `sun_shadow_lane` stays user-facing as the shadow switch;
+`ownership = 0` disables the renderer on every host since 2026-11-05: `create_device` hooks only the ownership
+wrapper's device and forwards a native one unhooked with one `device_hook route=bare refused reason=vtable_copy_unsafe`
+row, platform-portability.md "Current gaps"), and
 every `X3M_FIXTURE_*` seam (section 5 of the inventory), which stay **environment-only**: the resolver refuses
 them from a file (one `config_key problem=env_only` row) so a player's file cannot arm a seam.
 

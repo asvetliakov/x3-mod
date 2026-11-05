@@ -4,6 +4,9 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
+#include <string>
+#include <tuple>
 #include <vector>
 
 #define WINAPI
@@ -245,6 +248,15 @@ Monitor& process_admission_monitor() {
 struct ApplicationAdmissionAbi {
     explicit ApplicationAdmissionAbi(Monitor&) { events.push_back('I'); }
 };
+// d3d9_ownership.cpp's registry lookup: the native device behind a recognised wrapper, null for any other pointer
+// (never dereferenced). A scenario's wrappers are the devices it lists here.
+std::set<IDirect3DDevice9*> wrappers;
+NativeDevice recognised_backend;
+int lookups;
+IDirect3DDevice9* borrowed_native_device(IDirect3DDevice9* wrapped) noexcept {
+    ++lookups;
+    return wrappers.count(wrapped) ? &recognised_backend : nullptr;
+}
 } // namespace ownership
 
 struct HookGuard {
@@ -273,7 +285,16 @@ int process() {
 void record(int, Metric, Clock, bool) {}
 } // namespace telemetry
 
-void log(const char*, ...) {}
+std::vector<std::string> rows; // the format of every log() call
+void log(const char* format, ...) {
+    rows.push_back(format);
+}
+constexpr const char* kRefusedRow = "device_hook route=bare refused reason=vtable_copy_unsafe ptr=%p";
+int refused_rows() {
+    int n = 0;
+    for (const auto& row : rows) n += row == kRefusedRow;
+    return n;
+}
 void presentation_parameters(const char*, int, HWND, D3DPRESENT_PARAMETERS*) {}
 
 bool motion_output_requested;
@@ -387,6 +408,9 @@ void reset(IDirect3D9& d, NativeDevice& device,
            HRESULT(WINAPI* callback)(IDirect3D9*, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*,
                                      IDirect3DDevice9**)) {
     events.clear();
+    rows.clear();
+    ownership::wrappers = {&device}; // the scripted factory's device is a recognised wrapper unless a scenario clears it
+    ownership::lookups = 0;
     hook_record = {};
     direct_script = {};
     devices.clear();
@@ -652,6 +676,7 @@ int main() {
     ownership_host::reset(owned_native);
     capture_factory.context = &ownership_factory;
     capture_host::reset(capture_factory, direct_device, capture_host::ownership_bridge);
+    capture_host::ownership::wrappers = {&ownership_host::adopt_script.wrapped};
     capture_host::motion_output_requested = true;
     auto integrated_pp = parameters();
     IDirect3DDevice9* integrated_out = nullptr;
@@ -663,7 +688,61 @@ int main() {
     CHECK(integrated_out == &ownership_host::adopt_script.wrapped);
     CHECK(capture_host::hook_record.calls == 1);
     CHECK(capture_host::hook_record.native_flags == 0x42u);
+    CHECK(capture_host::refused_rows() == 0);
     CHECK(owned_native.releases == 0);
+
+    // A device the ownership wrapper does not recognise (X3M_OWNERSHIP=0, or the factory's native_fallback) is
+    // returned unhooked with its result and output unchanged and one refusal row; the address-space row names no
+    // device.
+    for (const HRESULT result : {S_OK, S_FALSE}) {
+        test::scenario();
+        capture_host::reset(capture_factory, direct_device, capture_host::direct_native);
+        capture_host::ownership::wrappers.clear();
+        capture_host::motion_output_requested = true;
+        capture_host::log_tier::cached_perf = true;
+        capture_host::direct_script.result = result;
+        auto bare_pp = parameters();
+        IDirect3DDevice9* bare_out = nullptr;
+        CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0x52u, &bare_pp, &bare_out) ==
+              result);
+        CHECK(bare_out == &direct_device);
+        CHECK(capture_host::direct_script.calls == 1);
+        CHECK(capture_host::ownership::lookups == 1);
+        CHECK(capture_host::hook_record.calls == 0);
+        CHECK(capture_host::devices.empty());
+        CHECK(capture_host::refused_rows() == 1);
+        CHECK(capture_host::rows.size() >= 2 &&
+              capture_host::rows[capture_host::rows.size() - 2] == std::string("create_device_result hr=%08lx") &&
+              capture_host::rows.back() == capture_host::kRefusedRow);
+        CHECK(capture_host::address_space::reports.calls == 1 && capture_host::address_space::reports.device == 0u);
+        CHECK((capture_host::events == std::vector<char>{'C', 'I', 'L', 'B', 'N', 'A', 'R', 'U'}));
+        CHECK(capture_host::capture_lock_depth == 0);
+        CHECK(direct_device.releases == 0);
+    }
+    // No device back (failure, null output, no output argument): no lookup and no refusal row.
+    for (const auto& [result, output, give_out] :
+         {std::tuple{E_FAIL, capture_host::Output::Device, true}, std::tuple{S_OK, capture_host::Output::Null, true},
+          std::tuple{S_OK, capture_host::Output::Device, false}}) {
+        test::scenario();
+        capture_host::reset(capture_factory, direct_device, capture_host::direct_native);
+        capture_host::ownership::wrappers.clear();
+        capture_host::direct_script.result = result;
+        capture_host::direct_script.output = output;
+        IDirect3DDevice9* none_out = nullptr;
+        CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0, nullptr,
+                                          give_out ? &none_out : nullptr) == result);
+        CHECK(capture_host::ownership::lookups == 0);
+        CHECK(capture_host::refused_rows() == 0);
+        CHECK(capture_host::hook_record.calls == 0);
+    }
+    // A recognised wrapper is hooked without a refusal row.
+    test::scenario();
+    capture_host::reset(capture_factory, direct_device, capture_host::direct_native);
+    IDirect3DDevice9* wrapped_out = nullptr;
+    CHECK(capture_host::create_device(&capture_factory, kAdapter, kType, kFocus, 0, nullptr, &wrapped_out) == S_OK);
+    CHECK(capture_host::ownership::lookups == 1);
+    CHECK(capture_host::hook_record.calls == 1 && capture_host::hook_record.device == &direct_device);
+    CHECK(capture_host::refused_rows() == 0);
 
     std::printf("capture_device_creation scenarios=%d checks=%d failures=%d\n", test::scenarios, test::checks,
                 test::failures);

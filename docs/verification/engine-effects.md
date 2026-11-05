@@ -1054,6 +1054,7 @@ the same 119-slot copy on the native device. Its first `SetRenderTarget(0, surfa
 game, then calls past the copy (inferred from the reproduction; not run in the game). It needs a documented-only
 decision, such as always wrapping, or refusing the unwrapped vtable route on a backend that is not known to be safe.
 That decision is not made here.
+Decided the same day (main session): the unwrapped route is retired; see "Bare route refused" below.
 
 ## Native stream offset: state-block Capture keeps the recorded offset (2026-11-05, dirty tree on df439ff3b, not a candidate)
 
@@ -1138,3 +1139,54 @@ Open:
   `run_motion_output.py`, which has no `--host` option yet, so they cannot run natively.
 - Unchecked: whether X3 has stream 1 or higher bound with a non-zero offset when these passes run. Before the fix, that
   is the only way the defect could reach the game beyond stream 0.
+
+## Bare route refused: a native device is forwarded unhooked (2026-11-05, dirty tree on 481e610c6, not a candidate)
+
+Decision (main session): the 119-slot copy route ("Native fixture fault" above) is retired as a production path.
+Since the copy's required length is not knowable through documented means, `create_device` (`src/proxy/capture.cpp`)
+now calls `hook_device` only for a device `ownership::borrowed_native_device` recognises as the ownership wrapper's,
+whose table is the proxy's own. Any other device is returned to the application unhooked, with its `HRESULT` and output
+unchanged, and one row: `device_hook route=bare refused reason=vtable_copy_unsafe ptr=…`. That covers `X3M_OWNERSHIP=0`
+and an `ownership_factory mode=native_fallback`. The renderer is off on every host in both cases. Nothing sizes or
+probes the native table and nothing detects Wine. `hook_device` itself and the ownership route are unchanged; the one
+added call on the ownership route is the registry lookup, once per `CreateDevice`. The launcher prints
+`ownership off: the renderer is disabled on every host …` for a modded launch with `--no-ownership`. The schema,
+`docs/user/config.md` and `docs/architecture/config-file.md` say the same.
+
+Evidence (measured, native host Windows 10.0.26300.9818, SysWOW64 `d3d9.dll` 10.0.26100.9818, RTX 5070 Ti):
+
+- `run_bare_device_refusal.py` (fixture `verification/probe/bare_device_refusal_fixture.cpp`, the production CMake
+  `d3d9.dll` app-local, record `verification/results/native-windows/bare-device-refusal/summary.json`, 12 s under the
+  lock including the build). With `X3M_OWNERSHIP=0`: exit 0 and 24 of 24 calls succeed. These are `CreateDevice`,
+  `SetRenderTarget(0, back buffer)`, three frames of Clear/BeginScene/SetRenderTarget/EndScene/Present, `Reset`, and
+  `SetRenderTarget` after it. All 119 slot targets lie in the system `d3d9.dll` and none in the proxy, before and
+  after `Reset`. The log has 1 refusal row, 0 `device_hooked` rows and no `ownership_factory` row. With
+  `X3M_OWNERSHIP=1` (the control): 24 of 24 calls succeed, all 119 slots are the proxy's, the log has
+  `ownership_factory mode=wrapped`, 1 `device_hooked` row and 0 refusal rows. The unhooked native device's vtable
+  pointer lies outside every loaded image (`VTABLE heap` in both modes), so the slot targets are the proof, not the
+  table's location.
+- `test_capture_device_creation` (host control flow of the extracted `create_device`) has 29 scenarios and 269 checks,
+  0 failures. The new scenarios are: an unrecognised device with `S_OK`/`S_FALSE` (no hook, one refusal row after
+  `create_device_result`, output and result unchanged, address-space row with device 0), no device back (no lookup, no
+  row), and a recognised device (hooked, no row). The same fixture against 481e610c6's `create_device` fails 15 of 271
+  checks (`bare-device-refusal/old_create_device_control.py`).
+- `run_engine_effects.py --host native` with ownership on: PASS, 299 checks, 0 failed, 61 s under the lock
+  (`native-windows/engine-effects/summary.json` replaced; its source binding reads `production_sources_dirty: true`
+  until `capture.cpp` is committed, so `test_engine_effects.test_bound_to_its_production_sources` fails until the
+  record is re-run on the commit).
+- The AP DLL builds with CMake `-j4`: exit 0, 0 warnings.
+
+Open: the native factory keeps its 17-slot copy under `X3M_OWNERSHIP=0` (`hook_direct3d`). Its `CreateDevice`,
+`GetAdapterIdentifier` and final `Release` pass natively in the fixture above; no other factory method is checked.
+`hook_device` also carries per-device duties outside the renderer: `window_trace::attach` (window trace, cursor
+re-assert), the text-density `SetTexture` filter and the telemetry cursor hooks. With ownership off these are now off
+too. Fixture runners run under `X3M_CONFIG=bare`, so ownership is off unless they set it. 110 of the 124
+`verification/probe/run_*.py` never set `X3M_OWNERSHIP`, and six set it to 0 in some cases (`run_motion_output.py`'s
+`plain` variant, `run_state_hook_benchmark.py`, `run_route_bench.py`, `run_sun_share_live.py`,
+`run_linear_material_live.py`, `run_hook_admission_benchmark.py`; counted by grep). Every one of them that expects
+device hooks now gets an unhooked device and needs `X3M_OWNERSHIP=1`. On the native host `native_host.run_native`
+supplies `X3M_OWNERSHIP=1` unless the runner sets the variable itself (`NATIVE_DEFAULTS`; `test_native_host`), so there
+they keep their hooks through the wrapper; under Wine they do not. `run_engine_effects.py` dropped its own, identical
+`X3M_OWNERSHIP=1`. None of these runners was re-run here; the native plume, ribbon, shimmer and FOV records were made
+before the default. The fixture-only export `x3m_bloom_lifetime_fixture_bind` still
+hooks a genuine native Ex device through `hook_device` directly, which is safe under Wine only.
