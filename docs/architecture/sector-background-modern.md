@@ -760,3 +760,70 @@ Whether the parts overlap anywhere (only the seam behaviour depends on it; the f
 exact SM1 program semantics beyond the coverage note (invariant 1's disassembly). Whether `StretchRect` with
 `D3DTEXF_LINEAR` from an FP16 RT is granted on the user's driver (the caps check and the `copy=` row answer it; point
 filtering is the fallback). The GPU figures are inferred until the native fixture measures them.
+
+### Implementation C1 (2026-11-05): nebula part deband
+
+Built, not flown; `sky_nebula_deband` default 0. Evidence: `verification/results/sky-nebula/` (`run_fixture.py` ->
+`fixture_out.txt`, `native/validate.py` -> `native/result.json`); host test `verification/analysis/test_sky_nebula.py`
+(`verification/probe/sky_nebula_check.cpp`, 12 checks). The pair's bytecode is recorded in
+[background-temporal-coverage.md](../reverse-engineering/background-temporal-coverage.md) ("The background pair's
+bytecode").
+
+**Pieces.** `src/proxy/sky_nebula_core.h` (pair, settings, c200-c201/c255 packing, the tap pattern field),
+`src/renderer/sky_nebula_pass.{h,cpp}` (programs; `begin` reads VS/PS, VS c255 and PS c200-c201 before the first write,
+sets them and the pair, undoes a partial write at once; `end` restores in reverse order), `src/proxy/
+motion_output_sky_nebula_inc.h` (match, swap, rows), `src/effects/sky_nebula_{vs,ps}.hlsl` compiled by
+`tools/shaders/generate_sky_nebula_programs.py`. Settings `sky_nebula_deband`, `sky_nebula_deband_threshold`,
+`sky_nebula_deband_radius`, developer `sky_nebula_jitter`, read once at process start (a refused value keeps the
+default, `<name>_setting=default` in `sky_nebula_config`).
+
+**Match (changed from the design).** As designed, plus two refusals the bytecode made necessary: `FOGENABLE` on (ps_3_0
+has no fixed-function fog) and stage 0 `D3DTTFF_PROJECTED` (honoured by an SM1 `tex`, not by `texld`); `outside=`
+counts pair-and-state matches outside the phase or the latch, never swapped. The texture size is cached per pointer and
+identity. PS c200-c201 are bracketed per draw (Get/Set/restore) instead of set once: the size differs between parts
+(2048x1024, 2048x2048, 1024x512) and no other user of c200 is assumed. 12 device calls per part draw (8 in `begin`, 4 in
+`end`), CPU 0.39 us per bracket, 1.55 us for four parts (measured, `CPU` row).
+
+**Filter (changed from the design).** The note's formula (`diff` = largest tap-minus-centre difference, two sequential
+rings, independent hash per ring) left the synthetic ramps' ripple unchanged (1.81 -> 1.83/255, measured): on a real
+gradient every tap at radius 12 differs from the centre by the gradient times 12, so the outer ring never averages.
+The implemented program is gradient-aware: `diff` is the largest channel difference between the midpoint of an
+opposite tap pair and the centre (0 on any linear gradient, half the height across an edge), over the four pairs of the
+same eight taps (ring 1 at R/2 along d and its perpendicular, ring 2 at R along d rotated 45 degrees); `w =
+saturate(2 (1 - diff / threshold))`; output `lerp(c, mean of centre and eight taps, w)`. The angle of d is a quarter
+turn times the texel-indexed hash interpolated between the four nearest texel centres (static in texture space,
+continuous in uv). 108 ps_3_0 slots, 9 taps.
+
+**Fixture (native D3D9, RTX 5070 Ti, plain D3D9, measured).** Synthetic 2048x1024 DXT1 part, 2.5x magnification:
+- Invariant 1: the reference vs_1_1/ps_1_1 pair has the engine's instruction tokens; threshold 0 against it with a
+  perspective c0-c3, an affine c4/c5 with rotation and offset and a non-black SRCALPHA/ONE target: 0 of 921,600 pixels
+  differ (285,615 written).
+- Invariant 2 at threshold 6, radius 12 (ramp interiors, three rows, every channel, 1/255 units): error against the
+  ideal ramp rms 1.03 -> 0.43, max 3.89 -> 2.36; ripple (max second difference) 1.81 -> 1.98; band mean -0.017.
+  The note's bounds (ripple <= 0.25, error <= 0.5) are **not met**: nine taps on the DXT1 ladder (G steps up to 3.6 at
+  block boundaries) leave a static texel-scale residual; with the hash removed (a fixed star) the ripple was 0.78
+  (measured once, not kept: the design asks for the hash). Edges 12/255 and 18/255: height at +-radius unchanged
+  (0.000), change beyond one texel of an edge 0.67, at the edge 1.26. A 3/255 island spreads at most 12.9 texels
+  (radius 12 plus the bilinear footprint); its sum changes by +0.96 %. Threshold 10/16 (reported): rms 0.40, but the
+  edges change by 4.0/6.9, so those thresholds smear 12-18/255 filaments.
+- Invariant 4: programs, VS c255 and PS c200-c201 back after a clean bracket, an injected draw failure, an injected
+  begin fault (undone inside `begin`) and an injected restore fault (reported, every restore still attempted): 0
+  mismatches in each.
+- Invariant 5: full-sky frame at 5120x1440 (four parts, each a quarter of the screen), event-flushed over 100 frames:
+  engine pair 0.060 ms, deband pair 0.089 ms, extra 0.029 ms (bound 0.5 ms).
+- Invariant 9 (model: history 0.9, exact bilinear reprojection, 3x3 clip, Halton jitter through c255, ramp interiors):
+  per-content-pixel temporal SD at 0.5 px/frame 0.041 max (engine pair 0.123); at 10 px/frame 0.639 (engine pair
+  0.618, the model's own reprojection error).
+- Invariant 10: `sky_nebula_vs` 118 words / 10 slots, `sky_nebula_ps` 491 words / 108 slots, native validator End()
+  S_OK, 0 messages.
+
+**Rows.** `sky_nebula_config requested= enabled= reason= threshold= threshold_setting= radius= radius_setting= jitter=`
+once; `sky_nebula_device attached= reason= result= vs_slots= ps_slots= max_ps_slots= references=` at attach;
+`sky_nebula_match index= texture=WxH format= fog= target= threshold= radius= jitter= result= c4= c5=` for the first four
+swapped draws per device (c4/c5 when the engine-effects hook shadows them); `sky_nebula status=<none|swapped|partial|
+refused> parts= swapped= reason= draw= restore= outside= frames= swapped_frames= refused= us= us_mean= us_max=
+threshold= radius=` at the depth-only Clear when parts, swapped or the reason changed (at most 1,024 per device); the
+`us` fields are the bracket's CPU cost (invariant 5's CPU side).
+
+**Flight-only.** Invariant 3 (`parts=4` in bluewell, `parts=0` in a fog-card family, AP's parts matched), the look
+(halos, smeared filaments, residual grain at 2.5x, seams), invariant 9 under SETA rotation, and native Windows.

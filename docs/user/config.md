@@ -107,6 +107,13 @@ the stars into a few dense clouds with some nearly empty patches between them (`
 up. A value the mod cannot use keeps the default, and the `sky_stars_config` line in `x3m.log` then shows
 `<name>_setting=default`. Stars brighter than white glow only as much as any light that `bloom_source_clamp` caps.
 
+`sky_nebula_deband` (default `off`) smooths the visible bands at the edge of the sector background's nebula, where it
+fades into black space; stars, planets and suns are not touched. `sky_nebula_deband_threshold` (default `6`, 1 to 16,
+in 1/255 brightness steps) is the largest step still treated as a band: larger smooths more but softens faint
+filaments. `sky_nebula_deband_radius` (default `12`, 2 to 32 texels of the nebula texture) is how far the smoothing
+looks. The `sky_nebula_config` line in `x3m.log` shows the values used; the `sky_nebula` lines show how many nebula
+parts were smoothed (`parts=` and `swapped=`).
+
 ## Checking what was loaded
 
 The mod writes `x3m.log` next to `d3d9.dll`. Near its top:

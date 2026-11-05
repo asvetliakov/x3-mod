@@ -33,6 +33,7 @@
 #include "own_sun_hook.h"
 #include "own_sun_core.h"
 #include "sky_stars_core.h"
+#include "sky_nebula_core.h"
 #include "cull_small_parts.h"
 #include "occlusion_engine_cull.h"
 #include "engine_effects.h"
@@ -241,6 +242,10 @@ float hull_emissive_widening[2] = {1.f, 1.f};
 bool sky_stars_requested = false, sky_stars_mask = true;
 x3m::sky_stars::core::Look sky_stars_look{}; // X3M_SKY_STARS_DENSITY, _BRIGHTNESS, _SIZE, _MIN_SIZE, _CLUSTERING
 float sky_stars_twinkle = x3m::sky_stars::core::twinkle_default; // X3M_SKY_STARS_TWINKLE
+// Sky nebula deband (X3M_SKY_NEBULA_DEBAND, default off; _THRESHOLD, _RADIUS, X3M_SKY_NEBULA_JITTER;
+// motion_output_sky_nebula_inc.h, sector-background-modern.md Decision C1): requested = the setting and the route.
+bool sky_nebula_requested = false, sky_nebula_jitter = true;
+float sky_nebula_threshold = x3m::sky_nebula::core::threshold_default, sky_nebula_radius = x3m::sky_nebula::core::radius_default;
 bool lod_material_strength_requested = false; // X3M_LOD_MATERIAL_STRENGTH=1 (schema default; overlay-material-strength.md):
                                               // the merged-LOD overlay's per-material diffuse strength: the D3DX texture
                                               // hook flags the baker's marked atlases, the hull pixel twins read the ratio
@@ -3611,6 +3616,8 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     // import-slot stub, d3dx_texture_hook::install).
     hooked.motion_output.configure_material_strength(lod_material_strength_requested);
     hooked.motion_output.configure_sky_stars(sky_stars_requested, sky_stars_look, sky_stars_twinkle, sky_stars_mask);
+    hooked.motion_output.configure_sky_nebula(sky_nebula_requested, sky_nebula_threshold, sky_nebula_radius,
+                                              sky_nebula_jitter);
 #if !X3M_EDITION_FL
     log("lod_material_strength_configured enabled=%u texture_hook=%u",
         unsigned(hooked.motion_output.material_strength_requested()), unsigned(loading_trace::texture_observer_requested()));
@@ -5078,6 +5085,35 @@ void initialize_log(HMODULE module) {
 #endif
         );
         if (!sky_stars_requested) log("sky_stars status=off reason=%s", !on ? "setting" : "route_off");
+    }
+    // X3M_SKY_NEBULA_DEBAND=1|0 (schema default 0; sector-background-modern.md Decision C1): the nebula part draws of the
+    // sector background run the own deband pair. Needs the route; the HDR latch is checked per draw. _THRESHOLD (1/255
+    // units) and _RADIUS (texels): a value that does not parse or is out of range keeps the default (<name>_setting=
+    // default). X3M_SKY_NEBULA_JITTER=0: the swapped parts are drawn unjittered. One sky_nebula_config row.
+    {
+        wchar_t value[32]{};
+        const DWORD n = x3m::config::get(L"X3M_SKY_NEBULA_DEBAND", value, 32);
+        const bool on = n == 1 && value[0] == L'1';
+        const bool valid = n == 0 || (n == 1 && (value[0] == L'0' || value[0] == L'1'));
+        auto float_setting = [&](const wchar_t* name, bool (*accept)(float, float*), float* out) {
+            const DWORD length = x3m::config::get(name, value, 32);
+            if (!length) return "ok";
+            wchar_t* end = nullptr;
+            const float v = length < 32 ? wcstof(value, &end) : 0.f;
+            return length < 32 && end != value && *end == L'\0' && accept(v, out) ? "ok" : "default";
+        };
+        const char* threshold_tag =
+            float_setting(L"X3M_SKY_NEBULA_DEBAND_THRESHOLD", x3m::sky_nebula::core::accept_threshold, &sky_nebula_threshold);
+        const char* radius_tag =
+            float_setting(L"X3M_SKY_NEBULA_DEBAND_RADIUS", x3m::sky_nebula::core::accept_radius, &sky_nebula_radius);
+        const DWORD j = x3m::config::get(L"X3M_SKY_NEBULA_JITTER", value, 32);
+        sky_nebula_jitter = !(j == 1 && value[0] == L'0');
+        sky_nebula_requested = on && motion_output_requested;
+        log("sky_nebula_config requested=%s enabled=%u reason=%s threshold=%.2f threshold_setting=%s radius=%.2f"
+            " radius_setting=%s jitter=%u",
+            n == 0 ? "unset" : valid ? "set" : "invalid_setting", unsigned(sky_nebula_requested),
+            sky_nebula_requested ? "ok" : !on ? "setting" : "route_off", double(sky_nebula_threshold), threshold_tag,
+            double(sky_nebula_radius), radius_tag, unsigned(sky_nebula_jitter));
     }
     // X3M_HULL_LIGHTMAP_GAIN=<g>: a gain on the light-map (self-illumination)
     // term inside the ORIGINAL hull pixel programs (station windows and hull

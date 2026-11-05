@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "source": "src/effects/sky_nebula_ps.hlsl",
+  "source_sha256": "7f437fc044bd781ef06f63b43f855910d119544ebeac22b2a0b2036ead351c5f",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": null,
+  "word_count": 491,
+  "bytecode_sha256": "4130707616b453255dc00509da55fa342029e82a11740c9f79c9bab961a4d874",
+  "header_sha256": "f2d9d5a5d081b6d14384fbef08fa028b5f26a65846cf0bf6a24fa1016adc37ff",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
+    "tools/shaders/generate_sky_nebula_programs.py": "e4d01e33211c46392643dab0969841015b120f8294962138aabd3dcc969f5514"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

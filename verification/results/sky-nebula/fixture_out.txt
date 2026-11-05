@@ -1,0 +1,42 @@
+DEVICE kind=d3d9 plain=00000000 created=00000000
+DEVICE adapter="NVIDIA GeForce RTX 5070 Ti"
+DEVICE max_ps30_slots=4096
+PASS attach hr=00000000 reason=ok vs_slots=10 ps_slots=108 references=2
+PASS reference_pair_created 
+PASS part_texture_dxt1_2048x1024 
+PASS identity_target 
+PASS identity_threshold0_bit_exact pixels=921600 differing=0 changed_by_draw=285615
+PASS band_target 
+PROFILE row=160 95.9:15.95/15.99,15.99/16.09,15.99 96.7:16.35/15.99,15.99/16.09,15.99 97.5:16.75/15.99,15.99/16.63,16.17 98.3:17.15/16.89,16.28/17.30,16.42 99.1:17.55/18.98,16.98/17.98,17.00 99.9:17.95/18.98,16.98/18.05,17.70 100.7:18.35/18.98,16.98/18.77,18.56 101.5:18.75/18.98,16.98/18.88,18.66 102.3:19.15/18.98,16.98/19.16,19.13 103.1:19.55/18.98,17.39/19.66,19.50 103.9:19.95/18.98,20.58/19.88,20.17
+BANDING threshold=6 samples=6210 ripple_before=1.813 ripple_after=1.984 err_before=3.894 err_after=2.357 rms_before=1.032 rms_after=0.428 mean_diff=-0.0165 (1/255 units)
+EDGES threshold=6 change_beyond_1_texel=0.6719 change_at_edge=1.2578 height_err=0.0000 mean_diff=-0.00076 (1/255)
+ISLAND threshold=6 farthest_nonzero_texels=12.90 radius=12 sum_ratio=1.0096
+PASS ramp_banding_reduced threshold=6 samples=6210 ripple_before=1.813 ripple_after=1.984 err_before=3.894 err_after=2.357 rms_before=1.032 rms_after=0.428 mean_diff=-0.0165 (1/255 units)
+NOTE_BOUNDS ripple_le_0.25=not_met err_le_0.5=not_met
+PASS ramp_mean_preserved_0.5 threshold=6 samples=6210 ripple_before=1.813 ripple_after=1.984 err_before=3.894 err_after=2.357 rms_before=1.032 rms_after=0.428 mean_diff=-0.0165 (1/255 units)
+PASS edges_kept_above_threshold threshold=6 change_beyond_1_texel=0.6719 change_at_edge=1.2578 height_err=0.0000 mean_diff=-0.00076 (1/255)
+PASS island_spread_le_radius_plus_bilinear threshold=6 farthest_nonzero_texels=12.90 radius=12 sum_ratio=1.0096
+BANDING threshold=10 samples=6210 ripple_before=1.813 ripple_after=1.984 err_before=3.894 err_after=1.644 rms_before=1.032 rms_after=0.400 mean_diff=-0.0186 (1/255 units)
+EDGES threshold=10 change_beyond_1_texel=4.0469 change_at_edge=4.4356 height_err=0.0000 mean_diff=-0.01687 (1/255)
+ISLAND threshold=10 farthest_nonzero_texels=12.90 radius=12 sum_ratio=1.0096
+BANDING threshold=16 samples=6210 ripple_before=1.813 ripple_after=1.984 err_before=3.894 err_after=1.644 rms_before=1.032 rms_after=0.400 mean_diff=-0.0186 (1/255 units)
+EDGES threshold=16 change_beyond_1_texel=6.8595 change_at_edge=6.8595 height_err=0.0000 mean_diff=-0.02121 (1/255)
+ISLAND threshold=16 farthest_nonzero_texels=12.90 radius=12 sum_ratio=1.0096
+BRACKET begin_calls=8 end_calls=4
+PASS state_restored_clean begin=00000000 begin_restore=00000000 draw=00000000 end=00000000 mismatches=0 calls=8+4
+PASS state_restored_draw_failure begin=00000000 begin_restore=00000000 draw=80004005 end=00000000 mismatches=0 calls=8+4
+PASS state_restored_begin_fault begin=80004005 begin_restore=00000000 draw=00000000 end=00000000 mismatches=0 calls=12+0
+PASS state_restored_restore_fault begin=00000000 begin_restore=00000000 draw=00000000 end=80004005 mismatches=0 calls=8+4
+PASS cost_target 
+COST engine_pair_ms=0.0597 deband_ms=0.0886 clear_ms=0.0006 extra_ms=0.0289
+PASS deband_full_sky_le_0.5ms engine_pair_ms=0.0597 deband_ms=0.0886 clear_ms=0.0006 extra_ms=0.0289
+CPU bracket_us=0.386 per_frame_4_parts_us=1.546
+PASS bracket_cpu bracket_us=0.386 per_frame_4_parts_us=1.546
+PASS taa_target 
+TAA speed=0.5 engine_sd_max=0.123 engine_sd_median=0.000 deband_sd_max=0.041 deband_sd_median=0.006 (1/255)
+PASS taa_sd_slow_pan speed=0.5 engine_sd_max=0.123 engine_sd_median=0.000 deband_sd_max=0.041 deband_sd_median=0.006 (1/255)
+TAA speed=10.0 engine_sd_max=0.618 engine_sd_median=0.000 deband_sd_max=0.639 deband_sd_median=0.005 (1/255)
+PASS taa_sd_fast_pan speed=10.0 engine_sd_max=0.618 engine_sd_median=0.000 deband_sd_max=0.639 deband_sd_median=0.005 (1/255)
+PASS detach_releases 
+PASS device_released device_references_after_release=0
+RESULT PASS checks=22 failures=0

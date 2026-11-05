@@ -114,6 +114,7 @@ renderer::EngineShimmerPass::~EngineShimmerPass() = default;
 renderer::OwnSunPass::~OwnSunPass() = default;
 // The scripted pass: attach as World says, one "batch" call per draw with World's draw and restore results.
 renderer::SkyStarsPass::~SkyStarsPass() {}
+renderer::SkyNebulaPass::~SkyNebulaPass() {} // the nebula deband pass is not exercised here (sky_nebula_fixture.cpp)
 HRESULT renderer::SkyStarsPass::attach(IDirect3DDevice9* d, void* const*, const D3DCAPS9&, D3DFORMAT) noexcept {
     ++w->attaches;
     device_ = d;

@@ -70,6 +70,8 @@
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
+#include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
+#include "sky_nebula_core.h"
 #include "sector_key_core.h" // the sky stars' per-sector seed (sector-identity.md section 3)
 #include "../renderer/shadow_replay_pass.h"
 #include "../renderer/shadow_replay_projection.h"
@@ -158,6 +160,10 @@ struct MotionRoute {
     // drawn after it, once per frame); sky_stars_masked: its colour writes are masked through fog_card_mask
     // (sky_stars_mask=1), which keeps every other preparation off the draw as for a masked card.
     bool sky_stars = false, sky_stars_masked = false;
+    // Sky nebula deband (motion_output_sky_nebula_inc.h, Decision C1): the draw is a nebula part of the background phase
+    // (sky_nebula); its pair was swapped for the deband pair (sky_nebula_swapped: the bracket holds sky_nebula_saved).
+    bool sky_nebula = false, sky_nebula_swapped = false;
+    renderer::SkyNebulaSaved sky_nebula_saved{};
     bool source_gain = false;        // Source-gain PS bound natively for this draw; restored after it.
     bool source_gain_screen = false; // ... and DESTBLEND ONE substituted for the native INVSRCCOLOR (screen
                                      // substitution); restored after it.
@@ -1250,6 +1256,11 @@ public:
     // The Clear hook, before before_clear: the colour of the application's Clear (the latching Clear's is logged at a
     // star-body match, invariant 1).
     void note_clear_colour(std::uint32_t colour) noexcept { clear_colour_pending_ = colour; }
+    // Sky nebula deband (X3M_SKY_NEBULA_DEBAND, motion_output_sky_nebula_inc.h; sector-background-modern.md Decision C1):
+    // process-start values (threshold in 1/255 units and radius in texels in their ranges, else the defaults of
+    // sky_nebula_core.h; jitter = sky_nebula_jitter).
+    void configure_sky_nebula(bool requested, float threshold, float radius, bool jitter) noexcept;
+    bool sky_nebula_requested() const noexcept { return sky_nebula_requested_; }
     // Process exit (capture.cpp abandon_devices_at_exit, DllMain with the other threads gone; the device is never
     // released, so ~MotionOutput never runs): the session rows the release would have written, once.
     void exit_rows() noexcept { strength_session_row("exit"); }
@@ -2159,6 +2170,22 @@ private:
     unsigned sky_stars_phase_log_ = 0, sky_stars_phase_logged_ = 0, sky_stars_phase_fields_ = 0;
     std::uint32_t sky_stars_phase_field_ = 0, sky_stars_phase_last_field_ = 0;
     std::uint32_t sky_stars_phase_seen_[sky_stars_phase_fields_max] = {};
+    // Sky nebula deband (motion_output_sky_nebula_inc.h): the settings, the pass, the stage-0 texture's cached level-0
+    // size (pointer and identity), this frame's background-phase record and what the last sky_nebula row said.
+    bool sky_nebula_requested_ = false, sky_nebula_jitter_ = true, sky_nebula_attach_failed_ = false;
+    float sky_nebula_threshold_ = sky_nebula::core::threshold_default, sky_nebula_radius_ = sky_nebula::core::radius_default;
+    std::unique_ptr<renderer::SkyNebulaPass> sky_nebula_;
+    const void* sky_nebula_texture_ = nullptr;
+    std::uint64_t sky_nebula_texture_id_ = 0;
+    unsigned sky_nebula_texture_width_ = 0, sky_nebula_texture_height_ = 0, sky_nebula_texture_format_ = 0;
+    unsigned sky_nebula_frame_parts_ = 0, sky_nebula_frame_swapped_ = 0;
+    const char* sky_nebula_frame_reason_ = "none";
+    HRESULT sky_nebula_frame_hr_ = S_OK, sky_nebula_frame_restore_ = S_OK;
+    std::uint64_t sky_nebula_frame_ticks_ = 0, sky_nebula_ticks_max_ = 0, sky_nebula_ticks_sum_ = 0;
+    std::uint64_t sky_nebula_outside_ = 0, sky_nebula_refused_ = 0, sky_nebula_frames_ = 0, sky_nebula_swapped_frames_ = 0;
+    unsigned sky_nebula_failures_ = 0, sky_nebula_rows_ = 0, sky_nebula_match_rows_ = 0;
+    unsigned sky_nebula_logged_parts_ = ~0u, sky_nebula_logged_swapped_ = ~0u;
+    const char* sky_nebula_logged_reason_ = "";
     IDirect3DTexture9* own_sun_lane_ = nullptr; // the completed RT2 the resolve reads (borrowed for the callback)
     UINT own_sun_width_ = 0, own_sun_height_ = 0;
     std::uint64_t own_sun_disarmed_until_ = 0, own_sun_row_qpc_ = 0;
@@ -3561,6 +3588,15 @@ private:
     bool attach_sky_stars() noexcept;
     void release_sky_stars() noexcept;
     void sky_stars_log_match(const MotionDrawCall&) noexcept;
+    void sky_nebula_classify(const MotionDrawCall&, MotionRoute&) noexcept;
+    void prepare_sky_nebula(MotionRoute&) noexcept;
+    void finish_sky_nebula(MotionRoute&, HRESULT) noexcept;
+    void sky_nebula_latch() noexcept;
+    void sky_nebula_before_reset() noexcept;
+    void sky_nebula_phase_end() noexcept;
+    bool attach_sky_nebula() noexcept;
+    void release_sky_nebula() noexcept;
+    bool sky_nebula_part_size(IDirect3DBaseTexture9* texture) noexcept;
     void finish_fog_card(MotionRoute&, HRESULT) noexcept;
     const char* fog_frame_prerequisite() const noexcept;
     const char* fog_frame_parameters(renderer::FogFrame&, float weight, bool& sun_tracked) noexcept;

@@ -200,6 +200,19 @@ SETTINGS = [
           range=(0.0, 2.0), requires=('sky_stars',), since='2026-11-05'),
     dev('sky_stars_mask', 'bool', 'graphics', 'Sky stars: 1 = hide the painted star layer under the procedural stars '
         '(default), 0 = draw the procedural stars over it.', builtin='1', requires=('sky_stars',), since='2026-11-05'),
+    entry('sky_nebula_deband', 'bool', 'graphics', 'Smooths the visible bands at the edge of the sector background\'s '
+          'nebula, where it fades into black space. 1 = on, 0 = the game\'s nebula as painted (default). Stars, planets '
+          'and suns are not touched.', builtin='0', requires=('taa', 'hdr'), since='2026-11-05'),
+    entry('sky_nebula_deband_threshold', 'float', 'graphics', 'How large a brightness step the nebula smoothing still '
+          'treats as a band (sky_nebula_deband = 1), 1 to 16 in 1/255 steps; 6 = the default. Larger smooths more and may '
+          'soften faint filaments; smaller keeps more detail and more bands.', builtin='6', range=(1.0, 16.0),
+          requires=('sky_nebula_deband',), since='2026-11-05'),
+    entry('sky_nebula_deband_radius', 'float', 'graphics', 'How far the nebula smoothing looks for the next band, in '
+          'texels of the nebula texture (sky_nebula_deband = 1), 2 to 32; 12 = the default.', builtin='12',
+          range=(2.0, 32.0), requires=('sky_nebula_deband',), since='2026-11-05'),
+    dev('sky_nebula_jitter', 'bool', 'graphics', 'Sky nebula deband: 1 = the smoothed nebula follows the TAA jitter like '
+        'the stars (default), 0 = drawn unjittered as the game does.', builtin='1', requires=('sky_nebula_deband',),
+        since='2026-11-05'),
     # ---------------------------------------------------------------- hdr
     entry('hdr', 'bool', 'hdr', 'High dynamic range rendering: lights brighter than white, automatic exposure and a filmic '
           'tone curve. 1 = on, 0 = off (the game\'s original look). Costs some frame rate and video memory.', '1', launcher='--hdr'),
