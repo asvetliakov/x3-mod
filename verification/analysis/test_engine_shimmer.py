@@ -18,6 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/config'))
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # source_text under PYTHONPATH=verification/probe
+sys.path.insert(0, str(ROOT))  # verification.analysis
 import schema  # noqa: E402
 from source_text import source_text  # noqa: E402
 from verification.analysis.test_config_schema import hermetic_launcher, launch_env  # noqa: E402
@@ -305,8 +307,9 @@ class Options(unittest.TestCase):
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER"', inc)), 1)
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_PX"', inc)), 1)
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_MAX"', inc)), 1)
-        self.assertIn('shimmer_requested_ = plumes_requested_ && on && px > 0.f && limit > 0;', inc)
-        self.assertIn('&shimmer_stats_, shimmer_max_, &dynamics);', inc)
+        # the plumes' request unchanged; the hull hits' (shields,hull) request the pass too (hull-impact-classes.md 3.8)
+        self.assertIn('shimmer_requested_ = ((plumes_requested_ && limit > 0) || weapon_hull_requested_) && on && px > 0.f;', inc)
+        self.assertIn('&shimmer_stats_,\n                                        plumes_requested_ ? shimmer_max_ : 0u, &dynamics);', inc)
         self.assertIn('dynamics.travel = engine_travel_weight_;', inc)
 
 
@@ -352,7 +355,7 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         self.assertIsNone(r['bottle'])
         self.assertEqual(r['host']['name'], 'native-windows')
         self.assertEqual(r['report']['failed_checks'], [])
-        self.assertEqual(r['report']['check_count'], 43)
+        self.assertEqual(r['report']['check_count'], 51)  # 43 + the hull hits' weapon-rect cases (2026-11-06)
         # The caller's stream 0 tuple (buffer, offset 16, stride 24) survives the pass's restore (native D3D9's Capture
         # keeps a block's recorded stream offset: docs/verification/engine-effects.md, "Native stream offset").
         state = r['report']['state'][0]
@@ -382,7 +385,10 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         self.assertTrue(wine['passed'])
         self.assertEqual(wine['bottle']['name'], 'X3')
         self.assertEqual(wine['report']['failed_checks'], [])
-        self.assertEqual([c[0] for c in wine['report']['checks']], [c[0] for c in self.record['report']['checks']])
+        # the native record's checks are the Wine record's plus the hull hits' weapon-rect cases (2026-11-06, native only:
+        # this host has no bottle)
+        native = [c[0] for c in self.record['report']['checks'] if not c[0].startswith('weapon_rect_')]
+        self.assertEqual([c[0] for c in wine['report']['checks']], native)
 
 
 if __name__ == '__main__':

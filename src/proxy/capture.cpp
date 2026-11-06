@@ -2080,7 +2080,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[28]{};
+        unsigned drops[36]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
@@ -2111,6 +2111,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.bursts_shed = drops[25];
         stage.burst_lod = drops[26];
         stage.hull_ready = drops[27] != 0;
+        stage.hull_streaks = drops[28];
+        stage.hull_chips = drops[29];
+        stage.hull_filaments = drops[30];
+        stage.hull_scorches = drops[31];
+        stage.hull_spots = drops[32];
+        stage.hull_merges = drops[33];
+        stage.hull_shimmer = drops[34];
+        stage.hull_dir_fallback = drops[35];
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();

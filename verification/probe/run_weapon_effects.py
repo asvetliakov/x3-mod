@@ -73,7 +73,12 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/renderer/weapon_glow_vertex_program_inc.h', 'src/renderer/weapon_glow_pixel_program_inc.h',
                       'src/effects/weapon_fireball_vs.hlsl', 'src/effects/weapon_fireball_ps.hlsl',
                       'src/renderer/weapon_fireball_vertex_program_inc.h', 'src/renderer/weapon_fireball_pixel_program_inc.h',
-                      'verification/probe/weapon_effects_hull_cases.h')
+                      'verification/probe/weapon_effects_hull_cases.h',
+                      # the hull-impact classes (docs/architecture/hull-impact-classes.md)
+                      'verification/probe/weapon_effects_class_cases.h', 'src/proxy/engine_shimmer_core.h',
+                      'src/effects/weapon_shape_vs.hlsl', 'src/effects/weapon_ring_ps.hlsl', 'src/effects/weapon_filament_ps.hlsl',
+                      'src/renderer/weapon_shape_vertex_program_inc.h', 'src/renderer/weapon_ring_pixel_program_inc.h',
+                      'src/renderer/weapon_filament_pixel_program_inc.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
@@ -88,6 +93,10 @@ PROGRAMS = {
                            'src/renderer/weapon_fireball_vertex_program_inc.h'),
     'weapon_fireball_ps': ('verification/results/weapon-fireball-pixel-program.json',
                            'src/renderer/weapon_fireball_pixel_program_inc.h'),
+    'weapon_shape_vs': ('verification/results/weapon-shape-vertex-program.json', 'src/renderer/weapon_shape_vertex_program_inc.h'),
+    'weapon_ring_ps': ('verification/results/weapon-ring-pixel-program.json', 'src/renderer/weapon_ring_pixel_program_inc.h'),
+    'weapon_filament_ps': ('verification/results/weapon-filament-pixel-program.json',
+                           'src/renderer/weapon_filament_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -162,7 +171,8 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'HULL', 'HULL_SLOTS', 'HULL_CPU', 'HULL_TIMING')
+            'REFUSED', 'TIMING', 'HULL', 'HULL_SLOTS', 'HULL_CPU', 'HULL_TIMING', 'CLASS', 'CLASS_SLOTS', 'CLASS_CPU',
+            'CLASS_TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -199,8 +209,9 @@ def parse_hook(text):
     suppress = [fields(line) for line in text.splitlines() if line.startswith('SUPPRESS ')]
     drained = [fields(line) for line in text.splitlines() if line.startswith('DRAINED ')]
     hull_mode = [fields(line) for line in text.splitlines() if line.startswith('HULL_MODE ')]
+    hull_class = [fields(line) for line in text.splitlines() if line.startswith('HULL_CLASS ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
-            'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode,
+            'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode, 'hull_class': hull_class,
             'event_cost': cost[-1] if cost else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -225,6 +236,7 @@ def run_hook(args, results):
     record['suppress'] = report['suppress']
     record['drained'] = report['drained']
     record['hull_mode'] = report['hull_mode']
+    record['hull_class'] = report['hull_class']
     record['event_cost'] = report['event_cost']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
@@ -290,7 +302,8 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing', 'hull', 'hull_slots', 'hull_cpu', 'hull_timing')}
+                                                 'refused', 'timing', 'hull', 'hull_slots', 'hull_cpu', 'hull_timing',
+                                                 'class', 'class_slots', 'class_cpu', 'class_timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

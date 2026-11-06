@@ -1207,7 +1207,7 @@ public:
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[28]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
+                                   unsigned drops[36]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
                                                                  // faces_culled, area_dropped, bubbles,
                                                                  // bubble_fallback, the walks (run, failed, held,
                                                                  // deferred), bubble_clamped; the hull hit's (13..20):
@@ -2246,6 +2246,12 @@ private:
     // (the ownership Present latches for the hooks), the lane the callback borrows, the callback the stage chains after
     // (the plumes' or the own sun's), and the frame's figures for weapon_effects_frame.
     bool weapon_requested_ = false, weapon_attach_failed_ = false, weapon_failed_out_ = false, weapon_armed_ = false;
+    // shields,hull requested (the engine shimmer pass then exists without the plumes: hull-impact-classes.md 3.8) and the
+    // frame's hull-hit shimmer rects (view space; the weapon stage's, read by run_engine_shimmer that frame).
+    bool weapon_hull_requested_ = false;
+    engine_shimmer::WeaponRequest weapon_shimmer_rects_[engine_shimmer::weapon_max_rects]{};
+    unsigned weapon_shimmer_count_ = 0;
+    std::uint64_t weapon_shimmer_frame_ = ~std::uint64_t(0);
     bool weapon_state_logged_ = false, weapon_logged_armed_ = false;
     // This frame's ownership inputs (core::stage_owned): the callback was set, it ran and returned S_OK / S_FALSE, and the
     // latch they give after the resolve.
@@ -2260,10 +2266,12 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    unsigned weapon_drops_[27]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
+    unsigned weapon_drops_[36]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
                                   // area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures, held, deferred,
                                   // clamped; HullCounts hits, flashes, sparks, glows, embers, shed, orphans, floored,
-                                  // owners_dropped, capped, bursts, rings, bursts_shed, the burst LOD frames
+                                  // owners_dropped, capped, bursts, rings, bursts_shed, the burst LOD frames; 28..35
+                                  // the classes' streaks, chips, filaments, scorches, spots, merges, shimmer rects and
+                                  // the jet classes' records without Event::dir (27 unused: the take's hull latch)
                                  // since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
@@ -2282,6 +2290,7 @@ private:
     bool shimmer_requested_ = false, shimmer_attach_failed_ = false, shimmer_failed_ = false;
     float shimmer_px_ = engine_shimmer::default_px;
     unsigned shimmer_max_ = engine_shimmer::default_max; // X3M_ENGINE_SHIMMER_MAX, 0..16
+    unsigned shimmer_weapon_rects_ = 0; // this frame's hull-hit rects after the engines' (the engine_shimmer row)
     std::unique_ptr<renderer::EngineShimmerPass> shimmer_;
     renderer::EngineShimmerReport shimmer_report_{};
     engine_shimmer::Stats shimmer_stats_{};

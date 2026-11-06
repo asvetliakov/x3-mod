@@ -32,15 +32,19 @@ void MotionOutput::configure_engine_shimmer() noexcept {
     if (!max_ok) limit = engine_shimmer::default_max;
     shimmer_px_ = px;
     shimmer_max_ = limit;
-    shimmer_requested_ = plumes_requested_ && on && px > 0.f && limit > 0;
+    // Requested with the plumes (their rects past engine_shimmer_max 0 none), or with the hull hits in shields,hull
+    // mode (hull-impact-classes.md 3.8: the pass exists whenever hull effects are armed and takes their rects on any
+    // frame; the plumes' frames unchanged when none is queued).
+    shimmer_requested_ = ((plumes_requested_ && limit > 0) || weapon_hull_requested_) && on && px > 0.f;
     shimmer_attach_failed_ = shimmer_failed_ = false;
     shimmer_frame_ = ~std::uint64_t(0);
-    if (plumes_requested_ || n || pn || mn)
-        log("engine_shimmer_config requested=%u plumes=%u setting=%s status=%s px=%.3f px_setting=%s px_status=%s max=%u max_setting=%s max_status=%s gate_px=%.0f",
+    if (plumes_requested_ || weapon_hull_requested_ || n || pn || mn)
+        log("engine_shimmer_config requested=%u plumes=%u setting=%s status=%s px=%.3f px_setting=%s px_status=%s max=%u max_setting=%s max_status=%s gate_px=%.0f weapon_hull=%u weapon_max=%u",
             unsigned(shimmer_requested_), unsigned(plumes_requested_), n ? shown : "-",
             ok ? "ok" : n >= 16 ? "too_long" : "invalid_setting", double(px), pn ? px_shown : "-",
             px_ok ? "ok" : pn >= 16 ? "too_long" : "invalid_setting", limit, mn ? max_shown : "-",
-            max_ok ? "ok" : mn >= 16 ? "too_long" : "invalid_setting", double(engine_shimmer::gate_px));
+            max_ok ? "ok" : mn >= 16 ? "too_long" : "invalid_setting", double(engine_shimmer::gate_px),
+            unsigned(weapon_hull_requested_), weapon_hull_requested_ ? engine_shimmer::weapon_max_rects : 0u);
     SetLastError(error);
 }
 // Attached once per device at the first frame with rects (inside the resolve's taa_call: its reference accounting
@@ -116,11 +120,14 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     shimmer_report_ = {};
     shimmer_stats_ = {};
     shimmer_us_ = 0.f;
-    // Only while the plume stage drew this frame (the producer is on screen) and not failed until Reset; the
-    // engine_shimmer row's skipped= says which.
+    // While the plume stage drew this frame (the producer is on screen) or the weapon stage queued hull-hit rects this
+    // frame, and not failed until Reset; the engine_shimmer row's skipped= says which. With no weapon rect queued the
+    // plumes' path below is the one it always was.
+    shimmer_weapon_rects_ = 0;
+    const bool plumes = plumes_armed_ && plumes_ran_ && plumes_report_.drew && engine_ring_ && engine_ring_->count;
+    const bool weapons = weapon_hull_requested_ && weapon_shimmer_frame_ == frame_ && weapon_shimmer_count_ > 0;
     const char* idle = shimmer_failed_ || shimmer_attach_failed_        ? "failed"
-                       : !plumes_armed_ || !plumes_ran_ || !plumes_report_.drew || !engine_ring_ || !engine_ring_->count
-                           ? "no_plumes"
+                       : !plumes && !weapons                             ? "no_plumes"
                        : !output || !output_surface || !width || !height ? "output"
                        : !camera_scene_.valid                            ? "camera"
                                                                          : nullptr;
@@ -157,26 +164,67 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     if (!(view.near_z > 0.f) || !(view.near_z < 1e30f)) view.near_z = -projection_default_m32 / projection_default_m22;
     std::uint32_t scene_camera = 0;
     engine_plumes::ViewRule rule = engine_plumes::ViewRule::none;
-    if (!engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene, engine_ring_->own, engine_ring_->count,
-                                          &scene_camera, &rule)) {
+    const bool scene_view = plumes && engine_plumes::scene_view_camera(engine_ring_->camera, engine_ring_->scene,
+                                                                        engine_ring_->own, engine_ring_->count,
+                                                                        &scene_camera, &rule);
+    if (!scene_view && !weapons) {
         shimmer_report_.skipped = "no_scene_view";
         idle_engine_shimmer();
         return;
     }
-    engine_plumes::ViewFilter filter{};
-    filter.camera = engine_ring_->camera;
-    filter.scene = engine_ring_->scene;
-    filter.handle = scene_camera;
     float seconds = 0.f;
     engine_clock_.wrapped(&seconds);
-    engine_plumes::Dynamics dynamics{};
-    dynamics.flow = engine_flow_.nozzle_widths;
-    dynamics.travel = engine_travel_weight_;
-    dynamics.transients = engine_transients_.get(); // read only: each rect's nozzle phase as the stage advanced it
-    const unsigned count = engine_shimmer::collect(engine_ring_->records, engine_ring_->count, &engine_plumes_body, view,
-                                                   projection, plumes_preset_, seconds, &filter, &plumes_look_,
-                                                   &plumes_tables_, engine_ring_->parent_radius, shimmer_rects_,
-                                                   &shimmer_stats_, shimmer_max_, &dynamics);
+    unsigned count = 0;
+    if (scene_view) {
+        engine_plumes::ViewFilter filter{};
+        filter.camera = engine_ring_->camera;
+        filter.scene = engine_ring_->scene;
+        filter.handle = scene_camera;
+        engine_plumes::Dynamics dynamics{};
+        dynamics.flow = engine_flow_.nozzle_widths;
+        dynamics.travel = engine_travel_weight_;
+        dynamics.transients = engine_transients_.get(); // read only: each rect's nozzle phase as the stage advanced it
+        count = engine_shimmer::collect(engine_ring_->records, engine_ring_->count, &engine_plumes_body, view, projection,
+                                        plumes_preset_, seconds, &filter, &plumes_look_, &plumes_tables_,
+                                        engine_ring_->parent_radius, shimmer_rects_, &shimmer_stats_,
+                                        plumes_requested_ ? shimmer_max_ : 0u, &dynamics);
+    }
+    // The hull hits' rects after the engines' (hull-impact-classes.md 3.8; at most shimmer_max, the engines keep
+    // priority within max_rects): each a square of its side about the hit along the shot's projection (the screen's x
+    // without one), occluded by a scene nearer than the hit less half its side, at its strength.
+    for (unsigned i = 0; weapons && i < weapon_shimmer_count_ && count < engine_shimmer::max_rects; ++i) {
+        const engine_shimmer::WeaponRequest& w = weapon_shimmer_rects_[i];
+        if (!(w.centre[2] > view.near_z) || !(w.size > 0.f)) continue;
+        float o[2], tip[2], axis[2] = {1.f, 0.f};
+        engine_shimmer::detail::project(projection, w.centre, o);
+        if (w.has_axis) {
+            const float q[3] = {w.centre[0] + w.axis[0] * w.size, w.centre[1] + w.axis[1] * w.size,
+                                w.centre[2] + w.axis[2] * w.size};
+            if (q[2] > view.near_z) {
+                engine_shimmer::detail::project(projection, q, tip);
+                const float dx = tip[0] - o[0], dy = tip[1] - o[1], l2 = dx * dx + dy * dy;
+                if (l2 > 1e-6f) {
+                    const float inv = 1.f / scalar::sqrt(l2);
+                    axis[0] = dx * inv;
+                    axis[1] = dy * inv;
+                }
+            }
+        }
+        const float size_px = w.size * projection.m00 * .5f * float(width) / w.centre[2];
+        float z_near = w.centre[2] - .5f * w.size;
+        if (z_near < view.near_z) z_near = view.near_z;
+        float z_full = z_near - .25f * w.size;
+        if (z_full < view.near_z) z_full = view.near_z;
+        float depth = projection.m22 + projection.m32 / z_near;
+        depth = depth > 0.f && depth < 1.f && projection.m32 < 0.f ? depth : 0.f;
+        const float span = depth - (projection.m22 + projection.m32 / z_full);
+        const float fade = span > 1e-7f ? 1.f / span : 1e7f;
+        if (engine_shimmer::weapon_rect(o, axis, size_px, w.seed, depth, fade, w.strength, float(width), float(height),
+                                        &shimmer_rects_[count])) {
+            ++count;
+            ++shimmer_weapon_rects_;
+        }
+    }
     HRESULT hr = S_FALSE;
     const bool attached = count && attach_engine_shimmer();
     if (!attached) shimmer_report_.skipped = count ? "attach" : "no_rects";
@@ -198,7 +246,14 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
         const std::uint64_t pre = probing ? fixture_shimmer_hash(output) : 0;
 #endif
         if (gpu_sync_) gpu_sync_->begin(gpu_sync_timing::EngineShimmer); // --gpu-sync-timing only (the revert adds)
+        const bool had_scratch = shimmer_->scratch_width() != 0;
         hr = shimmer_->run(f, &shimmer_report_);
+        // The scratch (an FP16 copy at the target's size) recreated after its idle release (review 2026-11-07: the first
+        // plasma or heavy hit after 300 frames without a shimmer pays it): one row each time.
+        if (!had_scratch && shimmer_->scratch_width() && shimmer_scratch_releases_)
+            log("engine_shimmer_scratch device=%llu frame=%llu recreated=1 width=%u height=%u releases=%u engine_rects=%u "
+                "weapon_rects=%u",
+                id_, frame_, width, height, shimmer_scratch_releases_, count - shimmer_weapon_rects_, shimmer_weapon_rects_);
         if (gpu_sync_) gpu_sync_->end(gpu_sync_timing::EngineShimmer);
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
         if (probing && shimmer_report_.drew) {
@@ -222,6 +277,13 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     QueryPerformanceCounter(&end);
     const std::uint64_t frequency = engine_qpc_frequency();
     shimmer_us_ = frequency ? float(double(end.QuadPart - begin.QuadPart) * 1e6 / double(frequency)) : 0.f;
+    // shields,hull mode without the engine census (log_engine_shimmer runs with it): the hull rects' row on a family-row
+    // frame that drew some.
+    if (weapon_hull_requested_ && !engine_census_ && shimmer_weapon_rects_ && family_row())
+        log("engine_shimmer_weapon device=%llu frame=%llu weapon_rects=%u rects=%u drew=%u scissor_px=%u copy_px=%u "
+            "result=%08lx cpu_us=%.1f",
+            id_, frame_, shimmer_weapon_rects_, count, unsigned(shimmer_report_.drew), shimmer_report_.scissor_px,
+            shimmer_report_.copy_px, shimmer_report_.operation, double(shimmer_us_));
 }
 // Before Present (after the write-back, the bloom candidate and the compositor have read the resolved image): the
 // history gets its unshimmered rect back. A failed revert leaves the displaced image in the history: the history
@@ -257,8 +319,9 @@ void MotionOutput::log_engine_shimmer() noexcept {
     const bool ran = shimmer_frame_ == frame_;
     const engine_shimmer::Stats s = ran ? shimmer_stats_ : engine_shimmer::Stats{};
     const renderer::EngineShimmerReport r = ran ? shimmer_report_ : renderer::EngineShimmerReport{};
-    log("engine_shimmer device=%llu frame=%llu failed=%u ran=%u rects=%u candidates=%u small=%u behind=%u refused=%u offscreen=%u capped=%u scissor_px=%u copy_px=%u drew=%u px=%.2f result=%08lx step=%u skipped=%s calls=%u cpu_us=%.1f revert=%08lx revert_us=%.1f stale_reverts=%u scratch=%u scratch_releases=%u",
+    log("engine_shimmer device=%llu frame=%llu failed=%u ran=%u rects=%u weapon_rects=%u candidates=%u small=%u behind=%u refused=%u offscreen=%u capped=%u scissor_px=%u copy_px=%u drew=%u px=%.2f result=%08lx step=%u skipped=%s calls=%u cpu_us=%.1f revert=%08lx revert_us=%.1f stale_reverts=%u scratch=%u scratch_releases=%u",
         id_, frame_, unsigned(shimmer_failed_ || shimmer_attach_failed_), unsigned(ran), s.kept,
+        ran ? shimmer_weapon_rects_ : 0u,
         s.candidates, s.small, s.behind, s.refused, s.offscreen, s.capped, r.scissor_px, r.copy_px, unsigned(r.drew),
         double(shimmer_px_), r.operation, unsigned(r.failed), r.skipped ? r.skipped : ran ? "-" : "no_resolve", r.calls,
         double(ran ? shimmer_us_ : 0.f), shimmer_revert_, double(shimmer_revert_us_), shimmer_stale_reverts_,

@@ -35,31 +35,42 @@
     "src/effects/weapon_fireball_ps.hlsl",
     "src/renderer/weapon_fireball_vertex_program_inc.h",
     "src/renderer/weapon_fireball_pixel_program_inc.h",
-    "verification/probe/weapon_effects_hull_cases.h"
+    "verification/probe/weapon_effects_hull_cases.h",
+    "verification/probe/weapon_effects_class_cases.h",
+    "src/proxy/engine_shimmer_core.h",
+    "src/effects/weapon_shape_vs.hlsl",
+    "src/effects/weapon_ring_ps.hlsl",
+    "src/effects/weapon_filament_ps.hlsl",
+    "src/renderer/weapon_shape_vertex_program_inc.h",
+    "src/renderer/weapon_ring_pixel_program_inc.h",
+    "src/renderer/weapon_filament_pixel_program_inc.h"
   ],
   "source": {
-    "commit": "826d5ebc6ae62c828c72c20901a8535c325a9636-dirty",
+    "commit": "926026c19d0c30ae273938c04db9318a644bff6a-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/effects/weapon_sprite_ps.hlsl",
-      "src/effects/weapon_sprite_vs.hlsl",
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_hull.h",
-      "src/proxy/weapon_effects_stage.h",
-      "src/renderer/weapon_effects_pass.cpp",
-      "src/renderer/weapon_effects_pass.h",
-      "src/renderer/weapon_sprite_pixel_program_inc.h",
-      "src/renderer/weapon_sprite_vertex_program_inc.h",
-      "verification/probe/weapon_effects_hull_cases.h",
       "src/effects/weapon_fireball_ps.hlsl",
       "src/effects/weapon_fireball_vs.hlsl",
+      "src/proxy/engine_shimmer_core.h",
+      "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_hull.h",
+      "src/renderer/weapon_effects_pass.cpp",
+      "src/renderer/weapon_effects_pass.h",
       "src/renderer/weapon_fireball_pixel_program_inc.h",
-      "src/renderer/weapon_fireball_vertex_program_inc.h"
+      "src/renderer/weapon_fireball_vertex_program_inc.h",
+      "verification/probe/weapon_effects_hull_cases.h",
+      "src/effects/weapon_filament_ps.hlsl",
+      "src/effects/weapon_ring_ps.hlsl",
+      "src/effects/weapon_shape_vs.hlsl",
+      "src/renderer/weapon_filament_pixel_program_inc.h",
+      "src/renderer/weapon_ring_pixel_program_inc.h",
+      "src/renderer/weapon_shape_vertex_program_inc.h",
+      "verification/probe/weapon_effects_class_cases.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "0aad580d49357254e7a8bbbf6e3c618659d02dede4b58028dc4b6d6b0b782592",
-      "src/renderer/weapon_effects_pass.cpp": "988f51f4458ee5c0781ea03751748e6926cc9547f0556f40c1fca565d3752fd0",
-      "src/proxy/weapon_effects_core.h": "76de1019630ff0eac3a7dcabf88c7f9477fd646b873812e220f7234aa3481e70",
+      "src/renderer/weapon_effects_pass.h": "2485a9ace781f8a6ac1cf5d9ad3c01751f8212ca332492b0006ffd348c17b6e7",
+      "src/renderer/weapon_effects_pass.cpp": "9016d4ed393d60605598215301273564bc1188f072bcd93b763279bd56109c09",
+      "src/proxy/weapon_effects_core.h": "b44c39166f3e9c557a579ee7e739dd556486cd6c6223c6d6e3658e3d3237e9aa",
       "src/proxy/weapon_effects_stage.h": "709f20faf8621f9a67b7822a0c24907e904d55b2d5ee7cf1c261c4a193a05ed9",
       "src/proxy/weapon_effects_bubble.h": "1c04711082437ba86b78ac9453b1c609c7d388ee1694394b430b02477facc741",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
@@ -78,7 +89,7 @@
       "src/renderer/weapon_shell_pixel_program_inc.h": "40ba2b0582943626c7b3e559d1228d59b003fbea8c13f4e7478763a1fe6223a2",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
-      "src/proxy/weapon_effects_hull.h": "27d6d467c7a42bc6eaffc73ac7d7bed7a98f5f622117c5e966c8fc790b256cc1",
+      "src/proxy/weapon_effects_hull.h": "dfa8a49c7f1b1a7874987b3120c38ad8cd28a324c07182b1f054103b8ee40525",
       "src/effects/weapon_sprite_vs.hlsl": "2d8c4e58059b77618f525c3d2dd092c6d542e10aa6aa4a3532505ad861853324",
       "src/effects/weapon_sprite_ps.hlsl": "2440c9023f42144ed5def613b912b18286d3bbc0d867685eb9bf21cb5c19716b",
       "src/effects/weapon_glow_vs.hlsl": "33fd595188c09c020b325d4ef906e03cd6c565e1db145745eb81b4c754a1ae3c",
@@ -87,11 +98,19 @@
       "src/renderer/weapon_sprite_pixel_program_inc.h": "abf161720ee1d19b048b46a56e787772a9752e602e354a21e13b0dc065428a79",
       "src/renderer/weapon_glow_vertex_program_inc.h": "520bd2569e40436b8f6848596e28efcf0e0f6558595c424891cac237c74d7270",
       "src/renderer/weapon_glow_pixel_program_inc.h": "d075e57e20989b6c67c2907d0d6207350fce85b912db454814ebfc9497155c7d",
-      "src/effects/weapon_fireball_vs.hlsl": "75b7e5783a050d1feee8433e255568a63d31cdc56a7755334a28d49ae5c2b2d6",
-      "src/effects/weapon_fireball_ps.hlsl": "1ea4e2a0f47b26d91a974e04a39bdff706b62804d3b6e176d50583ae1f246761",
-      "src/renderer/weapon_fireball_vertex_program_inc.h": "f25ad5b08464222e4dd7d94fdfbbdecc1ca6c3a7c3507bf49e9e46d5475323d4",
-      "src/renderer/weapon_fireball_pixel_program_inc.h": "c210b0b42d85abf21e7cd85684dad58fafb221d4c3a78d813a49e6662eb2f938",
-      "verification/probe/weapon_effects_hull_cases.h": "74b85074f4672c1af73e1aa101202609653fb10d0ce8a3b960f03231d8953026"
+      "src/effects/weapon_fireball_vs.hlsl": "8b6a73e69011786d35dccc1fb5b578eaa85a35d0e81d26dc305a1c7279e96ca5",
+      "src/effects/weapon_fireball_ps.hlsl": "5654fa3f7a744cba763fff5aafd638e76a572fb878d267bccb700787d37be2fe",
+      "src/renderer/weapon_fireball_vertex_program_inc.h": "a812194efe038a09e9368497ea3bbeddef47fa84d156a076da7fe89e5e9aeacd",
+      "src/renderer/weapon_fireball_pixel_program_inc.h": "09c1dcffafeb4630a499ec9cf7cbf2d7f0a2fe39dc4712aadd819beef0588244",
+      "verification/probe/weapon_effects_hull_cases.h": "8d8e5feafc0d8b06aae3cbd7ed9646b0a11beb0143ce44d64ca174072245d9b6",
+      "verification/probe/weapon_effects_class_cases.h": "6319874be86fc5a5f534a33a515c1ec7054b6ab9331cc2126b789794c23ec2c1",
+      "src/proxy/engine_shimmer_core.h": "e3692ba845f8ba144eaceac2c40b8cb903060dc665ec486fc65f8035b7c78ec7",
+      "src/effects/weapon_shape_vs.hlsl": "ff72dafa8feff66007281d1664e243cf2684255575717c8ca89176a9acd2d824",
+      "src/effects/weapon_ring_ps.hlsl": "ea1fd5f52bcafd2a4325b68f821d6a8489c8d1af068c18b50dded447e19ab716",
+      "src/effects/weapon_filament_ps.hlsl": "8365574b36b4c50f8e2fe18449bd35a1c879c96ee2523aa3fe8f4349b727d243",
+      "src/renderer/weapon_shape_vertex_program_inc.h": "c6be333c4a44270bf56500f3d31706e3e1e64290474229fe56a933149e5b4e21",
+      "src/renderer/weapon_ring_pixel_program_inc.h": "d84e63ce4440766057d9a248deebad31cc3a25f7143ae000f480071300c02acc",
+      "src/renderer/weapon_filament_pixel_program_inc.h": "82637e600e180ad748b08c5e2b93b0f4571fad506e531ec0e2bfda2a50fd04c4"
     }
   },
   "programs": {
@@ -151,14 +170,32 @@
     },
     "weapon_fireball_vs": {
       "source": "src/effects/weapon_fireball_vs.hlsl",
-      "word_count": 83,
-      "bytecode_sha256": "9f0013892b5dbbe24d30b5b953f26ff555c7fbf52b779d0f53d157216be847ae",
+      "word_count": 92,
+      "bytecode_sha256": "1729e9642689d97010c214dcb1c70c5fe3405a786bdd9d22120e87ec78d52a8f",
       "target": "vs_3_0"
     },
     "weapon_fireball_ps": {
       "source": "src/effects/weapon_fireball_ps.hlsl",
-      "word_count": 1290,
-      "bytecode_sha256": "fe404b03f638372d66e4085b7e6b28cec5cc1fafe65f9422cf5ad7192b0b57f6",
+      "word_count": 1316,
+      "bytecode_sha256": "edcec3c52fe36324e1da5bcc5a43fd00c5afbc76ab0a5f384d967778f9144b2c",
+      "target": "ps_3_0"
+    },
+    "weapon_shape_vs": {
+      "source": "src/effects/weapon_shape_vs.hlsl",
+      "word_count": 129,
+      "bytecode_sha256": "391fd7aadbb1905d3f8d49e3856a00aeb407f453ca69bcfb8f5d46bb0b755362",
+      "target": "vs_3_0"
+    },
+    "weapon_ring_ps": {
+      "source": "src/effects/weapon_ring_ps.hlsl",
+      "word_count": 285,
+      "bytecode_sha256": "744092d7f31ee370ab9b19ab418163cd109e069b8932785aba4d4208bbddf9f0",
+      "target": "ps_3_0"
+    },
+    "weapon_filament_ps": {
+      "source": "src/effects/weapon_filament_ps.hlsl",
+      "word_count": 1024,
+      "bytecode_sha256": "154ae2d7e6427aae98311234f4a9df0b6bb8c118985be33c2a68d3ce3a2e5c86",
       "target": "ps_3_0"
     }
   },
@@ -188,12 +225,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -220,13 +257,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a495a6d053a26bbd9/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "4da8a311bc3d84829731f6d2fe8d7c43e9a04e65937db53bacc25aa4c03f35ad"
+    "executable_sha256": "25501789f4d58dc7e2b4bb16ccb551eb6bcace6316456a7553d476a65cb8ae19"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -259,7 +296,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 114,
+      "checks": 154,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -499,11 +536,11 @@
       true
     ],
     [
-      "hull_spark_reach_law_200ms",
+      "hull_spark_reach_law_100ms",
       true
     ],
     [
-      "hull_spark_reach_asymptote_2_7u",
+      "hull_spark_reach_asymptote_energy_1_35u",
       true
     ],
     [
@@ -675,22 +712,6 @@
       true
     ],
     [
-      "hull_heavy_families_ring",
-      true
-    ],
-    [
-      "hull_ring_radius_law_and_tangent_on_narrow_hull",
-      true
-    ],
-    [
-      "hull_ring_station_face_axis",
-      true
-    ],
-    [
-      "hull_compose_no_pop_all_elements",
-      true
-    ],
-    [
       "hull_resolve_burst_survival",
       true
     ],
@@ -704,6 +725,182 @@
     ],
     [
       "hull_budget_20_hits_5120",
+      true
+    ],
+    [
+      "hull_class_programs_attached",
+      true
+    ],
+    [
+      "hull_class_anatomy_round_trip",
+      true
+    ],
+    [
+      "hull_scorch_multiplies_hull_only",
+      true
+    ],
+    [
+      "hull_scorch_store_outlives_record",
+      true
+    ],
+    [
+      "hull_scorch_through_temporal_0px",
+      true
+    ],
+    [
+      "hull_scorch_through_temporal_8px",
+      true
+    ],
+    [
+      "hull_classes_distinct_greyscale",
+      true
+    ],
+    [
+      "hull_energy_puff_grows_cools",
+      true
+    ],
+    [
+      "hull_energy_spatter_4_4k",
+      true
+    ],
+    [
+      "hull_energy_ember_outlasts_flash_10x",
+      true
+    ],
+    [
+      "hull_ballistic_two_spark_lifetimes",
+      true
+    ],
+    [
+      "hull_ballistic_splash_back_bias",
+      true
+    ],
+    [
+      "hull_ballistic_chips_keep_velocity",
+      true
+    ],
+    [
+      "hull_ballistic_no_fireball",
+      true
+    ],
+    [
+      "hull_plasma_bloom_2x_energy",
+      true
+    ],
+    [
+      "hull_plasma_globe_shrinks_reddens",
+      true
+    ],
+    [
+      "hull_plasma_ring_on_surface_not_sky",
+      true
+    ],
+    [
+      "hull_heavy_entry_streak_along_dir",
+      true
+    ],
+    [
+      "hull_heavy_back_jet_cone",
+      true
+    ],
+    [
+      "hull_heavy_exit_jet_emerges_thin_hull",
+      true
+    ],
+    [
+      "hull_heavy_shimmer_rect_submitted",
+      true
+    ],
+    [
+      "hull_beam_hold_relights_not_appends",
+      true
+    ],
+    [
+      "hull_beam_sweep_trail_without_strobe",
+      true
+    ],
+    [
+      "hull_beam_pulse_flash_after_gap",
+      true
+    ],
+    [
+      "hull_ion_filaments_on_surface_rehash",
+      true
+    ],
+    [
+      "hull_ion_no_heat_post_hit",
+      true
+    ],
+    [
+      "hull_missile_debris_two_sets_and_ring",
+      true
+    ],
+    [
+      "hull_beam_on_asteroid_holds",
+      true
+    ],
+    [
+      "hull_repair_relit_per_tick",
+      true
+    ],
+    [
+      "hull_asteroid_no_glow_no_scorch_dim_puff",
+      true
+    ],
+    [
+      "hull_compose_no_pop_per_class",
+      true
+    ],
+    [
+      "hull_min_frames_under_seta6_per_class",
+      true
+    ],
+    [
+      "hull_class_faults_reported_and_recover",
+      true
+    ],
+    [
+      "hull_cpu_64_hits_mixed",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_energy",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_ballistic",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_plasma",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_heavy",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_ion",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_beam",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_missile",
+      true
+    ],
+    [
+      "hull_budget_20_hits_5120_asteroid",
+      true
+    ],
+    [
+      "hull_budget_capital_close_within_8_screens",
+      true
+    ],
+    [
+      "hull_budget_128_plasma_close_within_budget",
       true
     ],
     [
@@ -1224,17 +1421,17 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 9.0,
-        "walk_mean_us": 9.1,
+        "walk_best_us": 8.7,
+        "walk_mean_us": 11.5,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.3,
-        "engine_memory_cold_mean_us": 13.0,
-        "engine_memory_warm_best_us": 11.8,
-        "engine_memory_warm_mean_us": 12.2,
-        "warm_best_us": 38.7,
-        "warm_mean_us": 44.4,
-        "cold_best_us": 48.1,
-        "cold_mean_us": 48.7,
+        "engine_memory_cold_best_us": 12.4,
+        "engine_memory_cold_mean_us": 17.5,
+        "engine_memory_warm_best_us": 11.9,
+        "engine_memory_warm_mean_us": 13.1,
+        "warm_best_us": 39.4,
+        "warm_mean_us": 50.2,
+        "cold_best_us": 48.9,
+        "cold_mean_us": 61.2,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1320,8 +1517,8 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 0.9,
-        "insertion_us": 1.2
+        "heap_us": 0.7,
+        "insertion_us": 2.3
       },
       {
         "case": "ascending",
@@ -1331,7 +1528,7 @@
       {
         "case": "descending",
         "heap_us": 0.6,
-        "insertion_us": 2.4
+        "insertion_us": 3.4
       }
     ],
     "attach_slots": [
@@ -1568,8 +1765,8 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 28.4,
-        "mean_us": 29.7,
+        "best_us": 29.0,
+        "mean_us": 34.1,
         "target_us": 200
       },
       {
@@ -1581,8 +1778,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 87.1,
-        "mean_us": 88.4,
+        "best_us": 93.3,
+        "mean_us": 106.6,
         "target_us": 200
       },
       {
@@ -1594,8 +1791,8 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 13.6,
-        "mean_us": 13.7,
+        "best_us": 13.7,
+        "mean_us": 16.7,
         "target_us": 200
       }
     ],
@@ -1632,10 +1829,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.52,
-        "last_drawn_ms": 473.5,
-        "frames": 20244,
-        "max_frame_ms": 0.417
+        "seta6_wall_ms": 473.54,
+        "last_drawn_ms": 473.49,
+        "frames": 20429,
+        "max_frame_ms": 1.333
       }
     ],
     "retired": [
@@ -1697,7 +1894,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.8
+        "gpu_us": 10.7
       },
       {
         "width": 1920,
@@ -1707,7 +1904,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 15.9
+        "gpu_us": 17.1
       },
       {
         "width": 1920,
@@ -1717,7 +1914,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.0
+        "gpu_us": 18.0
       },
       {
         "width": 1920,
@@ -1727,7 +1924,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 60.9
+        "gpu_us": 61.8
       },
       {
         "width": 1920,
@@ -1737,7 +1934,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 74.3
+        "gpu_us": 76.1
       },
       {
         "width": 1920,
@@ -1747,7 +1944,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 98.2
+        "gpu_us": 100.0
       },
       {
         "width": 1920,
@@ -1757,7 +1954,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 18.7
+        "gpu_us": 19.2
       },
       {
         "width": 1920,
@@ -1767,7 +1964,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 57.4
+        "gpu_us": 58.6
       },
       {
         "width": 1920,
@@ -1777,7 +1974,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 62.0
+        "gpu_us": 62.9
       },
       {
         "width": 1920,
@@ -1787,7 +1984,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 91.8
+        "gpu_us": 93.5
       },
       {
         "width": 1920,
@@ -1797,7 +1994,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.3
+        "gpu_us": 17.1
       },
       {
         "width": 1920,
@@ -1807,7 +2004,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 59.2
+        "gpu_us": 60.3
       },
       {
         "width": 1920,
@@ -1817,7 +2014,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 95.2
+        "gpu_us": 96.1
       },
       {
         "width": 1920,
@@ -1827,7 +2024,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 20.6
+        "gpu_us": 21.4
       },
       {
         "width": 1920,
@@ -1837,7 +2034,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 71.2
+        "gpu_us": 73.1
       },
       {
         "width": 5120,
@@ -1847,7 +2044,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.6
+        "gpu_us": 11.2
       },
       {
         "width": 5120,
@@ -1857,7 +2054,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 21.0
+        "gpu_us": 21.3
       },
       {
         "width": 5120,
@@ -1867,7 +2064,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 22.2
+        "gpu_us": 22.5
       },
       {
         "width": 5120,
@@ -1877,7 +2074,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 176.4
+        "gpu_us": 177.3
       },
       {
         "width": 5120,
@@ -1887,7 +2084,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 227.3
+        "gpu_us": 228.2
       },
       {
         "width": 5120,
@@ -1897,7 +2094,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 363.3
+        "gpu_us": 366.2
       },
       {
         "width": 5120,
@@ -1907,7 +2104,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 33.1
+        "gpu_us": 34.5
       },
       {
         "width": 5120,
@@ -1917,7 +2114,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 158.0
+        "gpu_us": 160.3
       },
       {
         "width": 5120,
@@ -1927,7 +2124,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 177.4
+        "gpu_us": 178.6
       },
       {
         "width": 5120,
@@ -1937,7 +2134,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 289.0
+        "gpu_us": 294.5
       },
       {
         "width": 5120,
@@ -1957,7 +2154,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 174.2
+        "gpu_us": 175.9
       },
       {
         "width": 5120,
@@ -1967,7 +2164,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 337.4
+        "gpu_us": 341.0
       },
       {
         "width": 5120,
@@ -1977,7 +2174,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.5
+        "gpu_us": 52.9
       },
       {
         "width": 5120,
@@ -1987,32 +2184,32 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 255.5
+        "gpu_us": 258.4
       }
     ],
     "hull": [
       {
         "case": "placement",
-        "sparks": 16,
-        "spark_lit": 1493,
-        "spark_centroid_err_u": 0.0098,
-        "quad_centroid_err_u": 0.0108,
+        "sparks": 7,
+        "spark_lit": 934,
+        "spark_centroid_err_u": 0.0173,
+        "quad_centroid_err_u": 0.0056,
         "flashes": 1,
-        "flash_lit": 5957,
+        "flash_lit": 22773,
         "flash_centroid_err_rhit": 0.0
       },
       {
         "case": "half_hidden",
-        "k0_share": 0.5186,
-        "k05_share": 0.5106,
-        "k1_share": 0.4807,
-        "k0_px": "6744/11536",
-        "k0_px_share": 0.5846,
-        "k05_px": "10434/16323",
-        "k05_px_share": 0.6392,
-        "k1_px": "13444/22375",
-        "k1_px_share": 0.6008,
-        "cpu_share": "0.5167,0.5106,0.4842",
+        "k0_share": 0.5343,
+        "k05_share": 0.5291,
+        "k1_share": 0.5017,
+        "k0_px": "10975/17739",
+        "k0_px_share": 0.6187,
+        "k05_px": "15007/23327",
+        "k05_px_share": 0.6433,
+        "k1_px": "20788/32852",
+        "k1_px_share": 0.6328,
+        "cpu_share": "0.5424,0.5266,0.5058",
         "crossing": "0,0,0",
         "seq": "695,704,713"
       },
@@ -2037,9 +2234,9 @@
       },
       {
         "case": "cooling",
-        "life_ms": 180.6,
+        "life_ms": 108.3,
         "half_T": 0.502,
-        "drawn_g_over_r": 0.4234,
+        "drawn_g_over_r": 0.4236,
         "want_g_over_r": 0.4219
       },
       {
@@ -2051,84 +2248,84 @@
         "tier": "fighter",
         "k": 0.0,
         "calibre": 0.0,
-        "sparks": 7,
-        "want": 7,
-        "flash_r": 5.25,
+        "sparks": 3,
+        "want": 3,
+        "flash_r": 10.5,
         "r_hit": 10.5,
         "glow_R": 31.5,
-        "ember_R": 6.3,
-        "width": 1.1353,
-        "reach_mean_u": 1.1297,
-        "law_mean_u": 1.1297,
+        "ember_R": 8.4,
+        "width": 1.2141,
+        "reach_mean_u": 0.2451,
+        "law_mean_u": 0.2451,
+        "early": 3,
+        "late": 0
+      },
+      {
+        "case": "law",
+        "tier": "fighter",
+        "k": 0.5,
+        "calibre": 0.5,
+        "sparks": 7,
+        "want": 7,
+        "flash_r": 20.25,
+        "r_hit": 20.25,
+        "glow_R": 60.75,
+        "ember_R": 16.2,
+        "width": 1.0941,
+        "reach_mean_u": 0.2907,
+        "law_mean_u": 0.2907,
         "early": 7,
         "late": 0
       },
       {
         "case": "law",
         "tier": "fighter",
-        "k": 0.5,
-        "calibre": 0.5,
-        "sparks": 17,
-        "want": 17,
-        "flash_r": 10.125,
-        "r_hit": 20.25,
-        "glow_R": 60.75,
-        "ember_R": 12.15,
-        "width": 1.3959,
-        "reach_mean_u": 1.0341,
-        "law_mean_u": 1.0341,
-        "early": 17,
-        "late": 0
-      },
-      {
-        "case": "law",
-        "tier": "fighter",
         "k": 1.0,
         "calibre": 1.0,
-        "sparks": 22,
-        "want": 22,
-        "flash_r": 15.0,
-        "r_hit": 30.0,
-        "glow_R": 90.0,
-        "ember_R": 18.0,
-        "width": 1.1616,
-        "reach_mean_u": 0.937,
-        "law_mean_u": 0.937,
-        "early": 22,
-        "late": 0
-      },
-      {
-        "case": "law",
-        "tier": "corvette",
-        "k": 0.0,
-        "calibre": 0.0,
         "sparks": 9,
         "want": 9,
-        "flash_r": 10.5,
-        "r_hit": 21.0,
-        "glow_R": 63.0,
-        "ember_R": 12.6,
-        "width": 2.6194,
-        "reach_mean_u": 0.8861,
-        "law_mean_u": 0.8861,
+        "flash_r": 30.0,
+        "r_hit": 30.0,
+        "glow_R": 90.0,
+        "ember_R": 24.0,
+        "width": 1.3434,
+        "reach_mean_u": 0.2577,
+        "law_mean_u": 0.2577,
         "early": 9,
         "late": 0
       },
       {
         "case": "law",
         "tier": "corvette",
+        "k": 0.0,
+        "calibre": 0.0,
+        "sparks": 4,
+        "want": 4,
+        "flash_r": 21.0,
+        "r_hit": 21.0,
+        "glow_R": 63.0,
+        "ember_R": 16.8,
+        "width": 2.3719,
+        "reach_mean_u": 0.2279,
+        "law_mean_u": 0.2279,
+        "early": 4,
+        "late": 0
+      },
+      {
+        "case": "law",
+        "tier": "corvette",
         "k": 0.5,
         "calibre": 0.5,
-        "sparks": 16,
-        "want": 16,
-        "flash_r": 20.25,
+        "sparks": 8,
+        "want": 8,
+        "flash_r": 40.5,
         "r_hit": 40.5,
         "glow_R": 121.5,
-        "ember_R": 24.3,
-        "width": 2.8294,
-        "reach_mean_u": 0.935,
-        "law_mean_u": 0.935,
-        "early": 16,
+        "ember_R": 32.4,
+        "width": 2.3006,
+        "reach_mean_u": 0.2834,
+        "law_mean_u": 0.2834,
+        "early": 8,
         "late": 0
       },
       {
@@ -2136,16 +2333,16 @@
         "tier": "corvette",
         "k": 1.0,
         "calibre": 1.0,
-        "sparks": 19,
-        "want": 19,
-        "flash_r": 30.0,
+        "sparks": 8,
+        "want": 8,
+        "flash_r": 60.0,
         "r_hit": 60.0,
         "glow_R": 180.0,
-        "ember_R": 36.0,
-        "width": 2.3644,
-        "reach_mean_u": 0.9712,
-        "law_mean_u": 0.9712,
-        "early": 19,
+        "ember_R": 48.0,
+        "width": 2.3344,
+        "reach_mean_u": 0.2522,
+        "law_mean_u": 0.2522,
+        "early": 8,
         "late": 0
       },
       {
@@ -2153,16 +2350,16 @@
         "tier": "capital",
         "k": 0.0,
         "calibre": 0.0,
-        "sparks": 6,
-        "want": 6,
-        "flash_r": 28.0,
+        "sparks": 5,
+        "want": 5,
+        "flash_r": 56.0,
         "r_hit": 56.0,
         "glow_R": 168.0,
-        "ember_R": 33.6,
-        "width": 5.185,
-        "reach_mean_u": 0.874,
-        "law_mean_u": 0.874,
-        "early": 6,
+        "ember_R": 44.8,
+        "width": 6.215,
+        "reach_mean_u": 0.2753,
+        "law_mean_u": 0.2752,
+        "early": 5,
         "late": 0
       },
       {
@@ -2170,16 +2367,16 @@
         "tier": "capital",
         "k": 0.5,
         "calibre": 0.5,
-        "sparks": 11,
-        "want": 11,
-        "flash_r": 54.0,
+        "sparks": 6,
+        "want": 6,
+        "flash_r": 108.0,
         "r_hit": 108.0,
         "glow_R": 324.0,
-        "ember_R": 64.8,
-        "width": 5.235,
-        "reach_mean_u": 0.8838,
-        "law_mean_u": 0.8838,
-        "early": 11,
+        "ember_R": 86.4,
+        "width": 5.885,
+        "reach_mean_u": 0.2318,
+        "law_mean_u": 0.2318,
+        "early": 6,
         "late": 0
       },
       {
@@ -2187,27 +2384,27 @@
         "tier": "capital",
         "k": 1.0,
         "calibre": 1.0,
-        "sparks": 26,
-        "want": 26,
-        "flash_r": 80.0,
+        "sparks": 7,
+        "want": 7,
+        "flash_r": 160.0,
         "r_hit": 160.0,
         "glow_R": 480.0,
-        "ember_R": 96.0,
-        "width": 5.815,
-        "reach_mean_u": 0.946,
-        "law_mean_u": 0.946,
-        "early": 26,
+        "ember_R": 128.0,
+        "width": 6.145,
+        "reach_mean_u": 0.2595,
+        "law_mean_u": 0.2595,
+        "early": 7,
         "late": 0
       },
       {
         "case": "reach_asymptote",
-        "v0_tau_u": 2.7
+        "v0_tau_u": 1.35
       },
       {
         "case": "floors_2km",
-        "sparks": 18,
+        "sparks": 4,
         "min_width_px": 3.0,
-        "min_length_px": 14.447,
+        "min_length_px": 16.228,
         "min_length_over_len_x_px": 24.0,
         "flash_core_px": 3.012
       },
@@ -2215,11 +2412,11 @@
         "case": "min_frames",
         "seta6_flash_frames": 3,
         "seta10_flash_frames": 3,
-        "ember_life_ms": 1185.2,
-        "ember_frames": 12,
-        "ember_last_age_ms": 1100,
-        "seta6_wall_ms": 200.0,
-        "expected_wall_ms": 197.53
+        "ember_life_ms": 1644.4,
+        "ember_frames": 17,
+        "ember_last_age_ms": 1600,
+        "seta6_wall_ms": 283.33,
+        "expected_wall_ms": 274.07
       },
       {
         "case": "no_pop_12hps",
@@ -2259,66 +2456,70 @@
       {
         "case": "far_side",
         "far_sum": 0.0,
-        "near_flash_on_hull": 6398.7991,
-        "near_flash_on_sky": 6398.7991,
+        "near_flash_on_hull": 8969.7667,
+        "near_flash_on_sky": 8970.1208,
         "ratio": 1.0
       },
       {
         "case": "chase_nose",
         "age_ms": 200,
-        "sparks": 12,
-        "lit": 3127,
-        "outside_lit": 3127
+        "energy_sparks": 1,
+        "energy_puffs": 1,
+        "energy_lit": 21341,
+        "energy_outside_lit": 21341,
+        "ballistic_sparks": 10,
+        "ballistic_lit": 528,
+        "ballistic_outside_lit": 528
       },
       {
         "case": "spark_visibility",
         "subject": "fighter_chase_nose",
         "age_ms": 100,
-        "sparks": 16,
-        "lit": 1019,
-        "width_px": 10.06,
-        "rest_px": 36.58,
-        "peak_luma": 10.836,
-        "sum_luma": 2587.0
+        "sparks": 3,
+        "lit": 0,
+        "width_px": 10.91,
+        "rest_px": 32.49,
+        "peak_luma": 0.0,
+        "sum_luma": 0.0
       },
       {
         "case": "spark_visibility",
         "subject": "fighter_chase_nose",
         "age_ms": 200,
+        "sparks": 1,
+        "lit": 0,
+        "width_px": 9.28,
+        "rest_px": 42.55,
+        "peak_luma": 0.0,
+        "sum_luma": 0.0
+      },
+      {
+        "case": "spark_visibility",
+        "subject": "capital_ppc_300m",
+        "age_ms": 100,
         "sparks": 8,
-        "lit": 1096,
-        "width_px": 10.54,
-        "rest_px": 29.29,
-        "peak_luma": 2.865,
-        "sum_luma": 1122.7
-      },
-      {
-        "case": "spark_visibility",
-        "subject": "capital_ppc_300m",
-        "age_ms": 100,
-        "sparks": 22,
-        "lit": 1687,
-        "width_px": 6.38,
-        "rest_px": 27.41,
-        "peak_luma": 36.531,
-        "sum_luma": 6359.2
+        "lit": 461,
+        "width_px": 6.43,
+        "rest_px": 22.9,
+        "peak_luma": 10.648,
+        "sum_luma": 1085.6
       },
       {
         "case": "spark_visibility",
         "subject": "capital_ppc_300m",
         "age_ms": 200,
-        "sparks": 14,
-        "lit": 1417,
-        "width_px": 6.35,
-        "rest_px": 24.38,
-        "peak_luma": 4.285,
-        "sum_luma": 1964.7
+        "sparks": 4,
+        "lit": 674,
+        "width_px": 6.79,
+        "rest_px": 23.4,
+        "peak_luma": 0.72,
+        "sum_luma": 116.4
       },
       {
         "case": "cockpit",
-        "chase": 67838.3834,
-        "own_cockpit": 23743.4008,
-        "other_cockpit": 67838.3834,
+        "chase": 71674.6744,
+        "own_cockpit": 25085.9614,
+        "other_cockpit": 71674.6744,
         "own_ratio": 0.35,
         "other_ratio": 1.0,
         "gain": 0.35
@@ -2332,15 +2533,15 @@
         "repair_glow_rgb": "0.029,1.000,0.029",
         "tug_glows": 1,
         "tug_embers": 0,
-        "tug_R": 37.35,
-        "missile_sparks": 27,
-        "missile_want": 27,
+        "tug_R": 24.9,
+        "missile_sparks": 37,
+        "missile_want": 37,
         "missile_halo_g": 0.4,
         "missile_tint_g": 0.4,
-        "asteroid_sparks": 22,
-        "asteroid_want": 22,
+        "asteroid_sparks": 27,
+        "asteroid_want": 27,
         "asteroid_flashes": 0,
-        "asteroid_rgb": "0.729,0.227,0.059"
+        "asteroid_rgb": "0.639,0.165,0.043"
       },
       {
         "case": "velocity",
@@ -2352,7 +2553,7 @@
         "case": "orphan",
         "orphans": 2,
         "retired": 1,
-        "sparks": 31,
+        "sparks": 11,
         "flashes": 0,
         "glows": 0,
         "embers": 0,
@@ -2362,41 +2563,42 @@
         "case": "velocity_first_hit",
         "v": 1250.0,
         "want": 1250.0,
-        "sparks": 19,
-        "mean_head_x": 132.511,
-        "expected_x": 132.511,
+        "sparks": 7,
+        "mean_head_x": 131.783,
+        "expected_x": 131.783,
         "owner_x": 145.0
       },
       {
         "case": "budget",
         "boxes": 24,
-        "screens": 13.098,
+        "screens": 19.084,
         "tight_boxes": 0,
         "tight_shed": 24,
-        "tight_screens": 0.281,
-        "sparks": 303,
-        "tight_sparks": 303,
+        "tight_screens": 0.49,
+        "tight_flash_screens": 0.49,
+        "sparks": 97,
+        "tight_sparks": 97,
         "own_boxes": 24,
         "own_shed": 0
       },
       {
         "case": "budget_bursts",
         "bursts": 12,
-        "burst_screens": 5.806,
+        "burst_screens": 1.728,
         "octaves": 2,
         "tight_bursts": 12,
-        "tight_bursts_shed": 11,
+        "tight_bursts_shed": 12,
         "tight_octaves": 1,
         "own_bursts": 12,
         "own_bursts_shed": 0,
-        "rings": 12,
-        "tight_rings": 12
+        "rings": 0,
+        "tight_rings": 0
       },
       {
         "case": "r32f_lane",
-        "four_channel": 28605.0152,
-        "r32f": 28604.7721,
-        "ratio": 0.99999
+        "four_channel": 37335.1416,
+        "r32f": 37335.1474,
+        "ratio": 1.0
       },
       {
         "case": "resolve",
@@ -2432,142 +2634,82 @@
       {
         "case": "burst_radius",
         "age_frac": 0.1,
-        "age_ms": 29,
-        "life_ms": 285.9,
-        "R_view": 12.4852,
-        "law_view": 12.4852,
+        "age_ms": 37,
+        "life_ms": 366.0,
+        "R_view": 8.3033,
+        "law_view": 8.3033,
         "r_hit": 16.934,
-        "R_px": 63.9,
-        "lit_extent_px": 64.6,
-        "extent_over_R": 1.0105,
-        "T": 0.8986,
-        "lit": 12703
+        "R_px": 42.5,
+        "lit_extent_px": 43.2,
+        "extent_over_R": 1.0151,
+        "T": 0.8989,
+        "lit": 5609
       },
       {
         "case": "burst_radius",
         "age_frac": 0.3,
-        "age_ms": 86,
-        "life_ms": 285.9,
-        "R_view": 21.983,
-        "law_view": 21.983,
+        "age_ms": 110,
+        "life_ms": 366.0,
+        "R_view": 14.651,
+        "law_view": 14.651,
         "r_hit": 16.934,
-        "R_px": 112.6,
-        "lit_extent_px": 113.4,
-        "extent_over_R": 1.0073,
-        "T": 0.6992,
-        "lit": 39333
+        "R_px": 75.0,
+        "lit_extent_px": 75.6,
+        "extent_over_R": 1.0083,
+        "T": 0.6994,
+        "lit": 17378
       },
       {
         "case": "burst_radius",
         "age_frac": 0.6,
-        "age_ms": 172,
-        "life_ms": 285.9,
-        "R_view": 24.9413,
-        "law_view": 24.9413,
+        "age_ms": 220,
+        "life_ms": 366.0,
+        "R_view": 16.6263,
+        "law_view": 16.6263,
         "r_hit": 16.934,
-        "R_px": 127.7,
-        "lit_extent_px": 128.2,
-        "extent_over_R": 1.004,
-        "T": 0.3983,
-        "lit": 45069
+        "R_px": 85.1,
+        "lit_extent_px": 85.4,
+        "extent_over_R": 1.0033,
+        "T": 0.3989,
+        "lit": 21648
       },
       {
         "case": "burst_colour",
         "birth_age_ms": 16,
-        "birth_r": 1.0605,
-        "birth_g_over_r": 0.872,
-        "birth_b_over_r": 0.679,
-        "end_age_ms": 257,
-        "end_r": 0.02806,
+        "birth_r": 1.4033,
+        "birth_g_over_r": 0.881,
+        "birth_b_over_r": 0.702,
+        "end_age_ms": 329,
+        "end_r": 0.02777,
         "end_g_over_r": 0.182,
         "end_b_over_r": 0.055
       },
       {
         "case": "burst_lane",
-        "sky": 7053.299,
-        "at_hit": 4105.274,
+        "sky": 4600.929,
+        "at_hit": 1998.927,
         "in_front": 0.0,
-        "behind": 7053.299,
-        "hit_share": 0.582,
+        "behind": 4600.929,
+        "hit_share": 0.4345,
         "front_share": 0.0,
         "behind_share": 1.0
       },
       {
         "case": "spark_random",
-        "seq_a": 828,
-        "count_a": 21,
-        "drawn_a": 21,
-        "seq_b": 831,
-        "count_b": 13,
-        "drawn_b": 13,
-        "a_in_b_worst_cos": 0.6122,
+        "seq_a": 829,
+        "count_a": 4,
+        "drawn_a": 4,
+        "seq_b": 832,
+        "count_b": 8,
+        "drawn_b": 8,
+        "a_in_b_worst_cos": 0.7899,
         "identical_same_frame": 1,
-        "count": 15,
-        "drawn": 15,
+        "count": 6,
+        "drawn": 6,
         "straight_worst_cos": 1.0,
-        "curled": "2/15",
-        "curl_min_bend_deg_100_250ms": 2.86,
+        "curled": "2/6",
+        "curl_min_bend_deg_100_250ms": -1.0,
         "curl_share_6400": 0.2592
-      },
-      {
-        "case": "ring_narrow",
-        "age_frac": 0.2,
-        "age_ms": 23,
-        "life_ms": 116.2,
-        "rho": 41.324,
-        "want_rho": 41.324,
-        "cos_normal": 1.0,
-        "centre_err_rhit": 0.0,
-        "lit": 9322,
-        "radiance": 1.085,
-        "band": 0.12
-      },
-      {
-        "case": "ring_narrow",
-        "age_frac": 0.5,
-        "age_ms": 58,
-        "life_ms": 116.2,
-        "rho": 104.209,
-        "want_rho": 104.209,
-        "cos_normal": 1.0,
-        "centre_err_rhit": 0.0,
-        "lit": 58732,
-        "radiance": 0.677,
-        "band": 0.12
-      },
-      {
-        "case": "ring_narrow",
-        "age_frac": 0.9,
-        "age_ms": 105,
-        "life_ms": 116.2,
-        "rho": 188.654,
-        "want_rho": 188.654,
-        "cos_normal": 1.0,
-        "centre_err_rhit": 0.0,
-        "lit": 182989,
-        "radiance": 0.13,
-        "band": 0.12
-      },
-      {
-        "case": "ring_normal",
-        "walks": 1,
-        "fallback": 0,
-        "bubble_vs_radial_deg": 27.61
-      },
-      {
-        "case": "ring_station",
-        "rings": 1,
-        "corner_z_spread": 0.0
-      },
-      {
-        "case": "compose_no_pop",
-        "frames": 40,
-        "checked": 240,
-        "violations": 0,
-        "bursts_seen": 13,
-        "rings_seen": 4,
-        "worst_additive_err": 0.0,
-        "additive_bad": 0
       },
       {
         "case": "resolve_burst",
@@ -2583,45 +2725,45 @@
         "sprite_ps": 103,
         "glow_vs": 6,
         "glow_ps": 47,
-        "fireball_vs": 6,
-        "fireball_ps": 309,
+        "fireball_vs": 7,
+        "fireball_ps": 315,
         "sprite_vertex_bytes": 48,
         "glow_vertex_bytes": 40,
-        "fireball_vertex_bytes": 44,
-        "hull_state_bytes": 131088
+        "fireball_vertex_bytes": 60,
+        "hull_state_bytes": 142096
       }
     ],
     "hull_cpu": [
       {
         "case": "capital_64_hits",
         "hits": 64,
-        "sparks": 1328,
+        "sparks": 445,
         "flashes": 64,
         "boxes": 128,
         "bursts": 64,
-        "rings": 64,
-        "best_us": 33.9,
-        "mean_us": 35.12,
+        "rings": 0,
+        "best_us": 18.8,
+        "mean_us": 25.83,
         "target_us": 40
       },
       {
         "case": "capital_64_hits_sparks_only",
-        "best_us": 26.0
+        "best_us": 12.5
       },
       {
         "case": "capital_64_hits_no_sparks",
-        "best_us": 8.8
+        "best_us": 8.6
       },
       {
         "case": "fighter_20_hits",
         "hits": 20,
-        "sparks": 236,
+        "sparks": 100,
         "flashes": 20,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "best_us": 6.9,
-        "mean_us": 6.99,
+        "best_us": 6.0,
+        "mean_us": 6.28,
         "target_us": 40
       }
     ],
@@ -2631,48 +2773,48 @@
         "height": 1080,
         "case": "fighter_60m_20_hits",
         "hits": 20,
-        "sparks": 246,
+        "sparks": 106,
         "flashes": 0,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 0.58,
-        "lit_share": 0.2179,
-        "raster_share": 3.3797,
-        "gpu_us": 90.0
+        "burst_screens": 0.155,
+        "lit_share": 0.2184,
+        "raster_share": 3.1588,
+        "gpu_us": 72.6
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 283,
+        "sparks": 114,
         "flashes": 0,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 0.051,
-        "lit_share": 0.0196,
-        "raster_share": 0.3066,
-        "gpu_us": 35.5
+        "burst_screens": 0.013,
+        "lit_share": 0.0197,
+        "raster_share": 0.2815,
+        "gpu_us": 23.3
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1357,
+        "sparks": 99,
         "flashes": 0,
-        "boxes": 0,
-        "bursts": 51,
+        "boxes": 38,
+        "bursts": 44,
         "rings": 0,
-        "octaves": 1,
-        "burst_screens": 7.659,
+        "octaves": 2,
+        "burst_screens": 4.904,
         "lit_share": 1.0,
-        "raster_share": 10.2848,
-        "gpu_us": 338.1
+        "raster_share": 8.362,
+        "gpu_us": 262.9
       },
       {
         "width": 1920,
@@ -2688,7 +2830,7 @@
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 34.5
+        "gpu_us": 30.8
       },
       {
         "width": 1920,
@@ -2704,7 +2846,7 @@
         "burst_screens": 1.04,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 62.3
+        "gpu_us": 65.1
       },
       {
         "width": 1920,
@@ -2720,55 +2862,55 @@
         "burst_screens": 1.04,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 47.4
+        "gpu_us": 50.9
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "fighter_60m_20_hits",
         "hits": 20,
-        "sparks": 295,
+        "sparks": 114,
         "flashes": 0,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 1.162,
+        "burst_screens": 0.388,
         "lit_share": 0.3569,
-        "raster_share": 6.1304,
-        "gpu_us": 453.5
+        "raster_share": 5.6854,
+        "gpu_us": 369.5
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 263,
+        "sparks": 108,
         "flashes": 0,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 0.103,
-        "lit_share": 0.0393,
-        "raster_share": 0.5946,
-        "gpu_us": 60.9
+        "burst_screens": 0.025,
+        "lit_share": 0.0394,
+        "raster_share": 0.5555,
+        "gpu_us": 53.2
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1329,
+        "sparks": 73,
         "flashes": 0,
-        "boxes": 0,
-        "bursts": 39,
+        "boxes": 26,
+        "bursts": 29,
         "rings": 0,
-        "octaves": 1,
-        "burst_screens": 7.558,
+        "octaves": 2,
+        "burst_screens": 4.686,
         "lit_share": 1.0,
-        "raster_share": 10.1812,
-        "gpu_us": 1001.5
+        "raster_share": 8.0555,
+        "gpu_us": 853.6
       },
       {
         "width": 5120,
@@ -2784,7 +2926,7 @@
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 70.7
+        "gpu_us": 71.7
       },
       {
         "width": 5120,
@@ -2800,11 +2942,11 @@
         "burst_screens": 1.04,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 184.9
+        "gpu_us": 193.3
       },
       {
         "case": "burst_alone_fills_frame",
-        "weight": 1.042
+        "weight": 1.089
       },
       {
         "width": 5120,
@@ -2820,11 +2962,1423 @@
         "burst_screens": 1.04,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 136.1
+        "gpu_us": 143.9
       },
       {
         "case": "burst_alone_fills_frame_lod",
-        "weight": 0.767
+        "weight": 0.811
+      }
+    ],
+    "class": [
+      {
+        "case": "anatomy",
+        "name": "energy",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "ballistic",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "plasma",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "heavy",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "ion",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "beam",
+        "picked": 1,
+        "counted": 1,
+        "spots": 1,
+        "hits": 0
+      },
+      {
+        "case": "anatomy",
+        "name": "missile",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "asteroid",
+        "picked": 1,
+        "counted": 1,
+        "spots": 0,
+        "hits": 1
+      },
+      {
+        "case": "anatomy",
+        "name": "repair",
+        "picked": 1,
+        "counted": 1,
+        "spots": 1,
+        "hits": 0
+      },
+      {
+        "case": "anatomy",
+        "name": "tug",
+        "picked": 1,
+        "counted": 1,
+        "spots": 1,
+        "hits": 0
+      },
+      {
+        "case": "scorch_multiply",
+        "seq": 1169,
+        "boxes": 1,
+        "s": 0.3801,
+        "sky_changed": 0,
+        "hull_darkened": 4087,
+        "centre_rgb": "0.7153,0.6963,0.6772",
+        "worst_err": 0.0002
+      },
+      {
+        "case": "scorch_store",
+        "record_live": 0,
+        "scorches_at_6s": 1,
+        "got": 0.16875,
+        "want": 0.16875,
+        "at_L_s": 0,
+        "marks_left": 0,
+        "owner_marks": 16,
+        "oldest_t0": 2010,
+        "first_seq": 1173,
+        "record_life_ms": 3601
+      },
+      {
+        "case": "scorch_temporal",
+        "speed_px": 0,
+        "frames": 16,
+        "centre_ratio": 1.0,
+        "residual_after_8": 0.0
+      },
+      {
+        "case": "scorch_temporal",
+        "speed_px": 8,
+        "frames": 16,
+        "centre_ratio": 1.0,
+        "residual_after_8": 0.0
+      },
+      {
+        "case": "greyscale_lineup",
+        "classes": 9,
+        "min_pair_l1": 0.2108,
+        "pair": "energy,beam"
+      },
+      {
+        "case": "energy_puff",
+        "life_ms": 384.7,
+        "R_b": 16.934,
+        "worst_radius_err": 0.0,
+        "hue_g_over_r": "0.614,0.362,0.182",
+        "anchor_dx": 20.0
+      },
+      {
+        "case": "energy_spatter",
+        "k": 0.0,
+        "sparks": 3,
+        "want": 3,
+        "law": 4.0
+      },
+      {
+        "case": "energy_spatter",
+        "k": 0.5,
+        "sparks": 6,
+        "want": 6,
+        "law": 6.0
+      },
+      {
+        "case": "energy_spatter",
+        "k": 1.0,
+        "sparks": 9,
+        "want": 9,
+        "law": 8.0
+      },
+      {
+        "case": "energy_ember",
+        "life_ms": 1540.8,
+        "flash_ms": 50.0,
+        "peak": 0.48,
+        "at300": 0.3748,
+        "at1500": 0.00044,
+        "after": 0.0
+      },
+      {
+        "case": "ballistic_lifetimes",
+        "fast": "8,0,0",
+        "slow": "6,6,2",
+        "chips": "3,3,3",
+        "fast_at_250": 0,
+        "slow_at_450": 4
+      },
+      {
+        "case": "ballistic_splash_back",
+        "age_ms": 100,
+        "back_share": 0.346,
+        "isotropic_share": 0.0162
+      },
+      {
+        "case": "ballistic_chips",
+        "slow_speed_share_600": 0.2886,
+        "chips_speed_share_600": 0.612,
+        "law": "0.2636,0.5488"
+      },
+      {
+        "case": "ballistic_no_fireball",
+        "puff_r": 0.4,
+        "lit": 5767,
+        "beyond_half_r": 0
+      },
+      {
+        "case": "plasma_bloom",
+        "energy_halo": 16.934,
+        "plasma_halo": 33.868,
+        "ratio": 2.0,
+        "lit_energy": 16613,
+        "lit_plasma": 54401,
+        "lit_radius_ratio": 1.8096
+      },
+      {
+        "case": "plasma_globe",
+        "life_ms": 754.1,
+        "R": "19.725,18.316,13.500",
+        "b_over_r": "0.6537,0.4200,0.3576"
+      },
+      {
+        "case": "plasma_ring",
+        "age_ms": 33,
+        "radius_px": 135.47,
+        "law_px": 134.73
+      },
+      {
+        "case": "plasma_ring",
+        "age_ms": 67,
+        "radius_px": 187.5,
+        "law_px": 186.62
+      },
+      {
+        "case": "plasma_ring",
+        "age_ms": 169,
+        "radius_px": 215.67,
+        "law_px": 215.26
+      },
+      {
+        "case": "plasma_ring_surface",
+        "sky": 0,
+        "lane": 48660,
+        "worst_radius_err": 0.0055
+      },
+      {
+        "case": "heavy_streak",
+        "streaks": 1,
+        "angle_deg": 0.0,
+        "inside": 561.917,
+        "outside": 13951.915,
+        "inside_share": 0.0387
+      },
+      {
+        "case": "heavy_back_jet",
+        "sparks": 248,
+        "within_30": 0.8911,
+        "within_25": 0.4677
+      },
+      {
+        "case": "heavy_exit_jet",
+        "thin_beyond": "0,1217,1211",
+        "thick_beyond": "0,0,0"
+      },
+      {
+        "case": "heavy_shimmer",
+        "at100": 1,
+        "strength100": 0.75,
+        "at401": 0,
+        "of3": 2,
+        "newest_ages_max": 0,
+        "over_budget": 0,
+        "over_budget_shed": 3,
+        "own_over_budget": 2
+      },
+      {
+        "case": "beam_hold",
+        "ticks": 60,
+        "max_spots": 1,
+        "ring_records_left": 0,
+        "flashes_after_first": 0,
+        "core": "4.0000,4.0000",
+        "glow": "0.8500,0.8500"
+      },
+      {
+        "case": "beam_sweep",
+        "ticks": 20,
+        "step_r": 0.3,
+        "marks": 10,
+        "min_gap_r": 0.5994,
+        "max_gap_r": 0.6006,
+        "flashes_after_first": 0
+      },
+      {
+        "case": "beam_pulse",
+        "held_end_flashes": 1,
+        "fallen_flashes": 0,
+        "restart_pulses": 1,
+        "restart_flashes": 1,
+        "second_pulses": 0
+      },
+      {
+        "case": "ion_filaments",
+        "sky": 0,
+        "lane": 5741,
+        "lit": 4700,
+        "jaccard_0_30": 0.9989,
+        "jaccard_0_100": 0.0776,
+        "jaccard_moved": 0.9996
+      },
+      {
+        "case": "ion_no_heat",
+        "glows": 0,
+        "embers": 0,
+        "bursts": 0,
+        "scorches": 0,
+        "marks": 0,
+        "flashes": 1,
+        "filaments": 1,
+        "at600": "0,0,0,0"
+      },
+      {
+        "case": "missile_debris",
+        "table_2x": 1,
+        "fast": 27,
+        "slow": 13,
+        "sparks_first": 30,
+        "rings_50": 1,
+        "slow_lit": 54,
+        "slow_alive": 247,
+        "duty": 0.2186
+      },
+      {
+        "case": "beam_on_asteroid",
+        "ticks": 60,
+        "ring_records": 0,
+        "max_spots": 1,
+        "flashes": 0,
+        "puff_frames": 59,
+        "sparks": 1052
+      },
+      {
+        "case": "repair_relit",
+        "ticks": 60,
+        "one_glow": 1,
+        "glow_g": "1.0000,1.0000"
+      },
+      {
+        "case": "asteroid_dust",
+        "glows": 0,
+        "embers": 0,
+        "marks": 0,
+        "scorches": 0,
+        "flashes": 0,
+        "sparks": 20,
+        "puff_peak": 0.0302
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "energy",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 0.0,
+        "additive_bad": 0,
+        "released": 0,
+        "life_ms": 2401
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "ballistic",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 2e-05,
+        "additive_bad": 0,
+        "released": 1,
+        "life_ms": 1041
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "plasma",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 0.0,
+        "additive_bad": 0,
+        "released": 0,
+        "life_ms": 3601
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "heavy",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 5e-05,
+        "additive_bad": 0,
+        "released": 0,
+        "life_ms": 2401
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "ion",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 0.0,
+        "additive_bad": 0,
+        "released": 1,
+        "life_ms": 601
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "missile",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 1e-05,
+        "additive_bad": 0,
+        "released": 0,
+        "life_ms": 2401
+      },
+      {
+        "case": "compose_no_pop",
+        "class": "asteroid",
+        "frames": 40,
+        "checked": 320,
+        "violations": 0,
+        "worst_additive_err": 5e-05,
+        "additive_bad": 0,
+        "released": 1,
+        "life_ms": 1441
+      },
+      {
+        "case": "min_frames_seta6",
+        "class": "energy",
+        "flash_frames": 3,
+        "streak_frames": 0
+      },
+      {
+        "case": "min_frames_seta6",
+        "class": "ballistic",
+        "flash_frames": 3,
+        "streak_frames": 0
+      },
+      {
+        "case": "min_frames_seta6",
+        "class": "plasma",
+        "flash_frames": 3,
+        "streak_frames": 0
+      },
+      {
+        "case": "min_frames_seta6",
+        "class": "heavy",
+        "flash_frames": 3,
+        "streak_frames": 3
+      },
+      {
+        "case": "min_frames_seta6",
+        "class": "ion",
+        "flash_frames": 3,
+        "streak_frames": 0
+      },
+      {
+        "case": "min_frames_seta6",
+        "class": "missile",
+        "flash_frames": 3,
+        "streak_frames": 0
+      },
+      {
+        "case": "fault",
+        "step": 0,
+        "bad": 80004005,
+        "failed": 11,
+        "good": 0,
+        "drew": 1
+      },
+      {
+        "case": "fault",
+        "step": 1,
+        "bad": 80004005,
+        "failed": 9,
+        "good": 0,
+        "drew": 1
+      },
+      {
+        "case": "fault",
+        "step": 2,
+        "bad": 80004005,
+        "failed": 10,
+        "good": 0,
+        "drew": 1
+      }
+    ],
+    "class_slots": [
+      {
+        "shape_vs": 10,
+        "ring_ps": 51,
+        "filament_ps": 247,
+        "fireball_ps": 315,
+        "scorch_blend": 1,
+        "shape_vertex_bytes": 92,
+        "fireball_vertex_bytes": 60,
+        "hull_state_bytes": 142096,
+        "spot_bytes": 100,
+        "mark_bytes": 36
+      }
+    ],
+    "class_cpu": [
+      {
+        "case": "capital_64_mixed",
+        "hits": 64,
+        "sparks": 1043,
+        "flashes": 64,
+        "boxes": 112,
+        "bursts": 56,
+        "rings": 24,
+        "filaments": 8,
+        "scorches": 16,
+        "streaks": 8,
+        "best_us": 33.0,
+        "mean_us": 46.49,
+        "target_us": 30
+      },
+      {
+        "case": "capital_64_mixed_sparks_only",
+        "best_us": 25.7
+      },
+      {
+        "case": "capital_64_mixed_no_sparks",
+        "best_us": 9.1
+      }
+    ],
+    "class_timing": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "energy",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 105,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.119,
+        "flash_screens": 0.013,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 23.6
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "energy",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 495,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 32,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.95,
+        "flash_screens": 2.761,
+        "shed": 70,
+        "bursts_shed": 22,
+        "scorches_shed": 8,
+        "rings_shed": 0,
+        "gpu_us": 311.0
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "ballistic",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 436,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.028,
+        "flash_screens": 0.002,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 25.8
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "ballistic",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 2042,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 79,
+        "bursts": 24,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 6,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 5.102,
+        "flash_screens": 0.437,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 242.4
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "plasma",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 93,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 20,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.268,
+        "flash_screens": 0.052,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 31.1
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "plasma",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 440,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.923,
+        "flash_screens": 7.923,
+        "shed": 108,
+        "bursts_shed": 22,
+        "scorches_shed": 13,
+        "rings_shed": 52,
+        "gpu_us": 276.3
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "heavy",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 473,
+        "flashes": 20,
+        "streaks": 20,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 20,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.139,
+        "flash_screens": 0.005,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 28.2
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "heavy",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 2048,
+        "flashes": 64,
+        "streaks": 64,
+        "boxes": 42,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.79,
+        "flash_screens": 1.002,
+        "shed": 53,
+        "bursts_shed": 23,
+        "scorches_shed": 8,
+        "rings_shed": 59,
+        "gpu_us": 352.3
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "ion",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 61,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "filaments": 20,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.064,
+        "flash_screens": 0.013,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 21.1
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "ion",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 235,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "filaments": 28,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 7.673,
+        "flash_screens": 2.761,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 283.7
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "beam",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 40,
+        "flashes": 40,
+        "streaks": 0,
+        "boxes": 29,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 20,
+        "octaves": 2,
+        "screens": 0.093,
+        "flash_screens": 0.018,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 22.8
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "beam",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 128,
+        "flashes": 94,
+        "streaks": 0,
+        "boxes": 34,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 64,
+        "octaves": 1,
+        "screens": 7.964,
+        "flash_screens": 3.224,
+        "shed": 44,
+        "bursts_shed": 22,
+        "scorches_shed": 9,
+        "rings_shed": 0,
+        "gpu_us": 304.4
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "missile",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 575,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 20,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.244,
+        "flash_screens": 0.013,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 31.5
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "missile",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 2048,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 23,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.67,
+        "flash_screens": 2.761,
+        "shed": 85,
+        "bursts_shed": 19,
+        "scorches_shed": 13,
+        "rings_shed": 56,
+        "gpu_us": 325.2
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "asteroid",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 367,
+        "flashes": 0,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.0,
+        "flash_screens": 0.0,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 21.9
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "asteroid",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 1553,
+        "flashes": 0,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 22,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.046,
+        "flash_screens": 0.0,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 46.6
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "class": "plasma",
+        "case": "capital_close_128_hits",
+        "flashes": 128,
+        "flashes_shed": 80,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "scorches": 0,
+        "screens": 7.923,
+        "flash_screens": 7.923,
+        "gpu_us": 286.6
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "ring_alone_fills_frame",
+        "rings": 1,
+        "filaments": 0,
+        "scorches": 0,
+        "flashes": 0,
+        "screens": 0.4,
+        "gpu_us": 30.2,
+        "weight": 0.17
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "filament_alone_fills_frame",
+        "rings": 0,
+        "filaments": 1,
+        "scorches": 0,
+        "flashes": 0,
+        "screens": 0.86,
+        "gpu_us": 53.0,
+        "weight": 0.299
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "scorch_alone_fills_frame",
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 1,
+        "flashes": 0,
+        "screens": 0.49,
+        "gpu_us": 30.6,
+        "weight": 0.172
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "flash_alone_fills_frame",
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "flashes": 1,
+        "screens": 0.49,
+        "gpu_us": 31.2,
+        "weight": 0.176
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "energy",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 108,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.238,
+        "flash_screens": 0.026,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 53.7
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "energy",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 480,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 27,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.923,
+        "flash_screens": 2.768,
+        "shed": 61,
+        "bursts_shed": 12,
+        "scorches_shed": 5,
+        "rings_shed": 0,
+        "gpu_us": 1061.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "ballistic",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 423,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.056,
+        "flash_screens": 0.004,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 30.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "ballistic",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 1977,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 56,
+        "bursts": 13,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 4,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 5.184,
+        "flash_screens": 0.439,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 769.9
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "plasma",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 95,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 20,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.541,
+        "flash_screens": 0.104,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 95.0
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "plasma",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 447,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.962,
+        "flash_screens": 7.962,
+        "shed": 95,
+        "bursts_shed": 12,
+        "scorches_shed": 10,
+        "rings_shed": 43,
+        "gpu_us": 945.6
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "heavy",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 501,
+        "flashes": 20,
+        "streaks": 20,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 20,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.281,
+        "flash_screens": 0.009,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 60.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "heavy",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 2048,
+        "flashes": 64,
+        "streaks": 64,
+        "boxes": 35,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.74,
+        "flash_screens": 0.961,
+        "shed": 45,
+        "bursts_shed": 12,
+        "scorches_shed": 5,
+        "rings_shed": 49,
+        "gpu_us": 1127.2
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "ion",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 44,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "filaments": 20,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.127,
+        "flash_screens": 0.026,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 36.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "ion",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 239,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "filaments": 22,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 7.652,
+        "flash_screens": 2.768,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 957.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "beam",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 40,
+        "flashes": 40,
+        "streaks": 0,
+        "boxes": 29,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 20,
+        "octaves": 2,
+        "screens": 0.187,
+        "flash_screens": 0.035,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 44.4
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "beam",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 128,
+        "flashes": 94,
+        "streaks": 0,
+        "boxes": 27,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 64,
+        "octaves": 1,
+        "screens": 7.706,
+        "flash_screens": 3.256,
+        "shed": 37,
+        "bursts_shed": 12,
+        "scorches_shed": 7,
+        "rings_shed": 0,
+        "gpu_us": 1013.0
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "missile",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 557,
+        "flashes": 20,
+        "streaks": 0,
+        "boxes": 40,
+        "bursts": 20,
+        "rings": 20,
+        "filaments": 0,
+        "scorches": 16,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.489,
+        "flash_screens": 0.026,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 89.5
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "missile",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 2048,
+        "flashes": 64,
+        "streaks": 0,
+        "boxes": 21,
+        "bursts": 2,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 1,
+        "screens": 7.736,
+        "flash_screens": 2.768,
+        "shed": 74,
+        "bursts_shed": 10,
+        "scorches_shed": 10,
+        "rings_shed": 45,
+        "gpu_us": 1074.1
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "asteroid",
+        "case": "fighter_200m_20_hits",
+        "hits": 20,
+        "sparks": 358,
+        "flashes": 0,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 20,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.001,
+        "flash_screens": 0.0,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 22.6
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "asteroid",
+        "case": "capital_close_64_hits",
+        "hits": 64,
+        "sparks": 1561,
+        "flashes": 0,
+        "streaks": 0,
+        "boxes": 0,
+        "bursts": 13,
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "spots": 0,
+        "octaves": 2,
+        "screens": 0.07,
+        "flash_screens": 0.0,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
+        "rings_shed": 0,
+        "gpu_us": 62.2
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "class": "plasma",
+        "case": "capital_close_128_hits",
+        "flashes": 128,
+        "flashes_shed": 80,
+        "boxes": 0,
+        "bursts": 0,
+        "rings": 0,
+        "scorches": 0,
+        "screens": 7.962,
+        "flash_screens": 7.962,
+        "gpu_us": 950.1
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "ring_alone_fills_frame",
+        "rings": 1,
+        "filaments": 0,
+        "scorches": 0,
+        "flashes": 0,
+        "screens": 0.4,
+        "gpu_us": 71.9,
+        "weight": 0.405
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "filament_alone_fills_frame",
+        "rings": 0,
+        "filaments": 1,
+        "scorches": 0,
+        "flashes": 0,
+        "screens": 0.86,
+        "gpu_us": 151.9,
+        "weight": 0.856
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "scorch_alone_fills_frame",
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 1,
+        "flashes": 0,
+        "screens": 0.49,
+        "gpu_us": 87.6,
+        "weight": 0.494
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "flash_alone_fills_frame",
+        "rings": 0,
+        "filaments": 0,
+        "scorches": 0,
+        "flashes": 1,
+        "screens": 0.49,
+        "gpu_us": 87.6,
+        "weight": 0.494
       }
     ],
     "fade": {

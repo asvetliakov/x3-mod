@@ -34,9 +34,10 @@ int main(int argc, char** argv) {
                 table.missile_rows, st.entries, st.textures, st.overrides, st.schema);
     if (ok && argc > 1) {
         const unsigned row = unsigned(std::atoi(argv[1]));
-        std::printf("row=%u bits=%u shape=%s texture=%06lx override=%06lx calibre_q=%u\n", row, table.bits[row],
-                    core::shape_name(table.shape[row]), (unsigned long)(table.texture_rgb[row] & 0xffffff),
-                    (unsigned long)(table.override_rgb[row] & 0xffffff), table.calibre_q[row]);
+        std::printf("row=%u bits=%u shape=%s texture=%06lx override=%06lx calibre_q=%u hull_class=%s\n", row,
+                    table.bits[row], core::shape_name(table.shape[row]), (unsigned long)(table.texture_rgb[row] & 0xffffff),
+                    (unsigned long)(table.override_rgb[row] & 0xffffff), table.calibre_q[row],
+                    (table.bits[row] & core::row_hull_class) ? core::hull_class_name(table.hull_class[row]) : "-");
     }
     return ok ? 0 : 1;
 }
@@ -57,7 +58,11 @@ def sample_table():
             {'row': 4, 'id': 'SS_BULLET_TUG', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
              'calibre': 0.1, 'hull': 'tug'},
             {'row': 5, 'id': 'SS_BULLET_Z', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
-             'calibre': None, 'hull': 'unknown'}]},
+             'calibre': None, 'hull': 'unknown'},
+            {'row': 6, 'id': 'SS_BULLET_MD', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': None, 'hull': 'ballistic'},
+            {'row': 7, 'id': 'SS_BULLET_PBC', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': None, 'hull': 'beam'}]},
         'missiles': {'rows': 36}}}
 
 
@@ -86,12 +91,16 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
 
     def test_shipped_overrides_file_schema(self):
         data = json.loads(OVERRIDES.read_text())
-        self.assertEqual(data['schema'], 1)
-        # docs/architecture/weapon-look.md 3.1: the hull-hit variants by id (stock REPAIR and TUG, Mayhem's RL)
-        self.assertEqual(data['by_id'], {'SS_BULLET_REPAIR': {'hull': 'repair'}, 'SS_BULLET_RL': {'hull': 'repair'},
-                                         'SS_BULLET_TUG': {'hull': 'tug', 'calibre': 0.1}})
+        self.assertEqual(data['schema'], 2)
+        # docs/architecture/weapon-look.md 3.1 (the variants) and hull-impact-classes.md section 2 (the class pins): the
+        # by_id hull keys are exactly the census script's pin list, the tug's calibre beside it
+        sys.path.insert(0, str(ROOT / 'verification/results/weapon-effects'))
+        import hull_class_census as census  # noqa: E402
+        self.assertEqual({k: v['hull'] for k, v in data['by_id'].items()}, census.PINS)
+        self.assertEqual(data['by_id']['SS_BULLET_TUG'], {'hull': 'tug', 'calibre': 0.1})
         for entry in data['by_id'].values():
             self.assertIn(entry.get('hull'), wt.HULL_VARIANTS)
+            self.assertNotEqual(entry.get('hull'), 'beam')
         self.assertEqual(set(data['by_table']),
                          {'be762076cdc38b03', '7b4ab0a6cea2cb07', 'f0cb79fd63c46318'})  # stock AP, Mayhem 3, FL
         self.assertIsInstance(wt.load_overrides(OVERRIDES), dict)
@@ -125,7 +134,7 @@ class WeaponEffectsTableReader(unittest.TestCase):
     def test_reader_round_trips_a_generated_table(self):
         code, f = self.read(sample_table(), row=0)
         self.assertEqual(code, 0)
-        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '6'))
+        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '8'))
         self.assertEqual(f['shape'], 'tracer')          # row 0: from elongation 18.5
         self.assertEqual(f['texture'], '275279')        # 121,82,39 -> r|g<<8|b<<16
         _, f1 = self.read(sample_table(), row=1)
@@ -141,8 +150,13 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertEqual(int(f3['bits']) & 0x60, 0x20)
         self.assertEqual(int(f4['bits']) & 0x60, 0x40)
         self.assertEqual(int(f4['calibre_q']), round(0.1 * 255))
-        self.assertEqual(int(f5['bits']) & 0x60, 0)
-        self.assertEqual(f['overrides'], '3')            # rows 1, 3 and 4 (its calibre the same row); none for 5
+        self.assertEqual(int(f5['bits']) & 0xe0, 0)
+        # the class pins (hull-impact-classes.md section 2): row_hull_class 0x80 with the class; beam is not pinnable
+        _, f6 = self.read(sample_table(), row=6)
+        _, f7 = self.read(sample_table(), row=7)
+        self.assertEqual((int(f6['bits']) & 0xe0, f6['hull_class']), (0x80, 'ballistic'))
+        self.assertEqual((int(f7['bits']) & 0xe0, f7['hull_class']), (0, '-'))
+        self.assertEqual(f['overrides'], '4')            # rows 1, 3, 4 (its calibre the same row) and 6; none for 5, 7
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 2, 'tables': {}})

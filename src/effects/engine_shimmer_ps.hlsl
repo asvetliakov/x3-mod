@@ -22,6 +22,7 @@ float4 rect_a[16] : register(c4);  // origin (px), unit axis
 float4 rect_b[16] : register(c20); // length (px ahead), half-width (px), back (px behind), 1 / nozzle width (px)
 float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), the nozzle's flow phase / cell, the
                                    // occlusion fade (1 / the band's device-depth span)
+float4 rect_d[16] : register(c52); // strength (an engine rect 1: x 1 is exact; a weapon hit's 1 -> 0), unused x3
 // The plume's value noise and its gradient in x and y: (d/dx, d/dy) of the smoothstep-trilinear interpolation.
 // The lattice index is exact, as in engine_plume_ps.hlsl vnoise: p - frac(p) is off an integer in its last bit when
 // fxc folds an integer offset out of the frc but keeps it in a mad that the driver fuses (NVIDIA, 2026-11-05);
@@ -71,7 +72,7 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             float2 v = (a.zw * g.x + float2(-a.w, a.z) * g.y) * (1.0 / 0.75);
             const float l2 = dot(v, v);
             v *= l2 > 1.0 ? rsqrt(l2) : 1.0;
-            total += mask * v;
+            total += (mask * rect_d[i].x) * v;
         }
     }
     const float m2 = dot(total, total);

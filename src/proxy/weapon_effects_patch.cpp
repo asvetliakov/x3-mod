@@ -38,6 +38,7 @@ struct Period {
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     unsigned hull_hits = 0, sparks = 0, glows = 0, embers = 0, flashes = 0, budget_shed = 0, orphans = 0, floored = 0;
     unsigned owners_dropped = 0, capped = 0, bursts = 0, rings = 0, bursts_shed = 0, burst_lod = 0;
+    unsigned streaks = 0, chips = 0, filaments = 0, scorches = 0, spots = 0, merges = 0, shimmer = 0, jet_no_dir = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
@@ -431,6 +432,14 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.rings += stage.rings;
     period_.bursts_shed += stage.bursts_shed;
     period_.burst_lod += stage.burst_lod;
+    period_.streaks += stage.hull_streaks;
+    period_.chips += stage.hull_chips;
+    period_.filaments += stage.hull_filaments;
+    period_.scorches += stage.hull_scorches;
+    period_.spots += stage.hull_spots;
+    period_.merges += stage.hull_merges;
+    period_.shimmer += stage.hull_shimmer;
+    period_.jet_no_dir += stage.hull_dir_fallback;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -461,7 +470,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                 log("weapon_event frame=%llu seq=%lu role=%s table=%s row=%u style=%s%s tier=%s calibre=%.3f absorbed=%u "
                     "damage=%ld forwarded=%u stage=%u nested=%u t0=%lu tint=%s:%06lx owner=%08lx radius=%ld "
                     "pos=%ld,%ld,%ld pos_r=%.3f dir=%d,%d,%d shield=%.4f shield_read=%u drained=%u patch_tier=%s "
-                    "tier_source=%s sample=%s",
+                    "tier_source=%s class=%s sample=%s",
                     frame, static_cast<unsigned long>(e.sequence), core::role_name(e.role), core::table_name(e.table),
                     unsigned(e.row), core::shape_name(e.style & core::style_shape_mask),
                     (e.style & core::style_burst) ? "+burst" : "", core::tier_name(e.tier), double(core::calibre_of(e)),
@@ -475,7 +484,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                     double(float(e.shield_q) * (1.f / 65535.f)),
                     unsigned((e.flags & core::flag_shield_read) != 0),
                     unsigned((e.detail & core::detail_drained) != 0), core::patch_tier_name(e.patch_tier),
-                    core::tier_source_name(e.tier_source), sample);
+                    core::tier_source_name(e.tier_source), core::hull_class_name(core::hull_class_of(e)), sample);
             }
         }
         // Census-only records leave once logged; the stage's at the end of their game-time life (a hull hit's, its
@@ -501,7 +510,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
         "bubble_held=%u bubble_deferred=%u bubble_clamped=%u hull_staged=%lu hull_hits=%u flashes=%u sparks=%u glows=%u "
         "embers=%u budget_shed=%u orphans=%u floored=%u owners_dropped=%u capped=%u life_floor_ms=%lu "
-        "table_hull_key_missing=%u bursts=%u rings=%u bursts_shed=%u burst_lod=%u",
+        "table_hull_key_missing=%u bursts=%u rings=%u bursts_shed=%u burst_lod=%u streaks=%u chips=%u filaments=%u "
+        "scorches=%u spots=%u merges=%u shimmer=%u jet_no_dir=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -522,7 +532,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.bubble_clamped, static_cast<unsigned long>(period_.hull_staged), period_.hull_hits, period_.flashes,
         period_.sparks, period_.glows, period_.embers, period_.budget_shed, period_.orphans, period_.floored,
         period_.owners_dropped, period_.capped, static_cast<unsigned long>(s.life_floor_ms),
-        unsigned(table_hull_key_missing_), period_.bursts, period_.rings, period_.bursts_shed, period_.burst_lod);
+        unsigned(table_hull_key_missing_), period_.bursts, period_.rings, period_.bursts_shed, period_.burst_lod,
+        period_.streaks, period_.chips, period_.filaments, period_.scorches, period_.spots, period_.merges, period_.shimmer,
+        period_.jet_no_dir);
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_retired_ = r.retired;

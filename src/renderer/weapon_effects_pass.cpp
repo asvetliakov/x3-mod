@@ -79,8 +79,29 @@ constexpr std::uint32_t fireball_ps_words[] = {
 constexpr D3DVERTEXELEMENT9 fireball_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
-    {0, 28, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1}, D3DDECL_END()};
-static_assert(sizeof(WeaponFireballVertex) == 44, "the fireball declaration follows the vertex");
+    {0, 28, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 44, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2}, D3DDECL_END()};
+static_assert(sizeof(WeaponFireballVertex) == 60, "the fireball declaration follows the vertex");
+// The hull classes' shaped glows (provenance: verification/results/weapon-{shape-vertex,ring-pixel,filament-pixel}-
+// program.json).
+constexpr std::uint32_t shape_vs_words[] = {
+#include "weapon_shape_vertex_program_inc.h"
+};
+constexpr std::uint32_t ring_ps_words[] = {
+#include "weapon_ring_pixel_program_inc.h"
+};
+constexpr std::uint32_t filament_ps_words[] = {
+#include "weapon_filament_pixel_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 shape_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 28, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 40, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2},
+    {0, 56, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 3},
+    {0, 68, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 4},
+    {0, 80, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 5}, D3DDECL_END()};
+static_assert(sizeof(WeaponShapeVertex) == 92, "the shape declaration follows the vertex");
 constexpr D3DVERTEXELEMENT9 sprite_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -175,6 +196,10 @@ void WeaponEffectsPass::release_hull_objects() noexcept {
     drop(fireball_vs_);
     drop(fireball_ps_);
     drop(fireball_declaration_);
+    drop(shape_vs_);
+    drop(ring_ps_);
+    drop(filament_ps_);
+    drop(shape_declaration_);
 }
 void WeaponEffectsPass::release_objects() noexcept {
     drop(shell_vs_);
@@ -204,7 +229,7 @@ void WeaponEffectsPass::after_reset(HRESULT hr) noexcept {
 }
 bool WeaponEffectsPass::hull_objects_ready() const noexcept {
     return sprite_vs_ && sprite_ps_ && glow_vs_ && glow_ps_ && sprite_declaration_ && glow_declaration_ && fireball_vs_ &&
-           fireball_ps_ && fireball_declaration_;
+           fireball_ps_ && fireball_declaration_ && shape_vs_ && ring_ps_ && filament_ps_ && shape_declaration_;
 }
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
@@ -219,7 +244,9 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(glow_vs_), static_cast<const void*>(glow_ps_),
                           static_cast<const void*>(sprite_declaration_), static_cast<const void*>(glow_declaration_),
                           static_cast<const void*>(fireball_vs_), static_cast<const void*>(fireball_ps_),
-                          static_cast<const void*>(fireball_declaration_)})
+                          static_cast<const void*>(fireball_declaration_), static_cast<const void*>(shape_vs_),
+                          static_cast<const void*>(ring_ps_), static_cast<const void*>(filament_ps_),
+                          static_cast<const void*>(shape_declaration_)})
         n += p != nullptr;
     return n;
 }
@@ -291,8 +318,15 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         caps_.glow_ps_slots = ps3_program_slots(glow_ps_words, std::size(glow_ps_words));
         caps_.fireball_vs_slots = vs3_slots(fireball_vs_words);
         caps_.fireball_ps_slots = ps3_program_slots(fireball_ps_words, std::size(fireball_ps_words));
+        caps_.shape_vs_slots = vs3_slots(shape_vs_words);
+        caps_.ring_ps_slots = ps3_program_slots(ring_ps_words, std::size(ring_ps_words));
+        caps_.filament_ps_slots = ps3_program_slots(filament_ps_words, std::size(filament_ps_words));
+        // The scorches' multiply blend (hull-impact-classes.md 3.7): ZERO / INVSRCCOLOR; without it the scorches are
+        // not drawn (the glue builds none), everything else is.
+        caps_.scorch_enabled = (caps.SrcBlendCaps & D3DPBLENDCAPS_ZERO) && (caps.DestBlendCaps & D3DPBLENDCAPS_INVSRCCOLOR);
         if (!caps_.sprite_vs_slots || !caps_.glow_vs_slots || !caps_.sprite_ps_slots || !caps_.glow_ps_slots ||
-            !caps_.fireball_vs_slots || !caps_.fireball_ps_slots)
+            !caps_.fireball_vs_slots || !caps_.fireball_ps_slots || !caps_.shape_vs_slots || !caps_.ring_ps_slots ||
+            !caps_.filament_ps_slots)
             caps_.hull_reason = "hull_compiled_program";
         else if (caps.MaxPrimitiveCount < 2u * weapon_sprite_quads || caps.MaxVertexIndex < 4u * weapon_sprite_quads - 1u)
             caps_.hull_reason = "hull_limits";
@@ -348,6 +382,14 @@ HRESULT WeaponEffectsPass::create_hull_objects() noexcept {
         hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(fireball_ps_words), &fireball_ps_);
     if (SUCCEEDED(hr) && !fireball_declaration_)
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, fireball_elements, &fireball_declaration_);
+    if (SUCCEEDED(hr) && !shape_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(shape_vs_words), &shape_vs_);
+    if (SUCCEEDED(hr) && !ring_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(ring_ps_words), &ring_ps_);
+    if (SUCCEEDED(hr) && !filament_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(filament_ps_words), &filament_ps_);
+    if (SUCCEEDED(hr) && !shape_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, shape_elements, &shape_declaration_);
     if (SUCCEEDED(hr) && !hull_objects_ready()) hr = E_FAIL;
     if (FAILED(hr)) release_hull_objects();
     return hr;
@@ -552,12 +594,18 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         !finite(f.m20) || !finite(f.m21) || !(f.near_z > 0.f) || (f.sprite_quads && !f.sprites) ||
         (f.glow_boxes && !f.glows) || f.sprite_quads > weapon_sprite_quads || f.glow_boxes > weapon_glow_boxes ||
         (f.fireball_boxes && !f.fireballs) || f.fireball_boxes > weapon_fireball_boxes || (f.ring_quads && !f.rings) ||
-        f.ring_quads > weapon_ring_quads || (f.fireball_boxes && f.fireball_octaves != 1u && f.fireball_octaves != 2u))
+        f.ring_quads > weapon_ring_quads || (f.fireball_boxes && f.fireball_octaves != 1u && f.fireball_octaves != 2u) ||
+        (f.filament_boxes && !f.filaments) || f.filament_boxes > weapon_filament_boxes ||
+        (f.scorch_boxes && !f.scorches) || f.scorch_boxes > weapon_scorch_boxes)
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
-    // Without the hull programs the sprites, glows, fireballs and rings are not drawn (the glue builds none then).
+    // Without the hull programs the sprites, glows, fireballs, rings, filaments and scorches are not drawn (the glue
+    // builds none then); without the multiply blend no scorch.
     const unsigned sprite_quads = caps_.hull_enabled ? f.sprite_quads : 0u, glow_boxes = caps_.hull_enabled ? f.glow_boxes : 0u;
     const unsigned fireball_boxes = caps_.hull_enabled ? f.fireball_boxes : 0u, ring_quads = caps_.hull_enabled ? f.ring_quads : 0u;
-    if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes && !fireball_boxes && !ring_quads)
+    const unsigned filament_boxes = caps_.hull_enabled ? f.filament_boxes : 0u;
+    const unsigned scorch_boxes = caps_.hull_enabled && caps_.scorch_enabled ? f.scorch_boxes : 0u;
+    if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes && !fireball_boxes && !ring_quads &&
+        !filament_boxes && !scorch_boxes)
         return finish(S_FALSE);
     const WeaponLook& l = f.look;
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !finite(l.centre_gain) || !finite(l.centre_fill) ||
@@ -603,10 +651,34 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                    std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)},
                    std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}})
         step(WeaponEffectsStep::State, call<SetRsFn>(SetRenderState)(d, s.first, s.second));
-    // The glows and embers first (look 2.10's order): one batched draw of their screen rectangles (no cull).
+    // The scorches first (hull-impact-classes.md 3.7: the only non-additive element, before every additive layer): the
+    // glow programs under ZERO / INVSRCCOLOR, the scene x (1 - s w scorch_colour); then ONE / ONE again.
+    const float glow_limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+    const float glow_ps[8] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f};
+    if (SUCCEEDED(hr) && scorch_boxes) {
+        step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_SRCBLEND, DWORD(D3DBLEND_ZERO)));
+        step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_DESTBLEND, DWORD(D3DBLEND_INVSRCCOLOR)));
+        step(WeaponEffectsStep::Scorches, call<SetDeclarationFn>(SetVertexDeclaration)(d, glow_declaration_));
+        step(WeaponEffectsStep::Scorches, call<SetVsFn>(SetVertexShader)(d, glow_vs_));
+        step(WeaponEffectsStep::Scorches, call<SetPsFn>(SetPixelShader)(d, glow_ps_));
+        step(WeaponEffectsStep::Scorches, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, glow_limits, 1));
+        step(WeaponEffectsStep::Scorches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, glow_ps, 2));
+        if (SUCCEEDED(hr)) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, scorch_boxes * 4, scorch_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.scorches,
+                UINT(sizeof(WeaponGlowVertex))));
+            if (step(WeaponEffectsStep::Scorches, draw)) {
+                r.scorch_boxes = scorch_boxes;
+                r.drew = true;
+            }
+        }
+        step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_SRCBLEND, DWORD(D3DBLEND_ONE)));
+        step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_DESTBLEND, DWORD(D3DBLEND_ONE)));
+    }
+    // The glows and embers (look 2.10's order): one batched draw of their screen rectangles (no cull).
     if (SUCCEEDED(hr) && glow_boxes) {
-        const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
-        const float glow_ps[8] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f};
+        const float* limits = glow_limits;
         step(WeaponEffectsStep::Glows, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Glows, call<SetDeclarationFn>(SetVertexDeclaration)(d, glow_declaration_));
         step(WeaponEffectsStep::Glows, call<SetVsFn>(SetVertexShader)(d, glow_vs_));
@@ -620,6 +692,38 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             if (step(WeaponEffectsStep::Glows, draw)) {
                 r.glow_boxes = glow_boxes;
                 r.drew = true;
+            }
+        }
+    }
+    // The surface rings and the filament glows (the glow primitive with a profile, one vertex program; no cull).
+    if (SUCCEEDED(hr) && (ring_quads || filament_boxes)) {
+        step(WeaponEffectsStep::Rings, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Rings, call<SetDeclarationFn>(SetVertexDeclaration)(d, shape_declaration_));
+        step(WeaponEffectsStep::Rings, call<SetVsFn>(SetVertexShader)(d, shape_vs_));
+        step(WeaponEffectsStep::Rings, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, glow_limits, 1));
+        step(WeaponEffectsStep::Rings, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, glow_ps, 2));
+        if (SUCCEEDED(hr) && ring_quads) {
+            step(WeaponEffectsStep::Rings, call<SetPsFn>(SetPixelShader)(d, ring_ps_));
+            if (SUCCEEDED(hr)) {
+                const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                    d, D3DPT_TRIANGLELIST, 0, ring_quads * 4, ring_quads * 2, sprite_indices_, D3DFMT_INDEX16, f.rings,
+                    UINT(sizeof(WeaponShapeVertex))));
+                if (step(WeaponEffectsStep::Rings, draw)) {
+                    r.ring_quads = ring_quads;
+                    r.drew = true;
+                }
+            }
+        }
+        if (SUCCEEDED(hr) && filament_boxes) {
+            step(WeaponEffectsStep::Filaments, call<SetPsFn>(SetPixelShader)(d, filament_ps_));
+            if (SUCCEEDED(hr)) {
+                const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                    d, D3DPT_TRIANGLELIST, 0, filament_boxes * 4, filament_boxes * 2, sprite_indices_, D3DFMT_INDEX16,
+                    f.filaments, UINT(sizeof(WeaponShapeVertex))));
+                if (step(WeaponEffectsStep::Filaments, draw)) {
+                    r.filament_boxes = filament_boxes;
+                    r.drew = true;
+                }
             }
         }
     }
@@ -738,9 +842,8 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             }
         }
     }
-    // The sprite batch last (flashes and sparks): one draw, both triangle windings (no cull); the heavy rings after it
-    // with the same programs and constants.
-    if (SUCCEEDED(hr) && (sprite_quads || ring_quads)) {
+    // The sprite batch last (flashes, streaks and sparks): one draw, both triangle windings (no cull).
+    if (SUCCEEDED(hr) && sprite_quads) {
         const float sprite_ps[4] = {wcore::look::soft_core, wcore::look::soft_halo, wcore::look::halo_max,
                                     wcore::look::halo_fold};
         // The streak expansion's constants (weapon_sprite_vs.hlsl c2, c3; c0, c1 the projection and viewport above).
@@ -758,15 +861,6 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                 f.sprites, UINT(sizeof(WeaponSpriteVertex))));
             if (step(WeaponEffectsStep::Sprites, draw)) {
                 r.sprite_quads = sprite_quads;
-                r.drew = true;
-            }
-        }
-        if (SUCCEEDED(hr) && ring_quads) {
-            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
-                d, D3DPT_TRIANGLELIST, 0, ring_quads * 4, ring_quads * 2, sprite_indices_, D3DFMT_INDEX16, f.rings,
-                UINT(sizeof(WeaponSpriteVertex))));
-            if (step(WeaponEffectsStep::Rings, draw)) {
-                r.ring_quads = ring_quads;
                 r.drew = true;
             }
         }

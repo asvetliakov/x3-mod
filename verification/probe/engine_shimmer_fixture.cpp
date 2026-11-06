@@ -272,6 +272,103 @@ bool same_pixel(const std::vector<unsigned short>& a, const std::vector<unsigned
     return !std::memcmp(&a[i * 4], &b[i * 4], 8);
 }
 
+// The program before the rects' strength (2026-11-06): the plumes' frame through it and through the current one.
+constexpr std::uint32_t previous_program[] = {
+#include "engine_shimmer_pixel_program_prev_inc.h"
+};
+// The hull hits' rects (docs/architecture/hull-impact-classes.md 3.8): (a) the plumes' frame with no weapon rect is the
+// previous program's image bit for bit (an engine rect's strength 1: x 1 is exact); (b) a weapon rect (engine_shimmer::
+// weapon_rect, a square about the hit) after the engine's: at strength 1 it moves the image within the amplitude, at
+// 0.5 within half of it and about half as far, at 0 not at all (byte-equal inside its scissor); (c) its constants at
+// the rect's index after the engine's, c52+i its strength.
+void weapon_rect_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, Targets& t, rr::EngineShimmerPass& pass) {
+    const ee::Record r = side_plume(t, 60.f);
+    es::Rect rects[es::max_rects];
+    es::Stats st{};
+    const unsigned n = collect(t, &r, 1, rects, &st);
+    report("weapon_rect_plume_rect", n == 1);
+    if (n != 1) return;
+    std::vector<unsigned short> img[2];
+    for (unsigned which = 0; which < 2; ++which) {
+        rr::EngineShimmerPass p;
+        if (which) p.set_program_words(previous_program);
+        const HRESULT hr = p.attach(d, *reinterpret_cast<void* const* const*>(d), caps, format);
+        if (FAILED(hr)) {
+            report("weapon_rect_previous_attach", false);
+            return;
+        }
+        t.upload(d);
+        const auto rep = run(d, p, frame_for(t, rects, n));
+        img[which] = t.read(d);
+        check("scene begin", d->BeginScene());
+        p.revert();
+        check("scene end", d->EndScene());
+        p.detach();
+        if (!rep.drew) img[which].clear();
+    }
+    std::size_t differ = 0, moved = 0;
+    for (std::size_t i = 0; i < img[0].size() / 4 && img[0].size() == img[1].size(); ++i) {
+        differ += !same_pixel(img[0], img[1], i);
+        moved += !same_pixel(img[0], t.pristine, i);
+    }
+    std::printf("WEAPON_RECT case=plumes_identical width=%u height=%u pixels_differ=%zu moved=%zu\n", t.w, t.h, differ, moved);
+    report("weapon_rect_plumes_byte_identical_to_previous_program", !img[0].empty() && img[0].size() == img[1].size() &&
+                                                                       differ == 0 && moved > 0);
+    // A weapon rect after the engine's, three strengths.
+    const float origin[2] = {float(t.w) * .3f, float(t.h) * .5f}, axis[2] = {1.f, 0.f};
+    double worst[3] = {0, 0, 0}, mean[3] = {0, 0, 0};
+    std::size_t inside_diff[3] = {0, 0, 0};
+    const float strengths[3] = {1.f, .5f, 0.f};
+    float amp = 0.f;
+    bool constants_ok = true;
+    for (unsigned k = 0; k < 3; ++k) {
+        es::Rect both[2] = {rects[0], {}};
+        const bool made = es::weapon_rect(origin, axis, 160.f, .37f, 0.f, 0.f, strengths[k], float(t.w), float(t.h), &both[1]);
+        if (!made) {
+            report("weapon_rect_made", false);
+            return;
+        }
+        float c[es::constant_vectors * 4];
+        es::constants(both, 2, 3.f, 1.5f, float(t.w), float(t.h), c);
+        constants_ok = constants_ok && c[5] == 2.f && c[(4 + 3 * es::max_rects + 1) * 4] == strengths[k] &&
+                       c[(4 + 3 * es::max_rects) * 4] == 1.f && c[(4 + 1) * 4] == origin[0];
+        t.upload(d);
+        const auto f = frame_for(t, both, 2);
+        amp = f.amplitude_px;
+        const auto rep = run(d, pass, f);
+        const auto out = t.read(d);
+        const Field m = measure(t, out, &both[1], 1);
+        std::size_t strong = 0;
+        for (UINT y = 0; y < t.h; ++y)
+            for (UINT x = 0; x < t.w; ++x) {
+                const std::size_t i = std::size_t(y) * t.w + x;
+                float own = 0.f;
+                es::mask_at(both[1], float(x) + .5f, float(y) + .5f, &own);
+                if (!(own > 0.f)) continue;
+                inside_diff[k] += !same_pixel(out, t.pristine, i);
+                if (!m.valid[i]) continue;
+                const double len = std::sqrt(double(m.dx[i]) * m.dx[i] + double(m.dy[i]) * m.dy[i]);
+                worst[k] = std::max(worst[k], len);
+                if (own > .25f) {
+                    mean[k] += len;
+                    ++strong;
+                }
+            }
+        mean[k] = strong ? mean[k] / double(strong) : 0.0;
+        check("scene begin", d->BeginScene());
+        pass.revert();
+        check("scene end", d->EndScene());
+        (void)rep;
+    }
+    std::printf("WEAPON_RECT case=strength width=%u height=%u amplitude_px=%.4f worst_px=%.4f,%.4f,%.4f mean_px=%.4f,%.4f,%.4f "
+                "inside_changed=%zu,%zu,%zu constants=%u\n",
+                t.w, t.h, double(amp), worst[0], worst[1], worst[2], mean[0], mean[1], mean[2], inside_diff[0], inside_diff[1],
+                inside_diff[2], unsigned(constants_ok));
+    report("weapon_rect_strength_scales_displacement", mean[0] > .2 * amp && worst[0] <= amp + .05 &&
+                                                          worst[1] <= .5 * amp + .05 && mean[1] >= .35 * mean[0] &&
+                                                          mean[1] <= .65 * mean[0] && inside_diff[2] == 0);
+    report("weapon_rect_constants_after_engine_rects", constants_ok);
+}
 void attach_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, rr::EngineShimmerPass& pass) {
     pass.set_faults(1);
     const HRESULT refused = pass.attach(d, *reinterpret_cast<void* const* const*>(d), caps, format);
@@ -804,6 +901,7 @@ int main(int argc, char** argv) {
             Targets* t = new Targets(d, size.first, size.second);
             std::printf("SIZE width=%u height=%u\n", size.first, size.second);
             if (wanted("displace")) displace_case(d, *t, pass);
+            if (wanted("weapon")) weapon_rect_case(d, caps, mode.Format, *t, pass);
             if (wanted("occlusion")) occlusion_case(d, *t, pass);
             if (size.first == 1920) {
                 if (wanted("gate")) gate_case(d, *t, pass);

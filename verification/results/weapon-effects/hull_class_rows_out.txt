@@ -1,0 +1,226 @@
+# verification/probe/build/weapon-effects/fixture.log
+HULL_SLOTS sprite_vs=72 sprite_ps=103 glow_vs=6 glow_ps=47 fireball_vs=7 fireball_ps=315 sprite_vertex_bytes=48 glow_vertex_bytes=40 fireball_vertex_bytes=60 hull_state_bytes=142096
+HULL case=half_hidden k0_share=0.5343 k05_share=0.5291 k1_share=0.5017 k0_px=10975/17739 k0_px_share=0.6187 k05_px=15007/23327 k05_px_share=0.6433 k1_px=20788/32852 k1_px_share=0.6328 cpu_share=0.5424,0.5266,0.5058 crossing=0,0,0 seq=695,704,713
+CHECK hull_min_frames_under_seta6 PASS
+CHECK hull_min_frames_under_seta10 PASS
+HULL case=chase_nose age_ms=200 energy_sparks=1 energy_puffs=1 energy_lit=21341 energy_outside_lit=21341 ballistic_sparks=10 ballistic_lit=528 ballistic_outside_lit=528
+CHECK hull_chase_nose_lit_outside_outline PASS
+HULL case=variants repair_sparks=0 repair_flashes=0 repair_glows=1 repair_embers=1 repair_glow_rgb=0.029,1.000,0.029 tug_glows=1 tug_embers=0 tug_R=24.900 missile_sparks=37 missile_want=37 missile_halo_g=0.400 missile_tint_g=0.400 asteroid_sparks=27 asteroid_want=27 asteroid_flashes=0 asteroid_rgb=0.639,0.165,0.043
+CHECK hull_repair_no_sparks PASS
+CHECK hull_missile_tier PASS
+CHECK hull_asteroid_dust PASS
+HULL case=budget boxes=24 screens=19.084 tight_boxes=0 tight_shed=24 tight_screens=0.490 tight_flash_screens=0.490 sparks=97 tight_sparks=97 own_boxes=24 own_shed=0
+HULL case=budget_bursts bursts=12 burst_screens=1.728 octaves=2 tight_bursts=12 tight_bursts_shed=12 tight_octaves=1 own_bursts=12 own_bursts_shed=0 rings=0 tight_rings=0
+CHECK hull_budget_shed PASS
+CHECK hull_budget_burst_lod_then_shed PASS
+HULL case=reset result=00000000 references_before_reset=0 ensure=00000000 drew=1
+CHECK hull_reset_recovers PASS
+HULL_CPU case=capital_64_hits hits=64 sparks=445 flashes=64 boxes=128 bursts=64 rings=0 best_us=18.80 mean_us=25.83 target_us=40
+HULL_CPU case=capital_64_hits_sparks_only best_us=12.50
+HULL_CPU case=capital_64_hits_no_sparks best_us=8.60
+CHECK hull_cpu_64_hits PASS
+HULL_CPU case=fighter_20_hits hits=20 sparks=100 flashes=20 boxes=40 bursts=20 rings=0 best_us=6.00 mean_us=6.28 target_us=40
+HULL_TIMING width=1920 height=1080 case=fighter_60m_20_hits hits=20 sparks=106 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.155 lit_share=0.2184 raster_share=3.1588 gpu_us=72.6
+HULL_TIMING width=1920 height=1080 case=fighter_200m_20_hits hits=20 sparks=114 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.013 lit_share=0.0197 raster_share=0.2815 gpu_us=23.3
+HULL_TIMING width=1920 height=1080 case=capital_close_64_hits hits=64 sparks=99 flashes=0 boxes=38 bursts=44 rings=0 octaves=2 burst_screens=4.904 lit_share=1.0000 raster_share=8.3620 gpu_us=262.9
+HULL_TIMING width=1920 height=1080 case=glow_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=1 bursts=0 rings=0 octaves=2 burst_screens=0.000 lit_share=1.0000 raster_share=1.0000 gpu_us=30.8
+HULL_TIMING width=1920 height=1080 case=burst_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=2 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=65.1
+HULL_TIMING width=1920 height=1080 case=burst_alone_fills_frame_lod hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=1 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=50.9
+HULL_TIMING width=5120 height=1440 case=fighter_60m_20_hits hits=20 sparks=114 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.388 lit_share=0.3569 raster_share=5.6854 gpu_us=369.5
+HULL_TIMING width=5120 height=1440 case=fighter_200m_20_hits hits=20 sparks=108 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.025 lit_share=0.0394 raster_share=0.5555 gpu_us=53.2
+CHECK hull_budget_20_hits_5120 PASS
+HULL_TIMING width=5120 height=1440 case=capital_close_64_hits hits=64 sparks=73 flashes=0 boxes=26 bursts=29 rings=0 octaves=2 burst_screens=4.686 lit_share=1.0000 raster_share=8.0555 gpu_us=853.6
+HULL_TIMING width=5120 height=1440 case=glow_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=1 bursts=0 rings=0 octaves=2 burst_screens=0.000 lit_share=1.0000 raster_share=1.0000 gpu_us=71.7
+HULL_TIMING width=5120 height=1440 case=burst_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=2 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=193.3
+HULL_TIMING case=burst_alone_fills_frame weight=1.089 (gpu_us / 177.5)
+HULL_TIMING width=5120 height=1440 case=burst_alone_fills_frame_lod hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=1 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=143.9
+HULL_TIMING case=burst_alone_fills_frame_lod weight=0.811 (gpu_us / 177.5)
+CLASS_SLOTS shape_vs=10 ring_ps=51 filament_ps=247 fireball_ps=315 scorch_blend=1 shape_vertex_bytes=92 fireball_vertex_bytes=60 hull_state_bytes=142096 spot_bytes=100 mark_bytes=36
+CHECK hull_class_programs_attached PASS
+CLASS case=anatomy name=energy picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=ballistic picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=plasma picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=heavy picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=ion picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=beam picked=1 counted=1 spots=1 hits=0
+CLASS case=anatomy name=missile picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=asteroid picked=1 counted=1 spots=0 hits=1
+CLASS case=anatomy name=repair picked=1 counted=1 spots=1 hits=0
+CLASS case=anatomy name=tug picked=1 counted=1 spots=1 hits=0
+CHECK hull_class_anatomy_round_trip PASS
+CLASS case=scorch_multiply seq=1169 boxes=1 s=0.3801 sky_changed=0 hull_darkened=4087 centre_rgb=0.7153,0.6963,0.6772 worst_err=0.00020
+CHECK hull_scorch_multiplies_hull_only PASS
+CLASS case=scorch_store record_live=0 scorches_at_6s=1 got=0.16875 want=0.16875 at_L_s=0 marks_left=0 owner_marks=16 oldest_t0=2010 first_seq=1173 record_life_ms=3601
+CHECK hull_scorch_store_outlives_record PASS
+CLASS case=scorch_temporal speed_px=0 frames=16 centre_ratio=1.0000 residual_after_8=0.00000
+CHECK hull_scorch_through_temporal_0px PASS
+CLASS case=scorch_temporal speed_px=8 frames=16 centre_ratio=1.0000 residual_after_8=0.00000
+CHECK hull_scorch_through_temporal_8px PASS
+CLASS case=greyscale_lineup classes=9 min_pair_l1=0.2108 pair=energy,beam
+CHECK hull_classes_distinct_greyscale PASS
+CLASS case=energy_puff life_ms=384.7 R_b=16.934 worst_radius_err=0.00000 hue_g_over_r=0.614,0.362,0.182 anchor_dx=20.0000
+CHECK hull_energy_puff_grows_cools PASS
+CLASS case=energy_spatter k=0.00 sparks=3 want=3 law=4.00
+CLASS case=energy_spatter k=0.50 sparks=6 want=6 law=6.00
+CLASS case=energy_spatter k=1.00 sparks=9 want=9 law=8.00
+CHECK hull_energy_spatter_4_4k PASS
+CLASS case=energy_ember life_ms=1540.8 flash_ms=50.0 peak=0.4800 at300=0.3748 at1500=0.00044 after=0.00000
+CHECK hull_energy_ember_outlasts_flash_10x PASS
+CLASS case=ballistic_lifetimes fast=8,0,0 slow=6,6,2 chips=3,3,3 fast_at_250=0 slow_at_450=4
+CHECK hull_ballistic_two_spark_lifetimes PASS
+CLASS case=ballistic_splash_back age_ms=100 back_share=0.3460 isotropic_share=0.0162
+CHECK hull_ballistic_splash_back_bias PASS
+CLASS case=ballistic_chips slow_speed_share_600=0.2886 chips_speed_share_600=0.6120 law=0.2636,0.5488
+CHECK hull_ballistic_chips_keep_velocity PASS
+CLASS case=ballistic_no_fireball puff_r=0.400 lit=5767 beyond_half_r=0
+CHECK hull_ballistic_no_fireball PASS
+CLASS case=plasma_bloom energy_halo=16.934 plasma_halo=33.868 ratio=2.0000 lit_energy=16613 lit_plasma=54401 lit_radius_ratio=1.8096
+CHECK hull_plasma_bloom_2x_energy PASS
+CLASS case=plasma_globe life_ms=754.1 R=19.725,18.316,13.500 b_over_r=0.6537,0.4200,0.3576
+CHECK hull_plasma_globe_shrinks_reddens PASS
+CLASS case=plasma_ring age_ms=33 radius_px=135.47 law_px=134.73
+CLASS case=plasma_ring age_ms=67 radius_px=187.50 law_px=186.62
+CLASS case=plasma_ring age_ms=169 radius_px=215.67 law_px=215.26
+CLASS case=plasma_ring_surface sky=0 lane=48660 worst_radius_err=0.0055
+CHECK hull_plasma_ring_on_surface_not_sky PASS
+CLASS case=heavy_streak streaks=1 angle_deg=0.000 inside=561.917 outside=13951.915 inside_share=0.0387
+CHECK hull_heavy_entry_streak_along_dir PASS
+CLASS case=heavy_back_jet sparks=248 within_30=0.8911 within_25=0.4677
+CHECK hull_heavy_back_jet_cone PASS
+CLASS case=heavy_exit_jet thin_beyond=0,1217,1211 thick_beyond=0,0,0
+CHECK hull_heavy_exit_jet_emerges_thin_hull PASS
+CLASS case=heavy_shimmer at100=1 strength100=0.7500 at401=0 of3=2 newest_ages_max=0 over_budget=0 over_budget_shed=3 own_over_budget=2
+CHECK hull_heavy_shimmer_rect_submitted PASS
+CLASS case=beam_hold ticks=60 max_spots=1 ring_records_left=0 flashes_after_first=0 core=4.0000,4.0000 glow=0.8500,0.8500
+CHECK hull_beam_hold_relights_not_appends PASS
+CLASS case=beam_sweep ticks=20 step_r=0.3 marks=10 min_gap_r=0.5994 max_gap_r=0.6006 flashes_after_first=0
+CHECK hull_beam_sweep_trail_without_strobe PASS
+CLASS case=beam_pulse held_end_flashes=1 fallen_flashes=0 restart_pulses=1 restart_flashes=1 second_pulses=0
+CHECK hull_beam_pulse_flash_after_gap PASS
+CLASS case=ion_filaments sky=0 lane=5741 lit=4700 jaccard_0_30=0.9989 jaccard_0_100=0.0776 jaccard_moved=0.9996
+CHECK hull_ion_filaments_on_surface_rehash PASS
+CLASS case=ion_no_heat glows=0 embers=0 bursts=0 scorches=0 marks=0 flashes=1 filaments=1 at600=0,0,0,0
+CHECK hull_ion_no_heat_post_hit PASS
+CLASS case=missile_debris table_2x=1 fast=27 slow=13 sparks_first=30 rings_50=1 slow_lit=54 slow_alive=247 duty=0.2186
+CHECK hull_missile_debris_two_sets_and_ring PASS
+CLASS case=beam_on_asteroid ticks=60 ring_records=0 max_spots=1 flashes=0 puff_frames=59 sparks=1052
+CHECK hull_beam_on_asteroid_holds PASS
+CLASS case=repair_relit ticks=60 one_glow=1 glow_g=1.0000,1.0000
+CHECK hull_repair_relit_per_tick PASS
+CLASS case=asteroid_dust glows=0 embers=0 marks=0 scorches=0 flashes=0 sparks=20 puff_peak=0.0302
+CHECK hull_asteroid_no_glow_no_scorch_dim_puff PASS
+CLASS case=compose_no_pop class=energy frames=40 checked=320 violations=0 worst_additive_err=0.00000 additive_bad=0 released=0 life_ms=2401
+CLASS case=compose_no_pop class=ballistic frames=40 checked=320 violations=0 worst_additive_err=0.00002 additive_bad=0 released=1 life_ms=1041
+CLASS case=compose_no_pop class=plasma frames=40 checked=320 violations=0 worst_additive_err=0.00000 additive_bad=0 released=0 life_ms=3601
+CLASS case=compose_no_pop class=heavy frames=40 checked=320 violations=0 worst_additive_err=0.00005 additive_bad=0 released=0 life_ms=2401
+CLASS case=compose_no_pop class=ion frames=40 checked=320 violations=0 worst_additive_err=0.00000 additive_bad=0 released=1 life_ms=601
+CLASS case=compose_no_pop class=missile frames=40 checked=320 violations=0 worst_additive_err=0.00001 additive_bad=0 released=0 life_ms=2401
+CLASS case=compose_no_pop class=asteroid frames=40 checked=320 violations=0 worst_additive_err=0.00005 additive_bad=0 released=1 life_ms=1441
+CHECK hull_compose_no_pop_per_class PASS
+CLASS case=min_frames_seta6 class=energy flash_frames=3 streak_frames=0
+CLASS case=min_frames_seta6 class=ballistic flash_frames=3 streak_frames=0
+CLASS case=min_frames_seta6 class=plasma flash_frames=3 streak_frames=0
+CLASS case=min_frames_seta6 class=heavy flash_frames=3 streak_frames=3
+CLASS case=min_frames_seta6 class=ion flash_frames=3 streak_frames=0
+CLASS case=min_frames_seta6 class=missile flash_frames=3 streak_frames=0
+CHECK hull_min_frames_under_seta6_per_class PASS
+CLASS case=fault step=0 bad=80004005 failed=11 good=00000000 drew=1
+CLASS case=fault step=1 bad=80004005 failed=9 good=00000000 drew=1
+CLASS case=fault step=2 bad=80004005 failed=10 good=00000000 drew=1
+CHECK hull_class_faults_reported_and_recover PASS
+CLASS_CPU case=capital_64_mixed hits=64 sparks=1043 flashes=64 boxes=112 bursts=56 rings=24 filaments=8 scorches=16 streaks=8 best_us=33.00 mean_us=46.49 target_us=30
+CLASS_CPU case=capital_64_mixed_sparks_only best_us=25.70
+CLASS_CPU case=capital_64_mixed_no_sparks best_us=9.10
+CHECK hull_cpu_64_hits_mixed PASS
+CLASS_TIMING width=1920 height=1080 class=energy case=fighter_200m_20_hits hits=20 sparks=105 flashes=20 streaks=0 boxes=40 bursts=20 rings=0 filaments=0 scorches=16 spots=0 octaves=2 screens=0.119 flash_screens=0.013 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=23.6
+CLASS_TIMING width=1920 height=1080 class=energy case=capital_close_64_hits hits=64 sparks=495 flashes=64 streaks=0 boxes=32 bursts=2 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.950 flash_screens=2.761 shed=70 bursts_shed=22 scorches_shed=8 rings_shed=0 gpu_us=311.0
+CLASS_TIMING width=1920 height=1080 class=ballistic case=fighter_200m_20_hits hits=20 sparks=436 flashes=20 streaks=0 boxes=40 bursts=20 rings=0 filaments=0 scorches=16 spots=0 octaves=2 screens=0.028 flash_screens=0.002 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=25.8
+CLASS_TIMING width=1920 height=1080 class=ballistic case=capital_close_64_hits hits=64 sparks=2042 flashes=64 streaks=0 boxes=79 bursts=24 rings=0 filaments=0 scorches=6 spots=0 octaves=2 screens=5.102 flash_screens=0.437 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=242.4
+CLASS_TIMING width=1920 height=1080 class=plasma case=fighter_200m_20_hits hits=20 sparks=93 flashes=20 streaks=0 boxes=40 bursts=20 rings=20 filaments=0 scorches=16 spots=0 octaves=2 screens=0.268 flash_screens=0.052 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=31.1
+CLASS_TIMING width=1920 height=1080 class=plasma case=capital_close_64_hits hits=64 sparks=440 flashes=64 streaks=0 boxes=0 bursts=0 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.923 flash_screens=7.923 shed=108 bursts_shed=22 scorches_shed=13 rings_shed=52 gpu_us=276.3
+CLASS_TIMING width=1920 height=1080 class=heavy case=fighter_200m_20_hits hits=20 sparks=473 flashes=20 streaks=20 boxes=40 bursts=20 rings=20 filaments=0 scorches=16 spots=0 octaves=2 screens=0.139 flash_screens=0.005 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=28.2
+CLASS_TIMING width=1920 height=1080 class=heavy case=capital_close_64_hits hits=64 sparks=2048 flashes=64 streaks=64 boxes=42 bursts=2 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.790 flash_screens=1.002 shed=53 bursts_shed=23 scorches_shed=8 rings_shed=59 gpu_us=352.3
+CLASS_TIMING width=1920 height=1080 class=ion case=fighter_200m_20_hits hits=20 sparks=61 flashes=20 streaks=0 boxes=0 bursts=0 rings=0 filaments=20 scorches=0 spots=0 octaves=2 screens=0.064 flash_screens=0.013 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=21.1
+CLASS_TIMING width=1920 height=1080 class=ion case=capital_close_64_hits hits=64 sparks=235 flashes=64 streaks=0 boxes=0 bursts=0 rings=0 filaments=28 scorches=0 spots=0 octaves=2 screens=7.673 flash_screens=2.761 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=283.7
+CLASS_TIMING width=1920 height=1080 class=beam case=fighter_200m_20_hits hits=20 sparks=40 flashes=40 streaks=0 boxes=29 bursts=20 rings=0 filaments=0 scorches=16 spots=20 octaves=2 screens=0.093 flash_screens=0.018 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=22.8
+CLASS_TIMING width=1920 height=1080 class=beam case=capital_close_64_hits hits=64 sparks=128 flashes=94 streaks=0 boxes=34 bursts=2 rings=0 filaments=0 scorches=0 spots=64 octaves=1 screens=7.964 flash_screens=3.224 shed=44 bursts_shed=22 scorches_shed=9 rings_shed=0 gpu_us=304.4
+CLASS_TIMING width=1920 height=1080 class=missile case=fighter_200m_20_hits hits=20 sparks=575 flashes=20 streaks=0 boxes=40 bursts=20 rings=20 filaments=0 scorches=16 spots=0 octaves=2 screens=0.244 flash_screens=0.013 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=31.5
+CLASS_TIMING width=1920 height=1080 class=missile case=capital_close_64_hits hits=64 sparks=2048 flashes=64 streaks=0 boxes=23 bursts=2 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.670 flash_screens=2.761 shed=85 bursts_shed=19 scorches_shed=13 rings_shed=56 gpu_us=325.2
+CLASS_TIMING width=1920 height=1080 class=asteroid case=fighter_200m_20_hits hits=20 sparks=367 flashes=0 streaks=0 boxes=0 bursts=20 rings=0 filaments=0 scorches=0 spots=0 octaves=2 screens=0.000 flash_screens=0.000 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=21.9
+CLASS_TIMING width=1920 height=1080 class=asteroid case=capital_close_64_hits hits=64 sparks=1553 flashes=0 streaks=0 boxes=0 bursts=22 rings=0 filaments=0 scorches=0 spots=0 octaves=2 screens=0.046 flash_screens=0.000 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=46.6
+CLASS_TIMING width=1920 height=1080 class=plasma case=capital_close_128_hits flashes=128 flashes_shed=80 boxes=0 bursts=0 rings=0 scorches=0 screens=7.923 flash_screens=7.923 gpu_us=286.6
+CLASS_TIMING width=1920 height=1080 case=ring_alone_fills_frame rings=1 filaments=0 scorches=0 flashes=0 screens=0.400 gpu_us=30.2 weight=0.170
+CLASS_TIMING width=1920 height=1080 case=filament_alone_fills_frame rings=0 filaments=1 scorches=0 flashes=0 screens=0.860 gpu_us=53.0 weight=0.299
+CLASS_TIMING width=1920 height=1080 case=scorch_alone_fills_frame rings=0 filaments=0 scorches=1 flashes=0 screens=0.490 gpu_us=30.6 weight=0.172
+CLASS_TIMING width=1920 height=1080 case=flash_alone_fills_frame rings=0 filaments=0 scorches=0 flashes=1 screens=0.490 gpu_us=31.2 weight=0.176
+CLASS_TIMING width=5120 height=1440 class=energy case=fighter_200m_20_hits hits=20 sparks=108 flashes=20 streaks=0 boxes=40 bursts=20 rings=0 filaments=0 scorches=16 spots=0 octaves=2 screens=0.238 flash_screens=0.026 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=53.7
+CHECK hull_budget_20_hits_5120_energy PASS
+CLASS_TIMING width=5120 height=1440 class=energy case=capital_close_64_hits hits=64 sparks=480 flashes=64 streaks=0 boxes=27 bursts=2 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.923 flash_screens=2.768 shed=61 bursts_shed=12 scorches_shed=5 rings_shed=0 gpu_us=1061.8
+CLASS_TIMING width=5120 height=1440 class=ballistic case=fighter_200m_20_hits hits=20 sparks=423 flashes=20 streaks=0 boxes=40 bursts=20 rings=0 filaments=0 scorches=16 spots=0 octaves=2 screens=0.056 flash_screens=0.004 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=30.8
+CHECK hull_budget_20_hits_5120_ballistic PASS
+CLASS_TIMING width=5120 height=1440 class=ballistic case=capital_close_64_hits hits=64 sparks=1977 flashes=64 streaks=0 boxes=56 bursts=13 rings=0 filaments=0 scorches=4 spots=0 octaves=2 screens=5.184 flash_screens=0.439 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=769.9
+CLASS_TIMING width=5120 height=1440 class=plasma case=fighter_200m_20_hits hits=20 sparks=95 flashes=20 streaks=0 boxes=40 bursts=20 rings=20 filaments=0 scorches=16 spots=0 octaves=2 screens=0.541 flash_screens=0.104 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=95.0
+CHECK hull_budget_20_hits_5120_plasma PASS
+CLASS_TIMING width=5120 height=1440 class=plasma case=capital_close_64_hits hits=64 sparks=447 flashes=64 streaks=0 boxes=0 bursts=0 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.962 flash_screens=7.962 shed=95 bursts_shed=12 scorches_shed=10 rings_shed=43 gpu_us=945.6
+CLASS_TIMING width=5120 height=1440 class=heavy case=fighter_200m_20_hits hits=20 sparks=501 flashes=20 streaks=20 boxes=40 bursts=20 rings=20 filaments=0 scorches=16 spots=0 octaves=2 screens=0.281 flash_screens=0.009 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=60.8
+CHECK hull_budget_20_hits_5120_heavy PASS
+CLASS_TIMING width=5120 height=1440 class=heavy case=capital_close_64_hits hits=64 sparks=2048 flashes=64 streaks=64 boxes=35 bursts=2 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.740 flash_screens=0.961 shed=45 bursts_shed=12 scorches_shed=5 rings_shed=49 gpu_us=1127.2
+CLASS_TIMING width=5120 height=1440 class=ion case=fighter_200m_20_hits hits=20 sparks=44 flashes=20 streaks=0 boxes=0 bursts=0 rings=0 filaments=20 scorches=0 spots=0 octaves=2 screens=0.127 flash_screens=0.026 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=36.8
+CHECK hull_budget_20_hits_5120_ion PASS
+CLASS_TIMING width=5120 height=1440 class=ion case=capital_close_64_hits hits=64 sparks=239 flashes=64 streaks=0 boxes=0 bursts=0 rings=0 filaments=22 scorches=0 spots=0 octaves=2 screens=7.652 flash_screens=2.768 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=957.8
+CLASS_TIMING width=5120 height=1440 class=beam case=fighter_200m_20_hits hits=20 sparks=40 flashes=40 streaks=0 boxes=29 bursts=20 rings=0 filaments=0 scorches=16 spots=20 octaves=2 screens=0.187 flash_screens=0.035 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=44.4
+CHECK hull_budget_20_hits_5120_beam PASS
+CLASS_TIMING width=5120 height=1440 class=beam case=capital_close_64_hits hits=64 sparks=128 flashes=94 streaks=0 boxes=27 bursts=2 rings=0 filaments=0 scorches=0 spots=64 octaves=1 screens=7.706 flash_screens=3.256 shed=37 bursts_shed=12 scorches_shed=7 rings_shed=0 gpu_us=1013.0
+CLASS_TIMING width=5120 height=1440 class=missile case=fighter_200m_20_hits hits=20 sparks=557 flashes=20 streaks=0 boxes=40 bursts=20 rings=20 filaments=0 scorches=16 spots=0 octaves=2 screens=0.489 flash_screens=0.026 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=89.5
+CHECK hull_budget_20_hits_5120_missile PASS
+CLASS_TIMING width=5120 height=1440 class=missile case=capital_close_64_hits hits=64 sparks=2048 flashes=64 streaks=0 boxes=21 bursts=2 rings=0 filaments=0 scorches=0 spots=0 octaves=1 screens=7.736 flash_screens=2.768 shed=74 bursts_shed=10 scorches_shed=10 rings_shed=45 gpu_us=1074.1
+CLASS_TIMING width=5120 height=1440 class=asteroid case=fighter_200m_20_hits hits=20 sparks=358 flashes=0 streaks=0 boxes=0 bursts=20 rings=0 filaments=0 scorches=0 spots=0 octaves=2 screens=0.001 flash_screens=0.000 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=22.6
+CHECK hull_budget_20_hits_5120_asteroid PASS
+CLASS_TIMING width=5120 height=1440 class=asteroid case=capital_close_64_hits hits=64 sparks=1561 flashes=0 streaks=0 boxes=0 bursts=13 rings=0 filaments=0 scorches=0 spots=0 octaves=2 screens=0.070 flash_screens=0.000 shed=0 bursts_shed=0 scorches_shed=0 rings_shed=0 gpu_us=62.2
+CHECK hull_budget_capital_close_within_8_screens PASS
+CLASS_TIMING width=5120 height=1440 class=plasma case=capital_close_128_hits flashes=128 flashes_shed=80 boxes=0 bursts=0 rings=0 scorches=0 screens=7.962 flash_screens=7.962 gpu_us=950.1
+CHECK hull_budget_128_plasma_close_within_budget PASS
+CLASS_TIMING width=5120 height=1440 case=ring_alone_fills_frame rings=1 filaments=0 scorches=0 flashes=0 screens=0.400 gpu_us=71.9 weight=0.405
+CLASS_TIMING width=5120 height=1440 case=filament_alone_fills_frame rings=0 filaments=1 scorches=0 flashes=0 screens=0.860 gpu_us=151.9 weight=0.856
+CLASS_TIMING width=5120 height=1440 case=scorch_alone_fills_frame rings=0 filaments=0 scorches=1 flashes=0 screens=0.490 gpu_us=87.6 weight=0.494
+CLASS_TIMING width=5120 height=1440 case=flash_alone_fills_frame rings=0 filaments=0 scorches=0 flashes=1 screens=0.490 gpu_us=87.6 weight=0.494
+RESULT PASS checks=154 failures=0
+# build/verification/weapon-effects-hook/fixture.log
+HULL_CLASS case=tug flags=0x2 shot=0,0 total=0 class=beam want=beam detail=0x54 ok=1
+HULL_CLASS case=repair flags=0xa2 shot=0,40 total=40 class=beam want=beam detail=0x52 ok=1
+HULL_CLASS case=beam_pal flags=0x2 shot=3969,3969 total=3969 class=beam want=beam detail=0x50 ok=1
+HULL_CLASS case=beam_invulnerable_target flags=0x2 shot=3969,3969 total=0 class=beam want=beam detail=0x50 ok=1
+HULL_CLASS case=beam_iond flags=0x214 shot=1575,1575 total=1575 class=beam want=beam detail=0x50 ok=1
+HULL_CLASS case=ion_esr flags=0x400 shot=2671,1335 total=1335 class=ion want=ion detail=0x40 ok=1
+HULL_CLASS case=ion_ipg_frag flags=0x300 shot=12563,6281 total=6281 class=ion want=ion detail=0x40 ok=1
+HULL_CLASS case=ion_ionc flags=0x2600 shot=119148,59574 total=59574 class=ion want=ion detail=0x40 ok=1
+HULL_CLASS case=ballistic_mass flags=0x60 shot=45,45 total=45 class=ballistic want=ballistic detail=0x10 ok=1
+HULL_CLASS case=ballistic_mam flags=0x140 shot=8350,4175 total=4175 class=ballistic want=ballistic detail=0x10 ok=1
+HULL_CLASS case=heavy_gauss_shield_total flags=0x40 shot=28540,7135 total=28540 class=heavy want=heavy detail=0x30 ok=1
+HULL_CLASS case=heavy_gauss_hull_total flags=0x40 shot=28540,7135 total=7135 class=heavy want=heavy detail=0x30 ok=1
+HULL_CLASS case=plasma_wave_psg flags=0x8 shot=1996,998 total=998 class=plasma want=plasma detail=0x20 ok=1
+HULL_CLASS case=heavy_ppc_shield_total flags=0x2000 shot=63778,15944 total=63778 class=heavy want=heavy detail=0x30 ok=1
+HULL_CLASS case=heavy_ppc_hull_total flags=0x2000 shot=63778,15944 total=15944 class=heavy want=heavy detail=0x30 ok=1
+HULL_CLASS case=energy_ire flags=0 shot=220,110 total=110 class=energy want=energy detail=0 ok=1
+HULL_CLASS case=energy_flak flags=0x2100 shot=13860,6930 total=6930 class=energy want=energy detail=0 ok=1
+HULL_CLASS case=heavy_band_edge flags=0 shot=20000,5000 total=5000 class=heavy want=heavy detail=0x30 ok=1
+HULL_CLASS case=heavy_band_edge_hull flags=0 shot=5000,20000 total=5000 class=heavy want=heavy detail=0x30 ok=1
+HULL_CLASS case=energy_below_band flags=0 shot=19999,19999 total=19999 class=energy want=energy detail=0 ok=1
+CHECK pass hull_class_from_record
+HULL_CLASS case=table orb=1 pin_md=1 pin_over_rule=1 pin_clears_repair=1 repair_pin=1 out_of_range=1 missile=1
+CHECK pass hull_class_pins_and_body
+RESULT PASS checks=92 failures=0 faults=3
+# verification/probe/build/engine-shimmer/fixture.log
+CHECK weapon_rect_plume_rect PASS
+WEAPON_RECT case=plumes_identical width=1920 height=1080 pixels_differ=0 moved=36789
+CHECK weapon_rect_plumes_byte_identical_to_previous_program PASS
+WEAPON_RECT case=strength width=1920 height=1080 amplitude_px=1.1250 worst_px=1.0666,0.5349,0.0000 mean_px=0.3755,0.1879,0.0000 inside_changed=22570,21631,0 constants=1
+CHECK weapon_rect_strength_scales_displacement PASS
+CHECK weapon_rect_constants_after_engine_rects PASS
+CHECK weapon_rect_plume_rect PASS
+WEAPON_RECT case=plumes_identical width=5120 height=1440 pixels_differ=0 moved=37719
+CHECK weapon_rect_plumes_byte_identical_to_previous_program PASS
+WEAPON_RECT case=strength width=5120 height=1440 amplitude_px=1.5000 worst_px=1.4222,0.7127,0.0000 mean_px=0.4785,0.2395,0.0000 inside_changed=22862,22032,0 constants=1
+CHECK weapon_rect_strength_scales_displacement PASS
+CHECK weapon_rect_constants_after_engine_rects PASS
+RESULT PASS checks=51 failures=0

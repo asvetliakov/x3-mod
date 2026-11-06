@@ -96,6 +96,30 @@ static core::Event* hit(core::Ring& ring, unsigned k, std::uint32_t t0, std::int
     e->radius = 20000;
     return e;
 }
+// The hull stage into the sprite and glow buffers only (weapon_effects_hull.h HullBuffers).
+static st::HullCounts build_hull2(core::Ring& ring, st::HullState& hs, const st::HullView& v, x3m::renderer::WeaponSpriteVertex* spr,
+                                  x3m::renderer::WeaponGlowVertex* glw, unsigned* q, unsigned* b) {
+    st::HullBuffers o;
+    o.sprites = spr;
+    o.sprite_cap = 2304;
+    o.glows = glw;
+    o.glow_cap = 512;
+    const st::HullCounts n = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, o);
+    *q = o.sprite_quads;
+    *b = o.glow_boxes;
+    return n;
+}
+// The energy class's spatter of a record alive at `age` (its one set, the slow one: its count, factors and floor).
+static unsigned spatter_alive(const core::Event& e, float k, float age, float floor_ms) {
+    const unsigned n = st::spark_count(e, k, st::HullTuning{}, core::hull::an_energy, 1);
+    const st::SparkSet ss = st::spark_set(core::hull::an_energy, 1);
+    unsigned alive = 0;
+    for (unsigned sp = 0; sp < n; ++sp) {
+        const float law = (ss.life + ss.life_k * k) * st::spark_factors(e.sequence, sp, ss.speed_spread).life_x;
+        alive += age < (law > floor_ms ? law : floor_ms);
+    }
+    return alive;
+}
 static unsigned live(const core::Ring& r) {
     unsigned n = 0;
     for (unsigned i = 0; i < core::ring_capacity; ++i) n += r.slots[i].sequence != 0;
@@ -820,7 +844,7 @@ int main(int argc, char** argv) {
         auto frame = [&](std::uint32_t now, const char* name) {
             v.now = now;
             unsigned q = 0, b = 0;
-            const st::HullCounts n = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+            const st::HullCounts n = build_hull2(ring, hs, v, spr, glw, &q, &b);
             unsigned mask_lo = 0, mask_hi = 0;
             for (unsigned k = 1; k <= 40; ++k)
                 if (drawn(k)) (k <= 20 ? mask_lo : mask_hi) |= 1u << ((k - 1) % 20);
@@ -886,17 +910,19 @@ int main(int argc, char** argv) {
         v.now = 1000;
         v.step_ms = 16;
         unsigned q = 0, b = 0;
-        const st::HullCounts first = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
-        const unsigned want = st::spark_count(ring.slots[0], st::hull_calibre(ring.slots[0]), st::HullTuning{});
-        std::printf("first hits=%u flashes=%u sparks=%u glows=%u embers=%u quads=%u boxes=%u want=%u\n", first.hits,
-                    first.flashes, first.sparks, first.glows, first.embers, q, b, want);
+        const st::HullCounts first = build_hull2(ring, hs, v, spr, glw, &q, &b);
+        const float k0 = st::hull_calibre(ring.slots[0]);
+        const unsigned want = st::spark_count(ring.slots[0], k0, st::HullTuning{}, core::hull::an_energy, 1);
+        const unsigned alive100 = spatter_alive(ring.slots[0], k0, 100.f, 48.f), alive110 = spatter_alive(ring.slots[0], k0, 110.f, 48.f);
+        std::printf("first hits=%u flashes=%u sparks=%u glows=%u embers=%u quads=%u boxes=%u want=%u alive100=%u alive110=%u\n",
+                    first.hits, first.flashes, first.sparks, first.glows, first.embers, q, b, want, alive100, alive110);
         v.now = 1100;
-        const st::HullCounts later = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+        const st::HullCounts later = build_hull2(ring, hs, v, spr, glw, &q, &b);
         std::printf("later hits=%u flashes=%u sparks=%u glows=%u embers=%u floored=%u\n", later.hits, later.flashes,
                     later.sparks, later.glows, later.embers, later.floored);
         put(obj(1) + core::layout::obj_flags, core::layout::obj_dying);
         v.now = 1110;
-        const st::HullCounts dead = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+        const st::HullCounts dead = build_hull2(ring, hs, v, spr, glw, &q, &b);
         std::printf("dead orphans=%u sparks=%u flashes=%u glows=%u embers=%u retired=%u\n", dead.orphans, dead.sparks,
                     dead.flashes, dead.glows, dead.embers, dead.retired);
         core::Mode m = core::mode_native;
@@ -1196,14 +1222,17 @@ class WeaponEffectsClassifier(unittest.TestCase):
     def test_hull_build_first_frame_later_and_orphan(self):
         r = self.run_case('hull')
         first, later, dead, mode = r['first'], r['later'], r['dead'], r['mode']
-        n = int(first['want'])                 # round(16 x (1 +- 0.4)), hashed from the sequence (spark_count)
-        self.assertTrue(10 <= n <= 22, n)
+        # the energy class (the nibble 0, hull-impact-classes.md 4.1): its spatter round((4 + 4 k) x (1 +- 0.4)), hashed
+        # from the sequence (spark_count), living (150 + 100 k) ms x its factor
+        n = int(first['want'])
+        self.assertTrue(3 <= n <= 9, n)
+        a100, a110 = int(first['alive100']), int(first['alive110'])
         self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, n, 1, 1))
         self.assertEqual((first['quads'], first['boxes']), (n + 1, 2))  # the shield and the unstaged records drew nothing
-        self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, n, 1, 1))
+        self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, a100, 1, 1))
         self.assertEqual((dead['orphans'], dead['sparks'], dead['flashes'], dead['glows'], dead['embers'], dead['retired']),
-                         (1, n, 0, 0, 0, 0))
-        self.assertEqual((mode['parsed'], mode['value'], mode['hull_word'], mode['lifetime']), (1, 3, 0, 1441))
+                         (1, a110, 0, 0, 0, 0))
+        self.assertEqual((mode['parsed'], mode['value'], mode['hull_word'], mode['lifetime']), (1, 3, 0, 3601))
 
     def test_present_latch_and_ring_scope(self):
         r = self.run_case('latch')
