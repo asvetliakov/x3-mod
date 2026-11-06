@@ -89,7 +89,7 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
             self.assertIsNone(data['weapon_effects_table'])
 
     def test_observe_and_shields_send_the_variable_and_table_path(self):
-        for value in ('observe', 'shields'):
+        for value in ('observe', 'shields', 'shields,hull'):
             code, data, error = self.launch('--weapon-effects', value, inherited={'X3M_WEAPON_EFFECTS': 'native'})
             self.assertEqual(code, 0, error)
             self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], value)
@@ -113,6 +113,9 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
             _, data, _ = self.launch('--weapon-effects', 'shields')
             self.assertEqual(data['weapon_effects_table'],
                              'weapon effects table: ok (45 TBullets rows, table be762076cdc38b03, schema 1)')
+            _, data, _ = self.launch('--weapon-effects', 'shields,hull')
+            self.assertEqual(data['weapon_effects_table'],
+                             'weapon effects table: ok (45 TBullets rows, table be762076cdc38b03, schema 1)')
             path.write_text('{"tool": "something else", "tables": {}}')
             _, data, _ = self.launch('--weapon-effects', 'observe')
             self.assertTrue(data['weapon_effects_table'].startswith('weapon effects table: unreadable'),
@@ -125,6 +128,18 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
         code, _, error = self.launch('--weapon-effects', 'shields', vanilla=True)
         self.assertEqual(code, 2)
         self.assertIn('--weapon-effects cannot be combined with --vanilla', error)
+
+    def test_hull_list_in_either_order_with_spaces_resolves(self):
+        for given in ('shields,hull', 'hull,shields', ' shields , hull', 'hull, shields'):
+            code, data, error = self.launch('--weapon-effects', given)
+            self.assertEqual(code, 0, error)
+            self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], 'shields,hull', given)
+            self.assertEqual(data['weapon_effects'], 'shields,hull', given)
+            self.assertIn('weapon effects: shields,hull (X3M_WEAPON_EFFECTS)', error)
+        for bad in ('hull', 'shields,shields', 'shields,hull,bolts', 'shields;hull'):
+            code, _, error = self.launch('--weapon-effects', bad)
+            self.assertEqual(code, 2, bad)
+            self.assertIn('invalid choice', error)
 
     def test_invalid_choice(self):
         code, _, error = self.launch('--weapon-effects', 'hull')

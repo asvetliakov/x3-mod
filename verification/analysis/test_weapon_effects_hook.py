@@ -43,7 +43,13 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'scope_sector_change_clears_owned', 'scope_loading_clears_owned', 'scope_load_epoch_clears_owned',
                 'fixture_stack_margin', 'travel_dir_from_bullet_row2', 'travel_dir_fallback_zero_row_dead_node',
                 'drained_shield_hit_forwards_as_hull_hit', 'shield_hit_above_drained_threshold_staged',
-                'unread_shield_keeps_the_engine_rule', 'drained_threshold_boundary_326_327'}
+                'unread_shield_keeps_the_engine_rule', 'drained_threshold_boundary_326_327',
+                # step 2, the hull hit (docs/architecture/weapon-look.md 3.1): the shields,hull mode's skip and forward
+                'hull_mode_parse', 'hull_mode_installed', 'hull_hit_skips_native_when_staged', 'hull_skip_frame_kept',
+                'hull_mode_shield_hit_staged', 'hull_hit_forwards_when_not_owned', 'hull_hit_dying_object_forwards',
+                'drained_hull_hit_staged', 'hull_hit_stage_and_forward', 'hull_missile_source_staged',
+                'hull_asteroid_variant', 'hull_repair_tug_variant_by_override', 'hull_present_keeps_floor_then_releases',
+                'hull_hit_forwards_without_hull_programs', 'overflow_census_first_then_oldest_staged'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -96,6 +102,12 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         b = d['boundary']                                                     # 326 drained, 327 not
         self.assertEqual((b['q_below'], b['role_below'], b['callee_below'], b['q_at'], b['role_at'], b['callee_at']),
                          (326, 'hull_hit', 1, 327, 'shield_hit', 0))
+
+    def test_hull_mode_rows(self):
+        rows = {x['case']: x for x in self.record['hull_mode']}
+        self.assertEqual((rows['skip']['through'], rows['skip']['unabsorbed'], rows['skip']['skipped_delta'],
+                          rows['skip']['forwarded_delta']), (1, 1, 2, 0))
+        self.assertEqual((rows['present']['kept'], rows['present']['released']), (1, 1))
 
     def test_forward_state(self):
         f = {k: int(v, 16) for k, v in self.record['forward_state'].items()}
@@ -265,6 +277,60 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                 self.assertIn((width, case), cases)
         fill = [x for x in m['timing'] if x['case'] == 'capital_fill_full_map']
         self.assertTrue(all(x['raster_share'] >= 0.95 for x in fill))             # its cells really fill the frame
+
+    def test_hull_hit_gates(self):
+        """Step 2 (docs/architecture/weapon-look.md 3.1 "Fixture gates"): every hull gate passed, and the rows behind
+        them: placement, the hidden half, the floors, the three-frame floor, no pop, the cockpit dim, the resolve, the CPU
+        and GPU budgets at 5120x1440, and the glow's budget weight re-pinned from its full-screen cost."""
+        r = self.record
+        names = {n for n, ok in r['checks'] if ok}
+        for gate in ('hull_programs_attached', 'hull_sparks_born_at_recorded_pos', 'hull_flash_centroid_at_projected_hit',
+                     'hull_half_of_sparks_hidden_by_flat_lane', 'hull_light_on_hull_not_sky', 'hull_light_peak_decay_150ms',
+                     'hull_spark_cooling_hue_half_life', 'hull_spark_cooling_ramp', 'hull_sizes_counts_per_tier_law',
+                     'hull_spark_reach_law_200ms', 'hull_spark_reach_asymptote_2u', 'hull_spark_lives_law',
+                     'hull_streak_min_footprint_3px_12px', 'hull_min_frames_under_seta6', 'hull_min_frames_under_seta10',
+                     'hull_seta6_wall_time_law', 'hull_no_pop_12hps', 'hull_far_side_hit_hidden',
+                     'hull_flash_not_halved_by_its_surface', 'hull_chase_nose_lit_outside_outline', 'hull_cockpit_dim_own_ship',
+                     'hull_repair_no_sparks', 'hull_tug_glow_only', 'hull_missile_tier', 'hull_asteroid_dust',
+                     'velocity_from_frame_delta', 'hull_orphan_sparks_outlive_owner', 'hull_budget_shed',
+                     'hull_r32f_lane_form', 'hull_resolve_core_survival_0px', 'hull_resolve_core_survival_4px',
+                     'hull_resolve_core_survival_8px', 'hull_resolve_no_scar_0px', 'hull_resolve_no_scar_4px',
+                     'hull_resolve_no_scar_8px', 'hull_fault_reported', 'hull_floor_latched_seta_engage_nothing_reappears',
+                     'hull_no_pop_step_change_law', 'hull_programs_refused_shields_still_draw',
+                     'shields_mode_loads_no_hull_programs', 'velocity_first_hit_from_previous_frame_rows',
+                     'hull_recovers_after_fault', 'hull_reset_recovers', 'hull_program_refusal_draws_nothing',
+                     'hull_cpu_64_hits', 'hull_budget_20_hits_5120'):
+            self.assertIn(gate, names)
+        m = r['metrics']
+        hull = {x['case']: x for x in m['hull'] if 'case' in x and x['case'] != 'law'}
+        self.assertLessEqual(hull['placement']['spark_centroid_err_u'], 0.25)
+        self.assertLessEqual(hull['placement']['flash_centroid_err_rhit'], 0.1)
+        for k in ('k0_share', 'k05_share', 'k1_share'):
+            self.assertTrue(0.45 <= hull['half_hidden'][k] <= 0.55, k)
+        self.assertEqual(hull['glow_surface']['lit_sky'], 0)
+        self.assertGreaterEqual((hull['floors_2km']['min_width_px'], hull['floors_2km']['min_length_px']), (3.0 - 1e-3, 12.0 - 1e-2))
+        self.assertEqual((hull['min_frames']['seta6_flash_frames'], hull['min_frames']['seta10_flash_frames']), (3, 3))
+        self.assertEqual(hull['no_pop_12hps']['popped_pixels'], 0)
+        self.assertEqual((hull['no_pop_step_change']['violations'], hull['no_pop_step_change']['checked']), (0, 720))
+        self.assertEqual(hull['seta_engage']['reappeared'], 0)
+        self.assertEqual(hull['chase_nose']['age_ms'], 200)
+        self.assertGreaterEqual(hull['chase_nose']['outside_lit'], 20)
+        self.assertEqual((hull['hull_refused']['hull'], hull['hull_refused']['patches'], hull['hull_refused']['sprites']), (0, 1, 0))
+        self.assertAlmostEqual(hull['cockpit']['own_ratio'], 0.35, delta=0.005)
+        laws = [x for x in m['hull'] if x.get('case') == 'law']
+        self.assertEqual(len(laws), 9)                                            # 3 tiers x k 0 / 0.5 / 1
+        for x in laws:
+            self.assertEqual(x['sparks'], x['want'])
+        cpu = {x['case']: x for x in m['hull_cpu']}
+        self.assertLessEqual(cpu['capital_64_hits']['best_us'], 30.0)
+        timing = {(x['width'], x['case']): x for x in m['hull_timing']}
+        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 50.0)
+        # the glow's budget weight (core::look::budget_weight_glow) against its measured full-screen cost / 177.5 us
+        core_h = (ROOT / 'src/proxy/weapon_effects_core.h').read_text()
+        import re
+        weight = float(re.search(r'budget_weight_glow = ([0-9.]+)f', core_h).group(1))
+        measured = timing[(5120, 'glow_alone_fills_frame')]['gpu_us'] / 177.5
+        self.assertAlmostEqual(weight, measured, delta=0.1)
 
     def test_bound_to_its_production_sources(self):
         import run_weapon_effects as runner

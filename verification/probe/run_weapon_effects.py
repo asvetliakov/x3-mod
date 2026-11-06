@@ -65,13 +65,23 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_decal_vs.hlsl', 'src/effects/weapon_decal_ps.hlsl', 'src/effects/weapon_soft_depth.hlsl',
                       'src/effects/weapon_hex_patch.hlsl',
                       'src/renderer/weapon_shell_vertex_program_inc.h', 'src/renderer/weapon_shell_pixel_program_inc.h',
-                      'src/renderer/weapon_decal_vertex_program_inc.h', 'src/renderer/weapon_decal_pixel_program_inc.h')
+                      'src/renderer/weapon_decal_vertex_program_inc.h', 'src/renderer/weapon_decal_pixel_program_inc.h',
+                      # step 2, the hull hit (docs/architecture/weapon-look.md 3.1)
+                      'src/proxy/weapon_effects_hull.h', 'src/effects/weapon_sprite_vs.hlsl',
+                      'src/effects/weapon_sprite_ps.hlsl', 'src/effects/weapon_glow_vs.hlsl', 'src/effects/weapon_glow_ps.hlsl',
+                      'src/renderer/weapon_sprite_vertex_program_inc.h', 'src/renderer/weapon_sprite_pixel_program_inc.h',
+                      'src/renderer/weapon_glow_vertex_program_inc.h', 'src/renderer/weapon_glow_pixel_program_inc.h',
+                      'verification/probe/weapon_effects_hull_cases.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
     'weapon_decal_vs': ('verification/results/weapon-decal-vertex-program.json', 'src/renderer/weapon_decal_vertex_program_inc.h'),
     'weapon_decal_ps': ('verification/results/weapon-decal-pixel-program.json', 'src/renderer/weapon_decal_pixel_program_inc.h'),
     'weapon_bubble_ps': ('verification/results/weapon-bubble-pixel-program.json', 'src/renderer/weapon_bubble_pixel_program_inc.h'),
+    'weapon_sprite_vs': ('verification/results/weapon-sprite-vertex-program.json', 'src/renderer/weapon_sprite_vertex_program_inc.h'),
+    'weapon_sprite_ps': ('verification/results/weapon-sprite-pixel-program.json', 'src/renderer/weapon_sprite_pixel_program_inc.h'),
+    'weapon_glow_vs': ('verification/results/weapon-glow-vertex-program.json', 'src/renderer/weapon_glow_vertex_program_inc.h'),
+    'weapon_glow_ps': ('verification/results/weapon-glow-pixel-program.json', 'src/renderer/weapon_glow_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -146,7 +156,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING')
+            'REFUSED', 'TIMING', 'HULL', 'HULL_SLOTS', 'HULL_CPU', 'HULL_TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -182,8 +192,9 @@ def parse_hook(text):
     travel = [fields(line) for line in text.splitlines() if line.startswith('DIR ')]
     suppress = [fields(line) for line in text.splitlines() if line.startswith('SUPPRESS ')]
     drained = [fields(line) for line in text.splitlines() if line.startswith('DRAINED ')]
+    hull_mode = [fields(line) for line in text.splitlines() if line.startswith('HULL_MODE ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
-            'dir': travel, 'suppress': suppress, 'drained': drained,
+            'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode,
             'event_cost': cost[-1] if cost else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -207,6 +218,7 @@ def run_hook(args, results):
     record['dir'] = report['dir']
     record['suppress'] = report['suppress']
     record['drained'] = report['drained']
+    record['hull_mode'] = report['hull_mode']
     record['event_cost'] = report['event_cost']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
@@ -272,7 +284,7 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing')}
+                                                 'refused', 'timing', 'hull', 'hull_slots', 'hull_cpu', 'hull_timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])
@@ -280,7 +292,8 @@ def main():
     out_path = results / 'summary.json'
     out_path.write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({'exit': returncode, 'result': report['result'], 'failed': report['failed_checks'],
-                      'timing': report['timing'], 'record': str(out_path.relative_to(ROOT))}, indent=1))
+                      'timing': report['timing'], 'hull_timing': report['hull_timing'], 'hull_cpu': report['hull_cpu'],
+                      'record': str(out_path.relative_to(ROOT))}, indent=1))
     return 0 if passed and hook_passed is not False else 1
 
 

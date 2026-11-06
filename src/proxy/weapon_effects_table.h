@@ -8,7 +8,7 @@
 //   {"schema": 1, "tool": "...", ..., "tables": {
 //      "bullets":  {"rows": N, "sha256": "<16 hex>", "entries": [{"row": i, "id": "SS_BULLET_...", "z_over_xy": e|null,
 //                   "texture_rgb": [r, g, b]|null, "style": "<shape>"|null, "tint": [r, g, b]|null,
-//                   "calibre": k|null, ...}, ...]},
+//                   "calibre": k|null, "hull": "repair"|"tug"|null, ...}, ...]},
 //      "missiles": {"rows": M, ...}}}
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
@@ -19,6 +19,7 @@ namespace core = x3m::weapon_effects::core;
 struct Stats {
     unsigned entries = 0, dropped = 0, textures = 0, overrides = 0;
     unsigned schema = 0;
+    unsigned hull_keys = 0; // entries carrying the "hull" key (0: a table generated before step 2, or no variant row)
 };
 inline bool parse_rgb(json::Cursor& c, std::uint32_t* out, bool* present) noexcept {
     *present = false;
@@ -49,7 +50,7 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     float row = -1.f, e = 0.f, calibre = 0.f;
     bool e_present = false, calibre_present = false, texture_present = false, tint_present = false, style_present = false;
     std::uint32_t texture = 0, tint = 0;
-    std::uint8_t style = 0;
+    std::uint8_t style = 0, hull = 0; // hull: the hull-hit variant (row_hull_repair / row_hull_tug), step 2
     if (!c.accept('}'))
         for (;;) {
             char key[24];
@@ -74,6 +75,18 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                     bool name_fits;
                     if (!c.string(name, sizeof name, &name_fits)) return false;
                     style_present = name_fits && shape_from_name(name, &style);
+                }
+            } else if (!std::strcmp(key, "hull")) {
+                ++st->hull_keys;
+                if (c.literal("null")) {
+                } else {
+                    char name[16];
+                    bool name_fits;
+                    if (!c.string(name, sizeof name, &name_fits)) return false;
+                    hull = !name_fits                     ? std::uint8_t(0)
+                           : !std::strcmp(name, "repair") ? std::uint8_t(core::row_hull_repair)
+                           : !std::strcmp(name, "tug")    ? std::uint8_t(core::row_hull_tug)
+                                                          : std::uint8_t(0);
                 }
             } else if (!c.skip_value())
                 return false;
@@ -105,7 +118,10 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
         t->calibre_q[i] = std::uint8_t(calibre * 255.f + 0.5f);
         bits |= core::row_calibre_override;
     }
-    if (bits & (core::row_style_override | core::row_tint_override | core::row_calibre_override)) ++st->overrides;
+    bits |= hull;
+    if (bits & (core::row_style_override | core::row_tint_override | core::row_calibre_override | core::row_hull_repair |
+                core::row_hull_tug))
+        ++st->overrides;
     t->bits[i] = bits;
     ++st->entries;
     return true;

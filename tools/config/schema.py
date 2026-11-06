@@ -439,11 +439,14 @@ SETTINGS = [
           'plumes = the mod draws its own engine plumes instead (ships and missiles; needs the HDR and TAA defaults, otherwise '
           'it looks like off; the trails come later); default plumes. Read when the game starts.', builtin='plumes',
           choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
-    entry('weapon_effects', 'enum', 'engine', 'Weapon hit effects drawn by the mod (step 1: shield hits). native = the '
+    entry('weapon_effects', 'enum', 'engine', 'Weapon hit effects drawn by the mod (step 1: shield hits; step 2: hull '
+          'hits). native = the '
           'game\'s own effects, nothing changed; observe = the game\'s effects with every hit recorded in the log (the '
           'first test flight); shields = the mod draws its own shield-hit shell with expanding rings instead of the '
-          'game\'s shield sprite (needs the HDR and TAA defaults, otherwise the game\'s sprite stays). Default native. '
-          'Read when the game starts.', builtin='native', choices=('native', 'observe', 'shields'),
+          'game\'s shield sprite (needs the HDR and TAA defaults, otherwise the game\'s sprite stays); shields,hull = '
+          'shields plus the mod\'s own hull hit (a brief flash, cooling sparks, a glow and an ember on the hull) instead of '
+          'the game\'s impact sprite (also written hull,shields). Default native. Read when the game starts.',
+          builtin='native', choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields'),
           launcher='--weapon-effects', since='2026-11-05'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Read when the game '

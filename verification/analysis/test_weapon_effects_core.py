@@ -43,6 +43,7 @@ struct IDirect3DVertexDeclaration9;
 HARNESS = r'''
 #include "weapon_effects_core.h"
 #include "weapon_effects_stage.h"
+#include "weapon_effects_hull.h"
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -775,6 +776,133 @@ int main(int argc, char** argv) {
         return 0;
     }
     if (!std::strcmp(argv[1], "stage")) return stage_cases();
+    if (!std::strcmp(argv[1], "owners")) {
+        // Review 3: 40 owners with one stage-owned hull hit each (owner k's at t0 1000 + k: the higher k the newer). Past
+        // hull::max_owners the oldest newest hits are not drawn: owners 1..8, the same set on the next frame (no
+        // blinking); a new hit on owner 1 then brings it in and drops owner 9 (the oldest of those kept).
+        static core::Ring ring;
+        core::ring_clear(ring);
+        for (unsigned k = 1; k <= 40; ++k) {
+            owner(k, 40000, 10000);
+            core::Event* e = core::ring_acquire(ring);
+            const std::uint32_t seq = e->sequence;
+            std::memset(e, 0, sizeof *e);
+            e->sequence = seq;
+            e->role = core::role_hull_hit;
+            e->flags = core::flag_stage;
+            e->table = core::table_bullets;
+            e->t0_game_ms = 1000 + k;
+            e->lifetime_ms = core::hull_lifetime_ms;
+            e->damage = 3000;
+            e->owner = obj(k);
+            e->node = node(k);
+            e->handle = 0xd000 + k;
+            e->pos[2] = -10000;
+            e->radius = 10000;
+        }
+        static st::HullState hs;
+        st::hull_clear(hs);
+        static x3m::renderer::WeaponSpriteVertex spr[x3m::renderer::weapon_sprite_quads * 4];
+        static x3m::renderer::WeaponGlowVertex glw[x3m::renderer::weapon_glow_boxes * 4];
+        st::HullView v;
+        v.cam.r[0] = v.cam.r[4] = v.cam.r[8] = 1.f;
+        v.cam.m00 = 1.6f;
+        v.cam.m11 = 1.6f * 16.f / 9.f;
+        v.width = 1920;
+        v.height = 1080;
+        v.near_z = 6;
+        v.step_ms = 16;
+        auto drawn = [&](unsigned k) {
+            for (unsigned i = 0; i < core::ring_capacity; ++i)
+                if (ring.slots[i].sequence && ring.slots[i].owner == obj(k)) return hs.slots[i].latched != 0;
+            return false;
+        };
+        auto frame = [&](std::uint32_t now, const char* name) {
+            v.now = now;
+            unsigned q = 0, b = 0;
+            const st::HullCounts n = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+            unsigned mask_lo = 0, mask_hi = 0;
+            for (unsigned k = 1; k <= 40; ++k)
+                if (drawn(k)) (k <= 20 ? mask_lo : mask_hi) |= 1u << ((k - 1) % 20);
+            std::printf("%s hits=%u owners_dropped=%u lo=%u hi=%u d1=%u d8=%u d9=%u d40=%u\n", name, n.hits, n.owners_dropped,
+                        mask_lo, mask_hi, unsigned(drawn(1)), unsigned(drawn(8)), unsigned(drawn(9)), unsigned(drawn(40)));
+        };
+        frame(1100, "first");
+        frame(1116, "second");
+        core::Event* e = core::ring_acquire(ring);
+        const std::uint32_t seq = e->sequence;
+        *e = ring.slots[0];
+        e->sequence = seq;
+        e->t0_game_ms = 1130;
+        e->owner = obj(1);
+        e->node = node(1);
+        e->handle = 0xd001;
+        frame(1132, "third");
+        return 0;
+    }
+    if (!std::strcmp(argv[1], "hull")) {
+        // Step 2 (docs/architecture/weapon-look.md 3.1): one stage-owned hull hit on owner 1 (k 0.5, a fighter): its
+        // first frame latches the contact point; 100 game ms later its flash is gone (60 ms x (1 +- 0.2) < 100, floor
+        // 48), its 16 sparks, glow (150 ms) and ember live; a shield hit and an unstaged hull hit draw nothing here; once
+        // the owner dies the sparks stay (orphan) and the glow, ember and flash go; the mode words.
+        owner(1, 40000, 10000);
+        static core::Ring ring;
+        core::ring_clear(ring);
+        core::Event* e = core::ring_acquire(ring);
+        const std::uint32_t seq = e->sequence;
+        std::memset(e, 0, sizeof *e);
+        e->sequence = seq;
+        e->role = core::role_hull_hit;
+        e->flags = core::flag_stage;
+        e->table = core::table_bullets;
+        e->tint_rgb = 0xffffff | core::rgb_present;
+        e->t0_game_ms = 1000;
+        e->lifetime_ms = core::hull_lifetime_ms;
+        e->damage = 3000;
+        e->owner = obj(1);
+        e->node = node(1);
+        e->handle = 0xd001;
+        e->pos[2] = -10000;
+        e->radius = 10000;
+        core::Event* sh = core::ring_acquire(ring);
+        *sh = *e;
+        sh->sequence = seq + 1;
+        sh->role = core::role_shield_hit;
+        core::Event* un = core::ring_acquire(ring);
+        *un = *e;
+        un->sequence = seq + 2;
+        un->flags = 0;
+        static st::HullState hs;
+        st::hull_clear(hs);
+        static x3m::renderer::WeaponSpriteVertex spr[x3m::renderer::weapon_sprite_quads * 4];
+        static x3m::renderer::WeaponGlowVertex glw[x3m::renderer::weapon_glow_boxes * 4];
+        st::HullView v;
+        v.cam.r[0] = v.cam.r[4] = v.cam.r[8] = 1.f;
+        v.cam.m00 = 1.6f;
+        v.cam.m11 = 1.6f * 16.f / 9.f;
+        v.width = 1920;
+        v.height = 1080;
+        v.near_z = 6;
+        v.now = 1000;
+        v.step_ms = 16;
+        unsigned q = 0, b = 0;
+        const st::HullCounts first = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+        std::printf("first hits=%u flashes=%u sparks=%u glows=%u embers=%u quads=%u boxes=%u\n", first.hits, first.flashes,
+                    first.sparks, first.glows, first.embers, q, b);
+        v.now = 1100;
+        const st::HullCounts later = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+        std::printf("later hits=%u flashes=%u sparks=%u glows=%u embers=%u floored=%u\n", later.hits, later.flashes,
+                    later.sparks, later.glows, later.embers, later.floored);
+        put(obj(1) + core::layout::obj_flags, core::layout::obj_dying);
+        v.now = 1110;
+        const st::HullCounts dead = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
+        std::printf("dead orphans=%u sparks=%u flashes=%u glows=%u embers=%u retired=%u\n", dead.orphans, dead.sparks,
+                    dead.flashes, dead.glows, dead.embers, dead.retired);
+        core::Mode m = core::mode_native;
+        std::printf("mode parsed=%u value=%u hull_word=%u lifetime=%u\n", unsigned(core::parse_mode("shields,hull", 12, &m)),
+                    unsigned(m), unsigned(core::parse_mode("hull", 4, &m)), core::hull_lifetime_ms);
+        return 0;
+    }
     if (!std::strcmp(argv[1], "latch")) {
         core::ScopeLatch l;
         const bool first = l.changed(core::Scope{0x111, 0, false});    // the first known key: no change
@@ -1052,6 +1180,27 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual((t['m3'], t['m5'], t['m6'], t['ts'], t['m7'], t['m2'], t['tl'], t['unknown']),
                          (0, 0, 1, 1, 2, 2, 2, 255))
         self.assertEqual((t['r10m'], t['r50m'], t['r200m']), (0, 1, 2))
+
+    def test_hull_owner_cap_drops_the_oldest_stably(self):
+        r = self.run_case('owners')
+        first, second, third = r['first'], r['second'], r['third']
+        self.assertEqual((first['hits'], first['owners_dropped']), (32, 8))
+        self.assertEqual((first['d1'], first['d8'], first['d9'], first['d40']), (0, 0, 1, 1))
+        self.assertEqual((second['lo'], second['hi'], second['owners_dropped']), (first['lo'], first['hi'], 8))  # stable
+        self.assertEqual(int(first['lo']), sum(1 << (k - 1) for k in range(9, 21)))
+        # owner 1's new hit brings it in; owner 9's old one goes (its record stays latched, not drawn this frame)
+        self.assertEqual((third['d1'], third['owners_dropped']), (1, 8))
+        self.assertEqual(third['hits'], 33)                       # owner 1's two records, 31 other owners
+
+    def test_hull_build_first_frame_later_and_orphan(self):
+        r = self.run_case('hull')
+        first, later, dead, mode = r['first'], r['later'], r['dead'], r['mode']
+        self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, 16, 1, 1))
+        self.assertEqual((first['quads'], first['boxes']), (17, 2))   # the shield and the unstaged records drew nothing
+        self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, 16, 1, 1))
+        self.assertEqual((dead['orphans'], dead['sparks'], dead['flashes'], dead['glows'], dead['embers'], dead['retired']),
+                         (1, 16, 0, 0, 0, 0))
+        self.assertEqual((mode['parsed'], mode['value'], mode['hull_word'], mode['lifetime']), (1, 3, 0, 1441))
 
     def test_present_latch_and_ring_scope(self):
         r = self.run_case('latch')

@@ -54,9 +54,15 @@ enum EventFlag : std::uint8_t { flag_absorbed = 1, flag_forwarded = 2, flag_nest
 // Whether a stage-owned shield hit also skips the engine's spawn (0x00413c40 not called: no native impact sprite, its
 // light or its PROPAGATE children). true (coordinator decision 2026-11-06, superseding the user decision of the same
 // day to keep the native sprite under the patch): in shields mode the patch alone answers a shield hit the stage owns;
-// observe, hull hits, a dying hit object and every frame the stage does not own still forward. HookState::
+// observe, a hull hit outside shields,hull mode, a dying hit object and every frame the stage does not own still
+// forward. HookState::
 // suppress_native carries it; the hook fixture drives both paths.
 constexpr bool suppress_native_shield_hit = true;
+// Step 2 (docs/architecture/weapon-look.md 3.1): in shields,hull mode a stage-owned hull hit (absorbed == 0, the
+// hull-through-shield rows, a drained shield, a missile source) skips the engine's spawn too (the outer site: its
+// PROPAGATE children and EEDF_LIGHT go with it); a dying hit object and every frame the stage did not own still forward.
+// HookState::suppress_native_hull carries it.
+constexpr bool suppress_native_hull_hit = true;
 // A drained shield (user report after Run237 Flight D: shield hits drawn on ships without shields; x3m.log: post-hit
 // shield fractions 0.0000 to 0.0005 on owners already at 0, the engine absorbing a weak bolt with the recharge
 // trickle): a shield hit whose post-hit fraction (Event::shield_q, read, flag_shield_read) is below drained_shield_q
@@ -64,8 +70,10 @@ constexpr bool suppress_native_shield_hit = true;
 // detail_drained; no patch is staged. Only the post-hit value is known, so a hit that drains a meaningful shield to
 // zero in one blow is drained too. An unread shield keeps the engine's rule.
 constexpr std::uint16_t drained_shield_q = 65535u * 5u / 1000u; // 327
-// Event::detail bits (an impact record).
-enum EventDetail : std::uint8_t { detail_drained = 1 };
+// Event::detail bits (an impact record): the drained shield; the hull-hit variants (weapon-look.md 3.1): the repair and
+// tug lasers by the curated override (the table's "hull" key: row_hull_repair / row_hull_tug), the asteroid by the hit
+// object's class (17).
+enum EventDetail : std::uint8_t { detail_drained = 1, detail_repair = 2, detail_tug = 4, detail_asteroid = 8 };
 // The hit object's size class for the patch (docs/architecture/weapon-effects.md 5.1.1): cell size and patch radius
 // are fixed in world units per class.
 enum PatchTier : std::uint8_t { patch_fighter = 0, patch_corvette = 1, patch_capital = 2, patch_tier_count = 3 };
@@ -151,7 +159,7 @@ constexpr unsigned model_lods = 0x0c, lod_extent = 0x20; // the LOD count, an in
 constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by the kill routine 0x0044abd0
 constexpr std::uint32_t obj_shielded = 0x100000u;  // obj+0x40 bit 20: docks, factories, ships at creation
 constexpr std::uint16_t class_bullet = 0, class_shielded_a = 1, class_dock = 5, class_factory = 6, class_ship = 7,
-                        class_missile = 10, class_shielded_b = 0x12;
+                        class_missile = 10, class_asteroid = 17, class_shielded_b = 0x12;
 }
 struct Globals {                     // the engine's slots (X3AP.exe VAs in production; the fixture maps the same pages)
     std::uintptr_t cfg_slot = 0x00606f34;
@@ -214,7 +222,7 @@ inline std::uint8_t role_from(std::uint32_t absorbed, std::uint16_t projectile_c
 // the lookups (stale), never the hooks.
 constexpr unsigned table_capacity = 512;
 enum RowBit : std::uint8_t { row_present = 1, row_style_override = 2, row_tint_override = 4, row_calibre_override = 8,
-                             row_texture = 16 };
+                             row_texture = 16, row_hull_repair = 32, row_hull_tug = 64 };
 struct Table {
     std::uint32_t rows = 0;           // TBullets rows of the generating game tree, 0 = no table
     std::uint32_t missile_rows = 0;
@@ -270,7 +278,9 @@ inline void ring_release(Ring& r, unsigned i) noexcept {
     r.slots[i].sequence = 0;
     r.free_list[r.free_count++] = std::uint16_t(i);
 }
-// Overflow order: the oldest record the stage does not draw, hull_hit or muzzle record first, else the oldest of all (only when full).
+// Overflow order (only when full): the oldest census-only record (one the stage does not draw: its native spawn ran),
+// else the oldest stage-owned record of any role (its native spawn was skipped, so evicting it loses the effect: a
+// staged hull hit is no cheaper than a staged shield hit).
 inline unsigned ring_victim(const Ring& r) noexcept {
     unsigned best = ring_capacity, any = ring_capacity;
     std::uint32_t best_seq = 0xffffffffu, any_seq = 0xffffffffu;
@@ -281,7 +291,7 @@ inline unsigned ring_victim(const Ring& r) noexcept {
             any_seq = e.sequence;
             any = i;
         }
-        const bool cheap = !(e.flags & flag_stage) || e.role == role_hull_hit || e.role == role_muzzle;
+        const bool cheap = !(e.flags & flag_stage);
         if (cheap && e.sequence < best_seq) {
             best_seq = e.sequence;
             best = i;
@@ -312,10 +322,13 @@ inline bool ring_owned_live(const Ring& r) noexcept {
     return false;
 }
 // Every live record of an owner (a death record, a failed validation) leaves the ring; returns how many.
-inline unsigned ring_retire_owner(Ring& r, std::uint32_t owner) noexcept {
+// keep_staged_hull (the shield stage's retirement): a stage-owned hull hit stays, the hull stage decides its own (its
+// sparks outlive the owner once they left it).
+inline unsigned ring_retire_owner(Ring& r, std::uint32_t owner, bool keep_staged_hull = false) noexcept {
     unsigned n = 0;
     for (unsigned i = 0; i < ring_capacity; ++i)
-        if (r.slots[i].sequence && r.slots[i].owner == owner) {
+        if (r.slots[i].sequence && r.slots[i].owner == owner &&
+            !(keep_staged_hull && r.slots[i].role == role_hull_hit && (r.slots[i].flags & flag_stage))) {
             ring_release(r, i);
             ++n;
         }
@@ -324,25 +337,52 @@ inline unsigned ring_retire_owner(Ring& r, std::uint32_t owner) noexcept {
 }
 
 // ---------------------------------------------------------------------------------------------- the handler (2.2)
-enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2 };
+// mode_shields_hull (step 2, docs/architecture/weapon-look.md 3.1 and 2.12): the shield hit as in shields mode plus the
+// hull hit (family_hull). Both are the stage's modes (stage_mode): the ownership latch, the ring's scope and the stage.
+enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2, mode_shields_hull = 3 };
 inline const char* mode_name(unsigned m) noexcept {
-    return m == mode_observe ? "observe" : m == mode_shields ? "shields" : "native";
+    return m == mode_observe ? "observe" : m == mode_shields ? "shields" : m == mode_shields_hull ? "shields,hull" : "native";
 }
-// X3M_WEAPON_EFFECTS: exactly "native", "observe" or "shields" (lower case); unset or empty = native (no family is
-// accepted yet, note 2.6); "hull", "explosions", "bolts", "beams" are later steps and refused here like any other word.
+inline bool stage_mode(unsigned m) noexcept {
+    return m == mode_shields || m == mode_shields_hull;
+}
+// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe" or "shields", or the family list "shields,hull" in either
+// order ("hull,shields"); spaces around each token are ignored. Unset or empty = native (note 2.6). Any other token
+// ("explosions", "bolts", "beams": later steps), "hull" alone, an empty or repeated token is refused.
 template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mode* out) noexcept {
-    static const char* const words[3] = {"native", "observe", "shields"};
-    if (!text) return false;
-    for (unsigned w = 0; w < 3; ++w) {
-        std::size_t len = 0;
-        while (words[w][len]) ++len;
-        if (n != len) continue;
-        bool same = true;
-        for (std::size_t i = 0; i < n && same; ++i) same = text[i] == Char(words[w][i]);
-        if (same) {
-            *out = Mode(w);
-            return true;
+    static const char* const words[4] = {"native", "observe", "shields", "hull"};
+    if (!text || !n) return false;
+    unsigned seen = 0, tokens = 0, single = 4;
+    std::size_t at = 0;
+    for (;;) {
+        std::size_t end = at;
+        while (end < n && text[end] != Char(',')) ++end;
+        std::size_t a = at, b = end;
+        while (a < b && text[a] == Char(' ')) ++a;
+        while (b > a && text[b - 1] == Char(' ')) --b;
+        unsigned w = 0;
+        for (; w < 4; ++w) {
+            std::size_t len = 0;
+            while (words[w][len]) ++len;
+            if (b - a != len) continue;
+            bool same = true;
+            for (std::size_t i = 0; i < len && same; ++i) same = text[a + i] == Char(words[w][i]);
+            if (same) break;
         }
+        if (w >= 4 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
+        seen |= 1u << w;
+        single = w;
+        ++tokens;
+        if (end >= n) break;
+        at = end + 1;
+    }
+    if (tokens == 1 && single < 3) {
+        *out = Mode(single);
+        return true;
+    }
+    if (tokens == 2 && seen == ((1u << 2) | (1u << 3))) {
+        *out = mode_shields_hull;
+        return true;
     }
     return false;
 }
@@ -368,14 +408,22 @@ struct HookState {
     std::uint8_t armed = 0;            // families whose records the stage draws (bit 0: shields)
     volatile std::uint8_t owned_next = 0; // Present's latch: the stage owned the last frame
     std::uint8_t suppress_native = suppress_native_shield_hit; // a stage-owned shield hit also skips the native spawn
+    std::uint8_t suppress_native_hull = suppress_native_hull_hit; // a stage-owned hull hit also skips it (step 2)
     Globals globals{};
     const Table* table = nullptr;      // the loaded table (null: classifier without table lookups)
     std::uint16_t lifetime_ms = 0;     // the records' game-time life (install: patch_lifetime_ms)
+    std::uint16_t hull_lifetime_ms = 0; // a hull hit's game-time life (install: hull_lifetime_ms)
+    // The stage's three-frame floor in game ms (written by the stage each call; Present only reads it): Present keeps a
+    // stage-owned hull hit that much past its lifetime, so a floored element still draws its frames.
+    std::uint32_t life_floor_ms = 0;
+    // Present's latch beside owned_next (shields,hull): the pass holds the hull programs (a device that refused them
+    // keeps the shield effect, and its hull hits forward).
+    volatile std::uint8_t hull_ready = 0;
     Ring ring{};
     PosCheck check{};
     Counters counters{};
 };
-constexpr std::uint8_t family_shields = 1;
+constexpr std::uint8_t family_shields = 1, family_hull = 2;
 
 inline std::uint32_t rd32(std::uintptr_t a) noexcept {
     return *reinterpret_cast<const volatile std::uint32_t*>(a);
@@ -564,7 +612,7 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     // The live record and the classifier.
     const std::uint16_t subtype = rd16(projectile + layout::obj_subtype);
     std::uint32_t flags = 0, light = 0;
-    std::uint8_t style = shape_slug, table = table_none, tint_source = tint_white, eflags = 0, calibre_q = 0;
+    std::uint8_t style = shape_slug, table = table_none, tint_source = tint_white, eflags = 0, calibre_q = 0, variant = 0;
     std::uint32_t tint = 0, alt = 0;
     const bool hit_dying = (rd32(hit + layout::obj_flags) & layout::obj_dying) != 0;
     const bool nested = hit_dying || (rd32(projectile + layout::obj_flags) & layout::obj_dying) != 0;
@@ -615,6 +663,10 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
                 calibre_q = t->calibre_q[subtype];
                 eflags |= flag_calibre_override | flag_override_applied;
             }
+            if (bits & row_hull_repair)
+                variant = detail_repair;
+            else if (bits & row_hull_tug)
+                variant = detail_tug;
         }
     } else {
         table = table_missiles;
@@ -634,11 +686,16 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     const bool drained = role == role_shield_hit && shield_ok && shield_q < drained_shield_q;
     if (drained) role = role_hull_hit;
     // The stage draws a shield hit while it owned the previous frame, and with suppress_native (the default) the
-    // engine's spawn is skipped for it. A dying hit object is never the stage's: the stage retires a dying owner's
+    // engine's spawn is skipped for it; in shields,hull mode a hull hit likewise (suppress_native_hull; a drained shield
+    // is a hull hit, weapon-look.md 3.1). A dying hit object is never the stage's: the stage retires a dying owner's
     // records unseen, so it stays native only.
-    const bool stage =
-        s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
-    const bool skip = stage && s.suppress_native;
+    const bool shield_stage =
+        stage_mode(s.mode) && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
+    const bool hull_stage = s.mode == mode_shields_hull && s.owned_next && s.hull_ready && (s.armed & family_hull) &&
+                            role == role_hull_hit && !hit_dying;
+    const bool stage = shield_stage || hull_stage;
+    const bool skip = shield_stage ? s.suppress_native != 0 : hull_stage && s.suppress_native_hull != 0;
+    if (hit_class == layout::class_asteroid) variant = detail_asteroid;
     std::uint8_t patch_tier = patch_fighter, tier_source = tier_by_radius;
     read_tier(hit, hit_class, hit_radius, s.globals, &patch_tier, &tier_source);
     // The projectile's travel (5.1.1 placement): its root node's row 2 (local z in world, 16.16) rotated into the hit
@@ -667,8 +724,8 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     e->row = subtype;
     const std::uintptr_t cfg = rd32(s.globals.cfg_slot);
     e->t0_game_ms = cfg ? rd32(cfg + layout::cfg_game_ms) : 0;
-    e->lifetime_ms = s.lifetime_ms;
-    e->detail = drained ? detail_drained : 0;
+    e->lifetime_ms = role == role_hull_hit ? s.hull_lifetime_ms : s.lifetime_ms;
+    e->detail = std::uint8_t((drained ? detail_drained : 0) | variant);
     e->calibre_q = calibre_q;
     e->tint_rgb = tint;
     e->alt_rgb332 = rgb332(alt);
@@ -759,9 +816,9 @@ struct ScopeLatch {
 inline std::uint32_t age_ms(std::uint32_t now, std::uint32_t t0) noexcept {
     return now - t0;
 }
-inline bool expired(std::uint32_t now, const Event& e) noexcept {
+inline bool expired(std::uint32_t now, const Event& e, std::uint32_t extra_ms = 0) noexcept {
     const std::uint32_t a = age_ms(now, e.t0_game_ms);
-    return a > e.lifetime_ms; // a wrapped (future) t0 is a huge age
+    return a > std::uint32_t(e.lifetime_ms) + extra_ms; // a wrapped (future) t0 is a huge age
 }
 // The patch look (docs/architecture/weapon-effects.md 5.1.1), the lab's controls (tools/effects/
 // generate_weapon_effects_lab.py injects every value below by name). Hexagon cells of cell_m (centre to centre) fixed in
@@ -846,6 +903,95 @@ constexpr unsigned hit_slots = 4;     // ring and core hits per draw (the region
 constexpr unsigned owner_hits = 64;   // live hits per owner feeding its cell map (newest first)
 constexpr unsigned cell_map_capacity = 128; // lit cells per draw (one owner and face; a face spills into more)
 constexpr unsigned disarm_frames = 64;
+
+// ---------------------------------------------------------------------------------------------- the shared look
+// docs/architecture/weapon-look.md 2.1-2.11 and 5: the language every family after the shield hit draws in. Radiance is
+// linear, engine space, before the TAA and AgX; sizes of a target in its cell unit U = cell_m[tier] scaled by the
+// calibre k; every life in game ms with the three-frame floor. The lab reads these by name (the generator's namespace-
+// scoped reader) and the fixture re-pins them.
+namespace look {
+// The heat ramp's five stops by temperature T = 0, 0.25, 0.5, 0.75, 1 (black, red, orange, yellow, white; linear);
+// radiance = ramp(T) x E x T, so a cooling element darkens and saturates together.
+constexpr float heat_ramp[5][3] = {{0.f, 0.f, 0.f}, {0.55f, 0.10f, 0.03f}, {1.0f, 0.42f, 0.10f}, {1.0f, 0.72f, 0.30f},
+                                   {1.0f, 0.92f, 0.80f}};
+constexpr unsigned min_frames = 3;      // no element lives fewer frames: life = max(life, min_frames x game step)
+constexpr float soft_core = 0.15f;      // volumetric fade against the lane, x the element's radius: cores and sparks
+constexpr float soft_halo = 1.0f;       // halos (and later fireballs and shock shells)
+constexpr float core_e = 4.0f;          // a core's radiance (may clip white)
+constexpr float body_max = 1.5f;        // a body or frame-filling element never above this
+constexpr float halo_max = 0.2f;        // a halo's peak over its core's, e-folded within halo_fold core radii
+constexpr float halo_fold = 1.5f;
+constexpr float streak_cap = 6.0f;      // a streak at most this many rest lengths (its radiance x rest / (rest + streak))
+constexpr float streak_core_min = 1.2f; // ... but a diluted core never below this (it survives the resolve)
+constexpr float floor_core_px = 2.0f, floor_lit_px = 3.0f, floor_len_px = 12.0f, floor_flash_px = 3.0f; // pixel floors
+// The shared screen budget's family weights (2.11): a draw is charged its projected area in screens x its weight (the
+// family's full-screen us over the decal's 177.5 us at 5120x1440). The glow: 71.4 us for one rectangle filling the
+// screen at 5120x1440 (native fixture, glow_alone_fills_frame, 2026-11-06; four runs 71.0-72.3) / 177.5 = 0.40 (the
+// note's [I] was 0.25).
+constexpr float budget_weight_patch = 1.0f, budget_weight_glow = 0.40f;
+} // namespace look
+// The hull hit (weapon-look.md 3.1): a 60 ms white flash, isotropic cooling sparks, a 150 ms glow on the hull and a
+// 1.2 s ember, all at the recorded contact point; r_hit = U (r_base + r_k k). mode full | simple (the kill fallback:
+// flash + glow + ember, no sparks) is a header constant, never a setting.
+namespace hull {
+enum Mode : std::uint8_t { full = 0, simple = 1 };
+constexpr Mode mode = full;
+// The kill criteria's other switches (3.1): (a) the spark count halves once (spark_count_x 0.5); (b) a glow seen on the
+// wrong ship or in space drops the glow (glow false; flash, sparks and ember remain); (c) the own nose hit unseen from
+// the chase camera: glow_r and glow_e x 2, spark_speed_u x 1.5, once.
+constexpr float spark_count_x = 1.0f;
+constexpr bool glow = true;
+constexpr float r_base = 0.35f, r_k = 0.65f;
+constexpr unsigned flash_ms = 60;
+constexpr float flash_core = 0.25f;     // the flash's white core radius over r_hit (>= floor_flash_px); its halo r_hit
+constexpr float flash_halo_t = 0.9f;    // the halo's heat
+constexpr unsigned spark_n0 = 8, spark_nk = 16; // n = round(spark_n0 + spark_nk k), isotropic in antipodal pairs
+constexpr float spark_speed_u = 6.0f;   // U per game second, x (1 +- spark_speed_spread)
+constexpr float spark_speed_spread = 0.3f;
+constexpr float spark_tau_s = 0.33f;    // p(t) = p0 + v0 tau (1 - e^(-t / tau)): v0 tau = 2 U at the mean speed
+constexpr unsigned spark_life_ms = 250, spark_life_k_ms = 250; // + k, x (1 +- stagger / 2)
+constexpr float spark_width_u = 0.04f;  // the streak's width (>= floor_lit_px)
+constexpr float spark_e = 4.0f;         // a spark's radiance at birth (the core's), x ramp(T) x T as it cools
+constexpr float spark_rest_w = 3.0f;    // a spark's rest length in widths (>= floor_len_px)
+constexpr float glow_r = 3.0f, glow_t = 0.85f, glow_e = 1.0f; // R = glow_r x r_hit; heat; radiance
+constexpr unsigned glow_ms = 150;
+constexpr float ember_r = 0.6f, ember_t = 0.4f, ember_e = 0.6f; // R = ember_r x r_hit; heat cooling to 0; radiance
+constexpr unsigned ember_ms = 1200;
+constexpr float bias = 0.5f;            // the flash's centre towards the eye, x r_hit (its own surface does not halve it)
+constexpr float asteroid_dust_x = 2.0f; // an asteroid (class 17): sparks x 2 on the ramp's last stops, no flash
+constexpr float asteroid_t = 0.3f;
+constexpr float missile_spark_x = 2.0f; // a missile source: sparks x 2, the missile tint on the flash halo
+constexpr float tug_colour[3] = {0.7f, 0.8f, 1.0f}; // the tug's glow (pale blue); repair: the weapon tint
+constexpr unsigned max_sparks = 2048;   // spark quads per frame (2.11)
+constexpr unsigned max_owners = 32;     // owners re-posed per frame
+} // namespace hull
+// A hull hit's record life: the slowest ember (ember_ms x (1 + stagger / 2)); Present keeps it life_floor_ms longer.
+constexpr unsigned hull_lifetime_ms = unsigned(float(hull::ember_ms) * (1.f + 0.5f * stagger)) + 1;
+static_assert(hull_lifetime_ms > 0 && hull_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");
+// The heat ramp at T (clamped to [0, 1]), linear between its stops.
+inline void heat_colour(float t, float out[3]) noexcept {
+    t = t > 0.f ? (t < 1.f ? t : 1.f) : 0.f;
+    const float x = t * 4.f;
+    unsigned i = unsigned(x);
+    if (i > 3) i = 3;
+    const float f = x - float(i);
+    for (unsigned c = 0; c < 3; ++c) out[c] = look::heat_ramp[i][c] + (look::heat_ramp[i + 1][c] - look::heat_ramp[i][c]) * f;
+}
+// e^x for x <= 0 without libm (SSE2 build: no x87): 2^(x log2 e), the integer part in the exponent, a degree-5 fit of
+// 2^f on [0, 1) (relative error below 2e-6); 0 below -80.
+inline float exp_neg(float x) noexcept {
+    if (!(x < 0.f)) return 1.f;
+    if (x < -80.f) return 0.f;
+    const float y = x * 1.44269504f; // log2 e
+    int i = int(y);
+    if (float(i) > y) --i;
+    const float f = y - float(i);
+    const float p = 1.f + f * (0.69314718f + f * (0.24022650f + f * (0.05550411f + f * (0.00961813f + f * 0.00133336f))));
+    std::uint32_t b = std::uint32_t(i + 127) << 23;
+    float s;
+    std::memcpy(&s, &b, 4);
+    return p * s;
+}
 
 // log10 without libm (SSE2 build: no x87): the float's exponent plus ln(m) = 2 atanh((m - 1) / (m + 1)).
 inline float log10f_sse(float x) noexcept {

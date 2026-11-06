@@ -580,6 +580,23 @@ void core_checks() {
     for (unsigned i = 0; i < core::ring_capacity; ++i)
         if (ring.slots[i].sequence == oldest_shield) shield_survived = true;
     check(shield_survived, "overflow_keeps_owned_shield");
+    // Review 2: a staged hull hit is no cheaper than a staged shield hit (its native spawn was skipped): with census
+    // records present the oldest census record goes; with only staged records the oldest of them, whatever its role.
+    core::ring_clear(ring);
+    for (unsigned i = 0; i < core::ring_capacity; ++i) {
+        core::Event* e = core::ring_acquire(ring);
+        e->role = (i & 1) ? core::role_hull_hit : core::role_shield_hit;
+        e->flags = i == 200 ? std::uint8_t(core::flag_forwarded) : std::uint8_t(core::flag_stage);
+    }
+    const unsigned census_slot = core::ring_victim(ring);
+    const bool census_first = ring.slots[census_slot].flags == core::flag_forwarded;
+    ring.slots[census_slot].flags = core::flag_stage;
+    const unsigned oldest_slot = core::ring_victim(ring);
+    std::uint32_t oldest_seq = 0xffffffffu;
+    for (unsigned i = 0; i < core::ring_capacity; ++i) oldest_seq = std::min(oldest_seq, ring.slots[i].sequence);
+    check(census_first && ring.slots[oldest_slot].sequence == oldest_seq &&
+              ring.slots[oldest_slot].role == core::role_shield_hit,
+          "overflow_census_first_then_oldest_staged");
     core::ring_clear(ring);
     for (unsigned i = 0; i < 6; ++i) {
         core::Event* e = core::ring_acquire(ring);
@@ -1055,6 +1072,170 @@ int main() {
         check(hit3 && kept3 && !core::ring_owned_live(hs2.ring), "scope_load_epoch_clears_owned");
     }
 
+    // Step 2 (docs/architecture/weapon-look.md 3.1): shields,hull. A stage-owned hull hit (the hull-through-shield row
+    // absorbed, an unabsorbed hit, a drained shield, a missile source) is the stage's and skips the callee
+    // (suppress_native_hull) with the frame as the caller expects; a shield hit is staged as in shields mode; a frame the
+    // stage did not own and a dying hit object forward; suppress_native_hull cleared, the staged hull hit reaches the
+    // callee with the call's state; the variants by the victim (asteroid) and by the table (repair); Present keeps a
+    // staged hull hit life_floor_ms past its lifetime and releases it after.
+    we::shutdown();
+    set_setting(L"shields,hull");
+    {
+        core::Mode parsed = core::mode_native;
+        // the family list in either order, spaces around the tokens ignored; "hull" alone, a repeated, empty or unknown
+        // token refused; the single words unchanged
+        auto parses = [&](const char* text, core::Mode want) {
+            core::Mode m = core::mode_native;
+            return core::parse_mode(text, std::strlen(text), &m) && m == want;
+        };
+        auto refused = [&](const char* text) {
+            core::Mode m = core::mode_native;
+            return !core::parse_mode(text, std::strlen(text), &m);
+        };
+        const bool parse_ok = parses("shields,hull", core::mode_shields_hull) && parses("hull,shields", core::mode_shields_hull) &&
+                              parses(" shields , hull ", core::mode_shields_hull) && parses("hull, shields", core::mode_shields_hull) &&
+                              parses("shields", core::mode_shields) && parses(" observe", core::mode_observe) &&
+                              parses("native", core::mode_native) && refused("hull") && refused("shields,shields") &&
+                              refused("shields,hull,bolts") && refused("shields,") && refused(",hull") &&
+                              refused("observe,hull") && refused("Shields,hull") && refused("") &&
+                              core::stage_mode(core::mode_shields_hull) && core::stage_mode(core::mode_shields) &&
+                              !core::stage_mode(core::mode_observe) &&
+                              !std::strcmp(core::mode_name(core::mode_shields_hull), "shields,hull");
+        (void)parsed;
+        check(parse_ok, "hull_mode_parse");
+        build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
+        const bool hull_ok = we::install_at(addresses(), core::mode_shields_hull);
+        core::HookState& h3 = we::hook_state();
+        check(hull_ok && we::mode() == core::mode_shields_hull && impact_redirected() &&
+                  h3.armed == (core::family_shields | core::family_hull) && h3.suppress_native_hull == 1 &&
+                  h3.hull_lifetime_ms == core::hull_lifetime_ms && core::suppress_native_hull_hit,
+              "hull_mode_installed");
+        auto staged_run = [&](std::uint32_t absorbed, core::Event* out, RunResult* run) {
+            h3.owned_next = 1;
+            h3.hull_ready = 1;
+            std::memset(we_ca, 0, sizeof we_ca);
+            *run = run_window(absorbed, 1200, absorbed);
+            return newest_record(u32(&victim_obj), out);
+        };
+        core::Event rec{};
+        RunResult run{};
+        const std::uint32_t skipped0 = h3.counters.skipped, forwarded0 = h3.counters.forwarded;
+        bool ok = staged_run(1, &rec, &run);
+        const bool through = ok && rec.role == core::role_hull_hit && (rec.flags & core::flag_stage) &&
+                             !(rec.flags & core::flag_forwarded) && rec.lifetime_ms == core::hull_lifetime_ms &&
+                             run.ca[11] == 0 && frame_kept(run);
+        ok = staged_run(0, &rec, &run);
+        const bool unabsorbed = ok && rec.role == core::role_hull_hit && (rec.flags & core::flag_stage) &&
+                                !(rec.flags & core::flag_forwarded) && run.ca[11] == 0 && frame_kept(run);
+        std::printf("HULL_MODE case=skip through=%u unabsorbed=%u skipped_delta=%lu forwarded_delta=%lu lifetime_ms=%u\n",
+                    unsigned(through), unsigned(unabsorbed), static_cast<unsigned long>(h3.counters.skipped - skipped0),
+                    static_cast<unsigned long>(h3.counters.forwarded - forwarded0), unsigned(rec.lifetime_ms));
+        check(through && unabsorbed && h3.counters.skipped - skipped0 == 2 && h3.counters.forwarded == forwarded0,
+              "hull_hit_skips_native_when_staged");
+        check(protection(at(dmg_page)) == PAGE_EXECUTE_READWRITE && (run.out[5] & 0x400u) == (run.flags_in & 0x400u),
+              "hull_skip_frame_kept");
+        // A shield hit in this mode: staged and skipped as in shields mode, the patch's lifetime.
+        build_world(7, 0, 4, 0x0, 123456);
+        ok = staged_run(1, &rec, &run);
+        check(ok && rec.role == core::role_shield_hit && (rec.flags & core::flag_stage) && run.ca[11] == 0 &&
+                  rec.lifetime_ms == core::patch_lifetime_ms && frame_kept(run),
+              "hull_mode_shield_hit_staged");
+        // Not owned: forwarded, census only.
+        build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
+        h3.owned_next = 0;
+        std::memset(we_ca, 0, sizeof we_ca);
+        run = run_window(0, 1200, 1);
+        ok = newest_record(u32(&victim_obj), &rec);
+        check(ok && rec.role == core::role_hull_hit && !(rec.flags & core::flag_stage) && (rec.flags & core::flag_forwarded) &&
+                  run.ca[11] == 1 && run.ca[9] == u32(&victim_obj) && run.ca[10] == u32(&source_obj) && frame_kept(run),
+              "hull_hit_forwards_when_not_owned");
+        // The pass without the hull programs (Present's hull_ready 0, review 5): the stage owns the frame for the shields
+        // but the hull hit forwards.
+        h3.owned_next = 1;
+        h3.hull_ready = 0;
+        std::memset(we_ca, 0, sizeof we_ca);
+        run = run_window(0, 1200, 0);
+        ok = newest_record(u32(&victim_obj), &rec);
+        check(ok && rec.role == core::role_hull_hit && !(rec.flags & core::flag_stage) && (rec.flags & core::flag_forwarded) &&
+                  run.ca[11] == 1 && frame_kept(run),
+              "hull_hit_forwards_without_hull_programs");
+        // A dying hit object forwards (the stage would retire it unseen).
+        w32(&victim_obj, core::layout::obj_flags, core::layout::obj_dying);
+        ok = staged_run(0, &rec, &run);
+        check(ok && rec.role == core::role_hull_hit && !(rec.flags & core::flag_stage) && (rec.flags & core::flag_forwarded) &&
+                  (rec.flags & core::flag_nested) && run.ca[11] == 1 && frame_kept(run),
+              "hull_hit_dying_object_forwards");
+        // The drained shield: a hull hit, now staged and skipped (drained_forwards_as_hull becomes staged).
+        build_world(7, 0, 4, 0x0, 123456);
+        {
+            const std::int32_t one_cap[1] = {1000}, low[1] = {std::int32_t(std::int64_t(core::layout::shield_full) * 200 / 65535)};
+            set_shields(1, one_cap, low);
+        }
+        ok = staged_run(1, &rec, &run);
+        check(ok && rec.role == core::role_hull_hit && (rec.detail & core::detail_drained) && (rec.flags & core::flag_stage) &&
+                  !(rec.flags & core::flag_forwarded) && (rec.flags & core::flag_absorbed) && run.ca[11] == 0 &&
+                  frame_kept(run),
+              "drained_hull_hit_staged");
+        // suppress_native_hull cleared: staged and forwarded, the callee with the call's state.
+        build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
+        h3.suppress_native_hull = 0;
+        ok = staged_run(0, &rec, &run);
+        check(ok && (rec.flags & core::flag_stage) && (rec.flags & core::flag_forwarded) && run.ca[11] == 1 &&
+                  run.ca[9] == u32(&victim_obj) && run.ca[10] == u32(&source_obj) &&
+                  (run.ca[7] & flag_mask) == (run.flags_in & flag_mask) && run.ca[12] == we_frame_esp - 12u &&
+                  run.ca[8] == std::uint32_t(impact_site() + sites::call_length) && frame_kept(run),
+              "hull_hit_stage_and_forward");
+        h3.suppress_native_hull = 1;
+        // A missile source (class 10): staged, skipped, the missile table and style.
+        build_world(7, 10, 4, 0x0, 123456);
+        ok = staged_run(0, &rec, &run);
+        check(ok && rec.role == core::role_hull_hit && rec.table == core::table_missiles &&
+                  rec.style == core::shape_missile_hit && (rec.flags & core::flag_stage) && run.ca[11] == 0 && frame_kept(run),
+              "hull_missile_source_staged");
+        // The asteroid (class 17 victim): detail_asteroid.
+        build_world(17, 0, 4, 0x0, 123456);
+        ok = staged_run(0, &rec, &run);
+        check(ok && rec.role == core::role_hull_hit && (rec.detail & core::detail_asteroid) &&
+                  (rec.flags & core::flag_stage) && run.ca[11] == 0 && frame_kept(run),
+              "hull_asteroid_variant");
+        // The repair laser by the table's override (row_hull_repair; the tug likewise row_hull_tug).
+        build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
+        static core::Table override_table;
+        override_table = core::Table{};
+        override_table.rows = core::rd32(h3.globals.bullet_count_slot);
+        override_table.bits[4] = std::uint8_t(core::row_present | core::row_hull_repair);
+        const core::Table* saved_table = h3.table;
+        h3.table = &override_table;
+        ok = staged_run(1, &rec, &run);
+        const bool repair = ok && (rec.detail & core::detail_repair) && !(rec.detail & core::detail_tug) &&
+                            (rec.flags & core::flag_stage) && run.ca[11] == 0 && frame_kept(run);
+        override_table.bits[4] = std::uint8_t(core::row_present | core::row_hull_tug);
+        ok = staged_run(1, &rec, &run);
+        const bool tug = ok && (rec.detail & core::detail_tug) && !(rec.detail & core::detail_repair) && frame_kept(run);
+        h3.table = saved_table;
+        check(repair && tug, "hull_repair_tug_variant_by_override");
+        // Present's upkeep: a staged hull hit stays life_floor_ms past its lifetime, then leaves.
+        build_world(7, 0, 4, core::bullet_hull_through_shields, 200000);
+        ok = staged_run(0, &rec, &run);
+        const std::uint32_t seq = rec.sequence;
+        auto alive = [&]() {
+            for (unsigned i = 0; i < core::ring_capacity; ++i)
+                if (h3.ring.slots[i].sequence == seq) return true;
+            return false;
+        };
+        we::StageFrame idle{};
+        h3.life_floor_ms = 400;
+        w32(config_block, core::layout::cfg_game_ms, 200000 + core::hull_lifetime_ms + 300);
+        we::present(10, false, true, idle);
+        const bool kept = alive();
+        w32(config_block, core::layout::cfg_game_ms, 200000 + core::hull_lifetime_ms + 500);
+        we::present(11, false, true, idle);
+        const bool released = !alive();
+        h3.life_floor_ms = 0;
+        std::printf("HULL_MODE case=present kept=%u released=%u lifetime_ms=%u floor_ms=400\n", unsigned(kept),
+                    unsigned(released), unsigned(core::hull_lifetime_ms));
+        check(ok && kept && released, "hull_present_keeps_floor_then_releases");
+    }
     // Observe-mode inner tap: the engine's &pos equals the handler's.
     we::shutdown();
     build_world(7, 0, 4, 0x0, 123456);

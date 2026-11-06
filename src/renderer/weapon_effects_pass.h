@@ -32,7 +32,41 @@ struct WeaponEffectsCaps {
     bool enabled = false;
     const char* reason = "not_attached";
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
+    unsigned sprite_vs_slots = 0, sprite_ps_slots = 0, glow_vs_slots = 0, glow_ps_slots = 0; // step 2 (hull hit)
+    // Step 2, requested at attach (shields,hull): the hull programs and batch limits; false keeps the shield effect.
+    bool hull_enabled = false;
+    const char* hull_reason = "not_requested";
     HRESULT fp16_blending = S_FALSE;
+};
+// Step 2, the hull hit (docs/architecture/weapon-look.md 2.5, 2.7, 2.8, 2.14, 3.1): two batched primitives, each one
+// DrawIndexedPrimitiveUP of the frame's elements from the stage's vertex array (the index lists are built once at
+// attach; no DEFAULT-pool resource).
+// The sprite batch (flashes and sparks): one quad per element, four vertices, the kind in the colour's alpha
+// (D3DCOLOR, linear 0..1: the heat ramp or a tint): 0 a streak, else a flash whose white core is alpha / 255 of the
+// quad's radius.
+// - A flash's corners are expanded by the stage: a = the corner in clip space (ndc x z, ndc y z, view z - near z,
+//   view z), b = (u, v) the disc coordinate, its radiance and its radius (view units, the analytic depth); c unused.
+// - A streak (a spark) carries its two closed-form ends and the vertex program expands it (weapon_sprite_vs.hlsl;
+//   the CPU twin stage::streak_corners): a = the head (this frame's position, view space) and its radiance, b = the
+//   tail (the previous frame's position through the previous frame's view) and its width (view units), c = the corner
+//   (u -1 tail / +1 head, v -1 / +1 across) and the radiance a diluted streak never drops below.
+constexpr unsigned weapon_sprite_quads = 2304; // 2048 sparks (look 2.11) + one flash per live hull hit (the ring's 256)
+struct WeaponSpriteVertex {
+    float a[4];
+    float b[4];
+    float c[3];
+    std::uint32_t colour;
+};
+// The glow primitive (look 2.8): E = colour x saturate(1 - d^2 / R^2)^2 on the lane's surface point at distance d from
+// the light, no normal, the sky dark; one quad per element, the light sphere's exact screen rectangle (four corners in
+// view space at the sphere's front, the whole screen when it reaches the near plane; stage::sphere_rect), the light's
+// centre and R, and its radiance colour carried by every corner. Drawn through the sprite batch's quad index list.
+constexpr unsigned weapon_glow_boxes = 512; // a glow and an ember per live hull hit (the ring's 256)
+static_assert(weapon_glow_boxes <= weapon_sprite_quads, "the glows share the sprite quads' index list");
+struct WeaponGlowVertex {
+    float corner[3];
+    float light[4];   // the light's view-space centre, R
+    float colour[3];  // linear radiance
 };
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
 // frame perpendicular to the face's axis), their box and the face's newest hits still in their ring. Plane and axis
@@ -125,13 +159,18 @@ struct WeaponEffectsFrame {
     unsigned patch_count = 0;
     const WeaponDecal* decals = nullptr;
     unsigned decal_count = 0;
+    // Step 2: the sprite quads and the glow rectangles (four vertices each) the stage wrote.
+    const WeaponSpriteVertex* sprites = nullptr;
+    unsigned sprite_quads = 0;
+    const WeaponGlowVertex* glows = nullptr;
+    unsigned glow_boxes = 0;
     WeaponLook look = default_weapon_look();
 };
-enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals };
+enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
-    unsigned calls = 0, patches = 0, decals = 0;
+    unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0;
     bool drew = false;
 };
 class WeaponEffectsPass {
@@ -145,7 +184,10 @@ public:
     ~WeaponEffectsPass();
     WeaponEffectsPass(const WeaponEffectsPass&) = delete;
     WeaponEffectsPass& operator=(const WeaponEffectsPass&) = delete;
-    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format) noexcept;
+    // hull (shields,hull): also the sprite batch and the glow (their programs and the batch limits); their refusal
+    // leaves the pass enabled for the patches with caps().hull_enabled false.
+    HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format,
+                   bool hull = false) noexcept;
     void detach() noexcept;
     const WeaponEffectsCaps& caps() const noexcept { return caps_; }
     void before_reset() noexcept;
@@ -158,7 +200,8 @@ public:
     const std::uint16_t* cell_indices() const noexcept { return indices_; }
 #if defined(X3M_WEAPON_EFFECTS_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
     // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the next draw, bit 2 every draw,
-    // bit 3 refuses the program creation (attach: program_create, no object kept).
+    // bit 3 refuses the program creation (attach: program_create, no object kept), bit 4 the hull programs only
+    // (attach succeeds with hull_enabled false, hull_reason hull_program_create).
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
 #endif
 private:
@@ -167,7 +210,10 @@ private:
         return reinterpret_cast<Fn>(vtable_[slot]);
     }
     HRESULT create_objects() noexcept;
+    HRESULT create_hull_objects() noexcept;
     void release_objects() noexcept;
+    void release_hull_objects() noexcept;
+    bool hull_objects_ready() const noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
     WeaponEffectsCaps caps_{};
@@ -181,7 +227,14 @@ private:
     IDirect3DPixelShader9* decal_ps_ = nullptr;
     IDirect3DVertexDeclaration9* shell_declaration_ = nullptr;
     IDirect3DVertexDeclaration9* decal_declaration_ = nullptr;
+    IDirect3DVertexShader9* sprite_vs_ = nullptr;
+    IDirect3DPixelShader9* sprite_ps_ = nullptr;
+    IDirect3DVertexShader9* glow_vs_ = nullptr;
+    IDirect3DPixelShader9* glow_ps_ = nullptr;
+    IDirect3DVertexDeclaration9* sprite_declaration_ = nullptr;
+    IDirect3DVertexDeclaration9* glow_declaration_ = nullptr;
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
+    std::uint16_t sprite_indices_[weapon_sprite_quads * 6]{}; // two triangles per quad (attach time; the glows' too)
 };
 } // namespace x3m::renderer

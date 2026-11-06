@@ -50,6 +50,119 @@ CAPACITIES = (('cell_key_bias', 'src/renderer/weapon_effects_pass.h', 'weapon_ce
               ('region_draws', 'src/proxy/weapon_effects_stage.h', 'region_draws'))
 HEADER_INT_ARRAYS = ('rings',)
 NUMBER = r'-?[0-9.]+(?:e-?[0-9]+)?'
+# The shared look and the hull hit (docs/architecture/weapon-look.md 5): the constants of `namespace look` and
+# `namespace hull` in weapon_effects_core.h, read inside their namespace (the same names recur in later families), as
+# HEADER.look and HEADER.hull; heat_ramp is a 5 x 3 array, tug_colour a 3-array, hull's mode the enum value's name.
+NAMESPACES = {
+    'look': ('heat_ramp', 'min_frames', 'soft_core', 'soft_halo', 'core_e', 'body_max', 'halo_max', 'halo_fold',
+             'streak_cap', 'streak_core_min', 'floor_core_px', 'floor_lit_px', 'floor_len_px', 'floor_flash_px',
+             'budget_weight_patch', 'budget_weight_glow'),
+    'hull': ('r_base', 'r_k', 'flash_ms', 'flash_core', 'flash_halo_t', 'spark_n0', 'spark_nk', 'spark_speed_u',
+             'spark_speed_spread', 'spark_tau_s', 'spark_life_ms', 'spark_life_k_ms', 'spark_width_u', 'spark_e',
+             'spark_rest_w', 'glow_r', 'glow_t', 'glow_e', 'glow_ms', 'ember_r', 'ember_t', 'ember_e', 'ember_ms', 'bias',
+             'asteroid_dust_x', 'asteroid_t', 'missile_spark_x', 'tug_colour', 'mode', 'spark_count_x')}
+# The lab's presets (weapon-look.md 6): <family>/<case>, each naming its view and weapon id (--check fails when the id
+# is missing from its view's census, or a family has no preset), the victim tier and preview hull, the camera, the SETA
+# rate, the hits per game second, the own ship and the cockpit view, the hull-hit variant, the calibre k and the
+# shield level. Families: shield (step 1, accepted) and hull (step 2, the 3.1 list).
+FAMILIES = ('shield', 'hull')
+PRESETS = (
+    dict(id='shield/fighter-ire-side', family='shield', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=100),
+    dict(id='shield/capital-ppc-flank', family='shield', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='narrow',
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.8, shield=60),
+    dict(id='hull/fighter-ire-side', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+    dict(id='hull/fighter-ire-chase-nose', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0,
+         hull='chase_nose', camera='chase', seta=1, hps=0, own=True, cockpit=False, variant='none', k=0.33, shield=0),
+    dict(id='hull/fighter-ire-cockpit-own', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='cockpit', seta=1, hps=8, own=True, cockpit=True, variant='none', k=0.33, shield=0),
+    dict(id='hull/corvette-ppc-flank', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=1, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+    dict(id='hull/capital-ppc-flank-300m', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+    dict(id='hull/capital-close-12hz', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='sphere',
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+    dict(id='hull/station-ppc-1km', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='sphere',
+         camera='far1', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+    dict(id='hull/mining-asteroid-60m', family='hull', view='stock_ap', weapon='SS_BULLET_MASS', tier=1, hull='sphere',
+         camera='side', seta=1, hps=4, own=False, cockpit=False, variant='asteroid', k=0.3, shield=0),
+    dict(id='hull/missile-hit-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=1, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='missile', k=0.5, shield=0),
+    dict(id='hull/seta6-12hz', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=6, hps=12, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+    dict(id='hull/far-2km', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='far2', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+    dict(id='hull/drained', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top', camera='side',
+         seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+    dict(id='hull/repair-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_RL', tier=1, hull='narrow',
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='repair', k=0.5, shield=0),
+    dict(id='hull/stock-vs-mayhem', family='hull', view='stock_ap', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+)
+PRESET_KEYS = ('id', 'family', 'view', 'weapon', 'tier', 'hull', 'camera', 'seta', 'hps', 'own', 'cockpit', 'variant', 'k',
+               'shield')
+CAMERAS = ('side', 'chase', 'cockpit', 'far1', 'far2', 'far8')
+VARIANTS = ('none', 'repair', 'tug', 'missile', 'asteroid')
+PRESETS_BEGIN = '/* @weapon_effects_presets */'
+
+
+def preset_problems(presets, data):
+    """Why the presets cannot be injected: an id missing from its view, an unknown key or value, a family without one."""
+    out = []
+    for pr in presets:
+        if tuple(pr) != PRESET_KEYS:
+            out.append(f"{pr.get('id')}: keys {tuple(pr)}")
+        if pr.get('family') not in FAMILIES or not str(pr.get('id', '')).startswith(f"{pr.get('family')}/"):
+            out.append(f"{pr.get('id')}: family {pr.get('family')!r}")
+        if pr.get('camera') not in CAMERAS or pr.get('variant') not in VARIANTS:
+            out.append(f"{pr.get('id')}: camera {pr.get('camera')!r} / variant {pr.get('variant')!r}")
+        view = data.get(pr.get('view'))
+        if view is None:
+            out.append(f"{pr['id']}: view {pr.get('view')!r} not loaded")
+        elif pr.get('weapon') not in {w['id'] for w in view['weapons']}:
+            out.append(f"{pr['id']}: weapon {pr.get('weapon')} not in view {pr['view']}")
+    for family in FAMILIES:
+        if not any(pr.get('family') == family for pr in presets):
+            out.append(f'family {family} has no preset')
+    return out
+
+
+def presets_block(presets):
+    return ('%s\n// Generated by tools/effects/generate_weapon_effects_lab.py (PRESETS); do not edit.\nconst PRESETS = %s;\n%s'
+            % (PRESETS_BEGIN, json.dumps(list(presets), separators=(',', ':')), END))
+
+
+def namespace_constants(text):
+    out = {}
+    for ns, names in NAMESPACES.items():
+        m = re.search(r'namespace %s \{\n(.*?)\n\} // namespace %s' % (ns, ns), text, re.S)
+        if not m:
+            raise SystemExit(f'weapon_effects_core.h: namespace {ns} not found')
+        body, values = m.group(1), {}
+        for name in names:
+            if name == 'mode':
+                mode = re.search(r'constexpr Mode mode = (\w+);', body)
+                if not mode:
+                    raise SystemExit(f'weapon_effects_core.h: {ns}::mode not found')
+                values[name] = mode.group(1)
+                continue
+            grid = re.search(r'\b%s\[[^\]]*\]\[[^\]]*\] = \{(.*?)\};' % name, body, re.S)
+            if grid:
+                values[name] = [[float(v.strip().rstrip('f')) for v in row.split(',')]
+                                for row in re.findall(r'\{([^{}]*)\}', grid.group(1))]
+                continue
+            array = re.search(r'\b%s\[[^\]]*\] = \{([^}]*)\}' % name, body)
+            if array:
+                values[name] = [float(v.strip().rstrip('f')) for v in array.group(1).split(',')]
+                continue
+            scalar = re.search(r'\b%s = (%s)f?\b' % (name, NUMBER), body)
+            if not scalar:
+                raise SystemExit(f'weapon_effects_core.h: constant {ns}::{name} not found')
+            v = float(scalar.group(1))
+            values[name] = int(v) if v.is_integer() and '.' not in scalar.group(1) else v
+        out[ns] = values
+    return out
 
 
 def header_constants(text):
@@ -70,12 +183,14 @@ def header_constants(text):
         if not m:
             raise SystemExit('%s: constant %s not found' % (path, cname))
         values[name] = int(m.group(1))
+    values.update(namespace_constants(text))
     return values
 
 
 def header_block(values):
-    body = ',\n'.join('  %s: %s' % (name, json.dumps(values[name]))
-                       for name in HEADER_NAMES + tuple(c[0] for c in CAPACITIES))
+    body = ',\n'.join('  %s: %s' % (name, json.dumps(values[name], separators=(',', ':')) if name in NAMESPACES
+                                     else json.dumps(values[name]))
+                       for name in HEADER_NAMES + tuple(c[0] for c in CAPACITIES) + tuple(NAMESPACES))
     return ('%s\n// Generated by tools/effects/generate_weapon_effects_lab.py from src/proxy/weapon_effects_core.h; do not edit.\n'
             'const HEADER = {\n%s\n};\n%s' % (HEADER_BEGIN, body, HEADER_END))
 # Death tiers the page offers: (label, TShips classes) or a non-ship source.
@@ -212,7 +327,15 @@ def block(data):
     return '\n'.join(lines)
 
 
-def render(html, data, header_values):
+def render(html, data, header_values, presets=PRESETS):
+    problems = preset_problems(presets, data)
+    if problems:
+        raise SystemExit('presets: ' + '; '.join(problems))
+    pstart = html.find(PRESETS_BEGIN)
+    if pstart < 0:
+        raise SystemExit(f'{HTML.relative_to(REPO)}: marked block {PRESETS_BEGIN} ... {END} not found')
+    pstop = html.find(END, pstart + len(PRESETS_BEGIN))
+    html = html[:pstart] + presets_block(presets) + html[pstop + len(END):]
     hstart = html.find(HEADER_BEGIN)
     if hstart < 0:
         raise SystemExit(f'{HTML.relative_to(REPO)}: marked block {HEADER_BEGIN} ... {HEADER_END} not found')

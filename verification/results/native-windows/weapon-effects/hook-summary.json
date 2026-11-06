@@ -16,23 +16,25 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "71545aa39283e0ade3485960fbf454e2a6850259-dirty",
+    "commit": "9ae410d6dd4afa4e36f006fc98cb1da89c3a292c-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h"
+      "src/proxy/weapon_effects_patch.h",
+      "src/proxy/weapon_effects_table.h",
+      "verification/probe/weapon_effects_hook_fixture.cpp"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture.cpp": "4cddfdcb98f6f4bec866513a85a651f3f717831d3f9064442e9e3986471851b5",
+      "verification/probe/weapon_effects_hook_fixture.cpp": "6d66ad4a43b276646ad726a2bead923397d851459a452782a1f2918dc403f0ff",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "b93d5d3f8a17cbba5102d28fc6cf13da61c93a6d494cf10dc6f1e4c404986fb8",
-      "src/proxy/weapon_effects_patch.cpp": "462a2c722358254af6f7e907ba21d787cefe861e4ee1ee32452ea9c4c5d0b9cf",
-      "src/proxy/weapon_effects_patch.h": "da4ed1107cf674b416340aad77df966d02514a182b757dc7ac12ed49fd9d8687",
+      "src/proxy/weapon_effects_patch.cpp": "ccd9c5862cc20a90e0bd47cbb94292e039fded36aa01b5e02c9af3295f6a23da",
+      "src/proxy/weapon_effects_patch.h": "23f7ab4d469b2a66a913580d9d4cbebef5481ad58d9c8d533dedd57088c46759",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "484f8dc63de20040f9da88021b0005a9821f92c3b63be8a145452d636aac926f",
+      "src/proxy/weapon_effects_core.h": "59dd21aa5121b5999eae490b4b0f251c367ee37ded369c9800e2801ddc650552",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
-      "src/proxy/weapon_effects_table.h": "91b861b8d809c312ee1ed2f946310c855531402993ce1c1b0792764f139d42b4",
+      "src/proxy/weapon_effects_table.h": "a62f25762dda98976b93dc8cc73a12483248933ed790d5469404adc454e24e04",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
     }
@@ -48,10 +50,10 @@
         "_x3m_weapon_tap": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event": 1065,
+        "_x3m_weapon_event": 1122,
         "_x3m_weapon_tap": 58
       },
-      "handler_frame_bytes": 204,
+      "handler_frame_bytes": 196,
       "stub_impact": [
         "pushf",
         "push",
@@ -77,7 +79,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "5e5d05173c97e15b0f5ca17d888f0d3e56449ebd8dc6c63d1deea5e49f08dbb1"
+    "executable_sha256": "fa97551101cdc0251161398adf1fe3b6ae96a003b7c6fef0d1757b6f3e85d7e6"
   },
   "host": {
     "name": "native-windows",
@@ -96,7 +98,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 75,
+      "checks": 90,
       "failures": 0,
       "faults": 3,
       "verdict": "PASS"
@@ -166,6 +168,11 @@
     },
     {
       "name": "overflow_keeps_owned_shield",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "overflow_census_first_then_oldest_staged",
       "passed": true,
       "detail": ""
     },
@@ -415,6 +422,76 @@
       "detail": ""
     },
     {
+      "name": "hull_mode_parse",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_mode_installed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_hit_skips_native_when_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_skip_frame_kept",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_mode_shield_hit_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_hit_forwards_when_not_owned",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_hit_forwards_without_hull_programs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_hit_dying_object_forwards",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "drained_hull_hit_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_hit_stage_and_forward",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_missile_source_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_asteroid_variant",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_repair_tug_variant_by_override",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_present_keeps_floor_then_releases",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "tap_reaches_callee",
       "passed": true,
       "detail": ""
@@ -480,18 +557,18 @@
       "detail": ""
     }
   ],
-  "check_count": 75,
+  "check_count": 90,
   "failed_checks": [],
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
-    "esp_frame": "00859640",
-    "esp_callee": "00859634",
-    "return": "00e46d8a",
-    "site": "00e46d85"
+    "esp_frame": "0085a640",
+    "esp_callee": "0085a634",
+    "return": "00d56d8a",
+    "site": "00d56d85"
   },
   "stack_depth": {
-    "bytes": 240,
+    "bytes": 232,
     "margin": 1536
   },
   "shield": [
@@ -583,12 +660,29 @@
       "threshold": 327
     }
   ],
+  "hull_mode": [
+    {
+      "case": "skip",
+      "through": 1,
+      "unabsorbed": 1,
+      "skipped_delta": 2,
+      "forwarded_delta": 0,
+      "lifetime_ms": 1441
+    },
+    {
+      "case": "present",
+      "kept": 1,
+      "released": 1,
+      "lifetime_ms": 1441,
+      "floor_ms": 400
+    }
+  ],
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.2,
-    "median_us": 17.3,
-    "worst_us": 24.1,
+    "best_us": 17.6,
+    "median_us": 17.7,
+    "worst_us": 18.9,
     "target_us": 30
   },
   "passed": true

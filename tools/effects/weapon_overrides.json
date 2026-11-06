@@ -1,7 +1,11 @@
 {
  "schema": 1,
- "comment": "Curated weapon-effect overrides (docs/architecture/weapon-effects.md 3.2), merged by tools/effects/weapon_effects_table.py into <game>/x3m/weapon_effects.json. by_id applies to any TBullets table carrying the SS_BULLET_* id; by_table[<decoded TBullets sha256 prefix>] applies to that exact table only and wins. Fields: style (tracer|slug|orb|wave|beam), tint ([r, g, b] linear 0..1), calibre (0..1). Users edit nothing; an unknown mod gets the classifier.",
- "by_id": {},
+ "comment": "Curated weapon-effect overrides (docs/architecture/weapon-effects.md 3.2), merged by tools/effects/weapon_effects_table.py into <game>/x3m/weapon_effects.json. by_id applies to any TBullets table carrying the SS_BULLET_* id; by_table[<decoded TBullets sha256 prefix>] applies to that exact table only and wins. Fields: style (tracer|slug|orb|wave|beam), tint ([r, g, b] linear 0..1), calibre (0..1), hull (repair|tug: the hull-hit variant, docs/architecture/weapon-look.md 3.1). Users edit nothing; an unknown mod gets the classifier.",
+ "by_id": {
+  "SS_BULLET_REPAIR": {"hull": "repair"},
+  "SS_BULLET_RL": {"hull": "repair"},
+  "SS_BULLET_TUG": {"hull": "tug", "calibre": 0.1}
+ },
  "by_table": {
   "be762076cdc38b03": {"name": "stock AP (addon/02.cat TBullets)"},
   "7b4ab0a6cea2cb07": {"name": "Mayhem 3 (addon/12.cat TBullets)"},

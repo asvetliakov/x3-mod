@@ -1207,10 +1207,13 @@ public:
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
+                                   unsigned drops[24]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
                                                                  // faces_culled, area_dropped, bubbles,
                                                                  // bubble_fallback, the walks (run, failed, held,
-                                                                 // deferred), bubble_clamped
+                                                                 // deferred), bubble_clamped; the hull hit's (13..20):
+                                                                 // hits, flashes, sparks, glows, embers, budget_shed,
+                                                                 // orphans, floored, owners_dropped, capped; 23:
+                                                                 // the pass holds the hull programs
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2256,9 +2259,10 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    unsigned weapon_drops_[13]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
+    unsigned weapon_drops_[23]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
                                   // area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures, held, deferred,
-                                  // clamped
+                                  // clamped; HullCounts hits, flashes, sparks, glows, embers, shed, orphans, floored,
+                                  // owners_dropped, capped
                                  // since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;

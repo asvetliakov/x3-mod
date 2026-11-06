@@ -36,12 +36,19 @@ struct Period {
     unsigned patches = 0, decals = 0, retired = 0, dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0, area_dropped = 0, bubbles = 0, bubble_fallback = 0;
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
+    unsigned hull_hits = 0, sparks = 0, glows = 0, embers = 0, flashes = 0, budget_shed = 0, orphans = 0, floored = 0;
+    unsigned owners_dropped = 0, capped = 0;
+    std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
 core::Counters seen_{};
 core::ScopeLatch scope_{};
 std::uint32_t scope_clears_ = 0, scope_changes_ = 0;
 std::uint32_t seen_overflow_ = 0, seen_retired_ = 0, seen_compared_ = 0;
+// Step 2: no loaded table, or one without any "hull" key (generated before step 2): the repair and tug variants are
+// unavailable until x3m-regenerate / `manage.py install` writes it again (logged once with the table row, carried in
+// every weapon_effects_frame row).
+bool table_hull_key_missing_ = true;
 
 bool window_matches(std::uintptr_t window, const unsigned char* expected, unsigned length) {
     unsigned char current[64]{};
@@ -160,13 +167,14 @@ void load_table() {
             table_ = nullptr;
         }
     }
+    table_hull_key_missing_ = !parsed || !st.hull_keys;
     // The live count is checked per hit (core::impact: a differing *0x00607038 disables the lookups, stale_table).
     x3m::log("weapon_effects_table event=%s reason=%s rows=%lu missile_rows=%lu entries=%u textures=%u overrides=%u "
-             "dropped=%u bytes=%lu fault=%lu path=\"%s\"",
+             "dropped=%u hull_keys=%u table_hull_key_missing=%u bytes=%lu fault=%lu path=\"%s\"",
              parsed ? "loaded" : had_text ? "rejected" : read, parsed ? "ok" : had_text ? "malformed" : read,
              static_cast<unsigned long>(parsed ? table_->rows : 0), static_cast<unsigned long>(parsed ? table_->missile_rows : 0),
-             st.entries, st.textures, st.overrides, st.dropped, static_cast<unsigned long>(size),
-             static_cast<unsigned long>(fault), path);
+             st.entries, st.textures, st.overrides, st.dropped, st.hull_keys, unsigned(table_hull_key_missing_),
+             static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
 const char* site_name(unsigned i) {
     return i == 0 ? "impact" : i == 1 ? "tap1" : "tap2";
@@ -228,10 +236,15 @@ bool install_at(const Addresses& a, core::Mode mode) {
     core::ring_clear(s.ring);
     s.table = table_;
     s.mode = std::uint8_t(mode);
-    s.armed = mode == core::mode_shields ? core::family_shields : 0;
+    s.armed = mode == core::mode_shields        ? core::family_shields
+              : mode == core::mode_shields_hull ? std::uint8_t(core::family_shields | core::family_hull)
+                                                : std::uint8_t(0);
     s.owned_next = 0;
     s.lifetime_ms = std::uint16_t(core::patch_lifetime_ms);
+    s.hull_lifetime_ms = std::uint16_t(core::hull_lifetime_ms);
+    s.life_floor_ms = 0;
     s.suppress_native = core::suppress_native_shield_hit; // true: a stage-owned shield hit skips the native spawn
+    s.suppress_native_hull = core::suppress_native_hull_hit; // true: a stage-owned hull hit too (shields,hull)
     x3m_weapon_effects_continue_impact = a.impact_target; // published before the redirects go live
     x3m_weapon_effects_continue_tap = a.tap_target;
     for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
@@ -371,7 +384,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     if (!installed_) return;
     core::HookState& s = hook_state();
     // A load, a sector change or a new load epoch: the stage-owned records of the scene that went leave the ring.
-    if (scope_.changed(scope) && mode_ == core::mode_shields) {
+    if (scope_.changed(scope) && core::stage_mode(mode_)) {
         ++scope_changes_;
         const unsigned cleared = clear_owned_count();
         if (cleared) {
@@ -381,8 +394,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                 static_cast<unsigned long long>(scope_.load_epoch), static_cast<unsigned long>(scope_clears_));
         }
     }
-    // The next frame's latch (shields only; observe never skips).
-    s.owned_next = std::uint8_t(mode_ == core::mode_shields && owned);
+    // The next frame's latch (the stage's modes only; observe never skips); the hull family's also needs the pass's
+    // hull programs (StageFrame::hull_ready).
+    s.owned_next = std::uint8_t(core::stage_mode(mode_) && owned);
+    s.hull_ready = std::uint8_t(mode_ == core::mode_shields_hull && owned && stage.hull_ready);
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
@@ -402,6 +417,16 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.bubble_held += stage.bubble_held;
     period_.bubble_deferred += stage.bubble_deferred;
     period_.bubble_clamped += stage.bubble_clamped;
+    period_.hull_hits += stage.hull_hits;
+    period_.sparks += stage.sparks;
+    period_.glows += stage.glows;
+    period_.embers += stage.embers;
+    period_.flashes += stage.flashes;
+    period_.budget_shed += stage.budget_shed;
+    period_.orphans += stage.orphans;
+    period_.floored += stage.floored;
+    period_.owners_dropped += stage.owners_dropped;
+    period_.capped += stage.capped;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -418,6 +443,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             else
                 ++period_.skipped;
             if (e.flags & core::flag_stage) ++period_.staged;
+            if ((e.flags & core::flag_stage) && e.role == core::role_hull_hit) ++period_.hull_staged;
             if (capture || logged_events_ < event_row_budget || period_events_ < period_row_budget) {
                 const char* sample = capture ? "capture" : logged_events_ < event_row_budget ? "start" : "period";
                 if (!capture) ++(logged_events_ < event_row_budget ? logged_events_ : period_events_);
@@ -448,8 +474,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                     core::tier_source_name(e.tier_source), sample);
             }
         }
-        // Census-only records leave once logged; the stage's at the end of their game-time life.
-        if (!(e.flags & core::flag_stage) || (now && core::expired(now, e))) {
+        // Census-only records leave once logged; the stage's at the end of their game-time life (a hull hit's, its
+        // floored elements included: the stage's life_floor_ms).
+        const std::uint32_t extra = e.role == core::role_hull_hit ? s.life_floor_ms : 0u;
+        if (!(e.flags & core::flag_stage) || (now && core::expired(now, e, extra))) {
             if (e.flags & core::flag_stage) ++period_.expired;
             core::ring_release(r, i);
         }
@@ -467,7 +495,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
-        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u",
+        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u hull_staged=%lu hull_hits=%u flashes=%u sparks=%u glows=%u "
+        "embers=%u budget_shed=%u orphans=%u floored=%u owners_dropped=%u capped=%u life_floor_ms=%lu "
+        "table_hull_key_missing=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -485,7 +515,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.spills, static_cast<unsigned long>(c.dir_fallback - seen_.dir_fallback), period_.faces_culled,
         period_.area_dropped, static_cast<unsigned long>(c.drained - seen_.drained), period_.bubbles,
         period_.bubble_fallback, period_.bubble_walks, period_.bubble_failures, period_.bubble_held, period_.bubble_deferred,
-        period_.bubble_clamped);
+        period_.bubble_clamped, static_cast<unsigned long>(period_.hull_staged), period_.hull_hits, period_.flashes,
+        period_.sparks, period_.glows, period_.embers, period_.budget_shed, period_.orphans, period_.floored,
+        period_.owners_dropped, period_.capped, static_cast<unsigned long>(s.life_floor_ms),
+        unsigned(table_hull_key_missing_));
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_retired_ = r.retired;

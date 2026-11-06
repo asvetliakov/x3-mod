@@ -43,7 +43,7 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
 #if !X3M_EDITION_FL
 #include "weapon_effects_patch.h" // X3M_WEAPON_EFFECTS=shields: the impact ring (motion_output_weapon_effects_inc.h)
-#include "weapon_effects_stage.h"
+#include "weapon_effects_hull.h"  // step 2: the hull hit (includes weapon_effects_stage.h)
 #endif
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier

@@ -301,9 +301,15 @@ class GeneratorTest(unittest.TestCase):
         data = {'stock_ap': gen.view_record('stock_ap', census_fixture(), manifest_fixture())}
         hv = gen.header_constants((gen.REPO / 'src/proxy/weapon_effects_core.h').read_text())
         shell = (f'<script>\n{gen.HEADER_BEGIN}\nconst HEADER = {{}};\n{gen.HEADER_END}\n'
-                 f'{gen.BEGIN}\nconst LAB_DATA = {{}};\n{gen.END}\nrest();\n</script>')
-        page = gen.render(shell, data, hv)
-        self.assertEqual(gen.render(page, data, hv), page)              # idempotent
+                 f'{gen.BEGIN}\nconst LAB_DATA = {{}};\n{gen.END}\n{gen.PRESETS_BEGIN}\nconst PRESETS = [];\n{gen.END}\n'
+                 f'rest();\n</script>')
+        presets = [dict(gen.PRESETS[0], view='stock_ap', weapon='SS_BULLET_X'),
+                   dict(gen.PRESETS[2], view='stock_ap', weapon='SS_BULLET_X')]
+        page = gen.render(shell, data, hv, presets)
+        self.assertEqual(gen.render(page, data, hv, presets), page)     # idempotent
+        self.assertIn('const PRESETS = [{"id":"shield/', page)
+        self.assertIn('  hull: {"r_base":0.35', page)                    # the namespaced constants (weapon-look.md 5)
+        self.assertIn('"heat_ramp":[[0.0,0.0,0.0]', page)
         self.assertIn('const HEADER = {', page)
         self.assertIn('ripple_speed:', page)
         self.assertTrue(page.endswith('\nrest();\n</script>'))
@@ -313,7 +319,27 @@ class GeneratorTest(unittest.TestCase):
         self.assertEqual(json.loads(view), 'stock_ap')
         self.assertEqual(json.loads(rec), json.loads(json.dumps(data['stock_ap'])))
         with self.assertRaises(SystemExit):
-            gen.render('<script></script>', data, hv)
+            gen.render('<script></script>', data, hv, presets)
+        with self.assertRaises(SystemExit):                              # a preset naming an id its view lacks
+            gen.render(page, data, hv, presets[:1] + [dict(presets[1], weapon='SS_BULLET_NOPE')])
+
+    def test_preset_problems(self):
+        """weapon-look.md 6: --check fails when a preset names an id missing from its view or a family has no preset."""
+        data = {'mayhem3': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_PPC'}, {'id': 'SS_BULLET_RL'}]},
+                'stock_ap': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_MASS'}]}}
+        self.assertEqual(gen.preset_problems(gen.PRESETS, data), [])
+        hull_only = [pr for pr in gen.PRESETS if pr['family'] == 'hull']
+        self.assertIn('family shield has no preset', gen.preset_problems(hull_only, data))
+        missing = [dict(gen.PRESETS[0], weapon='SS_BULLET_NOPE')] + list(gen.PRESETS[1:])
+        self.assertTrue(any('SS_BULLET_NOPE' in m for m in gen.preset_problems(missing, data)))
+        bad = [dict(gen.PRESETS[0], camera='orbit')] + list(gen.PRESETS[1:])
+        self.assertTrue(any('camera' in m for m in gen.preset_problems(bad, data)))
+        # every case of the 3.1 list
+        self.assertEqual({pr['id'] for pr in hull_only},
+                         {'hull/' + n for n in ('fighter-ire-side', 'fighter-ire-chase-nose', 'fighter-ire-cockpit-own',
+                                                'corvette-ppc-flank', 'capital-ppc-flank-300m', 'capital-close-12hz',
+                                                'station-ppc-1km', 'mining-asteroid-60m', 'missile-hit-corvette',
+                                                'seta6-12hz', 'far-2km', 'drained', 'repair-corvette', 'stock-vs-mayhem')})
 
     def test_main_check_against_inputs(self):
         tmp = Path(tempfile.mkdtemp())
@@ -336,7 +362,8 @@ class PageTest(unittest.TestCase):
     def test_shell(self):
         self.assertEqual(self.html.count(gen.BEGIN), 1)
         self.assertEqual(self.html.count(gen.HEADER_BEGIN), 1)
-        self.assertEqual(self.html.count(gen.END), 2)   # the header block and the data block both close with /* @end */
+        self.assertEqual(self.html.count(gen.END), 3)   # the header, data and presets blocks all close with /* @end */
+        self.assertEqual(self.html.count(gen.PRESETS_BEGIN), 1)
         self.assertIn('const HEADER = {', self.html)    # the injected header constants
         self.assertRegex(self.html, r'ripple_speed: [0-9.]+')
         self.assertRegex(self.html, r'cell_m: \[[0-9., ]+\]')
@@ -505,6 +532,49 @@ console.log(JSON.stringify(out));
         self.assertNotIn('id="c_tilt"', self.html)
         self.assertIn('id="c_own"', self.html)
         self.assertIn('id="c_cockpit"', self.html)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_hull_presets_render_their_elements(self):
+        """weapon-look.md 3.1 and 6: every hull preset of the page draws through renderHull: a flash and sparks at 40 ms
+        on the plain cases, the repair laser glow and ember without sparks or flash, the asteroid sparks without a flash,
+        the missile twice the sparks of the same calibre; the hull lifetime sets the loop."""
+        presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const PRESETS = __PRESETS__;
+const out = {};
+for (const p of PRESETS.filter(x => x.family === 'hull')) {
+  Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
+                       c_variant: p.variant, c_k: p.k, c_shield: p.shield});
+  checks.c_own = p.own; checks.c_cockpit = p.cockpit;
+  const data = new Uint8ClampedArray(W * H * 4);
+  const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data}; }, putImageData() {}},
+               weapon: {colour: [50, 255, 50]}};
+  renderOurs(rec, 40);
+  out[p.id] = rec.hullStats;
+}
+vals.c_seta = 1; out.loop = ourLoopMs();
+console.log(JSON.stringify(out));
+""".replace('__PRESETS__', json.dumps(presets))
+        js = self.run_node(probe)
+        for pid, st in js.items():
+            if pid == 'loop':
+                continue
+            self.assertGreater(st['lit'], 0, pid)
+            if pid == 'hull/repair-corvette':
+                self.assertEqual((st['sparks'], st['flashes']), (0, 0), pid)
+                self.assertGreater(st['glows'] + st['embers'], 0, pid)
+            elif pid == 'hull/mining-asteroid-60m':
+                self.assertEqual(st['flashes'], 0, pid)
+                self.assertGreater(st['sparks'], 0, pid)
+            else:
+                self.assertGreater(st['flashes'], 0, pid)
+                self.assertGreater(st['sparks'], 0, pid)
+        n = lambda k: round(8 + 16 * k)   # noqa: E731 (hull::spark_n0 + spark_nk k)
+        self.assertEqual(js['hull/missile-hit-corvette']['sparks'], 2 * n(0.5))
+        self.assertEqual(js['hull/fighter-ire-side']['sparks'], n(0.33))
+        self.assertEqual(js['loop'], 1441)                      # core::hull_lifetime_ms at SETA 1
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_bubble_presets_near_far_and_chase(self):

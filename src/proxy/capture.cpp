@@ -2080,7 +2080,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[13]{};
+        unsigned drops[24]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
@@ -2096,8 +2096,19 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.bubble_held = drops[10];
         stage.bubble_deferred = drops[11];
         stage.bubble_clamped = drops[12];
+        stage.hull_hits = drops[13];
+        stage.flashes = drops[14];
+        stage.sparks = drops[15];
+        stage.glows = drops[16];
+        stage.embers = drops[17];
+        stage.budget_shed = drops[18];
+        stage.orphans = drops[19];
+        stage.floored = drops[20];
+        stage.owners_dropped = drops[21];
+        stage.capped = drops[22];
+        stage.hull_ready = drops[23] != 0;
         weapon_effects::core::Scope scope{};
-        if (weapon_effects::mode() == weapon_effects::core::mode_shields) {
+        if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();
             auto read = [](std::uintptr_t p, void* out, std::size_t n) { return engine_memory::read(p, out, n); };
             const sector_background::Sample where = sector_background::sample(read, 0u);
@@ -3580,7 +3591,7 @@ void hook_device(IDirect3DDevice9* d, HWND window, HWND focus) {
     hooked.motion_output.configure_own_sun(own_sun_on, own_sun_radius, own_sun_radiance,
                                            own_sun_rays); // X3M_OWN_SUN as installed
 #if !X3M_EDITION_FL
-    hooked.motion_output.configure_weapon_effects(weapon_effects::mode() == weapon_effects::core::mode_shields);
+    hooked.motion_output.configure_weapon_effects(weapon_effects::core::stage_mode(weapon_effects::mode()));
 #endif
     hooked.motion_output.configure_engine_effects(engine_effects::hook_wanted(), engine_effects::suppress(),
                                                   log_tier::cached_debug); // X3M_ENGINE_EFFECTS: off = one bool per draw

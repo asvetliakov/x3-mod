@@ -35,6 +35,9 @@ OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
 # weapon_effects_core.h 4.1 (the host test pins both against the header).
 TRACER_MIN_ELONGATION, SLUG_MIN_ELONGATION = 4.0, 1.5
 SHAPES = ('tracer', 'slug', 'orb', 'wave', 'beam')
+# The hull-hit variants an override may pin (docs/architecture/weapon-look.md 3.1): the repair laser (glow and ember
+# only, the weapon tint) and the tug (the glow only, pale blue); written as the entry's "hull" key only when pinned.
+HULL_VARIANTS = ('repair', 'tug')
 
 
 class GenerateError(Exception):
@@ -67,7 +70,7 @@ def override_for(overrides, table_hash, weapon_id):
     """The merged override fields of one row ({} when none): by_id, then by_table[hash][id] on top."""
     out = dict(overrides['by_id'].get(weapon_id, {}))
     out.update((overrides['by_table'].get(table_hash) or {}).get(weapon_id, {}) or {})
-    return {k: v for k, v in out.items() if k in ('style', 'tint', 'calibre')}
+    return {k: v for k, v in out.items() if k in ('style', 'tint', 'calibre', 'hull')}
 
 
 def diffuse_names(body):
@@ -104,6 +107,10 @@ def row_entry(w, body, colour, override):
         entry['tint'] = [linear_to_srgb8(c) for c in override['tint']]
     if 'calibre' in override:
         entry['calibre'] = min(1.0, max(0.0, float(override['calibre'])))
+    if 'hull' in override:
+        if override['hull'] not in HULL_VARIANTS:
+            raise GenerateError(f"override for {w['weapon_id']}: unknown hull variant {override['hull']!r}")
+        entry['hull'] = override['hull']
     return entry
 
 

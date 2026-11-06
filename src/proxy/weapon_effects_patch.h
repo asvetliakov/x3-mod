@@ -2,7 +2,8 @@
 #include <cstdint>
 #include "weapon_effects_core.h"
 
-// Weapon effects, step 1: the shield hit (X3M_WEAPON_EFFECTS=native|observe|shields; unset = native;
+// Weapon effects, step 1: the shield hit; step 2: the hull hit (X3M_WEAPON_EFFECTS=native|observe|shields|shields,hull;
+// unset = native;
 // docs/architecture/weapon-effects.md 2.2, 2.6, 2.9, 5.1; the sites: weapon_effects_sites.h).
 // observe and shields redirect the impact call 0x00449d85 (-> 0x00413c40, the impact effect) to a stub that hands the
 // stack to the non-throwing cdecl handler x3m_weapon_event (weapon_effects_hook.cpp: integer only, no call, no
@@ -13,8 +14,13 @@
 // Present latched owned_next (the stage armed in the previous frame's resolve and the device holds the pass) is the
 // stage's (flag_stage: it draws the hex patch from the record) and, with core::suppress_native_shield_hit
 // (HookState::suppress_native, true by default since the coordinator decision of 2026-11-06), its native spawn is
-// skipped: the native sprite, its light and its PROPAGATE children are not created. Every other record (observe, hull
-// hits, a dying hit object, a frame the stage did not own) forwards and is census-only.
+// skipped: the native sprite, its light and its PROPAGATE children are not created. Every other record (observe, in
+// shields mode a hull hit, a dying hit object, a frame the stage did not own) forwards and is census-only.
+// shields,hull (step 2, docs/architecture/weapon-look.md 3.1) arms family_hull too: a hull hit (absorbed == 0, the
+// hull-through-shield rows, a drained shield, a missile source) while Present latched owned_next is the stage's and,
+// with core::suppress_native_hull_hit (HookState::suppress_native_hull), skips the native spawn the same way; a dying
+// hit object and a frame the stage did not own forward. Its record lives core::hull_lifetime_ms, and Present keeps it
+// HookState::life_floor_ms longer (the stage's three-frame floor).
 // observe additionally redirects the two inner instance calls 0x00413da8 / 0x00413e79 (-> 0x00414a70) to a tap that
 // compares the handler's contact point with the engine's own (weapon_pos_check) and forwards always.
 //
@@ -61,6 +67,12 @@ struct StageFrame {
     // the hull walks (stage::BubbleStats): run, failed, retries held back, deferred past the frame's budget, bubbles cut
     // to the object radius
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
+    // The hull hit (step 2, stage::HullCounts): records drawn, flash quads, spark quads, glow and ember boxes, glows the
+    // shared budget shed, records whose owner went (sparks only), elements drawn on their three-frame floor.
+    unsigned hull_hits = 0, flashes = 0, sparks = 0, glows = 0, embers = 0, budget_shed = 0, orphans = 0, floored = 0;
+    // owners past hull::max_owners the stage did not draw (the oldest newest hit first), elements past a count cap
+    unsigned owners_dropped = 0, capped = 0;
+    bool hull_ready = false; // the pass holds the hull programs (Present's hull latch, HookState::hull_ready)
     float stage_us = 0.f;
     bool drew = false;
 };

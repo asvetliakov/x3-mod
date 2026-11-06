@@ -34,7 +34,7 @@
 #include <d3d9.h>
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
-#include "../../src/proxy/weapon_effects_stage.h"
+#include "../../src/proxy/weapon_effects_hull.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
@@ -872,6 +872,7 @@ unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
     }
     return n;
 }
+#include "weapon_effects_hull_cases.h"
 }
 
 int main(int argc, char** argv) {
@@ -923,7 +924,8 @@ int main(int argc, char** argv) {
     report("d3dx_lane_shader", compile_helpers(), compile_shader ? "" : "D3DXCompileShader unavailable");
 
     rr::WeaponEffectsPass pass;
-    const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
+    // shields,hull: the hull programs too (weapon_effects_hull_cases.h refuses them on a second pass, review 5).
+    const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true);
     report("attach", SUCCEEDED(attached) && pass.caps().enabled, pass.caps().reason);
     std::printf("ATTACH result=%08lx shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u fp16=%08lx max_ps=%lu patch_vertices=%u patch_triangles=%u\n",
                 attached, pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots,
@@ -2272,11 +2274,13 @@ int main(int argc, char** argv) {
         }
         draw_lane(g, 0.f, -1.f);
     }
+    // Step 2: the hull hit (weapon_effects_hull_cases.h; its own Reset and fault cases before the patches' below).
+    hull_cases(pass, pp);
     // Program creation refused (fault bit 3): attach refuses with program_create and keeps no object; run refuses at once.
     {
         rr::WeaponEffectsPass refused;
         refused.set_faults(8);
-        const HRESULT hr = refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
+        const HRESULT hr = refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true);
         rr::WeaponEffectsFrame f = base_frame(g);
         const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.f}});
         f.patches = &p;

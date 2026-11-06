@@ -482,3 +482,118 @@ Open:
 ## Run239 Flight F (ship bubble), flown 2026-11-06
 
 The user accepted the look ("good now"): ships on the ellipsoid bubble, stations on the hull decal, no stand-off, hex only on shield hits, drained shields as hull hits, own-ship cockpit dim. Shield-hit step 1 closes on Run239 (`77a8ba3e5`, DLL `5735959d…`). Open items carried to step 2: the cockpit cull decision (drawn at 0.35), the untested R32F lane form, the bubble on winged or thin hulls (no complaint in Flight F), the 8-screen area budget as the GPU bound. [M] none: the flight was judged by eye, no log triage requested.
+
+## Hull hit, step 2 (dirty on `9ae410d6d`, 2026-11-06; [weapon-look.md](../architecture/weapon-look.md) 3.1)
+
+Built as the look note specifies, not flown. **Mode** `weapon_effects = shields,hull` (ini key, schema,
+`manage.py --weapon-effects`; `observe` and `shields` unchanged). `core::parse_mode` also takes `hull,shields` and
+spaces around the tokens; "hull" alone, a repeated, empty or unknown token is refused. The schema lists `shields,hull`
+and `hull,shields`; the launcher normalises to `shields,hull` and its dry run prints `weapon effects: <mode>` and a
+`weapon_effects` field. `install_at` arms `family_shields | family_hull`; a hull hit (absorbed 0, the
+hull-through-shield rows, a drained shield, a missile source) while the stage owned the previous frame *and* the pass
+holds the hull programs (Present's `HookState::hull_ready`) is staged and skips the native spawn
+(`core::suppress_native_hull_hit`, the outer site); a dying hit object, an unowned frame and a pass without the hull
+programs forward. Variants on `Event::detail`: asteroid by the hit object's class 17, repair / tug
+by the override's new `hull` key (`weapon_overrides.json` by_id: REPAIR and RL repair, TUG tug with calibre 0.1; the
+installed `x3m/weapon_effects.json` must be regenerated to carry them; a table without any `hull` key, or none, logs
+`table_hull_key_missing=1` with the `weapon_effects_table` row and in every `weapon_effects_frame` row). Record life
+`core::hull_lifetime_ms` 1441; Present keeps a staged hull hit `HookState::life_floor_ms` longer (the largest floor a
+live record latched, or this step's, plus a step). Ring overflow evicts the oldest census-only record first, then the
+oldest stage-owned record of any role (a staged hull hit's native spawn was skipped, so it is no cheaper than a shield
+hit's).
+
+**Stage** `src/proxy/weapon_effects_hull.h` (`stage::build_hull`, after the patches): per ring slot the record's first
+stage frame (game ms, the world contact point, the owner's velocity, and the three-frame floor of that frame's step,
+kept for the record's life: a SETA change never lengthens a faded element back into view), keyed by sequence. Every
+owner of a stage-owned record (a shield hit's too) is tracked each frame, so a first hull hit on an owner drawn in the
+previous stage frame takes the node's `+0x30` delta since then (0 otherwise). Past 32 owners a frame those whose
+newest hull hit is the oldest are not drawn (ties by address: the same choice frame to frame), counted
+`owners_dropped=`; flash (disc core + heat halo, centre biased 0.5 r_hit to the eye),
+sparks (antipodal Fibonacci pairs turned per record, closed form in game time, tail through the previous frame's view
+`camera_previous_` when it is the previous frame's), glow and ember on the lane; three-frame floor from `cfg+0x714`; a
+record whose owner went after its first frame keeps its sparks (orphan), one never seen leaves; own ship in the cockpit
+at 0.35; the shared budget: the glows of other owners shed oldest first past the screens the patches left
+(`stage::Counts::screens`), sparks and flashes never. **Pass**: two batched `DrawIndexedPrimitiveUP` draws (glows first,
+sprites last), one static quad index list, no DEFAULT-pool resource; the hull programs and the batch limits are
+requested at attach only in shields,hull mode, and their refusal leaves the pass enabled for the patches
+(`caps().hull_enabled` false, `hull_reason`); the sparks' quad expansion runs in
+`weapon_sprite_vs.hlsl` (CPU twin `stage::streak_corners`), the glow rasterizes the light sphere's exact screen
+rectangle. Programs (slots): sprite vs 69 / ps 85, glow vs 6 / ps 47. Rows: `weapon_effects_frame` gains `hull_staged=
+hull_hits= flashes= sparks= glows= embers= budget_shed= orphans= floored= owners_dropped= capped= life_floor_ms=
+table_hull_key_missing=`; `weapon_hull_frame` on capture frames; `weapon_effects_device` the four slot counts,
+`hull=` and `hull_reason=`.
+
+Deltas against the look note (and 5.2 of the architecture, which now points here):
+
+- Reach: `v0 tau` = 1.98 U is the asymptote; at its mean speed a spark has gone 1.05 U by the end of a 250 ms life (k 0)
+  and 1.54 U by 500 ms (k 1) [computed from the law; the drawn means at 200 ms are 0.80–0.96 U, the law rows]. The
+  note's "reach ≈ 2 U" and the chase-nose "2 U past the nose" are the asymptote. The chase gate measures the sparks
+  alone 200 ms in: 405 px outside the hull's outline (all of the 405 lit; the earlier figure, 3277 px, was the
+  first frame with the flash and glow).
+- The hidden half is measured by radiance over eight records per calibre: a pair grazing the plane is hidden on both
+  sides by the soft term (record seq 438, k 0.5, alone: 0.425); the lit-pixel ratio reads 0.52–0.54 (a pair along the
+  view axis overlaps itself on the sky).
+- Unspecified by the note, chosen here: spark radiance `spark_e` 4 (the core's) x ramp(T) x T, rest length 3 widths
+  floored at 12 px (the gate's name applies the bolt floor to sparks), the halo's e-fold 1.5 core radii.
+- `look::budget_weight_glow` re-pinned 0.40 (the note's [I] 0.25): one screen of glow 71.4 µs at 5120x1440 / 177.5.
+  Four of the ten runs that measured that row read 109–110 µs, six 71.0–72.3 (see Open).
+- The resolve scar test runs on a plane lane 100 view units behind the spark, not over the held far lane of
+  bolts-through-taa.
+- Kill switches as header constants: `hull::mode` (simple), `hull::spark_count_x`, `hull::glow`.
+
+Figures [M], `verification/results/weapon-effects/hull_figures.py` → `hull_figures_out.txt` (the records of this
+directory's native run after the review fixes, RTX 5070 Ti 32.0.16.2114): hook PASS 90/0 (15 step-2 checks: the
+shields,hull block and the ring's eviction order; handler 0 calls, 0 x87, 1122 instructions, frame 200 B; 50 events
+17.7 µs median); D3D PASS 96/0 (46 step-2 gates). AP DLL clean at -j4, 0 warnings, sha256 `14874a92…`, no-x87 PASS
+(1162 reachable, 0 violations). 74 `test_weapon_effects_*` OK; lab, programs and config `--check` PASS. Acceptance
+run: 44 s (lock to exit), after six attempts in which the device could not be created while the Windows session was
+locked (LockApp.exe up) and one that failed its 30 µs event-cost check, its short draws slow, under another
+session's CPU-bound process; the hull timing rows now take 120 untimed draws before their best of 60.
+
+| gate / row | measured | law / bound |
+| --- | --- | --- |
+| sparks' first-frame centroid / flash centroid | 0.006 U / 0.000 r_hit | ≤ 0.25 U / ≤ 0.1 r_hit |
+| hidden share k 0 / 0.5 / 1 (radiance, 8 records) | 0.506 / 0.505 / 0.501 | 0.45–0.55 |
+| glow on sky / centroid | 0 px / 0.000 R | 0 / ≤ 0.3 R |
+| glow peak, half life, end | 0.8496, 0.4265, 0 | 0.85, 0.4266, 0 |
+| cooling hue at half life (g / r), ramp error | 0.4234 vs 0.4239, 1.6e-3 | ±0.03, ≤ 2.5/255 |
+| count / flash r / glow R / ember R / width, 3 tiers x k 0, 0.5, 1 | all exact (8 / 16 / 24) | ±5 % |
+| mean reach at 200 ms (fighter k 0 / 0.5 / 1) | 0.90 / 0.95 / 0.96 U | the law, ±5 % (exact) |
+| floors at 2 km: width, length, flash core | 3.000, 12.000, 3.012 px | ≥ 3, 12, 3 |
+| flash frames at SETA 6 / 10 | 3 / 3 | 3 |
+| SETA engaging mid-life (16 → 167 ms steps), elements back | 0 (floor latched 48 ms) | 0 |
+| no pop at 12 hits/s (60 frames, image vs the same records aged) | 0 px | 0 |
+| no pop across a step change (6 records, 40 frames, 16 → 100 ms; each flash, glow, ember against its law) | 0 of 720 | 0 |
+| chase nose: sparks alone at 200 ms outside the outline | 405 px (of 405 lit) | ≥ 20 |
+| first hull hit on an owner drawn the frame before: velocity, mean spark head at 100 ms | 1250.0 / 127.838 view units | 1250 / 127.838 |
+| hull programs refused: patch draws, sprites, glows | 1, 0, 0 (hull_reason hull_program_create) | 1, 0, 0 |
+| far-side hit / near flash on its hull | 0.0 / 0.9999 of the sky's | 0 / ≥ 0.9 |
+| cockpit own / other | 0.350 / 1.000 | 0.35 / 1 |
+| R32F lane / four-channel | 1.0000 | ±1 % |
+| resolve core 0 / 4 / 8 px, residual after 8 frames | 1.000 each, 0 | ≥ 0.95, ≤ 1/255 |
+| CPU 64 hits on a capital (1344 sparks, 128 rects) | 26.6 µs best, 41.9 mean | ≤ 30 µs |
+| CPU 20 hits on a fighter | 9.8 µs best | — |
+
+Host checks (`test_weapon_effects_core`): 40 owners, one hull hit each: 32 drawn, owners 1–8 (the oldest newest hits)
+dropped, the same set the next frame; a new hit on owner 1 brings it in. The hook fixture: `hull,shields`,
+` shields , hull ` and `hull, shields` parse to shields,hull; "hull", `shields,shields`, `shields,` refused; a staged
+hull hit forwards while `hull_ready` is 0; with only staged records the oldest goes whatever its role.
+
+GPU, EVENT-fenced best of 60 (µs; 1080p / 5120x1440): 20 hits on a fighter 200 m away (the 3.1 budget) 21.3 / 24.3
+(≤ 50 at 5120); the same 60 m away (its hull a fifth of the frame, raster 1.38 screens) 28.6 / 96.2; 64 hits on a
+capital close 38.9 / 58.5; one glow filling the frame 31.0 / 71.5 (the 0.40 weight). Before the performance pass: CPU
+63.8 µs (CPU expansion, 36 B vertices), GPU 108.3 µs for the 60 m row (view-aligned boxes, 1.61 screens rasterized).
+
+Open:
+
+- Not flown. Flight per 3.1: `weapon_effects = shields,hull`, with the regenerated table for the repair variant.
+- The 60 m stress row exceeds 50 µs at 5120x1440 (96.2): 20 overlapping glows at 3 r_hit on a hull a fifth of the
+  frame; the budget sheds them at 8 screens, not at that cost.
+- The CPU mean (41.9 µs) is above the 30 µs bound the best meets.
+- The full-screen glow row read 109–110 µs in four runs against 71–72 in six; the warm-up brought it back, the cause
+  (GPU clock after the CPU-only cases, as far as the evidence goes) is not established.
+- The lab renders the law on its preview hulls; its sparks are not the stage's (their own rotation and speeds).
+- The budget's shed loop is O(glows x shed) (a selection per shed glow), only while over budget.
+- Missile-victim classing: an impact whose victim is class 10 takes the projectile branch (the handler's victim-first
+  rule), so a missile shot down by a bullet is not a hull hit; not reviewed against the engine.
+- `table_hull_key_missing` also reads 1 for a mod table that carries none of REPAIR, RL, TUG.

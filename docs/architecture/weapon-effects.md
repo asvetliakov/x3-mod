@@ -693,6 +693,14 @@ every hit, so a diagnosis flight still sees vanilla.
 
 ### 5.2 Step 2: hull hit
 
+**Superseded by [weapon-look.md](weapon-look.md) 3.1** (ratified 2026-11-06), which is the step's brief: built as
+`weapon_effects = shields,hull` (dirty on `9ae410d6d`; ledger [weapon-effects.md](../verification/weapon-effects.md)
+"Hull hit, step 2"). Where this paragraph and the look note disagree the look note wins: the sparks are isotropic in
+antipodal pairs, not a cone on the ellipsoid gradient (no surface normal), closed-form in game time (no `pos += v ·
+step_game` integration), 8 + 16 k of them (2 x for missile sources and asteroids), not 16–24; the flash, glow and
+ember follow the heat ramp with a three-frame floor; drained shields are staged hull hits; the repair (and tug)
+variant is pinned by the override's new `hull` key, not by `style = repair`. The paragraph below is kept as history.
+
 Arms `hull_hit` at the same site (no new patch): sparks (16–24 CPU particles, drag, 250–500 ms game time), the
 depth-aware hit light on the hull (150 ms) and the flash of the dropped 3.4, replacing the native sprite and its
 `EEDF_LIGHT`. The sparks' cone is the ellipsoid gradient at `pos`; the owner's velocity is the node's frame delta

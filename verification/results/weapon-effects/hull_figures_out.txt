@@ -1,0 +1,53 @@
+hook True {'checks': 90, 'failures': 0, 'faults': 3, 'verdict': 'PASS'} hull_checks 15 failed [] calls {'_x3m_weapon_event': [], '_x3m_weapon_tap': []} x87 0 instructions {'_x3m_weapon_event': 1122, '_x3m_weapon_tap': 58} frame 196 commit 9ae410d6dd4afa4e36f006fc98cb1da89c3a292c-dirty
+hull_mode {'case': 'skip', 'through': 1, 'unabsorbed': 1, 'skipped_delta': 2, 'forwarded_delta': 0, 'lifetime_ms': 1441}
+hull_mode {'case': 'present', 'kept': 1, 'released': 1, 'lifetime_ms': 1441, 'floor_ms': 400}
+event_cost {'events': 50, 'shields': 6, 'best_us': 17.6, 'median_us': 17.7, 'worst_us': 18.9, 'target_us': 30}
+d3d True {'checks': 96, 'failures': 0, 'verdict': 'PASS'} hull_gates 46 failed [] commit 9ae410d6dd4afa4e36f006fc98cb1da89c3a292c-dirty adapter NVIDIA GeForce RTX 5070 Ti 32.0.16.2114
+slots [{'sprite_vs': 69, 'sprite_ps': 85, 'glow_vs': 6, 'glow_ps': 47, 'sprite_vertex_bytes': 48, 'glow_vertex_bytes': 40, 'hull_state_bytes': 16400}]
+hull {'case': 'placement', 'sparks': 13, 'spark_lit': 350, 'spark_centroid_err_u': 0.006, 'quad_centroid_err_u': 0.006, 'flashes': 1, 'flash_lit': 5513, 'flash_centroid_err_rhit': 0.0}
+hull {'case': 'half_hidden', 'k0_share': 0.5055, 'k05_share': 0.5053, 'k1_share': 0.5014, 'k0_px': '1479/2820', 'k0_px_share': 0.5245, 'k05_px': '2976/5472', 'k05_px_share': 0.5439, 'k1_px': '4431/8306', 'k1_px_share': 0.5335, 'cpu_share': '0.5053,0.5053,0.5052', 'crossing': '0,0,0', 'seq': '436,445,454'}
+hull {'case': 'glow_surface', 'boxes': 1, 'lit_sky': 0, 'lit_lane': 26155, 'on_lane_share': 1.0, 'full_lit': 52569, 'centroid_err_R': 0.0, 'R_view': 25.402}
+hull {'case': 'glow_decay', 'life_ms': 146.5, 'age0': 0.8496, 'expected0': 0.85, 'age_half': 0.4265, 'expected_half': 0.4266, 'age_end': 0.0}
+hull {'case': 'cooling', 'life_ms': 279.8, 'half_T': 0.503, 'drawn_g_over_r': 0.4234, 'want_g_over_r': 0.4239}
+hull {'case': 'cooling_ramp', 'worst_channel_error': 0.0016}
+hull {'case': 'law', 'tier': 'fighter', 'k': 0.0, 'calibre': 0.0, 'sparks': 8, 'want': 8, 'flash_r': 5.25, 'r_hit': 5.25, 'glow_R': 15.75, 'ember_R': 3.15, 'width': 0.6, 'reach_mean_u': 0.9022, 'law_mean_u': 0.9022, 'early': 8, 'late': 0}
+hull {'case': 'law', 'tier': 'fighter', 'k': 0.5, 'calibre': 0.5, 'sparks': 16, 'want': 16, 'flash_r': 10.125, 'r_hit': 10.125, 'glow_R': 30.375, 'ember_R': 6.075, 'width': 0.6, 'reach_mean_u': 0.9495, 'law_mean_u': 0.9495, 'early': 16, 'late': 0}
+hull {'case': 'law', 'tier': 'fighter', 'k': 1.0, 'calibre': 1.0, 'sparks': 24, 'want': 24, 'flash_r': 15.0, 'r_hit': 15.0, 'glow_R': 45.0, 'ember_R': 9.0, 'width': 0.6, 'reach_mean_u': 0.9575, 'law_mean_u': 0.9575, 'early': 24, 'late': 0}
+hull {'case': 'law', 'tier': 'corvette', 'k': 0.0, 'calibre': 0.0, 'sparks': 8, 'want': 8, 'flash_r': 10.5, 'r_hit': 10.5, 'glow_R': 31.5, 'ember_R': 6.3, 'width': 1.2, 'reach_mean_u': 0.9006, 'law_mean_u': 0.9006, 'early': 8, 'late': 0}
+hull {'case': 'law', 'tier': 'corvette', 'k': 0.5, 'calibre': 0.5, 'sparks': 16, 'want': 16, 'flash_r': 20.25, 'r_hit': 20.25, 'glow_R': 60.75, 'ember_R': 12.15, 'width': 1.2, 'reach_mean_u': 0.8016, 'law_mean_u': 0.8016, 'early': 16, 'late': 0}
+hull {'case': 'law', 'tier': 'corvette', 'k': 1.0, 'calibre': 1.0, 'sparks': 24, 'want': 24, 'flash_r': 30.0, 'r_hit': 30.0, 'glow_R': 90.0, 'ember_R': 18.0, 'width': 1.2, 'reach_mean_u': 0.8923, 'law_mean_u': 0.8923, 'early': 24, 'late': 0}
+hull {'case': 'law', 'tier': 'capital', 'k': 0.0, 'calibre': 0.0, 'sparks': 8, 'want': 8, 'flash_r': 28.0, 'r_hit': 28.0, 'glow_R': 84.0, 'ember_R': 16.8, 'width': 3.2, 'reach_mean_u': 0.9083, 'law_mean_u': 0.9083, 'early': 8, 'late': 0}
+hull {'case': 'law', 'tier': 'capital', 'k': 0.5, 'calibre': 0.5, 'sparks': 16, 'want': 16, 'flash_r': 54.0, 'r_hit': 54.0, 'glow_R': 162.0, 'ember_R': 32.4, 'width': 3.2, 'reach_mean_u': 0.8805, 'law_mean_u': 0.8805, 'early': 16, 'late': 0}
+hull {'case': 'law', 'tier': 'capital', 'k': 1.0, 'calibre': 1.0, 'sparks': 24, 'want': 24, 'flash_r': 80.0, 'r_hit': 80.0, 'glow_R': 240.0, 'ember_R': 48.0, 'width': 3.2, 'reach_mean_u': 0.8995, 'law_mean_u': 0.8995, 'early': 24, 'late': 0}
+hull {'case': 'reach_asymptote', 'v0_tau_u': 1.98}
+hull {'case': 'floors_2km', 'sparks': 13, 'min_width_px': 3.0, 'min_length_px': 12.0, 'flash_core_px': 3.012}
+hull {'case': 'min_frames', 'seta6_flash_frames': 3, 'seta10_flash_frames': 3, 'ember_life_ms': 1070.2, 'ember_frames': 11, 'ember_last_age_ms': 1000, 'seta6_wall_ms': 183.33, 'expected_wall_ms': 178.37}
+hull {'case': 'no_pop_12hps', 'frames': 60, 'hits': 12, 'max_live': 12, 'popped_pixels': 0, 'worst': 0.0, 'worst_frame': 0}
+hull {'case': 'seta_engage', 'frames': 18, 'reappeared': 0, 'latched_floor_ms': 48}
+hull {'case': 'no_pop_step_change', 'frames': 40, 'records': 6, 'checked': 720, 'violations': 0, 'worst': 0.0}
+hull {'case': 'hull_refused', 'result': 0, 'enabled': 1, 'hull': 0, 'reason': 'hull_program_create', 'run': 0, 'patches': 1, 'sprites': 0, 'glows': 0, 'luma': 52750.554}
+hull {'case': 'far_side', 'far_sum': 0.0, 'near_flash_on_hull': 2178.1987, 'near_flash_on_sky': 2178.3715, 'ratio': 0.9999}
+hull {'case': 'chase_nose', 'age_ms': 200, 'sparks': 13, 'lit': 405, 'outside_lit': 405}
+hull {'case': 'cockpit', 'chase': 17546.1686, 'own_cockpit': 6141.1017, 'other_cockpit': 17546.1686, 'own_ratio': 0.35, 'other_ratio': 1.0, 'gain': 0.35}
+hull {'case': 'variants', 'repair_sparks': 0, 'repair_flashes': 0, 'repair_glows': 1, 'repair_embers': 1, 'repair_glow_rgb': '0.029,1.000,0.029', 'tug_glows': 1, 'tug_embers': 0, 'tug_R': 18.675, 'missile_sparks': 32, 'missile_want': 32, 'missile_halo_g': 0.4, 'missile_tint_g': 0.4, 'asteroid_sparks': 32, 'asteroid_want': 32, 'asteroid_flashes': 0, 'asteroid_rgb': '0.729,0.227,0.059'}
+hull {'case': 'velocity', 'first_v': '0.000,0.000,0.000', 'second_v': '1250.000,0.000,0.000', 'want_vx': 1250.0}
+hull {'case': 'orphan', 'orphans': 2, 'retired': 1, 'sparks': 26, 'flashes': 0, 'glows': 0, 'embers': 0, 'live': 2}
+hull {'case': 'velocity_first_hit', 'v': 1250.0, 'want': 1250.0, 'sparks': 16, 'mean_head_x': 127.838, 'expected_x': 127.838, 'owner_x': 145.0}
+hull {'case': 'budget', 'boxes': 24, 'screens': 5.374, 'tight_boxes': 3, 'tight_shed': 21, 'tight_screens': 0.496, 'sparks': 288, 'tight_sparks': 288, 'own_boxes': 24, 'own_shed': 0}
+hull {'case': 'r32f_lane', 'four_channel': 8123.4733, 'r32f': 8123.4811, 'ratio': 1.0}
+hull {'case': 'resolve', 'speed_px': 0, 'frames': 16, 'core': 1.0, 'peak': 3.127, 'residual_after_8': 0.0}
+hull {'case': 'resolve', 'speed_px': 4, 'frames': 16, 'core': 1.0, 'peak': 2.346, 'residual_after_8': 0.0}
+hull {'case': 'resolve', 'speed_px': 8, 'frames': 16, 'core': 1.0, 'peak': 1.877, 'residual_after_8': 0.0}
+hull {'case': 'reset', 'result': 0, 'references_before_reset': 0, 'ensure': 0, 'drew': 1}
+cpu {'case': 'capital_64_hits', 'hits': 64, 'sparks': 1344, 'flashes': 64, 'boxes': 128, 'best_us': 26.6, 'mean_us': 41.88, 'target_us': 30}
+cpu {'case': 'fighter_20_hits', 'hits': 20, 'sparks': 260, 'flashes': 20, 'boxes': 40, 'best_us': 9.8, 'mean_us': 10.48, 'target_us': 30}
+timing_us (best of 60, fenced):
+  1920x1080 fighter_60m_20_hits      sparks=260 rects=40 lit_share=0.0954 raster_share=0.6908 gpu_us=28.6
+  1920x1080 fighter_200m_20_hits     sparks=260 rects=40 lit_share=0.0086 raster_share=0.0668 gpu_us=21.3
+  1920x1080 capital_close_64_hits    sparks=1344 rects=26 lit_share=0.3009 raster_share=0.4789 gpu_us=38.9
+  1920x1080 glow_alone_fills_frame   sparks=0 rects=1 lit_share=1.0000 raster_share=1.0000 gpu_us=31.0
+  5120x1440 fighter_60m_20_hits      sparks=260 rects=40 lit_share=0.1908 raster_share=1.3773 gpu_us=96.2
+  5120x1440 fighter_200m_20_hits     sparks=260 rects=40 lit_share=0.0172 raster_share=0.1238 gpu_us=24.3
+  5120x1440 capital_close_64_hits    sparks=1344 rects=15 lit_share=0.3289 raster_share=0.5010 gpu_us=58.5
+  5120x1440 glow_alone_fills_frame   sparks=0 rects=1 lit_share=1.0000 raster_share=1.0000 gpu_us=71.5
+glow budget weight (5120 full screen / decal 177.5 us): 0.403

@@ -51,7 +51,13 @@ def sample_table():
             {'row': 1, 'id': 'SS_BULLET_X', 'z_over_xy': 2.0, 'texture_rgb': None, 'style': 'beam',
              'tint': [77, 255, 77], 'calibre': 0.5},
             {'row': 2, 'id': 'SS_BULLET_Y', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
-             'calibre': None}]},
+             'calibre': None},
+            {'row': 3, 'id': 'SS_BULLET_REPAIR', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': None, 'hull': 'repair'},
+            {'row': 4, 'id': 'SS_BULLET_TUG', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': 0.1, 'hull': 'tug'},
+            {'row': 5, 'id': 'SS_BULLET_Z', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': None, 'hull': 'unknown'}]},
         'missiles': {'rows': 36}}}
 
 
@@ -75,11 +81,17 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         self.assertEqual(wt.override_for(overrides, 'abc', 'SS_BULLET_IRE'), {'style': 'tracer', 'tint': [1, 0, 0]})
         self.assertEqual(wt.override_for(overrides, 'other', 'SS_BULLET_IRE'), {'style': 'orb'})
         self.assertEqual(wt.override_for(overrides, 'abc', 'SS_BULLET_Z'), {})
+        hull = {'schema': 1, 'by_id': {'SS_BULLET_TUG': {'hull': 'tug', 'calibre': 0.1}}, 'by_table': {}}
+        self.assertEqual(wt.override_for(hull, 'abc', 'SS_BULLET_TUG'), {'hull': 'tug', 'calibre': 0.1})
 
     def test_shipped_overrides_file_schema(self):
         data = json.loads(OVERRIDES.read_text())
         self.assertEqual(data['schema'], 1)
-        self.assertEqual(data['by_id'], {})
+        # docs/architecture/weapon-look.md 3.1: the hull-hit variants by id (stock REPAIR and TUG, Mayhem's RL)
+        self.assertEqual(data['by_id'], {'SS_BULLET_REPAIR': {'hull': 'repair'}, 'SS_BULLET_RL': {'hull': 'repair'},
+                                         'SS_BULLET_TUG': {'hull': 'tug', 'calibre': 0.1}})
+        for entry in data['by_id'].values():
+            self.assertIn(entry.get('hull'), wt.HULL_VARIANTS)
         self.assertEqual(set(data['by_table']),
                          {'be762076cdc38b03', '7b4ab0a6cea2cb07', 'f0cb79fd63c46318'})  # stock AP, Mayhem 3, FL
         self.assertIsInstance(wt.load_overrides(OVERRIDES), dict)
@@ -113,7 +125,7 @@ class WeaponEffectsTableReader(unittest.TestCase):
     def test_reader_round_trips_a_generated_table(self):
         code, f = self.read(sample_table(), row=0)
         self.assertEqual(code, 0)
-        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '3'))
+        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '6'))
         self.assertEqual(f['shape'], 'tracer')          # row 0: from elongation 18.5
         self.assertEqual(f['texture'], '275279')        # 121,82,39 -> r|g<<8|b<<16
         _, f1 = self.read(sample_table(), row=1)
@@ -122,6 +134,15 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertTrue(int(f1['bits']) & 0x2)          # row_style_override
         self.assertTrue(int(f1['bits']) & 0x4)          # row_tint_override
         self.assertTrue(int(f1['bits']) & 0x8)          # row_calibre_override
+        # the hull-hit variants (weapon-look.md 3.1): row_hull_repair 0x20, row_hull_tug 0x40; an unknown name pins none
+        _, f3 = self.read(sample_table(), row=3)
+        _, f4 = self.read(sample_table(), row=4)
+        _, f5 = self.read(sample_table(), row=5)
+        self.assertEqual(int(f3['bits']) & 0x60, 0x20)
+        self.assertEqual(int(f4['bits']) & 0x60, 0x40)
+        self.assertEqual(int(f4['calibre_q']), round(0.1 * 255))
+        self.assertEqual(int(f5['bits']) & 0x60, 0)
+        self.assertEqual(f['overrides'], '3')            # rows 1, 3 and 4 (its calibre the same row); none for 5
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 2, 'tables': {}})

@@ -56,6 +56,30 @@ constexpr std::uint32_t decal_vs_words[] = {
 constexpr std::uint32_t decal_ps_words[] = {
 #include "weapon_decal_pixel_program_inc.h"
 };
+// Step 2 (provenance: verification/results/weapon-{sprite,glow}-{vertex,pixel}-program.json).
+constexpr std::uint32_t sprite_vs_words[] = {
+#include "weapon_sprite_vertex_program_inc.h"
+};
+constexpr std::uint32_t sprite_ps_words[] = {
+#include "weapon_sprite_pixel_program_inc.h"
+};
+constexpr std::uint32_t glow_vs_words[] = {
+#include "weapon_glow_vertex_program_inc.h"
+};
+constexpr std::uint32_t glow_ps_words[] = {
+#include "weapon_glow_pixel_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 sprite_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 32, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 44, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_COLOR, 0}, D3DDECL_END()};
+static_assert(sizeof(WeaponSpriteVertex) == 48, "the sprite declaration follows the vertex");
+constexpr D3DVERTEXELEMENT9 glow_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 28, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1}, D3DDECL_END()};
+static_assert(sizeof(WeaponGlowVertex) == 40, "the glow declaration follows the vertex");
 template <std::size_t N> std::uint32_t vs3_slots(const std::uint32_t (&words)[N]) noexcept {
     std::uint32_t copy[N];
     std::memcpy(copy, words, sizeof copy);
@@ -96,6 +120,18 @@ bool build_indices(std::uint16_t* idx) noexcept {
     std::memcpy(idx, box, sizeof box);
     return true;
 }
+// Step 2's batched index list (attach time): quad q's corners 4q..4q+3 (a streak's tail-left, tail-right, head-left,
+// head-right; a flash's or a glow rectangle's corners in the same order) as two triangles (no culling: a streak's
+// winding depends on its direction on screen).
+void build_batch_indices(std::uint16_t* quads) noexcept {
+    for (unsigned q = 0; q < weapon_sprite_quads; ++q) {
+        const std::uint16_t b = std::uint16_t(4 * q);
+        const std::uint16_t t[6] = {b, std::uint16_t(b + 1), std::uint16_t(b + 2), std::uint16_t(b + 2),
+                                    std::uint16_t(b + 1), std::uint16_t(b + 3)};
+        std::memcpy(quads + 6 * q, t, sizeof t);
+    }
+}
+static_assert(weapon_sprite_quads * 4 <= 0x10000, "16-bit batch indices");
 } // namespace
 
 WeaponLook default_weapon_look() noexcept {
@@ -117,6 +153,14 @@ WeaponLook default_weapon_look() noexcept {
 WeaponEffectsPass::~WeaponEffectsPass() {
     detach();
 }
+void WeaponEffectsPass::release_hull_objects() noexcept {
+    drop(sprite_vs_);
+    drop(sprite_ps_);
+    drop(glow_vs_);
+    drop(glow_ps_);
+    drop(sprite_declaration_);
+    drop(glow_declaration_);
+}
 void WeaponEffectsPass::release_objects() noexcept {
     drop(shell_vs_);
     drop(shell_ps_);
@@ -125,6 +169,7 @@ void WeaponEffectsPass::release_objects() noexcept {
     drop(decal_ps_);
     drop(shell_declaration_);
     drop(decal_declaration_);
+    release_hull_objects();
 }
 void WeaponEffectsPass::detach() noexcept {
     PreserveCpuState guard;
@@ -142,19 +187,25 @@ void WeaponEffectsPass::before_reset() noexcept {
 void WeaponEffectsPass::after_reset(HRESULT hr) noexcept {
     if (SUCCEEDED(hr)) reset_pending_ = false;
 }
+bool WeaponEffectsPass::hull_objects_ready() const noexcept {
+    return sprite_vs_ && sprite_ps_ && glow_vs_ && glow_ps_ && sprite_declaration_ && glow_declaration_;
+}
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
-           shell_declaration_ && decal_declaration_;
+           shell_declaration_ && decal_declaration_ && (!caps_.hull_enabled || hull_objects_ready());
 }
 unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
     for (const void* p : {static_cast<const void*>(shell_vs_), static_cast<const void*>(shell_ps_),
                           static_cast<const void*>(bubble_ps_), static_cast<const void*>(decal_vs_), static_cast<const void*>(decal_ps_),
-                          static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_)})
+                          static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_),
+                          static_cast<const void*>(sprite_vs_), static_cast<const void*>(sprite_ps_),
+                          static_cast<const void*>(glow_vs_), static_cast<const void*>(glow_ps_),
+                          static_cast<const void*>(sprite_declaration_), static_cast<const void*>(glow_declaration_)})
         n += p != nullptr;
     return n;
 }
-HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMAT format) noexcept {
+HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMAT format, bool hull) noexcept {
     PreserveCpuState guard;
     detach();
     auto refuse = [&](const char* reason, HRESULT hr = D3DERR_NOTAVAILABLE) {
@@ -205,11 +256,32 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (!indices_built_) {
         indices_built_ = build_indices(indices_);
         if (!indices_built_) return refuse("box_mesh", E_FAIL);
+        build_batch_indices(sprite_indices_);
     }
     hr = create_objects();
     if (FAILED(hr)) return refuse("program_create", hr);
     caps_.enabled = true;
     caps_.reason = "ok";
+    // Step 2 (shields,hull only): the sprite batch and the glow, their batch limits (2 x weapon_sprite_quads triangles
+    // over 4 x as many vertices) and programs. A device refusing any of them keeps the shield effect: the pass stays
+    // enabled with hull_enabled false (hull_reason), and the glue's latch keeps the hull hits native.
+    caps_.hull_reason = "not_requested";
+    if (hull) {
+        caps_.sprite_vs_slots = vs3_slots(sprite_vs_words);
+        caps_.glow_vs_slots = vs3_slots(glow_vs_words);
+        caps_.sprite_ps_slots = ps3_program_slots(sprite_ps_words, std::size(sprite_ps_words));
+        caps_.glow_ps_slots = ps3_program_slots(glow_ps_words, std::size(glow_ps_words));
+        if (!caps_.sprite_vs_slots || !caps_.glow_vs_slots || !caps_.sprite_ps_slots || !caps_.glow_ps_slots)
+            caps_.hull_reason = "hull_compiled_program";
+        else if (caps.MaxPrimitiveCount < 2u * weapon_sprite_quads || caps.MaxVertexIndex < 4u * weapon_sprite_quads - 1u)
+            caps_.hull_reason = "hull_limits";
+        else if (FAILED(create_hull_objects()))
+            caps_.hull_reason = "hull_program_create";
+        else {
+            caps_.hull_enabled = true;
+            caps_.hull_reason = "ok";
+        }
+    }
     return S_OK;
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
@@ -234,12 +306,38 @@ HRESULT WeaponEffectsPass::create_objects() noexcept {
     if (FAILED(hr)) release_objects();
     return hr;
 }
+HRESULT WeaponEffectsPass::create_hull_objects() noexcept {
+    D d = device_;
+    HRESULT hr = (faults_ & 16u) ? E_FAIL : S_OK; // fixture fault bit 4: the hull programs refused
+    if (SUCCEEDED(hr) && !sprite_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(sprite_vs_words), &sprite_vs_);
+    if (SUCCEEDED(hr) && !sprite_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(sprite_ps_words), &sprite_ps_);
+    if (SUCCEEDED(hr) && !glow_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(glow_vs_words), &glow_vs_);
+    if (SUCCEEDED(hr) && !glow_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(glow_ps_words), &glow_ps_);
+    if (SUCCEEDED(hr) && !sprite_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, sprite_elements, &sprite_declaration_);
+    if (SUCCEEDED(hr) && !glow_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, glow_elements, &glow_declaration_);
+    if (SUCCEEDED(hr) && !hull_objects_ready()) hr = E_FAIL;
+    if (FAILED(hr)) release_hull_objects();
+    return hr;
+}
 HRESULT WeaponEffectsPass::ensure_resources() noexcept {
     if (!device_ || !caps_.enabled) return E_INVALIDARG;
     if (reset_pending_) return E_FAIL;
     if (resources_ready()) return S_OK;
     PreserveCpuState guard;
-    return create_objects();
+    const HRESULT hr = create_objects();
+    if (FAILED(hr) || !caps_.hull_enabled) return hr;
+    // The hull programs after a Reset: a refusal now turns the hull off (the shields keep drawing).
+    if (FAILED(create_hull_objects())) {
+        caps_.hull_enabled = false;
+        caps_.hull_reason = "hull_program_create";
+    }
+    return S_OK;
 }
 namespace {
 // The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,
@@ -424,9 +522,12 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (reset_pending_) return refuse(WeaponEffectsStep::Validate, E_FAIL);
     if (!f.width || !f.height || !f.lane || (f.patch_count && !f.patches) || (f.decal_count && !f.decals) ||
         f.patch_count > wcore::max_patches || f.decal_count > wcore::max_decals || !(f.m00 > 0.f) || !(f.m11 > 0.f) ||
-        !finite(f.m20) || !finite(f.m21) || !(f.near_z > 0.f))
+        !finite(f.m20) || !finite(f.m21) || !(f.near_z > 0.f) || (f.sprite_quads && !f.sprites) ||
+        (f.glow_boxes && !f.glows) || f.sprite_quads > weapon_sprite_quads || f.glow_boxes > weapon_glow_boxes)
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
-    if (!f.patch_count && !f.decal_count) return finish(S_FALSE);
+    // Without the hull programs the sprites and glows are not drawn (the glue builds none then).
+    const unsigned sprite_quads = caps_.hull_enabled ? f.sprite_quads : 0u, glow_boxes = caps_.hull_enabled ? f.glow_boxes : 0u;
+    if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes) return finish(S_FALSE);
     const WeaponLook& l = f.look;
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !finite(l.centre_gain) || !finite(l.centre_fill) ||
         !(l.fade_s > 0.f) || !(l.edge_width > 0.f) || !(l.edge_width < 0.5f) ||
@@ -471,6 +572,26 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                    std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)},
                    std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}})
         step(WeaponEffectsStep::State, call<SetRsFn>(SetRenderState)(d, s.first, s.second));
+    // The glows and embers first (look 2.10's order): one batched draw of their screen rectangles (no cull).
+    if (SUCCEEDED(hr) && glow_boxes) {
+        const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+        const float glow_ps[8] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f};
+        step(WeaponEffectsStep::Glows, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Glows, call<SetDeclarationFn>(SetVertexDeclaration)(d, glow_declaration_));
+        step(WeaponEffectsStep::Glows, call<SetVsFn>(SetVertexShader)(d, glow_vs_));
+        step(WeaponEffectsStep::Glows, call<SetPsFn>(SetPixelShader)(d, glow_ps_));
+        step(WeaponEffectsStep::Glows, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
+        step(WeaponEffectsStep::Glows, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, glow_ps, 2));
+        if (SUCCEEDED(hr)) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, glow_boxes * 4, glow_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.glows,
+                UINT(sizeof(WeaponGlowVertex))));
+            if (step(WeaponEffectsStep::Glows, draw)) {
+                r.glow_boxes = glow_boxes;
+                r.drew = true;
+            }
+        }
+    }
     if (SUCCEEDED(hr) && f.patch_count) {
         step(WeaponEffectsStep::Patches, call<SetDeclarationFn>(SetVertexDeclaration)(d, shell_declaration_));
         step(WeaponEffectsStep::Patches, call<SetVsFn>(SetVertexShader)(d, shell_vs_));
@@ -557,6 +678,29 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                     ++r.decals;
                     r.drew = true;
                 }
+            }
+        }
+    }
+    // The sprite batch last (flashes and sparks): one draw, both triangle windings (no cull).
+    if (SUCCEEDED(hr) && sprite_quads) {
+        const float sprite_ps[4] = {wcore::look::soft_core, wcore::look::soft_halo, wcore::look::halo_max,
+                                    wcore::look::halo_fold};
+        // The streak expansion's constants (weapon_sprite_vs.hlsl c2, c3; c0, c1 the projection and viewport above).
+        const float sprite_vs[8] = {f.near_z, wcore::look::floor_lit_px, wcore::hull::spark_rest_w, wcore::look::floor_len_px,
+                                    wcore::look::streak_cap, 0.f, 0.f, 0.f};
+        step(WeaponEffectsStep::Sprites, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Sprites, call<SetDeclarationFn>(SetVertexDeclaration)(d, sprite_declaration_));
+        step(WeaponEffectsStep::Sprites, call<SetVsFn>(SetVertexShader)(d, sprite_vs_));
+        step(WeaponEffectsStep::Sprites, call<SetPsFn>(SetPixelShader)(d, sprite_ps_));
+        step(WeaponEffectsStep::Sprites, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, sprite_ps, 1));
+        step(WeaponEffectsStep::Sprites, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, sprite_vs, 2));
+        if (SUCCEEDED(hr)) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, sprite_quads * 4, sprite_quads * 2, sprite_indices_, D3DFMT_INDEX16,
+                f.sprites, UINT(sizeof(WeaponSpriteVertex))));
+            if (step(WeaponEffectsStep::Sprites, draw)) {
+                r.sprite_quads = sprite_quads;
+                r.drew = true;
             }
         }
     }
