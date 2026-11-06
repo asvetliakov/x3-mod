@@ -3,8 +3,8 @@
 // hexLaw). Everything is planar: the pixel's position in its cell's lattice plane (view units). A hexagon lattice of
 // centre spacing `cell` (pointy rows: centres (i, j sqrt 3) and (i + 1/2, (j + 1/2) sqrt 3) in cells, integer key
 // (2 cx, 2 cy / sqrt 3)); per cell a hash of its key and the region seed gives a brightness stagger and a fade-rate
-// stagger (deterministic, no per-frame randomness). The cells are lit as wholes: a patch draw rasterizes each of its
-// cells as its own hexagon and carries the cell's clock in its vertices (rebuilt by the stage from the owner's live
+// stagger (deterministic, no per-frame randomness). The cells are lit as wholes: a patch draw shades each of its
+// cells over the hull from its constant cell map (weapon_shell_ps.hlsl; rebuilt by the stage from the owner's live
 // hits; a cell lit by several hits carries the newest clock, so a later hit resets it to full and never adds), the
 // decal program evaluates its one hit's footprint itself (cells whose centre lies within `reach` of the hit cell's
 // centre, lit when the ring front reaches that centre). A lit cell fades linearly over its own fade time as one unit,
@@ -42,13 +42,13 @@ float3 hex_cell(float2 g, out float2 key) {
     float hd = max(abs(l.x), max(abs(0.5 * l.x + 0.8660254 * l.y), abs(0.5 * l.x - 0.8660254 * l.y)));
     return float3(l, hd);
 }
-// The radiance of one cell's pixel: l the pixel's offset from the cell centre (cells), key the cell's integer key,
+// The radiance of one cell's pixel: l the pixel's offset from the cell centre (cells), hd its hexagon distance and fw
+// that distance's screen derivative (fwidth, taken by the caller outside any branch), key the cell's integer key,
 // centre its centre in the plane (view units); since its clock (game seconds since lit, < 0 unlit) and marker (lit as
 // a hit's centre cell) for a patch; the decal (decal true) derives both from its one hit.
-float3 hex_shade(float2 l, float2 key, float2 centre, float since, bool marker, const int count, const bool decal) {
-    float hd = max(abs(l.x), max(abs(0.5 * l.x + 0.8660254 * l.y), abs(0.5 * l.x - 0.8660254 * l.y)));
+float3 hex_shade(float2 l, float hd, float fw, float2 key, float2 centre, float since, bool marker, const int count,
+                 const bool decal) {
     float2 h = hex_hash(key, lattice.z);
-    float fw = max(fwidth(hd), 1e-5);
     float edge = saturate((hd - shape.x) / fw + 0.5);
     float coverage = 1.0 - 4.0 * shape.x * shape.x;    // the band's share of the hexagon
     float mask = lerp(edge, coverage, saturate(fw / timing.w - 1.0));
@@ -80,5 +80,5 @@ float3 hex_patch(float2 q, const int count) {
     float2 g = q * lattice.x;
     float2 key;
     float3 c = hex_cell(g, key);
-    return hex_shade(c.xy, key, (g - c.xy) * lattice.y, -1.0, false, count, true);
+    return hex_shade(c.xy, c.z, max(fwidth(c.z), 1e-5), key, (g - c.xy) * lattice.y, -1.0, false, count, true);
 }

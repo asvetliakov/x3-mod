@@ -19,50 +19,50 @@
     "src/renderer/weapon_decal_pixel_program_inc.h"
   ],
   "source": {
-    "commit": "77ec76056efab86e2bdb3e048e7078c1812abef2-dirty",
+    "commit": "1f9c065980b56537a121af0921045754e1849b52-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/effects/weapon_decal_ps.hlsl",
       "src/effects/weapon_hex_patch.hlsl",
       "src/effects/weapon_shell_ps.hlsl",
       "src/effects/weapon_shell_vs.hlsl",
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_stage.h",
+      "src/renderer/weapon_decal_pixel_program_inc.h",
       "src/renderer/weapon_effects_pass.cpp",
       "src/renderer/weapon_effects_pass.h",
       "src/renderer/weapon_shell_pixel_program_inc.h",
       "src/renderer/weapon_shell_vertex_program_inc.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "a0eeb88884499958d89821ef44e687daaea92d5d38c81355384bb94af57bd58c",
-      "src/renderer/weapon_effects_pass.cpp": "fb31626ec1d064abcafd5876bbb990a3af283a016f46d310d0da2661dc72a821",
-      "src/proxy/weapon_effects_core.h": "5e4d7f30cd083622f799d588867d2d798cf028ec09efb9f97af7675a5e8d07e8",
-      "src/proxy/weapon_effects_stage.h": "723ce9b6ba09cdd9c95ea94aaf21349ce7f38b1f5a912cab0399ab07a0d5cf1f",
+      "src/renderer/weapon_effects_pass.h": "17cd4c7b058dcce2462331a8226e57e2f6ad49201a4ab533753a5778d99336ca",
+      "src/renderer/weapon_effects_pass.cpp": "4ae8fd034972c225fa74d13b78efc539f87f712f39bb32ed2f0fcc0338fc6057",
+      "src/proxy/weapon_effects_core.h": "82793ee5bbb754d9fc64434d328c21719230b06925224f55f2378d256260f3d2",
+      "src/proxy/weapon_effects_stage.h": "ed972fc0792519acd2747fed3e13faaa5d5404d23a6a295e1521c7f129b9228b",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b",
-      "src/effects/weapon_shell_vs.hlsl": "6a6cc31eaac99a3f5e22a28e4b3a3564224f56347f6a07e169984f3c5e444afb",
-      "src/effects/weapon_shell_ps.hlsl": "d3a9755a4c7eb641ebc2c5e2b856387069d0e4b0f798ff339b5875e22009c498",
+      "src/effects/weapon_shell_vs.hlsl": "d20369cfe7c91735e9ac96d5f86ae37bfe95b57bdbcec78f869da87c0fc838d8",
+      "src/effects/weapon_shell_ps.hlsl": "862201bd462d33815eceb3301568358fb8fa7f4b6dd5322ded47085dfe297ce2",
       "src/effects/weapon_decal_vs.hlsl": "926541274fc3a98602d8262781204966607b4fabdf256edad30045894d66b9a9",
       "src/effects/weapon_decal_ps.hlsl": "ffecad0e50aa18a74f8d96b266fb15146280e1b8a77b9eb6b9808786087b2529",
       "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
-      "src/effects/weapon_hex_patch.hlsl": "f8dbf5fa3bfde8e11ab746e057ba4bc2503e18350e21ba2fecbd40e7ed55ab6a",
-      "src/renderer/weapon_shell_vertex_program_inc.h": "98544906a5c8a9d605935179e20b0ef9c0ff9740c6726dc1084b2457d77dd21f",
-      "src/renderer/weapon_shell_pixel_program_inc.h": "afa03256bf565a7313f0bb6b8c4a41578e06a7bbb86c618dcd3cc0989134c266",
+      "src/effects/weapon_hex_patch.hlsl": "6ebe779521f75653f27798d6daaa2600c971edc7b3ebbfc6e7bff686c933733f",
+      "src/renderer/weapon_shell_vertex_program_inc.h": "da38061ebc5a3757d1efe8ea00a4580d52abf1b0f5e3df1a344f52301596a307",
+      "src/renderer/weapon_shell_pixel_program_inc.h": "40ba2b0582943626c7b3e559d1228d59b003fbea8c13f4e7478763a1fe6223a2",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
-      "src/renderer/weapon_decal_pixel_program_inc.h": "2907633a268fd02a925b0db484c1e7b0096816eeefb778afedc143d2a711321d"
+      "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910"
     }
   },
   "programs": {
     "weapon_shell_vs": {
       "source": "src/effects/weapon_shell_vs.hlsl",
-      "word_count": 155,
-      "bytecode_sha256": "0e7d53ab021acec90566e50727d6e70bd495cc774bc527813d0ff8c5ad43cbf5",
+      "word_count": 94,
+      "bytecode_sha256": "a1660e876d785a23926df7b7d9dc54d3a2d619521a6a2cb6feb9c2afe8edfc9b",
       "target": "vs_3_0"
     },
     "weapon_shell_ps": {
       "source": "src/effects/weapon_shell_ps.hlsl",
-      "word_count": 841,
-      "bytecode_sha256": "dbf6dc8132a8276baa8b975faff6b8b047d76a2c6f27b5acea820d3af39e66ca",
+      "word_count": 1983,
+      "bytecode_sha256": "75731ef328e153736b92d3382cf45ee58d5fd11c6cacf5d5a74cbe76d87105ef",
       "target": "ps_3_0"
     },
     "weapon_decal_vs": {
@@ -74,7 +74,7 @@
     "weapon_decal_ps": {
       "source": "src/effects/weapon_decal_ps.hlsl",
       "word_count": 641,
-      "bytecode_sha256": "5ee5b243e20cb9499021c04bf9ff4f568133ba6a4fa17d2fdc8f179c0f195f01",
+      "bytecode_sha256": "ca902367fa292830e58bc5c3923735f5adcc72e825d6cf3884d7f38b0d79cc60",
       "target": "ps_3_0"
     }
   },
@@ -104,16 +104,16 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-ac76d389fbddcffd7/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-ac76d389fbddcffd7/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-ac76d389fbddcffd7/src/renderer/temporal_pass.cpp",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-ac76d389fbddcffd7/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "964dd4b702f7b289d91b6d8e4b8c1457cd4931b69b7160dd091e97176d7ce922"
+    "executable_sha256": "e4905a328516158c923ac162663011140e7ea880e35339e2003ba2c2589e221f"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -146,7 +146,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 43,
+      "checks": 46,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -162,7 +162,11 @@
       true
     ],
     [
-      "pixel_program_low_hundreds",
+      "cell_map_sort_orders",
+      true
+    ],
+    [
+      "pixel_program_low_thousands",
       true
     ],
     [
@@ -214,7 +218,7 @@
       true
     ],
     [
-      "soft_fade_hugs_the_hull",
+      "surface_from_the_lane",
       true
     ],
     [
@@ -234,11 +238,11 @@
       true
     ],
     [
-      "placement_aft_flank_faces_the_bolt",
+      "placement_narrow_hull_flank_aft_top_bottom_on_the_hull",
       true
     ],
     [
-      "placement_narrow_hull_flank_at_the_hit",
+      "placement_flat_fighter_flank_top_bottom_42deg_on_the_hull",
       true
     ],
     [
@@ -246,7 +250,7 @@
       true
     ],
     [
-      "placement_far_side_draws",
+      "placement_far_side_hidden_by_its_hull",
       true
     ],
     [
@@ -254,7 +258,15 @@
       true
     ],
     [
-      "seam_travel_regions_keep_their_peaks",
+      "placement_offcentre_origin_top_lights",
+      true
+    ],
+    [
+      "face_cull_away_culled_across_drawn",
+      true
+    ],
+    [
+      "cockpit_dims_only_the_own_ship_in_the_cockpit",
       true
     ],
     [
@@ -270,7 +282,7 @@
       true
     ],
     [
-      "no_pop_sphere_front_depth_held",
+      "no_pop_sphere_front",
       true
     ],
     [
@@ -331,14 +343,14 @@
     "attach": [
       {
         "result": 0,
-        "shell_vs": 17,
-        "shell_ps": 182,
+        "shell_vs": 8,
+        "shell_ps": 457,
         "decal_vs": 21,
         "decal_ps": 129,
         "fp16": 0,
         "max_ps": 4096,
-        "patch_vertices": 768,
-        "patch_triangles": 512
+        "patch_vertices": 8,
+        "patch_triangles": 12
       }
     ],
     "patch": [
@@ -521,155 +533,341 @@
     ],
     "placement": [
       {
-        "case": "narrow_flank_0p15R",
-        "patches": 1,
-        "cells": 19,
-        "region": 2,
-        "pos_r": 0.15,
-        "hit_view": "22.5,0.0,570.0",
-        "cell_m": 6.0,
-        "centroid_error_m": 3.08,
-        "centroid_error_cells": 0.513,
-        "old_projection_error_m": 42.5,
-        "drew": 1,
-        "lit_pixels": 107535,
-        "screen_error_px": 41.68,
-        "screen_error_m": 3.093,
-        "eye_r": 2.4,
-        "hull_normal_angle_deg": 1.2
+        "case": "narrow_mid_flank",
+        "patches": 5,
+        "lit_pixels": 71979,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 19881,
+        "covered": 19881,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.281,
+        "ref": "narrow_mid_flank",
+        "lit_ratio": 1.0,
+        "dir": "-127,0,0"
+      },
+      {
+        "case": "aft_flank",
+        "patches": 5,
+        "lit_pixels": 67016,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 19093,
+        "covered": 19093,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.264,
+        "ref": "narrow_mid_flank",
+        "lit_ratio": 0.931,
+        "dir": "-127,0,0"
+      },
+      {
+        "case": "y_top_narrow",
+        "patches": 5,
+        "lit_pixels": 69075,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 19093,
+        "covered": 19093,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.332,
+        "ref": "narrow_mid_flank",
+        "lit_ratio": 0.96,
+        "dir": "0,-127,0"
+      },
+      {
+        "case": "y_bottom_narrow",
+        "patches": 5,
+        "lit_pixels": 69068,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 19093,
+        "covered": 19093,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.356,
+        "ref": "narrow_mid_flank",
+        "lit_ratio": 0.96,
+        "dir": "0,127,0"
+      },
+      {
+        "case": "flat_flank",
+        "patches": 5,
+        "lit_pixels": 9324,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 1958,
+        "covered": 1958,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.45,
+        "ref": "flat_flank",
+        "lit_ratio": 1.0,
+        "dir": "-127,0,0"
+      },
+      {
+        "case": "y_top_flat",
+        "patches": 5,
+        "lit_pixels": 21342,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 2695,
+        "covered": 2695,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.446,
+        "ref": "flat_flank",
+        "lit_ratio": 2.289,
+        "dir": "0,-127,0"
+      },
+      {
+        "case": "y_bottom_flat",
+        "patches": 5,
+        "lit_pixels": 21367,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 2695,
+        "covered": 2695,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.42,
+        "ref": "flat_flank",
+        "lit_ratio": 2.292,
+        "dir": "0,127,0"
+      },
+      {
+        "case": "y_top_flat_42deg",
+        "patches": 5,
+        "lit_pixels": 21342,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 2695,
+        "covered": 2695,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.446,
+        "ref": "flat_flank",
+        "lit_ratio": 2.289,
+        "dir": "0,-85,95"
       },
       {
         "case": "station_flight_b_0p68R",
-        "patches": 1,
-        "cells": 19,
-        "region": 0,
-        "pos_r": 0.676,
-        "hit_view": "-1147.0,-851.6,9830.1",
-        "cell_m": 16.0,
-        "centroid_error_m": 6.744,
-        "centroid_error_cells": 0.422,
-        "old_projection_error_m": 422.0,
-        "drew": 1,
-        "lit_pixels": 2564,
-        "screen_error_px": 5.52,
-        "screen_error_m": 7.062,
-        "eye_r": 2.148,
-        "hull_normal_angle_deg": -1.0
+        "patches": 5,
+        "lit_pixels": 2452,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 439,
+        "covered": 439,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.482,
+        "ref": "station_flight_b_0p68R",
+        "lit_ratio": 1.0,
+        "dir": "0,0,-127"
       },
       {
         "case": "far_side",
-        "patches": 1,
-        "cells": 7,
-        "region": 0,
-        "pos_r": 0.6,
-        "hit_view": "0.0,0.0,460.0",
-        "cell_m": 3.0,
-        "centroid_error_m": 0.0,
-        "centroid_error_cells": 0.0,
-        "old_projection_error_m": 8.0,
-        "drew": 1,
-        "lit_pixels": 15277,
-        "screen_error_px": 2.95,
-        "screen_error_m": 0.177,
-        "eye_r": 4.0,
-        "hull_normal_angle_deg": -1.0
+        "patches": 5,
+        "lit_pixels": 0,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 0,
+        "covered": 0,
+        "coverage": 0.0,
+        "centroid_error_cells": 1e+30,
+        "ref": "far_side",
+        "lit_ratio": 0.0,
+        "dir": "0,0,-127"
       },
       {
         "case": "eye_inside_sphere",
-        "patches": 1,
-        "cells": 7,
-        "region": 1,
-        "pos_r": 0.8,
-        "hit_view": "0.0,0.0,30.0",
-        "cell_m": 3.0,
-        "centroid_error_m": 0.0,
-        "centroid_error_cells": 0.0,
-        "old_projection_error_m": 4.0,
-        "drew": 1,
-        "lit_pixels": 1956850,
-        "screen_error_px": 10.99,
-        "screen_error_m": 0.043,
-        "eye_r": 0.5,
-        "hull_normal_angle_deg": -1.0
+        "patches": 6,
+        "lit_pixels": 1258427,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 573535,
+        "covered": 573535,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.124,
+        "ref": "eye_inside_sphere",
+        "lit_ratio": 1.0,
+        "dir": "0,0,127"
       },
       {
-        "case": "aft_flank_by_travel",
-        "patches": 1,
-        "cells": 19,
-        "region": 2,
-        "pos_r": 0.428,
-        "hit_view": "100.0,0.0,561.8",
-        "cell_m": 6.0,
-        "centroid_error_m": 0.785,
-        "centroid_error_cells": 0.131,
-        "old_projection_error_m": 28.6,
-        "drew": 1,
-        "lit_pixels": 110907,
-        "screen_error_px": 13.46,
-        "screen_error_m": 0.984,
-        "eye_r": 2.4,
-        "hull_normal_angle_deg": 4.2
+        "case": "y_top_flat_offcentre",
+        "patches": 5,
+        "lit_pixels": 18624,
+        "sky_lit": 0,
+        "outside_lit": 0,
+        "eligible": 2326,
+        "covered": 2326,
+        "coverage": 1.0,
+        "centroid_error_cells": 0.431,
+        "ref": "y_top_flat",
+        "lit_ratio": 0.873,
+        "dir": "0,-127,0"
+      }
+    ],
+    "normals": [
+      {
+        "case": "y_top_narrow",
+        "pixels": 199320,
+        "silhouette_pixels": 2191,
+        "ddx_mean_deg": 0.444,
+        "ddx_p99_deg": 2.01,
+        "ddx_wrong_axis": 2212,
+        "ddx_wrong_axis_silhouette": 1134,
+        "neighbour_mean_deg": 0.474,
+        "neighbour_p99_deg": 2.583,
+        "neighbour_wrong_axis": 1102,
+        "neighbour_wrong_axis_silhouette": 0
       },
       {
-        "case": "witness_aft_flank_radial",
-        "patches": 1,
-        "cells": 19,
-        "region": 0,
-        "pos_r": 0.428,
-        "hit_view": "100.0,0.0,561.8",
-        "cell_m": 6.0,
-        "centroid_error_m": 1.636,
-        "centroid_error_cells": 0.273,
-        "old_projection_error_m": 28.6,
-        "drew": 1,
-        "lit_pixels": 19360,
-        "screen_error_px": 2.82,
-        "screen_error_m": 0.206,
-        "eye_r": 2.4,
-        "hull_normal_angle_deg": 85.8
-      }
-    ],
-    "placement_aft": [
+        "case": "y_top_flat",
+        "pixels": 111235,
+        "silhouette_pixels": 1188,
+        "ddx_mean_deg": 0.342,
+        "ddx_p99_deg": 4.684,
+        "ddx_wrong_axis": 1308,
+        "ddx_wrong_axis_silhouette": 719,
+        "neighbour_mean_deg": 0.361,
+        "neighbour_p99_deg": 5.455,
+        "neighbour_wrong_axis": 640,
+        "neighbour_wrong_axis_silhouette": 63
+      },
       {
-        "lit_mid": 107535,
-        "lit_aft": 110907,
-        "ratio": 1.031,
-        "aft_normal_angle_deg": 4.2
+        "case": "station_flight_b_0p68R",
+        "pixels": 815613,
+        "silhouette_pixels": 3106,
+        "ddx_mean_deg": 0.142,
+        "ddx_p99_deg": 1.267,
+        "ddx_wrong_axis": 3948,
+        "ddx_wrong_axis_silhouette": 1869,
+        "neighbour_mean_deg": 0.151,
+        "neighbour_p99_deg": 1.455,
+        "neighbour_wrong_axis": 2246,
+        "neighbour_wrong_axis_silhouette": 122
       }
     ],
-    "seam_narrow": [
-      {
-        "draws": 2,
-        "seams": "0x05",
-        "peak_a": 3.2559,
-        "peak_b": 2.5391,
-        "pair_peak": 3.2559,
-        "own_a": 3.2559,
-        "pair_own_a": 3.2559,
-        "own_b": 2.0957,
-        "pair_own_b": 2.0957,
-        "lit_a": 110907,
-        "lit_b": 29831,
-        "lit_pair": 119618,
-        "lit_union": 119788,
-        "union_dark": 170
-      }
-    ],
-    "soft": [
+    "surface": [
       {
         "plane_z": 144.0,
-        "soft": 15.0,
-        "sky": 162043.634,
-        "behind": 162043.634,
-        "half": 81021.817,
-        "inside": 0.0
+        "extent": 32.32,
+        "on": 162043.754,
+        "sky": 0.0,
+        "nearer": 205928.408,
+        "past": 0.0,
+        "half": 80719.434,
+        "half_left": 80719.434,
+        "on_left": 80719.434,
+        "half_right_lit": 0
+      }
+    ],
+    "cull": [
+      {
+        "case": "away",
+        "culled": 1,
+        "has_z": 0,
+        "patches": 5,
+        "dot_min": -0.9979,
+        "dot_max": -0.9972
+      },
+      {
+        "case": "across",
+        "theta_deg": 32,
+        "culled": 0,
+        "has_z": 1,
+        "patches": 6,
+        "dot_min": -0.9156,
+        "dot_max": -0.8404,
+        "cut": -0.841
+      }
+    ],
+    "sort": [
+      {
+        "case": "shuffled",
+        "heap_us": 0.7,
+        "insertion_us": 1.7
+      },
+      {
+        "case": "ascending",
+        "heap_us": 0.9,
+        "insertion_us": 0.1
+      },
+      {
+        "case": "descending",
+        "heap_us": 0.6,
+        "insertion_us": 3.4
+      }
+    ],
+    "attach_slots": [
+      {
+        "shell_vs": 8,
+        "shell_ps": 457,
+        "decal_vs": 21,
+        "decal_ps": 129,
+        "patch_bytes": 1944,
+        "frame_patches_bytes": 124416
+      }
+    ],
+    "cockpit": [
+      {
+        "case": "own_chase",
+        "own": 1,
+        "cockpit": 0,
+        "patches": 5,
+        "dimmed": 0,
+        "drew": 1,
+        "lit_pixels": 35289,
+        "luma_sum": 42293.2102
+      },
+      {
+        "case": "own_cockpit",
+        "own": 1,
+        "cockpit": 1,
+        "patches": 5,
+        "dimmed": 5,
+        "drew": 1,
+        "lit_pixels": 35289,
+        "luma_sum": 14803.4646
+      },
+      {
+        "case": "other_cockpit",
+        "own": 1,
+        "cockpit": 1,
+        "patches": 5,
+        "dimmed": 0,
+        "drew": 1,
+        "lit_pixels": 35289,
+        "luma_sum": 42293.2102
+      },
+      {
+        "case": "unknown_own_cockpit",
+        "own": 0,
+        "cockpit": 1,
+        "patches": 5,
+        "dimmed": 0,
+        "drew": 1,
+        "lit_pixels": 35289,
+        "luma_sum": 42293.2102
+      },
+      {
+        "case": "own_cockpit_stale",
+        "own": 1,
+        "cockpit": 1,
+        "patches": 5,
+        "dimmed": 0,
+        "drew": 1,
+        "lit_pixels": 35289,
+        "luma_sum": 42293.2102
+      },
+      {
+        "case": "summary",
+        "gain": 0.35,
+        "own_cockpit_ratio": 0.35,
+        "other_ratio": 1.0,
+        "unknown_ratio": 1.0,
+        "stale_ratio": 1.0
       }
     ],
     "grid": [
       {
-        "patches": 1,
-        "moved_patches": 1,
-        "cells": 23,
+        "patches": 5,
+        "moved_patches": 5,
+        "cells": 77,
         "identical": 1,
         "owner_moved": 1
       }
@@ -680,7 +878,7 @@
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 1,
+        "max_patches": 5,
         "max_cells": 19,
         "max_region_cells": 19,
         "spills": 0,
@@ -691,22 +889,21 @@
         "allowed": 0.02273,
         "excess": 0.0,
         "popped_pixels": 0,
-        "worst_frame": 19,
-        "worst_x": 988,
-        "worst_y": 570,
-        "worst_prev": 2.0293,
-        "worst_cur": 2.0098,
-        "max_overlap": 1
+        "worst_frame": 66,
+        "worst_x": 879,
+        "worst_y": 633,
+        "worst_prev": 2.0977,
+        "worst_cur": 2.0781
       },
       {
         "case": "capital_spread_12hps",
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 4,
+        "max_patches": 10,
         "max_cells": 128,
         "max_region_cells": 409,
-        "spills": 433,
+        "spills": 599,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
@@ -718,134 +915,83 @@
         "worst_x": 850,
         "worst_y": 705,
         "worst_prev": 2.3281,
-        "worst_cur": 2.3047,
-        "max_overlap": 1
+        "worst_cur": 2.3047
       },
       {
         "case": "capital_spread_one_draw_witness",
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 1,
+        "max_patches": 5,
         "max_cells": 128,
         "max_region_cells": 128,
         "spills": 0,
-        "cells_dropped": 42336,
+        "cells_dropped": 42588,
         "hits_dropped": 0,
         "dropped": 0,
         "max_drop": 1.99707,
         "allowed": 0.02273,
         "excess": 1.96935,
-        "popped_pixels": 1226153,
+        "popped_pixels": 1226155,
         "worst_frame": 45,
         "worst_x": 850,
         "worst_y": 477,
         "worst_prev": 1.9971,
-        "worst_cur": 0.0,
-        "max_overlap": 1
+        "worst_cur": 0.0
       },
       {
         "case": "fighter_sphere_front_12hps",
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 1,
+        "max_patches": 5,
         "max_cells": 19,
         "max_region_cells": 19,
         "spills": 0,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
-        "max_drop": 0.03906,
+        "max_drop": 0.01953,
         "allowed": 0.02273,
         "excess": 0.0,
         "popped_pixels": 0,
-        "worst_frame": 141,
-        "worst_x": 884,
-        "worst_y": 629,
-        "worst_prev": 4.0625,
-        "worst_cur": 4.0234,
-        "max_overlap": 2
+        "worst_frame": 19,
+        "worst_x": 1024,
+        "worst_y": 585,
+        "worst_prev": 2.0293,
+        "worst_cur": 2.0098
       },
       {
         "case": "capital_sphere_front_12hps",
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 5,
+        "max_patches": 16,
         "max_cells": 128,
         "max_region_cells": 551,
-        "spills": 609,
+        "spills": 1979,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
-        "max_drop": 0.05664,
+        "max_drop": 0.02344,
         "allowed": 0.02273,
         "excess": 0.0,
         "popped_pixels": 0,
-        "worst_frame": 208,
-        "worst_x": 1282,
-        "worst_y": 32,
-        "worst_prev": 3.6953,
-        "worst_cur": 3.6387,
-        "max_overlap": 3
-      },
-      {
-        "case": "fighter_sphere_front_no_cache_witness",
-        "hits": 49,
-        "frames": 240,
-        "max_live_hits": 36,
-        "max_patches": 1,
-        "max_cells": 19,
-        "max_region_cells": 19,
-        "spills": 0,
-        "cells_dropped": 0,
-        "hits_dropped": 0,
-        "dropped": 0,
-        "max_drop": 2.2041,
-        "allowed": 0.02273,
-        "excess": 2.16525,
-        "popped_pixels": 18150,
-        "worst_frame": 142,
-        "worst_x": 1041,
-        "worst_y": 631,
-        "worst_prev": 3.7695,
-        "worst_cur": 1.5654,
-        "max_overlap": 2
-      },
-      {
-        "case": "capital_sphere_front_no_cache_witness",
-        "hits": 49,
-        "frames": 240,
-        "max_live_hits": 36,
-        "max_patches": 5,
-        "max_cells": 128,
-        "max_region_cells": 551,
-        "spills": 609,
-        "cells_dropped": 0,
-        "hits_dropped": 0,
-        "dropped": 0,
-        "max_drop": 2.04297,
-        "allowed": 0.02273,
-        "excess": 1.99566,
-        "popped_pixels": 119246,
-        "worst_frame": 148,
-        "worst_x": 749,
-        "worst_y": 244,
-        "worst_prev": 4.0547,
-        "worst_cur": 2.0117,
-        "max_overlap": 3
+        "worst_frame": 72,
+        "worst_x": 1271,
+        "worst_y": 314,
+        "worst_prev": 2.2656,
+        "worst_cur": 2.2422
       }
     ],
     "seam": [
       {
-        "single_draws": 1,
-        "pair_draws": 2,
-        "seams": "0x0a",
+        "single_draws": 6,
+        "pair_draws": 6,
         "peak_a": 2.6035,
-        "peak_b": 3.1973,
-        "peak_pair": 3.1973,
-        "peak_without_sharing": 5.2578
+        "peak_b": 3.5312,
+        "peak_pair": 2.0352,
+        "peak_singles_added": 5.666
       }
     ],
     "stage_cpu": [
@@ -853,45 +999,39 @@
         "case": "one_capital_64_hits",
         "owners": 1,
         "hits": 64,
-        "patches": 7,
-        "cells": 784,
-        "spills": 6,
+        "patches": 19,
+        "cells": 2178,
+        "spills": 16,
         "cells_dropped": 0,
         "dropped": 0,
-        "depth_full": 0,
-        "depth_cache": 1,
-        "best_us": 19.0,
-        "mean_us": 24.5,
+        "best_us": 61.6,
+        "mean_us": 65.8,
         "target_us": 200
       },
       {
         "case": "sixteen_capitals_16_hits",
         "owners": 16,
         "hits": 256,
-        "patches": 32,
-        "cells": 3357,
-        "spills": 16,
-        "cells_dropped": 1299,
-        "dropped": 0,
-        "depth_full": 0,
-        "depth_cache": 1,
-        "best_us": 70.1,
-        "mean_us": 100.2,
+        "patches": 64,
+        "cells": 8192,
+        "spills": 0,
+        "cells_dropped": 5409,
+        "dropped": 24,
+        "best_us": 179.5,
+        "mean_us": 202.9,
         "target_us": 200
       },
       {
         "case": "station_flight_b_cluster_64_hits",
         "owners": 1,
         "hits": 64,
-        "patches": 1,
-        "cells": 82,
-        "spills": 0,
+        "patches": 7,
+        "cells": 532,
+        "spills": 2,
         "cells_dropped": 0,
         "dropped": 0,
-        "depth_full": 0,
-        "depth_cache": 1,
-        "best_us": 11.6,
-        "mean_us": 15.0,
+        "best_us": 39.6,
+        "mean_us": 41.2,
         "target_us": 200
       }
     ],
@@ -900,15 +1040,15 @@
         "fighter_12hps_cells": 36,
         "capital_full_map_cells": 128,
         "capital_fill_map_cells": 128,
-        "capital_spread_draws": 5,
-        "capital_spread_cells": 513
+        "capital_spread_draws": 14,
+        "capital_spread_cells": 1546
       },
       {
         "fighter_12hps_cells": 36,
         "capital_full_map_cells": 128,
         "capital_fill_map_cells": 128,
-        "capital_spread_draws": 5,
-        "capital_spread_cells": 513
+        "capital_spread_draws": 14,
+        "capital_spread_cells": 1546
       }
     ],
     "decal": [
@@ -919,7 +1059,7 @@
         "radius": 22.5,
         "cell": 15.0,
         "over_sky": 0.0,
-        "on_hull": 43750.1519,
+        "on_hull": 43764.9268,
         "edges": 4
       }
     ],
@@ -928,17 +1068,17 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.51,
-        "last_drawn_ms": 473.49,
-        "frames": 19635,
-        "max_frame_ms": 0.705
+        "seta6_wall_ms": 474.1,
+        "last_drawn_ms": 473.47,
+        "frames": 11338,
+        "max_frame_ms": 1.453
       }
     ],
     "retired": [
       {
-        "live_patches": 1,
+        "live_patches": 5,
         "live_drew": 1,
-        "live_sum": 46192.7925,
+        "live_sum": 42293.2102,
         "patches": 0,
         "decals": 0,
         "retired": 1,
@@ -954,7 +1094,7 @@
         "height": 1080,
         "speed_px": 0,
         "frames": 16,
-        "core": 0.9939,
+        "core": 1.0,
         "peak": 3.229
       },
       {
@@ -962,7 +1102,7 @@
         "height": 1080,
         "speed_px": 4,
         "frames": 16,
-        "core": 0.9859,
+        "core": 1.0,
         "peak": 3.229
       },
       {
@@ -970,7 +1110,7 @@
         "height": 1080,
         "speed_px": 8,
         "frames": 16,
-        "core": 0.9858,
+        "core": 1.0,
         "peak": 3.229
       }
     ],
@@ -993,7 +1133,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.2
+        "gpu_us": 10.8
       },
       {
         "width": 1920,
@@ -1002,8 +1142,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.0116,
-        "raster_share": 0.0116,
-        "gpu_us": 15.8
+        "raster_share": 0.0174,
+        "gpu_us": 16.0
       },
       {
         "width": 1920,
@@ -1012,8 +1152,8 @@
         "patches": 2,
         "drawn": 2,
         "lit_share": 0.0116,
-        "raster_share": 0.0124,
-        "gpu_us": 15.8
+        "raster_share": 0.0214,
+        "gpu_us": 16.9
       },
       {
         "width": 1920,
@@ -1022,8 +1162,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.8309,
-        "raster_share": 0.8309,
-        "gpu_us": 33.9
+        "raster_share": 1.0,
+        "gpu_us": 60.8
       },
       {
         "width": 1920,
@@ -1032,8 +1172,8 @@
         "patches": 2,
         "drawn": 2,
         "lit_share": 0.8309,
-        "raster_share": 0.9318,
-        "gpu_us": 35.4
+        "raster_share": 1.5568,
+        "gpu_us": 74.1
       },
       {
         "width": 1920,
@@ -1042,8 +1182,8 @@
         "patches": 4,
         "drawn": 4,
         "lit_share": 0.8348,
-        "raster_share": 1.1896,
-        "gpu_us": 42.8
+        "raster_share": 2.3827,
+        "gpu_us": 98.6
       },
       {
         "width": 1920,
@@ -1052,8 +1192,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.032,
-        "raster_share": 0.032,
-        "gpu_us": 17.4
+        "raster_share": 0.0533,
+        "gpu_us": 18.5
       },
       {
         "width": 1920,
@@ -1062,8 +1202,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.2719,
-        "raster_share": 0.2719,
-        "gpu_us": 24.0
+        "raster_share": 1.0,
+        "gpu_us": 57.3
       },
       {
         "width": 1920,
@@ -1073,17 +1213,17 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 36.4
+        "gpu_us": 62.1
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "capital_spread_spill",
-        "patches": 5,
-        "drawn": 5,
-        "lit_share": 0.4658,
-        "raster_share": 0.5538,
-        "gpu_us": 44.5
+        "patches": 14,
+        "drawn": 14,
+        "lit_share": 0.4169,
+        "raster_share": 7.3704,
+        "gpu_us": 198.6
       },
       {
         "width": 5120,
@@ -1093,7 +1233,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.3
+        "gpu_us": 10.8
       },
       {
         "width": 5120,
@@ -1102,8 +1242,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.0231,
-        "raster_share": 0.0231,
-        "gpu_us": 17.5
+        "raster_share": 0.0348,
+        "gpu_us": 21.0
       },
       {
         "width": 5120,
@@ -1112,8 +1252,8 @@
         "patches": 2,
         "drawn": 2,
         "lit_share": 0.0231,
-        "raster_share": 0.0248,
-        "gpu_us": 17.6
+        "raster_share": 0.0426,
+        "gpu_us": 22.3
       },
       {
         "width": 5120,
@@ -1122,8 +1262,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.9092,
-        "raster_share": 0.9092,
-        "gpu_us": 81.9
+        "raster_share": 1.0,
+        "gpu_us": 176.4
       },
       {
         "width": 5120,
@@ -1132,8 +1272,8 @@
         "patches": 2,
         "drawn": 2,
         "lit_share": 0.9092,
-        "raster_share": 1.0877,
-        "gpu_us": 91.0
+        "raster_share": 1.557,
+        "gpu_us": 229.2
       },
       {
         "width": 5120,
@@ -1142,8 +1282,8 @@
         "patches": 4,
         "drawn": 4,
         "lit_share": 0.8007,
-        "raster_share": 1.2198,
-        "gpu_us": 103.1
+        "raster_share": 3.1141,
+        "gpu_us": 365.1
       },
       {
         "width": 5120,
@@ -1152,8 +1292,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.0639,
-        "raster_share": 0.0639,
-        "gpu_us": 22.5
+        "raster_share": 0.1063,
+        "gpu_us": 33.4
       },
       {
         "width": 5120,
@@ -1162,8 +1302,8 @@
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.2269,
-        "raster_share": 0.2269,
-        "gpu_us": 35.4
+        "raster_share": 1.0,
+        "gpu_us": 158.3
       },
       {
         "width": 5120,
@@ -1173,28 +1313,28 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 82.7
+        "gpu_us": 177.5
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "capital_spread_spill",
-        "patches": 5,
-        "drawn": 5,
-        "lit_share": 0.5012,
-        "raster_share": 0.5782,
-        "gpu_us": 83.5
+        "patches": 14,
+        "drawn": 14,
+        "lit_share": 0.4514,
+        "raster_share": 7.92,
+        "gpu_us": 680.1
       }
     ],
     "fade": {
-      "t350": 177601.684,
-      "t600": 151681.027,
-      "t900": 120620.656,
-      "t1200": 89545.552,
-      "t1500": 58456.029,
-      "t1800": 28568.018,
-      "t2100": 9505.813,
-      "t2400": 903.038,
+      "t350": 177601.815,
+      "t600": 151681.061,
+      "t900": 120620.765,
+      "t1200": 89545.596,
+      "t1500": 58456.071,
+      "t1800": 28568.089,
+      "t2100": 9505.821,
+      "t2400": 903.049,
       "t2700": 0.0,
       "t2941": 0.0,
       "lifetime_ms": 2941

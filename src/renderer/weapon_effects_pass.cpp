@@ -61,9 +61,8 @@ template <std::size_t N> std::uint32_t vs3_slots(const std::uint32_t (&words)[N]
     return ps3_program_slots(copy, N);
 }
 constexpr D3DVERTEXELEMENT9 shell_elements[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
-                                                {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
                                                 D3DDECL_END()};
-static_assert(sizeof(WeaponEffectsPass::CellVertex) == 32, "the patch declaration follows the vertex");
+static_assert(sizeof(WeaponEffectsPass::CellVertex) == 16, "the patch declaration follows the vertex");
 constexpr D3DVERTEXELEMENT9 decal_elements[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
                                                 {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
                                                 D3DDECL_END()};
@@ -80,19 +79,19 @@ bool finite_all(const float* v, unsigned n) noexcept {
         if (!finite(v[i])) return false;
     return true;
 }
-// The patch index list (attach time): per cell its six corners (CellVertex, run() writes them per draw) as a fan of
-// four triangles, cell c at vertices 6 c .. 6 c + 5. Both faces draw (CULLMODE NONE), so the winding is free.
+// The box index list (attach time): corner c = (c & 1 ? max : min) u, (c & 2 ? max : min) v, (c & 4 ? max : min) a.
+// Every triangle is wound with its outward normal by the right-hand rule in the face frame (u, v, a); run() culls the
+// faces turned to the eye (the winding's sense on screen follows the sign of det(U, V, A) in view space), so each
+// pixel is shaded once per box, the eye inside it too.
 bool build_indices(std::uint16_t* idx) noexcept {
-    constexpr unsigned V = WeaponEffectsPass::cell_vertices;
-    static_assert(WeaponEffectsPass::patch_vertices <= 65536, "16-bit indices");
-    unsigned out = 0;
-    for (unsigned c = 0; c < weapon_patch_cells; ++c)
-        for (unsigned t = 0; t < WeaponEffectsPass::cell_triangles; ++t) {
-            idx[out++] = std::uint16_t(c * V);
-            idx[out++] = std::uint16_t(c * V + t + 1);
-            idx[out++] = std::uint16_t(c * V + t + 2);
-        }
-    return out == WeaponEffectsPass::patch_triangles * 3;
+    static constexpr std::uint16_t box[36] = {0, 2, 3, 0, 3, 1,  // -a
+                                              4, 5, 7, 4, 7, 6,  // +a
+                                              0, 1, 5, 0, 5, 4,  // -v
+                                              2, 6, 7, 2, 7, 3,  // +v
+                                              0, 4, 6, 0, 6, 2,  // -u
+                                              1, 3, 7, 1, 7, 5}; // +u
+    std::memcpy(idx, box, sizeof box);
+    return true;
 }
 } // namespace
 
@@ -174,7 +173,9 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");
-    if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE)) return refuse("cull_caps");
+    if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE) || !(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLCW) ||
+        !(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLCCW))
+        return refuse("cull_caps");
     if (caps.MaxPrimitiveCount < patch_triangles || caps.MaxVertexIndex < patch_vertices || caps.MaxStreams < 1u)
         return refuse("limits");
     IDirect3D9* api = nullptr;
@@ -195,7 +196,7 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (hr != D3D_OK) return refuse("fp16_blending", D3DERR_NOTAVAILABLE);
     if (!indices_built_) {
         indices_built_ = build_indices(indices_);
-        if (!indices_built_) return refuse("cell_mesh", E_FAIL);
+        if (!indices_built_) return refuse("box_mesh", E_FAIL);
     }
     hr = create_objects();
     if (FAILED(hr)) return refuse("program_create", hr);
@@ -231,10 +232,15 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
 }
 namespace {
 // The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,
-// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19 (the soft
-// radius, 1 / cell) and c20..c23 (the seam planes, weapon_shell_ps.hlsl). Returns false for a degenerate draw (skipped, never drawn
-// wrong).
-constexpr unsigned hex_head = 17, shell_tail = 5;
+// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19..c25
+// (shell_block, weapon_shell_ps.hlsl: the projection, the screen and footprint terms, the owner's axes, centre and the
+// eye in the owner frame) and the cell map (map_block): c26..c57 four packed keys per register in ascending order
+// (unused -1), c58..c89 their clocks + 1 (negative for a hit's centre cell, 0 not lit yet), c90..c93 the key range
+// [first, last] of each group of sixteen keys (unused: never matched), c94..c95 the box (min, max in the face frame). Returns false for a degenerate draw (skipped,
+// never drawn wrong).
+constexpr unsigned hex_head = 17, shell_tail = 7, map_blocks = weapon_patch_cells / 4, map_groups = map_blocks / 4;
+constexpr unsigned keys_at = 2 + hex_head + shell_tail, clocks_at = keys_at + map_blocks, ranges_at = clocks_at + map_blocks;
+static_assert(weapon_patch_cells % 16 == 0 && ranges_at + map_groups / 2 + 2 <= 224, "the cell map fits ps_3_0's constants");
 bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float seed, float surface2,
                const float colour[3], const float* anchor, const float* anchor_u, const float* anchor_v, unsigned hits,
                const float (*hit_cell)[2], const float (*point)[2], const float* ages, float* out) noexcept {
@@ -269,58 +275,66 @@ bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float
     }
     return finite_all(out, hex_head * 4);
 }
-// A patch's cells as hexagons (CellVertex): per cell its six lattice corners (integers: the centre (kx, 3 ky) in half
-// cells and sqrt 3 / 6 cells, the corners (0, +-2), (+-1, +-1) about it), its depth and its clock (game seconds since
-// lit + 1, negative for a hit's centre cell, 0 not lit yet); false for a cell the programs cannot carry.
-bool write_cells(const WeaponPatch& p, WeaponEffectsPass::CellVertex* v) noexcept {
-    if (p.cells > weapon_patch_cells) return false;
-    static constexpr float corner[WeaponEffectsPass::cell_vertices][2] = {{0.f, 2.f}, {-1.f, 1.f}, {-1.f, -1.f},
-                                                                         {0.f, -2.f}, {1.f, -1.f}, {1.f, 1.f}};
+// The cell map of a patch: all 32 key registers in ascending key order (unused -1), the clock registers of its groups
+// of sixteen keys (*sent) and the eight groups' key ranges (an unused group's range is empty), so the program scans
+// only the group whose range holds the pixel's key; false for a cell the program cannot carry. O(cells log cells): a
+// heap sort of the indices (sort_by_key, no allocation, review F5).
+bool map_block(const WeaponPatch& p, float* keys, float* clocks, float* ranges, unsigned* sent) noexcept {
+    if (p.cells > weapon_patch_cells || !p.cells) return false;
     constexpr float key_max = float((2 * weapon_cell_key_bias) * 4096);
+    std::uint8_t order[weapon_patch_cells];
     for (unsigned i = 0; i < p.cells; ++i) {
-        const float key = p.cell_key[i], since = p.cell_since[i], depth = p.cell_depth[i];
-        if (!(key >= 0.f) || !(key < key_max) || !finite(since) || !finite(depth)) return false;
-        const std::int32_t packed = std::int32_t(key); // exact: 0 <= key < 2^24
-        const float kx = float((packed >> 12) - weapon_cell_key_bias);
-        const float ky = float((packed & 0xfff) - weapon_cell_key_bias);
-        const float clock = since >= 0.f ? (p.cell_centre[i] ? -1.f : 1.f) * (since + 1.f) : 0.f;
-        for (unsigned k = 0; k < WeaponEffectsPass::cell_vertices; ++k) {
-            WeaponEffectsPass::CellVertex& c = v[i * WeaponEffectsPass::cell_vertices + k];
-            c.corner[0] = kx + corner[k][0];
-            c.corner[1] = 3.f * ky + corner[k][1];
-            c.corner[2] = depth;
-            c.corner[3] = clock;
-            c.key[0] = kx;
-            c.key[1] = ky;
-            c.key[2] = c.key[3] = 0.f;
-        }
+        if (!(p.cell_key[i] >= 0.f) || !(p.cell_key[i] < key_max) || !finite(p.cell_since[i])) return false;
+        order[i] = std::uint8_t(i);
+    }
+    sort_by_key(order, p.cells, p.cell_key);
+    const unsigned used = (p.cells + 15) / 16 * 4; // registers of the groups in use
+    for (unsigned i = 0; i < weapon_patch_cells; ++i) {
+        const bool on = i < p.cells;
+        const unsigned c = on ? order[i] : 0u;
+        keys[i] = on ? p.cell_key[c] : -1.f;
+        if (i < used * 4)
+            clocks[i] = on && p.cell_since[c] >= 0.f ? (p.cell_centre[c] ? -1.f : 1.f) * (p.cell_since[c] + 1.f) : 0.f;
+    }
+    for (unsigned g = 0; g < map_groups; ++g) {
+        const unsigned first = 16 * g, last = 16 * g + 15 < p.cells ? 16 * g + 15 : p.cells - 1;
+        const bool on = first < p.cells;
+        ranges[2 * g] = on ? keys[first] : 1e30f;
+        ranges[2 * g + 1] = on ? keys[last] : -1e30f;
+    }
+    *sent = used;
+    return true;
+}
+// The box's corners (CellVertex) from the patch's box; false for a degenerate box.
+bool write_box(const WeaponPatch& p, WeaponEffectsPass::CellVertex* v) noexcept {
+    if (!finite_all(p.box, 6) || !(p.box[3] > p.box[0]) || !(p.box[4] > p.box[1]) || !(p.box[5] > p.box[2])) return false;
+    for (unsigned c = 0; c < WeaponEffectsPass::patch_vertices; ++c) {
+        v[c].corner[0] = p.box[c & 1u ? 3 : 0];
+        v[c].corner[1] = p.box[c & 2u ? 4 : 1];
+        v[c].corner[2] = p.box[c & 4u ? 5 : 2];
+        v[c].corner[3] = 1.f;
     }
     return true;
 }
-// The seam registers c20..c23 (weapon_shell_ps.hlsl): per seam neighbour j (WeaponPatch::seam_bound) the radical plane
-// of the own bound (C, r) and the neighbour's (Cj, rj), as the signed distance s(X) = X . (C - Cj) / D + (|Cj|^2 -
-// |C|^2 - rj^2 + r^2) / (2 D), D = |C - Cj| (positive on the own side; within the own bound and outside the
-// neighbour's always positive, so the share bites only where both bounds cover the point); unused: s = 1e6. Double
-// precision on the CPU (owner-frame view units up to a station's 6500).
-void seam_block(const WeaponPatch& p, float out[16]) noexcept {
-    for (unsigned k = 0; k < 4; ++k) {
-        float* o = out + 4 * k;
-        o[0] = o[1] = o[2] = 0.f;
-        o[3] = 1e6f;
-        if (k >= p.seam_count) continue;
-        const float* q = p.seam_bound[k];
-        const double c[3] = {p.bound[0], p.bound[1], p.bound[2]}, cj[3] = {q[0], q[1], q[2]};
-        const double e[3] = {c[0] - cj[0], c[1] - cj[1], c[2] - cj[2]};
-        const double d2 = e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
-        if (!(d2 > 1e-6)) { // coincident bounds: half each
-            o[3] = 0.f;
-            continue;
-        }
-        const double d = double(scalar::sqrt(float(d2)));
-        const double cc = c[0] * c[0] + c[1] * c[1] + c[2] * c[2], jj = cj[0] * cj[0] + cj[1] * cj[1] + cj[2] * cj[2];
-        for (unsigned i = 0; i < 3; ++i) o[i] = float(e[i] / d);
-        o[3] = float((jj - cc - double(q[3]) * double(q[3]) + double(p.bound[3]) * double(p.bound[3])) / (2.0 * d));
-    }
+// The patch tail c19..c25 (weapon_shell_ps.hlsl): the frame's jittered projection (m00, m11, m20, m21); 2 / W, 2 / H,
+// unused and the triplanar sharpness; the owner's axes in view (L_k, owner_frame) and its
+// centre (view), so the program takes a view point to the owner frame as p_k = (v - centre) . L_k; and the eye in the
+// owner frame (p of the view origin), for the normal's side, with the triplanar floor. False for a degenerate frame.
+bool shell_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[shell_tail * 4]) noexcept {
+    if (!(f.m00 != 0.f) || !(f.m11 != 0.f) || !f.width || !f.height) return false;
+    const float block[shell_tail * 4] = {
+        f.m00, f.m11, f.m20, f.m21,
+        2.f / float(f.width), 2.f / float(f.height), 0.f, wcore::triplanar_sharpness,
+        p.axes[0][0], p.axes[0][1], p.axes[0][2], 0.f,
+        p.axes[1][0], p.axes[1][1], p.axes[1][2], 0.f,
+        p.axes[2][0], p.axes[2][1], p.axes[2][2], 0.f,
+        p.centre[0], p.centre[1], p.centre[2], 0.f,
+        -(p.centre[0] * p.axes[0][0] + p.centre[1] * p.axes[0][1] + p.centre[2] * p.axes[0][2]),
+        -(p.centre[0] * p.axes[1][0] + p.centre[1] * p.axes[1][1] + p.centre[2] * p.axes[1][2]),
+        -(p.centre[0] * p.axes[2][0] + p.centre[1] * p.axes[2][1] + p.centre[2] * p.axes[2][2]),
+        wcore::triplanar_floor};
+    std::memcpy(out, block, sizeof block);
+    return finite_all(out, shell_tail * 4);
 }
 } // namespace
 HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport* output) noexcept {
@@ -382,7 +396,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::State, call<SetSamplerFn>(SetSamplerState)(d, 0, s.first, s.second));
     for (auto s : {std::pair{D3DRS_CLIPPING, DWORD(TRUE)}, std::pair{D3DRS_ALPHABLENDENABLE, DWORD(TRUE)},
                    std::pair{D3DRS_SRCBLEND, DWORD(D3DBLEND_ONE)}, std::pair{D3DRS_DESTBLEND, DWORD(D3DBLEND_ONE)},
-                   std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)}, std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)},
+                   std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)},
                    std::pair{D3DRS_ZENABLE, DWORD(FALSE)}, std::pair{D3DRS_ZWRITEENABLE, DWORD(FALSE)},
                    std::pair{D3DRS_ALPHATESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_SEPARATEALPHABLENDENABLE, DWORD(FALSE)},
                    std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)},
@@ -394,34 +408,39 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Patches, call<SetPsFn>(SetPixelShader)(d, shell_ps_));
         for (unsigned i = 0; i < f.patch_count && SUCCEEDED(hr); ++i) {
             const WeaponPatch& p = f.patches[i];
-            bool ok = finite(p.soft) && p.soft > 0.f && finite_all(p.centre, 3) && finite_all(p.view_u, 3) &&
-                      finite_all(p.view_v, 3) && finite_all(p.view_a, 3) && finite_all(p.anchor, 3) &&
-                      finite_all(p.anchor_u, 3) && finite_all(p.anchor_v, 3) && p.cells > 0;
-            float ps[(hex_head + shell_tail) * 4];
+            bool ok = finite_all(p.centre, 3) && finite_all(p.view_u, 3) && finite_all(p.view_v, 3) &&
+                      finite_all(p.view_a, 3) && finite_all(p.anchor, 3) && finite_all(p.anchor_u, 3) &&
+                      finite_all(p.anchor_v, 3) && finite_all(&p.axes[0][0], 9) && p.cells > 0;
+            float ps[(hex_head + shell_tail + map_blocks) * 4], clocks[map_blocks * 4], ranges[map_groups * 2 + 8];
+            unsigned map_sent = 0;
             ok = ok && hex_block(l, p.cell, p.radius, p.reach, p.seed, 0.f, p.colour, p.anchor, p.anchor_u, p.anchor_v,
                                  p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
-                 write_cells(p, vertices_);
+                 write_box(p, vertices_) &&
+                 map_block(p, ps + (hex_head + shell_tail) * 4, clocks, ranges, &map_sent);
             if (!ok) continue; // a degenerate patch is skipped, never drawn wrong
-            {
-                float* x = ps + hex_head * 4; // c19 the soft radius and 1 / cell, c20..c23 the seam planes
-                x[0] = p.soft;
-                x[1] = 1.f / p.cell;
-                x[2] = x[3] = 0.f;
-                seam_block(p, x + 4);
-                if (!finite_all(x, shell_tail * 4)) continue;
-            }
-            const float vs[7 * 4] = {p.centre[0], p.centre[1], p.centre[2], f.near_z,
-                                     p.view_u[0], p.view_u[1], p.view_u[2], p.cell,
+            if (!shell_block(f, p, ps + hex_head * 4)) continue; // c19..c25
+            const float vs[4 * 4] = {p.centre[0], p.centre[1], p.centre[2], f.near_z,
+                                     p.view_u[0], p.view_u[1], p.view_u[2], 0.f,
                                      p.view_v[0], p.view_v[1], p.view_v[2], 0.f,
-                                     p.view_a[0], p.view_a[1], p.view_a[2], 0.f,
-                                     p.anchor[0], p.anchor[1], p.anchor[2], 0.f,
-                                     p.anchor_u[0], p.anchor_u[1], p.anchor_u[2], 0.f,
-                                     p.anchor_v[0], p.anchor_v[1], p.anchor_v[2], 0.f};
-            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, vs, 7));
-            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head + shell_tail));
+                                     p.view_a[0], p.view_a[1], p.view_a[2], 0.f};
+            // Only the faces turned away from the eye draw: right-hand outward triangles face the eye clockwise on
+            // screen when (U, V, A) keeps its sense in view space (det > 0), else counter-clockwise.
+            const float det = p.view_a[0] * (p.view_u[1] * p.view_v[2] - p.view_u[2] * p.view_v[1]) +
+                              p.view_a[1] * (p.view_u[2] * p.view_v[0] - p.view_u[0] * p.view_v[2]) +
+                              p.view_a[2] * (p.view_u[0] * p.view_v[1] - p.view_u[1] * p.view_v[0]);
+            step(WeaponEffectsStep::Patches,
+                 call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(det > 0.f ? D3DCULL_CW : D3DCULL_CCW)));
+            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, vs, 4));
+            step(WeaponEffectsStep::Patches,
+                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head + shell_tail + map_blocks));
+            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, clocks_at, clocks, map_sent));
+            const float box4[8] = {p.box[0], p.box[1], p.box[2], 0.f, p.box[3], p.box[4], p.box[5], 0.f};
+            std::memcpy(ranges + map_groups * 2, box4, sizeof box4);
+            step(WeaponEffectsStep::Patches,
+                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, ranges_at, ranges, map_groups / 2 + 2));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
-                    d, D3DPT_TRIANGLELIST, 0, p.cells * cell_vertices, p.cells * cell_triangles, indices_,
+                    d, D3DPT_TRIANGLELIST, 0, patch_vertices, patch_triangles, indices_,
                     D3DFMT_INDEX16, vertices_, UINT(sizeof vertices_[0])));
                 if (step(WeaponEffectsStep::Patches, draw)) {
                     ++r.patches;
@@ -432,6 +451,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     }
     if (SUCCEEDED(hr) && f.decal_count) {
         const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+        step(WeaponEffectsStep::Decals, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Decals, call<SetDeclarationFn>(SetVertexDeclaration)(d, decal_declaration_));
         step(WeaponEffectsStep::Decals, call<SetVsFn>(SetVertexShader)(d, decal_vs_));
         step(WeaponEffectsStep::Decals, call<SetPsFn>(SetPixelShader)(d, decal_ps_));

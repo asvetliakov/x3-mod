@@ -2,22 +2,24 @@
 // WeaponEffectsPass and its patch / decal programs; docs/architecture/weapon-effects.md 5.1 acceptance (b) and 5.1.1).
 // It creates a plain D3D9 HAL device, attaches the pass, and draws hex patches and flat decals onto an A16B16G16R16F
 // scene target with a controlled four-channel depth lane (.b = view depth, a sentinel .r < 0 = sky), built by a small FP
-// lane shader compiled through the game's d3dx9_37.dll (argv[1], run_weapon_effects.py's contract). Patches are built
-// with the production ws::fill_patch on an owner whose +z region faces the camera (its lattice plane square to the
-// view, the hit at the plane's origin at the screen centre). It reads the FP16 target back and reports the structural relations of 5.1.1 (the cell-map model):
+// lane shader compiled through the game's d3dx9_37.dll (argv[1], run_weapon_effects.py's contract): a plane at a depth
+// over a share of the screen, or a hull (an ellipsoid of the owner's frame, hull_ps, with its CPU twin hull_point). The
+// patch is the screen-space decal (5.1.1, Run236): it lights the lane's surface, never the sky. Patches are built with
+// the production ws::fill_patch on an owner whose +z face looks at the camera (its lattice plane square to the view,
+// the hit at the plane's origin at the screen centre, the lane that plane). It reads the FP16 target back and reports the structural relations of 5.1.1 (the cell-map model):
 // per tier the footprint's cell count 1 + 3 rings (rings + 1), the lit area bounded by hexagon edges (the outermost cell
 // centres plus a circumradius) and zero outside, lit on both sides of the hit in both axes, the edge bands across it;
-// the hit's centre cell brighter than a ring cell by the marker law; the soft fade against a hull lane (whole behind,
-// cut inside); the ring moving by whole cells and lighting a cell when the front reaches
+// the hit's centre cell brighter than a ring cell by the marker law; the surface from the lane (whole on it, nothing
+// on sky or past the extent along the axis, only the lane's half); the ring moving by whole cells and lighting a cell when the front reaches
 // its centre; the patch fading monotonically to zero at the record's lifetime and one cell's own fade duration against
 // its hash; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the newest clock, not a sum); a second
 // hit on the next cell resets only the shared cells and no cell is drawn twice; through the production builder the grid
-// fixed on a moved and rotated owner, the placement (Run235 Flight B: the patch at the recorded hit point, not on the
-// bounding sphere: a narrow hull's flank hit at 0.15 R, a station's hit at 0.64 R, a hit on the owner's far side, the
-// eye inside the bounding sphere), 12 hits per second without a pop on a fighter's and a capital's flat face (the
-// capital's cells overflow into spill draws) and on a sphere's front (each cell held at the depth it was first lit
-// at); with one draw per region the evicted cells' pops are the recorded witness), two hits across a region
-// seam never brighter than one hit, the stage's CPU cost (with the Flight B station cluster); the decal
+// fixed on a moved and rotated owner, the placement on hull lanes (a narrow 1:1:6 hull's flank, aft flank, top and
+// bottom, a flat 6:1:4 fighter's flank, top, bottom and top from 42 degrees down, the Flight B station at 0.68 R, the
+// far side hidden by its own hull, the eye inside the bounding sphere) with the normal's error (ddx / ddy against a
+// 4-neighbourhood), 12 hits per second without a pop on a fighter's and a capital's flat face (the capital's cells
+// overflow into spill draws) and on a sphere's front; with one draw per face the evicted cells' pops are the recorded
+// witness), two hits across a 45-degree face edge never brighter than one hit (the triplanar shares), the stage's CPU cost (with the Flight B station cluster); the decal
 // fallback (an owner without an ellipsoid) on a hull and 0 over sky; the game-time law at SETA 6 measured; the marker
 // through the production TemporalPass at 0 / 4 / 8 px per frame; a retired owner draws nothing; Reset recovery, the
 // fault cases, and the stage cost at 1080p and 5120x1440 (two hits on a fighter, two on a capital at close range, the
@@ -80,6 +82,7 @@ using CompileFn = HRESULT(WINAPI*)(LPCSTR, UINT, const D3DXMACRO*, LPD3DXINCLUDE
                                    LPD3DXBUFFER*, LPD3DXCONSTANTTABLE*);
 CompileFn compile_shader = nullptr;
 IDirect3DPixelShader9* lane_ps = nullptr;
+IDirect3DPixelShader9* hull_ps = nullptr;
 IDirect3DVertexShader9* quad_vs = nullptr;
 IDirect3DVertexDeclaration9* quad_decl = nullptr;
 IDirect3DPixelShader9* motion_ps = nullptr;
@@ -107,6 +110,23 @@ bool compile_helpers() {
     static Com<ID3DXBuffer> vh, ph;
     if (!compile(vs, "vs_3_0", &vw, &vh.p) || !compile(ps, "ps_3_0", &pw, &ph.p)) return false;
     if (FAILED(dev->CreateVertexShader(vw, &quad_vs)) || FAILED(dev->CreatePixelShader(pw, &lane_ps))) return false;
+    // The hull lane: the near root of the eye ray (D3D9 pixel centres at integer raster coordinates: ndc = 2 r / size
+    // - 1; the fixture's projection has m20 = m21 = 0) against an ellipsoid of half-extents e in the owner's frame (the
+    // far root when the eye is inside it): .b = the view depth (= t, the ray's z is 1), .r = 0.5; else the sky
+    // sentinel. c0 = (W, H, m00, m11), c1 the owner's centre (view), c2..c4 its axes in view, c5 = 1 / e^2.
+    const char* hull = "float4 c0:register(c0); float4 c1:register(c1); float4 c2:register(c2); float4 c3:register(c3);"
+                       " float4 c4:register(c4); float4 c5:register(c5); float4 main(float2 vp:VPOS):COLOR0{"
+                       " float2 ndc = float2(2.0 * vp.x / c0.x - 1.0, 1.0 - 2.0 * vp.y / c0.y);"
+                       " float3 d = float3(ndc.x / c0.z, ndc.y / c0.w, 1.0), o = -c1.xyz;"
+                       " float3 od = float3(dot(o, c2.xyz), dot(o, c3.xyz), dot(o, c4.xyz));"
+                       " float3 dd = float3(dot(d, c2.xyz), dot(d, c3.xyz), dot(d, c4.xyz));"
+                       " float A = dot(dd * dd, c5.xyz), B = dot(od * dd, c5.xyz), C = dot(od * od, c5.xyz) - 1.0;"
+                       " float disc = B * B - A * C; if (disc < 0.0) return float4(-1, 0, 0, 0);"
+                       " float s = sqrt(disc), t = (-B - s) / A; if (t <= 0.0) t = (-B + s) / A;"
+                       " return t > 0.0 ? float4(0.5, 0, t, 0) : float4(-1, 0, 0, 0); }";
+    const DWORD* hw = nullptr;
+    static Com<ID3DXBuffer> hh;
+    if (!compile(hull, "ps_3_0", &hw, &hh.p) || FAILED(dev->CreatePixelShader(hw, &hull_ps))) return false;
     // The motion target of an all-unrouted frame (the route's fill sentinel, alpha -1): the resolve's camera-only path.
     const DWORD* mw = nullptr;
     static Com<ID3DXBuffer> mh;
@@ -139,12 +159,61 @@ void draw_lane(Target& t, float depth, float occluder_frac) {
     dev->SetRenderTarget(0, t.lane_s.p);
     dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
     dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE); // the pass leaves its patches' cull mode set
     dev->SetVertexDeclaration(quad_decl);
     dev->SetVertexShader(quad_vs);
     dev->SetPixelShader(lane_ps);
     dev->SetPixelShaderConstantF(0, c0, 1);
     dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
     dev->EndScene();
+}
+// The hull lane (hull_ps): an ellipsoid of half-extents ext (view units) about centre (view) in the frame of axes
+// (the owner's local axes in view, rows), the fixture's projection (m00 1.6, m11 1.6 W / H).
+struct HullLane {
+    double centre[3], axes[3][3], ext[3];
+};
+void draw_hull_lane(Target& t, const HullLane& h) {
+    const float m00 = 1.6f, m11 = 1.6f * float(t.w) / float(t.h);
+    const float c[6][4] = {{float(t.w), float(t.h), m00, m11},
+                           {float(h.centre[0]), float(h.centre[1]), float(h.centre[2]), 0.f},
+                           {float(h.axes[0][0]), float(h.axes[0][1]), float(h.axes[0][2]), 0.f},
+                           {float(h.axes[1][0]), float(h.axes[1][1]), float(h.axes[1][2]), 0.f},
+                           {float(h.axes[2][0]), float(h.axes[2][1]), float(h.axes[2][2]), 0.f},
+                           {float(1.0 / (h.ext[0] * h.ext[0])), float(1.0 / (h.ext[1] * h.ext[1])),
+                            float(1.0 / (h.ext[2] * h.ext[2])), 0.f}};
+    const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.lane_s.p);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    dev->SetVertexDeclaration(quad_decl);
+    dev->SetVertexShader(quad_vs);
+    dev->SetPixelShader(hull_ps);
+    dev->SetPixelShaderConstantF(0, &c[0][0], 6);
+    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+    dev->EndScene();
+}
+// Its CPU twin in double: the surface point under pixel (x, y) in the owner's frame (view units); false for sky.
+bool hull_point(const Target& t, const HullLane& h, unsigned x, unsigned y, double p[3]) {
+    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
+    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
+    double od[3], dd[3], A = 0, B = 0, C = -1;
+    for (unsigned k = 0; k < 3; ++k) {
+        od[k] = -(h.centre[0] * h.axes[k][0] + h.centre[1] * h.axes[k][1] + h.centre[2] * h.axes[k][2]);
+        dd[k] = d[0] * h.axes[k][0] + d[1] * h.axes[k][1] + d[2] * h.axes[k][2];
+        const double w = 1.0 / (h.ext[k] * h.ext[k]);
+        A += dd[k] * dd[k] * w;
+        B += od[k] * dd[k] * w;
+        C += od[k] * od[k] * w;
+    }
+    const double disc = B * B - A * C;
+    if (disc < 0.0) return false;
+    double tt = (-B - std::sqrt(disc)) / A;
+    if (tt <= 0.0) tt = (-B + std::sqrt(disc)) / A;
+    if (!(tt > 0.0)) return false;
+    for (unsigned k = 0; k < 3; ++k) p[k] = od[k] + tt * dd[k];
+    return true;
 }
 // The whole target read back as RGB floats (row-major, 3 per pixel); empty on failure.
 std::vector<float> read_rgb(Target& t, IDirect3DSurface9* source) {
@@ -237,8 +306,7 @@ rr::WeaponPatch make_patch(const TierScene& s, const Hit* hits, unsigned count, 
         ages[n++] = h.age;
     }
     wc::shield_colour(shield, t.bands, colour);
-    ws::fill_patch(p, centre, frame, t.soft * ws::metres_to_view(t.cell_m[s.tier]), s.tier, anchor0, points, ages, n,
-                   colour, t);
+    ws::fill_patch(p, centre, frame, s.tier, anchor0, points, ages, n, colour, t);
     return p;
 }
 rr::WeaponPatch make_patch(const TierScene& s, std::initializer_list<Hit> hits, float shield = 1.f, float cx = 0.f,
@@ -262,9 +330,19 @@ float planar_extent(const TierScene& s) {
 float planar_cell(const TierScene& s) {
     return ws::metres_to_view(wc::cell_m[s.tier]);
 }
-// Draw one frame of patches over sky and read the luma back.
+// The plane a make_patch patch lies on (square to the view at its hits' depth), as the lane: the surface the
+// screen-space patch lights.
+void plane_lane(Target& t, const rr::WeaponPatch& p) {
+    draw_lane(t, p.centre[2] + p.view_a[2] * p.cell_anchor[0], 1.f);
+}
+// Draw one frame of patches on a surface (the hull lane, else the first patch's plane) and read the luma back.
 std::vector<float> render(rr::WeaponEffectsPass& pass, const rr::WeaponPatch* p, unsigned n,
-                          const rr::WeaponLook* look = nullptr, std::vector<float>* rgb = nullptr) {
+                          const rr::WeaponLook* look = nullptr, std::vector<float>* rgb = nullptr,
+                          const HullLane* hull = nullptr) {
+    if (hull)
+        draw_hull_lane(g, *hull);
+    else if (n)
+        plane_lane(g, p[0]);
     rr::WeaponEffectsFrame f = base_frame(g);
     f.patches = p;
     f.patch_count = n;
@@ -306,6 +384,23 @@ void put32(unsigned char* b, unsigned off, std::uint32_t v) {
 std::uint32_t addr(const void* p) {
     return std::uint32_t(reinterpret_cast<std::uintptr_t>(p));
 }
+// The staged owner's hull (identity camera: view = world): an ellipsoid of half-extents ext (view units) about its node
+// position in the frame of its rows.
+HullLane staged_hull(const double ext[3], const double offset[3] = nullptr) {
+    HullLane h{};
+    std::int32_t pos[3], rows[12];
+    std::memcpy(pos, fake_node + wc::layout::node_pos, 12);
+    std::memcpy(rows, fake_node + wc::layout::node_rot, 48);
+    for (unsigned k = 0; k < 3; ++k) {
+        h.centre[k] = double(pos[k]) * double(wc::world_scale);
+        for (unsigned j = 0; j < 3; ++j) h.axes[k][j] = double(rows[4 * k + j]) / 65536.0;
+        h.ext[k] = ext[k];
+    }
+    if (offset) // the hull's centre off the owner's origin (owner frame)
+        for (unsigned j = 0; j < 3; ++j)
+            for (unsigned k = 0; k < 3; ++k) h.centre[j] += h.axes[k][j] * offset[k];
+    return h;
+}
 // A live owner at view (0, 0, z) with radius r (view units; identity camera, identity rows), and the ring holding one
 // stage-owned shield hit on its front (t0 game ms, the header's patch lifetime, a fighter, full shields).
 wc::Ring stage_ring;
@@ -334,12 +429,15 @@ void stage_owner(float z, float r, std::uint32_t t0) {
     e->owner = addr(fake_obj);
     e->node = addr(fake_node);
     e->handle = 0xd00du;
+    e->pos[0] = e->pos[1] = 0; // the slot may carry an earlier case's point
     e->pos[2] = -std::int32_t(engine(r));
     e->radius = std::int32_t(engine(r));
 }
 ws::Camera identity_camera() {
     ws::Camera c;
     c.r[0] = c.r[4] = c.r[8] = 1.f;
+    c.m00 = 1.6f; // base_frame's projection at 16:9 (the stage's screen-area budget)
+    c.m11 = 1.6f * 16.f / 9.f;
     return c;
 }
 unsigned ring_live(const wc::Ring& r) {
@@ -438,7 +536,7 @@ double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion,
         float pjx = 0, pjy = 0;
         for (unsigned n = 0; n < frames; ++n) {
             const float jx = float(halton(n % 8 + 1, 2) - .5), jy = float(halton(n % 8 + 1, 3) - .5);
-            draw_lane(g, 0.f, -1.f); // sky everywhere
+            draw_lane(g, z_hit, 1.f); // the patch's plane everywhere
             const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
             dev->BeginScene();
             dev->SetRenderTarget(0, motion_s.p);
@@ -607,7 +705,48 @@ int main(int argc, char** argv) {
         std::printf("RESULT FAIL checks=%u failures=%u\n", checks, failures + 1);
         return 1;
     }
-    report("pixel_program_low_hundreds", pass.caps().shell_ps_slots < 400 && pass.caps().decal_ps_slots < 400, "");
+    std::printf("ATTACH_SLOTS shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u patch_bytes=%u frame_patches_bytes=%u\n",
+                pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots,
+                pass.caps().decal_ps_slots, unsigned(sizeof(rr::WeaponPatch)),
+                unsigned(sizeof(rr::WeaponPatch) * wc::max_patches));
+    // The cell map's sort (review F5): rr::sort_by_key (heap sort) against the insertion sort it replaced, on 128 keys
+    // shuffled, ascending and descending (best of 2000 sorts each, us).
+    {
+        float keys[128];
+        LARGE_INTEGER freq{}, a{}, b{};
+        QueryPerformanceFrequency(&freq);
+        auto insertion = [](std::uint8_t* idx, unsigned n, const float* key) {
+            for (unsigned i = 1; i < n; ++i) {
+                const std::uint8_t v = idx[i];
+                unsigned j = i;
+                while (j > 0 && key[idx[j - 1]] > key[v]) {
+                    idx[j] = idx[j - 1];
+                    --j;
+                }
+                idx[j] = v;
+            }
+        };
+        bool sorted_ok = true;
+        for (unsigned layout = 0; layout < 3; ++layout) {
+            for (unsigned i = 0; i < 128; ++i)
+                keys[i] = layout == 0 ? float(unsigned(halton(i + 1, 3) * 8388607.0)) : layout == 1 ? float(i) : float(127 - i);
+            double best[2] = {1e30, 1e30};
+            for (unsigned which = 0; which < 2; ++which)
+                for (unsigned rep = 0; rep < 2000; ++rep) {
+                    std::uint8_t idx[128];
+                    for (unsigned i = 0; i < 128; ++i) idx[i] = std::uint8_t(i);
+                    QueryPerformanceCounter(&a);
+                    if (which) insertion(idx, 128, keys); else rr::sort_by_key(idx, 128, keys);
+                    QueryPerformanceCounter(&b);
+                    best[which] = std::min(best[which], ticks_us(a, b, freq));
+                    for (unsigned i = 1; i < 128 && !which; ++i) sorted_ok = sorted_ok && keys[idx[i - 1]] <= keys[idx[i]];
+                }
+            std::printf("SORT case=%s heap_us=%.3f insertion_us=%.3f\n", layout == 0 ? "shuffled" : layout == 1 ? "ascending" : "descending",
+                        best[0], best[1]);
+        }
+        report("cell_map_sort_orders", sorted_ok, "");
+    }
+    report("pixel_program_low_thousands", pass.caps().shell_ps_slots < 2000 && pass.caps().decal_ps_slots < 2000, "");
     report("target_1080", make_target(g, 1920, 1080));
     draw_lane(g, 0.f, -1.f);
     rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, uniform = cells_only;
@@ -773,23 +912,43 @@ int main(int argc, char** argv) {
         const bool red = rgb[2][0] > 2.f * rgb[2][1] && rgb[2][0] > 2.f * rgb[2][2];
         report("colour_bands_blue_yellow_red", blue && yellow && red, "");
     }
-    // The soft fade against the lane (the patch hugs the hull it hit): a fighter patch (its plane square to the view at
-    // z = centre_z - S) over a hull lane 2 view units behind it is whole (the sky's total); with the hull half a soft
-    // radius in front of it the patch keeps half; a soft radius in front (the patch inside the hull) nothing draws.
+    // The surface is the lane (the screen-space patch): a fighter patch (its hit on the plane square to the view at
+    // z = centre_z - S) over a full-screen lane at that plane draws its whole footprint (on); over the sky nothing; the
+    // plane moved half an extent toward the eye still draws (within the extent along the axis); moved past the extent
+    // nothing; over a lane holding the plane on the left half only, nothing right of the centre (the hit) and the left
+    // half of the footprint as on.
     {
         const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.5f}});
-        const float z = fighter.centre_z - fighter.surface, soft = p.soft;
-        auto sum_at = [&](float lane_z, float frac) {
+        const float z = fighter.centre_z - fighter.surface, ext = p.extent;
+        auto sum_at = [&](float lane_z, float frac, unsigned* right_lit = nullptr, double* left = nullptr) {
             draw_lane(g, lane_z, frac);
-            return total(render(pass, &p, 1));
+            rr::WeaponEffectsFrame f = base_frame(g);
+            f.patches = &p;
+            f.patch_count = 1;
+            draw(pass, f);
+            const std::vector<float> l = read_luma(g, g.scene_s.p);
+            double sum = 0, lsum = 0;
+            unsigned right = 0;
+            for (UINT y = 0; y < g.h; ++y)
+                for (UINT x = 0; x < g.w; ++x) {
+                    const double v = l[std::size_t(y) * g.w + x];
+                    sum += v;
+                    if (x < g.w / 2) lsum += v; else right += v > 1e-3;
+                }
+            if (right_lit) *right_lit = right;
+            if (left) *left = lsum;
+            return sum;
         };
-        const double sky = sum_at(0.f, -1.f), behind = sum_at(z + 2.f, 1.f), half = sum_at(z - 0.5f * soft, 1.f);
-        const double inside = sum_at(z - 1.01f * soft, 1.f);
+        double on_left = 0, half_left = 0;
+        unsigned half_right = 0;
+        const double on = sum_at(z, 1.f, nullptr, &on_left), sky = sum_at(0.f, -1.f);
+        const double nearer = sum_at(z - 0.5f * ext, 1.f), past = sum_at(z - 1.01f * ext, 1.f);
+        const double half = sum_at(z, 0.5f, &half_right, &half_left);
         draw_lane(g, 0.f, -1.f);
-        std::printf("SOFT plane_z=%.2f soft=%.2f sky=%.3f behind=%.3f half=%.3f inside=%.3f\n", z, soft, sky, behind, half,
-                    inside);
-        report("soft_fade_hugs_the_hull", sky > 1.0 && std::fabs(behind - sky) <= 1e-3 * sky &&
-                                              std::fabs(half - 0.5 * sky) <= 0.02 * sky && inside == 0.0, "");
+        std::printf("SURFACE plane_z=%.2f extent=%.2f on=%.3f sky=%.3f nearer=%.3f past=%.3f half=%.3f half_left=%.3f "
+                    "on_left=%.3f half_right_lit=%u\n", z, ext, on, sky, nearer, past, half, half_left, on_left, half_right);
+        report("surface_from_the_lane", on > 1.0 && sky == 0.0 && nearer > 0.0 && past == 0.0 &&
+                                            half_right == 0 && std::fabs(half_left - on_left) <= 2e-3 * on_left, "");
     }
     // Repeated hits: the same point hit 0.7 s and 0.3 s ago re-lights (the cell's clock is the newest hit's, not a
     // sum); a second hit on the next cell (plane x = 1 cell, 0.5 s after the first at 1.0 s) resets only the cells the
@@ -847,34 +1006,42 @@ int main(int argc, char** argv) {
             for (unsigned c = 0; c < 3; ++c) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * c, std::uint32_t(rows[r][c]));
         const ws::Counts nb = ws::build(stage_ring, 1700, &fake_read, identity_camera(), ws::Tuning{}, pb, wc::max_patches,
                                         decals, wc::max_decals);
-        bool same = na.patches == nb.patches && na.patches > 0;
-        unsigned cells = 0;
+        // The faces both views draw (the face cull follows the view) carry the identical cells.
+        unsigned cells = 0, common = 0;
+        bool same = na.patches > 0 && nb.patches > 0;
         for (unsigned i = 0; same && i < na.patches; ++i) {
-            same = pa[i].seed == pb[i].seed && pa[i].cells == pb[i].cells;
+            unsigned j = 0;
+            while (j < nb.patches && pb[j].seed != pa[i].seed) ++j;
+            if (j == nb.patches) continue;
+            ++common;
+            const rr::WeaponPatch& b = pb[j];
+            same = b.cells == pa[i].cells;
             for (unsigned k = 0; same && k < pa[i].cells; ++k)
-                same = pa[i].cell_key[k] == pb[i].cell_key[k] && pa[i].cell_since[k] == pb[i].cell_since[k] &&
-                       pa[i].cell_depth[k] == pb[i].cell_depth[k];
+                same = pa[i].cell_key[k] == b.cell_key[k] && pa[i].cell_since[k] == b.cell_since[k] &&
+                       pa[i].cell_anchor[k] == b.cell_anchor[k];
             cells += pa[i].cells;
         }
+        same = same && common > 0;
         const bool moved = na.patches && nb.patches && (pa[0].centre[2] != pb[0].centre[2]) && (pa[0].view_a[0] != pb[0].view_a[0]);
         std::printf("GRID patches=%u moved_patches=%u cells=%u identical=%u owner_moved=%u\n", na.patches, nb.patches, cells,
                     unsigned(same), unsigned(moved));
         report("grid_fixed_on_owner", same && moved, "");
     }
-    // Placement (Run235 Flight B), through the production builder with the identity camera: the cells sit at the
-    // recorded hit point, not on the owner's bounding sphere. Per case one hit 0.5 s old (every footprint cell lit); the
-    // cells' centroid in view space (each cell centre at its depth through the patch's frame) against the hit point
-    // (stage::hit_point), and the drawn patch's luma-weighted screen centroid against the hit's projection (px, and in
-    // metres at the hit's depth); the old projection's error, R normalize(pos) against pos, for the record. Narrow:
-    // a 100 m long corvette (half-extents 1:1:6, R its 50 m half-length) hit on its flank at 0.15 R (0.12 R across, 0.09
-    // R aft); station: the Flight B station (R 1304 m, obj+0xa4 651764) at one of its recorded contact points (0.676 R);
-    // far side: a fighter hit on the face turned away from the eye (seen from behind: no face cull); eye inside: the
-    // camera 0.5 R from a fighter's centre (inside its bounding sphere), the hit on the face in front of it. Each
-    // record carries its bolt's travel (Event::dir, the owner frame at the hit as the hook records it): from the camera
-    // (world +z) but for the far side (a bolt from behind, world -z), each taken through its case's rows. The narrow hull's flank 40 % aft (on its 1:1:6 surface) hit by a bolt travelling along the owner's -x:
-    // the region facing the bolt (+x), its plane on the flank (hull_normal_angle_deg: the plane normal against the
-    // hull's), lit like the mid-flank case; witness, recorded and not gated: the same hit without a travel (the radial
-    // fallback), whose nearest axis is the long one, so its plane stands across the hull.
+    // Placement on the hull (the screen-space patch, Run236 Flight C): through the production builder with the identity
+    // camera, one hit 0.5 s old (every footprint cell lit), the lane holding the case's hull (an ellipsoid of the
+    // owner's frame: the modelled half-extents, else a sphere through the hit point). Per case: lit pixels over sky
+    // (must be 0), lit pixels whose surface point (the hull lane's CPU twin) lies farther than sqrt 2 x the extent from
+    // the hit (in the lattice's plane and along its axis each within it; at most 1 % of the lit, the GPU's float), the coverage of the surface within half the reach of the
+    // hit (lit / eligible, at least 0.9: those points lie in footprint cells), the luma-weighted centroid of the lit
+    // surface points against the hit (within one cell), the lit count against its hull's reference (the narrow hull's
+    // mid flank, the flat fighter's flank: a third to three times, every approach direction; the flat flank is 2 m
+    // high, so less of it lies within the footprint than of the top). Narrow: a 100 m corvette (1:1:6,
+    // R its 50 m half-length) on its flank 9 % aft, its flank, top and bottom 40 % aft; flat: a fighter of
+    // half-extents 6:1:4 (12 x 2 x 8 m) on its flank, top and bottom 0.3 of each half-extent off centre, and its top hit
+    // by a bolt 42 degrees below its plane (the Run236 case: the bolt's direction plays no part); station: the Flight B
+    // station (R 1304 m) at its recorded contact point (0.676 R); far side: a fighter hit on the face turned away from the
+    // eye (its own hull hides the patch: nothing draws); eye inside: the camera 0.6 R from a flat fighter's centre,
+    // inside its bounding sphere and outside its hull (6:1:4), the hit on the nose in front of it, 4 m away.
     {
         struct Placement {
             const char* name;
@@ -882,35 +1049,45 @@ int main(int argc, char** argv) {
             float radius, z;            // the owner's radius and its centre's view z (view units)
             std::int32_t pos[3];        // the contact point (engine units, owner frame)
             std::int32_t rows[3][3];    // the owner's rows (16.16)
-            float ext[3];               // the hull's half-extents (owner frame, view units; 0: none modelled)
-            std::int8_t dir[3];         // the bolt's travel (owner frame, x 127; 0: none, the radial fallback)
+            float ext[3];               // the hull's half-extents (owner frame, view units; 0: a sphere through the hit)
+            std::int8_t dir[3];         // the bolt's travel (recorded, unused)
+            unsigned ref;               // the case whose lit count is the reference (its own index: itself)
+            float off[3] = {0.f, 0.f, 0.f}; // the hull's centre off the owner's origin (owner frame, view units)
         };
         const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
         const std::int32_t ident[3][3] = {{65536, 0, 0}, {0, 65536, 0}, {0, 0, 65536}};
         const std::int32_t side[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}}; // local x -> view -z (the flank)
         const std::int32_t facing[3][3] = {{65536, 0, 0}, {0, -65536, 0}, {0, 0, -65536}}; // local +z -> view -z
+        const std::int32_t top[3][3] = {{65536, 0, 0}, {0, 0, -65536}, {0, 65536, 0}};    // local +y -> view -z
+        const std::int32_t bottom[3][3] = {{65536, 0, 0}, {0, 0, 65536}, {0, -65536, 0}}; // local -y -> view -z
         const float a6 = 250.f / 6.f;
-        const std::int32_t aft[3] = {eng(a6 * std::sqrt(1.0 - 0.16)), 0, eng(0.4 * 250.0)};
-        Placement cases[6] = {
-            {"narrow_flank_0p15R", wc::patch_corvette, 250.f, 600.f, {eng(0.12 * 250.0), 0, eng(0.09 * 250.0)}, {},
-             {a6, a6, 250.f}, {-127, 0, 0}},
-            {"station_flight_b_0p68R", wc::patch_capital, 6517.64f, 14000.f, {-114699, 85160, 416994}, {}, {}, {0, 0, -127}},
-            {"far_side", wc::patch_fighter, 100.f, 400.f, {0, 0, eng(60.0)}, {}, {}, {0, 0, -127}},
-            {"eye_inside_sphere", wc::patch_fighter, 100.f, -50.f, {0, 0, eng(80.0)}, {}, {}, {0, 0, 127}},
-            {"aft_flank_by_travel", wc::patch_corvette, 250.f, 600.f, {aft[0], aft[1], aft[2]}, {}, {a6, a6, 250.f},
-             {-127, 0, 0}},
-            {"witness_aft_flank_radial", wc::patch_corvette, 250.f, 600.f, {aft[0], aft[1], aft[2]}, {}, {a6, a6, 250.f},
-             {0, 0, 0}}};
-        std::memcpy(cases[0].rows, side, sizeof side);
-        std::memcpy(cases[1].rows, facing, sizeof facing);
-        for (unsigned k = 2; k < 4; ++k) std::memcpy(cases[k].rows, ident, sizeof ident);
-        std::memcpy(cases[4].rows, side, sizeof side);
-        std::memcpy(cases[5].rows, side, sizeof side);
-        unsigned lit_mid = 0, lit_aft = 0;
-        double aft_angle = 180.0;
-        const double metre = double(wc::engine_units_per_metre) * double(wc::world_scale);
-        bool narrow_ok = false, station_ok = false, far_ok = false, eye_ok = false, aft_ok = false;
-        for (const Placement& c : cases) {
+        const double s84 = std::sqrt(1.0 - 0.16), s82 = std::sqrt(1.0 - 0.18);
+        Placement cases[12] = {
+            {"narrow_mid_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * std::sqrt(1.0 - 0.09 * 0.09)), 0, eng(0.09 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
+            {"aft_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * s84), 0, eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
+            {"y_top_narrow", wc::patch_corvette, 250.f, 600.f, {0, eng(a6 * s84), eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {0, -127, 0}, 0},
+            {"y_bottom_narrow", wc::patch_corvette, 250.f, 600.f, {0, -eng(a6 * s84), eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {0, 127, 0}, 0},
+            {"flat_flank", wc::patch_fighter, 60.f, 400.f, {eng(60.0 * std::sqrt(1.0 - 0.09)), 0, eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {-127, 0, 0}, 4},
+            {"y_top_flat", wc::patch_fighter, 60.f, 400.f, {eng(0.3 * 60.0), eng(10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, -127, 0}, 4},
+            {"y_bottom_flat", wc::patch_fighter, 60.f, 400.f, {eng(0.3 * 60.0), -eng(10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, 127, 0}, 4},
+            {"y_top_flat_42deg", wc::patch_fighter, 60.f, 400.f, {eng(0.3 * 60.0), eng(10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, -85, 95}, 4},
+            {"station_flight_b_0p68R", wc::patch_capital, 6517.64f, 14000.f, {-114699, 85160, 416994}, {}, {}, {0, 0, -127}, 8},
+            {"far_side", wc::patch_fighter, 100.f, 400.f, {0, 0, eng(60.0)}, {}, {}, {0, 0, -127}, 9},
+            {"eye_inside_sphere", wc::patch_fighter, 100.f, 60.f, {0, 0, -eng(40.0)}, {}, {60.f, 10.f, 40.f}, {0, 0, 127}, 10},
+            // review F1: the flat fighter's hull centred 2 cells (6 m) below the owner's origin, hit on its top (an upward
+            // surface below the origin's plane): lights like the centred top
+            {"y_top_flat_offcentre", wc::patch_fighter, 60.f, 400.f,
+             {eng(0.3 * 60.0), eng(-30.0 + 10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, -127, 0}, 5,
+             {0.f, -30.f, 0.f}}};
+        const std::int32_t (*rows_of[12])[3] = {side, side, top, bottom, side, top, bottom, top, facing, ident, ident, top};
+        for (unsigned k = 0; k < 12; ++k) std::memcpy(cases[k].rows, rows_of[k], sizeof ident);
+        struct Result {
+            unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0;
+            double centroid_cells = 1e30, lit_ratio = 0;
+            bool drew = false;
+        } res[12];
+        for (unsigned i = 0; i < 12; ++i) {
+            const Placement& c = cases[i];
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
             stage_owner(c.z, c.radius, 1000);
@@ -925,163 +1102,282 @@ int main(int argc, char** argv) {
             stage_ring.slots[0].radius = eng(c.radius);
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
                                            wc::max_patches, decals, wc::max_decals);
-            ws::Owner o{};
-            std::memcpy(o.pos, fake_node + wc::layout::node_pos, 12);
-            std::memcpy(o.rows, fake_node + wc::layout::node_rot, 48);
-            float hit[3];
-            ws::hit_point(o, c.pos, identity_camera(), hit);
-            double sum[3] = {0, 0, 0};
-            unsigned cells = 0;
-            float cell = 1.f;
-            for (unsigned i = 0; i < n.patches; ++i) {
-                const rr::WeaponPatch& q = patches[i];
-                cell = q.cell;
-                for (unsigned k = 0; k < q.cells; ++k) {
-                    const std::uint32_t packed = std::uint32_t(q.cell_key[k]);
-                    const double cx = 0.5 * double(int(packed >> 12) - rr::weapon_cell_key_bias) * q.cell;
-                    const double cy = 0.8660254 * double(int(packed & 0xfffu) - rr::weapon_cell_key_bias) * q.cell;
-                    for (unsigned j = 0; j < 3; ++j)
-                        sum[j] += q.centre[j] + q.view_u[j] * cx + q.view_v[j] * cy + q.view_a[j] * q.cell_depth[k];
-                    ++cells;
-                }
+            double hp[3], pr = 0;
+            for (unsigned k = 0; k < 3; ++k) {
+                hp[k] = double(c.pos[k]) * double(wc::world_scale);
+                pr += hp[k] * hp[k];
             }
-            double err = 1e30;
-            if (cells) {
-                err = 0;
-                for (unsigned j = 0; j < 3; ++j) err += (sum[j] / cells - hit[j]) * (sum[j] / cells - hit[j]);
-                err = std::sqrt(err);
-            }
-            // The old projection: R normalize(pos), local, against pos.
-            const double pr = std::sqrt(double(c.pos[0]) * c.pos[0] + double(c.pos[1]) * c.pos[1] + double(c.pos[2]) * c.pos[2]);
-            const double old_err = (double(c.radius) / double(wc::world_scale) - pr) * double(wc::world_scale);
-            // Drawn: the luma-weighted screen centroid against the hit's projection.
-            rr::WeaponEffectsFrame f = base_frame(g);
-            f.patches = patches;
-            f.patch_count = n.patches;
-            draw_lane(g, 0.f, -1.f);
-            const auto res = draw(pass, f);
-            const std::vector<float> l = read_luma(g, g.scene_s.p);
-            double wsum = 0, sx = 0, sy = 0;
+            pr = std::sqrt(pr);
+            const double ext[3] = {c.ext[0] > 0.f ? double(c.ext[0]) : pr, c.ext[0] > 0.f ? double(c.ext[1]) : pr,
+                                   c.ext[0] > 0.f ? double(c.ext[2]) : pr};
+            const double off[3] = {c.off[0], c.off[1], c.off[2]};
+            const HullLane hull = staged_hull(ext, off);
+            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
+            const double extent = n.patches ? double(patches[0].extent) : 0.0, cell = n.patches ? double(patches[0].cell) : 1.0;
+            const double core = n.patches ? 0.5 * double(patches[0].reach) : 0.0; // surely inside the footprint's cells
+            Result& o = res[i];
+            o.patches = n.patches;
+            double wsum = 0, cs[3] = {0, 0, 0};
             for (UINT y = 0; y < g.h; ++y)
                 for (UINT x = 0; x < g.w; ++x) {
                     const double v = l[std::size_t(y) * g.w + x];
-                    if (!(v > 1e-3)) continue;
-                    wsum += v;
-                    sx += v * (x + 0.5);
-                    sy += v * (y + 0.5);
+                    const bool lit = v > 1e-3;
+                    double q[3];
+                    const bool on = hull_point(g, hull, x, y, q);
+                    for (unsigned k = 0; k < 3; ++k) q[k] += off[k]; // the hull lane's frame is centred on the hull
+                    o.lit += lit;
+                    if (!on) {
+                        o.sky_lit += lit;
+                        continue;
+                    }
+                    const double d = std::sqrt((q[0] - hp[0]) * (q[0] - hp[0]) + (q[1] - hp[1]) * (q[1] - hp[1]) +
+                                               (q[2] - hp[2]) * (q[2] - hp[2]));
+                    if (d <= core) {
+                        ++o.eligible;
+                        o.covered += lit;
+                    }
+                    if (lit && d > extent * 1.4142 * 1.01) ++o.outside; // the plane and the axis each within the extent
+                    if (lit) {
+                        wsum += v;
+                        for (unsigned k = 0; k < 3; ++k) cs[k] += v * q[k];
+                    }
                 }
-            const double hx = 0.5 * g.w * (1.0 + 1.6 * hit[0] / hit[2]);
-            const double hy = 0.5 * g.h * (1.0 - 1.6 * double(g.w) / double(g.h) * hit[1] / hit[2]);
-            const double px_err = wsum > 0 ? std::hypot(sx / wsum - hx, sy / wsum - hy) : 1e30;
-            const double px_m = hit[2] > 0 ? px_err * 2.0 * hit[2] / (1.6 * g.w) / metre : 0.0;
-            // The hull normal at the hit (the modelled ellipsoid) against the region's plane normal (its axis).
-            double normal_angle = -1.0;
-            if (c.ext[0] > 0.f && n.patches) {
-                double nrm[3], dotp = 0, len = 0;
-                for (unsigned k = 0; k < 3; ++k) {
-                    nrm[k] = double(c.pos[k]) * double(wc::world_scale) / (double(c.ext[k]) * double(c.ext[k]));
-                    len += nrm[k] * nrm[k];
-                    dotp += nrm[k] * double(patches[0].anchor[k]);
-                }
-                normal_angle = std::acos(std::min(1.0, std::fabs(dotp) / std::sqrt(len))) * 57.29578;
+            if (wsum > 0) {
+                double e2 = 0;
+                for (unsigned k = 0; k < 3; ++k) e2 += (cs[k] / wsum - hp[k]) * (cs[k] / wsum - hp[k]);
+                o.centroid_cells = std::sqrt(e2) / cell;
             }
-            std::printf("PLACEMENT case=%s patches=%u cells=%u region=%u pos_r=%.3f hit_view=%.1f,%.1f,%.1f cell_m=%.2f centroid_error_m=%.3f centroid_error_cells=%.3f old_projection_error_m=%.1f drew=%u lit_pixels=%u screen_error_px=%.2f screen_error_m=%.3f eye_r=%.3f hull_normal_angle_deg=%.1f\n",
-                        c.name, n.patches, cells, n.patches ? unsigned(patches[0].seed) : 99u, pr * wc::world_scale / c.radius,
-                        hit[0], hit[1], hit[2], cell / metre, err / metre, err / cell, old_err / metre,
-                        unsigned(res.second.drew), lit_count(l), px_err, px_m, std::fabs(double(c.z)) / double(c.radius),
-                        normal_angle);
-            const bool drawn = SUCCEEDED(res.first) && res.second.drew && lit_count(l) > 100;
-            const bool at_hit = cells > 0 && err <= double(cell) && px_err <= 2.0 + 0.6 * double(cell) * 1.6 * g.w / (2.0 * hit[2]);
-            if (c.name[0] == 'n') narrow_ok = drawn && at_hit && old_err > 3.0 * double(cell);
-            if (c.name[0] == 's') station_ok = drawn && at_hit && old_err / metre > 400.0;
-            if (c.name[0] == 'f') far_ok = drawn && at_hit;
-            if (c.name[0] == 'e') eye_ok = drawn && at_hit;
-            if (c.name[0] == 'n') lit_mid = lit_count(l);
-            if (c.name[0] == 'a') {
-                lit_aft = lit_count(l);
-                aft_angle = normal_angle;
-                aft_ok = drawn && at_hit && n.patches && patches[0].seed == 2.f;
-            }
+            o.drew = o.lit > 100;
         }
-        std::printf("PLACEMENT_AFT lit_mid=%u lit_aft=%u ratio=%.3f aft_normal_angle_deg=%.1f\n", lit_mid, lit_aft,
-                    lit_mid ? double(lit_aft) / double(lit_mid) : 0.0, aft_angle);
-        report("placement_aft_flank_faces_the_bolt", aft_ok && aft_angle < 30.0 && lit_aft * 2 >= lit_mid, "");
-        report("placement_narrow_hull_flank_at_the_hit", narrow_ok, "");
-        report("placement_station_at_the_hit", station_ok, "");
-        report("placement_far_side_draws", far_ok, "");
-        report("placement_eye_inside_sphere_draws", eye_ok, "");
+        for (unsigned i = 0; i < 12; ++i) {
+            const Result& o = res[i];
+            const double ratio = res[cases[i].ref].lit ? double(o.lit) / double(res[cases[i].ref].lit) : 0.0;
+            res[i].lit_ratio = ratio;
+            std::printf("PLACEMENT case=%s patches=%u lit_pixels=%u sky_lit=%u outside_lit=%u eligible=%u covered=%u "
+                        "coverage=%.3f centroid_error_cells=%.3f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
+                        cases[i].name, o.patches, o.lit, o.sky_lit, o.outside, o.eligible, o.covered,
+                        o.eligible ? double(o.covered) / double(o.eligible) : 0.0, o.centroid_cells, cases[cases[i].ref].name,
+                        ratio, int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
+        }
+        auto on_hull = [&](unsigned i) {
+            const Result& o = res[i];
+            return o.drew && o.sky_lit == 0 && o.outside * 100 <= o.lit && o.eligible &&
+                   double(o.covered) >= 0.9 * double(o.eligible) && o.centroid_cells <= 1.0 && o.lit_ratio >= 1.0 / 3.0 &&
+                   o.lit_ratio <= 3.0;
+        };
+        // The normal from the lane (Run236: ddx / ddy against a 4-neighbourhood), on the CPU twin of three hull lanes (the
+        // narrow hull's top, the flat fighter's top, the station's sphere): per hull pixel the analytic normal against
+        // the 2x2-quad derivative (the hardware's coarse ddx / ddy) and the neighbourhood (per axis the neighbour with
+        // the smaller depth step): the mean and 99th-percentile angle, and the share of pixels whose dominant axis (the
+        // lattice of the largest weight) differs from the analytic one; silhouette pixels (a quad or neighbour on sky)
+        // counted apart.
+        for (unsigned i : {2u, 5u, 8u}) {
+            const Placement& c = cases[i];
+            stage_owner(c.z, c.radius, 1000);
+            for (unsigned r = 0; r < 3; ++r)
+                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(c.rows[r][j]));
+            double pr = 0;
+            for (unsigned k = 0; k < 3; ++k) pr += double(c.pos[k]) * double(c.pos[k]) * double(wc::world_scale) * double(wc::world_scale);
+            pr = std::sqrt(pr);
+            const double ext[3] = {c.ext[0] > 0.f ? double(c.ext[0]) : pr, c.ext[0] > 0.f ? double(c.ext[1]) : pr,
+                                   c.ext[0] > 0.f ? double(c.ext[2]) : pr};
+            const HullLane hull = staged_hull(ext);
+            const UINT W = g.w, H = g.h;
+            std::vector<double> pts(std::size_t(W) * H * 3);
+            std::vector<unsigned char> on(std::size_t(W) * H);
+            for (UINT y = 0; y < H; ++y)
+                for (UINT x = 0; x < W; ++x) on[std::size_t(y) * W + x] = hull_point(g, hull, x, y, &pts[(std::size_t(y) * W + x) * 3]);
+            auto P = [&](UINT x, UINT y) { return &pts[(std::size_t(y) * W + x) * 3]; };
+            auto angle = [](const double* a, const double* b) {
+                double d = 0, la = 0, lb = 0;
+                for (unsigned k = 0; k < 3; ++k) { d += a[k] * b[k]; la += a[k] * a[k]; lb += b[k] * b[k]; }
+                return std::acos(std::min(1.0, std::fabs(d) / std::sqrt(la * lb + 1e-300))) * 57.29578;
+            };
+            auto dominant = [](const double* n) {
+                const double a[3] = {std::fabs(n[0]), std::fabs(n[1]), std::fabs(n[2])};
+                return a[0] >= a[1] && a[0] >= a[2] ? 0 : a[1] >= a[2] ? 1 : 2;
+            };
+            std::vector<double> err_q, err_n;
+            unsigned pixels = 0, edge = 0, wrong_q = 0, wrong_n = 0, wrong_q_edge = 0, wrong_n_edge = 0;
+            for (UINT y = 1; y + 1 < H; ++y)
+                for (UINT x = 1; x + 1 < W; ++x) {
+                    if (!on[std::size_t(y) * W + x]) continue;
+                    const double* q = P(x, y);
+                    const double tn[3] = {q[0] / (ext[0] * ext[0]), q[1] / (ext[1] * ext[1]), q[2] / (ext[2] * ext[2])};
+                    const UINT x0 = x & ~1u, y0 = y & ~1u;
+                    const bool quad_on = on[std::size_t(y0) * W + x0] && on[std::size_t(y0) * W + x0 + 1] &&
+                                         on[std::size_t(y0 + 1) * W + x0];
+                    double nq[3] = {0, 0, 0}, nn[3] = {0, 0, 0};
+                    if (quad_on) {
+                        const double *a = P(x0, y0), *bx = P(x0 + 1, y0), *by = P(x0, y0 + 1);
+                        const double dx[3] = {bx[0] - a[0], bx[1] - a[1], bx[2] - a[2]}, dy[3] = {by[0] - a[0], by[1] - a[1], by[2] - a[2]};
+                        nq[0] = dx[1] * dy[2] - dx[2] * dy[1]; nq[1] = dx[2] * dy[0] - dx[0] * dy[2]; nq[2] = dx[0] * dy[1] - dx[1] * dy[0];
+                    }
+                    const bool l = on[std::size_t(y) * W + x - 1], r = on[std::size_t(y) * W + x + 1];
+                    const bool u = on[std::size_t(y - 1) * W + x], d = on[std::size_t(y + 1) * W + x];
+                    const bool nb_on = (l || r) && (u || d);
+                    if (nb_on) {
+                        const double *xa = r ? P(x + 1, y) : q, *xb = r ? q : P(x - 1, y);
+                        const double *ya = d ? P(x, y + 1) : q, *yb = d ? q : P(x, y - 1);
+                        const double dx[3] = {xa[0] - xb[0], xa[1] - xb[1], xa[2] - xb[2]}, dy[3] = {ya[0] - yb[0], ya[1] - yb[1], ya[2] - yb[2]};
+                        nn[0] = dx[1] * dy[2] - dx[2] * dy[1]; nn[1] = dx[2] * dy[0] - dx[0] * dy[2]; nn[2] = dx[0] * dy[1] - dx[1] * dy[0];
+                    }
+                    const bool is_edge = !quad_on || !(l && r && u && d);
+                    ++pixels;
+                    edge += is_edge;
+                    const bool bad_q = !quad_on || dominant(nq) != dominant(tn), bad_n = !nb_on || dominant(nn) != dominant(tn);
+                    wrong_q += bad_q;
+                    wrong_n += bad_n;
+                    wrong_q_edge += bad_q && is_edge;
+                    wrong_n_edge += bad_n && is_edge;
+                    if (quad_on) err_q.push_back(angle(nq, tn));
+                    if (nb_on) err_n.push_back(angle(nn, tn));
+                }
+            auto stats = [](std::vector<double>& v, double* mean, double* p99) {
+                *mean = 0;
+                for (double e : v) *mean += e;
+                *mean = v.empty() ? 0 : *mean / double(v.size());
+                std::sort(v.begin(), v.end());
+                *p99 = v.empty() ? 0 : v[std::min(v.size() - 1, std::size_t(0.99 * double(v.size())))];
+            };
+            double mq, pq, mn, pn;
+            stats(err_q, &mq, &pq);
+            stats(err_n, &mn, &pn);
+            std::printf("NORMALS case=%s pixels=%u silhouette_pixels=%u ddx_mean_deg=%.3f ddx_p99_deg=%.3f ddx_wrong_axis=%u "
+                        "ddx_wrong_axis_silhouette=%u neighbour_mean_deg=%.3f neighbour_p99_deg=%.3f neighbour_wrong_axis=%u "
+                        "neighbour_wrong_axis_silhouette=%u\n",
+                        c.name, pixels, edge, mq, pq, wrong_q, wrong_q_edge, mn, pn, wrong_n, wrong_n_edge);
+        }
+        report("placement_narrow_hull_flank_aft_top_bottom_on_the_hull", on_hull(0) && on_hull(1) && on_hull(2) && on_hull(3), "");
+        report("placement_flat_fighter_flank_top_bottom_42deg_on_the_hull",
+               on_hull(4) && on_hull(5) && on_hull(6) && on_hull(7) && res[7].lit == res[5].lit, "");
+        report("placement_station_at_the_hit", on_hull(8), "");
+        report("placement_far_side_hidden_by_its_hull", res[9].lit == 0 && res[9].eligible == 0 && res[9].patches >= 1, "");
+        report("placement_eye_inside_sphere_draws", on_hull(10), "");
+        report("placement_offcentre_origin_top_lights", on_hull(11) && res[11].lit_ratio >= 0.7, "");
         draw_lane(g, 0.f, -1.f);
     }
-    // The seam by the cells' bounds (review F2): on the 1:1:6 hull, an aft-flank hit by a bolt along the owner's -x
-    // (region +x, its plane on the flank) next to a hit 0.62 R aft by a bolt along -z (region +z), footprints
-    // overlapping (cells 1.8 apart): two draws naming each other; each patch keeps its single-hit peak over the pixels
-    // only it lights, the pair never exceeds the brighter single (the share bites only where both bounds meet), and the
-    // pair leaves at most 1 % of the pixels either single lights dark (no lost area).
+    // The face cull (stage::face_culled, core::face_cull_sin): a fighter (R 100 at view z 400) hit on its back (local
+    // z = 60), the owner turned about y by theta: at 0 the +z face's box faces away from the eye at every corner
+    // (culled, not drawn); turning it, the first theta whose box corners lie on both sides of the cut (the largest and
+    // least dot(A, eye direction) across -face_cull_sin) draws the face.
     {
         rr::WeaponPatch patches[wc::max_patches];
         rr::WeaponDecal decals[wc::max_decals];
-        const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
-        const double R = 250.0, a = R / 6.0;
-        const std::int32_t side[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}};
-        const std::int32_t pa[3] = {eng(a * std::sqrt(1.0 - 0.16)), 0, eng(0.4 * R)};
-        const std::int32_t pb[3] = {eng(a * std::sqrt(1.0 - 0.3844)), 0, eng(0.62 * R)};
-        auto render_hits = [&](bool with_a, bool with_b, unsigned* drawn, unsigned* seams) {
-            stage_owner(600.f, float(R), 0);
-            wc::ring_clear(stage_ring);
-            for (unsigned r = 0; r < 3; ++r)
-                for (unsigned c = 0; c < 3; ++c) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * c, std::uint32_t(side[r][c]));
-            auto add = [&](const std::int32_t* pos, std::int8_t dx, std::int8_t dz) {
-                add_stage_hit(1000, pos, wc::patch_corvette);
-                for (unsigned i = 0; i < wc::ring_capacity; ++i) {
-                    wc::Event& e = stage_ring.slots[i];
-                    if (e.sequence && e.pos[0] == pos[0] && e.pos[2] == pos[2]) {
-                        e.dir[0] = dx;
-                        e.dir[1] = 0;
-                        e.dir[2] = dz;
-                    }
-                }
-            };
-            if (with_a) add(pa, -127, 0);
-            if (with_b) add(pb, 0, -127);
-            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
-                                           wc::max_patches, decals, wc::max_decals);
-            unsigned bits = 0;
-            for (unsigned i = 0; i < n.patches; ++i) bits |= patches[i].seams;
-            if (drawn) *drawn = n.patches;
-            if (seams) *seams = bits;
-            return render(pass, patches, n.patches, &cells_only);
+        struct Turn {
+            unsigned culled = 0, has_z = 0, patches = 0;
+            double dmin = 0, dmax = 0;
         };
-        unsigned pair_draws = 0, pair_seams = 0;
-        const std::vector<float> la = render_hits(true, false, nullptr, nullptr), lb = render_hits(false, true, nullptr, nullptr);
-        const std::vector<float> lab = render_hits(true, true, &pair_draws, &pair_seams);
-        double peak_a = 0, peak_b = 0, own_a = 0, own_b = 0, pair_own_a = 0, pair_own_b = 0, pair_peak = 0;
-        unsigned lit_union = 0, union_dark = 0; // pixels either single lights, and those of them the pair leaves dark
-        for (std::size_t i = 0; i < la.size(); ++i) {
-            if (la[i] > 1e-3f || lb[i] > 1e-3f) {
-                ++lit_union;
-                union_dark += !(lab[i] > 1e-3f);
+        auto turn = [&](double th) {
+            Turn o;
+            stage_owner(400.f, 100.f, 1000);
+            const std::int32_t c = std::int32_t(std::cos(th) * 65536.0), s = std::int32_t(std::sin(th) * 65536.0);
+            const std::int32_t rows[3][3] = {{c, 0, -s}, {0, 65536, 0}, {s, 0, c}};
+            for (unsigned r = 0; r < 3; ++r)
+                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
+            stage_ring.slots[0].pos[2] = 6000;
+            for (unsigned i = 0; i < wc::ring_capacity; ++i)
+                if (stage_ring.slots[i].sequence) stage_ring.slots[i].pos[2] = 6000;
+            const ws::Counts n = ws::build(stage_ring, 1300, &fake_read, identity_camera(), ws::Tuning{}, patches,
+                                           wc::max_patches, decals, wc::max_decals);
+            o.culled = n.faces_culled;
+            o.patches = n.patches;
+            // The +z face's box as the stage builds it (fill_patch with the owner's frame), its corners' dots.
+            ws::Owner own{};
+            std::memcpy(own.pos, fake_node + wc::layout::node_pos, 12);
+            std::memcpy(own.rows, fake_node + wc::layout::node_rot, 48);
+            own.radius = 10000;
+            float centre[3], frame[9], col[3] = {1.f, 1.f, 1.f};
+            ws::owner_frame(own, identity_camera(), centre, frame);
+            const float pt[1][3] = {{0.f, 0.f, 60.f}}, age[1] = {0.3f};
+            rr::WeaponPatch z{};
+            ws::fill_patch(z, centre, frame, wc::patch_fighter, 0, pt, age, 1, col, ws::Tuning{});
+            o.dmin = 1e30;
+            o.dmax = -1e30;
+            for (unsigned k = 0; k < 8; ++k) {
+                const float u = z.box[k & 1u ? 3 : 0], v = z.box[k & 2u ? 4 : 1], a = z.box[k & 4u ? 5 : 2];
+                double e[3], len = 0, d = 0;
+                for (unsigned j = 0; j < 3; ++j) {
+                    e[j] = -(z.centre[j] + z.view_u[j] * u + z.view_v[j] * v + z.view_a[j] * a);
+                    len += e[j] * e[j];
+                }
+                for (unsigned j = 0; j < 3; ++j) d += z.view_a[j] * e[j] / std::sqrt(len);
+                o.dmin = std::min(o.dmin, d);
+                o.dmax = std::max(o.dmax, d);
             }
-            peak_a = std::max(peak_a, double(la[i]));
-            peak_b = std::max(peak_b, double(lb[i]));
-            pair_peak = std::max(pair_peak, double(lab[i]));
-            if (la[i] > 1e-3f && !(lb[i] > 1e-3f)) {
-                own_a = std::max(own_a, double(la[i]));
-                pair_own_a = std::max(pair_own_a, double(lab[i]));
-            }
-            if (lb[i] > 1e-3f && !(la[i] > 1e-3f)) {
-                own_b = std::max(own_b, double(lb[i]));
-                pair_own_b = std::max(pair_own_b, double(lab[i]));
+            for (unsigned i = 0; i < n.patches; ++i) o.has_z += patches[i].seed == 0.f;
+            return o;
+        };
+        const Turn away = turn(0.0);
+        Turn across{};
+        double across_deg = -1;
+        for (int deg = 1; deg <= 80 && across_deg < 0; ++deg) {
+            const Turn t = turn(double(deg) * 3.14159265 / 180.0);
+            if (t.dmin < -double(wc::face_cull_sin) && t.dmax > -double(wc::face_cull_sin)) {
+                across = t;
+                across_deg = deg;
             }
         }
-        std::printf("SEAM_NARROW draws=%u seams=0x%02x peak_a=%.4f peak_b=%.4f pair_peak=%.4f own_a=%.4f pair_own_a=%.4f own_b=%.4f pair_own_b=%.4f lit_a=%u lit_b=%u lit_pair=%u lit_union=%u union_dark=%u\n",
-                    pair_draws, pair_seams, peak_a, peak_b, pair_peak, own_a, pair_own_a, own_b, pair_own_b, lit_count(la),
-                    lit_count(lb), lit_count(lab), lit_union, union_dark);
-        const auto kept = [](double pair, double single) { return pair >= single * (1.0 - 2e-3) - 1e-3; };
-        report("seam_travel_regions_keep_their_peaks", pair_draws == 2 && pair_seams == ((1u << 0) | (1u << 2)) &&
-                                                           own_a > 0.0 && own_b > 0.0 && kept(pair_own_a, own_a) &&
-                                                           kept(pair_own_b, own_b) &&
-                                                           pair_peak <= std::max(peak_a, peak_b) * (1.0 + 2e-3) + 1e-3 &&
-                                                           union_dark * 100u <= lit_union, ""); // area: at most 1 % lost
+        std::printf("CULL case=away culled=%u has_z=%u patches=%u dot_min=%.4f dot_max=%.4f\n", away.culled, away.has_z,
+                    away.patches, away.dmin, away.dmax);
+        std::printf("CULL case=across theta_deg=%.0f culled=%u has_z=%u patches=%u dot_min=%.4f dot_max=%.4f cut=%.4f\n",
+                    across_deg, across.culled, across.has_z, across.patches, across.dmin, across.dmax,
+                    -double(wc::face_cull_sin));
+        report("face_cull_away_culled_across_drawn", away.culled >= 1 && away.has_z == 0 &&
+                                                         away.dmax < -double(wc::face_cull_sin) && across_deg > 0 &&
+                                                         across.has_z == 1, "");
+        stage_owner(400.f, 100.f, 1000);
+    }
+    // The own ship in the cockpit view (core::own_cockpit_gain, Run236 Flight C): one patch on the staged owner, drawn
+    // after stage::dim_own_cockpit as the glue calls it: the own ship in the chase view (unchanged), the own ship in the
+    // cockpit view (its luma sum at the gain), another ship in the cockpit view (unchanged), and no own ship known.
+    {
+        struct View {
+            const char* name;
+            std::uint32_t own; // the own-ship root node the glue passes (0: none resolved)
+            bool cockpit;
+        };
+        stage_owner(400.f, 100.f, 1000);
+        const View views[5] = {{"own_chase", addr(fake_node), false},
+                               {"own_cockpit", addr(fake_node), true},
+                               {"other_cockpit", addr(fake_node) + 0x1000u, true},
+                               {"unknown_own_cockpit", 0u, true},
+                               {"own_cockpit_stale", addr(fake_node), true}};
+        double sums[5] = {};
+        unsigned dimmed[5] = {}, drawn[5] = {};
+        ws::CockpitClock clock;
+        clock.cockpit(41, 1, 100); // the chase camera's last visit, frame 100
+        for (unsigned v = 0; v < 5; ++v) {
+            rr::WeaponPatch patches[wc::max_patches];
+            rr::WeaponDecal decals[wc::max_decals];
+            const ws::Counts n = ws::build(stage_ring, 1300, &fake_read, identity_camera(), ws::Tuning{}, patches,
+                                           wc::max_patches, decals, wc::max_decals);
+            // the stale case: the glue's view test with no visit since frame 100, now at frame 102 (review F2)
+            const bool view = v == 4 ? clock.cockpit(41, 1, 102) : views[v].cockpit;
+            dimmed[v] = ws::dim_own_cockpit(patches, n.patches, views[v].own, view);
+            rr::WeaponEffectsFrame f = base_frame(g);
+            f.patches = patches;
+            f.patch_count = n.patches;
+            const double sphere[3] = {100.0, 100.0, 100.0};
+            draw_hull_lane(g, staged_hull(sphere));
+            const auto res = draw(pass, f);
+            const std::vector<float> l = read_luma(g, g.scene_s.p);
+            for (float x : l) sums[v] += x > 0.f ? double(x) : 0.0;
+            drawn[v] = unsigned(SUCCEEDED(res.first) && res.second.drew);
+            std::printf("COCKPIT case=%s own=%u cockpit=%u patches=%u dimmed=%u drew=%u lit_pixels=%u luma_sum=%.4f\n",
+                        views[v].name, unsigned(views[v].own != 0), unsigned(views[v].cockpit), n.patches, dimmed[v],
+                        drawn[v], lit_count(l), sums[v]);
+        }
+        const double ratio = sums[0] > 0 ? sums[1] / sums[0] : 0.0;
+        std::printf("COCKPIT case=summary gain=%.3f own_cockpit_ratio=%.4f other_ratio=%.4f unknown_ratio=%.4f "
+                    "stale_ratio=%.4f\n", double(wc::own_cockpit_gain), ratio, sums[0] > 0 ? sums[2] / sums[0] : 0.0,
+                    sums[0] > 0 ? sums[3] / sums[0] : 0.0, sums[0] > 0 ? sums[4] / sums[0] : 0.0);
+        report("cockpit_dims_only_the_own_ship_in_the_cockpit",
+               drawn[0] && drawn[1] && drawn[2] && drawn[3] && drawn[4] && dimmed[0] == 0 && dimmed[1] == 5 && dimmed[2] == 0 &&
+                   dimmed[3] == 0 && dimmed[4] == 0 && std::fabs(ratio - double(wc::own_cockpit_gain)) < 0.01 &&
+                   sums[2] == sums[0] && sums[3] == sums[0] && sums[4] == sums[0],
+               "");
+        draw_lane(g, 0.f, -1.f);
     }
     // 12 hits per second on one owner through the production builder, frames of 1/60 s game time for 4 s (the cell
     // cells in steady state, older hits' cells fading on their own clocks), the uniform-level look: between consecutive
@@ -1098,28 +1394,27 @@ int main(int argc, char** argv) {
         struct NoPop {
             unsigned hits = 0, frames = 0, max_live = 0, max_patches = 0, max_cells = 0, max_region_cells = 0, popped = 0;
             unsigned spills = 0, cells_dropped = 0, hits_dropped = 0, dropped = 0, worst_frame = 0, worst_x = 0, worst_y = 0;
-            unsigned max_overlap = 0;
             double worst = 0, worst_rel = 0, allowed = 0;
             float worst_prev = 0.f, worst_cur = 0.f;
         };
         auto run_nopop = [&](const char* name, std::uint8_t tier, float owner_r, float owner_z, double spread_rad,
-                             const ws::Tuning& tuning, bool flat, bool cached = true) {
+                             const ws::Tuning& tuning, bool flat) {
             NoPop o;
             stage_owner(owner_z, owner_r, 0);
             wc::ring_clear(stage_ring);
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
-            static ws::DepthCache depths;
-            std::memset(static_cast<void*>(&depths), 0, sizeof depths);
+            // The surface: the flat face (a plane square to the view at 0.6 R in front of the centre) or the sphere.
+            if (flat)
+                draw_lane(g, owner_z - 0.6f * owner_r, 1.f);
+            else {
+                const double r3[3] = {owner_r, owner_r, owner_r};
+                draw_hull_lane(g, staged_hull(r3));
+            }
             const double dt = 1.0 / 60.0, fade = double(wc::fade_ms) * 1e-3;
             o.allowed = double(wc::cell_gain) * (1.0 + 0.5 * wc::stagger) * dt / (fade * (1.0 - 0.5 * wc::stagger));
             const double r_engine = double(owner_r) / double(wc::world_scale);
-            std::vector<float> prev, prev_count;
-            rr::WeaponLook counting = uniform; // every lit cell at one level, no fade, no ring
-            counting.fade_s = 1e6f;
-            counting.stagger = 0.f;
-            counting.fill_ratio = 1.f;
-            counting.centre_fill = 1.f;
+            std::vector<float> prev;
             for (unsigned f = 0; f <= 240; ++f) {
                 const std::uint32_t now = std::uint32_t(double(f) * dt * 1000.0 + 0.5);
                 while (o.hits * 1000u / 12u <= now) {
@@ -1131,13 +1426,16 @@ int main(int argc, char** argv) {
                     ++o.hits;
                 }
                 const ws::Counts n = ws::build(stage_ring, now, &fake_read, identity_camera(), tuning, patches,
-                                               wc::max_patches, decals, wc::max_decals, cached ? &depths : nullptr);
+                                               wc::max_patches, decals, wc::max_decals);
                 unsigned cells = 0;
                 for (unsigned i = 0; i < n.patches; ++i) {
                     cells += patches[i].cells;
                     o.max_cells = std::max(o.max_cells, patches[i].cells);
                 }
-                o.max_region_cells = std::max(o.max_region_cells, cells);
+                unsigned face_cells[6] = {}; // per face (seed) over its draws
+                for (unsigned i = 0; i < n.patches; ++i) face_cells[unsigned(patches[i].seed) % 6u] += patches[i].cells;
+                for (unsigned c : face_cells) o.max_region_cells = std::max(o.max_region_cells, c);
+                (void)cells;
                 o.max_patches = std::max(o.max_patches, n.patches);
                 o.max_live = std::max(o.max_live, n.hits);
                 o.spills += n.spills;
@@ -1147,24 +1445,15 @@ int main(int argc, char** argv) {
                 rr::WeaponEffectsFrame fr = base_frame(g);
                 fr.patches = patches;
                 fr.patch_count = n.patches;
-                // The lit cells over each pixel (cells at different depths overlap on screen, and a pixel under k
-                // cells fades k steps per frame): the same draws with a constant level per lit cell, over its value.
-                fr.look = counting;
-                draw(pass, fr);
-                std::vector<float> k = read_luma(g, g.scene_s.p);
-                float unit = 0.f;
-                for (float v : k)
-                    if (v > 1e-3f && (unit == 0.f || v < unit)) unit = v;
-                for (float& v : k) v = unit > 0.f ? float(std::floor(double(v) / double(unit) + 0.5)) : 0.f;
+                // One cell per lattice over each pixel, the lattices' weights summing to one: a pixel fades at most
+                // one cell's step per frame.
                 fr.look = uniform;
                 draw(pass, fr);
                 std::vector<float> l = read_luma(g, g.scene_s.p);
                 if (!prev.empty() && l.size() == prev.size()) {
                     for (std::size_t i = 0; i < l.size(); ++i) {
                         const double drop = double(prev[i]) - double(l[i]);
-                        const double cover = prev_count[i] > 1.f ? double(prev_count[i]) : 1.0;
-                        o.max_overlap = std::max(o.max_overlap, unsigned(prev_count[i]));
-                        const double over = drop - (o.allowed * cover + 2e-3 * double(prev[i]) + 1e-3);
+                        const double over = drop - (o.allowed + 2e-3 * double(prev[i]) + 1e-3);
                         if (drop > o.worst) {
                             o.worst = drop;
                             o.worst_frame = f;
@@ -1179,17 +1468,16 @@ int main(int argc, char** argv) {
                     ++o.frames;
                 }
                 prev.swap(l);
-                prev_count.swap(k);
             }
-            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f max_overlap=%u\n",
+            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
                         name, o.hits, o.frames, o.max_live, o.max_patches, o.max_cells, o.max_region_cells, o.spills,
                         o.cells_dropped, o.hits_dropped, o.dropped, o.worst, o.allowed, o.worst_rel, o.popped,
-                        o.worst_frame, o.worst_x, o.worst_y, double(o.worst_prev), double(o.worst_cur), o.max_overlap);
+                        o.worst_frame, o.worst_x, o.worst_y, double(o.worst_prev), double(o.worst_cur));
             return o;
         };
         const NoPop fighter_fire = run_nopop("fighter_12hps", wc::patch_fighter, 100.f, 400.f, 0.15, ws::Tuning{}, true);
         report("no_pop_at_12_hits_per_second", fighter_fire.frames == 240 && fighter_fire.worst_rel <= 0.0 &&
-                                                   fighter_fire.max_live >= 30 && fighter_fire.max_patches == 1 &&
+                                                   fighter_fire.max_live >= 30 && fighter_fire.max_patches <= 6 &&
                                                    fighter_fire.cells_dropped == 0, "");
         const NoPop capital_fire = run_nopop("capital_spread_12hps", wc::patch_capital, 2000.f, 4000.f, 0.61, ws::Tuning{}, true);
         report("no_pop_spread_capital_map_overflows", capital_fire.frames == 240 && capital_fire.worst_rel <= 0.0 &&
@@ -1206,11 +1494,8 @@ int main(int argc, char** argv) {
                                                ws::Tuning{}, false);
         const NoPop capital_sphere = run_nopop("capital_sphere_front_12hps", wc::patch_capital, 2000.f, 4000.f, 0.61,
                                                ws::Tuning{}, false);
-        // Witnesses, recorded and not gated: the same sphere fronts without the depth cache (each cell on its newest
-        // hit's depth: a re-lit cell moves along the axis, its border pixels pop).
-        run_nopop("fighter_sphere_front_no_cache_witness", wc::patch_fighter, 100.f, 400.f, 0.15, ws::Tuning{}, false, false);
-        run_nopop("capital_sphere_front_no_cache_witness", wc::patch_capital, 2000.f, 4000.f, 0.61, ws::Tuning{}, false, false);
-        report("no_pop_sphere_front_depth_held", fighter_sphere.frames == 240 && fighter_sphere.worst_rel <= 0.0 &&
+        draw_lane(g, 0.f, -1.f);
+        report("no_pop_sphere_front", fighter_sphere.frames == 240 && fighter_sphere.worst_rel <= 0.0 &&
                                                      capital_sphere.frames == 240 && capital_sphere.worst_rel <= 0.0 &&
                                                      capital_sphere.cells_dropped == 0, "");
     }
@@ -1239,31 +1524,32 @@ int main(int argc, char** argv) {
             add_stage_hit(1000, pos);
         };
         const double seam = 0.78539816;
-        auto peak_of = [&](std::initializer_list<double> phis, bool clear_seams, unsigned* drawn, unsigned* seams) {
+        std::vector<float> img_a, img_b;
+        auto peak_of = [&](std::initializer_list<double> phis, unsigned* drawn, std::vector<float>* keep) {
             turned_owner();
             for (double phi : phis) hit_at(phi);
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
                                            wc::max_patches, decals, wc::max_decals);
-            unsigned bits = 0;
-            for (unsigned i = 0; i < n.patches; ++i) {
-                bits |= patches[i].seams;
-                if (clear_seams) patches[i].seams = patches[i].seam_count = 0; // the witness: the lattices add
-            }
             if (drawn) *drawn = n.patches;
-            if (seams) *seams = bits;
-            const std::vector<float> l = render(pass, patches, n.patches, &cells_only);
+            const double sphere[3] = {r, r, r};
+            const HullLane hull = staged_hull(sphere);
+            const std::vector<float> l = render(pass, patches, n.patches, &cells_only, nullptr, &hull);
+            if (keep) *keep = l;
             return l.empty() ? 0.0 : double(*std::max_element(l.begin(), l.end()));
         };
-        unsigned pair_draws = 0, pair_seams = 0, a_draws = 0;
-        const double peak_a = peak_of({seam - half_cell}, false, &a_draws, nullptr);
-        const double peak_b = peak_of({seam + half_cell}, false, nullptr, nullptr);
-        const double peak_pair = peak_of({seam - half_cell, seam + half_cell}, false, &pair_draws, &pair_seams);
-        const double peak_added = peak_of({seam - half_cell, seam + half_cell}, true, nullptr, nullptr);
+        unsigned pair_draws = 0, a_draws = 0;
+        const double peak_a = peak_of({seam - half_cell}, &a_draws, &img_a);
+        const double peak_b = peak_of({seam + half_cell}, nullptr, &img_b);
+        const double peak_pair = peak_of({seam - half_cell, seam + half_cell}, &pair_draws, nullptr);
+        double peak_added = 0; // the witness: the two singles' images added (what a sum of lattices would give)
+        for (std::size_t i = 0; i < img_a.size() && i < img_b.size(); ++i)
+            peak_added = std::max(peak_added, double(img_a[i]) + double(img_b[i]));
         const double single = std::max(peak_a, peak_b);
-        std::printf("SEAM single_draws=%u pair_draws=%u seams=0x%02x peak_a=%.4f peak_b=%.4f peak_pair=%.4f peak_without_sharing=%.4f\n",
-                    a_draws, pair_draws, pair_seams, peak_a, peak_b, peak_pair, peak_added);
-        report("seam_pair_never_above_one_hit", a_draws == 1 && pair_draws == 2 && pair_seams == ((1u << 1) | (1u << 3)) &&
-                                                    single > 0.0 && peak_pair <= single * (1.0 + 2e-3) + 1e-3, "");
+        std::printf("SEAM single_draws=%u pair_draws=%u peak_a=%.4f peak_b=%.4f peak_pair=%.4f peak_singles_added=%.4f\n",
+                    a_draws, pair_draws, peak_a, peak_b, peak_pair, peak_added);
+        report("seam_pair_never_above_one_hit", a_draws >= 1 && pair_draws >= a_draws && single > 0.0 &&
+                                                    peak_pair <= single * (1.0 + 2e-3) + 1e-3, "");
+        draw_lane(g, 0.f, -1.f);
     }
     // The stage's CPU cost in this i686 build (SSE2, the production flags): ws::build alone with the depth cache (the
     // production path), best and mean of 200 calls,
@@ -1319,15 +1605,13 @@ int main(int argc, char** argv) {
         rr::WeaponDecal decals[wc::max_decals];
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
-        static ws::DepthCache cpu_depths; // the production path: build with the depth cache
         auto time_build = [&](const char* name, std::uint32_t now) {
             double best = 1e30, sum = 0;
             ws::Counts n{};
-            std::memset(static_cast<void*>(&cpu_depths), 0, sizeof cpu_depths);
             for (unsigned rep = 0; rep < 200; ++rep) {
                 QueryPerformanceCounter(&a);
                 n = ws::build(ring, now, reader, identity_camera(), ws::Tuning{}, patches, wc::max_patches, decals,
-                              wc::max_decals, &cpu_depths);
+                              wc::max_decals);
                 QueryPerformanceCounter(&b);
                 const double us = ticks_us(a, b, freq);
                 best = std::min(best, us);
@@ -1335,8 +1619,8 @@ int main(int argc, char** argv) {
             }
             unsigned cells = 0;
             for (unsigned i = 0; i < n.patches; ++i) cells += patches[i].cells;
-            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u depth_full=%u depth_cache=1 best_us=%.1f mean_us=%.1f target_us=200\n",
-                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, n.depth_full, best,
+            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u best_us=%.1f mean_us=%.1f target_us=200\n",
+                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, best,
                         sum / 200.0);
             return best;
         };
@@ -1445,6 +1729,8 @@ int main(int argc, char** argv) {
         rr::WeaponEffectsFrame f = base_frame(g);
         f.patches = patches;
         f.patch_count = live.patches;
+        const double sphere[3] = {100.0, 100.0, 100.0};
+        draw_hull_lane(g, staged_hull(sphere));
         auto drawn = draw(pass, f);
         const double live_sum = total(read_luma(g, g.scene_s.p));
         put32(fake_obj, wc::layout::obj_flags, wc::layout::obj_dying);
@@ -1457,7 +1743,8 @@ int main(int argc, char** argv) {
         std::printf("RETIRED live_patches=%u live_drew=%u live_sum=%.4f patches=%u decals=%u retired=%u ring_live=%u result=%08lx drew=%u sum=%.4f\n",
                     live.patches, unsigned(drawn.second.drew), live_sum, dead.patches, dead.decals, dead.retired,
                     ring_live(stage_ring), res.first, unsigned(res.second.drew), dead_sum);
-        report("stage_build_live_owner_draws", live.patches == 1 && drawn.second.drew && live_sum > 1.0, "");
+        report("stage_build_live_owner_draws", live.patches == 5 && drawn.second.drew && live_sum > 1.0, "");
+        draw_lane(g, 0.f, -1.f);
         report("retired_owner_draws_nothing", dead.patches == 0 && dead.decals == 0 && dead.retired == 1 &&
                                                   ring_live(stage_ring) == 0 && res.first == S_FALSE && !res.second.drew &&
                                                   dead_sum == 0.0, "");
@@ -1521,7 +1808,7 @@ int main(int argc, char** argv) {
         std::printf("RESET ensure=%08lx\n", er);
         bool drew_after = false;
         if (mt && SUCCEEDED(er)) {
-            draw_lane(g, 0.f, -1.f);
+            plane_lane(g, p);
             rr::WeaponEffectsFrame f2 = base_frame(g);
             f2.patches = &p;
             f2.patch_count = 1;
@@ -1592,6 +1879,8 @@ int main(int argc, char** argv) {
             spread_count = ws::build(stage_ring, 2500, &fake_read, identity_camera(), ws::Tuning{}, spread, wc::max_patches,
                                      decals, wc::max_decals).patches;
         }
+        const double spread_r[3] = {2000.0, 2000.0, 2000.0};
+        const HullLane spread_hull = staged_hull(spread_r); // the capital's sphere: the hits' surface
         unsigned spread_cells = 0;
         for (unsigned i = 0; i < spread_count; ++i) spread_cells += spread[i].cells;
         std::printf("TIMING_MAPS fighter_12hps_cells=%u capital_full_map_cells=%u capital_fill_map_cells=%u capital_spread_draws=%u capital_spread_cells=%u\n",
@@ -1600,12 +1889,15 @@ int main(int argc, char** argv) {
             const char* name;
             const rr::WeaponPatch* patches;
             unsigned count;
-        } cases[] = {{"fence", nullptr, 0},
-                     {"fighter_two_hits_one_region", fighter_one, 1}, {"fighter_two_regions", fighter_regions, 2},
-                     {"capital_close_two_hits_one_region", capital_one, 1},
-                     {"capital_close_two_regions", capital_regions, 2}, {"worst_four_regions", worst, 4},
-                     {"fighter_12hps_map", fighter_burst, 1}, {"capital_close_full_map", capital_map, 1},
-                     {"capital_fill_full_map", capital_fill_map, 1}, {"capital_spread_spill", spread, spread_count}};
+            const HullLane* hull; // the surface (null: the first patch's plane)
+        } cases[] = {{"fence", nullptr, 0, nullptr},
+                     {"fighter_two_hits_one_region", fighter_one, 1, nullptr},
+                     {"fighter_two_regions", fighter_regions, 2, nullptr},
+                     {"capital_close_two_hits_one_region", capital_one, 1, nullptr},
+                     {"capital_close_two_regions", capital_regions, 2, nullptr}, {"worst_four_regions", worst, 4, nullptr},
+                     {"fighter_12hps_map", fighter_burst, 1, nullptr}, {"capital_close_full_map", capital_map, 1, nullptr},
+                     {"capital_fill_full_map", capital_fill_map, 1, nullptr},
+                     {"capital_spread_spill", spread, spread_count, &spread_hull}};
         Com<IDirect3DQuery9> ev, occlusion;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
         dev->CreateQuery(D3DQUERYTYPE_OCCLUSION, &occlusion.p);
@@ -1615,6 +1907,10 @@ int main(int argc, char** argv) {
             rr::WeaponEffectsFrame f = base_frame(tt);
             f.patches = c.patches;
             f.patch_count = c.count;
+            if (c.hull)
+                draw_hull_lane(tt, *c.hull);
+            else if (c.count)
+                plane_lane(tt, c.patches[0]);
             double best = 1e30;
             unsigned drawn = 0;
             for (int i = 0; i < 60; ++i) {

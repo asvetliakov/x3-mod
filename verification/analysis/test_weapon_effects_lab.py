@@ -457,6 +457,56 @@ console.log(JSON.stringify(out));
         self.assertIn('ours > 0 ? ours + 250 : 0', self.html)        # loopMs takes our patch into account
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_from_above_presets_and_own_ship_cockpit(self):
+        """Run236: the hulls seen from above and below light their +y / -y face around the canvas centre (the screen-
+        space patch on the hull under the hit, never the opposite face); Flight C: the own ship in the cockpit view
+        draws at own_cockpit_gain, in the chase view and for another ship unchanged."""
+        probe = self.ours_script() + self.CONTROLS + r'''
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const render = () => {
+  const data = new Uint8ClampedArray(W * H * 4);
+  renderOurs({slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data}; }, putImageData() {}}, weapon: {}}, 400);
+  const side = [0, 0, 0, 0];
+  let blue = 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (data[(y * W + x) * 4 + 2] > 0) {
+    if (x + 0.5 < W / 2) side[0]++; else side[1]++;
+    if (y + 0.5 < H / 2) side[2]++; else side[3]++;
+    blue += data[(y * W + x) * 4 + 2];
+  }
+  const c = ourControls(), hull = previewHull(c), S = hull.S, cell = c.cell_m[c.tier];
+  const seeds = patchDraws(hitSequence(400, c, S, cell), S, c).map(d => d.seed);
+  return {side, blue, seeds};
+};
+const out = {};
+for (const hull of ['narrow_top', 'flat_top', 'flat_bottom']) { vals.c_hull = hull; out[hull] = render(); }
+vals.c_hull = 'flat_top';
+checks.c_own = true; out.own_chase = render();
+checks.c_cockpit = true; out.own_cockpit = render();
+checks.c_own = false; out.other_cockpit = render();
+out.gain = HEADER.own_cockpit_gain;
+checks.c_cockpit = false;
+vals.c_hull = 'sphere'; out.sphere = render().seeds;
+console.log(JSON.stringify(out));
+'''
+        js = self.run_node(probe)
+        for hull, seed in (('narrow_top', 4), ('flat_top', 4), ('flat_bottom', 5)):
+            side = js[hull]['side']
+            self.assertIn(seed, js[hull]["seeds"], hull)                # the face on the hit's side (the normal picks)
+            self.assertGreater(min(side), 100, hull)
+            self.assertGreaterEqual(min(side[0], side[1]) / max(side[0], side[1]), 0.9, hull)
+            if hull != 'narrow_top':  # 40 % aft the top falls away along z: the soft fade cuts the half towards the centre
+                self.assertGreaterEqual(min(side[2], side[3]) / max(side[2], side[3]), 0.9, hull)
+        self.assertEqual(js['own_chase']['blue'], js['flat_top']['blue'])
+        self.assertEqual(js['other_cockpit']['blue'], js['flat_top']['blue'])
+        self.assertLess(js['own_cockpit']['blue'], 0.95 * js['own_chase']['blue'])  # 1 - exp, sRGB: dimmer, not x gain
+        self.assertAlmostEqual(js['gain'], 0.35)
+        self.assertEqual(sorted(js['sphere']), [0, 1, 2, 3, 4, 5])  # review F1: every hit on both faces of every axis
+        self.assertNotIn('id="c_tilt"', self.html)
+        self.assertIn('id="c_own"', self.html)
+        self.assertIn('id="c_cockpit"', self.html)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_cell_map_holds_clocks_at_12_hits_per_second(self):
         """The lab's cell map under the 12 hits/s player at 60 frames per second for 4 s: a cell's clock never jumps
         ahead by more than the frame (no pop: it fades on its own clock or is reset by a newer hit), a shared cell is

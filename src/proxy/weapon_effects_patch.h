@@ -55,7 +55,8 @@ struct StageFrame {
     // stage::Counts' drops: regions or decals the budget refused, lit cells no draw carried (the oldest clocks), live
     // hits past an owner's owner_hits newest; and the regions' spill draws.
     unsigned dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
-    unsigned depth_full = 0; // drawn lit cells the stage's depth cache had no room for
+    unsigned faces_culled = 0; // face draws the stage culled (their box faces away from the eye)
+    unsigned area_dropped = 0; // face draws past the frame's screen-area budget
     float stage_us = 0.f;
     bool drew = false;
 };

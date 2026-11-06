@@ -12,10 +12,10 @@ Builds verification/probe/weapon_effects_fixture.cpp with the production WeaponE
 match its source and header), runs it once and writes the record: the build, the checkout's commit and the production
 sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
 radius and edge count per tier with the symmetry counts, the centre cell over a ring cell, ring front at two ages, the
-fade, the colour bands, re-light and four-hit accumulation, the placement at the recorded hit point (narrow hull,
-the Flight B station, the far side, the eye inside the bounding sphere, the aft-flank witness), the no-pop runs (fighter
-and spread capital on a flat face, the one-draw eviction and sphere-front witnesses, each with its worst pixel), the
-seam pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
+fade, the colour bands, re-light and four-hit accumulation, the screen-space placement on hull lanes (narrow and flat
+hulls from every side, the Flight B station, the far side, the eye inside the bounding sphere) with the normal errors,
+the surface case, the no-pop runs (fighter and spread capital on a flat face, the one-draw eviction witness, the
+sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
 and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
 fighter, two on a capital at close range, the worst case of one owner). Never launches the game.
@@ -122,7 +122,7 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
-            'PLACEMENT', 'PLACEMENT_AFT', 'SEAM_NARROW', 'SOFT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+            'PLACEMENT', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
@@ -245,7 +245,7 @@ def main():
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
-                                                 'colour', 'relight', 'adjacent', 'placement', 'placement_aft', 'seam_narrow', 'soft', 'grid', 'nopop', 'seam',
+                                                 'colour', 'relight', 'adjacent', 'placement', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]

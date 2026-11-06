@@ -16,22 +16,21 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "77ec76056efab86e2bdb3e048e7078c1812abef2-dirty",
+    "commit": "1f9c065980b56537a121af0921045754e1849b52-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "verification/probe/weapon_effects_hook_fixture.cpp"
+      "src/proxy/weapon_effects_patch.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "afc5631e9f59ad7a4ccfe904ec53d54a2af31aa8a5c4631eaa559fa7c5d4eeeb",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "b93d5d3f8a17cbba5102d28fc6cf13da61c93a6d494cf10dc6f1e4c404986fb8",
-      "src/proxy/weapon_effects_patch.cpp": "bc98e40e22425a0f58cf3b5edee28b91d1e57f11c53d4b2383352acea94d0540",
-      "src/proxy/weapon_effects_patch.h": "dd27ba58e65577f521c0a44bcbb1f6f72ec9277a9939f74139f36a7ad0bc32f2",
+      "src/proxy/weapon_effects_patch.cpp": "26724164c542fb0f82245a71a88b5e7f97fb6dc576b3923c614248e89c89260e",
+      "src/proxy/weapon_effects_patch.h": "052bfeb5b5fb798a0790fa5810f4386e94231f6e096b53536d5cf99558807657",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "5e4d7f30cd083622f799d588867d2d798cf028ec09efb9f97af7675a5e8d07e8",
+      "src/proxy/weapon_effects_core.h": "82793ee5bbb754d9fc64434d328c21719230b06925224f55f2378d256260f3d2",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_table.h": "91b861b8d809c312ee1ed2f946310c855531402993ce1c1b0792764f139d42b4",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
@@ -78,7 +77,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "42c4be40ab7bd36ef8c5f11611f799f9dfa7932417b4eff06ac9588a20c1fe37"
+    "executable_sha256": "048e64b742681a6468099580334f89dfe28b02bca0aa94e13ce993d55c9bbb43"
   },
   "host": {
     "name": "native-windows",
@@ -468,8 +467,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00857640",
     "esp_callee": "00857634",
-    "return": "00f46d8a",
-    "site": "00f46d85"
+    "return": "00d66d8a",
+    "site": "00d66d85"
   },
   "stack_depth": {
     "bytes": 232,
@@ -520,8 +519,8 @@
     "events": 50,
     "shields": 6,
     "best_us": 17.2,
-    "median_us": 22.5,
-    "worst_us": 25.6,
+    "median_us": 17.2,
+    "worst_us": 22.4,
     "target_us": 30
   },
   "passed": true

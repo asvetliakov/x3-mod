@@ -4306,7 +4306,6 @@ void MotionOutput::before_reset() noexcept {
 #if !X3M_EDITION_FL
     if (weapon_requested_) {
         weapon_effects::clear_owned();
-        clear_weapon_depths(); // the held depths go with the records
     }
 #endif
     own_sun_lane_ = nullptr;

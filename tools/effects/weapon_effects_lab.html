@@ -91,7 +91,9 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>shield % <input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></label>
   <label>drain %/hit <input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></label>
   <label>frame <select id="c_frame"><option value="patch">patch</option><option value="ship">whole owner</option></select></label>
-  <label>hull <select id="c_hull" title="the preview owner: a sphere, or a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option></select></label>
+  <label>hull <select id="c_hull" title="the preview owner: a sphere, a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft or on its top from above, or a flat fighter (6:1:4) hit from above or below"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option><option value="narrow_top">narrow, from above (top 40 % aft)</option><option value="flat_top">flat fighter 6:1:4, from above</option><option value="flat_bottom">flat fighter 6:1:4, from below</option></select></label>
+  <label title="the preview owner is the player's own ship (5.1.1, Run236 Flight C)"><input id="c_own" type="checkbox"> own ship</label>
+  <label title="the view is the cockpit: the own ship's patch draws at own_cockpit_gain (the chase view and every other ship unchanged)"><input id="c_cockpit" type="checkbox"> cockpit view</label>
   <button id="c_reset" type="button">reset to header</button>
   </fieldset>
 </header>
@@ -148,20 +150,20 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
         triangles per scene, shared by its parts.</li>
       <li>A missing body is a dashed circle of the element size; a missing Effects row is named in the slot.</li>
       <li>Ours, impact slot (docs/architecture/weapon-effects.md 5.1.1): the shield-hit hex patch on a preview owner (a
-        sphere of 15 / 60 / 300 m for the three tiers, its front facing the camera, or a narrow hull of half-extents
-        1:1:6 seen side on, hit on its flank's middle or 40 % aft), drawn in addition to the vanilla impact on the left
-        (the native sprite stays in the game). The hits land on the preview hull, every bolt arriving from the camera,
-        and the patch sits at them: the patch law, the cell hash, the planar lattice of each of the six axis regions
-        (the plane perpendicular to the owner axis facing the bolt: the largest |dot| against its travel, signed against
-        it), the per-region cells (each hit lights the cell containing its projection and its rings of neighbours, each
-        cell on the clock and level of the newest hit that lit it and at the depth it was first lit at,
-        drawn as a flat hexagon at that depth, both faces, cut where the hull lies more than a soft radius in front of
-        it), the ring of the newest hits, the eviction of the oldest clocks past the region's draws and the light shared
-        across a region seam are the HLSL's and the stage's (<code>weapon_hex_patch.hlsl</code>,
-        <code>weapon_effects_stage.h</code>) in double precision (the GPU's float hash differs below 1e-3).
-        <b>Approximated</b>: the edge anti-aliasing uses forward differences per pixel for the GPU's quad
-        <code>fwidth</code>; the first-lit depth comes from the live hits (the DLL holds it in its depth cache until the
-        cell fades, past the oldest record's life); the hull depth is the preview ellipsoid's (the game's is the depth lane); the narrow hull
+        sphere of 15 / 60 / 300 m for the three tiers, its front facing the camera, a narrow hull of half-extents
+        1:1:6 seen side on (its flank's middle or 40 % aft) or from above, or a flat fighter of 6:1:4 from above or
+        below), drawn in addition to the vanilla impact on the left (the native sprite stays in the game). The hits land
+        on the preview hull, every bolt arriving from the camera, and the patch is laid on the hull as the screen-space
+        decal of the DLL: per pixel the hull's point and its normal (the 2x2 quad's differences of the hull depth), per
+        face of the six (the owner's +-z, +-x, +-y lattices) its triplanar share (the outward normal's component, sharpened
+        and floored), the pixel's cell on that face's lattice, lit when the face's cell set holds it within the extent of
+        the cell's anchor hit along the axis. The patch law, the cell hash, the face cell sets (each hit lights the cells
+        of its footprint on every face, each cell on the clock and level of the newest hit that lit it), the
+        ring of the newest hits and the eviction of the oldest clocks past a face's draws are the HLSL's and the stage's
+        (<code>weapon_hex_patch.hlsl</code>, <code>weapon_shell_ps.hlsl</code>, <code>weapon_effects_stage.h</code>) in
+        double precision (the GPU's float hash differs below 1e-3).
+                <b>Approximated</b>: the edge anti-aliasing uses forward differences per pixel for the GPU's quad
+        <code>fwidth</code>; the hull depth is the preview ellipsoid's (the game's is the depth lane); the narrow hull
         is shaded dimly so its shape shows; the radiance is shown as 1 - e<sup>-x</sup> per channel added to the
         background in linear light (the game goes through its HDR, TAA and tonemap chain); the lifetime follows the
         controls (the DLL uses the header's <code>patch_lifetime_ms</code>); the colour pickers hold the header's linear
@@ -203,6 +205,9 @@ const HEADER = {
   weapon_tint: 0.0,
   tint_mix: 0.0,
   soft: 1.0,
+  own_cockpit_gain: 0.35,
+  triplanar_sharpness: 8.0,
+  triplanar_floor: 0.3,
   tracer_min_elongation: 4.0,
   slug_min_elongation: 1.5,
   cell_key_bias: 2048,
@@ -239,14 +244,13 @@ const images = {};
 const prepCache = {};
 
 // ---------------------------------------------------------------- our renderer: the shield-hit hex patch (5.1.1)
-// The impact slot draws the hex patch on a preview owner (a sphere of the tier's preview radius, or a narrow hull of
-// half-extents 1:1:6) with the same law as src/effects/weapon_hex_patch.hlsl and the same cells as
-// src/proxy/weapon_effects_stage.h (fill_region: per owner and axis region the cells lit by its live hits in the
-// region's lattice plane, each cell on the clock, level (centre or ring) and depth of the newest hit that lit it, drawn
-// as a flat hexagon at that depth, both faces, cut by the soft fade where the hull lies in front of it; the oldest
-// clocks dropped past PATCH_CELLS x REGION_DRAWS; the region's newest hits in their ring carry the ring; link_seams
-// shares the light across a seam); every length is in metres (the GPU's view units are 5 per metre; the law is
-// scale-free). The other slots stay native in step 1.
+// The impact slot draws the hex patch on a preview owner (a sphere of the tier's preview radius, a narrow hull of
+// 1:1:6 or a flat fighter of 6:1:4) with the same law as src/effects/weapon_hex_patch.hlsl, the same cells as
+// src/proxy/weapon_effects_stage.h (fill_region per face: the cells lit by the owner's live hits in its lattice plane, each cell on the clock and level (centre or ring) of the newest hit that lit it, anchored at the
+// nearest covering hit; the oldest clocks dropped past PATCH_CELLS x REGION_DRAWS; the face's newest hits in their ring
+// carry the ring) and the same screen-space placement as src/effects/weapon_shell_ps.hlsl (the hull under the pixel,
+// its normal, the faces' triplanar shares); every length is in metres (the GPU's view units are 5 per metre; the law is
+// // scale-free). The other slots stay native in step 1.
 const PATCH_TIERS = ['fighter', 'corvette', 'capital'];
 const PREVIEW_OWNER_M = [15, 60, 300];
 const CELL_KEY_BIAS = HEADER.cell_key_bias, PATCH_CELLS = HEADER.patch_cells, PATCH_HITS = HEADER.patch_hits;
@@ -274,7 +278,8 @@ function ourControls() {
                   empty: hexToLinear($('c_colour_empty').value)},
           weapon_tint: n('c_weapon_tint'), seta: +$('c_seta').value, hits: +$('c_hits').value, tier: +$('c_tier').value,
           shield: n('c_shield') / 100, drain: n('c_drain') / 100, frame: $('c_frame').value,
-          hull: ($('c_hull') && $('c_hull').value) || 'sphere'};
+          hull: ($('c_hull') && $('c_hull').value) || 'sphere',
+          own: !!($('c_own') && $('c_own').checked), cockpit: !!($('c_cockpit') && $('c_cockpit').checked)};
 }
 // The record's game-time life (core::patch_lifetime_ms from the controls): the ring reaches the rim, then the slowest
 // cell fades out.
@@ -307,27 +312,11 @@ function shieldColour(f, b) {
 const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const norm3 = a => { const n = Math.hypot(a[0], a[1], a[2]); return n > 1e-12 ? a.map(v => v / n) : null; };
 const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-// stage::anchor_frame (the six axis regions, each a lattice plane perpendicular to its axis) and core::hit_region
-// (the axis nearest to the hit's radial direction: +z, -z, +x, -x, +y, -y, the first of equal components).
+// stage::anchor_frame: the six faces +z, -z, +x, -x, +y, -y, each a lattice plane perpendicular to its axis.
 function anchorFrame(k) {
   const i = (2 + (k >> 1)) % 3, j = (i + 1) % 3, a = [0, 0, 0], u = [0, 0, 0];
   a[i] = (k & 1) ? -1 : 1; u[j] = 1;
   return {a, u, v: cross3(a, u), seed: k};
-}
-function hitRegion(p) {
-  const c = [p[2], -p[2], p[0], -p[0], p[1], -p[1]];
-  let best = 0;
-  for (let k = 1; k < 6; k++) if (c[k] > c[best]) best = k;
-  return best;
-}
-// core::travel_region: the owner axis with the largest |dot| against the bolt's travel t (owner frame), signed against
-// it (the plane faces the incoming bolt); -1 without a travel.
-function travelRegion(t) {
-  if (!t || !(Math.abs(t[0]) + Math.abs(t[1]) + Math.abs(t[2]) > 0)) return -1;
-  const axis = [2, 0, 1];
-  let best = 0;
-  for (let r = 1; r < 3; r++) if (Math.abs(t[axis[r]]) > Math.abs(t[axis[best]])) best = r;
-  return 2 * best + (t[axis[best]] > 0 ? 1 : 0);
 }
 // weapon_hex_patch.hlsl hex_hash / hex_cell.
 const fract = x => x - Math.floor(x);
@@ -356,10 +345,10 @@ const unpackKey = key => [Math.floor(key / 4096) - CELL_KEY_BIAS, key % 4096 - C
 // oldest lighting of the unbroken run of lightings, each before the previous one's own fade ended); a ring hit (the
 // newest PATCH_HITS younger than the ring's travel) also carries its footprint cells not reached yet (since < 0: not
 // lit, at its depth); past room cells (PATCH_CELLS x REGION_DRAWS) the oldest clocks are dropped.
-function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS, seed = 0) {
+function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS, seed = 0) { // eslint-disable-line no-unused-vars
   const radius = (rings + 0.5) * cell, reach = rings * cell, v = c.ripple_speed * radius;
   const ringLife = 1 / c.ripple_speed, maxSince = c.fade_s * (1 + 0.5 * c.stagger);
-  const all = new Map(), hits = [], lit = new Map();
+  const all = new Map(), hits = [];
   planeHits.forEach((h, i) => {
     const cl = hexCell(h.q[0] / cell, h.q[1] / cell), depth = h.depth || 0;
     const centre = [(h.q[0] / cell - cl.lx) * cell, (h.q[1] / cell - cl.ly) * cell];
@@ -374,18 +363,12 @@ function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS,
         const since = h.age - cell * Math.hypot(0.5 * dx, 0.8660254 * dy) / v;
         if (since > maxSince || (since < 0 && !ringHit)) continue;
         const key = packKey(kx, ky), had = all.get(key);
-        if (!had) all.set(key, {since, centre: !dx && !dy, hit: i, depth});
-        else if (since >= 0 && (had.since < 0 || since < had.since)) all.set(key, {since, centre: !dx && !dy, hit: i, depth});
-        if (since >= 0) { if (!lit.has(key)) lit.set(key, []); lit.get(key).push({since, depth}); }
+        const d2 = (0.5 * kx * cell - h.q[0]) ** 2 + (0.8660254 * ky * cell - h.q[1]) ** 2;
+        if (!had) { all.set(key, {since, centre: !dx && !dy, hit: i, depth, d2}); continue; }
+        if (since >= 0 && (had.since < 0 || since < had.since)) { had.since = since; had.centre = !dx && !dy; }
+        if (d2 < had.d2) { had.d2 = d2; had.hit = i; had.depth = depth; } // the anchor: the nearest covering hit
       }
   });
-  for (const [key, events] of lit) { // the first depth of the unbroken run ending at the newest lighting
-    const [kx, ky] = unpackKey(key), fade = c.fade_s * (1 + c.stagger * (hexHash(kx, ky, seed)[1] - 0.5));
-    events.sort((x, y) => x.since - y.since);
-    let k = 0;
-    while (k + 1 < events.length && events[k + 1].since - events[k].since < fade) k++;
-    all.get(key).depth = events[k].depth;
-  }
   let kept = [...all.entries()], dropped = 0;
   if (kept.length > room) {
     kept = kept.map((e, order) => [e, order]).sort((x, y) => x[0][1].since - y[0][1].since || x[1] - y[1]).map(x => x[0]);
@@ -420,23 +403,38 @@ function hexLaw(q, cl, fw, d, c) {
   const cells = since >= 0 ? Math.max(0, Math.min(1, 1 - since * invFade)) : 0;
   return bright * cells + HEADER.ring_gain * pattern * ring;
 }
-// The preview owner (owner frame, metres): a sphere of the tier's radius S, or a narrow hull, an ellipsoid of
-// half-extents S / 6, S / 6, S (1:1:6, its bounding radius S along its z) seen side on. hullPoint: the hull point at
-// owner-frame (y, z) on the face toward the camera (the sphere's -z, the narrow hull's -x flank).
+// The preview owner (owner frame, metres): a sphere of the tier's radius S; a narrow hull, an ellipsoid of half-extents
+// S / 6, S / 6, S (1:1:6, its bounding radius S along its z) seen side on or from above; or a flat fighter, half-extents
+// S, S / 6, 2 S / 3 (6:1:4) seen from above or below. The face toward the camera is owner axis f on its `sign` side,
+// its coordinates (a, b) along axes (ia, ib); hullPoint gives the hull point there. Every rotation has det +1.
 function previewHull(c) {
   const S = PREVIEW_OWNER_M[c.tier];
-  if (!c.hull.startsWith('narrow')) return {S, ext: [S, S, S], narrow: false, aim: [0, 0], toView: p => p, toLocal: v => v};
-  // owner x -> view -z (its +x flank faces the camera, a bolt from the camera travels along -x), y -> y, z -> view +x
-  // (det +1); the aim on the flank's middle or 40 % of the half-length aft
-  return {S, ext: [S / 6, S / 6, S], narrow: true, aim: [0, c.hull === 'narrow_aft' ? 0.4 * S : 0],
-          toView: p => [p[2], p[1], -p[0]], toLocal: v => [-v[2], v[1], v[0]]};
+  const id = p => p;
+  const hulls = {
+    // owner x -> view -z (its +x flank faces the camera, a bolt from the camera travels along -x), y -> y, z -> view +x
+    narrow: {ext: [S / 6, S / 6, S], f: 0, ia: 1, ib: 2, aim: [0, 0], toView: p => [p[2], p[1], -p[0]],
+             toLocal: v => [-v[2], v[1], v[0]], name: 'narrow hull 1:1:6'},
+    // owner +y -> view -z (the top faces the camera, a bolt from the camera travels along -y), x -> x, z -> view +y
+    narrow_top: {ext: [S / 6, S / 6, S], f: 1, ia: 0, ib: 2, aim: [0, 0.4 * S], toView: p => [p[0], p[2], -p[1]],
+                 toLocal: v => [v[0], -v[2], v[1]], name: 'narrow hull 1:1:6 from above'},
+    flat_top: {ext: [S, S / 6, 2 * S / 3], f: 1, ia: 0, ib: 2, aim: [0, 0], toView: p => [p[0], p[2], -p[1]],
+               toLocal: v => [v[0], -v[2], v[1]], name: 'flat fighter 6:1:4 from above'},
+    // owner -y -> view -z (the bottom faces the camera, a bolt travels along +y), x -> x, z -> view -y
+    flat_bottom: {ext: [S, S / 6, 2 * S / 3], f: 1, sign: -1, ia: 0, ib: 2, aim: [0, 0], toView: p => [p[0], -p[2], p[1]],
+                  toLocal: v => [v[0], v[2], -v[1]], name: 'flat fighter 6:1:4 from below'}};
+  hulls.narrow_aft = Object.assign({}, hulls.narrow, {aim: [0, 0.4 * S]});
+  const h = hulls[c.hull];
+  if (!h) return {S, ext: [S, S, S], narrow: false, f: 2, sign: -1, ia: 0, ib: 1, aim: [0, 0], toView: id, toLocal: id,
+                  name: 'sphere'};
+  return Object.assign({S, narrow: true, sign: 1}, h);
 }
-// The hull point at the face coordinates (a, b): the sphere's front (x, y) = (a, b); the narrow hull's +x flank
-// (y, z) = (a, b).
+// The hull point at the face coordinates (a, b) along (ia, ib), on the face toward the camera (axis f, its sign).
 function hullPoint(hull, a, b) {
-  const e = hull.ext;
-  if (hull.narrow) return [e[0] * Math.sqrt(Math.max(0, 1 - (a / e[1]) ** 2 - (b / e[2]) ** 2)), a, b];
-  return [a, b, -Math.sqrt(Math.max(0, e[2] * e[2] - a * a - b * b))];
+  const e = hull.ext, p = [0, 0, 0];
+  p[hull.ia] = a;
+  p[hull.ib] = b;
+  p[hull.f] = hull.sign * e[hull.f] * Math.sqrt(Math.max(0, 1 - (a / e[hull.ia]) ** 2 - (b / e[hull.ib]) ** 2));
+  return p;
 }
 // The hit sequence: single (one hit at t = 0) or n hits per second of game time (a wall-time period of 1000 / (n x
 // SETA) ms, so at SETA x6 the cells are as dense as the game's), each aged in game time (x SETA), scattered
@@ -449,7 +447,8 @@ function hitSequence(t, c, S, cell) {
   const lifetime = patchLifetimeMs(c), hull = previewHull(c);
   const period = c.hits > 0 ? 1000 / (c.hits * Math.max(c.seta, 1e-3)) : 0, out = [];
   const count = period ? Math.floor(t / period) + 1 : 1;
-  const aim = hull.aim, spread = hull.narrow ? Math.min(2 * cell, 0.8 * hull.ext[1]) : 2 * cell;
+  const aim = hull.aim;
+  const spread = hull.narrow ? Math.min(2 * cell, 0.8 * Math.min(hull.ext[hull.ia], hull.ext[hull.ib])) : 2 * cell;
   for (let k = count - 1; k >= 0 && out.length < OWNER_HITS; k--) {
     const age = (t - k * period) * c.seta / 1000;
     if (age * 1000 > lifetime) break;
@@ -464,45 +463,23 @@ function hitSequence(t, c, S, cell) {
 // and depths), its draws (a region past PATCH_CELLS cells counts its spill draws in .draws), the bound of its cells
 // (owner frame) and link_seams: the other regions' draws whose cells' bound meets a draw's (the power-distance share).
 function patchDraws(hits, S, c) {
-  const cell = c.cell_m[c.tier], rings = c.rings[c.tier], draws = [], done = [];
+  const cell = c.cell_m[c.tier], rings = c.rings[c.tier], draws = [];
   const p = h => h.p || h.dir.map(v => v * S);
-  const regions = hits.map(h => { const r = travelRegion(h.t); return r >= 0 ? r : hitRegion(p(h)); });
-  for (let i = 0; i < hits.length; i++) {
-    if (done[i]) continue;
-    const fr = anchorFrame(regions[i]), group = [];
-    for (let j = i; j < hits.length; j++) if (!done[j] && regions[j] === regions[i]) { done[j] = true; group.push(hits[j]); }
+  for (let k = 0; k < 6; k++) {
+    const fr = anchorFrame(k), group = hits; // every hit on both faces of every axis (review F1)
     const f = fillCells(group.map(h => ({q: [dot3(p(h), fr.u), dot3(p(h), fr.v)], depth: dot3(p(h), fr.a), age: h.age})),
                         cell, rings, c, PATCH_CELLS * REGION_DRAWS, fr.seed);
     if (!f.cells.size) continue;
-    const pts = [...f.cells].map(([key, v]) => {
-      const [kx, ky] = unpackKey(key), cx = 0.5 * kx * cell, cy = 0.8660254 * ky * cell;
-      return [0, 1, 2].map(k => fr.u[k] * cx + fr.v[k] * cy + fr.a[k] * v.depth);
-    });
-    const mean = [0, 1, 2].map(k => pts.reduce((m, q) => m + q[k], 0) / pts.length);
-    const bound = Math.max(...pts.map(q => Math.hypot(q[0] - mean[0], q[1] - mean[1], q[2] - mean[2]))) + 0.5773503 * cell;
-    draws.push(Object.assign({fr, seed: fr.seed, cell, mean, bound, draws: Math.ceil(f.cells.size / PATCH_CELLS)}, f));
-  }
-  for (const d of draws) { // link_seams: the other regions' draws whose cell bound meets this one's (up to four)
-    const near = draws.filter(o => o.seed !== d.seed &&
-                                   Math.hypot(d.mean[0] - o.mean[0], d.mean[1] - o.mean[1], d.mean[2] - o.mean[2]) < d.bound + o.bound);
-    near.sort((a, b) => (Math.hypot(d.mean[0] - a.mean[0], d.mean[1] - a.mean[1], d.mean[2] - a.mean[2]) - d.bound - a.bound) -
-                        (Math.hypot(d.mean[0] - b.mean[0], d.mean[1] - b.mean[1], d.mean[2] - b.mean[2]) - d.bound - b.bound));
-    d.seams = near.slice(0, 4).map(o => o.seed);
-    d.seamBounds = near.slice(0, 4).map(o => ({mean: o.mean, bound: o.bound}));
+    // stage::fill_region's box: the cells' hexagons in the plane, their anchors -+ the extent along the axis
+    const extent = f.reach + 1.1547005 * cell, lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const [key, cv] of f.cells) {
+      const [kx, ky] = unpackKey(key), q = [0.5 * kx * cell, 0.8660254 * ky * cell, cv.depth];
+      const pad = [0.5773503 * cell, 0.5773503 * cell, extent];
+      for (let i = 0; i < 3; i++) { lo[i] = Math.min(lo[i], q[i] - pad[i]); hi[i] = Math.max(hi[i], q[i] + pad[i]); }
+    }
+    draws.push(Object.assign({fr, seed: fr.seed, cell, extent, lo, hi, draws: Math.ceil(f.cells.size / PATCH_CELLS)}, f));
   }
   return draws;
-}
-// weapon_shell_ps.hlsl's seam share of draw d at the owner-frame point x: saturate(min_j s_j / cell + 1/2), s_j the
-// signed distance to the radical plane of d's cell bound and seam neighbour j's (positive on d's side).
-function seamShare(d, x) {
-  if (!d.seamBounds || !d.seamBounds.length) return 1;
-  let s = Infinity;
-  for (const o of d.seamBounds) {
-    const e = [0, 1, 2].map(k => d.mean[k] - o.mean[k]), D = Math.hypot(e[0], e[1], e[2]);
-    const v = D > 1e-6 ? (dot3(x, e) + (dot3(o.mean, o.mean) - dot3(d.mean, d.mean) - o.bound * o.bound + d.bound * d.bound) / 2) / D : 0;
-    s = Math.min(s, v);
-  }
-  return Math.max(0, Math.min(1, s / d.cell + 0.5));
 }
 /** Our shield-hit patch for the impact slot (hull hits and the other slots stay native in step 1). t is wall ms
  *  since spawn; ages are game time (x SETA). */
@@ -520,6 +497,9 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     const w = weaponLinear(record.weapon), k = Math.min(1, c.weapon_tint);
     colour = colour.map((v, i) => v + (w[i] - v) * k);
   }
+  // stage::dim_own_cockpit: the own ship's patch in the cockpit view at own_cockpit_gain of its radiance
+  const dim = c.own && c.cockpit ? HEADER.own_cockpit_gain : 1;
+  colour = colour.map(v => v * dim);
   // The camera at the origin looking down +z (vertical field of view 40 degrees): the whole owner centred, or close
   // with the hit area (the scatter plus the footprint) a third of the canvas height and centred.
   const f = H / (2 * Math.tan(20 * Math.PI / 180));
@@ -534,7 +514,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   const img = ctx.getImageData(0, 0, W, H), px = img.data;
   const sum = new Float32Array(W * H);
   const rayOf = (x, y) => toLocal(norm3([(x + 0.5 - W / 2) / f, -(y + 0.5 - H / 2) / f, 1]));
-  // The hull's near root along a ray (owner frame): the soft fade's lane depth and the preview's dim hull shading.
+  // The hull's near root along a ray (owner frame): the surface the patch lies on and the preview's dim hull shading.
   const hullT = d => {
     const o = O.map((v, k) => v / e[k]), dd = d.map((v, k) => v / e[k]);
     const A = dot3(dd, dd), B = dot3(o, dd), Cc = dot3(o, o) - 1, disc = B * B - A * Cc;
@@ -551,43 +531,49 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
         for (let k = 0; k < 3; k++) px[(y * W + x) * 4 + k] = Math.round(255 * linearToSrgb(srgbToLinear(px[(y * W + x) * 4 + k] / 255) + shade));
       }
     }
-  const soft = (HEADER.soft || 1) * cell;
-  // Each draw's cells as flat hexagons in its region's plane at their own depth (both faces), the pixel's point the
-  // ray's intersection with the cell's plane, cut by the soft fade where the hull lies in front of it.
-  for (const d of draws) {
-    for (const [key, cv] of d.cells) {
-      const [kx, ky] = unpackKey(key), ccx = 0.5 * kx * cell, ccy = 0.8660254 * ky * cell;
-      const corners = [[0, 2], [-1, 1], [-1, -1], [0, -2], [1, -1], [1, 1]].map(([a, b]) => {
-        const qx = ccx + a * 0.5 * cell, qy = ccy + b * 0.28867513 * cell;
-        return toView([0, 1, 2].map(k => d.fr.u[k] * qx + d.fr.v[k] * qy + d.fr.a[k] * cv.depth));
-      });
-      if (corners.some(v => v[2] <= 0.05)) continue; // the near plane (the GPU clips per pixel)
-      const sx = corners.map(v => W / 2 + f * v[0] / v[2]), sy = corners.map(v => H / 2 - f * v[1] / v[2]);
-      const x0 = Math.max(0, Math.floor(Math.min(...sx))), x1 = Math.min(W - 1, Math.ceil(Math.max(...sx)));
-      const y0 = Math.max(0, Math.floor(Math.min(...sy))), y1 = Math.min(H - 1, Math.ceil(Math.max(...sy)));
-      const at = (x, y) => { // the ray's plane point: q (plane, metres), the hexagon distance, the point, its t
-        const r = rayOf(x, y), den = dot3(r, d.fr.a);
-        if (Math.abs(den) < 1e-9) return null;
-        const tt = (cv.depth - dot3(O, d.fr.a)) / den;
-        if (!(tt > 0)) return null;
-        const p = O.map((v, k) => v + tt * r[k]), q = [dot3(p, d.fr.u), dot3(p, d.fr.v)];
-        const lx = q[0] / cell - 0.5 * kx, ly = q[1] / cell - 0.8660254 * ky;
-        const hd = Math.max(Math.abs(lx), Math.abs(0.5 * lx + 0.8660254 * ly), Math.abs(0.5 * lx - 0.8660254 * ly));
-        return {q, lx, ly, hd, p, tt, rz: r};
-      };
-      for (let y = y0; y <= y1; y++)
-        for (let x = x0; x <= x1; x++) {
-          const s0 = at(x, y);
-          if (!s0 || s0.hd > 0.5) continue;
-          const sxp = at(x + 1, y), syp = at(x, y + 1);
-          const fw = (sxp ? Math.abs(sxp.hd - s0.hd) : 0) + (syp ? Math.abs(syp.hd - s0.hd) : 0);
-          const th = hullDepth[y * W + x], gap = th === Infinity ? Infinity : th - s0.tt; // > 0: the hull behind
-          const vis = Math.max(0, Math.min(1, (gap + soft) / soft));
-          if (!(vis > 0)) continue;
-          sum[y * W + x] += hexLaw(s0.q, {lx: s0.lx, ly: s0.ly, hd: s0.hd, kx, ky}, fw, d, c) * seamShare(d, s0.p) * vis;
-        }
+  // weapon_shell_ps.hlsl per pixel: the hull's point p (owner frame) from the depth, its normal from the 2x2 quad's
+  // differences (the hardware's coarse ddx / ddy; the eye's direction off the hull), turned towards the eye; per face
+  // its share (|n_a|^s normalised, less the floor, renormalised; only where the outward normal points along a), the
+  // pixel's cell on the face's lattice, lit when the point lies in the face's box and the face's set holds the cell.
+  const P = new Float32Array(W * H * 3), on = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const th = hullDepth[y * W + x];
+      if (!(th !== Infinity && th > 0)) continue;
+      const d = rayOf(x, y);
+      for (let k = 0; k < 3; k++) P[(y * W + x) * 3 + k] = O[k] + th * d[k];
+      on[y * W + x] = 1;
     }
-  }
+  const pt = (x, y) => [P[(y * W + x) * 3], P[(y * W + x) * 3 + 1], P[(y * W + x) * 3 + 2]];
+  const sharp = HEADER.triplanar_sharpness, floor = HEADER.triplanar_floor;
+  for (let y = 0; y + 1 < H; y++)
+    for (let x = 0; x + 1 < W; x++) {
+      if (!on[y * W + x]) continue;
+      const p = pt(x, y), x0 = x & ~1, y0 = y & ~1;
+      let n;
+      if (on[y0 * W + x0] && on[y0 * W + x0 + 1] && on[(y0 + 1) * W + x0]) {
+        const a = pt(x0, y0), bx = pt(x0 + 1, y0), by = pt(x0, y0 + 1);
+        n = cross3([0, 1, 2].map(k => bx[k] - a[k]), [0, 1, 2].map(k => by[k] - a[k]));
+      } else n = [0, 1, 2].map(k => O[k] - p[k]);
+      if (dot3(n, [0, 1, 2].map(k => O[k] - p[k])) < 0) n = n.map(v => -v);
+      const ln = Math.hypot(n[0], n[1], n[2]) || 1;
+      n = n.map(v => v / ln);
+      const m = n.map(v => Math.pow(Math.max(Math.abs(v), 1e-6), sharp)), ms = m[0] + m[1] + m[2];
+      const t = m.map(v => Math.max(v / ms - floor, 0)), ts = Math.max(t[0] + t[1] + t[2], 1e-6);
+      const pr = pt(x + 1, y), pd = pt(x, y + 1);
+      for (const d of draws) {
+        if (!(dot3(n, d.fr.a) > 0)) continue;
+        const axis = d.fr.a[0] ? 0 : d.fr.a[1] ? 1 : 2, w = t[axis] / ts;
+        if (!(w > 0)) continue;
+        const q = [dot3(p, d.fr.u), dot3(p, d.fr.v)], fa = [q[0], q[1], dot3(p, d.fr.a)];
+        if (fa.some((v, i) => v < d.lo[i] || v > d.hi[i])) continue; // the draw's box
+        const cl = hexCell(q[0] / cell, q[1] / cell), cv = d.cells.get(packKey(cl.kx, cl.ky));
+        if (!cv) continue;
+        const hd = qq => hexCell(dot3(qq, d.fr.u) / cell, dot3(qq, d.fr.v) / cell).hd;
+        const fw = (on[y * W + x + 1] ? Math.abs(hd(pr) - cl.hd) : 0) + (on[(y + 1) * W + x] ? Math.abs(hd(pd) - cl.hd) : 0);
+        sum[y * W + x] += hexLaw(q, cl, fw, d, c) * w;
+      }
+    }
   for (let i = 0; i < W * H; i++) {
     if (!(sum[i] > 0)) continue;
     for (let k = 0; k < 3; k++) {
@@ -599,7 +585,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   const f0 = hits.length ? hits[0].shield : 1, lit = draws.reduce((n, d) => n + d.cells.size, 0);
   const gpuDraws = draws.reduce((n, d) => n + d.draws, 0), dropped = draws.reduce((n, d) => n + d.dropped, 0);
   const regions = [...new Set(draws.map(d => ['+z', '-z', '+x', '-x', '+y', '-y'][d.seed]))].join(' ');
-  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.narrow ? 'narrow hull 1:1:6' : 'sphere'} ${S} m | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
+  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.name} ${S} m${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship, chase') : ''} | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
 }
 // The impact slot's share of the loop: our patch lasts its record lifetime in wall time (game time / SETA).
 function ourLoopMs() {
@@ -620,7 +606,8 @@ function initOurControls() {
   // A colour input always holds a value: the header's colours are written once (and again on reset).
   for (const [id, key] of [['c_colour_full', 'colour_full'], ['c_colour_half', 'colour_half'], ['c_colour_empty', 'colour_empty']])
     if ($(id) && !$(id).dataset.init) { $(id).value = linearToHex(HEADER[key]); $(id).dataset.init = '1'; }
-  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame', 'c_hull'];
+  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame', 'c_hull', 'c_own', 'c_cockpit',
+               ];
   for (const id of ids) if ($(id)) $(id).oninput = $(id).onchange = () => {
     if (id === 'c_shield') $('c_shield_read').textContent = $(id).value;
     state.dirty = true;

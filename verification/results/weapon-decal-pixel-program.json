@@ -11,11 +11,11 @@
   "defines": null,
   "includes": {
     "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
-    "src/effects/weapon_hex_patch.hlsl": "f8dbf5fa3bfde8e11ab746e057ba4bc2503e18350e21ba2fecbd40e7ed55ab6a"
+    "src/effects/weapon_hex_patch.hlsl": "6ebe779521f75653f27798d6daaa2600c971edc7b3ebbfc6e7bff686c933733f"
   },
   "word_count": 641,
-  "bytecode_sha256": "5ee5b243e20cb9499021c04bf9ff4f568133ba6a4fa17d2fdc8f179c0f195f01",
-  "header_sha256": "2907633a268fd02a925b0db484c1e7b0096816eeefb778afedc143d2a711321d",
+  "bytecode_sha256": "ca902367fa292830e58bc5c3923735f5adcc72e825d6cf3884d7f38b0d79cc60",
+  "header_sha256": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

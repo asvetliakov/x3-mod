@@ -34,7 +34,7 @@ constexpr unsigned long long frame_row_period = 300;
 struct Period {
     std::uint32_t events = 0, hits = 0, skipped = 0, forwarded = 0, staged = 0, expired = 0, owned = 0, frames = 0, drew = 0;
     unsigned patches = 0, decals = 0, retired = 0, dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
-    unsigned depth_full = 0;
+    unsigned faces_culled = 0, area_dropped = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
 core::Counters seen_{};
@@ -392,7 +392,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.cells_dropped += stage.cells_dropped;
     period_.hits_dropped += stage.hits_dropped;
     period_.spills += stage.spills;
-    period_.depth_full += stage.depth_full;
+    period_.faces_culled += stage.faces_culled;
+    period_.area_dropped += stage.area_dropped;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -412,17 +413,16 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             if (capture || logged_events_ < event_row_budget || period_events_ < period_row_budget) {
                 const char* sample = capture ? "capture" : logged_events_ < event_row_budget ? "start" : "period";
                 if (!capture) ++(logged_events_ < event_row_budget ? logged_events_ : period_events_);
-                // The contact point's distance from the owner's centre over its radius (obj+0xa4) and its axis region
-                // (core::hit_region: the stage's lattice plane); int32 -> double converts with SSE2.
+                // The contact point's distance from the owner's centre over its radius (obj+0xa4); the bolt's travel
+                // (dir, diagnostics only: the screen-space patch picks no face from it); int32 -> double converts with
+                // SSE2.
                 const double px = double(e.pos[0]), py = double(e.pos[1]), pz = double(e.pos[2]);
                 const double pos_r = e.radius > 0 ? double(x3m::scalar::sqrt(float(px * px + py * py + pz * pz))) /
                                                         double(e.radius)
                                                   : 0.0;
-                // The region by the projectile's travel (the stage's rule; owner frame); -1 without a travel.
-                const int travel = core::travel_region(e.dir);
                 log("weapon_event frame=%llu seq=%lu role=%s table=%s row=%u style=%s%s tier=%s calibre=%.3f absorbed=%u "
                     "damage=%ld forwarded=%u stage=%u nested=%u t0=%lu tint=%s:%06lx owner=%08lx radius=%ld "
-                    "pos=%ld,%ld,%ld pos_r=%.3f region=%u dir=%d,%d,%d travel_region=%d shield=%.4f shield_read=%u patch_tier=%s tier_source=%s sample=%s",
+                    "pos=%ld,%ld,%ld pos_r=%.3f dir=%d,%d,%d shield=%.4f shield_read=%u patch_tier=%s tier_source=%s sample=%s",
                     frame, static_cast<unsigned long>(e.sequence), core::role_name(e.role), core::table_name(e.table),
                     unsigned(e.row), core::shape_name(e.style & core::style_shape_mask),
                     (e.style & core::style_burst) ? "+burst" : "", core::tier_name(e.tier), double(core::calibre_of(e)),
@@ -432,8 +432,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                     static_cast<unsigned long>(e.t0_game_ms), core::tint_source_name(e.tint_source),
                     static_cast<unsigned long>(e.tint_rgb & 0xffffffu), static_cast<unsigned long>(e.owner),
                     static_cast<long>(e.radius), static_cast<long>(e.pos[0]), static_cast<long>(e.pos[1]),
-                    static_cast<long>(e.pos[2]), pos_r, core::hit_region(e.pos), int(e.dir[0]), int(e.dir[1]),
-                    int(e.dir[2]), travel, double(float(e.shield_q) * (1.f / 65535.f)),
+                    static_cast<long>(e.pos[2]), pos_r, int(e.dir[0]), int(e.dir[1]), int(e.dir[2]),
+                    double(float(e.shield_q) * (1.f / 65535.f)),
                     unsigned((e.flags & core::flag_shield_read) != 0), core::patch_tier_name(e.patch_tier),
                     core::tier_source_name(e.tier_source), sample);
             }
@@ -455,7 +455,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu staged=%lu "
         "patches=%u decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
-        "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu depth_full=%u",
+        "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
+        "area_dropped=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -470,7 +471,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         static_cast<unsigned long>(c.shield_read - seen_.shield_read),
         static_cast<unsigned long>(c.shield_unread - seen_.shield_unread), static_cast<unsigned long>(scope_clears_),
         core::ring_capacity - r.free_count, period_.dropped, period_.cells_dropped, period_.hits_dropped,
-        period_.spills, static_cast<unsigned long>(c.dir_fallback - seen_.dir_fallback), period_.depth_full);
+        period_.spills, static_cast<unsigned long>(c.dir_fallback - seen_.dir_fallback), period_.faces_culled,
+        period_.area_dropped);
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_retired_ = r.retired;

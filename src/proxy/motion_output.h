@@ -1207,7 +1207,8 @@ public:
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[5]) noexcept; // dropped, cells_dropped, hits_dropped, spills, depth_full
+                                   unsigned drops[6]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
+                                                                // faces_culled, area_dropped
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2253,14 +2254,15 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    unsigned weapon_drops_[5]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, depth_full since the last take
+    unsigned weapon_drops_[6]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled, area_dropped
+                                 // since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
+    bool weapon_cockpit_ = false; // this frame: the view is the cockpit (chase_camera's last active-control visit, mode 1)
     static constexpr unsigned weapon_failure_limit = 3;
     bool weapon_effects_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
     bool attach_weapon_effects() noexcept;
     void log_weapon_patches(const renderer::WeaponPatch* patches, unsigned count) noexcept; // capture frames
-    void clear_weapon_depths() noexcept; // the stage's depth cache (Reset, a scope change)
     void release_weapon_effects() noexcept;
     void note_weapon_state(bool armed, const char* reason) noexcept;
     static HRESULT weapon_effects_stage_callback(void* context, IDirect3DDevice9*) noexcept;

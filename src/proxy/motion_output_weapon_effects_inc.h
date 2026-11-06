@@ -132,16 +132,8 @@ namespace {
 bool weapon_effects_read(std::uintptr_t address, void* out, std::size_t size) {
     return engine_memory::read(address, out, size);
 }
-// The stage's depth memory of lit cells (weapon_effects_stage.h DepthCache, 192 KB): game objects, so one per process
-// whatever the device; its entries expire in game time.
-weapon_effects::stage::DepthCache weapon_depth_cache;
-std::uint32_t weapon_depth_scope = 0; // weapon_effects::scope_changes() when the cache was last cleared
-}
-// The depth cache's lifetime (review F10): cleared on a Reset and when the ring's scope changed (a load, a sector change,
-// a new load epoch) since the last stage frame.
-void MotionOutput::clear_weapon_depths() noexcept {
-    std::memset(static_cast<void*>(&weapon_depth_cache), 0, sizeof weapon_depth_cache); // no 192 KB temporary
-    weapon_depth_scope = weapon_effects::scope_changes();
+// The cockpit view's freshness (review F2): the chase camera's visit count and the frame it last moved (one game).
+weapon_effects::stage::CockpitClock weapon_cockpit_clock;
 }
 HRESULT MotionOutput::run_weapon_effects() noexcept {
     namespace wcore = weapon_effects::core;
@@ -163,13 +155,36 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     f.m32 = camera_scene_.m32 != 0.f ? camera_scene_.m32 : projection_default_m32;
     f.near_z = -f.m32 / f.m22;
     if (!(f.near_z > 0.f) || !(f.near_z < 1e30f)) f.near_z = -projection_default_m32 / projection_default_m22;
-    renderer::WeaponPatch patches[wcore::max_patches];
-    renderer::WeaponDecal decals[wcore::max_decals];
-    if (weapon_effects::scope_changes() != weapon_depth_scope) clear_weapon_depths();
+    camera.m00 = f.m00; // the jittered projection: the screen budget's box areas
+    camera.m11 = f.m11;
+    camera.m20 = f.m20;
+    camera.m21 = f.m21;
+    weapon_effects::stage::Tuning tuning{};
+    tuning.near_z = f.near_z;
+    // The frame's draws (64 x sizeof(WeaponPatch), about 124 KB: static, off the game thread's stack; the game thread is
+    // the only caller and run() consumes them before returning).
+    static renderer::WeaponPatch patches[wcore::max_patches];
+    static renderer::WeaponDecal decals[wcore::max_decals];
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
-                                     camera, weapon_effects::stage::Tuning{}, patches, wcore::max_patches, decals,
-                                     wcore::max_decals, &weapon_depth_cache);
+                                     camera, tuning, patches, wcore::max_patches, decals, wcore::max_decals);
+    // The own ship in the cockpit view (5.1.1, Run236 Flight C): its patches at core::own_cockpit_gain. The own ship is
+    // resolve_own_ship's root node (cached per frame); the view is the chase camera's last active-control cockpit visit
+    // this frame or the previous one (cockpit+0x150, 1 = the cockpit; stage::CockpitClock stamps the frame its visit
+    // count last moved: a camera no longer visiting is stale, no dim), read only when a patch belongs to the own ship.
+    // Without the chase camera installed the view is unknown and nothing is dimmed.
+    weapon_cockpit_ = false;
+    if (n.patches) {
+        resolve_own_ship();
+        const std::uint32_t own = std::uint32_t(own_ship_node_);
+        bool any_own = false;
+        for (unsigned i = 0; i < n.patches && own && !any_own; ++i) any_own = patches[i].owner_node == own;
+        if (any_own && chase_camera::installed()) {
+            const chase_camera::Stats cs = chase_camera::stats();
+            weapon_cockpit_ = weapon_cockpit_clock.cockpit(cs.frames, cs.view_mode, frame_);
+        }
+        weapon_effects::stage::dim_own_cockpit(patches, n.patches, own, weapon_cockpit_);
+    }
     f.patches = patches;
     f.patch_count = n.patches;
     f.decals = decals;
@@ -179,7 +194,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[1] += n.cells_dropped;
     weapon_drops_[2] += n.hits_dropped;
     weapon_drops_[3] += n.spills;
-    weapon_drops_[4] += n.depth_full;
+    weapon_drops_[4] += n.faces_culled;
+    weapon_drops_[5] += n.area_dropped;
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run(f, &report);
@@ -214,43 +230,41 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     return hr;
 }
 // One weapon_patch row per staged patch draw on a capture frame (docs/architecture/weapon-effects.md 5.1.1, Run235
-// Flight B diagnostics): its owner, whether that is the own ship (resolve_own_ship's root node: the ship the player
-// flies, seen in the chase view), the region, its cells (lit and a ring's not yet lit) and ring hits, the cells' depth
-// range along the region axis and the eye's distance from the owner's centre, both over the owner's radius (eye_r < 1:
-// the eye inside the bounding sphere), metres = view units / 5.
+// Flight B diagnostics): its owner, whether that is the own ship (own: resolve_own_ship's root node, the ship the player
+// flies), whether the view is the cockpit and the gain the own ship's patch took for it (Flight C), the lattice (0 z,
+// 2 x, 4 y; odd: the - faces), its cells (lit and a ring's not yet lit) and ring hits, the anchors' range along the axis and the
+// eye's distance from the owner's centre, both over the owner's radius (eye_r < 1: the eye inside the bounding sphere),
+// the extent (the footprint test's radius), metres = view units / 5.
 void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsigned count) noexcept {
     namespace wcore = weapon_effects::core;
     resolve_own_ship();
     const float metre = wcore::engine_units_per_metre * wcore::world_scale;
     for (unsigned i = 0; i < count; ++i) {
         const renderer::WeaponPatch& p = patches[i];
-        float lo = 0.f, hi = 0.f;
+        const float lo = p.box[2] + p.extent, hi = p.box[5] - p.extent; // the anchors' range along the face's axis
         unsigned lit = 0;
-        for (unsigned k = 0; k < p.cells; ++k) {
-            const float d = p.cell_depth[k];
-            lo = k == 0 || d < lo ? d : lo;
-            hi = k == 0 || d > hi ? d : hi;
-            lit += p.cell_since[k] >= 0.f;
-        }
+        for (unsigned k = 0; k < p.cells; ++k) lit += p.cell_since[k] >= 0.f;
         const float eye = scalar::sqrt(p.centre[0] * p.centre[0] + p.centre[1] * p.centre[1] + p.centre[2] * p.centre[2]);
         const float r = p.owner_radius > 0.f ? p.owner_radius : 1.f;
-        log("weapon_patch device=%llu frame=%llu index=%u owner=%08lx node=%08lx is_view_object=%u region=%u cells=%u lit=%u "
-            "hits=%u seams=0x%02x radius_m=%.1f depth_min_r=%.3f depth_max_r=%.3f eye_r=%.3f eye_m=%.1f view_z_m=%.1f "
-            "cell_m=%.2f soft_m=%.2f",
-            id_, frame_, i, static_cast<unsigned long>(p.owner), static_cast<unsigned long>(p.owner_node),
-            unsigned(own_ship_node_ && p.owner_node == own_ship_node_), unsigned(int(p.seed)), p.cells, lit, p.hits, p.seams,
+        const bool own = own_ship_node_ && p.owner_node == own_ship_node_;
+        log("weapon_patch device=%llu frame=%llu index=%u owner=%08lx node=%08lx own=%u cockpit=%u gain=%.2f region=%u "
+            "cells=%u lit=%u hits=%u radius_m=%.1f depth_min_r=%.3f depth_max_r=%.3f eye_r=%.3f eye_m=%.1f "
+            "view_z_m=%.1f cell_m=%.2f extent_m=%.2f",
+            id_, frame_, i, static_cast<unsigned long>(p.owner), static_cast<unsigned long>(p.owner_node), unsigned(own),
+            unsigned(weapon_cockpit_), double(own && weapon_cockpit_ ? wcore::own_cockpit_gain : 1.f),
+            unsigned(int(p.seed)), p.cells, lit, p.hits,
             double(p.owner_radius / metre), double(lo / r), double(hi / r), double(eye / r), double(eye / metre),
-            double(p.centre[2] / metre), double(p.cell / metre), double(p.soft / metre));
+            double(p.centre[2] / metre), double(p.cell / metre), double(p.extent / metre));
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[5]) noexcept {
+                                             bool* drew, unsigned drops[6]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 5; ++i) {
+    for (unsigned i = 0; i < 6; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

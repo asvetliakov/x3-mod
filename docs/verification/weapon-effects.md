@@ -165,3 +165,88 @@ host tests OK; lab and programs checks PASS; AP DLL 0 warnings (sha256 `525ee864
 PASS (1161, 0), objdump: no x87 instruction in the 11 weapon pass, stage, Present and handler functions.
 Diagnostics limitation: `weapon_patch is_view_object` is the own ship (`resolve_own_ship`), not the cockpit's view
 object. Left as notes (F7, F8, F11, F13). [I] the bullet's row 2 as its travel; not flown.
+
+## Run236 Flight C: the +-y regions and the own ship in the cockpit (dirty on `1f9c06598`, 2026-11-06)
+
+Flight C (Run236, DLL `9f35b335…`), `C:\X3\x3m.log`, triaged [M] with
+`verification/results/weapon-effects-run236/flight_c_rows.py`: 321 `weapon_effects_frame` rows, `stage_us_max` max
+1542.5 us (frame 6900; 1245.0 at 6600, the first drawn windows; 760.1 at 23100; median 20.8, p90 121.4 over the 177
+non-zero rows), totals `dropped` 0, `cells_dropped` 0, `hits_dropped` 0, `spills` 0, `depth_full` 0, `dir_fallback`
+0; no `weapon_effects_stage` or `weapon_effects_failed` row; `session_end frames=96100 elapsed_ms=515469 devices=1
+resets=0 exception=0`. User: flank and nose/tail hits right, a hit from above or below (the target above or below
+the player) draws the patch standing on edge.
+
+Finding. The +-y path places and draws like the flanks (below), so the defect is not in `anchor_frame`, the pass,
+the programs, the per-cell depth or the seams: it is the region rule. `core::travel_region` takes the axis of the
+bolt's largest component, not the face the bolt hit; on a flat hull an oblique bolt from above (under 45 degrees off
+the hull's plane) has its largest component along z or x, so its hit takes a z or x region whose plane stands across
+the top. [I] in the log (box per owner = the hits' own largest |pos| per axis, owners with at least 8 hits): 225 of
+501 hits lie on the y face, 79 of them took a +-y region (the logged `travel_region`); the travel normalised by that box (argmax |dir_k| / e_k)
+would give 176 of 225 (364 of 501 faces overall against 304 now). Not fixed here: it needs the owner's per-axis hull
+half-extents, which the stage does not read (the chain of render-node-bounds.md 6.1, ship_avoidance_walk_core.h
+`hull_children` for capitals); superseded: an extent-scaled rule (travel over the walked hull box) was built and
+discarded by user decision for the screen-space patch below, which chooses no face from the bolt.
+
+The planar +-y coverage table and the first cockpit-dim figures measured on that build are superseded (review F3):
+the planar patch was replaced by the screen-space patch below, whose final figures come from the record through
+`verification/results/weapon-effects-run236/ledger_figures.py`.
+
+### The screen-space patch (user decision 2026-11-06, same dirty tree; 5.1.1 "Placement")
+
+The patch is a decal on the hull from the depth lane; the travel region, the per-cell depth, the depth cache, the
+soft fade and the seam planes are gone; the cockpit dim stays. Per owner six faces, every hit on both faces of every
+axis (review F1); per cell its clock (the newest hit) and its anchor (the covering hit nearest its centre); a draw is
+one face's cells as one box (the cells' hexagons, the anchors -+ the extent along the axis; back faces only); per pixel
+the lane gives p (owner frame), p must lie in the box, the normal (ddx / ddy of p) gives the face's triplanar share
+(sharpness 8, floor 0.3, signed by the outward normal) and only where it is positive the pixel's cell is looked up in
+the draw's constant map (128 keys heap-sorted, clocks, eight group ranges). A face whose box points away from the eye
+past the cut (`face_cull_sin` 0.841) is culled on the CPU, first on the hits' grown box before its cells are built
+(`faces_culled=`); past 8 screens of boxes per frame the oldest owners' draws go (`area_dropped=`); 64 draws per frame;
+the cockpit dim only on a fresh chase-camera visit (review F2). Two earlier builds are superseded: one column per cell
+(2.5 to 9 x the planar patch's GPU time) and the per-face lighting by the side of the owner's origin (review F1).
+Figures [M] from the final record (`verification/results/weapon-effects-run236/ledger_figures.py`; D3D record PASS
+46/0, hook record PASS 71/0, handler 0 calls / 0 x87 / 1036 instructions, 50 events 17.2 us median; shell vs 8 / ps
+457 slots, decal ps 129; `sizeof(WeaponPatch)` 1944 B, the frame's 64: 124416 B):
+
+| placement case (hull lane) | draws | lit px | on sky | past the footprint | coverage near the hit | centroid | vs reference |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1:1:6 mid flank | 5 | 71979 | 0 | 0 | 1.0 | 0.28 cells | 1 (ref) |
+| 1:1:6 aft flank / top / bottom | 5 | 67016 / 69075 / 69068 | 0 | 0 | 1.0 | 0.26 / 0.33 / 0.36 | 0.93 / 0.96 / 0.96 |
+| 6:1:4 flank | 5 | 9324 | 0 | 0 | 1.0 | 0.45 | 1 (ref) |
+| 6:1:4 top / bottom / top from 42 deg down | 5 | 21342 / 21367 / 21342 | 0 | 0 | 1.0 | 0.45 / 0.42 / 0.45 | 2.29 (the 2 m flank holds less of the footprint) |
+| 6:1:4 top, hull centred 2 cells below the origin (F1) | 5 | 18624 | 0 | 0 | 1.0 | 0.43 | 0.87 of the centred top |
+| Flight B station 0.68 R | 5 | 2452 | 0 | 0 | 1.0 | 0.48 | 1 |
+| far side | 5 | 0 (hidden by its hull) | 0 | 0 | - | - | - |
+| eye inside the bounding sphere, 4 m from the nose | 6 | 1258427 | 0 | 0 | 1.0 | 0.12 | 1 |
+
+Draws per hit (F1): one front hit on a fighter 5 before and after (before: -z and both faces of the two axes whose
+plane held it; now all six, +z culled); the aft flank, the narrow top and bottom 4 -> 5, the station 3 -> 5, the eye
+inside 5 -> 6. Surface: on the plane 162043.8 luma, sky 0, half an extent nearer drawn, past the extent 0, the
+left-half lane nothing right of the hit, the left half equal. No-pop 0 popped pixels on the fighter and capital flat
+faces and sphere fronts. Face edge 45 degrees: pair peak 2.035, singles 2.604 / 3.531. Cull: a back face (corner dots
+-0.998) culled; turned 32 degrees across the cut (-0.916 .. -0.840 against -0.841) drawn. Cockpit (`COCKPIT`): own ship
+in the chase view 42293.21 luma (dimmed 0), in the cockpit 14803.46 (ratio 0.350, dimmed 5), another ship and no own
+ship 42293.21, the own ship with a stale visit (no visit for two frames) 42293.21 (dimmed 0); 35289 lit pixels each.
+Sort (`SORT`, 128 keys, best of 2000, us): heap 0.7 / 0.9 / 0.6 against insertion 1.7 / 0.1 / 3.4 (shuffled /
+ascending / descending). Normals (`NORMALS`): ddx / ddy mean 0.14 to 0.44 deg, p99 1.27 to 4.68; wrong dominant axis on
+silhouettes 1134 / 719 / 1869 of 2191 / 1188 / 3106 against 0 / 63 / 122 for the 4-neighbourhood; ddx kept. Stage CPU
+(best / mean): one capital 64 hits 61.6 / 65.8 us (19 draws), 16 capitals x 16 hits 179.5 / 202.9 us (64 draws, 24
+dropped), the Flight B station cluster 39.6 / 41.2 us. GPU (EVENT-fenced, best of 60, us):
+
+| case | 3ee53bf04 (planar) 1080p / 5120 | now 1080p / 5120 | raster share now at 5120 |
+| --- | --- | --- | --- |
+| fighter two hits | 15.8 / 17.5 | 16.0 / 21.0 | 0.035 |
+| capital close two hits | 33.9 / 81.9 | 60.8 / 176.4 | 1.0 |
+| worst four regions | 42.8 / 103.1 | 98.6 / 365.1 | 3.11 |
+| capital spread 12 hits/s (14 draws) | 44.5 / 83.5 | 198.6 / 680.1 | 7.92 |
+
+Moving the cell and border work behind the share test (F4) changed nothing measurable (capital close 177.9 -> 176.4
+us). The screen-area budget bounds a frame near 8 full-screen boxes: 8 x 177.5 us (the full-screen box at 5120x1440)
+= 1.42 ms. Accepted for the flight with this cost (coordinator, kill criterion recorded with the run). 64
+`test_weapon_effects_*` host tests OK; lab `--check` PASS; programs `--check` PASS; AP DLL 0 warnings, sha256
+`8ceaa0d4…`, no-x87 PASS (1161 reachable, 0 violations).
+
+Open: F6 the R32F lane form (`four_channel` false, device z/w inverted with m32 / (d - m22)) is untested (the fixture
+lanes are four-channel); F7, F8 notes as filed; F12 (review note, as filed); the 16-capital stage CPU mean 202.9 us
+crosses the 0.2 ms target (best 179.5); not verified in flight (the hull's real depth, faceted normals, part
+overlaps).

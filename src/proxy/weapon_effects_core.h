@@ -776,51 +776,39 @@ constexpr float colour_half[3] = {1.0f, 0.88f, 0.42f};  // light yellow
 constexpr float colour_empty[3] = {1.0f, 0.4f, 0.36f};  // light red
 constexpr float weapon_tint = 0.0f;     // 0 = the shield colour, 1 = the weapon's (classifier) colour; override, off
 constexpr float tint_mix = 0.0f;        // the weapon colour: 0 = the classifier's, 1 = the other candidate
-constexpr float soft = 1.0f;            // the soft fade against the lane, cells: whole where the lane lies behind the
-                                        // patch, cut once the hull is this far in front of it (the patch inside it)
+constexpr float soft = 1.0f;            // the decals' two-sided fade against the lane, cells (the patches lie on the
+                                        // lane itself)
+// Run236 Flight C (user, 2026-11-06): in the cockpit view the own ship's patch sits around the eye and covers the view.
+// Its patches (owner node = the own-ship root node) draw at own_cockpit_gain of their radiance while the view is the
+// cockpit (view mode 1); the chase view and every other ship are unchanged (stage::dim_own_cockpit).
+constexpr float own_cockpit_gain = 0.35f;
+// The screen-space patch (Run236 Flight C, user decision 2026-11-06): each pixel's face is chosen by its surface normal
+// (from the lane depth), blended over the normal's owner-frame components |n_k|^triplanar_sharpness, normalised.
+constexpr float triplanar_sharpness = 8.0f;
+// Less a floor, renormalised: a face past about 48 degrees of tilt takes no share (its pixels would depend on which hit
+// anchors a cell, which moves along a steep face: the capital sphere's pops in the fixture without it).
+constexpr float triplanar_floor = 0.3f;
+// The face cull's cut (stage::face_culled): with the floor f at sharpness s a face takes a share only while
+// tan^s(tilt) < (1 - f) 2^(s/2 - 1) / f (the rest of the normal split evenly over the two other axes, its least
+// weight), 18.67 at s = 8, f = 0.3: tilt < 55.26 degrees; with 2 degrees of margin a box whose axis points away from the
+// eye by more than 90 + 57.26 degrees at every corner is culled: sin 57.26 deg = 0.841.
+constexpr float face_cull_sin = 0.841f;
+// The frame's screen-area budget (review F4): the drawn boxes' projected areas summed, in screens; past it the draws of
+// the owners whose newest hit is the oldest are dropped (area_dropped), so a frame's patch cost is bounded by about
+// this many full-screen boxes.
+constexpr float screen_budget = 8.0f;
 // The records' game-time life: the ring reaches the rim, then the slowest cell fades out.
 constexpr unsigned patch_lifetime_ms = unsigned(1000.f / ripple_speed + float(fade_ms) * (1.f + 0.5f * stagger)) + 1;
 static_assert(patch_lifetime_ms > 0 && patch_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");
 // Engine integers to render (view) units: the gameplay context scale (own_sun_core.h context_scale).
 constexpr float world_scale = 0.01f;
 constexpr unsigned max_owners = 16;   // owners drawn per frame
-constexpr unsigned max_patches = 32;  // patch draws per frame (one per owner and anchor region)
+constexpr unsigned max_patches = 64;  // patch draws per frame (one per owner and lit face not culled, and spills)
 constexpr unsigned max_decals = 16;   // flat decals per frame (hits on an owner without a usable ellipsoid)
 constexpr unsigned hit_slots = 4;     // ring and core hits per draw (the region's newest hits still in their ring)
 constexpr unsigned owner_hits = 64;   // live hits per owner feeding its cell map (newest first)
-constexpr unsigned cell_map_capacity = 128; // lit cells per draw (one owner and anchor region; a region spills into more)
+constexpr unsigned cell_map_capacity = 128; // lit cells per draw (one owner and face; a face spills into more)
 constexpr unsigned disarm_frames = 64;
-// The axis region of a hit, radially (the fallback): the owner axis nearest to the owner-frame contact point's
-// direction (engine units), 0 +z, 1 -z, 2 +x, 3 -x, 4 +y, 5 -y (weapon_effects_stage.h anchor_frame), the first of
-// equal components winning; a zero point is +z. Integer compares only (the weapon_event row and the stage share it).
-inline unsigned hit_region(const std::int32_t pos[3]) noexcept {
-    const std::int64_t c[6] = {pos[2], -std::int64_t(pos[2]), pos[0], -std::int64_t(pos[0]), pos[1], -std::int64_t(pos[1])};
-    unsigned best = 0;
-    for (unsigned k = 1; k < 6; ++k)
-        if (c[k] > c[best]) best = k;
-    return best;
-}
-// The axis region of a hit by the projectile's travel (Run235 Flight B fix): the surface it hit faces it, so the region
-// axis is the owner axis with the largest |component| of the travel direction, signed against the travel (the plane
-// faces the incoming bolt). dir: Event::dir (owner frame at the hit, x 127). -1 without a direction (the caller takes
-// hit_region). Integer only.
-inline int travel_region(const std::int8_t dir[3]) noexcept {
-    if (!(dir[0] | dir[1] | dir[2])) return -1;
-    const std::int32_t t[3] = {dir[0], dir[1], dir[2]};
-    // region order z, x, y (0/1, 2/3, 4/5); the axis against the travel: +axis when the travel's component is negative
-    const unsigned axis_of[3] = {2, 0, 1};
-    unsigned best = 0;
-    std::int32_t mag = -1;
-    for (unsigned r = 0; r < 3; ++r) {
-        const std::int32_t m = t[axis_of[r]] < 0 ? -t[axis_of[r]] : t[axis_of[r]];
-        if (m > mag) {
-            mag = m;
-            best = r;
-        }
-    }
-    if (mag <= 0) return -1;
-    return int(2 * best + (t[axis_of[best]] > 0 ? 1u : 0u));
-}
 
 // log10 without libm (SSE2 build: no x87): the float's exponent plus ln(m) = 2 atanh((m - 1) / (m + 1)).
 inline float log10f_sse(float x) noexcept {

@@ -148,26 +148,51 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         centre = m['centre'][0]                                                    # the marker cell, no core flash
         self.assertGreater(centre['ratio'], 1.5)
         self.assertAlmostEqual(centre['ratio'], centre['expected'], delta=0.02 * centre['expected'])
-        seam = m['seam'][0]
-        self.assertEqual(seam['pair_draws'], 2)
+        seam = m['seam'][0]                                                       # the faces share, never add
+        self.assertGreaterEqual(seam['pair_draws'], seam['single_draws'])
         self.assertLessEqual(seam['peak_pair'], max(seam['peak_a'], seam['peak_b']) * 1.002 + 1e-3)
         self.assertEqual(sorted(x['case'] for x in m['stage_cpu']),
                          ['one_capital_64_hits', 'sixteen_capitals_16_hits', 'station_flight_b_cluster_64_hits'])
-        # Run235 Flight B: the cells at the recorded hit point (within a cell), never on the bounding sphere; the far
-        # side and an eye inside the sphere draw
+        # The screen-space patch (Run236 Flight C): on the hull lane under the hit, nothing on sky, nothing past the
+        # footprint, the surface near the hit covered, the centroid within a cell, the lit count of the same order for
+        # every approach direction; the far side hidden by its own hull; the eye inside the bounding sphere draws
         place = {x['case']: x for x in m['placement']}
-        for case in ('narrow_flank_0p15R', 'station_flight_b_0p68R', 'far_side', 'eye_inside_sphere'):
-            self.assertLessEqual(place[case]['centroid_error_cells'], 1.0, case)
-            self.assertEqual(place[case]['drew'], 1, case)
-        self.assertGreater(place['station_flight_b_0p68R']['old_projection_error_m'], 400.0)
-        self.assertLess(place['eye_inside_sphere']['eye_r'], 1.0)
-        # the region faces the bolt: the narrow hull's aft flank by its travel lies on the flank and lights like the
-        # mid-flank hit; radially its plane stood across the hull (the witness)
-        aft = m['placement_aft'][0]
-        self.assertLess(aft['aft_normal_angle_deg'], 30.0)
-        self.assertGreaterEqual(aft['ratio'], 0.5)
-        self.assertGreater(place['witness_aft_flank_radial']['hull_normal_angle_deg'], 60.0)
-        for case in ('fighter_sphere_front_12hps', 'capital_sphere_front_12hps'):  # the held depth: no cell moves
+        for case in ('narrow_mid_flank', 'aft_flank', 'y_top_narrow', 'y_bottom_narrow', 'flat_flank', 'y_top_flat',
+                     'y_bottom_flat', 'y_top_flat_42deg', 'station_flight_b_0p68R', 'eye_inside_sphere',
+                     'y_top_flat_offcentre'):  # review F1: the hull off the owner's origin lights
+            x = place[case]
+            self.assertEqual((x['sky_lit'], x['outside_lit']), (0, 0), case)
+            self.assertGreaterEqual(x['coverage'], 0.9, case)
+            self.assertLessEqual(x['centroid_error_cells'], 1.0, case)
+            self.assertGreaterEqual(x['lit_ratio'], 1.0 / 3.0, case)
+            self.assertLessEqual(x['lit_ratio'], 3.0, case)
+        self.assertEqual(place['y_top_flat_42deg']['lit_pixels'], place['y_top_flat']['lit_pixels'])  # dir unused
+        self.assertEqual((place['far_side']['lit_pixels'], place['far_side']['eligible']), (0, 0))
+        normals = {x['case']: x for x in m['normals']}                             # ddx / ddy against a neighbourhood
+        for x in normals.values():
+            self.assertLess(x['ddx_mean_deg'], 1.0)
+            self.assertLessEqual(x['ddx_wrong_axis'] - x['ddx_wrong_axis_silhouette'],
+                                 2 * (x['neighbour_wrong_axis'] - x['neighbour_wrong_axis_silhouette']) + 50)
+        cull = {x['case']: x for x in m['cull']}                                  # the face cull at its cut
+        self.assertEqual((cull['away']['culled'] >= 1, cull['away']['has_z']), (True, 0))
+        self.assertLess(cull['away']['dot_max'], cull['across']['cut'])
+        self.assertLess(cull['across']['dot_min'], cull['across']['cut'])
+        self.assertGreater(cull['across']['dot_max'], cull['across']['cut'])
+        self.assertEqual(cull['across']['has_z'], 1)
+        surf = m['surface'][0]                                                    # the surface is the lane
+        self.assertEqual((surf['sky'], surf['past'], surf['half_right_lit']), (0.0, 0.0, 0))
+        self.assertGreater(surf['nearer'], 0.0)
+        self.assertLess(m['attach_slots'][0]['shell_ps'], 2000)                   # the low thousands
+        # Flight C: the own ship in the cockpit view at own_cockpit_gain; the chase view and another ship unchanged
+        ck = {x['case']: x for x in m['cockpit']}
+        self.assertEqual((ck['own_chase']['dimmed'], ck['own_cockpit']['dimmed'], ck['other_cockpit']['dimmed'],
+                          ck['unknown_own_cockpit']['dimmed']), (0, 5, 0, 0))
+        self.assertAlmostEqual(ck['summary']['own_cockpit_ratio'], ck['summary']['gain'], delta=0.01)
+        self.assertEqual((ck['summary']['other_ratio'], ck['summary']['unknown_ratio']), (1.0, 1.0))
+        self.assertEqual((ck['own_cockpit_stale']['dimmed'], ck['summary']['stale_ratio']), (0, 1.0))  # review F2
+        sort = {x['case']: x for x in m['sort']}                                     # review F5: the heap sort
+        self.assertLess(sort['shuffled']['heap_us'], 5.0)
+        for case in ('fighter_sphere_front_12hps', 'capital_sphere_front_12hps'):  # the surface is the lane: no pop
             self.assertEqual(nopop[case]['popped_pixels'], 0, case)
         fade = m['fade']
         self.assertEqual(fade['t%d' % fade['lifetime_ms']], 0.0)                 # nothing left at the record's lifetime
@@ -176,7 +201,6 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLessEqual(age['seta6_wall_ms'], age['seta6_expected_wall_ms'] + 0.2 + age['max_frame_ms'] + 0.5)
         self.assertEqual((m['retired'][0]['retired'], m['retired'][0]['ring_live'], m['retired'][0]['drew']), (1, 0, 0))
         self.assertEqual(m['refused'][0]['reason'], 'program_create')
-        self.assertLess(m['attach'][0]['shell_ps'], 400)                          # low hundreds of slots
         cases = {(x['width'], x['case']) for x in m['timing']}
         for width in (1920, 5120):
             for case in ('fence', 'fighter_two_hits_one_region', 'fighter_two_regions',

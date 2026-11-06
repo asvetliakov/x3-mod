@@ -411,10 +411,10 @@ bolts, muzzle and explosions stay native.
 2. `tools/effects/weapon_effects_table.py` (the generated table, install / uninstall / regenerate wiring as
    `engine_bodies.json`), `tools/effects/weapon_overrides.json` (empty `by_id`, the three known tables listed).
 3. The stage: a `WeaponEffectsPass` fed by `Event` records (owner rows read at scene end as 3.1 says): per owner its
-   live stage-owned hits (up to 64) light cells per axis region (the owner axis facing the bolt by its owner-frame
-   travel, else the nearest to the radial direction; each region a planar lattice perpendicular to its axis, 5.1.1
-   "Placement"), one draw per region of up to 128 cells, each cell rasterized as its own flat hexagon at its held depth
-   (only the cells: the CPU-side cull); a flat decal of the same law for an owner without a usable frame; riding the resolve's step-0
+   live stage-owned hits (up to 64) light cells on the faces of their side (each face a planar lattice perpendicular to
+   its owner axis, 5.1.1 "Placement"), one draw per face of up to 128 cells as one box whose pixels light the hull
+   the depth lane holds under it where it falls in a cell of the draw's map, shared between faces by the triplanar
+   weights of the lane's normal (faces turned away from the eye culled on the CPU); a flat decal of the same law for an owner without a usable frame; riding the resolve's step-0
    callback after the plumes callback (the `own_sun_with_plumes_` chaining pattern of `motion_output.cpp:2493–2507`
    [S]). Occlusion by the lane alone (unknown 11 of the dropped note was settled: the depth is unbound before the
    callback [M]).
@@ -504,36 +504,58 @@ every hit, so a diagnosis flight still sees vanilla.
   footprint radius doubles with them), rings 1 / 2 / 2 (7 / 19 / 19 cells per hit; the patch radius control is gone);
   the tier is the TShips class id for ships (8.1 of the spawn note), capital for docks and factories, else radius
   bands below 30 / 150 m [I].
-- **Placement: a per-face lattice at the hit point (Run235 Flight B, 2026-11-06; supersedes the ellipsoid, the
-  stereographic plane, the cap and the per-pixel ray-ellipsoid point of the next bullet).** The bounding sphere (root
-  node origin, radius obj+0xa4) is no surface: the recorded contact point is exact but lies at 0.15 to 0.85 R on ships
-  and 0.64 R on a station of R 1304 m, so projecting it through the centre put a flank hit of a long hull on its tail
-  and a station's patch 417 to 710 m off its hull, and the outward-face cull hid every hit on the far half. Now each
-  of the six axis regions carries a planar hex lattice in the plane perpendicular to its owner axis (owner frame,
-  fixed offset); a hit belongs to the region facing its projectile (coordinator decision 2026-11-06: the owner axis
-  with the largest |component| of the bolt's travel, signed against it, `core::travel_region` on `Event::dir`, which
-  the hook records already in the owner frame (the bullet's row 2 through the hit object's rows at the hit, review F1:
-  a turning owner keeps its regions and held depths); the radial `core::hit_region` when the record has no travel),
-  its cell is the lattice cell containing its projection onto that plane, and each lit cell carries its own clock (the
-  hit that most recently lit it) and the depth it was first lit at, held until the cell has fully faded (a re-light
-  only resets the clock; `stage::DepthCache`, 192 KB of CPU memory keyed by owner, handle, region and cell, its
-  entries expiring in game time and cleared on a Reset and a scope change, the stage's only state; only drawn cells
-  are looked up, a full probe window is counted as `depth_full`). A draw is its
-  cells as flat hexagons at those depths (integer lattice corners, so neighbours at one depth share bit-identical
-  edges; the cell's key, depth and clock in its vertices, no pixel-constant map, 182 ps_3_0 slots), placed through the
-  owner's rows in view space, clipped at the near plane (an eye inside the old sphere draws), both faces, Z off, with
-  the soft fade against the lane biased by one soft radius (`soft` = 1 cell): whole where the hull lies behind the
-  patch, cut where the patch passes inside it (the soft radius was 0.5 R of the bounding sphere, 0.75 to 1.25 cells
-  for the decal's; now 1 cell for both). A ring hit also carries its footprint cells not reached yet, so the ring shows
-  over them; every spill draw carries the region's ring hits. Seams (review F2): a draw's neighbours are up to four
-  draws of the owner's other regions whose cell bounds meet its own, and the light is shared by the power distance to
-  the two bounds (the signed distance to their radical plane over a cell-wide band), so the share follows where the
-  cells are, not the rule that assigned their hits; it bites only where both bounds cover a point. Neighbours first lit at different depths overlap or gap by the depth step on
-  screen (a pixel under k cells fades k steps per frame; no cell moves). Why the travel rule [M]: radially, a narrow
-  hull gives most of its surface (81 % of a 1:1:6 ellipsoid) to the long-axis regions, whose plane stands across the
-  hull (86 degrees from its normal at a flank point 40 % aft) and is seen edge-on from the side; by the bolt's travel
-  that flank hit takes the flank's region (4 degrees). [I]: that a bullet's root node row 2 is its travel direction
-  (the coordinator's reading; the `weapon_event` row logs `dir` and `travel_region` for the flight to confirm).
+- **Placement: the screen-space patch (user decision 2026-11-06 after Run236 Flight C; supersedes the per-face
+  lattice at the hit point with its travel region, per-cell depth, depth cache, soft fade and seam planes).** The patch
+  is a decal laid on the hull through the depth lane; nothing chooses a face from the bolt (`Event::dir` stays
+  recorded for the `weapon_event` row and is unused). The cells keep their model: per owner six faces (+-z, +-x, +-y,
+  each a planar hex lattice perpendicular to its owner axis, fixed in the owner frame, `stage::anchor_frame`), a hit
+  lighting its footprint (the cells within `rings` of its projection's cell, each when the ring front reaches it) on both
+  faces of every axis (review F1: the side of the owner's origin decides nothing, so an upward surface below the origin
+  plane, a wing's underside or an off-centre model origin light; a thin wing shows the patch on both sides), every cell keyed (face, lattice cell) with its own clock (the newest hit's: a re-hit resets,
+  never adds), the hit cell the marker, the newest four hits the ring, the eviction and spill draws as before. Each
+  cell carries an anchor, the covering hit nearest its centre in the plane. A draw is one face's cells (up to 128;
+  more spill into further draws, Morton chunks) as one box in the face's frame: the cells' hexagons in the plane and
+  their anchors' depths -+ the extent (the reach plus two cell circumradii) along the axis; only the box's back faces
+  rasterize (the cull mode follows the sign of the owner frame's determinant in view), so each pixel is shaded once
+  per box, the eye inside it too (coordinator decision 2026-11-06: the per-cell columns of the first screen-space build
+  cost 2.5 to 9 x the planar patch's GPU time). Per pixel (`weapon_shell_ps.hlsl`) the lane's view depth (sky: nothing)
+  rebuilds the scene point through the jittered projection and the owner's rows (p, owner frame); a point outside the
+  box draws nothing; the pixel's cell is p's projection on the face's lattice, looked up in the draw's cell map (pixel
+  constants: 128 packed keys in ascending order, their clocks, and each group of sixteen keys' range, so a pixel scans
+  the one group that can hold its key). The normal is the cross product of the rebuilt point's screen derivatives
+  (ddx, ddy),   turned towards the eye; the face's share is the triplanar weight |n_a|^8 / sum |n_k|^8 less a floor of 0.3,
+  renormalised, where the outward normal points along the face's axis (`core::triplanar_sharpness`,
+  `core::triplanar_floor`): of each axis one face takes a point, the faces' shares sum to one (two lattices never add
+  over a point: the seam semantics), and a face tilted past about 48 degrees takes nothing, so the anchor's depth,
+  which moves along a steep face as hits arrive, never decides a pixel that still shows (the capital sphere's pops
+  without the floor); a pixel with no share skips the lookup. The face cull (CPU, `stage::face_culled`): a draw whose
+  axis points away from the eye at all eight box corners by more than 90 degrees plus the floor's cut (a face takes a
+  share only while tan^8(tilt) < 8 (1 - f) / f, 55.26 degrees, plus 2 degrees of margin: `core::face_cull_sin` 0.841)
+  is not drawn and counts as `faces_culled=` in `weapon_effects_frame` (the corners decide: the culled set is a convex
+  cone about the axis; the stage tests the hits' grown box before building a face's cells, then the exact box); the
+  frame takes 64 draws (`max_patches`, static off the game thread's stack, 124 KB). The screen-area budget (review F4,
+  `core::screen_budget` 8): the drawn boxes' projected areas summed in screens; past 8 the draws of the owners whose
+  newest hit is the oldest are dropped (`area_dropped=` in `weapon_effects_frame`), which bounds a frame's patch GPU
+  cost near 8 full-screen boxes (see the ledger). The patch
+  therefore lies on whatever hull is under the hit, from every approach direction (Run236's patch on edge from above
+  and below is gone); a hit on the far side of its owner is hidden by the owner's own hull, as the hull hides anything
+  behind it. Normal choice [M] (fixture `NORMALS`, the CPU twin of three hull lanes): the quad derivatives and a
+  4-neighbourhood (per axis the neighbour with the smaller depth step) agree inside a surface (mean 0.14 to 0.44
+  degrees, p99 1.3 to 4.7 against 1.5 to 5.5), the derivatives miss the dominant axis on about half the silhouette
+  pixels (1134 of 2191 on the narrow hull's top) where the neighbourhood misses none, and the neighbourhood costs four
+  more lane fetches per lit pixel; the derivatives  were kept, silhouettes take the eye's direction. Keys stay below the 2048 bias (about 1000 cells from the owner's
+  origin along a lattice axis: 15 km at a fighter's cell, 80 km at a capital's).
+- **The own ship in the cockpit view (user decision 2026-11-06, Run236 Flight C).** In the cockpit view the own
+  ship's patch sits around the eye and covers the view, so its draws take `core::own_cockpit_gain` (0.35, a header
+  constant, no setting) of their radiance (`stage::dim_own_cockpit` scales the patch colour; ONE/ONE, so the colour
+  is the intensity). Own ship: the patch's owner node is `resolve_own_ship`'s root node (cached per frame). Cockpit:
+  the chase camera's last active-control cockpit visit read view mode 1 (`cockpit+0x150`, the value its
+  `InternalView` refusal tests; `chase_camera::stats().view_mode`, read only when a patch belongs to the own ship, no
+  new engine read) and that visit is this frame's or the previous one's (`stage::CockpitClock` stamps the frame the
+  visit count last moved, review F2: a camera no longer visiting is stale and dims nothing). The chase view and every other ship are unchanged; without the chase camera installed
+  (`camera = vanilla`) the view is unknown and nothing is dimmed. The `weapon_event` row keeps `dir=` for diagnostics
+  and no longer logs `region=` or `travel_region=` (no rule uses them). The `weapon_patch` row logs `own=`, `cockpit=` and
+  `gain=` (it replaces `is_view_object=`). Decals (an owner without a frame) are not dimmed.
 - **Cell-map model (user decision 2026-11-06, supersedes the per-hit disc and the four-hit slots; its geometry,
   stereographic planes, caps, the pixel-constant map and the radial seam share, is superseded by "Placement" above,
   its clocks, footprints, spills and eviction stand).** Per owner a
@@ -544,7 +566,7 @@ every hit, so a diagnosis flight still sees vanilla.
   to "lit now" as its ring front reaches each centre (a cell already lit is reset to full, never drawn twice); cells
   the new hit does not cover keep their clocks and fade out. The stage rebuilds each region's cell map from the
   owner's live hits every frame (a cell's clock is the newest hit that lit it; up to 64 hits per owner, the rest
-  counted as `hits_dropped`; the held depths are the one state, "Placement"); one draw per owner and region over the cap bounding its
+  counted as `hits_dropped`; the stage keeps no state, "Placement"); one draw per owner and region over the cap bounding its
   lit cells, 128 cells per map; a region with more lit cells spills into further draws (`region_draws` = 8 per region,
   from the frame's 32 after every region's first, each map a compact Morton chunk with its own cap; review F1/F2
   2026-11-06), and past them the cells with the oldest clocks, the dimmest, are dropped and counted
