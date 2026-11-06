@@ -1,0 +1,50 @@
+timing view=stock_ap role=muzzle rows=40 longest_ms p10=150 p50=150 p90=925 max=1440 with_light=38
+timing view=stock_ap role=impact rows=41 longest_ms p10=650 p50=1296 p90=1680 max=9000 with_light=23
+timing view=stock_ap role=death rows=8 longest_ms p10=1296 p50=1500 p90=1500 max=1920 with_light=4
+timing view=stock_ap role=flight rows=3 longest_ms p10=20 p50=30000 p90=30000 max=30000 with_light=0
+beam view=stock_ap id=KH_ALPHA flags=0x2 life_ms=300 refire_ms=300 envelope=sustained
+beam view=stock_ap id=KH_BETA flags=0x2 life_ms=350 refire_ms=500 envelope=pulsed
+beam view=stock_ap id=KH_GAMMA flags=0x2 life_ms=400 refire_ms=700 envelope=pulsed
+beam view=stock_ap id=IOND flags=0x214 life_ms=463 refire_ms=473 envelope=pulsed
+beam view=stock_ap id=REPAIR flags=0xa2 life_ms=500 refire_ms=200 envelope=sustained
+beam view=stock_ap id=TUG flags=0x2 life_ms=500 refire_ms=500 envelope=sustained
+beam view=stock_ap id=PAL flags=0x2 life_ms=2490 refire_ms=420 envelope=sustained
+beam view=stock_ap id=PBC flags=0x2 life_ms=550 refire_ms=600 envelope=pulsed
+beam view=stock_ap id=DUMMY2 flags=0x2 life_ms=300 refire_ms=300 envelope=sustained
+beam view=stock_ap id=FUSIONBEAM flags=0x802 life_ms=2493 refire_ms=420 envelope=sustained
+beam view=stock_ap id=TRIBEAM flags=0x2 life_ms=1100 refire_ms=675 envelope=sustained
+bolt_speed view=stock_ap n=33 mps p10=312.0 p50=500.0 p90=2200.0
+timing view=mayhem3 role=muzzle rows=36 longest_ms p10=150 p50=200 p90=575 max=925 with_light=36
+timing view=mayhem3 role=impact rows=36 longest_ms p10=150 p50=800 p90=1440 max=2400 with_light=36
+timing view=mayhem3 role=death rows=0 longest_ms p10=None p50=None p90=None max=None with_light=0
+timing view=mayhem3 role=flight rows=5 longest_ms p10=30000 p50=150000 p90=150000 max=150000 with_light=0
+beam view=mayhem3 id=PBC flags=0x2 life_ms=900 refire_ms=2222 envelope=pulsed
+beam view=mayhem3 id=RL flags=0xa2 life_ms=1000 refire_ms=3000 envelope=pulsed
+bolt_speed view=mayhem3 n=36 mps p10=1000.0 p50=2000.0 p90=3500.0
+timing view=fl role=muzzle rows=40 longest_ms p10=150 p50=150 p90=925 max=1440 with_light=38
+timing view=fl role=impact rows=41 longest_ms p10=650 p50=1296 p90=1680 max=9000 with_light=23
+timing view=fl role=death rows=8 longest_ms p10=1296 p50=1500 p90=1500 max=1920 with_light=4
+timing view=fl role=flight rows=3 longest_ms p10=20 p50=30000 p90=30000 max=30000 with_light=0
+beam view=fl id=KH_ALPHA flags=0x2 life_ms=300 refire_ms=300 envelope=sustained
+beam view=fl id=KH_BETA flags=0x2 life_ms=350 refire_ms=500 envelope=pulsed
+beam view=fl id=KH_GAMMA flags=0x2 life_ms=400 refire_ms=700 envelope=pulsed
+beam view=fl id=IOND flags=0x214 life_ms=463 refire_ms=473 envelope=pulsed
+beam view=fl id=FUSIONBEAM flags=0x802 life_ms=2493 refire_ms=420 envelope=sustained
+beam view=fl id=PAL flags=0x2 life_ms=2490 refire_ms=420 envelope=sustained
+beam view=fl id=PBC flags=0x2 life_ms=550 refire_ms=600 envelope=pulsed
+beam view=fl id=TUG flags=0x2 life_ms=500 refire_ms=500 envelope=sustained
+beam view=fl id=TRIBEAM flags=0x2 life_ms=1100 refire_ms=675 envelope=sustained
+beam view=fl id=REPAIR flags=0xa2 life_ms=500 refire_ms=200 envelope=sustained
+beam view=fl id=DUMMY2 flags=0x2 life_ms=300 refire_ms=300 envelope=sustained
+bolt_speed view=fl n=33 mps p10=312.0 p50=500.0 p90=2200.0
+row 35 flags=EDF_NOROTATE|EDF_NODRIFT elements=2 last_end_ms=3110 propagate=[] cut_scenes=0
+row 40 flags=EDF_NOROTATE|EDF_NODRIFT elements=4 last_end_ms=9030 propagate=[] cut_scenes=0
+row 37 flags=EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE elements=11 last_end_ms=22120 propagate=['149 x30'] cut_scenes=1
+row 201 flags=EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE elements=11 last_end_ms=22120 propagate=['149 x40'] cut_scenes=1
+row 48 flags=0 elements=4 last_end_ms=5100 propagate=[] cut_scenes=0
+row 59 flags=EDF_NOROTATE|EDF_NODRIFT elements=3 last_end_ms=13000 propagate=[] cut_scenes=2
+row 39 flags=0 elements=1 last_end_ms=3840 propagate=[] cut_scenes=0
+row 158 flags=0 elements=6 last_end_ms=19300 propagate=[] cut_scenes=0
+row 155 flags=0 elements=2 last_end_ms=1500 propagate=['147 x3'] cut_scenes=0
+row 189 flags=0 elements=2 last_end_ms=1920 propagate=[] cut_scenes=0
+row 196 flags=0 elements=2 last_end_ms=1296 propagate=[] cut_scenes=0

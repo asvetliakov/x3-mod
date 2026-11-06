@@ -228,7 +228,7 @@ X3FL.exe is relocatable and has none of these sites traced; the FL edition compi
 (`X3M_EDITION_FL`: the hooks are not installed, `weapon_effects` reports `edition_unsupported`) until an FL
 reverse-engineering note names the four sites and the `absorbed` slot, as [fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md)
 did for the plumes. The FL weapon census has the same 45 rows and ids as stock AP; the record fields differ only in
-PD's lifetime (1,800 vs 2,100 ms), speed (177.5 vs 187.5 m/s) and damage (351/80 vs 468/120), and the PAC body's scale
+PD's lifetime (1,800 vs 2,100 ms), speed (355 vs 375 m/s) and damage (351/80 vs 468/120), and the PAC body's scale
 (8,099 vs 16,171; elongation 24.5 vs 24.7), so the classifier gives the same style for all 45 [M, `fl.json`,
 `classify_preview_out.txt`]; the classifier and overrides carry over unchanged.
 
@@ -329,7 +329,7 @@ drops the tail; the override fixes the rest.
 ### 4.3 Explosion tiers
 
 At the death site, by the victim: class 7 → the TShips class id (`+0xc8`, col 52) mapped to **fighter**
-(M5/M4/M3; also TM, drones, satellites), **corvette** (M6/M8/TS/TP) and **capital** (M1/M2/M7/TL); class 5/6 →
+(M5/M4/M3; also drones, satellites), **corvette** (M6/M8/TS/TP/TM) and **capital** (M1/M2/M7/TL); class 5/6 →
 **station**; class 17 → **asteroid** (size from `obj+0xa4`); class 10 → **missile**; class 0 with flag `0x100` →
 **burst** (calibre from the record). The numeric values of the `OBJ_SHIP_*` text ids are **unknown** (the census reads
 them as strings from the file [M]); until the text-id reader `0x004ea440`'s table is disassembled the DLL tiers by
@@ -338,48 +338,52 @@ col 47 is the cross-check: stock rows 35 / 40 / 37 and Mayhem 600 / 601 / 602 fo
 exceptions (2 M6 on 35, 4 TP and M8 on 40 [M, census]); the DLL logs `tier_mismatch` when its tier and the row's
 tier disagree, and the override file can pin a class.
 
+*Corrected 2026-11-06 (weapon-look.md §7): TM is a corvette, as `patch_tier_of_ship` (id 2141) tiers it; the text counted it a fighter.*
+
 ### 4.4 Resulting style per stock weapon [M]
 
 | weapon | flags | z/xy | m/s | dmg/shot | style | calibre | tint |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| IRE | 0x0 | 18.5 | 581 | 220 | tracer | light 0.00 | light |
-| PAC | 0x1 | 24.7 | 351 | 1,155 | tracer | light 0.29 | light |
-| MASS | 0x60 | 6.6 | 369 | 45 | tracer | light 0.00 | texture |
-| PRG | 0x1 | 7.3 | 780 | 680 | tracer | light 0.18 | light |
-| EBC | 0x40 | 3.8 | 302 | 1,357 | slug | light 0.33 | light |
-| FBL | 0x1000 | 1.9 | 179 | 2,793 | slug+burst | light 0.48 | light |
-| HEPT | 0x0 | 9.4 | 215 | 1,995 | tracer | light 0.41 | light |
-| IOND | 0x214 | 2.0 | 1,013 | 1,575 | beam | light 0.36 | light |
-| PBE | 0x0 | 18.7 | 3,490 | 945 | tracer | light 0.25 | light |
-| PD | 0x808 | 1.5 | 187 | 468 | wave | light 0.10 | light |
-| EMP | 0x800 | 1.8 | 294 | 2,000 | slug | light 0.41 | light |
-| CIG | 0x0 | 10.6 | 210 | 7,845 | tracer | medium 0.71 | texture |
-| IPG | 0x1200 | 7.2 | 173 | 12,563 | tracer+burst | medium 0.81 | light |
-| ESR | 0x400 | 5.6 | 249 | 2,671 | tracer | light 0.47 | light |
-| MAM | 0x140 | 1.3 | 222 | 8,350 | orb+burst | medium 0.72 | texture |
-| FLAK_ALPHA | 0x2100 | 18.7 | 3,525 | 13,860 | tracer+burst | medium 0.83 | texture |
-| FLAK_CLUSTER | 0x3000 | 18.7 | 1,100 | 11,781 | tracer+burst | medium 0.80 | texture |
-| PAL | 0x2 | 21.9 | 1,280 | 3,969 | beam | medium 0.56 | texture |
-| PSG | 0x8 | 0.9 | 127 | 1,996 | wave | light 0.41 | light |
-| TERANTIFIGHTER | 0x0 | 2.0 | 1,000 | 20,785 | slug | heavy 0.92 | texture |
-| PPC | 0x2000 | 2.9 | 166 | 63,778 | slug | heavy 1.00 | light |
-| IONC | 0x2600 | 3.5 | 193 | 119,148 | slug | heavy 1.00 | light |
-| GAUSS | 0x40 | 2.3 | 176 | 28,540 | slug | heavy 0.99 | light |
-| IBL | 0x2800 | 1.7 | 156 | 50,860 | slug | heavy 1.00 | light |
-| PSP | 0x2100 | 1.0 | 160 | 252,310 | orb+burst | heavy 1.00 | light |
-| PBC | 0x2 | 2.7 | 5,322 | 14,280 | beam | medium 0.84 | texture |
-| TRIBEAM | 0x2 | 21.9 | 2,815 | 7,532 | beam | medium 0.70 | texture |
-| FUSIONBEAM | 0x802 | 21.9 | 1,330 | 5,400 | beam | medium 0.63 | texture |
-| MINING | 0x0 | 1.0 | 42 | 6,500 | orb | medium 0.67 | light |
-| TUG | 0x2 | 3.4 | 2,000 | 0 | beam | light 0.00 | texture |
-| DUMMY1 | 0x3000 | 3.7 | 12,500 | 11,781 | slug+burst | medium 0.80 | texture |
-| DUMMY2 / KH_ALPHA | 0x2 | 3.4 | 2,996 | 700 | beam | light 0.18 | light |
-| KH_BETA | 0x2 | 1.9 | 4,882 | 2,500 | beam | light 0.46 | texture |
-| KH_GAMMA | 0x2 | 1.0 | 6,071 | 7,500 | beam | medium 0.70 | light |
-| REPAIR | 0xa2 | 21.4 | 2,200 | 40 | beam | light 0.00 | light |
-| FBL_FRAG, FLAK_*_FRAG (4) | 0x100 | 5.4–18.5 | 250–1,050 | 220 | tracer+burst | light 0.00 | light |
-| TERRANANTIFIGHTER_FRAG | 0x8 | 0.9 | 127 | 220 | wave | light 0.00 | light |
+| IRE | 0x0 | 18.5 | 1,162 | 220 | tracer | light 0.00 | light |
+| PAC | 0x1 | 24.7 | 703 | 1,155 | tracer | light 0.29 | light |
+| MASS | 0x60 | 6.6 | 739 | 45 | tracer | light 0.00 | texture |
+| PRG | 0x1 | 7.3 | 1,560 | 680 | tracer | light 0.18 | light |
+| EBC | 0x40 | 3.8 | 604 | 1,357 | slug | light 0.33 | light |
+| FBL | 0x1000 | 1.9 | 359 | 2,793 | slug+burst | light 0.48 | light |
+| HEPT | 0x0 | 9.4 | 431 | 1,995 | tracer | light 0.41 | light |
+| IOND | 0x214 | 2.0 | 2,027 | 1,575 | beam | light 0.36 | light |
+| PBE | 0x0 | 18.7 | 6,980 | 945 | tracer | light 0.25 | light |
+| PD | 0x808 | 1.5 | 375 | 468 | wave | light 0.10 | light |
+| EMP | 0x800 | 1.8 | 588 | 2,000 | slug | light 0.41 | light |
+| CIG | 0x0 | 10.6 | 420 | 7,845 | tracer | medium 0.71 | texture |
+| IPG | 0x1200 | 7.2 | 347 | 12,563 | tracer+burst | medium 0.81 | light |
+| ESR | 0x400 | 5.6 | 498 | 2,671 | tracer | light 0.47 | light |
+| MAM | 0x140 | 1.3 | 445 | 8,350 | orb+burst | medium 0.72 | texture |
+| FLAK_ALPHA | 0x2100 | 18.7 | 7,051 | 13,860 | tracer+burst | medium 0.83 | texture |
+| FLAK_CLUSTER | 0x3000 | 18.7 | 2,200 | 11,781 | tracer+burst | medium 0.80 | texture |
+| PAL | 0x2 | 21.9 | 2,561 | 3,969 | beam | medium 0.56 | texture |
+| PSG | 0x8 | 0.9 | 254 | 1,996 | wave | light 0.41 | light |
+| TERANTIFIGHTER | 0x0 | 2.0 | 2,000 | 20,785 | slug | heavy 0.92 | texture |
+| PPC | 0x2000 | 2.9 | 333 | 63,778 | slug | heavy 1.00 | light |
+| IONC | 0x2600 | 3.5 | 387 | 119,148 | slug | heavy 1.00 | light |
+| GAUSS | 0x40 | 2.3 | 353 | 28,540 | slug | heavy 0.99 | light |
+| IBL | 0x2800 | 1.7 | 312 | 50,860 | slug | heavy 1.00 | light |
+| PSP | 0x2100 | 1.0 | 321 | 252,310 | orb+burst | heavy 1.00 | light |
+| PBC | 0x2 | 2.7 | 10,644 | 14,280 | beam | medium 0.84 | texture |
+| TRIBEAM | 0x2 | 21.9 | 5,630 | 7,532 | beam | medium 0.70 | texture |
+| FUSIONBEAM | 0x802 | 21.9 | 2,661 | 5,400 | beam | medium 0.63 | texture |
+| MINING | 0x0 | 1.0 | 84 | 6,500 | orb | medium 0.67 | light |
+| TUG | 0x2 | 3.4 | 4,000 | 0 | beam | light 0.00 | texture |
+| DUMMY1 | 0x3000 | 3.7 | 25,000 | 11,781 | slug+burst | medium 0.80 | texture |
+| DUMMY2 / KH_ALPHA | 0x2 | 3.4 | 5,994 | 700 | beam | light 0.18 | light |
+| KH_BETA | 0x2 | 1.9 | 9,766 | 2,500 | beam | light 0.46 | texture |
+| KH_GAMMA | 0x2 | 1.0 | 12,143 | 7,500 | beam | medium 0.70 | light |
+| REPAIR | 0xa2 | 21.4 | 4,400 | 40 | beam | light 0.00 | light |
+| FBL_FRAG, FLAK_*_FRAG (4) | 0x100 | 5.4–18.5 | 500–2,100 | 220 | tracer+burst | light 0.00 | light |
+| TERRANANTIFIGHTER_FRAG | 0x8 | 0.9 | 254 | 220 | wave | light 0.00 | light |
 | EMP_1 / MAM_1 / TERRANANTIFIGHTER_1 / IPG_FRAG | as the base row | | | | slug / orb+burst / slug / slug+burst | | |
+
+*Corrected 2026-11-06 (weapon-look.md §7): the m/s column and the FL PD speed in 2.10 were col 11 / 1000; they are now col 11 / 500 (`engine_units_per_metre`, the catalogue's speeds).*
 
 Counts: stock and FL 45 rows → beam 11, wave 3, tracer 8 (+7 burst), slug 9 (+3 burst), orb 1 (+3 burst); Mayhem 38 →
 tracer 20, slug 9, orb 7, beam 2 [M, `classify_preview_out.txt`]. The Mayhem IRE classifies as a slug (its replacement
