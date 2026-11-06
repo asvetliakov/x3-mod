@@ -30,7 +30,8 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   figure { margin: 0; }
   figcaption { font-size: 11px; color: #8590a3; margin-top: 2px; max-width: 480px; }
   canvas { display: block; width: 480px; height: 270px; background: #020308; border: 1px solid #222838; }
-  figure.ours canvas { border: 1px dashed #4a5268; }
+  figure.ours canvas { border: 1px dashed #4a5268; width: 720px; height: 405px; }
+  figure.ours figcaption { max-width: 720px; }
   details { margin-top: 4px; }
   details table { border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
   details td, details th { border: 1px solid #262b38; padding: 1px 5px; text-align: left; }
@@ -104,7 +105,7 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <legend>Hull hit (ours, impact slot, docs/architecture/weapon-look.md 3.1): defaults from weapon_effects_core.h look:: and hull::</legend>
   <label>family <select id="c_family"><option value="shield">shield hit (step 1)</option><option value="hull">hull hit (step 2)</option></select></label>
   <label>camera <select id="c_camera"><option value="side">side</option><option value="chase">chase-nose</option><option value="cockpit">cockpit</option><option value="far1">far 1 km</option><option value="far2">far 2 km</option><option value="far8">far 8 km</option></select></label>
-  <label>variant <select id="c_variant"><option value="none">none</option><option value="repair">repair (override)</option><option value="tug">tug (override)</option><option value="missile">missile source</option><option value="asteroid">asteroid victim</option></select></label>
+  <label>variant <select id="c_variant"><option value="none">none</option><option value="repair">repair (override)</option><option value="tug">tug (override)</option><option value="missile">missile source</option><option value="flak">flak (burst bit)</option><option value="asteroid">asteroid victim</option></select></label>
   <label title="calibre k = clamp(log10(d / 300) / 2, 0, 1), d the impact's running damage">calibre k <input id="c_k" type="number" min="0" max="1" step="0.05" style="width:4.5em"></label>
   <label>sparks x <input id="c_h_spark_x" type="number" min="0" max="4" step="0.25" style="width:4em" title="spark count factor (the kill criterion halves it once)"></label>
   <label>speed U/s <input id="c_h_speed" type="number" min="0" step="0.5" style="width:4em"></label>
@@ -123,6 +124,8 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>orange <input id="c_h_ramp2" type="color"></label>
   <label>red <input id="c_h_ramp1" type="color"></label>
   <label>min frames <input id="c_h_min_frames" type="number" min="1" max="6" step="1" style="width:3.5em"></label>
+  <label>burst R <input id="c_h_burst_r" type="number" min="0" step="0.25" style="width:4em" title="x r_hit"></label>
+  <label>burst ms <input id="c_h_burst_ms" type="number" min="0" step="10" style="width:5em" title="+ burst_k_ms k"></label>
   <button id="c_h_reset" type="button">reset to header</button>
   </fieldset>
 </header>
@@ -247,8 +250,8 @@ const HEADER = {
   patch_hits: 4,
   owner_hits: 64,
   region_draws: 8,
-  look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4},
-  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_ms":60,"flash_core":0.25,"flash_halo_t":0.9,"spark_n0":8,"spark_nk":16,"spark_speed_u":6.0,"spark_speed_spread":0.3,"spark_tau_s":0.45,"spark_life_ms":250,"spark_life_k_ms":250,"spark_width_u":0.08,"spark_e":8.0,"spark_rest_w":3.0,"glow_r":3.0,"glow_t":0.85,"glow_e":1.0,"glow_ms":150,"ember_r":0.6,"ember_t":0.4,"ember_e":0.6,"ember_ms":1200,"bias":0.5,"asteroid_dust_x":2.0,"asteroid_t":0.3,"missile_spark_x":2.0,"tug_colour":[0.7,0.8,1.0],"mode":"full","spark_count_x":1.0}
+  look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4,"fireball_freq":2.2,"fireball_advect":1.5,"fireball_noise":0.9,"fireball_erode":0.6,"fireball_core_t":0.35,"fireball_octaves":2,"budget_weight_fireball":1.04,"budget_weight_fireball_lod":0.76},
+  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_ms":60,"flash_core":0.25,"flash_halo_t":0.9,"spark_n0":8,"spark_nk":16,"spark_speed_u":6.0,"spark_speed_spread":0.5,"spark_tau_s":0.45,"spark_life_ms":250,"spark_life_k_ms":250,"spark_width_u":0.08,"spark_e":8.0,"spark_rest_w":3.0,"glow_r":3.0,"glow_t":0.85,"glow_e":1.0,"glow_ms":150,"ember_r":0.6,"ember_t":0.4,"ember_e":0.6,"ember_ms":1200,"bias":0.5,"asteroid_dust_x":2.0,"asteroid_t":0.3,"missile_spark_x":2.0,"tug_colour":[0.7,0.8,1.0],"mode":"full","spark_count_x":1.0,"flash_halo_r":0.5,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"burst_r":1.5,"burst_ms":180,"burst_k_ms":220,"burst_rise":0.15,"burst_e":1.5,"heavy_k":0.6,"ring_r":4.0,"ring_rise":0.3,"ring_t":0.9,"ring_e":1.5,"ring_band":0.12,"ring_lift":0.25,"ring_limb_max":3.0}
 };
 /* @end */
 /* @weapon_effects_data */
@@ -260,11 +263,13 @@ const LAB_DATA = {
 /* @end */
 /* @weapon_effects_presets */
 // Generated by tools/effects/generate_weapon_effects_lab.py (PRESETS); do not edit.
-const PRESETS = [{"id":"shield/fighter-ire-side","family":"shield","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":100},{"id":"shield/capital-ppc-flank","family":"shield","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"narrow","camera":"side","seta":1,"hps":12,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":60},{"id":"hull/fighter-ire-side","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/fighter-ire-chase-nose","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"chase_nose","camera":"chase","seta":1,"hps":0,"own":true,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/fighter-ire-cockpit-own","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"cockpit","seta":1,"hps":8,"own":true,"cockpit":true,"variant":"none","k":0.33,"shield":0},{"id":"hull/corvette-ppc-flank","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/capital-ppc-flank-300m","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/capital-close-12hz","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"sphere","camera":"side","seta":1,"hps":12,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/station-ppc-1km","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"sphere","camera":"far1","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/mining-asteroid-60m","family":"hull","view":"stock_ap","weapon":"SS_BULLET_MASS","tier":1,"hull":"sphere","camera":"side","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"asteroid","k":0.3,"shield":0},{"id":"hull/missile-hit-corvette","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"missile","k":0.5,"shield":0},{"id":"hull/seta6-12hz","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":6,"hps":12,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/far-2km","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"far2","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/drained","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/repair-corvette","family":"hull","view":"mayhem3","weapon":"SS_BULLET_RL","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":12,"own":false,"cockpit":false,"variant":"repair","k":0.5,"shield":0},{"id":"hull/stock-vs-mayhem","family":"hull","view":"stock_ap","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0}];
+const PRESETS = [{"id":"shield/fighter-ire-side","family":"shield","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":100},{"id":"shield/capital-ppc-flank","family":"shield","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"narrow","camera":"side","seta":1,"hps":12,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":60},{"id":"hull/fighter-ire-side","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/fighter-ire-chase-nose","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"chase_nose","camera":"chase","seta":1,"hps":0,"own":true,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/fighter-ire-cockpit-own","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"cockpit","seta":1,"hps":8,"own":true,"cockpit":true,"variant":"none","k":0.33,"shield":0},{"id":"hull/corvette-ppc-flank","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/capital-ppc-flank-300m","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/capital-close-12hz","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"sphere","camera":"side","seta":1,"hps":12,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/station-ppc-1km","family":"hull","view":"mayhem3","weapon":"SS_BULLET_PPC","tier":2,"hull":"sphere","camera":"far1","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.8,"shield":0},{"id":"hull/mining-asteroid-60m","family":"hull","view":"stock_ap","weapon":"SS_BULLET_MASS","tier":1,"hull":"sphere","camera":"side","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"asteroid","k":0.3,"shield":0},{"id":"hull/missile-hit-corvette","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"missile","k":0.5,"shield":0},{"id":"hull/seta6-12hz","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":6,"hps":12,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/far-2km","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"far2","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/drained","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":4,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/repair-corvette","family":"hull","view":"mayhem3","weapon":"SS_BULLET_RL","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":12,"own":false,"cockpit":false,"variant":"repair","k":0.5,"shield":0},{"id":"hull/stock-vs-mayhem","family":"hull","view":"stock_ap","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.33,"shield":0},{"id":"hull/heavy-plasma-corvette","family":"hull","view":"mayhem3","weapon":"SS_BULLET_HEPT","tier":1,"hull":"narrow","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"none","k":0.63,"shield":0},{"id":"hull/heavy-flak-fighter","family":"hull","view":"stock_ap","weapon":"SS_BULLET_FLAK_ALPHA","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"flak","k":0.83,"shield":0},{"id":"hull/heavy-missile-hit","family":"hull","view":"mayhem3","weapon":"SS_BULLET_IRE","tier":0,"hull":"flat_top","camera":"side","seta":1,"hps":0,"own":false,"cockpit":false,"variant":"missile","k":0.5,"shield":0}];
 /* @end */
 
 const BASES = ['', '../../verification/results/weapon-effects-lab/'];
 const W = 480, H = 270;
+// Our preview canvas (2026-11-06: 1.5 x the vanilla's, both families).
+const OW = 720, OH = 405;
 const SLOTS = [
   {key: 'muzzle', label: 'Muzzle', col: 'col 21'},
   {key: 'projectile', label: 'Projectile', col: 'col 0 body + col 19 flight effect'},
@@ -601,49 +606,49 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   colour = colour.map(v => v * dim);
   // The camera at the origin looking down +z (vertical field of view 40 degrees): the whole owner centred, or close
   // with the hit area (the scatter plus the footprint) a third of the canvas height and centred.
-  const f = H / (2 * Math.tan(20 * Math.PI / 180));
+  const f = OH / (2 * Math.tan(20 * Math.PI / 180));
   const area = 2 * cell + (rings + 1) * cell;
   const aim = hull.toView(hullPoint(hull, hull.aim[0], hull.aim[1])), whole = c.frame === 'ship' || !!hull.whole;
-  const D = whole ? S * f / (0.42 * H) : area * f / (0.34 * H);
+  const D = whole ? S * f / (0.42 * OH) : area * f / (0.34 * OH);
   const C = whole ? [0, 0, D] : [-aim[0], -aim[1], D - aim[2]]; // the owner's centre in view space
   const toView = q => { const v = hull.toView(q); return [v[0] + C[0], v[1] + C[1], v[2] + C[2]]; };
   // view -> owner frame (the inverse rotation of toView)
   const toLocal = hull.toLocal;
   const O = toLocal([-C[0], -C[1], -C[2]]), e = hull.ext;
-  const img = ctx.getImageData(0, 0, W, H), px = img.data;
-  const sum = new Float32Array(W * H);
-  const rayOf = (x, y) => toLocal(norm3([(x + 0.5 - W / 2) / f, -(y + 0.5 - H / 2) / f, 1]));
+  const img = ctx.getImageData(0, 0, OW, OH), px = img.data;
+  const sum = new Float32Array(OW * OH);
+  const rayOf = (x, y) => toLocal(norm3([(x + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1]));
   // The hull's near root along a ray (owner frame): the surface the patch lies on and the preview's dim hull shading.
   const hullT = d => {
     const o = O.map((v, k) => v / e[k]), dd = d.map((v, k) => v / e[k]);
     const A = dot3(dd, dd), B = dot3(o, dd), Cc = dot3(o, o) - 1, disc = B * B - A * Cc;
     return disc < 0 ? Infinity : (-B - Math.sqrt(disc)) / A;
   };
-  const hullDepth = new Float32Array(W * H);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
+  const hullDepth = new Float32Array(OW * OH);
+  for (let y = 0; y < OH; y++)
+    for (let x = 0; x < OW; x++) {
       const d = rayOf(x, y), th = hullT(d);
-      hullDepth[y * W + x] = th;
+      hullDepth[y * OW + x] = th;
       if (hull.narrow && th !== Infinity && th > 0) { // the narrow hull, dim (the game draws the real one)
         const p = O.map((v, k) => v + th * d[k]), n = norm3(p.map((v, k) => v / (e[k] * e[k]))) || [0, 0, -1];
         const shade = 0.035 * Math.max(0.25, -dot3(n, d));
-        for (let k = 0; k < 3; k++) px[(y * W + x) * 4 + k] = Math.round(255 * linearToSrgb(srgbToLinear(px[(y * W + x) * 4 + k] / 255) + shade));
+        for (let k = 0; k < 3; k++) px[(y * OW + x) * 4 + k] = Math.round(255 * linearToSrgb(srgbToLinear(px[(y * OW + x) * 4 + k] / 255) + shade));
       }
     }
   // weapon_shell_ps.hlsl per pixel: the hull's point p (owner frame) from the depth, its normal from the 2x2 quad's
   // differences (the hardware's coarse ddx / ddy; the eye's direction off the hull), turned towards the eye; per face
   // its share (|n_a|^s normalised, less the floor, renormalised; only where the outward normal points along a), the
   // pixel's cell on the face's lattice, lit when the point lies in the face's box and the face's set holds the cell.
-  const P = new Float32Array(W * H * 3), on = new Uint8Array(W * H);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const th = hullDepth[y * W + x];
+  const P = new Float32Array(OW * OH * 3), on = new Uint8Array(OW * OH);
+  for (let y = 0; y < OH; y++)
+    for (let x = 0; x < OW; x++) {
+      const th = hullDepth[y * OW + x];
       if (!(th !== Infinity && th > 0)) continue;
       const d = rayOf(x, y);
-      for (let k = 0; k < 3; k++) P[(y * W + x) * 3 + k] = O[k] + th * d[k];
-      on[y * W + x] = 1;
+      for (let k = 0; k < 3; k++) P[(y * OW + x) * 3 + k] = O[k] + th * d[k];
+      on[y * OW + x] = 1;
     }
-  const pt = (x, y) => [P[(y * W + x) * 3], P[(y * W + x) * 3 + 1], P[(y * W + x) * 3 + 2]];
+  const pt = (x, y) => [P[(y * OW + x) * 3], P[(y * OW + x) * 3 + 1], P[(y * OW + x) * 3 + 2]];
   const sharp = HEADER.triplanar_sharpness, floor = HEADER.triplanar_floor;
   const share = (n, d) => { // the face's triplanar share at outward normal n (0 unless n points along its axis)
     if (!(dot3(n, d.fr.a) > 0)) return 0;
@@ -663,14 +668,14 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     const half = Math.sqrt(disc / A), at = tt => o.map((v, k) => (v + tt * dd[k]) * E[k]);
     return [{t: tm - half, p: at(tm - half)}, {t: tm + half, p: at(tm + half)}];
   };
-  for (let y = 0; bubble && y + 1 < H; y++)
-    for (let x = 0; x + 1 < W; x++) {
+  for (let y = 0; bubble && y + 1 < OH; y++)
+    for (let x = 0; x + 1 < OW; x++) {
       const roots = bubbleRoots(x, y);
       if (!roots) continue;
       const rx = bubbleRoots(x + 1, y), ry = bubbleRoots(x, y + 1);
       for (let side = 0; side < 2; side++) {
         const r = roots[side], gain = side ? c.bubble_far : 1;
-        if (!(r.t > 0 && r.t < hullDepth[y * W + x]) || !(gain > 0)) continue;
+        if (!(r.t > 0 && r.t < hullDepth[y * OW + x]) || !(gain > 0)) continue;
         const n = norm3(r.p.map((v, k) => v / (E[k] * E[k]))) || [0, 0, 1];
         let lit = 0;
         for (const d of draws) {
@@ -682,18 +687,18 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
           const hd = rr => rr ? hexCell(dot3(rr[side].p, d.fr.u) / cell, dot3(rr[side].p, d.fr.v) / cell).hd : cl.hd;
           const fw = Math.abs(hd(rx) - cl.hd) + Math.abs(hd(ry) - cl.hd);
           const v = hexLaw(q, cl, fw, d, c) * w * gain;
-          sum[y * W + x] += v;
+          sum[y * OW + x] += v;
           lit += v > 0;
         }
         if (lit) { if (side) farLit++; else nearLit++; }
       }
     }
-  for (let y = 0; !bubble && y + 1 < H; y++)
-    for (let x = 0; x + 1 < W; x++) {
-      if (!on[y * W + x]) continue;
+  for (let y = 0; !bubble && y + 1 < OH; y++)
+    for (let x = 0; x + 1 < OW; x++) {
+      if (!on[y * OW + x]) continue;
       const p = pt(x, y), x0 = x & ~1, y0 = y & ~1;
       let n;
-      if (on[y0 * W + x0] && on[y0 * W + x0 + 1] && on[(y0 + 1) * W + x0]) {
+      if (on[y0 * OW + x0] && on[y0 * OW + x0 + 1] && on[(y0 + 1) * OW + x0]) {
         const a = pt(x0, y0), bx = pt(x0 + 1, y0), by = pt(x0, y0 + 1);
         n = cross3([0, 1, 2].map(k => bx[k] - a[k]), [0, 1, 2].map(k => by[k] - a[k]));
       } else n = [0, 1, 2].map(k => O[k] - p[k]);
@@ -712,11 +717,11 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
         const cl = hexCell(q[0] / cell, q[1] / cell), cv = d.cells.get(packKey(cl.kx, cl.ky));
         if (!cv) continue;
         const hd = qq => hexCell(dot3(qq, d.fr.u) / cell, dot3(qq, d.fr.v) / cell).hd;
-        const fw = (on[y * W + x + 1] ? Math.abs(hd(pr) - cl.hd) : 0) + (on[(y + 1) * W + x] ? Math.abs(hd(pd) - cl.hd) : 0);
-        sum[y * W + x] += hexLaw(q, cl, fw, d, c) * w;
+        const fw = (on[y * OW + x + 1] ? Math.abs(hd(pr) - cl.hd) : 0) + (on[(y + 1) * OW + x] ? Math.abs(hd(pd) - cl.hd) : 0);
+        sum[y * OW + x] += hexLaw(q, cl, fw, d, c) * w;
       }
     }
-  for (let i = 0; i < W * H; i++) {
+  for (let i = 0; i < OW * OH; i++) {
     if (!(sum[i] > 0)) continue;
     for (let k = 0; k < 3; k++) {
       const base = srgbToLinear(px[i * 4 + k] / 255), v = base + (1 - Math.exp(-colour[k] * sum[i]));
@@ -767,17 +772,25 @@ function initOurControls() {
 // ---------------------------------------------------------------- our renderer: the hull hit (weapon-look.md 3.1)
 // The impact slot's hull hit (family hull, step 2): the law of src/proxy/weapon_effects_hull.h on the preview owner
 // (previewHull: the tier's preview hull and camera), every length in metres: r_hit = r_scale U (r_base + r_k k), U the tier's
-// cell_m; a white flash (its core flash_core r_hit, >= floor_flash_px, a halo of r_hit at heat flash_halo_t, flash_ms,
-// its centre biased towards the eye by bias r_hit); isotropic sparks in antipodal pairs (n = round(spark_n0 + spark_nk k),
-// a Fibonacci hemisphere turned per hit), closed form p(t) = p0 + v0 tau (1 - e^(-t / tau)) from the contact point, each
-// drawn from its previous frame's screen position (one 60 Hz frame of game time back) to its current one, at least its
-// rest length (spark_rest_w widths, >= floor_len_px) and at most streak_cap of it, radiance x rest / (rest + motion) not
-// below streak_core_min, hidden where the hull lies in front (the lane's rule: the sky never hides), cooling on the heat
-// ramp; the glow and the ember on the hull within R of the contact point (E = colour (1 - d^2 / R^2)^2); every life x
-// (1 +- stagger / 2) and never below min_frames frames of game time. Variants: repair (glow and ember, the weapon
-// tint), tug (glow only, pale blue, k 0.1), missile (sparks x 2, the missile tint on the halo), asteroid (sparks x 2 on
-// the ramp's last stops, no flash). The own ship in the cockpit view at own_cockpit_gain. The 5120x1440 pixel floors
-// at the canvas's scale (W / 5120).
+// cell_m; the hit's sequence is its seed, hashed with the stage's own functions (mix32, element_hash), so a preset draws
+// the stage's pattern. A white flash (its core flash_core r_hit, >= floor_flash_px, a halo of flash_halo_r r_hit at heat
+// flash_halo_t, flash_ms, its centre biased towards the eye by bias r_hit): a short core inside the hot-gas burst, the
+// fireball impostor (weapon_fireball_ps.hlsl: the chord's closed-form density of 1 - r^2 / R^2 clipped at the hull, two
+// octaves of advected value noise, the heat ramp) of R(t) = burst_r r_hit (1 - e^(-t / (burst_rise L))), L = burst_ms +
+// burst_k_ms k, on every hit but repair, tug and asteroid; sparks in antipodal pairs of hashed isotropic directions,
+// their count, speed, life, length and width hashed per hit and spark, a quarter curling (a constant sideways drift),
+// closed form p(t) = p0 + v0 tau (1 - e^(-t / tau)) + w t from the contact point, each drawn from its previous frame's
+// screen position (one 60 Hz frame of game time back) to its current one, at least its rest length (spark_rest_w
+// widths, >= floor_len_px, x its length factor) and at most streak_cap of it, radiance x rest / (rest + motion) not below
+// streak_core_min, hidden where the hull lies in front (the lane's rule: the sky never hides), cooling on the heat
+// ramp; the glow and the ember on the hull within R of the contact point (E = colour (1 - d^2 / R^2)^2); on heavy hits
+// (a missile source, flak (the burst style bit), k >= heavy_k) a shock ring in the hull's tangent plane (the preview
+// ellipsoid's normal at the hit), radius 0 -> ring_r r_hit over ring_rise L; every life x (1 +- stagger / 2) (the
+// sparks' by their own factors) and never below min_frames frames of game time. Variants: repair (glow and ember, the
+// weapon tint), tug (glow only, pale blue, k 0.1), missile (sparks x 2, the missile tint on the halo), flak (the ring),
+// asteroid (sparks x 2 on the ramp's last stops, no flash, no burst). The own ship in the cockpit view at
+// own_cockpit_gain. The 5120x1440 pixel floors at the canvas's scale (OW / 5120). The side camera frames 4 U and one glow
+// radius.
 const MISSILE_TINT = [255, 170, 90].map(v => srgbToLinear(v / 255));
 function ourFamily() { return $('c_family') && $('c_family').value === 'hull' ? 'hull' : 'shield'; }
 function hullControls() {
@@ -791,6 +804,7 @@ function hullControls() {
           flash_ms: num('c_h_flash_ms', HH.flash_ms), glow_r: num('c_h_glow_r', HH.glow_r), glow_e: num('c_h_glow_e', HH.glow_e),
           glow_ms: num('c_h_glow_ms', HH.glow_ms), ember_r: num('c_h_ember_r', HH.ember_r), ember_e: num('c_h_ember_e', HH.ember_e),
           ember_ms: num('c_h_ember_ms', HH.ember_ms), min_frames: Math.max(1, Math.round(num('c_h_min_frames', HEADER.look.min_frames))),
+          burst_r: num('c_h_burst_r', HH.burst_r), burst_ms: num('c_h_burst_ms', HH.burst_ms),
           k: Math.max(0, Math.min(1, num('c_k', 0.33))), ramp,
           camera: ($('c_camera') && $('c_camera').value) || 'side', variant: ($('c_variant') && $('c_variant').value) || 'none'};
 }
@@ -799,8 +813,58 @@ function heatRamp(T, ramp) {
   return [0, 1, 2].map(k => r[i][k] + (r[i + 1][k] - r[i][k]) * f);
 }
 function hullLifetimeMs(h) { return Math.floor(h.ember_ms * (1 + 0.5 * HEADER.stagger)) + 1; }
+// The stage's hashes (weapon_effects_hull.h: mix32, unit_of, element_hash), in 32-bit unsigned arithmetic.
+function mix32(x) {
+  x = (x ^ (x >>> 16)) >>> 0; x = Math.imul(x, 0x7feb352d) >>> 0; x = (x ^ (x >>> 15)) >>> 0;
+  x = Math.imul(x, 0x846ca68b) >>> 0; return (x ^ (x >>> 16)) >>> 0;
+}
+function unitOf(h) { return (h >>> 8) * (1 / 16777216); }
+function elementHash(seq, i) { return mix32((Math.imul(seq, 0x9e3779b9) + Math.imul(i, 0x85ebca6b) + 0x632be5ab) >>> 0); }
+// An element's life: its law x (1 + stagger (h - 1/2)), never below the floor (stage::element_life_ms).
+function elementLife(law, h, floorMs) { return Math.max(law * (1 + HEADER.stagger * (unitOf(h) - 0.5)), floorMs); }
+// stage::spark_count, spark_factors, pair_direction, curl_drift.
+function sparkCount(seq, k, h) {
+  const HH = HEADER.hull, v = h.variant;
+  if (v === 'repair' || v === 'tug' || HH.mode === 'simple') return 0;
+  let n = (HH.spark_n0 + HH.spark_nk * k) * h.spark_x * (v === 'missile' ? HH.missile_spark_x : 1) *
+          (v === 'asteroid' ? HH.asteroid_dust_x : 1);
+  if (!(n > 0)) return 0;
+  n *= 1 + HH.spark_count_spread * (2 * unitOf(elementHash(seq, 7)) - 1);
+  return Math.max(2, Math.floor(n + 0.5));
+}
+function sparkFactors(seq, s) {
+  const HH = HEADER.hull, h0 = elementHash(seq, 64 + s), h1 = mix32((h0 + 0x9e3779b9) >>> 0);
+  const byte = sh => (((h1 >>> sh) & 0xff) + 0.5) / 256, lerp = (lo, hi, sh) => lo + (hi - lo) * byte(sh);
+  return {speed_x: 1 + HH.spark_speed_spread * (2 * byte(0) - 1), life_x: lerp(HH.spark_life_lo, HH.spark_life_hi, 8),
+          len_x: lerp(HH.spark_len_lo, HH.spark_len_hi, 16), width_x: lerp(HH.spark_width_lo, HH.spark_width_hi, 24),
+          curl: unitOf(h0) < HH.spark_curl_share,
+          curl_hash: unitOf(h0) < HH.spark_curl_share ? mix32((h0 ^ 0x5bd1e995) >>> 0) : 0};
+}
+function cubePoint(h) { return [0, 10, 20].map(sh => (((h >>> sh) & 0x3ff) + 0.5) * (2 / 1024) - 1); }
+function pairDirection(seq, j) {
+  for (let a = 0; a < 8; a++) {
+    const q = cubePoint(elementHash(seq, 4096 + 8 * j + a)), r2 = dot3(q, q);
+    if (r2 > 1e-4 && (r2 <= 1 || a === 7)) { const n = Math.sqrt(r2); return q.map(v => v / n); }
+  }
+  return [0, 0, 1];
+}
+function curlDrift(h, d) {
+  let q = cubePoint(h), dq = dot3(q, d);
+  q = q.map((v, i) => v - dq * d[i]);
+  if (!(dot3(q, q) > 1e-6)) {
+    const a = d[1] * d[1] + d[2] * d[2] > 0.5 ? [1, 0, 0] : [0, 0, 1];
+    dq = dot3(a, d); q = a.map((v, i) => v - dq * d[i]);
+  }
+  const n = Math.sqrt(dot3(q, q));
+  return q.map(v => v * HEADER.hull.spark_curl_x / n);
+}
+// The heavy families (stage::hull_heavy): a missile source, flak (the burst style bit), k >= heavy_k.
+function hullHeavy(h, k) {
+  if (['repair', 'tug', 'asteroid'].includes(h.variant)) return false;
+  return h.variant === 'missile' || h.variant === 'flak' || k >= HEADER.hull.heavy_k;
+}
 // The live hull hits at wall time t: one at t = 0, or c.hits per game second, within 1.5 U of the aim point on the
-// hull's camera face; ages in game ms (x SETA), newest first.
+// hull's camera face; ages in game ms (x SETA), newest first; seq the hit's sequence (the stage's hashes).
 function hullHits(t, c, h, hull, U, floorMs) {
   const life = hullLifetimeMs(h) + floorMs, period = c.hits > 0 ? 1000 / (c.hits * Math.max(c.seta, 1e-3)) : 0, out = [];
   const count = period ? Math.floor(t / period) + 1 : 1;
@@ -813,117 +877,201 @@ function hullHits(t, c, h, hull, U, floorMs) {
   }
   return out;
 }
-// The sparks of one hit at game age a (ms): [{head, tail (owner frame, metres), life, T, radiance, colour}].
+// The sparks of one hit at game age a (ms): [{head, tail (owner frame, metres), e, colour, width_x, len_x}].
 function hullSparks(hit, a, h, U, k, floorMs, step) {
-  const HH = HEADER.hull, variant = h.variant;
-  if (variant === 'repair' || variant === 'tug' || HH.mode === 'simple') return [];
-  const x = (variant === 'missile' ? HH.missile_spark_x : 1) * (variant === 'asteroid' ? HH.asteroid_dust_x : 1);
-  const n = Math.round((HH.spark_n0 + HH.spark_nk * k) * h.spark_x * x), pairs = Math.ceil(n / 2), out = [];
-  const r = rng(hit.seed * 17 + 3), q = [0, 1, 2, 3].map(() => 2 * r() - 1), qn = Math.hypot(...q) || 1;
-  const [w, qx, qy, qz] = q.map(v => v / qn);
-  const rot = v => { // the hit's rotation of a Fibonacci direction (a unit quaternion)
-    const t = [2 * (qy * v[2] - qz * v[1]), 2 * (qz * v[0] - qx * v[2]), 2 * (qx * v[1] - qy * v[0])];
-    return [v[0] + w * t[0] + qy * t[2] - qz * t[1], v[1] + w * t[1] + qz * t[0] - qx * t[2], v[2] + w * t[2] + qx * t[1] - qy * t[0]];
-  };
+  const HH = HEADER.hull, variant = h.variant, seq = hit.seed, n = sparkCount(seq, k, h), out = [];
+  if (!n) return out;
   const tau = HH.spark_tau_s, F = s => s > 0 ? tau * (1 - Math.exp(-s / tau)) : 0;
-  const fNow = F(a / 1000), fPrev = F(Math.max(0, a - step) / 1000);
-  for (let j = 0; j < pairs; j++) {
-    const z = 1 - (j + 0.5) / pairs, rr = Math.sqrt(1 - z * z), phi = j * 2.39996323;
-    const d = rot([rr * Math.cos(phi), rr * Math.sin(phi), z]);
-    const pr = rng(hit.seed * 131 + j), speed = h.speed_u * U * (1 + HH.spark_speed_spread * (2 * pr() - 1));
-    const life = Math.max((h.life_ms + HH.spark_life_k_ms * k) * (1 + HEADER.stagger * (pr() - 0.5)), floorMs);
+  const tNow = a / 1000, tPrev = Math.max(0, a - step) / 1000, fNow = F(tNow), fPrev = F(tPrev), first = !(fNow - fPrev > 1e-6);
+  const lawLife = h.life_ms + HH.spark_life_k_ms * k;
+  let d = null, dPair = -1;
+  for (let s = 0; s < n; s++) {
+    const sf = sparkFactors(seq, s), life = Math.max(lawLife * sf.life_x, floorMs);
     if (!(a < life)) continue;
+    if ((s >> 1) !== dPair) { d = pairDirection(seq, s >> 1); dPair = s >> 1; }
+    const ds = s & 1 ? d.map(v => -v) : d, speed = h.speed_u * U * sf.speed_x;
+    const w = sf.curl ? curlDrift(sf.curl_hash, ds).map(v => v * speed) : [0, 0, 0];
     const T = 1 - a / life, asteroid = variant === 'asteroid';
     const colour = heatRamp(asteroid ? HH.asteroid_t * T + 0.05 : T, h.ramp);
     const e = (asteroid ? HEADER.look.body_max : HH.spark_e) * T;
-    for (let side = 0; side < 2 && side < n - 2 * j; side++) {
-      const s = side ? -speed : speed;
-      out.push({head: hit.p.map((v, i) => v + d[i] * s * fNow), tail: hit.p.map((v, i) => v + d[i] * s * (fNow > fPrev ? fPrev : fNow - 1e-3)),
-                e, colour});
-    }
+    const head = hit.p.map((v, i) => v + ds[i] * speed * fNow + w[i] * tNow);
+    const tail = first ? head.map((v, i) => v - (ds[i] * speed + w[i]) * 1e-3)
+      : hit.p.map((v, i) => v + ds[i] * speed * fPrev + w[i] * tPrev);
+    out.push({head, tail, e, colour, width_x: sf.width_x, len_x: sf.len_x});
   }
   return out;
+}
+// The fireball impostor's value noise and hash (weapon_fireball_ps.hlsl).
+function frac(x) { return x - Math.floor(x); }
+function hash3(p) {
+  let x = frac(p[0] * 0.1031), y = frac(p[1] * 0.1031), z = frac(p[2] * 0.1031);
+  const d = x * (z + 31.32) + y * (y + 31.32) + z * (x + 31.32);
+  x += d; y += d; z += d;
+  return frac((x + y) * z);
+}
+function valueNoise(p) {
+  const i = p.map(Math.floor), f = p.map((v, k) => v - i[k]), u = f.map(v => v * v * (3 - 2 * v));
+  const at = (a, b, c) => hash3([i[0] + a, i[1] + b, i[2] + c]), L = (a, b, t) => a + (b - a) * t;
+  return L(L(L(at(0, 0, 0), at(1, 0, 0), u[0]), L(at(0, 1, 0), at(1, 1, 0), u[0]), u[1]),
+           L(L(at(0, 0, 1), at(1, 0, 1), u[0]), L(at(0, 1, 1), at(1, 1, 1), u[0]), u[1]), u[2]);
 }
 function renderHull(record, t) {
   const ctx = record.ctx, c = ourControls(), h = hullControls(), hull = previewHull(c), S = hull.S, HH = HEADER.hull, LK = HEADER.look;
   const U = c.cell_m[c.tier], k = h.variant === 'tug' ? 0.1 : h.k, rHit = HH.r_scale * U * (HH.r_base + HH.r_k * k);
-  const step = 1000 / 60 * Math.max(c.seta, 1e-3), floorMs = h.min_frames * step, scale = W / 5120;
-  const f = H / (2 * Math.tan(20 * Math.PI / 180));
+  const step = 1000 / 60 * Math.max(c.seta, 1e-3), floorMs = h.min_frames * step, scale = OW / 5120;
+  const f = OH / (2 * Math.tan(20 * Math.PI / 180));
   const hits = hullHits(t, c, h, hull, U, floorMs);
   const aim = hull.toView(hullPoint(hull, hull.aim[0], hull.aim[1]));
-  const area = 4 * U + 2 * h.glow_r * rHit;
+  const area = 4 * U + h.glow_r * rHit; // the sparks' reach, the burst and the ember, one glow radius
   const D = h.camera === 'far1' ? 1000 : h.camera === 'far2' ? 2000 : h.camera === 'far8' ? 8000
-    : h.camera === 'cockpit' ? 1.5 * U : h.camera === 'chase' ? S * f / (0.42 * H) : area * f / (0.34 * H);
+    : h.camera === 'cockpit' ? 1.5 * U : h.camera === 'chase' ? S * f / (0.42 * OH) : area * f / (0.34 * OH);
   const C = h.camera === 'chase' ? [0, 0, D] : [-aim[0], -aim[1], D - aim[2]];
   const toView = q => { const v = hull.toView(q); return [v[0] + C[0], v[1] + C[1], v[2] + C[2]]; };
   const O = hull.toLocal([-C[0], -C[1], -C[2]]), e = hull.ext;
-  const img = ctx.getImageData(0, 0, W, H), px = img.data, sum = new Float32Array(W * H * 3);
+  const img = ctx.getImageData(0, 0, OW, OH), px = img.data, sum = new Float32Array(OW * OH * 3);
   // The hull's view depth and surface point (owner frame) per pixel; the sky Infinity.
-  const depth = new Float32Array(W * H).fill(Infinity), P = new Float32Array(W * H * 3);
-  for (let y = 0; y < H; y++)
-    for (let x = 0; x < W; x++) {
-      const dv = norm3([(x + 0.5 - W / 2) / f, -(y + 0.5 - H / 2) / f, 1]), d = hull.toLocal(dv);
+  const depth = new Float32Array(OW * OH).fill(Infinity), P = new Float32Array(OW * OH * 3);
+  for (let y = 0; y < OH; y++)
+    for (let x = 0; x < OW; x++) {
+      const dv = norm3([(x + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1]), d = hull.toLocal(dv);
       const o = O.map((v, i) => v / e[i]), dd = d.map((v, i) => v / e[i]);
       const A = dot3(dd, dd), B = dot3(o, dd), Cc = dot3(o, o) - 1, disc = B * B - A * Cc;
       if (disc < 0) continue;
       let th = (-B - Math.sqrt(disc)) / A;
       if (th <= 0) th = (-B + Math.sqrt(disc)) / A;
       if (!(th > 0)) continue;
-      depth[y * W + x] = th * dv[2];
-      for (let i = 0; i < 3; i++) P[(y * W + x) * 3 + i] = O[i] + th * d[i];
+      depth[y * OW + x] = th * dv[2];
+      for (let i = 0; i < 3; i++) P[(y * OW + x) * 3 + i] = O[i] + th * d[i];
     }
   const dim = c.own && c.cockpit ? HEADER.own_cockpit_gain : 1;
-  const add = (i, col, v) => { for (let q = 0; q < 3; q++) sum[i * 3 + q] += col[q] * v * dim; };
+  // Per element (0 flash, 1 sparks, 2 glow, 3 ember, 4 burst, 5 ring): the light it adds and the pixels it lights.
+  const ELEMENTS = ['flash', 'sparks', 'glow', 'ember', 'burst', 'ring'];
+  const light = new Float64Array(6), mask = ELEMENTS.map(() => new Uint8Array(OW * OH));
+  const add = (i, col, v, el) => {
+    for (let q = 0; q < 3; q++) sum[i * 3 + q] += col[q] * v * dim;
+    const l = (col[0] + col[1] + col[2]) / 3 * v * dim;
+    light[el] += l;
+    if (l > 1e-3) mask[el][i] = 1;
+  };
   const tint = h.variant === 'tug' ? HH.tug_colour : weaponLinear(record.weapon || {});
-  const stats = {hits: hits.length, flashes: 0, sparks: 0, glows: 0, embers: 0};
+  const stats = {hits: hits.length, flashes: 0, sparks: 0, glows: 0, embers: 0, bursts: 0, rings: 0};
+  const bbox = (cx, cy, r) => [Math.max(0, Math.floor(cx - r)), Math.min(OW, Math.ceil(cx + r)), Math.max(0, Math.floor(cy - r)),
+                               Math.min(OH, Math.ceil(cy + r))];
   for (const hit of hits) {
-    const a = hit.age, lr = rng(hit.seed * 7 + 1), lifeOf = law => Math.max(law * (1 + HEADER.stagger * (lr() - 0.5)), floorMs);
-    const pv = toView(hit.p), flashLife = lifeOf(h.flash_ms), glowLife = lifeOf(h.glow_ms), emberLife = lifeOf(h.ember_ms);
+    const a = hit.age, seq = hit.seed, lifeOf = (law, el) => elementLife(law, elementHash(seq, el), floorMs);
+    const pv = toView(hit.p), flashLife = lifeOf(h.flash_ms, 0), glowLife = lifeOf(h.glow_ms, 1), emberLife = lifeOf(h.ember_ms, 2);
+    const burstKind = !['repair', 'tug', 'asteroid'].includes(h.variant);
+    const burstLife = lifeOf(h.burst_ms + HH.burst_k_ms * k, 3);
     // The glow and the ember: on the hull within R of the contact point.
     const lights = [];
     if (a < glowLife) {
       const fade = 1 - a / glowLife;
-      lights.push({R: h.glow_r * rHit, col: h.variant === 'repair' || h.variant === 'tug' ? tint.map(v => v * h.glow_e * fade)
+      lights.push({R: h.glow_r * rHit, el: 2, col: h.variant === 'repair' || h.variant === 'tug' ? tint.map(v => v * h.glow_e * fade)
         : heatRamp(HH.glow_t, h.ramp).map(v => v * h.glow_e * HH.glow_t * fade)});
       stats.glows++;
     }
     if (a < emberLife && h.variant !== 'tug') {
       const fade = 1 - a / emberLife, T = HH.ember_t * fade;
-      lights.push({R: h.ember_r * rHit, col: h.variant === 'repair' ? tint.map(v => v * h.ember_e * fade)
+      lights.push({R: h.ember_r * rHit, el: 3, col: h.variant === 'repair' ? tint.map(v => v * h.ember_e * fade)
         : heatRamp(T, h.ramp).map(v => v * h.ember_e * T)});
       stats.embers++;
     }
     for (const L of lights) {
       if (!(pv[2] > 0)) continue;
-      const rpx = L.R * f / Math.max(pv[2] - L.R, 1e-3), cx = W / 2 + f * pv[0] / pv[2], cy = H / 2 - f * pv[1] / pv[2];
-      for (let y = Math.max(0, Math.floor(cy - rpx)); y < Math.min(H, Math.ceil(cy + rpx)); y++)
-        for (let x = Math.max(0, Math.floor(cx - rpx)); x < Math.min(W, Math.ceil(cx + rpx)); x++) {
-          const i = y * W + x;
+      const rpx = L.R * f / Math.max(pv[2] - L.R, 1e-3), [x0, x1, y0, y1] = bbox(OW / 2 + f * pv[0] / pv[2], OH / 2 - f * pv[1] / pv[2], rpx);
+      for (let y = y0; y < y1; y++)
+        for (let x = x0; x < x1; x++) {
+          const i = y * OW + x;
           if (depth[i] === Infinity) continue;
           const d2 = (P[i * 3] - hit.p[0]) ** 2 + (P[i * 3 + 1] - hit.p[1]) ** 2 + (P[i * 3 + 2] - hit.p[2]) ** 2;
           const q = Math.max(0, 1 - d2 / (L.R * L.R));
-          if (q > 0) add(i, L.col, q * q);
+          if (q > 0) add(i, L.col, q * q, L.el);
         }
     }
-    // The flash (not repair, tug, asteroid).
+    // The burst: the fireball impostor at the contact point (the lane clips the chord: the half inside the hull).
+    if (burstKind && a < burstLife && pv[2] > 0) {
+      const R = h.burst_r * rHit * (1 - Math.exp(-a / (HH.burst_rise * burstLife)));
+      if (R > 0) {
+        const T = 1 - a / burstLife, E = HH.burst_e, adv = LK.fireball_advect * a / burstLife;
+        const seed = 64 * unitOf(elementHash(seq, 4)), near = 0.1;
+        const rpx = R * f / Math.sqrt(Math.max(pv[2] * pv[2] - R * R, 1e-6));
+        const [x0, x1, y0, y1] = pv[2] - R > near ? bbox(OW / 2 + f * pv[0] / pv[2], OH / 2 - f * pv[1] / pv[2], rpx + 1) : [0, OW, 0, OH];
+        const cc = dot3(pv, pv);
+        for (let y = y0; y < y1; y++)
+          for (let x = x0; x < x1; x++) {
+            const dir = [(x + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), l = Math.sqrt(L2);
+            const bz = dot3(dir, pv), zm = bz / L2, disc = R * R - (cc - bz * zm);
+            if (!(disc > 0)) continue;
+            const hc = Math.sqrt(disc), u0 = Math.max(-hc, (near - zm) * l);
+            const lane = depth[y * OW + x], u1 = lane === Infinity ? hc : Math.min(hc, (lane - zm) * l);
+            if (!(u1 > u0)) continue;
+            const column = Math.min(1, ((u1 - u0) * disc - (u1 ** 3 - u0 ** 3) / 3) * 0.75 / (R * R * R));
+            const zq = zm + 0.5 * (u0 + u1) / l, q = dir.map((v, i) => (v * zq - pv[i]) / R), rq = Math.max(Math.hypot(...q), 1e-3);
+            const xs = q.map((v, i) => v * LK.fireball_freq - v / rq * adv + seed * [1.7, 3.1, 0.7][i]);
+            let n = valueNoise(xs);
+            if (LK.fireball_octaves > 1) n = 0.62 * n + 0.38 * valueNoise(xs.map(v => v * 2.07 + 5.3));
+            const dens = Math.max(0, column) * Math.max(0, Math.min(1, 1 + LK.fireball_noise * (2 * n - 1) - LK.fireball_erode * (1 - T)));
+            const tt = T * (1 - LK.fireball_core_t * (1 - Math.max(0, column)));
+            if (dens > 0) add(y * OW + x, heatRamp(tt, h.ramp), E * tt * dens, 4);
+          }
+        stats.bursts++;
+      }
+    }
+    // The heavy ring: the hull's tangent plane at the hit (the preview ellipsoid's normal), lifted ring_lift r_hit.
+    const ringLife = Math.max(HH.ring_rise * burstLife, floorMs);
+    if (burstKind && hullHeavy(h, k) && a < ringLife && a > 0) {
+      const nl = norm3(hit.p.map((v, i) => v / (e[i] * e[i]))) || [0, 0, -1], nv0 = hull.toView(nl), nv = norm3(nv0);
+      const rho = HH.ring_r * rHit * a / ringLife, rc = pv.map((v, i) => v + nv[i] * HH.ring_lift * rHit);
+      const ax = Math.abs(nv[0]) < 0.6 ? [1, 0, 0] : [0, 1, 0];
+      const t1 = norm3([nv[1] * ax[2] - nv[2] * ax[1], nv[2] * ax[0] - nv[0] * ax[2], nv[0] * ax[1] - nv[1] * ax[0]]);
+      const t2 = [nv[1] * t1[2] - nv[2] * t1[1], nv[2] * t1[0] - nv[0] * t1[2], nv[0] * t1[1] - nv[1] * t1[0]];
+      const cosv = Math.abs(dot3(nv, rc)) / Math.max(Math.hypot(...rc), 1e-6);
+      const limb = cosv * HH.ring_limb_max > 1 ? 1 / cosv : HH.ring_limb_max;
+      const rhoPx = rc[2] > 0 ? rho * f / rc[2] : 1e30, band = Math.min(1, Math.max(HH.ring_band, LK.floor_lit_px * scale / rhoPx));
+      const E = HH.ring_e * HH.ring_t * (1 - a / ringLife) * limb, col = heatRamp(HH.ring_t, h.ramp), soft = LK.soft_core * rHit;
+      const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([u, v]) => rc.map((c0, i) => c0 + rho * (u * t1[i] + v * t2[i])));
+      let bx = [0, OW, 0, OH];
+      if (corners.every(q => q[2] > 0.1)) {
+        const xs = corners.map(q => OW / 2 + f * q[0] / q[2]), ys = corners.map(q => OH / 2 - f * q[1] / q[2]);
+        bx = [Math.max(0, Math.floor(Math.min(...xs))), Math.min(OW, Math.ceil(Math.max(...xs))),
+              Math.max(0, Math.floor(Math.min(...ys))), Math.min(OH, Math.ceil(Math.max(...ys)))];
+      }
+      const nr = dot3(nv, rc);
+      for (let y = bx[2]; y < bx[3]; y++)
+        for (let x = bx[0]; x < bx[1]; x++) {
+          const dir = [(x + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], nd = dot3(nv, dir);
+          if (Math.abs(nd) < 1e-9) continue;
+          const s = nr / nd;
+          if (!(s > 0.1)) continue;
+          const Pp = dir.map(v => v * s), rel = Pp.map((v, i) => v - rc[i]);
+          const d = Math.hypot(dot3(rel, t1), dot3(rel, t2)) / rho;
+          if (!(d < 1)) continue;
+          const lane = depth[y * OW + x], vis = lane === Infinity ? 1 : Math.max(0, Math.min(1, (lane - Pp[2]) / soft));
+          const xx = (1 - d) / band, edge = Math.min(1, (1 - d) * 4 / band), inner = Math.max(0, 1 - xx);
+          if (vis > 0 && inner > 0) add(y * OW + x, col, E * edge * inner * inner * vis, 5);
+        }
+      stats.rings++;
+    }
+    // The flash (not repair, tug, asteroid): a short core inside the burst.
     if (a < flashLife && !['repair', 'tug', 'asteroid'].includes(h.variant)) {
       const dist = Math.hypot(...pv), b = dist > 0 ? 1 - HH.bias * rHit / dist : 1, cv = pv.map(v => v * b);
       if (cv[2] > 0) {
         const rpx = rHit * f / cv[2], core = Math.max(h.flash_core * rpx, 0.5 * LK.floor_flash_px * scale);
-        const halo = Math.max(rpx, core / h.flash_core), frac = core / halo, rView = halo * cv[2] / f;
-        const E = LK.core_e * (1 - a / flashLife), cx = W / 2 + f * cv[0] / cv[2], cy = H / 2 - f * cv[1] / cv[2];
+        const halo = Math.max(HH.flash_halo_r * rpx, core * HH.flash_halo_r / h.flash_core), frac = core / halo, rView = halo * cv[2] / f;
+        const E = LK.core_e * (1 - a / flashLife), cx = OW / 2 + f * cv[0] / cv[2], cy = OH / 2 - f * cv[1] / cv[2];
         const hc = h.variant === 'missile' ? MISSILE_TINT.map(v => v / Math.max(...MISSILE_TINT)) : heatRamp(HH.flash_halo_t, h.ramp);
-        for (let y = Math.max(0, Math.floor(cy - halo)); y < Math.min(H, Math.ceil(cy + halo)); y++)
-          for (let x = Math.max(0, Math.floor(cx - halo)); x < Math.min(W, Math.ceil(cx + halo)); x++) {
+        const [x0, x1, y0, y1] = bbox(cx, cy, halo);
+        for (let y = y0; y < y1; y++)
+          for (let x = x0; x < x1; x++) {
             const u = (x + 0.5 - cx) / halo, v = (y + 0.5 - cy) / halo, d2 = u * u + v * v;
             if (d2 >= 1) continue;
-            const dd = Math.sqrt(d2), zf = cv[2] - rView * Math.sqrt(1 - d2), lane = depth[y * W + x];
+            const dd = Math.sqrt(d2), zf = cv[2] - rView * Math.sqrt(1 - d2), lane = depth[y * OW + x];
             const visCore = lane === Infinity ? 1 : Math.max(0, Math.min(1, (lane - zf) / (LK.soft_core * frac * rView)));
             const visHalo = lane === Infinity ? 1 : Math.max(0, Math.min(1, (lane - zf) / (LK.soft_halo * rView)));
             const disc = Math.max(0, Math.min(1, (frac - dd) / (0.25 * frac))), wnd = (1 - d2) ** 2;
             const hal = LK.halo_max * Math.exp(-Math.max(dd - frac, 0) / (LK.halo_fold * frac)) * wnd;
-            add(y * W + x, [1, 1, 1], disc * visCore * E);
-            add(y * W + x, hc, hal * visHalo * E);
+            add(y * OW + x, [1, 1, 1], disc * visCore * E, 0);
+            add(y * OW + x, hc, hal * visHalo * E, 0);
           }
         stats.flashes++;
       }
@@ -932,11 +1080,12 @@ function renderHull(record, t) {
     for (const sp of hullSparks(hit, a, h, U, k, floorMs, step)) {
       const hv = toView(sp.head), tv = toView(sp.tail);
       if (!(hv[2] > 0.1 && tv[2] > 0.1)) continue;
-      const hp = [W / 2 + f * hv[0] / hv[2], H / 2 - f * hv[1] / hv[2]], tp = [W / 2 + f * tv[0] / tv[2], H / 2 - f * tv[1] / tv[2]];
+      const hp = [OW / 2 + f * hv[0] / hv[2], OH / 2 - f * hv[1] / hv[2]], tp = [OW / 2 + f * tv[0] / tv[2], OH / 2 - f * tv[1] / tv[2]];
       let dx = hp[0] - tp[0], dy = hp[1] - tp[1];
       const motion = Math.hypot(dx, dy);
       if (motion > 1e-6) { dx /= motion; dy /= motion; } else { dx = 1; dy = 0; }
-      const lit = Math.max(h.width_u * U * f / hv[2], LK.floor_lit_px * scale), rest = Math.max(HH.spark_rest_w * lit, LK.floor_len_px * scale);
+      const lit = Math.max(h.width_u * sp.width_x * U * f / hv[2], LK.floor_lit_px * scale);
+      const rest = Math.max(HH.spark_rest_w * lit, LK.floor_len_px * scale) * sp.len_x;
       const drawn = Math.min(Math.max(motion, rest), LK.streak_cap * rest);
       const E = Math.max(sp.e * rest / (rest + motion), Math.min(sp.e, LK.streak_core_min));
       // Sampled at the midpoints of 0.5 px steps along and across a footprint of at least one canvas pixel (the 5120
@@ -949,17 +1098,17 @@ function renderHull(record, t) {
         for (let i = 0; i < nw; i++) {
           const v = (2 * i + 1) / nw - 1, w = v * hw;
           const x = Math.floor(x0 - dx * s - dy * w), y = Math.floor(y0 - dy * s + dx * w);
-          if (x < 0 || y < 0 || x >= W || y >= H) continue;
-          if (depth[y * W + x] < z) continue; // the hull in front hides it
+          if (x < 0 || y < 0 || x >= OW || y >= OH) continue;
+          if (depth[y * OW + x] < z) continue; // the hull in front hides it
           const across = Math.max(0, 1 - v * v) ** 2;
-          add(y * W + x, sp.colour, E * across * along * wgt);
+          add(y * OW + x, sp.colour, E * across * along * wgt, 1);
         }
       }
       stats.sparks++;
     }
   }
   let litPx = 0;
-  for (let i = 0; i < W * H; i++) {
+  for (let i = 0; i < OW * OH; i++) {
     const v = [sum[i * 3], sum[i * 3 + 1], sum[i * 3 + 2]];
     if (!(v[0] + v[1] + v[2] > 0)) continue;
     litPx++;
@@ -970,17 +1119,27 @@ function renderHull(record, t) {
   }
   ctx.putImageData(img, 0, 0);
   stats.lit = litPx;
-  label(ctx, `hull hit: ${PATCH_TIERS[c.tier]} ${hull.name}, k ${fmt(k)}, r_hit ${fmt(rHit)} m, ${h.camera}${h.variant !== 'none' ? ', ' + h.variant : ''}${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship') : ''} | ${stats.hits} hit(s), ${stats.flashes} flash, ${stats.sparks} sparks, ${stats.glows} glow, ${stats.embers} ember | SETA x${c.seta}, floor ${fmt(floorMs)} ms`);
+  stats.light = {};
+  stats.lit_px = {};
+  ELEMENTS.forEach((name, el) => {
+    stats.light[name] = light[el];
+    let n = 0;
+    for (let i = 0; i < OW * OH; i++) n += mask[el][i];
+    stats.lit_px[name] = n;
+  });
+  label(ctx, `hull hit: ${PATCH_TIERS[c.tier]} ${hull.name}, k ${fmt(k)}, r_hit ${fmt(rHit)} m, ${h.camera}${h.variant !== 'none' ? ', ' + h.variant : ''}${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship') : ''} | ${stats.hits} hit(s), ${stats.flashes} flash, ${stats.bursts} burst, ${stats.sparks} sparks, ${stats.rings} ring, ${stats.glows} glow, ${stats.embers} ember | SETA x${c.seta}, floor ${fmt(floorMs)} ms`);
   record.hullStats = stats;
 }
 const HULL_IDS = ['c_k', 'c_h_spark_x', 'c_h_speed', 'c_h_life', 'c_h_width', 'c_h_flash_core', 'c_h_flash_ms', 'c_h_glow_r',
-                  'c_h_glow_e', 'c_h_glow_ms', 'c_h_ember_r', 'c_h_ember_e', 'c_h_ember_ms', 'c_h_min_frames'];
+                  'c_h_glow_e', 'c_h_glow_ms', 'c_h_ember_r', 'c_h_ember_e', 'c_h_ember_ms', 'c_h_min_frames', 'c_h_burst_r',
+                  'c_h_burst_ms'];
 function initHullControls() {
   const HH = HEADER.hull, set = (id, v) => { if ($(id) && !$(id).value) $(id).value = v; };
   set('c_k', 0.33); set('c_h_spark_x', HH.spark_count_x); set('c_h_speed', HH.spark_speed_u); set('c_h_life', HH.spark_life_ms);
   set('c_h_width', HH.spark_width_u); set('c_h_flash_core', HH.flash_core); set('c_h_flash_ms', HH.flash_ms);
   set('c_h_glow_r', HH.glow_r); set('c_h_glow_e', HH.glow_e); set('c_h_glow_ms', HH.glow_ms); set('c_h_ember_r', HH.ember_r);
   set('c_h_ember_e', HH.ember_e); set('c_h_ember_ms', HH.ember_ms); set('c_h_min_frames', HEADER.look.min_frames);
+  set('c_h_burst_r', HH.burst_r); set('c_h_burst_ms', HH.burst_ms);
   for (let i = 1; i <= 4; i++) {
     const e = $('c_h_ramp' + i);
     if (e && !e.dataset.init) { e.value = linearToHex(HEADER.look.heat_ramp[i]); e.dataset.init = '1'; }
@@ -1309,24 +1468,26 @@ function makeRecord(slot) {
           base: assetBase[state.view] || ''};
 }
 
-let background = null;
+const backgrounds = {};
 function drawBackground(ctx) {
-  if (!background) {
-    background = document.createElement('canvas'); background.width = W; background.height = H;
-    const g = background.getContext('2d'), r = rng(7);
-    g.fillStyle = '#020308'; g.fillRect(0, 0, W, H);
-    for (let i = 0; i < 90; i++) {
+  const cw = ctx.canvas ? ctx.canvas.width : W, ch = ctx.canvas ? ctx.canvas.height : H, key = cw + 'x' + ch;
+  if (!backgrounds[key]) {
+    const bg = backgrounds[key] = document.createElement('canvas');
+    bg.width = cw; bg.height = ch;
+    const g = bg.getContext('2d'), r = rng(7);
+    g.fillStyle = '#020308'; g.fillRect(0, 0, cw, ch);
+    for (let i = 0; i < Math.round(90 * cw * ch / (W * H)); i++) {
       const b = 40 + 120 * r() ** 3;
-      g.fillStyle = `rgb(${b},${b},${b + 10})`; g.fillRect(r() * W, r() * H, 1, 1);
+      g.fillStyle = `rgb(${b},${b},${b + 10})`; g.fillRect(r() * cw, r() * ch, 1, 1);
     }
   }
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-  ctx.drawImage(background, 0, 0);
+  ctx.drawImage(backgrounds[key], 0, 0);
 }
 
 function label(ctx, text) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#7d889c'; ctx.font = '11px system-ui'; ctx.fillText(text, 6, H - 6);
+  ctx.fillStyle = '#7d889c'; ctx.font = '11px system-ui'; ctx.fillText(text, 6, (ctx.canvas ? ctx.canvas.height : H) - 6);
 }
 
 /** Fit radius for a slot: over the row's whole life, or (zoom 'now') at time t, never below 2 % of the former. */
@@ -1523,7 +1684,7 @@ function init() {
     div.className = 'slot';
     div.innerHTML = `<h3>${s.label}</h3><div class="sinfo"></div>
       <div class="pair"><figure class="vanilla"><canvas width="${W}" height="${H}"></canvas><figcaption>Vanilla reconstruction</figcaption></figure>
-      <figure class="ours"><canvas width="${W}" height="${H}"></canvas><figcaption>${s.key === 'impact' ? 'Ours (step 1): the shield-hit hex patch on a shielded hit, drawn over the native impact' : 'Ours (later step): renderOurs(record, t) draws nothing yet'}</figcaption></figure></div>
+      <figure class="ours"><canvas width="${OW}" height="${OH}"></canvas><figcaption>${s.key === 'impact' ? 'Ours (step 1): the shield-hit hex patch on a shielded hit, drawn over the native impact' : 'Ours (later step): renderOurs(record, t) draws nothing yet'}</figcaption></figure></div>
       <div class="tbl"></div>`;
     slots.appendChild(div);
     const [vc, oc] = div.querySelectorAll('canvas');

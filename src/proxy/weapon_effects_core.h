@@ -862,6 +862,12 @@ constexpr float soft = 1.0f;            // the decals' two-sided fade against th
 // Its patches (owner node = the own-ship root node) draw at own_cockpit_gain of their radiance while the view is the
 // cockpit (view mode 1); the chase view and every other ship are unchanged (stage::dim_own_cockpit).
 constexpr float own_cockpit_gain = 0.35f;
+// Run240 Flight G (user, 2026-11-06): in the cockpit the own ship's patch read "cut at the screen's horizontal centre"
+// (the eye inside the hull-centred bubble: the lit far side of hits on the lower nose lies at or below the eye's
+// horizontal plane, which projects to the centre line). In the cockpit view the own ship's bubble is a sphere centred on
+// the eye, radius its smallest bubble half-extent (inside the hull extents) and never under eye_sphere_min_m; each hit
+// maps to it along its direction from the eye; its far side draws (the eye at the centre: one far root per ray).
+constexpr float eye_sphere_min_m = 15.0f;
 // The screen-space patch (Run236 Flight C, user decision 2026-11-06): each pixel's face is chosen by its surface normal
 // (from the lane depth), blended over the normal's owner-frame components |n_k|^triplanar_sharpness, normalised.
 constexpr float triplanar_sharpness = 8.0f;
@@ -930,6 +936,21 @@ constexpr float floor_core_px = 2.0f, floor_lit_px = 3.0f, floor_len_px = 24.0f,
 // screen at 5120x1440 (native fixture, glow_alone_fills_frame, 2026-11-06; four runs 71.0-72.3) / 177.5 = 0.40 (the
 // note's [I] was 0.25).
 constexpr float budget_weight_patch = 1.0f, budget_weight_glow = 0.40f;
+// The fireball impostor (2.14; the hull hit's hot-gas burst since 2026-11-06, the explosions of step 3 at full size): a
+// ray-sphere impostor whose column density is the closed-form chord integral of rho(r) = 1 - r^2 / R^2, clipped at the
+// lane (the half inside a hull is not there), times two octaves of value noise sampled at the chord's middle in the
+// sphere's normalised frame and advected outward with age (fireball_advect noise cells over the life), eroded as it
+// cools; its heat T x (1 - fireball_core_t (1 - column)) on the heat ramp, radiance ramp(T) x E x T x density.
+// fireball_octaves is the program's octave count (the budget's LOD drops it to 1, 2.11 (1)).
+constexpr float fireball_freq = 2.2f;     // noise cells per sphere radius
+constexpr float fireball_advect = 1.5f;   // outward drift of the pattern over the life (noise cells)
+constexpr float fireball_noise = 0.9f;    // the density's noise amplitude (1 +- this)
+constexpr float fireball_erode = 0.6f;    // the density lost at the end of the life (the ball breaks up as it cools)
+constexpr float fireball_core_t = 0.35f;  // the rim's heat below the core's
+constexpr unsigned fireball_octaves = 2;
+// One fireball rectangle filling the frame at 5120x1440, EVENT-fenced (native fixture, burst_alone_fills_frame,
+// 2026-11-06: 184.3 us at two octaves, 135.4 at one), over the decal's 177.5 us.
+constexpr float budget_weight_fireball = 1.04f, budget_weight_fireball_lod = 0.76f;
 } // namespace look
 // The hull hit (weapon-look.md 3.1): a 60 ms white flash, isotropic cooling sparks, a 150 ms glow on the hull and a
 // 1.2 s ember, all at the recorded contact point; r_hit = r_scale U (r_base + r_k k). mode full | simple (the kill fallback:
@@ -947,13 +968,29 @@ constexpr float r_base = 0.35f, r_k = 0.65f;
 // flash, glow and ember scale with it; the sparks' reach and width stay in U.
 constexpr float r_scale = 2.0f;
 constexpr unsigned flash_ms = 60;
-constexpr float flash_core = 0.25f;     // the flash's white core radius over r_hit (>= floor_flash_px); its halo r_hit
+// Run240 Flight G (user, 2026-11-06: "need good modern effects, not lazy flashes"): the flash is a short core inside the
+// hot-gas burst: its white core flash_core r_hit (>= floor_flash_px) in a halo of flash_halo_r r_hit.
+constexpr float flash_core = 0.25f;     // the flash's white core radius over r_hit (>= floor_flash_px)
+constexpr float flash_halo_r = 0.5f;    // its halo's radius over r_hit (r_hit until 2026-11-06)
 constexpr float flash_halo_t = 0.9f;    // the halo's heat
-constexpr unsigned spark_n0 = 8, spark_nk = 16; // n = round(spark_n0 + spark_nk k), isotropic in antipodal pairs
+// The sparks (randomised 2026-11-06, the user: "sparks read as the same decals appearing and disappearing"): per hit the
+// count round(n x (1 + spark_count_spread (2 u - 1))) about n = spark_n0 + spark_nk k (u hashed from the record's
+// sequence), in antipodal pairs of hashed isotropic directions (the lane hides the half that flies into the hull);
+// per spark (a hash of the sequence and the spark's index) its speed x [1 - spark_speed_spread, 1 + spark_speed_spread],
+// rest length x [spark_len_lo, spark_len_hi], width x [spark_width_lo, spark_width_hi] and life x [spark_life_lo,
+// spark_life_hi]; spark_curl_share of them drift sideways at spark_curl_x of their own speed (constant, undamped: the
+// path bends from the launch direction towards the drift as the launch speed decays), so the spray is not straight
+// rays. A given hit is the same frame to frame.
+constexpr unsigned spark_n0 = 8, spark_nk = 16; // n = round(spark_n0 + spark_nk k) before the count's spread
+constexpr float spark_count_spread = 0.4f;
 constexpr float spark_speed_u = 6.0f;   // U per game second, x (1 +- spark_speed_spread)
-constexpr float spark_speed_spread = 0.3f;
+constexpr float spark_speed_spread = 0.5f;
 constexpr float spark_tau_s = 0.45f;    // p(t) = p0 + v0 tau (1 - e^(-t / tau)): v0 tau = 2.7 U at the mean speed
-constexpr unsigned spark_life_ms = 250, spark_life_k_ms = 250; // + k, x (1 +- stagger / 2)
+constexpr unsigned spark_life_ms = 250, spark_life_k_ms = 250; // + k, x [spark_life_lo, spark_life_hi]
+constexpr float spark_life_lo = 0.7f, spark_life_hi = 1.3f;
+constexpr float spark_len_lo = 0.6f, spark_len_hi = 1.6f;     // x the rest length (after its floors)
+constexpr float spark_width_lo = 0.8f, spark_width_hi = 1.2f; // x the width (before floor_lit_px)
+constexpr float spark_curl_share = 0.25f, spark_curl_x = 0.3f;
 constexpr float spark_width_u = 0.08f;  // the streak's width (>= floor_lit_px)
 constexpr float spark_e = 8.0f;         // a spark's radiance at birth (2 x the core's), x ramp(T) x T as it cools
 constexpr float spark_rest_w = 3.0f;    // a spark's rest length in widths (>= floor_len_px)
@@ -966,6 +1003,25 @@ constexpr float asteroid_dust_x = 2.0f; // an asteroid (class 17): sparks x 2 on
 constexpr float asteroid_t = 0.3f;
 constexpr float missile_spark_x = 2.0f; // a missile source: sparks x 2, the missile tint on the flash halo
 constexpr float tug_colour[3] = {0.7f, 0.8f, 1.0f}; // the tug's glow (pale blue); repair: the weapon tint
+// The hot-gas burst on every hull hit (2026-11-06; not the repair, tug or asteroid variants): the fireball impostor
+// (look::fireball_*) at the contact point, riding the owner, R(t) = burst_r r_hit (1 - e^(-t / (burst_rise L))), L =
+// burst_ms + burst_k_ms k (x (1 +- stagger / 2), the three-frame floor), heat T 1 -> 0 over L (white, orange, dark red),
+// body burst_e (<= look::body_max); occlusion class 2 (the lane clips the chord: the half inside the hull is not drawn).
+constexpr float burst_r = 1.5f;
+constexpr unsigned burst_ms = 180, burst_k_ms = 220;
+constexpr float burst_rise = 0.15f;
+constexpr float burst_e = 1.5f;
+static_assert(burst_e <= look::body_max, "a body never above body_max (look 2.3)");
+// The heavy shock ring (2026-11-06): heavy families only (a missile source, the burst style bit (TBullets flags & 0x1100:
+// flak and area shots), calibre k >= heavy_k: the plasma and heavy energy weapons) a thin ring in the hull's tangent
+// plane at the hit (the owner bubble's normal there for a ship, the face lattice's axis for a station), lifted
+// ring_lift r_hit off the surface along it, radius 0 -> ring_r r_hit linearly over ring_rise x the burst's L, heat ring_t
+// x ring_e fading linearly, its band ring_band of its radius (>= floor_lit_px) brightest at the leading edge and x
+// 1 / |cos| of the view's angle to the plane (an optically thin sheet; at most ring_limb_max).
+constexpr float heavy_k = 0.6f;
+constexpr float ring_r = 4.0f, ring_rise = 0.3f, ring_t = 0.9f, ring_e = 1.5f, ring_band = 0.12f, ring_lift = 0.25f;
+constexpr float ring_limb_max = 3.0f;
+constexpr unsigned ring_walks_per_frame = 1; // hull walks a frame for a ring's normal (the fallback sphere otherwise)
 constexpr unsigned max_sparks = 2048;   // spark quads per frame (2.11)
 constexpr unsigned max_owners = 32;     // owners re-posed per frame
 } // namespace hull

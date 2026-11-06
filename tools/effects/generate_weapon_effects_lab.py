@@ -56,11 +56,15 @@ NUMBER = r'-?[0-9.]+(?:e-?[0-9]+)?'
 NAMESPACES = {
     'look': ('heat_ramp', 'min_frames', 'soft_core', 'soft_halo', 'core_e', 'body_max', 'halo_max', 'halo_fold',
              'streak_cap', 'streak_core_min', 'floor_core_px', 'floor_lit_px', 'floor_len_px', 'floor_flash_px',
-             'budget_weight_patch', 'budget_weight_glow'),
+             'budget_weight_patch', 'budget_weight_glow', 'fireball_freq', 'fireball_advect', 'fireball_noise',
+             'fireball_erode', 'fireball_core_t', 'fireball_octaves', 'budget_weight_fireball', 'budget_weight_fireball_lod'),
     'hull': ('r_base', 'r_k', 'r_scale', 'flash_ms', 'flash_core', 'flash_halo_t', 'spark_n0', 'spark_nk', 'spark_speed_u',
              'spark_speed_spread', 'spark_tau_s', 'spark_life_ms', 'spark_life_k_ms', 'spark_width_u', 'spark_e',
              'spark_rest_w', 'glow_r', 'glow_t', 'glow_e', 'glow_ms', 'ember_r', 'ember_t', 'ember_e', 'ember_ms', 'bias',
-             'asteroid_dust_x', 'asteroid_t', 'missile_spark_x', 'tug_colour', 'mode', 'spark_count_x')}
+             'asteroid_dust_x', 'asteroid_t', 'missile_spark_x', 'tug_colour', 'mode', 'spark_count_x', 'flash_halo_r',
+             'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',
+             'spark_width_hi', 'spark_curl_share', 'spark_curl_x', 'burst_r', 'burst_ms', 'burst_k_ms', 'burst_rise',
+             'burst_e', 'heavy_k', 'ring_r', 'ring_rise', 'ring_t', 'ring_e', 'ring_band', 'ring_lift', 'ring_limb_max')}
 # The lab's presets (weapon-look.md 6): <family>/<case>, each naming its view and weapon id (--check fails when the id
 # is missing from its view's census, or a family has no preset), the victim tier and preview hull, the camera, the SETA
 # rate, the hits per game second, the own ship and the cockpit view, the hull-hit variant, the calibre k and the
@@ -99,11 +103,18 @@ PRESETS = (
          camera='side', seta=1, hps=12, own=False, cockpit=False, variant='repair', k=0.5, shield=0),
     dict(id='hull/stock-vs-mayhem', family='hull', view='stock_ap', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
          camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+    # the heavy families (2026-11-06): the burst, the sparks and the shock ring
+    dict(id='hull/heavy-plasma-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_HEPT', tier=1, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.63, shield=0),
+    dict(id='hull/heavy-flak-fighter', family='hull', view='stock_ap', weapon='SS_BULLET_FLAK_ALPHA', tier=0,
+         hull='flat_top', camera='side', seta=1, hps=0, own=False, cockpit=False, variant='flak', k=0.83, shield=0),
+    dict(id='hull/heavy-missile-hit', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='missile', k=0.5, shield=0),
 )
 PRESET_KEYS = ('id', 'family', 'view', 'weapon', 'tier', 'hull', 'camera', 'seta', 'hps', 'own', 'cockpit', 'variant', 'k',
                'shield')
 CAMERAS = ('side', 'chase', 'cockpit', 'far1', 'far2', 'far8')
-VARIANTS = ('none', 'repair', 'tug', 'missile', 'asteroid')
+VARIANTS = ('none', 'repair', 'tug', 'missile', 'asteroid', 'flak')
 PRESETS_BEGIN = '/* @weapon_effects_presets */'
 
 

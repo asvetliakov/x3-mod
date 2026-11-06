@@ -71,6 +71,8 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_sprite_ps.hlsl', 'src/effects/weapon_glow_vs.hlsl', 'src/effects/weapon_glow_ps.hlsl',
                       'src/renderer/weapon_sprite_vertex_program_inc.h', 'src/renderer/weapon_sprite_pixel_program_inc.h',
                       'src/renderer/weapon_glow_vertex_program_inc.h', 'src/renderer/weapon_glow_pixel_program_inc.h',
+                      'src/effects/weapon_fireball_vs.hlsl', 'src/effects/weapon_fireball_ps.hlsl',
+                      'src/renderer/weapon_fireball_vertex_program_inc.h', 'src/renderer/weapon_fireball_pixel_program_inc.h',
                       'verification/probe/weapon_effects_hull_cases.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
@@ -82,6 +84,10 @@ PROGRAMS = {
     'weapon_sprite_ps': ('verification/results/weapon-sprite-pixel-program.json', 'src/renderer/weapon_sprite_pixel_program_inc.h'),
     'weapon_glow_vs': ('verification/results/weapon-glow-vertex-program.json', 'src/renderer/weapon_glow_vertex_program_inc.h'),
     'weapon_glow_ps': ('verification/results/weapon-glow-pixel-program.json', 'src/renderer/weapon_glow_pixel_program_inc.h'),
+    'weapon_fireball_vs': ('verification/results/weapon-fireball-vertex-program.json',
+                           'src/renderer/weapon_fireball_vertex_program_inc.h'),
+    'weapon_fireball_ps': ('verification/results/weapon-fireball-pixel-program.json',
+                           'src/renderer/weapon_fireball_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.

@@ -262,6 +262,33 @@ blue, calibre 0.1). Missile sources (`missile_hit`) take 2 x the sparks and the 
 adds a burst. Drained shields stay hull hits (the accepted rule: the HUD at 0 % agrees with sparks). One look for
 every race and class, as the shield.
 
+**2026-11-06, after Run240 Flight G** (the user: "need good modern effects, not lazy flashes; that's a downgrade";
+"sparks read as the same decals appearing and disappearing"). Built, not flown; figures in the
+[ledger](../verification/weapon-effects.md) "Burst, randomised sparks, heavy ring". (1) **A hot-gas burst on every hull
+hit** (not the repair, tug or asteroid variants): the fireball impostor of 3.2 (`weapon_fireball_{vs,ps}.hlsl`, one
+program whose radius, life, heat, radiance, advection and seed are per-vertex inputs and the octave count a constant,
+so step 3 draws explosions with it at full size) at the contact point, riding the owner: R(t) = R_b (1 − e^(−t /
+0.15 L)), R_b = 1.5 r_hit, L = 180 + 220 k ms (x (1 ± stagger/2), the three-frame floor), heat T 1 → 0 over L on the
+ramp (white core at birth, dark red at the end), body 1.5, the chord's closed-form density of 1 − r²/R² clipped at the
+lane (the half inside the hull is not there), two octaves of value noise advected outward, eroded as it cools; charged
+to the shared budget at `budget_weight_fireball` 1.04 (0.76 at one octave, the first shed step). The flash is a short
+core inside it: halo 0.5 r_hit, 60 ms. (2) **Randomised sparks**: per hit the count round(n (1 ± 0.4)) hashed from the
+record's sequence, antipodal pairs of hashed isotropic directions (the lane still hides one of each pair), per spark
+speed x 0.5..1.5, rest length x 0.6..1.6 (after the 24 px floor), width x 0.8..1.2, life x 0.7..1.3; a quarter drift
+sideways at 0.3 of their speed (constant, undamped: p(t) = p0 + v0 τ (1 − e^(−t/τ)) + w t bends the path as the
+launch speed decays); a given hit is identical frame to frame. (3) **The heavy shock ring** (a missile source, the burst
+style bit `flags & 0x1100` (flak and area shots; the record carries no raw flag word, and the classifier has no
+"plasma" style: the plasma weapons arrive through k ≥ `heavy_k` 0.6, HEPT 0.63, PBC 0.80 on Mayhem 3)): a thin ring
+in the hull's tangent plane at the hit, radius 0 → 4 r_hit over 0.3 L, heat 0.9, brightest at its leading edge and
+x 1/|cos| of the view's angle to the plane (at most 3), lifted 0.25 r_hit off the surface. The ring is the one element
+that needs a normal (an exception to "no normal" above): a ship's bubble normal at the hit (the shield stage's
+`BubbleCache` walk, one walk a frame, the radius sphere otherwise), a station's face-lattice axis; latched at the
+record's first frame. The engine shimmer puff is **not built**: `EngineShimmerPass` exists only with the plumes
+requested and draws only on frames whose plume stage drew (its scratch and its revert belong to that path), so reusing
+it for weapon puffs would need a lifetime change; skipped as the brief allows. The lab draws all three (presets
+`hull/heavy-plasma-corvette`, `hull/heavy-flak-fighter`, `hull/heavy-missile-hit`) with the stage's own hashes, on a
+720 x 405 preview framed on 4 U and one glow radius.
+
 **Engine data.** The record (pos, owner, radius, running damage, row), the patch tier and its source (step 1 fields),
 the owner's rows at scene end, the owner's velocity as the delta of its node `+0x30` between stage frames (0 on the
 first; no new read, no unit question). No hull box and no normal. The override pins `style` only.

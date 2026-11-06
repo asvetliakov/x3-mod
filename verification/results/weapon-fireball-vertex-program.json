@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "source": "src/effects/weapon_fireball_vs.hlsl",
+  "source_sha256": "75b7e5783a050d1feee8433e255568a63d31cdc56a7755334a28d49ae5c2b2d6",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "vs_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": null,
+  "word_count": 83,
+  "bytecode_sha256": "9f0013892b5dbbe24d30b5b953f26ff555c7fbf52b779d0f53d157216be847ae",
+  "header_sha256": "f25ad5b08464222e4dd7d94fdfbbdecc1ca6c3a7c3507bf49e9e46d5475323d4",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
+    "tools/shaders/generate_weapon_effects_programs.py": "9c9215b85d7b0b05d653a44ff41b42f4e260b0c6d2c5ad50d4799749de9cd6f8"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

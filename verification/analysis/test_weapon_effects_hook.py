@@ -299,7 +299,16 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'hull_no_pop_step_change_law', 'hull_programs_refused_shields_still_draw',
                      'shields_mode_loads_no_hull_programs', 'velocity_first_hit_from_previous_frame_rows',
                      'hull_recovers_after_fault', 'hull_reset_recovers', 'hull_program_refusal_draws_nothing',
-                     'hull_cpu_64_hits', 'hull_budget_20_hits_5120'):
+                     'hull_cpu_64_hits', 'hull_budget_20_hits_5120',
+                     # 2026-11-06: the burst, the randomised sparks, the heavy ring, the eye sphere
+                     'hull_burst_radius_law_3_ages', 'hull_burst_colour_white_core_at_birth',
+                     'hull_burst_colour_dark_red_at_end', 'hull_burst_half_hidden_by_lane', 'hull_spark_random_hits_differ',
+                     'hull_spark_same_hit_stable', 'hull_spark_curl_share', 'hull_heavy_families_ring',
+                     'hull_ring_radius_law_and_tangent_on_narrow_hull', 'hull_ring_station_face_axis',
+                     'hull_compose_no_pop_all_elements', 'hull_resolve_burst_survival', 'hull_resolve_burst_no_scar',
+                     'hull_budget_burst_lod_then_shed', 'hull_fireball_fault_reported_and_recovers',
+                     'cockpit_eye_sphere_hits_light_their_half', 'cockpit_eye_sphere_centroid_within_one_cell',
+                     'cockpit_eye_sphere_chase_unchanged'):
             self.assertIn(gate, names)
         m = r['metrics']
         hull = {x['case']: x for x in m['hull'] if 'case' in x and x['case'] != 'law'}
@@ -322,15 +331,20 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         for x in laws:
             self.assertEqual(x['sparks'], x['want'])
         cpu = {x['case']: x for x in m['hull_cpu']}
-        self.assertLessEqual(cpu['capital_64_hits']['best_us'], 30.0)
-        timing = {(x['width'], x['case']): x for x in m['hull_timing']}
-        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 50.0)
+        self.assertLessEqual(cpu['capital_64_hits']['best_us'], 40.0)    # 30 before the burst and the ring (2026-11-06)
+        timing = {(x['width'], x['case']): x for x in m['hull_timing'] if 'width' in x}
+        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 70.0)  # 50 before the bursts
         # the glow's budget weight (core::look::budget_weight_glow) against its measured full-screen cost / 177.5 us
         core_h = (ROOT / 'src/proxy/weapon_effects_core.h').read_text()
         import re
         weight = float(re.search(r'budget_weight_glow = ([0-9.]+)f', core_h).group(1))
         measured = timing[(5120, 'glow_alone_fills_frame')]['gpu_us'] / 177.5
         self.assertAlmostEqual(weight, measured, delta=0.1)
+        # the fireball's (the burst's) at two octaves and at one (the LOD)
+        for name, case in (('budget_weight_fireball', 'burst_alone_fills_frame'),
+                           ('budget_weight_fireball_lod', 'burst_alone_fills_frame_lod')):
+            weight = float(re.search(r'\b%s = ([0-9.]+)f' % name, core_h).group(1))
+            self.assertAlmostEqual(weight, timing[(5120, case)]['gpu_us'] / 177.5, delta=0.1, msg=name)
 
     def test_bound_to_its_production_sources(self):
         import run_weapon_effects as runner

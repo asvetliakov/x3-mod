@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Compile the weapon effects' programs (docs/architecture/weapon-effects.md 5.1, step 1: the shield-hit hull decal, the
-ship bubble and the flat decal; docs/architecture/weapon-look.md 3.1, step 2: the hull hit's sprite batch and glow):
-src/effects/weapon_{shell,decal,sprite,glow}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the bubble draws with the shell's
-vertex program) -> src/renderer/weapon_{shell,decal,bubble,sprite,glow}_{vertex,pixel}_program_inc.h, provenance
-verification/results/weapon-{shell,decal,bubble,sprite,glow}-{vertex,pixel}-program.json; the pixel programs include
+ship bubble and the flat decal; docs/architecture/weapon-look.md 3.1, step 2: the hull hit's sprite batch, glow and
+fireball impostor): src/effects/weapon_{shell,decal,sprite,glow,fireball}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the
+bubble draws with the shell's vertex program) -> src/renderer/weapon_{shell,decal,bubble,sprite,glow,fireball}_
+{vertex,pixel}_program_inc.h, provenance
+verification/results/weapon-{shell,decal,bubble,sprite,glow,fireball}-{vertex,pixel}-program.json; the pixel programs include
 src/effects/weapon_soft_depth.hlsl.
 
 The compilation, validation and record are tools/shaders/generate_rigid_motion_pixel.py's (its helpers are imported:
@@ -32,7 +33,7 @@ PROGRAMS = {
                                   provenance=ROOT / f'verification/results/weapon-{part}-{"vertex" if kind == "vs" else "pixel"}-program.json',
                                   target=f'{kind}_3_0')
     for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('sprite', ('vs', 'ps')),
-                        ('glow', ('vs', 'ps'))) for kind in kinds
+                        ('glow', ('vs', 'ps')), ('fireball', ('vs', 'ps'))) for kind in kinds
 }
 
 

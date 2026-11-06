@@ -887,8 +887,9 @@ int main(int argc, char** argv) {
         v.step_ms = 16;
         unsigned q = 0, b = 0;
         const st::HullCounts first = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
-        std::printf("first hits=%u flashes=%u sparks=%u glows=%u embers=%u quads=%u boxes=%u\n", first.hits, first.flashes,
-                    first.sparks, first.glows, first.embers, q, b);
+        const unsigned want = st::spark_count(ring.slots[0], st::hull_calibre(ring.slots[0]), st::HullTuning{});
+        std::printf("first hits=%u flashes=%u sparks=%u glows=%u embers=%u quads=%u boxes=%u want=%u\n", first.hits,
+                    first.flashes, first.sparks, first.glows, first.embers, q, b, want);
         v.now = 1100;
         const st::HullCounts later = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, spr, 2304, glw, 512, &q, &b);
         std::printf("later hits=%u flashes=%u sparks=%u glows=%u embers=%u floored=%u\n", later.hits, later.flashes,
@@ -1195,11 +1196,13 @@ class WeaponEffectsClassifier(unittest.TestCase):
     def test_hull_build_first_frame_later_and_orphan(self):
         r = self.run_case('hull')
         first, later, dead, mode = r['first'], r['later'], r['dead'], r['mode']
-        self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, 16, 1, 1))
-        self.assertEqual((first['quads'], first['boxes']), (17, 2))   # the shield and the unstaged records drew nothing
-        self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, 16, 1, 1))
+        n = int(first['want'])                 # round(16 x (1 +- 0.4)), hashed from the sequence (spark_count)
+        self.assertTrue(10 <= n <= 22, n)
+        self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, n, 1, 1))
+        self.assertEqual((first['quads'], first['boxes']), (n + 1, 2))  # the shield and the unstaged records drew nothing
+        self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, n, 1, 1))
         self.assertEqual((dead['orphans'], dead['sparks'], dead['flashes'], dead['glows'], dead['embers'], dead['retired']),
-                         (1, 16, 0, 0, 0, 0))
+                         (1, n, 0, 0, 0, 0))
         self.assertEqual((mode['parsed'], mode['value'], mode['hull_word'], mode['lifetime']), (1, 3, 0, 1441))
 
     def test_present_latch_and_ring_scope(self):

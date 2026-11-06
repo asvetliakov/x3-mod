@@ -72,6 +72,9 @@ struct StageFrame {
     unsigned hull_hits = 0, flashes = 0, sparks = 0, glows = 0, embers = 0, budget_shed = 0, orphans = 0, floored = 0;
     // owners past hull::max_owners the stage did not draw (the oldest newest hit first), elements past a count cap
     unsigned owners_dropped = 0, capped = 0;
+    // The hull hit's burst and ring (2026-11-06): bursts (fireball impostors) and heavy rings drawn, bursts the shared
+    // budget shed, frames whose bursts drew at one noise octave (the budget's LOD).
+    unsigned bursts = 0, rings = 0, bursts_shed = 0, burst_lod = 0;
     bool hull_ready = false; // the pass holds the hull programs (Present's hull latch, HookState::hull_ready)
     float stage_us = 0.f;
     bool drew = false;

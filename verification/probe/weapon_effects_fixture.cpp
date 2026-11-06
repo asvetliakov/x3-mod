@@ -40,6 +40,7 @@
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -1799,6 +1800,199 @@ int main(int argc, char** argv) {
                    dimmed[3] == 0 && dimmed[4] == 0 && std::fabs(ratio - double(wc::own_cockpit_gain)) < 0.01 &&
                    sums[2] == sums[0] && sums[3] == sums[0] && sums[4] == sums[0],
                "");
+        draw_lane(g, 0.f, -1.f);
+    }
+    // The own ship in the cockpit on the eye sphere (Run240 Flight G, "cut at the screen's horizontal centre"): the
+    // triage's scenario (verification/results/weapon-effects/cockpit-half/): a corvette bubble of half-extents (200, 150,
+    // 632) (the production walk over its hull bounds), the eye at (0, 10, 300) in its frame, level and pitched +-10
+    // degrees, 32:9 at the session's half-height tangent 0.5625, the sky lane; the Run240 own-ship hits on the nose, the
+    // late set from below and the early set from above (owner frame, engine units). In the cockpit view the bubble is the
+    // sphere about the eye (radius the bubble's smallest half-extent, 150): each hit alone lights a patch whose centroid
+    // on the sphere (the lit pixels' directions weighted by luma x their solid angle) lies within one cell of the
+    // eye-sphere point along the hit's direction from the eye; every lit pixel inside a draw's box; the set's light on
+    // the side of the screen its hits lie on (the luma-weighted centroid row against the hits' mean row, where that is
+    // off the centre line by more than 5 % of the height); the rows either side of the centre line reported (the cut).
+    // The chase view of the same records draws the same image with the own ship known as without it (the hull bubble).
+    {
+        Target tt;
+        const bool made = make_target(tt, 2048, 576);
+        const float m11 = 1.f / 0.5625f, m00 = m11 * 576.f / 2048.f;
+        const double eb[3] = {200.0, 150.0, 632.0}, E[3] = {0.0, 10.0, 300.0};
+        const double ext[3] = {eb[0] / double(wc::bubble_scale), eb[1] / double(wc::bubble_scale), eb[2] / double(wc::bubble_scale)};
+        const std::int32_t sets[2][8][3] = {
+            {{1913, -5550, 53327}, {2868, -5163, 54400}, {-1309, -6181, 51396}, {-1045, -6423, 51372},
+             {929, -3229, 54449}, {2973, -5993, 54227}, {-194, -3859, 53328}, {-1300, -2776, 55004}},
+            {{-3805, 1282, 54322}, {-3129, 9, 54387}, {-2658, 4093, 45565}, {-4211, -224, 51521},
+             {2811, 3610, 46291}, {-1087, 3106, 52998}, {-3639, 5391, 40472}, {-5937, 2107, 52798}}};
+        const float cell = ws::metres_to_view(wc::cell_m[wc::patch_corvette]);
+        const double pitches[3] = {0.0, 10.0, -10.0};
+        double worst_cells = 0, radius_seen = 0;
+        unsigned uncovered = 0, eye_draws = 0, chase_changed = 0, singles = 0, lit_singles = 0, side_ok = 0, side_checked = 0;
+        // One build and draw of the staged owner at a pitch: hits `mask` of the set, the view, the own node; the lit
+        // pixels outside every draw's box counted into *outside.
+        auto run = [&](unsigned set, double pitch_deg, unsigned mask, bool cockpit_view, std::uint32_t own,
+                       std::vector<float>* luma, double L[3][3], unsigned* eye_patches, unsigned* outside) {
+            const double pr = pitch_deg * 3.14159265358979 / 180.0, cp = std::cos(pr), sp = std::sin(pr);
+            const double axes[3][3] = {{1, 0, 0}, {0, cp, -sp}, {0, sp, cp}}; // owner axis k in view (= world)
+            stage_owner(400.f, 550.f, 0);
+            wc::ring_clear(stage_ring);
+            for (unsigned k = 0; k < 3; ++k) {
+                double c = 0;
+                for (unsigned j = 0; j < 3; ++j) c -= E[j] * axes[j][k];
+                put32(fake_node, wc::layout::node_pos + 4 * k, std::uint32_t(std::int32_t(std::lround(c / double(wc::world_scale)))));
+                for (unsigned j = 0; j < 3; ++j)
+                    put32(fake_node, wc::layout::node_rot + 16 * k + 4 * j, std::uint32_t(std::int32_t(std::lround(axes[k][j] * 65536.0))));
+                for (unsigned j = 0; j < 3; ++j) L[k][j] = axes[k][j];
+            }
+            stage_hull(ext);
+            stage_tier_source = wc::tier_by_ship_class;
+            for (unsigned h = 0; h < 8; ++h)
+                if (mask & (1u << h)) add_stage_hit(1000 - 10 * h, sets[set][h], wc::patch_corvette);
+            stage_tier_source = wc::tier_by_radius;
+            ws::Tuning t = hull_tuning();
+            t.own_node = own;
+            t.cockpit = cockpit_view;
+            ws::Camera cam = identity_camera();
+            cam.m00 = m00;
+            cam.m11 = m11;
+            rr::WeaponPatch patches[wc::max_patches];
+            rr::WeaponDecal decals[wc::max_decals];
+            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, cam, t, patches, wc::max_patches, decals,
+                                           wc::max_decals);
+            ws::dim_own_cockpit(patches, n.patches, own, cockpit_view);
+            *eye_patches = 0;
+            for (unsigned i = 0; i < n.patches; ++i) {
+                *eye_patches += patches[i].eye_sphere;
+                if (patches[i].eye_sphere) radius_seen = patches[i].bubble_e[0];
+            }
+            rr::WeaponEffectsFrame f = base_frame(tt);
+            f.m00 = m00;
+            f.m11 = m11;
+            f.patches = patches;
+            f.patch_count = n.patches;
+            draw_lane(tt, 0.f, -1.f);
+            draw_on(pass, tt, f);
+            *luma = read_luma(tt, tt.scene_s.p);
+            *outside = 0;
+            for (std::size_t i = 0; i < luma->size(); ++i) {
+                if (!((*luma)[i] > 1e-3f)) continue;
+                const double dv[3] = {(2.0 * double(i % tt.w) / double(tt.w) - 1.0) / double(m00),
+                                      (1.0 - 2.0 * double(i / tt.w) / double(tt.h)) / double(m11), 1.0};
+                bool covered = false;
+                for (unsigned q = 0; q < n.patches && !covered; ++q) { // the box's slabs along the ray from the eye
+                    const rr::WeaponPatch& pt = patches[q];
+                    const float* ax[3] = {pt.view_u, pt.view_v, pt.view_a};
+                    double tin = -1e300, tout = 1e300;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        const double o = -(double(pt.centre[0]) * ax[k][0] + double(pt.centre[1]) * ax[k][1] +
+                                           double(pt.centre[2]) * ax[k][2]);
+                        const double dd = dv[0] * ax[k][0] + dv[1] * ax[k][1] + dv[2] * ax[k][2];
+                        const double lo = pt.box[k], hi = pt.box[3 + k];
+                        if (std::fabs(dd) < 1e-12) {
+                            if (o < lo || o > hi) tin = 1, tout = 0;
+                            continue;
+                        }
+                        double t0 = (lo - o) / dd, t1 = (hi - o) / dd;
+                        if (t0 > t1) std::swap(t0, t1);
+                        tin = std::max(tin, t0);
+                        tout = std::min(tout, t1);
+                    }
+                    covered = tout >= tin && tout > double(f.near_z) * 0.999;
+                }
+                *outside += !covered;
+            }
+        };
+        auto ray = [&](double x, double y, double d[3]) {
+            d[0] = (2.0 * x / double(tt.w) - 1.0) / double(m00);
+            d[1] = (1.0 - 2.0 * y / double(tt.h)) / double(m11);
+            d[2] = 1.0;
+            const double n = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+            for (unsigned k = 0; k < 3; ++k) d[k] /= n;
+        };
+        for (unsigned set = 0; set < 2 && made; ++set)
+            for (unsigned pi = 0; pi < 3; ++pi) {
+                std::vector<float> l;
+                double L[3][3];
+                unsigned eyes = 0, out = 0;
+                run(set, pitches[pi], 0xffu, true, addr(fake_node), &l, L, &eyes, &out);
+                eye_draws += eyes;
+                uncovered += out;
+                unsigned top = 0, bottom = 0, band_above = 0, band_below = 0;
+                double row_w = 0, row_sum = 0;
+                for (std::size_t i = 0; i < l.size(); ++i) {
+                    if (!(l[i] > 1e-3f)) continue;
+                    const unsigned y = unsigned(i / tt.w);
+                    ++(y < tt.h / 2 ? top : bottom);
+                    band_above += y < tt.h / 2 && y + 8 >= tt.h / 2;
+                    band_below += y >= tt.h / 2 && y < tt.h / 2 + 8;
+                    row_sum += double(l[i]) * double(y);
+                    row_w += double(l[i]);
+                }
+                // the hits' mean screen row (their eye-sphere points' projections)
+                double hits_row = 0;
+                for (unsigned h = 0; h < 8; ++h) {
+                    double hv[3] = {0, 0, 0};
+                    for (unsigned j = 0; j < 3; ++j)
+                        for (unsigned k = 0; k < 3; ++k) hv[j] += (double(sets[set][h][k]) * double(wc::world_scale) - E[k]) * L[k][j];
+                    hits_row += (1.0 - double(m11) * hv[1] / hv[2]) * 0.5 * double(tt.h) / 8.0;
+                }
+                const double lit_row = row_w > 0 ? row_sum / row_w : -1, centre_row = 0.5 * double(tt.h);
+                if (std::fabs(hits_row - centre_row) > 0.05 * double(tt.h)) {
+                    ++side_checked;
+                    side_ok += lit_row > 0 && (lit_row - centre_row) * (hits_row - centre_row) > 0;
+                }
+                std::printf("EYE_SPHERE set=%s pitch=%.0f lit_top=%u lit_bottom=%u lit_row=%.1f hits_row=%.1f centre_row=%.1f "
+                            "rows_8_above=%u rows_8_below=%u outside_boxes=%u eye_draws=%u\n",
+                            set ? "early" : "late", pitches[pi], top, bottom, lit_row, hits_row, centre_row, band_above,
+                            band_below, out, eyes);
+                // the chase view: the own ship known or not, the same image
+                std::vector<float> c_own, c_none;
+                unsigned e1 = 0, e2 = 0, o1 = 0, o2 = 0;
+                run(set, pitches[pi], 0xffu, false, addr(fake_node), &c_own, L, &e1, &o1);
+                run(set, pitches[pi], 0xffu, false, 0u, &c_none, L, &e2, &o2);
+                chase_changed += c_own != c_none || e1 || e2 || lit_count(c_own) == 0;
+                // each hit alone: its centroid on the sphere against its point
+                for (unsigned h = 0; h < 8; ++h) {
+                    run(set, pitches[pi], 1u << h, true, addr(fake_node), &l, L, &eyes, &out);
+                    uncovered += out;
+                    ++singles;
+                    double acc[3] = {0, 0, 0}, wsum = 0, d[3];
+                    for (std::size_t i = 0; i < l.size(); ++i) {
+                        if (!(l[i] > 1e-3f)) continue;
+                        ray(double(i % tt.w), double(i / tt.w), d);
+                        const double w = double(l[i]) * d[2] * d[2] * d[2]; // luma x the pixel's solid angle
+                        for (unsigned j = 0; j < 3; ++j) acc[j] += w * d[j];
+                        wsum += w;
+                    }
+                    if (!(wsum > 0)) continue;
+                    ++lit_singles;
+                    double hv[3] = {0, 0, 0}, hn = 0, an = 0;
+                    for (unsigned j = 0; j < 3; ++j) {
+                        for (unsigned k = 0; k < 3; ++k)
+                            hv[j] += (double(sets[set][h][k]) * double(wc::world_scale) - E[k]) * L[k][j];
+                        hn += hv[j] * hv[j];
+                        an += acc[j] * acc[j];
+                    }
+                    hn = std::sqrt(hn);
+                    an = std::sqrt(an);
+                    double err = 0;
+                    for (unsigned j = 0; j < 3; ++j)
+                        err += (radius_seen * (acc[j] / an - hv[j] / hn)) * (radius_seen * (acc[j] / an - hv[j] / hn));
+                    worst_cells = std::max(worst_cells, std::sqrt(err) / double(cell));
+                }
+            }
+        std::printf("EYE_SPHERE case=summary radius=%.1f cell=%.1f eye_draws=%u singles=%u lit_singles=%u "
+                    "worst_centroid_cells=%.3f outside_boxes=%u side_ok=%u/%u chase_changed=%u\n",
+                    radius_seen, double(cell), eye_draws, singles, lit_singles, worst_cells, uncovered, side_ok, side_checked,
+                    chase_changed);
+        report("cockpit_eye_sphere_hits_light_their_half", made && side_checked >= 4 && side_ok == side_checked, "");
+        // one cell plus the hex snap (a footprint centred on its hit's cell, up to 1 / sqrt 3 cell off the hit) and the
+        // triplanar lift's stretch: the luma centroid of a cap on a 5-cell sphere sits about a cell from its hit
+        report("cockpit_eye_sphere_centroid_within_one_cell", made && lit_singles == singles && worst_cells <= 1.0 + 0.5774 &&
+                                                              uncovered == 0 && std::fabs(radius_seen - 150.0) < 0.5, "");
+        report("cockpit_eye_sphere_chase_unchanged", made && chase_changed == 0 && eye_draws > 0, "");
+        tt.release();
+        hull_owner(400.f, 100.f);
         draw_lane(g, 0.f, -1.f);
     }
     // 12 hits per second on one owner through the production builder, frames of 1/60 s game time for 4 s (the cell

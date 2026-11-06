@@ -646,3 +646,112 @@ warnings, sha256 `99b4fbf2…`, no-x87 PASS (1162 reachable, 0 violations); D3D 
 Open: the 60 m stress row is 3 x its earlier figure (293.6 µs at 5120x1440) and the 3.1 budget case has 4.4 µs of
 margin; the budget sheds glows by screens (8), not by this cost. The lab's spark test counts quads only
 (`test_hull_presets_render_their_elements`), which is why the zero-light sparks passed it.
+
+### Burst, randomised sparks, heavy ring (2026-11-06, dirty on `826d5ebc6`)
+
+After Run240 Flight G (the user: "need good modern effects, not lazy flashes"; "sparks read as the same decals
+appearing and disappearing"). The look is [weapon-look.md](../architecture/weapon-look.md) 3.1's dated paragraph.
+Built, not flown. **Stage** (`weapon_effects_hull.h`): the burst (the fireball impostor, `renderer::
+WeaponFireballVertex`, 44 B, at most 256 a frame) on every hull hit but repair, tug and asteroid; the flash halo 0.5
+r_hit; sparks with a hashed count (x 1 ± 0.4), hashed pair directions (antipodal, rejection from the cube), per-spark
+speed / life / length / width factors from one mix's bytes, a quarter curling (`spark_curl_x` 0.3, undamped);
+the heavy ring (`hull_heavy`: missile source, `style_burst`, k ≥ 0.6) as a sprite-batch quad of a third kind (c[0] 2,
+its own draw after the sprites, at most 64), its normal latched at the first frame (`ring_normal_local`: the bubble
+through the shield stage's `BubbleCache`, `ring_walks_per_frame` 1; a station's face axis). The shared budget charges
+the bursts (`budget_weight_fireball` 1.04, `_lod` 0.76, from the measured full-screen cost); over it: (1) one octave,
+(2) other owners' glows oldest first, (3) other owners' bursts oldest first. **Pass**: `weapon_fireball_{vs,ps}.hlsl`
+(slots VS 6 / PS 309) created with the hull programs (one refusal turns the hull off as before), drawn after the
+patches and decals and before the sprites; `WeaponEffectsStep::Fireballs` / `Rings`; the sprite VS reads the length
+factor from |c.x| and passes the ring kind (sprite VS 72, PS 103 slots, were 69 / 85). **Rows**:
+`weapon_effects_frame` gains `bursts= rings= bursts_shed= burst_lod=`; `weapon_hull_frame` `bursts= rings=
+bursts_shed= octaves= burst_screens= ring_walks= ring_fallback=`; `weapon_effects_device` `fireball_vs_slots=
+fireball_ps_slots=`. `HullState` 131 KB (the cached pair directions, 36 a record; was 18 KB). The engine shimmer puff
+is not built (the pass lives with the plumes: 3.1's paragraph).
+
+Deltas against the brief, chosen here: no "plasma" style exists in the classifier (tracer / slug / orb / wave / beam),
+so the plasma weapons are heavy by k ≥ 0.6; "flak/area flag 0x100" is the record's `style_burst` (`flags & 0x1100`); the
+spark length factor applies after the 24 px floor (every streak ≥ 24 px x its factor, ≥ 14.4 px); the asteroid gets no
+burst (rock dust); the burst's first frame has R 0 (the flash carries the birth).
+
+Figures [M], `verification/results/weapon-effects/hull_burst_rows.py` → `hull_burst_rows_out.txt` (the acceptance run,
+RTX 5070 Ti 32.0.16.2114, 39 s lock to exit): D3D PASS 114/0, hook PASS 90/0 (handler 0 calls, 0 x87, 1122
+instructions, frame 196 B; 50 events 17.0 µs median).
+
+| gate / row | measured | law / bound |
+| --- | --- | --- |
+| burst R at 0.1 / 0.3 / 0.6 L (IRE fighter, L 285.9 ms) | 12.485 / 21.983 / 24.941 view = the law; lit extent 1.011 / 1.007 / 1.004 R_px | ±0.1 %; 0.75–1.03 |
+| burst colour, brightest pixel at 16 ms / 0.9 L | g/r 0.872, b/r 0.679 / g/r 0.182, b/r 0.055, 0.026 of birth | white ≥ 0.75 / 0.45; dark red ≤ 0.3 / 0.2 |
+| burst against the lane: at the hit / in front / behind | 0.582 / 0 / 1.000 of the sky's | 0.35–0.65 / ≤ 1e-3 / ≥ 0.99 |
+| composition, 40 frames (30 x 16 ms, 10 x 100 ms), 6 elements | 0 of 240 law violations; image = sum of parts within 1e-5 | 0 |
+| spark randomness: seq 828 / 831 | 21 / 13 sparks; worst best-match cos 0.612; same frame identical; straight sparks cos 1.000000 frame to frame | differ / identical |
+| curled share (6400 sparks) / bend 100 → 250 ms | 0.259 / ≥ 2.86° | 0.25 ± 0.02 |
+| hidden half k 0 / 0.5 / 1 (radiance, 8 records) | 0.519 / 0.511 / 0.481 | 0.45–0.55 |
+| count / sizes / reach / lives, 3 tiers x 3 k | count = `spark_count` within its spread; flash halo 0.5 r_hit; widths per factor; reach = the hashed law exactly; all alive at 0.7 law, none at 1.3 | ±5 % |
+| floors at 2 km | width 3.000 px, length / its factor 24.000 px, shortest 14.447 px, flash core 3.012 px | 3 / 24 / 14.4 / 3 |
+| ring on the narrow corvette's mid flank, 0.2 / 0.5 / 0.9 of its life | ρ = the law, cos to the bubble normal 1.000000, centre error 0 r_hit; one walk, no fallback; the bubble normal 27.6° off the radial | ±0.5 %, ≥ 0.999 |
+| ring families: light slug / burst bit / k 0.8 / missile; station | 0 / 1 / 1 / 1; station plane on its face axis (corner z spread 0) | — |
+| budget, 12 capital hits, 0.5 screens left | octaves 2 → 1, 11 of 12 bursts shed (other owner), rings kept; own ship 0 shed | LOD, then shed |
+| burst through the production TemporalPass / after 8 frames | 1.000 / 0 | ≥ 0.9 / ≤ 1/255 |
+| fireball draw fault / Reset / refusal | reported at `Fireballs`, next frame draws; recreated after Reset; refused with the hull programs | — |
+
+CPU, best of 200 (i686, µs): 64 heavy hits on a capital (1328 sparks, 64 bursts, 64 rings) **33.9** (sparks alone
+26.0, all but the sparks 8.8; before the performance pass 61.3); 20 hits on a fighter 6.9. `hull_cpu_64_hits` re-set
+30 → **40 µs** (26.6 before this change for the flash, sparks, glow and ember). The pass: one mix per spark split into
+its factors' bytes, the pair directions cached at the first frame, the direction rotated once a pair, the heat ramp
+packed in a 1025-entry compile-time table (host perf: the ramp and the pack were 25 % of the spark loop).
+
+GPU, EVENT-fenced best of 60 (µs; 1080p / 5120x1440): 20 hits on a fighter 200 m away **35.5 / 60.9**
+(`hull_budget_20_hits_5120` re-set 50 → **70 µs**; 45.6 before the bursts); the same 60 m away 90.0 / 453.5 (bursts
+1.16 screens; 293.6 before); 64 hits on a capital close 338.1 / 1001.5 (the budget at work: 39 bursts at one octave,
+every glow shed, 7.56 screens; 132.8 before); one glow filling the frame 34.5 / 70.7; one burst filling the frame
+62.3 / 184.9 (weight 1.04), at one octave 47.4 / 136.1 (0.77).
+
+Lab: `renderHull` draws the burst (the shader's chord, noise and ramp ported), the hashed sparks (the stage's `mix32`
+/ `element_hash` / factors / directions; `test_spark_hashes_match_the_stage` compares them with a host build of the
+header for three sequences) and the ring; the variant `flak`; presets `hull/heavy-plasma-corvette` (HEPT, k 0.63),
+`hull/heavy-flak-fighter` (stock FLAK_ALPHA, k 0.83), `hull/heavy-missile-hit`. The "ours" canvas is **720 x 405**
+(1.5 x, both families; the vanilla stays 480 x 270), the side camera framed on 4 U + one glow radius (was + two).
+`test_hull_presets_render_their_elements` now counts each element's light and lit pixels, not its quads. Lit pixels at
+40 ms [M, `hull_burst_lab_probe.py` → `hull_burst_lab_probe_out.txt`]: IRE fighter side flash 324, burst 1253, sparks
+46, glow 11458, ember 452; PPC capital 300 m flash 502, burst 1246, sparks 36, ring 996; heavy flak fighter ring 986;
+the chase nose's sparks 104 px at 200 ms; the cockpit preset's hit lies below the canvas (its flash, sparks and ember
+unseen by geometry).
+
+Open:
+
+- Not flown. Flight per 3.1 with heavy weapons (PPC / HEPT on a corvette, flak, missiles) and a capital fight.
+- GPU: the 60 m stress row 453.5 µs and a close capital fight at the full 8-screen budget (1.0 ms at 5120x1440): the
+  burst (1.5 r_hit, 42 m on a capital) is the largest element; the budget bounds it, the flight decides its size.
+- The burst shader is 309 slots, 185 µs a full screen at 5120x1440; its octave LOD is per frame, not per burst.
+- The ring normal of an unshielded ship walks once (the cache holds the shield stage's owners); a deferred walk
+  latches the radius sphere's normal for that record.
+- `hull_spark_lab_probe.py` (the previous section's lab probe) no longer runs on the page (its regexes name the 480 x
+  270 renderer); its figures stand for that commit.
+
+### Cockpit: the own ship's patch on the eye sphere (2026-11-06, dirty on `826d5ebc6`)
+
+Run240 Flight G: in the cockpit the own-ship shield patch read "cut at the screen's horizontal centre, only the bottom
+half shows". Triage (CPU model of `fill_bubble` and the bubble pixel program, `verification/results/weapon-effects/
+cockpit-half/` in the main checkout) found no rasterisation, budget, cull or mapping defect: with the eye inside the
+hull-centred bubble (a corvette, half-extents (200, 150, 632), the eye at (0, 10, 300)) and the hits on the lower nose
+(18 of 20 own-ship hits came from below), the lit far side lies at or below the eye's horizontal plane, which projects
+to the centre line: the late set lit top 3502 / bottom 28521 px [M, the model, 1024 x 288]. **Fix** (coordinator
+decision): in the cockpit view the own ship's bubble is a sphere centred on the eye, radius its smallest bubble
+half-extent (never under `eye_sphere_min_m` 15 m), each hit mapped by its direction from the eye; cells on that
+sphere's face lattices as before; its far side draws; the 0.35 dim stays; chase view and other ships unchanged
+(`stage::Tuning::own_node / cockpit`, the glue resolves the own ship and the view before the build;
+`weapon_patch ... eye_sphere= eye_r_m=`).
+
+Fixture [M] (the same run, `EYE_SPHERE` rows): the triage's scenario at 2048 x 576 (32:9, half-height tangent 0.5625),
+level and pitched ±10°, sky lane: radius 150 (the bubble's smallest half-extent); every set's light on its hits' side
+(6 of 6: late lit row 362.8 / 316.8 / 413.8 against the centre 288, the hits' 418.4 / 326.0 / 519.5; early 254.7 /
+206.1 / 293.5, hits 234.7 / 139.6 / 326.2, the last within 5 % of the centre, not gated); the rows either side of the
+centre line continuous (late level 5504 above / 5780 below in the 8 rows each side); 48 single hits all lit, each patch's
+centroid on the sphere (luma x solid angle) **1.08 cells** from its hit's eye-sphere point at worst, gated at 1 + 1/√3
+cells (the footprint is centred on the hit's cell, up to 1/√3 cell off the hit, and the planar lattice stretches on a
+sphere of five cells' radius); 0 lit pixels outside the draws' boxes; the chase view of the same records identical
+with the own ship known or not (0 changed). The cockpit dim gate unchanged (0.350).
+
+Open: a cell of 6 m on a 30 m sphere makes each corvette hit's footprint ((rings + 0.5) cells, 75 view units) a cap of about 29° radius (the late set lights
+362004 of 1179648 px at level); the flight decides whether the eye sphere wants larger radius or smaller cells. Not
+flown.

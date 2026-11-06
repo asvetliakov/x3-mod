@@ -31,21 +31,36 @@
     "src/renderer/weapon_sprite_pixel_program_inc.h",
     "src/renderer/weapon_glow_vertex_program_inc.h",
     "src/renderer/weapon_glow_pixel_program_inc.h",
+    "src/effects/weapon_fireball_vs.hlsl",
+    "src/effects/weapon_fireball_ps.hlsl",
+    "src/renderer/weapon_fireball_vertex_program_inc.h",
+    "src/renderer/weapon_fireball_pixel_program_inc.h",
     "verification/probe/weapon_effects_hull_cases.h"
   ],
   "source": {
-    "commit": "a78c8c2f539c9454d02424ee48394ef7c20e2d90-dirty",
+    "commit": "826d5ebc6ae62c828c72c20901a8535c325a9636-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
+      "src/effects/weapon_sprite_ps.hlsl",
+      "src/effects/weapon_sprite_vs.hlsl",
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_hull.h",
-      "verification/probe/weapon_effects_hull_cases.h"
+      "src/proxy/weapon_effects_stage.h",
+      "src/renderer/weapon_effects_pass.cpp",
+      "src/renderer/weapon_effects_pass.h",
+      "src/renderer/weapon_sprite_pixel_program_inc.h",
+      "src/renderer/weapon_sprite_vertex_program_inc.h",
+      "verification/probe/weapon_effects_hull_cases.h",
+      "src/effects/weapon_fireball_ps.hlsl",
+      "src/effects/weapon_fireball_vs.hlsl",
+      "src/renderer/weapon_fireball_pixel_program_inc.h",
+      "src/renderer/weapon_fireball_vertex_program_inc.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "8641c011015712912c62943294bdbe7a016d8b8e3c6151d5989abbcccb19a7bb",
-      "src/renderer/weapon_effects_pass.cpp": "fbcd114439abc6c9c896aa82842c1414eb3cfaa6987ce2d0799b3f80f756c627",
-      "src/proxy/weapon_effects_core.h": "9804f3cfa9a3f0911de63bc94d6d5acf60809b06767684ffcb3142ba9fd0eba6",
-      "src/proxy/weapon_effects_stage.h": "8802e5f15aa980e76e671872efe51219f52b6db12cf3703194781d74d065b3c1",
+      "src/renderer/weapon_effects_pass.h": "0aad580d49357254e7a8bbbf6e3c618659d02dede4b58028dc4b6d6b0b782592",
+      "src/renderer/weapon_effects_pass.cpp": "988f51f4458ee5c0781ea03751748e6926cc9547f0556f40c1fca565d3752fd0",
+      "src/proxy/weapon_effects_core.h": "76de1019630ff0eac3a7dcabf88c7f9477fd646b873812e220f7234aa3481e70",
+      "src/proxy/weapon_effects_stage.h": "709f20faf8621f9a67b7822a0c24907e904d55b2d5ee7cf1c261c4a193a05ed9",
       "src/proxy/weapon_effects_bubble.h": "1c04711082437ba86b78ac9453b1c609c7d388ee1694394b430b02477facc741",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
       "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21",
@@ -63,16 +78,20 @@
       "src/renderer/weapon_shell_pixel_program_inc.h": "40ba2b0582943626c7b3e559d1228d59b003fbea8c13f4e7478763a1fe6223a2",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
-      "src/proxy/weapon_effects_hull.h": "fca067a887902f83955b5e77f6a24bfcdff3787f20e11b6cc9bfbe17aa8b785b",
-      "src/effects/weapon_sprite_vs.hlsl": "fd3edae174ab87a3912f0298415ffc455502fa18d9400ebe6c6c2d736efc7880",
-      "src/effects/weapon_sprite_ps.hlsl": "3028b22d636a5affd7cbabd896da2cb41af82d38a8afe7de8d6ff76976f98b18",
+      "src/proxy/weapon_effects_hull.h": "27d6d467c7a42bc6eaffc73ac7d7bed7a98f5f622117c5e966c8fc790b256cc1",
+      "src/effects/weapon_sprite_vs.hlsl": "2d8c4e58059b77618f525c3d2dd092c6d542e10aa6aa4a3532505ad861853324",
+      "src/effects/weapon_sprite_ps.hlsl": "2440c9023f42144ed5def613b912b18286d3bbc0d867685eb9bf21cb5c19716b",
       "src/effects/weapon_glow_vs.hlsl": "33fd595188c09c020b325d4ef906e03cd6c565e1db145745eb81b4c754a1ae3c",
       "src/effects/weapon_glow_ps.hlsl": "677be39d20faf35ff47e5295d7300de0018cb2e07cecca276740b8fe85c20eaa",
-      "src/renderer/weapon_sprite_vertex_program_inc.h": "205a1d7afa6b0b3aed9d77c0e0b3871f7b59e75dfc53ed438aa41ed4f6e35275",
-      "src/renderer/weapon_sprite_pixel_program_inc.h": "40bbd0aa381dd4e46962b5f12e3f7dcc8e6a628042c705ba8123f570d5af9a37",
+      "src/renderer/weapon_sprite_vertex_program_inc.h": "88b690f01534e874dd8fd0a404e7d5f5b99a0bec2a08e980be3cedd1f7f90521",
+      "src/renderer/weapon_sprite_pixel_program_inc.h": "abf161720ee1d19b048b46a56e787772a9752e602e354a21e13b0dc065428a79",
       "src/renderer/weapon_glow_vertex_program_inc.h": "520bd2569e40436b8f6848596e28efcf0e0f6558595c424891cac237c74d7270",
       "src/renderer/weapon_glow_pixel_program_inc.h": "d075e57e20989b6c67c2907d0d6207350fce85b912db454814ebfc9497155c7d",
-      "verification/probe/weapon_effects_hull_cases.h": "ac5e6cafe23f2f94c67ea568a50899e59e8b0826ca937b249f8b791564b5e94c"
+      "src/effects/weapon_fireball_vs.hlsl": "75b7e5783a050d1feee8433e255568a63d31cdc56a7755334a28d49ae5c2b2d6",
+      "src/effects/weapon_fireball_ps.hlsl": "1ea4e2a0f47b26d91a974e04a39bdff706b62804d3b6e176d50583ae1f246761",
+      "src/renderer/weapon_fireball_vertex_program_inc.h": "f25ad5b08464222e4dd7d94fdfbbdecc1ca6c3a7c3507bf49e9e46d5475323d4",
+      "src/renderer/weapon_fireball_pixel_program_inc.h": "c210b0b42d85abf21e7cd85684dad58fafb221d4c3a78d813a49e6662eb2f938",
+      "verification/probe/weapon_effects_hull_cases.h": "74b85074f4672c1af73e1aa101202609653fb10d0ce8a3b960f03231d8953026"
     }
   },
   "programs": {
@@ -108,14 +127,14 @@
     },
     "weapon_sprite_vs": {
       "source": "src/effects/weapon_sprite_vs.hlsl",
-      "word_count": 344,
-      "bytecode_sha256": "c0b9e9dcdf837db9f7db37f8dc2342e45650b6f082d51b5b74a0950c08cb2eb2",
+      "word_count": 357,
+      "bytecode_sha256": "45fc5c3f186c7658973b8d8d66ae812497eafa7cb86d205e2985e5a023fc6f35",
       "target": "vs_3_0"
     },
     "weapon_sprite_ps": {
       "source": "src/effects/weapon_sprite_ps.hlsl",
-      "word_count": 420,
-      "bytecode_sha256": "d5909e612d86198b14425c758d1aa0a56a10cba02f44deddd5287f50c8f0722a",
+      "word_count": 487,
+      "bytecode_sha256": "617c68a9ac50bde6ee63c60b1642fe91cf4a2be16206845efb9b9b508c2d968a",
       "target": "ps_3_0"
     },
     "weapon_glow_vs": {
@@ -128,6 +147,18 @@
       "source": "src/effects/weapon_glow_ps.hlsl",
       "word_count": 270,
       "bytecode_sha256": "b51780192fa6731f4bbd8b7138abea5bbe62ab8fa3cf96df4b52788659768a80",
+      "target": "ps_3_0"
+    },
+    "weapon_fireball_vs": {
+      "source": "src/effects/weapon_fireball_vs.hlsl",
+      "word_count": 83,
+      "bytecode_sha256": "9f0013892b5dbbe24d30b5b953f26ff555c7fbf52b779d0f53d157216be847ae",
+      "target": "vs_3_0"
+    },
+    "weapon_fireball_ps": {
+      "source": "src/effects/weapon_fireball_ps.hlsl",
+      "word_count": 1290,
+      "bytecode_sha256": "fe404b03f638372d66e4085b7e6b28cec5cc1fafe65f9422cf5ad7192b0b57f6",
       "target": "ps_3_0"
     }
   },
@@ -157,12 +188,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -189,13 +220,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-aa2b3f71b5cf018eb/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a8ab3dc12f7c6321a/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "c044c6a5e9028468573bc0726c78da836ed843a2b6b006e3a93e6c868890e9a0"
+    "executable_sha256": "4da8a311bc3d84829731f6d2fe8d7c43e9a04e65937db53bacc25aa4c03f35ad"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -228,7 +259,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 96,
+      "checks": 114,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -357,6 +388,18 @@
     ],
     [
       "cockpit_dims_only_the_own_ship_in_the_cockpit",
+      true
+    ],
+    [
+      "cockpit_eye_sphere_hits_light_their_half",
+      true
+    ],
+    [
+      "cockpit_eye_sphere_centroid_within_one_cell",
+      true
+    ],
+    [
+      "cockpit_eye_sphere_chase_unchanged",
       true
     ],
     [
@@ -552,6 +595,10 @@
       true
     ],
     [
+      "hull_budget_burst_lod_then_shed",
+      true
+    ],
+    [
       "hull_r32f_lane_form",
       true
     ],
@@ -588,11 +635,67 @@
       true
     ],
     [
+      "hull_fireball_fault_reported_and_recovers",
+      true
+    ],
+    [
       "hull_reset_recovers",
       true
     ],
     [
       "hull_program_refusal_draws_nothing",
+      true
+    ],
+    [
+      "hull_burst_radius_law_3_ages",
+      true
+    ],
+    [
+      "hull_burst_colour_white_core_at_birth",
+      true
+    ],
+    [
+      "hull_burst_colour_dark_red_at_end",
+      true
+    ],
+    [
+      "hull_burst_half_hidden_by_lane",
+      true
+    ],
+    [
+      "hull_spark_random_hits_differ",
+      true
+    ],
+    [
+      "hull_spark_same_hit_stable",
+      true
+    ],
+    [
+      "hull_spark_curl_share",
+      true
+    ],
+    [
+      "hull_heavy_families_ring",
+      true
+    ],
+    [
+      "hull_ring_radius_law_and_tangent_on_narrow_hull",
+      true
+    ],
+    [
+      "hull_ring_station_face_axis",
+      true
+    ],
+    [
+      "hull_compose_no_pop_all_elements",
+      true
+    ],
+    [
+      "hull_resolve_burst_survival",
+      true
+    ],
+    [
+      "hull_resolve_burst_no_scar",
       true
     ],
     [
@@ -1121,17 +1224,17 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 8.9,
+        "walk_best_us": 9.0,
         "walk_mean_us": 9.1,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.0,
-        "engine_memory_cold_mean_us": 13.8,
-        "engine_memory_warm_best_us": 11.5,
-        "engine_memory_warm_mean_us": 11.8,
-        "warm_best_us": 39.5,
-        "warm_mean_us": 43.6,
-        "cold_best_us": 48.5,
-        "cold_mean_us": 54.8,
+        "engine_memory_cold_best_us": 12.3,
+        "engine_memory_cold_mean_us": 13.0,
+        "engine_memory_warm_best_us": 11.8,
+        "engine_memory_warm_mean_us": 12.2,
+        "warm_best_us": 38.7,
+        "warm_mean_us": 44.4,
+        "cold_best_us": 48.1,
+        "cold_mean_us": 48.7,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1217,8 +1320,8 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 0.7,
-        "insertion_us": 1.3
+        "heap_us": 0.9,
+        "insertion_us": 1.2
       },
       {
         "case": "ascending",
@@ -1465,8 +1568,8 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 29.0,
-        "mean_us": 29.9,
+        "best_us": 28.4,
+        "mean_us": 29.7,
         "target_us": 200
       },
       {
@@ -1478,8 +1581,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 88.3,
-        "mean_us": 89.6,
+        "best_us": 87.1,
+        "mean_us": 88.4,
         "target_us": 200
       },
       {
@@ -1491,8 +1594,8 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 13.8,
-        "mean_us": 14.0,
+        "best_us": 13.6,
+        "mean_us": 13.7,
         "target_us": 200
       }
     ],
@@ -1531,8 +1634,8 @@
         "seta6_expected_wall_ms": 473.34,
         "seta6_wall_ms": 473.52,
         "last_drawn_ms": 473.5,
-        "frames": 20359,
-        "max_frame_ms": 1.452
+        "frames": 20244,
+        "max_frame_ms": 0.417
       }
     ],
     "retired": [
@@ -1594,7 +1697,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.9
+        "gpu_us": 10.8
       },
       {
         "width": 1920,
@@ -1604,7 +1707,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.0
+        "gpu_us": 15.9
       },
       {
         "width": 1920,
@@ -1644,7 +1747,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 99.0
+        "gpu_us": 98.2
       },
       {
         "width": 1920,
@@ -1674,7 +1777,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 62.6
+        "gpu_us": 62.0
       },
       {
         "width": 1920,
@@ -1684,7 +1787,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 91.9
+        "gpu_us": 91.8
       },
       {
         "width": 1920,
@@ -1694,7 +1797,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.2
+        "gpu_us": 16.3
       },
       {
         "width": 1920,
@@ -1714,7 +1817,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 95.6
+        "gpu_us": 95.2
       },
       {
         "width": 1920,
@@ -1724,7 +1827,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 20.7
+        "gpu_us": 20.6
       },
       {
         "width": 1920,
@@ -1734,7 +1837,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 72.3
+        "gpu_us": 71.2
       },
       {
         "width": 5120,
@@ -1744,7 +1847,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.0
+        "gpu_us": 10.6
       },
       {
         "width": 5120,
@@ -1764,7 +1867,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 22.4
+        "gpu_us": 22.2
       },
       {
         "width": 5120,
@@ -1774,7 +1877,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 177.1
+        "gpu_us": 176.4
       },
       {
         "width": 5120,
@@ -1784,7 +1887,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 230.3
+        "gpu_us": 227.3
       },
       {
         "width": 5120,
@@ -1794,7 +1897,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 365.1
+        "gpu_us": 363.3
       },
       {
         "width": 5120,
@@ -1804,7 +1907,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 33.4
+        "gpu_us": 33.1
       },
       {
         "width": 5120,
@@ -1814,7 +1917,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 158.8
+        "gpu_us": 158.0
       },
       {
         "width": 5120,
@@ -1824,7 +1927,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 178.1
+        "gpu_us": 177.4
       },
       {
         "width": 5120,
@@ -1834,7 +1937,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 288.9
+        "gpu_us": 289.0
       },
       {
         "width": 5120,
@@ -1844,7 +1947,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.0
+        "gpu_us": 21.2
       },
       {
         "width": 5120,
@@ -1854,7 +1957,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 175.3
+        "gpu_us": 174.2
       },
       {
         "width": 5120,
@@ -1864,7 +1967,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 339.0
+        "gpu_us": 337.4
       },
       {
         "width": 5120,
@@ -1874,7 +1977,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.7
+        "gpu_us": 51.5
       },
       {
         "width": 5120,
@@ -1884,34 +1987,34 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 257.0
+        "gpu_us": 255.5
       }
     ],
     "hull": [
       {
         "case": "placement",
-        "sparks": 13,
-        "spark_lit": 1406,
-        "spark_centroid_err_u": 0.012,
-        "quad_centroid_err_u": 0.012,
+        "sparks": 16,
+        "spark_lit": 1493,
+        "spark_centroid_err_u": 0.0098,
+        "quad_centroid_err_u": 0.0108,
         "flashes": 1,
-        "flash_lit": 22773,
+        "flash_lit": 5957,
         "flash_centroid_err_rhit": 0.0
       },
       {
         "case": "half_hidden",
-        "k0_share": 0.4983,
-        "k05_share": 0.5066,
-        "k1_share": 0.4997,
-        "k0_px": "5709/10102",
-        "k0_px_share": 0.5651,
-        "k05_px": "10957/17949",
-        "k05_px_share": 0.6105,
-        "k1_px": "15721/25019",
-        "k1_px_share": 0.6284,
-        "cpu_share": "0.5067,0.5067,0.5067",
+        "k0_share": 0.5186,
+        "k05_share": 0.5106,
+        "k1_share": 0.4807,
+        "k0_px": "6744/11536",
+        "k0_px_share": 0.5846,
+        "k05_px": "10434/16323",
+        "k05_px_share": 0.6392,
+        "k1_px": "13444/22375",
+        "k1_px_share": 0.6008,
+        "cpu_share": "0.5167,0.5106,0.4842",
         "crossing": "0,0,0",
-        "seq": "436,445,454"
+        "seq": "695,704,713"
       },
       {
         "case": "glow_surface",
@@ -1925,19 +2028,19 @@
       },
       {
         "case": "glow_decay",
-        "life_ms": 146.5,
+        "life_ms": 148.1,
         "age0": 0.8496,
         "expected0": 0.85,
-        "age_half": 0.4265,
-        "expected_half": 0.4266,
+        "age_half": 0.4253,
+        "expected_half": 0.4254,
         "age_end": 0.0
       },
       {
         "case": "cooling",
-        "life_ms": 279.8,
-        "half_T": 0.503,
-        "drawn_g_over_r": 0.4235,
-        "want_g_over_r": 0.4239
+        "life_ms": 180.6,
+        "half_T": 0.502,
+        "drawn_g_over_r": 0.4234,
+        "want_g_over_r": 0.4219
       },
       {
         "case": "cooling_ramp",
@@ -1948,83 +2051,83 @@
         "tier": "fighter",
         "k": 0.0,
         "calibre": 0.0,
-        "sparks": 8,
-        "want": 8,
-        "flash_r": 10.5,
+        "sparks": 7,
+        "want": 7,
+        "flash_r": 5.25,
         "r_hit": 10.5,
         "glow_R": 31.5,
         "ember_R": 6.3,
-        "width": 1.2,
-        "reach_mean_u": 0.9712,
-        "law_mean_u": 0.9712,
-        "early": 8,
+        "width": 1.1353,
+        "reach_mean_u": 1.1297,
+        "law_mean_u": 1.1297,
+        "early": 7,
         "late": 0
       },
       {
         "case": "law",
         "tier": "fighter",
+        "k": 0.5,
+        "calibre": 0.5,
+        "sparks": 17,
+        "want": 17,
+        "flash_r": 10.125,
+        "r_hit": 20.25,
+        "glow_R": 60.75,
+        "ember_R": 12.15,
+        "width": 1.3959,
+        "reach_mean_u": 1.0341,
+        "law_mean_u": 1.0341,
+        "early": 17,
+        "late": 0
+      },
+      {
+        "case": "law",
+        "tier": "fighter",
+        "k": 1.0,
+        "calibre": 1.0,
+        "sparks": 22,
+        "want": 22,
+        "flash_r": 15.0,
+        "r_hit": 30.0,
+        "glow_R": 90.0,
+        "ember_R": 18.0,
+        "width": 1.1616,
+        "reach_mean_u": 0.937,
+        "law_mean_u": 0.937,
+        "early": 22,
+        "late": 0
+      },
+      {
+        "case": "law",
+        "tier": "corvette",
+        "k": 0.0,
+        "calibre": 0.0,
+        "sparks": 9,
+        "want": 9,
+        "flash_r": 10.5,
+        "r_hit": 21.0,
+        "glow_R": 63.0,
+        "ember_R": 12.6,
+        "width": 2.6194,
+        "reach_mean_u": 0.8861,
+        "law_mean_u": 0.8861,
+        "early": 9,
+        "late": 0
+      },
+      {
+        "case": "law",
+        "tier": "corvette",
         "k": 0.5,
         "calibre": 0.5,
         "sparks": 16,
         "want": 16,
         "flash_r": 20.25,
-        "r_hit": 20.25,
-        "glow_R": 60.75,
-        "ember_R": 12.15,
-        "width": 1.2,
-        "reach_mean_u": 1.0222,
-        "law_mean_u": 1.0222,
-        "early": 16,
-        "late": 0
-      },
-      {
-        "case": "law",
-        "tier": "fighter",
-        "k": 1.0,
-        "calibre": 1.0,
-        "sparks": 24,
-        "want": 24,
-        "flash_r": 30.0,
-        "r_hit": 30.0,
-        "glow_R": 90.0,
-        "ember_R": 18.0,
-        "width": 1.2,
-        "reach_mean_u": 1.0308,
-        "law_mean_u": 1.0308,
-        "early": 24,
-        "late": 0
-      },
-      {
-        "case": "law",
-        "tier": "corvette",
-        "k": 0.0,
-        "calibre": 0.0,
-        "sparks": 8,
-        "want": 8,
-        "flash_r": 21.0,
-        "r_hit": 21.0,
-        "glow_R": 63.0,
-        "ember_R": 12.6,
-        "width": 2.4,
-        "reach_mean_u": 0.9696,
-        "law_mean_u": 0.9696,
-        "early": 8,
-        "late": 0
-      },
-      {
-        "case": "law",
-        "tier": "corvette",
-        "k": 0.5,
-        "calibre": 0.5,
-        "sparks": 16,
-        "want": 16,
-        "flash_r": 40.5,
         "r_hit": 40.5,
         "glow_R": 121.5,
         "ember_R": 24.3,
-        "width": 2.4,
-        "reach_mean_u": 0.8629,
-        "law_mean_u": 0.8629,
+        "width": 2.8294,
+        "reach_mean_u": 0.935,
+        "law_mean_u": 0.935,
         "early": 16,
         "late": 0
       },
@@ -2033,16 +2136,16 @@
         "tier": "corvette",
         "k": 1.0,
         "calibre": 1.0,
-        "sparks": 24,
-        "want": 24,
-        "flash_r": 60.0,
+        "sparks": 19,
+        "want": 19,
+        "flash_r": 30.0,
         "r_hit": 60.0,
         "glow_R": 180.0,
         "ember_R": 36.0,
-        "width": 2.4,
-        "reach_mean_u": 0.9606,
-        "law_mean_u": 0.9606,
-        "early": 24,
+        "width": 2.3644,
+        "reach_mean_u": 0.9712,
+        "law_mean_u": 0.9712,
+        "early": 19,
         "late": 0
       },
       {
@@ -2050,16 +2153,16 @@
         "tier": "capital",
         "k": 0.0,
         "calibre": 0.0,
-        "sparks": 8,
-        "want": 8,
-        "flash_r": 56.0,
+        "sparks": 6,
+        "want": 6,
+        "flash_r": 28.0,
         "r_hit": 56.0,
         "glow_R": 168.0,
         "ember_R": 33.6,
-        "width": 6.4,
-        "reach_mean_u": 0.9779,
-        "law_mean_u": 0.9779,
-        "early": 8,
+        "width": 5.185,
+        "reach_mean_u": 0.874,
+        "law_mean_u": 0.874,
+        "early": 6,
         "late": 0
       },
       {
@@ -2067,16 +2170,16 @@
         "tier": "capital",
         "k": 0.5,
         "calibre": 0.5,
-        "sparks": 16,
-        "want": 16,
-        "flash_r": 108.0,
+        "sparks": 11,
+        "want": 11,
+        "flash_r": 54.0,
         "r_hit": 108.0,
         "glow_R": 324.0,
         "ember_R": 64.8,
-        "width": 6.4,
-        "reach_mean_u": 0.9479,
-        "law_mean_u": 0.9479,
-        "early": 16,
+        "width": 5.235,
+        "reach_mean_u": 0.8838,
+        "law_mean_u": 0.8838,
+        "early": 11,
         "late": 0
       },
       {
@@ -2084,16 +2187,16 @@
         "tier": "capital",
         "k": 1.0,
         "calibre": 1.0,
-        "sparks": 24,
-        "want": 24,
-        "flash_r": 160.0,
+        "sparks": 26,
+        "want": 26,
+        "flash_r": 80.0,
         "r_hit": 160.0,
         "glow_R": 480.0,
         "ember_R": 96.0,
-        "width": 6.4,
-        "reach_mean_u": 0.9683,
-        "law_mean_u": 0.9683,
-        "early": 24,
+        "width": 5.815,
+        "reach_mean_u": 0.946,
+        "law_mean_u": 0.946,
+        "early": 26,
         "late": 0
       },
       {
@@ -2102,20 +2205,21 @@
       },
       {
         "case": "floors_2km",
-        "sparks": 13,
+        "sparks": 18,
         "min_width_px": 3.0,
-        "min_length_px": 24.0,
+        "min_length_px": 14.447,
+        "min_length_over_len_x_px": 24.0,
         "flash_core_px": 3.012
       },
       {
         "case": "min_frames",
         "seta6_flash_frames": 3,
         "seta10_flash_frames": 3,
-        "ember_life_ms": 1070.2,
-        "ember_frames": 11,
-        "ember_last_age_ms": 1000,
-        "seta6_wall_ms": 183.33,
-        "expected_wall_ms": 178.37
+        "ember_life_ms": 1185.2,
+        "ember_frames": 12,
+        "ember_last_age_ms": 1100,
+        "seta6_wall_ms": 200.0,
+        "expected_wall_ms": 197.53
       },
       {
         "case": "no_pop_12hps",
@@ -2155,66 +2259,66 @@
       {
         "case": "far_side",
         "far_sum": 0.0,
-        "near_flash_on_hull": 8969.7667,
-        "near_flash_on_sky": 8970.1208,
+        "near_flash_on_hull": 6398.7991,
+        "near_flash_on_sky": 6398.7991,
         "ratio": 1.0
       },
       {
         "case": "chase_nose",
         "age_ms": 200,
-        "sparks": 13,
-        "lit": 1546,
-        "outside_lit": 1546
+        "sparks": 12,
+        "lit": 3127,
+        "outside_lit": 3127
       },
       {
         "case": "spark_visibility",
         "subject": "fighter_chase_nose",
         "age_ms": 100,
-        "sparks": 13,
-        "lit": 722,
-        "width_px": 10.27,
-        "rest_px": 30.82,
-        "peak_luma": 5.387,
-        "sum_luma": 1442.0
+        "sparks": 16,
+        "lit": 1019,
+        "width_px": 10.06,
+        "rest_px": 36.58,
+        "peak_luma": 10.836,
+        "sum_luma": 2587.0
       },
       {
         "case": "spark_visibility",
         "subject": "fighter_chase_nose",
         "age_ms": 200,
-        "sparks": 13,
-        "lit": 1794,
-        "width_px": 10.31,
-        "rest_px": 30.93,
-        "peak_luma": 2.254,
-        "sum_luma": 1310.5
+        "sparks": 8,
+        "lit": 1096,
+        "width_px": 10.54,
+        "rest_px": 29.29,
+        "peak_luma": 2.865,
+        "sum_luma": 1122.7
       },
       {
         "case": "spark_visibility",
         "subject": "capital_ppc_300m",
         "age_ms": 100,
-        "sparks": 21,
-        "lit": 1901,
-        "width_px": 6.55,
-        "rest_px": 24.0,
-        "peak_luma": 10.234,
-        "sum_luma": 4149.2
+        "sparks": 22,
+        "lit": 1687,
+        "width_px": 6.38,
+        "rest_px": 27.41,
+        "peak_luma": 36.531,
+        "sum_luma": 6359.2
       },
       {
         "case": "spark_visibility",
         "subject": "capital_ppc_300m",
         "age_ms": 200,
-        "sparks": 21,
-        "lit": 2264,
-        "width_px": 6.56,
-        "rest_px": 24.0,
-        "peak_luma": 4.348,
-        "sum_luma": 3927.7
+        "sparks": 14,
+        "lit": 1417,
+        "width_px": 6.35,
+        "rest_px": 24.38,
+        "peak_luma": 4.285,
+        "sum_luma": 1964.7
       },
       {
         "case": "cockpit",
-        "chase": 70204.8248,
-        "own_cockpit": 24571.6499,
-        "other_cockpit": 70204.8248,
+        "chase": 67838.3834,
+        "own_cockpit": 23743.4008,
+        "other_cockpit": 67838.3834,
         "own_ratio": 0.35,
         "other_ratio": 1.0,
         "gain": 0.35
@@ -2229,12 +2333,12 @@
         "tug_glows": 1,
         "tug_embers": 0,
         "tug_R": 37.35,
-        "missile_sparks": 32,
-        "missile_want": 32,
+        "missile_sparks": 27,
+        "missile_want": 27,
         "missile_halo_g": 0.4,
         "missile_tint_g": 0.4,
-        "asteroid_sparks": 32,
-        "asteroid_want": 32,
+        "asteroid_sparks": 22,
+        "asteroid_want": 22,
         "asteroid_flashes": 0,
         "asteroid_rgb": "0.729,0.227,0.059"
       },
@@ -2248,7 +2352,7 @@
         "case": "orphan",
         "orphans": 2,
         "retired": 1,
-        "sparks": 26,
+        "sparks": 31,
         "flashes": 0,
         "glows": 0,
         "embers": 0,
@@ -2258,28 +2362,41 @@
         "case": "velocity_first_hit",
         "v": 1250.0,
         "want": 1250.0,
-        "sparks": 16,
-        "mean_head_x": 132.09,
-        "expected_x": 132.09,
+        "sparks": 19,
+        "mean_head_x": 132.511,
+        "expected_x": 132.511,
         "owner_x": 145.0
       },
       {
         "case": "budget",
         "boxes": 24,
-        "screens": 7.292,
-        "tight_boxes": 1,
-        "tight_shed": 23,
-        "tight_screens": 0.208,
-        "sparks": 288,
-        "tight_sparks": 288,
+        "screens": 13.098,
+        "tight_boxes": 0,
+        "tight_shed": 24,
+        "tight_screens": 0.281,
+        "sparks": 303,
+        "tight_sparks": 303,
         "own_boxes": 24,
         "own_shed": 0
       },
       {
+        "case": "budget_bursts",
+        "bursts": 12,
+        "burst_screens": 5.806,
+        "octaves": 2,
+        "tight_bursts": 12,
+        "tight_bursts_shed": 11,
+        "tight_octaves": 1,
+        "own_bursts": 12,
+        "own_bursts_shed": 0,
+        "rings": 12,
+        "tight_rings": 12
+      },
+      {
         "case": "r32f_lane",
-        "four_channel": 36587.0172,
-        "r32f": 36587.0478,
-        "ratio": 1.0
+        "four_channel": 28605.0152,
+        "r32f": 28604.7721,
+        "ratio": 0.99999
       },
       {
         "case": "resolve",
@@ -2311,39 +2428,201 @@
         "references_before_reset": 0,
         "ensure": 0,
         "drew": 1
+      },
+      {
+        "case": "burst_radius",
+        "age_frac": 0.1,
+        "age_ms": 29,
+        "life_ms": 285.9,
+        "R_view": 12.4852,
+        "law_view": 12.4852,
+        "r_hit": 16.934,
+        "R_px": 63.9,
+        "lit_extent_px": 64.6,
+        "extent_over_R": 1.0105,
+        "T": 0.8986,
+        "lit": 12703
+      },
+      {
+        "case": "burst_radius",
+        "age_frac": 0.3,
+        "age_ms": 86,
+        "life_ms": 285.9,
+        "R_view": 21.983,
+        "law_view": 21.983,
+        "r_hit": 16.934,
+        "R_px": 112.6,
+        "lit_extent_px": 113.4,
+        "extent_over_R": 1.0073,
+        "T": 0.6992,
+        "lit": 39333
+      },
+      {
+        "case": "burst_radius",
+        "age_frac": 0.6,
+        "age_ms": 172,
+        "life_ms": 285.9,
+        "R_view": 24.9413,
+        "law_view": 24.9413,
+        "r_hit": 16.934,
+        "R_px": 127.7,
+        "lit_extent_px": 128.2,
+        "extent_over_R": 1.004,
+        "T": 0.3983,
+        "lit": 45069
+      },
+      {
+        "case": "burst_colour",
+        "birth_age_ms": 16,
+        "birth_r": 1.0605,
+        "birth_g_over_r": 0.872,
+        "birth_b_over_r": 0.679,
+        "end_age_ms": 257,
+        "end_r": 0.02806,
+        "end_g_over_r": 0.182,
+        "end_b_over_r": 0.055
+      },
+      {
+        "case": "burst_lane",
+        "sky": 7053.299,
+        "at_hit": 4105.274,
+        "in_front": 0.0,
+        "behind": 7053.299,
+        "hit_share": 0.582,
+        "front_share": 0.0,
+        "behind_share": 1.0
+      },
+      {
+        "case": "spark_random",
+        "seq_a": 828,
+        "count_a": 21,
+        "drawn_a": 21,
+        "seq_b": 831,
+        "count_b": 13,
+        "drawn_b": 13,
+        "a_in_b_worst_cos": 0.6122,
+        "identical_same_frame": 1,
+        "count": 15,
+        "drawn": 15,
+        "straight_worst_cos": 1.0,
+        "curled": "2/15",
+        "curl_min_bend_deg_100_250ms": 2.86,
+        "curl_share_6400": 0.2592
+      },
+      {
+        "case": "ring_narrow",
+        "age_frac": 0.2,
+        "age_ms": 23,
+        "life_ms": 116.2,
+        "rho": 41.324,
+        "want_rho": 41.324,
+        "cos_normal": 1.0,
+        "centre_err_rhit": 0.0,
+        "lit": 9322,
+        "radiance": 1.085,
+        "band": 0.12
+      },
+      {
+        "case": "ring_narrow",
+        "age_frac": 0.5,
+        "age_ms": 58,
+        "life_ms": 116.2,
+        "rho": 104.209,
+        "want_rho": 104.209,
+        "cos_normal": 1.0,
+        "centre_err_rhit": 0.0,
+        "lit": 58732,
+        "radiance": 0.677,
+        "band": 0.12
+      },
+      {
+        "case": "ring_narrow",
+        "age_frac": 0.9,
+        "age_ms": 105,
+        "life_ms": 116.2,
+        "rho": 188.654,
+        "want_rho": 188.654,
+        "cos_normal": 1.0,
+        "centre_err_rhit": 0.0,
+        "lit": 182989,
+        "radiance": 0.13,
+        "band": 0.12
+      },
+      {
+        "case": "ring_normal",
+        "walks": 1,
+        "fallback": 0,
+        "bubble_vs_radial_deg": 27.61
+      },
+      {
+        "case": "ring_station",
+        "rings": 1,
+        "corner_z_spread": 0.0
+      },
+      {
+        "case": "compose_no_pop",
+        "frames": 40,
+        "checked": 240,
+        "violations": 0,
+        "bursts_seen": 13,
+        "rings_seen": 4,
+        "worst_additive_err": 0.0,
+        "additive_bad": 0
+      },
+      {
+        "case": "resolve_burst",
+        "frames": 16,
+        "core": 1.0,
+        "peak": 1.05,
+        "residual_after_8": 0.0
       }
     ],
     "hull_slots": [
       {
-        "sprite_vs": 69,
-        "sprite_ps": 85,
+        "sprite_vs": 72,
+        "sprite_ps": 103,
         "glow_vs": 6,
         "glow_ps": 47,
+        "fireball_vs": 6,
+        "fireball_ps": 309,
         "sprite_vertex_bytes": 48,
         "glow_vertex_bytes": 40,
-        "hull_state_bytes": 16400
+        "fireball_vertex_bytes": 44,
+        "hull_state_bytes": 131088
       }
     ],
     "hull_cpu": [
       {
         "case": "capital_64_hits",
         "hits": 64,
-        "sparks": 1344,
+        "sparks": 1328,
         "flashes": 64,
         "boxes": 128,
-        "best_us": 26.0,
-        "mean_us": 32.42,
-        "target_us": 30
+        "bursts": 64,
+        "rings": 64,
+        "best_us": 33.9,
+        "mean_us": 35.12,
+        "target_us": 40
+      },
+      {
+        "case": "capital_64_hits_sparks_only",
+        "best_us": 26.0
+      },
+      {
+        "case": "capital_64_hits_no_sparks",
+        "best_us": 8.8
       },
       {
         "case": "fighter_20_hits",
         "hits": 20,
-        "sparks": 260,
+        "sparks": 236,
         "flashes": 20,
         "boxes": 40,
-        "best_us": 6.3,
-        "mean_us": 9.4,
-        "target_us": 30
+        "bursts": 20,
+        "rings": 0,
+        "best_us": 6.9,
+        "mean_us": 6.99,
+        "target_us": 40
       }
     ],
     "hull_timing": [
@@ -2352,36 +2631,48 @@
         "height": 1080,
         "case": "fighter_60m_20_hits",
         "hits": 20,
-        "sparks": 260,
+        "sparks": 246,
         "flashes": 0,
         "boxes": 40,
-        "lit_share": 0.2182,
-        "raster_share": 2.8216,
-        "gpu_us": 61.6
+        "bursts": 20,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 0.58,
+        "lit_share": 0.2179,
+        "raster_share": 3.3797,
+        "gpu_us": 90.0
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 260,
+        "sparks": 283,
         "flashes": 0,
         "boxes": 40,
-        "lit_share": 0.0197,
-        "raster_share": 0.2556,
-        "gpu_us": 20.5
+        "bursts": 20,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 0.051,
+        "lit_share": 0.0196,
+        "raster_share": 0.3066,
+        "gpu_us": 35.5
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1344,
+        "sparks": 1357,
         "flashes": 0,
-        "boxes": 34,
-        "lit_share": 0.8818,
-        "raster_share": 1.959,
-        "gpu_us": 61.4
+        "boxes": 0,
+        "bursts": 51,
+        "rings": 0,
+        "octaves": 1,
+        "burst_screens": 7.659,
+        "lit_share": 1.0,
+        "raster_share": 10.2848,
+        "gpu_us": 338.1
       },
       {
         "width": 1920,
@@ -2391,45 +2682,93 @@
         "sparks": 0,
         "flashes": 0,
         "boxes": 1,
+        "bursts": 0,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 30.4
+        "gpu_us": 34.5
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "burst_alone_fills_frame",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 1.04,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 62.3
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "burst_alone_fills_frame_lod",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 1,
+        "burst_screens": 1.04,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 47.4
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "fighter_60m_20_hits",
         "hits": 20,
-        "sparks": 260,
+        "sparks": 295,
         "flashes": 0,
         "boxes": 40,
-        "lit_share": 0.3551,
-        "raster_share": 5.0021,
-        "gpu_us": 293.6
+        "bursts": 20,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 1.162,
+        "lit_share": 0.3569,
+        "raster_share": 6.1304,
+        "gpu_us": 453.5
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 260,
+        "sparks": 263,
         "flashes": 0,
         "boxes": 40,
+        "bursts": 20,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 0.103,
         "lit_share": 0.0393,
-        "raster_share": 0.4951,
-        "gpu_us": 45.6
+        "raster_share": 0.5946,
+        "gpu_us": 60.9
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1344,
+        "sparks": 1329,
         "flashes": 0,
-        "boxes": 19,
-        "lit_share": 0.8658,
-        "raster_share": 1.8543,
-        "gpu_us": 132.8
+        "boxes": 0,
+        "bursts": 39,
+        "rings": 0,
+        "octaves": 1,
+        "burst_screens": 7.558,
+        "lit_share": 1.0,
+        "raster_share": 10.1812,
+        "gpu_us": 1001.5
       },
       {
         "width": 5120,
@@ -2439,9 +2778,53 @@
         "sparks": 0,
         "flashes": 0,
         "boxes": 1,
+        "bursts": 0,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 71.0
+        "gpu_us": 70.7
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "burst_alone_fills_frame",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 1.04,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 184.9
+      },
+      {
+        "case": "burst_alone_fills_frame",
+        "weight": 1.042
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "burst_alone_fills_frame_lod",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 1,
+        "burst_screens": 1.04,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 136.1
+      },
+      {
+        "case": "burst_alone_fills_frame_lod",
+        "weight": 0.767
       }
     ],
     "fade": {
