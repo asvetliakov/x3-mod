@@ -72,6 +72,7 @@ textarea{font-family:var(--mono);font-size:.78rem;background:var(--panel);color:
     <label class="row">halo_gain<span class="v" id="v-halo_gain">0.30</span><input type="range" id="halo_gain" min="0" max="1" step="0.01" value="0.3"></label>
     <label class="row">halo_radius (half brightness, R)<span class="v" id="v-halo_radius">6.00</span><input type="range" id="halo_radius" min="0.5" max="16" step="0.1" value="6"></label>
     <label class="row">glow_radius (window, quad half extent, R)<span class="v" id="v-glow_radius">24.0</span><input type="range" id="glow_radius" min="4" max="48" step="0.5" value="24"></label>
+    <label class="row">taper_start (window flat inside, R)<span class="v" id="v-taper_start">16.0</span><input type="range" id="taper_start" min="0" max="47" step="0.5" value="16"></label>
   </div>
   <div class="group"><h2>Rays</h2>
     <label class="row">ray_count<span class="v" id="v-ray_count">6</span><input type="range" id="ray_count" min="1" max="32" step="1" value="6"></label>
@@ -108,7 +109,8 @@ const HEADER = {
   corona_sigma: 1.05,
   halo_gain: 0.4,
   halo_radius: 4.2,
-  glow_radius: 17.0,
+  glow_radius: 32.0,
+  taper_start: 22.0,
   ray_count: 9,
   ray_gain: 0.11,
   ray_length: 11.0,
@@ -126,7 +128,7 @@ const HEADER_MISSING = [];
 // The CPU mirror of the game's sun (the host test verification/analysis/test_own_sun_lab.py runs this block under node
 // against the C++ reference of src/proxy/own_sun_core.h). Pure functions, no DOM.
 const TWO_PI=6.28318531,LOG2E=1.44269504,SQRT_LOG2E=1.20112241; // own_sun_core.h two_pi, log2e, sqrt_log2e
-const LOOK_NAMES=['white_mix','core_inner','core_gain','corona_gain','corona_sigma','halo_gain','halo_radius','glow_radius','ray_count','ray_gain','ray_length','ray_start','ray_offset','ray_sigma','ray_sigma_min_px'];
+const LOOK_NAMES=['white_mix','core_inner','core_gain','corona_gain','corona_sigma','halo_gain','halo_radius','glow_radius','taper_start','ray_count','ray_gain','ray_length','ray_start','ray_offset','ray_sigma','ray_sigma_min_px'];
 function lookFromHeader(h){const o={};LOOK_NAMES.forEach(n=>o[n]=h[n]);return o;}
 // own_sun_core.h radiance(): c = the poll's words / 256 clamped to [0, 4]; core K core_gain lerp(c / m, 1, white_mix) m T
 // (core_gain on the core term only), glow tint c T K / K_default.
@@ -143,15 +145,16 @@ function rayWidthRadii(radiusPx,look){const f=radiusPx>0?look.ray_sigma_min_px/r
 function pixelConstants(width,height,disc,rad,rays,look,h){
  const dx=width?1/width:0,dy=height?1/height:0,share=rays>=h.rays_min&&rays<=h.rays_max?rays:h.rays_default;
  const ring=disc.radius_px,n=look.ray_count,sigma=rayWidthRadii(disc.radius_px,look);
+ const taper=Math.max(look.glow_radius-look.taper_start,1e-3); // the halo window's taper length (c8.w, c9.w)
  return [dx,dy,0,0, 2*dx,dy,dx,2*dy, -2*dx,dy,-dx,2*dy,
   rad.core[0],rad.core[1],rad.core[2],look.core_inner, rad.glow[0],rad.glow[1],rad.glow[2],0,
   look.corona_gain,look.halo_gain,look.ray_gain*share,0, .5+.5*disc.x,.5-.5*disc.y,ring*dx,ring*dy,
   n/TWO_PI,look.ray_offset,look.ray_length,TWO_PI/n/sigma*SQRT_LOG2E,
-  LOG2E/(look.corona_sigma*look.corona_sigma),1/(look.halo_radius*look.halo_radius),LOG2E,1/look.glow_radius,
-  look.ray_start,n,1/n,0];
+  LOG2E/(look.corona_sigma*look.corona_sigma),1/(look.halo_radius*look.halo_radius),LOG2E,1/taper,
+  look.ray_start,n,1/n,look.taper_start/taper];
 }
 const sat=v=>v<0?0:(v>1?1:v);
-// own_sun_ps.hlsl lines 125-131: the minimax arctangent (|error| < 1e-5 rad).
+// own_sun_ps.hlsl lines 130-136: the minimax arctangent (|error| < 1e-5 rad).
 function atanMinimax(px,py){
  const qx=Math.abs(px),qy=Math.abs(py),lo=Math.min(qx,qy),hi=Math.max(Math.max(qx,qy),1e-6),u=lo/hi,u2=u*u;
  let th=((((-0.0134804*u2+0.0574773)*u2-0.1212391)*u2+0.1956359)*u2-0.3329946)*u2*u+0.9999956*u;
@@ -168,7 +171,7 @@ function lawSpoke(c,index,across,r){
 // visible 0..1 the weighted core fraction; p in core radii, y up.
 function lawPixel(c,px,py,openTaps,visible){
  const r2=px*px+py*py,r=Math.sqrt(r2),s=sat((r-c[15])/(1-c[15])),d=1-s*s*(3-2*s);
- const corona=c[20]*Math.pow(2,-r2*c[32]),w=sat(1-r2*c[35]*c[35]),halo=c[21]/(1+r2*c[33])*w*w;
+ const corona=c[20]*Math.pow(2,-r2*c[32]),tw=sat(Math.sqrt(r2)*c[35]-c[39]),sw=1-tw,w=sw*sw*sw*(1+tw*(3+6*tw)),halo=c[21]/(1+r2*c[33])*w;
  const t=atanMinimax(px,py)*c[28]+c[29],nearest=Math.floor(t+0.5),across=t-nearest,side=across>=0?1:-1;
  const rays=c[22]*(lawSpoke(c,nearest,across,r)+lawSpoke(c,nearest+side,across-side,r));
  const open=Math.min(openTaps,9)/9,vis=sat(visible),rgb=[0,0,0];
@@ -185,14 +188,14 @@ function glowMaxOutsideCore(c,ext){let m=0;
 
 // Step 1c's constants (Run 221), drawn with the step 1d law: ray_start 0 gives its along-profile r / L, but its ray hashes
 // (L (0.25 + 0.75 h1^2), h1 = frac(k (0.618034 + 0.1547 k)); strength 0.6 + 0.4 h2) are not reproduced.
-const STEP_1C={white_mix:.25,core_inner:.6,core_gain:1,corona_gain:.6,corona_sigma:1.5,halo_gain:.3,halo_radius:6,glow_radius:24,ray_count:6,ray_gain:.15,ray_length:14,ray_start:0,ray_offset:.25,ray_sigma:.2,ray_sigma_min_px:3,radius_u:.012,K:2,sun_rays:1};
+const STEP_1C={white_mix:.25,core_inner:.6,core_gain:1,corona_gain:.6,corona_sigma:1.5,halo_gain:.3,halo_radius:6,glow_radius:24,taper_start:16,ray_count:6,ray_gain:.15,ray_length:14,ray_start:0,ray_offset:.25,ray_sigma:.2,ray_sigma_min_px:3,radius_u:.012,K:2,sun_rays:1};
 // Step 1d as merged (Run 221 feedback: more rays of different length from the core's edge, the halo about 30 % smaller,
 // the core dimmer, the glow at the core brighter).
-const STEP_1D=Object.assign({},STEP_1C,{white_mix:.25,core_inner:.4,core_gain:.72,corona_gain:2.15,corona_sigma:1.05,halo_gain:.3,halo_radius:4.2,glow_radius:17,ray_count:11,ray_gain:.15,ray_length:13,ray_start:1,ray_offset:.125});
+const STEP_1D=Object.assign({},STEP_1C,{white_mix:.25,core_inner:.4,core_gain:.72,corona_gain:2.15,corona_sigma:1.05,halo_gain:.3,halo_radius:4.2,glow_radius:17,taper_start:11,ray_count:11,ray_gain:.15,ray_length:13,ray_start:1,ray_offset:.125});
 const HEADER_PRESET=Object.assign(lookFromHeader(HEADER),{radius_u:HEADER.radius_default_u,K:HEADER.radiance_default,sun_rays:HEADER.rays_default});
 const RES={wide:[5120,1440],small:[1280,768]};
 const COLOURS=[['Yellow sector',[0.9961,0.9961,0.7812]],['Green sector',[0.8789,0.9961,0.7812]],['White',[1,1,1]]];
-// own_sun_ps.hlsl lines 73-115: the 37 core taps (offsets in core radii, lane uv y down) and their weights.
+// own_sun_ps.hlsl lines 76-118: the 37 core taps (offsets in core radii, lane uv y down) and their weights.
 const CORE_TAPS=[[0,0,0.0281785],
  [0.3000000,0.0000000,0.0279249],[0.2598076,0.1500000,0.0279249],[0.1500000,0.2598076,0.0279249],[0.0000000,0.3000000,0.0279249],[-0.1500000,0.2598076,0.0279249],[-0.2598076,0.1500000,0.0279249],
  [-0.3000000,0.0000000,0.0279249],[-0.2598076,-0.1500000,0.0279249],[-0.1500000,-0.2598076,0.0279249],[0.0000000,-0.3000000,0.0279249],[0.1500000,-0.2598076,0.0279249],[0.2598076,-0.1500000,0.0279249],
@@ -238,33 +241,34 @@ const vec3 TAPS[36]=vec3[36](vec3(0.3000000,0.0000000,0.0279249),vec3(0.2598076,
  vec3(-0.1562834,-0.8863270,0.0258961),vec3(0.3078181,-0.8457234,0.0258961),vec3(0.6894400,-0.5785088,0.0258961),vec3(0.8863270,-0.1562834,0.0258961));
 // own_sun_ps.hlsl main(): pix the game pixel index (VPOS), p the offset from the sun in core radii (TEXCOORD0, y up).
 vec3 ownSun(vec2 pix,vec2 p){
- vec2 base=(pix+0.5)*c[0].xy;                                // line 60
- float open=sentinel(lane(base));                            // lines 62-70: the fragment and the eight knight moves, / 9
+ vec2 base=(pix+0.5)*c[0].xy;                                // line 65
+ float open=sentinel(lane(base));                            // lines 67-75: the fragment and the eight knight moves, / 9
  open+=sentinel(lane(base+c[1].xy))+sentinel(lane(base-c[1].xy))+sentinel(lane(base+c[2].xy))+sentinel(lane(base-c[2].xy));
  open+=sentinel(lane(base+c[1].zw))+sentinel(lane(base-c[1].zw))+sentinel(lane(base+c[2].zw))+sentinel(lane(base-c[2].zw));
  open/=9.0;
- vec2 cc=c[6].xy;                                            // lines 73-115: the core's 37 weighted taps
+ vec2 cc=c[6].xy;                                            // lines 76-118: the core's 37 weighted taps
  float visible=sentinel(lane(cc))*0.0281785;
  for(int i=0;i<36;i++)visible+=sentinel(lane(cc+TAPS[i].xy*c[6].zw))*TAPS[i].z;
- float r2=dot(p,p),r=sqrt(r2);                               // lines 117-118
- float d=1.0-smoothstep(c[3].w,1.0,r);                       // line 119: the core D(r)
- float corona=c[5].x*exp2(-r2*c[8].x);                       // line 121: A_c exp(-(r / sigma_c)^2)
- float w=clamp(1.0-r2*c[8].w*c[8].w,0.0,1.0);                // line 122: the window W(r)
- float halo=c[5].y/(1.0+r2*c[8].y)*w*w;                      // line 123: the Lorentzian halo
- vec2 q=abs(p);                                              // lines 125-131: the minimax arctangent
+ float r2=dot(p,p),r=sqrt(r2);                               // lines 120-121
+ float d=1.0-smoothstep(c[3].w,1.0,r);                       // line 122: the core D(r)
+ float corona=c[5].x*exp2(-r2*c[8].x);                       // line 124: A_c exp(-(r / sigma_c)^2)
+ float tw=clamp(r*c[8].w-c[9].w,0.0,1.0);                    // lines 125-127: the window W(r), 1 - smootherstep
+ float sw=1.0-tw,w=sw*sw*sw*(1.0+tw*(3.0+6.0*tw));         // (1 - t)^3 (1 + 3 t + 6 t^2)
+ float halo=c[5].y/(1.0+r2*c[8].y)*w;                        // line 128: the Lorentzian halo
+ vec2 q=abs(p);                                              // lines 130-136: the minimax arctangent
  float lo=min(q.x,q.y),hi=max(max(q.x,q.y),1e-6);
  float u=lo/hi,u2=u*u;
  float theta=((((-0.0134804*u2+0.0574773)*u2-0.1212391)*u2+0.1956359)*u2-0.3329946)*u2*u+0.9999956*u;
  theta=q.y>q.x?1.57079633-theta:theta;
  theta=p.x<0.0?3.14159265-theta:theta;
  theta=p.y<0.0?-theta:theta;
- float t=theta*c[7].x+c[7].y;                                // lines 132-136: the two nearest spokes
+ float t=theta*c[7].x+c[7].y;                                // lines 137-141: the two nearest spokes
  float nearest=floor(t+0.5);
  float across=t-nearest;
  float side=across>=0.0?1.0:-1.0;
  float rays=c[5].z*(spoke(nearest,across,r)+spoke(nearest+side,across-side,r));
- vec3 glow=c[4].rgb*(corona+halo+rays);                      // line 137
- return mix(glow,c[3].rgb,d)*open*(d+(1.0-d)*visible);       // line 138
+ vec3 glow=c[4].rgb*(corona+halo+rays);                      // line 142
+ return mix(glow,c[3].rgb,d)*open*(d+(1.0-d)*visible);       // line 143
 }
 float hash2(vec2 v){v=fract(v*vec2(0.1031,0.1030));v+=dot(v,v.yx+33.33);return fract((v.x+v.y)*v.x);}
 float vnoise(vec2 v){vec2 i=floor(v),f=fract(v);f=f*f*(3.0-2.0*f);
@@ -356,7 +360,7 @@ function ensureTargets(w,h){
 const ids=['zoom','ev','bloom','fog','neb','radius_u','K','sun_rays'].concat(LOOK_NAMES.filter(n=>n!=='white_mix'&&n!=='core_inner'&&n!=='core_gain'),['core_gain','white_mix','core_inner']);
 const el={};ids.forEach(i=>el[i]=document.getElementById(i));
 const val=i=>parseFloat(el[i].value);
-const digits={zoom:1,ev:1,radius_u:3,ray_offset:3,ray_count:0,glow_radius:1,ray_length:1,ray_sigma_min_px:1,halo_radius:2};
+const digits={zoom:1,ev:1,radius_u:3,ray_offset:3,ray_count:0,glow_radius:1,taper_start:1,ray_length:1,ray_sigma_min_px:1,halo_radius:2};
 function fmt(i){const v=val(i);document.getElementById('v-'+i).textContent=i==='ev'?(v>=0?'+':'')+v.toFixed(1):v.toFixed(i in digits?digits[i]:2);}
 let dirty=true,lawDirty=true;
 const press=(group,id)=>group.forEach(g=>document.getElementById(g).setAttribute('aria-pressed',g===id?'true':'false'));
@@ -426,7 +430,8 @@ function portText(L){
  const lines=['// src/proxy/own_sun_core.h, the look (own_sun_lab.html)',
   'constexpr float white_mix = '+cf(L.white_mix)+', core_inner = '+cf(L.core_inner)+', core_gain = '+cf(L.core_gain)+';'];
  lines.push('constexpr float corona_gain = '+cf(L.corona_gain)+', corona_sigma = '+cf(L.corona_sigma)+';',
-  'constexpr float halo_gain = '+cf(L.halo_gain)+', halo_radius = '+cf(L.halo_radius)+', glow_radius = '+cf(L.glow_radius)+';',
+  'constexpr float halo_gain = '+cf(L.halo_gain)+', halo_radius = '+cf(L.halo_radius)+';',
+  'constexpr float taper_start = '+cf(L.taper_start)+', glow_radius = '+cf(L.glow_radius)+';',
   'constexpr unsigned ray_count = '+L.ray_count+';',
   'constexpr float ray_gain = '+cf(L.ray_gain)+', ray_length = '+cf(L.ray_length)+', ray_start = '+cf(L.ray_start)+', ray_offset = '+cf(L.ray_offset)+';',
   'constexpr float ray_sigma = '+cf(L.ray_sigma)+', ray_sigma_min_px = '+cf(L.ray_sigma_min_px)+';',

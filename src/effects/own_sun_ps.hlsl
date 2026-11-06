@@ -1,12 +1,15 @@
 // Own sun (docs/architecture/own-sun-pass.md sections 2-4 and 14; the look: docs/architecture/own-sun-look.md, steps 1c and 1d):
 // the pixel program of the stage's one quad, ONE/ONE into the FP16 scene after the fog pass and before the TAA resolve.
 // A small hot core in a dominant soft glow with eleven soft rays. p = the pixel's offset from the sun in core radii (the
-// quad reaches 17 to each side), r = |p|, theta = atan2(p.y, p.x):
+// quad reaches R_g = 32 to each side), r = |p|, theta = atan2(p.y, p.x):
 //   core    D(r) = 1 - smoothstep(c3.w, 1, r), colour c3 (above the bloom threshold, under the meter's guard)
 //   glow    tint c4 x [ corona + halo + rays ], up to about 1.33 engine at K = 2 next to the core and under the
 //           meter's guard (engine 2.25) everywhere (glow_meter.py), behind the core:
 //   corona  A_c exp(-(r / sigma_c)^2)                                    (c5.x, c8.x = log2 e / sigma_c^2)
-//   halo    A_h / (1 + (r / rho_h)^2) x W(r), W(r) = saturate(1 - (r / R_g)^2)^2: a Lorentzian tail, zero at the window
+//   halo    A_h / (1 + (r / rho_h)^2) x W(r): a Lorentzian tail; W = 1 - smootherstep(r_a, R_g, r), t = saturate((r - r_a)
+//           / (R_g - r_a)), W = (1 - t)^3 (1 + 3 t + 6 t^2) = 1 - t^3 (6 t^2 - 15 t + 10): exactly 1 inside r_a = 22,
+//           C2 at both ends, 0 at R_g = 32, the quad's edge (step 1e: the tail meets the tonemap's black floor near 20
+//           before the taper starts, no edge)
 //   rays    N = 11 spokes; t = theta N / 2 pi + offset, spoke k = floor(t + 0.5) mod N, a = t - floor(t + 0.5); per spoke
 //           the hash h1 = frac(0.6180340 k + 0.3) (golden-ratio steps: evenly spread) sets the length
 //           L_k = L_max (0.15 + 0.85 h1) beyond the start r_0 (the core's edge, c9.x) and h2 = frac(k 0.7548777 + 0.31) the
@@ -34,8 +37,8 @@ float4 glow_rgb : register(c4);  // c T K / K_default, unused
 float4 amplitude : register(c5); // A_c, A_h, A_r x sun_rays, unused
 float4 core_taps : register(c6); // the core's centre (lane uv, jittered), the core radius as lane uv (x, y)
 float4 spokes : register(c7);    // N / 2 pi, the spokes' offset (spoke units), L_max, (2 pi / N) sqrt(log2 e) / sigma
-float4 extent : register(c8);    // log2 e / sigma_c^2, 1 / rho_h^2, log2 e, 1 / R_g (core radii): exp folded to exp2
-float4 counts : register(c9);    // the rays' start r_0 (core radii), N, 1 / N, unused
+float4 extent : register(c8);    // log2 e / sigma_c^2, 1 / rho_h^2, log2 e, 1 / (R_g - r_a) (core radii): exp folded to exp2
+float4 counts : register(c9);    // the rays' start r_0 (core radii), N, 1 / N, r_a / (R_g - r_a) (the halo taper's start)
 struct Input {
     float2 local : TEXCOORD0; // offset from the sun's centre in core radii
     float2 pixel : VPOS;
@@ -119,8 +122,10 @@ float4 main(Input i) : COLOR {
     const float d = 1 - smoothstep(core_rgb.w, 1.0, r);
     // Corona and halo.
     const float corona = amplitude.x * exp2(-r2 * extent.x);
-    const float w = saturate(1 - r2 * extent.w * extent.w);
-    const float halo = amplitude.y / (1 + r2 * extent.y) * w * w;
+    const float t_w = saturate(r * extent.w - counts.w);
+    const float s_w = 1 - t_w; // 1 - smootherstep(t) = (1 - t)^3 (1 + 3 t + 6 t^2): no cancellation near the end
+    const float w = s_w * s_w * s_w * (1 + t_w * (3 + 6 * t_w));
+    const float halo = amplitude.y / (1 + r2 * extent.y) * w;
     // Rays: theta by a minimax arctangent (|error| < 1e-5 rad), the two nearest spokes.
     const float2 q = abs(p);
     const float lo = min(q.x, q.y), hi = max(max(q.x, q.y), 1e-6);

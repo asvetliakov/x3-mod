@@ -49,8 +49,8 @@ def python_law(h, words, k, fog, rays, px, py):
     r2 = px * px + py * py
     r = math.sqrt(r2)
     corona = h['corona_gain'] * math.exp(-r2 / h['corona_sigma'] ** 2)
-    w = min(max(1 - r2 / h['glow_radius'] ** 2, 0.), 1.)
-    halo = h['halo_gain'] / (1 + r2 / h['halo_radius'] ** 2) * w * w
+    t = min(max((r - h['taper_start']) / (h['glow_radius'] - h['taper_start']), 0.), 1.)
+    halo = h['halo_gain'] / (1 + r2 / h['halo_radius'] ** 2) * (1 - t * t * t * (t * (6 * t - 15) + 10))
 
     def spoke(index, across):
         kk = index - n * math.floor(index / n)

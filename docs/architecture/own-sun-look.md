@@ -9,7 +9,7 @@ in a wide soft glow; a sunburst over a soft halo) and the vanilla FL sun (a soft
 out of fog, faint radial rays in fog). Figures are [M] measured (offline script or code) or [I] inferred. Implemented as
 step 1c on 2026-11-02 (not flown; [own-sun-pass.md §14](own-sun-pass.md), the ledger section "Own sun step 1c — host
 evidence"): ps_3_0 184 slots, the glow maximum 0.781 [M]. Tuned as step 1d after Run221 (section "Step 1d" below; the constants
-there supersede the step 1c table).
+there supersede the step 1c table); the halo window and the quad are step 1e's (section "Step 1e").
 
 ## Step 1d: tuning after Run221
 
@@ -78,6 +78,58 @@ turned by 0, 10 and 20 deg), the same `1 - 0.1 rho^2` weights normalised (centre
 1.366 at 1440 rows, 1.369 at 768; worst sun-tile `ev_limit` +2.25 / +2.23 EV; cap rule PASS at both [M, `glow_meter.py`].
 Display at +1.3 EV: 1 R 0.93, 2 R 0.58, 4 R 0.32, 6 R 0.15 [I, AgX table]. The 25-tap paragraph above is the previous
 layout.
+
+## Step 1e: the glow's tail (2026-11-06)
+
+User report: "can we make it fall off more gradually, more smoothly. It's still a bulb with visible edges on the
+black/star background". Figures [M] are `verification/results/own-sun-pass/glow_edge.py` (the law from
+`own_sun_core.h`, white sun, K = 2, T = 1, one-pixel samples between spokes, the display chain of
+`tools/analysis/agx_reference.py`: gamma-2.2 decode, 2^EV, minimal AgX, 8-bit round, display dither not applied);
+`--window poly2 --glow-radius 17` reproduces step 1d.
+
+**What made the edge: the halo window.** `W = saturate(1 - (r / 17)^2)^2` is already 0.77 at 6 R and 0.34 at 11 R,
+so it, not the Lorentzian, drove the tail into the tonemap's black floor (the minimal AgX's sigmoid fit is negative
+below about 2.2e-4 exposed linear and clamps to 0, so every tail that reaches black has a kink there). Against black
+at EV +1.3 the display fell below 1/255 at 11.0 R (190 px at 1440 rows) and its slope then jumped by 0.130 codes/px
+(0.221 at 768 rows): an edge. The free Lorentzian meets the same floor at 20 R with a kink of 0.0185 codes/px, the
+tonemap's own and the least any tail can have there. Not the cause: the quad (W is 0 at its inscribed circle, slope 0
+at the quad's edge), the corona (sigma 1.05: 6e-4 engine at 3 R), and 8-bit quantisation (beyond 3 R no pixel step
+exceeds 2 codes at 1440 rows, 3 at 768, and the HDR route's static +-0.5 code display dither, `X3M_HDR_DITHER`, default
+on in the config schema and the launcher, already breaks the 1-code bands of the slow tail; the sun pass writes FP16,
+so a dither there would be quantised away before the tonemap: none added).
+
+**New window.** `W = 1 - smootherstep(r_a, R_g, r)`, evaluated as `(1 - t)^3 (1 + 3 t + 6 t^2)`, `t = saturate((r -
+r_a) / (R_g - r_a))`: exactly 1 inside `r_a`, C2 at both ends, 0 at `R_g`; the factored form has no cancellation near
+`t = 1` (the expanded `1 - t^3 (6 t^2 - 15 t + 10)` made the host test's monotonicity check see a 6e-9 rise).
+Constants (`own_sun_core.h`): `taper_start` r_a = **22**, `glow_radius` R_g = **32** (was 17; the quad's half extent
+follows it, so nothing is clipped); c8.w = 1 / (R_g - r_a) = 0.1, c9.w (unused before) = r_a / (R_g - r_a) = 2.2.
+Corona, halo gain and radius, rays, core, occlusion and visibility unchanged. ps_3_0 1286 words, 258 slots (was
+1265 / 253; budget 260), native validator 0 messages [M].
+
+| Between spokes, white, K 2, 1440 rows | Step 1d | Step 1e |
+| --- | --- | --- |
+| glow (engine) at 1, 1.5, 2, 3 R | 1.268, 0.630, 0.374, 0.249 | 1.271, 0.636, 0.383, 0.265 (+0.2, +1.0, +2.4, +6.4 %) |
+| glow at 4, 6, 9, 12, 16, 20, 24 R | 0.187, 0.101, 0.037, 0.011, 0.0003, 0, 0 | 0.210, 0.132, 0.072, 0.044, 0.026, 0.017, 0.011 |
+| display at EV +1.3 at 1, 2, 3, 4, 6, 9, 12, 16, 20 R | 0.937, 0.578, 0.418, 0.314, 0.138, 0.023, 0, 0, 0 | 0.937, 0.588, 0.443, 0.354, 0.203, 0.077, 0.031, 0.013, 0.004 |
+| below 1/255 over black from, EV +1.3 / EV 0 | 11.0 R / 10.0 R | 20.0 R / 16.1 R (W = 1.000 there) |
+| below 1/255 over the sky (0.0035), EV +1.3 / EV 0 | 14.7 R / 13.8 R | 28.5 R / 27.4 R |
+| largest slope jump beyond 3 R, black, EV +1.3, 1440 / 768 rows | 0.130 / 0.221 codes/px at 11.4 R | 0.0185 / 0.057 codes/px at 21.8 R (the AgX floor) |
+| same over the sky | 0.011 / 0.038 | 0.010 / 0.030 (at 3-6 R; the taper adds none) |
+| largest 8-bit step, r >= 1 R / r >= 3 R | 7 / 2 | 7 / 2 (768 rows: 12 / 3 both) |
+| glow max outside the core, 1440 / 768 (`glow_meter.py`) | 1.366 / 1.369 | 1.368 / 1.372 |
+| worst sun-tile `ev_limit`, 5120x1440 / 1280x768 | +2.25 / +2.23 EV | +2.25 / +2.23 EV, cap rule PASS |
+| lit tiles, 5120x1440 / 1280x768 | 12-14 / 58-63 | 21-26 / 104-112 |
+| quad at 5120x1440 / 1280x768 | 588 px, 0.345 Mpx / 313 px, 0.098 Mpx | 1106 px, 1.223 Mpx / 590 px, 0.348 Mpx |
+
+The glow next to the core (1-3 R, display 0.94-0.44) is within 6.4 % of step 1d; from 4 R out it is the longer tail
+the report asks for (+12 % at 4 R, +31 % at 6 R, visible to about 20 R instead of 11 R). `halo_gain` stays at the
+user's 0.4. The lit-tile count rises to step 1c's (20-24 at 5120x1440, flown in Run221), so the key-rule caveat of
+"Unknown, and what settles it" applies again; the flight's `ev=` with and without the sun settles it.
+
+Cost [I, the slot-budget rule, 1 us per slot per 5120x1440 frame]: 253 slots x 0.345 / 7.37 Mpx = 12 us before, 258 x
+1.223 / 7.37 = 43 us after; no fixture times the pass (not measured). The CPU side is unchanged except one more
+constant. The lab carries the new window and a `taper_start` slider; its step 1c / 1d presets set `taper_start` 16 /
+11 and do not reproduce the old `(1 - (r / R_g)^2)^2` window.
 
 ## Decision
 

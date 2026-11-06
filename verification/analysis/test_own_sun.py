@@ -59,7 +59,7 @@ def reference_projection(p, r, t, m00, m11, m20, m21, w, h, radius, jx, jy):
     x = view[0] * m00 / view[2] + m20
     y = view[1] * m11 / view[2] + m21
     rp = radius * h  # the radius is a fraction of the viewport height
-    return dict(u=.5 + .5 * x, v=.5 - .5 * y, x=x + 2 * jx / w, y=y - 2 * jy / h, half_x=17 * 2 * rp / w, half_y=17 * 2 * rp / h,
+    return dict(u=.5 + .5 * x, v=.5 - .5 * y, x=x + 2 * jx / w, y=y - 2 * jy / h, half_x=32 * 2 * rp / w, half_y=32 * 2 * rp / h,
                 radius_px=rp, view_z=view[2])
 
 
@@ -141,8 +141,8 @@ class OwnSunHost(unittest.TestCase):
         self.assertEqual(self.project((0, 0, 10 ** 9), size=(5120, 1440))['radius_px'],
                          self.project((0, 0, 10 ** 9), size=(2560, 1440))['radius_px'])
         d = self.project((0, 0, 10 ** 9), size=(1280, 720), radius=.1)
-        self.assertAlmostEqual(d['half_x'], 17 * 2 * 72 / 1280, places=5)                              # 17 radii across
-        self.assertAlmostEqual(d['half_y'], 17 * 2 * 72 / 720, places=5)                               # 17 up and down
+        self.assertAlmostEqual(d['half_x'], 32 * 2 * 72 / 1280, places=5)                              # 32 radii across
+        self.assertAlmostEqual(d['half_y'], 32 * 2 * 72 / 720, places=5)                               # 32 up and down
         self.assertAlmostEqual(d['half_x'] * 1280, d['half_y'] * 720, places=3)                       # square pixels: round
         self.assertEqual(self.project((0, 0, 10 ** 9), size=(200, 120))['skip'], 'small')              # 1.44 px
         self.assertEqual(self.project((0, 0, 10 ** 9), size=(200, 130))['skip'], 'none')              # 1.56 px
@@ -204,18 +204,22 @@ class OwnSunHost(unittest.TestCase):
         # Step 1d (own-sun-look.md): the glow outside the core peaks at 1.317 at K = 2 and 1440 rows (glow_meter.py), next
         # to the core so its edge disappears into it, far under the meter's guard (engine 2.25), and never rises outward
         # along any radial line; the corona and halo on the axis are the note's 2.15 exp(-(r / 1.05)^2) and
-        # 0.4 / (1 + (r / 4.2)^2) W(r), W windowed at 17 (halo_gain 0.4: user change 2026-11-02).
+        # 0.4 / (1 + (r / 4.2)^2) W(r) (halo_gain 0.4: user change 2026-11-02), W = 1 - smootherstep(22, 32, r) (step 1e:
+        # exactly 1 inside 22, C2 at both ends, 0 at the quad's edge).
         field = self.run_driver('field', 255, 255, 255, 2, 1, 1, .02)
         self.assertLessEqual(float(field['glow_max']), 1.39)                                       # halo_gain .4 (2026-11-02): 1.366
         self.assertGreater(float(field['glow_max']), 1.33)
         self.assertLessEqual(float(field['glow_rise']), 0.)
         self.assertLess(float(field['asymmetry']), 1e-4)                                              # each spoke mirror-symmetric
-        for r in (1, 2, 3, 6, 9, 12, 16, 20):
+        for r in (1, 2, 3, 6, 9, 12, 16, 20, 22, 24, 27, 30, 31.5):
             px = self.run_driver('pixel', 255, 255, 255, 2, 1, 1, r, 0, 9, 1)
             self.assertAlmostEqual(float(px['corona']), 2.15 * math.exp(-(r / 1.05) ** 2), delta=5e-5 * max(1, r))
-            window = max(0., 1 - (r / 17) ** 2) ** 2
+            t = min(max((r - 22) / 10, 0.), 1.)
+            window = 1 - t * t * t * (t * (6 * t - 15) + 10)
             self.assertAlmostEqual(float(px['halo']), .4 / (1 + (r / 4.2) ** 2) * window, delta=1e-6)
-        self.assertEqual(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 17, 0, 9, 1)['halo']), 0.)  # windowed at 17
+            if r <= 22:
+                self.assertEqual(window, 1.)                                                          # untouched inside 22
+        self.assertEqual(float(self.run_driver('pixel', 255, 255, 255, 2, 1, 1, 32, 0, 9, 1)['halo']), 0.)  # zero at the quad
         # Nine spokes (user tuning 2026-11-02; odd: no two opposite) with the hashed lengths beyond the core's edge (1.7-10.2,
         # evenly
         # spread) and strengths (0.6-1.2: the shortest rays are not hashed below 0.6 of the gain); each ray's reach orders
@@ -326,7 +330,7 @@ class OwnSunHost(unittest.TestCase):
         for got, want in zip([v[:2] for v in vertices], [(.15, -.7), (.15, -.3), (.35, -.7), (.35, -.3)]):
             self.assertAlmostEqual(got[0], want[0], places=6)
             self.assertAlmostEqual(got[1], want[1], places=6)
-        self.assertEqual([v[4:] for v in vertices], [[-17, -17], [-17, 17], [17, -17], [17, 17]])
+        self.assertEqual([v[4:] for v in vertices], [[-32, -32], [-32, 32], [32, -32], [32, 32]])
         self.assertEqual({tuple(v[2:4]) for v in vertices}, {(0., 1.)})
 
     def test_constants_give_the_knight_kernel_and_its_edge_profile(self):
@@ -343,6 +347,8 @@ class OwnSunHost(unittest.TestCase):
         self.assertAlmostEqual(c[26] * w, 10., places=4)                                             # the core radius
         self.assertAlmostEqual(c[27] * h, 10., places=4)
         self.assertEqual((c[36], c[37]), (1., 9.))                                                   # the rays' start, the spoke count
+        self.assertAlmostEqual(c[35], .1, places=7)                                                   # the halo taper: 1 / (32 - 22)
+        self.assertAlmostEqual(c[39], 2.2, places=6)                                                  # its start over its length
         d, wv = c[4:8], c[8:12]
         offsets = set()
         for vec in (d[0:2], d[2:4], wv[0:2], wv[2:4]):

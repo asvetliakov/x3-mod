@@ -26,6 +26,7 @@ RADIUS_U, K = constant('radius_default_u'), constant('radiance_default')
 CORE_INNER, WHITE_MIX, CORE_GAIN = constant('core_inner'), constant('white_mix'), constant('core_gain')
 CORONA_A, CORONA_SIGMA = constant('corona_gain'), constant('corona_sigma')
 HALO_A, HALO_RHO, GLOW_RADIUS = constant('halo_gain'), constant('halo_radius'), constant('glow_radius')
+TAPER_START = constant('taper_start')  # step 1e: W = 1 - smootherstep(taper_start, glow_radius, r)
 RAY_N, RAY_A, RAY_LENGTH = int(constant('ray_count')), constant('ray_gain'), constant('ray_length')
 RAY_SIGMA_PX, RAY_SIGMA_MIN, RAY_OFFSET = constant('ray_sigma'), constant('ray_sigma_min_px'), constant('ray_offset')  # sigma = max(3 px, 0.2 R)
 RAY_START = constant('ray_start')  # the rays' along-profile starts at the core's edge
@@ -62,7 +63,8 @@ def field(px, py, radius_px):
     """Engine value of a white sun at offsets (px, py) in core radii."""
     r = np.hypot(px, py)
     d = 1 - smoothstep(CORE_INNER, 1.0, r)
-    w = np.clip(1 - (r / GLOW_RADIUS) ** 2, 0, 1) ** 2
+    t = np.clip((r - TAPER_START) / (GLOW_RADIUS - TAPER_START), 0, 1)
+    w = 1 - t * t * t * (t * (6 * t - 15) + 10)
     corona = CORONA_A * np.exp(-(r / CORONA_SIGMA) ** 2)
     halo = HALO_A / (1 + (r / HALO_RHO) ** 2) * w
     theta = np.arctan2(py, px)
@@ -100,10 +102,10 @@ def main():
         v, glow, corona, halo, rays, _ = field(rr * np.cos(tt), rr * np.sin(tt), radius_px)
         glow_max[height] = float(glow.max())
         print('height %d (R = %.1f px, ray sigma %.1f px): glow max outside the core %.3f (corona %.3f, halo %.3f, rays %.3f); '
-              'glow between spokes at r = 1, 1.5, 2, 3, 6, 9, 12, 16, 20 R: %s' % (height, radius_px, max(RAY_SIGMA_MIN, RAY_SIGMA_PX * radius_px),
+              'glow between spokes at r = 1, 1.5, 2, 3, 6, 9, 12, 16, 20, 24, 28 R: %s' % (height, radius_px, max(RAY_SIGMA_MIN, RAY_SIGMA_PX * radius_px),
               glow.max(), corona.max(), halo.max(), rays.max(),
               ', '.join('%.3f' % field(np.array([x * math.cos(GAP)]), np.array([x * math.sin(GAP)]), radius_px)[1][0]
-                        for x in (1, 1.5, 2, 3, 6, 9, 12, 16, 20))))
+                        for x in (1, 1.5, 2, 3, 6, 9, 12, 16, 20, 24, 28))))
     print('ray lengths beyond r = %g / strengths, N = %d: %s' % (RAY_START, RAY_N, ', '.join('%.2f R x %.2f' % p for p in spoke_params(RAY_N))))
     # Each ray's visible reach (inferred): the last radius where it adds >= 10 % to the glow between spokes there.
     radius_px = RADIUS_U * 1440

@@ -33,7 +33,8 @@ constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
 // derived constants, not settings): the core whitened only a little (the polled colour stays visible) at core_gain of K,
 // its soft edge from core_inner (0.4) to 1 core radius; the glow is the pure polled colour times intensity, like vanilla's
 // chain, and dominates: a Gaussian corona (sigma 1.05, 2.15: 0.87 at the core's edge) plus a Lorentzian halo (half brightness at 4.2, 0.4) windowed
-// at 17; eleven soft rays at 0.15 with hashed lengths (2.0-12.1 beyond the core's edge, ray_start) and strengths
+// by a C2 taper from 22 to 32 (step 1e: the tail reaches the AgX black floor near 20 before the taper starts); eleven
+// soft rays at 0.15 with hashed lengths (2.0-12.1 beyond the core's edge, ray_start) and strengths
 // (0.6-1.2), a Gaussian width of max(3 px, 0.2 core radii) without taper and exp(-a) saturate(1 - a)^2 along,
 // a = max(r - ray_start, 0) / L (so a short ray still leaves the core at full strength). The cap (step 1d): the glow
 // next to the core reaches about 1.15-1.33 engine at K = 2 so the core's edge disappears into it (display within ~0.04 of
@@ -43,17 +44,22 @@ constexpr float rays_default = 1.f, rays_min = 0.f, rays_max = 1.f;
 // 3x3 box, and the far gate is 0 on the sentinel).
 constexpr float white_mix = .15f, core_inner = .4f, core_gain = .72f; // core_gain: the core term only (step 1d)
 constexpr float corona_gain = 2.15f, corona_sigma = 1.05f;
-constexpr float halo_gain = .4f, halo_radius = 4.2f, glow_radius = 17.f;
+constexpr float halo_gain = .4f, halo_radius = 4.2f;
+// The halo's window (step 1e, own-sun-look.md "Step 1e"): W = 1 - smootherstep(taper_start, glow_radius, r), exactly 1
+// inside taper_start and C2 at both ends, zero at glow_radius, the quad's half extent (the circle fits the square: nothing
+// is clipped). Step 1d's saturate(1 - (r / 17)^2)^2 bit from 8 R on and drove the tail into AgX's black floor at 11 R
+// with a kink of 0.13 codes/px (the visible edge); the free Lorentzian meets that floor at 20 R (white, K 2, +1.3 EV).
+constexpr float taper_start = 22.f, glow_radius = 32.f;
 // Spokes; their lengths and strengths hashed by index (own_sun_ps.hlsl). Odd, so no two spokes are opposite (no straight
 // line through the sun). ray_length: the longest hashed ray beyond ray_start (the core's edge), so every ray ends within
-// 1 + 13 = 14 core radii, inside the quad (17).
+// 1 + 11 = 12 core radii, inside the quad (32).
 constexpr unsigned ray_count = 9;
 // offset: spoke units; with N = 11 a spoke sits on a screen axis when 4 (k - offset) is a multiple of 11, so a quarter-odd
 // offset (4 offset = 0.5 mod 1) holds every spoke at least 1/8 spoke (4.1 deg) off the axes, the most N = 11 allows; .125
 // puts the four nearest-axis spokes (4.1 and 12.3 deg off) on hashed lengths 2.0-5.3 (review of 13692fc8, finding 1).
 constexpr float ray_gain = .11f, ray_length = 11.f, ray_start = 1.f, ray_offset = .125f;
 constexpr float ray_sigma = .25f, ray_sigma_min_px = 3.f;             // the rays' Gaussian width: max(3 px, 0.25 R)
-// The quad: 17 core radii to each side (the halo's window; the longest ray ends at 14).
+// The quad: glow_radius (32) core radii to each side (the halo's window ends there; the longest ray ends at 12).
 constexpr float quad_extent_x = glow_radius, quad_extent_y = glow_radius;
 // Below 1.5 px of radius the stage draws nothing (the plumes' rule; note section 7).
 constexpr float radius_min_px = 1.5f;
@@ -235,8 +241,9 @@ inline void quad(const Disc& d, Vertex out[4]) noexcept {
 // src/effects/own_sun_ps.hlsl: c0 the lane texel, c1 / c2 the knight offsets as lane uv, c3 the core (w its inner edge),
 // c4 the glow tint, c5 the amplitudes (corona, halo, rays x sun_rays), c6 the core's centre as lane uv (jittered, the
 // quad's) and the core radius as lane uv, c7 the spokes (N / 2 pi, offset, L_max, the across scale: 2 pi / N over the
-// width in core radii, log2 e folded in), c8 the corona, halo and window shapes (log2 e folded in), c9 the rays' start
-// radius and the spoke count.
+// width in core radii, log2 e folded in), c8 the corona, halo and window shapes (log2 e folded in; w the taper's
+// 1 / (glow_radius - taper_start)), c9 the rays' start radius, the spoke count, 1 / N and the taper's start over its
+// length (t = saturate(r c8.w - c9.w)).
 constexpr unsigned pixel_registers = 10;
 constexpr float two_pi = 6.28318531f, log2e = 1.44269504f, sqrt_log2e = 1.20112241f; // exp(-x) = exp2(-x log2 e)
 // The rays' Gaussian width in core radii for a core of radius_px pixels: max(3 px, 0.2 R).
@@ -261,8 +268,8 @@ inline void pixel_constants(unsigned width, unsigned height, const Disc& d, cons
                                           .5f + .5f * d.x, .5f - .5f * d.y, ring * dx, ring * dy,
                                           n / two_pi, ray_offset, ray_length, two_pi / n / sigma * sqrt_log2e,
                                           log2e / (corona_sigma * corona_sigma), 1.f / (halo_radius * halo_radius), log2e,
-                                          1.f / glow_radius,
-                                          ray_start, n, 1.f / n, 0.f};
+                                          1.f / (glow_radius - taper_start),
+                                          ray_start, n, 1.f / n, taper_start / (glow_radius - taper_start)};
     for (unsigned i = 0; i < pixel_registers * 4; ++i) out[i] = c[i];
 }
 
@@ -298,8 +305,9 @@ inline void reference_pixel(const float c[pixel_registers * 4], float px, float 
     const float s = saturate((r - core[3]) / (1.f - core[3]));
     const float d = 1.f - s * s * (3.f - 2.f * s);
     const float corona = amp[0] * std::exp2(-r2 * extent[0]);
-    const float w = saturate(1.f - r2 * extent[3] * extent[3]);
-    const float halo = amp[1] / (1.f + r2 * extent[1]) * w * w;
+    const float tw = saturate(r * extent[3] - c[39]);
+    const float sw = 1.f - tw, w = sw * sw * sw * (1.f + tw * (3.f + 6.f * tw)); // 1 - smootherstep(tw), no cancellation
+    const float halo = amp[1] / (1.f + r2 * extent[1]) * w;
     const float t = std::atan2(py, px) * spokes[0] + spokes[1];
     const float nearest = std::floor(t + .5f), across = t - nearest, side = across >= 0.f ? 1.f : -1.f;
     const float rays = amp[2] * (reference_spoke(c, nearest, across, r) + reference_spoke(c, nearest + side, across - side, r));

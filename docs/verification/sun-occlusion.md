@@ -1066,3 +1066,20 @@ CPU fixture natively: 225 checks, 0 failures (285 before; the 58-check lens sect
 engine-skip chain case now compares the pass's return flags with a disarmed run at the same stack depth, since the
 epilogue's `add esp` sets them). Full host suite (`run_host_suite.py`, measured): 326 modules, 3,370 tests, 6 failing modules: test_engine_effects, test_engine_plumes, test_engine_ribbons, test_hdr_dither_launch and test_motion_hdr_scene fail on main too; test_engine_shimmer fails because its Wine record (`verification/results/bottle-X3/engine-shimmer/summary.json`) pins the sha256 of `engine_effects_core.h`, changed only by the resolver move (include, alias, comment): it needs a Wine re-record, not a code fix. An ini `lens_flare_gain = 0.3` gives `config_open … unknown=1` and one
 `config_key key=lens_flare_gain problem=unknown line=N value=0.3` (host parse of `config_parse.h`, measured). Code and tests against the base: 56 files, +851 / -3,219 lines (shortstat `5644dbb5b..642956dd0`, measured).
+
+## 2026-11-06: Own sun step 1e — the glow's tail (host evidence; not flown)
+
+Cause and design: [own-sun-look.md, "Step 1e"](../architecture/own-sun-look.md). The step 1d halo window
+`saturate(1 - (r / 17)^2)^2` drove the tail into AgX's black floor at 11.0 R with a 0.130 codes/px slope jump (1440
+rows, EV +1.3, over black; 0.221 at 768); now `W = 1 - smootherstep(22, 32, r)` (C2, exactly 1 inside 22 R) and the
+quad at 32 R: below 1/255 from 20.0 R with W = 1.000 there, slope jump 0.0185 / 0.057 codes/px (the tonemap's own
+floor kink), glow at 1-3 R within +6.4 % [measured, `verification/results/own-sun-pass/glow_edge.py`; step 1d with
+`--window poly2 --glow-radius 17`]. `glow_meter.py`: glow max 1.368 / 1.372, worst sun-tile `ev_limit` +2.25 / +2.23 EV,
+cap rule PASS at both, lit tiles 21-26 / 104-112 (were 12-14 / 58-63) [measured]. ps_3_0 1286 words, 258 slots (was
+253), native validator 0 messages ([result](../../verification/results/own-sun-pass/native/result.json));
+`generate_own_sun_programs.py --check` and `generate_own_sun_lab.py --check` PASS; `test_own_sun*.py` 39 tests OK;
+`build-ap` (RelWithDebInfo, `-j4`) 0 warnings, `check_no_x87.py --edition ap` PASS; the own-sun hook fixture natively
+(`run_own_sun_hook.py` built it, then failed at the hardcoded CrossOver wine path; the built `own_sun_hook_fixture.exe`
+ran under `wine_lock.py` directly): 40 checks, 0 failures. Quad 0.345 -> 1.223 Mpx at 5120x1440, pass cost 12 -> 43 us
+[inferred, slot-budget rule; no fixture times the pass]. Display dither: the HDR route's `X3M_HDR_DITHER` (schema and
+launcher default on) covers the slow tail's 1-code bands; no dither added in the sun pass.
