@@ -1,0 +1,48 @@
+{
+  "recorded_utc": "2026-11-07T00:50:00+00:00",
+  "run": 241,
+  "source": {
+    "commit": "186ec638ec2ac62653f8ac5d53660adee6a52c9e",
+    "head": "186ec638ec2ac62653f8ac5d53660adee6a52c9e",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (HEAD == commit; merge of db913fbb7 per-class hull impacts)",
+    "marker": "X3M_SOURCE_COMMIT=186ec638ec2ac62653f8ac5d53660adee6a52c9e",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run241/d3d9.dll",
+    "stripped": false,
+    "sha256": "ca186878df76608fb86efb7bf4b9c8aa80d601f824989863bd89fa5114b793de",
+    "bytes": 64352835
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run241",
+    "command": "cmake -S . -B build-run241 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run241 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run241.configure.log",
+      "build-run241.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 1162,
+    "violations": 0
+  },
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{hook-summary.json,summary.json} (hook 92/0, D3D 154/0), verification/results/native-windows/engine-shimmer/summary.json (51/0, plume image bit-identical to the previous program); all bound to the committed sources; the agent's DLL 9eabb582 from the same sources; rows verification/results/weapon-effects/hull_class_rows_out.txt",
+    "host_tests": "test_weapon_effects_* 76 OK; test_engine_shimmer + test_weapon_effects_lab 38 OK; lab --check PASS after regeneration in the main checkout; test_engine_effects stale on its motion_output.h binding since before this change (inputs /tmp/x3-shader-sweep absent)",
+    "review": "docs/verification/weapon-effects.md, Hull impact classes section and Review fixes (2026-11-07): one review round at high, 2 must-fix (heavy band on applied total, beam on asteroid) and 8 should-fix items fixed, 4 notes carried"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: ok, weapon_effects_table null (DLL default <exe dir>\\x3m\\weapon_effects.json)"
+}
