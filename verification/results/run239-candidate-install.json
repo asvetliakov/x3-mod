@@ -1,0 +1,23 @@
+{
+ "run": 239,
+ "what": "shield-hit step 1: ellipsoid bubble for ships, hull decal for stations, stand-off reverted; Flight F",
+ "commit": "77a8ba3e5043cfb0a1987c0464aa6cf5d3c8e45d",
+ "branch": "effects",
+ "candidate_record": "verification/results/run239-candidate-build.json",
+ "dll_sha256": "5735959dbba9194b717dddbca91401a17e87647f18b16f343b3a6f22210d232b",
+ "dll_bytes": 63978639,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run239/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 238,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run238",
+  "sha256": "50d24a4299b02b249a64fd546bb15b77a95a724183080407fe62aeb2e4e9b789"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "unchanged (copy x3m.ini.run238): weapon_effects = shields",
+ "tables": {
+  "weapon_effects.json": "ce75216ff04a65dcdb59b1cb289a1417684caf2a6f656b23cee23548b0c9f28a (unchanged)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "installed_at": "2026-11-06T14:04",
+ "open": "AP 239 A"
+}
