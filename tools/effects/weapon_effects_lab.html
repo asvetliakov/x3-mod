@@ -9,38 +9,68 @@ markers, which tools/effects/generate_weapon_effects_lab.py writes (and checks w
 census and the lab asset manifests. Textures (tex/*.png) and body geometry (<view>/assets.js) are extracted by
 tools/effects/weapon_effects_lab_assets.py into verification/results/weapon-effects-lab/ (untracked, game-derived);
 the page loads them by relative path, from its results-directory copy or from tools/effects/ via ../../.
-Our replacement renderer plugs in at renderOurs(record, t): one right-hand canvas per effect slot.
+The stage's Shield hit and Hull hit tabs draw ours through renderOurs(record, t) (the impact slot), each element
+switchable in the Layers panel; the Vanilla tab draws the four slots of the vanilla reconstruction.
 -->
 <style>
   :root { color-scheme: dark; }
   body { margin: 0; background: #0b0d12; color: #cfd6e2; font: 13px/1.4 system-ui, sans-serif; }
-  header { position: sticky; top: 0; z-index: 2; background: #12151d; border-bottom: 1px solid #262b38;
-           padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
-  header label { display: inline-flex; gap: 4px; align-items: center; }
   select, input, button { background: #1b1f2a; color: #e2e8f2; border: 1px solid #333a4a; border-radius: 3px;
                           font: inherit; padding: 2px 4px; }
-  #scrub { width: 320px; }
-  #tread { font-variant-numeric: tabular-nums; min-width: 9em; display: inline-block; }
-  main { padding: 8px 12px 24px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: 0.5; }
+  input[type=number], #tread, #caption_detail, #c_shield_read, #c_class_rows, .num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  input[type=number] { width: 6em; }
+  [hidden] { display: none !important; }
+  main { padding: 10px 14px 24px; }
+  .layout { display: flex; gap: 14px; align-items: flex-start; }
+  .content { flex: 1 1 auto; min-width: 0; }
+  #tabs { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-end; border-bottom: 1px solid #2a3142; }
+  #tabs .tab { border-radius: 4px 4px 0 0; border-bottom: none; padding: 5px 12px; background: #141821; color: #a3adbf; }
+  #tabs .tab.active { background: #222838; color: #f2f5fa; border-color: #4a5674; }
+  #tabs .tab small { font-size: 10px; color: #7d889c; }
+  #scenario_bar { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-bottom: 8px; }
+  #scenario_bar select { max-width: 32em; }
+  #scenario_mod { color: #e0b060; }
+  #scenario_desc { flex-basis: 100%; color: #9aa5b8; font-size: 12px; min-height: 1.4em; }
+  #stage { padding: 8px 0 4px; }
+  #stage canvas { display: block; background: #020308; border: 1px solid #222838; }
+  #stage_ours canvas { width: 720px; height: 405px; }
+  #slots { display: grid; grid-template-columns: repeat(2, 482px); gap: 8px 10px; }
+  #slots canvas { width: 480px; height: 270px; }
+  .slot h3 { margin: 0; font-size: 13px; color: #e8edf5; }
+  #caption { margin: 6px 0 0; font-size: 14px; color: #e8edf5; }
+  #caption_more summary, details summary { cursor: pointer; color: #9aa5b8; }
+  #caption_detail { margin: 2px 0; font-size: 11px; color: #9aa5b8; white-space: pre-wrap; }
   #winfo, .sinfo { color: #9aa5b8; font-size: 12px; }
   .swatch { display: inline-block; width: 12px; height: 12px; vertical-align: -2px; border: 1px solid #555; }
-  .slot { margin: 10px 0 14px; border-top: 1px solid #222838; padding-top: 6px; }
-  .slot h3 { margin: 0 0 2px; font-size: 14px; color: #e8edf5; }
-  .pair { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
-  figure { margin: 0; }
-  figcaption { font-size: 11px; color: #8590a3; margin-top: 2px; max-width: 480px; }
-  canvas { display: block; width: 480px; height: 270px; background: #020308; border: 1px solid #222838; }
-  figure.ours canvas { border: 1px dashed #4a5268; width: 720px; height: 405px; }
-  figure.ours figcaption { max-width: 720px; }
+  #panels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+  @media (max-width: 1500px) { #panels { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 900px) { #panels { grid-template-columns: 1fr; } .layout { display: block; } #slots { grid-template-columns: 1fr; } }
+  fieldset { margin: 0; border: 1px solid #2a3342; border-radius: 4px; background: #12151d; padding: 6px 10px 8px; min-width: 0; }
+  legend { color: #e8edf5; font-weight: 600; padding: 0 4px; }
+  #p_tuning { grid-column: 1 / -1; }
+  label.row { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 8px; align-items: center; margin: 3px 0; }
+  label.row > span:first-child { color: #9aa5b8; }
+  label.row .ctl { display: inline-flex; gap: 6px; align-items: center; min-width: 0; }
+  label.row select { max-width: 100%; }
+  label.check { display: flex; gap: 6px; align-items: center; margin: 2px 0; }
+  label.placeholder { color: #7d889c; }
+  .layer_list { display: grid; grid-template-columns: repeat(auto-fill, minmax(10em, 1fr)); gap: 0 10px; }
+  .buttons { display: flex; gap: 6px; margin: 4px 0; }
+  .transport { display: flex; gap: 8px; align-items: center; margin: 2px 0 6px; }
+  #scrub { flex: 1 1 auto; min-width: 120px; }
+  #tread { min-width: 9em; display: inline-block; }
+  .tune { display: grid; grid-template-columns: repeat(auto-fill, minmax(17em, 1fr)); gap: 0 16px; margin-top: 6px; }
+  .tune h4, .tune .buttons, .tune details { grid-column: 1 / -1; margin: 6px 0 2px; color: #cfd6e2; }
+  #c_class_rows { font-size: 11px; margin: 2px 0; }
   details { margin-top: 4px; }
   details table { border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
   details td, details th { border: 1px solid #262b38; padding: 1px 5px; text-align: left; }
-  #legend { max-width: 1000px; color: #a3adbf; font-size: 12px; }
+  #legend { max-width: 1000px; color: #a3adbf; font-size: 12px; margin-top: 12px; }
   #legend li { margin: 2px 0; }
   .warn { color: #e0b060; }
-  .layout { display: flex; gap: 14px; align-items: flex-start; }
-  .content { flex: 1 1 auto; min-width: 0; }
-  #wdesc { flex: 0 0 340px; position: sticky; top: 52px; max-height: calc(100vh - 64px); overflow-y: auto;
+  #wdesc { flex: 0 0 340px; position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto;
            background: #12151d; border: 1px solid #262b38; border-radius: 4px; padding: 8px 10px; font-size: 12px; }
   #wdesc h3 { margin: 0 0 4px; font-size: 14px; color: #e8edf5; }
   #wdesc p { margin: 4px 0; }
@@ -50,91 +80,141 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
 </style>
 </head>
 <body>
-<header>
-  <label title="docs/architecture/weapon-look.md 6: a family's case (view, weapon, victim, camera, SETA, hits per game second, own ship, variant)">Preset <select id="preset"><option value="">(none)</option></select></label>
-  <label>View <select id="view"></select></label>
-  <label>Weapon <select id="weapon"></select></label>
-  <label>Death tier <select id="tier"></select></label>
-  <label>row <select id="drow"></select></label>
-  <button id="play">Pause</button>
-  <input id="scrub" type="range" min="0" max="1000" step="1" value="0">
-  <span id="tread">0 ms</span>
-  <label>loop ms <input id="loop" type="number" min="0" step="100" value="0" style="width:6em" title="0 = auto (the longest slot, our patch's lifetime / SETA included, plus 250 ms; capped at 12000 ms)"></label>
-  <label>speed <select id="speed"><option>0.1</option><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select></label>
-  <label>zoom <select id="zoom"><option value="span">fit whole life</option><option value="now">fit current time</option></select></label>
-  <label><input id="tint" type="checkbox"> tint bolt by cols 13-15</label>
-  <label><input id="travel" type="checkbox"> bolt travels</label>
-  <label><input id="flares" type="checkbox" checked> lens flares</label>
-  <label><input id="lights" type="checkbox"> light elements</label>
-  <button id="reseed" title="new random rotations, sizes and propagation">reseed</button>
-  <fieldset id="ourctl" style="margin-top:6px;border:1px solid #2a3342">
-  <legend>Shield-hit hex patch (ours, impact slot): defaults from src/proxy/weapon_effects_core.h</legend>
-  <label>cell m: fighter <input id="c_cell_fighter" type="number" step="0.1" style="width:4.5em"></label>
-  <label>corvette <input id="c_cell_corvette" type="number" step="0.1" style="width:4.5em"></label>
-  <label>capital <input id="c_cell_capital" type="number" step="0.5" style="width:4.5em"></label>
-  <label>rings: fighter <input id="c_rings_fighter" type="number" min="0" max="6" step="1" style="width:4em" title="neighbour rings a hit lights about its cell"></label>
-  <label>corvette <input id="c_rings_corvette" type="number" min="0" max="6" step="1" style="width:4em"></label>
-  <label>capital <input id="c_rings_capital" type="number" min="0" max="6" step="1" style="width:4em"></label>
-  <label>ripple speed <input id="c_ripple_speed" type="number" step="0.1" style="width:5em" title="footprint radii per game second"></label>
-  <label>centre gain <input id="c_centre_gain" type="number" min="0" step="0.1" style="width:4.5em" title="the hit's own cell over a ring cell, edge and fill (the marker; its fill at the header's centre_fill)"></label>
-  <label>fade ms <input id="c_fade_ms" type="number" step="50" style="width:5em"></label>
-  <label>stagger <input id="c_stagger" type="number" min="0" max="1.5" step="0.05" style="width:4.5em" title="per-cell spread of brightness and fade rate"></label>
-  <label>edge vs fill <input id="c_fill_ratio" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="fill radiance / edge radiance"></label>
-  <label>bands: full &ge; <input id="c_colour_high" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
-  <label><input id="c_colour_full" type="color"></label>
-  <label>half <input id="c_colour_mid" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
-  <label><input id="c_colour_half" type="color"></label>
-  <label>empty &le; <input id="c_colour_low" type="number" min="0" max="1" step="0.05" style="width:4em"></label>
-  <label><input id="c_colour_empty" type="color"></label>
-  <label>weapon tint <input id="c_weapon_tint" type="number" min="0" max="1" step="0.1" style="width:4em" title="0 = shield colour, 1 = the weapon's classifier colour (override, off)"></label>
-  <label>SETA rate <select id="c_seta"><option selected>1</option><option>2</option><option>4</option><option>6</option><option>10</option></select></label>
-  <label>hits per game s <select id="c_hits" title="hits per second of game time: at SETA x6 the map is as dense as the game's"><option value="0">single</option><option value="1">1</option><option value="4">4</option><option value="8">8</option><option value="12">12</option></select></label>
-  <label>preview: tier <select id="c_tier"><option value="0">fighter (15 m)</option><option value="1">corvette (60 m)</option><option value="2">capital (300 m)</option></select></label>
-  <label>shield % <input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></label>
-  <label>drain %/hit <input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></label>
-  <label>frame <select id="c_frame"><option value="patch">patch</option><option value="ship">whole owner</option></select></label>
-  <label title="5.1.1 Placement: a ship's patch lies on its bubble (the hull bounds x the bubble scale, near and far side, the hull hiding what lies behind it); a station's on the hull (the screen-space decal)">surface <select id="c_surface"><option value="bubble">ship bubble</option><option value="hull">station hull decal</option></select></label>
-  <label>bubble scale <input id="c_bubble_scale" type="number" min="1" max="2" step="0.05" style="width:4.5em" title="the bubble's half-extents over the hull bounds' (core::bubble_scale)"></label>
-  <label>far side <input id="c_bubble_far" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="the far side's radiance over the near side's (core::bubble_far_gain)"></label>
-  <label>hull <select id="c_hull" title="the preview owner: a sphere, a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft or on its top from above, or a flat fighter (6:1:4) hit from above or below"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option><option value="narrow_top">narrow, from above (top 40 % aft)</option><option value="flat_top">flat fighter 6:1:4, from above</option><option value="flat_bottom">flat fighter 6:1:4, from below</option><option value="chase_nose">narrow 1:1:6 from behind, nose hit (chase camera)</option></select></label>
-  <label title="the preview owner is the player's own ship (5.1.1, Run236 Flight C)"><input id="c_own" type="checkbox"> own ship</label>
-  <label title="the view is the cockpit: the own ship's patch draws at own_cockpit_gain (the chase view and every other ship unchanged)"><input id="c_cockpit" type="checkbox"> cockpit view</label>
-  <button id="c_reset" type="button">reset to header</button>
-  </fieldset>
-  <fieldset id="ourhull" style="margin-top:6px;border:1px solid #2a3342">
-  <legend>Hull hit (ours, impact slot, docs/architecture/weapon-look.md 3.1 and hull-impact-classes.md): defaults from weapon_effects_core.h look:: and hull::</legend>
-  <label>family <select id="c_family"><option value="shield">shield hit (step 1)</option><option value="hull">hull hit (step 2)</option></select></label>
-  <label>camera <select id="c_camera"><option value="side">side</option><option value="chase">chase-nose</option><option value="cockpit">cockpit</option><option value="far1">far 1 km</option><option value="far2">far 2 km</option><option value="far8">far 8 km</option></select></label>
-  <label>variant <select id="c_variant"><option value="none">none</option><option value="repair">repair (override)</option><option value="tug">tug (override)</option><option value="missile">missile source</option><option value="flak">flak (burst bit)</option><option value="asteroid">asteroid victim</option></select></label>
-  <label title="calibre k = clamp(log10(d / 300) / 2, 0, 1), d the impact's running damage">calibre k <input id="c_k" type="number" min="0" max="1" step="0.05" style="width:4.5em"></label>
-  <label title="the hull-impact class (docs/architecture/hull-impact-classes.md): auto = the weapon's (the rule and the override's pins); lineup = the nine classes side by side">class <select id="c_class"><option value="auto">auto (the weapon's)</option><option value="lineup">lineup (all nine)</option><option value="energy">energy</option><option value="ballistic">ballistic</option><option value="plasma">plasma</option><option value="heavy">heavy</option><option value="ion">ion</option><option value="beam">beam</option></select></label>
-  <label>sparks x <input id="c_h_spark_x" type="number" min="0" max="4" step="0.25" style="width:4em" title="spark count factor (the kill criterion halves it once)"></label>
-  <label title="a beam's pulse: on for this many game ms of every period (0: sustained)">pulse on <input id="c_pulse_on" type="number" min="0" step="50" style="width:4.5em"></label>
-  <label>period <input id="c_pulse_period" type="number" min="0" step="50" style="width:4.5em"></label>
-  <label title="a beam's crawl, r_hit per 16.7 ms tick (the trail marks every trail_step_r r)">sweep <input id="c_sweep" type="number" min="0" step="0.1" style="width:3.5em"></label>
-  <label title="the loop's game ms (0: the record life; a scorch lives 10-20 s)">loop ms <input id="c_loop" type="number" min="0" step="1000" style="width:5em"></label>
-  <label>ramp: white <input id="c_h_ramp4" type="color"></label>
-  <label>yellow <input id="c_h_ramp3" type="color"></label>
-  <label>orange <input id="c_h_ramp2" type="color"></label>
-  <label>red <input id="c_h_ramp1" type="color"></label>
-  <label>min frames <input id="c_h_min_frames" type="number" min="1" max="6" step="1" style="width:3.5em"></label>
-  <button id="c_h_reset" type="button">reset to header</button>
-  <details><summary>the class's constants (weapon_effects_core.h hull::class_*; the heat shimmer is post-resolve: not previewable here, judged in flight)</summary><pre id="c_class_rows" style="font-size:11px;margin:2px 0"></pre></details>
-  </fieldset>
-</header>
 <main>
 <div class="layout">
 <div class="content">
-  <div id="winfo"></div>
-  <div id="slots"></div>
-  <section id="legend">
-    <h3>What this draws, and what is approximated</h3>
+  <div id="scenario_bar">
+    <label title="docs/architecture/weapon-look.md 6: a prepared case (data set, weapon, victim, camera, SETA, hits per game second, own ship, variant); choosing one sets the controls and its tab">Scenario <select id="preset"><option value="">(none)</option></select></label>
+    <span id="scenario_mod"></span>
+    <div id="scenario_desc"></div>
+  </div>
+  <nav id="tabs" role="tablist">
+    <button type="button" class="tab" role="tab" data-tab="shield">Shield hit</button>
+    <button type="button" class="tab" role="tab" data-tab="hull">Hull hit</button>
+    <button type="button" class="tab" role="tab" data-tab="vanilla">Vanilla</button>
+    <button type="button" class="tab" role="tab" data-tab="explosion" disabled title="a later step">Explosion <small>later step</small></button>
+    <button type="button" class="tab" role="tab" data-tab="bolt" disabled title="a later step">Bolt <small>later step</small></button>
+    <button type="button" class="tab" role="tab" data-tab="beam" disabled title="a later step">Beam <small>later step</small></button>
+  </nav>
+  <section id="stage">
+    <div id="stage_ours" data-tabs="shield hull"></div>
+    <div id="slots" data-tabs="vanilla"></div>
+    <p id="caption"></p>
+    <details id="caption_more"><summary>counts and details</summary><pre id="caption_detail"></pre></details>
+  </section>
+  <div id="panels">
+  <fieldset id="p_scene"><legend>Scene</legend>
+  <label class="row" data-tabs="vanilla"><span>death tier</span><span class="ctl"><select id="tier"></select></span></label>
+  <label class="row" data-tabs="vanilla"><span>death row</span><span class="ctl"><select id="drow"></select></span></label>
+  <label class="row" data-tabs="shield hull"><span>victim tier</span><span class="ctl"><select id="c_tier"><option value="0">fighter (15 m)</option><option value="1">corvette (60 m)</option><option value="2">capital (300 m)</option></select></span></label>
+  <label class="row" data-tabs="shield hull"><span>hull / body</span><span class="ctl"><select id="c_hull" title="the preview owner: a sphere, a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft or on its top from above, or a flat fighter (6:1:4) hit from above or below"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option><option value="narrow_top">narrow, from above (top 40 % aft)</option><option value="flat_top">flat fighter 6:1:4, from above</option><option value="flat_bottom">flat fighter 6:1:4, from below</option><option value="chase_nose">narrow 1:1:6 from behind, nose hit (chase camera)</option></select></span></label>
+  <label class="row" data-tabs="shield" title="5.1.1 Placement: a ship's patch lies on its bubble (the hull bounds x the bubble scale, near and far side, the hull hiding what lies behind it); a station's on the hull (the screen-space decal)"><span>surface</span><span class="ctl"><select id="c_surface"><option value="bubble">ship bubble</option><option value="hull">station hull decal</option></select></span></label>
+  <label class="row" data-tabs="shield"><span>frame</span><span class="ctl"><select id="c_frame"><option value="patch">patch</option><option value="ship">whole owner</option></select></span></label>
+  <label class="row" data-tabs="hull"><span>camera</span><span class="ctl"><select id="c_camera"><option value="side">side</option><option value="chase">chase-nose</option><option value="cockpit">cockpit</option><option value="far1">far 1 km</option><option value="far2">far 2 km</option><option value="far8">far 8 km</option></select></span></label>
+  <label class="check" data-tabs="shield hull" title="the preview owner is the player's own ship (5.1.1, Run236 Flight C)"><input id="c_own" type="checkbox"> own ship</label>
+  <label class="check" data-tabs="shield hull" title="the view is the cockpit: the own ship's patch draws at own_cockpit_gain (the chase view and every other ship unchanged)"><input id="c_cockpit" type="checkbox"> cockpit view</label>
+  <label class="row" data-tabs="shield"><span>shield %</span><span class="ctl"><input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></span></label>
+  <label class="row" data-tabs="shield"><span>drain %/hit</span><span class="ctl"><input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></span></label>
+  <label hidden>family <select id="c_family"><option value="shield">shield hit (step 1)</option><option value="hull">hull hit (step 2)</option></select></label>
+  </fieldset>
+  <fieldset id="p_weapon"><legend>Weapon</legend>
+  <label class="row"><span>data set</span><span class="ctl"><select id="view"></select></span></label>
+  <label class="row"><span>weapon</span><span class="ctl"><select id="weapon"></select></span></label>
+  <label class="row" data-tabs="hull" title="the hull-impact class (docs/architecture/hull-impact-classes.md): auto = the weapon's (the rule and the override's pins); lineup = the nine classes side by side"><span>class</span><span class="ctl"><select id="c_class"><option value="auto">auto (the weapon's)</option><option value="lineup">lineup (all nine)</option><option value="energy">energy</option><option value="ballistic">ballistic</option><option value="plasma">plasma</option><option value="heavy">heavy</option><option value="ion">ion</option><option value="beam">beam</option></select></span></label>
+  <label class="row" data-tabs="hull"><span>variant</span><span class="ctl"><select id="c_variant"><option value="none">none</option><option value="repair">repair (override)</option><option value="tug">tug (override)</option><option value="missile">missile source</option><option value="flak">flak (burst bit)</option><option value="asteroid">asteroid victim</option></select></span></label>
+  <label class="row" data-tabs="hull" title="calibre k = clamp(log10(d / 300) / 2, 0, 1), d the impact's running damage"><span>calibre k</span><span class="ctl"><input id="c_k" type="number" min="0" max="1" step="0.05" style="width:4.5em"></span></label>
+  <label class="row" data-tabs="shield"><span>weapon tint</span><span class="ctl"><input id="c_weapon_tint" type="number" min="0" max="1" step="0.1" style="width:4em" title="0 = shield colour, 1 = the weapon's classifier colour (override, off)"></span></label>
+  <details><summary>weapon record (TBullets)</summary><div id="winfo"></div></details>
+  </fieldset>
+  <fieldset id="p_playback"><legend>Playback</legend>
+  <div class="transport"><button id="play" type="button">Pause</button><input id="scrub" type="range" min="0" max="1000" step="1" value="0"><span id="tread">0 ms</span></div>
+  <label class="row"><span>loop ms</span><span class="ctl"><input id="loop" type="number" min="0" step="100" value="0" style="width:6em" title="0 = auto (the longest slot, our patch's lifetime / SETA included, plus 250 ms; capped at 12000 ms)"></span></label>
+  <label class="row" data-tabs="hull" title="the loop's game ms (0: the record life; a scorch lives 10-20 s)"><span>hull loop (game ms)</span><span class="ctl"><input id="c_loop" type="number" min="0" step="1000" style="width:5em"></span></label>
+  <label class="row"><span>speed</span><span class="ctl"><select id="speed"><option>0.1</option><option>0.25</option><option>0.5</option><option selected>1</option><option>2</option></select></span></label>
+  <label class="row" data-tabs="shield hull"><span>SETA rate</span><span class="ctl"><select id="c_seta"><option selected>1</option><option>2</option><option>4</option><option>6</option><option>10</option></select></span></label>
+  <label class="row" data-tabs="shield hull"><span>hits per game s</span><span class="ctl"><select id="c_hits" title="hits per second of game time: at SETA x6 the map is as dense as the game's"><option value="0">single</option><option value="1">1</option><option value="4">4</option><option value="8">8</option><option value="12">12</option></select></span></label>
+  <label class="row" data-tabs="vanilla"><span>zoom</span><span class="ctl"><select id="zoom"><option value="span">fit whole life</option><option value="now">fit current time</option></select></span></label>
+  <div class="buttons" data-tabs="vanilla"><button id="reseed" type="button" title="new random rotations, sizes and propagation">reseed</button></div>
+  </fieldset>
+  <fieldset id="p_layers"><legend>Layers</legend>
+  <div class="buttons"><button id="layers_all" type="button">all</button><button id="layers_none" type="button">none</button></div>
+  <div class="layer_list">
+  <label class="check" data-tabs="shield hull" title="the preview hull drawn dim under the elements (lambert from the eye, a lighter rim), so an element that ends at the hull's edge is not read as clipped"><input id="layer_hull" type="checkbox" data-layer="hull" checked> hull body</label>
+  <label class="check" data-tabs="shield" title="the shield-hit hex patch (weapon_hex_patch.hlsl)"><input id="layer_patch" type="checkbox" data-layer="patch" checked> patch</label>
+  <label class="check" data-tabs="shield" title="the ship bubble's silhouette, a faint preview guide (the game draws no outline)"><input id="layer_bubble" type="checkbox" data-layer="bubble" checked> bubble outline</label>
+  <label class="check" data-tabs="shield" title="the vanilla impact row (col 20) the game keeps under the patch; its scale is fitted to the patch footprint (approximated)"><input id="layer_native" type="checkbox" data-layer="native" checked> native impact sprite</label>
+  <label class="check" data-tabs="hull" title="the white flash core"><input id="layer_flash" type="checkbox" data-layer="flash" checked> flash</label>
+  <label class="check" data-tabs="hull" title="the flash's coloured halo (class_flash halo r_hit; a beam's spot halo)"><input id="layer_flash_halo" type="checkbox" data-layer="flash_halo" checked> flash halo</label>
+  <label class="check" data-tabs="hull" title="the hot-gas burst: the fireball impostor (puff, dust, globe)"><input id="layer_burst" type="checkbox" data-layer="burst" checked> burst / puff</label>
+  <label class="check" data-tabs="hull" title="the spark streaks (and a beam's spatter)"><input id="layer_sparks" type="checkbox" data-layer="sparks" checked> sparks</label>
+  <label class="check" data-tabs="hull" title="the chips spark set"><input id="layer_chips" type="checkbox" data-layer="chips" checked> chips</label>
+  <label class="check" data-tabs="hull" title="the heavy class's entry streak along the shot"><input id="layer_streak" type="checkbox" data-layer="streak" checked> entry streak</label>
+  <label class="check" data-tabs="hull" title="the shock ring in the hull's tangent plane"><input id="layer_ring" type="checkbox" data-layer="ring" checked> ring</label>
+  <label class="check" data-tabs="hull" title="the soft surface glow on the hull within class_glow r_hit (2.5 to 4 r_hit) of the contact: the large bulb around the hit"><input id="layer_glow" type="checkbox" data-layer="glow" checked> glow (the bulb)</label>
+  <label class="check" data-tabs="hull" title="the cooling ember on the hull"><input id="layer_ember" type="checkbox" data-layer="ember" checked> ember</label>
+  <label class="check" data-tabs="hull" title="the scorch decal (darkens the hull)"><input id="layer_scorch" type="checkbox" data-layer="scorch" checked> scorch</label>
+  <label class="check" data-tabs="hull" title="the ion class's filament arcs"><input id="layer_filament" type="checkbox" data-layer="filament" checked> filaments</label>
+  <label class="check placeholder" data-tabs="hull" title="the heat shimmer is post-resolve: not previewable here, judged in flight"><input id="layer_shimmer" type="checkbox" checked disabled> shimmer <small>(not drawn here)</small></label>
+  <label class="check" data-tabs="vanilla"><input id="tint" type="checkbox"> tint bolt by cols 13-15</label>
+  <label class="check" data-tabs="vanilla"><input id="travel" type="checkbox"> bolt travels</label>
+  <label class="check" data-tabs="vanilla"><input id="flares" type="checkbox" checked> lens flares</label>
+  <label class="check" data-tabs="vanilla"><input id="lights" type="checkbox"> light elements</label>
+  </div>
+  </fieldset>
+  <fieldset id="p_tuning" data-tabs="shield hull"><legend>Tuning</legend>
+  <details id="tuning_more"><summary>constants (defaults from src/proxy/weapon_effects_core.h)</summary>
+  <div class="tune" data-tabs="shield">
+  <h4>Shield-hit hex patch</h4>
+  <label class="row"><span>cell m: fighter</span><span class="ctl"><input id="c_cell_fighter" type="number" step="0.1" style="width:4.5em"></span></label>
+  <label class="row"><span>cell m: corvette</span><span class="ctl"><input id="c_cell_corvette" type="number" step="0.1" style="width:4.5em"></span></label>
+  <label class="row"><span>cell m: capital</span><span class="ctl"><input id="c_cell_capital" type="number" step="0.5" style="width:4.5em"></span></label>
+  <label class="row"><span>rings: fighter</span><span class="ctl"><input id="c_rings_fighter" type="number" min="0" max="6" step="1" style="width:4em" title="neighbour rings a hit lights about its cell"></span></label>
+  <label class="row"><span>rings: corvette</span><span class="ctl"><input id="c_rings_corvette" type="number" min="0" max="6" step="1" style="width:4em"></span></label>
+  <label class="row"><span>rings: capital</span><span class="ctl"><input id="c_rings_capital" type="number" min="0" max="6" step="1" style="width:4em"></span></label>
+  <label class="row"><span>ripple speed</span><span class="ctl"><input id="c_ripple_speed" type="number" step="0.1" style="width:5em" title="footprint radii per game second"></span></label>
+  <label class="row"><span>centre gain</span><span class="ctl"><input id="c_centre_gain" type="number" min="0" step="0.1" style="width:4.5em" title="the hit's own cell over a ring cell, edge and fill (the marker; its fill at the header's centre_fill)"></span></label>
+  <label class="row"><span>fade ms</span><span class="ctl"><input id="c_fade_ms" type="number" step="50" style="width:5em"></span></label>
+  <label class="row"><span>stagger</span><span class="ctl"><input id="c_stagger" type="number" min="0" max="1.5" step="0.05" style="width:4.5em" title="per-cell spread of brightness and fade rate"></span></label>
+  <label class="row"><span>edge vs fill</span><span class="ctl"><input id="c_fill_ratio" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="fill radiance / edge radiance"></span></label>
+  <label class="row"><span>band: full &ge;</span><span class="ctl"><input id="c_colour_high" type="number" min="0" max="1" step="0.05" style="width:4em"></span></label>
+  <label class="row"><span>full colour</span><span class="ctl"><input id="c_colour_full" type="color"></span></label>
+  <label class="row"><span>band: half</span><span class="ctl"><input id="c_colour_mid" type="number" min="0" max="1" step="0.05" style="width:4em"></span></label>
+  <label class="row"><span>half colour</span><span class="ctl"><input id="c_colour_half" type="color"></span></label>
+  <label class="row"><span>band: empty &le;</span><span class="ctl"><input id="c_colour_low" type="number" min="0" max="1" step="0.05" style="width:4em"></span></label>
+  <label class="row"><span>empty colour</span><span class="ctl"><input id="c_colour_empty" type="color"></span></label>
+  <label class="row"><span>bubble scale</span><span class="ctl"><input id="c_bubble_scale" type="number" min="1" max="2" step="0.05" style="width:4.5em" title="the bubble's half-extents over the hull bounds' (core::bubble_scale)"></span></label>
+  <label class="row"><span>far side</span><span class="ctl"><input id="c_bubble_far" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="the far side's radiance over the near side's (core::bubble_far_gain)"></span></label>
+  <div class="buttons"><button id="c_reset" type="button">reset to defaults</button></div>
+  </div>
+  <div class="tune" data-tabs="hull">
+  <h4>Hull hit</h4>
+  <label class="row"><span>ramp: white</span><span class="ctl"><input id="c_h_ramp4" type="color"></span></label>
+  <label class="row"><span>ramp: yellow</span><span class="ctl"><input id="c_h_ramp3" type="color"></span></label>
+  <label class="row"><span>ramp: orange</span><span class="ctl"><input id="c_h_ramp2" type="color"></span></label>
+  <label class="row"><span>ramp: red</span><span class="ctl"><input id="c_h_ramp1" type="color"></span></label>
+  <label class="row"><span>sparks x</span><span class="ctl"><input id="c_h_spark_x" type="number" min="0" max="4" step="0.25" style="width:4em" title="spark count factor (the kill criterion halves it once)"></span></label>
+  <label class="row"><span>min frames</span><span class="ctl"><input id="c_h_min_frames" type="number" min="1" max="6" step="1" style="width:3.5em"></span></label>
+  <label class="row" title="a beam's pulse: on for this many game ms of every period (0: sustained)"><span>beam pulse on ms</span><span class="ctl"><input id="c_pulse_on" type="number" min="0" step="50" style="width:4.5em"></span></label>
+  <label class="row"><span>pulse period ms</span><span class="ctl"><input id="c_pulse_period" type="number" min="0" step="50" style="width:4.5em"></span></label>
+  <label class="row" title="a beam's crawl, r_hit per 16.7 ms tick (the trail marks every trail_step_r r)"><span>beam sweep</span><span class="ctl"><input id="c_sweep" type="number" min="0" step="0.1" style="width:3.5em"></span></label>
+  <div class="buttons"><button id="c_h_reset" type="button">reset to defaults</button></div>
+  <details><summary>the class's constants (weapon_effects_core.h hull::class_*)</summary><pre id="c_class_rows"></pre></details>
+  </div>
+  </details>
+  </fieldset>
+  </div>
+  <details id="legend"><summary>What this draws, and what is approximated</summary>
     <ul>
       <li>Each slot plays one Effects row on the shared looping timeline (t = 0 is the spawn): muzzle (TBullets col 21),
         projectile (the col 0 body with the col 19 flight effect attached), impact (col 20) and the death explosion of
-        the chosen tier (TShips col 47 by class, TDocks/TFactories col 14, TAsteroids col 8; 0 = default row). The left
-        canvas is the vanilla reconstruction; the dashed right canvas is reserved for our replacement
-        (<code>renderOurs(record, t)</code>, currently empty).</li>
+        the chosen tier (TShips col 47 by class, TDocks/TFactories col 14, TAsteroids col 8; 0 = default row). The
+        Vanilla tab shows the four slots of the vanilla reconstruction; the Shield hit and Hull hit tabs draw ours on the
+        stage (<code>renderOurs(record, t)</code>, the impact slot), each element switchable in the Layers panel (the
+        hull's "glow" is the soft bulb on the hull around the hit, "flash halo" the flash's coloured halo). The layer
+        "hull body" draws the preview hull (the same ellipsoid whose depth and normal the elements use) as a dim grey body,
+        lambert from the eye at 0.08 to 0.15 display value with a lighter rim, under the elements: a glow, ring or
+        scorch that lies on the hull ends at its silhouette, and the body shows where that is (a preview aid: the game
+        draws its own hull).</li>
       <li>An element is its body (numeric id N = objects/v/N, five digits) drawn from its LOD-0 triangles and UVs at
         uniform scale = element size: a body flat in x/y faces the camera; any other body (shockwave discs lie in x/z)
         is drawn as a 3D object seen from 30 degrees above its x/z plane (<b>approximated</b>: the engine orients it
@@ -177,7 +257,9 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
       <li>Ours, impact slot (docs/architecture/weapon-effects.md 5.1.1): the shield-hit hex patch on a preview owner (a
         sphere of 15 / 60 / 300 m for the three tiers, its front facing the camera, a narrow hull of half-extents
         1:1:6 seen side on (its flank's middle or 40 % aft) or from above, or a flat fighter of 6:1:4 from above or
-        below), drawn in addition to the vanilla impact on the left (the native sprite stays in the game). The hits land
+        below), with the vanilla impact row drawn over it (the layer "native impact sprite": the native sprite stays in the
+        game; its scale here is fitted to the patch footprint, <b>approximated</b>; the "bubble outline" is a preview
+        guide, not drawn by the game). The hits land
         on the preview hull, every bolt arriving from the camera, and the patch is laid on the hull as the screen-space
         decal of the DLL: per pixel the hull's point and its normal (the 2x2 quad's differences of the hull depth), per
         face of the six (the owner's +-z, +-x, +-y lattices) its triplanar share (the outward normal's component, sharpened
@@ -188,8 +270,8 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
         (<code>weapon_hex_patch.hlsl</code>, <code>weapon_shell_ps.hlsl</code>, <code>weapon_effects_stage.h</code>) in
         double precision (the GPU's float hash differs below 1e-3).
                 <b>Approximated</b>: the edge anti-aliasing uses forward differences per pixel for the GPU's quad
-        <code>fwidth</code>; the hull depth is the preview ellipsoid's (the game's is the depth lane); the narrow hull
-        is shaded dimly so its shape shows; the radiance is shown as 1 - e<sup>-x</sup> per channel added to the
+        <code>fwidth</code>; the hull depth is the preview ellipsoid's (the game's is the depth lane); the hull is
+        shaded dimly so its shape shows (the layer "hull body"); the radiance is shown as 1 - e<sup>-x</sup> per channel added to the
         background in linear light (the game goes through its HDR, TAA and tonemap chain); the lifetime follows the
         controls (the DLL uses the header's <code>patch_lifetime_ms</code>); the colour pickers hold the header's linear
         colours as 8-bit sRGB; a region's spill draws are one pass here (the same cells; the GPU splits them into draws
@@ -199,7 +281,7 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
         lifetime / SETA) plus 250 ms, so the patch is not cut at the vanilla sprite's end.</li>
     </ul>
     <div id="status"></div>
-  </section>
+  </details>
 </div>
 <aside id="wdesc"></aside>
 </div>
@@ -266,7 +348,7 @@ const OW = 720, OH = 405;
 const SLOTS = [
   {key: 'muzzle', label: 'Muzzle', col: 'col 21'},
   {key: 'projectile', label: 'Projectile', col: 'col 0 body + col 19 flight effect'},
-  {key: 'impact', label: 'Impact (shield and hull)', col: 'col 20; ours: the family control below (shield hit step 1, hull hit step 2)'},
+  {key: 'impact', label: 'Impact', col: 'col 20'},
   {key: 'death', label: 'Death explosion', col: 'tier row'},
 ];
 const ONESHOT = new Set(['TAT_ONESHOT', 'TAT_TAGONESHOT', 'TAT_TAGONESHOT_REINIT']);
@@ -274,7 +356,7 @@ const PINGPONG = new Set(['TAT_PINGPONG', 'TAT_TAGPINGPONG']);
 const ROLL = Math.PI / 6;
 
 const state = {view: null, weapon: 0, tier: 0, drow: 0, t: 0, playing: true, speed: 1, seed: 1,
-               last: performance.now(), dirty: true};
+               last: performance.now(), dirty: true, tab: 'shield', scenario: '', scenarioModified: false};
 const assetBase = {};
 const images = {};
 const prepCache = {};
@@ -287,6 +369,23 @@ const prepCache = {};
 // carry the ring) and the same screen-space placement as src/effects/weapon_shell_ps.hlsl (the hull under the pixel,
 // its normal, the faces' triplanar shares); every length is in metres (the GPU's view units are 5 per metre; the law is
 // // scale-free). The other slots stay native in step 1.
+// The Layers panel (all on by default): a renderer skips an element whose layer is off. The choice persists in
+// localStorage when the page may use it (a file:// page or a private window may refuse it).
+const LAYER_KEYS = ['hull', 'patch', 'bubble', 'native', 'flash', 'flash_halo', 'burst', 'sparks', 'chips', 'streak', 'ring', 'glow',
+                    'ember', 'scorch', 'filament'];
+const layers = Object.fromEntries(LAYER_KEYS.map(k => [k, true]));
+try {
+  const saved = JSON.parse(localStorage.getItem('x3m.weapon_lab.layers') || '{}');
+  for (const k of LAYER_KEYS) if (typeof saved[k] === 'boolean') layers[k] = saved[k];
+} catch (e) { /* no storage: the defaults */ }
+// The layer "hull body": the preview hull drawn dim under the elements so a glow or ring that ends at the hull's edge
+// reads as lying on a body, not as clipped. The display value (sRGB) of a hull pixel at outward normal n and eye ray d
+// (both in the owner frame): a grey of 0.08 to 0.15 by lambert from the eye, a lighter rim at grazing angles.
+function hullShade(n, d) {
+  const lam = Math.max(0, -dot3(n, d));
+  return 0.08 + 0.07 * lam + 0.07 * Math.pow(1 - lam, 4);
+}
+const HULL_BODY_TINT = [1, 1, 1.08];
 const PATCH_TIERS = ['fighter', 'corvette', 'capital'];
 const PREVIEW_OWNER_M = [15, 60, 300];
 const CELL_KEY_BIAS = HEADER.cell_key_bias, PATCH_CELLS = HEADER.patch_cells, PATCH_HITS = HEADER.patch_hits;
@@ -622,10 +721,10 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     for (let x = 0; x < OW; x++) {
       const d = rayOf(x, y), th = hullT(d);
       hullDepth[y * OW + x] = th;
-      if (hull.narrow && th !== Infinity && th > 0) { // the narrow hull, dim (the game draws the real one)
+      if (layers.hull && th !== Infinity && th > 0) { // the layer "hull body", dim (the game draws the real one)
         const p = O.map((v, k) => v + th * d[k]), n = norm3(p.map((v, k) => v / (e[k] * e[k]))) || [0, 0, -1];
-        const shade = 0.035 * Math.max(0.25, -dot3(n, d));
-        for (let k = 0; k < 3; k++) px[(y * OW + x) * 4 + k] = Math.round(255 * linearToSrgb(srgbToLinear(px[(y * OW + x) * 4 + k] / 255) + shade));
+        const shade = hullShade(n, d);
+        for (let k = 0; k < 3; k++) px[(y * OW + x) * 4 + k] = Math.round(255 * Math.min(1, shade * HULL_BODY_TINT[k]));
       }
     }
   // weapon_shell_ps.hlsl per pixel: the hull's point p (owner frame) from the depth, its normal from the 2x2 quad's
@@ -661,7 +760,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     const half = Math.sqrt(disc / A), at = tt => o.map((v, k) => (v + tt * dd[k]) * E[k]);
     return [{t: tm - half, p: at(tm - half)}, {t: tm + half, p: at(tm + half)}];
   };
-  for (let y = 0; bubble && y + 1 < OH; y++)
+  for (let y = 0; bubble && layers.patch && y + 1 < OH; y++)
     for (let x = 0; x + 1 < OW; x++) {
       const roots = bubbleRoots(x, y);
       if (!roots) continue;
@@ -686,7 +785,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
         if (lit) { if (side) farLit++; else nearLit++; }
       }
     }
-  for (let y = 0; !bubble && y + 1 < OH; y++)
+  for (let y = 0; !bubble && layers.patch && y + 1 < OH; y++)
     for (let x = 0; x + 1 < OW; x++) {
       if (!on[y * OW + x]) continue;
       const p = pt(x, y), x0 = x & ~1, y0 = y & ~1;
@@ -714,10 +813,23 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
         sum[y * OW + x] += hexLaw(q, cl, fw, d, c) * w;
       }
     }
+  // The layer "bubble outline" (a preview guide, not the game's): the bubble's silhouette, the pixels whose ray meets
+  // the bubble beside one whose ray misses it.
+  const rim = bubble && layers.bubble ? new Uint8Array(OW * OH) : null, RIM = [0.035, 0.045, 0.07];
+  if (rim) {
+    const inside = new Uint8Array(OW * OH);
+    for (let y = 0; y < OH; y++) for (let x = 0; x < OW; x++) inside[y * OW + x] = bubbleRoots(x, y) ? 1 : 0;
+    for (let y = 1; y + 1 < OH; y++)
+      for (let x = 1; x + 1 < OW; x++) {
+        const i = y * OW + x;
+        if (inside[i] && !(inside[i - 1] && inside[i + 1] && inside[i - OW] && inside[i + OW])) rim[i] = 1;
+      }
+  }
   for (let i = 0; i < OW * OH; i++) {
-    if (!(sum[i] > 0)) continue;
+    const edge = rim ? rim[i] : 0;
+    if (!(sum[i] > 0) && !edge) continue;
     for (let k = 0; k < 3; k++) {
-      const base = srgbToLinear(px[i * 4 + k] / 255), v = base + (1 - Math.exp(-colour[k] * sum[i]));
+      const base = srgbToLinear(px[i * 4 + k] / 255), v = base + (1 - Math.exp(-colour[k] * sum[i])) + edge * RIM[k];
       px[i * 4 + k] = Math.round(255 * linearToSrgb(Math.min(1, v)));
     }
   }
@@ -726,7 +838,12 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   const gpuDraws = draws.reduce((n, d) => n + d.draws, 0), dropped = draws.reduce((n, d) => n + d.dropped, 0);
   const regions = [...new Set(draws.map(d => ['+z', '-z', '+x', '-x', '+y', '-y'][d.seed]))].join(' ');
   const surface = bubble ? `bubble x${fmt(c.bubble_scale)} (${E.map(v => fmt(v)).join(' x ')} m), near ${nearLit} px, far ${farLit} px at x${fmt(c.bubble_far)}` : 'hull decal';
-  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.name} ${S} m${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship, chase') : ''} | ${surface} | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
+  // The aim point on the canvas and the footprint's radius in pixels: where the native impact sprite is drawn.
+  const av = toView(hullPoint(hull, hull.aim[0], hull.aim[1]));
+  if (av[2] > 0) { record.aimPx = [OW / 2 + f * av[0] / av[2], OH / 2 - f * av[1] / av[2]]; record.footPx = (rings + 1) * cell * f / av[2]; }
+  const hidden = ['hull', 'patch', 'bubble', 'native'].filter(n => !layers[n]).map(n => ({hull: 'hull body', patch: 'patch', bubble: 'bubble outline', native: 'native sprite'})[n]);
+  record.caption = `Shield hit on a ${PATCH_TIERS[c.tier]} (${hull.name}, ${S} m), ${bubble ? 'ship bubble' : 'station hull decal'}, shield ${Math.round(f0 * 100)} %, ${c.hits > 0 ? `${c.hits} hits per game s` : 'single hit'}, SETA x${c.seta}${c.own ? (c.cockpit ? ', own ship, cockpit view' : ', own ship') : ''}${hidden.length ? ` (hidden: ${hidden.join(', ')})` : ''}`;
+  record.detail = `${surface}\n${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'}\ncell ${fmt(cell)} m, ${rings} ring(s)${c.own && c.cockpit ? `, cockpit gain x${HEADER.own_cockpit_gain}` : ''}`;
   record.bubbleLit = {near: nearLit, far: farLit};
 }
 // The impact slot's share of the loop: our patch lasts its record lifetime in wall time (game time / SETA).
@@ -1001,6 +1118,11 @@ function renderHull(record, t) {
       if (!(th > 0)) continue;
       depth[y * OW + x] = th * dv[2];
       for (let i = 0; i < 3; i++) P[(y * OW + x) * 3 + i] = O[i] + th * d[i];
+      if (layers.hull) { // the layer "hull body" under the elements (their light composites over it as before)
+        const p = [0, 1, 2].map(i => P[(y * OW + x) * 3 + i]), n = norm3(p.map((v, i) => v / (e[i] * e[i]))) || [0, 0, -1];
+        const shade = hullShade(n, d);
+        for (let i = 0; i < 3; i++) px[(y * OW + x) * 4 + i] = Math.round(255 * Math.min(1, shade * HULL_BODY_TINT[i]));
+      }
     }
   const dim = c.own && c.cockpit ? HEADER.own_cockpit_gain : 1;
   // Per element: the light it adds (the scorch: the darkening) and the pixels it lights.
@@ -1039,7 +1161,7 @@ function renderHull(record, t) {
   };
   const glowAt = (p, R, col, el) => surface(p, R, (i, d) => { const q = Math.max(0, 1 - d * d / (R * R)); if (q > 0) add(i, col, q * q, el); });
   const puffAt = (pv, R, T, E, adv, seed, mix) => { // the fireball impostor (the lane clips the chord: the half inside the hull)
-    if (!(R > 0 && pv[2] > 0)) return false;
+    if (!layers.burst || !(R > 0 && pv[2] > 0)) return false;
     const near = 0.1, rpx = R * f / Math.sqrt(Math.max(pv[2] * pv[2] - R * R, 1e-6));
     const [x0, x1, y0, y1] = pv[2] - R > near ? bbox(OW / 2 + f * pv[0] / pv[2], OH / 2 - f * pv[1] / pv[2], rpx + 1) : [0, OW, 0, OH];
     const cc = dot3(pv, pv);
@@ -1064,6 +1186,7 @@ function renderHull(record, t) {
     return true;
   };
   const flashAt = (pv, rH, coreR, haloR, hc, E) => { // a white core in a halo, biased towards the eye
+    if (!layers.flash && !layers.flash_halo) return false;
     const dist = Math.hypot(...pv), b = dist > 0 ? 1 - HH.bias * rH / dist : 1, cv = pv.map(v => v * b);
     if (!(cv[2] > 0)) return false;
     const rpx = rH * f / cv[2], core = Math.max(coreR * rpx, 0.5 * LK.floor_flash_px * scale);
@@ -1079,13 +1202,13 @@ function renderHull(record, t) {
         const visHalo = lane === Infinity ? 1 : Math.max(0, Math.min(1, (lane - zf) / (LK.soft_halo * rView)));
         const disc = Math.max(0, Math.min(1, (fr - dd) / (0.25 * fr))), wnd = (1 - d2) ** 2;
         const hal = LK.halo_max * Math.exp(-Math.max(dd - fr, 0) / (LK.halo_fold * fr)) * wnd;
-        add(y * OW + x, [1, 1, 1], disc * visCore * E, EL.flash);
-        add(y * OW + x, hc, hal * visHalo * E, EL.flash);
+        if (layers.flash) add(y * OW + x, [1, 1, 1], disc * visCore * E, EL.flash);
+        if (layers.flash_halo) add(y * OW + x, hc, hal * visHalo * E, EL.flash);
       }
     return true;
   };
   const streakAt = (hv, tv, widthM, E, col, el) => { // a streak from tail to head (view), the hull hiding what lies behind it
-    if (!(hv[2] > 0.1 && tv[2] > 0.1)) return false;
+    if (!layers[ELEMENTS[el]] || !(hv[2] > 0.1 && tv[2] > 0.1)) return false;
     const hp = [OW / 2 + f * hv[0] / hv[2], OH / 2 - f * hv[1] / hv[2]], tp = [OW / 2 + f * tv[0] / tv[2], OH / 2 - f * tv[1] / tv[2]];
     let dx = hp[0] - tp[0], dy = hp[1] - tp[1];
     const motion = Math.hypot(dx, dy);
@@ -1146,26 +1269,26 @@ function renderHull(record, t) {
         }
         for (const mk of sp.marks) { // the scorch line along the dwell path
           const ma = t * c.seta - mk.t0, sr = HH.class_scorch[an];
-          if (HH.scorch && ma < sr[1]) {
+          if (layers.scorch && HH.scorch && ma < sr[1]) {
             const s = sr[2] * Math.min(1, ma / em[1]) * (1 - ma / sr[1]), R = sr[0] * rH;
             surface(mk.p, R, (i, d) => { const q = Math.max(0, 1 - d * d / (R * R)); if (q > 0) darken(i, s * q * q); });
             stats.scorches++;
           }
         }
-        if (!sp.held && sp.fall < em[1]) { // the trail ember from the spot's fall
+        if (layers.ember && !sp.held && sp.fall < em[1]) { // the trail ember from the spot's fall
           const T = em[3] * (1 - sp.fall / em[1]);
           glowAt(sp.p, em[0] * rH, heatRamp(T, h.ramp).map(v => v * em[4] * T), EL.ember);
           stats.embers++;
         }
       }
       const genv = 1 - sp.fall / gw[1];
-      if (gw[0] > 0 && genv > 0) {
+      if (layers.glow && gw[0] > 0 && genv > 0) {
         const col = an === AN.repair ? tint.map(v => v * gw[3] * genv) : an === AN.tug ? HH.tug_colour.map(v => v * gw[3] * genv)
           : heatRamp(gw[2], h.ramp).map(v => v * gw[3] * gw[2] * genv);
         glowAt(sp.p, gw[0] * rH, col, EL.glow);
         stats.glows++;
       }
-      if (an === AN.repair && em[0] > 0 && sp.fall < em[1]) {
+      if (layers.ember && an === AN.repair && em[0] > 0 && sp.fall < em[1]) {
         glowAt(sp.p, em[0] * rH, tint.map(v => v * em[4] * (1 - sp.fall / em[1])), EL.ember);
         stats.embers++;
       }
@@ -1174,25 +1297,25 @@ function renderHull(record, t) {
     const a = hit.age, pv = toView(hit.p);
     // The scorch first (the multiply decal: develops while the ember cools, fades over L_s).
     const sr = HH.class_scorch[an];
-    if (HH.scorch && sr[0] > 0 && a < sr[1]) {
+    if (layers.scorch && HH.scorch && sr[0] > 0 && a < sr[1]) {
       const s = sr[2] * Math.min(1, a / (em[1] + em[2] * kk)) * (1 - a / sr[1]), R = sr[0] * rH;
       if (s > 0) { surface(hit.p, R, (i, d) => { const q = Math.max(0, 1 - d * d / (R * R)); if (q > 0) darken(i, s * q * q); }); stats.scorches++; }
     }
     // The glow and the ember: on the hull within R of the contact point.
     const glowLife = lifeOf(gw[1], 1), emberLife = lifeOf(em[1] + em[2] * kk, 2);
-    if (gw[0] > 0 && a < glowLife) {
+    if (layers.glow && gw[0] > 0 && a < glowLife) { // the soft bulb on the hull (the layer "glow")
       const fade = 1 - a / glowLife;
       glowAt(hit.p, gw[0] * rH, heatRamp(gw[2], h.ramp).map(v => v * gw[3] * gw[2] * fade), EL.glow);
       stats.glows++;
     }
-    if (em[0] > 0 && a < emberLife) {
+    if (layers.ember && em[0] > 0 && a < emberLife) {
       const fade = 1 - a / emberLife, T = em[3] * fade;
       glowAt(hit.p, em[0] * rH, heatRamp(T, h.ramp).map(v => v * em[4] * T), EL.ember);
       stats.embers++;
     }
     // The surface ring: the expanding sphere shell cut by the hull.
     const ringLife = lifeOf(rg[2], 6);
-    if (rg[0] > 0 && a < ringLife) {
+    if (layers.ring && rg[0] > 0 && a < ringLife) {
       const x = a / ringLife, rr = rg[0] * rH * (1 - Math.exp(-x / HH.ring_rise)), wd = rg[1] * rH;
       const col = heatRamp(HH.ring_t, h.ramp).map(v => v * rg[3] * HH.ring_t * (1 - x) * (1 - x));
       surface(hit.p, rr + 3 * wd, (i, d) => { const z = (d - rr) / wd; add(i, col, Math.exp(-z * z), EL.ring); });
@@ -1200,7 +1323,7 @@ function renderHull(record, t) {
     }
     // The ion's filament glow: noise in the owner frame, re-hashed every rehash_ms.
     const filLife = lifeOf(HH.filament_ms, 8);
-    if (an === AN.ion && a < filLife) {
+    if (layers.filament && an === AN.ion && a < filLife) {
       const R = HH.filament_r * rH, sc = HH.filament_scale / rH, slot = Math.floor(a / HH.rehash_ms);
       const seed = 64 * unitOf(elementHash(seq, 512 + (slot & 255)));
       const col = HH.ion_colour.map(v => v * HH.filament_e * (1 - a / filLife));
@@ -1264,7 +1387,11 @@ function renderHull(record, t) {
     rows.push(`shimmer ${HH.class_shimmer[an0]} r over ${HH.shimmer_ms} ms (post-resolve: not previewable here, judged in flight)`);
     $('c_class_rows').textContent = (lineup ? 'lineup: ' + LINEUP.join(', ') + '\n' : '') + `${ANATOMIES[an0]}\n` + rows.join('\n');
   }
-  label(ctx, `hull hit: ${lineup ? 'lineup' : ANATOMIES[an0]}, ${PATCH_TIERS[c.tier]} ${hull.name}, k ${fmt(k)}, r_hit ${fmt(rHit)} m, ${h.camera}${h.variant !== 'none' ? ', ' + h.variant : ''}${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship') : ''} | ${stats.hits} hit(s), ${stats.flashes} flash, ${stats.streaks} streak, ${stats.bursts} puff, ${stats.sparks} sparks (${stats.chips} chips), ${stats.rings} ring, ${stats.filaments} arcs, ${stats.glows} glow, ${stats.embers} ember, ${stats.scorches} scorch | SETA x${c.seta}, floor ${fmt(floorMs)} ms`);
+  const cam = {side: 'side view', chase: 'chase view', cockpit: 'cockpit view', far1: 'seen from 1 km', far2: 'seen from 2 km',
+               far8: 'seen from 8 km'}[h.camera] || h.camera;
+  const hidden = ELEMENTS.filter(n => !layers[n]).concat(layers.flash_halo ? [] : ['flash halo'], layers.hull ? [] : ['hull body']);
+  record.caption = `Hull hit, ${lineup ? 'the class lineup' : ANATOMIES[an0]} on a ${PATCH_TIERS[c.tier]}${hull.name !== 'sphere' ? ` (${hull.name})` : ''}, k ${k.toFixed(2)}, r_hit ${rHit.toFixed(1)} m, ${cam}${h.variant !== 'none' ? ', ' + h.variant : ''}${c.own ? ', own ship' : ''}${hidden.length ? ` (hidden: ${hidden.join(', ')})` : ''}`;
+  record.detail = `${stats.hits} hit(s), ${stats.flashes} flash, ${stats.streaks} streak, ${stats.bursts} puff, ${stats.sparks} sparks (${stats.chips} chips), ${stats.rings} ring, ${stats.filaments} arcs, ${stats.glows} glow, ${stats.embers} ember, ${stats.scorches} scorch\nSETA x${c.seta}, floor ${fmt(floorMs)} ms${c.own && c.cockpit ? `, cockpit gain x${HEADER.own_cockpit_gain}` : ''}`;
   record.hullStats = stats;
 }
 const HULL_IDS = ['c_k', 'c_h_spark_x', 'c_h_min_frames', 'c_pulse_on', 'c_pulse_period', 'c_sweep', 'c_loop'];
@@ -1631,7 +1758,7 @@ function fitExtent(id, t) {
 function renderVanilla(slot, record, t) {
   const ctx = slot.ctx;
   drawBackground(ctx);
-  if (!assets()) { label(ctx, 'assets.js not found: run tools/effects/weapon_effects_lab_assets.py'); return; }
+  if (!assets()) { label(ctx, record.detail = 'assets.js not found: run tools/effects/weapon_effects_lab_assets.py'); return; }
   const id = record.row, seed = hash(state.seed, slot.key, state.weapon);
   if (slot.key === 'projectile') {
     const w = record.weapon, g = boltGeometry(w);
@@ -1644,15 +1771,15 @@ function renderVanilla(slot, record, t) {
                     1, 0, t, boltTint(w));
     else label(ctx, 'bolt body missing');
     drawEffect(ctx, id, t, cx, cy, k, seed);
-    label(ctx, `body ${w.body} | flight row ${id > 0 ? id : 'none'} | 1 unit = ${fmt(k)} px`);
+    record.detail = `body ${w.body}${g ? '' : ' (missing)'} | flight row ${id > 0 ? id : 'none'} | 1 unit = ${fmt(k)} px`;
     return;
   }
   const e = effectRow(id);
-  if (!(id > 0)) { label(ctx, 'no effect row'); return; }
-  if (!e || e.missing) { label(ctx, `row ${id} is missing from Effects`); return; }
+  if (!(id > 0)) { label(ctx, record.detail = 'no effect row'); return; }
+  if (!e || e.missing) { label(ctx, record.detail = `row ${id} is missing from Effects`); return; }
   const k = 0.42 * Math.min(W, H) / Math.max(fitExtent(id, t), 1e-6);
   drawEffect(ctx, id, t, W / 2, H / 2, k, seed);
-  label(ctx, `row ${id} | ${e.elements.length} elements | span ${fmt(effectSpan(id))} ms | 1 unit = ${fmt(k)} px`);
+  record.detail = `row ${id} | ${e.elements.length} elements | span ${fmt(effectSpan(id))} ms | 1 unit = ${fmt(k)} px`;
 }
 
 function loopMs() {
@@ -1661,8 +1788,8 @@ function loopMs() {
   const w = weapon();
   let span = 0;
   for (const s of SLOTS) span = Math.max(span, effectSpan(slotRow(s.key)));
-  // Our impact-slot patch outlives the vanilla sprite: the loop runs to its end plus a short tail.
-  const ours = ourLoopMs();
+  // Our impact-slot patch outlives the vanilla sprite: the loop runs to its end plus a short tail (our tabs only).
+  const ours = state.tab === 'vanilla' ? 0 : ourLoopMs();
   return Math.min(12000, Math.max(500, span || w.life || 1000, ours > 0 ? ours + 250 : 0));
 }
 
@@ -1766,13 +1893,98 @@ function fillRows() {
   state.drow = 0; $('drow').value = 0;
 }
 
-// A preset (weapon-look.md 6): its view and weapon, the family, the victim and hull, the camera, SETA, the hits per
-// game second, the own ship and cockpit, the variant, the calibre and the shield level.
+// A scenario is a preset (weapon-look.md 6; its id stays the preset id the tests and docs name): its view and weapon,
+// the family, the victim and hull, the camera, SETA, the hits per game second, the own ship and cockpit, the variant,
+// the calibre and the shield level. Its label and description are built here from those fields; SCENARIO_NOTES adds
+// what each one checks (hand-written, by id; a preset without a note shows the fields only).
+const SCENARIO_NOTES = {
+  'shield/fighter-ire-side': 'the fighter bubble patch under a steady stream of hits',
+  'shield/capital-ppc-flank': "a capital's flank at 12 hits per s and 60 % shield (the half band)",
+  'hull/fighter-ire-side': 'the baseline energy hit on a fighter',
+  'hull/fighter-ire-chase-nose': 'checks the chase-view nose placement',
+  'hull/fighter-ire-cockpit-own': 'the own ship seen from the cockpit, dimmed at the cockpit gain',
+  'hull/corvette-ppc-flank': 'a high-calibre hit on a corvette flank',
+  'hull/capital-ppc-flank-300m': 'the capital scale (300 m) on its flank',
+  'hull/capital-close-12hz': 'a dense 12 hits per s stream close on a capital',
+  'hull/station-ppc-1km': 'the pixel floors at 1 km',
+  'hull/mining-asteroid-60m': 'the asteroid victim: dust and rock sparks, no flash',
+  'hull/missile-hit-corvette': 'a missile source on a corvette',
+  'hull/seta6-12hz': 'SETA x6 at 12 hits per game s: the min-frames floor',
+  'hull/far-2km': 'the pixel floors at 2 km',
+  'hull/drained': 'repeated hits on a fighter with its shield down',
+  'hull/repair-corvette': 'the repair laser: glow and ember only, in its tint',
+  'hull/stock-vs-mayhem': 'the stock AP IRE, to compare with the Mayhem 3 one',
+  'hull/heavy-plasma-corvette': 'a heavy plasma hit on a corvette',
+  'hull/heavy-flak-fighter': "flak: the burst bit's shock ring",
+  'hull/heavy-missile-hit': 'a missile hit on a fighter: ring and debris',
+  'hull/energy-ire-fighter-side': 'the energy class anatomy',
+  'hull/ballistic-md-fighter-side': 'the ballistic class (the Mayhem pin): dust, sparks and chips',
+  'hull/ballistic-gauss-capital-300m': 'a gauss round in the heavy band on a capital',
+  'hull/plasma-hept-corvette-flank': 'the plasma class: bloom, globe and ring',
+  'hull/plasma-psp-capital-close': 'the plasma class at full calibre, close',
+  'hull/heavy-gke-capital-300m': 'the heavy class on a capital: entry streak, jets and ring',
+  'hull/heavy-rg-chase-nose': 'a heavy hit on the nose from the chase camera',
+  'hull/heavy-thin-wing-exit-jet': 'a heavy hit through a thin wing: the exit jet',
+  'hull/beam-pbc-pulsed-corvette': 'a pulsed beam: spot, puff and spatter per pulse',
+  'hull/beam-pal-sustained-sweep': 'a sustained sweeping beam: the scorch trail',
+  'hull/ion-id-fighter-side': 'the ion class: arcs and no heat',
+  'hull/ion-ionc-capital': 'the ion cannon on a capital',
+  'hull/class-lineup-fighter-side': 'every class side by side on a fighter',
+  'hull/class-lineup-capital-300m': 'every class side by side on a capital',
+  'hull/scorch-12hps-20s': 'the scorch build-up over 20 s at 12 hits per s',
+  'hull/seta6-classes': 'every class at SETA x6',
+};
+const VIEW_NAMES = {stock_ap: 'stock AP', mayhem3: 'Mayhem 3', fl: "Farnham's Legacy"};
+function scenarioLabel(p) {
+  const victim = p.variant === 'asteroid' ? `${PREVIEW_OWNER_M[p.tier]} m asteroid` : PATCH_TIERS[p.tier] || 'ship';
+  const where = {flat_top: 'from above', flat_bottom: 'from below', narrow: 'on the flank', narrow_aft: 'on the aft flank',
+                 narrow_top: 'on the top', chase_nose: 'on the nose', sphere: ''}[p.hull] || '';
+  const cam = {side: 'side view', chase: 'chase view', cockpit: 'cockpit view', far1: 'seen from 1 km', far2: 'seen from 2 km',
+               far8: 'seen from 8 km'}[p.camera] || p.camera;
+  const gun = String(p.weapon).replace(/^SS_BULLET_/, '').replace(/_/g, ' ');
+  const what = p.cls === 'lineup' ? 'all classes' : p.variant === 'missile' ? 'missile' : p.variant === 'repair' ? `${gun} repair` : gun;
+  const extra = [p.hps > 0 ? `${p.hps} hits/s` : '', p.seta > 1 ? `SETA x${p.seta}` : '', p.view !== 'mayhem3' ? VIEW_NAMES[p.view] || p.view : '']
+    .filter(Boolean);
+  return `${p.own ? 'Own ' + victim : victim[0].toUpperCase() + victim.slice(1)}, ${what} ${p.family === 'shield' ? 'shield hit' : 'hit'}${where ? ' ' + where : ''}, ${cam}${extra.length ? ', ' + extra.join(', ') : ''}`;
+}
+/** Every preset's selector label, made distinct: a label two presets share gets the id's tail in brackets. */
+function scenarioLabels() {
+  const raw = PRESETS.map(scenarioLabel), seen = {};
+  raw.forEach(l => { seen[l] = (seen[l] || 0) + 1; });
+  return Object.fromEntries(PRESETS.map((p, i) => [p.id, seen[raw[i]] > 1 ? `${raw[i]} [${p.id.split('/').pop()}]` : raw[i]]));
+}
+function scenarioDescription(p) {
+  const parts = [`k ${fmt(p.k)}`, VIEW_NAMES[p.view] || p.view, p.seta > 1 ? `SETA x${p.seta}` : 'no SETA',
+                 p.hps > 0 ? `${p.hps} hits per game s` : 'single hit'];
+  if (p.family === 'shield') parts.push(`shield ${p.shield} %`);
+  if (p.cls && p.cls !== 'auto' && p.cls !== 'lineup') parts.push(`class ${p.cls}`);
+  if (p.variant && !['none', 'asteroid', 'missile', 'repair'].includes(p.variant)) parts.push(p.variant);
+  if (p.pulse && p.pulse[0] > 0) parts.push(`pulse ${p.pulse[0]} of ${p.pulse[1]} ms`);
+  if (p.sweep > 0) parts.push(`sweep ${fmt(p.sweep)}`);
+  if (p.loop > 0) parts.push(`loop ${fmt(p.loop / 1000)} s`);
+  const note = SCENARIO_NOTES[p.id];
+  return parts.join(', ') + (note ? '; ' + note : '');
+}
+function fillScenarios() {
+  const labels = scenarioLabels();
+  const group = (fam, title) => `<optgroup label="${title}">` + PRESETS.filter(p => p.family === fam)
+    .map(p => `<option value="${esc(p.id)}" title="${esc(p.id)}">${esc(labels[p.id])}</option>`).join('') + '</optgroup>';
+  $('preset').innerHTML = '<option value="">(none)</option>' + group('shield', 'Shield') + group('hull', 'Hull');
+}
+// The scenario's marker: "(modified)" once a control it set (or any other scene, weapon or tuning control) changes.
+function showScenario() {
+  const p = PRESETS.find(x => x.id === state.scenario);
+  $('scenario_desc').textContent = p ? scenarioDescription(p) + ` (${p.id})` : '';
+  $('scenario_mod').textContent = p && state.scenarioModified ? '(modified)' : '';
+}
+function scenarioTouched() { if (state.scenario && !state.scenarioModified) { state.scenarioModified = true; showScenario(); } }
 function applyPreset(id) {
   const p = PRESETS.find(x => x.id === id);
-  if (!p) return;
+  state.scenario = p ? p.id : '';
+  state.scenarioModified = false;
+  if (!p) { showScenario(); return; }
   const set = (k, v) => { const e = $(k); if (!e) return; if (e.type === 'checkbox') e.checked = !!v; else e.value = v; };
-  set('c_family', p.family); set('c_tier', p.tier); set('c_hull', p.hull); set('c_camera', p.camera); set('c_seta', p.seta);
+  setTab(p.family); set('c_tier', p.tier); set('c_hull', p.hull); set('c_camera', p.camera); set('c_seta', p.seta);
   set('c_hits', p.hps); set('c_own', p.own); set('c_cockpit', p.cockpit); set('c_variant', p.variant); set('c_k', p.k);
   set('c_shield', p.shield);
   set('c_class', p.cls || 'auto'); set('c_pulse_on', (p.pulse || [0, 0])[0]); set('c_pulse_period', (p.pulse || [0, 0])[1]);
@@ -1788,11 +2000,24 @@ function applyPreset(id) {
     state.view = p.view;
     loadAssets(p.view, () => { fillWeapons(); pick(); });
   } else pick();
+  state.scenarioModified = false;
+  showScenario();
 }
 function setView(view) {
   state.view = view;
   loadAssets(view, () => { fillWeapons(); updateInfo(); state.dirty = true; });
 }
+
+/** The layer "native impact sprite": the vanilla impact row on the shield tab's stage at the aim point, its scale
+ *  fitted to the patch footprint (approximated: the row's units against metres are not traced). */
+function drawNative(rec, t) {
+  const id = slotRow('impact'), e = effectRow(id);
+  if (!assets() || !(id > 0) || !e || e.missing || !rec.aimPx) return;
+  const k = rec.footPx / Math.max(effectExtent(id), 1e-6);
+  drawEffect(rec.ctx, id, t, rec.aimPx[0], rec.aimPx[1], k, hash(state.seed, 'impact', state.weapon));
+  rec.ctx.setTransform(1, 0, 0, 1, 0, 0); rec.ctx.globalAlpha = 1; rec.ctx.globalCompositeOperation = 'source-over';
+}
+function setText(id, text) { if ($(id).textContent !== text) $(id).textContent = text; }
 
 function frame(now) {
   const dt = now - state.last; state.last = now;
@@ -1802,29 +2027,88 @@ function frame(now) {
     state.dirty = false;
     $('scrub').max = L; $('scrub').value = state.t;
     $('tread').textContent = `${state.t.toFixed(0)} / ${L.toFixed(0)} ms`;
-    for (const s of SLOTS) {
-      const rec = makeRecord(s);
-      renderVanilla(s, rec, state.t);
+    if (state.tab === 'vanilla') {
+      const lines = [];
+      for (const s of SLOTS) {
+        const rec = makeRecord(s);
+        renderVanilla(s, rec, state.t);
+        lines.push(`${s.label}: ${rec.detail || ''}`);
+      }
+      const w = weapon(), n = w.cat && w.cat.lasers.length ? w.cat.lasers[0].name : null;
+      setText('caption', `Vanilla reconstruction of ${w.id}${n ? ' (' + n + ')' : ''}: muzzle, projectile, impact and the ${data().tiers[state.tier] ? data().tiers[state.tier][0] : ''} death explosion`);
+      setText('caption_detail', lines.join('\n'));
+    } else {
+      const rec = makeRecord(SLOTS.find(s => s.key === 'impact'));
       renderOurs(rec, state.t);
+      if (state.tab === 'shield' && layers.native) drawNative(rec, state.t);
+      setText('caption', rec.caption || '');
+      setText('caption_detail', rec.detail || '');
     }
   }
   requestAnimationFrame(frame);
 }
 
+// The stage's tab: Shield hit and Hull hit draw ours on the one stage canvas, Vanilla the four slots; only the active
+// tab's controls show (every element with data-tabs lists the tabs it applies to).
+function setTab(tab) {
+  const btn = document.querySelector(`#tabs .tab[data-tab="${tab}"]`);
+  if (!btn || btn.disabled) tab = 'shield';
+  state.tab = tab;
+  if (tab === 'shield' || tab === 'hull') $('c_family').value = tab;
+  const sc = state.scenario && PRESETS.find(x => x.id === state.scenario);
+  if (sc && sc.family !== tab && (tab === 'shield' || tab === 'hull')) scenarioTouched(); // the other family
+  for (const b of document.querySelectorAll('#tabs .tab')) {
+    b.classList.toggle('active', b.dataset.tab === tab);
+    b.setAttribute('aria-selected', String(b.dataset.tab === tab));
+  }
+  for (const el of document.querySelectorAll('[data-tabs]')) el.hidden = !el.dataset.tabs.split(' ').includes(tab);
+  try { localStorage.setItem('x3m.weapon_lab.tab', tab); } catch (e) { /* no storage */ }
+  state.dirty = true;
+}
+const VANILLA_LAYERS = ['tint', 'travel', 'flares', 'lights'];
+function saveLayers() {
+  try {
+    localStorage.setItem('x3m.weapon_lab.layers', JSON.stringify(layers));
+    localStorage.setItem('x3m.weapon_lab.vanilla', JSON.stringify(Object.fromEntries(VANILLA_LAYERS.map(id => [id, $(id).checked]))));
+  } catch (e) { /* no storage */ }
+}
+function initLayers() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('x3m.weapon_lab.vanilla') || '{}');
+    for (const id of VANILLA_LAYERS) if (typeof saved[id] === 'boolean') $(id).checked = saved[id];
+  } catch (e) { /* no storage: the defaults */ }
+  for (const box of document.querySelectorAll('#p_layers input[data-layer]')) {
+    box.checked = layers[box.dataset.layer] !== false;
+    box.onchange = () => { layers[box.dataset.layer] = box.checked; saveLayers(); state.dirty = true; };
+  }
+  for (const id of VANILLA_LAYERS) $(id).onchange = () => { saveLayers(); state.dirty = true; };
+  const setAll = on => { // the active tab's layers (the shimmer placeholder stays)
+    for (const box of document.querySelectorAll('#p_layers input[type=checkbox]:not([disabled])')) {
+      if (box.closest('[hidden]')) continue;
+      box.checked = on;
+      if (box.dataset.layer) layers[box.dataset.layer] = on;
+    }
+    saveLayers(); state.dirty = true;
+  };
+  $('layers_all').onclick = () => setAll(true);
+  $('layers_none').onclick = () => setAll(false);
+}
+
 function init() {
+  const stage = document.createElement('canvas');
+  stage.width = OW; stage.height = OH;
+  $('stage_ours').appendChild(stage);
+  const stageCtx = stage.getContext('2d');
   const slots = $('slots');
   for (const s of SLOTS) {
     const div = document.createElement('div');
     div.className = 'slot';
-    div.innerHTML = `<h3>${s.label}</h3><div class="sinfo"></div>
-      <div class="pair"><figure class="vanilla"><canvas width="${W}" height="${H}"></canvas><figcaption>Vanilla reconstruction</figcaption></figure>
-      <figure class="ours"><canvas width="${OW}" height="${OH}"></canvas><figcaption>${s.key === 'impact' ? 'Ours (step 1): the shield-hit hex patch on a shielded hit, drawn over the native impact' : 'Ours (later step): renderOurs(record, t) draws nothing yet'}</figcaption></figure></div>
-      <div class="tbl"></div>`;
+    div.innerHTML = `<h3>${s.label} <span class="sinfo"></span></h3><canvas width="${W}" height="${H}"></canvas><div class="tbl"></div>`;
     slots.appendChild(div);
-    const [vc, oc] = div.querySelectorAll('canvas');
-    Object.assign(s, {ctx: vc.getContext('2d'), ours: oc, oursCtx: oc.getContext('2d'),
+    Object.assign(s, {ctx: div.querySelector('canvas').getContext('2d'), ours: stage, oursCtx: stageCtx,
                       info: div.querySelector('.sinfo'), table: div.querySelector('.tbl')});
   }
+  for (const b of document.querySelectorAll('#tabs .tab')) b.onclick = () => setTab(b.dataset.tab);
   $('view').innerHTML = Object.entries(LAB_DATA).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
   $('view').onchange = e => setView(e.target.value);
   $('weapon').onchange = e => { state.weapon = +e.target.value; updateInfo(); state.dirty = true; };
@@ -1834,13 +2118,27 @@ function init() {
   $('scrub').oninput = e => { state.t = +e.target.value; state.playing = false; $('play').textContent = 'Play'; state.dirty = true; };
   $('speed').onchange = e => { state.speed = +e.target.value; };
   $('reseed').onclick = () => { state.seed++; state.dirty = true; };
-  for (const id of ['loop', 'zoom', 'tint', 'travel', 'flares', 'lights']) $(id).onchange = () => { state.dirty = true; };
+  for (const id of ['loop', 'zoom']) $(id).onchange = () => { state.dirty = true; };
   const first = Object.keys(LAB_DATA)[0];
   if (!first) { $('winfo').textContent = 'No data block: run tools/effects/generate_weapon_effects_lab.py'; return; }
   initOurControls();
   initHullControls();
-  $('preset').innerHTML = '<option value="">(none)</option>' + PRESETS.map(p => `<option value="${p.id}">${p.id}</option>`).join('');
+  initLayers();
+  let tab = 'shield';
+  try { tab = localStorage.getItem('x3m.weapon_lab.tab') || 'shield'; } catch (e) { /* no storage */ }
+  setTab(tab);
+  fillScenarios();
   $('preset').onchange = e => applyPreset(e.target.value);
+  // Any user change of a scene, weapon, playback or tuning control after a scenario marks it modified (the layers,
+  // play, scrub, speed and zoom only change the view of it).
+  const touched = e => {
+    const el = e.target;
+    if (!el || el.closest('#p_layers') || ['play', 'scrub', 'speed', 'zoom'].includes(el.id)) return;
+    scenarioTouched();
+  };
+  $('panels').addEventListener('input', touched);
+  $('panels').addEventListener('change', touched);
+  $('panels').addEventListener('click', e => { if (e.target && /^c_h?_?reset$/.test(e.target.id)) scenarioTouched(); });
   setView(first);
   requestAnimationFrame(frame);
 }

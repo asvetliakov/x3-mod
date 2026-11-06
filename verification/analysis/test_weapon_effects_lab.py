@@ -400,8 +400,78 @@ class PageTest(unittest.TestCase):
         self.assertRegex(self.html, r'<select id="c_hits"[^>]*>.*value="1".*value="4".*value="12"')
         self.assertNotIn('c_core_ms', self.html)                        # the core flash is gone (2026-11-06)
         self.assertRegex(self.html, r'<select id="c_seta"><option selected>1</option>.*<option>6</option>')
-        # the caption names what the impact slot draws; "later step" only for the slots that draw nothing
-        self.assertIn("s.key === 'impact' ? 'Ours (step 1): the shield-hit hex patch", self.html)
+        # the stage replaces the vanilla/ours canvas pair: no dashed "ours" figure, no "draws nothing yet" caption
+        self.assertNotIn('figure class="ours"', self.html)
+        self.assertNotIn('draws nothing yet', self.html)
+        self.assertNotIn('<figcaption>Vanilla reconstruction</figcaption>', self.html)
+
+    def test_tabs_and_panels(self):
+        """2026-11-07 rework: one stage under a row of six tabs (Shield hit, Hull hit and Vanilla enabled; Explosion,
+        Bolt and Beam disabled with a "later step" note), the controls in the Scene, Weapon, Playback, Layers and Tuning
+        panels in that order (Tuning collapsed), a readable caption with its details collapsed, the legend collapsed,
+        every control's id kept, and the controls of the other tabs hidden by their data-tabs."""
+        tabs = re.findall(r'<button type="button" class="tab" role="tab" data-tab="(\w+)"( disabled)?[^>]*>([^<]+)(?:<small>([^<]*)</small>)?',
+                          self.html)
+        self.assertEqual([(t[0], t[2].strip()) for t in tabs],
+                         [('shield', 'Shield hit'), ('hull', 'Hull hit'), ('vanilla', 'Vanilla'),
+                          ('explosion', 'Explosion'), ('bolt', 'Bolt'), ('beam', 'Beam')])
+        self.assertEqual([t[0] for t in tabs if not t[1]], ['shield', 'hull', 'vanilla'])
+        self.assertTrue(all(t[3] == 'later step' for t in tabs if t[1]))
+        legends = re.findall(r'<fieldset id="p_(\w+)"[^>]*><legend>(\w+)</legend>', self.html)
+        self.assertEqual(legends, [('scene', 'Scene'), ('weapon', 'Weapon'), ('playback', 'Playback'),
+                                   ('layers', 'Layers'), ('tuning', 'Tuning')])
+        self.assertRegex(self.html, r'<legend>Tuning</legend>\n  <details id="tuning_more"><summary>')
+        self.assertIn('<details id="legend"><summary>What this draws', self.html)
+        self.assertIn('<p id="caption"></p>', self.html)
+        self.assertIn('<details id="caption_more"><summary>counts and details</summary><pre id="caption_detail">', self.html)
+        markup = self.html[self.html.index('<body>'):self.html.index('<script>')]
+        self.assertNotIn('<canvas', markup)                            # the stage and the slot canvases come from init()
+        for cid in ('preset', 'view', 'weapon', 'tier', 'drow', 'play', 'scrub', 'tread', 'loop', 'speed', 'zoom', 'tint',
+                    'travel', 'flares', 'lights', 'reseed', 'c_family', 'c_camera', 'c_variant', 'c_k', 'c_class',
+                    'c_h_spark_x', 'c_pulse_on', 'c_pulse_period', 'c_sweep', 'c_loop', 'c_h_ramp1', 'c_h_ramp2',
+                    'c_h_ramp3', 'c_h_ramp4', 'c_h_min_frames', 'c_reset', 'c_h_reset', 'c_class_rows', 'c_tier',
+                    'c_shield', 'c_drain', 'c_frame', 'c_surface', 'c_bubble_scale', 'c_bubble_far', 'c_hull', 'c_own',
+                    'c_cockpit', 'winfo', 'status', 'wdesc'):
+            self.assertEqual(self.html.count(f'id="{cid}"'), 1, cid)
+        # the hull-only and shield-only rows name their tab; the tab switch hides, never disables
+        for cid, tabs_of in (('c_camera', 'hull'), ('c_class', 'hull'), ('c_k', 'hull'), ('c_surface', 'shield'),
+                             ('c_shield', 'shield'), ('c_hits', 'shield hull'), ('tier', 'vanilla'), ('zoom', 'vanilla')):
+            self.assertRegex(self.html, r'<label class="row" data-tabs="%s"[^\n]*id="%s"' % (tabs_of, cid), cid)
+        self.assertIn("el.hidden = !el.dataset.tabs.split(' ').includes(tab);", self.html)
+        self.assertIn("setTab(p.family);", self.html)                  # a preset picks its tab
+        self.assertIn("try { localStorage.setItem('x3m.weapon_lab.tab', tab); } catch (e)", self.html)
+        self.assertIn('@media (max-width: 900px) { #panels { grid-template-columns: 1fr; }', self.html)
+
+    def test_layers_panel(self):
+        """The Layers panel: one checkbox per drawn element of the active family, all on by default (hull: flash, flash
+        halo, burst, sparks, chips, entry streak, ring, glow, ember, scorch, filaments and the shimmer's disabled
+        placeholder; shield: patch, bubble outline, native impact sprite; vanilla: the tint, travel, flare and light
+        options), "all" and "none", the state persisted in localStorage inside try/catch and read by the renderers."""
+        panel = re.search(r'<fieldset id="p_layers">(.*?)</fieldset>', self.html, re.S).group(1)
+        boxes = re.findall(r'<label class="check[^"]*" data-tabs="([\w ]+)"[^>]*><input id="(\w+)" type="checkbox"([^>]*)>', panel)
+        by_tab = {}
+        for tab, cid, attrs in boxes:
+            by_tab.setdefault(tab, []).append(cid)
+        self.assertEqual(by_tab['hull'], ['layer_flash', 'layer_flash_halo', 'layer_burst', 'layer_sparks', 'layer_chips',
+                                          'layer_streak', 'layer_ring', 'layer_glow', 'layer_ember', 'layer_scorch',
+                                          'layer_filament', 'layer_shimmer'])
+        self.assertEqual(by_tab['shield hull'], ['layer_hull'])       # the hull body under both previews
+        self.assertEqual(by_tab['shield'], ['layer_patch', 'layer_bubble', 'layer_native'])
+        self.assertEqual(by_tab['vanilla'], ['tint', 'travel', 'flares', 'lights'])
+        for tab, cid, attrs in boxes:
+            if cid.startswith('layer_'):
+                self.assertIn('checked', attrs, cid)
+        self.assertIn('disabled', dict((c, a) for _, c, a in boxes)['layer_shimmer'])
+        self.assertIn('id="layers_all"', panel)
+        self.assertIn('id="layers_none"', panel)
+        keys = json.loads(re.search(r'const LAYER_KEYS = (\[.*?\]);', self.html, re.S).group(1).replace("'", '"'))
+        self.assertEqual(sorted(keys), sorted(re.findall(r'data-layer="(\w+)"', panel)))
+        render_hull = self.html[self.html.index('function renderHull('):self.html.index('const HULL_IDS')]
+        for name in ('glow', 'flash', 'flash_halo', 'ember', 'ring', 'scorch', 'filament', 'burst'):
+            self.assertIn(f'layers.{name}', render_hull, name)
+        self.assertIn('if (layers.glow && gw[0] > 0 && a < glowLife)', render_hull)
+        self.assertIn('layers.patch', self.html[self.html.index('function renderOurs('):self.html.index('function ourLoopMs(')])
+        self.assertRegex(self.html, r"try \{\n  const saved = JSON\.parse\(localStorage\.getItem\('x3m\.weapon_lab\.layers'\)")
 
     def test_stage_capacities_come_from_the_headers(self):
         """CELL_KEY_BIAS, PATCH_CELLS, PATCH_HITS, OWNER_HITS and REGION_DRAWS are injected into the HEADER block from
@@ -468,6 +538,7 @@ const vals = {c_cell_fighter: HEADER.cell_m[0], c_cell_corvette: HEADER.cell_m[1
   c_colour_low: HEADER.colour_low, c_colour_full: '#a0c0ff', c_colour_half: '#ffff80', c_colour_empty: '#ff8080',
   c_weapon_tint: 0, c_seta: 1, c_hits: 0, c_tier: 0, c_shield: 100, c_drain: 0, c_frame: 'patch'};
 function $(id) { return {value: vals[id]}; }
+layers.hull = false; // the shield tests count lit pixels: the dim hull body under the patch would count with them
 '''
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
@@ -654,6 +725,109 @@ console.log(JSON.stringify(out));
         self.assertEqual(js['hull/ion-ionc-capital']['anatomy'], 'ion')
         self.assertEqual(js['hull/repair-corvette']['anatomy'], 'repair')
         self.assertEqual(js['hull/mining-asteroid-60m']['anatomy'], 'asteroid')
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_scenarios(self):
+        """The Scenario selector (the presets, ids unchanged): grouped Shield / Hull, every preset a distinct readable
+        label and a one-line description built from its fields in the page, the hand-written notes only for existing
+        ids, choosing one switches the tab, and a later control change shows "(modified)"."""
+        presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        self.assertIn('Scenario <select id="preset">', self.html)
+        self.assertNotIn('>Preset <select', self.html)
+        self.assertIn('''group('shield', 'Shield') + group('hull', 'Hull')''', self.html)
+        self.assertIn("$('scenario_mod').textContent = p && state.scenarioModified ? '(modified)' : '';", self.html)
+        self.assertIn("$('panels').addEventListener('change', touched);", self.html)
+        self.assertIn('setTab(p.family);', self.html[self.html.index('function applyPreset('):self.html.index('function setView(')])
+        script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
+        names = script[script.index('const SCENARIO_NOTES'):script.index('function fillScenarios(')]
+        probe = self.ours_script() + self.CONTROLS + names + r"""
+const PRESETS = __PRESETS__;
+console.log(JSON.stringify({labels: Object.fromEntries(PRESETS.map(p => [p.id, scenarioLabel(p)])),
+                            desc: Object.fromEntries(PRESETS.map(p => [p.id, scenarioDescription(p)])),
+                            shown: scenarioLabels(),
+                            notes: Object.keys(SCENARIO_NOTES)}));
+""".replace('__PRESETS__', json.dumps(presets))
+        js = self.run_node(probe)
+        ids = [p['id'] for p in presets]
+        self.assertEqual(sorted(js['labels']), sorted(ids))
+        self.assertEqual(len(set(js['shown'].values())), len(ids))      # the selector's labels are distinct
+        self.assertEqual(set(js['notes']) - set(ids), set())
+        self.assertEqual(js['labels']['hull/fighter-ire-chase-nose'], 'Own fighter, IRE hit on the nose, chase view')
+        self.assertEqual(js['desc']['hull/fighter-ire-chase-nose'],
+                         'k 0.33, Mayhem 3, no SETA, single hit; checks the chase-view nose placement')
+        self.assertIn('stock AP', js['desc']['hull/stock-vs-mayhem'])
+        self.assertEqual(js['labels']['shield/capital-ppc-flank'], 'Capital, PPC shield hit on the flank, side view, 12 hits/s')
+        self.assertEqual(js['labels']['hull/stock-vs-mayhem'], 'Fighter, IRE hit from above, side view, stock AP')
+        self.assertIn('shield 60 %', js['desc']['shield/capital-ppc-flank'])
+        for pid, text in js['labels'].items():
+            self.assertNotIn('undefined', text + js['desc'][pid], pid)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_hull_layers_remove_their_element(self):
+        """The Layers panel's glow (the soft bulb within class_glow r_hit of the contact) and flash halo: every hull preset
+        at 40 ms renders with all layers on (the default), with glow off and with the flash halo off. Glow off leaves no
+        glow light, pixel or count and every other element's light unchanged; the flash halo off keeps the glow and
+        lowers the flash's light (the white core stays where it is in view). The hull body (on by default) paints the hull's
+        pixels under the elements and leaves every element's light, lit pixels and count as with it off."""
+        presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        weapons = {}
+        for view in ('stock_ap', 'mayhem3', 'fl'):
+            m = re.search(r'\n%s: (\{.*?\}),\n' % json.dumps(view), self.html)
+            if m:
+                weapons[view] = {w['id']: w for w in json.loads(m.group(1))['weapons']}
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const PRESETS = __PRESETS__, WEAPONS = __WEAPONS__;
+layers.hull = true; // CONTROLS turns the hull body off for the pixel-counting shield tests; the page's default is on
+const out = {defaults: Object.assign({}, layers)};
+for (const p of PRESETS.filter(x => x.family === 'hull')) {
+  Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
+                       c_variant: p.variant, c_k: p.k, c_shield: p.shield, c_class: p.cls, c_pulse_on: p.pulse[0],
+                       c_pulse_period: p.pulse[1], c_sweep: p.sweep, c_loop: p.loop});
+  checks.c_own = p.own; checks.c_cockpit = p.cockpit;
+  const data = new Uint8ClampedArray(OW * OH * 4).fill(128), weapon = WEAPONS[p.view][p.weapon];
+  const at = () => {
+    let put = null;
+    const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data: data.slice()}; }, putImageData(img) { put = img.data; }}, weapon};
+    renderOurs(rec, 40);
+    return {light: rec.hullStats.light, lit_px: rec.hullStats.lit_px, glows: rec.hullStats.glows, lit: rec.hullStats.lit,
+            caption: rec.caption, put};
+  };
+  const on = at();
+  layers.glow = false; const noGlow = at(); layers.glow = true;
+  layers.flash_halo = false; const noHalo = at(); layers.flash_halo = true;
+  layers.hull = false; const noBody = at(); layers.hull = true;
+  let body = 0; // the pixels the hull body changes
+  for (let i = 0; i < on.put.length; i += 4) body += on.put[i] !== noBody.put[i] || on.put[i + 2] !== noBody.put[i + 2];
+  for (const r of [on, noGlow, noHalo, noBody]) delete r.put;
+  out[p.id] = {on, noGlow, noHalo, noBody, body};
+}
+console.log(JSON.stringify(out));
+""".replace('__PRESETS__', json.dumps(presets)).replace('__WEAPONS__', json.dumps(weapons))
+        js = self.run_node(probe)
+        self.assertTrue(all(js.pop('defaults').values()))               # all layers on by default
+        glowing = 0
+        for pid, r in js.items():
+            on, no_glow, no_halo, no_body = r['on'], r['noGlow'], r['noHalo'], r['noBody']
+            # the hull body only paints the pixels under the elements: every element's light, lit pixels and count stay
+            self.assertEqual((no_body['light'], no_body['lit_px'], no_body['lit']), (on['light'], on['lit_px'], on['lit']), pid)
+            self.assertGreater(r['body'], 0, pid)                       # the hull body shows (36 px for a fighter at 2 km)
+            self.assertIn('hidden: hull body', no_body['caption'])
+            self.assertEqual((no_glow['light']['glow'], no_glow['lit_px']['glow'], no_glow['glows']), (0, 0, 0), pid)
+            for el, v in on['light'].items():
+                if el != 'glow':
+                    self.assertEqual(no_glow['light'][el], v, (pid, el))
+            if on['light']['glow'] > 0:
+                glowing += 1
+                self.assertLess(no_glow['lit'], on['lit'], pid)
+                self.assertIn('hidden: glow', no_glow['caption'])
+            self.assertEqual(no_halo['light']['glow'], on['light']['glow'], pid)
+            if on['light']['flash'] > 0:
+                self.assertLess(no_halo['light']['flash'], on['light']['flash'], pid)
+            self.assertTrue(on['caption'].startswith('Hull hit, '), on['caption'])
+            self.assertNotIn('hidden', on['caption'])
+        self.assertGreaterEqual(glowing, 8)                             # the classes with a glow light it at 40 ms
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_lab_classes_match_the_census(self):
