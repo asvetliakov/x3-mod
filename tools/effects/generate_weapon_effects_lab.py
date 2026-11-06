@@ -57,7 +57,7 @@ NAMESPACES = {
     'look': ('heat_ramp', 'min_frames', 'soft_core', 'soft_halo', 'core_e', 'body_max', 'halo_max', 'halo_fold',
              'streak_cap', 'streak_core_min', 'floor_core_px', 'floor_lit_px', 'floor_len_px', 'floor_flash_px',
              'budget_weight_patch', 'budget_weight_glow'),
-    'hull': ('r_base', 'r_k', 'flash_ms', 'flash_core', 'flash_halo_t', 'spark_n0', 'spark_nk', 'spark_speed_u',
+    'hull': ('r_base', 'r_k', 'r_scale', 'flash_ms', 'flash_core', 'flash_halo_t', 'spark_n0', 'spark_nk', 'spark_speed_u',
              'spark_speed_spread', 'spark_tau_s', 'spark_life_ms', 'spark_life_k_ms', 'spark_width_u', 'spark_e',
              'spark_rest_w', 'glow_r', 'glow_t', 'glow_e', 'glow_ms', 'ember_r', 'ember_t', 'ember_e', 'ember_ms', 'bias',
              'asteroid_dust_x', 'asteroid_t', 'missile_spark_x', 'tug_colour', 'mode', 'spark_count_x')}

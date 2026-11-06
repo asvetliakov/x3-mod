@@ -1,0 +1,30 @@
+# before: HEAD constants, new rows (device lost at Reset in that run: timings absent); after: this change, RESULT PASS
+# fixture_before.log
+CHECK hull_spark_reach_asymptote_2u PASS
+HULL case=floors_2km sparks=13 min_width_px=3.000 min_length_px=12.000 flash_core_px=3.012
+CHECK hull_streak_min_footprint_3px_12px PASS
+HULL case=chase_nose age_ms=200 sparks=13 lit=405 outside_lit=405
+HULL case=spark_visibility subject=fighter_chase_nose age_ms=100 sparks=13 lit=208 width_px=5.14 rest_px=15.41 peak_luma=2.070 sum_luma=169.0
+HULL case=spark_visibility subject=fighter_chase_nose age_ms=200 sparks=13 lit=502 width_px=5.15 rest_px=15.46 peak_luma=0.875 sum_luma=192.5
+HULL case=spark_visibility subject=capital_ppc_300m age_ms=100 sparks=21 lit=499 width_px=3.28 rest_px=12.00 peak_luma=2.836 sum_luma=473.3
+HULL case=spark_visibility subject=capital_ppc_300m age_ms=200 sparks=21 lit=564 width_px=3.28 rest_px=12.00 peak_luma=2.016 sum_luma=460.1
+RESULT FAIL checks=99 failures=8
+# fixture.log
+CHECK hull_spark_reach_asymptote_2_7u PASS
+HULL case=floors_2km sparks=13 min_width_px=3.000 min_length_px=24.000 flash_core_px=3.012
+CHECK hull_streak_min_footprint_3px_24px PASS
+HULL case=chase_nose age_ms=200 sparks=13 lit=1546 outside_lit=1546
+HULL case=spark_visibility subject=fighter_chase_nose age_ms=100 sparks=13 lit=722 width_px=10.27 rest_px=30.82 peak_luma=5.387 sum_luma=1442.0
+HULL case=spark_visibility subject=fighter_chase_nose age_ms=200 sparks=13 lit=1794 width_px=10.31 rest_px=30.93 peak_luma=2.254 sum_luma=1310.5
+HULL case=spark_visibility subject=capital_ppc_300m age_ms=100 sparks=21 lit=1901 width_px=6.55 rest_px=24.00 peak_luma=10.234 sum_luma=4149.2
+HULL case=spark_visibility subject=capital_ppc_300m age_ms=200 sparks=21 lit=2264 width_px=6.56 rest_px=24.00 peak_luma=4.348 sum_luma=3927.7
+HULL_TIMING width=1920 height=1080 case=fighter_60m_20_hits hits=20 sparks=260 flashes=0 boxes=40 lit_share=0.2182 raster_share=2.8216 gpu_us=61.6
+HULL_TIMING width=1920 height=1080 case=fighter_200m_20_hits hits=20 sparks=260 flashes=0 boxes=40 lit_share=0.0197 raster_share=0.2556 gpu_us=20.5
+HULL_TIMING width=1920 height=1080 case=capital_close_64_hits hits=64 sparks=1344 flashes=0 boxes=34 lit_share=0.8818 raster_share=1.9590 gpu_us=61.4
+HULL_TIMING width=1920 height=1080 case=glow_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=1 lit_share=1.0000 raster_share=1.0000 gpu_us=30.4
+HULL_TIMING width=5120 height=1440 case=fighter_60m_20_hits hits=20 sparks=260 flashes=0 boxes=40 lit_share=0.3551 raster_share=5.0021 gpu_us=293.6
+HULL_TIMING width=5120 height=1440 case=fighter_200m_20_hits hits=20 sparks=260 flashes=0 boxes=40 lit_share=0.0393 raster_share=0.4951 gpu_us=45.6
+CHECK hull_budget_20_hits_5120 PASS
+HULL_TIMING width=5120 height=1440 case=capital_close_64_hits hits=64 sparks=1344 flashes=0 boxes=19 lit_share=0.8658 raster_share=1.8543 gpu_us=132.8
+HULL_TIMING width=5120 height=1440 case=glow_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=1 lit_share=1.0000 raster_share=1.0000 gpu_us=71.0
+RESULT PASS checks=96 failures=0

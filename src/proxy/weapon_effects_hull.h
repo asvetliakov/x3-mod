@@ -7,7 +7,7 @@
 // renderer::WeaponSpriteVertex) and glow and ember boxes (the glow primitive, renderer::WeaponGlowVertex).
 //
 // Per record, at the contact point Event::pos in its owner's frame, sized in the owner's cell unit U = cell_m[tier]
-// and the impact's calibre k (calibre_of: the running damage total, or the override's): r_hit = U (r_base + r_k k);
+// and the impact's calibre k (calibre_of: the running damage total, or the override's): r_hit = r_scale U (r_base + r_k k);
 // - flash: a white disc core of flash_core r_hit (>= floor_flash_px) in a halo of r_hit at heat flash_halo_t (a missile
 //   source: its tint), radiance core_e, fading linearly over flash_ms; its centre biased towards the eye by bias r_hit;
 // - sparks: n = round(spark_n0 + spark_nk k) (x missile_spark_x for a missile source, x asteroid_dust_x for an asteroid)
@@ -135,7 +135,7 @@ inline float hull_unit(const core::Event& e, const HullTuning& t) noexcept {
     return metres_to_view(t.cell_m[tier]);
 }
 inline float hull_r_hit(const core::Event& e, const HullTuning& t) noexcept {
-    return hull_unit(e, t) * (core::hull::r_base + core::hull::r_k * hull_calibre(e));
+    return core::hull::r_scale * hull_unit(e, t) * (core::hull::r_base + core::hull::r_k * hull_calibre(e));
 }
 // The world point (view units, double) of an owner-frame contact point.
 inline void hit_world(const Owner& o, const std::int32_t pos[3], double out[3]) noexcept {
@@ -479,7 +479,7 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         if (hs.orphan) ++n.orphans;
         const float age = float(age_ms);
         const float k = (e.detail & core::detail_tug) && !(e.flags & core::flag_calibre_override) ? 0.1f : hull_calibre(e);
-        const float U = hull_unit(e, t), r_hit = U * (core::hull::r_base + core::hull::r_k * k);
+        const float U = hull_unit(e, t), r_hit = core::hull::r_scale * U * (core::hull::r_base + core::hull::r_k * k);
         const bool repair = (e.detail & core::detail_repair) != 0, tug = (e.detail & core::detail_tug) != 0;
         const bool asteroid = (e.detail & core::detail_asteroid) != 0, missile = e.table == core::table_missiles;
         const float gain = (f.cockpit && f.own_node && e.node == f.own_node) ? t.own_gain : 1.f;

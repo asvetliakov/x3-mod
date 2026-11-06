@@ -177,7 +177,7 @@ bool r32f_lane(Target& t, Com<IDirect3DTexture9>& tex, Com<IDirect3DSurface9>& s
     dev->EndScene();
     return true;
 }
-// One streak through the production resolve (resolve_core's configuration): a spark of rest length 12 px and width
+// One streak through the production resolve (resolve_core's configuration): a spark of rest length floor_len_px and width
 // 3 px moving +x at speed_px per frame (drawn from the previous frame's head to the current one: the streak rule),
 // radiance 3.6 (a spark at T 0.9), the lane 100 view units behind it; 16 frames on, then `after` frames without it.
 // Returns the core ratio (the current frame's streak pixels at half its peak or more: resolved over current share, on -
@@ -215,7 +215,7 @@ double resolve_streak(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motio
             hv.cam.m20 = ctx.frame.m20;
             hv.cam.m21 = ctx.frame.m21;
             // the head this frame, the tail where it was the previous frame (the vertex program draws the rest length
-            // of 12 px when it moved less); 3 px wide at view z 300 (5.12 px per view unit at 1080p)
+            // of floor_len_px when it moved less); 3 px wide at view z 300 (5.12 px per view unit at 1080p)
             const float head_x = float(g.w) * 0.5f + (float(n) - float(frames - 1)) * speed_px, tail_x = head_x - speed_px;
             const float head[3] = {(head_x * 2.f / float(g.w) - 1.f) / 1.6f * z, 0.f, z};
             const float tail[3] = {(tail_x * 2.f / float(g.w) - 1.f) / 1.6f * z, 0.f, z};
@@ -322,7 +322,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         draw_lane(g, 0.f, -1.f);
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.33));
-        const float r_hit = U * (hl::r_base + hl::r_k * 0.33f);
+        const float r_hit = hl::r_scale * U * (hl::r_base + hl::r_k * 0.33f);
         const HullOut sp = hull_build(hull_view(g, 1000, 16), only_sparks);
         const Centroid cs = centroid(hull_render(pass, sp), g.w);
         double qx = 0, qy = 0;
@@ -411,7 +411,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (half[i] > 1e-4f) ++((i % g.w) < g.w / 2 ? on_lane : on_sky);
         draw_lane(g, z_hit, 1.f);
         const Centroid c = centroid(hull_render(pass, o), g.w, 1e-4f);
-        const float R = hl::glow_r * U * (hl::r_base + hl::r_k * 0.33f);
+        const float R = hl::glow_r * hl::r_scale * U * (hl::r_base + hl::r_k * 0.33f);
         const double err = std::hypot(c.x - cx, c.y - cy) / ppu / R;
         std::printf("HULL case=glow_surface boxes=%u lit_sky=%u lit_lane=%u on_lane_share=%.4f full_lit=%u centroid_err_R=%.4f "
                     "R_view=%.3f\n",
@@ -492,7 +492,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     }
     // 6. Sizes, counts, reach and lives per tier at k 0 / 0.5 / 1 against the law (5 %): spark count round(8 + 16 k),
     // flash radius r_hit, glow R 3 r_hit, ember R 0.6 r_hit, spark width 0.04 U; the sparks' mean displacement at 200 ms
-    // against v0 tau (1 - e^(-t / tau)) over their own speeds; the reach law's asymptote 2 U (20 %); the sparks all live at
+    // against v0 tau (1 - e^(-t / tau)) over their own speeds; the reach law's asymptote 2.7 U (20 %); the sparks all live at
     // 0.8 x their law and none past 1.2 x.
     {
         bool sizes_ok = true, reach_ok = true, lives_ok = true;
@@ -505,7 +505,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const wc::Event* e = add_hull_hit(1000, front, damage_of(k), std::uint8_t(tier));
                 const std::uint32_t seq = e->sequence;
                 const float kf = wc::calibre_of(e->damage);
-                const float r_hit = Ut * (hl::r_base + hl::r_k * kf);
+                const float r_hit = hl::r_scale * Ut * (hl::r_base + hl::r_k * kf);
                 const HullOut o = hull_build(hull_view(g, 1000, 16));
                 const unsigned want_n = unsigned(float(hl::spark_n0) + float(hl::spark_nk) * kf + 0.5f);
                 float flash_r = 0, glow_R = 0, ember_R = 0, width = 0;
@@ -567,10 +567,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         std::printf("HULL case=reach_asymptote v0_tau_u=%.3f\n", asymptote_u);
         report("hull_sizes_counts_per_tier_law", sizes_ok, "");
         report("hull_spark_reach_law_200ms", reach_ok, "");
-        report("hull_spark_reach_asymptote_2u", std::fabs(asymptote_u - 2.0) <= 0.4, "");
+        report("hull_spark_reach_asymptote_2_7u", std::fabs(asymptote_u - 2.7) <= 0.54, "");
         report("hull_spark_lives_law", lives_ok, "");
     }
-    // 7. The pixel floors at 2 km: every spark quad at least 3 px wide and 12 px long, the flash's core 3 px across.
+    // 7. The pixel floors at 2 km: every spark quad at least 3 px wide and 24 px long, the flash's core 3 px across.
     {
         hull_owner(10100.f, 100.f); // the hit 2 km away
         add_hull_hit(1000, front, damage_of(0.33));
@@ -592,7 +592,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         }
         std::printf("HULL case=floors_2km sparks=%u min_width_px=%.3f min_length_px=%.3f flash_core_px=%.3f\n", o.n.sparks,
                     min_w, min_l, core_px);
-        report("hull_streak_min_footprint_3px_12px", o.n.sparks > 0 && min_w >= 3.0 - 1e-3 && min_l >= 12.0 - 1e-2 &&
+        report("hull_streak_min_footprint_3px_24px", o.n.sparks > 0 && min_w >= 3.0 - 1e-3 && min_l >= 24.0 - 1e-2 &&
                                                          core_px >= 3.0 - 0.02, "");
     }
     // 8. The three-frame floor: a 60 ms flash at SETA 6 (game step 100 ms) and SETA 10 (167 ms) drawn on 3 frames from
@@ -719,7 +719,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         std::uint32_t now = 1150, step = 16; // every record drawn from its own first frame below
         hull_build(hull_view(g, 1000, 16), statics);
         for (std::uint32_t t = 1016; t < 1150; t += 16) hull_build(hull_view(g, t, 16), statics);
-        const float rr = U * (hl::r_base + hl::r_k * wc::calibre_of(damage_of(0.33)));
+        const float rr = hl::r_scale * U * (hl::r_base + hl::r_k * wc::calibre_of(damage_of(0.33)));
         while (frames < 40) {
             const HullOut o = hull_build(hull_view(g, now, step), statics);
             for (unsigned r = 0; r < 6; ++r) {
@@ -867,6 +867,51 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         report("hull_chase_nose_lit_outside_outline", o.n.sparks > 0 && outside >= 20, "");
         draw_lane(g, 0.f, -1.f);
     }
+    // 11b. The sparks' visibility (the lab's "no sparks" report, 2026-11-06): sparks alone at 100 and 200 ms, (a) the
+    // chase-nose camera of case 11 on a fighter (IRE, k 0.33), (b) a PPC (k 0.8) on a capital's flat face 300 m from
+    // the eye (view z 1500, the lane at the hit: the inward half hidden). Lit pixels, the mean quad width and rest
+    // length in pixels through the vertex program's CPU twin, the peak and summed luma. Report rows only.
+    for (unsigned subject = 0; subject < 2; ++subject)
+        for (std::uint32_t age : {100u, 200u}) {
+            const bool capital = subject == 1;
+            HullLane hull{};
+            if (capital) {
+                hull_owner(2500.f, 1000.f);
+                const std::int32_t at[3] = {0, 0, -100000};
+                add_hull_hit(1000, at, damage_of(0.8), wc::patch_capital);
+                draw_lane(g, 1500.f, 1.f);
+            } else {
+                hull_owner(120.f, 66.f);
+                const double pc = std::cos(0.175), ps = std::sin(0.175);
+                const std::int32_t rows[3][3] = {{65536, 0, 0},
+                                                 {0, std::int32_t(pc * 65536.0), std::int32_t(ps * 65536.0)},
+                                                 {0, -std::int32_t(ps * 65536.0), std::int32_t(pc * 65536.0)}};
+                for (unsigned r = 0; r < 3; ++r)
+                    for (unsigned j = 0; j < 3; ++j)
+                        put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
+                const std::int32_t nose[3] = {0, 0, 6000};
+                add_hull_hit(1000, nose, damage_of(0.33));
+                const double ext[3] = {20.0, 8.0, 60.0};
+                hull = staged_hull(ext);
+                draw_hull_lane(g, hull);
+            }
+            hull_build(hull_view(g, 1000, 16), only_sparks);
+            const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_sparks);
+            double w = 0, len = 0;
+            for (unsigned q = 0; q < o.quads; ++q) {
+                const ws::StreakCorners sk = ws::streak_corners(hull_view(g, 1000 + age, 16), hq_sprites + 4 * q);
+                w += sk.lit;
+                len += sk.rest;
+            }
+            const std::vector<float> l = hull_render(pass, o);
+            float peak = 0.f;
+            for (float v : l) peak = std::max(peak, v);
+            std::printf("HULL case=spark_visibility subject=%s age_ms=%u sparks=%u lit=%u width_px=%.2f rest_px=%.2f "
+                        "peak_luma=%.3f sum_luma=%.1f\n",
+                        capital ? "capital_ppc_300m" : "fighter_chase_nose", age, o.n.sparks, lit_count(l),
+                        o.quads ? w / o.quads : 0.0, o.quads ? len / o.quads : 0.0, double(peak), total(l));
+            draw_lane(g, 0.f, -1.f);
+        }
     // 12. The own ship in the cockpit: every element of a hit on it at own_cockpit_gain; another ship unchanged.
     {
         hull_owner(400.f, 100.f);
@@ -905,7 +950,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const HullOut to = hull_build(hull_view(g, 1000, 16));
         const float tug_R = to.boxes ? hq_glows[0].light[3] : 0.f;
         const bool tug_ok = to.n.sparks == 0 && to.n.flashes == 0 && to.n.glows == 1 && to.n.embers == 0 &&
-                            std::fabs(tug_R - hl::glow_r * U * (hl::r_base + hl::r_k * 0.1f)) <= 1e-3f * tug_R &&
+                            std::fabs(tug_R - hl::glow_r * hl::r_scale * U * (hl::r_base + hl::r_k * 0.1f)) <= 1e-3f * tug_R &&
                             hq_glows[0].colour[2] > hq_glows[0].colour[0];
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.5), wc::patch_corvette, 0, wc::table_missiles);

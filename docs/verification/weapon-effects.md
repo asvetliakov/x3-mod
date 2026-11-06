@@ -597,3 +597,52 @@ Open:
 - Missile-victim classing: an impact whose victim is class 10 takes the projectile branch (the handler's victim-first
   rule), so a missile shot down by a bullet is not a hull hit; not reviewed against the engine.
 - `table_hull_key_missing` also reads 1 for a mod table that carries none of REPAIR, RL, TUG.
+
+### Hull sparks unseen in the lab; visibility and r_hit retune (2026-11-06, on `a78c8c2f5`)
+
+User report on the lab's hull presets (`hull/capital-ppc-flank-300m`, `hull/fighter-ire-side`): one bright blob that
+fades to a small red mark, no sparks. **Cause: a lab bug.** `renderHull` drew every spark quad (13 / 21 per frame, the
+law's count) but sampled its width from `w = -hw` in 0.5 px steps; below a 1 px streak (the 5120 floors scaled to the
+480 px canvas: 0.4–0.7 px wide, 1.2–2.1 px long) the only sample was the profile's edge, `(1 - v^2)^2 = 0`, so the
+sparks deposited no light (0 lit px on the capital at every age, at most 11 px of peak 0.004 on the fighter side). The
+stage drew them: before the change the fixture's sparks alone were 3.3 px wide on the capital and 5.1 px on the
+chase-nose fighter at 1080p. Fix: the lab samples midpoints across a footprint of at least one canvas pixel and keeps a
+thinner streak's energy (x lit / footprint); with the old constants the capital then lights 34–38 px at 100–300 ms
+(peak 0.36–0.38 after `1 - e^-v`), the fighter side 20–23 px.
+
+Visibility raised in the header, read by the stage and injected into the lab: `look::floor_len_px` 12 → 24
+(`floor_lit_px` stays 3; the hull sparks are the floor's only reader), `hull::spark_width_u` 0.04 → 0.08 U,
+`hull::spark_e` 4 → 8 (additive; the hold `streak_core_min` 1.2 unchanged), `hull::spark_tau_s` 0.33 → 0.45 s (reach
+asymptote 2.7 U; τ shapes the deceleration, the lives stay 250 + 250 k ms), and the new `hull::r_scale` 2: r_hit =
+2 U (0.35 + 0.65 k), so the flash, glow and ember double; the sparks' reach and width stay in U. Gates renamed with the
+law: `hull_spark_reach_asymptote_2_7u` (±20 %), `hull_streak_min_footprint_3px_24px`. The inward-half occlusion and
+the three-frame floor are unchanged (`hull_half_of_sparks_hidden_by_flat_lane` 0.498 / 0.507 / 0.500 after, 0.506 / 0.505 / 0.501 before).
+
+Fixture [M] (`verification/results/weapon-effects/hull_spark_rows.py` → `hull_spark_rows_out.txt`, native RTX 5070 Ti;
+the before run is this change's new rows on the old constants; two before runs lost the device at Reset while the game
+was up on the host, so before timings are the section's earlier table):
+
+| sparks alone, 1080p | width px | rest px | lit px 100 ms | lit px 200 ms | peak luma 100 / 200 ms |
+| --- | --- | --- | --- | --- | --- |
+| fighter chase nose (IRE k 0.33), before | 5.14 | 15.4 | 208 | 502 | 2.07 / 0.88 |
+| fighter chase nose, after | 10.27 | 30.8 | 722 | 1794 | 5.39 / 2.25 |
+| capital flat face 300 m (PPC k 0.8), before | 3.28 | 12.0 | 499 | 564 | 2.84 / 2.02 |
+| capital flat face 300 m, after | 6.55 | 24.0 | 1901 | 2264 | 10.23 / 4.35 |
+
+Chase-nose gate 405 → 1546 px outside the outline; floors at 2 km 3.000 / 24.000 px, flash core 3.012 px.
+
+Lab [M] (`verification/results/weapon-effects/hull_spark_lab_probe.py` → `hull_spark_lab_probe_out.txt`, 480x270):
+r_hit fighter IRE 1.69 → 3.39 m, capital PPC 13.92 → 27.84 m (glow R 5.1 → 10.2 m and 41.8 → 83.5 m). Sparks alone
+after: fighter side 31 / 33 lit px at 100 / 200 ms (peak 0.95 / 0.72), capital 35 / 55 px (0.98 / 0.75), chase nose 31
+/ 91 px; the side camera frames 4 U + 2 glow R, so the doubled r_hit draws the hull farther and the sparks smaller on
+the canvas (0.68 / 0.51 px wide, the 24 px floor 2.25 px).
+
+GPU, EVENT-fenced best of 60 (µs, 1080p / 5120x1440), after: fighter 200 m 20 hits 20.5 / 45.6 (`hull_budget_20_hits_5120`
+≤ 50 holds, 24.3 before), fighter 60 m 61.6 / 293.6 (96.2 before), capital close 64 hits 61.4 / 132.8 (58.5 before),
+one glow filling the frame 30.4 / 71.0. The rise is the glows' area (2 x R, 4 x the area). AP DLL clean at -j4, 0
+warnings, sha256 `99b4fbf2…`, no-x87 PASS (1162 reachable, 0 violations); D3D PASS 96/0, hook PASS 90/0; 74
+`test_weapon_effects_*` OK; lab and programs `--check` PASS.
+
+Open: the 60 m stress row is 3 x its earlier figure (293.6 µs at 5120x1440) and the 3.1 budget case has 4.4 µs of
+margin; the budget sheds glows by screens (8), not by this cost. The lab's spark test counts quads only
+(`test_hull_presets_render_their_elements`), which is why the zero-light sparks passed it.

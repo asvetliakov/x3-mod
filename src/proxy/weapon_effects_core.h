@@ -923,7 +923,8 @@ constexpr float halo_max = 0.2f;        // a halo's peak over its core's, e-fold
 constexpr float halo_fold = 1.5f;
 constexpr float streak_cap = 6.0f;      // a streak at most this many rest lengths (its radiance x rest / (rest + streak))
 constexpr float streak_core_min = 1.2f; // ... but a diluted core never below this (it survives the resolve)
-constexpr float floor_core_px = 2.0f, floor_lit_px = 3.0f, floor_len_px = 12.0f, floor_flash_px = 3.0f; // pixel floors
+constexpr float floor_core_px = 2.0f, floor_lit_px = 3.0f, floor_len_px = 24.0f, floor_flash_px = 3.0f; // pixel floors
+// floor_len_px: a streak (the hull sparks) never shorter than 24 px (12 until 2026-11-06: the lab's sparks unseen).
 // The shared screen budget's family weights (2.11): a draw is charged its projected area in screens x its weight (the
 // family's full-screen us over the decal's 177.5 us at 5120x1440). The glow: 71.4 us for one rectangle filling the
 // screen at 5120x1440 (native fixture, glow_alone_fills_frame, 2026-11-06; four runs 71.0-72.3) / 177.5 = 0.40 (the
@@ -931,7 +932,7 @@ constexpr float floor_core_px = 2.0f, floor_lit_px = 3.0f, floor_len_px = 12.0f,
 constexpr float budget_weight_patch = 1.0f, budget_weight_glow = 0.40f;
 } // namespace look
 // The hull hit (weapon-look.md 3.1): a 60 ms white flash, isotropic cooling sparks, a 150 ms glow on the hull and a
-// 1.2 s ember, all at the recorded contact point; r_hit = U (r_base + r_k k). mode full | simple (the kill fallback:
+// 1.2 s ember, all at the recorded contact point; r_hit = r_scale U (r_base + r_k k). mode full | simple (the kill fallback:
 // flash + glow + ember, no sparks) is a header constant, never a setting.
 namespace hull {
 enum Mode : std::uint8_t { full = 0, simple = 1 };
@@ -942,16 +943,19 @@ constexpr Mode mode = full;
 constexpr float spark_count_x = 1.0f;
 constexpr bool glow = true;
 constexpr float r_base = 0.35f, r_k = 0.65f;
+// r_hit's scale (2026-11-06, user: as the shield cells and the plumes, too small on ships tens of metres long): the
+// flash, glow and ember scale with it; the sparks' reach and width stay in U.
+constexpr float r_scale = 2.0f;
 constexpr unsigned flash_ms = 60;
 constexpr float flash_core = 0.25f;     // the flash's white core radius over r_hit (>= floor_flash_px); its halo r_hit
 constexpr float flash_halo_t = 0.9f;    // the halo's heat
 constexpr unsigned spark_n0 = 8, spark_nk = 16; // n = round(spark_n0 + spark_nk k), isotropic in antipodal pairs
 constexpr float spark_speed_u = 6.0f;   // U per game second, x (1 +- spark_speed_spread)
 constexpr float spark_speed_spread = 0.3f;
-constexpr float spark_tau_s = 0.33f;    // p(t) = p0 + v0 tau (1 - e^(-t / tau)): v0 tau = 2 U at the mean speed
+constexpr float spark_tau_s = 0.45f;    // p(t) = p0 + v0 tau (1 - e^(-t / tau)): v0 tau = 2.7 U at the mean speed
 constexpr unsigned spark_life_ms = 250, spark_life_k_ms = 250; // + k, x (1 +- stagger / 2)
-constexpr float spark_width_u = 0.04f;  // the streak's width (>= floor_lit_px)
-constexpr float spark_e = 4.0f;         // a spark's radiance at birth (the core's), x ramp(T) x T as it cools
+constexpr float spark_width_u = 0.08f;  // the streak's width (>= floor_lit_px)
+constexpr float spark_e = 8.0f;         // a spark's radiance at birth (2 x the core's), x ramp(T) x T as it cools
 constexpr float spark_rest_w = 3.0f;    // a spark's rest length in widths (>= floor_len_px)
 constexpr float glow_r = 3.0f, glow_t = 0.85f, glow_e = 1.0f; // R = glow_r x r_hit; heat; radiance
 constexpr unsigned glow_ms = 150;

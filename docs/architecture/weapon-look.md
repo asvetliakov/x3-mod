@@ -244,13 +244,14 @@ hull-through-shield rows (flag `0x20`: MASS, the repair lasers), drained shields
 sources (`missile_hit`). Step 2 arms `hull` and skips the native spawn for them as step 1 does for shields (the
 outer site, so the `PROPAGATE` children and `EEDF_LIGHT` go with it [M, 2.2]); a dying hit object keeps forwarding.
 
-**Look.** r_hit = U x (0.35 + 0.65 k): an IRE on a fighter (Mayhem d 1,358, k 0.33) 1.7 m, a PPC on a capital (d 11,957,
-k 0.80) 13.9 m.
+**Look.** r_hit = 2 U x (0.35 + 0.65 k) (`hull::r_scale` 2 since 2026-11-06, the user: too small on ships tens of
+metres long, as the shield cells and the plumes): an IRE on a fighter (Mayhem d 1,358, k 0.33) 3.4 m, a PPC on a capital
+(d 11,957, k 0.80) 27.8 m. The flash, glow and ember scale with r_hit; the sparks' reach and width stay in U.
 
 | Element | Shape | Colour | Size | Life (game) | Motion / fade |
 | --- | --- | --- | --- | --- | --- |
 | Flash | disc core + halo | white core E 4, halo heat T 0.9 | core 0.25 r_hit (≥ 3 px), halo r_hit | 60 ms | linear; three-frame floor |
-| Sparks | streak quads, closed form | heat T 1 → 0 over life | n = round(8 + 16 k); width 0.04 U (≥ 2 px); speed 6 U/s x (1 ± 0.3), τ 0.33 s (reach ≈ 2 U), **isotropic** directions, plus the owner's velocity | 250 + 250 k ms ± 20 % (the architecture's 250–500) | streak rule 2.5 |
+| Sparks | streak quads, closed form | heat T 1 → 0 over life, E 8 at birth | n = round(8 + 16 k); width 0.08 U (≥ 3 px), rest length 3 widths (≥ 24 px); speed 6 U/s x (1 ± 0.3), τ 0.45 s (reach ≈ 2.7 U), **isotropic** directions, plus the owner's velocity | 250 + 250 k ms ± 20 % (the architecture's 250–500) | streak rule 2.5 |
 | Glow | surface light | heat T 0.85, E 1.0 | R = 3 r_hit | 150 ms | linear |
 | Ember | surface light, small | heat T 0.4 → 0, E 0.6 | R = 0.6 r_hit | 1,200 ms | linear with cooling; the persistent "here" cue, as the shield's marker cell |
 
@@ -296,8 +297,8 @@ stops, `min_frames`, SETA.
 (the sparks' first-frame centroid within 0.25 U of P) and the flash's lit centroid within 0.1 r_hit of the projected
 hit; `hull_half_of_sparks_hidden_by_flat_lane` (0.45 to 0.55 of the streak pixels survive on a flat hull facing the
 eye); `hull_light_on_hull_not_sky` (0 lit sky pixels, ≥ 0.9 of the glow on the lane, its centroid within 0.3 R);
-`hull_light_peak_decay_150ms`; `hull_spark_cooling_ramp` (hue at 0 / 0.5 / 1 life); sizes, counts, reach (2 U ± 20 %)
-and lives per tier at k 0 / 0.5 / 1 against the law ±5 %; `hull_streak_min_footprint_3px_12px`;
+`hull_light_peak_decay_150ms`; `hull_spark_cooling_ramp` (hue at 0 / 0.5 / 1 life); sizes, counts, reach (2.7 U ± 20 %)
+and lives per tier at k 0 / 0.5 / 1 against the law ±5 %; `hull_streak_min_footprint_3px_24px`;
 `hull_min_frames_under_seta6` (a 60 ms flash drawn on ≥ 3 frames at SETA 6) and the SETA 6 wall-time law for the
 longer elements; `hull_no_pop_12hps` (no pixel drops by more than one frame's fade step before an element's end); the
 far-side hit hidden, the flash not halved by its own surface; the chase-nose gate (2.9); `hull_cockpit_dim_own_ship`
@@ -608,8 +609,8 @@ setting.
 
 | Namespace | Constants |
 | --- | --- |
-| `look` | `heat_ramp[5]`, `min_frames` 3, `soft_core` 0.15, `soft_halo` 1.0, `core_e` 4, `body_max` 1.5, `halo_max` 0.2, `streak_cap` 6, `streak_core_min` 1.2, `floor_core_px` 2, `floor_lit_px` 3, `floor_len_px` 12, `floor_flash_px` 3, `budget_weight[family]` |
-| `hull` | `mode`, `r_base` 0.35, `r_k` 0.65, `flash_ms` 60, `spark_n0` 8, `spark_nk` 16, `spark_speed_u` 6, `spark_tau_s` 0.33 (isotropic), `spark_life_ms` 250 + 250 k, `spark_width_u` 0.04, `glow_r` 3, `glow_ms` 150, `ember_r` 0.6, `ember_ms` 1200, `bias` 0.5, `asteroid_dust_x` 2, `missile_spark_x` 2 |
+| `look` | `heat_ramp[5]`, `min_frames` 3, `soft_core` 0.15, `soft_halo` 1.0, `core_e` 4, `body_max` 1.5, `halo_max` 0.2, `streak_cap` 6, `streak_core_min` 1.2, `floor_core_px` 2, `floor_lit_px` 3, `floor_len_px` 24 (12 until 2026-11-06; the hull sparks its only reader), `floor_flash_px` 3, `budget_weight[family]` |
+| `hull` | `mode`, `r_base` 0.35, `r_k` 0.65, `r_scale` 2, `flash_ms` 60, `spark_n0` 8, `spark_nk` 16, `spark_speed_u` 6, `spark_tau_s` 0.45 (isotropic), `spark_life_ms` 250 + 250 k, `spark_width_u` 0.08, `spark_e` 8, `glow_r` 3, `glow_ms` 150, `ember_r` 0.6, `ember_ms` 1200, `bias` 0.5, `asteroid_dust_x` 2, `missile_spark_x` 2 |
 | `boom` | `mode`, per tier `f`, `clamp`, `life_s`, `embers`, `secondaries`; `flash_ms` 80, `grow` 0.15, `shock_r` 4, `shock_life` 0.3, `glow_r` 5, `drift_tau_s` 0.4, `lod_coverage` 0.2, `peak_cap` 2 (above 0.5 EV), `smoke` false, `station_secondaries` 12, `tier_native` mask, `asteroid_native` true |
 | `bolt` | `mode`, `w0_m` 0.5, `w_k` 2, rest lengths 1 / 3 / 10, `halo_sigma` 1.5, `tail_ms` 40, `tail_max_w` 30, `birth_ms` 30, `end_ms` 60, `cockpit_native` false |
 | `muzzle` | `mode`, `r_w` 2.5, `cone_w` 4, `life_ms` 120, `glow_r_w` 6, `glow_ms` 120 |

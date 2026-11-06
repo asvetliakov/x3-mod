@@ -16,14 +16,10 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "9ae410d6dd4afa4e36f006fc98cb1da89c3a292c-dirty",
+    "commit": "a78c8c2f539c9454d02424ee48394ef7c20e2d90-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "src/proxy/weapon_effects_table.h",
-      "verification/probe/weapon_effects_hook_fixture.cpp"
+      "src/proxy/weapon_effects_core.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "6d66ad4a43b276646ad726a2bead923397d851459a452782a1f2918dc403f0ff",
@@ -32,7 +28,7 @@
       "src/proxy/weapon_effects_patch.cpp": "ccd9c5862cc20a90e0bd47cbb94292e039fded36aa01b5e02c9af3295f6a23da",
       "src/proxy/weapon_effects_patch.h": "23f7ab4d469b2a66a913580d9d4cbebef5481ad58d9c8d533dedd57088c46759",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "59dd21aa5121b5999eae490b4b0f251c367ee37ded369c9800e2801ddc650552",
+      "src/proxy/weapon_effects_core.h": "9804f3cfa9a3f0911de63bc94d6d5acf60809b06767684ffcb3142ba9fd0eba6",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_table.h": "a62f25762dda98976b93dc8cc73a12483248933ed790d5469404adc454e24e04",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
@@ -79,7 +75,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "fa97551101cdc0251161398adf1fe3b6ae96a003b7c6fef0d1757b6f3e85d7e6"
+    "executable_sha256": "accc4c2ecaee56411d82bd4516b23535e4bf7b432fbe1fdb314f7b1185e35364"
   },
   "host": {
     "name": "native-windows",
@@ -680,9 +676,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.6,
-    "median_us": 17.7,
-    "worst_us": 18.9,
+    "best_us": 17.4,
+    "median_us": 17.5,
+    "worst_us": 18.5,
     "target_us": 30
   },
   "passed": true

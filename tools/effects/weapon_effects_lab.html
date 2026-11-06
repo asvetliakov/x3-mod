@@ -247,8 +247,8 @@ const HEADER = {
   patch_hits: 4,
   owner_hits: 64,
   region_draws: 8,
-  look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":12.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4},
-  hull: {"r_base":0.35,"r_k":0.65,"flash_ms":60,"flash_core":0.25,"flash_halo_t":0.9,"spark_n0":8,"spark_nk":16,"spark_speed_u":6.0,"spark_speed_spread":0.3,"spark_tau_s":0.33,"spark_life_ms":250,"spark_life_k_ms":250,"spark_width_u":0.04,"spark_e":4.0,"spark_rest_w":3.0,"glow_r":3.0,"glow_t":0.85,"glow_e":1.0,"glow_ms":150,"ember_r":0.6,"ember_t":0.4,"ember_e":0.6,"ember_ms":1200,"bias":0.5,"asteroid_dust_x":2.0,"asteroid_t":0.3,"missile_spark_x":2.0,"tug_colour":[0.7,0.8,1.0],"mode":"full","spark_count_x":1.0}
+  look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4},
+  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_ms":60,"flash_core":0.25,"flash_halo_t":0.9,"spark_n0":8,"spark_nk":16,"spark_speed_u":6.0,"spark_speed_spread":0.3,"spark_tau_s":0.45,"spark_life_ms":250,"spark_life_k_ms":250,"spark_width_u":0.08,"spark_e":8.0,"spark_rest_w":3.0,"glow_r":3.0,"glow_t":0.85,"glow_e":1.0,"glow_ms":150,"ember_r":0.6,"ember_t":0.4,"ember_e":0.6,"ember_ms":1200,"bias":0.5,"asteroid_dust_x":2.0,"asteroid_t":0.3,"missile_spark_x":2.0,"tug_colour":[0.7,0.8,1.0],"mode":"full","spark_count_x":1.0}
 };
 /* @end */
 /* @weapon_effects_data */
@@ -766,7 +766,7 @@ function initOurControls() {
 
 // ---------------------------------------------------------------- our renderer: the hull hit (weapon-look.md 3.1)
 // The impact slot's hull hit (family hull, step 2): the law of src/proxy/weapon_effects_hull.h on the preview owner
-// (previewHull: the tier's preview hull and camera), every length in metres: r_hit = U (r_base + r_k k), U the tier's
+// (previewHull: the tier's preview hull and camera), every length in metres: r_hit = r_scale U (r_base + r_k k), U the tier's
 // cell_m; a white flash (its core flash_core r_hit, >= floor_flash_px, a halo of r_hit at heat flash_halo_t, flash_ms,
 // its centre biased towards the eye by bias r_hit); isotropic sparks in antipodal pairs (n = round(spark_n0 + spark_nk k),
 // a Fibonacci hemisphere turned per hit), closed form p(t) = p0 + v0 tau (1 - e^(-t / tau)) from the contact point, each
@@ -846,7 +846,7 @@ function hullSparks(hit, a, h, U, k, floorMs, step) {
 }
 function renderHull(record, t) {
   const ctx = record.ctx, c = ourControls(), h = hullControls(), hull = previewHull(c), S = hull.S, HH = HEADER.hull, LK = HEADER.look;
-  const U = c.cell_m[c.tier], k = h.variant === 'tug' ? 0.1 : h.k, rHit = U * (HH.r_base + HH.r_k * k);
+  const U = c.cell_m[c.tier], k = h.variant === 'tug' ? 0.1 : h.k, rHit = HH.r_scale * U * (HH.r_base + HH.r_k * k);
   const step = 1000 / 60 * Math.max(c.seta, 1e-3), floorMs = h.min_frames * step, scale = W / 5120;
   const f = H / (2 * Math.tan(20 * Math.PI / 180));
   const hits = hullHits(t, c, h, hull, U, floorMs);
@@ -939,15 +939,20 @@ function renderHull(record, t) {
       const lit = Math.max(h.width_u * U * f / hv[2], LK.floor_lit_px * scale), rest = Math.max(HH.spark_rest_w * lit, LK.floor_len_px * scale);
       const drawn = Math.min(Math.max(motion, rest), LK.streak_cap * rest);
       const E = Math.max(sp.e * rest / (rest + motion), Math.min(sp.e, LK.streak_core_min));
-      const len = drawn + lit, hw = 0.5 * lit, x0 = hp[0] + dx * hw, y0 = hp[1] + dy * hw;
-      for (let s = 0; s <= len; s += 0.5) {
+      // Sampled at the midpoints of 0.5 px steps along and across a footprint of at least one canvas pixel (the 5120
+      // floors scale below a pixel here): a thinner streak keeps its energy (x lit / wide), so its profile's edge is
+      // never the only sample (the sampler drew zero light under a 1 px streak until 2026-11-06).
+      const wide = Math.max(lit, 1), nw = Math.max(2, Math.ceil(2 * wide)), wgt = 0.5 * lit / nw;
+      const len = drawn + lit, hw = 0.5 * wide, x0 = hp[0] + dx * 0.5 * lit, y0 = hp[1] + dy * 0.5 * lit;
+      for (let s = 0.25; s < len; s += 0.5) {
         const along = Math.min(1, (1 - Math.abs(2 * s / len - 1)) * 4), z = hv[2] + (tv[2] - hv[2]) * Math.min(1, s / Math.max(drawn, 1e-6));
-        for (let w = -hw; w <= hw; w += 0.5) {
+        for (let i = 0; i < nw; i++) {
+          const v = (2 * i + 1) / nw - 1, w = v * hw;
           const x = Math.floor(x0 - dx * s - dy * w), y = Math.floor(y0 - dy * s + dx * w);
           if (x < 0 || y < 0 || x >= W || y >= H) continue;
           if (depth[y * W + x] < z) continue; // the hull in front hides it
-          const v = w / Math.max(hw, 1e-6), across = Math.max(0, 1 - v * v) ** 2;
-          add(y * W + x, sp.colour, E * across * along * 0.25);
+          const across = Math.max(0, 1 - v * v) ** 2;
+          add(y * W + x, sp.colour, E * across * along * wgt);
         }
       }
       stats.sparks++;
