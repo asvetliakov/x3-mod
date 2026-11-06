@@ -703,6 +703,24 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Rings, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, glow_limits, 1));
         step(WeaponEffectsStep::Rings, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, glow_ps, 2));
         if (SUCCEEDED(hr) && ring_quads) {
+            // The shock front's terms (weapon_ring_ps.hlsl c4, c5; weapon_effects_core.h hull::ring_*): the trailing
+            // band's colour over the leading edge's x its gain, 1 / the band's span; the noise, the span; c6 the seed's
+            // axis and the noise's window, c7 the front's window.
+            namespace wh = wcore::hull;
+            float lead[3], tail[3];
+            wcore::heat_colour(wh::ring_lead_t, lead);
+            wcore::heat_colour(wh::ring_trail_t, tail);
+            float ring_front[16] = {};
+            for (unsigned c = 0; c < 3; ++c) ring_front[c] = lead[c] > 1e-6f ? wh::ring_trail_gain * tail[c] / lead[c] : 0.f;
+            ring_front[3] = 1.f / wh::ring_trail_span;
+            ring_front[4] = wh::ring_noise_freq;
+            ring_front[5] = wh::ring_noise_contrast;
+            ring_front[6] = wh::ring_noise_depth;
+            ring_front[7] = wh::ring_trail_span;
+            for (unsigned c = 0; c < 3; ++c) ring_front[8 + c] = wh::ring_seed_axis[c];
+            ring_front[11] = wh::ring_noise_window;
+            ring_front[12] = wh::ring_front_window;
+            step(WeaponEffectsStep::Rings, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 4, ring_front, 4));
             step(WeaponEffectsStep::Rings, call<SetPsFn>(SetPixelShader)(d, ring_ps_));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(

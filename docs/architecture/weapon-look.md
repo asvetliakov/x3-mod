@@ -224,7 +224,8 @@ patches; (6) secondaries; last, other owners' flashes, oldest first (charged at 
 2026-11-07: about 80 plasma blooms on a close capital passed the budget otherwise). Never shed: entry streaks, sparks,
 chips, arc sparks, beam spot cores and anything of the own ship. A hull record leaves the ring at its anatomy's slowest
 element (`core::hull_lives`, 181-3,601 ms). Weights [M,
-5120x1440]: ring 0.40, filament glow 0.86, scorch 0.49, flash 0.49 (glow 0.40, puff 1.04 / 0.76). Count caps add:
+5120x1440]: ring 0.50 (0.40 until the shock front, 2026-11-07), hull shimmer rect 2.85 (charged from 2026-11-07),
+filament glow 0.86, scorch 0.49, flash 0.49 (glow 0.40, puff 1.04 / 0.76). Count caps add:
 puffs 256, rings 64, filament glows 32, beam spots 64, scorches 128 (16 per owner, the oldest of an owner retires),
 shimmer rects 2.
 

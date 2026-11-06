@@ -44,7 +44,15 @@ constexpr float boil_rate = 1.5f;              // the noise's third axis per sec
 constexpr float default_px = 1.5f, px_min = 0.f, px_max = 4.f; // X3M_ENGINE_SHIMMER_PX: amplitude at 1440 rows
 constexpr float reference_rows = 1440.f;       // the amplitude scales with the target height
 constexpr float max_length_screens = 4.f;      // a tip barely past the near plane: the rect's length is held here
-constexpr unsigned constant_vectors = 4 + 4 * max_rects; // c0..c67 (c52..c67: the rects' strength, 2026-11-06)
+// A hull hit's shock ring (docs/architecture/hull-impact-classes.md 3.5): the displacement band's width, px at
+// reference_rows (it scales with the target height), one band inside the ring's front.
+constexpr float weapon_ring_band_px = 3.f;
+// A ring's rect is refused past this share of the target (its drawn quad's box): a close ring would otherwise shade
+// up to the whole screen with the full program and the union copy (the stage arms no band past it either).
+constexpr float weapon_ring_max_screens = .25f;
+constexpr unsigned ring_slots = 2;            // the weapon rects' shock rings (weapon_max_rects; c68..c75)
+constexpr unsigned constant_vectors = 4 + 4 * max_rects + 3 * ring_slots + 2; // c0..c75 (c52..c67: the rects' strength,
+                                                                               // 2026-11-06; c68..c75 the rings, 2026-11-07)
 constexpr unsigned vertices_per_rect = 6;      // two triangles (TRIANGLELIST)
 
 // ----------------------------------------------------------------------------------------------------- options
@@ -104,17 +112,26 @@ struct Rect {
     // The displacement's scale (docs/architecture/hull-impact-classes.md 3.8: a weapon hit's rect fades 1 -> 0 over its
     // life); every engine rect 1 (x 1 is exact: the plumes' image is unchanged bit for bit).
     float strength = 1.f;
+    // A weapon hit's shock ring (weapon_ring; hull-impact-classes.md 3.5): the lane's surface points whose stretched
+    // distance from the centre lies a band inside the ring's radius push outward from the centre's pixel. View space:
+    // the centre, the radius, the heading x sqrt(1 - 1 / stretch^2) (0: round), the band; the centre's pixel, the
+    // strength (0: no ring, every engine rect) and the unjittered projection's m00, m11, m20, m21, m22, m32.
+    float ring_centre[3]{}, ring_r = 0.f, ring_axis[3]{}, ring_band = 0.f, ring_px[2]{}, ring_strength = 0.f;
+    float ring_proj[6]{};
 };
 // A weapon hit's request (the hull hits' plasma and heavy classes, docs/architecture/hull-impact-classes.md 3.8;
 // weapon_effects_hull.h builds them, the glue turns them into rects after the engines'): view space, the hit point, the
 // shot heading (has_axis) or none (the screen's x), the square's side (view units), the strength (1 at birth, 0 at its
 // end), a seed in [0, 1), its age (game ms) and whether it belongs to the own ship.
 constexpr unsigned weapon_max_rects = 2;
+// Its shock ring (2026-11-07): the ring's radius now (view units; 0 none), its refraction strength and its stretch along
+// the heading (1 without one).
 struct WeaponRequest {
     float centre[3]{}, axis[3]{};
     float size = 0.f, strength = 0.f, seed = 0.f;
     std::uint32_t age = 0;
     std::uint8_t own = 0, has_axis = 0;
+    float ring_r = 0.f, ring_strength = 0.f, ring_stretch = 1.f;
 };
 struct Stats {
     unsigned candidates = 0; // scene-view records
@@ -389,9 +406,12 @@ inline bool union_bounds(const Rect* rects, unsigned n, int margin, int width, i
 }
 
 // The pixel program's constants (src/effects/engine_shimmer_ps.hlsl): c0 (1/W, 1/H, W, H), c1 (amplitude px, rect
-// count, 0, boil), c2 (1 / cell, 0, 0, 0), c3 zero; per rect i: c4+i (origin, axis), c20+i (length,
+// count, ring count, boil), c2 (1 / cell, 0, 0, 0), c3 zero; per rect i: c4+i (origin, axis), c20+i (length,
 // half-width, back, 1 / nozzle px), c36+i (seed, depth, flow phase / cell, the occlusion fade), c52+i (strength, 0, 0,
-// 0). Unused rects stay zero (the program skips them past the count). `seconds` the stage's clock.
+// 0); per ring k (the rects with a ring, in order, at most ring_slots): c68+k (centre, radius), c70+k (scaled heading,
+// band), c72+k (centre px, strength, 0); c74 (m00, m11, m20, m21), c75 (m22, m32, 0, 0) of the first ring's projection.
+// Unused rects and rings stay zero (the program skips them past the counts; no ring: c1.z 0 and c68..c75 zero, the
+// plumes' constants as before). `seconds` the stage's clock.
 inline void constants(const Rect* rects, unsigned n, float amplitude, float seconds, float width, float height,
                       float out[constant_vectors * 4]) noexcept {
     for (unsigned i = 0; i < constant_vectors * 4; ++i) out[i] = 0.f;
@@ -428,6 +448,29 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float seco
         e[3] = r.fade;
         g[0] = r.strength;
     }
+    unsigned rings = 0;
+    for (unsigned i = 0; i < n && rings < ring_slots; ++i) {
+        const Rect& r = rects[i];
+        if (!(r.ring_strength > 0.f) || !(r.ring_r > 0.f) || !(r.ring_band > 0.f)) continue;
+        float* ra = out + (4 + 4 * max_rects + rings) * 4;
+        float* rb = out + (4 + 4 * max_rects + ring_slots + rings) * 4;
+        float* rc = out + (4 + 4 * max_rects + 2 * ring_slots + rings) * 4;
+        for (unsigned j = 0; j < 3; ++j) {
+            ra[j] = r.ring_centre[j];
+            rb[j] = r.ring_axis[j];
+        }
+        ra[3] = r.ring_r;
+        rb[3] = r.ring_band;
+        rc[0] = r.ring_px[0];
+        rc[1] = r.ring_px[1];
+        rc[2] = r.ring_strength;
+        if (!rings) {
+            float* pr = out + (4 + 4 * max_rects + 3 * ring_slots) * 4;
+            for (unsigned j = 0; j < 6; ++j) pr[j] = r.ring_proj[j];
+        }
+        ++rings;
+    }
+    c[6] = float(rings);
 }
 
 // The quads: six vertices per rect (TRIANGLELIST), the quad vertex layout of renderer/quad_vertex_program.h (clip x, y,
@@ -469,6 +512,53 @@ inline bool weapon_rect(const float origin[2], const float axis[2], float size_p
     if (!make_rect(origin, axis, h, h, h, h, seed, depth, width, height, out)) return false;
     out->fade = depth > 0.f ? fade : 0.f;
     out->strength = strength > 0.f ? (strength < 1.f ? strength : 1.f) : 0.f;
+    return true;
+}
+// A weapon hit's shock ring on its rect (hull-impact-classes.md 3.5, 2026-11-07): the ring's centre (view), its radius
+// now (view units), the shot's heading (unit view; null: round) and its stretch along it, the refraction strength, the
+// unjittered projection and the near plane. The band is weapon_ring_band_px at reference_rows, in view units at the
+// centre's depth; the rect's drawn quad and box grow to the ring's reach (the noise mask keeps its square). False: no
+// ring (no radius or strength, behind the near plane, a degenerate projection, the grown box past
+// weapon_ring_max_screens of the target), the rect unchanged.
+inline bool weapon_ring(const float centre[3], float ring_r, const float* axis, float stretch, float strength,
+                        const Projection& p, float near_z, Rect* r) noexcept {
+    if (!r || !(ring_r > 0.f) || !(strength > 0.f) || !(centre[2] > near_z) || !(p.m00 > 0.f) || !(p.m11 > 0.f) ||
+        !(p.width > 0.f) || !(p.height > 0.f))
+        return false;
+    const float px_per_unit = p.m00 * .5f * p.width / centre[2];
+    const float band = weapon_ring_band_px * (p.height / reference_rows) / px_per_unit;
+    const float s = stretch > 1.f ? stretch : 1.f;
+    const float k = axis ? x3m::scalar::sqrt(1.f - 1.f / (s * s)) : 0.f;
+    // the reach: the stretched ring and its band at the ring's nearest depth, plus the filter
+    const float reach_r = s * ring_r + 2.f * band;
+    const float z_near = centre[2] - reach_r > near_z ? centre[2] - reach_r : near_z;
+    const float reach = reach_r * p.m00 * .5f * p.width / z_near + 2.f;
+    float origin[2];
+    detail::project(p, centre, origin);
+    if (!detail::finite2(origin) || !(reach < 1e7f)) return false;
+    Rect grown{};
+    const float length = r->length > reach ? r->length : reach, back = r->back > reach ? r->back : reach;
+    const float half = r->half_width > reach ? r->half_width : reach;
+    if (!make_rect(r->origin, r->axis, length, half, back, r->nozzle_px, r->seed, r->depth, p.width, p.height, &grown))
+        return false;
+    const float box = float(grown.bounds[2] - grown.bounds[0]) * float(grown.bounds[3] - grown.bounds[1]);
+    if (!(box <= weapon_ring_max_screens * p.width * p.height)) return false;
+    for (unsigned c = 0; c < 4; ++c) {
+        r->corners[c][0] = grown.corners[c][0];
+        r->corners[c][1] = grown.corners[c][1];
+        r->bounds[c] = grown.bounds[c];
+    }
+    for (unsigned j = 0; j < 3; ++j) {
+        r->ring_centre[j] = centre[j];
+        r->ring_axis[j] = axis ? axis[j] * k : 0.f;
+    }
+    r->ring_r = ring_r;
+    r->ring_band = band;
+    r->ring_px[0] = origin[0];
+    r->ring_px[1] = origin[1];
+    r->ring_strength = strength;
+    const float proj[6] = {p.m00, p.m11, p.m20, p.m21, p.m22, p.m32};
+    for (unsigned j = 0; j < 6; ++j) r->ring_proj[j] = proj[j];
     return true;
 }
 inline void mask_at(const Rect& r, float px, float py, float* out) noexcept {

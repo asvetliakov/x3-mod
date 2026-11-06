@@ -988,3 +988,82 @@ burst rebuild's 64-hit row of that run was its usual 19.0); bound 40. Greyscale 
 Figures [M], one native run after the review fixes (`run_weapon_effects.py --host native`, 64 s under the lock): D3D
 PASS 167/0, hook PASS 95/0; host `test_weapon_effects_*` 77 OK; `build-ring` 0 warnings, `check_no_x87.py --edition ap`
 PASS.
+
+## Shock front (2026-11-07, dirty on `ade4de383`)
+
+The heavy, plasma and missile surface ring as a shock front ([hull-impact-classes.md](../architecture/hull-impact-classes.md)
+3.5): noise arcs, white-hot edge over a redder trailing band, the wash inside, the stretch along the shot's heading,
+and the plasma / heavy refraction band through the engine shimmer pass. Lab first (`ring: noise`, `ring: refraction`,
+`ring: wash` sub-layers; the four shock-front Scenarios set a 60 degree shot incidence), one set of constants
+(`hull::ring_*`, including the seed axis, scale and element and the profile's windows) read by the stage, the ring
+program (c4-c7 from the pass) and the lab (its generated HEADER block).
+
+Gates [M], the tracked record `verification/results/native-windows/weapon-effects/summary.json`
+(`run_weapon_effects.py --host native`: D3D PASS 176/0, hook PASS 95/0), the plasma ring at 0.3 L on the flat lane:
+
+| Gate | Row | Result |
+| --- | --- | --- |
+| `hull_ring_front_noise_arcs_2to1_no_sky` | `ring_front_noise` | brightest pixel of 64 angular bins within 1.5 w of r, max / min per record sequence: 0x5eed 2.40, 7000 4.03, 7001 4.03, 7002 3.08 (each >= 2); 0 sky pixels on the half lane |
+| `hull_ring_front_leading_edge_over_trailing_band` | `ring_front_bands` | per-circumference peak 0.482 at the edge over 0.270 in the band; R/G 1.13 at the edge, 2.48 in the band |
+| `hull_ring_front_wash_inside_only` | `ring_front_wash` | wash on - off: 132,116 px inside the front, 0 px outside |
+| `hull_ring_front_stretch_along_heading` | `ring_front_stretch` | heading in the lane's plane (sin phi 1): 1.2500 (want 1.25 +- 5 %) |
+| `hull_ring_front_stretch_45_degrees` | `ring_front_stretch` | Event::dir (90, 0, 90), sin phi 0.707: 1.1043 (the 3-D law 1 / sqrt(1 - (1 - 1/s^2) sin^2 phi) = 1.1043) |
+| `hull_ring_front_round_without_heading` | `ring_front_stretch` | Event::dir 0: 1.0000 |
+| `hull_ring_front_newborn_finite` | `ring_front_newborn` | r 0 at the first frame: 0 non-finite pixels (the wash exponent clamped) |
+| `hull_ring_front_shimmer_request` | `ring_front_shimmer` | heavy hit at view z 3,900, 40 ms: ring_r 64.513, strength 0.683, stretch 1.25; 0 with the ring off |
+| `hull_ring_front_shimmer_capped_and_charged` | `ring_front_shimmer` | at view z 300 the ring's rect passes 0.25 screens: drawn, no band; the frame's screens 0.3893 with the kept shimmer rect, 0.1685 without |
+| `hull_plasma_ring_on_surface_not_sky` (wash off now) | `plasma_ring_surface` | worst radius error 0.0266 (was 0.0055: the trailing band pulls the per-circumference peak inward) |
+
+The ring's box is the capsule of radius r + 3 w about the hit +- (s - 1)(r + 3 w) along the heading (the union of the end
+spheres' rects): it holds the whole stretched front and stays the round box for a heading along the eye's ray.
+
+Noise gate seed dependence: the arcs' max / min depends on the record's sequence (the seed is ring_seed_scale
+unit(element_hash(seq, ring_seed_element)) x ring_seed_axis). The gate checks the fixture's fixed 0x5eed (the on / off
+pairs' record) and the lab's first three hit sequences 7000-7002; the weakest, 0x5eed, gives 2.40 against the 2.0 line.
+The lab test checks 7000-7003 on `shockFront` alone (each >= 2).
+
+Shimmer ring [M], the tracked record `verification/results/native-windows/engine-shimmer/summary.json`
+(`run_engine_shimmer.py --host native`, PASS 63/0): `weapon_rect_plumes_byte_identical_to_previous_program` 0 differing
+pixels at 1920x1080 and 5120x1440 with a valid lane behind the plume (c1.z 0, the rings' branch uniform on it);
+`WEAPON_RING`: band pixels 840 / 2,099, all moved and all outward (mean 0.97 / 1.29 px at amplitude 1.125 / 1.5), 0
+changed beyond the band, on the sky or outside the grown quad; the state case's untouched constant now c80 (past the
+program's c0-c75). Cap: `engine_shimmer::weapon_ring_max_screens` 0.25 of the target per ring rect (its grown box),
+refused past it by `weapon_ring` and never armed by the stage. `WEAPON_RING_TIMING` (two round rings at the cap's
+reach on a lane plane, EVENT-fenced): 5120x1440 ring 425 px, boxes 0.486 of the screen, 0.2454 ms; 1920x1080 0.0602 ms.
+The stage charges every kept hull shimmer rect its drawn rect (the square, or the ring's rect) x `budget_weight_shimmer`
+2.85 (245.4 us / 0.486 screens / 177.5 us). Shimmer program 6,489 -> 6,805 words.
+
+Unresolved: the plume timing with no ring. The record's single-rect frames read 0.0197 ms (1920x1080) and 0.0442 ms
+(5120x1440) against 0.0191 / 0.0342 ms in the earlier record from another session; the change's own cost on a plume
+frame (one uniform `c1.z > 0` branch per pixel) is not separated from run-to-run spread. Settling it needs both
+programs timed in one run (the fixture's previous-program slot, `set_program_words`).
+
+Ring cost [M], EVENT-fenced best of 60, before (`55dc676bd`, `before-summary.json`) against the tracked record
+(`python3 verification/results/weapon-effects-shock-front/ring_cost.py verification/results/weapon-effects-shock-front/before-summary.json
+verification/results/native-windows/weapon-effects/summary.json`, output `ring_cost_out.txt`; ring only = the ring
+draws alone of the same build, about 11 us of it the pass's base):
+
+| 5120x1440 | before us | after us | ratio |
+| --- | --- | --- | --- |
+| heavy, fighter 200 m, 20 hits, ring only | 25.2 | 30.3 | 1.20 |
+| plasma, fighter 200 m, 20 hits, ring only | 23.1 | 27.4 | 1.19 |
+| missile, fighter 200 m, 20 hits, ring only | 24.9 | 29.6 | 1.19 |
+| heavy / plasma / missile whole class, 20 hits | 63.3 / 93.3 / 88.4 | 66.1 / 97.7 / 95.1 | 1.04 / 1.05 / 1.08 |
+| ring alone filling the frame | 71.4 | 89.6 | 1.25 |
+
+Net of the base the 20-hit rings cost 1.3-1.4x; under the 1.5x line, so the noise stays. Ring PS 51 -> 180 slots.
+
+Budget weights (2.11 of [weapon-look.md](../architecture/weapon-look.md), over the decal's 177.5 us at 5120x1440): the
+frame-filling ring 89.6 us in the record (0.505), so `budget_weight_ring` 0.40 -> 0.50 (decision 2026-11-07); the shed
+order is unchanged; the hull shimmer rects are charged from now on.
+
+| Primitive | Weight |
+| --- | --- |
+| ring (shock front) | 0.50 (was 0.40) |
+| hull shimmer rect | 2.85 (new) |
+| filament glow | 0.86 |
+| scorch | 0.49 |
+| flash | 0.49 |
+
+Host `test_weapon_effects_*` 82 OK, `test_engine_shimmer*` OK; `build-shock` 0 warnings, `check_no_x87.py --edition ap`
+PASS; lab `--check` PASS, lab tests 34 OK.

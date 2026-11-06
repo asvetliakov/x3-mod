@@ -123,6 +123,7 @@ switchable in the Layers panel; the Vanilla tab draws the four slots of the vani
   <label class="row" data-tabs="hull" title="the hull-impact class (docs/architecture/hull-impact-classes.md): auto = the weapon's (the rule and the override's pins); lineup = the nine classes side by side"><span>class</span><span class="ctl"><select id="c_class"><option value="auto">auto (the weapon's)</option><option value="lineup">lineup (all nine)</option><option value="energy">energy</option><option value="ballistic">ballistic</option><option value="plasma">plasma</option><option value="heavy">heavy</option><option value="ion">ion</option><option value="beam">beam</option></select></span></label>
   <label class="row" data-tabs="hull"><span>variant</span><span class="ctl"><select id="c_variant"><option value="none">none</option><option value="repair">repair (override)</option><option value="tug">tug (override)</option><option value="missile">missile source</option><option value="flak">flak (burst bit)</option><option value="asteroid">asteroid victim</option></select></span></label>
   <label class="row" data-tabs="hull" title="calibre k = clamp(log10(d / 300) / 2, 0, 1), d the impact's running damage"><span>calibre k</span><span class="ctl"><input id="c_k" type="number" min="0" max="1" step="0.05" style="width:4.5em"></span></label>
+  <label class="row" data-tabs="hull" title="the shot's heading off the inward normal, tilted towards the view's +x (0: head-on, as before; a Scenario of the shock front sets it): the entry streak, the sparks' bias and the ring's stretch along the heading follow it"><span>shot incidence (deg)</span><span class="ctl"><input id="c_incidence" type="number" min="0" max="85" step="5" style="width:4em"></span></label>
   <label class="row" data-tabs="shield"><span>weapon tint</span><span class="ctl"><input id="c_weapon_tint" type="number" min="0" max="1" step="0.1" style="width:4em" title="0 = shield colour, 1 = the weapon's classifier colour (override, off)"></span></label>
   <details><summary>weapon record (TBullets)</summary><div id="winfo"></div></details>
   </fieldset>
@@ -150,6 +151,9 @@ switchable in the Layers panel; the Vanilla tab draws the four slots of the vani
   <label class="check" data-tabs="hull" title="the chips spark set"><input id="layer_chips" type="checkbox" data-layer="chips" checked> chips</label>
   <label class="check" data-tabs="hull" title="the heavy class's entry streak along the shot"><input id="layer_streak" type="checkbox" data-layer="streak" checked> entry streak</label>
   <label class="check" data-tabs="hull" title="the shock ring in the hull's tangent plane"><input id="layer_ring" type="checkbox" data-layer="ring" checked> ring</label>
+  <label class="check" data-tabs="hull" title="the shock front's bright and weak arcs: one octave of value noise around the circumference, hashed on the hit (off: an unbroken front)"><input id="layer_ring_noise" type="checkbox" data-layer="ring_noise" checked> ring: noise</label>
+  <label class="check" data-tabs="hull" title="the refraction band just inside the front (the plasma and heavy hits' shimmer rects; approximated here as a displacement of the drawn pixels, floored at one lab pixel)"><input id="layer_ring_refraction" type="checkbox" data-layer="ring_refraction" checked> ring: refraction</label>
+  <label class="check" data-tabs="hull" title="the light wash the front throws on the hull just inside it, falling off behind it"><input id="layer_ring_wash" type="checkbox" data-layer="ring_wash" checked> ring: wash</label>
   <label class="check" data-tabs="hull" title="the soft surface glow on the hull within class_glow r_hit (2.5 to 4 r_hit) of the contact: the large bulb around the hit"><input id="layer_glow" type="checkbox" data-layer="glow" checked> glow (the bulb)</label>
   <label class="check" data-tabs="hull" title="the cooling ember on the hull"><input id="layer_ember" type="checkbox" data-layer="ember" checked> ember</label>
   <label class="check" data-tabs="hull" title="the scorch decal (darkens the hull)"><input id="layer_scorch" type="checkbox" data-layer="scorch" checked> scorch</label>
@@ -325,8 +329,11 @@ const HEADER = {
   patch_hits: 4,
   owner_hits: 64,
   region_draws: 8,
+  shimmer_px: 1.5,
+  shimmer_rows: 1440.0,
+  ring_band_px: 3.0,
   look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4,"fireball_freq":2.2,"fireball_advect":1.5,"fireball_noise":0.9,"fireball_erode":0.6,"fireball_core_t":0.35,"fireball_octaves":2,"budget_weight_fireball":1.04,"budget_weight_fireball_lod":0.76},
-  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"tug_colour":[0.7,0.8,1.0],"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.25,1.0,60.0,0.9,0.0],[0.15,0.4,40.0,1.0,0.0],[0.35,2.0,60.0,1.0,1.0],[0.2,0.6,60.0,0.9,0.0],[0.2,1.0,60.0,1.0,2.0],[0.25,1.0,60.0,0.9,0.0],[0.25,1.0,60.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[1.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.4,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[1.5,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[0.8,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.6,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,1.0,1.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[1.2,0.0,0.0,800.0,400.0,0.3,0.5,0.15,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,6.0,0.5,120.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.5],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,1.5,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[3.0,150.0,0.85,1.0],[1.5,100.0,0.9,0.6],[4.0,250.0,0.8,1.2],[3.0,200.0,0.9,1.5],[0.0,0.0,0.0,0.0],[2.5,150.0,0.85,1.0],[4.0,250.0,0.85,1.5],[0.0,0.0,0.0,0.0],[2.0,150.0,0.0,1.0],[2.0,150.0,0.0,1.0]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"filament_r":1.5,"filament_e":2.0,"filament_scale":6.0,"filament_width":0.08,"filament_ms":500,"rehash_ms":100,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.4,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.49,"puff_lod_px":96.0}
+  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"tug_colour":[0.7,0.8,1.0],"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.25,1.0,60.0,0.9,0.0],[0.15,0.4,40.0,1.0,0.0],[0.35,2.0,60.0,1.0,1.0],[0.2,0.6,60.0,0.9,0.0],[0.2,1.0,60.0,1.0,2.0],[0.25,1.0,60.0,0.9,0.0],[0.25,1.0,60.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[1.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.4,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[1.5,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[0.8,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.6,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,1.0,1.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[1.2,0.0,0.0,800.0,400.0,0.3,0.5,0.15,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,6.0,0.5,120.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.5],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,1.5,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[3.0,150.0,0.85,1.0],[1.5,100.0,0.9,0.6],[4.0,250.0,0.8,1.2],[3.0,200.0,0.9,1.5],[0.0,0.0,0.0,0.0],[2.5,150.0,0.85,1.0],[4.0,250.0,0.85,1.5],[0.0,0.0,0.0,0.0],[2.0,150.0,0.0,1.0],[2.0,150.0,0.0,1.0]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"ring_lead_t":1.0,"ring_trail_t":0.35,"ring_trail_gain":0.55,"ring_trail_span":3.0,"ring_noise_freq":1.3,"ring_noise_depth":0.9,"ring_noise_contrast":2.5,"ring_wash_gain":0.25,"ring_wash_fall":0.35,"ring_stretch":1.25,"ring_refract":1.0,"ring_seed_axis":[1.7,3.1,0.7],"ring_seed_scale":64.0,"ring_noise_window":2.5,"ring_front_window":3.0,"ring_seed_element":7,"budget_weight_shimmer":2.85,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"filament_r":1.5,"filament_e":2.0,"filament_scale":6.0,"filament_width":0.08,"filament_ms":500,"rehash_ms":100,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.5,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.49,"puff_lod_px":96.0}
 };
 /* @end */
 /* @weapon_effects_data */
@@ -371,8 +378,8 @@ const prepCache = {};
 // // scale-free). The other slots stay native in step 1.
 // The Layers panel (all on by default): a renderer skips an element whose layer is off. The choice persists in
 // localStorage when the page may use it (a file:// page or a private window may refuse it).
-const LAYER_KEYS = ['hull', 'patch', 'bubble', 'native', 'flash', 'flash_halo', 'burst', 'sparks', 'chips', 'streak', 'ring', 'glow',
-                    'ember', 'scorch', 'filament'];
+const LAYER_KEYS = ['hull', 'patch', 'bubble', 'native', 'flash', 'flash_halo', 'burst', 'sparks', 'chips', 'streak', 'ring', 'ring_noise',
+                    'ring_refraction', 'ring_wash', 'glow', 'ember', 'scorch', 'filament'];
 const layers = Object.fromEntries(LAYER_KEYS.map(k => [k, true]));
 try {
   const saved = JSON.parse(localStorage.getItem('x3m.weapon_lab.layers') || '{}');
@@ -913,7 +920,7 @@ function hullControls() {
           k: Math.max(0, Math.min(1, num('c_k', 0.33))), ramp,
           camera: ($('c_camera') && $('c_camera').value) || 'side', variant: ($('c_variant') && $('c_variant').value) || 'none',
           cls: ($('c_class') && $('c_class').value) || 'auto', pulse_on: num('c_pulse_on', 0), pulse_period: num('c_pulse_period', 0),
-          sweep: num('c_sweep', 0), loop: num('c_loop', 0)};
+          sweep: num('c_sweep', 0), loop: num('c_loop', 0), incidence: Math.max(0, Math.min(85, num('c_incidence', 0)))};
 }
 function heatRamp(T, ramp) {
   const r = ramp || HEADER.look.heat_ramp, x = Math.max(0, Math.min(1, T)) * 4, i = Math.min(3, Math.floor(x)), f = x - i;
@@ -1088,6 +1095,47 @@ function beamSpot(g, h, hull, rHit) {
   } else marks.push({p: at(start), t0: start});
   return {p: at(last), first: start, last, held, fall: held ? 0 : g - last, marks};
 }
+// The shock front's profile at q (the owner-frame offset from the hit, already stretched along the heading; core::hull
+// ring_*, weapon_ring_ps.hlsl): the leading edge exp(-z^2) at the ring's radius rr (width w), the trailing band
+// 4 b (1 - b) from rr - ring_trail_span w to rr, the noise's modulation m of both (seed < 0: none) and the wash inside the
+// front (gain 0: none). The colour is the caller's: lead x (m (lead + band x trail) + wash).
+function shockFront(q, rr, w, seed, washGain) {
+  const HH = HEADER.hull, dl = Math.hypot(q[0], q[1], q[2]), z = (dl - rr) / Math.max(w, 1e-9);
+  const behind = rr - dl;
+  const wash = washGain * Math.max(0, Math.min(1, behind / Math.max(w, 1e-9))) * Math.exp(-Math.max(behind, 0) / (HH.ring_wash_fall * Math.max(rr, 1e-6)));
+  if (!(z > -HH.ring_trail_span && z < HH.ring_front_window)) return {m: 1, lead: 0, band: 0, wash}; // the front's window
+  const b = Math.max(0, Math.min(1, -z / HH.ring_trail_span));
+  let m = 1;
+  if (seed >= 0 && z < HH.ring_noise_window) {
+    const inv = 1 / Math.max(dl, 1e-9);
+    const n = valueNoise(q.map((v, j) => v * inv * HH.ring_noise_freq + seed * HH.ring_seed_axis[j]));
+    m = 1 - HH.ring_noise_depth + HH.ring_noise_depth * Math.max(0, Math.min(1, 0.5 + HH.ring_noise_contrast * (n - 0.5)));
+  }
+  return {m, lead: Math.exp(-z * z), band: 4 * b * (1 - b), wash};
+}
+// The ring's refraction (approximate: the shimmer pass displaces the resolved image, engine_shimmer_ps.hlsl's ring loop):
+// the lit hull's pixels whose stretched distance from the hit lies a band (ring_band_px) inside the front push the drawn
+// pixels outward from the hit's screen point by the shimmer amplitude, x k, the rings' sum clamped to unit length.
+// Amplitude and band at the lab's rows (OH / reference rows), floored at 1 and 1.5 lab px so the band reads at 720 x 405.
+function refractionTerms() {
+  return {amp: Math.max(1, HEADER.shimmer_px * OH / HEADER.shimmer_rows),
+          band: Math.max(1.5, HEADER.ring_band_px * OH / HEADER.shimmer_rows)};
+}
+function refractPixels(px, disp, amp) {
+  const src = px.slice();
+  const sample = (x, y, q) => { // bilinear from the composited copy
+    const x0 = Math.max(0, Math.min(OW - 1, Math.floor(x))), y0 = Math.max(0, Math.min(OH - 1, Math.floor(y)));
+    const x1 = Math.min(OW - 1, x0 + 1), y1 = Math.min(OH - 1, y0 + 1), fx = Math.max(0, Math.min(1, x - x0)), fy = Math.max(0, Math.min(1, y - y0));
+    const at = (xx, yy) => src[(yy * OW + xx) * 4 + q];
+    return (at(x0, y0) * (1 - fx) + at(x1, y0) * fx) * (1 - fy) + (at(x0, y1) * (1 - fx) + at(x1, y1) * fx) * fy;
+  };
+  for (let i = 0; i < OW * OH; i++) {
+    const vx = disp[2 * i], vy = disp[2 * i + 1], l2 = vx * vx + vy * vy;
+    if (!(l2 > 0)) continue;
+    const sc = (l2 > 1 ? 1 / Math.sqrt(l2) : 1) * amp, x = i % OW, y = (i - x) / OW;
+    for (let q = 0; q < 3; q++) px[i * 4 + q] = Math.round(sample(x + vx * sc, y + vy * sc, q));
+  }
+}
 function renderHull(record, t) {
   const ctx = record.ctx, c = ourControls(), h = hullControls(), hull = previewHull(c), S = hull.S, HH = HEADER.hull, LK = HEADER.look;
   const w = record.weapon || {}, an0 = weaponAnatomy(w, h);
@@ -1096,6 +1144,13 @@ function renderHull(record, t) {
   const step = 1000 / 60 * Math.max(c.seta, 1e-3), floorMs = h.min_frames * step, scale = OW / 5120;
   const f = OH / (2 * Math.tan(20 * Math.PI / 180));
   const hits = hullHits(t, c, h, hull, U, floorMs, an0);
+  if (h.incidence > 0) { // the shot incidence: each heading tilted off the inward normal towards the view's +x
+    const th = h.incidence * Math.PI / 180, vx = hull.toLocal([1, 0, 0]);
+    for (const hit of hits) {
+      const n = hit.axis, tx = vx.map((v, i) => v - dot3(vx, n) * n[i]), tl = Math.hypot(...tx);
+      if (tl > 1e-6) hit.axis = norm3(n.map((v, i) => Math.cos(th) * v + Math.sin(th) * tx[i] / tl));
+    }
+  }
   const aim = hull.toView(hullPoint(hull, hull.aim[0], hull.aim[1]));
   const lineup = h.cls === 'lineup';
   const area = (lineup ? 1.0 * (hull.narrow ? hull.ext[hull.ib] : S) : 4 * U) + 3 * rHit; // the reach and one glow radius
@@ -1240,6 +1295,8 @@ function renderHull(record, t) {
       }
   };
   const hold = (an) => an === AN.beam || an === AN.repair || an === AN.tug;
+  const refr = refractionTerms();
+  let refractions = 0, disp = null;
   for (const hit of hits) {
     const an = hit.a, rH = rOf(an), kk = kOf(an), seq = hit.seed, lifeOf = (law, el) => elementLife(law, elementHash(seq, el), floorMs);
     const fr = HH.class_flash[an], pf = HH.class_puff[an], gw = HH.class_glow[an], em = HH.class_ember[an], rg = HH.class_ring[an];
@@ -1313,13 +1370,40 @@ function renderHull(record, t) {
       glowAt(hit.p, em[0] * rH, heatRamp(T, h.ramp).map(v => v * em[4] * T), EL.ember);
       stats.embers++;
     }
-    // The surface ring: the expanding sphere shell cut by the hull.
+    // The surface ring: the expanding sphere shell cut by the hull, drawn as the shock front (shockFront: the
+    // white-hot leading edge, the redder trailing band, the noise's arcs, the wash inside; stretched along the heading).
     const ringLife = lifeOf(rg[2], 6);
     if (layers.ring && rg[0] > 0 && a < ringLife) {
       const x = a / ringLife, rr = rg[0] * rH * (1 - Math.exp(-x / HH.ring_rise)), wd = rg[1] * rH;
-      const col = heatRamp(HH.ring_t, h.ramp).map(v => v * rg[3] * HH.ring_t * (1 - x) * (1 - x));
-      surface(hit.p, rr + 3 * wd, (i, d) => { const z = (d - rr) / wd; add(i, col, Math.exp(-z * z), EL.ring); });
+      const ax = hit.axis, E = ax ? HH.ring_stretch : 1, kq = 1 - 1 / E;
+      const lead = heatRamp(HH.ring_lead_t, h.ramp), trailC = heatRamp(HH.ring_trail_t, h.ramp);
+      const e0 = rg[3] * HH.ring_t * (1 - x) * (1 - x), trail = trailC.map((v, j) => HH.ring_trail_gain * v / Math.max(lead[j], 1e-6));
+      const seed = layers.ring_noise ? HH.ring_seed_scale * unitOf(elementHash(seq, HH.ring_seed_element)) : -1;
+      const wash = layers.ring_wash ? HH.ring_wash_gain : 0;
+      const col = [0, 0, 0];
+      surface(hit.p, E * (rr + HH.ring_front_window * wd), (i, d, rel) => {
+        const along = ax ? dot3(rel, ax) * kq : 0, q = ax ? rel.map((v, j) => v - along * ax[j]) : rel;
+        const sf = shockFront(q, rr, wd, seed, wash);
+        for (let j = 0; j < 3; j++) col[j] = lead[j] * e0 * (sf.m * (sf.lead + sf.band * trail[j]) + sf.wash);
+        add(i, col, 1, EL.ring);
+      });
       stats.rings++;
+      // The refraction band (the plasma and heavy hits' shimmer rect carries the ring: engine_shimmer_ps.hlsl's ring
+      // loop): on the hull a band inside the front, the pixels pushed outward from the hit's screen point.
+      if (layers.ring_refraction && HH.class_shimmer[an] > 0 && a < HH.shimmer_ms && pv[2] > 0.1) {
+        const bandM = refr.band * pv[2] / f, kr = HH.ring_refract * (1 - x) * (1 - x);
+        const cx = OW / 2 + f * pv[0] / pv[2], cy = OH / 2 - f * pv[1] / pv[2];
+        if (!disp) disp = new Float32Array(OW * OH * 2);
+        surface(hit.p, E * rr + 2 * bandM, (i, d, rel) => {
+          const along = ax ? dot3(rel, ax) * kq : 0, q = ax ? rel.map((v, j) => v - along * ax[j]) : rel;
+          const u = (rr - Math.hypot(q[0], q[1], q[2])) / bandM - 1;
+          if (!(Math.abs(u) < 2.5)) return;
+          const sx = i % OW + 0.5 - cx, sy = (i - i % OW) / OW + 0.5 - cy, g = kr * Math.exp(-u * u) / Math.max(Math.hypot(sx, sy), 1e-2);
+          disp[2 * i] += g * sx;
+          disp[2 * i + 1] += g * sy;
+        });
+        refractions++;
+      }
     }
     // The ion's filament glow: noise in the owner frame, re-hashed every rehash_ms.
     const filLife = lifeOf(HH.filament_ms, 8);
@@ -1371,6 +1455,8 @@ function renderHull(record, t) {
       px[i * 4 + q] = Math.round(255 * linearToSrgb(Math.min(1, base + (1 - Math.exp(-v[q])))));
     }
   }
+  if (disp) refractPixels(px, disp, refr.amp);
+  stats.refractions = refractions;
   ctx.putImageData(img, 0, 0);
   stats.lit = litPx;
   stats.light = {};
@@ -1394,11 +1480,11 @@ function renderHull(record, t) {
   record.detail = `${stats.hits} hit(s), ${stats.flashes} flash, ${stats.streaks} streak, ${stats.bursts} puff, ${stats.sparks} sparks (${stats.chips} chips), ${stats.rings} ring, ${stats.filaments} arcs, ${stats.glows} glow, ${stats.embers} ember, ${stats.scorches} scorch\nSETA x${c.seta}, floor ${fmt(floorMs)} ms${c.own && c.cockpit ? `, cockpit gain x${HEADER.own_cockpit_gain}` : ''}`;
   record.hullStats = stats;
 }
-const HULL_IDS = ['c_k', 'c_h_spark_x', 'c_h_min_frames', 'c_pulse_on', 'c_pulse_period', 'c_sweep', 'c_loop'];
+const HULL_IDS = ['c_k', 'c_h_spark_x', 'c_h_min_frames', 'c_pulse_on', 'c_pulse_period', 'c_sweep', 'c_loop', 'c_incidence'];
 function initHullControls() {
   const HH = HEADER.hull, set = (id, v) => { if ($(id) && !$(id).value) $(id).value = v; };
   set('c_k', 0.33); set('c_h_spark_x', HH.spark_count_x); set('c_h_min_frames', HEADER.look.min_frames);
-  set('c_pulse_on', 0); set('c_pulse_period', 0); set('c_sweep', 0); set('c_loop', 0);
+  set('c_pulse_on', 0); set('c_pulse_period', 0); set('c_sweep', 0); set('c_loop', 0); set('c_incidence', 0);
   for (let i = 1; i <= 4; i++) {
     const e = $('c_h_ramp' + i);
     if (e && !e.dataset.init) { e.value = linearToHex(HEADER.look.heat_ramp[i]); e.dataset.init = '1'; }
@@ -1897,6 +1983,10 @@ function fillRows() {
 // the family, the victim and hull, the camera, SETA, the hits per game second, the own ship and cockpit, the variant,
 // the calibre and the shield level. Its label and description are built here from those fields; SCENARIO_NOTES adds
 // what each one checks (hand-written, by id; a preset without a note shows the fields only).
+// The shock front's Scenarios (2026-11-07): an oblique shot (degrees off the inward normal) so the ring's stretch along
+// the heading shows (core::hull::ring_stretch along the shot's 3-D heading: 1 head-on, the full stretch at grazing).
+const SCENARIO_INCIDENCE = {'hull/heavy-gke-capital-300m': 60, 'hull/heavy-rg-chase-nose': 60, 'hull/plasma-psp-capital-close': 60,
+                            'hull/heavy-missile-hit': 60};
 const SCENARIO_NOTES = {
   'shield/fighter-ire-side': 'the fighter bubble patch under a steady stream of hits',
   'shield/capital-ppc-flank': "a capital's flank at 12 hits per s and 60 % shield (the half band)",
@@ -1988,7 +2078,7 @@ function applyPreset(id) {
   set('c_hits', p.hps); set('c_own', p.own); set('c_cockpit', p.cockpit); set('c_variant', p.variant); set('c_k', p.k);
   set('c_shield', p.shield);
   set('c_class', p.cls || 'auto'); set('c_pulse_on', (p.pulse || [0, 0])[0]); set('c_pulse_period', (p.pulse || [0, 0])[1]);
-  set('c_sweep', p.sweep || 0); set('c_loop', p.loop || 0);
+  set('c_sweep', p.sweep || 0); set('c_loop', p.loop || 0); set('c_incidence', SCENARIO_INCIDENCE[p.id] || 0);
   if ($('c_shield_read')) $('c_shield_read').textContent = p.shield;
   const pick = () => {
     const i = data().weapons.findIndex(w => w.id === p.weapon);

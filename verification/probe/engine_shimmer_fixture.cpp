@@ -11,8 +11,10 @@
 //               mid-way and near 1.5 L along the axis, and at the rect's sides; revert() -> the whole target byte-equal
 //   gate        nozzles of 20 / 23.9 / 24.5 / 30 px: rects only from 24 px; no rect -> S_FALSE, no device call
 //   occlusion   a lane occluder nearer than the plume over the back half of the rect: byte-equal there, displaced in front
+//   ring        a weapon rect's shock ring on a lane plane: the band inside the front displaced outward, byte-equal beyond
+//               it, on the sky and outside the grown quad (weapon_ring_case)
 //   state       hostile caller state (RT0 another target, RT1, depth, viewport, scissor, blend, a texture, a constant, FVF
-//               mode) restored after the run; stream 0 and the index buffer restored, a constant past c51 and the target
+//               mode) restored after the run; stream 0 and the index buffer restored, a constant past c75 and the target
 //               bound on an unused sampler untouched (the recorded block); the pass's own scene without a caller scene;
 //               the scratch released while idle (never with a revert pending) and recreated by the next run
 //   refusal     a non-FP16 target, a recording caller, an empty rect list, zero amplitude: S_FALSE, the target unchanged
@@ -21,7 +23,8 @@
 //   reset       before_reset releases the block and the scratch (programs survive), forgets the pending revert; a run
 //               while the Reset is pending is skipped (reset_pending, no device call); after Reset the next run recreates
 //               them and draws
-//   timing      EVENT-fenced run + revert in a frame tail for 1 / 4 / 16 rects of 10 % of the screen each
+//   timing      EVENT-fenced run + revert in a frame tail for 1 / 4 / 16 rects of 10 % of the screen each; two hull rings
+//               at the cap's reach (weapon_ring_timing_case)
 // Validation-only readback; never launches the game.
 #include "../../src/renderer/engine_shimmer_pass.h"
 #include <windows.h>
@@ -298,7 +301,8 @@ void weapon_rect_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT forma
             return;
         }
         t.upload(d);
-        const auto rep = run(d, p, frame_for(t, rects, n));
+        t.lane_fill(d, 0, 0, int(t.w), int(t.h), 4000.f); // a valid lane behind the plume (frame.z 0: no ring)
+        const auto rep = run(d, p, frame_for(t, rects, n, true));
         img[which] = t.read(d);
         check("scene begin", d->BeginScene());
         p.revert();
@@ -306,6 +310,7 @@ void weapon_rect_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT forma
         p.detach();
         if (!rep.drew) img[which].clear();
     }
+    t.lane_fill(d, 0, 0, 0, 0, 4000.f);
     std::size_t differ = 0, moved = 0;
     for (std::size_t i = 0; i < img[0].size() / 4 && img[0].size() == img[1].size(); ++i) {
         differ += !same_pixel(img[0], img[1], i);
@@ -368,6 +373,91 @@ void weapon_rect_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT forma
                                                           worst[1] <= .5 * amp + .05 && mean[1] >= .35 * mean[0] &&
                                                           mean[1] <= .65 * mean[0] && inside_diff[2] == 0);
     report("weapon_rect_constants_after_engine_rects", constants_ok);
+}
+// A weapon rect's shock ring (2026-11-07, docs/architecture/hull-impact-classes.md 3.5; engine_shimmer::weapon_ring): a
+// ring of 0.12 target heights at view z 1000 about the screen's centre, stretched 1.25 along the view's x, on a lane
+// plane at that depth over the target left of 0.3 ring radii past the centre (the sky beyond), its rect's noise at
+// strength 0. The band just inside the front (the replica's |u| < 0.7) moves outward (the moved share and the outward
+// share of the valid pixels), the plane beyond the band (|u| > 2.6), the sky and everything outside the grown quad stay
+// byte-equal; the ring's constants after the rects' (c1.z the ring count, c68 the centre and radius).
+void weapon_ring_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
+    const float Z = 1000.f, stretch = 1.25f;
+    const es::Projection p = projection_of(t);
+    const float ppu = t.ppu(Z), ring_px = .12f * float(t.h), ring_r = ring_px / ppu;
+    const float centre[3] = {0.f, 0.f, Z}, heading[3] = {1.f, 0.f, 0.f}, axis2[2] = {1.f, 0.f};
+    float origin[2];
+    es::detail::project(p, centre, origin);
+    es::Rect rect{};
+    const bool made = es::weapon_rect(origin, axis2, .5f * ring_px, .37f, 0.f, 0.f, 0.f, float(t.w), float(t.h), &rect);
+    const bool ringed = made && es::weapon_ring(centre, ring_r, heading, stretch, 1.f, p, -projection_m32 / projection_m22, &rect);
+    report("weapon_rect_ring_made", ringed && rect.bounds[2] - rect.bounds[0] > int(2.f * stretch * ring_px));
+    if (!ringed) return;
+    float c[es::constant_vectors * 4];
+    es::constants(&rect, 1, 3.f, 1.5f, float(t.w), float(t.h), c);
+    const float* ring_a = c + (4 + 4 * es::max_rects) * 4;
+    const bool constants_ok = c[6] == 1.f && ring_a[2] == Z && ring_a[3] == ring_r && c[(4 + 4 * es::max_rects + 2 * es::ring_slots) * 4 + 2] == 1.f;
+    const int split = int(origin[0] + .3f * ring_px);
+    t.upload(d);
+    t.lane_fill(d, 0, 0, split, int(t.h), Z);
+    const auto f = frame_for(t, &rect, 1, true);
+    const auto rep = run(d, pass, f);
+    const auto out = t.read(d);
+    const Field m = measure(t, out, &rect, 1);
+    const float k = std::sqrt(1.f - 1.f / (stretch * stretch));
+    std::size_t band = 0, band_moved = 0, band_out = 0, beyond = 0, beyond_diff = 0, sky = 0, sky_diff = 0, outside = 0,
+                outside_diff = 0;
+    double band_mean = 0.0;
+    for (UINT y = 0; y < t.h; ++y)
+        for (UINT x = 0; x < t.w; ++x) {
+            const std::size_t i = std::size_t(y) * t.w + x;
+            const bool in_quad = int(x) >= rect.bounds[0] && int(x) < rect.bounds[2] && int(y) >= rect.bounds[1] &&
+                                 int(y) < rect.bounds[3];
+            const bool diff = !same_pixel(out, t.pristine, i);
+            if (!in_quad) {
+                ++outside;
+                outside_diff += diff;
+                continue;
+            }
+            if (int(x) >= split) {
+                ++sky;
+                sky_diff += diff;
+                continue;
+            }
+            // the replica: the plane's point under the pixel's centre (the program's ndc), its stretched distance
+            const float nx = 2.f * float(x) / float(t.w) - 1.f, ny = 1.f - 2.f * float(y) / float(t.h);
+            const float px = (nx - p.m20) / p.m00 * Z, py = (ny - p.m21) / p.m11 * Z;
+            const float al = px * k;
+            const float dl = std::sqrt(std::max(px * px + py * py - al * al, 0.f));
+            const float u = (ring_r - dl) / rect.ring_band - 1.f;
+            if (std::fabs(u) > 2.6f) {
+                ++beyond;
+                beyond_diff += diff;
+                continue;
+            }
+            if (std::fabs(u) < .7f && m.valid[i]) {
+                ++band;
+                const double len = std::sqrt(double(m.dx[i]) * m.dx[i] + double(m.dy[i]) * m.dy[i]);
+                band_mean += len;
+                band_moved += len > .3 * double(f.amplitude_px);
+                const double rx = double(x) + .5 - origin[0], ry = double(y) + .5 - origin[1];
+                band_out += double(m.dx[i]) * rx + double(m.dy[i]) * ry > 0.0;
+            }
+        }
+    band_mean = band ? band_mean / double(band) : 0.0;
+    check("scene begin", d->BeginScene());
+    pass.revert();
+    check("scene end", d->EndScene());
+    t.lane_fill(d, 0, 0, 0, 0, Z);
+    std::printf("WEAPON_RING width=%u height=%u result=%08lx ring_px=%.2f band_px=%.3f amplitude_px=%.4f band=%zu moved=%zu "
+                "outward=%zu mean_px=%.4f beyond=%zu beyond_diff=%zu sky=%zu sky_diff=%zu outside=%zu outside_diff=%zu "
+                "constants=%u\n",
+                t.w, t.h, rep.operation, double(ring_px), double(rect.ring_band * ppu), double(f.amplitude_px), band, band_moved,
+                band_out, band_mean, beyond, beyond_diff, sky, sky_diff, outside, outside_diff, unsigned(constants_ok));
+    report("weapon_rect_ring_band_displaced_outward", rep.drew && band > 0 && double(band_moved) >= .8 * double(band) &&
+                                                          double(band_out) >= .95 * double(band));
+    report("weapon_rect_ring_zero_beyond_band_sky_and_rect", beyond > 0 && beyond_diff == 0 && sky > 0 && sky_diff == 0 &&
+                                                                 outside > 0 && outside_diff == 0);
+    report("weapon_rect_ring_constants", constants_ok);
 }
 void attach_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, rr::EngineShimmerPass& pass) {
     pass.set_faults(1);
@@ -575,7 +665,7 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     check("stream", d->SetStreamSource(0, vb.p, 16, 24));
     check("indices", d->SetIndices(ib.p));
     const float outside[4] = {55.f, 66.f, 77.f, 88.f};
-    check("constant c60", d->SetPixelShaderConstantF(60, outside, 1));
+    check("constant c80", d->SetPixelShaderConstantF(80, outside, 1)); // past the program's c0..c75
     check("texture s5", d->SetTexture(5, t.target.p));
     rr::EngineShimmerFrame f = frame_for(t, rects, n);
     f.caller_scene_open = false; // the pass opens and closes its own scene
@@ -608,13 +698,13 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     Com<IDirect3DIndexBuffer9> ib2;
     Com<IDirect3DBaseTexture9> tex5;
     UINT offset = 0, stride = 0;
-    float c60[4]{};
+    float c80[4]{};
     d->GetStreamSource(0, &vb2.p, &offset, &stride);
     d->GetIndices(&ib2.p);
     d->GetTexture(5, &tex5.p);
-    d->GetPixelShaderConstantF(60, c60, 1);
+    d->GetPixelShaderConstantF(80, c80, 1);
     const bool untouched = vb2.p == vb.p && offset == 16 && stride == 24 && ib2.p == ib.p &&
-                           tex5.p == static_cast<IDirect3DBaseTexture9*>(t.target.p) && !std::memcmp(c60, outside, sizeof c60);
+                           tex5.p == static_cast<IDirect3DBaseTexture9*>(t.target.p) && !std::memcmp(c80, outside, sizeof c80);
     const bool restored = rt0.p == t.other_s.p && rt1.p == t.lane_s.p && ds.p == t.depth.p && vp2.X == vp.X && vp2.Y == vp.Y &&
                           vp2.Width == vp.Width && vp2.Height == vp.Height && vp2.MinZ == vp.MinZ && vp2.MaxZ == vp.MaxZ &&
                           !std::memcmp(&sc2, &sc, sizeof sc) && scissor_on == TRUE && blend == TRUE && src == D3DBLEND_DESTCOLOR &&
@@ -628,10 +718,10 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     pass.revert();
     const bool reverted = t.read(d) == t.pristine;
     std::printf("STATE width=%u result=%08lx restore=%08lx restored=%u stream_indices_outside=%u own_scene=1 changed=%zu reverted=%u calls=%u "
-                "vb_same=%u offset=%u stride=%u ib_same=%u tex5_same=%u c60_same=%u\n",
+                "vb_same=%u offset=%u stride=%u ib_same=%u tex5_same=%u c80_same=%u\n",
                 t.w, rep.operation, rep.restore, unsigned(restored), unsigned(untouched), changed, unsigned(reverted), rep.calls,
                 unsigned(vb2.p == vb.p), offset, stride, unsigned(ib2.p == ib.p),
-                unsigned(tex5.p == static_cast<IDirect3DBaseTexture9*>(t.target.p)), unsigned(!std::memcmp(c60, outside, sizeof c60)));
+                unsigned(tex5.p == static_cast<IDirect3DBaseTexture9*>(t.target.p)), unsigned(!std::memcmp(c80, outside, sizeof c80)));
     report("state_restored", rep.operation == S_OK && rep.restore == S_OK && restored);
     report("state_stream_indices_restored_outside_untouched", untouched);
     report("state_own_scene_drew", rep.drew && changed > 0 && reverted);
@@ -840,6 +930,59 @@ void timing_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass, u
 }
 } // namespace
 
+// Two hull hits' rings at the largest reach the cap admits (engine_shimmer::weapon_ring_max_screens of the target per
+// rect, found by shrinking the radius until weapon_ring accepts it), round, on a lane plane at view z 20000, their noise
+// at strength 0: the shimmer pass's worst weapon-ring frame, EVENT-fenced as timing_case (the hull budget charges each
+// rect's area x hull::budget_weight_shimmer).
+void weapon_ring_timing_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
+    const float Z = 20000.f, near_z = -projection_m32 / projection_m22;
+    const es::Projection p = projection_of(t);
+    es::Rect rects[2];
+    unsigned made = 0;
+    float ring_px = 0.f;
+    for (unsigned k = 0; k < 2; ++k) {
+        const float centre[3] = {(k ? .45f : -.45f) * Z / p.m00, 0.f, Z}, axis2[2] = {1.f, 0.f};
+        float origin[2];
+        es::detail::project(p, centre, origin);
+        for (float r = .5f * Z; r > 1.f; r *= .98f) {
+            es::Rect q{};
+            if (!es::weapon_rect(origin, axis2, 4.f, .37f, 0.f, 0.f, 0.f, float(t.w), float(t.h), &q)) break;
+            if (es::weapon_ring(centre, r, nullptr, 1.f, 1.f, p, near_z, &q)) {
+                rects[made++] = q;
+                ring_px = r * t.ppu(Z);
+                break;
+            }
+        }
+    }
+    report("weapon_rect_ring_timing_made", made == 2);
+    if (made != 2) return;
+    t.lane_fill(d, 0, 0, int(t.w), int(t.h), Z);
+    Fence fence(d);
+    rr::EngineShimmerFrame f = frame_for(t, rects, 2, true);
+    std::vector<double> on, off, submit;
+    for (unsigned i = 0; i < 126; ++i) {
+        const bool with = i % 2 == 0;
+        double s = 0;
+        const double v = tail_ms(d, t, pass, fence, with ? &f : nullptr, &s);
+        if (i < 6) continue;
+        (with ? on : off).push_back(v);
+        if (with) submit.push_back(s);
+    }
+    rr::EngineShimmerReport rep{};
+    check("scene begin", d->BeginScene());
+    pass.run(f, &rep);
+    pass.revert();
+    check("scene end", d->EndScene());
+    t.lane_fill(d, 0, 0, 0, 0, Z);
+    double box = 0.;
+    for (const auto& r : rects) box += double(r.bounds[2] - r.bounds[0]) * double(r.bounds[3] - r.bounds[1]);
+    const double chain = median(on) - median(off), cpu = median(submit);
+    std::printf("WEAPON_RING_TIMING width=%u height=%u rings=2 ring_px=%.1f box_share=%.4f scissor_px=%u copy_px=%u "
+                "fenced_on_ms=%.4f fenced_off_ms=%.4f submit_ms=%.4f gpu_ms=%.4f samples=%zu drew=%u\n",
+                t.w, t.h, double(ring_px), box / (double(t.w) * t.h), rep.scissor_px, rep.copy_px, median(on), median(off), cpu,
+                std::max(0., chain - cpu), on.size(), unsigned(rep.drew));
+    report("weapon_rect_ring_timing_drew", rep.drew && box <= 2.0 * double(es::weapon_ring_max_screens) * t.w * t.h);
+}
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
@@ -902,6 +1045,7 @@ int main(int argc, char** argv) {
             std::printf("SIZE width=%u height=%u\n", size.first, size.second);
             if (wanted("displace")) displace_case(d, *t, pass);
             if (wanted("weapon")) weapon_rect_case(d, caps, mode.Format, *t, pass);
+            if (wanted("weapon")) weapon_ring_case(d, *t, pass);
             if (wanted("occlusion")) occlusion_case(d, *t, pass);
             if (size.first == 1920) {
                 if (wanted("gate")) gate_case(d, *t, pass);
@@ -912,6 +1056,7 @@ int main(int argc, char** argv) {
             }
             if (wanted("timing"))
                 for (const unsigned n : {1u, 4u, 16u}) timing_case(d, *t, pass, n);
+            if (wanted("timing")) weapon_ring_timing_case(d, *t, pass);
             delete t;
         }
         pass.detach();

@@ -601,7 +601,10 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                     R[2], br[0], br[1], br[2]);
         report("hull_plasma_globe_shrinks_reddens", R[0] > R[1] && R[1] > R[2] && R[2] > 0 && br[0] > br[1] && br[1] > br[2] &&
                                                         br[2] >= 0, "");
-        // The ring: on half a hull no sky pixel lit; on the flat lane its radius on the law at 0.1 / 0.2 / 0.5 of its life.
+        // The ring: on half a hull no sky pixel lit; on the flat lane its radius on the law at 0.1 / 0.2 / 0.5 of its life
+        // (the front's: without the shock front's wash, which lights inside it, 8b).
+        ws::HullTuning ring_law = only(RING);
+        ring_law.ring_wash = false;
         hull_owner(400.f, 100.f);
         e = add_of(hl::an_plasma, 1000, front, 0.33);
         const float RL = ws::element_life_ms(hl::class_ring[hl::an_plasma][2], ws::element_hash(e->sequence, 6), wc::stagger,
@@ -618,7 +621,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         const float rf[3] = {0.1f, 0.2f, 0.5f};
         for (unsigned i = 0; i < 3; ++i) {
             const std::uint32_t age = std::uint32_t(rf[i] * RL);
-            const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only(RING));
+            const HullOut o = hull_build(hull_view(g, 1000 + age, 16), ring_law);
             const double rmax = double(hl::class_ring[hl::an_plasma][0] * r33);
             const double want = rmax * (1.0 - std::exp(-double(age) / double(RL) / double(hl::ring_rise))) * ppu;
             const std::vector<double> prof = radial(hull_render(pass, o), g.w, cx, cy, 4.0 * rmax * ppu, 400);
@@ -631,6 +634,197 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         }
         std::printf("CLASS case=plasma_ring_surface sky=%u lane=%u worst_radius_err=%.4f\n", sky, lane, worst);
         report("hull_plasma_ring_on_surface_not_sky", half.rings == 1 && sky == 0 && lane > 0 && worst <= 0.05, "");
+        // 8b. The shock front (2026-11-07, hull-impact-classes.md 3.5): the plasma ring at 0.3 L on the flat lane. The noise
+        // breaks the front into bright and weak arcs (the brightest pixel of 64 angular bins within 1.5 w of r at least
+        // 2:1 max / min, none on the sky half); the white-hot edge over the redder trailing band (noise and wash off);
+        // the wash lights inside the front only (wash on - off); the front 1.25 times as far along an in-plane heading
+        // as across it; a heavy hit's shimmer request carries the live ring.
+        {
+            struct Shot {
+                unsigned rings = 0;
+                std::vector<float> l, rgb;
+                double rr = 0, w = 0;
+            };
+            auto shot = [&](bool axis, const ws::HullTuning& tune, std::uint32_t sequence = 0x5eedu, int dx = 127, int dy = 0,
+                            int dz = 0) {
+                Shot s;
+                hull_owner(400.f, 100.f);
+                wc::Event* er = add_of(hl::an_plasma, 1000, front, 0.33);
+                er->sequence = sequence; // one record per shot, fixed: the same life, radius and seed (the on / off pairs)
+                if (axis) set_dir(er, dx, dy, dz);
+                bool f2 = false;
+                const float L = ws::element_life_ms(hl::class_ring[hl::an_plasma][2], ws::element_hash(er->sequence, 6),
+                                                    wc::stagger, 48.f, &f2);
+                hull_build(hull_view(g, 1000, 16), tune);
+                const std::uint32_t age = std::uint32_t(0.3f * L);
+                const HullOut o = hull_build(hull_view(g, 1000 + age, 16), tune);
+                s.rr = double(hl::class_ring[hl::an_plasma][0] * r33) *
+                       (1.0 - std::exp(-double(age) / double(L) / double(hl::ring_rise))) * ppu;
+                s.w = double(hl::class_ring[hl::an_plasma][1] * r33) * ppu;
+                s.rings = o.rings;
+                s.l = hull_render(pass, o, &s.rgb);
+                return s;
+            };
+            auto radius_of = [&](std::size_t i) {
+                return std::hypot(double(i % g.w) + 0.5 - cx, double(i / g.w) + 0.5 - cy);
+            };
+            ws::HullTuning plain = only(RING);
+            plain.ring_noise = plain.ring_wash = false;
+            // (a) the arcs, and no sky pixel with every part on
+            draw_lane(g, z_hit, 0.5f);
+            const Shot half = shot(false, only(RING));
+            unsigned sky = 0;
+            for (std::size_t i = 0; i < half.l.size(); ++i)
+                if (half.l[i] > 1e-4f && (i % g.w) >= g.w / 2) ++sky;
+            draw_lane(g, z_hit, 1.f);
+            // the seed is the record's sequence hash (element_hash(seq, 7)): the fixture's own 0x5eed and the lab's first
+            // three hit sequences 7000-7002 (its lineup's), each at least 2:1
+            bool arcs_ok = half.rings == 1 && sky == 0;
+            double worst_ratio = 1e30;
+            for (std::uint32_t sequence : {0x5eedu, 7000u, 7001u, 7002u}) {
+                const Shot arcs = shot(false, only(RING), sequence);
+                double bin[64];
+                for (double& b : bin) b = 0.0;
+                for (std::size_t i = 0; i < arcs.l.size(); ++i) {
+                    if (std::fabs(radius_of(i) - arcs.rr) >= std::max(1.5 * arcs.w, 1.5)) continue;
+                    const double ang = std::atan2(double(i / g.w) + 0.5 - cy, double(i % g.w) + 0.5 - cx);
+                    const unsigned b = std::min(63u, unsigned((ang + 3.14159265358979) / 6.28318530717959 * 64.0));
+                    bin[b] = std::max(bin[b], double(arcs.l[i]));
+                }
+                double hi = 0.0, lo = 1e30;
+                for (double b : bin) {
+                    hi = std::max(hi, b);
+                    lo = std::min(lo, b);
+                }
+                const double arc_ratio = lo > 0.0 ? hi / lo : 0.0;
+                worst_ratio = std::min(worst_ratio, arc_ratio);
+                arcs_ok = arcs_ok && arcs.rings == 1 && arc_ratio >= 2.0;
+                std::printf("CLASS case=ring_front_noise sequence=%u rings=%u radius_px=%.2f width_px=%.2f max=%.4f min=%.4f "
+                            "ratio=%.3f sky=%u\n",
+                            sequence, arcs.rings, arcs.rr, arcs.w, hi, lo, arc_ratio, sky);
+            }
+            std::printf("CLASS case=ring_front_noise_worst ratio=%.3f\n", worst_ratio);
+            report("hull_ring_front_noise_arcs_2to1_no_sky", arcs_ok, "");
+            // (b) the leading edge over the trailing band (per unit circumference), the band redder
+            const Shot flat = shot(false, plain);
+            const unsigned nb = 400;
+            const double reach = 1.5 * flat.rr;
+            const std::vector<double> prof = radial(flat.l, g.w, cx, cy, reach, nb);
+            double lead = 0.0, band = 0.0;
+            for (unsigned b = 0; b < nb; ++b) {
+                const double r = (double(b) + 0.5) * reach / nb, v = prof[b] / (6.28318530717959 * r * reach / nb);
+                if (std::fabs(r - flat.rr) < 0.5 * flat.w) lead = std::max(lead, v);
+                if (r > flat.rr - 3.0 * flat.w && r < flat.rr - 1.2 * flat.w) band = std::max(band, v);
+            }
+            double edge_rg[2] = {0, 0}, band_rg[2] = {0, 0};
+            for (std::size_t i = 0; i < flat.l.size(); ++i) {
+                const double r = radius_of(i);
+                double* acc = std::fabs(r - flat.rr) < 0.5 * flat.w ? edge_rg
+                              : (r > flat.rr - 2.5 * flat.w && r < flat.rr - 1.2 * flat.w) ? band_rg : nullptr;
+                if (!acc) continue;
+                acc[0] += double(flat.rgb[3 * i]);
+                acc[1] += double(flat.rgb[3 * i + 1]);
+            }
+            const double edge_r_g = edge_rg[1] > 0 ? edge_rg[0] / edge_rg[1] : 0.0, band_r_g = band_rg[1] > 0 ? band_rg[0] / band_rg[1] : 0.0;
+            std::printf("CLASS case=ring_front_bands lead=%.4f band=%.4f edge_r_over_g=%.3f band_r_over_g=%.3f\n", lead, band,
+                        edge_r_g, band_r_g);
+            report("hull_ring_front_leading_edge_over_trailing_band", flat.rings == 1 && lead > band && band > 0.0 &&
+                                                                          band_r_g > edge_r_g, "");
+            // (c) the wash: inside the front only
+            ws::HullTuning washed = plain;
+            washed.ring_wash = true;
+            const Shot lit = shot(false, washed);
+            unsigned inside = 0, outside = 0;
+            double inside_sum = 0.0;
+            for (std::size_t i = 0; i < lit.l.size() && lit.l.size() == flat.l.size(); ++i) {
+                const double r = radius_of(i), dl = double(lit.l[i]) - double(flat.l[i]);
+                if (r < lit.rr - 0.5 && dl > 0.0) {
+                    ++inside;
+                    inside_sum += dl;
+                }
+                if (r > lit.rr + 1.0 && dl != 0.0) ++outside;
+            }
+            std::printf("CLASS case=ring_front_wash inside_px=%u inside_sum=%.3f outside_px=%u\n", inside, inside_sum, outside);
+            report("hull_ring_front_wash_inside_only", inside > 0 && outside == 0, "");
+            // (d) the stretch along the heading (Event::dir along the owner's x, in the lane's plane)
+            auto peak = [&](const Shot& sh, int dx, int dy) { // the edge's radius on a ray from the centre (parabolic)
+                const int x0 = int(cx), y0 = int(cy);
+                const int n = int(2.0 * sh.rr);
+                double best = -1.0;
+                int at = 0;
+                for (int s = int(0.5 * sh.rr); s < n; ++s) {
+                    const int x = x0 + dx * s, y = y0 + dy * s;
+                    if (x < 0 || y < 0 || x >= int(g.w) || y >= int(g.h)) break;
+                    const double v = sh.l[std::size_t(y) * g.w + unsigned(x)];
+                    if (v > best) {
+                        best = v;
+                        at = s;
+                    }
+                }
+                auto v_at = [&](int s) { return double(sh.l[std::size_t(y0 + dy * s) * g.w + unsigned(x0 + dx * s)]); };
+                const double a = v_at(at - 1), b = v_at(at), c = v_at(at + 1), den = a - 2.0 * b + c;
+                const double off = den < 0.0 ? 0.5 * (a - c) / den : 0.0;
+                return double(at) + off + (dx ? (double(x0) + 0.5 - cx) * dx : (double(y0) + 0.5 - cy) * dy);
+            };
+            auto ratio_of = [&](const Shot& sh) {
+                const double rx = 0.5 * (peak(sh, 1, 0) + peak(sh, -1, 0)), ry = 0.5 * (peak(sh, 0, 1) + peak(sh, 0, -1));
+                return ry > 0.0 ? rx / ry : 0.0;
+            };
+            // in the lane's plane (sin phi 1): the full stretch; at 45 degrees out of it (Event::dir (90, 0, 90), sin phi
+            // 0.707): the 3-D law 1 / sqrt(1 - (1 - 1 / s^2) sin^2 phi); no heading (Event::dir 0): round
+            const Shot along = shot(true, plain);
+            const Shot tilted = shot(true, plain, 0x5eedu, 90, 0, 90);
+            const Shot round = shot(false, plain);
+            const double ecc = ratio_of(along), ecc45 = ratio_of(tilted), ecc0 = ratio_of(round);
+            const double s2 = double(hl::ring_stretch) * double(hl::ring_stretch);
+            const double want45 = 1.0 / std::sqrt(1.0 - (1.0 - 1.0 / s2) * 0.5);
+            std::printf("CLASS case=ring_front_stretch ratio=%.4f want=%.3f ratio_45=%.4f want_45=%.4f ratio_round=%.4f\n", ecc,
+                        double(hl::ring_stretch), ecc45, want45, ecc0);
+            report("hull_ring_front_stretch_along_heading", along.rings == 1 &&
+                                                                std::fabs(ecc - double(hl::ring_stretch)) <= 0.05 * hl::ring_stretch, "");
+            report("hull_ring_front_stretch_45_degrees", tilted.rings == 1 && std::fabs(ecc45 - want45) <= 0.05 * want45, "");
+            report("hull_ring_front_round_without_heading", round.rings == 1 && std::fabs(ecc0 - 1.0) <= 0.02, "");
+            // (f) a newborn ring (r 0 at its first frame): every pixel finite (the wash's exponent is clamped inside the
+            // front, never 0 x inf), its edge lit
+            hull_owner(400.f, 100.f);
+            wc::Event* en = add_of(hl::an_plasma, 1000, front, 0.33);
+            en->sequence = 0x5eedu;
+            const HullOut born = hull_build(hull_view(g, 1000, 16), only(RING));
+            const std::vector<float> ln = hull_render(pass, born);
+            unsigned nonfinite = 0, lit_nb = 0;
+            for (float v : ln) {
+                nonfinite += !std::isfinite(v);
+                lit_nb += v > 1e-4f;
+            }
+            std::printf("CLASS case=ring_front_newborn rings=%u nonfinite=%u lit=%u\n", born.rings, nonfinite, lit_nb);
+            report("hull_ring_front_newborn_finite", born.rings == 1 && nonfinite == 0 && lit_nb > 0, "");
+            // (e) the heavy hit's shimmer request carries the live ring at 3,900 view units (none with the ring off); at
+            // 300 its ring's rect passes engine_shimmer::weapon_ring_max_screens: drawn, no band (capped), and the
+            // kept rect charged at budget_weight_shimmer (the frame's screens with the shimmer over without it)
+            auto heavy_at = [&](float owner_z, unsigned what) {
+                hull_owner(owner_z, 100.f);
+                wc::Event* eh = add_of(hl::an_heavy, 1000, front, 0.8);
+                eh->sequence = 0x5eedu;
+                set_dir(eh, 0, 0, 127);
+                hull_build(hull_view(g, 1000, 16), only(what));
+                return hull_build(hull_view(g, 1040, 16), only(what));
+            };
+            const HullOut sh = heavy_at(4000.f, RING | SHIMMER);
+            const ws::ShimmerRect with = hq_shimmer[0];
+            const HullOut sn = heavy_at(4000.f, SHIMMER);
+            const float without = sn.shimmer ? hq_shimmer[0].ring_r : -1.f;
+            const HullOut near_on = heavy_at(400.f, RING | SHIMMER);
+            const float near_r = near_on.shimmer ? hq_shimmer[0].ring_r : -1.f;
+            const HullOut near_off = heavy_at(400.f, RING);
+            std::printf("CLASS case=ring_front_shimmer rects=%u ring_r=%.3f ring_strength=%.3f stretch=%.3f without_ring_r=%.3f "
+                        "near_rings=%u near_ring_r=%.3f near_screens=%.4f near_screens_no_shimmer=%.4f\n",
+                        sh.shimmer, double(with.ring_r), double(with.ring_strength), double(with.ring_stretch), double(without),
+                        near_on.rings, double(near_r), double(near_on.n.screens), double(near_off.n.screens));
+            report("hull_ring_front_shimmer_request", sh.shimmer == 1 && with.ring_r > 0.f && with.ring_strength > 0.f &&
+                                                          with.ring_stretch == hl::ring_stretch && without == 0.f, "");
+            report("hull_ring_front_shimmer_capped_and_charged", near_on.rings == 1 && near_on.shimmer == 1 && near_r == 0.f &&
+                                                                     near_on.n.screens > near_off.n.screens, "");
+        }
         draw_lane(g, 0.f, -1.f);
     }
     // 9. Heavy: the entry streak along the projected shot, its inside half hidden; the back-jet cone; the exit jet only
@@ -1168,6 +1362,14 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                             o.n.spots, o.n.octaves, double(o.n.screens), double(o.n.flash_screens), o.n.shed,
                             o.n.bursts_shed, o.n.scorches_shed,
                             o.n.rings_shed, best);
+                // The ring's own cost in the same build (the shock front, docs/verification/weapon-effects.md "Shock
+                // front"): the ring draws alone (hull_only kind 3), for the classes that carry one.
+                if (an == hl::an_heavy || an == hl::an_plasma || an == hl::an_missile) {
+                    const double ring_us = time_frame(hull_frame(tt, hull_only(o, 3)));
+                    std::printf("CLASS_TIMING width=%u height=%u class=%s case=%s_ring_only hits=%u rings=%u gpu_us=%.1f\n",
+                                size.first, size.second, anatomy_name(an),
+                                c ? "capital_close_64_hits" : "fighter_200m_20_hits", hits, o.rings, ring_us);
+                }
                 // the sheddable screens within the budget (or nothing sheddable left: the flashes are charged, never
                 // shed) and at 5120x1440 the frame within the budget's 8 x 177.5 us
                 const bool sheddable_ok = o.n.screens - o.n.flash_screens <= wc::screen_budget + 1e-3f ||

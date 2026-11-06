@@ -100,8 +100,9 @@ struct WeaponShapeVertex {
     float corner[3];
     float light[4];  // the box's view-space centre and radius
     float colour[3]; // linear radiance
-    float shape[4];  // ring: r(t), w, 0, 0; filament: noise scale, seed, width, falloff radius
-    float frame[9];  // filament: the owner's local axes in view (x, y, z rows); ring: unused
+    float shape[4];  // ring: r(t), 1 / w, noise seed (< 0 none), wash gain; filament: noise scale, seed, width, falloff
+                     // radius (a ring's light[3] carries its wash rate, weapon_ring_ps.hlsl)
+    float frame[9];  // filament: the owner's local axes in view (x, y, z rows); ring: those rows with the shot's stretch
 };
 // The scorches (hull-impact-classes.md 3.7): glow rectangles drawn with the glow programs under ZERO / INVSRCCOLOR (the
 // scene x (1 - the program's output)) before every additive layer; their colour s(t) x scorch_colour.

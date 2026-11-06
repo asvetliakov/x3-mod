@@ -221,6 +221,10 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
         const float fade = span > 1e-7f ? 1.f / span : 1e7f;
         if (engine_shimmer::weapon_rect(o, axis, size_px, w.seed, depth, fade, w.strength, float(width), float(height),
                                         &shimmer_rects_[count])) {
+            // its shock ring's refraction band (hull-impact-classes.md 3.5): the rect grows to the ring's reach
+            if (w.ring_r > 0.f && w.ring_strength > 0.f)
+                engine_shimmer::weapon_ring(w.centre, w.ring_r, w.has_axis ? w.axis : nullptr, w.ring_stretch,
+                                            w.ring_strength, projection, view.near_z, &shimmer_rects_[count]);
             ++count;
             ++shimmer_weapon_rects_;
         }

@@ -1201,6 +1201,23 @@ constexpr float class_ring[10][4] = {{0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f},
                                      {3.f, 0.15f, 300.f, 1.0f}, {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f},
                                      {0.f, 0.f, 0.f, 0.f}};
 constexpr float ring_t = 0.9f, ring_rise = 0.1f;
+// The shock front (2026-11-07, hull-impact-classes.md 3.5; the lab's renderHull draws the same law): with d' the
+// stretched distance |M d| (M: the owner's axes, x 1 / ring_stretch along the shot's heading when it is valid) and
+// z = (d' - r) / w, E = colour(ring_lead_t) x E0 x (m (exp(-z^2) + 4 b (1 - b) trail) + wash), b = saturate(-z /
+// ring_trail_span) (the trailing band from r - ring_trail_span w to r), trail = ring_trail_gain heat(ring_trail_t) /
+// heat(ring_lead_t); m = 1 - depth + depth saturate(0.5 + contrast (n - 0.5)), n the value noise of the owner-frame
+// direction x ring_noise_freq + 64 unit(hash(seq, 7)) (1.7, 3.1, 0.7) (bright and weak arcs, stable per hit);
+// wash = ring_wash_gain saturate((r - d') / w) e^(-(r - d') / (ring_wash_fall r)) inside the front only. The plasma
+// and heavy hits' shimmer rects carry the ring (ring_refract x (1 - t / L)^2): a displacement band one
+// engine_shimmer::weapon_ring_band_px inside the front.
+constexpr float ring_lead_t = 1.0f, ring_trail_t = 0.35f, ring_trail_gain = 0.55f, ring_trail_span = 3.0f;
+constexpr float ring_noise_freq = 1.3f, ring_noise_depth = 0.9f, ring_noise_contrast = 2.5f;
+constexpr float ring_wash_gain = 0.25f, ring_wash_fall = 0.35f, ring_stretch = 1.25f, ring_refract = 1.0f;
+// The noise's seed (64 unit(hash(seq, 7)) x (1.7, 3.1, 0.7)) and the profile's windows in w: the noise where
+// -span < z < ring_noise_window, the front (edge, band, noise) where -span < z < ring_front_window, the box's edge.
+constexpr float ring_seed_axis[3] = {1.7f, 3.1f, 0.7f};
+constexpr float ring_seed_scale = 64.f, ring_noise_window = 2.5f, ring_front_window = 3.f;
+constexpr unsigned ring_seed_element = 7;
 // Scorch (the multiply decal, the only non-additive element): the glow's window drawn ZERO / INVSRCCOLOR, output s(t)
 // w(d) scorch_colour, s(t) = s0 min(1, t / L_ember) (1 - t / L_s): it develops while the ember cools and fades linearly;
 // in its own per-owner store (scorch_per_owner, scorch_store), drawn first, never on sky. Columns: R r, L_s ms, s0.
@@ -1248,9 +1265,14 @@ constexpr float bias = 0.5f;         // the flash's centre towards the eye, x r_
 constexpr float tug_colour[3] = {0.7f, 0.8f, 1.0f}; // the tug's glow (pale blue); repair: the weapon tint
 // The shared budget's weights of the new primitives (2.11, over the decal's 177.5 us at 5120x1440; the native fixture's
 // *_alone_fills_frame rows, 2026-11-06: the ring 71.6 us, the filament glow 153.2, the scorch 86.7, a flash's halo
-// holding the eye 87.3): charged; the flashes are the shed order's last step (other owners', oldest first).
-constexpr float budget_weight_ring = 0.40f, budget_weight_filament = 0.86f, budget_weight_scorch = 0.49f;
+// holding the eye 87.3; the ring as a shock front 88.1-90.5 us, 2026-11-07): charged; the flashes are the shed order's
+// last step (other owners', oldest first).
+constexpr float budget_weight_ring = 0.50f, budget_weight_filament = 0.86f, budget_weight_scorch = 0.49f;
 constexpr float budget_weight_flash = 0.49f;
+// A kept hull shimmer rect (with its ring's band) per screen of its drawn rect over the decal's 177.5 us per screen:
+// run_engine_shimmer.py --host native 2026-11-07, two rings at the cap's reach (WEAPON_RING_TIMING) 245.4 us for 0.486
+// screens of boxes at 5120x1440 (2.84; a plume rect of a tenth 44.2 us, 2.49).
+constexpr float budget_weight_shimmer = 2.85f;
 // The puffs' octave LOD at fighter range (section 6): a puff whose projected radius is under puff_lod_px (at 1440 rows,
 // scaled with the target's height) draws one noise octave (the sign of its seed), charged at budget_weight_fireball_lod.
 constexpr float puff_lod_px = 96.f;

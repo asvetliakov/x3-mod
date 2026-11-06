@@ -11,18 +11,29 @@
 // smoothstep(-back, 0, s) (1 - smoothstep(0, length, s)) (1 - smoothstep(0.35 half-width, half-width, |t|)), 0 on the
 // border. Occlusion: the lane's device depth d (s2, point) in [0, depth) is nearer than the plume: the shimmer fades out
 // over a small view-depth band in front of it, x saturate(1 - (depth - d) x fade) (the sky's -1 never occludes).
+// A weapon hit's shock ring (docs/architecture/hull-impact-classes.md 3.5, 2026-11-07; engine_shimmer_core.h weapon_ring):
+// with c1.z rings, the lane's surface point under the pixel (its device depth through the unjittered projection, c74 /
+// c75; the sky never) whose stretched distance d' from the ring's centre lies within the band b of r - b (u = (r - d') /
+// b - 1, |u| < 2.5) adds strength e^(-u^2) along the pixel's direction from the centre's pixel: the band rides the hull
+// just inside the front like the ring's own shell. No ring (every plume frame): the branch is skipped, the plumes'
+// image as before bit for bit.
 // Compiled with tools/shaders/generate_engine_shimmer_program.py.
 sampler2D scene_linear : register(s0);
 sampler2D scene_point : register(s1);
 sampler2D lane : register(s2);
 float4 target : register(c0);    // 1/W, 1/H, W, H
-float4 frame : register(c1);     // amplitude (px), rect count, 0, the clock x boil rate
+float4 frame : register(c1);     // amplitude (px), rect count, ring count, the clock x boil rate
 float4 grid : register(c2);      // 1 / cell (cells per nozzle width), 0, 0, 0
 float4 rect_a[16] : register(c4);  // origin (px), unit axis
 float4 rect_b[16] : register(c20); // length (px ahead), half-width (px), back (px behind), 1 / nozzle width (px)
 float4 rect_c[16] : register(c36); // seed (x 61.7), occlusion depth (device; 0 none), the nozzle's flow phase / cell, the
                                    // occlusion fade (1 / the band's device-depth span)
 float4 rect_d[16] : register(c52); // strength (an engine rect 1: x 1 is exact; a weapon hit's 1 -> 0), unused x3
+float4 ring_a[2] : register(c68);  // the ring's centre (view), its radius (view units)
+float4 ring_b[2] : register(c70);  // the heading x sqrt(1 - 1 / stretch^2) (view; 0: round), the band (view units)
+float4 ring_c[2] : register(c72);  // the centre's pixel, the strength, 0
+float4 lane_proj : register(c74);  // m00, m11, m20, m21 of the unjittered projection
+float4 lane_law : register(c75);   // m22, m32 (view z = m32 / (d - m22)), 0, 0
 // The plume's value noise and its gradient in x and y: (d/dx, d/dy) of the smoothstep-trilinear interpolation.
 // The lattice index is exact, as in engine_plume_ps.hlsl vnoise: p - frac(p) is off an integer in its last bit when
 // fxc folds an integer offset out of the frc but keeps it in a mad that the driver fuses (NVIDIA, 2026-11-05);
@@ -73,6 +84,22 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             const float l2 = dot(v, v);
             v *= l2 > 1.0 ? rsqrt(l2) : 1.0;
             total += (mask * rect_d[i].x) * v;
+        }
+    }
+    [branch] if (frame.z > 0.0) { // uniform: a plume-only frame skips the rings whole
+        [branch] if (depth >= 0.0) {
+            const float zv = lane_law.y / (depth - lane_law.x);
+            const float2 ndc = float2(2.0 * uv.x - 1.0 - target.x, 1.0 - 2.0 * uv.y + target.y);
+            const float3 pv = float3((ndc.x - lane_proj.z) / lane_proj.x * zv, (ndc.y - lane_proj.w) / lane_proj.y * zv, zv);
+            [unroll] for (int k = 0; k < 2; ++k) {
+                const float3 d = pv - ring_a[k].xyz;
+                const float al = dot(d, ring_b[k].xyz);
+                const float u = (ring_a[k].w - sqrt(max(dot(d, d) - al * al, 0.0))) / ring_b[k].w - 1.0;
+                [branch] if (k < frame.z && abs(u) < 2.5) {
+                    const float2 rel = p - ring_c[k].xy;
+                    total += (ring_c[k].z * exp2(-1.442695 * u * u) * rsqrt(max(dot(rel, rel), 1e-4))) * rel;
+                }
+            }
         }
     }
     const float m2 = dot(total, total);
