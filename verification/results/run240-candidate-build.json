@@ -1,0 +1,40 @@
+{
+  "recorded_utc": "2026-11-06T17:18:00+00:00",
+  "run": 240,
+  "source": {
+    "commit": "e96b7d5e8c75d426cb04e0dfa98e06d9e7566f48",
+    "head": "e96b7d5e8c75d426cb04e0dfa98e06d9e7566f48",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (HEAD == commit)",
+    "marker": "X3M_SOURCE_COMMIT=e96b7d5e8c75d426cb04e0dfa98e06d9e7566f48",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run240/d3d9.dll",
+    "stripped": false,
+    "sha256": "6512c016b246a1c9cd05fe9d6e5cb9027229e5a66c6c3db54ad969614e890071",
+    "bytes": 64091530
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run240",
+    "command": "cmake -S . -B build-run240 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run240 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": ["build-run240.configure.log", "build-run240.build.log"]
+  },
+  "no_x87": {"result": "PASS", "reachable_functions": 1162, "violations": 0},
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{hook-summary.json,summary.json} (hook 90/0, D3D 96/0, bound to the committed sources; the agent's DLL 14874a92 from the same sources); own sun: verification/results/own-sun-pass/native/result.json, own_sun_hook_fixture 40/0",
+    "review": "docs/verification/weapon-effects.md, 2026-11-06 Hull hit, step 2 section (one review round, all ten items fixed, no blocking findings); sun: docs/architecture/own-sun-look.md Step 1e, docs/verification/sun-occlusion.md"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: ok, weapon_effects_table null (DLL default <exe dir>\\x3m\\weapon_effects.json)"
+}
