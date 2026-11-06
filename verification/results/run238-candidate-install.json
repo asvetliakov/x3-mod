@@ -1,0 +1,23 @@
+{
+ "run": 238,
+ "what": "shield-hit step 1: stand-off above the hull + drained shield as hull hit; own sun C2 halo taper; Flight E",
+ "commit": "a572877d409bbbe80e28461d5058a5d14814c772",
+ "branch": "effects",
+ "candidate_record": "verification/results/run238-candidate-build.json",
+ "dll_sha256": "50d24a4299b02b249a64fd546bb15b77a95a724183080407fe62aeb2e4e9b789",
+ "dll_bytes": 63894569,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run238/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 237,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run237",
+  "sha256": "1219cb9910d5e9f20a7ac40f33d842efc424e286e0c5c818f2c5cc55c2a992e0"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "unchanged (copy x3m.ini.run237): weapon_effects = shields",
+ "tables": {
+  "weapon_effects.json": "ce75216ff04a65dcdb59b1cb289a1417684caf2a6f656b23cee23548b0c9f28a (unchanged)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "installed_at": "2026-11-06T12:18",
+ "open": "AP 238 A"
+}
