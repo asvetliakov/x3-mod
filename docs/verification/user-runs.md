@@ -18,6 +18,35 @@ Since 2026-09-14 the linear distance-fade route is on by default whenever
 "Default"); the queue commands below keep `--linear-distance-fade` spelled out,
 which is the same resolved setting, and `--no-linear-distance-fade` opts out.
 
+## Weapon test ground (standing recipe, 2026-11-06)
+
+Every weapon-effects run (hull hits, bolts, muzzle, beams, explosions) uses the same
+in-game setup so flights compare. It needs nothing from the proxy: the installed
+Cycrow cheat package (`addon/scripts/z.cheat.cycrow.*`, menu text page 9999) does it.
+Open the cheat menu with its hotkey (Controls, the "Cheat Menu" key; Mayhem shows a
+one-time warning) while aiming at the object the cheat should act on; with nothing
+aimed it acts on your ship.
+
+1. **Spawn the targets** (menu "Create Objects" > "Create ships...": Settings "Sector
+   Position", equipment level default; the ships are created player-owned next to you,
+   so nothing shoots back): one per tier.
+   - fighter tier: an M4 (Argon Buster) and an M5 (Argon Discoverer)
+   - corvette / transport tier: a TM (Argon Magnetar) and an M6 (Argon Centaur)
+   - capital tier: an M7 (Argon Cerberus) or M2 (Argon Titan), plus a TL (Argon Mammoth)
+   - station tier: any existing station in the sector
+   Mayhem ship names differ; pick the same classes from its list.
+2. **Hull-hit target:** aim at one TM or M6, cheat menu > "Ship Commands" > "Remove
+   wares, upgrades and equipment" > "Remove all shields" (its shield bar reads 0 and
+   stays 0), then "God mode" on the same ship so its hull is refilled every 100 ms and
+   it never dies. Do this for one ship per tier when a run asks for all tiers.
+3. **Shield target:** God mode on a ship that keeps its shields (God mode refills
+   shields and hull every 100 ms, so the shield never drains: every hit is a shield hit).
+4. **Shooting targets** (bolts, muzzle, beams): "Create Objects" > "Spawn fodder" gives
+   enemy fighters at 1 hull near you.
+5. Keep SETA off for the judged part of the run; the effects age in game time.
+   Take F8 at the moments the run names. Nothing here is saved: do not save the game
+   on a test-ground session.
+
 | Run | Purpose | Sessions | Status |
 | --- | --- | ---: | --- |
 | FL 50 A | FL run 50 (main d072fb7f, DLL 6dac80a4…, unstripped) on native Windows, `C:\X3FL`; rollback `rollback-d3d9\d3d9.dll.run48`; `x3m.ini` = run 48 file + `sky_stars = 1`. **Procedural stars.** Start FL, jump to Argon Prime, look at the stars at rest, then rotate under SETA 10x; turn from the nebula to black sky; note bloom. Then one more sector. Report the `sky_stars_match` row, the `sky_stars status=` row and whether stars shimmer, trail or step in brightness. | 1 | complete (flown 2026-11-05: ready, matched=1, accepted) |
