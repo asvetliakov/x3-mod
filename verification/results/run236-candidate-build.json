@@ -1,0 +1,40 @@
+{
+  "recorded_utc": "2026-11-06T00:50:20+00:00",
+  "run": 236,
+  "source": {
+    "commit": "3ee53bf04ceb78df1c303d8c6fe516061d971550",
+    "head": "3ee53bf04ceb78df1c303d8c6fe516061d971550",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (HEAD == commit)",
+    "marker": "X3M_SOURCE_COMMIT=3ee53bf04ceb78df1c303d8c6fe516061d971550",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run236/d3d9.dll",
+    "stripped": false,
+    "sha256": "9f35b335271b19ef5299dfa19f486c4073d2cf7c5385b13a65c96ef49b953075",
+    "bytes": 63748066
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run236",
+    "command": "cmake -S . -B build-run236 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run236 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": ["build-run236.configure.log", "build-run236.build.log"]
+  },
+  "no_x87": {"result": "PASS", "reachable_functions": 1161, "violations": 0},
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{hook-summary.json,summary.json} (hook 71/0, D3D 43/0, bound to the committed sources; the agent's DLL 525ee864 from the same sources)",
+    "review": "docs/verification/weapon-effects.md, 2026-11-06 placement fix sections (two review rounds, no blocking findings left)"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: ok, weapon_effects_table null (DLL default <exe dir>\\x3m\\weapon_effects.json)"
+}
