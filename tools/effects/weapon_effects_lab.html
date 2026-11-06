@@ -714,7 +714,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   // view -> owner frame (the inverse rotation of toView)
   const toLocal = hull.toLocal;
   const O = toLocal([-C[0], -C[1], -C[2]]), e = hull.ext;
-  const img = ctx.getImageData(0, 0, OW, OH), px = img.data;
+  const img = stageImage(ctx), px = img.data;
   const sum = new Float32Array(OW * OH);
   const rayOf = (x, y) => toLocal(norm3([(x + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1]));
   // The hull's near root along a ray (owner frame): the surface the patch lies on and the preview's dim hull shading.
@@ -1159,7 +1159,7 @@ function renderHull(record, t) {
   const C = h.camera === 'chase' ? [0, 0, D] : [-aim[0], -aim[1], D - aim[2]];
   const toView = q => { const v = hull.toView(q); return [v[0] + C[0], v[1] + C[1], v[2] + C[2]]; };
   const O = hull.toLocal([-C[0], -C[1], -C[2]]), e = hull.ext;
-  const img = ctx.getImageData(0, 0, OW, OH), px = img.data, sum = new Float32Array(OW * OH * 3), mul = new Float32Array(OW * OH * 3).fill(1);
+  const img = stageImage(ctx), px = img.data, sum = new Float32Array(OW * OH * 3), mul = new Float32Array(OW * OH * 3).fill(1);
   // The hull's view depth and surface point (owner frame) per pixel; the sky Infinity.
   const depth = new Float32Array(OW * OH).fill(Infinity), P = new Float32Array(OW * OH * 3);
   for (let y = 0; y < OH; y++)
@@ -1829,6 +1829,15 @@ function drawBackground(ctx) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   ctx.drawImage(backgrounds[key], 0, 0);
 }
+// The stage's pixels as drawBackground left them, copied from the background canvas, never read back from the stage:
+// the native impact sprite draws a tex/*.png texture on the stage, which taints it when the page is opened from
+// file://, and getImageData on a tainted canvas throws a SecurityError (it stopped the animation loop).
+const backgroundPixels = {};
+function stageImage(ctx) {
+  const cw = ctx.canvas.width, ch = ctx.canvas.height, key = cw + 'x' + ch;
+  if (!backgroundPixels[key]) backgroundPixels[key] = backgrounds[key].getContext('2d').getImageData(0, 0, cw, ch).data;
+  return new ImageData(new Uint8ClampedArray(backgroundPixels[key]), cw, ch);
+}
 
 function label(ctx, text) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalCompositeOperation = 'source-over';
@@ -2080,22 +2089,29 @@ function applyPreset(id) {
   set('c_class', p.cls || 'auto'); set('c_pulse_on', (p.pulse || [0, 0])[0]); set('c_pulse_period', (p.pulse || [0, 0])[1]);
   set('c_sweep', p.sweep || 0); set('c_loop', p.loop || 0); set('c_incidence', SCENARIO_INCIDENCE[p.id] || 0);
   if ($('c_shield_read')) $('c_shield_read').textContent = p.shield;
-  const pick = () => {
-    const i = data().weapons.findIndex(w => w.id === p.weapon);
-    if (i >= 0) { state.weapon = i; $('weapon').value = i; updateInfo(); }
-    state.dirty = true;
-  };
-  if (state.view !== p.view) {
-    $('view').value = p.view;
-    state.view = p.view;
-    loadAssets(p.view, () => { fillWeapons(); pick(); });
-  } else pick();
+  if (state.view !== p.view) { $('view').value = p.view; state.view = p.view; fillWeapons(); }
+  const i = data().weapons.findIndex(w => w.id === p.weapon);
+  if (i >= 0) { state.weapon = i; $('weapon').value = i; }
   state.scenarioModified = false;
   showScenario();
+  settle(p.view);
 }
 function setView(view) {
   state.view = view;
-  loadAssets(view, () => { fillWeapons(); updateInfo(); state.dirty = true; });
+  $('view').value = view;
+  fillWeapons();
+  settle(view);
+}
+// The weapon list, the controls and a draw follow a view or scenario change at once (LAB_DATA is inline); the view's
+// assets.js (body tints, textures) loads after and redraws. window.labReady resolves once that view's assets.js has
+// loaded or failed and the stage has drawn with it, so an automated select-then-draw awaits it and is deterministic.
+function settle(view) {
+  updateInfo();
+  draw();
+  window.labReady = new Promise(resolve => loadAssets(view, () => {
+    if (state.view === view) { updateInfo(); draw(); }
+    resolve();
+  }));
 }
 
 /** The layer "native impact sprite": the vanilla impact row on the shield tab's stage at the aim point, its scale
@@ -2110,11 +2126,17 @@ function drawNative(rec, t) {
 function setText(id, text) { if ($(id).textContent !== text) $(id).textContent = text; }
 
 function frame(now) {
+  requestAnimationFrame(frame); // first: a draw that throws must not stop the loop
   const dt = now - state.last; state.last = now;
-  const L = loopMs();
-  if (state.playing) { state.t = (state.t + dt * state.speed) % L; state.dirty = true; }
-  if (state.dirty && state.view && data()) {
-    state.dirty = false;
+  if (state.playing && state.view && data()) { state.t = (state.t + dt * state.speed) % loopMs(); state.dirty = true; }
+  if (state.dirty) draw();
+}
+// One draw of the active tab at state.t; an error is shown under the caption once and the next change redraws.
+function draw() {
+  if (!state.view || !data()) return;
+  state.dirty = false;
+  try {
+    const L = loopMs();
     $('scrub').max = L; $('scrub').value = state.t;
     $('tread').textContent = `${state.t.toFixed(0)} / ${L.toFixed(0)} ms`;
     if (state.tab === 'vanilla') {
@@ -2134,8 +2156,10 @@ function frame(now) {
       setText('caption', rec.caption || '');
       setText('caption_detail', rec.detail || '');
     }
+  } catch (e) {
+    const msg = `draw failed: ${e && e.message || e}`;
+    if ($('caption_detail').textContent !== msg) { console.error(e); setText('caption_detail', msg); }
   }
-  requestAnimationFrame(frame);
 }
 
 // The stage's tab: Shield hit and Hull hit draw ours on the one stage canvas, Vanilla the four slots; only the active
@@ -2210,7 +2234,7 @@ function init() {
   $('reseed').onclick = () => { state.seed++; state.dirty = true; };
   for (const id of ['loop', 'zoom']) $(id).onchange = () => { state.dirty = true; };
   const first = Object.keys(LAB_DATA)[0];
-  if (!first) { $('winfo').textContent = 'No data block: run tools/effects/generate_weapon_effects_lab.py'; return; }
+  if (!first) { $('winfo').textContent = 'No data block: run tools/effects/generate_weapon_effects_lab.py'; window.labReady = Promise.resolve(); return; }
   initOurControls();
   initHullControls();
   initLayers();

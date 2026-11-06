@@ -532,7 +532,7 @@ class PageTest(unittest.TestCase):
 
     CONTROLS = r'''
 const OW = 720, OH = 405, W = OW, H = OH; function fmt(v) { return v; } function assets() { return null; }
-function drawBackground() {} function label() {}
+function drawBackground() {} function label() {} function stageImage(ctx) { return ctx.getImageData(0, 0, OW, OH); }
 const vals = {c_cell_fighter: HEADER.cell_m[0], c_cell_corvette: HEADER.cell_m[1], c_cell_capital: HEADER.cell_m[2],
   c_rings_fighter: HEADER.rings[0], c_rings_corvette: HEADER.rings[1], c_rings_capital: HEADER.rings[2],
   c_ripple_speed: HEADER.ripple_speed, c_centre_gain: HEADER.centre_gain, c_fade_ms: HEADER.fade_ms, c_stagger: HEADER.stagger,
@@ -935,6 +935,61 @@ console.log(JSON.stringify(out));
             self.assertTrue(on['caption'].startswith('Hull hit, '), on['caption'])
             self.assertNotIn('hidden', on['caption'])
         self.assertGreaterEqual(glowing, 8)                             # the classes with a glow light it at 40 ms
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_stage_draws_on_a_tainted_canvas(self):
+        """Opened from file://, the native impact sprite's texture taints the stage and getImageData on it throws. The
+        renderers take the stage's pixels from the background canvas (stageImage), so the close plasma capital preset
+        still draws the hull body and the hit at 40, 150, 400 and 900 ms with a stage whose getImageData throws."""
+        script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
+        self.assertEqual(script.count('getImageData('), 1)                # only stageImage, on the background canvas
+        self.assertIn("backgrounds[key].getContext('2d').getImageData(", script)
+        presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        p = next(x for x in presets if x['id'] == 'hull/plasma-psp-capital-close')
+        weapon = next(w for w in json.loads(re.search(r'\n%s: (\{.*?\}),\n' % json.dumps(p['view']), self.html).group(1))
+                      ['weapons'] if w['id'] == p['weapon'])
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+function stageImage() { return {data: new Uint8ClampedArray(OW * OH * 4).fill(8)}; }
+const p = __P__, weapon = __W__;
+Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
+                     c_variant: p.variant, c_k: p.k, c_shield: p.shield, c_class: p.cls, c_pulse_on: p.pulse[0],
+                     c_pulse_period: p.pulse[1], c_sweep: p.sweep, c_loop: p.loop, c_incidence: 60});
+const tainted = {setTransform() {}, getImageData() { throw new Error('SecurityError: tainted'); }};
+const at = t => { let put = null; const rec = {slot: 'impact', ctx: Object.assign({putImageData(img) { put = img.data; }}, tainted), weapon};
+                  renderOurs(rec, t); return {put, light: rec.hullStats.light}; };
+const out = {};
+for (const t of [40, 150, 400, 900]) {
+  layers.hull = true; const on = at(t); layers.hull = false; const off = at(t);
+  let body = 0;
+  for (let i = 0; i < on.put.length; i += 4) body += on.put[i] !== off.put[i];
+  out[t] = {body, light: Object.values(on.light).reduce((a, b) => a + Math.max(b, 0), 0)};
+}
+console.log(JSON.stringify(out));
+""".replace('__P__', json.dumps(p)).replace('__W__', json.dumps(weapon))
+        js = self.run_node(probe)
+        for t, r in js.items():
+            self.assertGreater(r['body'], 0.2 * 720 * 405, t)            # the close capital fills about 0.38 of the stage
+            self.assertGreater(r['light'], 0, t)                         # the hit's elements light the stage
+
+    def test_scenario_select_is_synchronous(self):
+        """Choosing a scenario sets the view's weapon list, the weapon and the controls and draws at once (LAB_DATA is
+        inline; only assets.js loads later and redraws); window.labReady resolves after that view's assets settled and
+        the stage drew; the animation loop reschedules before drawing, so a draw that throws cannot stop it."""
+        script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)
+        apply = script[script.index('function applyPreset('):script.index('function setView(')]
+        self.assertNotIn('loadAssets(', apply)
+        self.assertIn('fillWeapons(); }', apply)
+        self.assertIn('settle(p.view);', apply)
+        settle = script[script.index('function settle('):script.index('function drawNative(')]
+        self.assertLess(settle.index('draw();'), settle.index('loadAssets('))
+        self.assertIn('window.labReady = new Promise(', settle)
+        frame = script[script.index('function frame('):script.index('function draw()')]
+        self.assertTrue(frame.split('\n')[1].strip().startswith('requestAnimationFrame(frame);'))
+        draw = script[script.index('function draw()'):script.index('function setTab(')]
+        self.assertIn('} catch (e) {', draw)
+        self.assertIn('window.labReady = Promise.resolve();', script)    # no data block: nothing to wait for
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_lab_classes_match_the_census(self):
