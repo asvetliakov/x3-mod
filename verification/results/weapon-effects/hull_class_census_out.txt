@@ -1,0 +1,144 @@
+== stock_ap (45 rows)
+id                                flags shape      dmg classifier pin       class    
+SS_BULLET_KH_ALPHA                  0x2 beam       700 beam      -         beam     
+SS_BULLET_KH_BETA                   0x2 beam      2500 beam      -         beam     
+SS_BULLET_EMP                     0x800 slug      2000 energy    plasma    plasma   
+SS_BULLET_EBC                      0x40 slug      1357 ballistic -         ballistic
+SS_BULLET_FBL                    0x1000 slug      2793 energy    ballistic ballistic
+SS_BULLET_KH_GAMMA                  0x2 beam      7500 beam      -         beam     
+SS_BULLET_HEPT                      0x0 tracer    1995 energy    plasma    plasma   
+SS_BULLET_IRE                       0x0 tracer     220 energy    -         energy   
+SS_BULLET_IOND                    0x214 beam      1575 beam      -         beam     
+SS_BULLET_MASS                     0x60 tracer      45 ballistic -         ballistic
+SS_BULLET_MAM                     0x140 orb       8350 ballistic -         ballistic
+SS_BULLET_PAC                       0x1 tracer    1155 energy    -         energy   
+SS_BULLET_PRG                       0x1 tracer     680 energy    -         energy   
+SS_BULLET_PD                      0x808 wave       468 plasma    -         plasma   
+SS_BULLET_PBE                       0x0 tracer     945 energy    energy    energy   
+SS_BULLET_TERANTIFIGHTER            0x0 slug     20785 heavy     plasma    plasma   
+SS_BULLET_CIG                       0x0 tracer    7845 energy    -         energy   
+SS_BULLET_IPG                    0x1200 tracer   12563 ion       ion       ion      
+SS_BULLET_ESR                     0x400 tracer    2671 ion       -         ion      
+SS_BULLET_MINING                    0x0 orb       6500 plasma    -         plasma   
+SS_BULLET_REPAIR                   0xa2 beam        40 repair    repair    repair   
+SS_BULLET_TUG                       0x2 beam         0 tug       tug       tug      
+SS_BULLET_FLAK_CLUSTER           0x3000 tracer   11781 energy    -         energy   
+SS_BULLET_FLAK_ALPHA             0x2100 tracer   13860 energy    -         energy   
+SS_BULLET_GAUSS                    0x40 slug     28540 heavy     -         heavy    
+SS_BULLET_IBL                    0x2800 slug     50860 heavy     plasma    plasma   
+SS_BULLET_IONC                   0x2600 slug    119148 ion       -         ion      
+SS_BULLET_PAL                       0x2 beam      3969 beam      -         beam     
+SS_BULLET_PSG                       0x8 wave      1996 plasma    plasma    plasma   
+SS_BULLET_PPC                    0x2000 slug     63778 heavy     -         heavy    
+SS_BULLET_PBC                       0x2 beam     14280 beam      -         beam     
+SS_BULLET_PSP                    0x2100 orb     252310 plasma    plasma    plasma   
+SS_BULLET_DUMMY1                 0x3000 slug     11781 energy    -         energy   
+SS_BULLET_DUMMY2                    0x2 beam       700 beam      -         beam     
+SS_BULLET_FUSIONBEAM              0x802 beam      5400 beam      -         beam     
+SS_BULLET_EMP_1                     0x0 slug      2700 energy    -         energy   
+SS_BULLET_FBL_FRAG                0x100 tracer     220 energy    -         energy   
+SS_BULLET_FLAK_ALPHA_FRAG         0x100 tracer     220 energy    -         energy   
+SS_BULLET_FLAK_CLUSTER_FRAG       0x100 tracer     220 energy    -         energy   
+SS_BULLET_FLAK_CLUSTER_FRAG_FRAG  0x100 tracer     220 energy    -         energy   
+SS_BULLET_IPG_FRAG                0x300 slug     12563 ion       -         ion      
+SS_BULLET_MAM_1                   0x140 orb       7845 ballistic -         ballistic
+SS_BULLET_TERRANANTIFIGHTER_1       0x0 slug     20785 heavy     -         heavy    
+SS_BULLET_TERRANANTIFIGHTER_FRAG    0x8 wave       220 plasma    -         plasma   
+SS_BULLET_TRIBEAM                   0x2 beam      7532 beam      -         beam     
+counts: ballistic=5 beam=9 energy=13 heavy=3 ion=4 plasma=9 repair=1 tug=1
+pins used: 11 of 45 rows
+
+== mayhem3 (38 rows)
+id                                flags shape      dmg classifier pin       class    
+SS_BULLET_AKE                       0x0 slug      2363 energy    -         energy   
+SS_BULLET_APC                       0x0 slug      1286 energy    -         energy   
+SS_BULLET_BKE                       0x0 orb      21451 plasma    heavy     heavy    
+SS_BULLET_EMPC                      0x0 tracer    5084 energy    plasma    plasma   
+SS_BULLET_EBC                       0x0 tracer    1393 energy    -         energy   
+SS_BULLET_FBL                       0x0 slug      8136 energy    ballistic ballistic
+SS_BULLET_GKE                       0x0 tracer   94130 heavy     -         heavy    
+SS_BULLET_HEPT                      0x0 orb       5539 plasma    plasma    plasma   
+SS_BULLET_IRE                       0x0 slug      1358 energy    -         energy   
+SS_BULLET_ID                        0x0 tracer    5624 energy    ion       ion      
+SS_BULLET_MD                        0x0 tracer    1716 energy    ballistic ballistic
+SS_BULLET_RG                        0x0 orb      25752 plasma    heavy     heavy    
+SS_BULLET_PAC                       0x0 tracer    2738 energy    -         energy   
+SS_BULLET_PRG                       0x0 slug      3512 energy    -         energy   
+SS_BULLET_PBC                       0x2 beam     12012 beam      -         beam     
+SS_BULLET_PBG                       0x0 tracer    5532 energy    plasma    plasma   
+SS_BULLET_PG                        0x0 orb       2660 plasma    -         plasma   
+SS_BULLET_PBE                       0x0 orb       2640 plasma    energy    energy   
+SS_BULLET_CFA                       0x0 tracer   14769 energy    ballistic ballistic
+SS_BULLET_CIG                       0x0 tracer   12030 energy    -         energy   
+SS_BULLET_FAA                       0x0 slug     10952 energy    ballistic ballistic
+SS_BULLET_GRC                       0x0 tracer    5972 energy    -         energy   
+SS_BULLET_IPG                       0x0 tracer   13989 energy    ion       ion      
+SS_BULLET_ISR                       0x0 slug     11263 energy    ion       ion      
+SS_BULLET_MAML                      0x0 tracer    3883 energy    -         energy   
+SS_BULLET_MDS                       0x0 orb          8 plasma    energy    energy   
+SS_BULLET_PALC                      0x0 orb      10889 plasma    energy    energy   
+SS_BULLET_PSG                       0x0 tracer   12853 energy    plasma    plasma   
+SS_BULLET_RL                       0xa2 beam      1000 repair    repair    repair   
+SS_BULLET_SSC                       0x0 tracer    9157 energy    plasma    plasma   
+SS_BULLET_FBC                       0x0 tracer    3272 energy    -         energy   
+SS_BULLET_GC                        0x0 tracer    3546 energy    ballistic ballistic
+SS_BULLET_IBL                       0x0 tracer   16718 energy    plasma    plasma   
+SS_BULLET_IC                        0x0 tracer    8719 energy    ion       ion      
+SS_BULLET_PAA                       0x0 tracer    7328 energy    -         energy   
+SS_BULLET_PPC                       0x0 slug     11957 energy    -         energy   
+SS_BULLET_PSP                       0x0 slug     31364 heavy     plasma    plasma   
+SS_BULLET_TBC                       0x0 tracer    3425 energy    -         energy   
+counts: ballistic=5 beam=1 energy=16 heavy=3 ion=4 plasma=8 repair=1
+pins used: 22 of 38 rows
+
+== fl (45 rows)
+id                                flags shape      dmg classifier pin       class    
+SS_BULLET_KH_ALPHA                  0x2 beam       700 beam      -         beam     
+SS_BULLET_KH_BETA                   0x2 beam      2500 beam      -         beam     
+SS_BULLET_EMP                     0x800 slug      2000 energy    plasma    plasma   
+SS_BULLET_EBC                      0x40 slug      1357 ballistic -         ballistic
+SS_BULLET_FBL                    0x1000 slug      2793 energy    ballistic ballistic
+SS_BULLET_KH_GAMMA                  0x2 beam      7500 beam      -         beam     
+SS_BULLET_HEPT                      0x0 tracer    1995 energy    plasma    plasma   
+SS_BULLET_IRE                       0x0 tracer     220 energy    -         energy   
+SS_BULLET_IOND                    0x214 beam      1575 beam      -         beam     
+SS_BULLET_MASS                     0x60 tracer      45 ballistic -         ballistic
+SS_BULLET_MAM                     0x140 orb       8350 ballistic -         ballistic
+SS_BULLET_PAC                       0x1 tracer    1155 energy    -         energy   
+SS_BULLET_PRG                       0x1 tracer     680 energy    -         energy   
+SS_BULLET_PD                      0x808 wave       351 plasma    -         plasma   
+SS_BULLET_PBE                       0x0 tracer     945 energy    energy    energy   
+SS_BULLET_TERANTIFIGHTER            0x0 slug     20785 heavy     plasma    plasma   
+SS_BULLET_CIG                       0x0 tracer    7845 energy    -         energy   
+SS_BULLET_FUSIONBEAM              0x802 beam      5400 beam      -         beam     
+SS_BULLET_IPG                    0x1200 tracer   12563 ion       ion       ion      
+SS_BULLET_ESR                     0x400 tracer    2671 ion       -         ion      
+SS_BULLET_MINING                    0x0 orb       6500 plasma    -         plasma   
+SS_BULLET_PAL                       0x2 beam      3969 beam      -         beam     
+SS_BULLET_PBC                       0x2 beam     14280 beam      -         beam     
+SS_BULLET_TUG                       0x2 beam         0 tug       tug       tug      
+SS_BULLET_TRIBEAM                   0x2 beam      7532 beam      -         beam     
+SS_BULLET_FLAK_CLUSTER           0x3000 tracer   11781 energy    -         energy   
+SS_BULLET_FLAK_ALPHA             0x2100 tracer   13860 energy    -         energy   
+SS_BULLET_GAUSS                    0x40 slug     28540 heavy     -         heavy    
+SS_BULLET_IBL                    0x2800 slug     50860 heavy     plasma    plasma   
+SS_BULLET_IONC                   0x2600 slug    119148 ion       -         ion      
+SS_BULLET_PSG                       0x8 wave      1996 plasma    plasma    plasma   
+SS_BULLET_PPC                    0x2000 slug     63778 heavy     -         heavy    
+SS_BULLET_PSP                    0x2100 orb     252310 plasma    plasma    plasma   
+SS_BULLET_REPAIR                   0xa2 beam        40 repair    repair    repair   
+SS_BULLET_DUMMY1                 0x3000 slug     11781 energy    -         energy   
+SS_BULLET_DUMMY2                    0x2 beam       700 beam      -         beam     
+SS_BULLET_EMP_1                     0x0 slug      2700 energy    -         energy   
+SS_BULLET_FBL_FRAG                0x100 tracer     220 energy    -         energy   
+SS_BULLET_FLAK_ALPHA_FRAG         0x100 tracer     220 energy    -         energy   
+SS_BULLET_FLAK_CLUSTER_FRAG       0x100 tracer     220 energy    -         energy   
+SS_BULLET_FLAK_CLUSTER_FRAG_FRAG  0x100 tracer     220 energy    -         energy   
+SS_BULLET_IPG_FRAG                0x300 slug     12563 ion       -         ion      
+SS_BULLET_MAM_1                   0x140 orb       7845 ballistic -         ballistic
+SS_BULLET_TERRANANTIFIGHTER_1       0x0 slug     20785 heavy     -         heavy    
+SS_BULLET_TERRANANTIFIGHTER_FRAG    0x8 wave       220 plasma    -         plasma   
+counts: ballistic=5 beam=9 energy=13 heavy=3 ion=4 plasma=9 repair=1 tug=1
+pins used: 11 of 45 rows
+
+pins naming no catalogue id: none
