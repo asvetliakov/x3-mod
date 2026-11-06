@@ -10,7 +10,9 @@
 // its normal in the owner frame, weighs the face by the normal's component on its axis (triplanar), takes the
 // pixel's cell on the face's lattice and looks it up in the draw's cell map (pixel constants: 128 packed keys, their
 // clocks and their anchors' depths), lighting it within the extent of its anchor along the axis, so the hull itself
-// is the surface and the sky draws nothing. Each decal's four vertices go through DrawPrimitiveUP. The pass holds no
+// is the surface and the sky draws nothing; the patch floats its stand-off above the hull with parallax (one lane
+// re-projection step, weapon_shell_ps.hlsl) and the box rasterizes grown by it (raster_box). Each decal's four
+// vertices go through DrawPrimitiveUP. The pass holds no
 // DEFAULT-pool resource and allocates nothing per frame.
 //
 // run() draws the frame's patches and decals inside the temporal resolve's stage bracket (TemporalPass FrameInputs::
@@ -80,12 +82,27 @@ struct WeaponPatch {
     float cell_since[weapon_patch_cells]{}; // game seconds since the cell was lit; < 0: not lit yet (a ring passes)
     float cell_anchor[weapon_patch_cells]{}; // along the face's axis (view units): the depth of the cell's anchor hit
     std::uint8_t cell_centre[weapon_patch_cells]{}; // 1: lit as its hit's centre cell (the marker level)
-    float box[6]{};       // the draw's box in the face's frame (u, v, a; view units): min x3, max x3
+    float box[6]{};       // the draw's box in the face's frame (u, v, a; view units): min x3, max x3, bounding the
+                          // cells' hull points (the pixel program's test); the rasterized box is it grown by standoff
+    float standoff = 0.f; // the patch's stand-off above the hull along the normal (view units, >= 0)
     float newest_s = 0.f; // the owner's newest hit's age (game seconds): the screen budget drops the oldest first
     std::uint32_t owner = 0, owner_node = 0; // diagnostics (the weapon_patch row): the owner object, its node and its
                                              // radius (view units)
     float owner_radius = 0.f;
 };
+// The rasterized box of a patch: its hull box grown by where the floated points H + n d can lie, so the box covers
+// every pixel whose floated point the program may draw: a face takes a share only where the outward normal points
+// along its axis within the triplanar cut (57.26 degrees with the cull's margin, core::face_cull_sin), so the floated
+// point lies 0..d above H along the axis (+a only) and up to d sin 57.26 = 0.842 d sideways in the plane. The face
+// cull and the screen budget use it.
+inline void raster_box(const WeaponPatch& p, float out[6]) noexcept {
+    const float d = p.standoff > 0.f ? p.standoff : 0.f, side = 0.842f * d;
+    const float grow_lo[3] = {side, side, 0.f}, grow_hi[3] = {side, side, d};
+    for (unsigned i = 0; i < 3; ++i) {
+        out[i] = p.box[i] - grow_lo[i];
+        out[3 + i] = p.box[3 + i] + grow_hi[i];
+    }
+}
 // A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad covering the hit's footprint
 // with the same hex law, the hit at its centre (the one hit's cells are evaluated in the program).
 struct WeaponDecal {

@@ -13,7 +13,8 @@ match its source and header), runs it once and writes the record: the build, the
 sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
 radius and edge count per tier with the symmetry counts, the centre cell over a ring cell, ring front at two ages, the
 fade, the colour bands, re-light and four-hit accumulation, the screen-space placement on hull lanes (narrow and flat
-hulls from every side, the Flight B station, the far side, the eye inside the bounding sphere) with the normal errors,
+hulls from every side, the Flight B station, the far side, the eye inside the bounding sphere, about the hit's floated
+image) with the normal errors, the stand-off's parallax on a tilted plate and its CPU twin's re-projection steps,
 the surface case, the no-pop runs (fighter and spread capital on a flat face, the one-draw eviction witness, the
 sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
@@ -122,7 +123,7 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
-            'PLACEMENT', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+            'PLACEMENT', 'STANDOFF', 'STANDOFF_STEPS', 'STANDOFF_REFUSALS', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
@@ -158,8 +159,9 @@ def parse_hook(text):
     cost = [fields(line) for line in text.splitlines() if line.startswith('EVENT_COST ')]
     travel = [fields(line) for line in text.splitlines() if line.startswith('DIR ')]
     suppress = [fields(line) for line in text.splitlines() if line.startswith('SUPPRESS ')]
+    drained = [fields(line) for line in text.splitlines() if line.startswith('DRAINED ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
-            'dir': travel, 'suppress': suppress,
+            'dir': travel, 'suppress': suppress, 'drained': drained,
             'event_cost': cost[-1] if cost else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -182,6 +184,7 @@ def run_hook(args, results):
     record['shield'] = report['shield']
     record['dir'] = report['dir']
     record['suppress'] = report['suppress']
+    record['drained'] = report['drained']
     record['event_cost'] = report['event_cost']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
@@ -245,7 +248,7 @@ def main():
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
-                                                 'colour', 'relight', 'adjacent', 'placement', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
+                                                 'colour', 'relight', 'adjacent', 'placement', 'standoff', 'standoff_steps', 'standoff_refusals', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]

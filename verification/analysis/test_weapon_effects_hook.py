@@ -41,7 +41,9 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'nested_death_retires_owner', 'overflow_keeps_owned_shield', 'observe_rollback_three_sites',
                 'observe_rollback_second_site', 'rollback_on_failed_readback', 'late_claim_refused',
                 'scope_sector_change_clears_owned', 'scope_loading_clears_owned', 'scope_load_epoch_clears_owned',
-                'fixture_stack_margin', 'travel_dir_from_bullet_row2', 'travel_dir_fallback_zero_row_dead_node'}
+                'fixture_stack_margin', 'travel_dir_from_bullet_row2', 'travel_dir_fallback_zero_row_dead_node',
+                'drained_shield_hit_forwards_as_hull_hit', 'shield_hit_above_drained_threshold_staged',
+                'unread_shield_keeps_the_engine_rule', 'drained_threshold_boundary_326_327'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -77,6 +79,23 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         cost = self.record['event_cost']
         self.assertEqual((cost['events'], cost['shields']), (50, 6))
         self.assertLessEqual(cost['median_us'], 30.0)                          # the 30 us per 50 events target
+
+    def test_drained_shield_is_a_hull_hit(self):
+        # Run237 Flight D: an absorbed hit below 0.5 % post-hit shield forwards as a hull hit; 400 / 65535 and an
+        # unread shield stay the stage's shield hit (skipped)
+        d = {x['case']: x for x in self.record['drained']}
+        low, high, unread = d['low'], d['high'], d['unread']
+        self.assertLess(low['q'], low['threshold'])
+        self.assertEqual((low['role'], low['detail'], low['absorbed'], low['forwarded'], low['stage'], low['callee']),
+                         ('hull_hit', 1, 1, 1, 0, 1))
+        self.assertEqual((low['drained_delta'], low['forwarded_delta']), (1, 1))
+        self.assertGreater(high['q'], low['threshold'])
+        self.assertEqual((high['role'], high['detail'], high['stage'], high['callee']), ('shield_hit', 0, 1, 0))
+        self.assertEqual((unread['read'], unread['role'], unread['stage'], unread['callee'], unread['drained_total_delta']),
+                         (0, 'shield_hit', 1, 0, 1))
+        b = d['boundary']                                                     # 326 drained, 327 not
+        self.assertEqual((b['q_below'], b['role_below'], b['callee_below'], b['q_at'], b['role_at'], b['callee_at']),
+                         (326, 'hull_hit', 1, 327, 'shield_hit', 0))
 
     def test_forward_state(self):
         f = {k: int(v, 16) for k, v in self.record['forward_state'].items()}
@@ -162,11 +181,33 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'y_top_flat_offcentre'):  # review F1: the hull off the owner's origin lights
             x = place[case]
             self.assertEqual((x['sky_lit'], x['outside_lit']), (0, 0), case)
-            self.assertGreaterEqual(x['coverage'], 0.9, case)
+            # the eye 4 m from the sharp nose: the stand-off's screen-space limit (5.1.1), its CPU twin's share 0.497
+            self.assertGreaterEqual(x['coverage'], 0.45 if case == 'eye_inside_sphere' else 0.9, case)
             self.assertLessEqual(x['centroid_error_cells'], 1.0, case)
             self.assertGreaterEqual(x['lit_ratio'], 1.0 / 3.0, case)
             self.assertLessEqual(x['lit_ratio'], 3.0, case)
         self.assertEqual(place['y_top_flat_42deg']['lit_pixels'], place['y_top_flat']['lit_pixels'])  # dir unused
+        # The stand-off (Run237 Flight D): on the 60-degree plate the centroid's parallax shift matches the floated
+        # image of the hit within a cell and implies the stand-off within a cell; nothing on sky; the CPU twin's one
+        # re-projection step beats none and a second one does not help (screen error)
+        so = m['standoff']
+        self.assertEqual(sorted(x['standoff_m'] for x in so), [0.0, 1.5, 6.0])  # off, the fighter's default, 2 cells
+        for x in so:
+            self.assertEqual(x['sky_lit'], 0)
+            self.assertLessEqual(x['shift_error_cells'], 0.1)    # no parallax would miss the default by ~1 cell
+            self.assertLessEqual(x['implied_error_cells'], 0.1)
+        # the eye-inside case's refusals are the fixture's own CPU twin row (5.1.1): the shares add up to one
+        ref = m['standoff_refusals'][0]
+        self.assertAlmostEqual(sum(ref[k] for k in ('no_normal', 'behind_eye', 'off_screen', 'sky', 'plane', 'drawn')),
+                               1.0, delta=1e-3)
+        self.assertGreater(max(x['shift_view'] for x in so), 2 * max(x['cell_view'] for x in so))
+        steps = {}
+        for x in m['standoff_steps']:
+            steps.setdefault(x['case'], {})[x['steps']] = x
+        self.assertEqual(len(steps), 4)
+        for case, s in steps.items():
+            self.assertLess(s[1]['px_p99'], s[0]['px_p99'], case)
+            self.assertGreaterEqual(s[2]['px_p99'], s[1]['px_p99'] - 0.5, case)
         self.assertEqual((place['far_side']['lit_pixels'], place['far_side']['eligible']), (0, 0))
         normals = {x['case']: x for x in m['normals']}                             # ddx / ddy against a neighbourhood
         for x in normals.values():
