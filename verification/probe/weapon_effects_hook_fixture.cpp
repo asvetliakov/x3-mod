@@ -984,17 +984,20 @@ int main() {
                         unsigned(unread_run.ca[11]), static_cast<unsigned long>(hs2.counters.drained - drained_before),
                         static_cast<unsigned long>(skipped));
             check(low_ok && (low.flags & core::flag_shield_read) && low.shield_q < core::drained_shield_q &&
-                      low.role == core::role_hull_hit && (low.detail & core::detail_drained) &&
+                      low.role == core::role_hull_hit && (low.detail & 0x0f) == core::detail_drained &&
+                      core::hull_class_of(low) == core::class_energy &&
                       (low.flags & core::flag_absorbed) && (low.flags & core::flag_forwarded) &&
                       !(low.flags & core::flag_stage) && low_run.ca[11] == 1 && drained_low == 1 && forwarded_low == 1 &&
                       frame_kept(low_run),
                   "drained_shield_hit_forwards_as_hull_hit");
             check(high_ok && (high.flags & core::flag_shield_read) && high.shield_q > core::drained_shield_q &&
-                      high.role == core::role_shield_hit && !high.detail && (high.flags & core::flag_stage) &&
+                      high.role == core::role_shield_hit && !(high.detail & 0x0f) &&
+                      core::hull_class_of(high) == core::class_energy && (high.flags & core::flag_stage) &&
                       !(high.flags & core::flag_forwarded) && high_run.ca[11] == 0 && frame_kept(high_run),
                   "shield_hit_above_drained_threshold_staged");
             check(unread_ok && !(unread.flags & core::flag_shield_read) && unread.role == core::role_shield_hit &&
-                      !unread.detail && (unread.flags & core::flag_stage) && unread_run.ca[11] == 0 &&
+                      !(unread.detail & 0x0f) && core::hull_class_of(unread) == core::class_energy &&
+                      (unread.flags & core::flag_stage) && unread_run.ca[11] == 0 &&
                       hs2.counters.drained - drained_before == 1 && skipped == 2 && frame_kept(unread_run),
                   "unread_shield_keeps_the_engine_rule");
             // The boundary: one shield of 1000 points at energy 327000 / 328000 (16.16 thousandths) reads 326 / 327 of
@@ -1011,7 +1014,9 @@ int main() {
                         unsigned(core::drained_shield_q));
             check(ok326 && ok327 && core::drained_shield_q == 327 && b326.shield_q == 326 &&
                       b326.role == core::role_hull_hit && (b326.detail & core::detail_drained) && r326.ca[11] == 1 &&
-                      b327.shield_q == 327 && b327.role == core::role_shield_hit && !b327.detail &&
+                      b327.shield_q == 327 && b327.role == core::role_shield_hit && !(b327.detail & 0x0f) &&
+                      (b327.detail >> core::detail_class_shift) == core::class_energy &&
+                      (b326.detail >> core::detail_class_shift) == core::class_energy &&
                       (b327.flags & core::flag_stage) && r327.ca[11] == 0 && frame_kept(r326) && frame_kept(r327),
                   "drained_threshold_boundary_326_327");
         }
@@ -1214,6 +1219,110 @@ int main() {
         const bool tug = ok && (rec.detail & core::detail_tug) && !(rec.detail & core::detail_repair) && frame_kept(run);
         h3.table = saved_table;
         check(repair && tug, "hull_repair_tug_variant_by_override");
+        // The hull-hit class (docs/architecture/hull-impact-classes.md section 2) at the hook, into Event::detail bits 4-7:
+        // one live record per cue of the rule (the flag words and damage of the stock rows it names), the round trip
+        // through the ring and the variant bits beside it; then the table: an orb body, a class pin over the rule, a
+        // pin over the repair bit, an out-of-range pin. Every run through the production stub (frame kept).
+        {
+            // shot: the bullet record's per-shot damage (+0x44 shield, +0x80 hull: the class's band); total: the applied
+            // total the hook sees (a shields-down hull hit: its hull damage; 0 on a target that takes none)
+            struct Cue {
+                const char* name;
+                std::uint32_t flags;
+                std::int32_t shot_shield, shot_hull;
+                std::uint32_t total;
+                unsigned want;
+                std::uint8_t variant;
+            };
+            const Cue cues[] = {{"tug", 0x2, 0, 0, 0, core::class_beam, core::detail_tug},
+                                {"repair", 0xa2, 0, 40, 40, core::class_beam, core::detail_repair},
+                                {"beam_pal", 0x2, 3969, 3969, 3969, core::class_beam, 0},
+                                {"beam_invulnerable_target", 0x2, 3969, 3969, 0, core::class_beam, 0},
+                                {"beam_iond", 0x214, 1575, 1575, 1575, core::class_beam, 0},
+                                {"ion_esr", 0x400, 2671, 1335, 1335, core::class_ion, 0},
+                                {"ion_ipg_frag", 0x300, 12563, 6281, 6281, core::class_ion, 0},
+                                {"ion_ionc", 0x2600, 119148, 59574, 59574, core::class_ion, 0},
+                                {"ballistic_mass", 0x60, 45, 45, 45, core::class_ballistic, 0},
+                                {"ballistic_mam", 0x140, 8350, 4175, 4175, core::class_ballistic, 0},
+                                {"heavy_gauss_shield_total", 0x40, 28540, 7135, 28540, core::class_heavy, 0},
+                                {"heavy_gauss_hull_total", 0x40, 28540, 7135, 7135, core::class_heavy, 0},
+                                {"plasma_wave_psg", 0x8, 1996, 998, 998, core::class_plasma, 0},
+                                {"heavy_ppc_shield_total", 0x2000, 63778, 15944, 63778, core::class_heavy, 0},
+                                {"heavy_ppc_hull_total", 0x2000, 63778, 15944, 15944, core::class_heavy, 0},
+                                {"energy_ire", 0x0, 220, 110, 110, core::class_energy, 0},
+                                {"energy_flak", 0x2100, 13860, 6930, 6930, core::class_energy, 0},
+                                {"heavy_band_edge", 0x0, 20000, 5000, 5000, core::class_heavy, 0},
+                                {"heavy_band_edge_hull", 0x0, 5000, 20000, 5000, core::class_heavy, 0},
+                                {"energy_below_band", 0x0, 19999, 19999, 19999, core::class_energy, 0}};
+            unsigned passed = 0, total_cues = 0;
+            auto classed = [&](std::uint32_t total, core::Event* out) {
+                h3.owned_next = 1;
+                h3.hull_ready = 1;
+                std::memset(we_ca, 0, sizeof we_ca);
+                const RunResult r = run_window(0, total, 0);
+                return newest_record(u32(&victim_obj), out) && frame_kept(r);
+            };
+            for (const Cue& c : cues) {
+                build_world(7, 0, 4, c.flags, 123456);
+                unsigned char* rec = bullet_table + 4 * core::layout::type_stride;
+                w32(rec, core::layout::bullet_shield_damage, std::uint32_t(c.shot_shield));
+                w32(rec, core::layout::bullet_hull_damage, std::uint32_t(c.shot_hull));
+                core::Event e{};
+                const bool ok = classed(c.total, &e) && core::hull_class_of(e) == c.want &&
+                                (e.detail & (core::detail_repair | core::detail_tug)) == c.variant &&
+                                (e.detail >> core::detail_class_shift) == c.want && e.role == core::role_hull_hit;
+                passed += ok;
+                ++total_cues;
+                std::printf("HULL_CLASS case=%s flags=%#lx shot=%ld,%ld total=%lu class=%s want=%s detail=%#x ok=%u\n",
+                            c.name, static_cast<unsigned long>(c.flags), static_cast<long>(c.shot_shield),
+                            static_cast<long>(c.shot_hull), static_cast<unsigned long>(c.total),
+                            core::hull_class_name(core::hull_class_of(e)), core::hull_class_name(c.want), unsigned(e.detail),
+                            unsigned(ok));
+            }
+            check(passed == total_cues, "hull_class_from_record");
+            // The table: an orb body (the elongation's shape) is plasma; a pin replaces the rule (MD: flags 0 -> ballistic;
+            // a 0x40 row pinned ion); a class pin clears the rule's repair variant; an out-of-range pin reads energy; a
+            // missile source keeps the nibble 0 (its style is missile_hit).
+            static core::Table class_table;
+            class_table = core::Table{};
+            class_table.rows = core::rd32(h3.globals.bullet_count_slot);
+            h3.table = &class_table;
+            core::Event e{};
+            build_world(7, 0, 4, 0x0, 123456);
+            class_table.bits[4] = core::row_present;
+            class_table.shape[4] = core::shape_orb;
+            const bool orb = classed(5539, &e) && core::hull_class_of(e) == core::class_plasma;
+            class_table.bits[4] = std::uint8_t(core::row_present | core::row_hull_class);
+            class_table.shape[4] = core::shape_tracer;
+            class_table.hull_class[4] = core::class_ballistic;
+            const bool pin_md = classed(1716, &e) && core::hull_class_of(e) == core::class_ballistic &&
+                                (e.flags & core::flag_override_applied);
+            build_world(7, 0, 4, 0x40, 123456);
+            class_table.hull_class[4] = core::class_ion;
+            const bool pin_over_rule = classed(1716, &e) && core::hull_class_of(e) == core::class_ion;
+            build_world(7, 0, 4, 0x80, 123456);
+            class_table.hull_class[4] = core::class_energy;
+            const bool pin_clears_repair = classed(40, &e) && core::hull_class_of(e) == core::class_energy &&
+                                           !(e.detail & core::detail_repair);
+            class_table.bits[4] = std::uint8_t(core::row_present | core::row_hull_class | core::row_hull_repair);
+            const bool repair_pin = classed(40, &e) && (e.detail & core::detail_repair) &&
+                                    core::hull_class_of(e) == core::class_energy;
+            build_world(7, 0, 4, 0x0, 123456);
+            class_table.bits[4] = std::uint8_t(core::row_present | core::row_hull_class);
+            class_table.hull_class[4] = 9;
+            const bool out_of_range = classed(1716, &e) && core::hull_class_of(e) == core::class_energy &&
+                                      (e.detail >> core::detail_class_shift) == core::class_energy;
+            build_world(7, 10, 4, 0x0, 123456);
+            const bool missile = classed(30000, &e) && e.table == core::table_missiles && core::hull_class_of(e) == 0 &&
+                                 (e.detail >> core::detail_class_shift) == 0;
+            h3.table = saved_table;
+            std::printf("HULL_CLASS case=table orb=%u pin_md=%u pin_over_rule=%u pin_clears_repair=%u repair_pin=%u "
+                        "out_of_range=%u missile=%u\n",
+                        unsigned(orb), unsigned(pin_md), unsigned(pin_over_rule), unsigned(pin_clears_repair),
+                        unsigned(repair_pin), unsigned(out_of_range), unsigned(missile));
+            check(orb && pin_md && pin_over_rule && pin_clears_repair && repair_pin && out_of_range && missile,
+                  "hull_class_pins_and_body");
+        }
         // Present's upkeep: a staged hull hit stays life_floor_ms past its lifetime, then leaves.
         build_world(7, 0, 4, core::bullet_hull_through_shields, 200000);
         ok = staged_run(0, &rec, &run);

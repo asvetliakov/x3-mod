@@ -81,6 +81,8 @@ public:
     // Fixture faults: bit 0 refuses the FP16 filter capability at attach, bit 1 fails the draw once, bit 2 fails the
     // scratch's creation once.
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
+    // The pixel program attach creates (nullptr: the production one); the fixture's previous-program comparison.
+    void set_program_words(const std::uint32_t* words) noexcept { program_words_ = words; }
 #endif
 private:
     struct SavedState;
@@ -98,6 +100,7 @@ private:
     bool reset_pending_ = false;
     mutable unsigned calls_ = 0;
     unsigned faults_ = 0;
+    const std::uint32_t* program_words_ = nullptr; // fixture only (set_program_words)
     UINT render_targets_ = 1;
     IDirect3DVertexShader9* vs_ = nullptr;
     IDirect3DPixelShader9* ps_ = nullptr;

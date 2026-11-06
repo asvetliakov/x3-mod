@@ -74,6 +74,19 @@ constexpr std::uint16_t drained_shield_q = 65535u * 5u / 1000u; // 327
 // tug lasers by the curated override (the table's "hull" key: row_hull_repair / row_hull_tug), the asteroid by the hit
 // object's class (17).
 enum EventDetail : std::uint8_t { detail_drained = 1, detail_repair = 2, detail_tug = 4, detail_asteroid = 8 };
+// Bits 4-7 of Event::detail: the hull-hit class (docs/architecture/hull-impact-classes.md section 2), decided at the
+// hook from the live record (hull_class_from: flags, the running damage, the style's body shape) or the table's pin
+// (row_hull_class, the override's `hull` key); missile sources, asteroid victims, repair and tug keep their own bits
+// and styles. A record from before the classes (the nibble 0) is energy.
+enum HullClass : std::uint8_t { class_energy = 0, class_ballistic = 1, class_plasma = 2, class_heavy = 3, class_ion = 4,
+                                class_beam = 5, hull_class_count = 6 };
+constexpr unsigned detail_class_shift = 4;
+constexpr std::uint8_t detail_class_mask = 0xf0;
+inline const char* hull_class_name(unsigned c) noexcept {
+    static const char* const names[hull_class_count] = {"energy", "ballistic", "plasma", "heavy", "ion", "beam"};
+    return c < hull_class_count ? names[c] : "?";
+}
+inline unsigned hull_class_of(const struct Event& e) noexcept;
 // The hit object's size class for the patch (docs/architecture/weapon-effects.md 5.1.1): cell size and patch radius
 // are fixed in world units per class.
 enum PatchTier : std::uint8_t { patch_fighter = 0, patch_corvette = 1, patch_capital = 2, patch_tier_count = 3 };
@@ -123,6 +136,10 @@ struct Event {
     std::uint32_t sequence;                  // monotonic, 0 = free slot
 };
 static_assert(sizeof(Event) == 64, "the event record is 64 bytes (16 KB ring)");
+inline unsigned hull_class_of(const Event& e) noexcept {
+    const unsigned c = unsigned(e.detail) >> detail_class_shift;
+    return c < hull_class_count ? c : unsigned(class_energy);
+}
 
 // ---------------------------------------------------------------------------------------------- engine layout
 // Object: class word +0x48, subtype +0x4a, flags +0x40, extension +0x50, root node +0x70, radius +0xa4.
@@ -173,6 +190,9 @@ struct Globals {                     // the engine's slots (X3AP.exe VAs in prod
 // TBullets flag bits (col 12, +0x58).
 constexpr std::uint32_t bullet_beam_bits = 0x6, bullet_wave_bit = 0x8, bullet_hull_through_shields = 0x20,
                         bullet_burst_bits = 0x1100;
+// The hull-hit classifier's cues (hull-impact-classes.md section 2): ammunition 0x40 (mass drivers), repair 0x80, the
+// on-hit bits 0x200 (slow) and 0x400 (energy drain: the ion cues).
+constexpr std::uint32_t bullet_ammunition_bit = 0x40, bullet_repair_bit = 0x80, bullet_on_hit_bits = 0x600;
 // 4.1 shape thresholds on the vanilla body's z_over_xy (the table generator and the DLL's table loader apply them).
 constexpr float tracer_min_elongation = 4.0f, slug_min_elongation = 1.5f;
 // 4.2 tint: the light colour when max >= tint_light_min and (max - min) / max >= tint_saturation_min.
@@ -209,6 +229,32 @@ inline bool light_saturated(std::int32_t r, std::int32_t g, std::int32_t b) noex
 inline std::uint32_t clamp_channel(std::int32_t v) noexcept {
     return v < 0 ? 0u : v > 255 ? 255u : std::uint32_t(v);
 }
+// The hull-hit class of a live record (hull-impact-classes.md section 2, first match wins; integers only, the handler's
+// values): beam flags with no per-shot damage: the tug; repair 0x80: the repair laser (*variant, the class beam for a
+// beam row); beam flags: beam; the on-hit bits: ion; ammunition: ballistic, heavy in the heavy band; an orb or wave body:
+// plasma; the heavy band: heavy; else energy. *variant gets detail_repair / detail_tug or 0. d is the bullet record's
+// own per-shot damage, max(shield +0x44, hull +0x80) (the census script's), never the applied total: a shields-down hit's
+// total is its hull damage alone (review 2026-11-07: stock PPC read energy, GAUSS ballistic), and a target that takes
+// no damage must not turn a damaging beam into the tug.
+static inline __attribute__((always_inline)) std::uint8_t hull_class_from(std::uint32_t flags, std::int32_t d,
+                                                                       std::uint8_t style, std::uint8_t* variant) noexcept {
+    *variant = 0;
+    const bool beam = (flags & bullet_beam_bits) != 0, heavy = d >= calibre_heavy_min;
+    if (beam && d <= 0) {
+        *variant = detail_tug;
+        return class_beam;
+    }
+    if (flags & bullet_repair_bit) {
+        *variant = detail_repair;
+        return beam ? std::uint8_t(class_beam) : std::uint8_t(class_energy);
+    }
+    if (beam) return class_beam;
+    if (flags & bullet_on_hit_bits) return class_ion;
+    if (flags & bullet_ammunition_bit) return heavy ? std::uint8_t(class_heavy) : std::uint8_t(class_ballistic);
+    const std::uint8_t shape = std::uint8_t(style & style_shape_mask);
+    if (shape == shape_orb || shape == shape_wave) return class_plasma;
+    return heavy ? std::uint8_t(class_heavy) : std::uint8_t(class_energy);
+}
 // The shield rule (spawn note section 3): a shield-hit look is absorbed == 1 && !(class 0 source && flag 0x20).
 inline std::uint8_t role_from(std::uint32_t absorbed, std::uint16_t projectile_class, std::uint32_t bullet_flags) noexcept {
     if (absorbed != 1) return role_hull_hit;
@@ -222,7 +268,7 @@ inline std::uint8_t role_from(std::uint32_t absorbed, std::uint16_t projectile_c
 // the lookups (stale), never the hooks.
 constexpr unsigned table_capacity = 512;
 enum RowBit : std::uint8_t { row_present = 1, row_style_override = 2, row_tint_override = 4, row_calibre_override = 8,
-                             row_texture = 16, row_hull_repair = 32, row_hull_tug = 64 };
+                             row_texture = 16, row_hull_repair = 32, row_hull_tug = 64, row_hull_class = 128 };
 struct Table {
     std::uint32_t rows = 0;           // TBullets rows of the generating game tree, 0 = no table
     std::uint32_t missile_rows = 0;
@@ -231,6 +277,7 @@ struct Table {
     std::uint8_t calibre_q[table_capacity]{}; // override x 255
     std::uint32_t texture_rgb[table_capacity]{};
     std::uint32_t override_rgb[table_capacity]{};
+    std::uint8_t hull_class[table_capacity]{}; // the override's class pin (HullClass, with row_hull_class)
 };
 
 // ---------------------------------------------------------------------------------------------- 16.16 arithmetic
@@ -612,7 +659,8 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     // The live record and the classifier.
     const std::uint16_t subtype = rd16(projectile + layout::obj_subtype);
     std::uint32_t flags = 0, light = 0;
-    std::uint8_t style = shape_slug, table = table_none, tint_source = tint_white, eflags = 0, calibre_q = 0, variant = 0;
+    std::uint8_t style = shape_slug, table = table_none, tint_source = tint_white, eflags = 0, calibre_q = 0, variant = 0,
+                 hull_class = class_energy;
     std::uint32_t tint = 0, alt = 0;
     const bool hit_dying = (rd32(hit + layout::obj_flags) & layout::obj_dying) != 0;
     const bool nested = hit_dying || (rd32(projectile + layout::obj_flags) & layout::obj_dying) != 0;
@@ -662,6 +710,16 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
             if (bits & row_calibre_override) {
                 calibre_q = t->calibre_q[subtype];
                 eflags |= flag_calibre_override | flag_override_applied;
+            }
+            // The hull-hit class (hull-impact-classes.md section 2): the rule on the live values, then the table's pins
+            // (a class pin replaces the rule's class and variant; a repair or tug pin sets its variant).
+            const std::int32_t shot_shield = std::int32_t(rd32(rec + layout::bullet_shield_damage)),
+                               shot_hull = std::int32_t(rd32(rec + layout::bullet_hull_damage));
+            hull_class = hull_class_from(flags, shot_shield > shot_hull ? shot_shield : shot_hull, style, &variant);
+            if (bits & row_hull_class) {
+                hull_class = t->hull_class[subtype] < hull_class_count ? t->hull_class[subtype] : std::uint8_t(class_energy);
+                variant = 0;
+                eflags |= flag_override_applied;
             }
             if (bits & row_hull_repair)
                 variant = detail_repair;
@@ -725,7 +783,7 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     const std::uintptr_t cfg = rd32(s.globals.cfg_slot);
     e->t0_game_ms = cfg ? rd32(cfg + layout::cfg_game_ms) : 0;
     e->lifetime_ms = role == role_hull_hit ? s.hull_lifetime_ms : s.lifetime_ms;
-    e->detail = std::uint8_t((drained ? detail_drained : 0) | variant);
+    e->detail = std::uint8_t((drained ? detail_drained : 0) | variant | (hull_class << detail_class_shift));
     e->calibre_q = calibre_q;
     e->tint_rgb = tint;
     e->alt_rgb332 = rgb332(alt);
@@ -967,66 +1025,180 @@ constexpr float r_base = 0.35f, r_k = 0.65f;
 // r_hit's scale (2026-11-06, user: as the shield cells and the plumes, too small on ships tens of metres long): the
 // flash, glow and ember scale with it; the sparks' reach and width stay in U.
 constexpr float r_scale = 2.0f;
-constexpr unsigned flash_ms = 60;
-// Run240 Flight G (user, 2026-11-06: "need good modern effects, not lazy flashes"): the flash is a short core inside the
-// hot-gas burst: its white core flash_core r_hit (>= floor_flash_px) in a halo of flash_halo_r r_hit.
-constexpr float flash_core = 0.25f;     // the flash's white core radius over r_hit (>= floor_flash_px)
-constexpr float flash_halo_r = 0.5f;    // its halo's radius over r_hit (r_hit until 2026-11-06)
-constexpr float flash_halo_t = 0.9f;    // the halo's heat
-// The sparks (randomised 2026-11-06, the user: "sparks read as the same decals appearing and disappearing"): per hit the
-// count round(n x (1 + spark_count_spread (2 u - 1))) about n = spark_n0 + spark_nk k (u hashed from the record's
-// sequence), in antipodal pairs of hashed isotropic directions (the lane hides the half that flies into the hull);
-// per spark (a hash of the sequence and the spark's index) its speed x [1 - spark_speed_spread, 1 + spark_speed_spread],
+// The per-class anatomy (docs/architecture/hull-impact-classes.md section 4; ratified 2026-11-06): one row per Anatomy
+// (the six HullClass values, then the missile source, the asteroid victim, repair and tug). Sizes over r = r_hit (or U
+// where named), lives in game ms (x (1 +- stagger / 2) by hash, the three-frame floor). The lab reads every grid by name.
+enum Anatomy : std::uint8_t { an_energy = 0, an_ballistic = 1, an_plasma = 2, an_heavy = 3, an_ion = 4, an_beam = 5,
+                              an_missile = 6, an_asteroid = 7, an_repair = 8, an_tug = 9, anatomy_count = 10 };
+// Flash: core r, halo r, life ms, halo heat, halo colour (0 heat, 1 the tint when saturated (plasma), 2 ion_colour (fixed,
+// ratified 2026-11-06), 3 the missile tint). A zero life: no flash. The heavy class adds the entry streak (streak_*).
+constexpr float class_flash[10][5] = {{0.25f, 1.0f, 60.f, 0.9f, 0.f}, {0.15f, 0.4f, 40.f, 1.0f, 0.f},
+                                      {0.35f, 2.0f, 60.f, 1.0f, 1.f}, {0.2f, 0.6f, 60.f, 0.9f, 0.f},
+                                      {0.2f, 1.0f, 60.f, 1.0f, 2.f}, {0.25f, 1.0f, 60.f, 0.9f, 0.f},
+                                      {0.25f, 1.0f, 60.f, 0.9f, 3.f}, {0.f, 0.f, 0.f, 0.f, 0.f},
+                                      {0.f, 0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f, 0.f}};
+// Puff (the fireball impostor riding the owner): R_b = rb_r r + U (rb_u + rb_uk k), L = life + life_k k ms, heat T0 -> 0
+// over L, body E (<= look::body_max), R(t) = R_b (1 - e^(-t / (rise L))) x (1 - shrink max(0, (t / L - 0.3) / 0.7)), the
+// tint mixed in at tint_mix (1 - t / L) when saturated (plasma). Columns: rb_r, rb_u, rb_uk, life, life_k, T0, E, rise,
+// shrink, tint_mix. A zero radius: no puff.
+constexpr float class_puff[10][10] = {{1.0f, 0.f, 0.f, 350.f, 150.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
+                                      {0.4f, 0.f, 0.f, 200.f, 0.f, 0.6f, 0.8f, 0.15f, 0.f, 0.f},
+                                      {1.5f, 0.f, 0.f, 600.f, 400.f, 1.0f, 1.5f, 0.2f, 0.5f, 0.5f},
+                                      {0.8f, 0.f, 0.f, 300.f, 200.f, 1.0f, 1.5f, 0.1f, 0.f, 0.f},
+                                      {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+                                      {0.6f, 0.f, 0.f, 300.f, 0.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
+                                      {0.f, 1.0f, 1.0f, 500.f, 700.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
+                                      {1.2f, 0.f, 0.f, 800.f, 400.f, 0.3f, 0.5f, 0.15f, 0.f, 0.f},
+                                      {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+                                      {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}};
+// Spark sets, three per anatomy (row 3 a + set: 0 fast, 1 slow, 2 chips): n = n0 + nk k (x the count's spread), speed U/s
+// (1 +- speed_spread), life + life_k k ms (x the spark's factor), width U, rest length in widths, tau s, radiance E at
+// birth (x its life fraction f), heat T0 f, the shot-axis bias b (v = speed normalize(u + b a), a = Event::dir in world;
+// b 0 isotropic, and without dir), duty: the share of flicker_ms slots it is lit in (0: always). Columns: n0, nk, speed,
+// speed_spread, life, life_k, width, rest_w, tau, E, T0, bias, duty. n0 = nk = 0: no set. The beam's slow row is its
+// spatter: n0 sparks per spatter_period_ms while held. The ion's sparks take ion_colour.
+constexpr float class_sparks[30][13] = {
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // energy: the spatter (slow) only
+    {4.f, 4.f, 3.f, 0.3f, 150.f, 100.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {8.f, 12.f, 8.f, 0.3f, 150.f, 50.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, -0.6f, 0.f}, // ballistic: splash back, two lives
+    {4.f, 6.f, 4.f, 0.3f, 450.f, 150.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, -0.3f, 0.f},
+    {3.f, 3.f, 2.f, 0.5f, 600.f, 200.f, 0.12f, 1.5f, 1.0f, 1.5f, 0.3f, -0.3f, 0.f}, // chips
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // plasma
+    {3.f, 5.f, 3.f, 0.4f, 400.f, 200.f, 0.10f, 3.f, 0.45f, 8.f, 1.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {12.f, 12.f, 10.f, 0.4f, 300.f, 200.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, -2.0f, 0.f}, // heavy: the back-jet
+    {6.f, 6.f, 12.f, 0.3f, 400.f, 200.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 2.0f, 0.f}, // the exit jet
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {4.f, 4.f, 6.f, 0.5f, 120.f, 0.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 0.f, 0.5f}, // ion: the arc sparks, flickering
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // beam: the spatter (slow)
+    {2.f, 0.f, 4.f, 0.4f, 300.f, 0.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {16.f, 24.f, 8.f, 0.3f, 150.f, 50.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, -0.3f, 0.f}, // missile: two debris sets
+    {8.f, 12.f, 3.f, 0.3f, 1500.f, 0.f, 0.08f, 3.f, 1.0f, 8.f, 1.f, -0.3f, 0.3f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // asteroid: rock dust and chips
+    {8.f, 8.f, 3.f, 0.3f, 450.f, 150.f, 0.08f, 3.f, 0.45f, 1.5f, 0.3f, 0.f, 0.f},
+    {6.f, 6.f, 2.f, 0.5f, 600.f, 200.f, 0.12f, 1.5f, 1.0f, 1.5f, 0.25f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // repair
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // tug
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}};
+// Glow (the glow primitive at the hit): R r, life ms (a beam's and repair's: the fall after the hold), heat T, radiance
+// E (repair: the weapon tint, tug: tug_colour, at E). Ember (the post-hit light): R r, life + life_k k ms, heat T0
+// cooling to 0, E (radiance ramp(T) x E x T; repair: the tint x E fading); the beam's is its spots' trail ember.
+constexpr float class_glow[10][4] = {{3.f, 150.f, 0.85f, 1.0f}, {1.5f, 100.f, 0.9f, 0.6f}, {4.f, 250.f, 0.8f, 1.2f},
+                                     {3.f, 200.f, 0.9f, 1.5f},  {0.f, 0.f, 0.f, 0.f},       {2.5f, 150.f, 0.85f, 1.0f},
+                                     {4.f, 250.f, 0.85f, 1.5f}, {0.f, 0.f, 0.f, 0.f},       {2.f, 150.f, 0.f, 1.0f},
+                                     {2.f, 150.f, 0.f, 1.0f}};
+constexpr float class_ember[10][5] = {{0.8f, 1500.f, 500.f, 0.6f, 0.8f}, {0.3f, 500.f, 0.f, 0.4f, 0.5f},
+                                      {1.0f, 3000.f, 0.f, 0.6f, 1.0f},   {0.5f, 2000.f, 0.f, 0.7f, 1.2f},
+                                      {0.f, 0.f, 0.f, 0.f, 0.f},         {0.8f, 1500.f, 0.f, 0.6f, 0.8f},
+                                      {1.0f, 2000.f, 0.f, 0.6f, 1.0f},   {0.f, 0.f, 0.f, 0.f, 0.f},
+                                      {0.4f, 800.f, 0.f, 0.f, 0.6f},     {0.f, 0.f, 0.f, 0.f, 0.f}};
+// Surface ring (the glow primitive with a shell profile, weapon_ring_ps.hlsl): E = heat(ring_t) x E x exp(-((d - r(t)) /
+// w)^2) x (1 - t / L)^2, r(t) = r_max (1 - e^(-t / (ring_rise L))), d the lane point's distance from the hit: the sphere
+// shell cut by whatever surface the lane holds, no normal. Columns: r_max r, w r, L ms, E. A zero radius: none.
+constexpr float class_ring[10][4] = {{0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}, {2.5f, 0.15f, 300.f, 1.0f},
+                                     {3.f, 0.12f, 250.f, 1.2f}, {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f},
+                                     {3.f, 0.15f, 300.f, 1.0f}, {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f},
+                                     {0.f, 0.f, 0.f, 0.f}};
+constexpr float ring_t = 0.9f, ring_rise = 0.1f;
+// Scorch (the multiply decal, the only non-additive element): the glow's window drawn ZERO / INVSRCCOLOR, output s(t)
+// w(d) scorch_colour, s(t) = s0 min(1, t / L_ember) (1 - t / L_s): it develops while the ember cools and fades linearly;
+// in its own per-owner store (scorch_per_owner, scorch_store), drawn first, never on sky. Columns: R r, L_s ms, s0.
+constexpr bool scorch = true; // the kill switch (section 9: false keeps every other element)
+constexpr float class_scorch[10][3] = {{0.6f, 12000.f, 0.45f}, {0.3f, 10000.f, 0.5f}, {1.2f, 20000.f, 0.6f},
+                                       {0.6f, 15000.f, 0.7f},  {0.f, 0.f, 0.f},         {0.8f, 15000.f, 0.5f},
+                                       {1.5f, 20000.f, 0.6f},  {0.f, 0.f, 0.f},         {0.f, 0.f, 0.f},
+                                       {0.f, 0.f, 0.f}};
+constexpr float scorch_colour[3] = {0.75f, 0.80f, 0.85f};
+constexpr unsigned scorch_per_owner = 16, scorch_store = 128;
+// Heat shimmer rects (plasma, heavy): one oriented square of shimmer_r r about the hit along the shot's projection (the
+// view's x without dir), strength 1 - t / shimmer_ms, at most shimmer_max a frame after the engines' rects.
+constexpr float class_shimmer[10] = {0.f, 0.f, 3.f, 3.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+constexpr unsigned shimmer_ms = 400, shimmer_max = 2;
+// Heavy: the entry streak from P - streak_back r a to P + streak_front r a, width streak_width r, white at streak_e,
+// streak_ms; without dir the flash at streak_fallback_halo r instead.
+constexpr float streak_back = 1.5f, streak_front = 0.5f, streak_width = 0.3f, streak_e = 4.0f, streak_fallback_halo = 1.5f;
+constexpr unsigned streak_ms = 60;
+// Ion: the filament glow (weapon_filament_ps.hlsl): R filament_r r, E filament_e x (1 - t / filament_ms), the noise at
+// filament_scale / r in the owner's frame re-hashed every rehash_ms, lit where |n| < filament_width; ion_colour.
+constexpr float filament_r = 1.5f, filament_e = 2.0f, filament_scale = 6.0f, filament_width = 0.08f;
+constexpr unsigned filament_ms = 500, rehash_ms = 100, flicker_ms = 40;
+constexpr float ion_colour[3] = {0.60f, 0.75f, 1.00f};
+// Beam: the hold rule (section 3.9): a new beam record of a held spot's owner and (table, row) within hold_r r re-lights
+// it; held while now - t_last <= max(hold_ms, 2 game steps), the spot core spot_core / spot_halo r falling over
+// spot_fall_ms after, the boiling puff and the glow over their own lives; spatter n0 sparks per spatter_period_ms while
+// held (at most spatter_cap live); a scorch mark every trail_step_r r of the spot's travel (the trail ember the spot's
+// own, from its fall).
+constexpr unsigned hold_ms = 60, spot_fall_ms = 80, spatter_period_ms = 40, spatter_cap = 24, max_spots = 64;
+constexpr float hold_r = 0.5f, spot_core = 0.2f, spot_halo = 0.6f, trail_step_r = 0.5f;
+constexpr float flash_halo_t = 0.9f; // the default halo heat
+// The sparks' shared spreads (2026-11-06, the user: "sparks read as the same decals appearing and disappearing"): per hit
+// the count round(n x (1 + spark_count_spread (2 u - 1))) (u hashed from the record's sequence), in antipodal pairs of
+// hashed directions (the lane hides the half that flies into the hull); per spark its speed x (1 +- the set's spread),
 // rest length x [spark_len_lo, spark_len_hi], width x [spark_width_lo, spark_width_hi] and life x [spark_life_lo,
-// spark_life_hi]; spark_curl_share of them drift sideways at spark_curl_x of their own speed (constant, undamped: the
-// path bends from the launch direction towards the drift as the launch speed decays), so the spray is not straight
-// rays. A given hit is the same frame to frame.
-constexpr unsigned spark_n0 = 8, spark_nk = 16; // n = round(spark_n0 + spark_nk k) before the count's spread
+// spark_life_hi]; spark_curl_share of them drift sideways at spark_curl_x of their own speed. A hit is the same frame to
+// frame.
 constexpr float spark_count_spread = 0.4f;
-constexpr float spark_speed_u = 6.0f;   // U per game second, x (1 +- spark_speed_spread)
-constexpr float spark_speed_spread = 0.5f;
-constexpr float spark_tau_s = 0.45f;    // p(t) = p0 + v0 tau (1 - e^(-t / tau)): v0 tau = 2.7 U at the mean speed
-constexpr unsigned spark_life_ms = 250, spark_life_k_ms = 250; // + k, x [spark_life_lo, spark_life_hi]
 constexpr float spark_life_lo = 0.7f, spark_life_hi = 1.3f;
 constexpr float spark_len_lo = 0.6f, spark_len_hi = 1.6f;     // x the rest length (after its floors)
 constexpr float spark_width_lo = 0.8f, spark_width_hi = 1.2f; // x the width (before floor_lit_px)
 constexpr float spark_curl_share = 0.25f, spark_curl_x = 0.3f;
-constexpr float spark_width_u = 0.08f;  // the streak's width (>= floor_lit_px)
-constexpr float spark_e = 8.0f;         // a spark's radiance at birth (2 x the core's), x ramp(T) x T as it cools
-constexpr float spark_rest_w = 3.0f;    // a spark's rest length in widths (>= floor_len_px)
-constexpr float glow_r = 3.0f, glow_t = 0.85f, glow_e = 1.0f; // R = glow_r x r_hit; heat; radiance
-constexpr unsigned glow_ms = 150;
-constexpr float ember_r = 0.6f, ember_t = 0.4f, ember_e = 0.6f; // R = ember_r x r_hit; heat cooling to 0; radiance
-constexpr unsigned ember_ms = 1200;
-constexpr float bias = 0.5f;            // the flash's centre towards the eye, x r_hit (its own surface does not halve it)
-constexpr float asteroid_dust_x = 2.0f; // an asteroid (class 17): sparks x 2 on the ramp's last stops, no flash
-constexpr float asteroid_t = 0.3f;
-constexpr float missile_spark_x = 2.0f; // a missile source: sparks x 2, the missile tint on the flash halo
+constexpr float spark_rest_w = 3.0f; // the streak program's rest length in widths (a set's rest_w scales its len_x)
+constexpr float bias = 0.5f;         // the flash's centre towards the eye, x r_hit (its own surface does not halve it)
 constexpr float tug_colour[3] = {0.7f, 0.8f, 1.0f}; // the tug's glow (pale blue); repair: the weapon tint
-// The hot-gas burst on every hull hit (2026-11-06; not the repair, tug or asteroid variants): the fireball impostor
-// (look::fireball_*) at the contact point, riding the owner, R(t) = burst_r r_hit (1 - e^(-t / (burst_rise L))), L =
-// burst_ms + burst_k_ms k (x (1 +- stagger / 2), the three-frame floor), heat T 1 -> 0 over L (white, orange, dark red),
-// body burst_e (<= look::body_max); occlusion class 2 (the lane clips the chord: the half inside the hull is not drawn).
-constexpr float burst_r = 1.5f;
-constexpr unsigned burst_ms = 180, burst_k_ms = 220;
-constexpr float burst_rise = 0.15f;
-constexpr float burst_e = 1.5f;
-static_assert(burst_e <= look::body_max, "a body never above body_max (look 2.3)");
-// The heavy shock ring (2026-11-06): heavy families only (a missile source, the burst style bit (TBullets flags & 0x1100:
-// flak and area shots), calibre k >= heavy_k: the plasma and heavy energy weapons) a thin ring in the hull's tangent
-// plane at the hit (the owner bubble's normal there for a ship, the face lattice's axis for a station), lifted
-// ring_lift r_hit off the surface along it, radius 0 -> ring_r r_hit linearly over ring_rise x the burst's L, heat ring_t
-// x ring_e fading linearly, its band ring_band of its radius (>= floor_lit_px) brightest at the leading edge and x
-// 1 / |cos| of the view's angle to the plane (an optically thin sheet; at most ring_limb_max).
-constexpr float heavy_k = 0.6f;
-constexpr float ring_r = 4.0f, ring_rise = 0.3f, ring_t = 0.9f, ring_e = 1.5f, ring_band = 0.12f, ring_lift = 0.25f;
-constexpr float ring_limb_max = 3.0f;
-constexpr unsigned ring_walks_per_frame = 1; // hull walks a frame for a ring's normal (the fallback sphere otherwise)
+// The shared budget's weights of the new primitives (2.11, over the decal's 177.5 us at 5120x1440; the native fixture's
+// *_alone_fills_frame rows, 2026-11-06: the ring 71.6 us, the filament glow 153.2, the scorch 86.7, a flash's halo
+// holding the eye 87.3): charged; the flashes are the shed order's last step (other owners', oldest first).
+constexpr float budget_weight_ring = 0.40f, budget_weight_filament = 0.86f, budget_weight_scorch = 0.49f;
+constexpr float budget_weight_flash = 0.49f;
+// The puffs' octave LOD at fighter range (section 6): a puff whose projected radius is under puff_lod_px (at 1440 rows,
+// scaled with the target's height) draws one noise octave (the sign of its seed), charged at budget_weight_fireball_lod.
+constexpr float puff_lod_px = 96.f;
 constexpr unsigned max_sparks = 2048;   // spark quads per frame (2.11)
 constexpr unsigned max_owners = 32;     // owners re-posed per frame
 } // namespace hull
-// A hull hit's record life: the slowest ember (ember_ms x (1 + stagger / 2)); Present keeps it life_floor_ms longer.
-constexpr unsigned hull_lifetime_ms = unsigned(float(hull::ember_ms) * (1.f + 0.5f * stagger)) + 1;
+// A hull hit's record life per anatomy (review 2026-11-07): its slowest element (an ember, a puff, a glow, a ring, the
+// flash, the streak, the filament glow at k 1 x (1 + stagger / 2), a spark set at spark_life_hi; the scorches live in
+// their own store, the beam, repair and tug spots in theirs), so each class leaves the ring at its own end;
+// hull_lifetime_ms the slowest of them (the installed bound). Present keeps a record life_floor_ms longer. Compile-time
+// integers: the handler reads the table, never a float.
+constexpr float hull_slowest_ms(unsigned a) noexcept {
+    const float st = 1.f + 0.5f * stagger;
+    float m = 0.f;
+    const float cand[7] = {(hull::class_ember[a][1] + hull::class_ember[a][2]) * st,
+                           (hull::class_puff[a][3] + hull::class_puff[a][4]) * st, hull::class_glow[a][1] * st,
+                           hull::class_ring[a][2] * st, hull::class_flash[a][2] * st,
+                           a == hull::an_heavy ? float(hull::streak_ms) * st : 0.f,
+                           a == hull::an_ion ? float(hull::filament_ms) * st : 0.f};
+    for (float c : cand) m = c > m ? c : m;
+    for (unsigned k = 0; k < 3; ++k) {
+        const float sl = (hull::class_sparks[3 * a + k][4] + hull::class_sparks[3 * a + k][5]) * hull::spark_life_hi;
+        m = sl > m ? sl : m;
+    }
+    return m;
+}
+struct HullLives {
+    std::uint16_t v[hull::anatomy_count];
+};
+constexpr HullLives make_hull_lives() noexcept {
+    HullLives l{};
+    for (unsigned a = 0; a < hull::anatomy_count; ++a) l.v[a] = std::uint16_t(unsigned(hull_slowest_ms(a)) + 1);
+    return l;
+}
+constexpr HullLives hull_lives = make_hull_lives();
+constexpr unsigned hull_lifetime_max() noexcept {
+    unsigned m = 0;
+    for (unsigned a = 0; a < hull::anatomy_count; ++a) m = hull_lives.v[a] > m ? hull_lives.v[a] : m;
+    return m;
+}
+constexpr unsigned hull_lifetime_ms = hull_lifetime_max();
 static_assert(hull_lifetime_ms > 0 && hull_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");
 // The heat ramp at T (clamped to [0, 1]), linear between its stops.
 inline void heat_colour(float t, float out[3]) noexcept {

@@ -287,7 +287,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         for gate in ('hull_programs_attached', 'hull_sparks_born_at_recorded_pos', 'hull_flash_centroid_at_projected_hit',
                      'hull_half_of_sparks_hidden_by_flat_lane', 'hull_light_on_hull_not_sky', 'hull_light_peak_decay_150ms',
                      'hull_spark_cooling_hue_half_life', 'hull_spark_cooling_ramp', 'hull_sizes_counts_per_tier_law',
-                     'hull_spark_reach_law_200ms', 'hull_spark_reach_asymptote_2_7u', 'hull_spark_lives_law',
+                     'hull_spark_reach_law_100ms', 'hull_spark_reach_asymptote_energy_1_35u', 'hull_spark_lives_law',
                      'hull_streak_min_footprint_3px_24px', 'hull_min_frames_under_seta6', 'hull_min_frames_under_seta10',
                      'hull_seta6_wall_time_law', 'hull_no_pop_12hps', 'hull_far_side_hit_hidden',
                      'hull_flash_not_halved_by_its_surface', 'hull_chase_nose_lit_outside_outline', 'hull_cockpit_dim_own_ship',
@@ -303,12 +303,29 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      # 2026-11-06: the burst, the randomised sparks, the heavy ring, the eye sphere
                      'hull_burst_radius_law_3_ages', 'hull_burst_colour_white_core_at_birth',
                      'hull_burst_colour_dark_red_at_end', 'hull_burst_half_hidden_by_lane', 'hull_spark_random_hits_differ',
-                     'hull_spark_same_hit_stable', 'hull_spark_curl_share', 'hull_heavy_families_ring',
-                     'hull_ring_radius_law_and_tangent_on_narrow_hull', 'hull_ring_station_face_axis',
-                     'hull_compose_no_pop_all_elements', 'hull_resolve_burst_survival', 'hull_resolve_burst_no_scar',
+                     'hull_spark_same_hit_stable', 'hull_spark_curl_share', 'hull_resolve_burst_survival',
+                     'hull_resolve_burst_no_scar',
                      'hull_budget_burst_lod_then_shed', 'hull_fireball_fault_reported_and_recovers',
                      'cockpit_eye_sphere_hits_light_their_half', 'cockpit_eye_sphere_centroid_within_one_cell',
-                     'cockpit_eye_sphere_chase_unchanged'):
+                     'cockpit_eye_sphere_chase_unchanged',
+                     # the hull-impact classes (docs/architecture/hull-impact-classes.md section 8)
+                     'hull_class_programs_attached', 'hull_class_anatomy_round_trip', 'hull_scorch_multiplies_hull_only',
+                     'hull_scorch_store_outlives_record', 'hull_scorch_through_temporal_0px',
+                     'hull_scorch_through_temporal_8px', 'hull_classes_distinct_greyscale', 'hull_energy_puff_grows_cools',
+                     'hull_energy_spatter_4_4k', 'hull_energy_ember_outlasts_flash_10x',
+                     'hull_ballistic_two_spark_lifetimes', 'hull_ballistic_splash_back_bias',
+                     'hull_ballistic_chips_keep_velocity', 'hull_ballistic_no_fireball', 'hull_plasma_bloom_2x_energy',
+                     'hull_plasma_globe_shrinks_reddens', 'hull_plasma_ring_on_surface_not_sky',
+                     'hull_heavy_entry_streak_along_dir', 'hull_heavy_back_jet_cone',
+                     'hull_heavy_exit_jet_emerges_thin_hull', 'hull_heavy_shimmer_rect_submitted',
+                     'hull_beam_hold_relights_not_appends', 'hull_beam_sweep_trail_without_strobe',
+                     'hull_beam_pulse_flash_after_gap', 'hull_ion_filaments_on_surface_rehash', 'hull_ion_no_heat_post_hit',
+                     'hull_missile_debris_two_sets_and_ring', 'hull_repair_relit_per_tick',
+                     'hull_asteroid_no_glow_no_scorch_dim_puff', 'hull_compose_no_pop_per_class',
+                     'hull_min_frames_under_seta6_per_class', 'hull_class_faults_reported_and_recover',
+                     'hull_cpu_64_hits_mixed', 'hull_budget_capital_close_within_8_screens') + tuple(
+                         'hull_budget_20_hits_5120_' + c for c in ('energy', 'ballistic', 'plasma', 'heavy', 'ion', 'beam',
+                                                                   'missile', 'asteroid')):
             self.assertIn(gate, names)
         m = r['metrics']
         hull = {x['case']: x for x in m['hull'] if 'case' in x and x['case'] != 'law'}
@@ -323,7 +340,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertEqual((hull['no_pop_step_change']['violations'], hull['no_pop_step_change']['checked']), (0, 720))
         self.assertEqual(hull['seta_engage']['reappeared'], 0)
         self.assertEqual(hull['chase_nose']['age_ms'], 200)
-        self.assertGreaterEqual(hull['chase_nose']['outside_lit'], 20)
+        self.assertGreaterEqual(hull['chase_nose']['energy_outside_lit'], 20)
+        self.assertGreaterEqual(hull['chase_nose']['ballistic_outside_lit'], 20)
         self.assertEqual((hull['hull_refused']['hull'], hull['hull_refused']['patches'], hull['hull_refused']['sprites']), (0, 1, 0))
         self.assertAlmostEqual(hull['cockpit']['own_ratio'], 0.35, delta=0.005)
         laws = [x for x in m['hull'] if x.get('case') == 'law']
@@ -337,6 +355,12 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         # the glow's budget weight (core::look::budget_weight_glow) against its measured full-screen cost / 177.5 us
         core_h = (ROOT / 'src/proxy/weapon_effects_core.h').read_text()
         import re
+        # the classes' primitives (hull::budget_weight_ring, _filament, _scorch, _flash), the same law
+        classes = {x['case']: x for x in m['class_timing'] if x.get('width') == 5120 and 'weight' in x}
+        for name, case in (('budget_weight_ring', 'ring_alone_fills_frame'), ('budget_weight_filament', 'filament_alone_fills_frame'),
+                           ('budget_weight_scorch', 'scorch_alone_fills_frame'), ('budget_weight_flash', 'flash_alone_fills_frame')):
+            weight = float(re.search(r'\b%s = ([0-9.]+)f' % name, core_h).group(1))
+            self.assertAlmostEqual(weight, classes[case]['gpu_us'] / 177.5, delta=0.1, msg=name)
         weight = float(re.search(r'budget_weight_glow = ([0-9.]+)f', core_h).group(1))
         measured = timing[(5120, 'glow_alone_fills_frame')]['gpu_us'] / 177.5
         self.assertAlmostEqual(weight, measured, delta=0.1)

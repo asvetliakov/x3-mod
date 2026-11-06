@@ -8,7 +8,10 @@
 // (screen.w; 1 is the budget's LOD) of value noise at the chord's middle in the sphere's normalised frame, advected
 // outward by look.z cells and offset by the seed look.w, modulate it; erosion takes fireball_erode x (1 - T) away as
 // it cools; the soft edge is the chord's own fall to 0 at the limb. Heat T' = T (1 - core_t (1 - column)) on the heat
-// ramp (c5..c9), radiance ramp(T') x E x T' x density (E = look.y <= body_max). Alpha 0 under ONE/ONE. Constants:
+// ramp (c5..c9), radiance ramp(T') x E x T' x density (E = look.y <= body_max); the colour mixed towards the tint
+// (TEXCOORD2 rgb) by its share (.a; 0 the ramp alone: the plasma globe of hull-impact-classes.md 4.3). A negative seed
+// draws one octave whatever screen.w (the puffs' LOD at fighter range; its magnitude the seed). Alpha 0 under
+// ONE/ONE. Constants:
 // renderer/weapon_effects_pass.cpp, defaults weapon_effects_core.h look::fireball_*.
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
@@ -36,7 +39,7 @@ float3 heat(float t) {
     float3 hi = i < 0.5 ? ramp[1].rgb : i < 1.5 ? ramp[2].rgb : i < 2.5 ? ramp[3].rgb : ramp[4].rgb;
     return lerp(lo, hi, f);
 }
-float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOORD1) : COLOR0 {
+float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOORD1, float4 tint : TEXCOORD2) : COLOR0 {
     float2 ndc = float2(vpos.x * screen.x - 1.0, 1.0 - vpos.y * screen.y);
     float3 dir = float3((ndc.x - proj.z) / proj.x, (ndc.y - proj.w) / proj.y, 1.0); // the point at view depth z: dir z
     float R = max(sphere.w, 1e-6), R2 = R * R;
@@ -56,13 +59,13 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
             float column = ((u1 - u0) * disc - (u1 * u1 * u1 - u0 * u0 * u0) / 3.0) * 0.75 / (R2 * R);
             float3 q = (dir * (zm + 0.5 * (u0 + u1) / l) - sphere.xyz) / R;
             float rq = sqrt(dot(q, q));
-            float3 x = q * shape.x - q / max(rq, 1e-3) * look.z + look.w * float3(1.7, 3.1, 0.7);
+            float3 x = q * shape.x - q / max(rq, 1e-3) * look.z + abs(look.w) * float3(1.7, 3.1, 0.7);
             float n = value_noise(x);
-            [branch] if (screen.w > 1.5) n = 0.62 * n + 0.38 * value_noise(x * 2.07 + 5.3);
+            [branch] if (screen.w > 1.5 && look.w >= 0.0) n = 0.62 * n + 0.38 * value_noise(x * 2.07 + 5.3);
             float T = look.x;
             float density = saturate(column) * saturate(1.0 + shape.y * (2.0 * n - 1.0) - shape.z * (1.0 - T));
             float t = T * (1.0 - shape.w * (1.0 - saturate(column)));
-            c = heat(t) * (look.y * t * density);
+            c = lerp(heat(t), tint.rgb, tint.a) * (look.y * t * density);
         }
     }
     return float4(max(c, 0.0), 0.0);

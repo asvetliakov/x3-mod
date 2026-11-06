@@ -152,7 +152,12 @@ nothing. Exact under SETA, deterministic for the fixture, no pool to age.
 
 No family needs a surface normal. Sparks are isotropic and the lane hides the half that flies into the hull, so a
 spray always reads as leaving the surface; a normal estimated from the hull box, the centre or the bolt's travel would
-bring the two rejected placement rules back through a side door (section 8).
+bring the two rejected placement rules back through a side door (section 8). **Amended 2026-11-06**
+([hull-impact-classes.md](hull-impact-classes.md) 3.4, ratified): the hull hit's ballistic, heavy and missile classes
+bias a spark set along the recorded shot heading, v = speed normalize(u + b a) with u the hashed isotropic direction and
+a = `Event::dir` through the owner's rows at the record's first frame (data, not an estimate; b < 0 back towards the
+shooter, b > 0 through the hull, b 0 when `dir` is zero); the bias moves no anchor and needs no normal. The shock ring
+of 3.1's burst rebuild no longer takes a normal either: it is the surface ring (the sphere shell cut by the lane).
 
 ### 2.7 Occlusion
 
@@ -209,6 +214,19 @@ existing rule); (4) secondary fireballs past the first two. Never shed: bolts, b
 by the own ship (thin or small, bounded by count caps). Count caps (CPU, static): live hull hits 256 (the ring), sparks
 2,048 quads, bolts 512, beams 64, fireballs 32 + 64 secondaries, bursts 64, muzzles 128. Flight targets: `stage_us`
 p90 ≤ 0.3 ms in a normal fight, the budget ≤ 1.5 ms worst.
+
+**Amended 2026-11-06** ([hull-impact-classes.md](hull-impact-classes.md) section 6, ratified; built, not flown). The
+hull stage's order over budget: (0) the heat-shimmer rects of owners other than the own ship (past `hull::shimmer_max`
+2 always); (1) the puffs' second octave (a puff under `hull::puff_lod_px` 96 px at 1440 rows draws one octave at any
+budget), then other owners' puffs past two per owner, oldest first; (2) other owners' scorches, oldest first; (3) their
+surface rings and filament glows; (4) their glows and embers, oldest first, then their remaining puffs; (5) shield
+patches; (6) secondaries; last, other owners' flashes, oldest first (charged at `hull::budget_weight_flash`; review
+2026-11-07: about 80 plasma blooms on a close capital passed the budget otherwise). Never shed: entry streaks, sparks,
+chips, arc sparks, beam spot cores and anything of the own ship. A hull record leaves the ring at its anatomy's slowest
+element (`core::hull_lives`, 181-3,601 ms). Weights [M,
+5120x1440]: ring 0.40, filament glow 0.86, scorch 0.49, flash 0.49 (glow 0.40, puff 1.04 / 0.76). Count caps add:
+puffs 256, rings 64, filament glows 32, beam spots 64, scorches 128 (16 per owner, the oldest of an owner retires),
+shimmer rects 2.
 
 ### 2.12 Modes and kill criteria
 
@@ -288,6 +306,14 @@ requested and draws only on frames whose plume stage drew (its scratch and its r
 it for weapon puffs would need a lifetime change; skipped as the brief allows. The lab draws all three (presets
 `hull/heavy-plasma-corvette`, `hull/heavy-flak-fighter`, `hull/heavy-missile-hit`) with the stage's own hashes, on a
 720 x 405 preview framed on 4 U and one glow radius.
+
+**2026-11-06, the hull-impact classes** ([hull-impact-classes.md](hull-impact-classes.md), ratified; built, not
+flown; figures in the [ledger](../verification/weapon-effects.md) "Hull impact classes"). The hit's anatomy now follows
+its class (energy, ballistic, plasma, heavy, ion, beam; missile, asteroid, repair and tug by their own cues), decided at
+the hook into `Event::detail` bits 4-7 and pinned per id by the override's `hull` key; the burst becomes each class's
+puff, the tangent-plane ring the surface ring, and the classes add the entry streak, two spark lifetimes and chips with
+the shot-heading bias, the filament glow, the multiply scorch in its own store, the beam hold rule and the heat-shimmer
+rects on the engine shimmer pass. Sections 2.6 and 2.11 carry the two amendments.
 
 **Engine data.** The record (pos, owner, radius, running damage, row), the patch tier and its source (step 1 fields),
 the owner's rows at scene end, the owner's velocity as the delta of its node `+0x30` between stage frames (0 on the

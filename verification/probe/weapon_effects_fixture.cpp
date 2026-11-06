@@ -873,7 +873,9 @@ unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
     }
     return n;
 }
+void class_cases(rr::WeaponEffectsPass& pass);
 #include "weapon_effects_hull_cases.h"
+#include "weapon_effects_class_cases.h"
 }
 
 int main(int argc, char** argv) {

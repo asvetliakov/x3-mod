@@ -75,6 +75,11 @@ struct StageFrame {
     // The hull hit's burst and ring (2026-11-06): bursts (fireball impostors) and heavy rings drawn, bursts the shared
     // budget shed, frames whose bursts drew at one noise octave (the budget's LOD).
     unsigned bursts = 0, rings = 0, bursts_shed = 0, burst_lod = 0;
+    // The hull classes (docs/architecture/hull-impact-classes.md): heavy entry streaks, chips, ion filament glows,
+    // scorch boxes, beam spots drawn, beam records merged into a spot (the hold rule), shimmer rects handed to the engine
+    // shimmer pass, ballistic / heavy / missile records without Event::dir (isotropic).
+    unsigned hull_streaks = 0, hull_chips = 0, hull_filaments = 0, hull_scorches = 0, hull_spots = 0, hull_merges = 0;
+    unsigned hull_shimmer = 0, hull_dir_fallback = 0;
     bool hull_ready = false; // the pass holds the hull programs (Present's hull latch, HookState::hull_ready)
     float stage_us = 0.f;
     bool drew = false;

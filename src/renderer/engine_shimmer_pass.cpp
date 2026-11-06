@@ -248,7 +248,8 @@ HRESULT EngineShimmerPass::attach(D d, void* const* native, const D3DCAPS9& caps
     render_targets_ = caps.NumSimultaneousRTs ? caps.NumSimultaneousRTs : 1;
     hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(quad_vertex_program()), &vs_);
     if (SUCCEEDED(hr)) hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, quad_declaration, &declaration_);
-    if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(ps_words), &ps_);
+    const std::uint32_t* words = program_words_ ? program_words_ : ps_words;
+    if (SUCCEEDED(hr)) hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(words), &ps_);
     if (SUCCEEDED(hr) && !(vs_ && ps_ && declaration_)) hr = E_FAIL;
     if (FAILED(hr)) return refuse("program_create", hr);
     caps_.enabled = true;

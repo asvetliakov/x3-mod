@@ -35,9 +35,13 @@ OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
 # weapon_effects_core.h 4.1 (the host test pins both against the header).
 TRACER_MIN_ELONGATION, SLUG_MIN_ELONGATION = 4.0, 1.5
 SHAPES = ('tracer', 'slug', 'orb', 'wave', 'beam')
-# The hull-hit variants an override may pin (docs/architecture/weapon-look.md 3.1): the repair laser (glow and ember
-# only, the weapon tint) and the tug (the glow only, pale blue); written as the entry's "hull" key only when pinned.
-HULL_VARIANTS = ('repair', 'tug')
+# The hull-hit values an override may pin, written as the entry's "hull" key only when pinned: the variants of
+# docs/architecture/weapon-look.md 3.1 (the repair laser: glow and ember only, the weapon tint; the tug: the glow only,
+# pale blue) and the classes of docs/architecture/hull-impact-classes.md section 2 (beam is not pinnable: a bolt pinned
+# beam would hold a spot with no tick stream).
+HULL_VARIANTS = ('repair', 'tug', 'energy', 'ballistic', 'plasma', 'heavy', 'ion')
+# The override file's schemas: 1 (the variants only) and 2 (the classes, 2026-11-06).
+OVERRIDE_SCHEMAS = (1, 2)
 
 
 class GenerateError(Exception):
@@ -59,10 +63,11 @@ def linear_to_srgb8(v):
 def load_overrides(path=OVERRIDES):
     """The curated overrides; an absent file (the frozen x3m-regenerate carries none yet) is the empty set."""
     if not Path(path).is_file():
-        return dict(schema=1, by_id={}, by_table={})
+        return dict(schema=2, by_id={}, by_table={})
     data = json.loads(Path(path).read_text())
-    if data.get('schema') != 1 or not isinstance(data.get('by_id'), dict) or not isinstance(data.get('by_table'), dict):
-        raise GenerateError(f'{path}: schema 1 with by_id and by_table objects expected')
+    if data.get('schema') not in OVERRIDE_SCHEMAS or not isinstance(data.get('by_id'), dict) or \
+            not isinstance(data.get('by_table'), dict):
+        raise GenerateError(f'{path}: schema 1 or 2 with by_id and by_table objects expected')
     return data
 
 

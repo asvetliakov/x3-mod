@@ -8,7 +8,7 @@
 //   {"schema": 1, "tool": "...", ..., "tables": {
 //      "bullets":  {"rows": N, "sha256": "<16 hex>", "entries": [{"row": i, "id": "SS_BULLET_...", "z_over_xy": e|null,
 //                   "texture_rgb": [r, g, b]|null, "style": "<shape>"|null, "tint": [r, g, b]|null,
-//                   "calibre": k|null, "hull": "repair"|"tug"|null, ...}, ...]},
+//                   "calibre": k|null, "hull": "repair"|"tug"|"energy"|"ballistic"|"plasma"|"heavy"|"ion"|null, ...}, ...]},
 //      "missiles": {"rows": M, ...}}}
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
@@ -50,7 +50,9 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     float row = -1.f, e = 0.f, calibre = 0.f;
     bool e_present = false, calibre_present = false, texture_present = false, tint_present = false, style_present = false;
     std::uint32_t texture = 0, tint = 0;
-    std::uint8_t style = 0, hull = 0; // hull: the hull-hit variant (row_hull_repair / row_hull_tug), step 2
+    // hull: the hull-hit variant (row_hull_repair / row_hull_tug, step 2) or a class pin (row_hull_class with hull_class,
+    // docs/architecture/hull-impact-classes.md section 2)
+    std::uint8_t style = 0, hull = 0, hull_class = 0;
     if (!c.accept('}'))
         for (;;) {
             char key[24];
@@ -87,6 +89,12 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                            : !std::strcmp(name, "repair") ? std::uint8_t(core::row_hull_repair)
                            : !std::strcmp(name, "tug")    ? std::uint8_t(core::row_hull_tug)
                                                           : std::uint8_t(0);
+                    // The class pins (beam is not pinnable: a bolt pinned beam would hold a spot with no tick stream).
+                    for (unsigned c = 0; name_fits && !hull && c < core::hull_class_count; ++c)
+                        if (c != core::class_beam && !std::strcmp(name, core::hull_class_name(c))) {
+                            hull = core::row_hull_class;
+                            hull_class = std::uint8_t(c);
+                        }
                 }
             } else if (!c.skip_value())
                 return false;
@@ -119,8 +127,9 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
         bits |= core::row_calibre_override;
     }
     bits |= hull;
+    t->hull_class[i] = hull_class;
     if (bits & (core::row_style_override | core::row_tint_override | core::row_calibre_override | core::row_hull_repair |
-                core::row_hull_tug))
+                core::row_hull_tug | core::row_hull_class))
         ++st->overrides;
     t->bits[i] = bits;
     ++st->entries;

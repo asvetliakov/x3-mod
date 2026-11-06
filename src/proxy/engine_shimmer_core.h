@@ -44,7 +44,7 @@ constexpr float boil_rate = 1.5f;              // the noise's third axis per sec
 constexpr float default_px = 1.5f, px_min = 0.f, px_max = 4.f; // X3M_ENGINE_SHIMMER_PX: amplitude at 1440 rows
 constexpr float reference_rows = 1440.f;       // the amplitude scales with the target height
 constexpr float max_length_screens = 4.f;      // a tip barely past the near plane: the rect's length is held here
-constexpr unsigned constant_vectors = 4 + 3 * max_rects; // c0..c51
+constexpr unsigned constant_vectors = 4 + 4 * max_rects; // c0..c67 (c52..c67: the rects' strength, 2026-11-06)
 constexpr unsigned vertices_per_rect = 6;      // two triangles (TRIANGLELIST)
 
 // ----------------------------------------------------------------------------------------------------- options
@@ -101,6 +101,20 @@ struct Rect {
     float phase = 0.f;     // the nozzle's own flow phase, nozzle widths (engine_plumes::nozzle_phase, as its plume)
     float corners[4][2]{}; // the drawn quad (the rect plus one pixel): back-left, back-right, front-left, front-right
     int bounds[4]{};       // x0, y0, x1, y1 (exclusive), the quad's box clipped to the target
+    // The displacement's scale (docs/architecture/hull-impact-classes.md 3.8: a weapon hit's rect fades 1 -> 0 over its
+    // life); every engine rect 1 (x 1 is exact: the plumes' image is unchanged bit for bit).
+    float strength = 1.f;
+};
+// A weapon hit's request (the hull hits' plasma and heavy classes, docs/architecture/hull-impact-classes.md 3.8;
+// weapon_effects_hull.h builds them, the glue turns them into rects after the engines'): view space, the hit point, the
+// shot heading (has_axis) or none (the screen's x), the square's side (view units), the strength (1 at birth, 0 at its
+// end), a seed in [0, 1), its age (game ms) and whether it belongs to the own ship.
+constexpr unsigned weapon_max_rects = 2;
+struct WeaponRequest {
+    float centre[3]{}, axis[3]{};
+    float size = 0.f, strength = 0.f, seed = 0.f;
+    std::uint32_t age = 0;
+    std::uint8_t own = 0, has_axis = 0;
 };
 struct Stats {
     unsigned candidates = 0; // scene-view records
@@ -376,8 +390,8 @@ inline bool union_bounds(const Rect* rects, unsigned n, int margin, int width, i
 
 // The pixel program's constants (src/effects/engine_shimmer_ps.hlsl): c0 (1/W, 1/H, W, H), c1 (amplitude px, rect
 // count, 0, boil), c2 (1 / cell, 0, 0, 0), c3 zero; per rect i: c4+i (origin, axis), c20+i (length,
-// half-width, back, 1 / nozzle px), c36+i (seed, depth, flow phase / cell, the occlusion fade). Unused rects stay zero (the program
-// skips them past the count). `seconds` the stage's clock.
+// half-width, back, 1 / nozzle px), c36+i (seed, depth, flow phase / cell, the occlusion fade), c52+i (strength, 0, 0,
+// 0). Unused rects stay zero (the program skips them past the count). `seconds` the stage's clock.
 inline void constants(const Rect* rects, unsigned n, float amplitude, float seconds, float width, float height,
                       float out[constant_vectors * 4]) noexcept {
     for (unsigned i = 0; i < constant_vectors * 4; ++i) out[i] = 0.f;
@@ -399,6 +413,7 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float seco
         float* a = out + (4 + i) * 4;
         float* b = out + (4 + max_rects + i) * 4;
         float* e = out + (4 + 2 * max_rects + i) * 4;
+        float* g = out + (4 + 3 * max_rects + i) * 4;
         a[0] = r.origin[0];
         a[1] = r.origin[1];
         a[2] = r.axis[0];
@@ -411,6 +426,7 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float seco
         e[1] = r.depth;
         e[2] = r.phase / cell_widths;
         e[3] = r.fade;
+        g[0] = r.strength;
     }
 }
 
@@ -442,6 +458,18 @@ inline void smooth01(float e0, float e1, float x, float* out) noexcept {
     float t = e1 > e0 ? (x - e0) / (e1 - e0) : (x >= e1 ? 1.f : 0.f);
     t = t < 0.f ? 0.f : t > 1.f ? 1.f : t;
     *out = t * t * (3.f - 2.f * t);
+}
+// A weapon hit's rect (hull-impact-classes.md 3.8): a square of side `size_px` about `origin` along `axis` (unit,
+// screen), its noise cell half its half-side, occluded by a scene nearer than `depth` (device; 0 none) over the device
+// span 1 / fade, at `strength`. False: off the target.
+inline bool weapon_rect(const float origin[2], const float axis[2], float size_px, float seed, float depth, float fade,
+                        float strength, float width, float height, Rect* out) noexcept {
+    const float h = .5f * size_px;
+    if (!(h > 0.f) || !detail::finite2(origin) || !detail::finite2(axis)) return false;
+    if (!make_rect(origin, axis, h, h, h, h, seed, depth, width, height, out)) return false;
+    out->fade = depth > 0.f ? fade : 0.f;
+    out->strength = strength > 0.f ? (strength < 1.f ? strength : 1.f) : 0.f;
+    return true;
 }
 inline void mask_at(const Rect& r, float px, float py, float* out) noexcept {
     const float rx = px - r.origin[0], ry = py - r.origin[1];

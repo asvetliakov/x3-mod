@@ -11,7 +11,6 @@ Run through verification/probe/wine_lock.py with X3M_FIXTURE_BOTTLE=X3.
 """
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -19,6 +18,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_rigid_motion_pixel as base  # noqa: E402
+import generate_weapon_effects_programs as weapons  # noqa: E402
 
 ROOT = base.ROOT
 SOURCE = ROOT / 'src/effects/engine_shimmer_ps.hlsl'
@@ -43,9 +43,9 @@ def compile_program(args):
         subprocess.run(['i686-w64-mingw32-g++', '-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror',
                         '-msse2', '-mfpmath=sse', '-mstackrealign', '-mincoming-stack-boundary=2',
                         '-static', str(base.COMPILER_SOURCE), '-o', str(exe)], check=True)
-        subprocess.run([base.bottle.WINE, *base.bottle.wine_args(), '--dll', 'd3dx9_37=n',
-                        str(exe), 'Z:' + str(compiler_path), 'Z:' + str(compiled), 'Z:' + str(binary), TARGET],
-                       check=True, timeout=300, env=dict(os.environ, WINEDLLOVERRIDES='d3dx9_37=n'))
+        # the CrossOver bottle's wine, or on the native Windows host (WSL2, no wine) compile.exe through WSL interop
+        # with Windows paths (tools/shaders/generate_weapon_effects_programs.py's rule)
+        weapons.run_compiler(exe, compiler_path, compiled, binary, TARGET)
         data = binary.read_bytes()
     if before != {path: base.sha(path.read_bytes()) for path in inputs}:
         raise RuntimeError('Compilation inputs changed')
@@ -77,7 +77,7 @@ def main():
     parser.add_argument('--check', action='store_true')
     parser.add_argument('--d3dx', type=Path, default=base.bottle.game_dir() / 'd3dx9_37.dll')
     args = parser.parse_args()
-    if base.game_running():
+    if weapons.game_running():
         raise RuntimeError('X3AP running or process inventory failed; postpone compilation')
     print(json.dumps(dict(result='PASS', check=args.check, shaders=[compile_program(args)])))
 

@@ -16,23 +16,25 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "826d5ebc6ae62c828c72c20901a8535c325a9636-dirty",
+    "commit": "926026c19d0c30ae273938c04db9318a644bff6a-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h"
+      "src/proxy/weapon_effects_patch.h",
+      "src/proxy/weapon_effects_table.h",
+      "verification/probe/weapon_effects_hook_fixture.cpp"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture.cpp": "6d66ad4a43b276646ad726a2bead923397d851459a452782a1f2918dc403f0ff",
+      "verification/probe/weapon_effects_hook_fixture.cpp": "aabfcbb1049df2ae2c7ac44c8d1bc953f0c56017bb0fc284dc61054a687170da",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "b93d5d3f8a17cbba5102d28fc6cf13da61c93a6d494cf10dc6f1e4c404986fb8",
-      "src/proxy/weapon_effects_patch.cpp": "e98b00f87f6283c44abd69b892e9de3a599a98e55ad79b50570f429f693ce6ff",
-      "src/proxy/weapon_effects_patch.h": "b82aae0f75183b361a767add3664c2b778a8c3dcb8a6dfa6289529a40c0e79e9",
+      "src/proxy/weapon_effects_patch.cpp": "501ba37bcd917d8c57ed0894c3681d07f641c38821d6640fdde9333796dd1919",
+      "src/proxy/weapon_effects_patch.h": "3282ff7b7598b101bb537d77e5f9e4b8c7dce904660bc478ff8d33b20023b524",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "76de1019630ff0eac3a7dcabf88c7f9477fd646b873812e220f7234aa3481e70",
+      "src/proxy/weapon_effects_core.h": "b44c39166f3e9c557a579ee7e739dd556486cd6c6223c6d6e3658e3d3237e9aa",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
-      "src/proxy/weapon_effects_table.h": "a62f25762dda98976b93dc8cc73a12483248933ed790d5469404adc454e24e04",
+      "src/proxy/weapon_effects_table.h": "8b58ad833326bb00266a5a672cd317935ceee0f2116b141cff320211ea47656b",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071"
     }
@@ -48,10 +50,10 @@
         "_x3m_weapon_tap": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event": 1122,
+        "_x3m_weapon_event": 1216,
         "_x3m_weapon_tap": 58
       },
-      "handler_frame_bytes": 196,
+      "handler_frame_bytes": 204,
       "stub_impact": [
         "pushf",
         "push",
@@ -77,7 +79,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "42bfb85f5fd046057bc1f333e7540da50d15c48df278475c35d02ba9a6372f47"
+    "executable_sha256": "4b65a35cfad8a4707630327ab65676a036eb7142195a49ae11350d86f400f363"
   },
   "host": {
     "name": "native-windows",
@@ -96,7 +98,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 90,
+      "checks": 92,
       "failures": 0,
       "faults": 3,
       "verdict": "PASS"
@@ -485,6 +487,16 @@
       "detail": ""
     },
     {
+      "name": "hull_class_from_record",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "hull_class_pins_and_body",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "hull_present_keeps_floor_then_releases",
       "passed": true,
       "detail": ""
@@ -555,18 +567,18 @@
       "detail": ""
     }
   ],
-  "check_count": 90,
+  "check_count": 92,
   "failed_checks": [],
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
     "esp_frame": "0085b640",
     "esp_callee": "0085b634",
-    "return": "00d86d8a",
-    "site": "00d86d85"
+    "return": "00dc6d8a",
+    "site": "00dc6d85"
   },
   "stack_depth": {
-    "bytes": 232,
+    "bytes": 240,
     "margin": 1536
   },
   "shield": [
@@ -665,22 +677,234 @@
       "unabsorbed": 1,
       "skipped_delta": 2,
       "forwarded_delta": 0,
-      "lifetime_ms": 1441
+      "lifetime_ms": 3601
     },
     {
       "case": "present",
       "kept": 1,
       "released": 1,
-      "lifetime_ms": 1441,
+      "lifetime_ms": 3601,
       "floor_ms": 400
+    }
+  ],
+  "hull_class": [
+    {
+      "case": "tug",
+      "flags": "0x2",
+      "shot": "0,0",
+      "total": 0,
+      "class": "beam",
+      "want": "beam",
+      "detail": "0x54",
+      "ok": 1
+    },
+    {
+      "case": "repair",
+      "flags": "0xa2",
+      "shot": "0,40",
+      "total": 40,
+      "class": "beam",
+      "want": "beam",
+      "detail": "0x52",
+      "ok": 1
+    },
+    {
+      "case": "beam_pal",
+      "flags": "0x2",
+      "shot": "3969,3969",
+      "total": 3969,
+      "class": "beam",
+      "want": "beam",
+      "detail": "0x50",
+      "ok": 1
+    },
+    {
+      "case": "beam_invulnerable_target",
+      "flags": "0x2",
+      "shot": "3969,3969",
+      "total": 0,
+      "class": "beam",
+      "want": "beam",
+      "detail": "0x50",
+      "ok": 1
+    },
+    {
+      "case": "beam_iond",
+      "flags": "0x214",
+      "shot": "1575,1575",
+      "total": 1575,
+      "class": "beam",
+      "want": "beam",
+      "detail": "0x50",
+      "ok": 1
+    },
+    {
+      "case": "ion_esr",
+      "flags": "0x400",
+      "shot": "2671,1335",
+      "total": 1335,
+      "class": "ion",
+      "want": "ion",
+      "detail": "0x40",
+      "ok": 1
+    },
+    {
+      "case": "ion_ipg_frag",
+      "flags": "0x300",
+      "shot": "12563,6281",
+      "total": 6281,
+      "class": "ion",
+      "want": "ion",
+      "detail": "0x40",
+      "ok": 1
+    },
+    {
+      "case": "ion_ionc",
+      "flags": "0x2600",
+      "shot": "119148,59574",
+      "total": 59574,
+      "class": "ion",
+      "want": "ion",
+      "detail": "0x40",
+      "ok": 1
+    },
+    {
+      "case": "ballistic_mass",
+      "flags": "0x60",
+      "shot": "45,45",
+      "total": 45,
+      "class": "ballistic",
+      "want": "ballistic",
+      "detail": "0x10",
+      "ok": 1
+    },
+    {
+      "case": "ballistic_mam",
+      "flags": "0x140",
+      "shot": "8350,4175",
+      "total": 4175,
+      "class": "ballistic",
+      "want": "ballistic",
+      "detail": "0x10",
+      "ok": 1
+    },
+    {
+      "case": "heavy_gauss_shield_total",
+      "flags": "0x40",
+      "shot": "28540,7135",
+      "total": 28540,
+      "class": "heavy",
+      "want": "heavy",
+      "detail": "0x30",
+      "ok": 1
+    },
+    {
+      "case": "heavy_gauss_hull_total",
+      "flags": "0x40",
+      "shot": "28540,7135",
+      "total": 7135,
+      "class": "heavy",
+      "want": "heavy",
+      "detail": "0x30",
+      "ok": 1
+    },
+    {
+      "case": "plasma_wave_psg",
+      "flags": "0x8",
+      "shot": "1996,998",
+      "total": 998,
+      "class": "plasma",
+      "want": "plasma",
+      "detail": "0x20",
+      "ok": 1
+    },
+    {
+      "case": "heavy_ppc_shield_total",
+      "flags": "0x2000",
+      "shot": "63778,15944",
+      "total": 63778,
+      "class": "heavy",
+      "want": "heavy",
+      "detail": "0x30",
+      "ok": 1
+    },
+    {
+      "case": "heavy_ppc_hull_total",
+      "flags": "0x2000",
+      "shot": "63778,15944",
+      "total": 15944,
+      "class": "heavy",
+      "want": "heavy",
+      "detail": "0x30",
+      "ok": 1
+    },
+    {
+      "case": "energy_ire",
+      "flags": 0,
+      "shot": "220,110",
+      "total": 110,
+      "class": "energy",
+      "want": "energy",
+      "detail": 0,
+      "ok": 1
+    },
+    {
+      "case": "energy_flak",
+      "flags": "0x2100",
+      "shot": "13860,6930",
+      "total": 6930,
+      "class": "energy",
+      "want": "energy",
+      "detail": 0,
+      "ok": 1
+    },
+    {
+      "case": "heavy_band_edge",
+      "flags": 0,
+      "shot": "20000,5000",
+      "total": 5000,
+      "class": "heavy",
+      "want": "heavy",
+      "detail": "0x30",
+      "ok": 1
+    },
+    {
+      "case": "heavy_band_edge_hull",
+      "flags": 0,
+      "shot": "5000,20000",
+      "total": 5000,
+      "class": "heavy",
+      "want": "heavy",
+      "detail": "0x30",
+      "ok": 1
+    },
+    {
+      "case": "energy_below_band",
+      "flags": 0,
+      "shot": "19999,19999",
+      "total": 19999,
+      "class": "energy",
+      "want": "energy",
+      "detail": 0,
+      "ok": 1
+    },
+    {
+      "case": "table",
+      "orb": 1,
+      "pin_md": 1,
+      "pin_over_rule": 1,
+      "pin_clears_repair": 1,
+      "repair_pin": 1,
+      "out_of_range": 1,
+      "missile": 1
     }
   ],
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 16.9,
-    "median_us": 17.0,
-    "worst_us": 17.4,
+    "best_us": 17.0,
+    "median_us": 17.1,
+    "worst_us": 17.6,
     "target_us": 30
   },
   "passed": true

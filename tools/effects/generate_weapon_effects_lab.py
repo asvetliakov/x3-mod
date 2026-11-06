@@ -58,61 +58,157 @@ NAMESPACES = {
              'streak_cap', 'streak_core_min', 'floor_core_px', 'floor_lit_px', 'floor_len_px', 'floor_flash_px',
              'budget_weight_patch', 'budget_weight_glow', 'fireball_freq', 'fireball_advect', 'fireball_noise',
              'fireball_erode', 'fireball_core_t', 'fireball_octaves', 'budget_weight_fireball', 'budget_weight_fireball_lod'),
-    'hull': ('r_base', 'r_k', 'r_scale', 'flash_ms', 'flash_core', 'flash_halo_t', 'spark_n0', 'spark_nk', 'spark_speed_u',
-             'spark_speed_spread', 'spark_tau_s', 'spark_life_ms', 'spark_life_k_ms', 'spark_width_u', 'spark_e',
-             'spark_rest_w', 'glow_r', 'glow_t', 'glow_e', 'glow_ms', 'ember_r', 'ember_t', 'ember_e', 'ember_ms', 'bias',
-             'asteroid_dust_x', 'asteroid_t', 'missile_spark_x', 'tug_colour', 'mode', 'spark_count_x', 'flash_halo_r',
+    # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
+    'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'tug_colour', 'mode', 'spark_count_x',
              'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',
-             'spark_width_hi', 'spark_curl_share', 'spark_curl_x', 'burst_r', 'burst_ms', 'burst_k_ms', 'burst_rise',
-             'burst_e', 'heavy_k', 'ring_r', 'ring_rise', 'ring_t', 'ring_e', 'ring_band', 'ring_lift', 'ring_limb_max')}
+             'spark_width_hi', 'spark_curl_share', 'spark_curl_x', 'class_flash', 'class_puff', 'class_sparks',
+             'class_glow', 'class_ember', 'class_ring', 'ring_t', 'ring_rise', 'scorch', 'class_scorch', 'scorch_colour',
+             'scorch_per_owner', 'class_shimmer', 'shimmer_ms', 'shimmer_max', 'streak_back', 'streak_front',
+             'streak_width', 'streak_e', 'streak_fallback_halo', 'streak_ms', 'filament_r', 'filament_e',
+             'filament_scale', 'filament_width', 'filament_ms', 'rehash_ms', 'flicker_ms', 'ion_colour', 'hold_ms',
+             'spot_fall_ms', 'spatter_period_ms', 'spatter_cap', 'hold_r', 'spot_core', 'spot_halo', 'trail_step_r',
+             'budget_weight_ring', 'budget_weight_filament', 'budget_weight_scorch', 'budget_weight_flash',
+             'puff_lod_px')}
+# The hull-impact class rule (docs/architecture/hull-impact-classes.md section 2; the DLL's core::hull_class_from, the
+# census script verification/results/weapon-effects/hull_class_census.py) on a catalogue row, then the override file's
+# `hull` pins (tools/effects/weapon_overrides.json by_id): the lab's `auto` class of a weapon (LAB_DATA weapons[].hc).
+OVERRIDES = REPO / 'tools/effects/weapon_overrides.json'
+CLASSES = ('energy', 'ballistic', 'plasma', 'heavy', 'ion', 'beam', 'missile', 'repair', 'asteroid')
+
+
+def hull_class_rule(flags, damage, elongation):
+    beam, heavy = flags & 0x6, damage >= 20000
+    if beam and damage == 0:
+        return 'tug'
+    if flags & 0x80:
+        return 'repair'
+    if beam:
+        return 'beam'
+    if flags & 0x600:
+        return 'ion'
+    if flags & 0x40:
+        return 'heavy' if heavy else 'ballistic'
+    shape = 'wave' if flags & 0x8 else 'slug' if elongation is None else (
+        'tracer' if elongation >= 4 else 'slug' if elongation >= 1.5 else 'orb')
+    if shape in ('orb', 'wave'):
+        return 'plasma'
+    return 'heavy' if heavy else 'energy'
+
+
+def hull_pins(path=OVERRIDES):
+    data = json.loads(pathlib.Path(path).read_text())
+    return {k: v['hull'] for k, v in data.get('by_id', {}).items() if isinstance(v, dict) and 'hull' in v}
+
+
+def hull_class_of(entry, pins):
+    if entry.get('id') in pins:
+        return pins[entry['id']]
+    fw = entry.get('flag_word')
+    flags = int(fw, 16) if isinstance(fw, str) else int(fw or 0)
+    damage = max(entry.get('damage_shield') or 0, entry.get('damage_hull') or 0)
+    return hull_class_rule(flags, damage, entry.get('elongation'))
 # The lab's presets (weapon-look.md 6): <family>/<case>, each naming its view and weapon id (--check fails when the id
 # is missing from its view's census, or a family has no preset), the victim tier and preview hull, the camera, the SETA
 # rate, the hits per game second, the own ship and the cockpit view, the hull-hit variant, the calibre k and the
-# shield level. Families: shield (step 1, accepted) and hull (step 2, the 3.1 list).
+# shield level; the hull-impact class (auto: the weapon's; lineup: the nine side by side), a beam's pulse (on, period
+# game ms; 0: sustained) and sweep (r_hit per tick) and the loop (game ms; 0: the record life). Families: shield (step
+# 1, accepted) and hull (step 2: the 3.1 list and one preset per class of hull-impact-classes.md section 7; --check
+# fails when a class has none).
 FAMILIES = ('shield', 'hull')
 PRESETS = (
     dict(id='shield/fighter-ire-side', family='shield', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='side', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=100),
+         camera='side', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=100, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='shield/capital-ppc-flank', family='shield', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='narrow',
-         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.8, shield=60),
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.8, shield=60, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/fighter-ire-side', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/fighter-ire-chase-nose', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0,
-         hull='chase_nose', camera='chase', seta=1, hps=0, own=True, cockpit=False, variant='none', k=0.33, shield=0),
+         hull='chase_nose', camera='chase', seta=1, hps=0, own=True, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/fighter-ire-cockpit-own', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='cockpit', seta=1, hps=8, own=True, cockpit=True, variant='none', k=0.33, shield=0),
+         camera='cockpit', seta=1, hps=8, own=True, cockpit=True, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/corvette-ppc-flank', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=1, hull='narrow',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/capital-ppc-flank-300m', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='narrow',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/capital-close-12hz', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='sphere',
-         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.8, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/station-ppc-1km', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='sphere',
-         camera='far1', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.8, shield=0),
+         camera='far1', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.8, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/mining-asteroid-60m', family='hull', view='stock_ap', weapon='SS_BULLET_MASS', tier=1, hull='sphere',
-         camera='side', seta=1, hps=4, own=False, cockpit=False, variant='asteroid', k=0.3, shield=0),
+         camera='side', seta=1, hps=4, own=False, cockpit=False, variant='asteroid', k=0.3, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/missile-hit-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=1, hull='narrow',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='missile', k=0.5, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='missile', k=0.5, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/seta6-12hz', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='side', seta=6, hps=12, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+         camera='side', seta=6, hps=12, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/far-2km', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='far2', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+         camera='far2', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/drained', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top', camera='side',
-         seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+         seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/repair-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_RL', tier=1, hull='narrow',
-         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='repair', k=0.5, shield=0),
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='repair', k=0.5, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/stock-vs-mayhem', family='hull', view='stock_ap', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     # the heavy families (2026-11-06): the burst, the sparks and the shock ring
     dict(id='hull/heavy-plasma-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_HEPT', tier=1, hull='narrow',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.63, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.63, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/heavy-flak-fighter', family='hull', view='stock_ap', weapon='SS_BULLET_FLAK_ALPHA', tier=0,
-         hull='flat_top', camera='side', seta=1, hps=0, own=False, cockpit=False, variant='flak', k=0.83, shield=0),
+         hull='flat_top', camera='side', seta=1, hps=0, own=False, cockpit=False, variant='flak', k=0.83, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
     dict(id='hull/heavy-missile-hit', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
-         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='missile', k=0.5, shield=0),
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='missile', k=0.5, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0),
+    # the hull-impact classes (docs/architecture/hull-impact-classes.md section 7)
+    dict(id='hull/energy-ire-fighter-side', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/ballistic-md-fighter-side', family='hull', view='mayhem3', weapon='SS_BULLET_MD', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.43, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/ballistic-gauss-capital-300m', family='hull', view='stock_ap', weapon='SS_BULLET_GAUSS', tier=2,
+         hull='narrow', camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.98, shield=0, cls='auto',
+         pulse=[0, 0], sweep=0, loop=0),
+    dict(id='hull/plasma-hept-corvette-flank', family='hull', view='mayhem3', weapon='SS_BULLET_HEPT', tier=1, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.63, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/plasma-psp-capital-close', family='hull', view='mayhem3', weapon='SS_BULLET_PSP', tier=2, hull='sphere',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=1.0, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/heavy-gke-capital-300m', family='hull', view='mayhem3', weapon='SS_BULLET_GKE', tier=2, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=1.0, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/heavy-rg-chase-nose', family='hull', view='mayhem3', weapon='SS_BULLET_RG', tier=0, hull='chase_nose',
+         camera='chase', seta=1, hps=0, own=True, cockpit=False, variant='none', k=0.96, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/heavy-thin-wing-exit-jet', family='hull', view='mayhem3', weapon='SS_BULLET_RG', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.96, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/beam-pbc-pulsed-corvette', family='hull', view='mayhem3', weapon='SS_BULLET_PBC', tier=1, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0, cls='auto',
+         pulse=[900, 2222], sweep=0, loop=4444),
+    dict(id='hull/beam-pal-sustained-sweep', family='hull', view='stock_ap', weapon='SS_BULLET_PAL', tier=2, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.6, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0.3, loop=6000),
+    dict(id='hull/ion-id-fighter-side', family='hull', view='mayhem3', weapon='SS_BULLET_ID', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.62, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/ion-ionc-capital', family='hull', view='stock_ap', weapon='SS_BULLET_IONC', tier=2, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=1.0, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0),
+    dict(id='hull/class-lineup-fighter-side', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='lineup',
+         pulse=[0, 0], sweep=0, loop=0),
+    dict(id='hull/class-lineup-capital-300m', family='hull', view='mayhem3', weapon='SS_BULLET_PPC', tier=2, hull='narrow',
+         camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.8, shield=0, cls='lineup',
+         pulse=[0, 0], sweep=0, loop=0),
+    dict(id='hull/scorch-12hps-20s', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=1, hull='narrow',
+         camera='side', seta=1, hps=12, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='energy',
+         pulse=[0, 0], sweep=0, loop=20000),
+    dict(id='hull/seta6-classes', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=6, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='lineup',
+         pulse=[0, 0], sweep=0, loop=0),
 )
+
 PRESET_KEYS = ('id', 'family', 'view', 'weapon', 'tier', 'hull', 'camera', 'seta', 'hps', 'own', 'cockpit', 'variant', 'k',
-               'shield')
+               'shield', 'cls', 'pulse', 'sweep', 'loop')
+PRESET_CLASSES = ('auto', 'lineup') + CLASSES
 CAMERAS = ('side', 'chase', 'cockpit', 'far1', 'far2', 'far8')
 VARIANTS = ('none', 'repair', 'tug', 'missile', 'asteroid', 'flak')
 PRESETS_BEGIN = '/* @weapon_effects_presets */'
@@ -128,6 +224,8 @@ def preset_problems(presets, data):
             out.append(f"{pr.get('id')}: family {pr.get('family')!r}")
         if pr.get('camera') not in CAMERAS or pr.get('variant') not in VARIANTS:
             out.append(f"{pr.get('id')}: camera {pr.get('camera')!r} / variant {pr.get('variant')!r}")
+        if pr.get('cls') not in PRESET_CLASSES:
+            out.append(f"{pr.get('id')}: class {pr.get('cls')!r}")
         view = data.get(pr.get('view'))
         if view is None:
             out.append(f"{pr['id']}: view {pr.get('view')!r} not loaded")
@@ -137,6 +235,23 @@ def preset_problems(presets, data):
         if not any(pr.get('family') == family for pr in presets):
             out.append(f'family {family} has no preset')
     return out
+
+
+def class_problems(presets, data):
+    """hull-impact-classes.md section 7: one hull preset per class (its own class, its variant's, or its weapon's)."""
+    seen = set()
+    for pr in presets:
+        if pr.get('family') != 'hull':
+            continue
+        variant = pr.get('variant')
+        if variant in ('missile', 'repair', 'asteroid'):
+            seen.add(variant)
+        elif pr.get('cls') in CLASSES:
+            seen.add(pr['cls'])
+        elif pr.get('cls') == 'auto':
+            weapons = {w['id']: w for w in (data.get(pr.get('view')) or {}).get('weapons', [])}
+            seen.add((weapons.get(pr.get('weapon')) or {}).get('hc', 'energy'))
+    return [f'class {cls} has no preset' for cls in CLASSES if cls not in seen]
 
 
 def presets_block(presets):
@@ -166,6 +281,10 @@ def namespace_constants(text):
             array = re.search(r'\b%s\[[^\]]*\] = \{([^}]*)\}' % name, body)
             if array:
                 values[name] = [float(v.strip().rstrip('f')) for v in array.group(1).split(',')]
+                continue
+            flag = re.search(r'\b%s = (true|false)\b' % name, body)
+            if flag:
+                values[name] = flag.group(1) == 'true'
                 continue
             scalar = re.search(r'\b%s = (%s)f?\b' % (name, NUMBER), body)
             if not scalar:
@@ -305,9 +424,11 @@ def view_record(view, census, manifest, catalog=None):
         effects.setdefault(k, dict(compact_effect(e), propagated_only=True))
     weapons = [compact_weapon(w) for w in census['weapons']]
     entries = {e['id']: e for e in (catalog or {}).get('weapons', [])}
+    pins = hull_pins()
     for w in weapons:
         if w['id'] in entries:
             w['cat'] = cat_entry(entries[w['id']])
+        w['hc'] = hull_class_of(entries.get(w['id'], {'id': w['id']}), pins)
     tiers = tier_rows(census['death_rows'])
     ids = reachable(weapons, tiers, effects)
     tex = manifest['textures']
@@ -375,6 +496,9 @@ def main(argv=None):
     ap.add_argument('--check', action='store_true', help='fail when a page differs from the inputs')
     args = ap.parse_args(argv)
     data = load()
+    problems = class_problems(PRESETS, data)
+    if problems:
+        raise SystemExit('presets: ' + '; '.join(problems))
     header_values = header_constants(HEADER.read_text())
     html = HTML.read_text()
     fresh = render(html, data, header_values)

@@ -23,6 +23,8 @@
 // armed state or its reason; one weapon_effects_device row per attach; weapon_effects_failed per failed stage frame.
 void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     weapon_requested_ = requested;
+    weapon_hull_requested_ = requested && weapon_effects::hook_state().mode == weapon_effects::core::mode_shields_hull;
+    weapon_shimmer_count_ = 0;
     weapon_armed_ = false;
     weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_failures_ = 0;
@@ -153,9 +155,12 @@ weapon_effects::stage::BubbleCache weapon_bubble_cache;
 weapon_effects::stage::HullState weapon_hull_state;
 renderer::WeaponSpriteVertex weapon_sprites[renderer::weapon_sprite_quads * 4];
 renderer::WeaponGlowVertex weapon_glows[renderer::weapon_glow_boxes * 4];
-// The bursts (fireball impostors, about 45 KB) and the heavy rings (12 KB), static as the sprites.
+// The puffs (fireball impostors, about 61 KB), the surface rings and filament glows (24 KB and 12 KB) and the scorches
+// (20 KB), static as the sprites.
 renderer::WeaponFireballVertex weapon_fireballs[renderer::weapon_fireball_boxes * 4];
-renderer::WeaponSpriteVertex weapon_rings[renderer::weapon_ring_quads * 4];
+renderer::WeaponShapeVertex weapon_rings[renderer::weapon_ring_quads * 4];
+renderer::WeaponShapeVertex weapon_filaments[renderer::weapon_filament_boxes * 4];
+renderer::WeaponGlowVertex weapon_scorches[renderer::weapon_scorch_boxes * 4];
 // The frame's game step (cfg+0x714, game ms; 0 when unreadable), clamped to 5 s (ship_avoidance's reader's bound).
 std::uint32_t weapon_game_step_ms() {
     std::uint32_t cfg = 0, step = 0;
@@ -172,6 +177,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_effects::stage::Camera camera;
     for (unsigned i = 0; i < 9; ++i) camera.r[i] = camera_scene_.r[i];
     for (unsigned i = 0; i < 3; ++i) camera.t[i] = camera_scene_.t[i];
+    weapon_shimmer_count_ = 0; // this frame's hull shimmer rects, built below in shields,hull mode
     renderer::WeaponEffectsFrame f;
     f.width = weapon_width_;
     f.height = weapon_height_;
@@ -196,6 +202,15 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     static renderer::WeaponPatch patches[wcore::max_patches];
     static renderer::WeaponDecal decals[wcore::max_decals];
     weapon_bubble_cache.rescope(weapon_effects::scope_changes());
+    {
+        // the hull stage's spots and scorch marks leave with the ring's records on a scope change
+        static std::uint32_t hull_scope = 0;
+        const std::uint32_t changes = weapon_effects::scope_changes();
+        if (changes != hull_scope) {
+            hull_scope = changes;
+            weapon_effects::stage::hull_rescope(weapon_hull_state);
+        }
+    }
     // The own ship in the cockpit view (5.1.1, Run236 Flight C): its patches at core::own_cockpit_gain, and (Run240
     // Flight G) its bubble the eye sphere, so both are known before the build. The own ship is resolve_own_ship's root
     // node (cached per frame); the view is the chase camera's last active-control cockpit visit this frame or the
@@ -254,13 +269,29 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         hv.own_node = own;
         hv.cockpit = weapon_cockpit_;
         hv.budget_left = tuning.screen_budget - n.screens;
-        unsigned quads = 0, boxes = 0, fireballs = 0, rings = 0;
+        weapon_effects::stage::HullBuffers hb;
+        hb.sprites = weapon_sprites;
+        hb.sprite_cap = renderer::weapon_sprite_quads;
+        hb.glows = weapon_glows;
+        hb.glow_cap = renderer::weapon_glow_boxes;
+        hb.fireballs = weapon_fireballs;
+        hb.fireball_cap = renderer::weapon_fireball_boxes;
+        hb.rings = weapon_rings;
+        hb.ring_cap = renderer::weapon_ring_quads;
+        hb.filaments = weapon_filaments;
+        hb.filament_cap = renderer::weapon_filament_boxes;
+        // The scorches need the multiply blend (the pass's attach caps); without it none are built.
+        hb.scorches = weapon_->caps().scorch_enabled ? weapon_scorches : nullptr;
+        hb.scorch_cap = renderer::weapon_scorch_boxes;
+        // The shimmer rects go to the engine shimmer pass after the resolve (motion_output_engine_shimmer_inc.h), this
+        // frame only.
+        hb.shimmer = weapon_shimmer_rects_;
+        hb.shimmer_cap = shimmer_requested_ ? weapon_effects::core::hull::shimmer_max : 0u;
         hn = weapon_effects::stage::build_hull(weapon_effects::hook_state().ring, weapon_hull_state, &weapon_effects_read,
-                                               hv, weapon_effects::stage::HullTuning{}, weapon_sprites,
-                                               renderer::weapon_sprite_quads, weapon_glows, renderer::weapon_glow_boxes,
-                                               &quads, &boxes, weapon_fireballs, renderer::weapon_fireball_boxes,
-                                               &fireballs, weapon_rings, renderer::weapon_ring_quads, &rings,
-                                               &weapon_bubble_cache);
+                                               hv, weapon_effects::stage::HullTuning{}, hb);
+        const unsigned quads = hb.sprite_quads, boxes = hb.glow_boxes, fireballs = hb.fireball_boxes, rings = hb.ring_quads;
+        weapon_shimmer_count_ = hb.shimmer_count;
+        weapon_shimmer_frame_ = frame_;
         // Present's keep past a record's lifetime: the largest floor a live record latched, or the floor a record
         // latched now would take, plus a frame.
         const std::uint32_t latched = std::uint32_t(hn.max_floor_ms), now_floor = wcore::look::min_frames * hv.step_ms;
@@ -274,17 +305,27 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         f.fireball_octaves = hn.octaves;
         f.rings = weapon_rings;
         f.ring_quads = rings;
+        f.filaments = weapon_filaments;
+        f.filament_boxes = hb.filament_boxes;
+        f.scorches = weapon_scorches;
+        f.scorch_boxes = hb.scorch_boxes;
         // F8 (a capture frame): the frame's hull-hit figures, the step and the views the streaks used.
         if (capture_)
             log("weapon_hull_frame device=%llu frame=%llu now=%lu step_ms=%lu prev_view=%u own=%08lx cockpit=%u hits=%u "
                 "flashes=%u sparks=%u glows=%u embers=%u shed=%u orphans=%u retired=%u floored=%u capped=%u "
                 "owners_dropped=%u quads=%u rects=%u glow_screens=%.3f patch_screens=%.3f bursts=%u rings=%u "
-                "bursts_shed=%u octaves=%u burst_screens=%.3f ring_walks=%u ring_fallback=%u",
+                "bursts_shed=%u octaves=%u burst_screens=%.3f streaks=%u chips=%u filaments=%u scorches=%u marks=%u "
+                "spots=%u merges=%u spot_flashes=%u shimmer=%u shimmer_shed=%u scorches_shed=%u rings_shed=%u "
+                "filaments_shed=%u jet_no_dir=%u energy=%u ballistic=%u plasma=%u heavy=%u ion=%u beam=%u missile=%u "
+                "asteroid=%u repair=%u tug=%u done=%u flashes_shed=%u pulses=%u",
                 id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                 unsigned(hv.prev_valid), static_cast<unsigned long>(own), unsigned(hv.cockpit), hn.hits, hn.flashes,
                 hn.sparks, hn.glows, hn.embers, hn.shed, hn.orphans, hn.retired, hn.floored, hn.capped, hn.owners_dropped,
                 quads, boxes, double(hn.screens), double(n.screens), hn.bursts, hn.rings, hn.bursts_shed, hn.octaves,
-                double(hn.burst_screens), hn.ring_walks, hn.ring_fallback);
+                double(hn.burst_screens), hn.streaks, hn.chips, hn.filaments, hn.scorches, hn.marks, hn.spots, hn.merges,
+                hn.spot_flashes, hn.shimmer, hn.shimmer_shed, hn.scorches_shed, hn.rings_shed, hn.filaments_shed,
+                hn.dir_fallback, hn.anatomy[0], hn.anatomy[1], hn.anatomy[2], hn.anatomy[3], hn.anatomy[4], hn.anatomy[5],
+                hn.anatomy[6], hn.anatomy[7], hn.anatomy[8], hn.anatomy[9], hn.done, hn.flashes_shed, hn.pulses);
     }
     weapon_retired_ += hn.retired;
     weapon_drops_[13] += hn.hits;
@@ -301,6 +342,14 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[24] += hn.rings;
     weapon_drops_[25] += hn.bursts_shed;
     weapon_drops_[26] += hn.bursts && hn.octaves < wcore::look::fireball_octaves;
+    weapon_drops_[28] += hn.streaks;
+    weapon_drops_[29] += hn.chips;
+    weapon_drops_[30] += hn.filaments;
+    weapon_drops_[31] += hn.scorches;
+    weapon_drops_[32] += hn.spots;
+    weapon_drops_[33] += hn.merges;
+    weapon_drops_[34] += hn.shimmer;
+    weapon_drops_[35] += hn.dir_fallback;
     weapon_retired_ += n.retired;
     weapon_drops_[0] += n.dropped;
     weapon_drops_[1] += n.cells_dropped;
@@ -382,13 +431,13 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[28]) noexcept {
+                                             bool* drew, unsigned drops[36]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 27; ++i) {
+    for (unsigned i = 0; i < 36; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

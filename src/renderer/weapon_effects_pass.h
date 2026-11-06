@@ -34,6 +34,8 @@ struct WeaponEffectsCaps {
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
     unsigned sprite_vs_slots = 0, sprite_ps_slots = 0, glow_vs_slots = 0, glow_ps_slots = 0; // step 2 (hull hit)
     unsigned fireball_vs_slots = 0, fireball_ps_slots = 0; // the fireball impostor (the hull hit's burst)
+    unsigned shape_vs_slots = 0, ring_ps_slots = 0, filament_ps_slots = 0; // the hull classes' ring and filament glow
+    bool scorch_enabled = false; // the multiply blend (ZERO / INVSRCCOLOR) the scorches need (attach caps)
     // Step 2, requested at attach (shields,hull): the hull programs and batch limits; false keeps the shield effect.
     bool hull_enabled = false;
     const char* hull_reason = "not_requested";
@@ -52,7 +54,9 @@ struct WeaponEffectsCaps {
 //   tail (the previous frame's position through the previous frame's view) and its width (view units), c = the corner
 //   (u -1 tail / +1 head, x the spark's rest-length factor: its sign the end, its magnitude the factor; v -1 / +1
 //   across) and the radiance a diluted streak never drops below.
-constexpr unsigned weapon_sprite_quads = 2304; // 2048 sparks (look 2.11) + one flash per live hull hit (the ring's 256)
+// 2048 sparks (look 2.11), a flash and a heavy entry streak per live hull hit (the ring's 256 each), a pulse flash and
+// a core per beam spot (64 each): the sparks' own cap binds first (review 2026-11-07).
+constexpr unsigned weapon_sprite_quads = 2048 + 2 * 256 + 2 * 64;
 struct WeaponSpriteVertex {
     float a[4];
     float b[4];
@@ -83,12 +87,25 @@ struct WeaponFireballVertex {
     float corner[3];
     float sphere[4];  // view-space centre, radius
     float look[4];    // heat T, radiance E, advection (noise cells), seed
+    float tint[4];    // a weapon tint (linear) and its share of the colour (0: the heat ramp alone; the plasma globe)
 };
-// The heavy shock rings (look 3.1): sprite-batch quads of a third kind, expanded by the stage as a flash is (the colour's
-// alpha 255) and marked c[0] = 2: a = the corner of the ring plane's square in clip space (perspective-correct u, v),
-// b = (u, v, radiance, band as a fraction of the radius), c[1] the soft radius (view units) of the lane test. Drawn
-// with the sprite programs after the sprites.
-constexpr unsigned weapon_ring_quads = 64;
+// The hull classes' shaped glows (docs/architecture/hull-impact-classes.md 3.5, 3.6): the glow primitive's box (the
+// light sphere's screen rectangle, its centre and R) with a profile: the surface ring (weapon_ring_ps.hlsl: the sphere
+// shell of radius shape.x and width shape.y cut by the lane's surface) and the filament glow (weapon_filament_ps.hlsl:
+// value noise at shape.x per view unit in the owner's frame (frame: its local axes in view), offset by the seed
+// shape.y, lit where |n| < shape.z, x saturate(1 - d^2 / shape.w^2)). One vertex program (weapon_shape_vs.hlsl), both
+// through the sprite batch's quad index list.
+constexpr unsigned weapon_ring_quads = 64, weapon_filament_boxes = 32;
+struct WeaponShapeVertex {
+    float corner[3];
+    float light[4];  // the box's view-space centre and radius
+    float colour[3]; // linear radiance
+    float shape[4];  // ring: r(t), w, 0, 0; filament: noise scale, seed, width, falloff radius
+    float frame[9];  // filament: the owner's local axes in view (x, y, z rows); ring: unused
+};
+// The scorches (hull-impact-classes.md 3.7): glow rectangles drawn with the glow programs under ZERO / INVSRCCOLOR (the
+// scene x (1 - the program's output)) before every additive layer; their colour s(t) x scorch_colour.
+constexpr unsigned weapon_scorch_boxes = 128;
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
 // frame perpendicular to the face's axis), their box and the face's newest hits still in their ring. Plane and axis
 // are view units in the owner's frame: view = centre + view_u q.x + view_v q.y + view_a depth; the pixels light the
@@ -190,16 +207,21 @@ struct WeaponEffectsFrame {
     const WeaponFireballVertex* fireballs = nullptr;
     unsigned fireball_boxes = 0;
     unsigned fireball_octaves = 2;       // 1 or 2 (the budget's LOD: core::look::fireball_octaves, 1 past the budget)
-    const WeaponSpriteVertex* rings = nullptr;
+    const WeaponShapeVertex* rings = nullptr; // the surface rings
     unsigned ring_quads = 0;
+    const WeaponShapeVertex* filaments = nullptr; // the ion class's filament glows
+    unsigned filament_boxes = 0;
+    const WeaponGlowVertex* scorches = nullptr; // multiply decals, drawn first
+    unsigned scorch_boxes = 0;
     WeaponLook look = default_weapon_look();
 };
 enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites, Fireballs,
-                                          Rings };
+                                          Rings, Filaments, Scorches };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
     unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0, fireball_boxes = 0, ring_quads = 0;
+    unsigned filament_boxes = 0, scorch_boxes = 0;
     bool drew = false;
 };
 class WeaponEffectsPass {
@@ -265,6 +287,10 @@ private:
     IDirect3DVertexShader9* fireball_vs_ = nullptr;
     IDirect3DPixelShader9* fireball_ps_ = nullptr;
     IDirect3DVertexDeclaration9* fireball_declaration_ = nullptr;
+    IDirect3DVertexShader9* shape_vs_ = nullptr;
+    IDirect3DPixelShader9* ring_ps_ = nullptr;
+    IDirect3DPixelShader9* filament_ps_ = nullptr;
+    IDirect3DVertexDeclaration9* shape_declaration_ = nullptr;
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
     std::uint16_t sprite_indices_[weapon_sprite_quads * 6]{}; // two triangles per quad (attach time; the glows' too)

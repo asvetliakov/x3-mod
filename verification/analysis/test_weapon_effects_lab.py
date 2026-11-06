@@ -325,10 +325,20 @@ class GeneratorTest(unittest.TestCase):
 
     def test_preset_problems(self):
         """weapon-look.md 6: --check fails when a preset names an id missing from its view or a family has no preset."""
-        data = {'mayhem3': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_PPC'}, {'id': 'SS_BULLET_RL'},
-                                        {'id': 'SS_BULLET_HEPT'}]},
-                'stock_ap': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_MASS'}, {'id': 'SS_BULLET_FLAK_ALPHA'}]}}
+        hc = {'SS_BULLET_MD': 'ballistic', 'SS_BULLET_GAUSS': 'heavy', 'SS_BULLET_HEPT': 'plasma', 'SS_BULLET_PSP': 'plasma',
+              'SS_BULLET_GKE': 'heavy', 'SS_BULLET_RG': 'heavy', 'SS_BULLET_PBC': 'beam', 'SS_BULLET_PAL': 'beam',
+              'SS_BULLET_ID': 'ion', 'SS_BULLET_IONC': 'ion', 'SS_BULLET_RL': 'repair'}
+        data = {'mayhem3': {'weapons': [{'id': i, 'hc': hc.get(i, 'energy')} for i in (
+                    'SS_BULLET_IRE', 'SS_BULLET_PPC', 'SS_BULLET_RL', 'SS_BULLET_HEPT', 'SS_BULLET_MD', 'SS_BULLET_PSP',
+                    'SS_BULLET_GKE', 'SS_BULLET_RG', 'SS_BULLET_PBC', 'SS_BULLET_ID')]},
+                'stock_ap': {'weapons': [{'id': i, 'hc': hc.get(i, 'energy')} for i in (
+                    'SS_BULLET_IRE', 'SS_BULLET_MASS', 'SS_BULLET_FLAK_ALPHA', 'SS_BULLET_GAUSS', 'SS_BULLET_PAL',
+                    'SS_BULLET_IONC')]}}
         self.assertEqual(gen.preset_problems(gen.PRESETS, data), [])
+        # hull-impact-classes.md section 7: one preset per class; the ion presets removed, --check refuses
+        self.assertEqual(gen.class_problems(gen.PRESETS, data), [])
+        no_ion = [pr for pr in gen.PRESETS if not pr['id'].startswith('hull/ion-')]
+        self.assertEqual(gen.class_problems(no_ion, data), ['class ion has no preset'])
         hull_only = [pr for pr in gen.PRESETS if pr['family'] == 'hull']
         self.assertIn('family shield has no preset', gen.preset_problems(hull_only, data))
         missing = [dict(gen.PRESETS[0], weapon='SS_BULLET_NOPE')] + list(gen.PRESETS[1:])
@@ -342,7 +352,15 @@ class GeneratorTest(unittest.TestCase):
                                                 'station-ppc-1km', 'mining-asteroid-60m', 'missile-hit-corvette',
                                                 'seta6-12hz', 'far-2km', 'drained', 'repair-corvette', 'stock-vs-mayhem',
                                                 # the heavy families (2026-11-06)
-                                                'heavy-plasma-corvette', 'heavy-flak-fighter', 'heavy-missile-hit')})
+                                                'heavy-plasma-corvette', 'heavy-flak-fighter', 'heavy-missile-hit',
+                                                # the hull-impact classes (hull-impact-classes.md section 7)
+                                                'energy-ire-fighter-side', 'ballistic-md-fighter-side',
+                                                'ballistic-gauss-capital-300m', 'plasma-hept-corvette-flank',
+                                                'plasma-psp-capital-close', 'heavy-gke-capital-300m', 'heavy-rg-chase-nose',
+                                                'heavy-thin-wing-exit-jet', 'beam-pbc-pulsed-corvette',
+                                                'beam-pal-sustained-sweep', 'ion-id-fighter-side', 'ion-ionc-capital',
+                                                'class-lineup-fighter-side', 'class-lineup-capital-300m', 'scorch-12hps-20s',
+                                                'seta6-classes')})
 
     def test_main_check_against_inputs(self):
         tmp = Path(tempfile.mkdtemp())
@@ -538,82 +556,120 @@ console.log(JSON.stringify(out));
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_hull_presets_render_their_elements(self):
-        """weapon-look.md 3.1 and 6: every hull preset of the page draws through renderHull, and every element it should
-        have deposits light on the canvas (its summed radiance and its lit pixels, not its quad count: the sparks drew
-        zero light under a 1 px streak until 2026-11-06 while their quads were counted) at 40 ms of wall time: the
-        flash, the burst, the sparks, the glow and the ember on the plain cases, the shock ring on the heavy ones (a
-        missile source, flak, k >= heavy_k) and nowhere else (the chase nose's sparks at 200 ms, as the fixture's chase
-        gate); the repair laser glow and ember only, the tug its glow,
-        the asteroid sparks, glow and ember (no flash, no burst); the spark count is the stage's hashed law (the
-        missile's from its doubled n); the hull lifetime sets the loop; the canvas is 720 x 405."""
+        """hull-impact-classes.md 4 and 7: every hull preset of the page draws through renderHull, and every element its
+        class should have deposits light on the canvas (its summed radiance and its lit pixels) at its preset's time: the
+        energy class its flash, puff, spatter, glow and ember (40 ms) and its scorch (400 ms); ballistic its flash, dust,
+        sparks, chips and pit glow and ember, no ring; plasma its bloom, globe, ring, sparks, glow and hot spot; heavy its
+        entry streak, puff, jets, ring, glow and hole; ion its flash, arcs and arc sparks and no heat; a beam its spot (a
+        flash), boiling puff, spatter and glow; the missile its flash, burst, debris, ring, glow and ember; repair its glow
+        and ember only, the tug its glow; an asteroid its dust puff and rock sparks and chips, no flash, glow, ember or
+        scorch; the lineup every class's element at once. The spark count is the stage's hashed law per set; the hull
+        lifetime sets the loop; the canvas is 720 x 405."""
         presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        weapons = {}
+        for view in ('stock_ap', 'mayhem3', 'fl'):
+            m = re.search(r'\n%s: (\{.*?\}),\n' % json.dumps(view), self.html)
+            if m:
+                weapons[view] = {w['id']: w for w in json.loads(m.group(1))['weapons']}
         probe = self.ours_script() + self.CONTROLS + r"""
 const checks = {};
 function $(id) { return {value: vals[id], checked: !!checks[id]}; }
-const PRESETS = __PRESETS__;
+const PRESETS = __PRESETS__, WEAPONS = __WEAPONS__;
 const out = {};
 for (const p of PRESETS.filter(x => x.family === 'hull')) {
   Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
-                       c_variant: p.variant, c_k: p.k, c_shield: p.shield});
+                       c_variant: p.variant, c_k: p.k, c_shield: p.shield, c_class: p.cls, c_pulse_on: p.pulse[0],
+                       c_pulse_period: p.pulse[1], c_sweep: p.sweep, c_loop: p.loop});
   checks.c_own = p.own; checks.c_cockpit = p.cockpit;
-  const data = new Uint8ClampedArray(OW * OH * 4);
-  const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data}; }, putImageData() {}},
-               weapon: {colour: [50, 255, 50]}};
-  renderOurs(rec, 40);
-  out[p.id] = rec.hullStats;
-  if (p.camera === 'chase') { // the nose hit seen from behind: its sparks clear the outline later (the fixture's 200 ms)
-    const later = {slot: 'impact', ctx: rec.ctx, weapon: rec.weapon};
-    renderOurs(later, 200);
-    out[p.id].light.sparks = later.hullStats.light.sparks;
-    out[p.id].lit_px.sparks = later.hullStats.lit_px.sparks;
-  }
-  const h = hullControls();
-  out[p.id].want_sparks = p.hps === 0 ? sparkCount(7000, p.variant === 'tug' ? 0.1 : p.k, h) : -1;
+  const data = new Uint8ClampedArray(OW * OH * 4).fill(128);
+  const weapon = WEAPONS[p.view][p.weapon];
+  const at = t => {
+    const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data: data.slice()}; }, putImageData() {}}, weapon};
+    renderOurs(rec, t);
+    return rec.hullStats;
+  };
+  const st = at(40), late = at(400), chase = at(200);
+  out[p.id] = {anatomy: st.anatomy, light: st.light, lit_px: st.lit_px, lit: st.lit, sparks: st.sparks, scorch_late: late.light.scorch,
+               ember_late: late.light.ember, sparks_chase: chase.light.sparks + chase.light.chips};
+  const h = hullControls(), a = weaponAnatomy(weapon, h);
+  // the stage's count per set (the classes whose sets flicker, ion and missile, light a share of theirs)
+  out[p.id].want_sparks = p.hps === 0 && p.cls !== 'lineup' && !['beam', 'repair', 'tug', 'ion', 'missile'].includes(ANATOMIES[a])
+    ? [0, 1, 2].map(s => sparkCount(7000, a === AN.tug ? 0.1 : p.k, h, a, s)) : null;
+  out[p.id].stats = st;
 }
-vals.c_seta = 1; out.loop = ourLoopMs();
+vals.c_seta = 1; vals.c_loop = 0; out.loop = ourLoopMs();
 out.canvas = [OW, OH];
 console.log(JSON.stringify(out));
-""".replace('__PRESETS__', json.dumps(presets))
+""".replace('__PRESETS__', json.dumps(presets)).replace('__WEAPONS__', json.dumps(weapons))
         js = self.run_node(probe)
         self.assertEqual(js.pop('canvas'), [720, 405])
-        self.assertEqual(js.pop('loop'), 1441)                  # core::hull_lifetime_ms at SETA 1
-        elements = ('flash', 'burst', 'sparks', 'glow', 'ember', 'ring')
+        self.assertEqual(js.pop('loop'), 3601)                  # core::hull_lifetime_ms at SETA 1
+        want_by = {'energy': {'flash', 'burst', 'sparks', 'glow', 'ember'},
+                   'ballistic': {'flash', 'burst', 'sparks', 'chips', 'glow', 'ember'},
+                   'plasma': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
+                   'heavy': {'flash', 'streak', 'burst', 'sparks', 'ring', 'glow', 'ember'},
+                   'ion': {'flash', 'filament', 'sparks'},
+                   'beam': {'flash', 'burst', 'glow'},
+                   'missile': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
+                   'asteroid': {'burst', 'sparks', 'chips'},
+                   'repair': {'glow', 'ember'}, 'tug': {'glow'}}
+        never_by = {'ion': {'burst', 'glow', 'ember', 'scorch', 'ring'}, 'asteroid': {'flash', 'glow', 'ember', 'scorch'},
+                    'repair': {'flash', 'sparks', 'burst', 'scorch'}, 'tug': {'flash', 'sparks', 'burst', 'ember', 'scorch'},
+                    'energy': {'ring', 'streak', 'filament'}, 'ballistic': {'ring', 'streak', 'filament'}}
         by_id = {p['id']: p for p in presets}
-        heavy_k = gen.namespace_constants(gen.HEADER.read_text())['hull']['heavy_k']
         for pid, st in js.items():
             p = by_id[pid]
-            variant = p['variant']
-            heavy = variant in ('missile', 'flak') or (variant not in ('repair', 'tug', 'asteroid') and p['k'] >= heavy_k)
-            if variant == 'repair':
-                want = {'glow', 'ember'}
-            elif variant == 'tug':
-                want = {'glow'}
-            elif variant == 'asteroid':
-                want = {'sparks', 'glow', 'ember'}
+            an = st['anatomy']
+            if p['cls'] == 'lineup':
+                want, never = {'flash', 'streak', 'burst', 'sparks', 'chips', 'ring', 'filament', 'glow', 'ember'}, set()
             else:
-                want = {'flash', 'burst', 'sparks', 'glow', 'ember'} | ({'ring'} if heavy else set())
+                want, never = want_by[an], never_by.get(an, set())
             # Out of view by the preset's geometry, neither required nor refused: the cockpit preset's first hit lies
-            # 4.7 m from the eye below the canvas (its flash, sparks and ember; the burst and glow reach in), the chase
-            # nose's ember sits inside the hull's outline seen from behind.
-            unseen = {'hull/fighter-ire-cockpit-own': {'flash', 'sparks', 'ember'},
-                      'hull/fighter-ire-chase-nose': {'ember'}}.get(pid, set())
-            for el in elements:
+            # below the canvas, the chase nose's ember sits inside the hull's outline seen from behind, the chase's sparks
+            # clear the outline later (the fixture's 200 ms); the beam's spatter starts with its first 40 ms.
+            unseen = {'hull/fighter-ire-cockpit-own': {'flash', 'sparks', 'ember', 'burst'},
+                      'hull/fighter-ire-chase-nose': {'ember', 'sparks'},
+                      'hull/heavy-rg-chase-nose': {'ember', 'sparks', 'chips', 'streak', 'ring', 'glow'}}.get(pid, set())
+            for el in sorted(want | never):
                 lit = (st['light'][el], st['lit_px'][el])
                 if el in unseen:
                     continue
                 if el in want:
-                    self.assertGreater(lit[0], 0, (pid, el))
-                    self.assertGreater(lit[1], 0, (pid, el))
+                    self.assertGreater(lit[0], 0, (pid, an, el))
+                    self.assertGreater(lit[1], 0, (pid, an, el))
                 else:
-                    self.assertEqual(lit, (0, 0), (pid, el))
+                    self.assertEqual(lit, (0, 0), (pid, an, el))
             self.assertGreater(st['lit'], 0, pid)
-            if st['want_sparks'] >= 0:
-                self.assertEqual(st['sparks'], st['want_sparks'], pid)
-        n = lambda k: 8 + 16 * k   # noqa: E731 (hull::spark_n0 + spark_nk k), x (1 +- spark_count_spread)
-        self.assertTrue(0.6 * 2 * n(0.5) - 1 <= js['hull/missile-hit-corvette']['sparks'] <= 1.4 * 2 * n(0.5) + 1)
-        self.assertTrue(0.6 * n(0.33) - 1 <= js['hull/fighter-ire-side']['sparks'] <= 1.4 * n(0.33) + 1)
-        for pid in ('hull/heavy-plasma-corvette', 'hull/heavy-flak-fighter', 'hull/heavy-missile-hit'):
-            self.assertIn(pid, js)
+            # the scorch at 400 ms (out of view on the chase nose seen from behind and below the cockpit's canvas)
+            if an in ('energy', 'ballistic', 'plasma', 'heavy', 'missile') and not pid.endswith(('chase-nose', 'cockpit-own')):
+                self.assertGreater(st['scorch_late'], 0, (pid, 'scorch at 400 ms'))
+            if pid.endswith('chase-nose'):
+                self.assertGreater(st['sparks_chase'], 0, (pid, 'sparks at 200 ms'))
+            if st['want_sparks'] is not None and p['hps'] == 0:
+                self.assertEqual(st['sparks'], sum(st['want_sparks']), pid)
+        self.assertEqual(js['hull/fighter-ire-side']['anatomy'], 'energy')
+        self.assertEqual(js['hull/ballistic-md-fighter-side']['anatomy'], 'ballistic')  # the Mayhem pin
+        self.assertEqual(js['hull/ballistic-gauss-capital-300m']['anatomy'], 'heavy')   # 0x40 in the heavy band
+        self.assertEqual(js['hull/beam-pbc-pulsed-corvette']['anatomy'], 'beam')
+        self.assertEqual(js['hull/ion-ionc-capital']['anatomy'], 'ion')
+        self.assertEqual(js['hull/repair-corvette']['anatomy'], 'repair')
+        self.assertEqual(js['hull/mining-asteroid-60m']['anatomy'], 'asteroid')
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_lab_classes_match_the_census(self):
+        """The lab's `auto` class of every catalogued weapon (LAB_DATA weapons[].hc: the generator's rule and the override
+        file's pins) is the census script's (verification/results/weapon-effects/hull_class_census.py)."""
+        sys.path.insert(0, str(gen.REPO / 'verification/results/weapon-effects'))
+        import hull_class_census as census  # noqa: E402
+        pins = gen.hull_pins()
+        self.assertEqual(pins, census.PINS)
+        for view in ('stock_ap', 'mayhem3', 'fl'):
+            cat = json.loads((gen.CATALOG / f'{view}.json').read_text())
+            for w in cat['weapons']:
+                flags = int(w.get('flag_word') or '0', 16) if isinstance(w.get('flag_word'), str) else int(w.get('flag_word') or 0)
+                dmg = max(w.get('damage_shield') or 0, w.get('damage_hull') or 0)
+                want = census.PINS.get(w['id']) or census.classify(flags, dmg, w.get('elongation'))
+                self.assertEqual(gen.hull_class_of(w, pins), want, (view, w['id']))
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_spark_hashes_match_the_stage(self):
@@ -623,8 +679,8 @@ console.log(JSON.stringify(out));
 const out = [];
 for (const seq of [1, 438, 7000]) {
   const h = {variant: 'none', spark_x: 1};
-  const f = sparkFactors(seq, 3), d = pairDirection(seq, 2);
-  out.push([elementHash(seq, 7), sparkCount(seq, 0.5, h), +f.speed_x.toFixed(5), +f.life_x.toFixed(5), +f.len_x.toFixed(5),
+  const f = sparkFactors(seq, 3, 0.3), d = pairDirection(seq, 2);
+  out.push([elementHash(seq, 7), sparkCount(seq, 0.5, h, 1, 0), +f.speed_x.toFixed(5), +f.life_x.toFixed(5), +f.len_x.toFixed(5),
             +f.width_x.toFixed(5), f.curl ? 1 : 0, f.curl_hash, ...d.map(v => +v.toFixed(5))]);
 }
 console.log(JSON.stringify(out));
@@ -643,15 +699,17 @@ int main() {
         core::Event e{};
         e.sequence = seq;
         e.table = core::table_bullets;
-        const st::SparkFactors f = st::spark_factors(seq, 3);
+        const st::SparkFactors f = st::spark_factors(seq, 3, 0.3f);
         float d[3];
         st::pair_direction(seq, 2, d);
         std::printf("%u %u %.5f %.5f %.5f %.5f %u %u %.5f %.5f %.5f\n", st::element_hash(seq, 7),
-                    st::spark_count(e, 0.5f, st::HullTuning{}), double(f.speed_x), double(f.life_x), double(f.len_x),
-                    double(f.width_x), unsigned(f.curl), f.curl_hash, double(d[0]), double(d[1]), double(d[2]));
+                    st::spark_count(e, 0.5f, st::HullTuning{}, core::hull::an_ballistic, 0), double(f.speed_x),
+                    double(f.life_x), double(f.len_x), double(f.width_x), unsigned(f.curl), f.curl_hash, double(d[0]),
+                    double(d[1]), double(d[2]));
     }
 }
 """
+        sys.path.insert(0, str(Path(__file__).resolve().parent))  # under PYTHONPATH=verification/probe
         import test_weapon_effects_core as core_test
         with tempfile.TemporaryDirectory() as tmp:
             Path(tmp, 'd3d9.h').write_text(core_test.D3D9_STUB)

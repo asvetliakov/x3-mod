@@ -755,3 +755,162 @@ with the own ship known or not (0 changed). The cockpit dim gate unchanged (0.35
 Open: a cell of 6 m on a 30 m sphere makes each corvette hit's footprint ((rings + 0.5) cells, 75 view units) a cap of about 29° radius (the late set lights
 362004 of 1179648 px at level); the flight decides whether the eye sphere wants larger radius or smaller cells. Not
 flown.
+
+### Hull impact classes (2026-11-07, dirty on `926026c19`; [hull-impact-classes.md](../architecture/hull-impact-classes.md))
+
+The ratified design built on the burst rebuild; not flown. **Hook**: `core::hull_class_from` (the rule of section 2, integer
+only, `always_inline`) and the table's pin write the class into `Event::detail` bits 4-7 (`HullClass` energy 0 ..
+beam 5); the rule also sets the repair (0x80) and tug (beam bits, damage 0) variants; a class pin replaces the rule's
+class and variant; missile sources keep the nibble 0. **Table**: the override's `hull` key takes `energy | ballistic |
+plasma | heavy | ion` besides `repair | tug` (`beam` not pinnable; schema 2), `row_hull_class` 0x80 with
+`Table::hull_class`; `weapon_overrides.json` carries the census script's 26 `by_id` pins (stock 11 used, Mayhem 3 22, FL
+= stock). **Stage** (`weapon_effects_hull.h`): one row per `Anatomy` of the `hull::class_*` grids (the asteroid victim,
+repair, tug and a missile source first, then the nibble): flash, puff (the fireball impostor riding the owner; the
+plasma globe shrinking, its tint mixed in while hot), three spark sets with the shot-heading bias `normalize(+-u + b
+a)` (a = `Event::dir` through the owner's rows at the first frame; b 0 without it) and the flicker duty (ion, the
+missile's slow debris), glow, ember, the surface ring (the sphere shell cut by the lane; the tangent-plane ring and its
+bubble walk are gone), the ion filament glow, the heavy entry streak, the shimmer request; the scorch store (128 marks
+of 36 B, 16 per owner, laid at a record's first frame, cleared on a scope change); the hold rule's spots (64 of 100 B:
+beam, repair, tug records leave the ring; a pulse restart after a gap flashes; scorch marks every 0.5 r of a crawl);
+the amended shed order. `HullState` 142,096 B. Record life: per anatomy since the review (below); the bound
+`hull_lifetime_ms` 3,601 (the plasma hot spot's 3 s x 1.2; was 1,441). **Pass**: `weapon_shape_vs` (10 slots), `weapon_ring_ps` (51), `weapon_filament_ps` (247), the
+fireball's tint input (VS 7, PS 311; vertex 60 B) and per-puff octave (a negative seed); scorches drawn first with the
+glow programs under ZERO / INVSRCCOLOR (`caps().scorch_enabled` from the blend caps), then glows, rings, filaments,
+patches, decals, puffs, sprites; steps `Rings`, `Filaments`, `Scorches`. **Shimmer**: the engine shimmer pass is
+requested with the plumes or in shields,hull mode; `run_engine_shimmer` appends the frame's hull rects
+(`engine_shimmer::weapon_rect`, at most 2) after the engines'; the program takes a per-rect strength (c52..c67; an
+engine rect 1). **Rows**: `weapon_event ... class=`; `weapon_effects_frame` gains `streaks= chips= filaments= scorches=
+spots= merges= shimmer= jet_no_dir=`; `weapon_hull_frame` the class counts per anatomy; `engine_shimmer ...
+weapon_rects=`; `engine_shimmer_config ... weapon_hull= weapon_max=`.
+
+Deltas against the design, chosen here: the record life is the anatomy's slowest element (the design kept 1,441, but
+the plasma hot spot, the heavy hole and the missile ember outlive it); the splash-back and back-jet gates read at 100 ms and 30 deg
+(the design's 200 ms leaves only the slow set and chips, whose b -0.3 gives 2 b / 3 = 0.2 of the reach; b -2 bounds
+the cone at asin(1/2) = 30 deg, not 25); the chips' gate compares their speed fraction at 600 ms with the slow sparks'
+(the design's "centroid beyond" contradicts its own speeds 2 vs 4 U/s); the greyscale gate normalises each age's
+profile and takes the larger L1 of the two ages; the flashes are charged to the budget at their measured weight and shed
+last (the plasma bloom's 2 r halo on a close capital was 2.3 ms uncharged); a puff under 96 px (1440 rows) draws one
+octave at any budget (the design's fighter-range LOD); the beam's trail ember is the spot's own (marks are scorches
+only); the lab previews the heading as the hull's inward normal.
+
+Figures [M], `verification/results/weapon-effects/hull_class_rows.py` -> `hull_class_rows_out.txt` (the acceptance run,
+RTX 5070 Ti 32.0.16.2114): D3D PASS 152/0, hook PASS 92/0 (handler 0 calls, 0 x87, 1,237 instructions (1,122 before), frame 200 B; 50 events 18.1 µs median), engine shimmer PASS 51/0 (43 + 8 weapon-rect checks).
+
+| gate / row | measured | law / bound |
+| --- | --- | --- |
+| class nibble at the hook (16 stock cues: tug, repair, beams, ESR, IPG_FRAG, IONC, MASS, MAM, GAUSS, PSG, PPC, IRE, flak, the 20,000 edge) / the table (orb body, MD pin, pin over 0x40, over 0x80, out of range, missile) | 16 of 16 / 7 of 7 | all |
+| anatomy round trip (10 anatomies, one frame each) | 10 of 10 | all |
+| scorch on a half-hull white scene: sky changed / hull pixel error | 0 px / 2.0e-4 (s 0.380) | 0 / ≤ 4e-3 |
+| scorch store: record released, at 6 s / at L_s / 17 marks on one owner | 0.16875 = law / 0, mark freed / 16 kept, the first gone | law ±1e-4 / 0 / 16 |
+| scorch through the production TemporalPass, 0 / 8 px a frame | centre 1.000 / 1.000, residual after 8 frames 0 / 0 | ≥ 0.5, ≤ 1/255 |
+| greyscale lineup, 9 classes, 8-bin radial profile at 100 and 400 ms | min pair L1 0.216 (plasma, missile) | ≥ 0.2 |
+| energy puff R at 0.2 / 0.5 / 0.95 L; g/r of its brightest pixel; owner moved 20 | radius error 0; 0.614 / 0.362 / 0.182; dx 20.000 | ±5 %, falling, 20 |
+| energy spatter n at k 0 / 0.5 / 1 (law 4 / 6 / 8) / ember at 300 ms, 1,500 ms, after (flash 50 ms) | 3 / 6 / 9 / 0.78 of peak, lit, 0 | within ±40 % / ≥ 0.5, > 0, 0 |
+| ballistic lit sparks fast 100 / 300 / 500 ms; fast at 250; slow at 450 | 8 / 0 / 0; 0; 4 | gone by 250, alive at 450 |
+| ballistic splash back at 100 ms along -dir / isotropic without dir (32 records) | 0.346 / 0.016 of the reach | ≥ 0.3 / ≤ 0.05 |
+| ballistic speed fraction at 600 ms: slow sparks / chips (law 0.264 / 0.549) | 0.289 / 0.612 | chips ≥ 1.5 x |
+| ballistic dust puff lit beyond 0.5 r | 0 px (4,912 lit) | 0 |
+| plasma bloom halo / energy halo; lit radius ratio | 2.000; 1.81 | 2 ±5 % |
+| plasma globe R at 0.3 / 0.65 / 0.95 L; b/r (a blue tint) | 19.7 / 18.3 / 13.5 view; 0.654 / 0.420 / 0.368 | falling, reddening |
+| plasma ring on half a hull: sky / lane; radius at 0.1 / 0.2 / 0.5 L | 0 / 47,119 px; 135.5 / 187.5 / 215.7 px (law 134.7 / 186.6 / 215.3) | 0; ±5 % |
+| heavy entry streak angle to the projected shot; its inside share on a flat lane | 0.000 deg; 0.039 | ≤ 2 deg; ≤ 0.1 |
+| heavy back-jet launch within 30 / 25 deg of -dir (248 sparks) | 0.891 / 0.468 | ≥ 0.75 within 30 |
+| heavy exit jet lit beyond a 1 U plate's edge at 0 / 150 / 400 ms; 10 U | 0 / 1,217 / 1,211 px; 0 / 0 / 0 | 0, > 0; none |
+| heavy shimmer: at 100 ms strength / at 401 ms / of 3 / over budget (other, own) | 0.750 / none / 2 / 0, 2 | 1 - t/400, 0, 2, own only |
+| beam: 60 ticks at one point: spots / ring records left / later pulses / core, glow | 1 / 0 / 0 / 4.000 = 4.000, 0.850 = 0.850 | 1, 0, 0, equal |
+| beam sweep 0.3 r a tick, 20 ticks: marks / gaps / pulses after the first | 10 / 0.599-0.601 r / 0 | 0.5-0.6 r, 0 |
+| beam pulse: core at hold end / 81 ms after / restart after 1,322 ms: pulses, flash / next tick | 1 / 0 / 1, 1 / 0 | |
+| ion filaments: sky / lane px; Jaccard 0-30 ms / 0-100 ms / owner moved 128 px | 0 / 5,741; 0.999 / 0.078 / 1.000 | 0; ≥ 0.9 / ≤ 0.5 / ≥ 0.9 |
+| ion: glows, embers, puffs, scorches, marks / at 600 ms everything | 0 / 0 | 0 |
+| missile debris 2 x ballistic counts; slow set lit share 1.1-1.4 s; ring at 50 ms | yes (27 + 13); 0.219; 1 | 0.3 ±0.1 |
+| repair 60 ticks: one glow a frame, colour | yes, 1.000 = 1.000 | |
+| asteroid: glows, embers, marks, flashes / puff peak | 0 / 0.022 | 0 / ≤ 0.5 |
+| composition, 7 record classes x 40 frames (30 x 16 ms, 10 x 100 ms), 8 element counts | 0 of 2,240 violations; image = sum of parts within 2e-5 | 0 |
+| three-frame floor at SETA 6: flash (heavy: and streak) per class | 3 frames each | 3 |
+| faults at Scorches / Rings / Filaments; Reset (the scorch mark draws again) | reported at the step, the next frame draws; recovered | |
+| weights at 5120x1440 alone filling the frame: ring / filament / scorch / flash | 71.4 / 152.7 / 86.8 / 88.3 µs = 0.40 / 0.86 / 0.49 / 0.50 | pinned 0.40 / 0.86 / 0.49 / 0.49 |
+
+Open:
+
+- Not flown. Flight per section 9's kill criteria, a lineup at the user's eye (the lab presets `hull/class-lineup-*`).
+- The per-class 20-hit fighter bounds at 5120x1440 are the measured ones with margin, not the design's 50 µs: energy,
+  plasma, heavy and missile miss 50 (the glows of 3-4 r_hit dominate: a 4 r glow at 200 m is 0.85 screens for 20 hits).
+- The CPU bound stays 40 µs (64 mixed hits 33.7 best, 1,066 sparks); the design's 30 µs (1,600 quads, [I]) is not met.
+- The heat shimmer is not previewable in the lab and the hull rects are not driven through `MotionOutput` by a fixture:
+  `run_engine_effects.py` needs the local shader-sweep programs (`/tmp/x3-shader-sweep/programs`, absent on this host),
+  so its record stays bound to the previous sources.
+- Unknowns 1 (the `dir_fallback` rate: `jet_no_dir=` counts it) and 2 (one beam record per frame: `merges=`) are read
+  in flight.
+
+CPU, best of 200 (i686, µs): 64 mixed hits on a capital (the classes in turn: 1,066 sparks, 56 puffs, 24 rings, 8
+filament glows, 16 scorches, 8 streaks) **33.4** (sparks only 25.9, all but the sparks 9.1), mean 44.9; the burst
+rebuild's 64-hit row (now energy) 18.8, 20 fighter hits 6.1. `hull_cpu_64_hits_mixed` bound 40 µs (the design's 30 is
+missed by 3.4 µs).
+
+GPU, EVENT-fenced best of 60 (µs; 1080p / 5120x1440), 20 hits on a fighter 200 m away per class, against the design's
+section 6 estimate (20 x its per-hit µs) and the new bound at 5120x1440:
+
+| class | 1080p | 5120x1440 | design estimate | bound |
+| --- | --- | --- | --- | --- |
+| energy | 25.0 | 53.6 | ~60 | 60 |
+| ballistic | 26.7 | 29.6 | ~60 | 40 |
+| plasma | 31.1 | 91.0 | ~80 | 105 |
+| heavy | 28.5 | 60.9 | ~100 | 70 |
+| ion | 21.4 | 37.1 | ~60 | 45 |
+| beam (20 spots) | 21.8 | 45.4 | ~80 | 55 |
+| missile | 32.4 | 88.4 | ~120 | 100 |
+| asteroid | 22.4 | 23.3 | ~60 | 30 |
+
+64 hits on a capital at close range under the 8-screen budget, 5120x1440 (µs): energy 1,061, ballistic 777, plasma
+1,247, heavy 1,131, ion 949, beam 1,015, missile 1,078, asteroid 62, every one within 8 x 177.5 = 1,420 (plasma was
+2,334 before the flashes were charged: its 64 bloom halos alone charge 10.7 screens, so every sheddable box goes).
+`hull_budget_capital_close_within_8_screens`: the sheddable screens within 8 (or none left) and the frame within 1,420 µs.
+
+Reproduce:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_shimmer.py --host native
+python3 verification/results/weapon-effects/hull_class_rows.py > verification/results/weapon-effects/hull_class_rows_out.txt
+```
+
+#### Review fixes (2026-11-07, same dirty tree)
+
+- **Heavy band from the shot, not the applied total.** `core::hull_class_from` takes the bullet record's own per-shot
+  damage, max(`+0x44` shield, `+0x80` hull) as the census script does; the applied total at `[esp+0x1c]` is a
+  shields-down hit's hull damage alone, so stock PPC read energy and GAUSS ballistic. The tug is a beam whose per-shot
+  damage is 0 (a damaging beam on a target that takes none stays a beam). Hook cases [M]: `heavy_gauss_hull_total`
+  (shot 28,540 / 7,135, total 7,135), `heavy_ppc_hull_total` (63,778 / 15,944, total 15,944), `heavy_band_edge_hull`
+  and `beam_invulnerable_target` (shot 3,969, total 0) all pass, 20 of 20 cues; the shield-hit and drained cases assert
+  the low nibble and the class nibble explicitly. Handler 0 calls, 0 x87, 1,216 instructions, frame 204 B; 50 events
+  17.9 µs median.
+- **The hold rule for every beam.** `stage::holds` reads the class nibble and the repair / tug bits, not the anatomy, so a
+  beam on an asteroid keeps its one spot (the asteroid's dust puff and rock spatter, no flash). `hull_beam_on_asteroid_holds`:
+  60 ticks leave 0 records in the ring, 1 spot, 59 puff frames, 1,052 sparks, 0 flashes [M].
+- **Record life per anatomy** (`core::hull_lives`: the slowest of ember, puff, glow, ring, flash, streak, filament at k 1
+  x 1.2 and the spark sets x 1.3): energy 2,401, ballistic 1,041, plasma 3,601, heavy 2,401, ion 601, beam 1,801,
+  missile 2,401, asteroid 1,441, repair 961, tug 181 ms. The stage releases a record past its anatomy's life (or its
+  floor; `weapon_hull_frame ... done=`); Present keeps the 3,601 bound for frames the stage does not draw. The ring of
+  256 overflows past 107 energy hits a second sustained (178 before the classes, at 1,441 ms), 246 ballistic, 71 plasma.
+  The per-class composition gate now runs past a released record (ballistic, ion and asteroid released within its 40
+  frames, 0 violations).
+- **Flashes shed last.** Other owners' flashes, oldest first, after every other step (`flashes_shed=`). 128 plasma hits on
+  a close capital: 80 of 128 flashes shed, 7.96 screens, **950.1 µs** at 5120x1440 (957.3 the run before) (286.6 at 1080p) within 1,420
+  (`hull_budget_128_plasma_close_within_budget`); 64 plasma hits 941.6 µs (was 1,246.7).
+- **Sprite cap** 2,048 sparks + 2 x 256 (a flash and a heavy streak per record) + 2 x 64 (a spot's pulse flash and core)
+  = 2,688 quads: the sparks' own cap binds first.
+- **One seed at both octaves**: a puff's seed lies in (0, 64], its sign alone selects the one-octave LOD.
+- The scorch store's unreachable trail-ember branch removed (marks are scorches; the beam's trail ember is its spot's).
+- The surface ring's box is rr + 3 w (the shell at its edge e^-9; 1.8 % at rr + 2 w), in the lab too.
+- Rows: `engine_shimmer_scratch ... recreated=1` when the 59 MB scratch comes back after its idle release;
+  `engine_shimmer_weapon ... weapon_rects=` on a family-row frame in shields,hull mode without the engine census;
+  `weapon_hull_frame ... done= flashes_shed= pulses=`. Beam, repair and tug records leave the ring at the stage, before
+  Present logs them, so no `weapon_event ... class=beam` row appears; the flight reads `spots=` and `merges=`
+  (`weapon_effects_frame`).
+- Host modules importable under the documented `PYTHONPATH=verification/probe` (`test_engine_shimmer`, `test_weapon_effects_lab`).
+
+Figures [M], the same rows script, after the fixes (RTX 5070 Ti): D3D PASS 154/0, hook PASS 92/0. 20 fighter hits at
+200 m, 5120x1440 (µs): energy 54.4, ballistic 27.7, plasma 94.7, heavy 61.8, ion 38.0, beam 46.2, missile 90.7,
+asteroid 23.3 (the bounds unchanged); close capital, 64 hits: 64.2-1,135.9, all within 1,420. CPU 64 mixed hits 33.0
+best (sparks only 25.9, all but the sparks 14.1); one run of the same build read 50.2 (a transient host load: the
+burst rebuild's 64-hit row of that run was its usual 19.0); bound 40. Greyscale lineup min pair 0.211.
