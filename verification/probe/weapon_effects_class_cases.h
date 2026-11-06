@@ -214,6 +214,7 @@ double resolve_scorch(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motio
 }
 } // namespace classes
 
+void stage_dump(rr::WeaponEffectsPass& pass);
 void class_cases(rr::WeaponEffectsPass& pass) {
     using namespace classes;
     namespace hl = wc::hull;
@@ -1435,6 +1436,173 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         (void)fighter_bad;
         tt.release();
     }
+    hull_owner(400.f, 100.f);
+    draw_lane(g, 0.f, -1.f);
+    stage_dump(pass);
+}
+// The stage image dump (X3M_WEAPON_EFFECTS_DUMP=<dir>; off, with no row and no draw, when unset): representative hull-hit
+// scenes built through the production stage and drawn through the production pass at 1920x1080 and 5120x1440, one frame
+// every 16 ms of game time from 8 ms after the newest hit to 712 ms, the frames nearest X3M_WEAPON_EFFECTS_DUMP_MS
+// (default 40,120,300,700; "all": every frame) written as <dir>/<case>_<W>x<H>-<ms>.ppm: binary P6, 8 bits, the scene
+// target's linear values clamped to [0, 1] (the readback the gates see; the fixture has no tonemap). At 1920x1080 the
+// cases marked `parts` also write the glow and the burst alone (cleared black) as float PFM, <case>_<W>x<H>-<ms>-glow.pfm
+// and -burst.pfm; X3M_WEAPON_EFFECTS_DUMP_FLOAT=1 adds the composite as PFM. X3M_WEAPON_EFFECTS_DUMP_CASES (comma-
+// separated base names; default all) selects the cases. Rows: `DUMP ...`. Never a gate.
+namespace dump {
+bool write_ppm(const char* path, const std::vector<float>& rgb, unsigned w, unsigned h) {
+    FILE* f = std::fopen(path, "wb");
+    if (!f) return false;
+    std::fprintf(f, "P6\n%u %u\n255\n", w, h);
+    std::vector<unsigned char> row(std::size_t(w) * 3);
+    for (unsigned y = 0; y < h; ++y) {
+        for (std::size_t i = 0; i < row.size(); ++i) {
+            const float v = rgb[std::size_t(y) * w * 3 + i];
+            row[i] = (unsigned char)(v > 0.f ? (v < 1.f ? std::lround(v * 255.f) : 255) : 0);
+        }
+        std::fwrite(row.data(), 1, row.size(), f);
+    }
+    return std::fclose(f) == 0;
+}
+bool write_pfm(const char* path, const std::vector<float>& rgb, unsigned w, unsigned h) {
+    FILE* f = std::fopen(path, "wb");
+    if (!f) return false;
+    std::fprintf(f, "PF\n%u %u\n-1.0\n", w, h);
+    for (unsigned y = h; y-- > 0;) std::fwrite(rgb.data() + std::size_t(y) * w * 3, sizeof(float), std::size_t(w) * 3, f);
+    return std::fclose(f) == 0;
+}
+bool listed(const char* list, const char* name) {
+    if (!list || !*list) return true;
+    const std::size_t n = std::strlen(name);
+    for (const char* p = list; *p;) {
+        const char* e = std::strchr(p, ',');
+        const std::size_t len = e ? std::size_t(e - p) : std::strlen(p);
+        if (len == n && !std::strncmp(p, name, n)) return true;
+        if (!e) break;
+        p = e + 1;
+    }
+    return false;
+}
+struct Case {
+    const char* name;
+    unsigned anatomy, hits;
+    bool capital, single, jet, glow, parts;
+    float owner_z, lane_z;
+    D3DCOLOR clear;
+};
+} // namespace dump
+
+void stage_dump(rr::WeaponEffectsPass& pass) {
+    using namespace classes;
+    namespace hl = wc::hull;
+    const char* dir = std::getenv("X3M_WEAPON_EFFECTS_DUMP");
+    if (!dir || !*dir) return;
+    const char* list = std::getenv("X3M_WEAPON_EFFECTS_DUMP_CASES");
+    const char* ms_env = std::getenv("X3M_WEAPON_EFFECTS_DUMP_MS");
+    const bool all_frames = ms_env && !std::strcmp(ms_env, "all");
+    const char* fl = std::getenv("X3M_WEAPON_EFFECTS_DUMP_FLOAT");
+    const bool float_composite = fl && *fl == '1';
+    std::vector<unsigned> want;
+    for (const char* p = (ms_env && *ms_env && !all_frames) ? ms_env : "40,120,300,700"; *p;) {
+        want.push_back(unsigned(std::strtoul(p, nullptr, 10)));
+        const char* e = std::strchr(p, ',');
+        if (!e) break;
+        p = e + 1;
+    }
+    const D3DCOLOR grey = D3DCOLOR_ARGB(0, 128, 128, 128), black = D3DCOLOR_ARGB(0, 0, 0, 0);
+    // The class timing cases (fighter_200m_20_hits, capital_close_64_hits: owner, spread, calibre, the shot along the
+    // hull, the grey hull clear), the hull timing's fighter_60m_20_hits (the default class, cleared black), and the
+    // greyscale lineup's single hit per class (owner at 400, the hit at view z 300 at the frame centre, cleared black).
+    std::vector<dump::Case> cases = {
+        {"energy_fighter_20", hl::an_energy, 20, false, false, true, true, true, 1100.f, 1000.f, grey},
+        {"heavy_fighter_20", hl::an_heavy, 20, false, false, true, true, true, 1100.f, 1000.f, grey},
+        {"plasma_fighter_20", hl::an_plasma, 20, false, false, true, true, false, 1100.f, 1000.f, grey},
+        {"heavy_capital_64", hl::an_heavy, 64, true, false, true, true, false, 2600.f, 600.f, grey},
+        {"energy_fighter60_20", hl::an_energy, 20, false, false, false, true, true, 400.f, 300.f, black},
+        {"energy_fighter_20_noglow", hl::an_energy, 20, false, false, true, false, false, 1100.f, 1000.f, grey},
+        {"heavy_fighter_20_noglow", hl::an_heavy, 20, false, false, true, false, false, 1100.f, 1000.f, grey},
+    };
+    const unsigned lineup[9] = {hl::an_energy, hl::an_ballistic, hl::an_plasma,   hl::an_heavy, hl::an_ion,
+                                hl::an_beam,   hl::an_missile,   hl::an_asteroid, hl::an_repair};
+    static char single_names[9][32];
+    for (unsigned c = 0; c < 9; ++c) {
+        const unsigned a = lineup[c];
+        std::snprintf(single_names[c], sizeof single_names[c], "%s_single", anatomy_name(a));
+        const bool jet = a == hl::an_ballistic || a == hl::an_heavy || a == hl::an_missile;
+        cases.push_back({single_names[c], a, 1, false, true, jet, true, a == hl::an_energy || a == hl::an_heavy, 400.f,
+                         300.f, black});
+    }
+    unsigned written = 0, failed = 0;
+    char path[1024];
+    for (auto size : {std::pair<UINT, UINT>{1920, 1080}, std::pair<UINT, UINT>{5120, 1440}}) {
+        Target tt;
+        if (!make_target(tt, size.first, size.second)) {
+            std::printf("DUMP target width=%u height=%u failed=1\n", size.first, size.second);
+            continue;
+        }
+        for (const dump::Case& k : cases) {
+            if (!dump::listed(list, k.name)) continue;
+            hull_owner(k.owner_z, k.capital ? 2000.f : 100.f);
+            const std::int32_t front[3] = {0, 0, -10000};
+            for (unsigned i = 0; i < k.hits; ++i) {
+                const double r = (k.capital ? 60000.0 : 3000.0) * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
+                const std::int32_t pos[3] = {std::int32_t(r * std::cos(ang)), std::int32_t(r * std::sin(ang)),
+                                             k.capital ? -200000 : -10000};
+                wc::Event* e = k.single ? add_of(k.anatomy, 1000, front, 0.33)
+                                        : add_of(k.anatomy, 1000 + 4 * i, pos, k.capital ? 0.8 : 0.33,
+                                                 k.capital ? wc::patch_capital : wc::patch_fighter);
+                if (e && k.jet) set_dir(e, 0, 0, 127);
+                if (e && !k.single) e->row = std::uint16_t(i);
+            }
+            ws::HullTuning tune;
+            tune.glow = k.glow;
+            const std::uint32_t newest = 1000 + 4 * (k.hits - 1);
+            draw_lane(tt, k.lane_z, 1.f);
+            std::vector<unsigned> picks;
+            for (unsigned w : want) picks.push_back(w < 8 ? 0 : (w - 8 + 8) / 16);
+            for (unsigned fi = 0; fi <= 44; ++fi) {
+                const unsigned age = 8 + 16 * fi;
+                ws::HullView v = hull_view(tt, newest + age, 16);
+                if (!k.single) v.budget_left = wc::screen_budget;
+                const HullOut o = hull_build(v, tune);
+                if (!all_frames && std::find(picks.begin(), picks.end(), fi) == picks.end()) continue;
+                const rr::WeaponEffectsFrame f = hull_frame(tt, o);
+                dev->BeginScene();
+                dev->SetRenderTarget(0, tt.scene_s.p);
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET, k.clear, 1.f, 0);
+                rr::WeaponEffectsReport rep{};
+                const HRESULT hr = pass.run(f, &rep);
+                dev->EndScene();
+                const std::vector<float> rgb = read_rgb(tt, tt.scene_s.p);
+                std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u.ppm", dir, k.name, size.first, size.second, age);
+                const bool ok = SUCCEEDED(hr) && !rgb.empty() && dump::write_ppm(path, rgb, tt.w, tt.h);
+                ok ? ++written : ++failed;
+                if (ok && float_composite) {
+                    std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u.pfm", dir, k.name, size.first, size.second, age);
+                    dump::write_pfm(path, rgb, tt.w, tt.h) ? ++written : ++failed;
+                }
+                std::printf("DUMP case=%s width=%u height=%u age_ms=%u hits=%u sparks=%u flashes=%u glows=%u bursts=%u "
+                            "rings=%u streaks=%u scorches=%u octaves=%u screens=%.3f written=%u\n",
+                            k.name, size.first, size.second, age, o.n.hits, o.n.sparks, o.n.flashes, o.boxes, o.bursts,
+                            o.rings, o.n.streaks, o.scorches, o.n.octaves, double(o.n.screens), unsigned(ok));
+                if (!k.parts || size.first != 1920) continue;
+                for (unsigned part = 1; part <= 2; ++part) { // hull_only kinds: 1 glows, 2 bursts
+                    rr::WeaponEffectsFrame pf = hull_frame(tt, hull_only(o, part));
+                    dev->BeginScene();
+                    dev->SetRenderTarget(0, tt.scene_s.p);
+                    dev->Clear(0, nullptr, D3DCLEAR_TARGET, black, 1.f, 0);
+                    rr::WeaponEffectsReport pr{};
+                    const HRESULT ph = pass.run(pf, &pr);
+                    dev->EndScene();
+                    const std::vector<float> prgb = read_rgb(tt, tt.scene_s.p);
+                    std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u-%s.pfm", dir, k.name, size.first, size.second, age,
+                                  part == 1 ? "glow" : "burst");
+                    (SUCCEEDED(ph) && !prgb.empty() && dump::write_pfm(path, prgb, tt.w, tt.h)) ? ++written : ++failed;
+                }
+            }
+        }
+        tt.release();
+    }
+    std::printf("DUMP done written=%u failed=%u\n", written, failed);
     hull_owner(400.f, 100.f);
     draw_lane(g, 0.f, -1.f);
 }

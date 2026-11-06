@@ -253,14 +253,30 @@ def run_hook(args, results):
     return record['passed']
 
 
+DUMP_VARIABLES = ('X3M_WEAPON_EFFECTS_DUMP_CASES', 'X3M_WEAPON_EFFECTS_DUMP_MS', 'X3M_WEAPON_EFFECTS_DUMP_FLOAT')
+
+
+def dump_environment(args):
+    """--dump <dir>: the fixture's image dump (X3M_WEAPON_EFFECTS_DUMP as the Windows path of <dir>, with the dump's
+    case, frame and float selectors passed through); empty without it (no dump, the fixture unchanged)."""
+    if not args.dump:
+        return {}
+    path = Path(args.dump).resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    target = native_host.windows_path(path) if args.host == 'native' else 'Z:' + str(path).replace('/', '\\')
+    return {'X3M_WEAPON_EFFECTS_DUMP': target, **{k: os.environ[k] for k in DUMP_VARIABLES if os.environ.get(k)}}
+
+
 def run_fixture(args):
     if args.host == 'native':
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
-        done, text = native_host.run_native(EXE, [d3dx], BUILD, args.timeout, log=BUILD / 'fixture')
+        done, text = native_host.run_native(EXE, [d3dx], BUILD, args.timeout, env=dump_environment(args),
+                                            log=BUILD / 'fixture')
         return done.returncode, text
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE),
                r'C:\X3\d3dx9_37.dll']
-    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'), timeout=args.timeout)
+    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b', **dump_environment(args)),
+                          timeout=args.timeout)
     text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
     (BUILD / 'fixture.log').write_text(text)
     (BUILD / 'fixture.stderr.txt').write_bytes(done.stderr)
@@ -271,6 +287,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=900)
+    parser.add_argument('--dump', metavar='DIR',
+                        help='write the stage image dump (weapon_effects_class_cases.h stage_dump) into DIR; '
+                             'X3M_WEAPON_EFFECTS_DUMP_CASES / _MS / _FLOAT select cases, frames and float composites')
     parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
                         help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
                              'WSL2 host through interop (native_host.py), never a fallback')
