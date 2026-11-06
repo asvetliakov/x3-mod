@@ -478,3 +478,7 @@ Open:
 - `standoff_figures.py` reads the stand-off record and no longer runs against this record (kept with its section).
 - Review notes F8 and F12 as filed.
 - Not verified in flight.
+
+## Run239 Flight F (ship bubble), flown 2026-11-06
+
+The user accepted the look ("good now"): ships on the ellipsoid bubble, stations on the hull decal, no stand-off, hex only on shield hits, drained shields as hull hits, own-ship cockpit dim. Shield-hit step 1 closes on Run239 (`77a8ba3e5`, DLL `5735959d…`). Open items carried to step 2: the cockpit cull decision (drawn at 0.35), the untested R32F lane form, the bubble on winged or thin hulls (no complaint in Flight F), the 8-screen area budget as the GPU bound. [M] none: the flight was judged by eye, no log triage requested.
