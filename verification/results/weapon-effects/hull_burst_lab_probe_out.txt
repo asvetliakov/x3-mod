@@ -1,0 +1,17 @@
+hull/fighter-ire-side {"r_hit":3.39,"counts":[1,1,12,0],"lit_px":{"flash":324,"sparks":46,"glow":11458,"ember":452,"burst":1253,"ring":0}}
+hull/fighter-ire-chase-nose {"r_hit":3.39,"counts":[1,1,12,0],"lit_px":{"flash":146,"sparks":0,"glow":96,"ember":0,"burst":1251,"ring":0},"sparks_200ms_px":104}
+hull/fighter-ire-cockpit-own {"r_hit":3.39,"counts":[1,1,12,0],"lit_px":{"flash":0,"sparks":0,"glow":291600,"ember":0,"burst":23946,"ring":0}}
+hull/corvette-ppc-flank {"r_hit":10.44,"counts":[1,1,19,1],"lit_px":{"flash":502,"sparks":36,"glow":6692,"ember":650,"burst":1246,"ring":996}}
+hull/capital-ppc-flank-300m {"r_hit":27.84,"counts":[1,1,19,1],"lit_px":{"flash":502,"sparks":36,"glow":11836,"ember":678,"burst":1246,"ring":996}}
+hull/capital-close-12hz {"r_hit":27.84,"counts":[1,1,19,1],"lit_px":{"flash":500,"sparks":37,"glow":17105,"ember":678,"burst":1241,"ring":991}}
+hull/station-ppc-1km {"r_hit":27.84,"counts":[1,1,19,1],"lit_px":{"flash":172,"sparks":22,"glow":6189,"ember":239,"burst":440,"ring":354}}
+hull/mining-asteroid-60m {"r_hit":6.54,"counts":[0,0,23,0],"lit_px":{"flash":0,"sparks":58,"glow":10562,"ember":418,"burst":0,"ring":0}}
+hull/missile-hit-corvette {"r_hit":8.1,"counts":[1,1,29,1],"lit_px":{"flash":386,"sparks":56,"glow":6826,"ember":522,"burst":1287,"ring":1178}}
+hull/seta6-12hz {"r_hit":3.39,"counts":[3,3,32,0],"lit_px":{"flash":982,"sparks":290,"glow":14312,"ember":1280,"burst":5598,"ring":0}}
+hull/far-2km {"r_hit":3.39,"counts":[1,1,12,0],"lit_px":{"flash":1,"sparks":34,"glow":18,"ember":1,"burst":2,"ring":0}}
+hull/drained {"r_hit":3.39,"counts":[1,1,12,0],"lit_px":{"flash":324,"sparks":47,"glow":9472,"ember":432,"burst":1237,"ring":0}}
+hull/repair-corvette {"r_hit":8.1,"counts":[0,0,0,0],"lit_px":{"flash":0,"sparks":0,"glow":6646,"ember":503,"burst":0,"ring":0}}
+hull/stock-vs-mayhem {"r_hit":3.39,"counts":[1,1,12,0],"lit_px":{"flash":324,"sparks":46,"glow":11458,"ember":452,"burst":1253,"ring":0}}
+hull/heavy-plasma-corvette {"r_hit":9.11,"counts":[1,1,16,1],"lit_px":{"flash":440,"sparks":43,"glow":6814,"ember":584,"burst":1285,"ring":1110}}
+hull/heavy-flak-fighter {"r_hit":5.34,"counts":[1,1,19,1],"lit_px":{"flash":510,"sparks":36,"glow":10916,"ember":698,"burst":1239,"ring":986}}
+hull/heavy-missile-hit {"r_hit":4.05,"counts":[1,1,29,1],"lit_px":{"flash":386,"sparks":64,"glow":12374,"ember":534,"burst":1286,"ring":1178}}

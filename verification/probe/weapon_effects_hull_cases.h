@@ -5,6 +5,8 @@
 // Never launches the game.
 rr::WeaponSpriteVertex hq_sprites[rr::weapon_sprite_quads * 4];
 rr::WeaponGlowVertex hq_glows[rr::weapon_glow_boxes * 4];
+rr::WeaponFireballVertex hq_fireballs[rr::weapon_fireball_boxes * 4];
+rr::WeaponSpriteVertex hq_rings[rr::weapon_ring_quads * 4];
 ws::HullState hq_state;
 // The staged owner at view (0, 0, z) with radius r (identity camera and rows) and an empty ring and hull state.
 void hull_owner(float z, float r) {
@@ -58,13 +60,14 @@ ws::HullView hull_view(const Target& t, std::uint32_t now, std::uint32_t step) {
 }
 struct HullOut {
     ws::HullCounts n;
-    unsigned quads = 0, boxes = 0;
+    unsigned quads = 0, boxes = 0, bursts = 0, rings = 0;
 };
 HullOut hull_build(const ws::HullView& v, const ws::HullTuning& t = ws::HullTuning{}, ws::HullState* st = &hq_state,
                    wc::Ring* ring = &stage_ring) {
     HullOut o;
     o.n = ws::build_hull(*ring, *st, &fake_read, v, t, hq_sprites, rr::weapon_sprite_quads, hq_glows, rr::weapon_glow_boxes,
-                         &o.quads, &o.boxes);
+                         &o.quads, &o.boxes, hq_fireballs, rr::weapon_fireball_boxes, &o.bursts, hq_rings,
+                         rr::weapon_ring_quads, &o.rings, nullptr);
     return o;
 }
 rr::WeaponEffectsFrame hull_frame(Target& t, const HullOut& o) {
@@ -73,7 +76,34 @@ rr::WeaponEffectsFrame hull_frame(Target& t, const HullOut& o) {
     f.sprite_quads = o.quads;
     f.glows = hq_glows;
     f.glow_boxes = o.boxes;
+    f.fireballs = hq_fireballs;
+    f.fireball_boxes = o.bursts;
+    f.fireball_octaves = o.n.octaves;
+    f.rings = hq_rings;
+    f.ring_quads = o.rings;
     return f;
+}
+// One element kind alone of a build (the others' counts zeroed): 0 sprites, 1 glows, 2 bursts, 3 rings.
+HullOut hull_only(HullOut o, unsigned kind) {
+    if (kind != 0) o.quads = 0;
+    if (kind != 1) o.boxes = 0;
+    if (kind != 2) o.bursts = 0;
+    if (kind != 3) o.rings = 0;
+    return o;
+}
+// A spark's displacement from its hit point at game age t_s (world = view under the fixture's identity camera, the owner
+// still): the stage's own law, d speed tau (1 - e^(-t / tau)) + w t (spark_factors, pair_direction, curl_drift).
+void spark_displacement(std::uint32_t seq, unsigned sp, float U, double t_s, double out[3]) {
+    const ws::SparkFactors sf = ws::spark_factors(seq, sp);
+    float d[3];
+    ws::pair_direction(seq, sp >> 1, d);
+    const float sgn = (sp & 1u) ? -1.f : 1.f;
+    for (float& v : d) v *= sgn;
+    const double speed = double(wc::hull::spark_speed_u * U * sf.speed_x);
+    float w[3] = {0.f, 0.f, 0.f};
+    if (sf.curl) ws::curl_drift(sf.curl_hash, d, w);
+    const double F = double(wc::hull::spark_tau_s) * (1.0 - std::exp(-t_s / double(wc::hull::spark_tau_s)));
+    for (unsigned k = 0; k < 3; ++k) out[k] = double(d[k]) * speed * F + double(w[k]) * speed * t_s;
 }
 std::pair<HRESULT, rr::WeaponEffectsReport> draw_on(rr::WeaponEffectsPass& pass, Target& t, const rr::WeaponEffectsFrame& f) {
     dev->BeginScene();
@@ -182,8 +212,10 @@ bool r32f_lane(Target& t, Com<IDirect3DTexture9>& tex, Com<IDirect3DSurface9>& s
 // radiance 3.6 (a spark at T 0.9), the lane 100 view units behind it; 16 frames on, then `after` frames without it.
 // Returns the core ratio (the current frame's streak pixels at half its peak or more: resolved over current share, on -
 // off) and *residual the largest resolved difference on - off `after` frames after the spark left.
+// With `burst` the frame draws that fireball (still, four vertices) instead of the streak.
 double resolve_streak(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion, Com<IDirect3DSurface9>& motion_s,
-                      float speed_px, unsigned after, float* peak_out, double* residual) {
+                      float speed_px, unsigned after, float* peak_out, double* residual,
+                      const rr::WeaponFireballVertex* burst = nullptr) {
     constexpr unsigned frames = 16;
     const float z = 300.f;
     std::vector<float> cur[2], res[2], late[2];
@@ -223,7 +255,9 @@ double resolve_streak(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motio
             ws::streak_vertices(head, tail, 3.6f, 1.2f, 3.f / 5.12f, ws::pack_colour(wc::look::heat_ramp[4], 0.f), hq_sprites);
             (void)hv;
             ctx.frame.sprites = hq_sprites;
-            ctx.frame.sprite_quads = drawn ? 1 : 0;
+            ctx.frame.sprite_quads = drawn && !burst ? 1 : 0;
+            ctx.frame.fireballs = burst;
+            ctx.frame.fireball_boxes = drawn && burst ? 1 : 0;
             rr::FrameInputs in;
             in.color = g.scene_tex.p;
             in.current_depth = g.lane_tex.p;
@@ -297,14 +331,16 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     namespace hl = wc::hull;
     namespace lk = wc::look;
     char detail[256];
-    std::printf("HULL_SLOTS sprite_vs=%u sprite_ps=%u glow_vs=%u glow_ps=%u sprite_vertex_bytes=%u glow_vertex_bytes=%u "
-                "hull_state_bytes=%u\n",
+    std::printf("HULL_SLOTS sprite_vs=%u sprite_ps=%u glow_vs=%u glow_ps=%u fireball_vs=%u fireball_ps=%u "
+                "sprite_vertex_bytes=%u glow_vertex_bytes=%u fireball_vertex_bytes=%u hull_state_bytes=%u\n",
                 pass.caps().sprite_vs_slots, pass.caps().sprite_ps_slots, pass.caps().glow_vs_slots,
-                pass.caps().glow_ps_slots, unsigned(sizeof(rr::WeaponSpriteVertex)), unsigned(sizeof(rr::WeaponGlowVertex)),
-                unsigned(sizeof(ws::HullState)));
+                pass.caps().glow_ps_slots, pass.caps().fireball_vs_slots, pass.caps().fireball_ps_slots,
+                unsigned(sizeof(rr::WeaponSpriteVertex)), unsigned(sizeof(rr::WeaponGlowVertex)),
+                unsigned(sizeof(rr::WeaponFireballVertex)), unsigned(sizeof(ws::HullState)));
     report("hull_programs_attached", pass.caps().hull_enabled && !std::strcmp(pass.caps().hull_reason, "ok") &&
                                          pass.caps().sprite_vs_slots && pass.caps().sprite_ps_slots &&
-                                         pass.caps().glow_vs_slots && pass.caps().glow_ps_slots, "");
+                                         pass.caps().glow_vs_slots && pass.caps().glow_ps_slots &&
+                                         pass.caps().fireball_vs_slots && pass.caps().fireball_ps_slots, "");
     const std::int32_t front[3] = {0, 0, -10000}; // the staged owner's front (r 100 view units), at view z 300
     const float z_hit = 300.f;
     const double ppu = px_per_unit(g, z_hit);
@@ -314,6 +350,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     only_sparks.flash = only_sparks.glow = only_sparks.ember = false;
     only_glow.flash = only_glow.sparks = only_glow.ember = false;
     only_ember.flash = only_ember.sparks = only_ember.glow = false;
+    for (ws::HullTuning* t : {&only_flash, &only_sparks, &only_glow, &only_ember}) t->burst = t->ring = false;
     const float U = ws::metres_to_view(wc::cell_m[wc::patch_fighter]);
 
     // 1. Placement: the sparks' first-frame centroid at the recorded hit point (within 0.25 U) and the flash's lit
@@ -450,9 +487,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     {
         hull_owner(400.f, 100.f);
         const wc::Event* e = add_hull_hit(1000, front, damage_of(0.0));
-        const std::uint32_t h = ws::element_hash(e->sequence, 16u);
-        bool fl = false;
-        const float life = ws::element_life_ms(float(hl::spark_life_ms), ws::mix32(h), wc::stagger, 48.f, &fl);
+        const float life = std::max(float(hl::spark_life_ms) * ws::spark_factors(e->sequence, 0).life_x, 48.f);
         double worst = 0;
         double hue_ratio = -1;
         const float fracs[3] = {0.f, 0.5f, 0.95f};
@@ -490,10 +525,11 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         std::printf("HULL case=cooling_ramp worst_channel_error=%.4f\n", worst);
         report("hull_spark_cooling_ramp", worst <= 2.5 / 255.0, "");
     }
-    // 6. Sizes, counts, reach and lives per tier at k 0 / 0.5 / 1 against the law (5 %): spark count round(8 + 16 k),
-    // flash radius r_hit, glow R 3 r_hit, ember R 0.6 r_hit, spark width 0.04 U; the sparks' mean displacement at 200 ms
-    // against v0 tau (1 - e^(-t / tau)) over their own speeds; the reach law's asymptote 2.7 U (20 %); the sparks all live at
-    // 0.8 x their law and none past 1.2 x.
+    // 6. Sizes, counts, reach and lives per tier at k 0 / 0.5 / 1 against the law (5 %): the spark count (round(8 + 16 k)
+    // x (1 +- 0.4) by the record's hash: within the spread and equal to spark_count), the flash's halo flash_halo_r
+    // r_hit, glow R 3 r_hit, ember R 0.6 r_hit, each spark's width spark_width_u U x its own factor (0.8..1.2); the
+    // sparks' mean displacement at 200 ms against d speed tau (1 - e^(-t / tau)) + w t over their own speeds, directions
+    // and curls; the reach law's asymptote 2.7 U (20 %); the sparks all live at 0.7 x their law and none past 1.3 x.
     {
         bool sizes_ok = true, reach_ok = true, lives_ok = true;
         const double asymptote_u = double(hl::spark_speed_u * hl::spark_tau_s);
@@ -507,22 +543,29 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const float kf = wc::calibre_of(e->damage);
                 const float r_hit = hl::r_scale * Ut * (hl::r_base + hl::r_k * kf);
                 const HullOut o = hull_build(hull_view(g, 1000, 16));
-                const unsigned want_n = unsigned(float(hl::spark_n0) + float(hl::spark_nk) * kf + 0.5f);
-                float flash_r = 0, glow_R = 0, ember_R = 0, width = 0;
+                const unsigned want_n = ws::spark_count(*e, kf, ws::HullTuning{});
+                const float law_n = float(hl::spark_n0) + float(hl::spark_nk) * kf;
+                const bool n_in_spread = float(want_n) >= law_n * (1.f - hl::spark_count_spread) - 0.5f &&
+                                         float(want_n) <= law_n * (1.f + hl::spark_count_spread) + 0.5f;
+                float flash_r = 0, glow_R = 0, ember_R = 0, width = 0, width_err = 0;
+                unsigned spark_q = 0;
                 for (unsigned q = 0; q < o.quads; ++q)
                     if (is_flash(q))
                         flash_r = hq_sprites[4 * q].b[3];
-                    else
+                    else {
                         width = hq_sprites[4 * q].b[3];
+                        const float want_w = hl::spark_width_u * Ut * ws::spark_factors(seq, spark_q++).width_x;
+                        width_err = std::max(width_err, std::fabs(width - want_w) / want_w);
+                    }
                 for (unsigned b = 0; b < o.boxes; ++b) {
                     const float R = hq_glows[4 * b].light[3];
                     if (R > 2.f * r_hit) glow_R = R;
                     else ember_R = R;
                 }
-                const bool s_ok = o.n.sparks == want_n && o.n.flashes == 1 && std::fabs(flash_r - r_hit) <= 0.05f * r_hit &&
+                const bool s_ok = o.n.sparks == want_n && n_in_spread && o.n.flashes == 1 &&
+                                  std::fabs(flash_r - hl::flash_halo_r * r_hit) <= 0.05f * hl::flash_halo_r * r_hit &&
                                   std::fabs(glow_R - hl::glow_r * r_hit) <= 0.01f * glow_R &&
-                                  std::fabs(ember_R - hl::ember_r * r_hit) <= 0.01f * ember_R &&
-                                  std::fabs(width - hl::spark_width_u * Ut) <= 0.01f * width;
+                                  std::fabs(ember_R - hl::ember_r * r_hit) <= 0.01f * ember_R && width_err <= 0.01f;
                 // The reach at 200 ms: each spark's head against its law.
                 const HullOut o2 = hull_build(hull_view(g, 1200, 16), only_sparks);
                 const double z_hit_t = double(z_owner) - 100.0;
@@ -535,25 +578,21 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     got += std::sqrt(vx * vx + vy * vy + (p.hz - z_hit_t) * (p.hz - z_hit_t));
                     ++m;
                 }
-                const unsigned pairs = (want_n + 1) / 2;
                 unsigned counted = 0;
-                for (unsigned j = 0; j < pairs; ++j) {
-                    const std::uint32_t h = ws::element_hash(seq, 16u + j);
-                    const double speed = double(hl::spark_speed_u * Ut) *
-                                         (1.0 + double(hl::spark_speed_spread) * (2.0 * double(ws::unit_of(h)) - 1.0));
-                    bool fl = false;
-                    const float life = ws::element_life_ms(float(hl::spark_life_ms) + float(hl::spark_life_k_ms) * kf,
-                                                           ws::mix32(h), wc::stagger, 48.f, &fl);
+                for (unsigned sp = 0; sp < want_n; ++sp) {
+                    const float life = std::max((float(hl::spark_life_ms) + float(hl::spark_life_k_ms) * kf) *
+                                                    ws::spark_factors(seq, sp).life_x, 48.f);
                     if (!(200.f < life)) continue;
-                    const unsigned sides = std::min(2u, want_n - 2 * j);
-                    want += sides * speed * double(hl::spark_tau_s) * (1.0 - std::exp(-0.2 / double(hl::spark_tau_s)));
-                    counted += sides;
+                    double dsp[3];
+                    spark_displacement(seq, sp, Ut, 0.2, dsp);
+                    want += std::sqrt(dsp[0] * dsp[0] + dsp[1] * dsp[1] + dsp[2] * dsp[2]);
+                    ++counted;
                 }
                 const bool r_ok = m == counted && m > 0 && std::fabs(got - want) <= 0.05 * want;
-                // Lives: every spark at 0.8 x its law, none past 1.2 x.
+                // Lives: every spark at 0.7 x its law, none past 1.3 x.
                 const float law = float(hl::spark_life_ms) + float(hl::spark_life_k_ms) * kf;
-                const HullOut early = hull_build(hull_view(g, 1000 + std::uint32_t(0.8f * law) - 1, 16), only_sparks);
-                const HullOut late = hull_build(hull_view(g, 1000 + std::uint32_t(1.2f * law) + 1, 16), only_sparks);
+                const HullOut early = hull_build(hull_view(g, 1000 + std::uint32_t(hl::spark_life_lo * law) - 1, 16), only_sparks);
+                const HullOut late = hull_build(hull_view(g, 1000 + std::uint32_t(hl::spark_life_hi * law) + 1, 16), only_sparks);
                 const bool l_ok = early.n.sparks == want_n && late.n.sparks == 0;
                 std::printf("HULL case=law tier=%s k=%.2f calibre=%.4f sparks=%u want=%u flash_r=%.3f r_hit=%.3f glow_R=%.3f "
                             "ember_R=%.3f width=%.4f reach_mean_u=%.4f law_mean_u=%.4f early=%u late=%u\n",
@@ -576,7 +615,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         add_hull_hit(1000, front, damage_of(0.33));
         hull_build(hull_view(g, 1000, 16));
         const HullOut o = hull_build(hull_view(g, 1050, 16));
-        double min_w = 1e9, min_l = 1e9, core_px = 0;
+        double min_w = 1e9, min_l = 1e9, core_px = 0, min_l_over_x = 1e9;
         for (unsigned q = 0; q < o.quads; ++q) {
             if (is_flash(q)) {
                 const QuadPx p = quad_px(g, q);
@@ -589,10 +628,13 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const QuadPx p = quad_px(g, q);
             min_w = std::min(min_w, p.width);
             min_l = std::min(min_l, p.length);
+            min_l_over_x = std::min(min_l_over_x, p.length / double(std::fabs(hq_sprites[4 * q].c[0])));
         }
-        std::printf("HULL case=floors_2km sparks=%u min_width_px=%.3f min_length_px=%.3f flash_core_px=%.3f\n", o.n.sparks,
-                    min_w, min_l, core_px);
-        report("hull_streak_min_footprint_3px_24px", o.n.sparks > 0 && min_w >= 3.0 - 1e-3 && min_l >= 24.0 - 1e-2 &&
+        std::printf("HULL case=floors_2km sparks=%u min_width_px=%.3f min_length_px=%.3f min_length_over_len_x_px=%.3f "
+                    "flash_core_px=%.3f\n", o.n.sparks, min_w, min_l, min_l_over_x, core_px);
+        // The floors before each spark's length factor (0.6..1.6): every streak at least floor_len_px x its factor.
+        report("hull_streak_min_footprint_3px_24px", o.n.sparks > 0 && min_w >= 3.0 - 1e-3 && min_l_over_x >= 24.0 - 1e-2 &&
+                                                         min_l >= 24.0 * double(hl::spark_len_lo) - 1e-2 &&
                                                          core_px >= 3.0 - 0.02, "");
     }
     // 8. The three-frame floor: a 60 ms flash at SETA 6 (game step 100 ms) and SETA 10 (167 ms) drawn on 3 frames from
@@ -676,14 +718,15 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.33));
         unsigned reappeared = 0, frames = 0, prev_sparks = 1000;
-        bool gone[3] = {false, false, false}; // flash, glow, ember
+        bool gone[4] = {false, false, false, false}, seen[4] = {false, false, false, false}; // flash, glow, ember, burst
         std::uint32_t now = 1000, step = 16;
         while (now <= 3000) {
             const HullOut o = hull_build(hull_view(g, now, step));
-            const unsigned counts[3] = {o.n.flashes, o.n.glows, o.n.embers};
-            for (unsigned k = 0; k < 3; ++k) {
+            const unsigned counts[4] = {o.n.flashes, o.n.glows, o.n.embers, o.n.bursts};
+            for (unsigned k = 0; k < 4; ++k) { // the burst's first frame has R 0 (nothing drawn): tracked once seen
                 if (gone[k] && counts[k]) ++reappeared;
-                if (!counts[k]) gone[k] = true;
+                if (counts[k]) seen[k] = true;
+                else if (seen[k] || k < 3) gone[k] = true;
             }
             if (o.n.sparks > prev_sparks) ++reappeared;
             prev_sparks = o.n.sparks;
@@ -695,7 +738,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     double(hq_state.slots[unsigned(std::find_if(stage_ring.slots, stage_ring.slots + wc::ring_capacity,
                                                                 [](const wc::Event& e) { return e.sequence != 0; }) -
                                                    stage_ring.slots)].floor_ms));
-        report("hull_floor_latched_seta_engage_nothing_reappears", reappeared == 0 && gone[0] && gone[1] && gone[2], "");
+        report("hull_floor_latched_seta_engage_nothing_reappears",
+               reappeared == 0 && gone[0] && gone[1] && gone[2] && seen[3] && gone[3], "");
     }
     // 9c. Review 6: consecutive frames of the same records across a step change (note 3.1 no-pop: no pixel drops by more
     // than one frame's fade step before an element's end): six records at fixed points on a flat face, 20 frames at 16 ms
@@ -788,7 +832,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const HRESULT hr = shields_only.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true);
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.33));
-        const HullOut o = hull_build(hull_view(g, 1000, 16));
+        hull_build(hull_view(g, 1000, 16));
+        const HullOut o = hull_build(hull_view(g, 1030, 16));
         const rr::WeaponPatch patch = make_patch(tier_scene[0], {{0.f, 0.f, 0.05f}});
         rr::WeaponEffectsFrame f = hull_frame(g, o);
         f.patches = &patch;
@@ -803,7 +848,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         report("hull_programs_refused_shields_still_draw",
                SUCCEEDED(hr) && shields_only.caps().enabled && !shields_only.caps().hull_enabled &&
                    !std::strcmp(shields_only.caps().hull_reason, "hull_program_create") && SUCCEEDED(drawn.first) &&
-                   drawn.second.patches == 1 && drawn.second.sprite_quads == 0 && drawn.second.glow_boxes == 0 && sum > 1.0,
+                   drawn.second.patches == 1 && drawn.second.sprite_quads == 0 && drawn.second.glow_boxes == 0 &&
+                   drawn.second.fireball_boxes == 0 && drawn.second.ring_quads == 0 && o.bursts > 0 && sum > 1.0,
                "");
         rr::WeaponEffectsPass shields_mode; // shields mode never asks for them
         shields_mode.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, false);
@@ -960,14 +1006,20 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (is_flash(q)) colour_of(hq_sprites[4 * q].colour, halo);
         float mt[3];
         wc::tint_linear(wc::missile_tint_rgb, mt);
-        const unsigned want_m = unsigned((float(hl::spark_n0) + float(hl::spark_nk) * 0.5f) * hl::missile_spark_x + 0.5f);
+        const wc::Event* missile_e = nullptr;
+        for (unsigned i = 0; i < wc::ring_capacity; ++i)
+            if (stage_ring.slots[i].sequence) missile_e = &stage_ring.slots[i];
+        const unsigned want_m = missile_e ? ws::spark_count(*missile_e, wc::calibre_of(missile_e->damage), ws::HullTuning{}) : 0;
         const bool missile_ok = mo.n.sparks == want_m && mo.n.flashes == 1 && std::fabs(halo[1] - double(mt[1])) <= 0.01;
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.5), wc::patch_fighter, wc::detail_asteroid);
         const HullOut ao = hull_build(hull_view(g, 1000, 16));
         double dust[3] = {0, 0, 0};
         if (ao.quads) colour_of(hq_sprites[0].colour, dust);
-        const unsigned want_a = unsigned((float(hl::spark_n0) + float(hl::spark_nk) * 0.5f) * hl::asteroid_dust_x + 0.5f);
+        const wc::Event* rock_e = nullptr;
+        for (unsigned i = 0; i < wc::ring_capacity; ++i)
+            if (stage_ring.slots[i].sequence) rock_e = &stage_ring.slots[i];
+        const unsigned want_a = rock_e ? ws::spark_count(*rock_e, wc::calibre_of(rock_e->damage), ws::HullTuning{}) : 0;
         const bool asteroid_ok = ao.n.sparks == want_a && ao.n.flashes == 0 && dust[0] < 0.9 && dust[1] < 0.5 * dust[0];
         std::printf("HULL case=variants repair_sparks=%u repair_flashes=%u repair_glows=%u repair_embers=%u repair_glow_rgb=%.3f,%.3f,%.3f "
                     "tug_glows=%u tug_embers=%u tug_R=%.3f missile_sparks=%u missile_want=%u missile_halo_g=%.3f missile_tint_g=%.3f "
@@ -1030,10 +1082,23 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 mean_x += (p.hx / double(g.w) * 2.0 - 1.0) / 1.6 * p.hz;
             }
             mean_x = o.quads ? mean_x / o.quads : 0.0;
-            const double expect_x = 20.0 + double(want) * double(ws::spark_reach_factor(0.1f));
+            double spray_x = 0;
+            unsigned alive = 0;
+            const float law_life = float(hl::spark_life_ms) + float(hl::spark_life_k_ms) * wc::calibre_of(first->damage);
+            for (unsigned sp = 0; sp < ws::spark_count(*first, wc::calibre_of(first->damage), ws::HullTuning{}); ++sp) {
+                if (!(100.f < std::max(law_life * ws::spark_factors(first->sequence, sp).life_x, 48.f))) continue;
+                double dsp[3];
+                spark_displacement(first->sequence, sp, U, 0.1, dsp);
+                spray_x += dsp[0];
+                ++alive;
+            }
+            spray_x = alive ? spray_x / alive : 0.0;
+            const double expect_x = 20.0 + double(want) * double(ws::spark_reach_factor(0.1f)) + spray_x;
+            const unsigned want_sparks = alive;
             std::printf("HULL case=velocity_first_hit v=%.3f want=%.3f sparks=%u mean_head_x=%.3f expected_x=%.3f "
                         "owner_x=%.3f\n", double(v0), double(want), o.n.sparks, mean_x, expect_x, 20.0 + 125.0);
-            report("velocity_first_hit_from_previous_frame_rows", std::fabs(v0 - want) <= 1e-3f * want && o.n.sparks == 16 &&
+            report("velocity_first_hit_from_previous_frame_rows", std::fabs(v0 - want) <= 1e-3f * want &&
+                                                                  o.n.sparks == want_sparks &&
                                                                   std::fabs(mean_x - expect_x) <= 0.02 * (expect_x - 20.0), "");
         }
     }
@@ -1042,8 +1107,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     {
         hull_owner(400.f, 100.f);
         for (unsigned i = 0; i < 12; ++i) add_hull_hit(1000 + 5 * i, front, damage_of(1.0), wc::patch_capital);
+        hull_build(hull_view(g, 1060, 16)); // every record latched (a burst's first frame has R 0)
         ws::HullState st = hq_state;
-        ws::HullView full = hull_view(g, 1060, 16), tight = full;
+        ws::HullView full = hull_view(g, 1090, 16), tight = full;
+        full.budget_left = 1e6f; // nothing shed, the bursts at two octaves
         tight.budget_left = 0.5f;
         const HullOut a = hull_build(full, ws::HullTuning{}, &st);
         const unsigned sparks_full = a.n.sparks, boxes_full = a.boxes;
@@ -1056,8 +1123,15 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     "own_boxes=%u own_shed=%u\n",
                     boxes_full, double(a.n.screens), b.boxes, b.n.shed, double(b.n.screens), sparks_full, b.n.sparks, c.boxes,
                     c.n.shed);
+        std::printf("HULL case=budget_bursts bursts=%u burst_screens=%.3f octaves=%u tight_bursts=%u tight_bursts_shed=%u "
+                    "tight_octaves=%u own_bursts=%u own_bursts_shed=%u rings=%u tight_rings=%u\n",
+                    a.n.bursts, double(a.n.burst_screens), a.n.octaves, b.n.bursts, b.n.bursts_shed, b.n.octaves,
+                    c.n.bursts, c.n.bursts_shed, a.n.rings, b.n.rings);
         report("hull_budget_shed", b.n.shed > 0 && b.n.screens <= 0.5f && b.n.sparks == sparks_full && b.n.flashes == a.n.flashes &&
                                        c.n.shed == 0 && c.boxes == boxes_full, "");
+        report("hull_budget_burst_lod_then_shed", a.bursts > 0 && a.n.octaves == 2 && b.n.octaves == 1 && b.n.bursts_shed > 0 &&
+                                                      b.bursts + b.n.bursts_shed == a.bursts && b.rings == a.rings &&
+                                                      c.bursts == a.bursts && c.n.bursts_shed == 0, "");
     }
     // 16. The R32F lane form (four_channel false, the step-1 open item): the glow and the hidden sparks on a plane drawn
     // with the same law as on the four-channel lane.
@@ -1112,6 +1186,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     {
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.33));
+        hull_build(hull_view(g, 1000, 16)); // latched: the burst drawn at 50 ms
         const HullOut o = hull_build(hull_view(g, 1050, 16));
         draw_lane(g, z_hit, 1.f);
         pass.set_faults(2);
@@ -1121,7 +1196,19 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         report("hull_fault_reported", FAILED(bad.first) && (bad.second.failed == rr::WeaponEffectsStep::Glows ||
                                                             bad.second.failed == rr::WeaponEffectsStep::Sprites), "");
         report("hull_recovers_after_fault", SUCCEEDED(good.first) && good.second.drew && good.second.sprite_quads == o.quads &&
-                                                good.second.glow_boxes == o.boxes, "");
+                                                good.second.glow_boxes == o.boxes && o.bursts > 0 &&
+                                                good.second.fireball_boxes == o.bursts, "");
+        // A fault in the fireball draw alone (the glows absent): reported at its step, the next frame draws it.
+        {
+            const HullOut fo = hull_only(o, 2);
+            pass.set_faults(2);
+            const auto fbad = draw_on(pass, g, hull_frame(g, fo));
+            pass.set_faults(0);
+            const auto fgood = draw_on(pass, g, hull_frame(g, fo));
+            report("hull_fireball_fault_reported_and_recovers",
+                   FAILED(fbad.first) && fbad.second.failed == rr::WeaponEffectsStep::Fireballs && SUCCEEDED(fgood.first) &&
+                       fgood.second.fireball_boxes == fo.bursts && fo.bursts > 0, "");
+        }
         pass.before_reset();
         const unsigned refs_reset = pass.references();
         g.release();
@@ -1139,7 +1226,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             draw_lane(g, z_hit, 1.f);
             const auto after = draw_on(pass, g, hull_frame(g, o));
             drew = SUCCEEDED(after.first) && after.second.drew && after.second.sprite_quads == o.quads &&
-                   total(read_luma(g, g.scene_s.p)) > 1.0;
+                   after.second.fireball_boxes == o.bursts && total(read_luma(g, g.scene_s.p)) > 1.0;
         }
         std::printf("HULL case=reset result=%08lx references_before_reset=%u ensure=%08lx drew=%u\n", reset, refs_reset, er,
                     unsigned(drew));
@@ -1151,6 +1238,415 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const HRESULT run = refused.run(hull_frame(g, o), &rep);
         report("hull_program_refusal_draws_nothing", !refused.caps().enabled && refused.references() == 0 &&
                                                          run == E_INVALIDARG && rep.calls == 0, "");
+        draw_lane(g, 0.f, -1.f);
+    }
+    // 21. The hot-gas burst (2026-11-06, look 3.1): one IRE hit (k 0.33) on a fighter's front at view z 300, the burst
+    // alone. (a) Its radius against R(t) = burst_r r_hit (1 - e^(-t / (burst_rise L))) at 0.1 / 0.3 / 0.6 of its life
+    // (the vertex's sphere, and the drawn lit extent on the sky against the projected radius); (b) its colour on the
+    // heat ramp: the brightest pixel white at its first drawn frame, dark red at 0.9 of its life; (c) the lane: a plane
+    // through the hit hides the half inside the hull, a plane in front of the whole sphere hides it all, one behind it
+    // nothing.
+    {
+        ws::HullTuning only_burst = only_flash;
+        only_burst.flash = false;
+        only_burst.burst = true;
+        draw_lane(g, 0.f, -1.f);
+        hull_owner(400.f, 100.f);
+        const wc::Event* e = add_hull_hit(1000, front, damage_of(0.33));
+        const float kf = wc::calibre_of(e->damage);
+        const float r_hit = hl::r_scale * U * (hl::r_base + hl::r_k * kf);
+        bool fl = false;
+        const float life = ws::element_life_ms(ws::burst_law_ms(kf), ws::element_hash(e->sequence, 3), wc::stagger, 48.f, &fl);
+        hull_build(hull_view(g, 1000, 16), only_burst); // the first frame: R 0, nothing drawn
+        const double fracs[3] = {0.1, 0.3, 0.6};
+        double worst_r = 0, worst_extent = 0, best_extent = 1e9, worst_t = 0;
+        bool law_ok = true;
+        for (unsigned a = 0; a < 3; ++a) {
+            const std::uint32_t age = std::uint32_t(fracs[a] * double(life) + 0.5);
+            const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_burst);
+            const double want = double(hl::burst_r) * double(r_hit) *
+                                (1.0 - std::exp(-double(age) / (double(hl::burst_rise) * double(life))));
+            const double got = o.bursts ? double(hq_fireballs[0].sphere[3]) : 0.0;
+            const double t_err = o.bursts ? std::fabs(double(hq_fireballs[0].look[0]) - (1.0 - double(age) / double(life))) : 1.0;
+            const std::vector<float> l = hull_render(pass, o);
+            double extent = 0;
+            for (std::size_t i = 0; i < l.size(); ++i)
+                if (l[i] > 1e-4f) extent = std::max(extent, std::hypot(double(i % g.w) + 0.5 - cx, double(i / g.w) + 0.5 - cy));
+            const double r_px = want * ppu;
+            std::printf("HULL case=burst_radius age_frac=%.1f age_ms=%u life_ms=%.1f R_view=%.4f law_view=%.4f r_hit=%.3f "
+                        "R_px=%.1f lit_extent_px=%.1f extent_over_R=%.4f T=%.4f lit=%u\n",
+                        fracs[a], age, double(life), got, want, double(r_hit), r_px, extent, r_px > 0 ? extent / r_px : 0.0,
+                        o.bursts ? double(hq_fireballs[0].look[0]) : -1.0, lit_count(l));
+            law_ok = law_ok && o.bursts == 1 && std::fabs(got - want) <= 1e-3 * want;
+            worst_r = std::max(worst_r, std::fabs(got - want) / want);
+            worst_t = std::max(worst_t, t_err);
+            worst_extent = std::max(worst_extent, extent / r_px);
+            best_extent = std::min(best_extent, extent / r_px);
+        }
+        report("hull_burst_radius_law_3_ages", law_ok && worst_t <= 1e-5 && best_extent >= 0.75 && worst_extent <= 1.03, "");
+        // (b) the colour: the brightest pixel at the first drawn frame (16 ms) and at 0.9 of the life.
+        double gr[2] = {0, 0}, br[2] = {0, 0}, peak[2] = {0, 0};
+        const std::uint32_t ages[2] = {16u, std::uint32_t(0.9 * double(life))};
+        for (unsigned a = 0; a < 2; ++a) {
+            const HullOut o = hull_build(hull_view(g, 1000 + ages[a], 16), only_burst);
+            std::vector<float> rgb;
+            hull_render(pass, o, &rgb);
+            std::size_t best = 0;
+            for (std::size_t i = 0; i < rgb.size() / 3; ++i)
+                if (rgb[i * 3] > rgb[best * 3]) best = i;
+            peak[a] = rgb.empty() ? 0.0 : double(rgb[best * 3]);
+            gr[a] = peak[a] > 0 ? double(rgb[best * 3 + 1]) / peak[a] : -1;
+            br[a] = peak[a] > 0 ? double(rgb[best * 3 + 2]) / peak[a] : -1;
+        }
+        std::printf("HULL case=burst_colour birth_age_ms=%u birth_r=%.4f birth_g_over_r=%.3f birth_b_over_r=%.3f "
+                    "end_age_ms=%u end_r=%.5f end_g_over_r=%.3f end_b_over_r=%.3f\n",
+                    ages[0], peak[0], gr[0], br[0], ages[1], peak[1], gr[1], br[1]);
+        report("hull_burst_colour_white_core_at_birth", peak[0] > 0.1 && gr[0] >= 0.75 && br[0] >= 0.45, "");
+        report("hull_burst_colour_dark_red_at_end", peak[1] > 0 && peak[1] <= 0.1 * peak[0] && gr[1] <= 0.3 && br[1] <= 0.2, "");
+        // (c) the lane.
+        const std::uint32_t age = std::uint32_t(0.3 * double(life));
+        const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_burst);
+        const float R = o.bursts ? hq_fireballs[0].sphere[3] : 0.f;
+        draw_lane(g, 0.f, -1.f);
+        const double sky = total(hull_render(pass, o));
+        draw_lane(g, z_hit, 1.f);
+        const double at_hit = total(hull_render(pass, o));
+        draw_lane(g, z_hit - R - 2.f, 1.f);
+        const double in_front = total(hull_render(pass, o));
+        draw_lane(g, z_hit + R + 50.f, 1.f);
+        const double behind = total(hull_render(pass, o));
+        draw_lane(g, 0.f, -1.f);
+        std::printf("HULL case=burst_lane sky=%.3f at_hit=%.3f in_front=%.4f behind=%.3f hit_share=%.4f front_share=%.5f "
+                    "behind_share=%.4f\n", sky, at_hit, in_front, behind, sky > 0 ? at_hit / sky : 0.0,
+                    sky > 0 ? in_front / sky : 0.0, sky > 0 ? behind / sky : 0.0);
+        // at the hit: the front half's chord (its noise sampled at that half's middle: a half within the noise's spread)
+        report("hull_burst_half_hidden_by_lane", sky > 0 && at_hit / sky >= 0.35 && at_hit / sky <= 0.65 &&
+                                                     in_front <= 1e-3 * sky && behind >= 0.99 * sky, "");
+    }
+    // 22. Randomised sparks: two hits of the same calibre at the same point (different sequences) differ in count and in
+    // their direction sets (each drawn spark's head less the hit point, 100 ms in); the same hit's quads are identical
+    // when built twice for one frame, and its uncurled sparks keep their directions from one frame to the next; the
+    // curled share and the curl's bend (100 to 300 ms) are reported.
+    {
+        draw_lane(g, 0.f, -1.f);
+        const double k = 0.5;
+        auto directions = [&](std::uint32_t* seq_out, unsigned* count_out, std::vector<std::array<double, 3>>* dirs,
+                              unsigned extra) {
+            hull_owner(400.f, 100.f);
+            for (unsigned i = 0; i < extra; ++i) wc::ring_release(stage_ring, unsigned(add_hull_hit(1000, front, damage_of(k)) - stage_ring.slots));
+            const wc::Event* e = add_hull_hit(1000, front, damage_of(k));
+            *seq_out = e->sequence;
+            *count_out = ws::spark_count(*e, wc::calibre_of(e->damage), ws::HullTuning{});
+            hull_build(hull_view(g, 1000, 16), only_sparks);
+            const HullOut o = hull_build(hull_view(g, 1100, 16), only_sparks);
+            dirs->clear();
+            for (unsigned q = 0; q < o.quads; ++q) {
+                const QuadPx p = quad_px(g, q);
+                const double v[3] = {(p.hx / double(g.w) * 2.0 - 1.0) / 1.6 * p.hz,
+                                     (1.0 - p.hy / double(g.h) * 2.0) / (1.6 * double(g.w) / double(g.h)) * p.hz, p.hz - z_hit};
+                const double n = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+                dirs->push_back({v[0] / n, v[1] / n, v[2] / n});
+            }
+            return o;
+        };
+        std::uint32_t seq_a = 0, seq_b = 0;
+        unsigned n_a = 0, n_b = 0, extra = 0;
+        std::vector<std::array<double, 3>> da, db;
+        directions(&seq_a, &n_a, &da, 0);
+        do directions(&seq_b, &n_b, &db, ++extra);
+        while (n_b == n_a && extra < 8);
+        double closest_worst = 1; // over A's directions, the best match in B; the set differs when some has none
+        for (const auto& a : da) {
+            double best = -1;
+            for (const auto& b : db) best = std::max(best, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+            closest_worst = std::min(closest_worst, best);
+        }
+        // The same hit: twice for one frame (identical bytes), and its directions one frame later.
+        hull_owner(400.f, 100.f);
+        const wc::Event* e = add_hull_hit(1000, front, damage_of(k));
+        const std::uint32_t seq = e->sequence;
+        const unsigned n = ws::spark_count(*e, wc::calibre_of(e->damage), ws::HullTuning{});
+        hull_build(hull_view(g, 1000, 16), only_sparks);
+        ws::HullState s1 = hq_state, s2 = hq_state;
+        const HullOut o1 = hull_build(hull_view(g, 1100, 16), only_sparks, &s1);
+        std::vector<rr::WeaponSpriteVertex> copy(hq_sprites, hq_sprites + 4 * o1.quads);
+        const HullOut o2 = hull_build(hull_view(g, 1100, 16), only_sparks, &s2);
+        const bool identical = o1.quads == o2.quads && o1.quads > 0 &&
+                               !std::memcmp(copy.data(), hq_sprites, sizeof(rr::WeaponSpriteVertex) * 4 * o1.quads);
+        double straight_worst = 1, curl_min_deg = 1e9;
+        unsigned curled = 0, total_sparks = 0;
+        {
+            std::vector<std::array<double, 3>> d1, d2;
+            for (std::uint32_t t : {1100u, 1116u, 1250u}) {
+                ws::HullState st = s1;
+                const HullOut o = hull_build(hull_view(g, t, 16), only_sparks, &st);
+                std::vector<std::array<double, 3>>& d = t == 1100u ? d1 : d2;
+                if (t == 1250u) { // the curl's bend: 100 -> 250 ms, curled sparks only (every spark alive at 250 ms, k 0.5)
+                    for (unsigned q = 0; q < o.quads && q < d1.size(); ++q) {
+                        const QuadPx p = quad_px(g, q);
+                        const double v[3] = {(p.hx / double(g.w) * 2.0 - 1.0) / 1.6 * p.hz,
+                                             (1.0 - p.hy / double(g.h) * 2.0) / (1.6 * double(g.w) / double(g.h)) * p.hz,
+                                             p.hz - z_hit};
+                        const double m = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+                        if (o.quads != o1.quads || !ws::spark_factors(seq, q).curl) continue;
+                        const double c = (v[0] * d1[q][0] + v[1] * d1[q][1] + v[2] * d1[q][2]) / m;
+                        curl_min_deg = std::min(curl_min_deg, std::acos(std::min(1.0, c)) * 57.29578);
+                    }
+                    continue;
+                }
+                d.clear();
+                for (unsigned q = 0; q < o.quads; ++q) {
+                    const QuadPx p = quad_px(g, q);
+                    const double v[3] = {(p.hx / double(g.w) * 2.0 - 1.0) / 1.6 * p.hz,
+                                         (1.0 - p.hy / double(g.h) * 2.0) / (1.6 * double(g.w) / double(g.h)) * p.hz,
+                                         p.hz - z_hit};
+                    const double m = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+                    d.push_back({v[0] / m, v[1] / m, v[2] / m});
+                }
+            }
+            for (unsigned q = 0; q < n && q < d1.size() && q < d2.size(); ++q) {
+                const bool c = ws::spark_factors(seq, q).curl;
+                curled += c;
+                ++total_sparks;
+                if (!c) straight_worst = std::min(straight_worst, d1[q][0] * d2[q][0] + d1[q][1] * d2[q][1] + d1[q][2] * d2[q][2]);
+            }
+        }
+        // The curled share over many records (the hash's spread).
+        unsigned curl_all = 0, sparks_all = 0;
+        for (std::uint32_t q = 1; q <= 400; ++q)
+            for (unsigned sp = 0; sp < 16; ++sp) {
+                curl_all += ws::spark_factors(q, sp).curl;
+                ++sparks_all;
+            }
+        std::printf("HULL case=spark_random seq_a=%u count_a=%u drawn_a=%u seq_b=%u count_b=%u drawn_b=%u "
+                    "a_in_b_worst_cos=%.4f identical_same_frame=%u count=%u drawn=%u straight_worst_cos=%.6f curled=%u/%u "
+                    "curl_min_bend_deg_100_250ms=%.2f curl_share_6400=%.4f\n",
+                    seq_a, n_a, unsigned(da.size()), seq_b, n_b, unsigned(db.size()), closest_worst, unsigned(identical), n,
+                    o1.quads, straight_worst, curled, total_sparks, curl_min_deg < 1e8 ? curl_min_deg : -1.0,
+                    double(curl_all) / double(sparks_all));
+        report("hull_spark_random_hits_differ", n_a != n_b && da.size() == n_a && db.size() == n_b && closest_worst < 0.99, "");
+        report("hull_spark_same_hit_stable", identical && o1.quads == n && straight_worst >= 0.9999, "");
+        report("hull_spark_curl_share", std::fabs(double(curl_all) / double(sparks_all) - double(hl::spark_curl_share)) <= 0.02,
+               "");
+    }
+    // 23. The heavy ring: the heavy families (a missile source, the burst style bit, k >= heavy_k) get it, a light slug
+    // none; on the narrow 1:1:6 corvette's mid flank (the placement case's hull, the production walk) its plane is the
+    // bubble's tangent plane at the hit (normal Q / e of the bubble 1.15 x the hull bounds), its centre ring_lift r_hit
+    // out along it, its radius ring_r r_hit age / life at 0.2 / 0.5 / 0.9 of its life (ring_rise x the burst's); a
+    // station hit takes the face axis of the hit's largest component.
+    {
+        ws::HullTuning only_ring = only_flash;
+        only_ring.flash = false;
+        only_ring.ring = true;
+        unsigned rings_of[4] = {0, 0, 0, 0};
+        for (unsigned v = 0; v < 4; ++v) { // 0 a light slug, 1 the burst bit, 2 k 0.8, 3 a missile
+            hull_owner(400.f, 100.f);
+            wc::Event* e = add_hull_hit(1000, front, damage_of(v == 2 ? 0.8 : 0.33), wc::patch_fighter, 0,
+                                        v == 3 ? wc::table_missiles : wc::table_bullets);
+            if (v == 1) e->style |= wc::style_burst;
+            hull_build(hull_view(g, 1000, 16), only_ring);
+            rings_of[v] = hull_build(hull_view(g, 1020, 16), only_ring).rings;
+        }
+        report("hull_heavy_families_ring", rings_of[0] == 0 && rings_of[1] == 1 && rings_of[2] == 1 && rings_of[3] == 1, "");
+        // The narrow corvette (radius 250, centre z 600, its local x towards the eye: the flank).
+        const float a6 = 250.f / 6.f;
+        const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
+        const std::int32_t side[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}};
+        hull_owner(600.f, 250.f);
+        for (unsigned r = 0; r < 3; ++r)
+            for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(side[r][j]));
+        const double ext[3] = {a6, a6, 250.0};
+        stage_hull(ext);
+        const std::int32_t at[3] = {eng(a6 * std::sqrt(1.0 - 0.09 * 0.09)), 0, eng(0.09 * 250.0)};
+        const wc::Event* e = add_hull_hit(1000, at, damage_of(0.8), wc::patch_corvette);
+        const float kf = wc::calibre_of(e->damage);
+        const float Uc = ws::metres_to_view(wc::cell_m[wc::patch_corvette]);
+        const float r_hit = hl::r_scale * Uc * (hl::r_base + hl::r_k * kf);
+        bool fl = false;
+        const float burst_life = ws::element_life_ms(ws::burst_law_ms(kf), ws::element_hash(e->sequence, 3), wc::stagger, 48.f, &fl);
+        const float life = std::max(hl::ring_rise * burst_life, 48.f);
+        ws::HullTuning ring_walk = only_ring;
+        ring_walk.body_cache_root = addr(fake_hull);
+        const HullOut first = hull_build(hull_view(g, 1000, 16), ring_walk);
+        // The expected plane: the bubble (hull bounds x bubble_scale, cut at bubble_scale x the radius), its normal at the
+        // hit's bubble point, in view through the side rows; the centre the hit plus the lift.
+        double eb[3], p[3], q[3], nq = 0;
+        for (unsigned k = 0; k < 3; ++k) {
+            eb[k] = std::min(double(wc::bubble_scale) * ext[k], double(wc::bubble_scale) * 250.0);
+            p[k] = double(at[k]) * double(wc::world_scale);
+            q[k] = p[k] / eb[k];
+            nq += q[k] * q[k];
+        }
+        double nl[3], nn = 0;
+        for (unsigned k = 0; k < 3; ++k) {
+            nl[k] = q[k] / std::sqrt(nq) / eb[k];
+            nn += nl[k] * nl[k];
+        }
+        double nv[3] = {0, 0, 0}, hit[3] = {0, 0, 600.0}, radial[3] = {0, 0, 0}, pr = std::sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+        for (unsigned k = 0; k < 3; ++k)
+            for (unsigned j = 0; j < 3; ++j) {
+                nv[j] += nl[k] / std::sqrt(nn) * double(side[k][j]) / 65536.0;
+                hit[j] += p[k] * double(side[k][j]) / 65536.0;
+                radial[j] += p[k] / pr * double(side[k][j]) / 65536.0;
+            }
+        const double radial_deg = std::acos(std::min(1.0, nv[0] * radial[0] + nv[1] * radial[1] + nv[2] * radial[2])) * 57.29578;
+        const double fr[3] = {0.2, 0.5, 0.9};
+        double worst_cos = 1, worst_centre = 0, worst_rho = 0;
+        unsigned drawn = 0, lit = 0;
+        draw_lane(g, 0.f, -1.f);
+        for (unsigned a = 0; a < 3; ++a) {
+            const std::uint32_t age = std::uint32_t(fr[a] * double(life) + 0.5);
+            const HullOut o = hull_build(hull_view(g, 1000 + age, 16), ring_walk);
+            if (o.rings != 1) continue;
+            ++drawn;
+            double P[4][3], c[3] = {0, 0, 0};
+            const ws::HullView hv = hull_view(g, 1000 + age, 16);
+            for (unsigned k = 0; k < 4; ++k) {
+                const rr::WeaponSpriteVertex& v = hq_rings[k];
+                P[k][2] = v.a[3];
+                P[k][0] = (double(v.a[0]) - double(hv.cam.m20) * P[k][2]) / double(hv.cam.m00);
+                P[k][1] = (double(v.a[1]) - double(hv.cam.m21) * P[k][2]) / double(hv.cam.m11);
+                for (unsigned j = 0; j < 3; ++j) c[j] += 0.25 * P[k][j];
+            }
+            double e1[3], e2[3], n3[3];
+            for (unsigned j = 0; j < 3; ++j) {
+                e1[j] = P[1][j] - P[0][j];
+                e2[j] = P[2][j] - P[0][j];
+            }
+            n3[0] = e1[1] * e2[2] - e1[2] * e2[1];
+            n3[1] = e1[2] * e2[0] - e1[0] * e2[2];
+            n3[2] = e1[0] * e2[1] - e1[1] * e2[0];
+            const double m = std::sqrt(n3[0] * n3[0] + n3[1] * n3[1] + n3[2] * n3[2]);
+            const double cosn = std::fabs(n3[0] * nv[0] + n3[1] * nv[1] + n3[2] * nv[2]) / m;
+            double ce = 0, rr2 = 0;
+            for (unsigned j = 0; j < 3; ++j) {
+                const double want_c = hit[j] + nv[j] * double(hl::ring_lift) * double(r_hit);
+                ce += (c[j] - want_c) * (c[j] - want_c);
+                rr2 += (P[0][j] - c[j]) * (P[0][j] - c[j]);
+            }
+            const double rho = std::sqrt(rr2 / 2.0), want_rho = double(hl::ring_r) * double(r_hit) * double(age) / double(life);
+            worst_cos = std::min(worst_cos, cosn);
+            worst_centre = std::max(worst_centre, std::sqrt(ce) / double(r_hit));
+            worst_rho = std::max(worst_rho, std::fabs(rho - want_rho) / want_rho);
+            const unsigned l = lit_count(hull_render(pass, o));
+            lit = a == 1 ? l : lit;
+            std::printf("HULL case=ring_narrow age_frac=%.1f age_ms=%u life_ms=%.1f rho=%.3f want_rho=%.3f cos_normal=%.6f "
+                        "centre_err_rhit=%.5f lit=%u radiance=%.3f band=%.3f\n",
+                        fr[a], age, double(life), rho, want_rho, cosn, std::sqrt(ce) / double(r_hit), l,
+                        double(hq_rings[0].b[2]), double(hq_rings[0].b[3]));
+        }
+        std::printf("HULL case=ring_normal walks=%u fallback=%u bubble_vs_radial_deg=%.2f\n", first.n.ring_walks,
+                    first.n.ring_fallback, radial_deg);
+        report("hull_ring_radius_law_and_tangent_on_narrow_hull", drawn == 3 && first.n.ring_walks == 1 &&
+                                                                     first.n.ring_fallback == 0 && worst_cos >= 0.999 &&
+                                                                     worst_centre <= 1e-3 && worst_rho <= 5e-3 && lit > 0, "");
+        // A station: the face axis (local -z here, the hit's largest component), through the rows.
+        stage_tier_source = wc::tier_by_station;
+        hull_owner(4000.f, 2000.f);
+        const std::int32_t st_at[3] = {30000, -20000, -150000};
+        add_hull_hit(1000, st_at, damage_of(0.8), wc::patch_capital)->tier_source = wc::tier_by_station;
+        stage_tier_source = wc::tier_by_radius;
+        hull_build(hull_view(g, 1000, 16), only_ring);
+        const HullOut so = hull_build(hull_view(g, 1030, 16), only_ring);
+        double sc = 0;
+        if (so.rings == 1) {
+            // the plane's normal along the view axis (local -z = view -z): its four corners at one view depth
+            for (unsigned k = 1; k < 4; ++k) sc += std::fabs(double(hq_rings[k].a[3]) - double(hq_rings[0].a[3]));
+        }
+        std::printf("HULL case=ring_station rings=%u corner_z_spread=%.6f\n", so.rings, sc);
+        report("hull_ring_station_face_axis", so.rings == 1 && sc <= 1e-3, "");
+        draw_lane(g, 0.f, -1.f);
+    }
+    // 24. The composition without a pop (look 3.1, consecutive frames): one heavy hit (the burst bit, k 0.33) on a flat
+    // face, every element on (burst, flash, sparks, glow, ember, ring), 30 frames of 16 ms then 10 of 100 ms (SETA 6)
+    // from its first frame: each element present exactly while its age is under its law's life (the floor its record
+    // latched), the burst's radius never shrinking and its heat falling on its law, the ring's radius growing on its law;
+    // the composite image the sum of its parts (additive, no element hiding another).
+    {
+        hull_owner(400.f, 100.f);
+        draw_lane(g, z_hit, 1.f);
+        wc::Event* e = add_hull_hit(1000, front, damage_of(0.33));
+        e->style |= wc::style_burst;
+        const std::uint32_t seq = e->sequence;
+        const float kf = wc::calibre_of(e->damage);
+        std::uint32_t now = 1000, step = 16;
+        unsigned frames = 0, violations = 0, checked = 0, additive_bad = 0, seen_burst = 0, seen_ring = 0;
+        double worst_add = 0, last_R = 0;
+        float last_T = 2.f;
+        while (frames < 40) {
+            const HullOut o = hull_build(hull_view(g, now, step));
+            const ws::HullSlot* hs = nullptr;
+            for (unsigned i = 0; i < wc::ring_capacity; ++i)
+                if (hq_state.slots[i].sequence == seq) hs = &hq_state.slots[i];
+            if (!hs) break;
+            const float age = float(now - hs->first_ms), floor = hs->floor_ms;
+            bool fl = false;
+            const float flash_life = ws::element_life_ms(float(hl::flash_ms), ws::element_hash(seq, 0), wc::stagger, floor, &fl);
+            const float glow_life = ws::element_life_ms(float(hl::glow_ms), ws::element_hash(seq, 1), wc::stagger, floor, &fl);
+            const float ember_life = ws::element_life_ms(float(hl::ember_ms), ws::element_hash(seq, 2), wc::stagger, floor, &fl);
+            const float burst_life = ws::element_life_ms(ws::burst_law_ms(kf), ws::element_hash(seq, 3), wc::stagger, floor, &fl);
+            const float ring_life = std::max(hl::ring_rise * burst_life, floor);
+            unsigned sparks_want = 0;
+            const float spark_law = float(hl::spark_life_ms) + float(hl::spark_life_k_ms) * kf;
+            for (unsigned sp = 0; sp < ws::spark_count(*e, kf, ws::HullTuning{}); ++sp)
+                sparks_want += age < std::max(spark_law * ws::spark_factors(seq, sp).life_x, floor);
+            const unsigned want[6] = {age < flash_life, sparks_want, age < glow_life, age < ember_life,
+                                      age > 0.f && age < burst_life, age > 0.f && age < ring_life};
+            const unsigned got[6] = {o.n.flashes, o.n.sparks, o.n.glows, o.n.embers, o.n.bursts, o.n.rings};
+            for (unsigned k = 0; k < 6; ++k) {
+                ++checked;
+                violations += want[k] != got[k];
+            }
+            if (o.bursts) {
+                ++seen_burst;
+                const double R = hq_fireballs[0].sphere[3];
+                const float T = hq_fireballs[0].look[0];
+                if (R < last_R - 1e-4 || !(T < last_T) || std::fabs(T - (1.f - age / burst_life)) > 1e-5f) ++violations;
+                last_R = R;
+                last_T = T;
+            }
+            if (o.rings) ++seen_ring;
+            // the composite against its parts (every 4th frame: the renders are the cost)
+            if (frames % 4 == 0 || frames >= 28) {
+                const double whole = total(hull_render(pass, o));
+                double parts = 0;
+                for (unsigned kind = 0; kind < 4; ++kind) parts += total(hull_render(pass, hull_only(o, kind)));
+                const double err = std::fabs(whole - parts) / std::max(whole, 1e-6);
+                worst_add = std::max(worst_add, err);
+                additive_bad += err > 2e-3 && std::fabs(whole - parts) > 1e-2;
+            }
+            ++frames;
+            if (frames == 30) step = 100;
+            now += step;
+        }
+        std::printf("HULL case=compose_no_pop frames=%u checked=%u violations=%u bursts_seen=%u rings_seen=%u "
+                    "worst_additive_err=%.5f additive_bad=%u\n",
+                    frames, checked, violations, seen_burst, seen_ring, worst_add, additive_bad);
+        report("hull_compose_no_pop_all_elements", frames == 40 && violations == 0 && additive_bad == 0 && seen_burst >= 3 &&
+                                                       seen_ring >= 2, "");
+        draw_lane(g, 0.f, -1.f);
+    }
+    // 25. The burst through the production TemporalPass (resolve_core's configuration): a still burst (T 0.7) over the
+    // whole screen quad, 16 frames: the core's energy survives (>= 0.9), and 8 frames after it went no residual above
+    // one code.
+    {
+        Com<IDirect3DTexture9> motion;
+        Com<IDirect3DSurface9> motion_s;
+        const bool made = SUCCEEDED(dev->CreateTexture(g.w, g.h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F,
+                                                       D3DPOOL_DEFAULT, &motion.p, nullptr)) &&
+                          SUCCEEDED(motion.p->GetSurfaceLevel(0, &motion_s.p));
+        rr::WeaponFireballVertex fb[4];
+        const ws::HullView hv = hull_view(g, 0, 16);
+        const float c[3] = {0.f, 0.f, 300.f}, rect[4] = {-1.f, -1.f, 1.f, 1.f};
+        const float look[4] = {0.7f, hl::burst_e, 0.3f, 3.f};
+        ws::fireball_quad(hv, c, 25.f, rect, true, look, fb);
+        float peak = 0.f;
+        double residual = 1;
+        const double ratio = made ? resolve_streak(pass, motion, motion_s, 0.f, 8, &peak, &residual, fb) : -1.0;
+        std::printf("HULL case=resolve_burst frames=16 core=%.4f peak=%.3f residual_after_8=%.5f\n", ratio, double(peak),
+                    residual);
+        report("hull_resolve_burst_survival", ratio >= 0.9, "");
+        report("hull_resolve_burst_no_scar", ratio >= 0 && residual <= 1.0 / 255.0, "");
         draw_lane(g, 0.f, -1.f);
     }
     // 19. The CPU cost of the hull build: 64 hits on one capital (best / mean of 200 builds) and 20 hits on a fighter.
@@ -1178,9 +1674,28 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 best = std::min(best, us);
                 sum += us;
             }
-            std::printf("HULL_CPU case=%s hits=%u sparks=%u flashes=%u boxes=%u best_us=%.2f mean_us=%.2f target_us=30\n",
-                        c ? "fighter_20_hits" : "capital_64_hits", hits, o.n.sparks, o.n.flashes, o.boxes, best, sum / 200.0);
-            if (!c) report("hull_cpu_64_hits", best <= 30.0, "");
+            std::printf("HULL_CPU case=%s hits=%u sparks=%u flashes=%u boxes=%u bursts=%u rings=%u best_us=%.2f mean_us=%.2f "
+                        "target_us=40\n", c ? "fighter_20_hits" : "capital_64_hits", hits, o.n.sparks, o.n.flashes, o.boxes,
+                        o.bursts, o.rings, best, sum / 200.0);
+            // the same frame by element (report only): the sparks alone, everything but the sparks
+            for (unsigned part = 0; part < 2 && !c; ++part) {
+                ws::HullTuning pt;
+                if (part == 0) pt.flash = pt.glow = pt.ember = pt.burst = pt.ring = false;
+                else pt.sparks = false;
+                double pbest = 1e30;
+                for (unsigned i = 0; i < 200; ++i) {
+                    ws::HullState st = hq_state;
+                    QueryPerformanceCounter(&a);
+                    hull_build(hull_view(g, 1000 + 4 * hits + 16, 16), pt, &st);
+                    QueryPerformanceCounter(&b);
+                    pbest = std::min(pbest, ticks_us(a, b, freq));
+                }
+                std::printf("HULL_CPU case=capital_64_hits_%s best_us=%.2f\n", part ? "no_sparks" : "sparks_only", pbest);
+            }
+            // 30 us for the flash, sparks, glow and ember (26.6 measured before the burst, 2026-11-06); 64 bursts and 64
+            // rings (a heavy PPC) add their element law, the sparks' hashes their factors (33.6 measured after the
+            // performance pass)
+            if (!c) report("hull_cpu_64_hits", best <= 40.0, "");
         }
     }
     // 20. GPU cost, EVENT-fenced (best of 60) at 1080p and 5120x1440: 20 hits on a fighter at 60 m (the 3.1 budget: 50 us
@@ -1197,27 +1712,33 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         dev->CreateQuery(D3DQUERYTYPE_OCCLUSION, &occlusion.p);
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
-        for (unsigned c = 0; c < 4; ++c) {
+        ws::HullTuning only_burst = only_flash;
+        only_burst.flash = false;
+        only_burst.burst = true;
+        for (unsigned c = 0; c < 6; ++c) {
             // 0: 20 hits on a fighter 60 m away (its hull a fifth of the frame: the stress row); 1: the same 200 m away
             // (the 3.1 budget's case); 2: 64 hits on a capital at close range; 3: one glow alone whose sphere holds the
-            // eye (the whole screen once: the glow's full-screen cost, its budget weight against the decal's 177.5 us).
-            const unsigned hits = c == 2 ? 64 : c == 3 ? 1 : 20;
+            // eye (the whole screen once: the glow's full-screen cost, its budget weight against the decal's 177.5 us);
+            // 4, 5: one burst alone holding the eye at two octaves and at one (the LOD): the fireball's weights.
+            const unsigned hits = c == 2 ? 64 : c >= 3 ? 1 : 20;
             const float owner_z = c == 0 ? 400.f : c == 1 ? 1100.f : c == 2 ? 2600.f : 120.f;
             hull_owner(owner_z, c == 2 ? 2000.f : 100.f);
             for (unsigned i = 0; i < hits; ++i) {
                 const double r = (c == 2 ? 60000.0 : 3000.0) * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
-                const std::int32_t pos[3] = {c == 3 ? 0 : std::int32_t(r * std::cos(ang)),
-                                             c == 3 ? 0 : std::int32_t(r * std::sin(ang)), c == 2 ? -200000 : -10000};
-                add_hull_hit(1000 + 4 * i, pos, damage_of(c == 2 ? 0.8 : c == 3 ? 1.0 : 0.33),
+                const std::int32_t pos[3] = {c >= 3 ? 0 : std::int32_t(r * std::cos(ang)),
+                                             c >= 3 ? 0 : std::int32_t(r * std::sin(ang)), c == 2 ? -200000 : -10000};
+                add_hull_hit(1000 + 4 * i, pos, damage_of(c == 2 ? 0.8 : c >= 3 ? 1.0 : 0.33),
                              c >= 2 ? wc::patch_capital : wc::patch_fighter);
             }
+            const ws::HullTuning& tune = c == 3 ? only_glow : c >= 4 ? only_burst : ws::HullTuning{};
             ws::HullView v = hull_view(tt, 1000, 16);
-            hull_build(v, c == 3 ? only_glow : ws::HullTuning{});
+            hull_build(v, tune);
             v.now = 1000 + 4 * hits + 16;
-            const HullOut o = hull_build(v, c == 3 ? only_glow : ws::HullTuning{});
-            const float lane_z = c == 2 ? 600.f : c == 3 ? 20.f : owner_z - 100.f;
+            const HullOut o = hull_build(v, tune);
+            const float lane_z = c == 2 ? 600.f : c == 3 ? 20.f : c >= 4 ? 600.f : owner_z - 100.f;
             draw_lane(tt, lane_z, 1.f);
-            const rr::WeaponEffectsFrame f = hull_frame(tt, o);
+            rr::WeaponEffectsFrame f = hull_frame(tt, o);
+            if (c == 5) f.fireball_octaves = 1;
             double best = 1e30;
             // 120 untimed runs first: the CPU-only cases before these rows leave the GPU idle, and best-of-60 of a short
             // fenced draw did not always bring its clock back (the glow-alone row read 71 or 109 us run to run).
@@ -1255,13 +1776,19 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const char* name = c == 0   ? "fighter_60m_20_hits"
                                : c == 1 ? "fighter_200m_20_hits"
                                : c == 2 ? "capital_close_64_hits"
-                                        : "glow_alone_fills_frame";
-            std::printf("HULL_TIMING width=%u height=%u case=%s hits=%u sparks=%u flashes=%u boxes=%u lit_share=%.4f "
-                        "raster_share=%.4f gpu_us=%.1f\n",
-                        size.first, size.second, name, hits, o.n.sparks, o.n.flashes, o.boxes,
+                               : c == 3 ? "glow_alone_fills_frame"
+                               : c == 4 ? "burst_alone_fills_frame"
+                                        : "burst_alone_fills_frame_lod";
+            std::printf("HULL_TIMING width=%u height=%u case=%s hits=%u sparks=%u flashes=%u boxes=%u bursts=%u rings=%u "
+                        "octaves=%u burst_screens=%.3f lit_share=%.4f raster_share=%.4f gpu_us=%.1f\n",
+                        size.first, size.second, name, hits, o.n.sparks, o.n.flashes, o.boxes, o.bursts, o.rings,
+                        f.fireball_octaves, double(o.n.burst_screens),
                         l.empty() ? 0.0 : double(lit_count(l)) / double(l.size()),
                         double(rasterized) / (double(size.first) * double(size.second)), best);
-            if (c == 1 && size.first == 5120) report("hull_budget_20_hits_5120", best <= 50.0, "");
+            // 50 us before the burst (45.6 measured, 2026-11-06); the twenty bursts' impostors add their rectangles
+            if (c == 1 && size.first == 5120) report("hull_budget_20_hits_5120", best <= 70.0, "");
+            if (c >= 4 && size.first == 5120)
+                std::printf("HULL_TIMING case=%s weight=%.3f (gpu_us / 177.5)\n", name, best / 177.5);
         }
         tt.release();
     }

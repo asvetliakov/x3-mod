@@ -69,6 +69,18 @@ constexpr std::uint32_t glow_vs_words[] = {
 constexpr std::uint32_t glow_ps_words[] = {
 #include "weapon_glow_pixel_program_inc.h"
 };
+// The fireball impostor (provenance: verification/results/weapon-fireball-{vertex,pixel}-program.json).
+constexpr std::uint32_t fireball_vs_words[] = {
+#include "weapon_fireball_vertex_program_inc.h"
+};
+constexpr std::uint32_t fireball_ps_words[] = {
+#include "weapon_fireball_pixel_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 fireball_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 28, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1}, D3DDECL_END()};
+static_assert(sizeof(WeaponFireballVertex) == 44, "the fireball declaration follows the vertex");
 constexpr D3DVERTEXELEMENT9 sprite_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -160,6 +172,9 @@ void WeaponEffectsPass::release_hull_objects() noexcept {
     drop(glow_ps_);
     drop(sprite_declaration_);
     drop(glow_declaration_);
+    drop(fireball_vs_);
+    drop(fireball_ps_);
+    drop(fireball_declaration_);
 }
 void WeaponEffectsPass::release_objects() noexcept {
     drop(shell_vs_);
@@ -188,7 +203,8 @@ void WeaponEffectsPass::after_reset(HRESULT hr) noexcept {
     if (SUCCEEDED(hr)) reset_pending_ = false;
 }
 bool WeaponEffectsPass::hull_objects_ready() const noexcept {
-    return sprite_vs_ && sprite_ps_ && glow_vs_ && glow_ps_ && sprite_declaration_ && glow_declaration_;
+    return sprite_vs_ && sprite_ps_ && glow_vs_ && glow_ps_ && sprite_declaration_ && glow_declaration_ && fireball_vs_ &&
+           fireball_ps_ && fireball_declaration_;
 }
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
@@ -201,7 +217,9 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_),
                           static_cast<const void*>(sprite_vs_), static_cast<const void*>(sprite_ps_),
                           static_cast<const void*>(glow_vs_), static_cast<const void*>(glow_ps_),
-                          static_cast<const void*>(sprite_declaration_), static_cast<const void*>(glow_declaration_)})
+                          static_cast<const void*>(sprite_declaration_), static_cast<const void*>(glow_declaration_),
+                          static_cast<const void*>(fireball_vs_), static_cast<const void*>(fireball_ps_),
+                          static_cast<const void*>(fireball_declaration_)})
         n += p != nullptr;
     return n;
 }
@@ -271,7 +289,10 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         caps_.glow_vs_slots = vs3_slots(glow_vs_words);
         caps_.sprite_ps_slots = ps3_program_slots(sprite_ps_words, std::size(sprite_ps_words));
         caps_.glow_ps_slots = ps3_program_slots(glow_ps_words, std::size(glow_ps_words));
-        if (!caps_.sprite_vs_slots || !caps_.glow_vs_slots || !caps_.sprite_ps_slots || !caps_.glow_ps_slots)
+        caps_.fireball_vs_slots = vs3_slots(fireball_vs_words);
+        caps_.fireball_ps_slots = ps3_program_slots(fireball_ps_words, std::size(fireball_ps_words));
+        if (!caps_.sprite_vs_slots || !caps_.glow_vs_slots || !caps_.sprite_ps_slots || !caps_.glow_ps_slots ||
+            !caps_.fireball_vs_slots || !caps_.fireball_ps_slots)
             caps_.hull_reason = "hull_compiled_program";
         else if (caps.MaxPrimitiveCount < 2u * weapon_sprite_quads || caps.MaxVertexIndex < 4u * weapon_sprite_quads - 1u)
             caps_.hull_reason = "hull_limits";
@@ -321,6 +342,12 @@ HRESULT WeaponEffectsPass::create_hull_objects() noexcept {
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, sprite_elements, &sprite_declaration_);
     if (SUCCEEDED(hr) && !glow_declaration_)
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, glow_elements, &glow_declaration_);
+    if (SUCCEEDED(hr) && !fireball_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(fireball_vs_words), &fireball_vs_);
+    if (SUCCEEDED(hr) && !fireball_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(fireball_ps_words), &fireball_ps_);
+    if (SUCCEEDED(hr) && !fireball_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, fireball_elements, &fireball_declaration_);
     if (SUCCEEDED(hr) && !hull_objects_ready()) hr = E_FAIL;
     if (FAILED(hr)) release_hull_objects();
     return hr;
@@ -523,11 +550,15 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (!f.width || !f.height || !f.lane || (f.patch_count && !f.patches) || (f.decal_count && !f.decals) ||
         f.patch_count > wcore::max_patches || f.decal_count > wcore::max_decals || !(f.m00 > 0.f) || !(f.m11 > 0.f) ||
         !finite(f.m20) || !finite(f.m21) || !(f.near_z > 0.f) || (f.sprite_quads && !f.sprites) ||
-        (f.glow_boxes && !f.glows) || f.sprite_quads > weapon_sprite_quads || f.glow_boxes > weapon_glow_boxes)
+        (f.glow_boxes && !f.glows) || f.sprite_quads > weapon_sprite_quads || f.glow_boxes > weapon_glow_boxes ||
+        (f.fireball_boxes && !f.fireballs) || f.fireball_boxes > weapon_fireball_boxes || (f.ring_quads && !f.rings) ||
+        f.ring_quads > weapon_ring_quads || (f.fireball_boxes && f.fireball_octaves != 1u && f.fireball_octaves != 2u))
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
-    // Without the hull programs the sprites and glows are not drawn (the glue builds none then).
+    // Without the hull programs the sprites, glows, fireballs and rings are not drawn (the glue builds none then).
     const unsigned sprite_quads = caps_.hull_enabled ? f.sprite_quads : 0u, glow_boxes = caps_.hull_enabled ? f.glow_boxes : 0u;
-    if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes) return finish(S_FALSE);
+    const unsigned fireball_boxes = caps_.hull_enabled ? f.fireball_boxes : 0u, ring_quads = caps_.hull_enabled ? f.ring_quads : 0u;
+    if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes && !fireball_boxes && !ring_quads)
+        return finish(S_FALSE);
     const WeaponLook& l = f.look;
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !finite(l.centre_gain) || !finite(l.centre_fill) ||
         !(l.fade_s > 0.f) || !(l.edge_width > 0.f) || !(l.edge_width < 0.5f) ||
@@ -681,8 +712,35 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             }
         }
     }
-    // The sprite batch last (flashes and sparks): one draw, both triangle windings (no cull).
-    if (SUCCEEDED(hr) && sprite_quads) {
+    // The fireballs (the hull hits' bursts; look 2.10: after the patches, before the sprite batch): one batched draw of
+    // their screen rectangles (no cull); weapon_fireball_ps.hlsl c2..c9: the projection, the screen and the octaves, the
+    // noise law, the heat ramp's five stops.
+    if (SUCCEEDED(hr) && fireball_boxes) {
+        const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+        float fb[8 * 4] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, f.near_z, float(f.fireball_octaves),
+                           wcore::look::fireball_freq, wcore::look::fireball_noise, wcore::look::fireball_erode,
+                           wcore::look::fireball_core_t};
+        for (unsigned k = 0; k < 5; ++k)
+            for (unsigned c = 0; c < 3; ++c) fb[12 + 4 * k + c] = wcore::look::heat_ramp[k][c];
+        step(WeaponEffectsStep::Fireballs, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Fireballs, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
+        step(WeaponEffectsStep::Fireballs, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
+        step(WeaponEffectsStep::Fireballs, call<SetPsFn>(SetPixelShader)(d, fireball_ps_));
+        step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
+        step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 8));
+        if (SUCCEEDED(hr)) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, fireball_boxes * 4, fireball_boxes * 2, sprite_indices_, D3DFMT_INDEX16,
+                f.fireballs, UINT(sizeof(WeaponFireballVertex))));
+            if (step(WeaponEffectsStep::Fireballs, draw)) {
+                r.fireball_boxes = fireball_boxes;
+                r.drew = true;
+            }
+        }
+    }
+    // The sprite batch last (flashes and sparks): one draw, both triangle windings (no cull); the heavy rings after it
+    // with the same programs and constants.
+    if (SUCCEEDED(hr) && (sprite_quads || ring_quads)) {
         const float sprite_ps[4] = {wcore::look::soft_core, wcore::look::soft_halo, wcore::look::halo_max,
                                     wcore::look::halo_fold};
         // The streak expansion's constants (weapon_sprite_vs.hlsl c2, c3; c0, c1 the projection and viewport above).
@@ -694,12 +752,21 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Sprites, call<SetPsFn>(SetPixelShader)(d, sprite_ps_));
         step(WeaponEffectsStep::Sprites, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, sprite_ps, 1));
         step(WeaponEffectsStep::Sprites, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, sprite_vs, 2));
-        if (SUCCEEDED(hr)) {
+        if (SUCCEEDED(hr) && sprite_quads) {
             const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                 d, D3DPT_TRIANGLELIST, 0, sprite_quads * 4, sprite_quads * 2, sprite_indices_, D3DFMT_INDEX16,
                 f.sprites, UINT(sizeof(WeaponSpriteVertex))));
             if (step(WeaponEffectsStep::Sprites, draw)) {
                 r.sprite_quads = sprite_quads;
+                r.drew = true;
+            }
+        }
+        if (SUCCEEDED(hr) && ring_quads) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, ring_quads * 4, ring_quads * 2, sprite_indices_, D3DFMT_INDEX16, f.rings,
+                UINT(sizeof(WeaponSpriteVertex))));
+            if (step(WeaponEffectsStep::Rings, draw)) {
+                r.ring_quads = ring_quads;
                 r.drew = true;
             }
         }

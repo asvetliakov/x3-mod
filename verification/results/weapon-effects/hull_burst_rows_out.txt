@@ -1,0 +1,89 @@
+# fixture.log
+EYE_SPHERE set=late pitch=0 lit_top=104832 lit_bottom=257172 lit_row=362.8 hits_row=418.4 centre_row=288.0 rows_8_above=5504 rows_8_below=5780 outside_boxes=0 eye_draws=4
+EYE_SPHERE set=late pitch=10 lit_top=177101 lit_bottom=261179 lit_row=316.8 hits_row=326.0 centre_row=288.0 rows_8_above=6311 rows_8_below=6585 outside_boxes=0 eye_draws=4
+EYE_SPHERE set=late pitch=-10 lit_top=44824 lit_bottom=232860 lit_row=413.8 hits_row=519.5 centre_row=288.0 rows_8_above=4752 rows_8_below=4806 outside_boxes=0 eye_draws=4
+EYE_SPHERE set=early pitch=0 lit_top=414097 lit_bottom=317775 lit_row=254.7 hits_row=234.7 centre_row=288.0 rows_8_above=11409 rows_8_below=11179 outside_boxes=0 eye_draws=5
+EYE_SPHERE set=early pitch=10 lit_top=420445 lit_bottom=182129 lit_row=206.1 hits_row=139.6 centre_row=288.0 rows_8_above=10403 rows_8_below=10302 outside_boxes=0 eye_draws=5
+EYE_SPHERE set=early pitch=-10 lit_top=361386 lit_bottom=408166 lit_row=293.5 hits_row=326.2 centre_row=288.0 rows_8_above=11482 rows_8_below=11593 outside_boxes=0 eye_draws=5
+EYE_SPHERE case=summary radius=150.0 cell=30.0 eye_draws=27 singles=48 lit_singles=48 worst_centroid_cells=1.080 outside_boxes=0 side_ok=6/6 chase_changed=0
+CHECK cockpit_eye_sphere_hits_light_their_half PASS
+CHECK cockpit_eye_sphere_centroid_within_one_cell PASS
+CHECK cockpit_eye_sphere_chase_unchanged PASS
+HULL_SLOTS sprite_vs=72 sprite_ps=103 glow_vs=6 glow_ps=47 fireball_vs=6 fireball_ps=309 sprite_vertex_bytes=48 glow_vertex_bytes=40 fireball_vertex_bytes=44 hull_state_bytes=131088
+CHECK hull_programs_attached PASS
+CHECK hull_sparks_born_at_recorded_pos PASS
+HULL case=half_hidden k0_share=0.5186 k05_share=0.5106 k1_share=0.4807 k0_px=6744/11536 k0_px_share=0.5846 k05_px=10434/16323 k05_px_share=0.6392 k1_px=13444/22375 k1_px_share=0.6008 cpu_share=0.5167,0.5106,0.4842 crossing=0,0,0 seq=695,704,713
+CHECK hull_half_of_sparks_hidden_by_flat_lane PASS
+CHECK hull_spark_cooling_hue_half_life PASS want_g_over_r=0.4219
+CHECK hull_spark_cooling_ramp PASS
+HULL case=law tier=fighter k=0.00 calibre=0.0000 sparks=7 want=7 flash_r=5.250 r_hit=10.500 glow_R=31.500 ember_R=6.300 width=1.1353 reach_mean_u=1.1297 law_mean_u=1.1297 early=7 late=0
+HULL case=law tier=fighter k=0.50 calibre=0.5000 sparks=17 want=17 flash_r=10.125 r_hit=20.250 glow_R=60.750 ember_R=12.150 width=1.3959 reach_mean_u=1.0341 law_mean_u=1.0341 early=17 late=0
+HULL case=law tier=fighter k=1.00 calibre=1.0000 sparks=22 want=22 flash_r=15.000 r_hit=30.000 glow_R=90.000 ember_R=18.000 width=1.1616 reach_mean_u=0.9370 law_mean_u=0.9370 early=22 late=0
+HULL case=law tier=corvette k=0.00 calibre=0.0000 sparks=9 want=9 flash_r=10.500 r_hit=21.000 glow_R=63.000 ember_R=12.600 width=2.6194 reach_mean_u=0.8861 law_mean_u=0.8861 early=9 late=0
+HULL case=law tier=corvette k=0.50 calibre=0.5000 sparks=16 want=16 flash_r=20.250 r_hit=40.500 glow_R=121.500 ember_R=24.300 width=2.8294 reach_mean_u=0.9350 law_mean_u=0.9350 early=16 late=0
+HULL case=law tier=corvette k=1.00 calibre=1.0000 sparks=19 want=19 flash_r=30.000 r_hit=60.000 glow_R=180.000 ember_R=36.000 width=2.3644 reach_mean_u=0.9712 law_mean_u=0.9712 early=19 late=0
+HULL case=law tier=capital k=0.00 calibre=0.0000 sparks=6 want=6 flash_r=28.000 r_hit=56.000 glow_R=168.000 ember_R=33.600 width=5.1850 reach_mean_u=0.8740 law_mean_u=0.8740 early=6 late=0
+HULL case=law tier=capital k=0.50 calibre=0.5000 sparks=11 want=11 flash_r=54.000 r_hit=108.000 glow_R=324.000 ember_R=64.800 width=5.2350 reach_mean_u=0.8838 law_mean_u=0.8838 early=11 late=0
+HULL case=law tier=capital k=1.00 calibre=1.0000 sparks=26 want=26 flash_r=80.000 r_hit=160.000 glow_R=480.000 ember_R=96.000 width=5.8150 reach_mean_u=0.9460 law_mean_u=0.9460 early=26 late=0
+CHECK hull_spark_reach_law_200ms PASS
+CHECK hull_spark_reach_asymptote_2_7u PASS
+CHECK hull_spark_lives_law PASS
+HULL case=floors_2km sparks=18 min_width_px=3.000 min_length_px=14.447 min_length_over_len_x_px=24.000 flash_core_px=3.012
+CHECK hull_streak_min_footprint_3px_24px PASS
+CHECK hull_programs_refused_shields_still_draw PASS
+HULL case=variants repair_sparks=0 repair_flashes=0 repair_glows=1 repair_embers=1 repair_glow_rgb=0.029,1.000,0.029 tug_glows=1 tug_embers=0 tug_R=37.350 missile_sparks=27 missile_want=27 missile_halo_g=0.400 missile_tint_g=0.400 asteroid_sparks=22 asteroid_want=22 asteroid_flashes=0 asteroid_rgb=0.729,0.227,0.059
+HULL case=velocity_first_hit v=1250.000 want=1250.000 sparks=19 mean_head_x=132.511 expected_x=132.511 owner_x=145.000
+HULL case=budget boxes=24 screens=13.098 tight_boxes=0 tight_shed=24 tight_screens=0.281 sparks=303 tight_sparks=303 own_boxes=24 own_shed=0
+HULL case=budget_bursts bursts=12 burst_screens=5.806 octaves=2 tight_bursts=12 tight_bursts_shed=11 tight_octaves=1 own_bursts=12 own_bursts_shed=0 rings=12 tight_rings=12
+CHECK hull_budget_shed PASS
+CHECK hull_budget_burst_lod_then_shed PASS
+CHECK hull_recovers_after_fault PASS
+CHECK hull_fireball_fault_reported_and_recovers PASS
+CHECK hull_reset_recovers PASS
+HULL case=burst_radius age_frac=0.1 age_ms=29 life_ms=285.9 R_view=12.4852 law_view=12.4852 r_hit=16.934 R_px=63.9 lit_extent_px=64.6 extent_over_R=1.0105 T=0.8986 lit=12703
+HULL case=burst_radius age_frac=0.3 age_ms=86 life_ms=285.9 R_view=21.9830 law_view=21.9830 r_hit=16.934 R_px=112.6 lit_extent_px=113.4 extent_over_R=1.0073 T=0.6992 lit=39333
+HULL case=burst_radius age_frac=0.6 age_ms=172 life_ms=285.9 R_view=24.9413 law_view=24.9413 r_hit=16.934 R_px=127.7 lit_extent_px=128.2 extent_over_R=1.0040 T=0.3983 lit=45069
+CHECK hull_burst_radius_law_3_ages PASS
+HULL case=burst_colour birth_age_ms=16 birth_r=1.0605 birth_g_over_r=0.872 birth_b_over_r=0.679 end_age_ms=257 end_r=0.02806 end_g_over_r=0.182 end_b_over_r=0.055
+CHECK hull_burst_colour_white_core_at_birth PASS
+CHECK hull_burst_colour_dark_red_at_end PASS
+HULL case=burst_lane sky=7053.299 at_hit=4105.274 in_front=0.0000 behind=7053.299 hit_share=0.5820 front_share=0.00000 behind_share=1.0000
+CHECK hull_burst_half_hidden_by_lane PASS
+HULL case=spark_random seq_a=828 count_a=21 drawn_a=21 seq_b=831 count_b=13 drawn_b=13 a_in_b_worst_cos=0.6122 identical_same_frame=1 count=15 drawn=15 straight_worst_cos=1.000000 curled=2/15 curl_min_bend_deg_100_250ms=2.86 curl_share_6400=0.2592
+CHECK hull_spark_random_hits_differ PASS
+CHECK hull_spark_same_hit_stable PASS
+CHECK hull_spark_curl_share PASS
+CHECK hull_heavy_families_ring PASS
+HULL case=ring_narrow age_frac=0.2 age_ms=23 life_ms=116.2 rho=41.324 want_rho=41.324 cos_normal=1.000000 centre_err_rhit=0.00000 lit=9322 radiance=1.085 band=0.120
+HULL case=ring_narrow age_frac=0.5 age_ms=58 life_ms=116.2 rho=104.209 want_rho=104.209 cos_normal=1.000000 centre_err_rhit=0.00000 lit=58732 radiance=0.677 band=0.120
+HULL case=ring_narrow age_frac=0.9 age_ms=105 life_ms=116.2 rho=188.654 want_rho=188.654 cos_normal=1.000000 centre_err_rhit=0.00000 lit=182989 radiance=0.130 band=0.120
+HULL case=ring_normal walks=1 fallback=0 bubble_vs_radial_deg=27.61
+CHECK hull_ring_radius_law_and_tangent_on_narrow_hull PASS
+HULL case=ring_station rings=1 corner_z_spread=0.000000
+CHECK hull_ring_station_face_axis PASS
+HULL case=compose_no_pop frames=40 checked=240 violations=0 bursts_seen=13 rings_seen=4 worst_additive_err=0.00000 additive_bad=0
+CHECK hull_compose_no_pop_all_elements PASS
+HULL case=resolve_burst frames=16 core=1.0000 peak=1.050 residual_after_8=0.00000
+CHECK hull_resolve_burst_survival PASS
+CHECK hull_resolve_burst_no_scar PASS
+HULL_CPU case=capital_64_hits hits=64 sparks=1328 flashes=64 boxes=128 bursts=64 rings=64 best_us=33.90 mean_us=35.12 target_us=40
+HULL_CPU case=capital_64_hits_sparks_only best_us=26.00
+HULL_CPU case=capital_64_hits_no_sparks best_us=8.80
+CHECK hull_cpu_64_hits PASS
+HULL_CPU case=fighter_20_hits hits=20 sparks=236 flashes=20 boxes=40 bursts=20 rings=0 best_us=6.90 mean_us=6.99 target_us=40
+HULL_TIMING width=1920 height=1080 case=fighter_60m_20_hits hits=20 sparks=246 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.580 lit_share=0.2179 raster_share=3.3797 gpu_us=90.0
+HULL_TIMING width=1920 height=1080 case=fighter_200m_20_hits hits=20 sparks=283 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.051 lit_share=0.0196 raster_share=0.3066 gpu_us=35.5
+HULL_TIMING width=1920 height=1080 case=capital_close_64_hits hits=64 sparks=1357 flashes=0 boxes=0 bursts=51 rings=0 octaves=1 burst_screens=7.659 lit_share=1.0000 raster_share=10.2848 gpu_us=338.1
+HULL_TIMING width=1920 height=1080 case=glow_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=1 bursts=0 rings=0 octaves=2 burst_screens=0.000 lit_share=1.0000 raster_share=1.0000 gpu_us=34.5
+HULL_TIMING width=1920 height=1080 case=burst_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=2 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=62.3
+HULL_TIMING width=1920 height=1080 case=burst_alone_fills_frame_lod hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=1 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=47.4
+HULL_TIMING width=5120 height=1440 case=fighter_60m_20_hits hits=20 sparks=295 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=1.162 lit_share=0.3569 raster_share=6.1304 gpu_us=453.5
+HULL_TIMING width=5120 height=1440 case=fighter_200m_20_hits hits=20 sparks=263 flashes=0 boxes=40 bursts=20 rings=0 octaves=2 burst_screens=0.103 lit_share=0.0393 raster_share=0.5946 gpu_us=60.9
+CHECK hull_budget_20_hits_5120 PASS
+HULL_TIMING width=5120 height=1440 case=capital_close_64_hits hits=64 sparks=1329 flashes=0 boxes=0 bursts=39 rings=0 octaves=1 burst_screens=7.558 lit_share=1.0000 raster_share=10.1812 gpu_us=1001.5
+HULL_TIMING width=5120 height=1440 case=glow_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=1 bursts=0 rings=0 octaves=2 burst_screens=0.000 lit_share=1.0000 raster_share=1.0000 gpu_us=70.7
+HULL_TIMING width=5120 height=1440 case=burst_alone_fills_frame hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=2 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=184.9
+HULL_TIMING case=burst_alone_fills_frame weight=1.042 (gpu_us / 177.5)
+HULL_TIMING width=5120 height=1440 case=burst_alone_fills_frame_lod hits=1 sparks=0 flashes=0 boxes=0 bursts=1 rings=0 octaves=1 burst_screens=1.040 lit_share=1.0000 raster_share=1.0000 gpu_us=136.1
+HULL_TIMING case=burst_alone_fills_frame_lod weight=0.767 (gpu_us / 177.5)
+RESULT PASS checks=114 failures=0

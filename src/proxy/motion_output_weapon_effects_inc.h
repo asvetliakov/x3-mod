@@ -64,10 +64,10 @@ bool MotionOutput::attach_weapon_effects() noexcept {
     }
     const bool attached = queried && SUCCEEDED(hr) && weapon_->caps().enabled;
     const auto& c = weapon_->caps();
-    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u hull=%u hull_reason=%s max_ps_slots=%lu retry=reset",
+    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u hull=%u hull_reason=%s max_ps_slots=%lu retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
         c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.sprite_vs_slots, c.sprite_ps_slots,
-        c.glow_vs_slots, c.glow_ps_slots, unsigned(c.hull_enabled), c.hull_reason,
+        c.glow_vs_slots, c.glow_ps_slots, c.fireball_vs_slots, c.fireball_ps_slots, unsigned(c.hull_enabled), c.hull_reason,
         static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
     if (!attached) weapon_attach_failed_ = true;
     return attached;
@@ -153,6 +153,9 @@ weapon_effects::stage::BubbleCache weapon_bubble_cache;
 weapon_effects::stage::HullState weapon_hull_state;
 renderer::WeaponSpriteVertex weapon_sprites[renderer::weapon_sprite_quads * 4];
 renderer::WeaponGlowVertex weapon_glows[renderer::weapon_glow_boxes * 4];
+// The bursts (fireball impostors, about 45 KB) and the heavy rings (12 KB), static as the sprites.
+renderer::WeaponFireballVertex weapon_fireballs[renderer::weapon_fireball_boxes * 4];
+renderer::WeaponSpriteVertex weapon_rings[renderer::weapon_ring_quads * 4];
 // The frame's game step (cfg+0x714, game ms; 0 when unreadable), clamped to 5 s (ship_avoidance's reader's bound).
 std::uint32_t weapon_game_step_ms() {
     std::uint32_t cfg = 0, step = 0;
@@ -193,31 +196,40 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     static renderer::WeaponPatch patches[wcore::max_patches];
     static renderer::WeaponDecal decals[wcore::max_decals];
     weapon_bubble_cache.rescope(weapon_effects::scope_changes());
+    // The own ship in the cockpit view (5.1.1, Run236 Flight C): its patches at core::own_cockpit_gain, and (Run240
+    // Flight G) its bubble the eye sphere, so both are known before the build. The own ship is resolve_own_ship's root
+    // node (cached per frame); the view is the chase camera's last active-control cockpit visit this frame or the
+    // previous one (cockpit+0x150, 1 = the cockpit; stage::CockpitClock stamps the frame its visit count last moved: a
+    // camera no longer visiting is stale, no dim), read only when a stage-owned record belongs to the own ship (in
+    // shields,hull mode whenever the own ship is known: the hull hits' elements below take the same view). Without the
+    // chase camera installed the view is unknown: nothing is dimmed and the own ship keeps its hull bubble.
+    weapon_cockpit_ = false;
+    const bool hull_mode = weapon_effects::hook_state().mode == wcore::mode_shields_hull && weapon_->caps().hull_enabled;
+    std::uint32_t own = 0;
+    {
+        const wcore::Ring& ring = weapon_effects::hook_state().ring;
+        bool staged = false;
+        for (unsigned i = 0; i < wcore::ring_capacity && !staged; ++i)
+            staged = ring.slots[i].sequence && (ring.slots[i].flags & wcore::flag_stage);
+        if (staged || hull_mode) {
+            resolve_own_ship();
+            own = std::uint32_t(own_ship_node_);
+            bool any_own = hull_mode && own;
+            for (unsigned i = 0; i < wcore::ring_capacity && own && !any_own; ++i)
+                any_own = ring.slots[i].sequence && (ring.slots[i].flags & wcore::flag_stage) && ring.slots[i].node == own;
+            if (any_own && chase_camera::installed()) {
+                const chase_camera::Stats cs = chase_camera::stats();
+                weapon_cockpit_ = weapon_cockpit_clock.cockpit(cs.frames, cs.view_mode, frame_);
+            }
+        }
+    }
+    tuning.own_node = own;
+    tuning.cockpit = weapon_cockpit_;
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
                                      camera, tuning, patches, wcore::max_patches, decals, wcore::max_decals,
                                      &weapon_bubble_cache);
-    // The own ship in the cockpit view (5.1.1, Run236 Flight C): its patches at core::own_cockpit_gain. The own ship is
-    // resolve_own_ship's root node (cached per frame); the view is the chase camera's last active-control cockpit visit
-    // this frame or the previous one (cockpit+0x150, 1 = the cockpit; stage::CockpitClock stamps the frame its visit
-    // count last moved: a camera no longer visiting is stale, no dim), read only when a patch belongs to the own ship.
-    // Without the chase camera installed the view is unknown and nothing is dimmed.
-    // Step 2 (shields,hull): the hull hits' elements are built below with the same own ship and view, so the view is
-    // read whenever the own ship is known in that mode.
-    weapon_cockpit_ = false;
-    const bool hull_mode = weapon_effects::hook_state().mode == wcore::mode_shields_hull && weapon_->caps().hull_enabled;
-    std::uint32_t own = 0;
-    if (n.patches || hull_mode) {
-        resolve_own_ship();
-        own = std::uint32_t(own_ship_node_);
-        bool any_own = hull_mode && own;
-        for (unsigned i = 0; i < n.patches && own && !any_own; ++i) any_own = patches[i].owner_node == own;
-        if (any_own && chase_camera::installed()) {
-            const chase_camera::Stats cs = chase_camera::stats();
-            weapon_cockpit_ = weapon_cockpit_clock.cockpit(cs.frames, cs.view_mode, frame_);
-        }
-        weapon_effects::stage::dim_own_cockpit(patches, n.patches, own, weapon_cockpit_);
-    }
+    weapon_effects::stage::dim_own_cockpit(patches, n.patches, own, weapon_cockpit_);
     f.patches = patches;
     f.patch_count = n.patches;
     f.decals = decals;
@@ -242,11 +254,13 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         hv.own_node = own;
         hv.cockpit = weapon_cockpit_;
         hv.budget_left = tuning.screen_budget - n.screens;
-        unsigned quads = 0, boxes = 0;
+        unsigned quads = 0, boxes = 0, fireballs = 0, rings = 0;
         hn = weapon_effects::stage::build_hull(weapon_effects::hook_state().ring, weapon_hull_state, &weapon_effects_read,
                                                hv, weapon_effects::stage::HullTuning{}, weapon_sprites,
                                                renderer::weapon_sprite_quads, weapon_glows, renderer::weapon_glow_boxes,
-                                               &quads, &boxes);
+                                               &quads, &boxes, weapon_fireballs, renderer::weapon_fireball_boxes,
+                                               &fireballs, weapon_rings, renderer::weapon_ring_quads, &rings,
+                                               &weapon_bubble_cache);
         // Present's keep past a record's lifetime: the largest floor a live record latched, or the floor a record
         // latched now would take, plus a frame.
         const std::uint32_t latched = std::uint32_t(hn.max_floor_ms), now_floor = wcore::look::min_frames * hv.step_ms;
@@ -255,15 +269,22 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         f.sprite_quads = quads;
         f.glows = weapon_glows;
         f.glow_boxes = boxes;
+        f.fireballs = weapon_fireballs;
+        f.fireball_boxes = fireballs;
+        f.fireball_octaves = hn.octaves;
+        f.rings = weapon_rings;
+        f.ring_quads = rings;
         // F8 (a capture frame): the frame's hull-hit figures, the step and the views the streaks used.
         if (capture_)
             log("weapon_hull_frame device=%llu frame=%llu now=%lu step_ms=%lu prev_view=%u own=%08lx cockpit=%u hits=%u "
                 "flashes=%u sparks=%u glows=%u embers=%u shed=%u orphans=%u retired=%u floored=%u capped=%u "
-                "owners_dropped=%u quads=%u rects=%u glow_screens=%.3f patch_screens=%.3f",
+                "owners_dropped=%u quads=%u rects=%u glow_screens=%.3f patch_screens=%.3f bursts=%u rings=%u "
+                "bursts_shed=%u octaves=%u burst_screens=%.3f ring_walks=%u ring_fallback=%u",
                 id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                 unsigned(hv.prev_valid), static_cast<unsigned long>(own), unsigned(hv.cockpit), hn.hits, hn.flashes,
                 hn.sparks, hn.glows, hn.embers, hn.shed, hn.orphans, hn.retired, hn.floored, hn.capped, hn.owners_dropped,
-                quads, boxes, double(hn.screens), double(n.screens));
+                quads, boxes, double(hn.screens), double(n.screens), hn.bursts, hn.rings, hn.bursts_shed, hn.octaves,
+                double(hn.burst_screens), hn.ring_walks, hn.ring_fallback);
     }
     weapon_retired_ += hn.retired;
     weapon_drops_[13] += hn.hits;
@@ -276,6 +297,10 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[20] += hn.floored;
     weapon_drops_[21] += hn.owners_dropped;
     weapon_drops_[22] += hn.capped;
+    weapon_drops_[23] += hn.bursts;
+    weapon_drops_[24] += hn.rings;
+    weapon_drops_[25] += hn.bursts_shed;
+    weapon_drops_[26] += hn.bursts && hn.octaves < wcore::look::fireball_octaves;
     weapon_retired_ += n.retired;
     weapon_drops_[0] += n.dropped;
     weapon_drops_[1] += n.cells_dropped;
@@ -344,28 +369,30 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
         const bool own = own_ship_node_ && p.owner_node == own_ship_node_;
         log("weapon_patch device=%llu frame=%llu index=%u owner=%08lx node=%08lx own=%u cockpit=%u gain=%.2f region=%u "
             "cells=%u lit=%u hits=%u radius_m=%.1f depth_min_r=%.3f depth_max_r=%.3f eye_r=%.3f eye_m=%.1f "
-            "view_z_m=%.1f cell_m=%.2f extent_m=%.2f bubble=%u bubble_c_m=%.1f,%.1f,%.1f bubble_e_m=%.1f,%.1f,%.1f",
+            "view_z_m=%.1f cell_m=%.2f extent_m=%.2f bubble=%u bubble_c_m=%.1f,%.1f,%.1f bubble_e_m=%.1f,%.1f,%.1f "
+            "eye_sphere=%u eye_r_m=%.1f",
             id_, frame_, i, static_cast<unsigned long>(p.owner), static_cast<unsigned long>(p.owner_node), unsigned(own),
             unsigned(weapon_cockpit_), double(own && weapon_cockpit_ ? wcore::own_cockpit_gain : 1.f),
             unsigned(int(p.seed)), p.cells, lit, p.hits,
             double(p.owner_radius / metre), double(lo / r), double(hi / r), double(eye / r), double(eye / metre),
             double(p.centre[2] / metre), double(p.cell / metre), double(p.extent / metre), unsigned(p.bubble),
             double(p.bubble_c[0] / metre), double(p.bubble_c[1] / metre), double(p.bubble_c[2] / metre),
-            double(p.bubble_e[0] / metre), double(p.bubble_e[1] / metre), double(p.bubble_e[2] / metre));
+            double(p.bubble_e[0] / metre), double(p.bubble_e[1] / metre), double(p.bubble_e[2] / metre),
+            unsigned(p.eye_sphere), double(p.eye_sphere ? p.bubble_e[0] / metre : 0.f));
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[24]) noexcept {
+                                             bool* drew, unsigned drops[28]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 23; ++i) {
+    for (unsigned i = 0; i < 27; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }
-    drops[23] = weapon_ && weapon_->caps().hull_enabled; // the hull latch (Present's HookState::hull_ready)
+    drops[27] = weapon_ && weapon_->caps().hull_enabled; // the hull latch (Present's HookState::hull_ready)
     weapon_patches_ = weapon_decals_ = weapon_retired_ = 0;
     weapon_stage_us_ = 0.f;
     weapon_drew_ = false;

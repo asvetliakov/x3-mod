@@ -151,6 +151,7 @@ struct Counts {
     unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their bubble; of them on the fallback sphere
     BubbleStats bubble;                        // the frame's walks, failures, held retries, deferred walks, clamps
     float screens = 0.f;                       // the drawn patches' screens (the shared budget's patch share, look 2.11)
+    unsigned eye_spheres = 0;                  // owners drawn on the eye sphere (the own ship in the cockpit)
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
 constexpr unsigned region_draws = 8;
@@ -166,6 +167,9 @@ struct Tuning {
     float screen_budget = core::screen_budget;    // screens of boxes per frame
     float near_z = 1.f;                           // the projection's near view z (the box area's clip)
     std::uintptr_t body_cache_root = core::layout::body_cache_root; // the hull walk's body cache slot (the fixture's own)
+    // The own ship (its root node; 0 unknown) and the cockpit view: its bubble is the eye sphere (core::eye_sphere_min_m).
+    std::uint32_t own_node = 0;
+    bool cockpit = false;
 };
 inline float metres_to_view(float m) noexcept {
     return m * core::engine_units_per_metre * core::world_scale;
@@ -643,14 +647,31 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
             const float owner_radius = float(double(s.data.radius) * double(core::world_scale));
             if (newest.tier_source != core::tier_by_station) { // the ship bubble
                 bool fallback = false;
-                const Bubble b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle,
-                                              s.data.radius, now, &walks_left, &n.bubble, &fallback);
+                Bubble b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle,
+                                        s.data.radius, now, &walks_left, &n.bubble, &fallback);
                 ++n.bubbles;
                 n.bubble_fallback += fallback;
+                // The own ship in the cockpit (Run240 Flight G): the sphere about the eye, of the bubble's smallest
+                // half-extent (>= eye_sphere_min_m); the eye in the owner frame through its axes in view.
+                const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
+                if (eye) {
+                    float r = b.e[0] < b.e[1] ? b.e[0] : b.e[1];
+                    r = r < b.e[2] ? r : b.e[2];
+                    const float r_min = metres_to_view(core::eye_sphere_min_m);
+                    r = r > r_min ? r : r_min;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        const float* L = frame + 3 * k;
+                        const float l2 = dot3(L, L);
+                        b.c[k] = l2 > 1e-12f ? -dot3(centre, L) / l2 : 0.f;
+                        b.e[k] = r;
+                    }
+                    ++n.eye_spheres;
+                }
                 const unsigned first = n.patches;
                 fill_bubble(patches, patch_cap, &regions_left, centre, frame, tier, b, plan.points, plan.ages, s.count,
                             colour, t, &n);
                 for (unsigned d = first; d < n.patches; ++d) {
+                    patches[d].eye_sphere = eye;
                     patches[d].newest_s = plan.ages[0];
                     patches[d].owner = s.owner;
                     patches[d].owner_node = newest.node;

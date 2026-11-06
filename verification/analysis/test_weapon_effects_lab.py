@@ -325,8 +325,9 @@ class GeneratorTest(unittest.TestCase):
 
     def test_preset_problems(self):
         """weapon-look.md 6: --check fails when a preset names an id missing from its view or a family has no preset."""
-        data = {'mayhem3': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_PPC'}, {'id': 'SS_BULLET_RL'}]},
-                'stock_ap': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_MASS'}]}}
+        data = {'mayhem3': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_PPC'}, {'id': 'SS_BULLET_RL'},
+                                        {'id': 'SS_BULLET_HEPT'}]},
+                'stock_ap': {'weapons': [{'id': 'SS_BULLET_IRE'}, {'id': 'SS_BULLET_MASS'}, {'id': 'SS_BULLET_FLAK_ALPHA'}]}}
         self.assertEqual(gen.preset_problems(gen.PRESETS, data), [])
         hull_only = [pr for pr in gen.PRESETS if pr['family'] == 'hull']
         self.assertIn('family shield has no preset', gen.preset_problems(hull_only, data))
@@ -339,7 +340,9 @@ class GeneratorTest(unittest.TestCase):
                          {'hull/' + n for n in ('fighter-ire-side', 'fighter-ire-chase-nose', 'fighter-ire-cockpit-own',
                                                 'corvette-ppc-flank', 'capital-ppc-flank-300m', 'capital-close-12hz',
                                                 'station-ppc-1km', 'mining-asteroid-60m', 'missile-hit-corvette',
-                                                'seta6-12hz', 'far-2km', 'drained', 'repair-corvette', 'stock-vs-mayhem')})
+                                                'seta6-12hz', 'far-2km', 'drained', 'repair-corvette', 'stock-vs-mayhem',
+                                                # the heavy families (2026-11-06)
+                                                'heavy-plasma-corvette', 'heavy-flak-fighter', 'heavy-missile-hit')})
 
     def test_main_check_against_inputs(self):
         tmp = Path(tempfile.mkdtemp())
@@ -438,7 +441,7 @@ class PageTest(unittest.TestCase):
             Path(f.name).unlink()
 
     CONTROLS = r'''
-const W = 480, H = 270; function fmt(v) { return v; } function assets() { return null; }
+const OW = 720, OH = 405, W = OW, H = OH; function fmt(v) { return v; } function assets() { return null; }
 function drawBackground() {} function label() {}
 const vals = {c_cell_fighter: HEADER.cell_m[0], c_cell_corvette: HEADER.cell_m[1], c_cell_capital: HEADER.cell_m[2],
   c_rings_fighter: HEADER.rings[0], c_rings_corvette: HEADER.rings[1], c_rings_capital: HEADER.rings[2],
@@ -535,9 +538,14 @@ console.log(JSON.stringify(out));
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_hull_presets_render_their_elements(self):
-        """weapon-look.md 3.1 and 6: every hull preset of the page draws through renderHull: a flash and sparks at 40 ms
-        on the plain cases, the repair laser glow and ember without sparks or flash, the asteroid sparks without a flash,
-        the missile twice the sparks of the same calibre; the hull lifetime sets the loop."""
+        """weapon-look.md 3.1 and 6: every hull preset of the page draws through renderHull, and every element it should
+        have deposits light on the canvas (its summed radiance and its lit pixels, not its quad count: the sparks drew
+        zero light under a 1 px streak until 2026-11-06 while their quads were counted) at 40 ms of wall time: the
+        flash, the burst, the sparks, the glow and the ember on the plain cases, the shock ring on the heavy ones (a
+        missile source, flak, k >= heavy_k) and nowhere else (the chase nose's sparks at 200 ms, as the fixture's chase
+        gate); the repair laser glow and ember only, the tug its glow,
+        the asteroid sparks, glow and ember (no flash, no burst); the spark count is the stage's hashed law (the
+        missile's from its doubled n); the hull lifetime sets the loop; the canvas is 720 x 405."""
         presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
         probe = self.ours_script() + self.CONTROLS + r"""
 const checks = {};
@@ -548,33 +556,119 @@ for (const p of PRESETS.filter(x => x.family === 'hull')) {
   Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
                        c_variant: p.variant, c_k: p.k, c_shield: p.shield});
   checks.c_own = p.own; checks.c_cockpit = p.cockpit;
-  const data = new Uint8ClampedArray(W * H * 4);
+  const data = new Uint8ClampedArray(OW * OH * 4);
   const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data}; }, putImageData() {}},
                weapon: {colour: [50, 255, 50]}};
   renderOurs(rec, 40);
   out[p.id] = rec.hullStats;
+  if (p.camera === 'chase') { // the nose hit seen from behind: its sparks clear the outline later (the fixture's 200 ms)
+    const later = {slot: 'impact', ctx: rec.ctx, weapon: rec.weapon};
+    renderOurs(later, 200);
+    out[p.id].light.sparks = later.hullStats.light.sparks;
+    out[p.id].lit_px.sparks = later.hullStats.lit_px.sparks;
+  }
+  const h = hullControls();
+  out[p.id].want_sparks = p.hps === 0 ? sparkCount(7000, p.variant === 'tug' ? 0.1 : p.k, h) : -1;
 }
 vals.c_seta = 1; out.loop = ourLoopMs();
+out.canvas = [OW, OH];
 console.log(JSON.stringify(out));
 """.replace('__PRESETS__', json.dumps(presets))
         js = self.run_node(probe)
+        self.assertEqual(js.pop('canvas'), [720, 405])
+        self.assertEqual(js.pop('loop'), 1441)                  # core::hull_lifetime_ms at SETA 1
+        elements = ('flash', 'burst', 'sparks', 'glow', 'ember', 'ring')
+        by_id = {p['id']: p for p in presets}
+        heavy_k = gen.namespace_constants(gen.HEADER.read_text())['hull']['heavy_k']
         for pid, st in js.items():
-            if pid == 'loop':
-                continue
-            self.assertGreater(st['lit'], 0, pid)
-            if pid == 'hull/repair-corvette':
-                self.assertEqual((st['sparks'], st['flashes']), (0, 0), pid)
-                self.assertGreater(st['glows'] + st['embers'], 0, pid)
-            elif pid == 'hull/mining-asteroid-60m':
-                self.assertEqual(st['flashes'], 0, pid)
-                self.assertGreater(st['sparks'], 0, pid)
+            p = by_id[pid]
+            variant = p['variant']
+            heavy = variant in ('missile', 'flak') or (variant not in ('repair', 'tug', 'asteroid') and p['k'] >= heavy_k)
+            if variant == 'repair':
+                want = {'glow', 'ember'}
+            elif variant == 'tug':
+                want = {'glow'}
+            elif variant == 'asteroid':
+                want = {'sparks', 'glow', 'ember'}
             else:
-                self.assertGreater(st['flashes'], 0, pid)
-                self.assertGreater(st['sparks'], 0, pid)
-        n = lambda k: round(8 + 16 * k)   # noqa: E731 (hull::spark_n0 + spark_nk k)
-        self.assertEqual(js['hull/missile-hit-corvette']['sparks'], 2 * n(0.5))
-        self.assertEqual(js['hull/fighter-ire-side']['sparks'], n(0.33))
-        self.assertEqual(js['loop'], 1441)                      # core::hull_lifetime_ms at SETA 1
+                want = {'flash', 'burst', 'sparks', 'glow', 'ember'} | ({'ring'} if heavy else set())
+            # Out of view by the preset's geometry, neither required nor refused: the cockpit preset's first hit lies
+            # 4.7 m from the eye below the canvas (its flash, sparks and ember; the burst and glow reach in), the chase
+            # nose's ember sits inside the hull's outline seen from behind.
+            unseen = {'hull/fighter-ire-cockpit-own': {'flash', 'sparks', 'ember'},
+                      'hull/fighter-ire-chase-nose': {'ember'}}.get(pid, set())
+            for el in elements:
+                lit = (st['light'][el], st['lit_px'][el])
+                if el in unseen:
+                    continue
+                if el in want:
+                    self.assertGreater(lit[0], 0, (pid, el))
+                    self.assertGreater(lit[1], 0, (pid, el))
+                else:
+                    self.assertEqual(lit, (0, 0), (pid, el))
+            self.assertGreater(st['lit'], 0, pid)
+            if st['want_sparks'] >= 0:
+                self.assertEqual(st['sparks'], st['want_sparks'], pid)
+        n = lambda k: 8 + 16 * k   # noqa: E731 (hull::spark_n0 + spark_nk k), x (1 +- spark_count_spread)
+        self.assertTrue(0.6 * 2 * n(0.5) - 1 <= js['hull/missile-hit-corvette']['sparks'] <= 1.4 * 2 * n(0.5) + 1)
+        self.assertTrue(0.6 * n(0.33) - 1 <= js['hull/fighter-ire-side']['sparks'] <= 1.4 * n(0.33) + 1)
+        for pid in ('hull/heavy-plasma-corvette', 'hull/heavy-flak-fighter', 'hull/heavy-missile-hit'):
+            self.assertIn(pid, js)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_spark_hashes_match_the_stage(self):
+        """The lab's sparks are the stage's: mix32, element_hash, spark_count, spark_factors and pair_direction in 32-bit
+        arithmetic give the C++ values (a host build of weapon_effects_hull.h prints them for three sequences)."""
+        probe = self.ours_script() + self.CONTROLS + r"""
+const out = [];
+for (const seq of [1, 438, 7000]) {
+  const h = {variant: 'none', spark_x: 1};
+  const f = sparkFactors(seq, 3), d = pairDirection(seq, 2);
+  out.push([elementHash(seq, 7), sparkCount(seq, 0.5, h), +f.speed_x.toFixed(5), +f.life_x.toFixed(5), +f.len_x.toFixed(5),
+            +f.width_x.toFixed(5), f.curl ? 1 : 0, f.curl_hash, ...d.map(v => +v.toFixed(5))]);
+}
+console.log(JSON.stringify(out));
+"""
+        js = self.run_node(probe)
+        cxx = shutil.which('g++') or shutil.which('clang++')
+        if not cxx:
+            self.skipTest('no host C++ compiler')
+        src = r"""
+#include "weapon_effects_hull.h"
+#include <cstdio>
+namespace st = x3m::weapon_effects::stage;
+namespace core = x3m::weapon_effects::core;
+int main() {
+    for (unsigned seq : {1u, 438u, 7000u}) {
+        core::Event e{};
+        e.sequence = seq;
+        e.table = core::table_bullets;
+        const st::SparkFactors f = st::spark_factors(seq, 3);
+        float d[3];
+        st::pair_direction(seq, 2, d);
+        std::printf("%u %u %.5f %.5f %.5f %.5f %u %u %.5f %.5f %.5f\n", st::element_hash(seq, 7),
+                    st::spark_count(e, 0.5f, st::HullTuning{}), double(f.speed_x), double(f.life_x), double(f.len_x),
+                    double(f.width_x), unsigned(f.curl), f.curl_hash, double(d[0]), double(d[1]), double(d[2]));
+    }
+}
+"""
+        import test_weapon_effects_core as core_test
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, 'd3d9.h').write_text(core_test.D3D9_STUB)
+            Path(tmp, 'p.cpp').write_text(src)
+            exe = Path(tmp, 'p')
+            subprocess.run([cxx, '-std=c++17', '-O2', '-msse2', '-I', tmp, '-I', str(gen.REPO / 'src/proxy'),
+                            str(Path(tmp, 'p.cpp')), '-o', str(exe)], check=True)
+            rows = [line.split() for line in subprocess.run([str(exe)], capture_output=True, text=True,
+                                                             check=True).stdout.splitlines()]
+        for got, want in zip(js, rows):
+            self.assertEqual(got[0], int(want[0]))
+            self.assertEqual(got[1], int(want[1]))
+            for a, b in zip(got[2:6], want[2:6]):
+                self.assertAlmostEqual(a, float(b), places=4)
+            self.assertEqual((got[6], got[7]), (int(want[6]), int(want[7])))
+            for a, b in zip(got[8:], want[8:]):
+                self.assertAlmostEqual(a, float(b), places=4)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_bubble_presets_near_far_and_chase(self):
@@ -606,7 +700,8 @@ console.log(JSON.stringify(out));
         self.assertAlmostEqual(ch['scale'], 1.15)
         self.assertAlmostEqual(ch['gain'], 0.6)
         self.assertGreater(ch['far'], 50)                      # the nose hit seen from behind: the far side
-        self.assertEqual(ch['near'], 0)                        # its near side outside the footprint
+        # its near side outside the footprint (at 720 x 405 a pixel or two on the limb, where the two roots meet)
+        self.assertLessEqual(ch['near'], 0.05 * ch['far'])
         self.assertIn(0, ch['seeds'])                          # +z at the nose
         self.assertNotIn(1, ch['seeds'])                       # the -z lattice's draw dropped (the tail: outside the window)
         self.assertEqual(js['chase_no_far']['far'], 0)

@@ -33,6 +33,7 @@ struct WeaponEffectsCaps {
     const char* reason = "not_attached";
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
     unsigned sprite_vs_slots = 0, sprite_ps_slots = 0, glow_vs_slots = 0, glow_ps_slots = 0; // step 2 (hull hit)
+    unsigned fireball_vs_slots = 0, fireball_ps_slots = 0; // the fireball impostor (the hull hit's burst)
     // Step 2, requested at attach (shields,hull): the hull programs and batch limits; false keeps the shield effect.
     bool hull_enabled = false;
     const char* hull_reason = "not_requested";
@@ -49,7 +50,8 @@ struct WeaponEffectsCaps {
 // - A streak (a spark) carries its two closed-form ends and the vertex program expands it (weapon_sprite_vs.hlsl;
 //   the CPU twin stage::streak_corners): a = the head (this frame's position, view space) and its radiance, b = the
 //   tail (the previous frame's position through the previous frame's view) and its width (view units), c = the corner
-//   (u -1 tail / +1 head, v -1 / +1 across) and the radiance a diluted streak never drops below.
+//   (u -1 tail / +1 head, x the spark's rest-length factor: its sign the end, its magnitude the factor; v -1 / +1
+//   across) and the radiance a diluted streak never drops below.
 constexpr unsigned weapon_sprite_quads = 2304; // 2048 sparks (look 2.11) + one flash per live hull hit (the ring's 256)
 struct WeaponSpriteVertex {
     float a[4];
@@ -68,6 +70,25 @@ struct WeaponGlowVertex {
     float light[4];   // the light's view-space centre, R
     float colour[3];  // linear radiance
 };
+// The fireball impostor (look 2.14; the hull hit's hot-gas burst, step 3's explosions at full size): one quad per
+// fireball, the sphere's exact screen rectangle as the glow's (the corners in view space at the sphere's front, the whole
+// screen when it reaches the near plane), each corner carrying the sphere (view-space centre, radius) and its look: the
+// heat T of the body at this age, its radiance E, the noise's outward advection (cells) and its seed. The pixel program
+// (weapon_fireball_ps.hlsl) intersects the pixel's ray with the sphere, integrates the radial density along the chord
+// up to the lane (the part inside a hull is not drawn), modulates it by WeaponEffectsFrame::fireball_octaves octaves of
+// advected value noise and shades it on the heat ramp. Drawn through the sprite batch's quad index list.
+constexpr unsigned weapon_fireball_boxes = 256; // a burst per live hull hit (the ring's 256)
+static_assert(weapon_fireball_boxes <= weapon_sprite_quads, "the fireballs share the sprite quads' index list");
+struct WeaponFireballVertex {
+    float corner[3];
+    float sphere[4];  // view-space centre, radius
+    float look[4];    // heat T, radiance E, advection (noise cells), seed
+};
+// The heavy shock rings (look 3.1): sprite-batch quads of a third kind, expanded by the stage as a flash is (the colour's
+// alpha 255) and marked c[0] = 2: a = the corner of the ring plane's square in clip space (perspective-correct u, v),
+// b = (u, v, radiance, band as a fraction of the radius), c[1] the soft radius (view units) of the lane test. Drawn
+// with the sprite programs after the sprites.
+constexpr unsigned weapon_ring_quads = 64;
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
 // frame perpendicular to the face's axis), their box and the face's newest hits still in their ring. Plane and axis
 // are view units in the owner's frame: view = centre + view_u q.x + view_v q.y + view_a depth; the pixels light the
@@ -126,6 +147,7 @@ struct WeaponPatch {
     // bubble_e (owner frame, view units; weapon_bubble_ps.hlsl, its near and far side, the lane only occluding); 0 the
     // hull decal (weapon_shell_ps.hlsl, the stations). The box then bounds the bubble's sheet over the cells.
     std::uint8_t bubble = 0;
+    std::uint8_t eye_sphere = 0; // the bubble is the own ship's eye sphere in the cockpit (diagnostics)
     float bubble_c[3]{}, bubble_e[3]{1.f, 1.f, 1.f};
 };
 // A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad covering the hit's footprint
@@ -164,13 +186,20 @@ struct WeaponEffectsFrame {
     unsigned sprite_quads = 0;
     const WeaponGlowVertex* glows = nullptr;
     unsigned glow_boxes = 0;
+    // The hull hit's bursts (fireball impostors) and heavy rings (sprite quads), four vertices each.
+    const WeaponFireballVertex* fireballs = nullptr;
+    unsigned fireball_boxes = 0;
+    unsigned fireball_octaves = 2;       // 1 or 2 (the budget's LOD: core::look::fireball_octaves, 1 past the budget)
+    const WeaponSpriteVertex* rings = nullptr;
+    unsigned ring_quads = 0;
     WeaponLook look = default_weapon_look();
 };
-enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites };
+enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites, Fireballs,
+                                          Rings };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
-    unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0;
+    unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0, fireball_boxes = 0, ring_quads = 0;
     bool drew = false;
 };
 class WeaponEffectsPass {
@@ -184,7 +213,7 @@ public:
     ~WeaponEffectsPass();
     WeaponEffectsPass(const WeaponEffectsPass&) = delete;
     WeaponEffectsPass& operator=(const WeaponEffectsPass&) = delete;
-    // hull (shields,hull): also the sprite batch and the glow (their programs and the batch limits); their refusal
+    // hull (shields,hull): also the sprite batch, the glow and the fireball (their programs and the batch limits); their refusal
     // leaves the pass enabled for the patches with caps().hull_enabled false.
     HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format,
                    bool hull = false) noexcept;
@@ -233,6 +262,9 @@ private:
     IDirect3DPixelShader9* glow_ps_ = nullptr;
     IDirect3DVertexDeclaration9* sprite_declaration_ = nullptr;
     IDirect3DVertexDeclaration9* glow_declaration_ = nullptr;
+    IDirect3DVertexShader9* fireball_vs_ = nullptr;
+    IDirect3DPixelShader9* fireball_ps_ = nullptr;
+    IDirect3DVertexDeclaration9* fireball_declaration_ = nullptr;
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
     std::uint16_t sprite_indices_[weapon_sprite_quads * 6]{}; // two triangles per quad (attach time; the glows' too)

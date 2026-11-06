@@ -37,7 +37,7 @@ struct Period {
     unsigned faces_culled = 0, area_dropped = 0, bubbles = 0, bubble_fallback = 0;
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     unsigned hull_hits = 0, sparks = 0, glows = 0, embers = 0, flashes = 0, budget_shed = 0, orphans = 0, floored = 0;
-    unsigned owners_dropped = 0, capped = 0;
+    unsigned owners_dropped = 0, capped = 0, bursts = 0, rings = 0, bursts_shed = 0, burst_lod = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
@@ -427,6 +427,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.floored += stage.floored;
     period_.owners_dropped += stage.owners_dropped;
     period_.capped += stage.capped;
+    period_.bursts += stage.bursts;
+    period_.rings += stage.rings;
+    period_.bursts_shed += stage.bursts_shed;
+    period_.burst_lod += stage.burst_lod;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -497,7 +501,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
         "bubble_held=%u bubble_deferred=%u bubble_clamped=%u hull_staged=%lu hull_hits=%u flashes=%u sparks=%u glows=%u "
         "embers=%u budget_shed=%u orphans=%u floored=%u owners_dropped=%u capped=%u life_floor_ms=%lu "
-        "table_hull_key_missing=%u",
+        "table_hull_key_missing=%u bursts=%u rings=%u bursts_shed=%u burst_lod=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -518,7 +522,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.bubble_clamped, static_cast<unsigned long>(period_.hull_staged), period_.hull_hits, period_.flashes,
         period_.sparks, period_.glows, period_.embers, period_.budget_shed, period_.orphans, period_.floored,
         period_.owners_dropped, period_.capped, static_cast<unsigned long>(s.life_floor_ms),
-        unsigned(table_hull_key_missing_));
+        unsigned(table_hull_key_missing_), period_.bursts, period_.rings, period_.bursts_shed, period_.burst_lod);
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_retired_ = r.retired;
