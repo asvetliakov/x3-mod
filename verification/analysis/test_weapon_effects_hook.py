@@ -49,7 +49,10 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'hull_mode_shield_hit_staged', 'hull_hit_forwards_when_not_owned', 'hull_hit_dying_object_forwards',
                 'drained_hull_hit_staged', 'hull_hit_stage_and_forward', 'hull_missile_source_staged',
                 'hull_asteroid_variant', 'hull_repair_tug_variant_by_override', 'hull_present_keeps_floor_then_releases',
-                'hull_hit_forwards_without_hull_programs', 'overflow_census_first_then_oldest_staged'}
+                'hull_hit_forwards_without_hull_programs', 'overflow_census_first_then_oldest_staged',
+                # the 1024-record ring (2026-11-07): the hidden owner's records first, the handler's cost when full
+                'overflow_1024_hidden_owner_first_then_oldest', 'event_cost_50_full_ring_1024',
+                'overflow_counts_evicted_visible'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -85,6 +88,17 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         cost = self.record['event_cost']
         self.assertEqual((cost['events'], cost['shields']), (50, 6))
         self.assertLessEqual(cost['median_us'], 30.0)                          # the 30 us per 50 events target
+        # the 1024-record ring: through the handler the stamped-hidden owner's 16 records go first, then the oldest
+        # drawn record; 50 events on the full ring within the fixture's bound
+        over = self.record['overflow']
+        self.assertEqual((over['capacity'], over['stamped_hidden'], over['first_evicts_oldest_hidden'],
+                          over['hidden_after_16'], over['drawn_kept_after_16'], over['evicted_after'], over['overflow'],
+                          over['evicted_visible']),
+                         (1024, 16, 1, 0, 1, 'oldest_drawn', 17, 1))
+        full = self.record['event_cost_full']
+        self.assertEqual((full['events'], full['capacity']), (50, 1024))
+        self.assertLessEqual(full['median_us'], full['target_us'])
+        self.assertEqual(full['target_us'], 150)
 
     def test_drained_shield_is_a_hull_hit(self):
         # Run237 Flight D: an absorbed hit below 0.5 % post-hit shield forwards as a hull hit; 400 / 65535 and an
@@ -323,7 +337,17 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'hull_missile_debris_two_sets_and_ring', 'hull_repair_relit_per_tick',
                      'hull_asteroid_no_glow_no_scorch_dim_puff', 'hull_compose_no_pop_per_class',
                      'hull_min_frames_under_seta6_per_class', 'hull_class_faults_reported_and_recover',
-                     'hull_cpu_64_hits_mixed', 'hull_budget_capital_close_within_8_screens') + tuple(
+                     'hull_cpu_64_hits_mixed', 'hull_budget_capital_close_within_8_screens',
+                     # the 1024-record ring (2026-11-07): the stamp, the CPU bounds, the shed order past 256 hits
+                     'hull_ring_1024_visible_64_stamp', 'hull_ring_1024_visible_256_stamp', 'hull_cpu_ring_1024_visible_64',
+                     'hull_cpu_ring_1024_visible_256', 'hull_ring_1024_visible_256_shed_within_budget',
+                     'hull_visible_first_keeps_all_on_screen', 'hull_reach_edge_sparks_unchanged',
+                     'hull_reach_beyond_margin_builds_nothing',
+                     # review 2026-11-07: the heavy class's sweep with its streak, the moving owner's spark sphere, each
+                     # owner past a cap read once a frame for both stages
+                     'hull_reach_heavy_edge_unchanged', 'hull_reach_heavy_beyond_margin_builds_nothing',
+                     'hull_reach_moving_owner_sparks_kept', 'stage_owners_512_located_once',
+                     'stage_owners_1024_located_once') + tuple(
                          'hull_budget_20_hits_5120_' + c for c in ('energy', 'ballistic', 'plasma', 'heavy', 'ion', 'beam',
                                                                    'missile', 'asteroid')):
             self.assertIn(gate, names)
@@ -350,6 +374,9 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertEqual(x['sparks'], x['want'])
         cpu = {x['case']: x for x in m['hull_cpu']}
         self.assertLessEqual(cpu['capital_64_hits']['best_us'], 40.0)    # 30 before the burst and the ring (2026-11-06)
+        for case, hidden in (('ring_1024_visible_64', 960), ('ring_1024_visible_256', 768)):  # the full 1024-record ring
+            self.assertEqual((cpu[case]['live'], cpu[case]['hidden']), (1024, hidden), case)
+            self.assertLessEqual(cpu[case]['best_us'], cpu[case]['target_us'], case)
         timing = {(x['width'], x['case']): x for x in m['hull_timing'] if 'width' in x}
         self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 70.0)  # 50 before the bursts
         # the glow's budget weight (core::look::budget_weight_glow) against its measured full-screen cost / 177.5 us

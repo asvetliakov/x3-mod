@@ -135,7 +135,7 @@ struct Event {
     std::int32_t radius;                     // obj+0xa4 of the owner (engine units)
     std::uint32_t sequence;                  // monotonic, 0 = free slot
 };
-static_assert(sizeof(Event) == 64, "the event record is 64 bytes (16 KB ring)");
+static_assert(sizeof(Event) == 64, "the event record is 64 bytes (64 KB ring at 1024 records)");
 inline unsigned hull_class_of(const Event& e) noexcept {
     const unsigned c = unsigned(e.detail) >> detail_class_shift;
     return c < hull_class_count ? c : unsigned(class_energy);
@@ -305,18 +305,28 @@ inline void rotate_in(const std::int32_t* m, const std::int32_t* v, std::int32_t
 }
 
 // ---------------------------------------------------------------------------------------------- the ring (3.1)
-constexpr unsigned ring_capacity = 256;
+// 1024 records (64 KB; 256 until 2026-11-07): a 60-80 ship battle's live hits. The free list's u16 indices hold it.
+constexpr unsigned ring_capacity = 1024;
+static_assert(ring_capacity <= 0x10000u, "the free list holds u16 slot indices");
 struct Ring {
     Event slots[ring_capacity];
     std::uint16_t free_list[ring_capacity];
+    // Per slot, the stage's verdict on the record's owner in its last frame (ring_stamp_hidden): hidden_undrawn (not
+    // drawn: past its owner cap, off screen, beyond the far plane; the overflow order, ring_victim) and hidden_off_screen
+    // (its sphere outside the view volume, whether kept or not; the stages' visible-first owner order). 0 for a record
+    // acquired since that frame (not judged yet): a fresh hit keeps its afterglow, a new owner counts as visible.
+    std::uint8_t hidden[ring_capacity];
     unsigned free_count = 0;
     std::uint32_t next_sequence = 1;
-    std::uint32_t overflow = 0, retired = 0;
+    // overflow: records evicted; evicted_visible: of them records not stamped hidden_undrawn (drawn, or not judged yet)
+    std::uint32_t overflow = 0, retired = 0, evicted_visible = 0;
 };
+constexpr std::uint8_t hidden_undrawn = 1, hidden_off_screen = 2;
 inline void ring_clear(Ring& r) noexcept {
     for (unsigned i = 0; i < ring_capacity; ++i) {
         r.slots[i].sequence = 0;
         r.free_list[i] = std::uint16_t(ring_capacity - 1 - i);
+        r.hidden[i] = 0;
     }
     r.free_count = ring_capacity;
 }
@@ -325,28 +335,28 @@ inline void ring_release(Ring& r, unsigned i) noexcept {
     r.slots[i].sequence = 0;
     r.free_list[r.free_count++] = std::uint16_t(i);
 }
-// Overflow order (only when full): the oldest census-only record (one the stage does not draw: its native spawn ran),
-// else the oldest stage-owned record of any role (its native spawn was skipped, so evicting it loses the effect: a
-// staged hull hit is no cheaper than a staged shield hit).
+// Overflow order (only when full), four classes, the oldest (lowest sequence) first within each: census-only records
+// (the stage does not draw them: their native spawn ran) whose owner the stage did not draw in its last frame, the
+// other census-only records, stage-owned records of any role (their native spawn was skipped, so evicting one loses
+// the effect: a staged hull hit is no cheaper than a staged shield hit) whose owner was not drawn, the other
+// stage-owned records. "Not drawn" is the stage's per-slot stamp (Ring::hidden & hidden_undrawn); the handler reads it
+// with integer compares in the one scan it already made, and calls nothing.
 inline unsigned ring_victim(const Ring& r) noexcept {
-    unsigned best = ring_capacity, any = ring_capacity;
-    std::uint32_t best_seq = 0xffffffffu, any_seq = 0xffffffffu;
+    unsigned best = ring_capacity, best_rank = 4;
+    std::uint32_t best_seq = 0xffffffffu;
     for (unsigned i = 0; i < ring_capacity; ++i) {
         const Event& e = r.slots[i];
         if (!e.sequence) continue;
-        if (e.sequence < any_seq) {
-            any_seq = e.sequence;
-            any = i;
-        }
-        const bool cheap = !(e.flags & flag_stage);
-        if (cheap && e.sequence < best_seq) {
+        const unsigned rank = ((e.flags & flag_stage) ? 2u : 0u) | ((r.hidden[i] & hidden_undrawn) ? 0u : 1u);
+        if (rank < best_rank || (rank == best_rank && e.sequence < best_seq)) {
+            best_rank = rank;
             best_seq = e.sequence;
             best = i;
         }
     }
-    return best < ring_capacity ? best : any;
+    return best;
 }
-// A slot for a new event (sequence assigned); never fails on a cleared ring.
+// A slot for a new event (sequence assigned, not hidden: not judged yet); never fails on a cleared ring.
 inline Event* ring_acquire(Ring& r) noexcept {
     unsigned i;
     if (r.free_count)
@@ -355,10 +365,12 @@ inline Event* ring_acquire(Ring& r) noexcept {
         i = ring_victim(r);
         if (i >= ring_capacity) return nullptr;
         ++r.overflow;
+        if (!(r.hidden[i] & hidden_undrawn)) ++r.evicted_visible; // the flight's row: evictions that cost a drawn effect
     }
     Event* e = &r.slots[i];
     e->sequence = r.next_sequence++;
     if (!r.next_sequence) r.next_sequence = 1;
+    r.hidden[i] = 0;
     return e;
 }
 // Whether a stage-owned (flag_stage) record is live: the stage's callback is set only then.
@@ -381,6 +393,87 @@ inline unsigned ring_retire_owner(Ring& r, std::uint32_t owner, bool keep_staged
         }
     r.retired += n;
     return n;
+}
+// The stages' verdicts on the owners of one frame (stage::build and stage::build_hull add theirs): drawn (read, kept
+// within the owner cap and in reach: the shield stage's owner_in_view sphere, the hull stage's reach sphere) and in view
+// (every owner of a candidate record whose sphere reaches the view volume, kept or not; an owner past a cap is located
+// through stage::locate_owner). far_z is the caller's input (the projection's far plane, view units; 0: none), kept
+// far_margin beyond it (the plane recovered from a float projection is about 2 % off). ring_stamp_hidden turns the
+// verdicts into Ring::hidden. The located table: the owners read this frame (key owner, node, handle; position, radius
+// and the read's status), so both stages read an owner at most once per frame however many of its records they visit;
+// its entries carry the frame's generation, so reset clears nothing.
+struct VisibleOwners {
+    static constexpr unsigned capacity = 64;                     // drawn: >= max_owners + hull::max_owners (asserted)
+    static constexpr unsigned view_capacity = 2 * ring_capacity; // in view: every candidate of both stages
+    static constexpr float far_margin = 1.05f;
+    static constexpr unsigned located_bits = 11, located_size = 1u << located_bits; // at most ring_capacity keys
+    struct Located {
+        std::uint32_t owner = 0, node = 0, handle = 0, generation = 0; // generation 0: never current
+        std::int32_t pos[3]{}, radius = 0;
+        std::uint8_t status = 0; // stage::OwnerStatus
+    };
+    float far_z = 0.f;
+    unsigned count = 0, in_view_count = 0;
+    unsigned located_count = 0, located_reads = 0; // this frame: owners in the table, those read from memory
+    std::uint32_t generation = 1;
+    std::uint32_t owner[capacity];
+    std::uint32_t in_view[view_capacity];
+    Located located[located_size];
+    void add(std::uint32_t o) noexcept { // drawn (once)
+        for (unsigned k = 0; k < count; ++k)
+            if (owner[k] == o) return;
+        if (count < capacity) owner[count++] = o;
+    }
+    void add_in_view(std::uint32_t o) noexcept { // repeats allowed (both stages may add an owner)
+        if (in_view_count < view_capacity) in_view[in_view_count++] = o;
+    }
+    void reset(float far_plane) noexcept {
+        far_z = far_plane > 0.f ? far_plane * far_margin : 0.f;
+        count = in_view_count = located_count = located_reads = 0;
+        if (!++generation) { // the wrap (once in 2^32 frames): no entry may carry the new generation
+            for (auto& l : located) l.generation = 0;
+            generation = 1;
+        }
+    }
+    // The entry of (o, node, handle): its own this frame, or the free one it would take; nullptr when the table is full.
+    Located* find(std::uint32_t o, std::uint32_t node, std::uint32_t handle) noexcept {
+        unsigned h = unsigned(((o ^ (node * 0x85ebca6bu)) * 0x9e3779b1u) >> (32u - located_bits));
+        for (unsigned probe = 0; probe < located_size; ++probe, h = (h + 1u) & (located_size - 1u)) {
+            Located& l = located[h];
+            if (l.generation != generation) return located_count < located_size / 2 ? &l : nullptr;
+            if (l.owner == o && l.node == node && l.handle == handle) return &l;
+        }
+        return nullptr;
+    }
+};
+static_assert(2 * ring_capacity <= VisibleOwners::located_size, "the located table stays at most half full");
+// Once per stage frame, after the builds: Ring::hidden for every live record from its owner's verdicts (hidden_undrawn
+// unless drawn, hidden_off_screen unless in view). The owners in a 2048-entry open-addressed table (at most 1024
+// distinct, half full), one probe or two per record, O(ring_capacity).
+inline void ring_stamp_hidden(Ring& r, const VisibleOwners& v) noexcept {
+    constexpr unsigned bits = 11, size = 1u << bits;
+    static_assert(2 * ring_capacity <= size, "the table stays at most half full");
+    std::uint32_t key[size];
+    std::uint8_t flag[size]; // 0 empty; 1 drawn, 2 in view
+    for (unsigned k = 0; k < size; ++k) flag[k] = 0;
+    const auto slot = [&](std::uint32_t o) {
+        unsigned h = unsigned((o * 0x9e3779b1u) >> (32u - bits));
+        while (flag[h] && key[h] != o) h = (h + 1u) & (size - 1u);
+        return h;
+    };
+    const auto put = [&](std::uint32_t o, std::uint8_t f) {
+        const unsigned h = slot(o);
+        key[h] = o;
+        flag[h] = std::uint8_t(flag[h] | f);
+    };
+    for (unsigned k = 0; k < v.count; ++k) put(v.owner[k], 1);
+    for (unsigned k = 0; k < v.in_view_count; ++k) put(v.in_view[k], 2);
+    for (unsigned i = 0; i < ring_capacity; ++i) {
+        if (!r.slots[i].sequence) continue;
+        const unsigned h = slot(r.slots[i].owner);
+        const std::uint8_t f = flag[h];
+        r.hidden[i] = std::uint8_t(((f & 1) ? 0 : hidden_undrawn) | ((f & 2) ? 0 : hidden_off_screen));
+    }
 }
 
 // ---------------------------------------------------------------------------------------------- the handler (2.2)
@@ -1164,6 +1257,12 @@ constexpr float puff_lod_px = 96.f;
 constexpr unsigned max_sparks = 2048;   // spark quads per frame (2.11)
 constexpr unsigned max_owners = 32;     // owners re-posed per frame
 } // namespace hull
+static_assert(max_owners + hull::max_owners <= VisibleOwners::capacity, "every owner a stage frame can draw");
+// The view volume's sphere about a shield stage owner (stage::owner_in_view): its object radius (obj+0xa4) x this, past
+// the bubble (bubble_scale), so an owner just past the screen edge whose bubble still reaches into it counts as drawn.
+// The hull stage judges its owners by their reach sphere instead (stage::out_of_reach: 2 r + the records' element reach,
+// grown by the pixel floors), the same test its cull uses.
+constexpr float visible_radius_scale = 2.0f;
 // A hull hit's record life per anatomy (review 2026-11-07): its slowest element (an ember, a puff, a glow, a ring, the
 // flash, the streak, the filament glow at k 1 x (1 + stagger / 2), a spark set at spark_life_hi; the scorches live in
 // their own store, the beam, repair and tug spots in theirs), so each class leaves the ring at its own end;

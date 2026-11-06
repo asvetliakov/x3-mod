@@ -210,9 +210,12 @@ def parse_hook(text):
     drained = [fields(line) for line in text.splitlines() if line.startswith('DRAINED ')]
     hull_mode = [fields(line) for line in text.splitlines() if line.startswith('HULL_MODE ')]
     hull_class = [fields(line) for line in text.splitlines() if line.startswith('HULL_CLASS ')]
+    overflow = [fields(line) for line in text.splitlines() if line.startswith('OVERFLOW ')]
+    cost_full = [fields(line) for line in text.splitlines() if line.startswith('EVENT_COST_FULL ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
             'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode, 'hull_class': hull_class,
-            'event_cost': cost[-1] if cost else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
+            'event_cost': cost[-1] if cost else None, 'overflow': overflow[-1] if overflow else None,
+            'event_cost_full': cost_full[-1] if cost_full else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
 def run_hook(args, results):
@@ -238,6 +241,8 @@ def run_hook(args, results):
     record['hull_mode'] = report['hull_mode']
     record['hull_class'] = report['hull_class']
     record['event_cost'] = report['event_cost']
+    record['overflow'] = report['overflow']
+    record['event_cost_full'] = report['event_cost_full']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
                         result.get('checks') == len(report['checks']) and result.get('failures') == 0)

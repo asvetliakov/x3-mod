@@ -1,0 +1,59 @@
+# build/verification/weapon-effects-hook/fixture.log
+CHECK pass overflow_counts
+CHECK pass overflow_keeps_owned_shield
+CHECK pass overflow_census_first_then_oldest_staged
+EVENT_COST events=50 shields=6 best_us=17.50 median_us=17.50 worst_us=17.70 target_us=30
+CHECK pass event_cost_50_within_30us
+OVERFLOW capacity=1024 stamped_hidden=16 first_evicts_oldest_hidden=1 hidden_after_16=0 drawn_kept_after_16=1 evicted_after=oldest_drawn overflow=17 evicted_visible=1
+CHECK pass overflow_1024_hidden_owner_first_then_oldest
+CHECK pass overflow_counts_evicted_visible
+EVENT_COST_FULL events=50 capacity=1024 best_us=59.60 median_us=62.60 worst_us=103.40 target_us=150
+CHECK pass event_cost_50_full_ring_1024
+STACK_DEPTH bytes=240 margin=1536
+RESULT PASS checks=95 failures=0 faults=3
+# verification/probe/build/weapon-effects/fixture.log
+STAGE_CPU case=one_capital_64_hits owners=1 hits=64 patches=11 cells=1135 spills=6 cells_dropped=0 dropped=0 best_us=29.9 mean_us=36.7 target_us=200
+STAGE_CPU case=sixteen_capitals_16_hits owners=16 hits=256 patches=64 cells=3158 spills=0 cells_dropped=2295 dropped=14 best_us=90.5 mean_us=115.4 target_us=200
+STAGE_CPU case=station_flight_b_cluster_64_hits owners=1 hits=64 patches=2 cells=148 spills=1 cells_dropped=0 dropped=0 best_us=14.7 mean_us=19.9 target_us=200
+HULL_CPU case=capital_64_hits hits=64 sparks=445 flashes=64 boxes=128 bursts=64 rings=0 best_us=19.30 mean_us=23.33 target_us=40
+HULL_CPU case=capital_64_hits_sparks_only best_us=13.50
+HULL_CPU case=capital_64_hits_no_sparks best_us=9.50
+HULL_CPU case=fighter_20_hits hits=20 sparks=100 flashes=20 boxes=40 bursts=20 rings=0 best_us=7.20 mean_us=12.00 target_us=40
+HULL_CPU case=ring_1024_visible_64 live=1024 visible_hits=64 hidden=960 drawn_owners=1 hits=560 owners_dropped=29 sparks=472 flashes=64 boxes=128 bursts=64 rings=0 shed=0 bursts_shed=0 flashes_shed=0 capped=0 octaves=2 screens=6.189 budget=8.000 out_of_reach=496 owners_out_of_reach=31 best_us=41.40 mean_us=57.99 target_us=100
+HULL_CPU case=ring_1024_visible_256 live=1024 visible_hits=256 hidden=768 drawn_owners=4 hits=704 owners_dropped=20 sparks=1840 flashes=256 boxes=28 bursts=4 rings=0 shed=168 bursts_shed=28 flashes_shed=0 capped=0 octaves=1 screens=7.978 budget=8.000 out_of_reach=448 owners_out_of_reach=28 best_us=124.50 mean_us=162.23 target_us=300
+HULL case=visible_first owners=40 off_screen=20 cap=32 frame1_drawn=12 frame2_drawn=20 frame2_on_screen_kept=20 in_view=20
+CHECK hull_visible_first_keeps_all_on_screen PASS
+STAGE_OWNERS case=owners_512_shield_hull records=1024 owners=512 located_reads=496 located=512 reads=2866 fake_best_us=94.7 fake_mean_us=116.3 production_best_us=122.8 production_mean_us=151.0 production_ns_per_read=9.8
+CHECK stage_owners_512_located_once PASS
+STAGE_OWNERS case=owners_1024_hull records=1024 owners=1024 located_reads=992 located=1024 reads=5248 fake_best_us=122.8 fake_mean_us=148.4 production_best_us=210.4 production_mean_us=276.9 production_ns_per_read=16.7
+CHECK stage_owners_1024_located_once PASS
+HULL case=reach class=ballistic step=0 d=10.0 margin=449.3 lit_px=505 edge_px=471 identical=1 elements=293 streaks=0 unculled_quads=274 out_of_reach=0
+HULL case=reach class=ballistic step=1 d=11.9 margin=449.3 lit_px=357 edge_px=350 identical=1 elements=293 streaks=0 unculled_quads=274 out_of_reach=0
+HULL case=reach class=ballistic step=2 d=13.7 margin=449.3 lit_px=238 edge_px=238 identical=1 elements=285 streaks=0 unculled_quads=274 out_of_reach=0
+HULL case=reach class=ballistic step=3 d=15.6 margin=449.3 lit_px=125 edge_px=125 identical=1 elements=284 streaks=0 unculled_quads=274 out_of_reach=0
+HULL case=reach class=ballistic step=4 d=17.5 margin=449.3 lit_px=60 edge_px=60 identical=1 elements=277 streaks=0 unculled_quads=274 out_of_reach=0
+HULL case=reach class=ballistic step=5 d=19.4 margin=449.3 lit_px=24 edge_px=24 identical=1 elements=277 streaks=0 unculled_quads=274 out_of_reach=0
+HULL case=reach class=ballistic step=6 d=459.3 margin=449.3 lit_px=0 edge_px=0 identical=1 elements=0 streaks=0 unculled_quads=274 out_of_reach=8
+HULL case=reach class=ballistic step=7 d=534.2 margin=449.3 lit_px=0 edge_px=0 identical=1 elements=0 streaks=0 unculled_quads=274 out_of_reach=8
+HULL case=reach class=ballistic step=8 d=609.1 margin=449.3 lit_px=0 edge_px=0 identical=1 elements=0 streaks=0 unculled_quads=274 out_of_reach=8
+HULL case=reach_summary class=ballistic r=5.0 reach_attached=66.0 reach_spark=124.6 floor_px=318.3 floor_view=248.8 d_lit=19.4 steps=9 identical=9 lit_steps=6 min_lit_px=24 max_edge_px=471 streaks=0 beyond_elements=0 beyond_unculled_quads=274 beyond_out_of_reach=8
+CHECK hull_reach_edge_sparks_unchanged PASS
+CHECK hull_reach_beyond_margin_builds_nothing PASS
+HULL case=reach class=heavy step=0 d=10.0 margin=614.1 lit_px=1317 edge_px=663 identical=1 elements=318 streaks=8 unculled_quads=284 out_of_reach=0
+HULL case=reach class=heavy step=1 d=15.1 margin=614.1 lit_px=882 edge_px=362 identical=1 elements=315 streaks=8 unculled_quads=284 out_of_reach=0
+HULL case=reach class=heavy step=2 d=20.2 margin=614.1 lit_px=615 edge_px=212 identical=1 elements=302 streaks=8 unculled_quads=284 out_of_reach=0
+HULL case=reach class=heavy step=3 d=25.4 margin=614.1 lit_px=481 edge_px=208 identical=1 elements=302 streaks=8 unculled_quads=284 out_of_reach=0
+HULL case=reach class=heavy step=4 d=30.5 margin=614.1 lit_px=364 edge_px=208 identical=1 elements=302 streaks=8 unculled_quads=284 out_of_reach=0
+HULL case=reach class=heavy step=5 d=35.6 margin=614.1 lit_px=247 edge_px=208 identical=1 elements=302 streaks=8 unculled_quads=284 out_of_reach=0
+HULL case=reach class=heavy step=6 d=624.1 margin=614.1 lit_px=0 edge_px=0 identical=1 elements=0 streaks=0 unculled_quads=284 out_of_reach=8
+HULL case=reach class=heavy step=7 d=726.5 margin=614.1 lit_px=0 edge_px=0 identical=1 elements=0 streaks=0 unculled_quads=284 out_of_reach=8
+HULL case=reach class=heavy step=8 d=828.8 margin=614.1 lit_px=0 edge_px=0 identical=1 elements=0 streaks=0 unculled_quads=284 out_of_reach=8
+HULL case=reach_summary class=heavy r=5.0 reach_attached=124.8 reach_spark=202.2 floor_px=318.3 floor_view=277.1 d_lit=35.6 steps=9 identical=9 lit_steps=6 min_lit_px=247 max_edge_px=663 streaks=48 beyond_elements=0 beyond_unculled_quads=284 beyond_out_of_reach=8
+CHECK hull_reach_heavy_edge_unchanged PASS
+CHECK hull_reach_heavy_beyond_margin_builds_nothing PASS
+HULL case=reach_moving speed=15000 hits=9 sparks=36 unculled_sparks=36 out_of_reach=0 owners_out_of_reach=1 lit_px=1157 identical=1 drawn=1 in_view=1
+CHECK hull_reach_moving_owner_sparks_kept PASS
+CLASS_CPU case=capital_64_mixed hits=64 sparks=1043 flashes=64 boxes=112 bursts=56 rings=24 filaments=8 scorches=16 streaks=8 best_us=33.90 mean_us=47.02 target_us=30
+CLASS_CPU case=capital_64_mixed_sparks_only best_us=26.70
+CLASS_CPU case=capital_64_mixed_no_sparks best_us=10.30
+RESULT PASS checks=167 failures=0

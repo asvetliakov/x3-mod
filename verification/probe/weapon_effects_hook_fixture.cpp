@@ -455,6 +455,9 @@ void expected_pos(std::int32_t out[3]) {
     core::rotate_in(vrot, d, out);
 }
 constexpr unsigned frame_offset = 0x600; // we_enter's F inside we_frame_buffer
+// 50 events on a full 1024-record ring (each scans the ring for its victim), median of 21: the bound set from the native
+// measurement of 2026-11-07 (docs/verification/weapon-effects.md, "Ring 1024").
+constexpr double event_cost_full_us = 150.0; // 57.9, 59.9 and 85.6 measured (17.9 on an empty ring)
 constexpr unsigned char stack_fill = 0x5a;
 unsigned max_stack_depth = 0;            // bytes below F the stub and the handler wrote, over every run
 struct RunResult {
@@ -1045,6 +1048,83 @@ int main() {
         std::printf("EVENT_COST events=50 shields=6 best_us=%.2f median_us=%.2f worst_us=%.2f target_us=30\n", runs[0],
                     runs[10], runs[20]);
         check(runs[10] <= 30.0, "event_cost_50_within_30us");
+        // The overflow order at ring_capacity (1024) through the installed stub and handler (2026-11-07): the ring full of
+        // stage-owned shield hits on 64 owners, the stage's stamp (core::ring_stamp_hidden) with every owner drawn but
+        // one (its 16 records hidden). Each hit evicts the oldest hidden record first (the others stay); with none hidden
+        // left the oldest drawn record goes, never a record acquired since the stamp.
+        {
+            core::ring_clear(hs2.ring);
+            const std::uint32_t base = hs2.ring.next_sequence; // record i's sequence is base + i
+            for (unsigned i = 0; i < core::ring_capacity; ++i) {
+                core::Event* e = core::ring_acquire(hs2.ring);
+                e->role = core::role_shield_hit;
+                e->flags = core::flag_stage;
+                e->owner = 0x4000u + (i & 63u);
+            }
+            const std::uint32_t hidden_owner = 0x4005u;
+            core::VisibleOwners drawn;
+            for (unsigned k = 0; k < 64; ++k)
+                if (0x4000u + k != hidden_owner) drawn.add(0x4000u + k);
+            core::ring_stamp_hidden(hs2.ring, drawn);
+            auto count_owner = [&](std::uint32_t owner, bool match) {
+                unsigned n = 0;
+                for (unsigned i = 0; i < core::ring_capacity; ++i)
+                    n += hs2.ring.slots[i].sequence && (hs2.ring.slots[i].owner == owner) == match &&
+                         hs2.ring.slots[i].owner != u32(&victim_obj);
+                return n;
+            };
+            auto live_seq = [&](std::uint32_t seq) {
+                for (unsigned i = 0; i < core::ring_capacity; ++i)
+                    if (hs2.ring.slots[i].sequence == seq) return true;
+                return false;
+            };
+            unsigned stamped = 0;
+            for (unsigned i = 0; i < core::ring_capacity; ++i) stamped += hs2.ring.hidden[i] & core::hidden_undrawn;
+            const std::uint32_t overflow0 = hs2.ring.overflow, evicted_visible0 = hs2.ring.evicted_visible;
+            const std::uint32_t oldest_hidden = base + 5, second_hidden = base + 69; // owner 0x4005's first two
+            hs2.owned_next = 1;
+            const RunResult first = run_window(1, 1200, 0);
+            const bool first_ok = !live_seq(oldest_hidden) && live_seq(second_hidden) &&
+                                  count_owner(hidden_owner, true) == 15 && count_owner(hidden_owner, false) == 1008 &&
+                                  hs2.ring.overflow == overflow0 + 1 && frame_kept(first);
+            for (unsigned k = 1; k < 16; ++k) {
+                hs2.owned_next = 1;
+                run_window(1, 1200, 0);
+            }
+            const bool hidden_gone = count_owner(hidden_owner, true) == 0 && count_owner(hidden_owner, false) == 1008 &&
+                                     live_seq(base);
+            hs2.owned_next = 1;
+            const RunResult next = run_window(1, 1200, 0);
+            const bool oldest_drawn = !live_seq(base) && live_seq(base + 1) && count_owner(hidden_owner, false) == 1007 &&
+                                      ring_live(hs2.ring) == core::ring_capacity && hs2.ring.overflow == overflow0 + 17 &&
+                                      frame_kept(next);
+            // the frame row's evicted_visible= (Ring::evicted_visible): the 16 hidden evictions do not count, the 17th does
+            const std::uint32_t evicted_visible = hs2.ring.evicted_visible - evicted_visible0;
+            std::printf("OVERFLOW capacity=%u stamped_hidden=%u first_evicts_oldest_hidden=%u hidden_after_16=%u "
+                        "drawn_kept_after_16=%u evicted_after=%s overflow=%lu evicted_visible=%lu\n",
+                        core::ring_capacity, stamped, unsigned(first_ok), count_owner(hidden_owner, true),
+                        unsigned(hidden_gone), oldest_drawn ? "oldest_drawn" : "other",
+                        static_cast<unsigned long>(hs2.ring.overflow - overflow0), static_cast<unsigned long>(evicted_visible));
+            check(stamped == 16 && first_ok && hidden_gone && oldest_drawn, "overflow_1024_hidden_owner_first_then_oldest");
+            check(evicted_visible == 1, "overflow_counts_evicted_visible");
+            // The handler's cost on a full ring: every event scans the 1024 slots for its victim (50 events, best and
+            // median of 21, the same window as event_cost).
+            double full[21];
+            for (double& us : full) {
+                QueryPerformanceCounter(&a);
+                for (unsigned i = 0; i < 50; ++i) {
+                    hs2.owned_next = 1;
+                    run_window(1, 1200, 0);
+                }
+                QueryPerformanceCounter(&b);
+                us = double(b.QuadPart - a.QuadPart) * 1e6 / double(freq.QuadPart);
+            }
+            std::sort(full, full + 21);
+            std::printf("EVENT_COST_FULL events=50 capacity=%u best_us=%.2f median_us=%.2f worst_us=%.2f target_us=%.0f\n",
+                        core::ring_capacity, full[0], full[10], full[20], event_cost_full_us);
+            check(ring_live(hs2.ring) == core::ring_capacity && full[10] <= event_cost_full_us,
+                  "event_cost_50_full_ring_1024");
+        }
         core::ring_clear(hs2.ring);
         build_world(7, 0, 4, 0x0, 123456);
     }

@@ -63,8 +63,9 @@ def audit(objects):
                      for name in ('_x3m_weapon_event', '_x3m_weapon_tap')}
     handler_rows = {name: len(body(hlist, name)) for name in handler_calls}
     # The handler's own stack frame (its entry `sub esp,N`; the stub adds 0x20 and the return address): recorded, the
-    # fixture measures the depth it reaches below the synthetic frame.
-    entry = body(hlist, '_x3m_weapon_event')[:2]
+    # fixture measures the depth it reaches below the synthetic frame. The first rows, not only the first two: GCC may
+    # shrink-wrap the frame past the mode_native early return (the 1024-record ring's layout, 2026-11-07).
+    entry = body(hlist, '_x3m_weapon_event')[:8]
     frame = [int(m.group(1), 16) for m in (re.search(r'sub\s+esp,0x([0-9a-f]+)', line) for line in entry) if m]
     module = tool('nm', str(objects['module']))
     module_own_protect = [l.strip() for l in module.splitlines() if re.search(r'__imp__VirtualProtect@', l)]

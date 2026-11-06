@@ -257,8 +257,42 @@ Shared by the DLL, the fixture (compiled in) and the lab (its JSON mirror, injec
 
 Per frame the stage derives, not stores: the owner's current object → world rows (`node+0x30`, `node+0x40` through
 `engine_memory::read`, validated by `obj+0x70 == node && node+0x28 == handle` and, when active, the `object_lifetime`
-serial; a failed validation retires the record), the view/projection of the resolve, and the age. The ring holds 256
-events (16 KB); overflow drops the oldest `hull_hit`/`muzzle` first and counts `overflow`. The ring clears on the
+serial; a failed validation retires the record), the view/projection of the resolve, and the age. The ring holds 1024
+events (64 KB, a u16 free list; 256 until 2026-11-07, raised so a 60-80 ship battle keeps its afterglow). When it is
+full the handler evicts in four classes, the oldest (lowest sequence) first within each, and counts `overflow`:
+census-only records whose owner the stage did not draw in its last frame, the other census-only records, stage-owned
+records (shield or hull: their native spawn was skipped) of an undrawn owner, the other stage-owned records;
+`evicted_visible=` beside `overflow=` on the `weapon_effects_frame` row (both per row period) counts the evictions of
+records not stamped undrawn. The stamp is the per-slot byte `Ring::hidden`, written by the stage, read by the handler with integer
+compares inside the one victim scan it already made (no call, no visibility test in the hook): after both builds the
+glue stamps every live record (`core::ring_stamp_hidden`, one hashed probe per record) with two bits, `hidden_undrawn`
+unless its owner is in the frame's drawn set and `hidden_off_screen` unless in its in-view set. The view volume is
+that of the jittered projection: in front of the near plane, inside the far plane m32 / (1 − m22) kept 5 % out (the
+float recovery is about 2 % off with m22 near 1) and inside the four side planes (`stage::sphere_in_view`). The shield
+stage counts an owner in view when its sphere of 2 × `obj+0xa4` (past the bubble) reaches that volume
+(`stage::owner_in_view`); the hull stage when it is in reach by the cull's own test below. An owner past a stage's cap
+is located for this through the drawn path's checks (`stage::locate_owner`: `obj+0x70 == node`, `node+0x28 == handle`,
+not dying; then its position and radius, five reads, no rows), and a failed check counts it off screen; the frame's
+located table (`core::VisibleOwners::located`, keyed by owner, node and handle) holds every owner either stage read, so
+an owner is read at most once a frame for both stages. It is drawn when a build also kept it within its owner cap (16
+shield, 32 hull; the hull stage only for an owner with a hull hit). Both stages pick their owners visible first: owners with a
+record stamped off screen by the previous frame go after the others (on screen, or new this frame), then the newest hit
+(the hull stage: an owner with a hull hit first), then the address, so an on-screen owner past the cap is still stamped
+in view and competes again next frame. A record acquired since the last stamp carries 0, so a fresh hit keeps its
+afterglow and a new owner counts as visible until the stage has judged it.
+
+The hull stage's reach cull (`stage::build_hull`): a kept owner with a hull hit builds no elements when the sphere
+about its current node position of 2 r plus its records' largest element reach, grown by the pixel floors at its far
+depth, lies outside that view volume. The three terms: the attached reach (r_hit × the largest of the flash halo, the
+heavy streak, the ring's rr + 3 w, the filament, the shimmer square, the glow and the ember, plus the puff's R_b), the
+spark reach (per set the launch speed × (1 + spread) × (tau + the curl drift over the longest life) plus the floored
+streak's world part), and the pixel floors (`reach_floor_px()`, 318 px: the floored spark streak and flash halo), so an
+element there cannot reach a pixel. `record_reach` caches both world terms per record in `HullSlot`, from the floor the
+record latches. A record of such an owner still builds when its own spark sphere reaches the view: the sparks ride the
+latched contact point plus the owner's velocity at the latch (`p0 + v tau (1 − e^(−t / tau))`, on the segment p0 ..
+p0 + v t), not the owner's current position. Never culled: the beam, repair and tug spots and the scorch marks (their
+own stores, drawn from their owners' reads). The stamp takes the same verdict, so an owner whose sparks are on screen
+counts as drawn and in view. The ring clears on the
 resolve's cut verdict, a Reset, a sector change or load epoch (the plumes' rule [S]; step 1: Present samples the
 cockpit's sector key through `sector_key::sample`, the loading state and the `object_lifetime` load epoch, and
 `core::ScopeLatch` clears the stage-owned records on a load, a different known key or a different known epoch).

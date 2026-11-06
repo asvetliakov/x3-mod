@@ -799,6 +799,182 @@ int main(int argc, char** argv) {
                     unsigned(core::expired(500, age)));
         return 0;
     }
+    if (!std::strcmp(argv[1], "evict")) {
+        // The overflow order at ring_capacity (2026-11-07): records i interleave the four classes (census or staged,
+        // owner drawn or not); after the stage's stamp the victims come census-hidden, census-drawn, staged-hidden,
+        // staged-drawn, each oldest first.
+        static core::Ring ring;
+        core::ring_clear(ring);
+        for (unsigned i = 0; i < core::ring_capacity; ++i) {
+            core::Event* e = core::ring_acquire(ring);
+            e->flags = (i & 1) ? std::uint8_t(core::flag_stage) : std::uint8_t(core::flag_forwarded);
+            e->owner = (i & 2) ? 0x2000u : 0x1000u;
+        }
+        core::VisibleOwners drawn;
+        drawn.add(0x1000u);
+        drawn.add(0x1000u); // once
+        core::ring_stamp_hidden(ring, drawn);
+        unsigned hidden = 0, per[4] = {}, order_ok = 1, last_rank = 0;
+        std::uint32_t last_seq = 0;
+        for (unsigned i = 0; i < core::ring_capacity; ++i) hidden += ring.hidden[i] & core::hidden_undrawn;
+        for (unsigned n = 0; n < core::ring_capacity; ++n) {
+            const unsigned v = core::ring_victim(ring);
+            if (v >= core::ring_capacity) { order_ok = 0; break; }
+            const core::Event& e = ring.slots[v];
+            const unsigned rank = ((e.flags & core::flag_stage) ? 2u : 0u) | (e.owner == 0x1000u ? 1u : 0u);
+            if (rank < last_rank || (rank == last_rank && e.sequence <= last_seq)) order_ok = 0;
+            last_rank = rank;
+            last_seq = e.sequence;
+            ++per[rank];
+            core::ring_release(ring, v);
+        }
+        // A record acquired since the stamp is not hidden: full ring, every record hidden, one replaced by a fresh one;
+        // the next overflow evicts the oldest hidden record and keeps the fresh one.
+        core::ring_clear(ring);
+        for (unsigned i = 0; i < core::ring_capacity; ++i) {
+            core::Event* e = core::ring_acquire(ring);
+            e->flags = core::flag_stage;
+            e->owner = 0x2000u;
+        }
+        core::ring_stamp_hidden(ring, core::VisibleOwners{});
+        std::uint32_t oldest = 0xffffffffu;
+        unsigned oldest_slot = 0;
+        for (unsigned i = 0; i < core::ring_capacity; ++i)
+            if (ring.slots[i].sequence < oldest) { oldest = ring.slots[i].sequence; oldest_slot = i; }
+        core::ring_release(ring, (oldest_slot + 7) % core::ring_capacity);
+        core::Event* fresh = core::ring_acquire(ring);
+        fresh->flags = core::flag_stage;
+        fresh->owner = 0x2000u;
+        const std::uint32_t fresh_seq = fresh->sequence;
+        const std::uint32_t overflow0 = ring.overflow;
+        core::ring_acquire(ring)->flags = core::flag_stage;
+        const unsigned overflowed = ring.overflow - overflow0;
+        bool fresh_kept = false, oldest_gone = true;
+        for (unsigned i = 0; i < core::ring_capacity; ++i) {
+            fresh_kept |= ring.slots[i].sequence == fresh_seq;
+            oldest_gone &= ring.slots[i].sequence != oldest;
+        }
+        // The stage's drawn owners: the shield stage adds an owner in front of the camera (1), not one behind it (2), past
+        // the side planes (3) or past the far plane (4); the hull stage adds its kept owners in view (hull::max_owners of
+        // 40, the newest hits) and the stamp marks the 8 others' records hidden.
+        core::ring_clear(ring);
+        owner(1, 40000, 10000);
+        owner(2, -40000, 10000);
+        owner(3, 40000, 10000);
+        put(node(3) + core::layout::node_pos, 400000);
+        owner(4, 4000000, 10000);
+        for (unsigned k = 1; k <= 4; ++k) hit(ring, k, 1000, 0);
+        x3m::renderer::WeaponPatch patches[core::max_patches];
+        x3m::renderer::WeaponDecal decals[core::max_decals];
+        st::Camera cam;
+        cam.r[0] = cam.r[4] = cam.r[8] = 1.f;
+        cam.m00 = 1.6f;
+        cam.m11 = 1.6f * 16.f / 9.f;
+        core::VisibleOwners shield_drawn;
+        shield_drawn.far_z = 10000.f;
+        st::build(ring, 1010, &rd, cam, st::Tuning{}, patches, core::max_patches, decals, core::max_decals, nullptr,
+                  &shield_drawn);
+        core::ring_stamp_hidden(ring, shield_drawn);
+        unsigned shield_hidden = 0;
+        for (unsigned i = 0; i < core::ring_capacity; ++i)
+            shield_hidden += ring.slots[i].sequence && (ring.hidden[i] & core::hidden_undrawn);
+        const bool shield_ok = shield_drawn.count == 1 && shield_drawn.owner[0] == obj(1) && shield_hidden == 3;
+        core::ring_clear(ring);
+        for (unsigned k = 1; k <= 40; ++k) {
+            owner(k, 40000, 10000);
+            core::Event* e = core::ring_acquire(ring);
+            const std::uint32_t seq = e->sequence;
+            std::memset(e, 0, sizeof *e);
+            e->sequence = seq;
+            e->role = core::role_hull_hit;
+            e->flags = core::flag_stage;
+            e->table = core::table_bullets;
+            e->t0_game_ms = 1000 + k;
+            e->lifetime_ms = core::hull_lifetime_ms;
+            e->damage = 3000;
+            e->owner = obj(k);
+            e->node = node(k);
+            e->handle = 0xd000 + k;
+            e->pos[2] = -10000;
+            e->radius = 10000;
+        }
+        static st::HullState hs;
+        st::hull_clear(hs);
+        static x3m::renderer::WeaponSpriteVertex spr[x3m::renderer::weapon_sprite_quads * 4];
+        static x3m::renderer::WeaponGlowVertex glw[x3m::renderer::weapon_glow_boxes * 4];
+        st::HullView v;
+        v.cam = cam;
+        v.width = 1920;
+        v.height = 1080;
+        v.near_z = 6;
+        v.step_ms = 16;
+        v.now = 1100;
+        st::HullBuffers o;
+        o.sprites = spr;
+        o.sprite_cap = 2304;
+        o.glows = glw;
+        o.glow_cap = 512;
+        core::VisibleOwners hull_drawn;
+        st::build_hull(ring, hs, &rd, v, st::HullTuning{}, o, &hull_drawn);
+        core::ring_stamp_hidden(ring, hull_drawn);
+        unsigned hull_hidden = 0, hidden_old = 0;
+        for (unsigned i = 0; i < core::ring_capacity; ++i)
+            if (ring.slots[i].sequence && (ring.hidden[i] & core::hidden_undrawn)) {
+                ++hull_hidden;
+                hidden_old += ring.slots[i].t0_game_ms <= 1008;
+            }
+        // Visible first in the shield stage: 40 owners with one shield hit each, 20 in view (t0 1000) and 20 behind the
+        // camera with newer hits (t0 1005). Unstamped, the 16 newest are all behind (nothing drawn); after the stamp the
+        // next frame draws 16 owners, all in view.
+        core::ring_clear(ring);
+        for (unsigned k = 1; k <= 40; ++k) {
+            owner(k, k <= 20 ? 40000 : -40000, 10000);
+            if (k <= 20) put(node(k) + core::layout::node_pos, std::uint32_t(std::int32_t(-24000 + 2400 * int(k - 1))));
+            hit(ring, k, k <= 20 ? 1000 : 1005, 0);
+        }
+        static core::VisibleOwners vf;
+        unsigned vf_drawn[2] = {}, vf_on_screen = 0;
+        for (unsigned frame = 0; frame < 2; ++frame) {
+            vf.reset(0.f);
+            st::build(ring, 1010 + 16 * frame, &rd, cam, st::Tuning{}, patches, core::max_patches, decals, core::max_decals,
+                      nullptr, &vf);
+            core::ring_stamp_hidden(ring, vf);
+            vf_drawn[frame] = vf.count;
+        }
+        for (unsigned j = 0; j < vf.count; ++j)
+            for (unsigned k = 1; k <= 20; ++k) vf_on_screen += vf.owner[j] == obj(k);
+        // An on-screen owner past the cap is located through the drawn path's checks: in view while they hold; with its
+        // node's handle changed it is stamped off screen (another on-screen owner past the cap stays in view).
+        unsigned dropped_in_view = 0, dropped_k = 0;
+        for (unsigned k = 1; k <= 20; ++k) {
+            bool drawn = false;
+            for (unsigned j = 0; j < vf.count; ++j) drawn |= vf.owner[j] == obj(k);
+            if (drawn) continue;
+            for (unsigned i = 0; i < core::ring_capacity; ++i)
+                if (ring.slots[i].sequence && ring.slots[i].owner == obj(k) && !(ring.hidden[i] & core::hidden_off_screen)) {
+                    ++dropped_in_view;
+                    dropped_k = k;
+                }
+        }
+        put(node(dropped_k) + core::layout::node_handle, 0xbad);
+        vf.reset(0.f);
+        st::build(ring, 1042, &rd, cam, st::Tuning{}, patches, core::max_patches, decals, core::max_decals, nullptr, &vf);
+        core::ring_stamp_hidden(ring, vf);
+        unsigned bad_off = 0, others_in_view = 0;
+        for (unsigned i = 0; i < core::ring_capacity; ++i) {
+            if (!ring.slots[i].sequence || ring.slots[i].owner > obj(20)) continue;
+            if (ring.slots[i].owner == obj(dropped_k)) bad_off += (ring.hidden[i] & core::hidden_off_screen) != 0;
+            else others_in_view += !(ring.hidden[i] & core::hidden_off_screen);
+        }
+        std::printf("hidden=%u census_hidden=%u census_drawn=%u staged_hidden=%u staged_drawn=%u order_ok=%u "
+                    "fresh_kept=%u oldest_gone=%u overflow=%u shield_drawn_ok=%u hull_drawn=%u hull_hidden=%u "
+                    "hull_hidden_oldest=%u vf_frame1_drawn=%u vf_frame2_drawn=%u vf_on_screen=%u "
+                    "vf_dropped_in_view=%u vf_bad_handle_off=%u vf_others_in_view=%u\n",
+                    hidden, per[0], per[1], per[2], per[3], order_ok, unsigned(fresh_kept), unsigned(oldest_gone),
+                    overflowed, unsigned(shield_ok), hull_drawn.count, hull_hidden, hidden_old, vf_drawn[0], vf_drawn[1],
+                    vf_on_screen, dropped_in_view, bad_off, others_in_view);
+        return 0;
+    }
     if (!std::strcmp(argv[1], "stage")) return stage_cases();
     if (!std::strcmp(argv[1], "owners")) {
         // Review 3: 40 owners with one stage-owned hull hit each (owner k's at t0 1000 + k: the higher k the newer). Past
@@ -1015,6 +1191,24 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual(fields['age'], '100')     # game-time age
         self.assertEqual(fields['exp_now'], '1')
         self.assertEqual(fields['exp_wrap'], '1')   # a future t0 (a load) reads as expired
+
+    def test_overflow_evicts_undrawn_owner_first(self):
+        # 2026-11-07: the 1024-record ring's overflow order with the stage's per-slot stamp (core::ring_stamp_hidden):
+        # census-only records of an undrawn owner, then the drawn owner's, then the staged records likewise, each oldest
+        # first; a record acquired since the stamp is never hidden; the shield stage draws only an owner in the view
+        # volume (not behind, beside or past the far plane), the hull stage its kept owners (hull::max_owners of 40).
+        out = subprocess.run([str(self.exe), 'evict'], capture_output=True, text=True, check=True).stdout
+        f = {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', out)}
+        self.assertEqual(f['hidden'], 512)
+        self.assertEqual((f['census_hidden'], f['census_drawn'], f['staged_hidden'], f['staged_drawn']), (256,) * 4)
+        self.assertEqual(f['order_ok'], 1)
+        self.assertEqual((f['fresh_kept'], f['oldest_gone'], f['overflow']), (1, 1, 1))
+        self.assertEqual(f['shield_drawn_ok'], 1)
+        self.assertEqual((f['hull_drawn'], f['hull_hidden'], f['hull_hidden_oldest']), (32, 8, 8))
+        # visible first (shield stage, cap 16): unstamped the 16 newest are behind the camera; stamped, 16 in view
+        self.assertEqual((f['vf_frame1_drawn'], f['vf_frame2_drawn'], f['vf_on_screen']), (0, 16, 16))
+        # the 4 on-screen owners past the cap are located in view; one whose handle no longer matches is off screen
+        self.assertEqual((f['vf_dropped_in_view'], f['vf_bad_handle_off'], f['vf_others_in_view']), (4, 1, 19))
 
     def run_case(self, case):
         out = subprocess.run([str(self.exe), case], capture_output=True, text=True, check=True).stdout

@@ -86,6 +86,87 @@ inline bool owner_frame(const Owner& o, const Camera& c, float centre[3], float 
     }
     return true;
 }
+// Whether the owner's sphere (its node position, core::visible_radius_scale x obj+0xa4) reaches the view volume of the
+// jittered projection: in front of the near plane, inside the far plane (far_z 0: none) and inside the four side planes
+// (clip x' = m00 x + m20 z against w = z, likewise y). The overflow order's "drawn" (core::VisibleOwners); a camera
+// without a projection (m00 or m11 not positive) counts every owner as drawn. sphere_in_view: any view-space sphere
+// (centre v, radius R) against the same planes.
+inline bool sphere_in_view(const float v[3], float R, const Camera& c, float near_z, float far_z) noexcept {
+    if (!(c.m00 > 0.f) || !(c.m11 > 0.f)) return true;
+    if (!(v[2] + R > near_z)) return false;
+    if (far_z > 0.f && !(v[2] - R < far_z)) return false;
+    const float m[2] = {c.m00, c.m11}, off[2] = {c.m20, c.m21};
+    for (unsigned a = 0; a < 2; ++a) {
+        const float lo = m[a] * v[a] + (off[a] + 1.f) * v[2], hi = m[a] * v[a] + (off[a] - 1.f) * v[2];
+        if (-lo > R * scalar::sqrt(m[a] * m[a] + (off[a] + 1.f) * (off[a] + 1.f))) return false;
+        if (hi > R * scalar::sqrt(m[a] * m[a] + (off[a] - 1.f) * (off[a] - 1.f))) return false;
+    }
+    return true;
+}
+inline bool owner_in_view(const Owner& o, const Camera& c, float near_z, float far_z) noexcept {
+    if (!(c.m00 > 0.f) || !(c.m11 > 0.f)) return true;
+    const double s = double(core::world_scale);
+    const double w[3] = {double(o.pos[0]) * s, double(o.pos[1]) * s, double(o.pos[2]) * s};
+    float v[3];
+    to_view(c, w, v);
+    const float R = o.radius > 0 ? float(double(o.radius) * s) * core::visible_radius_scale : 0.f;
+    return sphere_in_view(v, R, c, near_z, far_z);
+}
+// The frame's located owners (core::VisibleOwners::located): a read owner's status, position and radius under its key
+// (owner, node, handle). remember_owner files a drawn path's read (read_owner); locate_owner returns the filed entry or
+// reads an owner past a stage's cap for the stamp only, through the drawn path's checks (obj+0x70 == node, node+0x28 ==
+// handle, not dying) and its position and radius, not its rows (five reads; out->rows stay zero). Either way an owner
+// is read at most once per frame for both stages (a full table, never at 1024 records, reads without filing).
+inline void remember_owner(core::VisibleOwners* v, const core::Event& e, OwnerStatus st, const Owner& o) noexcept {
+    if (!v) return;
+    core::VisibleOwners::Located* l = v->find(e.owner, e.node, e.handle);
+    if (!l || l->generation == v->generation) return;
+    *l = core::VisibleOwners::Located{e.owner, e.node, e.handle, v->generation, {o.pos[0], o.pos[1], o.pos[2]}, o.radius,
+                                      std::uint8_t(st)};
+    ++v->located_count;
+}
+inline OwnerStatus locate_owner(Reader rd, const core::Event& e, core::VisibleOwners& v, Owner* out) noexcept {
+    core::VisibleOwners::Located* l = v.find(e.owner, e.node, e.handle);
+    if (l && l->generation == v.generation) {
+        for (unsigned q = 0; q < 3; ++q) out->pos[q] = l->pos[q];
+        out->radius = l->radius;
+        return OwnerStatus(l->status);
+    }
+    ++v.located_reads;
+    OwnerStatus st = OwnerStatus::ok;
+    std::uint32_t node = 0, handle = 0, flags = 0;
+    if (!rd(e.owner + core::layout::obj_node, &node, 4) || !rd(e.owner + core::layout::obj_flags, &flags, 4))
+        st = OwnerStatus::unreadable;
+    else if (node != e.node)
+        st = OwnerStatus::mismatch;
+    else if (!rd(node + core::layout::node_handle, &handle, 4))
+        st = OwnerStatus::unreadable;
+    else if (handle != e.handle)
+        st = OwnerStatus::mismatch;
+    else if (flags & core::layout::obj_dying)
+        st = OwnerStatus::dying;
+    else if (!rd(node + core::layout::node_pos, out->pos, 12) || !rd(e.owner + core::layout::obj_radius, &out->radius, 4))
+        st = OwnerStatus::unreadable;
+    remember_owner(&v, e, st, *out);
+    return st;
+}
+// A per-call map from an owner to its candidate (the stages' owner lists): open addressing, 2048 entries for at most
+// ring_capacity owners (half full); value 0 is an empty entry, else the candidate's index + 1.
+struct OwnerMap {
+    static constexpr unsigned bits = 11, size = 1u << bits;
+    std::uint32_t key[size];
+    std::uint16_t value[size];
+    void clear() noexcept {
+        for (unsigned k = 0; k < size; ++k) value[k] = 0;
+    }
+    // The entry of owner o: its own, or the empty one it would take.
+    unsigned find(std::uint32_t o) const noexcept {
+        unsigned h = unsigned((o * 0x9e3779b1u) >> (32u - bits));
+        while (value[h] && key[h] != o) h = (h + 1u) & (size - 1u);
+        return h;
+    }
+};
+static_assert(2 * core::ring_capacity <= OwnerMap::size && core::ring_capacity < 0xffffu, "the owner map's entries");
 // The hit point in view space: node position + sum_j pos_j row_j (the engine's local -> world, 16.16 rows).
 inline void hit_point(const Owner& o, const std::int32_t pos[3], const Camera& c, float out[3]) noexcept {
     const double s = double(core::world_scale);
@@ -562,10 +643,14 @@ inline float box_screens(const renderer::WeaponPatch& p, const Camera& c, float 
     return w > 0.f && h > 0.f ? 0.25f * w * h : 0.f;
 }
 // Builds the frame's patches and decals from the ring (see the header). now = cfg+0x718. bubbles: the hull walk's cache
-// (production: one per process, rescoped by the caller; nullptr walks every owner every call).
-inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera& cam, const Tuning& t,
+// (production: one per process, rescoped by the caller; nullptr walks every owner every call). visible (nullable): adds
+// every owner it read and kept (max_owners) whose sphere reaches the view volume (owner_in_view) as drawn, and every
+// candidate owner in view (kept or not) as in view, for the stamp (core::ring_stamp_hidden); its located table holds
+// the owners read. Internal linkage (static), so its ring-sized static scratch is the TU's zero-initialised .bss, not a
+// comdat .data$ section of the file (the production DLL calls it from one TU).
+static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera& cam, const Tuning& t,
                     renderer::WeaponPatch* patches, unsigned patch_cap, renderer::WeaponDecal* decals,
-                    unsigned decal_cap, BubbleCache* bubbles = nullptr) noexcept {
+                    unsigned decal_cap, BubbleCache* bubbles = nullptr, core::VisibleOwners* visible = nullptr) noexcept {
     Counts n{};
     struct Seen {
         std::uint32_t owner;
@@ -575,8 +660,65 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         std::uint32_t age[core::owner_hits];
         unsigned index[core::owner_hits];
     };
+    // The owners, visible first (2026-11-07): every owner of a live stage-owned shield hit, those with a record the
+    // previous frame stamped off screen (core::hidden_off_screen) after the others (on screen, or new this frame), then
+    // by its newest hit, then by address; the first max_owners are read and drawn, the rest only located for the stamp.
+    // One pass over the ring with the owner map, a partial selection sort (keep <= 16). Static scratch, off the game
+    // thread's stack (the game thread is the only caller; nothing carries over).
+    struct Pick {
+        std::uint32_t owner, newest, index; // index: a record of the owner (the reader's validation)
+        std::uint8_t off;
+    };
+    static Pick pick[core::ring_capacity];
+    static OwnerMap map;
+    map.clear();
+    unsigned picks = 0;
+    for (unsigned i = 0; i < core::ring_capacity; ++i) {
+        const core::Event& e = ring.slots[i];
+        if (!e.sequence || e.role != core::role_shield_hit || !(e.flags & core::flag_stage)) continue;
+        const std::uint32_t age = core::age_ms(now, e.t0_game_ms);
+        if (age > e.lifetime_ms) continue;
+        const unsigned h = map.find(e.owner);
+        Pick* p;
+        if (!map.value[h]) {
+            map.key[h] = e.owner;
+            map.value[h] = std::uint16_t(picks + 1);
+            p = &pick[picks++];
+            *p = Pick{e.owner, age, i, 0};
+        } else {
+            p = &pick[map.value[h] - 1];
+        }
+        p->off = std::uint8_t(p->off | (ring.hidden[i] & core::hidden_off_screen));
+        if (age < p->newest) p->newest = age;
+    }
+    const unsigned keep = picks < core::max_owners ? picks : core::max_owners;
+    for (unsigned a = 0; a < keep; ++a) {
+        unsigned best = a;
+        for (unsigned b = a + 1; b < picks; ++b) {
+            const Pick &x = pick[b], &y = pick[best];
+            if (x.off != y.off ? x.off < y.off : x.newest != y.newest ? x.newest < y.newest : x.owner < y.owner) best = b;
+        }
+        if (best != a) {
+            const Pick tmp = pick[a];
+            pick[a] = pick[best];
+            pick[best] = tmp;
+        }
+    }
     Seen seen[core::max_owners];
-    unsigned seen_count = 0;
+    const unsigned seen_count = keep;
+    for (unsigned k = 0; k < keep; ++k) {
+        seen[k].owner = pick[k].owner;
+        seen[k].count = seen[k].live = 0;
+        seen[k].status = read_owner(rd, ring.slots[pick[k].index], &seen[k].data);
+        remember_owner(visible, ring.slots[pick[k].index], seen[k].status, seen[k].data);
+    }
+    if (visible) // the owners past the cap, located for the stamp only (the next frame's order); each read once a frame
+        for (unsigned k = keep; k < picks; ++k) {
+            Owner o;
+            if (locate_owner(rd, ring.slots[pick[k].index], *visible, &o) == OwnerStatus::ok &&
+                owner_in_view(o, cam, t.near_z, visible->far_z))
+                visible->add_in_view(pick[k].owner);
+        }
     for (unsigned i = 0; i < core::ring_capacity; ++i) {
         core::Event& e = ring.slots[i];
         if (!e.sequence || e.role != core::role_shield_hit || !(e.flags & core::flag_stage)) continue;
@@ -585,15 +727,9 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         Seen* s = nullptr;
         for (unsigned k = 0; k < seen_count && !s; ++k)
             if (seen[k].owner == e.owner) s = &seen[k];
-        if (!s) {
-            if (seen_count >= core::max_owners) {
-                ++n.dropped;
-                continue;
-            }
-            s = &seen[seen_count++];
-            s->owner = e.owner;
-            s->count = s->live = 0;
-            s->status = read_owner(rd, e, &s->data);
+        if (!s) { // its owner past max_owners this frame
+            ++n.dropped;
+            continue;
         }
         if (s->status != OwnerStatus::ok) {
             n.retired += core::ring_retire_owner(ring, e.owner, true);
@@ -633,6 +769,10 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         Seen& s = seen[k];
         if (s.status != OwnerStatus::ok || !s.count) continue;
         ++n.owners;
+        if (visible && owner_in_view(s.data, cam, t.near_z, visible->far_z)) {
+            visible->add_in_view(s.owner);
+            visible->add(s.owner);
+        }
         const core::Event& newest = ring.slots[s.index[0]];
         float colour[3];
         patch_colour(newest, t, colour);
