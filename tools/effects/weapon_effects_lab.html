@@ -73,6 +73,9 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>rings: fighter <input id="c_rings_fighter" type="number" min="0" max="6" step="1" style="width:4em" title="neighbour rings a hit lights about its cell"></label>
   <label>corvette <input id="c_rings_corvette" type="number" min="0" max="6" step="1" style="width:4em"></label>
   <label>capital <input id="c_rings_capital" type="number" min="0" max="6" step="1" style="width:4em"></label>
+  <label title="the patch floats this far above the hull along its normal, with parallax (weapon_shell_ps.hlsl); clipped at the hull's outline">stand-off m: fighter <input id="c_standoff_fighter" type="number" min="0" step="0.1" style="width:4.5em"></label>
+  <label>corvette <input id="c_standoff_corvette" type="number" min="0" step="0.1" style="width:4.5em"></label>
+  <label>capital <input id="c_standoff_capital" type="number" min="0" step="0.5" style="width:4.5em"></label>
   <label>ripple speed <input id="c_ripple_speed" type="number" step="0.1" style="width:5em" title="footprint radii per game second"></label>
   <label>centre gain <input id="c_centre_gain" type="number" min="0" step="0.1" style="width:4.5em" title="the hit's own cell over a ring cell, edge and fill (the marker; its fill at the header's centre_fill)"></label>
   <label>fade ms <input id="c_fade_ms" type="number" step="50" style="width:5em"></label>
@@ -186,6 +189,7 @@ const HEADER = {
   engine_units_per_metre: 500.0,
   cell_m: [3.0, 6.0, 16.0],
   rings: [1, 2, 2],
+  standoff_m: [1.5, 3.0, 8.0],
   ripple_speed: 3.333,
   ring_width: 0.12,
   ring_gain: 1.0,
@@ -271,6 +275,7 @@ function ourControls() {
   const n = id => parseFloat($(id).value);
   return {cell_m: PATCH_TIERS.map(t => n('c_cell_' + t)),
           rings: PATCH_TIERS.map(t => Math.max(0, Math.min(6, Math.round(n('c_rings_' + t)) || 0))),
+          standoff_m: PATCH_TIERS.map(t => Math.max(0, n('c_standoff_' + t) || 0)),
           ripple_speed: n('c_ripple_speed'), centre_gain: n('c_centre_gain'), fade_s: n('c_fade_ms') / 1000,
           stagger: n('c_stagger'), fill_ratio: n('c_fill_ratio'),
           bands: {high: n('c_colour_high'), mid: n('c_colour_mid'), low: n('c_colour_low'),
@@ -546,27 +551,47 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     }
   const pt = (x, y) => [P[(y * W + x) * 3], P[(y * W + x) * 3 + 1], P[(y * W + x) * 3 + 2]];
   const sharp = HEADER.triplanar_sharpness, floor = HEADER.triplanar_floor;
+  // The stand-off (weapon_shell_ps.hlsl): the patch floats `lift` above the hull along the normal; the pixel shows the
+  // hull point whose offset lies on its ray (one parallax step: P's tangent plane offset by lift, cut by the ray, the
+  // hull under that point, its plane the same way); off the outline, the hull more than lift off the tangent plane or
+  // behind the eye: nothing. pixelOf is rayOf's inverse (owner frame -> pixel).
+  const lift = c.standoff_m[c.tier];
+  const pixelOf = q => { const v = toView(q); return [Math.round(v[0] / v[2] * f + W / 2 - 0.5), Math.round(H / 2 - 0.5 - v[1] / v[2] * f)]; };
+  const cut = (d, q, n, den) => (lift + dot3(n, [0, 1, 2].map(k => q[k] - O[k]))) / den; // ray parameter on q's offset plane
   for (let y = 0; y + 1 < H; y++)
     for (let x = 0; x + 1 < W; x++) {
       if (!on[y * W + x]) continue;
-      const p = pt(x, y), x0 = x & ~1, y0 = y & ~1;
-      let n;
-      if (on[y0 * W + x0] && on[y0 * W + x0 + 1] && on[(y0 + 1) * W + x0]) {
-        const a = pt(x0, y0), bx = pt(x0 + 1, y0), by = pt(x0, y0 + 1);
-        n = cross3([0, 1, 2].map(k => bx[k] - a[k]), [0, 1, 2].map(k => by[k] - a[k]));
-      } else n = [0, 1, 2].map(k => O[k] - p[k]);
-      if (dot3(n, [0, 1, 2].map(k => O[k] - p[k])) < 0) n = n.map(v => -v);
+      const p0 = pt(x, y), x0 = x & ~1, y0 = y & ~1;
+      if (!(on[y0 * W + x0] && on[y0 * W + x0 + 1] && on[(y0 + 1) * W + x0])) continue; // a quad on the sky: no normal
+      const a = pt(x0, y0), bx = pt(x0 + 1, y0), by = pt(x0, y0 + 1);
+      let n = cross3([0, 1, 2].map(k => bx[k] - a[k]), [0, 1, 2].map(k => by[k] - a[k]));
+      if (dot3(n, [0, 1, 2].map(k => O[k] - p0[k])) < 0) n = n.map(v => -v);
       const ln = Math.hypot(n[0], n[1], n[2]) || 1;
       n = n.map(v => v / ln);
+      let p = p0;
+      if (lift > 0) {
+        const d = rayOf(x, y), den = Math.min(dot3(n, d), -1e-6), s1 = cut(d, p0, n, den);
+        if (!(s1 > 0)) continue;
+        const [qx, qy] = pixelOf([0, 1, 2].map(k => O[k] + d[k] * s1 - n[k] * lift));
+        if (qx < 0 || qy < 0 || qx >= W || qy >= H || !on[qy * W + qx]) continue;
+        const q = pt(qx, qy);
+        if (Math.abs(dot3(n, [0, 1, 2].map(k => q[k] - p0[k]))) > lift + 0.05 * cell) continue;
+        const s2 = cut(d, q, n, den);
+        if (!(s2 > 0)) continue;
+        p = [0, 1, 2].map(k => O[k] + d[k] * s2 - n[k] * lift);
+      }
       const m = n.map(v => Math.pow(Math.max(Math.abs(v), 1e-6), sharp)), ms = m[0] + m[1] + m[2];
       const t = m.map(v => Math.max(v / ms - floor, 0)), ts = Math.max(t[0] + t[1] + t[2], 1e-6);
-      const pr = pt(x + 1, y), pd = pt(x, y + 1);
+      const sh = [0, 1, 2].map(k => p[k] - p0[k]); // the neighbours' points moved with the parallax (the edge's fwidth)
+      const pr = pt(x + 1, y).map((v, k) => v + sh[k]), pd = pt(x, y + 1).map((v, k) => v + sh[k]);
       for (const d of draws) {
         if (!(dot3(n, d.fr.a) > 0)) continue;
         const axis = d.fr.a[0] ? 0 : d.fr.a[1] ? 1 : 2, w = t[axis] / ts;
         if (!(w > 0)) continue;
         const q = [dot3(p, d.fr.u), dot3(p, d.fr.v)], fa = [q[0], q[1], dot3(p, d.fr.a)];
         if (fa.some((v, i) => v < d.lo[i] || v > d.hi[i])) continue; // the draw's box
+        const fp = [dot3(p0, d.fr.u), dot3(p0, d.fr.v), dot3(p0, d.fr.a)]; // the program's pre-test: P within 4 lift
+        if (fp.some((v, i) => v < d.lo[i] - 4 * lift || v > d.hi[i] + 4 * lift)) continue;
         const cl = hexCell(q[0] / cell, q[1] / cell), cv = d.cells.get(packKey(cl.kx, cl.ky));
         if (!cv) continue;
         const hd = qq => hexCell(dot3(qq, d.fr.u) / cell, dot3(qq, d.fr.v) / cell).hd;
@@ -585,7 +610,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   const f0 = hits.length ? hits[0].shield : 1, lit = draws.reduce((n, d) => n + d.cells.size, 0);
   const gpuDraws = draws.reduce((n, d) => n + d.draws, 0), dropped = draws.reduce((n, d) => n + d.dropped, 0);
   const regions = [...new Set(draws.map(d => ['+z', '-z', '+x', '-x', '+y', '-y'][d.seed]))].join(' ');
-  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.name} ${S} m${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship, chase') : ''} | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
+  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.name} ${S} m${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship, chase') : ''} | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s), stand-off ${fmt(lift)} m`);
 }
 // The impact slot's share of the loop: our patch lasts its record lifetime in wall time (game time / SETA).
 function ourLoopMs() {
@@ -596,10 +621,12 @@ function ourLoopMs() {
 const OUR_IDS = ['c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_rings_fighter', 'c_rings_corvette',
                  'c_rings_capital', 'c_ripple_speed', 'c_centre_gain', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
                  'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
-                 'c_weapon_tint'];
+                 'c_weapon_tint', 'c_standoff_fighter', 'c_standoff_corvette', 'c_standoff_capital'];
 function initOurControls() {
   const set = (id, v) => { if ($(id) && !$(id).value) $(id).value = v; };
-  PATCH_TIERS.forEach((t, i) => { set('c_cell_' + t, HEADER.cell_m[i]); set('c_rings_' + t, HEADER.rings[i]); });
+  PATCH_TIERS.forEach((t, i) => {
+    set('c_cell_' + t, HEADER.cell_m[i]); set('c_rings_' + t, HEADER.rings[i]); set('c_standoff_' + t, HEADER.standoff_m[i]);
+  });
   set('c_ripple_speed', HEADER.ripple_speed); set('c_centre_gain', HEADER.centre_gain); set('c_fade_ms', HEADER.fade_ms);
   set('c_stagger', HEADER.stagger); set('c_fill_ratio', HEADER.fill_ratio); set('c_weapon_tint', HEADER.weapon_tint);
   set('c_colour_high', HEADER.colour_high); set('c_colour_mid', HEADER.colour_mid); set('c_colour_low', HEADER.colour_low);

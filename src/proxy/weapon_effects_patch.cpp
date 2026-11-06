@@ -422,7 +422,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                                                   : 0.0;
                 log("weapon_event frame=%llu seq=%lu role=%s table=%s row=%u style=%s%s tier=%s calibre=%.3f absorbed=%u "
                     "damage=%ld forwarded=%u stage=%u nested=%u t0=%lu tint=%s:%06lx owner=%08lx radius=%ld "
-                    "pos=%ld,%ld,%ld pos_r=%.3f dir=%d,%d,%d shield=%.4f shield_read=%u patch_tier=%s tier_source=%s sample=%s",
+                    "pos=%ld,%ld,%ld pos_r=%.3f dir=%d,%d,%d shield=%.4f shield_read=%u drained=%u patch_tier=%s "
+                    "tier_source=%s sample=%s",
                     frame, static_cast<unsigned long>(e.sequence), core::role_name(e.role), core::table_name(e.table),
                     unsigned(e.row), core::shape_name(e.style & core::style_shape_mask),
                     (e.style & core::style_burst) ? "+burst" : "", core::tier_name(e.tier), double(core::calibre_of(e)),
@@ -434,7 +435,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                     static_cast<long>(e.radius), static_cast<long>(e.pos[0]), static_cast<long>(e.pos[1]),
                     static_cast<long>(e.pos[2]), pos_r, int(e.dir[0]), int(e.dir[1]), int(e.dir[2]),
                     double(float(e.shield_q) * (1.f / 65535.f)),
-                    unsigned((e.flags & core::flag_shield_read) != 0), core::patch_tier_name(e.patch_tier),
+                    unsigned((e.flags & core::flag_shield_read) != 0),
+                    unsigned((e.detail & core::detail_drained) != 0), core::patch_tier_name(e.patch_tier),
                     core::tier_source_name(e.tier_source), sample);
             }
         }
@@ -456,7 +458,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "patches=%u decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
-        "area_dropped=%u",
+        "area_dropped=%u drained=%lu",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -472,7 +474,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         static_cast<unsigned long>(c.shield_unread - seen_.shield_unread), static_cast<unsigned long>(scope_clears_),
         core::ring_capacity - r.free_count, period_.dropped, period_.cells_dropped, period_.hits_dropped,
         period_.spills, static_cast<unsigned long>(c.dir_fallback - seen_.dir_fallback), period_.faces_culled,
-        period_.area_dropped);
+        period_.area_dropped, static_cast<unsigned long>(c.drained - seen_.drained));
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_retired_ = r.retired;

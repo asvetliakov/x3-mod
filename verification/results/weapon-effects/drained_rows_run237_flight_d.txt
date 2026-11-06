@@ -1,0 +1,21 @@
+# /mnt/c/X3/x3m.log: drained_rows.py summary, then the 11 rows below the threshold
+# shield_hit rows with a read shield: 776; below 0.0050: 11; owners: 2
+#   row=11 damage=12030 shield=0.0034: 1
+#   row=29 damage=428 shield=0.0000: 3
+#   row=29 damage=428 shield=0.0001: 2
+#   row=29 damage=428 shield=0.0002: 1
+#   row=29 damage=428 shield=0.0004: 1
+#   row=29 damage=428 shield=0.0005: 3
+#   owner=49850338: 9
+#   owner=a71a18d0: 2
+weapon_event frame=36073 seq=698 role=shield_hit table=bullets row=11 style=tracer tier=medium calibre=0.802 absorbed=1 damage=12030 forwarded=0 stage=1 nested=0 t0=18413480 tint=texture:222418 owner=49850338 radius=27888 pos=-850,-1422,-19398 pos_r=0.698 dir=1,0,127 shield=0.0034 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=36642 seq=730 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18415850 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=-7678,4680,-5483 pos_r=0.378 dir=31,-47,114 shield=0.0004 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=37044 seq=748 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18417532 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=-6214,6677,-22322 pos_r=0.865 dir=26,-38,118 shield=0.0002 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=38001 seq=785 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18421526 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=-1892,8292,-3613 pos_r=0.331 dir=40,-94,75 shield=0.0005 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=38002 seq=786 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18421530 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=-989,6147,-68 pos_r=0.223 dir=40,-94,75 shield=0.0000 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=38348 seq=793 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18422972 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=-998,7357,-7084 pos_r=0.368 dir=49,-83,82 shield=0.0005 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=38377 seq=794 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18423093 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=-3685,6134,-2136 pos_r=0.268 dir=49,-82,84 shield=0.0001 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=41048 seq=928 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18434283 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=7938,2577,-3184 pos_r=0.320 dir=-115,11,53 shield=0.0000 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=41818 seq=959 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18437492 tint=texture:bdbaa0 owner=49850338 radius=27888 pos=8294,3820,9393 pos_r=0.470 dir=-85,-78,-53 shield=0.0005 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=74466 seq=1639 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18964724 tint=texture:bdbaa0 owner=a71a18d0 radius=27888 pos=-1408,2852,-22808 pos_r=0.826 dir=-6,1,127 shield=0.0001 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period
+weapon_event frame=75031 seq=1662 role=shield_hit table=bullets row=29 style=slug tier=light calibre=0.077 absorbed=1 damage=428 forwarded=0 stage=1 nested=0 t0=18967290 tint=texture:bdbaa0 owner=a71a18d0 radius=27888 pos=2325,820,-24716 pos_r=0.891 dir=-4,1,127 shield=0.0000 shield_read=1 patch_tier=corvette tier_source=ship_class sample=period

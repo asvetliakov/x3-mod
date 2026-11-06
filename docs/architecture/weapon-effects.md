@@ -248,7 +248,7 @@ Shared by the DLL, the fixture (compiled in) and the lab (its JSON mirror, injec
 | `t0_game_ms` | u32 | `cfg+0x718` at the hook; **every age and bound is game time**: `age = now_game − t0`, so SETA shortens ripples, sparks and fireballs exactly as it does the engine's own effects |
 | `lifetime_ms` | u16 | the style's timeline (shield patch `patch_lifetime_ms` = 2941, 5.1.1; sparks 250–500, fireball 1,000–2,000 by tier, beam = col 27 when flag 0x2000) |
 | `owner` | object ptr, root node ptr, node handle u32, serial u64 (0 when `object_lifetime` is inactive) | the victim (impact), the ship (muzzle), the dying object (explosion, t0 only) |
-| `shooter`, `slot` | object ptr, u8 | muzzle and bolts. Step 1 does not carry `shooter` (unread, F9); its four bytes hold `shield_q` (u16, current / maximum shield points × 65535, valid with `shield_read`), `patch_tier` (u8, fighter / corvette / capital) and `tier_source` (u8: ship class id, station, radius); a later step that binds the shooter widens the record |
+| `shooter`, `slot` | object ptr, u8 | muzzle and bolts. Step 1 does not carry `shooter` (unread, F9); its four bytes hold `shield_q` (u16, current / maximum shield points × 65535, valid with `shield_read`), `patch_tier` (u8, fighter / corvette / capital) and `tier_source` (u8: ship class id, station, radius); a later step that binds the shooter widens the record. The `slot` byte is `detail` in step 1 (an impact's `EventDetail` bits: `detail_drained`, 5.1.1); a muzzle record carries its gun slot there |
 | `table`, `row` | u8 (`bullets` / `missiles`), u16 | the live record's identity; the override and the table lookup key |
 | `pos` | 3 × f32 | local to the owner (impact, muzzle) or world (explosion) |
 | `axis` | 3 × f32 | projectile heading / muzzle orientation / dying object's velocity. As built for impacts `dir` (3 × i8, world, × 127 rounded): the projectile root node's row 2 (`node+0x40` third row, local z in world, 16.16); 0, 0, 0 when that node is not live or the row is zero (`dir_fallback`), taking the three bytes the narrowed `alt_rgb332` freed |
@@ -519,8 +519,9 @@ every hit, so a diagnosis flight still sees vanilla.
   rasterize (the cull mode follows the sign of the owner frame's determinant in view), so each pixel is shaded once
   per box, the eye inside it too (coordinator decision 2026-11-06: the per-cell columns of the first screen-space build
   cost 2.5 to 9 x the planar patch's GPU time). Per pixel (`weapon_shell_ps.hlsl`) the lane's view depth (sky: nothing)
-  rebuilds the scene point through the jittered projection and the owner's rows (p, owner frame); a point outside the
-  box draws nothing; the pixel's cell is p's projection on the face's lattice, looked up in the draw's cell map (pixel
+  rebuilds the scene point P through the jittered projection; the stand-off's step (below) gives the hull point H the
+  pixel shows, and H in the face's frame (owner rows) is tested against the box: an H outside it draws nothing; the
+  pixel's cell is H's projection on the face's lattice, looked up in the draw's cell map (pixel
   constants: 128 packed keys in ascending order, their clocks, and each group of sixteen keys' range, so a pixel scans
   the one group that can hold its key). The normal is the cross product of the rebuilt point's screen derivatives
   (ddx, ddy),   turned towards the eye; the face's share is the triplanar weight |n_a|^8 / sum |n_k|^8 less a floor of 0.3,
@@ -543,8 +544,56 @@ every hit, so a diagnosis flight still sees vanilla.
   4-neighbourhood (per axis the neighbour with the smaller depth step) agree inside a surface (mean 0.14 to 0.44
   degrees, p99 1.3 to 4.7 against 1.5 to 5.5), the derivatives miss the dominant axis on about half the silhouette
   pixels (1134 of 2191 on the narrow hull's top) where the neighbourhood misses none, and the neighbourhood costs four
-  more lane fetches per lit pixel; the derivatives  were kept, silhouettes take the eye's direction. Keys stay below the 2048 bias (about 1000 cells from the owner's
+  more lane fetches per lit pixel; the derivatives were kept, and a pixel whose quad touches the sky (no normal) is
+  refused (the stand-off; before it, such silhouette pixels took the eye's direction). Keys stay below the 2048 bias (about 1000 cells from the owner's
   origin along a lattice axis: 15 km at a fighter's cell, 80 km at a capital's).
+- **Stand-off (user request after Run237 Flight D: "render the decal a little distance away from the hull, like on a
+  hull scaled 1.2-1.3").** The patch floats a per-tier stand-off d above the hull along its normal, with parallax:
+  `core::standoff_m` 1.5 / 3 / 8 m for fighter / corvette / capital (half a cell; a station is a capital: 8 m), header
+  constants, no user setting; the lab has a stand-off control per tier. Per pixel (`weapon_shell_ps.hlsl`) the lane
+  gives the hull point P and the normal n (ddx / ddy as above); the pixel shows the hull point H whose offset H + n d
+  lies on its view ray, found in one parallax step: P's tangent plane offset by d and cut by the ray gives H1 (exact on
+  a plane), the lane at H1's raster gives the hull point Q there, and Q's plane (normal n) offset and cut the same way
+  gives H; the cell, the box test and the anchor all take H's owner-frame coordinates, the triplanar share takes n.
+  Steps measured on the CPU twin (fixture `STANDOFF_STEPS`, spheres of every tier against the exact offset sphere):
+  without the step the screen error of the drawn hull point is 1.0 to 32.7 px at p99, one step brings it to 0.6 to
+  7.1 px, a second step does not reduce it (the fixed normal n bounds it), so the program takes one (one extra lane
+  fetch per pixel) [M]. **Limit: the floated patch is clipped at the ship's outline.** A pixel draws nothing where its own
+  lane shows the sky (the offset surface reaches up to d past the hull's outline there and is not drawn), where the
+  lane under H1 shows the sky, where H1 lies at or behind the eye plane or projects off the screen, where Q departs
+  from P's tangent plane by more than d (the hull curves or steps away under the floated point: a crease or a part
+  edge clips it there too, and so does an occluder in front of H1), where the ray meets the offset plane behind
+  the eye (an eye within d of the hull, as in the cockpit), where the 2x2 quad touches the sky (no normal: a rim of
+  a pixel or two inside the outline, where the eye-direction fallback put the patch several pixels off), and, for the
+  per-pixel cost, where P lies more than 4 d outside the hull box (H lies d tan(theta) from P on a plane, so a view
+  more than 76 degrees off the normal loses the patch's far band). Near the eye the clipping grows: with the eye 4 m
+  from a flat fighter's nose (curvature radius 0.5 m across its thin axis) the floated patch's hull points under the
+  outer pixels lie off the screen or beyond the outline, and 0.50 of the surface within half a reach of the hit draws
+  (fixture `eye_inside_sphere`; its CPU twin's `STANDOFF_REFUSALS` row refuses the rest: 22 % off screen, 19 % on
+  the sky, 5 % behind the eye, 5 % past the plane test) [M]. The box
+  rasterizes grown where the floated point H + n d can lie (`renderer::raster_box`: a face takes a share only where n
+  points along its axis within the cut, so 0..d above H along +a and up to 0.842 d sideways in the plane), so it covers
+  every pixel whose floated point may draw; the face cull and the screen budget test that grown box (the floated point
+  X = H + n d lies in it and on the same eye ray as the lane point P whose normal decides the share, so the cull's
+  argument at P holds at X; a fighter's +z face that the hull box culled under a hit on its top now draws and lights
+  nothing), and the pre-cull of the hits' box pads by d. The program's cost gates (P outside the hull box grown by 4 d
+  skips the normal and the step, H1 outside it grown by 2 d skips the fetch; reusing the pixel's own depth when the
+  shift rounds to its own texel was measured slower and dropped) and the per-draw constants c93..c101 are in
+  `weapon_shell_ps.hlsl`. The decal fallback (an
+  owner without a frame) does not float.
+- **Drained shield (user report after Run237 Flight D: "shield hit effects are rendered even when the ship doesn't have
+  shields left").** The engine absorbs a weak bolt on an empty shield with the recharge trickle and sets the absorbed
+  flag (`C:\X3\x3m.log` of Run237 Flight D, `verification/results/weapon-effects/drained_rows.py` [M]: of 776 logged
+  `shield_hit` rows with a read shield, 10 at post-hit 0.0000 to 0.0005, all TBullets row 29 at damage 428, and one at
+  0.0034, row 11 at damage 12030, on two owners), so the hit is a shield hit by the engine's rule while the HUD shows
+  0 %. Rule: an absorbed hit whose
+  read post-hit fraction (`Event::shield_q`, `flag_shield_read`) is below `core::drained_shield_q` (0.5 % of 65535:
+  327) is a hull hit: the hook forwards the engine's spawn (the native impact sprite), records `role_hull_hit` with
+  `Event::detail` `detail_drained` (the byte the impact never used; a later muzzle step's gun slot shares it), stages no
+  patch and counts `drained` (`weapon_event drained=1`, `weapon_effects_frame drained=`); an unread shield keeps the
+  engine's rule. Only the post-hit value is known, so a hit that drains a meaningful shield to zero in one blow is
+  drained too (it shows the native hull impact, not the patch): accepted. Integer compare in the handler, which keeps
+  no call and no x87.
 - **The own ship in the cockpit view (user decision 2026-11-06, Run236 Flight C).** In the cockpit view the own
   ship's patch sits around the eye and covers the view, so its draws take `core::own_cockpit_gain` (0.35, a header
   constant, no setting) of their radiance (`stage::dim_own_cockpit` scales the patch colour; ONE/ONE, so the colour
@@ -598,9 +647,11 @@ every hit, so a diagnosis flight still sees vanilla.
   red below 35 %. The hook reads the current and maximum shield (spawn note §9, 2.2: capacity-weighted like the HUD
   bar, post-hit); a refused read colours light blue.
 - **Cost.** A patch is a fraction of the full shell (which measured 201.8 us for two shells at 5120x1440 with the
-  winding cull, the ledger). The per-cell program is 182 ps_3_0 slots (was 360 for the cell map in pixel constants);
-  the per-frame figures and the stage's CPU cost are in the ledger (rows of 2026-11-06) [M].
-- **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, rings per tier, ripple speed,
+  winding cull, the ledger). The patch program is 548 ps_3_0 slots with the stand-off (457 before it); the stand-off's
+  step costs about 1.27x per rasterized pixel at 5120x1440, and the grown box adds raster, so the stacked-box cases
+  measure 1.49x / 1.49x of the efce60957 figures; the per-frame figures and the stage's CPU cost are in the ledger
+  (rows of 2026-11-06) [M].
+- **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, rings per tier, stand-off per tier, ripple speed,
   centre gain and fade duration, stagger, edge-versus-fill, the three colour bands, the SETA rate (default 1), the
   hit-sequence player in hits per game second (so SETA 6 is as dense as the game).
 - **Later options, not now:** patterns per race or class; weapon tint.

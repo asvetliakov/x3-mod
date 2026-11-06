@@ -194,10 +194,9 @@ void draw_hull_lane(Target& t, const HullLane& h) {
     dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
     dev->EndScene();
 }
-// Its CPU twin in double: the surface point under pixel (x, y) in the owner's frame (view units); false for sky.
-bool hull_point(const Target& t, const HullLane& h, unsigned x, unsigned y, double p[3]) {
-    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
-    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
+// Its CPU twin in double: the surface point on the eye ray of view direction d in the hull's frame (view units);
+// false for sky.
+bool hull_ray(const HullLane& h, const double d[3], double p[3], double* depth = nullptr) {
     double od[3], dd[3], A = 0, B = 0, C = -1;
     for (unsigned k = 0; k < 3; ++k) {
         od[k] = -(h.centre[0] * h.axes[k][0] + h.centre[1] * h.axes[k][1] + h.centre[2] * h.axes[k][2]);
@@ -213,7 +212,32 @@ bool hull_point(const Target& t, const HullLane& h, unsigned x, unsigned y, doub
     if (tt <= 0.0) tt = (-B + std::sqrt(disc)) / A;
     if (!(tt > 0.0)) return false;
     for (unsigned k = 0; k < 3; ++k) p[k] = od[k] + tt * dd[k];
+    if (depth) *depth = tt; // the view depth (d's z is 1)
     return true;
+}
+// The surface point under pixel (x, y) (the hull lane's ray).
+bool hull_point(const Target& t, const HullLane& h, unsigned x, unsigned y, double p[3]) {
+    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
+    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
+    return hull_ray(h, d, p);
+}
+// The floated image of hull point q (hull frame): q + n d (n the ellipsoid's outward normal at q) seen from the eye
+// lands on the hull at the returned point (hull frame), where the patch drawn about q appears to lie in the lane's
+// reconstruction; false when that ray misses the hull or the hull hides the floated point (a far-side hit).
+bool lifted_image(const HullLane& h, const double q[3], double d, double out[3]) {
+    double n[3], len = 0;
+    for (unsigned k = 0; k < 3; ++k) {
+        n[k] = q[k] / (h.ext[k] * h.ext[k]);
+        len += n[k] * n[k];
+    }
+    len = std::sqrt(len);
+    double v[3] = {h.centre[0], h.centre[1], h.centre[2]};
+    for (unsigned k = 0; k < 3; ++k)
+        for (unsigned j = 0; j < 3; ++j) v[j] += h.axes[k][j] * (q[k] + n[k] / len * d);
+    if (!(v[2] > 0.0)) return false;
+    const double dir[3] = {v[0] / v[2], v[1] / v[2], 1.0};
+    double depth = 0;
+    return hull_ray(h, dir, out, &depth) && depth >= v[2];
 }
 // The whole target read back as RGB floats (row-major, 3 per pixel); empty on failure.
 std::vector<float> read_rgb(Target& t, IDirect3DSurface9* source) {
@@ -313,9 +337,14 @@ rr::WeaponPatch make_patch(const TierScene& s, std::initializer_list<Hit> hits, 
                            const ws::Tuning& t = ws::Tuning{}) {
     return make_patch(s, hits.begin(), unsigned(hits.size()), shield, cx, t);
 }
-// Screen x (px) of the plane point (q, 0) on the scanline through the hit (the plane at view z centre_z - S).
+// The tier's stand-off (view units, the production tuning).
+double standoff_of(const TierScene& s) {
+    return double(ws::standoff_view(ws::Tuning{}, s.tier));
+}
+// Screen x (px) of the plane point (q, 0) on the scanline through the hit: the plane at view z centre_z - S, its patch
+// floated the stand-off nearer the eye (the plane square to the view: the lattice point q shows at the floated depth).
 double screen_x(const Target& t, const TierScene& s, double q) {
-    return double(t.w) * 0.5 * (1.0 + 1.6 * q / (double(s.centre_z) - double(s.surface)));
+    return double(t.w) * 0.5 * (1.0 + 1.6 * q / (double(s.centre_z) - double(s.surface) - standoff_of(s)));
 }
 unsigned tier_rings(const TierScene& s) {
     return wc::rings[s.tier];
@@ -1083,7 +1112,7 @@ int main(int argc, char** argv) {
         for (unsigned k = 0; k < 12; ++k) std::memcpy(cases[k].rows, rows_of[k], sizeof ident);
         struct Result {
             unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0;
-            double centroid_cells = 1e30, lit_ratio = 0;
+            double centroid_cells = 1e30, lit_ratio = 0, image_shift_cells = 0;
             bool drew = false;
         } res[12];
         for (unsigned i = 0; i < 12; ++i) {
@@ -1115,6 +1144,83 @@ int main(int argc, char** argv) {
             const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
             const double extent = n.patches ? double(patches[0].extent) : 0.0, cell = n.patches ? double(patches[0].cell) : 1.0;
             const double core = n.patches ? 0.5 * double(patches[0].reach) : 0.0; // surely inside the footprint's cells
+            // The stand-off: the patch about the hit floats d above the hull, so the lane's reconstruction shows it
+            // about the hit's floated image (lifted_image; the hit itself when d = 0 or the image misses the hull).
+            const double lift = n.patches ? double(patches[0].standoff) : 0.0;
+            double image[3] = {hp[0] - off[0], hp[1] - off[1], hp[2] - off[2]}, lifted[3];
+            if (lift > 0.0 && lifted_image(hull, image, lift, lifted)) std::memcpy(image, lifted, sizeof image);
+            for (unsigned k = 0; k < 3; ++k) image[k] += off[k];
+            {
+                double s2 = 0;
+                for (unsigned k = 0; k < 3; ++k) s2 += (image[k] - hp[k]) * (image[k] - hp[k]);
+                res[i].image_shift_cells = std::sqrt(s2) / cell;
+            }
+            for (unsigned k = 0; k < 3; ++k) hp[k] = image[k]; // the metrics below about the floated image
+            // The eye-inside case's refusals (the program's step on this lane's CPU twin, without the box and the map):
+            // per hull pixel within half a reach of the floated image, the first rule that refuses it.
+            if (!std::strcmp(c.name, "eye_inside_sphere") && lift > 0.0) {
+                const double W = g.w, Hh = g.h, m00 = 1.6, m11 = 1.6 * W / Hh;
+                auto at = [&](double x, double y, double v[3], double q[3]) {
+                    const double d[3] = {(2.0 * x / W - 1.0) / m00, (1.0 - 2.0 * y / Hh) / m11, 1.0};
+                    double t = 0;
+                    if (!hull_ray(hull, d, q, &t)) return false;
+                    for (unsigned k = 0; k < 3; ++k) v[k] = d[k] * t;
+                    return true;
+                };
+                auto dot = [](const double* a, const double* b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+                unsigned core_px = 0, no_normal = 0, behind = 0, off_screen = 0, sky = 0, plane = 0, drawn = 0;
+                for (unsigned y = 0; y < g.h; ++y)
+                    for (unsigned x = 0; x < g.w; ++x) {
+                        double P[3], q[3];
+                        if (!at(x, y, P, q)) continue;
+                        double e2 = 0;
+                        for (unsigned k = 0; k < 3; ++k) e2 += (q[k] + off[k] - hp[k]) * (q[k] + off[k] - hp[k]);
+                        if (e2 > core * core) continue;
+                        ++core_px;
+                        const unsigned x0 = std::min(x & ~1u, g.w - 2), y0 = std::min(y & ~1u, g.h - 2);
+                        double a[3], bx[3], by[3], tmp[3];
+                        if (!at(x0, y0, a, tmp) || !at(x0 + 1, y0, bx, tmp) || !at(x0, y0 + 1, by, tmp)) {
+                            ++no_normal;
+                            continue;
+                        }
+                        const double dx[3] = {bx[0] - a[0], bx[1] - a[1], bx[2] - a[2]}, dy[3] = {by[0] - a[0], by[1] - a[1], by[2] - a[2]};
+                        double n[3] = {dx[1] * dy[2] - dx[2] * dy[1], dx[2] * dy[0] - dx[0] * dy[2], dx[0] * dy[1] - dx[1] * dy[0]};
+                        const double ln = std::sqrt(dot(n, n));
+                        for (double& v : n) v /= ln;
+                        const double ray[3] = {P[0] / P[2], P[1] / P[2], 1.0};
+                        if (dot(n, ray) > 0.0)
+                            for (double& v : n) v = -v;
+                        const double rden = 1.0 / std::min(dot(n, ray), -1e-6), t1 = P[2] + lift * rden;
+                        double h1[3];
+                        for (unsigned k = 0; k < 3; ++k) h1[k] = ray[k] * t1 - n[k] * lift;
+                        if (!(t1 > 0.0) || !(h1[2] > 1e-6)) {
+                            ++behind;
+                            continue;
+                        }
+                        const double rx = std::floor((m00 * h1[0] / h1[2] + 1.0) * W * 0.5 + 0.5);
+                        const double ry = std::floor((1.0 - m11 * h1[1] / h1[2]) * Hh * 0.5 + 0.5);
+                        if (rx < 0.0 || ry < 0.0 || rx >= W || ry >= Hh) {
+                            ++off_screen;
+                            continue;
+                        }
+                        double Q[3];
+                        if (!at(rx, ry, Q, tmp)) {
+                            ++sky;
+                            continue;
+                        }
+                        const double dev[3] = {Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]};
+                        if (std::fabs(dot(n, dev)) > lift + 0.05 * cell || !((dot(n, Q) + lift) * rden > 0.0)) {
+                            ++plane;
+                            continue;
+                        }
+                        ++drawn;
+                    }
+                const double cp = core_px ? double(core_px) : 1.0;
+                std::printf("STANDOFF_REFUSALS case=%s core_pixels=%u no_normal=%.4f behind_eye=%.4f off_screen=%.4f "
+                            "sky=%.4f plane=%.4f drawn=%.4f\n",
+                            c.name, core_px, no_normal / cp, behind / cp, off_screen / cp, sky / cp, plane / cp,
+                            drawn / cp);
+            }
             Result& o = res[i];
             o.patches = n.patches;
             double wsum = 0, cs[3] = {0, 0, 0};
@@ -1136,7 +1242,8 @@ int main(int argc, char** argv) {
                         ++o.eligible;
                         o.covered += lit;
                     }
-                    if (lit && d > extent * 1.4142 * 1.01) ++o.outside; // the plane and the axis each within the extent
+                    if (lit && d > extent * 1.4142 * 1.01 + lift) ++o.outside; // the plane and the axis each within the
+                                                                              // extent, the parallax's spread within d
                     if (lit) {
                         wsum += v;
                         for (unsigned k = 0; k < 3; ++k) cs[k] += v * q[k];
@@ -1154,10 +1261,10 @@ int main(int argc, char** argv) {
             const double ratio = res[cases[i].ref].lit ? double(o.lit) / double(res[cases[i].ref].lit) : 0.0;
             res[i].lit_ratio = ratio;
             std::printf("PLACEMENT case=%s patches=%u lit_pixels=%u sky_lit=%u outside_lit=%u eligible=%u covered=%u "
-                        "coverage=%.3f centroid_error_cells=%.3f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
+                        "coverage=%.3f centroid_error_cells=%.3f image_shift_cells=%.3f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
                         cases[i].name, o.patches, o.lit, o.sky_lit, o.outside, o.eligible, o.covered,
-                        o.eligible ? double(o.covered) / double(o.eligible) : 0.0, o.centroid_cells, cases[cases[i].ref].name,
-                        ratio, int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
+                        o.eligible ? double(o.covered) / double(o.eligible) : 0.0, o.centroid_cells, o.image_shift_cells,
+                        cases[cases[i].ref].name, ratio, int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
         }
         auto on_hull = [&](unsigned i) {
             const Result& o = res[i];
@@ -1253,9 +1360,245 @@ int main(int argc, char** argv) {
                on_hull(4) && on_hull(5) && on_hull(6) && on_hull(7) && res[7].lit == res[5].lit, "");
         report("placement_station_at_the_hit", on_hull(8), "");
         report("placement_far_side_hidden_by_its_hull", res[9].lit == 0 && res[9].eligible == 0 && res[9].patches >= 1, "");
-        report("placement_eye_inside_sphere_draws", on_hull(10), "");
+        // The eye 4 m from the flat fighter's nose (curvature radius 0.5 m across its thin axis) with the 1.5 m stand-off:
+        // the floated patch's hull points under the outer pixels lie off the screen or beyond the outline, or the step
+        // leaves the nose (the CPU twin of this lane: 0.497 of the surface within half a reach of the hit drawn, the
+        // rest refused for those reasons; 5.1.1 "Stand-off"): its coverage gate is that measured share less 0.05.
+        const Result& eye = res[10];
+        report("placement_eye_inside_sphere_draws",
+               eye.drew && eye.sky_lit == 0 && eye.outside * 100 <= eye.lit && eye.eligible &&
+                   double(eye.covered) >= 0.45 * double(eye.eligible) && eye.centroid_cells <= 1.0,
+               "");
         report("placement_offcentre_origin_top_lights", on_hull(11) && res[11].lit_ratio >= 0.7, "");
         draw_lane(g, 0.f, -1.f);
+    }
+    // The stand-off on the GPU (user request after Run237 Flight D): a fighter's flat top (a plate, half-extents 500 x 10
+    // x 500 view units: flat to 0.05 units over the patch) turned 60 degrees about the view's y axis (its normal 60
+    // degrees off the eye ray), one hit at its top centre, 0.5 s old, through the production builder at stand-off 0,
+    // the tier's default and two cells. The lit pixels' hull points (the lane's CPU twin) carry the patch's luma-
+    // weighted centroid; its shift from the stand-off-0 centroid is the parallax, against the floated image of the hit
+    // (lifted_image: exact for a plane) and as the stand-off it implies (the d' whose floated image lies |shift| from
+    // the hit), both within 0.1 cell; nothing on sky.
+    {
+        const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
+        const double th = 60.0 * 3.14159265358979 / 180.0, cs = std::cos(th), sn = std::sin(th);
+        // local x -> view (cos, 0, sin), y -> (sin, 0, -cos) (towards the eye), z -> view y (det +1)
+        const std::int32_t rows[3][3] = {{std::int32_t(cs * 65536.0), 0, std::int32_t(sn * 65536.0)},
+                                         {std::int32_t(sn * 65536.0), 0, -std::int32_t(cs * 65536.0)},
+                                         {0, 65536, 0}};
+        const double plate[3] = {500.0, 10.0, 500.0};
+        const float cell = ws::metres_to_view(wc::cell_m[wc::patch_fighter]);
+        const float lifts_m[3] = {0.f, wc::standoff_m[wc::patch_fighter], 2.f * wc::cell_m[wc::patch_fighter]};
+        double centroid[3][3]{}, shift_pred[3][3]{};
+        unsigned lit[3]{}, sky[3]{}, drawn[3]{};
+        const double hit[3] = {0.0, 10.0, 0.0};
+        double theta = 0;
+        for (unsigned k = 0; k < 3; ++k) {
+            rr::WeaponPatch patches[wc::max_patches];
+            rr::WeaponDecal decals[wc::max_decals];
+            stage_owner(300.f, 60.f, 1000);
+            for (unsigned r = 0; r < 3; ++r)
+                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
+            stage_ring.slots[0].pos[0] = 0;
+            stage_ring.slots[0].pos[1] = eng(10.0);
+            stage_ring.slots[0].pos[2] = 0;
+            ws::Tuning t{};
+            t.standoff_m[wc::patch_fighter] = lifts_m[k];
+            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), t, patches, wc::max_patches,
+                                           decals, wc::max_decals);
+            const HullLane hull = staged_hull(plate);
+            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
+            drawn[k] = n.patches;
+            double wsum = 0;
+            for (UINT y = 0; y < g.h; ++y)
+                for (UINT x = 0; x < g.w; ++x) {
+                    const double v = l[std::size_t(y) * g.w + x];
+                    if (!(v > 1e-3)) continue;
+                    double q[3];
+                    ++lit[k];
+                    if (!hull_point(g, hull, x, y, q)) {
+                        ++sky[k];
+                        continue;
+                    }
+                    wsum += v;
+                    for (unsigned j = 0; j < 3; ++j) centroid[k][j] += v * q[j];
+                }
+            for (unsigned j = 0; j < 3; ++j) centroid[k][j] = wsum > 0 ? centroid[k][j] / wsum : 0.0;
+            double img[3] = {hit[0], hit[1], hit[2]};
+            const double d = double(ws::metres_to_view(lifts_m[k]));
+            if (d > 0.0) lifted_image(hull, hit, d, img);
+            for (unsigned j = 0; j < 3; ++j) shift_pred[k][j] = img[j] - hit[j];
+            if (k == 0) { // the angle at the hit between the normal (local +y) and the eye
+                double v[3], e = 0;
+                for (unsigned j = 0; j < 3; ++j) v[j] = hull.centre[j] + hull.axes[1][j] * hit[1];
+                for (unsigned j = 0; j < 3; ++j) e += v[j] * v[j];
+                theta = std::acos(-(v[0] * hull.axes[1][0] + v[1] * hull.axes[1][1] + v[2] * hull.axes[1][2]) / std::sqrt(e));
+            }
+        }
+        bool ok = lit[0] > 1000 && sky[0] == 0;
+        for (unsigned k = 0; k < 3; ++k) {
+            double s[3], err = 0, mag = 0, pmag = 0;
+            for (unsigned j = 0; j < 3; ++j) {
+                s[j] = centroid[k][j] - centroid[0][j];
+                err += (s[j] - shift_pred[k][j]) * (s[j] - shift_pred[k][j]);
+                mag += s[j] * s[j];
+                pmag += shift_pred[k][j] * shift_pred[k][j];
+            }
+            err = std::sqrt(err) / double(cell);
+            // The implied stand-off: the d' whose floated image of the hit lies |shift| from it (lifted_image inverted
+            // by bisection; the image's distance grows with d').
+            const double d = double(ws::metres_to_view(lifts_m[k])), want = std::sqrt(mag);
+            auto image_shift = [&](double dd) {
+                double img[3] = {hit[0], hit[1], hit[2]}, s2 = 0;
+                const HullLane hull = staged_hull(plate);
+                if (dd > 0.0) lifted_image(hull, hit, dd, img);
+                for (unsigned j = 0; j < 3; ++j) s2 += (img[j] - hit[j]) * (img[j] - hit[j]);
+                return std::sqrt(s2);
+            };
+            double lo = 0.0, hi = 4.0 * double(ws::metres_to_view(lifts_m[2]));
+            for (int it = 0; it < 60; ++it) (image_shift(0.5 * (lo + hi)) < want ? lo : hi) = 0.5 * (lo + hi);
+            const double implied = want > 0.0 ? 0.5 * (lo + hi) : 0.0;
+            std::printf("STANDOFF case=plate_60deg standoff_m=%.2f standoff_view=%.2f patches=%u lit_pixels=%u sky_lit=%u "
+                        "shift_view=%.3f predicted_view=%.3f shift_error_cells=%.4f implied_standoff_m=%.3f "
+                        "implied_error_cells=%.4f theta_deg=%.2f cell_view=%.2f\n",
+                        double(lifts_m[k]), d, drawn[k], lit[k], sky[k], std::sqrt(mag), std::sqrt(pmag), err,
+                        implied / double(ws::metres_to_view(1.f)), std::fabs(implied - d) / double(cell),
+                        theta * 57.29578, double(cell));
+            // 0.1 cell: no parallax (a shift of 0) misses the default stand-off's 14.7 view units by about a cell
+            ok = ok && lit[k] > 1000 && sky[k] == 0 && err <= 0.1 && std::fabs(implied - d) <= 0.1 * double(cell);
+        }
+        report("standoff_parallax_matches_d_on_a_tilted_plate", ok, "");
+        draw_lane(g, 0.f, -1.f);
+    }
+    // The stand-off's parallax steps (weapon_shell_ps.hlsl), its CPU twin in double on spheres (the hull lane's law,
+    // 1920 x 1080, the fixture's projection; the normal from the 2x2 quad as the hardware's coarse ddx / ddy) against
+    // the exact answer (the ray against the sphere of radius R + d, scaled back to R): per pixel on the hull, after 0, 1
+    // and 2 lane re-projection steps (the program takes one), the screen error of the hull point H drawn here (where
+    // H's own floated point H + n(H) d projects, in pixels) and its world error (cells), over all pixels and the
+    // silhouette-near ones (normal more than 60 degrees off the eye ray); pixels refused (a quad on the sky: no normal)
+    // and rejected (the lane under the step on the sky, the hull more than d off the tangent plane, behind the eye).
+    {
+        const double W = 1920.0, Hh = 1080.0, m00 = 1.6, m11 = 1.6 * W / Hh;
+        struct Sphere {
+            const char* name;
+            std::uint8_t tier;
+            double R, Z;
+        } spheres[] = {{"fighter_12m_at_68m", wc::patch_fighter, 60.0, 400.0},
+                       {"fighter_12m_at_37m", wc::patch_fighter, 60.0, 244.0},
+                       {"corvette_50m_at_70m", wc::patch_corvette, 250.0, 600.0},
+                       {"capital_400m_at_400m", wc::patch_capital, 2000.0, 4000.0}};
+        bool one_step = true;
+        for (const Sphere& sp : spheres) {
+            const double d = double(ws::standoff_view(ws::Tuning{}, sp.tier));
+            const double cell = double(ws::metres_to_view(wc::cell_m[sp.tier]));
+            auto ray_of = [&](double x, double y, double r[3]) {
+                r[0] = (2.0 * x / W - 1.0) / m00;
+                r[1] = (1.0 - 2.0 * y / Hh) / m11;
+                r[2] = 1.0;
+            };
+            auto sphere_t = [&](const double r[3], double radius) {
+                const double A = r[0] * r[0] + r[1] * r[1] + r[2] * r[2], B = -r[2] * sp.Z;
+                const double C = sp.Z * sp.Z - radius * radius, disc = B * B - A * C;
+                return disc < 0.0 ? -1.0 : (-B - std::sqrt(disc)) / A;
+            };
+            auto lane = [&](double x, double y, double p[3]) {
+                double r[3];
+                ray_of(x, y, r);
+                const double t = sphere_t(r, sp.R);
+                for (unsigned k = 0; k < 3; ++k) p[k] = r[k] * t;
+                return t > 0.0;
+            };
+            auto dot = [](const double* a, const double* b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+            auto raster = [&](const double v[3], double out[2]) {
+                out[0] = (m00 * v[0] / v[2] + 1.0) * W * 0.5;
+                out[1] = (1.0 - m11 * v[1] / v[2]) * Hh * 0.5;
+            };
+            std::vector<float> px[3], px_sil[3], cells[3];
+            unsigned pixels = 0, refused = 0, sil = 0, rejected[3]{};
+            for (unsigned y = 0; y < unsigned(Hh); ++y)
+                for (unsigned x = 0; x < unsigned(W); ++x) {
+                    double P[3], r[3];
+                    if (!lane(x, y, P)) continue;
+                    ++pixels;
+                    ray_of(x, y, r);
+                    const unsigned x0 = std::min(x & ~1u, unsigned(W) - 2), y0 = std::min(y & ~1u, unsigned(Hh) - 2);
+                    double a[3], bx[3], by[3];
+                    if (!lane(x0, y0, a) || !lane(x0 + 1, y0, bx) || !lane(x0, y0 + 1, by)) {
+                        ++refused;
+                        continue;
+                    }
+                    const double dx[3] = {bx[0] - a[0], bx[1] - a[1], bx[2] - a[2]}, dy[3] = {by[0] - a[0], by[1] - a[1], by[2] - a[2]};
+                    double n[3] = {dx[1] * dy[2] - dx[2] * dy[1], dx[2] * dy[0] - dx[0] * dy[2], dx[0] * dy[1] - dx[1] * dy[0]};
+                    const double ln = std::sqrt(dot(n, n));
+                    for (double& v : n) v /= ln;
+                    if (dot(n, r) > 0.0)
+                        for (double& v : n) v = -v;
+                    const double den = std::min(dot(n, r), -1e-6), rl = std::sqrt(dot(r, r));
+                    const bool is_sil = -dot(n, r) / rl < 0.5;
+                    sil += is_sil;
+                    // The exact floated hit: the ray against the sphere R + d, its point scaled back to R.
+                    const double te = sphere_t(r, sp.R + d);
+                    double he[3] = {r[0] * te, r[1] * te, r[2] * te - sp.Z};
+                    for (double& v : he) v *= sp.R / (sp.R + d);
+                    he[2] += sp.Z;
+                    double h[3];
+                    double t = (dot(n, P) + d) / den;
+                    bool ok = t > 0.0;
+                    for (unsigned k = 0; k < 3; ++k) h[k] = r[k] * t - n[k] * d;
+                    for (unsigned step = 0; step < 3; ++step) {
+                        if (step) {
+                            double rr[2], Q[3];
+                            raster(h, rr);
+                            const double qx = std::min(std::max(std::floor(rr[0] + 0.5), 0.0), W - 1.0);
+                            const double qy = std::min(std::max(std::floor(rr[1] + 0.5), 0.0), Hh - 1.0);
+                            ok = ok && lane(qx, qy, Q);
+                            const double dev[3] = {Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]};
+                            ok = ok && std::fabs(dot(n, dev)) <= d + 0.05 * cell;
+                            t = (dot(n, Q) + d) / den;
+                            ok = ok && t > 0.0;
+                            for (unsigned k = 0; k < 3; ++k) h[k] = r[k] * t - n[k] * d;
+                        }
+                        if (!ok) {
+                            ++rejected[step];
+                            continue;
+                        }
+                        double hc[3] = {h[0], h[1], h[2] - sp.Z};
+                        const double hl = std::sqrt(dot(hc, hc));
+                        double fl[3], fr[2];
+                        for (unsigned k = 0; k < 3; ++k) fl[k] = h[k] + hc[k] / hl * d;
+                        raster(fl, fr);
+                        const float e_px = float(std::sqrt((fr[0] - x) * (fr[0] - x) + (fr[1] - y) * (fr[1] - y)));
+                        const double ew[3] = {h[0] - he[0], h[1] - he[1], h[2] - he[2]};
+                        px[step].push_back(e_px);
+                        if (is_sil) px_sil[step].push_back(e_px);
+                        cells[step].push_back(float(std::sqrt(dot(ew, ew)) / cell));
+                    }
+                }
+            auto pct = [](std::vector<float>& v, double q) {
+                if (v.empty()) return 0.0;
+                std::sort(v.begin(), v.end());
+                return double(v[std::min(v.size() - 1, std::size_t(q * double(v.size())))]);
+            };
+            auto mean = [](const std::vector<float>& v) {
+                double s = 0;
+                for (float e : v) s += e;
+                return v.empty() ? 0.0 : s / double(v.size());
+            };
+            double p99[3], sil99[3];
+            for (unsigned step = 0; step < 3; ++step) {
+                p99[step] = pct(px[step], 0.99);
+                sil99[step] = pct(px_sil[step], 0.99);
+                std::printf("STANDOFF_STEPS case=%s standoff_view=%.2f cell_view=%.2f pixels=%u refused_no_normal=%u "
+                            "silhouette_pixels=%u steps=%u drawn=%u rejected=%u px_mean=%.3f px_p99=%.3f px_max=%.3f "
+                            "silhouette_px_p99=%.3f silhouette_px_max=%.3f cells_p99=%.4f\n",
+                            sp.name, d, cell, pixels, refused, sil, step, unsigned(px[step].size()), rejected[step],
+                            mean(px[step]), p99[step], pct(px[step], 1.0), sil99[step], pct(px_sil[step], 1.0),
+                            pct(cells[step], 0.99));
+            }
+            one_step = one_step && p99[1] < p99[0] && sil99[1] < sil99[0] && p99[2] >= p99[1] - 0.5 &&
+                       sil99[2] >= sil99[1] - 0.5;
+        }
+        report("standoff_one_step_suffices", one_step, "");
     }
     // The face cull (stage::face_culled, core::face_cull_sin): a fighter (R 100 at view z 400) hit on its back (local
     // z = 60), the owner turned about y by theta: at 0 the +z face's box faces away from the eye at every corner

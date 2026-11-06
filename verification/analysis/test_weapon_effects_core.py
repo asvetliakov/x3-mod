@@ -578,7 +578,9 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual((r['dir_unused']['identical'], r['dir_unused']['cells'] > 0), (1, True))
         for name, sign, seed in (('ytop', 1, 4), ('ybottom', -1, 5)):  # Run236: the y faces under hits from above / below
             y = r[name]
-            self.assertEqual((y['patches'], y['seed']), (5, seed), name)  # six faces, +z culled
+            # six faces; +z, culled at 5 before the stand-off, is within the cut once its box grows by the fighter's 7.5
+            # units (the cull tests the rasterized box: the floated point lies on the hull point's eye ray)
+            self.assertEqual((y['patches'], y['seed']), (6, seed), name)
             self.assertAlmostEqual(y['anchor'], 200.0, places=1)              # 200 along +y / -y
             self.assertEqual((y['hit_u'], y['hit_v']), (0.0, 0.0), name)
         yt = self.ytop_frames()

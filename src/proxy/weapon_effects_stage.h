@@ -16,7 +16,8 @@
 // weapon_shell_vs.hlsl); its pixels read the lane depth, rebuild the scene point in the owner frame and its normal,
 // keep a point inside the box whose cell is in the draw's map, and weigh the face by the outward normal's component on
 // its axis (triplanar, weapon_shell_ps.hlsl), so a hit shows on whatever hull lies under it and the faces share each
-// point (the weights sum to one). A face whose box points away from the eye past the triplanar cut is not drawn
+// point (the weights sum to one); the patch floats the tier's stand-off (Tuning::standoff_m) above the hull, its box
+// rasterized grown by it (renderer::raster_box). A face whose box points away from the eye past the triplanar cut is not drawn
 // (faces_culled), and past the frame's screen-area budget the oldest owners' boxes go (area_dropped). The cell sets are rebuilt from the live hits every frame
 // (fill_region); the stage keeps no state, so a retired owner or a Reset leaves nothing that can draw. One draw per
 // owner and lit face, more when its cells exceed one draw (spills, from the frame's budget after every face's first
@@ -146,6 +147,7 @@ constexpr unsigned region_draws = 8;
 struct Tuning {
     float cell_m[core::patch_tier_count] = {core::cell_m[0], core::cell_m[1], core::cell_m[2]};
     unsigned rings[core::patch_tier_count] = {core::rings[0], core::rings[1], core::rings[2]};
+    float standoff_m[core::patch_tier_count] = {core::standoff_m[0], core::standoff_m[1], core::standoff_m[2]};
     // The cell clocks' law (the pass's WeaponLook carries the same defaults): ring speed in footprint radii per game
     // second, the mean fade and its per-cell spread.
     float ripple_speed = core::ripple_speed, fade_s = float(core::fade_ms) * 1e-3f, stagger = core::stagger;
@@ -157,6 +159,11 @@ struct Tuning {
 };
 inline float metres_to_view(float m) noexcept {
     return m * core::engine_units_per_metre * core::world_scale;
+}
+// The tier's stand-off in view units (a negative or non-finite tuning floats nothing).
+inline float standoff_view(const Tuning& t, unsigned tier) noexcept {
+    const float d = metres_to_view(t.standoff_m[tier < core::patch_tier_count ? tier : unsigned(core::patch_capital)]);
+    return d > 0.f && d < 1e30f ? d : 0.f;
 }
 // The patch colour of a record: its shield fraction's colour, weapon_tint toward the weapon's (classifier) colour.
 inline void patch_colour(const core::Event& e, const Tuning& t, float out[3]) noexcept {
@@ -281,6 +288,7 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
     head.radius = (float(rings) + 0.5f) * cell;
     head.reach = float(rings) * cell;
     head.extent = head.reach + 1.1547005f * cell; // the hit within its cell, the far cell's corner: two circumradii
+    head.standoff = standoff_view(t, tier);
     head.hits = 0;
     head.cells = 0;
 
@@ -431,7 +439,9 @@ inline bool box_culled(const float centre[3], const float vu[3], const float vv[
     return true;
 }
 inline bool face_culled(const renderer::WeaponPatch& p) noexcept {
-    return box_culled(p.centre, p.view_u, p.view_v, p.view_a, p.box);
+    float box[6];
+    renderer::raster_box(p, box); // the floated points' box
+    return box_culled(p.centre, p.view_u, p.view_v, p.view_a, box);
 }
 inline bool fill_patch(renderer::WeaponPatch& out, const float centre[3], const float frame[9], unsigned tier,
                        unsigned anchor, const float (*points)[3], const float* ages, unsigned n, const float colour[3],
@@ -468,13 +478,14 @@ struct CockpitClock {
         return view_mode == 1 && frame - stamp <= 1;
     }
 };
-// The frame's screen-area budget (review F4): each draw's box projected (its eight corners' bounding rectangle in
-// the jittered projection, clipped to the screen; a corner at or behind the near plane counts the whole screen), in
-// screens.
+// The frame's screen-area budget (review F4): each draw's rasterized box (raster_box) projected (its eight corners'
+// bounding rectangle in the jittered projection, clipped to the screen; a corner at or behind the near plane counts
+// the whole screen), in screens.
 inline float box_screens(const renderer::WeaponPatch& p, const Camera& c, float near_z) noexcept {
-    float lo[2] = {1.f, 1.f}, hi[2] = {-1.f, -1.f};
+    float lo[2] = {1.f, 1.f}, hi[2] = {-1.f, -1.f}, box[6];
+    renderer::raster_box(p, box);
     for (unsigned k = 0; k < 8; ++k) {
-        const float u = p.box[k & 1u ? 3 : 0], v = p.box[k & 2u ? 4 : 1], a = p.box[k & 4u ? 5 : 2];
+        const float u = box[k & 1u ? 3 : 0], v = box[k & 2u ? 4 : 1], a = box[k & 4u ? 5 : 2];
         float e[3];
         for (unsigned j = 0; j < 3; ++j) e[j] = p.centre[j] + p.view_u[j] * u + p.view_v[j] * v + p.view_a[j] * a;
         if (!(e[2] > near_z)) return 1.f;
@@ -572,11 +583,12 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         if (owner_frame(s.data, cam, centre, frame)) {
             const float owner_radius = float(double(s.data.radius) * double(core::world_scale));
             const float cell = metres_to_view(t.cell_m[tier]), reach = float(tier_rings(t, tier)) * cell;
-            const float extent = reach + 1.1547005f * cell;
+            const float extent = reach + 1.1547005f * cell + standoff_view(t, tier);
             for (unsigned face = 0; face < anchor_count; ++face) { // every hit on both faces of every axis
                 if (regions_left) --regions_left;
                 // The cull before the cells (review F4's CPU budget): the hits' box grown by the footprint in the plane
-                // and the extent along the axis holds every cell the face could get, so a face it culls is culled.
+                // and the extent along the axis, each with the stand-off, holds every rasterized box the face could
+                // get, so a face it culls is culled.
                 {
                     float a[3], u[3], v[3], vu[3] = {}, vv[3] = {}, va[3] = {};
                     anchor_frame(face, a, u, v);

@@ -922,6 +922,82 @@ int main() {
         ok = hit(&e);
         tier_ok = tier_ok && ok && e.patch_tier == core::patch_capital && e.tier_source == core::tier_by_radius;
         check(tier_ok, "patch_tier_class_id_and_radius_fallback");
+        // The drained shield (core::drained_shield_q, user report after Run237 Flight D): an absorbed hit whose read
+        // post-hit fraction is below 0.5 % is a hull hit: forwarded (the callee entered: the native impact), recorded
+        // role_hull_hit with detail_drained and absorbed, not staged, counted drained; at 400 / 65535 it stays a shield
+        // hit (skipped, staged); an unread shield (no extension) keeps the engine's rule (skipped, staged). The frame
+        // as the caller expects on every path.
+        {
+            const std::int32_t one_cap[1] = {1000};
+            auto drained_run = [&](std::int32_t energy, core::Event* out, RunResult* run) {
+                build_world(7, 0, 4, 0x0, 123456);
+                if (energy >= 0) {
+                    const std::int32_t e1[1] = {energy};
+                    set_shields(1, one_cap, e1);
+                }
+                hs2.owned_next = 1;
+                std::memset(we_ca, 0, sizeof we_ca);
+                *run = run_window(1, 1200, 0);
+                return newest_record(u32(&victim_obj), out);
+            };
+            const std::uint32_t drained_before = hs2.counters.drained, forwarded_before = hs2.counters.forwarded,
+                                skipped_before = hs2.counters.skipped;
+            core::Event low{}, high{}, unread{};
+            RunResult low_run{}, high_run{}, unread_run{};
+            const bool low_ok = drained_run(std::int32_t(std::int64_t(core::layout::shield_full) * 200 / 65535), &low, &low_run);
+            const std::uint32_t drained_low = hs2.counters.drained - drained_before;
+            const std::uint32_t forwarded_low = hs2.counters.forwarded - forwarded_before;
+            const bool high_ok = drained_run(std::int32_t(std::int64_t(core::layout::shield_full) * 400 / 65535), &high, &high_run);
+            const bool unread_ok = drained_run(-1, &unread, &unread_run);
+            const std::uint32_t skipped = hs2.counters.skipped - skipped_before;
+            std::printf("DRAINED case=low q=%u read=%u role=%s detail=%u absorbed=%u forwarded=%u stage=%u callee=%u "
+                        "drained_delta=%lu forwarded_delta=%lu threshold=%u\n",
+                        unsigned(low.shield_q), unsigned((low.flags & core::flag_shield_read) != 0), core::role_name(low.role),
+                        unsigned(low.detail), unsigned((low.flags & core::flag_absorbed) != 0),
+                        unsigned((low.flags & core::flag_forwarded) != 0), unsigned((low.flags & core::flag_stage) != 0),
+                        unsigned(low_run.ca[11]), static_cast<unsigned long>(drained_low),
+                        static_cast<unsigned long>(forwarded_low), unsigned(core::drained_shield_q));
+            std::printf("DRAINED case=high q=%u read=%u role=%s detail=%u stage=%u callee=%u\n", unsigned(high.shield_q),
+                        unsigned((high.flags & core::flag_shield_read) != 0), core::role_name(high.role),
+                        unsigned(high.detail), unsigned((high.flags & core::flag_stage) != 0), unsigned(high_run.ca[11]));
+            std::printf("DRAINED case=unread read=%u role=%s detail=%u stage=%u callee=%u drained_total_delta=%lu "
+                        "skipped_delta=%lu\n",
+                        unsigned((unread.flags & core::flag_shield_read) != 0), core::role_name(unread.role),
+                        unsigned(unread.detail), unsigned((unread.flags & core::flag_stage) != 0),
+                        unsigned(unread_run.ca[11]), static_cast<unsigned long>(hs2.counters.drained - drained_before),
+                        static_cast<unsigned long>(skipped));
+            check(low_ok && (low.flags & core::flag_shield_read) && low.shield_q < core::drained_shield_q &&
+                      low.role == core::role_hull_hit && (low.detail & core::detail_drained) &&
+                      (low.flags & core::flag_absorbed) && (low.flags & core::flag_forwarded) &&
+                      !(low.flags & core::flag_stage) && low_run.ca[11] == 1 && drained_low == 1 && forwarded_low == 1 &&
+                      frame_kept(low_run),
+                  "drained_shield_hit_forwards_as_hull_hit");
+            check(high_ok && (high.flags & core::flag_shield_read) && high.shield_q > core::drained_shield_q &&
+                      high.role == core::role_shield_hit && !high.detail && (high.flags & core::flag_stage) &&
+                      !(high.flags & core::flag_forwarded) && high_run.ca[11] == 0 && frame_kept(high_run),
+                  "shield_hit_above_drained_threshold_staged");
+            check(unread_ok && !(unread.flags & core::flag_shield_read) && unread.role == core::role_shield_hit &&
+                      !unread.detail && (unread.flags & core::flag_stage) && unread_run.ca[11] == 0 &&
+                      hs2.counters.drained - drained_before == 1 && skipped == 2 && frame_kept(unread_run),
+                  "unread_shield_keeps_the_engine_rule");
+            // The boundary: one shield of 1000 points at energy 327000 / 328000 (16.16 thousandths) reads 326 / 327 of
+            // 65535 through the handler's shifted division; 326 is drained (forwarded), 327 is not (staged, skipped).
+            core::Event b326{}, b327{};
+            RunResult r326{}, r327{};
+            const bool ok326 = drained_run(327000, &b326, &r326);
+            const bool ok327 = drained_run(328000, &b327, &r327);
+            std::printf("DRAINED case=boundary q_below=%u role_below=%s detail_below=%u callee_below=%u q_at=%u role_at=%s "
+                        "detail_at=%u stage_at=%u callee_at=%u threshold=%u\n",
+                        unsigned(b326.shield_q), core::role_name(b326.role), unsigned(b326.detail), unsigned(r326.ca[11]),
+                        unsigned(b327.shield_q), core::role_name(b327.role), unsigned(b327.detail),
+                        unsigned((b327.flags & core::flag_stage) != 0), unsigned(r327.ca[11]),
+                        unsigned(core::drained_shield_q));
+            check(ok326 && ok327 && core::drained_shield_q == 327 && b326.shield_q == 326 &&
+                      b326.role == core::role_hull_hit && (b326.detail & core::detail_drained) && r326.ca[11] == 1 &&
+                      b327.shield_q == 327 && b327.role == core::role_shield_hit && !b327.detail &&
+                      (b327.flags & core::flag_stage) && r327.ca[11] == 0 && frame_kept(r326) && frame_kept(r327),
+                  "drained_threshold_boundary_326_327");
+        }
         // The per-event cost: 50 stage-path shield hits on a six-shield ship through the whole window (the fixture's
         // entry, the stub, the handler, the forward to the callee stand-in and the epilogue), best and median of 21.
         const std::int32_t six_caps[6] = {25000, 25000, 25000, 25000, 25000, 25000};

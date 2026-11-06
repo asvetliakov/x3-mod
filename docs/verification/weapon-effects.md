@@ -250,3 +250,106 @@ Open: F6 the R32F lane form (`four_channel` false, device z/w inverted with m32 
 lanes are four-channel); F7, F8 notes as filed; F12 (review note, as filed); the 16-capital stage CPU mean 202.9 us
 crosses the 0.2 ms target (best 179.5); not verified in flight (the hull's real depth, faceted normals, part
 overlaps).
+
+## Stand-off and drained shield (dirty on `efce60957`, 2026-11-06; 5.1.1 "Stand-off", "Drained shield")
+
+Two changes after Run237 Flight D. **Stand-off**: the patch floats `core::standoff_m` (1.5 / 3 / 8 m) above the hull
+with one parallax step per pixel (one extra lane fetch); the box rasterizes grown by `renderer::raster_box`, which the
+face cull and the screen budget also test. **Drained shield**: an absorbed hit whose read post-hit fraction is below
+`core::drained_shield_q` (327 / 65535) forwards as a hull hit (`detail_drained`, `drained=` in `weapon_event` and
+`weapon_effects_frame`). Evidence for the rule [M], `verification/results/weapon-effects/drained_rows.py` on Flight D's
+`C:\X3\x3m.log`: of 776 `shield_hit` rows with a read shield, 10 have a post-hit fraction of 0.0000 to 0.0005 (TBullets
+row 29, damage 428) and 1 has 0.0034 (row 11, damage 12030), on two owners (9 / 2 rows). The 11 rows, the summary and
+the per-owner counts are kept in `verification/results/weapon-effects/drained_rows_run237_flight_d.txt` (the script
+reads it back). Figures [M] come from `verification/results/weapon-effects/standoff_figures.py` on the final record
+(review fixes F1-F14 applied). Both records pass: D3D PASS 48/0 and hook PASS 75/0. The handler makes 0 calls, uses 0
+x87 and has 1065 instructions (1036 before). 50 events take a 17.3 us median against the 30 us target. Shell ps is 548
+slots (457 before); `sizeof(WeaponPatch)` is 1948 B and the frame's 64 patches take 124672 B.
+
+Drained (hook fixture `DRAINED`):
+
+- q 199: `hull_hit`, `detail_drained`, absorbed, forwarded, callee entered, `drained` +1. The frame is kept.
+- q 399: shield hit, staged, skipped.
+- Unread shield: shield hit, staged, skipped.
+- Boundary: q 326 is drained (forwarded); q 327 is a shield hit (staged, skipped).
+
+Tilted plate (`STANDOFF`): a fighter's flat top, its normal 61.7 degrees off the eye, one hit. The parallax shift is
+the lit centroid against the stand-off-0 centroid, against the floated image of the hit:
+
+| stand-off | lit px | on sky | shift / predicted (view units) | shift error | implied stand-off |
+| --- | --- | --- | --- | --- | --- |
+| 0 | 17656 | 0 | 0 / 0 | 0 | 0 |
+| 1.5 m (default) | 17365 | 0 | 14.63 / 14.71 | 0.006 cells | 1.491 m (0.003 cells off) |
+| 6 m (2 cells) | 16265 | 0 | 70.81 / 71.09 | 0.020 cells | 5.981 m (0.006 cells off) |
+
+The implied stand-off is the d' whose floated image of the hit lies the measured shift from it (the floated image
+inverted by bisection). Both gates are 0.1 cell; without parallax the default stand-off would miss them by about a
+cell (a shift of 0 against 14.7 view units).
+
+Placement (the metrics about the hit's floated image; image shift = image against hit):
+
+| case | lit px | on sky | past the footprint | coverage | centroid | image shift | vs reference |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| narrow mid flank / aft / top / bottom | 75523 / 69420 / 75309 / 75374 | 0 | 0 | 1.0 | 0.30 / 0.25 / 0.34 / 0.39 | 0.03 / 0.13 / 0.13 / 0.13 | 1 / 0.92 / 1.00 / 1.00 |
+| flat flank / top / bottom / top 42 deg | 9663 / 24538 / 24571 / 24538 | 0 | 0 | 1.0 | 0.44 / 0.42 / 0.40 / 0.42 | 0.27 / 0.08 / 0.08 / 0.08 | 1 / 2.54 / 2.54 / 2.54 |
+| top, hull 2 cells below the origin | 21332 | 0 | 0 | 1.0 | 0.42 | 0.08 | 0.87 |
+| Flight B station | 2520 | 0 | 0 | 1.0 | 0.48 | 0.26 | 1 |
+| far side | 0 | 0 | 0 | - | - | 0 (hidden: the hit itself) | - |
+| eye inside, 4 m from the nose | 480222 | 0 | 0 | 0.497 | 0.03 | 0 | 1 |
+
+The eye-inside coverage is the stand-off's screen-space limit. The hull points under the outer pixels lie off the
+screen or beyond the outline, so its gate is 0.45. The fixture's CPU twin of this lane (`STANDOFF_REFUSALS`) draws
+0.4967 of the 573535 pixels within half a reach of the floated image. It refuses the rest: 0.2192 off the screen,
+0.1883 on the sky, 0.0493 behind the eye and 0.0466 at the plane test. The program now refuses an off-screen H1 and an
+H1 at or behind the eye plane itself; before the review they fell to the texture clamp and the sky / plane tests.
+
+Parallax steps (`STANDOFF_STEPS`, the CPU twin on spheres against the exact offset sphere, 1920x1080). The figure is
+the screen error of the drawn hull point in px at p99, all pixels / silhouette (normal over 60 degrees off the eye):
+
+| sphere | 0 steps | 1 step (built) | 2 steps | rejected at 1 step | no normal (refused) |
+| --- | --- | --- | --- | --- | --- |
+| fighter 12 m at 68 m | 14.6 / 21.8 | 3.95 / 4.08 | 4.46 / 5.80 | 126 of 170605 | 822 |
+| fighter 12 m at 37 m | 32.7 / 59.5 | 7.13 / 7.16 | 8.45 / 10.67 | 2134 of 477057 | 1401 |
+| corvette 50 m at 70 m | 11.4 / 32.1 | 3.61 / 3.63 | 3.85 / 4.96 | 3066 of 1354434 | 1379 |
+| capital 400 m at 400 m | 0.96 / 2.36 | 0.56 / 0.72 | 0.57 / 0.82 | 319 of 1789450 | 1296 |
+
+One step suffices: a second step lowers the world error (cells p99 0.26 -> 0.17 on the far fighter) but raises the
+screen error, because the fixed normal bounds it. The 1-step maxima (12.6 / 7.2 / 4.2 / 5.0 px) are those of pixels
+with a normal; pixels whose quad touches the sky are refused.
+
+GPU timing at 5120x1440 (EVENT-fenced, best of 60, us), against efce60957's ledger rows:
+
+| case | efce60957 | now | ratio | raster share (efce60957 -> now) |
+| --- | --- | --- | --- | --- |
+| fighter two hits | 21.0 | 26.3 | 1.25 | 0.035 -> 0.054 |
+| capital close two hits | 176.4 | 223.9 | 1.27 | 1.0 -> 1.0 |
+| worst one owner (four regions) | 365.1 | 542.5 | 1.49 | 3.11 -> 3.62 |
+| capital spread 12 hits/s | 680.1 | 1014.3 | 1.49 | 7.92 -> 8.33 |
+
+Per rasterized pixel the step costs about 1.27x (the full-screen capital case, its raster share unchanged). The two
+stacked-box cases also pay the larger raster box (+16 % / +5 %): they miss the 1.3x target. The pre-test margins stay
+4d / 2d; narrower margins clip the parallax's far band on oblique views. Reusing the pixel's own depth when the shift
+rounds to its own texel did not make the run faster, so it was dropped (no record kept).
+
+Other checks:
+
+- The stand-off is static per tier, so the time-based cases were not affected and still pass: no-pop 0 popped pixels
+  in the four gated runs, the cockpit dims 5 / 0 / 0 / 0, fade, SETA 6, Reset and faults.
+- Stage CPU best / mean: 64.6 / 86.9 us, 185.9 / 256.9 us and 39.8 / 48.3 us. The means are above the earlier
+  65.8 / 202.9 / 41.2 us; the best figures are unchanged.
+- 65 `test_weapon_effects_*` host tests OK. The core test's y-face case now draws 6 faces (+z within the cut once its
+  box grows).
+- Lab `--check` PASS, with a stand-off control per tier. Programs `--check` PASS.
+- AP DLL: 0 warnings, sha256 `6f7aa8f0…`, no-x87 PASS (1161 reachable, 0 violations).
+
+Open:
+
+- The 1.3x target on the stacked-box cases (above).
+- The eye-near clipping (above).
+- The thin-part angle limit: across a part thinner than about 2 d, the hull under a floated point is the part's
+  other side or nothing, so the plane test clips the floated patch at an angle-dependent band.
+- The occluder-outline hole: where another surface covers H1 (a part or a ship in front), the plane test refuses the
+  pixel, so a ring about the occluder's outline stays dark on the floated patch.
+- Review notes 5-9 and 12 as filed.
+- The R32F lane form is still untested (F6).
+- Not verified in flight.

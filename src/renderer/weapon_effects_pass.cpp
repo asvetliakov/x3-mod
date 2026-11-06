@@ -232,15 +232,19 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
 }
 namespace {
 // The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,
-// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19..c25
-// (shell_block, weapon_shell_ps.hlsl: the projection, the screen and footprint terms, the owner's axes, centre and the
-// eye in the owner frame) and the cell map (map_block): c26..c57 four packed keys per register in ascending order
-// (unused -1), c58..c89 their clocks + 1 (negative for a hit's centre cell, 0 not lit yet), c90..c93 the key range
-// [first, last] of each group of sixteen keys (unused: never matched), c94..c95 the box (min, max in the face frame). Returns false for a degenerate draw (skipped,
-// never drawn wrong).
-constexpr unsigned hex_head = 17, shell_tail = 7, map_blocks = weapon_patch_cells / 4, map_groups = map_blocks / 4;
+// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19..c22
+// (shell_block, weapon_shell_ps.hlsl: the stand-off and the triplanar terms, the owner's axes) and the cell map
+// (map_block): c23..c54 four packed keys per register in ascending order (unused -1), c55..c86 their clocks + 1
+// (negative for a hit's centre cell, 0 not lit yet), c87..c90 the key range [first, last] of each group of sixteen
+// keys (unused: never matched), c91..c92 the box (min, max in the face frame), c93..c101 the stand-off's (lift_block).
+// Returns false for a degenerate draw (skipped, never drawn wrong).
+constexpr unsigned hex_head = 17, shell_tail = 4, map_blocks = weapon_patch_cells / 4, map_groups = map_blocks / 4;
 constexpr unsigned keys_at = 2 + hex_head + shell_tail, clocks_at = keys_at + map_blocks, ranges_at = clocks_at + map_blocks;
-static_assert(weapon_patch_cells % 16 == 0 && ranges_at + map_groups / 2 + 2 <= 224, "the cell map fits ps_3_0's constants");
+constexpr unsigned lift_tail = 9;
+static_assert(weapon_patch_cells % 16 == 0 && ranges_at + map_groups / 2 + 2 + lift_tail <= 224,
+              "the cell map and the stand-off's constants fit ps_3_0's constants");
+static_assert(keys_at == 23 && clocks_at == 55 && ranges_at == 87 && ranges_at + map_groups / 2 + 2 == 93,
+              "the register map of weapon_shell_ps.hlsl");
 bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float seed, float surface2,
                const float colour[3], const float* anchor, const float* anchor_u, const float* anchor_v, unsigned hits,
                const float (*hit_cell)[2], const float (*point)[2], const float* ages, float* out) noexcept {
@@ -305,36 +309,54 @@ bool map_block(const WeaponPatch& p, float* keys, float* clocks, float* ranges, 
     *sent = used;
     return true;
 }
-// The box's corners (CellVertex) from the patch's box; false for a degenerate box.
+// The rasterized box's corners (CellVertex): the patch's box grown by its stand-off (raster_box); false for a
+// degenerate box or stand-off.
 bool write_box(const WeaponPatch& p, WeaponEffectsPass::CellVertex* v) noexcept {
-    if (!finite_all(p.box, 6) || !(p.box[3] > p.box[0]) || !(p.box[4] > p.box[1]) || !(p.box[5] > p.box[2])) return false;
+    if (!finite_all(p.box, 6) || !(p.box[3] > p.box[0]) || !(p.box[4] > p.box[1]) || !(p.box[5] > p.box[2]) ||
+        !(p.standoff >= 0.f) || !finite(p.standoff))
+        return false;
+    float box[6];
+    raster_box(p, box);
     for (unsigned c = 0; c < WeaponEffectsPass::patch_vertices; ++c) {
-        v[c].corner[0] = p.box[c & 1u ? 3 : 0];
-        v[c].corner[1] = p.box[c & 2u ? 4 : 1];
-        v[c].corner[2] = p.box[c & 4u ? 5 : 2];
+        v[c].corner[0] = box[c & 1u ? 3 : 0];
+        v[c].corner[1] = box[c & 2u ? 4 : 1];
+        v[c].corner[2] = box[c & 4u ? 5 : 2];
         v[c].corner[3] = 1.f;
     }
     return true;
 }
-// The patch tail c19..c25 (weapon_shell_ps.hlsl): the frame's jittered projection (m00, m11, m20, m21); 2 / W, 2 / H,
-// unused and the triplanar sharpness; the owner's axes in view (L_k, owner_frame) and its
-// centre (view), so the program takes a view point to the owner frame as p_k = (v - centre) . L_k; and the eye in the
-// owner frame (p of the view origin), for the normal's side, with the triplanar floor. False for a degenerate frame.
+// The patch tail c19..c22 (weapon_shell_ps.hlsl): the stand-off (view units), the triplanar sharpness and floor; the
+// owner's axes in view (L_k, owner_frame), which take the normal to the owner frame (its triplanar weights). False for a
+// degenerate frame.
 bool shell_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[shell_tail * 4]) noexcept {
     if (!(f.m00 != 0.f) || !(f.m11 != 0.f) || !f.width || !f.height) return false;
     const float block[shell_tail * 4] = {
-        f.m00, f.m11, f.m20, f.m21,
-        2.f / float(f.width), 2.f / float(f.height), 0.f, wcore::triplanar_sharpness,
+        p.standoff, wcore::triplanar_sharpness, wcore::triplanar_floor, 0.f,
         p.axes[0][0], p.axes[0][1], p.axes[0][2], 0.f,
         p.axes[1][0], p.axes[1][1], p.axes[1][2], 0.f,
-        p.axes[2][0], p.axes[2][1], p.axes[2][2], 0.f,
-        p.centre[0], p.centre[1], p.centre[2], 0.f,
-        -(p.centre[0] * p.axes[0][0] + p.centre[1] * p.axes[0][1] + p.centre[2] * p.axes[0][2]),
-        -(p.centre[0] * p.axes[1][0] + p.centre[1] * p.axes[1][1] + p.centre[2] * p.axes[1][2]),
-        -(p.centre[0] * p.axes[2][0] + p.centre[1] * p.axes[2][1] + p.centre[2] * p.axes[2][2]),
-        wcore::triplanar_floor};
+        p.axes[2][0], p.axes[2][1], p.axes[2][2], 0.f};
     std::memcpy(out, block, sizeof block);
     return finite_all(out, shell_tail * 4);
+}
+// The stand-off's constants c93..c101 (weapon_shell_ps.hlsl): the face frame (u, v, a) in view space with each axis'
+// offset -centre . axis in .w (f = dot(float4(v, 1), F)); the eye ray of raster r, (r A.xy + A.zw, 1); a view point's
+// raster + 1/2, (v.xy / v.z) B.xy + B.zw; the hull box grown by 4 d (P's pre-test) and by 2 d (H1's). False for a
+// degenerate frame.
+bool lift_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[lift_tail * 4]) noexcept {
+    const float sx = 2.f / float(f.width), sy = 2.f / float(f.height), d = p.standoff > 0.f ? p.standoff : 0.f;
+    auto offset = [&](const float* a) { return -(p.centre[0] * a[0] + p.centre[1] * a[1] + p.centre[2] * a[2]); };
+    const float block[lift_tail * 4] = {
+        p.view_u[0], p.view_u[1], p.view_u[2], offset(p.view_u),
+        p.view_v[0], p.view_v[1], p.view_v[2], offset(p.view_v),
+        p.view_a[0], p.view_a[1], p.view_a[2], offset(p.view_a),
+        sx / f.m00, -sy / f.m11, (-1.f - f.m20) / f.m00, (1.f - f.m21) / f.m11,
+        f.m00 / sx, -f.m11 / sy, (f.m20 + 1.f) / sx + .5f, (1.f - f.m21) / sy + .5f,
+        p.box[0] - 4.f * d, p.box[1] - 4.f * d, p.box[2] - 4.f * d, 0.f,
+        p.box[3] + 4.f * d, p.box[4] + 4.f * d, p.box[5] + 4.f * d, 0.f,
+        p.box[0] - 2.f * d, p.box[1] - 2.f * d, p.box[2] - 2.f * d, 0.f,
+        p.box[3] + 2.f * d, p.box[4] + 2.f * d, p.box[5] + 2.f * d, 0.f};
+    std::memcpy(out, block, sizeof block);
+    return finite_all(out, lift_tail * 4);
 }
 } // namespace
 HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport* output) noexcept {
@@ -411,14 +433,16 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             bool ok = finite_all(p.centre, 3) && finite_all(p.view_u, 3) && finite_all(p.view_v, 3) &&
                       finite_all(p.view_a, 3) && finite_all(p.anchor, 3) && finite_all(p.anchor_u, 3) &&
                       finite_all(p.anchor_v, 3) && finite_all(&p.axes[0][0], 9) && p.cells > 0;
-            float ps[(hex_head + shell_tail + map_blocks) * 4], clocks[map_blocks * 4], ranges[map_groups * 2 + 8];
+            float ps[(hex_head + shell_tail + map_blocks) * 4], clocks[map_blocks * 4];
+            float ranges[map_groups * 2 + 8 + lift_tail * 4]; // c87..c90, the box c91..c92, lift_block c93..c101
             unsigned map_sent = 0;
             ok = ok && hex_block(l, p.cell, p.radius, p.reach, p.seed, 0.f, p.colour, p.anchor, p.anchor_u, p.anchor_v,
                                  p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
                  write_box(p, vertices_) &&
                  map_block(p, ps + (hex_head + shell_tail) * 4, clocks, ranges, &map_sent);
             if (!ok) continue; // a degenerate patch is skipped, never drawn wrong
-            if (!shell_block(f, p, ps + hex_head * 4)) continue; // c19..c25
+            if (!shell_block(f, p, ps + hex_head * 4)) continue; // c19..c22
+            if (!lift_block(f, p, ranges + map_groups * 2 + 8)) continue; // c93..c101
             const float vs[4 * 4] = {p.centre[0], p.centre[1], p.centre[2], f.near_z,
                                      p.view_u[0], p.view_u[1], p.view_u[2], 0.f,
                                      p.view_v[0], p.view_v[1], p.view_v[2], 0.f,
@@ -437,7 +461,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             const float box4[8] = {p.box[0], p.box[1], p.box[2], 0.f, p.box[3], p.box[4], p.box[5], 0.f};
             std::memcpy(ranges + map_groups * 2, box4, sizeof box4);
             step(WeaponEffectsStep::Patches,
-                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, ranges_at, ranges, map_groups / 2 + 2));
+                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, ranges_at, ranges, map_groups / 2 + 2 + lift_tail));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                     d, D3DPT_TRIANGLELIST, 0, patch_vertices, patch_triangles, indices_,

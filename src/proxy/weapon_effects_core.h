@@ -57,6 +57,15 @@ enum EventFlag : std::uint8_t { flag_absorbed = 1, flag_forwarded = 2, flag_nest
 // observe, hull hits, a dying hit object and every frame the stage does not own still forward. HookState::
 // suppress_native carries it; the hook fixture drives both paths.
 constexpr bool suppress_native_shield_hit = true;
+// A drained shield (user report after Run237 Flight D: shield hits drawn on ships without shields; x3m.log: post-hit
+// shield fractions 0.0000 to 0.0005 on owners already at 0, the engine absorbing a weak bolt with the recharge
+// trickle): a shield hit whose post-hit fraction (Event::shield_q, read, flag_shield_read) is below drained_shield_q
+// (0.5 % of 65535) is a hull hit: the hook forwards the engine's spawn, records role_hull_hit and marks the record
+// detail_drained; no patch is staged. Only the post-hit value is known, so a hit that drains a meaningful shield to
+// zero in one blow is drained too. An unread shield keeps the engine's rule.
+constexpr std::uint16_t drained_shield_q = 65535u * 5u / 1000u; // 327
+// Event::detail bits (an impact record).
+enum EventDetail : std::uint8_t { detail_drained = 1 };
 // The hit object's size class for the patch (docs/architecture/weapon-effects.md 5.1.1): cell size and patch radius
 // are fixed in world units per class.
 enum PatchTier : std::uint8_t { patch_fighter = 0, patch_corvette = 1, patch_capital = 2, patch_tier_count = 3 };
@@ -85,7 +94,8 @@ struct Event {
     std::uint16_t row;                       // TBullets / TMissiles index (the object's subtype)
     std::uint32_t t0_game_ms;                // cfg+0x718 at the hook
     std::uint16_t lifetime_ms;               // game ms
-    std::uint8_t slot, calibre_q;            // gun slot (muzzle, later steps); calibre override x 255 (flag_calibre_override)
+    std::uint8_t detail, calibre_q;          // EventDetail bits of an impact (a muzzle record of a later step carries its
+                                             // gun slot here); calibre override x 255 (flag_calibre_override)
     std::uint32_t tint_rgb;                  // the classifier's colour (rgb_present | b << 16 | g << 8 | r)
     // The other tint candidate (light <-> texture) narrowed to RGB 3:3:2 (0: none; the weapon_tint / tint_mix override
     // only), and the projectile's travel in the hit object's frame at the hit: its root node's local z (node+0x40 row 2)
@@ -344,6 +354,7 @@ struct Counters {
                   taps = 0, shield_hits = 0, hull_hits = 0, nested = 0;
     std::uint32_t dir_fallback = 0; // recorded without a travel direction (projectile node not live, or a zero row)
     std::uint32_t shield_read = 0, shield_unread = 0; // the hit object's shield list walked to its sentinel, or refused
+    std::uint32_t drained = 0; // absorbed hits on a drained shield recorded as hull hits (drained_shield_q)
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
@@ -604,19 +615,23 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
         tint = missile_tint_rgb;
         tint_source = tint_missile;
     }
-    const std::uint8_t role = role_from(absorbed, pclass, flags);
-    // The stage draws a shield hit while it owned the previous frame, and with suppress_native (the default) the
-    // engine's spawn is skipped for it. A dying hit object is never the stage's: the stage retires a dying owner's
-    // records unseen, so it stays native only.
-    const bool stage =
-        s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
-    const bool skip = stage && s.suppress_native;
     // The hit object's shield fraction and patch tier (5.1.1), for every recorded hit (the observe flight compares
     // `absorbed` with the shield state).
     const std::uint16_t hit_class = victim_is_projectile ? sc : vc;
     const std::int32_t hit_radius = std::int32_t(rd32(hit + layout::obj_radius));
     std::uint16_t shield_q = 0;
     const bool shield_ok = read_shields(hit, hit_class, s.globals, &shield_q);
+    // The engine's rule, then the drained shield (drained_shield_q): an absorbed hit whose read post-hit fraction is
+    // below it is a hull hit (integer compare).
+    std::uint8_t role = role_from(absorbed, pclass, flags);
+    const bool drained = role == role_shield_hit && shield_ok && shield_q < drained_shield_q;
+    if (drained) role = role_hull_hit;
+    // The stage draws a shield hit while it owned the previous frame, and with suppress_native (the default) the
+    // engine's spawn is skipped for it. A dying hit object is never the stage's: the stage retires a dying owner's
+    // records unseen, so it stays native only.
+    const bool stage =
+        s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
+    const bool skip = stage && s.suppress_native;
     std::uint8_t patch_tier = patch_fighter, tier_source = tier_by_radius;
     read_tier(hit, hit_class, hit_radius, s.globals, &patch_tier, &tier_source);
     // The projectile's travel (5.1.1 placement): its root node's row 2 (local z in world, 16.16) rotated into the hit
@@ -646,7 +661,7 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     const std::uintptr_t cfg = rd32(s.globals.cfg_slot);
     e->t0_game_ms = cfg ? rd32(cfg + layout::cfg_game_ms) : 0;
     e->lifetime_ms = s.lifetime_ms;
-    e->slot = 0;
+    e->detail = drained ? detail_drained : 0;
     e->calibre_q = calibre_q;
     e->tint_rgb = tint;
     e->alt_rgb332 = rgb332(alt);
@@ -666,6 +681,7 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     else
         ++s.counters.shield_unread;
     if (nested) ++s.counters.nested;
+    if (drained) ++s.counters.drained;
     if (role == role_shield_hit)
         ++s.counters.shield_hits;
     else
@@ -760,6 +776,10 @@ constexpr float engine_units_per_metre = 500.f;
 // cells, doubles with it).
 constexpr float cell_m[patch_tier_count] = {3.0f, 6.0f, 16.0f};    // fighter, corvette, capital/station (metres)
 constexpr unsigned rings[patch_tier_count] = {1, 2, 2};            // neighbour rings a hit lights about its cell
+// The stand-off (user request after Run237 Flight D: "like on a hull scaled 1.2-1.3"): the patch floats standoff_m
+// above the hull along its normal, with parallax (weapon_shell_ps.hlsl); half a cell per tier as the starting values,
+// a station takes the capital's. No user setting; the lab has the control.
+constexpr float standoff_m[patch_tier_count] = {1.5f, 3.0f, 8.0f};
 constexpr float ripple_speed = 3.333f;  // the ring front, footprint radii per game second (the rim in 0.3 s)
 constexpr float ring_width = 0.12f;     // the ring's Gaussian width, footprint radii
 constexpr float ring_gain = 1.0f;       // ring radiance (x the patch colour), fading as the ring nears the rim
