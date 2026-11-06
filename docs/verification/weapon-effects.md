@@ -23,3 +23,145 @@ from `verification/results/native-windows/weapon-effects/ledger_rows.py`.
 ## Run235 Flight A (observe), flown 2026-11-06
 
 Log `C:\X3\x3m.log` (DLL `bcb3dd38…`, commit `1c8f3371f`), triaged [M]: impact site and both taps `state=active` (impact write=plain, taps atomic); table `loaded rows=38 missile_rows=36 entries=38 textures=37`; 1,165 impact calls, every one forwarded, nested 0; `weapon_pos_check` max_error 0, unmatched 0 over compared=1165 taps=1165 (the +0x180 contact point is the tap's point); 64 `weapon_event` rows (the per-run row cap): 46 shield_hit absorbed=1, 18 hull_hit absorbed=0, tiers capital 42 / corvette 18 / fighter 4; the shield fraction falls about 0.030 per 12,030-damage hit on fighters and only rises after gaps over 1,400 frames (recharge); frame counters shield_read 296 / shield_unread 869 / no_projectile 2, overflow and stale_table 0; stage_us 0 (nothing staged in observe); no perf rows, frame_end windows 4.2-5.5 ms after loading; `session_end frames=103196 exception=0 resets=0`. No `weapon_death` rows (no death hook in step 1). No F8 captures were taken. Outcome: the hook contract holds in flight; Flight B (`weapon_effects = shields`) proceeds on the same DLL.
+
+## Run235 Flight B (shields), flown 2026-11-06
+
+Log `C:\X3\x3m.log` session `20261106-025218` (DLL of commit `1c8f3371f`), triaged [M]. User findings: cells too
+small, the patch on the wrong side, never right on stations, the own ship's patch intermittent in chase view. Cause
+(`verification/results/weapon-effects/run235-flight-b/shield_hit_geometry.py`): the stage drew on the owner's
+bounding sphere and placed each hit at R normalize(pos); the logged contact points lie at |pos| / R 0.151 to 0.845
+on three corvettes (R 56 / 88 / 110 m; 13 of 16 hits on one of them in the +-z regions) and 0.455 to 0.680 on a
+station of R 1304 m (34 hits, 33 in +z, radial gap 417 to 710 m); only outward faces drew, so far-half hits (the own
+ship's nose in chase view) never showed. Cost (`stage_cost.py`, 183 of 315 `weapon_effects_frame` rows drew):
+stage_us (the period mean) median 13.9 / p90 34.4 / max 59.2 us, stage_us_max median 38.5 / p90 121.1 / max 1741.5
+us (4 rows over 200 us), spills up to 1298 per 300-frame window (median 0, at most 4.33 per drawn frame), hits_dropped
+82 in total (45 once), cells_dropped and dropped 0. The 64-row `weapon_event` cap ended at frame 22324 of 94355.
+
+## Placement fix: the per-face lattice at the hit point (dirty on `77ec76056`, 2026-11-06)
+
+Architecture 5.1.1 "Placement". Cells doubled to 3 / 6 / 16 m (rings unchanged, so the footprint radius doubles);
+`soft` 1 cell (biased fade, whole where the hull lies behind); `weapon_event` rows: the first 64 of the run, then up
+to 8 per 300-frame period (`sample=start|period|capture`), each with `pos_r` and `region`; a `weapon_patch` row per
+staged draw on capture frames (owner, node, `is_view_object` = the own ship's root, region, cells, lit, ring hits,
+seams, depth range and eye distance over R, cell and soft in metres). Commands: `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native` (33 s);
+`PYTHONPATH=verification/probe python3 -m unittest discover -s verification/analysis -p 'test_weapon_effects_*.py'`;
+`python3 tools/effects/generate_weapon_effects_lab.py --check`; `tools/shaders/generate_weapon_effects_programs.py
+--check`; AP DLL `cmake --build build-ap -j4` and `check_no_x87.py --edition ap`; figures:
+`python3 verification/results/weapon-effects/run235-flight-b/placement_fix_rows.py`, `narrow_hull_regions.py` and `lab_narrow_hull.py`.
+
+Results [M]: hook record PASS 68/0 (handler calls 0, x87 0, frame 168 B); D3D record PASS 40/0 (RTX 5070 Ti): patch
+VS 17 / PS 188 slots (was 360), decal PS 129. Placement through the production builder (cells' centroid against the
+hit point, its drawn screen centroid; the old projection's error for the record): narrow hull 1:1:6 flank hit at
+0.15 R (corvette, cell 6 m) 3.08 m = 0.51 cell (screen 3.09 m), was 42.5 m; Flight B station contact point 0.676 R
+(capital, cell 16 m) 6.74 m = 0.42 cell (screen 7.06 m), was 422.0 m; far-side hit 0.00 m, drawn (15277 px); eye at
+0.5 R inside the sphere 0.00 m, drawn; the residual is the hit's offset from its cell centre (at most 0.58 cell).
+Witness, the narrow hull's flank 40 % aft: region +z, its plane 85.8 degrees from the hull normal (architecture
+"Placement", the paragraph's "Why the travel rule"). Unchanged gates pass: per tier 7 / 19 / 19 cells inside the cell-edge bound, both sides in both axes,
+marker ratio 3.2142 vs 3.2146, soft fade over a hull lane (new) whole 2 units behind (162043.6 = the sky's), half at
+half a soft radius in front (81021.8), 0 a soft radius in front, ring by whole cells, fade to 0 at 2941 ms, colour bands, re-light, adjacent hit 10
+cells (peak 2.5391 = single), grid identical on a moved and rotated owner (23 cells), seam pair peak 3.1973 = the
+brighter single (5.2578 unshared), decal, SETA 6 473.52 ms wall vs 473.34, retired owner, resolve core 0.994 /
+0.986 / 0.986 at 0 / 4 / 8 px, program refusal, fault and Reset. No pop at 12 hits/s on a flat face (front at 0.6 R):
+fighter 19 cells, capital 409 cells in 4 draws (433 spills, 0 dropped), 0 pixels over; witnesses: one draw per
+region 1226153 pixel-frames over; the same fire on a sphere's front (each re-lit cell takes the newer hit's depth)
+23415 (fighter) and 864202 (capital) pixel-frames over, worst frame drops 2.17 / 2.01. Stage CPU (`ws::build`, best /
+mean of 200, i686 SSE2): one capital 64 hits 16.1 / 22.5 us (7 draws, 784 cells, 0 dropped; was 22.9 / 26.6 with 80
+dropped), 16 capitals x 16 hits 59.0 / 90.2 us (32 draws, 1299 dropped), the Flight B station cluster 64 hits 11.1 /
+12.4 us (1 draw, 82 cells, 0 spills), all under the 0.2 ms target; per region at most 8 draws, 32 per frame. Timing,
+best of 60 fenced (us, 1080p / 5120x1440; fence 11.3 / 11.0): fighter two hits 15.3 / 18.7, capital close two hits
+35.3 / 86.6 (two regions 37.1 / 95.4), worst four regions 44.4 / 108.2 (was 62.4 / 198.5), fighter 12 hits/s 17.5 /
+23.0, capital 128 cells 24.5 / 36.4, 128 cells filling the frame 37.5 / 86.4 (raster 1.00), capital spread 5 draws
+46.1 / 88.4 (was 184.7 / 604.4). Lab: the narrow hull (mid flank: region -x, 9925 lit px; aft flank: region +z,
+224 px, edge-on) [M, node probe]. 63 host tests OK; lab and programs checks PASS; AP DLL 0 warnings (sha256
+`91273006…`), no-x87 PASS (1161 reachable, 0 violations). Not flown.
+
+## Placement follow-up: region by the bolt's travel, held depth (dirty on `77ec76056`, 2026-11-06)
+
+Coordinator decisions on the fix above. (1) The region faces the bolt: `Event::dir` (3 × i8, world, the projectile
+root node's row 2 × 127 rounded; the other tint candidate narrowed from u32 to `alt_rgb332` to free the bytes, Event
+still 64 B), in this round taken into the owner frame at scene end with the owner's then rows; since review F1 (below)
+the hook stores it owner-local (`core::travel_region`: the owner axis with the largest |component| of the travel,
+signed against it); the radial rule when the record has no travel, counted per period as
+`dir_fallback=` in `weapon_effects_frame`; `weapon_event` adds `dir=` and `travel_region=`. (2) A lit cell keeps the
+depth it was first lit at until it has fully faded out (`stage::DepthCache`, per owner, handle, region and cell;
+until = its newest clock's own fade end); a re-light only resets the clock. (3) `is_view_object` in `weapon_patch` is
+the own ship (`resolve_own_ship`'s root node), not the cockpit's view object: in an external view of another ship it
+reads 0 for the viewed ship (diagnostics limitation). (4) `seam_block`'s float -> unsigned through int (the x87
+`fistpll` in `WeaponEffectsPass::run` is gone; also `link_seams` and the `weapon_patch` row).
+
+Results [M] (same commands as the fix above, figures by `placement_fix_rows.py`):
+hook record PASS 70/0 (new `travel_dir_from_bullet_row2`: identity rows give 0, 0, 127, the row (39322, -52429, 0)
+gives 76, -102, 0 = the independent rounding; `travel_dir_fallback_zero_row_dead_node`: a zero row records 0, 0, 0
+and counts one `dir_fallback`; a dead bullet node records nothing, `no_node` +1, forwarded: the callee's own test
+returns before any effect, so in flight the fallback is the zero row only), handler 0 calls / 0 x87, 977
+instructions (was 904), frame 196 B (was 168), stack 232 B of 1536, 50 events 17.0 us median against 30. D3D record
+PASS 42/0: the narrow hull's aft flank hit by a bolt travelling along the owner's -x takes region +x, its plane 4.2
+degrees from the hull normal, 110907 lit px against the mid-flank hit's 107535 (ratio 1.03), 0.79 m from the hit;
+radially (the witness) region +z, 85.8 degrees, 19360 px. Lab (`lab_narrow_hull.py`, corvette, 4 hits/s at 1.2 s,
+patch frame): mid flank 9916 px, aft flank 10709 px, both region +x (radially the aft flank lit 224 px). Held depth
+(`no_pop_sphere_front_depth_held`, gated; the no-pop bound per pixel is one fade step per lit cell over it, counted
+by the same draws at a constant level): fighter sphere front max drop 0.0391 under 2 overlapping cells, capital 0.0566
+under 3, 0 pixels over (were 23415 / 864202 with the newest hit's depth); flat faces unchanged (0 over, overlap 1).
+Host core cases: travel regions -x / +z / radial -z / turned +x; a re-light keeps 200 (without the cache 150), after
+the fade a new hit lights at 150. Stage CPU without the cache (`ws::build` called without one; the production path with it is in the review section below): 15.8 / 17.7, 57.6 / 76.8 and 10.7 / 13.4 us (best / mean),
+under 0.2 ms. Timing at 5120x1440 unchanged within noise (fighter 17.2, worst four regions 108.4, spread 87.6 us).
+63 host tests OK; lab and programs checks PASS; AP DLL 0 warnings (sha256 `d441c038…`), no-x87 PASS (1161, 0); the
+pass, stage, Present and handler functions in the DLL carry no x87 instruction (objdump scan, 10 functions). [I] the
+bullet row 2 as its travel; not flown.
+
+## Native shield-hit sprite skipped (dirty on `77ec76056`, 2026-11-06)
+
+Coordinator decision, superseding the user decision of 2026-11-06 to keep the native impact under the patch:
+`core::suppress_native_shield_hit` = `true`, so in `shields` mode a shield hit the stage owns (absorbed, not the
+hull-through-shield class, the stage armed in the previous frame, the hit object not dying) records its Event and
+skips `0x00413c40`: the stub returns `xor eax,eax; ret` to `0x00449d8a`, where the caller's `add esp,8` pops the two
+arguments and `mov eax,esi` overwrites EAX. Observe, hull hits, a dying hit object, a frame the stage did not own and
+every non-projectile call forward unchanged. Same commands as above. Results [M]: hook record PASS 71/0 (new
+`shields_default_skips_native` and `shield_hit_skips_callee_hull_forwards`: the shield hit's callee not entered,
+forwarded count +0, skipped +1, record `stage` and not `forwarded`, `frame_kept` (EBX/ESI/EDI/EBP, DF, MXCSR, x87
+control word and stack, LastError, ESP); the hull hit in the same mode enters the callee, forwarded +1; the forward
+path with `suppress_native` cleared and the observe forward checks unchanged), handler 0 calls / 0 x87, 977
+instructions, frame 196 B, stack 232 B, 50 events 17.3 us median. D3D record PASS 42/0. 63 host tests OK; lab check
+PASS; AP DLL 0 warnings (sha256 `24601f60…`, superseded by the review build below), no-x87 PASS (1161, 0). Not flown: the flight must confirm no native
+shield sprite in `shields` and the vanilla sprite in `observe`.
+
+## Review of the placement diff (F1-F6, F9, F10; dirty on `77ec76056`, 2026-11-06)
+
+**F1** `Event::dir` is owner-local: the hook rotates the bullet's row 2 into the hit object's frame with the rows it
+already read for `pos` (`rotate_in`), so the region no longer depends on the owner's rows at scene end (a turning owner
+kept moving a live patch across a region boundary and losing its held depth, the region being in the cache key);
+`core::travel_region` takes the owner-local bytes alone. **F2** the seam share follows the cells, not the radial
+direction: per draw up to four seam neighbours (other regions' draws whose cell bounds meet its own), the light
+shared by the signed distance to the radical plane of the two bounds over a cell-wide band (182 ps_3_0 slots, was
+188). **F3** the stage CPU rows are `ws::build` with the depth cache (the production path). **F4** the cache is
+looked up only for drawn lit cells; a full probe window counts `depth_full=` in `weapon_effects_frame`; the cache grew
+to 8192 slots (192 KB; at most half full under 32 x 128 drawn cells) and stores each cell's own fade, so a hit skips
+the hash. **F5** the sphere-front no-pop without the cache stays in the record as a witness. **F6** stale text fixed
+(5.1 item 3, the cell-map bullet's state and slots, the travel conversion, the architecture reference). **F9** the soft
+radius changed with the placement fix: 0.5 R of the bounding sphere for the patch and 0.5 x the footprint radius (0.75
+to 1.25 cells) for the decal, now 1 cell for both. The suppression flip of the section above (`suppress_native_shield_hit`
+= `true`) is part of this diff. **F10** the cache is cleared on a Reset and when the ring's scope changed (a load, a
+sector change, a new load epoch: `weapon_effects::scope_changes()`). **F3** label: STAGE_CPU `depth_cache=1`.
+
+Results [M] (same commands; `placement_fix_rows.py`): hook record PASS 71/0: the direction check with the victim
+turned (local x -> world -z, z -> world +x): the bullet's identity row gives (-127, 0, 0), the row (39322, -52429, 0)
+gives (0, -102, 76), the zero-row fallback and the dead node as before; handler 0 calls / 0 x87, 1036 instructions (the rotation into the owner frame; 977 before),
+frame 196 B, 50 events 17.3 us median. D3D record PASS 43/0 (two runs hit `CHECK device FAIL`, the host's display
+unavailable for CreateDevice for about 7 minutes; the run after the wait passed, unchanged inputs): new
+`seam_travel_regions_keep_their_peaks`: on the 1:1:6 hull an aft-flank hit by a bolt along -x (region +x) next to a
+hit 0.62 R aft by a bolt along -z (region +z), two draws naming each other (0x05); each keeps its single-hit peak over
+the pixels only it lights (3.2559 = 3.2559, 2.0957 = 2.0957), the pair's peak 3.2559 = the brighter single, and its
+area (recheck): of the 119788 pixels either single lights the pair leaves 170 dark (0.14 %, gate at most 1 %; 119618
+lit, the share band at the radical plane); the
+radial seam pair 3.1973 = the brighter single, 5.2578 with the share cleared (the witness, now clearing the
+neighbours). Held depth gated (sphere fronts 0 pixels over at overlap 2 / 3); witnesses without the cache: fighter
+18150, capital 119246 pixel-frames over (worst drops 2.20 / 2.04). Stage CPU with the cache (best / mean): one capital
+64 hits 19.0 / 24.5 us, 16 capitals x 16 hits 70.1 / 100.2 us (depth_full 0), Flight B station cluster 11.6 / 15.0
+us; under 0.2 ms. Placement and timing unchanged (aft flank 110907 px vs mid 107535; 5120x1440 fighter 17.5, worst
+four regions 103.1, spread 83.5 us). Figures from the recheck run (D3D record PASS 43/0; the hook record re-ran with
+unchanged sources, PASS 71/0). Lab (`lab_narrow_hull.py`): mid flank 9916 px, aft flank 10709 px, both +x. 63
+host tests OK; lab and programs checks PASS; AP DLL 0 warnings (sha256 `525ee864…`, the build of this diff), no-x87
+PASS (1161, 0), objdump: no x87 instruction in the 11 weapon pass, stage, Present and handler functions.
+Diagnostics limitation: `weapon_patch is_view_object` is the own ship (`resolve_own_ship`), not the cockpit's view
+object. Left as notes (F7, F8, F11, F13). [I] the bullet's row 2 as its travel; not flown.

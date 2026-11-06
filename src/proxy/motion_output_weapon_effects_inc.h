@@ -1,8 +1,8 @@
 // Weapon effects, step 1: the shield hit (included by motion_output.cpp inside namespace x3m; AP only;
 // weapon_effects_patch.h, weapon_effects_stage.h, renderer/weapon_effects_pass.h; docs/architecture/weapon-effects.md
 // 2.6, 5.1 and 5.1.1). X3M_WEAPON_EFFECTS=shields: the impact hook records every hit into the proxy ring and marks a
-// shield hit stage-owned (flag_stage) while the stage owned the previous frame; the engine's own impact still spawns
-// (user decision 2026-11-06: the native sprite plus the patch; core::suppress_native_shield_hit would skip it). This
+// shield hit stage-owned (flag_stage) while the stage owned the previous frame and skips the engine's own impact for it
+// (core::suppress_native_shield_hit, coordinator decision 2026-11-06: the patch alone). This
 // stage draws the hex patches and flat decals of the ring's
 // stage-owned records as an act of the temporal resolve's stage bracket, after the plumes and the own sun when they
 // draw (one callback slot: the stage chains the callback it found, own_sun_with_plumes_'s pattern), reading the lane the
@@ -132,6 +132,16 @@ namespace {
 bool weapon_effects_read(std::uintptr_t address, void* out, std::size_t size) {
     return engine_memory::read(address, out, size);
 }
+// The stage's depth memory of lit cells (weapon_effects_stage.h DepthCache, 192 KB): game objects, so one per process
+// whatever the device; its entries expire in game time.
+weapon_effects::stage::DepthCache weapon_depth_cache;
+std::uint32_t weapon_depth_scope = 0; // weapon_effects::scope_changes() when the cache was last cleared
+}
+// The depth cache's lifetime (review F10): cleared on a Reset and when the ring's scope changed (a load, a sector change,
+// a new load epoch) since the last stage frame.
+void MotionOutput::clear_weapon_depths() noexcept {
+    std::memset(static_cast<void*>(&weapon_depth_cache), 0, sizeof weapon_depth_cache); // no 192 KB temporary
+    weapon_depth_scope = weapon_effects::scope_changes();
 }
 HRESULT MotionOutput::run_weapon_effects() noexcept {
     namespace wcore = weapon_effects::core;
@@ -155,10 +165,11 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     if (!(f.near_z > 0.f) || !(f.near_z < 1e30f)) f.near_z = -projection_default_m32 / projection_default_m22;
     renderer::WeaponPatch patches[wcore::max_patches];
     renderer::WeaponDecal decals[wcore::max_decals];
+    if (weapon_effects::scope_changes() != weapon_depth_scope) clear_weapon_depths();
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
                                      camera, weapon_effects::stage::Tuning{}, patches, wcore::max_patches, decals,
-                                     wcore::max_decals);
+                                     wcore::max_decals, &weapon_depth_cache);
     f.patches = patches;
     f.patch_count = n.patches;
     f.decals = decals;
@@ -168,6 +179,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[1] += n.cells_dropped;
     weapon_drops_[2] += n.hits_dropped;
     weapon_drops_[3] += n.spills;
+    weapon_drops_[4] += n.depth_full;
+    if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run(f, &report);
     QueryPerformanceCounter(&end);
@@ -200,14 +213,44 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     }
     return hr;
 }
+// One weapon_patch row per staged patch draw on a capture frame (docs/architecture/weapon-effects.md 5.1.1, Run235
+// Flight B diagnostics): its owner, whether that is the own ship (resolve_own_ship's root node: the ship the player
+// flies, seen in the chase view), the region, its cells (lit and a ring's not yet lit) and ring hits, the cells' depth
+// range along the region axis and the eye's distance from the owner's centre, both over the owner's radius (eye_r < 1:
+// the eye inside the bounding sphere), metres = view units / 5.
+void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsigned count) noexcept {
+    namespace wcore = weapon_effects::core;
+    resolve_own_ship();
+    const float metre = wcore::engine_units_per_metre * wcore::world_scale;
+    for (unsigned i = 0; i < count; ++i) {
+        const renderer::WeaponPatch& p = patches[i];
+        float lo = 0.f, hi = 0.f;
+        unsigned lit = 0;
+        for (unsigned k = 0; k < p.cells; ++k) {
+            const float d = p.cell_depth[k];
+            lo = k == 0 || d < lo ? d : lo;
+            hi = k == 0 || d > hi ? d : hi;
+            lit += p.cell_since[k] >= 0.f;
+        }
+        const float eye = scalar::sqrt(p.centre[0] * p.centre[0] + p.centre[1] * p.centre[1] + p.centre[2] * p.centre[2]);
+        const float r = p.owner_radius > 0.f ? p.owner_radius : 1.f;
+        log("weapon_patch device=%llu frame=%llu index=%u owner=%08lx node=%08lx is_view_object=%u region=%u cells=%u lit=%u "
+            "hits=%u seams=0x%02x radius_m=%.1f depth_min_r=%.3f depth_max_r=%.3f eye_r=%.3f eye_m=%.1f view_z_m=%.1f "
+            "cell_m=%.2f soft_m=%.2f",
+            id_, frame_, i, static_cast<unsigned long>(p.owner), static_cast<unsigned long>(p.owner_node),
+            unsigned(own_ship_node_ && p.owner_node == own_ship_node_), unsigned(int(p.seed)), p.cells, lit, p.hits, p.seams,
+            double(p.owner_radius / metre), double(lo / r), double(hi / r), double(eye / r), double(eye / metre),
+            double(p.centre[2] / metre), double(p.cell / metre), double(p.soft / metre));
+    }
+}
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[4]) noexcept {
+                                             bool* drew, unsigned drops[5]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 4; ++i) {
+    for (unsigned i = 0; i < 5; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

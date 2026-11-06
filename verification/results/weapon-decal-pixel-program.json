@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_decal_ps.hlsl",
-  "source_sha256": "790d1fdc8d86324250258ba231a4c8ba02dd28d3c92416841705380af0806b53",
+  "source_sha256": "ffecad0e50aa18a74f8d96b266fb15146280e1b8a77b9eb6b9808786087b2529",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -11,7 +11,7 @@
   "defines": null,
   "includes": {
     "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
-    "src/effects/weapon_hex_patch.hlsl": "57ca4815a481132b1f5391797dc96bf33c39a904415e5794c9e4f34c3ee64bb5"
+    "src/effects/weapon_hex_patch.hlsl": "f8dbf5fa3bfde8e11ab746e057ba4bc2503e18350e21ba2fecbd40e7ed55ab6a"
   },
   "word_count": 641,
   "bytecode_sha256": "5ee5b243e20cb9499021c04bf9ff4f568133ba6a4fa17d2fdc8f179c0f195f01",

@@ -20,7 +20,7 @@ Hook the engine's four weapon-effect spawn call sites (impact `0x00449d85`, muzz
 `0x0044ac64` / `0x0044acb2`) with the `claim_call` redirect pattern of `engine_effects_patch.cpp`; each stub hands a
 64-byte **event record** (role, victim or owner, projectile record index, contact point, absorbed flag, damage, game
 time) to the proxy and **skips the engine's spawn** when the stage owned the previous frame, else forwards the call
-unchanged (step 1's shield hit forwards it too and draws its patch over the native sprite, user decision 2026-11-06,
+unchanged (step 1's shield hit skips it too and the patch alone answers the hit, coordinator decision 2026-11-06,
 2.2). Style comes from a **classifier over the live TBullets record** (flag bits, damage per shot, light colour)
 plus the vanilla body's elongation from a generated table, with a curated override file keyed by `SS_BULLET_*` id per
 edition and known mod; users configure nothing. Explosions tier by the victim's class at the death site (three ship
@@ -104,11 +104,14 @@ this path, F9; the record carries 0 until a later step binds the owner), and the
 `+0x40` for the nested rule of 2.7.
 
 Decision: a record is the **stage's** (`flag_stage`, it draws the hex patch) when the stage owns the frame (2.6) *and*
-the family of the role is armed (step 1 arms `shield_hit` only; a hull hit is native until step 2). Step 1 still
-**forwards** the engine's spawn for the stage's shield hits (user decision 2026-11-06: the weapon's own impact is the
-weapon's energy arriving and stays visible; the patch is the shield's response, drawn over it); the skip path stays
-implemented behind `core::suppress_native_shield_hit` (default `false`, `HookState::suppress_native`) for step 2, once our
-own weapon impact exists. The replicated contact point is the one unknown of this site (the meaning of `node+0x180`);
+the family of the role is armed (step 1 arms `shield_hit` only; a hull hit is native until step 2). The stage's shield
+hits **skip** the engine's spawn (`core::suppress_native_shield_hit` = `true`, `HookState::suppress_native`; coordinator
+decision 2026-11-06, superseding the user decision of the same day to keep the native sprite under the patch): the
+stub returns `xor eax,eax; ret` to `0x00449d8a` as if the callee had run (the caller's `add esp,8` pops the two
+arguments and `mov eax,esi` overwrites EAX; EBX/ESI/EDI/EBP, DF, MXCSR, the x87 state, LastError and the stack are as
+the call left them, checked by the hook fixture; ECX/EDX come back from the stub's saves, which a cdecl callee would
+have clobbered anyway). Observe, hull hits, a dying hit object and every
+frame the stage did not own forward unchanged. The replicated contact point is the one unknown of this site (the meaning of `node+0x180`);
 it is settled by the observe flight of 2.6, not assumed.
 
 The handler also reads the hit object's shield fraction (spawn note §9: the class-9 list `[obj+0x50]+0x6c` to its
@@ -165,9 +168,8 @@ a bullet whose col 19 is 0 (42 of 45 stock rows, 33 of 38 Mayhem) is **unknown**
   scene draws). A hook never consults device state itself.
 - **The stage draws only when owned and the family is armed; a skip additionally needs the family's suppression.**
   A record the stage does not own is census-only (logged, then released); the stage never draws it. Step 1's shield
-  hit is the one intentional double draw: the native impact sprite (forwarded, `core::suppress_native_shield_hit` =
-  `false`, user decision 2026-11-06) plus the stage's hex patch over it. Any other family draws either natively or by
-  the stage, never both; with the suppression set a stage-owned shield hit skips the native spawn as designed above.
+  hit skips the native spawn (`core::suppress_native_shield_hit` = `true`, coordinator decision 2026-11-06): it is
+  drawn by the stage alone, and every family draws either natively or by the stage, never both.
 - **One-shot events and a failing stage.** If the stage fails at scene end, that frame's stage-owned
   events are not lost: they live in the proxy ring with their own game-time timelines and are drawn when the stage
   returns, if still within age. The stage disarms for 64 frames (the dropped design's rule), during which the hooks
@@ -242,14 +244,14 @@ Shared by the DLL, the fixture (compiled in) and the lab (its JSON mirror, injec
 | `style` | u8: shape `tracer` / `slug` / `orb` / `wave` / `beam` (+ `burst` bit), or `missile_hit`; explosions carry the tier instead | the classifier (section 4) or the override |
 | `tier` | u8: `light` / `medium` / `heavy` (weapons); `fighter` / `corvette` / `capital` / `station` / `asteroid` / `missile` / `burst` (explosions) | damage per shot; the victim's class |
 | `calibre` | f32 0..1 | `clamp(log10(d / 300) / 2, 0, 1)` with d = max(shield, hull) damage per shot; for impacts the running total replaces d |
-| `tint` | 3 × f32, linear | light colour when saturated, else the body's texture mean colour from the table, else white (4.2) |
+| `tint` | 3 × f32, linear | light colour when saturated, else the body's texture mean colour from the table, else white (4.2). As built `tint_rgb` (u32) and the other candidate narrowed to `alt_rgb332` (u8, RGB 3:3:2, 0 none: only the `tint_mix` override reads it) |
 | `t0_game_ms` | u32 | `cfg+0x718` at the hook; **every age and bound is game time**: `age = now_game − t0`, so SETA shortens ripples, sparks and fireballs exactly as it does the engine's own effects |
 | `lifetime_ms` | u16 | the style's timeline (shield patch `patch_lifetime_ms` = 2941, 5.1.1; sparks 250–500, fireball 1,000–2,000 by tier, beam = col 27 when flag 0x2000) |
 | `owner` | object ptr, root node ptr, node handle u32, serial u64 (0 when `object_lifetime` is inactive) | the victim (impact), the ship (muzzle), the dying object (explosion, t0 only) |
 | `shooter`, `slot` | object ptr, u8 | muzzle and bolts. Step 1 does not carry `shooter` (unread, F9); its four bytes hold `shield_q` (u16, current / maximum shield points × 65535, valid with `shield_read`), `patch_tier` (u8, fighter / corvette / capital) and `tier_source` (u8: ship class id, station, radius); a later step that binds the shooter widens the record |
 | `table`, `row` | u8 (`bullets` / `missiles`), u16 | the live record's identity; the override and the table lookup key |
 | `pos` | 3 × f32 | local to the owner (impact, muzzle) or world (explosion) |
-| `axis` | 3 × f32 | projectile heading / muzzle orientation / dying object's velocity |
+| `axis` | 3 × f32 | projectile heading / muzzle orientation / dying object's velocity. As built for impacts `dir` (3 × i8, world, × 127 rounded): the projectile root node's row 2 (`node+0x40` third row, local z in world, 16.16); 0, 0, 0 when that node is not live or the row is zero (`dir_fallback`), taking the three bytes the narrowed `alt_rgb332` freed |
 | `radius` | f32 | `obj+0xa4` of the owner (shell ellipsoid, fireball size) |
 | `flags` | u8 | `absorbed`, `forwarded` (the native spawn ran), `stage` (the stage draws it; took the bit of `owner_retired`, which was set only on a record about to be released), `nested`, `override_applied`, `calibre_override`, `logged`, `shield_read` |
 
@@ -396,8 +398,8 @@ run through `native_host.py` [S]) and one flight whose capture rows are named he
 ### 5.1 Step 1: shield hit (the brief for `implement-deep`)
 
 **Goal.** A shield hit shows the hex patch of 5.1.1 (which supersedes the dropped design's Fresnel shell of 3.3),
-placed by the impact hook, coloured by the hit object's shield fraction, aged in game time, drawn over the native
-impact sprite (user decision 2026-11-06: the native sprite is forwarded, 2.2). Nothing else changes: hull hits,
+placed by the impact hook, coloured by the hit object's shield fraction, aged in game time, in place of the native
+impact sprite (coordinator decision 2026-11-06: the native spawn is skipped for the stage's shield hits, 2.2). Nothing else changes: hull hits,
 bolts, muzzle and explosions stay native.
 
 **Scope.**
@@ -409,10 +411,10 @@ bolts, muzzle and explosions stay native.
 2. `tools/effects/weapon_effects_table.py` (the generated table, install / uninstall / regenerate wiring as
    `engine_bodies.json`), `tools/effects/weapon_overrides.json` (empty `by_id`, the three known tables listed).
 3. The stage: a `WeaponEffectsPass` fed by `Event` records (owner rows read at scene end as 3.1 says): per owner its
-   live stage-owned hits (up to 64) build a cell map per anchor region (the nearest of the owner's six axis directions,
-   whose stereographic tangent plane carries the lattice; 5.1.1), one draw per region, each rasterizing only the
-   spherical cap that bounds its lit cells (a polar mesh of 8 rings x 32 segments bent onto the ellipsoid by the vertex program: the
-   CPU-side cull); a flat decal of the same law for an owner without a usable ellipsoid; riding the resolve's step-0
+   live stage-owned hits (up to 64) light cells per axis region (the owner axis facing the bolt by its owner-frame
+   travel, else the nearest to the radial direction; each region a planar lattice perpendicular to its axis, 5.1.1
+   "Placement"), one draw per region of up to 128 cells, each cell rasterized as its own flat hexagon at its held depth
+   (only the cells: the CPU-side cull); a flat decal of the same law for an owner without a usable frame; riding the resolve's step-0
    callback after the plumes callback (the `own_sun_with_plumes_` chaining pattern of `motion_output.cpp:2493–2507`
    [S]). Occlusion by the lane alone (unknown 11 of the dropped note was settled: the depth is unbound before the
    callback [M]).
@@ -433,8 +435,9 @@ bolts, muzzle and explosions stay native.
 
 - Hook fixture, run natively through WSL interop (the FL redirect fixture's harness): a synthetic image with copies of
   the impact window and the two inner windows; checks: window compare and refusal on one changed byte; the shields
-  default forwards a stage-owned shield hit to the callee with every register and the stack as the call left them,
-  and the skip path (behind `suppress_native`) leaves EBX/ESI/EDI/EBP and the stack exactly, returning with the
+  default skips a stage-owned shield hit (the callee not entered, the forwarded count unchanged) while a hull hit
+  forwards, the forward path (`suppress_native` cleared) reaches the callee with every register and the stack as the
+  call left them, and the skip path leaves EBX/ESI/EDI/EBP and the stack exactly, returning with the
   caller's `add esp`; the absorbed slot and the damage slot read from the synthetic frame; the shield rule
   (`absorbed`, flag `0x20`, class 0/10/other) on a table of cases; the shield read on a synthetic list
   (capacity-weighted against the HUD's own formula, 2e9-point shields, clamped energy, the sentinel, an index out of
@@ -473,8 +476,8 @@ below 1 unit over ≥ 50 hits (settles the `+0x180` unknown), every `weapon_even
 visible native shield sprite, `absorbed` and `shield=` consistent with the HUD shield bar, `patch_tier` /
 `tier_source` against the ships hit, the hooks' cost in `weapon_effects_frame` (target ≤ 30 µs per frame at 50 events
 [I]), and `weapon_death` rows with class id, col 47 and radius for the tier table. Flight B (`shields`): what the user
-must see — on every shielded hit the native impact sprite **and** the hex patch over it (the one intentional double
-draw, 2.6), the patch wrapping the hull at the hit point with cells sized by the target's class, the hit's own cell
+must see — on every shielded hit the hex patch (the native impact sprite skipped since the coordinator decision
+of 2026-11-06, 2.2), the patch wrapping the hull at the hit point with cells sized by the target's class, the hit's own cell
 brighter as the marker and one
 ring from the hit point, each cell fading over 1.76 to 2.64 s of game time (2.2 s × (1 ± 0.2) per cell, 5.1.1;
 SETA shortens it in wall time exactly as the engine's own effects), its colour
@@ -488,17 +491,52 @@ fighter fight). The user reports with F8 captures at a hit and after a kill.
 ### 5.1.1 Shield-hit look (user decision 2026-11-05, supersedes the full shell of 3.3)
 
 Agreed with the user after the step-1 build (`2fc8762ce`) and before its flight; this is the look the step flies.
-User decision 2026-11-06: the weapon's own native impact effect stays visible on a shield hit and the patch is drawn
-in addition (the impact is the weapon's energy arriving, the patch the shield's response); when the shield is down
-only the weapon impact shows, which becomes step 2's hull look.
+Coordinator decision 2026-11-06 (after Run235 Flight B, superseding the user decision of the same day to keep the
+weapon's native impact visible under the patch): in `shields` mode a shield hit the stage owns no longer forwards the
+native impact sprite (the engine's `0x00413c40` is not called); the patch alone answers it. Hull hits (the shield
+down, or a hull-through-shield bullet) keep the weapon impact, which becomes step 2's hull look; `observe` forwards
+every hit, so a diagnosis flight still sees vanilla.
 
 - **Geometry.** Not the whole-ship Fresnel shell. A **patch of hexagon cells on the same ellipsoid**: the hit
   lights the cell containing the hit point and its neighbour rings, so the pattern wraps the hull around the hit. The
   hex cell size and the ring count scale with the victim's **tier**; cell size is fixed in world units per tier,
-  never per screen. As built: cell 1.5 / 3 / 8 m, rings 1 / 2 / 2 (7 / 19 / 19 cells per hit; the patch radius
-  control is gone); the tier is the TShips class id for ships (8.1 of the spawn note), capital for docks and
-  factories, else radius bands below 30 / 150 m [I].
-- **Cell-map model (user decision 2026-11-06, supersedes the per-hit disc and the four-hit slots).** Per owner a
+  never per screen. As built: cell 3 / 6 / 16 m (doubled after Run235 Flight B: the cells read too small; the
+  footprint radius doubles with them), rings 1 / 2 / 2 (7 / 19 / 19 cells per hit; the patch radius control is gone);
+  the tier is the TShips class id for ships (8.1 of the spawn note), capital for docks and factories, else radius
+  bands below 30 / 150 m [I].
+- **Placement: a per-face lattice at the hit point (Run235 Flight B, 2026-11-06; supersedes the ellipsoid, the
+  stereographic plane, the cap and the per-pixel ray-ellipsoid point of the next bullet).** The bounding sphere (root
+  node origin, radius obj+0xa4) is no surface: the recorded contact point is exact but lies at 0.15 to 0.85 R on ships
+  and 0.64 R on a station of R 1304 m, so projecting it through the centre put a flank hit of a long hull on its tail
+  and a station's patch 417 to 710 m off its hull, and the outward-face cull hid every hit on the far half. Now each
+  of the six axis regions carries a planar hex lattice in the plane perpendicular to its owner axis (owner frame,
+  fixed offset); a hit belongs to the region facing its projectile (coordinator decision 2026-11-06: the owner axis
+  with the largest |component| of the bolt's travel, signed against it, `core::travel_region` on `Event::dir`, which
+  the hook records already in the owner frame (the bullet's row 2 through the hit object's rows at the hit, review F1:
+  a turning owner keeps its regions and held depths); the radial `core::hit_region` when the record has no travel),
+  its cell is the lattice cell containing its projection onto that plane, and each lit cell carries its own clock (the
+  hit that most recently lit it) and the depth it was first lit at, held until the cell has fully faded (a re-light
+  only resets the clock; `stage::DepthCache`, 192 KB of CPU memory keyed by owner, handle, region and cell, its
+  entries expiring in game time and cleared on a Reset and a scope change, the stage's only state; only drawn cells
+  are looked up, a full probe window is counted as `depth_full`). A draw is its
+  cells as flat hexagons at those depths (integer lattice corners, so neighbours at one depth share bit-identical
+  edges; the cell's key, depth and clock in its vertices, no pixel-constant map, 182 ps_3_0 slots), placed through the
+  owner's rows in view space, clipped at the near plane (an eye inside the old sphere draws), both faces, Z off, with
+  the soft fade against the lane biased by one soft radius (`soft` = 1 cell): whole where the hull lies behind the
+  patch, cut where the patch passes inside it (the soft radius was 0.5 R of the bounding sphere, 0.75 to 1.25 cells
+  for the decal's; now 1 cell for both). A ring hit also carries its footprint cells not reached yet, so the ring shows
+  over them; every spill draw carries the region's ring hits. Seams (review F2): a draw's neighbours are up to four
+  draws of the owner's other regions whose cell bounds meet its own, and the light is shared by the power distance to
+  the two bounds (the signed distance to their radical plane over a cell-wide band), so the share follows where the
+  cells are, not the rule that assigned their hits; it bites only where both bounds cover a point. Neighbours first lit at different depths overlap or gap by the depth step on
+  screen (a pixel under k cells fades k steps per frame; no cell moves). Why the travel rule [M]: radially, a narrow
+  hull gives most of its surface (81 % of a 1:1:6 ellipsoid) to the long-axis regions, whose plane stands across the
+  hull (86 degrees from its normal at a flank point 40 % aft) and is seen edge-on from the side; by the bolt's travel
+  that flank hit takes the flank's region (4 degrees). [I]: that a bullet's root node row 2 is its travel direction
+  (the coordinator's reading; the `weapon_event` row logs `dir` and `travel_region` for the flight to confirm).
+- **Cell-map model (user decision 2026-11-06, supersedes the per-hit disc and the four-hit slots; its geometry,
+  stereographic planes, caps, the pixel-constant map and the radial seam share, is superseded by "Placement" above,
+  its clocks, footprints, spills and eviction stand).** Per owner a
   **stable hex grid fixed in the owner's object frame**: six anchor regions centred on the owner's local axes (nose,
   tail, flanks, top, belly mid-region, the seams on the cube's edges), each a stereographic tangent plane (conformal,
   the cell scale grows at most 27 % at a cube corner), so the cells stay put as the ship moves and every hit in a
@@ -506,7 +544,7 @@ only the weapon impact shows, which becomes step 2's hull look.
   to "lit now" as its ring front reaches each centre (a cell already lit is reset to full, never drawn twice); cells
   the new hit does not cover keep their clocks and fade out. The stage rebuilds each region's cell map from the
   owner's live hits every frame (a cell's clock is the newest hit that lit it; up to 64 hits per owner, the rest
-  counted as `hits_dropped`), so it holds no state of its own; one draw per owner and region over the cap bounding its
+  counted as `hits_dropped`; the held depths are the one state, "Placement"); one draw per owner and region over the cap bounding its
   lit cells, 128 cells per map; a region with more lit cells spills into further draws (`region_draws` = 8 per region,
   from the frame's 32 after every region's first, each map a compact Morton chunk with its own cap; review F1/F2
   2026-11-06), and past them the cells with the oldest clocks, the dimmest, are dropped and counted
@@ -538,8 +576,8 @@ only the weapon impact shows, which becomes step 2's hull look.
   red below 35 %. The hook reads the current and maximum shield (spawn note §9, 2.2: capacity-weighted like the HUD
   bar, post-hit); a refused read colours light blue.
 - **Cost.** A patch is a fraction of the full shell (which measured 201.8 us for two shells at 5120x1440 with the
-  winding cull, the ledger). The cell-map program is 360 ps_3_0 slots (the map unrolled in groups, the seam share,
-  no core); the per-frame figures and the stage's CPU cost are in the ledger (rows of 2026-11-06) [M].
+  winding cull, the ledger). The per-cell program is 182 ps_3_0 slots (was 360 for the cell map in pixel constants);
+  the per-frame figures and the stage's CPU cost are in the ledger (rows of 2026-11-06) [M].
 - **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, rings per tier, ripple speed,
   centre gain and fade duration, stagger, edge-versus-fill, the three colour bands, the SETA rate (default 1), the
   hit-sequence player in hits per game second (so SETA 6 is as dense as the game).

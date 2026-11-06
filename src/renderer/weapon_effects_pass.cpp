@@ -60,8 +60,10 @@ template <std::size_t N> std::uint32_t vs3_slots(const std::uint32_t (&words)[N]
     copy[0] = ps3_version_token;
     return ps3_program_slots(copy, N);
 }
-constexpr D3DVERTEXELEMENT9 shell_elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+constexpr D3DVERTEXELEMENT9 shell_elements[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                                {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
                                                 D3DDECL_END()};
+static_assert(sizeof(WeaponEffectsPass::CellVertex) == 32, "the patch declaration follows the vertex");
 constexpr D3DVERTEXELEMENT9 decal_elements[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
                                                 {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
                                                 D3DDECL_END()};
@@ -78,49 +80,19 @@ bool finite_all(const float* v, unsigned n) noexcept {
         if (!finite(v[i])) return false;
     return true;
 }
-// The unit polar cap: vertex 0 the pole (rho 0), then cap_rings rings of cap_segments vertices at rho = r / cap_rings,
-// phi = 2 pi k / cap_segments, stored as (cos phi, sin phi, rho); the vertex program maps (x, y, rho) to cos(rho a) dir
-// + sin(rho a) (x u + y v) with (u, v, dir) right-handed. The angles come from a rotation recurrence (attach time only,
-// no libm), renormalized every step. Winding: every triangle is counter-clockwise seen from outside (from +dir), so
-// (b - a) x (c - a) points outward like the icosphere it replaces; run() keeps the outward winding per patch from the
-// sign of det A.
-bool build_cap(float (*v)[3], std::uint16_t* idx) noexcept {
-    constexpr unsigned R = WeaponEffectsPass::cap_rings, S = WeaponEffectsPass::cap_segments;
-    static_assert(S == 32, "the recurrence step is 2 pi / 32");
-    const float step_c = 0.98078528040323044f, step_s = 0.19509032201612826f; // cos, sin of pi / 16
-    float c = 1.f, s = 0.f;
-    float ring_c[S], ring_s[S];
-    for (unsigned k = 0; k < S; ++k) {
-        ring_c[k] = c;
-        ring_s[k] = s;
-        const float nc = c * step_c - s * step_s, ns = s * step_c + c * step_s;
-        const float n = scalar::sqrt(nc * nc + ns * ns);
-        c = nc / n;
-        s = ns / n;
-    }
-    v[0][0] = v[0][1] = v[0][2] = 0.f;
-    for (unsigned r = 1; r <= R; ++r)
-        for (unsigned k = 0; k < S; ++k) {
-            float* p = v[1 + (r - 1) * S + k];
-            p[0] = ring_c[k];
-            p[1] = ring_s[k];
-            p[2] = float(r) / float(R);
-        }
+// The patch index list (attach time): per cell its six corners (CellVertex, run() writes them per draw) as a fan of
+// four triangles, cell c at vertices 6 c .. 6 c + 5. Both faces draw (CULLMODE NONE), so the winding is free.
+bool build_indices(std::uint16_t* idx) noexcept {
+    constexpr unsigned V = WeaponEffectsPass::cell_vertices;
+    static_assert(WeaponEffectsPass::patch_vertices <= 65536, "16-bit indices");
     unsigned out = 0;
-    auto at = [](unsigned r, unsigned k) { return std::uint16_t(1 + (r - 1) * S + (k % S)); };
-    for (unsigned k = 0; k < S; ++k) {
-        idx[out++] = 0;
-        idx[out++] = at(1, k);
-        idx[out++] = at(1, k + 1);
-    }
-    for (unsigned r = 1; r < R; ++r)
-        for (unsigned k = 0; k < S; ++k) {
-            const std::uint16_t a = at(r, k), b = at(r + 1, k), cc = at(r + 1, k + 1), d = at(r, k + 1);
-            const std::uint16_t tris[6] = {a, b, cc, a, cc, d};
-            std::memcpy(idx + out, tris, sizeof tris);
-            out += 6;
+    for (unsigned c = 0; c < weapon_patch_cells; ++c)
+        for (unsigned t = 0; t < WeaponEffectsPass::cell_triangles; ++t) {
+            idx[out++] = std::uint16_t(c * V);
+            idx[out++] = std::uint16_t(c * V + t + 1);
+            idx[out++] = std::uint16_t(c * V + t + 2);
         }
-    return out == WeaponEffectsPass::cap_triangles * 3;
+    return out == WeaponEffectsPass::patch_triangles * 3;
 }
 } // namespace
 
@@ -202,9 +174,8 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
         return refuse("blend_caps");
-    constexpr DWORD cull_caps = D3DPMISCCAPS_CULLNONE | D3DPMISCCAPS_CULLCW | D3DPMISCCAPS_CULLCCW;
-    if ((caps.PrimitiveMiscCaps & cull_caps) != cull_caps) return refuse("cull_caps");
-    if (caps.MaxPrimitiveCount < cap_triangles || caps.MaxVertexIndex < cap_vertices || caps.MaxStreams < 1u)
+    if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE)) return refuse("cull_caps");
+    if (caps.MaxPrimitiveCount < patch_triangles || caps.MaxVertexIndex < patch_vertices || caps.MaxStreams < 1u)
         return refuse("limits");
     IDirect3D9* api = nullptr;
     D3DDEVICE_CREATION_PARAMETERS creation{};
@@ -222,9 +193,9 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         hr = D3DERR_NOTAVAILABLE;
     }
     if (hr != D3D_OK) return refuse("fp16_blending", D3DERR_NOTAVAILABLE);
-    if (!cap_built_) {
-        cap_built_ = build_cap(cap_, indices_);
-        if (!cap_built_) return refuse("cap_mesh", E_FAIL);
+    if (!indices_built_) {
+        indices_built_ = build_indices(indices_);
+        if (!indices_built_) return refuse("cell_mesh", E_FAIL);
     }
     hr = create_objects();
     if (FAILED(hr)) return refuse("program_create", hr);
@@ -260,16 +231,10 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
 }
 namespace {
 // The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,
-// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19..c27
-// (weapon_shell_ps.hlsl: projection, A^-1, the eye, the seam), c28..c59 the cell map's keys (four packed keys per
-// register, unused -1) and c60..c91 their clocks + 1 (negative for a hit's centre cell). The program tests each group
-// of four key registers on its leading key and skips a group led by -1, so every patch uploads all 32 key registers
-// (a group past this map never reads a previous draw's keys) and only the clocks of its groups. Returns false for a
-// degenerate draw (skipped, never drawn wrong).
-constexpr unsigned hex_head = 17, shell_tail = 9, map_blocks = weapon_patch_cells / 4;
-constexpr unsigned keys_at = 2 + hex_head + shell_tail, clocks_at = keys_at + map_blocks; // c28, c60
-static_assert(weapon_patch_cells % 4 == 0 && clocks_at + map_blocks <= 224 - 8,
-              "the patch program's constants stay within ps_3_0's 224 float registers with room for its literals");
+// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19 (the soft
+// radius, 1 / cell) and c20..c23 (the seam planes, weapon_shell_ps.hlsl). Returns false for a degenerate draw (skipped, never drawn
+// wrong).
+constexpr unsigned hex_head = 17, shell_tail = 5;
 bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float seed, float surface2,
                const float colour[3], const float* anchor, const float* anchor_u, const float* anchor_v, unsigned hits,
                const float (*hit_cell)[2], const float (*point)[2], const float* ages, float* out) noexcept {
@@ -304,43 +269,58 @@ bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float
     }
     return finite_all(out, hex_head * 4);
 }
-// The cell map of a patch: all 32 key registers (unused -1) and *clocks_sent clock registers (its groups of four
-// registers); false for a map the program cannot read.
-bool cell_map_block(const WeaponPatch& p, float* keys, float* clocks, unsigned* keys_sent, unsigned* clocks_sent) noexcept {
+// A patch's cells as hexagons (CellVertex): per cell its six lattice corners (integers: the centre (kx, 3 ky) in half
+// cells and sqrt 3 / 6 cells, the corners (0, +-2), (+-1, +-1) about it), its depth and its clock (game seconds since
+// lit + 1, negative for a hit's centre cell, 0 not lit yet); false for a cell the programs cannot carry.
+bool write_cells(const WeaponPatch& p, WeaponEffectsPass::CellVertex* v) noexcept {
     if (p.cells > weapon_patch_cells) return false;
-    const unsigned groups = (p.cells + 15) / 16, ckeys = groups * 4, sent = map_blocks;
+    static constexpr float corner[WeaponEffectsPass::cell_vertices][2] = {{0.f, 2.f}, {-1.f, 1.f}, {-1.f, -1.f},
+                                                                         {0.f, -2.f}, {1.f, -1.f}, {1.f, 1.f}};
     constexpr float key_max = float((2 * weapon_cell_key_bias) * 4096);
-    for (unsigned i = 0; i < sent * 4; ++i) {
-        const bool on = i < p.cells;
-        if (on && (!(p.cell_key[i] >= 0.f) || !(p.cell_key[i] < key_max) || !(p.cell_since[i] >= 0.f) ||
-                   !finite(p.cell_since[i])))
-            return false;
-        keys[i] = on ? p.cell_key[i] : -1.f;
-        if (i < ckeys * 4) clocks[i] = on ? (p.cell_centre[i] ? -1.f : 1.f) * (p.cell_since[i] + 1.f) : 0.f;
-    }
-    *keys_sent = sent;
-    *clocks_sent = ckeys;
-    return true;
-}
-// The seam registers c24..c27 (weapon_shell_ps.hlsl): per owner axis i the masks M+ (+axis a seam region), B+ = 2 M+ - 2,
-// -M- and B- = 2 M- - 2, and k = S / (sqrt 2 cell) (at least 1, so no seam keeps the whole light).
-void seam_block(const WeaponPatch& p, float out[16]) noexcept {
-    for (unsigned i = 0; i < 16; ++i) out[i] = 0.f;
-    const unsigned own = p.seed >= 0.f && p.seed < 6.f ? unsigned(p.seed) : 6u;
-    const unsigned seams = p.seams & 63u & ~(own < 6u ? 1u << own : 0u);
-    for (unsigned k = 0; k < 6; ++k) {
-        const unsigned i = (2u + (k >> 1)) % 3u; // weapon_effects_stage.h anchor_frame: 0, 1 z; 2, 3 x; 4, 5 y
-        const float on = (seams >> k) & 1u ? 1.f : 0.f;
-        if (k & 1u) {
-            out[8 + i] = -on;
-            out[12 + i] = 2.f * on - 2.f;
-        } else {
-            out[i] = on;
-            out[4 + i] = 2.f * on - 2.f;
+    for (unsigned i = 0; i < p.cells; ++i) {
+        const float key = p.cell_key[i], since = p.cell_since[i], depth = p.cell_depth[i];
+        if (!(key >= 0.f) || !(key < key_max) || !finite(since) || !finite(depth)) return false;
+        const std::int32_t packed = std::int32_t(key); // exact: 0 <= key < 2^24
+        const float kx = float((packed >> 12) - weapon_cell_key_bias);
+        const float ky = float((packed & 0xfff) - weapon_cell_key_bias);
+        const float clock = since >= 0.f ? (p.cell_centre[i] ? -1.f : 1.f) * (since + 1.f) : 0.f;
+        for (unsigned k = 0; k < WeaponEffectsPass::cell_vertices; ++k) {
+            WeaponEffectsPass::CellVertex& c = v[i * WeaponEffectsPass::cell_vertices + k];
+            c.corner[0] = kx + corner[k][0];
+            c.corner[1] = 3.f * ky + corner[k][1];
+            c.corner[2] = depth;
+            c.corner[3] = clock;
+            c.key[0] = kx;
+            c.key[1] = ky;
+            c.key[2] = c.key[3] = 0.f;
         }
     }
-    const float k = 0.70710678f * p.surface / p.cell;
-    out[3] = k > 1.f ? k : 1.f;
+    return true;
+}
+// The seam registers c20..c23 (weapon_shell_ps.hlsl): per seam neighbour j (WeaponPatch::seam_bound) the radical plane
+// of the own bound (C, r) and the neighbour's (Cj, rj), as the signed distance s(X) = X . (C - Cj) / D + (|Cj|^2 -
+// |C|^2 - rj^2 + r^2) / (2 D), D = |C - Cj| (positive on the own side; within the own bound and outside the
+// neighbour's always positive, so the share bites only where both bounds cover the point); unused: s = 1e6. Double
+// precision on the CPU (owner-frame view units up to a station's 6500).
+void seam_block(const WeaponPatch& p, float out[16]) noexcept {
+    for (unsigned k = 0; k < 4; ++k) {
+        float* o = out + 4 * k;
+        o[0] = o[1] = o[2] = 0.f;
+        o[3] = 1e6f;
+        if (k >= p.seam_count) continue;
+        const float* q = p.seam_bound[k];
+        const double c[3] = {p.bound[0], p.bound[1], p.bound[2]}, cj[3] = {q[0], q[1], q[2]};
+        const double e[3] = {c[0] - cj[0], c[1] - cj[1], c[2] - cj[2]};
+        const double d2 = e[0] * e[0] + e[1] * e[1] + e[2] * e[2];
+        if (!(d2 > 1e-6)) { // coincident bounds: half each
+            o[3] = 0.f;
+            continue;
+        }
+        const double d = double(scalar::sqrt(float(d2)));
+        const double cc = c[0] * c[0] + c[1] * c[1] + c[2] * c[2], jj = cj[0] * cj[0] + cj[1] * cj[1] + cj[2] * cj[2];
+        for (unsigned i = 0; i < 3; ++i) o[i] = float(e[i] / d);
+        o[3] = float((jj - cc - double(q[3]) * double(q[3]) + double(p.bound[3]) * double(p.bound[3])) / (2.0 * d));
+    }
 }
 } // namespace
 HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport* output) noexcept {
@@ -412,71 +392,37 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Patches, call<SetDeclarationFn>(SetVertexDeclaration)(d, shell_declaration_));
         step(WeaponEffectsStep::Patches, call<SetVsFn>(SetVertexShader)(d, shell_vs_));
         step(WeaponEffectsStep::Patches, call<SetPsFn>(SetPixelShader)(d, shell_ps_));
-        DWORD cull = D3DCULL_NONE; // the state list's value
         for (unsigned i = 0; i < f.patch_count && SUCCEEDED(hr); ++i) {
             const WeaponPatch& p = f.patches[i];
-            bool ok = finite(p.soft) && finite_all(p.centre, 3) && finite_all(p.axes, 9) && finite_all(p.cap_dir, 3) &&
-                      finite_all(p.cap_u, 3) && finite_all(p.cap_v, 3) && finite(p.cap_angle) && p.cap_angle > 0.f &&
-                      finite(p.surface) && p.surface > 0.f;
-            float ps[(hex_head + shell_tail + map_blocks) * 4], clocks[map_blocks * 4];
-            unsigned key_registers = 0, clock_registers = 0;
-            ok = ok && (p.hits || p.cells) &&
-                 hex_block(l, p.cell, p.radius, p.reach, p.seed, 2.f * p.surface, p.colour, p.anchor, p.anchor_u,
-                           p.anchor_v, p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
-                 cell_map_block(p, ps + (hex_head + shell_tail) * 4, clocks, &key_registers, &clock_registers);
-            // The winding of the outward faces on screen (see build_cap): det A0 . (A1 x A2).
-            const float* a = p.axes;
-            const float det = ok ? a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6]) +
-                                       a[2] * (a[3] * a[7] - a[4] * a[6])
-                                 : 0.f;
-            if (!ok || !finite(det) || det == 0.f) continue; // a degenerate patch is skipped, never drawn wrong
+            bool ok = finite(p.soft) && p.soft > 0.f && finite_all(p.centre, 3) && finite_all(p.view_u, 3) &&
+                      finite_all(p.view_v, 3) && finite_all(p.view_a, 3) && finite_all(p.anchor, 3) &&
+                      finite_all(p.anchor_u, 3) && finite_all(p.anchor_v, 3) && p.cells > 0;
+            float ps[(hex_head + shell_tail) * 4];
+            ok = ok && hex_block(l, p.cell, p.radius, p.reach, p.seed, 0.f, p.colour, p.anchor, p.anchor_u, p.anchor_v,
+                                 p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
+                 write_cells(p, vertices_);
+            if (!ok) continue; // a degenerate patch is skipped, never drawn wrong
             {
-                // c19 the projection, c20..c22 the rows of A^-1 (columns A0, A1, A2: rows (A1 x A2, A2 x A0, A0 x A1) /
-                // det), c23 the eye (view origin) in the owner's unit-sphere frame, A^-1 (0 - centre), in double;
-                // c24..c27 the seam.
-                const double A[9] = {a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]};
-                const double id = 1.0 / double(det);
-                const double rows[9] = {(A[4] * A[8] - A[5] * A[7]) * id, (A[5] * A[6] - A[3] * A[8]) * id,
-                                        (A[3] * A[7] - A[4] * A[6]) * id, (A[7] * A[2] - A[8] * A[1]) * id,
-                                        (A[8] * A[0] - A[6] * A[2]) * id, (A[6] * A[1] - A[7] * A[0]) * id,
-                                        (A[1] * A[5] - A[2] * A[4]) * id, (A[2] * A[3] - A[0] * A[5]) * id,
-                                        (A[0] * A[4] - A[1] * A[3]) * id};
-                float* x = ps + hex_head * 4;
-                x[0] = f.m00;
-                x[1] = f.m11;
-                x[2] = f.m20;
-                x[3] = f.m21;
-                for (unsigned r = 0; r < 3; ++r) {
-                    x[4 + 4 * r] = float(rows[3 * r]);
-                    x[5 + 4 * r] = float(rows[3 * r + 1]);
-                    x[6 + 4 * r] = float(rows[3 * r + 2]);
-                    x[7 + 4 * r] = 0.f;
-                    x[16 + r] = float(-(rows[3 * r] * double(p.centre[0]) + rows[3 * r + 1] * double(p.centre[1]) +
-                                        rows[3 * r + 2] * double(p.centre[2])));
-                }
-                x[19] = 0.f;
-                seam_block(p, x + 20);
-                if (!finite_all(x, 36)) continue;
+                float* x = ps + hex_head * 4; // c19 the soft radius and 1 / cell, c20..c23 the seam planes
+                x[0] = p.soft;
+                x[1] = 1.f / p.cell;
+                x[2] = x[3] = 0.f;
+                seam_block(p, x + 4);
+                if (!finite_all(x, shell_tail * 4)) continue;
             }
-            DWORD want = det > 0.f ? DWORD(D3DCULL_CCW) : DWORD(D3DCULL_CW); // keep the front (outward) faces
-            if (faults_ & 16u) want = D3DCULL_NONE; // fixture bit 4: CULLMODE NONE (the cull's A/B)
-            if (want != cull && step(WeaponEffectsStep::Patches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, want)))
-                cull = want;
-            const float angle = p.cap_angle < 3.14159265f ? p.cap_angle : 3.14159265f;
             const float vs[7 * 4] = {p.centre[0], p.centre[1], p.centre[2], f.near_z,
-                                     a[0], a[1], a[2], p.soft, a[3], a[4], a[5], 0.f, a[6], a[7], a[8], 0.f,
-                                     p.cap_dir[0], p.cap_dir[1], p.cap_dir[2], angle,
-                                     p.cap_u[0], p.cap_u[1], p.cap_u[2], 0.f, p.cap_v[0], p.cap_v[1], p.cap_v[2], 0.f};
+                                     p.view_u[0], p.view_u[1], p.view_u[2], p.cell,
+                                     p.view_v[0], p.view_v[1], p.view_v[2], 0.f,
+                                     p.view_a[0], p.view_a[1], p.view_a[2], 0.f,
+                                     p.anchor[0], p.anchor[1], p.anchor[2], 0.f,
+                                     p.anchor_u[0], p.anchor_u[1], p.anchor_u[2], 0.f,
+                                     p.anchor_v[0], p.anchor_v[1], p.anchor_v[2], 0.f};
             step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, vs, 7));
-            step(WeaponEffectsStep::Patches,
-                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head + shell_tail + key_registers));
-            if (clock_registers)
-                step(WeaponEffectsStep::Patches,
-                     call<SetConstantsFn>(SetPixelShaderConstantF)(d, clocks_at, clocks, clock_registers));
+            step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head + shell_tail));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
-                    d, D3DPT_TRIANGLELIST, 0, cap_vertices, cap_triangles, indices_, D3DFMT_INDEX16, cap_,
-                    UINT(sizeof cap_[0])));
+                    d, D3DPT_TRIANGLELIST, 0, p.cells * cell_vertices, p.cells * cell_triangles, indices_,
+                    D3DFMT_INDEX16, vertices_, UINT(sizeof vertices_[0])));
                 if (step(WeaponEffectsStep::Patches, draw)) {
                     ++r.patches;
                     r.drew = true;
@@ -486,8 +432,6 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     }
     if (SUCCEEDED(hr) && f.decal_count) {
         const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
-        if (f.patch_count) // the patches may have left a winding cull; the decal quads are not wound
-            step(WeaponEffectsStep::Decals, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Decals, call<SetDeclarationFn>(SetVertexDeclaration)(d, decal_declaration_));
         step(WeaponEffectsStep::Decals, call<SetVsFn>(SetVertexShader)(d, decal_vs_));
         step(WeaponEffectsStep::Decals, call<SetPsFn>(SetPixelShader)(d, decal_ps_));

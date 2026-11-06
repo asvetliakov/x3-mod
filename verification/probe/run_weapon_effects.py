@@ -12,8 +12,10 @@ Builds verification/probe/weapon_effects_fixture.cpp with the production WeaponE
 match its source and header), runs it once and writes the record: the build, the checkout's commit and the production
 sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
 radius and edge count per tier with the symmetry counts, the centre cell over a ring cell, ring front at two ages, the
-fade, the colour bands, re-light and four-hit accumulation, the CPU cap, the no-pop runs (fighter, spread capital and
-the one-draw eviction witness, each with its worst pixel), the seam pair, the stage's CPU cost, the decal fallback,
+fade, the colour bands, re-light and four-hit accumulation, the placement at the recorded hit point (narrow hull,
+the Flight B station, the far side, the eye inside the bounding sphere, the aft-flank witness), the no-pop runs (fighter
+and spread capital on a flat face, the one-draw eviction and sphere-front witnesses, each with its worst pixel), the
+seam pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
 and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
 fighter, two on a capital at close range, the worst case of one owner). Never launches the game.
@@ -120,7 +122,7 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
-            'CAPCHECK', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+            'PLACEMENT', 'PLACEMENT_AFT', 'SEAM_NARROW', 'SOFT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
@@ -154,7 +156,10 @@ def parse_hook(text):
             stack = fields(line)
     shields = [fields(line) for line in text.splitlines() if line.startswith('SHIELD ')]
     cost = [fields(line) for line in text.splitlines() if line.startswith('EVENT_COST ')]
+    travel = [fields(line) for line in text.splitlines() if line.startswith('DIR ')]
+    suppress = [fields(line) for line in text.splitlines() if line.startswith('SUPPRESS ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
+            'dir': travel, 'suppress': suppress,
             'event_cost': cost[-1] if cost else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -175,6 +180,8 @@ def run_hook(args, results):
     record['forward_state'] = report['forward_state']
     record['stack_depth'] = report['stack_depth']
     record['shield'] = report['shield']
+    record['dir'] = report['dir']
+    record['suppress'] = report['suppress']
     record['event_cost'] = report['event_cost']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
@@ -238,7 +245,7 @@ def main():
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
-                                                 'colour', 'relight', 'adjacent', 'capcheck', 'grid', 'nopop', 'seam',
+                                                 'colour', 'relight', 'adjacent', 'placement', 'placement_aft', 'seam_narrow', 'soft', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]

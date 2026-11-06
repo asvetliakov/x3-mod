@@ -81,7 +81,8 @@ static core::Event* hit(core::Ring& ring, unsigned k, std::uint32_t t0, std::int
     e->lifetime_ms = core::patch_lifetime_ms;
     e->damage = 1200;
     e->tint_rgb = 0x1000000u | 255u;
-    e->alt_rgb = 0;
+    e->alt_rgb332 = 0;
+    e->dir[0] = e->dir[1] = e->dir[2] = 0; // no travel: the radial region
     e->owner = obj(k);
     e->node = node(k);
     e->handle = 0xd000 + k;
@@ -108,15 +109,18 @@ static int stage_cases() {
         return st::build(ring, now, &rd, cam, st::Tuning{}, patches, core::max_patches, decals, core::max_decals);
     };
     const std::uint32_t L = core::patch_lifetime_ms;
-    // 1 a live owner: one patch, one hit, its geometry, its colour (full shields: light blue).
+    // 1 a live owner: one patch, one hit, its geometry (the cells at the hit's depth along its region's axis), its
+    // colour (full shields: light blue).
     core::ring_clear(ring);
     owner(0, 40000, 20000);
     hit(ring, 0, 1000, 0);
     st::Counts n = build(1100);
     const auto& p = patches[0];
-    std::printf("live patches=%u hits=%u retired=%u decals=%u patch_hits=%u age=%.3f centre_z=%.1f surface=%.1f radius=%.2f reach=%.2f cells=%u cell=%.2f cap=%.4f hit_x=%.3f hit_y=%.3f r=%.3f g=%.3f b=%.3f\n",
-                n.patches, n.hits, n.retired, n.decals, p.hits, p.age_s[0], p.centre[2], p.surface, p.radius, p.reach,
-                p.cells, p.cell, p.cap_angle, p.hit[0][0], p.hit[0][1], p.colour[0], p.colour[1], p.colour[2]);
+    unsigned lit = 0;
+    for (unsigned i = 0; i < p.cells; ++i) lit += p.cell_since[i] >= 0.f;
+    std::printf("live patches=%u hits=%u retired=%u decals=%u patch_hits=%u age=%.3f centre_z=%.1f depth=%.1f radius=%.2f reach=%.2f cells=%u lit=%u cell=%.2f bound=%.4f seed=%.0f hit_x=%.3f hit_y=%.3f r=%.3f g=%.3f b=%.3f\n",
+                n.patches, n.hits, n.retired, n.decals, p.hits, p.age_s[0], p.centre[2], p.cell_depth[0], p.radius, p.reach,
+                p.cells, lit, p.cell, p.bound[3], p.seed, p.hit[0][0], p.hit[0][1], p.colour[0], p.colour[1], p.colour[2]);
     // 2..5 validation: a replaced node, a changed handle, the dying bit, an unreadable owner; each retires every record
     // of that owner (three hits) and leaves another owner's hit alone.
     const char* names[4] = {"node_mismatch", "handle_mismatch", "dying", "unreadable"};
@@ -163,33 +167,31 @@ static int stage_cases() {
     unsigned dupes = 0;
     for (unsigned i = 0; i < f.cells; ++i)
         for (unsigned j = i + 1; j < f.cells; ++j) dupes += f.cell_key[i] == f.cell_key[j];
-    std::printf("four patches=%u hits=%u patch_hits=%u cells=%u dupes=%u age0=%.3f age1=%.3f age2=%.3f age3=%.3f r=%.3f g=%.3f b=%.3f cap=%.4f\n",
+    std::printf("four patches=%u hits=%u patch_hits=%u cells=%u dupes=%u age0=%.3f age1=%.3f age2=%.3f age3=%.3f r=%.3f g=%.3f b=%.3f bound=%.4f\n",
                 n.patches, n.hits, f.hits, f.cells, dupes, f.age_s[0], f.age_s[1], f.age_s[2], f.age_s[3], f.colour[0],
-                f.colour[1], f.colour[2], f.cap_angle);
-    // The cap bounds every lit point: sample the unit sphere, light a point whose cell is in the map (the pixel
-    // program's lookup) and count those outside the cap.
+                f.colour[1], f.colour[2], f.bound[3]);
+    // The cells sit at the hits: every cell's centre (owner frame, its depth) within a footprint (reach) of one of the
+    // five hit points (x = 10 .. 50 view units on the plane z = -200), and inside the draw's bound.
     {
-        unsigned lit = 0, outside = 0;
-        for (unsigned a = 0; a < 400; ++a)
-            for (unsigned b = 0; b < 800; ++b) {
-                const float th = 3.14159265f * (float(a) + 0.5f) / 400.f, ph = 6.2831853f * float(b) / 800.f;
-                const float q3[3] = {float(std::sin(th) * std::cos(ph)), float(std::sin(th) * std::sin(ph)), float(std::cos(th))};
-                if (q3[0] * f.anchor[0] + q3[1] * f.anchor[1] + q3[2] * f.anchor[2] < 0.f) continue; // the far side
-                float q[2], g[2], centre[2];
-                int key[2];
-                st::stereo(f.anchor, f.anchor_u, f.anchor_v, f.surface, q3, q);
-                g[0] = q[0] / f.cell;
-                g[1] = q[1] / f.cell;
-                st::hex_key(g, key, centre);
-                bool on = false;
-                if (key[0] > -2048 && key[0] < 2048 && key[1] > -2048 && key[1] < 2048)
-                    for (unsigned h = 0; h < f.cells; ++h) on |= f.cell_key[h] == st::pack_key(key[0], key[1]);
-                if (!on) continue;
-                ++lit;
-                const double c = double(q3[0]) * f.cap_dir[0] + double(q3[1]) * f.cap_dir[1] + double(q3[2]) * f.cap_dir[2];
-                outside += std::acos(c > 1 ? 1 : c < -1 ? -1 : c) > double(f.cap_angle);
+        unsigned off = 0, outside = 0;
+        float lo = 1e30f, hi = -1e30f;
+        for (unsigned i = 0; i < f.cells; ++i) {
+            const std::uint32_t packed = std::uint32_t(f.cell_key[i]);
+            const float cx = 0.5f * float(int(packed >> 12) - 2048) * f.cell, cy = 0.8660254f * float(int(packed & 0xfff) - 2048) * f.cell;
+            float x[3];
+            for (unsigned k = 0; k < 3; ++k) x[k] = f.anchor_u[k] * cx + f.anchor_v[k] * cy + f.anchor[k] * f.cell_depth[i];
+            float best = 1e30f;
+            for (unsigned h = 0; h < 5; ++h) {
+                const float d = std::sqrt((x[0] - 10.f * float(h + 1)) * (x[0] - 10.f * float(h + 1)) + x[1] * x[1] + (x[2] + 200.f) * (x[2] + 200.f));
+                best = d < best ? d : best;
             }
-        std::printf("cap lit=%u outside=%u\n", lit, outside);
+            off += best > f.reach + 0.5774f * f.cell + 1e-3f;
+            const float e[3] = {x[0] - f.bound[0], x[1] - f.bound[1], x[2] - f.bound[2]};
+            outside += std::sqrt(e[0] * e[0] + e[1] * e[1] + e[2] * e[2]) > f.bound[3] + 1e-3f;
+            lo = f.cell_depth[i] < lo ? f.cell_depth[i] : lo;
+            hi = f.cell_depth[i] > hi ? f.cell_depth[i] : hi;
+        }
+        std::printf("at_hits cells=%u off=%u outside_bound=%u depth_min=%.2f depth_max=%.2f\n", f.cells, off, outside, lo, hi);
     }
     // 9 one draw per anchor region: a hit on the front and one on the back of the same owner.
     core::ring_clear(ring);
@@ -218,14 +220,15 @@ static int stage_cases() {
     for (unsigned i = 0; i < 70; ++i) hit(ring, 0, 1000 + 10 * i, std::int32_t(200 * (i % 7)));
     n = build(1000 + 10 * 70);
     std::printf("window hits=%u hits_dropped=%u owner_hits=%u\n", n.hits, n.hits_dropped, core::owner_hits);
-    // 14 a full region: 20 disjoint fighter footprints (7 cells each, 140 > 128) on a large owner, ages 0.55 .. 1.5 s.
+    // 14 a full region: 20 disjoint fighter footprints (7 cells each, 140 > 128, four cells apart) on a large owner,
+    // ages 0.55 .. 1.5 s.
     // One draw per region: the 128 cells with the newest clocks stay, the oldest 12 (the oldest hit's 7 and 5 of the
     // next) are dropped; the default spills into a second draw and drops nothing, every cell once over both.
     {
         auto fill = [&](unsigned draws) {
             core::ring_clear(ring);
             owner(0, 4000000, 2000000);
-            for (unsigned i = 0; i < 20; ++i) hit(ring, 0, 1000 + 50 * i, std::int32_t(3000 * i), 0xffff, -2000000);
+            for (unsigned i = 0; i < 20; ++i) hit(ring, 0, 1000 + 50 * i, std::int32_t(6000 * i), 0xffff, -2000000);
             st::Tuning t{};
             t.region_draws = draws;
             return st::build(ring, 1000 + 50 * 20 + 500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
@@ -256,6 +259,54 @@ static int stage_cases() {
     n = build(1300);
     std::printf("seams patches=%u seed0=%.0f seams0=%u seed1=%.0f seams1=%u\n", n.patches, patches[0].seed, patches[0].seams,
                 patches[1].seed, patches[1].seams);
+    // 16 the region by the bolt's travel (Event::dir, owner frame as the hook records it): a hit on the front (-z
+    // radially) by a bolt travelling +x faces it on -x; travelling -z it faces +z; no travel: radial. The owner's rows
+    // turned 90 degrees about y change nothing (review F1: the direction is owner-local, so a turning owner keeps its
+    // regions).
+    core::ring_clear(ring);
+    owner(0, 40000, 20000);
+    hit(ring, 0, 1000, 0)->dir[0] = 127;
+    n = build(1100);
+    const float travel_x = n.patches ? patches[0].seed : -1.f;
+    core::ring_clear(ring);
+    hit(ring, 0, 1000, 0)->dir[2] = -127;
+    n = build(1100);
+    const float travel_z = n.patches ? patches[0].seed : -1.f;
+    core::ring_clear(ring);
+    hit(ring, 0, 1000, 0);
+    n = build(1100);
+    const float radial = n.patches ? patches[0].seed : -1.f;
+    const std::int32_t turned[3][3] = {{0, 0, -0x10000}, {0, 0x10000, 0}, {0x10000, 0, 0}};
+    for (unsigned r = 0; r < 3; ++r)
+        for (unsigned c = 0; c < 3; ++c) put(node(0) + core::layout::node_rot + 16 * r + 4 * c, std::uint32_t(turned[r][c]));
+    core::ring_clear(ring);
+    hit(ring, 0, 1000, 0)->dir[0] = 127;
+    n = build(1100);
+    std::printf("travel x=%.0f z=%.0f radial=%.0f turned=%.0f\n", travel_x, travel_z, radial, n.patches ? patches[0].seed : -1.f);
+    // 17 the held depth (DepthCache): hit A lights its cell at depth 200 (-z face at z = -20000); hit B on the same
+    // cell at depth 150 re-lights it 1 s later: the cell keeps 200; 4 s after B (both faded, B's record expired) hit C
+    // at depth 150 lights it anew at 150. Without the cache B's depth is taken at once.
+    {
+        static st::DepthCache cache;
+        cache = st::DepthCache{};
+        owner(0, 40000, 20000);
+        auto centre_depth = [&](std::uint32_t now, bool cached) {
+            const st::Counts m = st::build(ring, now, &rd, cam, st::Tuning{}, patches, core::max_patches, decals,
+                                           core::max_decals, cached ? &cache : nullptr);
+            for (unsigned i = 0; i < (m.patches ? patches[0].cells : 0); ++i)
+                if (patches[0].cell_centre[i]) return patches[0].cell_depth[i];
+            return -1.f;
+        };
+        core::ring_clear(ring);
+        hit(ring, 0, 1000, 0, 0xffff, -20000);
+        const float a = centre_depth(1100, true);
+        hit(ring, 0, 2000, 0, 0xffff, -15000);
+        const float b = centre_depth(2100, true), b_plain = centre_depth(2100, false);
+        core::ring_clear(ring);
+        hit(ring, 0, 6000, 0, 0xffff, -15000);
+        const float c = centre_depth(6100, true);
+        std::printf("held a=%.1f b=%.1f b_plain=%.1f c=%.1f\n", a, b, b_plain, c);
+    }
     // 11 the shield colour bands (5.1.1) and the patch tier tables.
     const float fr[7] = {0.9f, 0.75f, 0.6f, 0.5f, 0.4f, 0.35f, 0.2f};
     std::printf("colour");
@@ -411,13 +462,15 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual((live['patches'], live['hits'], live['retired'], live['decals'], live['patch_hits']), (1, 1, 0, 0, 1))
         self.assertAlmostEqual(live['age'], 0.1, places=3)             # 100 game ms
         self.assertAlmostEqual(live['centre_z'], 400.0, places=1)      # engine 40000 x world_scale
-        self.assertAlmostEqual(live['surface'], 200.0, places=1)       # radius 20000 x world_scale x the unit rows
-        self.assertAlmostEqual(live['cell'], 7.5, places=2)            # 1.5 m x 500 x 0.01 (fighter)
-        self.assertAlmostEqual(live['radius'], 11.25, places=2)        # (1 ring + 0.5) cells: the ring's footprint
-        self.assertAlmostEqual(live['reach'], 7.5, places=2)           # 1 ring
-        self.assertEqual(live['cells'], 1)                             # age 0.1: the hit cell; its ring of six at 0.2 s
-        # a single hit: the cap is the footprint (reach + two circumradii) over S plus the margins (acos, 32-gon rim)
-        self.assertAlmostEqual(live['cap'], ((7.5 + 2 * 0.5773503 * 7.5) / 200.0 + 1e-3) * 1.0049, delta=2e-3)
+        self.assertAlmostEqual(live['depth'], 200.0, places=1)         # the hit (0, 0, -20000) on the -z axis: 200 deep
+        self.assertEqual(live['seed'], 1)                              # region -z
+        self.assertAlmostEqual(live['cell'], 15.0, places=2)           # 3 m x 500 x 0.01 (fighter)
+        self.assertAlmostEqual(live['radius'], 22.5, places=2)         # (1 ring + 0.5) cells: the ring's footprint
+        self.assertAlmostEqual(live['reach'], 15.0, places=2)          # 1 ring
+        self.assertEqual(live['lit'], 1)                               # age 0.1: the hit cell; its ring of six at 0.2 s
+        self.assertEqual(live['cells'], 7)                             # the ring hit carries its six not reached yet
+        # a single hit: the bound is the footprint's outer centres (one cell) plus a circumradius
+        self.assertAlmostEqual(live['bound'], 15.0 + 0.5773503 * 15.0, delta=1e-3)
         self.assertEqual((live['r'], live['g'], live['b']), (0.45, 0.72, 1.0))  # full shields: light blue
         for case in ('node_mismatch', 'handle_mismatch', 'dying', 'unreadable'):
             row = r[case]
@@ -429,15 +482,16 @@ class WeaponEffectsClassifier(unittest.TestCase):
         d = r['decal']
         self.assertEqual((d['patches'], d['decals']), (0, 1))
         self.assertAlmostEqual(d['centre_z'], 2000.0, places=1)       # the hit point: 400000 - 200000 engine units
-        self.assertAlmostEqual(d['radius'], 11.25, places=2)
-        self.assertAlmostEqual(d['cell'], 7.5, places=2)
+        self.assertAlmostEqual(d['radius'], 22.5, places=2)
+        self.assertAlmostEqual(d['cell'], 15.0, places=2)
         f = r['four']
         self.assertEqual((f['patches'], f['hits'], f['patch_hits'], f['dupes']), (1, 5, 4, 0))
         self.assertEqual([f['age0'], f['age1'], f['age2'], f['age3']], [0.05, 0.1, 0.2, 0.3])  # newest first, 500 past the ring
         self.assertGreater(f['cells'], 7)                               # the five footprints' union, each cell once
         self.assertEqual((f['r'], f['g'], f['b']), (1.0, 0.88, 0.42))  # the newest hit: half shields, light yellow
-        self.assertGreater(r['cap']['lit'], 1000)
-        self.assertEqual(r['cap']['outside'], 0)                        # the cap bounds every lit point
+        h = r['at_hits']                                                # every cell at its hit, at the hits' depth
+        self.assertEqual((h['off'], h['outside_bound']), (0, 0))
+        self.assertEqual((h['depth_min'], h['depth_max']), (200.0, 200.0))
         g = r['regions']
         self.assertEqual(g['patches'], 2)                               # front and back: two anchor regions, two draws
         self.assertNotEqual(g['seed0'], g['seed1'])
@@ -449,7 +503,11 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertLess(e['kept_max'], e['oldest'] - 0.05)
         sp = r['spill']                                  # the default: a second draw, nothing dropped, each cell once
         self.assertEqual((sp['patches'], sp['cells'], sp['cells_dropped'], sp['spills'], sp['dupes']), (2, 140, 0, 1, 0))
-        self.assertEqual((sp['hits1'], sp['seams0']), (0, 0))  # ring hits stay with the first draw; one region, no seam
+        self.assertEqual((sp['hits1'], sp['seams0']), (sp['hits0'], 0))  # every draw carries the ring; one region, no seam
+        tr = r['travel']                                 # the region faces the bolt: -x, +z; radial -z; turned +x
+        self.assertEqual((tr['x'], tr['z'], tr['radial'], tr['turned']), (3, 0, 1, 3))
+        held = r['held']                                 # a re-light keeps the first depth; after the fade the new one
+        self.assertEqual((held['a'], held['b'], held['b_plain'], held['c']), (200.0, 200.0, 150.0, 150.0))
         sm = r['seams']                                  # review F3: the two regions name each other
         self.assertEqual(sm['patches'], 2)
         self.assertEqual({int(sm['seed0']), int(sm['seed1'])}, {1, 2})

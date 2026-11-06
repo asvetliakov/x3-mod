@@ -4304,7 +4304,10 @@ void MotionOutput::before_reset() noexcept {
     weapon_disarmed_until_ = 0;
     weapon_failures_ = 0;
 #if !X3M_EDITION_FL
-    if (weapon_requested_) weapon_effects::clear_owned();
+    if (weapon_requested_) {
+        weapon_effects::clear_owned();
+        clear_weapon_depths(); // the held depths go with the records
+    }
 #endif
     own_sun_lane_ = nullptr;
     own_sun_attach_failed_ = own_sun_failed_out_ = false;

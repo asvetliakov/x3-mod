@@ -473,7 +473,7 @@ for (let f = 0; f <= 240; f++) {
   maxCells = Math.max(maxCells, ...draws.map(d => d.cells.size), 0);
   for (const [k, v] of prev) {
     const now = cur.has(k) ? cur.get(k) : Infinity, fadeMin = c.fade_s * (1 - 0.5 * c.stagger);
-    if (v < fadeMin) worst = Math.max(worst, now - v - 1 / 60);
+    if (v >= 0 && v < fadeMin) worst = Math.max(worst, now - v - 1 / 60); // lit cells (a ring's unlit cells carry since < 0)
   }
   prev = cur;
 }
@@ -506,18 +506,19 @@ console.log(JSON.stringify({worst, maxCells, maxLive, n1: at1.length, n6: at6.le
         probe = header + ours + r'''
 const c = {stagger: HEADER.stagger, fill_ratio: HEADER.fill_ratio, fade_s: HEADER.fade_ms / 1000,
            centre_gain: HEADER.centre_gain, ripple_speed: HEADER.ripple_speed};
+const CELL = HEADER.cell_m[0] * HEADER.engine_units_per_metre * 0.01; // the fixture's fighter cell, view units
 const at = (age, over, x) => {
   const saved = Object.assign({}, HEADER);
   Object.assign(HEADER, over || {});
-  const d = Object.assign({cell: 7.5, seed: 0}, fillCells([{q: [0, 0], age}], 7.5, HEADER.rings[0], c));
+  const d = Object.assign({cell: CELL, seed: 0}, fillCells([{q: [0, 0], age}], CELL, HEADER.rings[0], c));
   const q = [x || 0, 0];
-  const v = hexLaw(q, hexCell(q[0] / 7.5, 0), 1e-3, d, c);
+  const v = hexLaw(q, hexCell(q[0] / CELL, 0), 1e-3, d, c);
   Object.assign(HEADER, saved);
   return v;
 };
 const cells = {ring_gain: 0};
 console.log(JSON.stringify({at05: at(0.05), at05_cells: at(0.05, cells), hit_cell: at(0.5, cells),
-                            ring_cell: at(0.5, cells, 7.5), old: at(0.7, cells), new: at(0.3, cells)}));
+                            ring_cell: at(0.5, cells, CELL), old: at(0.7, cells), new: at(0.3, cells)}));
 '''
         with tempfile.NamedTemporaryFile('w', suffix='.js', delete=False) as f:
             f.write(probe.replace('const HEADER', 'var HEADER'))

@@ -2,7 +2,7 @@
 """The figures docs/verification/weapon-effects.md quotes, from the two native records of this directory (written by
 run_weapon_effects.py --host native): the hook fixture (checks, audit, stack, the shield read and the per-event cost)
 and the D3D fixture of the hex patch (docs/architecture/weapon-effects.md 5.1.1: per-tier geometry, core, ring, fade,
-colour, re-light and accumulation, the cap, decal, age law, retired, resolve, refusal) and its timing.
+colour, re-light and accumulation, the placement, decal, age law, retired, resolve, refusal) and its timing.
 usage: python3 verification/results/native-windows/weapon-effects/ledger_rows.py"""
 import json
 from pathlib import Path
@@ -22,7 +22,7 @@ print('d3d', d3d['passed'], d3d['run']['result'], 'commit', d3d['source']['commi
       d3d['host']['windows']['version'])
 m = d3d['metrics']
 for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fade', 'fadecell', 'colour', 'relight', 'adjacent',
-          'capcheck', 'grid', 'nopop', 'seam', 'stage_cpu', 'timing_maps', 'decal', 'age',
+          'placement', 'grid', 'nopop', 'seam', 'stage_cpu', 'timing_maps', 'decal', 'age',
           'retired', 'resolve', 'refused'):
     print(k, m[k])
 print('timing_us (best of 60, fenced):')

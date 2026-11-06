@@ -41,7 +41,7 @@ HEADER = REPO / 'src/proxy/weapon_effects_core.h'
 # (CAPACITIES: name in the page, header, C++ name), integers.
 HEADER_NAMES = ('engine_units_per_metre', 'cell_m', 'rings', 'ripple_speed', 'ring_width', 'ring_gain', 'centre_gain',
                 'centre_fill', 'fade_ms', 'stagger', 'edge_width', 'fill_ratio', 'cell_gain', 'colour_high', 'colour_mid', 'colour_low', 'colour_full', 'colour_half',
-                'colour_empty', 'weapon_tint', 'tint_mix', 'tracer_min_elongation', 'slug_min_elongation')
+                'colour_empty', 'weapon_tint', 'tint_mix', 'soft', 'tracer_min_elongation', 'slug_min_elongation')
 HEADER_INTS = ('fade_ms',)
 CAPACITIES = (('cell_key_bias', 'src/renderer/weapon_effects_pass.h', 'weapon_cell_key_bias'),
               ('patch_cells', 'src/renderer/weapon_effects_pass.h', 'weapon_patch_cells'),

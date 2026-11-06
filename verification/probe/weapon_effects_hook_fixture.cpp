@@ -658,9 +658,37 @@ int main() {
     const bool shields_ok = we::install_at(addresses(), core::mode_shields);
     check(shields_ok && we::mode() == core::mode_shields, "shields_installed");
     core::HookState& hs2 = we::hook_state();
-    // User decision 2026-11-06: a stage-owned shield hit forwards the engine's spawn by default (the native impact plus
-    // the patch); the record is the stage's and forwarded.
-    check(!core::suppress_native_shield_hit && hs2.suppress_native == 0, "shields_default_forwards_native");
+    // Coordinator decision 2026-11-06: a stage-owned shield hit skips the engine's spawn by default (the patch alone):
+    // the record is the stage's and not forwarded, the callee never entered, the forwarded count unchanged, and the
+    // frame as the caller expects (registers, flags, MXCSR, x87, LastError, stack: frame_kept); a hull hit still
+    // forwards and is counted.
+    check(core::suppress_native_shield_hit && hs2.suppress_native == 1, "shields_default_skips_native");
+    {
+        hs2.owned_next = 1;
+        std::memset(we_ca, 0, sizeof we_ca);
+        const std::uint32_t forwarded = hs2.counters.forwarded, skipped = hs2.counters.skipped;
+        const RunResult skipped_run = run_window(1, 1200, 1);
+        core::Event rec{};
+        const bool shield_skipped = skipped_run.ca[11] == 0 && hs2.counters.forwarded == forwarded &&
+                                    hs2.counters.skipped == skipped + 1 && newest_record(u32(&victim_obj), &rec) &&
+                                    (rec.flags & core::flag_stage) && !(rec.flags & core::flag_forwarded) &&
+                                    frame_kept(skipped_run);
+        build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
+        hs2.owned_next = 1;
+        std::memset(we_ca, 0, sizeof we_ca);
+        const std::uint32_t forwarded_hull = hs2.counters.forwarded;
+        const RunResult hull_run = run_window(1, 1200, 1);
+        const bool hull_forwarded = hull_run.ca[11] == 1 && hs2.counters.forwarded == forwarded_hull + 1 &&
+                                    frame_kept(hull_run);
+        std::printf("SUPPRESS shield_callee=%u shield_forwarded_delta=%lu shield_skipped_delta=%lu hull_callee=%u hull_forwarded_delta=%lu\n",
+                    unsigned(skipped_run.ca[11]), static_cast<unsigned long>(hs2.counters.forwarded - forwarded - 1),
+                    static_cast<unsigned long>(hs2.counters.skipped - skipped), unsigned(hull_run.ca[11]),
+                    static_cast<unsigned long>(hs2.counters.forwarded - forwarded_hull));
+        check(shield_skipped && hull_forwarded, "shield_hit_skips_callee_hull_forwards");
+        build_world(7, 0, 4, 0x0, 123456);
+    }
+    // The forward path of a stage-owned shield hit (suppress_native cleared): the callee with the call's state.
+    hs2.suppress_native = 0;
     hs2.owned_next = 1;
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult staged = run_window(1, 1200, 1);
@@ -672,7 +700,7 @@ int main() {
     check((staged.ca[7] & flag_mask) == (staged.flags_in & flag_mask) && staged.ca[12] == we_frame_esp - 12u &&
               staged.ca[8] == std::uint32_t(impact_site() + sites::call_length),
           "shield_hit_forward_callee_state");
-    // The skip path, kept for step 2 (suppress_native): no callee, the frame as the caller expects.
+    // The skip path (the default): no callee, the frame as the caller expects.
     hs2.suppress_native = 1;
     hs2.owned_next = 1;
     std::memset(we_ca, 0, sizeof we_ca);
@@ -681,7 +709,6 @@ int main() {
               !(staged_rec.flags & core::flag_forwarded),
           "skip_no_callee");
     check(frame_kept(skip) && protection(at(dmg_page)) == PAGE_EXECUTE_READWRITE, "skip_frame_kept");
-    hs2.suppress_native = 0;
     hs2.owned_next = 1;
     build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
     std::memset(we_ca, 0, sizeof we_ca);
@@ -701,6 +728,7 @@ int main() {
     // unseen) and marked nested.
     build_world(7, 0, 4, 0x0, 123456);
     w32(&source_obj, core::layout::obj_flags, core::layout::obj_dying);
+    hs2.suppress_native = 0;
     hs2.owned_next = 1;
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult blast = run_window(1, 1200, 1);
@@ -712,7 +740,6 @@ int main() {
     hs2.owned_next = 1;
     std::memset(we_ca, 0, sizeof we_ca);
     blast = run_window(1, 1200, 1);
-    hs2.suppress_native = 0;
     blast_ok = blast_ok && blast.ca[11] == 0 && newest_record(u32(&victim_obj), &nested_rec) &&
                (nested_rec.flags & core::flag_nested) && !(nested_rec.flags & core::flag_forwarded) && frame_kept(blast);
     check(blast_ok, "nested_dying_projectile_staged_marked");
@@ -722,21 +749,64 @@ int main() {
     hs2.suppress_native = 1; // even with the skip selected, a dying victim stays native
     std::memset(we_ca, 0, sizeof we_ca);
     RunResult dying = run_window(1, 1200, 1);
-    hs2.suppress_native = 0;
     check(dying.ca[11] == 1 && newest_record(u32(&victim_obj), &nested_rec) && (nested_rec.flags & core::flag_nested) &&
               (nested_rec.flags & core::flag_forwarded) && !(nested_rec.flags & core::flag_stage) && frame_kept(dying),
           "nested_dying_victim_forwards_marked");
 
-    // The shield read (spawn note 9) and the patch tier (5.1.1), on the stage path (forwarded, flag_stage).
+    // The shield read (spawn note 9) and the patch tier (5.1.1), on the stage path (skipped by default, flag_stage).
     {
         auto hit = [&](core::Event* out) {
             hs2.owned_next = 1;
             std::memset(we_ca, 0, sizeof we_ca);
             const RunResult r = run_window(1, 1200, 0);
-            return newest_record(u32(&victim_obj), out) && r.ca[11] == 1 && frame_kept(r);
+            return newest_record(u32(&victim_obj), out) && r.ca[11] == 0 && frame_kept(r);
         };
         core::Event e{};
         char detail[160];
+        // The projectile's travel (Run235 Flight B fix, Event::dir): the source (bullet) node's row 2 (local z in world,
+        // 16.16) in the hit object's frame (its rows, as pos) as int8 x 127 rounded. The victim's rows turned (local x ->
+        // world -z, y -> y, z -> world +x): the bullet's identity row (0, 0, 1) gives (-127, 0, 0); the row (0.6, -0.8,
+        // 0) is local (0, -0.8, 0.6) and gives (0, -102, 76) (the independent rounding below); a zero row records (0, 0,
+        // 0) and counts dir_fallback; a dead bullet node records nothing (no_node: the callee's own test returns before
+        // any effect) and forwards.
+        {
+            build_world(7, 0, 4, 0x0, 123456);
+            const std::int32_t turned[3][3] = {{0, 0, -0x10000}, {0, 0x10000, 0}, {0x10000, 0, 0}};
+            for (unsigned r = 0; r < 3; ++r)
+                for (unsigned c = 0; c < 3; ++c)
+                    w32(&victim_node, core::layout::node_rot + 16 * r + 4 * c, std::uint32_t(turned[r][c]));
+            bool ok = hit(&e);
+            const bool identity = ok && e.dir[0] == -127 && e.dir[1] == 0 && e.dir[2] == 0;
+            const std::int32_t row[3] = {39322, -52429, 0};
+            for (unsigned k = 0; k < 3; ++k) w32(&source_node, core::layout::node_rot + 32 + 4 * k, std::uint32_t(row[k]));
+            ok = hit(&e);
+            auto rounded = [](std::int32_t v) { // floor(v x 127 / 65536 + 1/2), integer only
+                const std::int64_t n = std::int64_t(v) * 127 + 32768;
+                return int(n >= 0 ? n / 65536 : -((-n + 65535) / 65536));
+            };
+            const bool known = ok && e.dir[0] == 0 && e.dir[1] == rounded(row[1]) && e.dir[2] == rounded(row[0]) &&
+                               rounded(row[0]) == 76 && rounded(row[1]) == -102;
+            std::printf("DIR case=known row=%ld,%ld,%ld dir=%d,%d,%d want=0,%d,%d identity_row=%u\n", long(row[0]),
+                        long(row[1]), long(row[2]), int(e.dir[0]), int(e.dir[1]), int(e.dir[2]), rounded(row[1]),
+                        rounded(row[0]), unsigned(identity));
+            check(identity && known, "travel_dir_from_bullet_row2");
+            const std::uint32_t fallback = hs2.counters.dir_fallback;
+            for (unsigned k = 0; k < 3; ++k) w32(&source_node, core::layout::node_rot + 32 + 4 * k, 0);
+            ok = hit(&e);
+            const bool zero = ok && !e.dir[0] && !e.dir[1] && !e.dir[2] && hs2.counters.dir_fallback == fallback + 1;
+            w32(&source_node, core::layout::node_live, 0);
+            const unsigned live_before = ring_live(hs2.ring);
+            const std::uint32_t no_node = hs2.counters.no_node, fallback_dead = hs2.counters.dir_fallback;
+            hs2.owned_next = 1;
+            std::memset(we_ca, 0, sizeof we_ca);
+            const RunResult dead = run_window(1, 1200, 0);
+            const bool dead_ok = dead.ca[11] == 1 && frame_kept(dead) && ring_live(hs2.ring) == live_before &&
+                                 hs2.counters.no_node == no_node + 1 && hs2.counters.dir_fallback == fallback_dead;
+            std::printf("DIR case=fallback zero_row=%u dir_fallback=%lu dead_node_recorded=%u no_node=%lu\n",
+                        unsigned(zero), static_cast<unsigned long>(hs2.counters.dir_fallback - fallback),
+                        unsigned(ring_live(hs2.ring) != live_before), static_cast<unsigned long>(hs2.counters.no_node - no_node));
+            check(zero && dead_ok, "travel_dir_fallback_zero_row_dead_node");
+        }
         // Three shields: capacity-weighted (the HUD bar), not the mean of the fractions.
         const std::int32_t caps[3] = {20000, 50000, 125000};
         const std::int32_t energy[3] = {core::layout::shield_full, core::layout::shield_full / 2,
@@ -888,7 +958,7 @@ int main() {
             hs2.owned_next = 1;
             std::memset(we_ca, 0, sizeof we_ca);
             run_window(1, 1200, 0);
-            return we_ca[11] == 1 && core::ring_owned_live(hs2.ring); // the stage's record, the native spawn forwarded
+            return we_ca[11] == 0 && core::ring_owned_live(hs2.ring); // the stage's record, the native spawn skipped
         };
         we::StageFrame idle{};
         bool keep = owned_hit();

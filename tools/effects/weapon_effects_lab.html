@@ -91,6 +91,7 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>shield % <input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></label>
   <label>drain %/hit <input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></label>
   <label>frame <select id="c_frame"><option value="patch">patch</option><option value="ship">whole owner</option></select></label>
+  <label>hull <select id="c_hull" title="the preview owner: a sphere, or a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option></select></label>
   <button id="c_reset" type="button">reset to header</button>
   </fieldset>
 </header>
@@ -147,22 +148,28 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
         triangles per scene, shared by its parts.</li>
       <li>A missing body is a dashed circle of the element size; a missing Effects row is named in the slot.</li>
       <li>Ours, impact slot (docs/architecture/weapon-effects.md 5.1.1): the shield-hit hex patch on a preview owner (a
-        sphere of 15 / 60 / 300 m for the three tiers, its front facing the camera), drawn in addition to the vanilla
-        impact on the left (the native sprite stays in the game). The patch law, the cell hash, the stereographic
-        lattice of the six axis regions, the per-region cell map (each hit lights its cell and its rings of neighbours,
-        each cell on the clock of the newest hit that lit it, the hit's own cell brighter as the marker), the ring of
-        the newest hits, the eviction of the oldest clocks past the region's draws, the light shared across a region
-        seam, and the cap are the HLSL's and the stage's (<code>weapon_hex_patch.hlsl</code>,
+        sphere of 15 / 60 / 300 m for the three tiers, its front facing the camera, or a narrow hull of half-extents
+        1:1:6 seen side on, hit on its flank's middle or 40 % aft), drawn in addition to the vanilla impact on the left
+        (the native sprite stays in the game). The hits land on the preview hull, every bolt arriving from the camera,
+        and the patch sits at them: the patch law, the cell hash, the planar lattice of each of the six axis regions
+        (the plane perpendicular to the owner axis facing the bolt: the largest |dot| against its travel, signed against
+        it), the per-region cells (each hit lights the cell containing its projection and its rings of neighbours, each
+        cell on the clock and level of the newest hit that lit it and at the depth it was first lit at,
+        drawn as a flat hexagon at that depth, both faces, cut where the hull lies more than a soft radius in front of
+        it), the ring of the newest hits, the eviction of the oldest clocks past the region's draws and the light shared
+        across a region seam are the HLSL's and the stage's (<code>weapon_hex_patch.hlsl</code>,
         <code>weapon_effects_stage.h</code>) in double precision (the GPU's float hash differs below 1e-3).
         <b>Approximated</b>: the edge anti-aliasing uses forward differences per pixel for the GPU's quad
-        <code>fwidth</code>; the cap is a circle (the GPU's rim is a 32-gon); the radiance is shown as 1 - e<sup>-x</sup> per channel added to the background in
-        linear light (the game goes through its HDR, TAA and tonemap chain); the lifetime follows the controls (the DLL
-        uses the header's <code>patch_lifetime_ms</code>); the colour pickers hold the header's linear colours as
-        8-bit sRGB; a region's spill draws are one pass here (the same cells; the GPU splits them into maps of
-        PATCH_CELLS with their own caps). Hits arrive per second of game time (the SETA rate shortens the wall-time
-        period) and are scattered within two cells of the front's centre; "drain" lowers the shield fraction per
-        hit so a sequence walks the colour bands; the newest hit's shield colours the patch. The automatic loop runs to
-        the end of our patch (its lifetime / SETA) plus 250 ms, so the patch is not cut at the vanilla sprite's end.</li>
+        <code>fwidth</code>; the first-lit depth comes from the live hits (the DLL holds it in its depth cache until the
+        cell fades, past the oldest record's life); the hull depth is the preview ellipsoid's (the game's is the depth lane); the narrow hull
+        is shaded dimly so its shape shows; the radiance is shown as 1 - e<sup>-x</sup> per channel added to the
+        background in linear light (the game goes through its HDR, TAA and tonemap chain); the lifetime follows the
+        controls (the DLL uses the header's <code>patch_lifetime_ms</code>); the colour pickers hold the header's linear
+        colours as 8-bit sRGB; a region's spill draws are one pass here (the same cells; the GPU splits them into draws
+        of PATCH_CELLS). Hits arrive per second of game time (the SETA rate shortens the wall-time period) and are
+        scattered within two cells of the aim point; "drain" lowers the shield fraction per hit so a sequence walks the
+        colour bands; the newest hit's shield colours the patch. The automatic loop runs to the end of our patch (its
+        lifetime / SETA) plus 250 ms, so the patch is not cut at the vanilla sprite's end.</li>
     </ul>
     <div id="status"></div>
   </section>
@@ -175,7 +182,7 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
 // Generated by tools/effects/generate_weapon_effects_lab.py from src/proxy/weapon_effects_core.h; do not edit.
 const HEADER = {
   engine_units_per_metre: 500.0,
-  cell_m: [1.5, 3.0, 8.0],
+  cell_m: [3.0, 6.0, 16.0],
   rings: [1, 2, 2],
   ripple_speed: 3.333,
   ring_width: 0.12,
@@ -195,6 +202,7 @@ const HEADER = {
   colour_empty: [1.0, 0.4, 0.36],
   weapon_tint: 0.0,
   tint_mix: 0.0,
+  soft: 1.0,
   tracer_min_elongation: 4.0,
   slug_min_elongation: 1.5,
   cell_key_bias: 2048,
@@ -231,12 +239,14 @@ const images = {};
 const prepCache = {};
 
 // ---------------------------------------------------------------- our renderer: the shield-hit hex patch (5.1.1)
-// The impact slot draws the hex patch on a preview owner (a sphere of the tier's preview radius) with the same law as
-// src/effects/weapon_hex_patch.hlsl and the same cell map as src/proxy/weapon_effects_stage.h (fill_region: per owner
-// and anchor region the cells lit by its live hits, each cell on the clock and level (centre or ring) of the newest
-// hit that lit it, the oldest clocks dropped past PATCH_CELLS x REGION_DRAWS; the region's newest hits in their ring
-// carry the ring; link_seams shares the light across a seam); every length is in metres (the GPU's view units are 5 per
-// metre; the law is scale-free). The other slots stay native in step 1.
+// The impact slot draws the hex patch on a preview owner (a sphere of the tier's preview radius, or a narrow hull of
+// half-extents 1:1:6) with the same law as src/effects/weapon_hex_patch.hlsl and the same cells as
+// src/proxy/weapon_effects_stage.h (fill_region: per owner and axis region the cells lit by its live hits in the
+// region's lattice plane, each cell on the clock, level (centre or ring) and depth of the newest hit that lit it, drawn
+// as a flat hexagon at that depth, both faces, cut by the soft fade where the hull lies in front of it; the oldest
+// clocks dropped past PATCH_CELLS x REGION_DRAWS; the region's newest hits in their ring carry the ring; link_seams
+// shares the light across a seam); every length is in metres (the GPU's view units are 5 per metre; the law is
+// scale-free). The other slots stay native in step 1.
 const PATCH_TIERS = ['fighter', 'corvette', 'capital'];
 const PREVIEW_OWNER_M = [15, 60, 300];
 const CELL_KEY_BIAS = HEADER.cell_key_bias, PATCH_CELLS = HEADER.patch_cells, PATCH_HITS = HEADER.patch_hits;
@@ -263,7 +273,8 @@ function ourControls() {
                   full: hexToLinear($('c_colour_full').value), half: hexToLinear($('c_colour_half').value),
                   empty: hexToLinear($('c_colour_empty').value)},
           weapon_tint: n('c_weapon_tint'), seta: +$('c_seta').value, hits: +$('c_hits').value, tier: +$('c_tier').value,
-          shield: n('c_shield') / 100, drain: n('c_drain') / 100, frame: $('c_frame').value};
+          shield: n('c_shield') / 100, drain: n('c_drain') / 100, frame: $('c_frame').value,
+          hull: ($('c_hull') && $('c_hull').value) || 'sphere'};
 }
 // The record's game-time life (core::patch_lifetime_ms from the controls): the ring reaches the rim, then the slowest
 // cell fades out.
@@ -296,25 +307,27 @@ function shieldColour(f, b) {
 const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const norm3 = a => { const n = Math.hypot(a[0], a[1], a[2]); return n > 1e-12 ? a.map(v => v / n) : null; };
 const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-// stage::acos_approx, stage::anchor_frame (the six axis regions), stage::nearest_anchor, stage::stereo.
-function acosApprox(x) {
-  x = Math.max(-1, Math.min(1, x));
-  const a = Math.abs(x), r = Math.sqrt(1 - a) * (1.5707288 + a * (-0.2121144 + a * (0.0742610 - 0.0187293 * a)));
-  return x < 0 ? 3.14159265 - r : r;
-}
+// stage::anchor_frame (the six axis regions, each a lattice plane perpendicular to its axis) and core::hit_region
+// (the axis nearest to the hit's radial direction: +z, -z, +x, -x, +y, -y, the first of equal components).
 function anchorFrame(k) {
   const i = (2 + (k >> 1)) % 3, j = (i + 1) % 3, a = [0, 0, 0], u = [0, 0, 0];
   a[i] = (k & 1) ? -1 : 1; u[j] = 1;
   return {a, u, v: cross3(a, u), seed: k};
 }
-function nearestAnchor(d) {
-  let best = 0, bd = -2;
-  for (let k = 0; k < 6; k++) { const c = dot3(anchorFrame(k).a, d); if (c > bd) { bd = c; best = k; } }
+function hitRegion(p) {
+  const c = [p[2], -p[2], p[0], -p[0], p[1], -p[1]];
+  let best = 0;
+  for (let k = 1; k < 6; k++) if (c[k] > c[best]) best = k;
   return best;
 }
-function stereo(fr, S, p) {
-  const den = Math.max(1 + dot3(p, fr.a), 1e-3);
-  return [2 * S * dot3(p, fr.u) / den, 2 * S * dot3(p, fr.v) / den];
+// core::travel_region: the owner axis with the largest |dot| against the bolt's travel t (owner frame), signed against
+// it (the plane faces the incoming bolt); -1 without a travel.
+function travelRegion(t) {
+  if (!t || !(Math.abs(t[0]) + Math.abs(t[1]) + Math.abs(t[2]) > 0)) return -1;
+  const axis = [2, 0, 1];
+  let best = 0;
+  for (let r = 1; r < 3; r++) if (Math.abs(t[axis[r]]) > Math.abs(t[axis[best]])) best = r;
+  return 2 * best + (t[axis[best]] > 0 ? 1 : 0);
 }
 // weapon_hex_patch.hlsl hex_hash / hex_cell.
 const fract = x => x - Math.floor(x);
@@ -335,18 +348,23 @@ function hexCell(gx, gy) {
   return {lx, ly, hd, kx: Math.floor((gx - lx) * 2 + 0.5), ky: Math.floor((gy - ly) * 1.1547005 + 0.5)};
 }
 const packKey = (kx, ky) => (kx + CELL_KEY_BIAS) * 4096 + (ky + CELL_KEY_BIAS);
-// stage::fill_region's cell map for one region: plane hits {q, age} newest first; each lights the cells within rings
-// of its cell once the ring front reaches their centre; a shared cell keeps the newest clock and that hit's level (its
-// own cell: the centre); past room cells (PATCH_CELLS x REGION_DRAWS) the oldest clocks are dropped.
-function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS) {
+const unpackKey = key => [Math.floor(key / 4096) - CELL_KEY_BIAS, key % 4096 - CELL_KEY_BIAS];
+// stage::fill_region's cells for one region: plane hits {q, age, depth} newest first (q the projection onto the
+// region's plane, depth along its axis); each lights the cells within rings of its cell once the ring front reaches
+// their centre; a shared cell keeps the newest clock and that hit's level (its own cell: the centre); its depth is the
+// one it was first lit at while it has not faded out since (the stage's DepthCache; here from the live hits: the
+// oldest lighting of the unbroken run of lightings, each before the previous one's own fade ended); a ring hit (the
+// newest PATCH_HITS younger than the ring's travel) also carries its footprint cells not reached yet (since < 0: not
+// lit, at its depth); past room cells (PATCH_CELLS x REGION_DRAWS) the oldest clocks are dropped.
+function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS, seed = 0) {
   const radius = (rings + 0.5) * cell, reach = rings * cell, v = c.ripple_speed * radius;
   const ringLife = 1 / c.ripple_speed, maxSince = c.fade_s * (1 + 0.5 * c.stagger);
-  const all = new Map(), hits = [], ringHit = [];
+  const all = new Map(), hits = [], lit = new Map();
   planeHits.forEach((h, i) => {
-    const cl = hexCell(h.q[0] / cell, h.q[1] / cell);
+    const cl = hexCell(h.q[0] / cell, h.q[1] / cell), depth = h.depth || 0;
     const centre = [(h.q[0] / cell - cl.lx) * cell, (h.q[1] / cell - cl.ly) * cell];
-    ringHit.push(hits.length < PATCH_HITS && h.age < ringLife);
-    if (ringHit[i]) hits.push({q: h.q, c: centre, age: h.age});
+    const ringHit = hits.length < PATCH_HITS && h.age < ringLife;
+    if (ringHit) hits.push({q: h.q, c: centre, age: h.age});
     for (let dy = -rings; dy <= rings; dy++)
       for (let dx = -2 * rings; dx <= 2 * rings; dx++) {
         const ady = Math.abs(dy), adx = Math.abs(dx);
@@ -354,23 +372,31 @@ function fillCells(planeHits, cell, rings, c, room = PATCH_CELLS * REGION_DRAWS)
         const kx = cl.kx + dx, ky = cl.ky + dy;
         if (Math.abs(kx) >= CELL_KEY_BIAS || Math.abs(ky) >= CELL_KEY_BIAS) continue;
         const since = h.age - cell * Math.hypot(0.5 * dx, 0.8660254 * dy) / v;
-        if (since < 0 || since > maxSince) continue;
+        if (since > maxSince || (since < 0 && !ringHit)) continue;
         const key = packKey(kx, ky), had = all.get(key);
-        if (!had || since < had.since) all.set(key, {since, centre: !dx && !dy, hit: i});
+        if (!had) all.set(key, {since, centre: !dx && !dy, hit: i, depth});
+        else if (since >= 0 && (had.since < 0 || since < had.since)) all.set(key, {since, centre: !dx && !dy, hit: i, depth});
+        if (since >= 0) { if (!lit.has(key)) lit.set(key, []); lit.get(key).push({since, depth}); }
       }
   });
+  for (const [key, events] of lit) { // the first depth of the unbroken run ending at the newest lighting
+    const [kx, ky] = unpackKey(key), fade = c.fade_s * (1 + c.stagger * (hexHash(kx, ky, seed)[1] - 0.5));
+    events.sort((x, y) => x.since - y.since);
+    let k = 0;
+    while (k + 1 < events.length && events[k + 1].since - events[k].since < fade) k++;
+    all.get(key).depth = events[k].depth;
+  }
   let kept = [...all.entries()], dropped = 0;
   if (kept.length > room) {
     kept = kept.map((e, order) => [e, order]).sort((x, y) => x[0][1].since - y[0][1].since || x[1] - y[1]).map(x => x[0]);
     dropped = kept.length - room;
     kept = kept.slice(0, room);
   }
-  const cells = new Map(kept), used = planeHits.map((h, i) => ringHit[i]);
-  for (const v of cells.values()) used[v.hit] = true;
-  return {radius, reach, hits, cells, used, dropped};
+  return {radius, reach, hits, cells: new Map(kept), dropped};
 }
-// weapon_hex_patch.hlsl hex_patch for one draw: q the plane point, cl its cell, fw the pixel's fwidth of the hexagon
-// distance; d {seed, cell, radius, reach, hits [{q, c, age}], cells Map(key -> since)}.
+// weapon_hex_patch.hlsl hex_shade for one cell's pixel: q the pixel's plane point, cl its cell (lx, ly the offset from
+// its centre in cells, hd the hexagon distance, kx, ky the key), fw the pixel's fwidth of hd; d {seed, cell, radius,
+// reach, hits [{q, c, age}], cells Map(key -> {since, centre})}.
 function hexLaw(q, cl, fw, d, c) {
   const ew = HEADER.edge_width, h0 = 0.5 - ew, R = d.radius, cell = d.cell;
   const h = hexHash(cl.kx, cl.ky, d.seed);
@@ -394,56 +420,89 @@ function hexLaw(q, cl, fw, d, c) {
   const cells = since >= 0 ? Math.max(0, Math.min(1, 1 - since * invFade)) : 0;
   return bright * cells + HEADER.ring_gain * pattern * ring;
 }
-// The hit sequence: single (one hit at t = 0 on the front) or n hits per second of game time (a wall-time period of
-// 1000 / (n x SETA) ms, so at SETA x6 the map is as dense as the game's), each aged in game time (x SETA), scattered
-// deterministically within two cells of the front's centre (sustained fire lands in one area); the drain lowers the
-// shield fraction per hit. Returns the live hits, newest first (age <= the record lifetime), at most the stage's
-// OWNER_HITS per owner.
+// The preview owner (owner frame, metres): a sphere of the tier's radius S, or a narrow hull, an ellipsoid of
+// half-extents S / 6, S / 6, S (1:1:6, its bounding radius S along its z) seen side on. hullPoint: the hull point at
+// owner-frame (y, z) on the face toward the camera (the sphere's -z, the narrow hull's -x flank).
+function previewHull(c) {
+  const S = PREVIEW_OWNER_M[c.tier];
+  if (!c.hull.startsWith('narrow')) return {S, ext: [S, S, S], narrow: false, aim: [0, 0], toView: p => p, toLocal: v => v};
+  // owner x -> view -z (its +x flank faces the camera, a bolt from the camera travels along -x), y -> y, z -> view +x
+  // (det +1); the aim on the flank's middle or 40 % of the half-length aft
+  return {S, ext: [S / 6, S / 6, S], narrow: true, aim: [0, c.hull === 'narrow_aft' ? 0.4 * S : 0],
+          toView: p => [p[2], p[1], -p[0]], toLocal: v => [-v[2], v[1], v[0]]};
+}
+// The hull point at the face coordinates (a, b): the sphere's front (x, y) = (a, b); the narrow hull's +x flank
+// (y, z) = (a, b).
+function hullPoint(hull, a, b) {
+  const e = hull.ext;
+  if (hull.narrow) return [e[0] * Math.sqrt(Math.max(0, 1 - (a / e[1]) ** 2 - (b / e[2]) ** 2)), a, b];
+  return [a, b, -Math.sqrt(Math.max(0, e[2] * e[2] - a * a - b * b))];
+}
+// The hit sequence: single (one hit at t = 0) or n hits per second of game time (a wall-time period of 1000 / (n x
+// SETA) ms, so at SETA x6 the cells are as dense as the game's), each aged in game time (x SETA), scattered
+// deterministically within two cells of the aim point on the hull's camera face (the sphere's front centre; on the
+// narrow hull the flank's middle, or 40 % of its half-length aft), every bolt arriving from the camera (t its travel,
+// owner frame); p the contact point
+// on the hull (owner frame, metres), as the engine records it. The drain lowers the shield fraction per hit. Returns
+// the live hits, newest first (age <= the record lifetime), at most the stage's OWNER_HITS per owner.
 function hitSequence(t, c, S, cell) {
-  const lifetime = patchLifetimeMs(c);
+  const lifetime = patchLifetimeMs(c), hull = previewHull(c);
   const period = c.hits > 0 ? 1000 / (c.hits * Math.max(c.seta, 1e-3)) : 0, out = [];
   const count = period ? Math.floor(t / period) + 1 : 1;
+  const aim = hull.aim, spread = hull.narrow ? Math.min(2 * cell, 0.8 * hull.ext[1]) : 2 * cell;
   for (let k = count - 1; k >= 0 && out.length < OWNER_HITS; k--) {
     const age = (t - k * period) * c.seta / 1000;
     if (age * 1000 > lifetime) break;
-    const r = rng(1000 + k), th = k === 0 && !period ? 0 : (2 * cell / S) * Math.sqrt(r()), ph = 2 * Math.PI * r();
-    const dir = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), -Math.cos(th)];
-    out.push({dir, age, shield: Math.max(0, c.shield - c.drain * k)});
+    const r = rng(1000 + k), rad = k === 0 && !period ? 0 : spread * Math.sqrt(r()), ph = 2 * Math.PI * r();
+    const p = hullPoint(hull, aim[0] + rad * Math.cos(ph), aim[1] + rad * Math.sin(ph));
+    out.push({p, dir: norm3(p) || [0, 0, -1], t: hull.toLocal([0, 0, 1]), age, shield: Math.max(0, c.shield - c.drain * k)});
   }
   return out;
 }
-// stage::build for one owner: its live hits by anchor region, one draw per region with its cell map and its cap
-// (a region past PATCH_CELLS cells counts its spill draws in .draws), and link_seams: the other regions whose caps
-// overlap a draw's.
+// stage::build for one owner: its live hits by axis region (stage::event_region: by the bolt's travel, else radially),
+// per region its cells (fillCells on the hits' plane points
+// and depths), its draws (a region past PATCH_CELLS cells counts its spill draws in .draws), the bound of its cells
+// (owner frame) and link_seams: the other regions' draws whose cells' bound meets a draw's (the power-distance share).
 function patchDraws(hits, S, c) {
   const cell = c.cell_m[c.tier], rings = c.rings[c.tier], draws = [], done = [];
-  const anchors = hits.map(h => nearestAnchor(h.dir));
+  const p = h => h.p || h.dir.map(v => v * S);
+  const regions = hits.map(h => { const r = travelRegion(h.t); return r >= 0 ? r : hitRegion(p(h)); });
   for (let i = 0; i < hits.length; i++) {
     if (done[i]) continue;
-    const fr = anchorFrame(anchors[i]), group = [];
-    for (let j = i; j < hits.length; j++) if (!done[j] && anchors[j] === anchors[i]) { done[j] = true; group.push(hits[j]); }
-    const f = fillCells(group.map(h => ({q: stereo(fr, S, h.dir), age: h.age})), cell, rings, c);
-    if (!f.cells.size && !f.hits.length) continue;
-    const live = group.filter((h, k) => f.used[k]);
-    const mean = norm3(live.reduce((m, h) => [m[0] + h.dir[0], m[1] + h.dir[1], m[2] + h.dir[2]], [0, 0, 0])) || group[0].dir;
-    const spread = Math.max(0, ...live.map(h => acosApprox(dot3(mean, h.dir))));
-    const extent = f.reach + 2 * 0.5773503 * cell;
-    const capAngle = Math.min(3.14159265, (spread + extent / S + 1e-3) * 1.0049);
-    draws.push(Object.assign({fr, seed: fr.seed, cell, capDir: mean, capCos: Math.cos(capAngle), capAngle,
-                              draws: Math.max(1, Math.ceil(f.cells.size / PATCH_CELLS))}, f));
+    const fr = anchorFrame(regions[i]), group = [];
+    for (let j = i; j < hits.length; j++) if (!done[j] && regions[j] === regions[i]) { done[j] = true; group.push(hits[j]); }
+    const f = fillCells(group.map(h => ({q: [dot3(p(h), fr.u), dot3(p(h), fr.v)], depth: dot3(p(h), fr.a), age: h.age})),
+                        cell, rings, c, PATCH_CELLS * REGION_DRAWS, fr.seed);
+    if (!f.cells.size) continue;
+    const pts = [...f.cells].map(([key, v]) => {
+      const [kx, ky] = unpackKey(key), cx = 0.5 * kx * cell, cy = 0.8660254 * ky * cell;
+      return [0, 1, 2].map(k => fr.u[k] * cx + fr.v[k] * cy + fr.a[k] * v.depth);
+    });
+    const mean = [0, 1, 2].map(k => pts.reduce((m, q) => m + q[k], 0) / pts.length);
+    const bound = Math.max(...pts.map(q => Math.hypot(q[0] - mean[0], q[1] - mean[1], q[2] - mean[2]))) + 0.5773503 * cell;
+    draws.push(Object.assign({fr, seed: fr.seed, cell, mean, bound, draws: Math.ceil(f.cells.size / PATCH_CELLS)}, f));
   }
-  for (const d of draws)
-    d.seams = draws.filter(o => o.seed !== d.seed && acosApprox(dot3(d.capDir, o.capDir)) < d.capAngle + o.capAngle)
-                   .map(o => o.seed);
+  for (const d of draws) { // link_seams: the other regions' draws whose cell bound meets this one's (up to four)
+    const near = draws.filter(o => o.seed !== d.seed &&
+                                   Math.hypot(d.mean[0] - o.mean[0], d.mean[1] - o.mean[1], d.mean[2] - o.mean[2]) < d.bound + o.bound);
+    near.sort((a, b) => (Math.hypot(d.mean[0] - a.mean[0], d.mean[1] - a.mean[1], d.mean[2] - a.mean[2]) - d.bound - a.bound) -
+                        (Math.hypot(d.mean[0] - b.mean[0], d.mean[1] - b.mean[1], d.mean[2] - b.mean[2]) - d.bound - b.bound));
+    d.seams = near.slice(0, 4).map(o => o.seed);
+    d.seamBounds = near.slice(0, 4).map(o => ({mean: o.mean, bound: o.bound}));
+  }
   return draws;
 }
-// weapon_shell_ps.hlsl's seam share of draw d at the unit-sphere point p: saturate((s_own - s_seam) k + 1/2), s the
-// point's score on each region's axis, k = max(1, S / (sqrt 2 cell)).
-function seamShare(d, p, S) {
-  if (!d.seams.length) return 1;
-  const other = Math.max(...d.seams.map(k => dot3(p, anchorFrame(k).a)));
-  const k = Math.max(1, 0.70710678 * S / d.cell);
-  return Math.max(0, Math.min(1, (dot3(p, d.fr.a) - other) * k + 0.5));
+// weapon_shell_ps.hlsl's seam share of draw d at the owner-frame point x: saturate(min_j s_j / cell + 1/2), s_j the
+// signed distance to the radical plane of d's cell bound and seam neighbour j's (positive on d's side).
+function seamShare(d, x) {
+  if (!d.seamBounds || !d.seamBounds.length) return 1;
+  let s = Infinity;
+  for (const o of d.seamBounds) {
+    const e = [0, 1, 2].map(k => d.mean[k] - o.mean[k]), D = Math.hypot(e[0], e[1], e[2]);
+    const v = D > 1e-6 ? (dot3(x, e) + (dot3(o.mean, o.mean) - dot3(d.mean, d.mean) - o.bound * o.bound + d.bound * d.bound) / 2) / D : 0;
+    s = Math.min(s, v);
+  }
+  return Math.max(0, Math.min(1, s / d.cell + 0.5));
 }
 /** Our shield-hit patch for the impact slot (hull hits and the other slots stay native in step 1). t is wall ms
  *  since spawn; ages are game time (x SETA). */
@@ -452,8 +511,8 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   drawBackground(ctx);
   if (record.slot !== 'impact') { label(ctx, record.slot === 'death' ? 'explosions: a later step' : 'native (step 1 draws the shield hit only)'); return; }
-  const c = ourControls();
-  const S = PREVIEW_OWNER_M[c.tier], cell = c.cell_m[c.tier], rings = c.rings[c.tier];
+  const c = ourControls(), hull = previewHull(c);
+  const S = hull.S, cell = c.cell_m[c.tier], rings = c.rings[c.tier];
   const hits = hitSequence(t, c, S, cell);
   const draws = hits.length ? patchDraws(hits, S, c) : [];
   let colour = shieldColour(hits.length ? hits[0].shield : 1, c.bands);
@@ -461,41 +520,73 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     const w = weaponLinear(record.weapon), k = Math.min(1, c.weapon_tint);
     colour = colour.map((v, i) => v + (w[i] - v) * k);
   }
-  // The camera at the origin looking down +z at the owner centred at (0, 0, D), its front (-z, where the hits land)
-  // facing the camera: the whole owner, or close so the hit area (the scatter plus the footprint) is a third of the
-  // canvas height (vertical field of view 40 degrees). The patch spans a small angle of the owner, far inside the
-  // horizon acos(S / D).
+  // The camera at the origin looking down +z (vertical field of view 40 degrees): the whole owner centred, or close
+  // with the hit area (the scatter plus the footprint) a third of the canvas height and centred.
   const f = H / (2 * Math.tan(20 * Math.PI / 180));
   const area = 2 * cell + (rings + 1) * cell;
-  const D = c.frame === 'ship' ? S * f / (0.42 * H) : S + area * f / (0.34 * H);
+  const aim = hull.toView(hullPoint(hull, hull.aim[0], hull.aim[1])), whole = c.frame === 'ship';
+  const D = whole ? S * f / (0.42 * H) : area * f / (0.34 * H);
+  const C = whole ? [0, 0, D] : [-aim[0], -aim[1], D - aim[2]]; // the owner's centre in view space
+  const toView = q => { const v = hull.toView(q); return [v[0] + C[0], v[1] + C[1], v[2] + C[2]]; };
+  // view -> owner frame (the inverse rotation of toView)
+  const toLocal = hull.toLocal;
+  const O = toLocal([-C[0], -C[1], -C[2]]), e = hull.ext;
   const img = ctx.getImageData(0, 0, W, H), px = img.data;
-  const hd = new Float32Array(W * H), cellOf = new Array(W * H), qOf = new Array(W * H), sum = new Float32Array(W * H);
-  const pOf = new Array(W * H);
+  const sum = new Float32Array(W * H);
+  const rayOf = (x, y) => toLocal(norm3([(x + 0.5 - W / 2) / f, -(y + 0.5 - H / 2) / f, 1]));
+  // The hull's near root along a ray (owner frame): the soft fade's lane depth and the preview's dim hull shading.
+  const hullT = d => {
+    const o = O.map((v, k) => v / e[k]), dd = d.map((v, k) => v / e[k]);
+    const A = dot3(dd, dd), B = dot3(o, dd), Cc = dot3(o, o) - 1, disc = B * B - A * Cc;
+    return disc < 0 ? Infinity : (-B - Math.sqrt(disc)) / A;
+  };
+  const hullDepth = new Float32Array(W * H);
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
-      const rd = norm3([(x + 0.5 - W / 2) / f, -(y + 0.5 - H / 2) / f, 1]);
-      // |s rd - (0, 0, D)| = S: s = D rd.z - sqrt((D rd.z)^2 - (D^2 - S^2)), the near root.
-      const b = D * rd[2], disc = b * b - (D * D - S * S);
-      if (disc < 0) continue;
-      const s = b - Math.sqrt(disc);
-      pOf[y * W + x] = [rd[0] * s / S, rd[1] * s / S, (rd[2] * s - D) / S];
-    }
-  for (const d of draws) {
-    for (let i = 0; i < W * H; i++) {
-      const p = pOf[i];
-      cellOf[i] = null;
-      if (!p || dot3(p, d.capDir) < d.capCos) continue; // the CPU cap: outside it nothing is rasterized
-      const q = stereo(d.fr, S, p), cl = hexCell(q[0] / d.cell, q[1] / d.cell);
-      cellOf[i] = cl; qOf[i] = q; hd[i] = cl.hd;
-    }
-    for (let y = 0; y < H; y++)
-      for (let x = 0; x < W; x++) {
-        const i = y * W + x, cl = cellOf[i];
-        if (!cl) continue;
-        const dx = x + 1 < W && cellOf[i + 1] ? Math.abs(hd[i + 1] - hd[i]) : 0;
-        const dy = y + 1 < H && cellOf[i + W] ? Math.abs(hd[i + W] - hd[i]) : 0;
-        sum[i] += hexLaw(qOf[i], cl, dx + dy, d, c) * seamShare(d, pOf[i], S);
+      const d = rayOf(x, y), th = hullT(d);
+      hullDepth[y * W + x] = th;
+      if (hull.narrow && th !== Infinity && th > 0) { // the narrow hull, dim (the game draws the real one)
+        const p = O.map((v, k) => v + th * d[k]), n = norm3(p.map((v, k) => v / (e[k] * e[k]))) || [0, 0, -1];
+        const shade = 0.035 * Math.max(0.25, -dot3(n, d));
+        for (let k = 0; k < 3; k++) px[(y * W + x) * 4 + k] = Math.round(255 * linearToSrgb(srgbToLinear(px[(y * W + x) * 4 + k] / 255) + shade));
       }
+    }
+  const soft = (HEADER.soft || 1) * cell;
+  // Each draw's cells as flat hexagons in its region's plane at their own depth (both faces), the pixel's point the
+  // ray's intersection with the cell's plane, cut by the soft fade where the hull lies in front of it.
+  for (const d of draws) {
+    for (const [key, cv] of d.cells) {
+      const [kx, ky] = unpackKey(key), ccx = 0.5 * kx * cell, ccy = 0.8660254 * ky * cell;
+      const corners = [[0, 2], [-1, 1], [-1, -1], [0, -2], [1, -1], [1, 1]].map(([a, b]) => {
+        const qx = ccx + a * 0.5 * cell, qy = ccy + b * 0.28867513 * cell;
+        return toView([0, 1, 2].map(k => d.fr.u[k] * qx + d.fr.v[k] * qy + d.fr.a[k] * cv.depth));
+      });
+      if (corners.some(v => v[2] <= 0.05)) continue; // the near plane (the GPU clips per pixel)
+      const sx = corners.map(v => W / 2 + f * v[0] / v[2]), sy = corners.map(v => H / 2 - f * v[1] / v[2]);
+      const x0 = Math.max(0, Math.floor(Math.min(...sx))), x1 = Math.min(W - 1, Math.ceil(Math.max(...sx)));
+      const y0 = Math.max(0, Math.floor(Math.min(...sy))), y1 = Math.min(H - 1, Math.ceil(Math.max(...sy)));
+      const at = (x, y) => { // the ray's plane point: q (plane, metres), the hexagon distance, the point, its t
+        const r = rayOf(x, y), den = dot3(r, d.fr.a);
+        if (Math.abs(den) < 1e-9) return null;
+        const tt = (cv.depth - dot3(O, d.fr.a)) / den;
+        if (!(tt > 0)) return null;
+        const p = O.map((v, k) => v + tt * r[k]), q = [dot3(p, d.fr.u), dot3(p, d.fr.v)];
+        const lx = q[0] / cell - 0.5 * kx, ly = q[1] / cell - 0.8660254 * ky;
+        const hd = Math.max(Math.abs(lx), Math.abs(0.5 * lx + 0.8660254 * ly), Math.abs(0.5 * lx - 0.8660254 * ly));
+        return {q, lx, ly, hd, p, tt, rz: r};
+      };
+      for (let y = y0; y <= y1; y++)
+        for (let x = x0; x <= x1; x++) {
+          const s0 = at(x, y);
+          if (!s0 || s0.hd > 0.5) continue;
+          const sxp = at(x + 1, y), syp = at(x, y + 1);
+          const fw = (sxp ? Math.abs(sxp.hd - s0.hd) : 0) + (syp ? Math.abs(syp.hd - s0.hd) : 0);
+          const th = hullDepth[y * W + x], gap = th === Infinity ? Infinity : th - s0.tt; // > 0: the hull behind
+          const vis = Math.max(0, Math.min(1, (gap + soft) / soft));
+          if (!(vis > 0)) continue;
+          sum[y * W + x] += hexLaw(s0.q, {lx: s0.lx, ly: s0.ly, hd: s0.hd, kx, ky}, fw, d, c) * seamShare(d, s0.p) * vis;
+        }
+    }
   }
   for (let i = 0; i < W * H; i++) {
     if (!(sum[i] > 0)) continue;
@@ -507,7 +598,8 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   ctx.putImageData(img, 0, 0);
   const f0 = hits.length ? hits[0].shield : 1, lit = draws.reduce((n, d) => n + d.cells.size, 0);
   const gpuDraws = draws.reduce((n, d) => n + d.draws, 0), dropped = draws.reduce((n, d) => n + d.dropped, 0);
-  label(ctx, `${PATCH_TIERS[c.tier]} owner ${S} m | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} lit cell(s)${dropped ? `, ${dropped} dropped` : ''} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
+  const regions = [...new Set(draws.map(d => ['+z', '-z', '+x', '-x', '+y', '-y'][d.seed]))].join(' ');
+  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.narrow ? 'narrow hull 1:1:6' : 'sphere'} ${S} m | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
 }
 // The impact slot's share of the loop: our patch lasts its record lifetime in wall time (game time / SETA).
 function ourLoopMs() {
@@ -528,7 +620,7 @@ function initOurControls() {
   // A colour input always holds a value: the header's colours are written once (and again on reset).
   for (const [id, key] of [['c_colour_full', 'colour_full'], ['c_colour_half', 'colour_half'], ['c_colour_empty', 'colour_empty']])
     if ($(id) && !$(id).dataset.init) { $(id).value = linearToHex(HEADER[key]); $(id).dataset.init = '1'; }
-  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame'];
+  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame', 'c_hull'];
   for (const id of ids) if ($(id)) $(id).oninput = $(id).onchange = () => {
     if (id === 'c_shield') $('c_shield_read').textContent = $(id).value;
     state.dirty = true;

@@ -30,7 +30,7 @@ class WeaponEffectsHookRecord(unittest.TestCase):
     REQUIRED = {'changed_byte_refused', 'witness_mismatch_refused', 'prologue_mismatch_refused', 'tap_byte_mismatch_refused',
                 'forward_callee_eax_ecx_edx_ebx_ebp', 'forward_callee_return_address', 'forward_callee_esp',
                 'forward_callee_eflags', 'forward_frame_kept', 'skip_frame_kept', 'skip_no_callee',
-                'shields_default_forwards_native', 'shield_hit_stage_and_forward', 'shield_hit_forward_callee_state',
+                'shields_default_skips_native', 'shield_hit_skips_callee_hull_forwards', 'shield_hit_stage_and_forward', 'shield_hit_forward_callee_state',
                 'tap_callee_esi_ebx_edi_return', 'weapon_pos_check_zero_error', 'no_projectile_class_forwards_unrecorded',
                 'no_bullet_extension_read', 'nested_dying_projectile_staged_marked', 'nested_dying_victim_forwards_marked',
                 'record_shield_unread_tier_ship_class', 'shield_read_capacity_weighted', 'shield_read_large_capacity',
@@ -41,7 +41,7 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'nested_death_retires_owner', 'overflow_keeps_owned_shield', 'observe_rollback_three_sites',
                 'observe_rollback_second_site', 'rollback_on_failed_readback', 'late_claim_refused',
                 'scope_sector_change_clears_owned', 'scope_loading_clears_owned', 'scope_load_epoch_clears_owned',
-                'fixture_stack_margin'}
+                'fixture_stack_margin', 'travel_dir_from_bullet_row2', 'travel_dir_fallback_zero_row_dead_node'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -151,7 +151,24 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         seam = m['seam'][0]
         self.assertEqual(seam['pair_draws'], 2)
         self.assertLessEqual(seam['peak_pair'], max(seam['peak_a'], seam['peak_b']) * 1.002 + 1e-3)
-        self.assertEqual(sorted(x['case'] for x in m['stage_cpu']), ['one_capital_64_hits', 'sixteen_capitals_16_hits'])
+        self.assertEqual(sorted(x['case'] for x in m['stage_cpu']),
+                         ['one_capital_64_hits', 'sixteen_capitals_16_hits', 'station_flight_b_cluster_64_hits'])
+        # Run235 Flight B: the cells at the recorded hit point (within a cell), never on the bounding sphere; the far
+        # side and an eye inside the sphere draw
+        place = {x['case']: x for x in m['placement']}
+        for case in ('narrow_flank_0p15R', 'station_flight_b_0p68R', 'far_side', 'eye_inside_sphere'):
+            self.assertLessEqual(place[case]['centroid_error_cells'], 1.0, case)
+            self.assertEqual(place[case]['drew'], 1, case)
+        self.assertGreater(place['station_flight_b_0p68R']['old_projection_error_m'], 400.0)
+        self.assertLess(place['eye_inside_sphere']['eye_r'], 1.0)
+        # the region faces the bolt: the narrow hull's aft flank by its travel lies on the flank and lights like the
+        # mid-flank hit; radially its plane stood across the hull (the witness)
+        aft = m['placement_aft'][0]
+        self.assertLess(aft['aft_normal_angle_deg'], 30.0)
+        self.assertGreaterEqual(aft['ratio'], 0.5)
+        self.assertGreater(place['witness_aft_flank_radial']['hull_normal_angle_deg'], 60.0)
+        for case in ('fighter_sphere_front_12hps', 'capital_sphere_front_12hps'):  # the held depth: no cell moves
+            self.assertEqual(nopop[case]['popped_pixels'], 0, case)
         fade = m['fade']
         self.assertEqual(fade['t%d' % fade['lifetime_ms']], 0.0)                 # nothing left at the record's lifetime
         age = m['age'][0]
@@ -167,7 +184,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                          'fighter_12hps_map', 'capital_close_full_map', 'capital_fill_full_map', 'capital_spread_spill'):
                 self.assertIn((width, case), cases)
         fill = [x for x in m['timing'] if x['case'] == 'capital_fill_full_map']
-        self.assertTrue(all(x['raster_share'] >= 0.95 for x in fill))             # its cap really fills the frame
+        self.assertTrue(all(x['raster_share'] >= 0.95 for x in fill))             # its cells really fill the frame
 
     def test_bound_to_its_production_sources(self):
         import run_weapon_effects as runner

@@ -6,7 +6,7 @@
 #include "weapon_soft_depth.hlsl"
 #include "weapon_hex_patch.hlsl"
 float4 main(float4 raster : TEXCOORD0, float4 shade : TEXCOORD1) : COLOR0 {
-    float3 c = hex_patch(shade.xy * points[0].z, 1, false);
+    float3 c = hex_patch(shade.xy * points[0].z, 1);
     float affinity = surface_affinity(raster.xy, raster.z, raster.w);
     return float4(max(c * (affinity * shade.w), 0.0), 0.0);
 }

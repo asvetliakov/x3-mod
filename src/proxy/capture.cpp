@@ -2080,13 +2080,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[4]{};
+        unsigned drops[5]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
         stage.cells_dropped = drops[1];
         stage.hits_dropped = drops[2];
         stage.spills = drops[3];
+        stage.depth_full = drops[4];
         weapon_effects::core::Scope scope{};
         if (weapon_effects::mode() == weapon_effects::core::mode_shields) {
             const DWORD saved_error = GetLastError();

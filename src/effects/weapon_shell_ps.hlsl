@@ -1,45 +1,30 @@
-// Weapon effects, shield hit (docs/architecture/weapon-effects.md 5.1.1): the hex patch's pixel program. The lattice
-// plane is the stereographic projection of the unit sphere from the anchor's antipode: q = 2 S (p.u, p.v) / (1 + p.a)
-// (a the anchor region's direction, u, v its tangent frame, S the ellipsoid's mean axis in view units), conformal (the
-// hexagons keep their shape) and nowhere shrinking (scale 2 / (1 + cos theta) >= 1), so a planar distance is an upper
-// bound of the surface distance and the stage's cap bounds every lit cell. The hex law (weapon_hex_patch.hlsl, with
-// the draw's cell map) gives the radiance; front faces only (the pass's winding cull and the interpolated normal
-// facing the eye); the soft fade against the lane where the patch cuts the hull. At a seam with another of the owner's
-// regions drawing there (the stage's seams), the light is shared: this draw keeps saturate((s_own - s_other) k + 1/2)
-// of it, s the pixel's score dot(p, axis) of each region and s_other the best of the seam regions, k = S / (sqrt 2 cell)
-// (one cell wide), so two lattices across a seam never add over one point (their shares sum to one; up to 3/2 within
-// a cell of a cube corner where three regions meet). Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp
-// hex_block, defaults weapon_effects_core.h.
+// Weapon effects, shield hit (docs/architecture/weapon-effects.md 5.1.1): the hex patch's pixel program. Each cell is
+// its own hexagon (the vertex program), so the pixel's cell, key and clock come from its vertices (no lookup): the
+// offset from the cell centre gives the edge band, the key the hash, the clock (game seconds since lit + 1, negative
+// for a hit's centre cell, 0 unlit: a ring passing over a cell not reached yet) the fade; the hex law is
+// weapon_hex_patch.hlsl's. Both faces draw (a hit on the far side of its owner is seen through the shield). The soft
+// fade against the lane at the pixel (VPOS): whole where the lane lies behind the patch, cut once the hull is a soft
+// radius in front of it, so a patch hugs the hull it hit and is cut where it passes inside it. Where a draw of
+// another of the owner's regions has cells near (the stage's seam neighbours, up to four), the light is shared by the
+// power distance to the two draws' cell bounds: this draw keeps saturate(min_j s_j / cell + 1/2), s_j the pixel's
+// owner-frame point's signed distance to the radical plane of its own bound and neighbour j's (positive on its own
+// side), so the two shares sum to one over a cell-wide band and two lattices never add over one point; within its own
+// bound and outside every neighbour's the share is whole. It depends on where the cells are, not on the rule that
+// assigned the hits to regions (travel or radial). Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp hex_block, defaults
+// weapon_effects_core.h.
 #include "weapon_soft_depth.hlsl"
 #include "weapon_hex_patch.hlsl"
-float4 anchor[3] : register(c8);  // the anchor direction, its u, its v (owner frame)
-float4 projection : register(c19); // m00, m11, m20, m21 of the projection the vertex program placed the cap with
-float4 inverse[3] : register(c20); // the rows of A^-1: view -> the owner's unit sphere
-float4 origin : register(c23);     // A^-1 (eye - centre): the eye in the owner's unit-sphere frame
-// The seam regions' scores (owner frame): max(p M+ + B+, p M- + B-) is p_i (+axis i a seam), -p_i (-axis i) or -2 (no
-// seam); seam[0].w = k.
-float4 seam[4] : register(c24);
-// The pixel's point on the owner's unit sphere, exactly: the eye ray through the pixel's window position (the vertex
-// program's own projection, inverted) intersected with the ellipsoid in its unit-sphere frame (the near root, through
-// the ray's closest approach so a far owner keeps its precision). The interpolated cap point would follow the facets
-// (window-exact positions interpolate affinely), so a cell border pixel could change cells when the cap changes; the
-// window position is snapped to the pixel's integer position (as soft_visibility reads the lane), so the triangle that
-// interpolates it does not move a pixel lying on a cell border across it.
-float3 sphere_point(float2 raster) {
-    float2 at = floor(raster + 0.5);
-    float2 ndc = float2(at.x * 2.0 * lane_sizes.z - 1.0, 1.0 - at.y * 2.0 * lane_sizes.w);
-    float3 ray = float3((ndc.x - projection.z) / projection.x, (ndc.y - projection.w) / projection.y, 1.0);
-    float3 d = normalize(float3(dot(inverse[0].xyz, ray), dot(inverse[1].xyz, ray), dot(inverse[2].xyz, ray)));
-    float3 perp = origin.xyz - dot(origin.xyz, d) * d;
-    return normalize(perp - sqrt(saturate(1.0 - dot(perp, perp))) * d);
-}
-float4 main(float4 raster : TEXCOORD0, float3 normal : TEXCOORD1, float3 view : TEXCOORD3) : COLOR0 {
-    float3 p = sphere_point(raster.xy);
-    float facing = dot(normalize(normal), normalize(-view));
-    float2 q = lattice.w * float2(dot(p, anchor[1].xyz), dot(p, anchor[2].xyz)) / max(1.0 + dot(p, anchor[0].xyz), 1e-3);
-    float3 o = max(p * seam[0].xyz + seam[1].xyz, p * seam[2].xyz + seam[3].xyz);
-    float share = saturate((dot(p, anchor[0].xyz) - max(max(o.x, o.y), o.z)) * seam[0].w + 0.5);
-    float3 c = hex_patch(q, 4, true) * share;
-    float vis = soft_visibility(raster.xy, raster.z, raster.w);
-    return float4(max(c * (vis * step(0.0, facing)), 0.0), 0.0);
+float4 anchor[3] : register(c8);  // the region's axis, its u, its v (owner frame)
+float4 shell : register(c19);     // the soft radius (view units), 1 / cell, unused x2
+float4 seam[4] : register(c20);   // per seam neighbour the radical plane: s = dot(p, xyz) + w (unused: w = 1e6)
+float4 main(float4 cell : TEXCOORD0, float4 key : TEXCOORD1, float3 local : TEXCOORD2, float2 vpos : VPOS) : COLOR0 {
+    float2 k = floor(key.xy + 0.5);
+    float clock = abs(cell.w);
+    float since = clock > 0.5 ? max(clock - 1.0, 0.0) : -1.0; // interpolated: a fresh cell (+-1) may read 1 - 1e-7
+    float3 c = hex_shade(cell.xy, k, float2(0.5, 0.8660254) * k * lattice.y, since, cell.w < -0.5, 4, false);
+    float s = min(min(dot(local, seam[0].xyz) + seam[0].w, dot(local, seam[1].xyz) + seam[1].w),
+                  min(dot(local, seam[2].xyz) + seam[2].w, dot(local, seam[3].xyz) + seam[3].w));
+    float share = saturate(s * shell.y + 0.5);
+    float vis = soft_visibility(vpos, cell.z - shell.x, shell.x);
+    return float4(max(c * (share * vis), 0.0), 0.0);
 }

@@ -19,33 +19,35 @@
     "src/renderer/weapon_decal_pixel_program_inc.h"
   ],
   "source": {
-    "commit": "e0e81b8a64b8feb3c82e38ef5b2d95c5d6061b84-dirty",
+    "commit": "77ec76056efab86e2bdb3e048e7078c1812abef2-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
+      "src/effects/weapon_decal_ps.hlsl",
       "src/effects/weapon_hex_patch.hlsl",
       "src/effects/weapon_shell_ps.hlsl",
+      "src/effects/weapon_shell_vs.hlsl",
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_stage.h",
-      "src/renderer/weapon_decal_pixel_program_inc.h",
       "src/renderer/weapon_effects_pass.cpp",
       "src/renderer/weapon_effects_pass.h",
-      "src/renderer/weapon_shell_pixel_program_inc.h"
+      "src/renderer/weapon_shell_pixel_program_inc.h",
+      "src/renderer/weapon_shell_vertex_program_inc.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "47c58c2b5958068af57e60df11110f4274f7145cd1e8ac11e1e16cd2ac0232b3",
-      "src/renderer/weapon_effects_pass.cpp": "c8605617759726abb9bf55db060aab70d2cd6d89d4a6a891f491276909dc8bb6",
-      "src/proxy/weapon_effects_core.h": "040a3e8f2c28a8effe90c6cd1a06bb7a188042a8b6b4c9da279e57c01c258ab1",
-      "src/proxy/weapon_effects_stage.h": "8eb009de77d2fb973bf2467146c81c4f80607877be5fb533f68d1e41a7401888",
+      "src/renderer/weapon_effects_pass.h": "a0eeb88884499958d89821ef44e687daaea92d5d38c81355384bb94af57bd58c",
+      "src/renderer/weapon_effects_pass.cpp": "fb31626ec1d064abcafd5876bbb990a3af283a016f46d310d0da2661dc72a821",
+      "src/proxy/weapon_effects_core.h": "5e4d7f30cd083622f799d588867d2d798cf028ec09efb9f97af7675a5e8d07e8",
+      "src/proxy/weapon_effects_stage.h": "723ce9b6ba09cdd9c95ea94aaf21349ce7f38b1f5a912cab0399ab07a0d5cf1f",
       "src/renderer/temporal_pass.h": "6dac7ef887ee273652b92f6db8491c9536b123ab61a44523a2d916feca0e4078",
       "src/renderer/temporal_pass.cpp": "fc02b65b224e3b1b657069ec1fce061e0d155e2eb2b2b58604b458ceeba08c6b",
-      "src/effects/weapon_shell_vs.hlsl": "439c515857a151bedeaaf16947ec79a4cca54511a8f3d92b6574fe357a47d883",
-      "src/effects/weapon_shell_ps.hlsl": "30128741db79d001a4a755859ca1bed723225e84736f4e5ebda03ee8a5b6ad08",
+      "src/effects/weapon_shell_vs.hlsl": "6a6cc31eaac99a3f5e22a28e4b3a3564224f56347f6a07e169984f3c5e444afb",
+      "src/effects/weapon_shell_ps.hlsl": "d3a9755a4c7eb641ebc2c5e2b856387069d0e4b0f798ff339b5875e22009c498",
       "src/effects/weapon_decal_vs.hlsl": "926541274fc3a98602d8262781204966607b4fabdf256edad30045894d66b9a9",
-      "src/effects/weapon_decal_ps.hlsl": "790d1fdc8d86324250258ba231a4c8ba02dd28d3c92416841705380af0806b53",
+      "src/effects/weapon_decal_ps.hlsl": "ffecad0e50aa18a74f8d96b266fb15146280e1b8a77b9eb6b9808786087b2529",
       "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
-      "src/effects/weapon_hex_patch.hlsl": "57ca4815a481132b1f5391797dc96bf33c39a904415e5794c9e4f34c3ee64bb5",
-      "src/renderer/weapon_shell_vertex_program_inc.h": "32f9f073c06e70f64959499e2b503e72c9f480a8a6382c0ae8a49271f61edaae",
-      "src/renderer/weapon_shell_pixel_program_inc.h": "3ba2c755b66b34ab3c342468835ae13df2161bf92b8904868a7eaf2af8c214c4",
+      "src/effects/weapon_hex_patch.hlsl": "f8dbf5fa3bfde8e11ab746e057ba4bc2503e18350e21ba2fecbd40e7ed55ab6a",
+      "src/renderer/weapon_shell_vertex_program_inc.h": "98544906a5c8a9d605935179e20b0ef9c0ff9740c6726dc1084b2457d77dd21f",
+      "src/renderer/weapon_shell_pixel_program_inc.h": "afa03256bf565a7313f0bb6b8c4a41578e06a7bbb86c618dcd3cc0989134c266",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "2907633a268fd02a925b0db484c1e7b0096816eeefb778afedc143d2a711321d"
     }
@@ -53,14 +55,14 @@
   "programs": {
     "weapon_shell_vs": {
       "source": "src/effects/weapon_shell_vs.hlsl",
-      "word_count": 280,
-      "bytecode_sha256": "3347ab348b6bca5304f50265497e49464d3983db62dbd1dfd2b86b7440f258ac",
+      "word_count": 155,
+      "bytecode_sha256": "0e7d53ab021acec90566e50727d6e70bd495cc774bc527813d0ff8c5ad43cbf5",
       "target": "vs_3_0"
     },
     "weapon_shell_ps": {
       "source": "src/effects/weapon_shell_ps.hlsl",
-      "word_count": 1566,
-      "bytecode_sha256": "f15db24d2271bf06440dd05b6c1d858a13fa64166da3d11c88ceb59525104a9c",
+      "word_count": 841,
+      "bytecode_sha256": "dbf6dc8132a8276baa8b975faff6b8b047d76a2c6f27b5acea820d3af39e66ca",
       "target": "ps_3_0"
     },
     "weapon_decal_vs": {
@@ -102,16 +104,16 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a354caf492da8ee1f/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a354caf492da8ee1f/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a354caf492da8ee1f/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/src/renderer/temporal_pass.cpp",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a354caf492da8ee1f/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-aadd397a5ee590a7c/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "56125a002db2d8ff86b6a9f38f278fc458a2d124f5fc5640ae989d475d7087ef"
+    "executable_sha256": "964dd4b702f7b289d91b6d8e4b8c1457cd4931b69b7160dd091e97176d7ce922"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -144,7 +146,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 36,
+      "checks": 43,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -212,6 +214,10 @@
       true
     ],
     [
+      "soft_fade_hugs_the_hull",
+      true
+    ],
+    [
       "repeated_hit_relights_max_not_sum",
       true
     ],
@@ -224,11 +230,31 @@
       true
     ],
     [
-      "cpu_cap_culls_nothing_lit",
+      "grid_fixed_on_owner",
       true
     ],
     [
-      "grid_fixed_on_owner",
+      "placement_aft_flank_faces_the_bolt",
+      true
+    ],
+    [
+      "placement_narrow_hull_flank_at_the_hit",
+      true
+    ],
+    [
+      "placement_station_at_the_hit",
+      true
+    ],
+    [
+      "placement_far_side_draws",
+      true
+    ],
+    [
+      "placement_eye_inside_sphere_draws",
+      true
+    ],
+    [
+      "seam_travel_regions_keep_their_peaks",
       true
     ],
     [
@@ -241,6 +267,10 @@
     ],
     [
       "one_draw_evicts_the_oldest_clocks",
+      true
+    ],
+    [
+      "no_pop_sphere_front_depth_held",
       true
     ],
     [
@@ -301,14 +331,14 @@
     "attach": [
       {
         "result": 0,
-        "shell_vs": 51,
-        "shell_ps": 360,
+        "shell_vs": 17,
+        "shell_ps": 182,
         "decal_vs": 21,
         "decal_ps": 129,
         "fp16": 0,
         "max_ps": 4096,
-        "cap_vertices": 257,
-        "cap_triangles": 480
+        "patch_vertices": 768,
+        "patch_triangles": 512
       }
     ],
     "patch": [
@@ -317,16 +347,16 @@
         "rings": 1,
         "cells": 7,
         "expected_cells": 7,
-        "reach_view": 7.5,
-        "cell_view": 7.5,
-        "reach_px": 79.7,
-        "bound_px": 125.1,
-        "cell_px": 79.7,
-        "lit_px": 121.6,
+        "reach_view": 15.0,
+        "cell_view": 15.0,
+        "reach_px": 160.0,
+        "bound_px": 252.4,
+        "cell_px": 160.0,
+        "lit_px": 244.6,
         "outside_sum": 0.0,
         "edges": 4,
         "expected_edges": 4,
-        "lit_pixels": 38313,
+        "lit_pixels": 155196,
         "peak": 2.2891
       },
       {
@@ -334,16 +364,16 @@
         "rings": 2,
         "cells": 19,
         "expected_cells": 19,
-        "reach_view": 30.0,
-        "cell_view": 15.0,
-        "reach_px": 114.7,
-        "bound_px": 147.4,
-        "cell_px": 57.5,
-        "lit_px": 144.5,
+        "reach_view": 60.0,
+        "cell_view": 30.0,
+        "reach_px": 230.4,
+        "bound_px": 296.9,
+        "cell_px": 115.2,
+        "lit_px": 290.3,
         "outside_sum": 0.0,
         "edges": 6,
         "expected_edges": 6,
-        "lit_pixels": 53947,
+        "lit_pixels": 218314,
         "peak": 2.2891
       },
       {
@@ -351,52 +381,52 @@
         "rings": 2,
         "cells": 19,
         "expected_cells": 19,
-        "reach_view": 80.0,
-        "cell_view": 40.0,
-        "reach_px": 95.8,
-        "bound_px": 123.4,
-        "cell_px": 48.0,
-        "lit_px": 120.9,
+        "reach_view": 160.0,
+        "cell_view": 80.0,
+        "reach_px": 192.0,
+        "bound_px": 247.4,
+        "cell_px": 96.0,
+        "lit_px": 242.0,
         "outside_sum": 0.0,
         "edges": 6,
         "expected_edges": 6,
-        "lit_pixels": 37659,
+        "lit_pixels": 151648,
         "peak": 2.2891
       }
     ],
     "symmetry": [
       {
         "tier": "fighter",
-        "left": 19065,
-        "right": 19248,
-        "up": 19037,
-        "down": 19276,
-        "ext_left": 118.5,
-        "ext_right": 119.5,
-        "ext_up": 113.5,
-        "ext_down": 114.5
+        "left": 77552,
+        "right": 77644,
+        "up": 77358,
+        "down": 77838,
+        "ext_left": 239.5,
+        "ext_right": 239.5,
+        "ext_up": 229.5,
+        "ext_down": 230.5
       },
       {
         "tier": "corvette",
-        "left": 26841,
-        "right": 27106,
-        "up": 26830,
-        "down": 27117,
-        "ext_left": 142.5,
-        "ext_right": 143.5,
-        "ext_up": 131.5,
-        "ext_down": 132.5
+        "left": 108924,
+        "right": 109390,
+        "up": 108869,
+        "down": 109445,
+        "ext_left": 287.5,
+        "ext_right": 287.5,
+        "ext_up": 265.5,
+        "ext_down": 266.5
       },
       {
         "tier": "capital",
-        "left": 18719,
-        "right": 18940,
-        "up": 18710,
-        "down": 18949,
-        "ext_left": 118.5,
-        "ext_right": 119.5,
-        "ext_up": 109.5,
-        "ext_down": 110.5
+        "left": 75740,
+        "right": 75908,
+        "up": 75584,
+        "down": 76064,
+        "ext_left": 239.5,
+        "ext_right": 239.5,
+        "ext_up": 220.5,
+        "ext_down": 221.5
       }
     ],
     "centre": [
@@ -489,24 +519,157 @@
         "peak_pair": 2.5391
       }
     ],
-    "capcheck": [
+    "placement": [
       {
-        "cells": 28,
-        "cap_lit": 146254,
-        "wider_lit": 146254,
-        "sphere_lit": 146254,
-        "cap_total": 142883.691,
-        "wider_total": 142883.691,
-        "sphere_total": 142883.691,
-        "cap_angle": 0.3138,
-        "rel_diff": 0.0
+        "case": "narrow_flank_0p15R",
+        "patches": 1,
+        "cells": 19,
+        "region": 2,
+        "pos_r": 0.15,
+        "hit_view": "22.5,0.0,570.0",
+        "cell_m": 6.0,
+        "centroid_error_m": 3.08,
+        "centroid_error_cells": 0.513,
+        "old_projection_error_m": 42.5,
+        "drew": 1,
+        "lit_pixels": 107535,
+        "screen_error_px": 41.68,
+        "screen_error_m": 3.093,
+        "eye_r": 2.4,
+        "hull_normal_angle_deg": 1.2
+      },
+      {
+        "case": "station_flight_b_0p68R",
+        "patches": 1,
+        "cells": 19,
+        "region": 0,
+        "pos_r": 0.676,
+        "hit_view": "-1147.0,-851.6,9830.1",
+        "cell_m": 16.0,
+        "centroid_error_m": 6.744,
+        "centroid_error_cells": 0.422,
+        "old_projection_error_m": 422.0,
+        "drew": 1,
+        "lit_pixels": 2564,
+        "screen_error_px": 5.52,
+        "screen_error_m": 7.062,
+        "eye_r": 2.148,
+        "hull_normal_angle_deg": -1.0
+      },
+      {
+        "case": "far_side",
+        "patches": 1,
+        "cells": 7,
+        "region": 0,
+        "pos_r": 0.6,
+        "hit_view": "0.0,0.0,460.0",
+        "cell_m": 3.0,
+        "centroid_error_m": 0.0,
+        "centroid_error_cells": 0.0,
+        "old_projection_error_m": 8.0,
+        "drew": 1,
+        "lit_pixels": 15277,
+        "screen_error_px": 2.95,
+        "screen_error_m": 0.177,
+        "eye_r": 4.0,
+        "hull_normal_angle_deg": -1.0
+      },
+      {
+        "case": "eye_inside_sphere",
+        "patches": 1,
+        "cells": 7,
+        "region": 1,
+        "pos_r": 0.8,
+        "hit_view": "0.0,0.0,30.0",
+        "cell_m": 3.0,
+        "centroid_error_m": 0.0,
+        "centroid_error_cells": 0.0,
+        "old_projection_error_m": 4.0,
+        "drew": 1,
+        "lit_pixels": 1956850,
+        "screen_error_px": 10.99,
+        "screen_error_m": 0.043,
+        "eye_r": 0.5,
+        "hull_normal_angle_deg": -1.0
+      },
+      {
+        "case": "aft_flank_by_travel",
+        "patches": 1,
+        "cells": 19,
+        "region": 2,
+        "pos_r": 0.428,
+        "hit_view": "100.0,0.0,561.8",
+        "cell_m": 6.0,
+        "centroid_error_m": 0.785,
+        "centroid_error_cells": 0.131,
+        "old_projection_error_m": 28.6,
+        "drew": 1,
+        "lit_pixels": 110907,
+        "screen_error_px": 13.46,
+        "screen_error_m": 0.984,
+        "eye_r": 2.4,
+        "hull_normal_angle_deg": 4.2
+      },
+      {
+        "case": "witness_aft_flank_radial",
+        "patches": 1,
+        "cells": 19,
+        "region": 0,
+        "pos_r": 0.428,
+        "hit_view": "100.0,0.0,561.8",
+        "cell_m": 6.0,
+        "centroid_error_m": 1.636,
+        "centroid_error_cells": 0.273,
+        "old_projection_error_m": 28.6,
+        "drew": 1,
+        "lit_pixels": 19360,
+        "screen_error_px": 2.82,
+        "screen_error_m": 0.206,
+        "eye_r": 2.4,
+        "hull_normal_angle_deg": 85.8
+      }
+    ],
+    "placement_aft": [
+      {
+        "lit_mid": 107535,
+        "lit_aft": 110907,
+        "ratio": 1.031,
+        "aft_normal_angle_deg": 4.2
+      }
+    ],
+    "seam_narrow": [
+      {
+        "draws": 2,
+        "seams": "0x05",
+        "peak_a": 3.2559,
+        "peak_b": 2.5391,
+        "pair_peak": 3.2559,
+        "own_a": 3.2559,
+        "pair_own_a": 3.2559,
+        "own_b": 2.0957,
+        "pair_own_b": 2.0957,
+        "lit_a": 110907,
+        "lit_b": 29831,
+        "lit_pair": 119618,
+        "lit_union": 119788,
+        "union_dark": 170
+      }
+    ],
+    "soft": [
+      {
+        "plane_z": 144.0,
+        "soft": 15.0,
+        "sky": 162043.634,
+        "behind": 162043.634,
+        "half": 81021.817,
+        "inside": 0.0
       }
     ],
     "grid": [
       {
         "patches": 1,
         "moved_patches": 1,
-        "cells": 22,
+        "cells": 23,
         "identical": 1,
         "owner_moved": 1
       }
@@ -518,31 +681,32 @@
         "frames": 240,
         "max_live_hits": 36,
         "max_patches": 1,
-        "max_cells": 36,
-        "max_region_cells": 36,
+        "max_cells": 19,
+        "max_region_cells": 19,
         "spills": 0,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
-        "max_drop": 0.02148,
+        "max_drop": 0.01953,
         "allowed": 0.02273,
         "excess": 0.0,
         "popped_pixels": 0,
-        "worst_frame": 45,
-        "worst_x": 864,
-        "worst_y": 552,
-        "worst_prev": 2.2656,
-        "worst_cur": 2.2441
+        "worst_frame": 19,
+        "worst_x": 988,
+        "worst_y": 570,
+        "worst_prev": 2.0293,
+        "worst_cur": 2.0098,
+        "max_overlap": 1
       },
       {
         "case": "capital_spread_12hps",
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 5,
+        "max_patches": 4,
         "max_cells": 128,
-        "max_region_cells": 608,
-        "spills": 590,
+        "max_region_cells": 409,
+        "spills": 433,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
@@ -550,11 +714,12 @@
         "allowed": 0.02273,
         "excess": 0.0,
         "popped_pixels": 0,
-        "worst_frame": 22,
-        "worst_x": 769,
-        "worst_y": 854,
-        "worst_prev": 2.25,
-        "worst_cur": 2.2266
+        "worst_frame": 6,
+        "worst_x": 850,
+        "worst_y": 705,
+        "worst_prev": 2.3281,
+        "worst_cur": 2.3047,
+        "max_overlap": 1
       },
       {
         "case": "capital_spread_one_draw_witness",
@@ -565,18 +730,111 @@
         "max_cells": 128,
         "max_region_cells": 128,
         "spills": 0,
-        "cells_dropped": 64247,
+        "cells_dropped": 42336,
         "hits_dropped": 0,
         "dropped": 0,
-        "max_drop": 1.87012,
+        "max_drop": 1.99707,
         "allowed": 0.02273,
-        "excess": 1.84265,
-        "popped_pixels": 312386,
-        "worst_frame": 130,
-        "worst_x": 376,
-        "worst_y": 160,
-        "worst_prev": 1.8701,
-        "worst_cur": 0.0
+        "excess": 1.96935,
+        "popped_pixels": 1226153,
+        "worst_frame": 45,
+        "worst_x": 850,
+        "worst_y": 477,
+        "worst_prev": 1.9971,
+        "worst_cur": 0.0,
+        "max_overlap": 1
+      },
+      {
+        "case": "fighter_sphere_front_12hps",
+        "hits": 49,
+        "frames": 240,
+        "max_live_hits": 36,
+        "max_patches": 1,
+        "max_cells": 19,
+        "max_region_cells": 19,
+        "spills": 0,
+        "cells_dropped": 0,
+        "hits_dropped": 0,
+        "dropped": 0,
+        "max_drop": 0.03906,
+        "allowed": 0.02273,
+        "excess": 0.0,
+        "popped_pixels": 0,
+        "worst_frame": 141,
+        "worst_x": 884,
+        "worst_y": 629,
+        "worst_prev": 4.0625,
+        "worst_cur": 4.0234,
+        "max_overlap": 2
+      },
+      {
+        "case": "capital_sphere_front_12hps",
+        "hits": 49,
+        "frames": 240,
+        "max_live_hits": 36,
+        "max_patches": 5,
+        "max_cells": 128,
+        "max_region_cells": 551,
+        "spills": 609,
+        "cells_dropped": 0,
+        "hits_dropped": 0,
+        "dropped": 0,
+        "max_drop": 0.05664,
+        "allowed": 0.02273,
+        "excess": 0.0,
+        "popped_pixels": 0,
+        "worst_frame": 208,
+        "worst_x": 1282,
+        "worst_y": 32,
+        "worst_prev": 3.6953,
+        "worst_cur": 3.6387,
+        "max_overlap": 3
+      },
+      {
+        "case": "fighter_sphere_front_no_cache_witness",
+        "hits": 49,
+        "frames": 240,
+        "max_live_hits": 36,
+        "max_patches": 1,
+        "max_cells": 19,
+        "max_region_cells": 19,
+        "spills": 0,
+        "cells_dropped": 0,
+        "hits_dropped": 0,
+        "dropped": 0,
+        "max_drop": 2.2041,
+        "allowed": 0.02273,
+        "excess": 2.16525,
+        "popped_pixels": 18150,
+        "worst_frame": 142,
+        "worst_x": 1041,
+        "worst_y": 631,
+        "worst_prev": 3.7695,
+        "worst_cur": 1.5654,
+        "max_overlap": 2
+      },
+      {
+        "case": "capital_sphere_front_no_cache_witness",
+        "hits": 49,
+        "frames": 240,
+        "max_live_hits": 36,
+        "max_patches": 5,
+        "max_cells": 128,
+        "max_region_cells": 551,
+        "spills": 609,
+        "cells_dropped": 0,
+        "hits_dropped": 0,
+        "dropped": 0,
+        "max_drop": 2.04297,
+        "allowed": 0.02273,
+        "excess": 1.99566,
+        "popped_pixels": 119246,
+        "worst_frame": 148,
+        "worst_x": 749,
+        "worst_y": 244,
+        "worst_prev": 4.0547,
+        "worst_cur": 2.0117,
+        "max_overlap": 3
       }
     ],
     "seam": [
@@ -584,10 +842,10 @@
         "single_draws": 1,
         "pair_draws": 2,
         "seams": "0x0a",
-        "peak_a": 2.7207,
-        "peak_b": 2.4805,
-        "peak_pair": 2.7207,
-        "peak_without_sharing": 4.4219
+        "peak_a": 2.6035,
+        "peak_b": 3.1973,
+        "peak_pair": 3.1973,
+        "peak_without_sharing": 5.2578
       }
     ],
     "stage_cpu": [
@@ -595,13 +853,15 @@
         "case": "one_capital_64_hits",
         "owners": 1,
         "hits": 64,
-        "patches": 8,
-        "cells": 1024,
-        "spills": 7,
-        "cells_dropped": 80,
+        "patches": 7,
+        "cells": 784,
+        "spills": 6,
+        "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 22.9,
-        "mean_us": 26.6,
+        "depth_full": 0,
+        "depth_cache": 1,
+        "best_us": 19.0,
+        "mean_us": 24.5,
         "target_us": 200
       },
       {
@@ -609,12 +869,29 @@
         "owners": 16,
         "hits": 256,
         "patches": 32,
-        "cells": 3360,
+        "cells": 3357,
         "spills": 16,
-        "cells_dropped": 1305,
+        "cells_dropped": 1299,
         "dropped": 0,
-        "best_us": 66.1,
-        "mean_us": 89.2,
+        "depth_full": 0,
+        "depth_cache": 1,
+        "best_us": 70.1,
+        "mean_us": 100.2,
+        "target_us": 200
+      },
+      {
+        "case": "station_flight_b_cluster_64_hits",
+        "owners": 1,
+        "hits": 64,
+        "patches": 1,
+        "cells": 82,
+        "spills": 0,
+        "cells_dropped": 0,
+        "dropped": 0,
+        "depth_full": 0,
+        "depth_cache": 1,
+        "best_us": 11.6,
+        "mean_us": 15.0,
         "target_us": 200
       }
     ],
@@ -624,14 +901,14 @@
         "capital_full_map_cells": 128,
         "capital_fill_map_cells": 128,
         "capital_spread_draws": 5,
-        "capital_spread_cells": 540
+        "capital_spread_cells": 513
       },
       {
         "fighter_12hps_cells": 36,
         "capital_full_map_cells": 128,
         "capital_fill_map_cells": 128,
         "capital_spread_draws": 5,
-        "capital_spread_cells": 540
+        "capital_spread_cells": 513
       }
     ],
     "decal": [
@@ -639,10 +916,10 @@
         "patches": 0,
         "decals": 1,
         "centre_z": 300.0,
-        "radius": 11.25,
-        "cell": 7.5,
+        "radius": 22.5,
+        "cell": 15.0,
         "over_sky": 0.0,
-        "on_hull": 10993.4536,
+        "on_hull": 43750.1519,
         "edges": 4
       }
     ],
@@ -651,17 +928,17 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.5,
-        "last_drawn_ms": 473.48,
-        "frames": 19046,
-        "max_frame_ms": 5.353
+        "seta6_wall_ms": 473.51,
+        "last_drawn_ms": 473.49,
+        "frames": 19635,
+        "max_frame_ms": 0.705
       }
     ],
     "retired": [
       {
         "live_patches": 1,
         "live_drew": 1,
-        "live_sum": 6338.1794,
+        "live_sum": 46192.7925,
         "patches": 0,
         "decals": 0,
         "retired": 1,
@@ -677,7 +954,7 @@
         "height": 1080,
         "speed_px": 0,
         "frames": 16,
-        "core": 0.9862,
+        "core": 0.9939,
         "peak": 3.229
       },
       {
@@ -685,7 +962,7 @@
         "height": 1080,
         "speed_px": 4,
         "frames": 16,
-        "core": 0.9718,
+        "core": 0.9859,
         "peak": 3.229
       },
       {
@@ -693,7 +970,7 @@
         "height": 1080,
         "speed_px": 8,
         "frames": 16,
-        "core": 0.9656,
+        "core": 0.9858,
         "peak": 3.229
       }
     ],
@@ -716,7 +993,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.1
+        "gpu_us": 11.2
       },
       {
         "width": 1920,
@@ -724,9 +1001,9 @@
         "case": "fighter_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.0028,
-        "raster_share": 0.0079,
-        "gpu_us": 16.2
+        "lit_share": 0.0116,
+        "raster_share": 0.0116,
+        "gpu_us": 15.8
       },
       {
         "width": 1920,
@@ -734,9 +1011,9 @@
         "case": "fighter_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 0.0028,
-        "raster_share": 0.0074,
-        "gpu_us": 17.9
+        "lit_share": 0.0116,
+        "raster_share": 0.0124,
+        "gpu_us": 15.8
       },
       {
         "width": 1920,
@@ -744,9 +1021,9 @@
         "case": "capital_close_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.2102,
-        "raster_share": 0.4825,
-        "gpu_us": 40.6
+        "lit_share": 0.8309,
+        "raster_share": 0.8309,
+        "gpu_us": 33.9
       },
       {
         "width": 1920,
@@ -754,9 +1031,9 @@
         "case": "capital_close_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 0.2102,
-        "raster_share": 0.4596,
-        "gpu_us": 39.2
+        "lit_share": 0.8309,
+        "raster_share": 0.9318,
+        "gpu_us": 35.4
       },
       {
         "width": 1920,
@@ -764,9 +1041,9 @@
         "case": "worst_four_regions",
         "patches": 4,
         "drawn": 4,
-        "lit_share": 0.2948,
-        "raster_share": 0.9026,
-        "gpu_us": 62.4
+        "lit_share": 0.8348,
+        "raster_share": 1.1896,
+        "gpu_us": 42.8
       },
       {
         "width": 1920,
@@ -774,9 +1051,9 @@
         "case": "fighter_12hps_map",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.0077,
-        "raster_share": 0.0129,
-        "gpu_us": 17.2
+        "lit_share": 0.032,
+        "raster_share": 0.032,
+        "gpu_us": 17.4
       },
       {
         "width": 1920,
@@ -784,9 +1061,9 @@
         "case": "capital_close_full_map",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.2851,
-        "raster_share": 0.9989,
-        "gpu_us": 90.6
+        "lit_share": 0.2719,
+        "raster_share": 0.2719,
+        "gpu_us": 24.0
       },
       {
         "width": 1920,
@@ -794,9 +1071,9 @@
         "case": "capital_fill_full_map",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.1919,
+        "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 88.7
+        "gpu_us": 36.4
       },
       {
         "width": 1920,
@@ -804,9 +1081,9 @@
         "case": "capital_spread_spill",
         "patches": 5,
         "drawn": 5,
-        "lit_share": 0.1005,
-        "raster_share": 2.1282,
-        "gpu_us": 184.7
+        "lit_share": 0.4658,
+        "raster_share": 0.5538,
+        "gpu_us": 44.5
       },
       {
         "width": 5120,
@@ -816,7 +1093,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.2
+        "gpu_us": 11.3
       },
       {
         "width": 5120,
@@ -824,9 +1101,9 @@
         "case": "fighter_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.0057,
-        "raster_share": 0.0157,
-        "gpu_us": 19.5
+        "lit_share": 0.0231,
+        "raster_share": 0.0231,
+        "gpu_us": 17.5
       },
       {
         "width": 5120,
@@ -834,9 +1111,9 @@
         "case": "fighter_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 0.0057,
-        "raster_share": 0.0149,
-        "gpu_us": 20.1
+        "lit_share": 0.0231,
+        "raster_share": 0.0248,
+        "gpu_us": 17.6
       },
       {
         "width": 5120,
@@ -844,9 +1121,9 @@
         "case": "capital_close_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.4175,
-        "raster_share": 0.5686,
-        "gpu_us": 107.8
+        "lit_share": 0.9092,
+        "raster_share": 0.9092,
+        "gpu_us": 81.9
       },
       {
         "width": 5120,
@@ -854,9 +1131,9 @@
         "case": "capital_close_two_regions",
         "patches": 2,
         "drawn": 2,
-        "lit_share": 0.4175,
-        "raster_share": 0.7394,
-        "gpu_us": 129.5
+        "lit_share": 0.9092,
+        "raster_share": 1.0877,
+        "gpu_us": 91.0
       },
       {
         "width": 5120,
@@ -864,9 +1141,9 @@
         "case": "worst_four_regions",
         "patches": 4,
         "drawn": 4,
-        "lit_share": 0.3666,
-        "raster_share": 1.1831,
-        "gpu_us": 198.5
+        "lit_share": 0.8007,
+        "raster_share": 1.2198,
+        "gpu_us": 103.1
       },
       {
         "width": 5120,
@@ -874,9 +1151,9 @@
         "case": "fighter_12hps_map",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.0153,
-        "raster_share": 0.0258,
-        "gpu_us": 23.5
+        "lit_share": 0.0639,
+        "raster_share": 0.0639,
+        "gpu_us": 22.5
       },
       {
         "width": 5120,
@@ -884,9 +1161,9 @@
         "case": "capital_close_full_map",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.2594,
-        "raster_share": 1.0,
-        "gpu_us": 271.1
+        "lit_share": 0.2269,
+        "raster_share": 0.2269,
+        "gpu_us": 35.4
       },
       {
         "width": 5120,
@@ -894,9 +1171,9 @@
         "case": "capital_fill_full_map",
         "patches": 1,
         "drawn": 1,
-        "lit_share": 0.0965,
+        "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 266.6
+        "gpu_us": 82.7
       },
       {
         "width": 5120,
@@ -904,20 +1181,20 @@
         "case": "capital_spread_spill",
         "patches": 5,
         "drawn": 5,
-        "lit_share": 0.1036,
-        "raster_share": 2.2561,
-        "gpu_us": 604.4
+        "lit_share": 0.5012,
+        "raster_share": 0.5782,
+        "gpu_us": 83.5
       }
     ],
     "fade": {
-      "t350": 43864.4,
-      "t600": 37463.933,
-      "t900": 29794.031,
-      "t1200": 22120.659,
-      "t1500": 14443.743,
-      "t1800": 7063.291,
-      "t2100": 2350.105,
-      "t2400": 220.475,
+      "t350": 177601.684,
+      "t600": 151681.027,
+      "t900": 120620.656,
+      "t1200": 89545.552,
+      "t1500": 58456.029,
+      "t1800": 28568.018,
+      "t2100": 9505.813,
+      "t2400": 903.038,
       "t2700": 0.0,
       "t2941": 0.0,
       "lifetime_ms": 2941

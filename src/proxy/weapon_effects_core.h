@@ -45,16 +45,18 @@ inline const char* tint_source_name(unsigned t) noexcept {
     return t < 5 ? names[t] : "?";
 }
 // flag_forwarded: the engine's own spawn ran (the hook returned 0); flag_stage: the stage draws the record (a shield hit
-// while the stage owned the previous frame). User decision 2026-11-06: on a shield hit the weapon's native impact stays
-// visible and the patch is drawn over it, so a stage record is normally forwarded too (suppress_native_shield_hit).
+// while the stage owned the previous frame). Coordinator decision 2026-11-06 (after Run235 Flight B): a stage-owned
+// shield hit skips the engine's spawn (suppress_native_shield_hit), so it is not flag_forwarded.
 // The former flag_owner_retired (set only on a record about to be released) gave its bit to flag_stage.
 enum EventFlag : std::uint8_t { flag_absorbed = 1, flag_forwarded = 2, flag_nested = 4, flag_stage = 8,
                                 flag_override_applied = 16, flag_calibre_override = 32, flag_logged = 64,
                                 flag_shield_read = 128 };
-// Whether a stage-owned shield hit also skips the engine's spawn. false (user decision 2026-11-06): the native impact
-// sprite is the weapon's energy arriving and stays; the patch is the shield's response, drawn in addition. Step 2 sets
-// it once our own weapon impact exists (HookState::suppress_native carries it, the hook fixture drives both paths).
-constexpr bool suppress_native_shield_hit = false;
+// Whether a stage-owned shield hit also skips the engine's spawn (0x00413c40 not called: no native impact sprite, its
+// light or its PROPAGATE children). true (coordinator decision 2026-11-06, superseding the user decision of the same
+// day to keep the native sprite under the patch): in shields mode the patch alone answers a shield hit the stage owns;
+// observe, hull hits, a dying hit object and every frame the stage does not own still forward. HookState::
+// suppress_native carries it; the hook fixture drives both paths.
+constexpr bool suppress_native_shield_hit = true;
 // The hit object's size class for the patch (docs/architecture/weapon-effects.md 5.1.1): cell size and patch radius
 // are fixed in world units per class.
 enum PatchTier : std::uint8_t { patch_fighter = 0, patch_corvette = 1, patch_capital = 2, patch_tier_count = 3 };
@@ -84,7 +86,13 @@ struct Event {
     std::uint32_t t0_game_ms;                // cfg+0x718 at the hook
     std::uint16_t lifetime_ms;               // game ms
     std::uint8_t slot, calibre_q;            // gun slot (muzzle, later steps); calibre override x 255 (flag_calibre_override)
-    std::uint32_t tint_rgb, alt_rgb;         // the classifier's colour and the other candidate (light <-> texture)
+    std::uint32_t tint_rgb;                  // the classifier's colour (rgb_present | b << 16 | g << 8 | r)
+    // The other tint candidate (light <-> texture) narrowed to RGB 3:3:2 (0: none; the weapon_tint / tint_mix override
+    // only), and the projectile's travel in the hit object's frame at the hit: its root node's local z (node+0x40 row 2)
+    // rotated into the owner's rows (as pos) x 127, rounded; 0, 0, 0 when its node is not live or the row is zero (the
+    // stage then takes the radial region, Run235 Flight B fix). Owner-local, so a turning owner keeps its regions.
+    std::uint8_t alt_rgb332;
+    std::int8_t dir[3];
     std::int32_t damage;                     // the damage routine's running total at the call ([esp+0x1c])
     std::uint32_t owner, node, handle;       // the hit object, its root node obj+0x70 and node+0x28
     // The note's `shooter` is not carried ([[source+0x50]+4] is not dereferenced by the engine on this path, review F9);
@@ -334,6 +342,7 @@ struct PosCheck {           // observe mode: the handler's pos against the inner
 struct Counters {
     std::uint32_t calls = 0, recorded = 0, skipped = 0, forwarded = 0, no_projectile = 0, no_node = 0, stale_table = 0,
                   taps = 0, shield_hits = 0, hull_hits = 0, nested = 0;
+    std::uint32_t dir_fallback = 0; // recorded without a travel direction (projectile node not live, or a zero row)
     std::uint32_t shield_read = 0, shield_unread = 0; // the hit object's shield list walked to its sentinel, or refused
 };
 struct HookState {
@@ -470,6 +479,18 @@ static inline __attribute__((always_inline)) void read_tier(std::uintptr_t obj, 
     *source = tier_by_radius;
 }
 
+// A unit 16.16 row (a node rotation row) as three int8 x 127, rounded half up (each component clamped to +-1 first).
+static inline __attribute__((always_inline)) void quantize_dir(const std::int32_t row[3], std::int8_t out[3]) noexcept {
+    for (unsigned i = 0; i < 3; ++i) {
+        const std::int32_t r = row[i] > 0x10000 ? 0x10000 : row[i] < -0x10000 ? -0x10000 : row[i];
+        out[i] = std::int8_t((r * 127 + 0x8000) >> 16); // arithmetic shift: floor((r x 127) / 65536 + 1/2)
+    }
+}
+// An rgb_present colour word as RGB 3:3:2 (the top bits of each channel); 0 for none.
+static inline __attribute__((always_inline)) std::uint8_t rgb332(std::uint32_t word) noexcept {
+    if (!(word & rgb_present)) return 0;
+    return std::uint8_t(((word & 0xe0u)) | ((word >> 11) & 0x1cu) | ((word >> 22) & 0x3u));
+}
 // The impact site 0x00449d85 -> 0x00413c40(victim, source). `esp` is the stack at stub entry: [1] victim, [2] source,
 // [7] the running damage total, [9] the absorbed flag. Integer only, plain loads, no call. Returns 1 to skip the
 // engine's spawn (stage-owned shield hit), 0 to forward. now_game is read here (cfg+0x718).
@@ -584,9 +605,9 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
         tint_source = tint_missile;
     }
     const std::uint8_t role = role_from(absorbed, pclass, flags);
-    // The stage draws a shield hit while it owned the previous frame. The engine's spawn still runs unless
-    // suppress_native is set (default off, user decision 2026-11-06: the native impact plus the patch). A dying hit
-    // object is never the stage's: the stage retires a dying owner's records unseen, so it stays native only.
+    // The stage draws a shield hit while it owned the previous frame, and with suppress_native (the default) the
+    // engine's spawn is skipped for it. A dying hit object is never the stage's: the stage retires a dying owner's
+    // records unseen, so it stays native only.
     const bool stage =
         s.mode == mode_shields && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
     const bool skip = stage && s.suppress_native;
@@ -598,8 +619,22 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     const bool shield_ok = read_shields(hit, hit_class, s.globals, &shield_q);
     std::uint8_t patch_tier = patch_fighter, tier_source = tier_by_radius;
     read_tier(hit, hit_class, hit_radius, s.globals, &patch_tier, &tier_source);
+    // The projectile's travel (5.1.1 placement): its root node's row 2 (local z in world, 16.16) rotated into the hit
+    // object's frame with the rows read for pos (rows still holds hit_node's), quantized; none when the node is not live
+    // or the row is zero.
+    const std::uintptr_t projectile_node = victim_is_projectile ? victim_node : source_node;
+    std::int8_t dir[3] = {0, 0, 0};
+    if (rd32(projectile_node + layout::node_live)) {
+        std::int32_t row[3], local[3];
+        read3(projectile_node + layout::node_rot + 32, row);
+        if (row[0] | row[1] | row[2]) {
+            rotate_in(rows, row, local);
+            quantize_dir(local, dir);
+        }
+    }
     Event* e = ring_acquire(s.ring);
     if (!e) return 0;
+    if (!(dir[0] | dir[1] | dir[2])) ++s.counters.dir_fallback;
     e->role = role;
     e->style = style;
     e->tier = tier_from(std::int32_t(total));
@@ -614,7 +649,8 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     e->slot = 0;
     e->calibre_q = calibre_q;
     e->tint_rgb = tint;
-    e->alt_rgb = alt;
+    e->alt_rgb332 = rgb332(alt);
+    for (unsigned i = 0; i < 3; ++i) e->dir[i] = dir[i];
     e->damage = std::int32_t(total);
     e->owner = std::uint32_t(hit);
     e->node = std::uint32_t(hit_node);
@@ -706,8 +742,10 @@ inline bool expired(std::uint32_t now, const Event& e) noexcept {
 }
 // The patch look (docs/architecture/weapon-effects.md 5.1.1), the lab's controls (tools/effects/
 // generate_weapon_effects_lab.py injects every value below by name). Hexagon cells of cell_m (centre to centre) fixed in
-// world units per PatchTier on a stable grid in the owner's frame (six anchor regions, weapon_effects_stage.h); a hit
-// lights the cell containing it and its rings neighbour rings (1 + 3 rings (rings + 1) cells), each cell when the ring
+// world units per PatchTier on a stable grid in the owner's frame (six axis regions, each a planar lattice
+// perpendicular to its axis, weapon_effects_stage.h); a hit lights the cell containing its projection onto its
+// region's plane and its rings neighbour rings (1 + 3 rings (rings + 1) cells, drawn at the hit's depth along the
+// region axis), each cell when the ring
 // front from the hit cell's centre reaches its centre; a lit cell then fades over fade_ms on its own clock (a later hit
 // covering it resets that clock to full, never adds; each region's cell maps of cell_map_capacity cells per draw are
 // rebuilt from the live hits every frame). Per cell a deterministic stagger of brightness and fade rate (a hash of the
@@ -718,7 +756,9 @@ inline bool expired(std::uint32_t now, const Event& e) noexcept {
 // object's shield fraction: colour_full at or above colour_high, colour_half at colour_mid, colour_empty at or below
 // colour_low, smoothstep between; weapon_tint mixes the classifier's weapon colour in (an override, off).
 constexpr float engine_units_per_metre = 500.f;
-constexpr float cell_m[patch_tier_count] = {1.5f, 3.0f, 8.0f};     // fighter, corvette, capital/station (metres)
+// Run235 Flight B (user, 2026-11-06): the cells read too small; cell_m doubled (the footprint radius, (rings + 0.5)
+// cells, doubles with it).
+constexpr float cell_m[patch_tier_count] = {3.0f, 6.0f, 16.0f};    // fighter, corvette, capital/station (metres)
 constexpr unsigned rings[patch_tier_count] = {1, 2, 2};            // neighbour rings a hit lights about its cell
 constexpr float ripple_speed = 3.333f;  // the ring front, footprint radii per game second (the rim in 0.3 s)
 constexpr float ring_width = 0.12f;     // the ring's Gaussian width, footprint radii
@@ -736,7 +776,8 @@ constexpr float colour_half[3] = {1.0f, 0.88f, 0.42f};  // light yellow
 constexpr float colour_empty[3] = {1.0f, 0.4f, 0.36f};  // light red
 constexpr float weapon_tint = 0.0f;     // 0 = the shield colour, 1 = the weapon's (classifier) colour; override, off
 constexpr float tint_mix = 0.0f;        // the weapon colour: 0 = the classifier's, 1 = the other candidate
-constexpr float soft = 0.5f;            // the soft fade against the lane, a multiple of the owner's mean axis
+constexpr float soft = 1.0f;            // the soft fade against the lane, cells: whole where the lane lies behind the
+                                        // patch, cut once the hull is this far in front of it (the patch inside it)
 // The records' game-time life: the ring reaches the rim, then the slowest cell fades out.
 constexpr unsigned patch_lifetime_ms = unsigned(1000.f / ripple_speed + float(fade_ms) * (1.f + 0.5f * stagger)) + 1;
 static_assert(patch_lifetime_ms > 0 && patch_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");
@@ -749,6 +790,37 @@ constexpr unsigned hit_slots = 4;     // ring and core hits per draw (the region
 constexpr unsigned owner_hits = 64;   // live hits per owner feeding its cell map (newest first)
 constexpr unsigned cell_map_capacity = 128; // lit cells per draw (one owner and anchor region; a region spills into more)
 constexpr unsigned disarm_frames = 64;
+// The axis region of a hit, radially (the fallback): the owner axis nearest to the owner-frame contact point's
+// direction (engine units), 0 +z, 1 -z, 2 +x, 3 -x, 4 +y, 5 -y (weapon_effects_stage.h anchor_frame), the first of
+// equal components winning; a zero point is +z. Integer compares only (the weapon_event row and the stage share it).
+inline unsigned hit_region(const std::int32_t pos[3]) noexcept {
+    const std::int64_t c[6] = {pos[2], -std::int64_t(pos[2]), pos[0], -std::int64_t(pos[0]), pos[1], -std::int64_t(pos[1])};
+    unsigned best = 0;
+    for (unsigned k = 1; k < 6; ++k)
+        if (c[k] > c[best]) best = k;
+    return best;
+}
+// The axis region of a hit by the projectile's travel (Run235 Flight B fix): the surface it hit faces it, so the region
+// axis is the owner axis with the largest |component| of the travel direction, signed against the travel (the plane
+// faces the incoming bolt). dir: Event::dir (owner frame at the hit, x 127). -1 without a direction (the caller takes
+// hit_region). Integer only.
+inline int travel_region(const std::int8_t dir[3]) noexcept {
+    if (!(dir[0] | dir[1] | dir[2])) return -1;
+    const std::int32_t t[3] = {dir[0], dir[1], dir[2]};
+    // region order z, x, y (0/1, 2/3, 4/5); the axis against the travel: +axis when the travel's component is negative
+    const unsigned axis_of[3] = {2, 0, 1};
+    unsigned best = 0;
+    std::int32_t mag = -1;
+    for (unsigned r = 0; r < 3; ++r) {
+        const std::int32_t m = t[axis_of[r]] < 0 ? -t[axis_of[r]] : t[axis_of[r]];
+        if (m > mag) {
+            mag = m;
+            best = r;
+        }
+    }
+    if (mag <= 0) return -1;
+    return int(2 * best + (t[axis_of[best]] > 0 ? 1u : 0u));
+}
 
 // log10 without libm (SSE2 build: no x87): the float's exponent plus ln(m) = 2 atanh((m - 1) / (m + 1)).
 inline float log10f_sse(float x) noexcept {
@@ -821,11 +893,18 @@ inline void tint_linear(std::uint32_t word, float out[3]) noexcept {
     }
     for (unsigned i = 0; i < 3; ++i) out[i] = m > 0.f ? out[i] / m : 1.f;
 }
+// The narrowed alt candidate back to a colour word (each channel's top bits, scaled to 0..255).
+inline std::uint32_t rgb332_word(std::uint8_t q) noexcept {
+    if (!q) return 0;
+    const std::uint32_t r = (q >> 5) & 7u, g = (q >> 2) & 7u, b = q & 3u;
+    return pack_rgb(r * 255u / 7u, g * 255u / 7u, b * 255u / 3u);
+}
 inline void event_tint(const Event& e, float mix, float out[3]) noexcept {
     tint_linear(e.tint_rgb, out);
-    if (!(e.alt_rgb & rgb_present) || !(mix > 0.f)) return;
+    const std::uint32_t other = rgb332_word(e.alt_rgb332);
+    if (!(other & rgb_present) || !(mix > 0.f)) return;
     float alt[3];
-    tint_linear(e.alt_rgb, alt);
+    tint_linear(other, alt);
     const float t = mix > 1.f ? 1.f : mix;
     for (unsigned i = 0; i < 3; ++i) out[i] += (alt[i] - out[i]) * t;
 }

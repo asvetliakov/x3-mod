@@ -11,10 +11,10 @@
 // with every register, the flags and the stack as the call left them; the skip path returns `xor eax,eax; ret` (the
 // caller pops its two arguments; EAX/ECX/EDX/EFLAGS are dead after the call). In shields mode a shield_hit while
 // Present latched owned_next (the stage armed in the previous frame's resolve and the device holds the pass) is the
-// stage's (flag_stage: it draws the hex patch from the record); its native spawn is still forwarded (user decision
-// 2026-11-06: the weapon's impact sprite plus the shield's patch, two intentional draws) unless core::
-// suppress_native_shield_hit (HookState::suppress_native) is set, which skips it: the native sprite, its light and its
-// PROPAGATE children are then not created (kept for step 2). Every other record forwards and is census-only.
+// stage's (flag_stage: it draws the hex patch from the record) and, with core::suppress_native_shield_hit
+// (HookState::suppress_native, true by default since the coordinator decision of 2026-11-06), its native spawn is
+// skipped: the native sprite, its light and its PROPAGATE children are not created. Every other record (observe, hull
+// hits, a dying hit object, a frame the stage did not own) forwards and is census-only.
 // observe additionally redirects the two inner instance calls 0x00413da8 / 0x00413e79 (-> 0x00414a70) to a tap that
 // compares the handler's contact point with the engine's own (weapon_pos_check) and forwards always.
 //
@@ -45,15 +45,17 @@ const char* site_state(unsigned site); // 0 impact, 1 tap1, 2 tap2
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
 // Present, once per frame on the thread that runs the hooks: the next frame's latch (shields mode: owned), the
-// weapon_event rows (the first 64 events of the run and every event of a capture frame), the forwarded records
+// weapon_event rows (the first 64 events of the run, then up to 8 per 300-frame period, and every event of a capture
+// frame; each with pos_r = |pos| / radius, the radial region, the travel dir and its region), the forwarded records
 // leaving the ring once logged, expired records (game time) leaving it, weapon_pos_check (observe) and
 // weapon_effects_frame every 300 frames with the stage's period figures (patches, decals, retired, stage_us, and the
-// drops: dropped, cells_dropped, hits_dropped, with spills).
+// drops: dropped, cells_dropped, hits_dropped, with spills; and dir_fallback, the records without a travel).
 struct StageFrame {
     unsigned patches = 0, decals = 0, retired = 0;
     // stage::Counts' drops: regions or decals the budget refused, lit cells no draw carried (the oldest clocks), live
     // hits past an owner's owner_hits newest; and the regions' spill draws.
     unsigned dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
+    unsigned depth_full = 0; // drawn lit cells the stage's depth cache had no room for
     float stage_us = 0.f;
     bool drew = false;
 };
@@ -62,6 +64,9 @@ struct StageFrame {
 void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage, const core::Scope& scope = {});
 // The resolve's cut verdict, a Reset, a load or a sector change: every stage-owned record leaves the ring.
 void clear_owned();
+// Counts the ring's scope changes (a load, a sector change, a new load epoch; shields mode): the stage clears its depth
+// cache when the count moved since its last frame.
+std::uint32_t scope_changes();
 std::uint32_t game_ms(); // cfg+0x718 through engine_memory (0 when unreadable; hook_state().globals' slot)
 }
 extern "C" {
