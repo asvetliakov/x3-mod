@@ -66,10 +66,17 @@ struct HullSlot {
     std::uint32_t sequence = 0, first_ms = 0;
     float pair_dir[hull_cached_pairs][3]; // world, unit (pair_direction), valid below `pairs`
     std::uint8_t pairs = 0;
+    // The frame floor (ms) the cached reach below was computed with; negative: not computed yet. In the padding before
+    // p0 (the slot stays 512 bytes).
+    float reach_floor_ms = -1.f;
     double p0[3]{};   // the contact point in world (view units) at the record's first stage frame
     float v[3]{};     // the owner's velocity then (world, view units per game second)
     float axis[3]{};  // the shot heading in world (Event::dir through the owner's rows then), unit; has_axis
     float floor_ms = 0.f; // the three-frame floor latched at the first drawn frame (min_frames x that frame's step)
+    // The record's element reach (view units; record_reach at its first stage frame, again at the latch when floor_ms
+    // differs from that frame's floor): from the contact point (flash, streak, puff, ring, filament, shimmer, glow,
+    // ember) and from the spark origin (sparks and chips)
+    float reach_attached = 0.f, reach_spark = 0.f;
     std::uint8_t latched = 0, orphan = 0, has_axis = 0;
 };
 struct OwnerTrack {
@@ -151,6 +158,7 @@ struct HullTuning {
     unsigned min_frames = core::look::min_frames;
     float spark_count_x = core::hull::spark_count_x; // the kill criterion's halving (a header decision, never a setting)
     unsigned set_mask = 7; // the spark sets drawn (bit 0 fast, 1 slow, 2 chips; the fixture isolates one)
+    bool reach_cull = true; // a kept owner out of reach builds no elements (the fixture's pre-change image: false)
 };
 struct HullCounts {
     unsigned hits = 0, flashes = 0, sparks = 0, glows = 0, embers = 0, bursts = 0, rings = 0;
@@ -159,6 +167,7 @@ struct HullCounts {
     unsigned streaks = 0, chips = 0, filaments = 0, scorches = 0, marks = 0, spots = 0, merges = 0, spot_flashes = 0;
     unsigned pulses = 0; // spots whose pulse started this frame (a new spot, or a re-lit one after a gap)
     unsigned done = 0, flashes_shed = 0; // records released at their anatomy's end; flashes the budget shed (last)
+    unsigned out_of_reach = 0, owners_out_of_reach = 0; // records (and kept owners) that built no elements: out of reach
     unsigned shimmer = 0, shimmer_shed = 0, scorches_shed = 0, rings_shed = 0, filaments_shed = 0, dir_fallback = 0;
     unsigned anatomy[core::hull::anatomy_count]{}; // live records (and spots) per anatomy this frame
     unsigned octaves = core::look::fireball_octaves; // the puffs' noise octaves this frame (1: the budget's LOD)
@@ -667,9 +676,79 @@ inline float record_calibre(const core::Event& e) noexcept {
 inline bool tint_saturated(const core::Event& e) noexcept {
     return e.tint_source == core::tint_light || e.tint_source == core::tint_override;
 }
-// Builds the frame's hull-hit elements (see the header) into the buffers. Returns the counts.
-inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, const HullView& f, const HullTuning& t,
-                             HullBuffers& out) noexcept {
+// The record's element reach (view units), from its class constants, calibre and tier unit (2026-11-07): the
+// owner-attached elements about the contact point (the flash halo, the heavy streak, the puff's R_b, the ring's
+// rr + 3 w, the filament glow, the shimmer square, the glow and the ember; the largest) and the sparks about their
+// origin (per set the launch speed x (1 + spread) x tau, which bounds tau (1 - e^(-t / tau)), the curl drift
+// spark_curl_x of it over the longest life (law x spark_life_hi, or the frame floor), and the streak's world part:
+// streak_cap rest lengths of spark_rest_w widths at the largest width and length factors, plus half a width).
+inline void record_reach(const core::Event& e, const HullTuning& t, float frame_floor_ms, float* attached,
+                         float* spark) noexcept {
+    namespace hl = core::hull;
+    const unsigned a = anatomy_of(e);
+    const float k = record_calibre(e);
+    const float U = hull_unit(e, t), r_hit = hl::r_scale * U * (hl::r_base + hl::r_k * k);
+    const float* fr = hl::class_flash[a];
+    float m = fr[1] > hl::streak_fallback_halo ? fr[1] : hl::streak_fallback_halo;
+    const float streak = (hl::streak_front > hl::streak_back ? hl::streak_front : hl::streak_back) + hl::streak_width;
+    const float* rg = hl::class_ring[a];
+    const float* gw = hl::class_glow[a];
+    const float* em = hl::class_ember[a];
+    for (const float v : {streak, rg[0] + 3.f * rg[1], hl::filament_r, hl::class_shimmer[a], gw[0], em[0]})
+        m = v > m ? v : m;
+    const float* pf = hl::class_puff[a];
+    const float R_b = pf[0] * r_hit + U * (pf[1] + pf[2] * k);
+    *attached = m * r_hit + (R_b > 0.f ? R_b : 0.f);
+    float sp = 0.f;
+    for (unsigned set = 0; set < 3; ++set) {
+        const SparkSet ss = spark_set(a, set);
+        if (!(ss.n0 + ss.nk * k > 0.f)) continue;
+        const float speed = ss.speed * U * (1.f + ss.speed_spread);
+        float life_s = (ss.life + ss.life_k * k) * hl::spark_life_hi;
+        life_s = (life_s > frame_floor_ms ? life_s : frame_floor_ms) * 1e-3f;
+        const float width = ss.width * U * hl::spark_width_hi, len_x = hl::spark_len_hi * ss.rest_w / hl::spark_rest_w;
+        const float r = speed * (ss.tau + hl::spark_curl_x * life_s) +
+                        core::look::streak_cap * hl::spark_rest_w * width * len_x + 0.5f * width;
+        sp = r > sp ? r : sp;
+    }
+    *spark = sp;
+}
+// The pixel floors' reach (px) past any world bound: a spark streak's floored rest length (streak_cap x (spark_rest_w
+// floor_lit_px + floor_len_px) x the largest length factor, half the lit floor) and the flash's floored halo (half
+// floor_flash_px x the largest halo over core).
+constexpr float reach_floor_px() noexcept {
+    namespace hl = core::hull;
+    float m = 0.f;
+    for (unsigned r = 0; r < 30; ++r) {
+        const float len_x = hl::spark_len_hi * hl::class_sparks[r][7] / hl::spark_rest_w;
+        const float v = core::look::streak_cap * (hl::spark_rest_w * core::look::floor_lit_px + core::look::floor_len_px) *
+                            len_x + 0.5f * core::look::floor_lit_px;
+        m = v > m ? v : m;
+    }
+    for (unsigned a = 0; a < 10; ++a) {
+        const float core_frac = hl::class_flash[a][0];
+        if (!(core_frac > 0.f)) continue;
+        const float halo = hl::class_flash[a][1] > hl::streak_fallback_halo ? hl::class_flash[a][1] : hl::streak_fallback_halo;
+        const float v = 0.5f * core::look::floor_flash_px * halo / core_frac;
+        m = v > m ? v : m;
+    }
+    return m;
+}
+// Whether a view-space sphere grown by the pixel floors at its far depth is outside the view volume (an element there
+// cannot reach a pixel). px: view units per pixel at depth 1 (the larger of the two axes').
+inline bool out_of_reach(const float c[3], float R, const HullView& f, float far_z, float px) noexcept {
+    const float z = c[2] + R > f.near_z ? c[2] + R : f.near_z;
+    return !sphere_in_view(c, R + reach_floor_px() * px * z, f.cam, f.near_z, far_z);
+}
+// Builds the frame's hull-hit elements (see the header) into the buffers. Returns the counts. visible (nullable): adds
+// every kept owner (hull::max_owners) with a hull hit it read that is in reach (its reach sphere, or a record's spark
+// sphere, reaches the view volume: the cull's own test, whether or not HullTuning::reach_cull applies it) as drawn and
+// in view, a kept shield-only owner whose owner_in_view sphere reaches it as in view, and every owner past the cap by
+// the same tests on its located position (stage::locate_owner) as in view, for the stamp (core::ring_stamp_hidden).
+// Internal linkage (static), so its ring-sized static scratch is the TU's zero-initialised .bss, not a comdat .data$
+// section of the file (the production DLL calls it from one TU).
+static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, const HullView& f, const HullTuning& t,
+                             HullBuffers& out, core::VisibleOwners* visible = nullptr) noexcept {
     namespace hl = core::hull;
     HullCounts n{};
     unsigned nq = 0, ng = 0, nb = 0, nr = 0, nf = 0, ns = 0;
@@ -770,15 +849,24 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
             state.slots[i] = HullSlot{};
         }
     }
-    // (B) The owners (review 3): every owner of a stage-owned record, its newest hull hit's age (t0, game ms; a
-    // shield-only owner after them) and whether it has a hull hit; past hull::max_owners the owners whose newest hit is
-    // the oldest are not drawn this frame (ties by the object address), a stable choice from frame to frame (no
-    // blinking).
+    // (B) The owners (review 3; visible first 2026-11-07): every owner of a stage-owned record, whether the previous
+    // frame stamped one of its records off screen (core::hidden_off_screen: such owners after the others, which are on
+    // screen or new this frame), whether it has a hull hit (a shield-only owner after them) and its newest hull hit's
+    // age (t0, game ms); past hull::max_owners the last in that order are not drawn this frame (ties by the object
+    // address), a stable choice from frame to frame (no blinking: an on-screen owner past the cap is still stamped on
+    // screen). The owner map finds a record's candidate in one probe or two.
     struct Candidate {
         std::uint32_t owner, node, handle, newest, index; // index: a record of the owner (the reader's validation)
         bool hull;
+        std::uint8_t off;
+        float reach; // the largest record reach (attached + spark) of its hull hits
     };
-    Candidate cand[core::ring_capacity];
+    // The ring-sized scratch (here and the flashes' bookkeeping below: about 45 KB at 1024 records) is static, off the
+    // game thread's stack (1 MB reserve), as the glue's frame buffers; the game thread is the only caller and nothing
+    // carries over between calls.
+    static Candidate cand[core::ring_capacity];
+    static OwnerMap map;
+    map.clear();
     unsigned cand_count = 0;
     for (unsigned i = 0; i < core::ring_capacity; ++i) {
         const core::Event& e = ring.slots[i];
@@ -787,13 +875,30 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         const bool is_hull = e.role == core::role_hull_hit;
         if (is_hull && state.slots[i].sequence == e.sequence && state.slots[i].orphan) continue; // needs no owner
         const std::uint32_t age = f.now - e.t0_game_ms;
-        Candidate* c = nullptr;
-        for (unsigned k = 0; k < cand_count && !c; ++k)
-            if (cand[k].owner == e.owner) c = &cand[k];
-        if (!c) {
+        const unsigned h = map.find(e.owner);
+        Candidate* c;
+        if (!map.value[h]) {
+            map.key[h] = e.owner;
+            map.value[h] = std::uint16_t(cand_count + 1);
             c = &cand[cand_count++];
-            *c = Candidate{e.owner, e.node, e.handle, 0xffffffffu, i, false};
+            *c = Candidate{e.owner, e.node, e.handle, 0xffffffffu, i, false, 0, 0.f};
+        } else {
+            c = &cand[map.value[h] - 1];
         }
+        if (is_hull) { // the record's reach, once at its first stage frame (the slot as (C) would start it)
+            HullSlot& hs = state.slots[i];
+            if (hs.sequence != e.sequence) {
+                hs = HullSlot{};
+                hs.sequence = e.sequence;
+            }
+            if (hs.reach_floor_ms < 0.f) { // the latch below recomputes it when its floor differs
+                record_reach(e, t, frame_floor_ms, &hs.reach_attached, &hs.reach_spark);
+                hs.reach_floor_ms = frame_floor_ms;
+            }
+            const float r = hs.reach_attached + hs.reach_spark;
+            c->reach = r > c->reach ? r : c->reach;
+        }
+        c->off = std::uint8_t(c->off | (ring.hidden[i] & core::hidden_off_screen));
         if (is_hull && (!c->hull || age < c->newest)) {
             c->newest = age;
             c->index = i;
@@ -801,6 +906,7 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         c->hull = c->hull || is_hull;
     }
     auto before = [](const Candidate& a, const Candidate& b) {
+        if (a.off != b.off) return a.off < b.off;
         if (a.hull != b.hull) return a.hull;
         if (a.newest != b.newest) return a.newest < b.newest;
         return a.owner < b.owner;
@@ -816,7 +922,31 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
             cand[best] = tmp;
         }
     }
-    for (unsigned k = keep; k < cand_count; ++k) n.owners_dropped += cand[k].hull;
+    // Out of reach (2026-11-07): an owner with a hull hit whose sphere of 2 r + its records' largest reach, grown by the
+    // pixel floors, lies outside the view volume (the far plane included; core::VisibleOwners::far_margin past it). A
+    // kept one keeps its track and builds no elements (HullTuning::reach_cull), but a record of it still builds when its
+    // spark sphere (below, in (C)) reaches the view; the stamp takes the same verdict (in reach: the owner sphere or a
+    // record's spark sphere).
+    const float far_z = visible ? visible->far_z : 0.f;
+    const float px_scale = 0.5f * f.width * f.cam.m00 < 0.5f * f.height * f.cam.m11 ? 0.5f * f.width * f.cam.m00
+                                                                                      : 0.5f * f.height * f.cam.m11;
+    const float px_per_z = px_scale > 0.f ? 1.f / px_scale : 0.f; // view units per pixel at depth 1
+    auto owner_out_of_reach = [&](const Owner& o, float reach) {
+        const double s = double(core::world_scale);
+        const double w[3] = {double(o.pos[0]) * s, double(o.pos[1]) * s, double(o.pos[2]) * s};
+        float c[3];
+        to_view(f.cam, w, c);
+        return out_of_reach(c, 2.f * float(double(o.radius > 0 ? o.radius : 0) * s) + reach, f, far_z, px_per_z);
+    };
+    for (unsigned k = keep; k < cand_count; ++k) {
+        n.owners_dropped += cand[k].hull;
+        // located for the stamp only (the next frame's order); read once a frame for both stages
+        if (!visible) continue;
+        Owner o;
+        if (locate_owner(rd, ring.slots[cand[k].index], *visible, &o) != OwnerStatus::ok) continue;
+        if (cand[k].hull ? !owner_out_of_reach(o, cand[k].reach) : owner_in_view(o, f.cam, f.near_z, visible->far_z))
+            visible->add_in_view(cand[k].owner);
+    }
     struct Seen {
         std::uint32_t owner, node, handle;
         OwnerStatus status;
@@ -824,6 +954,8 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         float vel[3];
         float centre[3], frame[9]; // its frame in view (owner_frame), once per frame when a filament needs it
         std::uint8_t frame_state;  // 0 not taken, 1 valid, 2 degenerate
+        std::uint8_t out;          // its reach sphere out of reach this frame (a kept owner with a hull hit)
+        std::uint8_t reached;      // a record of it out of reach by the owner's sphere whose spark sphere reaches
     };
     // The ring's kept owners, then the spots' and marks' owners read on demand (owner_extra at most).
     constexpr unsigned owner_extra = hl::max_owners;
@@ -835,9 +967,15 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         sn.node = cand[k].node;
         sn.handle = cand[k].handle;
         sn.status = read_owner(rd, ring.slots[cand[k].index], &sn.data);
+        remember_owner(visible, ring.slots[cand[k].index], sn.status, sn.data);
         sn.vel[0] = sn.vel[1] = sn.vel[2] = 0.f;
         sn.frame_state = 0;
+        sn.out = sn.reached = 0;
         if (sn.status != OwnerStatus::ok) continue;
+        if (cand[k].hull) {
+            sn.out = owner_out_of_reach(sn.data, cand[k].reach) ? 1 : 0;
+            n.owners_out_of_reach += t.reach_cull ? sn.out : 0u;
+        }
         OwnerTrack* tr = nullptr;
         OwnerTrack* lru = &state.tracks[0];
         for (auto& c : state.tracks) {
@@ -883,6 +1021,7 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         sn.status = read_owner(rd, probe, &sn.data);
         sn.vel[0] = sn.vel[1] = sn.vel[2] = 0.f;
         sn.frame_state = 0;
+        sn.out = sn.reached = 0;
         return &sn;
     };
     // The budget's bookkeeping per box.
@@ -901,8 +1040,8 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
     float flash_area = 0.f; // the flashes' charge (the shed order's last step: other owners' flashes, oldest first)
     // The flashes' bookkeeping (their quad, age, owner): the emitter reads the record's while it draws.
     constexpr unsigned flash_meta_cap = core::ring_capacity + hl::max_spots;
-    BoxMeta flash_meta[flash_meta_cap];
-    std::uint16_t flash_quad_of[flash_meta_cap];
+    static BoxMeta flash_meta[flash_meta_cap];
+    static std::uint16_t flash_quad_of[flash_meta_cap];
     unsigned nfl = 0;
     std::uint32_t flash_age = 0, flash_owner = 0;
     bool flash_own = false;
@@ -993,6 +1132,10 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
             for (unsigned q = 0; q < 3; ++q) hs.v[q] = s->vel[q];
             hs.first_ms = f.now;
             hs.floor_ms = frame_floor_ms; // review 1: the floor of its first drawn frame, kept for its whole life
+            if (hs.reach_floor_ms != hs.floor_ms) { // its reach from the latched floor (first seen in another frame)
+                record_reach(e, t, hs.floor_ms, &hs.reach_attached, &hs.reach_spark);
+                hs.reach_floor_ms = hs.floor_ms;
+            }
             // The shot heading (section 3.4: data, never an estimate): Event::dir through the owner's rows.
             if (e.dir[0] | e.dir[1] | e.dir[2]) {
                 for (unsigned q = 0; q < 3; ++q) {
@@ -1027,6 +1170,22 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
         ++n.hits;
         ++n.anatomy[a];
         if (hs.orphan) ++n.orphans;
+        // Out of reach: the owner's sphere is (above); the sparks ride p0 + v_owner tau (1 - e^(-t / tau)), on the
+        // segment p0 .. p0 + v t, so their sphere is its middle, half its length plus the spark reach.
+        if (s && s->out) {
+            const float t_s = float(f.now - hs.first_ms) * 1e-3f;
+            double m[3];
+            for (unsigned q = 0; q < 3; ++q) m[q] = hs.p0[q] + double(hs.v[q]) * double(0.5f * t_s);
+            float c[3];
+            to_view(f.cam, m, c);
+            const float R = 0.5f * t_s * scalar::sqrt(dot3(hs.v, hs.v)) + hs.reach_spark;
+            if (!out_of_reach(c, R, f, far_z, px_per_z))
+                s->reached = 1;
+            else if (t.reach_cull) {
+                ++n.out_of_reach;
+                continue;
+            }
+        }
         const float age = float(age_ms);
         const bool own = f.own_node && e.node == f.own_node;
         const float gain = (f.cockpit && own) ? t.own_gain : 1.f;
@@ -1328,6 +1487,18 @@ inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader rd, cons
             }
         }
     }
+    // The stamp (core::ring_stamp_hidden) of the kept owners: one with a hull hit drawn and in view when in reach (its
+    // reach sphere, or a record's spark sphere: the cull's test), a shield-only one in view by owner_in_view (kept for
+    // its track only; the shield stage judges its drawing). A record dropped by the budget still counts as drawn.
+    if (visible)
+        for (unsigned k = 0; k < keep; ++k) {
+            const Seen& sn = seen[k];
+            if (sn.status != OwnerStatus::ok) continue;
+            if (cand[k].hull ? !sn.out || sn.reached : owner_in_view(sn.data, f.cam, f.near_z, visible->far_z)) {
+                visible->add_in_view(sn.owner);
+                if (cand[k].hull) visible->add(sn.owner);
+            }
+        }
     // (D) The spots (the hold rule's beams, repair and tug).
     for (Spot& sp : state.spots) {
         if (!sp.used) continue;

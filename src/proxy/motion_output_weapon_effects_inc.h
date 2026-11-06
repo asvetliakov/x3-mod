@@ -240,10 +240,22 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     }
     tuning.own_node = own;
     tuning.cockpit = weapon_cockpit_;
+    // The owners this frame draws and those in view (both builds add theirs): after the builds every live record is
+    // stamped (core::ring_stamp_hidden), so a full ring evicts an undrawn owner's records first and the next frame's
+    // builds pick on-screen owners first. The far plane from the projection (m22 = f / (f - n), m32 = -n f / (f - n):
+    // f = m32 / (1 - m22)); none when m22 <= 1; reset keeps it VisibleOwners::far_margin (5 %) out, since m22 near 1
+    // leaves the float recovery about 2 % off. Its located table reads each owner past a cap once a frame for both
+    // stages. Static (about 82 KB: the located table 2048 x 36 B; off the game thread's stack; reset every frame, the
+    // table by its generation).
+    static wcore::VisibleOwners visible;
+    {
+        const float far_z = f.m22 > 1.f ? f.m32 / (1.f - f.m22) : 0.f;
+        visible.reset(far_z > f.near_z && far_z < 1e30f ? far_z : 0.f);
+    }
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
                                      camera, tuning, patches, wcore::max_patches, decals, wcore::max_decals,
-                                     &weapon_bubble_cache);
+                                     &weapon_bubble_cache, &visible);
     weapon_effects::stage::dim_own_cockpit(patches, n.patches, own, weapon_cockpit_);
     f.patches = patches;
     f.patch_count = n.patches;
@@ -288,7 +300,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         hb.shimmer = weapon_shimmer_rects_;
         hb.shimmer_cap = shimmer_requested_ ? weapon_effects::core::hull::shimmer_max : 0u;
         hn = weapon_effects::stage::build_hull(weapon_effects::hook_state().ring, weapon_hull_state, &weapon_effects_read,
-                                               hv, weapon_effects::stage::HullTuning{}, hb);
+                                               hv, weapon_effects::stage::HullTuning{}, hb, &visible);
         const unsigned quads = hb.sprite_quads, boxes = hb.glow_boxes, fireballs = hb.fireball_boxes, rings = hb.ring_quads;
         weapon_shimmer_count_ = hb.shimmer_count;
         weapon_shimmer_frame_ = frame_;
@@ -317,7 +329,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 "bursts_shed=%u octaves=%u burst_screens=%.3f streaks=%u chips=%u filaments=%u scorches=%u marks=%u "
                 "spots=%u merges=%u spot_flashes=%u shimmer=%u shimmer_shed=%u scorches_shed=%u rings_shed=%u "
                 "filaments_shed=%u jet_no_dir=%u energy=%u ballistic=%u plasma=%u heavy=%u ion=%u beam=%u missile=%u "
-                "asteroid=%u repair=%u tug=%u done=%u flashes_shed=%u pulses=%u",
+                "asteroid=%u repair=%u tug=%u done=%u flashes_shed=%u pulses=%u out_of_reach=%u owners_out_of_reach=%u "
+                "owners_located=%u",
                 id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                 unsigned(hv.prev_valid), static_cast<unsigned long>(own), unsigned(hv.cockpit), hn.hits, hn.flashes,
                 hn.sparks, hn.glows, hn.embers, hn.shed, hn.orphans, hn.retired, hn.floored, hn.capped, hn.owners_dropped,
@@ -325,8 +338,10 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 double(hn.burst_screens), hn.streaks, hn.chips, hn.filaments, hn.scorches, hn.marks, hn.spots, hn.merges,
                 hn.spot_flashes, hn.shimmer, hn.shimmer_shed, hn.scorches_shed, hn.rings_shed, hn.filaments_shed,
                 hn.dir_fallback, hn.anatomy[0], hn.anatomy[1], hn.anatomy[2], hn.anatomy[3], hn.anatomy[4], hn.anatomy[5],
-                hn.anatomy[6], hn.anatomy[7], hn.anatomy[8], hn.anatomy[9], hn.done, hn.flashes_shed, hn.pulses);
+                hn.anatomy[6], hn.anatomy[7], hn.anatomy[8], hn.anatomy[9], hn.done, hn.flashes_shed, hn.pulses,
+                hn.out_of_reach, hn.owners_out_of_reach, visible.located_reads);
     }
+    wcore::ring_stamp_hidden(weapon_effects::hook_state().ring, visible);
     weapon_retired_ += hn.retired;
     weapon_drops_[13] += hn.hits;
     weapon_drops_[14] += hn.flashes;

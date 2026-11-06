@@ -914,3 +914,77 @@ Figures [M], the same rows script, after the fixes (RTX 5070 Ti): D3D PASS 154/0
 asteroid 23.3 (the bounds unchanged); close capital, 64 hits: 64.2-1,135.9, all within 1,420. CPU 64 mixed hits 33.0
 best (sparks only 25.9, all but the sparks 14.1); one run of the same build read 50.2 (a transient host load: the
 burst rebuild's 64-hit row of that run was its usual 19.0); bound 40. Greyscale lineup min pair 0.211.
+
+## Ring 1024 and the reach cull (2026-11-07, dirty on `41fd2a4fb`)
+
+[M] measured, [I] inferred. Rows: `verification/results/weapon-effects-ring/ring_rows_out.txt` (from
+`ring_rows.py` over the two native fixture logs); sizes: `ring_sizes_out.json` (from `ring_sizes.py`: the TU sizes of
+`41fd2a4fb` and of the tree, `objdump -h` of the Run241 DLL and of `build-ring/d3d9.dll`); records:
+`verification/results/native-windows/weapon-effects/{summary,hook-summary}.json`.
+
+- **Capacity and sizes [M].** `core::ring_capacity` 256 → 1024 (a u16 free list, asserted). `Ring` 16,912 → 68,628 B,
+  `HookState` 17,068 → 68,784 B, `HullSlot` 504 → 512 B (the cached reach; its floor in the padding before `p0`),
+  `HullState` 142,096 → 537,360 B. Stack frames: `build_hull` 38,744 → 26,796 B, `build` 10,852 → 10,984 B. DLL `.data`
+  3,285,392 → 3,337,104 B, `.bss` 22,898,184 → 23,464,872 B: static +618,400 B against the Run241 DLL. The build before
+  the review fixes read `.data` 3,426,328 / `.bss` 23,301,928 (+544,680 B); since then the ring-sized scratch moved from
+  `.data$` to `.bss` (89,216 B of file size gone [M]: `build` and `build_hull` have internal linkage, so their statics
+  are no comdat sections) and the frame's located table adds 73,728 B (2048 × 36 B [I], the rest of the 73,720 B
+  difference).
+- **The two-bit stamp and the eviction order.** After both builds Present stamps every live record (`Ring::hidden`):
+  `hidden_undrawn` unless its owner was drawn, `hidden_off_screen` unless in view. The handler's one victim scan evicts
+  census-only records of an undrawn owner, then other census-only, then stage-owned of an undrawn owner, then other
+  stage-owned, oldest first within each, with integer compares only. `evicted_visible=` counts evictions of records not
+  stamped undrawn, per row period beside `overflow=` (it was cumulative before the review). A record acquired since the
+  last stamp carries 0 (counts as drawn).
+- **Handler [M]** (hook audit): 0 calls, 0 x87, 1,231 instructions, frame 204 B (stack depth 240 B, margin 1,536). 50
+  events: median 17.5 µs on an empty ring (bound 30; 17.4 in the run before the review fixes), 62.6 µs on the full
+  1024 ring (bound 150; 59.8 before; worst 103.4 in this run). `OVERFLOW`: 16 stamped-hidden records evicted first, then
+  the oldest drawn one, overflow 17, evicted_visible 1.
+- **Visible first [M].** Both stages order owners with no record stamped off screen first, then the newest hit (the hull
+  stage: an owner with a hull hit first), then the address. `HULL case=visible_first`: 40 owners, 20 on screen with
+  older hits, 20 behind with newer ones, cap 32: the first frame (nothing stamped) draws 12 on-screen owners, the next
+  draws all 20, 20 in view. The shield stage (cap 16) host case: 0 then 16 of 16 on screen.
+- **The reach rule.** A kept owner with a hull hit is out of reach when the sphere about its node position of 2 r + the
+  records' largest reach, grown by the pixel floors at its far depth, misses the view volume (near, far plane + 5 %,
+  four sides). Three terms: the attached elements' reach, the spark sphere's reach and the pixel-floor margin
+  (`reach_floor_px()` 318.3 px). Ballistic fighter-tier hit at calibre 1, r 5 at z 1000: margin 449.3 = 10 (2 r) + 66.0
+  attached + 124.6 spark + 248.8 floor view units [M]. Heavy: 614.1 = 10 + 124.8 + 202.2 + 277.1 [M]. The reach is
+  computed at a record's first stage frame and again at its latch if the latched floor differs (review 3). The beam,
+  repair and tug spots and the scorch marks are never culled.
+- **Edge sweep [M]** (`HULL case=reach`, reworked in review 6): the lit range is scanned first, then six steps across
+  it and three past the margin, each built with and without the cull and compared pixel for pixel. Ballistic at 100 ms:
+  lit to 19.4 view units past the plane (2 r 10.0), lit pixels 505 → 24 over the six steps (471 in the last 16 columns
+  at step 0, with the 2 r sphere already outside), 9 of 9 steps identical, 0 elements past the margin (unculled 274
+  quads). Heavy at 30 ms with its streak: lit to 35.6, 1,317 → 247 px, streak built on every lit step, 9 of 9
+  identical, 0 elements past the margin (unculled 284). In the run before the review only step 0 had lit pixels in the
+  edge columns (steps 1-5 sat past the lit range). Lit to 19.4 of a 449.3 margin: the cull takes only owners well off
+  screen.
+- **Moving owner [M]** (`HULL case=reach_moving`): an owner closing at 15,000 view units/s is behind the camera 100 ms
+  after its hits latched (its own sphere out of reach: `owners_out_of_reach=1`); the records' spark spheres (the
+  segment p0 .. p0 + v t) reach the view, so all 9 build (`out_of_reach=0`), 36 sparks with and without the cull, 1,157
+  lit px, identical images, and the stamp counts the owner drawn and in view (review 2: the stamp takes the cull's
+  verdict, not the 2 r sphere).
+- **CPU [M]** (best of 200): 1024 live / 64 visible 41.4 µs (bound 100; 41.2 before the review fixes; 136.9 before the
+  cull), 496 records of 31 owners out of reach; 256 visible 124.5 µs (bound 300; 122.0 before), the shed order engaged
+  (168 shed, 7.978 of 8 screens); 64 hits alone 19.3 µs (19.6 before; bound 40). Means are 25-40 % above the bests in
+  this run (host load).
+- **Owners past the caps (review 5) [M]** (`STAGE_OWNERS`, one frame of both stages and the stamp): each owner is read
+  at most once a frame for both stages (`core::VisibleOwners::located`; five reads, no rows). 512 owners with a shield
+  and a hull hit each: 496 owners located, 2,866 reads per frame, 94.7 µs through the fixture reader, 122.8 µs through
+  `engine_memory::read` (9.8 ns per read). 1024 owners with one hull hit each: 992 located, 5,248 reads, 122.8 / 210.4 µs
+  (16.7 ns per read). Before the cache each stage read its own past-cap owners in full (six reads each) [I]. The flight
+  reads `owners_located=` on `weapon_hull_frame`.
+- **Judgement calls.** The shield stage keeps the 2 r sphere (`visible_radius_scale`, past the bubble) for its owners;
+  the hull stage uses its reach sphere. A record dropped by the budget still counts as drawn (its owner was kept and in
+  reach; the stamp judges owners, not elements).
+- **Accepted: a camera cut [I].** For one frame after a cut, records stamped hidden in the previous frame are evicted
+  first or sorted last while on screen; the next stamp corrects it. No code change.
+- **Fixture note.** Later cases hash their record sequences, so a case that acquires records on the shared ring
+  restores `stage_ring.next_sequence` (the first native run of the cull failed the energy ember's 1,500 ms probe on
+  shifted lives until the reach case restored it).
+- **Rows.** `weapon_hull_frame ... out_of_reach= owners_out_of_reach= owners_located=` (capture frames);
+  `weapon_effects_frame ... overflow= evicted_visible=` (both per period).
+
+Figures [M], one native run after the review fixes (`run_weapon_effects.py --host native`, 64 s under the lock): D3D
+PASS 167/0, hook PASS 95/0; host `test_weapon_effects_*` 77 OK; `build-ring` 0 warnings, `check_no_x87.py --edition ap`
+PASS.

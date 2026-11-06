@@ -16,23 +16,22 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "926026c19d0c30ae273938c04db9318a644bff6a-dirty",
+    "commit": "41fd2a4fb493975db9ecc582cc143a1cfd6123a8-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "src/proxy/weapon_effects_table.h",
+      "verification/probe/build_weapon_effects_hook.py",
       "verification/probe/weapon_effects_hook_fixture.cpp"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture.cpp": "aabfcbb1049df2ae2c7ac44c8d1bc953f0c56017bb0fc284dc61054a687170da",
+      "verification/probe/weapon_effects_hook_fixture.cpp": "b16d5ce2fac09b593ecc80d62d199a4bd47cba4833ee560177f24b43600e53f1",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
-      "verification/probe/build_weapon_effects_hook.py": "b93d5d3f8a17cbba5102d28fc6cf13da61c93a6d494cf10dc6f1e4c404986fb8",
-      "src/proxy/weapon_effects_patch.cpp": "501ba37bcd917d8c57ed0894c3681d07f641c38821d6640fdde9333796dd1919",
+      "verification/probe/build_weapon_effects_hook.py": "e12e17104f9bfb6dcf48c0b7d7e0315f02d1c8025a96a5e0c8be9604cd9e9747",
+      "src/proxy/weapon_effects_patch.cpp": "0ca0630368823f0e775db3da54c8356d91cdc3643e8c7e70fe863c2b096acf8e",
       "src/proxy/weapon_effects_patch.h": "3282ff7b7598b101bb537d77e5f9e4b8c7dce904660bc478ff8d33b20023b524",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "b44c39166f3e9c557a579ee7e739dd556486cd6c6223c6d6e3658e3d3237e9aa",
+      "src/proxy/weapon_effects_core.h": "72f12d69cb4b225274228b1da259a6f39b81870e8a5e5e4c7b62e8fc13c877df",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_table.h": "8b58ad833326bb00266a5a672cd317935ceee0f2116b141cff320211ea47656b",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
@@ -50,8 +49,8 @@
         "_x3m_weapon_tap": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event": 1216,
-        "_x3m_weapon_tap": 58
+        "_x3m_weapon_event": 1231,
+        "_x3m_weapon_tap": 74
       },
       "handler_frame_bytes": 204,
       "stub_impact": [
@@ -79,7 +78,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "4b65a35cfad8a4707630327ab65676a036eb7142195a49ae11350d86f400f363"
+    "executable_sha256": "537751a1670fdbe0946d89055c4a9d68d7763ca2a862d20454578c9365e68af3"
   },
   "host": {
     "name": "native-windows",
@@ -98,7 +97,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 92,
+      "checks": 95,
       "failures": 0,
       "faults": 3,
       "verdict": "PASS"
@@ -402,6 +401,21 @@
       "detail": ""
     },
     {
+      "name": "overflow_1024_hidden_owner_first_then_oldest",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "overflow_counts_evicted_visible",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "event_cost_50_full_ring_1024",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "scope_first_key_and_unknown_keep",
       "passed": true,
       "detail": ""
@@ -567,15 +581,15 @@
       "detail": ""
     }
   ],
-  "check_count": 92,
+  "check_count": 95,
   "failed_checks": [],
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
-    "esp_frame": "0085b640",
-    "esp_callee": "0085b634",
-    "return": "00dc6d8a",
-    "site": "00dc6d85"
+    "esp_frame": "00869640",
+    "esp_callee": "00869634",
+    "return": "00e56d8a",
+    "site": "00e56d85"
   },
   "stack_depth": {
     "bytes": 240,
@@ -902,10 +916,28 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.0,
-    "median_us": 17.1,
-    "worst_us": 17.6,
+    "best_us": 17.5,
+    "median_us": 17.5,
+    "worst_us": 17.7,
     "target_us": 30
+  },
+  "overflow": {
+    "capacity": 1024,
+    "stamped_hidden": 16,
+    "first_evicts_oldest_hidden": 1,
+    "hidden_after_16": 0,
+    "drawn_kept_after_16": 1,
+    "evicted_after": "oldest_drawn",
+    "overflow": 17,
+    "evicted_visible": 1
+  },
+  "event_cost_full": {
+    "events": 50,
+    "capacity": 1024,
+    "best_us": 59.6,
+    "median_us": 62.6,
+    "worst_us": 103.4,
+    "target_us": 150
   },
   "passed": true
 }

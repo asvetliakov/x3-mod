@@ -1,0 +1,29 @@
+{
+ "before": {
+  "src": "41fd2a4fb src",
+  "ring": 16912,
+  "hook_state": 17068,
+  "hull_slot": 504,
+  "hull_state": 142096,
+  "ring_capacity": 256,
+  "stack_build_hull": 38744,
+  "stack_build": 10852,
+  "dll": "/home/asvetl/x3-mod/build-run241/d3d9.dll",
+  "dll_data": 3285392,
+  "dll_bss": 22898184
+ },
+ "after": {
+  "src": "checkout src",
+  "ring": 68628,
+  "hook_state": 68784,
+  "hull_slot": 512,
+  "hull_state": 537360,
+  "ring_capacity": 1024,
+  "stack_build_hull": 26796,
+  "stack_build": 10984,
+  "dll": "build-ring/d3d9.dll",
+  "dll_data": 3337104,
+  "dll_bss": 23464872
+ },
+ "static_delta_bytes": 618400
+}

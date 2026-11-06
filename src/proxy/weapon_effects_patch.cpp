@@ -45,7 +45,7 @@ struct Period {
 core::Counters seen_{};
 core::ScopeLatch scope_{};
 std::uint32_t scope_clears_ = 0, scope_changes_ = 0;
-std::uint32_t seen_overflow_ = 0, seen_retired_ = 0, seen_compared_ = 0;
+std::uint32_t seen_overflow_ = 0, seen_evicted_visible_ = 0, seen_retired_ = 0, seen_compared_ = 0;
 // Step 2: no loaded table, or one without any "hull" key (generated before step 2): the repair and tug variants are
 // unavailable until x3m-regenerate / `manage.py install` writes it again (logged once with the table row, carried in
 // every weapon_effects_frame row).
@@ -504,7 +504,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     if (frame % frame_row_period) return;
     const core::Counters& c = s.counters;
     log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu staged=%lu "
-        "patches=%u decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
+        "patches=%u decals=%u retired=%u expired=%lu overflow=%lu evicted_visible=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
@@ -517,7 +517,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
         period_.decals,
         period_.retired + unsigned(r.retired - seen_retired_), static_cast<unsigned long>(period_.expired),
-        static_cast<unsigned long>(r.overflow - seen_overflow_), static_cast<unsigned long>(period_.owned),
+        static_cast<unsigned long>(r.overflow - seen_overflow_),
+        static_cast<unsigned long>(r.evicted_visible - seen_evicted_visible_),
+        static_cast<unsigned long>(period_.owned),
         static_cast<unsigned long>(period_.drew),
         double(period_.drew ? period_.stage_us_sum / float(period_.drew) : 0.f), double(period_.stage_us_max),
         static_cast<unsigned long>(c.calls - seen_.calls), static_cast<unsigned long>(c.no_projectile - seen_.no_projectile),
@@ -537,6 +539,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.jet_no_dir);
     seen_ = c;
     seen_overflow_ = r.overflow;
+    seen_evicted_visible_ = r.evicted_visible;
     seen_retired_ = r.retired;
     period_ = {};
     period_events_ = 0;

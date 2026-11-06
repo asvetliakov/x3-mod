@@ -1076,7 +1076,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         double best = 1e30, sum = 0;
         HullOut o;
         for (unsigned i = 0; i < 200; ++i) {
-            ws::HullState st = hq_state;
+            static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+            st = hq_state;
             QueryPerformanceCounter(&a);
             o = hull_build(hull_view(g, 1000 + 256 + 16, 16), ws::HullTuning{}, &st);
             QueryPerformanceCounter(&b);
@@ -1092,7 +1093,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             const ws::HullTuning pt = part ? only(ALL & ~SPARKS) : only(SPARKS);
             double pbest = 1e30;
             for (unsigned i = 0; i < 200; ++i) {
-                ws::HullState st = hq_state;
+                static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+                st = hq_state;
                 QueryPerformanceCounter(&a);
                 hull_build(hull_view(g, 1000 + 256 + 16, 16), pt, &st);
                 QueryPerformanceCounter(&b);

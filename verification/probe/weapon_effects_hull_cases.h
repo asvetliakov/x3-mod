@@ -11,6 +11,11 @@ rr::WeaponShapeVertex hq_filaments[rr::weapon_filament_boxes * 4];
 rr::WeaponGlowVertex hq_scorches[rr::weapon_scorch_boxes * 4];
 ws::ShimmerRect hq_shimmer[wc::hull::shimmer_max];
 ws::HullState hq_state;
+// The 1024-record ring's CPU bounds (case 19b: build_hull and the overflow stamp, best of 200): set from the native
+// measurement of 2026-11-07 (docs/verification/weapon-effects.md, "Ring 1024").
+// 64 visible: 144.7 and 136.9 measured before the out-of-reach cull (2026-11-07), the bound 100 after it (its owners
+// behind the camera build nothing); 256 visible: 214.0 and 209.1 before.
+constexpr double ring_1024_cpu_64_us = 100.0, ring_1024_cpu_256_us = 300.0;
 // The laws of the records the shared machinery's gates stage (the class nibble 0: the energy class, hull-impact-
 // classes.md 4.1; its sparks one set, the slow "spatter", so a spark's index is its set index), and of any anatomy.
 namespace law {
@@ -123,7 +128,7 @@ struct HullOut {
     unsigned quads = 0, boxes = 0, bursts = 0, rings = 0, filaments = 0, scorches = 0, shimmer = 0;
 };
 HullOut hull_build(const ws::HullView& v, const ws::HullTuning& t = ws::HullTuning{}, ws::HullState* st = &hq_state,
-                   wc::Ring* ring = &stage_ring) {
+                   wc::Ring* ring = &stage_ring, ws::Reader rd = &fake_read, wc::VisibleOwners* visible = nullptr) {
     HullOut o;
     ws::HullBuffers b;
     b.sprites = hq_sprites;
@@ -140,7 +145,7 @@ HullOut hull_build(const ws::HullView& v, const ws::HullTuning& t = ws::HullTuni
     b.scorch_cap = rr::weapon_scorch_boxes;
     b.shimmer = hq_shimmer;
     b.shimmer_cap = wc::hull::shimmer_max;
-    o.n = ws::build_hull(*ring, *st, &fake_read, v, t, b);
+    o.n = ws::build_hull(*ring, *st, rd, v, t, b, visible);
     o.quads = b.sprite_quads;
     o.boxes = b.glow_boxes;
     o.bursts = b.fireball_boxes;
@@ -770,7 +775,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         unsigned hits = 0;
         for (unsigned f = 0; f < 60; ++f) {
             const std::uint32_t now = 1000 + 16 * f;
-            ws::HullState before = hq_state;
+            static ws::HullState before; // static: 529 KB at 1024 records, off the fixture stack
+            before = hq_state;
             wc::Ring aged_ring = stage_ring;
             while (now >= last_hit + 83) {
                 last_hit = last_hit ? last_hit + 83 : now;
@@ -1078,7 +1084,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         draw_lane(g, z_hit, 1.f);
         double sums[3] = {0, 0, 0};
         for (unsigned c = 0; c < 3; ++c) {
-            ws::HullState st = hq_state;
+            static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+            st = hq_state;
             ws::HullView v = hull_view(g, 1030, 16);
             v.own_node = c == 2 ? addr(fake_node) + 4 : addr(fake_node);
             v.cockpit = c != 0;
@@ -1222,7 +1229,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         hull_owner(400.f, 100.f);
         for (unsigned i = 0; i < 12; ++i) add_hull_hit(1000 + 5 * i, front, damage_of(1.0), wc::patch_capital);
         hull_build(hull_view(g, 1060, 16)); // every record latched (a burst's first frame has R 0)
-        ws::HullState st = hq_state;
+        static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+        st = hq_state;
         ws::HullView full = hull_view(g, 1090, 16), tight = full;
         full.budget_left = 1e6f; // nothing shed, the bursts at two octaves
         tight.budget_left = 0.5f;
@@ -1487,7 +1495,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const std::uint32_t seq = e->sequence;
         const unsigned n = law::sparks_of(*e, wc::calibre_of(e->damage));
         hull_build(hull_view(g, 1000, 16), only_sparks);
-        ws::HullState s1 = hq_state, s2 = hq_state;
+        static ws::HullState s1, s2; // static: 529 KB each at 1024 records
+        s1 = hq_state;
+        s2 = hq_state;
         const HullOut o1 = hull_build(hull_view(g, 1100, 16), only_sparks, &s1);
         std::vector<rr::WeaponSpriteVertex> copy(hq_sprites, hq_sprites + 4 * o1.quads);
         const HullOut o2 = hull_build(hull_view(g, 1100, 16), only_sparks, &s2);
@@ -1498,7 +1508,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         {
             std::vector<std::array<double, 3>> d1, d2;
             for (std::uint32_t t : {1100u, 1116u, 1250u}) {
-                ws::HullState st = s1;
+                static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+                st = s1;
                 const HullOut o = hull_build(hull_view(g, t, 16), only_sparks, &st);
                 std::vector<std::array<double, 3>>& d = t == 1100u ? d1 : d2;
                 if (t == 1250u) { // the curl's bend: 100 -> 250 ms, curled sparks only (every spark alive at 250 ms, k 0.5)
@@ -1592,7 +1603,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             double best = 1e30, sum = 0;
             HullOut o;
             for (unsigned i = 0; i < 200; ++i) {
-                ws::HullState st = hq_state;
+                static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+                st = hq_state;
                 QueryPerformanceCounter(&a);
                 o = hull_build(hull_view(g, 1000 + 4 * hits + 16, 16), ws::HullTuning{}, &st);
                 QueryPerformanceCounter(&b);
@@ -1610,7 +1622,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 else pt.sparks = false;
                 double pbest = 1e30;
                 for (unsigned i = 0; i < 200; ++i) {
-                    ws::HullState st = hq_state;
+                    static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+                    st = hq_state;
                     QueryPerformanceCounter(&a);
                     hull_build(hull_view(g, 1000 + 4 * hits + 16, 16), pt, &st);
                     QueryPerformanceCounter(&b);
@@ -1622,6 +1635,412 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             // rings (a heavy PPC) add their element law, the sparks' hashes their factors (33.6 measured after the
             // performance pass)
             if (!c) report("hull_cpu_64_hits", best <= 40.0, "");
+        }
+        // 19b. The 1024-record ring (2026-11-07): the full ring of stage-owned hull hits, the visible ones on capitals in
+        // view (64 hits each, t0 1000 + 4 i) and the rest on capitals behind the camera (16 hits each, older newest hits,
+        // so the visible capitals are among hull::max_owners kept and 31 or 28 hidden ones are re-posed for nothing):
+        // build_hull with the drawn-owner set and the overflow stamp (core::ring_stamp_hidden), best and mean of 200
+        // from the latched state. 64 visible hits: one capital; 256: four, the shed order past the old ring's count.
+        {
+            struct FarOwner {
+                unsigned char obj[0x100], node[0x200];
+            };
+            static FarOwner far_owners[wc::ring_capacity]; // 768 KB: up to one owner per record
+            static wc::Ring full_ring, timed_ring;
+            static ws::HullState full_state, timed_state;
+            const ws::Reader rd = [](std::uintptr_t at, void* out, std::size_t n) {
+                const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(&far_owners[0]), size = sizeof far_owners;
+                if (at >= base && n <= size && at - base <= size - n) {
+                    std::memcpy(out, reinterpret_cast<const void*>(at), n);
+                    return true;
+                }
+                return fake_read(at, out, n);
+            };
+            const auto engine = [](float v) { return std::uint32_t(std::int32_t(v / wc::world_scale)); };
+            auto make = [&](unsigned k, float x, float z) {
+                FarOwner& o = far_owners[k];
+                std::memset(&o, 0, sizeof o);
+                put32(o.obj, wc::layout::obj_node, addr(o.node));
+                put32(o.obj, wc::layout::obj_radius, engine(2000.f));
+                put32(o.node, wc::layout::node_handle, 0xf000u + k);
+                put32(o.node, wc::layout::node_pos + 0, engine(x));
+                put32(o.node, wc::layout::node_pos + 8, engine(z));
+                for (unsigned i = 0; i < 3; ++i) put32(o.node, wc::layout::node_rot + 16 * i + 4 * i, 0x10000u);
+            };
+            auto hit = [&](unsigned k, unsigned i) {
+                wc::Event* e = wc::ring_acquire(full_ring);
+                const std::uint32_t seq = e->sequence;
+                std::memset(e, 0, sizeof *e);
+                e->sequence = seq;
+                e->role = wc::role_hull_hit;
+                e->style = wc::shape_slug;
+                e->flags = std::uint8_t(wc::flag_stage);
+                e->table = wc::table_bullets;
+                e->tint_rgb = 0xffffffu | wc::rgb_present;
+                e->patch_tier = wc::patch_capital;
+                e->tier_source = wc::tier_by_radius;
+                e->t0_game_ms = 1000 + 4 * i;
+                e->lifetime_ms = std::uint16_t(wc::hull_lifetime_ms);
+                e->damage = damage_of(0.8);
+                e->detail = std::uint8_t(wc::class_energy << wc::detail_class_shift);
+                e->owner = addr(far_owners[k].obj);
+                e->node = addr(far_owners[k].node);
+                e->handle = 0xf000u + k;
+                const double r = 60000.0 * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
+                e->pos[0] = std::int32_t(r * std::cos(ang));
+                e->pos[1] = std::int32_t(r * std::sin(ang));
+                e->pos[2] = -200000;
+                e->radius = std::int32_t(engine(2000.f));
+            };
+            for (unsigned visible : {1u, 4u}) {
+                const unsigned hidden_owners = (wc::ring_capacity - 64 * visible) / 16;
+                wc::ring_clear(full_ring);
+                ws::hull_clear(full_state);
+                // the visible capital at 4 km (capital_64_hits' distance), or four across the view at 2.6 km (x -1.2 ..
+                // 1.2 km: the capital-close budget case's distance, so the shed order engages); the hidden ones 20 km
+                // behind the camera
+                for (unsigned k = 0; k < visible; ++k)
+                    make(k, visible == 1 ? 0.f : -1200.f + 800.f * float(k), visible == 1 ? 4000.f : 2600.f);
+                for (unsigned k = visible; k < visible + hidden_owners; ++k)
+                    make(k, (float(k) - 32.f) * 5000.f, -20000.f);
+                for (unsigned i = 0; i < 64; ++i)
+                    for (unsigned k = 0; k < visible + hidden_owners; ++k)
+                        if (k < visible || i < 16) hit(k, i);
+                const std::uint32_t now = 1000 + 4 * 64;
+                { // the first frame latches and stamps (the timed frames order their owners by it: visible first)
+                    static wc::VisibleOwners first;
+                    first.reset(0.f);
+                    hull_build(hull_view(g, now, 16), ws::HullTuning{}, &full_state, &full_ring, rd, &first);
+                    wc::ring_stamp_hidden(full_ring, first);
+                }
+                double best = 1e30, sum = 0;
+                HullOut o;
+                unsigned drawn_owners = 0, hidden = 0, live = 0;
+                for (unsigned rep = 0; rep < 200; ++rep) {
+                    timed_ring = full_ring;
+                    timed_state = full_state;
+                    static wc::VisibleOwners vis;
+                    vis.reset(0.f);
+                    QueryPerformanceCounter(&a);
+                    o = hull_build(hull_view(g, now + 16, 16), ws::HullTuning{}, &timed_state, &timed_ring, rd, &vis);
+                    wc::ring_stamp_hidden(timed_ring, vis);
+                    QueryPerformanceCounter(&b);
+                    const double us = ticks_us(a, b, freq);
+                    best = std::min(best, us);
+                    sum += us;
+                    drawn_owners = vis.count;
+                }
+                for (unsigned i = 0; i < wc::ring_capacity; ++i) {
+                    live += timed_ring.slots[i].sequence != 0;
+                    hidden += timed_ring.slots[i].sequence && (timed_ring.hidden[i] & wc::hidden_undrawn);
+                }
+                const bool v64 = visible == 1;
+                const float budget = hull_view(g, now + 16, 16).budget_left;
+                const unsigned shed = o.n.shed + o.n.bursts_shed + o.n.flashes_shed + o.n.rings_shed + o.n.scorches_shed +
+                                      o.n.filaments_shed + o.n.capped + (o.n.octaves < wc::look::fireball_octaves ? 1u : 0u);
+                std::printf("HULL_CPU case=%s live=%u visible_hits=%u hidden=%u drawn_owners=%u hits=%u owners_dropped=%u "
+                            "sparks=%u flashes=%u boxes=%u bursts=%u rings=%u shed=%u bursts_shed=%u flashes_shed=%u "
+                            "capped=%u octaves=%u screens=%.3f budget=%.3f out_of_reach=%u owners_out_of_reach=%u "
+                            "best_us=%.2f mean_us=%.2f target_us=%.0f\n",
+                            v64 ? "ring_1024_visible_64" : "ring_1024_visible_256", live, 64 * visible, hidden,
+                            drawn_owners, o.n.hits, o.n.owners_dropped, o.n.sparks, o.n.flashes, o.boxes, o.bursts,
+                            o.rings, o.n.shed, o.n.bursts_shed, o.n.flashes_shed, o.n.capped, o.n.octaves,
+                            double(o.n.screens), double(budget), o.n.out_of_reach, o.n.owners_out_of_reach, best,
+                            sum / 200.0,
+                            v64 ? ring_1024_cpu_64_us : ring_1024_cpu_256_us);
+                report(v64 ? "hull_ring_1024_visible_64_stamp" : "hull_ring_1024_visible_256_stamp",
+                       live == wc::ring_capacity && hidden == wc::ring_capacity - 64 * visible && drawn_owners == visible, "");
+                report(v64 ? "hull_cpu_ring_1024_visible_64" : "hull_cpu_ring_1024_visible_256",
+                       best <= (v64 ? ring_1024_cpu_64_us : ring_1024_cpu_256_us), "");
+                if (!v64) report("hull_ring_1024_visible_256_shed_within_budget", shed > 0 && o.n.screens <= budget + 1e-3f, "");
+            }
+            // Visible first (2026-11-07): 40 owners, 20 on screen (one hit each at t0 1000) and 20 behind the camera with
+            // newer hits (t0 1040). The first frame (nothing stamped yet: every owner counts as visible) keeps the 32
+            // newest, so 12 on-screen owners; after its stamp the next frame keeps all 20 on-screen owners and fills the
+            // other 12 slots behind the camera.
+            {
+                wc::ring_clear(full_ring);
+                ws::hull_clear(full_state);
+                for (unsigned k = 0; k < 20; ++k) make(k, -3600.f + 378.9f * float(k), 6000.f);
+                for (unsigned k = 20; k < 40; ++k) make(k, (float(k) - 30.f) * 5000.f, -20000.f);
+                for (unsigned k = 0; k < 40; ++k) hit(k, k < 20 ? 0 : 10);
+                static wc::VisibleOwners vis;
+                unsigned drawn[2] = {}, in_view[2] = {};
+                for (unsigned frame = 0; frame < 2; ++frame) {
+                    vis.reset(0.f);
+                    hull_build(hull_view(g, 1100 + 16 * frame, 16), ws::HullTuning{}, &full_state, &full_ring, rd, &vis);
+                    wc::ring_stamp_hidden(full_ring, vis);
+                    drawn[frame] = vis.count;
+                    for (unsigned j = 0; j < vis.in_view_count; ++j) in_view[frame] += vis.in_view[j] != 0;
+                }
+                unsigned kept_on_screen = 0;
+                for (unsigned j = 0; j < vis.count; ++j)
+                    for (unsigned k = 0; k < 20; ++k) kept_on_screen += vis.owner[j] == addr(far_owners[k].obj);
+                std::printf("HULL case=visible_first owners=40 off_screen=20 cap=%u frame1_drawn=%u frame2_drawn=%u "
+                            "frame2_on_screen_kept=%u in_view=%u\n",
+                            wc::hull::max_owners, drawn[0], drawn[1], kept_on_screen, in_view[1]);
+                report("hull_visible_first_keeps_all_on_screen",
+                       drawn[0] == 12 && drawn[1] == 20 && kept_on_screen == 20 && in_view[1] == 20, "");
+            }
+            // The owners past the caps through the production reader (review 5, 2026-11-07): one frame of both stages
+            // (stage::build, stage::build_hull, the stamp) on a full ring of distinct owners, each located once a frame
+            // for both stages (core::VisibleOwners::located). 512 owners with a shield hit and a hull hit each (16 on
+            // screen at 6 km, the rest behind the camera), and 1024 owners with one hull hit each. Timed through the
+            // fixture's reader and through engine_memory::read (src/proxy/engine_memory.cpp as production builds it;
+            // next_frame before each frame, so every region is revalidated once per frame as in flight); the reads one
+            // frame makes counted through a wrapper.
+            {
+                static unsigned reads = 0;
+                static ws::Reader inner = nullptr;
+                const ws::Reader counted = [](std::uintptr_t at, void* out, std::size_t n) {
+                    ++reads;
+                    return inner(at, out, n);
+                };
+                const ws::Reader production = [](std::uintptr_t at, void* out, std::size_t n) {
+                    return x3m::engine_memory::read(at, out, n);
+                };
+                static rr::WeaponPatch patches[wc::max_patches];
+                static rr::WeaponDecal decals[wc::max_decals];
+                ws::Tuning st_tuning{};
+                st_tuning.near_z = hull_view(g, 1000, 16).near_z;
+                for (unsigned owners : {512u, 1024u}) {
+                    const bool both = owners == 512;
+                    wc::ring_clear(full_ring);
+                    ws::hull_clear(full_state);
+                    for (unsigned k = 0; k < owners; ++k) {
+                        if (k < 16)
+                            make(k, -3600.f + 480.f * float(k), 6000.f);
+                        else
+                            make(k, (float(k % 64) - 32.f) * 5000.f, -20000.f - 5000.f * float(k / 64));
+                        hit(k, k);
+                        if (both) { // its shield hit (a stage-owned shield record of the same owner)
+                            wc::Event* e = wc::ring_acquire(full_ring);
+                            const std::uint32_t seq = e->sequence;
+                            std::memset(e, 0, sizeof *e);
+                            e->sequence = seq;
+                            e->role = wc::role_shield_hit;
+                            e->style = wc::shape_slug;
+                            e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
+                            e->shield_q = 0xffff;
+                            e->patch_tier = wc::patch_capital;
+                            e->tier_source = wc::tier_by_radius;
+                            e->t0_game_ms = 1000 + 4 * k;
+                            e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
+                            e->damage = 1200;
+                            e->tint_rgb = 0xffffffu | wc::rgb_present;
+                            e->owner = addr(far_owners[k].obj);
+                            e->node = addr(far_owners[k].node);
+                            e->handle = 0xf000u + k;
+                            e->pos[2] = -200000;
+                            e->radius = std::int32_t(engine(2000.f));
+                        }
+                    }
+                    const std::uint32_t now = 1000 + 4 * owners;
+                    static wc::VisibleOwners vis;
+                    auto frame = [&](ws::Reader r, std::uint32_t t) {
+                        vis.reset(0.f);
+                        ws::build(timed_ring, t, r, hull_view(g, t, 16).cam, st_tuning, patches, wc::max_patches, decals,
+                                  wc::max_decals, nullptr, &vis);
+                        hull_build(hull_view(g, t, 16), ws::HullTuning{}, &timed_state, &timed_ring, r, &vis);
+                        wc::ring_stamp_hidden(timed_ring, vis);
+                    };
+                    timed_ring = full_ring;
+                    timed_state = full_state;
+                    frame(rd, now); // latch and stamp (the timed frames order their owners by it)
+                    full_ring = timed_ring;
+                    full_state = timed_state;
+                    double best[2] = {1e30, 1e30}, sum[2] = {0, 0};
+                    for (unsigned path = 0; path < 2; ++path)
+                        for (unsigned rep = 0; rep < 200; ++rep) {
+                            timed_ring = full_ring;
+                            timed_state = full_state;
+                            if (path) x3m::engine_memory::next_frame();
+                            QueryPerformanceCounter(&a);
+                            frame(path ? production : rd, now + 16);
+                            QueryPerformanceCounter(&b);
+                            best[path] = std::min(best[path], ticks_us(a, b, freq));
+                            sum[path] += ticks_us(a, b, freq);
+                        }
+                    timed_ring = full_ring;
+                    timed_state = full_state;
+                    reads = 0;
+                    inner = rd;
+                    frame(counted, now + 16);
+                    const unsigned frame_reads = reads, located = vis.located_reads, past_cap = owners - wc::hull::max_owners;
+                    const double per_read_ns = frame_reads ? (best[1] - best[0]) * 1e3 / double(frame_reads) : 0.0;
+                    std::printf("STAGE_OWNERS case=%s records=%u owners=%u located_reads=%u located=%u reads=%u "
+                                "fake_best_us=%.1f fake_mean_us=%.1f production_best_us=%.1f production_mean_us=%.1f "
+                                "production_ns_per_read=%.1f\n",
+                                both ? "owners_512_shield_hull" : "owners_1024_hull", ring_live(full_ring), owners, located,
+                                vis.located_count, frame_reads, best[0], sum[0] / 200.0, best[1], sum[1] / 200.0,
+                                per_read_ns);
+                    // each owner located at most once a frame for both stages: the hull stage's owners past its cap
+                    // (owners - 32) are all located, those the shield stage located or drew are not read again
+                    report(both ? "stage_owners_512_located_once" : "stage_owners_1024_located_once",
+                           located <= past_cap + (both ? 16u : 0u) && located >= past_cap - (both ? 16u : 0u) &&
+                               vis.located_count <= owners,
+                           "");
+                }
+            }
+            // Out of reach (2026-11-07; review 6): eight fighter-tier hits at calibre 1 on an owner (r 5 view units, z
+            // 1000) moved out past the right edge (x = z / m00 at its centre), the contact point on its side towards the
+            // screen; each position is built with the cull and without it (the pre-change image), rendered on the sky
+            // lane and compared pixel for pixel. Two classes: ballistic at 100 ms (the many-spark class) and heavy at 30
+            // ms with its entry streak (the shot heading +x, so the streak's tail points into the screen). The lit range
+            // is scanned first (margin / 48 steps, the unculled image); six steps across it (2 r .. the last lit
+            // position) must each be non-empty and identical, and three past the margin must build nothing when culled.
+            // The shared ring's sequence counter is restored afterwards (later cases hash their sequences).
+            {
+                draw_lane(g, 0.f, -1.f);
+                const std::uint32_t sequence0 = stage_ring.next_sequence;
+                const float r_view = 5.f, z_owner = 1000.f; // a small owner: its sparks outrun its 2 r
+                const std::int32_t side[3] = {-std::int32_t(r_view / wc::world_scale), 0, 0};
+                struct Sweep {
+                    const char* name;
+                    std::uint8_t cls;
+                    std::int8_t dir_x;
+                    std::uint32_t age_ms;
+                };
+                for (const Sweep sw : {Sweep{"ballistic", wc::class_ballistic, 0, 100}, Sweep{"heavy", wc::class_heavy, 127, 30}}) {
+                    const bool heavy = sw.cls == wc::class_heavy;
+                    ws::HullTuning culled, unculled;
+                    unculled.reach_cull = false;
+                    const ws::HullView v0 = hull_view(g, 1000, 16), v1 = hull_view(g, 1000 + sw.age_ms, 16);
+                    float reach_att = 0.f, reach_spark = 0.f;
+                    auto run = [&](float x, const ws::HullTuning& tt, std::vector<float>* luma) {
+                        hull_owner(z_owner, r_view);
+                        put32(fake_node, wc::layout::node_pos, std::uint32_t(std::int32_t(x / wc::world_scale)));
+                        for (unsigned h = 0; h < 8; ++h) {
+                            wc::Event* e = add_hull_hit(1000, side, damage_of(1.0), wc::patch_fighter, 0, wc::table_bullets,
+                                                        sw.cls);
+                            e->sequence = 0x5eed01u + h; // the same hashes in both builds
+                            e->dir[0] = sw.dir_x;
+                            ws::record_reach(*e, tt, float(wc::look::min_frames) * 16.f, &reach_att, &reach_spark);
+                        }
+                        hull_build(v0, tt);
+                        const HullOut o = hull_build(v1, tt);
+                        *luma = hull_render(pass, o);
+                        return o;
+                    };
+                    auto lit_of = [](const std::vector<float>& l) {
+                        unsigned n = 0;
+                        for (const float v : l) n += v > 1e-3f;
+                        return n;
+                    };
+                    const float m00 = v1.cam.m00, x_edge = z_owner / m00, norm = std::sqrt(m00 * m00 + 1.f);
+                    const float px_scale = std::min(0.5f * v1.width * v1.cam.m00, 0.5f * v1.height * v1.cam.m11);
+                    {
+                        std::vector<float> l;
+                        run(x_edge, culled, &l); // the reach of this record (both figures)
+                    }
+                    const float reach = reach_att + reach_spark;
+                    const float floor_view = ws::reach_floor_px() * (z_owner + 2.f * r_view + reach) / px_scale;
+                    const float margin = 2.f * r_view + reach + floor_view; // the owner test's radius
+                    auto x_at = [&](float d) { return x_edge + d * norm / m00; }; // centre d past the right plane
+                    float d_lit = 2.f * r_view;
+                    for (unsigned j = 0; j <= 48; ++j) { // the lit range (unculled)
+                        const float d = 2.f * r_view + float(j) * margin / 48.f;
+                        std::vector<float> l;
+                        run(x_at(d), unculled, &l);
+                        if (!lit_of(l)) break;
+                        d_lit = d;
+                    }
+                    unsigned identical = 0, steps = 0, lit_steps = 0, min_lit = ~0u, max_edge_px = 0, streaks = 0,
+                             beyond_elements = 0, beyond_unculled = ~0u, beyond_skipped = ~0u;
+                    for (unsigned j = 0; j <= 8; ++j) {
+                        const bool beyond = j > 5;
+                        const float d = beyond ? 2.f * r_view + float(j) * margin / 6.f
+                                               : 2.f * r_view + float(j) * (d_lit - 2.f * r_view) / 5.f;
+                        std::vector<float> lc, lu;
+                        const HullOut oc = run(x_at(d), culled, &lc), ou = run(x_at(d), unculled, &lu);
+                        unsigned edge = 0;
+                        for (unsigned yy = 0; yy < g.h; ++yy)
+                            for (unsigned xx = g.w - 16; xx < g.w; ++xx) edge += lc[std::size_t(yy) * g.w + xx] > 1e-3f;
+                        const unsigned lit = lit_of(lc);
+                        const unsigned elements = oc.quads + oc.boxes + oc.bursts + oc.rings + oc.filaments + oc.shimmer;
+                        ++steps;
+                        identical += lc == lu;
+                        if (!beyond) {
+                            lit_steps += lit > 0;
+                            min_lit = std::min(min_lit, lit);
+                            max_edge_px = std::max(max_edge_px, edge);
+                            streaks += oc.n.streaks;
+                        } else {
+                            beyond_elements = std::max(beyond_elements, elements);
+                            beyond_unculled = std::min(beyond_unculled, ou.quads);
+                            beyond_skipped = std::min(beyond_skipped, oc.n.out_of_reach);
+                        }
+                        std::printf("HULL case=reach class=%s step=%u d=%.1f margin=%.1f lit_px=%u edge_px=%u identical=%u "
+                                    "elements=%u streaks=%u unculled_quads=%u out_of_reach=%u\n",
+                                    sw.name, j, double(d), double(margin), lit, edge, unsigned(lc == lu), elements,
+                                    oc.n.streaks, ou.quads, oc.n.out_of_reach);
+                    }
+                    std::printf("HULL case=reach_summary class=%s r=%.1f reach_attached=%.1f reach_spark=%.1f floor_px=%.1f "
+                                "floor_view=%.1f d_lit=%.1f steps=%u identical=%u lit_steps=%u min_lit_px=%u max_edge_px=%u "
+                                "streaks=%u beyond_elements=%u beyond_unculled_quads=%u beyond_out_of_reach=%u\n",
+                                sw.name, double(r_view), double(reach_att), double(reach_spark), double(ws::reach_floor_px()),
+                                double(floor_view), double(d_lit), steps, identical, lit_steps, min_lit, max_edge_px,
+                                streaks, beyond_elements, beyond_unculled, beyond_skipped);
+                    const bool edge_ok = identical == steps && lit_steps == 6 && min_lit > 0 && max_edge_px > 0 &&
+                                         d_lit > 2.f * r_view && (!heavy || streaks > 0);
+                    const bool beyond_ok = beyond_elements == 0 && beyond_skipped == 8 && beyond_unculled > 0;
+                    report(heavy ? "hull_reach_heavy_edge_unchanged" : "hull_reach_edge_sparks_unchanged", edge_ok, "");
+                    report(heavy ? "hull_reach_heavy_beyond_margin_builds_nothing" : "hull_reach_beyond_margin_builds_nothing",
+                           beyond_ok, "");
+                }
+                // The spark sphere of a moving owner (stage::build_hull (C)): an owner at z 1000 closing on the camera at
+                // 15,000 view units/s (frame 968 at z 1240, 984 at z 1000: the hits there latch that velocity) is 100
+                // ms later at z -500, behind the camera, so its own reach sphere is out of reach; the hits' sparks ride
+                // p0 + v tau (1 - e^(-t / tau)) on the segment p0 .. p0 + v t, which is in view. With the cull its records
+                // still build (out_of_reach 0, the owner counted out of reach) and the image is the unculled one, not
+                // empty; the stamp counts the owner drawn and in view (its spark sphere, not its 2 r sphere).
+                {
+                    const float r_m = 5.f, speed = 15000.f;
+                    const std::int32_t front[3] = {0, 0, -std::int32_t(r_m / wc::world_scale)};
+                    auto at_z = [&](float z) {
+                        put32(fake_node, wc::layout::node_pos + 8, std::uint32_t(std::int32_t(z / wc::world_scale)));
+                    };
+                    unsigned drawn = 0, in_view = 0;
+                    auto run = [&](const ws::HullTuning& tt, std::vector<float>* luma) {
+                        hull_owner(1000.f + speed * 0.016f, r_m);
+                        add_hull_hit(968, front, damage_of(1.0), wc::patch_fighter, 0, wc::table_bullets, wc::class_ballistic)
+                            ->sequence = 0x5eed11u;
+                        static wc::VisibleOwners vis;
+                        vis.reset(0.f);
+                        hull_build(hull_view(g, 968, 16), tt, &hq_state, &stage_ring, &fake_read, &vis);
+                        at_z(1000.f);
+                        for (unsigned h = 0; h < 8; ++h)
+                            add_hull_hit(984, front, damage_of(1.0), wc::patch_fighter, 0, wc::table_bullets, wc::class_ballistic)
+                                ->sequence = 0x5eed21u + h;
+                        vis.reset(0.f);
+                        hull_build(hull_view(g, 984, 16), tt, &hq_state, &stage_ring, &fake_read, &vis);
+                        at_z(1000.f - speed * 0.1f);
+                        vis.reset(0.f);
+                        const HullOut o = hull_build(hull_view(g, 1084, 16), tt, &hq_state, &stage_ring, &fake_read, &vis);
+                        drawn = vis.count;
+                        in_view = vis.in_view_count;
+                        *luma = hull_render(pass, o);
+                        return o;
+                    };
+                    ws::HullTuning culled, unculled;
+                    unculled.reach_cull = false;
+                    std::vector<float> lc, lu;
+                    const HullOut oc = run(culled, &lc);
+                    const unsigned drawn_c = drawn, in_view_c = in_view;
+                    const HullOut ou = run(unculled, &lu);
+                    unsigned lit = 0;
+                    for (const float v : lc) lit += v > 1e-3f;
+                    std::printf("HULL case=reach_moving speed=%.0f hits=%u sparks=%u unculled_sparks=%u out_of_reach=%u "
+                                "owners_out_of_reach=%u lit_px=%u identical=%u drawn=%u in_view=%u\n",
+                                double(speed), oc.n.hits, oc.n.sparks, ou.n.sparks, oc.n.out_of_reach,
+                                oc.n.owners_out_of_reach, lit, unsigned(lc == lu), drawn_c, in_view_c);
+                    report("hull_reach_moving_owner_sparks_kept",
+                           oc.n.owners_out_of_reach == 1 && oc.n.out_of_reach == 0 && oc.n.hits == 9 && lit > 0 &&
+                               lc == lu && oc.n.sparks == ou.n.sparks && drawn_c == 1 && in_view_c >= 1,
+                           "");
+                }
+                stage_ring.next_sequence = sequence0;
+            }
         }
     }
     // 20. GPU cost, EVENT-fenced (best of 60) at 1080p and 5120x1440: 20 hits on a fighter at 60 m (the 3.1 budget: 50 us
