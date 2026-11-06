@@ -355,7 +355,7 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         self.assertIsNone(r['bottle'])
         self.assertEqual(r['host']['name'], 'native-windows')
         self.assertEqual(r['report']['failed_checks'], [])
-        self.assertEqual(r['report']['check_count'], 51)  # 43 + the hull hits' weapon-rect cases (2026-11-06)
+        self.assertEqual(r['report']['check_count'], 63)  # 43 + the hull hits' weapon-rect cases (2026-11-06) + their ring (2026-11-07)
         # The caller's stream 0 tuple (buffer, offset 16, stride 24) survives the pass's restore (native D3D9's Capture
         # keeps a block's recorded stream offset: docs/verification/engine-effects.md, "Native stream offset").
         state = r['report']['state'][0]

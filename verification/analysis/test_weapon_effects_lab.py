@@ -444,7 +444,8 @@ class PageTest(unittest.TestCase):
 
     def test_layers_panel(self):
         """The Layers panel: one checkbox per drawn element of the active family, all on by default (hull: flash, flash
-        halo, burst, sparks, chips, entry streak, ring, glow, ember, scorch, filaments and the shimmer's disabled
+        halo, burst, sparks, chips, entry streak, ring with its noise, refraction and wash, glow, ember, scorch, filaments
+        and the shimmer's disabled
         placeholder; shield: patch, bubble outline, native impact sprite; vanilla: the tint, travel, flare and light
         options), "all" and "none", the state persisted in localStorage inside try/catch and read by the renderers."""
         panel = re.search(r'<fieldset id="p_layers">(.*?)</fieldset>', self.html, re.S).group(1)
@@ -453,7 +454,8 @@ class PageTest(unittest.TestCase):
         for tab, cid, attrs in boxes:
             by_tab.setdefault(tab, []).append(cid)
         self.assertEqual(by_tab['hull'], ['layer_flash', 'layer_flash_halo', 'layer_burst', 'layer_sparks', 'layer_chips',
-                                          'layer_streak', 'layer_ring', 'layer_glow', 'layer_ember', 'layer_scorch',
+                                          'layer_streak', 'layer_ring', 'layer_ring_noise', 'layer_ring_refraction',
+                                          'layer_ring_wash', 'layer_glow', 'layer_ember', 'layer_scorch',
                                           'layer_filament', 'layer_shimmer'])
         self.assertEqual(by_tab['shield hull'], ['layer_hull'])       # the hull body under both previews
         self.assertEqual(by_tab['shield'], ['layer_patch', 'layer_bubble', 'layer_native'])
@@ -763,6 +765,108 @@ console.log(JSON.stringify({labels: Object.fromEntries(PRESETS.map(p => [p.id, s
             self.assertNotIn('undefined', text + js['desc'][pid], pid)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_shock_front(self):
+        """The ring's shock front (2026-11-07, hull-impact-classes.md 3.5; weapon_ring_ps.hlsl's law): shockFront around
+        the front of four seeds at least 2:1 max / min (the noise's arcs), flat without it; the leading edge's peak over
+        the trailing band's (the lead colour against lead + trail ratio); the wash inside the front only; the front's
+        radius along an in-plane heading ring_stretch (1.25) times across. The four shock-front Scenarios at 60 ms: an
+        oblique heading (SCENARIO_INCIDENCE), the ring lit, the noise and the wash each changing its light when off, the
+        refraction band on the heavy and plasma hits (their shimmer rects) moving pixels and no light, none on the missile."""
+        presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        weapons = {}
+        for view in ('stock_ap', 'mayhem3', 'fl'):
+            m = re.search(r'\n%s: (\{.*?\}),\n' % json.dumps(view), self.html)
+            if m:
+                weapons[view] = {w['id']: w for w in json.loads(m.group(1))['weapons']}
+        incidence = re.search(r'const SCENARIO_INCIDENCE = (\{.*?\});', self.html, re.S).group(1).replace("'", '"')
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const PRESETS = __PRESETS__, WEAPONS = __WEAPONS__, SCENARIO_INCIDENCE = __INCIDENCE__;
+const HH = HEADER.hull, out = {ratios: [], flat: []};
+const rr = 1, w = 0.12;
+for (const seq of [7000, 7001, 7002, 7003]) {
+  const seed = HH.ring_seed_scale * unitOf(elementHash(seq, HH.ring_seed_element));
+  let hi = 0, lo = Infinity, fhi = 0, flo = Infinity;
+  for (let k = 0; k < 256; k++) {
+    const ph = 2 * Math.PI * k / 256, q = [rr * Math.cos(ph), rr * Math.sin(ph), 0];
+    const sf = shockFront(q, rr, w, seed, 0), v = sf.m * sf.lead, fv = shockFront(q, rr, w, -1, 0).lead;
+    hi = Math.max(hi, v); lo = Math.min(lo, v); fhi = Math.max(fhi, fv); flo = Math.min(flo, fv);
+  }
+  out.ratios.push(hi / lo); out.flat.push(fhi / flo);
+}
+const lead = heatRamp(HH.ring_lead_t), trailC = heatRamp(HH.ring_trail_t), lum = c => (c[0] + c[1] + c[2]) / 3;
+const trail = trailC.map((v, j) => HH.ring_trail_gain * v / lead[j]);
+const radial = [];
+for (let k = 0; k <= 400; k++) {
+  const d = 0.5 + k / 400 * 0.7, sf = shockFront([d, 0, 0], rr, w, -1, HH.ring_wash_gain);
+  radial.push({d, front: lum(lead.map((v, j) => v * (sf.lead + sf.band * trail[j]))), wash: sf.wash});
+}
+out.lead_peak = Math.max(...radial.filter(r => Math.abs(r.d - rr) < 0.02).map(r => r.front));
+out.band_peak = Math.max(...radial.filter(r => r.d < rr - 0.6 * w && r.d > rr - HH.ring_trail_span * w).map(r => r.front));
+out.wash_inside = Math.max(...radial.filter(r => r.d < rr).map(r => r.wash));
+out.wash_outside = Math.max(...radial.filter(r => r.d >= rr).map(r => r.wash));
+// the stretch: q = rel - (1 - 1 / E) a (a . rel) with a = x; the leading edge's peak along x over along y
+const E = HH.ring_stretch, peak = dir => {
+  let best = 0, at = 0;
+  for (let k = 0; k <= 2000; k++) {
+    const d = 0.8 + k / 2000 * 0.8, rel = dir.map(v => v * d), q = [rel[0] / E, rel[1], rel[2]], v = shockFront(q, rr, w, -1, 0).lead;
+    if (v > best) { best = v; at = d; }
+  }
+  return at;
+};
+out.stretch = peak([1, 0, 0]) / peak([0, 1, 0]);
+out.scenarios = {};
+for (const id of Object.keys(SCENARIO_INCIDENCE)) {
+  const p = PRESETS.find(x => x.id === id);
+  if (!p) { out.scenarios[id] = null; continue; }
+  Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
+                       c_variant: p.variant, c_k: p.k, c_shield: p.shield, c_class: p.cls, c_pulse_on: p.pulse[0],
+                       c_pulse_period: p.pulse[1], c_sweep: p.sweep, c_loop: p.loop, c_incidence: SCENARIO_INCIDENCE[id]});
+  checks.c_own = p.own; checks.c_cockpit = p.cockpit;
+  const data = new Uint8ClampedArray(OW * OH * 4).fill(128), weapon = WEAPONS[p.view][p.weapon];
+  const at = () => {
+    let put = null;
+    const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data: data.slice()}; }, putImageData(img) { put = img.data; }}, weapon};
+    renderOurs(rec, 60);
+    return {ring: rec.hullStats.light.ring, refractions: rec.hullStats.refractions, light: rec.hullStats.light,
+            anatomy: rec.hullStats.anatomy, put};
+  };
+  const on = at();
+  layers.ring_noise = false; const noNoise = at(); layers.ring_noise = true;
+  layers.ring_wash = false; const noWash = at(); layers.ring_wash = true;
+  layers.ring_refraction = false; const noRefr = at(); layers.ring_refraction = true;
+  let moved = 0;
+  for (let i = 0; i < on.put.length; i++) moved += on.put[i] !== noRefr.put[i];
+  out.scenarios[id] = {anatomy: on.anatomy, ring: on.ring, no_noise: noNoise.ring, no_wash: noWash.ring, refractions: on.refractions,
+                       moved, same_light: JSON.stringify(on.light) === JSON.stringify(noRefr.light)};
+}
+vals.c_incidence = 0;
+console.log(JSON.stringify(out));
+""".replace('__PRESETS__', json.dumps(presets)).replace('__WEAPONS__', json.dumps(weapons)).replace('__INCIDENCE__', incidence)
+        js = self.run_node(probe)
+        self.assertTrue(all(r >= 2.0 for r in js['ratios']), js['ratios'])
+        self.assertTrue(all(abs(r - 1.0) < 1e-9 for r in js['flat']), js['flat'])
+        self.assertGreater(js['lead_peak'], js['band_peak'])
+        self.assertGreater(js['band_peak'], 0)
+        self.assertGreater(js['wash_inside'], 0)
+        self.assertEqual(js['wash_outside'], 0)
+        self.assertAlmostEqual(js['stretch'], 1.25, delta=0.0625)
+        self.assertEqual(sorted(js['scenarios']), ['hull/heavy-gke-capital-300m', 'hull/heavy-missile-hit',
+                                                   'hull/heavy-rg-chase-nose', 'hull/plasma-psp-capital-close'])
+        for pid, r in js['scenarios'].items():
+            self.assertIsNotNone(r, pid)
+            self.assertGreater(r['ring'], 0, pid)
+            self.assertNotEqual(r['no_noise'], r['ring'], pid)
+            self.assertLess(r['no_wash'], r['ring'], pid)
+            self.assertTrue(r['same_light'], pid)                     # the refraction moves pixels, adds no light
+            if r['anatomy'] == 'missile':
+                self.assertEqual((r['refractions'], r['moved']), (0, 0), pid)
+            else:
+                self.assertGreater(r['refractions'], 0, pid)
+                self.assertGreater(r['moved'], 0, pid)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_hull_layers_remove_their_element(self):
         """The Layers panel's glow (the soft bulb within class_glow r_hit of the contact) and flash halo: every hull preset
         at 40 ms renders with all layers on (the default), with glow off and with the flash halo off. Glow off leaves no
@@ -820,7 +924,10 @@ console.log(JSON.stringify(out));
                     self.assertEqual(no_glow['light'][el], v, (pid, el))
             if on['light']['glow'] > 0:
                 glowing += 1
-                self.assertLess(no_glow['lit'], on['lit'], pid)
+                if on['light']['ring'] > 0:  # the ring's wash lights the hull inside its front: it may cover the bulb
+                    self.assertLessEqual(no_glow['lit'], on['lit'], pid)
+                else:
+                    self.assertLess(no_glow['lit'], on['lit'], pid)
                 self.assertIn('hidden: glow', no_glow['caption'])
             self.assertEqual(no_halo['light']['glow'], on['light']['glow'], pid)
             if on['light']['flash'] > 0:

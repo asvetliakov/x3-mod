@@ -152,6 +152,7 @@ struct HullTuning {
     core::hull::Mode mode = core::hull::mode;
     bool flash = true, sparks = true, glow = core::hull::glow, ember = true, burst = true, ring = true;
     bool streak = true, filament = true, scorch = core::hull::scorch, shimmer = true, spots = true;
+    bool ring_noise = true, ring_wash = true, ring_refraction = true; // the shock front's parts (the lab's sub-layers)
     float cell_m[core::patch_tier_count] = {core::cell_m[0], core::cell_m[1], core::cell_m[2]};
     float stagger = core::stagger;
     float own_gain = core::own_cockpit_gain;
@@ -552,6 +553,33 @@ inline void fireball_quad(const HullView& f, const float c[3], float R, const fl
         for (unsigned i = 0; i < 4; ++i) out[k].tint[i] = tint[i];
     }
 }
+// The stretched ring's box (the shock front, 2026-11-07): the ellipsoid |M d| <= R0, s times longer along the unit
+// heading a, lies inside the capsule of radius R0 about the segment c +- (s - 1) R0 a (its distance from the segment is
+// at most R0 at both ends of the stretched axis and in between), whose projection lies inside the hull of its end
+// spheres' (perspective keeps convexity in front of the eye): the union of their rects. Full when the whole reach
+// s R0 crosses the near plane (as sphere_rect). False when both ends lie off screen.
+inline bool capsule_rect(const HullView& f, const float c[3], const float a[3], float stretch, float R0, float r[4],
+                         bool* full) noexcept {
+    const float e = (stretch - 1.f) * R0;
+    if (!(e > 0.f)) return sphere_rect(f, c, R0, r, full);
+    *full = !(c[2] - stretch * R0 > f.near_z);
+    if (*full) {
+        r[0] = r[1] = -1.f;
+        r[2] = r[3] = 1.f;
+        return true;
+    }
+    const float p0[3] = {c[0] + e * a[0], c[1] + e * a[1], c[2] + e * a[2]};
+    const float p1[3] = {c[0] - e * a[0], c[1] - e * a[1], c[2] - e * a[2]};
+    float r0[4], r1[4];
+    bool f0 = false, f1 = false;
+    const bool h0 = sphere_rect(f, p0, R0, r0, &f0), h1 = sphere_rect(f, p1, R0, r1, &f1);
+    if (!h0 && !h1) return false;
+    for (unsigned k = 0; k < 4; ++k) {
+        const float u = h0 ? r0[k] : r1[k], v = h1 ? r1[k] : r0[k];
+        r[k] = k < 2 ? (u < v ? u : v) : (u > v ? u : v);
+    }
+    return true;
+}
 // A shaped glow's four corners (weapon_shape_vs.hlsl): the glow's rectangle with the profile's terms (ring: r(t), w;
 // filament: scale, seed, width, R and the owner's axes in view).
 inline void shape_quad(const HullView& f, const float c[3], float R, const float rect[4], bool full, const float colour[3],
@@ -678,8 +706,8 @@ inline bool tint_saturated(const core::Event& e) noexcept {
 }
 // The record's element reach (view units), from its class constants, calibre and tier unit (2026-11-07): the
 // owner-attached elements about the contact point (the flash halo, the heavy streak, the puff's R_b, the ring's
-// rr + 3 w, the filament glow, the shimmer square, the glow and the ember; the largest) and the sparks about their
-// origin (per set the launch speed x (1 + spread) x tau, which bounds tau (1 - e^(-t / tau)), the curl drift
+// ring_stretch (rr + 3 w), the filament glow, the shimmer square, the glow and the ember; the largest) and the sparks
+// about their origin (per set the launch speed x (1 + spread) x tau, which bounds tau (1 - e^(-t / tau)), the curl drift
 // spark_curl_x of it over the longest life (law x spark_life_hi, or the frame floor), and the streak's world part:
 // streak_cap rest lengths of spark_rest_w widths at the largest width and length factors, plus half a width).
 inline void record_reach(const core::Event& e, const HullTuning& t, float frame_floor_ms, float* attached,
@@ -694,7 +722,9 @@ inline void record_reach(const core::Event& e, const HullTuning& t, float frame_
     const float* rg = hl::class_ring[a];
     const float* gw = hl::class_glow[a];
     const float* em = hl::class_ember[a];
-    for (const float v : {streak, rg[0] + 3.f * rg[1], hl::filament_r, hl::class_shimmer[a], gw[0], em[0]})
+    // the ring's front stretched along the heading (the shock front, ring_stretch) reaches that much further
+    const float ring = hl::ring_stretch * (rg[0] + 3.f * rg[1]);
+    for (const float v : {streak, ring, hl::filament_r, hl::class_shimmer[a], gw[0], em[0]})
         m = v > m ? v : m;
     const float* pf = hl::class_puff[a];
     const float R_b = pf[0] * r_hit + U * (pf[1] + pf[2] * k);
@@ -1032,6 +1062,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     BoxMeta filament_meta[renderer::weapon_filament_boxes];
     BoxMeta scorch_meta[renderer::weapon_scorch_boxes];
     ShimmerRect shimmer_cand[16];
+    float shimmer_screens[16];
     unsigned shimmer_cands = 0;
     const Camera& prev = f.prev_valid ? f.prev : f.cam;
     const float step_s = float(f.step_ms) * 1e-3f;
@@ -1267,28 +1298,57 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     n.floored += fl;
             }
         }
-        // Surface ring: the expanding sphere shell cut by the lane (no normal).
+        // Surface ring: the expanding sphere shell cut by the lane (no normal), drawn as the shock front (weapon_ring_ps.hlsl:
+        // the white-hot edge, the redder trailing band, the noise's arcs and the wash; stretched along the heading).
         const float* rg = hl::class_ring[a];
+        float ring_r_now = 0.f, ring_e_now = 0.f, ring_screens = 0.f; // the drawn ring for the shimmer rect's band
         if (t.ring && ring_cap && !hs.orphan && rg[0] > 0.f) {
             const float life = element_life_ms(rg[2], element_hash(e.sequence, 6), t.stagger, floor_ms, &fl);
             if (age < life) {
                 const float x = age / life;
                 const float rr = rg[0] * r_hit * (1.f - core::exp_neg(-x / hl::ring_rise)), w = rg[1] * r_hit;
-                const float R = rr + 3.f * w; // the shell's profile at the box edge e^-9
+                // the shell's profile at the box edge (ring_front_window w), the stretched front inside its capsule
+                const float stretch = hs.has_axis ? hl::ring_stretch : 1.f, R0 = rr + hl::ring_front_window * w;
+                const float R = stretch * R0;
                 float rect[4];
                 bool full = false;
-                if (c_view[2] + R > f.near_z && sphere_rect(f, c_view, R, rect, &full)) {
+                if (c_view[2] + R > f.near_z && capsule_rect(f, c_view, a_view, stretch, R0, rect, &full)) {
                     if (nr < ring_cap) {
                         float colour[3];
-                        core::heat_colour(hl::ring_t, colour);
+                        core::heat_colour(hl::ring_lead_t, colour);
                         const float e0 = rg[3] * hl::ring_t * (1.f - x) * (1.f - x) * gain;
                         for (unsigned q = 0; q < 3; ++q) colour[q] *= e0;
-                        const float shape[4] = {rr, w, 0.f, 0.f};
-                        shape_quad(f, c_view, R, rect, full, colour, shape, nullptr, out.rings + 4 * nr);
+                        // r, 1 / w, the noise's seed (-1: none), the wash's gain (0: none); light.w the wash's
+                        // exponent rate log2(e) / (ring_wash_fall r) (the program reads no box radius)
+                        const float seed = hl::ring_seed_scale * unit_of(element_hash(e.sequence, hl::ring_seed_element));
+                        const float shape[4] = {rr, 1.f / w, t.ring_noise ? seed : -1.f, t.ring_wash ? hl::ring_wash_gain : 0.f};
+                        // M = R - (1 - 1 / stretch) (R a) a^T: the owner's axes (the view's without its frame) with the
+                        // stretch along the heading folded in (the noise rides the hull, the front is longer along it).
+                        if (!s->frame_state) s->frame_state = owner_frame(s->data, f.cam, s->centre, s->frame) ? 1 : 2;
+                        float m[9] = {1.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f};
+                        if (s->frame_state == 1)
+                            for (unsigned q = 0; q < 9; ++q) m[q] = s->frame[q];
+                        if (hs.has_axis) {
+                            const float kq = 1.f - 1.f / hl::ring_stretch;
+                            for (unsigned row = 0; row < 3; ++row) {
+                                const float ra = dot3(m + 3 * row, a_view) * kq;
+                                for (unsigned q = 0; q < 3; ++q) m[3 * row + q] -= ra * a_view[q];
+                            }
+                        }
+                        shape_quad(f, c_view, R, rect, full, colour, shape, m, out.rings + 4 * nr);
+                        const float wash_rate = 1.4426950f / (hl::ring_wash_fall * (rr > 1e-6f ? rr : 1e-6f));
+                        for (unsigned k = 0; k < 4; ++k) out.rings[4 * nr + k].light[3] = wash_rate;
                         ring_meta[nr] = BoxMeta{age_ms, e.owner, rect_screens(rect) * hl::budget_weight_ring, std::uint8_t(own), 0};
                         ++nr;
                         ++n.rings;
                         n.floored += fl;
+                        // the refraction band rides a drawn ring whose rect stays within the shimmer's cap (a capped,
+                        // culled or eye-filling ring does not refract)
+                        if (t.ring_refraction && !full && rect_screens(rect) <= x3m::engine_shimmer::weapon_ring_max_screens) {
+                            ring_r_now = rr;
+                            ring_e_now = hl::ring_refract * (1.f - x) * (1.f - x);
+                            ring_screens = rect_screens(rect);
+                        }
                     } else
                         ++n.capped;
                 }
@@ -1331,7 +1391,14 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 sr.axis[q] = a_view[q];
             }
             sr.size = hl::class_shimmer[a] * r_hit;
+            // its charge (screens): the square's projected area, or the ring's rect when it carries the ring
+            const float side = sr.size * f.cam.m00 * f.width / c_view[2], square = side * side / (4.f * f.width * f.height);
+            const float drawn = ring_screens > square ? ring_screens : square;
+            shimmer_screens[shimmer_cands - 1] = drawn < 1.f ? drawn : 1.f;
             sr.strength = 1.f - age / float(hl::shimmer_ms);
+            sr.ring_r = ring_r_now; // the ring's refraction band (0: none)
+            sr.ring_strength = ring_e_now;
+            sr.ring_stretch = hs.has_axis ? hl::ring_stretch : 1.f;
             sr.seed = unit_of(element_hash(e.sequence, 9));
             sr.age = age_ms;
             sr.own = own;
@@ -1734,6 +1801,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         if (best == 16) break;
         taken[best] = true;
         out.shimmer[out.shimmer_count++] = shimmer_cand[best];
+        area += shimmer_screens[best] * hl::budget_weight_shimmer; // charged, never shed past this point
     }
     for (unsigned c = 0; c < shimmer_cands; ++c) n.shimmer_shed += !taken[c];
     n.shimmer = out.shimmer_count;

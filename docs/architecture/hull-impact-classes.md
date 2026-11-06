@@ -130,11 +130,30 @@ Everything below is one of the existing primitives with a different profile, or 
    shooter, b > 0 continues through the hull. The lane hides what is inside the hull; with `dir` zero (`dir_fallback`)
    b is 0 and the set is isotropic. This amends 2.6's "sparks are isotropic" for the classes that use it and keeps
    the rejected rules out: no normal, no face choice, placement unchanged.
-5. **Surface ring.** The glow primitive with a shell profile: `E = colour x exp(−((d − r(t)) / w)²) x (1 − t/L)²`,
-   r(t) = r_max (1 − e^(−t / 0.1 L)) (fast then slow [R]; a linear ring reads as a UI circle), the box radius r(t) +
-   2 w. It is the expanding sphere shell intersected with whatever surface the lane holds: a circle on a flat plate,
-   a contour on a curved hull, cut at a hull edge, never on sky, and it needs no tangent plane. About +10 PS slots
-   over the glow's 47 [I]. This is how the brief's "tangent-plane shock ring" is drawn.
+5. **Surface ring, drawn as a shock front (2026-11-07).** The glow primitive with a front profile; each class keeps
+   its r_max, w, L and E, r(t) = r_max (1 − e^(−t / 0.1 L)) (fast then slow [R]; a linear ring reads as a UI circle).
+   It is the expanding sphere shell intersected with whatever surface the lane holds: a circle on a flat plate, a
+   contour on a curved hull, cut at a hull edge, never on sky, with no tangent plane. With d' the lane point's
+   distance from the hit in the owner's frame, stretched by `ring_stretch` 1.25 along the shot's 3-D heading when
+   `Event::dir` is valid (round otherwise; a head-on shot therefore stays round, a grazing one shows the full 1.25),
+   and z = (d' − r) / w: `E = heat(ring_lead_t 1.0) x E x (1 − t/L)² x (m (e^(−z²) + 4 b (1 − b) trail) + wash)`.
+   The thin white-hot leading edge sits at r; the trailing band b = saturate(−z / 3) runs from r − 3 w to r in
+   `ring_trail_gain` 0.55 x heat(`ring_trail_t` 0.35) (the ramp's orange-red end); m = 0.1 + 0.9 saturate(0.5 +
+   2.5 (n − 0.5)) breaks both into bright and weak arcs, n one octave of the filament's value noise of the owner-frame
+   direction x 1.3 plus a seed hashed on the record (64 unit(`element_hash(seq, 7)`) x (1.7, 3.1, 0.7): stable per
+   hit, different per hit), only where −3 < z < 2.5; the wash 0.25 saturate((r − d') / w) e^(−(r − d') / 0.35 r)
+   lights the hull inside the front only. The box is the capsule of radius r + 3 w about the hit ± 0.25 (r + 3 w)
+   along the heading (the union of its end spheres' rects). On plasma and heavy hits the engine shimmer pass's hull
+   rect carries the ring: its pixel program's ring loop (two slots, c68–c75, `engine_shimmer::weapon_ring`)
+   displaces the lane's surface points whose stretched distance lies one `weapon_ring_band_px` (3 px at 1440 rows)
+   inside the front,
+   outward from the hit's pixel by up to the shimmer amplitude x (1 − t/L)²; the plume image is unchanged bit for bit.
+   A ring whose rect passes `engine_shimmer::weapon_ring_max_screens` (0.25 of the target) draws but does not
+   refract, and every kept hull shimmer rect is charged its drawn rect x `budget_weight_shimmer` 2.85.
+   Missile rings have no shimmer rect and no refraction. The constants are `hull::ring_*` in weapon_effects_core.h; the
+   lab's `shockFront` reads them through its HEADER block. 180 PS slots on the native host (was 51) [M]; the ring's
+   budget weight 0.50 (was 0.40; measured 0.505: docs/verification/weapon-effects.md "Shock front"), the shed order
+   unchanged.
 6. **Filament glow (ion arcs).** The glow primitive with a noise mask: the lane's reconstructed point is taken into
    the owner's frame (one 3x3 multiply; the owner's rows are already uploaded), `n = fbm3(p · 6 / r + seed(slot))`,
    mask = saturate(1 − |n| / 0.08), E = colour x mask x saturate(1 − d² / R²), `slot = floor(age / rehash_ms)`. Thin
