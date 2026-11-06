@@ -17,7 +17,11 @@
 // fixed on a moved and rotated owner, the placement on hull lanes (a narrow 1:1:6 hull's flank, aft flank, top and
 // bottom, a flat 6:1:4 fighter's flank, top, bottom and top from 42 degrees down, the Flight B station at 0.68 R, the
 // far side hidden by its own hull, the eye inside the bounding sphere) with the normal's error (ddx / ddy against a
-// 4-neighbourhood), 12 hits per second without a pop on a fighter's and a capital's flat face (the capital's cells
+// 4-neighbourhood); since the ship bubble (5.1.1 "Placement", user decision after Run238 Flight E) the ships' cases
+// draw on their bubble from the production hull walk over a fake body cache (stage_hull) and are measured against the
+// bubble's CPU twin (the hit's bubble point B, the near side; the chase camera's nose hit on the far side around the
+// outline with the hull hiding the rest; the eye inside the bubble drawing its far side only), the station keeps the
+// hull decal; 12 hits per second without a pop on a fighter's and a capital's flat face (the capital's cells
 // overflow into spill draws) and on a sphere's front; with one draw per face the evicted cells' pops are the recorded
 // witness), two hits across a 45-degree face edge never brighter than one hit (the triplanar shares), the stage's CPU cost (with the Flight B station cluster); the decal
 // fallback (an owner without an ellipsoid) on a hull and 0 over sky; the game-time law at SETA 6 measured; the marker
@@ -31,6 +35,7 @@
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
 #include "../../src/proxy/weapon_effects_stage.h"
+#include "../../src/proxy/engine_memory.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
@@ -194,9 +199,10 @@ void draw_hull_lane(Target& t, const HullLane& h) {
     dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
     dev->EndScene();
 }
-// Its CPU twin in double: the surface point on the eye ray of view direction d in the hull's frame (view units);
-// false for sky.
-bool hull_ray(const HullLane& h, const double d[3], double p[3], double* depth = nullptr) {
+// Its CPU twin in double: the surface point under pixel (x, y) in the owner's frame (view units); false for sky.
+bool hull_point(const Target& t, const HullLane& h, unsigned x, unsigned y, double p[3]) {
+    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
+    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
     double od[3], dd[3], A = 0, B = 0, C = -1;
     for (unsigned k = 0; k < 3; ++k) {
         od[k] = -(h.centre[0] * h.axes[k][0] + h.centre[1] * h.axes[k][1] + h.centre[2] * h.axes[k][2]);
@@ -212,32 +218,7 @@ bool hull_ray(const HullLane& h, const double d[3], double p[3], double* depth =
     if (tt <= 0.0) tt = (-B + std::sqrt(disc)) / A;
     if (!(tt > 0.0)) return false;
     for (unsigned k = 0; k < 3; ++k) p[k] = od[k] + tt * dd[k];
-    if (depth) *depth = tt; // the view depth (d's z is 1)
     return true;
-}
-// The surface point under pixel (x, y) (the hull lane's ray).
-bool hull_point(const Target& t, const HullLane& h, unsigned x, unsigned y, double p[3]) {
-    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
-    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
-    return hull_ray(h, d, p);
-}
-// The floated image of hull point q (hull frame): q + n d (n the ellipsoid's outward normal at q) seen from the eye
-// lands on the hull at the returned point (hull frame), where the patch drawn about q appears to lie in the lane's
-// reconstruction; false when that ray misses the hull or the hull hides the floated point (a far-side hit).
-bool lifted_image(const HullLane& h, const double q[3], double d, double out[3]) {
-    double n[3], len = 0;
-    for (unsigned k = 0; k < 3; ++k) {
-        n[k] = q[k] / (h.ext[k] * h.ext[k]);
-        len += n[k] * n[k];
-    }
-    len = std::sqrt(len);
-    double v[3] = {h.centre[0], h.centre[1], h.centre[2]};
-    for (unsigned k = 0; k < 3; ++k)
-        for (unsigned j = 0; j < 3; ++j) v[j] += h.axes[k][j] * (q[k] + n[k] / len * d);
-    if (!(v[2] > 0.0)) return false;
-    const double dir[3] = {v[0] / v[2], v[1] / v[2], 1.0};
-    double depth = 0;
-    return hull_ray(h, dir, out, &depth) && depth >= v[2];
 }
 // The whole target read back as RGB floats (row-major, 3 per pixel); empty on failure.
 std::vector<float> read_rgb(Target& t, IDirect3DSurface9* source) {
@@ -337,14 +318,9 @@ rr::WeaponPatch make_patch(const TierScene& s, std::initializer_list<Hit> hits, 
                            const ws::Tuning& t = ws::Tuning{}) {
     return make_patch(s, hits.begin(), unsigned(hits.size()), shield, cx, t);
 }
-// The tier's stand-off (view units, the production tuning).
-double standoff_of(const TierScene& s) {
-    return double(ws::standoff_view(ws::Tuning{}, s.tier));
-}
-// Screen x (px) of the plane point (q, 0) on the scanline through the hit: the plane at view z centre_z - S, its patch
-// floated the stand-off nearer the eye (the plane square to the view: the lattice point q shows at the floated depth).
+// Screen x (px) of the plane point (q, 0) on the scanline through the hit (the plane at view z centre_z - S).
 double screen_x(const Target& t, const TierScene& s, double q) {
-    return double(t.w) * 0.5 * (1.0 + 1.6 * q / (double(s.centre_z) - double(s.surface) - standoff_of(s)));
+    return double(t.w) * 0.5 * (1.0 + 1.6 * q / (double(s.centre_z) - double(s.surface)));
 }
 unsigned tier_rings(const TierScene& s) {
     return wc::rings[s.tier];
@@ -367,8 +343,9 @@ void plane_lane(Target& t, const rr::WeaponPatch& p) {
 // Draw one frame of patches on a surface (the hull lane, else the first patch's plane) and read the luma back.
 std::vector<float> render(rr::WeaponEffectsPass& pass, const rr::WeaponPatch* p, unsigned n,
                           const rr::WeaponLook* look = nullptr, std::vector<float>* rgb = nullptr,
-                          const HullLane* hull = nullptr) {
-    if (hull)
+                          const HullLane* hull = nullptr, bool keep_lane = false) {
+    if (keep_lane) {
+    } else if (hull)
         draw_hull_lane(g, *hull);
     else if (n)
         plane_lane(g, p[0]);
@@ -395,11 +372,12 @@ float centre_luma(const std::vector<float>& l) {
 }
 // The production stage builder's input: one owner in the fixture's own memory (object block and node block), read
 // through a reader bounded to those two blocks (engine_memory::read's contract: false outside readable memory).
-alignas(16) unsigned char fake_obj[0x100], fake_node[0x200];
+alignas(16) unsigned char fake_obj[0x100], fake_node[0x200], fake_hull[0x14000];
 bool fake_read(std::uintptr_t a, void* out, std::size_t n) {
-    for (const unsigned char* base : {static_cast<const unsigned char*>(fake_obj), static_cast<const unsigned char*>(fake_node)}) {
+    for (const unsigned char* base : {static_cast<const unsigned char*>(fake_obj), static_cast<const unsigned char*>(fake_node),
+                                      static_cast<const unsigned char*>(fake_hull)}) {
         const std::uintptr_t b = reinterpret_cast<std::uintptr_t>(base);
-        const std::size_t size = base == fake_obj ? sizeof fake_obj : sizeof fake_node;
+        const std::size_t size = base == fake_obj ? sizeof fake_obj : base == fake_node ? sizeof fake_node : sizeof fake_hull;
         if (a >= b && n <= size && a - b <= size - n) {
             std::memcpy(out, reinterpret_cast<const void*>(a), n);
             return true;
@@ -433,6 +411,8 @@ HullLane staged_hull(const double ext[3], const double offset[3] = nullptr) {
 // A live owner at view (0, 0, z) with radius r (view units; identity camera, identity rows), and the ring holding one
 // stage-owned shield hit on its front (t0 game ms, the header's patch lifetime, a fighter, full shields).
 wc::Ring stage_ring;
+// The staged records' TierSource: radius (a ship's bubble) unless a case sets the station's (the hull decal).
+std::uint8_t stage_tier_source = wc::tier_by_radius;
 void stage_owner(float z, float r, std::uint32_t t0) {
     std::memset(fake_obj, 0, sizeof fake_obj);
     std::memset(fake_node, 0, sizeof fake_node);
@@ -449,6 +429,7 @@ void stage_owner(float z, float r, std::uint32_t t0) {
     e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
     e->shield_q = 0xffff;
     e->patch_tier = wc::patch_fighter;
+    e->tier_source = stage_tier_source;
     e->t0_game_ms = t0;
     e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
     e->damage = 1200;
@@ -492,6 +473,7 @@ void add_stage_hit(std::uint32_t t0, const std::int32_t pos[3], std::uint8_t tie
     e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
     e->shield_q = 0xffff;
     e->patch_tier = tier;
+    e->tier_source = stage_tier_source;
     e->t0_game_ms = t0;
     e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
     e->damage = 1200;
@@ -505,6 +487,224 @@ void add_stage_hit(std::uint32_t t0, const std::int32_t pos[3], std::uint8_t tie
     std::int32_t r = 0;
     std::memcpy(&r, fake_obj + wc::layout::obj_radius, 4);
     e->radius = r;
+}
+// The ship bubble's inputs (5.1.1 "Placement"): the staged owner's hull as parts in a body cache the production walk
+// reads (fake_hull: the slot, the cache root, its hash, one bucket, the chain entry, the model, its LOD array and record,
+// then the part nodes, 0x270 each), so stage::build's bubble is the hull bounds x bubble_scale (hull_tuning points the
+// walk at it); without stage_hull the staged root has no children and the walk falls back to the radius sphere.
+constexpr unsigned hull_part_at = 0x400, hull_part_bytes = 0x270, hull_parts_max = (sizeof fake_hull - 0x400) / 0x270;
+ws::Tuning hull_tuning() {
+    ws::Tuning t{};
+    t.body_cache_root = addr(fake_hull);
+    return t;
+}
+// The hull: `parts` part nodes (body 7, one model whose single LOD record has the normalised extents of ext), the first
+// at offset off (view units, owner frame), the others stepped along z by 2 ext_z / parts (the walk's budget case);
+// half-extents ext (view units).
+void stage_hull(const double ext[3], const double off[3] = nullptr, unsigned parts = 1) {
+    std::memset(fake_hull, 0, sizeof fake_hull);
+    const std::uint32_t h = addr(fake_hull);
+    put32(fake_hull, 0x00, h + 0x10);        // the slot: the cache root
+    put32(fake_hull, 0x10 + 0x14, h + 0x40); // its hash
+    put32(fake_hull, 0x40, h + 0x80);        // buckets
+    put32(fake_hull, 0x44, 1);               // one bucket
+    put32(fake_hull, 0x80, h + 0xc0);        // the chain: one entry, key 7 + 1
+    put32(fake_hull, 0xc0 + 4, 8);
+    put32(fake_hull, 0xc0 + 8, h + 0x100);   // the model
+    put32(fake_hull, 0x100 + 0x0c, h + 0x140);
+    const std::uint16_t lods = 1;
+    std::memcpy(fake_hull + 0x100 + 0x10, &lods, 2);
+    put32(fake_hull, 0x140, h + 0x180);
+    double e[3], m = 0;
+    for (unsigned k = 0; k < 3; ++k) {
+        e[k] = ext[k] / double(wc::world_scale);
+        m = std::max(m, e[k]);
+    }
+    const std::int32_t s = std::int32_t(m + 0.5);
+    for (unsigned k = 0; k < 3; ++k) put32(fake_hull, 0x180 + 0x20 + 4 * k, std::uint32_t(std::lround(65536.0 * e[k] / m)));
+    parts = std::min(std::max(parts, 1u), hull_parts_max);
+    for (unsigned j = 0; j < parts; ++j) {
+        unsigned char* c = fake_hull + hull_part_at + hull_part_bytes * j;
+        const std::uint32_t self = h + hull_part_at + hull_part_bytes * j;
+        put32(c, 0, j + 1 < parts ? self + hull_part_bytes : addr(fake_node) + wc::layout::node_sentinel);
+        put32(c, wc::layout::node_children, self + wc::layout::node_sentinel);
+        double o[3] = {off ? off[0] : 0.0, off ? off[1] : 0.0, off ? off[2] : 0.0};
+        if (parts > 1) o[2] += ext[2] * (2.0 * (double(j) + 0.5) / double(parts) - 1.0);
+        for (unsigned k = 0; k < 3; ++k)
+            put32(c, wc::layout::node_offset + 4 * k, std::uint32_t(std::int32_t(std::lround(o[k] / double(wc::world_scale)))));
+        for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_basis + 0x10 * k + 4 * k, 0x10000);
+        put32(c, wc::layout::node_scale, std::uint32_t(s));
+        for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_axis_scale + 4 * k, 0x10000);
+        put32(c, wc::layout::node_flags, 0x1000000);
+        put32(c, wc::layout::node_body, 7);
+    }
+    put32(fake_node, wc::layout::node_children, h + hull_part_at);
+    put32(fake_node, wc::layout::node_sentinel, 0);
+    put32(fake_node, wc::layout::node_flags, 0);
+    for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
+}
+// The bubble's CPU twin in double from a bubble draw: the owner's centre and axes in view, the bubble's centre and
+// half-extents (owner frame).
+struct BubbleTwin {
+    double centre[3], axes[3][3], c[3], e[3];
+};
+BubbleTwin bubble_twin(const rr::WeaponPatch& p) {
+    BubbleTwin b{};
+    for (unsigned k = 0; k < 3; ++k) {
+        b.centre[k] = p.centre[k];
+        b.c[k] = p.bubble_c[k];
+        b.e[k] = p.bubble_e[k];
+        for (unsigned j = 0; j < 3; ++j) b.axes[k][j] = p.axes[k][j];
+    }
+    return b;
+}
+// The production mapping in double: the hull point p (owner frame) onto the bubble, B = c + e q / |q|.
+void bubble_image(const BubbleTwin& b, const double p[3], double out[3], double q[3]) {
+    double n = 0;
+    for (unsigned k = 0; k < 3; ++k) {
+        q[k] = (p[k] - b.c[k]) / b.e[k];
+        n += q[k] * q[k];
+    }
+    n = std::sqrt(n);
+    for (unsigned k = 0; k < 3; ++k) {
+        q[k] /= n;
+        out[k] = b.c[k] + b.e[k] * q[k];
+    }
+}
+// The bubble's near and far points under pixel (x, y) (owner frame) and their view z; false where the ray misses it.
+bool bubble_roots(const Target& t, const BubbleTwin& b, unsigned x, unsigned y, double pn[3], double pf[3], double* tn,
+                  double* tf) {
+    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
+    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
+    double od[3], dd[3], A = 0, Bq = 0;
+    for (unsigned k = 0; k < 3; ++k) {
+        const double* L = b.axes[k];
+        od[k] = (-(b.centre[0] * L[0] + b.centre[1] * L[1] + b.centre[2] * L[2]) - b.c[k]) / b.e[k];
+        dd[k] = (d[0] * L[0] + d[1] * L[1] + d[2] * L[2]) / b.e[k];
+        A += dd[k] * dd[k];
+        Bq += od[k] * dd[k];
+    }
+    const double tm = -Bq / A;
+    double h2 = 0;
+    for (unsigned k = 0; k < 3; ++k) h2 += (od[k] + tm * dd[k]) * (od[k] + tm * dd[k]);
+    if (!(h2 < 1.0)) return false;
+    const double half = std::sqrt((1.0 - h2) / A);
+    *tn = tm - half;
+    *tf = tm + half;
+    for (unsigned k = 0; k < 3; ++k) {
+        pn[k] = b.c[k] + b.e[k] * (od[k] + *tn * dd[k]);
+        pf[k] = b.c[k] + b.e[k] * (od[k] + *tf * dd[k]);
+    }
+    return true;
+}
+// The hull lane's view depth under pixel (x, y) (hull_point's ray), 1e30 for sky.
+double hull_depth(const Target& t, const HullLane& h, unsigned x, unsigned y) {
+    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
+    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
+    double A = 0, B = 0, C = -1;
+    for (unsigned k = 0; k < 3; ++k) {
+        const double od = -(h.centre[0] * h.axes[k][0] + h.centre[1] * h.axes[k][1] + h.centre[2] * h.axes[k][2]);
+        const double dd = d[0] * h.axes[k][0] + d[1] * h.axes[k][1] + d[2] * h.axes[k][2];
+        const double w = 1.0 / (h.ext[k] * h.ext[k]);
+        A += dd * dd * w;
+        B += od * dd * w;
+        C += od * od * w;
+    }
+    const double disc = B * B - A * C;
+    if (disc < 0.0) return 1e30;
+    double tt = (-B - std::sqrt(disc)) / A;
+    if (tt <= 0.0) tt = (-B + std::sqrt(disc)) / A;
+    return tt > 0.0 ? tt : 1e30;
+}
+// One side of the bubble against an image (side 0 near, 1 far), the twin deciding each pixel's point on that side and
+// whether it shows (in front of the near plane, nearer than the hull lane): lit pixels, of them over sky (the hull
+// lane), with no visible point on that side (hidden_lit: the GPU drew what the twin hides), farther than sqrt 2 x the
+// extent from B; the points within `core` of B, visible (eligible, covered when lit) or hidden; the luma-weighted
+// centroid's distance from B (view units).
+struct SideMetric {
+    unsigned lit = 0, sky_lit = 0, hidden_lit = 0, outside = 0, eligible = 0, covered = 0, hidden = 0;
+    double centroid = 1e30, luma = 0;
+};
+SideMetric side_metric(const std::vector<float>& l, const BubbleTwin& b, const HullLane* hull, const double B[3],
+                       double extent, double core, int side, double near_z) {
+    SideMetric o;
+    double wsum = 0, cs[3] = {0, 0, 0};
+    for (UINT y = 0; y < g.h; ++y)
+        for (UINT x = 0; x < g.w; ++x) {
+            const double v = l[std::size_t(y) * g.w + x];
+            const bool lit = v > 1e-3;
+            double pn[3], pf[3], tn = 0, tf = 0;
+            const bool hit = bubble_roots(g, b, x, y, pn, pf, &tn, &tf);
+            const double hz = hull ? hull_depth(g, *hull, x, y) : 1e30;
+            const double* p = side ? pf : pn;
+            const double t = side ? tf : tn;
+            const bool visible = hit && t > near_z && t < hz;
+            const double d = hit ? std::sqrt((p[0] - B[0]) * (p[0] - B[0]) + (p[1] - B[1]) * (p[1] - B[1]) +
+                                             (p[2] - B[2]) * (p[2] - B[2]))
+                                 : 1e30;
+            if (lit) {
+                ++o.lit;
+                o.luma += v;
+                o.sky_lit += hz >= 1e29;
+                if (!visible) {
+                    ++o.hidden_lit;
+                } else {
+                    o.outside += d > extent * 1.4142 * 1.01;
+                    wsum += v;
+                    for (unsigned k = 0; k < 3; ++k) cs[k] += v * p[k];
+                }
+            }
+            if (hit && d <= core) {
+                if (visible) {
+                    ++o.eligible;
+                    o.covered += lit;
+                } else {
+                    ++o.hidden;
+                }
+            }
+        }
+    if (wsum > 0) {
+        double e2 = 0;
+        for (unsigned k = 0; k < 3; ++k) e2 += (cs[k] / wsum - B[k]) * (cs[k] / wsum - B[k]);
+        o.centroid = std::sqrt(e2);
+    }
+    return o;
+}
+// Bubble draws of hits on an owner whose +z face looks at the camera (make_patch's frame and centre), its bubble a sphere
+// of the scene's surface radius about its centre: each hit at the plane point (qx, qy) of depth S maps radially onto
+// it, through the production stage::fill_bubble (the builder's bubble draws). Returns the draws written.
+unsigned bubble_patches(const TierScene& s, const Hit* hits, unsigned count, rr::WeaponPatch* out, unsigned cap) {
+    float frame[9], centre[3] = {0.f, 0.f, s.centre_z}, points[wc::owner_hits][3], ages[wc::owner_hits], colour[3];
+    facing_frame(frame);
+    unsigned n = 0;
+    for (unsigned k = 0; k < count && n < wc::owner_hits; ++k, ++n) {
+        points[n][0] = hits[k].qx;
+        points[n][1] = hits[k].qy;
+        points[n][2] = s.surface;
+        ages[n] = hits[k].age;
+    }
+    wc::shield_colour(1.f, ws::Tuning{}.bands, colour);
+    ws::Bubble b;
+    for (unsigned k = 0; k < 3; ++k) b.e[k] = s.surface;
+    ws::Counts c{};
+    unsigned regions_left = 0;
+    ws::fill_bubble(out, cap, &regions_left, centre, frame, s.tier, b, points, ages, n, colour, ws::Tuning{}, &c);
+    return c.patches;
+}
+unsigned bubble_patches(const TierScene& s, std::initializer_list<Hit> hits, rr::WeaponPatch* out, unsigned cap) {
+    return bubble_patches(s, hits.begin(), unsigned(hits.size()), out, cap);
+}
+// The hull inside a facing owner's bubble: a sphere of `share` of the scene's surface radius (the lane under a bubble).
+HullLane facing_hull(const TierScene& s, double share) {
+    HullLane h{};
+    float frame[9];
+    facing_frame(frame);
+    for (unsigned k = 0; k < 3; ++k) {
+        h.centre[k] = k == 2 ? double(s.centre_z) : 0.0;
+        h.ext[k] = share * double(s.surface);
+        for (unsigned j = 0; j < 3; ++j) h.axes[k][j] = frame[3 * k + j];
+    }
+    return h;
 }
 // The luma on the scanline through the anchor at the plane point (q, 0) (view units).
 float scan_luma(const std::vector<float>& l, const TierScene& s, double q) {
@@ -734,8 +934,8 @@ int main(int argc, char** argv) {
         std::printf("RESULT FAIL checks=%u failures=%u\n", checks, failures + 1);
         return 1;
     }
-    std::printf("ATTACH_SLOTS shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u patch_bytes=%u frame_patches_bytes=%u\n",
-                pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots,
+    std::printf("ATTACH_SLOTS shell_vs=%u shell_ps=%u bubble_ps=%u decal_vs=%u decal_ps=%u patch_bytes=%u frame_patches_bytes=%u\n",
+                pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().bubble_ps_slots, pass.caps().decal_vs_slots,
                 pass.caps().decal_ps_slots, unsigned(sizeof(rr::WeaponPatch)),
                 unsigned(sizeof(rr::WeaponPatch) * wc::max_patches));
     // The cell map's sort (review F5): rr::sort_by_key (heap sort) against the insertion sort it replaced, on 128 keys
@@ -775,7 +975,8 @@ int main(int argc, char** argv) {
         }
         report("cell_map_sort_orders", sorted_ok, "");
     }
-    report("pixel_program_low_thousands", pass.caps().shell_ps_slots < 2000 && pass.caps().decal_ps_slots < 2000, "");
+    report("pixel_program_low_thousands", pass.caps().shell_ps_slots < 2000 && pass.caps().decal_ps_slots < 2000 &&
+                                              pass.caps().bubble_ps_slots < 2000, "");
     report("target_1080", make_target(g, 1920, 1080));
     draw_lane(g, 0.f, -1.f);
     rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, uniform = cells_only;
@@ -1056,21 +1257,22 @@ int main(int argc, char** argv) {
                     unsigned(same), unsigned(moved));
         report("grid_fixed_on_owner", same && moved, "");
     }
-    // Placement on the hull (the screen-space patch, Run236 Flight C): through the production builder with the identity
-    // camera, one hit 0.5 s old (every footprint cell lit), the lane holding the case's hull (an ellipsoid of the
-    // owner's frame: the modelled half-extents, else a sphere through the hit point). Per case: lit pixels over sky
-    // (must be 0), lit pixels whose surface point (the hull lane's CPU twin) lies farther than sqrt 2 x the extent from
-    // the hit (in the lattice's plane and along its axis each within it; at most 1 % of the lit, the GPU's float), the coverage of the surface within half the reach of the
-    // hit (lit / eligible, at least 0.9: those points lie in footprint cells), the luma-weighted centroid of the lit
-    // surface points against the hit (within one cell), the lit count against its hull's reference (the narrow hull's
-    // mid flank, the flat fighter's flank: a third to three times, every approach direction; the flat flank is 2 m
-    // high, so less of it lies within the footprint than of the top). Narrow: a 100 m corvette (1:1:6,
-    // R its 50 m half-length) on its flank 9 % aft, its flank, top and bottom 40 % aft; flat: a fighter of
-    // half-extents 6:1:4 (12 x 2 x 8 m) on its flank, top and bottom 0.3 of each half-extent off centre, and its top hit
-    // by a bolt 42 degrees below its plane (the Run236 case: the bolt's direction plays no part); station: the Flight B
-    // station (R 1304 m) at its recorded contact point (0.676 R); far side: a fighter hit on the face turned away from the
-    // eye (its own hull hides the patch: nothing draws); eye inside: the camera 0.6 R from a flat fighter's centre,
-    // inside its bounding sphere and outside its hull (6:1:4), the hit on the nose in front of it, 4 m away.
+    // Placement (5.1.1 "Placement", user decision after Run238 Flight E): through the production builder with the
+    // identity camera, one hit 0.5 s old (every footprint cell lit), the lane holding the case's hull (an ellipsoid of
+    // the owner's frame: the modelled half-extents, else a sphere through the hit point). Ships draw on their bubble:
+    // the staged owner's hull is one part in the body cache the production walk reads (stage_hull), so the bubble is the
+    // hull's half-extents x bubble_scale about its centre and the hit maps radially onto it (B). Per ship case the image
+    // with the near side only (bubble_far_gain 0): the lit pixels whose near point (the bubble twin) lies hidden or off the
+    // bubble (must be under 0.5 %), farther than sqrt 2 x the extent from B (the plane and the axis each within it; at
+    // most 1 %: not on the tail), the coverage of the visible bubble within half the reach of B (at least 0.9), the
+    // luma-weighted centroid of the lit near points against B (within one cell), the lit count against its hull's
+    // reference (a third to three times), and the lit pixels over sky (the bubble reaches past the hull's outline:
+    // recorded). Narrow: a 100 m corvette (1:1:6, R its 50 m half-length) on its flank 9 % aft, its flank, top and
+    // bottom 40 % aft; flat: a fighter of half-extents 6:1:4 (12 x 2 x 8 m) on its flank, top and bottom 0.3 of each
+    // half-extent off centre, and its top hit by a bolt 42 degrees below its plane (the bolt's direction plays no part:
+    // the face-on count); the top with the hull centred 2 cells below the owner's origin. The station keeps the hull
+    // decal (tier_by_station): the Flight B station (R 1304 m) at its recorded contact point (0.676 R), on the hull lane
+    // (nothing on sky, nothing past the footprint). The chase camera and the eye inside the bubble follow.
     {
         struct Placement {
             const char* name;
@@ -1084,14 +1286,14 @@ int main(int argc, char** argv) {
             float off[3] = {0.f, 0.f, 0.f}; // the hull's centre off the owner's origin (owner frame, view units)
         };
         const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
-        const std::int32_t ident[3][3] = {{65536, 0, 0}, {0, 65536, 0}, {0, 0, 65536}};
         const std::int32_t side[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}}; // local x -> view -z (the flank)
         const std::int32_t facing[3][3] = {{65536, 0, 0}, {0, -65536, 0}, {0, 0, -65536}}; // local +z -> view -z
         const std::int32_t top[3][3] = {{65536, 0, 0}, {0, 0, -65536}, {0, 65536, 0}};    // local +y -> view -z
         const std::int32_t bottom[3][3] = {{65536, 0, 0}, {0, 0, 65536}, {0, -65536, 0}}; // local -y -> view -z
         const float a6 = 250.f / 6.f;
         const double s84 = std::sqrt(1.0 - 0.16), s82 = std::sqrt(1.0 - 0.18);
-        Placement cases[12] = {
+        constexpr unsigned count = 10, station = 8;
+        Placement cases[count] = {
             {"narrow_mid_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * std::sqrt(1.0 - 0.09 * 0.09)), 0, eng(0.09 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
             {"aft_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * s84), 0, eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
             {"y_top_narrow", wc::patch_corvette, 250.f, 600.f, {0, eng(a6 * s84), eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {0, -127, 0}, 0},
@@ -1101,24 +1303,25 @@ int main(int argc, char** argv) {
             {"y_bottom_flat", wc::patch_fighter, 60.f, 400.f, {eng(0.3 * 60.0), -eng(10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, 127, 0}, 4},
             {"y_top_flat_42deg", wc::patch_fighter, 60.f, 400.f, {eng(0.3 * 60.0), eng(10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, -85, 95}, 4},
             {"station_flight_b_0p68R", wc::patch_capital, 6517.64f, 14000.f, {-114699, 85160, 416994}, {}, {}, {0, 0, -127}, 8},
-            {"far_side", wc::patch_fighter, 100.f, 400.f, {0, 0, eng(60.0)}, {}, {}, {0, 0, -127}, 9},
-            {"eye_inside_sphere", wc::patch_fighter, 100.f, 60.f, {0, 0, -eng(40.0)}, {}, {60.f, 10.f, 40.f}, {0, 0, 127}, 10},
-            // review F1: the flat fighter's hull centred 2 cells (6 m) below the owner's origin, hit on its top (an upward
-            // surface below the origin's plane): lights like the centred top
+            // review F1: the flat fighter's hull centred 2 cells (6 m) below the owner's origin, hit on its top
             {"y_top_flat_offcentre", wc::patch_fighter, 60.f, 400.f,
              {eng(0.3 * 60.0), eng(-30.0 + 10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, -127, 0}, 5,
              {0.f, -30.f, 0.f}}};
-        const std::int32_t (*rows_of[12])[3] = {side, side, top, bottom, side, top, bottom, top, facing, ident, ident, top};
-        for (unsigned k = 0; k < 12; ++k) std::memcpy(cases[k].rows, rows_of[k], sizeof ident);
+        const std::int32_t (*rows_of[count])[3] = {side, side, top, bottom, side, top, bottom, top, facing, top};
+        for (unsigned k = 0; k < count; ++k) std::memcpy(cases[k].rows, rows_of[k], sizeof side);
         struct Result {
-            unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0;
-            double centroid_cells = 1e30, lit_ratio = 0, image_shift_cells = 0;
+            unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0, bubbles = 0, off_bubble = 0;
+            double centroid_cells = 1e30, lit_ratio = 0, b_shift_cells = 0;
+            double cap_lo = 0, cap_hi = 0; // the bubble past the hull's tail and nose along z (view units; > 0: past)
             bool drew = false;
-        } res[12];
-        for (unsigned i = 0; i < 12; ++i) {
+        } res[count];
+        rr::WeaponLook near_only = rr::default_weapon_look();
+        near_only.bubble_far_gain = 0.f;
+        for (unsigned i = 0; i < count; ++i) {
             const Placement& c = cases[i];
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
+            stage_tier_source = i == station ? std::uint8_t(wc::tier_by_station) : std::uint8_t(wc::tier_by_ship_class);
             stage_owner(c.z, c.radius, 1000);
             for (unsigned r = 0; r < 3; ++r)
                 for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(c.rows[r][j]));
@@ -1129,8 +1332,6 @@ int main(int argc, char** argv) {
                 stage_ring.slots[0].dir[k] = c.dir[k];
             }
             stage_ring.slots[0].radius = eng(c.radius);
-            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
-                                           wc::max_patches, decals, wc::max_decals);
             double hp[3], pr = 0;
             for (unsigned k = 0; k < 3; ++k) {
                 hp[k] = double(c.pos[k]) * double(wc::world_scale);
@@ -1140,89 +1341,36 @@ int main(int argc, char** argv) {
             const double ext[3] = {c.ext[0] > 0.f ? double(c.ext[0]) : pr, c.ext[0] > 0.f ? double(c.ext[1]) : pr,
                                    c.ext[0] > 0.f ? double(c.ext[2]) : pr};
             const double off[3] = {c.off[0], c.off[1], c.off[2]};
+            if (i != station) stage_hull(ext, off);
+            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), hull_tuning(), patches,
+                                           wc::max_patches, decals, wc::max_decals);
             const HullLane hull = staged_hull(ext, off);
-            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
+            const std::vector<float> l = render(pass, patches, n.patches, i == station ? nullptr : &near_only, nullptr, &hull);
             const double extent = n.patches ? double(patches[0].extent) : 0.0, cell = n.patches ? double(patches[0].cell) : 1.0;
             const double core = n.patches ? 0.5 * double(patches[0].reach) : 0.0; // surely inside the footprint's cells
-            // The stand-off: the patch about the hit floats d above the hull, so the lane's reconstruction shows it
-            // about the hit's floated image (lifted_image; the hit itself when d = 0 or the image misses the hull).
-            const double lift = n.patches ? double(patches[0].standoff) : 0.0;
-            double image[3] = {hp[0] - off[0], hp[1] - off[1], hp[2] - off[2]}, lifted[3];
-            if (lift > 0.0 && lifted_image(hull, image, lift, lifted)) std::memcpy(image, lifted, sizeof image);
-            for (unsigned k = 0; k < 3; ++k) image[k] += off[k];
-            {
-                double s2 = 0;
-                for (unsigned k = 0; k < 3; ++k) s2 += (image[k] - hp[k]) * (image[k] - hp[k]);
-                res[i].image_shift_cells = std::sqrt(s2) / cell;
-            }
-            for (unsigned k = 0; k < 3; ++k) hp[k] = image[k]; // the metrics below about the floated image
-            // The eye-inside case's refusals (the program's step on this lane's CPU twin, without the box and the map):
-            // per hull pixel within half a reach of the floated image, the first rule that refuses it.
-            if (!std::strcmp(c.name, "eye_inside_sphere") && lift > 0.0) {
-                const double W = g.w, Hh = g.h, m00 = 1.6, m11 = 1.6 * W / Hh;
-                auto at = [&](double x, double y, double v[3], double q[3]) {
-                    const double d[3] = {(2.0 * x / W - 1.0) / m00, (1.0 - 2.0 * y / Hh) / m11, 1.0};
-                    double t = 0;
-                    if (!hull_ray(hull, d, q, &t)) return false;
-                    for (unsigned k = 0; k < 3; ++k) v[k] = d[k] * t;
-                    return true;
-                };
-                auto dot = [](const double* a, const double* b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
-                unsigned core_px = 0, no_normal = 0, behind = 0, off_screen = 0, sky = 0, plane = 0, drawn = 0;
-                for (unsigned y = 0; y < g.h; ++y)
-                    for (unsigned x = 0; x < g.w; ++x) {
-                        double P[3], q[3];
-                        if (!at(x, y, P, q)) continue;
-                        double e2 = 0;
-                        for (unsigned k = 0; k < 3; ++k) e2 += (q[k] + off[k] - hp[k]) * (q[k] + off[k] - hp[k]);
-                        if (e2 > core * core) continue;
-                        ++core_px;
-                        const unsigned x0 = std::min(x & ~1u, g.w - 2), y0 = std::min(y & ~1u, g.h - 2);
-                        double a[3], bx[3], by[3], tmp[3];
-                        if (!at(x0, y0, a, tmp) || !at(x0 + 1, y0, bx, tmp) || !at(x0, y0 + 1, by, tmp)) {
-                            ++no_normal;
-                            continue;
-                        }
-                        const double dx[3] = {bx[0] - a[0], bx[1] - a[1], bx[2] - a[2]}, dy[3] = {by[0] - a[0], by[1] - a[1], by[2] - a[2]};
-                        double n[3] = {dx[1] * dy[2] - dx[2] * dy[1], dx[2] * dy[0] - dx[0] * dy[2], dx[0] * dy[1] - dx[1] * dy[0]};
-                        const double ln = std::sqrt(dot(n, n));
-                        for (double& v : n) v /= ln;
-                        const double ray[3] = {P[0] / P[2], P[1] / P[2], 1.0};
-                        if (dot(n, ray) > 0.0)
-                            for (double& v : n) v = -v;
-                        const double rden = 1.0 / std::min(dot(n, ray), -1e-6), t1 = P[2] + lift * rden;
-                        double h1[3];
-                        for (unsigned k = 0; k < 3; ++k) h1[k] = ray[k] * t1 - n[k] * lift;
-                        if (!(t1 > 0.0) || !(h1[2] > 1e-6)) {
-                            ++behind;
-                            continue;
-                        }
-                        const double rx = std::floor((m00 * h1[0] / h1[2] + 1.0) * W * 0.5 + 0.5);
-                        const double ry = std::floor((1.0 - m11 * h1[1] / h1[2]) * Hh * 0.5 + 0.5);
-                        if (rx < 0.0 || ry < 0.0 || rx >= W || ry >= Hh) {
-                            ++off_screen;
-                            continue;
-                        }
-                        double Q[3];
-                        if (!at(rx, ry, Q, tmp)) {
-                            ++sky;
-                            continue;
-                        }
-                        const double dev[3] = {Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]};
-                        if (std::fabs(dot(n, dev)) > lift + 0.05 * cell || !((dot(n, Q) + lift) * rden > 0.0)) {
-                            ++plane;
-                            continue;
-                        }
-                        ++drawn;
-                    }
-                const double cp = core_px ? double(core_px) : 1.0;
-                std::printf("STANDOFF_REFUSALS case=%s core_pixels=%u no_normal=%.4f behind_eye=%.4f off_screen=%.4f "
-                            "sky=%.4f plane=%.4f drawn=%.4f\n",
-                            c.name, core_px, no_normal / cp, behind / cp, off_screen / cp, sky / cp, plane / cp,
-                            drawn / cp);
-            }
             Result& o = res[i];
             o.patches = n.patches;
+            o.bubbles = n.bubbles;
+            if (i != station && n.patches) {
+                const BubbleTwin bt = bubble_twin(patches[0]);
+                double B[3], q[3];
+                bubble_image(bt, hp, B, q);
+                double shift = 0;
+                for (unsigned k = 0; k < 3; ++k) shift += (B[k] - hp[k]) * (B[k] - hp[k]);
+                o.b_shift_cells = std::sqrt(shift) / cell; // the bubble point's distance from the hull's contact point
+                o.cap_hi = double(patches[0].bubble_c[2] + patches[0].bubble_e[2]) - (off[2] + ext[2]);
+                o.cap_lo = (off[2] - ext[2]) - double(patches[0].bubble_c[2] - patches[0].bubble_e[2]);
+                const SideMetric m = side_metric(l, bt, &hull, B, extent, core, 0, base_frame(g).near_z);
+                o.lit = m.lit;
+                o.sky_lit = m.sky_lit;
+                o.outside = m.outside;
+                o.eligible = m.eligible;
+                o.covered = m.covered;
+                o.off_bubble = m.hidden_lit;
+                o.centroid_cells = m.centroid / cell;
+                o.drew = o.lit > 100;
+                continue;
+            }
             double wsum = 0, cs[3] = {0, 0, 0};
             for (UINT y = 0; y < g.h; ++y)
                 for (UINT x = 0; x < g.w; ++x) {
@@ -1242,8 +1390,7 @@ int main(int argc, char** argv) {
                         ++o.eligible;
                         o.covered += lit;
                     }
-                    if (lit && d > extent * 1.4142 * 1.01 + lift) ++o.outside; // the plane and the axis each within the
-                                                                              // extent, the parallax's spread within d
+                    if (lit && d > extent * 1.4142 * 1.01) ++o.outside; // the plane and the axis each within the extent
                     if (lit) {
                         wsum += v;
                         for (unsigned k = 0; k < 3; ++k) cs[k] += v * q[k];
@@ -1256,16 +1403,25 @@ int main(int argc, char** argv) {
             }
             o.drew = o.lit > 100;
         }
-        for (unsigned i = 0; i < 12; ++i) {
+        stage_tier_source = wc::tier_by_radius;
+        for (unsigned i = 0; i < count; ++i) {
             const Result& o = res[i];
             const double ratio = res[cases[i].ref].lit ? double(o.lit) / double(res[cases[i].ref].lit) : 0.0;
             res[i].lit_ratio = ratio;
-            std::printf("PLACEMENT case=%s patches=%u lit_pixels=%u sky_lit=%u outside_lit=%u eligible=%u covered=%u "
-                        "coverage=%.3f centroid_error_cells=%.3f image_shift_cells=%.3f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
-                        cases[i].name, o.patches, o.lit, o.sky_lit, o.outside, o.eligible, o.covered,
-                        o.eligible ? double(o.covered) / double(o.eligible) : 0.0, o.centroid_cells, o.image_shift_cells,
-                        cases[cases[i].ref].name, ratio, int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
+            std::printf("PLACEMENT case=%s surface=%s patches=%u bubbles=%u lit_pixels=%u sky_lit=%u outside_lit=%u "
+                        "off_bubble_lit=%u eligible=%u covered=%u coverage=%.3f centroid_error_cells=%.3f "
+                        "bubble_shift_cells=%.3f cap_nose_m=%.2f cap_tail_m=%.2f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
+                        cases[i].name, i == station ? "hull" : "bubble", o.patches, o.bubbles, o.lit, o.sky_lit, o.outside,
+                        o.off_bubble, o.eligible, o.covered, o.eligible ? double(o.covered) / double(o.eligible) : 0.0,
+                        o.centroid_cells, o.b_shift_cells, o.cap_hi / 5.0, o.cap_lo / 5.0, cases[cases[i].ref].name, ratio,
+                        int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
         }
+        auto on_bubble = [&](unsigned i) {
+            const Result& o = res[i];
+            return o.drew && o.bubbles == 1 && o.off_bubble * 200 <= o.lit && o.outside * 100 <= o.lit && o.eligible &&
+                   double(o.covered) >= 0.9 * double(o.eligible) && o.centroid_cells <= 1.0 && o.lit_ratio >= 1.0 / 3.0 &&
+                   o.lit_ratio <= 3.0;
+        };
         auto on_hull = [&](unsigned i) {
             const Result& o = res[i];
             return o.drew && o.sky_lit == 0 && o.outside * 100 <= o.lit && o.eligible &&
@@ -1355,250 +1511,167 @@ int main(int argc, char** argv) {
                         "neighbour_wrong_axis_silhouette=%u\n",
                         c.name, pixels, edge, mq, pq, wrong_q, wrong_q_edge, mn, pn, wrong_n, wrong_n_edge);
         }
-        report("placement_narrow_hull_flank_aft_top_bottom_on_the_hull", on_hull(0) && on_hull(1) && on_hull(2) && on_hull(3), "");
-        report("placement_flat_fighter_flank_top_bottom_42deg_on_the_hull",
-               on_hull(4) && on_hull(5) && on_hull(6) && on_hull(7) && res[7].lit == res[5].lit, "");
-        report("placement_station_at_the_hit", on_hull(8), "");
-        report("placement_far_side_hidden_by_its_hull", res[9].lit == 0 && res[9].eligible == 0 && res[9].patches >= 1, "");
-        // The eye 4 m from the flat fighter's nose (curvature radius 0.5 m across its thin axis) with the 1.5 m stand-off:
-        // the floated patch's hull points under the outer pixels lie off the screen or beyond the outline, or the step
-        // leaves the nose (the CPU twin of this lane: 0.497 of the surface within half a reach of the hit drawn, the
-        // rest refused for those reasons; 5.1.1 "Stand-off"): its coverage gate is that measured share less 0.05.
-        const Result& eye = res[10];
-        report("placement_eye_inside_sphere_draws",
-               eye.drew && eye.sky_lit == 0 && eye.outside * 100 <= eye.lit && eye.eligible &&
-                   double(eye.covered) >= 0.45 * double(eye.eligible) && eye.centroid_cells <= 1.0,
-               "");
-        report("placement_offcentre_origin_top_lights", on_hull(11) && res[11].lit_ratio >= 0.7, "");
+        report("placement_narrow_hull_flank_aft_top_bottom_on_the_bubble",
+               on_bubble(0) && on_bubble(1) && on_bubble(2) && on_bubble(3), "");
+        // the radius cut at bubble_scale x the radius: the narrow hull reaching its radius keeps the cap past its nose
+        // and tail (at least 0.1 of the half-length; 1.15 x gives 0.15)
+        report("bubble_cap_past_the_narrow_hull_nose_and_tail",
+               res[1].cap_hi >= 0.1 * 250.0 && res[1].cap_lo >= 0.1 * 250.0, "");
+        report("placement_flat_fighter_flank_top_bottom_42deg_on_the_bubble",
+               on_bubble(4) && on_bubble(5) && on_bubble(6) && on_bubble(7) && res[7].lit == res[5].lit, "");
+        report("placement_station_hull_decal_at_the_hit", on_hull(station) && res[station].bubbles == 0, "");
+        report("placement_offcentre_origin_top_lights", on_bubble(9) && res[9].lit_ratio >= 0.7, "");
         draw_lane(g, 0.f, -1.f);
     }
-    // The stand-off on the GPU (user request after Run237 Flight D): a fighter's flat top (a plate, half-extents 500 x 10
-    // x 500 view units: flat to 0.05 units over the patch) turned 60 degrees about the view's y axis (its normal 60
-    // degrees off the eye ray), one hit at its top centre, 0.5 s old, through the production builder at stand-off 0,
-    // the tier's default and two cells. The lit pixels' hull points (the lane's CPU twin) carry the patch's luma-
-    // weighted centroid; its shift from the stand-off-0 centroid is the parallax, against the floated image of the hit
-    // (lifted_image: exact for a plane) and as the stand-off it implies (the d' whose floated image lies |shift| from
-    // the hit), both within 0.1 cell; nothing on sky.
+    // A hit a hair either side of an axis plane (review F2): the flat fighter's top hit at its centre with x = +1, -1 and
+    // 0 engine units (Q_x = +-eps): every face lit by each (no sign rule), so the three images agree (lit pixels within
+    // 0.1 %, the peak within 0.2 %, the luma sum within 0.1 %) and no point is lit twice (the peak not above the zero
+    // case's).
     {
-        const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
-        const double th = 60.0 * 3.14159265358979 / 180.0, cs = std::cos(th), sn = std::sin(th);
-        // local x -> view (cos, 0, sin), y -> (sin, 0, -cos) (towards the eye), z -> view y (det +1)
-        const std::int32_t rows[3][3] = {{std::int32_t(cs * 65536.0), 0, std::int32_t(sn * 65536.0)},
-                                         {std::int32_t(sn * 65536.0), 0, -std::int32_t(cs * 65536.0)},
-                                         {0, 65536, 0}};
-        const double plate[3] = {500.0, 10.0, 500.0};
-        const float cell = ws::metres_to_view(wc::cell_m[wc::patch_fighter]);
-        const float lifts_m[3] = {0.f, wc::standoff_m[wc::patch_fighter], 2.f * wc::cell_m[wc::patch_fighter]};
-        double centroid[3][3]{}, shift_pred[3][3]{};
-        unsigned lit[3]{}, sky[3]{}, drawn[3]{};
-        const double hit[3] = {0.0, 10.0, 0.0};
-        double theta = 0;
-        for (unsigned k = 0; k < 3; ++k) {
-            rr::WeaponPatch patches[wc::max_patches];
-            rr::WeaponDecal decals[wc::max_decals];
-            stage_owner(300.f, 60.f, 1000);
+        rr::WeaponPatch patches[wc::max_patches];
+        rr::WeaponDecal decals[wc::max_decals];
+        const std::int32_t top_rows[3][3] = {{65536, 0, 0}, {0, 0, -65536}, {0, 65536, 0}};
+        const double ext[3] = {60.0, 10.0, 40.0};
+        stage_tier_source = wc::tier_by_ship_class;
+        double sum[3] = {}, peak[3] = {};
+        unsigned lit[3] = {}, draws[3] = {};
+        const std::int32_t xs[3] = {1, -1, 0};
+        for (unsigned v = 0; v < 3; ++v) {
+            stage_owner(400.f, 66.f, 1000);
             for (unsigned r = 0; r < 3; ++r)
-                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
-            stage_ring.slots[0].pos[0] = 0;
-            stage_ring.slots[0].pos[1] = eng(10.0);
+                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(top_rows[r][j]));
+            stage_ring.slots[0].pos[0] = xs[v];
+            stage_ring.slots[0].pos[1] = 1000;
             stage_ring.slots[0].pos[2] = 0;
-            ws::Tuning t{};
-            t.standoff_m[wc::patch_fighter] = lifts_m[k];
+            stage_hull(ext);
+            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), hull_tuning(), patches,
+                                           wc::max_patches, decals, wc::max_decals);
+            draws[v] = n.patches;
+            const HullLane hull = staged_hull(ext);
+            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
+            for (float x : l) {
+                sum[v] += x;
+                peak[v] = std::max(peak[v], double(x));
+                lit[v] += x > 1e-3f;
+            }
+        }
+        stage_tier_source = wc::tier_by_radius;
+        std::printf("AXIS_PLANE draws_plus=%u draws_minus=%u draws_zero=%u lit_plus=%u lit_minus=%u lit_zero=%u "
+                    "peak_plus=%.4f peak_minus=%.4f peak_zero=%.4f sum_plus=%.2f sum_minus=%.2f sum_zero=%.2f\n",
+                    draws[0], draws[1], draws[2], lit[0], lit[1], lit[2], peak[0], peak[1], peak[2], sum[0], sum[1], sum[2]);
+        bool agree = draws[0] == draws[1] && draws[0] == draws[2] && lit[2] > 100;
+        for (unsigned v = 0; v < 2; ++v)
+            agree = agree && std::fabs(double(lit[v]) - double(lit[2])) <= 1e-3 * double(lit[2]) &&
+                    std::fabs(sum[v] - sum[2]) <= 1e-3 * sum[2] && peak[v] <= peak[2] * 1.002 + 1e-3 &&
+                    peak[v] >= peak[2] * 0.998 - 1e-3;
+        report("bubble_axis_plane_no_flip_no_double_light", agree, "");
+        draw_lane(g, 0.f, -1.f);
+    }
+    // The bubble's two sides (5.1.1 "Placement"). Chase: the camera behind and above a fighter (a 4 x 1.6 x 12 m hull,
+    // 24 m ahead, pitched 0.175 rad nose down: placement from the CPU sweep of the review, the near side unlit, the far
+    // side's cap past the outline in view), a hit on its nose: the patch lies on the bubble's far side from the eye (its
+    // outward normal points away); the far side draws around the hull's outline and the hull lane hides what lies behind
+    // the hull. Images with one side each (the other's gain 0) and with both (the default gains):
+    // per side the lit pixels, those the twin hides (hidden_lit: must be under 0.5 %), the bubble within half the reach
+    // of B visible (eligible, its coverage) and hidden by the hull (hidden: their share is the occlusion), the centroid
+    // against B. Eye inside: a sphere bubble (the fallback, R 20 m, no hull walk) with the eye 10 m behind its centre,
+    // inside it, the sky lane, a hit on its front pole: the near point lies behind the eye, so nothing draws with the far
+    // side's gain 0 and the far side alone draws the patch; the default image is the far side's at bubble_far_gain.
+    {
+        rr::WeaponPatch patches[wc::max_patches];
+        rr::WeaponDecal decals[wc::max_decals];
+        rr::WeaponLook near_only = rr::default_weapon_look(), far_only = near_only;
+        near_only.bubble_far_gain = 0.f;
+        far_only.bubble_near_gain = 0.f;
+        far_only.bubble_far_gain = 1.f;
+        const float near_z = base_frame(g).near_z;
+        struct Side {
+            const char* name = "";
+            unsigned patches = 0;
+            SideMetric near_side, far_side;
+            double both_luma = 0, far_luma = 0, cell = 1, cap_nose = 0; // the bubble past the hull's nose (view units)
+        };
+        auto measure = [&](Side& out, const HullLane* hull, const double hp[3], const ws::Tuning& t) {
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), t, patches, wc::max_patches,
                                            decals, wc::max_decals);
-            const HullLane hull = staged_hull(plate);
-            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
-            drawn[k] = n.patches;
-            double wsum = 0;
-            for (UINT y = 0; y < g.h; ++y)
-                for (UINT x = 0; x < g.w; ++x) {
-                    const double v = l[std::size_t(y) * g.w + x];
-                    if (!(v > 1e-3)) continue;
-                    double q[3];
-                    ++lit[k];
-                    if (!hull_point(g, hull, x, y, q)) {
-                        ++sky[k];
-                        continue;
-                    }
-                    wsum += v;
-                    for (unsigned j = 0; j < 3; ++j) centroid[k][j] += v * q[j];
-                }
-            for (unsigned j = 0; j < 3; ++j) centroid[k][j] = wsum > 0 ? centroid[k][j] / wsum : 0.0;
-            double img[3] = {hit[0], hit[1], hit[2]};
-            const double d = double(ws::metres_to_view(lifts_m[k]));
-            if (d > 0.0) lifted_image(hull, hit, d, img);
-            for (unsigned j = 0; j < 3; ++j) shift_pred[k][j] = img[j] - hit[j];
-            if (k == 0) { // the angle at the hit between the normal (local +y) and the eye
-                double v[3], e = 0;
-                for (unsigned j = 0; j < 3; ++j) v[j] = hull.centre[j] + hull.axes[1][j] * hit[1];
-                for (unsigned j = 0; j < 3; ++j) e += v[j] * v[j];
-                theta = std::acos(-(v[0] * hull.axes[1][0] + v[1] * hull.axes[1][1] + v[2] * hull.axes[1][2]) / std::sqrt(e));
-            }
+            out.patches = n.patches;
+            if (!n.patches) return;
+            out.cap_nose = double(patches[0].bubble_c[2] + patches[0].bubble_e[2]);
+            const BubbleTwin bt = bubble_twin(patches[0]);
+            double B[3], q[3];
+            bubble_image(bt, hp, B, q);
+            const double extent = patches[0].extent, core = 0.5 * double(patches[0].reach);
+            out.cell = patches[0].cell;
+            const std::vector<float> ln = render(pass, patches, n.patches, &near_only, nullptr, hull, hull == nullptr);
+            const std::vector<float> lf = render(pass, patches, n.patches, &far_only, nullptr, hull, hull == nullptr);
+            const std::vector<float> lb = render(pass, patches, n.patches, nullptr, nullptr, hull, hull == nullptr);
+            out.near_side = side_metric(ln, bt, hull, B, extent, core, 0, near_z);
+            out.far_side = side_metric(lf, bt, hull, B, extent, core, 1, near_z);
+            out.both_luma = total(lb);
+            out.far_luma = total(lf);
+        };
+        // chase: the nose hit (0, 0, 60) on the hull of half-extents (20, 8, 60)
+        Side chase, inside;
+        chase.name = "chase_nose_from_behind";
+        inside.name = "eye_inside_bubble";
+        stage_tier_source = wc::tier_by_ship_class;
+        {
+            // the owner 24 m ahead, pitched 0.175 rad nose down (the camera above and behind it: the bubble's nose cap
+            // beyond the hull's outline, the rays over the nose top entering the bubble outside the footprint), its
+            // object radius 1.1 x the half-length (the bubble's z cut to it)
+            stage_owner(120.f, 66.f, 1000);
+            const double pc = std::cos(0.175), ps = std::sin(0.175);
+            const std::int32_t rows[3][3] = {{65536, 0, 0},
+                                             {0, std::int32_t(pc * 65536.0), std::int32_t(ps * 65536.0)},
+                                             {0, -std::int32_t(ps * 65536.0), std::int32_t(pc * 65536.0)}};
+            for (unsigned r = 0; r < 3; ++r)
+                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
+            const std::int32_t nose[3] = {0, 0, 6000};
+            for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = nose[k];
+            const double ext[3] = {20.0, 8.0, 60.0}, hp[3] = {0.0, 0.0, 60.0};
+            stage_hull(ext);
+            HullLane hull = staged_hull(ext);
+            measure(chase, &hull, hp, hull_tuning());
+            chase.cap_nose -= ext[2];
         }
-        bool ok = lit[0] > 1000 && sky[0] == 0;
-        for (unsigned k = 0; k < 3; ++k) {
-            double s[3], err = 0, mag = 0, pmag = 0;
-            for (unsigned j = 0; j < 3; ++j) {
-                s[j] = centroid[k][j] - centroid[0][j];
-                err += (s[j] - shift_pred[k][j]) * (s[j] - shift_pred[k][j]);
-                mag += s[j] * s[j];
-                pmag += shift_pred[k][j] * shift_pred[k][j];
-            }
-            err = std::sqrt(err) / double(cell);
-            // The implied stand-off: the d' whose floated image of the hit lies |shift| from it (lifted_image inverted
-            // by bisection; the image's distance grows with d').
-            const double d = double(ws::metres_to_view(lifts_m[k])), want = std::sqrt(mag);
-            auto image_shift = [&](double dd) {
-                double img[3] = {hit[0], hit[1], hit[2]}, s2 = 0;
-                const HullLane hull = staged_hull(plate);
-                if (dd > 0.0) lifted_image(hull, hit, dd, img);
-                for (unsigned j = 0; j < 3; ++j) s2 += (img[j] - hit[j]) * (img[j] - hit[j]);
-                return std::sqrt(s2);
-            };
-            double lo = 0.0, hi = 4.0 * double(ws::metres_to_view(lifts_m[2]));
-            for (int it = 0; it < 60; ++it) (image_shift(0.5 * (lo + hi)) < want ? lo : hi) = 0.5 * (lo + hi);
-            const double implied = want > 0.0 ? 0.5 * (lo + hi) : 0.0;
-            std::printf("STANDOFF case=plate_60deg standoff_m=%.2f standoff_view=%.2f patches=%u lit_pixels=%u sky_lit=%u "
-                        "shift_view=%.3f predicted_view=%.3f shift_error_cells=%.4f implied_standoff_m=%.3f "
-                        "implied_error_cells=%.4f theta_deg=%.2f cell_view=%.2f\n",
-                        double(lifts_m[k]), d, drawn[k], lit[k], sky[k], std::sqrt(mag), std::sqrt(pmag), err,
-                        implied / double(ws::metres_to_view(1.f)), std::fabs(implied - d) / double(cell),
-                        theta * 57.29578, double(cell));
-            // 0.1 cell: no parallax (a shift of 0) misses the default stand-off's 14.7 view units by about a cell
-            ok = ok && lit[k] > 1000 && sky[k] == 0 && err <= 0.1 && std::fabs(implied - d) <= 0.1 * double(cell);
+        // eye inside: the fallback sphere R 100 view units about view z 50 (the eye 50 behind its centre), the hit on its
+        // front pole (0, 0, 100), the sky lane
+        {
+            stage_owner(50.f, 100.f, 1000);
+            stage_ring.slots[0].pos[2] = 10000;
+            const double hp[3] = {0.0, 0.0, 100.0};
+            draw_lane(g, 0.f, -1.f);
+            measure(inside, nullptr, hp, ws::Tuning{});
         }
-        report("standoff_parallax_matches_d_on_a_tilted_plate", ok, "");
+        stage_tier_source = wc::tier_by_radius;
+        for (const Side* s : {&chase, &inside}) {
+            for (int k = 0; k < 2; ++k) {
+                const SideMetric& m = k ? s->far_side : s->near_side;
+                std::printf("BUBBLE_SIDE case=%s side=%s patches=%u lit_pixels=%u hidden_lit=%u sky_lit=%u outside_lit=%u "
+                            "eligible=%u covered=%u coverage=%.3f hidden=%u hidden_share=%.3f centroid_error_cells=%.3f "
+                            "luma=%.3f\n",
+                            s->name, k ? "far" : "near", s->patches, m.lit, m.hidden_lit, m.sky_lit, m.outside, m.eligible,
+                            m.covered, m.eligible ? double(m.covered) / double(m.eligible) : 0.0, m.hidden,
+                            m.eligible + m.hidden ? double(m.hidden) / double(m.eligible + m.hidden) : 0.0,
+                            m.centroid / s->cell, m.luma);
+            }
+            std::printf("BUBBLE_SIDE case=%s side=both luma=%.3f far_luma=%.3f ratio=%.4f far_gain=%.2f cap_nose_m=%.2f\n",
+                        s->name, s->both_luma, s->far_luma, s->far_luma > 0 ? s->both_luma / s->far_luma : 0.0,
+                        double(wc::bubble_far_gain), s->cap_nose / 5.0);
+        }
+        const SideMetric& cf = chase.far_side;
+        report("bubble_chase_far_side_around_the_outline",
+               chase.near_side.lit == 0 && cf.lit >= 500 && cf.hidden_lit * 200 <= cf.lit && cf.hidden > 0 &&
+                   chase.cap_nose >= 0.1 * 60.0 &&
+                   cf.outside * 100 <= cf.lit &&
+                   std::fabs(chase.both_luma - double(wc::bubble_far_gain) * chase.far_luma) <= 0.01 * chase.both_luma, "");
+        const SideMetric& in = inside.far_side;
+        report("bubble_eye_inside_far_side_only",
+               inside.near_side.lit == 0 && in.lit > 100 && in.hidden_lit * 200 <= in.lit && in.eligible > 0 &&
+                   double(in.covered) >= 0.9 * double(in.eligible) && in.centroid <= inside.cell &&
+                   std::fabs(inside.both_luma - double(wc::bubble_far_gain) * inside.far_luma) <= 0.01 * inside.both_luma,
+               "");
         draw_lane(g, 0.f, -1.f);
-    }
-    // The stand-off's parallax steps (weapon_shell_ps.hlsl), its CPU twin in double on spheres (the hull lane's law,
-    // 1920 x 1080, the fixture's projection; the normal from the 2x2 quad as the hardware's coarse ddx / ddy) against
-    // the exact answer (the ray against the sphere of radius R + d, scaled back to R): per pixel on the hull, after 0, 1
-    // and 2 lane re-projection steps (the program takes one), the screen error of the hull point H drawn here (where
-    // H's own floated point H + n(H) d projects, in pixels) and its world error (cells), over all pixels and the
-    // silhouette-near ones (normal more than 60 degrees off the eye ray); pixels refused (a quad on the sky: no normal)
-    // and rejected (the lane under the step on the sky, the hull more than d off the tangent plane, behind the eye).
-    {
-        const double W = 1920.0, Hh = 1080.0, m00 = 1.6, m11 = 1.6 * W / Hh;
-        struct Sphere {
-            const char* name;
-            std::uint8_t tier;
-            double R, Z;
-        } spheres[] = {{"fighter_12m_at_68m", wc::patch_fighter, 60.0, 400.0},
-                       {"fighter_12m_at_37m", wc::patch_fighter, 60.0, 244.0},
-                       {"corvette_50m_at_70m", wc::patch_corvette, 250.0, 600.0},
-                       {"capital_400m_at_400m", wc::patch_capital, 2000.0, 4000.0}};
-        bool one_step = true;
-        for (const Sphere& sp : spheres) {
-            const double d = double(ws::standoff_view(ws::Tuning{}, sp.tier));
-            const double cell = double(ws::metres_to_view(wc::cell_m[sp.tier]));
-            auto ray_of = [&](double x, double y, double r[3]) {
-                r[0] = (2.0 * x / W - 1.0) / m00;
-                r[1] = (1.0 - 2.0 * y / Hh) / m11;
-                r[2] = 1.0;
-            };
-            auto sphere_t = [&](const double r[3], double radius) {
-                const double A = r[0] * r[0] + r[1] * r[1] + r[2] * r[2], B = -r[2] * sp.Z;
-                const double C = sp.Z * sp.Z - radius * radius, disc = B * B - A * C;
-                return disc < 0.0 ? -1.0 : (-B - std::sqrt(disc)) / A;
-            };
-            auto lane = [&](double x, double y, double p[3]) {
-                double r[3];
-                ray_of(x, y, r);
-                const double t = sphere_t(r, sp.R);
-                for (unsigned k = 0; k < 3; ++k) p[k] = r[k] * t;
-                return t > 0.0;
-            };
-            auto dot = [](const double* a, const double* b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
-            auto raster = [&](const double v[3], double out[2]) {
-                out[0] = (m00 * v[0] / v[2] + 1.0) * W * 0.5;
-                out[1] = (1.0 - m11 * v[1] / v[2]) * Hh * 0.5;
-            };
-            std::vector<float> px[3], px_sil[3], cells[3];
-            unsigned pixels = 0, refused = 0, sil = 0, rejected[3]{};
-            for (unsigned y = 0; y < unsigned(Hh); ++y)
-                for (unsigned x = 0; x < unsigned(W); ++x) {
-                    double P[3], r[3];
-                    if (!lane(x, y, P)) continue;
-                    ++pixels;
-                    ray_of(x, y, r);
-                    const unsigned x0 = std::min(x & ~1u, unsigned(W) - 2), y0 = std::min(y & ~1u, unsigned(Hh) - 2);
-                    double a[3], bx[3], by[3];
-                    if (!lane(x0, y0, a) || !lane(x0 + 1, y0, bx) || !lane(x0, y0 + 1, by)) {
-                        ++refused;
-                        continue;
-                    }
-                    const double dx[3] = {bx[0] - a[0], bx[1] - a[1], bx[2] - a[2]}, dy[3] = {by[0] - a[0], by[1] - a[1], by[2] - a[2]};
-                    double n[3] = {dx[1] * dy[2] - dx[2] * dy[1], dx[2] * dy[0] - dx[0] * dy[2], dx[0] * dy[1] - dx[1] * dy[0]};
-                    const double ln = std::sqrt(dot(n, n));
-                    for (double& v : n) v /= ln;
-                    if (dot(n, r) > 0.0)
-                        for (double& v : n) v = -v;
-                    const double den = std::min(dot(n, r), -1e-6), rl = std::sqrt(dot(r, r));
-                    const bool is_sil = -dot(n, r) / rl < 0.5;
-                    sil += is_sil;
-                    // The exact floated hit: the ray against the sphere R + d, its point scaled back to R.
-                    const double te = sphere_t(r, sp.R + d);
-                    double he[3] = {r[0] * te, r[1] * te, r[2] * te - sp.Z};
-                    for (double& v : he) v *= sp.R / (sp.R + d);
-                    he[2] += sp.Z;
-                    double h[3];
-                    double t = (dot(n, P) + d) / den;
-                    bool ok = t > 0.0;
-                    for (unsigned k = 0; k < 3; ++k) h[k] = r[k] * t - n[k] * d;
-                    for (unsigned step = 0; step < 3; ++step) {
-                        if (step) {
-                            double rr[2], Q[3];
-                            raster(h, rr);
-                            const double qx = std::min(std::max(std::floor(rr[0] + 0.5), 0.0), W - 1.0);
-                            const double qy = std::min(std::max(std::floor(rr[1] + 0.5), 0.0), Hh - 1.0);
-                            ok = ok && lane(qx, qy, Q);
-                            const double dev[3] = {Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]};
-                            ok = ok && std::fabs(dot(n, dev)) <= d + 0.05 * cell;
-                            t = (dot(n, Q) + d) / den;
-                            ok = ok && t > 0.0;
-                            for (unsigned k = 0; k < 3; ++k) h[k] = r[k] * t - n[k] * d;
-                        }
-                        if (!ok) {
-                            ++rejected[step];
-                            continue;
-                        }
-                        double hc[3] = {h[0], h[1], h[2] - sp.Z};
-                        const double hl = std::sqrt(dot(hc, hc));
-                        double fl[3], fr[2];
-                        for (unsigned k = 0; k < 3; ++k) fl[k] = h[k] + hc[k] / hl * d;
-                        raster(fl, fr);
-                        const float e_px = float(std::sqrt((fr[0] - x) * (fr[0] - x) + (fr[1] - y) * (fr[1] - y)));
-                        const double ew[3] = {h[0] - he[0], h[1] - he[1], h[2] - he[2]};
-                        px[step].push_back(e_px);
-                        if (is_sil) px_sil[step].push_back(e_px);
-                        cells[step].push_back(float(std::sqrt(dot(ew, ew)) / cell));
-                    }
-                }
-            auto pct = [](std::vector<float>& v, double q) {
-                if (v.empty()) return 0.0;
-                std::sort(v.begin(), v.end());
-                return double(v[std::min(v.size() - 1, std::size_t(q * double(v.size())))]);
-            };
-            auto mean = [](const std::vector<float>& v) {
-                double s = 0;
-                for (float e : v) s += e;
-                return v.empty() ? 0.0 : s / double(v.size());
-            };
-            double p99[3], sil99[3];
-            for (unsigned step = 0; step < 3; ++step) {
-                p99[step] = pct(px[step], 0.99);
-                sil99[step] = pct(px_sil[step], 0.99);
-                std::printf("STANDOFF_STEPS case=%s standoff_view=%.2f cell_view=%.2f pixels=%u refused_no_normal=%u "
-                            "silhouette_pixels=%u steps=%u drawn=%u rejected=%u px_mean=%.3f px_p99=%.3f px_max=%.3f "
-                            "silhouette_px_p99=%.3f silhouette_px_max=%.3f cells_p99=%.4f\n",
-                            sp.name, d, cell, pixels, refused, sil, step, unsigned(px[step].size()), rejected[step],
-                            mean(px[step]), p99[step], pct(px[step], 1.0), sil99[step], pct(px_sil[step], 1.0),
-                            pct(cells[step], 0.99));
-            }
-            one_step = one_step && p99[1] < p99[0] && sil99[1] < sil99[0] && p99[2] >= p99[1] - 0.5 &&
-                       sil99[2] >= sil99[1] - 0.5;
-        }
-        report("standoff_one_step_suffices", one_step, "");
     }
     // The face cull (stage::face_culled, core::face_cull_sin): a fighter (R 100 at view z 400) hit on its back (local
     // z = 60), the owner turned about y by theta: at 0 the +z face's box faces away from the eye at every corner
@@ -1611,6 +1684,7 @@ int main(int argc, char** argv) {
             unsigned culled = 0, has_z = 0, patches = 0;
             double dmin = 0, dmax = 0;
         };
+        stage_tier_source = wc::tier_by_station; // the face cull is the hull decal's (a bubble draws no cull)
         auto turn = [&](double th) {
             Turn o;
             stage_owner(400.f, 100.f, 1000);
@@ -1669,6 +1743,7 @@ int main(int argc, char** argv) {
         report("face_cull_away_culled_across_drawn", away.culled >= 1 && away.has_z == 0 &&
                                                          away.dmax < -double(wc::face_cull_sin) && across_deg > 0 &&
                                                          across.has_z == 1, "");
+        stage_tier_source = wc::tier_by_radius;
         stage_owner(400.f, 100.f, 1000);
     }
     // The own ship in the cockpit view (core::own_cockpit_gain, Run236 Flight C): one patch on the staged owner, drawn
@@ -1687,7 +1762,7 @@ int main(int argc, char** argv) {
                                {"unknown_own_cockpit", 0u, true},
                                {"own_cockpit_stale", addr(fake_node), true}};
         double sums[5] = {};
-        unsigned dimmed[5] = {}, drawn[5] = {};
+        unsigned dimmed[5] = {}, drawn[5] = {}, built[5] = {};
         ws::CockpitClock clock;
         clock.cockpit(41, 1, 100); // the chase camera's last visit, frame 100
         for (unsigned v = 0; v < 5; ++v) {
@@ -1698,10 +1773,11 @@ int main(int argc, char** argv) {
             // the stale case: the glue's view test with no visit since frame 100, now at frame 102 (review F2)
             const bool view = v == 4 ? clock.cockpit(41, 1, 102) : views[v].cockpit;
             dimmed[v] = ws::dim_own_cockpit(patches, n.patches, views[v].own, view);
+            built[v] = n.patches;
             rr::WeaponEffectsFrame f = base_frame(g);
             f.patches = patches;
             f.patch_count = n.patches;
-            const double sphere[3] = {100.0, 100.0, 100.0};
+            const double sphere[3] = {80.0, 80.0, 80.0}; // the hull inside the fallback bubble (the radius, 100)
             draw_hull_lane(g, staged_hull(sphere));
             const auto res = draw(pass, f);
             const std::vector<float> l = read_luma(g, g.scene_s.p);
@@ -1716,7 +1792,8 @@ int main(int argc, char** argv) {
                     "stale_ratio=%.4f\n", double(wc::own_cockpit_gain), ratio, sums[0] > 0 ? sums[2] / sums[0] : 0.0,
                     sums[0] > 0 ? sums[3] / sums[0] : 0.0, sums[0] > 0 ? sums[4] / sums[0] : 0.0);
         report("cockpit_dims_only_the_own_ship_in_the_cockpit",
-               drawn[0] && drawn[1] && drawn[2] && drawn[3] && drawn[4] && dimmed[0] == 0 && dimmed[1] == 5 && dimmed[2] == 0 &&
+               drawn[0] && drawn[1] && drawn[2] && drawn[3] && drawn[4] && dimmed[0] == 0 && built[1] >= 1 &&
+                   dimmed[1] == built[1] && dimmed[2] == 0 &&
                    dimmed[3] == 0 && dimmed[4] == 0 && std::fabs(ratio - double(wc::own_cockpit_gain)) < 0.01 &&
                    sums[2] == sums[0] && sums[3] == sums[0] && sums[4] == sums[0],
                "");
@@ -1750,8 +1827,8 @@ int main(int argc, char** argv) {
             // The surface: the flat face (a plane square to the view at 0.6 R in front of the centre) or the sphere.
             if (flat)
                 draw_lane(g, owner_z - 0.6f * owner_r, 1.f);
-            else {
-                const double r3[3] = {owner_r, owner_r, owner_r};
+            else { // the hull inside the fallback bubble (the radius): the bubble draws on its own sphere
+                const double r3[3] = {0.8 * owner_r, 0.8 * owner_r, 0.8 * owner_r};
                 draw_hull_lane(g, staged_hull(r3));
             }
             const double dt = 1.0 / 60.0, fade = double(wc::fade_ms) * 1e-3;
@@ -1841,6 +1918,13 @@ int main(int argc, char** argv) {
         report("no_pop_sphere_front", fighter_sphere.frames == 240 && fighter_sphere.worst_rel <= 0.0 &&
                                                      capital_sphere.frames == 240 && capital_sphere.worst_rel <= 0.0 &&
                                                      capital_sphere.cells_dropped == 0, "");
+        // The station's hull decal on its flat face (the decal path, unchanged by the bubble).
+        stage_tier_source = wc::tier_by_station;
+        const NoPop station_fire = run_nopop("station_flat_12hps", wc::patch_capital, 2000.f, 4000.f, 0.61, ws::Tuning{}, true);
+        stage_tier_source = wc::tier_by_radius;
+        draw_lane(g, 0.f, -1.f);
+        report("no_pop_station_hull_decal", station_fire.frames == 240 && station_fire.worst_rel <= 0.0 &&
+                                                station_fire.cells_dropped == 0, "");
     }
     // A region seam (through the production builder): the owner turned 45 degrees about y, so the edge between its -z
     // and -x regions faces the camera; two hits half a cell either side of the seam (ages 0.5 s, cells only), each
@@ -1874,7 +1958,7 @@ int main(int argc, char** argv) {
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
                                            wc::max_patches, decals, wc::max_decals);
             if (drawn) *drawn = n.patches;
-            const double sphere[3] = {r, r, r};
+            const double sphere[3] = {0.8 * r, 0.8 * r, 0.8 * r}; // the hull inside the fallback bubble
             const HullLane hull = staged_hull(sphere);
             const std::vector<float> l = render(pass, patches, n.patches, &cells_only, nullptr, &hull);
             if (keep) *keep = l;
@@ -1990,6 +2074,84 @@ int main(int argc, char** argv) {
         const double station = time_build("station_flight_b_cluster_64_hits", 1000 + 40 * wc::owner_hits);
         report("stage_cpu_measured", one > 0.0 && many > 0.0 && station > 0.0, "");
     }
+    // The hull walk's cost (5.1.1 "Placement"; the per-owner cache): the production stage::hull_bounds over the fake body
+    // cache with 127 parts (the walk's budget is 128 nodes), and the builder's frame for one capital with 64 spread hits
+    // with the cache warm (the owner's bounds reused: the production steady state) and cold (rescoped before every call:
+    // a walk in every frame, what the cache saves), best and mean of 200 calls (us).
+    {
+        stage_owner(4000.f, 2000.f, 0);
+        wc::ring_clear(stage_ring);
+        for (unsigned i = 0; i < wc::owner_hits; ++i) {
+            const double th = 0.61 * std::sqrt(halton(i + 1, 2)), a = 6.2831853 * halton(i + 1, 3), re = 200000.0;
+            const std::int32_t pos[3] = {std::int32_t(re * std::sin(th) * std::cos(a)),
+                                         std::int32_t(re * std::sin(th) * std::sin(a)), -std::int32_t(re * std::cos(th))};
+            add_stage_hit(1000 + 40 * i, pos, wc::patch_capital);
+        }
+        const double ext[3] = {600.0, 400.0, 2000.0};
+        stage_hull(ext, nullptr, 127);
+        LARGE_INTEGER freq, a, b;
+        QueryPerformanceFrequency(&freq);
+        ws::HullBox box;
+        bool ok = true;
+        double walk_best = 1e30, walk_sum = 0;
+        for (unsigned rep = 0; rep < 200; ++rep) {
+            QueryPerformanceCounter(&a);
+            ok = ws::hull_bounds(&fake_read, addr(fake_hull), addr(fake_node), &box) && ok;
+            QueryPerformanceCounter(&b);
+            walk_best = std::min(walk_best, ticks_us(a, b, freq));
+            walk_sum += ticks_us(a, b, freq);
+        }
+        // The production reader (engine_memory::read, src/proxy/engine_memory.cpp built as production builds it, without
+        // SSE) over the same fixture blocks: cold, the region cache invalidated before each walk (next_frame: the walk's
+        // first frame), and warm (the regions validated by the previous walk of the frame); the reads one walk makes.
+        static unsigned walk_reads = 0;
+        auto counted = [](std::uintptr_t at, void* out, std::size_t n) {
+            ++walk_reads;
+            return fake_read(at, out, n);
+        };
+        walk_reads = 0;
+        ws::hull_bounds(counted, addr(fake_hull), addr(fake_node), &box);
+        const unsigned reads = walk_reads;
+        auto production = [](std::uintptr_t at, void* out, std::size_t n) { return x3m::engine_memory::read(at, out, n); };
+        double em_best[2] = {1e30, 1e30}, em_sum[2] = {0, 0};
+        bool em_ok = true;
+        for (unsigned warm = 0; warm < 2; ++warm)
+            for (unsigned rep = 0; rep < 200; ++rep) {
+                if (!warm) x3m::engine_memory::next_frame();
+                QueryPerformanceCounter(&a);
+                em_ok = ws::hull_bounds(production, addr(fake_hull), addr(fake_node), &box) && em_ok;
+                QueryPerformanceCounter(&b);
+                em_best[warm] = std::min(em_best[warm], ticks_us(a, b, freq));
+                em_sum[warm] += ticks_us(a, b, freq);
+            }
+        static rr::WeaponPatch patches[wc::max_patches];
+        static rr::WeaponDecal decals[wc::max_decals];
+        static ws::BubbleCache cache;
+        double best[2] = {1e30, 1e30}, sum[2] = {0, 0};
+        ws::Counts n{};
+        for (unsigned cold = 0; cold < 2; ++cold) {
+            cache.rescope(100 + cold);
+            for (unsigned rep = 0; rep < 200; ++rep) {
+                if (cold) cache.rescope(1000 + rep);
+                QueryPerformanceCounter(&a);
+                n = ws::build(stage_ring, 1000 + 40 * wc::owner_hits, &fake_read, identity_camera(), hull_tuning(), patches,
+                              wc::max_patches, decals, wc::max_decals, &cache);
+                QueryPerformanceCounter(&b);
+                best[cold] = std::min(best[cold], ticks_us(a, b, freq));
+                sum[cold] += ticks_us(a, b, freq);
+            }
+        }
+        std::printf("HULL_WALK parts=%u nodes=%u ok=%u reads=%u walk_best_us=%.1f walk_mean_us=%.1f "
+                    "engine_memory_ok=%u engine_memory_cold_best_us=%.1f engine_memory_cold_mean_us=%.1f "
+                    "engine_memory_warm_best_us=%.1f engine_memory_warm_mean_us=%.1f warm_best_us=%.1f "
+                    "warm_mean_us=%.1f cold_best_us=%.1f cold_mean_us=%.1f patches=%u bubbles=%u bubble_fallback=%u "
+                    "cache_walks=%u cache_hits=%u\n",
+                    box.parts, box.nodes, unsigned(ok), reads, walk_best, walk_sum / 200.0, unsigned(em_ok), em_best[0],
+                    em_sum[0] / 200.0, em_best[1], em_sum[1] / 200.0, best[0], sum[0] / 200.0, best[1], sum[1] / 200.0,
+                    n.patches, n.bubbles, n.bubble_fallback, cache.walks, cache.hits);
+        report("hull_walk_measured", ok && em_ok && box.parts == 127 && box.nodes == 127 && n.bubbles == 1 &&
+                                         n.bubble_fallback == 0 && cache.hits >= 199, "");
+    }
     // The decal fallback through the production builder: an owner without an ellipsoid (radius 0) gives one flat
     // patch at the hit point and no patch; it draws on a hull at its depth and 0 over sky.
     {
@@ -2072,7 +2234,7 @@ int main(int argc, char** argv) {
         rr::WeaponEffectsFrame f = base_frame(g);
         f.patches = patches;
         f.patch_count = live.patches;
-        const double sphere[3] = {100.0, 100.0, 100.0};
+        const double sphere[3] = {80.0, 80.0, 80.0}; // the hull inside the fallback bubble
         draw_hull_lane(g, staged_hull(sphere));
         auto drawn = draw(pass, f);
         const double live_sum = total(read_luma(g, g.scene_s.p));
@@ -2086,7 +2248,7 @@ int main(int argc, char** argv) {
         std::printf("RETIRED live_patches=%u live_drew=%u live_sum=%.4f patches=%u decals=%u retired=%u ring_live=%u result=%08lx drew=%u sum=%.4f\n",
                     live.patches, unsigned(drawn.second.drew), live_sum, dead.patches, dead.decals, dead.retired,
                     ring_live(stage_ring), res.first, unsigned(res.second.drew), dead_sum);
-        report("stage_build_live_owner_draws", live.patches == 5 && drawn.second.drew && live_sum > 1.0, "");
+        report("stage_build_live_owner_draws", live.patches >= 1 && live.bubbles == 1 && drawn.second.drew && live_sum > 1.0, "");
         draw_lane(g, 0.f, -1.f);
         report("retired_owner_draws_nothing", dead.patches == 0 && dead.decals == 0 && dead.retired == 1 &&
                                                   ring_live(stage_ring) == 0 && res.first == S_FALSE && !res.second.drew &&
@@ -2127,18 +2289,22 @@ int main(int argc, char** argv) {
                                              !std::strcmp(refused.caps().reason, "program_create") &&
                                              refused.references() == 0 && run == E_INVALIDARG && rep.calls == 0, "");
     }
-    // Fault once, then recover; then Reset.
+    // Fault once, then recover; then Reset; a hull decal draw and a bubble's.
     {
         rr::WeaponEffectsFrame f = base_frame(g);
-        const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.f}});
-        f.patches = &p;
-        f.patch_count = 1;
+        rr::WeaponPatch both[9];
+        both[0] = make_patch(fighter, {{0.f, 0.f, 0.f}});
+        const rr::WeaponPatch& p = both[0];
+        const unsigned drawn_both = 1 + bubble_patches(fighter, {{0.f, 0.f, 0.f}}, both + 1, 8);
+        f.patches = both;
+        f.patch_count = drawn_both;
         pass.set_faults(2);
         auto res = draw(pass, f);
         report("fault_reported", FAILED(res.first) && res.second.failed != rr::WeaponEffectsStep::None, "");
         pass.set_faults(0);
         auto res2 = draw(pass, f);
-        report("recovers_after_fault", SUCCEEDED(res2.first) && res2.second.drew, "");
+        report("recovers_after_fault", SUCCEEDED(res2.first) && res2.second.drew && res2.second.patches == drawn_both &&
+                                           drawn_both >= 2, "");
         pass.before_reset();
         g.release();                       // only DEFAULT-pool targets are lost across Reset; shaders survive
         D3DPRESENT_PARAMETERS pp2 = pp;
@@ -2153,10 +2319,11 @@ int main(int argc, char** argv) {
         if (mt && SUCCEEDED(er)) {
             plane_lane(g, p);
             rr::WeaponEffectsFrame f2 = base_frame(g);
-            f2.patches = &p;
-            f2.patch_count = 1;
+            f2.patches = both;
+            f2.patch_count = drawn_both;
             auto after = draw(pass, f2);
-            drew_after = SUCCEEDED(after.first) && after.second.drew && total(read_luma(g, g.scene_s.p)) > 1.0;
+            drew_after = SUCCEEDED(after.first) && after.second.drew && after.second.patches == drawn_both &&
+                         total(read_luma(g, g.scene_s.p)) > 1.0;
         }
         report("reset_recovers", mt && SUCCEEDED(er) && pass.resources_ready() && drew_after, "");
         draw_lane(g, 0.f, -1.f);
@@ -2222,8 +2389,40 @@ int main(int argc, char** argv) {
             spread_count = ws::build(stage_ring, 2500, &fake_read, identity_camera(), ws::Tuning{}, spread, wc::max_patches,
                                      decals, wc::max_decals).patches;
         }
-        const double spread_r[3] = {2000.0, 2000.0, 2000.0};
-        const HullLane spread_hull = staged_hull(spread_r); // the capital's sphere: the hits' surface
+        const double spread_r[3] = {0.87 * 2000.0, 0.87 * 2000.0, 0.87 * 2000.0};
+        const HullLane spread_hull = staged_hull(spread_r); // the capital's hull inside its bubble (the fallback sphere)
+        // The ship bubble's cases (5.1.1 "Placement"): the same hits on a facing owner's bubble (a sphere of the scene's
+        // surface radius, the hull inside it at 0.87 of it as the lane), through the production fill_bubble; the
+        // capital spread above is a bubble through the builder.
+        rr::WeaponPatch bubble_fighter[8], bubble_capital[8], bubble_worst[32];
+        const unsigned n_bf = bubble_patches(fighter_far, {{-cf, 0.f, 0.2f}, {cf, 0.f, 0.5f}}, bubble_fighter, 8);
+        const unsigned n_bc = bubble_patches(capital_close, {{-1.5f * cc, 0.f, 0.2f}, {1.5f * cc, 0.f, 0.5f}}, bubble_capital, 8);
+        unsigned n_bw = 0;
+        for (unsigned k = 0; k < 4; ++k)
+            n_bw += bubble_patches(capital_close, {{(k & 1 ? 1.5f : -1.5f) * cc, (k & 2 ? 1.5f : -1.5f) * cc, 0.1f + 0.1f * k}},
+                                   bubble_worst + n_bw, 32 - n_bw);
+        const HullLane fighter_hull = facing_hull(fighter_far, 0.87), capital_hull = facing_hull(capital_close, 0.87);
+        // The eye inside the bubble (review F6), through the builder on the sky lane: the placement case (the fallback
+        // sphere R 20 m, the eye 10 m behind its centre, the hit on its front pole), and the own ship in the cockpit view
+        // (the eye 1 m inside the bubble's back, eight hits around it, two behind the eye; the draws dimmed as the glue
+        // dims them).
+        rr::WeaponPatch inside_front[wc::max_patches], cockpit[wc::max_patches];
+        unsigned n_inside = 0, n_cockpit = 0;
+        {
+            rr::WeaponDecal decals[wc::max_decals];
+            stage_owner(50.f, 100.f, 1000);
+            stage_ring.slots[0].pos[2] = 10000;
+            n_inside = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, inside_front,
+                                 wc::max_patches, decals, wc::max_decals).patches;
+            stage_owner(95.f, 100.f, 1000);
+            wc::ring_clear(stage_ring);
+            const std::int32_t around[8][3] = {{0, 0, 10000}, {7071, 0, 7071}, {-7071, 0, 7071}, {0, 7071, 7071},
+                                               {10000, 0, 0}, {0, -10000, 0}, {0, 2000, -9798}, {3000, 0, -9539}};
+            for (unsigned k = 0; k < 8; ++k) add_stage_hit(1000 + 40 * k, around[k]);
+            n_cockpit = ws::build(stage_ring, 1400, &fake_read, identity_camera(), ws::Tuning{}, cockpit, wc::max_patches,
+                                  decals, wc::max_decals).patches;
+            ws::dim_own_cockpit(cockpit, n_cockpit, addr(fake_node), true);
+        }
         unsigned spread_cells = 0;
         for (unsigned i = 0; i < spread_count; ++i) spread_cells += spread[i].cells;
         std::printf("TIMING_MAPS fighter_12hps_cells=%u capital_full_map_cells=%u capital_fill_map_cells=%u capital_spread_draws=%u capital_spread_cells=%u\n",
@@ -2233,6 +2432,7 @@ int main(int argc, char** argv) {
             const rr::WeaponPatch* patches;
             unsigned count;
             const HullLane* hull; // the surface (null: the first patch's plane)
+            bool sky = false;     // the sky lane instead
         } cases[] = {{"fence", nullptr, 0, nullptr},
                      {"fighter_two_hits_one_region", fighter_one, 1, nullptr},
                      {"fighter_two_regions", fighter_regions, 2, nullptr},
@@ -2240,7 +2440,12 @@ int main(int argc, char** argv) {
                      {"capital_close_two_regions", capital_regions, 2, nullptr}, {"worst_four_regions", worst, 4, nullptr},
                      {"fighter_12hps_map", fighter_burst, 1, nullptr}, {"capital_close_full_map", capital_map, 1, nullptr},
                      {"capital_fill_full_map", capital_fill_map, 1, nullptr},
-                     {"capital_spread_spill", spread, spread_count, &spread_hull}};
+                     {"capital_spread_spill", spread, spread_count, &spread_hull},
+                     {"bubble_fighter_two_hits", bubble_fighter, n_bf, &fighter_hull},
+                     {"bubble_capital_close_two_hits", bubble_capital, n_bc, &capital_hull},
+                     {"bubble_worst_one_owner_four_hits", bubble_worst, n_bw, &capital_hull},
+                     {"bubble_eye_inside_front_hit", inside_front, n_inside, nullptr, true},
+                     {"bubble_cockpit_eight_hits", cockpit, n_cockpit, nullptr, true}};
         Com<IDirect3DQuery9> ev, occlusion;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
         dev->CreateQuery(D3DQUERYTYPE_OCCLUSION, &occlusion.p);
@@ -2250,7 +2455,9 @@ int main(int argc, char** argv) {
             rr::WeaponEffectsFrame f = base_frame(tt);
             f.patches = c.patches;
             f.patch_count = c.count;
-            if (c.hull)
+            if (c.sky)
+                draw_lane(tt, 0.f, -1.f);
+            else if (c.hull)
                 draw_hull_lane(tt, *c.hull);
             else if (c.count)
                 plane_lane(tt, c.patches[0]);

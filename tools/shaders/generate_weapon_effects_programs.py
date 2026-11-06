@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Compile the weapon effects' programs (docs/architecture/weapon-effects.md 5.1, step 1: the shield-hit shell and the
-ripple decal): src/effects/weapon_{shell,decal}_{vs,ps}.hlsl -> src/renderer/weapon_{shell,decal}_{vertex,pixel}_program_inc.h,
-provenance verification/results/weapon-{shell,decal}-{vertex,pixel}-program.json; the pixel programs include
+"""Compile the weapon effects' programs (docs/architecture/weapon-effects.md 5.1, step 1: the shield-hit hull decal, the
+ship bubble and the flat decal): src/effects/weapon_{shell,decal}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the bubble
+draws with the shell's vertex program) -> src/renderer/weapon_{shell,decal,bubble}_{vertex,pixel}_program_inc.h,
+provenance verification/results/weapon-{shell,decal,bubble}-{vertex,pixel}-program.json; the pixel programs include
 src/effects/weapon_soft_depth.hlsl.
 
 The compilation, validation and record are tools/shaders/generate_rigid_motion_pixel.py's (its helpers are imported:
@@ -29,7 +30,7 @@ PROGRAMS = {
                                   header=ROOT / f'src/renderer/weapon_{part}_{"vertex" if kind == "vs" else "pixel"}_program_inc.h',
                                   provenance=ROOT / f'verification/results/weapon-{part}-{"vertex" if kind == "vs" else "pixel"}-program.json',
                                   target=f'{kind}_3_0')
-    for part in ('shell', 'decal') for kind in ('vs', 'ps')
+    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',))) for kind in kinds
 }
 
 

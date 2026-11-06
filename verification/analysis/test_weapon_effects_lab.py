@@ -507,6 +507,49 @@ console.log(JSON.stringify(out));
         self.assertIn('id="c_cockpit"', self.html)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_bubble_presets_near_far_and_chase(self):
+        """5.1.1 Placement (user decision after Run238 Flight E): a ship's patch on its bubble (the header's scale and far
+        gain by default), the chase preset's nose hit drawing on the far side, the far gain at 0 drawing no far side, the
+        nose hit never lighting the -z face (the tail), the station surface on the hull decal."""
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const render = () => {
+  const data = new Uint8ClampedArray(W * H * 4), rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data}; }, putImageData() {}}, weapon: {}};
+  renderOurs(rec, 400);
+  let lit = 0;
+  for (let i = 0; i < W * H; i++) lit += data[i * 4 + 2] > 0;
+  const c = ourControls(), hull = previewHull(c), E = bubbleOf(hull, c);
+  const seeds = bubbleDraws(bubbleHits(hitSequence(400, c, hull.S, c.cell_m[c.tier]), E), c, E).map(d => d.seed);
+  return {lit, near: rec.bubbleLit.near, far: rec.bubbleLit.far, seeds, scale: c.bubble_scale, gain: c.bubble_far, E};
+};
+const out = {};
+vals.c_hull = 'chase_nose'; out.chase = render();
+vals.c_bubble_far = 0; out.chase_no_far = render();
+delete vals.c_bubble_far;
+vals.c_hull = 'sphere'; out.sphere = render();
+vals.c_surface = 'hull'; out.station = render();
+console.log(JSON.stringify(out));
+"""
+        js = self.run_node(probe)
+        ch = js['chase']
+        self.assertAlmostEqual(ch['scale'], 1.15)
+        self.assertAlmostEqual(ch['gain'], 0.6)
+        self.assertGreater(ch['far'], 50)                      # the nose hit seen from behind: the far side
+        self.assertEqual(ch['near'], 0)                        # its near side outside the footprint
+        self.assertIn(0, ch['seeds'])                          # +z at the nose
+        self.assertNotIn(1, ch['seeds'])                       # the -z lattice's draw dropped (the tail: outside the window)
+        self.assertEqual(js['chase_no_far']['far'], 0)
+        self.assertLess(js['chase_no_far']['lit'], ch['lit'])
+        self.assertAlmostEqual(js['sphere']['E'][0], 1.15 * 15, places=6)  # at the 1.15 x radius bound, not cut
+        self.assertGreater(js['sphere']['near'], 100)         # the front hit: the near side
+        self.assertEqual((js['station']['near'], js['station']['far']), (0, 0))
+        self.assertGreater(js['station']['lit'], 100)         # the hull decal
+        for cid in ('c_surface', 'c_bubble_scale', 'c_bubble_far'):
+            self.assertIn(f'id="{cid}"', self.html)
+        self.assertIn('value="chase_nose"', self.html)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_cell_map_holds_clocks_at_12_hits_per_second(self):
         """The lab's cell map under the 12 hits/s player at 60 frames per second for 4 s: a cell's clock never jumps
         ahead by more than the frame (no pop: it fades on its own clock or is reset by a newer hit), a shared cell is

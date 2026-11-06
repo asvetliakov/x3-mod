@@ -10,10 +10,11 @@
 // its normal in the owner frame, weighs the face by the normal's component on its axis (triplanar), takes the
 // pixel's cell on the face's lattice and looks it up in the draw's cell map (pixel constants: 128 packed keys, their
 // clocks and their anchors' depths), lighting it within the extent of its anchor along the axis, so the hull itself
-// is the surface and the sky draws nothing; the patch floats its stand-off above the hull with parallax (one lane
-// re-projection step, weapon_shell_ps.hlsl) and the box rasterizes grown by it (raster_box). Each decal's four
-// vertices go through DrawPrimitiveUP. The pass holds no
-// DEFAULT-pool resource and allocates nothing per frame.
+// is the surface and the sky draws nothing. A ship's patch (WeaponPatch::bubble) is drawn on its bubble instead
+// (weapon_bubble_ps.hlsl): per pixel the ray meets the owner-frame ellipsoid analytically, its near and far points take
+// the face's cell from the same map and the lane only occludes (a point draws where it is nearer the eye than the
+// lane). Each decal's four vertices go through DrawPrimitiveUP. The pass holds no DEFAULT-pool resource and allocates
+// nothing per frame.
 //
 // run() draws the frame's patches and decals inside the temporal resolve's stage bracket (TemporalPass FrameInputs::
 // stage_callback, after the plumes and the own sun when they draw: RT0 the FP16 scene the resolve reads, RT1+ and the
@@ -30,7 +31,7 @@ namespace x3m::renderer {
 struct WeaponEffectsCaps {
     bool enabled = false;
     const char* reason = "not_attached";
-    unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0;
+    unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
 };
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
@@ -82,27 +83,17 @@ struct WeaponPatch {
     float cell_since[weapon_patch_cells]{}; // game seconds since the cell was lit; < 0: not lit yet (a ring passes)
     float cell_anchor[weapon_patch_cells]{}; // along the face's axis (view units): the depth of the cell's anchor hit
     std::uint8_t cell_centre[weapon_patch_cells]{}; // 1: lit as its hit's centre cell (the marker level)
-    float box[6]{};       // the draw's box in the face's frame (u, v, a; view units): min x3, max x3, bounding the
-                          // cells' hull points (the pixel program's test); the rasterized box is it grown by standoff
-    float standoff = 0.f; // the patch's stand-off above the hull along the normal (view units, >= 0)
+    float box[6]{};       // the draw's box in the face's frame (u, v, a; view units): min x3, max x3
     float newest_s = 0.f; // the owner's newest hit's age (game seconds): the screen budget drops the oldest first
     std::uint32_t owner = 0, owner_node = 0; // diagnostics (the weapon_patch row): the owner object, its node and its
                                              // radius (view units)
     float owner_radius = 0.f;
+    // The ship bubble (5.1.1 "Placement"): 1 draws the cells on the ellipsoid of centre bubble_c and half-extents
+    // bubble_e (owner frame, view units; weapon_bubble_ps.hlsl, its near and far side, the lane only occluding); 0 the
+    // hull decal (weapon_shell_ps.hlsl, the stations). The box then bounds the bubble's sheet over the cells.
+    std::uint8_t bubble = 0;
+    float bubble_c[3]{}, bubble_e[3]{1.f, 1.f, 1.f};
 };
-// The rasterized box of a patch: its hull box grown by where the floated points H + n d can lie, so the box covers
-// every pixel whose floated point the program may draw: a face takes a share only where the outward normal points
-// along its axis within the triplanar cut (57.26 degrees with the cull's margin, core::face_cull_sin), so the floated
-// point lies 0..d above H along the axis (+a only) and up to d sin 57.26 = 0.842 d sideways in the plane. The face
-// cull and the screen budget use it.
-inline void raster_box(const WeaponPatch& p, float out[6]) noexcept {
-    const float d = p.standoff > 0.f ? p.standoff : 0.f, side = 0.842f * d;
-    const float grow_lo[3] = {side, side, 0.f}, grow_hi[3] = {side, side, d};
-    for (unsigned i = 0; i < 3; ++i) {
-        out[i] = p.box[i] - grow_lo[i];
-        out[3 + i] = p.box[3 + i] + grow_hi[i];
-    }
-}
 // A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad covering the hit's footprint
 // with the same hex law, the hit at its centre (the one hit's cells are evaluated in the program).
 struct WeaponDecal {
@@ -120,6 +111,7 @@ struct WeaponLook {
     float centre_gain, centre_fill;             // the hit cell's radiance over a ring cell's, its fill / edge
     float fade_s, stagger;                      // a lit cell's mean fade (game seconds), per-cell spread
     float edge_width, fill_ratio, cell_gain;    // cells (< 0.5), fill / edge, edge radiance
+    float bubble_near_gain, bubble_far_gain;    // the bubble's near and far side (1, core::bubble_far_gain)
 };
 WeaponLook default_weapon_look() noexcept; // the header constants of weapon_effects_core.h
 struct WeaponEffectsFrame {
@@ -184,6 +176,7 @@ private:
     unsigned faults_ = 0;
     IDirect3DVertexShader9* shell_vs_ = nullptr;
     IDirect3DPixelShader9* shell_ps_ = nullptr;
+    IDirect3DPixelShader9* bubble_ps_ = nullptr;
     IDirect3DVertexShader9* decal_vs_ = nullptr;
     IDirect3DPixelShader9* decal_ps_ = nullptr;
     IDirect3DVertexDeclaration9* shell_declaration_ = nullptr;

@@ -52,7 +52,7 @@ namespace st = x3m::weapon_effects::stage;
 static long I(const char* s) { return std::strtol(s, nullptr, 0); }
 // A fake engine memory at 0x100000..0x110000 (32-bit addresses, as the records carry): object k at base + k * 0x400,
 // its node at + 0x200. The reader refuses anything outside, as engine_memory::read refuses unreadable memory.
-static unsigned char mem[0x10000];
+static unsigned char mem[0x40000];
 constexpr std::uint32_t base = 0x100000;
 static bool rd(std::uintptr_t a, void* out, std::size_t n) {
     if (a < base || a + n > base + sizeof mem) return false;
@@ -88,6 +88,7 @@ static core::Event* hit(core::Ring& ring, unsigned k, std::uint32_t t0, std::int
     e->handle = 0xd000 + k;
     e->shield_q = shield;
     e->patch_tier = core::patch_fighter;
+    e->tier_source = core::tier_by_station; // the hull decal's cases (the bubble's: bubble_cases)
     e->pos[0] = px;
     e->pos[1] = 0;
     e->pos[2] = pz;
@@ -373,7 +374,369 @@ static int stage_cases() {
                 core::patch_tier_of_radius(25000), core::patch_tier_of_radius(100000));
     return 0;
 }
+
+// The ship bubble (weapon_effects_bubble.h, 5.1.1 "Placement") over the same fake memory: a body cache at base + 0x8000
+// (slot, root, hash, one bucket chain, models and LOD records) and hull part nodes at base + 0xa000 (0x270 each).
+constexpr std::uint32_t slot = base + 0x8000, croot = base + 0x8010, chash = base + 0x8040, buckets = base + 0x8080;
+static std::uint32_t entry(unsigned i) { return base + 0x80c0 + 0x10 * i; }
+static std::uint32_t model(unsigned i) { return base + 0x8200 + 0x20 * i; }
+static std::uint32_t lods(unsigned i) { return base + 0x8400 + 0x40 * i; }
+static std::uint32_t lod(unsigned i, unsigned k) { return base + 0x8800 + 0x80 * i + 0x20 * k; }
+static std::uint32_t part(unsigned j) { return base + 0xa000 + 0x270 * j; }
+static void put16(std::uint32_t a, std::uint16_t v) { std::memcpy(mem + (a - base), &v, 2); }
+// The body cache: one bucket (size 1), the chain of `bodies` entries (ids 7 + i, keys id + 1), model i with `nl` LOD
+// records of extents ext[i] (normalised 65536 = 1.0).
+static void body_cache(unsigned bodies, const std::int32_t (*ext)[3], unsigned nl = 2) {
+    std::memset(mem + (slot - base), 0, 0x2000);
+    put(slot, croot);
+    put(croot + 0x14, chash);
+    put(chash, buckets);
+    put(chash + 4, 1);
+    put(buckets, entry(0));
+    for (unsigned i = 0; i < bodies; ++i) {
+        put(entry(i), i + 1 < bodies ? entry(i + 1) : 0);
+        put(entry(i) + 4, 7 + i + 1);
+        put(entry(i) + 8, model(i));
+        put(model(i) + 0x0c, lods(i));
+        put16(model(i) + 0x10, std::uint16_t(nl));
+        for (unsigned k = 0; k < nl; ++k) {
+            put(lods(i) + 4 * k, lod(i, k));
+            for (unsigned c = 0; c < 3; ++c) put(lod(i, k) + 0x20 + 4 * c, std::uint32_t(k ? ext[i][c] / 2 : ext[i][c]));
+        }
+    }
+}
+// Hull part j: body id (0: none), offset (engine units in the parent frame), node scale s, the basis turned 90 degrees
+// about z when `turned`, its next sibling (0: the parent's sentinel) and its first child (0: none).
+static void hull_part(unsigned j, std::uint32_t parent, std::int32_t body, const std::int32_t o[3], std::int32_t s,
+                      bool turned, std::uint32_t next, std::uint32_t child) {
+    std::memset(mem + (part(j) - base), 0, 0x270);
+    put(part(j), next ? next : parent + 0x10);
+    put(part(j) + 0x0c, child ? child : part(j) + 0x10);
+    for (unsigned c = 0; c < 3; ++c) put(part(j) + 0x30 + 4 * c, std::uint32_t(o[c]));
+    const std::int32_t rows[3][3] = {{turned ? 0 : 0x10000, turned ? 0x10000 : 0, 0},
+                                     {turned ? -0x10000 : 0, turned ? 0 : 0x10000, 0},
+                                     {0, 0, 0x10000}};
+    for (unsigned r = 0; r < 3; ++r)
+        for (unsigned c = 0; c < 3; ++c) put(part(j) + 0x40 + 0x10 * r + 4 * c, std::uint32_t(rows[r][c]));
+    put(part(j) + 0x70, std::uint32_t(s));
+    for (unsigned c = 0; c < 3; ++c) put(part(j) + 0x80 + 4 * c, 0x10000);
+    put(part(j) + 0x12c, 0x1000000);
+    put(part(j) + 0x140, std::uint32_t(body));
+}
+// Owner k's root node takes `first` as its first child (its axis scales 1.0).
+static void hull_root(unsigned k, std::uint32_t first) {
+    put(node(k) + 0x0c, first ? first : node(k) + 0x10);
+    put(node(k) + 0x10, 0);
+    for (unsigned c = 0; c < 3; ++c) put(node(k) + 0x80 + 4 * c, 0x10000);
+}
+static void show(const char* name, const st::Bubble& b, bool ok) {
+    std::printf("%s ok=%u cx=%.3f cy=%.3f cz=%.3f ex=%.3f ey=%.3f ez=%.3f\n", name, unsigned(ok), b.c[0], b.c[1], b.c[2],
+                b.e[0], b.e[1], b.e[2]);
+}
+// owner_bubble with an ample walk budget (the budget's own case below) and the harness's stats.
+static st::BubbleStats bst;
+static st::Bubble own_bubble(st::BubbleCache* c, std::uintptr_t cache_root, std::uint32_t owner, std::int32_t radius,
+                     std::uint32_t now, bool* fb) {
+    unsigned budget = 1000;
+    return st::owner_bubble(c, &rd, cache_root, owner, node(0), 0xd000, radius, now, &budget, &bst, fb);
+}
+static int bubble_cases() {
+    static core::Ring ring;
+    x3m::renderer::WeaponPatch patches[core::max_patches];
+    x3m::renderer::WeaponDecal decals[core::max_decals];
+    st::Camera cam;
+    cam.r[0] = cam.r[4] = cam.r[8] = 1.f;
+    // 1 one hull part: body 7, half-extents (60, 10, 20) view units (6000, 1000, 2000 engine: the extents' largest
+    // axis 65536 at node scale 6000), offset (0, -500, 1000) engine: the box about the offset, the bubble its centre
+    // and half-extents x bubble_scale; the walk counts one part and one node.
+    owner(0, 40000, 20000);
+    const std::int32_t ext1[1][3] = {{65536, 65536 / 6, 65536 / 3}};
+    body_cache(1, ext1);
+    const std::int32_t o1[3] = {0, -500, 1000}, zero[3] = {0, 0, 0};
+    hull_part(0, node(0), 7, o1, 6000, false, 0, 0);
+    hull_root(0, part(0));
+    st::HullBox hb;
+    bool ok = st::hull_bounds(&rd, slot, node(0), &hb);
+    st::Bubble b;
+    bool cut = false;
+    ok = ok && st::bubble_from_box(hb, 20000, &b, &cut);
+    std::printf("walk ok=%u parts=%u nodes=%u lo=%.0f,%.0f,%.0f hi=%.0f,%.0f,%.0f\n", unsigned(ok), hb.parts, hb.nodes,
+                hb.lo[0], hb.lo[1], hb.lo[2], hb.hi[0], hb.hi[1], hb.hi[2]);
+    show("one_part", b, ok);
+    // 2 two parts and a grandchild below a turned node: A (body 7) aligned at (+3000, 0, 0); B (no body, its basis
+    // turned) at (0, 0, -4000) with C (body 8, half-extents 500 each) at (0, 2000, 0) in B's frame: C's position is
+    // known only to |(0, 2000, 0)| about B's and its extents to their length (866) on every axis.
+    const std::int32_t ext2[2][3] = {{65536, 65536, 65536}, {65536, 65536, 65536}};
+    body_cache(2, ext2);
+    const std::int32_t oa[3] = {3000, 0, 0}, ob[3] = {0, 0, -4000}, oc[3] = {0, 2000, 0};
+    hull_part(0, node(0), 7, oa, 1000, false, part(1), 0);
+    hull_part(1, node(0), 0, ob, 1000, true, 0, part(2));
+    hull_part(2, part(1), 8, oc, 500, false, 0, 0);
+    hull_root(0, part(0));
+    ok = st::hull_bounds(&rd, slot, node(0), &hb);
+    std::printf("nested ok=%u parts=%u nodes=%u lo=%.0f,%.0f,%.0f hi=%.0f,%.0f,%.0f\n", unsigned(ok), hb.parts, hb.nodes,
+                hb.lo[0], hb.lo[1], hb.lo[2], hb.hi[0], hb.hi[1], hb.hi[2]);
+    // 3 the guards: 129 sibling parts (past the 128-node budget), an extent past 0x20000, no body cache, a missing
+    // model (an unknown body id), a part four levels down (past the depth cap: not visited, the walk still succeeds on
+    // the parts above it); each failure gives the fallback sphere through owner_bubble.
+    {
+        const std::int32_t e1[1][3] = {{65536, 65536, 65536}};
+        body_cache(1, e1);
+        for (unsigned j = 0; j < 129; ++j) hull_part(j, node(0), 7, zero, 1000, false, j + 1 < 129 ? part(j + 1) : 0, 0);
+        hull_root(0, part(0));
+        const bool over = st::hull_bounds(&rd, slot, node(0), &hb);
+        for (unsigned j = 0; j < 128; ++j) hull_part(j, node(0), 7, zero, 1000, false, j + 1 < 128 ? part(j + 1) : 0, 0);
+        const bool at = st::hull_bounds(&rd, slot, node(0), &hb);
+        const unsigned at_nodes = hb.nodes;
+        hull_part(0, node(0), 7, zero, 1000, false, 0, 0);
+        put(lod(0, 0) + 0x20, 0x20001);
+        const bool extent = st::hull_bounds(&rd, slot, node(0), &hb);
+        body_cache(1, e1);
+        const bool no_cache = st::hull_bounds(&rd, base + 0x7ff0 - 0x10000, node(0), &hb);
+        hull_part(0, node(0), 99, zero, 1000, false, 0, 0);
+        const bool unknown = st::hull_bounds(&rd, slot, node(0), &hb);
+        // depth: part 0 (body) -> 1 -> 2 -> 3 (body, four levels down: not visited)
+        hull_part(0, node(0), 7, zero, 1000, false, 0, part(1));
+        hull_part(1, part(0), 0, zero, 1000, false, 0, part(2));
+        hull_part(2, part(1), 0, zero, 1000, false, 0, part(3));
+        const std::int32_t far[3] = {0, 0, 900000};
+        hull_part(3, part(2), 7, far, 1000, false, 0, 0);
+        const bool deep = st::hull_bounds(&rd, slot, node(0), &hb);
+        std::printf("guards over_budget=%u at_budget=%u at_nodes=%u extent=%u no_cache=%u unknown_body=%u deep=%u "
+                    "deep_nodes=%u deep_hi_z=%.0f\n",
+                    unsigned(over), unsigned(at), at_nodes, unsigned(extent), unsigned(no_cache), unsigned(unknown),
+                    unsigned(deep), hb.nodes, hb.hi[2]);
+        bool fb = false;
+        const st::Bubble f = own_bubble(nullptr, base + 0x7ff0 - 0x10000, obj(0), 20000, 0, &fb);
+        show("fallback_sphere", f, fb);
+    }
+    // 4 the cache: one walk, then cached answers; a radius change walks again; a scope change clears; a failed walk is
+    // held for bubble_retry_ms of game time (the fallback meanwhile), then retried; 64 entries, the least recently used
+    // evicted.
+    {
+        body_cache(1, ext1);
+        hull_part(0, node(0), 7, o1, 6000, false, 0, 0);
+        hull_root(0, part(0));
+        static st::BubbleCache cache;
+        cache.rescope(5);
+        bool fb = false;
+        auto get = [&](std::int32_t radius, std::uint32_t now) {
+            return own_bubble(&cache, slot, obj(0), radius, now, &fb);
+        };
+        get(20000, 1000);
+        const unsigned w1 = cache.walks;
+        get(20000, 1016);
+        get(20000, 1032);
+        const unsigned w2 = cache.walks, h2 = cache.hits;
+        get(21000, 1048);
+        const unsigned w3 = cache.walks;
+        cache.rescope(5);
+        get(21000, 1064);
+        const unsigned w4 = cache.walks;
+        cache.rescope(6);
+        get(21000, 1080);
+        const unsigned w5 = cache.walks, clears = cache.clears;
+        put(part(0) + 0x140, 99); // the model gone: the walk fails
+        cache.rescope(7);
+        get(21000, 2000);
+        const unsigned f1 = cache.failures, w6 = cache.walks;
+        const bool fb1 = fb;
+        get(21000, 3999);
+        const unsigned w7 = cache.walks, held = cache.held;
+        put(part(0) + 0x140, 7);
+        const st::Bubble back = get(21000, 4000);
+        const unsigned w8 = cache.walks;
+        std::printf("cache first=%u cached=%u hits=%u radius=%u same_scope=%u scope=%u clears=%u failed=%u walks_failed=%u "
+                    "fallback=%u held=%u walks_held=%u retried=%u retried_fallback=%u retried_ez=%.3f\n",
+                    w1, w2, h2, w3, w4, w5, clears, f1, w6, unsigned(fb1), held, w7, w8, unsigned(fb), back.e[2]);
+        // LRU: 65 owners, the first touched again before the 65th: the second (the least recently used) is evicted
+        cache.rescope(8);
+        for (unsigned k = 0; k < 64; ++k)
+            own_bubble(&cache, slot, 0x1000 + k, 20000, 5000, &fb);
+        own_bubble(&cache, slot, 0x1000, 20000, 5000, &fb);
+        own_bubble(&cache, slot, 0x2000, 20000, 5000, &fb); // a 65th: evicts 0x1001
+        const unsigned before = cache.walks;
+        own_bubble(&cache, slot, 0x1000, 20000, 5000, &fb); // still cached
+        const unsigned kept = cache.walks - before;
+        own_bubble(&cache, slot, 0x1001, 20000, 5000, &fb); // walked again
+        std::printf("lru walks_65=%u kept_walks=%u evicted_walks=%u\n", before, kept, cache.walks - before - kept);
+    }
+    // 5 the mapping on the one-part bubble (centre (0, -5, 10), half-extents 1.15 (60, 10, 20)): the hull point on the
+    // hull ellipsoid's nose maps to the bubble's nose (B = c + e Q, on the bubble: |(B - c) / e| = 1, along the radial
+    // line of q); the nose lights +z and both faces of x and y, never -z; a flank hit (+x) lights +x and both of y and
+    // z; a hit at the centre takes +z.
+    {
+        body_cache(1, ext1);
+        hull_part(0, node(0), 7, o1, 6000, false, 0, 0);
+        hull_root(0, part(0));
+        bool fb = false;
+        const st::Bubble bb = own_bubble(nullptr, slot, obj(0), 20000, 0, &fb);
+        const float nose[3] = {0.f, -5.f, 10.f + 20.f}, flank[3] = {60.f, -5.f, 10.f}, mid[3] = {0.f, -5.f, 10.f};
+        const float tilted[3] = {30.f, 0.f, 25.f};
+        float B[3], Q[3];
+        st::bubble_point(bb, nose, B, Q);
+        std::printf("nose bx=%.4f by=%.4f bz=%.4f\n", B[0], B[1], B[2]);
+        st::bubble_point(bb, flank, B, Q);
+        std::printf("flank bx=%.4f by=%.4f bz=%.4f\n", B[0], B[1], B[2]);
+        st::bubble_point(bb, mid, B, Q);
+        std::printf("centre bx=%.4f by=%.4f bz=%.4f\n", B[0], B[1], B[2]);
+        st::bubble_point(bb, tilted, B, Q);
+        float r2 = 0.f, cross = 0.f;
+        float q0[3];
+        for (unsigned i = 0; i < 3; ++i) {
+            const float qq = (B[i] - bb.c[i]) / bb.e[i];
+            r2 += qq * qq;
+            q0[i] = (tilted[i] - bb.c[i]) / bb.e[i];
+        }
+        // the radial line: (B - c) / e parallel to q (their cross product's length)
+        const float bq[3] = {(B[0] - bb.c[0]) / bb.e[0], (B[1] - bb.c[1]) / bb.e[1], (B[2] - bb.c[2]) / bb.e[2]};
+        const float cx = bq[1] * q0[2] - bq[2] * q0[1], cy = bq[2] * q0[0] - bq[0] * q0[2], cz = bq[0] * q0[1] - bq[1] * q0[0];
+        cross = std::sqrt(cx * cx + cy * cy + cz * cz);
+        std::printf("tilted on_bubble=%.6f radial=%.6f\n", r2, cross);
+    }
+    // 6 through the builder: a nose hit on the one-part ship (cached walk): its draws are bubble draws on its faces
+    // with the nose's projection inside each box, none on -z; the station tier keeps the hull decal; the fallback
+    // counted when the walk fails.
+    {
+        core::ring_clear(ring);
+        owner(0, 40000, 20000);
+        body_cache(1, ext1);
+        hull_part(0, node(0), 7, o1, 6000, false, 0, 0);
+        hull_root(0, part(0));
+        core::Event* e = hit(ring, 0, 1000, 0, 0xffff, 3000); // the hull's nose (z 30 view units)
+        e->pos[1] = -500;
+        e->tier_source = core::tier_by_ship_class;
+        st::Tuning t{};
+        t.body_cache_root = slot;
+        static st::BubbleCache cache;
+        cache.rescope(1);
+        st::Counts n = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        unsigned bubble = 0, minus_z = 0, inside = 0, seeds = 0;
+        const float bn[3] = {0.f, -5.f, 10.f + 1.15f * 20.f}; // the bubble's nose
+        for (unsigned i = 0; i < n.patches; ++i) {
+            const auto& q = patches[i];
+            bubble += q.bubble;
+            minus_z += q.seed == 1.f;
+            seeds |= 1u << unsigned(q.seed);
+            const float f[3] = {st::dot3(bn, q.anchor_u), st::dot3(bn, q.anchor_v), st::dot3(bn, q.anchor)};
+            bool in = q.seed == 0.f; // the +z face's box holds the bubble's nose
+            for (unsigned k = 0; k < 3; ++k) in = in && f[k] >= q.box[k] - 1e-3f && f[k] <= q.box[3 + k] + 1e-3f;
+            inside += in;
+        }
+        std::printf("build patches=%u bubble=%u minus_z=%u inside=%u seeds=%u bubbles=%u fallback=%u walks=%u ez=%.3f\n",
+                    n.patches, bubble, minus_z, inside, seeds, n.bubbles, n.bubble_fallback, cache.walks,
+                    n.patches ? patches[0].bubble_e[2] : 0.f);
+        n = st::build(ring, 1516, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        std::printf("rebuild walks=%u hits=%u fallback=%u\n", cache.walks, cache.hits, n.bubble_fallback);
+        e->tier_source = core::tier_by_station;
+        n = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        unsigned decal = 0;
+        for (unsigned i = 0; i < n.patches; ++i) decal += !patches[i].bubble;
+        std::printf("station patches=%u decal=%u bubbles=%u\n", n.patches, decal, n.bubbles);
+        e->tier_source = core::tier_by_radius;
+        t.body_cache_root = 0x10;
+        n = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
+        std::printf("fallback patches=%u bubbles=%u bubble_fallback=%u ex=%.3f\n", n.patches, n.bubbles, n.bubble_fallback,
+                    n.patches ? patches[0].bubble_e[0] : 0.f);
+    }
+    // 7 the box over the bubble's sheet: a unit-ish sphere bubble (radius 100) with one hit on its front lights -z and
+    // both faces of x and y; the x and y draws' cells lie on the rim of their sheet (steeper than the cut): dropped;
+    // the -z draw's box spans the sheet's depths over its cells (within the sphere's front cap).
+    {
+        core::ring_clear(ring);
+        owner(0, 40000, 10000);
+        core::Event* e = hit(ring, 0, 1000, 0, 0xffff, -10000);
+        e->tier_source = core::tier_by_radius;
+        st::Tuning t{};
+        t.body_cache_root = 0x10; // the fallback sphere: radius 100 view units
+        const st::Counts n = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
+        std::printf("sheet patches=%u seed=%.0f a0=%.3f a1=%.3f u0=%.3f u1=%.3f fallback=%u\n", n.patches,
+                    n.patches ? patches[0].seed : -1.f, n.patches ? patches[0].box[2] : 0.f,
+                    n.patches ? patches[0].box[5] : 0.f, n.patches ? patches[0].box[0] : 0.f,
+                    n.patches ? patches[0].box[3] : 0.f, n.bubble_fallback);
+    }
+    // 8 a top hit on the one-part ship a hair either side of the x axis plane (review F2: Q_x = +eps, -eps and 0): every
+    // face lit by all three, the same draws with the same cells and clocks (no flip of the lit faces, no cell twice).
+    {
+        auto draws_of = [&](std::int32_t x, double* keys, unsigned* nkeys) {
+            core::ring_clear(ring);
+            owner(0, 40000, 20000);
+            body_cache(1, ext1);
+            hull_part(0, node(0), 7, o1, 6000, false, 0, 0);
+            hull_root(0, part(0));
+            core::Event* e = hit(ring, 0, 1000, x, 0xffff, 1000);
+            e->pos[1] = 500; // the hull's top (centre y -5 view units + 10)
+            e->tier_source = core::tier_by_ship_class;
+            st::Tuning t{};
+            t.body_cache_root = slot;
+            const st::Counts n = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
+            *nkeys = 0;
+            for (unsigned i = 0; i < n.patches; ++i)
+                for (unsigned k = 0; k < patches[i].cells; ++k)
+                    keys[(*nkeys)++] = double(patches[i].seed) * 1e8 + double(patches[i].cell_key[k]) + 1e-3 * double(patches[i].cell_since[k]);
+            std::sort(keys, keys + *nkeys);
+            unsigned seeds = 0;
+            for (unsigned i = 0; i < n.patches; ++i) seeds |= 1u << unsigned(patches[i].seed);
+            return std::pair<unsigned, unsigned>(n.patches, seeds);
+        };
+        static double kp[6 * 128 * 8], km[6 * 128 * 8], k0[6 * 128 * 8];
+        unsigned np = 0, nm = 0, n0 = 0;
+        const auto dp = draws_of(1, kp, &np), dm = draws_of(-1, km, &nm), d0 = draws_of(0, k0, &n0);
+        bool same = np == nm && np == n0;
+        for (unsigned i = 0; same && i < np; ++i) same = kp[i] == km[i] && kp[i] == k0[i];
+        unsigned dupes = 0;
+        for (unsigned i = 1; i < np; ++i) dupes += kp[i] == kp[i - 1];
+        std::printf("axis_plane draws_plus=%u draws_minus=%u draws_zero=%u seeds_plus=%u seeds_minus=%u cells=%u "
+                    "identical=%u dupes=%u\n", dp.first, dm.first, d0.first, dp.second, dm.second, np, unsigned(same), dupes);
+    }
+    // 9 the walk budget (review F4): three ships whose bounds are not cached in one frame: two walk, the third draws on the
+    // fallback sphere (deferred) and walks on the next frame; then a changed first child (another hull) walks again
+    // (review F7) and a bubble wider than the object radius is cut to it (review F5).
+    {
+        core::ring_clear(ring);
+        body_cache(1, ext1);
+        hull_part(0, node(0), 7, o1, 6000, false, 0, 0);
+        for (unsigned k = 0; k < 3; ++k) {
+            owner(k, 40000, 20000);
+            hull_root(k, part(0));
+            core::Event* e = hit(ring, k, 1000, 0, 0xffff, 3000);
+            e->tier_source = core::tier_by_ship_class;
+        }
+        st::Tuning t{};
+        t.body_cache_root = slot;
+        static st::BubbleCache cache;
+        cache.rescope(1);
+        const st::Counts a = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        const st::Counts b2 = st::build(ring, 1516, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        const st::Counts c3 = st::build(ring, 1532, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        std::printf("budget walks=%u deferred=%u fallback=%u next_walks=%u next_deferred=%u next_fallback=%u "
+                    "then_walks=%u then_hits=%u per_frame=%u\n", a.bubble.walks, a.bubble.deferred, a.bubble_fallback,
+                    b2.bubble.walks, b2.bubble.deferred, b2.bubble_fallback, c3.bubble.walks, c3.bubble.deferred,
+                    core::bubble_walks_per_frame);
+        // the first child of owner 0 becomes another part (half the extents): walked again, a narrower bubble
+        const std::int32_t half_ext[1][3] = {{65536, 65536 / 6, 65536 / 3}};
+        (void)half_ext;
+        hull_part(1, node(0), 7, o1, 3000, false, 0, 0);
+        hull_root(0, part(1));
+        const st::Counts d = st::build(ring, 1548, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
+        float ex = 0.f;
+        for (unsigned i = 0; i < d.patches; ++i)
+            if (patches[i].owner == obj(0)) ex = patches[i].bubble_e[0];
+        std::printf("child walks=%u ex=%.3f\n", d.bubble.walks, ex);
+        // the object radius 20 view units (2000 engine) under the 69 x 11.5 x 23 bubble: x cut to 1.15 x 20 = 23
+        core::ring_clear(ring);
+        owner(0, 40000, 2000);
+        hull_root(0, part(0));
+        core::Event* e = hit(ring, 0, 1000, 0, 0xffff, 2000);
+        e->tier_source = core::tier_by_ship_class;
+        const st::Counts c = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
+        std::printf("clamp clamped=%u ex=%.3f ey=%.3f ez=%.3f\n", c.bubble.clamped, c.patches ? patches[0].bubble_e[0] : 0.f,
+                    c.patches ? patches[0].bubble_e[1] : 0.f, c.patches ? patches[0].bubble_e[2] : 0.f);
+    }
+    return 0;
+}
 int main(int argc, char** argv) {
+    if (!std::strcmp(argv[1], "bubble")) return bubble_cases();
     if (!std::strcmp(argv[1], "classify")) {
         // argv: classify flags z_over_xy_milli(or "none") shield hull r g b
         const std::uint32_t flags = (std::uint32_t)I(argv[2]);
@@ -578,9 +941,7 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual((r['dir_unused']['identical'], r['dir_unused']['cells'] > 0), (1, True))
         for name, sign, seed in (('ytop', 1, 4), ('ybottom', -1, 5)):  # Run236: the y faces under hits from above / below
             y = r[name]
-            # six faces; +z, culled at 5 before the stand-off, is within the cut once its box grows by the fighter's 7.5
-            # units (the cull tests the rasterized box: the floated point lies on the hull point's eye ray)
-            self.assertEqual((y['patches'], y['seed']), (6, seed), name)
+            self.assertEqual((y['patches'], y['seed']), (5, seed), name)  # six faces, +z culled
             self.assertAlmostEqual(y['anchor'], 200.0, places=1)              # 200 along +y / -y
             self.assertEqual((y['hit_u'], y['hit_v']), (0.0, 0.0), name)
         yt = self.ytop_frames()
@@ -593,6 +954,83 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual(int(ck['dimmed']), 5000)     # the own ship's five face draws
         cl = r['clock']                                  # review F2: a stale cockpit visit dims nothing
         self.assertEqual((cl['fresh'], cl['previous'], cl['stale'], cl['revisit'], cl['chase']), (1, 1, 0, 1, 0))
+
+    def test_ship_bubble_walk_cache_mapping_and_fallback(self):
+        """5.1.1 "Placement" (user decision after Run238 Flight E): the hull bounds walk of render-node-bounds.md 6.1,
+        its per-owner cache (scope and radius invalidation, the 2 s retry, LRU), the hit's mapping onto the bubble and
+        its faces, the station tier's hull decal and the fallback sphere."""
+        r = self.run_case('bubble')
+        w = r['walk']
+        self.assertEqual((w['ok'], w['parts'], w['nodes']), (1, 1, 1))
+        self.assertEqual((w['lo'], w['hi']), (-6000.0, 6000.0))                 # x: the part's +-6000 about 0
+        n = r['nested']                         # A aligned, C below the turned B: its slack and |e| on every axis
+        self.assertEqual((n['ok'], n['parts'], n['nodes'], n['lo'], n['hi']), (1, 2, 3, -2866.0, 4000.0))
+        one = r['one_part']                       # c = the box's centre, e = its half-extents x 1.15 (view units)
+        self.assertEqual(one['ok'], 1)
+        for k, want in (('cx', 0.0), ('cy', -5.0), ('cz', 10.0)):
+            self.assertAlmostEqual(one[k], want, delta=1e-3, msg=k)
+        for k, want in (('ex', 60.0), ('ey', 10.0), ('ez', 20.0)):
+            self.assertAlmostEqual(one[k], 1.15 * want, delta=0.02, msg=k)
+        g = r['guards']
+        self.assertEqual((g['over_budget'], g['at_budget'], g['at_nodes']), (0, 1, 128))    # the 128-node cap
+        self.assertEqual((g['extent'], g['no_cache'], g['unknown_body']), (0, 0, 0))
+        self.assertEqual((g['deep'], g['deep_nodes']), (1, 3))                              # three levels, no deeper
+        self.assertLess(g['deep_hi_z'], 2000.0)
+        fb = r['fallback_sphere']                                                           # the object's radius
+        self.assertEqual(fb['ok'], 1)
+        self.assertEqual((fb['cx'], fb['cy'], fb['cz'], fb['ex'], fb['ey'], fb['ez']), (0, 0, 0, 200, 200, 200))
+        c = r['cache']
+        self.assertEqual((c['first'], c['cached'], c['hits']), (1, 1, 2))      # one walk, then the cache
+        self.assertEqual((c['radius'], c['same_scope'], c['scope']), (2, 2, 3))  # a radius change, a scope change
+        self.assertEqual((c['failed'], c['walks_failed'], c['fallback']), (1, 4, 1))
+        self.assertEqual((c['held'], c['walks_held']), (1, 4))                 # held within 2 s of game time
+        self.assertEqual((c['retried'], c['retried_fallback']), (5, 0))        # retried at 2 s, walked
+        self.assertAlmostEqual(c['retried_ez'], 23.0, delta=0.02)
+        lru = r['lru']
+        self.assertEqual((lru['kept_walks'], lru['evicted_walks']), (0, 1))
+        nose, flank, centre = r['nose'], r['flank'], r['centre']
+        self.assertAlmostEqual(nose['bz'], 10.0 + 23.0, delta=1e-3)            # the bubble's nose
+        self.assertAlmostEqual(nose['by'], -5.0, delta=1e-4)
+        self.assertAlmostEqual(flank['bx'], 69.0, delta=1e-3)
+        self.assertAlmostEqual(centre['bz'], 33.0, delta=1e-3)                  # a hit at the centre: +z
+        t = r['tilted']
+        self.assertAlmostEqual(t['on_bubble'], 1.0, delta=1e-5)
+        self.assertLess(t['radial'], 1e-5)
+        b = r['build']
+        # +z holds the nose; every face is lit (review F1), -z's draw only where its sheet lies within the nose cells'
+        # depth window (this bubble's z half-extent, 23, is under the extent, 32: its rim survives)
+        self.assertEqual((b['bubble'], b['inside']), (b['patches'], 1))
+        self.assertGreaterEqual(b['patches'], 1)
+        self.assertEqual((b['bubbles'], b['fallback'], b['walks']), (1, 0, 1))
+        self.assertAlmostEqual(b['ez'], 23.0, delta=0.02)
+        self.assertEqual((r['rebuild']['walks'], r['rebuild']['fallback']), (1, 0))  # the second frame: cached
+        st = r['station']
+        self.assertEqual((st['decal'], st['bubbles']), (st['patches'], 0))
+        self.assertGreater(st['patches'], 0)
+        f = r['fallback']
+        self.assertEqual((f['bubbles'], f['bubble_fallback'], f['ex']), (1, 1, 200.0))
+        ap = r['axis_plane']                    # review F2: Q_x = +eps, -eps, 0 light the same cells, none twice
+        self.assertEqual((ap['identical'], ap['dupes']), (1, 0))
+        self.assertEqual((ap['draws_plus'], ap['seeds_plus']), (ap['draws_minus'], ap['seeds_minus']))
+        self.assertGreater(ap['cells'], 0)
+        bu = r['budget']                        # review F4: two walks a frame, the third deferred to the next
+        self.assertEqual((bu['per_frame'], bu['walks'], bu['deferred'], bu['fallback']), (2, 2, 1, 1))
+        self.assertEqual((bu['next_walks'], bu['next_deferred'], bu['next_fallback']), (1, 0, 0))
+        self.assertEqual(bu['then_walks'], 0)
+        ch = r['child']                         # review F7: a new first child walks again
+        self.assertEqual(ch['walks'], 1)
+        self.assertAlmostEqual(ch['ex'], 0.5 * 69.0, delta=0.02)
+        cl = r['clamp']                         # review F5: the half-extents cut to bubble_scale x the object radius
+        self.assertEqual(cl['clamped'], 1)
+        self.assertAlmostEqual(cl['ex'], 23.0, delta=1e-3)   # cut to bubble_scale x the radius
+        self.assertAlmostEqual(cl['ez'], 23.0, delta=1e-3)   # 1.15 x 20 m of hull: at the bound, not cut
+        self.assertAlmostEqual(cl['ey'], 11.5, delta=0.01)
+        sh = r['sheet']
+        self.assertEqual((sh['patches'], sh['seed'], sh['fallback']), (1, 1, 1))  # -z only: the rim faces dropped
+        self.assertLess(sh['a1'], 100.1)                                           # the front cap of the sphere
+        self.assertGreater(sh['a1'], 99.0)
+        self.assertGreater(sh['a0'], 100.0 * 0.5)
+        self.assertGreaterEqual(sh['u0'], -100.0 * 0.85)
 
     def test_shield_colour_bands_and_tiers(self):
         out = subprocess.run([str(self.exe), 'stage'], capture_output=True, text=True, check=True).stdout

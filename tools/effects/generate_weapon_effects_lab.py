@@ -39,9 +39,9 @@ HEADER = REPO / 'src/proxy/weapon_effects_core.h'
 # header's value, docs/architecture/weapon-effects.md 5.1.1). fade_ms is unsigned; cell_m, rings and the three colours
 # are arrays (`name[N] = {a, b, c}`; rings holds integers). The stage's capacities come from their own headers
 # (CAPACITIES: name in the page, header, C++ name), integers.
-HEADER_NAMES = ('engine_units_per_metre', 'cell_m', 'rings', 'standoff_m', 'ripple_speed', 'ring_width', 'ring_gain', 'centre_gain',
+HEADER_NAMES = ('engine_units_per_metre', 'cell_m', 'rings', 'bubble_scale', 'bubble_far_gain', 'ripple_speed', 'ring_width', 'ring_gain', 'centre_gain',
                 'centre_fill', 'fade_ms', 'stagger', 'edge_width', 'fill_ratio', 'cell_gain', 'colour_high', 'colour_mid', 'colour_low', 'colour_full', 'colour_half',
-                'colour_empty', 'weapon_tint', 'tint_mix', 'soft', 'own_cockpit_gain', 'triplanar_sharpness', 'triplanar_floor', 'tracer_min_elongation', 'slug_min_elongation')
+                'colour_empty', 'weapon_tint', 'tint_mix', 'soft', 'own_cockpit_gain', 'triplanar_sharpness', 'triplanar_floor', 'face_cull_sin', 'tracer_min_elongation', 'slug_min_elongation')
 HEADER_INTS = ('fade_ms',)
 CAPACITIES = (('cell_key_bias', 'src/renderer/weapon_effects_pass.h', 'weapon_cell_key_bias'),
               ('patch_cells', 'src/renderer/weapon_effects_pass.h', 'weapon_patch_cells'),

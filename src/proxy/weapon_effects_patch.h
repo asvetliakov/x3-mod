@@ -57,6 +57,10 @@ struct StageFrame {
     unsigned dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0; // face draws the stage culled (their box faces away from the eye)
     unsigned area_dropped = 0; // face draws past the frame's screen-area budget
+    unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their ship bubble, of them on the fallback sphere
+    // the hull walks (stage::BubbleStats): run, failed, retries held back, deferred past the frame's budget, bubbles cut
+    // to the object radius
+    unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     float stage_us = 0.f;
     bool drew = false;
 };

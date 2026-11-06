@@ -141,6 +141,13 @@ constexpr unsigned type_stride = 0xdb8;
 constexpr unsigned bullet_shield_damage = 0x44, bullet_flags = 0x58, bullet_light = 0x5c, bullet_hull_damage = 0x80;
 constexpr unsigned ship_class_id = 0xc8;
 constexpr unsigned cfg_game_ms = 0x718;
+// The ship's hull walk (render-node-bounds.md 6.1; ship_avoidance_walk_core.h hull_children): node links, placement,
+// scales, flags and body id; the body cache's hash, its model's LOD records and their extents.
+constexpr std::uintptr_t body_cache_root = 0x00608518;
+constexpr unsigned body_cache_hash = 0x14, node_children = 0x0c, node_sentinel = 0x10, node_offset = 0x30, node_basis = 0x40,
+                   node_scale = 0x70, node_axis_scale = 0x80, node_flags = 0x12c, node_body = 0x140, node_walk_bytes = 0x144;
+constexpr std::uint32_t node_scaled = 0x40, node_unscaled_offset = 0x10000, node_no_collision = 0x8000000;
+constexpr unsigned model_lods = 0x0c, lod_extent = 0x20; // the LOD count, an int16, follows the array pointer
 constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by the kill routine 0x0044abd0
 constexpr std::uint32_t obj_shielded = 0x100000u;  // obj+0x40 bit 20: docks, factories, ships at creation
 constexpr std::uint16_t class_bullet = 0, class_shielded_a = 1, class_dock = 5, class_factory = 6, class_ship = 7,
@@ -776,10 +783,6 @@ constexpr float engine_units_per_metre = 500.f;
 // cells, doubles with it).
 constexpr float cell_m[patch_tier_count] = {3.0f, 6.0f, 16.0f};    // fighter, corvette, capital/station (metres)
 constexpr unsigned rings[patch_tier_count] = {1, 2, 2};            // neighbour rings a hit lights about its cell
-// The stand-off (user request after Run237 Flight D: "like on a hull scaled 1.2-1.3"): the patch floats standoff_m
-// above the hull along its normal, with parallax (weapon_shell_ps.hlsl); half a cell per tier as the starting values,
-// a station takes the capital's. No user setting; the lab has the control.
-constexpr float standoff_m[patch_tier_count] = {1.5f, 3.0f, 8.0f};
 constexpr float ripple_speed = 3.333f;  // the ring front, footprint radii per game second (the rim in 0.3 s)
 constexpr float ring_width = 0.12f;     // the ring's Gaussian width, footprint radii
 constexpr float ring_gain = 1.0f;       // ring radiance (x the patch colour), fading as the ring nears the rim
@@ -817,6 +820,20 @@ constexpr float face_cull_sin = 0.841f;
 // the owners whose newest hit is the oldest are dropped (area_dropped), so a frame's patch cost is bounded by about
 // this many full-screen boxes.
 constexpr float screen_budget = 8.0f;
+// The ship bubble (user decision after Run238 Flight E, 5.1.1 "Placement"): an owner whose tier is not the station's
+// (TierSource tier_by_station keeps the hull decal) gets a smooth ellipsoid in its frame: centre the hull bounds' centre,
+// half-extents the hull bounds' half-extents x bubble_scale (the hull_children walk of render-node-bounds.md 6.1,
+// weapon_effects_bubble.h), each floored at bubble_floor of the largest and cut to bubble_scale x the object radius; a failed walk
+// takes a sphere of the object radius about the root node (bubble_fallback=). Per pixel the ray meets it twice: the near side draws at full
+// radiance, the far side (seen around the hull's outline, the hull lane hiding what lies behind it) at
+// bubble_far_gain; both add where both draw. A failed walk is retried after bubble_retry_ms of game time.
+constexpr float bubble_scale = 1.15f;
+constexpr float bubble_far_gain = 0.6f;
+constexpr float bubble_floor = 1.f / 16.f;
+constexpr unsigned bubble_retry_ms = 2000;
+// At most this many hull walks per stage call (review F4: a crowded sector's first frame); the owners past it draw on
+// the fallback sphere until a later frame walks them (bubble_deferred= in weapon_effects_frame).
+constexpr unsigned bubble_walks_per_frame = 2;
 // The records' game-time life: the ring reaches the rim, then the slowest cell fades out.
 constexpr unsigned patch_lifetime_ms = unsigned(1000.f / ripple_speed + float(fade_ms) * (1.f + 0.5f * stagger)) + 1;
 static_assert(patch_lifetime_ms > 0 && patch_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");

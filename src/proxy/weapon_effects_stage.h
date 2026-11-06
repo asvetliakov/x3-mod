@@ -1,12 +1,21 @@
 #pragma once
 #include "../renderer/weapon_effects_pass.h"
+#include "weapon_effects_bubble.h"
 #include "weapon_effects_core.h"
 #include "sse_scalar.h"
 #include <algorithm>
 
 // The weapon effects' scene-end step (docs/architecture/weapon-effects.md 3.1, 5.1 item 3 and 5.1.1): the ring's
-// stage-owned shield hits (flag_stage) become hex patches laid on the hull through the lane depth (the screen-space
-// patch, user decision 2026-11-06). Per owner its owner_hits newest hits light cells on the owner's six faces (the
+// stage-owned shield hits (flag_stage) become hex patches. A ship (any owner whose tier is not the station's: the
+// newest record's TierSource) gets its bubble (user decision after Run238 Flight E; weapon_effects_bubble.h): the
+// hull bounds' ellipsoid x bubble_scale (the walk through the caller's BubbleCache, else the fallback sphere of the
+// object radius, Counts::bubble_fallback), each hit mapped onto it radially in its normalised space (bubble_point) and
+// lighting both faces of every axis with the same cells, clocks and draws as below; a face draw's box bounds the
+// bubble's sheet over its cells within their anchors' windows (bubble_box: the opposite sheet drops out) and the pixel
+// program draws the bubble's near and
+// far points (weapon_bubble_ps.hlsl), so the bubble draws no face cull (its far side faces away from the eye). A
+// station keeps the hull decal laid on the hull through the lane depth (the screen-space patch, user decision
+// 2026-11-06). Per owner its owner_hits newest hits light cells on the owner's six faces (the
 // anchor_frame lattices +-z, +-x, +-y: a planar hex lattice perpendicular to the face's axis, fixed in the owner's
 // frame, so every hit on a face lands on the same cells whatever the owner's motion), each hit on both faces of every
 // axis (the pixel's normal and the face's box decide what shows; review F1: no side of the owner's origin decides); a
@@ -16,8 +25,7 @@
 // weapon_shell_vs.hlsl); its pixels read the lane depth, rebuild the scene point in the owner frame and its normal,
 // keep a point inside the box whose cell is in the draw's map, and weigh the face by the outward normal's component on
 // its axis (triplanar, weapon_shell_ps.hlsl), so a hit shows on whatever hull lies under it and the faces share each
-// point (the weights sum to one); the patch floats the tier's stand-off (Tuning::standoff_m) above the hull, its box
-// rasterized grown by it (renderer::raster_box). A face whose box points away from the eye past the triplanar cut is not drawn
+// point (the weights sum to one). A face whose box points away from the eye past the triplanar cut is not drawn
 // (faces_culled), and past the frame's screen-area budget the oldest owners' boxes go (area_dropped). The cell sets are rebuilt from the live hits every frame
 // (fill_region); the stage keeps no state, so a retired owner or a Reset leaves nothing that can draw. One draw per
 // owner and lit face, more when its cells exceed one draw (spills, from the frame's budget after every face's first
@@ -33,7 +41,6 @@
 // with owners <= max_owners.
 namespace x3m::weapon_effects::stage {
 namespace core = x3m::weapon_effects::core;
-using Reader = bool (*)(std::uintptr_t address, void* out, std::size_t size);
 struct Camera {
     float r[9]{}, t[3]{}; // view_j = sum_i world_i r[i*3+j] + t_j (renderer::CameraState)
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
@@ -141,13 +148,14 @@ struct Counts {
     unsigned cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0; // face draws whose box faces away from the eye past the triplanar cut (not drawn)
     unsigned area_dropped = 0; // face draws past the frame's screen-area budget (the oldest newest hit first)
+    unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their bubble; of them on the fallback sphere
+    BubbleStats bubble;                        // the frame's walks, failures, held retries, deferred walks, clamps
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
 constexpr unsigned region_draws = 8;
 struct Tuning {
     float cell_m[core::patch_tier_count] = {core::cell_m[0], core::cell_m[1], core::cell_m[2]};
     unsigned rings[core::patch_tier_count] = {core::rings[0], core::rings[1], core::rings[2]};
-    float standoff_m[core::patch_tier_count] = {core::standoff_m[0], core::standoff_m[1], core::standoff_m[2]};
     // The cell clocks' law (the pass's WeaponLook carries the same defaults): ring speed in footprint radii per game
     // second, the mean fade and its per-cell spread.
     float ripple_speed = core::ripple_speed, fade_s = float(core::fade_ms) * 1e-3f, stagger = core::stagger;
@@ -156,14 +164,10 @@ struct Tuning {
     unsigned region_draws = stage::region_draws; // >= 1 (the fixture's eviction witness sets 1)
     float screen_budget = core::screen_budget;    // screens of boxes per frame
     float near_z = 1.f;                           // the projection's near view z (the box area's clip)
+    std::uintptr_t body_cache_root = core::layout::body_cache_root; // the hull walk's body cache slot (the fixture's own)
 };
 inline float metres_to_view(float m) noexcept {
     return m * core::engine_units_per_metre * core::world_scale;
-}
-// The tier's stand-off in view units (a negative or non-finite tuning floats nothing).
-inline float standoff_view(const Tuning& t, unsigned tier) noexcept {
-    const float d = metres_to_view(t.standoff_m[tier < core::patch_tier_count ? tier : unsigned(core::patch_capital)]);
-    return d > 0.f && d < 1e30f ? d : 0.f;
 }
 // The patch colour of a record: its shield fraction's colour, weapon_tint toward the weapon's (classifier) colour.
 inline void patch_colour(const core::Event& e, const Tuning& t, float out[3]) noexcept {
@@ -288,9 +292,9 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
     head.radius = (float(rings) + 0.5f) * cell;
     head.reach = float(rings) * cell;
     head.extent = head.reach + 1.1547005f * cell; // the hit within its cell, the far cell's corner: two circumradii
-    head.standoff = standoff_view(t, tier);
     head.hits = 0;
     head.cells = 0;
+    head.bubble = 0; // the hull decal unless bubble_box makes it the ship bubble's draw (outs are reused frame to frame)
 
     const float v = t.ripple_speed * head.radius, ring_life = 1.f / t.ripple_speed;
     const float max_since = t.fade_s * (1.f + 0.5f * t.stagger);
@@ -439,14 +443,68 @@ inline bool box_culled(const float centre[3], const float vu[3], const float vv[
     return true;
 }
 inline bool face_culled(const renderer::WeaponPatch& p) noexcept {
-    float box[6];
-    renderer::raster_box(p, box); // the floated points' box
-    return box_culled(p.centre, p.view_u, p.view_v, p.view_a, box);
+    return box_culled(p.centre, p.view_u, p.view_v, p.view_a, p.box);
 }
 inline bool fill_patch(renderer::WeaponPatch& out, const float centre[3], const float frame[9], unsigned tier,
                        unsigned anchor, const float (*points)[3], const float* ages, unsigned n, const float colour[3],
                        const Tuning& t, RegionStats* stats = nullptr) noexcept {
     return fill_region(&out, 1, centre, frame, tier, anchor, points, ages, n, colour, t, stats) == 1;
+}
+// One owner's bubble draws (5.1.1 "Placement"): its hits (owner frame, view units, newest first, ages in game seconds)
+// mapped onto bubble b (bubble_point), each face's draws from every hit (both faces of every axis) through fill_region
+// into patches[n->patches..] (at most cap draws in all; *regions_left reserves one draw for every face still to come,
+// as the builder's), every draw's box over the bubble's sheet (bubble_box; a draw whose cells cannot show is not
+// kept). Adds the draws, spills, dropped cells and refusals to *n. No face cull: the far side faces away from the eye.
+inline void fill_bubble(renderer::WeaponPatch* patches, unsigned cap, unsigned* regions_left, const float centre[3],
+                        const float frame[9], unsigned tier, const Bubble& b, const float (*hits)[3], const float* ages,
+                        unsigned count, const float colour[3], const Tuning& t, Counts* n) noexcept {
+    float points[core::owner_hits][3], sub_points[core::owner_hits][3], sub_ages[core::owner_hits];
+    count = count < core::owner_hits ? count : core::owner_hits;
+    if (!count) return;
+    for (unsigned h = 0; h < count; ++h) { // the hit onto the bubble
+        float q[3];
+        bubble_point(b, hits[h], points[h], q);
+    }
+    const unsigned tr = tier < core::patch_tier_count ? tier : unsigned(core::patch_capital);
+    const float cell = metres_to_view(t.cell_m[tr]), extent = float(tier_rings(t, tr)) * cell + 1.1547005f * cell;
+    for (unsigned face = 0; face < anchor_count; ++face) {
+        if (*regions_left) --*regions_left;
+        // The cost filter (review F1 keeps every face): a hit whose depth window along the face's axis (B.a -+ the
+        // extent, every cell it anchors lies in it) misses the face's sheet within the share region lights nothing there
+        // (bubble_box would drop its cells), so it does not feed this face's cells; a face no hit reaches is skipped.
+        float a[3], u[3], v[3];
+        anchor_frame(face, a, u, v);
+        FaceSheet fs;
+        if (!face_sheet(b, a, u, v, &fs)) continue;
+        unsigned m = 0;
+        for (unsigned h = 0; h < count; ++h) {
+            const float d = dot3(points[h], a);
+            if (d + extent < fs.sheet_lo || d - extent > fs.ca + fs.ea) continue;
+            std::memcpy(sub_points[m], points[h], sizeof sub_points[m]);
+            sub_ages[m++] = ages[h];
+        }
+        if (!m) continue;
+        if (n->patches >= cap) {
+            ++n->dropped;
+            continue;
+        }
+        const unsigned free = cap - n->patches;
+        const unsigned room = free > *regions_left ? free - *regions_left : 1u;
+        RegionStats rs{};
+        unsigned drawn = fill_region(patches + n->patches, room, centre, frame, tier, face, sub_points, sub_ages, m,
+                                     colour, t, &rs);
+        for (unsigned d = 0; d < drawn;) // a draw whose cells' sheet is steeper than the cut shows nothing
+            if (!bubble_box(patches[n->patches + d], b)) {
+                patches[n->patches + d] = patches[n->patches + drawn - 1];
+                --drawn;
+            } else {
+                ++d;
+            }
+        n->patches += drawn;
+        n->spills += drawn > 1 ? drawn - 1 : 0;
+        n->cells_dropped += rs.dropped;
+        if (rs.refused) ++n->dropped;
+    }
 }
 // The own ship in the cockpit view (core::own_cockpit_gain, 5.1.1): every patch draw whose owner node is own_node (the
 // own-ship root node, nonzero) is scaled to `gain` of its radiance (its colour: the patch blends ONE/ONE, so the colour
@@ -478,14 +536,13 @@ struct CockpitClock {
         return view_mode == 1 && frame - stamp <= 1;
     }
 };
-// The frame's screen-area budget (review F4): each draw's rasterized box (raster_box) projected (its eight corners'
-// bounding rectangle in the jittered projection, clipped to the screen; a corner at or behind the near plane counts
-// the whole screen), in screens.
+// The frame's screen-area budget (review F4): each draw's box projected (its eight corners' bounding rectangle in
+// the jittered projection, clipped to the screen; a corner at or behind the near plane counts the whole screen), in
+// screens.
 inline float box_screens(const renderer::WeaponPatch& p, const Camera& c, float near_z) noexcept {
-    float lo[2] = {1.f, 1.f}, hi[2] = {-1.f, -1.f}, box[6];
-    renderer::raster_box(p, box);
+    float lo[2] = {1.f, 1.f}, hi[2] = {-1.f, -1.f};
     for (unsigned k = 0; k < 8; ++k) {
-        const float u = box[k & 1u ? 3 : 0], v = box[k & 2u ? 4 : 1], a = box[k & 4u ? 5 : 2];
+        const float u = p.box[k & 1u ? 3 : 0], v = p.box[k & 2u ? 4 : 1], a = p.box[k & 4u ? 5 : 2];
         float e[3];
         for (unsigned j = 0; j < 3; ++j) e[j] = p.centre[j] + p.view_u[j] * u + p.view_v[j] * v + p.view_a[j] * a;
         if (!(e[2] > near_z)) return 1.f;
@@ -499,10 +556,11 @@ inline float box_screens(const renderer::WeaponPatch& p, const Camera& c, float 
     const float h = (hi[1] < 1.f ? hi[1] : 1.f) - (lo[1] > -1.f ? lo[1] : -1.f);
     return w > 0.f && h > 0.f ? 0.25f * w * h : 0.f;
 }
-// Builds the frame's patches and decals from the ring (see the header). now = cfg+0x718.
+// Builds the frame's patches and decals from the ring (see the header). now = cfg+0x718. bubbles: the hull walk's cache
+// (production: one per process, rescoped by the caller; nullptr walks every owner every call).
 inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera& cam, const Tuning& t,
                     renderer::WeaponPatch* patches, unsigned patch_cap, renderer::WeaponDecal* decals,
-                    unsigned decal_cap) noexcept {
+                    unsigned decal_cap, BubbleCache* bubbles = nullptr) noexcept {
     Counts n{};
     struct Seen {
         std::uint32_t owner;
@@ -559,7 +617,7 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         const unsigned v = ring.slots[s.index[0]].patch_tier;
         return v < core::patch_tier_count ? v : unsigned(core::patch_capital);
     };
-    unsigned regions_left = 0;
+    unsigned regions_left = 0, walks_left = core::bubble_walks_per_frame;
     for (unsigned k = 0; k < seen_count; ++k) {
         Seen& s = seen[k];
         if (s.status != OwnerStatus::ok || !s.count) continue;
@@ -582,13 +640,29 @@ inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera
         float centre[3], frame[9];
         if (owner_frame(s.data, cam, centre, frame)) {
             const float owner_radius = float(double(s.data.radius) * double(core::world_scale));
+            if (newest.tier_source != core::tier_by_station) { // the ship bubble
+                bool fallback = false;
+                const Bubble b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle,
+                                              s.data.radius, now, &walks_left, &n.bubble, &fallback);
+                ++n.bubbles;
+                n.bubble_fallback += fallback;
+                const unsigned first = n.patches;
+                fill_bubble(patches, patch_cap, &regions_left, centre, frame, tier, b, plan.points, plan.ages, s.count,
+                            colour, t, &n);
+                for (unsigned d = first; d < n.patches; ++d) {
+                    patches[d].newest_s = plan.ages[0];
+                    patches[d].owner = s.owner;
+                    patches[d].owner_node = newest.node;
+                    patches[d].owner_radius = owner_radius;
+                }
+                continue;
+            }
             const float cell = metres_to_view(t.cell_m[tier]), reach = float(tier_rings(t, tier)) * cell;
-            const float extent = reach + 1.1547005f * cell + standoff_view(t, tier);
+            const float extent = reach + 1.1547005f * cell;
             for (unsigned face = 0; face < anchor_count; ++face) { // every hit on both faces of every axis
                 if (regions_left) --regions_left;
                 // The cull before the cells (review F4's CPU budget): the hits' box grown by the footprint in the plane
-                // and the extent along the axis, each with the stand-off, holds every rasterized box the face could
-                // get, so a face it culls is culled.
+                // and the extent along the axis holds every cell the face could get, so a face it culls is culled.
                 {
                     float a[3], u[3], v[3], vu[3] = {}, vv[3] = {}, va[3] = {};
                     anchor_frame(face, a, u, v);

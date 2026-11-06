@@ -73,9 +73,6 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>rings: fighter <input id="c_rings_fighter" type="number" min="0" max="6" step="1" style="width:4em" title="neighbour rings a hit lights about its cell"></label>
   <label>corvette <input id="c_rings_corvette" type="number" min="0" max="6" step="1" style="width:4em"></label>
   <label>capital <input id="c_rings_capital" type="number" min="0" max="6" step="1" style="width:4em"></label>
-  <label title="the patch floats this far above the hull along its normal, with parallax (weapon_shell_ps.hlsl); clipped at the hull's outline">stand-off m: fighter <input id="c_standoff_fighter" type="number" min="0" step="0.1" style="width:4.5em"></label>
-  <label>corvette <input id="c_standoff_corvette" type="number" min="0" step="0.1" style="width:4.5em"></label>
-  <label>capital <input id="c_standoff_capital" type="number" min="0" step="0.5" style="width:4.5em"></label>
   <label>ripple speed <input id="c_ripple_speed" type="number" step="0.1" style="width:5em" title="footprint radii per game second"></label>
   <label>centre gain <input id="c_centre_gain" type="number" min="0" step="0.1" style="width:4.5em" title="the hit's own cell over a ring cell, edge and fill (the marker; its fill at the header's centre_fill)"></label>
   <label>fade ms <input id="c_fade_ms" type="number" step="50" style="width:5em"></label>
@@ -94,7 +91,10 @@ Our replacement renderer plugs in at renderOurs(record, t): one right-hand canva
   <label>shield % <input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></label>
   <label>drain %/hit <input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></label>
   <label>frame <select id="c_frame"><option value="patch">patch</option><option value="ship">whole owner</option></select></label>
-  <label>hull <select id="c_hull" title="the preview owner: a sphere, a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft or on its top from above, or a flat fighter (6:1:4) hit from above or below"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option><option value="narrow_top">narrow, from above (top 40 % aft)</option><option value="flat_top">flat fighter 6:1:4, from above</option><option value="flat_bottom">flat fighter 6:1:4, from below</option></select></label>
+  <label title="5.1.1 Placement: a ship's patch lies on its bubble (the hull bounds x the bubble scale, near and far side, the hull hiding what lies behind it); a station's on the hull (the screen-space decal)">surface <select id="c_surface"><option value="bubble">ship bubble</option><option value="hull">station hull decal</option></select></label>
+  <label>bubble scale <input id="c_bubble_scale" type="number" min="1" max="2" step="0.05" style="width:4.5em" title="the bubble's half-extents over the hull bounds' (core::bubble_scale)"></label>
+  <label>far side <input id="c_bubble_far" type="number" min="0" max="1" step="0.05" style="width:4.5em" title="the far side's radiance over the near side's (core::bubble_far_gain)"></label>
+  <label>hull <select id="c_hull" title="the preview owner: a sphere, a narrow hull (half-extents 1:1:6) hit on its flank's middle or 40 % aft or on its top from above, or a flat fighter (6:1:4) hit from above or below"><option value="sphere">sphere</option><option value="narrow">narrow, mid flank</option><option value="narrow_aft">narrow, aft flank</option><option value="narrow_top">narrow, from above (top 40 % aft)</option><option value="flat_top">flat fighter 6:1:4, from above</option><option value="flat_bottom">flat fighter 6:1:4, from below</option><option value="chase_nose">narrow 1:1:6 from behind, nose hit (chase camera)</option></select></label>
   <label title="the preview owner is the player's own ship (5.1.1, Run236 Flight C)"><input id="c_own" type="checkbox"> own ship</label>
   <label title="the view is the cockpit: the own ship's patch draws at own_cockpit_gain (the chase view and every other ship unchanged)"><input id="c_cockpit" type="checkbox"> cockpit view</label>
   <button id="c_reset" type="button">reset to header</button>
@@ -189,7 +189,8 @@ const HEADER = {
   engine_units_per_metre: 500.0,
   cell_m: [3.0, 6.0, 16.0],
   rings: [1, 2, 2],
-  standoff_m: [1.5, 3.0, 8.0],
+  bubble_scale: 1.15,
+  bubble_far_gain: 0.6,
   ripple_speed: 3.333,
   ring_width: 0.12,
   ring_gain: 1.0,
@@ -212,6 +213,7 @@ const HEADER = {
   own_cockpit_gain: 0.35,
   triplanar_sharpness: 8.0,
   triplanar_floor: 0.3,
+  face_cull_sin: 0.841,
   tracer_min_elongation: 4.0,
   slug_min_elongation: 1.5,
   cell_key_bias: 2048,
@@ -275,7 +277,6 @@ function ourControls() {
   const n = id => parseFloat($(id).value);
   return {cell_m: PATCH_TIERS.map(t => n('c_cell_' + t)),
           rings: PATCH_TIERS.map(t => Math.max(0, Math.min(6, Math.round(n('c_rings_' + t)) || 0))),
-          standoff_m: PATCH_TIERS.map(t => Math.max(0, n('c_standoff_' + t) || 0)),
           ripple_speed: n('c_ripple_speed'), centre_gain: n('c_centre_gain'), fade_s: n('c_fade_ms') / 1000,
           stagger: n('c_stagger'), fill_ratio: n('c_fill_ratio'),
           bands: {high: n('c_colour_high'), mid: n('c_colour_mid'), low: n('c_colour_low'),
@@ -284,6 +285,10 @@ function ourControls() {
           weapon_tint: n('c_weapon_tint'), seta: +$('c_seta').value, hits: +$('c_hits').value, tier: +$('c_tier').value,
           shield: n('c_shield') / 100, drain: n('c_drain') / 100, frame: $('c_frame').value,
           hull: ($('c_hull') && $('c_hull').value) || 'sphere',
+          surface: ($('c_surface') && $('c_surface').value) || 'bubble',
+          bubble_scale: ($('c_bubble_scale') && parseFloat($('c_bubble_scale').value)) || HEADER.bubble_scale,
+          bubble_far: $('c_bubble_far') && $('c_bubble_far').value !== undefined && $('c_bubble_far').value !== ''
+            ? parseFloat($('c_bubble_far').value) : HEADER.bubble_far_gain,
           own: !!($('c_own') && $('c_own').checked), cockpit: !!($('c_cockpit') && $('c_cockpit').checked)};
 }
 // The record's game-time life (core::patch_lifetime_ms from the controls): the ring reaches the rim, then the slowest
@@ -428,6 +433,13 @@ function previewHull(c) {
     flat_bottom: {ext: [S, S / 6, 2 * S / 3], f: 1, sign: -1, ia: 0, ib: 2, aim: [0, 0], toView: p => [p[0], -p[2], p[1]],
                   toLocal: v => [v[0], v[2], -v[1]], name: 'flat fighter 6:1:4 from below'}};
   hulls.narrow_aft = Object.assign({}, hulls.narrow, {aim: [0, 0.4 * S]});
+  // the chase camera: behind the narrow hull and 0.25 rad above it (owner z -> view +z, pitched; the near side stays
+  // unlit, the nose cap shows past the outline), the hit on its nose (the
+  // bubble's far side from the eye), the whole owner framed
+  const ca = Math.cos(0.25), sa = Math.sin(0.25);
+  hulls.chase_nose = {ext: [S / 6, S / 6, S], f: 2, ia: 0, ib: 1, aim: [0, 0],
+                      toView: p => [p[0], ca * p[1] - sa * p[2], sa * p[1] + ca * p[2]],
+                      toLocal: v => [v[0], ca * v[1] + sa * v[2], -sa * v[1] + ca * v[2]], name: 'narrow hull 1:1:6, chase'};
   const h = hulls[c.hull];
   if (!h) return {S, ext: [S, S, S], narrow: false, f: 2, sign: -1, ia: 0, ib: 1, aim: [0, 0], toView: id, toLocal: id,
                   name: 'sphere'};
@@ -486,6 +498,54 @@ function patchDraws(hits, S, c) {
   }
   return draws;
 }
+// The ship bubble (5.1.1 Placement; stage::fill_bubble, weapon_effects_bubble.h): the hull's half-extents x the bubble
+// scale about its centre (the preview hulls are centred), each hit mapped radially in its normalised space (B = E Q,
+// Q = q / |q|) and lighting both faces of every axis, each face's cells from fillCells on the B projections (their depth
+// along the axis the anchor's: the box keeps a point within the extent of it); a face draw none of whose cells has the
+// bubble's sheet within the cut and its anchor's window is dropped (stage::bubble_box: the opposite sheet).
+// the half-extents cut to bubble_scale x the object radius (the preview owner's: its tier's preview size, 1.1 x for
+// the elongated)
+function bubbleOf(hull, c) {
+  const r = (hull.narrow ? 1.1 * Math.max(...hull.ext) : hull.S) * c.bubble_scale;
+  return hull.ext.map(v => Math.min(v * c.bubble_scale, r));
+}
+function bubbleHits(hits, E) {
+  return hits.map(h => {
+    const q = h.p.map((v, k) => v / E[k]), n = Math.hypot(q[0], q[1], q[2]);
+    const Q = n > 1e-12 ? q.map(v => v / n) : [0, 0, 1];
+    return Object.assign({}, h, {p: Q.map((v, k) => v * E[k]), Q});
+  });
+}
+// stage::bubble_box's test: some cell of the draw has the sheet on its face's side, within the cut, inside its
+// anchor's depth window (E the bubble's half-extents, the bubble centred).
+function bubbleBoxKeeps(d, E) {
+  const ab = v => Math.abs(v), eu = dot3(E, d.fr.u.map(ab)), ev = dot3(E, d.fr.v.map(ab)), ea = dot3(E, d.fr.a.map(ab));
+  const cc = Math.sqrt(1 - HEADER.face_cull_sin * HEADER.face_cull_sin), Em = Math.max(eu, ev);
+  const cap = (1 - cc * cc) * Em * Em / (cc * cc * ea * ea + (1 - cc * cc) * Em * Em), circ = 0.5773503 * d.cell;
+  const range = (x0, x1) => [x0 <= 0 && x1 >= 0 ? 0 : Math.min(x0 * x0, x1 * x1), Math.max(x0 * x0, x1 * x1)];
+  for (const [key, cv] of d.cells) {
+    const [kx, ky] = unpackKey(key), qx = 0.5 * kx * d.cell, qy = 0.8660254 * ky * d.cell;
+    const [u0, u1] = range((qx - circ) / eu, (qx + circ) / eu), [v0, v1] = range((qy - circ) / ev, (qy + circ) / ev);
+    if (!(u0 + v0 <= cap)) continue;
+    const hi = ea * Math.sqrt(1 - (u0 + v0)), lo = ea * Math.sqrt(1 - Math.min(u1 + v1, cap));
+    if (Math.min(hi, cv.depth + d.extent) >= Math.max(lo, cv.depth - d.extent)) return true;
+  }
+  return false;
+}
+function bubbleDraws(hits, c, E) {
+  const cell = c.cell_m[c.tier], rings = c.rings[c.tier], draws = [];
+  for (let k = 0; k < 6; k++) { // every hit on both faces of every axis
+    const fr = anchorFrame(k);
+    if (!hits.length) continue;
+    const f = fillCells(hits.map(h => ({q: [dot3(h.p, fr.u), dot3(h.p, fr.v)], depth: dot3(h.p, fr.a), age: h.age})),
+                        cell, rings, c, PATCH_CELLS * REGION_DRAWS, fr.seed);
+    if (!f.cells.size) continue;
+    const d = Object.assign({fr, seed: fr.seed, cell, extent: f.reach + 1.1547005 * cell,
+                             draws: Math.ceil(f.cells.size / PATCH_CELLS)}, f);
+    if (bubbleBoxKeeps(d, E)) draws.push(d);
+  }
+  return draws;
+}
 /** Our shield-hit patch for the impact slot (hull hits and the other slots stay native in step 1). t is wall ms
  *  since spawn; ages are game time (x SETA). */
 function renderOurs(record, t) { // eslint-disable-line no-unused-vars
@@ -495,8 +555,9 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   if (record.slot !== 'impact') { label(ctx, record.slot === 'death' ? 'explosions: a later step' : 'native (step 1 draws the shield hit only)'); return; }
   const c = ourControls(), hull = previewHull(c);
   const S = hull.S, cell = c.cell_m[c.tier], rings = c.rings[c.tier];
-  const hits = hitSequence(t, c, S, cell);
-  const draws = hits.length ? patchDraws(hits, S, c) : [];
+  const hits = hitSequence(t, c, S, cell), bubble = c.surface !== 'hull';
+  const E = bubbleOf(hull, c), mapped = bubble ? bubbleHits(hits, E) : hits;
+  const draws = hits.length ? (bubble ? bubbleDraws(mapped, c, E) : patchDraws(hits, S, c)) : [];
   let colour = shieldColour(hits.length ? hits[0].shield : 1, c.bands);
   if (c.weapon_tint > 0) {
     const w = weaponLinear(record.weapon), k = Math.min(1, c.weapon_tint);
@@ -509,7 +570,7 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   // with the hit area (the scatter plus the footprint) a third of the canvas height and centred.
   const f = H / (2 * Math.tan(20 * Math.PI / 180));
   const area = 2 * cell + (rings + 1) * cell;
-  const aim = hull.toView(hullPoint(hull, hull.aim[0], hull.aim[1])), whole = c.frame === 'ship';
+  const aim = hull.toView(hullPoint(hull, hull.aim[0], hull.aim[1])), whole = c.frame === 'ship' || !!hull.whole;
   const D = whole ? S * f / (0.42 * H) : area * f / (0.34 * H);
   const C = whole ? [0, 0, D] : [-aim[0], -aim[1], D - aim[2]]; // the owner's centre in view space
   const toView = q => { const v = hull.toView(q); return [v[0] + C[0], v[1] + C[1], v[2] + C[2]]; };
@@ -551,47 +612,70 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
     }
   const pt = (x, y) => [P[(y * W + x) * 3], P[(y * W + x) * 3 + 1], P[(y * W + x) * 3 + 2]];
   const sharp = HEADER.triplanar_sharpness, floor = HEADER.triplanar_floor;
-  // The stand-off (weapon_shell_ps.hlsl): the patch floats `lift` above the hull along the normal; the pixel shows the
-  // hull point whose offset lies on its ray (one parallax step: P's tangent plane offset by lift, cut by the ray, the
-  // hull under that point, its plane the same way); off the outline, the hull more than lift off the tangent plane or
-  // behind the eye: nothing. pixelOf is rayOf's inverse (owner frame -> pixel).
-  const lift = c.standoff_m[c.tier];
-  const pixelOf = q => { const v = toView(q); return [Math.round(v[0] / v[2] * f + W / 2 - 0.5), Math.round(H / 2 - 0.5 - v[1] / v[2] * f)]; };
-  const cut = (d, q, n, den) => (lift + dot3(n, [0, 1, 2].map(k => q[k] - O[k]))) / den; // ray parameter on q's offset plane
-  for (let y = 0; y + 1 < H; y++)
+  const share = (n, d) => { // the face's triplanar share at outward normal n (0 unless n points along its axis)
+    if (!(dot3(n, d.fr.a) > 0)) return 0;
+    const m = n.map(v => Math.pow(Math.max(Math.abs(v), 1e-6), sharp)), ms = m[0] + m[1] + m[2];
+    const tt = m.map(v => Math.max(v / ms - floor, 0)), ts = Math.max(tt[0] + tt[1] + tt[2], 1e-6);
+    return tt[d.fr.a[0] ? 0 : d.fr.a[1] ? 1 : 2] / ts;
+  };
+  // weapon_bubble_ps.hlsl per pixel: the ray's near and far points on the bubble (owner frame), each drawn where it lies
+  // in front of the eye and nearer than the hull (hullDepth), at full radiance (near) or the far side's; its outward
+  // normal gives the faces' shares, its plane point the cell, its depth along the axis within the extent of the cell's
+  // anchor.
+  let nearLit = 0, farLit = 0;
+  const bubbleRoots = (x, y) => {
+    const d = rayOf(x, y), o = O.map((v, k) => v / E[k]), dd = d.map((v, k) => v / E[k]);
+    const A = dot3(dd, dd), tm = -dot3(o, dd) / A, h = o.map((v, k) => v + tm * dd[k]), disc = 1 - dot3(h, h);
+    if (!(disc > 0)) return null;
+    const half = Math.sqrt(disc / A), at = tt => o.map((v, k) => (v + tt * dd[k]) * E[k]);
+    return [{t: tm - half, p: at(tm - half)}, {t: tm + half, p: at(tm + half)}];
+  };
+  for (let y = 0; bubble && y + 1 < H; y++)
+    for (let x = 0; x + 1 < W; x++) {
+      const roots = bubbleRoots(x, y);
+      if (!roots) continue;
+      const rx = bubbleRoots(x + 1, y), ry = bubbleRoots(x, y + 1);
+      for (let side = 0; side < 2; side++) {
+        const r = roots[side], gain = side ? c.bubble_far : 1;
+        if (!(r.t > 0 && r.t < hullDepth[y * W + x]) || !(gain > 0)) continue;
+        const n = norm3(r.p.map((v, k) => v / (E[k] * E[k]))) || [0, 0, 1];
+        let lit = 0;
+        for (const d of draws) {
+          const w = share(n, d);
+          if (!(w > 0)) continue;
+          const q = [dot3(r.p, d.fr.u), dot3(r.p, d.fr.v)];
+          const cl = hexCell(q[0] / cell, q[1] / cell), cv = d.cells.get(packKey(cl.kx, cl.ky));
+          if (!cv || Math.abs(dot3(r.p, d.fr.a) - cv.depth) > d.extent) continue; // the box: the anchor's window
+          const hd = rr => rr ? hexCell(dot3(rr[side].p, d.fr.u) / cell, dot3(rr[side].p, d.fr.v) / cell).hd : cl.hd;
+          const fw = Math.abs(hd(rx) - cl.hd) + Math.abs(hd(ry) - cl.hd);
+          const v = hexLaw(q, cl, fw, d, c) * w * gain;
+          sum[y * W + x] += v;
+          lit += v > 0;
+        }
+        if (lit) { if (side) farLit++; else nearLit++; }
+      }
+    }
+  for (let y = 0; !bubble && y + 1 < H; y++)
     for (let x = 0; x + 1 < W; x++) {
       if (!on[y * W + x]) continue;
-      const p0 = pt(x, y), x0 = x & ~1, y0 = y & ~1;
-      if (!(on[y0 * W + x0] && on[y0 * W + x0 + 1] && on[(y0 + 1) * W + x0])) continue; // a quad on the sky: no normal
-      const a = pt(x0, y0), bx = pt(x0 + 1, y0), by = pt(x0, y0 + 1);
-      let n = cross3([0, 1, 2].map(k => bx[k] - a[k]), [0, 1, 2].map(k => by[k] - a[k]));
-      if (dot3(n, [0, 1, 2].map(k => O[k] - p0[k])) < 0) n = n.map(v => -v);
+      const p = pt(x, y), x0 = x & ~1, y0 = y & ~1;
+      let n;
+      if (on[y0 * W + x0] && on[y0 * W + x0 + 1] && on[(y0 + 1) * W + x0]) {
+        const a = pt(x0, y0), bx = pt(x0 + 1, y0), by = pt(x0, y0 + 1);
+        n = cross3([0, 1, 2].map(k => bx[k] - a[k]), [0, 1, 2].map(k => by[k] - a[k]));
+      } else n = [0, 1, 2].map(k => O[k] - p[k]);
+      if (dot3(n, [0, 1, 2].map(k => O[k] - p[k])) < 0) n = n.map(v => -v);
       const ln = Math.hypot(n[0], n[1], n[2]) || 1;
       n = n.map(v => v / ln);
-      let p = p0;
-      if (lift > 0) {
-        const d = rayOf(x, y), den = Math.min(dot3(n, d), -1e-6), s1 = cut(d, p0, n, den);
-        if (!(s1 > 0)) continue;
-        const [qx, qy] = pixelOf([0, 1, 2].map(k => O[k] + d[k] * s1 - n[k] * lift));
-        if (qx < 0 || qy < 0 || qx >= W || qy >= H || !on[qy * W + qx]) continue;
-        const q = pt(qx, qy);
-        if (Math.abs(dot3(n, [0, 1, 2].map(k => q[k] - p0[k]))) > lift + 0.05 * cell) continue;
-        const s2 = cut(d, q, n, den);
-        if (!(s2 > 0)) continue;
-        p = [0, 1, 2].map(k => O[k] + d[k] * s2 - n[k] * lift);
-      }
       const m = n.map(v => Math.pow(Math.max(Math.abs(v), 1e-6), sharp)), ms = m[0] + m[1] + m[2];
       const t = m.map(v => Math.max(v / ms - floor, 0)), ts = Math.max(t[0] + t[1] + t[2], 1e-6);
-      const sh = [0, 1, 2].map(k => p[k] - p0[k]); // the neighbours' points moved with the parallax (the edge's fwidth)
-      const pr = pt(x + 1, y).map((v, k) => v + sh[k]), pd = pt(x, y + 1).map((v, k) => v + sh[k]);
+      const pr = pt(x + 1, y), pd = pt(x, y + 1);
       for (const d of draws) {
         if (!(dot3(n, d.fr.a) > 0)) continue;
         const axis = d.fr.a[0] ? 0 : d.fr.a[1] ? 1 : 2, w = t[axis] / ts;
         if (!(w > 0)) continue;
         const q = [dot3(p, d.fr.u), dot3(p, d.fr.v)], fa = [q[0], q[1], dot3(p, d.fr.a)];
         if (fa.some((v, i) => v < d.lo[i] || v > d.hi[i])) continue; // the draw's box
-        const fp = [dot3(p0, d.fr.u), dot3(p0, d.fr.v), dot3(p0, d.fr.a)]; // the program's pre-test: P within 4 lift
-        if (fp.some((v, i) => v < d.lo[i] - 4 * lift || v > d.hi[i] + 4 * lift)) continue;
         const cl = hexCell(q[0] / cell, q[1] / cell), cv = d.cells.get(packKey(cl.kx, cl.ky));
         if (!cv) continue;
         const hd = qq => hexCell(dot3(qq, d.fr.u) / cell, dot3(qq, d.fr.v) / cell).hd;
@@ -610,7 +694,9 @@ function renderOurs(record, t) { // eslint-disable-line no-unused-vars
   const f0 = hits.length ? hits[0].shield : 1, lit = draws.reduce((n, d) => n + d.cells.size, 0);
   const gpuDraws = draws.reduce((n, d) => n + d.draws, 0), dropped = draws.reduce((n, d) => n + d.dropped, 0);
   const regions = [...new Set(draws.map(d => ['+z', '-z', '+x', '-x', '+y', '-y'][d.seed]))].join(' ');
-  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.name} ${S} m${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship, chase') : ''} | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s), stand-off ${fmt(lift)} m`);
+  const surface = bubble ? `bubble x${fmt(c.bubble_scale)} (${E.map(v => fmt(v)).join(' x ')} m), near ${nearLit} px, far ${farLit} px at x${fmt(c.bubble_far)}` : 'hull decal';
+  label(ctx, `${PATCH_TIERS[c.tier]} ${hull.name} ${S} m${c.own ? (c.cockpit ? `, own ship, cockpit x${HEADER.own_cockpit_gain}` : ', own ship, chase') : ''} | ${surface} | ${hits.length} live hit(s), ${gpuDraws} draw(s), ${lit} cell(s)${dropped ? `, ${dropped} dropped` : ''}, region ${regions || '-'} | shield ${Math.round(f0 * 100)} % | SETA x${c.seta} | cell ${fmt(cell)} m, ${rings} ring(s)`);
+  record.bubbleLit = {near: nearLit, far: farLit};
 }
 // The impact slot's share of the loop: our patch lasts its record lifetime in wall time (game time / SETA).
 function ourLoopMs() {
@@ -621,20 +707,19 @@ function ourLoopMs() {
 const OUR_IDS = ['c_cell_fighter', 'c_cell_corvette', 'c_cell_capital', 'c_rings_fighter', 'c_rings_corvette',
                  'c_rings_capital', 'c_ripple_speed', 'c_centre_gain', 'c_fade_ms', 'c_stagger', 'c_fill_ratio',
                  'c_colour_high', 'c_colour_mid', 'c_colour_low', 'c_colour_full', 'c_colour_half', 'c_colour_empty',
-                 'c_weapon_tint', 'c_standoff_fighter', 'c_standoff_corvette', 'c_standoff_capital'];
+                 'c_weapon_tint', 'c_bubble_scale', 'c_bubble_far'];
 function initOurControls() {
   const set = (id, v) => { if ($(id) && !$(id).value) $(id).value = v; };
-  PATCH_TIERS.forEach((t, i) => {
-    set('c_cell_' + t, HEADER.cell_m[i]); set('c_rings_' + t, HEADER.rings[i]); set('c_standoff_' + t, HEADER.standoff_m[i]);
-  });
+  PATCH_TIERS.forEach((t, i) => { set('c_cell_' + t, HEADER.cell_m[i]); set('c_rings_' + t, HEADER.rings[i]); });
   set('c_ripple_speed', HEADER.ripple_speed); set('c_centre_gain', HEADER.centre_gain); set('c_fade_ms', HEADER.fade_ms);
   set('c_stagger', HEADER.stagger); set('c_fill_ratio', HEADER.fill_ratio); set('c_weapon_tint', HEADER.weapon_tint);
+  set('c_bubble_scale', HEADER.bubble_scale); set('c_bubble_far', HEADER.bubble_far_gain);
   set('c_colour_high', HEADER.colour_high); set('c_colour_mid', HEADER.colour_mid); set('c_colour_low', HEADER.colour_low);
   // A colour input always holds a value: the header's colours are written once (and again on reset).
   for (const [id, key] of [['c_colour_full', 'colour_full'], ['c_colour_half', 'colour_half'], ['c_colour_empty', 'colour_empty']])
     if ($(id) && !$(id).dataset.init) { $(id).value = linearToHex(HEADER[key]); $(id).dataset.init = '1'; }
-  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame', 'c_hull', 'c_own', 'c_cockpit',
-               ];
+  const ids = [...OUR_IDS, 'c_seta', 'c_hits', 'c_tier', 'c_shield', 'c_drain', 'c_frame', 'c_hull', 'c_surface', 'c_own',
+               'c_cockpit'];
   for (const id of ids) if ($(id)) $(id).oninput = $(id).onchange = () => {
     if (id === 'c_shield') $('c_shield_read').textContent = $(id).value;
     state.dirty = true;

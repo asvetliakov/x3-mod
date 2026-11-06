@@ -13,8 +13,9 @@ match its source and header), runs it once and writes the record: the build, the
 sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
 radius and edge count per tier with the symmetry counts, the centre cell over a ring cell, ring front at two ages, the
 fade, the colour bands, re-light and four-hit accumulation, the screen-space placement on hull lanes (narrow and flat
-hulls from every side, the Flight B station, the far side, the eye inside the bounding sphere, about the hit's floated
-image) with the normal errors, the stand-off's parallax on a tilted plate and its CPU twin's re-projection steps,
+hulls from every side on the ship bubble from the production hull walk, the Flight B station on the hull decal), the
+bubble's sides (the chase camera's nose hit on the far side around the outline, the eye inside the bubble), the hull
+walk's cost warm and cold, with the normal errors,
 the surface case, the no-pop runs (fighter and spread capital on a flat face, the one-draw eviction witness, the
 sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
@@ -50,8 +51,15 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function
          '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-DX3M_WEAPON_EFFECTS_FIXTURE']
 SOURCES = ('verification/probe/weapon_effects_fixture.cpp', 'src/renderer/weapon_effects_pass.cpp',
            'src/renderer/temporal_pass.cpp')
+# The production reader the hull walk is timed through (review F4), compiled as the DLL compiles it (CMakeLists.txt:
+# no SSE / MMX) into its own object.
+NO_SSE_SOURCES = ('src/proxy/engine_memory.cpp',)
+NO_SSE = ['-mno-sse', '-mno-mmx', '-mfpmath=387']
 PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon_effects_pass.cpp',
                       'src/proxy/weapon_effects_core.h', 'src/proxy/weapon_effects_stage.h',
+                      'src/proxy/weapon_effects_bubble.h', 'src/effects/weapon_bubble_ps.hlsl',
+                      'src/proxy/engine_memory.h', 'src/proxy/engine_memory.cpp',
+                      'src/renderer/weapon_bubble_pixel_program_inc.h',
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp',
                       'src/effects/weapon_shell_vs.hlsl', 'src/effects/weapon_shell_ps.hlsl',
                       'src/effects/weapon_decal_vs.hlsl', 'src/effects/weapon_decal_ps.hlsl', 'src/effects/weapon_soft_depth.hlsl',
@@ -63,6 +71,7 @@ PROGRAMS = {
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
     'weapon_decal_vs': ('verification/results/weapon-decal-vertex-program.json', 'src/renderer/weapon_decal_vertex_program_inc.h'),
     'weapon_decal_ps': ('verification/results/weapon-decal-pixel-program.json', 'src/renderer/weapon_decal_pixel_program_inc.h'),
+    'weapon_bubble_ps': ('verification/results/weapon-bubble-pixel-program.json', 'src/renderer/weapon_bubble_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -102,12 +111,25 @@ def programs_current():
 
 def build():
     BUILD.mkdir(parents=True, exist_ok=True)
-    command = ['i686-w64-mingw32-g++', *FLAGS, *(str(ROOT / s) for s in SOURCES), '-o', str(EXE), '-luser32', '-ldxguid']
+    objects, logs, commands = [], '', []
+    for source in NO_SSE_SOURCES:
+        obj = BUILD / (Path(source).stem + '.o')
+        command = ['i686-w64-mingw32-g++', *FLAGS, *NO_SSE, '-c', str(ROOT / source), '-o', str(obj)]
+        done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+        logs += done.stdout + done.stderr
+        commands.append([str(c) for c in command])
+        if done.returncode:
+            raise SystemExit('fixture build failed:\n' + logs)
+        objects.append(str(obj))
+    command = ['i686-w64-mingw32-g++', *FLAGS, *(str(ROOT / s) for s in SOURCES), *objects, '-o', str(EXE), '-luser32',
+               '-ldxguid']
     done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
-    (BUILD / 'build.log').write_text(done.stdout + done.stderr)
+    logs += done.stdout + done.stderr
+    (BUILD / 'build.log').write_text(logs)
     if done.returncode:
-        raise SystemExit('fixture build failed:\n' + done.stdout + done.stderr)
-    return {'command': [str(c) for c in command], 'warnings': len(re.findall(r'\bwarning:', done.stdout + done.stderr)),
+        raise SystemExit('fixture build failed:\n' + logs)
+    commands.append([str(c) for c in command])
+    return {'command': commands[-1], 'objects': commands[:-1], 'warnings': len(re.findall(r'\bwarning:', logs)),
             'executable_sha256': sha(EXE)}
 
 
@@ -123,7 +145,7 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
-            'PLACEMENT', 'STANDOFF', 'STANDOFF_STEPS', 'STANDOFF_REFUSALS', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+            'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
@@ -248,7 +270,7 @@ def main():
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
-                                                 'colour', 'relight', 'adjacent', 'placement', 'standoff', 'standoff_steps', 'standoff_refusals', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
+                                                 'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]

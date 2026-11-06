@@ -47,6 +47,9 @@ constexpr std::uint32_t shell_vs_words[] = {
 constexpr std::uint32_t shell_ps_words[] = {
 #include "weapon_shell_pixel_program_inc.h"
 };
+constexpr std::uint32_t bubble_ps_words[] = {
+#include "weapon_bubble_pixel_program_inc.h"
+};
 constexpr std::uint32_t decal_vs_words[] = {
 #include "weapon_decal_vertex_program_inc.h"
 };
@@ -107,6 +110,8 @@ WeaponLook default_weapon_look() noexcept {
     l.edge_width = wcore::edge_width;
     l.fill_ratio = wcore::fill_ratio;
     l.cell_gain = wcore::cell_gain;
+    l.bubble_near_gain = 1.f;
+    l.bubble_far_gain = wcore::bubble_far_gain;
     return l;
 }
 WeaponEffectsPass::~WeaponEffectsPass() {
@@ -115,6 +120,7 @@ WeaponEffectsPass::~WeaponEffectsPass() {
 void WeaponEffectsPass::release_objects() noexcept {
     drop(shell_vs_);
     drop(shell_ps_);
+    drop(bubble_ps_);
     drop(decal_vs_);
     drop(decal_ps_);
     drop(shell_declaration_);
@@ -137,13 +143,13 @@ void WeaponEffectsPass::after_reset(HRESULT hr) noexcept {
     if (SUCCEEDED(hr)) reset_pending_ = false;
 }
 bool WeaponEffectsPass::resources_ready() const noexcept {
-    return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && decal_vs_ && decal_ps_ &&
+    return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
            shell_declaration_ && decal_declaration_;
 }
 unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
     for (const void* p : {static_cast<const void*>(shell_vs_), static_cast<const void*>(shell_ps_),
-                          static_cast<const void*>(decal_vs_), static_cast<const void*>(decal_ps_),
+                          static_cast<const void*>(bubble_ps_), static_cast<const void*>(decal_vs_), static_cast<const void*>(decal_ps_),
                           static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_)})
         n += p != nullptr;
     return n;
@@ -168,7 +174,9 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     caps_.decal_vs_slots = vs3_slots(decal_vs_words);
     caps_.shell_ps_slots = ps3_program_slots(shell_ps_words, std::size(shell_ps_words));
     caps_.decal_ps_slots = ps3_program_slots(decal_ps_words, std::size(decal_ps_words));
-    if (!caps_.shell_vs_slots || !caps_.decal_vs_slots || !caps_.shell_ps_slots || !caps_.decal_ps_slots)
+    caps_.bubble_ps_slots = ps3_program_slots(bubble_ps_words, std::size(bubble_ps_words));
+    if (!caps_.shell_vs_slots || !caps_.decal_vs_slots || !caps_.shell_ps_slots || !caps_.decal_ps_slots ||
+        !caps_.bubble_ps_slots)
         return refuse("compiled_program");
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
@@ -210,6 +218,8 @@ HRESULT WeaponEffectsPass::create_objects() noexcept {
     if (SUCCEEDED(hr) && !shell_vs_) hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(shell_vs_words), &shell_vs_);
     if (SUCCEEDED(hr) && !shell_ps_)
         hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(shell_ps_words), &shell_ps_);
+    if (SUCCEEDED(hr) && !bubble_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(bubble_ps_words), &bubble_ps_);
     if (SUCCEEDED(hr) && !decal_vs_)
         hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(decal_vs_words), &decal_vs_);
     if (SUCCEEDED(hr) && !decal_ps_)
@@ -218,7 +228,8 @@ HRESULT WeaponEffectsPass::create_objects() noexcept {
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, shell_elements, &shell_declaration_);
     if (SUCCEEDED(hr) && !decal_declaration_)
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, decal_elements, &decal_declaration_);
-    if (SUCCEEDED(hr) && !(shell_vs_ && shell_ps_ && decal_vs_ && decal_ps_ && shell_declaration_ && decal_declaration_))
+    if (SUCCEEDED(hr) &&
+        !(shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ && shell_declaration_ && decal_declaration_))
         hr = E_FAIL;
     if (FAILED(hr)) release_objects();
     return hr;
@@ -232,19 +243,15 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
 }
 namespace {
 // The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,
-// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19..c22
-// (shell_block, weapon_shell_ps.hlsl: the stand-off and the triplanar terms, the owner's axes) and the cell map
-// (map_block): c23..c54 four packed keys per register in ascending order (unused -1), c55..c86 their clocks + 1
-// (negative for a hit's centre cell, 0 not lit yet), c87..c90 the key range [first, last] of each group of sixteen
-// keys (unused: never matched), c91..c92 the box (min, max in the face frame), c93..c101 the stand-off's (lift_block).
-// Returns false for a degenerate draw (skipped, never drawn wrong).
-constexpr unsigned hex_head = 17, shell_tail = 4, map_blocks = weapon_patch_cells / 4, map_groups = map_blocks / 4;
+// shape, anchor frame, the ring hits and their points (hex_block, the decals' whole set); patches add c19..c25
+// (shell_block, weapon_shell_ps.hlsl: the projection, the screen and footprint terms, the owner's axes, centre and the
+// eye in the owner frame; a ship's bubble draw bubble_block, weapon_bubble_ps.hlsl) and the cell map (map_block): c26..c57 four packed keys per register in ascending order
+// (unused -1), c58..c89 their clocks + 1 (negative for a hit's centre cell, 0 not lit yet), c90..c93 the key range
+// [first, last] of each group of sixteen keys (unused: never matched), c94..c95 the box (min, max in the face frame). Returns false for a degenerate draw (skipped,
+// never drawn wrong).
+constexpr unsigned hex_head = 17, shell_tail = 7, map_blocks = weapon_patch_cells / 4, map_groups = map_blocks / 4;
 constexpr unsigned keys_at = 2 + hex_head + shell_tail, clocks_at = keys_at + map_blocks, ranges_at = clocks_at + map_blocks;
-constexpr unsigned lift_tail = 9;
-static_assert(weapon_patch_cells % 16 == 0 && ranges_at + map_groups / 2 + 2 + lift_tail <= 224,
-              "the cell map and the stand-off's constants fit ps_3_0's constants");
-static_assert(keys_at == 23 && clocks_at == 55 && ranges_at == 87 && ranges_at + map_groups / 2 + 2 == 93,
-              "the register map of weapon_shell_ps.hlsl");
+static_assert(weapon_patch_cells % 16 == 0 && ranges_at + map_groups / 2 + 2 <= 224, "the cell map fits ps_3_0's constants");
 bool hex_block(const WeaponLook& l, float cell, float radius, float reach, float seed, float surface2,
                const float colour[3], const float* anchor, const float* anchor_u, const float* anchor_v, unsigned hits,
                const float (*hit_cell)[2], const float (*point)[2], const float* ages, float* out) noexcept {
@@ -309,54 +316,93 @@ bool map_block(const WeaponPatch& p, float* keys, float* clocks, float* ranges, 
     *sent = used;
     return true;
 }
-// The rasterized box's corners (CellVertex): the patch's box grown by its stand-off (raster_box); false for a
-// degenerate box or stand-off.
+// The box's corners (CellVertex) from the patch's box; false for a degenerate box.
 bool write_box(const WeaponPatch& p, WeaponEffectsPass::CellVertex* v) noexcept {
-    if (!finite_all(p.box, 6) || !(p.box[3] > p.box[0]) || !(p.box[4] > p.box[1]) || !(p.box[5] > p.box[2]) ||
-        !(p.standoff >= 0.f) || !finite(p.standoff))
-        return false;
-    float box[6];
-    raster_box(p, box);
+    if (!finite_all(p.box, 6) || !(p.box[3] > p.box[0]) || !(p.box[4] > p.box[1]) || !(p.box[5] > p.box[2])) return false;
     for (unsigned c = 0; c < WeaponEffectsPass::patch_vertices; ++c) {
-        v[c].corner[0] = box[c & 1u ? 3 : 0];
-        v[c].corner[1] = box[c & 2u ? 4 : 1];
-        v[c].corner[2] = box[c & 4u ? 5 : 2];
+        v[c].corner[0] = p.box[c & 1u ? 3 : 0];
+        v[c].corner[1] = p.box[c & 2u ? 4 : 1];
+        v[c].corner[2] = p.box[c & 4u ? 5 : 2];
         v[c].corner[3] = 1.f;
     }
     return true;
 }
-// The patch tail c19..c22 (weapon_shell_ps.hlsl): the stand-off (view units), the triplanar sharpness and floor; the
-// owner's axes in view (L_k, owner_frame), which take the normal to the owner frame (its triplanar weights). False for a
-// degenerate frame.
+// The patch tail c19..c25 (weapon_shell_ps.hlsl): the frame's jittered projection (m00, m11, m20, m21); 2 / W, 2 / H,
+// unused and the triplanar sharpness; the owner's axes in view (L_k, owner_frame) and its
+// centre (view), so the program takes a view point to the owner frame as p_k = (v - centre) . L_k; and the eye in the
+// owner frame (p of the view origin), for the normal's side, with the triplanar floor. False for a degenerate frame.
 bool shell_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[shell_tail * 4]) noexcept {
     if (!(f.m00 != 0.f) || !(f.m11 != 0.f) || !f.width || !f.height) return false;
     const float block[shell_tail * 4] = {
-        p.standoff, wcore::triplanar_sharpness, wcore::triplanar_floor, 0.f,
+        f.m00, f.m11, f.m20, f.m21,
+        2.f / float(f.width), 2.f / float(f.height), 0.f, wcore::triplanar_sharpness,
         p.axes[0][0], p.axes[0][1], p.axes[0][2], 0.f,
         p.axes[1][0], p.axes[1][1], p.axes[1][2], 0.f,
-        p.axes[2][0], p.axes[2][1], p.axes[2][2], 0.f};
+        p.axes[2][0], p.axes[2][1], p.axes[2][2], 0.f,
+        p.centre[0], p.centre[1], p.centre[2], 0.f,
+        -(p.centre[0] * p.axes[0][0] + p.centre[1] * p.axes[0][1] + p.centre[2] * p.axes[0][2]),
+        -(p.centre[0] * p.axes[1][0] + p.centre[1] * p.axes[1][1] + p.centre[2] * p.axes[1][2]),
+        -(p.centre[0] * p.axes[2][0] + p.centre[1] * p.axes[2][1] + p.centre[2] * p.axes[2][2]),
+        wcore::triplanar_floor};
     std::memcpy(out, block, sizeof block);
     return finite_all(out, shell_tail * 4);
 }
-// The stand-off's constants c93..c101 (weapon_shell_ps.hlsl): the face frame (u, v, a) in view space with each axis'
-// offset -centre . axis in .w (f = dot(float4(v, 1), F)); the eye ray of raster r, (r A.xy + A.zw, 1); a view point's
-// raster + 1/2, (v.xy / v.z) B.xy + B.zw; the hull box grown by 4 d (P's pre-test) and by 2 d (H1's). False for a
-// degenerate frame.
-bool lift_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[lift_tail * 4]) noexcept {
-    const float sx = 2.f / float(f.width), sy = 2.f / float(f.height), d = p.standoff > 0.f ? p.standoff : 0.f;
-    auto offset = [&](const float* a) { return -(p.centre[0] * a[0] + p.centre[1] * a[1] + p.centre[2] * a[2]); };
-    const float block[lift_tail * 4] = {
-        p.view_u[0], p.view_u[1], p.view_u[2], offset(p.view_u),
-        p.view_v[0], p.view_v[1], p.view_v[2], offset(p.view_v),
-        p.view_a[0], p.view_a[1], p.view_a[2], offset(p.view_a),
-        sx / f.m00, -sy / f.m11, (-1.f - f.m20) / f.m00, (1.f - f.m21) / f.m11,
-        f.m00 / sx, -f.m11 / sy, (f.m20 + 1.f) / sx + .5f, (1.f - f.m21) / sy + .5f,
-        p.box[0] - 4.f * d, p.box[1] - 4.f * d, p.box[2] - 4.f * d, 0.f,
-        p.box[3] + 4.f * d, p.box[4] + 4.f * d, p.box[5] + 4.f * d, 0.f,
-        p.box[0] - 2.f * d, p.box[1] - 2.f * d, p.box[2] - 2.f * d, 0.f,
-        p.box[3] + 2.f * d, p.box[4] + 2.f * d, p.box[5] + 2.f * d, 0.f};
+// The bubble's tail c19..c25 (weapon_bubble_ps.hlsl), the shell's register count, so the cell map keeps c26..c95: the
+// view ray of raster r is ((2 r.x / W - 1 - m20) / m00, (1 - 2 r.y / H - m21) / m11, 1) (view z = t along it); taken
+// to the owner frame (the axes L_k) and scaled by 1 / e it is r.x X + r.y Y + D0 (X, Y, D0 with the far and near
+// gains and the triplanar sharpness in .w); the eye's normalised point (-centre . L_k - c_k) / e_k with the near z;
+// 1 / e with the triplanar floor; e * u and e * v with c . u and c . v (the lattice coordinates of a normalised point).
+// In double (a far owner's eye point is large against the bubble). False for a degenerate frame or bubble.
+bool bubble_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[shell_tail * 4]) noexcept {
+    if (!(f.m00 != 0.f) || !(f.m11 != 0.f) || !f.width || !f.height || !finite_all(p.bubble_c, 3) ||
+        !finite_all(p.bubble_e, 3) || !(p.bubble_e[0] > 0.f) || !(p.bubble_e[1] > 0.f) || !(p.bubble_e[2] > 0.f))
+        return false;
+    const double sx = 2.0 / double(int(f.width)), sy = 2.0 / double(int(f.height)); // signed: cvtsi2sd
+    const double r0[3] = {(-1.0 - double(f.m20)) / double(f.m00), (1.0 - double(f.m21)) / double(f.m11), 1.0};
+    const double rx = sx / double(f.m00), ry = -sy / double(f.m11);
+    double X[3], Y[3], D0[3], O[3], ie[3], U[3], V[3], cu = 0.0, cv = 0.0;
+    for (unsigned k = 0; k < 3; ++k) {
+        const double L[3] = {double(p.axes[k][0]), double(p.axes[k][1]), double(p.axes[k][2])};
+        ie[k] = 1.0 / double(p.bubble_e[k]);
+        X[k] = rx * L[0] * ie[k];
+        Y[k] = ry * L[1] * ie[k];
+        D0[k] = (r0[0] * L[0] + r0[1] * L[1] + r0[2] * L[2]) * ie[k];
+        const double eye = -(double(p.centre[0]) * L[0] + double(p.centre[1]) * L[1] + double(p.centre[2]) * L[2]);
+        O[k] = (eye - double(p.bubble_c[k])) * ie[k];
+        U[k] = double(p.bubble_e[k]) * double(p.anchor_u[k]);
+        V[k] = double(p.bubble_e[k]) * double(p.anchor_v[k]);
+        cu += double(p.bubble_c[k]) * double(p.anchor_u[k]);
+        cv += double(p.bubble_c[k]) * double(p.anchor_v[k]);
+    }
+    const float block[shell_tail * 4] = {
+        float(X[0]), float(X[1]), float(X[2]), f.look.bubble_far_gain,
+        float(Y[0]), float(Y[1]), float(Y[2]), f.look.bubble_near_gain,
+        float(D0[0]), float(D0[1]), float(D0[2]), wcore::triplanar_sharpness,
+        float(O[0]), float(O[1]), float(O[2]), f.near_z,
+        float(ie[0]), float(ie[1]), float(ie[2]), wcore::triplanar_floor,
+        float(U[0]), float(U[1]), float(U[2]), float(cu),
+        float(V[0]), float(V[1]), float(V[2]), float(cv)};
     std::memcpy(out, block, sizeof block);
-    return finite_all(out, lift_tail * 4);
+    return finite_all(out, shell_tail * 4);
+}
+// The draw's box (face frame u, v, a) as bounds of the bubble's normalised owner coordinates q = (x - c) / e (the
+// pixel program's test; the face's axes are signed owner axes, so each maps to one owner axis): out[0..2] min, out[4..6]
+// max (.w 0).
+void bubble_box_normalised(const WeaponPatch& p, float out[8]) noexcept {
+    const float* dirs[3] = {p.anchor_u, p.anchor_v, p.anchor};
+    for (unsigned k = 0; k < 3; ++k) {
+        float lo = -1e30f, hi = 1e30f;
+        for (unsigned f = 0; f < 3; ++f) {
+            const float d = dirs[f][k];
+            if (!(d > 0.5f || d < -0.5f)) continue;
+            const float a = d > 0.f ? p.box[f] : -p.box[3 + f], b = d > 0.f ? p.box[3 + f] : -p.box[f];
+            lo = (a - p.bubble_c[k]) / p.bubble_e[k];
+            hi = (b - p.bubble_c[k]) / p.bubble_e[k];
+        }
+        out[k] = lo;
+        out[4 + k] = hi;
+    }
+    out[3] = out[7] = 0.f;
 }
 } // namespace
 HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport* output) noexcept {
@@ -385,7 +431,8 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !finite(l.centre_gain) || !finite(l.centre_fill) ||
         !(l.fade_s > 0.f) || !(l.edge_width > 0.f) || !(l.edge_width < 0.5f) ||
         !(l.stagger >= 0.f) || !(l.stagger < 2.f) || !finite(l.ring_gain) ||
-        !finite(l.cell_gain) || !finite(l.fill_ratio))
+        !finite(l.cell_gain) || !finite(l.fill_ratio) || !(l.bubble_near_gain >= 0.f) || !finite(l.bubble_near_gain) ||
+        !(l.bubble_far_gain >= 0.f) || !finite(l.bubble_far_gain))
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
     HRESULT hr = ensure_resources();
     if (FAILED(hr)) return refuse(WeaponEffectsStep::Resources, hr);
@@ -427,22 +474,25 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (SUCCEEDED(hr) && f.patch_count) {
         step(WeaponEffectsStep::Patches, call<SetDeclarationFn>(SetVertexDeclaration)(d, shell_declaration_));
         step(WeaponEffectsStep::Patches, call<SetVsFn>(SetVertexShader)(d, shell_vs_));
-        step(WeaponEffectsStep::Patches, call<SetPsFn>(SetPixelShader)(d, shell_ps_));
+        IDirect3DPixelShader9* bound = nullptr; // the hull decal's or the bubble's program, set when it changes
         for (unsigned i = 0; i < f.patch_count && SUCCEEDED(hr); ++i) {
             const WeaponPatch& p = f.patches[i];
             bool ok = finite_all(p.centre, 3) && finite_all(p.view_u, 3) && finite_all(p.view_v, 3) &&
                       finite_all(p.view_a, 3) && finite_all(p.anchor, 3) && finite_all(p.anchor_u, 3) &&
                       finite_all(p.anchor_v, 3) && finite_all(&p.axes[0][0], 9) && p.cells > 0;
-            float ps[(hex_head + shell_tail + map_blocks) * 4], clocks[map_blocks * 4];
-            float ranges[map_groups * 2 + 8 + lift_tail * 4]; // c87..c90, the box c91..c92, lift_block c93..c101
+            float ps[(hex_head + shell_tail + map_blocks) * 4], clocks[map_blocks * 4], ranges[map_groups * 2 + 8];
             unsigned map_sent = 0;
             ok = ok && hex_block(l, p.cell, p.radius, p.reach, p.seed, 0.f, p.colour, p.anchor, p.anchor_u, p.anchor_v,
                                  p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
                  write_box(p, vertices_) &&
                  map_block(p, ps + (hex_head + shell_tail) * 4, clocks, ranges, &map_sent);
             if (!ok) continue; // a degenerate patch is skipped, never drawn wrong
-            if (!shell_block(f, p, ps + hex_head * 4)) continue; // c19..c22
-            if (!lift_block(f, p, ranges + map_groups * 2 + 8)) continue; // c93..c101
+            if (!(p.bubble ? bubble_block(f, p, ps + hex_head * 4) : shell_block(f, p, ps + hex_head * 4))) continue; // c19..c25
+            IDirect3DPixelShader9* program = p.bubble ? bubble_ps_ : shell_ps_;
+            if (program != bound) {
+                if (!step(WeaponEffectsStep::Patches, call<SetPsFn>(SetPixelShader)(d, program))) break;
+                bound = program;
+            }
             const float vs[4 * 4] = {p.centre[0], p.centre[1], p.centre[2], f.near_z,
                                      p.view_u[0], p.view_u[1], p.view_u[2], 0.f,
                                      p.view_v[0], p.view_v[1], p.view_v[2], 0.f,
@@ -458,10 +508,11 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             step(WeaponEffectsStep::Patches,
                  call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head + shell_tail + map_blocks));
             step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, clocks_at, clocks, map_sent));
-            const float box4[8] = {p.box[0], p.box[1], p.box[2], 0.f, p.box[3], p.box[4], p.box[5], 0.f};
+            float box4[8] = {p.box[0], p.box[1], p.box[2], 0.f, p.box[3], p.box[4], p.box[5], 0.f};
+            if (p.bubble) bubble_box_normalised(p, box4); // c94..c95: the bubble program tests its points in q
             std::memcpy(ranges + map_groups * 2, box4, sizeof box4);
             step(WeaponEffectsStep::Patches,
-                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, ranges_at, ranges, map_groups / 2 + 2 + lift_tail));
+                 call<SetConstantsFn>(SetPixelShaderConstantF)(d, ranges_at, ranges, map_groups / 2 + 2));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                     d, D3DPT_TRIANGLELIST, 0, patch_vertices, patch_triangles, indices_,

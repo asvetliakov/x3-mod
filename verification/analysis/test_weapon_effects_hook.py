@@ -172,43 +172,54 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLessEqual(seam['peak_pair'], max(seam['peak_a'], seam['peak_b']) * 1.002 + 1e-3)
         self.assertEqual(sorted(x['case'] for x in m['stage_cpu']),
                          ['one_capital_64_hits', 'sixteen_capitals_16_hits', 'station_flight_b_cluster_64_hits'])
-        # The screen-space patch (Run236 Flight C): on the hull lane under the hit, nothing on sky, nothing past the
-        # footprint, the surface near the hit covered, the centroid within a cell, the lit count of the same order for
-        # every approach direction; the far side hidden by its own hull; the eye inside the bounding sphere draws
+        # The ship bubble (user decision after Run238 Flight E): every ship case on its bubble from the hull walk, the lit
+        # near side's centroid within a cell of the hit's bubble point, nothing the twin hides, nothing past the
+        # footprint (not on the tail), the bubble near the hit covered, the lit count of the same order for every
+        # approach direction; the station keeps the hull decal (nothing on sky); dir unused (the 42-degree bolt)
         place = {x['case']: x for x in m['placement']}
         for case in ('narrow_mid_flank', 'aft_flank', 'y_top_narrow', 'y_bottom_narrow', 'flat_flank', 'y_top_flat',
-                     'y_bottom_flat', 'y_top_flat_42deg', 'station_flight_b_0p68R', 'eye_inside_sphere',
+                     'y_bottom_flat', 'y_top_flat_42deg', 'station_flight_b_0p68R',
                      'y_top_flat_offcentre'):  # review F1: the hull off the owner's origin lights
             x = place[case]
-            self.assertEqual((x['sky_lit'], x['outside_lit']), (0, 0), case)
-            # the eye 4 m from the sharp nose: the stand-off's screen-space limit (5.1.1), its CPU twin's share 0.497
-            self.assertGreaterEqual(x['coverage'], 0.45 if case == 'eye_inside_sphere' else 0.9, case)
+            station = case.startswith('station')
+            self.assertEqual((x['surface'], x['bubbles']), ('hull', 0) if station else ('bubble', 1), case)
+            if station:
+                self.assertEqual((x['sky_lit'], x['outside_lit']), (0, 0), case)
+            self.assertLessEqual(x['off_bubble_lit'] * 200, x['lit_pixels'], case)
+            self.assertLessEqual(x['outside_lit'] * 100, x['lit_pixels'], case)
+            self.assertGreaterEqual(x['coverage'], 0.9, case)
             self.assertLessEqual(x['centroid_error_cells'], 1.0, case)
             self.assertGreaterEqual(x['lit_ratio'], 1.0 / 3.0, case)
             self.assertLessEqual(x['lit_ratio'], 3.0, case)
         self.assertEqual(place['y_top_flat_42deg']['lit_pixels'], place['y_top_flat']['lit_pixels'])  # dir unused
-        # The stand-off (Run237 Flight D): on the 60-degree plate the centroid's parallax shift matches the floated
-        # image of the hit within a cell and implies the stand-off within a cell; nothing on sky; the CPU twin's one
-        # re-projection step beats none and a second one does not help (screen error)
-        so = m['standoff']
-        self.assertEqual(sorted(x['standoff_m'] for x in so), [0.0, 1.5, 6.0])  # off, the fighter's default, 2 cells
-        for x in so:
-            self.assertEqual(x['sky_lit'], 0)
-            self.assertLessEqual(x['shift_error_cells'], 0.1)    # no parallax would miss the default by ~1 cell
-            self.assertLessEqual(x['implied_error_cells'], 0.1)
-        # the eye-inside case's refusals are the fixture's own CPU twin row (5.1.1): the shares add up to one
-        ref = m['standoff_refusals'][0]
-        self.assertAlmostEqual(sum(ref[k] for k in ('no_normal', 'behind_eye', 'off_screen', 'sky', 'plane', 'drawn')),
-                               1.0, delta=1e-3)
-        self.assertGreater(max(x['shift_view'] for x in so), 2 * max(x['cell_view'] for x in so))
-        steps = {}
-        for x in m['standoff_steps']:
-            steps.setdefault(x['case'], {})[x['steps']] = x
-        self.assertEqual(len(steps), 4)
-        for case, s in steps.items():
-            self.assertLess(s[1]['px_p99'], s[0]['px_p99'], case)
-            self.assertGreaterEqual(s[2]['px_p99'], s[1]['px_p99'] - 0.5, case)
-        self.assertEqual((place['far_side']['lit_pixels'], place['far_side']['eligible']), (0, 0))
+        # The bubble's sides: the chase camera's nose hit draws on the far side around the outline, the hull hiding most
+        # of it (the hidden share measured), nothing the twin hides; the eye inside the bubble draws the far side only, the
+        # default image at bubble_far_gain of it
+        sides = {(x['case'], x['side']): x for x in m['bubble_side']}
+        chase = sides[('chase_nose_from_behind', 'far')]                       # review F3: hundreds of far pixels,
+        self.assertEqual(sides[('chase_nose_from_behind', 'near')]['lit_pixels'], 0)  # the near side unlit
+        self.assertGreaterEqual(chase['lit_pixels'], 500)
+        self.assertGreaterEqual(sides[('chase_nose_from_behind', 'both')]['cap_nose_m'], 1.2)  # the cap past the nose
+        aft = place['aft_flank']                                                  # 1.15 x radius: the cap stays
+        self.assertGreaterEqual((aft['cap_nose_m'], aft['cap_tail_m']), (5.0, 5.0))
+        self.assertGreater(chase['hidden_share'], 0.0)
+        self.assertLessEqual(chase['hidden_lit'] * 200, chase['lit_pixels'])
+        self.assertLessEqual(chase['outside_lit'] * 100, chase['lit_pixels'])
+        ap = m['axis_plane'][0]                                                   # review F2: no flip, no double light
+        self.assertEqual((ap['draws_plus'], ap['draws_minus']), (ap['draws_zero'], ap['draws_zero']))
+        for k in ('lit', 'peak', 'sum'):
+            for side in ('plus', 'minus'):
+                self.assertAlmostEqual(ap['%s_%s' % (k, side)], ap['%s_zero' % k], delta=2e-3 * max(1.0, ap['%s_zero' % k]))
+        self.assertEqual(sides[('eye_inside_bubble', 'near')]['lit_pixels'], 0)
+        inside = sides[('eye_inside_bubble', 'far')]
+        self.assertGreater(inside['lit_pixels'], 100)
+        self.assertGreaterEqual(inside['coverage'], 0.9)
+        self.assertAlmostEqual(sides[('eye_inside_bubble', 'both')]['ratio'], 0.6, delta=0.01)
+        walk = m['hull_walk'][0]                                                 # 127 parts within the budget, cached
+        self.assertEqual((walk['ok'], walk['parts'], walk['nodes'], walk['bubble_fallback']), (1, 127, 127, 0))
+        self.assertEqual(walk['engine_memory_ok'], 1)                             # review F4: the production reader
+        self.assertGreater(walk['reads'], 127)
+        self.assertGreaterEqual(walk['cache_hits'], 199)
         normals = {x['case']: x for x in m['normals']}                             # ddx / ddy against a neighbourhood
         for x in normals.values():
             self.assertLess(x['ddx_mean_deg'], 1.0)
@@ -224,16 +235,18 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertEqual((surf['sky'], surf['past'], surf['half_right_lit']), (0.0, 0.0, 0))
         self.assertGreater(surf['nearer'], 0.0)
         self.assertLess(m['attach_slots'][0]['shell_ps'], 2000)                   # the low thousands
+        self.assertLess(m['attach_slots'][0]['bubble_ps'], 2000)
         # Flight C: the own ship in the cockpit view at own_cockpit_gain; the chase view and another ship unchanged
         ck = {x['case']: x for x in m['cockpit']}
         self.assertEqual((ck['own_chase']['dimmed'], ck['own_cockpit']['dimmed'], ck['other_cockpit']['dimmed'],
-                          ck['unknown_own_cockpit']['dimmed']), (0, 5, 0, 0))
+                          ck['unknown_own_cockpit']['dimmed']), (0, ck['own_cockpit']['patches'], 0, 0))
+        self.assertGreaterEqual(ck['own_cockpit']['patches'], 1)
         self.assertAlmostEqual(ck['summary']['own_cockpit_ratio'], ck['summary']['gain'], delta=0.01)
         self.assertEqual((ck['summary']['other_ratio'], ck['summary']['unknown_ratio']), (1.0, 1.0))
         self.assertEqual((ck['own_cockpit_stale']['dimmed'], ck['summary']['stale_ratio']), (0, 1.0))  # review F2
         sort = {x['case']: x for x in m['sort']}                                     # review F5: the heap sort
         self.assertLess(sort['shuffled']['heap_us'], 5.0)
-        for case in ('fighter_sphere_front_12hps', 'capital_sphere_front_12hps'):  # the surface is the lane: no pop
+        for case in ('fighter_sphere_front_12hps', 'capital_sphere_front_12hps', 'station_flat_12hps'):  # no pop
             self.assertEqual(nopop[case]['popped_pixels'], 0, case)
         fade = m['fade']
         self.assertEqual(fade['t%d' % fade['lifetime_ms']], 0.0)                 # nothing left at the record's lifetime
@@ -246,7 +259,9 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         for width in (1920, 5120):
             for case in ('fence', 'fighter_two_hits_one_region', 'fighter_two_regions',
                          'capital_close_two_hits_one_region', 'capital_close_two_regions', 'worst_four_regions',
-                         'fighter_12hps_map', 'capital_close_full_map', 'capital_fill_full_map', 'capital_spread_spill'):
+                         'fighter_12hps_map', 'capital_close_full_map', 'capital_fill_full_map', 'capital_spread_spill',
+                         'bubble_fighter_two_hits', 'bubble_capital_close_two_hits', 'bubble_worst_one_owner_four_hits',
+                         'bubble_eye_inside_front_hit', 'bubble_cockpit_eight_hits'):
                 self.assertIn((width, case), cases)
         fill = [x for x in m['timing'] if x['case'] == 'capital_fill_full_map']
         self.assertTrue(all(x['raster_share'] >= 0.95 for x in fill))             # its cells really fill the frame

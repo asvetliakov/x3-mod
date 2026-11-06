@@ -134,6 +134,11 @@ bool weapon_effects_read(std::uintptr_t address, void* out, std::size_t size) {
 }
 // The cockpit view's freshness (review F2): the chase camera's visit count and the frame it last moved (one game).
 weapon_effects::stage::CockpitClock weapon_cockpit_clock;
+// The ship bubbles' hull walks (5.1.1 "Placement"; one game, the game thread only): 64 owners' bounds, at most
+// core::bubble_walks_per_frame walks per stage call (the rest on the fallback sphere until their turn), cleared when the
+// ring's scope changes (weapon_effects::scope_changes: a load, a sector change, a load epoch). CPU data only: a device
+// Reset leaves it valid (it names engine objects, never a device resource).
+weapon_effects::stage::BubbleCache weapon_bubble_cache;
 }
 HRESULT MotionOutput::run_weapon_effects() noexcept {
     namespace wcore = weapon_effects::core;
@@ -165,9 +170,11 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     // the only caller and run() consumes them before returning).
     static renderer::WeaponPatch patches[wcore::max_patches];
     static renderer::WeaponDecal decals[wcore::max_decals];
+    weapon_bubble_cache.rescope(weapon_effects::scope_changes());
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
-                                     camera, tuning, patches, wcore::max_patches, decals, wcore::max_decals);
+                                     camera, tuning, patches, wcore::max_patches, decals, wcore::max_decals,
+                                     &weapon_bubble_cache);
     // The own ship in the cockpit view (5.1.1, Run236 Flight C): its patches at core::own_cockpit_gain. The own ship is
     // resolve_own_ship's root node (cached per frame); the view is the chase camera's last active-control cockpit visit
     // this frame or the previous one (cockpit+0x150, 1 = the cockpit; stage::CockpitClock stamps the frame its visit
@@ -196,6 +203,13 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[3] += n.spills;
     weapon_drops_[4] += n.faces_culled;
     weapon_drops_[5] += n.area_dropped;
+    weapon_drops_[6] += n.bubbles;
+    weapon_drops_[7] += n.bubble_fallback;
+    weapon_drops_[8] += n.bubble.walks;
+    weapon_drops_[9] += n.bubble.failures;
+    weapon_drops_[10] += n.bubble.held;
+    weapon_drops_[11] += n.bubble.deferred;
+    weapon_drops_[12] += n.bubble.clamped;
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run(f, &report);
@@ -234,7 +248,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
 // flies), whether the view is the cockpit and the gain the own ship's patch took for it (Flight C), the lattice (0 z,
 // 2 x, 4 y; odd: the - faces), its cells (lit and a ring's not yet lit) and ring hits, the anchors' range along the axis and the
 // eye's distance from the owner's centre, both over the owner's radius (eye_r < 1: the eye inside the bounding sphere),
-// the extent (the footprint test's radius), metres = view units / 5.
+// the extent (the footprint test's radius), and for a ship its bubble (bubble=1: centre and half-extents in the owner
+// frame; 0: the station's hull decal), metres = view units / 5.
 void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsigned count) noexcept {
     namespace wcore = weapon_effects::core;
     resolve_own_ship();
@@ -249,22 +264,24 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
         const bool own = own_ship_node_ && p.owner_node == own_ship_node_;
         log("weapon_patch device=%llu frame=%llu index=%u owner=%08lx node=%08lx own=%u cockpit=%u gain=%.2f region=%u "
             "cells=%u lit=%u hits=%u radius_m=%.1f depth_min_r=%.3f depth_max_r=%.3f eye_r=%.3f eye_m=%.1f "
-            "view_z_m=%.1f cell_m=%.2f extent_m=%.2f",
+            "view_z_m=%.1f cell_m=%.2f extent_m=%.2f bubble=%u bubble_c_m=%.1f,%.1f,%.1f bubble_e_m=%.1f,%.1f,%.1f",
             id_, frame_, i, static_cast<unsigned long>(p.owner), static_cast<unsigned long>(p.owner_node), unsigned(own),
             unsigned(weapon_cockpit_), double(own && weapon_cockpit_ ? wcore::own_cockpit_gain : 1.f),
             unsigned(int(p.seed)), p.cells, lit, p.hits,
             double(p.owner_radius / metre), double(lo / r), double(hi / r), double(eye / r), double(eye / metre),
-            double(p.centre[2] / metre), double(p.cell / metre), double(p.extent / metre));
+            double(p.centre[2] / metre), double(p.cell / metre), double(p.extent / metre), unsigned(p.bubble),
+            double(p.bubble_c[0] / metre), double(p.bubble_c[1] / metre), double(p.bubble_c[2] / metre),
+            double(p.bubble_e[0] / metre), double(p.bubble_e[1] / metre), double(p.bubble_e[2] / metre));
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[6]) noexcept {
+                                             bool* drew, unsigned drops[13]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 6; ++i) {
+    for (unsigned i = 0; i < 13; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

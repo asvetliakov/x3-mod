@@ -353,3 +353,128 @@ Open:
 - Review notes 5-9 and 12 as filed.
 - The R32F lane form is still untested (F6).
 - Not verified in flight.
+
+## Ship bubble, station decal (dirty on `71545aa39`, 2026-11-06; 5.1.1 "Placement")
+
+User decision after Run238 Flight E: the stand-off of `21ad87836` is reverted (its constants, the parallax step and
+its refusals, the grown raster box); ships get a smooth shield bubble, stations keep the hull decal of `6720724d3`
+unchanged; the drained-shield rule and the cockpit dim stay. Selection by the newest record's `TierSource`
+(`tier_by_station`: the decal). The bubble: the hull bounds from the walk of render-node-bounds.md 6.1
+(`stage::hull_bounds`, `src/proxy/weapon_effects_bubble.h`) x `core::bubble_scale` 1.15, floored per axis at 1/16 of
+the largest and cut to `bubble_scale` x the object radius, else a sphere of the object radius (`bubble_fallback=`);
+the walk cached per
+owner (`stage::BubbleCache`, 64 entries keyed by owner, root node, handle and the root's first child with its body id;
+a radius, child or ring scope change invalidates, a failed walk retried after 2000 game ms, LRU) and bounded to two
+walks per stage call (`bubble_deferred=`); the hit mapped radially in the bubble's normalised space (B), lighting both
+faces of every axis; per pixel (`weapon_bubble_ps.hlsl`) the ray's near and far bubble points, each drawn in front of
+the lane and inside the draw's box, the far side at `core::bubble_far_gain` 0.6.
+
+Review fixes (same dirty tree): **F1** both faces of every axis for every hit (the sign rule is gone); `bubble_box`
+drops the opposite sheet (its cells lie outside their anchor's depth window), and a cost filter feeds a face only the
+hits whose window meets its sheet. **F2** the axis-plane pair (fixture `AXIS_PLANE`, host `axis_plane`). **F3** the
+chase case's camera from a CPU sweep (`chase_sweep.py` in the session scratchpad, not kept: the near side lit from a
+pitch of 0.2 rad, the far side's count rising with it), gated on no near pixel. **F4** two walks per stage call, the
+walk timed through the production reader. **F5** the radius cut (`bubble_clamped=`), at `bubble_scale` x the radius
+(coordinator, last change: the bare radius pulled the bubble onto the nose and tail of a hull that reaches its radius,
+and the chase camera's nose hit needs the cap past the outline; the guard is against bogus parts). **F6** the eye-inside and
+cockpit timing (not culled: below). **F7** the child key and the walk counters in `weapon_effects_frame`
+(`bubble_walks=`, `bubble_walk_failures=`, `bubble_held=`, `bubble_deferred=`, `bubble_clamped=`). **F9** the 5.1.1
+frame-buffer line (126 KB). **F10** `model_lod_count` removed. **F11** `manage.py --weapon-effects` help text (the
+Fresnel shell). `node_sentinel` stays: the walk's child key and the fixture's hull use it. **F8** and **F12**: notes as
+filed.
+
+Figures [M] from `verification/results/weapon-effects/bubble_figures.py` on the final records: D3D PASS 50/0, hook
+PASS 75/0 (handler 0 calls, 0 x87, 1065 instructions, unchanged; 50 events 17.3 us median). Slots: hull decal ps 457,
+bubble ps 873, decal ps 129; `sizeof(WeaponPatch)` 1972 B, the frame's 64 126208 B.
+
+Placement (the near side only; centroid and footprint about B; the station on its hull lane; every face fed, the
+opposite sheet's draws dropped; cap = the bubble past the hull's nose / tail along z):
+
+| case | surface | draws | lit px | over sky | past the footprint | coverage | centroid | B from the contact | cap | vs reference |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| narrow mid flank / aft / top / bottom | bubble | 4 | 83463 / 76739 / 77195 / 77195 | 10060 / 11344 / 13414 / 13414 | 0 | 1.0 | 0.28 / 0.42 / 0.31 / 0.29 cells | 0.24 / 0.54 / 0.54 / 0.54 | 7.5 m | 1 / 0.92 / 0.93 / 0.93 |
+| flat flank / top / bottom / top 42 deg | bubble | 5 | 11784 / 21373 / 21305 / 21373 | 172 / 1066 / 1066 / 1066 | 0 | 1.0 | 0.49 / 0.39 / 0.37 / 0.39 | 0.59 / 0.24 / 0.24 / 0.24 | 1.2 m | 1 / 1.81 / 1.81 / 1.81 |
+| flat top, hull 2 cells below the origin | bubble | 5 | 18480 | 926 | 0 | 1.0 | 0.40 | 0.23 | 1.2 m | 0.87 of the top |
+| Flight B station 0.68 R | hull decal | 5 | 2452 | 0 | 0 | 1.0 | 0.48 | - | - | 1 |
+
+No lit pixel lies where the bubble's CPU twin hides the near point. "Over sky" is the bubble past the hull's outline
+(by design). The 42-degree bolt lights the face-on count (dir unused). With the cut at 1.15 x the radius no case is
+cut (the hulls reach their radius: the cap is 0.15 of the half-length past nose and tail, gated at 0.1 on the narrow
+hull, `bubble_cap_past_the_narrow_hull_nose_and_tail`); with the bare radius the cap was 0 and B lay 0.04 to 0.43 cells
+from the contact (the previous record).
+
+Axis plane (F2): the flat fighter's top hit at x = +1, -1 and 0 engine units gives 4 draws each and identical images
+(21253 lit px, peak 3.1816, luma 23845.03 all three); the host twin lights the same cells with the same clocks, none
+twice.
+
+The two sides (images with one side's gain 0):
+
+- Chase camera behind and above a fighter (4 x 1.6 x 12 m hull, object radius 13.2 m, 24 m ahead, pitched 0.175 rad
+  nose down), a hit on its nose: the bubble's cap 1.8 m past the nose (gated at 1.2 m); near side 0 px; far side 1212
+  px around the outline (all over sky), 0 the twin hides, nothing past the footprint; the patch's core within half a
+  reach of B is hidden by the hull (5915 px, share 1.0), the visible far-side centroid 0.89 cells from B. The default
+  image is 0.600 of the far side's. (With the bare-radius cut the cap was 1.2 m and the far side 2969 px: the shorter
+  bubble's cap lay further out of the hull's shadow at this pitch; the CPU sweep with the 1.15 x cut keeps the near side
+  unlit to 0.2 rad.)
+- Eye inside the bubble (the fallback sphere, R 20 m, the eye 10 m behind its centre, sky lane, the hit on the front
+  pole): near side 0 px, far side 147479 px (coverage 1.0, centroid 0.09 cells); the default image 0.6001 of it.
+
+Hull walk (127 parts, 894 reads per walk; best / mean, us): the fixture's reader 8.8 / 9.1; the production
+`engine_memory::read` (`src/proxy/engine_memory.cpp` compiled without SSE as the DLL builds it, over the same fixture
+blocks) 12.0 / 15.4 with the region cache invalidated before each walk (a new frame) and 11.6 / 14.5 warm. The
+fixture's blocks are one committed region; in the game a walk's nodes, models and LOD records span several heap
+regions, each validated by one VirtualQuery per frame on its first touch, so the production cost is these figures
+plus one VirtualQuery per distinct region [I], at most two walks per frame. One capital's 64-hit frame: 39.6 / 52.1 us
+warm (199 of 200 frames from the cache), 48.5 / 61.8 us walking every frame. Stage CPU: `one_capital_64_hits` 28.9 /
+38.9 (11 draws), `sixteen_capitals_16_hits` 88.8 / 110.7 (64 draws), the Flight B station cluster 13.5 / 14.6; before the F1 cost filter the sixteen capitals took 351 / 471 (all six faces fed every hit; recorded in the
+pre-filter run, not kept).
+
+Precision of the bubble program's float32 (`verification/results/weapon-effects/bubble_prec.py`, the reviewer's
+script: a 1 km capital 10 km away at 5120x1440, 20000 samples across its image, 409 on it): 0 hit/miss mismatches
+against float64, the normalised point within 4.7e-5 (2.4 cm), the view depth within 2.2e-6 relative (2.3 cm) [M].
+
+GPU at 5120x1440 (EVENT-fenced, best of 60, us) against `6720724d3`'s rows:
+
+| case | 6720724d3 (hull decal) | bubble | ratio | raster share |
+| --- | --- | --- | --- | --- |
+| fighter two hits | 21.0 | 21.5 | 1.02 | 0.031 |
+| capital close two hits | 176.4 | 178.0 | 1.01 | 0.92 |
+| worst one owner (four draws) | 365.1 | 340.9 | 0.93 | 2.01 |
+| capital spread 12 hits/s (builder) | 680.1 | 290.9 | 0.43 | 1.89 |
+| eye inside, front hit (builder, sky lane) | - | 54.2 | - | 0.22 |
+| own ship in the cockpit, eight hits (builder, sky lane) | - | 257.9 | - | 2.24 |
+
+At 1080p the bubble rows are 17.4 / 60.2 / 96.0, the spread 95.4, the eye inside 21.8 and the cockpit 74.3 us. The hull
+decal's own rows are unchanged (fighter 21.4, capital close 178.4, worst four regions 366.8 at 5120x1440).
+
+F6, the cockpit: its draws whose box contains the eye rasterize the screen, 258 us against the close capital's 178 us.
+Not culled: the cull (drop the own ship's eye-containing boxes in the cockpit view) would hide the patch about the eye
+that the user decided to keep at `own_cockpit_gain` 0.35 (Run236 Flight C), and the 8-screen budget already bounds a
+frame; it is an option for the user, not applied.
+
+Other checks: no-pop 0 popped pixels on the bubble (fighter and capital spread on the flat lane, both sphere fronts:
+draws 1 / 9) and on the station's hull decal (`station_flat_12hps`, 10 draws); the one-draw witness still evicts. Seam
+pair peak 2.033 against singles 2.604 / 3.535. Cockpit dim: the own ship's one draw dimmed in the cockpit (ratio 0.350),
+nothing else; colour, SETA 6, Reset and fault (a decal and a bubble draw: both draw after the fault and after Reset),
+the retired owner and the program refusal pass. 67 `test_weapon_effects_*` host tests OK (the walk, its cache with the
+child key, the budget, the radius cut, the mapping, the axis-plane pair and the fallback through the host harness; the
+lab's bubble presets under node). Lab `--check` PASS. Programs `--check` PASS (the bubble program without warnings; the
+hull decal's program keeps its three X4121 gradient warnings of 6720724d3). AP DLL clean at -j4, 0 warnings, sha256
+`2dcc549e80f9a775…`, no-x87 PASS (1161 reachable, 0 violations); no x87 instruction in the stage, the walk or the pass
+(objdump of their objects). The native host could not create a D3D device for four attempts (the session locked,
+`LockApp.exe` up; one earlier run lost its device mid-run); the record is the run after the last change (first
+attempt).
+
+Open:
+
+- The chase view's patch core lies behind the hull from every camera that keeps the near side unlit; what shows is the
+  bubble's nose cap past the outline.
+- Hull parts reaching past the bubble (a box corner lies at sqrt 3 of the half-extents) hide it there. Not measured on
+  a real hull.
+- The walk's bounds are the union over every collision part and LOD record; the census of 6.3 (animated or rotated
+  parts, unresolved bodies) applies.
+- The cockpit cull (F6) is the user's call.
+- The lab feeds every hit to every face (no cost filter): the same draws, more work.
+- `standoff_figures.py` reads the stand-off record and no longer runs against this record (kept with its section).
+- Review notes F8 and F12 as filed.
+- Not verified in flight.

@@ -34,7 +34,8 @@ constexpr unsigned long long frame_row_period = 300;
 struct Period {
     std::uint32_t events = 0, hits = 0, skipped = 0, forwarded = 0, staged = 0, expired = 0, owned = 0, frames = 0, drew = 0;
     unsigned patches = 0, decals = 0, retired = 0, dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
-    unsigned faces_culled = 0, area_dropped = 0;
+    unsigned faces_culled = 0, area_dropped = 0, bubbles = 0, bubble_fallback = 0;
+    unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
 } period_{};
 core::Counters seen_{};
@@ -394,6 +395,13 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.spills += stage.spills;
     period_.faces_culled += stage.faces_culled;
     period_.area_dropped += stage.area_dropped;
+    period_.bubbles += stage.bubbles;
+    period_.bubble_fallback += stage.bubble_fallback;
+    period_.bubble_walks += stage.bubble_walks;
+    period_.bubble_failures += stage.bubble_failures;
+    period_.bubble_held += stage.bubble_held;
+    period_.bubble_deferred += stage.bubble_deferred;
+    period_.bubble_clamped += stage.bubble_clamped;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -458,7 +466,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "patches=%u decals=%u retired=%u expired=%lu overflow=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
-        "area_dropped=%u drained=%lu",
+        "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
+        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u",
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -474,7 +483,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         static_cast<unsigned long>(c.shield_unread - seen_.shield_unread), static_cast<unsigned long>(scope_clears_),
         core::ring_capacity - r.free_count, period_.dropped, period_.cells_dropped, period_.hits_dropped,
         period_.spills, static_cast<unsigned long>(c.dir_fallback - seen_.dir_fallback), period_.faces_culled,
-        period_.area_dropped, static_cast<unsigned long>(c.drained - seen_.drained));
+        period_.area_dropped, static_cast<unsigned long>(c.drained - seen_.drained), period_.bubbles,
+        period_.bubble_fallback, period_.bubble_walks, period_.bubble_failures, period_.bubble_held, period_.bubble_deferred,
+        period_.bubble_clamped);
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_retired_ = r.retired;
