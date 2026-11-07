@@ -447,7 +447,7 @@ SETTINGS = [
           'shields plus the mod\'s own hull hit (a brief flash, cooling sparks, a glow and an ember on the hull) instead of '
           'the game\'s impact sprite (also written hull,shields). shields,hull,bolts = adds the mod\'s own projectiles '
           '(energy bolts, slugs, plasma orbs, flak) drawn in place of the game\'s bullet sprites and a per-weapon muzzle '
-          'flash (in any token order); it needs screen_emission_additive = 1 (the only route that sees the game\'s '
+          'flash (in any token order); it needs screen_emission_additive on (any value but 0, the default 2 is fine: the only route that sees the game\'s '
           'bullet draws: without it the bolts and muzzle flashes stay the game\'s, logged as weapon_bolts_state '
           'reason=screen_emission_additive). Default native. Read when the game starts.',
           builtin='native',
