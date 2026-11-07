@@ -38,6 +38,8 @@ struct IDirect3DTexture9;
 struct IDirect3DVertexShader9;
 struct IDirect3DPixelShader9;
 struct IDirect3DVertexDeclaration9;
+struct IDirect3DVertexBuffer9; // step 4: the bolt draw's buffers
+struct IDirect3DIndexBuffer9;
 '''
 
 HARNESS = r'''
@@ -1439,6 +1441,120 @@ class WeaponEffectsClassifier(unittest.TestCase):
         # armed + resolve completed + (callback ran and drew / had nothing) owns; a failed resolve or callback does not
         self.assertEqual(owned, {'drew': 1, 'nothing_to_draw': 1, 'callback_unset': 1, 'failed_resolve': 0,
                                  'callback_failed': 0, 'unarmed': 0})
+
+
+# Step 4, review 2026-11-07 finding 1: the previous frame's index (src/proxy/weapon_effects_bolt_stage.h BoltPrevIndex)
+# stamped per build. Two build_bolts calls on consecutive frames (400 bolts; 8 new at the front, 8 expired), each
+# bolt's previous record must be its own (object and creation) or none for a new one. The stamp the production glue
+# passes (the hooks' Present generation, one per frame) against the stamp it replaced (frame | 1, equal on frames 2k and
+# 2k + 1: the reviewer's model verification/results/bolt-muzzle-look/prev_index_stamp.py printed 5 -> 24..45 probes and
+# wrong records on odd frames); a second build in the same frame (the same stamp) keeps the index.
+BOLT_HARNESS = r"""
+#include "weapon_effects_bolt_stage.h"
+#include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <vector>
+namespace core = x3m::weapon_effects::core;
+namespace st = x3m::weapon_effects::stage;
+static st::BoltScratch scratch;
+static x3m::renderer::WeaponBoltQuad quads[x3m::renderer::weapon_bolt_quads];
+static st::BoltPrevIndex index_;
+static std::vector<core::BoltRecord> frame_list(unsigned frame) {
+    // bolts 1000 + i of creation 7000 + i; each frame the 8 oldest expire and 8 new ones lead the list (the tap's order)
+    std::vector<core::BoltRecord> v;
+    for (unsigned k = 0; k < 8; ++k) {
+        core::BoltRecord r{};
+        r.obj = 0x9000000u + 16u * frame + k;
+        r.created = 5000u + frame;
+        v.push_back(r);
+    }
+    for (unsigned i = 8 * (frame + 1); i < 8 * (frame + 1) + 392; ++i) {
+        core::BoltRecord r{};
+        r.obj = 0x1000000u + 16u * i;
+        r.created = 7000u + i;
+        v.push_back(r);
+    }
+    for (unsigned i = 0; i < v.size(); ++i) {
+        v[i].pos[0] = std::int32_t((i % 20) * 500) - 5000;
+        v[i].pos[1] = std::int32_t((i / 20) * 300) - 3000;
+        v[i].pos[2] = 200000;
+        v[i].vel[0] = 65536;
+        v[i].expiry = v[i].created + 100000u;
+        v[i].row = 0;
+    }
+    return v;
+}
+int main(int argc, char** argv) {
+    const bool old_stamp = argc > 1 && !std::strcmp(argv[1], "frame_or_1");
+    const float tint[3] = {1.f, 0.5f, 0.2f};
+    const st::BoltLook look = st::bolt_look_from(0, core::shape_tracer, 0.3f, 0, 2000.f, tint);
+    st::BoltView v;
+    for (unsigned i = 0; i < 9; ++i) v.cam.r[i] = (i % 4 == 0) ? 1.f : 0.f;
+    v.cam.m11 = 1.3333333f;
+    v.cam.m00 = 0.75f;
+    v.width = 1920.f;
+    v.height = 1080.f;
+    v.near_z = 5.f;
+    v.now = 6000u;
+    v.step_ms = 16u;
+    unsigned wrong = 0, lost = 0, checked = 0, generation = 40;
+    for (unsigned frame = 4; frame < 8; ++frame, ++generation) {
+        const std::vector<core::BoltRecord> prev = frame_list(frame - 1), cur = frame_list(frame);
+        const std::uint32_t stamp = old_stamp ? (frame | 1u) : generation;
+        st::BoltFrameOut out;
+        out.quads = quads;
+        for (unsigned again = 0; again < 2; ++again) // the second: a second build in the same frame (the same stamp)
+            st::build_bolts(v, cur.data(), unsigned(cur.size()), prev.data(), unsigned(prev.size()), index_, stamp, nullptr,
+                            [&](unsigned) -> const st::BoltLook& { return look; }, scratch, out);
+        for (const core::BoltRecord& r : cur) {
+            const int i = st::bolt_prev_find(index_, r.obj, r.created);
+            bool listed = false;
+            for (const core::BoltRecord& p : prev) listed = listed || (p.obj == r.obj && p.created == r.created);
+            ++checked;
+            if (i >= 0 && (prev[unsigned(i)].obj != r.obj || prev[unsigned(i)].created != r.created)) ++wrong;
+            if (i < 0 && listed) ++lost;
+        }
+    }
+    std::printf("checked=%u wrong=%u lost=%u\n", checked, wrong, lost);
+    return 0;
+}
+"""
+
+
+class WeaponBoltPrevIndex(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        compiler = shutil.which('clang++') or shutil.which('c++') or shutil.which('g++')
+        if not compiler:
+            raise unittest.SkipTest('a host C++ compiler is required')
+        cls.tmp = tempfile.TemporaryDirectory(prefix='x3-weapon-bolt-')
+        src = Path(cls.tmp.name) / 'b.cpp'
+        src.write_text(BOLT_HARNESS)
+        stub = Path(cls.tmp.name) / 'stub'
+        stub.mkdir()
+        (stub / 'd3d9.h').write_text(D3D9_STUB)
+        cls.exe = Path(cls.tmp.name) / 'b'
+        subprocess.run([compiler, '-std=c++17', '-O2', '-I', str(stub), '-I', str(ROOT / 'src/proxy'), str(src), '-o',
+                        str(cls.exe)], check=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def run_harness(self, *args):
+        out = subprocess.run([str(self.exe), *args], capture_output=True, text=True, check=True).stdout
+        return {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', out)}
+
+    def test_previous_record_is_its_own_on_consecutive_frames(self):
+        r = self.run_harness()
+        self.assertEqual(r['checked'], 4 * 400)
+        self.assertEqual((r['wrong'], r['lost']), (0, 0))
+
+    def test_the_replaced_frame_or_1_stamp_hands_out_other_records(self):
+        # the negative control: the old stamp repeats on frames 4/5 and 6/7, so odd frames read the even frame's slots
+        r = self.run_harness('frame_or_1')
+        self.assertGreater(r['wrong'] + r['lost'], 0)
 
 
 if __name__ == '__main__':

@@ -20,6 +20,7 @@
 // checked against the state the call left (review F7).
 #include "../../src/proxy/weapon_effects_patch.h"
 #include "../../src/proxy/weapon_effects_sites.h"
+#include "../../src/proxy/weapon_effects_bolt_sites.h"
 #include "../../src/proxy/weapon_effects_table.h"
 #include "../../src/proxy/engine_patch.h"
 #include <windows.h>
@@ -346,6 +347,11 @@ bool build_pages() {
     write_jmp(at(sites::impact_target_va), we_impact_callee_body); // 0x00413c40
     write_jmp(at(sites::tap_target_va), we_tap_callee_body);       // 0x00414a70
     write_jmp(at(0x00414410), we_prop_body);
+    // Step 4: the per-bullet tap, the muzzle and the flight-effect windows (weapon_effects_bolt_sites.h).
+    namespace bs = x3m::weapon_effects::bolt_sites;
+    std::memcpy(reinterpret_cast<void*>(at(bs::tap_window_va)), bs::expected_tap_window, bs::tap_window_length);
+    std::memcpy(reinterpret_cast<void*>(at(bs::muzzle_window_va)), bs::expected_muzzle_window, bs::muzzle_window_length);
+    std::memcpy(reinterpret_cast<void*>(at(bs::flight_window_va)), bs::expected_flight_window, bs::flight_window_length);
     FlushInstructionCache(GetCurrentProcess(), region, span);
     config_block = reinterpret_cast<unsigned char*>(at(data_page) + 0x1000);
     we_window_ptr = std::uint32_t(at(sites::impact_window_va));
@@ -616,6 +622,7 @@ void core_checks() {
               core::expired(500, e),
           "age_law_game_time");
 }
+#include "weapon_effects_bolt_cases.h"
 }
 
 int main() {
@@ -1180,8 +1187,11 @@ int main() {
         const bool parse_ok = parses("shields,hull", core::mode_shields_hull) && parses("hull,shields", core::mode_shields_hull) &&
                               parses(" shields , hull ", core::mode_shields_hull) && parses("hull, shields", core::mode_shields_hull) &&
                               parses("shields", core::mode_shields) && parses(" observe", core::mode_observe) &&
-                              parses("native", core::mode_native) && refused("hull") && refused("shields,shields") &&
-                              refused("shields,hull,bolts") && refused("shields,") && refused(",hull") &&
+                              parses("native", core::mode_native) &&
+                              parses("shields,hull,bolts", core::mode_shields_hull_bolts) &&
+                              parses("bolts,hull,shields", core::mode_shields_hull_bolts) && refused("hull") &&
+                              refused("bolts") && refused("shields,bolts") && refused("shields,shields") &&
+                              refused("shields,hull,hull") && refused("shields,") && refused(",hull") &&
                               refused("observe,hull") && refused("Shields,hull") && refused("") &&
                               core::stage_mode(core::mode_shields_hull) && core::stage_mode(core::mode_shields) &&
                               !core::stage_mode(core::mode_observe) &&
@@ -1511,6 +1521,8 @@ int main() {
               !std::strcmp(we::site_state(0), "readback_rolled_back"),
           "rollback_on_failed_readback", we::site_state(0));
     fault_read_at = 0;
+
+    bolt_checks(); // step 4: the per-bullet tap, the muzzle and the flight-effect skip (while the window is still open)
 
     engine_patch::close_install_window("fixture");
     SetLastError(sentinel_error);

@@ -1360,3 +1360,287 @@ seed and now take medians over pinned records (dust 1.84 r / 0.178; small burst 
 globe b/r 0.69 / 0.51 / 0.45); the 20-hit records pinned. The ion's close GPU bound 450 -> 600 (497.8 us: its 64 stars
 3.30 charged screens against the discs' 2.77, 370.3). The tip's engine-shimmer record was a `device` failure (the screen
 saver): re-run PASS.
+
+## Bolts and muzzle (step 4)
+
+Design `docs/architecture/bolt-muzzle-look.md` (ratified 2026-11-07). Base: `effects` at `98f095045` (reset into this
+worktree). The per-bullet tap, the muzzle site and the flight-effect skip, the mode `shields,hull,bolts`, the header
+constants, the capsule programs and the stage/draw contract. The hull-burst merge runs in a separate worktree; the
+bolt and muzzle code is in new files (`src/proxy/weapon_effects_bolt.h`, `weapon_effects_bolt_sites.h`,
+`src/effects/weapon_bolt_{vs,ps}.hlsl`, `verification/probe/weapon_effects_bolt_cases.h`) and the edits to shared files
+are small and additive.
+
+**Hook sites (weapon_effects_bolt_sites.h, bytes read from the installed `C:\X3\X3AP.exe`, SHA fdbf3418…).** The
+per-bullet tap at `0x0045ac7d` → `0x00414590` (cdecl, one arg EBX=obj; the five bytes straddle the qword `0x0045ac80`,
+plain write in the install window), the muzzle at `0x00446268` → `0x00413c00` (cdecl 3; EAX the bullet index, EDX
+`&orientation`, both forwarded; atomic), the flight effect at `0x004146c0` → `0x004148a0` (cdecl 10, the col-19 sprite;
+atomic). Install order {muzzle, flight, bolt_tap, impact} after the atomic shield/hull taps, all-or-none with the rest;
+rollback restores every site; refusal before any write on a changed window; FL compiles the hook out.
+
+**The handler (weapon_effects_bolt.h) stays 0 calls / 0 x87.** `build_weapon_effects_hook.py`'s audit over
+`weapon_effects_hook.o`: `_x3m_weapon_bolt_tap` 486, `_x3m_weapon_muzzle` 190, `_x3m_weapon_flight` 40 instructions,
+each with **0 call** and **0 x87/MMX**, no undefined symbol; the three new stubs match their expected opcode shapes
+(the muzzle stub passes EAX/EDX with `lea eax,[esp+0x18]`). The tap keeps a 512-entry per-frame list double-buffered by a
+generation Present advances (`present_bolts`); a bullet seen twice in a frame is refreshed in place (a 1024-slot keyed
+table); past 512 the farthest non-own record is replaced. The muzzle keeps one record per (ship, slot), re-lit per shot
+(t0 and seed reset, `prev_t0` kept, shots advanced); 128 records. The muzzle and flight skip (return 1) only while the
+in-place draw owned the previous frame and the suppress flag is set.
+
+**Hook fixture gates (native host, `run_weapon_effects.py --host native`; hook-summary.json).** 109 checks, 0 failures.
+The step-4 rows: `bolts_installed`, `bolt_sites_redirected`, `bolt_write_paths` (bolt_tap plain, muzzle+flight atomic),
+`bolt_tap_record_per_live_bullet` (recorded once per pass, refreshed on a second pass, a second bullet a second record,
+the own ship's bolt marked, EBP/EDI and the stack as the call left), `bolt_tap_generation_stamped_per_present`,
+`bolt_tap_non_bullet_forwards`, `muzzle_stub_forwards_eax_edx` (EAX=7 the index, EDX=&orient, ship/slot/&pos reach the
+callee, EBX/EDI/EBP kept, stack balanced), `muzzle_record_per_shot_per_slot`, `muzzle_skips_native_when_staged` (callee
+never entered, frame kept), `flight_skip_when_staged_else_forward`, `bolt_shutdown_restores_all`,
+`bolt_tap_byte_mismatch_refused`, `muzzle_byte_mismatch_refused`, `bolt_rollback_restores_all`. The parity basis: the
+generation stamp makes the in-place draw read exactly one frame's list; the draw matches tap records to the engine's
+draw instances by subtype and nearest position (`weapon_bolts_frame parity_mismatch`), the step's open gate.
+
+**Capsule programs.** `weapon_bolt_vs` 97 words, `weapon_bolt_ps` 2654 words (2699 and the flag variant 2722 after the
+review fixes below), all compiled on the game's native
+`d3dx9_37.dll` D3DXCompileShader (`generate_weapon_effects_programs.py`, records
+`verification/results/weapon-bolt-{vertex,pixel}-program.json`). The VS is a pass-through (the stage lays the
+velocity-stretch quad of 5.2 on the CPU and hands each corner in clip space), the PS the
+distance-field capsule (core/body/halo/tail/ball head, per-end widths, the streak energy `g_s`, the floors, the far
+flag oC2 = 32·max(rgb)). The muzzle draws through the existing stage sprite batch (note 3.1). `MaxPixelShader30Instruction
+Slots` is logged at device creation as today; no program is refused or split for exceeding 512.
+
+**Table.** `mount_tier` and `range_m` added to the generated weapon table and `core::Table` (the stub reads nothing new;
+the stage reads them for the width law). The header constants of the design's section 8 are in `weapon_effects_core.h`
+`namespace bolt` / `namespace muzzle`.
+
+**Build / checks.** `build-bolt` (ap) and `build-bolt-fl` (fl) 0 warnings; `check_no_x87.py --edition ap` PASS (1162
+reachable functions, no violations); `schema.py --check` and `generate.py --check` PASS; `tools/config` regenerated
+`config_schema_inc.h` and `assets/x3m.ini` for the `shields,hull,bolts` choice; host `test_weapon_effects_*` 91 OK; lab
+`--check` PASS.
+
+### The in-place draw, the gates and the lab (2026-11-07, dirty on `a7da14fdc`)
+
+**Table (generator schema 2).** `tools/effects/weapon_effects_table.py` writes `mount_tier` (the smallest mounting class
+from TLaser / TShips / TCockpits, `weapon_catalog.py`'s used-by rule: any M5/M4/M3 fighter, only M1/M2/M7/TL capital, else
+corvette, unmounted fighter) and `range_m` (lifetime x speed) per bullet row; SCHEMA 2, the DLL reads 1 and 2. Regenerated
+from `C:\X3` (Mayhem, 38 rows: fighter 18, corvette 14, capital 6) into the scratchpad: 0 of 38 rows differ from the
+tracked catalogue (`verification/results/bolt-muzzle-look/table_mount_check.py`); over both AP catalogues the rule gives
+the note's 30 / 19 / 12 (`test_mount_tiers_match_the_catalogue`).
+
+**The stage (`src/proxy/weapon_effects_bolt_stage.h`).** The row's look from the live TBullets record and the table (the
+classifier's tint rule, the style, k, the mount tier and range, the muzzle class; a table class pin sets the muzzle class
+too: the Mayhem MD carries no 0x40 and is pinned ballistic), cached per row per frame; section 1's width law; 2.2's
+lengths; the speed from range / (expiry - creation); `build_bolts` lays 5.2 on the CPU: the world segment min(L + T,
+v age) back along the velocity's direction (birth never longer than flown), the eye-plane clip of the back end (a head
+behind z_near + 0.5 m culled), both ends projected through the frame's jittered projection, per-end widths and sigmas with
+the floors, the own ceiling 16 x rows / 1440 and the halo cap 40 x rows / 1440, the length floor 24 x rows / 1440 x c x
+the flown share, the streak to the previous head (its record keyed by object and creation in a 1024-slot index of the
+previous list, projected through the previous view) capped at (1 + c_s) L (an orb: its edge + c_s W), g_s = rest /
+(rest + e / 3), the end-on disc, the oriented quad around the axis and the streak with R = w/2 + 3 sigma, the CPU frustum
+cull, the corners' depth by 1 / z extrapolated along the axis (clamped to the eye plane), clip z = m22 z + m32 (the
+scene's depth law). Quads leave in kind order, rim-eligible (band 0.6 w >= 3 px) first. `bolt_parity`, `bolt_draw_action`
+and `build_muzzles` (disc without the hull flash's eye bias, cone / star arms / vents as a new sprite kind 4 (the burst
+took kind 3 for its star), the plasma bloom on the burst's fireball law, the hull glow with s(N), the smoke puff as a
+scorch-state multiply, the cockpit gain and no puff in the cockpit, the three-frame floor, re-light by reset, breathing).
+
+**Deviations the gates forced (each a size floor or a measurement-consistent law; the note's figures stand otherwise).**
+(1) The end-on footprint: a 3 px body with a halo of sigma 1.5 px at E_h 0.6 never reaches 10 % of a 6.6 peak outside
+the body, so 2.4's "lit diameter >= 7 px" is unreachable; `bolt::floor_endon_px` 9 x rows / 1440 raises an end-on line's
+body (keyed on the travel's foreshortening and the projected axis, linear to the side-on floor). (2) The edge tint t_c is
+(t - min t) / (1 - min t) (same hue, full saturation) instead of t^2 / max t^2, which turned an orange's hue by 10 degrees
+(`bolt_colour_core_rim`). (3) The muzzle's breathing amplitude is breath x saturate(dt / 3 steps - 1): the literal
+saturate(dt / 3 steps) left 9 % frame to frame at SETA 6, 10 Hz against the gate's 2 %. (4) The core is shaded from its own
+segment ending half a body width short of L (its round cap ends at L) and the tail separately, so an end-on bolt keeps its
+whole disc and halo (the first law cut it along the tail's end). Widths are measured as the phase-averaged count of pixels
+the body term lights (halo isolated off), the 10 %-of-core level of a discrete 3 px profile reading 3.4-3.65 px.
+
+**The in-place draw.** `WeaponEffectsPass::draw_bolts` (attach with `bolts`: the programs, the MRT variant
+`weapon_bolt_flag_ps`, a DYNAMIC | WRITEONLY DEFAULT-pool VB of 544 quads x 4 x 128 B and a static index buffer, released
+before Reset and recreated by the first draw after it): every state it sets read first through the documented Get* calls
+(programs, declaration, stream 0 and its frequency, refused unless 1, indices, PS c0..c3, 19 render states), one DISCARD
+lock, the rim pass (ZERO / INVSRCCOLOR, COLORWRITEENABLE1 / 2 = 0) over the rim-eligible prefixes, the capsule pass (ONE /
+ONE, LESSEQUAL, Z write off, CULL NONE, the caller's RT1 / RT2 masks) per kind, everything restored in reverse.
+`motion_output` (`weapon_bolts_in_place`, AP only): in `prepare_screen_additive`, after its admission checks and the
+single-copy drop, a bullet-producer draw is decided by `bolt_draw_action` (armed: the route, the HDR / TAA path, the scene
+camera, the pass's bolt objects, the hooks; the frame's first late copy draws ours, any other is suppressed while ours
+own the bullets, a frame without a tap list or unarmed draws natively); ours binds the far flag's targets exactly as the
+route does (`bind_bolt_flag_targets`), publishes the own ship's object and the eye to the hooks, applies the parity rule
+when the locked-prefix scan holds the draw's vertices, builds and draws; a failed draw forwards the game's copy and disarms
+64 frames (the third consecutive: until Reset); a failed restore drops the shadow. The muzzles join the hull stage's
+sprite / glow / fireball / scorch batches in `run_weapon_effects`. Also fixed: the stage's three `mode ==
+mode_shields_hull` tests (hull_mode()), so the hull family stays on in `shields,hull,bolts`.
+
+**D3D fixture (`verification/probe/weapon_effects_bolt_draw_cases.h`, native host, RTX 5070 Ti).** 48 step-4 checks, all
+PASS: every section-7 row (width / length law at 1080 and 1440, radial profile, rim darkens (band min 0.69 x the hull) and
+survives the resolve, halo cap, orb breathing, wave crescent, floors, own ceiling, style shapes, colour, tail law, streak
+covers the previous position at 4 / 8 / L px along and across, SETA cap and energy (summed radiance within 10 %, SETA 10
+streak 2 L), end-on disc and near-plane clip, birth and death, stream without strobe (CV <= 0.10 at 1x / SETA 6 / 10, the
+trim rule 1.2 -> 0.80), no scar after 8 frames, two draws with every state restored and RT2.g > 1 on bolt pixels only,
+over-bright hull 7.5 : 1 after the resolve, the convergent barrage peak 6.6 (<= 8), resolve survival >= 0.95 at 0 / 4 / 8 px, the
+VB equals the culled list, the hard end at a hull's depth, the parity rule (equal counts keep all and learn each row's body,
+three engine-culled instances drop three records, a body mismatch drops its record)), the muzzle rows (size per class,
+life floor, re-light peak = single, breathing, broadside summed glow <= 2.3, smoke surface only, heavy rise and vents,
+cockpit gain, placement on a moved and rotated ship, axis, light on hull not sky), the budget, Reset recovery, the lock
+and capsule-pass faults (restored) and the program refusal (hull and shields kept). Budget at 5120x1440 (the note's case:
+32 near fighter bolts at 150-200 m, 480 floored far ones, 20 muzzles; quads 1.31 Mpx = 0.18 screens): GPU by D3D9
+timestamps with the GPU kept loaded 43.9 us (bolts 41.8, muzzles 2.0; bound 60); the fenced wall clock, which adds the
+draw call's CPU and the idle-clock fence wake (15 us for one far bolt), reads 105-125 us and is reported, not gated; CPU:
+build 37.6 us + draw call (Gets, lock, 256 KB write) 10.0 us = 47.6 us (bound 150); bolt_alone_fills_frame 115 us by
+timestamps (weight 0.65 of the decal's 177.5). Programs: bolt VS 8 slots, PS 673 / flag PS 679 slots (no refusal for the
+count; device max 4096 logged).
+
+**Pixel sizes, the three proving scenarios** (`verification/results/bolt-muzzle-look/sizes.py` over the fixture's
+BOLT_SIZE rows, output `sizes_out.md`; 5120x1440 shown, 1080 rows are x 0.75 as the note says; each bolt alone at 10 % of
+its own peak; the law in brackets):
+
+| scenario | screen | t ms | dist m | body px (law: w f / d, floors, ceiling) | lit width px (10 %) | core px (law: L f / d) | lit length px (10 %) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| own_fire_chase | 5120x1440 | 50 | 85 | 16.00 (16.00, c 0.11) | 15.85 | 28.28 (28.28) | 44.40 |
+| own_fire_chase | 5120x1440 | 300 | 85 | 16.00 (16.00, c 0.11) | 15.85 | 28.28 (28.28) | 44.40 |
+| own_fire_chase | 5120x1440 | 750 | 27 | 16.00 (16.00, c 0.00) | 16.05 | 0.00 (0.00) | 15.90 |
+| own_fire_chase | 5120x1440 | 1500 | 27 | 16.00 (16.00, c 0.00) | 16.05 | 0.00 (0.00) | 15.90 |
+| incoming_cockpit | 5120x1440 | 0 | 600 | 8.93 (3.87, c 0.00) | 8.50 | 0.04 (0.05) | 8.35 |
+| incoming_cockpit | 5120x1440 | 200 | 300 | 8.78 (7.74, c 0.00) | 8.90 | 0.13 (0.10) | 9.00 |
+| incoming_cockpit | 5120x1440 | 333 | 100 | 23.07 (23.23, c 0.00) | 22.25 | 0.91 (0.94) | 23.00 |
+| incoming_cockpit | 5120x1440 | 367 | 50 | 46.84 (46.46, c 0.00) | 44.85 | 2.79 (2.50) | 44.75 |
+| stream_station_3km_1x | 5120x1440 | 0 | 3000 | 3.00 (3.00, c 0.00) | 3.80 | 0.00 (0.00) | 3.80 |
+| stream_station_3km_1x | 5120x1440 | 48 | 3000 | 3.00 (3.00) | 3.80 | 30.72 (33.50) | 31.85 |
+| stream_station_3km_1x | 5120x1440 | 96 | 3000 | 3.00 (3.00) | 3.80 | 33.52 (33.50) | 38.60 |
+| stream_station_3km_1x | 5120x1440 | 144 | 3000 | 3.00 (3.00) | 3.80 | 28.16 (33.50) | 28.90 |
+| stream_station_3km_seta6 | 5120x1440 | 0 | 3000 | 3.00 (3.00, c 0.00) | 3.80 | 0.00 (0.00) | 3.80 |
+| stream_station_3km_seta6 | 5120x1440 | 48 | 3000 | 3.00 (3.00) | 3.80 | 33.52 (33.50) | 38.65 |
+| stream_station_3km_seta6 | 5120x1440 | 96 | 3000 | 3.00 (3.00) | 3.80 | 33.52 (33.50) | 38.50 |
+| stream_station_3km_seta6 | 5120x1440 | 144 | 3000 | 3.00 (3.00) | 3.80 | 33.52 (33.50) | 37.85 |
+
+| scenario | screen | t ms | muzzle disc px (target) | cone px | glows |
+| --- | --- | --- | --- | --- | --- |
+| own_fire_chase | 1920x1080 | 50 | 30.20 (>= 40 at 1440) | 20.27 | 1 |
+| own_fire_chase | 1920x1080 | 300 | 30.20 (>= 40 at 1440) | 20.27 | 1 |
+| own_fire_chase | 1920x1080 | 750 | 30.07 (>= 40 at 1440) | 20.27 | 1 |
+| own_fire_chase | 1920x1080 | 1500 | 30.07 (>= 40 at 1440) | 20.27 | 1 |
+| incoming_cockpit | 1920x1080 | 0 | 2.99 (floor 3) | 1.88 | 1 |
+| own_fire_chase | 5120x1440 | 50 | 40.26 (>= 40 at 1440) | 27.02 | 1 |
+| own_fire_chase | 5120x1440 | 300 | 40.26 (>= 40 at 1440) | 27.02 | 1 |
+| own_fire_chase | 5120x1440 | 750 | 40.10 (>= 40 at 1440) | 27.02 | 1 |
+| own_fire_chase | 5120x1440 | 1500 | 40.10 (>= 40 at 1440) | 27.02 | 1 |
+| incoming_cockpit | 5120x1440 | 0 | 2.99 (floor 3) | 1.88 | 1 |
+
+Own fire: the newborn bolt at the guns is the 16 px own ceiling, the nearest flown one (85 m, c 0.11 in the chase view)
+16 px by 28 px core; the muzzle disc 40.3 px at 1440 rows (target >= 40). Incoming: the end-on floor (9 px) holds the
+disc at 600 and 300 m (law 3.9 / 7.7 px), growing with the law to 23 px at 100 m and 47 px at 50 m. The stream at 3 km:
+the 3 px body floor, core 33.5 px (law 33.5), 1x and SETA 6 alike (a newborn bolt shorter by the birth law).
+
+**Dumps.** `X3M_WEAPON_EFFECTS_DUMP` writes the three scenarios (the stream at 1x and SETA 6) at 1920x1080 and 5120x1440,
+four times each, through x / (1 + x) for viewing (the 1.0 hull at 0.5; the fixture has no AgX); converted with
+`verification/results/weapon-effects-burst/ppm2png.py`, the grid by `verification/results/bolt-muzzle-look/crop_grid.py`
+(600x360 centre crops). Seen: the incoming bolt a dot growing to a disc with its halo, own fire leaving the guns under the
+disc, the stream as separate dashes over the lit hull at 1x and SETA 6.
+
+**Lab.** The Bolt and Muzzle tabs (`tools/effects/weapon_effects_lab.html`): the stage's law and the pixel program's
+profile in canvas pixels (the centre 720x405 of the emulated screen at 1:1, 1440 / 1080 rows, the vanilla or remapped
+FOV), layers core / body / halo / tail / head / rim / streak and disc / cone-vents / star / bloom / puff / hull glow,
+HEADER.bolt and HEADER.muzzle injected by name, the weapons' mount tier and range from the catalogue, 17 Bolt and 9 Muzzle
+Scenarios (weapon-look 3.3's list, section 6's additions, the three proving ones). Lab tests 40 OK (new: the tabs, layers
+and presets; the width law at d_eng 3 px, the own ceiling 16 px, the end-on floor, PPC 4.44 px at 4 km; the broadside's
+light counting: 12 lights, summed <= 2.3 single, the cockpit gain 0.35); `--check` PASS.
+
+**Acceptance (native host, `run_weapon_effects.py --host native`, after the merge).** D3D fixture 252 checks, 0
+failures, 0 build warnings (`summary.json`); hook fixture 109 checks, 0 failures (`hook-summary.json`); `build-bolt` (ap)
+and `build-bolt-fl` (fl) 0 warnings; `check_no_x87.py --edition ap` PASS (1180 reachable functions); `schema.py --check`,
+`generate_weapon_effects_programs.py --check` and the lab's `--check` PASS; host `test_weapon_effects_*` OK.
+
+**Merge.** `effects` moved to `a7da14fdc` (the burst rebuild and the run242 install); fast-forwarded with this step's work
+re-applied: the burst's star took sprite kind 3, so the muzzle cone is kind 4 (both branches kept); `fireball_quad` gained
+the burst's disc term (the plasma bloom passes rotation, lobe seed, advection and two octaves); the ledger keeps the burst
+sections before this one; the lab's header lists, layer keys and preset keys (the burst's `count`) merged; the program
+records, the sprite headers and the lab page regenerated; the summaries re-recorded by the acceptance run.
+
+### Review fixes (2026-11-07, dirty on `a7da14fdc`)
+
+Findings of the step-4 review, each by its number; figures [M] measured on this host (RTX 5070 Ti, native), [I] inferred.
+
+1. **Previous-position stamp.** The index of the previous list was stamped `frame_ | 1`, equal on frames 2k and 2k + 1,
+   so odd frames read the even frame's slots (the reviewer's model `verification/results/bolt-muzzle-look/prev_index_stamp.py`:
+   probes 5 -> 32 / 45 on odd frames). The stamp is now the hooks' Present generation (`BoltHookState::generation`, one per
+   frame), the look cache's too; a second build with the same stamp keeps the index. Host test
+   `test_weapon_effects_core.WeaponBoltPrevIndex`: `build_bolts` on four consecutive frames of 400 bolts (8 new, 8
+   expired a frame): 0 wrong / 0 lost of 1600 with the generation, 752 wrong + 16 lost with `frame | 1` (the negative
+   control) [M].
+2. **Muzzle ownership.** The muzzle has its own latch (`BoltHookState::muzzle_owned`, `stage::muzzle_latch`): the bolts
+   armed this frame, the stage built and drew this frame's muzzles, no element short of room. The hook skips the native
+   muzzle only under it and marks the shot ours (`MuzzleRecord::ours`); the stage builds only ours (`MuzzleCounts::native`
+   counts the rest). The muzzles go first into the shared batches (at most 128 x 7 sprites, 128 glows / fireballs /
+   puffs: always room), the hull hit's elements after them. A refused bolt draw disarms (the latch drops at that
+   Present). Gates: hook `muzzle_skips_native_when_staged` (ours = 1), `muzzle_forwards_and_not_ours_without_latch`
+   (latch 0 with the bolt latch 1: forwarded, ours = 0; Present latches from the BoltFrame); D3D `muzzle_ownership_exact`
+   (a native shot builds nothing; a full sprite batch counts 2 starved and the latch drops; unarmed or no stage draw:
+   no latch).
+3. **The frame's ownership** (`stage::bolt_take`): decided at the frame's first bullet-producer draw, before anything is
+   suppressed, in the per-draw path ahead of every preparation (the additive route's refusals no longer decide a bullet
+   draw: a refused late copy after ours is suppressed, not drawn over ours). Ours takes the frame when armed, listed and
+   a late copy is expected (this draw is late, or the previous frame had one); otherwise every copy is native and nothing
+   is suppressed. A late copy that cannot take ours (no open scene, a state-block recording, a query) or a failed draw
+   leaves the rest of the frame native. `weapon_bolts_armed` is evaluated at least once a frame (Present), cached per
+   frame, its row logged on every change of the reason and the reason carried in every `weapon_bolts_frame` row (with
+   `armed`, `taken`, `lost_early`, `muzzle_owned`, `muzzle_native`, `muzzle_endon`, `muzzle_starved`); the new reason
+   `screen_emission_additive`. **Needs: screen_emission_additive = 1** (the only route that sees the game's bullet
+   draws; without it every bolt and muzzle stays the game's; the `weapon_effects` comment in `x3m.ini` says so). Gate
+   `bolt_frame_ownership` (nine frame sequences).
+4. **Parity.** The tolerance is `parity_tol_px` 6 + the instance's own on-screen radius (its body's half diagonal), the
+   records matched among at most 48 instances of the x-sorted list (heap sort, binary search), the row periods learned
+   from the first 32 records of every frame with an unambiguous match; the scan's instances now carry their radius.
+   Gates `bolt_parity_rule` (learns with unequal counts; a 20 px head-to-centroid offset kept with a 20 px body, dropped
+   with a 1 px one) and `bolt_parity_cpu_512_256`: 512 records against 256 instances, median 3.9 us in the record run
+   (4.9-8.0 in two development runs), bound 60 [M].
+5. **Tap overflow O(1).** Past 512 each overflowing call examines the next 8 records from a ring cursor and keeps the
+   farthest non-own one as the candidate (no rescan); a replaced record's key is a tombstone the next insertion reuses;
+   key probes stop at 64. Hook gate `bolt_tap_overflow_1024_o1` (1024 live bullets, 8 own, two passes through the
+   production handler): 512 listed, all 8 own, no duplicate, the listed mean distance 32.3 km against 64.1 km for all,
+   median 47.7 us for both passes (worst of 21: 300.6), bound 150 [M]. `_x3m_weapon_bolt_tap` 507 instructions, `_x3m_weapon_muzzle` 224,
+   0 calls, 0 x87 (the audit).
+6. **Rim extent.** The quad reaches max(0.5 w + 3 sigma, 1.8 w + 1 px) where the rim draws (an orb: its lobed radius),
+   and the line kind's shading reach in the rim pass the band's outer edge. Gate `bolt_rim_whole_on_wide_bolt`: the
+   Mayhem PPC at 100 m (133 px), quad 481.5 px across (want 479.5), the band darkening a 1.0 hull to 0.800 at 1.7 w [M].
+7. **Budget.** Gated on the fenced wall clock as the hull rows are: the in-place draw and the muzzle batches each fenced,
+   summed, bound 100 us (`bolt_budget_512_bolts_20_muzzles_5120`): 89.7 us (bolts 70.3, muzzles 19.4; 89.8 before the
+   fixes); by timestamps 44.6 us, reported [M]. The note's 60 us came from a 90-slot estimate while the pixel program has
+   673 slots (684, the flag variant 690, after the reach change) [M]. The rim's wider reach costs where a bolt fills the
+   frame: `bolt_alone_fills_frame` 175.3 us fenced / 160.0 by timestamps (weight 0.99 / 0.90 of the decal's 177.5;
+   130.6 / 115.4 before) [M]; the 512-bolt frame is unchanged (32 rim bolts).
+8. **Stale text.** The capsule programs' figures above (VS 97 words, a pass-through; PS 2654), 91 OK; the two "not wired"
+   comments (`motion_output.h`, `motion_output_weapon_effects_inc.h`) and the one in `capture.cpp` replaced.
+9. **Shooter classes** (weapon-look unknown 13): the muzzle hook counts its shooters' object class (ship 7, dock 5,
+   factory 6, other with the last other class), in `weapon_bolts_frame` (`shooter_*`); hook gate
+   `muzzle_shooter_class_counted`.
+10. **A new ship at a reused object.** A changed node handle starts the record over (prev_t0 0, one shot): hook gate
+   `muzzle_record_restarts_on_new_handle`; `muzzle_restarted` in the row.
+11. **Star arms.** The truncated series on [-pi, pi] (4.4 degrees / 2.2 % off at its ends) is replaced by the quarter
+   turn reduced into `sincos_quarter` (1e-8) and exact quarter turns per arm.
+12. **The 9 px end-on floor stays** (incoming fire must be visible: the Halo rule of the references). The flight's
+   question: does an incoming bolt at 300-600 m read as a dot of the right size, neither lost nor a blob?
+13. Folded into 3: a frame whose expected late copy never comes loses its early copies for that frame (`lost_early`);
+   the next frame takes nothing until a late copy is seen (gate frames 4 and 5).
+14. **A capsule failure after the rim** divides the rim back out: the same rim ranges with the program's undo output s / (1 -
+   s) under DESTCOLOR / ONE (`D3DPBLENDCAPS_DESTCOLOR`, `caps().bolt_rim_undo`; never on a lost device). The fault bit 7 now
+   refuses the capsule draw instead of failing after it. Gate `bolt_rim_undone_when_capsules_fail`: worst 0.10 % over a
+   1.0 hull and 0.08 % over an HDR 2.5 one (the whole draw darkens them to 0.600 / 1.500) [M].
+15. **Another ship's back end near the eye** is never wider than its head or 4 x the own ceiling, whichever is wider
+   (`back_w_own_x`; `capped_back` in `weapon_bolts_draw`). Gate `bolt_back_end_capped_near_eye`: head 30 m ahead, back end
+   clipped to the eye plane, 48.00 px at 1080 rows (the cap), the own bolt 12 px; the wide PPC's ends untouched [M].
+16. **Table fallback rows.** The generator marks each bullet row no ship class mounts (`mount_fallback`, the fighter tier,
+   unknown 7), counts them and prints one stderr line per row.
+
+**The muzzle's view rule** (bolt-muzzle-look.md 3.2): a gun axis within 30 degrees of the eye ray (`endon_cos`) takes the
+hull burst's four-arm star (sprite kind 3, `star_arm_len`, A = the cone's length, `star_e`) about the disc for the cone
+(energy and heavy; ballistic and flak keep their own star). The star takes the cone's life, not the burst star's 40 ms:
+at 16 ms frames a 40 ms star is gone before the gate's 50 ms (its three-frame floor is 48 ms). Gate
+`muzzle_endon_star_side_cone`: the own fire chase frame at 50 ms (the gun axis 11 degrees off the eye ray) has one star,
+no cone, second-moment ratio 2.13 at 10 % of its peak (1.00 with the cone); the yawed shooter (axis across the view)
+keeps its cone [M]. The cone-measuring gates run with the rule off (`MuzzleTuning::endon_star`). The size table's
+own_fire_chase cone column above predates the rule: the chase muzzle now draws the star (BOLT_SIZE cone_px 0). Lab: the view rule in
+the Muzzle tab's renderer and the `own_side` scene (`muzzle/ire-own-side-cone`); `test_muzzle_view_rule`.
+
+**Acceptance (native host, `run_weapon_effects.py --host native`, 1:20 under the lock).** D3D fixture 259 checks, 0
+failures, 0 build warnings (`summary.json`); hook fixture 113 checks, 0 failures (`hook-summary.json`); host
+`test_weapon_effects_*` 94 OK; `generate_weapon_effects_programs.py --check`, the lab's `--check` and `schema.py --check`
+PASS; `build-bolt` (ap) and `build-bolt-fl` (fl) 0 warnings; `check_no_x87.py --edition ap` PASS (1180 reachable
+functions). The own fire chase dump at 5120x1440 (`--dump`, `X3M_WEAPON_EFFECTS_DUMP_CASES=own_fire_chase_5120x1440`, the
+plain record restored after it): at 50 ms one muzzle, its disc 40.3 px, the star for the cone; the 4x crop by
+`verification/results/bolt-muzzle-look/muzzle_crop.py` (the BOLT_DUMP row's `muzzle_x` / `muzzle_y`), kept local.

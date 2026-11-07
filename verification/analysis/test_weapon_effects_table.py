@@ -38,6 +38,7 @@ int main(int argc, char** argv) {
                     table.bits[row], core::shape_name(table.shape[row]), (unsigned long)(table.texture_rgb[row] & 0xffffff),
                     (unsigned long)(table.override_rgb[row] & 0xffffff), table.calibre_q[row],
                     (table.bits[row] & core::row_hull_class) ? core::hull_class_name(table.hull_class[row]) : "-");
+        std::printf("mount_tier=%u range_m=%u mount_keys=%u\n", table.mount_tier[row], table.range_m[row], st.mount_keys);
     }
     return ok ? 0 : 1;
 }
@@ -62,7 +63,11 @@ def sample_table():
             {'row': 6, 'id': 'SS_BULLET_MD', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
              'calibre': None, 'hull': 'ballistic'},
             {'row': 7, 'id': 'SS_BULLET_PBC', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
-             'calibre': None, 'hull': 'beam'}]},
+             'calibre': None, 'hull': 'beam'},
+            {'row': 8, 'id': 'SS_BULLET_PPC', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': None, 'mount_tier': 'capital', 'range_m': 4957.4},
+            {'row': 9, 'id': 'SS_BULLET_PSG', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
+             'calibre': None, 'mount_tier': 'corvette', 'range_m': None}]},
         'missiles': {'rows': 36}}}
 
 
@@ -88,6 +93,39 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         self.assertEqual(wt.override_for(overrides, 'abc', 'SS_BULLET_Z'), {})
         hull = {'schema': 1, 'by_id': {'SS_BULLET_TUG': {'hull': 'tug', 'calibre': 0.1}}, 'by_table': {}}
         self.assertEqual(wt.override_for(hull, 'abc', 'SS_BULLET_TUG'), {'hull': 'tug', 'calibre': 0.1})
+
+    def test_mount_tier_rule(self):
+        # docs/architecture/bolt-muzzle-look.md section 1: the smallest mounting class decides; unmounted is a fighter
+        self.assertEqual(wt.mount_tier_of({'M3': 4, 'M6': 2, 'M2': 1}), 'fighter')
+        self.assertEqual(wt.mount_tier_of({'M6': 2, 'M2': 1}), 'corvette')
+        self.assertEqual(wt.mount_tier_of({'M7': 1, 'TL': 2}), 'capital')
+        self.assertEqual(wt.mount_tier_of({'TS': 1}), 'corvette')
+        self.assertEqual(wt.mount_tier_of({}), 'fighter')
+        self.assertEqual(wt.range_of({'speed': 500 * 1000, 'lifetime_ms': 2000}), 2000.0)   # 1000 m/s x 2 s
+        self.assertIsNone(wt.range_of({'speed': None, 'lifetime_ms': 2000}))
+        self.assertEqual(wt.SCHEMA, 2)
+        # an unmounted row is marked and listed (the generator logs it: unknown 7's fallback)
+        w = {'index': 3, 'weapon_id': 'SS_BULLET_X', 'body_key': None, 'speed': None, 'lifetime_ms': None}
+        unmounted, mounted = wt.row_entry(w, None, None, {}), wt.row_entry(dict(w, index=4), None, None, {}, {'M2': 1})
+        self.assertEqual((unmounted['mount_tier'], unmounted['mount_fallback']), ('fighter', True))
+        self.assertEqual((mounted['mount_tier'], mounted['mount_fallback']), ('capital', False))
+        table = {'tables': {'bullets': {'entries': [unmounted, mounted]}}}
+        self.assertEqual([e['row'] for e in wt.mount_fallback_rows(table)], [3])
+
+    def test_mount_tiers_match_the_catalogue(self):
+        # the generator's rule over the tracked catalogue's used-by (both AP views): the size_derivation counts 30/19/12
+        tiers = {}
+        for view in ('stock_ap', 'mayhem3'):
+            data = json.loads((ROOT / f'tools/effects/weapon_catalog/{view}.json').read_text())
+            for e in data['weapons']:
+                if e['style'].split('+')[0] == 'beam' or not e.get('lasers'):
+                    continue
+                u = set()
+                for laser in e['lasers']:
+                    u |= set((laser.get('used_by') or {}).keys())
+                t = wt.mount_tier_of(u)
+                tiers[t] = tiers.get(t, 0) + 1
+        self.assertEqual((tiers['fighter'], tiers['corvette'], tiers['capital']), (30, 19, 12))
 
     def test_shipped_overrides_file_schema(self):
         data = json.loads(OVERRIDES.read_text())
@@ -134,7 +172,7 @@ class WeaponEffectsTableReader(unittest.TestCase):
     def test_reader_round_trips_a_generated_table(self):
         code, f = self.read(sample_table(), row=0)
         self.assertEqual(code, 0)
-        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '8'))
+        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '10'))
         self.assertEqual(f['shape'], 'tracer')          # row 0: from elongation 18.5
         self.assertEqual(f['texture'], '275279')        # 121,82,39 -> r|g<<8|b<<16
         _, f1 = self.read(sample_table(), row=1)
@@ -157,10 +195,19 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertEqual((int(f6['bits']) & 0xe0, f6['hull_class']), (0x80, 'ballistic'))
         self.assertEqual((int(f7['bits']) & 0xe0, f7['hull_class']), (0, '-'))
         self.assertEqual(f['overrides'], '4')            # rows 1, 3, 4 (its calibre the same row) and 6; none for 5, 7
+        # step 4: mount_tier (0 fighter, 1 corvette, 2 capital; absent = fighter) and range_m (metres; null = 0)
+        _, f8 = self.read(sample_table(), row=8)
+        _, f9 = self.read(sample_table(), row=9)
+        self.assertEqual((f['mount_tier'], f['range_m'], f['mount_keys']), ('0', '0', '2'))
+        self.assertEqual((f8['mount_tier'], f8['range_m']), ('2', '4957'))
+        self.assertEqual((f9['mount_tier'], f9['range_m']), ('1', '0'))
+        schema2 = sample_table()
+        schema2['schema'] = 2
+        self.assertEqual(self.read(schema2, row=8)[1]['mount_tier'], '2')
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
-        code, f = self.read({'schema': 2, 'tables': {}})
-        self.assertEqual(code, 1)   # schema must be 1
+        code, f = self.read({'schema': 3, 'tables': {}})
+        self.assertEqual(code, 1)   # schema must be 1 or 2
         code, f = self.read({'schema': 1, 'tables': {'bullets': {'rows': 45, 'entries': 'not a list'}}})
         self.assertEqual(code, 1)
 

@@ -303,8 +303,10 @@ class GeneratorTest(unittest.TestCase):
         shell = (f'<script>\n{gen.HEADER_BEGIN}\nconst HEADER = {{}};\n{gen.HEADER_END}\n'
                  f'{gen.BEGIN}\nconst LAB_DATA = {{}};\n{gen.END}\n{gen.PRESETS_BEGIN}\nconst PRESETS = [];\n{gen.END}\n'
                  f'rest();\n</script>')
+        step4 = [next(p for p in gen.PRESETS if p['family'] == f) for f in ('bolt', 'muzzle')]
         presets = [dict(gen.PRESETS[0], view='stock_ap', weapon='SS_BULLET_X'),
-                   dict(gen.PRESETS[2], view='stock_ap', weapon='SS_BULLET_X')]
+                   dict(gen.PRESETS[2], view='stock_ap', weapon='SS_BULLET_X')] + \
+                  [dict(p, view='stock_ap', weapon='SS_BULLET_X') for p in step4]
         page = gen.render(shell, data, hv, presets)
         self.assertEqual(gen.render(page, data, hv, presets), page)     # idempotent
         self.assertIn('const PRESETS = [{"id":"shield/', page)
@@ -330,10 +332,10 @@ class GeneratorTest(unittest.TestCase):
               'SS_BULLET_ID': 'ion', 'SS_BULLET_IONC': 'ion', 'SS_BULLET_RL': 'repair'}
         data = {'mayhem3': {'weapons': [{'id': i, 'hc': hc.get(i, 'energy')} for i in (
                     'SS_BULLET_IRE', 'SS_BULLET_PPC', 'SS_BULLET_RL', 'SS_BULLET_HEPT', 'SS_BULLET_MD', 'SS_BULLET_PSP',
-                    'SS_BULLET_GKE', 'SS_BULLET_RG', 'SS_BULLET_PBC', 'SS_BULLET_ID')]},
+                    'SS_BULLET_GKE', 'SS_BULLET_RG', 'SS_BULLET_PBC', 'SS_BULLET_ID', 'SS_BULLET_PAC', 'SS_BULLET_PSG')]},
                 'stock_ap': {'weapons': [{'id': i, 'hc': hc.get(i, 'energy')} for i in (
                     'SS_BULLET_IRE', 'SS_BULLET_MASS', 'SS_BULLET_FLAK_ALPHA', 'SS_BULLET_GAUSS', 'SS_BULLET_PAL',
-                    'SS_BULLET_IONC')]}}
+                    'SS_BULLET_IONC', 'SS_BULLET_PAC', 'SS_BULLET_PSP', 'SS_BULLET_PSG')]}}
         self.assertEqual(gen.preset_problems(gen.PRESETS, data), [])
         # hull-impact-classes.md section 7: one preset per class; the ion presets removed, --check refuses
         self.assertEqual(gen.class_problems(gen.PRESETS, data), [])
@@ -414,8 +416,8 @@ class PageTest(unittest.TestCase):
                           self.html)
         self.assertEqual([(t[0], t[2].strip()) for t in tabs],
                          [('shield', 'Shield hit'), ('hull', 'Hull hit'), ('vanilla', 'Vanilla'),
-                          ('explosion', 'Explosion'), ('bolt', 'Bolt'), ('beam', 'Beam')])
-        self.assertEqual([t[0] for t in tabs if not t[1]], ['shield', 'hull', 'vanilla'])
+                          ('explosion', 'Explosion'), ('bolt', 'Bolt'), ('muzzle', 'Muzzle'), ('beam', 'Beam')])
+        self.assertEqual([t[0] for t in tabs if not t[1]], ['shield', 'hull', 'vanilla', 'bolt', 'muzzle'])
         self.assertTrue(all(t[3] == 'later step' for t in tabs if t[1]))
         legends = re.findall(r'<fieldset id="p_(\w+)"[^>]*><legend>(\w+)</legend>', self.html)
         self.assertEqual(legends, [('scene', 'Scene'), ('weapon', 'Weapon'), ('playback', 'Playback'),
@@ -501,6 +503,127 @@ class PageTest(unittest.TestCase):
         self.assertIn('renderOurs(rec, state.t)', self.html)
         self.assertIn('<aside id="wdesc">', self.html)                 # catalogue description panel
         self.assertIn('function updateDesc()', self.html)
+
+    def test_bolt_and_muzzle_tabs_layers_presets(self):
+        """Step 4 (docs/architecture/bolt-muzzle-look.md 6): the Bolt and Muzzle tabs are live with their layers (core,
+        body, halo, tail, head, rim, streak; disc, cone, star, bloom, puff, hull glow), the header's bolt and muzzle
+        constants are injected by name, every preset of section 6 and weapon-look 3.3's list is a Scenario grouped under
+        Bolt or Muzzle, and the three proving scenarios are among them."""
+        self.assertIn('<button type="button" class="tab" role="tab" data-tab="bolt">Bolt</button>', self.html)
+        self.assertIn('<button type="button" class="tab" role="tab" data-tab="muzzle">Muzzle</button>', self.html)
+        self.assertNotRegex(self.html, r'data-tab="bolt" disabled')
+        for k in ('b_core', 'b_body', 'b_halo', 'b_tail', 'b_head', 'b_rim', 'b_streak', 'm_disc', 'm_cone', 'm_star',
+                  'm_bloom', 'm_puff', 'm_glow'):
+            self.assertIn(f'data-layer="{k}"', self.html)
+        header = gen.header_constants((ROOT / 'src/proxy/weapon_effects_core.h').read_text())
+        self.assertEqual(header['bolt']['w_px_target'], 3)
+        self.assertEqual(header['bolt']['d_eng_m'], [600.0, 1500.0, 4000.0])
+        self.assertEqual(header['muzzle']['cluster_n0'], 2.5)
+        self.assertIn('bolt:{"mode":"full"', re.sub(r'\s', '', self.html[self.html.index(gen.HEADER_BEGIN):][:200000]))
+        ids = {p['id'] for p in gen.PRESETS}
+        for pid in ('bolt/own-fire-chase', 'bolt/incoming-cockpit', 'bolt/stream-over-station-3km', 'bolt/far-10km-floor',
+                    'bolt/convergent-barrage', 'bolt/mayhem-gke-fighter-heavy', 'bolt/psg-wave-endon',
+                    'muzzle/md-ballistic-chase', 'muzzle/gke-heavy-chase', 'muzzle/capital-broadside-12',
+                    'bolt/ire-chase-ahead-600m', 'bolt/psp-orb', 'bolt/psg-wave-200m', 'bolt/seta6-stream',
+                    'muzzle/ire-own-chase', 'muzzle/pac-own-cockpit', 'muzzle/flak-alpha-turret', 'muzzle/seta6-10hz'):
+            self.assertIn(pid, ids)
+        self.assertIn("group('bolt', 'Bolt') + group('muzzle', 'Muzzle')", self.html)
+        problems = gen.preset_problems([p for p in gen.PRESETS if p['family'] in ('bolt', 'muzzle')],
+                                       {v: {'weapons': [{'id': p['weapon']} for p in gen.PRESETS if p['view'] == v]}
+                                        for v in gen.VIEWS})
+        self.assertEqual([m for m in problems if 'has no preset' not in m], [])
+
+    BOLT = r'''
+const OW = 720, OH = 405, W = OW, H = OH; function fmt(v) { return v; } function assets() { return null; }
+function stageImage() { return {data: new Uint8ClampedArray(OW * OH * 4)}; }
+const vals = {c_b_scene: 'single', c_m_scene: 'own_chase', c_b_rows: 1440, c_b_fov: 'vanilla', c_b_dist: 600, c_b_angle: 90,
+  c_b_seta: 1, c_b_hull: 0, c_m_hz: 4};
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+// the stock IRE (fighter, k 0) and the Mayhem PPC (capital slug, k 0.8) as the lab data carries them
+const IRE = {id: 'SS_BULLET_IRE', mt: 0, rg: 1394.4, colour: [48, 16, 192], speed: 581000, life: 1200,
+  cat: {style: 'tracer', damage_shield: 100, damage_hull: 100, speed_mps: 1162, range_m: 1394.4, flag_word: '0x0'}};
+const PPC = {id: 'SS_BULLET_PPC', mt: 2, rg: 19250, colour: [255, 255, 255], speed: 1750000, life: 5500,
+  cat: {style: 'slug', damage_shield: 11943, damage_hull: 7500, speed_mps: 3500, range_m: 19250, flag_word: '0x0'}};
+function lit(fr) { let n = 0; for (let i = 0; i < OW * OH; i++) if (fr.sum[i * 3] + fr.sum[i * 3 + 1] + fr.sum[i * 3 + 2] > 0.05) n++; return n; }
+'''
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_bolt_renders_the_width_law_and_layers(self):
+        """The Bolt tab's law (section 1, 2.4, 2.6) in canvas pixels at 1440 rows: the stock IRE side-on at its d_eng is
+        the 3 px body floor with its 37.5 px core and 24 px tail; at 60 m the own ceiling caps it at 16 px while another
+        ship's is not capped; end-on it is a disc of at least the end-on floor; the halo layer off lights fewer pixels."""
+        probe = self.ours_script() + self.BOLT + r'''
+const out = {};
+const near = fr => fr.qs.reduce((a, b) => (a.dist < b.dist ? a : b));
+vals.c_b_dist = 600; const mid = boltLoopMs(boltControls(), IRE) / 2;  // the bolt crosses the canvas centre at mid-loop
+let fr = boltFrame(boltControls(), IRE, mid); const q = near(fr);
+out.ire = {w: q.wh, L: q.Lc, T: q.T, lit: lit(fr), w_m: boltLook(IRE).w};
+layers.b_halo = false; out.ire.lit_nohalo = lit(boltFrame(boltControls(), IRE, mid)); layers.b_halo = true;
+vals.c_b_dist = 60; checks.c_b_own = true; out.own = near(boltFrame(boltControls(), IRE, 0)).wh;
+checks.c_b_own = false; out.other = near(boltFrame(boltControls(), IRE, 0)).wh;
+vals.c_b_dist = 600; vals.c_b_angle = 0; out.endon = near(boltFrame(boltControls(), IRE, 0)).wh;
+vals.c_b_angle = 90; vals.c_b_dist = 4000; out.ppc_w_m = boltLook(PPC).w; out.ppc = near(boltFrame(boltControls(), PPC, 0)).wh;
+console.log(JSON.stringify(out));
+'''
+        js = self.run_node(probe)
+        self.assertAlmostEqual(js['ire']['w_m'], 1.875, places=3)
+        self.assertAlmostEqual(js['ire']['w'], 3.0, places=2)
+        self.assertAlmostEqual(js['ire']['L'], 37.5 * (0.75 + 0.5 * 1162 / 2000) / 1.0425, delta=1.0)  # 12 w s_v at 600 m
+        self.assertAlmostEqual(js['ire']['T'], 24.0, delta=0.6)       # T_max 8 w (v tau 17.4 m > 15 m)
+        self.assertLess(js['ire']['lit_nohalo'], js['ire']['lit'])
+        self.assertAlmostEqual(js['own'], 16.0, places=3)             # own_body_max_px at 1440 rows
+        self.assertGreater(js['other'], 16.0)                         # another ship's bolt is not capped
+        self.assertGreaterEqual(js['endon'], 9.0 - 1e-6)              # the end-on floor
+        self.assertAlmostEqual(js['ppc_w_m'], 18.5, delta=0.1)        # the capital slug, 4.44 px at 4 km
+        self.assertAlmostEqual(js['ppc'], 4.44, delta=0.05)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_muzzle_light_counting(self):
+        """Section 3.2's broadside: 12 turrets along a capital hull cast 12 lights whose cluster factor s(N) bounds their
+        summed glow to <= 2.3 single glows (12 / 5.4 = 2.2); the own fighter's two guns in the cockpit cast theirs at the
+        cockpit gain 0.35."""
+        probe = self.ours_script() + self.BOLT + r'''
+const out = {};
+vals.c_m_scene = 'broadside_12'; vals.c_m_hz = 0.33;
+const all = muzzleLights(boltControls(), PPC, 10);
+out.count = all.length; out.sum = all.reduce((a, l) => a + l.E, 0); out.n = all.map(l => l.N);
+vals.c_m_scene = 'capital_600m'; out.single = muzzleLights(boltControls(), PPC, 10)[0].E;
+vals.c_m_scene = 'own_chase'; vals.c_m_hz = 4; out.chase = muzzleLights(boltControls(), IRE, 5).map(l => l.E);
+vals.c_m_scene = 'own_cockpit'; out.cockpit = muzzleLights(boltControls(), IRE, 5).map(l => l.E);
+console.log(JSON.stringify(out));
+'''
+        js = self.run_node(probe)
+        self.assertEqual(js['count'], 12)
+        self.assertEqual(max(js['n']), 12)
+        self.assertLessEqual(js['sum'], 2.3 * js['single'] + 1e-9)
+        self.assertGreaterEqual(js['sum'], 2.0 * js['single'])
+        self.assertEqual(len(js['chase']), len(js['cockpit']))
+        for a, b in zip(js['chase'], js['cockpit']):
+            self.assertAlmostEqual(b, 0.35 * a, places=6)
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_muzzle_view_rule(self):
+        """The view rule (core::muzzle::endon_cos, 2026-11-07): the own guns in the chase view (the gun axis about 11
+        degrees off the eye ray) take the four-arm star for the cone; the own_side scene (guns across the view) keeps the
+        cone; a class with a star of its own (ballistic) keeps its own star and cone; the side preset is listed."""
+        probe = self.ours_script() + self.BOLT + r'''
+const out = {};
+const at = (sc, g) => g.map((v, k) => v + sc.centre[k]);
+vals.c_m_scene = 'own_chase'; const sc = muzzleScene(boltControls());
+out.chase = sc.guns.map(g => muzzleEndOn(at(sc, g), sc.dir || [0, 0, 1], 0));
+out.ballistic = muzzleEndOn(at(sc, sc.guns[0]), sc.dir || [0, 0, 1], 1);
+vals.c_m_scene = 'own_side'; const ss = muzzleScene(boltControls());
+out.side = ss.guns.map(g => muzzleEndOn(at(ss, g), ss.dir, 0));
+out.cos = MH.endon_cos;
+console.log(JSON.stringify(out));
+'''
+        js = self.run_node(probe)
+        self.assertEqual(js['chase'], [True, True])
+        self.assertEqual(js['side'], [False, False])
+        self.assertFalse(js['ballistic'])
+        self.assertAlmostEqual(js['cos'], 0.8660254, places=6)
+        self.assertIn('muzzle/ire-own-side-cone', [p['id'] for p in gen.PRESETS])
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_script_parses(self):

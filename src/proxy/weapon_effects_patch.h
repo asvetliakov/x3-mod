@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "weapon_effects_core.h"
+#include "weapon_effects_bolt.h"
 
 // Weapon effects, step 1: the shield hit; step 2: the hull hit (X3M_WEAPON_EFFECTS=native|observe|shields|shields,hull;
 // unset = native;
@@ -31,7 +32,10 @@
 // unload only) restores in reverse order, each only while its five bytes still hold this module's call. FL builds
 // compile the hook out (edition_unsupported).
 //
-// Rows: `weapon_effects_patch site=impact|tap1|tap2 va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
+// Step 4 (shields,hull,bolts; docs/architecture/bolt-muzzle-look.md, weapon_effects_bolt.h): also the per-bullet tap
+// 0x0045ac7d (plain write: it straddles a qword), the muzzle 0x00446268 and the flight effect 0x004146c0 (atomic), their
+// windows compared with the impact's before any write, all or none with the rest.
+// Rows: `weapon_effects_patch site=impact|tap1|tap2|bolt_tap|muzzle|flight va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
 // write=none|atomic|plain` per site at initialize; `weapon_effects_table event= reason= rows= entries= textures=
 // overrides= dropped= bytes= path=` once; the frame rows of present() below and `weapon_effects_scope frame= cleared=
 // loading= sector_key= load_epoch= clears=` when a scope change clears stage-owned records. The FL edition writes one
@@ -40,6 +44,10 @@ namespace x3m::weapon_effects {
 struct Addresses {
     std::uintptr_t impact_window, impact_target, prologue;
     std::uintptr_t tap_window[2], tap_target;
+    // Step 4 (shields,hull,bolts; weapon_effects_bolt_sites.h): the per-bullet tap, the muzzle and the flight effect
+    // windows and callees (zero outside the bolts mode).
+    std::uintptr_t bolt_tap_window = 0, bolt_tap_target = 0, muzzle_window = 0, muzzle_target = 0, flight_window = 0,
+                   flight_target = 0;
 };
 bool initialize();
 bool shutdown();
@@ -47,9 +55,27 @@ bool install_at(const Addresses& a, core::Mode mode);
 bool installed();
 core::Mode mode();
 const char* state();
-const char* site_state(unsigned site); // 0 impact, 1 tap1, 2 tap2
+const char* site_state(unsigned site); // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4)
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
+// Step 4: the bolt lists, the muzzle records and their latch (weapon_effects_bolt.h; the in-place draw reads the lists).
+core::BoltHookState& bolt_hook_state();
+// Step 4, once per frame after present() (shields,hull,bolts): the next frame's bolt latch (`owned`: the in-place draw
+// drew this frame), the generation advance (the next frame's list starts empty) and the weapon_bolts_frame row every 300
+// frames with the in-place draw's period figures.
+struct BoltFrame {
+    bool drew = false;            // the in-place draw replaced a late bullet draw this frame (the flight skip's latch)
+    bool armed = false;           // the in-place draw was armed this frame (reason: why not)
+    bool taken = false;           // ours took the frame's bullet draws (stage::bolt_take)
+    bool lost_early = false;      // ours took it, suppressed an early copy and never drew (no late copy came)
+    bool muzzle_owned = false;    // the next frame's muzzle latch (stage::muzzle_latch)
+    const char* reason = "off";
+    unsigned bolts = 0, muzzle_elements = 0, suppressed = 0, culled = 0, beams = 0, parity_mismatch = 0;
+    unsigned muzzles = 0, muzzle_glows = 0, muzzle_puffs = 0, rims = 0, refused = 0;
+    unsigned muzzle_native = 0, muzzle_endon = 0, muzzle_starved = 0;
+    float build_us = 0.f;
+};
+void present_bolts(unsigned long long frame, bool capture, const BoltFrame& bolts);
 // Present, once per frame on the thread that runs the hooks: the next frame's latch (shields mode: owned), the
 // weapon_event rows (the first 64 events of the run, then up to 8 per 300-frame period, and every event of a capture
 // frame; each with pos_r = |pos| / radius, the radial region, the travel dir and its region), the forwarded records
@@ -101,4 +127,14 @@ int __cdecl x3m_weapon_event(const std::uint32_t* entry);
 void __cdecl x3m_weapon_tap(const std::uint32_t* entry);
 extern std::uintptr_t x3m_weapon_effects_continue_impact;
 extern std::uintptr_t x3m_weapon_effects_continue_tap;
+// Step 4: the bolt tap, the muzzle and the flight effect.
+void x3m_weapon_effects_stub_bolt_tap();
+void x3m_weapon_effects_stub_muzzle();
+void x3m_weapon_effects_stub_flight();
+void __cdecl x3m_weapon_bolt_tap(const std::uint32_t* entry);
+int __cdecl x3m_weapon_muzzle(const std::uint32_t* entry, std::uint32_t eax, std::uint32_t edx);
+int __cdecl x3m_weapon_flight(const std::uint32_t* entry);
+extern std::uintptr_t x3m_weapon_effects_continue_bolt_tap;
+extern std::uintptr_t x3m_weapon_effects_continue_muzzle;
+extern std::uintptr_t x3m_weapon_effects_continue_flight;
 }

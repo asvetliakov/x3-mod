@@ -5,6 +5,7 @@
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "sse_scalar.h"
+#include "weapon_effects_bolt_sites.h"
 #include "weapon_effects_sites.h"
 #include "weapon_effects_table.h"
 #include <windows.h>
@@ -18,11 +19,13 @@ namespace {
 namespace engine_patch = x3m::engine_patch;
 namespace sites = x3m::weapon_effects::sites;
 namespace core = x3m::weapon_effects::core;
-constexpr unsigned site_count = 3; // impact, tap1, tap2
+namespace bolt_sites = x3m::weapon_effects::bolt_sites;
+constexpr unsigned site_count = 6; // impact, tap1, tap2; step 4: bolt_tap, muzzle, flight
 bool patched_ = false, installed_ = false;
 core::Mode mode_ = core::mode_native;
 const char* state_ = "not_initialized";
-const char* site_state_[site_count] = {"not_initialized", "not_initialized", "not_initialized"};
+const char* site_state_[site_count] = {"not_initialized", "not_initialized", "not_initialized",
+                                      "not_initialized", "not_initialized", "not_initialized"};
 bool written_[site_count] = {};
 engine_patch::CallSite site_[site_count]{};
 core::Table* table_ = nullptr;
@@ -178,11 +181,42 @@ void load_table() {
              static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
 const char* site_name(unsigned i) {
-    return i == 0 ? "impact" : i == 1 ? "tap1" : "tap2";
+    static const char* const names[site_count] = {"impact", "tap1", "tap2", "bolt_tap", "muzzle", "flight"};
+    return i < site_count ? names[i] : "?";
 }
 std::uintptr_t site_va(unsigned i) {
-    return i == 0 ? sites::impact_site_va : sites::tap_site_va[i - 1];
+    return i == 0   ? sites::impact_site_va
+           : i < 3  ? sites::tap_site_va[i - 1]
+           : i == 3 ? bolt_sites::tap_site_va
+           : i == 4 ? bolt_sites::muzzle_site_va
+                    : bolt_sites::flight_site_va;
 }
+// Step 4: a bolt site's window, offset, callee and stub (3 bolt_tap, 4 muzzle, 5 flight).
+struct BoltSite {
+    std::uintptr_t window, target;
+    unsigned offset, length;
+    const unsigned char* expected;
+    void* stub;
+};
+BoltSite bolt_site(const x3m::weapon_effects::Addresses& a, unsigned i) {
+    if (i == 3)
+        return {a.bolt_tap_window, a.bolt_tap_target, bolt_sites::tap_site_offset, bolt_sites::tap_window_length,
+                bolt_sites::expected_tap_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_bolt_tap)};
+    if (i == 4)
+        return {a.muzzle_window, a.muzzle_target, bolt_sites::muzzle_site_offset, bolt_sites::muzzle_window_length,
+                bolt_sites::expected_muzzle_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_muzzle)};
+    return {a.flight_window, a.flight_target, bolt_sites::flight_site_offset, bolt_sites::flight_window_length,
+            bolt_sites::expected_flight_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_flight)};
+}
+// The bolts family's period figures (present_bolts): frames drawn in place, bolts and muzzle elements, suppressed draws.
+struct BoltPeriod {
+    std::uint32_t frames = 0, drew = 0, bolts = 0, elements = 0, suppressed = 0, culled = 0, beams = 0, parity = 0;
+    std::uint32_t muzzles = 0, glows = 0, puffs = 0, rims = 0, refused = 0;
+    std::uint32_t armed = 0, taken = 0, lost_early = 0, muzzle_native = 0, muzzle_endon = 0, muzzle_starved = 0;
+    std::uint32_t muzzle_owned = 0;
+    float build_us_sum = 0.f, build_us_max = 0.f;
+} bolt_period_{};
+x3m::weapon_effects::core::BoltCounters bolt_seen_{};
 } // namespace
 
 namespace x3m::weapon_effects {
@@ -203,15 +237,20 @@ bool install_at(const Addresses& a, core::Mode mode) {
         site_state_[i] = "not_attempted";
     }
     const bool taps = mode == core::mode_observe;
+    const bool bolts = core::bolts_mode(mode);
     if (!taps) site_state_[1] = site_state_[2] = "not_used";
+    if (!bolts) site_state_[3] = site_state_[4] = site_state_[5] = "not_used";
+    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : bolts); };
     if (mode == core::mode_native) return done("native", false);
-    if (!a.impact_window || !a.impact_target || !a.prologue || (taps && (!a.tap_window[0] || !a.tap_window[1] || !a.tap_target))) {
+    if (!a.impact_window || !a.impact_target || !a.prologue || (taps && (!a.tap_window[0] || !a.tap_window[1] || !a.tap_target)) ||
+        (bolts && (!a.bolt_tap_window || !a.bolt_tap_target || !a.muzzle_window || !a.muzzle_target || !a.flight_window ||
+                   !a.flight_target))) {
         site_state_[0] = "invalid_site";
         return done("invalid_site", false);
     }
     if (!engine_patch::install_window_open()) {
         for (unsigned i = 0; i < site_count; ++i)
-            if (i == 0 || taps) site_state_[i] = "late_claim";
+            if (used(i)) site_state_[i] = "late_claim";
         return done("late_claim", false);
     }
     // Every window and witness before any write: a changed byte anywhere costs no rollback.
@@ -229,6 +268,15 @@ bool install_at(const Addresses& a, core::Mode mode) {
                 site_state_[1 + i] = "bytes_mismatch";
                 return done("bytes_mismatch_tap", false);
             }
+    if (bolts)
+        for (unsigned i = 3; i < site_count; ++i) {
+            const BoltSite b = bolt_site(a, i);
+            if (!window_matches(b.window, b.expected, b.length)) {
+                site_state_[i] = "bytes_mismatch";
+                return done(i == 3 ? "bytes_mismatch_bolt_tap" : i == 4 ? "bytes_mismatch_muzzle" : "bytes_mismatch_flight",
+                            false);
+            }
+        }
     if (!pin_self()) {
         site_state_[0] = "pin_failed";
         return done("pin_failed", false);
@@ -237,9 +285,15 @@ bool install_at(const Addresses& a, core::Mode mode) {
     core::ring_clear(s.ring);
     s.table = table_;
     s.mode = std::uint8_t(mode);
-    s.armed = mode == core::mode_shields        ? core::family_shields
-              : mode == core::mode_shields_hull ? std::uint8_t(core::family_shields | core::family_hull)
-                                                : std::uint8_t(0);
+    s.armed = mode == core::mode_shields   ? core::family_shields
+              : bolts                      ? std::uint8_t(core::family_shields | core::family_hull | core::family_bolts)
+              : core::hull_mode(mode)      ? std::uint8_t(core::family_shields | core::family_hull)
+                                           : std::uint8_t(0);
+    core::BoltHookState& bs = bolt_hook_state();
+    bs.armed = 0; // set once every site is live
+    bs.owned = 0;
+    bs.muzzle_owned = 0;
+    bs.globals = s.globals;
     s.owned_next = 0;
     s.lifetime_ms = std::uint16_t(core::patch_lifetime_ms);
     s.hull_lifetime_ms = std::uint16_t(core::hull_lifetime_ms);
@@ -248,17 +302,34 @@ bool install_at(const Addresses& a, core::Mode mode) {
     s.suppress_native_hull = core::suppress_native_hull_hit; // true: a stage-owned hull hit too (shields,hull)
     x3m_weapon_effects_continue_impact = a.impact_target; // published before the redirects go live
     x3m_weapon_effects_continue_tap = a.tap_target;
+    if (bolts) {
+        x3m_weapon_effects_continue_bolt_tap = a.bolt_tap_target;
+        x3m_weapon_effects_continue_muzzle = a.muzzle_target;
+        x3m_weapon_effects_continue_flight = a.flight_target;
+    }
     for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
-    // Atomic sites first (the taps), then the impact (plain copy); all or none.
-    const unsigned order[site_count] = {1, 2, 0};
+    // Atomic sites first (the taps, the muzzle, the flight effect), then the plain copies (the bolt tap, the impact);
+    // all or none.
+    const unsigned order[site_count] = {1, 2, 4, 5, 3, 0};
     unsigned claimed[site_count]{};
     unsigned n = 0;
     for (unsigned k = 0; k < site_count; ++k) {
         const unsigned i = order[k];
-        if (i && !taps) continue;
-        const std::uintptr_t at = i ? a.tap_window[i - 1] + sites::tap_site_offset : a.impact_window + sites::impact_site_offset;
-        void* stub = i ? reinterpret_cast<void*>(&x3m_weapon_effects_stub_tap) : reinterpret_cast<void*>(&x3m_weapon_effects_stub_impact);
-        const bool ok = engine_patch::claim_call(site_[i], at, i ? a.tap_target : a.impact_target, stub);
+        if (!used(i)) continue;
+        std::uintptr_t at = 0, target = 0;
+        void* stub = nullptr;
+        if (i >= 3) {
+            const BoltSite b = bolt_site(a, i);
+            at = b.window + b.offset;
+            target = b.target;
+            stub = b.stub;
+        } else {
+            at = i ? a.tap_window[i - 1] + sites::tap_site_offset : a.impact_window + sites::impact_site_offset;
+            target = i ? a.tap_target : a.impact_target;
+            stub = i ? reinterpret_cast<void*>(&x3m_weapon_effects_stub_tap)
+                     : reinterpret_cast<void*>(&x3m_weapon_effects_stub_impact);
+        }
+        const bool ok = engine_patch::claim_call(site_[i], at, target, stub);
         written_[i] = reached_write(site_[i], ok);
         const char* failed = ok ? confirm(site_[i]) : site_[i].status;
         if (failed) {
@@ -273,6 +344,7 @@ bool install_at(const Addresses& a, core::Mode mode) {
             for (unsigned j = 0; j < site_count; ++j) patched_ = patched_ || site_[j].patched_in;
             s.mode = core::mode_native;
             s.armed = 0;
+            bs.armed = 0;
             return done(patched_ || !back ? "rollback_failed" : failed, false);
         }
         site_state_[i] = "active";
@@ -280,6 +352,7 @@ bool install_at(const Addresses& a, core::Mode mode) {
     }
     patched_ = installed_ = true;
     mode_ = mode;
+    bs.armed = std::uint8_t(bolts);
     return done("ok", true);
 }
 bool initialize() {
@@ -307,8 +380,12 @@ bool initialize() {
         reason = "executable_mismatch";
     else {
         load_table();
-        const Addresses a{sites::impact_window_va, sites::impact_target_va, sites::prologue_va,
-                          {sites::tap_window_va[0], sites::tap_window_va[1]}, sites::tap_target_va};
+        const Addresses a{sites::impact_window_va,     sites::impact_target_va,
+                          sites::prologue_va,          {sites::tap_window_va[0], sites::tap_window_va[1]},
+                          sites::tap_target_va,        bolt_sites::tap_window_va,
+                          bolt_sites::tap_target_va,   bolt_sites::muzzle_window_va,
+                          bolt_sites::muzzle_target_va, bolt_sites::flight_window_va,
+                          bolt_sites::flight_target_va};
         applied = install_at(a, mode);
     }
     if (reason) {
@@ -330,7 +407,10 @@ bool shutdown() {
     const DWORD error = GetLastError();
     installed_ = false;
     hook_state().mode = core::mode_native; // a thread still inside a stub forwards
-    static constexpr unsigned reverse[site_count] = {0, 2, 1}; // the reverse of the install order
+    bolt_hook_state().armed = 0;
+    bolt_hook_state().owned = 0;
+    bolt_hook_state().muzzle_owned = 0;
+    static constexpr unsigned reverse[site_count] = {0, 3, 5, 4, 2, 1}; // the reverse of the install order
     for (unsigned k = 0; k < site_count; ++k) {
         const unsigned i = reverse[k];
         if (!site_[i].patched_in) continue;
@@ -398,7 +478,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // The next frame's latch (the stage's modes only; observe never skips); the hull family's also needs the pass's
     // hull programs (StageFrame::hull_ready).
     s.owned_next = std::uint8_t(core::stage_mode(mode_) && owned);
-    s.hull_ready = std::uint8_t(mode_ == core::mode_shields_hull && owned && stage.hull_ready);
+    s.hull_ready = std::uint8_t(core::hull_mode(mode_) && owned && stage.hull_ready);
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
@@ -543,5 +623,82 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     seen_retired_ = r.retired;
     period_ = {};
     period_events_ = 0;
+}
+// Step 4: the bolt latch for the next frame, the generation advance and the weapon_bolts_frame row (every 300 frames,
+// and on a capture frame) with the in-place draw's period figures and the hooks' counters since the last row.
+void present_bolts(unsigned long long frame, bool capture, const BoltFrame& f) {
+    if (!installed_ || !core::bolts_mode(mode_)) return;
+    core::BoltHookState& b = bolt_hook_state();
+    b.owned = std::uint8_t(f.drew);
+    b.muzzle_owned = std::uint8_t(f.muzzle_owned); // the muzzle's own latch (the hook marks its shots ours by it)
+    const std::uint32_t passes = b.pass + 1u, listed = core::bolt_list_count(b, core::bolt_list_current(b));
+    ++b.generation; // the next frame's list starts empty (the tap resets a list of an older generation)
+    BoltPeriod& p = bolt_period_;
+    ++p.frames;
+    p.drew += f.drew;
+    p.bolts += f.bolts;
+    p.elements += f.muzzle_elements;
+    p.suppressed += f.suppressed;
+    p.culled += f.culled;
+    p.beams += f.beams;
+    p.parity += f.parity_mismatch;
+    p.muzzles += f.muzzles;
+    p.glows += f.muzzle_glows;
+    p.puffs += f.muzzle_puffs;
+    p.rims += f.rims;
+    p.refused += f.refused;
+    p.armed += f.armed;
+    p.taken += f.taken;
+    p.lost_early += f.lost_early;
+    p.muzzle_native += f.muzzle_native;
+    p.muzzle_endon += f.muzzle_endon;
+    p.muzzle_starved += f.muzzle_starved;
+    p.muzzle_owned += f.muzzle_owned;
+    if (f.drew) {
+        p.build_us_sum += f.build_us;
+        if (f.build_us > p.build_us_max) p.build_us_max = f.build_us;
+    }
+    if (!capture && frame % frame_row_period) return;
+    const core::BoltCounters& c = b.counters;
+    log("weapon_bolts_frame frame=%llu frames=%lu drew=%lu bolts=%lu muzzle_elements=%lu suppressed=%lu culled=%lu "
+        "beams=%lu parity_mismatch=%lu muzzles=%lu muzzle_glows=%lu muzzle_puffs=%lu rims=%lu refused=%lu "
+        "build_us=%.1f build_us_max=%.1f listed=%lu passes=%lu tap_calls=%lu tap_bullets=%lu tap_no_node=%lu "
+        "tap_overflow=%lu tap_replaced=%lu tap_refreshed=%lu flight_calls=%lu flight_skipped=%lu muzzle_calls=%lu "
+        "muzzle_skipped=%lu muzzle_relit=%lu muzzle_evicted=%lu owned=%u capture=%u reason=%s armed=%lu taken=%lu "
+        "lost_early=%lu muzzle_owned=%lu muzzle_native=%lu muzzle_endon=%lu muzzle_starved=%lu muzzle_restarted=%lu "
+        "shooter_ship=%lu shooter_dock=%lu shooter_factory=%lu shooter_other=%lu shooter_other_class=%u "
+        "tap_tombstoned=%lu tap_unkeyed=%lu",
+        frame, static_cast<unsigned long>(p.frames), static_cast<unsigned long>(p.drew), static_cast<unsigned long>(p.bolts),
+        static_cast<unsigned long>(p.elements), static_cast<unsigned long>(p.suppressed), static_cast<unsigned long>(p.culled),
+        static_cast<unsigned long>(p.beams), static_cast<unsigned long>(p.parity), static_cast<unsigned long>(p.muzzles),
+        static_cast<unsigned long>(p.glows), static_cast<unsigned long>(p.puffs), static_cast<unsigned long>(p.rims),
+        static_cast<unsigned long>(p.refused), double(p.drew ? p.build_us_sum / float(p.drew) : 0.f),
+        double(p.build_us_max), static_cast<unsigned long>(listed), static_cast<unsigned long>(passes),
+        static_cast<unsigned long>(c.tap_calls - bolt_seen_.tap_calls),
+        static_cast<unsigned long>(c.tap_bullets - bolt_seen_.tap_bullets),
+        static_cast<unsigned long>(c.tap_no_node - bolt_seen_.tap_no_node),
+        static_cast<unsigned long>(c.tap_overflow - bolt_seen_.tap_overflow),
+        static_cast<unsigned long>(c.tap_replaced - bolt_seen_.tap_replaced),
+        static_cast<unsigned long>(c.tap_refreshed - bolt_seen_.tap_refreshed),
+        static_cast<unsigned long>(c.flight_calls - bolt_seen_.flight_calls),
+        static_cast<unsigned long>(c.flight_skipped - bolt_seen_.flight_skipped),
+        static_cast<unsigned long>(c.muzzle_calls - bolt_seen_.muzzle_calls),
+        static_cast<unsigned long>(c.muzzle_skipped - bolt_seen_.muzzle_skipped),
+        static_cast<unsigned long>(c.muzzle_relit - bolt_seen_.muzzle_relit),
+        static_cast<unsigned long>(c.muzzle_evicted - bolt_seen_.muzzle_evicted), unsigned(b.owned), unsigned(capture),
+        f.reason ? f.reason : "none", static_cast<unsigned long>(p.armed), static_cast<unsigned long>(p.taken),
+        static_cast<unsigned long>(p.lost_early), static_cast<unsigned long>(p.muzzle_owned),
+        static_cast<unsigned long>(p.muzzle_native), static_cast<unsigned long>(p.muzzle_endon),
+        static_cast<unsigned long>(p.muzzle_starved),
+        static_cast<unsigned long>(c.muzzle_restarted - bolt_seen_.muzzle_restarted),
+        static_cast<unsigned long>(c.shooter_ship - bolt_seen_.shooter_ship),
+        static_cast<unsigned long>(c.shooter_dock - bolt_seen_.shooter_dock),
+        static_cast<unsigned long>(c.shooter_factory - bolt_seen_.shooter_factory),
+        static_cast<unsigned long>(c.shooter_other - bolt_seen_.shooter_other), unsigned(b.shooter_last_other),
+        static_cast<unsigned long>(c.tap_tombstoned - bolt_seen_.tap_tombstoned),
+        static_cast<unsigned long>(c.tap_unkeyed - bolt_seen_.tap_unkeyed));
+    if (capture && frame % frame_row_period) return; // a capture frame's row does not end the period
+    bolt_seen_ = c;
+    bolt_period_ = {};
 }
 } // namespace x3m::weapon_effects

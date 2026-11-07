@@ -180,7 +180,9 @@ a bullet whose col 19 is 0 (42 of 45 stock rows, 33 of 38 Mayhem) is **unknown**
 - **Modes** (`weapon_effects = native | observe | <families>`, key in `tools/config/schema.py`, launcher
   `--weapon-effects`): `native` patches nothing; the family list arms steps independently (`shields`, `hull`,
   `explosions`, `bolts`, `beams`); the DLL default is the set of flown-and-accepted families (none until step 1
-  lands), as `engine_effects` defaults to `plumes` after Run 123 A [S, config-file.md].
+  lands), as `engine_effects` defaults to `plumes` after Run 123 A [S, config-file.md]. The built lists today are
+  `shields`, `shields,hull` and `shields,hull,bolts` (the last adds the bolt tap, the muzzle and the in-place capsule
+  draw of step 4, `docs/architecture/bolt-muzzle-look.md`; any token order).
 
 ### 2.7 Nested kills and missiles
 

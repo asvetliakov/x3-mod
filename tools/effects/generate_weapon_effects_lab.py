@@ -24,6 +24,9 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / 'tools/effects'))
+import weapon_effects_table  # noqa: E402  (the mount tier rule, step 4)
+MOUNT_TIERS = weapon_effects_table.MOUNT_TIERS
 HTML = REPO / 'tools/effects/weapon_effects_lab.html'
 CENSUS = REPO / 'verification/results/weapon-effects-census'
 LAB = REPO / 'verification/results/weapon-effects-lab'
@@ -88,7 +91,20 @@ NAMESPACES = {
              # smoke, the asteroid's dust and the cool spot
              'star_arm_len', 'star_width', 'star_width_px', 'star_floor_px', 'star_element', 'burst_rot_element',
              'burst_lobe_element', 'glow_r_x', 'glow_e_x', 'cluster_r_x', 'cluster_n0_glow', 'cluster_n0_burst',
-             'class_smoke', 'smoke_t0', 'smoke_span', 'smoke_rise', 'dust_colour', 'cool_colour', 'ember_lobe_amp')}
+             'class_smoke', 'smoke_t0', 'smoke_span', 'smoke_rise', 'dust_colour', 'cool_colour', 'ember_lobe_amp'),
+    # step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md section 8): HEADER.bolt, HEADER.muzzle
+    'bolt': ('mode', 'd_eng_m', 'd_eng_range', 'w_px_target', 'w_k', 'f_ref', 'ref_rows', 'w_cap_m', 'heavy_k', 'rest_w',
+             'sv_ref_mps', 'tail_tau_ms', 'tail_max_w', 'tail_root_w', 'tail_gain', 'core_r', 'core_r_heavy', 'halo_sigma_w',
+             'e_body', 'e_halo', 'e_halo_heavy', 'h', 'head_gain', 'head_ball_w', 'tip_w', 'slug_tail_white', 'slug_tail_end',
+             'streak_c', 'streak_c_simple', 'core_min', 'end_ms', 'orb_freq', 'orb_boil_hz', 'orb_lobes', 'orb_lobe_amp',
+             'orb_lobe_turns', 'orb_stretch', 'orb_h_lo', 'orb_h_hi', 'wave_span_w', 'wave_sagitta', 'wave_sheet_e',
+             'wave_ring_c', 'trim_rs', 'rim', 'rim_dark', 'rim_band_w', 'rim_min_px', 'halo_px_max', 'floor_core_px',
+             'floor_body_px', 'floor_halo_px', 'floor_len_px', 'floor_endon_px', 'own_body_max_px', 'cockpit_native',
+             'far_flag_k', 'list_capacity', 'beam_w_m'),
+    'muzzle': ('mode', 'class_disc', 'disc_halo_w', 'disc_halo_e', 'class_flame', 'class_star', 'star_arms', 'star_width_w',
+               'star_e', 'bloom_w', 'bloom_e', 'vent_w', 'vent_ms', 'vent_e', 'afterglow_ms', 'afterglow_e', 'rise_ms',
+               'class_smoke', 'class_glow', 'class_life', 'cap_core_rs', 'cap_flame_rs', 'endon_cos', 'breath', 'cluster_n0',
+               'record_capacity')}
 # The hull-impact class rule (docs/architecture/hull-impact-classes.md section 2; the DLL's core::hull_class_from, the
 # census script verification/results/weapon-effects/hull_class_census.py) on a catalogue row, then the override file's
 # `hull` pins (tools/effects/weapon_overrides.json by_id): the lab's `auto` class of a weapon (LAB_DATA weapons[].hc).
@@ -134,7 +150,7 @@ def hull_class_of(entry, pins):
 # game ms; 0: sustained) and sweep (r_hit per tick) and the loop (game ms; 0: the record life). Families: shield (step
 # 1, accepted) and hull (step 2: the 3.1 list and one preset per class of hull-impact-classes.md section 7; --check
 # fails when a class has none).
-FAMILIES = ('shield', 'hull')
+FAMILIES = ('shield', 'hull', 'bolt', 'muzzle')
 PRESETS = (
     dict(id='shield/fighter-ire-side', family='shield', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
          camera='side', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=100, cls='auto', pulse=[0, 0], sweep=0, loop=0),
@@ -233,8 +249,61 @@ PRESETS = (
 # count: the hits of a stream before it stops (0: open-ended); the presets without one take 0.
 PRESETS = tuple(p if 'count' in p else dict(p, count=0) for p in PRESETS)
 
+# Step 4 (docs/architecture/bolt-muzzle-look.md 6, weapon-look.md 3.3's list): the bolt and muzzle presets, the shared keys
+# (tier, hull 'lit' or 'space', camera, SETA, hps: a muzzle's shots per game second, own, cockpit, k the calibre) and
+# BOLT_KEYS: the scene (Bolt tab: single, own_fire, incoming, stream, barrage, far; Muzzle tab: own_chase, own_cockpit,
+# capital_600m, broadside_12, turret, own_side), the distance and the travel's angle off the view ray, the emulated rows and FOV.
+def _b(id, view, weapon, scene, dist_m=600, angle=90, camera='side', seta=1, hps=0, own=False, cockpit=False, k=0.33,
+       hull='space', rows=1440, fov='vanilla'):
+    family = id.split('/')[0]
+    return dict(id=id, family=family, view=view, weapon=weapon, tier=0, hull=hull, camera=camera, seta=seta, hps=hps, own=own,
+                cockpit=cockpit, variant='none', k=k, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0, count=0, scene=scene,
+                dist_m=dist_m, angle=angle, rows=rows, fov=fov)
+
+
+PRESETS = PRESETS + (
+    # the three scenarios that prove the look (section 6)
+    _b('bolt/own-fire-chase', 'stock_ap', 'SS_BULLET_IRE', 'own_fire', camera='chase', own=True, k=0.0),
+    _b('bolt/incoming-cockpit', 'mayhem3', 'SS_BULLET_PAC', 'incoming', camera='cockpit', cockpit=True, k=0.48),
+    _b('bolt/stream-over-station-3km', 'mayhem3', 'SS_BULLET_PSG', 'stream', dist_m=3000, hull='lit', k=0.82),
+    _b('bolt/stream-over-station-3km-seta6', 'mayhem3', 'SS_BULLET_PSG', 'stream', dist_m=3000, hull='lit', seta=6, k=0.82),
+    # weapon-look 3.3's list
+    _b('bolt/ire-chase-ahead-600m', 'mayhem3', 'SS_BULLET_IRE', 'single', dist_m=600, angle=20, camera='chase', k=0.33),
+    _b('bolt/ire-mayhem-slug-vs-tracer', 'mayhem3', 'SS_BULLET_IRE', 'single', dist_m=600, k=0.33),
+    _b('bolt/pac-cockpit-own', 'stock_ap', 'SS_BULLET_PAC', 'single', dist_m=60, angle=10, camera='cockpit', own=True,
+       cockpit=True, k=0.29),
+    _b('bolt/ppc-slug-capital-broadside', 'mayhem3', 'SS_BULLET_PPC', 'single', dist_m=2000, k=0.8),
+    _b('bolt/psp-orb', 'stock_ap', 'SS_BULLET_PSP', 'single', dist_m=200, k=1.0),
+    _b('bolt/psg-wave-200m', 'stock_ap', 'SS_BULLET_PSG', 'single', dist_m=200, k=0.41),
+    _b('bolt/over-station-hull-20km', 'mayhem3', 'SS_BULLET_PSG', 'stream', dist_m=20000, hull='lit', k=0.82),
+    _b('bolt/seta6-stream', 'mayhem3', 'SS_BULLET_PSG', 'stream', dist_m=1000, seta=6, k=0.82),
+    # section 6's additions
+    _b('bolt/far-10km-floor', 'mayhem3', 'SS_BULLET_IRE', 'far', dist_m=10000, k=0.33),
+    _b('bolt/far-10km-floor-ppc-remap', 'mayhem3', 'SS_BULLET_PPC', 'far', dist_m=10000, k=0.8, fov='remap'),
+    _b('bolt/convergent-barrage', 'mayhem3', 'SS_BULLET_PPC', 'barrage', dist_m=2000, k=0.8),
+    _b('bolt/mayhem-gke-fighter-heavy', 'mayhem3', 'SS_BULLET_GKE', 'single', dist_m=600, k=1.0),
+    _b('bolt/psg-wave-endon', 'stock_ap', 'SS_BULLET_PSG', 'single', dist_m=300, angle=0, k=0.41),
+    # the muzzle: 3.3's list and section 6's additions
+    _b('muzzle/ire-own-chase', 'stock_ap', 'SS_BULLET_IRE', 'own_chase', camera='chase', own=True, hps=4, k=0.0),
+    _b('muzzle/pac-own-cockpit', 'stock_ap', 'SS_BULLET_PAC', 'own_cockpit', camera='cockpit', own=True, cockpit=True,
+       hps=4, k=0.29),
+    _b('muzzle/ppc-capital-broadside-600m', 'mayhem3', 'SS_BULLET_PPC', 'capital_600m', hps=0.33, k=0.8),
+    _b('muzzle/flak-alpha-turret', 'stock_ap', 'SS_BULLET_FLAK_ALPHA', 'turret', hps=1, k=0.83),
+    _b('muzzle/mayhem-white-light-texture-tint', 'mayhem3', 'SS_BULLET_MD', 'own_chase', camera='chase', own=True, hps=4,
+       k=0.38),
+    _b('muzzle/seta6-10hz', 'mayhem3', 'SS_BULLET_IRE', 'own_chase', camera='chase', own=True, seta=6, hps=10, k=0.33),
+    _b('muzzle/md-ballistic-chase', 'mayhem3', 'SS_BULLET_MD', 'own_chase', camera='chase', own=True, hps=4, k=0.38),
+    _b('muzzle/gke-heavy-chase', 'mayhem3', 'SS_BULLET_GKE', 'own_chase', camera='chase', own=True, hps=1, k=1.0),
+    _b('muzzle/capital-broadside-12', 'mayhem3', 'SS_BULLET_PPC', 'broadside_12', hps=0.33, k=0.8),
+    # the view rule (2026-11-07): the own guns across the view keep the cone (the chase view above draws the star)
+    _b('muzzle/ire-own-side-cone', 'stock_ap', 'SS_BULLET_IRE', 'own_side', camera='side', own=True, hps=4, k=0.0),
+)
+
 PRESET_KEYS = ('id', 'family', 'view', 'weapon', 'tier', 'hull', 'camera', 'seta', 'hps', 'own', 'cockpit', 'variant', 'k',
                'shield', 'cls', 'pulse', 'sweep', 'loop', 'count')
+BOLT_KEYS = ('scene', 'dist_m', 'angle', 'rows', 'fov')
+BOLT_SCENES = {'bolt': ('single', 'own_fire', 'incoming', 'stream', 'barrage', 'far'),
+               'muzzle': ('own_chase', 'own_cockpit', 'capital_600m', 'broadside_12', 'turret', 'own_side')}
 PRESET_CLASSES = ('auto', 'lineup') + CLASSES
 CAMERAS = ('side', 'chase', 'cockpit', 'far1', 'far2', 'far8')
 VARIANTS = ('none', 'repair', 'tug', 'missile', 'asteroid', 'flak')
@@ -245,8 +314,12 @@ def preset_problems(presets, data):
     """Why the presets cannot be injected: an id missing from its view, an unknown key or value, a family without one."""
     out = []
     for pr in presets:
-        if tuple(pr) != PRESET_KEYS:
+        step4 = pr.get('family') in BOLT_SCENES
+        if tuple(pr) != PRESET_KEYS + (BOLT_KEYS if step4 else ()):
             out.append(f"{pr.get('id')}: keys {tuple(pr)}")
+        if step4 and (pr.get('scene') not in BOLT_SCENES[pr['family']] or pr.get('rows') not in (1440, 1080) or
+                      pr.get('fov') not in ('vanilla', 'remap') or pr.get('hull') not in ('lit', 'space')):
+            out.append(f"{pr.get('id')}: scene {pr.get('scene')!r} / rows / fov / hull")
         if pr.get('family') not in FAMILIES or not str(pr.get('id', '')).startswith(f"{pr.get('family')}/"):
             out.append(f"{pr.get('id')}: family {pr.get('family')!r}")
         if pr.get('camera') not in CAMERAS or pr.get('variant') not in VARIANTS:
@@ -460,6 +533,12 @@ def view_record(view, census, manifest, catalog=None):
     for w in weapons:
         if w['id'] in entries:
             w['cat'] = cat_entry(entries[w['id']])
+            # step 4: the mount tier (0 fighter, 1 corvette, 2 capital; weapon_effects_table.py's rule) and range (m)
+            used = set()
+            for laser in entries[w['id']].get('lasers', []):
+                used |= set((laser.get('used_by') or {}).keys())
+            w['mt'] = MOUNT_TIERS.index(weapon_effects_table.mount_tier_of(used))
+            w['rg'] = entries[w['id']].get('range_m')
         w['hc'] = hull_class_of(entries.get(w['id'], {'id': w['id']}), pins)
     tiers = tier_rows(census['death_rows'])
     ids = reachable(weapons, tiers, effects)

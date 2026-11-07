@@ -44,6 +44,12 @@ struct WeaponEffectsCaps {
     // Step 2, requested at attach (shields,hull): the hull programs and batch limits; false keeps the shield effect.
     bool hull_enabled = false;
     const char* hull_reason = "not_requested";
+    // Step 4, requested at attach (shields,hull,bolts): the capsule programs, their declaration and the dynamic vertex
+    // and static index buffers of the in-place bolt draw; false keeps the game's bullets (the hull and shields draw).
+    bool bolt_enabled = false;
+    const char* bolt_reason = "not_requested";
+    unsigned bolt_vs_slots = 0, bolt_ps_slots = 0, bolt_flag_ps_slots = 0;
+    bool bolt_rim_undo = false; // D3DPBLENDCAPS_DESTCOLOR (source): a failed capsule pass divides the rim back out
     HRESULT fp16_blending = S_FALSE;
 };
 // Step 2, the hull hit (docs/architecture/weapon-look.md 2.5, 2.7, 2.8, 2.14, 3.1): two batched primitives, each one
@@ -138,6 +144,43 @@ struct WeaponLightningVertex {
 // The scorches (hull-impact-classes.md 3.7): glow rectangles drawn with the glow programs under ZERO / INVSRCCOLOR (the
 // scene x (1 - the program's output)) before every additive layer; their colour s(t) x scorch_colour.
 constexpr unsigned weapon_scorch_boxes = 128;
+// Step 4, the bolts (docs/architecture/bolt-muzzle-look.md 5): one capsule quad per bolt, drawn in place of the frame's
+// late bullet draw by draw_bolts from the stage's WeaponBoltQuads (weapon_effects_bolt_stage.h lays every quantity on the
+// CPU: the frustum cull needs the projection anyway, and the programs stay one pass-through vertex program and one
+// distance-field pixel program). Each corner's clip position and the bolt's seven constant interpolants (the same at the
+// four corners): p0 head px xy and the axis's unit (head -> back) px; p1 the visible axis length (core + tail), the core
+// and the tail px lengths, the drawn streak length from the head; p2 the streak's unit (head -> previous head), the
+// stretch's start (px from the head), the energy factor g_s; p3 the body width at the head and the back end, the halo
+// sigma at both; p4 the tint (max 1) and the core's whiteness h; p5 the style code (0 tracer, 1 slug, 2 orb, 3 wave; +4
+// heavy), the fade, the tail root (of the body width) and the tail gain; p6 the noise seed, the foreshortening c, the
+// wave chord px and the rim flag. 128 bytes a vertex, four a quad (weapon_bolt_vs.hlsl / weapon_bolt_ps.hlsl).
+constexpr unsigned weapon_bolt_quads = 512 + 32; // the tap list's 512 and the beams' and spares' (bolt::list_capacity)
+struct WeaponBoltVertex {
+    float clip[4];
+    float p[7][4];
+};
+struct WeaponBoltQuad {
+    float clip[4][4]; // corners: head-left, head-right, back-left, back-right (a strip-free quad: indices 0 1 2, 2 1 3)
+    float p[7][4];
+};
+// The draw: the frame's quads in kind order (line kinds first, then orbs, then waves; within the line and orb kinds the
+// rim-eligible quads first, so the rim pass draws two prefixes), the pixel constants and the far flag's variant.
+struct WeaponBoltDraw {
+    const WeaponBoltQuad* quads = nullptr;
+    unsigned lines = 0, orbs = 0, waves = 0;     // [0, lines) line kinds, [lines, lines + orbs) orbs, then waves
+    unsigned rim_lines = 0, rim_orbs = 0;        // the rim-eligible prefixes of the line and orb ranges
+    float look[4][4]{};                          // c0..c3 of weapon_bolt_ps.hlsl (stage::bolt_pixel_constants)
+    bool far_flag = false;                       // the caller bound RT1 (masked) and RT2 (GREEN): the MRT variant
+    bool rim = true;                             // the multiply rim's first pass (core::bolt::rim and its gate)
+};
+enum class WeaponBoltStep : unsigned { None, Validate, Resources, Save, Lock, State, Rim, Capsules, Restore };
+struct WeaponBoltReport {
+    HRESULT operation = S_FALSE;
+    WeaponBoltStep failed = WeaponBoltStep::None;
+    unsigned draws = 0, quads = 0, rim_quads = 0, calls = 0;
+    bool drew = false, restored = true;          // restored false: a restore call failed (the caller drops its shadow)
+    bool rim_undone = false;                     // the capsule pass failed after the rim: the rim's band divided back out
+};
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
 // frame perpendicular to the face's axis), their box and the face's newest hits still in their ring. Plane and axis
 // are view units in the owner's frame: view = centre + view_u q.x + view_v q.y + view_a depth; the pixels light the
@@ -272,7 +315,7 @@ public:
     // hull (shields,hull): also the sprite batch, the glow and the fireball (their programs and the batch limits); their refusal
     // leaves the pass enabled for the patches with caps().hull_enabled false.
     HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format,
-                   bool hull = false) noexcept;
+                   bool hull = false, bool bolts = false) noexcept;
     void detach() noexcept;
     const WeaponEffectsCaps& caps() const noexcept { return caps_; }
     void before_reset() noexcept;
@@ -283,11 +326,22 @@ public:
     HRESULT run(const WeaponEffectsFrame&, WeaponEffectsReport*) noexcept;
     unsigned references() const noexcept;
     const std::uint16_t* cell_indices() const noexcept { return indices_; }
+    // Step 4: the in-place bolt draw inside the game's scene at its late bullet draw (docs/architecture/bolt-muzzle-look.md
+    // 5.1): every state it sets is read first through the documented Get* calls (the device is non-pure under the proxy)
+    // and put back after, in reverse order: the programs, the declaration, stream 0 and its frequency (refused unless 1),
+    // the indices, the pixel constants c0..c3 and the render states of the two passes. The rim pass (ZERO / INVSRCCOLOR,
+    // COLORWRITEENABLE1 and 2 = 0) draws the rim-eligible prefixes, then the capsule pass (ONE / ONE, the masks the
+    // caller left: RT1 0 and RT2 GREEN with the far flag) draws every quad; LESSEQUAL with Z write off, CULL NONE. The
+    // quads are written into the dynamic vertex buffer under one DISCARD lock. S_FALSE with no device call when there
+    // is nothing to draw; a lost device passes through; a failed restore reports restored = false.
+    HRESULT draw_bolts(const WeaponBoltDraw&, WeaponBoltReport*) noexcept;
 #if defined(X3M_WEAPON_EFFECTS_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
     // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the next draw, bit 2 every draw,
     // bit 3 refuses the program creation (attach: program_create, no object kept), bit 4 the hull programs only
     // (attach succeeds with hull_enabled false, hull_reason hull_program_create).
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
+    // bit 5: the bolt programs refused at attach (bolt_reason bolt_program_create); bit 6: the next bolt draw's lock
+    // fails; bit 7: the next bolt draw's second pass fails (the restore still runs).
 #endif
 private:
     template <class Fn> Fn call(unsigned slot) const noexcept {
@@ -296,6 +350,9 @@ private:
     }
     HRESULT create_objects() noexcept;
     HRESULT create_hull_objects() noexcept;
+    HRESULT create_bolt_objects() noexcept;
+    void release_bolt_objects() noexcept;
+    bool bolt_objects_ready() const noexcept;
     void release_objects() noexcept;
     void release_hull_objects() noexcept;
     bool hull_objects_ready() const noexcept;
@@ -327,6 +384,12 @@ private:
     IDirect3DVertexDeclaration9* shape_declaration_ = nullptr;
     IDirect3DVertexShader9* lightning_vs_ = nullptr;
     IDirect3DVertexDeclaration9* lightning_declaration_ = nullptr;
+    IDirect3DVertexShader9* bolt_vs_ = nullptr;
+    IDirect3DPixelShader9* bolt_ps_ = nullptr;
+    IDirect3DPixelShader9* bolt_flag_ps_ = nullptr;
+    IDirect3DVertexDeclaration9* bolt_declaration_ = nullptr;
+    IDirect3DVertexBuffer9* bolt_vb_ = nullptr; // DEFAULT pool, DYNAMIC | WRITEONLY: released before Reset
+    IDirect3DIndexBuffer9* bolt_ib_ = nullptr;  // DEFAULT pool, WRITEONLY, the quads' indices written once
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
     std::uint16_t sprite_indices_[weapon_sprite_quads * 6]{}; // two triangles per quad (attach time; the glows' too)

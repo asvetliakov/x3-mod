@@ -35,6 +35,7 @@
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
 #include "../../src/proxy/weapon_effects_hull.h"
+#include "../../src/proxy/weapon_effects_bolt_stage.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
@@ -877,6 +878,8 @@ unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
 void class_cases(rr::WeaponEffectsPass& pass);
 #include "weapon_effects_hull_cases.h"
 #include "weapon_effects_class_cases.h"
+void bolt_draw_cases(D3DPRESENT_PARAMETERS& pp);
+#include "weapon_effects_bolt_draw_cases.h"
 }
 
 int main(int argc, char** argv) {
@@ -944,6 +947,12 @@ int main(int argc, char** argv) {
                 pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().bubble_ps_slots, pass.caps().decal_vs_slots,
                 pass.caps().decal_ps_slots, unsigned(sizeof(rr::WeaponPatch)),
                 unsigned(sizeof(rr::WeaponPatch) * wc::max_patches));
+    // X3M_WEAPON_EFFECTS_BOLTS_ONLY=1 (a development run, never the record): the step-4 cases alone.
+    if (const char* only = std::getenv("X3M_WEAPON_EFFECTS_BOLTS_ONLY"); only && *only == '1') {
+        bolt_draw_cases(pp);
+        std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
+        return failures ? 1 : 0;
+    }
     // The cell map's sort (review F5): rr::sort_by_key (heap sort) against the insertion sort it replaced, on 128 keys
     // shuffled, ascending and descending (best of 2000 sorts each, us).
     {
@@ -2473,6 +2482,8 @@ int main(int argc, char** argv) {
     }
     // Step 2: the hull hit (weapon_effects_hull_cases.h; its own Reset and fault cases before the patches' below).
     hull_cases(pass, pp);
+    // Step 4: the bolts and the muzzle (weapon_effects_bolt_draw_cases.h; its own pass, Reset and fault cases).
+    bolt_draw_cases(pp);
     // Program creation refused (fault bit 3): attach refuses with program_create and keeps no object; run refuses at once.
     {
         rr::WeaponEffectsPass refused;

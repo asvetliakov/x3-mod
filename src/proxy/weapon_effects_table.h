@@ -5,11 +5,13 @@
 // The reader of <game>\x3m\weapon_effects.json (tools/effects/weapon_effects_table.py, docs/architecture/
 // weapon-effects.md 3.2), reduced to weapon_effects::core::Table. Portable (host tests compile it); runs once at
 // initialize, never in the handler. Shape:
-//   {"schema": 1, "tool": "...", ..., "tables": {
+//   {"schema": 1|2, "tool": "...", ..., "tables": {
 //      "bullets":  {"rows": N, "sha256": "<16 hex>", "entries": [{"row": i, "id": "SS_BULLET_...", "z_over_xy": e|null,
 //                   "texture_rgb": [r, g, b]|null, "style": "<shape>"|null, "tint": [r, g, b]|null,
-//                   "calibre": k|null, "hull": "repair"|"tug"|"energy"|"ballistic"|"plasma"|"heavy"|"ion"|null, ...}, ...]},
+//                   "calibre": k|null, "hull": "repair"|"tug"|"energy"|"ballistic"|"plasma"|"heavy"|"ion"|null,
+//                   "mount_tier": "fighter"|"corvette"|"capital"|null, "range_m": m|null, ...}, ...]},
 //      "missiles": {"rows": M, ...}}}
+// Schema 2 (step 4) adds mount_tier and range_m; a schema 1 table reads as every row a fighter mount of unknown range.
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -20,6 +22,7 @@ struct Stats {
     unsigned entries = 0, dropped = 0, textures = 0, overrides = 0;
     unsigned schema = 0;
     unsigned hull_keys = 0; // entries carrying the "hull" key (0: a table generated before step 2, or no variant row)
+    unsigned mount_keys = 0; // entries carrying "mount_tier" (step 4; 0: a table generated before it)
 };
 inline bool parse_rgb(json::Cursor& c, std::uint32_t* out, bool* present) noexcept {
     *present = false;
@@ -53,6 +56,9 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     // hull: the hull-hit variant (row_hull_repair / row_hull_tug, step 2) or a class pin (row_hull_class with hull_class,
     // docs/architecture/hull-impact-classes.md section 2)
     std::uint8_t style = 0, hull = 0, hull_class = 0;
+    std::uint8_t mount = 0; // step 4: the mount tier (fighter when absent or unknown)
+    float range = 0.f;
+    bool range_present = false;
     if (!c.accept('}'))
         for (;;) {
             char key[24];
@@ -96,6 +102,19 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                             hull_class = std::uint8_t(c);
                         }
                 }
+            } else if (!std::strcmp(key, "mount_tier")) {
+                ++st->mount_keys;
+                if (!c.literal("null")) {
+                    char name[16];
+                    bool name_fits;
+                    if (!c.string(name, sizeof name, &name_fits)) return false;
+                    mount = !name_fits                       ? std::uint8_t(0)
+                            : !std::strcmp(name, "corvette") ? std::uint8_t(1)
+                            : !std::strcmp(name, "capital")  ? std::uint8_t(2)
+                                                             : std::uint8_t(0);
+                }
+            } else if (!std::strcmp(key, "range_m")) {
+                if (!c.number_or_null(&range, &range_present)) return false;
             } else if (!c.skip_value())
                 return false;
             if (c.accept('}')) break;
@@ -128,6 +147,8 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     }
     bits |= hull;
     t->hull_class[i] = hull_class;
+    t->mount_tier[i] = mount;
+    t->range_m[i] = range_present && range > 0.f ? std::uint16_t(range < 65535.f ? range + 0.5f : 65535.f) : std::uint16_t(0);
     if (bits & (core::row_style_override | core::row_tint_override | core::row_calibre_override | core::row_hull_repair |
                 core::row_hull_tug | core::row_hull_class))
         ++st->overrides;
@@ -182,7 +203,7 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                     break;
                 }
                 st->schema = unsigned(v);
-                schema = v == 1.f;
+                schema = v == 1.f || v == 2.f; // 2: step 4's mount_tier and range_m
             } else if (fits && !std::strcmp(key, "tables")) {
                 if (!c.expect('{')) {
                     ok = false;

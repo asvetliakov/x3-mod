@@ -468,6 +468,12 @@ collisions) for the tuning that follows.
 
 ### 3.3 Bolts, their trails, and the muzzle (step 4)
 
+The look, sizes, anatomy and laws of the bolts and the muzzle are ratified in
+[bolt-muzzle-look.md](bolt-muzzle-look.md) (2026-11-07), which amends this section; its numbers, gates and kill
+criteria stand where they differ from the sketch below. The hook sites, the in-place late-bullet draw, the records and
+the modes of this section stand. Implementation state: [weapon-effects.md](../verification/weapon-effects.md), "Bolts
+and muzzle (step 4)".
+
 **Records.** The per-bullet tap at the sector update's call site **`0x0045ac7d`** (`E8` → `0x00414590`, one argument,
 EBX/EBP/EDI live, no register inputs, return dead; a plain write in the install window [M, spawn note 8.2]): the stub
 records class-0 objects (row `+0x4a`, node `+0x30`, rotation `+0x40`, `ext+0x78`, creation `ext+8`) into a per-frame

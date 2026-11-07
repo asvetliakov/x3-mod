@@ -11,6 +11,11 @@ diffuse texture's alpha-weighted mean colour as 8-bit sRGB (engine_bodies.py's t
 that decodes), the shape the elongation gives (weapon_effects_core.h tracer/slug/orb thresholds, informational: the
 DLL applies the same thresholds to z_over_xy and the live flag word), and the curated override fields from
 tools/effects/weapon_overrides.json resolved to the row (style, tint as 8-bit sRGB, calibre; by_table wins over by_id).
+Schema 2 (step 4, docs/architecture/bolt-muzzle-look.md section 1) adds per row the mount tier (mount_tier: the smallest
+ship class whose TShips/TCockpits laser masks admit a TLaser row firing the bullet, tools/effects/weapon_catalog.py's
+used-by rule: any of M5/M4/M3 -> fighter, only M1/M2/M7/TL -> capital, else corvette; a bullet no laser fires, the
+fragments, or no mounting row -> fighter, the note's unknown 7 fallback) and the range (range_m: lifetime ms x speed /
+1000 / 500, metres; null when either column is missing).
 Per TMissiles row only the count. Also the TBullets table's decoded hash and row count (the DLL compares the count
 with the live *0x00607038 and disables the lookups on a mismatch), the generator's schema and its `tool` field (the
 ownership mark manage.py and x3m-regenerate test before replacing or removing the file). Only names, numbers and
@@ -28,8 +33,9 @@ sys.path.insert(0, str(ROOT / 'tools/effects'))
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import engine_bodies  # noqa: E402
 import weapon_effects_census as census_reader  # noqa: E402
+import weapon_catalog  # noqa: E402
 
-SCHEMA = 1
+SCHEMA = 2  # 2: mount_tier and range_m per bullet row (step 4); the DLL reads 1 and 2
 TOOL = 'tools/effects/weapon_effects_table.py'
 OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
 # weapon_effects_core.h 4.1 (the host test pins both against the header).
@@ -46,6 +52,44 @@ OVERRIDE_SCHEMAS = (1, 2)
 
 class GenerateError(Exception):
     pass
+
+
+# Step 4 (bolt-muzzle-look.md section 1): the mount tiers by OBJ_SHIP_* class (prefix removed).
+FIGHTER_CLASSES, CAPITAL_CLASSES = frozenset(('M5', 'M4', 'M3')), frozenset(('M1', 'M2', 'M7', 'TL'))
+MOUNT_TIERS = ('fighter', 'corvette', 'capital')
+
+
+def mount_tier_of(classes):
+    """The mount tier from the classes that mount the weapon ({class: rows} or any iterable of class names)."""
+    u = set(classes)
+    if not u or u & FIGHTER_CLASSES:
+        return 'fighter'
+    return 'capital' if u <= CAPITAL_CLASSES else 'corvette'
+
+
+def mount_classes(assets):
+    """{bullet index: set of OBJ_SHIP_* classes mounting a laser that fires it} from the selected layers' TLaser,
+    TShips and TCockpits (weapon_catalog's mask rule and excluded rows)."""
+    texts = {}
+    for name in ('TLaser', 'TShips', 'TCockpits'):
+        data, _ = assets.get(f'types/{name}.txt')
+        texts[name] = data.decode('latin1')
+    lasers = weapon_catalog.parse_tlaser(texts['TLaser'], lambda page, ident: None)
+    ships, _, _ = weapon_catalog.ship_masks(texts['TShips'], weapon_catalog.parse_tcockpits(texts['TCockpits']))
+    out = {}
+    for laser in lasers:
+        if laser['bullet'] is None:
+            continue
+        out.setdefault(laser['bullet'], set()).update(weapon_catalog.used_by(laser['subtype_bit'], ships))
+    return out
+
+
+def range_of(w):
+    """Speed x lifetime in metres (the catalogue's range_m), None when either column is missing."""
+    speed, life = w.get('speed'), w.get('lifetime_ms')
+    if not isinstance(speed, (int, float)) or not isinstance(life, (int, float)) or speed <= 0 or life <= 0:
+        return None
+    return round(life * speed / 1000 / weapon_catalog.UNITS_PER_M, 1)
 
 
 def shape_from_elongation(e):
@@ -96,14 +140,16 @@ def diffuse_names(body):
     return out
 
 
-def row_entry(w, body, colour, override):
+def row_entry(w, body, colour, override, mounts=None):
     ext = (body or {}).get('extents') or {}
     e = ext.get('z_over_xy')
     half = ext.get('half_extents')
     entry = dict(row=w['index'], id=w['weapon_id'], body=w['body_key'],
                  z_over_xy=e, half_extent=round(max(half[0], half[1]), 4) if half else None,
                  texture_rgb=[int(round(min(255.0, max(0.0, float(c))))) for c in colour['mean']] if colour else None,
-                 shape=shape_from_elongation(e), style=None, tint=None, calibre=None)
+                 shape=shape_from_elongation(e), style=None, tint=None, calibre=None,
+                 mount_tier=mount_tier_of(mounts or ()), range_m=range_of(w),
+                 mount_fallback=not mounts)  # no mounting ship class: the fighter fallback (unknown 7), logged
     if 'style' in override:
         if override['style'] not in SHAPES:
             raise GenerateError(f"override for {w['weapon_id']}: unknown style {override['style']!r}")
@@ -135,6 +181,10 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
     except FileNotFoundError as exc:
         raise GenerateError(f'types table not found in the selected layers: {exc}') from None
     table = result['tables']['TBullets']
+    try:
+        mounts = mount_classes(assets)
+    except FileNotFoundError as exc:
+        raise GenerateError(f'mount tables not found in the selected layers: {exc}') from None
     cache = {}
     entries, applied = [], 0
     for w in result['weapons']:
@@ -149,7 +199,7 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
                 break
         override = override_for(overrides, table['sha256'], w['weapon_id'])
         applied += bool(override)
-        entries.append(row_entry(w, body, colour, override))
+        entries.append(row_entry(w, body, colour, override, mounts.get(w['index'])))
     missile_rows = len(census_reader.data_rows(missiles_text.decode('latin1'))[1:])
     return dict(
         schema=SCHEMA, tool=TOOL,
@@ -160,11 +210,20 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
                             if Path(overrides_path).resolve().is_relative_to(ROOT) else str(overrides_path)),
         rules=dict(tracer_min_elongation=TRACER_MIN_ELONGATION, slug_min_elongation=SLUG_MIN_ELONGATION,
                    texture_rgb='alpha-weighted mean of the first decodable body texture, 8-bit sRGB',
-                   tint='override tint, linear -> 8-bit sRGB'),
+                   tint='override tint, linear -> 8-bit sRGB',
+                   mount_tier='smallest mounting class: any of M5/M4/M3 fighter, only M1/M2/M7/TL capital, else '
+                              'corvette; unmounted fighter',
+                   range_m='lifetime_ms x speed / 1000 / 500 m'),
         counts=dict(bullets=len(entries), missiles=missile_rows, textures=sum(1 for e in entries if e['texture_rgb']),
-                    overrides=applied),
+                    overrides=applied, mount_fallback=sum(1 for e in entries if e['mount_fallback']),
+                    **{t: sum(1 for e in entries if e['mount_tier'] == t) for t in MOUNT_TIERS}),
         tables=dict(bullets=dict(rows=len(entries), sha256=table['sha256'], entries=entries),
                     missiles=dict(rows=missile_rows)))
+
+
+def mount_fallback_rows(table):
+    """The bullet rows that took the fighter tier because no ship class mounts them (unknown 7)."""
+    return [e for e in table['tables']['bullets']['entries'] if e.get('mount_fallback')]
 
 
 def dumps(table):
@@ -189,6 +248,10 @@ def main(argv=None):
     except (GenerateError, ValueError) as exc:
         print(f'weapon_effects_table: {exc}', file=sys.stderr)
         return 1
+    # the rows no ship class mounts (the fighter fallback, bolt-muzzle-look.md unknown 7): one line each
+    for e in mount_fallback_rows(table):
+        print(f"weapon_effects_table: mount fallback (fighter): row {e['row']} {e['id']} (no mounting ship class)",
+              file=sys.stderr)
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp = out.with_name(out.name + '.tmp')
     tmp.write_text(dumps(table))

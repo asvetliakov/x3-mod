@@ -14,7 +14,11 @@ contain no call instruction (core::impact / core::tap and every helper inlined i
 COMDAT instance of another TU can be bound, review F10), that the impact stub is exactly pushf, push, push, push, cld, lea, push,
 call, add, test, pop, pop, pop, jne, popf, jmp [continue], popf, xor, ret with `lea eax,[esp+0x10]`, that
 engine_patch.o carries `lock cmpxchg8b`, and that the module routes through the seam (no VirtualProtect import of its
-own).
+own). Step 4 (docs/architecture/bolt-muzzle-look.md): the bolt-tap stub has the tap's shape (pushf, push x3, cld, lea
+eax,[esp+0x10], push, call, add, pop x3, popf, jmp [continue]), the flight stub the impact's, the muzzle stub passes EAX
+and EDX (pushf, push x3, cld, push edx, push eax, lea eax,[esp+0x18], push, call, add esp,0xc, test, pop x3, jne, popf,
+jmp [continue], popf, xor, ret), and the three handler entry points _x3m_weapon_bolt_tap / _x3m_weapon_muzzle /
+_x3m_weapon_flight contain no call.
 """
 import json
 import re
@@ -30,6 +34,10 @@ IMAGE_BASE = 0x800000
 HANDLER_FLAGS = ('-fno-exceptions', '-mno-sse', '-mno-mmx', '-mfpmath=387')
 STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'add', 'test', 'pop', 'pop', 'pop', 'jne',
         'popf', 'jmp', 'popf', 'xor', 'ret']
+TAP_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'add', 'pop', 'pop', 'pop', 'popf', 'jmp']
+MUZZLE_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'push', 'lea', 'push', 'call', 'add', 'test', 'pop', 'pop',
+               'pop', 'jne', 'popf', 'jmp', 'popf', 'xor', 'ret']
+HANDLERS = ('_x3m_weapon_event', '_x3m_weapon_tap', '_x3m_weapon_bolt_tap', '_x3m_weapon_muzzle', '_x3m_weapon_flight')
 X87 = re.compile(r'^\s*[0-9a-f]+:\s+(f[a-z0-9]+|emms)\b|\b(st\(\d\)|mm[0-7])\b')
 
 
@@ -41,6 +49,14 @@ def stub(listing, name):
     body = listing.split(f'<{name}>:', 1)[1].split('\n\n', 1)[0] if f'<{name}>:' in listing else ''
     rows = [m.groups() for m in (re.match(r'^\s*[0-9a-f]+:\s+([a-z]+)\s*(.*)$', line) for line in body.splitlines()) if m]
     end = next((i for i, (m, _) in enumerate(rows) if m == 'ret'), len(rows) - 1)
+    return [m for m, _ in rows[:end + 1]], [o.strip() for _, o in rows[:end + 1]]
+
+
+def stub_to_jmp(listing, name):
+    """A stub that ends in its forwarding jmp (no ret): the rows up to the first jmp."""
+    body = listing.split(f'<{name}>:', 1)[1].split('\n\n', 1)[0] if f'<{name}>:' in listing else ''
+    rows = [m.groups() for m in (re.match(r'^\s*[0-9a-f]+:\s+([a-z]+)\s*(.*)$', line) for line in body.splitlines()) if m]
+    end = next((i for i, (m, _) in enumerate(rows) if m == 'jmp'), len(rows) - 1)
     return [m for m, _ in rows[:end + 1]], [o.strip() for _, o in rows[:end + 1]]
 
 
@@ -59,8 +75,15 @@ def audit(objects):
     handler_x87 = [line.strip() for line in hlist.splitlines() if X87.search(line)]
     i_mn, i_ops = stub(hlist, '_x3m_weapon_effects_stub_impact')
     stub_ok = i_mn == STUB and i_ops[5] == 'eax,[esp+0x10]' and i_ops[15].startswith('DWORD PTR ds:')
+    b_mn, b_ops = stub_to_jmp(hlist, '_x3m_weapon_effects_stub_bolt_tap')
+    bolt_tap_ok = b_mn == TAP_STUB and b_ops[5] == 'eax,[esp+0x10]' and b_ops[13].startswith('DWORD PTR ds:')
+    m_mn, m_ops = stub(hlist, '_x3m_weapon_effects_stub_muzzle')
+    muzzle_ok = (m_mn == MUZZLE_STUB and m_ops[5] == 'edx' and m_ops[6] == 'eax' and m_ops[7] == 'eax,[esp+0x18]' and
+                 m_ops[10] == 'esp,0xc' and m_ops[17].startswith('DWORD PTR ds:'))
+    f_mn, f_ops = stub(hlist, '_x3m_weapon_effects_stub_flight')
+    flight_ok = f_mn == STUB and f_ops[5] == 'eax,[esp+0x10]' and f_ops[15].startswith('DWORD PTR ds:')
     handler_calls = {name: [line.strip() for line in body(hlist, name) if re.search(r'\bcall\b', line)]
-                     for name in ('_x3m_weapon_event', '_x3m_weapon_tap')}
+                     for name in HANDLERS}
     handler_rows = {name: len(body(hlist, name)) for name in handler_calls}
     # The handler's own stack frame (its entry `sub esp,N`; the stub adds 0x20 and the return address): recorded, the
     # fixture measures the depth it reaches below the synthetic frame. The first rows, not only the first two: GCC may
@@ -72,10 +95,12 @@ def audit(objects):
     patch = tool('objdump', '-d', '--no-show-raw-insn', str(objects['patch']))
     record = {'handler_undefined': undefined, 'handler_x87': handler_x87, 'handler_calls': handler_calls,
               'handler_instructions': handler_rows, 'handler_frame_bytes': frame[0] if frame else 0,
-              'stub_impact': i_mn, 'stub_ok': stub_ok,
+              'stub_impact': i_mn, 'stub_ok': stub_ok, 'stub_bolt_tap': b_mn, 'stub_bolt_tap_ok': bolt_tap_ok,
+              'stub_muzzle': m_mn, 'stub_muzzle_ok': muzzle_ok, 'stub_flight': f_mn, 'stub_flight_ok': flight_ok,
               'module_imports_own_protect': module_own_protect,
               'engine_patch_lock_cmpxchg8b': len(re.findall(r'lock cmpxchg8b', patch))}
-    if (undefined or handler_x87 or not stub_ok or module_own_protect or record['engine_patch_lock_cmpxchg8b'] < 1 or
+    if (undefined or handler_x87 or not stub_ok or not bolt_tap_ok or not muzzle_ok or not flight_ok or
+            module_own_protect or record['engine_patch_lock_cmpxchg8b'] < 1 or
             any(handler_calls.values()) or not all(handler_rows.values())):
         raise RuntimeError('fixture build audit failed: ' + json.dumps(record))
     return record

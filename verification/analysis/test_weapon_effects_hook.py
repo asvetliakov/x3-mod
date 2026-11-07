@@ -75,8 +75,9 @@ class WeaponEffectsHookRecord(unittest.TestCase):
     def test_build_audit(self):
         a = self.record['build']['audit']
         self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
-        self.assertEqual(a['handler_calls'], {'_x3m_weapon_event': [], '_x3m_weapon_tap': []})
-        self.assertTrue(a['stub_ok'])
+        self.assertEqual(a['handler_calls'], {'_x3m_weapon_event': [], '_x3m_weapon_tap': [], '_x3m_weapon_bolt_tap': [],
+                                              '_x3m_weapon_muzzle': [], '_x3m_weapon_flight': []})
+        self.assertTrue(a['stub_ok'] and a['stub_bolt_tap_ok'] and a['stub_muzzle_ok'] and a['stub_flight_ok'])
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
         # the stub (0x20 + the return address) and the handler's frame stayed inside the fixture's margin
         self.assertEqual(self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x24)

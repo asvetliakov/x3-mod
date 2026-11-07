@@ -22,7 +22,7 @@
 // after the hysteresis). Fixture: the seam's injected node.
 void MotionOutput::resolve_own_ship() noexcept {
     if (own_ship_frame_ == frame_) return;
-    own_ship_frame_ = frame_; own_ship_node_ = 0; own_ship_handle_ = 0;
+    own_ship_frame_ = frame_; own_ship_node_ = 0; own_ship_handle_ = 0; own_ship_object_ = 0;
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
     if (fixture_own_ship_set_) { own_ship_node_ = fixture_own_ship_node_; own_ship_handle_ = fixture_own_ship_handle_; own_ship_status_ = unsigned(object_capture::Status::Ready); return; }
 #endif
@@ -52,7 +52,8 @@ void MotionOutput::resolve_own_ship() noexcept {
     const auto s = object_capture::own_ship(read, 0x608504);
 #endif
     own_ship_status_ = unsigned(s.status);
-    if (s.status == object_capture::Status::Ready) { own_ship_node_ = s.node; own_ship_handle_ = s.node_handle; }
+    own_ship_object_ = 0;
+    if (s.status == object_capture::Status::Ready) { own_ship_node_ = s.node; own_ship_handle_ = s.node_handle; own_ship_object_ = s.object; }
     SetLastError(error);
 }
 // Whether a draw's scope node belongs to the own ship: the root itself, or a

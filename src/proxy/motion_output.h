@@ -100,6 +100,9 @@ inline constexpr std::size_t motion_matrix_windows_max = 4;
 inline constexpr std::size_t motion_shadow_state_count = 32;
 }
 
+namespace x3m::weapon_effects {
+struct BoltFrame; // step 4: the in-place bolt draw's per-frame figures (weapon_effects_patch.h)
+}
 namespace x3m {
 struct MotionDrawCall {
     bool indexed = false, user_memory = false;
@@ -1215,6 +1218,9 @@ public:
                                                                  // orphans, floored, owners_dropped, capped; 23..26:
                                                                  // bursts, rings, bursts_shed, burst_lod; 27: the
                                                                  // pass holds the hull programs
+    // Step 4 (shields,hull,bolts): the in-place bolt draw's figures since the last call (weapon_effects::BoltFrame), the
+    // frame's arming reason and the muzzle latch; Present calls it once a frame (docs/architecture/bolt-muzzle-look.md 5).
+    void weapon_bolts_take_frame(x3m::weapon_effects::BoltFrame* bolt_frame) noexcept;
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2275,6 +2281,27 @@ private:
                                  // since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
+    // Step 4 (shields,hull,bolts): the in-place bolt draw's figures since the last take (weapon_bolts_take_frame), set by
+    // the capsule draw when it replaces the frame's late bullet draw.
+    bool weapon_bolt_drew_ = false;
+    unsigned weapon_bolt_count_ = 0, weapon_bolt_suppressed_ = 0, weapon_bolt_culled_ = 0, weapon_bolt_beams_ = 0,
+             weapon_bolt_parity_ = 0;
+    float weapon_bolt_build_us_ = 0.f;
+    // The in-place draw (motion_output_weapon_effects_inc.h weapon_bolts_in_place; the frame's ownership is the inc's
+    // stage::BoltOwnership): requested at configure (shields,hull,bolts), the muzzles the stage built (its figures for the
+    // BoltFrame: drawn, native, end-on, starved; built and drawn this frame, the muzzle latch's inputs), the rims,
+    // refusals and the failure latch (three consecutive failed draws: off until Reset; one: 64 frames native), the
+    // arming reason cached per frame.
+    bool weapon_bolts_requested_ = false, weapon_bolt_failed_out_ = false;
+    bool weapon_bolt_muzzle_built_ = false, weapon_bolt_muzzle_drew_ = false, weapon_bolt_armed_ = false;
+    unsigned weapon_bolt_failures_ = 0, weapon_bolt_muzzles_ = 0, weapon_bolt_muzzle_elements_ = 0,
+             weapon_bolt_muzzle_glows_ = 0, weapon_bolt_muzzle_puffs_ = 0, weapon_bolt_rims_ = 0, weapon_bolt_refused_ = 0;
+    unsigned weapon_bolt_muzzle_native_ = 0, weapon_bolt_muzzle_endon_ = 0, weapon_bolt_muzzle_starved_ = 0;
+    unsigned long long weapon_bolt_disarmed_until_ = 0, weapon_bolt_armed_frame_ = ~0ull;
+    const char* weapon_bolt_reason_ = "off";
+    bool weapon_bolt_reason_logged_ = false;
+    bool weapon_bolts_in_place(const MotionDrawCall&, MotionRoute&) noexcept;
+    bool weapon_bolts_armed() noexcept;
     bool weapon_cockpit_ = false; // this frame: the view is the cockpit (chase_camera's last active-control visit, mode 1)
     static constexpr unsigned weapon_failure_limit = 3;
     bool weapon_effects_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
@@ -2680,6 +2707,7 @@ private:
     renderer::ShadowCascadeAdaptive cascade_adaptive_{};
     std::uint64_t own_ship_frame_ = ~std::uint64_t(0);
     std::uintptr_t own_ship_node_ = 0;
+    std::uintptr_t own_ship_object_ = 0; // the own ship's object (step 4: the bolt tap's own-ship owner)
     std::uint32_t own_ship_handle_ = 0, own_ship_status_ = 0;
     float own_radius_frame_ = 0.f;
     unsigned own_draws_frame_ = 0;

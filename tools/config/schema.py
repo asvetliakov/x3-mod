@@ -440,13 +440,18 @@ SETTINGS = [
           'it looks like off; the trails come later); default plumes. Read when the game starts.', builtin='plumes',
           choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
     entry('weapon_effects', 'enum', 'engine', 'Weapon hit effects drawn by the mod (step 1: shield hits; step 2: hull '
-          'hits). native = the '
+          'hits; step 4: bolts and the muzzle flash). native = the '
           'game\'s own effects, nothing changed; observe = the game\'s effects with every hit recorded in the log (the '
           'first test flight); shields = the mod draws its own shield-hit shell with expanding rings instead of the '
           'game\'s shield sprite (needs the HDR and TAA defaults, otherwise the game\'s sprite stays); shields,hull = '
           'shields plus the mod\'s own hull hit (a brief flash, cooling sparks, a glow and an ember on the hull) instead of '
-          'the game\'s impact sprite (also written hull,shields). Default native. Read when the game starts.',
-          builtin='native', choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields'),
+          'the game\'s impact sprite (also written hull,shields). shields,hull,bolts = adds the mod\'s own projectiles '
+          '(energy bolts, slugs, plasma orbs, flak) drawn in place of the game\'s bullet sprites and a per-weapon muzzle '
+          'flash (in any token order); it needs screen_emission_additive = 1 (the only route that sees the game\'s '
+          'bullet draws: without it the bolts and muzzle flashes stay the game\'s, logged as weapon_bolts_state '
+          'reason=screen_emission_additive). Default native. Read when the game starts.',
+          builtin='native',
+          choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields', 'shields,hull,bolts'),
           launcher='--weapon-effects', since='2026-11-05'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Read when the game '
