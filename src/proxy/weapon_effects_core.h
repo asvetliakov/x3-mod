@@ -51,6 +51,11 @@ inline const char* tint_source_name(unsigned t) noexcept {
 enum EventFlag : std::uint8_t { flag_absorbed = 1, flag_forwarded = 2, flag_nested = 4, flag_stage = 8,
                                 flag_override_applied = 16, flag_calibre_override = 32, flag_logged = 64,
                                 flag_shield_read = 128 };
+// A death record's own uses of the impact-only bits: flag_swapped (the native spawn ran through the clone row R', with
+// flag_stage and flag_forwarded), and the stage's answer to unknown 4 (explosion-look.md section 11): whether it looked
+// up the dying owner in the bubble cache (flag_bubble_looked) and found its box there (flag_bubble_cached).
+constexpr std::uint8_t flag_swapped = flag_absorbed, flag_bubble_looked = flag_override_applied,
+                       flag_bubble_cached = flag_calibre_override;
 // Whether a stage-owned shield hit also skips the engine's spawn (0x00413c40 not called: no native impact sprite, its
 // light or its PROPAGATE children). true (coordinator decision 2026-11-06, superseding the user decision of the same
 // day to keep the native sprite under the patch): in shields mode the patch alone answers a shield hit the stage owns;
@@ -185,6 +190,18 @@ constexpr std::uint16_t class_no_effect = 0x1c;
 constexpr std::uint32_t obj_missile_area = 0x1000000u;
 constexpr unsigned ship_death_row = 0xbc, station_death_row = 0x60, asteroid_death_row = 0x48, missile_death_row = 0x7c;
 constexpr unsigned caller_reason = 8; // the kill routine 0x0044abd0's word [ebp+8]: the reason
+// The Effects row table (spawn note 10.1: 0x00580068 + id 0x14, ids 0..999; the loader 0x004126d0): count +0, EDF flags
+// +4 (|1 for a BREAKUP element, |2 EDF_PROPAGATE for a PROPAGATE one: the death path's second carrier at 0x004138fa),
+// +8 / +0xc copied, the element array +0x10 (count 0x70-byte records). Element fields (10.2): body +0, I3DF +4, timeout
+// +0x10, EEDF flags +0x3c, start +0x40. EEDF bits: TIMEOUT 0x10, CUT 0x20, LIGHT 0x80, FADEOUTBODY 0x800 (the carrier's
+// root faded over a fixed 1000 ms from the element's start), PROPAGATE 0x4000, DISTANT 0x20000 (phase 2 at its start:
+// never a node), WRECK 0x4000000.
+constexpr unsigned row_stride = 0x14, row_count = 0, row_flags = 4, row_8 = 8, row_c = 0xc, row_elements = 0x10;
+constexpr unsigned row_ids = 1000, element_stride = 0x70;
+constexpr unsigned el_body = 0, el_i3df = 4, el_timeout = 0x10, el_flags = 0x3c, el_start = 0x40;
+constexpr std::uint32_t edf_propagate = 2;
+constexpr std::uint32_t eedf_timeout = 0x10, eedf_fadeoutbody = 0x800, eedf_propagate = 0x4000, eedf_distant = 0x20000,
+                        eedf_wreck = 0x4000000;
 }
 struct Globals {                     // the engine's slots (X3AP.exe VAs in production; the fixture maps the same pages)
     std::uintptr_t cfg_slot = 0x00606f34;
@@ -197,6 +214,11 @@ struct Globals {                     // the engine's slots (X3AP.exe VAs in prod
     std::uintptr_t dock_table_slot = 0x00606fcc, dock_count_slot = 0x0060704c;
     std::uintptr_t factory_table_slot = 0x00606fd0, factory_count_slot = 0x00607050;
     std::uintptr_t asteroid_table_slot = 0x00606ffc, asteroid_count_slot = 0x0060707c;
+    // The big tiers' clone row R' (explosion-look.md section 1): the Effects row table (spawn note 10.1) and the EXE's
+    // malloc (0x005112c4, cdecl: the allocator 0x00414ba0 uses, so the engine's reset 0x00412c80 frees the element arrays
+    // with its matching free 0x0050e1b0). Present builds R' through them; the handler reads the table only.
+    std::uintptr_t effects_rows = 0x00580068;
+    std::uintptr_t malloc_va = 0x005112c4;
 };
 static_assert(Globals{}.dock_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_dock &&
                   Globals{}.factory_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_factory &&
@@ -519,16 +541,35 @@ inline const char* tier_name(unsigned t) noexcept {
     static const char* const names[tier_count] = {"fighter", "corvette", "capital", "station", "missile", "asteroid", "other"};
     return t < tier_count ? names[t] : "?";
 }
-// The tiers forwarded native (a bit per Tier) while the sprite mask of the engine's hull copy is not pinned (note 1:
-// the big tiers keep the carrier and its wreck; skipping their spawn would blink a 1.8 km hull out): corvette, capital
-// and station. A tier that reads wrong in flight joins the mask (section 10's last row).
-constexpr std::uint8_t tier_native = 14; // (1 << corvette) | (1 << capital) | (1 << station); a literal the lab reads
-static_assert(tier_native == ((1u << corvette) | (1u << capital) | (1u << station)), "the first flight's native tiers");
-// The seam: whether a record of this tier is the stage's (its native spawn skipped) or forwarded native. The one place
-// the decision is taken; the big tiers' masked forward replaces the `native` answer here once the mask is built.
-enum Decision : std::uint8_t { decide_native = 0, decide_ours = 1 };
+// The tiers forwarded native (a bit per Tier; section 10's last row: a tier that still reads wrong in flight joins it).
+// None since the big tiers' clone row (2026-11-07): corvette, capital and station forward through R' (tier_swap).
+constexpr std::uint8_t tier_native = 0; // a literal the lab reads
+// The tiers whose native spawn runs with the type record's death column pointing at the clone row R' for that one call
+// (section 1: the engine's carrier keeps the hull copy through the pre-roll and fades it over P .. P + 1 s; its sprites
+// DISTANT, its PROPAGATE children dropped): corvette, capital and station. The others (fighter, missile) skip the spawn.
+constexpr std::uint8_t tier_swap = 14; // (1 << corvette) | (1 << capital) | (1 << station); a literal the lab reads
+static_assert(tier_swap == ((1u << corvette) | (1u << capital) | (1u << station)), "the big tiers take R'");
+// The seam: whether a record of this tier is the stage's with its native spawn skipped (ours), the stage's with the
+// native spawn forwarded through R' (swap), or forwarded native. The one place the decision is taken.
+enum Decision : std::uint8_t { decide_native = 0, decide_ours = 1, decide_swap = 2 };
 constexpr Decision decide(unsigned tier) noexcept {
-    return tier < drawn_tiers && !(tier_native & (1u << tier)) ? decide_ours : decide_native;
+    return tier >= drawn_tiers || (tier_native & (1u << tier)) ? decide_native
+           : (tier_swap & (1u << tier))                         ? decide_swap
+                                                                : decide_ours;
+}
+inline const char* decision_name(unsigned d) noexcept {
+    return d == decide_ours ? "ours" : d == decide_swap ? "swap" : "native";
+}
+// Why a death record is what it is (a death record's Event::tier; the weapon_death row's `cause=`): ours (the spawn
+// skipped), swapped through R', or forwarded native because the tier is native, the frame was not the stage's (latch,
+// programs, the family), R' was not ready for the type record's row (not built, a zeroed or foreign slot: the tier stays
+// native for that death, `reason=tier_native`), the type record was unreadable, or the swap stack was full.
+enum Cause : std::uint8_t { cause_ours = 0, cause_swap = 1, cause_tier_native = 2, cause_not_owned = 3,
+                            cause_clone_not_ready = 4, cause_no_record = 5, cause_swap_full = 6, cause_count = 7 };
+inline const char* cause_name(unsigned c) noexcept {
+    static const char* const names[cause_count] = {"ours", "swap", "tier_native", "not_owned", "clone_not_ready",
+                                                   "no_record", "swap_full"};
+    return c < cause_count ? names[c] : "?";
 }
 enum Mode : std::uint8_t { full = 0, simple = 1 };
 constexpr Mode mode = full; // simple (section 10): the same body, shock off, embers halved, smoke off
@@ -554,6 +595,11 @@ constexpr float tier_shock_tau[5] = {0.3f, 0.3f, 0.3f, 0.4f, 0.3f};
 // measured natively 2026-11-07); 1.33 brings both within 5 % (death_tier_sizes).
 constexpr float body_grow = 0.1f, body_hold = 0.8f, body_cool = 0.7f, body_e = 1.5f, body_bias = 0.5f;
 constexpr float body_r_sphere = 1.33f;
+// The drawn sphere's factor by the body's projected radius (px at 1440 rows; 2026-11-07, the big tiers): the 10 %-of-peak
+// outline grows with the pixel size at body_r_sphere (0.98-1.01 R(t) at 57-82 px, the corvette; 1.07 at 280-380 px, the
+// station; 1.10-1.14 at 340-457 px, the capital [M]), so the factor falls linearly from body_r_sphere at sphere_px0 to
+// body_r_sphere_big at sphere_px1 and past; an eye inside the sphere keeps body_r_sphere (secondaries likewise).
+constexpr float body_r_sphere_big = 1.21f, sphere_px0 = 64.f, sphere_px1 = 320.f;
 // Section 3's floor: a body never under body_floor_px of radius at 1440 rows (scaled by the target's rows); a floor
 // raises size, never radiance.
 constexpr float body_floor_px = 12.f;
@@ -573,6 +619,12 @@ constexpr float star_arm = 0.4f, star_core = 0.08f, star_ms = 40.f, star_t = 0.9
 constexpr float shock_r_x = 4.0f, shock_w = 0.06f, shock_e = 1.0f, shock_limb = 0.15f, shock_end = 0.25f;
 // Off for the first flight (decision 6 applied 2026-11-07: the limb-only shell read as a flat ring in the frames).
 constexpr bool missile_shock = false;
+// The tiers that draw the shell (a bit per Tier; coordinator decision D14, 2026-11-07, from the big tiers' frames: the
+// corvette's expanding grey ring and the white ring at the capital's and station's birth are the soap-bubble failure of
+// section 10): none. The program stays built and optional; the fixture forces the shell for its law gates only
+// (BoomTuning::force_shock). The planned replacement is a refraction limb through the engine shimmer pass (the hull
+// shock front's), not a thinner ring.
+constexpr std::uint8_t shock_tiers = 0;
 // 2.4 embers: ember_cones_lo..hi seed cones (axis uniform, half-angle ember_cone_deg, both hashed per event), speed
 // v_e = clamp(ember_v_x R_f per s, ember_v_min, ember_v_max) m/s x a hashed factor in [ember_speed_lo, ember_speed_hi]
 // at constant speed (the linear branch), from the centre +- ember_p0 R_f within the unit ball, never past ember_hide_r
@@ -604,16 +656,57 @@ constexpr float fragment_dark = 0.6f, fragment_tip_t = 0.6f, fragment_dark_r = 1
 // The halo also fades with the body's erosion, x (1 - smoothstep(halo_fade_x0, halo_fade_x1, x)) (2026-11-07: kept at
 // 1.6 R(t) to the end it read as a balloon around the eroded body in the frames).
 constexpr float glow_r_x = 1.6f, glow_r_max = 2.0f, glow_e = 0.33f, halo_soft = 0.5f, halo_fade_x0 = 0.4f, halo_fade_x1 = 0.8f;
+// The halo of corvettes and up (coordinator decision D15, 2026-11-07: at 1.6 R(t) it read as a smooth balloon about the
+// body from 0.3 L): radius halo_big_r R(t), radiance at most halo_big_e E_b, faded out over halo_big_x0 .. halo_big_x1 of
+// L (smoothstep); fighters and missiles keep the law above.
+constexpr float halo_big_r = 1.15f, halo_big_e = 0.2f, halo_big_x0 = 0.3f, halo_big_x1 = 0.6f;
 constexpr float cluster_r_x = 2.0f, cluster_n0 = 1.6f;
 // 2.7 the smoke: the burst's surface-bound multiply puff at smoke_r R_f, y = (t - smoke_t0 L) / (smoke_span L),
 // strength smoke_s0 min(1, y / smoke_rise) (1 - y) / (1 - smoke_rise), the body's seed and rotation.
 constexpr float smoke_r = 1.1f, smoke_t0 = 0.5f, smoke_span = 1.1f, smoke_s0 = 0.45f, smoke_rise = 0.27f;
+// 2.5 and 4, the pre-roll of the capital and the station (tier_preroll_ms P): tier_secondaries secondaries at a
+// geometric cadence (ratio tier_cadence: the first at 0, the gaps g0 r^k summing to P, g0 = P (1 - r) / (1 - r^(N - 1)),
+// each gap x (1 +- secondary_jitter) by the seed, no birth past P): the capital's 0.49 0.34 0.24 0.17 0.12 0.08 0.06 s,
+// the station's 0.66 ... 0.07 s. Each is the burst body at R_s = secondary_r R_f (the last two secondary_r_last R_f, the
+// size the body is born at; the station's two before them secondary_r_big R_f), life secondary_life L, rise
+// secondary_rise, E body_e with the body's white-hot core, its own star (A = star_arm R_s), its glow on surfaces
+// (glow_r_x R(t), at most glow_r_max R_s, glow_e) and secondary_embers embers (8 per secondary: half the tier's; the rest
+// at the body's birth), at a hashed point inside the hull box: the owner's box from the bubble cache (unknown 4: the
+// weapon_death row's bubble_cached=), else the axis capsule secondary_capsule_len R_obj long and secondary_capsule_r R_obj
+// in radius along the node's row 2; secondary_inset of the way to the box's faces. The glows of an event's live
+// secondaries saturate by s(N) = 1 / (1 + (N - 1) / secondary_cluster_n0), N by remaining life. Counts: max_secondaries.
+constexpr unsigned tier_secondaries[5] = {0, 0, 8, 12, 0};
+constexpr float tier_cadence[5] = {0.f, 0.f, 0.7f, 0.8f, 0.f};
+constexpr float secondary_jitter = 0.2f, secondary_r = 0.35f, secondary_r_last = 0.5f, secondary_r_big = 0.6f;
+constexpr float secondary_life = 0.3f, secondary_rise = 0.1f, secondary_inset = 0.85f;
+constexpr float secondary_capsule_len = 1.4f, secondary_capsule_r = 0.25f, secondary_cluster_n0 = 2.5f;
+constexpr unsigned secondary_embers = 8, max_secondaries = 64, max_glows = 128;
+static_assert(tier_secondaries[2] * secondary_embers <= 128u && tier_secondaries[3] * secondary_embers <= 160u,
+              "the secondaries' embers are part of the tier's count");
+// A secondary's radius over R_f (k of the tier's N).
+constexpr float secondary_scale(unsigned tier, unsigned k) noexcept {
+    return k + 2u >= tier_secondaries[tier < 5 ? tier : 0] ? secondary_r_last
+           : tier == 3 && k + 4u >= tier_secondaries[3]     ? secondary_r_big
+                                                              : secondary_r;
+}
+// 2.6 the dying hull's light through the pre-roll: the glow primitive at the hull box's centre, R = hull_light_r R_obj,
+// E = glow_e E_b (hull_light_e0 + (hull_light_e1 - hull_light_e0) t / P) heat(hull_light_t) from t = 0 to P, then falling
+// linearly to 0 with the hull copy's fade over P .. P + clone_fade_ms (2026-11-07: ended at P, the hull dropped from lit
+// to grey in one frame in the dumps).
+constexpr float hull_light_r = 1.f, hull_light_e0 = 0.4f, hull_light_e1 = 0.8f, hull_light_t = 0.6f;
+// A secondary k's hashes: element_hash(sequence, secondary_element + 4 k + j) (j 0 the gap, 1 the point, 2 the rotation
+// and lobes, 3 the noise seed), past every ember's.
+constexpr unsigned secondary_element = 512;
 // Section 5's coverage dimming (off: death_exposure_meter_shift decides): E_b / (1 + 0.5 max(0, cov - 0.5) / 0.5).
 constexpr bool coverage_dim = false;
 // Section 7: the shock's budget weight (the limb-only shell measured 2026-11-07 at 5120x1440: 0.356 a screen, the fence
 // removed, shock_weight row; the 0.76 first quoted came from the filled shell's 0.113-screen box, the fence's error
 // dominating), the halo's (the glow's), the count caps.
 constexpr float budget_weight_shock = 0.36f, budget_weight_halo = 0.40f;
+// The family's own cap (screens charged before the shed order runs, below the shared screen_budget's remainder): the
+// close capital's 450 us fence at 5120x1440 (the note's 3-screen ceiling 532 us less its margin; 2026-11-07: without it
+// six live secondaries near the eye charged 6.6 screens, 907 us [M]).
+constexpr float budget_screens = 2.5f;
 constexpr unsigned max_bodies = 32, max_quads = 2048;
 // The record's element hashes (stage::element_hash(sequence, k)): the body's rotation, lobes and noise seed are the
 // burst's elements 8 / 10 / 4, the star's 11; the cones from cone_element, an ember's from ember_element + its index.
@@ -626,6 +719,64 @@ constexpr std::uint16_t record_life_ms[drawn_tiers] = {record_life(0), record_li
                                                        record_life(4)};
 static_assert(record_life_ms[station] > record_life_ms[capital] && record_life_ms[missile] > 1000u,
               "the record lives to the smoke's end (u16 game ms)");
+// Section 1, the clone row R' (spawn note 10.5 (b); built at Present, weapon_effects_patch.cpp): at most clone_rows
+// clones (one per source row and pre-roll), a source row of at most clone_max_elements elements; free slots (count and
+// array 0) searched from clone_slot_hi down to clone_slot_lo (installed 901-999 and stock 203-999 free [M census]). The
+// handler's swap stack holds swap_depth_max nested big-tier deaths (an area blast inside one forwarded call).
+constexpr unsigned clone_rows = 16, clone_max_elements = 32, clone_slot_lo = 203, clone_slot_hi = 999, swap_depth_max = 8;
+constexpr std::uint32_t clone_fade_ms = 1000; // FADEOUTBODY's fixed ramp (spawn note 10.2): the carrier held to P + 1 s
+// The tier's pre-roll in whole game ms (R''s FADEOUTBODY start): an integer table (the handler holds no float).
+constexpr std::uint32_t tier_preroll_whole_ms[drawn_tiers] = {
+    std::uint32_t(tier_preroll_ms[0]), std::uint32_t(tier_preroll_ms[1]), std::uint32_t(tier_preroll_ms[2]),
+    std::uint32_t(tier_preroll_ms[3]), std::uint32_t(tier_preroll_ms[4])};
+constexpr std::uint32_t preroll_ms(unsigned t) noexcept {
+    return t < drawn_tiers ? tier_preroll_whole_ms[t] : 0u;
+}
+// R' from the source row's elements (count n, 0x70 bytes each) into out (room for n + 2): every element copied with
+// DISTANT set and FADEOUTBODY / WRECK cleared, its start clamped to P (a masked element pending past P + 1 s would hold the
+// carrier); the PROPAGATE element dropped; then one empty FADEOUTBODY node (body 0, TIMEOUT 1000 ms) starting at P and
+// one empty TIMEOUT node from 0 to P + 1000 ms (it holds the instance and so the carrier to the fade's end). Returns the
+// clone's count; *masked the copies, *dropped the PROPAGATE elements. Integer only, plain byte stores.
+struct CloneCounts {
+    unsigned masked = 0, dropped = 0, kept = 0;
+};
+inline unsigned clone_elements(const unsigned char* src, unsigned n, std::uint32_t P, unsigned char* out,
+                               CloneCounts* c) noexcept {
+    namespace L = layout;
+    auto get = [](const unsigned char* b, unsigned off) {
+        return std::uint32_t(b[off]) | std::uint32_t(b[off + 1]) << 8 | std::uint32_t(b[off + 2]) << 16 |
+               std::uint32_t(b[off + 3]) << 24;
+    };
+    auto put = [](unsigned char* b, unsigned off, std::uint32_t v) {
+        for (unsigned k = 0; k < 4; ++k) b[off + k] = std::uint8_t(v >> (8 * k));
+    };
+    unsigned k = 0;
+    *c = CloneCounts{};
+    for (unsigned i = 0; i < n; ++i) {
+        const unsigned char* e = src + i * L::element_stride;
+        const std::uint32_t f = get(e, L::el_flags);
+        if (f & L::eedf_propagate) {
+            ++c->dropped;
+            continue;
+        }
+        unsigned char* o = out + k * L::element_stride;
+        for (unsigned b = 0; b < L::element_stride; ++b) o[b] = e[b];
+        put(o, L::el_flags, (f | L::eedf_distant) & ~(L::eedf_fadeoutbody | L::eedf_wreck));
+        if (get(o, L::el_start) > P) put(o, L::el_start, P);
+        ++c->masked;
+        ++k;
+    }
+    for (unsigned j = 0; j < 2; ++j) {
+        unsigned char* o = out + k * L::element_stride;
+        for (unsigned b = 0; b < L::element_stride; ++b) o[b] = 0;
+        put(o, L::el_flags, j ? L::eedf_timeout : (L::eedf_fadeoutbody | L::eedf_timeout));
+        put(o, L::el_start, j ? 0u : P);
+        put(o, L::el_timeout, j ? P + clone_fade_ms : clone_fade_ms);
+        ++c->kept;
+        ++k;
+    }
+    return k;
+}
 } // namespace boom
 // ---------------------------------------------------------------------------------------------- the handler (2.2)
 // mode_shields_hull (step 2, docs/architecture/weapon-look.md 3.1 and 2.12): the shield hit as in shields mode plus the
@@ -736,6 +887,26 @@ struct Counters {
     // and the deaths recorded inside another death's game millisecond (nested kills of one outer call).
     std::uint32_t deaths = 0, death_records = 0, death_ours = 0, death_no_node = 0, death_bullet = 0, death_rule_b = 0;
     std::uint32_t death_nested = 0, death_tier[7] = {};
+    // The big tiers (section 1): deaths forwarded through R', big-tier deaths forwarded native because R' was not ready
+    // (or the stack was full), the restores after the call, a restore that found the column changed by the call (left
+    // as the call left it), a restore with nothing saved, the columns Present restored itself (a swap whose call never
+    // returned through the stub: an unwind).
+    std::uint32_t death_swapped = 0, death_clone_missing = 0, death_swap_full = 0, swap_restores = 0, swap_changed = 0;
+    std::uint32_t swap_underflow = 0, swap_leaked = 0;
+    std::uint32_t clone_builds = 0, clone_invalidated = 0; // Present's R' builds (and rebuilds), the clones it found gone
+    std::uint32_t clone_abandoned = 0; // slots Present left holding a clone (a changed or vanished source)
+};
+// One clone row R' (written by Present, read by the handler): the source row and the pre-roll it was built for, its
+// slot, its element array and count (the handler checks both still sit in the slot before swapping), ready.
+struct CloneRow {
+    std::uint16_t source = 0, slot = 0;
+    std::uint32_t preroll_ms = 0, elements = 0, count = 0;
+    std::uint8_t ready = 0;
+};
+// One swapped death column: its address and the value the handler saved (restored LIFO after the forwarded call).
+struct Swap {
+    std::uintptr_t column = 0;
+    std::uint32_t saved = 0, wrote = 0;
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
@@ -758,6 +929,12 @@ struct HookState {
     volatile std::uint8_t boom_ready = 0;
     std::uint32_t boom_floor_ms = 0;
     std::uint32_t death_ms = 0; // the game ms of the newest death record (flag_nested: another one in the same ms)
+    // The big tiers' clone rows (Present writes them between frames, the handler reads them) and the swap stack (the
+    // handler pushes, the restore entry pops; Present restores what an unwind left).
+    CloneRow clones[boom::clone_rows]{};
+    std::uint32_t clone_count = 0;
+    Swap swaps[boom::swap_depth_max]{};
+    std::uint32_t swap_depth = 0;
     Ring ring{};
     PosCheck check{};
     Counters counters{};
@@ -1135,20 +1312,28 @@ static inline __attribute__((always_inline)) void tap(const std::uint32_t* esp, 
 }
 
 // Step 3, the death sites 0x0044ac64 (an area bullet, or any object with obj+0x40 & 0x40000000) and 0x0044acb2
-// (everything else) -> 0x00413610(obj, killer, arg4) (docs/reverse-engineering/weapon-effect-spawn.md sections 4, 6 and
-// 8.1). `esp` is the stack at stub entry ([1] the dying object, = EDI; [2] the killer, a pointer or an id [u]: never
+// (everything else) -> 0x00413610(obj, killer, arg4) (docs/reverse-engineering/weapon-effect-spawn.md sections 4, 6, 8.1
+// and 10). `esp` is the stack at stub entry ([1] the dying object, = EDI; [2] the killer, a pointer or an id [u]: never
 // followed; [3] arg4), `ebp` the caller's EBP (0x0044abd0's frame: the reason word at [ebp+8]); `site` 0 for
-// 0x0044ac64, 1 for 0x0044acb2. Integer only, plain loads, no call. Returns 1 to skip the engine's spawn (the stage
-// draws the death: boom::decide said ours and Present latched the stage and its death programs), 0 to forward.
+// 0x0044ac64, 1 for 0x0044acb2. Integer only, plain loads and stores, no call. Returns death_skip (1) to skip the
+// engine's spawn (the stage draws the death: boom::decide said ours and Present latched the stage and its death
+// programs), death_swap (2) after writing the clone row R' into the type record's death column (the big tiers: the stub
+// calls 0x00413610 and then death_restore, which writes the saved value back), death_forward (0) to forward.
 // Forwarded without a record: outside the explosions modes, a null object, a missing node (or node+0x1c 0) or class
 // 0x1c (the callee returns 0 at once), a bullet area death (class 0: step 7), and the rule-(b) missile (class 10 with
 // the area flag and a non-zero killer: the callee itself makes no explosion). Every other death is recorded: the
-// stage's (flag_stage, its native spawn skipped) or census-only (flag_forwarded: the big tiers while boom::tier_native
-// holds them, the asteroid, any other class, a frame the stage did not own). The class is tested first at both sites
-// (0x0044ac64 is taken for any object with the bullet flag, spawn note 4). The record retires the object's other live
-// records first (its hits; a staged hull hit stays: its sparks outlive the owner). Nested kills (an area blast's deaths
-// inside one outer kill routine, spawn note 6) arrive as separate calls, each its own record; one in the same game
-// millisecond as the previous death is marked flag_nested (census).
+// stage's (flag_stage; its native spawn skipped, or run through R' with flag_swapped | flag_forwarded) or census-only
+// (flag_forwarded: the asteroid, any other class, a frame the stage did not own, a big tier whose R' is not ready: that
+// death keeps the native look, cause_clone_not_ready). The swap: the column's value must be the source row of a ready
+// clone built for the tier's pre-roll (or that clone's own slot: a nested death of the same type inside the call writes
+// the same R' and restores what it saved), the slot must still hold the clone's count and array (a reload zeroes it),
+// and the stack must have room; LIFO, so nested kills of other types touch their own records. The class is tested first
+// at both sites (0x0044ac64 is taken for any object with the bullet flag, spawn note 4). The record retires the object's
+// other live records first (its hits; a staged hull hit stays). Nested kills (an area blast's deaths inside one outer
+// kill routine, spawn note 6) arrive as separate calls, each its own record; one in the same game millisecond as the
+// previous death is marked flag_nested (census). A death record also carries the node's rows 0 and 2 (x 127: row 2 in
+// dir, row 0 in alt_rgb332 / detail / calibre_q as int8) for the stage's hull frame, and its Cause in tier.
+enum DeathResult : int { death_forward = 0, death_skip = 1, death_swap = 2 };
 static inline __attribute__((always_inline)) int death(const std::uint32_t* esp, std::uint32_t ebp, unsigned site,
                                                        HookState& s) noexcept {
     ++s.counters.deaths;
@@ -1202,36 +1387,83 @@ static inline __attribute__((always_inline)) int death(const std::uint32_t* esp,
     // The type record's death row (the census cross-check; 0xffff unread): the subtype bounded by the class's count.
     std::uint16_t row = 0xffffu;
     std::int32_t class_id = 0;
+    std::uintptr_t column = 0;
     if (table_slot) {
         const std::uintptr_t base = rd32(table_slot);
         const std::int32_t count = std::int32_t(rd32(count_slot));
         if (base && sub >= 0 && sub < count) {
             const std::uintptr_t rec = base + std::uintptr_t(sub) * layout::type_stride;
-            row = std::uint16_t(rd32(rec + row_offset));
+            column = rec + row_offset;
+            row = std::uint16_t(rd32(column));
             if (cls == layout::class_ship) class_id = std::int32_t(rd32(rec + layout::ship_class_id));
         }
     }
-    const bool ours = boom::decide(tier) == boom::decide_ours && s.owned_next && s.boom_ready && (s.armed & family_boom);
+    const boom::Decision decision = boom::decide(tier);
+    const bool latched = s.owned_next && s.boom_ready && (s.armed & family_boom);
+    std::uint8_t cause = decision == boom::decide_native ? boom::cause_tier_native
+                         : !latched                      ? boom::cause_not_owned
+                         : decision == boom::decide_ours ? boom::cause_ours
+                                                         : boom::cause_swap;
+    // The big tiers: the clone built for this column's row and the tier's pre-roll (or its own slot, when a death of the
+    // same type is nested inside the forwarded call), still in its slot.
+    std::uint32_t clone_slot = 0;
+    if (cause == boom::cause_swap) {
+        const std::uint32_t value = column ? rd32(column) : 0xffffffffu;
+        const std::uint32_t pre = boom::preroll_ms(tier);
+        if (!column) {
+            cause = boom::cause_no_record;
+        } else {
+            for (std::uint32_t k = 0; k < s.clone_count && k < boom::clone_rows; ++k) {
+                const CloneRow& c = s.clones[k];
+                if (!c.ready || c.preroll_ms != pre || (value != c.source && value != c.slot)) continue;
+                const std::uintptr_t slot = s.globals.effects_rows + std::uintptr_t(c.slot) * layout::row_stride;
+                if (rd32(slot + layout::row_count) == c.count && rd32(slot + layout::row_elements) == c.elements)
+                    clone_slot = c.slot;
+                break;
+            }
+            if (!clone_slot)
+                cause = boom::cause_clone_not_ready;
+            else if (s.swap_depth >= boom::swap_depth_max)
+                cause = boom::cause_swap_full;
+        }
+        if (cause != boom::cause_swap) {
+            clone_slot = 0;
+            if (cause == boom::cause_swap_full)
+                ++s.counters.death_swap_full;
+            else
+                ++s.counters.death_clone_missing;
+        }
+    }
+    const bool ours = cause == boom::cause_ours, swapped = cause == boom::cause_swap;
     const std::uintptr_t cfg = rd32(s.globals.cfg_slot);
     const std::uint32_t now = cfg ? rd32(cfg + layout::cfg_game_ms) : 0;
     const bool nested = s.counters.death_records && now == s.death_ms;
     ring_retire_owner(s.ring, std::uint32_t(obj), true);
     Event* e = ring_acquire(s.ring);
-    if (!e) return 0;
+    if (!e) return death_forward; // forwarded unswapped: nothing would draw the death
     e->role = role_explosion;
     e->style = tier;
-    e->tier = 0;
-    e->flags = std::uint8_t((ours ? flag_stage : flag_forwarded) | (nested ? flag_nested : 0));
+    e->tier = cause;
+    e->flags = std::uint8_t((ours ? flag_stage : swapped ? (flag_stage | flag_forwarded | flag_swapped) : flag_forwarded) |
+                            (nested ? flag_nested : 0));
     e->table = std::uint8_t(cls < 0x100 ? cls : 0xff);
     e->tint_source = std::uint8_t(site);
     e->row = row;
     e->t0_game_ms = now;
-    e->lifetime_ms = ours ? boom::record_life_ms[tier] : 0;
-    e->detail = 0;
-    e->calibre_q = 0;
+    e->lifetime_ms = ours || swapped ? boom::record_life_ms[tier] : 0;
     e->tint_rgb = std::uint32_t(class_id);
-    e->alt_rgb332 = 0;
-    for (unsigned i = 0; i < 3; ++i) e->dir[i] = 0;
+    // the node's rows 2 and 0 (local z and x in world), the stage's hull frame (the capsule's axis, the box's rotation)
+    {
+        std::int32_t r2[3], r0[3];
+        read3(node + layout::node_rot + 32, r2);
+        read3(node + layout::node_rot, r0);
+        std::int8_t q0[3];
+        quantize_dir(r2, e->dir);
+        quantize_dir(r0, q0);
+        e->alt_rgb332 = std::uint8_t(q0[0]);
+        e->detail = std::uint8_t(q0[1]);
+        e->calibre_q = std::uint8_t(q0[2]);
+    }
     e->damage = std::int32_t(killer);
     e->owner = std::uint32_t(obj);
     e->node = std::uint32_t(node);
@@ -1246,7 +1478,31 @@ static inline __attribute__((always_inline)) int death(const std::uint32_t* esp,
     ++s.counters.death_tier[tier];
     if (nested) ++s.counters.death_nested;
     if (ours) ++s.counters.death_ours;
-    return ours ? 1 : 0;
+    if (!swapped) return ours ? death_skip : death_forward;
+    // The swap: save the column, write R' (plain integer stores), the stub forwards and calls death_restore.
+    Swap& w = s.swaps[s.swap_depth];
+    w.column = column;
+    w.saved = rd32(column);
+    w.wrote = clone_slot;
+    *reinterpret_cast<volatile std::uint32_t*>(column) = clone_slot;
+    ++s.swap_depth;
+    ++s.counters.death_swapped;
+    return death_swap;
+}
+// The swap's second half (the stub's call after 0x00413610 returned): the newest saved column back, unless the call
+// changed it from what the handler wrote (then it is left as the call left it: swap_changed). Integer only, no call.
+static inline __attribute__((always_inline)) void death_restore(HookState& s) noexcept {
+    if (!s.swap_depth || s.swap_depth > boom::swap_depth_max) {
+        ++s.counters.swap_underflow;
+        return;
+    }
+    const Swap& w = s.swaps[--s.swap_depth];
+    volatile std::uint32_t* column = reinterpret_cast<volatile std::uint32_t*>(w.column);
+    if (*column == w.wrote) {
+        *column = w.saved;
+        ++s.counters.swap_restores;
+    } else
+        ++s.counters.swap_changed;
 }
 // ---------------------------------------------------------------------------------------------- Present's rules
 // The ownership latch (note 2.6, review F8): the next frame's hooks skip only when this frame's stage was armed, the

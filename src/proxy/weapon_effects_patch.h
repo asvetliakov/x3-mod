@@ -124,6 +124,7 @@ struct StageFrame {
     // programs (Present's latch, HookState::boom_ready).
     unsigned deaths = 0, boom_bodies = 0, boom_stars = 0, boom_shocks = 0, boom_embers = 0, boom_fragments = 0;
     unsigned boom_smokes = 0, boom_glows = 0, boom_shed = 0, boom_lod = 0, boom_out_of_reach = 0, boom_capped = 0;
+    unsigned boom_secondaries = 0, boom_hull_lights = 0; // the big tiers' pre-roll: secondaries and hull lights drawn
     bool boom_ready = false;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
@@ -134,6 +135,9 @@ void clear_owned();
 // Counts the ring's scope changes (a load, a sector change, a new load epoch; shields mode): the stage clears its depth
 // cache when the count moved since its last frame.
 std::uint32_t scope_changes();
+// Step 3, the big tiers' clone rows: the last type-table scan's time (us) and the slots abandoned (left as they were).
+float clone_scan_us();
+unsigned clone_abandoned_slots();
 std::uint32_t game_ms(); // cfg+0x718 through engine_memory (0 when unreadable; hook_state().globals' slot)
 }
 extern "C" {
@@ -158,5 +162,6 @@ void x3m_weapon_effects_stub_death_area();
 void x3m_weapon_effects_stub_death_other();
 int __cdecl x3m_weapon_death_area(const std::uint32_t* entry, std::uint32_t ebp);
 int __cdecl x3m_weapon_death_other(const std::uint32_t* entry, std::uint32_t ebp);
+void __cdecl x3m_weapon_death_restore();
 extern std::uintptr_t x3m_weapon_effects_continue_death;
 }

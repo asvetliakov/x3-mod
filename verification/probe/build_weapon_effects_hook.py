@@ -19,8 +19,10 @@ eax,[esp+0x10], push, call, add, pop x3, popf, jmp [continue]), the flight stub 
 and EDX (pushf, push x3, cld, push edx, push eax, lea eax,[esp+0x18], push, call, add esp,0xc, test, pop x3, jne, popf,
 jmp [continue], popf, xor, ret), and the three handler entry points _x3m_weapon_bolt_tap / _x3m_weapon_muzzle /
 _x3m_weapon_flight contain no call. Step 3 (docs/architecture/explosion-look.md): the two death stubs pass EBP (pushf, push
-x3, cld, push ebp, lea eax,[esp+0x14], push, call, add esp,0x8, test, pop x3, jne, popf, jmp [continue], popf, xor,
-ret), the handler entry points _x3m_weapon_death_area / _x3m_weapon_death_other contain no call, and the two death
+x3, cld, push ebp, lea eax,[esp+0x14], push, call, add esp,0x8, cmp eax,0x1, pop x3, je, ja, popf, jmp [continue], popf,
+xor, ret) and carry the big tiers' swap path after it (popf, push [esp+0xc] x3, call [continue], add esp,0xc, push x3,
+cld, call _x3m_weapon_death_restore, pop x3, ret), the handler entry points _x3m_weapon_death_area /
+_x3m_weapon_death_other / _x3m_weapon_death_restore contain no call, and the two death
 windows of src/proxy/weapon_effects_death_sites.h equal the installed EXE's bytes (/mnt/c/X3/X3AP.exe, read through its
 PE section table; recorded as death_windows_exe; an absent EXE fails the audit).
 """
@@ -42,10 +44,14 @@ STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'add', 't
 TAP_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'add', 'pop', 'pop', 'pop', 'popf', 'jmp']
 MUZZLE_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'push', 'lea', 'push', 'call', 'add', 'test', 'pop', 'pop',
                'pop', 'jne', 'popf', 'jmp', 'popf', 'xor', 'ret']
-DEATH_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'lea', 'push', 'call', 'add', 'test', 'pop', 'pop', 'pop',
-              'jne', 'popf', 'jmp', 'popf', 'xor', 'ret']
+DEATH_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'lea', 'push', 'call', 'add', 'cmp', 'pop', 'pop', 'pop',
+              'je', 'ja', 'popf', 'jmp', 'popf', 'xor', 'ret']
+# The big tiers' swap path after the skip's ret (handler 2): the three arguments copied, the call through the continue
+# slot, the pop, the restore entry with EAX / ECX / EDX kept and DF cleared, the return to the caller's `add esp,0xc`.
+DEATH_SWAP = ['popf', 'push', 'push', 'push', 'call', 'add', 'push', 'push', 'push', 'cld', 'call', 'pop', 'pop', 'pop',
+              'ret']
 HANDLERS = ('_x3m_weapon_event', '_x3m_weapon_tap', '_x3m_weapon_bolt_tap', '_x3m_weapon_muzzle', '_x3m_weapon_flight',
-            '_x3m_weapon_death_area', '_x3m_weapon_death_other')
+            '_x3m_weapon_death_area', '_x3m_weapon_death_other', '_x3m_weapon_death_restore')
 GAME_EXE = Path('/mnt/c/X3/X3AP.exe')
 DEATH_SITES = ROOT / 'src/proxy/weapon_effects_death_sites.h'
 
@@ -90,6 +96,17 @@ def stub(listing, name):
     return [m for m, _ in rows[:end + 1]], [o.strip() for _, o in rows[:end + 1]]
 
 
+def stub_tail(listing, name):
+    """The rows after a stub's first ret up to its second (the death stubs' swap path)."""
+    body = listing.split(f'<{name}>:', 1)[1].split('\n\n', 1)[0] if f'<{name}>:' in listing else ''
+    rows = [m.groups() for m in (re.match(r'^\s*[0-9a-f]+:\s+([a-z]+)\s*(.*)$', line) for line in body.splitlines()) if m]
+    rets = [i for i, (m, _) in enumerate(rows) if m == 'ret']
+    if len(rets) < 2:
+        return [], []
+    tail = rows[rets[0] + 1:rets[1] + 1]
+    return [m for m, _ in tail], [o.strip() for _, o in tail]
+
+
 def stub_to_jmp(listing, name):
     """A stub that ends in its forwarding jmp (no ret): the rows up to the first jmp."""
     body = listing.split(f'<{name}>:', 1)[1].split('\n\n', 1)[0] if f'<{name}>:' in listing else ''
@@ -123,8 +140,12 @@ def audit(objects):
     death_ok = {}
     for name in ('area', 'other'):
         d_mn, d_ops = stub(hlist, f'_x3m_weapon_effects_stub_death_{name}')
+        s_mn, s_ops = stub_tail(hlist, f'_x3m_weapon_effects_stub_death_{name}')
         death_ok[name] = (d_mn == DEATH_STUB and d_ops[5] == 'ebp' and d_ops[6] == 'eax,[esp+0x14]' and
-                          d_ops[9] == 'esp,0x8' and d_ops[16].startswith('DWORD PTR ds:'))
+                          d_ops[9] == 'esp,0x8' and d_ops[10] == 'eax,0x1' and d_ops[17].startswith('DWORD PTR ds:') and
+                          s_mn == DEATH_SWAP and s_ops[1:4] == ['DWORD PTR [esp+0xc]'] * 3 and
+                          s_ops[4].startswith('DWORD PTR ds:') and s_ops[5] == 'esp,0xc' and
+                          s_ops[10].endswith('<_x3m_weapon_death_restore>'))
     exe = death_windows_exe()
     handler_calls = {name: [line.strip() for line in body(hlist, name) if re.search(r'\bcall\b', line)]
                      for name in HANDLERS}

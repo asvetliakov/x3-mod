@@ -116,7 +116,7 @@ switchable in the Layers panel; the Vanilla tab draws the four slots of the vani
   <label class="check" data-tabs="shield hull" title="the view is the cockpit: the own ship's patch draws at own_cockpit_gain (the chase view and every other ship unchanged)"><input id="c_cockpit" type="checkbox"> cockpit view</label>
   <label class="row" data-tabs="shield"><span>shield %</span><span class="ctl"><input id="c_shield" type="range" min="0" max="100" step="1" value="100"><span id="c_shield_read">100</span></span></label>
   <label class="row" data-tabs="shield"><span>drain %/hit</span><span class="ctl"><input id="c_drain" type="number" min="0" max="20" step="1" value="0" style="width:4em"></span></label>
-  <label class="row" data-tabs="boom" title="explosion-look.md 3: the death tier (patch_tier_of_ship; stations; missiles). The big tiers stay native in the first flight (boom::tier_native)"><span>death tier</span><span class="ctl"><select id="c_x_tier"><option value="fighter">fighter</option><option value="corvette">corvette</option><option value="capital">capital</option><option value="station">station</option><option value="missile">missile</option></select></span></label>
+  <label class="row" data-tabs="boom" title="explosion-look.md 3: the death tier (patch_tier_of_ship; stations; missiles). The big tiers forward through the clone row R': the engine's carrier is the hull through the pre-roll (boom::tier_swap)"><span>death tier</span><span class="ctl"><select id="c_x_tier"><option value="fighter">fighter</option><option value="corvette">corvette</option><option value="capital">capital</option><option value="station">station</option><option value="missile">missile</option></select></span></label>
   <label class="row" data-tabs="boom"><span>distance (m)</span><span class="ctl"><input id="c_x_dist" type="number" min="1" step="50" value="600" style="width:6em"></span></label>
   <label class="row" data-tabs="boom" title="R_obj, obj+0xa4 / 500 (empty: the tier's typical radius)"><span>radius (m)</span><span class="ctl"><input id="c_x_radius" type="number" min="0.5" step="1" value="" style="width:6em"></span></label>
   <label class="row" data-tabs="boom" title="deaths in one frame, 60 m apart (the nested area kill)"><span>deaths</span><span class="ctl"><input id="c_x_nested" type="number" min="1" max="8" step="1" value="1" style="width:4em"></span></label>
@@ -212,6 +212,9 @@ switchable in the Layers panel; the Vanilla tab draws the four slots of the vani
   <label class="row" title="v_e = clamp(this x R_f per s, ember_v_min, ember_v_max)"><span>ember speed (R_f / s)</span><span class="ctl"><input id="c_x_ve" type="number" step="0.1" style="width:5em"></span></label>
   <label class="row"><span>shock tau (x L)</span><span class="ctl"><input id="c_x_tau" type="number" step="0.05" style="width:5em"></span></label>
   <label class="row"><span>shock width (x r)</span><span class="ctl"><input id="c_x_shock_w" type="number" step="0.01" style="width:5em"></span></label>
+  <label class="row" title="explosion-look.md 4: the pre-roll P (the capital's 1.5 s, the station's 3 s); the hull copy fades over P .. P + 1 s"><span>pre-roll (game ms)</span><span class="ctl"><input id="c_x_preroll" type="number" step="100" style="width:6em"></span></label>
+  <label class="row" title="2.5: the secondaries through the pre-roll (8 capital, 12 station; big tiers only)"><span>secondaries</span><span class="ctl"><input id="c_x_secondaries" type="number" min="0" max="12" step="1" style="width:4em"></span></label>
+  <label class="row" title="2.5: the cadence's geometric ratio (0.7 capital, 0.8 station)"><span>cadence ratio</span><span class="ctl"><input id="c_x_cadence" type="number" step="0.05" style="width:5em"></span></label>
   <label class="check"><input id="c_x_smoke" type="checkbox" checked> smoke</label>
   </fieldset>
   <fieldset id="p_tuning" data-tabs="shield hull"><legend>Tuning</legend>
@@ -385,7 +388,7 @@ const HEADER = {
   look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4,"fireball_octave_freq":[1.6,3.4,7.0],"fireball_octave_w":[0.5,0.3,0.2],"fireball_advect":1.0,"fireball_erode_0":0.1,"fireball_erode_t":0.3,"fireball_erode_r":0.2,"fireball_erode_soft":0.2,"fireball_erode_rt":3.0,"fireball_column_pow":0.35,"fireball_lobes":5.0,"fireball_lobe_amp":0.25,"fireball_lobe_soft":0.06,"fireball_heat_soft":0.2,"fireball_rim_t":0.45,"fireball_octaves":3,"fireball_fine_px":48.0,"fireball_fine_band_px":16.0,"budget_weight_fireball":1.18,"budget_weight_fireball_coarse":1.03,"budget_weight_smoke":1.2},
   hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.12,1.2,40.0,0.9,0.0],[0.12,0.6,40.0,1.0,0.0],[0.12,2.0,40.0,1.0,1.0],[0.12,1.0,40.0,0.9,0.0],[0.12,1.2,40.0,1.0,2.0],[0.12,1.2,40.0,0.9,0.0],[0.12,1.5,40.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.12,0.6,40.0,0.0,4.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[2.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.8,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[3.0,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[1.6,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[1.2,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,2.0,2.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[2.4,0.0,0.0,800.0,400.0,0.3,0.375,0.08,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,0.75,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,0.75,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[1.0,150.0,0.0,0.3],[1.0,150.0,0.0,0.15]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"ring_lead_t":1.0,"ring_trail_t":0.35,"ring_trail_gain":0.55,"ring_trail_span":3.0,"ring_noise_freq":1.3,"ring_noise_depth":0.9,"ring_noise_contrast":2.5,"ring_wash_gain":0.25,"ring_wash_fall":0.35,"ring_stretch":1.25,"ring_refract":1.0,"ring_seed_axis":[1.7,3.1,0.7],"ring_seed_scale":64.0,"ring_noise_window":2.5,"ring_front_window":3.0,"ring_seed_element":7,"budget_weight_shimmer":2.85,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"ion_channels_lo":2,"ion_channels_hi":4,"ion_segments_lo":6,"ion_segments_hi":10,"ion_branches_lo":1,"ion_branches_hi":2,"ion_len":1.0,"ion_len_spread":0.5,"ion_dir_jitter":0.27,"ion_jag":0.8,"ion_lateral":0.3,"ion_branch_t_lo":0.2679,"ion_branch_t_hi":0.5774,"ion_branch_len":0.5,"ion_branch_e":0.6,"ion_depth_r":1.0,"ion_core_w":0.01,"ion_core_px":2.0,"ion_branch_px":1.0,"ion_corona_x":4.0,"ion_corona_share":0.25,"ion_core_white":0.7,"ion_channel_e":3.0,"ion_strike_decay":0.15,"ion_residual_e":0.3,"ion_strikes_lo":3,"ion_strikes_hi":4,"ion_strike_window_ms":200,"ion_strike_ms":40,"ion_residual_ms":280,"ion_end_ms":400,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"beam_colour":true,"beam_glow_mix":0.6,"beam_core_mix":0.3,"beam_colour_sat_min":0.15,"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.5,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.4,"star_arm_len":[1.0,0.55,0.8,0.45],"star_width":0.1,"star_width_px":2.0,"star_floor_px":6.0,"star_element":11,"burst_rot_element":8,"burst_lobe_element":10,"glow_r_x":1.6,"glow_e_x":0.33,"cluster_r_x":2.0,"cluster_n0_glow":2.5,"cluster_n0_burst":1.6,"class_smoke":[[1.3,0.45],[1.0,0.3],[1.2,0.5],[1.3,0.5],[0.0,0.0],[1.2,0.4],[1.3,0.5],[1.0,0.3],[0.0,0.0],[0.0,0.0]],"smoke_t0":0.5,"smoke_span":1.1,"smoke_rise":0.27,"dust_colour":[0.55,0.52,0.48],"cool_colour":[0.7,0.8,1.0],"ember_lobe_amp":0.25},
   bolt: {"mode":"full","d_eng_m":[600.0,1500.0,4000.0],"d_eng_range":0.75,"w_px_target":3.0,"w_k":0.6,"f_ref":960.0,"ref_rows":1440.0,"w_cap_m":20.0,"heavy_k":0.91,"rest_w":[12.0,4.0,1.6,0.5],"sv_ref_mps":2000.0,"tail_tau_ms":[15.0,30.0,10.0,0.0,40.0],"tail_max_w":[8.0,12.0,4.0,0.0,20.0],"tail_root_w":[0.6,0.35,0.8,0.0,0.8],"tail_gain":[0.5,0.6,0.5,0.0,0.6],"core_r":0.4,"core_r_heavy":0.55,"halo_sigma_w":[0.8,0.7,0.9,0.6,1.0],"e_body":1.2,"e_halo":0.6,"e_halo_heavy":0.8,"h":[0.75,0.85,0.7,0.5],"head_gain":0.5,"head_ball_w":0.6,"tip_w":1.0,"slug_tail_white":0.6,"slug_tail_end":0.4,"streak_c":[1.0,1.0,0.5,0.0],"streak_c_simple":0.5,"core_min":1.2,"end_ms":60,"orb_freq":[3.0,6.4],"orb_boil_hz":3.0,"orb_lobes":5.0,"orb_lobe_amp":0.12,"orb_lobe_turns":0.5,"orb_stretch":1.3,"orb_h_lo":0.5,"orb_h_hi":0.9,"wave_span_w":6.0,"wave_sagitta":0.25,"wave_sheet_e":0.15,"wave_ring_c":0.4,"trim_rs":0.8,"rim":true,"rim_dark":0.4,"rim_band_w":[1.2,1.8],"rim_min_px":3.0,"halo_px_max":40.0,"floor_core_px":2.0,"floor_body_px":3.0,"floor_halo_px":1.5,"floor_len_px":24.0,"floor_endon_px":9.0,"own_body_max_px":16.0,"cockpit_native":false,"far_flag_k":32.0,"list_capacity":512,"beam_w_m":1.2},
-  boom: {"mode":"full","tier_native":14,"tier_f":[2.0,1.5,0.9,0.6,3.5],"tier_min_m":[12.0,30.0,80.0,200.0,6.0],"tier_max_m":[50.0,160.0,600.0,1800.0,25.0],"tier_life_ms":[2000.0,3000.0,4000.0,6000.0,800.0],"tier_preroll_ms":[0.0,0.0,1500.0,3000.0,0.0],"tier_rise":[0.12,0.15,0.15,0.2,0.1],"tier_r0_obj":[0.5,0.5,0.0,0.0,0.5],"tier_r0_f":[0.0,0.0,0.5,0.5,0.0],"tier_embers":[32.0,64.0,128.0,160.0,12.0],"tier_shock":[0.0,1.0,1.0,1.0,1.0],"tier_shock_tau":[0.3,0.3,0.3,0.4,0.3],"body_grow":0.1,"body_hold":0.8,"body_cool":0.7,"body_e":1.5,"body_bias":0.5,"body_r_sphere":1.33,"body_floor_px":12.0,"core_gain":2.5,"core_x":0.35,"core_r":0.3,"core_soft":0.2,"star_arm":0.4,"star_core":0.08,"star_ms":40.0,"star_t":0.9,"star_cap_h":0.25,"shock_r_x":4.0,"shock_w":0.06,"shock_e":1.0,"shock_limb":0.15,"shock_end":0.25,"missile_shock":false,"ember_cones_lo":4.0,"ember_cones_hi":6.0,"ember_cone_deg":25.0,"ember_v_x":1.5,"ember_v_min":40.0,"ember_v_max":300.0,"ember_p0":0.3,"ember_speed_lo":0.5,"ember_speed_hi":1.5,"ember_life":[0.4,0.8,1.2],"ember_stagger":0.4,"ember_e":8.0,"ember_tau":0.5,"ember_w_px_lo":1.5,"ember_w_px_hi":2.5,"ember_len_max":0.35,"ember_len_lo":0.25,"ember_hide_r":0.8,"ember_hide_x0":0.5,"ember_hide_x1":0.9,"fragment_every":8.0,"fragment_v":0.5,"fragment_life":1.5,"fragment_w_px":3.0,"fragment_dark":0.6,"fragment_tip_t":0.6,"fragment_dark_r":1.0,"glow_r_x":1.6,"glow_r_max":2.0,"glow_e":0.33,"halo_soft":0.5,"halo_fade_x0":0.4,"halo_fade_x1":0.8,"cluster_r_x":2.0,"cluster_n0":1.6,"smoke_r":1.1,"smoke_t0":0.5,"smoke_span":1.1,"smoke_s0":0.45,"smoke_rise":0.27,"coverage_dim":false,"budget_weight_shock":0.36,"budget_weight_halo":0.4,"max_bodies":32,"max_quads":2048,"cone_element":32,"ember_element":64},
+  boom: {"mode":"full","tier_native":0,"tier_f":[2.0,1.5,0.9,0.6,3.5],"tier_min_m":[12.0,30.0,80.0,200.0,6.0],"tier_max_m":[50.0,160.0,600.0,1800.0,25.0],"tier_life_ms":[2000.0,3000.0,4000.0,6000.0,800.0],"tier_preroll_ms":[0.0,0.0,1500.0,3000.0,0.0],"tier_rise":[0.12,0.15,0.15,0.2,0.1],"tier_r0_obj":[0.5,0.5,0.0,0.0,0.5],"tier_r0_f":[0.0,0.0,0.5,0.5,0.0],"tier_embers":[32.0,64.0,128.0,160.0,12.0],"tier_shock":[0.0,1.0,1.0,1.0,1.0],"tier_shock_tau":[0.3,0.3,0.3,0.4,0.3],"body_grow":0.1,"body_hold":0.8,"body_cool":0.7,"body_e":1.5,"body_bias":0.5,"body_r_sphere":1.33,"body_floor_px":12.0,"core_gain":2.5,"core_x":0.35,"core_r":0.3,"core_soft":0.2,"star_arm":0.4,"star_core":0.08,"star_ms":40.0,"star_t":0.9,"star_cap_h":0.25,"shock_r_x":4.0,"shock_w":0.06,"shock_e":1.0,"shock_limb":0.15,"shock_end":0.25,"missile_shock":false,"ember_cones_lo":4.0,"ember_cones_hi":6.0,"ember_cone_deg":25.0,"ember_v_x":1.5,"ember_v_min":40.0,"ember_v_max":300.0,"ember_p0":0.3,"ember_speed_lo":0.5,"ember_speed_hi":1.5,"ember_life":[0.4,0.8,1.2],"ember_stagger":0.4,"ember_e":8.0,"ember_tau":0.5,"ember_w_px_lo":1.5,"ember_w_px_hi":2.5,"ember_len_max":0.35,"ember_len_lo":0.25,"ember_hide_r":0.8,"ember_hide_x0":0.5,"ember_hide_x1":0.9,"fragment_every":8.0,"fragment_v":0.5,"fragment_life":1.5,"fragment_w_px":3.0,"fragment_dark":0.6,"fragment_tip_t":0.6,"fragment_dark_r":1.0,"glow_r_x":1.6,"glow_r_max":2.0,"glow_e":0.33,"halo_soft":0.5,"halo_fade_x0":0.4,"halo_fade_x1":0.8,"cluster_r_x":2.0,"cluster_n0":1.6,"smoke_r":1.1,"smoke_t0":0.5,"smoke_span":1.1,"smoke_s0":0.45,"smoke_rise":0.27,"coverage_dim":false,"budget_weight_shock":0.36,"budget_weight_halo":0.4,"max_bodies":32,"max_quads":2048,"cone_element":32,"ember_element":64,"tier_swap":14,"tier_secondaries":[0.0,0.0,8.0,12.0,0.0],"tier_cadence":[0.0,0.0,0.7,0.8,0.0],"secondary_jitter":0.2,"secondary_r":0.35,"secondary_r_last":0.5,"secondary_r_big":0.6,"secondary_life":0.3,"secondary_rise":0.1,"secondary_inset":0.85,"secondary_capsule_len":1.4,"secondary_capsule_r":0.25,"secondary_cluster_n0":2.5,"secondary_embers":8,"max_secondaries":64,"secondary_element":512,"hull_light_r":1.0,"hull_light_e0":0.4,"hull_light_e1":0.8,"hull_light_t":0.6,"body_r_sphere_big":1.21,"sphere_px0":64.0,"sphere_px1":320.0,"budget_screens":2.5,"shock_tiers":0,"halo_big_r":1.15,"halo_big_e":0.2,"halo_big_x0":0.3,"halo_big_x1":0.6},
   muzzle: {"mode":"full","class_disc":[[0.6,0.7,4.0],[0.5,0.7,4.0],[0.8,0.6,4.0],[0.8,1.0,4.0],[0.5,0.5,4.0]],"disc_halo_w":0.4,"disc_halo_e":0.6,"class_flame":[[2.0,0.6,1.2],[1.2,0.5,1.2],[0.0,0.0,0.0],[3.0,0.8,1.2],[0.0,0.0,0.0]],"class_star":[0.0,1.2,0.0,0.0,0.8],"star_arms":[1.0,0.55,0.8,0.45],"star_width_w":0.12,"star_e":2.0,"bloom_w":[0.5,1.0],"bloom_e":1.2,"vent_w":1.2,"vent_ms":150.0,"vent_e":1.2,"afterglow_ms":250.0,"afterglow_e":1.2,"rise_ms":40.0,"class_smoke":[[0.0,0.0,0.0,0.0,0.0],[0.6,1.2,0.3,400.0,0.5],[0.0,0.0,0.0,0.0,0.0],[0.8,1.6,0.4,600.0,0.5],[0.6,1.2,0.3,400.0,0.0]],"class_glow":[[3.0,0.6],[2.5,0.6],[3.5,0.8],[4.0,1.0],[2.0,0.5]],"class_life":[120.0,60.0,180.0,80.0,80.0],"cap_core_rs":0.25,"cap_flame_rs":1.0,"endon_cos":0.8660254,"breath":0.25,"cluster_n0":2.5,"record_capacity":128}
 };
 /* @end */
@@ -2281,11 +2284,15 @@ function renderMuzzle(record, t) {
 // docs/architecture/explosion-look.md, the stage src/proxy/weapon_effects_boom.h (its laws mirrored, every constant
 // HEADER.boom / HEADER.look / HEADER.hull, generated from weapon_effects_core.h): the body (the burst's fireball law at
 // R(t) = R_0 + (R_f - R_0)(1 - e^(-t / (rho L))) + body_grow R_f t / L, T(t), the erosion over x = t / L, the cluster
-// rule over the frame's bodies), the 40 ms star, the missile's shock shell (the chord law), embers and fragments from the
-// seed cones at constant speed (the stage's hashes: elementHash, the cube points, the cones), the glow and the smoke on
-// the optional hull plane behind (surface-bound: nothing over sky). The vanilla death row plays in the inset beside ours.
-// The camera is the vanilla vertical FOV (73.74 deg) on the canvas's rows. The big tiers' pre-roll and secondaries are the
-// masked forward's (not drawn by the stage yet: boom::tier_native keeps those tiers native in the first flight).
+// rule over the frame's bodies), the 40 ms star, the shock shell (the chord law: corvette and up; the missile's off),
+// embers and fragments from the seed cones at constant speed (the stage's hashes: elementHash, the cube points, the
+// cones), the glow and the smoke on the optional hull plane behind (surface-bound: nothing over sky). The big tiers
+// (corvette, capital, station: the native spawn runs through the clone row R', so the engine's carrier is the hull) draw
+// the carrier as a box of 2 R_obj along the forward axis (broadside: view x) and 0.5 R_obj across, at FADEOUTBODY's
+// alpha (1 to the pre-roll's end P, 0 at P + 1 s), its surface lit by the dying hull's light through the pre-roll and the
+// secondaries at the stage's cadence (hashed points in the axis capsule, their stars, glows and embers), then the body
+// at P, the body's embers from the capsule's surface. The vanilla death row plays in the inset beside ours. The camera is
+// the vanilla vertical FOV (73.74 deg) on the canvas's rows.
 const BOOM_TIERS = ['fighter', 'corvette', 'capital', 'station', 'missile'];
 const BOOM_RADIUS = [14, 87, 1288, 1800, 3]; // typical R_obj (m), the note's section 3
 function boomControls() {
@@ -2299,16 +2306,23 @@ function boomControls() {
           L: Math.max(50, num('c_x_life', BM.tier_life_ms[tier])), rho: Math.max(0.01, num('c_x_rise', BM.tier_rise[tier])),
           embers: Math.max(0, Math.round(num('c_x_embers', BM.tier_embers[tier]))), ve_x: num('c_x_ve', BM.ember_v_x),
           tau: Math.max(0.01, num('c_x_tau', BM.tier_shock_tau[tier])), shock_w: Math.max(0.005, num('c_x_shock_w', BM.shock_w)),
+          pre: Math.max(0, num('c_x_preroll', BM.tier_preroll_ms[tier])),
+          secondaries: Math.max(0, Math.min(12, Math.round(num('c_x_secondaries', BM.tier_secondaries[tier])))),
+          cadence: Math.max(0.05, Math.min(1, num('c_x_cadence', BM.tier_cadence[tier] || 0.7))),
+          big: tier >= 1 && tier <= 3,
           smoke: chk('c_x_smoke', true), shock: BM.tier_shock[tier] > 0, min_frames: HEADER.look.min_frames};
 }
 function boomLoopMs(c) {
   const BM = HEADER.boom;
-  return (BM.tier_preroll_ms[c.tier] + (BM.smoke_t0 + BM.smoke_span) * c.L) / c.seta + 250;
+  return (c.pre + (BM.smoke_t0 + BM.smoke_span) * c.L) / c.seta + 250;
 }
-// stage::boom_body_radius / boom_body_heat / boom_ember_speed_m
+// stage::boom_body_radius / boom_body_heat / boom_ember_speed_m (and the laws with an explicit life: the secondaries')
 function boomRadius(c, R_f, R_0, tb) {
   const BM = HEADER.boom;
   return R_0 + (R_f - R_0) * (1 - Math.exp(-tb / (c.rho * c.L))) + BM.body_grow * R_f * tb / c.L;
+}
+function boomRadiusLaw(R_f, R_0, t, L, rho) {
+  return R_0 + (R_f - R_0) * (1 - Math.exp(-t / (rho * L))) + HEADER.boom.body_grow * R_f * t / L;
 }
 function boomHeat(tb, L) {
   const BM = HEADER.boom, x = tb / L;
@@ -2340,6 +2354,45 @@ function boomCones(seq) {
   return Array.from({length: n}, (_, c) => boomConeAxis(seq, c));
 }
 function byteUnit(h, shift) { return (((h >>> shift) & 0xff) + 0.5) / 256; }
+// stage::boom_secondary_births: 0, then the geometric gaps g0 r^j (summing to P) x (1 +- secondary_jitter), none past P.
+function boomBirths(seq, c) {
+  const BM = HEADER.boom, N = c.secondaries, P = c.pre, r = c.cadence;
+  if (!N) return [];
+  let rn = 1;
+  for (let j = 0; j + 1 < N; j++) rn *= r;
+  let g = N > 1 && rn < 1 ? P * (1 - r) / (1 - rn) : P, at = 0;
+  const out = [0];
+  for (let k = 1; k < N; k++) {
+    at += g * (1 + BM.secondary_jitter * (2 * unitOf(elementHash(seq, BM.secondary_element + 4 * k)) - 1));
+    g *= r;
+    out.push(Math.min(at, P));
+  }
+  return out;
+}
+// The secondary k's radius over R_f (boom::secondary_scale).
+function boomSecondaryScale(c, k) {
+  const BM = HEADER.boom, N = c.secondaries;
+  return k + 2 >= N ? BM.secondary_r_last : c.tier === 3 && k + 4 >= N ? BM.secondary_r_big : BM.secondary_r;
+}
+// The axis capsule (the stage's hull shape without a bubble-cache box): along the forward axis, broadside = view +x;
+// the stage's rows: row 0 = +z, row 1 = -y, row 2 = +x. boom_hull_point and boom_hull_exit, local (row 0, 1, 2) -> view.
+function boomCapsule(c) {
+  const BM = HEADER.boom, rad = BM.secondary_capsule_r * c.radius;
+  return {rad, hl: Math.max(0, 0.5 * BM.secondary_capsule_len * c.radius - rad)};
+}
+const boomLocalToView = l => [l[2], -l[1], l[0]];
+function boomHullPoint(cap, h) {
+  const BM = HEADER.boom, inset = BM.secondary_inset, q = cubePoint(h), b = cubePoint(mix32((h ^ 0x85ebca6b) >>> 0)), r2 = dot3(b, b);
+  if (r2 > 1) for (let k = 0; k < 3; k++) b[k] /= Math.sqrt(r2);
+  return boomLocalToView([inset * cap.rad * b[0], inset * cap.rad * b[1], inset * (q[2] * cap.hl + cap.rad * b[2])]);
+}
+function boomHullExit(cap, d) {
+  const da = Math.abs(d[0]), dp = Math.sqrt(Math.max(0, 1 - da * da)); // the axis is view x
+  let t;
+  if (dp > 1e-4 && cap.rad * da <= cap.hl * dp) t = cap.rad / dp;
+  else { const b = cap.hl * da; t = b + Math.sqrt(Math.max(0, b * b - cap.hl * cap.hl + cap.rad * cap.rad)); }
+  return d.map(v => v * t);
+}
 // The deaths of the scene (seq, view-space centre in metres), the nested case `nested` of them 60 m apart.
 function boomEvents(c) {
   const out = [];
@@ -2354,39 +2407,71 @@ function renderBoom(record, t) {
   const f = 0.5 * OH * 1.3333333, scale = OH / 1440, near = 0.1, tg = t * c.seta, step = 1000 / 60 * c.seta;
   const floorMs = c.min_frames * step;
   const R_f = Math.max(c.lo, Math.min(c.hi, c.f * c.radius)), U = HEADER.cell_m[c.tier === 1 ? 1 : c.tier === 2 || c.tier === 3 ? 2 : 0];
-  const R_0 = BM.tier_r0_obj[c.tier] * c.radius + BM.tier_r0_f[c.tier] * R_f, pre = BM.tier_preroll_ms[c.tier], tb = tg - pre;
+  const R_0 = BM.tier_r0_obj[c.tier] * c.radius + BM.tier_r0_f[c.tier] * R_f, pre = c.pre, tb = tg - pre;
   const sum = new Float32Array(OW * OH * 3), mul = new Float32Array(OW * OH * 3).fill(1);
-  const plane = c.hull ? c.dist + 20 : Infinity, base = c.hull ? 0.5 : 0;
+  // the surfaces the lane holds per pixel (depth, its base colour): the optional plane 20 m behind, and the big tiers'
+  // carrier box at FADEOUTBODY's alpha (in front of the plane where both are)
+  const depth = new Float32Array(OW * OH).fill(c.hull ? c.dist + 20 : Infinity);
+  const baseC = new Float32Array(OW * OH * 3).fill(c.hull ? 0.5 : 0);
+  const hullAlpha = !c.big ? 0 : tg < pre ? 1 : tg < pre + 1000 ? 1 - (tg - pre) / 1000 : 0;
   const stats = {bodies: 0, stars: 0, shocks: 0, embers: 0, fragments: 0, glows: 0, smokes: 0, halos: 0, hidden: 0, lengths: [],
-                 light: {body: 0, star: 0, shock: 0, ember: 0, glow: 0, smoke: 0, halo: 0}};
+                 secondaries: 0, births: 0, hull_lights: 0, hull_alpha: hullAlpha,
+                 light: {body: 0, star: 0, shock: 0, ember: 0, glow: 0, smoke: 0, halo: 0, secondary: 0, hull_light: 0}};
   const add = (i, col, e, el) => { for (let k = 0; k < 3; k++) sum[i * 3 + k] += col[k] * e; stats.light[el] += e; };
   const bbox = (cx, cy, r) => [Math.max(0, Math.floor(cx - r)), Math.min(OW, Math.ceil(cx + r)), Math.max(0, Math.floor(cy - r)),
                                Math.min(OH, Math.ceil(cy + r))];
   const toPx = p => [OW / 2 + f * p[0] / p[2], OH / 2 - f * p[1] / p[2]];
   const events = boomEvents(c);
+  if (hullAlpha > 0) { // the carrier: half-extents R_obj along x (the forward axis), 0.25 R_obj across, about each death
+    const E = [c.radius, 0.25 * c.radius, 0.25 * c.radius], light = [-0.45, 0.6, -0.66].map(v => v / Math.hypot(-0.45, 0.6, -0.66));
+    for (const ev of events)
+      for (let y = 0; y < OH; y++) for (let xp = 0; xp < OW; xp++) {
+        const d = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1];
+        let t0 = -Infinity, t1 = Infinity, ax = 0, sg = 1;
+        for (let k = 0; k < 3; k++) {
+          const o = -ev.c[k], dk = Math.abs(d[k]) > 1e-9 ? d[k] : 1e-9, ta = (-E[k] - o) / dk, tb2 = (E[k] - o) / dk;
+          const lo = Math.min(ta, tb2), hi = Math.max(ta, tb2);
+          if (lo > t0) { t0 = lo; ax = k; sg = dk > 0 ? -1 : 1; }
+          t1 = Math.min(t1, hi);
+        }
+        if (!(t1 >= Math.max(t0, 0))) continue;
+        const z = t0 > 0 ? t0 : t1, i = y * OW + xp;
+        if (!(z < depth[i])) continue;
+        depth[i] = z;
+        const n = [0, 0, 0]; n[ax] = sg;
+        const u = [0, 1, 2].map(k => (d[k] * z - ev.c[k]) / E[k]), fr = u.map((v, k) => k === ax ? 0 : Math.abs(((v * 4) % 1 + 1) % 1 - 0.5));
+        const k = (0.05 + 0.17 * Math.max(0, dot3(n, light))) * (Math.max(...fr) > 0.47 ? 0.55 : 1) * hullAlpha;
+        baseC[i * 3] = 0.85 * k; baseC[i * 3 + 1] = 0.9 * k; baseC[i * 3 + 2] = k;
+      }
+  }
   // the body now (radius with its pixel floor, heat, age fraction) and the cluster's N by the others' remaining life
   const live = tb >= 0 && tb < c.L;
   let R = live ? boomRadius(c, R_f, R_0, tb) : 0;
   if (live) R = Math.max(R, BM.body_floor_px * scale * c.dist / f);
   const T = live ? boomHeat(tb, c.L) : 0, x = live ? tb / c.L : 0;
   const cn = events.map(a => events.reduce((s, b) => s + (b !== a && Math.hypot(...a.c.map((v, k) => v - b.c[k])) <= BM.cluster_r_x * R ? 1 - x : 0), 1));
-  // the burst body or its smoke (weapon_fireball_ps.hlsl): the sphere of R x body_r_sphere about the biased centre
-  const body = (cv, Rl, Tt, E, xx, adv, seq, smoke, core = 0) => {
-    const Rs = Rl * BM.body_r_sphere;
+  // the burst body or its smoke (weapon_fireball_ps.hlsl): the sphere of R x body_r_sphere about the biased centre; its
+  // rotation, noise seed and lobe seed from the death's hashes (or a secondary's, hs)
+  const body = (cv, Rl, Tt, E, xx, adv, seq, smoke, core = 0, hs = null, el = 'body') => {
+    // the drawn sphere: boom_sphere_factor by the projected radius (px at 1440 rows) outside the sphere; the smoke's as built
+    const brs = BM.body_r_sphere, out = !(smoke > 0) && cv[2] > Rl * brs && Math.hypot(...cv) > Rl * brs;
+    const sf = u => brs + (BM.body_r_sphere_big - brs) * Math.max(0, Math.min(1, (u - BM.sphere_px0) / (BM.sphere_px1 - BM.sphere_px0)));
+    const Rs = Rl * (out ? sf(Rl * f / cv[2] * 1440 / OH) : brs);
     if (!(cv[2] + Rs > near)) return false;
     const rpx = Rs * f / Math.sqrt(Math.max(cv[2] * cv[2] - Rs * Rs, 1e-6));
     const [x0, x1, y0, y1] = cv[2] - Rs > near ? bbox(...toPx(cv), rpx + 1) : [0, OW, 0, OH];
     const fine = cv[2] - Rs > near ? Math.max(0, Math.min(1, (Rl * f / cv[2] - LK.fireball_fine_px * scale) / (LK.fireball_fine_band_px * scale))) : 1;
-    const th = 2 * Math.PI * unitOf(elementHash(seq, HH.burst_rot_element)), cs = Math.cos(th), sn = Math.sin(th);
-    const o = 64 * unitOf(elementHash(seq, 4)), lseed = 64 * unitOf(elementHash(seq, HH.burst_lobe_element));
+    const th = hs ? hs.th : 2 * Math.PI * unitOf(elementHash(seq, HH.burst_rot_element)), cs = Math.cos(th), sn = Math.sin(th);
+    const o = hs ? hs.o : 64 * unitOf(elementHash(seq, 4)), lseed = hs ? hs.lseed : 64 * unitOf(elementHash(seq, HH.burst_lobe_element));
     const fq = LK.fireball_octave_freq, w = LK.fireball_octave_w, cc = dot3(cv, cv), R2 = Rs * Rs;
     for (let y = y0; y < y1; y++)
       for (let xp = x0; xp < x1; xp++) {
-        if (smoke > 0 && plane === Infinity) continue; // surface-bound
-        const i = y * OW + xp, dir = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), l = Math.sqrt(L2);
+        const i = y * OW + xp, dp = depth[i];
+        if (smoke > 0 && dp === Infinity) continue; // surface-bound
+        const dir = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), l = Math.sqrt(L2);
         const bz = dot3(dir, cv), zm = bz / L2, disc = R2 - (cc - bz * zm);
         if (!(disc > 0)) continue;
-        const hc = Math.sqrt(disc), u0 = Math.max(-hc, (near - zm) * l), u1 = plane === Infinity ? hc : Math.min(hc, (plane - zm) * l);
+        const hc = Math.sqrt(disc), u0 = Math.max(-hc, (near - zm) * l), u1 = dp === Infinity ? hc : Math.min(hc, (dp - zm) * l);
         if (!(u1 > u0)) continue;
         const column = Math.max(0, Math.min(1, ((u1 - u0) * disc - (u1 ** 3 - u0 ** 3) / 3) * 0.75 / (R2 * Rs)));
         const zq = zm + 0.5 * (u0 + u1) / l, q = dir.map((v, k) => (v * zq - cv[k]) / Rs), rq2 = dot3(q, q), rq = Math.sqrt(rq2);
@@ -2413,7 +2498,7 @@ function renderBoom(record, t) {
         const m = column * Math.max(0, Math.min(1, (n - thr) / LK.fireball_heat_soft));
         // the white-hot core (boom::core_*): radiance x (1 + g), whitened by min(1, g), inside 0.3 R falling to 0 at 0.5
         const gc = core * Math.max(0, Math.min(1, (0.5 - rq) / 0.2)), hcol = heatRamp(Tt * (LK.fireball_rim_t + (1 - LK.fireball_rim_t) * m));
-        add(i, hcol.map(v => v + (1 - v) * Math.min(1, gc)), E * dens * (1 + gc), 'body');
+        add(i, hcol.map(v => v + (1 - v) * Math.min(1, gc)), E * dens * (1 + gc), el);
       }
     return true;
   };
@@ -2423,115 +2508,78 @@ function renderBoom(record, t) {
     const b = 1 - BM.body_bias * Rb * Math.min(1, d / (2 * Rb)) / d;
     return cv.map(v => v * b);
   };
-  events.forEach((ev, k) => {
-    if (tb < 0) return;
-    const sb = 1 / (1 + (cn[k] - 1) / BM.cluster_n0), seq = ev.seq, cv = ev.c;
-    const gcore = x < BM.core_x ? BM.core_gain * (1 - x / BM.core_x) : 0;
-    if (live && layers.burst && body(biased(cv, R), R, T, BM.body_e * sb, x, LK.fireball_advect * x, seq, 0, gcore)) stats.bodies++;
-    // the star: arms star_arm R_f (capped at star_cap_h of the rows), core star_core R_f, star_ms with the floor
-    const slife = Math.max(BM.star_ms, floorMs);
-    if (tb < slife && (layers.flash || layers.star)) {
-      const rpx0 = R_f * f / cv[2], rH = Math.min(1, BM.star_cap_h * OH / Math.max(BM.star_arm * rpx0, 1e-6)) * R_f;
-      const d = Math.hypot(...cv), bb = 1 - HH.bias * rH / d, sv = cv.map(v => v * bb), rpx = rH * f / sv[2];
-      const A = Math.max(BM.star_arm * rpx, HH.star_floor_px * scale), fw = 0.5 * HH.star_width_px * scale, half = A + fw;
-      const core = Math.min(Math.max(BM.star_core * rpx, 0.5 * LK.floor_flash_px * scale), half), E = LK.core_e * (1 - tb / slife);
-      const th = 0.5 * Math.PI * unitOf(elementHash(seq, HH.star_element)), cs = Math.cos(th), sn = Math.sin(th), hc = heatRamp(BM.star_t);
-      const [cx, cy] = toPx(sv), len = HH.star_arm_len, [x0, x1, y0, y1] = bbox(cx, cy, half * (cs + sn));
-      const arm = (along, across, Lr) => {
-        const s = along / Lr, wd = 0.5 * HH.star_width * A * Math.max(0, 1 - s) + fw;
-        const xw = Math.max(0, 1 - across * across / (wd * wd)), fs = Math.max(0, 1 - s);
-        return fs * fs * xw * xw;
-      };
-      for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
-        const dx = xp + 0.5 - cx, up = -(y + 0.5 - cy), u = cs * dx + sn * up, v = -sn * dx + cs * up;
-        if (Math.abs(u) > half || Math.abs(v) > half) continue;
-        const arms = Math.max(arm(Math.abs(u), Math.abs(v), (u >= 0 ? len[0] : len[2]) * A), arm(Math.abs(v), Math.abs(u), (v >= 0 ? len[1] : len[3]) * A));
-        const dsk = Math.max(0, Math.min(1, (core - Math.hypot(u, v)) / (0.25 * core)));
-        if (layers.flash) add(y * OW + xp, [1, 1, 1], dsk * E, 'star');
-        if (layers.star) add(y * OW + xp, hc, arms * E, 'star');
-      }
-      stats.stars++;
+  // the star: arms star_arm Rr (capped at star_cap_h of the rows), core star_core Rr, life slife, at view point cv
+  const star = (cv, Rr, ts, slife, seqAngle) => {
+    const rpx0 = Rr * f / cv[2], rH = Math.min(1, BM.star_cap_h * OH / Math.max(BM.star_arm * rpx0, 1e-6)) * Rr;
+    const d = Math.hypot(...cv), bb = 1 - HH.bias * rH / d, sv = cv.map(v => v * bb), rpx = rH * f / sv[2];
+    const A = Math.max(BM.star_arm * rpx, HH.star_floor_px * scale), fw = 0.5 * HH.star_width_px * scale, half = A + fw;
+    const core = Math.min(Math.max(BM.star_core * rpx, 0.5 * LK.floor_flash_px * scale), half), E = LK.core_e * (1 - ts / slife);
+    const th = 0.5 * Math.PI * seqAngle, cs = Math.cos(th), sn = Math.sin(th), hc = heatRamp(BM.star_t);
+    const [cx, cy] = toPx(sv), len = HH.star_arm_len, [x0, x1, y0, y1] = bbox(cx, cy, half * (cs + sn));
+    const arm = (along, across, Lr) => {
+      const s = along / Lr, wd = 0.5 * HH.star_width * A * Math.max(0, 1 - s) + fw;
+      const xw = Math.max(0, 1 - across * across / (wd * wd)), fs = Math.max(0, 1 - s);
+      return fs * fs * xw * xw;
+    };
+    for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
+      const dx = xp + 0.5 - cx, up = -(y + 0.5 - cy), u = cs * dx + sn * up, v = -sn * dx + cs * up;
+      if (Math.abs(u) > half || Math.abs(v) > half) continue;
+      const arms = Math.max(arm(Math.abs(u), Math.abs(v), (u >= 0 ? len[0] : len[2]) * A), arm(Math.abs(v), Math.abs(u), (v >= 0 ? len[1] : len[3]) * A));
+      const dsk = Math.max(0, Math.min(1, (core - Math.hypot(u, v)) / (0.25 * core)));
+      if (layers.flash) add(y * OW + xp, [1, 1, 1], dsk * E, 'star');
+      if (layers.star) add(y * OW + xp, hc, arms * E, 'star');
     }
-    // the shock (weapon_shock_ps.hlsl): the time in the shell over the limb's chord, not drawn once the eye is inside
-    const tau = c.tau * c.L, shl = Math.max(BM.shock_end * c.L, floorMs);
-    if (c.shock && (c.tier !== 4 || BM.missile_shock) && layers.ring && tb < shl) {
-      const r = BM.shock_r_x * R_f * Math.sqrt(Math.max(Math.min(1, tb / tau), 1e-4)), wv = c.shock_w * r, a = (1 - tb / shl) ** 2;
-      if (Math.hypot(...cv) > r) {
-        const col = heatRamp(boomHeat(tb, c.L)), E = BM.shock_e * a, rpx = r * f / Math.sqrt(Math.max(cv[2] * cv[2] - r * r, 1e-6));
-        const [x0, x1, y0, y1] = cv[2] - r > near ? bbox(...toPx(cv), rpx + 1) : [0, OW, 0, OH], cc = dot3(cv, cv);
-        const limb = 2 * Math.sqrt(Math.max(2 * r * wv - wv * wv, 1e-12));
-        for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
-          const dir = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), l = Math.sqrt(L2);
-          const bz = dot3(dir, cv), zm = bz / L2, h2 = cc - bz * zm, so2 = r * r - h2;
-          if (!(so2 > 0)) continue;
-          const so = Math.sqrt(so2), si = Math.sqrt(Math.max((r - wv) ** 2 - h2, 0));
-          const u0 = (near - zm) * l, u1 = plane === Infinity ? 1e30 : (plane - zm) * l;
-          const front = Math.max(0, Math.min(-si, u1) - Math.max(-so, u0)), back = Math.max(0, Math.min(so, u1) - Math.max(si, u0));
-          const ramp = Math.max(0, Math.min(1, (Math.sqrt(h2) - (1 - BM.shock_limb) * r) / (BM.shock_limb * r)));
-          add(y * OW + xp, col, E * Math.min(1, (front + back) / limb) * ramp, 'shock');
-        }
-        stats.shocks++;
-      }
+    stats.stars++;
+  };
+  // the glow primitive on the lane's surfaces about lc (view, m) within Rg: colour col x e0 (none over sky)
+  const glow = (lc, Rg, col, e0, el) => {
+    const rpx = Rg * f / Math.max(lc[2], 1e-6);
+    const [x0, x1, y0, y1] = lc[2] - Rg > near ? bbox(...toPx(lc), rpx + 1) : [0, OW, 0, OH];
+    let any = false;
+    for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
+      const i = y * OW + xp, z = depth[i];
+      if (z === Infinity) continue;
+      const p = [(xp + 0.5 - OW / 2) / f * z, -(y + 0.5 - OH / 2) / f * z, z];
+      const dd = p.map((v, j) => v - lc[j]), q = 1 - dot3(dd, dd) / (Rg * Rg);
+      if (q > 0) { add(i, col, e0 * q * q, el); any = true; }
     }
-    // the glow on the hull plane (none over sky): glow_e E_b T(t) heat(T) within glow_r R_f, the cluster's saturation
-    if (live && layers.glow && plane !== Infinity) {
-      const Rg = Math.min(BM.glow_r_x * R, BM.glow_r_max * R_f), e0 = BM.glow_e * BM.body_e * T * sb, col = heatRamp(T);
-      for (let y = 0; y < OH; y++) for (let xp = 0; xp < OW; xp++) {
-        const p = [(xp + 0.5 - OW / 2) / f * plane, -(y + 0.5 - OH / 2) / f * plane, plane];
-        const dd = p.map((v, j) => v - cv[j]), q = 1 - dot3(dd, dd) / (Rg * Rg);
-        if (q > 0) add(y * OW + xp, col, e0 * q * q, 'glow');
-      }
-      stats.glows++;
-    }
-    // the halo: the same light in air about the body (weapon_halo_ps.hlsl), not with the eye inside the body; the hull
-    // plane in front of the ray's closest approach hides it softly
-    const hf = Math.max(0, Math.min(1, (x - BM.halo_fade_x0) / (BM.halo_fade_x1 - BM.halo_fade_x0))), haloFade = 1 - hf * hf * (3 - 2 * hf);
-    if (live && layers.glow && Math.hypot(...cv) > R * BM.body_r_sphere && haloFade > 0) {
-      const Rh = BM.glow_r_x * R, e0 = BM.glow_e * BM.body_e * T * sb * haloFade, col = heatRamp(T), cc = dot3(cv, cv);
-      const rpx = Rh * f / Math.sqrt(Math.max(cv[2] * cv[2] - Rh * Rh, 1e-6));
-      const [x0, x1, y0, y1] = cv[2] - Rh > near ? bbox(...toPx(cv), rpx + 1) : [0, OW, 0, OH];
-      for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
-        const dir = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), bz = dot3(dir, cv), zc = bz / L2;
-        const q = Math.max(0, 1 - (cc - bz * zc) / (Rh * Rh)), vis = plane === Infinity ? 1 : Math.max(0, Math.min(1, (plane - zc) / (BM.halo_soft * Rh)));
-        if (q > 0) add(y * OW + xp, col, e0 * q * q * vis, 'halo');
-      }
-      stats.halos++;
-    }
-    // the smoke: the body's impostor in the multiply buffer from smoke_t0 L over smoke_span L (on the plane only)
-    const ys = (tb - BM.smoke_t0 * c.L) / (BM.smoke_span * c.L);
-    if (c.smoke && layers.smoke && ys > 0 && ys < 1) {
-      const s = BM.smoke_s0 * Math.min(1, ys / BM.smoke_rise) * (1 - ys) / (1 - BM.smoke_rise), Rm = BM.smoke_r * R_f;
-      if (body(biased(cv, Rm), Rm * (1 + LK.fireball_lobe_amp) / BM.body_r_sphere, 0, 0, ys, LK.fireball_advect * tb / c.L, seq, s))
-        stats.smokes++;
-    }
-    // embers and fragments: the stage's cones and hashes, p(t) = p0 + v t, drawn from the previous frame's point
-    if (!layers.sparks && !layers.chips) return;
-    const cones = boomCones(seq), ve = boomSpeed(R_f, c), every = BM.fragment_every;
-    for (let mI = 0; mI < c.embers; mI++) {
-      const frag = every > 0 && mI % every === every - 1;
-      if (frag ? !layers.chips : !layers.sparks) continue;
-      const h = elementHash(seq, BM.ember_element + mI), h2 = mix32((h + 0x9e3779b9) >>> 0);
-      const law = (frag ? BM.fragment_life : BM.ember_life[mI % 3]) * c.L * (1 + BM.ember_stagger * (byteUnit(h2, 0) - 0.5));
+    return any;
+  };
+  // one ember set (the stage's ember_set): count embers from hash index index0, launched from cen (view offset from the
+  // death point, m) +- the launch offset or from the capsule's surface along their direction; hidden inside the body
+  // about cen (Rb now, R0b at birth, xb its age share); speeds from Rfb, lives from Lset, at the set's age ts (ms)
+  const emberSet = (ev, cones, index0, count, cen, surface, Rb, R0b, Rfb, xb, Lset, ts, own) => {
+    if (!(ts >= 0)) return;
+    const wantE = own || layers.sparks, wantF = own || layers.chips, every = BM.fragment_every, ve = boomSpeed(Rfb, c), cap = boomCapsule(c);
+    const hideA = Rb > 0 ? 1 - Math.max(0, Math.min(1, (xb - BM.ember_hide_x0) / (BM.ember_hide_x1 - BM.ember_hide_x0))) : 0;
+    const o = Math.min(BM.ember_p0 * Rfb, BM.ember_hide_r * R0b), tn = ts / 1000, tp = Math.max(0, ts - step) / 1000;
+    for (let j = 0; j < count; j++) {
+      const mI = index0 + j, frag = every > 0 && mI % every === every - 1;
+      if (frag ? !wantF : !wantE) continue;
+      const h = elementHash(ev.seq, BM.ember_element + mI), h2 = mix32((h + 0x9e3779b9) >>> 0);
+      const law = (frag ? BM.fragment_life : BM.ember_life[mI % 3]) * Lset * (1 + BM.ember_stagger * (byteUnit(h2, 0) - 0.5));
       const life = Math.max(law, floorMs);
-      if (!(tb < life)) continue;
+      if (!(ts < life)) continue;
       const d = boomEmberDir(cones[(h >>> 8) % cones.length], mix32((h ^ 0x5bd1e995) >>> 0));
-      const off = cubePoint(mix32((h2 ^ 0x27d4eb2f) >>> 0));
       const sp = (frag ? BM.fragment_v : 1) * ve * (BM.ember_speed_lo + (BM.ember_speed_hi - BM.ember_speed_lo) * byteUnit(h2, 8));
-      const o = Math.min(BM.ember_p0 * R_f, BM.ember_hide_r * R_0), tn = tb / 1000, tp = Math.max(0, tb - step) / 1000;
-      { const r2 = dot3(off, off); if (r2 > 1) for (let j = 0; j < 3; j++) off[j] /= Math.sqrt(r2); } // within the unit ball
+      let launch;
+      if (surface) launch = boomHullExit(cap, d);
+      else {
+        const off = cubePoint(mix32((h2 ^ 0x27d4eb2f) >>> 0)), r2 = dot3(off, off), kk = r2 > 1 ? 1 / Math.sqrt(r2) : 1;
+        launch = cen.map((v, k) => v + off[k] * kk * o);
+      }
       // hidden while inside the body (fully within ember_hide_r R, visible past R), the share fading with the erosion
-      const rE = Math.hypot(...off.map((v, j) => v * o + d[j] * sp * tn));
-      const hideA = live ? 1 - Math.max(0, Math.min(1, (x - BM.ember_hide_x0) / (BM.ember_hide_x1 - BM.ember_hide_x0))) : 0;
-      const vis = 1 - hideA * (live ? Math.max(0, Math.min(1, (R - rE) / ((1 - BM.ember_hide_r) * R))) : 0);
+      const rE = Math.hypot(...launch.map((v, k) => v - cen[k] + d[k] * sp * tn));
+      const vis = 1 - hideA * (Rb > 0 ? Math.max(0, Math.min(1, (Rb - rE) / ((1 - BM.ember_hide_r) * Rb))) : 0);
       if (!(vis > 0.01)) { stats.hidden++; continue; }
-      const head = cv.map((v, j) => v + off[j] * o + d[j] * sp * tn), tail = cv.map((v, j) => v + off[j] * o + d[j] * sp * tp);
+      const head = ev.c.map((v, k) => v + launch[k] + d[k] * sp * tn), tail = ev.c.map((v, k) => v + launch[k] + d[k] * sp * tp);
       if (!(head[2] > near) || !(tail[2] > near)) continue;
-      const fade = 1 - tb / life, E = (frag ? 0.5 * BM.ember_e * fade : BM.ember_e * Math.exp(-tb / (BM.ember_tau * c.L)) * fade) * vis;
+      const fade = 1 - ts / life, E = (frag ? 0.5 * BM.ember_e * fade : BM.ember_e * Math.exp(-ts / (BM.ember_tau * Lset)) * fade) * vis;
       const col = heatRamp(frag ? BM.fragment_tip_t * fade : fade), A = toPx(head), B = toPx(tail);
       // the pixel mode: a hashed width (px at 1080 rows, scaled), a hashed length of the cap ember_len_max R_f (half for a
       // fragment), never under two widths; the bright head and the fading tail (weapon_sprite_ps.hlsl)
       const lit = (frag ? BM.fragment_w_px : BM.ember_w_px_lo + (BM.ember_w_px_hi - BM.ember_w_px_lo) * byteUnit(h2, 16)) * OH / 1080;
-      const capPx = BM.ember_len_max * R_f * f / head[2];
+      const capPx = BM.ember_len_max * Rfb * f / head[2];
       const drawn = Math.max(2 * lit, (BM.ember_len_lo + (1 - BM.ember_len_lo) * byteUnit(h2, 24)) * capPx * (frag ? 0.5 : 1));
       stats.lengths.push(drawn);
       let ax = A[0] - B[0], ay = A[1] - B[1];
@@ -2543,16 +2591,114 @@ function renderBoom(record, t) {
         if (along < -0.5 * lit || along > drawn || across > 0.5 * lit) continue;
         const u = 1 - Math.max(0, along) / drawn; // 1 at the head, 0 at the tail
         add(y * OW + xp, col, E * u * u * (1 - (across / (0.5 * lit)) ** 2) ** 2, 'ember');
-        if (frag && plane !== Infinity) for (let q = 0; q < 3; q++) mul[(y * OW + xp) * 3 + q] *= 1 - BM.fragment_dark * fade * vis;
+        if (frag && depth[y * OW + xp] !== Infinity) for (let q = 0; q < 3; q++) mul[(y * OW + xp) * 3 + q] *= 1 - BM.fragment_dark * fade * vis;
       }
       if (frag) stats.fragments++; else stats.embers++;
     }
+  };
+  events.forEach((ev, k) => {
+    const sb = 1 / (1 + (cn[k] - 1) / BM.cluster_n0), seq = ev.seq, cv = ev.c, cones = boomCones(seq);
+    const nSec = c.big ? c.secondaries : 0, secEmbers = nSec * BM.secondary_embers;
+    const mainEmbers = Math.max(0, c.embers - secEmbers);
+    // the pre-roll (capital and station): the dying hull's light from 0 to P (fading out with the copy), the secondaries
+    if (c.big && pre > 0 && tg < pre + 1000 && layers.glow) { // to P, then falling with the hull copy's fade (P + 1 s)
+      const hcol = heatRamp(BM.hull_light_t), e0 = BM.glow_e * BM.body_e * (tg < pre
+        ? BM.hull_light_e0 + (BM.hull_light_e1 - BM.hull_light_e0) * tg / pre : BM.hull_light_e1 * (1 - (tg - pre) / 1000));
+      if (glow(cv, BM.hull_light_r * c.radius, hcol, e0, 'hull_light')) stats.hull_lights++;
+    }
+    if (nSec && layers.burst) {
+      const births = boomBirths(seq, c), Ls = BM.secondary_life * c.L, cap = boomCapsule(c);
+      const emberEnd = Math.max(BM.fragment_life, BM.ember_life[2]) * Ls * (1 + 0.5 * BM.ember_stagger), blife = Math.max(Ls, floorMs);
+      let csum = 0;
+      births.forEach(b => { const a = tg - b; if (a >= 0 && a < Ls) csum += 1 - a / Ls; });
+      const sg = csum > 1 ? 1 / (1 + (csum - 1) / BM.secondary_cluster_n0) : 1;
+      births.forEach((b, kk) => {
+        const a = tg - b;
+        if (a < 0 || !(a < Math.max(emberEnd, blife) + floorMs)) return;
+        if (a < step) stats.births++;
+        const Rs = boomSecondaryScale(c, kk) * R_f, pw = boomHullPoint(cap, elementHash(seq, BM.secondary_element + 4 * kk + 1));
+        const sc = cv.map((v, q) => v + pw[q]);
+        let Rn = 0, Tn = 0, xn = 0;
+        if (a < blife) {
+          Rn = Math.max(boomRadiusLaw(Rs, 0, a, Ls, BM.secondary_rise), BM.body_floor_px * scale * sc[2] / f);
+          Tn = boomHeat(Math.min(a, Ls), Ls); xn = Math.min(1, a / Ls);
+        }
+        const hrot = elementHash(seq, BM.secondary_element + 4 * kk + 2);
+        const hs = {th: 2 * Math.PI * unitOf(hrot), lseed: 64 * unitOf(mix32(hrot)), o: 64 * unitOf(elementHash(seq, BM.secondary_element + 4 * kk + 3))};
+        if (Rn > 0 && Tn > 0) {
+          const g = xn < BM.core_x ? BM.core_gain * (1 - xn / BM.core_x) : 0;
+          if (body(biased(sc, Rn), Rn, Tn, BM.body_e, xn, LK.fireball_advect * xn, seq, 0, g, hs, 'secondary')) stats.secondaries++;
+          glow(sc, Math.min(BM.glow_r_x * Rn, BM.glow_r_max * Rs), heatRamp(Tn), BM.glow_e * BM.body_e * Tn * sg, 'secondary');
+        }
+        const slife = Math.max(BM.star_ms, floorMs);
+        if (a < slife && (layers.flash || layers.star)) star(sc, Rs, a, slife, unitOf(mix32((hrot ^ 0x7f4a7c15) >>> 0)));
+        emberSet(ev, cones, mainEmbers + BM.secondary_embers * kk, BM.secondary_embers, pw, false, Rn, 0.5 * Rs, Rs, xn, Ls, a, true);
+      });
+    }
+    if (tb < 0) return;
+    const gcore = x < BM.core_x ? BM.core_gain * (1 - x / BM.core_x) : 0;
+    if (live && layers.burst && body(biased(cv, R), R, T, BM.body_e * sb, x, LK.fireball_advect * x, seq, 0, gcore)) stats.bodies++;
+    // the star: arms star_arm R_f (capped at star_cap_h of the rows), core star_core R_f, star_ms with the floor
+    const slife = Math.max(BM.star_ms, floorMs);
+    if (tb < slife && (layers.flash || layers.star)) star(cv, R_f, tb, slife, unitOf(elementHash(seq, HH.star_element)));
+    // the shock (weapon_shock_ps.hlsl): the time in the shell over the limb's chord, not drawn once the eye is inside
+    const tau = c.tau * c.L, shl = Math.max(BM.shock_end * c.L, floorMs);
+    if (c.shock && ((BM.shock_tiers & (1 << c.tier)) || (c.tier === 4 && BM.missile_shock)) && layers.ring && tb < shl) {
+      const r = BM.shock_r_x * R_f * Math.sqrt(Math.max(Math.min(1, tb / tau), 1e-4)), wv = c.shock_w * r, a = (1 - tb / shl) ** 2;
+      if (Math.hypot(...cv) > r) {
+        const col = heatRamp(boomHeat(tb, c.L)), E = BM.shock_e * a, rpx = r * f / Math.sqrt(Math.max(cv[2] * cv[2] - r * r, 1e-6));
+        const [x0, x1, y0, y1] = cv[2] - r > near ? bbox(...toPx(cv), rpx + 1) : [0, OW, 0, OH], cc = dot3(cv, cv);
+        const limb = 2 * Math.sqrt(Math.max(2 * r * wv - wv * wv, 1e-12));
+        for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
+          const dir = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), l = Math.sqrt(L2);
+          const bz = dot3(dir, cv), zm = bz / L2, h2 = cc - bz * zm, so2 = r * r - h2;
+          if (!(so2 > 0)) continue;
+          const so = Math.sqrt(so2), si = Math.sqrt(Math.max((r - wv) ** 2 - h2, 0)), dp = depth[y * OW + xp];
+          const u0 = (near - zm) * l, u1 = dp === Infinity ? 1e30 : (dp - zm) * l;
+          const front = Math.max(0, Math.min(-si, u1) - Math.max(-so, u0)), back = Math.max(0, Math.min(so, u1) - Math.max(si, u0));
+          const ramp = Math.max(0, Math.min(1, (Math.sqrt(h2) - (1 - BM.shock_limb) * r) / (BM.shock_limb * r)));
+          add(y * OW + xp, col, E * Math.min(1, (front + back) / limb) * ramp, 'shock');
+        }
+        stats.shocks++;
+      }
+    }
+    // the glow on the lane's surfaces (none over sky): glow_e E_b T(t) heat(T) within glow_r R_f, the cluster's saturation
+    if (live && layers.glow && glow(cv, Math.min(BM.glow_r_x * R, BM.glow_r_max * R_f), heatRamp(T), BM.glow_e * BM.body_e * T * sb, 'glow'))
+      stats.glows++;
+    // the halo: the same light in air about the body (weapon_halo_ps.hlsl), not with the eye inside the body; a surface
+    // in front of the ray's closest approach hides it softly
+    // corvettes and up (D15): halo_big_r R(t), at most halo_big_e E_b, faded out over halo_big_x0 .. x1 of L
+    const hx0 = c.big ? BM.halo_big_x0 : BM.halo_fade_x0, hx1 = c.big ? BM.halo_big_x1 : BM.halo_fade_x1;
+    const hf = Math.max(0, Math.min(1, (x - hx0) / (hx1 - hx0))), haloFade = 1 - hf * hf * (3 - 2 * hf);
+    if (live && layers.glow && Math.hypot(...cv) > R * BM.body_r_sphere && haloFade > 0) {
+      const eg = BM.glow_e * BM.body_e * T * sb, ecap = c.big ? Math.min(eg, BM.halo_big_e * BM.body_e) : eg;
+      const Rh = (c.big ? BM.halo_big_r : BM.glow_r_x) * R, e0 = ecap * haloFade, col = heatRamp(T), cc = dot3(cv, cv);
+      const rpx = Rh * f / Math.sqrt(Math.max(cv[2] * cv[2] - Rh * Rh, 1e-6));
+      const [x0, x1, y0, y1] = cv[2] - Rh > near ? bbox(...toPx(cv), rpx + 1) : [0, OW, 0, OH];
+      for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
+        const dir = [(xp + 0.5 - OW / 2) / f, -(y + 0.5 - OH / 2) / f, 1], L2 = dot3(dir, dir), bz = dot3(dir, cv), zc = bz / L2;
+        const dp = depth[y * OW + xp];
+        const q = Math.max(0, 1 - (cc - bz * zc) / (Rh * Rh)), vis = dp === Infinity ? 1 : Math.max(0, Math.min(1, (dp - zc) / (BM.halo_soft * Rh)));
+        if (q > 0) add(y * OW + xp, col, e0 * q * q * vis, 'halo');
+      }
+      stats.halos++;
+    }
+    // the smoke: the body's impostor in the multiply buffer from smoke_t0 L over smoke_span L (on the lane's surfaces)
+    const ys = (tb - BM.smoke_t0 * c.L) / (BM.smoke_span * c.L);
+    if (c.smoke && layers.smoke && ys > 0 && ys < 1) {
+      const s = BM.smoke_s0 * Math.min(1, ys / BM.smoke_rise) * (1 - ys) / (1 - BM.smoke_rise), Rm = BM.smoke_r * R_f;
+      if (body(biased(cv, Rm), Rm * (1 + LK.fireball_lobe_amp) / BM.body_r_sphere, 0, 0, ys, LK.fireball_advect * tb / c.L, seq, s))
+        stats.smokes++;
+    }
+    // embers and fragments: the stage's cones and hashes, p(t) = p0 + v t, drawn from the previous frame's point (the
+    // big tiers' from the capsule's surface)
+    if (layers.sparks || layers.chips) emberSet(ev, cones, 0, mainEmbers, [0, 0, 0], c.big, live ? R : 0, R_0, R_f, x, c.L, tb, false);
   });
   const img = stageImage(ctx), out = img.data;
   for (let i = 0; i < OW * OH; i++) {
     for (let k = 0; k < 3; k++) {
-      const v = base * mul[i * 3 + k] + sum[i * 3 + k];
-      if (plane !== Infinity || sum[i * 3 + k] > 0) out[i * 4 + k] = Math.round(linearToSrgb(1 - Math.exp(-v)) * 255);
+      const v = baseC[i * 3 + k] * mul[i * 3 + k] + sum[i * 3 + k];
+      if (depth[i] !== Infinity || sum[i * 3 + k] > 0) out[i * 4 + k] = Math.round(linearToSrgb(1 - Math.exp(-v)) * 255);
     }
     out[i * 4 + 3] = 255;
   }
@@ -2570,9 +2716,11 @@ function renderBoom(record, t) {
   record.boomStats = stats;
   record.caption = `Death: ${BOOM_TIERS[c.tier]} R_obj ${c.radius} m at ${c.dist} m, R_f ${R_f.toFixed(1)} m, L ${c.L} ms` +
     `${c.nested > 1 ? ', ' + c.nested + ' deaths in one frame' : ''}` +
-    `${BM.tier_native & (1 << c.tier) ? ' (native in the first flight: boom::tier_native)' : ''}`;
+    `${c.big ? `, pre-roll ${c.pre} ms (${c.secondaries} secondaries), the hull copy at ${(hullAlpha * 100).toFixed(0)} %` : ''}` +
+    `${BM.tier_native & (1 << c.tier) ? ' (native: boom::tier_native)' : ''}`;
   record.detail = `body R ${stats.R_px.toFixed(1)} px, T ${T.toFixed(2)}, bodies ${stats.bodies}, stars ${stats.stars}, shocks ${stats.shocks}, ` +
-    `embers ${stats.embers} (${stats.hidden} inside the body), fragments ${stats.fragments}, glows ${stats.glows}, halos ${stats.halos}, smokes ${stats.smokes}`;
+    `embers ${stats.embers} (${stats.hidden} inside the body), fragments ${stats.fragments}, glows ${stats.glows}, halos ${stats.halos}, smokes ${stats.smokes}` +
+    `${c.big ? `, secondaries ${stats.secondaries}, hull lights ${stats.hull_lights}` : ''}`;
 }
 // ---------------------------------------------------------------- helpers
 function $(id) { return document.getElementById(id); }
@@ -3156,7 +3304,7 @@ function fillScenarios() {
   const group = (fam, title) => `<optgroup label="${title}">` + PRESETS.filter(p => p.family === fam)
     .map(p => `<option value="${esc(p.id)}" title="${esc(p.id)}">${esc(labels[p.id])}</option>`).join('') + '</optgroup>';
   $('preset').innerHTML = '<option value="">(none)</option>' + group('shield', 'Shield') + group('hull', 'Hull') +
-    group('bolt', 'Bolt') + group('muzzle', 'Muzzle');
+    group('bolt', 'Bolt') + group('muzzle', 'Muzzle') + group('boom', 'Boom');
 }
 // The scenario's marker: "(modified)" once a control it set (or any other scene, weapon or tuning control) changes.
 function showScenario() {

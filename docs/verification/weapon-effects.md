@@ -1769,3 +1769,83 @@ The hull burst's pinhole row is in "Burst review fixes and the merge" above.
 `d0c96e637-dirty`). `build-boom` (ap) and `build-boom-fl` (fl) clean builds 0 warnings (d3d9.dll 1bdc864b... /
 cada0404...); `check_no_x87.py --edition ap` no violations (1181 reachable functions); `manage.py launch --game-dir
 /mnt/c/X3 --config --dry-run` exit 0, weapon_effects unset.
+
+## Explosions: the big tiers
+
+2026-11-07, uncommitted on the `effects` branch at `da8e8bcac`. Spec: [explosion-look.md](../architecture/explosion-look.md)
+sections 1, 2.5, 2.6, 4, 7, 9 and its "Built numbers (the big tiers)"; the engine facts of
+[weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md) section 10. Numbers from
+`python3 verification/results/explosion-look/ledger_rows.py --markdown --big` over the native records of
+`verification/results/native-windows/weapon-effects/` (RTX 5070 Ti, the native Windows d3d9.dll).
+
+**What is built.**
+- **Hook.** Corvettes, capitals and stations forward `0x00413610` through the clone row R' (`boom::tier_swap`): the
+  handler (integer only, no call) saves the type record's death column, writes R', and returns 2; the stub then calls the
+  callee itself with the three arguments copied and calls `x3m_weapon_death_restore` after it returns (LIFO; nested kills
+  of another type touch their own record, the same type writes the same R' and restores its own saved value). R' not
+  ready (none built, a zeroed or foreign slot), an unreadable record or a full stack: byte-exact forward, census
+  (`cause=`). Present restores a swap an unwind left on the stack.
+- **R'.** Built at Present (`clone_upkeep`, `weapon_boom_rows` per event), never while the scope loads, from the loaded
+  death rows of the type records we own; the array from the EXE malloc `0x005112c4` (its prologue checked first); never
+  freed by us. A vanished or changed source drops its pair and abandons its slot (left as it is, at most 16); R' is built
+  again in another slot, never refilled or regrown in place (review A); a zeroed slot is refilled only with the same
+  count; free slots skip every row a death column or a PROPAGATE child references (review C); the scan is timed
+  (`scan_us`, review L). `shutdown()` restores a leaked swap before the sites (review H); `weapon_death` carries one
+  `cause=` (review D).
+- **Stage.** Through the pre-roll (capital 1.5 s, station 3 s) the dying hull's light (fading with the hull copy over
+  P .. P + 1 s) and the secondaries at the geometric cadence inside the hull shape (the bubble cache's box, else the axis
+  capsule; `weapon_death bubble_cached=`), each with its star, glow and 8 embers; the body from 0.5 R_f at P, no shock on
+  any tier (D14), the big tiers' halo capped (D15), the body's embers from the hull shape's surface. Budget: the family's own 2.5-screen cap, the
+  secondaries past the two newest shed at step 5 (all of them from P); the drawn sphere 1.33 -> 1.21 R(t) by pixel size.
+- **Lab.** The Boom tab draws the carrier box at FADEOUTBODY's alpha, the hull light, the secondaries and the surface
+  embers; the 14 scenarios are now in the scenario menu (they were missing from it); pre-roll, secondaries and cadence
+  controls.
+- **Coordinator decisions D9-D15** (explosion-look.md "Built numbers (the big tiers)"): the hull light fades with the copy
+  (D9), the 2.5-screen cap (D10), the secondaries protected only through the pre-roll (D11: worst close-capital frame
+  361.4 us, every step shed 82.8 us), the drawn sphere 1.33 -> 1.21
+  over 64-320 px (D12), the CPU gate per drawn quad (D13); no shell on any tier (D14, `boom::shock_tiers` 0: the corvette's
+  grey ring and the capital's and station's white ring at birth were the soap bubble; the replacement is a refraction limb
+  through the engine shimmer pass); the big tiers' halo capped at 1.15 R(t) and 0.2 E_b, out by 0.6 L (D15: a balloon from
+  0.3 L).
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| hook: `death_clone_row_built`, `death_clone_malloc_prologue_refused` (PASS, PASS) | row 37 -> slot 998: 12 elements (10 DISTANT copies, 2 empty nodes, 1 PROPAGATE dropped), row flags 0, FADEOUTBODY from 1500 ms, the hold to 2500 ms; row 40 -> 6 elements (P 0); row 201 fade from 3000 ms; 3 arrays from the EXE malloc stand-in; a changed prologue builds none | |
+| hook: `death_swaps_death_column_big_tiers`, `death_swap_callee_state` (PASS, PASS) | the callee read R' in its column, the original back after; ESP 005ea898 against the frame's 005ea8b8 (32 below), return 0081211b inside the stub 008120e0, ECX 00a4a4a4 / EDX 00c0ffee, flags 00000ac7 | |
+| hook: `death_nested_lifo_restore`, `death_nested_after_return_swap` (PASS, PASS) | 3 entries in one outer call: outer M2 998, inner M6 999, inner M2 998; after: M2 37, M6 40, depth 0, 3 restores | |
+| hook: `death_clone_not_ready_forwards_exact`, `death_clone_rebuilt_after_reload`, `death_clone_slot_taken_refused`, `death_swap_leak_restored_at_present` (PASS, PASS, PASS, PASS) | totals: swapped 13, restores 12, changed 0, leaked 1, clone_missing 6, swap_full 1, builds 10, invalidated 4 | |
+| hook: `death_clone_scan_refused_while_loading`, `death_clone_source_vanished_drops`, `death_clone_source_changed_new_slot`, `death_clone_free_slot_skips_referenced` (PASS, PASS, PASS, PASS) | a scan due while loading added nothing; a vanished source's pair dropped, its slot 993 left as it was; row 37 moved: slot 998 abandoned, R' again in 992 (rows 995 / 994 referenced, skipped); 2 slots abandoned | |
+| hook: `death_clone_scan_time` (PASS; the installed tables' 1553 records, the fixture's engine memory) | 3 pairs, 9.4 us median of 15 scans, 446.0 us the first (cold) | <= 250 us |
+| audit | death stubs {'area': True, 'other': True}; calls {'_x3m_weapon_death_area': [], '_x3m_weapon_death_other': [], '_x3m_weapon_death_restore': []}; x87 0; restore 45 instructions | 0 calls, 0 x87 |
+| `death_big_tier_sizes` (PASS; core off) | outline / R(t) at 0.1 / 0.3 L after P: corvette 1.5 km 1.014 / 0.970, capital 1.5 km 0.990 / 1.004, station 3 km 0.984 / 0.963; R_f M7 556.2 m, shipyard 1800.0 m | 5 % |
+| `death_preroll_cadence_and_hull_light` (PASS; capital 1.5 km, 4 ms steps) | capsule: 8 births 0-1484 ms, 8 inside; cached box: 8, 8 inside (bubble flags 3); bodies before P 0; first body 0.5 R_f; hull light 0.198 / 0.3938 / 0.198 against 0.198 / 0.3939 / 0.198 at 0 / P - 16 / P + 500 ms, after the fade 0 | gaps 20 % + 4 ms; 10 %; 0.5 R_f +- 3 % |
+| `death_big_no_pop_at_birth` (PASS) | first body over R_0: corvette 1.0, capital 1.007; rise <= 2x over P +- 32 ms: 1; the capital's star 145.0 px half against 270.0 | |
+| `death_shock_off_all_tiers` (PASS; D14) | `shock_tiers` 0: 0 shells over the three tiers at 0.02 / 0.1 / 0.2 L | 0 |
+| `death_big_halo_capped` (PASS; D15, capital 1.5 km, the halo alone) | at 0.2 L: farthest pixel 1.013 R(t) (259.1 px of 255.8), peak 0.3; halos at 0.6 L 0 | <= 1.25 R(t); <= 0.2 E_b; 0 |
+| `death_big_shock_is_a_shell` (PASS; corvette, forced on: the law's evidence only) | farthest 80.4 / 114.1 px against 79.2 / 112.1 at 0.1 / 0.2 tau; interior 0.0; peak 0.472 / 0.352 | 5 %; <= 0.02; <= 0.7 E_b |
+| `death_big_light_and_fade` (PASS) | capital glow peak 0.452 / 0.365 at 0.1 / 0.3 L, over sky 0.0; elements left at P + 1.6 L: 0 | <= 0.4 E_b; 0 |
+| `death_big_eye_inside_bounded` (PASS; the eye 720 m from a capital) | 0.25 L: lit 1.0, std / mean 0.488; 0.6 L: dark 0.562 | D2 |
+| `death_big_seta6` (PASS; 100 ms steps) | 8 secondaries born; body last at 5400 of 5500 ms; star 3 frames | 8; within a step; 3 |
+| `death_budget_capital_close_5120` (PASS) | worst 361.4 us (capital_close_700ms, 2.434 screens, shed 9) over 22 frames P - 100 .. P + 2000 ms; every step shed 82.8 us | <= 450; <= 300 |
+| `death_big_stage_cpu` (PASS) | 4 capitals, 2 stations, 26 fighters: 30 bodies, 35 secondaries, 791 quads: 53.2 us median (0.0673 us a quad) | 0.08 us a quad, 100 us |
+
+**Judged from the frames** (v3: `crop_grid.py` over the dump of `boom_corvette_1500m`, `boom_capital_1500m_broadside`,
+`boom_capital_close_720m`, `boom_station_3km` at 1920x1080 and 5120x1440 in the fixture's scene model, the carrier box at
+FADEOUTBODY's alpha with its depth in the lane; grids local, not tracked). The hull visible and lit through the pre-roll and
+through its fade, secondaries popping on it (half hidden where they sit inside the solid box: the model's worst case), the
+body born at 0.5 R_f eating the hull over its 1 s fade, no ring (D14), no balloon about the body (D15), no lamp at the
+tiers' distances, nothing native left. The v1 / v2 frames showed the rings, the halo disc and the hull light's drop at P.
+
+**Open items** (review notes G, I, J, M as recorded here; G and J are engine-side assumptions not verified):
+- G [unverified, engine]: the carrier's alpha before P. R' starts at t0 = 0, so for P > 0 `FADEOUTBODY`'s ramp is read
+  before its element starts; the alpha is assumed to stay 255 until P (natively the ramp only ever ran from t0 on).
+- J [unverified, engine]: a zeroed slot means the engine's reset freed its array and no instance outlives the reload; the
+  same-count refill and the reclaiming of abandoned slots rest on it.
+- I: a ship whose class id is outside `patch_tier_of_ship` swaps only when a known class shares its (row, pre-roll).
+- M: the scan's cost is measured in the fixture's engine memory (a plain copy); the production reader's per-read cost on
+  the 1,553 records of the installed tables is not measured (the first, cold scan took 446 us in the fixture).
+
+**Acceptance** [M]: `test_weapon_effects_*` 98 OK; `generate_weapon_effects_programs.py --check`, the lab's `--check`,
+`schema.py --check`, `generate.py --check` PASS; native run D3D 298 / 0, hook 147 / 0 (built from these sources,
+`da8e8bcac-dirty`); `build-boom-big` (ap) and `build-boom-big-fl` (fl) clean builds 0 warnings; `check_no_x87.py --edition
+ap` no violations (1181 reachable functions); `manage.py launch --game-dir /mnt/c/X3 --config --dry-run` exit 0. Not flown.

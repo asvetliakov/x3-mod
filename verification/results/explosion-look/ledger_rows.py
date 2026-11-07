@@ -3,8 +3,9 @@
 verification/results/native-windows/weapon-effects/ (run_weapon_effects.py --host native): the hook fixture's death-site
 checks, the audit's death stubs and EXE windows, the forward state and the nested rows; the D3D fixture's death_* checks,
 the EXPLOSION rows and the EXPLOSION_TIMING rows (EVENT-fenced best of 60 at 1080p and 5120x1440).
-usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown]
---markdown prints the ledger's gate table and budget line from the record (the ledger's numbers are pasted from it)."""
+usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big]]
+--markdown prints the ledger's gate table and budget line from the record (the ledger's numbers are pasted from it);
+with --big the big tiers' table ("Explosions: the big tiers": the clone row R', the swap, the pre-roll gates)."""
 import json
 import sys
 from pathlib import Path
@@ -98,7 +99,56 @@ def markdown():
     print('\n'.join(out))
 
 
+def big_markdown():
+    """The big tiers (docs/verification/weapon-effects.md "Explosions: the big tiers"): the hook's clone row and swap rows,
+    the D3D fixture's big-tier gates and the close capital's fenced frames."""
+    ok = lambda name: 'PASS' if checks.get(name) else 'FAIL'
+    hk = {c['name']: c['passed'] for c in hook['checks']}
+    hok = lambda name: 'PASS' if hk.get(name) else 'FAIL'
+    c, s, n, w = hook['death_clone'], hook['death_swap_state'], hook['death_nested_swap'], hook['death_swap']
+    a = hook['build']['audit']
+    sc, sl = hook['death_scan_timing'], hook['death_slots']
+    sz = {(r['tier'], r['age_frac']): r['outline_over_law'] for r in rows if r.get('case') == 'size'}
+    cl = row('clamp')
+    pre = {r['box']: r for r in rows if r.get('case') == 'preroll'}
+    hl = row('hull_light')
+    pop = {r['tier']: r for r in rows if r.get('case') == 'no_pop'}
+    sh = [r for r in rows if r.get('case') == 'shock' and r['tier'] == 'corvette_1500m']
+    bl = row('big_light')
+    so = row('shock_off')
+    hb = row('halo_big')
+    eye = {r['age_frac']: r for r in rows if r.get('case') == 'eye_inside' and r['tier'] == 'capital_720m'}
+    seta = row('seta', tier='capital')
+    cpu = row('cpu', big=6)
+    close = [r for (wd, case), r in sorted(timing.items()) if wd == 5120 and case.startswith('capital_close_') and
+             case != 'capital_close_all_shed']
+    worst = max(close, key=lambda r: r['gpu_us'])
+    allshed = timing[(5120, 'capital_close_all_shed')]
+    out = [
+        '| Gate | Result [M] | Bound |', '| --- | --- | --- |',
+        f"| hook: `death_clone_row_built`, `death_clone_malloc_prologue_refused` ({hok('death_clone_row_built')}, {hok('death_clone_malloc_prologue_refused')}) | row 37 -> slot {c['slot']}: {c['count']} elements ({c['masked']} DISTANT copies, {c['kept']} empty nodes, {c['dropped']} PROPAGATE dropped), row flags {c['row_flags']}, FADEOUTBODY from {c['fade_start']} ms, the hold to {c['hold_end']} ms; row 40 -> {c['corvette_count']} elements (P 0); row 201 fade from {c['station_fade_start']} ms; {c['mallocs']} arrays from the EXE malloc stand-in; a changed prologue builds none | |",
+        f"| hook: `death_swaps_death_column_big_tiers`, `death_swap_callee_state` ({hok('death_swaps_death_column_big_tiers')}, {hok('death_swap_callee_state')}) | the callee read R' in its column, the original back after; ESP {s['esp_callee']} against the frame's {s['esp_frame']} (32 below), return {s['return']} inside the stub {s['stub']}, ECX {s['ecx']} / EDX {s['edx']}, flags {s['eflags_callee']} | |",
+        f"| hook: `death_nested_lifo_restore`, `death_nested_after_return_swap` ({hok('death_nested_lifo_restore')}, {hok('death_nested_after_return_swap')}) | {n['entries']} entries in one outer call: outer M2 {n['outer_m2']}, inner M6 {n['inner_m6']}, inner M2 {n['inner_m2']}; after: M2 {n['after_m2']}, M6 {n['after_m6']}, depth {n['depth']}, {n['restores']} restores | |",
+        f"| hook: `death_clone_not_ready_forwards_exact`, `death_clone_rebuilt_after_reload`, `death_clone_slot_taken_refused`, `death_swap_leak_restored_at_present` ({hok('death_clone_not_ready_forwards_exact')}, {hok('death_clone_rebuilt_after_reload')}, {hok('death_clone_slot_taken_refused')}, {hok('death_swap_leak_restored_at_present')}) | totals: swapped {w['swapped']}, restores {w['restores']}, changed {w['changed']}, leaked {w['leaked']}, clone_missing {w['clone_missing']}, swap_full {w['swap_full']}, builds {w['builds']}, invalidated {w['invalidated']} | |",
+        f"| hook: `death_clone_scan_refused_while_loading`, `death_clone_source_vanished_drops`, `death_clone_source_changed_new_slot`, `death_clone_free_slot_skips_referenced` ({hok('death_clone_scan_refused_while_loading')}, {hok('death_clone_source_vanished_drops')}, {hok('death_clone_source_changed_new_slot')}, {hok('death_clone_free_slot_skips_referenced')}) | a scan due while loading added nothing; a vanished source's pair dropped, its slot {sl['slot650']} left as it was; row 37 moved: slot {sl['old37']} abandoned, R' again in {sl['new37']} (rows 995 / 994 referenced, skipped); {sl['abandoned']} slots abandoned | |",
+        f"| hook: `death_clone_scan_time` ({hok('death_clone_scan_time')}; the installed tables' {sc['records']} records, the fixture's engine memory) | {sc['pairs']} pairs, {sc['median_us']} us median of 15 scans, {sc['max_us']} us the first (cold) | <= {sc['bound_us']} us |",
+        f"| audit | death stubs {a['stub_death_ok']}; calls {dict((k, v) for k, v in a['handler_calls'].items() if 'death' in k)}; x87 {len(a['handler_x87'])}; restore {a['handler_instructions'].get('_x3m_weapon_death_restore')} instructions | 0 calls, 0 x87 |",
+        f"| `death_big_tier_sizes` ({ok('death_big_tier_sizes')}; core off) | outline / R(t) at 0.1 / 0.3 L after P: corvette 1.5 km {sz[('corvette_1500m', 0.1)]:.3f} / {sz[('corvette_1500m', 0.3)]:.3f}, capital 1.5 km {sz[('capital_1500m', 0.1)]:.3f} / {sz[('capital_1500m', 0.3)]:.3f}, station 3 km {sz[('station_3km', 0.1)]:.3f} / {sz[('station_3km', 0.3)]:.3f}; R_f M7 {cl['m7_R_f']} m, shipyard {cl['shipyard_R_f']} m | 5 % |",
+        f"| `death_preroll_cadence_and_hull_light` ({ok('death_preroll_cadence_and_hull_light')}; capital 1.5 km, 4 ms steps) | capsule: {pre[0]['births']} births {pre[0]['first']}-{pre[0]['last']} ms, {pre[0]['inside']} inside; cached box: {pre[1]['births']}, {pre[1]['inside']} inside (bubble flags {pre[1]['bubble_flags']}); bodies before P {pre[0]['bodies_before_P']}; first body {pre[0]['first_body_R_over_R_f']} R_f; hull light {hl['peak_0']} / {hl['peak_P']} / {hl['peak_P500']} against {hl['want_0']} / {hl['want_P']} / {hl['want_P500']} at 0 / P - 16 / P + 500 ms, after the fade {hl['hull_lights_after_fade']} | gaps 20 % + 4 ms; 10 %; 0.5 R_f +- 3 % |",
+        f"| `death_big_no_pop_at_birth` ({ok('death_big_no_pop_at_birth')}) | first body over R_0: corvette {pop['corvette_1500m']['first_over_r0']}, capital {pop['capital_1500m']['first_over_r0']}; rise <= 2x over P +- 32 ms: {pop['capital_1500m']['rise_ok']}; the capital's star {pop['capital_1500m']['star_half_px']} px half against {pop['capital_1500m']['cap_px']} | |",
+        f"| `death_shock_off_all_tiers` ({ok('death_shock_off_all_tiers')}; D14) | `shock_tiers` {so['shock_tiers']}: {so['shocks']} shells over the three tiers at 0.02 / 0.1 / 0.2 L | 0 |",
+        f"| `death_big_halo_capped` ({ok('death_big_halo_capped')}; D15, capital 1.5 km, the halo alone) | at 0.2 L: farthest pixel {hb['ratio']} R(t) ({hb['max_r_px']} px of {hb['R_t_px']}), peak {hb['peak']}; halos at 0.6 L {hb['halos_06']} | <= 1.25 R(t); <= 0.2 E_b; 0 |",
+        f"| `death_big_shock_is_a_shell` ({ok('death_big_shock_is_a_shell')}; corvette, forced on: the law's evidence only) | farthest {sh[0]['outline_max_px']} / {sh[1]['outline_max_px']} px against {sh[0]['law_px']} / {sh[1]['law_px']} at 0.1 / 0.2 tau; interior {sh[0]['interior_over_limb']}; peak {sh[0]['shock_peak']} / {sh[1]['shock_peak']} | 5 %; <= 0.02; <= 0.7 E_b |",
+        f"| `death_big_light_and_fade` ({ok('death_big_light_and_fade')}) | capital glow peak {bl['glow_peak_01']} / {bl['glow_peak_03']} at 0.1 / 0.3 L, over sky {bl['sky']}; elements left at P + 1.6 L: {bl['left_at_life']} | <= 0.4 E_b; 0 |",
+        f"| `death_big_eye_inside_bounded` ({ok('death_big_eye_inside_bounded')}; the eye 720 m from a capital) | 0.25 L: lit {eye[0.25]['lit_share']}, std / mean {eye[0.25]['std_over_mean']}; 0.6 L: dark {eye[0.6]['dark_share']} | D2 |",
+        f"| `death_big_seta6` ({ok('death_big_seta6')}; 100 ms steps) | {seta['secondaries_born']} secondaries born; body last at {seta['body_last_age_ms']} of {seta['life_ms']} ms; star {seta['star_frames']} frames | 8; within a step; 3 |",
+        f"| `death_budget_capital_close_5120` ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, {worst['screens']} screens, shed {worst['shed']}) over {len(close)} frames P - 100 .. P + 2000 ms; every step shed {allshed['gpu_us']} us | <= 450; <= 300 |",
+        f"| `death_big_stage_cpu` ({ok('death_big_stage_cpu')}) | 4 capitals, 2 stations, 26 fighters: {cpu['bodies']} bodies, {cpu['secondaries']} secondaries, {cpu['quads']} quads: {cpu['median_us']} us median ({cpu['us_per_quad']} us a quad) | 0.08 us a quad, 100 us |",
+    ]
+    print('\n'.join(out))
+
+
 if '--markdown' in sys.argv:
-    markdown()
+    big_markdown() if '--big' in sys.argv else markdown()
 else:
     plain()

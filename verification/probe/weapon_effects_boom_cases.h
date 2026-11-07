@@ -1,7 +1,7 @@
 #pragma once
 // Step 3, the death explosion (docs/architecture/explosion-look.md sections 2, 3, 5, 7 and 9; the stage
-// src/proxy/weapon_effects_boom.h, the shock src/effects/weapon_shock_ps.hlsl): the production builder and pass on the
-// tiers the first flight draws (fighter, missile), at the vanilla vertical FOV (73.74 deg: 960 px per metre at 1 m at
+// src/proxy/weapon_effects_boom.h, the shock src/effects/weapon_shock_ps.hlsl): the production builder and pass on every
+// tier (fighter, missile; the big tiers corvette, capital, station with their pre-roll, section 16), at the vanilla vertical FOV (73.74 deg: 960 px per metre at 1 m at
 // 1440 rows, 720 at 1080), so the frames have the note's pixel sizes. Included by weapon_effects_fixture.cpp after the
 // class cases (it shares g, dev, report, base_frame, make_target, read_rgb, draw_lane, fence, stage_ring and the burst
 // gates' body analysis). Rows: `EXPLOSION case=...`, `EXPLOSION_TIMING ...`, `EXPLOSION_DUMP ...`; checks death_*.
@@ -11,22 +11,29 @@ constexpr float vanilla_m11 = 1.3333333f; // 1 / tan(73.74 / 2 deg)
 ws::BoomState state;
 rr::WeaponSpriteVertex sprites[bm::max_quads * 4];
 rr::WeaponGlowVertex glows[rr::weapon_glow_boxes * 4], darks[rr::weapon_scorch_boxes * 4];
-rr::WeaponFireballVertex bodies[bm::max_bodies * 4], smokes[bm::max_bodies * 4], shocks[rr::weapon_shock_boxes * 4];
+// the bodies and, after them, the big tiers' secondaries (the stage places them past the bodies)
+constexpr unsigned body_boxes = bm::max_bodies + bm::max_secondaries;
+rr::WeaponFireballVertex bodies[body_boxes * 4], smokes[bm::max_bodies * 4], shocks[rr::weapon_shock_boxes * 4];
 rr::WeaponGlowVertex halos[rr::weapon_halo_boxes * 4];
 struct Out {
     ws::BoomCounts n;
     unsigned quads = 0, glows = 0, bodies = 0, smokes = 0, darks = 0, shocks = 0, halos = 0;
 };
 // Parts (the dump's and the gates' isolation): bit per element.
+// p_secondary: the big tiers' secondaries (each with its star, glow and embers); the hull light rides on p_glow.
 enum Part : unsigned { p_flash = 1, p_body = 2, p_shock = 4, p_ember = 8, p_fragment = 16, p_glow = 32, p_smoke = 64,
-                       p_halo = 128, p_all = 255 };
-const char* const part_names[8] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo"};
-constexpr unsigned part_count = 8;
+                       p_halo = 128, p_secondary = 256, p_all = 511 };
+const char* const part_names[9] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo", "secondary"};
+constexpr unsigned part_count = 9;
 // The body's white-hot core in the builds (the geometry gates, sizes and erosion, measure the law's outline with it off:
 // the core is a radiance term inside 0.5 R that would raise the 10 %-of-peak threshold).
 bool core_on = true;
 // The missile's shell for its own gate cases and budget row (boom::missile_shock is off in production).
 bool force_shock = false;
+// The hull light's switch in the builds (0 with p_glow, 1 alone with the body's glow off, 2 off): its own gates.
+unsigned hull_light_mode = 0;
+// The family's own screen cap (BoomTuning::budget_screens; the hysteresis gate lifts it to see the shared budget alone).
+float cap_screens = bm::budget_screens;
 ws::BoomTuning tuning(unsigned parts) {
     ws::BoomTuning t;
     t.star = parts & p_flash;
@@ -37,8 +44,12 @@ ws::BoomTuning tuning(unsigned parts) {
     t.glow = parts & p_glow;
     t.smoke = parts & p_smoke;
     t.halo = parts & p_halo;
+    t.secondaries = parts & p_secondary; // its star also needs p_flash (every star is the flash part)
+    t.hull_light = hull_light_mode == 2 ? false : hull_light_mode == 1 ? true : (parts & p_glow) != 0;
+    if (hull_light_mode == 1) t.glow = false;
     t.core = core_on;
     t.force_shock = force_shock;
+    t.budget_screens = cap_screens;
     return t;
 }
 ws::HullView view(const Target& t, std::uint32_t now, std::uint32_t step) {
@@ -82,6 +93,8 @@ wc::Event* add(unsigned tier, std::uint32_t t0, double x_m, double y_m, double z
     e->radius = std::int32_t(std::lround(r_m * 500.0));
     return e;
 }
+// The bubble cache the build looks the dying owner up in (nullptr: none; the big tiers take the axis capsule).
+const ws::BubbleCache* bubbles = nullptr;
 Out build(const ws::HullView& v, unsigned parts = p_all) {
     Out o;
     ws::BoomBuffers b;
@@ -90,7 +103,7 @@ Out build(const ws::HullView& v, unsigned parts = p_all) {
     b.glows = glows;
     b.glow_cap = rr::weapon_glow_boxes;
     b.fireballs = bodies;
-    b.fireball_cap = bm::max_bodies;
+    b.fireball_cap = body_boxes;
     b.smokes = smokes;
     b.smoke_cap = bm::max_bodies;
     b.scorches = darks;
@@ -99,7 +112,7 @@ Out build(const ws::HullView& v, unsigned parts = p_all) {
     b.halos = halos;
     b.halo_cap = rr::weapon_halo_boxes;
     b.shock_cap = rr::weapon_shock_boxes;
-    o.n = ws::build_boom(stage_ring, state, v, tuning(parts), b);
+    o.n = ws::build_boom(stage_ring, state, v, tuning(parts), b, nullptr, bubbles);
     o.quads = b.sprite_quads;
     o.glows = b.glow_boxes;
     o.bodies = b.fireball_boxes;
@@ -140,6 +153,122 @@ std::vector<float> render(rr::WeaponEffectsPass& pass, Target& t, const Out& o, 
     dev->EndScene();
     if (result) *result = hr;
     return read_rgb(t, t.scene_s.p);
+}
+// The big tiers' scene model (section 8: the lab's box, 2 R_obj along the node's row 2 and 0.5 R_obj across): the dying
+// hull drawn by the fixture into the scene target, grey with a key light and panel lines, at the engine's FADEOUTBODY
+// alpha (1 to P, then to 0 at P + 1 s: the carrier's root faded by R'), and its depth into the lane while it is drawn
+// (the glows and the smoke land on it, the lane's soft cut hides what is behind it). The camera is the identity, so the
+// event's world rows are the view's.
+IDirect3DPixelShader9* box_ps = nullptr;
+bool compile_box() {
+    if (box_ps) return true;
+    // c0 (W, H, m00, m11), c1 the box centre (view) and the alpha, c2..c4 its axes (view), c5 its half-extents and the
+    // mode (0 the lane: .r 0.5 hull, .b the view depth, else the sky sentinel; 1 the colour, clipped outside)
+    const char* src =
+        "float4 c0:register(c0); float4 c1:register(c1); float4 c2:register(c2); float4 c3:register(c3);"
+        " float4 c4:register(c4); float4 c5:register(c5); float4 main(float2 vp:VPOS):COLOR0{"
+        " float2 ndc = float2(2.0 * vp.x / c0.x - 1.0, 1.0 - 2.0 * vp.y / c0.y);"
+        " float3 d = float3(ndc.x / c0.z, ndc.y / c0.w, 1.0), o = -c1.xyz;"
+        " float3 ol = float3(dot(o, c2.xyz), dot(o, c3.xyz), dot(o, c4.xyz));"
+        " float3 dl = float3(dot(d, c2.xyz), dot(d, c3.xyz), dot(d, c4.xyz));"
+        " float3 sl = float3(dl.x >= 0.0 ? 1.0 : -1.0, dl.y >= 0.0 ? 1.0 : -1.0, dl.z >= 0.0 ? 1.0 : -1.0);"
+        " float3 inv = sl / max(abs(dl), 1e-7);"
+        " float3 ta = (-c5.xyz - ol) * inv, tb = (c5.xyz - ol) * inv, tn = min(ta, tb), tf = max(ta, tb);"
+        " float t0 = max(max(tn.x, tn.y), tn.z), t1 = min(min(tf.x, tf.y), tf.z);"
+        " bool hit = t1 >= max(t0, 0.0); float t = t0 > 0.0 ? t0 : t1;"
+        " if (c5.w < 0.5) return hit ? float4(0.5, 0, t, 0) : float4(-1, 0, 0, 0);"
+        " clip(hit ? 1.0 : -1.0);"
+        " float3 n = tn.x >= t0 ? float3(-sl.x, 0, 0) : (tn.y >= t0 ? float3(0, -sl.y, 0) : float3(0, 0, -sl.z));"
+        " float3 nv = n.x * c2.xyz + n.y * c3.xyz + n.z * c4.xyz;"
+        " float k = 0.05 + 0.17 * saturate(dot(nv, normalize(float3(-0.45, 0.6, -0.66))));"
+        " float3 u = (ol + dl * t) / c5.xyz, f = abs(frac(u * 4.0) - 0.5) * (1.0 - abs(n));"
+        " float seam = max(max(f.x, f.y), f.z) > 0.47 ? 0.55 : 1.0;"
+        " return float4(float3(0.85, 0.9, 1.0) * k * seam * c1.w, 1.0); }";
+    const DWORD* w = nullptr;
+    static Com<ID3DXBuffer> hold;
+    return compile(src, "ps_3_0", &w, &hold.p) && SUCCEEDED(dev->CreatePixelShader(w, &box_ps));
+}
+struct Hull {
+    float c[3], ax[3][3], e[3];
+};
+// The box of a big-tier record (its world point and rows; half-extents R_obj along row 2, 0.25 R_obj across).
+Hull hull_of(const wc::Event& e) {
+    Hull h;
+    ws::boom_rows(e, h.ax);
+    const float r = float(e.radius) * wc::world_scale;
+    for (unsigned q = 0; q < 3; ++q) h.c[q] = float(e.pos[q]) * wc::world_scale;
+    h.e[0] = h.e[1] = 0.25f * r;
+    h.e[2] = r;
+    return h;
+}
+// The carrier's alpha at game age `age` (ms from the death) of a tier: FADEOUTBODY retimed to P, 1000 ms.
+float hull_alpha(unsigned tier, float age) {
+    const float P = bm::tier_preroll_ms[tier < bm::drawn_tiers ? tier : 0];
+    return age < P ? 1.f : age < P + 1000.f ? 1.f - (age - P) / 1000.f : 0.f;
+}
+void hull_constants(const Target& t, const ws::HullView& v, const Hull& h, float alpha, float mode) {
+    const float c[6][4] = {{float(t.w), float(t.h), v.cam.m00, v.cam.m11},
+                           {h.c[0], h.c[1], h.c[2], alpha},
+                           {h.ax[0][0], h.ax[0][1], h.ax[0][2], 0.f},
+                           {h.ax[1][0], h.ax[1][1], h.ax[1][2], 0.f},
+                           {h.ax[2][0], h.ax[2][1], h.ax[2][2], 0.f},
+                           {h.e[0], h.e[1], h.e[2], mode}};
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    dev->SetVertexDeclaration(quad_decl);
+    dev->SetVertexShader(quad_vs);
+    dev->SetPixelShader(box_ps);
+    dev->SetPixelShaderConstantF(0, &c[0][0], 6);
+}
+// The lane for the frame: the hull's depth while it is drawn (alpha > 0), else sky.
+void hull_lane(Target& t, const ws::HullView& v, const Hull* h, float alpha) {
+    if (!h || !(alpha > 0.f) || !compile_box()) {
+        draw_lane(t, 0.f, -1.f);
+        return;
+    }
+    const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.lane_s.p);
+    hull_constants(t, v, *h, alpha, 0.f);
+    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+    dev->EndScene();
+}
+// One frame over the scene model: the hull at its alpha drawn first, then the pass (the lane set by hull_lane).
+std::vector<float> render_hull(rr::WeaponEffectsPass& pass, Target& t, const Out& o, const ws::HullView& v, const Hull* h,
+                               float alpha, HRESULT* result = nullptr) {
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.scene_s.p);
+    dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+    if (h && alpha > 0.f && compile_box()) {
+        const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+        hull_constants(t, v, *h, alpha, 1.f);
+        dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+    }
+    rr::WeaponEffectsReport r{};
+    const HRESULT hr = pass.run(frame(t, o, v), &r);
+    dev->EndScene();
+    if (result) *result = hr;
+    return read_rgb(t, t.scene_s.p);
+}
+// The drawn sphere's factor of body box k (its radius over R(t): the stage's boom_sphere_factor at the box's centre).
+double sphere_of(const Target& t, unsigned k) {
+    const ws::HullView v = view(t, 0, 16);
+    const float* s = bodies[4 * k].sphere;
+    const float r = s[3], z = s[2], px_x = 0.5f * float(t.w) * v.cam.m00;
+    // the factor depends on R px; R = r / factor: solve by two fixed-point steps from body_r_sphere
+    float fct = bm::body_r_sphere;
+    for (unsigned i = 0; i < 4; ++i) fct = ws::boom_sphere_factor(r / fct * px_x / z * 1440.f / float(t.h));
+    return fct;
+}
+// A big-tier death broadside to the identity camera: row 2 (the forward axis, the capsule's) along view +x, row 0 along
+// +z, row 1 = row 2 x row 0 (-y).
+void broadside(wc::Event* e) {
+    e->dir[0] = 127;
+    e->dir[1] = e->dir[2] = 0;
+    e->alt_rgb332 = 0;
+    e->detail = 0;
+    e->calibre_q = 127;
 }
 std::vector<float> luma(const std::vector<float>& rgb) {
     std::vector<float> l(rgb.size() / 3);
@@ -195,14 +324,16 @@ bool write_pfm(const char* path, const std::vector<float>& rgb, unsigned w, unsi
     for (unsigned y = h; y-- > 0;) std::fwrite(rgb.data() + std::size_t(y) * w * 3, sizeof(float), std::size_t(w) * 3, f);
     return std::fclose(f) == 0;
 }
-bool write_ppm(const char* path, const std::vector<float>& rgb, unsigned w, unsigned h) {
+// cw / ch (non-zero): only the centred cw x ch window (the big tiers' dump: the 5120x1440 frames would be 22 MB each).
+bool write_ppm(const char* path, const std::vector<float>& rgb, unsigned w, unsigned h, unsigned cw = 0, unsigned ch = 0) {
     FILE* f = std::fopen(path, "wb");
     if (!f) return false;
-    std::fprintf(f, "P6\n%u %u\n255\n", w, h);
-    std::vector<unsigned char> row(std::size_t(w) * 3);
-    for (unsigned y = 0; y < h; ++y) {
+    const unsigned ow = cw && cw < w ? cw : w, oh = ch && ch < h ? ch : h, x0 = (w - ow) / 2, y0 = (h - oh) / 2;
+    std::fprintf(f, "P6\n%u %u\n255\n", ow, oh);
+    std::vector<unsigned char> row(std::size_t(ow) * 3);
+    for (unsigned y = y0; y < y0 + oh; ++y) {
         for (std::size_t i = 0; i < row.size(); ++i) {
-            const float v = rgb[std::size_t(y) * w * 3 + i];
+            const float v = rgb[(std::size_t(y) * w + x0) * 3 + i];
             row[i] = (unsigned char)(v > 0.f ? (v < 1.f ? std::lround(v * 255.f) : 255) : 0);
         }
         std::fwrite(row.data(), 1, row.size(), f);
@@ -724,10 +855,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         latch(g);
         draw_lane(g, 605.f * m, 1.f);
         bool zero = true;
-        const float lives[8] = {bm::star_ms / Lf + 0.03f, 1.0f, bm::shock_end + 0.01f,
+        const float lives[9] = {bm::star_ms / Lf + 0.03f, 1.0f, bm::shock_end + 0.01f,
                                 bm::ember_life[2] * (1.f + 0.5f * bm::ember_stagger) + 0.01f,
                                 bm::fragment_life * (1.f + 0.5f * bm::ember_stagger) + 0.01f, 1.0f,
-                                bm::smoke_t0 + bm::smoke_span + 0.01f, 1.0f};
+                                bm::smoke_t0 + bm::smoke_span + 0.01f, 1.0f, 1.0f};
         for (unsigned p = 0; p < boom::part_count; ++p) {
             const Out o = at(g, lives[p] * Lf, 1u << p);
             const unsigned n = o.quads + o.glows + o.bodies + o.smokes + o.darks + o.shocks + o.halos;
@@ -934,6 +1065,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         // fireball_octave_hold frames, back to three only under fireball_octave_return of it
         boom::clear();
         for (unsigned k = 0; k < 6; ++k) fighter(12.0 + 2.0 * k, 0x70000u + k);
+        boom::cap_screens = 1e6f; // the shared budget alone decides here
         unsigned entered = 0, left = 0, frames_coarse = 0;
         for (unsigned fi = 0; fi < 12; ++fi) {
             ws::HullView v = boom::view(g, 1000 + 16 * fi, 16);
@@ -945,6 +1077,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             } else if (entered && !left)
                 left = fi + 1;
         }
+        boom::cap_screens = bm::budget_screens;
         std::printf("EXPLOSION case=octave_lod entered_frame=%u left_frame=%u coarse_frames=%u hold=%u\n", entered, left,
                     frames_coarse, wc::look::fireball_octave_hold);
         report("death_octave_lod_hysteresis", entered == 1 && frames_coarse >= wc::look::fireball_octave_hold && left > 6, "");
@@ -971,6 +1104,471 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         std::printf("EXPLOSION case=cpu deaths=32 bodies=%u quads=%u glows=%u median_us=%.1f bound_us=50\n", o.bodies, o.quads,
                     o.glows, med);
         report("death_stage_cpu_32_deaths", o.bodies == 32 && med <= 50.0, "");
+    }
+    // ---- 16. The big tiers (sections 2.5, 2.6, 3, 4 and 9; the native spawn ran through R', so the engine's carrier is
+    // the hull through the pre-roll: the fixture's scene model draws it). Corvette (R 87 m) at 1.5 km, capital (M2, R
+    // 1288 m) at 1.5 km broadside, station (R 1800 m) at 3 km; the close capital (the eye 720 m from its centre).
+    {
+        struct BigTier {
+            unsigned tier;
+            double z, r;
+            const char* name;
+        } bigs[3] = {{bm::corvette, 1500.0, 87.0, "corvette_1500m"}, {bm::capital, 1500.0, 1288.0, "capital_1500m"},
+                     {bm::station, 3000.0, 1800.0, "station_3km"}};
+        auto big = [&](const BigTier& b, std::uint32_t seq = 0, double z = 0.0) {
+            wc::Event* e = boom::add(b.tier, 1000, 0, 0, z > 0.0 ? z : b.z, b.r, seq);
+            e->table = b.tier == bm::station ? 6 : 7;
+            boom::broadside(e);
+            return e;
+        };
+        // death_big_tier_sizes: the body's mean outline (core off, over sky) within 5 % of R(t) f / z at 0.1 / 0.3 L after
+        // its birth P, median of 8 seeds; the clamps: an M7 (R 618 m: 0.9 R = 556 m, inside [80, 600]) and a shipyard
+        // (R 4 km: 0.6 R past 1,800 m: clamped).
+        boom::core_on = false;
+        bool sizes = true;
+        for (const BigTier& b : bigs) {
+            const float L = bm::tier_life_ms[b.tier], P = bm::tier_preroll_ms[b.tier];
+            for (float frac : {0.1f, 0.3f}) {
+                std::vector<double> ratios;
+                double expected_px = 0;
+                for (unsigned j = 0; j < 8; ++j) {
+                    boom::clear();
+                    wc::Event* e = big(b, 0x6d000u + 977u * (j + 1));
+                    latch(g);
+                    const Out o = at(g, P + frac * L, boom::p_body);
+                    const float R_f = ws::boom_r_f_m(*e) * m;
+                    const float R0 = bm::tier_r0_obj[b.tier] * float(e->radius) * wc::world_scale + bm::tier_r0_f[b.tier] * R_f;
+                    float c[3];
+                    boom::body_centre(o, c);
+                    if (!o.n.bodies) {
+                        ratios.push_back(0.0);
+                        continue;
+                    }
+                    const classes::burst::Disc d = boom::disc(g, boom::view(g, 0, 16), c, ws::boom_body_radius(b.tier, R_f, R0, frac * L));
+                    expected_px = d.R;
+                    const boom::Outline ol = boom::outline(boom::luma(boom::render(pass, g, o, boom::view(g, 0, 16))), g.w, d.x, d.y);
+                    ratios.push_back(ol.mean / d.R);
+                }
+                const double med = boom::median(ratios);
+                std::printf("EXPLOSION case=size tier=%s age_frac=%.1f expected_px=%.1f outline_over_law=%.3f\n", b.name,
+                            double(frac), expected_px, med);
+                sizes = sizes && std::fabs(med - 1.0) <= 0.05;
+            }
+        }
+        {
+            boom::clear();
+            wc::Event* m7 = boom::add(bm::capital, 1000, 0, 0, 5000.0, 618.0);
+            wc::Event* yard = boom::add(bm::station, 1000, 0, 0, 9000.0, 4000.0, 0x6d900u);
+            const double m7_rf = ws::boom_r_f_m(*m7), yard_rf = ws::boom_r_f_m(*yard);
+            std::printf("EXPLOSION case=clamp m7_R_f=%.1f shipyard_R_f=%.1f\n", m7_rf, yard_rf);
+            sizes = sizes && std::fabs(m7_rf - 556.2) < 0.2 && yard_rf == double(bm::tier_max_m[bm::station]);
+        }
+        report("death_big_tier_sizes", sizes, "");
+        boom::core_on = true;
+        // death_preroll_cadence_and_hull_light: the capital broadside at 1.5 km in 4 ms steps from its first frame to P +
+        // 8 ms: 8 secondary births at the law's gaps (each within 20 % plus a step), each centre inside the axis capsule
+        // (no box in the cache) and, with the owner's box in the bubble cache, inside that box; the hull light (alone,
+        // over a lane plane through the hull's centre) at 0 and just before P at 0.4 / 0.8 x 0.33 E_b x heat(0.6) within
+        // 10 %; no body before P; the body born at P at 0.5 R_f.
+        {
+            const BigTier& cap = bigs[1];
+            const float P = bm::tier_preroll_ms[bm::capital], r = bm::tier_cadence[bm::capital];
+            const unsigned N = bm::tier_secondaries[bm::capital];
+            bool ok = true;
+            unsigned births_box = 0, inside_box = 0;
+            for (unsigned with_box = 0; with_box < 2; ++with_box) {
+                boom::clear();
+                wc::Event* e = big(cap);
+                const float R = float(e->radius) * wc::world_scale, c0[3] = {0.f, 0.f, float(cap.z) * m};
+                static ws::BubbleCache cache;
+                cache.clear();
+                if (with_box) { // the hull walk's box in the owner frame: 2 R long along row 2, offset 0.1 R along it
+                    ws::BubbleCache::Entry& x = cache.entries[0];
+                    x.owner = e->owner;
+                    x.node = e->node;
+                    x.handle = e->handle;
+                    x.state = ws::BubbleCache::walked;
+                    x.radius = e->radius;
+                    x.bubble.c[0] = x.bubble.c[1] = 0.f;
+                    x.bubble.c[2] = 0.1f * R;
+                    x.bubble.e[0] = 0.2f * R * wc::bubble_scale;
+                    x.bubble.e[1] = 0.15f * R * wc::bubble_scale;
+                    x.bubble.e[2] = 0.9f * R * wc::bubble_scale;
+                    boom::bubbles = &cache;
+                }
+                std::vector<float> births;
+                std::vector<std::array<float, 3>> where;
+                unsigned bodies_before = 0;
+                double first_body_R = 0;
+                for (unsigned a = 0; a <= unsigned(P) + 8; a += 4) {
+                    const Out o = boom::build(boom::view(g, 1000 + a, 4), boom::p_all);
+                    if (float(a) < P) bodies_before += o.n.bodies;
+                    else if (!first_body_R && o.n.bodies)
+                        first_body_R = double(boom::bodies[0].sphere[3]) / boom::sphere_of(g, 0);
+                    for (unsigned k = 0; k < o.n.secondaries_born; ++k) {
+                        births.push_back(float(a));
+                        where.push_back({o.n.born_at[0], o.n.born_at[1], o.n.born_at[2]});
+                    }
+                }
+                boom::bubbles = nullptr;
+                const unsigned record_flags = e->flags;
+                bool gaps = births.size() == N;
+                for (unsigned k = 1; gaps && k < N; ++k) {
+                    float g0 = P * (1.f - r), rn = 1.f;
+                    for (unsigned j = 0; j + 1 < N; ++j) rn *= r;
+                    g0 /= 1.f - rn;
+                    float law = g0;
+                    for (unsigned j = 1; j < k; ++j) law *= r;
+                    const float gap = births[k] - births[k - 1];
+                    gaps = gaps && std::fabs(gap - law) <= 0.2f * law + 4.f + 1e-3f;
+                }
+                // inside: the capsule (row 2 = +x, 0.7 R half-length, 0.25 R radius) or the box (centre +0.1 R along x)
+                unsigned inside = 0;
+                for (const auto& w : where) {
+                    const float l[3] = {w[0] - c0[0], w[1] - c0[1], w[2] - c0[2]};
+                    if (with_box) {
+                        // local axes: row 0 = +z, row 1 = -y, row 2 = +x
+                        const float lx = l[2], ly = -l[1], lz = l[0] - 0.1f * R;
+                        inside += std::fabs(lx) <= 0.2f * R * 1.001f && std::fabs(ly) <= 0.15f * R * 1.001f &&
+                                  std::fabs(lz) <= 0.9f * R * 1.001f;
+                    } else {
+                        const float rad = bm::secondary_capsule_r * R, hl = 0.5f * bm::secondary_capsule_len * R - rad;
+                        const float s = std::max(-hl, std::min(hl, l[0]));
+                        const float dx = l[0] - s;
+                        inside += dx * dx + l[1] * l[1] + l[2] * l[2] <= rad * rad * 1.002f;
+                    }
+                }
+                std::printf("EXPLOSION case=preroll tier=capital_1500m box=%u births=%zu first=%.0f last=%.0f inside=%u "
+                            "bodies_before_P=%u first_body_R_over_R_f=%.3f bubble_flags=%u\n",
+                            with_box, births.size(), births.empty() ? -1.0 : double(births.front()),
+                            births.empty() ? -1.0 : double(births.back()), inside, bodies_before,
+                            first_body_R / double(ws::boom_r_f_m(*e) * m), unsigned((record_flags >> 4) & 3u));
+                ok = ok && gaps && inside == N && bodies_before == 0 &&
+                     std::fabs(first_body_R / double(ws::boom_r_f_m(*e) * m) - double(bm::tier_r0_f[bm::capital])) <= 0.03 &&
+                     (record_flags & wc::flag_bubble_looked) && (with_box ? (record_flags & wc::flag_bubble_cached) != 0
+                                                                         : (record_flags & wc::flag_bubble_cached) == 0);
+                if (with_box) {
+                    births_box = unsigned(births.size());
+                    inside_box = inside;
+                }
+            }
+            // the hull light alone (p_glow; the secondaries off) on a lane plane through the hull's centre
+            boom::clear();
+            big(cap);
+            latch(g);
+            draw_lane(g, float(cap.z) * m, 1.f);
+            float hc[3];
+            wc::heat_colour(bm::hull_light_t, hc);
+            const double maxc = std::max(hc[0], std::max(hc[1], hc[2]));
+            const double want0 = double(bm::hull_light_e0) * bm::glow_e * bm::body_e * maxc;
+            const ws::HullView v = boom::view(g, 0, 16);
+            const double p0 = boom::peak(boom::luma(boom::render(pass, g, at(g, 0.f, boom::p_glow), v)));
+            const float late = P - 16.f;
+            const double want1 = (double(bm::hull_light_e0) + double(bm::hull_light_e1 - bm::hull_light_e0) * late / P) *
+                                 bm::glow_e * bm::body_e * maxc;
+            const double p1 = boom::peak(boom::luma(boom::render(pass, g, at(g, late, boom::p_glow), v)));
+            // past P it falls with the hull copy's fade: half at P + 500 ms, gone at P + 1 s
+            boom::hull_light_mode = 1;
+            const double ph = boom::peak(boom::luma(boom::render(pass, g, at(g, P + 500.f, boom::p_glow), v)));
+            boom::hull_light_mode = 0;
+            const Out after = at(g, P + 1000.f + 16.f, boom::p_glow);
+            draw_lane(g, 0.f, -1.f);
+            const double want_h = 0.5 * double(bm::hull_light_e1) * bm::glow_e * bm::body_e * maxc;
+            std::printf("EXPLOSION case=hull_light tier=capital_1500m peak_0=%.4f want_0=%.4f peak_P=%.4f want_P=%.4f "
+                        "peak_P500=%.4f want_P500=%.4f hull_lights_after_fade=%u box_births=%u box_inside=%u\n",
+                        p0, want0, p1, want1, ph, want_h, after.n.hull_lights, births_box, inside_box);
+            ok = ok && std::fabs(p0 / want0 - 1.0) <= 0.10 && std::fabs(p1 / want1 - 1.0) <= 0.10 &&
+                 std::fabs(ph / want_h - 1.0) <= 0.10 && after.n.hull_lights == 0;
+            report("death_preroll_cadence_and_hull_light", ok, "");
+        }
+        // death_big_no_pop_at_birth: the capital and the corvette at their body's birth (16 ms steps, every part but the
+        // flash, over sky): the body's first frame at least R_0 f / z (0.5 R_f; the corvette's 0.5 R_obj); no frame's peak
+        // above twice the frame before over P - 32 .. P + 32 ms; the capital's star arm under 0.25 H.
+        {
+            bool ok = true;
+            for (unsigned which : {0u, 1u}) {
+                const BigTier& b = bigs[which];
+                const float P = bm::tier_preroll_ms[b.tier];
+                boom::clear();
+                wc::Event* e = big(b);
+                const float R_f = ws::boom_r_f_m(*e) * m;
+                const float R0 = bm::tier_r0_obj[b.tier] * float(e->radius) * wc::world_scale + bm::tier_r0_f[b.tier] * R_f;
+                float prev_peak = 0.f;
+                bool rise_ok = true;
+                double first = 0, arm_px = 0;
+                const unsigned start = P > 32.f ? unsigned(P) - 32u : 0u;
+                for (unsigned a = 0; a <= unsigned(P) + 32; a += 16) {
+                    const ws::HullView v = boom::view(g, 1000 + a, 16);
+                    const Out o = boom::build(v, boom::p_all & ~unsigned(boom::p_flash));
+                    if (a < start) continue;
+                    const float pk = boom::peak(boom::luma(boom::render(pass, g, o, v)));
+                    if (a > start && prev_peak > 0.f && pk > 2.f * prev_peak) rise_ok = false;
+                    prev_peak = pk;
+                    if (!first && o.n.bodies) {
+                        float c[3];
+                        boom::body_centre(o, c);
+                        first = double(boom::bodies[0].sphere[3]) / boom::sphere_of(g, 0) / double(R0);
+                    }
+                }
+                if (b.tier == bm::capital) {
+                    const ws::HullView v = boom::view(g, 1000 + unsigned(P) + 16, 16);
+                    const Out o = boom::build(v, boom::p_flash);
+                    for (unsigned q = 0; q < o.quads; ++q) // the body's star: the widest of the frame's stars
+                        arm_px = std::max(arm_px, double(boom::sprites[4 * q].b[3]) * 0.5 * g.w * v.cam.m00 /
+                                                      double(boom::sprites[4 * q].a[3]));
+                }
+                std::printf("EXPLOSION case=no_pop tier=%s first_over_r0=%.3f rise_ok=%u star_half_px=%.1f cap_px=%.1f\n",
+                            b.name, first, unsigned(rise_ok), arm_px, double(bm::star_cap_h) * g.h);
+                ok = ok && first >= 0.95 && rise_ok && arm_px <= double(bm::star_cap_h) * g.h + 3.0;
+            }
+            report("death_big_no_pop_at_birth", ok, "");
+        }
+        // death_big_shock_is_a_shell: the corvette's shell at 0.1 / 0.2 tau (the limb only), forced on (D14: off for every
+        // tier in production; the law kept as evidence): its farthest lit pixel within 5 % of the law's r, the interior
+        // <= 0.02 of the limb's peak, the peak <= 0.7 E_b. death_shock_off_all_tiers: none drawn for any tier unforced.
+        {
+            bool ok = true;
+            boom::force_shock = true;
+            const float L = bm::tier_life_ms[bm::corvette], tau = bm::tier_shock_tau[bm::corvette] * L;
+            for (float u : {0.1f, 0.2f}) {
+                boom::clear();
+                wc::Event* e = big(bigs[0]);
+                latch(g);
+                const Out so = at(g, u * tau, boom::p_shock);
+                const ws::HullView v = boom::view(g, 0, 16);
+                const std::vector<float> l = boom::luma(boom::render(pass, g, so, v));
+                const float c[3] = {0.f, 0.f, 1500.f * m};
+                const classes::burst::Disc d = boom::disc(g, v, c, bm::shock_r_x * ws::boom_r_f_m(*e) * m * std::sqrt(u));
+                const boom::Outline ol = boom::outline(l, g.w, d.x, d.y);
+                const float sp = boom::peak(l), inner = l[std::size_t(int(d.y)) * g.w + std::size_t(int(d.x))];
+                std::printf("EXPLOSION case=shock tier=corvette_1500m u=%.1f law_px=%.1f outline_max_px=%.1f "
+                            "interior_over_limb=%.3f shock_peak=%.3f body_e=%.2f boxes=%u\n",
+                            double(u), d.R, ol.max, sp > 0 ? double(inner / sp) : 0.0, double(sp), double(bm::body_e), so.shocks);
+                ok = ok && so.shocks == 1 && std::fabs(ol.max / d.R - 1.0) <= 0.05 && sp > 0 && inner <= 0.02f * sp &&
+                     sp <= 0.7f * bm::body_e;
+            }
+            boom::force_shock = false;
+            report("death_big_shock_is_a_shell", ok, "");
+            unsigned shocks = 0;
+            for (const BigTier& b : bigs) {
+                boom::clear();
+                big(b);
+                latch(g);
+                const float Lb = bm::tier_life_ms[b.tier], Pb = bm::tier_preroll_ms[b.tier];
+                for (float fr : {0.02f, 0.1f, 0.2f}) shocks += at(g, Pb + fr * Lb).shocks;
+            }
+            std::printf("EXPLOSION case=shock_off shock_tiers=%u shocks=%u\n", unsigned(bm::shock_tiers), shocks);
+            report("death_shock_off_all_tiers", bm::shock_tiers == 0 && shocks == 0, "");
+            // death_big_halo_capped (D15): the capital's halo alone over sky: its farthest pixel above 10 % of its peak
+            // <= 1.25 R(t) at 0.2 L, its peak <= 0.2 E_b, none at 0.6 L
+            {
+                const float Lc = bm::tier_life_ms[bm::capital], Pc = bm::tier_preroll_ms[bm::capital];
+                boom::clear();
+                wc::Event* e = big(bigs[1]);
+                latch(g);
+                const ws::HullView v = boom::view(g, 0, 16);
+                const std::vector<float> hl = boom::luma(boom::render(pass, g, at(g, Pc + 0.2f * Lc, boom::p_halo), v));
+                const float R_f = ws::boom_r_f_m(*e) * m, R0 = bm::tier_r0_f[bm::capital] * R_f;
+                const float c[3] = {0.f, 0.f, 1500.f * m};
+                const double Rt_px = boom::disc(g, v, c, ws::boom_body_radius(bm::capital, R_f, R0, 0.2f * Lc)).R;
+                const boom::Outline ol = boom::outline(hl, g.w, 0.5 * g.w, 0.5 * g.h);
+                const float hp = boom::peak(hl);
+                const Out late = at(g, Pc + 0.6f * Lc, boom::p_halo);
+                std::printf("EXPLOSION case=halo_big tier=capital_1500m age_frac=0.2 peak=%.3f max_r_px=%.1f R_t_px=%.1f "
+                            "ratio=%.3f halos_06=%u\n", double(hp), ol.max, Rt_px, Rt_px > 0 ? ol.max / Rt_px : 0.0, late.halos);
+                report("death_big_halo_capped", hp > 0.f && ol.max <= 1.25 * Rt_px + 1.0 &&
+                                                    hp <= bm::halo_big_e * bm::body_e + 1e-3f && late.halos == 0, "");
+            }
+        }
+        // death_big_light_and_fade: the capital's glow at 0.1 / 0.3 L (a lane plane through its centre) <= 0.4 E_b and
+        // none over sky; every tier's elements gone at P + 1.6 L (+ the floor); the secondaries gone by P + 1.8 x 0.3 L.
+        {
+            bool ok = true;
+            const float L = bm::tier_life_ms[bm::capital], P = bm::tier_preroll_ms[bm::capital];
+            boom::clear();
+            big(bigs[1]);
+            latch(g);
+            const ws::HullView v = boom::view(g, 0, 16);
+            draw_lane(g, 1500.f * m, 1.f);
+            boom::hull_light_mode = 2; // the body's light alone (the hull light has its own gate)
+            const double g1 = boom::peak(boom::luma(boom::render(pass, g, at(g, P + 0.1f * L, boom::p_glow), v)));
+            const double g3 = boom::peak(boom::luma(boom::render(pass, g, at(g, P + 0.3f * L, boom::p_glow), v)));
+            boom::hull_light_mode = 0;
+            draw_lane(g, 0.f, -1.f);
+            const double sky = boom::peak(boom::luma(boom::render(pass, g, at(g, P + 0.1f * L, boom::p_glow), v)));
+            ok = g1 <= 0.4 * bm::body_e && g3 <= 0.4 * bm::body_e && g1 > 0.0 && sky == 0.0;
+            unsigned left = 0;
+            for (const BigTier& b : bigs) {
+                boom::clear();
+                big(b);
+                latch(g);
+                const float Lb = bm::tier_life_ms[b.tier], Pb = bm::tier_preroll_ms[b.tier];
+                const Out o = at(g, Pb + (bm::smoke_t0 + bm::smoke_span) * Lb + 3.f * 16.f + 1.f);
+                left += o.quads + o.glows + o.bodies + o.smokes + o.darks + o.shocks + o.halos + o.n.secondaries;
+                if (b.tier != bm::corvette) {
+                    const float Ls = bm::secondary_life * Lb;
+                    const Out s2 = at(g, Pb + (bm::fragment_life > bm::ember_life[2] ? bm::fragment_life : bm::ember_life[2]) *
+                                                  Ls * (1.f + 0.5f * bm::ember_stagger) + 64.f,
+                                      boom::p_secondary);
+                    left += s2.quads + s2.glows + s2.bodies;
+                }
+            }
+            std::printf("EXPLOSION case=big_light tier=capital_1500m glow_peak_01=%.3f glow_peak_03=%.3f sky=%.4f left_at_life=%u\n",
+                        g1, g3, sky, left);
+            report("death_big_light_and_fade", ok && left == 0, "");
+        }
+        // death_big_eye_inside_bounded (decision D2's law): the close capital (the eye 720 m from its centre, broadside):
+        // at 0.25 L after P the frame lit >= 90 % and not uniform (std >= 0.05 of the mean); at 0.6 L a dark share >= 0.15.
+        {
+            bool ok = true;
+            const float L = bm::tier_life_ms[bm::capital], P = bm::tier_preroll_ms[bm::capital];
+            for (float frac : {0.25f, 0.6f}) {
+                boom::clear();
+                big(bigs[1], 0, 720.0);
+                latch(g);
+                const ws::HullView v = boom::view(g, 0, 16);
+                const std::vector<float> l = boom::luma(boom::render(pass, g, at(g, P + frac * L, boom::p_body), v));
+                const float pk = boom::peak(l);
+                double lit = 0, dark = 0, mean = 0, var = 0;
+                for (float x : l) {
+                    lit += x > 0.f;
+                    dark += x < 0.1f * pk;
+                    mean += x;
+                }
+                lit /= double(l.size());
+                dark /= double(l.size());
+                mean /= double(l.size());
+                for (float x : l) var += (x - mean) * (x - mean);
+                const double cv = mean > 0 ? std::sqrt(var / double(l.size())) / mean : 0.0;
+                std::printf("EXPLOSION case=eye_inside tier=capital_720m eye_m=720 age_frac=%.2f lit_share=%.3f dark_share=%.3f "
+                            "std_over_mean=%.3f peak=%.3f\n", double(frac), lit, dark, cv, double(pk));
+                if (frac < 0.3f) ok = ok && lit >= 0.9 && cv >= 0.05;
+                else ok = ok && dark >= 0.15;
+            }
+            report("death_big_eye_inside_bounded", ok, "");
+        }
+        // death_big_seta6: the capital at 100 ms steps (SETA 6 at 60 fps): every secondary born (8, several in a frame),
+        // the body's game life unchanged (its last frame within a step of P + L), its star on 3 frames.
+        {
+            boom::clear();
+            big(bigs[1]);
+            const float L = bm::tier_life_ms[bm::capital], P = bm::tier_preroll_ms[bm::capital];
+            unsigned born = 0, last = 0, star_frames = 0;
+            for (unsigned a = 0; a <= unsigned(P + L) + 300; a += 100) {
+                const Out o = boom::build(boom::view(g, 1000 + a, 100), boom::p_all);
+                born += o.n.secondaries_born;
+                if (o.n.bodies) last = a;
+                if (float(a) >= P) {
+                    const Out s = boom::build(boom::view(g, 1000 + a, 100), boom::p_flash);
+                    star_frames += s.n.stars > 0;
+                }
+            }
+            std::printf("EXPLOSION case=seta tier=capital step_ms=100 secondaries_born=%u body_last_age_ms=%u life_ms=%.0f "
+                        "star_frames=%u\n", born, last, double(P + L), star_frames);
+            report("death_big_seta6", born == bm::tier_secondaries[bm::capital] && float(last) < P + L &&
+                                          float(last) + 100.f >= P + L && star_frames == 3, "");
+        }
+        // death_budget_capital_close_5120: the close capital over its own hull (the scene model's lane), fenced best of 60
+        // every 100 ms from P - 100 to P + 2000: <= 450 us each, the shed state logged; with every step shed (a budget
+        // of 0) <= 300 us at the body's birth.
+        {
+            Target tt;
+            if (make_target(tt, 5120, 1440)) {
+                Com<IDirect3DQuery9> ev;
+                dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
+                LARGE_INTEGER freq, a0, b0;
+                QueryPerformanceFrequency(&freq);
+                auto time_frame = [&](const Out& o, const ws::HullView& v) {
+                    double best = 1e30;
+                    const rr::WeaponEffectsFrame f = boom::frame(tt, o, v);
+                    for (int i = -60; i < 60; ++i) {
+                        dev->BeginScene();
+                        dev->SetRenderTarget(0, tt.scene_s.p);
+                        dev->Clear(0, nullptr, D3DCLEAR_TARGET, grey, 1.f, 0);
+                        fence(ev.p);
+                        QueryPerformanceCounter(&a0);
+                        rr::WeaponEffectsReport rep{};
+                        pass.run(f, &rep);
+                        fence(ev.p);
+                        QueryPerformanceCounter(&b0);
+                        dev->EndScene();
+                        if (i >= 0) best = std::min(best, ticks_us(a0, b0, freq));
+                    }
+                    return best;
+                };
+                const float P = bm::tier_preroll_ms[bm::capital];
+                boom::clear();
+                wc::Event* e = big(bigs[1], 0, 720.0);
+                const boom::Hull hull = boom::hull_of(*e);
+                double worst = 0, worst_at = 0;
+                unsigned worst_shed = 0;
+                for (unsigned a = 0; a <= unsigned(P) + 2000; a += 50) {
+                    const ws::HullView v = boom::view(tt, 1000 + a, 16);
+                    const Out o = boom::build(v); // every 50 ms (the octave hysteresis sees a stream of frames)
+                    if (float(a) + 100.f < P || (a % 100)) continue;
+                    boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, float(a)));
+                    const double us = time_frame(o, v);
+                    std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_%dms bodies=%u quads=%u glows=%u "
+                                "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u "
+                                "secondaries_shed=%u smokes_shed=%u shocks_shed=%u glows_shed=%u\n",
+                                int(a) - int(P), o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.n.octaves,
+                                double(o.n.screens), us, us / 177.5, o.n.secondaries, o.n.shed, o.n.secondaries_shed,
+                                o.n.smokes_shed, o.n.shocks_shed, o.n.glows_shed);
+                    if (us > worst) {
+                        worst = us;
+                        worst_at = double(a) - double(P);
+                        worst_shed = o.n.shed;
+                    }
+                }
+                // every step shed: the budget 0 at the body's birth + 100 ms
+                boom::clear();
+                big(bigs[1], 0, 720.0);
+                for (unsigned a = 0; a <= unsigned(P) + 100; a += 50) boom::build(boom::view(tt, 1000 + a, 16));
+                ws::HullView v = boom::view(tt, 1000 + unsigned(P) + 100, 16);
+                v.budget_left = 0.f;
+                const Out all_shed = boom::build(v);
+                boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, P + 100.f));
+                const double shed_us = time_frame(all_shed, v);
+                std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_all_shed bodies=%u quads=%u glows=%u "
+                            "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u\n",
+                            all_shed.bodies, all_shed.quads, all_shed.glows, all_shed.smokes, all_shed.shocks,
+                            all_shed.n.octaves, double(all_shed.n.screens), shed_us, shed_us / 177.5, all_shed.n.secondaries,
+                            all_shed.n.shed);
+                std::snprintf(detail, sizeof detail, "worst=%.1f at=%.0f shed=%u all_shed=%.1f", worst, worst_at, worst_shed,
+                              shed_us);
+                report("death_budget_capital_close_5120", worst <= 450.0 && shed_us <= 300.0, detail);
+                draw_lane(tt, 0.f, -1.f);
+                tt.release();
+            } else
+                report("death_budget_capital_close_5120", false, "target");
+        }
+        // death_big_stage_cpu (the performance pass): four capitals and two stations through their pre-roll's end (every
+        // secondary live, the bodies born) plus 26 fighters, median of 201 builds, against the 50 us bound.
+        {
+            boom::clear();
+            for (unsigned k = 0; k < 4; ++k) big(bigs[1], 0x72000u + 13u * k, 1500.0 + 400.0 * k);
+            for (unsigned k = 0; k < 2; ++k) big(bigs[2], 0x72100u + 13u * k, 3000.0 + 600.0 * k);
+            for (unsigned k = 0; k < 26; ++k) fighter(600.0 + 15.0 * (k % 4), 0x72200u + 13u * k, -300.0 + 20.0 * k);
+            latch(g);
+            LARGE_INTEGER freq, a0, b0;
+            QueryPerformanceFrequency(&freq);
+            std::vector<double> us;
+            Out o;
+            for (unsigned r = 0; r < 201; ++r) {
+                const ws::HullView v = boom::view(g, 1000 + 1600 + (r & 1u), 16);
+                QueryPerformanceCounter(&a0);
+                o = boom::build(v);
+                QueryPerformanceCounter(&b0);
+                us.push_back(ticks_us(a0, b0, freq));
+            }
+            const double med = boom::median(us);
+            // the stage's cost follows the quads it writes (the 32 fighters: 0.065 us a quad): bound 0.08 us a drawn quad
+            // and 100 us in all
+            std::printf("EXPLOSION case=cpu deaths=32 big=6 bodies=%u secondaries=%u quads=%u glows=%u median_us=%.1f "
+                        "us_per_quad=%.4f bound_us_per_quad=0.08 bound_us=100\n",
+                        o.n.bodies, o.n.secondaries, o.quads, o.glows, med, o.quads ? med / o.quads : 0.0);
+            report("death_big_stage_cpu", o.n.secondaries > 0 && o.quads && med <= 0.08 * o.quads && med <= 100.0, "");
+        }
     }
     // ---- Reset and refusal: the death programs survive a Reset (ensure_resources recreates them) and draw; a pass whose
     // death programs are refused (fault bit 8) keeps the hull (boom_enabled false, boom_reason) and draws no shock.
@@ -1063,9 +1661,56 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                      {"boom_eye_inside_fighter", 3}, {"boom_fighter_600m_hull", 4}};
         unsigned written = 0, failed = 0;
         char path[1024];
+        // The big tiers over the scene model (the dying hull at the carrier's alpha, its depth in the lane), at the note's
+        // ages from the death (the pre-roll's and the body's), each frame built in 16 ms steps from the first, the PPM a
+        // centred window (cw x ch at 1440 rows, x 0.75 at 1080; 0: the whole frame); no part PFMs.
+        struct BigCase {
+            const char* name;
+            unsigned tier;
+            double z, r;
+            unsigned cw, ch;
+            std::initializer_list<unsigned> ages;
+        };
+        const BigCase big_cases[] = {
+            {"boom_corvette_1500m", bm::corvette, 1500.0, 87.0, 1000, 600, {16, 100, 300, 600, 900, 1800, 3000}},
+            {"boom_capital_1500m_broadside", bm::capital, 1500.0, 1288.0, 2000, 1100,
+             {100, 600, 1100, 1450, 1540, 1900, 2300, 2700, 3900, 5500}},
+            {"boom_capital_close_720m", bm::capital, 720.0, 1288.0, 0, 0, {600, 1450, 1540, 2500, 3900}},
+            {"boom_station_3km", bm::station, 3000.0, 1800.0, 1600, 1100, {200, 1500, 2800, 3060, 3600, 4200, 6600, 9000}}};
         for (auto size : {std::pair<UINT, UINT>{1920, 1080}, std::pair<UINT, UINT>{5120, 1440}}) {
             Target tt;
             if (!make_target(tt, size.first, size.second)) continue;
+            for (const BigCase& k : big_cases) {
+                if (!dump::listed(list, k.name)) continue;
+                for (unsigned age : k.ages) {
+                    boom::clear();
+                    wc::Event* e = boom::add(k.tier, 1000, 0, 0, k.z, k.r);
+                    e->table = k.tier == bm::station ? 6 : 7;
+                    boom::broadside(e);
+                    const boom::Hull hull = boom::hull_of(*e);
+                    Out o;
+                    for (unsigned t_ms = 0;; t_ms += 16) {
+                        const unsigned now_age = t_ms < age ? t_ms : age;
+                        o = boom::build(boom::view(tt, 1000 + now_age, 16));
+                        if (now_age == age) break;
+                    }
+                    const ws::HullView v = boom::view(tt, 1000 + age, 16);
+                    const float alpha = boom::hull_alpha(k.tier, float(age));
+                    boom::hull_lane(tt, v, &hull, alpha);
+                    HRESULT hr = E_FAIL;
+                    const std::vector<float> rgb = boom::render_hull(pass, tt, o, v, &hull, alpha, &hr);
+                    const double s = size.second == 1440 ? 1.0 : 0.75;
+                    std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u.ppm", dir, k.name, size.first, size.second, age);
+                    const bool ok = SUCCEEDED(hr) && !rgb.empty() &&
+                                    boom::write_ppm(path, rgb, tt.w, tt.h, unsigned(k.cw * s), unsigned(k.ch * s));
+                    ok ? ++written : ++failed;
+                    std::printf("EXPLOSION_DUMP case=%s width=%u height=%u age_ms=%u bodies=%u secondaries=%u quads=%u "
+                                "glows=%u smokes=%u shocks=%u darks=%u hull_alpha=%.2f screens=%.3f written=%u\n",
+                                k.name, size.first, size.second, age, o.n.bodies, o.n.secondaries, o.quads, o.glows, o.smokes,
+                                o.shocks, o.darks, double(alpha), double(o.n.screens), unsigned(ok));
+                }
+            }
+            draw_lane(tt, 0.f, -1.f);
             for (const Case& k : cases) {
                 if (!dump::listed(list, k.name)) continue;
                 const float L = k.kind == 1 ? Lm : Lf;
@@ -1097,6 +1742,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 double(o.n.screens), unsigned(ok));
                     if (size.first != 1920) continue;
                     for (unsigned p = 0; p < boom::part_count; ++p) {
+                        if ((1u << p) == boom::p_secondary) continue; // none on these tiers
                         // the part's own build at the same state (the switches select what the frame draws)
                         static ws::BoomState saved;
                         saved = boom::state;

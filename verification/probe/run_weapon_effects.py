@@ -239,11 +239,25 @@ def parse_hook(text):
                           if line.startswith('DEATH_FORWARD_STATE ')), None)
     death_nested = [fields(line) for line in text.splitlines() if line.startswith('DEATH_NESTED ')]
     death_state = [fields(line) for line in text.splitlines() if line.startswith('DEATH_STATE ')]
+    # the big tiers' clone row R' (explosion-look.md section 1): the built clone, the swap path's callee state, the
+    # nested swaps, the counters
+    death_clone = [fields(line) for line in text.splitlines() if line.startswith('DEATH_CLONE ')]
+    death_swap_state = next((dict(re.findall(r'(\w+)=(\S+)', line)) for line in text.splitlines()
+                             if line.startswith('DEATH_SWAP_STATE ')), None)
+    death_nested_swap = [fields(line) for line in text.splitlines() if line.startswith('DEATH_NESTED_SWAP ')]
+    death_swap = [fields(line) for line in text.splitlines() if line.startswith('DEATH_SWAP ')]
+    death_scan_timing = [fields(line) for line in text.splitlines() if line.startswith('DEATH_SCAN_TIMING ')]
+    death_slots = [fields(line) for line in text.splitlines() if line.startswith('DEATH_SLOTS ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
             'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode, 'hull_class': hull_class,
             'event_cost': cost[-1] if cost else None, 'overflow': overflow[-1] if overflow else None,
             'event_cost_full': cost_full[-1] if cost_full else None, 'death_forward_state': death_forward,
             'death_nested': death_nested[-1] if death_nested else None, 'death_state': death_state[-1] if death_state else None,
+            'death_clone': death_clone[-1] if death_clone else None, 'death_swap_state': death_swap_state,
+            'death_nested_swap': death_nested_swap[-1] if death_nested_swap else None,
+            'death_swap': death_swap[-1] if death_swap else None,
+            'death_scan_timing': death_scan_timing[-1] if death_scan_timing else None,
+            'death_slots': death_slots[-1] if death_slots else None,
             'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -275,6 +289,8 @@ def run_hook(args, results):
     record['death_forward_state'] = report['death_forward_state']
     record['death_nested'] = report['death_nested']
     record['death_state'] = report['death_state']
+    for key in ('death_clone', 'death_swap_state', 'death_nested_swap', 'death_swap', 'death_scan_timing', 'death_slots'):
+        record[key] = report[key]
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
                         result.get('checks') == len(report['checks']) and result.get('failures') == 0)

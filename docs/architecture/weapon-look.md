@@ -383,10 +383,12 @@ sparks; repair and tug: a cool spot (0.7, 0.8, 1.0) at E 0.3 / 0.15, R 1.0 r, re
 
 ### 3.2 Explosions (step 3)
 
-**Built 2026-11-07 for fighters and missiles** (corvettes, capitals and stations forwarded native: `boom::tier_native`):
-the look, sizes and laws are [explosion-look.md](explosion-look.md) (ratified; it amends the table and the smoke rule
-below), its built numbers in that note's "Built numbers (step 3)", the gates and measurements in
-[the ledger](../verification/weapon-effects.md) "Explosions (step 3)". The mode token is `explosions`
+**Built 2026-11-07 for fighters and missiles; the big tiers the same day** (corvettes, capitals and stations: the native
+spawn forwarded through the clone row R', `boom::tier_swap`, with the capital's and station's pre-roll of secondaries and
+hull light): the look, sizes and laws are [explosion-look.md](explosion-look.md) (ratified; it amends the table and the
+smoke rule below), its built numbers in that note's "Built numbers (step 3)" and "Built numbers (the big tiers)", the
+gates and measurements in [the ledger](../verification/weapon-effects.md) "Explosions (step 3)" and "Explosions: the big
+tiers". The mode token is `explosions`
 (`shields,hull,explosions`, `shields,hull,bolts,explosions`). The records, the asteroid and the rule-(b) missile below
 stand as built.
 

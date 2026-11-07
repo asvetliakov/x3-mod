@@ -354,6 +354,18 @@ inline Bubble owner_bubble(BubbleCache* cache, Reader rd, std::uintptr_t body_ca
     return fallback_bubble(radius);
 }
 
+// The owner's walked bubble if the cache holds one (no read, no walk, no counter: the death stage asks for a dying owner,
+// whose node may already be gone); false otherwise (nullptr cache too).
+inline bool bubble_peek(const BubbleCache* cache, std::uint32_t owner, std::uint32_t node, std::uint32_t handle,
+                        Bubble* out) noexcept {
+    if (!cache) return false;
+    for (const BubbleCache::Entry& x : cache->entries)
+        if (x.state == BubbleCache::walked && x.owner == owner && x.node == node && x.handle == handle) {
+            *out = x.bubble;
+            return true;
+        }
+    return false;
+}
 // The hit mapping: the recorded hit point p (owner frame, view units) in the bubble's normalised space q = (p - c) / e,
 // Q = q / |q|, the bubble point B = c + e Q (a hit at the centre takes Q = +z). The hit lights both faces of every axis
 // (the hull decal's rule, review F1); the opposite sheet's cells lie outside their anchor's depth window and

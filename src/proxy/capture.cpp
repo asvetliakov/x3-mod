@@ -2080,7 +2080,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[49]{};
+        unsigned drops[51]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
@@ -2133,6 +2133,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.boom_out_of_reach = drops[46];
         stage.boom_capped = drops[47];
         stage.boom_ready = drops[48] != 0;
+        stage.boom_secondaries = drops[49];
+        stage.boom_hull_lights = drops[50];
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();

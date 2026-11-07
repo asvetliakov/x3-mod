@@ -661,6 +661,15 @@ out.nested = run({vals: {c_x_nested: 3}}, 600);
 out.hull = run({hull: true}, 1200);
 out.sky = run({}, 1200);
 out.seed2 = run({vals: {c_x_seed: 2}}, 600);
+// the big tiers (2026-11-07): the capital's pre-roll (the carrier box lit, secondaries, no body), its birth at P, the
+// hull copy faded by P + 1 s; the corvette (P 0) mid-fade; the station's pre-roll
+const cap = {vals: {c_x_tier: 'capital', c_x_dist: 1500, c_x_radius: 1288}};
+out.cap_pre = run(cap, 700);
+out.cap_birth = run(cap, 1700);
+out.cap_late = run(cap, 2600);
+out.corvette = run({vals: {c_x_tier: 'corvette', c_x_dist: 1500, c_x_radius: 87}}, 500);
+out.station_pre = run({vals: {c_x_tier: 'station', c_x_dist: 3000, c_x_radius: 1800}}, 2000);
+run({}, 0); // the fighter's controls again for the loop
 vals.c_family = 'boom'; out.loop = ourLoopMs();
 out.boom = HEADER.boom;
 console.log(JSON.stringify(out));
@@ -688,6 +697,24 @@ console.log(JSON.stringify(out));
         self.assertEqual((js['sky']['light']['glow'], js['sky']['light']['smoke']), (0, 0))  # surface-bound
         self.assertNotEqual(js['f03']['light']['ember'], js['seed2']['light']['ember'])
         self.assertAlmostEqual(js['loop'], (bm['smoke_t0'] + bm['smoke_span']) * bm['tier_life_ms'][0] + 250, places=3)
+        # the big tiers' pre-roll (explosion-look.md 4): the carrier at full alpha and lit (the hull light, the secondaries'
+        # glows), secondaries drawn and born, no body before P; the body from P, the hull copy at 0.8 at P + 0.2 s, gone at
+        # P + 1 s; the corvette (P 0) at half alpha at 0.5 s with no secondaries; the station's twelve over 3 s
+        pre, birth, late = js['cap_pre'], js['cap_birth'], js['cap_late']
+        self.assertEqual((pre['bodies'], pre['hull_lights'], pre['hull_alpha']), (0, 1, 1))
+        self.assertGreater(pre['secondaries'], 0)
+        self.assertGreater(pre['light']['hull_light'], 0)
+        self.assertGreater(pre['light']['secondary'], 0)
+        self.assertEqual((birth['bodies'], birth['hull_lights']), (1, 1))   # the hull light fades with the copy
+        self.assertAlmostEqual(birth['hull_alpha'], 0.8, places=6)
+        self.assertEqual((late['hull_alpha'], late['hull_lights']), (0, 0))
+        self.assertEqual((js['corvette']['secondaries'], js['corvette']['bodies']), (0, 1))
+        self.assertAlmostEqual(js['corvette']['hull_alpha'], 0.5, places=6)
+        self.assertGreater(js['station_pre']['secondaries'], 0)
+        self.assertEqual(js['station_pre']['bodies'], 0)
+        self.assertEqual(bm['tier_secondaries'], [0, 0, 8, 12, 0])
+        self.assertEqual((bm['shock_tiers'], birth['shocks'], js['corvette']['shocks']), (0, 0, 0))  # D14: no shell
+        self.assertEqual((birth['halos'], js['cap_late']['halos']), (1, 1))                         # D15: drawn to 0.6 L
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_script_parses(self):

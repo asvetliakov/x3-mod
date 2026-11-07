@@ -395,7 +395,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
             bb.shock_cap = weapon_->caps().shock_enabled ? bb.shock_cap : 0u; // the shells only with their program
             bb.halo_cap = renderer::weapon_halo_boxes;
             bn = weapon_effects::stage::build_boom(weapon_effects::hook_state().ring, weapon_boom_state, hv,
-                                                                weapon_effects::stage::BoomTuning{}, bb, &visible);
+                                                   weapon_effects::stage::BoomTuning{}, bb, &visible, &weapon_bubble_cache);
             boom_shocks = bb.shock_boxes;
             boom_halos = bb.halo_boxes;
             hb.sprites += 4 * bb.sprite_quads;
@@ -433,16 +433,20 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
             weapon_drops_[45] += bn.bodies && bn.octaves < wcore::look::fireball_octaves;
             weapon_drops_[46] += bn.out_of_reach;
             weapon_drops_[47] += bn.capped;
+            weapon_drops_[49] += bn.secondaries;
+            weapon_drops_[50] += bn.hull_lights;
             if (capture_ && (bn.deaths || bn.out_of_reach))
                 log("weapon_boom_capture device=%llu frame=%llu now=%lu step_ms=%lu deaths=%u bodies=%u stars=%u shocks=%u "
                     "embers=%u fragments=%u darks=%u glows=%u smokes=%u shed=%u octaves=%u fine=%u out_of_reach=%u "
-                    "capped=%u floored=%u screens=%.3f body_screens=%.3f max_cluster=%.2f halos=%u embers_hidden=%u",
+                    "capped=%u floored=%u screens=%.3f body_screens=%.3f max_cluster=%.2f halos=%u embers_hidden=%u "
+                    "secondaries=%u secondaries_shed=%u secondaries_born=%u hull_lights=%u bubble_cached=%u capsules=%u",
                     id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                     bn.deaths, bn.bodies, bn.stars, bn.shocks,
                     bn.embers, bn.fragments, bn.darks, bn.glows,
                     bn.smokes, bn.shed, bn.octaves, bn.fine,
                     bn.out_of_reach, bn.capped, bn.floored,
-                    double(bn.screens), double(bn.body_screens), double(bn.max_cluster), bn.halos, bn.embers_hidden);
+                    double(bn.screens), double(bn.body_screens), double(bn.max_cluster), bn.halos, bn.embers_hidden,
+                    bn.secondaries, bn.secondaries_shed, bn.secondaries_born, bn.hull_lights, bn.bubble_cached, bn.capsules);
         }
         hn = weapon_effects::stage::build_hull(weapon_effects::hook_state().ring, weapon_hull_state, &weapon_effects_read,
                                                hv, weapon_effects::stage::HullTuning{}, hb, &visible);
@@ -600,13 +604,13 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[49]) noexcept {
+                                             bool* drew, unsigned drops[51]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 48; ++i) {
+    for (unsigned i = 0; i < 51; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }
