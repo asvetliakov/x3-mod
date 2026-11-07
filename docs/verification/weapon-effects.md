@@ -2622,14 +2622,15 @@ stand-in had hidden that). (4) `hull_clear` resets the fence state. (5) boom's l
 `body_screens`. (6) A shed box (core.z < 0) and the budget's step (1) (screen.w 0) skip the Cartesian fine tap (n_f
 1/2): a mul and a min, `fireball_ps` 842 -> 843 slots [M]. (7) A shed burst or body stays shed for its life
 (`HullSlot::fire_shed` in the slot's last padding byte, 512 bytes asserted; `Spot::fire_shed`, cleared at a pulse start;
-`BoomSlot::fire_shed` bit 0 the body, bit k + 1 secondary k), set by the (0c) step, the fence and boom's last loop; no
+`BoomSlot::fire_shed` bit 0 the body, bit k + 1 secondary k), set by the (0c) step, the fence and boom's last loop (except the newest death's body there: shed per frame,
+never latched, the note's rule); no
 per-frame allocation (static pointer / index arrays). (8) Budget pins (orchestrator decision): `budget_weight_fireball`
 1.18 -> 1.35, `_coarse` 1.03 -> 1.18, `_fine4` 1.18 -> 1.35 (pinned at the three-octave weight), `budget_weight_fire`
 2.28 -> 2.46; the charged fence they feed `boom::budget_screens` 2.5 -> 2.86 (x 1.144, the close capital's 450 -> 515 us
 charged); `hull::fire_fence` (in the tongues' extra, 1.10 -> 1.11) and the shared `screen_budget` unchanged. The close
 capital's wave drawn on 7 of 7 on-screen frames, worst frame 329.3 us (<= 450) [M]. The eye-inside GPU bounds 300 ->
-330 us (`eye_inside_fighter_n4` 298.2 on round 1's record, 301.4 on round 2's; `eye_inside_fighter` too, which read
-300.8 on this round's second record): 299.7 / 315.4 us on the last [M]. (9) fire-material.md section 7's stride reads
+330 us (orchestrator-confirmed; `eye_inside_fighter_n4` 298.2 on round 1's record, 301.4 on round 2's;
+`eye_inside_fighter` 283.8 on the record at `9af82ad81`, 296.8 on round 2's, 300.8 on this round's second record): 299.7 / 315.4 us on the last [M]. (9) fire-material.md section 7's stride reads
 80 -> 84 as designed, 80 -> 92 as built (12.1 row). SETA: at 100-160 ms steps the flicker and the fine grain are new
 noise every frame (no freeze; possible sparkle): flight question 5 (fire-material.md 8, 12.3).
 

@@ -2379,7 +2379,11 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     n.smokes_shed = shed_largest(out.smokes, &nm, smoke_meta, &area, budget);
     n.shocks_shed = shed_largest(out.shocks, &ns, shock_meta, &area, budget);
     // (0c, last) the bodies' remaining tongues (the newest death's, the own ship's), farthest first, before a wave goes
-    // (fire-material.md 7: they keep them until the fence's last step; bodies are never shed, so their indices hold)
+    // (fire-material.md 7: they keep them until the fence's last step; bodies are never shed, so their indices hold).
+    // The newest death's body is shed per frame, never latched (it comes back as soon as the frame fits); the others latch.
+    unsigned newest_body = nb;
+    for (unsigned g = 0; g < nb; ++g)
+        if (newest_body == nb || body_meta[g].age < body_meta[newest_body].age) newest_body = g;
     while (area > budget) {
         unsigned sel = nb;
         for (unsigned g = 0; g < nb; ++g)
@@ -2391,7 +2395,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         body_area -= cut;
         body_meta[sel].area -= cut;
         body_fire[sel] = 0.f;
-        state.slots[body_slot[sel]].fire_shed |= 1u;
+        if (sel != newest_body) state.slots[body_slot[sel]].fire_shed |= 1u;
         for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
                     -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
         ++n.fire_shed;
