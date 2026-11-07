@@ -414,7 +414,7 @@ spark cloud about three fireball radii across. Four new elements of the death st
    outwards, mean 0.08 of the length), the trapezoid 1.4 FWHM each side at either end (the tail there under 0.5 %);
    along the sun's e^(-u) (1 - u)^2, faded in over the first 0.15 of u (smoothstep: no bright base); brightness `ray_e`
    0.4 x (0.6 + 0.6 g2), g2 = frac(0.755 (i + o) + 0.31), x (1 - x / 0.5)^3 x a per-ray flicker (period 150-300 game ms,
-   at least the frame step so SETA does not strobe it; the hash of the period's index blended smoothly into the next:
+   at least two frame steps, so under SETA a flicker level holds at least two frames; the hash of the period's index blended smoothly into the next:
    1 - 0.3 level), colour heat(0.95 -> 0.8) (the lower end read as brown smoke shafts under AgX in the lab), SOFT R_f
    against the lane, gone at 0.5 L. The 2026-11-07 starburst (24-40 rays of 1-3 px, length 1.2-2.0 R_f, `ray_e` 2.4,
    flicker 30-60 ms at depth 0.55) read as a painted decal and is superseded.
@@ -444,6 +444,10 @@ spark cloud about three fireball radii across. Four new elements of the death st
    is left out, then every fourth (at most 3 / 4 halvings; an index is drawn when its low bits are all set, so the long
    streaks keep their share and the fragments, indices 7 mod 8, their full count through three halvings and half of it
    at the fourth). 20 fighters at 600 m: 2 halvings, 787 sparks drawn, 2,624 shed [M].
+   Since 2026-11-08 (review) the spark quads (2 FWHM + 0.5 px about head and tail) are charged to the family's budget
+   at `budget_weight_flash` a screen, as the rays and stars, and the frame's spark area, estimated before the build per
+   death from its mean quad (a 4 px head, a 16 px length, both x min(1, R_f on screen / 28.8 px)), takes at most a
+   quarter of that budget: past it another halving (within the four).
 4. **Contrast [C].** No change: the body's rim erosion is the shared program's (not this step's), and the frames show
    the blown core over the orange fringe with black around it; the glow and halo weights stay.
 
@@ -462,7 +466,7 @@ Since the 3-5 px Gaussian spark heads (2026-11-08) the 120 m fighter pulls the d
 400 ms (1.13 at the spark gain 1; the head puts its whole radiance on a pixel where the 1-2 px streak head sampled
 lower, and the p99 tile maximum follows it [I]); the 300 m fighter still moves nothing [M]. Coordinator decision
 2026-11-08: a death at 120 m may dim the scene, so the bound splits by case: the 300 m fighter <= 0.5 EV (sparks at
-normal range never drive the meter), the 120 m fighter <= 1.3 EV (the meter's own cap).
+normal range never drive the meter), the 120 m fighter <= 1.3 EV (Auto's upper limit, +1.3 EV).
 
 | Gate (fixture, `EXPLOSION case=...` rows) | Built [M] | Bound |
 | --- | --- | --- |

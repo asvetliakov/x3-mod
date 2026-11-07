@@ -2393,7 +2393,7 @@ third without (331 / 1 failed, the meter); the committed record is the third, ho
 
 Meter bound by case (2026-11-08, coordinator decision): a death at 120 m may dim the scene, so
 `death_exposure_meter_shift` bounds the 300 m fighter at 0.5 EV (measured 0.0: sparks at normal range never drive the
-meter) and the 120 m fighter at 1.3 EV, the meter's own cap (measured 0.817 over the dim scene at 400 ms; 1.13 at the
+meter) and the 120 m fighter at 1.3 EV, Auto's upper limit (measured 0.817 over the dim scene at 400 ms; 1.13 at the
 spark gain 1; the 3-5 px Gaussian heads put their whole radiance on a pixel, and the p99 tile maximum follows it [I]).
 Flight question added to explosion-look.md section 14: pumping (scene darkening and brightening with the spark cloud
 at point-blank range). Record: `run_weapon_effects.py --host native` under the X3 lock, no dump: D3D 331 checks, 0
@@ -2410,9 +2410,21 @@ Table:
 | `death_sparks_dense` (PASS; fighter 600 m, 0.3 L) | 221 sparks, 217 drawn, 217 heads on screen, 116 local maxima in the ember part; lengths 16.0 +- 8.4 px (std / mean 0.528) | >= 100; >= 0.4 |
 | `death_spark_heads` (PASS; fighter 600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows over 116 image heads (the narrowest of the row, column and diagonal half widths) | >= 3 |
 | `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` (PASS, PASS, PASS) | 41 at birth, 207 of 221 once the births are out (0.05 L); widths 3.00..4.98 px; seed correlation -0.186, T 0.75 / 0.5 / 0.25 at 0.3 / 0.7 / 1.1 L, farthest 221.3 px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |
-| `death_exposure_meter_shift` (PASS; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift over dim / lit 300 m 0.0 EV, 120 m 0.817 EV (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; 1.3 EV); 300 m: black / dim 0.15 / lit 0.5 worst 0.000 / 0.000 / 0.000 EV (frame peaks 35.03 / 35.06 / 18.27 / 7.54 / 3.84 / 2.52); 120 m: black / dim 0.15 / lit 0.5 worst 1.300 / 0.817 / 0.000 EV (frame peaks 17.94 / 15.7 / 10.2 / 5.18 / 3.32 / 2.52) | 300 m <= 0.5 EV; 120 m <= 1.3 EV (the meter's cap) |
+| `death_exposure_meter_shift` (PASS; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift over dim / lit 300 m 0.0 EV, 120 m 0.817 EV (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; 1.3 EV); 300 m: black / dim 0.15 / lit 0.5 worst 0.000 / 0.000 / 0.000 EV (frame peaks 35.03 / 35.06 / 18.27 / 7.54 / 3.84 / 2.52); 120 m: black / dim 0.15 / lit 0.5 worst 1.300 / 0.817 / 0.000 EV (frame peaks 17.94 / 15.7 / 10.2 / 5.18 / 3.32 / 2.52) | 300 m <= 0.5 EV; 120 m <= 1.3 EV (Auto's upper limit) |
 | `death_no_pop_at_birth`, `death_big_no_pop_at_birth` (PASS, PASS) | worst frame-to-frame peak rise corvette_1500m 1.271, capital_1500m 1.195 | <= 2 |
 | `death_rays_sparks_budget_5120` (PASS) | fighter 600 m 21.4 / 20.9 / 21.1 us at 0.1 / 0.05 / 0.3 L; 20 fighters 47.0 / 45.0 / 47.8 us (spark halvings 2: 787 drawn, 2624 shed, 250 rays); fence 11.2 us | <= 60; <= 150 |
 | `death_budget_capital_close_5120` (PASS) | worst 294.0 us (capital_close_400ms, shed 12) | <= 450 |
 | rays alone (5120x1440) | fighter 300 m 15.1 us (9 quads), close capital 47.7 us (9 quads), the fence 11.2 us | |
 | `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 44.8 us, 1075 quads (repeats 44.8,44.7,44.8,44.6,44.8; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 34.2 us, 0.0673 a quad | 50; 0.08 |
+
+Review fixes (2026-11-08, on `791a7d3e5`): the ray flicker's period is at least two frame steps (one step gave a fresh
+level every frame under SETA: a 0.3 strobe); the spark quads are charged to the family's budget at
+`budget_weight_flash` a screen (they grew about 8x with the 3-5 px heads and their halo window), and the frame's
+estimated spark area takes at most a quarter of the budget before another halving; the 120 m meter bound is Auto's
+upper limit (+1.3 EV). New row `death_sparks_1024_budget_5120`: six fighters at 300 m, 986 sparks demanded, 962 drawn,
+no halving, the sparks alone at 0.3 L: 38.5 us at 5120x1440 on the first run (0.053 screens charged), the bound set at
+that + 25 % = 48.1 us; the record 41.2 us (1080p 34.5 us). Record: D3D 332 checks, 2 failed, both loaded-host CPU rows
+with another project's X4.exe running on the Windows side: `death_stage_cpu_32_deaths` 62.5 us (repeats 49.2-68.1;
+44.8 in the previous record) and `death_big_stage_cpu` 0.0963 us a quad (0.0673); hook 147 / 0. Programs `--check`
+PASS; host tests `test_weapon_effects_hook` and `_lab` 59, 2 failing on those CPU rows; AP `build-rays` 0 warnings
+(d3d9.dll sha256 70be38ab567405f2...), `check_no_x87.py --edition ap` PASS (1181 reachable functions).

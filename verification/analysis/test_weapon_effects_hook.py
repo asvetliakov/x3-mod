@@ -541,7 +541,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                     # section 14 (explosion-look.md, 2026-11-07): the radiant core, the rays, the spark spray, the meter
                     'death_core_radiance', 'death_rays_starburst', 'death_rays_soft', 'death_rays_differ',
                     'death_sparks_dense', 'death_spark_heads',
-                    'death_exposure_meter_shift', 'death_rays_sparks_budget_5120')
+                    'death_exposure_meter_shift', 'death_rays_sparks_budget_5120', 'death_sparks_1024_budget_5120')
 
     def test_explosion_gates(self):
         checks = dict(self.record['checks'])

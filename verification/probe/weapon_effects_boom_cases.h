@@ -32,6 +32,8 @@ enum Part : unsigned { p_flash = 1, p_body = 2, p_shock = 4, p_ember = 8, p_frag
 const char* const part_names[12] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo", "secondary",
                                     "wave", "ray", "spike"};
 constexpr unsigned part_count = 12;
+// death_sparks_1024_budget_5120's bound (us at 5120x1440): the first measurement + 25 % (2026-11-08 review)
+constexpr double sparks_1024_bound_us = 48.1; // 38.5 us measured on the first run, + 25 %
 // Section 13.2's composed body in the builds (off: the single sphere; the drift-law ring gate measures one sphere), the
 // fixture's compose rows (force_n, force_shared, force_jets 0xff: the law's) and the box gate's growth.
 bool compose_on = true, force_shared = false;
@@ -1128,7 +1130,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             float base_ev[3];
             for (unsigned b = 0; b < 3; ++b) base_ev[b] = meter_ev(empty, bgs[b]);
             // the gate: dim and lit, per distance (coordinator decision 2026-11-08: the 300 m fighter <= 0.5 EV, sparks at
-            // normal range never drive the meter; the 120 m fighter <= 1.3 EV, the meter's own cap: a death that close may
+            // normal range never drive the meter; the 120 m fighter <= 1.3 EV, Auto's upper limit: a death that close may
             // dim the scene); black informational
             double worst = 0, worst_black = 0, worst_at[2] = {0, 0};
             for (const unsigned dist_m : {300u, 120u}) {
@@ -1586,6 +1588,29 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         "twenty_rays=%u\n",
                         size.first, size.second, last_case.n.spark_halvings, last_case.n.embers, last_case.n.sparks_shed,
                         last_case.n.rays);
+            // 2026-11-08 review: the sparks' quads (2 FWHM + 0.5 px about head and tail) at full count: fighters at 300 m
+            // across the screen, as many as keep the frame's demand within spark_frame_cap (no halving), the sparks alone
+            // at 0.3 L; bound the first measurement + 25 % (docs/verification/weapon-effects.md)
+            {
+                std::uint32_t seqs[32];
+                unsigned nseq = 0, total = 0;
+                for (unsigned k = 0; k < 32; ++k) {
+                    const std::uint32_t sq = 0x71000u + 11u * k;
+                    const unsigned c = ws::boom_spark_count(sq, bm::fighter);
+                    if (total + c > bm::spark_frame_cap) break;
+                    total += c;
+                    seqs[nseq++] = sq;
+                }
+                const double us = run_case("sparks_1024_300m", boom::p_ember, 0.3f, [&] {
+                    for (unsigned k = 0; k < nseq; ++k)
+                        fighter(300.0 + 15.0 * (k / 4), seqs[k], -90.0 + 60.0 * (k % 4));
+                });
+                std::printf("EXPLOSION_TIMING width=%u height=%u case=sparks_1024 deaths=%u demand=%u drawn=%u halvings=%u "
+                            "screens=%.3f gpu_us=%.1f bound_us=%.1f\n",
+                            size.first, size.second, nseq, total, last_case.n.embers, last_case.n.spark_halvings,
+                            double(last_case.n.screens), us, boom::sparks_1024_bound_us);
+                if (size.first == 5120) report("death_sparks_1024_budget_5120", us <= boom::sparks_1024_bound_us, "");
+            }
             run_case("rays_alone_fighter_300m", boom::p_ray, 0.1f, [&] { fighter(300.0); });
             const double rays_close = run_case("rays_alone_capital_close_720m", boom::p_ray,
                                                (bm::tier_preroll_ms[bm::capital] + 0.05f * bm::tier_life_ms[bm::capital]) / Lf,

@@ -2865,7 +2865,8 @@ function renderBoom(record, t) {
       let ax = A[0] - B[0], ay = A[1] - B[1];
       const motion = Math.hypot(ax, ay);
       if (motion > 1e-6) { ax /= motion; ay /= motion; } else { ax = 1; ay = 0; }
-      // the head a Gaussian of FWHM lit in its halo (0.25 at 2 head radii, windowed to 4), the tail tapering to 1 px
+      // the head a Gaussian of FWHM lit in its halo (spark_halo_e at the head, 0.5 of that at 2 head radii, windowed to 4),
+      // the tail tapering to 1 px
       const hw = 2 * lit + 0.5, r = 0.5 * lit;
       const [x0, x1, y0, y1] = bbox(A[0] - ax * drawn / 2, A[1] - ay * drawn / 2, drawn / 2 + hw + 1);
       for (let y = y0; y < y1; y++) for (let xp = x0; xp < x1; xp++) {
@@ -2912,7 +2913,7 @@ function renderBoom(record, t) {
       // the sun's spokes: golden-ratio lengths and strengths, a Gaussian across widening outwards, e^(-u) (1 - u)^2 along
       const gl = fr32(Math.fround((i + o) * BM.ray_phi)), gs = fr32(Math.fround((i + o) * BM.ray_phi2 + 0.31));
       const len = (BM.ray_len_lo + (BM.ray_len_hi - BM.ray_len_lo) * gl) * rf * grow, wk = BM.ray_fwhm_len * len;
-      const period = Math.max(BM.ray_flicker_lo + (BM.ray_flicker_hi - BM.ray_flicker_lo) * byteUnit(h1, 24), step), q = tb / period, qi = Math.floor(q);
+      const period = Math.max(BM.ray_flicker_lo + (BM.ray_flicker_hi - BM.ray_flicker_lo) * byteUnit(h1, 24), 2 * step), q = tb / period, qi = Math.floor(q);
       const a0 = unitOf(mix32((h ^ Math.imul(qi, 0x9e3779b9)) >>> 0)), a1 = unitOf(mix32((h ^ Math.imul(qi + 1, 0x9e3779b9)) >>> 0));
       const fr = q - qi, sm = fr * fr * (3 - 2 * fr), flick = 1 - BM.ray_flicker * (a0 + (a1 - a0) * sm);
       const E = BM.ray_e * (BM.ray_s_lo + BM.ray_s_span * gs) * env * flick;

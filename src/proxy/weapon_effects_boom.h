@@ -1117,6 +1117,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     // fourth (an index is drawn when its low bits are all set: the long streaks keep their share, the fragments, indices
     // 7 mod fragment_every, their full count through three halvings and half of it at the fourth).
     unsigned ray_demand = 0, spark_demand = 0, star_reserve = 0;
+    float spark_area_est = 0.f; // all the sparks' screens (x budget_weight_flash), estimated: / 2^halvings as drawn
+    const float spark_px_rows = f.height * (1.f / 1080.f), inv_screen_w = core::hull::budget_weight_flash / (f.width * f.height);
     {
         constexpr float spark_end = (bm::fragment_life > bm::ember_life[2] ? bm::fragment_life : bm::ember_life[2]) *
                                         (1.f + 0.5f * bm::ember_stagger) +
@@ -1127,8 +1129,18 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             const float L = bm::tier_life_ms[lv.tier], fl = state.slots[lv.slot].floor_ms;
             float turn;
             if (t.rays && lv.tb >= 0.f && lv.tb < (bm::ray_x * L > fl ? bm::ray_x * L : fl)) ray_demand += boom_ray_count(sq, &turn);
-            if (lv.age < bm::tier_preroll_ms[lv.tier] + spark_end * L + fl)
-                spark_demand += unsigned(float(boom_spark_count(sq, lv.tier)) * (simple ? 0.5f : 1.f) + 0.5f);
+            if (lv.age < bm::tier_preroll_ms[lv.tier] + spark_end * L + fl) {
+                const unsigned cnt = unsigned(float(boom_spark_count(sq, lv.tier)) * (simple ? 0.5f : 1.f) + 0.5f);
+                spark_demand += cnt;
+                // the death's mean spark quad: the head's FWHM F, the quad 2 F + 0.5 px about the head and the tail
+                const float z = lv.c[2] > f.near_z ? lv.c[2] : f.near_z;
+                const float rf = lv.R_f * px_x / z, ref = bm::spark_ref_px * spark_px_rows;
+                const float sl = rf < ref ? rf / ref : 1.f;
+                const float F = (bm::spark_est_head * sl > bm::ember_w_px_floor ? bm::spark_est_head * sl : bm::ember_w_px_floor) *
+                                spark_px_rows;
+                const float len = bm::spark_est_len * spark_px_rows * sl, hq = 2.f * F + 0.5f;
+                spark_area_est += float(cnt) * (len + 2.f * hq) * 2.f * hq * inv_screen_w;
+            }
             // the secondaries' stars (born by P, each star_ms or the floor): as the secondaries' loop draws them
             if (t.star && !simple && t.secondaries && state.slots[lv.slot].hull_kind &&
                 lv.age < bm::tier_preroll_ms[lv.tier] + (bm::star_ms > fl ? bm::star_ms : fl))
@@ -1138,9 +1150,14 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     const unsigned ray_shift = boom_halvings(ray_demand, bm::ray_frame_cap, bm::ray_shed_max);
     const unsigned spark_reserve = (ray_demand >> ray_shift) + 4u * nl + star_reserve;
     const unsigned spark_room_left = sprite_cap > spark_reserve ? sprite_cap - spark_reserve : 0u;
-    const unsigned spark_shift = boom_halvings(spark_demand, spark_room_left < bm::spark_frame_cap ? spark_room_left
+    const unsigned spark_shift_n = boom_halvings(spark_demand, spark_room_left < bm::spark_frame_cap ? spark_room_left
                                                                                                    : bm::spark_frame_cap,
                                                bm::spark_shed_max);
+    // the sparks' area (2026-11-08 review): past spark_budget_share of the family's budget, another halving
+    const float budget_now = f.budget_left < t.budget_screens ? f.budget_left : t.budget_screens;
+    unsigned spark_shift = spark_shift_n;
+    while (spark_shift < bm::spark_shed_max && spark_area_est / float(1u << spark_shift) > bm::spark_budget_share * budget_now)
+        ++spark_shift;
     const unsigned ray_mask = (1u << ray_shift) - 1u, spark_mask = (1u << spark_shift) - 1u;
     n.ray_halvings = ray_shift;
     n.spark_halvings = spark_shift;
@@ -1297,6 +1314,10 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 const float cap_px = cap_k * iz;
                 len_px = Rb > 0.f && len_px > cap_px ? cap_px : len_px;
                 len_px = len_px > 2.f * w_px ? len_px : 2.f * w_px;
+                // the quad's area charged to the family's budget (weapon_sprite_vs.hlsl: 2 w + 0.5 px about the head and
+                // the tail)
+                const float hq_px = 2.f * w_px + 0.5f;
+                star_area += (len_px + 2.f * hq_px) * 2.f * hq_px * inv_screen_w;
                 if (!fragment) {
                     const float in = ts < in_x ? bm::spark_in0 + ts * in_k : 1.f;
                     const float e_raw = bm::ember_e * bm::spark_gain * (lng ? bm::spark_long_e : 1.f) * core::exp_neg(ts * tau_k) * fade * vis *
@@ -1761,7 +1782,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 const std::uint32_t packed = pack_colour(colour, 1.f);
                 const float soft = bm::ray_soft * lv.R_f, inv_n = 1.f / float(N);
                 const float floor_px = bm::ray_fwhm_px * rows, r0 = bm::ray_start * rb_px;
-                // the flicker's period at least the frame step (SETA: a shorter one strobed)
+                // the flicker's period at least two frame steps (SETA: each level holds at least two frames)
                 const float step_ms = float(f.step_ms);
                 // the half-count shed: only the indices whose low ray_shift bits are all set, the others counted
                 n.rays_shed += N - (ray_mask < N ? ((N - 1u - ray_mask) >> ray_shift) + 1u : 0u);
@@ -1786,7 +1807,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     }
                     // the flicker: the hash of the period's index blended smoothly into the next one's
                     float period = bm::ray_flicker_lo + (bm::ray_flicker_hi - bm::ray_flicker_lo) * byte_unit(h1, 24);
-                    period = period > step_ms ? period : step_ms;
+                    period = period > 2.f * step_ms ? period : 2.f * step_ms;
                     const float q = lv.tb / period;
                     const float qf = float(scalar::floor(double(q)));
                     const std::uint32_t qi = std::uint32_t(qf);

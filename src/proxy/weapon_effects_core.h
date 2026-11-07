@@ -595,6 +595,11 @@ constexpr float tier_embers[5] = {32.f, 64.f, 128.f, 160.f, 12.f};
 constexpr float tier_sparks_lo[5] = {120.f, 160.f, 240.f, 240.f, 40.f};
 constexpr float tier_sparks_hi[5] = {240.f, 300.f, 400.f, 400.f, 80.f};
 constexpr unsigned spark_frame_cap = 1024, spark_shed_max = 4;
+// The sparks' quads are charged to the family's budget (budget_weight_flash a screen, as the rays and stars); the frame's
+// spark area, estimated before the build per death from its mean quad (a spark_est_head px head, a spark_est_len px
+// length, both at 1080 rows, the length x min(1, R_f on screen / spark_ref_px)), takes at most spark_budget_share of the
+// budget: past it the half-count shed halves the sparks again (within spark_shed_max).
+constexpr float spark_budget_share = 0.25f, spark_est_head = 4.f, spark_est_len = 16.f;
 constexpr float tier_shock[5] = {0.f, 1.f, 1.f, 1.f, 1.f};
 constexpr float tier_shock_tau[5] = {0.3f, 0.3f, 0.3f, 0.4f, 0.3f};
 // 2.1 the body: the burst program unchanged (look::fireball_*), R(t) = R_0 + (R_f - R_0) (1 - e^(-t / (rho L))) +
@@ -641,8 +646,8 @@ constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_ha
 // px at 1080 rows (scaled with the rows), ray_fwhm_len x its length x (1 + u / 2)), u = 0 at the start .. 1 at the tip (the
 // spoke widening outwards); along e^(-u) (1 - u)^2 (the sun's), faded in over the first ray_in of it (smoothstep: no
 // bright base); its brightness (ray_s_lo + ray_s_span g2_i) of ray_e (g2_i = frac(ray_phi2 (i + o) + 0.31)) x (1 - x /
-// ray_x)^ray_pow x the flicker: per ray a hashed period ray_flicker_lo..hi game ms (at least the frame step: under SETA a
-// shorter period strobed), its level the hash of the period's index blended smoothly into the next one's, 1 -
+// ray_x)^ray_pow x the flicker: per ray a hashed period ray_flicker_lo..hi game ms (at least two frame steps: under SETA
+// a level holds at least two frames), its level the hash of the period's index blended smoothly into the next one's, 1 -
 // ray_flicker x level; colour heat(T) on T ray_t0 at birth to ray_t1 at ray_x L; at the body's front (z - R(t)), SOFT
 // ray_soft R_f against the lane; gone at ray_x L. The quad a trapezoid of half width ray_quad_w x the FWHM at either end
 // (the Gaussian's tail there under 0.5 % of its peak). A frame draws at most ray_frame_cap ray quads (past it every second
