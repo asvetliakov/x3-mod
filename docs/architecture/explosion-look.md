@@ -288,9 +288,11 @@ thick planar fire wave on two tiers; the body stops being one ball on every tier
 
 ### 13.1 The fire ring (capital and station) [C]
 
-- **Plane, birth, radius.** Born on the body's frame at P in the plane of the node's long axis (row 2) and up axis
-  (row 2 x row 0), normal row 0, from the rows the record carries for the hull box; rows invalid: the view plane
-  (logged `wave_plane=`). In-plane distance stretched 1.25 along the long axis (the hull ring's rule). r(t) = r_0 +
+- **Plane, birth, radius.** Born on the body's frame at P in the ship's deck plane: the node's long axis (row 2) and
+  sideways axis (row 0), normal the up axis (row 1 = row 2 x row 0), from the rows the record carries for the hull box;
+  rows invalid: the view plane (logged `wave_plane=`). Until 2026-11-08 the plane was the long and up axes (normal row
+  0), the hull ring's rule, never a choice: a capital's widest extent is its deck, and the vertical plane showed a thin
+  bar from above and ahead. The user chose the deck plane (2026-11-08); flight question: the wave from above and ahead. In-plane distance stretched 1.25 along the long axis (the hull ring's rule). r(t) = r_0 +
   (r_max − r_0)(1 − (1 − t / τ)³), then + 0.05 (r_max − r_0) per τ (never stops): r_0 the hull's half length (924 /
   1,800 m [M]), r_max `wave_r_x` 7 R_f (4,200 / 7,560 m), τ 0.25 L (1.0 / 1.5 s; 9.8 / 11.5 km/s at birth, 3.3 / 3.8
   mean), gone at L_w 0.4 L (1.6 / 2.4 s) by (1 − t / L_w)² [M arithmetic].

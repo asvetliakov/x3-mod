@@ -1866,8 +1866,9 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 }
             }
         }
-        // Section 13.1, the fire wave (capital, station): the slab's box from the body's birth to L_w, the plane of the
-        // rows 2 and 1 (the view plane without rows); the newest wave's refraction request through the shimmer pass.
+        // Section 13.1, the fire wave (capital, station): the slab's box from the body's birth to L_w, the ship's deck
+        // plane (rows 2 and 0, normal row 1: the hull's widest extent; user decision 2026-11-08, was rows 2 and 1) or
+        // the view plane without rows; the newest wave's refraction request through the shimmer pass.
         if (t.wave && !simple && (bm::wave_tiers & (1u << tier)) && wave_cap) {
             const float Lw = bm::wave_life_x * L, life = Lw > s.floor_ms ? Lw : s.floor_ms;
             if (lv.tb < life) {
@@ -1881,7 +1882,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 if (rows_ok) {
                     float rows[3][3];
                     boom_rows(e, rows);
-                    rotate_world_to_view(f.cam, rows[0], nv);
+                    rotate_world_to_view(f.cam, rows[1], nv); // the deck plane's normal: the up axis
                     rotate_world_to_view(f.cam, rows[2], av);
                 } else { // the view plane: the normal to the eye, the long axis the view's x across it
                     const float k = dist > 1e-6f ? -1.f / dist : 0.f;

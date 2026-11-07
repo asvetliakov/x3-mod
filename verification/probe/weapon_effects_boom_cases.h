@@ -290,23 +290,25 @@ std::vector<float> render_hull(rr::WeaponEffectsPass& pass, Target& t, const Out
     if (result) *result = hr;
     return read_rgb(t, t.scene_s.p);
 }
-// A big-tier death broadside to the identity camera: row 2 (the forward axis, the capsule's) along view +x, row 0 along
-// +z, row 1 = row 2 x row 0 (-y).
+// A big-tier death broadside to the identity camera: row 2 (the forward axis, the capsule's) along view +x, row 0 (the
+// sideways axis) along +y, row 1 (up) = row 2 x row 0 (+z, along the view axis): the deck plane (rows 2 and 0, the
+// wave's plane since 2026-11-08) is the view's x-y plane, face-on. Until 2026-11-08 the wave's plane was rows 2 and 1
+// and the helpers put row 0 along +z: the rows are swapped here so every wave gate keeps its geometry.
 void broadside(wc::Event* e) {
-    e->dir[0] = 127;
-    e->dir[1] = e->dir[2] = 0;
-    e->alt_rgb332 = 0;
-    e->detail = 0;
-    e->calibre_q = 127;
-}
-// The same hull seen from above (section 13.1's -above frames): row 2 along +x, row 0 along +y (the wave's plane, rows 2
-// and 1, the view's x-z plane: edge-on).
-void from_above(wc::Event* e) {
     e->dir[0] = 127;
     e->dir[1] = e->dir[2] = 0;
     e->alt_rgb332 = 0;
     e->detail = 127;
     e->calibre_q = 0;
+}
+// The same hull with the eye in the deck plane (section 13.1's -above frames keep their name): row 2 along +x, row 0
+// along +z, row 1 = -y (the wave's plane, rows 2 and 0, the view's x-z plane: edge-on).
+void from_above(wc::Event* e) {
+    e->dir[0] = 127;
+    e->dir[1] = e->dir[2] = 0;
+    e->alt_rgb332 = 0;
+    e->detail = 0;
+    e->calibre_q = 127;
 }
 std::vector<float> luma(const std::vector<float>& rgb) {
     std::vector<float> l(rgb.size() / 3);
