@@ -1,0 +1,28 @@
+{
+ "run": 245,
+ "what": "weapon effects: corvette/capital/station explosions with the clone-row mask and pre-roll, fire wave on capital and station deaths, fourth fireball octave, fireball drift law (centre dot gone), ion lightning more and longer with a cold light; composed body built but off; AP 244 A folded into AP 245 A (flown without a crash, the user's notes: ion wanted more lightning and a light, explosions too round)",
+ "commit": "82c9b96acc0d4723b938a3ab09e3050ebe77b8c3",
+ "branch": "effects",
+ "candidate_record": "verification/results/run245-candidate-build.json",
+ "dll_sha256": "7c42acc2a71348956a497c2276f8caff5f90a7faa232de63e76fae250acb97a0",
+ "dll_bytes": 66432254,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run245/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 244,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run244",
+  "sha256": "0b42aa18c655cc29ba0de51e61f0fd85c8d1e948a1f32012da1cf8f202b02cec",
+  "ini_copy": "C:\\X3\\x3m.ini.run244",
+  "table_copy": "C:\\X3\\x3m\\weapon_effects.json.run244 (19573464)"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "unchanged from run 244 (weapon_effects = shields,hull,bolts,explosions)",
+ "tables": {
+  "weapon_effects.json": "19573464cd2d09ac83ae292b9ac6a028d09d1ab191439231d49765fcc9675533 (unchanged)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "lab": "C:\\X3\\x3m\\weapon_effects_lab.html copied from tools/effects (Boom tab: big tiers, wave and compose controls; ion scenarios)",
+ "dry_run": "exit 0",
+ "installed_at": "2026-11-07T15:08",
+ "open": "AP 245 A",
+ "host_note": "keep-awake stopped by the user; the native fixtures hold display-required only for a run; host CPU rows 1.5x slower than the committed records today (unexplained, clock and load nominal)"
+}

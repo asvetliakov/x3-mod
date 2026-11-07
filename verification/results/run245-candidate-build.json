@@ -1,21 +1,21 @@
 {
-  "recorded_utc": "2026-11-07T12:30:00+00:00",
+  "recorded_utc": "2026-11-07T15:10:00+00:00",
   "run": 245,
-  "status": "candidate built, not installed (waits for the AP 244 A flight)",
+  "status": "built and installed",
   "source": {
-    "commit": "213667af094369ee739db13483dd2e3986c2ff8f",
-    "head": "213667af094369ee739db13483dd2e3986c2ff8f",
+    "commit": "82c9b96acc0d4723b938a3ab09e3050ebe77b8c3",
+    "head": "82c9b96acc0d4723b938a3ab09e3050ebe77b8c3",
     "branch": "effects",
     "tracked_changes": 0,
-    "production_diff_vs_commit": "none (merge of the big-tier explosions 618000e8a into effects dc597da9c, plus a ledger-only commit)",
-    "marker": "X3M_SOURCE_COMMIT=213667af094369ee739db13483dd2e3986c2ff8f",
+    "production_diff_vs_commit": "none (merges on effects since Run244: big-tier explosions dc597da9c, fireball drift law 0093a702c, ion lightning bfe904e97, fire wave / fourth octave / composed body 82c9b96ac)",
+    "marker": "X3M_SOURCE_COMMIT=82c9b96acc0d4723b938a3ab09e3050ebe77b8c3",
     "marker_count": 1
   },
   "candidate": {
     "dll": "/home/asvetl/x3-mod/build-run245/d3d9.dll",
     "stripped": false,
-    "sha256": "ccce4d326b458627949726b75140f533c9897fb0b06182c35f4685d4d1317f7b",
-    "bytes": 65734396
+    "sha256": "7c42acc2a71348956a497c2276f8caff5f90a7faa232de63e76fae250acb97a0",
+    "bytes": 66432254
   },
   "toolchain": {
     "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
@@ -41,9 +41,9 @@
   },
   "config_check": "PASS 311 settings, 151 in the template",
   "evidence": {
-    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 298/0), hook-summary.json (147/0)} recorded in the big-tier worktree on the committed sources (618000e8a content); frames: scratchpad stage-dump-boom-big/v3 (corvette 1.5 km, capital broadside and close, station 3 km) viewed by the main session",
-    "host_tests": "test_weapon_effects_* 98 OK on the merged tree",
-    "reviews": "docs/verification/weapon-effects.md section Explosions: the big tiers (one review round at high: no blocker, should-fixes A-F, H, K, L applied, notes G, I, J, M in the open items); design explosion-look.md Built numbers (the big tiers) D9-D15"
+    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 321 checks: 319 pass, the two stage CPU rows death_stage_cpu_32_deaths 57.6 us / death_big_stage_cpu 0.099 per quad fail on today's host state: the committed tree bfe904e97 measured 57.8 / 0.095 against its recorded 38.3 / 0.068 with clock and load nominal, A/B by the verify agent), hook-summary.json (147/0)}, engine-shimmer (73/0); frames judged by the main session: stage-dump-boom-big/v3, stage-dump-drift, stage-dump-ion, stage-dump-wave/v4-v6",
+    "host_tests": "test_weapon_effects_* 101 run, 2 failures (the record checks of the two CPU rows above); programs/lab/schema/generate --check PASS",
+    "reviews": "docs/verification/weapon-effects.md: Explosions: the big tiers (review high, A-L applied), Fireball drift law, Ion lightning: more and longer, Explosions: the fire wave and the composed body (review: must-fix seed wiring + 8 should-fixes applied); designs explosion-look.md (D1-D51), hull-impact-classes.md ion 4.6, hull-burst-look.md section 10"
   },
-  "install_plan": "after AP 244 A: rollback copies run244, ini unchanged (weapon_effects = shields,hull,bolts,explosions), table unchanged; flight AP 245 A judges corvette/capital/station deaths (the hull through the pre-roll, secondaries on real geometry, the fade)"
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: exit 0"
 }
