@@ -2248,7 +2248,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             mt.area -= cut;
             fs = 0.f;
             renderer::WeaponFireballVertex* v4 = body ? out.fireballs + 4 * g : sec_verts + 4 * g;
-            for (unsigned k = 0; k < 4; ++k) v4[k].core[2] = 0.f;
+            for (unsigned k = 0; k < 4; ++k) // the law kept at its size LOD, no tongues
+                v4[k].core[2] = -(v4[k].core[2] < 1.f ? v4[k].core[2] : 1.f);
             ++n.fire_shed;
         }
     }
@@ -2336,7 +2337,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         area -= cut;
         body_meta[sel].area -= cut;
         body_fire[sel] = 0.f;
-        for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] = 0.f;
+        for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
+                    -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
         ++n.fire_shed;
     }
     {   // the waves with their constants (the shed moves the last box into the freed place: the constants follow)

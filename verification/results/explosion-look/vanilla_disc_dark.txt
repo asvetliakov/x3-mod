@@ -1,0 +1,4 @@
+linear, core centroid: lit 2066 px, R_eq 25.6 px, dark share in the disc 0.096
+linear, lit centroid: lit 2066 px, R_eq 25.6 px, dark share in the disc 0.090
+srgb, core centroid: lit 3710 px, R_eq 34.4 px, dark share in the disc 0.077
+srgb, lit centroid: lit 3710 px, R_eq 34.4 px, dark share in the disc 0.071

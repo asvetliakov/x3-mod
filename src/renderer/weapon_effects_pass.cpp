@@ -964,6 +964,8 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     float fire_c[12 * 4] = {};
     for (unsigned k = 0; k < 5; ++k)
         for (unsigned c = 0; c < 3; ++c) fire_c[4 * k + c] = lk::fire_ramp[k][c];
+    fire_c[3] = lk::fire_fine_bias;                  // c14.w
+    fire_c[7] = wcore::hull::fire_cluster_thr;       // c15.w
     {
         const float law[20] = {lk::fire_cells, lk::fire_s_cells, lk::fire_warp_f, lk::fire_warp_amp,
                                lk::fire_shear, lk::fire_blend_0, lk::fire_blend_1, 1.f / lk::fire_flow_ms,
@@ -971,8 +973,9 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                lk::fire_thr_r, 1.f / lk::fire_soft, lk::fire_gain, lk::fire_gain_small,
                                1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_oct2_w, lk::fire_oct2_big};
         for (unsigned k = 0; k < 20; ++k) fire_c[20 + k] = law[k];
-        const float tail[8] = {lk::fire_rim_cool, lk::fire_rim_r0, lk::fire_rim_r1, 0.f,
-                               lk::fire_core_r1, 1.f / (lk::fire_core_r1 - lk::fire_core_r0), 0.f, 0.f};
+        const float tail[8] = {lk::fire_rim_cool, lk::fire_rim_r0, lk::fire_rim_r1, lk::fire_fine_depth,
+                               lk::fire_core_r1, 1.f / (lk::fire_core_r1 - lk::fire_core_r0), lk::fire_fine_jitter,
+                               lk::fire_fine_k};
         for (unsigned k = 0; k < 8; ++k) fire_c[40 + k] = tail[k];
     }
     if (SUCCEEDED(hr) && (scorch_boxes || smoke_boxes)) {
@@ -1296,13 +1299,14 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                   wb::fire_wave_cells, lk::fire_warp_amp, lk::fire_shear, 1.f / lk::fire_flow_ms,
                                   wb::fire_wave_thr_0, wb::fire_wave_thr_end, 1.f / wb::wave_sheet_span, wb::wave_lead,
                                   lk::fire_oct2_w, wb::fire_wave_gain, lk::fire_gain, wb::wave_break_floor,
-                                  1.f / lk::fire_soft, 1.f / lk::fire_heat_soft, lk::fire_rim_t, 0.f,
-                                  0.f, 0.f, wb::wave_floor_a, wb::wave_floor_t};
+                                  1.f / lk::fire_soft, 1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_fine_k,
+                                  lk::fire_fine_depth, lk::fire_fine_jitter, wb::wave_floor_a, wb::wave_floor_t};
         float ramp[7 * 4] = {};
         for (unsigned k = 0; k < 5; ++k)
             for (unsigned c = 0; c < 3; ++c) ramp[4 * k + c] = lk::fire_ramp[k][c]; // v8: the fire ramp
+        ramp[3] = lk::fire_fine_bias; // c16.w
         const float tail[8] = {wb::wave_t_edge, wb::wave_t_band0, wb::wave_t_band_end, wb::wave_t_sheet_end,
-                               wb::wave_ahead, wb::wave_rim_noise, 0.f, 0.f};
+                               wb::wave_ahead, wb::wave_rim_gain, 1.f / wb::fire_wave_lick, wb::wave_rim_lift};
         for (unsigned k = 0; k < 8; ++k) ramp[20 + k] = tail[k];
         const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
         step(WeaponEffectsStep::Waves, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));

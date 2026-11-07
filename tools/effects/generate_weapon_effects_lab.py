@@ -75,7 +75,8 @@ NAMESPACES = {
              'fire_blend_0', 'fire_blend_1', 'fire_flow_ms', 'fire_flick_ms', 'fire_flick_amp', 'fire_thr_0', 'fire_thr_t',
              'fire_thr_r', 'fire_soft', 'fire_gain', 'fire_gain_small', 'fire_heat_soft', 'fire_rim_t', 'fire_oct2_w',
              'fire_oct2_big', 'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire',
-             'fire_rim_cool', 'fire_rim_r0', 'fire_rim_r1', 'fire_core_r0', 'fire_core_r1'),
+             'fire_rim_cool', 'fire_rim_r0', 'fire_rim_r1', 'fire_core_r0', 'fire_core_r1',
+             'fire_fine_k', 'fire_fine_depth', 'fire_fine_jitter', 'fire_fine_bias'),
     # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
     'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'mode', 'spark_count_x',
              'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',
@@ -97,7 +98,7 @@ NAMESPACES = {
              # the burst look (docs/architecture/hull-burst-look.md): the star, the burst's glow, the cluster rule, the
              # smoke, the asteroid's dust and the cool spot
              'star_arm_len', 'star_width', 'star_width_px', 'star_floor_px', 'star_element', 'burst_rot_element',
-             'burst_lobe_element', 'glow_r_x', 'glow_e_x', 'cluster_r_x', 'cluster_n0_glow', 'cluster_n0_burst',
+             'burst_lobe_element', 'glow_r_x', 'glow_e_x', 'cluster_r_x', 'cluster_n0_glow', 'cluster_n0_burst', 'cluster_glow_fire_n', 'fire_cluster_thr',
              'class_smoke', 'smoke_t0', 'smoke_span', 'smoke_rise', 'dust_colour', 'cool_colour', 'ember_lobe_amp',
              'class_fire', 'class_fire_core', 'fire_core_x', 'ring_fire_cells', 'ring_fire_z', 'ring_fire_thr'),
     # step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md section 8): HEADER.bolt, HEADER.muzzle
@@ -134,7 +135,7 @@ NAMESPACES = {
              'wave_slab_x', 'wave_trail_span', 'wave_e', 'wave_t_edge', 'wave_t_band0', 'wave_t_band_end', 'wave_t_sheet_end',
              'wave_t_cool', 'fire_wave_cells', 'fire_wave_aspect', 'fire_wave_thr_0', 'fire_wave_thr_end', 'fire_wave_gain',
              'wave_floor_a', 'wave_floor_t', 'wave_lead', 'wave_ahead', 'wave_break_floor',
-             'wave_rim_noise', 'wave_eye_plane_x', 'wave_eye_plane_blend_x',
+             'wave_rim_gain', 'wave_rim_lift', 'fire_wave_lick', 'wave_eye_plane_x', 'wave_eye_plane_blend_x',
              'wave_eye_fade_x', 'wave_sheet_enabled', 'compose_enabled', 'compose_count_3', 'compose_count_2',
              'wave_window_in', 'wave_window_out', 'wave_light', 'wave_m_floor', 'wave_m_contrast', 'wave_n_cells',
              'wave_n_w', 'wave_refract_px', 'budget_weight_wave', 'budget_weight_wave_miss', 'wave_seed_element',

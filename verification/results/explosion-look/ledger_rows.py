@@ -284,19 +284,33 @@ def fire_markdown():
     hseam_med = 0.5 * (hseam[len(hseam) // 2 - 1] + hseam[len(hseam) // 2]) if len(hseam) % 2 == 0 else hseam[len(hseam) // 2]
     att = row('attach')
     hs, cs_ = d3d['metrics']['hull_slots'][0], d3d['metrics']['class_slots'][0]
+    h2 = crow('fire_hull_round2')
+    f2, c2 = row('fire_body_round2', tier='fighter_200m'), row('fire_body_round2', tier='capital_3km')
+    er, pg = crow('burst_erosion_median'), crow('plasma_globe')
+    rings = [r for r in d3d['metrics']['class'] if r.get('case') == 'burst_centre_ring_median']
+    fr = {(r['tier'], r['age_frac']): r.get('front_over_law') for r in rows if r.get('case') == 'size'}
+    so = {(r['tier'], r['age_frac']): r.get('outline_over_law') for r in rows if r.get('case') == 'size'}
+    wc_ = row('wave_circumference')
     hb = lambda k: f"{h[k]}"
     bd = lambda k: f"{f[k]} / {c[k]}"
     out = [
         '| Gate | Result [M] (hull; fighter / capital) | Bound |', '| --- | --- | --- |',
-        f"| `fire_luminance_thin_hull`, `_death` ({ok('fire_luminance_thin_hull')}, {ok('fire_luminance_thin_death')}) | share > 0.8 peak {hb('thin')}; {bd('thin')}; gaps under 0.25 peak {hb('gaps')}; {bd('gaps')} | 0.10-0.35; >= 0.35 |",
+        f"| `fire_luminance_thin_hull`, `_death` ({ok('fire_luminance_thin_hull')}, {ok('fire_luminance_thin_death')}) | share > 0.8 peak {hb('thin')}; {bd('thin')}; equal-area disc under 0.1 peak {h2['disc_dark']}; {f2['disc_dark']} / {c2['disc_dark']} (the outline's gaps under 0.25 peak {hb('gaps')}; {bd('gaps')}, printed) | 0.10-0.35; >= 0.20 (vanilla 0.096) |",
+        f"| `fire_not_pink_hull`, `_death` ({ok('fire_not_pink_hull')}, {ok('fire_not_pink_death')}) | AgX pink share at 0.2, 0.3, 0.5 L {h2['pink']}; {f2['pink']} / {c2['pink']} | the medians' largest < 0.02 |",
+        f"| `fire_quad_edge_dark_hull`, `_death` ({ok('fire_quad_edge_dark_hull')}, {ok('fire_quad_edge_dark_death')}) | the quad's boundary over the peak, worst hit {h2['quad_edge_worst']}; {f2['quad_edge_worst']} / {c2['quad_edge_worst']} | < 0.02 |",
         f"| `fire_tongues_radial_hull`, `_death` ({ok('fire_tongues_radial_hull')}, {ok('fire_tongues_radial_death')}) | radial / tangential {hb('aniso')}; {bd('aniso')} | <= 0.75 |",
         f"| `fire_edge_licks_hull`, `_death` ({ok('fire_edge_licks_hull')}, {ok('fire_edge_licks_death')}) | lit boundary / outline boundary {hb('licks')}; {bd('licks')} | >= 2.0 |",
         f"| `fire_temporal_hull` ({ok('fire_temporal_hull')}) | high-pass corr +16 ms {h['hp16']}, +100 ms {h['hp100']}; low-pass +16 ms {h['lp16']} | 0.5-0.9; <= 0.6; >= 0.9 |",
         f"| `fire_colour_ramp_hull`, `_death` ({ok('fire_colour_ramp_hull')}, {ok('fire_colour_ramp_death')}) | hot {hb('hot')} @ {hb('hot_r')}, red {hb('cold')} @ {hb('cold_r')}, mid {hb('mid')}; hot {bd('hot')} @ {bd('hot_r')}, red {bd('cold')} @ {bd('cold_r')}, mid {bd('mid')} | >= 0.25 @ <= 0.5; 0.05-0.25 @ >= 0.65; <= 0.5 |",
         f"| `fire_core_bloom_hull`, `_death` ({ok('fire_core_bloom_hull')}, {ok('fire_core_bloom_death')}) | peak inside 0.3 R {hb('core40')} (40 ms), {bd('core10')} (0.1 L); outside 0.5 R {hb('out40')}; {bd('out10')} | >= 3.0; <= 1.5 |",
         f"| `hull_20_hits_no_white_sun` ({ok('hull_20_hits_no_white_sun')}) | cores on: worst share above 3.0 {sun['worst_share_above_3']} | <= 0.01 (cores off <= 3.0 as before) |",
-        f"| `fire_small_reads` ({ok('fire_small_reads')}) | 30 px far hit at 0.4 L_b: holes {sm['dark_share']}, lobes {sm['lobe_max_over_min']}, lit share {sm['lit_share']} | >= 0.10; >= 1.2; >= 0.4 |",
-        f"| `wave_not_a_tyre` ({ok('wave_not_a_tyre')}; 5 km face-on, 0.5 tau) | band mean / edge {w['mean_over_edge']}, dark share {w['dark_share']}, anisotropy {w['aniso']}, grey {w['grey_share']} | <= 0.35; >= 0.40; <= 0.75; <= 0.10 |",
+        f"| `fire_small_reads` ({ok('fire_small_reads')}) | 30 px far hit at 0.4 L_b: holes {sm['dark_share']}, lobes {sm['lobe_max_over_min']}, equal-area radius / R(t) {sm.get('eq_r')} (lit share inside R(t) {sm['lit_share']}, printed) | >= 0.10; >= 1.2; >= 0.45 |",
+        f"| `wave_not_a_tyre` ({ok('wave_not_a_tyre')}; 5 km face-on, 0.5 tau) | band mean / edge {w['mean_over_edge']}, dark share {w['dark_share']}, anisotropy {w['aniso']}, grey {w['grey_share']}, longest rim arc >= 0.5 peak {w.get('rim_arc_deg')} deg | <= 0.35; >= 0.40; <= 0.75; <= 0.10; <= 60 |",
+        f"| `hull_burst_erodes_outside_in` ({ok('hull_burst_erodes_outside_in')}) | equal-area radius / R(t) {er.get('eq_r')}, over its 0.1 L_b value {er.get('eq_ratio')}; mean radius 0.8 / 0.2 {er['mean_r_ratio']}; after L_b {er['bursts_after']} (lit share {er['lit_share']}, printed) | 0.35-0.9, <= 0.4; <= 0.8; 0 |",
+        f"| `hull_burst_no_centre_ring` ({ok('hull_burst_no_centre_ring')}; over R_eq) | worst prominence {', '.join(str(r['prominence_max']) for r in rings)}; annulus ratio {', '.join(str(r['annulus_ratio']) for r in rings)} (0.5 / 0.6 / 0.7 L_b) | <= 0.15; <= 1.3 |",
+        f"| `death_tier_sizes`, `death_big_tier_sizes` ({ok('death_tier_sizes')}, {ok('death_big_tier_sizes')}) | the tongues' front / R(t) at 0.1 / 0.3 L: {'; '.join(f'{t} {fr[(t, 0.1)]} / {fr[(t, 0.3)]}' for t in ('fighter_600m', 'missile_300m', 'corvette_1500m', 'capital_1500m', 'station_3km'))} (mean outline {'; '.join(f'{t} {so[(t, 0.3)]}' for t in ('fighter_600m', 'capital_1500m'))} at 0.3 L) | 0.80-1.15 |",
+        f"| `wave_broken_circumference` ({ok('wave_broken_circumference')}) | longest run of bins under 5 % {wc_['dark_run_bins']} (min bin {wc_['min_bin_peak']}), arcs max / min {wc_['arc_max_over_min']}, CV {wc_['arc_cv']} | <= 2; >= 2.0; >= 0.25 |",
+        f"| `hull_plasma_globe_shrinks_reddens` ({ok('hull_plasma_globe_shrinks_reddens')}) | R {pg['R']} px; b / r {pg['b_over_r']} at 0.3 / 0.65 / 0.95 L | shrinks, reddens, lit at 0.95 L |",
         f"| `fire_no_seam_hull`, `_death`, `_wave` ({ok('fire_no_seam_hull')}, {ok('fire_no_seam_death')}, {ok('fire_no_seam_wave')}) | median over the seeds {hseam_med:.4f}; {bd('seam')}; {w['seam']} (worst seed {h['seam_max']}; {bd('seam_max')}) | <= 0.1 (median) |",
         f"| program slots (device creation, max {att['max_ps_slots']}) | fireball_ps {hs['fireball_ps']}, wave_ps {att['wave_ps_slots']}, ring_ps {cs_['ring_ps']}; fireball vertex {hs['fireball_vertex_bytes']} bytes | the modern cap 32768 |",
         f"| `hull_fire_within_weight` ({ok('hull_fire_within_weight')}) | tongues on {on} us ({on / 177.5:.3f}), off {off} us ({off / 177.5:.3f}) at 5120x1440: + {(on - off) / 177.5:.3f} a screen | within 0.1 of budget_weight_fire - budget_weight_fireball |",

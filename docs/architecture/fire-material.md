@@ -300,6 +300,54 @@ the puffing law f ≈ 1.5 / √D Hz of pool fires (Cetegen & Ahmed 1993); fire s
 on a blackbody ramp with absorption only in the smoke (Nguyen, Fedkiw, Jensen 2002; Houdini pyro practice); tongue
 lifetimes of 50–150 ms and advection of 2–5 R/s [I from flame footage, not a sourced figure].
 
+## 12. As built
+
+Built 2026-11-07 in two rounds through the shared fireball, wave and ring programs; the measured rows are in the ledger
+([weapon-effects.md](../verification/weapon-effects.md) "Fire material" and its "Round 2"). This section records every
+constant and gate that differs from sections 2-7 and why; sections 1-11 are the design as ratified.
+
+### 12.1 Law changes
+
+| Item | Note | As built | Reason |
+| --- | --- | --- | --- |
+| The law's radius | the chord middle's \|q\| | the view-plane disc's \|p\| | on a hull hit the lane cuts the chord: the tongues met in a point at the screen centre (round 1) |
+| `fire_warp_amp`, `fire_shear` | 0.35, 0.6 | 0.6, 1.0 | section 8's step for straight spikes (a sea urchin late on the capital, lab round 1) |
+| `fire_blend_0 / _1` | 0.2 / 0.5 | 0.12 / 0.40 | round 1 |
+| `fire_thr_0 / _t / _r` | 0.08 / 0.30 / 0.45 | 0.12 / 0.39 / 0.48 | round 1 0.12 / 0.43 / 0.57 (the first native gates); round 2 the replica's search under the new ramp: the tongues reach R(t) |
+| `fire_gain`, `fire_gain_small` | 1.6, 1.2 | 1.2, 1.2 | round 2: with the fine octave's luminance the thin share holds at 1.2; the small size and a shed burst keep the convex gain (item 3: overlapping clumps summed to a tan body) |
+| `fire_heat_soft`, `fire_rim_t` | 0.55, 0.30 | 0.60, 0.21 | round 1 0.48 / 0.18; round 2 the search |
+| `fire_rim_cool` over \|p\| `fire_rim_r0 .. r1` | none | 0.76 over 0.45 .. 0.95 | the tips red: with the note's law no red pixel was lit (round 1 0.63) |
+| The fire core | 0.3 .. 0.5 R_s | `fire_core_r0 .. r1` 0.2 .. 0.35 R_s | the note's radii put 2.2 linear past 0.5 R(t) on the hull, 3.9 on a death body |
+| The core's colour | white | the ramp's top stop (yellow-white) | round 2: a neutral white core blended through peach |
+| `fire_ramp` | (0.45, 0.05, 0.015), (1.0, 0.33, 0.05), (1.0, 0.80, 0.30), (1.0, 0.97, 0.85) | (0.47, 0.15, 0), (0.62, 0.34, 0), (1.0, 0.78, 0.06), (1.0, 0.92, 0.30) | round 2: AgX (decode 2.2) turns an orange or red brighter than about 1.1 x its stop salmon (B > 0.5 G, G < 0.85 R); green rises before blue, blue near zero below the yellow stop, the red and orange stops dim (`fire_pink.py`: 0.248 of the (T, core, intensity) samples pink with the old ramp, 0.031 with this one, all at intensities the body does not reach outside its core) |
+| The fine octave | the third Cartesian octave weighted out under the tongues | `fire_fine_k` 4: under the tongues the polar noise at 4 x their cells and s (streams outward with them), elsewhere the Cartesian third octave (taken on a fire body of any size); luminance x (1 - `fire_fine_depth` 0.35 saturate(`fire_fine_bias` 1.2 - 2 n_f)), threshold + `fire_fine_jitter` 0.10 (n_f - 1/2) | round 2 item 2: each tongue was a flat fill with a soft edge (petals); the tap replaces the third octave's, no new hash where the tongues are |
+| The size LOD | `fire_px_0 / _1` 48 / 72 | 24 / 40 (R px at 1440 rows) | round 2 item 6: the nested fighters at 900 ms (R about 45 px) kept the erosion law (smooth blobs) |
+| The plasma globe | half the law | the tongues and gain at half weight, the previous threshold (blend `w_px saturate(2 fire - 1)`) | round 2: the globe at half the fire threshold had no lit pixel at 0.95 L (its late-life floor) |
+| Cluster thinning | none | a fire class's burst: threshold + `hull::fire_cluster_thr` 0.2 x (1 - s(N)), carried as fire weight 1 + (1 - s(N)) | round 2 item 3: N overlapping bursts' tongues summed to a filled body |
+| Cluster glow and ember | the glow 1 / (1 + (N - 1) / 2.5), the ember none | past `hull::cluster_glow_fire_n` 4 bursts x 4 / N more, the ember of a fire class the same factor | round 2 item 3: the 20 hits' embers (lab: the smooth puffball with the bursts off) and glows summed to tan |
+| Shed tongues | LOD 0 (the previous law) | core.z = -LOD: the law kept at its size, no polar taps | round 2: a shed burst kept the convex gain (item 3) |
+| The wave | band and sheet from tongues behind the front, the rim e^(-z^2) x m x (0.6 + 0.4 d) | `fire_wave_thr_0 / _end` 0.3 / 0.6, the radial cell `fire_wave_aspect` 2.5 x the arc (round 1); round 2: the noise continues ahead of the front and the threshold rises to 1 over `fire_wave_lick` 4 w_e ahead (`wave_window_out` 2.5 -> 4), so tongues point outward; the rim = `wave_rim_gain` 1 x the tongues' own front density x saturate((n - thr - `wave_rim_lift` 0.25) / fire_soft)^2 (never brighter than a tongue, broken between the spines); the second octave at `fire_fine_k` x the cells is the fine octave (jitter, luminance) | item 5: the round-1 lab wave was a drawn hoop (a thin continuous bright line with tongues trailing inward) |
+| The ring's band | a periodic 2-D noise | a value noise of the owner-frame direction (31 cells about, no seam) offset by -z / 3 | the ring program has no age: **open item**, the band does not flow with game time |
+| The budget | step (0c) by the frame's budget | step (0c), and the tongues' own fence `hull::fire_fence` 0.08 screens of their charge: past it other owners' bursts drop the term farthest first until under 0.8 of it, held 3 frames (the octave step's hysteresis); the own ship's keep it, the deaths keep theirs (boom's own step 0c) | the 20 hits at 200 m: 88.2 us against 80 with every tongue drawn |
+
+### 12.2 Gates as built
+
+| Gate | Note's bound | As built | Reason |
+| --- | --- | --- | --- |
+| `fire_luminance_thin_*` gap clause | the hole-filled outline's share under 0.25 peak >= 0.35 | the equal-area disc of the lit set (radius sqrt(lit / pi) about the centre): share under 0.1 of the peak >= 0.20 | the outline's gaps are open bays the hole fill drops; vanilla's frame measures 0.096 on this measure (`verification/results/explosion-look/vanilla_disc_dark.py`): **the bound 0.20 is the orchestrator's and vanilla does not pass it** |
+| `fire_edge_licks_*` | the outline's boundary | the 4-boundary of the disc of the outline's area | accepted (orchestrator 2026-11-07): against the hole-filled outline an open tongue silhouette is 1.0 by construction |
+| `fire_not_pink_hull`, `_death` (new) | none | lit pixels at most 0.8 of the peak whose AgX display has B > 0.5 G and G < 0.85 R: the medians' largest over 0.2 / 0.3 / 0.5 L < 0.02 | item 1 |
+| `fire_quad_edge_dark_hull`, `_death` (new) | none | the impostor quad's boundary rows and columns: the worst hit's largest luma < 0.02 of the frame's peak (40 ms and 0.3 L_b; 0.1 and 0.3 L) | item 4. The quad is the sphere's exact screen rectangle and the law lives inside the sphere, so it cannot clip; the straight cuts on `boom_capital_far_5km` frames 1-3 are the fixture's dying-hull box in the lane (the body part is drawn with the hull's depth at alpha 0.91 / 0.83 / 0.55; none at 2700 ms, alpha 0): occlusion class 2 against a box |
+| `wave_not_a_tyre` | band mean, dark share, anisotropy, grey | + the longest continuous rim arc: at 720 angles the largest luma within +-1.5 w_e of the 64-bin's edge radius; the longest circular run >= 0.5 of the peak <= 60 degrees | item 5 |
+| `hull_burst_erodes_outside_in` | lit share inside R(t) >= 0.8 / 0.35-0.75 / <= 0.15 at 0.1 / 0.5 / 0.9 L_b | the lit set's equal-area radius at 0.5 L_b 0.35-0.9 of its radius at 0.1 L_b, at 0.9 L_b <= 0.4 of it; none after L_b; the mean radius 0.8 / 0.2 <= 0.8 unchanged | the tongues' gaps are the material; the intent (it shrinks from outside in and is gone at L) measured on the body drawn |
+| `hull_burst_no_centre_ring` | the profile over 0 .. 0.6 R_s | over 0 .. R_eq (the lit set's equal-area disc); the bounds 0.15 / 1.3 unchanged | the tongues' bases sit at the blend radius of the drawn sphere, outside the body the eye sees as its centre; one seed's base read 0.157 |
+| `death_big_tier_sizes`, `death_tier_sizes` | the mean outline within 5 % of R(t) | the tongues' front, the 90th percentile of the 36 bins' outermost lit radius, within 0.80-1.15 of R(t) (the mean printed) | the mean outline counts the bays between the tongues' tips (0.66-0.74 measured on round 1); `death_tier_sizes` (fighter 600 m, missile 300 m) is included because `fire_px` 24 / 40 puts the 600 m fighter partly under the tongue law |
+| `wave_broken_circumference` | every bin's peak >= 5 % of the ring's | no run of more than 2 bins (11.25 degrees) under 5 % (no transparent arc); max / min and CV unchanged | the rim broken into tongues leaves single bins dark between them |
+| `fire_small_reads` | lit share inside R(t) >= 0.4 | the lit set's equal-area radius >= 0.45 R(t) (holes and lobes unchanged) | `fire_px` 24 / 40 puts the 30 px (1080) hit at 40 px of 1440 rows: the whole tongue law, whose gaps are the material |
+| `death_big_stage_cpu` | 0.08 us a quad | unchanged | host CPU timing: a host-noise row unless it fails three times on a quiet host |
+
+ROUND2_NATIVE
+
 ## Reproduce
 
 ```sh

@@ -1470,9 +1470,12 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         std::printf("HULL case=burst_colour birth_age_ms=%u birth_r=%.4f birth_g_over_r=%.3f birth_b_over_r=%.3f "
                     "end_age_ms=%u end_r=%.5f end_g_over_r=%.3f end_b_over_r=%.3f\n",
                     ages[0], peak[0], gr[0], br[0], ages[1], peak[1], gr[1], br[1]);
-        report("hull_burst_colour_white_core_at_birth", peak[0] > 0.1 && gr[0] >= 0.75 && br[0] >= 0.45, "");
+        // round 2 (fire-material.md section 12): the fire core whitens towards the ramp's top stop (1, 0.92, 0.30), a
+        // yellow-white, never neutral white (the peach mid-life): blue over red >= 0.25 (was 0.45)
+        report("hull_burst_colour_white_core_at_birth", peak[0] > 0.1 && gr[0] >= 0.75 && br[0] >= 0.25, "");
         // radiance heat(T') E density (hull-burst-look.md 2.5: no extra x T, the ramp's darkening carries the cooling)
-        report("hull_burst_colour_dark_red_at_end", peak[1] > 0 && peak[1] <= 0.3 * peak[0] && gr[1] <= 0.3 && br[1] <= 0.2, "");
+        // round 2: the fire ramp's red stop is G / R 0.32 (a redder one turns salmon under AgX): green over red <= 0.35
+        report("hull_burst_colour_dark_red_at_end", peak[1] > 0 && peak[1] <= 0.3 * peak[0] && gr[1] <= 0.35 && br[1] <= 0.2, "");
         // (c) the lane.
         const std::uint32_t age = std::uint32_t(0.3 * double(life));
         const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_burst);

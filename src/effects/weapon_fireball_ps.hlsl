@@ -32,6 +32,12 @@
 // tongues' s, the threshold, the core) is the view-plane disc's |p|, never the chord middle's |q| (a lane-cut chord). The
 // tips cool to red, T x (1 - fire_rim_cool smoothstep(fire_rim_r0, fire_rim_r1, |p|)) (c24); the fire core inside
 // fire_core_r0 falling to 0 at fire_core_r1 of R_s (c25).
+// Round 2 (2026-11-07, fire-material.md section 12): a fine octave n_f (under the tongues the polar noise at fire_fine_k x
+// their cells and s, streaming outward with them; elsewhere the Cartesian third octave, taken for a fire body of any
+// size) modulates the luminance by 1 - fire_fine_depth saturate(fire_fine_bias - 2 n_f) and jitters the threshold by
+// fire_fine_jitter (n_f - 1/2): ragged edges, structure inside every tongue; the threshold blends to the fire law by
+// w_px saturate(2 fire - 1) (the plasma globe, fire 0.5, keeps the previous threshold and its late-life floor); the
+// core whitens towards the fire ramp's top stop (yellow-white), never neutral white.
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
 float4 screen : register(c3);  // 2 / W, 2 / H, near view z, the third octave's weight at most (0: the budget's step 1)
@@ -41,14 +47,15 @@ float4 erode : register(c6);   // erode_0, erode_t, erode_r, erode_soft
 float4 shape : register(c7);   // column_pow, lobe_amp, lobe_soft, heat_soft
 float4 ramp[5] : register(c8); // the heat ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb)
 float4 erode2 : register(c13); // erode_rt (the radial term x (1 + erode_rt x)), unused, the fourth octave's cells, weight
-float4 framp[5] : register(c14); // the fire ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb)
+float4 framp[5] : register(c14); // the fire ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb); c14.w fire_fine_bias,
+                                 // c15.w hull::fire_cluster_thr (fire 1 .. 2: a cluster's burst, its tongues thinned)
 float4 fire1 : register(c19);   // fire_cells, fire_s_cells, fire_warp_f, fire_warp_amp
 float4 fire2 : register(c20);   // fire_shear, fire_blend_0, fire_blend_1, 1 / fire_flow_ms
 float4 fire3 : register(c21);   // 1 / fire_flick_ms, fire_flick_amp, fire_thr_0, fire_thr_t
 float4 fire4 : register(c22);   // fire_thr_r, 1 / fire_soft, fire_gain, fire_gain_small
 float4 fire5 : register(c23);   // 1 / fire_heat_soft, fire_rim_t, fire_oct2_w, fire_oct2_big
-float4 fire6 : register(c24);   // fire_rim_cool, fire_rim_r0, fire_rim_r1, unused
-float4 fire7 : register(c25);   // fire_core_r1, 1 / (fire_core_r1 - fire_core_r0), unused x2
+float4 fire6 : register(c24);   // fire_rim_cool, fire_rim_r0, fire_rim_r1, fire_fine_depth
+float4 fire7 : register(c25);   // fire_core_r1, 1 / (fire_core_r1 - fire_core_r0), fire_fine_jitter, fire_fine_k
 float hash2(float2 q) {
     float3 p = frac(float3(q.x, q.y, q.x) * 0.1031);
     p += dot(p, p.yzx + 33.33);
@@ -131,16 +138,21 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 // the fire material's weights: w_px the size LOD, the tongues' blend w_t (0 inside fire_blend_0)
                 // the fire law's radius: the view-plane disc's |p| (the chord's middle q leaves the plane where the lane
                 // cuts the chord: a hull hit's tongues would meet at the screen centre with |q|)
-                float fire = core.y, wpx = saturate(core.z), rp2 = dot(p, p), rp = sqrt(rp2);
+                // core.z < 0: the budget shed the tongues (step 0c, the fence), the law's size LOD -core.z kept
+                float fire = core.y, wpx = saturate(core.z), rp2 = dot(p, p), rp = sqrt(rp2), wlaw = saturate(abs(core.z));
                 float wt = max(fire, 0.0) * wpx * smoothstep(fire2.y, fire2.z, rp);
-                float wl = wpx * saturate(fire); // the law's blend: the size LOD x the fire weight (the plasma globe half)
+                float wl = wlaw * saturate(fire); // the law's blend: the size LOD x the fire weight (the plasma globe half)
+                float wth = wlaw * saturate(2.0 * fire - 1.0); // the threshold's (the plasma globe: the previous one)
                 float n = weight.x * value_noise(p * (freq.x - g.x) + look.w * float2(1.7, 3.1)) +
                           weight.y * value_noise(p * (freq.y - g.y) + look.w * float2(3.1, 1.7) + 5.3);
                 float wsum = weight.x + weight.y;
                 // the third octave, replaced by the tongues where they are (its fine grain never shows under them)
                 float o3 = min(disc.w, screen.w), w3 = saturate(o3) * weight.z * (1.0 - wt), w4 = saturate(o3 - 1.0) * erode2.w;
-                [branch] if (w3 > 0.0) {
-                    n += w3 * value_noise(p * (freq.z - g.z) + look.w * float2(0.7, 2.3) + 11.1);
+                // the third octave; on a fire body also the fine octave's Cartesian part (wt < 1) at any size
+                float n3 = 0.5;
+                [branch] if (w3 > 0.0 || (fire > 0.0 && wt < 1.0)) {
+                    n3 = value_noise(p * (freq.z - g.z) + look.w * float2(0.7, 2.3) + 11.1);
+                    n += w3 * n3;
                     wsum += w3;
                 }
                 // the fourth octave (2026-11-07: a body past fireball_fine4_px, disc.w 1 .. 2; the frame's octaves 4), on
@@ -151,7 +163,7 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     wsum += w4;
                 }
                 n /= wsum;
-                float flick = 1.0;
+                float flick = 1.0, nf = n3;
                 [branch] if (wt > 0.0) {
                     // the tongues: two warp taps, the polar domain (a about the disc, s outward, streaming with t_g), two
                     // periodic octaves; the per-tongue flicker
@@ -164,6 +176,9 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     float wo = fire5.z + fire5.w * saturate(core.z - 1.0);
                     float nt = (1.0 - wo) * vnp(float2(a, s), fire1.x) + wo * vnp(float2(2.0 * a + 0.5, 2.0 * s + 3.7), 2.0 * fire1.x);
                     n = lerp(n, nt, wt);
+                    // the fine octave under the tongues: the polar noise at fire_fine_k x their cells, streaming with s
+                    float kf = fire7.w;
+                    nf = lerp(n3, vnp(float2(kf * a + 0.3, kf * s + 1.9), kf * fire1.x), wt);
                     flick = lerp(1.0, 1.0 - fire3.y + fire3.y * vn1p(fire1.x * u + core.w * fire3.x, fire1.x, look.w), wt);
                 }
                 float colpow = pow(max(column, 1e-6), shape.x);
@@ -177,9 +192,10 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                         // (today's clumps and holes, section 2.5) on the fire ramp with the small gain
                         float thr_o = erode.x + erode.y * look.z + erode.z * rq2 * (1.0 + erode2.x * look.z);
                         float thr_f = fire3.z + fire3.w * look.z + fire4.x * rp2 * (1.0 + erode2.x * look.z);
-                        float thr = lerp(thr_o, thr_f, wl);
+                        float thr = lerp(thr_o, thr_f, wth) + fire7.z * (nf - 0.5) + framp[1].w * saturate(fire - 1.0);
                         float d = saturate((n - thr) / lerp(erode.w, 1.0 / fire4.y, wl));
-                        density = pow(max(d, 1e-6), lerp(fire4.w, fire4.z, wl)) * step(1e-6, d) * flick * colpow * lobe;
+                        density = pow(max(d, 1e-6), lerp(fire4.w, fire4.z, wl)) * step(1e-6, d) * flick * colpow * lobe *
+                                  (1.0 - fire6.w * saturate(framp[0].w - 2.0 * nf)); // the fine octave's luminance
                         float m = saturate((n - thr) * fire5.x);
                         float T_f = look.x * (fire5.y + (1.0 - fire5.y) * pow(max(m, 1e-6), 0.75)) *
                                     (1.0 - fire6.x * smoothstep(fire6.y, fire6.z, rp)); // the tongues' tips red
@@ -194,7 +210,8 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     // the white-hot core (core.x > 0: a death body, a fire class's hull burst): inside 0.3 of the radius
                     // the radiance x (1 + g) and the colour whitened by min(1, g), to 0 at 0.5
                     float g = core.x * (fire != 0.0 ? saturate((fire7.x - rp) * fire7.y) : saturate((0.5 - rq) / 0.2));
-                    c = lerp(lerp(heat(T, fire != 0.0), tint.rgb, tint.a), float3(1.0, 1.0, 1.0), saturate(g)) *
+                    c = lerp(lerp(heat(T, fire != 0.0), tint.rgb, tint.a), fire != 0.0 ? framp[4].rgb : float3(1.0, 1.0, 1.0),
+                             saturate(g)) *
                         (look.y * density * (1.0 + g));
                 }
             }

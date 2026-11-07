@@ -139,6 +139,9 @@ struct HullState {
     // The budget's tongue step (0c) with the same hysteresis (fire-material.md section 7).
     bool fire_coarse = false;
     std::uint8_t fire_frames = 0;
+    // The tongues' own fence (hull::fire_fence; fire-material.md section 12) with the same hysteresis.
+    bool fire_fenced = false;
+    std::uint8_t fence_frames = 0;
 };
 // A load, a sector change or a new load epoch (the ring's scope): the spots and the scorch marks name engine objects of
 // the old scope and go with the ring's records.
@@ -1983,8 +1986,10 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     // the white-hot core (fire-material.md 2.3): class_fire_core (1 - x / fire_core_x)^2 x s(N)^2
                     const float gx = 1.f - x / hl::fire_core_x;
                     const float gcore = t.fire_core && x < hl::fire_core_x ? hl::class_fire_core[a] * gx * gx * sb * sb : 0.f;
+                    // round 2: a fire class's weight 1 + (1 - s(N)), the cluster's thinning (hull::fire_cluster_thr)
+                    const float fire_w = !t.fire ? 0.f : hl::class_fire[a] >= 1.f ? 2.f - sb : hl::class_fire[a];
                     if (puff_box(c_view, r_hit, burst_R, burst_T, pf[6] * gain * sb, x, core::look::fireball_advect * x,
-                                 e.sequence, tint4, age_ms, own, e.owner, false, t.fire ? hl::class_fire[a] : 0.f, gcore, age))
+                                 e.sequence, tint4, age_ms, own, e.owner, false, fire_w, gcore, age))
                         n.floored += fl;
                 }
             }
@@ -2289,7 +2294,9 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             if (t.glow && burst_alive && burst_R > 0.f && a != hl::an_asteroid) {
                 float colour[3];
                 core::heat_colour(burst_T, colour);
-                const float sg = 1.f / (1.f + (cn - 1.f) * (1.f / hl::cluster_n0_glow));
+                float sg = 1.f / (1.f + (cn - 1.f) * (1.f / hl::cluster_n0_glow));
+                // round 2: a fire class's glow under a dense cluster lower still (the gaps between the filaments dark)
+                if (t.fire && hl::class_fire[a] > 0.f && cn > hl::cluster_glow_fire_n) sg *= hl::cluster_glow_fire_n / cn;
                 const float e0 = hl::glow_e_x * pf[6] * burst_T * sg * gain;
                 for (unsigned q = 0; q < 3; ++q) colour[q] *= e0;
                 float Rg = hl::glow_r_x * burst_R;
@@ -2337,7 +2344,14 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 } else {
                     const float T = em[3] * fade;
                     core::heat_colour(T, colour);
-                    for (unsigned q = 0; q < 3; ++q) colour[q] *= em[4] * T;
+                    // round 2 (fire-material.md section 12): a fire class's ember (the smooth lobed glow under the
+                    // filaments) saturates with the cluster as the burst's glow does (the 20 hits' embers summed to a tan
+                    // puffball)
+                    const float se = t.fire && hl::class_fire[a] > 0.f
+                                         ? 1.f / (1.f + (cn - 1.f) * (1.f / hl::cluster_n0_glow)) *
+                                               (cn > hl::cluster_glow_fire_n ? hl::cluster_glow_fire_n / cn : 1.f)
+                                         : 1.f;
+                    for (unsigned q = 0; q < 3; ++q) colour[q] *= em[4] * T * se;
                 }
                 for (unsigned q = 0; q < 3; ++q) colour[q] *= gain;
                 // a burst class's ember: the burst's lobed silhouette (its rotation and lobe seed), the body's remnant
@@ -2776,7 +2790,40 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             burst_area -= cut;
             burst_meta[sel].area -= cut;
             burst_fire[sel] = 0.f;
-            for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] = 0.f;
+            for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
+                    -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
+            ++n.fire_shed;
+        }
+        // the tongues' own fence (hull::fire_fence, round 2): past it in screens of the tongues' charge, other owners'
+        // bursts drop the term farthest first until under fireball_octave_return of it; held fireball_octave_hold frames
+        float tongues = 0.f;
+        for (unsigned g = 0; g < nb; ++g)
+            if (burst_fire[g] > 0.f)
+                tongues += burst_meta[g].area * extra * burst_fire[g] / (octave_weight(burst_fine[g]) + extra * burst_fire[g]);
+        if (state.fire_fenced) {
+            if (state.fence_frames >= core::look::fireball_octave_hold &&
+                tongues < core::look::fireball_octave_return * hl::fire_fence)
+                state.fire_fenced = false;
+            else if (state.fence_frames < 255)
+                ++state.fence_frames;
+        } else if (tongues > hl::fire_fence && any) {
+            state.fire_fenced = true;
+            state.fence_frames = 1;
+        }
+        while (state.fire_fenced && tongues > core::look::fireball_octave_return * hl::fire_fence) {
+            unsigned sel = nb;
+            for (unsigned g = 0; g < nb; ++g)
+                if (burst_fire[g] > 0.f && !burst_meta[g].own && (sel == nb || burst_depth[g] > burst_depth[sel])) sel = g;
+            if (sel == nb) break;
+            const float w = octave_weight(burst_fine[sel]) + extra * burst_fire[sel];
+            const float cut = burst_meta[sel].area * extra * burst_fire[sel] / w;
+            tongues -= cut;
+            area -= cut;
+            burst_area -= cut;
+            burst_meta[sel].area -= cut;
+            burst_fire[sel] = 0.f;
+            for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
+                    -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
             ++n.fire_shed;
         }
     }
