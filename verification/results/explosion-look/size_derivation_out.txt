@@ -1,0 +1,24 @@
+tier R_obj_m hull_m dist_m R_f_m 2R_f/hull px1440 px1080 hull_px1440 flash_arm_px core_px sec_px v_e_mps v_e_px_s reach_m reach_over_R_f L_s preroll_s
+fighter       14     22    600     28  2.59     45     34      35     18  3.6     0    42     67    101  3.6 2.0 0.0
+corvette      87    130   1500    130  2.00     84     63      83     33  6.7     0   196    125    705  5.4 3.0 0.0
+capital     1288   1849   1500    600  0.65    384    288    1183    154 30.7   134   300    192   1440  2.4 4.0 1.5
+station     1800   3600   3000   1080  0.60    346    259    1152    138 27.6   121   300     96   2160  2.0 6.0 3.0
+missile        3      6    300     10  3.50     34     25      19     13  3.0     0    40    128     38  3.7 0.8 0.0
+
+floors (1440 rows): fighter R_f at 2 km 13.4 px (floor 12); at 1.2 km 22.4 px; missile at 800 m 12.6 px
+
+capital pre-roll: 8 secondaries over 1.5 s, gap ratio 0.7: gaps 0.49 0.34 0.24 0.17 0.12 0.08 0.06 | times 0.00 0.49 0.83 1.07 1.24 1.36 1.44 1.50
+
+station pre-roll: 12 secondaries over 3.0 s, gap ratio 0.8: gaps 0.66 0.53 0.42 0.34 0.27 0.22 0.17 0.14 0.11 0.09 0.07 | times 0.00 0.66 1.18 1.60 1.94 2.21 2.42 2.59 2.73 2.84 2.93 3.00
+
+close capital: R_f 600 m, eye at 720 m, body radius 800 px (> 720: the screen)
+  body 3 oct              1.18 screens     209 us
+  body 2 oct              1.03 screens     183 us
+  shock (first 0.1 s)     0.40 screens      71 us
+  glow on hulls           0.40 screens      71 us
+  two secondaries         0.09 screens      16 us
+  flash (40 ms)           0.03 screens       5 us
+  smoke (from 0.5 L)      1.20 screens     213 us
+  sum at t_b + 0.1 s, no shed (smoke not yet): 373 us; third octave shed: 346 us; secondaries and shock shed: 259 us; fence 450 us; the 3-screen ceiling 532 us
+  smoke at 0.5 L adds 213 us: shed first on a close capital
+  capital at 1.5 km: body box 0.080 screens = 17 us at three octaves
