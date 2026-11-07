@@ -27,6 +27,11 @@ SITES = {  # name: (call address, expected callee)
     'object   0x0045ac7d -> 0x00414590': (0x0045ac7d, 0x00414590),
     'hit inst 0x00413da8 -> 0x00414a70': (0x00413da8, 0x00414a70),
     'hit inst 0x00413e79 -> 0x00414a70': (0x00413e79, 0x00414a70),
+    # section 10 (death-row mask seam): inside 0x00413610
+    'row      0x0041367d -> 0x00413040': (0x0041367d, 0x00413040),
+    'propag.  0x004139ff -> 0x00414410': (0x004139ff, 0x00414410),
+    'death sp 0x00413a24 -> 0x004148a0': (0x00413a24, 0x004148a0),
+    'death sp 0x00413a66 -> 0x004148a0': (0x00413a66, 0x004148a0),
 }
 SECS = []
 

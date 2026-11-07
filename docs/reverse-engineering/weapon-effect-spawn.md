@@ -192,7 +192,8 @@ tests the flag and indexes TBullets by the object's own subtype **without checki
 runs only when the object's parent is a sector (`[obj+0x54]+0x48 == 1`). The two calls are `0x0044ac64` (area
 bullet, or any object with that flag) and `0x0044acb2` (everything else): `0x00413610(obj, killer, arg4)`, then the explosion sound `0x00417170`
 when the object is in the player's sector **[m]**. Whether the killer argument is a pointer or an object id is **[u]**
-(it is forwarded to `0x0045eeb0`, `0x00439ff0` and the instance `+0x18`).
+(it is forwarded to `0x0045eeb0` and `0x00439ff0`). Inside `0x00413610` the killer is read only by the missile skip
+(`0x0041369b`); the instance `+0x18` receives the **third** argument (`[ebp+0x10]`, §10.4), not the killer **[m]**.
 
 **Row choice `0x00413040`** (ECX = subtype, EDX = class, `[esp+4]` = `obj+0x40`; default row **48**) **[m]**:
 
@@ -218,7 +219,7 @@ TAsteroids `+0x4c` (col 9), TMissiles `+0x80` (flag `0x1000000`), default **36**
 the missile's area damage `0x0045eeb0` (`0x0044ad18`). A death replacement must not add an explosion there. Area
 bullets have their speed zeroed. Then it allocates a
 **carrier object of class `0x1b`** whose subtype is the dying root body (`node+0x140`, `0x0043f900(mem, body|0x1b0000)`),
-copies position, rotation and velocity, and spawns `0x004148a0(1, carrier id, row, carrier, …, killer, …, &zero, …)`. Row flags (`0x0058006c + row·0x14`,
+copies position, rotation and velocity, and spawns `0x004148a0(1, carrier id, row, carrier, second carrier or 0, arg3, a7, &zero, t0, 0)` (§10.4). Row flags (`0x0058006c + row·0x14`,
 names at `0x00554d78`: `BREAKUP 1, PROPAGATE 2, REINIT 4, NOROTATE 8, NODRIFT 0x10, HIDEOBJECT 0x20`):
 `HIDEOBJECT` hides the carrier node; without `NOROTATE` it gets a random spin; `PROPAGATE` makes a second carrier
 with a copy of the dying scene (`0x004871e0`, `+0x4c/+0x4e` = the dying class/subtype) for the propagated
@@ -527,6 +528,241 @@ view the only row with such an element is stock 45, which is not an impact row
 ([`weapon_effect_census_out.txt`](../../verification/results/weapon-effect-spawn/weapon_effect_census_out.txt),
 "impact rows, EEDF_HULLDAMAGE") **[m data]**. The threshold is 100 shield points, not a percentage.
 
+## 10. Death-row element layout and the mask seam (2026-11-07)
+
+Evidence: [`death_row_layout_sites.py`](../../verification/results/weapon-effect-spawn/death_row_layout_sites.py) →
+[`_out.txt`](../../verification/results/weapon-effect-spawn/death_row_layout_sites_out.txt) (137/137 instruction
+checks, and a scan of the row offsets `0x00414cf0` reads through the instance's row pointer); the block "death-row
+element timelines" of [`weapon_effect_census_out.txt`](../../verification/results/weapon-effect-spawn/weapon_effect_census_out.txt);
+the four "section 10" rows of [`weapon_effect_sites_out.txt`](../../verification/results/weapon-effect-spawn/weapon_effect_sites_out.txt);
+decompiles of `0x004126d0`, `0x00414ba0`, `0x00414c10`, `0x00414c60`, `0x00414cf0`, `0x004148a0`, `0x00413610`,
+`0x00414410`, `0x00413eb0`, `0x00416750`, `0x004871e0`, `0x0043acf0`, `0x00486cd0`, `0x00414b60` (untracked).
+
+**Answer.** An element has **no kind id**. What it does is decided at its start by its EEDF flags and its body
+field. **No element of a reachable death row is a body-only operation**: `WRECK`, `FADEOUTBODY`, `PUSH` and
+`CUTKEEPBODY` are flags on sprite or scene elements. No ship, station or missile death row has a `LIGHT` or `LENSFLARE` element. Lights appear only in the stock bullet area rows 178, 189 and 196 and in child row 184. Elements play no sound except the `HULLDAMAGE` hull hit (`0x00414dfb`). The
+instance **keeps a pointer to the static row** (`inst+8`) and re-reads the shared 0x70-byte records on every update.
+It owns only 0x14 bytes of state per element. So a per-call mask that keeps the body operations needs a **clone row**
+(option b): sprite elements made `DISTANT`, the `WRECK` element and a life timer turned into empty timed nodes,
+`FADEOUTBODY` kept. Select the clone for one call by swapping the type record's death column around the forwarded
+`0x00413610`. Two findings correct [explosion-look.md](../architecture/explosion-look.md) §1:
+
+* `CUT` makes the element a multi-part scene. It does not cut the hull.
+* The capital hull copy fades over 1 s once the propagation pre-roll ends: about 1.8 s stock, 6.0-6.4 s on Mayhem
+  row 602. The 22 s is the debris scene.
+
+`WRECK` acts only when the kill passes a non-zero third argument (section 4 had the killer there). Every direct
+native kill caller (collision, area damage, five more native sites and the KC native with three arguments) passes 0, and whether the combat-death script path passes
+one is **[u]**.
+
+### 10.1 Row record `0x00580068 + id·0x14` (question 1) [m: loader `0x004126d0`]
+
+| offset | type | content | readers |
+| --- | --- | --- | --- |
+| `+0x00` | int | element count (`0x00412894`) | `0x00414cf0`, `0x00416750`, `0x00414410`, `0x00414c60`; 0 → no state array (`0x0041494f`), instance dropped at its first liveness check (`0x00416ac5`) |
+| `+0x04` | uint | `EDF_*` flags (`0x0041289f`, table `0x00554d78`), plus **`|1` for any `BREAKUP` element (`0x00412926`) and `|2` for any `PROPAGATE` element (`0x0041293a`)**: bullet area rows 155/156/186 are `PROPAGATE` at runtime with text flags 0 | death `0x00413766` (`HIDEOBJECT`), `0x00413858` (`NOROTATE`), `0x004138fa` (`PROPAGATE` → second carrier); re-arm `0x00414c64` (`REINIT`) |
+| `+0x08` | int | 30000 (death rows), 15000 (row 149) (`0x004128ac`) | break-up `0x0041355a` only; not read on the death path **[m: no reference in `0x00413610`; `0x00414cf0` reads only `+0` and `+0x10` through `inst+8`]**; meaning **[u]** |
+| `+0x0c` | number (`0x004eafc0`) | 1.0 (`0x004128c3`) | break-up `0x00413484` (with `NODRIFT`) only; meaning **[u]** |
+| `+0x10` | pointer | element array, count·0x70 bytes, allocated with `0x004b89f0` and zero-filled (`0x004b8a97`); `0x004128d7` | everything |
+
+Ids 0..999 (`0x00412831`). The loader zeroes count and pointer of all 1000 slots before a load (`0x004126ec` loop).
+The reset `0x00412c80` frees every slot's `+0x10` with the EXE's `free` `0x0050e1b0` when the count is non-zero
+(`0x00412ca8`). Free ids **[m census]**: installed 842, top block 901-999; stock 873, block 203-999.
+
+### 10.2 Element record, stride 0x70 (question 2) [m: loader stores and the cited test sites; i: size and GROW semantics from the decompile]
+
+| offset | content (loader store) | runtime use |
+| --- | --- | --- |
+| `+0x00` | body id (`0x00412a5c`): scene id through `0x0046e690` when `CUT`, body id through `0x0046e400` otherwise; light id (`sscanf %d`, `0x00412a28`) when `LIGHT`; −1 for `PROPAGATE` | node body (`0x00487e30`), scene (`0x00492970`), light record `*0x00608518+0xcc+id·0x18` |
+| `+0x04` | `I3DF_*` (`0x00412911`; `I3DF_2D 0x4000`, `I3DF_HASLENSFLARE 0x20000000`) | OR-ed into the new node's `+0x12c`; `0x4000` selects the 2D roll (`0x00414f1f`) **[i: screen-aligned]** |
+| `+0x08`, `+0x0c` | size a, b (`0x00412a70`, `0x00412a81`; 16.16 numbers **[i]**) | start size `+0x08` (+ random), `GROW` → `+0x0c` over the timeout, `RANDOMSIZE` random in `[0, +0x0c − +0x08)` into state `+0x10` (`0x00414e13`) |
+| `+0x10` | timeout, int ms (`0x00412a92`) | `TIMEOUT`: end = start + timeout (`0x00416439`/`0x0041643d`, liveness `0x00416b32`) |
+| `+0x14` | number (`0x00412aa3`) | used only when 0 < f < 1.0 (`0x00415f3b..0x00415f4c`); meaning **[u]** |
+| `+0x20..+0x28` | offset x, y, z; numbers when `RELATIVESIZE`, ints otherwise (`0x00412aad`) | added to the node position (`0x00415a6a..`) |
+| `+0x30` | int (`0x00412b27`) | lens-flare id (`LENSFLARE`, node `+0x1a0`, `0x004152e2..`); particle id for `PARTICLEGENERATOR` parts (`0x00412d70`) |
+| `+0x34` | int (`0x00412b38`) | lens-flare `+0x1b0` |
+| `+0x38` | number (`0x00412b49`) | **[u]** |
+| `+0x3c` | `EEDF_*` flags (`0x00412902`, table `0x005530b8`) | below |
+| `+0x40` | start delay, int ms, both branches (`0x00412b96`) | starts when `now − inst+0x28 ≥ +0x40` (`0x00414d79`) |
+| `+0x44..+0x60` | `PROPAGATE` only (`0x00412954..0x004129cb`): `+0x44` child row, `+0x48`/`+0x4c` child count min/max, `+0x50`/`+0x54` gap a/b (ms), `+0x58` chain length, `+0x5c` random delay (ms), `+0x60` number (`WAVE` spacing) | `0x00414410`, `0x00413eb0` |
+
+Bits and the instruction that acts on each **[m: test sites; i: effect where marked]**:
+
+| bit | name | acts |
+| --- | --- | --- |
+| `0x1` | SPEEDDEPENDENT | size from speed (engine-effects.md §2) |
+| `0x2` | RELATIVESIZE | size × obj `+0xa4` (`0x004161a5`); offsets read as numbers |
+| `0x4` | LENSFLARE | flare on the node (`0x004152e2`) |
+| `0x10` | TIMEOUT | end at `+0x40 + +0x10` (`0x0041642d`) |
+| `0x20` | CUT | **scene element**: root node at the carrier (`0x00414e76`), one node per scene part (`0x00415085`); every frame it removes finished parts (part `+0x1f4` bit 0 clear or bit `0x200` set), and when none is left it ends (`0x004162d9..0x00416332`) |
+| `0x80` | LIGHT | light node `0x004885a0` (`0x004155eb`) |
+| `0x400` | FADEOUT | element-node alpha ramp, children too; not for `PROPAGATE` (`0x004161ea`/`0x004161f6`) |
+| `0x800` | FADEOUTBODY | **static**: after the element loop, the last `FADEOUTBODY` element's `+0x40` sets a 1000 ms alpha ramp 255 → 1 on the **root node of `inst+0x10`**, only for a class-`0x1b` carrier (`0x00416638..0x00416718`); it is read from the static record in every phase, including a pending, masked or finished element; only a `DISTANT` element's start frame and a `HULLDAMAGE` element while its gate holds skip the read (`0x00414d93`, `0x00414daa` → `0x0041664c`) |
+| `0x2000` | BREAKUP | `0x004132d0(inst+0x14)` (`0x0041574d`) |
+| `0x4000` | PROPAGATE | nothing at its own start (empty node, body −1); its work is done at spawn (§10.6) |
+| `0x8000` | RANDOMSIZE | `0x00414e13` |
+| `0x10000` | PARTICLEGENERATOR | trail per scene part (`0x0041510a`); links removed at the end (`0x00416466`) |
+| `0x20000` | DISTANT | **phase 2 at its start, never a node** (`0x00414d85..0x00414d93`) |
+| `0x40000`, `0x8000000` | DEBRIS, DEBRISMAP | at the scene's end: `"CreateDebris"` event with `inst+0x18` (`0x00416342..0x00416368`); `DEBRISMAP` takes the scene from `inst+0x1c` (`0x00415011`) |
+| `0x80000` | HULLDAMAGE | start waits while the obj's shield sum is ≥ 100 (§9) |
+| `0x200000` | NOREINIT | kept on re-arm (`0x00414c86`) |
+| `0x400000` | CUTACTUALSIZE | scene part scale base 0x10000 instead of 1000 (`0x00414eb1`) |
+| `0x800000` | CUTKEEPBODY | finished scene parts are kept, not removed (`0x00416316`) |
+| `0x1000000` | NOZTEST | node `+0x130 |= 0x18` (`0x00415f0b`) |
+| `0x4000000` | WRECK | at the element's end (scene end `0x0041637a` or timeout `0x004165b0`), **only when `inst+0x18 ≠ 0` and `inst+0x10 ≠ 0`**: `0x00486cd0(node, 0x8100000, 0)` on the carrier's node tree (`0x100000` is the hide bit `HIDEOBJECT` sets, `0x00413776`), carrier `+0x40 |= 0x400`, the same on `inst+0x14`, then the script event `"CreateWreck"` (`0x0043acf0`, string `0x0055fb58`) with `inst+0x18` |
+| `0x10000000` | PUSH | at its start, only when `inst+0x10` is a class-7 ship (`0x0041536d`): **a no-op on a death carrier** |
+
+Other bits (GROWANDSHRINK, CAMERARELATIVE, GROW, RANDOMROT, BULLETROT, WAVE, NOSKIP) shape the node and were not
+traced further.
+
+### 10.3 Instance state and the first update (question 3) [m]
+
+The state array (`0x00414ba0`: count·0x14 bytes, zero-filled, `inst+0xc`) holds, per element:
+
+* `+0x0` the instance;
+* `+0x4` a flag word (bit `0x10000` cleared at the end, `0x0041659e`);
+* `+0x8` the node;
+* `+0xc` the phase: 0 pending, 1 running, 2 done;
+* `+0x10` the random size offset.
+
+`0x00414ba0` creates no node. `0x00414c10` zeroes node and phase, sets the clock base `inst+0x28 = now + t0`
+(`0x00414c47`) and runs `0x00414cf0`. The first update gives a node to **every element whose `+0x40` has passed**.
+For a row with t0 = 0 that is every start-0 element. For a `PROPAGATE` row (t0 > 0) it is none.
+
+Dispatch at the start, in test order:
+
+1. `DISTANT`: nothing.
+2. `HULLDAMAGE`: wait.
+3. `CUT`: a scene root node plus one node per part.
+4. `LIGHT`: a light node.
+5. `BREAKUP`: the break-up of `inst+0x14`.
+6. Body id > 0: a body node (2D with `I3DF_2D`).
+7. Body id ≤ 0: an **empty node** (`0x0041594b`; no body, `+0x140 = −1`), drawn as nothing **[i]**.
+
+Liveness (`0x00416ac0..0x00416b97`):
+
+* An element with a node is alive until its node is flagged `0x2000` or its `TIMEOUT` end passes.
+* An element without a node is alive only while pending.
+* When nothing is alive, the instance is freed. A class-`0x1b` carrier with no other instance of the same obj, kind
+  and row pointer is then removed (`0x00416c2d`/`0x00416c36`).
+
+**The carrier, and with it the hull copy, lives exactly as long as its instance.**
+
+Rows (installed 600/601 = stock 35/40; 602 = stock 37 with children at 200 ms + random 400 ms instead of 60 + 10; 201 = 37
+at ten times the size with 40 children at 40 ms; census **[m data]**):
+
+| row | element (start..end ms after t0) | what it is | body op |
+| --- | --- | --- | --- |
+| 35, 600 | 0: 11997, 0..3110, NOZTEST, CAMERARELATIVE | 2D body (the fireball) | — |
+| | 1: 4264, 0..1900, GROW, RANDOMSIZE | CUT scene | — |
+| 40, 601 | 0: 10670, 10..8010, and 1: 10670, 30..9030 (FADEOUT) | 2D body | — |
+| | 2: 11998, 0..3110 | 2D body | **WRECK**, PUSH (no-op) |
+| | 3: 4264, 0..1900 | CUT scene | — |
+| 37, 201, 602 | 0: PROPAGATE → row 149 ×30 at 60 ms (201: ×40 at 40 ms; 602: ×30 at 200 ms) | empty node | spawn-time propagation |
+| | 1: 4262, 0..3840 | CUT scene, 2D | — |
+| | 2: 4262, 25..3865 | CUT scene, 2D | **WRECK** |
+| | 3: 11999, 700..2780 (shock) | body (3D) | PUSH (no-op) |
+| | 4: 11994, 780..4380 (flash) | 2D body | — |
+| | 5: 10664, 0..7000 (dim red glow) | 2D body | **FADEOUTBODY** (start 0) |
+| | 6: 10670, 1400..11300 | 2D body | — |
+| | 7: body −1, 0..0 | empty node | — |
+| | 8: 4264, 1800..3700, and 9: 4264, 1858..3758 | CUT scene | — |
+| | 10: debrislarge_scene, 120..22120, CUTACTUALSIZE | CUT scene (debris) | **CUTKEEPBODY** |
+| 149 (child) | 0: 4262, 0..3840, RANDOMROT, RANDOMSIZE | CUT scene, 2D | — |
+
+Installed row 40 (the M0 row) is missing (§4). The default row 48 has a `FADEOUTBODY` CUT scene at start 0.
+
+### 10.4 The carrier timeline (input to question 5) [m paths; i visibility]
+
+* **t0.** `0x00413610` passes `t0 = (first BREAKUP element's +0x40, 0x00414b60 with ESI = 0x2000) + 0x00414410(…)`
+  (`0x004139e0..0x00413a0f`) on the `PROPAGATE` path. The second term is the latest child start: count × gap +
+  random. The other path passes 0 (`0x00413a66`). So the main explosion of row 37 starts at 1800-1810 ms, 201 at
+  1600-1610 ms and Mayhem 602 at **6000-6400 ms** (30 × 200 + random 400) after the kill **[m data; i: assumes every
+  child finds a surface point]**. The 30 surface explosions on the hull before it are the engine's own pre-roll.
+* **Fade.** `FADEOUTBODY` fades the main carrier's root node over t0 .. t0+1000 ms (37/201/602, 48). 35/600 and
+  40/601 have no fade: the hull copy stays until the carrier is removed at 3110 ms and 9030 ms. That end is exact,
+  because the last end belongs to a body element.
+* **Life.** For 37/201/602 the census life of t0 + 22120 is an **upper bound**. A CUT element ends at the earlier of
+  "all parts finished" and its timeout, and whether the debris scene's parts count as running for 22 s is **[u]**.
+* **WRECK** fires at t0 + 3110 (40/601) or t0 + 3865 (37/201/602) **only if `inst+0x18 ≠ 0`**.
+  `inst+0x18` = a6 = **the third argument of `0x00413610`** (`[ebp+0x10]`, `0x00413a0c`/`0x00413a54`). The kill
+  routine passes its own `[ebp+0x10]` (`0x0044acaf`). Every native kill caller pushes 0 there:
+  * collision `0x0045dc70`;
+  * area damage `0x0045f10a`;
+  * `0x0045ed6f`, `0x0045ee91`, `0x004494c3`, `0x0045332f`, `0x00453b2d`;
+  * `0x004634b9`/`0x004634d5`.
+
+  Only the KC native passes a value, a fourth script argument (`0x0046345e`, `0x0046346c` → `0x00463478`/`0x0046349d`).
+  Whether the script path a combat death takes (`"KilledBy"`, `0x004494d5`, `0x0045dc82`) supplies it is **[u]**.
+* **Two carriers.** The main carrier (`inst+0x10`) is built from the root body only (`0x0043f900(mem, body|0x1b0000)`).
+  The second (`inst+0x14`, `PROPAGATE` rows) is a full copy of the dying scene: body plus the whole part hierarchy
+  (`0x004871e0` recursion). `FADEOUTBODY` touches only the main root. Whether both are drawn, and which one the
+  player sees as "the hull" during the pre-roll, is **[u]**.
+
+### 10.5 The seam (question 4)
+
+`inst+8` is `&row` in the static table (`0x0041493f..0x0041494c`). `0x00414cf0` reads only `row+0` and `row+0x10`
+through it, 2 and 43 times (`0x00414cf0..0x0041672d` scan), and the element records are never copied **[m]**. So:
+
+* **(a) Per-instance phase flip** (state `+0xc = 2`, node removed with `0x00487be0`, as the re-arm `0x00414c9c` does)
+  works after `0x00413610` returns. The main instance is then the list tail `*0x0057b100`: it is the last append
+  (`0x004149fc`), with the children appended before it. For `PROPAGATE` rows no node exists yet. For t0 = 0 rows the
+  start-0 nodes already exist and must be freed. It costs nothing to allocate, but it **cannot keep `WRECK`**,
+  because that runs only at the end of a running element. It cannot keep the carrier alive either: a done element
+  does not count, and every element of these rows is visual. `FADEOUTBODY` survives (§10.2).
+* **(b) Clone row: recommended.** Build a clone of row R in a free slot R′ (count, flags, `+8`, `+0xc` copied).
+  Allocate its element array with the EXE's `malloc` `0x005112c4`, the allocator `0x00414ba0` uses, so the engine's
+  reset frees it with the matching `free`. Per element:
+  * a visual element without a body op: `+0x3c |= DISTANT`;
+  * the `WRECK` element: body `+0 = 0` (empty node), `+0x3c = TIMEOUT|WRECK`, `+4 = 0`, start and timeout kept;
+  * a life timer: the CUTKEEPBODY debris element (or the last-ending element) made an empty `TIMEOUT` node with the
+    row's end;
+  * `FADEOUTBODY` kept on any element; its `+0x40` is then the hull fade start, and the pre-roll can retime it;
+  * the `PROPAGATE` element: point `+0x44` at a second clone row R″ (one empty `TIMEOUT` element), or set
+    `+0x48 = +0x4c = 0`.
+
+  Select R′ per call. The **data swap** is the type record's death column: TShips `rec+0xbc` (read at `0x0041306e`),
+  TFactories / TDocks `rec+0x60` (`0x0041308f` / `0x004130a9`; tables `0x00606fd0` / `0x00606fcc`). Write R′ in the
+  death stub before forwarding and restore it after `0x00413610` returns. This needs no new patch site.
+  `0x00413040` reads the column once, at `0x0041367d`. Nested kills run only after `0x00413610` returns (§6), so the
+  window needs no stack **[i: no kill in its call tree for rows without BREAKUP]**. The code alternative is a
+  redirect of `0x0041367d` (`E8 BE F9 FF FF` → `0x00413040`; ECX = subtype, EDX = class, `[esp+4]` = obj `+0x40`,
+  returns EAX, caller pops at `0x00413682`). After the call EAX → EDX (`0x00413689`) → `[esp+0x10]`; EBX = class,
+  ESI = obj, EDI = obj `+0x40` and EBP are live; ECX and EFLAGS are dead. No branch or image dword lands in its bytes
+  1..4. It is not atomic, because it crosses `0x00413680` **[m]**. Returning 0 there skips the carrier and the spawn
+  (`0x004136f4`/`0x00413706`).
+
+  **Rollback:** stop swapping (or restore the five bytes). Instances already made keep `&slot[R′]` until they end, so
+  the clone memory must outlive them: never free it, and let the reset free it. A reload zeroes the slot
+  (`0x004126ec`), so rebuild when slot R′ reads count 0 or R's `+0x10` has changed.
+* **(c) Node-creation hook** keyed by the carrier needs four `0x00486d10` sites (`0x00414e76`, `0x00415085`,
+  `0x00415788`, `0x0041594b`) plus `0x004885a0`. It still lets WRECK ride on a node that has to be hidden every frame.
+
+### 10.6 Per-element timeout (question 5)
+
+Not per instance: start and timeout live only in the shared record, and the only per-instance time datum is the base
+`inst+0x28`, which shifts all elements together **[m]**. In the clone (b) it can be done:
+
+* sprites marked `DISTANT` are gone at their start (t = 0 for start-0 elements, never drawn for later ones);
+* one empty `TIMEOUT` element with the row's end keeps the instance and the carrier alive to that end (liveness
+  `0x00416b2c..0x00416b72`);
+* the hull copy stays visible until the clone's `FADEOUTBODY` start + 1 s, the `WRECK` timer end (if `inst+0x18 ≠ 0`),
+  or the carrier's removal, whichever comes first.
+
+### 10.7 The PROPAGATE children (question 6)
+
+**Sprites, separate, made before the parent [m].** `0x00414410(second carrier, 3, R, 0)` at `0x004139ff` runs
+before the main spawn at `0x00413a24`. Per `PROPAGATE` element it calls `0x00413eb0` count times. Each call picks a
+random point on the second carrier's mesh (`0x0047f560`/`0x0047fc20`, **[i]**) and spawns `0x004148a0(3, k, +0x44 = 149, second
+carrier, 0, 0, 0, &point, delay, 0)` (`0x0041409b`; chain `0x004143de`), with delays `k·gap + random`. Row 149 is one
+CUT 4262 scene element, `I3DF_2D`, 3840 ms: a 2D sprite scene. **Masking the parent does not mask them**: they are
+their own kind-3 instances with obj = the second carrier. Under (b) the clone's `PROPAGATE` element decides them (child
+row R″ or count 0). Under (a) the stub flips the single element of each kind-3 instance whose obj is the main
+instance's `+0x14`, before any child's delay has passed.
+
+The second carrier is removed with its last child instance (§10.3). With count 0 no instance references it, and its
+removal is then **[u]**: clearing the clone's `EDF_PROPAGATE` bit avoids creating it (path `0x00413a43`, a5 = 0).
+
 ## Unknown
 
 - The meaning of node `+0x180` in the contact point, and whether `0x00413c40` sees the true contact or the smaller
@@ -548,6 +784,12 @@ view the only row with such an element is stock 45, which is not an impact row
 - That `0x004596e0` runs every frame for every sector (only the call chain is known).
 - The order of the shield recharge `0x0044f7b0` against the collision pass in a frame, and whether bit 20 of a
   station's `obj+0x40` can be cleared after creation.
+- §10: the meaning of row `+0x08` / `+0x0c` (read only by the break-up) and element `+0x14` / `+0x38`; whether
+  both death carriers are drawn and whether the main carrier (root body only) shows the hull's parts; whether the
+  combat-death script path (`"KilledBy"`) passes a non-zero kill third argument, without which `WRECK` and
+  `"CreateWreck"` never run; when a scene part counts as finished (part `+0x1f4` bit 0), and so the real life of the
+  22 s debris element; how a `PROPAGATE` carrier with no child instance is removed; how `0x004ea9d0` treats an
+  unknown flag token (stock row 39 `EEDF_FADOUT`).
 
 ## Reproduce
 
@@ -564,9 +806,12 @@ done > $R/type_loader_columns_out.txt      # loops expanded, version branches ev
 python3 $R/weapon_effect_sites.py /mnt/c/X3/X3AP.exe $L > $R/weapon_effect_sites_out.txt
 python3 $R/weapon_effect_census.py > $R/weapon_effect_census_out.txt
 python3 $R/shield_layout_sites.py $L > $R/shield_layout_sites_out.txt   # §9, 27 checks
+python3 $R/death_row_layout_sites.py $L > $R/death_row_layout_sites_out.txt   # §10, 137 checks + row-pointer scan
 python3 $R/class_id_tables.py /mnt/c/X3/X3AP.exe /mnt/c/X3/X3AP.exe /mnt/c/X3FL/X3FL.exe \
   > $R/class_id_tables_out.txt                          # §8.1: EXE tables, FL anchor table, class columns per view
 # Ghidra (raw output untracked): analyzeHeadless ~/x3-ghidra-research X3Render -process X3AP.exe -noanalysis
 #   -readOnly -postScript X3DecContaining.java <out> 413c40 49b1f0 417250 449a60 414410 414a70 4148a0 413040
 #   413610 4132d0 413c00 44abd0 445170 43ffa0 449db0 449e20 449e70 444a70 452ad0 449ee0 460630
+#   §10: 4127c0 414ba0 414c10 414c60 414cf0 4148a0 413610 413eb0 416750 416e10 414410 412c80 43acf0 49f570
+#        486cd0 487be0 486d10 414b60 4885a0 4871e0 43f900 469a30
 ```

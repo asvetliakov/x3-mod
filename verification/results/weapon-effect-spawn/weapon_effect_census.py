@@ -15,7 +15,11 @@ Columns are the EXE's (type loader 0x00434e40, case per class; column 0 = body, 
   TMissiles col 20 +0x68 impact row, col 21 +0x7c death row (file version >= 0x31)
 Fallbacks in the EXE: death row 48 (0x00413040) and break-up row 36 (0x00413140) when the column is 0.
 The last block lists every death and break-up row the tables can reach (defaults included) with its element
-counts of EEDF_RELATIVESIZE and EEDF_BREAKUP, and the rows missing from Effects.
+counts of EEDF_RELATIVESIZE and EEDF_BREAKUP, and the rows missing from Effects. After it, the element timeline of
+every reachable non-asteroid death row and of the rows its PROPAGATE elements spawn (weapon-effect-spawn.md section
+10): per element the engine's dispatch at its start (0x00414d82..0x0041594b), the EEDF/I3DF flags, body, start
+(+0x40), timeout (+0x10) and end, then the row's timeline (main-instance delay t0 from the propagation, carrier
+life, FADEOUTBODY window, WRECK time) and the free Effects ids (slots a clone row could use).
 """
 import collections
 import pathlib
@@ -61,6 +65,117 @@ def element_flags(row):
             for tok in f[0].split('|'):
                 c[tok.strip()] += 1
     return dict(sorted(c.items()))
+
+
+EEDF = {'SPEEDDEPENDENT': 0x1, 'RELATIVESIZE': 0x2, 'LENSFLARE': 0x4, 'GROWANDSHRINK': 0x8, 'TIMEOUT': 0x10,
+        'CUT': 0x20, 'CAMERARELATIVE': 0x40, 'LIGHT': 0x80, 'GROW': 0x100, 'RANDOMROT': 0x200, 'FADEOUT': 0x400,
+        'FADEOUTBODY': 0x800, 'BULLETROT': 0x1000, 'BREAKUP': 0x2000, 'PROPAGATE': 0x4000, 'RANDOMSIZE': 0x8000,
+        'PARTICLEGENERATOR': 0x10000, 'DISTANT': 0x20000, 'DEBRIS': 0x40000, 'HULLDAMAGE': 0x80000, 'WAVE': 0x100000,
+        'NOREINIT': 0x200000, 'CUTACTUALSIZE': 0x400000, 'CUTKEEPBODY': 0x800000, 'NOZTEST': 0x1000000,
+        'NOSKIP': 0x2000000, 'WRECK': 0x4000000, 'DEBRISMAP': 0x8000000, 'PUSH': 0x10000000}   # table 0x005530b8
+BODY_OPS = ('WRECK', 'FADEOUTBODY', 'CUTKEEPBODY', 'PUSH', 'PROPAGATE', 'BREAKUP', 'DEBRIS', 'DEBRISMAP', 'HULLDAMAGE')
+
+
+EDF = {'BREAKUP': 1, 'PROPAGATE': 2, 'REINIT': 4, 'NOROTATE': 8, 'NODRIFT': 0x10, 'HIDEOBJECT': 0x20}   # 0x00554d78
+
+
+def runtime_row_flags(row):
+    """Row +4 as the loader leaves it: the text flags, | 1 for a BREAKUP element (0x00412926), | 2 for a PROPAGATE
+    element (0x0041293a)."""
+    v = 0
+    for tok in row['flags'].split('|'):
+        v |= EDF.get(tok.strip().replace('EDF_', ''), 0)
+    for e in elements(row):
+        v |= (1 if e['bits'] & 0x2000 else 0) | (2 if e['bits'] & 0x4000 else 0)
+    return v
+
+
+def elements(row):
+    """Pair each `flags; i3dflags;` line with its data line, as the loader 0x004126d0 reads them."""
+    out, lines = [], [l.rstrip(';').split(';') for l in row['el']]
+    i = 0
+    while i + 1 < len(lines):
+        f, d = [x.strip() for x in lines[i]], [x.strip() for x in lines[i + 1]]
+        i += 2
+        bits, unknown = 0, []
+        for tok in f[0].split('|'):
+            t = tok.strip().replace('EEDF_', '')
+            bits |= EEDF.get(t, 0)
+            if t not in EEDF and t not in ('NONE', '0'):
+                unknown.append(t)   # not in 0x005530b8; how 0x004ea9d0 treats it is not traced
+        e = dict(bits=bits, flags=f[0].replace('EEDF_', '').replace(' ', '') +
+                 (f' (unknown token {",".join(unknown)} counted as 0)' if unknown else ''),
+                 i3d=f[1] if len(f) > 1 else '?')
+        num = lambda k: int(float(d[k])) if k < len(d) and re.match(r'^-?[\d.]+$', d[k]) else None
+        if bits & 0x4000:   # PROPAGATE: +0x44 row, +0x48/+0x4c count, +0x50/+0x54 gap, +0x58 chain, +0x5c rnd, +0x60, +0x40
+            e.update(body=-1, child=num(0), nmin=num(1), nmax=num(2), gap0=num(3), gap1=num(4), chain=num(5),
+                     rnd=num(6), start=num(8) or 0, timeout=0)
+        else:               # body, +8, +0xc, +0x10 timeout, +0x14, +0x20..+0x28, +0x30, +0x34, +0x38, +0x40 start
+            e.update(body=d[0], size=(d[1], d[2]), timeout=num(3) or 0, start=num(11) or 0)
+        out.append(e)
+    return out
+
+
+def dispatch(e):
+    """What the element does at its start in 0x00414cf0 (order of the tests 0x00414d85, 0x00414e6e, 0x004155e5,
+    0x0041574d, 0x0041577f)."""
+    b = e['bits']
+    if b & 0x20000:
+        return 'none (DISTANT: state 2 at start)'
+    if b & 0x20:
+        return 'scene + part nodes (CUT)'
+    if b & 0x80:
+        return 'light node'
+    if b & 0x2000:
+        return 'break-up of +0x14'
+    body = e['body']
+    if b & 0x4000 or (isinstance(body, str) and re.match(r'^-?\d+$', body) and int(body) < 1):
+        return 'empty node' + (' (PROPAGATE: work done at spawn)' if b & 0x4000 else '')
+    return ('2D ' if 'I3DF_2D' in e['i3d'] else '') + 'body node' + (' + lens flare' if b & 0x4 else '')
+
+
+def timeline(eff, rid, depth=0):
+    """Print one row's elements and its derived timeline; recurse once into PROPAGATE child rows."""
+    row = eff[rid]
+    els = elements(row)
+    ind = '      ' + '  ' * depth
+    t0lo = t0hi = 0
+    for k, e in enumerate(els):
+        ops = [o for o in BODY_OPS if e['bits'] & EEDF[o]]
+        if e['bits'] & 0x4000:
+            gap = f'{e["gap0"]}' if e['gap0'] == e['gap1'] else f'{e["gap0"]}..{e["gap1"]} (unequal: t0 not computed)'
+            print(f'{ind}[{k}] {dispatch(e)}; flags {e["flags"]}; child row {e["child"]} x {e["nmin"]}..{e["nmax"]}, '
+                  f'gap {gap} ms, chain {e["chain"]}, random +{e["rnd"]} ms, start {e["start"]}')
+            if e['gap0'] == e['gap1'] and e['nmax']:
+                t0lo = max(t0lo, e['start'] + e['nmin'] * e['gap0'])
+                t0hi = max(t0hi, e['start'] + e['nmax'] * e['gap0'] + max(e['rnd'] or 0, 0))
+            continue
+        end = e['start'] + e['timeout'] if e['bits'] & 0x10 else None
+        print(f'{ind}[{k}] {dispatch(e)}; flags {e["flags"]}; i3d {e["i3d"] or 0}; body {e["body"]}; size '
+              f'{e["size"][0]}..{e["size"][1]}; start {e["start"]} timeout {e["timeout"]} end '
+              f'{end if end is not None else "open (no TIMEOUT)"}; body ops {"|".join(ops) or "-"}')
+    ends = [e['start'] + e['timeout'] for e in els if e['bits'] & 0x10 and not e['bits'] & 0x24000]
+    open_ = [k for k, e in enumerate(els) if not e['bits'] & 0x10 and not e['bits'] & 0x20000]
+    fade = [e['start'] for e in els if e['bits'] & 0x800]
+    wreck = [e['start'] + e['timeout'] for e in els if e['bits'] & 0x4000000]
+    t0 = f'{t0lo}..{t0hi}' if t0hi else '0'
+    life = f'{t0lo + max(ends)}..{t0hi + max(ends)}' if ends and t0hi else (str(max(ends)) if ends else 'none')
+    if depth:   # a PROPAGATE child: its own clock starts at its spawn delay (k x gap + random, 0x00414410)
+        print(f'{ind}per child (ms after its spawn delay): life {max(ends) if ends else "none"}')
+        return
+    print(f'{ind}timeline (ms after the kill): main-instance delay t0 {t0}; carrier life (last TIMEOUT end + t0) '
+          f'{life}{"; elements without TIMEOUT " + str(open_) if open_ else ""}; FADEOUTBODY root fade '
+          f'{"t0+" + str(fade[-1]) + " .. +1000" if fade else "none"}; WRECK at {["t0+" + str(w) for w in wreck] or "none"} '
+          f'(only when the kill passes a non-zero third argument)')
+    for e in els:
+        if e['bits'] & 0x4000 and depth == 0:
+            c = e['child']
+            if c in eff:
+                print(f'{ind}  child row {c} ({eff[c]["n"]} elements, row flags {eff[c]["flags"]}), one kind-3 '
+                      f'instance per child on the PROPAGATE carrier:')
+                timeline(eff, c, depth + 1)
+            else:
+                print(f'{ind}  child row {c}: MISSING from Effects')
 
 
 def ival(row, col):
@@ -152,6 +267,25 @@ def report(label, a):
                           f'BREAKUP {f.get("EEDF_BREAKUP", 0)}; from {sorted(set(rows_[v]))}')
                 else:
                     print(f'    {kind} row {v}: MISSING from Effects; from {sorted(set(rows_[v]))}')
+        print('  death-row element timelines (section 10; asteroid-only rows skipped):')
+        for v in sorted(death):
+            src = sorted(set(death[v]))
+            if v not in eff or src == ['TAsteroids col 8']:
+                continue
+            print(f'    death row {v}: {eff[v]["n"]} elements, row flags {eff[v]["flags"]} (runtime +4 = '
+                  f'0x{runtime_row_flags(eff[v]):x}); from {src}')
+            timeline(eff, v)
+        free = [i for i in range(1000) if i not in eff]
+        blocks, start = [], None
+        for i in range(1001):
+            if i < 1000 and i in free:
+                start = i if start is None else start
+            elif start is not None:
+                blocks.append((start, i - 1))
+                start = None
+        big = sorted(blocks, key=lambda b: b[0] - b[1])[:3]
+        print(f'  free Effects ids (0..999, table 0x00580068): {len(free)}; largest blocks '
+              f'{", ".join(f"{a}-{b}" for a, b in big)}; top block {blocks[-1][0]}-{blocks[-1][1]}')
 
 
 if __name__ == '__main__':

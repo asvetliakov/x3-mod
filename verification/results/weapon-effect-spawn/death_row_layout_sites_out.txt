@@ -1,0 +1,139 @@
+ok   0x00412831 cmp ebp,0x3e8                                    row id 0..999
+ok   0x00412894 mov DWORD PTR [ebp+0x580068],eax                 row +0x00 element count
+ok   0x0041288c push 0x554d78                                    EDF_* name table for the row flags
+ok   0x0041289f mov DWORD PTR [ebp+0x58006c],eax                 row +0x04 EDF flags
+ok   0x004128ac mov DWORD PTR [ebp+0x580070],eax                 row +0x08 int (0x004ea610)
+ok   0x004128c3 mov DWORD PTR [ebp+0x580074],eax                 row +0x0c number (0x004eafc0)
+ok   0x004128bf imul esi,esi,0x70                                element record stride 0x70
+ok   0x004128c9 call 0x4b89f0                                    element array allocation (count*0x70)
+ok   0x004b8a97 call 0x518de0                                    allocator zero-fills (memset 0)
+ok   0x004128d7 mov DWORD PTR [ebp+0x580078],eax                 row +0x10 element array pointer
+ok   0x004128e9 push 0x5530b8                                    EEDF_* name table
+ok   0x00412902 mov DWORD PTR [ebx+ecx*1+0x3c],eax               element +0x3c EEDF flags
+ok   0x00412911 mov DWORD PTR [ebx+edx*1+0x4],eax                element +0x04 I3DF flags
+ok   0x0041291d test DWORD PTR [eax+0x3c],0x2000                 BREAKUP element ...
+ok   0x00412926 or DWORD PTR [ebp+0x58006c],0x1                  ... sets row EDF_BREAKUP
+ok   0x0041292d test DWORD PTR [eax+0x3c],0x4000                 PROPAGATE element ...
+ok   0x0041293a or DWORD PTR [ebp+0x58006c],0x2                  ... sets row EDF_PROPAGATE
+ok   0x00412954 mov DWORD PTR [ebx+ecx*1+0x44],eax               PROPAGATE +0x44 child row
+ok   0x00412965 mov DWORD PTR [ebx+edx*1+0x48],eax               PROPAGATE +0x48 child count min
+ok   0x00412976 mov DWORD PTR [ebx+ecx*1+0x4c],eax               PROPAGATE +0x4c child count max
+ok   0x00412987 mov DWORD PTR [ebx+edx*1+0x50],eax               PROPAGATE +0x50 gap a (ms)
+ok   0x00412998 mov DWORD PTR [ebx+ecx*1+0x54],eax               PROPAGATE +0x54 gap b (ms)
+ok   0x004129a9 mov DWORD PTR [ebx+edx*1+0x58],eax               PROPAGATE +0x58 chain length
+ok   0x004129ba mov DWORD PTR [ebx+ecx*1+0x5c],eax               PROPAGATE +0x5c random delay (ms)
+ok   0x004129cb mov DWORD PTR [ebx+edx*1+0x60],eax               PROPAGATE +0x60 number (WAVE spacing)
+ok   0x00412a28 mov DWORD PTR [ebx+edx*1],eax                    LIGHT: +0x00 = sscanf %d light id
+ok   0x00412a3c test al,0x20                                     CUT selects the scene reader ...
+ok   0x00412a45 call 0x46e690                                    ... 0x0046e690 (CUT) ...
+ok   0x00412a51 call 0x46e400                                    ... or the body reader 0x0046e400
+ok   0x00412a5c mov DWORD PTR [ebx+ecx*1],eax                    element +0x00 body / scene id
+ok   0x00412a70 mov DWORD PTR [ebx+edx*1+0x8],eax                element +0x08 size a
+ok   0x00412a81 mov DWORD PTR [ebx+ecx*1+0xc],eax                element +0x0c size b
+ok   0x00412a92 mov DWORD PTR [ebx+edx*1+0x10],eax               element +0x10 timeout (int ms)
+ok   0x00412aa3 mov DWORD PTR [ebx+ecx*1+0x14],eax               element +0x14 number
+ok   0x00412aad test BYTE PTR [ebx+edx*1+0x3c],0x2               RELATIVESIZE: +0x20..+0x28 read as numbers, else ints
+ok   0x00412b27 mov DWORD PTR [ebx+ecx*1+0x30],eax               element +0x30 int (lens-flare / particle id)
+ok   0x00412b38 mov DWORD PTR [ebx+edx*1+0x34],eax               element +0x34 int
+ok   0x00412b49 mov DWORD PTR [ebx+ecx*1+0x38],eax               element +0x38 number
+ok   0x00412b96 mov DWORD PTR [ebx+edx*1+0x40],eax               element +0x40 start delay (ms), both branches
+ok   0x00414945 lea eax,[eax*4+0x580068]                         instance +0x08 = &row (pointer into the static table)
+ok   0x0041494c mov DWORD PTR [esi+0x8],eax                      instance +0x08 store
+ok   0x00414953 call 0x414ba0                                    state array built only for count > 0
+ok   0x00414ba8 mov ecx,0x14                                     state array: count * 0x14
+ok   0x00414bde call 0x518de0                                    state array zero-filled
+ok   0x00414be9 mov DWORD PTR [esi+0xc],edi                      instance +0x0c = state array
+ok   0x00414bf9 mov DWORD PTR [ecx+edx*1],esi                    state +0x00 = instance
+ok   0x00414973 mov DWORD PTR [ebx+0x14],eax                     instance +0x14 = a5 (PROPAGATE carrier for a death)
+ok   0x00414987 mov DWORD PTR [ebx+0x18],ecx                     instance +0x18 = a6 (the kill's third argument for a death)
+ok   0x0041498d mov DWORD PTR [ebx+0x1c],edx                     instance +0x1c = a7
+ok   0x004149fc mov DWORD PTR ds:0x57b100,ebx                    new instance appended at the list tail
+ok   0x00414a02 call 0x414c10                                    first update inside the spawner
+ok   0x00414c23 mov DWORD PTR [edi+ecx*1+0x8],esi                first update: state +0x08 node = 0
+ok   0x00414c2a mov DWORD PTR [edi+ecx*1+0xc],esi                first update: state +0x0c phase = 0
+ok   0x00414c47 add ecx,DWORD PTR [esp+0xc]                      instance clock base = now + t0 ...
+ok   0x00414c51 mov DWORD PTR [eax+0x28],ecx                     ... stored at instance +0x28
+ok   0x00414c5a jmp 0x414cf0                                     then the element update
+ok   0x00414d40 cmp DWORD PTR [ecx+0xc],0x0                      phase != 0 -> running/done path
+ok   0x00414d51 test eax,eax                                     node != 0 -> running path
+ok   0x00414d79 cmp edx,DWORD PTR [eax+0x40]                     starts when now - base >= +0x40
+ok   0x00414d85 test eax,0x20000                                 DISTANT ...
+ok   0x00414d8c mov DWORD PTR [ecx+0xc],0x2                      ... phase 2 at once, no node
+ok   0x00414d98 test eax,0x80000                                 HULLDAMAGE gate
+ok   0x00414e13 test DWORD PTR [esi+edx*1+0x3c],0x8000           RANDOMSIZE -> state +0x10
+ok   0x00414e6e test al,0x20                                     CUT -> scene path
+ok   0x00414e76 call 0x486d10                                    CUT: scene root node
+ok   0x00415085 call 0x486d10                                    CUT: one node per scene part
+ok   0x004155e5 jns 0x41574d                                     LIGHT (sign bit of the low byte) ...
+ok   0x004155eb call 0x4885a0                                    ... light node
+ok   0x0041574d test eax,0x2000                                  BREAKUP ...
+ok   0x0041575c call 0x4132d0                                    ... break-up of instance +0x14
+ok   0x0041577f cmp DWORD PTR [ecx],0x0                          body id > 0 ...
+ok   0x00415788 call 0x486d10                                    ... body node
+ok   0x0041594b call 0x486d10                                    body id <= 0: empty node
+ok   0x004152e2 test BYTE PTR [ecx+esi*1+0x3c],0x4               LENSFLARE on the new node
+ok   0x00415343 test DWORD PTR [eax+ecx*1+0x3c],0x10000000       PUSH ...
+ok   0x0041536d cmp WORD PTR [esi+0x48],0x7                      ... only when the instance object is a ship (not a 0x1b carrier)
+ok   0x00415a64 je 0x41662b                                      no node -> skip to the FADEOUTBODY read
+ok   0x004161ea test ecx,0x400                                   FADEOUT on the element node ...
+ok   0x004161f6 test ecx,0x4000                                  ... not for PROPAGATE
+ok   0x004162d9 test DWORD PTR [ecx+esi*1+0x3c],0x8040020        CUT|DEBRIS|DEBRISMAP: walk the part nodes
+ok   0x00416316 test DWORD PTR [ecx+edx*1+0x3c],0x800000         CUTKEEPBODY keeps finished parts
+ok   0x00416357 push 0x55fb48                                    "CreateDebris" event (DEBRIS|DEBRISMAP, instance +0x18)
+ok   0x0041637a test DWORD PTR [eax+ecx*1+0x3c],0x4000000        WRECK at the CUT end ...
+ok   0x0041642d test cl,0x10                                     TIMEOUT ...
+ok   0x00416439 mov edi,DWORD PTR [eax+edx*1+0x40]               ... end = +0x40 ...
+ok   0x0041643d add edi,DWORD PTR [eax+edx*1+0x10]               ... + +0x10
+ok   0x004165b0 test DWORD PTR [eax+edx*1+0x3c],0x4000000        WRECK at the timeout end ...
+ok   0x004165ba cmp DWORD PTR [ebx+0x18],0x0                     ... only when instance +0x18 != 0 ...
+ok   0x004165c5 je 0x416605                                      ... and instance +0x10 != 0
+ok   0x004165cc push 0x8100000                                   ... node tree flags 0x8100000 (0x100000 = hidden, as HIDEOBJECT)
+ok   0x004165de or DWORD PTR [eax+0x40],edx                      ... carrier +0x40 |= 0x400
+ok   0x004165fa or DWORD PTR [eax+0x40],edx                      ... same on instance +0x14
+ok   0x00416600 call 0x43acf0                                    ... "CreateWreck" event with instance +0x18
+ok   0x0043acfe push 0x55fb58                                    "CreateWreck"
+ok   0x0041660d call 0x487be0                                    element node removed
+ok   0x00416623 mov DWORD PTR [esi+ecx*1+0xc],0x2                phase 2
+ok   0x00416638 test DWORD PTR [edx+ecx*1+0x3c],0x800            FADEOUTBODY read for every element each update ...
+ok   0x00416645 mov edx,DWORD PTR [eax+0x40]                     ... its start (+0x40) from the static record
+ok   0x0041666d cmp WORD PTR [edx+0x48],0x1b                     fade only for a 0x1b carrier
+ok   0x0041669b cmp eax,0x3e8                                    fade over 1000 ms
+ok   0x004166bd push 0xffffff02                                  alpha 255 -> 1 (0x00469a30 = a*b/c)
+ok   0x00416700 mov DWORD PTR [ecx+0x13c],eax                    root node +0x13c only
+ok   0x00416aab call 0x414cf0                                    per-frame update
+ok   0x00416af6 test DWORD PTR [eax+0x12c],0x2000                node marked finished -> removed
+ok   0x00416b2c test BYTE PTR [ecx+0x3c],0x10                    TIMEOUT node past +0x40 + +0x10 -> removed
+ok   0x00416b6c cmp DWORD PTR [ecx+0xc],0x0                      no node: alive only while phase 0 (pending)
+ok   0x00416b97 jne 0x416c64                                     any alive element keeps the instance
+ok   0x00416c00 cmp WORD PTR [ecx+0x48],0x1b                     instance gone: a 0x1b carrier ...
+ok   0x00416c21 cmp edx,DWORD PTR [esi+0x8]                      ... with no other instance of the same obj, kind and row ...
+ok   0x00416c36 call 0x44aab0                                    ... is removed
+ok   0x0041367d call 0x413040                                    row chosen once ...
+ok   0x0041368b mov DWORD PTR [esp+0x10],edx                     ... held in [esp+0x10]
+ok   0x0041369b cmp DWORD PTR [ebp+0xc],edi                      the killer (arg 2) is read only by the missile skip
+ok   0x00413766 test BYTE PTR [eax+0x58006c],0x20                HIDEOBJECT ...
+ok   0x00413776 or DWORD PTR [eax+0x12c],0x100000                ... carrier node hidden
+ok   0x004138fa and edi,0x2                                      EDF_PROPAGATE (runtime row flag) -> second carrier
+ok   0x00413973 call 0x4871e0                                    second carrier = copy of the dying scene (body and part hierarchy)
+ok   0x004139e0 mov esi,0x2000                                   t0 = first BREAKUP element +0x40 (0x00414b60) ...
+ok   0x004139ff call 0x414410                                    ... + propagation: children spawned before the main instance
+ok   0x00413a0a add esi,eax                                      ... t0
+ok   0x00413a0c mov eax,DWORD PTR [ebp+0x10]                     a6 = arg 3 of 0x00413610 (the kill's [ebp+0x10])
+ok   0x00413a1e push edi                                         a5 = second carrier
+ok   0x00413a24 call 0x4148a0                                    main spawn (PROPAGATE rows)
+ok   0x00413a54 mov ecx,DWORD PTR [ebp+0x10]                     a6 = arg 3 (no-propagate path)
+ok   0x00413a66 call 0x4148a0                                    main spawn (other rows), t0 = 0
+ok   0x0044acaf push ecx                                         kill passes its [ebp+0x10] as arg 3
+ok   0x0041409b call 0x4148a0                                    child spawn (first)
+ok   0x004143de call 0x4148a0                                    child spawn (chain)
+ok   0x00414522 call 0x413eb0                                    one call per child
+ok   0x0045dc70 push 0x0                                         collision kill: arg 3 = 0
+ok   0x0045f10a push 0x0                                         area-damage kill: arg 3 = 0
+ok   0x0045ed6f push 0x0                                         kill at 0x0045ed75: arg 3 = 0
+ok   0x004494c3 push 0x0                                         kill at 0x004494ed: arg 3 = 0
+ok   0x0045332f push 0x0                                         kill at 0x00453337: arg 3 = 0
+ok   0x00453b2d push 0x0                                         kill at 0x00453b35: arg 3 = 0
+ok   0x0046345e cmp DWORD PTR [ebp+0x14],0x3                     KC native: a fourth script argument ...
+ok   0x0046346c mov ecx,DWORD PTR [esi+0x10]                     ... becomes arg 3 (0x00463478, 0x0046349d)
+137/137 checks pass
+row offsets read through instance +0x08 in 0x00414cf0: +0x0 x2, +0x10 x43

@@ -78,6 +78,126 @@
     break-up row 36: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TAsteroids col 9', 'TFactories col 15', 'TMissiles +0x80', 'TShips col 48', 'default']
     break-up row 38: 5 elements, RELATIVESIZE 3, BREAKUP 0; from ['TDocks col 15', 'TFactories col 15', 'TShips col 48']
     break-up row 41: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TShips col 48']
+  death-row element timelines (section 10; asteroid-only rows skipped):
+    death row 15: 2 elements, row flags 0 (runtime +4 = 0x0); from ['TBullets 0x100']
+      [0] 2D body node; flags TIMEOUT|GROW|RANDOMROT|FADEOUT; i3d I3DF_2D; body 10663; size 0.04..0.06; start 0 timeout 800 end 800; body ops -
+      [1] 2D body node; flags TIMEOUT|GROW|FADEOUT; i3d I3DF_2D; body 10661; size 0.01..0.2; start 0 timeout 250 end 250; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 800; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 35: 2 elements, row flags EDF_NOROTATE|EDF_NODRIFT (runtime +4 = 0x18); from ['TFactories col 14', 'TShips col 47']
+      [0] 2D body node; flags TIMEOUT|NOSKIP|NOZTEST|CAMERARELATIVE; i3d I3DF_2D; body 11997; size 0.5..0.5; start 0 timeout 3110 end 3110; body ops -
+      [1] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|RANDOMROT|RANDOMSIZE; i3d 0; body 4264; size 0.0004..0.0214; start 0 timeout 1900 end 1900; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 3110; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 37: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE (runtime +4 = 0x1a); from ['TDocks col 14', 'TFactories col 14', 'TShips col 47']
+      [0] empty node (PROPAGATE: work done at spawn); flags TIMEOUT|PROPAGATE|NOSKIP; child row 149 x 30..30, gap 60 ms, chain 1, random +10 ms, start 0
+      [1] scene + part nodes (CUT); flags TIMEOUT|CUT|NOSKIP|RANDOMROT|NOZTEST; i3d I3DF_2D; body 4262; size 0.41..0.41; start 0 timeout 3840 end 3840; body ops -
+      [2] scene + part nodes (CUT); flags TIMEOUT|CUT|NOSKIP|RANDOMROT|NOZTEST|WRECK; i3d I3DF_2D; body 4262; size 0.52..0.52; start 25 timeout 3840 end 3865; body ops WRECK
+      [3] body node; flags TIMEOUT|GROW|NOSKIP|NOZTEST|PUSH; i3d 0; body 11999; size 70.1..80.1; start 700 timeout 2080 end 2780; body ops PUSH
+      [4] 2D body node; flags TIMEOUT|GROWANDSHRINK|NOSKIP; i3d I3DF_2D; body 11994; size 22..24; start 780 timeout 3600 end 4380; body ops -
+      [5] 2D body node; flags TIMEOUT|RANDOMROT|FADEOUT|FADEOUTBODY|GROW|NOZTEST; i3d I3DF_2D; body 10664; size 0.018..16.829; start 0 timeout 7000 end 7000; body ops FADEOUTBODY
+      [6] 2D body node; flags TIMEOUT|GROW|FADEOUT|RANDOMROT|NOZTEST; i3d I3DF_2D; body 10670; size 2.4..36.8; start 1400 timeout 9900 end 11300; body ops -
+      [7] empty node; flags TIMEOUT|NOZTEST; i3d 0; body -1; size 0.500..2.500; start 0 timeout 0 end 0; body ops -
+      [8] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|RANDOMROT|RANDOMSIZE; i3d 0; body 4264; size 0.002..0.1204; start 1800 timeout 1900 end 3700; body ops -
+      [9] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|RANDOMROT|RANDOMSIZE; i3d 0; body 4264; size 0.003..0.1254; start 1858 timeout 1900 end 3758; body ops -
+      [10] scene + part nodes (CUT); flags TIMEOUT|CUT|CUTACTUALSIZE|CUTKEEPBODY|GROW; i3d 0; body environments\debris\debrislarge_scene; size 1.0..4.1; start 120 timeout 22000 end 22120; body ops CUTKEEPBODY
+      timeline (ms after the kill): main-instance delay t0 1800..1810; carrier life (last TIMEOUT end + t0) 23920..23930; FADEOUTBODY root fade t0+0 .. +1000; WRECK at ['t0+3865'] (only when the kill passes a non-zero third argument)
+        child row 149 (1 elements, row flags 0), one kind-3 instance per child on the PROPAGATE carrier:
+        [0] scene + part nodes (CUT); flags TIMEOUT|CUT|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 4262; size 0.02..0.15; start 0 timeout 3840 end 3840; body ops -
+        per child (ms after its spawn delay): life 3840
+    death row 39: 1 elements, row flags 0 (runtime +4 = 0x0); from ['TMissiles col 21']
+      [0] scene + part nodes (CUT); flags TIMEOUT|CUT|FADOUT (unknown token FADOUT counted as 0); i3d 0; body 4262; size 0.001..0.001; start 0 timeout 3840 end 3840; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 3840; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 40: 4 elements, row flags EDF_NOROTATE|EDF_NODRIFT (runtime +4 = 0x18); from ['TShips col 47']
+      [0] 2D body node; flags TIMEOUT|GROW|FADEOUT|RANDOMROT|NOSKIP|NOZTEST; i3d I3DF_2D; body 10670; size 1.1..2.2; start 10 timeout 8000 end 8010; body ops -
+      [1] 2D body node; flags TIMEOUT|GROW|FADEOUT|RANDOMROT|NOSKIP|NOZTEST; i3d I3DF_2D; body 10670; size 1.3..2.4; start 30 timeout 9000 end 9030; body ops -
+      [2] 2D body node; flags TIMEOUT|NOSKIP|NOZTEST|WRECK|PUSH; i3d I3DF_2D; body 11998; size 3.0..3.0; start 0 timeout 3110 end 3110; body ops WRECK|PUSH
+      [3] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|RANDOMROT|RANDOMSIZE; i3d 0; body 4264; size 0.001..0.0614; start 0 timeout 1900 end 1900; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 9030; FADEOUTBODY root fade none; WRECK at ['t0+3110'] (only when the kill passes a non-zero third argument)
+    death row 48: 4 elements, row flags 0 (runtime +4 = 0x0); from ['TAsteroids col 8', 'TFactories col 14', 'TShips col 47', 'default']
+      [0] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|FADEOUT|FADEOUTBODY; i3d 0; body 4262; size 0.003..0.011; start 0 timeout 3840 end 3840; body ops FADEOUTBODY
+      [1] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW; i3d 0; body 4264; size 0.014..0.017; start 100 timeout 5000 end 5100; body ops -
+      [2] 2D body node; flags TIMEOUT|GROW|FADEOUT; i3d I3DF_2D; body 751; size 0.0..1.2; start 0 timeout 1000 end 1000; body ops -
+      [3] 2D body node; flags TIMEOUT|GROW|FADEOUT; i3d I3DF_2D; body 775; size 0.0..1.2; start 100 timeout 1000 end 1100; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 5100; FADEOUTBODY root fade t0+0 .. +1000; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 155: 2 elements, row flags 0 (runtime +4 = 0x2); from ['TBullets 0x100']
+      [0] empty node (PROPAGATE: work done at spawn); flags TIMEOUT|PROPAGATE|FADEOUTBODY; child row 147 x 1..3, gap 10..200 (unequal: t0 not computed) ms, chain 1, random +500 ms, start 0
+      [1] 2D body node; flags TIMEOUT|GROWANDSHRINK|FADEOUT; i3d I3DF_2D; body 10664; size 0.18..1.1; start 0 timeout 1500 end 1500; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 1500; FADEOUTBODY root fade t0+0 .. +1000; WRECK at none (only when the kill passes a non-zero third argument)
+        child row 147 (1 elements, row flags 0), one kind-3 instance per child on the PROPAGATE carrier:
+        [0] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|FADEOUT|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 4262; size 0.003..0.09; start 0 timeout 3840 end 3840; body ops -
+        per child (ms after its spawn delay): life 3840
+    death row 156: 2 elements, row flags 0 (runtime +4 = 0x2); from ['TBullets 0x100']
+      [0] 2D body node; flags TIMEOUT|GROWANDSHRINK|FADEOUT; i3d I3DF_2D; body 10664; size 0.18..1.5; start 0 timeout 1500 end 1500; body ops -
+      [1] empty node (PROPAGATE: work done at spawn); flags TIMEOUT|PROPAGATE|FADEOUTBODY; child row 147 x 1..3, gap 10..200 (unequal: t0 not computed) ms, chain 1, random +500 ms, start 0
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 1500; FADEOUTBODY root fade t0+0 .. +1000; WRECK at none (only when the kill passes a non-zero third argument)
+        child row 147 (1 elements, row flags 0), one kind-3 instance per child on the PROPAGATE carrier:
+        [0] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|FADEOUT|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 4262; size 0.003..0.09; start 0 timeout 3840 end 3840; body ops -
+        per child (ms after its spawn delay): life 3840
+    death row 158: 6 elements, row flags 0 (runtime +4 = 0x0); from ['TMissiles col 21']
+      [0] 2D body node; flags TIMEOUT|NOSKIP|NOZTEST|WRECK|PUSH; i3d I3DF_2D; body 11998; size 1.5..1.5; start 100 timeout 3110 end 3210; body ops WRECK|PUSH
+      [1] 2D body node; flags TIMEOUT|GROW|FADEOUT|NOZTEST; i3d I3DF_2D; body 10661; size 0.0025..1.4; start 0 timeout 5000 end 5000; body ops -
+      [2] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10670; size 0.0175..1.5; start 50 timeout 19000 end 19050; body ops -
+      [3] 2D body node; flags TIMEOUT|RANDOMROT|RANDOMSIZE|GROW; i3d I3DF_2D; body 10670; size 0.0185..1.45; start 100 timeout 19000 end 19100; body ops -
+      [4] 2D body node; flags TIMEOUT|RANDOMROT|RANDOMSIZE|GROW|NOSKIP; i3d I3DF_2D; body 10670; size 0.02..1.4025; start 300 timeout 19000 end 19300; body ops -
+      [5] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10660; size 0.0005..1.45125; start 0 timeout 2900 end 2900; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 19300; FADEOUTBODY root fade none; WRECK at ['t0+3210'] (only when the kill passes a non-zero third argument)
+    death row 159: 5 elements, row flags 0 (runtime +4 = 0x0); from ['TMissiles col 21']
+      [0] 2D body node; flags TIMEOUT|GROW|NOSKIP|PUSH; i3d I3DF_2D; body 10670; size 0.15..1.45; start 0 timeout 9000 end 9000; body ops PUSH
+      [1] 2D body node; flags TIMEOUT|NOSKIP|RANDOMROT|NOZTEST; i3d I3DF_2D; body 11997; size 0.315..0.315; start 100 timeout 3110 end 3210; body ops -
+      [2] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10670; size 0.25..1.525; start 200 timeout 9000 end 9200; body ops -
+      [3] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10660; size 0.00525..1.5125; start 0 timeout 24000 end 24000; body ops -
+      [4] body node; flags TIMEOUT|GROW|NOSKIP|NOZTEST; i3d 0; body 11999; size 0.25..1.05; start 40 timeout 2080 end 2120; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 24000; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 160: 3 elements, row flags 0 (runtime +4 = 0x0); from ['TMissiles col 21']
+      [0] 2D body node; flags TIMEOUT|NOSKIP|NOZTEST; i3d I3DF_2D; body 11997; size 0.215..0.215; start 0 timeout 3110 end 3110; body ops -
+      [1] 2D body node; flags TIMEOUT|RANDOMROT|RANDOMSIZE|GROW|NOSKIP; i3d I3DF_2D; body 10670; size 0.0525..0.1525; start 20 timeout 3000 end 3020; body ops -
+      [2] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10660; size 0.00525..0.505125; start 0 timeout 3000 end 3000; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 3110; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 161: 6 elements, row flags 0 (runtime +4 = 0x0); from ['TMissiles col 21']
+      [0] 2D body node; flags TIMEOUT|RANDOMROT|RANDOMSIZE|GROW|NOSKIP; i3d I3DF_2D; body 10670; size 1.5525..3.25; start 20 timeout 3000 end 3020; body ops -
+      [1] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10670; size 0.50525..5.0625; start 0 timeout 3000 end 3000; body ops -
+      [2] body node; flags TIMEOUT|GROW|NOSKIP|NOZTEST|PUSH; i3d 0; body 11999; size 10.05..15.05; start 300 timeout 2080 end 2380; body ops PUSH
+      [3] 2D body node; flags TIMEOUT|GROWANDSHRINK|NOSKIP; i3d I3DF_2D; body 11994; size 2..3; start 170 timeout 3600 end 3770; body ops -
+      [4] 2D body node; flags TIMEOUT|RANDOMROT|GROW|NOSKIP; i3d I3DF_2D; body 10670; size 0.53..3.2025; start 600 timeout 6000 end 6600; body ops -
+      [5] 2D body node; flags TIMEOUT|RANDOMROT|GROW; i3d I3DF_2D; body 10660; size 0.00525..1.520125; start 0 timeout 6600 end 6600; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 6600; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 178: 4 elements, row flags EDF_NOROTATE|EDF_NODRIFT (runtime +4 = 0x18); from ['TBullets 0x100']
+      [0] scene + part nodes (CUT); flags TIMEOUT|GROWANDSHRINK|FADEOUT|CUT|NOSKIP|RANDOMROT; i3d I3DF_2D; body 4791; size 0.01..0.033; start 0 timeout 1000 end 1000; body ops -
+      [1] 2D body node; flags TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 12001; size 0.4..0.41; start 0 timeout 1440 end 1440; body ops -
+      [2] light node; flags GROW|TIMEOUT|LIGHT; i3d 0; body 4; size 0.02..0.22; start 200 timeout 400 end 600; body ops -
+      [3] body node; flags TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT; i3d 0; body 587; size 0.01..0.18; start 0 timeout 460 end 460; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 1440; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 186: 1 elements, row flags 0 (runtime +4 = 0x2); from ['TBullets 0x100']
+      [0] empty node (PROPAGATE: work done at spawn); flags TIMEOUT|PROPAGATE|FADEOUTBODY; child row 184 x 1..3, gap 30..150 (unequal: t0 not computed) ms, chain 1, random +0 ms, start 0
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) none; FADEOUTBODY root fade t0+0 .. +1000; WRECK at none (only when the kill passes a non-zero third argument)
+        child row 184 (2 elements, row flags 0), one kind-3 instance per child on the PROPAGATE carrier:
+        [0] 2D body node; flags TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 12000; size 0.01..0.15; start 0 timeout 1295 end 1295; body ops -
+        [1] light node; flags GROW|TIMEOUT|LIGHT; i3d 0; body 397; size 0.01..0.06; start 200 timeout 400 end 600; body ops -
+        per child (ms after its spawn delay): life 1295
+    death row 189: 2 elements, row flags 0 (runtime +4 = 0x0); from ['TBullets 0x100']
+      [0] 2D body node; flags TIMEOUT|GROW|NOZTEST|RANDOMROT|RANDOMSIZE|FADEOUT; i3d I3DF_2D; body 12002; size 0.24..1.2; start 0 timeout 1920 end 1920; body ops -
+      [1] light node; flags GROW|TIMEOUT|LIGHT; i3d 0; body 10; size 0.005..0.03; start 50 timeout 500 end 550; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 1920; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 196: 2 elements, row flags 0 (runtime +4 = 0x0); from ['TBullets 0x100']
+      [0] 2D body node; flags TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 12004; size 0.001..0.15; start 0 timeout 1296 end 1296; body ops -
+      [1] light node; flags GROW|TIMEOUT|LIGHT; i3d 0; body 4; size 0.01..0.11; start 200 timeout 400 end 600; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 1296; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 201: 11 elements, row flags EDF_NOROTATE|EDF_NODRIFT|EDF_PROPAGATE (runtime +4 = 0x1a); from ['TDocks col 14', 'TFactories col 14']
+      [0] empty node (PROPAGATE: work done at spawn); flags TIMEOUT|PROPAGATE|NOSKIP; child row 149 x 40..40, gap 40 ms, chain 1, random +10 ms, start 0
+      [1] scene + part nodes (CUT); flags TIMEOUT|CUT|NOSKIP|RANDOMROT|NOZTEST; i3d I3DF_2D; body 4262; size 4.1..4.1; start 0 timeout 3840 end 3840; body ops -
+      [2] scene + part nodes (CUT); flags TIMEOUT|CUT|NOSKIP|RANDOMROT|NOZTEST|WRECK; i3d I3DF_2D; body 4262; size 5.2..5.2; start 25 timeout 3840 end 3865; body ops WRECK
+      [3] body node; flags TIMEOUT|GROW|NOSKIP|NOZTEST|PUSH; i3d 0; body 11999; size 701..801; start 700 timeout 2080 end 2780; body ops PUSH
+      [4] 2D body node; flags TIMEOUT|GROWANDSHRINK|NOSKIP; i3d I3DF_2D; body 11994; size 220..240; start 780 timeout 3600 end 4380; body ops -
+      [5] 2D body node; flags TIMEOUT|RANDOMROT|FADEOUT|FADEOUTBODY|GROW|NOZTEST; i3d I3DF_2D; body 10664; size 0.18..168.29; start 0 timeout 7000 end 7000; body ops FADEOUTBODY
+      [6] 2D body node; flags TIMEOUT|GROW|FADEOUT|RANDOMROT|NOZTEST; i3d I3DF_2D; body 10670; size 24..368; start 1400 timeout 9900 end 11300; body ops -
+      [7] empty node; flags TIMEOUT|NOZTEST; i3d 0; body -1; size 5.00..25.00; start 0 timeout 0 end 0; body ops -
+      [8] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|RANDOMROT|RANDOMSIZE; i3d 0; body 4264; size 0.02..1.204; start 1800 timeout 1900 end 3700; body ops -
+      [9] scene + part nodes (CUT); flags TIMEOUT|CUT|GROW|RANDOMROT|RANDOMSIZE; i3d 0; body 4264; size 0.03..1.254; start 1858 timeout 1900 end 3758; body ops -
+      [10] scene + part nodes (CUT); flags TIMEOUT|CUT|CUTACTUALSIZE|CUTKEEPBODY|GROW; i3d 0; body environments\debris\debrislarge_scene; size 10.0..41; start 120 timeout 22000 end 22120; body ops CUTKEEPBODY
+      timeline (ms after the kill): main-instance delay t0 1600..1610; carrier life (last TIMEOUT end + t0) 23720..23730; FADEOUTBODY root fade t0+0 .. +1000; WRECK at ['t0+3865'] (only when the kill passes a non-zero third argument)
+        child row 149 (1 elements, row flags 0), one kind-3 instance per child on the PROPAGATE carrier:
+        [0] scene + part nodes (CUT); flags TIMEOUT|CUT|RANDOMROT|RANDOMSIZE; i3d I3DF_2D; body 4262; size 0.02..0.15; start 0 timeout 3840 end 3840; body ops -
+        per child (ms after its spawn delay): life 3840
+  free Effects ids (0..999, table 0x00580068): 873; largest blocks 203-999, 71-141, 162-165; top block 203-999
 == installed: TBullets addon/12.cat version 55 rows 38 (header 38); columns per row [(50, 38)]; Effects addon/10.cat rows 158
   col 12 flags: distinct values [(0, 36), (2, 1), (162, 1)]
   col 12 bit counts: 0x2:2, 0x20:1, 0x80:1
@@ -140,3 +260,37 @@
     break-up row 41: MISSING from Effects; from ['TShips col 48']
     break-up row 650: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TShips col 48']
     break-up row 651: 4 elements, RELATIVESIZE 3, BREAKUP 0; from ['TShips col 48']
+  death-row element timelines (section 10; asteroid-only rows skipped):
+    death row 48: 4 elements, row flags 0 (runtime +4 = 0x0); from ['TMissiles col 21', 'default']
+      [0] scene + part nodes (CUT); flags FADEOUT|GROW|TIMEOUT|CUT|FADEOUTBODY; i3d 0; body 4262; size 0.003..0.011; start 0 timeout 3840 end 3840; body ops FADEOUTBODY
+      [1] scene + part nodes (CUT); flags GROW|TIMEOUT|CUT; i3d 0; body 4264; size 0.014..0.017; start 100 timeout 5000 end 5100; body ops -
+      [2] 2D body node; flags FADEOUT|GROW|TIMEOUT; i3d I3DF_2D; body 751; size 0.0..1.2; start 0 timeout 1000 end 1000; body ops -
+      [3] 2D body node; flags FADEOUT|GROW|TIMEOUT; i3d I3DF_2D; body 775; size 0.0..1.2; start 100 timeout 1000 end 1100; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 5100; FADEOUTBODY root fade t0+0 .. +1000; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 600: 2 elements, row flags EDF_NODRIFT|EDF_NOROTATE (runtime +4 = 0x18); from ['TShips col 47']
+      [0] 2D body node; flags NOZTEST|TIMEOUT|CAMERARELATIVE|NOSKIP; i3d I3DF_2D; body 11997; size 0.5..0.5; start 0 timeout 3110 end 3110; body ops -
+      [1] scene + part nodes (CUT); flags GROW|RANDOMROT|TIMEOUT|CUT|RANDOMSIZE; i3d 0; body 4264; size 0.0004..0.0214; start 0 timeout 1900 end 1900; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 3110; FADEOUTBODY root fade none; WRECK at none (only when the kill passes a non-zero third argument)
+    death row 601: 4 elements, row flags EDF_NODRIFT|EDF_NOROTATE (runtime +4 = 0x18); from ['TShips col 47']
+      [0] 2D body node; flags FADEOUT|GROW|NOZTEST|RANDOMROT|TIMEOUT|NOSKIP; i3d I3DF_2D; body 10670; size 1.1..2.2; start 10 timeout 8000 end 8010; body ops -
+      [1] 2D body node; flags FADEOUT|GROW|NOZTEST|RANDOMROT|TIMEOUT|NOSKIP; i3d I3DF_2D; body 10670; size 1.3..2.4; start 30 timeout 9000 end 9030; body ops -
+      [2] 2D body node; flags NOZTEST|TIMEOUT|PUSH|NOSKIP|WRECK; i3d I3DF_2D; body 11998; size 3.0..3.0; start 0 timeout 3110 end 3110; body ops WRECK|PUSH
+      [3] scene + part nodes (CUT); flags GROW|RANDOMROT|TIMEOUT|CUT|RANDOMSIZE; i3d 0; body 4264; size 0.001..0.0614; start 0 timeout 1900 end 1900; body ops -
+      timeline (ms after the kill): main-instance delay t0 0; carrier life (last TIMEOUT end + t0) 9030; FADEOUTBODY root fade none; WRECK at ['t0+3110'] (only when the kill passes a non-zero third argument)
+    death row 602: 11 elements, row flags EDF_NODRIFT|EDF_NOROTATE|EDF_PROPAGATE (runtime +4 = 0x1a); from ['TDocks col 14', 'TFactories col 14', 'TShips col 47']
+      [0] empty node (PROPAGATE: work done at spawn); flags PROPAGATE|TIMEOUT|NOSKIP; child row 149 x 30..30, gap 200 ms, chain 1, random +400 ms, start 0
+      [1] scene + part nodes (CUT); flags NOZTEST|RANDOMROT|TIMEOUT|CUT|NOSKIP; i3d I3DF_2D; body 4262; size 0.41..0.41; start 0 timeout 3840 end 3840; body ops -
+      [2] scene + part nodes (CUT); flags NOZTEST|RANDOMROT|TIMEOUT|CUT|NOSKIP|WRECK; i3d I3DF_2D; body 4262; size 0.52..0.52; start 25 timeout 3840 end 3865; body ops WRECK
+      [3] body node; flags GROW|NOZTEST|TIMEOUT|PUSH|NOSKIP; i3d 0; body 11999; size 70.1..80.1; start 700 timeout 2080 end 2780; body ops PUSH
+      [4] 2D body node; flags GROWANDSHRINK|TIMEOUT|NOSKIP; i3d I3DF_2D; body 11994; size 22.0..24.0; start 780 timeout 3600 end 4380; body ops -
+      [5] 2D body node; flags FADEOUT|GROW|NOZTEST|RANDOMROT|TIMEOUT|FADEOUTBODY; i3d I3DF_2D; body 10664; size 0.018..16.829; start 0 timeout 7000 end 7000; body ops FADEOUTBODY
+      [6] 2D body node; flags FADEOUT|GROW|NOZTEST|RANDOMROT|TIMEOUT; i3d I3DF_2D; body 10670; size 2.4..36.8; start 1400 timeout 9900 end 11300; body ops -
+      [7] empty node; flags NOZTEST|TIMEOUT; i3d 0; body -1; size 0.5..2.5; start 0 timeout 0 end 0; body ops -
+      [8] scene + part nodes (CUT); flags GROW|RANDOMROT|TIMEOUT|CUT|RANDOMSIZE; i3d 0; body 4264; size 0.002..0.1204; start 1800 timeout 1900 end 3700; body ops -
+      [9] scene + part nodes (CUT); flags GROW|RANDOMROT|TIMEOUT|CUT|RANDOMSIZE; i3d 0; body 4264; size 0.003..0.1254; start 1858 timeout 1900 end 3758; body ops -
+      [10] scene + part nodes (CUT); flags GROW|TIMEOUT|CUT|CUTACTUALSIZE|CUTKEEPBODY; i3d 0; body environments\debris\debrislarge_scene; size 1.0..4.1; start 120 timeout 22000 end 22120; body ops CUTKEEPBODY
+      timeline (ms after the kill): main-instance delay t0 6000..6400; carrier life (last TIMEOUT end + t0) 28120..28520; FADEOUTBODY root fade t0+0 .. +1000; WRECK at ['t0+3865'] (only when the kill passes a non-zero third argument)
+        child row 149 (1 elements, row flags 0), one kind-3 instance per child on the PROPAGATE carrier:
+        [0] scene + part nodes (CUT); flags RANDOMROT|TIMEOUT|CUT|RANDOMSIZE; i3d I3DF_2D; body 4262; size 0.02..0.15; start 0 timeout 3840 end 3840; body ops -
+        per child (ms after its spawn delay): life 3840
+  free Effects ids (0..999, table 0x00580068): 842; largest blocks 901-999, 803-899, 404-499; top block 901-999
