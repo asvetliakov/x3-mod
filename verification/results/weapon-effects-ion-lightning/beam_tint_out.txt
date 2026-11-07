@@ -1,0 +1,15 @@
+== stock_ap be762076cdc38b03
+SS_BULLET_KH_ALPHA         Alpha Kyon Emitter                       cls=beam       light=[128, 0, 255] tex=None src=light    tint=(0.21,0.00,1.00) halo=(0.53,0.40,1.00) sat=0.60 core_sat=0.30 spot=colour
+SS_BULLET_KH_BETA          Beta Kyon Emitter                        cls=beam       light=[255, 255, 255] tex=None src=white    tint=(1.00,1.00,1.00) halo=(1.00,1.00,1.00) sat=0.00 core_sat=0.00 spot=heat
+SS_BULLET_KH_GAMMA         Gamma Kyon Emitter                       cls=beam       light=[255, 255, 0] tex=None src=light    tint=(1.00,1.00,0.00) halo=(1.00,1.00,0.40) sat=0.60 core_sat=0.30 spot=colour
+SS_BULLET_IOND             Ion Disruptor                            cls=pinned:ion light=[50, 50, 255] tex=None src=light    tint=(0.03,0.03,1.00) halo=(0.42,0.42,1.00) sat=0.58 core_sat=0.29 spot=-
+SS_BULLET_REPAIR           Repair Laser                             cls=repair     light=[255, 150, 1] tex=[148, 188, 194] src=light    tint=(1.00,0.30,0.00) halo=(1.00,0.58,0.40) sat=0.60 core_sat=0.30 spot=-
+SS_BULLET_TUG              Tractor Beam                             cls=tug        light=[255, 255, 255] tex=None src=white    tint=(1.00,1.00,1.00) halo=(1.00,1.00,1.00) sat=0.00 core_sat=0.00 spot=-
+SS_BULLET_PAL              Phased Array Laser Cannon                cls=beam       light=[192, 192, 192] tex=None src=white    tint=(1.00,1.00,1.00) halo=(1.00,1.00,1.00) sat=0.00 core_sat=0.00 spot=heat
+SS_BULLET_PBC              Plasma Beam Cannon                       cls=beam       light=[192, 192, 192] tex=[121, 82, 39] src=texture  tint=(1.00,0.43,0.09) halo=(1.00,0.66,0.46) sat=0.54 core_sat=0.27 spot=colour
+SS_BULLET_DUMMY2           SPARE LASER 2                            cls=beam       light=[128, 0, 255] tex=None src=light    tint=(0.21,0.00,1.00) halo=(0.53,0.40,1.00) sat=0.60 core_sat=0.30 spot=colour
+SS_BULLET_FUSIONBEAM       Fusion Beam Cannon                       cls=beam       light=[192, 192, 192] tex=None src=white    tint=(1.00,1.00,1.00) halo=(1.00,1.00,1.00) sat=0.00 core_sat=0.00 spot=heat
+SS_BULLET_TRIBEAM          Tri-Beam Cannon                          cls=beam       light=[192, 192, 192] tex=None src=white    tint=(1.00,1.00,1.00) halo=(1.00,1.00,1.00) sat=0.00 core_sat=0.00 spot=heat
+== mayhem3 7b4ab0a6cea2cb07
+SS_BULLET_PBC              Plasma Beam Cannon                       cls=beam       light=[255, 255, 255] tex=None src=white    tint=(1.00,1.00,1.00) halo=(1.00,1.00,1.00) sat=0.00 core_sat=0.00 spot=heat
+SS_BULLET_RL               Repair Laser                             cls=repair     light=[50, 255, 50] tex=[164, 178, 209] src=light    tint=(0.03,1.00,0.03) halo=(0.42,1.00,0.42) sat=0.58 core_sat=0.29 spot=-

@@ -140,6 +140,12 @@ class WeaponEffectsHookRecord(unittest.TestCase):
             self.assertEqual(sha(path), recorded, path + ': changed since the record: rerun run_weapon_effects.py --host native')
 
 
+# The lightning's bounds (us; 2026-11-07, set from the native measurement in docs/verification/weapon-effects.md "Beam
+# colour and ion lightning"): 64 lit ion hits on a capital (CPU, best of 200), the same 64 at close range (GPU, 5120x1440,
+# EVENT-fenced best of 60), and the 64 mixed hits' CPU bound.
+ION_CPU_BOUND_US, ION_CLOSE_GPU_BOUND_US, MIXED_CPU_BOUND_US = 35.0, 450.0, 50.0
+
+
 class WeaponEffectsD3DRecord(unittest.TestCase):
     PATH = RESULTS / 'summary.json'
 
@@ -333,7 +339,12 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'hull_heavy_entry_streak_along_dir', 'hull_heavy_back_jet_cone',
                      'hull_heavy_exit_jet_emerges_thin_hull', 'hull_heavy_shimmer_rect_submitted',
                      'hull_beam_hold_relights_not_appends', 'hull_beam_sweep_trail_without_strobe',
-                     'hull_beam_pulse_flash_after_gap', 'hull_ion_filaments_on_surface_rehash', 'hull_ion_no_heat_post_hit',
+                     'hull_beam_pulse_flash_after_gap', 'hull_beam_spot_weapon_colour', 'hull_beam_ember_scorch_stay_heat',
+                     'hull_beam_white_keeps_heat', 'hull_beam_stock_pbc_orange_mix',
+                     'hull_ion_lightning_law_16_seeds', 'hull_ion_lightning_on_surface_restrikes',
+                     'hull_ion_lightning_within_filament_charge', 'hull_ion_core_floor_corona_4x', 'hull_ion_no_heat_post_hit',
+                     'hull_ion_plane_on_narrow_hull', 'hull_cpu_64_hits_ion', 'hull_ion_cap_cuts_whole_hits_oldest',
+                     'hull_ion_shed_whole_channels_oldest',
                      'hull_missile_debris_two_sets_and_ring', 'hull_repair_relit_per_tick',
                      'hull_asteroid_no_glow_no_scorch_dim_puff', 'hull_compose_no_pop_per_class',
                      'hull_min_frames_under_seta6_per_class', 'hull_class_faults_reported_and_recover',
@@ -374,6 +385,28 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertEqual(x['sparks'], x['want'])
         cpu = {x['case']: x for x in m['hull_cpu']}
         self.assertLessEqual(cpu['capital_64_hits']['best_us'], 40.0)    # 30 before the burst and the ring (2026-11-06)
+        # the beam colour and ion lightning review (2026-11-07): the lightning's CPU and GPU bounds from the measurement
+        # (docs/verification/weapon-effects.md "Beam colour and ion lightning"), its cap and shed, the narrow hull's plane
+        ccpu = {x['case']: x for x in m['class_cpu']}
+        self.assertLessEqual(ccpu['capital_64_ion']['best_us'], ION_CPU_BOUND_US)
+        self.assertGreater(ccpu['capital_64_ion']['capped'], 0)
+        self.assertLessEqual(ccpu['capital_64_mixed']['best_us'], MIXED_CPU_BOUND_US)
+        rows = [x for x in m['class'] if x.get('case') == 'ion_plane' and x.get('lane_normal') == 1]
+        self.assertEqual(len(rows), 3)
+        for x in rows:
+            self.assertEqual(x['sky'], 0, x['hit'])
+            self.assertLess(x['peak_over_straight'], 2.0, x['hit'])
+            self.assertTrue(0.5 <= x['channel_over_straight'] <= 1.5, x['hit'])
+        shed = next(x for x in m['class'] if x.get('case') == 'ion_cap_shed')
+        self.assertGreater(shed['capped'], 0)
+        self.assertGreater(shed['shed'], 0)
+        self.assertEqual(shed['whole_channels'], 1)
+        slots = m['class_slots'][0]
+        self.assertGreater(slots['lightning_vs'], 0)
+        self.assertEqual(slots['lightning_vertex_bytes'], 64)
+        ion_close = {x['width']: x for x in m['class_timing'] if x.get('class') == 'ion' and
+                     x.get('case') == 'capital_close_64_hits'}
+        self.assertLessEqual(ion_close[5120]['gpu_us'], ION_CLOSE_GPU_BOUND_US)
         for case, hidden in (('ring_1024_visible_64', 960), ('ring_1024_visible_256', 768)):  # the full 1024-record ring
             self.assertEqual((cpu[case]['live'], cpu[case]['hidden']), (1024, hidden), case)
             self.assertLessEqual(cpu[case]['best_us'], cpu[case]['target_us'], case)
@@ -384,10 +417,13 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         import re
         # the classes' primitives (hull::budget_weight_ring, _filament, _scorch, _flash), the same law
         classes = {x['case']: x for x in m['class_timing'] if x.get('width') == 5120 and 'weight' in x}
-        for name, case in (('budget_weight_ring', 'ring_alone_fills_frame'), ('budget_weight_filament', 'filament_alone_fills_frame'),
-                           ('budget_weight_scorch', 'scorch_alone_fills_frame'), ('budget_weight_flash', 'flash_alone_fills_frame')):
+        for name, case in (('budget_weight_ring', 'ring_alone_fills_frame'), ('budget_weight_scorch', 'scorch_alone_fills_frame'),
+                           ('budget_weight_flash', 'flash_alone_fills_frame')):
             weight = float(re.search(r'\b%s = ([0-9.]+)f' % name, core_h).group(1))
             self.assertAlmostEqual(weight, classes[case]['gpu_us'] / 177.5, delta=0.1, msg=name)
+        # the lightning program on every pixel (2026-11-07): the filament glow's weight 0.86 stays its bound
+        weight = float(re.search(r'\bbudget_weight_filament = ([0-9.]+)f', core_h).group(1))
+        self.assertLessEqual(classes['filament_alone_fills_frame']['gpu_us'] / 177.5, weight + 0.1)
         weight = float(re.search(r'budget_weight_glow = ([0-9.]+)f', core_h).group(1))
         measured = timing[(5120, 'glow_alone_fills_frame')]['gpu_us'] / 177.5
         self.assertAlmostEqual(weight, measured, delta=0.1)
@@ -396,6 +432,20 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                            ('budget_weight_fireball_lod', 'burst_alone_fills_frame_lod')):
             weight = float(re.search(r'\b%s = ([0-9.]+)f' % name, core_h).group(1))
             self.assertAlmostEqual(weight, timing[(5120, case)]['gpu_us'] / 177.5, delta=0.1, msg=name)
+
+    def test_lightning_log_fields(self):
+        """Review 2026-11-07: the device row logs the lightning's programs (filament_ps_slots, lightning_vs_slots, the
+        lane fetch per format) with the others, the F8 hull frame row its segments (ion_segments)."""
+        text = (ROOT / 'src/proxy/motion_output_weapon_effects_inc.h').read_text()
+        device = text[text.index('log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result='):]
+        device = device[:device.index(');')]
+        for field in ('filament_ps_slots=%u', 'lightning_vs_slots=%u', 'lightning_vtf=%u,%u'):
+            self.assertIn(field, device)
+        self.assertIn('c.lightning_vs_slots', device)
+        frame = text[text.index('log("weapon_hull_frame'):]
+        frame = frame[:frame.index(');')]
+        self.assertIn('ion_segments=%u', frame)
+        self.assertTrue(frame.rstrip().endswith('hn.ion_segments'))
 
     def test_bound_to_its_production_sources(self):
         import run_weapon_effects as runner

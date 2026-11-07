@@ -5,6 +5,7 @@
   "SS_BULLET_EMP": {"hull": "plasma"},
   "SS_BULLET_HEPT": {"hull": "plasma"},
   "SS_BULLET_IPG": {"hull": "ion"},
+  "SS_BULLET_IOND": {"hull": "ion"},
   "SS_BULLET_TERANTIFIGHTER": {"hull": "plasma"},
   "SS_BULLET_IBL": {"hull": "plasma"},
   "SS_BULLET_PSG": {"hull": "plasma"},

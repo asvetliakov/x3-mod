@@ -66,10 +66,11 @@ bool MotionOutput::attach_weapon_effects() noexcept {
     }
     const bool attached = queried && SUCCEEDED(hr) && weapon_->caps().enabled;
     const auto& c = weapon_->caps();
-    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u hull=%u hull_reason=%s max_ps_slots=%lu retry=reset",
+    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u filament_ps_slots=%u lightning_vs_slots=%u lightning_vtf=%u,%u hull=%u hull_reason=%s max_ps_slots=%lu retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
         c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.sprite_vs_slots, c.sprite_ps_slots,
-        c.glow_vs_slots, c.glow_ps_slots, c.fireball_vs_slots, c.fireball_ps_slots, unsigned(c.hull_enabled), c.hull_reason,
+        c.glow_vs_slots, c.glow_ps_slots, c.fireball_vs_slots, c.fireball_ps_slots, c.filament_ps_slots, c.lightning_vs_slots,
+        unsigned(c.lightning_vtf_four), unsigned(c.lightning_vtf_r32f), unsigned(c.hull_enabled), c.hull_reason,
         static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
     if (!attached) weapon_attach_failed_ = true;
     return attached;
@@ -159,7 +160,7 @@ renderer::WeaponGlowVertex weapon_glows[renderer::weapon_glow_boxes * 4];
 // (20 KB), static as the sprites.
 renderer::WeaponFireballVertex weapon_fireballs[renderer::weapon_fireball_boxes * 4];
 renderer::WeaponShapeVertex weapon_rings[renderer::weapon_ring_quads * 4];
-renderer::WeaponShapeVertex weapon_filaments[renderer::weapon_filament_boxes * 4];
+renderer::WeaponLightningVertex weapon_filaments[renderer::weapon_filament_boxes * 4];
 renderer::WeaponGlowVertex weapon_scorches[renderer::weapon_scorch_boxes * 4];
 // The frame's game step (cfg+0x714, game ms; 0 when unreadable), clamped to 5 s (ship_avoidance's reader's bound).
 std::uint32_t weapon_game_step_ms() {
@@ -330,7 +331,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 "spots=%u merges=%u spot_flashes=%u shimmer=%u shimmer_shed=%u scorches_shed=%u rings_shed=%u "
                 "filaments_shed=%u jet_no_dir=%u energy=%u ballistic=%u plasma=%u heavy=%u ion=%u beam=%u missile=%u "
                 "asteroid=%u repair=%u tug=%u done=%u flashes_shed=%u pulses=%u out_of_reach=%u owners_out_of_reach=%u "
-                "owners_located=%u",
+                "owners_located=%u ion_segments=%u",
                 id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                 unsigned(hv.prev_valid), static_cast<unsigned long>(own), unsigned(hv.cockpit), hn.hits, hn.flashes,
                 hn.sparks, hn.glows, hn.embers, hn.shed, hn.orphans, hn.retired, hn.floored, hn.capped, hn.owners_dropped,
@@ -339,7 +340,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 hn.spot_flashes, hn.shimmer, hn.shimmer_shed, hn.scorches_shed, hn.rings_shed, hn.filaments_shed,
                 hn.dir_fallback, hn.anatomy[0], hn.anatomy[1], hn.anatomy[2], hn.anatomy[3], hn.anatomy[4], hn.anatomy[5],
                 hn.anatomy[6], hn.anatomy[7], hn.anatomy[8], hn.anatomy[9], hn.done, hn.flashes_shed, hn.pulses,
-                hn.out_of_reach, hn.owners_out_of_reach, visible.located_reads);
+                hn.out_of_reach, hn.owners_out_of_reach, visible.located_reads, hn.ion_segments);
     }
     wcore::ring_stamp_hidden(weapon_effects::hook_state().ring, visible);
     weapon_retired_ += hn.retired;

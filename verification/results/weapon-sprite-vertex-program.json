@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_sprite_vs.hlsl",
-  "source_sha256": "2d8c4e58059b77618f525c3d2dd092c6d542e10aa6aa4a3532505ad861853324",
+  "source_sha256": "bb998e01651a5f45d741fb41c011c39fbad4ba8c7c6d7b32f5c03e831099a2a0",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -10,13 +10,13 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": null,
-  "word_count": 357,
-  "bytecode_sha256": "45fc5c3f186c7658973b8d8d66ae812497eafa7cb86d205e2985e5a023fc6f35",
-  "header_sha256": "88b690f01534e874dd8fd0a404e7d5f5b99a0bec2a08e980be3cedd1f7f90521",
+  "word_count": 360,
+  "bytecode_sha256": "be5e6116e8e42b8a48b473a9d59710b2cf9a595836022820c045743eab4105c0",
+  "header_sha256": "0fbb917f233ac5b46999f5ba3bc265b513da53b3e098f1a51beb0f9e98db7bdb",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
-    "tools/shaders/generate_weapon_effects_programs.py": "f913b9b41e0d86a0be3689db2b100fdd0bdd672459bea3318fcb50d024ac2bb9"
+    "tools/shaders/generate_weapon_effects_programs.py": "6574eed4b45e365cb599c8b6ca99ebcaaa0808f351d12722dc6b686852f95c94"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

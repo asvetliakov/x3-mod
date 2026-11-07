@@ -1067,3 +1067,119 @@ order is unchanged; the hull shimmer rects are charged from now on.
 
 Host `test_weapon_effects_*` 82 OK, `test_engine_shimmer*` OK; `build-shock` 0 warnings, `check_no_x87.py --edition ap`
 PASS; lab `--check` PASS, lab tests 34 OK.
+
+## Beam colour and ion lightning (2026-11-07, dirty on `d41a60f01`)
+
+Two look changes to the hull classes ([hull-impact-classes.md](../architecture/hull-impact-classes.md) 4.5, 4.6),
+lab first, with the review's fixes folded in. Beam: where the weapon has a colour (`stage::beam_coloured`: the tint from
+the light or the texture average, 8-bit saturation above `hull::beam_colour_sat_min` 0.15) the held spot's halo and
+glow are white mixed `hull::beam_glow_mix` 0.6 towards the record's tint (`core::event_tint`), its core
+`beam_core_mix` 0.3 (the sprite programs' flash core takes `lerp(white, halo, c.z)`), the glow at the heat glow's mean
+radiance; a white or grey beam keeps the heat halo and glow; pulse flash, puff, spatter, trail ember and scorch line
+unchanged. Ion: the noise filament glow replaced by lightning (`hull::ion_*`; `stage::ion_strike`, `ion_phase`):
+2..4 channels of 6..10 segments with 1..2 branches each, 3 or 4 strikes over 200 ms, a residual flicker to 400 ms, no
+sparks (the arc sparks dropped: less dense, less chaotic; kill switch for a web `ion_branches_lo` = `ion_branches_hi` =
+0); one quad per segment through `weapon_lightning_vs.hlsl` (`renderer::WeaponLightningVertex`, 64 bytes: the contact,
+the plane's axes, the segment's plane ends) and `weapon_filament_ps.hlsl` (64 PS slots, was 247), drawn on the lane under
+the segment within `ion_depth_r` r of its depth. The vertex program lays the plane on the lane's normal at the contact
+pixel (vertex texture fetch, `CheckDeviceFormat` `D3DUSAGE_QUERY_VERTEXTEXTURE`; the stage's origin-to-contact plane
+where the lane cannot give one). Stock `SS_BULLET_IOND` is pinned ion (its beam bit `0x4` won over its on-hit `0x200`):
+stock AP 12 pins (was 11), beam 8 (was 9), ion 5 (was 4); Mayhem 3 unchanged, 22 pins
+(`verification/results/weapon-effects/hull_class_census_out.txt`). The lightning's cap and shed are per hit and per
+channel: past 1,024 segments whole hits are cut, the oldest first (`capped` counts hits); the budget sheds whole channels
+of other owners' oldest hits in one pass. The strike cache is 64 sets x 4 ways (was 32 direct-mapped slots). Device row
+`weapon_effects_device` logs `filament_ps_slots`, `lightning_vs_slots` and `lightning_vtf`; the F8 row
+`weapon_hull_frame` logs `ion_segments`. Lab: Layers "ion: channels", "ion: branches", "ion: corona", "beam: weapon
+colour"; the page's `ionStrike` / `ionPhase` mirror the stage's, `beamColoured` the gate, `ionPlane` the vertex
+program's plane on the preview ellipsoid; the ion's spark row is the stage's (zero) through the generated HEADER block.
+
+Ion beam hold (2026-11-07, follow-up): `stage::holds` also takes any record whose style carries `shape_beam` (the bullet's
+beam bits), so stock IOND (pinned ion) holds; a holding anatomy the spots do not draw (`stage::spot_anatomy`: not beam,
+asteroid, repair, tug) merges each tick into its held ring record (pos, dir, damage, shield, t0 refreshed; sequence and
+first stage frame kept) and the ion strike timer (`stage::ion_hold_age`, `ion_cycle_strike`) restarts its 200 ms window
+every 200 ms of the hold, the 400 ms end after the last tick. Fixture gate `hull_ion_beam_holds_one_record`
+(`ion_beam_hold`: 60 ion ticks with the beam shape on a fighter: 1 ring record a frame, the first tick's sequence, 0 spots,
+at most 1 lightning set a frame, lit frames past 400 ms, 59 merges, 0 records 464 ms after the hold) added; the native run
+(`run_weapon_effects.py --host native`, two attempts) failed at `CreateDevice` before any pass code both times (D3D 1/1
+`device`, hook PASS 95/0), so the gate is not yet measured and the tracked `summary.json` now holds that failed run.
+
+Beams by tint on the two tables (`python3 -I verification/results/weapon-effects-ion-lightning/beam_tint.py <stock table>
+<mayhem table>`, tables from `tools/effects/weapon_effects_table.py --game-root /mnt/c/X3 --edition ap [--stock-only]`,
+output `beam_tint_out.txt`) [M]:
+
+| Table | Weapon | Class | Light | Texture | Source | Halo | Spot |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| stock AP | KH_ALPHA | beam | 128, 0, 255 | — | light | (0.53, 0.40, 1.00) | colour (violet) |
+| stock AP | KH_BETA | beam | 255, 255, 255 | — | white | (1, 1, 1) | heat |
+| stock AP | KH_GAMMA | beam | 255, 255, 0 | — | light | (1.00, 1.00, 0.40) | colour (yellow) |
+| stock AP | IOND | pinned ion | 50, 50, 255 | — | light | (0.42, 0.42, 1.00) | — (lightning) |
+| stock AP | PAL, FUSIONBEAM, TRIBEAM | beam | 192, 192, 192 | — | white | (1, 1, 1) | heat |
+| stock AP | PBC | beam | 192, 192, 192 | 121, 82, 39 | texture | (1.00, 0.66, 0.46) | colour (orange) |
+| stock AP | DUMMY2 (spare) | beam | 128, 0, 255 | — | light | (0.53, 0.40, 1.00) | colour |
+| stock AP | REPAIR, TUG | repair, tug | | | | | their own (unchanged) |
+| Mayhem 3 | PBC | beam | 255, 255, 255 | — | white | (1, 1, 1) | heat |
+| Mayhem 3 | RL | repair | | | | | its own (unchanged) |
+
+Gates [M], the tracked record `verification/results/native-windows/weapon-effects/summary.json`
+(`run_weapon_effects.py --host native`: D3D PASS 187/0, hook PASS 95/0; `lightning_vtf` 1,1 on this host, an RTX 5070 Ti;
+the third of four runs failed at `CreateDevice` before any pass code, environment, and its retry passed):
+
+| Gate | Row | Result |
+| --- | --- | --- |
+| `hull_beam_spot_weapon_colour` | `beam_colour` | light colour (64, 255, 96): weapon hue 124.19, glow annulus (0.6..2.0 r) hue 124.19 (0.00 deg); saturation annulus 0.571, core (< 0.15 r) 0.374 (nearer white), weapon 0.951 |
+| `hull_beam_ember_scorch_stay_heat` | `beam_colour` | the fall's trail ember (1 box) and scorch (1) vertices bit for bit those with `beam_colour` off |
+| `hull_beam_white_keeps_heat` | `beam_colour_gate` | white (tint_white), grey 192 (tint_white) and white read as a light: sprite and glow vertices bit for bit those with `beam_colour` off (1, 1, 1) |
+| `hull_beam_stock_pbc_orange_mix` | `beam_colour_gate` | texture 121, 82, 39: glow (1, 0.6605, 0.4552) against the 0.6 mix's (1, 0.6605, 0.4552), ratio error 0.0; core share 0.5 (0.3 / 0.6) |
+| `hull_ion_lightning_law_16_seeds` | `ion_law` | channels 2..4 (all three), branches 1..2 per channel, segments 6..10, strikes 3..4 |
+| `hull_ion_lightning_on_surface_restrikes` | `ion_lightning` | half lane: 0 sky px, 889 lane px; age 0 vs 16 ms max abs diff 0.0; strike 1 at 70 ms, Jaccard 0.0086 against strike 0; owner moved 128 px: Jaccard 1.0 |
+| `hull_ion_lightning_within_filament_charge` | `ion_lightning` | one hit (28 segments) charged 0.00181 screens against the old filament box's 0.02826 (1.5 r x 0.86) |
+| `hull_ion_core_floor_corona_4x` | `ion_profile` | one segment at 1440 rows: core FWHM 2.293 px (floor 2), corona extent 3.75 x the core half width, corona level 0.1865 of the peak |
+| `hull_ion_no_heat_post_hit` | `ion_no_heat` | 0 glows, embers, puffs, scorches, marks; 1 flash, 1 strike; at 400 ms 0 flashes, sparks, strikes, boxes and 0 lit px |
+| `hull_ion_plane_on_narrow_hull` | `ion_plane` | below |
+| `hull_ion_cap_cuts_whole_hits_oldest` | `ion_cap_shed` | 42 hits, 1,638 segments: 27 newest kept (1,020 segments), 15 cut whole (`capped` 15) |
+| `hull_ion_shed_whole_channels_oldest` | `ion_cap_shed` | budget 0.0291 (half of 0.0582): 509 segments shed, a run of whole channels from the oldest kept hit; 511 kept |
+| `hull_cpu_64_hits_ion` | `class_cpu` | 64 lit ion hits on a capital: 23.1 us best, 23.5 mean (bound 35; 23.2 / 29.3 and 23.5 / 26.9 in the earlier runs); 25 hits drawn, 987 segments, 39 cut |
+| `hull_cpu_64_hits_mixed` | `class_cpu` | 37.6 us best, 38.7 mean (37.1 / 46.7 and 38.0 / 46.4 in the earlier runs): still above 36 after the arc sparks went, so the bound is 50 (was 40) |
+
+The plane on the narrow 1:1:6 hull (half-extents 6 b, b, b, b = 4 r, one strike; lit = pixels above 1e-3, the corona's
+fringe included; channel = pixels at a third of the first strike's core radiance and above, the gated count) [M]:
+
+| Hit | Plane | Sky px | Peak / straight | Lit / straight | Channel / straight |
+| --- | --- | --- | --- | --- | --- |
+| straight on (front centre) | lane normal | 0 | 1.000 | 1.000 (985 px) | 1.000 (489 px) |
+| end, seen edge-on (x 0.85 x 6 b) | lane normal | 0 | 1.046 | 0.889 | 0.896 |
+| near the silhouette (x 3 b, 65 deg) | lane normal | 0 | 1.181 | 0.481 | 0.544 |
+| end, seen edge-on | stage plane (fault bit 5) | 0 | 1.021 | 0.660 | 0.736 |
+| near the silhouette | stage plane (fault bit 5) | 0 | 1.223 | 0.230 | 0.254 |
+
+The silhouette hit's lane plane is grazing (65 deg from the view axis), so its channels foreshorten: an offline model of
+line length on the same geometry (300 random strikes, scratch only) gave 0.70 of the straight-on length at 65 deg [I];
+the lit count falls further where the foreshortened channels' corona fringes overlap. No hot knot appeared with either
+plane (the depth window already removed the stage plane's off-surface segments); the stage plane's loss is coverage.
+
+Ion cost [M], EVENT-fenced best of 60, before (the record committed at `d41a60f01`, produced on `ade4de383`-dirty)
+against the tracked record (`python3 verification/results/weapon-effects-ion-lightning/ion_cost.py before-summary.json
+verification/results/native-windows/weapon-effects/summary.json`, output `ion_cost_out.txt`):
+
+| Case | 1920x1080 before / after us | 5120x1440 before / after us |
+| --- | --- | --- |
+| ion, fighter 200 m, 20 hits (20 filament boxes -> 874 / 718 segments) | 21.4 / 34.6 | 37.3 / 35.1 |
+| ion, capital close, 64 hits (charged screens 7.67 -> 3.13 / 3.38; the cap binds; GPU bound 450 at 5120x1440) | 285.2 / 129.8 | 951.6 / 370.8 |
+| the program on every pixel (`filament_alone_fills_frame`) | 53.0 / 31.8 | 151.7 / 87.5 (0.49 of the decal; 87.9, the figure `budget_weight_filament`'s comment cites, and 89.4 in earlier runs) |
+| beam, fighter 200 m, 20 hits | 21.5 / 21.1 | 46.1 / 42.9 |
+| beam, capital close, 64 hits | 307.7 / 304.0 | 1019.9 / 1010.9 |
+
+At 1080p the 20-hit fighter frame costs more (the per-quad and vertex share of 874 small quads; the lane-normal vertex
+program, 301 slots with five lane fetches a vertex, and the 64-byte vertex took it from 29.4 to 34.6 us; at 5120x1440
+34.9 then, 35.1 now); at 5120x1440 and on the close capital it costs less than the filament glow (thin segments charge
+and shade a fraction of the old box). Performance-pass steps, measured on this host: the 92-byte shape vertex -> the
+48-byte lightning vertex (5120 fighter 43.6 -> 32.2 us, 1080p 39.8 -> 29.5 us; CPU 44.4 -> 40.5 us); the off-screen
+strike cull, the strike memo and SSE vertex stores (CPU 42.5 -> 38.8 us); then the review's two-pass emission (the
+first pass counts each hit's visible segments by the contact sphere's bound, no per-point projection; the second writes
+prepared rows, four stores a vertex), the 256-entry strike cache and no ion sparks (64 mixed hits 38.8 -> 37.6 us; 64
+lit ion hits 23.1 us). `budget_weight_filament` 0.86 stays the lightning's bound (measured 0.50; the hook test asserts
+it as an upper bound); a segment is charged at its plane length x r in pixels (the turned plane's foreshortening is not
+known on the CPU: an upper bound).
+
+Host `test_weapon_effects_*` 84 OK; `build-ion` 0 warnings, `check_no_x87.py --edition ap` PASS; lab `--check` PASS;
+`generate_weapon_effects_programs.py --check` PASS (every other record changes only in this tool's digest).

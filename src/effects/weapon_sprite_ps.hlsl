@@ -4,7 +4,8 @@
 // - A streak (alpha 0, a spark): across its width a (1 - v^2)^2 profile, its ends feathered over a quarter of the
 //   quad's half-length, at the interpolated view depth, SOFT = soft_core x its width (a hard test in practice: the
 //   lane hides the half of the sparks that flies into the hull).
-// - A flash (alpha > 0): a white disc core of alpha x the quad's radius (anti-aliased over a quarter of it) and a halo
+// - A flash (alpha > 0): a disc core of alpha x the quad's radius (anti-aliased over a quarter of it; white, or
+//   lerp(white, the vertex colour, depth.w): the beam spot's weapon-coloured core) and a halo
 //   of the vertex colour at halo_max of the core, e-folded within halo_fold core radii and windowed to the quad
 //   ((1 - d^2)^2); its depth the sphere's front z - r sqrt(1 - d^2) about the eye-biased centre, SOFT soft_core x the
 //   core's radius for the core and soft_halo x r for the halo.
@@ -44,7 +45,8 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
         float disc = saturate((core - d) / max(0.25 * core, 1e-3));
         float w = saturate(1.0 - d2);
         float halo = sprite_look.z * exp(-max(d - core, 0.0) / max(sprite_look.w * core, 1e-3)) * w * w;
-        c = (disc * vis_core + colour.rgb * (halo * vis_halo)) * shade.z;
+        float3 core_c = lerp(float3(1.0, 1.0, 1.0), colour.rgb, depth.w);
+        c = (core_c * (disc * vis_core) + colour.rgb * (halo * vis_halo)) * shade.z;
     }
     return float4(valid ? max(c, 0.0) : 0.0, 0.0);
 }

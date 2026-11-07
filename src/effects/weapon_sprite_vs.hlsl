@@ -1,7 +1,8 @@
 // Weapon effects, the sprite batch (docs/architecture/weapon-look.md 2.5, 2.14, 3.1: the hull hit's flash, sparks and
 // heavy rings; renderer/weapon_effects_pass.h WeaponSpriteVertex, stride 48). Kinds by the colour's alpha:
 // - a flash or a ring (alpha > 0): the stage expanded its quad on the CPU: a = the corner in clip space (ndc x z, ndc y z,
-//   z - near z, z), b = (u, v, radiance, r) passed through; c.x 2 marks a ring (c.y its soft radius), 0 a flash.
+//   z - near z, z), b = (u, v, radiance, r) passed through; c.x 2 marks a ring (c.y its soft radius), 0 a flash (c.z
+//   its core's share of the halo colour: 0 a white core, the beam spot's weapon-coloured one).
 // - a streak (alpha 0, a spark; the performance pass moved its expansion here): a = its head (this frame's position,
 //   view space) and its radiance, b = its tail (the previous frame's position through the previous frame's view) and
 //   its width (view units), c = the corner (u -1 tail / +1 head, x the spark's rest-length factor; v -1 / +1 across)
@@ -19,7 +20,7 @@ struct Output {
     float4 position : POSITION;
     float4 shade : TEXCOORD0;   // u, v, radiance, radius (flash), band (ring) or width (streak), view units
     float4 colour : TEXCOORD1;  // linear colour, alpha: 0 a streak, else a flash's core fraction of its radius (a ring 1)
-    float4 depth : TEXCOORD2;   // view z, the kind (2 a ring), a ring's soft radius
+    float4 depth : TEXCOORD2;   // view z, the kind (2 a ring), a ring's soft radius, a flash core's colour share
 };
 float2 to_px(float3 v) {
     float2 ndc = projection.xy * v.xy / v.z + projection.zw;
@@ -31,7 +32,7 @@ Output main(float4 a : POSITION, float4 b : TEXCOORD0, float3 c : TEXCOORD1, flo
     if (colour.a > 0.5 / 255.0) {
         o.position = a;
         o.shade = b;
-        o.depth = float4(a.w, c.x, c.y, 0.0);
+        o.depth = float4(a.w, c.x, c.y, c.z);
         return o;
     }
     float2 head = to_px(a.xyz), tail = to_px(b.xyz);

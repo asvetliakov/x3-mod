@@ -34,7 +34,12 @@ struct WeaponEffectsCaps {
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
     unsigned sprite_vs_slots = 0, sprite_ps_slots = 0, glow_vs_slots = 0, glow_ps_slots = 0; // step 2 (hull hit)
     unsigned fireball_vs_slots = 0, fireball_ps_slots = 0; // the fireball impostor (the hull hit's burst)
-    unsigned shape_vs_slots = 0, ring_ps_slots = 0, filament_ps_slots = 0; // the hull classes' ring and filament glow
+    unsigned shape_vs_slots = 0, ring_ps_slots = 0, filament_ps_slots = 0; // the hull classes' ring and lightning
+    unsigned lightning_vs_slots = 0;
+    // The lightning's tangent plane from the lane (weapon_lightning_vs.hlsl): vertex texture fetch (point filtered) of
+    // the four-channel (A32B32G32R32F) and the R32F lane, IDirect3D9::CheckDeviceFormat with D3DUSAGE_QUERY_VERTEXTEXTURE
+    // at attach; without it the segments keep the stage's plane (the contact's direction from the owner's origin).
+    bool lightning_vtf_four = false, lightning_vtf_r32f = false;
     bool scorch_enabled = false; // the multiply blend (ZERO / INVSRCCOLOR) the scorches need (attach caps)
     // Step 2, requested at attach (shields,hull): the hull programs and batch limits; false keeps the shield effect.
     bool hull_enabled = false;
@@ -91,18 +96,34 @@ struct WeaponFireballVertex {
 };
 // The hull classes' shaped glows (docs/architecture/hull-impact-classes.md 3.5, 3.6): the glow primitive's box (the
 // light sphere's screen rectangle, its centre and R) with a profile: the surface ring (weapon_ring_ps.hlsl: the sphere
-// shell of radius shape.x and width shape.y cut by the lane's surface) and the filament glow (weapon_filament_ps.hlsl:
-// value noise at shape.x per view unit in the owner's frame (frame: its local axes in view), offset by the seed
-// shape.y, lit where |n| < shape.z, x saturate(1 - d^2 / shape.w^2)). One vertex program (weapon_shape_vs.hlsl), both
-// through the sprite batch's quad index list.
-constexpr unsigned weapon_ring_quads = 64, weapon_filament_boxes = 32;
+// shell of radius shape.x and width shape.y cut by the lane's surface; weapon_shape_vs.hlsl, through the sprite batch's
+// quad index list).
+constexpr unsigned weapon_ring_quads = 64;
 struct WeaponShapeVertex {
     float corner[3];
     float light[4];  // the box's view-space centre and radius
     float colour[3]; // linear radiance
-    float shape[4];  // ring: r(t), 1 / w, noise seed (< 0 none), wash gain; filament: noise scale, seed, width, falloff
-                     // radius (a ring's light[3] carries its wash rate, weapon_ring_ps.hlsl)
-    float frame[9];  // filament: the owner's local axes in view (x, y, z rows); ring: those rows with the shot's stretch
+    float shape[4];  // ring: r(t), 1 / w, noise seed (< 0 none), wash gain; lightning: core and corona half widths (px),
+                     // the ends' view depths (a ring's light[3] carries its wash rate, weapon_ring_ps.hlsl; a segment's
+                     // light its ends in pixels)
+    float frame[9];  // ring: the owner's rows with the shot's stretch
+};
+// The ion's lightning (hull-impact-classes.md 4.6; stage::ion_segment_quad): one quad per segment of a channel or branch.
+// The vertex carries the hit's contact point and tangent axes (view) and the segment's ends in that plane;
+// weapon_lightning_vs.hlsl turns the plane onto the lane's surface normal at the contact pixel (its depth's one-pixel
+// differences, the side nearer in depth per axis; the stage's plane where the lane cannot give one), projects the ends
+// and lays the quad along the segment in pixels, the corona's half width + 1 px past it on every side;
+// weapon_filament_ps.hlsl draws the lane under it within the depth window, the core and corona profile in the pass's
+// constant colours x the vertex's radiance. Corner k: its end (A for -along, B for +along) by the sign of c[3], its side
+// by the sign of d[3] (0: A -+, 1: B ++, 2: A --, 3: B +-). 64 bytes a vertex. weapon_filament_boxes: segments a frame
+// (about 40 an ion hit, at most 80), through the sprite batch's quad index list.
+constexpr unsigned weapon_filament_boxes = 1024;
+static_assert(weapon_filament_boxes <= weapon_sprite_quads, "the lightning shares the sprite quads' index list");
+struct WeaponLightningVertex {
+    float a[4]; // the contact point (view), the radiance (x the pass's core and corona colours)
+    float b[4]; // the segment's ends in the tangent plane (u, v of A, u, v of B; in units of the axes)
+    float c[4]; // the plane's first axis (view units a plane unit), the core's half width (px) signed along
+    float d[4]; // the plane's second axis, the depth window (view units) signed across
 };
 // The scorches (hull-impact-classes.md 3.7): glow rectangles drawn with the glow programs under ZERO / INVSRCCOLOR (the
 // scene x (1 - the program's output)) before every additive layer; their colour s(t) x scorch_colour.
@@ -210,7 +231,7 @@ struct WeaponEffectsFrame {
     unsigned fireball_octaves = 2;       // 1 or 2 (the budget's LOD: core::look::fireball_octaves, 1 past the budget)
     const WeaponShapeVertex* rings = nullptr; // the surface rings
     unsigned ring_quads = 0;
-    const WeaponShapeVertex* filaments = nullptr; // the ion class's filament glows
+    const WeaponLightningVertex* filaments = nullptr; // the ion class's lightning segments
     unsigned filament_boxes = 0;
     const WeaponGlowVertex* scorches = nullptr; // multiply decals, drawn first
     unsigned scorch_boxes = 0;
@@ -292,6 +313,8 @@ private:
     IDirect3DPixelShader9* ring_ps_ = nullptr;
     IDirect3DPixelShader9* filament_ps_ = nullptr;
     IDirect3DVertexDeclaration9* shape_declaration_ = nullptr;
+    IDirect3DVertexShader9* lightning_vs_ = nullptr;
+    IDirect3DVertexDeclaration9* lightning_declaration_ = nullptr;
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
     std::uint16_t sprite_indices_[weapon_sprite_quads * 6]{}; // two triangles per quad (attach time; the glows' too)
