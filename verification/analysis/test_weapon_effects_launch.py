@@ -89,7 +89,8 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
             self.assertIsNone(data['weapon_effects_table'])
 
     def test_observe_and_shields_send_the_variable_and_table_path(self):
-        for value in ('observe', 'shields', 'shields,hull', 'shields,hull,bolts'):
+        for value in ('observe', 'shields', 'shields,hull', 'shields,hull,bolts', 'shields,hull,explosions',
+                      'shields,hull,bolts,explosions'):
             code, data, error = self.launch('--weapon-effects', value, inherited={'X3M_WEAPON_EFFECTS': 'native'})
             self.assertEqual(code, 0, error)
             self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], value)
@@ -141,7 +142,15 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
             self.assertEqual(code, 0, error)
             self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], 'shields,hull,bolts', given)
             self.assertEqual(data['weapon_effects'], 'shields,hull,bolts', given)
-        for bad in ('hull', 'bolts', 'shields,bolts', 'shields,shields', 'shields,hull,bolts,beams', 'shields;hull'):
+        # step 3: the explosions token in any order, never without the shields and hull families
+        for given, want in (('shields,hull,explosions', 'shields,hull,explosions'),
+                            ('explosions, hull ,shields', 'shields,hull,explosions'),
+                            ('explosions,bolts,hull,shields', 'shields,hull,bolts,explosions')):
+            code, data, error = self.launch('--weapon-effects', given)
+            self.assertEqual(code, 0, error)
+            self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], want, given)
+        for bad in ('hull', 'bolts', 'shields,bolts', 'shields,shields', 'shields,hull,bolts,beams', 'shields;hull',
+                    'explosions', 'shields,explosions', 'hull,explosions', 'shields,hull,explosions,explosions'):
             code, _, error = self.launch('--weapon-effects', bad)
             self.assertEqual(code, 2, bad)
             self.assertIn('invalid choice', error)

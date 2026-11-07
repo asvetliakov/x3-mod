@@ -35,6 +35,7 @@
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
 #include "../../src/proxy/weapon_effects_hull.h"
+#include "../../src/proxy/weapon_effects_boom.h"
 #include "../../src/proxy/weapon_effects_bolt_stage.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/renderer/temporal_pass.h"
@@ -878,6 +879,8 @@ unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
 void class_cases(rr::WeaponEffectsPass& pass);
 #include "weapon_effects_hull_cases.h"
 #include "weapon_effects_class_cases.h"
+void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp);
+#include "weapon_effects_boom_cases.h"
 void bolt_draw_cases(D3DPRESENT_PARAMETERS& pp);
 #include "weapon_effects_bolt_draw_cases.h"
 }
@@ -932,7 +935,9 @@ int main(int argc, char** argv) {
 
     rr::WeaponEffectsPass pass;
     // shields,hull: the hull programs too (weapon_effects_hull_cases.h refuses them on a second pass, review 5).
-    const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true);
+    // step 3: the death programs too (weapon_effects_boom_cases.h)
+    const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true,
+                                         false, true);
     report("attach", SUCCEEDED(attached) && pass.caps().enabled, pass.caps().reason);
     std::printf("ATTACH result=%08lx shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u fp16=%08lx max_ps=%lu patch_vertices=%u patch_triangles=%u\n",
                 attached, pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots,
@@ -2482,6 +2487,8 @@ int main(int argc, char** argv) {
     }
     // Step 2: the hull hit (weapon_effects_hull_cases.h; its own Reset and fault cases before the patches' below).
     hull_cases(pass, pp);
+    // Step 3: the death explosion (weapon_effects_boom_cases.h; its own Reset and refusal cases).
+    boom_cases(pass, pp);
     // Step 4: the bolts and the muzzle (weapon_effects_bolt_draw_cases.h; its own pass, Reset and fault cases).
     bolt_draw_cases(pp);
     // Program creation refused (fault bit 3): attach refuses with program_create and keeps no object; run refuses at once.

@@ -1210,7 +1210,7 @@ public:
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[36]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
+                                   unsigned drops[49]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
                                                                  // faces_culled, area_dropped, bubbles,
                                                                  // bubble_fallback, the walks (run, failed, held,
                                                                  // deferred), bubble_clamped; the hull hit's (13..20):
@@ -2272,7 +2272,9 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    unsigned weapon_drops_[36]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
+    // 36..47 the death explosion's (stage::BoomCounts: deaths, bodies, stars, shocks, embers, fragments, smokes, glows,
+    // shed, lod, out_of_reach, capped); 48 (take_frame only) the pass holds the death programs
+    unsigned weapon_drops_[49]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
                                   // area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures, held, deferred,
                                   // clamped; HullCounts hits, flashes, sparks, glows, embers, shed, orphans, floored,
                                   // owners_dropped, capped, bursts, rings, bursts_shed, the burst LOD frames; 28..35

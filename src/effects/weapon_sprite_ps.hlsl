@@ -1,7 +1,8 @@
 // Weapon effects, the sprite batch's pixel program (docs/architecture/weapon-look.md 2.3, 2.7, 3.1). Two kinds by the
 // colour's alpha, both volumetric against the lane (weapon_soft_depth.hlsl): vis = saturate((z_lane - z) / (SOFT r)),
 // the sky never hides, an invalid lane texel hides.
-// - A streak (alpha 0, a spark): across its width a (1 - v^2)^2 profile, its ends feathered over a quarter of the
+// - A streak (alpha 0, a spark): across its width a (1 - v^2)^2 profile (a death ember, shade.w < 0: a bright head and a
+//   fading tail), its ends feathered over a quarter of the
 //   quad's half-length, at the interpolated view depth, SOFT = soft_core x its width (a hard test in practice: the
 //   lane hides the half of the sparks that flies into the hull).
 // - A flash (alpha > 0): a disc core of alpha x the quad's radius (anti-aliased over a quarter of it; white, or
@@ -65,8 +66,11 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
         c = colour.rgb * (shade.z * edge * inner * inner * vis);
     } else if (colour.a < 0.5 / 255.0) {
         float across = saturate(1.0 - shade.y * shade.y);
-        float along = saturate((1.0 - abs(shade.x)) * 4.0);
-        float vis = occluder ? saturate((lane - z) / max(sprite_look.x * shade.w, 1e-4)) : 1.0;
+        // a death ember (shade.w < 0, the vertex program's pixel mode): a bright head and a fading tail, ((x + 1) / 2)^2
+        // from the tail (x -1) to the head (x +1), the head feathered over its last sixteenth
+        float along = shade.w < 0.0 ? 0.25 * (shade.x + 1.0) * (shade.x + 1.0) * saturate((1.0 - shade.x) * 8.0)
+                                    : saturate((1.0 - abs(shade.x)) * 4.0);
+        float vis = occluder ? saturate((lane - z) / max(sprite_look.x * abs(shade.w), 1e-4)) : 1.0;
         c = colour.rgb * (shade.z * across * across * along * vis);
     } else {
         float d2 = dot(shade.xy, shade.xy);

@@ -1859,6 +1859,41 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
                     double(hull_min), double(1.f - s0 - 0.02f), double(sky_max), c.n.puffs, unsigned(ok));
         report("muzzle_smoke_surface_only", ok, "");
     }
+    // The fireball program's two muzzle uses measured (2026-11-07, the death step's fireball changes are compared on
+    // them): the plasma bloom alone over sky (PBE row 8, the fighter 27 m out, 40 ms) and the ballistic smoke puff alone
+    // over a 1.0 hull (150 ms): peak, pixels above 10 % of it (the puff: of its darkening), equivalent radius. Never a gate.
+    {
+        auto measure = [&](const std::vector<float>& rgb, bool darken, double* peak, double* lit, double* eq) {
+            const Img im{&rgb, bt.t.w, bt.t.h};
+            float p = 0.f;
+            for (unsigned y = 0; y < im.h; ++y)
+                for (unsigned x = 0; x < im.w; ++x) p = std::max(p, darken ? 1.f - im.px(x, y) : im.px(x, y));
+            unsigned n = 0;
+            for (unsigned y = 0; y < im.h; ++y)
+                for (unsigned x = 0; x < im.w; ++x) n += (darken ? 1.f - im.px(x, y) : im.px(x, y)) > 0.1f * p;
+            *peak = p;
+            *lit = n;
+            *eq = std::sqrt(double(n) / 3.14159265);
+        };
+        shooter(0.f, 0.f, 27.f, 12.f);
+        bs::MuzzleTuning bloom_only;
+        bloom_only.cone = bloom_only.star = bloom_only.glow = bloom_only.smoke = bloom_only.vents = false;
+        const bs::BoltView vb = view_of(bt.t.w, bt.t.h, 100000 + 40);
+        const MuzzleOut ob = muzzles(muzzle_view(vb), {muzzle(0.f, 0.f, 0.f, 100000, 0, 8)}, bloom_only);
+        for (unsigned s = 0; s < ob.b.sprite_quads * 4; ++s) mz_sprites[s].b[2] = 0.f; // the disc's radiance off
+        double bp = 0, bl = 0, be = 0, sp = 0, sl = 0, se = 0;
+        measure(render_muzzles(pass, bt, ob, 0.f, 0.f), false, &bp, &bl, &be);
+        shooter(0.f, 0.f, 200.f, 15.f);
+        bs::MuzzleTuning smoke_only;
+        smoke_only.cone = smoke_only.star = smoke_only.glow = smoke_only.bloom = smoke_only.vents = false;
+        const bs::BoltView vs = view_of(bt.t.w, bt.t.h, 100000 + 150);
+        const MuzzleOut os = muzzles(muzzle_view(vs), {muzzle(0.f, 0.f, 0.f, 100000, 0, 10)}, smoke_only);
+        for (unsigned s = 0; s < os.b.sprite_quads * 4; ++s) mz_sprites[s].b[2] = 0.f;
+        measure(render_muzzles(pass, bt, os, 1.f, 199.f * upm), true, &sp, &sl, &se);
+        std::printf("MUZZLE gate=fireball_measure blooms=%u bloom_peak=%.4f bloom_lit=%.0f bloom_eq_r=%.2f puffs=%u "
+                    "puff_peak=%.4f puff_lit=%.0f puff_eq_r=%.2f\n",
+                    ob.n.blooms, bp, bl, be, os.n.puffs, sp, sl, se);
+    }
     // The heavy: its cone reaches 3 w at 40 ms (+-1 frame), two vents across the gun axis, the afterglow <= 1.2 to t.
     {
         shooter(0.f, 0.f, 600.f, 560.f);

@@ -50,6 +50,13 @@ struct WeaponEffectsCaps {
     const char* bolt_reason = "not_requested";
     unsigned bolt_vs_slots = 0, bolt_ps_slots = 0, bolt_flag_ps_slots = 0;
     bool bolt_rim_undo = false; // D3DPBLENDCAPS_DESTCOLOR (source): a failed capsule pass divides the rim back out
+    // Step 3, requested at attach with the hull (the explosions modes): the death programs beside the hull's: the halo
+    // (weapon_halo_ps.hlsl, required: boom_enabled false keeps every death native) and the shock (weapon_shock_ps.hlsl,
+    // optional: its refusal leaves shock_enabled false and shock_reason, and only the tiers with a shock lose it).
+    bool boom_enabled = false, shock_enabled = false;
+    const char* boom_reason = "not_requested";
+    const char* shock_reason = "not_requested";
+    unsigned shock_ps_slots = 0, halo_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
 };
 // Step 2, the hull hit (docs/architecture/weapon-look.md 2.5, 2.7, 2.8, 2.14, 3.1): two batched primitives, each one
@@ -101,6 +108,12 @@ struct WeaponGlowVertex {
 // surface only. Drawn through the sprite batch's quad index list.
 constexpr unsigned weapon_fireball_boxes = 256; // a burst per live hull hit (the ring's 256)
 constexpr unsigned weapon_smoke_boxes = 256;    // a smoke per live hull hit
+// Step 3 (docs/architecture/explosion-look.md 2.3): the death shocks, one fireball-layout quad each (sphere = the shell's
+// centre and outer radius, look.x its width, look.y E x alpha, tint.rgb its heat colour), weapon_shock_ps.hlsl.
+constexpr unsigned weapon_shock_boxes = 32;
+// The death bodies' halos (weapon_halo_ps.hlsl with the glow's vertex program: the light in air about a body), one glow
+// box each.
+constexpr unsigned weapon_halo_boxes = 32;
 static_assert(weapon_fireball_boxes <= weapon_sprite_quads && weapon_smoke_boxes <= weapon_sprite_quads,
               "the fireballs and smokes share the sprite quads' index list");
 struct WeaponFireballVertex {
@@ -109,6 +122,7 @@ struct WeaponFireballVertex {
     float look[4];    // heat T, radiance E, age fraction x, seed
     float tint[4];    // a weapon tint (linear) and its share of the colour (0: the heat ramp alone; < 0: smoke)
     float disc[4];    // rotation (radians), lobe seed, advection (noise cells), octaves (2 or 3)
+    float core = 0.f; // step 3: the white-hot core's gain g (0: none; the hull bursts and smokes; boom::core_*)
 };
 // The hull classes' shaped glows (docs/architecture/hull-impact-classes.md 3.5, 3.6): the glow primitive's box (the
 // light sphere's screen rectangle, its centre and R) with a profile: the surface ring (weapon_ring_ps.hlsl: the sphere
@@ -290,15 +304,19 @@ struct WeaponEffectsFrame {
     unsigned filament_boxes = 0;
     const WeaponGlowVertex* scorches = nullptr; // multiply decals, drawn first
     unsigned scorch_boxes = 0;
+    const WeaponFireballVertex* shocks = nullptr; // step 3: the death shocks (after the fireballs, additive)
+    unsigned shock_boxes = 0;
+    const WeaponGlowVertex* halos = nullptr; // step 3: the death bodies' halos (after the shocks, additive)
+    unsigned halo_boxes = 0;
     WeaponLook look = default_weapon_look();
 };
 enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites, Fireballs,
-                                          Rings, Filaments, Scorches, Smokes };
+                                          Rings, Filaments, Scorches, Smokes, Shocks, Halos };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
     unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0, fireball_boxes = 0, ring_quads = 0;
-    unsigned filament_boxes = 0, scorch_boxes = 0, smoke_boxes = 0;
+    unsigned filament_boxes = 0, scorch_boxes = 0, smoke_boxes = 0, shock_boxes = 0, halo_boxes = 0;
     bool drew = false;
 };
 class WeaponEffectsPass {
@@ -314,8 +332,9 @@ public:
     WeaponEffectsPass& operator=(const WeaponEffectsPass&) = delete;
     // hull (shields,hull): also the sprite batch, the glow and the fireball (their programs and the batch limits); their refusal
     // leaves the pass enabled for the patches with caps().hull_enabled false.
+    // booms (the explosions modes, with hull): the death programs (caps().boom_enabled; a refusal keeps deaths native).
     HRESULT attach(IDirect3DDevice9*, void* const* native, const D3DCAPS9&, D3DFORMAT adapter_format,
-                   bool hull = false, bool bolts = false) noexcept;
+                   bool hull = false, bool bolts = false, bool booms = false) noexcept;
     void detach() noexcept;
     const WeaponEffectsCaps& caps() const noexcept { return caps_; }
     void before_reset() noexcept;
@@ -341,7 +360,9 @@ public:
     // (attach succeeds with hull_enabled false, hull_reason hull_program_create).
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
     // bit 5: the bolt programs refused at attach (bolt_reason bolt_program_create); bit 6: the next bolt draw's lock
-    // fails; bit 7: the next bolt draw's second pass fails (the restore still runs).
+    // fails; bit 7: the next bolt draw's second pass fails (the restore still runs); bit 8: the death programs refused
+    // at attach (boom_reason boom_program_create, the hull kept); bit 9: the shock program alone refused (shock_reason
+    // shock_program_create, the deaths drawn without their shells).
 #endif
 private:
     template <class Fn> Fn call(unsigned slot) const noexcept {
@@ -351,6 +372,7 @@ private:
     HRESULT create_objects() noexcept;
     HRESULT create_hull_objects() noexcept;
     HRESULT create_bolt_objects() noexcept;
+    HRESULT create_boom_objects() noexcept;
     void release_bolt_objects() noexcept;
     bool bolt_objects_ready() const noexcept;
     void release_objects() noexcept;
@@ -381,6 +403,8 @@ private:
     IDirect3DVertexShader9* shape_vs_ = nullptr;
     IDirect3DPixelShader9* ring_ps_ = nullptr;
     IDirect3DPixelShader9* filament_ps_ = nullptr;
+    IDirect3DPixelShader9* shock_ps_ = nullptr; // step 3 (released with the hull objects they draw with)
+    IDirect3DPixelShader9* halo_ps_ = nullptr;
     IDirect3DVertexDeclaration9* shape_declaration_ = nullptr;
     IDirect3DVertexShader9* lightning_vs_ = nullptr;
     IDirect3DVertexDeclaration9* lightning_declaration_ = nullptr;

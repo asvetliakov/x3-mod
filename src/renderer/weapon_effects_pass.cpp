@@ -97,8 +97,9 @@ constexpr D3DVERTEXELEMENT9 fireball_elements[] = {
     {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
     {0, 28, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
     {0, 44, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2},
-    {0, 60, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 3}, D3DDECL_END()};
-static_assert(sizeof(WeaponFireballVertex) == 76, "the fireball declaration follows the vertex");
+    {0, 60, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 3},
+    {0, 76, D3DDECLTYPE_FLOAT1, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 4}, D3DDECL_END()};
+static_assert(sizeof(WeaponFireballVertex) == 80, "the fireball declaration follows the vertex");
 // The hull classes' shaped glows (provenance: verification/results/weapon-{shape-vertex,ring-pixel,filament-pixel}-
 // program.json).
 constexpr std::uint32_t shape_vs_words[] = {
@@ -159,6 +160,14 @@ constexpr std::uint32_t bolt_ps_words[] = {
 };
 constexpr std::uint32_t bolt_flag_ps_words[] = {
 #include "weapon_bolt_flag_pixel_program_inc.h"
+};
+// Step 3: the death shock (provenance: verification/results/weapon-shock-pixel-program.json).
+constexpr std::uint32_t shock_ps_words[] = {
+#include "weapon_shock_pixel_program_inc.h"
+};
+// Step 3: the death body's halo (provenance: verification/results/weapon-halo-pixel-program.json).
+constexpr std::uint32_t halo_ps_words[] = {
+#include "weapon_halo_pixel_program_inc.h"
 };
 constexpr D3DVERTEXELEMENT9 bolt_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
@@ -255,6 +264,8 @@ void WeaponEffectsPass::release_hull_objects() noexcept {
     drop(shape_declaration_);
     drop(lightning_vs_);
     drop(lightning_declaration_);
+    drop(shock_ps_);
+    drop(halo_ps_);
 }
 void WeaponEffectsPass::release_bolt_objects() noexcept {
     drop(bolt_vs_);
@@ -302,7 +313,8 @@ bool WeaponEffectsPass::bolt_objects_ready() const noexcept {
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
            shell_declaration_ && decal_declaration_ && (!caps_.hull_enabled || hull_objects_ready()) &&
-           (!caps_.bolt_enabled || bolt_objects_ready());
+           (!caps_.bolt_enabled || bolt_objects_ready()) && (!caps_.boom_enabled || halo_ps_) &&
+           (!caps_.shock_enabled || shock_ps_);
 }
 unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
@@ -319,12 +331,13 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(lightning_declaration_), static_cast<const void*>(bolt_vs_),
                           static_cast<const void*>(bolt_ps_), static_cast<const void*>(bolt_flag_ps_),
                           static_cast<const void*>(bolt_declaration_), static_cast<const void*>(bolt_vb_),
-                          static_cast<const void*>(bolt_ib_)})
+                          static_cast<const void*>(bolt_ib_), static_cast<const void*>(shock_ps_),
+                          static_cast<const void*>(halo_ps_)})
         n += p != nullptr;
     return n;
 }
 HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMAT format, bool hull,
-                                  bool bolts) noexcept {
+                                  bool bolts, bool booms) noexcept {
     PreserveCpuState guard;
     detach();
     auto refuse = [&](const char* reason, HRESULT hr = D3DERR_NOTAVAILABLE) {
@@ -424,6 +437,29 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
             caps_.hull_reason = "ok";
         }
     }
+    // Step 3 (the explosions modes, with the hull): the shock's program beside the hull's; a refusal keeps every death
+    // native (boom_enabled false, boom_reason) and the hull drawing. Its slots are logged; none is refused for its count.
+    caps_.boom_reason = "not_requested";
+    if (booms) {
+        caps_.shock_ps_slots = ps3_program_slots(shock_ps_words, std::size(shock_ps_words));
+        caps_.halo_ps_slots = ps3_program_slots(halo_ps_words, std::size(halo_ps_words));
+        if (!caps_.hull_enabled)
+            caps_.boom_reason = "boom_needs_hull";
+        else if (!caps_.halo_ps_slots)
+            caps_.boom_reason = "boom_compiled_program";
+        else if (FAILED(create_boom_objects()))
+            caps_.boom_reason = "boom_program_create";
+        else {
+            caps_.boom_enabled = true;
+            caps_.boom_reason = "ok";
+        }
+        // the shock: optional (a refusal keeps the deaths and drops only the shells)
+        caps_.shock_reason = !caps_.boom_enabled ? caps_.boom_reason
+                             : !caps_.shock_ps_slots ? "shock_compiled_program"
+                             : shock_ps_ ? "ok"
+                                         : "shock_program_create";
+        caps_.shock_enabled = caps_.boom_enabled && shock_ps_ != nullptr;
+    }
     // Step 4 (shields,hull,bolts only): the capsule programs, the MRT variant (independent write masks: the far flag's RT2
     // GREEN lane while RT1 stays masked), the quads' index limits, the multiply blend of the rim pass and the buffers. A
     // refusal leaves the game's bullets (bolt_enabled false, bolt_reason); the hull and shields keep drawing. The program
@@ -482,6 +518,22 @@ HRESULT WeaponEffectsPass::create_bolt_objects() noexcept {
     }
     if (SUCCEEDED(hr) && !bolt_objects_ready()) hr = E_FAIL;
     if (FAILED(hr)) release_bolt_objects();
+    return hr;
+}
+HRESULT WeaponEffectsPass::create_boom_objects() noexcept {
+    D d = device_;
+    HRESULT hr = (faults_ & 256u) ? E_FAIL : S_OK; // fixture fault bit 8: the death programs refused
+    if (SUCCEEDED(hr) && !halo_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(halo_ps_words), &halo_ps_);
+    if (FAILED(hr)) {
+        drop(shock_ps_);
+        drop(halo_ps_);
+        return hr;
+    }
+    // the shock is optional: a refusal (or fixture fault bit 9) leaves it null and the set enabled
+    if (!shock_ps_ && !(faults_ & 512u) && caps_.shock_ps_slots &&
+        FAILED(call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(shock_ps_words), &shock_ps_)))
+        drop(shock_ps_);
     return hr;
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
@@ -566,6 +618,15 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
     if (caps_.bolt_enabled && FAILED(create_bolt_objects())) {
         caps_.bolt_enabled = false;
         caps_.bolt_reason = "bolt_program_create";
+    }
+    // The death programs after a Reset (with the hull's): a refusal turns the deaths native (Present's boom latch).
+    if (caps_.boom_enabled && (!caps_.hull_enabled || FAILED(create_boom_objects()))) {
+        caps_.boom_enabled = false;
+        caps_.boom_reason = "boom_program_create";
+    }
+    if (caps_.shock_enabled && (!caps_.boom_enabled || !shock_ps_)) {
+        caps_.shock_enabled = false;
+        caps_.shock_reason = "shock_program_create";
     }
     return S_OK;
 }
@@ -758,7 +819,8 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         f.ring_quads > weapon_ring_quads || ((f.fireball_boxes || f.smoke_boxes) && f.fireball_octaves != 2u && f.fireball_octaves != 3u) ||
         (f.smoke_boxes && !f.smokes) || f.smoke_boxes > weapon_smoke_boxes ||
         (f.filament_boxes && !f.filaments) || f.filament_boxes > weapon_filament_boxes ||
-        (f.scorch_boxes && !f.scorches) || f.scorch_boxes > weapon_scorch_boxes)
+        (f.scorch_boxes && !f.scorches) || f.scorch_boxes > weapon_scorch_boxes || (f.shock_boxes && !f.shocks) ||
+        f.shock_boxes > weapon_shock_boxes || (f.halo_boxes && !f.halos) || f.halo_boxes > weapon_halo_boxes)
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
     // Without the hull programs the sprites, glows, fireballs, rings, filaments and scorches are not drawn (the glue
     // builds none then); without the multiply blend no scorch.
@@ -767,8 +829,10 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     const unsigned filament_boxes = caps_.hull_enabled ? f.filament_boxes : 0u;
     const unsigned scorch_boxes = caps_.hull_enabled && caps_.scorch_enabled ? f.scorch_boxes : 0u;
     const unsigned smoke_boxes = caps_.hull_enabled && caps_.scorch_enabled ? f.smoke_boxes : 0u;
+    const unsigned shock_boxes = caps_.hull_enabled && caps_.shock_enabled ? f.shock_boxes : 0u;
+    const unsigned halo_boxes = caps_.hull_enabled && caps_.boom_enabled ? f.halo_boxes : 0u;
     if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes && !fireball_boxes && !ring_quads &&
-        !filament_boxes && !scorch_boxes && !smoke_boxes)
+        !filament_boxes && !scorch_boxes && !smoke_boxes && !shock_boxes && !halo_boxes)
         return finish(S_FALSE);
     const WeaponLook& l = f.look;
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !finite(l.centre_gain) || !finite(l.centre_fill) ||
@@ -1073,6 +1137,47 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                 f.fireballs, UINT(sizeof(WeaponFireballVertex))));
             if (step(WeaponEffectsStep::Fireballs, draw)) {
                 r.fireball_boxes = fireball_boxes;
+                r.drew = true;
+            }
+        }
+    }
+    // Step 3: the death shocks (explosion-look.md 2.3; after the fireballs, additive): one batched draw of their screen
+    // rectangles with the fireball's vertex program and declaration and weapon_shock_ps.hlsl (c2, c3 of fb above).
+    if (SUCCEEDED(hr) && shock_boxes) {
+        const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+        step(WeaponEffectsStep::Shocks, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Shocks, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
+        step(WeaponEffectsStep::Shocks, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
+        step(WeaponEffectsStep::Shocks, call<SetPsFn>(SetPixelShader)(d, shock_ps_));
+        step(WeaponEffectsStep::Shocks, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
+        step(WeaponEffectsStep::Shocks, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 2));
+        if (SUCCEEDED(hr)) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, shock_boxes * 4, shock_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.shocks,
+                UINT(sizeof(WeaponFireballVertex))));
+            if (step(WeaponEffectsStep::Shocks, draw)) {
+                r.shock_boxes = shock_boxes;
+                r.drew = true;
+            }
+        }
+    }
+    // Step 3: the death bodies' halos (the glow's vertex program and declaration, weapon_halo_ps.hlsl: the light in air,
+    // occlusion class 1; c2, c3 the glow's, c4.x the soft cut's share of R).
+    if (SUCCEEDED(hr) && halo_boxes) {
+        const float halo_ps[12] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f, wcore::boom::halo_soft, 0.f,
+                                   0.f, 0.f};
+        step(WeaponEffectsStep::Halos, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Halos, call<SetDeclarationFn>(SetVertexDeclaration)(d, glow_declaration_));
+        step(WeaponEffectsStep::Halos, call<SetVsFn>(SetVertexShader)(d, glow_vs_));
+        step(WeaponEffectsStep::Halos, call<SetPsFn>(SetPixelShader)(d, halo_ps_));
+        step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, glow_limits, 1));
+        step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, halo_ps, 3));
+        if (SUCCEEDED(hr)) {
+            const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                d, D3DPT_TRIANGLELIST, 0, halo_boxes * 4, halo_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.halos,
+                UINT(sizeof(WeaponGlowVertex))));
+            if (step(WeaponEffectsStep::Halos, draw)) {
+                r.halo_boxes = halo_boxes;
                 r.drew = true;
             }
         }

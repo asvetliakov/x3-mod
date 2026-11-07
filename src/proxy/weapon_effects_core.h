@@ -177,6 +177,14 @@ constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by t
 constexpr std::uint32_t obj_shielded = 0x100000u;  // obj+0x40 bit 20: docks, factories, ships at creation
 constexpr std::uint16_t class_bullet = 0, class_shielded_a = 1, class_dock = 5, class_factory = 6, class_ship = 7,
                         class_missile = 10, class_asteroid = 17, class_shielded_b = 0x12;
+// The death sites (spawn note 4 and 8.1): the class 0x1c the callee refuses at once, the missile's area flag
+// (obj+0x40 & 0x1000000: with a non-zero killer the callee returns 1 with no explosion, rule (b)), and the per-class
+// death-row columns of the type records (TShips +0xbc col 47, TDocks / TFactories +0x60 col 14, TAsteroids +0x48 col 8,
+// TMissiles +0x7c col 21).
+constexpr std::uint16_t class_no_effect = 0x1c;
+constexpr std::uint32_t obj_missile_area = 0x1000000u;
+constexpr unsigned ship_death_row = 0xbc, station_death_row = 0x60, asteroid_death_row = 0x48, missile_death_row = 0x7c;
+constexpr unsigned caller_reason = 8; // the kill routine 0x0044abd0's word [ebp+8]: the reason
 }
 struct Globals {                     // the engine's slots (X3AP.exe VAs in production; the fixture maps the same pages)
     std::uintptr_t cfg_slot = 0x00606f34;
@@ -184,7 +192,20 @@ struct Globals {                     // the engine's slots (X3AP.exe VAs in prod
     std::uintptr_t missile_table_slot = 0x00606fe0, missile_count_slot = 0x00607060;
     std::uintptr_t ship_table_slot = 0x00606fd4, ship_count_slot = 0x00607054;
     std::uintptr_t shield_table_slot = 0x00606fdc, shield_count_slot = 0x0060705c;
+    // Step 3 (the death sites' row read): TDocks 5, TFactories 6, TAsteroids 17 (0x00606fb8 + 4 class, counts
+    // 0x00607038 + 4 class).
+    std::uintptr_t dock_table_slot = 0x00606fcc, dock_count_slot = 0x0060704c;
+    std::uintptr_t factory_table_slot = 0x00606fd0, factory_count_slot = 0x00607050;
+    std::uintptr_t asteroid_table_slot = 0x00606ffc, asteroid_count_slot = 0x0060707c;
 };
+static_assert(Globals{}.dock_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_dock &&
+                  Globals{}.factory_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_factory &&
+                  Globals{}.asteroid_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_asteroid &&
+                  Globals{}.ship_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_ship &&
+                  Globals{}.missile_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_missile &&
+                  Globals{}.asteroid_count_slot == Globals{}.bullet_count_slot + 4 * layout::class_asteroid &&
+                  Globals{}.dock_count_slot == Globals{}.bullet_count_slot + 4 * layout::class_dock,
+              "the type tables are indexed by class (0x00606fb8 + 4 class, counts 0x00607038 + 4 class)");
 
 // ---------------------------------------------------------------------------------------------- the classifier (4)
 // TBullets flag bits (col 12, +0x58).
@@ -408,7 +429,7 @@ inline unsigned ring_retire_owner(Ring& r, std::uint32_t owner, bool keep_staged
 // and the read's status), so both stages read an owner at most once per frame however many of its records they visit;
 // its entries carry the frame's generation, so reset clears nothing.
 struct VisibleOwners {
-    static constexpr unsigned capacity = 64;                     // drawn: >= max_owners + hull::max_owners (asserted)
+    static constexpr unsigned capacity = 96; // drawn: >= max_owners + hull::max_owners + boom::max_bodies (asserted)
     static constexpr unsigned view_capacity = 2 * ring_capacity; // in view: every candidate of both stages
     static constexpr float far_margin = 1.05f;
     static constexpr unsigned located_bits = 11, located_size = 1u << located_bits; // at most ring_capacity keys
@@ -481,36 +502,171 @@ inline void ring_stamp_hidden(Ring& r, const VisibleOwners& v) noexcept {
     }
 }
 
+// ---------------------------------------------------------------------------------------------- the death explosion (3.2)
+// Step 3 (docs/architecture/explosion-look.md, the ratified spec; weapon-look.md 3.2 where it is silent): the death
+// sites' tiers, the one decision "ours / native" per record (decide), and the look's per-tier table and laws. The
+// integer half (Tier, tier_native, decide, record_life_ms) is the death handler's; the floats are the stage's and the
+// lab reads them by name (`name = value`), as for `look` and `hull`. A flight observation flips a constant here, never
+// a setting (note section 10).
+namespace boom {
+// The death tiers: fighter, corvette, capital (patch_tier_of_ship, the radius bands for an unknown id), station
+// (classes 5 / 6), missile (class 10); asteroid (class 17, always native: rock geometry, weapon-look 3.2) and other
+// (any other class: native). The first five have a law below.
+enum Tier : std::uint8_t { fighter = 0, corvette = 1, capital = 2, station = 3, missile = 4, asteroid = 5, other = 6,
+                           tier_count = 7 };
+constexpr unsigned drawn_tiers = 5;
+inline const char* tier_name(unsigned t) noexcept {
+    static const char* const names[tier_count] = {"fighter", "corvette", "capital", "station", "missile", "asteroid", "other"};
+    return t < tier_count ? names[t] : "?";
+}
+// The tiers forwarded native (a bit per Tier) while the sprite mask of the engine's hull copy is not pinned (note 1:
+// the big tiers keep the carrier and its wreck; skipping their spawn would blink a 1.8 km hull out): corvette, capital
+// and station. A tier that reads wrong in flight joins the mask (section 10's last row).
+constexpr std::uint8_t tier_native = 14; // (1 << corvette) | (1 << capital) | (1 << station); a literal the lab reads
+static_assert(tier_native == ((1u << corvette) | (1u << capital) | (1u << station)), "the first flight's native tiers");
+// The seam: whether a record of this tier is the stage's (its native spawn skipped) or forwarded native. The one place
+// the decision is taken; the big tiers' masked forward replaces the `native` answer here once the mask is built.
+enum Decision : std::uint8_t { decide_native = 0, decide_ours = 1 };
+constexpr Decision decide(unsigned tier) noexcept {
+    return tier < drawn_tiers && !(tier_native & (1u << tier)) ? decide_ours : decide_native;
+}
+enum Mode : std::uint8_t { full = 0, simple = 1 };
+constexpr Mode mode = full; // simple (section 10): the same body, shock off, embers halved, smoke off
+// The per-tier table (section 3; index Tier, the five drawn tiers): R_f = f R_obj clamped to [min, max] m; the life L
+// and the pre-roll (game ms); the rise fraction rho; R_0 = r0_obj R_obj + r0_f R_f; embers per death; the shock (1) and
+// its tau as a share of L.
+constexpr float tier_f[5] = {2.0f, 1.5f, 0.9f, 0.6f, 3.5f};
+constexpr float tier_min_m[5] = {12.f, 30.f, 80.f, 200.f, 6.f};
+constexpr float tier_max_m[5] = {50.f, 160.f, 600.f, 1800.f, 25.f};
+constexpr float tier_life_ms[5] = {2000.f, 3000.f, 4000.f, 6000.f, 800.f};
+constexpr float tier_preroll_ms[5] = {0.f, 0.f, 1500.f, 3000.f, 0.f};
+constexpr float tier_rise[5] = {0.12f, 0.15f, 0.15f, 0.20f, 0.10f};
+constexpr float tier_r0_obj[5] = {0.5f, 0.5f, 0.f, 0.f, 0.5f};
+constexpr float tier_r0_f[5] = {0.f, 0.f, 0.5f, 0.5f, 0.f};
+constexpr float tier_embers[5] = {32.f, 64.f, 128.f, 160.f, 12.f};
+constexpr float tier_shock[5] = {0.f, 1.f, 1.f, 1.f, 1.f};
+constexpr float tier_shock_tau[5] = {0.3f, 0.3f, 0.3f, 0.4f, 0.3f};
+// 2.1 the body: the burst program unchanged (look::fireball_*), R(t) = R_0 + (R_f - R_0) (1 - e^(-t / (rho L))) +
+// body_grow R_f t / L; T(t) = 1 - body_cool t / (body_hold L) to body_hold L, then linear to 0 at L; E_b = body_e
+// (look::body_max); biased body_bias R(t) towards the eye; occlusion class 2 (SOFT 1.0: the program's lane cut).
+// body_r_sphere: the drawn sphere's radius over R(t): the burst's puff_box rule (1 + lobe_amp = 1.25) put the body's mean
+// outline (36 bins, 10 % of its peak) at 0.97 / 0.91 R(t) at 0.1 / 0.3 L (the column's and the rim erosion's loss,
+// measured natively 2026-11-07); 1.33 brings both within 5 % (death_tier_sizes).
+constexpr float body_grow = 0.1f, body_hold = 0.8f, body_cool = 0.7f, body_e = 1.5f, body_bias = 0.5f;
+constexpr float body_r_sphere = 1.33f;
+// Section 3's floor: a body never under body_floor_px of radius at 1440 rows (scaled by the target's rows); a floor
+// raises size, never radiance.
+constexpr float body_floor_px = 12.f;
+// The white-hot core (coordinator decision 2026-11-07, after the first frames: the body itself carries the birth's white
+// heat, not the embers): the fireball program's radiance x (1 + g) and its colour whitened by min(1, g) inside core_r of
+// the body's radius (falling to 0 at core_r + core_soft), g = core_gain (1 - x / core_x) while x < core_x (x = t / L):
+// at 0.1 L the core is E_b (1 + 1.79) = 4.2 [I], over 3; gone by 0.35 L.
+constexpr float core_gain = 2.5f, core_x = 0.35f, core_r = 0.3f, core_soft = 0.2f;
+// 2.2 the flash: the burst's star at A = star_arm R_f, core star_core R_f, white at look::core_e, the arms heat(star_t),
+// star_ms game ms (three-frame floor), its arm on screen capped at star_cap_h of the target's rows.
+constexpr float star_arm = 0.4f, star_core = 0.08f, star_ms = 40.f, star_t = 0.9f, star_cap_h = 0.25f;
+// 2.3 the shock: r(t) = shock_r_x R_f (t / tau)^0.5, shell width shock_w r; the limb only (decision 2026-11-07: the
+// filled shell read as a grey disc): the chord's density x a ramp from shock_limb r inside the limb (interior 0); colour
+// heat(T(t)) of the body's age x shock_e x (1 - t / (shock_end L))^2, gone at shock_end L; not drawn once the eye is
+// inside it. missile_shock: the kill switch of the missile's shell (decision 6: off if the limb-only shell still reads as
+// a disc in the frames).
+constexpr float shock_r_x = 4.0f, shock_w = 0.06f, shock_e = 1.0f, shock_limb = 0.15f, shock_end = 0.25f;
+// Off for the first flight (decision 6 applied 2026-11-07: the limb-only shell read as a flat ring in the frames).
+constexpr bool missile_shock = false;
+// 2.4 embers: ember_cones_lo..hi seed cones (axis uniform, half-angle ember_cone_deg, both hashed per event), speed
+// v_e = clamp(ember_v_x R_f per s, ember_v_min, ember_v_max) m/s x a hashed factor in [ember_speed_lo, ember_speed_hi]
+// at constant speed (the linear branch), from the centre +- ember_p0 R_f within the unit ball, never past ember_hide_r
+// R_0 (launched inside the newborn body: none drawn at birth, they emerge); lives ember_life[3] L by thirds x (1 +-
+// ember_stagger / 2); E ember_e e^(-t / (ember_tau L)) T, colour heat(T), T = 1 - t / life (a cooling
+// spark dims as it reddens: the frame's mean hue follows the hot ones). Decision 2026-11-07 (the first frames: a tangle
+// of white sticks over the body, then uniform rods): an ember is hidden while inside the body (fully inside
+// ember_hide_r R(t), visible past R(t), the hiding fading with the body's erosion from ember_hide_x0 to ember_hide_x1 of
+// L), its width ember_w_px_lo..hi px at 1080 rows (hashed, scaled with the rows; the program's pixel mode: no floors),
+// its length a hashed ember_len_lo..1 of ember_len_max R_f (never under two widths), a bright head and a fading tail.
+// One in fragment_every a fragment: fragment_v v_e, fragment_life L, width fragment_w_px px, half an ember's length, a
+// hot tip at heat(fragment_tip_t) cooling and a dark box under it (the scorch pass, darkening fragment_dark,
+// surface-bound), hidden inside the body likewise.
+constexpr float ember_cones_lo = 4.f, ember_cones_hi = 6.f, ember_cone_deg = 25.f;
+constexpr float ember_v_x = 1.5f, ember_v_min = 40.f, ember_v_max = 300.f, ember_p0 = 0.3f;
+constexpr float ember_speed_lo = 0.5f, ember_speed_hi = 1.5f;
+constexpr float ember_life[3] = {0.4f, 0.8f, 1.2f};
+constexpr float ember_stagger = 0.4f, ember_e = 8.f, ember_tau = 0.5f;
+constexpr float ember_w_px_lo = 1.5f, ember_w_px_hi = 2.5f, ember_len_max = 0.35f, ember_len_lo = 0.25f;
+constexpr float ember_hide_r = 0.8f, ember_hide_x0 = 0.5f, ember_hide_x1 = 0.9f;
+constexpr float fragment_every = 8.f, fragment_v = 0.5f, fragment_life = 1.5f, fragment_w_px = 3.f;
+constexpr float fragment_dark = 0.6f, fragment_tip_t = 0.6f, fragment_dark_r = 1.f;
+// 2.6 the light (decision 2026-11-07: the note's 5 R_f read as a lamp over a hull; the burst's accepted law instead,
+// hull-burst-look.md section 3): the glow primitive on the lane's surfaces at R = min(glow_r_x R(t), glow_r_max R_f),
+// E_g = glow_e E_b T(t) heat(T(t)), while the body draws; and the same light in air about the body (the halo,
+// weapon_halo_ps.hlsl: occlusion class 1, its soft cut halo_soft R_h; R = glow_r_x R(t)), so a body has its own soft
+// bloom; not drawn with the eye inside the body. The cluster rule over the event frame's bodies (N by remaining life
+// within cluster_r_x R_i, cluster_n0).
+// The halo also fades with the body's erosion, x (1 - smoothstep(halo_fade_x0, halo_fade_x1, x)) (2026-11-07: kept at
+// 1.6 R(t) to the end it read as a balloon around the eroded body in the frames).
+constexpr float glow_r_x = 1.6f, glow_r_max = 2.0f, glow_e = 0.33f, halo_soft = 0.5f, halo_fade_x0 = 0.4f, halo_fade_x1 = 0.8f;
+constexpr float cluster_r_x = 2.0f, cluster_n0 = 1.6f;
+// 2.7 the smoke: the burst's surface-bound multiply puff at smoke_r R_f, y = (t - smoke_t0 L) / (smoke_span L),
+// strength smoke_s0 min(1, y / smoke_rise) (1 - y) / (1 - smoke_rise), the body's seed and rotation.
+constexpr float smoke_r = 1.1f, smoke_t0 = 0.5f, smoke_span = 1.1f, smoke_s0 = 0.45f, smoke_rise = 0.27f;
+// Section 5's coverage dimming (off: death_exposure_meter_shift decides): E_b / (1 + 0.5 max(0, cov - 0.5) / 0.5).
+constexpr bool coverage_dim = false;
+// Section 7: the shock's budget weight (the limb-only shell measured 2026-11-07 at 5120x1440: 0.356 a screen, the fence
+// removed, shock_weight row; the 0.76 first quoted came from the filled shell's 0.113-screen box, the fence's error
+// dominating), the halo's (the glow's), the count caps.
+constexpr float budget_weight_shock = 0.36f, budget_weight_halo = 0.40f;
+constexpr unsigned max_bodies = 32, max_quads = 2048;
+// The record's element hashes (stage::element_hash(sequence, k)): the body's rotation, lobes and noise seed are the
+// burst's elements 8 / 10 / 4, the star's 11; the cones from cone_element, an ember's from ember_element + its index.
+constexpr unsigned cone_element = 32, ember_element = 64;
+// The record's life (game ms): the pre-roll plus the slowest element's (the smoke's (smoke_t0 + smoke_span) L).
+constexpr std::uint16_t record_life(unsigned t) noexcept {
+    return std::uint16_t(tier_preroll_ms[t] + (smoke_t0 + smoke_span) * tier_life_ms[t]) + 1u;
+}
+constexpr std::uint16_t record_life_ms[drawn_tiers] = {record_life(0), record_life(1), record_life(2), record_life(3),
+                                                       record_life(4)};
+static_assert(record_life_ms[station] > record_life_ms[capital] && record_life_ms[missile] > 1000u,
+              "the record lives to the smoke's end (u16 game ms)");
+} // namespace boom
 // ---------------------------------------------------------------------------------------------- the handler (2.2)
 // mode_shields_hull (step 2, docs/architecture/weapon-look.md 3.1 and 2.12): the shield hit as in shields mode plus the
 // hull hit (family_hull). Both are the stage's modes (stage_mode): the ownership latch, the ring's scope and the stage.
 // mode_shields_hull_bolts (step 4, docs/architecture/bolt-muzzle-look.md): the hull mode plus the bolts and the muzzle
 // (family_bolts: the per-bullet tap 0x0045ac7d, the muzzle site 0x00446268 and the flight-effect skip 0x004146c0,
 // weapon_effects_bolt.h); hull_mode() is true for both hull modes.
+// mode_shields_hull_explosions / mode_shields_hull_bolts_explosions (step 3, docs/architecture/explosion-look.md and
+// weapon-look.md 3.2): the hull modes plus the death explosion (family_boom: the two death sites 0x0044ac64 /
+// 0x0044acb2, boom::decide); explosions_mode() is true for both, hull_mode() and stage_mode() too.
 enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2, mode_shields_hull = 3,
-                           mode_shields_hull_bolts = 4 };
+                           mode_shields_hull_bolts = 4, mode_shields_hull_explosions = 5,
+                           mode_shields_hull_bolts_explosions = 6 };
 inline const char* mode_name(unsigned m) noexcept {
-    return m == mode_observe              ? "observe"
-           : m == mode_shields            ? "shields"
-           : m == mode_shields_hull       ? "shields,hull"
-           : m == mode_shields_hull_bolts ? "shields,hull,bolts"
-                                          : "native";
+    return m == mode_observe                         ? "observe"
+           : m == mode_shields                       ? "shields"
+           : m == mode_shields_hull                  ? "shields,hull"
+           : m == mode_shields_hull_bolts            ? "shields,hull,bolts"
+           : m == mode_shields_hull_explosions       ? "shields,hull,explosions"
+           : m == mode_shields_hull_bolts_explosions ? "shields,hull,bolts,explosions"
+                                                     : "native";
 }
 inline bool stage_mode(unsigned m) noexcept {
-    return m == mode_shields || m == mode_shields_hull || m == mode_shields_hull_bolts;
+    return m >= mode_shields && m <= mode_shields_hull_bolts_explosions;
 }
 inline bool hull_mode(unsigned m) noexcept {
-    return m == mode_shields_hull || m == mode_shields_hull_bolts;
+    return m >= mode_shields_hull && m <= mode_shields_hull_bolts_explosions;
 }
 inline bool bolts_mode(unsigned m) noexcept {
-    return m == mode_shields_hull_bolts;
+    return m == mode_shields_hull_bolts || m == mode_shields_hull_bolts_explosions;
 }
-// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe" or "shields", or the family list "shields,hull" or
-// "shields,hull,bolts" in any order ("hull,shields", "bolts,shields,hull"); spaces around each token are ignored. Unset or
-// empty = native (note 2.6). Any other token ("explosions", "beams": later steps), "hull" or "bolts" without the
-// families below them, an empty or repeated token is refused.
+inline bool explosions_mode(unsigned m) noexcept {
+    return m == mode_shields_hull_explosions || m == mode_shields_hull_bolts_explosions;
+}
+// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe" or "shields", or the family list "shields,hull",
+// "shields,hull,bolts", "shields,hull,explosions" or "shields,hull,bolts,explosions" in any order ("hull,shields",
+// "bolts,shields,hull"); spaces around each token are ignored. Unset or empty = native (note 2.6). Any other token
+// ("beams": a later step), "hull", "bolts" or "explosions" without the families below them, an empty or repeated token
+// is refused.
 template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mode* out) noexcept {
-    static const char* const words[5] = {"native", "observe", "shields", "hull", "bolts"};
+    static const char* const words[6] = {"native", "observe", "shields", "hull", "bolts", "explosions"};
     if (!text || !n) return false;
     unsigned seen = 0, tokens = 0, single = 4;
     std::size_t at = 0;
@@ -521,7 +677,7 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
         while (a < b && text[a] == Char(' ')) ++a;
         while (b > a && text[b - 1] == Char(' ')) --b;
         unsigned w = 0;
-        for (; w < 5; ++w) {
+        for (; w < 6; ++w) {
             std::size_t len = 0;
             while (words[w][len]) ++len;
             if (b - a != len) continue;
@@ -529,7 +685,7 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
             for (std::size_t i = 0; i < len && same; ++i) same = text[a + i] == Char(words[w][i]);
             if (same) break;
         }
-        if (w >= 5 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
+        if (w >= 6 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
         seen |= 1u << w;
         single = w;
         ++tokens;
@@ -548,10 +704,19 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
         *out = mode_shields_hull_bolts;
         return true;
     }
+    if (tokens == 3 && seen == ((1u << 2) | (1u << 3) | (1u << 5))) {
+        *out = mode_shields_hull_explosions;
+        return true;
+    }
+    if (tokens == 4 && seen == ((1u << 2) | (1u << 3) | (1u << 4) | (1u << 5))) {
+        *out = mode_shields_hull_bolts_explosions;
+        return true;
+    }
     return false;
 }
 constexpr Mode default_mode = mode_native;
-constexpr unsigned setting_capacity = 32; // "shields,hull,bolts" with spaces (16 until step 4)
+// "shields,hull,bolts,explosions" with spaces (16 until step 4, 32 until step 3)
+constexpr unsigned setting_capacity = 48;
 
 struct PosCheck {           // observe mode: the handler's pos against the inner tap's (weapon_pos_check)
     std::uint32_t owner = 0, sequence = 0;
@@ -566,6 +731,11 @@ struct Counters {
     std::uint32_t dir_fallback = 0; // recorded without a travel direction (projectile node not live, or a zero row)
     std::uint32_t shield_read = 0, shield_unread = 0; // the hit object's shield list walked to its sentinel, or refused
     std::uint32_t drained = 0; // absorbed hits on a drained shield recorded as hull hits (drained_shield_q)
+    // Step 3, the death sites (core::death): calls (every mode), records (census or ours), ours (the native spawn
+    // skipped), the forwards by cause (no live node or class 0x1c, a bullet area death: step 7, the rule-(b) missile)
+    // and the deaths recorded inside another death's game millisecond (nested kills of one outer call).
+    std::uint32_t deaths = 0, death_records = 0, death_ours = 0, death_no_node = 0, death_bullet = 0, death_rule_b = 0;
+    std::uint32_t death_nested = 0, death_tier[7] = {};
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
@@ -583,11 +753,16 @@ struct HookState {
     // Present's latch beside owned_next (shields,hull): the pass holds the hull programs (a device that refused them
     // keeps the shield effect, and its hull hits forward).
     volatile std::uint8_t hull_ready = 0;
+    // Step 3 (explosions modes): Present's latch beside hull_ready (the pass holds the death programs: the shock), and
+    // the stage's three-frame floor for a death record (written by the stage; Present keeps an expired one that long).
+    volatile std::uint8_t boom_ready = 0;
+    std::uint32_t boom_floor_ms = 0;
+    std::uint32_t death_ms = 0; // the game ms of the newest death record (flag_nested: another one in the same ms)
     Ring ring{};
     PosCheck check{};
     Counters counters{};
 };
-constexpr std::uint8_t family_shields = 1, family_hull = 2, family_bolts = 4;
+constexpr std::uint8_t family_shields = 1, family_hull = 2, family_bolts = 4, family_boom = 8;
 
 inline std::uint32_t rd32(std::uintptr_t a) noexcept {
     return *reinterpret_cast<const volatile std::uint32_t*>(a);
@@ -959,6 +1134,120 @@ static inline __attribute__((always_inline)) void tap(const std::uint32_t* esp, 
     if (worst > s.check.max_error) s.check.max_error = worst;
 }
 
+// Step 3, the death sites 0x0044ac64 (an area bullet, or any object with obj+0x40 & 0x40000000) and 0x0044acb2
+// (everything else) -> 0x00413610(obj, killer, arg4) (docs/reverse-engineering/weapon-effect-spawn.md sections 4, 6 and
+// 8.1). `esp` is the stack at stub entry ([1] the dying object, = EDI; [2] the killer, a pointer or an id [u]: never
+// followed; [3] arg4), `ebp` the caller's EBP (0x0044abd0's frame: the reason word at [ebp+8]); `site` 0 for
+// 0x0044ac64, 1 for 0x0044acb2. Integer only, plain loads, no call. Returns 1 to skip the engine's spawn (the stage
+// draws the death: boom::decide said ours and Present latched the stage and its death programs), 0 to forward.
+// Forwarded without a record: outside the explosions modes, a null object, a missing node (or node+0x1c 0) or class
+// 0x1c (the callee returns 0 at once), a bullet area death (class 0: step 7), and the rule-(b) missile (class 10 with
+// the area flag and a non-zero killer: the callee itself makes no explosion). Every other death is recorded: the
+// stage's (flag_stage, its native spawn skipped) or census-only (flag_forwarded: the big tiers while boom::tier_native
+// holds them, the asteroid, any other class, a frame the stage did not own). The class is tested first at both sites
+// (0x0044ac64 is taken for any object with the bullet flag, spawn note 4). The record retires the object's other live
+// records first (its hits; a staged hull hit stays: its sparks outlive the owner). Nested kills (an area blast's deaths
+// inside one outer kill routine, spawn note 6) arrive as separate calls, each its own record; one in the same game
+// millisecond as the previous death is marked flag_nested (census).
+static inline __attribute__((always_inline)) int death(const std::uint32_t* esp, std::uint32_t ebp, unsigned site,
+                                                       HookState& s) noexcept {
+    ++s.counters.deaths;
+    if (!explosions_mode(s.mode)) return 0;
+    const std::uintptr_t obj = esp[1];
+    const std::uint32_t killer = esp[2];
+    if (!obj) return 0;
+    const std::uintptr_t node = live_node(obj);
+    const std::uint16_t cls = rd16(obj + layout::obj_class);
+    if (!node || cls == layout::class_no_effect) {
+        ++s.counters.death_no_node;
+        return 0;
+    }
+    if (cls == layout::class_bullet) {
+        ++s.counters.death_bullet;
+        return 0;
+    }
+    const std::uint32_t flags = rd32(obj + layout::obj_flags);
+    if (cls == layout::class_missile && (flags & layout::obj_missile_area) && killer) {
+        ++s.counters.death_rule_b;
+        return 0;
+    }
+    const std::int32_t radius = std::int32_t(rd32(obj + layout::obj_radius));
+    const std::int32_t sub = std::int16_t(rd16(obj + layout::obj_subtype));
+    std::uint8_t tier = boom::other, patch_tier = patch_fighter, tier_source = tier_by_radius;
+    read_tier(obj, cls, radius, s.globals, &patch_tier, &tier_source);
+    std::uintptr_t table_slot = 0, count_slot = 0;
+    unsigned row_offset = 0;
+    if (cls == layout::class_ship) {
+        tier = patch_tier == patch_capital ? boom::capital : patch_tier == patch_corvette ? boom::corvette : boom::fighter;
+        table_slot = s.globals.ship_table_slot;
+        count_slot = s.globals.ship_count_slot;
+        row_offset = layout::ship_death_row;
+    } else if (cls == layout::class_dock || cls == layout::class_factory) {
+        tier = boom::station;
+        table_slot = cls == layout::class_dock ? s.globals.dock_table_slot : s.globals.factory_table_slot;
+        count_slot = cls == layout::class_dock ? s.globals.dock_count_slot : s.globals.factory_count_slot;
+        row_offset = layout::station_death_row;
+    } else if (cls == layout::class_missile) {
+        tier = boom::missile;
+        patch_tier = patch_fighter; // the missile's U is the fighter's cell (its radius sits in the fighter band)
+        table_slot = s.globals.missile_table_slot;
+        count_slot = s.globals.missile_count_slot;
+        row_offset = layout::missile_death_row;
+    } else if (cls == layout::class_asteroid) {
+        tier = boom::asteroid;
+        table_slot = s.globals.asteroid_table_slot;
+        count_slot = s.globals.asteroid_count_slot;
+        row_offset = layout::asteroid_death_row;
+    }
+    // The type record's death row (the census cross-check; 0xffff unread): the subtype bounded by the class's count.
+    std::uint16_t row = 0xffffu;
+    std::int32_t class_id = 0;
+    if (table_slot) {
+        const std::uintptr_t base = rd32(table_slot);
+        const std::int32_t count = std::int32_t(rd32(count_slot));
+        if (base && sub >= 0 && sub < count) {
+            const std::uintptr_t rec = base + std::uintptr_t(sub) * layout::type_stride;
+            row = std::uint16_t(rd32(rec + row_offset));
+            if (cls == layout::class_ship) class_id = std::int32_t(rd32(rec + layout::ship_class_id));
+        }
+    }
+    const bool ours = boom::decide(tier) == boom::decide_ours && s.owned_next && s.boom_ready && (s.armed & family_boom);
+    const std::uintptr_t cfg = rd32(s.globals.cfg_slot);
+    const std::uint32_t now = cfg ? rd32(cfg + layout::cfg_game_ms) : 0;
+    const bool nested = s.counters.death_records && now == s.death_ms;
+    ring_retire_owner(s.ring, std::uint32_t(obj), true);
+    Event* e = ring_acquire(s.ring);
+    if (!e) return 0;
+    e->role = role_explosion;
+    e->style = tier;
+    e->tier = 0;
+    e->flags = std::uint8_t((ours ? flag_stage : flag_forwarded) | (nested ? flag_nested : 0));
+    e->table = std::uint8_t(cls < 0x100 ? cls : 0xff);
+    e->tint_source = std::uint8_t(site);
+    e->row = row;
+    e->t0_game_ms = now;
+    e->lifetime_ms = ours ? boom::record_life_ms[tier] : 0;
+    e->detail = 0;
+    e->calibre_q = 0;
+    e->tint_rgb = std::uint32_t(class_id);
+    e->alt_rgb332 = 0;
+    for (unsigned i = 0; i < 3; ++i) e->dir[i] = 0;
+    e->damage = std::int32_t(killer);
+    e->owner = std::uint32_t(obj);
+    e->node = std::uint32_t(node);
+    e->handle = rd32(node + layout::node_handle);
+    e->shield_q = ebp ? rd16(ebp + layout::caller_reason) : 0;
+    e->patch_tier = patch_tier;
+    e->tier_source = tier_source;
+    read3(node + layout::node_pos, e->pos); // world (the sector's frame): the node dies with the object
+    e->radius = radius;
+    s.death_ms = now;
+    ++s.counters.death_records;
+    ++s.counters.death_tier[tier];
+    if (nested) ++s.counters.death_nested;
+    if (ours) ++s.counters.death_ours;
+    return ours ? 1 : 0;
+}
 // ---------------------------------------------------------------------------------------------- Present's rules
 // The ownership latch (note 2.6, review F8): the next frame's hooks skip only when this frame's stage was armed, the
 // resolve completed and, when the stage's callback was set, the callback ran and succeeded (it drew, or had nothing to
@@ -1405,7 +1694,8 @@ constexpr float budget_weight_shimmer = 2.85f;
 constexpr unsigned max_sparks = 2048;   // spark quads per frame (2.11)
 constexpr unsigned max_owners = 32;     // owners re-posed per frame
 } // namespace hull
-static_assert(max_owners + hull::max_owners <= VisibleOwners::capacity, "every owner a stage frame can draw");
+static_assert(max_owners + hull::max_owners + boom::max_bodies <= VisibleOwners::capacity,
+              "every owner a stage frame can draw");
 // The view volume's sphere about a shield stage owner (stage::owner_in_view): its object radius (obj+0xa4) x this, past
 // the bubble (bubble_scale), so an owner just past the screen edge whose bubble still reaches into it counts as drawn.
 // The hull stage judges its owners by their reach sphere instead (stage::out_of_reach: 2 r + the records' element reach,

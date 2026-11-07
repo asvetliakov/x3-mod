@@ -6,6 +6,7 @@
 #include "weapon_effects_patch.h"
 #include "weapon_effects_bolt.h"
 #include "weapon_effects_bolt_sites.h"
+#include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
 
 static_assert(sizeof(void*) == 4, "x86 code patching only");
@@ -27,6 +28,7 @@ std::uintptr_t x3m_weapon_effects_continue_tap = x3m::weapon_effects::sites::tap
 std::uintptr_t x3m_weapon_effects_continue_bolt_tap = x3m::weapon_effects::bolt_sites::tap_target_va;
 std::uintptr_t x3m_weapon_effects_continue_muzzle = x3m::weapon_effects::bolt_sites::muzzle_target_va;
 std::uintptr_t x3m_weapon_effects_continue_flight = x3m::weapon_effects::bolt_sites::flight_target_va;
+std::uintptr_t x3m_weapon_effects_continue_death = x3m::weapon_effects::death_sites::target_va;
 int __cdecl x3m_weapon_event(const std::uint32_t* entry) {
     return x3m::weapon_effects::core::impact(entry, state_);
 }
@@ -43,6 +45,13 @@ int __cdecl x3m_weapon_muzzle(const std::uint32_t* entry, std::uint32_t eax, std
 int __cdecl x3m_weapon_flight(const std::uint32_t* entry) {
     return x3m::weapon_effects::core::bolt_flight(entry, bolt_state_);
 }
+// Step 3 (weapon_effects_death_sites.h): the two death sites, each passing the caller's EBP (the reason word).
+int __cdecl x3m_weapon_death_area(const std::uint32_t* entry, std::uint32_t ebp) {
+    return x3m::weapon_effects::core::death(entry, ebp, 0, state_);
+}
+int __cdecl x3m_weapon_death_other(const std::uint32_t* entry, std::uint32_t ebp) {
+    return x3m::weapon_effects::core::death(entry, ebp, 1, state_);
+}
 }
 // In: the engine's call at 0x00449d85 (impact) or 0x00413da8 / 0x00413e79 (taps); [esp] the return address. The saved
 // block is EDX ECX EAX EFLAGS above the return address, so `lea eax,[esp+0x10]` is the stack at stub entry.
@@ -50,6 +59,9 @@ int __cdecl x3m_weapon_flight(const std::uint32_t* entry) {
 // `xor eax,eax; ret`, the caller pops its ten arguments); the muzzle 0x00446268 passes EAX (the bullet index) and EDX
 // (&orientation) to its handler as two more arguments (`lea eax,[esp+0x18]`: the saved block and the two pushes above
 // the return address) and forwards both unchanged, or skips like the impact.
+// Step 3: the death sites 0x0044ac64 / 0x0044acb2 pass EBP (the kill routine's frame: the reason word) as the handler's
+// second argument (`lea eax,[esp+0x14]`: the saved block and the push above the return address) and skip like the
+// impact (`xor eax,eax; ret`: the caller pops its three arguments) or forward with every register unchanged.
 asm(R"(
     .intel_syntax noprefix
     .text
@@ -155,6 +167,54 @@ _x3m_weapon_effects_stub_flight:
     popfd
     jmp dword ptr [_x3m_weapon_effects_continue_flight]
 .Lx3m_weapon_effects_flight_skip:
+    popfd
+    xor eax, eax
+    ret
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_death_area
+_x3m_weapon_effects_stub_death_area:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    push ebp
+    lea eax, [esp+0x14]
+    push eax
+    call _x3m_weapon_death_area
+    add esp, 8
+    test eax, eax
+    pop edx
+    pop ecx
+    pop eax
+    jnz .Lx3m_weapon_effects_death_area_skip
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_death]
+.Lx3m_weapon_effects_death_area_skip:
+    popfd
+    xor eax, eax
+    ret
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_death_other
+_x3m_weapon_effects_stub_death_other:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    push ebp
+    lea eax, [esp+0x14]
+    push eax
+    call _x3m_weapon_death_other
+    add esp, 8
+    test eax, eax
+    pop edx
+    pop ecx
+    pop eax
+    jnz .Lx3m_weapon_effects_death_other_skip
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_death]
+.Lx3m_weapon_effects_death_other_skip:
     popfd
     xor eax, eax
     ret

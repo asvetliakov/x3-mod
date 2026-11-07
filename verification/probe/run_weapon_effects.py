@@ -85,7 +85,11 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_bolt_vs.hlsl', 'src/effects/weapon_bolt_ps.hlsl',
                       'src/effects/weapon_bolt_flag_ps.hlsl', 'src/renderer/weapon_bolt_vertex_program_inc.h',
                       'src/renderer/weapon_bolt_pixel_program_inc.h', 'src/renderer/weapon_bolt_flag_pixel_program_inc.h',
-                      'verification/probe/weapon_effects_bolt_draw_cases.h')
+                      'verification/probe/weapon_effects_bolt_draw_cases.h',
+                      # step 3, the death explosion (docs/architecture/explosion-look.md)
+                      'src/proxy/weapon_effects_boom.h', 'src/effects/weapon_shock_ps.hlsl',
+                      'src/renderer/weapon_shock_pixel_program_inc.h', 'verification/probe/weapon_effects_boom_cases.h',
+                      'src/effects/weapon_halo_ps.hlsl', 'src/renderer/weapon_halo_pixel_program_inc.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
@@ -110,6 +114,9 @@ PROGRAMS = {
     'weapon_bolt_ps': ('verification/results/weapon-bolt-pixel-program.json', 'src/renderer/weapon_bolt_pixel_program_inc.h'),
     'weapon_bolt_flag_ps': ('verification/results/weapon-bolt_flag-pixel-program.json',
                             'src/renderer/weapon_bolt_flag_pixel_program_inc.h'),
+    'weapon_shock_ps': ('verification/results/weapon-shock-pixel-program.json',
+                        'src/renderer/weapon_shock_pixel_program_inc.h'),
+    'weapon_halo_ps': ('verification/results/weapon-halo-pixel-program.json', 'src/renderer/weapon_halo_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -122,7 +129,8 @@ HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verificat
                 'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
                 'src/proxy/weapon_effects_sites.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_sites.h',
                 'verification/probe/weapon_effects_bolt_cases.h', 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp',
-                'src/proxy/engine_patch.h')
+                'src/proxy/engine_patch.h', 'src/proxy/weapon_effects_death_sites.h',
+                'verification/probe/weapon_effects_death_cases.h')
 
 
 def sha(path):
@@ -186,7 +194,8 @@ def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING', 'HULL', 'HULL_SLOTS', 'HULL_CPU', 'HULL_TIMING', 'CLASS', 'CLASS_SLOTS', 'CLASS_CPU',
-            'CLASS_TIMING', 'BOLT', 'BOLT_SLOTS', 'BOLT_CPU', 'BOLT_TIMING', 'MUZZLE', 'BOLT_DUMP')
+            'CLASS_TIMING', 'BOLT', 'BOLT_SLOTS', 'BOLT_CPU', 'BOLT_TIMING', 'MUZZLE', 'BOLT_DUMP', 'EXPLOSION',
+            'EXPLOSION_TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -226,10 +235,16 @@ def parse_hook(text):
     hull_class = [fields(line) for line in text.splitlines() if line.startswith('HULL_CLASS ')]
     overflow = [fields(line) for line in text.splitlines() if line.startswith('OVERFLOW ')]
     cost_full = [fields(line) for line in text.splitlines() if line.startswith('EVENT_COST_FULL ')]
+    death_forward = next((dict(re.findall(r'(\w+)=(\S+)', line)) for line in text.splitlines()
+                          if line.startswith('DEATH_FORWARD_STATE ')), None)
+    death_nested = [fields(line) for line in text.splitlines() if line.startswith('DEATH_NESTED ')]
+    death_state = [fields(line) for line in text.splitlines() if line.startswith('DEATH_STATE ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
             'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode, 'hull_class': hull_class,
             'event_cost': cost[-1] if cost else None, 'overflow': overflow[-1] if overflow else None,
-            'event_cost_full': cost_full[-1] if cost_full else None, 'failed_checks': [c['name'] for c in checks if not c['passed']]}
+            'event_cost_full': cost_full[-1] if cost_full else None, 'death_forward_state': death_forward,
+            'death_nested': death_nested[-1] if death_nested else None, 'death_state': death_state[-1] if death_state else None,
+            'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
 def run_hook(args, results):
@@ -257,6 +272,9 @@ def run_hook(args, results):
     record['event_cost'] = report['event_cost']
     record['overflow'] = report['overflow']
     record['event_cost_full'] = report['event_cost_full']
+    record['death_forward_state'] = report['death_forward_state']
+    record['death_nested'] = report['death_nested']
+    record['death_state'] = report['death_state']
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
                         result.get('checks') == len(report['checks']) and result.get('failures') == 0)
@@ -342,7 +360,7 @@ def main():
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'hull', 'hull_slots', 'hull_cpu', 'hull_timing',
                                                  'class', 'class_slots', 'class_cpu', 'class_timing', 'bolt', 'bolt_slots',
-                                                 'bolt_cpu', 'bolt_timing', 'muzzle')}
+                                                 'bolt_cpu', 'bolt_timing', 'muzzle', 'explosion', 'explosion_timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])
@@ -352,6 +370,7 @@ def main():
     print(json.dumps({'exit': returncode, 'result': report['result'], 'failed': report['failed_checks'],
                       'timing': report['timing'], 'hull_timing': report['hull_timing'], 'hull_cpu': report['hull_cpu'],
                       'bolt_timing': report['bolt_timing'], 'bolt_cpu': report['bolt_cpu'],
+                      'explosion_timing': report['explosion_timing'],
                       'record': str(out_path.relative_to(ROOT))}, indent=1))
     return 0 if passed and hook_passed is not False else 1
 

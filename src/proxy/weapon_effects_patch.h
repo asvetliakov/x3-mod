@@ -35,7 +35,14 @@
 // Step 4 (shields,hull,bolts; docs/architecture/bolt-muzzle-look.md, weapon_effects_bolt.h): also the per-bullet tap
 // 0x0045ac7d (plain write: it straddles a qword), the muzzle 0x00446268 and the flight effect 0x004146c0 (atomic), their
 // windows compared with the impact's before any write, all or none with the rest.
-// Rows: `weapon_effects_patch site=impact|tap1|tap2|bolt_tap|muzzle|flight va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
+// Step 3 (shields,hull,explosions and shields,hull,bolts,explosions; docs/architecture/explosion-look.md,
+// weapon_effects_death_sites.h, core::death): the two death calls 0x0044ac64 (area; plain write: it straddles a qword) and
+// 0x0044acb2 (other; atomic) -> 0x00413610, their windows compared with the rest before any write, all or none. Each
+// death is recorded (core::boom::decide: fighters and missiles the stage's, their native spawn skipped while Present
+// latched the stage and its death programs, HookState::boom_ready; the big tiers, asteroids and other classes census
+// and forwarded byte-exact; the rule-(b) missile and bullet area deaths forwarded unrecorded); rows `weapon_death` (the
+// run's first 64, then 16 per period, every death of a capture frame) and `weapon_boom_frame` every 300 frames.
+// Rows: `weapon_effects_patch site=impact|tap1|tap2|bolt_tap|muzzle|flight|death_area|death_other va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
 // write=none|atomic|plain` per site at initialize; `weapon_effects_table event= reason= rows= entries= textures=
 // overrides= dropped= bytes= path=` once; the frame rows of present() below and `weapon_effects_scope frame= cleared=
 // loading= sector_key= load_epoch= clears=` when a scope change clears stage-owned records. The FL edition writes one
@@ -48,6 +55,8 @@ struct Addresses {
     // windows and callees (zero outside the bolts mode).
     std::uintptr_t bolt_tap_window = 0, bolt_tap_target = 0, muzzle_window = 0, muzzle_target = 0, flight_window = 0,
                    flight_target = 0;
+    // Step 3 (the explosions modes; weapon_effects_death_sites.h): the area and other death windows and their callee.
+    std::uintptr_t death_area_window = 0, death_other_window = 0, death_target = 0;
 };
 bool initialize();
 bool shutdown();
@@ -55,7 +64,8 @@ bool install_at(const Addresses& a, core::Mode mode);
 bool installed();
 core::Mode mode();
 const char* state();
-const char* site_state(unsigned site); // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4)
+// 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3)
+const char* site_state(unsigned site);
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
 // Step 4: the bolt lists, the muzzle records and their latch (weapon_effects_bolt.h; the in-place draw reads the lists).
@@ -109,6 +119,12 @@ struct StageFrame {
     bool hull_ready = false; // the pass holds the hull programs (Present's hull latch, HookState::hull_ready)
     float stage_us = 0.f;
     bool drew = false;
+    // Step 3 (stage::BoomCounts): the death records drawn, their bodies, stars, shocks, embers and fragments, smokes and
+    // glows, the elements the budget shed, the frames whose bodies drew two octaves; boom_ready the pass holds the death
+    // programs (Present's latch, HookState::boom_ready).
+    unsigned deaths = 0, boom_bodies = 0, boom_stars = 0, boom_shocks = 0, boom_embers = 0, boom_fragments = 0;
+    unsigned boom_smokes = 0, boom_glows = 0, boom_shed = 0, boom_lod = 0, boom_out_of_reach = 0, boom_capped = 0;
+    bool boom_ready = false;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
 // sector change or a new load epoch (note 3.1), before the frame's upkeep.
@@ -137,4 +153,10 @@ int __cdecl x3m_weapon_flight(const std::uint32_t* entry);
 extern std::uintptr_t x3m_weapon_effects_continue_bolt_tap;
 extern std::uintptr_t x3m_weapon_effects_continue_muzzle;
 extern std::uintptr_t x3m_weapon_effects_continue_flight;
+// Step 3: the death sites.
+void x3m_weapon_effects_stub_death_area();
+void x3m_weapon_effects_stub_death_other();
+int __cdecl x3m_weapon_death_area(const std::uint32_t* entry, std::uint32_t ebp);
+int __cdecl x3m_weapon_death_other(const std::uint32_t* entry, std::uint32_t ebp);
+extern std::uintptr_t x3m_weapon_effects_continue_death;
 }

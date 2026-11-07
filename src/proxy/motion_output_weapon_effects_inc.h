@@ -65,20 +65,23 @@ bool MotionOutput::attach_weapon_effects() noexcept {
     // The hull programs only in shields,hull mode (their refusal keeps the shield effect: caps().hull_enabled false).
     const bool hull = weapon_effects::core::hull_mode(weapon_effects::hook_state().mode);
     const bool bolts = weapon_bolts_requested_; // step 4: the capsule programs and buffers too
+    // step 3: the death programs (the shock) in the explosions modes, beside the hull's
+    const bool booms = hull && weapon_effects::core::explosions_mode(weapon_effects::hook_state().mode);
     if (queried) {
         if (taa_busy_)
-            hr = weapon_->attach(device_, native_, caps_, display.Format, hull, bolts);
+            hr = weapon_->attach(device_, native_, caps_, display.Format, hull, bolts, booms);
         else
-            taa_call([&] { hr = weapon_->attach(device_, native_, caps_, display.Format, hull, bolts); });
+            taa_call([&] { hr = weapon_->attach(device_, native_, caps_, display.Format, hull, bolts, booms); });
     }
     const bool attached = queried && SUCCEEDED(hr) && weapon_->caps().enabled;
     const auto& c = weapon_->caps();
-    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u filament_ps_slots=%u lightning_vs_slots=%u lightning_vtf=%u,%u hull=%u hull_reason=%s bolt=%u bolt_reason=%s bolt_vs_slots=%u bolt_ps_slots=%u bolt_flag_ps_slots=%u max_ps_slots=%lu retry=reset",
+    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u filament_ps_slots=%u lightning_vs_slots=%u lightning_vtf=%u,%u hull=%u hull_reason=%s bolt=%u bolt_reason=%s bolt_vs_slots=%u bolt_ps_slots=%u bolt_flag_ps_slots=%u boom=%u boom_reason=%s shock=%u shock_reason=%s shock_ps_slots=%u halo_ps_slots=%u max_ps_slots=%lu retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
         c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.sprite_vs_slots, c.sprite_ps_slots,
         c.glow_vs_slots, c.glow_ps_slots, c.fireball_vs_slots, c.fireball_ps_slots, c.filament_ps_slots, c.lightning_vs_slots,
         unsigned(c.lightning_vtf_four), unsigned(c.lightning_vtf_r32f), unsigned(c.hull_enabled), c.hull_reason,
         unsigned(c.bolt_enabled), c.bolt_reason, c.bolt_vs_slots, c.bolt_ps_slots, c.bolt_flag_ps_slots,
+        unsigned(c.boom_enabled), c.boom_reason, unsigned(c.shock_enabled), c.shock_reason, c.shock_ps_slots, c.halo_ps_slots,
         static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
     if (!attached) weapon_attach_failed_ = true;
     return attached;
@@ -171,6 +174,12 @@ renderer::WeaponFireballVertex weapon_smokes[renderer::weapon_smoke_boxes * 4];
 renderer::WeaponShapeVertex weapon_rings[renderer::weapon_ring_quads * 4];
 renderer::WeaponLightningVertex weapon_filaments[renderer::weapon_filament_boxes * 4];
 renderer::WeaponGlowVertex weapon_scorches[renderer::weapon_scorch_boxes * 4];
+// Step 3 (weapon_effects_boom.h): the death records' per-slot state (first frame, floor, world point, seed cones; CPU
+// data: a Reset leaves it valid, the sequence recognises a reused slot) and the frame's shock boxes (static as the
+// sprites).
+weapon_effects::stage::BoomState weapon_boom_state;
+renderer::WeaponFireballVertex weapon_shocks[renderer::weapon_shock_boxes * 4];
+renderer::WeaponGlowVertex weapon_halos[renderer::weapon_halo_boxes * 4];
 // Step 4: the bullet rows' looks, one read per row per frame (the in-place bolt draw and the muzzles; CPU data).
 weapon_effects::stage::BoltRowCache& weapon_bolt_rows() {
     static weapon_effects::stage::BoltRowCache cache;
@@ -280,6 +289,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     // streaks start there), the frame's game step for the three-frame floor (Present keeps a floored record that long:
     // HookState::life_floor_ms), the screens of the shared budget the patches left.
     weapon_effects::stage::HullCounts hn{};
+    weapon_effects::stage::BoomCounts bn{}; // step 3: the deaths (built in the explosions modes)
+    unsigned boom_shocks = 0, boom_halos = 0;
     if (hull_mode) {
         weapon_effects::stage::HullView hv;
         hv.cam = camera;
@@ -319,7 +330,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         // Step 4: the muzzle flashes (bolt-muzzle-look.md section 3) first into the shared batches (at most 128 records x
         // 7 sprites, 128 glows, fireballs and puffs: always room), the hull hit's elements after them, so a muzzle whose
         // native effect the hook skipped is always drawn (finding 2); only the records the hook marked ours.
-        unsigned mz_sprites = 0, mz_glows = 0, mz_fireballs = 0, mz_scorches = 0;
+        unsigned mz_sprites = 0, mz_glows = 0, mz_fireballs = 0, mz_scorches = 0, mz_smokes = 0;
         if (weapon_bolts_requested_ && weapon_effects::core::bolts_mode(weapon_effects::mode())) {
             const wcore::BoltHookState& bs = weapon_effects::bolt_hook_state();
             weapon_effects::stage::MuzzleBuffers mb;
@@ -363,6 +374,76 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 hb.scorch_cap -= mz_scorches;
             }
         }
+        // Step 3 (explosions modes, the pass holding the death programs): the deaths before the hull hits, into the shared
+        // batches after the muzzles, charged first to the budget the patches left (a death is rarer and larger than a
+        // hit; the hull hits shed against what the deaths leave).
+        if (weapon_effects::core::explosions_mode(weapon_effects::mode()) && weapon_->caps().boom_enabled) {
+            weapon_effects::stage::BoomBuffers bb;
+            bb.sprites = hb.sprites;
+            bb.sprite_cap = hb.sprite_cap;
+            bb.glows = hb.glows;
+            bb.glow_cap = hb.glow_cap;
+            bb.fireballs = hb.fireballs;
+            bb.fireball_cap = hb.fireball_cap;
+            bb.smokes = hb.smokes;
+            bb.smoke_cap = hb.smokes ? hb.smoke_cap : 0u;
+            bb.scorches = hb.scorches;
+            bb.scorch_cap = hb.scorches ? hb.scorch_cap : 0u;
+            bb.shocks = weapon_shocks;
+            bb.shock_cap = renderer::weapon_shock_boxes;
+            bb.halos = weapon_halos;
+            bb.shock_cap = weapon_->caps().shock_enabled ? bb.shock_cap : 0u; // the shells only with their program
+            bb.halo_cap = renderer::weapon_halo_boxes;
+            bn = weapon_effects::stage::build_boom(weapon_effects::hook_state().ring, weapon_boom_state, hv,
+                                                                weapon_effects::stage::BoomTuning{}, bb, &visible);
+            boom_shocks = bb.shock_boxes;
+            boom_halos = bb.halo_boxes;
+            hb.sprites += 4 * bb.sprite_quads;
+            hb.sprite_cap -= bb.sprite_quads;
+            hb.glows += 4 * bb.glow_boxes;
+            hb.glow_cap -= bb.glow_boxes;
+            hb.fireballs += 4 * bb.fireball_boxes;
+            hb.fireball_cap -= bb.fireball_boxes;
+            if (hb.smokes) {
+                hb.smokes += 4 * bb.smoke_boxes;
+                hb.smoke_cap -= bb.smoke_boxes;
+            }
+            if (hb.scorches) {
+                hb.scorches += 4 * bb.scorch_boxes;
+                hb.scorch_cap -= bb.scorch_boxes;
+            }
+            mz_sprites += bb.sprite_quads;
+            mz_glows += bb.glow_boxes;
+            mz_fireballs += bb.fireball_boxes;
+            mz_scorches += bb.scorch_boxes;
+            mz_smokes = bb.smoke_boxes;
+            hv.budget_left -= bn.screens;
+            const std::uint32_t boom_latched = std::uint32_t(bn.max_floor_ms),
+                                boom_now = wcore::look::min_frames * hv.step_ms;
+            weapon_effects::hook_state().boom_floor_ms = (boom_latched > boom_now ? boom_latched : boom_now) + hv.step_ms;
+            weapon_drops_[36] += bn.deaths;
+            weapon_drops_[37] += bn.bodies;
+            weapon_drops_[38] += bn.stars;
+            weapon_drops_[39] += bn.shocks;
+            weapon_drops_[40] += bn.embers;
+            weapon_drops_[41] += bn.fragments;
+            weapon_drops_[42] += bn.smokes;
+            weapon_drops_[43] += bn.glows;
+            weapon_drops_[44] += bn.shed;
+            weapon_drops_[45] += bn.bodies && bn.octaves < wcore::look::fireball_octaves;
+            weapon_drops_[46] += bn.out_of_reach;
+            weapon_drops_[47] += bn.capped;
+            if (capture_ && (bn.deaths || bn.out_of_reach))
+                log("weapon_boom_capture device=%llu frame=%llu now=%lu step_ms=%lu deaths=%u bodies=%u stars=%u shocks=%u "
+                    "embers=%u fragments=%u darks=%u glows=%u smokes=%u shed=%u octaves=%u fine=%u out_of_reach=%u "
+                    "capped=%u floored=%u screens=%.3f body_screens=%.3f max_cluster=%.2f halos=%u embers_hidden=%u",
+                    id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
+                    bn.deaths, bn.bodies, bn.stars, bn.shocks,
+                    bn.embers, bn.fragments, bn.darks, bn.glows,
+                    bn.smokes, bn.shed, bn.octaves, bn.fine,
+                    bn.out_of_reach, bn.capped, bn.floored,
+                    double(bn.screens), double(bn.body_screens), double(bn.max_cluster), bn.halos, bn.embers_hidden);
+        }
         hn = weapon_effects::stage::build_hull(weapon_effects::hook_state().ring, weapon_hull_state, &weapon_effects_read,
                                                hv, weapon_effects::stage::HullTuning{}, hb, &visible);
         const unsigned quads = mz_sprites + hb.sprite_quads, boxes = mz_glows + hb.glow_boxes,
@@ -379,7 +460,11 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         f.glow_boxes = boxes;
         f.fireballs = weapon_fireballs;
         f.fireball_boxes = fireballs;
-        f.fireball_octaves = hn.octaves;
+        f.fireball_octaves = hn.octaves < bn.octaves ? hn.octaves : bn.octaves;
+        f.shocks = weapon_shocks;
+        f.shock_boxes = boom_shocks;
+        f.halos = weapon_halos;
+        f.halo_boxes = boom_halos;
         f.rings = weapon_rings;
         f.ring_quads = rings;
         f.filaments = weapon_filaments;
@@ -387,7 +472,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         f.scorches = weapon_scorches;
         f.scorch_boxes = mz_scorches + hb.scorch_boxes;
         f.smokes = weapon_smokes;
-        f.smoke_boxes = hb.smoke_boxes;
+        f.smoke_boxes = mz_smokes + hb.smoke_boxes;
         // F8 (a capture frame): the frame's hull-hit figures, the step and the views the streaks used.
         if (capture_)
             log("weapon_hull_frame device=%llu frame=%llu now=%lu step_ms=%lu prev_view=%u own=%08lx cockpit=%u hits=%u "
@@ -515,17 +600,18 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[36]) noexcept {
+                                             bool* drew, unsigned drops[49]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 36; ++i) {
+    for (unsigned i = 0; i < 48; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }
     drops[27] = weapon_ && weapon_->caps().hull_enabled; // the hull latch (Present's HookState::hull_ready)
+    drops[48] = weapon_ && weapon_->caps().boom_enabled; // the death latch (Present's HookState::boom_ready)
     weapon_patches_ = weapon_decals_ = weapon_retired_ = 0;
     weapon_stage_us_ = 0.f;
     weapon_drew_ = false;

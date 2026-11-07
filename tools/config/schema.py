@@ -440,7 +440,7 @@ SETTINGS = [
           'it looks like off; the trails come later); default plumes. Read when the game starts.', builtin='plumes',
           choices=('native', 'off', 'plumes'), launcher='--engine-effects', since='2026-10-01'),
     entry('weapon_effects', 'enum', 'engine', 'Weapon hit effects drawn by the mod (step 1: shield hits; step 2: hull '
-          'hits; step 4: bolts and the muzzle flash). native = the '
+          'hits; step 3: death explosions; step 4: bolts and the muzzle flash). native = the '
           'game\'s own effects, nothing changed; observe = the game\'s effects with every hit recorded in the log (the '
           'first test flight); shields = the mod draws its own shield-hit shell with expanding rings instead of the '
           'game\'s shield sprite (needs the HDR and TAA defaults, otherwise the game\'s sprite stays); shields,hull = '
@@ -449,9 +449,13 @@ SETTINGS = [
           '(energy bolts, slugs, plasma orbs, flak) drawn in place of the game\'s bullet sprites and a per-weapon muzzle '
           'flash (in any token order); it needs screen_emission_additive on (any value but 0, the default 2 is fine: the only route that sees the game\'s '
           'bullet draws: without it the bolts and muzzle flashes stay the game\'s, logged as weapon_bolts_state '
-          'reason=screen_emission_additive). Default native. Read when the game starts.',
+          'reason=screen_emission_additive). shields,hull,explosions (or shields,hull,bolts,explosions) adds the mod\'s '
+          'own death explosion for fighters and missiles (a lobed fireball with a star flash, embers, its light on '
+          'nearby hulls and smoke) instead of the game\'s; corvettes, capital ships, stations and asteroids keep the '
+          'game\'s explosion for now. Default native. Read when the game starts.',
           builtin='native',
-          choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields', 'shields,hull,bolts'),
+          choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields', 'shields,hull,bolts',
+                   'shields,hull,explosions', 'shields,hull,bolts,explosions'),
           launcher='--weapon-effects', since='2026-11-05'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Read when the game '

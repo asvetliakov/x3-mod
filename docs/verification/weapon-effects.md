@@ -1361,6 +1361,16 @@ globe b/r 0.69 / 0.51 / 0.45); the 20-hit records pinned. The ion's close GPU bo
 3.30 charged screens against the discs' 2.77, 370.3). The tip's engine-shimmer record was a `device` failure (the screen
 saver): re-run PASS.
 
+**The pinhole fix (2026-11-07, step 3).** The fireball program's outward drift p / |p| is singular at the disc's
+centre; the death bodies showed it as a dark dot from about 0.5 L. Within 0.08 of the centre its direction now blends
+to a seed-hashed fixed one (continuous at the boundary). The hull burst `energy_single` before / after (the same
+fixture binary's dump, then the new program's; `verification/results/weapon-effects-burst/pinhole_compare.py <before>
+<after>`, measure.py's 10 %-of-peak figures) [M]: 120 ms burst peak 1.3076 / 1.3076, lit 47,037 / 47,037 px, radius
+122.4 / 122.4; 296 ms burst peak 0.7148 / 0.7144, lit 53,109 / 53,115, radius 130.0 / 130.0; glows unchanged; worst
+change 0.056 % (bound 2 %). The same release also gave the program a fifth vertex input (the death body's white-hot
+core gain, stride 80; 0 for every hull burst and smoke): the full-frame body's cost rose 213.8 -> 224.5 us at
+5120x1440 [M] (the core's and the blend's instructions; the hull bursts pay the same few per pixel).
+
 ## Bolts and muzzle (step 4)
 
 Design `docs/architecture/bolt-muzzle-look.md` (ratified 2026-11-07). Base: `effects` at `98f095045` (reset into this
@@ -1644,3 +1654,118 @@ PASS; `build-bolt` (ap) and `build-bolt-fl` (fl) 0 warnings; `check_no_x87.py --
 functions). The own fire chase dump at 5120x1440 (`--dump`, `X3M_WEAPON_EFFECTS_DUMP_CASES=own_fire_chase_5120x1440`, the
 plain record restored after it): at 50 ms one muzzle, its disc 40.3 px, the star for the cone; the 4x crop by
 `verification/results/bolt-muzzle-look/muzzle_crop.py` (the BOLT_DUMP row's `muzzle_x` / `muzzle_y`), kept local.
+
+## Explosions (step 3)
+
+2026-11-07, uncommitted on the `effects` branch at `d0c96e637` (merged into the worktree; that commit's amendment of
+explosion-look.md sections 1, 4 and 11 is the seam below). Spec: [explosion-look.md](../architecture/explosion-look.md)
+(ratified) with its "Built numbers (step 3)" (the coordinator's decisions D1-D8 after the first frames);
+[weapon-look.md](../architecture/weapon-look.md) 3.2 where it is silent. Built for fighters and missiles; corvettes,
+capitals and stations are recorded, logged (`weapon_death`) and forwarded byte-exact. Numbers from
+`verification/results/explosion-look/ledger_rows.py` over the native records of
+`verification/results/native-windows/weapon-effects/` (RTX 5070 Ti, the native Windows d3d9.dll).
+
+**What is built.**
+- **Hook.** `X3M_WEAPON_EFFECTS` takes the token `explosions` (`shields,hull,explosions`, `shields,hull,bolts,explosions`;
+  any order; refused without shields and hull; the launcher and the config schema likewise). The two death calls
+  `0x0044ac64` (area: plain write, the five bytes straddle `0x0044ac68`) and `0x0044acb2` (atomic) -> `0x00413610` are
+  redirected to stubs that pass the caller's EBP (the kill routine's frame: the reason word) and call `core::death`
+  (integer only, no call, no x87). Windows (19 bytes each: the two loads, three pushes, the call, the pop, `mov eax,edi`)
+  are compared whole before any write; the build script compares them with `/mnt/c/X3/X3AP.exe`'s bytes. Install order:
+  the atomic sites first (the other death site with them), then the plain copies (the area site before the impact); all
+  or none; shutdown in reverse.
+- **The decision seam.** `core::boom::decide(tier)` alone answers ours / native: ours unless the tier is in
+  `boom::tier_native` (corvette | capital | station = 14), the asteroid or another class. A record is the stage's only
+  when also Present latched the stage and its death programs (`HookState::boom_ready`); then the stub skips the callee
+  (`xor eax,eax; ret`). Every other death forwards with every register, the flags and the stack as the call left them.
+  The amended section 1's clone row R' (swapped into the type record's death column around the forwarded `0x00413610`,
+  LIFO for nested kills) goes where `decide` answers native for the big tiers, in `core::death`'s forward path; not built.
+- **Records.** One 64-byte Event per death (role_explosion): tier, class, the type record's death row, the TShips class
+  id, the reason word, the killer argument (not followed), the world position (node+0x30), the radius, the site; flag
+  `nested` when another death fell in the same game millisecond. Forwarded unrecorded: no live node / class 0x1c, bullet
+  area deaths (step 7), the rule-(b) missile. A death retires its object's other records (a staged hull hit stays).
+- **Stage** (`weapon_effects_boom.h`, before the hull hits, charged first): the body (the shared fireball program, with
+  the white-hot core and the pinhole fix), the star, embers and fragments (hidden inside the body, the sprite program's
+  pixel mode: hashed 1.5-2.5 px widths and lengths, a bright head and a fading tail), the light on hulls (1.6 R(t), at
+  most 2 R_f) and the halo in air (`weapon_halo_ps.hlsl`), the smoke; the missile's limb-only shell built and switched
+  off (`boom::missile_shock`; the fixture forces it on for its own gates, `BoomTuning::force_shock`). The shed order; reach
+  cull; per-slot state keyed by sequence. **Pass:** the halo program is the death set beside the hull's
+  (`caps().boom_enabled`, fault bit 8); the shock program is optional within it (`caps().shock_enabled`, fault bit 9: a
+  refusal drops only the shells); both slot counts logged at device creation and in the attach row; recreated after a Reset.
+  **Lab:** the Boom tab (`renderBoom`, HEADER.boom, 14 scenarios of section 8, the vanilla death row in an inset), the
+  same laws (`test_boom_tab_presets_and_laws`).
+
+**Hook record** (`hook-summary.json`): 132 checks, 0 failures [M]; 19 `death_*` checks: parse, the decide seam, install
+(area plain / other atomic), the forward byte-exact when not owned (EAX / ECX = arg4 / EDX = the killer / EBX / EBP / ESI /
+EDI, the flags, the return after the site, ESP 16 below the frame, MXCSR, the x87 control word and stack, LastError), the
+fighter and the missile skipped when owned (the frame kept, the stand-in never entered, the record's tier, class, rows
+35 / 39, class id 2023, reason, killer, world position, life), the corvette (row 40) and the factory (row 201)
+census-forwarded, the asteroid (row 59) forwarded, the rule-(b) missile and a class-0 bullet at the area site forwarded
+unrecorded, a ship at the area site classified, the owner's shield hit retired and its staged hull hit kept, nested kills
+(a forwarded corvette whose callee runs two fighter deaths through the other window: 3 records, 2 nested, the stand-in
+entered once, the outer frame kept; and the same two deaths run after the forwarded `0x00413610` returned, the area
+missile first, `death_nested_after_return`), Present releasing the census and keeping ours to life + floor, the forward without
+the death programs, shutdown, the hull-only mode leaving the sites, a byte flipped in either window refused before any
+write, a faulted read-back at the area site (the other rolled back) and at the impact (both rolled back) [M]. Audit:
+both death stubs of the expected shape, both handler entry points 0 calls and 0 x87 (502 / 533 instructions), both
+windows equal to `/mnt/c/X3/X3AP.exe` (fdbf3418...f8ab) [M]; the audit fails when that EXE is absent.
+
+**D3D record** (`summary.json`, RTX 5070 Ti): 287 checks, 0 failures; 28 `death_*` [M]. The table and the budget line are
+`ledger_rows.py --markdown`'s output over this record. Vanilla FOV (73.74 deg) at
+1080p unless noted; 16 ms steps; fixed seeds (the medians over 8 or 16).
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `death_tier_sizes` (PASS; core off) | outline / R(t) at 0.1 / 0.3 L: fighter 600 m 1.038 / 0.967, missile 300 m 1.029 / 0.962; at 0.6 / 0.8 L 0.735 / 0.538 and 0.731 / 0.532 (recorded); the 3 km fighter at 1440 rows: law 7.7 px, drawn 12.1 | 5 % at 0.1 / 0.3 L (D1); floor 12 px |
+| `death_body_contrast` / `_silhouette_lobed` / `_colour_core_rim` (PASS / PASS / PASS; 16 seeds, core off) | dark 0.195, high-pass 0.125; max / min 1.86; core T 0.75, rim T 0.5 | 0.15, 0.10; 1.25; >= 0.75, <= 0.5 |
+| `death_body_erodes_outside_in` (PASS; 16 seeds, core off) | lit inside R(t) at 0.1 / 0.5 / 0.9 / 1.0 L: 0.866 / 0.731 / 0.154 / 0.0 | >= 0.8 / 0.35-0.75 / <= 0.20 (D1) / 0 |
+| `death_body_white_hot_core` (PASS; 8 seeds) | median radiance inside 0.3 R(t): 4.12 at 0.1 L, 1.48 at 0.4 L | >= 3; <= E_b once gone (D5) |
+| `death_no_pop_at_birth` (PASS) | first body 9.06 px against R_0 8.45; the star at 60 m 176.3 px half against the 270.0 px cap | |
+| `death_flash_star_3_frames`, `death_seta6_three_frame_floor` (PASS, PASS) | lit frames 3 / 3 at 16 / 100 ms; moment ratio 5.4; off the arms 0.0; the body's last frame 1984 / 1900 ms of 2000 | 3; >= 2; <= 0.02 |
+| `death_shock_is_a_shell` (PASS; the missile's shell forced on: `missile_shock` 0 in production, `death_missile_shock_off` PASS) | farthest pixel 32.6 / 45.7 px against the law's 31.9 / 45.1 at 0.1 / 0.2 tau; interior 0.0; peak 0.472 / 0.352; boxes after shock_end 0, with the eye inside 0 | 5 %; <= 0.02; <= 0.7 E_b |
+| `death_embers_random_and_cooling` (PASS) | seed correlation 0.076; T 0.75 / 0.5 / 0.25 at 0.3 / 0.7 / 1.1 L; farthest 87.5 px at 1.19 L against v_e 1.2 L = 120.0 (speeds 0.5-1.5 v_e) | < 0.5; >= 0.75 / >= 0.5 / <= 0.3; 0.9 x 0.5 .. 1.1 x 1.5 of the reach |
+| `death_embers_hidden_in_body` (PASS; D5) | lit share over the body's disc at 0.1 L 0.0; 0 of 32 drawn at birth | <= 0.15; at most half |
+| `death_embers_lengths_and_widths` (PASS; D5) | 18 drawn at 0.6 L, lengths 7.9 +- 2.2 px (cap 11.8), widths 1.57..2.48 px | std >= 0.2 mean; 1.5-2.5 px |
+| `death_glow_is_the_bodys_light` (PASS; D3, a hull plane 20 m behind) | peak 0.149 / 0.226 at 0.1 / 0.3 L; 10 % equivalent radius 22.3 px against min(1.6 R(t), 2 R_f) = 36.8; over sky 0.0, after L 0.0 | <= 0.4 E_b; <= the law |
+| `death_halo_in_air` (PASS; D3) | farthest pixel over R(t) 1.354 / 1.344 / 1.344 / 1.345 at 0.1 / 0.3 / 0.6 / 0.8 L, peaks 0.452 / 0.365 / 0.112 / 0.005 (the erosion fade); 0 after L, 0 with the eye inside the body | <= 1.8 R(t) |
+| `death_smoke_darkens_surfaces_only` (PASS; 0.5 grey) | darkest 0.341 at its peak (bound 0.366); 0.502 at 1.6 L, 0.502 over sky | |
+| `death_cools_through_ramp` (PASS; 8 seeds), `death_fades_to_zero_at_life` (PASS) | T 1.0 / 0.5 / 0.0 at 0.2 / 0.6 / 1.0 L; every part 0 at its life: 1 | >= 0.75 / >= 0.5 / <= 0.25 |
+| `death_nested_three_drawn` (PASS; three fighters 12 m apart) | 3 bodies, worst silhouette correlation 0.175 (each alone); cluster N 2.8; the three's peak 4.66 against one death's 4.629 (x 1.007); the embers' own peak 2.072 | < 0.8; N > 1; <= 1.4 x one |
+| `death_eye_inside_bounded` (PASS; D2, own death in chase, the eye 24 m out) | 0.25 L: lit 1.0, std / mean 0.364; 0.6 L: dark 0.528; the 10 m eye 0.336 / 0.587 (recorded); cost 279.4 us | lit >= 0.9 and >= 0.05; dark >= 0.15; <= 300 us |
+| `death_octave_lod_hysteresis` (PASS) | entered on frame 1, held 6 frames, left on frame 7 | hold 3 |
+| `death_stage_cpu_32_deaths` (PASS) | 32 bodies, 588 streaks, 32 glows: 38.0 us median of 201 builds | <= 50 us |
+| `death_budget_5120` (PASS) | fighter 600 m 17.7, 20 fighters 24.0, missile 17.6, nested three 18.3, eye inside 279.4 us | the far cases <= 100 / 150, eye <= 300 |
+| `death_programs_attached`, `death_programs_refused_keep_hull`, `death_shock_refused_deaths_drawn`, `death_reset_recovers` (PASS, PASS, PASS, PASS) | shock 95 and halo 60 slots (`MaxPixelShader30InstructionSlots` 4096); fault bit 8: the hull kept, boom off (boom_program_create), 1 body drawn and 0 halo; fault bit 9: the deaths kept (shock 0, shock_program_create), 2 bodies and 2 halos drawn, 0 of 1 shells; the halo drawn after a Reset | |
+
+Budget rows (5120x1440, EVENT-fenced best of 60, gpu_us / weight over 177.5 us) [M]: the fence alone 14.3; body alone (eye inside, 3 octaves, the core) 224.5 / 1.265; smoke alone 226.3 / 1.275; halo alone (the eye in its sphere) 70.2 / 0.395; star 15.9; the missile's shell (forced on) over 0.515 screens 43.4 us: 0.318 a screen with the fence removed (`budget_weight_shock` 0.36).
+
+**Frames judged** (`--dump`, `boom_fighter_600m`, `_missile_300m`, `_nested_3_fighters`, `_eye_inside_fighter` (the
+24 m chase eye), `_fighter_600m_hull` (1080p only in v4: its 5120 frames were truncated by a full tmpfs), at 0.1 / 0.3 / 0.6 / 0.8 / 1.0 L, 1080p and 5120x1440; grids by
+`verification/results/explosion-look/crop_grid.py` (the clamped composite) and `part_grid.py` (the float parts
+tonemapped 1 - e^(-v)), kept local), against the standard (a white core, a lobed eroding body, a soft halo, random
+sparks; no lamp, no disc, no sticks):
+- the fighter at 600 m: the white-hot core inside a lobed body at 0.1 L with a soft halo; at 0.3 L the core fading and
+  short sparks of varied lengths leaving the body; at 0.6 L an eroding orange body, the halo fading; at 0.8 L a small
+  dark-red remnant, no halo; at L sparks only. No tangle, no rods, no lamp. The missile reads the same at its scale (its
+  shell off; the limb-only shell had read as a flat ring);
+- the nested kill (three fighters 12 m apart, re-dumped `stage-dump-boom-v4`): three overlapping, different lobed balls
+  whose halos merge into one soft band, no sun; one body still large and hot at 0.8 L while the other two are remnants
+  (seeds);
+- over a hull 20 m behind: the hull light stays near the body (no lamp); the smoke darkens the hull from 0.8 L;
+- the eye inside (24 m): at 0.1 L the core is a large white disc filling a third of the view; 0.3 L a hot wash with
+  broad structure; 0.6 L clumps and holes;
+- **remaining**: from 0.5 L a small ring and bright centre (a "doughnut") at each body's disc centre, most visible on the
+  nested and eye-inside frames. Cause: the fireball program's outward drift is a constant-length radial shift, so each
+  octave's samples collapse to one point on the circle r = advect x / freq (0.375 R_s for the first octave at 0.6 L);
+  the 0.08 blend (D4) removes only the centre point. The planned fix is a radial zoom (sample p / (1 + advect)); tried
+  2026-11-07 and reverted: the hull burst `energy_single` at 296 ms lost 28 % of its lit area (radius 130.0 -> 110.1 px),
+  `hull_plasma_globe_shrinks_reddens` failed, the muzzle bloom moved 0.6 % [M]
+  (`verification/results/weapon-effects-burst/zoom-attempt-2026-11-07.txt`); it needs the burst's erosion retuned with it.
+
+The hull burst's pinhole row is in "Burst review fixes and the merge" above.
+
+**Acceptance** [M]: `test_weapon_effects_*` 97 OK; `generate_weapon_effects_programs.py --check` PASS, the lab's
+`--check`, `schema.py --check`, `generate.py --check` PASS; native run 287 / 132 checks PASS (built from these sources,
+`d0c96e637-dirty`). `build-boom` (ap) and `build-boom-fl` (fl) clean builds 0 warnings (d3d9.dll 1bdc864b... /
+cada0404...); `check_no_x87.py --edition ap` no violations (1181 reachable functions); `manage.py launch --game-dir
+/mnt/c/X3 --config --dry-run` exit 0, weapon_effects unset.

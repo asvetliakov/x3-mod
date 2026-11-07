@@ -12,7 +12,8 @@
 //   the drawn length is the screen motion clamped to [rest, streak_cap x rest] (rest = max(spark_rest_w x the lit
 //   width, floor_len_px) x |c.x|, the lit width max(its width in pixels, floor_lit_px)), the tail moved back along the
 //   motion to it, the quad capped by half the lit width at both ends, and the radiance x rest / (rest + motion), not
-//   below the hold. The stage's CPU twin is stage::streak_corners (the fixture measures through it).
+//   below the hold. The stage's CPU twin is stage::streak_corners (the fixture measures through it). Step 3's pixel
+//   mode (b.w < 0, the death embers): -b.w the lit width and |c.x| the length, both pixels, no floor, no dilution.
 // Compiled with tools/shaders/generate_weapon_effects_programs.py (vs_3_0).
 float4 projection : register(c0); // m00, m11, m20, m21 of the jittered projection
 float4 viewport : register(c1);   // W/2, H/2, 2/W, 2/H
@@ -43,15 +44,20 @@ Output main(float4 a : POSITION, float4 b : TEXCOORD0, float3 c : TEXCOORD1, flo
     float len2 = dot(d, d);
     float motion = sqrt(len2);
     float2 dir = len2 > 1e-6 ? d / motion : float2(1.0, 0.0);
-    float lit = max(b.w * viewport.x * projection.x / a.z, limits.y);
-    float rest = max(limits.z * lit, limits.w) * abs(c.x);
-    float drawn = clamp(motion, rest, streak.x * rest);
+    // b.w < 0 (step 3's embers, the pixel mode): -b.w is the lit width in pixels and |c.x| the drawn length in pixels,
+    // no floors and no dilution (the stage chose both; the radiance is a.w)
+    bool px_mode = b.w < 0.0;
+    float lit = px_mode ? -b.w : max(b.w * viewport.x * projection.x / a.z, limits.y);
+    float rest = px_mode ? abs(c.x) : max(limits.z * lit, limits.w) * abs(c.x);
+    float drawn = px_mode ? rest : clamp(motion, rest, streak.x * rest);
     float hw = 0.5 * lit;
     float2 n = float2(-dir.y, dir.x) * hw;
     float2 p = (c.x > 0.0 ? head + dir * hw : head - dir * (drawn + hw)) + n * c.y;
     float z = c.x > 0.0 ? a.z : b.z;
     o.position = float4((p.x * viewport.z - 1.0) * z, (1.0 - p.y * viewport.w) * z, z - limits.x, z);
-    o.shade = float4(c.x > 0.0 ? 1.0 : -1.0, c.y, max(a.w * rest / (rest + motion), c.z), b.w);
+    // the pixel mode passes its width in view units negated (the pixel program's profile flag)
+    o.shade = float4(c.x > 0.0 ? 1.0 : -1.0, c.y, px_mode ? a.w : max(a.w * rest / (rest + motion), c.z),
+                     px_mode ? -lit * a.z / (viewport.x * projection.x) : b.w);
     o.depth = float4(z, 0.0, 0.0, 0.0);
     return o;
 }

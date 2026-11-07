@@ -52,7 +52,15 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'hull_hit_forwards_without_hull_programs', 'overflow_census_first_then_oldest_staged',
                 # the 1024-record ring (2026-11-07): the hidden owner's records first, the handler's cost when full
                 'overflow_1024_hidden_owner_first_then_oldest', 'event_cost_50_full_ring_1024',
-                'overflow_counts_evicted_visible'}
+                'overflow_counts_evicted_visible',
+                # step 3, the death sites (docs/architecture/explosion-look.md section 9 "hook record")
+                'death_mode_parse', 'death_decision_seam', 'death_installed', 'death_forwards_when_not_owned',
+                'death_skips_fighter_when_owned', 'death_skips_missile_when_owned', 'death_forwards_big_tier_census',
+                'death_forwards_asteroid', 'death_forwards_rule_b_missile', 'death_area_bullet_forwards',
+                'death_retires_owner_hits', 'death_nested_stack', 'death_present_keeps_ours_releases_census',
+                'death_forwards_without_boom_programs', 'death_shutdown_restores_both',
+                'death_mode_without_token_leaves_sites', 'death_byte_mismatch_refused', 'death_rollback_restores_both',
+                'death_nested_after_return'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -76,8 +84,12 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         a = self.record['build']['audit']
         self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
         self.assertEqual(a['handler_calls'], {'_x3m_weapon_event': [], '_x3m_weapon_tap': [], '_x3m_weapon_bolt_tap': [],
-                                              '_x3m_weapon_muzzle': [], '_x3m_weapon_flight': []})
+                                              '_x3m_weapon_muzzle': [], '_x3m_weapon_flight': [],
+                                              '_x3m_weapon_death_area': [], '_x3m_weapon_death_other': []})
         self.assertTrue(a['stub_ok'] and a['stub_bolt_tap_ok'] and a['stub_muzzle_ok'] and a['stub_flight_ok'])
+        # step 3: the death stubs pass EBP; both windows are the installed EXE's bytes
+        self.assertEqual(a['stub_death_ok'], {'area': True, 'other': True})
+        self.assertEqual(a['death_windows_exe'], {'area': True, 'other': True})
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
         # the stub (0x20 + the return address) and the handler's frame stayed inside the fixture's margin
         self.assertEqual(self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x24)
@@ -123,6 +135,18 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         self.assertEqual((rows['skip']['through'], rows['skip']['unabsorbed'], rows['skip']['skipped_delta'],
                           rows['skip']['forwarded_delta']), (1, 1, 2, 0))
         self.assertEqual((rows['present']['kept'], rows['present']['released']), (1, 1))
+
+    def test_death_forward_and_nested(self):
+        # the forward path reaches 0x00413610 with ECX = arg4, EDX = the killer (the window's loads), the flags, the
+        # return after the site and ESP three arguments and the return below the frame; three records in one outer call
+        f = self.record['death_forward_state']
+        mask = 0xcd5
+        self.assertEqual(int(f['eflags_entry'], 16) & mask, int(f['eflags_callee'], 16) & mask)
+        self.assertEqual(int(f['esp_callee'], 16), int(f['esp_frame'], 16) - 16)
+        self.assertEqual(int(f['return'], 16), int(f['site'], 16) + 5)
+        self.assertEqual((int(f['ecx'], 16), int(f['edx'], 16)), (0x00a4a4a4, 0x00c0ffee))
+        n = self.record['death_nested']
+        self.assertEqual((n['records'], n['nested'], n['outer_entries']), (3, 2, 1))
 
     def test_forward_state(self):
         f = {k: int(v, 16) for k, v in self.record['forward_state'].items()}
@@ -451,6 +475,39 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertAlmostEqual(weight, worst, delta=0.15, msg=name)
         # the dense frame within the budget's 8 x 177.5 us
         self.assertLessEqual(timing[(5120, 'capital_close_64_hits')]['gpu_us'], 1420.0)
+
+    # Step 3, the death explosion (docs/architecture/explosion-look.md section 9; weapon_effects_boom_cases.h).
+    DEATH_CHECKS = ('death_programs_attached', 'death_tier_sizes', 'death_body_contrast', 'death_body_silhouette_lobed',
+                    'death_body_erodes_outside_in', 'death_body_colour_core_rim', 'death_no_pop_at_birth',
+                    'death_flash_star_3_frames', 'death_seta6_three_frame_floor', 'death_shock_is_a_shell',
+                    'death_embers_random_and_cooling', 'death_glow_is_the_bodys_light', 'death_smoke_darkens_surfaces_only',
+                    'death_cools_through_ramp', 'death_fades_to_zero_at_life', 'death_nested_three_drawn',
+                    'death_eye_inside_bounded', 'death_budget_5120', 'death_octave_lod_hysteresis',
+                    'death_programs_refused_keep_hull', 'death_reset_recovers', 'death_stage_cpu_32_deaths',
+                    # the coordinator's decisions of 2026-11-07
+                    'death_body_white_hot_core', 'death_embers_hidden_in_body', 'death_embers_lengths_and_widths',
+                    'death_halo_in_air', 'death_missile_shock_off', 'death_shock_refused_deaths_drawn')
+
+    def test_explosion_gates(self):
+        checks = dict(self.record['checks'])
+        for name in self.DEATH_CHECKS:
+            self.assertIn(name, checks)
+            self.assertTrue(checks[name], name)
+        rows = self.record['metrics']['explosion']
+        sizes = [r for r in rows if r.get('case') == 'size' and r['age_frac'] in (0.1, 0.3)]
+        self.assertEqual(len(sizes), 4)
+        self.assertTrue(all(abs(r['outline_over_law'] - 1.0) <= 0.05 for r in sizes))
+        shock = [r for r in rows if r.get('case') == 'shock']                    # the limb only: interior 0
+        self.assertTrue(all(r['interior_over_limb'] <= 0.02 for r in shock))
+        core = next(r for r in rows if r.get('case') == 'core')
+        self.assertGreaterEqual(core['median_core_01'], 3.0)
+        halo = [r for r in rows if r.get('case') == 'halo']
+        self.assertTrue(halo and all(r['ratio'] <= 1.8 for r in halo))
+        timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
+        self.assertLessEqual(timing[(5120, 'eye_inside_fighter')]['gpu_us'], 300.0)
+        self.assertLessEqual(timing[(5120, 'fighters_20_600m')]['gpu_us'], 8 * 177.5)
+        for case in ('body_alone_fills_frame', 'shock_alone_fills_frame', 'smoke_alone_fills_frame', 'star_alone'):
+            self.assertIn((5120, case), timing)
 
     def test_lightning_log_fields(self):
         """Review 2026-11-07: the device row logs the lightning's programs (filament_ps_slots, lightning_vs_slots, the

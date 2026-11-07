@@ -45,6 +45,7 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "weapon_effects_patch.h" // X3M_WEAPON_EFFECTS=shields: the impact ring (motion_output_weapon_effects_inc.h)
 #include "weapon_effects_hull.h"  // step 2: the hull hit (includes weapon_effects_stage.h)
 #include "weapon_effects_bolt_stage.h" // step 4: the bolts and the muzzle (the in-place draw)
+#include "weapon_effects_boom.h" // step 3: the death explosion
 #endif
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier

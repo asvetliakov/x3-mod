@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """measure.py <dump_dir>: for each 1920x1080 -glow / -burst PFM: peak luma (max RGB), lit pixels above 10 % of peak,
 equivalent radius sqrt(A/pi) of the union, connected blobs (4-neighbour) count and median blob equivalent radius, and
-for single-hit cases the max lit distance from the frame centre."""
+for single-hit cases the max lit distance from the frame centre. Step 3 (docs/architecture/explosion-look.md 9): the death
+explosion's dump cases (weapon_effects_boom_cases.h, boom_*) write the parts -flash, -body, -shock, -ember, -fragment,
+-glow and -smoke the same way; each is measured likewise, with the max lit distance from the centre (one death on the
+axis; the nested case's three about it)."""
 import sys, numpy as np
 from pathlib import Path
 
@@ -40,7 +43,7 @@ for p in sorted(Path(sys.argv[1]).glob('*_1920x1080-*-*.pfm')):
     sizes = blobs(m); n = len(sizes)
     med = float(np.sqrt(np.median(sizes) / np.pi)) if n else 0.0
     ys, xs = np.nonzero(m)
-    rmax = float(np.hypot(xs - 960, ys - 540).max()) if 'single' in case else float('nan')
+    rmax = float(np.hypot(xs - 960, ys - 540).max()) if 'single' in case or case.startswith('boom_') else float('nan')
     rows.append((case, int(ms), part, peak, A, float(np.sqrt(A / np.pi)), n, med, rmax))
 rows.sort()
 print('case ms part peak lit_px eq_radius_px blobs median_blob_radius_px max_r_from_centre_px')

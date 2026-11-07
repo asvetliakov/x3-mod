@@ -512,12 +512,15 @@ inline StreakCorners streak_corners(const HullView& f, const renderer::WeaponSpr
         dx = 1.f;
         dy = 0.f;
     }
-    float lit = v[0].b[3] * sc.hw * f.cam.m00 / v[0].a[2];
-    o.lit = lit > core::look::floor_lit_px ? lit : core::look::floor_lit_px;
-    const float rest_w = core::hull::spark_rest_w * o.lit, len_x = v[0].c[0] < 0.f ? -v[0].c[0] : v[0].c[0];
-    o.rest = (rest_w > core::look::floor_len_px ? rest_w : core::look::floor_len_px) * len_x;
+    // step 3's pixel mode (b.w < 0, the death embers): -b.w the lit width and |c.x| the length, pixels, no floors
+    const bool px_mode = v[0].b[3] < 0.f;
+    const float len_x = v[0].c[0] < 0.f ? -v[0].c[0] : v[0].c[0];
+    float lit = px_mode ? -v[0].b[3] : v[0].b[3] * sc.hw * f.cam.m00 / v[0].a[2];
+    o.lit = px_mode || lit > core::look::floor_lit_px ? lit : core::look::floor_lit_px;
+    const float rest_w = core::hull::spark_rest_w * o.lit;
+    o.rest = px_mode ? len_x : (rest_w > core::look::floor_len_px ? rest_w : core::look::floor_len_px) * len_x;
     const float cap = core::look::streak_cap * o.rest;
-    const float drawn = o.motion < o.rest ? o.rest : o.motion > cap ? cap : o.motion;
+    const float drawn = px_mode ? o.rest : o.motion < o.rest ? o.rest : o.motion > cap ? cap : o.motion;
     const float hw = 0.5f * o.lit, nx = -dy * hw, ny = dx * hw;
     for (unsigned c = 0; c < 4; ++c) {
         const bool at_head = v[c].c[0] > 0.f;
@@ -526,8 +529,8 @@ inline StreakCorners streak_corners(const HullView& f, const renderer::WeaponSpr
         o.y[c] = head.y + dy * along + ny * v[c].c[1];
         o.z[c] = at_head ? v[c].a[2] : v[c].b[2];
     }
-    const float r = v[0].a[3] * o.rest / (o.rest + o.motion);
-    o.radiance = r > v[0].c[2] ? r : v[0].c[2];
+    const float r = px_mode ? v[0].a[3] : v[0].a[3] * o.rest / (o.rest + o.motion);
+    o.radiance = px_mode || r > v[0].c[2] ? r : v[0].c[2];
     return o;
 }
 // The glow primitive's raster: the light sphere's exact screen rectangle (per axis the two tangent planes through the
@@ -581,7 +584,8 @@ inline void glow_quad(const HullView& f, const float c[3], float R, const float 
 // 1.5 x the near plane for the whole screen), each corner carrying the sphere, its look (T, E, age fraction, seed), its
 // tint (rgb, share; share < 0 smoke) and its disc (rotation, lobe seed, advection, the third octave's weight).
 inline void fireball_quad(const HullView& f, const float c[3], float R, const float rect[4], bool full, const float look[4],
-                          const float tint[4], const float disc[4], renderer::WeaponFireballVertex* out) noexcept {
+                          const float tint[4], const float disc[4], renderer::WeaponFireballVertex* out,
+                          float core = 0.f) noexcept {
     const float zq = full ? 1.5f * f.near_z : c[2] - R;
     const float kx = zq / f.cam.m00, ky = zq / f.cam.m11;
     for (unsigned k = 0; k < 4; ++k) {
@@ -594,6 +598,7 @@ inline void fireball_quad(const HullView& f, const float c[3], float R, const fl
         for (unsigned i = 0; i < 4; ++i) out[k].look[i] = look[i];
         for (unsigned i = 0; i < 4; ++i) out[k].tint[i] = tint[i];
         for (unsigned i = 0; i < 4; ++i) out[k].disc[i] = disc[i];
+        out[k].core = core;
     }
 }
 // sin and cos of a in [0, pi / 2] (the star's angle): Taylor terms about pi / 4 (error below 1e-8), no libm, no x87.
