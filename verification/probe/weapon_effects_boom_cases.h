@@ -940,9 +940,11 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     // recorded); death_rays_differ: two seeds' 360-bin profiles at 0.1 L correlate < 0.3. death_sparks_dense: the fighter
     // at 600 m at 0.3 L draws >= 100 sparks with their head on screen (the ember part's local maxima recorded), its drawn
     // lengths' std >= 0.4 of their mean. death_exposure_meter_shift: the production meter (src/renderer/exposure.cpp,
-    // Auto capped at +1.3 EV, gamma 2.2 decode) on the fighter at 300 m at 5120x1440 over black sky and over a uniform
-    // dim scene (engine 0.15, the cap holds alone) and a lit one (0.5): the fresh target moves <= 0.5 EV at 0.025 ...
-    // 0.5 L against the scene alone.
+    // Auto capped at +1.3 EV, gamma 2.2 decode) on the fighter at 300 m and at 120 m (enough bright tiles for the p99
+    // tile maximum: the highlight limit acts) at 5120x1440 over a uniform dim scene (engine 0.15, the cap holds alone)
+    // and a lit one (0.5): the fresh target moves <= 0.5 EV at 0.025 ... 0.5 L against the scene alone. Black sky is
+    // recorded, not gated: the meter scores an empty frame 0 EV and climbs to its cap on any signal, so that row measures
+    // the meter's black policy, not the death's highlight pull (coordinator decision 2026-11-07).
     {
         std::vector<double> core05;
         for (unsigned j = 0; j < 8; ++j) {
@@ -973,8 +975,18 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             latch(g);
             const Out o = at(g, 0.3f * Lf, boom::p_ember | boom::p_fragment);
             std::vector<double> lens;
-            for (unsigned q = 0; q < o.quads; ++q)
-                if (boom::sprites[4 * q].b[3] < 0.f) lens.push_back(std::fabs(boom::sprites[4 * q].c[0]));
+            // the sparks whose head is on screen (the pixel-mode quads but the fragments: wider than any spark's head)
+            unsigned on_screen = 0;
+            const ws::Camera cam = boom::view(g, 0, 16).cam;
+            const float spark_w_max = bm::ember_w_px_hi * float(g.h) / 1080.f + 0.5f;
+            for (unsigned q = 0; q < o.quads; ++q) {
+                const auto& v = boom::sprites[4 * q];
+                if (!(v.b[3] < 0.f)) continue;
+                lens.push_back(std::fabs(v.c[0]));
+                if (!(v.a[2] > 0.f) || -v.b[3] > spark_w_max) continue;
+                const float xs = cam.m00 * v.a[0] / v.a[2] + cam.m20, ys = cam.m11 * v.a[1] / v.a[2] + cam.m21;
+                on_screen += xs >= -1.f && xs <= 1.f && ys >= -1.f && ys <= 1.f;
+            }
             double mean = 0, sd = 0;
             for (double x : lens) mean += x / double(lens.size());
             for (double x : lens) sd += (x - mean) * (x - mean) / double(lens.size());
@@ -1000,9 +1012,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 }
             std::printf("EXPLOSION case=sparks tier=fighter_600m age_frac=0.3 count=%u drawn=%u on_screen=%u hidden=%u "
                         "image_heads=%u len_mean_px=%.1f len_std_px=%.1f std_over_mean=%.3f halvings=%u\n",
-                        ws::boom_spark_count(0x6d000u, bm::fighter), o.n.embers, o.n.embers_on_screen, o.n.embers_hidden,
+                        ws::boom_spark_count(0x6d000u, bm::fighter), o.n.embers, on_screen, o.n.embers_hidden,
                         heads, mean, sd, mean > 0 ? sd / mean : 0.0, o.n.spark_halvings);
-            report("death_sparks_dense", o.n.embers_on_screen >= 100 && mean > 0 && sd >= 0.4 * mean, "");
+            report("death_sparks_dense", on_screen >= 100 && mean > 0 && sd >= 0.4 * mean, "");
         }
         Target big;
         if (make_target(big, 5120, 1440)) {
@@ -1105,30 +1117,33 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const float bgs[3] = {0.f, 0.15f, 0.5f};
             float base_ev[3];
             for (unsigned b = 0; b < 3; ++b) base_ev[b] = meter_ev(empty, bgs[b]);
-            double worst = 0;
-            boom::clear();
-            fighter(300.0, 0x6d000u);
-            Out o;
-            unsigned t_ms = 0;
-            for (float frac : {0.025f, 0.05f, 0.1f, 0.2f, 0.3f, 0.5f}) {
-                const unsigned age = unsigned(frac * Lf + 0.5f);
-                for (;; t_ms += 16) {
-                    const unsigned now_age = t_ms < age ? t_ms : age;
-                    o = boom::build(boom::view(big, 1000 + now_age, 16));
-                    if (now_age == age) break;
+            double worst = 0, worst_black = 0; // the gate: dim and lit; black informational
+            for (const unsigned dist_m : {300u, 120u}) {
+                boom::clear();
+                fighter(double(dist_m), 0x6d000u);
+                Out o;
+                unsigned t_ms = 0;
+                for (float frac : {0.025f, 0.05f, 0.1f, 0.2f, 0.3f, 0.5f}) {
+                    const unsigned age = unsigned(frac * Lf + 0.5f);
+                    for (;; t_ms += 16) {
+                        const unsigned now_age = t_ms < age ? t_ms : age;
+                        o = boom::build(boom::view(big, 1000 + now_age, 16));
+                        if (now_age == age) break;
+                    }
+                    const std::vector<float> rgb = boom::render(pass, big, o, vb);
+                    float ev[3];
+                    for (unsigned b = 0; b < 3; ++b) {
+                        ev[b] = meter_ev(rgb, bgs[b]);
+                        double& w = b ? worst : worst_black;
+                        w = std::max(w, std::fabs(double(ev[b] - base_ev[b])));
+                    }
+                    std::printf("EXPLOSION case=meter tier=fighter_%um_5120 age_ms=%u ev_black=%.3f ev_dim=%.3f ev_lit=%.3f "
+                                "base=%.3f,%.3f,%.3f peak=%.2f\n",
+                                dist_m, age, double(ev[0]), double(ev[1]), double(ev[2]), double(base_ev[0]), double(base_ev[1]),
+                                double(base_ev[2]), double(boom::peak(boom::luma(rgb))));
                 }
-                const std::vector<float> rgb = boom::render(pass, big, o, vb);
-                float ev[3];
-                for (unsigned b = 0; b < 3; ++b) {
-                    ev[b] = meter_ev(rgb, bgs[b]);
-                    worst = std::max(worst, std::fabs(double(ev[b] - base_ev[b])));
-                }
-                std::printf("EXPLOSION case=meter tier=fighter_300m_5120 age_ms=%u ev_black=%.3f ev_dim=%.3f ev_lit=%.3f "
-                            "base=%.3f,%.3f,%.3f peak=%.2f\n",
-                            age, double(ev[0]), double(ev[1]), double(ev[2]), double(base_ev[0]), double(base_ev[1]),
-                            double(base_ev[2]), double(boom::peak(boom::luma(rgb))));
             }
-            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f\n", worst);
+            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f black_shift_ev=%.3f\n", worst, worst_black);
             report("death_exposure_meter_shift", worst <= 0.5, "");
             big.release();
         } else {

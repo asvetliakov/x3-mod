@@ -589,8 +589,9 @@ constexpr float tier_embers[5] = {32.f, 64.f, 128.f, 160.f, 12.f};
 // [tier_sparks_lo, tier_sparks_hi] (the secondaries' share secondary_embers each part of it); tier_embers stays the span of
 // the main set's indices the fragments come from (one in fragment_every of the first tier_embers), so the fragments keep
 // their count. A frame draws at most spark_frame_cap sparks and what the sprite room leaves: past either every second
-// spark of every death is shed, then every fourth (the half-count shed, spark_shed_max halvings at most; the fragments and
-// the long streaks keep their share).
+// spark of every death is shed, then every fourth (the half-count shed, spark_shed_max halvings at most; the long
+// streaks keep their share, the fragments (indices 7 mod fragment_every) their full count through three halvings and
+// half of it at the fourth).
 constexpr float tier_sparks_lo[5] = {120.f, 160.f, 240.f, 240.f, 40.f};
 constexpr float tier_sparks_hi[5] = {240.f, 300.f, 400.f, 400.f, 80.f};
 constexpr unsigned spark_frame_cap = 1024, spark_shed_max = 4;
@@ -621,7 +622,8 @@ constexpr float body_floor_px = 12.f;
 // 0.35 L (it was 2.5 (1 - x / 0.35): E_b (1 + 1.79) at 0.1 L).
 constexpr float core_gain = 5.0f, core_x = 0.35f, core_r = 0.3f, core_soft = 0.2f;
 // A big tier's body is born over its burning secondaries (the pre-roll): its core gain eases in over core_ramp_ms game ms
-// (three frames), so the main blast never doubles the frame's peak at once (death_big_no_pop_at_birth: 2.09 x without).
+// (three frames at 16 ms) or the record's latched three-frame floor when longer (SETA), so the main blast never doubles
+// the frame's peak at once (death_big_no_pop_at_birth: 2.09 x without).
 constexpr float core_ramp_ms = 48.f;
 // Section 14, the halo spike at birth: the sprite batch's flash kind (a white disc core and its e-folded halo) at the
 // body's centre biased to its front, its core spike_rf of R_f on screen clamped to spike_px_lo..hi px at 1080 rows (scaled
@@ -637,8 +639,8 @@ constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_ha
 // bases on one pixel stacked to E 50+ in the first frames), its width a hashed ray_w_px_lo..hi px at 1080 rows (scaled
 // with the rows; its half tapering to 1 - ray_taper at the tip, anti-aliased over a pixel), radiance along (1 - u)^ray_fall
 // faded in over its first eighth; its brightness a hashed
-// ray_e_lo..1 of ray_e x (1 - x / ray_x)^ray_pow, x the flicker: per ray a hashed period ray_flicker_lo..hi game ms, its
-// level the hash of the period's index blended smoothly into the next one's, 1 - ray_flicker x level; colour heat(T) on
+// ray_e_lo..1 of ray_e x (1 - x / ray_x)^ray_pow, x the flicker: per ray a hashed period ray_flicker_lo..hi game ms (at
+// least the frame step: under SETA a shorter period strobed), its level the hash of the period's index blended smoothly into the next one's, 1 - ray_flicker x level; colour heat(T) on
 // T ray_t0 at birth to ray_t1 at ray_x L; at the body's front (z - R(t)), SOFT ray_soft R_f against the lane; gone at
 // ray_x L. A frame draws at most ray_frame_cap ray quads (past it every second ray of every death, then every fourth:
 // the half-count shed, ray_shed_max halvings at most).
@@ -694,8 +696,9 @@ constexpr std::uint8_t shock_tiers = 0;
 // the body's erosion from ember_hide_x0 to ember_hide_x1 of L; its head ember_w_px_lo..hi px wide at 1080 rows, its length
 // a hashed spark_len_lo..hi px at 1080 rows (h^2: more short ones), one in spark_long_every a long thin streak of
 // spark_long_lo..hi px, spark_long_w px wide, its head x spark_long_e; lengths x min(1, R_f on screen / spark_ref_px at
-// 1080 rows), never under two widths; head radiance ember_e e^(-t / (ember_tau L)) T x vis on heat(spark_t0 T) (the
-// meter's limit: death_exposure_meter_shift <= 0.5 EV puts a head at most about 2.6 in engine space).
+// 1080 rows), never under two widths; head radiance ember_e e^(-t / (ember_tau L)) T x vis on heat(spark_t0 T) (ember_e
+// 2.6: a head decodes to 8.2 linear, the tonemap's white at the Auto cap [I, the meter's arithmetic];
+// death_exposure_meter_shift measures the production meter's shift on a fighter at 300 m and 120 m, not that limit).
 constexpr float ember_cones_lo = 4.f, ember_cones_hi = 6.f, ember_cone_deg = 25.f;
 constexpr float ember_v_x = 1.5f, ember_v_min = 40.f, ember_v_max = 300.f, ember_p0 = 0.3f;
 constexpr float ember_speed_lo = 0.5f, ember_speed_hi = 2.0f;
