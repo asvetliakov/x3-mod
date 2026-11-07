@@ -140,7 +140,17 @@ NAMESPACES = {
              'compose_cost_base', 'compose_cost_per', 'compose_cost_shared_base', 'compose_cost_shared_per',
              'wave_sheet_x', 'wave_sheet_span', 'wave_tongue', 'wave_tongue_contrast',
              'compose_soft_add',
-             'compose_core_x', 'compose_offset_min', 'compose_offset_cool'),
+             'compose_core_x', 'compose_offset_min', 'compose_offset_cool',
+             # section 14 (2026-11-07): the radiant core, the halo spike, the rays, the spark spray
+             'core_ramp_ms', 'spike_rf', 'spike_px_lo', 'spike_px_hi', 'spike_halo', 'spike_e', 'spike_x', 'spike_t',
+             'ray_n_lo', 'ray_n_hi', 'ray_jitter_lo', 'ray_jitter', 'ray_len_lo', 'ray_len_hi', 'ray_len_floor', 'ray_grow0',
+             'ray_grow_x', 'ray_start', 'ray_w_px_lo', 'ray_w_px_hi', 'ray_taper', 'ray_fall', 'ray_w_len_px', 'ray_e',
+             'ray_e_lo', 'ray_x', 'ray_pow', 'ray_flicker_lo', 'ray_flicker_hi', 'ray_flicker', 'ray_t0', 'ray_t1',
+             'ray_soft', 'ray_frame_cap', 'ray_shed_max', 'ray_element', 'tier_sparks_lo', 'tier_sparks_hi',
+             'spark_frame_cap', 'spark_shed_max', 'spark_r0_lo', 'spark_r0_span', 'spark_cone_share', 'spark_hide_soft',
+             'spark_len_lo', 'spark_len_hi', 'spark_long_every', 'spark_long_lo', 'spark_long_hi', 'spark_long_w',
+             'spark_long_e', 'spark_ref_px', 'spark_t0', 'spark_birth_x', 'spark_birth_now', 'spark_in_x', 'spark_in0',
+             'spark_cool_pow'),
     'muzzle': ('mode', 'class_disc', 'disc_halo_w', 'disc_halo_e', 'class_flame', 'class_star', 'star_arms', 'star_width_w',
                'star_e', 'bloom_w', 'bloom_e', 'vent_w', 'vent_ms', 'vent_e', 'afterglow_ms', 'afterglow_e', 'rise_ms',
                'class_smoke', 'class_glow', 'class_life', 'cap_core_rs', 'cap_flame_rs', 'endon_cos', 'breath', 'cluster_n0',
@@ -350,6 +360,8 @@ def _x(id, boom_tier, dist_m, radius_m, nested=1, seta=1, camera='side', own=Fal
 
 PRESETS = PRESETS + (
     _x('boom/fighter-m5-600m-side', 'fighter', 600, 12),
+    # section 14 (2026-11-07): the vanilla frames' size, ours beside the vanilla row (the radiant core, rays, sparks)
+    _x('boom/fighter-m5-300m-vanilla-compare', 'fighter', 300, 12),
     _x('boom/fighter-m3-2km-floor', 'fighter', 2000, 19),
     _x('boom/corvette-m6-1500m', 'corvette', 1500, 87),
     _x('boom/freighter-ts-1500m', 'corvette', 1500, 50),

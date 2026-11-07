@@ -41,6 +41,7 @@
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
+#include "../../src/renderer/exposure.h"
 #include <algorithm>
 #include <array>
 #include <cmath>

@@ -389,6 +389,73 @@ wave from above (the `-above` frames); CPU / GPU hash agreement (`compose_box_ho
 sphere-shell heat wave (D14), a flat ring sprite (the Praxis disc), the box rect alone, a separate surface-ring draw
 for swept hulls (a second 0.50 box), composing the big tiers only (the fighter is "too round" too), N up to 8.
 
+## 14. Radiance, rays and sparks (2026-11-07, the user's vanilla comparison; built the same day, not flown)
+
+The user set our fighter death (Run245: a soft mid-tone clumped body, a white core only to about 0.25 L, 32 embers hidden
+inside the body, no rays) beside three vanilla frames: a blown white-yellow core with hard radial rays and a thin
+orange-red fringe; mid-life a dense spray of 100-300 small yellow sparks and short streaks; late a dim core in a wide
+spark cloud about three fireball radii across. Four new elements of the death stage, every tier, scaled by R_f
+(constants `namespace boom` in `weapon_effects_core.h`, the stage `weapon_effects_boom.h`, the lab's `renderBoom`):
+
+1. **Radiant core [C, M].** The body's core gain 2.5 -> `core_gain` 5, decaying as (1 - x / `core_x`)^2 to 0.35 L
+   (linear kept the capital's core a white blob at 0.3 L in the frames): at 0.05 L E_b (1 + 3.67) = 7.0 x the column.
+   A big tier's body is born over its burning secondaries, so its gain eases in over `core_ramp_ms` 48 (three frames;
+   without it the capital's peak rose 2.09 x in one frame at P [M]). A **halo spike** at birth: the sprite batch's flash
+   kind at the body's front, its white core `spike_rf` 0.15 R_f on screen clamped to 4-8 px at 1080 rows, halo 4 core
+   radii, E `spike_e` 6 (1 - x / 0.12)^2, gone at 0.12 L.
+2. **Rays [C, M].** A new sprite kind (`weapon_sprite_ps.hlsl` depth.y 5; the vertex program passes it through): one
+   screen-space quad a ray from 0.3 R(t) out from the projected centre (the bases apart: 40 bases on one pixel stacked
+   to E 50+), 24-40 rays a death at stratified hashed angles turned per death, length 1.2-2.0 R_f (at least 1.6 R(t)),
+   growing from 0.7 over the first 0.06 L, width 1-3 px at 1080 rows x sqrt(max(1, length / 110 px)) tapering to 0.4 at
+   the tip, radiance (1 - u)^1.5 faded in over the first eighth, brightness a hashed 0.45-1 of `ray_e` 2.4 x (1 - x /
+   0.5)^3 x a per-ray flicker (period 30-60 game ms, the hash of the period's index blended smoothly into the next:
+   1 - 0.55 level), colour heat(0.9 -> 0.6), SOFT R_f against the lane, gone at 0.5 L. The exponent 3 replaced 1.5 after
+   the capital's frames (shafts of light at 0.3 L); the width's square root replaced a linear growth (shafts 9-27 px).
+   **Per-ray quads, not a ray sheet:** the sprite program grows 178 -> 201 slots (806 -> 895 words) [M], the starburst
+   alone costs 4.2 us on the 300 m fighter and 8.8 us on the close capital over the fence (28 quads) [M]; the sheet
+   variant (`verification/results/explosion-look/ray-sheet/`, three nearest rays a pixel) compiles to 464 slots [M] and
+   would charge its whole box, about 0.025 screens on the 300 m fighter and the full screen on the close capital, about
+   464 us by the 1 us a slot a screen rule [I].
+3. **Spark spray [C, M].** The embers become 120-240 sparks a fighter death (`tier_sparks_lo/hi`: corvette 160-300,
+   capital and station 240-400, missile 40-80; hashed per death; the secondaries' 8 each inside the count; the fragments
+   keep their count from the first `tier_embers`). Each leaves at a hashed delay within 0.05 L (15 % at once: 200 heads
+   on one ring stacked to E 50+), its radiance from 0.25 to whole over its first 0.02 L, from 0.55-1.0 R_0 out along its
+   own direction (visible at birth), 60 % in the seed cones and 40 % in uniform directions, speeds 0.5-2.0 v_e leaning
+   fast (sqrt of the hash), hidden only within 0.5 R(t) (soft over its inner fifth, the share fading with the erosion),
+   heads 1-2 px at 1080 rows, lengths 4-24 px (h^2) and one in 12 a 1 px streak of 40-80 px, the lengths x min(1, R_f on
+   screen / 28.8 px), E `ember_e` 2.6 e^(-t / 0.8 L) x (1 - t / life), T 1 - (t / life)^1.5 (yellow late), lives to 1.2 L
+   (x 1 +- 0.2) by thirds. `ember_e` 8 -> 2.6 is the meter's limit, not a look choice: at engine 2.6 a head decodes to 8.2
+   linear, past the tonemap's white at the Auto cap. **Shed by half-counts:** a frame draws at most 512 ray quads and
+   1,024 sparks within the sprite room the rays, stars and spikes leave; past either, every second index of every death
+   is left out, then every fourth (at most 3 / 4 halvings; an index is drawn when its low bits are all set, so the
+   fragments' and the long streaks' shares stay). 20 fighters at 600 m: 2 halvings, 787 sparks drawn, 2,624 shed [M].
+4. **Contrast [C].** No change: the body's rim erosion is the shared program's (not this step's), and the frames show
+   the blown core over the orange fringe with black around it; the glow and halo weights stay.
+
+The meter: `death_exposure_meter_shift` runs the production meter (`src/renderer/exposure.cpp`, Auto capped at +1.3 EV,
+gamma 2.2 decode) on the 300 m fighter at 5120x1440: the fresh target never moves (0.0 EV at 0.025-0.5 L over black, a
+dim 0.15 and a lit 0.5 scene) [M]: the bright pixels (frame peaks 35 / 33 / 20 at 50 / 100 / 200 ms) fill fewer than
+the 19 tiles of 1,840 the p99 tile maximum needs. A closer death (more tiles) would meet the highlight limit first: at
+engine 2.6 the limit is +1.0 EV, at 3.4 0 EV [I, the meter's arithmetic].
+
+| Gate (fixture, `EXPLOSION case=...` rows) | Built [M] | Bound |
+| --- | --- | --- |
+| `death_core_radiance` (fighter 600 m, 8 seeds) | median inside 0.2 R(t) at 0.05 L 6.98 | >= 6 |
+| `death_rays_starburst` (300 m, 5120x1440, 4 seeds) | angular peaks at 1.5 R(t) at 0.1 L 31-39 (the count's 30-38); 0 at 0.6 L | >= 24; <= 2 |
+| `death_rays_differ` | two deaths' 360-bin profiles correlate 0.10 | < 0.3 |
+| `death_sparks_dense` (600 m, 0.3 L) | 217 heads on screen (173 local maxima); lengths std / mean 1.0 | >= 100; >= 0.4 |
+| `death_exposure_meter_shift` (300 m, 5120x1440) | 0.0 EV | <= 0.5 |
+| `death_rays_sparks_budget_5120` | fighter 600 m 20.9-21.9 us, 20 fighters 42.4-50.6 us (0.05 / 0.1 / 0.3 L) | <= 60; <= 150 |
+| `death_budget_capital_close_5120` | worst 354.0 us | <= 450 |
+
+Gates changed with the law: `death_embers_hidden_in_body` (D5: at most half drawn at birth, none over the young body) now
+asks for some drawn at birth and >= 80 % once the births are out (41, then 207 of 221); `death_embers_lengths_and_widths`
+std >= 0.4 of the mean (was 0.2, the mean under 0.35 R_f); `death_no_pop_at_birth` and `death_big_no_pop_at_birth` leave
+the spike out with the star (worst rise 1.27 / 1.29). Frames: the lab (`boom/fighter-m5-300m-vanilla-compare` at 50 /
+150 / 400 / 900 / 1,500 ms beside the vanilla frame) and the native dump grids (fighter 300 / 600 m, the nested kill,
+the capital broadside through the main blast; clipped engine space and AgX from the 1080p frame) local. Kill: rays read
+as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads as noise -> `tier_sparks_hi` halved.
+
 ## Reproduce
 
 ```sh
@@ -397,6 +464,8 @@ python3 verification/results/explosion-look/size_derivation.py          # the pe
 X3M_WEAPON_EFFECTS_DUMP_MS=40,120,296,696 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \
   python3 verification/probe/run_weapon_effects.py --host native --dump <dir>
 python3 verification/results/weapon-effects-burst/measure.py <dir>
+python3 verification/results/explosion-look/ledger_rows.py --markdown --rays  # section 14's table from the native record
+python3 verification/results/explosion-look/ray-sheet/slots.py .             # the ray sheet's and the sprite program's slots
 ```
 
 ## Built numbers (step 3, 2026-11-07)

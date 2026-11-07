@@ -26,12 +26,12 @@ struct Out {
 };
 // Parts (the dump's and the gates' isolation): bit per element.
 // p_secondary: the big tiers' secondaries (each with its star, glow and embers); the hull light rides on p_glow.
-// p_wave: section 13.1's fire wave (capital, station).
+// p_wave: section 13.1's fire wave (capital, station). p_ray, p_spike: section 14's starburst and halo spike.
 enum Part : unsigned { p_flash = 1, p_body = 2, p_shock = 4, p_ember = 8, p_fragment = 16, p_glow = 32, p_smoke = 64,
-                       p_halo = 128, p_secondary = 256, p_wave = 512, p_all = 1023 };
-const char* const part_names[10] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo", "secondary",
-                                    "wave"};
-constexpr unsigned part_count = 10;
+                       p_halo = 128, p_secondary = 256, p_wave = 512, p_ray = 1024, p_spike = 2048, p_all = 4095 };
+const char* const part_names[12] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo", "secondary",
+                                    "wave", "ray", "spike"};
+constexpr unsigned part_count = 12;
 // Section 13.2's composed body in the builds (off: the single sphere; the drift-law ring gate measures one sphere), the
 // fixture's compose rows (force_n, force_shared, force_jets 0xff: the law's) and the box gate's growth.
 bool compose_on = true, force_shared = false;
@@ -52,6 +52,8 @@ float cap_screens = bm::budget_screens;
 ws::BoomTuning tuning(unsigned parts) {
     ws::BoomTuning t;
     t.star = parts & p_flash;
+    t.spike = parts & p_spike;
+    t.rays = parts & p_ray;
     t.body = parts & p_body;
     t.shock = parts & p_shock;
     t.embers = parts & p_ember;
@@ -613,7 +615,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         double first_px = 0, r0_px = 0, arm_px = 0;
         for (unsigned fi = 0; fi < 6; ++fi) {
             const ws::HullView v = boom::view(g, 1000 + 16 * fi, 16);
-            const Out o = boom::build(v, boom::p_all & ~unsigned(boom::p_flash));
+            const Out o = boom::build(v, boom::p_all & ~unsigned(boom::p_flash | boom::p_spike));
             const float p = boom::peak(boom::luma(boom::render(pass, g, o, v)));
             if (fi && prev_peak > 0.f && p > 2.f * prev_peak) rise_ok = false;
             prev_peak = p;
@@ -756,7 +758,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         double hist[2][36] = {};
         double t_at[3] = {};
         double far_px = 0, reach_px = 0, cap_px = 0, over_body = 0, len_mean = 0, len_std = 0, w_lo = 1e9, w_hi = 0;
-        unsigned at_birth = 0, drawn_06 = 0;
+        unsigned at_birth = 0, drawn_06 = 0, spread_drawn = 0;
         for (unsigned j = 0; j < 2; ++j) {
             boom::clear();
             wc::Event* e = fighter(600.0, j ? 0x6d001u : 0x6d000u);
@@ -815,6 +817,8 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             boom::clear();
             fighter(600.0, 0x6d000u);
             at_birth = boom::build(boom::view(g, 1000, 16), boom::p_ember).n.embers;
+            // section 14: the spray's births spread over spark_birth_x L: drawn once they are all out
+            spread_drawn = boom::build(boom::view(g, 1000 + unsigned(bm::spark_birth_x * Lf) + 16u, 16), boom::p_ember).n.embers;
         }
         double ma = 0, mb = 0, sab = 0, saa = 0, sbb = 0;
         for (unsigned b = 0; b < 36; ++b) {
@@ -827,7 +831,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             sbb += (hist[1][b] - mb) * (hist[1][b] - mb);
         }
         const double corr = saa > 0 && sbb > 0 ? sab / std::sqrt(saa * sbb) : 1.0;
-        const unsigned count = unsigned(bm::tier_embers[bm::fighter]);
+        const unsigned count = ws::boom_spark_count(0x6d000u, bm::fighter);
         std::printf("EXPLOSION case=embers tier=fighter_600m seed_correlation=%.3f T_03=%.2f T_07=%.2f T_11=%.2f far_px=%.1f "
                     "reach_px=%.1f lit_over_body_01=%.3f at_birth=%u count=%u drawn_06=%u len_mean_px=%.1f len_std_px=%.1f "
                     "cap_px=%.1f width_px=%.2f..%.2f\n",
@@ -836,9 +840,220 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         report("death_embers_random_and_cooling", corr < 0.5 && t_at[0] >= 0.75 && t_at[1] >= 0.5 && t_at[2] <= 0.3 &&
                                                        far_px <= 1.1 * bm::ember_speed_hi * reach_px + cap_px &&
                                                        far_px >= 0.9 * bm::ember_speed_lo * reach_px, "");
-        report("death_embers_hidden_in_body", over_body <= 0.15 && 2 * at_birth <= count, "");
-        report("death_embers_lengths_and_widths", drawn_06 > 0 && len_std >= 0.2 * len_mean && len_mean <= cap_px &&
+        // section 14 (2026-11-07): the spray visible from birth (hidden only within ember_hide_r R(t)); the pixel lengths
+        // and widths of the new law (the over-body share recorded, no longer bounded)
+        std::printf("EXPLOSION case=sparks_birth tier=fighter_600m at_birth=%u after_spread=%u count=%u\n", at_birth,
+                    spread_drawn, count);
+        report("death_embers_hidden_in_body", at_birth > 0 && 10 * spread_drawn >= 8 * (count - count / 8u), "");
+        report("death_embers_lengths_and_widths", drawn_06 > 0 && len_std >= 0.4 * len_mean &&
+                                                      len_mean <= double(bm::spark_long_hi) &&
                                                       w_lo >= bm::ember_w_px_lo - 1e-3 && w_hi <= 3.0 + 1e-3, "");
+    }
+    // ---- 14. Section 14 (2026-11-07, the vanilla frames): the radiant core, the starburst, the spark spray, the meter.
+    // death_core_radiance: the body part's median radiance (the max channel) inside 0.2 R(t) at 0.05 L >= 6 (the fighter
+    // at 600 m, median of 8 seeds). death_rays_starburst: the ray part alone about the screen centre (the fighter at
+    // 300 m, 5120x1440, 4 seeds): the angular peaks of the circle at 1.5 R(t) (4096 bilinear samples, a peak above 0.1 of
+    // the 0.1 L profile's maximum, >= its left and > its right neighbour) >= 24 at 0.1 L and <= 2 at 0.6 L (600 m
+    // recorded); death_rays_differ: two seeds' 360-bin profiles at 0.1 L correlate < 0.3. death_sparks_dense: the fighter
+    // at 600 m at 0.3 L draws >= 100 sparks with their head on screen (the ember part's local maxima recorded), its drawn
+    // lengths' std >= 0.4 of their mean. death_exposure_meter_shift: the production meter (src/renderer/exposure.cpp,
+    // Auto capped at +1.3 EV, gamma 2.2 decode) on the fighter at 300 m at 5120x1440 over black sky and over a uniform
+    // dim scene (engine 0.15, the cap holds alone) and a lit one (0.5): the fresh target moves <= 0.5 EV at 0.025 ...
+    // 0.5 L against the scene alone.
+    {
+        std::vector<double> core05;
+        for (unsigned j = 0; j < 8; ++j) {
+            boom::clear();
+            wc::Event* e = fighter(600.0, 0x6c400u + 977u * (j + 1));
+            latch(g);
+            const float R_f = ws::boom_r_f_m(*e) * m, R0 = 0.5f * float(e->radius) * wc::world_scale;
+            const Out o = at(g, 0.05f * Lf, boom::p_body);
+            float c[3];
+            boom::body_centre(o, c);
+            const classes::burst::Disc d =
+                boom::disc(g, boom::view(g, 0, 16), c, ws::boom_body_radius(bm::fighter, R_f, R0, 0.05f * Lf));
+            const std::vector<float> l = boom::luma(boom::render(pass, g, o, boom::view(g, 0, 16)));
+            std::vector<double> in;
+            for (unsigned y = 0; y < g.h; ++y)
+                for (unsigned x = 0; x < g.w; ++x)
+                    if (std::hypot(x + 0.5 - d.x, y + 0.5 - d.y) <= 0.2 * d.R) in.push_back(l[std::size_t(y) * g.w + x]);
+            core05.push_back(boom::median(in));
+        }
+        std::printf("EXPLOSION case=core_radiance tier=fighter_600m median_02R_005=%.3f min=%.3f max=%.3f core_gain=%.2f\n",
+                    boom::median(core05), *std::min_element(core05.begin(), core05.end()),
+                    *std::max_element(core05.begin(), core05.end()), double(bm::core_gain));
+        report("death_core_radiance", boom::median(core05) >= 6.0, "");
+        // the sparks at 0.3 L (600 m, 1080p)
+        {
+            boom::clear();
+            fighter(600.0, 0x6d000u);
+            latch(g);
+            const Out o = at(g, 0.3f * Lf, boom::p_ember | boom::p_fragment);
+            std::vector<double> lens;
+            for (unsigned q = 0; q < o.quads; ++q)
+                if (boom::sprites[4 * q].b[3] < 0.f) lens.push_back(std::fabs(boom::sprites[4 * q].c[0]));
+            double mean = 0, sd = 0;
+            for (double x : lens) mean += x / double(lens.size());
+            for (double x : lens) sd += (x - mean) * (x - mean) / double(lens.size());
+            sd = std::sqrt(sd);
+            const std::vector<float> l = boom::luma(boom::render(pass, g, o, boom::view(g, 0, 16)));
+            const float pk = boom::peak(l);
+            unsigned heads = 0;
+            for (unsigned y = 1; y + 1 < g.h; ++y)
+                for (unsigned x = 1; x + 1 < g.w; ++x) {
+                    const float v = l[std::size_t(y) * g.w + x];
+                    if (!(v > 0.1f * pk)) continue;
+                    bool top = true;
+                    for (int dy = -1; dy <= 1 && top; ++dy)
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            if (!dx && !dy) continue;
+                            const float w = l[std::size_t(int(y) + dy) * g.w + unsigned(int(x) + dx)];
+                            if (w > v || (w == v && (dy < 0 || (dy == 0 && dx < 0)))) {
+                                top = false;
+                                break;
+                            }
+                        }
+                    heads += top;
+                }
+            std::printf("EXPLOSION case=sparks tier=fighter_600m age_frac=0.3 count=%u drawn=%u on_screen=%u hidden=%u "
+                        "image_heads=%u len_mean_px=%.1f len_std_px=%.1f std_over_mean=%.3f halvings=%u\n",
+                        ws::boom_spark_count(0x6d000u, bm::fighter), o.n.embers, o.n.embers_on_screen, o.n.embers_hidden,
+                        heads, mean, sd, mean > 0 ? sd / mean : 0.0, o.n.spark_halvings);
+            report("death_sparks_dense", o.n.embers_on_screen >= 100 && mean > 0 && sd >= 0.4 * mean, "");
+        }
+        Target big;
+        if (make_target(big, 5120, 1440)) {
+            draw_lane(big, 0.f, -1.f);
+            const ws::HullView vb = boom::view(big, 0, 16);
+            const double kx = 0.5 * big.w * double(vb.cam.m00);
+            // the ray part's circle at 1.5 R(t) about the screen centre: 4096 bilinear samples
+            const auto circle = [&](std::uint32_t seq, double z, float frac, unsigned* rays) {
+                boom::clear();
+                wc::Event* e = fighter(z, seq);
+                latch(big);
+                const Out o = at(big, frac * Lf, boom::p_ray);
+                if (rays) *rays = o.n.rays;
+                const std::vector<float> l = boom::luma(boom::render(pass, big, o, vb));
+                const float R_f = ws::boom_r_f_m(*e) * m, R0 = 0.5f * float(e->radius) * wc::world_scale;
+                const double r = 1.5 * ws::boom_body_radius(bm::fighter, R_f, R0, frac * Lf) * kx / (z * m);
+                std::vector<double> s(4096);
+                for (unsigned i = 0; i < 4096; ++i) {
+                    const double a = 6.283185307 * (i + 0.5) / 4096.0;
+                    const double x = 0.5 * big.w + r * std::cos(a) - 0.5, y = 0.5 * big.h + r * std::sin(a) - 0.5;
+                    const int x0 = int(std::floor(x)), y0 = int(std::floor(y));
+                    const double fx = x - x0, fy = y - y0;
+                    const auto at_px = [&](int xx, int yy) {
+                        return xx < 0 || yy < 0 || xx >= int(big.w) || yy >= int(big.h) ? 0.0
+                                                                                         : double(l[std::size_t(yy) * big.w + xx]);
+                    };
+                    s[i] = (1 - fy) * ((1 - fx) * at_px(x0, y0) + fx * at_px(x0 + 1, y0)) +
+                           fy * ((1 - fx) * at_px(x0, y0 + 1) + fx * at_px(x0 + 1, y0 + 1));
+                }
+                return s;
+            };
+            const auto peaks = [](const std::vector<double>& s, double thr) {
+                unsigned n = 0;
+                const std::size_t N = s.size();
+                for (std::size_t i = 0; i < N; ++i)
+                    n += s[i] > thr && s[i] >= s[(i + N - 1) % N] && s[i] > s[(i + 1) % N];
+                return n;
+            };
+            bool rays_ok = true;
+            unsigned worst01 = 1000, worst06 = 0;
+            for (double z : {300.0, 600.0})
+                for (unsigned j = 0; j < 4; ++j) {
+                    const std::uint32_t seq = 0x6f100u + 131u * j;
+                    unsigned drawn = 0;
+                    const std::vector<double> a = circle(seq, z, 0.1f, &drawn), b = circle(seq, z, 0.6f, nullptr);
+                    const double mx = *std::max_element(a.begin(), a.end());
+                    const unsigned pa = peaks(a, 0.1 * mx), pb = peaks(b, 0.1 * mx);
+                    float turn;
+                    std::printf("EXPLOSION case=rays tier=fighter z_m=%.0f seed=%u rays=%u drawn=%u peaks_01=%u peaks_06=%u "
+                                "max_01=%.3f\n", z, j, ws::boom_ray_count(seq, &turn), drawn, pa, pb, mx);
+                    if (z < 400.0) {
+                        worst01 = std::min(worst01, pa);
+                        worst06 = std::max(worst06, pb);
+                        rays_ok = rays_ok && pa >= 24 && pb <= 2;
+                    }
+                }
+            // two deaths' starbursts: 360-bin profiles at 0.1 L (300 m)
+            double corr = 1.0;
+            {
+                const std::vector<double> a = circle(0x6f100u, 300.0, 0.1f, nullptr), b = circle(0x6f283u, 300.0, 0.1f, nullptr);
+                double ha[360] = {}, hb[360] = {}, ma = 0, mb = 0, sab = 0, saa = 0, sbb = 0;
+                for (unsigned i = 0; i < 4096; ++i) {
+                    ha[i * 360 / 4096] += a[i];
+                    hb[i * 360 / 4096] += b[i];
+                }
+                for (unsigned q = 0; q < 360; ++q) {
+                    ma += ha[q] / 360;
+                    mb += hb[q] / 360;
+                }
+                for (unsigned q = 0; q < 360; ++q) {
+                    sab += (ha[q] - ma) * (hb[q] - mb);
+                    saa += (ha[q] - ma) * (ha[q] - ma);
+                    sbb += (hb[q] - mb) * (hb[q] - mb);
+                }
+                corr = saa > 0 && sbb > 0 ? sab / std::sqrt(saa * sbb) : 1.0;
+            }
+            std::printf("EXPLOSION case=rays_summary worst_peaks_01=%u worst_peaks_06=%u seed_correlation=%.3f\n", worst01,
+                        worst06, corr);
+            report("death_rays_starburst", rays_ok, "");
+            report("death_rays_differ", corr < 0.3, "");
+            // the meter: the production statistic and target on the frame plus a uniform scene in engine space
+            const auto meter_ev = [&](const std::vector<float>& rgb, float bg) {
+                rr::ExposureParams pm;
+                pm.ev_max = 1.3f; // the production Auto cap (capture.cpp)
+                const std::size_t n = std::size_t(big.w) * big.h;
+                std::vector<float> mean(n), mx(n), scratch(std::size_t((big.w + 3) / 4) * ((big.h + 3) / 4));
+                for (std::size_t i = 0; i < n; ++i) {
+                    const float c[3] = {rgb[3 * i] + bg, rgb[3 * i + 1] + bg, rgb[3 * i + 2] + bg};
+                    mean[i] = mx[i] = rr::meter_level0(c, rr::ExposureDecode::Gamma22, pm);
+                }
+                unsigned tw = big.w, th = big.h;
+                rr::reduce_chain(mean.data(), mx.data(), scratch.data(), tw, th, 4, rr::kMeterTileMax);
+                std::vector<float> wts(std::size_t(tw) * th);
+                rr::tile_weights(wts.data(), tw, th, pm.meter_edge_weight);
+                std::vector<rr::TileSample> ts(std::size_t(tw) * th);
+                const rr::MeterStatistics st = rr::meter_statistics(mean.data(), mx.data(), wts.data(), tw * th, ts.data(), pm);
+                return rr::exposure_target(st, pm).ev_target;
+            };
+            const std::vector<float> empty(std::size_t(big.w) * big.h * 3, 0.f);
+            const float bgs[3] = {0.f, 0.15f, 0.5f};
+            float base_ev[3];
+            for (unsigned b = 0; b < 3; ++b) base_ev[b] = meter_ev(empty, bgs[b]);
+            double worst = 0;
+            boom::clear();
+            fighter(300.0, 0x6d000u);
+            Out o;
+            unsigned t_ms = 0;
+            for (float frac : {0.025f, 0.05f, 0.1f, 0.2f, 0.3f, 0.5f}) {
+                const unsigned age = unsigned(frac * Lf + 0.5f);
+                for (;; t_ms += 16) {
+                    const unsigned now_age = t_ms < age ? t_ms : age;
+                    o = boom::build(boom::view(big, 1000 + now_age, 16));
+                    if (now_age == age) break;
+                }
+                const std::vector<float> rgb = boom::render(pass, big, o, vb);
+                float ev[3];
+                for (unsigned b = 0; b < 3; ++b) {
+                    ev[b] = meter_ev(rgb, bgs[b]);
+                    worst = std::max(worst, std::fabs(double(ev[b] - base_ev[b])));
+                }
+                std::printf("EXPLOSION case=meter tier=fighter_300m_5120 age_ms=%u ev_black=%.3f ev_dim=%.3f ev_lit=%.3f "
+                            "base=%.3f,%.3f,%.3f peak=%.2f\n",
+                            age, double(ev[0]), double(ev[1]), double(ev[2]), double(base_ev[0]), double(base_ev[1]),
+                            double(base_ev[2]), double(boom::peak(boom::luma(rgb))));
+            }
+            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f\n", worst);
+            report("death_exposure_meter_shift", worst <= 0.5, "");
+            big.release();
+        } else {
+            report("death_rays_starburst", false, "target");
+            report("death_rays_differ", false, "target");
+            report("death_exposure_meter_shift", false, "target");
+        }
+        draw_lane(g, 0.f, -1.f);
     }
     // ---- 9. death_glow_is_the_bodys_light (over a hull plane 20 m behind the fighter; the burst's law, decision
     // 2026-11-07): the glow's peak <= 0.4 E_b; its 10 % equivalent radius <= min(glow_r_x R(t), glow_r_max R_f) f / z;
@@ -936,10 +1151,14 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         latch(g);
         draw_lane(g, 605.f * m, 1.f);
         bool zero = true;
-        const float lives[10] = {bm::star_ms / Lf + 0.03f, 1.0f, bm::shock_end + 0.01f,
-                                bm::ember_life[2] * (1.f + 0.5f * bm::ember_stagger) + 0.01f,
-                                bm::fragment_life * (1.f + 0.5f * bm::ember_stagger) + 0.01f, 1.0f,
-                                bm::smoke_t0 + bm::smoke_span + 0.01f, 1.0f, 1.0f, bm::wave_life_x + 0.01f};
+        // section 14: the rays end at ray_x L, the halo spike at spike_x L
+        const float lives[boom::part_count] = {bm::star_ms / Lf + 0.03f, 1.0f,
+                                               bm::shock_end + 0.01f,
+                                               bm::ember_life[2] * (1.f + 0.5f * bm::ember_stagger) + bm::spark_birth_x + 0.01f,
+                                               bm::fragment_life * (1.f + 0.5f * bm::ember_stagger) + bm::spark_birth_x + 0.01f,
+                                               1.0f,
+                                               bm::smoke_t0 + bm::smoke_span + 0.01f, 1.0f, 1.0f, bm::wave_life_x + 0.01f,
+                                               bm::ray_x + 0.01f, bm::spike_x + 0.01f};
         for (unsigned p = 0; p < boom::part_count; ++p) {
             const Out o = at(g, lives[p] * Lf, 1u << p);
             const unsigned n = o.quads + o.glows + o.bodies + o.smokes + o.darks + o.shocks + o.halos;
@@ -1239,6 +1458,34 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 for (unsigned k = 0; k < 20; ++k)
                     fighter(600.0 + 20.0 * (k % 5), 0x6f000u + 7u * k, -200.0 + 100.0 * (k / 5) + 13.0 * (k % 5));
             });
+            // section 14: the rays' and the sparks' ages (0.05 L: the starburst, the spike and the core; 0.3 L: the spray), the
+            // starburst alone (the per-ray quads) on the 300 m fighter and the close capital at its body's birth
+            const double f600r = run_case("fighter_600m_rays", boom::p_all, 0.05f, [&] { fighter(600.0); });
+            const double f600s = run_case("fighter_600m_sparks", boom::p_all, 0.3f, [&] { fighter(600.0); });
+            const auto twenty = [&] {
+                for (unsigned k = 0; k < 20; ++k)
+                    fighter(600.0 + 20.0 * (k % 5), 0x6f000u + 7u * k, -200.0 + 100.0 * (k / 5) + 13.0 * (k % 5));
+            };
+            const double f20r = run_case("fighters_20_600m_rays", boom::p_all, 0.05f, twenty);
+            const double f20s = run_case("fighters_20_600m_sparks", boom::p_all, 0.3f, twenty);
+            std::printf("EXPLOSION_TIMING width=%u height=%u case=spark_shed twenty_halvings=%u twenty_sparks=%u twenty_shed=%u "
+                        "twenty_rays=%u\n",
+                        size.first, size.second, last_case.n.spark_halvings, last_case.n.embers, last_case.n.sparks_shed,
+                        last_case.n.rays);
+            run_case("rays_alone_fighter_300m", boom::p_ray, 0.1f, [&] { fighter(300.0); });
+            const double rays_close = run_case("rays_alone_capital_close_720m", boom::p_ray,
+                                               (bm::tier_preroll_ms[bm::capital] + 0.05f * bm::tier_life_ms[bm::capital]) / Lf,
+                                               [&] {
+                                                   wc::Event* e = boom::add(bm::capital, 1000, 0, 0, 720.0, 1288.0);
+                                                   e->table = 7;
+                                                   boom::broadside(e);
+                                               });
+            if (size.first == 5120) {
+                std::snprintf(detail, sizeof detail, "fighter=%.1f,%.1f,%.1f twenty=%.1f,%.1f,%.1f rays_close=%.1f", f600, f600r,
+                              f600s, f20, f20r, f20s, rays_close);
+                report("death_rays_sparks_budget_5120", std::max(f600, std::max(f600r, f600s)) <= 60.0 &&
+                                                            std::max(f20, std::max(f20r, f20s)) <= 150.0, detail);
+            }
             const double mis = run_case("missile_300m", boom::p_all, 0.1f, [&] { boom::add(bm::missile, 1000, 0, 0, 300.0, 3.0); });
             const double nest = run_case("nested_3_fighters", boom::p_all, 0.1f, [&] {
                 for (int k = -1; k <= 1; ++k) fighter(600.0, 0x6e000u + 31u * unsigned(k + 1), 60.0 * k);
@@ -1505,14 +1752,15 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const float R0 = bm::tier_r0_obj[b.tier] * float(e->radius) * wc::world_scale + bm::tier_r0_f[b.tier] * R_f;
                 float prev_peak = 0.f;
                 bool rise_ok = true;
-                double first = 0, arm_px = 0;
+                double first = 0, arm_px = 0, worst_rise = 0;
                 const unsigned start = P > 32.f ? unsigned(P) - 32u : 0u;
                 for (unsigned a = 0; a <= unsigned(P) + 32; a += 16) {
                     const ws::HullView v = boom::view(g, 1000 + a, 16);
-                    const Out o = boom::build(v, boom::p_all & ~unsigned(boom::p_flash));
+                    const Out o = boom::build(v, boom::p_all & ~unsigned(boom::p_flash | boom::p_spike));
                     if (a < start) continue;
                     const float pk = boom::peak(boom::luma(boom::render(pass, g, o, v)));
                     if (a > start && prev_peak > 0.f && pk > 2.f * prev_peak) rise_ok = false;
+                    if (a > start && prev_peak > 0.f) worst_rise = std::max(worst_rise, double(pk / prev_peak));
                     prev_peak = pk;
                     if (!first && o.n.bodies) {
                         float c[3];
@@ -1527,8 +1775,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         arm_px = std::max(arm_px, double(boom::sprites[4 * q].b[3]) * 0.5 * g.w * v.cam.m00 /
                                                       double(boom::sprites[4 * q].a[3]));
                 }
-                std::printf("EXPLOSION case=no_pop tier=%s first_over_r0=%.3f rise_ok=%u star_half_px=%.1f cap_px=%.1f\n",
-                            b.name, first, unsigned(rise_ok), arm_px, double(bm::star_cap_h) * g.h);
+                std::printf("EXPLOSION case=no_pop tier=%s first_over_r0=%.3f rise_ok=%u worst_rise=%.3f star_half_px=%.1f "
+                            "cap_px=%.1f\n",
+                            b.name, first, unsigned(rise_ok), worst_rise, arm_px, double(bm::star_cap_h) * g.h);
                 ok = ok && first >= 0.95 && rise_ok && arm_px <= double(bm::star_cap_h) * g.h + 3.0;
             }
             report("death_big_no_pop_at_birth", ok, "");
@@ -2859,9 +3108,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const char* list = std::getenv("X3M_WEAPON_EFFECTS_DUMP_CASES");
         struct Case {
             const char* name;
-            unsigned kind; // 0 fighter 600 m, 1 missile 300 m, 2 nested three, 3 eye inside, 4 fighter over a hull
+            unsigned kind; // 0 fighter 600 m, 1 missile 300 m, 2 nested three, 3 eye inside, 4 fighter over a hull,
+                           // 5 fighter 300 m (section 14: the vanilla frames' size)
         } cases[] = {{"boom_fighter_600m", 0}, {"boom_missile_300m", 1}, {"boom_nested_3_fighters", 2},
-                     {"boom_eye_inside_fighter", 3}, {"boom_fighter_600m_hull", 4}};
+                     {"boom_eye_inside_fighter", 3}, {"boom_fighter_600m_hull", 4}, {"boom_fighter_300m", 5}};
         unsigned written = 0, failed = 0;
         char path[1024];
         // The big tiers over the scene model (the dying hull at the carrier's alpha, its depth in the lane), at the note's
@@ -2913,6 +3163,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     const bool ok = SUCCEEDED(hr) && !rgb.empty() &&
                                     boom::write_ppm(path, rgb, tt.w, tt.h, unsigned(k.cw * s), unsigned(k.ch * s));
                     ok ? ++written : ++failed;
+                    if (size.first == 1920 && SUCCEEDED(hr) && !rgb.empty()) { // section 14: the frame as PFM (AgX offline)
+                        std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u.pfm", dir, k.name, size.first, size.second, age);
+                        boom::write_pfm(path, rgb, tt.w, tt.h) ? ++written : ++failed;
+                    }
                     std::printf("EXPLOSION_DUMP case=%s width=%u height=%u age_ms=%u bodies=%u secondaries=%u quads=%u "
                                 "glows=%u smokes=%u shocks=%u darks=%u waves=%u wave_strips=%u composed=%u hull_alpha=%.2f "
                                 "screens=%.3f written=%u\n",
@@ -2937,9 +3191,13 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             for (const Case& k : cases) {
                 if (!dump::listed(list, k.name)) continue;
                 const float L = k.kind == 1 ? Lm : Lf;
-                for (float frac : {0.1f, 0.3f, 0.6f, 0.8f, 1.0f}) {
+                // section 14: the vanilla comparison's ages (50 / 150 / 400 / 900 / 1,500 ms of the fighter) as frames only,
+                // the parts at the note's five
+                for (float frac : {0.025f, 0.075f, 0.1f, 0.2f, 0.3f, 0.45f, 0.6f, 0.75f, 0.8f, 1.0f}) {
+                    const bool parts_too = frac == 0.1f || frac == 0.3f || frac == 0.6f || frac == 0.8f || frac == 1.0f;
                     boom::clear();
                     if (k.kind == 0 || k.kind == 4) fighter(600.0);
+                    if (k.kind == 5) fighter(300.0);
                     if (k.kind == 1) boom::add(bm::missile, 1000, 0, 0, 300.0, 3.0);
                     if (k.kind == 2)
                         for (int q = -1; q <= 1; ++q) fighter(600.0, 0x6e000u + 31u * unsigned(q + 1), 60.0 * q);
@@ -2959,11 +3217,16 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u.ppm", dir, k.name, size.first, size.second, age);
                     const bool ok = SUCCEEDED(hr) && !rgb.empty() && boom::write_ppm(path, rgb, tt.w, tt.h);
                     ok ? ++written : ++failed;
+                    // section 14: the frame itself as PFM at 1080 rows (the HDR path's view: decode, exposure, AgX offline)
+                    if (size.first == 1920 && SUCCEEDED(hr) && !rgb.empty()) {
+                        std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u.pfm", dir, k.name, size.first, size.second, age);
+                        boom::write_pfm(path, rgb, tt.w, tt.h) ? ++written : ++failed;
+                    }
                     std::printf("EXPLOSION_DUMP case=%s width=%u height=%u age_ms=%u bodies=%u quads=%u glows=%u smokes=%u "
                                 "shocks=%u darks=%u screens=%.3f written=%u\n",
                                 k.name, size.first, size.second, age, o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.darks,
                                 double(o.n.screens), unsigned(ok));
-                    if (size.first != 1920) continue;
+                    if (size.first != 1920 || !parts_too) continue;
                     for (unsigned p = 0; p < boom::part_count; ++p) {
                         if ((1u << p) == boom::p_secondary || (1u << p) == boom::p_wave) continue; // none on these tiers
                         // the part's own build at the same state (the switches select what the frame draws)
