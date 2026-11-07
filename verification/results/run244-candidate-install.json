@@ -1,0 +1,28 @@
+{
+ "run": 244,
+ "what": "weapon effects step 3: death explosions for fighters and missiles (corvettes, capitals, stations, asteroids native), on top of the unflown Run243 bolts/muzzle and Run242 hull look; AP 243 A folded into AP 244 A",
+ "commit": "f019c1e507a8704f708ca851b25c54ce44f6976a",
+ "branch": "effects",
+ "candidate_record": "verification/results/run244-candidate-build.json",
+ "dll_sha256": "0b42aa18c655cc29ba0de51e61f0fd85c8d1e948a1f32012da1cf8f202b02cec",
+ "dll_bytes": 65599199,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run244/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 243,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run243",
+  "sha256": "d1f1da3bd798d6720fb4609ab9fc482cd62b726f546498defb625a451df1db47",
+  "ini_copy": "C:\\X3\\x3m.ini.run243",
+  "table_copy": "C:\\X3\\x3m\\weapon_effects.json.run243 (19573464, schema 2)"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "one line changed from run 243: weapon_effects = shields,hull,bolts,explosions",
+ "tables": {
+  "weapon_effects.json": "19573464cd2d09ac83ae292b9ac6a028d09d1ab191439231d49765fcc9675533 (unchanged)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "lab": "C:\\X3\\x3m\\weapon_effects_lab.html copied from tools/effects (Boom tab added)",
+ "dry_run": "exit 0",
+ "installed_at": "2026-11-07T11:00",
+ "open": "AP 244 A",
+ "host_note": "session-only keep-awake process still running from C:\\X3\\x3m\\keepawake-session.ps1 (started 04:43; kill it when done)"
+}

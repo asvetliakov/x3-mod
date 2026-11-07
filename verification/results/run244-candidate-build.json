@@ -1,0 +1,48 @@
+{
+  "recorded_utc": "2026-11-07T11:00:00+00:00",
+  "run": 244,
+  "source": {
+    "commit": "f019c1e507a8704f708ca851b25c54ce44f6976a",
+    "head": "f019c1e507a8704f708ca851b25c54ce44f6976a",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (merge of explosions step 3 9e20ff2ee into effects d0c96e637)",
+    "marker": "X3M_SOURCE_COMMIT=f019c1e507a8704f708ca851b25c54ce44f6976a",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run244/d3d9.dll",
+    "stripped": false,
+    "sha256": "0b42aa18c655cc29ba0de51e61f0fd85c8d1e948a1f32012da1cf8f202b02cec",
+    "bytes": 65599199
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run244",
+    "command": "cmake -S . -B build-run244 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run244 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run244.configure.log",
+      "build-run244.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 1181,
+    "violations": 0
+  },
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 287/0, 28 death gates), hook-summary.json (132/0, 19 death gates)} recorded in the explosion worktree on the committed sources (9e20ff2ee content); frames: scratchpad stage-dump-boom-v2 and -v4 grids (fighter 600 m, missile 300 m, nested kill, eye inside, hull behind) viewed by the main session",
+    "host_tests": "test_weapon_effects_* 97 OK on the merged tree; programs --check, lab --check, schema.py --check, generate.py --check PASS",
+    "reviews": "docs/verification/weapon-effects.md section Explosions (step 3) (one review round at high: no blocker, 6 should-fix and notes applied; the radial-zoom drift attempt reverted and recorded); design explosion-look.md with Built numbers (step 3) and decisions D1-D8"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: exit 0 (ini weapon_effects = shields,hull,bolts,explosions)"
+}
