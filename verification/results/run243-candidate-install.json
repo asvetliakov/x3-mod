@@ -1,0 +1,28 @@
+{
+ "run": 243,
+ "what": "weapon effects step 4: capsule bolts and per-class muzzle flash in the late bullet draw (mode shields,hull,bolts); the Run242 hull-hit look unchanged; AP 242 A folded into AP 243 A",
+ "commit": "f68fef2b8622a651c7251b7adb9ba7f043064e30",
+ "branch": "effects",
+ "candidate_record": "verification/results/run243-candidate-build.json",
+ "dll_sha256": "d1f1da3bd798d6720fb4609ab9fc482cd62b726f546498defb625a451df1db47",
+ "dll_bytes": 65405319,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run243/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 242,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run242",
+  "sha256": "8ca628193859c326c47f91afae94a81abeaa8563933f75b07eb47c7543abf84f",
+  "ini_copy": "C:\\X3\\x3m.ini.run242",
+  "table_copy": "C:\\X3\\x3m\\weapon_effects.json.run242 (45e42190, schema 1)"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "one line changed from run 242: weapon_effects = shields,hull,bolts (was shields,hull); screen_emission_additive stays at its default 2 (the bolts need the additive route)",
+ "tables": {
+  "weapon_effects.json": "19573464cd2d09ac83ae292b9ac6a028d09d1ab191439231d49765fcc9675533 (regenerated, schema 2: mount_tier fighter 18 / corvette 14 / capital 6, range_m per row, mount_fallback 0; 38 bullet rows, 36 missile rows, 22 overrides)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "lab": "C:\\X3\\x3m\\weapon_effects_lab.html copied from tools/effects (Bolts and Muzzle tabs, the muzzle view rule, own_side scene)",
+ "dry_run": "ok, weapon_effects null, weapon_effects_table null",
+ "installed_at": "2026-11-07T08:20",
+ "open": "AP 243 A",
+ "host_note": "session-only keep-awake process still running from C:\\X3\\x3m\\keepawake-session.ps1 (started 04:43; kill it when done)"
+}

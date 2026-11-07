@@ -1,0 +1,48 @@
+{
+  "recorded_utc": "2026-11-07T08:20:00+00:00",
+  "run": 243,
+  "source": {
+    "commit": "f68fef2b8622a651c7251b7adb9ba7f043064e30",
+    "head": "5b09aa8dd (one commit after the build commit: tools/config/schema.py and assets/x3m.ini comment text only, config_schema_inc.h unchanged, not compiled into the DLL)",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (merge of bolts and muzzle dd5fb09aa into effects a7da14fdc)",
+    "marker": "X3M_SOURCE_COMMIT=f68fef2b8622a651c7251b7adb9ba7f043064e30",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run243/d3d9.dll",
+    "stripped": false,
+    "sha256": "d1f1da3bd798d6720fb4609ab9fc482cd62b726f546498defb625a451df1db47",
+    "bytes": 65405319
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run243",
+    "command": "cmake -S . -B build-run243 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run243 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run243.configure.log",
+      "build-run243.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 1180,
+    "violations": 0
+  },
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 259/0), hook-summary.json (113/0)} recorded in the bolt worktree on the same sources (dd5fb09aa content); the own-fire chase muzzle frame at 50 ms viewed by the main session (star + disc, no cone)",
+    "host_tests": "test_weapon_effects_* 94 OK on the merged tree; programs --check, lab --check, schema.py --check PASS (in the worktree)",
+    "reviews": "docs/verification/weapon-effects.md sections: Bolts and muzzle (step 4) / The in-place draw, the gates and the lab / Review fixes (one review round at high: 1 must-fix, 7 should-fix, 8 notes, all fixed); design bolt-muzzle-look.md (ratified, budget line corrected to the measured 89.7 us / 100 bound)"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: ok, weapon_effects null (ini weapon_effects = shields,hull,bolts), weapon_effects_table null (DLL default <exe dir>\\x3m\\weapon_effects.json)"
+}
