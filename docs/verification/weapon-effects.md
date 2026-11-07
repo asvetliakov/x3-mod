@@ -1836,14 +1836,24 @@ through its fade, secondaries popping on it (half hidden where they sit inside t
 body born at 0.5 R_f eating the hull over its 1 s fade, no ring (D14), no balloon about the body (D15), no lamp at the
 tiers' distances, nothing native left. The v1 / v2 frames showed the rings, the halo disc and the hull light's drop at P.
 
-**Open items** (review notes G, I, J, M as recorded here; G and J are engine-side assumptions not verified):
-- G [unverified, engine]: the carrier's alpha before P. R' starts at t0 = 0, so for P > 0 `FADEOUTBODY`'s ramp is read
-  before its element starts; the alpha is assumed to stay 255 until P (natively the ramp only ever ran from t0 on).
-- J [unverified, engine]: a zeroed slot means the engine's reset freed its array and no instance outlives the reload; the
-  same-count refill and the reclaiming of abandoned slots rest on it.
-- I: a ship whose class id is outside `patch_tier_of_ship` swaps only when a known class shares its (row, pre-roll).
-- M: the scan's cost is measured in the fixture's engine memory (a plain copy); the production reader's per-read cost on
-  the 1,553 records of the installed tables is not measured (the first, cold scan took 446 us in the fixture).
+**Open items** (engine-side assumptions not verified, and the review's notes G, I, J, M):
+- Carrier alpha before P [unverified, engine]: R' starts at t0 = 0, so for P > 0 `FADEOUTBODY`'s ramp is read before
+  its element starts; the alpha is assumed to stay 255 until P (natively the ramp only ever ran from t0 on).
+- Zeroed slot [unverified, engine]: a zeroed slot means the engine's reset freed its array and no instance outlives the
+  reload; the same-count refill and the reclaiming of abandoned slots rest on it.
+- Unknown class ids: a ship whose class id is outside `patch_tier_of_ship` swaps only when a known class shares its
+  (row, pre-roll).
+- Scan cost in production: measured in the fixture's engine memory (a plain copy); the production reader's per-read
+  cost on the 1,553 records of the installed tables is not measured (the first, cold scan took 446 us in the fixture).
+- Review note G [engine, diagnostic]: the loader allocates row arrays through `0x004b89f0` (malloc plus the counters at
+  `0x6085f4` / `0x6085f8`); the reset subtracts count x 0x70 for every slot it frees, so each R' freed by a reset pushes
+  the counters below their true value; the readers found are diagnostic only.
+- Review note I: the swap path is the first stub whose return address stays live across an engine call; a FreeLibrary
+  during `0x00413610` would return into unloaded code (unreachable: shutdown runs only at FreeLibrary).
+- Review note J [unverified, engine]: the stage dates the pre-roll from its first frame, the engine's `FADEOUTBODY`
+  from the kill (`inst+0x28`); the offset is zero if the game clock ticks once per frame.
+- Review note M: `WRECK` is cleared in R', so a kill with a non-zero third argument (the script path) loses
+  "CreateWreck" (design item 2a).
 
 **Acceptance** [M]: `test_weapon_effects_*` 98 OK; `generate_weapon_effects_programs.py --check`, the lab's `--check`,
 `schema.py --check`, `generate.py --check` PASS; native run D3D 298 / 0, hook 147 / 0 (built from these sources,
