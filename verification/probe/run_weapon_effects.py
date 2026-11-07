@@ -78,7 +78,8 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'verification/probe/weapon_effects_class_cases.h', 'src/proxy/engine_shimmer_core.h',
                       'src/effects/weapon_shape_vs.hlsl', 'src/effects/weapon_ring_ps.hlsl', 'src/effects/weapon_filament_ps.hlsl',
                       'src/renderer/weapon_shape_vertex_program_inc.h', 'src/renderer/weapon_ring_pixel_program_inc.h',
-                      'src/renderer/weapon_filament_pixel_program_inc.h')
+                      'src/renderer/weapon_filament_pixel_program_inc.h', 'src/effects/weapon_lightning_vs.hlsl',
+                      'src/renderer/weapon_lightning_vertex_program_inc.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
@@ -97,6 +98,8 @@ PROGRAMS = {
     'weapon_ring_ps': ('verification/results/weapon-ring-pixel-program.json', 'src/renderer/weapon_ring_pixel_program_inc.h'),
     'weapon_filament_ps': ('verification/results/weapon-filament-pixel-program.json',
                            'src/renderer/weapon_filament_pixel_program_inc.h'),
+    'weapon_lightning_vs': ('verification/results/weapon-lightning-vertex-program.json',
+                            'src/renderer/weapon_lightning_vertex_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.

@@ -24,14 +24,16 @@ adds) and gives each class a different *second layer* and a different *post-hit*
 the identity of a hit lives: energy hits puff and glow, ballistic hits spray two spark lifetimes and chips and leave a
 pit, plasma hits bloom into a tinted globe with a surface ring and a heavy scorch, heavy (railgun-like) hits streak
 along the shot axis with a back-jet, an exit jet on thin hulls, a ring, a shimmer and a glowing hole, beams hold a
-boiling spot that crawls and leaves a scorch line, ion hits throw crawling filaments and leave nothing, missiles add
+boiling spot in the weapon's colour that crawls and leaves a scorch line, ion hits throw re-striking lightning and
+leave nothing, missiles add
 debris to the burst of 3.5, repair and tug stay the tinted glows of 3.1, and an asteroid victim takes a dim dust puff
 and rock chips. Two primitives are new and both are the glow primitive with a different profile (a **surface ring**:
-the expanding sphere shell intersected with the lane, so no normal is needed; a **filament glow**: a noise mask over
-the lane's reconstructed point, for ion arcs), one is a blend mode (the **scorch**: a multiply decal, the only
+the expanding sphere shell intersected with the lane, so no normal is needed; the ion's **lightning segments**: one
+quad per polyline segment, the core and corona profile drawn on the lane under it (2026-11-07, replacing the noise
+filament glow), one is a blend mode (the **scorch**: a multiply decal, the only
 non-additive element, 10–20 s), and one is a reuse (the engine shimmer pass's rect list, post-resolve). The class is
 decided at the hook from the live record (flags, damage band, body shape) into the free nibble of `Event::detail` [S],
-and the override file's `hull` key pins it per `SS_BULLET_*` id: 11 pins on stock AP, 22 on Mayhem 3, whose flag
+and the override file's `hull` key pins it per `SS_BULLET_*` id: 12 pins on stock AP, 22 on Mayhem 3, whose flag
 words are all 0 except PBC and RL [M, `hull_class_census_out.txt`]. Cost stays inside the shared 8-screen budget with
 three new shed steps (shimmer rects, scorches, rings) ahead of the glows; sparks, flashes and the own ship are never
 shed. Each class has a lab preset, a fixture gate on its distinguishing element and a kill criterion that folds it
@@ -104,7 +106,7 @@ a hold rule with no tick stream). Pins are needed where the flags carry nothing 
 
 | Table | Pins | Result (counts by the script [M]) |
 | --- | --- | --- |
-| stock AP (45) | EMP, HEPT, IBL, PSG, TERANTIFIGHTER → plasma; FBL → ballistic; IPG → ion; REPAIR, TUG (existing) | ballistic 5, beam 9, energy 13, heavy 3 (GAUSS, PPC, TERRANANTIFIGHTER_1), ion 4, plasma 9, repair 1, tug 1; 11 pins |
+| stock AP (45) | EMP, HEPT, IBL, PSG, TERANTIFIGHTER → plasma; FBL → ballistic; IPG, IOND → ion (IOND's beam bit `0x4` would win over its on-hit `0x200`; review 2026-11-07); REPAIR, TUG (existing) | ballistic 5, beam 8, energy 13, heavy 3 (GAUSS, PPC, TERRANANTIFIGHTER_1), ion 5, plasma 9, repair 1, tug 1; 12 pins |
 | Mayhem 3 (38) | MD, GC, FBL, CFA, FAA → ballistic; ID, IC, ISR, IPG → ion; EMPC, PBG, SSC, PSG, PSP → plasma; RG, BKE → heavy; PALC, PBE, MDS → energy (orb bodies that are not plasma); RL → repair (existing) | ballistic 5, beam 1 (PBC), energy 16, heavy 3 (GKE, RG, BKE), ion 4, plasma 8, repair 1; 22 pins |
 | FL (45) | the stock ids (the script gives FL the stock counts row for row [M, `hull_class_census_out.txt`]) | as stock |
 
@@ -154,11 +156,26 @@ Everything below is one of the existing primitives with a different profile, or 
    lab's `shockFront` reads them through its HEADER block. 180 PS slots on the native host (was 51) [M]; the ring's
    budget weight 0.50 (was 0.40; measured 0.505: docs/verification/weapon-effects.md "Shock front"), the shed order
    unchanged.
-6. **Filament glow (ion arcs).** The glow primitive with a noise mask: the lane's reconstructed point is taken into
-   the owner's frame (one 3x3 multiply; the owner's rows are already uploaded), `n = fbm3(p · 6 / r + seed(slot))`,
-   mask = saturate(1 − |n| / 0.08), E = colour x mask x saturate(1 − d² / R²), `slot = floor(age / rehash_ms)`. Thin
-   bright filaments where the noise crosses zero, crawling on the hull because the pattern re-hashes per slot and is
-   fixed to the owner between slots. About +70 PS slots [I: two 3D octaves, the fireball's two cost ~150 of its 300].
+6. **Lightning segments (ion; 2026-11-07, replacing the noise filament glow).** One quad per segment of a channel or
+   branch (`stage::ion_segment_quad`, `renderer::WeaponLightningVertex`, 64 bytes, `weapon_lightning_vs.hlsl`),
+   oriented along the segment in pixels and the corona's half width + 1 px past it. `weapon_filament_ps.hlsl`: the
+   pixel's distance d from the segment in pixels; the lane's view depth within `ion_depth_r` r of the segment's depth
+   at the nearest point (full within half of it), so the channel lies on whatever hull the lane holds under its
+   projection and never on sky; the core `saturate(hw + ½ − d)` in white mixed `ion_core_white` 0.7 towards
+   `ion_colour`, under it the corona `ion_corona_share` 0.25 x `saturate(1 − (d / 4 hw)²)` in `ion_colour`. 64 PS
+   slots on the native host [M]. The polylines are built on the CPU in plane coordinates (`stage::ion_strike`) and ride
+   the owner; the vertex carries the contact point and the stage's plane axes (normal to the contact point's direction
+   from the owner's origin). The vertex program lays the plane on the hull's tangent plane at the contact (review
+   2026-11-07, as the station decal's normal): the lane's view points at the contact pixel and its four neighbours
+   (vertex texture fetch of the lane, point sampled; `CheckDeviceFormat` with `D3DUSAGE_QUERY_VERTEXTEXTURE` for the
+   four-channel and the R32F lane at attach), per screen axis the neighbour nearer in depth, both within the depth
+   window, their cross product towards the eye; the stage's axes turned onto it by the smallest rotation, so the
+   channels keep their directions. The stage's plane stays when the contact is off screen or behind the near plane, the
+   lane at the contact pixel holds another surface (not within the depth window), an axis has no neighbour within it,
+   or the device has no vertex texture fetch of the lane's format. On a narrow 1:1:6 hull the stage's plane alone left a
+   hit near the end seen edge-on as a knot (fixture `hull_ion_plane_on_narrow_hull`). The stage culls a segment by the
+   sphere about the contact through its farther end (the turned plane is not known on the CPU) and charges its quad at
+   its plane length x r in pixels (an upper bound).
 7. **Scorch.** A surface-bound decal that darkens: the glow box drawn with blend ZERO / INVSRCCOLOR, output
    `s(t) x w(d) x (0.75, 0.80, 0.85)` so the hull is multiplied by 1 − that (a slightly brown darkening), w(d) the
    glow's window, s(t) = s0 x min(1, t / L_ember) x (1 − t / L_s): it develops while the ember cools [R, SC burn =
@@ -273,32 +290,53 @@ One class; the look follows the tick stream through the hold rule (section 3.9).
 boiling spot that crawls where the beam moves and leaves a line of cooling spots; a pulsed beam (Mayhem PBC: 900 ms
 on, 1,322 off [M]) flashes at each pulse start, holds for the pulse, falls.
 
+The beam is light, so its spot carries the beam colour where the weapon has one; everything heated stays on the heat
+ramp (user, 2026-11-07: the one exception to the hull impact's no-weapon-colour rule). The weapon colour is the record's
+tint (`core::event_tint`: the light colour when saturated, else the table row's `texture_rgb` average, else white; the
+same colour the shield patch's weapon tint reads), white mixed `hull::beam_glow_mix` 0.6 towards it for the spot's halo
+and glow and `beam_core_mix` 0.3 for its core, so a coloured beam's spot is a tinted white light; the glow keeps the
+heat glow's mean radiance. Only where a colour exists (review 2026-11-07, `stage::beam_coloured`): the tint must come
+from the light or the texture and its 8-bit saturation (max − min) / max exceed `beam_colour_sat_min` 0.15; a white or
+grey beam keeps the heat halo (1, .92, .80) and glow exactly as before. On stock AP that colours PBC (its grey light
+gives way to its texture average 121, 82, 39: orange, halo (1.00, .66, .46)), the Kyon Alpha emitter (violet light
+128, 0, 255) and the Kyon Gamma emitter (yellow light 255, 255, 0); the Ion Disruptor's blue light (50, 50, 255) no
+longer reaches the beam look (pinned ion, section 2), but it is still a beam: the hold rule follows the bullet's beam
+bits whatever the class (`stage::holds`), so an IOND beam keeps one ring record refreshed in place by each tick (no
+spot), its lightning re-striking while held (the 4.6 strike window restarts every 200 ms of the hold, from the hold's
+start) and ending within `ion_end_ms` 400 ms after the last tick (the current window's strikes, residual and end). Kyon Beta's light is white, PAL, FUSIONBEAM and TRIBEAM have grey
+lights and no texture: the heat look. On Mayhem 3 the one beam, PBC, has a white light and no texture: white, so every
+Mayhem 3 beam keeps the heat look (`verification/results/weapon-effects-ion-lightning/beam_tint_out.txt`).
+
 | Order | Element | Size | Life | Colour | Motion / fade |
 | --- | --- | --- | --- | --- | --- |
 | pulse start | Flash | core 0.25 r, halo 1.0 r | 60 | white, halo T 0.9 | only when no spot of that (owner, row) was held |
-| held | Spot | core 0.2 r (≥ 3 px), halo 0.6 r | while held, fall 80 | white E 4, halo T 1 | re-posed each tick (the beam's crawl) |
+| held | Spot | core 0.2 r (≥ 3 px), halo 0.6 r | while held, fall 80 | core white mixed 0.3 towards the weapon colour, E 4; halo white mixed 0.6 towards it | re-posed each tick (the beam's crawl) |
 | held | Boiling puff | r_b 0.6 r | L_b 300, age reset at each tick | T 1 | grows 0.15 L_b; re-lit, never added |
 | held | Spatter | 2 per 40 ms game while held (closed form: spark i born at t0 + 40 i), cap 24 live per spot, 0.08 U | 300 | heat, E 8 | 4 U/s (1 ± 0.4), isotropic, τ 0.45 |
-| held | Glow | R 2.5 r | while held, fall 150 | T 0.85, E 1.0 | linear fall |
+| held | Glow | R 2.5 r | while held, fall 150 | white mixed 0.6 towards the weapon colour at the T 0.85 glow's mean radiance, E 1.0 | linear fall |
 | after | Trail ember (per spot) | R 0.8 r | 1,500 | T 0.6 → 0, E 0.8 | starts at the spot's fall |
 | post | Scorch line (per spot) | R 0.8 r | L_s 15,000 | s0 0.5 | the dwell path as scorches 0.5 r apart |
 
 Distinguishing element: the held spot and the trail. Repair and tug (4.8) are beams whose class bits say otherwise:
-the hold rule applies, the spot does not.
+the hold rule applies, the spot does not, and they keep their colours (the tint, `tug_colour`).
 
-### 4.6 Ion / distortion (`0x200` / `0x400`; Mayhem ID, IC, ISR, IPG by pin; stock ESR, IONC)
+### 4.6 Ion / distortion (`0x200` / `0x400`; Mayhem ID, IC, ISR, IPG by pin; stock ESR, IONC; stock IPG, IOND by pin)
 
-The SC distortion and HW3 ion look [R, inference]: blue-white flash, arcs crawling over the hull with 3–5 flickers
-over 0.5 s, no scorch, nothing after.
+Lightning, not a cloud (user, 2026-11-07: the noise filament glow read dense and chaotic): a blue-white flash, then 2 to
+4 thin jagged channels crawling over the hull from the hit, re-striking 3 or 4 times in the first 200 ms, one faint
+residual flicker to 400 ms, no scorch, nothing after. All constants `hull::ion_*` (weapon_effects_core.h); the lab's
+`ionStrike` / `ionPhase` mirror `stage::ion_strike` / `ion_phase`.
 
 | Order | Element | Size | Life | Colour | Motion / fade |
 | --- | --- | --- | --- | --- | --- |
-| 0 ms | Flash | core 0.2 r, halo 1.0 r | 60 | white core; halo `hull::ion_colour` (0.60, 0.75, 1.00) (the tint when saturated: stock IOND's blue) | linear |
-| 0 ms | Filament glow (arcs) | R 1.5 r | 500 | ion colour, E 2.0 | re-hash every 100 ms (five flickers), linear fade |
-| 0 ms | Arc sparks | n = 4 + 4 k, 0.08 U | 120 | ion colour, E 8 | 6 U/s (1 ± 0.5), isotropic; hash-gated on/off per 40 ms (a flicker) |
-| — | no puff, no glow, no ember, no scorch | | | | the class's identity is its absence of heat |
+| 0 ms | Flash | core 0.2 r, halo 1.0 r | 60 | white core; halo `hull::ion_colour` (0.60, 0.75, 1.00) | linear |
+| strikes | Channels | 2..4 per hit (hashed on the sequence), each 6..10 segments, `ion_len` 1.0 r x (1 ± 0.25), directions at c x 360 / count ± 30° about a hashed base; each vertex steps up to `ion_jag` 0.8 of a segment sideways, clamped to 0.3 of the channel's length | each strike max(40 ms, the three-frame floor) | core white mixed 0.7 towards `ion_colour`, E 3.0 x (1 − 0.15 j); corona `ion_colour` x 0.25 | in the hull's tangent plane at the hit (the lane's normal at the contact pixel, 3.6), riding the owner; core width max(0.01 r, 2 px at 1440 rows, 1 px), corona 4 x the core |
+| strikes | Branches | 1..2 per channel from an inner vertex at 30..60°, half its length, half its segments (≥ 3) | as its strike | as the channels x 0.6 | core width max(0.005 r, 1 px at 1440 rows, 1 px) |
+| 0..200 ms | Re-strikes | 3 or 4 (hashed), strike j at j x 200 / count ms, a new channel set each (the count stays) | | | the latest started strike drawn alone: dark frames between strikes at 60 fps |
+| 280..400 ms | Residual | the last strike's channels | from 280 + 40 u ms to 400 ms (at least the floor) | x 0.3 | one flicker |
+| — | no sparks (the arc sparks dropped, review 2026-11-07: less dense, less chaotic), no puff, no glow, no ember, no scorch | | | | the class's identity is its absence of heat |
 
-Distinguishing element: the crawling filaments and the cold colour. The 500 ms arcs are the slow element (8x the flash).
+Distinguishing element: the re-striking channels and the cold colour. The residual's 400 ms is the slow element.
 
 ### 4.7 Missile (`missile_hit`)
 
@@ -336,17 +374,18 @@ weapons (MDS) on asteroids take this; the weapon's class does not matter on rock
 | Source | Where it is allowed | Where it is not |
 | --- | --- | --- |
 | Heat ramp (T) | every flash halo, puff, spark, chip, glow, ember, ring of every class on a ship; the asteroid's dust at T ≤ 0.3 | — |
-| Weapon tint (saturated only; else heat) | the plasma bloom halo and globe at 50 % while hot; the ion flash halo and arcs (stock's blue lights); repair and tug glows (3.1); the missile flash halo and burst rim (3.5 / 3.6) | energy, ballistic, heavy, beam: a texture average (Mayhem's white lights, 36 of 38 [M]) would colour burning metal with nothing |
+| Weapon tint (saturated only; else heat) | the plasma bloom halo and globe at 50 % while hot; repair and tug glows (3.1); the missile flash halo and burst rim (3.5 / 3.6) | energy, ballistic, heavy: a texture average (Mayhem's white lights, 36 of 38 [M]) would colour burning metal with nothing |
+| Weapon colour (the record's tint from the light or texture, 8-bit saturation above 0.15; 2026-11-07) | the beam spot's halo and glow (white mixed 0.6 towards it) and core (0.3): the beam is light | white and grey beams (the heat look); the beam's pulse flash, puff, spatter, trail ember and scorch line (heated: the heat ramp) |
 | Class constants | `ion_colour` (0.60, 0.75, 1.00); `tug_colour` [S]; the scorch's darkening (0.75, 0.80, 0.85) | — |
 | White | every core | — |
 
 The greyscale rule (reference rule 5) is why the classes differ in *shape and timing* first: energy's puff vs
-ballistic's spray vs heavy's axis vs beam's held spot vs ion's filaments read without colour; colour only confirms.
+ballistic's spray vs heavy's axis vs beam's held spot vs ion's lightning read without colour; colour only confirms.
 
 ## 6. What stays, what it costs, what is shed
 
 **Unchanged:** placement from the recorded contact point on the owner's rows (2.6; the shot-axis bias moves no
-anchor); occlusion classes 1 and 2 with the plumes' SOFT pair (2.7; the ring, filament glow and scorch are class 1 by
+anchor); occlusion classes 1 and 2 with the plumes' SOFT pair (2.7; the ring, the lightning and the scorch are class 1 by
 construction, the entry streak class 2 at SOFT 0.15); game time with the three-frame floor and the SETA law (2.4);
 one stage callback, one sprite batch, the draw order of 2.10 with the scorches inserted first; no user setting; the
 native spawn skipped per record as today; sounds untouched (2.13); the own-ship cockpit gain on every owner-attached
@@ -365,7 +404,7 @@ box a few hundred pixels) and the worst case, a hit on a capital 100 m away (r 2
 | plasma | ~16 | ~4 µs | glow 71 + globe ~120 + ring 40 + ember 20 + scorch 10 ≈ 260 µs + shimmer | + ring 0.5, filament 1.0 |
 | heavy | ~40 | ~5 µs | glow 71 + puff 30 + ring 50 + hole 5 + scorch 5 ≈ 160 µs + shimmer | as plasma |
 | beam (per spot) | ~30 | ~4 µs | glow 50 + puff 20 + trail embers ≈ 80 µs | glow 0.40 |
-| ion | ~10 | ~3 µs | filament 1.5 r ≈ 45 µs | filament 1.0 |
+| ion | about 40 lightning segments, no sparks | 20 hits 34.9 µs at 5120x1440 [M] | 64 close hits 368.9 µs at 5120x1440 (3.0 screens charged) [M] | the segments' quads x 0.86 (measured 0.50) |
 | missile | ~50 | ~6 µs | the 3.6 burst (≤ 3 screens on a close capital) + ring + glow ≈ 300 µs | 3.6's |
 | repair / tug | 2 | ~2 µs | glow 40 µs | glow 0.40 |
 | asteroid | ~20 | ~3 µs | dust puff 20 µs | puff |
@@ -378,9 +417,12 @@ the LOD below), 64 mixed hits ≤ 30 µs CPU (about 1,600 quads: inside the 2,04
 **Shed order**, extending 2.11 (the stage charges projected box area x weight; over 8 screens): (0) shimmer rects past
 `shimmer_max` and every shimmer rect of owners other than the own ship; (1) the puffs' second octave above 20 %
 coverage, then puffs past two per owner; (2) scorches of owners other than the own ship, oldest first; (3) rings of
-other owners; (4) glows and embers of other owners, oldest first (the existing step 2); (5) shield patches; (6)
-secondaries. **Never shed:** flashes, entry streaks, sparks, chips, arc sparks, beam spots, anything of the own ship.
-Count caps (static): sparks 2,048 quads (existing), puffs 128, rings 64, filament glows 32, beam spots 64, scorches
+other owners, then the lightning of other owners: whole channels (a channel with its branches), the oldest hit first and
+each hit's channels from its last, one compaction pass (review 2026-11-07); (4) glows and embers of other owners, oldest
+first (the existing step 2); (5) shield patches; (6) secondaries. **Never shed:** flashes, entry streaks, sparks, chips,
+beam spots, anything of the own ship. Count caps (static): sparks 2,048 quads (existing), puffs 128, rings 64,
+lightning segments 1,024 (about 40 an ion hit; past it whole hits are cut, the oldest first: the newest kept while they
+fit, never a channel cut mid-way, `capped` counts the hits cut), beam spots 64, scorches
 128 (16 per owner; the oldest of an owner retires), shimmer rects 2.
 
 ## 7. Lab presets
@@ -409,7 +451,7 @@ owner keep 16), `hull_scorch_through_temporal` (an owner moving 8 px per frame: 
 scorch ends), `hull_classes_distinct_greyscale` (the lineup at 100 ms and 400 ms: the 8-bin radial luminance profile
 of every pair of classes differs by ≥ 0.2 L1, normalised; a crude form of the reference's rule 5), the per-class
 budget rows (`hull_budget_20_hits_5120_<class>` ≤ 50 µs; the capital-close row per class recorded and the shed
-counts asserted at 8 screens), `hull_cpu_64_hits_mixed` ≤ 30 µs, `hull_min_frames_under_seta6` per class, Reset,
+counts asserted at 8 screens), `hull_cpu_64_hits_mixed` ≤ 50 µs (the design's 30; 40 until 2026-11-07), `hull_min_frames_under_seta6` per class, Reset,
 fault, refusal, slots per program.
 
 Per class, on the distinguishing element:
@@ -428,8 +470,15 @@ Per class, on the distinguishing element:
 | heavy | `hull_heavy_shimmer_rect_submitted` | the shimmer pass receives ≤ 2 hull rects after the engines', none after 400 ms, none in the resolve's history |
 | beam | `hull_beam_hold_relights_not_appends` | 60 ticks at one point over 1 s: one spot, peak = a single tick's, ring occupancy 1 |
 | beam | `hull_beam_sweep_trail_without_strobe` and `hull_beam_pulse_flash_after_gap` | a contact moving 0.3 r per tick: spots 0.5 r apart, 0 flashes; a 1,322 ms gap: exactly one flash at the next tick; the fall 80 ms |
-| ion | `hull_ion_filaments_on_surface_rehash` | 0 sky pixels, ≥ 0.9 on the lane; the lit set at 0 and 100 ms differs in ≥ 50 % of its pixels, at 0 and 30 ms it is identical; fixed to a moving owner between slots |
-| ion | `hull_ion_no_heat_post_hit` | 0 lit pixels of any ember, glow or scorch; nothing after 500 ms |
+| beam | `hull_beam_spot_weapon_colour` and `hull_beam_ember_scorch_stay_heat` | a green light colour: the mean hue at 0.6..2.0 r within 10° of the weapon's, the core (< 0.15 r) less saturated; the trail ember and scorch line bit for bit those with the colour off |
+| ion | `hull_ion_lightning_law_16_seeds` | over 16 sequences 2..4 channels (all three counts), 1..2 branches each, 6..10 segments, 3..4 strikes |
+| ion | `hull_ion_lightning_on_surface_restrikes` and `hull_ion_lightning_within_filament_charge` | 0 sky pixels, lit on the lane; a strike the same image across its frames; the next strike Jaccard < 0.3; fixed to a moving owner (≥ 0.95); its charged screens within the old filament box's (1.5 r x 0.86) |
+| ion | `hull_ion_core_floor_corona_4x` | one segment at 1440 rows: the core's FWHM within 0.75 px of 2 px, the corona's extent 3..4.5 core half widths at 0.15..0.3 of the peak |
+| ion | `hull_ion_no_heat_post_hit` | 0 lit pixels of any ember, glow or scorch; 0 lit pixels at 400 ms |
+| ion | `hull_ion_plane_on_narrow_hull` | the 1:1:6 hull, one strike straight on, near the end seen edge-on and near the silhouette: 0 sky pixels, the peak under 2 x the straight-on case's, the channel (core) pixels 0.5..1.5 x its |
+| ion | `hull_ion_cap_cuts_whole_hits_oldest` and `hull_ion_shed_whole_channels_oldest` | 42 hits past the 1,024 segments: the newest kept while they fit, the rest cut whole; half the charge as budget: the shed a run of whole channels from the oldest kept hit |
+| ion | `hull_cpu_64_hits_ion` | 64 lit ion hits on a capital, the strike cache holding them: the CPU bound of the ledger |
+| beam | `hull_beam_white_keeps_heat` and `hull_beam_stock_pbc_orange_mix` | a white light, a grey light and a white light read as a light: sprite and glow vertices bit for bit those with the colour off; stock PBC's texture 121, 82, 39: the glow proportional to the 0.6 mix, r > g > b |
 | missile | `hull_missile_debris_two_sets_and_ring` | counts 2 x the ballistic law; the slow set lit at 1,200 ms with a 0.3 duty; the ring as plasma's |
 | repair / tug | existing `hull_repair_no_sparks`; `hull_repair_relit_per_tick` | 60 ticks: one glow, peak = single |
 | asteroid | existing `hull_asteroid_dust`; `hull_asteroid_no_glow_no_scorch_dim_puff` | 0 glow / ember / scorch pixels; the dust puff's peak ≤ 0.5 |
@@ -446,7 +495,7 @@ The user's words decide, per class, in the lineup preset or in flight; each step
 | heavy | the jet reads as a laser line, or sparks appear on the far side of a thick hull | exit jet off | entry streak → the disc flash; the class folds into plasma |
 | heavy, plasma | the shimmer double-images or flickers | `shimmer_max` 0 | — |
 | beam | spots pile up (a dotted line) or the pulse flashes strobe | `hold_r` 1.0 r, trail embers 500 ms / pulse flash off | the class folds into energy per tick (the hold rule stays, as the ring cap) |
-| ion | the arcs read as static or noise | `rehash_ms` 200, filament width 0.05 | the energy look in the ion colour |
+| ion | the lightning reads as a strobe or a web | 3 strikes, no branches (`ion_strikes_hi` 3, `ion_branches_lo` = `ion_branches_hi` = 0) | the energy look in the ion colour |
 | missile | too big or doubles the hull hit | 3.5's rule (`hit_burst` off) | debris at the ballistic counts |
 | scorch (all) | ghosting, a mark on the wrong ship, ships "painted black" in a long fight | s0 halved, L_s halved | `hull::scorch` false (the ember's life x 2 keeps a post-hit) |
 | identity (all) | two classes the user cannot tell apart in the lineup | the pair's pins move to one class (the louder one) | — |

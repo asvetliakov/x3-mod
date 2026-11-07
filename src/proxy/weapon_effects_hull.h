@@ -7,8 +7,9 @@
 // docs/architecture/hull-impact-classes.md): the ring's stage-owned hull hits (role_hull_hit with flag_stage,
 // shields,hull mode) become the frame's flash, streak and spark quads (the sprite batch, renderer::WeaponSpriteVertex),
 // glow and ember boxes (the glow primitive, renderer::WeaponGlowVertex), puffs (the fireball impostor,
-// renderer::WeaponFireballVertex), surface rings and filament glows (renderer::WeaponShapeVertex), multiply scorches
-// (glow boxes drawn ZERO / INVSRCCOLOR) and heat-shimmer rects (ShimmerRect, the engine shimmer pass's list).
+// renderer::WeaponFireballVertex), surface rings (renderer::WeaponShapeVertex), the ion's lightning segments
+// (renderer::WeaponLightningVertex), multiply scorches (glow boxes drawn ZERO / INVSRCCOLOR) and heat-shimmer rects
+// (ShimmerRect, the engine shimmer pass's list).
 //
 // Per record, at the contact point Event::pos in its owner's frame, sized in the owner's cell unit U = cell_m[tier]
 // and the impact's calibre k (calibre_of: the running damage total, or the override's): r = r_hit = r_scale U (r_base +
@@ -27,14 +28,17 @@
 //   from the previous frame's screen position to the current one (the streak rule); radiance E f, heat T0 f with f the
 //   life fraction (the ion's in ion_colour); a set with a duty is lit in that share of flicker_ms slots;
 // - glow and ember (the glow primitive at the hit), the surface ring (the sphere shell cut by the lane), the ion's
-//   filament glow (noise in the owner's frame, re-hashed every rehash_ms) and the plasma / heavy shimmer rect;
+//   lightning (ion_phase: 3 or 4 strikes re-seeding its channels over ion_strike_window_ms, then a faint residual to
+//   ion_end_ms; ion_strike: 2 to 4 jagged channels with 1 or 2 branches each in the hit's tangent plane riding the owner,
+//   one segment quad each drawn on the lane under it) and the plasma / heavy shimmer rect;
 // - the scorch: at a record's first frame a mark enters the per-owner scorch store (scorch_per_owner, scorch_store; it
 //   outlives the record), drawn every frame as a multiply decal s0 min(1, t / L_ember) (1 - t / L_s) until L_s.
 // Beams, repair and tug follow the hold rule (section 3.9): a new record of an owner and (table, row) within hold_r r of
 // a live spot of theirs re-lights it (its newest tick) and leaves the ring; otherwise it becomes a new spot, flashing
 // only when the owner held no spot of that (table, row). A spot is held while now - t_last <= max(hold_ms, 2 steps),
 // then falls; the beam's spot draws a core, a boiling puff, spatter (closed form: two sparks per spatter_period_ms of
-// its hold), a glow and a trail ember from its fall, and lays a scorch mark every trail_step_r r it crawls; repair
+// its hold), a glow and a trail ember from its fall, and lays a scorch mark every trail_step_r r it crawls (the spot's
+// halo, core and glow in the weapon colour mixed with white, beam_glow_mix / beam_core_mix; the rest heat); repair
 // draws a tinted glow and ember, tug a pale glow.
 // Every life is game time from the record's first stage frame (age 0 on its first drawn frame) and never shorter than
 // min_frames x its first frame's game step (the three-frame floor), each element's life x (1 +- stagger / 2) by a hash
@@ -45,7 +49,7 @@
 // The shared budget (look 2.11 as amended by hull-impact-classes.md section 6): each box is charged its screen rectangle
 // x its family weight; past the screens the patches left: (0) the shimmer rects of other owners, (1) the puffs' second
 // octave, then other owners' puffs past two per owner, (2) other owners' scorches, oldest first, (3) their rings and
-// filament glows, (4) their glows and embers, oldest first, then their remaining puffs, last their flashes. Entry
+// lightning segments, (4) their glows and embers, oldest first, then their remaining puffs, last their flashes. Entry
 // streaks, sparks, chips, beam spot cores and anything of the own ship are never shed (count caps: hull::max_sparks;
 // renderer::weapon_sprite_quads, weapon_glow_boxes, weapon_fireball_boxes, weapon_ring_quads, weapon_filament_boxes,
 // weapon_scorch_boxes; hull::max_spots, scorch_store, shimmer_max).
@@ -152,6 +156,7 @@ struct HullTuning {
     core::hull::Mode mode = core::hull::mode;
     bool flash = true, sparks = true, glow = core::hull::glow, ember = true, burst = true, ring = true;
     bool streak = true, filament = true, scorch = core::hull::scorch, shimmer = true, spots = true;
+    bool beam_colour = core::hull::beam_colour; // the beam spot's halo, core and glow in the weapon colour
     bool ring_noise = true, ring_wash = true, ring_refraction = true; // the shock front's parts (the lab's sub-layers)
     float cell_m[core::patch_tier_count] = {core::cell_m[0], core::cell_m[1], core::cell_m[2]};
     float stagger = core::stagger;
@@ -166,6 +171,8 @@ struct HullCounts {
     unsigned orphans = 0, retired = 0, shed = 0, capped = 0, floored = 0, owners_dropped = 0;
     unsigned bursts_shed = 0;
     unsigned streaks = 0, chips = 0, filaments = 0, scorches = 0, marks = 0, spots = 0, merges = 0, spot_flashes = 0;
+    unsigned ion_segments = 0; // the lightning's segment quads (filaments: the ion records whose strike is lit; for the
+                               // lightning, capped counts the hits cut whole at the segment cap)
     unsigned pulses = 0; // spots whose pulse started this frame (a new spot, or a re-lit one after a gap)
     unsigned done = 0, flashes_shed = 0; // records released at their anatomy's end; flashes the budget shed (last)
     unsigned out_of_reach = 0, owners_out_of_reach = 0; // records (and kept owners) that built no elements: out of reach
@@ -187,7 +194,7 @@ struct HullBuffers {
     unsigned fireball_cap = 0, fireball_boxes = 0;
     renderer::WeaponShapeVertex* rings = nullptr;
     unsigned ring_cap = 0, ring_quads = 0;
-    renderer::WeaponShapeVertex* filaments = nullptr;
+    renderer::WeaponLightningVertex* filaments = nullptr; // the ion's lightning segments
     unsigned filament_cap = 0, filament_boxes = 0;
     renderer::WeaponGlowVertex* scorches = nullptr;
     unsigned scorch_cap = 0, scorch_boxes = 0;
@@ -238,9 +245,18 @@ inline unsigned anatomy_of(const core::Event& e) noexcept {
 }
 // The hold rule's records (section 3.9): beams, repair and tug, whatever the target's look (review 2026-11-07: a beam
 // on an asteroid kept one record per tick in the ring for its whole life); a beam's spot on rock draws the asteroid's
-// dust puff and rock spatter.
+// dust puff and rock spatter. A beam is the beam class or any record whose bullet carries the beam bits (its style's
+// shape_beam, core::style_from), whatever its class: stock IOND, pinned ion, is a beam (2026-11-07: one 400 ms
+// lightning hit per damage tick before).
 inline bool holds(const core::Event& e) noexcept {
-    return (e.detail & (core::detail_repair | core::detail_tug)) || core::hull_class_of(e) == core::class_beam;
+    return (e.detail & (core::detail_repair | core::detail_tug)) || core::hull_class_of(e) == core::class_beam ||
+           (e.style & core::style_shape_mask) == core::shape_beam;
+}
+// A holding record the spots draw (the beam's, the asteroid's dust, repair, tug); any other anatomy (a pinned class
+// with the beam bits: the ion's lightning) is held in the ring itself, its newest tick refreshing the record in place.
+inline bool spot_anatomy(unsigned a) noexcept {
+    namespace hl = core::hull;
+    return a == hl::an_beam || a == hl::an_asteroid || a == hl::an_repair || a == hl::an_tug;
 }
 // One spark set's row (core::hull::class_sparks, 3 anatomy + set).
 struct SparkSet {
@@ -581,7 +597,7 @@ inline bool capsule_rect(const HullView& f, const float c[3], const float a[3], 
     return true;
 }
 // A shaped glow's four corners (weapon_shape_vs.hlsl): the glow's rectangle with the profile's terms (ring: r(t), w;
-// filament: scale, seed, width, R and the owner's axes in view).
+// the ring's frame; the lightning's segments use ion_segment_quad).
 inline void shape_quad(const HullView& f, const float c[3], float R, const float rect[4], bool full, const float colour[3],
                        const float shape[4], const float* frame, renderer::WeaponShapeVertex* out) noexcept {
     const float zq = full ? 1.5f * f.near_z : c[2] - R;
@@ -598,12 +614,253 @@ inline void shape_quad(const HullView& f, const float c[3], float R, const float
         for (unsigned i = 0; i < 9; ++i) out[k].frame[i] = frame ? frame[i] : 0.f;
     }
 }
+// The ion's lightning (core::hull ion_*; hull-impact-classes.md 4.6). One strike's channels and their side branches as
+// polylines in the hit's tangent plane (u, v in r_hit) from the record's sequence and the strike index; no libm (the
+// turns by 2 atan(t) in rational form). The lab's ionStrike is the same law.
+struct IonLine {
+    std::uint8_t first, points, branch; // its points in IonStrike::p; branch 1: a side branch
+};
+struct IonStrike {
+    static constexpr unsigned max_lines = core::hull::ion_channels_hi * (1 + core::hull::ion_branches_hi);
+    static constexpr unsigned branch_segments_hi = core::hull::ion_segments_hi / 2 > 3 ? core::hull::ion_segments_hi / 2 : 3;
+    static constexpr unsigned max_points =
+        core::hull::ion_channels_hi * (core::hull::ion_segments_hi + 1 + core::hull::ion_branches_hi * (branch_segments_hi + 1));
+    unsigned lines = 0, points = 0, channels = 0, branches = 0;
+    IonLine line[max_lines];
+    float p[max_points][2];
+    float len[max_points]; // the segment from point i to i + 1 (r_hit units; a line's last point: 0)
+};
+static_assert(IonStrike::max_points <= 255, "the lines' point indices");
+inline unsigned ion_channel_count(std::uint32_t sequence) noexcept {
+    namespace hl = core::hull;
+    return hl::ion_channels_lo + (element_hash(sequence, 40) >> 8) % (hl::ion_channels_hi - hl::ion_channels_lo + 1);
+}
+inline unsigned ion_strike_count(std::uint32_t sequence) noexcept {
+    namespace hl = core::hull;
+    return hl::ion_strikes_lo + (element_hash(sequence, 41) >> 8) % (hl::ion_strikes_hi - hl::ion_strikes_lo + 1);
+}
+// (x, y) turned by the angle 2 atan(t).
+inline void ion_turn(float t, float d[2]) noexcept {
+    const float s = rcp_nr(1.f + t * t), c = (1.f - t * t) * s, n = 2.f * t * s;
+    const float x = d[0];
+    d[0] = c * x - n * d[1];
+    d[1] = n * x + c * d[1];
+}
+// One polyline from o along d (unit), length L, n segments: each vertex steps L / n along d and up to ion_jag x that
+// sideways (hashed from h), the sideways offset clamped to ion_lateral L.
+inline void ion_walk(IonStrike* s, const float o[2], const float d[2], float L, unsigned n, std::uint32_t h,
+                     std::uint8_t branch) noexcept {
+    namespace hl = core::hull;
+    if (s->lines >= IonStrike::max_lines || s->points + n + 1 > IonStrike::max_points) return;
+    IonLine& ln = s->line[s->lines++];
+    ln.first = std::uint8_t(s->points);
+    ln.points = std::uint8_t(n + 1);
+    ln.branch = branch;
+    const float step = L / float(n), lim = hl::ion_lateral * L;
+    float y = 0.f;
+    for (unsigned i = 0; i <= n; ++i) {
+        if (i) {
+            y += step * hl::ion_jag * (2.f * unit_of(mix32(h + 0x85ebca6bu * i)) - 1.f);
+            y = y > lim ? lim : y < -lim ? -lim : y;
+        }
+        const float x = step * float(i);
+        float* p = s->p[s->points];
+        p[0] = o[0] + d[0] * x - d[1] * y;
+        p[1] = o[1] + d[1] * x + d[0] * y;
+        s->len[s->points] = 0.f;
+        if (i) {
+            const float* q = s->p[s->points - 1];
+            const float dx = p[0] - q[0], dy = p[1] - q[1];
+            s->len[s->points - 1] = scalar::sqrt(dx * dx + dy * dy);
+        }
+        ++s->points;
+    }
+}
+// The channel directions at c x 360 / count degrees (count 2, 3 or 4): cos and sin of the multiples of 30 degrees.
+constexpr float ion_cos30[12] = {1.f, 0.8660254f, 0.5f, 0.f, -0.5f, -0.8660254f, -1.f, -0.8660254f, -0.5f, 0.f, 0.5f, 0.8660254f};
+inline void ion_strike(std::uint32_t sequence, unsigned strike, IonStrike* s) noexcept {
+    namespace hl = core::hull;
+    *s = IonStrike{};
+    const unsigned count = ion_channel_count(sequence);
+    s->channels = count;
+    const std::uint32_t h0 = element_hash(sequence, 600u + strike);
+    const std::uint32_t hb = mix32(h0 ^ 0x5bd1e995u);
+    const float tb = 2.f * unit_of(hb) - 1.f, ib = rcp_nr(1.f + tb * tb), sg = (hb & 1u) ? -1.f : 1.f;
+    const float base[2] = {sg * (1.f - tb * tb) * ib, sg * 2.f * tb * ib};
+    for (unsigned c = 0; c < count; ++c) {
+        const std::uint32_t hc = mix32(h0 + 0x9e3779b9u * (c + 1));
+        const unsigned k = (c * 12u / count) % 12u;
+        const float cs = ion_cos30[k], sn = ion_cos30[(k + 9u) % 12u]; // sin(a) = cos(a - 90)
+        float d[2] = {cs * base[0] - sn * base[1], sn * base[0] + cs * base[1]};
+        ion_turn(hl::ion_dir_jitter * (2.f * unit_of(hc) - 1.f), d);
+        const float L = hl::ion_len * (1.f + hl::ion_len_spread * (unit_of(mix32(hc ^ 0x27d4eb2fu)) - 0.5f));
+        const unsigned n = hl::ion_segments_lo + (mix32(hc ^ 0x165667b1u) >> 8) % (hl::ion_segments_hi - hl::ion_segments_lo + 1);
+        const float o[2] = {0.f, 0.f};
+        const unsigned first = s->points;
+        ion_walk(s, o, d, L, n, hc, 0);
+        const unsigned nb = hl::ion_branches_lo + (mix32(hc ^ 0xd3a2646cu) >> 8) % (hl::ion_branches_hi - hl::ion_branches_lo + 1);
+        for (unsigned b = 0; b < nb; ++b) {
+            const std::uint32_t hr = mix32(hc + 0xc2b2ae35u * (b + 1));
+            const unsigned j = 1u + (hr >> 8) % (n - 2u); // an inner vertex
+            float t = hl::ion_branch_t_lo + (hl::ion_branch_t_hi - hl::ion_branch_t_lo) * unit_of(mix32(hr + 1u));
+            if (hr & 1u) t = -t;
+            float db[2] = {d[0], d[1]};
+            ion_turn(t, db);
+            const unsigned nbs = n / 2 > 3 ? n / 2 : 3;
+            const unsigned lines = s->lines;
+            ion_walk(s, s->p[first + j], db, hl::ion_branch_len * L, nbs, hr, 1);
+            s->branches += s->lines > lines;
+        }
+    }
+}
+// The strike's geometry memoised (the performance pass: a strike is drawn on three frames or more; a pure function of
+// its key, so an entry never goes stale): ion_cache_sets sets of ion_cache_ways entries, the set by a hash of (sequence,
+// strike), the least recently used way replaced (review 2026-11-07: 32 direct-mapped slots recomputed nearly every
+// strike at 64 lit hits; 256 entries hold 64 lit hits with their previous strikes, about 290 KB in the TU's .bss).
+// Sequence 0 is no record (an empty entry). The game thread's only (the stage's caller); a reference stays valid until
+// the next lookup.
+constexpr unsigned ion_cache_sets = 64, ion_cache_ways = 4;
+struct IonCacheEntry {
+    std::uint32_t sequence = 0, strike = 0, used = 0;
+    IonStrike st;
+};
+inline const IonStrike& ion_strike_cached(std::uint32_t sequence, unsigned strike) noexcept {
+    static IonCacheEntry cache[ion_cache_sets * ion_cache_ways];
+    static std::uint32_t clock = 0;
+    IonCacheEntry* set = cache + (mix32(sequence * 8u + strike) & (ion_cache_sets - 1u)) * ion_cache_ways;
+    IonCacheEntry* victim = set;
+    ++clock;
+    for (unsigned w = 0; w < ion_cache_ways; ++w) {
+        IonCacheEntry& c = set[w];
+        if (c.sequence == sequence && c.strike == strike && sequence) {
+            c.used = clock;
+            return c.st;
+        }
+        if (c.used < victim->used) victim = &c;
+    }
+    ion_strike(sequence, strike, &victim->st);
+    victim->sequence = sequence;
+    victim->strike = strike;
+    victim->used = clock;
+    return victim->st;
+}
+// The ion's strike timer of a held record (hull-impact-classes.md 4.5, 4.6): ticks refresh its t0 in place, so the
+// hold has lasted t0 - first_ms; the strike window restarts every ion_strike_window_ms of the hold (its strikes re-seeded,
+// cycle `*cycle`), and the window's remaining strikes, residual and ion_end_ms end run after the hold ends. A record that
+// was never refreshed (t0 at or before its first stage frame) is at cycle 0: ion_phase's own age.
+inline std::uint32_t ion_hold_age(const core::Event& e, std::uint32_t first_ms, std::uint32_t age_ms,
+                                  unsigned* cycle) noexcept {
+    const std::int32_t held = std::int32_t(e.t0_game_ms - first_ms);
+    const std::uint32_t k = held > 0 ? std::uint32_t(held) / core::hull::ion_strike_window_ms : 0u;
+    const std::uint32_t base = k * core::hull::ion_strike_window_ms;
+    *cycle = unsigned(k);
+    return age_ms > base ? age_ms - base : 0u;
+}
+// The strike index of cycle k's strike j (IonJob::strike is a byte; the channel sets repeat after 63 cycles, 12.6 s)
+inline unsigned ion_cycle_strike(std::uint32_t sequence, unsigned cycle, unsigned strike) noexcept {
+    return strike + ion_strike_count(sequence) * (cycle % 63u);
+}
+// The strike drawn at game age `age` (ms; floor_ms the record's three-frame floor): the latest started strike while it
+// is lit, then the residual flicker of the last one; e its radiance factor (x ion_channel_e).
+struct IonPhase {
+    bool lit = false, residual = false;
+    unsigned strike = 0;
+    float e = 0.f;
+};
+inline IonPhase ion_phase(std::uint32_t sequence, float age, float floor_ms) noexcept {
+    namespace hl = core::hull;
+    IonPhase ph;
+    if (!(age >= 0.f)) return ph;
+    const unsigned count = ion_strike_count(sequence);
+    const float spacing = float(hl::ion_strike_window_ms) / float(count);
+    const float t_res = float(hl::ion_residual_ms) + 40.f * unit_of(element_hash(sequence, 42));
+    const float strike_life = float(hl::ion_strike_ms) > floor_ms ? float(hl::ion_strike_ms) : floor_ms;
+    const float res_life = float(hl::ion_end_ms) - t_res > floor_ms ? float(hl::ion_end_ms) - t_res : floor_ms;
+    if (age >= t_res) {
+        if (age < t_res + res_life) {
+            ph.lit = ph.residual = true;
+            ph.strike = count - 1;
+            ph.e = hl::ion_residual_e * (1.f - hl::ion_strike_decay * float(count - 1));
+        }
+        return ph;
+    }
+    unsigned j = unsigned(age / spacing);
+    if (j >= count) j = count - 1;
+    if (age < float(j) * spacing + strike_life) {
+        ph.lit = true;
+        ph.strike = j;
+        ph.e = 1.f - hl::ion_strike_decay * float(j);
+    }
+    return ph;
+}
+// The stage's tangent plane of a hit (owner frame): normal to the contact point's direction from the owner's origin
+// (0, 0, 1 at the origin), its two axes taken into view through the owner's axes in view (frame rows). The vertex program
+// turns it onto the lane's normal at the contact pixel; this plane is its fallback.
+inline void ion_tangents(const std::int32_t pos[3], const float frame[9], float t1[3], float t2[3]) noexcept {
+    float n[3] = {float(pos[0]), float(pos[1]), float(pos[2])};
+    if (!normalize3(n)) {
+        n[0] = n[1] = 0.f;
+        n[2] = 1.f;
+    }
+    const float a[3] = {n[1] * n[1] < 0.81f ? 0.f : 1.f, n[1] * n[1] < 0.81f ? 1.f : 0.f, 0.f};
+    float u[3], v[3];
+    cross3(n, a, u);
+    normalize3(u);
+    cross3(n, u, v);
+    for (unsigned j = 0; j < 3; ++j) {
+        t1[j] = u[0] * frame[j] + u[1] * frame[3 + j] + u[2] * frame[6 + j];
+        t2[j] = v[0] * frame[j] + v[1] * frame[3 + j] + v[2] * frame[6 + j];
+    }
+}
+// One lightning segment's quad (renderer::WeaponLightningVertex; weapon_lightning_vs.hlsl, weapon_filament_ps.hlsl):
+// the hit's contact point c (view) with the radiance e, the segment's ends pa, pb in the plane of the axes t1, t2 (view
+// units a plane unit), the core's half width hw (px) and the depth window tol (view units); the vertex program orients
+// the quad (corner k: end A for k 0 and 2, B for 1 and 3, by the sign of c[3]; side + for 0 and 1, - for 2 and 3, by
+// the sign of d[3]). The performance pass: four 16-byte stores a vertex, nothing computed.
+inline void ion_segment_quad(const float c[3], const float t1[3], const float t2[3], const float pa[2], const float pb[2],
+                             float hw, float e, float tol, renderer::WeaponLightningVertex* out) noexcept {
+    const __m128 va = _mm_setr_ps(c[0], c[1], c[2], e), vb = _mm_setr_ps(pa[0], pa[1], pb[0], pb[1]);
+    const __m128 cm = _mm_setr_ps(t1[0], t1[1], t1[2], -hw), cp = _mm_setr_ps(t1[0], t1[1], t1[2], hw);
+    const __m128 dm = _mm_setr_ps(t2[0], t2[1], t2[2], -tol), dp = _mm_setr_ps(t2[0], t2[1], t2[2], tol);
+    for (unsigned k = 0; k < 4; ++k) {
+        _mm_storeu_ps(out[k].a, va);
+        _mm_storeu_ps(out[k].b, vb);
+        _mm_storeu_ps(out[k].c, (k & 1u) ? cp : cm);
+        _mm_storeu_ps(out[k].d, (k & 2u) ? dm : dp);
+    }
+}
+// A lit ion hit of the frame (the lightning's job, build_hull (C) and (C2)): its contact point and the stage's axes x
+// r_hit (view), r_hit in pixels there, the core half widths and radiances of its channels and branches, the depth
+// window, its age, sequence and strike, its visible segments (mask: by the strike's point index i, the segment i .. i + 1)
+// and, once written, its first segment, its channels' ends (from first) and charged screens, the channels kept.
+struct IonJob {
+    static constexpr unsigned mask_words = (IonStrike::max_points + 31) / 32;
+    float c[3], t1[3], t2[3];
+    float r_px, hw_main, hw_branch, e_main, e_branch, tol;
+    std::uint32_t age, sequence;
+    std::uint16_t segments, first;
+    std::uint8_t strike, own, kept, channels, keep_channels;
+    std::uint16_t chan_end[core::hull::ion_channels_hi];
+    float chan_area[core::hull::ion_channels_hi];
+    std::uint32_t mask[mask_words];
+};
+// One segment's four vertices from a job's prepared rows (ion_segment_quad's layout; four 16-byte stores a vertex).
+inline void ion_emit(renderer::WeaponLightningVertex* out, __m128 va, __m128 vb, __m128 cm, __m128 cp, __m128 dm,
+                     __m128 dp) noexcept {
+    for (unsigned k = 0; k < 4; ++k) {
+        _mm_storeu_ps(out[k].a, va);
+        _mm_storeu_ps(out[k].b, vb);
+        _mm_storeu_ps(out[k].c, (k & 1u) ? cp : cm);
+        _mm_storeu_ps(out[k].d, (k & 2u) ? dm : dp);
+    }
+}
 // A flash's quad (the sprite batch's disc kind): the core core_frac r_hit (>= floor_flash_px) in a halo of halo_frac
-// r_hit, centred on c (view) biased towards the eye by bias r_hit, the halo's colour, its radiance. False when behind the
-// near plane or past the cap (*capped).
+// r_hit, centred on c (view) biased towards the eye by bias r_hit, the halo's colour, its radiance, and the core's share
+// of the halo colour (c.z: the core lerp(white, halo, core_share); 0 white, the beam spot's beam_core_mix / beam_glow_mix).
+// False when behind the near plane or past the cap (*capped).
 inline bool flash_quad(const HullView& f, const Screen& sc, const float c_view[3], float r_hit, float core_frac,
                        float halo_frac, const float halo[3], float radiance, renderer::WeaponSpriteVertex* v,
-                       float* screens) noexcept {
+                       float* screens, float core_share = 0.f) noexcept {
     const float px_x = 0.5f * f.width * f.cam.m00;
     const float dist = scalar::sqrt(dot3(c_view, c_view));
     const float b = dist > 1e-6f ? 1.f - core::hull::bias * r_hit / dist : 1.f;
@@ -630,7 +887,8 @@ inline bool flash_quad(const HullView& f, const Screen& sc, const float c_view[3
         v[q].b[1] = sy[q];
         v[q].b[2] = radiance;
         v[q].b[3] = r_view;
-        v[q].c[0] = v[q].c[1] = v[q].c[2] = 0.f;
+        v[q].c[0] = v[q].c[1] = 0.f;
+        v[q].c[2] = core_share;
         v[q].colour = colour;
     }
     return true;
@@ -704,9 +962,19 @@ inline float record_calibre(const core::Event& e) noexcept {
 inline bool tint_saturated(const core::Event& e) noexcept {
     return e.tint_source == core::tint_light || e.tint_source == core::tint_override;
 }
+// The beam spot's weapon colour applies (section 4.5, review 2026-11-07: only where a colour exists): the tint from the
+// light or the texture average, its 8-bit saturation (max - min) / max above hull::beam_colour_sat_min; white and grey
+// beams (Mayhem 3's PBC, stock PAL / FUSIONBEAM / TRIBEAM) keep the heat look.
+inline bool beam_coloured(const core::Event& e) noexcept {
+    if (e.tint_source != core::tint_light && e.tint_source != core::tint_texture) return false;
+    if (!(e.tint_rgb & core::rgb_present)) return false;
+    const unsigned r = e.tint_rgb & 0xffu, g = (e.tint_rgb >> 8) & 0xffu, b = (e.tint_rgb >> 16) & 0xffu;
+    const unsigned hi = r > g ? (r > b ? r : b) : (g > b ? g : b), lo = r < g ? (r < b ? r : b) : (g < b ? g : b);
+    return hi > 0 && float(hi - lo) > core::hull::beam_colour_sat_min * float(hi);
+}
 // The record's element reach (view units), from its class constants, calibre and tier unit (2026-11-07): the
 // owner-attached elements about the contact point (the flash halo, the heavy streak, the puff's R_b, the ring's
-// ring_stretch (rr + 3 w), the filament glow, the shimmer square, the glow and the ember; the largest) and the sparks
+// ring_stretch (rr + 3 w), the ion's lightning (ion_reach_r), the shimmer square, the glow and the ember; the largest) and the sparks
 // about their origin (per set the launch speed x (1 + spread) x tau, which bounds tau (1 - e^(-t / tau)), the curl drift
 // spark_curl_x of it over the longest life (law x spark_life_hi, or the frame floor), and the streak's world part:
 // streak_cap rest lengths of spark_rest_w widths at the largest width and length factors, plus half a width).
@@ -724,7 +992,7 @@ inline void record_reach(const core::Event& e, const HullTuning& t, float frame_
     const float* em = hl::class_ember[a];
     // the ring's front stretched along the heading (the shock front, ring_stretch) reaches that much further
     const float ring = hl::ring_stretch * (rg[0] + 3.f * rg[1]);
-    for (const float v : {streak, ring, hl::filament_r, hl::class_shimmer[a], gw[0], em[0]})
+    for (const float v : {streak, ring, a == hl::an_ion ? hl::ion_reach_r : 0.f, hl::class_shimmer[a], gw[0], em[0]})
         m = v > m ? v : m;
     const float* pf = hl::class_puff[a];
     const float R_b = pf[0] * r_hit + U * (pf[1] + pf[2] * k);
@@ -797,7 +1065,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     const std::uint32_t hold_window = hl::hold_ms > 2u * f.step_ms ? hl::hold_ms : 2u * f.step_ms;
     const float engine_per_view = 1.f / core::world_scale;
     // (A) The hold rule (section 3.9): every stage-owned beam, repair or tug record re-lights a spot of its owner and
-    // (table, row) within hold_r r, or becomes one; either way it leaves the ring (one record per beam per frame).
+    // (table, row) within hold_r r, or becomes one; either way it leaves the ring (one record per beam per frame). A
+    // holding record of another anatomy (an ion beam) refreshes its held ring record instead (one record per beam).
     if (t.spots) {
         for (unsigned i = 0; i < core::ring_capacity; ++i) {
             const core::Event& e = ring.slots[i];
@@ -805,6 +1074,42 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             if (!holds(e)) continue;
             const unsigned a = anatomy_of(e);
             const float r_eng = hull_r_hit(e, t) * engine_per_view, hold2 = hl::hold_r * r_eng * hl::hold_r * r_eng;
+            if (!spot_anatomy(a)) {
+                // Held in the ring (a pinned class with the beam bits: the ion's lightning, (C)): the newest tick
+                // re-poses the older held record of its owner and (table, row) within hold_r r (its sequence, first
+                // stage frame and strike seed kept; its t0 the tick's, so the hold's length is t0 - first_ms) and
+                // leaves the ring; none held: it stays as the hold's record.
+                core::Event* into = nullptr;
+                for (unsigned j = 0; j < core::ring_capacity; ++j) {
+                    core::Event& o = ring.slots[j];
+                    if (j == i || !o.sequence || o.role != core::role_hull_hit || !(o.flags & core::flag_stage) ||
+                        o.owner != e.owner || o.node != e.node || o.handle != e.handle || o.table != e.table ||
+                        o.row != e.row || std::int32_t(e.sequence - o.sequence) <= 0 || !holds(o) || anatomy_of(o) != a)
+                        continue;
+                    if (std::int32_t(f.now - o.t0_game_ms) > std::int32_t(hold_window)) continue;
+                    float d2 = 0.f;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        const float d = float(core::wrap_sub(e.pos[k], o.pos[k]));
+                        d2 += d * d;
+                    }
+                    if (d2 <= hold2 && (!into || std::int32_t(o.t0_game_ms - into->t0_game_ms) > 0)) into = &o;
+                }
+                if (into) {
+                    const std::uint32_t seq = into->sequence;
+                    if (std::int32_t(e.t0_game_ms - into->t0_game_ms) > 0) into->t0_game_ms = e.t0_game_ms;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        into->pos[k] = e.pos[k];
+                        into->dir[k] = e.dir[k];
+                    }
+                    into->damage = e.damage;
+                    into->shield_q = e.shield_q;
+                    into->sequence = seq;
+                    ++n.merges;
+                    core::ring_release(ring, i);
+                    state.slots[i] = HullSlot{};
+                }
+                continue;
+            }
             Spot* hit = nullptr;
             bool held_any = false;
             for (Spot& sp : state.spots) {
@@ -1059,7 +1364,11 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     BoxMeta glow_meta[renderer::weapon_glow_boxes];
     BoxMeta burst_meta[renderer::weapon_fireball_boxes];
     BoxMeta ring_meta[renderer::weapon_ring_quads];
-    BoxMeta filament_meta[renderer::weapon_filament_boxes];
+    // The lightning's jobs (the lit ion hits with a visible segment, the first pass in (C); the TU's .bss, about 120 KB
+    // at 1024 records) and their order by age (the cap's and the shed's).
+    static IonJob ion_jobs[core::ring_capacity];
+    static std::uint16_t ion_order[core::ring_capacity];
+    unsigned n_ion_jobs = 0;
     BoxMeta scorch_meta[renderer::weapon_scorch_boxes];
     ShimmerRect shimmer_cand[16];
     float shimmer_screens[16];
@@ -1114,13 +1423,14 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         return true;
     };
     auto emit_flash = [&](const float c_view[3], float r_hit, float core_frac, float halo_frac, const float halo[3],
-                          float radiance) -> bool {
+                          float radiance, float core_share = 0.f) -> bool {
         if (nq >= sprite_cap) {
             if (c_view[2] > f.near_z) ++n.capped;
             return false;
         }
         float screens = 0.f;
-        if (!flash_quad(f, sc, c_view, r_hit, core_frac, halo_frac, halo, radiance, out.sprites + 4 * nq, &screens)) return false;
+        if (!flash_quad(f, sc, c_view, r_hit, core_frac, halo_frac, halo, radiance, out.sprites + 4 * nq, &screens, core_share))
+            return false;
         flash_area += screens * hl::budget_weight_flash;
         if (nfl < flash_meta_cap) {
             flash_quad_of[nfl] = std::uint16_t(nq);
@@ -1185,12 +1495,17 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         }
         const float floor_ms = hs.floor_ms;
         const std::uint32_t age_ms = f.now - hs.first_ms;
-        if (age_ms > 60000u) continue; // a clock reset: Present releases it
+        // A held ion beam (the hold rule in the ring, (A)): its lightning's age on the strike timer, which also bounds
+        // its life (ion_end_ms after the hold's last strike window); the other elements keep the hold's start.
+        unsigned ion_cycle = 0;
+        const bool ion_held = a == hl::an_ion && holds(e);
+        const std::uint32_t life_age = ion_held ? ion_hold_age(e, hs.first_ms, age_ms, &ion_cycle) : age_ms;
+        if (life_age > 60000u) continue; // a clock reset: Present releases it
         // Its anatomy's slowest element over (core::hull_lives, review 2026-11-07): the record leaves the ring at its own
         // end, not at the slowest class's (Present's hull_lifetime_ms bound stays for frames the stage does not draw).
         {
             const float life_end = float(core::hull_lives.v[a]) > floor_ms ? float(core::hull_lives.v[a]) : floor_ms;
-            if (float(age_ms) > life_end) {
+            if (float(life_age) > life_end) {
                 core::ring_release(ring, i);
                 hs = HullSlot{};
                 ++n.done;
@@ -1354,31 +1669,84 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 }
             }
         }
-        // Filament glow (ion): noise in the owner's frame, re-hashed every rehash_ms.
+        // Lightning (ion), the first of its two passes: the strike lit at this age, its visible segments counted (a job;
+        // the second pass after the records writes them, whole hits only, oldest cut first when the cap binds).
         if (t.filament && filament_cap && !hs.orphan && a == hl::an_ion) {
-            const float life = element_life_ms(float(hl::filament_ms), element_hash(e.sequence, 8), t.stagger, floor_ms, &fl);
-            if (age < life) {
+            const IonPhase ph = ion_phase(e.sequence, float(life_age), floor_ms);
+            const unsigned strike = ion_cycle_strike(e.sequence, ion_cycle, ph.strike);
+            if (ph.lit) {
                 if (!s->frame_state) s->frame_state = owner_frame(s->data, f.cam, s->centre, s->frame) ? 1 : 2;
-                const float R = hl::filament_r * r_hit;
+                const float px_x = 0.5f * f.width * f.cam.m00;
+                const float r_px = c_view[2] > f.near_z ? r_hit * px_x / c_view[2] : 0.f;
+                const float rows = f.height * (1.f / 1440.f);
+                const float floor_main = hl::ion_core_px * rows > 1.f ? hl::ion_core_px * rows : 1.f;
+                const float floor_branch = hl::ion_branch_px * rows > 1.f ? hl::ion_branch_px * rows : 1.f;
+                const float w_main = hl::ion_core_w * r_px, w_branch = 0.5f * w_main;
+                const float hw_main = 0.5f * (w_main > floor_main ? w_main : floor_main);
+                const float hw_branch = 0.5f * (w_branch > floor_branch ? w_branch : floor_branch);
+                // the strike's sphere (its reach and the corona's pixels) off screen: nothing to build (the performance
+                // pass: no strike, no points)
                 float rect[4];
                 bool full = false;
-                if (s->frame_state == 1 && c_view[2] + R > f.near_z && sphere_rect(f, c_view, R, rect, &full)) {
-                    if (nf < filament_cap) {
-                        float colour[3];
-                        const float e0 = hl::filament_e * (1.f - age / life) * gain;
-                        for (unsigned q = 0; q < 3; ++q) colour[q] = hl::ion_colour[q] * e0;
-                        const unsigned slot = age_ms / hl::rehash_ms;
-                        const float shape[4] = {hl::filament_scale / r_hit,
-                                                64.f * unit_of(element_hash(e.sequence, 512u + (slot & 255u))),
-                                                hl::filament_width, R};
-                        shape_quad(f, c_view, R, rect, full, colour, shape, s->frame, out.filaments + 4 * nf);
-                        filament_meta[nf] = BoxMeta{age_ms, e.owner, rect_screens(rect) * hl::budget_weight_filament,
-                                                    std::uint8_t(own), 0};
-                        ++nf;
+                const float margin = c_view[2] > f.near_z ? (hl::ion_corona_x * hw_main + 1.f) * c_view[2] / px_x : 0.f;
+                if (s->frame_state == 1 && c_view[2] > f.near_z && n_ion_jobs < core::ring_capacity &&
+                    sphere_rect(f, c_view, hl::ion_reach_r * r_hit + margin, rect, &full)) {
+                    IonJob& j = ion_jobs[n_ion_jobs];
+                    const IonStrike& st = ion_strike_cached(e.sequence, strike);
+                    // Each segment's cull is the sphere about the contact through its farther end (the vertex program
+                    // may turn the plane onto the lane's normal, so the stage's projection does not bound it): a point
+                    // d from the contact, |d| <= rho, projects within px_x rho (1 + |c_x| / c_z) / (c_z - rho) of it
+                    // (rho the L1 norm of its plane coordinates x r_hit: no root).
+                    const Px cp = to_px(f, sc, c_view);
+                    const float iz = rcp_nr(c_view[2]);
+                    const float ax = c_view[0] * iz, ay = c_view[1] * iz;
+                    const float kx = px_x * r_hit * (1.f + (ax < 0.f ? -ax : ax));
+                    const float ky = 0.5f * f.height * f.cam.m11 * r_hit * (1.f + (ay < 0.f ? -ay : ay));
+                    unsigned count = 0;
+                    for (unsigned w = 0; w < IonJob::mask_words; ++w) j.mask[w] = 0;
+                    for (unsigned l = 0; l < st.lines; ++l) {
+                        const IonLine& ln = st.line[l];
+                        const float q = hl::ion_corona_x * (ln.branch ? hw_branch : hw_main) + 1.f;
+                        for (unsigned i = ln.first; i + 1 < unsigned(ln.first) + ln.points; ++i) {
+                            const float* pa = st.p[i];
+                            const float* pb = st.p[i + 1];
+                            const float ra = (pa[0] < 0.f ? -pa[0] : pa[0]) + (pa[1] < 0.f ? -pa[1] : pa[1]);
+                            const float rb = (pb[0] < 0.f ? -pb[0] : pb[0]) + (pb[1] < 0.f ? -pb[1] : pb[1]);
+                            const float rho = ra > rb ? ra : rb;
+                            const float zmin = c_view[2] - rho * r_hit;
+                            if (zmin > f.near_z) {
+                                const float izm = rcp_nr(zmin);
+                                const float hx = kx * rho * izm + q, hy = ky * rho * izm + q;
+                                if (cp.x + hx < 0.f || cp.x - hx > f.width || cp.y + hy < 0.f || cp.y - hy > f.height) continue;
+                            }
+                            j.mask[i >> 5] |= 1u << (i & 31u);
+                            ++count;
+                        }
+                    }
+                    if (count) {
+                        float t1[3], t2[3];
+                        ion_tangents(e.pos, s->frame, t1, t2);
+                        for (unsigned q = 0; q < 3; ++q) {
+                            j.c[q] = c_view[q];
+                            j.t1[q] = t1[q] * r_hit;
+                            j.t2[q] = t2[q] * r_hit;
+                        }
+                        j.r_px = r_px;
+                        j.hw_main = hw_main;
+                        j.hw_branch = hw_branch;
+                        j.e_main = hl::ion_channel_e * ph.e * gain;
+                        j.e_branch = j.e_main * hl::ion_branch_e;
+                        j.tol = hl::ion_depth_r * r_hit;
+                        j.age = life_age; // a held beam's strike age: its current strikes are not the oldest
+                        j.sequence = e.sequence;
+                        j.segments = std::uint16_t(count);
+                        j.strike = std::uint8_t(strike);
+                        j.own = std::uint8_t(own);
+                        j.kept = 1;
+                        ++n_ion_jobs;
                         ++n.filaments;
-                        n.floored += fl;
-                    } else
-                        ++n.capped;
+                        n.floored += floor_ms > float(hl::ion_strike_ms);
+                    }
                 }
             }
         }
@@ -1601,6 +1969,12 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         flash_own = own;
         float tint[3];
         core::event_tint(e, 0.f, tint);
+        // The beam is light (section 4.5, 2026-11-07): its held spot's halo and glow white mixed beam_glow_mix towards
+        // the weapon colour, the core beam_core_mix, where the weapon has a colour (beam_coloured); everything heated
+        // stays on the heat ramp.
+        const bool beam_lit = a == hl::an_beam && t.beam_colour && beam_coloured(e);
+        float beam_c[3];
+        for (unsigned q = 0; q < 3; ++q) beam_c[q] = 1.f + (tint[q] - 1.f) * hl::beam_glow_mix;
         float c_view[3];
         {
             double w[3];
@@ -1625,8 +1999,13 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             const float env = 1.f - fall_age / float(hl::spot_fall_ms);
             if (t.flash && env > 0.f && a == hl::an_beam) {
                 float halo[3];
-                core::heat_colour(1.f, halo);
-                if (emit_flash(c_view, r_hit, hl::spot_core, hl::spot_halo, halo, core::look::core_e * env * gain)) ++n.flashes;
+                if (beam_lit)
+                    for (unsigned q = 0; q < 3; ++q) halo[q] = beam_c[q];
+                else
+                    core::heat_colour(1.f, halo);
+                if (emit_flash(c_view, r_hit, hl::spot_core, hl::spot_halo, halo, core::look::core_e * env * gain,
+                               beam_lit ? hl::beam_core_mix / hl::beam_glow_mix : 0.f))
+                    ++n.flashes;
             }
             // The boiling puff: grown from the spot's birth, its heat re-lit at each tick (never added).
             const float* pf = hl::class_puff[a];
@@ -1698,6 +2077,10 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 for (unsigned q = 0; q < 3; ++q) colour[q] = hl::tug_colour[q] * gw[3] * genv;
             else {
                 core::heat_colour(gw[2], colour);
+                if (beam_lit) { // the weapon colour at the heat glow's mean radiance
+                    const float m = (colour[0] + colour[1] + colour[2]) / (beam_c[0] + beam_c[1] + beam_c[2]);
+                    for (unsigned q = 0; q < 3; ++q) colour[q] = beam_c[q] * m;
+                }
                 for (unsigned q = 0; q < 3; ++q) colour[q] *= gw[3] * gw[2] * genv;
             }
             for (unsigned q = 0; q < 3; ++q) colour[q] *= gain;
@@ -1772,16 +2155,93 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             }
         }
     }
+    // (C2) The lightning's second pass: the jobs' segments written, whole hits only. Past filament_cap segments the
+    // newest hits are kept while they fit and the rest cut whole, oldest first (review 2026-11-07: never a channel cut
+    // mid-way; n.capped counts the hits cut). Each segment charged its quad's screens: (its plane length x r_px + 2 q) x
+    // 2 q (q the corona's half width + 1 px), the plane's foreshortening not known here (an upper bound), x
+    // budget_weight_filament; per channel (a main line with its branches) for the shed in (F).
+    bool ion_sorted = false;
+    auto sort_by_age = [&] { // the newest first, ties by job index (a stable choice); once a frame, only when needed
+        if (ion_sorted) return;
+        for (unsigned k = 0; k < n_ion_jobs; ++k) ion_order[k] = std::uint16_t(k);
+        std::sort(ion_order, ion_order + n_ion_jobs, [](std::uint16_t x, std::uint16_t y) {
+            return ion_jobs[x].age != ion_jobs[y].age ? ion_jobs[x].age < ion_jobs[y].age : x < y;
+        });
+        ion_sorted = true;
+    };
+    {
+        unsigned total = 0;
+        for (unsigned k = 0; k < n_ion_jobs; ++k) total += ion_jobs[k].segments;
+        if (total > filament_cap) {
+            sort_by_age();
+            unsigned used = 0;
+            bool cut = false;
+            for (unsigned k = 0; k < n_ion_jobs; ++k) {
+                IonJob& j = ion_jobs[ion_order[k]];
+                cut = cut || used + j.segments > filament_cap;
+                if (cut) {
+                    j.kept = 0;
+                    ++n.capped;
+                    --n.filaments;
+                } else
+                    used += j.segments;
+            }
+        }
+        const float inv_screen = 1.f / (f.width * f.height);
+        for (unsigned k = 0; k < n_ion_jobs; ++k) {
+            IonJob& j = ion_jobs[k];
+            if (!j.kept) continue;
+            const IonStrike& st = ion_strike_cached(j.sequence, j.strike);
+            j.first = std::uint16_t(nf);
+            j.channels = 0;
+            const __m128 va_m = _mm_setr_ps(j.c[0], j.c[1], j.c[2], j.e_main);
+            const __m128 va_b = _mm_setr_ps(j.c[0], j.c[1], j.c[2], j.e_branch);
+            const __m128 cm_m = _mm_setr_ps(j.t1[0], j.t1[1], j.t1[2], -j.hw_main);
+            const __m128 cp_m = _mm_setr_ps(j.t1[0], j.t1[1], j.t1[2], j.hw_main);
+            const __m128 cm_b = _mm_setr_ps(j.t1[0], j.t1[1], j.t1[2], -j.hw_branch);
+            const __m128 cp_b = _mm_setr_ps(j.t1[0], j.t1[1], j.t1[2], j.hw_branch);
+            const __m128 dm = _mm_setr_ps(j.t2[0], j.t2[1], j.t2[2], -j.tol);
+            const __m128 dp = _mm_setr_ps(j.t2[0], j.t2[1], j.t2[2], j.tol);
+            const float q_m = hl::ion_corona_x * j.hw_main + 1.f, q_b = hl::ion_corona_x * j.hw_branch + 1.f;
+            const float w_m = 2.f * q_m * inv_screen * hl::budget_weight_filament;
+            const float w_b = 2.f * q_b * inv_screen * hl::budget_weight_filament;
+            int ch = -1;
+            for (unsigned l = 0; l < st.lines; ++l) {
+                const IonLine& ln = st.line[l];
+                const bool b = ln.branch != 0;
+                if (!b && ch + 1 < int(hl::ion_channels_hi)) {
+                    ++ch;
+                    j.chan_area[ch] = 0.f;
+                }
+                if (ch < 0) continue;
+                for (unsigned i = ln.first; i + 1 < unsigned(ln.first) + ln.points; ++i) {
+                    if (!(j.mask[i >> 5] & (1u << (i & 31u)))) continue;
+                    const float* pa = st.p[i];
+                    const float* pb = st.p[i + 1];
+                    ion_emit(out.filaments + 4 * nf, b ? va_b : va_m, _mm_setr_ps(pa[0], pa[1], pb[0], pb[1]),
+                             b ? cm_b : cm_m, b ? cp_b : cp_m, dm, dp);
+                    j.chan_area[ch] += (st.len[i] * j.r_px + 2.f * (b ? q_b : q_m)) * (b ? w_b : w_m);
+                    ++nf;
+                }
+                j.chan_end[ch] = std::uint16_t(nf - j.first);
+            }
+            j.channels = std::uint8_t(ch + 1);
+            j.keep_channels = j.channels;
+            n.ion_segments += nf - j.first;
+        }
+    }
     // (F) The shared budget (look 2.11 as amended): past the screens the patches left, (0) the shimmer rects of other
     // owners, (1) the puffs' second octave, then other owners' puffs past two per owner, (2) other owners' scorches, (3)
-    // their rings and filament glows, (4) their glows and embers, then their remaining puffs (oldest first, O(boxes x
+    // their rings and lightning segments, (4) their glows and embers, then their remaining puffs (oldest first, O(boxes x
     // shed), only while over budget), last other owners' flashes. Streaks, sparks, chips, spot cores and anything of the
     // own ship are never shed.
     float area = 0.f, burst_area = 0.f;
     for (unsigned g = 0; g < ng; ++g) area += glow_meta[g].area;
     for (unsigned g = 0; g < nb; ++g) burst_area += burst_meta[g].area;
     for (unsigned g = 0; g < nr; ++g) area += ring_meta[g].area;
-    for (unsigned g = 0; g < nf; ++g) area += filament_meta[g].area;
+    for (unsigned k = 0; k < n_ion_jobs; ++k)
+        if (ion_jobs[k].kept)
+            for (unsigned c = 0; c < ion_jobs[k].channels; ++c) area += ion_jobs[k].chan_area[c];
     for (unsigned g = 0; g < ns; ++g) area += scorch_meta[g].area;
     area += burst_area + flash_area;
     const bool over = area > f.budget_left;
@@ -1829,7 +2289,36 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     }
     n.scorches_shed += shed_oldest(out.scorches, &ns, scorch_meta, &area, f.budget_left, 0);
     n.rings_shed += shed_oldest(out.rings, &nr, ring_meta, &area, f.budget_left, 0);
-    n.filaments_shed += shed_oldest(out.filaments, &nf, filament_meta, &area, f.budget_left, 0);
+    // The lightning (step 3 with the rings; review 2026-11-07: one pass, whole channels): other owners' hits oldest first,
+    // each hit's channels from its last (a channel goes with its branches), while over budget; then the kept segments
+    // move down in one pass. n.filaments_shed counts the segments shed.
+    if (area > f.budget_left && nf) {
+        sort_by_age();
+        bool any = false;
+        for (unsigned k = n_ion_jobs; k-- > 0 && area > f.budget_left;) {
+            IonJob& j = ion_jobs[ion_order[k]];
+            if (!j.kept || j.own) continue;
+            while (j.keep_channels && area > f.budget_left) {
+                area -= j.chan_area[--j.keep_channels];
+                any = true;
+            }
+        }
+        if (any) {
+            unsigned w = 0;
+            for (unsigned k = 0; k < n_ion_jobs; ++k) {
+                IonJob& j = ion_jobs[k];
+                if (!j.kept) continue;
+                const unsigned keep = j.keep_channels ? j.chan_end[j.keep_channels - 1] : 0u;
+                const unsigned all = j.channels ? j.chan_end[j.channels - 1] : 0u;
+                if (w != j.first && keep)
+                    std::memmove(out.filaments + 4 * w, out.filaments + 4 * j.first, sizeof(*out.filaments) * 4 * keep);
+                j.first = std::uint16_t(w);
+                w += keep;
+                n.filaments_shed += all - keep;
+            }
+            nf = w;
+        }
+    }
     n.shed += shed_oldest(out.glows, &ng, glow_meta, &area, f.budget_left, 0);
     for (unsigned g = 0; g < nb; ++g) burst_meta[g].rank = 0;
     n.bursts_shed += shed_oldest(out.fireballs, &nb, burst_meta, &area, f.budget_left, 0, &burst_area);

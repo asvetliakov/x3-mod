@@ -8,7 +8,7 @@ SS_BULLET_FBL                    0x1000 slug      2793 energy    ballistic balli
 SS_BULLET_KH_GAMMA                  0x2 beam      7500 beam      -         beam     
 SS_BULLET_HEPT                      0x0 tracer    1995 energy    plasma    plasma   
 SS_BULLET_IRE                       0x0 tracer     220 energy    -         energy   
-SS_BULLET_IOND                    0x214 beam      1575 beam      -         beam     
+SS_BULLET_IOND                    0x214 beam      1575 beam      ion       ion      
 SS_BULLET_MASS                     0x60 tracer      45 ballistic -         ballistic
 SS_BULLET_MAM                     0x140 orb       8350 ballistic -         ballistic
 SS_BULLET_PAC                       0x1 tracer    1155 energy    -         energy   
@@ -45,8 +45,8 @@ SS_BULLET_MAM_1                   0x140 orb       7845 ballistic -         balli
 SS_BULLET_TERRANANTIFIGHTER_1       0x0 slug     20785 heavy     -         heavy    
 SS_BULLET_TERRANANTIFIGHTER_FRAG    0x8 wave       220 plasma    -         plasma   
 SS_BULLET_TRIBEAM                   0x2 beam      7532 beam      -         beam     
-counts: ballistic=5 beam=9 energy=13 heavy=3 ion=4 plasma=9 repair=1 tug=1
-pins used: 11 of 45 rows
+counts: ballistic=5 beam=8 energy=13 heavy=3 ion=5 plasma=9 repair=1 tug=1
+pins used: 12 of 45 rows
 
 == mayhem3 (38 rows)
 id                                flags shape      dmg classifier pin       class    
@@ -101,7 +101,7 @@ SS_BULLET_FBL                    0x1000 slug      2793 energy    ballistic balli
 SS_BULLET_KH_GAMMA                  0x2 beam      7500 beam      -         beam     
 SS_BULLET_HEPT                      0x0 tracer    1995 energy    plasma    plasma   
 SS_BULLET_IRE                       0x0 tracer     220 energy    -         energy   
-SS_BULLET_IOND                    0x214 beam      1575 beam      -         beam     
+SS_BULLET_IOND                    0x214 beam      1575 beam      ion       ion      
 SS_BULLET_MASS                     0x60 tracer      45 ballistic -         ballistic
 SS_BULLET_MAM                     0x140 orb       8350 ballistic -         ballistic
 SS_BULLET_PAC                       0x1 tracer    1155 energy    -         energy   
@@ -138,7 +138,7 @@ SS_BULLET_IPG_FRAG                0x300 slug     12563 ion       -         ion
 SS_BULLET_MAM_1                   0x140 orb       7845 ballistic -         ballistic
 SS_BULLET_TERRANANTIFIGHTER_1       0x0 slug     20785 heavy     -         heavy    
 SS_BULLET_TERRANANTIFIGHTER_FRAG    0x8 wave       220 plasma    -         plasma   
-counts: ballistic=5 beam=9 energy=13 heavy=3 ion=4 plasma=9 repair=1 tug=1
-pins used: 11 of 45 rows
+counts: ballistic=5 beam=8 energy=13 heavy=3 ion=5 plasma=9 repair=1 tug=1
+pins used: 12 of 45 rows
 
 pins naming no catalogue id: none

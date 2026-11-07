@@ -104,6 +104,17 @@ double jaccard(const std::vector<std::uint8_t>& a, const std::vector<std::uint8_
         }
     return any ? double(both) / double(any) : 1.0;
 }
+// One lightning segment given in pixels at a's view depth (the fixture's projection, m00 1.6, m11 1.6 W / H, no jitter):
+// the contact at a's view point, the plane's axes one pixel in x and one down in y at that depth, so on a flat lane facing
+// the eye the vertex program's plane is the screen's (the lane's normal is the stage's).
+void px_segment(const Target& t, const ws::Px& a, const ws::Px& b, float hw, float e, float tol,
+                rr::WeaponLightningVertex* out) {
+    const float m00 = 1.6f, m11 = 1.6f * float(t.w) / float(t.h), z = a.z;
+    const float c[3] = {(2.f * a.x / float(t.w) - 1.f) / m00 * z, (1.f - 2.f * a.y / float(t.h)) / m11 * z, z};
+    const float t1[3] = {2.f * z / (float(t.w) * m00), 0.f, 0.f}, t2[3] = {0.f, -2.f * z / (float(t.h) * m11), 0.f};
+    const float pa[2] = {0.f, 0.f}, pb[2] = {b.x - a.x, b.y - a.y};
+    ws::ion_segment_quad(c, t1, t2, pa, pb, hw, e, tol, out);
+}
 // A scorch through the production TemporalPass (resolve_core's configuration): the scene a hull of value 1 at view z 300
 // (the lane), a scorch box (s 0.5) moving +x at speed_px per frame for 16 frames, then `after` frames without it, once
 // with the stage and once without. *residual: the largest |on - off| of the resolved image `after` frames after it went;
@@ -226,15 +237,18 @@ void class_cases(rr::WeaponEffectsPass& pass) {
     auto r_of = [&](float k, float Uu) { return hl::r_scale * Uu * (hl::r_base + hl::r_k * k); };
     const float r33 = r_of(k33, U);
     char detail[256];
-    std::printf("CLASS_SLOTS shape_vs=%u ring_ps=%u filament_ps=%u fireball_ps=%u scorch_blend=%u shape_vertex_bytes=%u "
-                "fireball_vertex_bytes=%u hull_state_bytes=%u spot_bytes=%u mark_bytes=%u\n",
+    std::printf("CLASS_SLOTS shape_vs=%u ring_ps=%u filament_ps=%u lightning_vs=%u lightning_vtf=%u,%u fireball_ps=%u "
+                "scorch_blend=%u shape_vertex_bytes=%u lightning_vertex_bytes=%u fireball_vertex_bytes=%u "
+                "hull_state_bytes=%u spot_bytes=%u mark_bytes=%u\n",
                 pass.caps().shape_vs_slots, pass.caps().ring_ps_slots, pass.caps().filament_ps_slots,
-                pass.caps().fireball_ps_slots, unsigned(pass.caps().scorch_enabled),
-                unsigned(sizeof(rr::WeaponShapeVertex)), unsigned(sizeof(rr::WeaponFireballVertex)),
+                pass.caps().lightning_vs_slots, unsigned(pass.caps().lightning_vtf_four),
+                unsigned(pass.caps().lightning_vtf_r32f), pass.caps().fireball_ps_slots,
+                unsigned(pass.caps().scorch_enabled), unsigned(sizeof(rr::WeaponShapeVertex)),
+                unsigned(sizeof(rr::WeaponLightningVertex)), unsigned(sizeof(rr::WeaponFireballVertex)),
                 unsigned(sizeof(ws::HullState)), unsigned(sizeof(ws::Spot)), unsigned(sizeof(ws::ScorchMark)));
     report("hull_class_programs_attached", pass.caps().hull_enabled && pass.caps().shape_vs_slots &&
                                                pass.caps().ring_ps_slots && pass.caps().filament_ps_slots &&
-                                               pass.caps().scorch_enabled, "");
+                                               pass.caps().lightning_vs_slots && pass.caps().scorch_enabled, "");
     // 1. The class nibble round-trips through the ring into the stage's anatomy (every anatomy alone, one frame).
     {
         unsigned ok = 0;
@@ -1009,11 +1023,180 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         report("hull_beam_pulse_flash_after_gap", held_end.n.flashes == 1 && fallen.n.flashes == 0 && restart.n.pulses == 1 &&
                                                       restart.n.spot_flashes == 1 && second.n.pulses == 0, "");
     }
-    // 11. Ion: the filaments on the surface only, crawling (re-hashed at 100 ms, still within a slot, riding a moving
-    // owner); no heat after the hit, nothing after 500 ms.
+    // 10b. Beam colour (2026-11-07, user: the beam is light): a green light colour (a PBG-like saturated light) on a held
+    // spot past its pulse flash: the mean hue in the glow annulus (0.6..2.0 r) within 10 degrees of the weapon colour's,
+    // the core (under 0.15 r) less saturated (nearer white); the trail ember and the scorch line bit for bit those of the
+    // spot with beam_colour off (they are the hull: the heat ramp).
     {
+        const std::uint32_t green = 64u | (255u << 8) | (96u << 16) | wc::rgb_present;
+        auto run_spot = [&](bool colour, unsigned what) {
+            hull_owner(400.f, 100.f);
+            ws::HullTuning tune = only(what);
+            tune.beam_colour = colour;
+            HullOut o;
+            for (unsigned i = 0; i < 10; ++i) {
+                const std::uint32_t t = 1000 + 16 * i;
+                wc::Event* e = add_of(hl::an_beam, t, front, 0.33);
+                e->tint_rgb = green;
+                e->tint_source = wc::tint_light;
+                o = hull_build(hull_view(g, t, 16), tune);
+            }
+            return o;
+        };
+        float w[3];
+        wc::tint_linear(green, w);
+        auto hue = [](double r, double gg, double b) {
+            const double mx = std::max(r, std::max(gg, b)), mn = std::min(r, std::min(gg, b)), d = mx - mn;
+            if (!(d > 1e-9)) return 0.0;
+            double h = mx == r ? std::fmod((gg - b) / d, 6.0) : mx == gg ? (b - r) / d + 2.0 : (r - gg) / d + 4.0;
+            h *= 60.0;
+            return h < 0 ? h + 360.0 : h;
+        };
+        auto sat = [](const double c[3]) {
+            const double mx = std::max(c[0], std::max(c[1], c[2])), mn = std::min(c[0], std::min(c[1], c[2]));
+            return mx > 0 ? (mx - mn) / mx : 0.0;
+        };
+        draw_lane(g, z_hit, 1.f);
+        const HullOut held = run_spot(true, FLASH | GLOW);
+        std::vector<float> rgb;
+        hull_render(pass, held, &rgb);
+        const double r_px = double(r33) * ppu;
+        double ring_c[3] = {0, 0, 0}, core_c[3] = {0, 0, 0};
+        unsigned ring_n = 0, core_n = 0;
+        for (std::size_t i = 0; i < rgb.size() / 3; ++i) {
+            const double d = std::hypot(double(i % g.w) + 0.5 - cx, double(i / g.w) + 0.5 - cy) / r_px;
+            double* acc = d < 0.15 ? core_c : (d >= 0.6 && d <= 2.0) ? ring_c : nullptr;
+            if (!acc) continue;
+            for (unsigned q = 0; q < 3; ++q) acc[q] += double(rgb[3 * i + q]);
+            ++(acc == core_c ? core_n : ring_n);
+        }
+        const double h_w = hue(w[0], w[1], w[2]), h_ring = hue(ring_c[0], ring_c[1], ring_c[2]);
+        double dh = std::fabs(h_ring - h_w);
+        dh = std::min(dh, 360.0 - dh);
+        const double w_d[3] = {w[0], w[1], w[2]};
+        const double s_ring = sat(ring_c), s_core = sat(core_c), s_w = sat(w_d);
+        // the ember and the scorch line after the hold, beam_colour on and off
+        auto after = [&](bool colour) {
+            run_spot(colour, EMBER | SCORCH);
+            const std::uint32_t last = 1000 + 16 * 9;
+            const HullOut o = hull_build(hull_view(g, last + hl::hold_ms + 200, 16), [&] {
+                ws::HullTuning t = only(EMBER | SCORCH);
+                t.beam_colour = colour;
+                return t;
+            }());
+            std::vector<unsigned char> bytes(reinterpret_cast<const unsigned char*>(hq_glows),
+                                             reinterpret_cast<const unsigned char*>(hq_glows + 4 * o.boxes));
+            bytes.insert(bytes.end(), reinterpret_cast<const unsigned char*>(hq_scorches),
+                         reinterpret_cast<const unsigned char*>(hq_scorches + 4 * o.scorches));
+            return std::make_pair(o, bytes);
+        };
+        const auto on = after(true), off = after(false);
+        const bool heat_same = on.first.boxes > 0 && on.first.scorches > 0 && on.first.boxes == off.first.boxes &&
+                               on.first.scorches == off.first.scorches && on.second == off.second;
+        std::printf("CLASS case=beam_colour weapon_hue=%.2f ring_hue=%.2f hue_err_deg=%.2f ring_sat=%.4f core_sat=%.4f "
+                    "weapon_sat=%.4f ring_px=%u core_px=%u ember_boxes=%u scorches=%u ember_scorch_unchanged=%u\n",
+                    h_w, h_ring, dh, s_ring, s_core, s_w, ring_n,
+                    core_n, on.first.boxes, on.first.scorches, unsigned(heat_same));
+        report("hull_beam_spot_weapon_colour", held.n.flashes >= 1 && held.boxes >= 1 && ring_n > 0 && core_n > 0 &&
+                                                   dh <= 10.0 && s_core < s_ring, "");
+        report("hull_beam_ember_scorch_stay_heat", heat_same, "");
+        // 10c. Only where a colour exists (review 2026-11-07): a white beam (Mayhem 3's PBC: a white light, no texture:
+        // tint_white), a grey one (stock PAL, FUSIONBEAM, TRIBEAM: 192 grey, tint_white) and a white light reaching the
+        // stage as a light keep the heat halo and glow, their sprite and glow vertices bit for bit those with
+        // beam_colour off; stock PBC (a grey light, its texture average 121, 82, 39: tint_texture) takes the orange mix:
+        // the glow proportional to white mixed beam_glow_mix towards the texture's linear colour (r > g > b), the spot
+        // core's share of its halo beam_core_mix / beam_glow_mix.
+        {
+            auto spot = [&](std::uint32_t word, std::uint8_t source, bool colour, HullOut* out) {
+                hull_owner(400.f, 100.f);
+                ws::HullTuning tune = only(FLASH | GLOW);
+                tune.beam_colour = colour;
+                HullOut o;
+                for (unsigned i = 0; i < 10; ++i) {
+                    const std::uint32_t t = 1000 + 16 * i;
+                    wc::Event* e = add_of(hl::an_beam, t, front, 0.33);
+                    e->tint_rgb = word;
+                    e->tint_source = source;
+                    o = hull_build(hull_view(g, t, 16), tune);
+                }
+                if (out) *out = o;
+                std::vector<unsigned char> bytes(reinterpret_cast<const unsigned char*>(hq_sprites),
+                                                 reinterpret_cast<const unsigned char*>(hq_sprites + 4 * o.quads));
+                bytes.insert(bytes.end(), reinterpret_cast<const unsigned char*>(hq_glows),
+                             reinterpret_cast<const unsigned char*>(hq_glows + 4 * o.boxes));
+                return bytes;
+            };
+            const std::uint32_t white = 0xffffffu | wc::rgb_present, grey = wc::pack_rgb(192, 192, 192);
+            HullOut wo;
+            const auto white_on = spot(white, wc::tint_white, true, &wo);
+            const bool white_same = wo.quads > 0 && wo.boxes > 0 && white_on == spot(white, wc::tint_white, false, nullptr);
+            const bool grey_same = spot(grey, wc::tint_white, true, nullptr) == spot(grey, wc::tint_white, false, nullptr);
+            const bool light_same = spot(white, wc::tint_light, true, nullptr) == spot(white, wc::tint_light, false, nullptr);
+            HullOut pbc;
+            const std::uint32_t pbc_word = wc::pack_rgb(121, 82, 39);
+            spot(pbc_word, wc::tint_texture, true, &pbc);
+            float lin[3], want[3];
+            wc::tint_linear(pbc_word, lin);
+            for (unsigned q = 0; q < 3; ++q) want[q] = 1.f + (lin[q] - 1.f) * hl::beam_glow_mix;
+            const float* gc = hq_glows[0].colour;
+            double ratio_err = 0.0;
+            for (unsigned q = 0; q < 3; ++q)
+                ratio_err = std::max(ratio_err, std::fabs(double(gc[q] / gc[0]) - double(want[q] / want[0])));
+            float share = 0.f;
+            for (unsigned q = 0; q < 4 * pbc.quads; ++q) share = std::max(share, hq_sprites[q].c[2]);
+            const bool orange = pbc.boxes >= 1 && pbc.quads >= 1 && gc[0] > gc[1] && gc[1] > gc[2] && ratio_err < 1e-4 &&
+                                std::fabs(share - hl::beam_core_mix / hl::beam_glow_mix) < 1e-6f;
+            std::printf("CLASS case=beam_colour_gate white_same=%u grey_same=%u white_light_same=%u pbc_glow=%.4f,%.4f,%.4f "
+                        "pbc_want=%.4f,%.4f,%.4f ratio_err=%.6f core_share=%.4f\n",
+                        unsigned(white_same), unsigned(grey_same), unsigned(light_same), double(gc[0] / gc[0]),
+                        double(gc[1] / gc[0]), double(gc[2] / gc[0]), double(want[0] / want[0]), double(want[1] / want[0]),
+                        double(want[2] / want[0]), ratio_err, double(share));
+            report("hull_beam_white_keeps_heat", white_same && grey_same && light_same, "");
+            report("hull_beam_stock_pbc_orange_mix", orange, "");
+        }
+        draw_lane(g, 0.f, -1.f);
+    }
+    // 11. Ion: the lightning (2026-11-07). (a) The law over 16 sequences: 2..4 channels, 1..2 branches each, 6..10
+    // segments a channel, 3..4 strikes. (b) On the half lane: the channels on the hull only (0 sky pixels); a strike the
+    // same image across its frames (age 0 and 16); the next strike another set (Jaccard under 0.3); riding a moving
+    // owner (shifted 128 px, Jaccard 1); its charged screens within the old filament box's (R 1.5 r x 0.86) at the same
+    // hit. (c) One segment's profile through the production program at 1440 rows: the core's full width at half maximum
+    // at the floor (2 px), the corona to 4 x the core's half width at about a quarter of the core. (d) No heat; nothing
+    // lit at 400 ms.
+    {
+        unsigned law_bad = 0, ch_lo = 99, ch_hi = 0, br_lo = 99, br_hi = 0, sg_lo = 99, sg_hi = 0, sk_lo = 99, sk_hi = 0;
+        for (unsigned i = 0; i < 16; ++i) {
+            const std::uint32_t seq = 1u + 7919u * i;
+            ws::IonStrike st;
+            ws::ion_strike(seq, 0, &st);
+            const unsigned strikes = ws::ion_strike_count(seq);
+            sk_lo = std::min(sk_lo, strikes);
+            sk_hi = std::max(sk_hi, strikes);
+            ch_lo = std::min(ch_lo, st.channels);
+            ch_hi = std::max(ch_hi, st.channels);
+            unsigned mains = 0;
+            for (unsigned l = 0; l < st.lines; ++l) {
+                if (st.line[l].branch) continue;
+                ++mains;
+                unsigned br = 0;
+                for (unsigned m = l + 1; m < st.lines && st.line[m].branch; ++m) ++br;
+                br_lo = std::min(br_lo, br);
+                br_hi = std::max(br_hi, br);
+                sg_lo = std::min(sg_lo, unsigned(st.line[l].points) - 1);
+                sg_hi = std::max(sg_hi, unsigned(st.line[l].points) - 1);
+            }
+            law_bad += mains != st.channels;
+        }
+        const bool law_ok = law_bad == 0 && ch_lo >= hl::ion_channels_lo && ch_hi <= hl::ion_channels_hi && ch_lo < ch_hi &&
+                            br_lo >= hl::ion_branches_lo && br_hi <= hl::ion_branches_hi && sg_lo >= hl::ion_segments_lo &&
+                            sg_hi <= hl::ion_segments_hi && sk_lo >= hl::ion_strikes_lo && sk_hi <= hl::ion_strikes_hi;
+        std::printf("CLASS case=ion_law seeds=16 channels=%u..%u branches=%u..%u segments=%u..%u strikes=%u..%u bad=%u\n",
+                    ch_lo, ch_hi, br_lo, br_hi, sg_lo, sg_hi, sk_lo, sk_hi, law_bad);
+        report("hull_ion_lightning_law_16_seeds", law_ok, "");
+        // (b) on the hull
         hull_owner(400.f, 100.f);
-        add_of(hl::an_ion, 1000, front, 0.33);
+        wc::Event* e = add_of(hl::an_ion, 1000, front, 0.33);
+        const std::uint32_t seq = e->sequence;
         draw_lane(g, z_hit, 0.5f);
         const HullOut h0 = hull_build(hull_view(g, 1000, 16), only(FIL));
         const std::vector<float> lh = hull_render(pass, h0);
@@ -1021,29 +1204,155 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         for (std::size_t i = 0; i < lh.size(); ++i)
             if (lh[i] > 1e-4f) ++((i % g.w) < g.w / 2 ? lane : sky);
         draw_lane(g, z_hit, 1.f);
-        const std::vector<std::uint8_t> s0 = lit_set(hull_render(pass, hull_build(hull_view(g, 1000, 16), only(FIL))), 0.25f);
-        const std::vector<std::uint8_t> s30 = lit_set(hull_render(pass, hull_build(hull_view(g, 1030, 16), only(FIL))), 0.25f);
-        const std::vector<std::uint8_t> s100 = lit_set(hull_render(pass, hull_build(hull_view(g, 1100, 16), only(FIL))), 0.25f);
+        const HullOut o0 = hull_build(hull_view(g, 1000, 16), only(FIL));
+        const std::vector<float> l0 = hull_render(pass, o0);
+        const std::vector<float> l16 = hull_render(pass, hull_build(hull_view(g, 1016, 16), only(FIL)));
+        float frame_diff = 0.f;
+        for (std::size_t i = 0; i < l0.size(); ++i) frame_diff = std::max(frame_diff, std::fabs(l0[i] - l16[i]));
         put32(fake_node, wc::layout::node_pos + 0, 2500u); // 25 view units: 128 px at view z 300
-        const std::vector<std::uint8_t> s50 = lit_set(hull_render(pass, hull_build(hull_view(g, 1050, 16), only(FIL))), 0.25f);
+        const std::vector<std::uint8_t> s32 = lit_set(hull_render(pass, hull_build(hull_view(g, 1032, 16), only(FIL))), 0.25f);
         put32(fake_node, wc::layout::node_pos + 0, 0u);
-        const double same_slot = jaccard(s0, s30, g.w, 0), next_slot = jaccard(s0, s100, g.w, 0);
-        const double moved = jaccard(s0, s50, g.w, 128);
-        std::printf("CLASS case=ion_filaments sky=%u lane=%u lit=%u jaccard_0_30=%.4f jaccard_0_100=%.4f jaccard_moved=%.4f\n",
-                    sky, lane, unsigned(std::count(s0.begin(), s0.end(), std::uint8_t(1))), same_slot, next_slot, moved);
-        report("hull_ion_filaments_on_surface_rehash", h0.filaments == 1 && sky == 0 && lane > 0 && same_slot >= 0.9 &&
-                                                           next_slot <= 0.5 && moved >= 0.9, "");
+        const ws::IonPhase p70 = ws::ion_phase(seq, 70.f, 48.f);
+        const HullOut o70 = hull_build(hull_view(g, 1070, 16), only(FIL));
+        const std::vector<std::uint8_t> s0 = lit_set(l0, 0.25f), s70 = lit_set(hull_render(pass, o70), 0.25f);
+        const double next_strike = jaccard(s0, s70, g.w, 0), moved = jaccard(s0, s32, g.w, 128);
+        // the charged screens against the old filament box at this hit (R filament 1.5 r x its weight 0.86)
+        const float c_hit[3] = {0.f, 0.f, z_hit};
+        float rect[4];
+        bool full = false;
+        const ws::HullView v0 = hull_view(g, 1000, 16);
+        const float box = ws::sphere_rect(v0, c_hit, 1.5f * r33, rect, &full) ? ws::rect_screens(rect) * hl::budget_weight_filament
+                                                                             : 0.f;
+        unsigned lit0 = 0;
+        for (float v : l0) lit0 += v > 1e-3f;
+        const double box_px = double(box) / double(hl::budget_weight_filament) * g.w * g.h;
+        std::printf("CLASS case=ion_lightning segments=%u strikes=%u sky=%u lane=%u lit=%u frame_diff=%.6f strike_70=%u "
+                    "jaccard_0_70=%.4f jaccard_moved=%.4f screens=%.5f old_box_screens=%.5f old_box_px=%.0f\n",
+                    o0.n.ion_segments, ws::ion_strike_count(seq), sky, lane, lit0, double(frame_diff), p70.strike, next_strike,
+                    moved, double(o0.n.screens), double(box), box_px);
+        report("hull_ion_lightning_on_surface_restrikes", h0.filaments > 0 && h0.n.filaments == 1 && sky == 0 && lane > 0 &&
+                                                              frame_diff == 0.f && p70.lit && p70.strike == 1 &&
+                                                              next_strike < 0.3 && moved >= 0.95, "");
+        report("hull_ion_lightning_within_filament_charge", o0.n.screens > 0.f && o0.n.screens <= box, "");
+        // (c) one segment's profile at 1440 rows (a horizontal segment a quarter pixel below a row's centre)
+        {
+            Target tp;
+            bool prof_ok = false;
+            double fwhm = 0, extent = 0, level = 0, peak = 0;
+            if (make_target(tp, 2560, 1440)) {
+                draw_lane(tp, z_hit, 1.f);
+                const ws::HullView vp = hull_view(tp, 1000, 16);
+                const float y0 = 720.25f;
+                const ws::Px a{1000.f, y0, z_hit, 1.f / z_hit}, b{1500.f, y0, z_hit, 1.f / z_hit};
+                const float hw = 0.5f * std::max(hl::ion_core_px * float(tp.h) / 1440.f, 1.f);
+                (void)vp;
+                px_segment(tp, a, b, hw, 1.f, hl::ion_depth_r * r33, hq_filaments);
+                HullOut one;
+                one.filaments = 1;
+                draw_on(pass, tp, hull_frame(tp, one));
+                const std::vector<float> lp = read_luma(tp, tp.scene_s.p);
+                // the column x 1250: values by distance from y0 (pixel centres at integer y, the program's VPOS)
+                std::vector<std::pair<double, double>> col;
+                for (unsigned y = 700; y < 741; ++y) col.emplace_back(std::fabs(double(y) - double(y0)), double(lp[std::size_t(y) * tp.w + 1250]));
+                std::sort(col.begin(), col.end());
+                peak = col.front().second;
+                // FWHM: twice the distance where the profile crosses half its peak (interpolated), on the sorted samples
+                for (std::size_t i = 1; i < col.size(); ++i)
+                    if (col[i].second < 0.5 * peak && col[i - 1].second >= 0.5 * peak) {
+                        const double t = (col[i - 1].second - 0.5 * peak) / std::max(col[i - 1].second - col[i].second, 1e-9);
+                        fwhm = 2.0 * (col[i - 1].first + t * (col[i].first - col[i - 1].first));
+                        break;
+                    }
+                for (const auto& s : col)
+                    if (s.second > 0.01 * peak) extent = std::max(extent, s.first);
+                unsigned nl = 0;
+                for (const auto& s : col)
+                    if (s.first >= double(hw) + 0.5 && s.first <= double(hw) + 1.5) {
+                        level += s.second;
+                        ++nl;
+                    }
+                level = nl ? level / nl / peak : 0.0;
+                prof_ok = std::fabs(fwhm - 2.0 * hw) <= 0.75 && extent / hw >= 3.0 && extent / hw <= 4.5 && level >= 0.15 &&
+                          level <= 0.3;
+                std::printf("CLASS case=ion_profile rows=%u core_hw=%.3f peak=%.4f fwhm_px=%.3f corona_extent_px=%.3f "
+                            "corona_over_hw=%.3f corona_level=%.4f\n",
+                            tp.h, double(hw), peak, fwhm, extent, extent / hw, level);
+                tp.release();
+            }
+            report("hull_ion_core_floor_corona_4x", prof_ok, "");
+        }
+        // (d) no heat, nothing at 400 ms
         hull_owner(400.f, 100.f);
         add_of(hl::an_ion, 1000, front, 0.33);
         const HullOut a0 = hull_build(hull_view(g, 1000, 16));
-        const HullOut a6 = hull_build(hull_view(g, 1600, 16));
+        for (std::uint32_t t = 1016; t < 1400; t += 16) hull_build(hull_view(g, t, 16));
+        const HullOut a400 = hull_build(hull_view(g, 1400, 16));
+        const std::vector<float> l400 = hull_render(pass, a400);
+        unsigned lit400 = 0;
+        for (float v : l400) lit400 += v > 1e-4f;
         std::printf("CLASS case=ion_no_heat glows=%u embers=%u bursts=%u scorches=%u marks=%u flashes=%u filaments=%u "
-                    "at600=%u,%u,%u,%u\n",
-                    a0.n.glows, a0.n.embers, a0.bursts, a0.scorches, a0.n.marks, a0.n.flashes, a0.filaments, a6.n.flashes,
-                    a6.n.sparks, a6.filaments, a6.boxes);
+                    "at400=%u,%u,%u,%u lit_400=%u\n",
+                    a0.n.glows, a0.n.embers, a0.bursts, a0.scorches, a0.n.marks, a0.n.flashes, a0.n.filaments, a400.n.flashes,
+                    a400.n.sparks, a400.filaments, a400.boxes, lit400);
         report("hull_ion_no_heat_post_hit", a0.n.glows == 0 && a0.n.embers == 0 && a0.bursts == 0 && a0.scorches == 0 &&
-                                                a0.n.marks == 0 && a0.n.flashes == 1 && a0.filaments == 1 && a6.n.flashes == 0 &&
-                                                a6.n.sparks == 0 && a6.filaments == 0 && a6.boxes == 0, "");
+                                                a0.n.marks == 0 && a0.n.flashes == 1 && a0.n.filaments == 1 &&
+                                                a400.n.flashes == 0 && a400.n.sparks == 0 && a400.filaments == 0 &&
+                                                a400.boxes == 0 && lit400 == 0, "");
+        // (e) The tangent plane from the lane (review 2026-11-07): the narrow 1:1:6 hull (half-extents 6 b, b, b, its long
+        // axis the owner's x across the screen, b = 4 r), one strike (the same sequence) straight on at the front's
+        // centre, near its end seen edge-on (x 0.85 x 6 b on the front: the stage's plane, normal to the contact's
+        // direction from the origin, nearly edge-on) and near its silhouette (x 3 b, 65 degrees about the long axis):
+        // with the lane's normal 0 sky pixels each (any lit pixel, 1e-3), no hot knot (the peak under 2 x the straight-on
+        // case's) and the channel pixels (the cores: a third of the first strike's core radiance ion_channel_e and
+        // above) within 0.5..1.5 x the straight-on case's; the lit pixels (the corona's fringe included) reported, and
+        // everything without the lane fetch (fixture fault bit 5: the stage's plane).
+        {
+            const float b = 4.f * r33, zo = 12.f * b;
+            const double ext[3] = {6.0 * b, b, b};
+            const double s85 = std::sqrt(1.0 - 0.85 * 0.85), b3 = std::sqrt(0.75), a65 = 65.0 * 3.14159265358979 / 180.0;
+            const char* names[3] = {"straight", "end_edge_on", "silhouette"};
+            const double unit[3][3] = {{0.0, 0.0, -1.0}, {0.85 * 6.0, 0.0, -s85}, {3.0, b3 * std::sin(a65), -b3 * std::cos(a65)}};
+            double peak[2][3] = {}, lit[2][3] = {}, chan[2][3] = {};
+            const float core_level = hl::ion_channel_e / 3.f;
+            unsigned sky[2][3] = {}, segs[2][3] = {};
+            for (unsigned lane_on = 0; lane_on < 2; ++lane_on)
+                for (unsigned c = 0; c < 3; ++c) {
+                    hull_owner(zo, 6.f * b);
+                    const HullLane hull = staged_hull(ext);
+                    draw_hull_lane(g, hull);
+                    std::int32_t pos[3];
+                    for (unsigned k = 0; k < 3; ++k) pos[k] = std::int32_t(std::lround(unit[c][k] * b / wc::world_scale));
+                    wc::Event* he = add_of(hl::an_ion, 1000, pos, 0.33);
+                    he->sequence = 0x5eed1u; // the same strike in every case
+                    pass.set_faults(lane_on ? 0u : 32u);
+                    const HullOut ho = hull_build(hull_view(g, 1000, 16), only(FIL));
+                    const std::vector<float> l = hull_render(pass, ho);
+                    pass.set_faults(0);
+                    segs[lane_on][c] = ho.n.ion_segments;
+                    for (std::size_t i = 0; i < l.size(); ++i) {
+                        if (!(l[i] > 1e-3f)) continue;
+                        double pt[3];
+                        if (!hull_point(g, hull, unsigned(i % g.w), unsigned(i / g.w), pt)) ++sky[lane_on][c];
+                        peak[lane_on][c] = std::max(peak[lane_on][c], double(l[i]));
+                        ++lit[lane_on][c];
+                        chan[lane_on][c] += l[i] >= core_level;
+                    }
+                }
+            bool plane_ok = true;
+            for (unsigned lane_on = 0; lane_on < 2; ++lane_on)
+                for (unsigned c = 0; c < 3; ++c) {
+                    const double pr = peak[lane_on][c] / std::max(peak[lane_on][0], 1e-9),
+                                 lr = lit[lane_on][c] / std::max(lit[lane_on][0], 1.0),
+                                 cr = chan[lane_on][c] / std::max(chan[lane_on][0], 1.0);
+                    std::printf("CLASS case=ion_plane hull=1:1:6 hit=%s lane_normal=%u segments=%u sky=%u lit=%.0f channel=%.0f "
+                                "peak=%.4f peak_over_straight=%.3f lit_over_straight=%.3f channel_over_straight=%.3f\n",
+                                names[c], lane_on, segs[lane_on][c], sky[lane_on][c], lit[lane_on][c], chan[lane_on][c],
+                                peak[lane_on][c], pr, lr, cr);
+                    if (lane_on)
+                        plane_ok = plane_ok && segs[1][c] > 0 && sky[1][c] == 0 && pr < 2.0 && cr >= 0.5 && cr <= 1.5;
+                }
+            report("hull_ion_plane_on_narrow_hull", plane_ok, "");
+        }
         draw_lane(g, 0.f, -1.f);
     }
     // 12. Missile: two debris sets at twice the ballistic counts, the slow set flickering at its 0.3 duty, a ring.
@@ -1099,6 +1408,55 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         std::printf("CLASS case=beam_on_asteroid ticks=60 ring_records=%u max_spots=%u flashes=%u puff_frames=%u sparks=%u\n",
                     ring_left, max_spots, flashes, bursts, sparks);
         report("hull_beam_on_asteroid_holds", ring_left <= 1 && max_spots == 1 && flashes == 0 && bursts > 0 && sparks > 0, "");
+    }
+    // 12c. An ion beam (stock IOND: the beam bits on a pinned ion row, 2026-11-07): the hold rule in the ring: 60 ion
+    // ticks with the beam shape at one point leave one record (the first tick's sequence) and no spot, at most one
+    // lightning set a frame, strikes past the single hit's 400 ms while held (the timer re-strikes), and the record
+    // gone ion_end_ms after the hold ends.
+    {
+        hull_owner(400.f, 100.f);
+        unsigned max_records = 0, min_records = 0xffffffffu, max_spots = 0, max_sets = 0, lit_late = 0, merges = 0;
+        std::uint32_t first_seq = 0;
+        bool same_seq = true;
+        auto records = [&] {
+            unsigned c = 0;
+            for (unsigned r = 0; r < wc::ring_capacity; ++r) {
+                const wc::Event& ev = stage_ring.slots[r];
+                if (ev.sequence && ev.role == wc::role_hull_hit) {
+                    ++c;
+                    same_seq = same_seq && ev.sequence == first_seq;
+                }
+            }
+            return c;
+        };
+        const std::uint32_t last = 1000 + 16 * 59;
+        for (unsigned i = 0; i < 60; ++i) {
+            const std::uint32_t t = 1000 + 16 * i;
+            wc::Event* e = add_of(hl::an_ion, t, front, 0.33);
+            e->style = std::uint8_t(wc::shape_beam);
+            if (!i) first_seq = e->sequence;
+            const HullOut o = hull_build(hull_view(g, t, 16));
+            unsigned used = 0;
+            for (const ws::Spot& sp : hq_state.spots) used += sp.used;
+            max_spots = std::max(max_spots, used);
+            const unsigned c = records();
+            max_records = std::max(max_records, c);
+            min_records = std::min(min_records, c);
+            max_sets = std::max(max_sets, o.n.filaments);
+            lit_late += t - 1000 > hl::ion_end_ms && o.n.filaments > 0;
+            merges += o.n.merges;
+        }
+        unsigned after_records = 0;
+        for (std::uint32_t t = last + 16; t <= last + hl::ion_end_ms + 64; t += 16) {
+            hull_build(hull_view(g, t, 16));
+            after_records = records();
+        }
+        std::printf("CLASS case=ion_beam_hold ticks=60 ring_records=%u..%u same_sequence=%u spots=%u max_sets_per_frame=%u "
+                    "lit_frames_past_400ms=%u merges=%u records_after_end=%u\n",
+                    min_records, max_records, unsigned(same_seq), max_spots, max_sets, lit_late, merges, after_records);
+        report("hull_ion_beam_holds_one_record", min_records == 1 && max_records == 1 && same_seq && max_spots == 0 &&
+                                                     max_sets == 1 && lit_late > 0 && merges == 59 && after_records == 0,
+               "");
     }
     // 13. Repair re-lit per tick: 60 ticks, one glow a frame at a single tick's colour.
     {
@@ -1182,7 +1540,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                                           hl::class_ember[a][0] > 0.f && alive(law::ember_ms(kf, a), 2),
                                           has_puff && age > 0.f && alive(law::puff_ms(kf, a), 3),
                                           hl::class_ring[a][0] > 0.f && alive(hl::class_ring[a][2], 6),
-                                          a == hl::an_ion && alive(float(hl::filament_ms), 8),
+                                          a == hl::an_ion && ws::ion_phase(seq, age, floor).lit,
                                           a == hl::an_heavy && alive(float(hl::streak_ms), 5)};
                 const unsigned got[8] = {o.n.flashes, o.n.sparks, o.n.glows, o.n.embers, o.n.bursts, o.n.rings, o.n.filaments,
                                          o.n.streaks};
@@ -1234,8 +1592,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
     {
         hull_owner(400.f, 100.f);
         add_of(hl::an_plasma, 1000, front, 0.33);
-        add_of(hl::an_ion, 1000, front, 0.33);
         hull_build(hull_view(g, 1000, 16));
+        add_of(hl::an_ion, 1050, front, 0.33); // its first frame at 1050: a strike lit
         const HullOut o = hull_build(hull_view(g, 1050, 16));
         draw_lane(g, z_hit, 1.f);
         bool ok = o.scorches > 0 && o.rings > 0 && o.filaments > 0;
@@ -1298,7 +1656,109 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             std::printf("CLASS_CPU case=capital_64_mixed_%s best_us=%.2f\n", part ? "no_sparks" : "sparks_only", pbest);
         }
         // the design's 30 us (about 1,600 quads, [I]) against the 40 us hull_cpu_64_hits bound of the burst rebuild
-        report("hull_cpu_64_hits_mixed", best <= 40.0, "");
+        // 40 us until 2026-11-07; the lightning's review measured 38.0 best (mean 46.4) after the ion's sparks went: within
+        // noise of 40, so 50 (docs/verification/weapon-effects.md "Beam colour and ion lightning")
+        report("hull_cpu_64_hits_mixed", best <= 50.0, "");
+    }
+    // 17b. CPU: 64 lit ion hits on the same capital (review 2026-11-07: the strike cache holds 64 lit hits; the segment
+    // cap binds, whole hits cut), best / mean of 200 builds.
+    {
+        LARGE_INTEGER freq{}, a{}, b{};
+        QueryPerformanceFrequency(&freq);
+        hull_owner(4000.f, 2000.f);
+        for (unsigned i = 0; i < 64; ++i) {
+            const double r = 60000.0 * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
+            const std::int32_t pos[3] = {std::int32_t(r * std::cos(ang)), std::int32_t(r * std::sin(ang)), -200000};
+            add_of(hl::an_ion, 1000 + 4 * i, pos, 0.5, wc::patch_capital);
+        }
+        hull_build(hull_view(g, 1000 + 256, 16));
+        double best = 1e30, sum = 0;
+        HullOut o;
+        for (unsigned i = 0; i < 200; ++i) {
+            static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
+            st = hq_state;
+            QueryPerformanceCounter(&a);
+            o = hull_build(hull_view(g, 1000 + 256 + 16, 16), ws::HullTuning{}, &st);
+            QueryPerformanceCounter(&b);
+            const double us = ticks_us(a, b, freq);
+            best = std::min(best, us);
+            sum += us;
+        }
+        std::printf("CLASS_CPU case=capital_64_ion hits=64 filaments=%u segments=%u quads=%u capped=%u flashes=%u "
+                    "best_us=%.2f mean_us=%.2f\n",
+                    o.n.filaments, o.n.ion_segments, o.filaments, o.n.capped, o.n.flashes, best, sum / 200.0);
+        // measured 23.5 best, 26.9 mean (2026-11-07): the bound 35
+        report("hull_cpu_64_hits_ion", o.n.filaments > 0 && o.n.capped > 0 && best <= 35.0, "");
+    }
+    // 17c. The lightning's cap and shed (review 2026-11-07): 42 ion hits on a fighter-scale owner, all on screen, in three
+    // frames 16 ms apart (ages 32, 16, 0: all in their first strike), more segments than the cap: the newest kept while
+    // they fit, the rest cut whole (oldest first; capped counts hits); then a budget of half the lightning's charge: the
+    // shed takes whole channels (a channel with its branches) of the oldest kept hits first, each hit's from its last.
+    {
+        hull_owner(400.f, 100.f);
+        struct Rec { std::uint32_t seq, age; unsigned segs; unsigned chan[4]; unsigned channels; };
+        std::vector<Rec> recs;
+        for (unsigned frame = 0; frame < 3; ++frame) {
+            for (unsigned i = 0; i < 14; ++i) {
+                const unsigned k = frame * 14 + i;
+                const std::int32_t pos[3] = {std::int32_t((int(k % 7) - 3) * 2600), std::int32_t((int(k / 7) - 3) * 1500),
+                                             -10000};
+                wc::Event* e = add_of(hl::an_ion, 1000 + 16 * frame, pos, 0.33);
+                ws::IonStrike st;
+                ws::ion_strike(e->sequence, 0, &st);
+                Rec r{e->sequence, 32u - 16u * frame, 0, {0, 0, 0, 0}, 0};
+                for (unsigned l = 0; l < st.lines; ++l) {
+                    if (!st.line[l].branch) ++r.channels;
+                    r.chan[r.channels - 1] += st.line[l].points - 1u;
+                    r.segs += st.line[l].points - 1u;
+                }
+                recs.push_back(r);
+            }
+            if (frame < 2) hull_build(hull_view(g, 1000 + 16 * frame, 16), only(FIL));
+        }
+        static ws::HullState st0;
+        st0 = hq_state;
+        ws::HullView v = hull_view(g, 1032, 16);
+        v.budget_left = 1e6f;
+        const HullOut full = hull_build(v, only(FIL));
+        // the expected cut: the newest first (ties: the ring's order), kept while they fit
+        std::vector<unsigned> order(recs.size());
+        for (unsigned k = 0; k < order.size(); ++k) order[k] = k;
+        std::stable_sort(order.begin(), order.end(), [&](unsigned x, unsigned y) { return recs[x].age < recs[y].age; });
+        unsigned used = 0, kept = 0, total = 0;
+        bool cut = false;
+        std::vector<unsigned> kept_order;
+        for (unsigned k : order) {
+            total += recs[k].segs;
+            cut = cut || used + recs[k].segs > rr::weapon_filament_boxes;
+            if (!cut) {
+                used += recs[k].segs;
+                ++kept;
+                kept_order.push_back(k);
+            }
+        }
+        const bool cap_ok = total > rr::weapon_filament_boxes && full.n.ion_segments == used && full.filaments == used &&
+                            full.n.capped == recs.size() - kept && full.n.filaments == kept;
+        hq_state = st0;
+        v.budget_left = 0.5f * full.n.screens;
+        const HullOut half = hull_build(v, only(FIL));
+        // the shed is a run of whole channels: the oldest kept hits first, each from its last channel
+        unsigned acc = 0;
+        bool whole = half.n.filaments_shed == 0;
+        for (auto it = kept_order.rbegin(); it != kept_order.rend() && !whole; ++it)
+            for (unsigned c = recs[*it].channels; c-- > 0 && !whole;) {
+                acc += recs[*it].chan[c];
+                whole = acc == half.n.filaments_shed;
+            }
+        const bool shed_ok = half.n.filaments_shed > 0 && whole && half.filaments == used - half.n.filaments_shed &&
+                             half.n.screens <= v.budget_left + 1e-5f;
+        std::printf("CLASS case=ion_cap_shed hits=%u total_segments=%u cap=%u kept_hits=%u capped=%u segments=%u "
+                    "screens=%.4f budget=%.4f shed=%u kept_after_shed=%u whole_channels=%u\n",
+                    unsigned(recs.size()), total, rr::weapon_filament_boxes, full.n.filaments, full.n.capped,
+                    full.n.ion_segments, double(full.n.screens), double(v.budget_left), half.n.filaments_shed,
+                    half.filaments, unsigned(whole));
+        report("hull_ion_cap_cuts_whole_hits_oldest", cap_ok, "");
+        report("hull_ion_shed_whole_channels_oldest", shed_ok, "");
     }
     // 18. GPU cost per class, EVENT-fenced (best of 60) at 1080p and 5120x1440: 20 hits on a fighter 200 m away (the
     // design's <= 50 us at 5120x1440 per class), 64 on a capital at close range under the 8-screen budget (recorded; the
@@ -1411,7 +1871,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                                                                          o.n.screens <= wc::screen_budget + 1e-3f &&
                                                                          best <= double(wc::screen_budget) * 177.5, "");
         }
-        // The new primitives alone holding the eye (the whole screen once): a ring, a filament glow, a scorch, a flash.
+        // The new primitives alone holding the eye (the whole screen once): a ring, the lightning program (one segment
+        // whose corona covers the frame: every pixel through its full branch), a scorch, a flash.
         for (unsigned kind = 0; kind < 4; ++kind) {
             hull_owner(120.f, 100.f);
             const std::int32_t c0[3] = {0, 0, 0};
@@ -1421,7 +1882,15 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             const ws::HullTuning tune = only(kind == 0 ? RING : kind == 1 ? FIL : kind == 2 ? SCORCH : FLASH);
             hull_build(v, tune);
             v.now = kind == 2 ? 4000 : kind == 3 ? 1010 : 1030;
-            const HullOut o = hull_build(v, tune);
+            HullOut o = hull_build(v, tune);
+            if (kind == 1) {
+                const float W = float(tt.w), H = float(tt.h);
+                const ws::Px pa{0.25f * W, 0.5f * H, 20.f, 1.f / 20.f}, pb{0.75f * W, 0.5f * H, 20.f, 1.f / 20.f};
+                px_segment(tt, pa, pb, W, 1.f, 10.f, hq_filaments);
+                o = HullOut{};
+                o.filaments = 1;
+                o.n.screens = 1.f;
+            }
             draw_lane(tt, 20.f, 1.f);
             const double best = time_frame(hull_frame(tt, o));
             const char* name = kind == 0   ? "ring_alone_fills_frame"

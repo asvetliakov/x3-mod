@@ -93,6 +93,17 @@ constexpr std::uint32_t ring_ps_words[] = {
 constexpr std::uint32_t filament_ps_words[] = {
 #include "weapon_filament_pixel_program_inc.h"
 };
+// The ion's lightning segments (provenance: verification/results/weapon-lightning-vertex-program.json; the pixel
+// program is the filament's).
+constexpr std::uint32_t lightning_vs_words[] = {
+#include "weapon_lightning_vertex_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 lightning_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 32, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 48, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2}, D3DDECL_END()};
+static_assert(sizeof(WeaponLightningVertex) == 64, "the lightning declaration follows the vertex");
 constexpr D3DVERTEXELEMENT9 shape_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -200,6 +211,8 @@ void WeaponEffectsPass::release_hull_objects() noexcept {
     drop(ring_ps_);
     drop(filament_ps_);
     drop(shape_declaration_);
+    drop(lightning_vs_);
+    drop(lightning_declaration_);
 }
 void WeaponEffectsPass::release_objects() noexcept {
     drop(shell_vs_);
@@ -229,7 +242,8 @@ void WeaponEffectsPass::after_reset(HRESULT hr) noexcept {
 }
 bool WeaponEffectsPass::hull_objects_ready() const noexcept {
     return sprite_vs_ && sprite_ps_ && glow_vs_ && glow_ps_ && sprite_declaration_ && glow_declaration_ && fireball_vs_ &&
-           fireball_ps_ && fireball_declaration_ && shape_vs_ && ring_ps_ && filament_ps_ && shape_declaration_;
+           fireball_ps_ && fireball_declaration_ && shape_vs_ && ring_ps_ && filament_ps_ && shape_declaration_ &&
+           lightning_vs_ && lightning_declaration_;
 }
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
@@ -246,7 +260,8 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(fireball_vs_), static_cast<const void*>(fireball_ps_),
                           static_cast<const void*>(fireball_declaration_), static_cast<const void*>(shape_vs_),
                           static_cast<const void*>(ring_ps_), static_cast<const void*>(filament_ps_),
-                          static_cast<const void*>(shape_declaration_)})
+                          static_cast<const void*>(shape_declaration_), static_cast<const void*>(lightning_vs_),
+                          static_cast<const void*>(lightning_declaration_)})
         n += p != nullptr;
     return n;
 }
@@ -291,6 +306,18 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         hr = api->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, format,
                                     D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING, D3DRTYPE_TEXTURE,
                                     D3DFMT_A16B16G16R16F);
+    // The lightning's lane normal (weapon_lightning_vs.hlsl): vertex texture fetch of the lane's two formats, point
+    // filtered (documented D3D9: CheckDeviceFormat with D3DUSAGE_QUERY_VERTEXTEXTURE, VertexTextureFilterCaps).
+    caps_.lightning_vtf_four = caps_.lightning_vtf_r32f = false;
+    if (SUCCEEDED(hr) && (caps.VertexTextureFilterCaps & D3DPTFILTERCAPS_MINFPOINT) &&
+        (caps.VertexTextureFilterCaps & D3DPTFILTERCAPS_MAGFPOINT)) {
+        caps_.lightning_vtf_four = api->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, format,
+                                                          D3DUSAGE_QUERY_VERTEXTEXTURE, D3DRTYPE_TEXTURE,
+                                                          D3DFMT_A32B32G32R32F) == D3D_OK;
+        caps_.lightning_vtf_r32f = api->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, format,
+                                                          D3DUSAGE_QUERY_VERTEXTEXTURE, D3DRTYPE_TEXTURE,
+                                                          D3DFMT_R32F) == D3D_OK;
+    }
     drop(api);
     caps_.fp16_blending = hr;
     if (faults_ & 1u) {
@@ -321,12 +348,13 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         caps_.shape_vs_slots = vs3_slots(shape_vs_words);
         caps_.ring_ps_slots = ps3_program_slots(ring_ps_words, std::size(ring_ps_words));
         caps_.filament_ps_slots = ps3_program_slots(filament_ps_words, std::size(filament_ps_words));
+        caps_.lightning_vs_slots = vs3_slots(lightning_vs_words);
         // The scorches' multiply blend (hull-impact-classes.md 3.7): ZERO / INVSRCCOLOR; without it the scorches are
         // not drawn (the glue builds none), everything else is.
         caps_.scorch_enabled = (caps.SrcBlendCaps & D3DPBLENDCAPS_ZERO) && (caps.DestBlendCaps & D3DPBLENDCAPS_INVSRCCOLOR);
         if (!caps_.sprite_vs_slots || !caps_.glow_vs_slots || !caps_.sprite_ps_slots || !caps_.glow_ps_slots ||
             !caps_.fireball_vs_slots || !caps_.fireball_ps_slots || !caps_.shape_vs_slots || !caps_.ring_ps_slots ||
-            !caps_.filament_ps_slots)
+            !caps_.filament_ps_slots || !caps_.lightning_vs_slots)
             caps_.hull_reason = "hull_compiled_program";
         else if (caps.MaxPrimitiveCount < 2u * weapon_sprite_quads || caps.MaxVertexIndex < 4u * weapon_sprite_quads - 1u)
             caps_.hull_reason = "hull_limits";
@@ -390,6 +418,10 @@ HRESULT WeaponEffectsPass::create_hull_objects() noexcept {
         hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(filament_ps_words), &filament_ps_);
     if (SUCCEEDED(hr) && !shape_declaration_)
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, shape_elements, &shape_declaration_);
+    if (SUCCEEDED(hr) && !lightning_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(lightning_vs_words), &lightning_vs_);
+    if (SUCCEEDED(hr) && !lightning_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, lightning_elements, &lightning_declaration_);
     if (SUCCEEDED(hr) && !hull_objects_ready()) hr = E_FAIL;
     if (FAILED(hr)) release_hull_objects();
     return hr;
@@ -733,16 +765,47 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             }
         }
         if (SUCCEEDED(hr) && filament_boxes) {
+            // The lightning (weapon_lightning_vs.hlsl c1 the viewport, c2 the near plane; weapon_filament_ps.hlsl c4 the
+            // core's colour, c5 the corona's, c6.x the corona's half width over the core's; weapon_effects_core.h
+            // hull::ion_*): the core white mixed ion_core_white towards ion_colour, the corona ion_colour x its share.
+            // The vertex program (c0 the projection, c1 the viewport, c2 the near plane, the corona's half width over the
+            // core's and the lane fetch's switch, c3 the lane's form, c4 its sizes; s0 = D3DVERTEXTEXTURESAMPLER0 the
+            // lane, point sampled) turns each hit's plane onto the lane's normal at the contact pixel; without vertex
+            // texture fetch of the lane's format (or fixture fault bit 5) the stage's plane.
+            namespace wh = wcore::hull;
+            float ion[12] = {};
+            for (unsigned c = 0; c < 3; ++c) {
+                ion[c] = wh::ion_colour[c] + (1.f - wh::ion_colour[c]) * wh::ion_core_white;
+                ion[4 + c] = wh::ion_colour[c] * wh::ion_corona_share;
+            }
+            ion[8] = wh::ion_corona_x;
+            const bool vtf = !(faults_ & 32u) && (f.four_channel ? caps_.lightning_vtf_four : caps_.lightning_vtf_r32f);
+            const float ion_vs[12] = {f.near_z, wh::ion_corona_x, vtf ? 1.f : 0.f, 0.f, lane[4], lane[5], lane[6], lane[7],
+                                      lane[0], lane[1], lane[2], lane[3]};
+            step(WeaponEffectsStep::Filaments, call<SetDeclarationFn>(SetVertexDeclaration)(d, lightning_declaration_));
+            step(WeaponEffectsStep::Filaments, call<SetVsFn>(SetVertexShader)(d, lightning_vs_));
+            step(WeaponEffectsStep::Filaments, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, ion_vs, 3));
+            step(WeaponEffectsStep::Filaments, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 4, ion, 3));
             step(WeaponEffectsStep::Filaments, call<SetPsFn>(SetPixelShader)(d, filament_ps_));
+            if (vtf) {
+                step(WeaponEffectsStep::Filaments, call<SetTextureFn>(SetTexture)(d, D3DVERTEXTEXTURESAMPLER0, f.lane));
+                for (auto s : {std::pair{D3DSAMP_MINFILTER, DWORD(D3DTEXF_POINT)}, std::pair{D3DSAMP_MAGFILTER, DWORD(D3DTEXF_POINT)},
+                               std::pair{D3DSAMP_MIPFILTER, DWORD(D3DTEXF_NONE)}, std::pair{D3DSAMP_ADDRESSU, DWORD(D3DTADDRESS_CLAMP)},
+                               std::pair{D3DSAMP_ADDRESSV, DWORD(D3DTADDRESS_CLAMP)}})
+                    step(WeaponEffectsStep::Filaments,
+                         call<SetSamplerFn>(SetSamplerState)(d, D3DVERTEXTEXTURESAMPLER0, s.first, s.second));
+            }
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                     d, D3DPT_TRIANGLELIST, 0, filament_boxes * 4, filament_boxes * 2, sprite_indices_, D3DFMT_INDEX16,
-                    f.filaments, UINT(sizeof(WeaponShapeVertex))));
+                    f.filaments, UINT(sizeof(WeaponLightningVertex))));
                 if (step(WeaponEffectsStep::Filaments, draw)) {
                     r.filament_boxes = filament_boxes;
                     r.drew = true;
                 }
             }
+            // the lane leaves the vertex sampler (it is a render target again later in the frame)
+            if (vtf) step(WeaponEffectsStep::Filaments, call<SetTextureFn>(SetTexture)(d, D3DVERTEXTEXTURESAMPLER0, nullptr));
         }
     }
     if (SUCCEEDED(hr) && f.patch_count) {

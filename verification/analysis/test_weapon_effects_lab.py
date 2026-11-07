@@ -444,8 +444,8 @@ class PageTest(unittest.TestCase):
 
     def test_layers_panel(self):
         """The Layers panel: one checkbox per drawn element of the active family, all on by default (hull: flash, flash
-        halo, burst, sparks, chips, entry streak, ring with its noise, refraction and wash, glow, ember, scorch, filaments
-        and the shimmer's disabled
+        halo, burst, sparks, chips, entry streak, ring with its noise, refraction and wash, glow, ember, scorch, the ion's
+        channels, branches and corona, the beam's weapon colour and the shimmer's disabled
         placeholder; shield: patch, bubble outline, native impact sprite; vanilla: the tint, travel, flare and light
         options), "all" and "none", the state persisted in localStorage inside try/catch and read by the renderers."""
         panel = re.search(r'<fieldset id="p_layers">(.*?)</fieldset>', self.html, re.S).group(1)
@@ -456,7 +456,8 @@ class PageTest(unittest.TestCase):
         self.assertEqual(by_tab['hull'], ['layer_flash', 'layer_flash_halo', 'layer_burst', 'layer_sparks', 'layer_chips',
                                           'layer_streak', 'layer_ring', 'layer_ring_noise', 'layer_ring_refraction',
                                           'layer_ring_wash', 'layer_glow', 'layer_ember', 'layer_scorch',
-                                          'layer_filament', 'layer_shimmer'])
+                                          'layer_ion_channels', 'layer_ion_branches', 'layer_ion_corona',
+                                          'layer_beam_colour', 'layer_shimmer'])
         self.assertEqual(by_tab['shield hull'], ['layer_hull'])       # the hull body under both previews
         self.assertEqual(by_tab['shield'], ['layer_patch', 'layer_bubble', 'layer_native'])
         self.assertEqual(by_tab['vanilla'], ['tint', 'travel', 'flares', 'lights'])
@@ -469,7 +470,8 @@ class PageTest(unittest.TestCase):
         keys = json.loads(re.search(r'const LAYER_KEYS = (\[.*?\]);', self.html, re.S).group(1).replace("'", '"'))
         self.assertEqual(sorted(keys), sorted(re.findall(r'data-layer="(\w+)"', panel)))
         render_hull = self.html[self.html.index('function renderHull('):self.html.index('const HULL_IDS')]
-        for name in ('glow', 'flash', 'flash_halo', 'ember', 'ring', 'scorch', 'filament', 'burst'):
+        for name in ('glow', 'flash', 'flash_halo', 'ember', 'ring', 'scorch', 'ion_channels', 'ion_branches', 'ion_corona',
+                     'beam_colour', 'burst'):
             self.assertIn(f'layers.{name}', render_hull, name)
         self.assertIn('if (layers.glow && gw[0] > 0 && a < glowLife)', render_hull)
         self.assertIn('layers.patch', self.html[self.html.index('function renderOurs('):self.html.index('function ourLoopMs(')])
@@ -681,12 +683,12 @@ console.log(JSON.stringify(out));
                    'ballistic': {'flash', 'burst', 'sparks', 'chips', 'glow', 'ember'},
                    'plasma': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
                    'heavy': {'flash', 'streak', 'burst', 'sparks', 'ring', 'glow', 'ember'},
-                   'ion': {'flash', 'filament', 'sparks'},
+                   'ion': {'flash', 'filament'},  # no sparks (the arc sparks dropped, review 2026-11-07)
                    'beam': {'flash', 'burst', 'glow'},
                    'missile': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
                    'asteroid': {'burst', 'sparks', 'chips'},
                    'repair': {'glow', 'ember'}, 'tug': {'glow'}}
-        never_by = {'ion': {'burst', 'glow', 'ember', 'scorch', 'ring'}, 'asteroid': {'flash', 'glow', 'ember', 'scorch'},
+        never_by = {'ion': {'burst', 'glow', 'ember', 'scorch', 'ring', 'sparks', 'chips'}, 'asteroid': {'flash', 'glow', 'ember', 'scorch'},
                     'repair': {'flash', 'sparks', 'burst', 'scorch'}, 'tug': {'flash', 'sparks', 'burst', 'ember', 'scorch'},
                     'energy': {'ring', 'streak', 'filament'}, 'ballistic': {'ring', 'streak', 'filament'}}
         by_id = {p['id']: p for p in presets}
@@ -727,6 +729,121 @@ console.log(JSON.stringify(out));
         self.assertEqual(js['hull/ion-ionc-capital']['anatomy'], 'ion')
         self.assertEqual(js['hull/repair-corvette']['anatomy'], 'repair')
         self.assertEqual(js['hull/mining-asteroid-60m']['anatomy'], 'asteroid')
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_ion_lightning_and_beam_colour(self):
+        """2026-11-07 (hull-impact-classes.md 4.5, 4.6): the ion Scenarios draw the lightning (stage::ion_strike's law:
+        2..4 channels with 1..2 branches each over 16 sequences, 6..10 segments a channel; on the hull only), the layers
+        "ion: channels", "ion: branches" and "ion: corona" each removing light, a re-strike another channel set, nothing
+        at 400 ms game time; the beam Scenarios' held spot glow in the weapon colour's hue (within 10 degrees) with
+        "beam: weapon colour" on, the heat ramp's with it off, the trail ember the same either way."""
+        presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
+        weapons = {}
+        for view in ('stock_ap', 'mayhem3', 'fl'):
+            m = re.search(r'\n%s: (\{.*?\}),\n' % json.dumps(view), self.html)
+            if m:
+                weapons[view] = {w['id']: w for w in json.loads(m.group(1))['weapons']}
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const PRESETS = __PRESETS__, WEAPONS = __WEAPONS__, out = {law: [], scen: {}};
+for (let i = 0; i < 16; i++) {
+  const st = ionStrike(1 + 7919 * i, 0), mains = st.lines.filter(l => !l.branch);
+  const per = [];
+  st.lines.forEach((l, j) => { if (!l.branch) { let n = 0; for (let m = j + 1; m < st.lines.length && st.lines[m].branch; m++) n++; per.push(n); } });
+  out.law.push({channels: st.channels, mains: mains.length, branches: per, segments: mains.map(l => l.pts.length - 1),
+                strikes: ionStrikeCount(1 + 7919 * i)});
+}
+const ids = ['hull/ion-id-fighter-side', 'hull/ion-ionc-capital', 'hull/beam-pbc-pulsed-corvette', 'hull/beam-pal-sustained-sweep'];
+for (const p of PRESETS.filter(x => ids.includes(x.id))) {
+  Object.assign(vals, {c_family: 'hull', c_tier: p.tier, c_hull: p.hull, c_camera: p.camera, c_seta: p.seta, c_hits: p.hps,
+                       c_variant: p.variant, c_k: p.k, c_shield: p.shield, c_class: p.cls, c_pulse_on: p.pulse[0],
+                       c_pulse_period: p.pulse[1], c_sweep: p.sweep, c_loop: p.loop});
+  checks.c_own = p.own; checks.c_cockpit = p.cockpit;
+  const data = new Uint8ClampedArray(OW * OH * 4).fill(128);
+  let weapon = WEAPONS[p.view][p.weapon];
+  const at = (t, off = []) => {
+    for (const k of LAYER_KEYS) layers[k] = !off.includes(k);
+    layers.hull = false;
+    const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data: data.slice()}; }, putImageData() {}}, weapon};
+    renderOurs(rec, t);
+    for (const k of LAYER_KEYS) layers[k] = true;
+    return rec.hullStats;
+  };
+  const seta = Math.max(p.seta, 1e-3), r = {tint: weaponLinear(weapon), saturated: tintSaturated(weapon)};
+  if (p.id.includes('/ion-')) {
+    const s40 = at(40 / seta);
+    r.ion = s40.ion; r.segments = s40.ion_segments; r.light = s40.light.filament; r.lit = s40.lit_px.filament;
+    r.no_branches = at(40 / seta, ['ion_branches']).light.filament;
+    r.no_corona = at(40 / seta, ['ion_corona']).light.filament;
+    r.no_channels = at(40 / seta, ['ion_channels']).light.filament;
+    const s70 = at(70 / seta); r.strike70 = s70.ion ? s70.ion.strike : -1;
+    r.at400 = at(400 / seta).light.filament;
+    r.heat = ['burst', 'glow', 'ember', 'scorch'].map(k => s40.light[k]);
+  } else {
+    const on = at(100 / seta), off = at(100 / seta, ['beam_colour']);
+    r.glow_on = on.rgb.glow; r.glow_off = off.rgb.glow; r.flash_on = on.rgb.flash;
+    r.ember_on = on.light.ember; r.ember_off = off.light.ember; r.burst_on = on.light.burst; r.burst_off = off.light.burst;
+    // the same beam with a saturated green light colour (the Scenarios' own lights are white or grey: the game takes
+    // their texture average, which the page has only with its assets)
+    const green = Object.assign({}, weapon, {colour: [64, 255, 96]}), keep = weapon;
+    weapon = green;
+    const g = at(100 / seta);
+    weapon = keep;
+    r.green_tint = weaponLinear(green); r.green_glow = g.rgb.glow; r.green_flash = g.rgb.flash;
+  }
+  out.scen[p.id] = r;
+}
+console.log(JSON.stringify(out));
+""".replace('__PRESETS__', json.dumps(presets)).replace('__WEAPONS__', json.dumps(weapons))
+        js = self.run_node(probe)
+        for row in js['law']:
+            self.assertEqual(row['mains'], row['channels'])
+            self.assertTrue(2 <= row['channels'] <= 4, row)
+            self.assertTrue(all(1 <= n <= 2 for n in row['branches']), row)
+            self.assertTrue(all(6 <= n <= 10 for n in row['segments']), row)
+            self.assertIn(row['strikes'], (3, 4))
+        self.assertEqual({r['channels'] for r in js['law']}, {2, 3, 4})
+
+        def hue(c):
+            mx, mn = max(c), min(c)
+            if mx - mn <= 1e-9:
+                return None
+            if mx == c[0]:
+                h = ((c[1] - c[2]) / (mx - mn)) % 6
+            elif mx == c[1]:
+                h = (c[2] - c[0]) / (mx - mn) + 2
+            else:
+                h = (c[0] - c[1]) / (mx - mn) + 4
+            return 60 * h
+
+        for pid in ('hull/ion-id-fighter-side', 'hull/ion-ionc-capital'):
+            r = js['scen'][pid]
+            self.assertTrue(2 <= r['ion']['channels'] <= 4, pid)
+            self.assertGreater(r['segments'], 0, pid)
+            self.assertGreater(r['lit'], 0, pid)
+            for k in ('no_branches', 'no_corona', 'no_channels'):
+                self.assertLess(r[k], r['light'], (pid, k))
+            self.assertEqual(r['strike70'], 1, pid)
+            self.assertEqual(r['at400'], 0, pid)
+            self.assertEqual(r['heat'], [0, 0, 0, 0], pid)
+        for pid in ('hull/beam-pbc-pulsed-corvette', 'hull/beam-pal-sustained-sweep'):
+            r = js['scen'][pid]
+            self.assertGreater(sum(r['glow_on']), 0, pid)
+            self.assertAlmostEqual(sum(r['glow_on']), sum(r['glow_off']), delta=1e-6 * sum(r['glow_off']))  # its mean radiance
+            self.assertEqual((r['ember_on'], r['burst_on']), (r['ember_off'], r['burst_off']), pid)    # the heat stays
+            if hue(r['tint']) is None:  # a white or grey beam keeps the heat glow (review 2026-11-07, stage::beam_coloured)
+                self.assertEqual(r['glow_on'], r['glow_off'], pid)
+            for tint, glow in ((r['tint'], r['glow_on']), (r['green_tint'], r['green_glow'])):
+                want = hue(tint)
+                if want is not None:
+                    got = hue(glow)
+                    self.assertLessEqual(min(abs(got - want), 360 - abs(got - want)), 10.0, pid)
+                    self.assertNotEqual(hue(r['glow_off']), got, pid)
+            self.assertIsNotNone(hue(r['green_tint']))
+            # the spot (flash core and halo) nearer white than its glow: lower saturation
+            sat = lambda c: (max(c) - min(c)) / max(c)
+            self.assertLess(sat(r['green_flash']), sat(r['green_glow']), pid)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_scenarios(self):

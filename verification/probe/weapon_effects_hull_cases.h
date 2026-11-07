@@ -7,7 +7,7 @@ rr::WeaponSpriteVertex hq_sprites[rr::weapon_sprite_quads * 4];
 rr::WeaponGlowVertex hq_glows[rr::weapon_glow_boxes * 4];
 rr::WeaponFireballVertex hq_fireballs[rr::weapon_fireball_boxes * 4];
 rr::WeaponShapeVertex hq_rings[rr::weapon_ring_quads * 4];
-rr::WeaponShapeVertex hq_filaments[rr::weapon_filament_boxes * 4];
+rr::WeaponLightningVertex hq_filaments[rr::weapon_filament_boxes * 4];
 rr::WeaponGlowVertex hq_scorches[rr::weapon_scorch_boxes * 4];
 ws::ShimmerRect hq_shimmer[wc::hull::shimmer_max];
 ws::HullState hq_state;

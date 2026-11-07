@@ -65,6 +65,7 @@ PINS = {
     'SS_BULLET_EMP': 'plasma',              # Electro-Magnetic Plasma Cannon (0x800 only)
     'SS_BULLET_HEPT': 'plasma',             # High Energy Plasma Thrower (a tracer body)
     'SS_BULLET_IPG': 'ion',                 # Ion Pulse Generator (0x1200: no on-hit bit)
+    'SS_BULLET_IOND': 'ion',                # Ion Disruptor (0x214: the beam bit would win over its on-hit bit)
     'SS_BULLET_TERANTIFIGHTER': 'plasma',   # Starburst Shockwave Cannon: a bloom, not a railgun
     'SS_BULLET_IBL': 'plasma',              # Incendiary Bomb Launcher: a fire bomb, not a railgun (stock 50,860 per shot)
     'SS_BULLET_PSG': 'plasma',              # Phased Shockwave Generator (stock: a wave body already; Mayhem: a tracer body)

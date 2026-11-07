@@ -1149,7 +1149,8 @@ constexpr float class_puff[10][10] = {{1.0f, 0.f, 0.f, 350.f, 150.f, 1.0f, 1.5f,
 // birth (x its life fraction f), heat T0 f, the shot-axis bias b (v = speed normalize(u + b a), a = Event::dir in world;
 // b 0 isotropic, and without dir), duty: the share of flicker_ms slots it is lit in (0: always). Columns: n0, nk, speed,
 // speed_spread, life, life_k, width, rest_w, tau, E, T0, bias, duty. n0 = nk = 0: no set. The beam's slow row is its
-// spatter: n0 sparks per spatter_period_ms while held. The ion's sparks take ion_colour.
+// spatter: n0 sparks per spatter_period_ms while held. The ion has no sparks (its arc sparks dropped 2026-11-07: less
+// dense, less chaotic; the lightning alone).
 constexpr float class_sparks[30][13] = {
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // energy: the spatter (slow) only
     {4.f, 4.f, 3.f, 0.3f, 150.f, 100.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 0.f, 0.f},
@@ -1163,7 +1164,7 @@ constexpr float class_sparks[30][13] = {
     {12.f, 12.f, 10.f, 0.4f, 300.f, 200.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, -2.0f, 0.f}, // heavy: the back-jet
     {6.f, 6.f, 12.f, 0.3f, 400.f, 200.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 2.0f, 0.f}, // the exit jet
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
-    {4.f, 4.f, 6.f, 0.5f, 120.f, 0.f, 0.08f, 3.f, 0.45f, 8.f, 1.f, 0.f, 0.5f}, // ion: the arc sparks, flickering
+    {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // ion: no sparks (2026-11-07: the lightning alone)
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // beam: the spatter (slow)
@@ -1236,11 +1237,49 @@ constexpr unsigned shimmer_ms = 400, shimmer_max = 2;
 // streak_ms; without dir the flash at streak_fallback_halo r instead.
 constexpr float streak_back = 1.5f, streak_front = 0.5f, streak_width = 0.3f, streak_e = 4.0f, streak_fallback_halo = 1.5f;
 constexpr unsigned streak_ms = 60;
-// Ion: the filament glow (weapon_filament_ps.hlsl): R filament_r r, E filament_e x (1 - t / filament_ms), the noise at
-// filament_scale / r in the owner's frame re-hashed every rehash_ms, lit where |n| < filament_width; ion_colour.
-constexpr float filament_r = 1.5f, filament_e = 2.0f, filament_scale = 6.0f, filament_width = 0.08f;
-constexpr unsigned filament_ms = 500, rehash_ms = 100, flicker_ms = 40;
+// Ion: the lightning (2026-11-07, user: "less dense / chaotic, more lightning like"; weapon_filament_ps.hlsl, one
+// segment quad each). Per hit ion_channels_lo..hi main channels (hashed on the record's sequence), each a jagged
+// polyline of ion_segments_lo..hi segments in the hull's tangent plane at the hit (the normal the lane's depth gives at
+// the contact pixel, weapon_lightning_vs.hlsl; the contact point's direction from the owner's origin where the lane
+// cannot: the contact off screen, under another surface, or no vertex texture fetch of the lane's format), ion_len r
+// long x (1 +- ion_len_spread / 2), its directions spread about
+// the hit (base hashed, channel c at c x 360 / count degrees, +- 2 atan(ion_dir_jitter)); each segment steps
+// ion_jag x its length sideways at most (clamped to ion_lateral x the channel's length); per channel ion_branches_lo..hi
+// side branches from an inner vertex at 30..60 degrees (tangents of their half angles ion_branch_t_lo..hi), ion_branch_len
+// x its length, half its segments (at least 3), ion_branch_e x its radiance. The lane under each segment's projection
+// within ion_depth_r r of its depth carries it (never the sky). Profile across a segment (pixels, d from it): the core
+// saturate(hw + 1/2 - d) of half width hw = max(ion_core_w r, ion_core_px x H / 1440, 1) / 2 (branches ion_branch_px),
+// white mixed ion_core_white towards ion_colour, under it the corona ion_corona_share x saturate(1 - (d / hc)^2) in
+// ion_colour, hc = ion_corona_x hw. Timing (game ms from the first drawn frame, no stagger): the strikes, 3 or 4 (hashed),
+// re-seed the channels at j x ion_strike_window_ms / count, each lit for max(ion_strike_ms, the three-frame floor) at
+// ion_channel_e x (1 - ion_strike_decay j), the latest started strike drawn alone; then one residual flicker of the last
+// strike's channels at ion_residual_e x that from ion_residual_ms (+ 40 hashed) to ion_end_ms (at least the floor).
+// No heat elements (no puff, glow, ember, scorch) and no sparks. Kill switch for a web: ion_branches_lo = ion_branches_hi
+// = 0 (no branches; hull-impact-classes.md section 9).
+constexpr unsigned ion_channels_lo = 2, ion_channels_hi = 4, ion_segments_lo = 6, ion_segments_hi = 10;
+constexpr unsigned ion_branches_lo = 1, ion_branches_hi = 2;
+constexpr float ion_len = 1.0f, ion_len_spread = 0.5f, ion_dir_jitter = 0.27f, ion_jag = 0.8f, ion_lateral = 0.3f;
+constexpr float ion_branch_t_lo = 0.2679f, ion_branch_t_hi = 0.5774f, ion_branch_len = 0.5f, ion_branch_e = 0.6f;
+constexpr float ion_depth_r = 1.0f;
+constexpr float ion_core_w = 0.01f, ion_core_px = 2.0f, ion_branch_px = 1.0f, ion_corona_x = 4.0f;
+constexpr float ion_corona_share = 0.25f, ion_core_white = 0.7f;
+constexpr float ion_channel_e = 3.0f, ion_strike_decay = 0.15f, ion_residual_e = 0.3f;
+constexpr unsigned ion_strikes_lo = 3, ion_strikes_hi = 4, ion_strike_window_ms = 200, ion_strike_ms = 40;
+constexpr unsigned ion_residual_ms = 280, ion_end_ms = 400, flicker_ms = 40;
 constexpr float ion_colour[3] = {0.60f, 0.75f, 1.00f};
+// The lightning's reach from the hit (x r): a channel's longest (ion_len (1 + ion_len_spread / 2)) with its lateral
+// clamp, a branch from its end (ion_branch_len of that again).
+constexpr float ion_reach_r = ion_len * (1.f + 0.5f * ion_len_spread) * (1.f + ion_lateral) * (1.f + ion_branch_len);
+// Beam (2026-11-07, user: "the beam is light"): the held spot's halo and its glow take the weapon colour (event_tint:
+// the light colour when saturated, else the texture average, else the override or white), white mixed beam_glow_mix
+// towards it; the spot's core beam_core_mix (a green beam's spot a green-white light); the glow keeps the heat glow's
+// mean radiance. Only where a colour exists (review 2026-11-07): the record's tint_source a light or a texture colour
+// whose 8-bit saturation (max - min) / max is above beam_colour_sat_min; a white or grey beam (Mayhem 3's PBC: a white
+// light, no texture; stock PAL, FUSIONBEAM, TRIBEAM: grey lights) keeps the heat halo and glow. Everything heated stays
+// on the heat ramp: the pulse flash, the boiling puff, the spatter, the trail ember and the scorch line. Repair and tug
+// keep theirs (the tint, tug_colour).
+constexpr bool beam_colour = true;
+constexpr float beam_glow_mix = 0.6f, beam_core_mix = 0.3f, beam_colour_sat_min = 0.15f;
 // Beam: the hold rule (section 3.9): a new beam record of a held spot's owner and (table, row) within hold_r r re-lights
 // it; held while now - t_last <= max(hold_ms, 2 game steps), the spot core spot_core / spot_halo r falling over
 // spot_fall_ms after, the boiling puff and the glow over their own lives; spatter n0 sparks per spatter_period_ms while
@@ -1266,7 +1305,9 @@ constexpr float tug_colour[3] = {0.7f, 0.8f, 1.0f}; // the tug's glow (pale blue
 // The shared budget's weights of the new primitives (2.11, over the decal's 177.5 us at 5120x1440; the native fixture's
 // *_alone_fills_frame rows, 2026-11-06: the ring 71.6 us, the filament glow 153.2, the scorch 86.7, a flash's halo
 // holding the eye 87.3; the ring as a shock front 88.1-90.5 us, 2026-11-07): charged; the flashes are the shed order's
-// last step (other owners', oldest first).
+// last step (other owners', oldest first). budget_weight_filament charges the ion's lightning segments (their quads'
+// screens): the lightning program on every pixel measured 87.9 us at 5120x1440 (0.50, 2026-11-07), the filament glow's
+// 0.86 kept as its bound.
 constexpr float budget_weight_ring = 0.50f, budget_weight_filament = 0.86f, budget_weight_scorch = 0.49f;
 constexpr float budget_weight_flash = 0.49f;
 // A kept hull shimmer rect (with its ring's band) per screen of its drawn rect over the decal's 177.5 us per screen:
@@ -1286,7 +1327,7 @@ static_assert(max_owners + hull::max_owners <= VisibleOwners::capacity, "every o
 // grown by the pixel floors), the same test its cull uses.
 constexpr float visible_radius_scale = 2.0f;
 // A hull hit's record life per anatomy (review 2026-11-07): its slowest element (an ember, a puff, a glow, a ring, the
-// flash, the streak, the filament glow at k 1 x (1 + stagger / 2), a spark set at spark_life_hi; the scorches live in
+// flash, the streak, the ion's lightning to ion_end_ms (no stagger), a spark set at spark_life_hi; the scorches live in
 // their own store, the beam, repair and tug spots in theirs), so each class leaves the ring at its own end;
 // hull_lifetime_ms the slowest of them (the installed bound). Present keeps a record life_floor_ms longer. Compile-time
 // integers: the handler reads the table, never a float.
@@ -1297,7 +1338,7 @@ constexpr float hull_slowest_ms(unsigned a) noexcept {
                            (hull::class_puff[a][3] + hull::class_puff[a][4]) * st, hull::class_glow[a][1] * st,
                            hull::class_ring[a][2] * st, hull::class_flash[a][2] * st,
                            a == hull::an_heavy ? float(hull::streak_ms) * st : 0.f,
-                           a == hull::an_ion ? float(hull::filament_ms) * st : 0.f};
+                           a == hull::an_ion ? float(hull::ion_end_ms) : 0.f};
     for (float c : cand) m = c > m ? c : m;
     for (unsigned k = 0; k < 3; ++k) {
         const float sl = (hull::class_sparks[3 * a + k][4] + hull::class_sparks[3 * a + k][5]) * hull::spark_life_hi;
