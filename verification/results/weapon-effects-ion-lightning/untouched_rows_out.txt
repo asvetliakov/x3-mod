@@ -1,0 +1,5 @@
+/bolt_cpu:parity median_us 4.0 -> 4.4 x1.100
+/bolt_timing: gpu_total_us 96.1 -> 96.4 x1.003
+/explosion:cpu median_us 38.1 -> 38.3 x1.005
+/explosion:cpu:big median_us 53.0 -> 53.8 x1.015
+/explosion:cpu:big us_per_quad 0.067 -> 0.068 x1.015

@@ -33,9 +33,11 @@
 //   life fraction (the ion's in ion_colour); a set with a duty is lit in that share of flicker_ms slots;
 // - glow (the burst's light: glow_r_x R(t), its heat and life, the cluster's saturation; repair's and tug's cool spot) and
 //   ember (the glow primitive at the hit), the surface ring (the sphere shell cut by the lane), the ion's lightning
-//   (ion_phase: 3 or 4 strikes re-seeding its channels over ion_strike_window_ms, then a faint residual to ion_end_ms;
-//   ion_strike: 2 to 4 jagged channels with 1 or 2 branches each in the hit's tangent plane riding the owner, one
-//   segment quad each drawn on the lane under it) and the plasma / heavy shimmer rect;
+//   (ion_phase: a strike every ion_period_lo_ms..ion_period_hi_ms re-seeding its channels to ion_strike_until of
+//   ion_life_ms, each flash lingering as a faint afterglow for one period, the last 1 - ion_fade_from of the life fading;
+//   ion_strike: 3 to 6 jagged channels with 1 to 3 branches each in the hit's tangent plane riding the owner, one
+//   segment quad each drawn on the lane under it; the cold light on the hull, the glow primitive in ion_colour
+//   flickering with the strikes) and the plasma / heavy shimmer rect;
 // - the scorch: at a record's first frame a mark enters the per-owner scorch store (scorch_per_owner, scorch_store; it
 //   outlives the record), drawn every frame as a multiply decal s0 min(1, t / L_ember) (1 - t / L_s) until L_s.
 // Beams, repair and tug follow the hold rule (section 3.9): a new record of an owner and (table, row) within hold_r r of
@@ -711,6 +713,7 @@ struct IonStrike {
     static constexpr unsigned max_points =
         core::hull::ion_channels_hi * (core::hull::ion_segments_hi + 1 + core::hull::ion_branches_hi * (branch_segments_hi + 1));
     unsigned lines = 0, points = 0, channels = 0, branches = 0;
+    float extent = 0.f; // its farthest point from the hit (r_hit units; the cold light's radius, ion_glow_r x it)
     IonLine line[max_lines];
     float p[max_points][2];
     float len[max_points]; // the segment from point i to i + 1 (r_hit units; a line's last point: 0)
@@ -720,9 +723,20 @@ inline unsigned ion_channel_count(std::uint32_t sequence) noexcept {
     namespace hl = core::hull;
     return hl::ion_channels_lo + (element_hash(sequence, 40) >> 8) % (hl::ion_channels_hi - hl::ion_channels_lo + 1);
 }
-inline unsigned ion_strike_count(std::uint32_t sequence) noexcept {
+// Strike j's period (ms): hashed in ion_period_lo_ms..ion_period_hi_ms, at least the record's three-frame floor.
+inline float ion_period(std::uint32_t sequence, unsigned j, float floor_ms) noexcept {
     namespace hl = core::hull;
-    return hl::ion_strikes_lo + (element_hash(sequence, 41) >> 8) % (hl::ion_strikes_hi - hl::ion_strikes_lo + 1);
+    const float p = float(hl::ion_period_lo_ms +
+                          (element_hash(sequence, 700u + j) >> 8) % (hl::ion_period_hi_ms - hl::ion_period_lo_ms + 1));
+    return p > floor_ms ? p : floor_ms;
+}
+// The strikes of a life: those starting before ion_strike_span_ms (at most ion_strikes_max).
+inline unsigned ion_strike_count(std::uint32_t sequence, float floor_ms) noexcept {
+    namespace hl = core::hull;
+    float t = 0.f;
+    unsigned n = 1;
+    while (n < hl::ion_strikes_max && (t += ion_period(sequence, n - 1, floor_ms)) < float(hl::ion_strike_span_ms)) ++n;
+    return n;
 }
 // (x, y) turned by the angle 2 atan(t).
 inline void ion_turn(float t, float d[2]) noexcept {
@@ -797,11 +811,18 @@ inline void ion_strike(std::uint32_t sequence, unsigned strike, IonStrike* s) no
             s->branches += s->lines > lines;
         }
     }
+    float r2 = 0.f;
+    for (unsigned i = 0; i < s->points; ++i) {
+        const float d2 = s->p[i][0] * s->p[i][0] + s->p[i][1] * s->p[i][1];
+        r2 = d2 > r2 ? d2 : r2;
+    }
+    s->extent = scalar::sqrt(r2);
 }
 // The strike's geometry memoised (the performance pass: a strike is drawn on three frames or more; a pure function of
 // its key, so an entry never goes stale): ion_cache_sets sets of ion_cache_ways entries, the set by a hash of (sequence,
 // strike), the least recently used way replaced (review 2026-11-07: 32 direct-mapped slots recomputed nearly every
-// strike at 64 lit hits; 256 entries hold 64 lit hits with their previous strikes, about 290 KB in the TU's .bss).
+// strike at 64 lit hits; 256 entries hold 64 lit hits with their flash's and afterglow's strikes, about 560 KB in the
+// TU's .bss at 6 channels of 3 branches).
 // Sequence 0 is no record (an empty entry). The game thread's only (the stage's caller); a reference stays valid until
 // the next lookup.
 constexpr unsigned ion_cache_sets = 64, ion_cache_ways = 4;
@@ -830,52 +851,75 @@ inline const IonStrike& ion_strike_cached(std::uint32_t sequence, unsigned strik
     return victim->st;
 }
 // The ion's strike timer of a held record (hull-impact-classes.md 4.5, 4.6): ticks refresh its t0 in place, so the
-// hold has lasted t0 - first_ms; the strike window restarts every ion_strike_window_ms of the hold (its strikes re-seeded,
-// cycle `*cycle`), and the window's remaining strikes, residual and ion_end_ms end run after the hold ends. A record that
-// was never refreshed (t0 at or before its first stage frame) is at cycle 0: ion_phase's own age.
+// hold has lasted t0 - first_ms; the strike schedule restarts every ion_strike_span_ms of the hold (its strikes
+// re-seeded, cycle `*cycle`), and the schedule's remaining strikes, afterglow and fade run to ion_life_ms after the hold
+// ends. A record that was never refreshed (t0 at or before its first stage frame) is at cycle 0: ion_phase's own age.
 inline std::uint32_t ion_hold_age(const core::Event& e, std::uint32_t first_ms, std::uint32_t age_ms,
                                   unsigned* cycle) noexcept {
     const std::int32_t held = std::int32_t(e.t0_game_ms - first_ms);
-    const std::uint32_t k = held > 0 ? std::uint32_t(held) / core::hull::ion_strike_window_ms : 0u;
-    const std::uint32_t base = k * core::hull::ion_strike_window_ms;
+    const std::uint32_t k = held > 0 ? std::uint32_t(held) / core::hull::ion_strike_span_ms : 0u;
+    const std::uint32_t base = k * core::hull::ion_strike_span_ms;
     *cycle = unsigned(k);
     return age_ms > base ? age_ms - base : 0u;
 }
-// The strike index of cycle k's strike j (IonJob::strike is a byte; the channel sets repeat after 63 cycles, 12.6 s)
-inline unsigned ion_cycle_strike(std::uint32_t sequence, unsigned cycle, unsigned strike) noexcept {
-    return strike + ion_strike_count(sequence) * (cycle % 63u);
+// The strike index of cycle k's strike j (IonJob::strike is a byte; the channel sets repeat after 31 cycles, 29.8 s)
+inline unsigned ion_cycle_strike(unsigned cycle, unsigned strike) noexcept {
+    static_assert(core::hull::ion_strikes_max * 31u <= 255u, "a cycle's strike index is a byte");
+    return strike + core::hull::ion_strikes_max * (cycle % 31u);
 }
-// The strike drawn at game age `age` (ms; floor_ms the record's three-frame floor): the latest started strike while it
-// is lit, then the residual flicker of the last one; e its radiance factor (x ion_channel_e).
+// What a hit draws at game age `age` (ms; floor_ms the record's three-frame floor): the latest started strike's flash
+// while it is lit, the afterglow of the strike before it (or of the latest once its flash is over; the last strike's to
+// the life's end), both x the life's fade, and the cold light's factor; e its radiance factors (x ion_channel_e), w the
+// width factors.
 struct IonPhase {
-    bool lit = false, residual = false;
-    unsigned strike = 0;
-    float e = 0.f;
+    bool lit = false, flash = false, after = false;
+    unsigned strike = 0, after_strike = 0, latest = 0;
+    float e = 0.f, w = 1.f, after_e = 0.f, after_w = 1.f, glow = 0.f, fade = 0.f;
 };
 inline IonPhase ion_phase(std::uint32_t sequence, float age, float floor_ms) noexcept {
     namespace hl = core::hull;
     IonPhase ph;
-    if (!(age >= 0.f)) return ph;
-    const unsigned count = ion_strike_count(sequence);
-    const float spacing = float(hl::ion_strike_window_ms) / float(count);
-    const float t_res = float(hl::ion_residual_ms) + 40.f * unit_of(element_hash(sequence, 42));
-    const float strike_life = float(hl::ion_strike_ms) > floor_ms ? float(hl::ion_strike_ms) : floor_ms;
-    const float res_life = float(hl::ion_end_ms) - t_res > floor_ms ? float(hl::ion_end_ms) - t_res : floor_ms;
-    if (age >= t_res) {
-        if (age < t_res + res_life) {
-            ph.lit = ph.residual = true;
-            ph.strike = count - 1;
-            ph.e = hl::ion_residual_e * (1.f - hl::ion_strike_decay * float(count - 1));
-        }
-        return ph;
+    const float L = float(hl::ion_life_ms);
+    if (!(age >= 0.f) || !(age < L)) return ph;
+    const float span = float(hl::ion_strike_span_ms);
+    const float flash_life = float(hl::ion_strike_ms) > floor_ms ? float(hl::ion_strike_ms) : floor_ms;
+    // the latest started strike j at t, its period p; the one before at t_prev
+    float t = 0.f, t_prev = 0.f, p = ion_period(sequence, 0, floor_ms);
+    unsigned j = 0;
+    while (j + 1 < hl::ion_strikes_max && t + p < span && t + p <= age) {
+        t_prev = t;
+        t += p;
+        p = ion_period(sequence, ++j, floor_ms);
     }
-    unsigned j = unsigned(age / spacing);
-    if (j >= count) j = count - 1;
-    if (age < float(j) * spacing + strike_life) {
-        ph.lit = true;
+    const float x0 = hl::ion_fade_from * L;
+    ph.fade = age < x0 ? 1.f : (L - age) / (L - x0);
+    auto e_of = [](unsigned i, float ti) {
+        return ti < float(hl::ion_late_ms) ? 1.f - hl::ion_strike_decay * float(i) : hl::ion_late_e;
+    };
+    auto w_of = [](float ti) { return ti < float(hl::ion_late_ms) ? 1.f : hl::ion_late_w; };
+    const float ej = e_of(j, t);
+    if (age < t + flash_life) {
+        ph.flash = true;
         ph.strike = j;
-        ph.e = 1.f - hl::ion_strike_decay * float(j);
+        ph.e = ej * ph.fade;
+        ph.w = w_of(t);
+        if (j) {
+            ph.after = true;
+            ph.after_strike = j - 1;
+            ph.after_e = hl::ion_after_e * e_of(j - 1, t_prev) * ph.fade;
+            ph.after_w = w_of(t_prev);
+        }
+    } else { // between strikes (and after the last one's flash, to the life's end): its afterglow
+        ph.after = true;
+        ph.after_strike = j;
+        ph.after_e = hl::ion_after_e * ej * ph.fade;
+        ph.after_w = w_of(t);
     }
+    ph.lit = ph.fade > 0.f;
+    ph.latest = j;
+    float x = (age - t) / p;
+    x = x < 1.f ? x : 1.f;
+    ph.glow = ej * (hl::ion_glow_floor + (1.f - hl::ion_glow_floor) * (1.f - x)) * ph.fade;
     return ph;
 }
 // The stage's tangent plane of a hit (owner frame): normal to the contact point's direction from the owner's origin
@@ -914,7 +958,8 @@ inline void ion_segment_quad(const float c[3], const float t1[3], const float t2
         _mm_storeu_ps(out[k].d, (k & 2u) ? dm : dp);
     }
 }
-// A lit ion hit of the frame (the lightning's job, build_hull (C) and (C2)): its contact point and the stage's axes x
+// A lit ion strike of the frame (the lightning's job, build_hull (C) and (C2); a hit's flash and afterglow two jobs,
+// adjacent): its contact point and the stage's axes x
 // r_hit (view), r_hit in pixels there, the core half widths and radiances of its channels and branches, the depth
 // window, its age, sequence and strike, its visible segments (mask: by the strike's point index i, the segment i .. i + 1)
 // and, once written, its first segment, its channels' ends (from first) and charged screens, the channels kept.
@@ -925,6 +970,7 @@ struct IonJob {
     std::uint32_t age, sequence;
     std::uint16_t segments, first;
     std::uint8_t strike, own, kept, channels, keep_channels;
+    std::uint8_t part; // 0 the hit's first job, 1 its second (the flash's then the afterglow's: cut together)
     std::uint16_t chan_end[core::hull::ion_channels_hi];
     float chan_area[core::hull::ion_channels_hi];
     std::uint32_t mask[mask_words];
@@ -1077,7 +1123,7 @@ inline void record_reach(const core::Event& e, const HullTuning& t, float frame_
     const float* em = hl::class_ember[a];
     // the ring's front stretched along the heading (the shock front, ring_stretch) reaches that much further
     const float ring = hl::ring_stretch * (rg[0] + 3.f * rg[1]);
-    for (const float v : {streak, ring, a == hl::an_ion ? hl::ion_reach_r : 0.f, hl::class_shimmer[a], gw[0], em[0]})
+    for (const float v : {streak, ring, a == hl::an_ion ? hl::ion_glow_r * hl::ion_reach_r : 0.f, hl::class_shimmer[a], gw[0], em[0]})
         m = v > m ? v : m;
     // the burst (its lobed sphere biased bias r towards the eye), its glow (glow_r_x R(t) <= glow_r_x R_b), its smoke
     const float* pf = hl::class_puff[a];
@@ -1590,10 +1636,11 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     BoxMeta glow_meta[renderer::weapon_glow_boxes];
     BoxMeta burst_meta[renderer::weapon_fireball_boxes];
     BoxMeta ring_meta[renderer::weapon_ring_quads];
-    // The lightning's jobs (the lit ion hits with a visible segment, the first pass in (C); the TU's .bss, about 120 KB
-    // at 1024 records) and their order by age (the cap's and the shed's).
-    static IonJob ion_jobs[core::ring_capacity];
-    static std::uint16_t ion_order[core::ring_capacity];
+    // The lightning's jobs (the lit ion strikes with a visible segment, the first pass in (C), two a hit; the TU's .bss,
+    // about 290 KB at 1024 records) and their order by age (the cap's and the shed's).
+    constexpr unsigned ion_job_capacity = 2 * core::ring_capacity; // a hit's flash and afterglow
+    static IonJob ion_jobs[ion_job_capacity];
+    static std::uint16_t ion_order[ion_job_capacity];
     unsigned n_ion_jobs = 0;
     BoxMeta scorch_meta[renderer::weapon_scorch_boxes];
     BoxMeta smoke_meta[renderer::weapon_smoke_boxes];
@@ -1769,7 +1816,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         const float floor_ms = hs.floor_ms;
         const std::uint32_t age_ms = f.now - hs.first_ms;
         // A held ion beam (the hold rule in the ring, (A)): its lightning's age on the strike timer, which also bounds
-        // its life (ion_end_ms after the hold's last strike window); the other elements keep the hold's start.
+        // its life (ion_life_ms after the hold's last strike cycle); the other elements keep the hold's start.
         unsigned ion_cycle = 0;
         const bool ion_held = a == hl::an_ion && holds(e);
         const std::uint32_t life_age = ion_held ? ion_hold_age(e, hs.first_ms, age_ms, &ion_cycle) : age_ms;
@@ -1967,39 +2014,49 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 }
             }
         }
-        // Lightning (ion), the first of its two passes: the strike lit at this age, its visible segments counted (a job;
-        // the second pass after the records writes them, whole hits only, oldest cut first when the cap binds).
-        if (t.filament && filament_cap && !hs.orphan && a == hl::an_ion) {
-            const IonPhase ph = ion_phase(e.sequence, float(life_age), floor_ms);
-            const unsigned strike = ion_cycle_strike(e.sequence, ion_cycle, ph.strike);
-            if (ph.lit) {
-                if (!s->frame_state) s->frame_state = owner_frame(s->data, f.cam, s->centre, s->frame) ? 1 : 2;
-                const float px_x = 0.5f * f.width * f.cam.m00;
-                const float r_px = c_view[2] > f.near_z ? r_hit * px_x / c_view[2] : 0.f;
-                const float rows = f.height * (1.f / 1440.f);
-                const float floor_main = hl::ion_core_px * rows > 1.f ? hl::ion_core_px * rows : 1.f;
-                const float floor_branch = hl::ion_branch_px * rows > 1.f ? hl::ion_branch_px * rows : 1.f;
-                const float w_main = hl::ion_core_w * r_px, w_branch = 0.5f * w_main;
-                const float hw_main = 0.5f * (w_main > floor_main ? w_main : floor_main);
-                const float hw_branch = 0.5f * (w_branch > floor_branch ? w_branch : floor_branch);
-                // the strike's sphere (its reach and the corona's pixels) off screen: nothing to build (the performance
-                // pass: no strike, no points)
-                float rect[4];
-                bool full = false;
-                const float margin = c_view[2] > f.near_z ? (hl::ion_corona_x * hw_main + 1.f) * c_view[2] / px_x : 0.f;
-                if (s->frame_state == 1 && c_view[2] > f.near_z && n_ion_jobs < core::ring_capacity &&
-                    sphere_rect(f, c_view, hl::ion_reach_r * r_hit + margin, rect, &full)) {
+        // Lightning (ion), the first of its two passes: the strikes drawn at this age (the flash, the afterglow of the
+        // strike before it: one job each), their visible segments counted (the second pass after the records writes
+        // them, whole hits only, oldest cut first when the cap binds).
+        IonPhase ion_ph;
+        if (a == hl::an_ion) ion_ph = ion_phase(e.sequence, float(life_age), floor_ms);
+        if (t.filament && filament_cap && !hs.orphan && a == hl::an_ion && ion_ph.lit) {
+            if (!s->frame_state) s->frame_state = owner_frame(s->data, f.cam, s->centre, s->frame) ? 1 : 2;
+            const float px_x = 0.5f * f.width * f.cam.m00;
+            const float r_px = c_view[2] > f.near_z ? r_hit * px_x / c_view[2] : 0.f;
+            const float rows = f.height * (1.f / 1440.f);
+            const float floor_main = hl::ion_core_px * rows > 1.f ? hl::ion_core_px * rows : 1.f;
+            const float floor_branch = hl::ion_branch_px * rows > 1.f ? hl::ion_branch_px * rows : 1.f;
+            const float w_main = hl::ion_core_w * r_px, w_branch = 0.5f * w_main;
+            const float full_main = w_main > floor_main ? w_main : floor_main;
+            const float full_branch = w_branch > floor_branch ? w_branch : floor_branch;
+            // the strikes' sphere (their reach and the full-width corona's pixels) off screen: nothing to build (the
+            // performance pass: no strike, no points)
+            float rect[4];
+            bool full = false;
+            const float margin = c_view[2] > f.near_z ? (hl::ion_corona_x * 0.5f * full_main + 1.f) * c_view[2] / px_x : 0.f;
+            if (s->frame_state == 1 && c_view[2] > f.near_z && sphere_rect(f, c_view, hl::ion_reach_r * r_hit + margin, rect, &full)) {
+                // Each segment's cull is the sphere about the contact through its farther end (the vertex program
+                // may turn the plane onto the lane's normal, so the stage's projection does not bound it): a point
+                // d from the contact, |d| <= rho, projects within px_x rho (1 + |c_x| / c_z) / (c_z - rho) of it
+                // (rho the L1 norm of its plane coordinates x r_hit: no root).
+                const Px cp = to_px(f, sc, c_view);
+                const float iz = rcp_nr(c_view[2]);
+                const float ax = c_view[0] * iz, ay = c_view[1] * iz;
+                const float kx = px_x * r_hit * (1.f + (ax < 0.f ? -ax : ax));
+                const float ky = 0.5f * f.height * f.cam.m11 * r_hit * (1.f + (ay < 0.f ? -ay : ay));
+                float t1[3], t2[3];
+                ion_tangents(e.pos, s->frame, t1, t2);
+                unsigned hit_jobs = 0;
+                for (unsigned part = 0; part < 2 && n_ion_jobs < ion_job_capacity; ++part) {
+                    const bool is_flash = part == 0;
+                    if (is_flash ? !ion_ph.flash : !ion_ph.after) continue;
+                    const float wf = is_flash ? ion_ph.w : ion_ph.after_w, ef = is_flash ? ion_ph.e : ion_ph.after_e;
+                    if (!(ef > 0.f)) continue;
+                    const float hw_main = 0.5f * (wf * full_main > 1.f ? wf * full_main : 1.f);
+                    const float hw_branch = 0.5f * (wf * full_branch > 1.f ? wf * full_branch : 1.f);
+                    const unsigned strike = ion_cycle_strike(ion_cycle, is_flash ? ion_ph.strike : ion_ph.after_strike);
                     IonJob& j = ion_jobs[n_ion_jobs];
                     const IonStrike& st = ion_strike_cached(e.sequence, strike);
-                    // Each segment's cull is the sphere about the contact through its farther end (the vertex program
-                    // may turn the plane onto the lane's normal, so the stage's projection does not bound it): a point
-                    // d from the contact, |d| <= rho, projects within px_x rho (1 + |c_x| / c_z) / (c_z - rho) of it
-                    // (rho the L1 norm of its plane coordinates x r_hit: no root).
-                    const Px cp = to_px(f, sc, c_view);
-                    const float iz = rcp_nr(c_view[2]);
-                    const float ax = c_view[0] * iz, ay = c_view[1] * iz;
-                    const float kx = px_x * r_hit * (1.f + (ax < 0.f ? -ax : ax));
-                    const float ky = 0.5f * f.height * f.cam.m11 * r_hit * (1.f + (ay < 0.f ? -ay : ay));
                     unsigned count = 0;
                     for (unsigned w = 0; w < IonJob::mask_words; ++w) j.mask[w] = 0;
                     for (unsigned l = 0; l < st.lines; ++l) {
@@ -2021,30 +2078,31 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                             ++count;
                         }
                     }
-                    if (count) {
-                        float t1[3], t2[3];
-                        ion_tangents(e.pos, s->frame, t1, t2);
-                        for (unsigned q = 0; q < 3; ++q) {
-                            j.c[q] = c_view[q];
-                            j.t1[q] = t1[q] * r_hit;
-                            j.t2[q] = t2[q] * r_hit;
-                        }
-                        j.r_px = r_px;
-                        j.hw_main = hw_main;
-                        j.hw_branch = hw_branch;
-                        j.e_main = hl::ion_channel_e * ph.e * gain;
-                        j.e_branch = j.e_main * hl::ion_branch_e;
-                        j.tol = hl::ion_depth_r * r_hit;
-                        j.age = life_age; // a held beam's strike age: its current strikes are not the oldest
-                        j.sequence = e.sequence;
-                        j.segments = std::uint16_t(count);
-                        j.strike = std::uint8_t(strike);
-                        j.own = std::uint8_t(own);
-                        j.kept = 1;
-                        ++n_ion_jobs;
-                        ++n.filaments;
-                        n.floored += floor_ms > float(hl::ion_strike_ms);
+                    if (!count) continue;
+                    for (unsigned q = 0; q < 3; ++q) {
+                        j.c[q] = c_view[q];
+                        j.t1[q] = t1[q] * r_hit;
+                        j.t2[q] = t2[q] * r_hit;
                     }
+                    j.r_px = r_px;
+                    j.hw_main = hw_main;
+                    j.hw_branch = hw_branch;
+                    j.e_main = hl::ion_channel_e * ef * gain;
+                    j.e_branch = j.e_main * hl::ion_branch_e;
+                    j.tol = hl::ion_depth_r * r_hit;
+                    j.age = life_age; // a held beam's strike age: its current strikes are not the oldest
+                    j.sequence = e.sequence;
+                    j.segments = std::uint16_t(count);
+                    j.strike = std::uint8_t(strike);
+                    j.own = std::uint8_t(own);
+                    j.kept = 1;
+                    j.part = std::uint8_t(hit_jobs ? 1 : 0);
+                    ++n_ion_jobs;
+                    ++hit_jobs;
+                }
+                if (hit_jobs) {
+                    ++n.filaments;
+                    n.floored += floor_ms > float(hl::ion_strike_ms);
                 }
             }
         }
@@ -2206,6 +2264,16 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     }
                 }
                 if (glow_box(c_view, Rg, colour, age_ms, own, e.owner, core::look::budget_weight_glow)) ++n.glows;
+            }
+            // the ion's cold light on the hull (core::hull ion_glow_*): ion_colour, never the heat ramp; ion_glow_r x
+            // the latest strike's extent, flickering with the strikes (its strike is in the cache: the lightning's)
+            if (t.glow && a == hl::an_ion && ion_ph.glow > 0.f) {
+                const IonStrike& st = ion_strike_cached(e.sequence, ion_cycle_strike(ion_cycle, ion_ph.latest));
+                float colour[3];
+                for (unsigned q = 0; q < 3; ++q) colour[q] = hl::ion_colour[q] * hl::ion_glow_e * ion_ph.glow * gain;
+                if (glow_box(c_view, hl::ion_glow_r * st.extent * r_hit, colour, age_ms, own, e.owner,
+                             core::look::budget_weight_glow))
+                    ++n.glows;
             }
             const float* gw = hl::class_glow[a];
             const float* em = hl::class_ember[a];
@@ -2508,8 +2576,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             }
         }
     }
-    // (C2) The lightning's second pass: the jobs' segments written, whole hits only. Past filament_cap segments the
-    // newest hits are kept while they fit and the rest cut whole, oldest first (review 2026-11-07: never a channel cut
+    // (C2) The lightning's second pass: the jobs' segments written, whole hits only (a hit's flash and afterglow jobs
+    // together). Past filament_cap segments the newest hits are kept while they fit and the rest cut whole, oldest first (review 2026-11-07: never a channel cut
     // mid-way; n.capped counts the hits cut). Each segment charged its quad's screens: (its plane length x r_px + 2 q) x
     // 2 q (q the corona's half width + 1 px), the plane's foreshortening not known here (an upper bound), x
     // budget_weight_filament; per channel (a main line with its branches) for the shed in (F).
@@ -2531,13 +2599,17 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             bool cut = false;
             for (unsigned k = 0; k < n_ion_jobs; ++k) {
                 IonJob& j = ion_jobs[ion_order[k]];
-                cut = cut || used + j.segments > filament_cap;
+                if (j.part) continue; // decided with its hit's first job (adjacent: the same age, the next index)
+                IonJob* second = k + 1 < n_ion_jobs && ion_jobs[ion_order[k + 1]].part ? &ion_jobs[ion_order[k + 1]] : nullptr;
+                const unsigned segs = j.segments + (second ? second->segments : 0u);
+                cut = cut || used + segs > filament_cap;
                 if (cut) {
                     j.kept = 0;
+                    if (second) second->kept = 0;
                     ++n.capped;
                     --n.filaments;
                 } else
-                    used += j.segments;
+                    used += segs;
             }
         }
         const float inv_screen = 1.f / (f.width * f.height);

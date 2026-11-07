@@ -190,8 +190,8 @@ switchable in the Layers panel; the Vanilla tab draws the four slots of the vani
   <label class="check" data-tabs="hull" title="the cooling ember on the hull"><input id="layer_ember" type="checkbox" data-layer="ember" checked> ember</label>
   <label class="check" data-tabs="hull" title="the scorch decal (darkens the hull)"><input id="layer_scorch" type="checkbox" data-layer="scorch" checked> scorch</label>
   <label class="check" data-tabs="hull" title="the burst's dark smoke (hull-burst-look.md 5: the impostor multiplying the hull from 0.5 to 1.6 L_b)"><input id="layer_smoke" type="checkbox" data-layer="smoke" checked> smoke</label>
-  <label class="check" data-tabs="hull" title="the ion class's lightning: the main channels' cores (2 to 4 jagged channels a strike, re-seeded 3 or 4 times over 200 ms)"><input id="layer_ion_channels" type="checkbox" data-layer="ion_channels" checked> ion: channels</label>
-  <label class="check" data-tabs="hull" title="the ion class's lightning: the side branches (1 or 2 a channel, half its length, thinner)"><input id="layer_ion_branches" type="checkbox" data-layer="ion_branches" checked> ion: branches</label>
+  <label class="check" data-tabs="hull" title="the ion class's lightning: the main channels' cores (3 to 6 jagged channels a strike, re-struck every 120 to 200 ms to 0.8 of its 1.2 s life, each flash lingering as a faint afterglow)"><input id="layer_ion_channels" type="checkbox" data-layer="ion_channels" checked> ion: channels</label>
+  <label class="check" data-tabs="hull" title="the ion class's lightning: the side branches (1 to 3 a channel, half its length, thinner)"><input id="layer_ion_branches" type="checkbox" data-layer="ion_branches" checked> ion: branches</label>
   <label class="check" data-tabs="hull" title="the ion class's lightning: the soft blue corona about the cores (4 x the core's width at a quarter of its intensity)"><input id="layer_ion_corona" type="checkbox" data-layer="ion_corona" checked> ion: corona</label>
   <label class="check" data-tabs="hull" title="the beam's held spot and its glow in the weapon colour mixed with white (0.6 at the glow, 0.3 at the core); off: the heat ramp"><input id="layer_beam_colour" type="checkbox" data-layer="beam_colour" checked> beam: weapon colour</label>
   <label class="check placeholder" data-tabs="hull" title="the heat shimmer is post-resolve: not previewable here, judged in flight"><input id="layer_shimmer" type="checkbox" checked disabled> shimmer <small>(not drawn here)</small></label>
@@ -386,7 +386,7 @@ const HEADER = {
   shimmer_rows: 1440.0,
   ring_band_px: 3.0,
   look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4,"fireball_octave_freq":[1.6,3.4,7.0],"fireball_octave_w":[0.5,0.3,0.2],"fireball_advect":1.0,"fireball_erode_0":0.1,"fireball_erode_t":0.28,"fireball_erode_r":0.2,"fireball_erode_soft":0.28,"fireball_erode_rt":3.0,"fireball_column_pow":0.25,"fireball_lobes":5.0,"fireball_lobe_amp":0.25,"fireball_lobe_soft":0.06,"fireball_heat_soft":0.2,"fireball_rim_t":0.45,"fireball_octaves":3,"fireball_fine_px":48.0,"fireball_fine_band_px":16.0,"budget_weight_fireball":1.18,"budget_weight_fireball_coarse":1.03,"budget_weight_smoke":1.2},
-  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.12,1.2,40.0,0.9,0.0],[0.12,0.6,40.0,1.0,0.0],[0.12,2.0,40.0,1.0,1.0],[0.12,1.0,40.0,0.9,0.0],[0.12,1.2,40.0,1.0,2.0],[0.12,1.2,40.0,0.9,0.0],[0.12,1.5,40.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.12,0.6,40.0,0.0,4.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[2.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.8,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[3.0,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[1.6,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[1.2,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,2.0,2.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[2.4,0.0,0.0,800.0,400.0,0.3,0.375,0.08,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,0.75,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,0.75,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[1.0,150.0,0.0,0.3],[1.0,150.0,0.0,0.15]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"ring_lead_t":1.0,"ring_trail_t":0.35,"ring_trail_gain":0.55,"ring_trail_span":3.0,"ring_noise_freq":1.3,"ring_noise_depth":0.9,"ring_noise_contrast":2.5,"ring_wash_gain":0.25,"ring_wash_fall":0.35,"ring_stretch":1.25,"ring_refract":1.0,"ring_seed_axis":[1.7,3.1,0.7],"ring_seed_scale":64.0,"ring_noise_window":2.5,"ring_front_window":3.0,"ring_seed_element":7,"budget_weight_shimmer":2.85,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"ion_channels_lo":2,"ion_channels_hi":4,"ion_segments_lo":6,"ion_segments_hi":10,"ion_branches_lo":1,"ion_branches_hi":2,"ion_len":1.0,"ion_len_spread":0.5,"ion_dir_jitter":0.27,"ion_jag":0.8,"ion_lateral":0.3,"ion_branch_t_lo":0.2679,"ion_branch_t_hi":0.5774,"ion_branch_len":0.5,"ion_branch_e":0.6,"ion_depth_r":1.0,"ion_core_w":0.01,"ion_core_px":2.0,"ion_branch_px":1.0,"ion_corona_x":4.0,"ion_corona_share":0.25,"ion_core_white":0.7,"ion_channel_e":3.0,"ion_strike_decay":0.15,"ion_residual_e":0.3,"ion_strikes_lo":3,"ion_strikes_hi":4,"ion_strike_window_ms":200,"ion_strike_ms":40,"ion_residual_ms":280,"ion_end_ms":400,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"beam_colour":true,"beam_glow_mix":0.6,"beam_core_mix":0.3,"beam_colour_sat_min":0.15,"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.5,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.4,"star_arm_len":[1.0,0.55,0.8,0.45],"star_width":0.1,"star_width_px":2.0,"star_floor_px":6.0,"star_element":11,"burst_rot_element":8,"burst_lobe_element":10,"glow_r_x":1.6,"glow_e_x":0.33,"cluster_r_x":2.0,"cluster_n0_glow":2.5,"cluster_n0_burst":1.6,"class_smoke":[[1.3,0.45],[1.0,0.3],[1.2,0.5],[1.3,0.5],[0.0,0.0],[1.2,0.4],[1.3,0.5],[1.0,0.3],[0.0,0.0],[0.0,0.0]],"smoke_t0":0.5,"smoke_span":1.1,"smoke_rise":0.27,"dust_colour":[0.55,0.52,0.48],"cool_colour":[0.7,0.8,1.0],"ember_lobe_amp":0.25},
+  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.12,1.2,40.0,0.9,0.0],[0.12,0.6,40.0,1.0,0.0],[0.12,2.0,40.0,1.0,1.0],[0.12,1.0,40.0,0.9,0.0],[0.12,1.2,40.0,1.0,2.0],[0.12,1.2,40.0,0.9,0.0],[0.12,1.5,40.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.12,0.6,40.0,0.0,4.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[2.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.8,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[3.0,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[1.6,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[1.2,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,2.0,2.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[2.4,0.0,0.0,800.0,400.0,0.3,0.375,0.08,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,0.75,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,0.75,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[1.0,150.0,0.0,0.3],[1.0,150.0,0.0,0.15]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"ring_lead_t":1.0,"ring_trail_t":0.35,"ring_trail_gain":0.55,"ring_trail_span":3.0,"ring_noise_freq":1.3,"ring_noise_depth":0.9,"ring_noise_contrast":2.5,"ring_wash_gain":0.25,"ring_wash_fall":0.35,"ring_stretch":1.25,"ring_refract":1.0,"ring_seed_axis":[1.7,3.1,0.7],"ring_seed_scale":64.0,"ring_noise_window":2.5,"ring_front_window":3.0,"ring_seed_element":7,"budget_weight_shimmer":2.85,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"ion_channels_lo":3,"ion_channels_hi":6,"ion_segments_lo":6,"ion_segments_hi":10,"ion_branches_lo":1,"ion_branches_hi":3,"ion_len":1.0,"ion_len_spread":0.5,"ion_dir_jitter":0.27,"ion_jag":0.8,"ion_lateral":0.3,"ion_branch_t_lo":0.2679,"ion_branch_t_hi":0.5774,"ion_branch_len":0.5,"ion_branch_e":0.6,"ion_depth_r":1.0,"ion_core_w":0.01,"ion_core_px":2.0,"ion_branch_px":1.0,"ion_corona_x":4.0,"ion_corona_share":0.25,"ion_core_white":0.7,"ion_channel_e":3.0,"ion_strike_decay":0.15,"ion_after_e":0.25,"ion_late_w":0.6,"ion_late_e":0.5,"ion_life_ms":1200,"ion_period_lo_ms":120,"ion_period_hi_ms":200,"ion_strike_ms":40,"ion_late_ms":200,"ion_strike_until":0.8,"ion_fade_from":0.8,"ion_glow_r":1.2,"ion_glow_e":0.3,"ion_glow_floor":0.25,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"beam_colour":true,"beam_glow_mix":0.6,"beam_core_mix":0.3,"beam_colour_sat_min":0.15,"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.5,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.4,"star_arm_len":[1.0,0.55,0.8,0.45],"star_width":0.1,"star_width_px":2.0,"star_floor_px":6.0,"star_element":11,"burst_rot_element":8,"burst_lobe_element":10,"glow_r_x":1.6,"glow_e_x":0.33,"cluster_r_x":2.0,"cluster_n0_glow":2.5,"cluster_n0_burst":1.6,"class_smoke":[[1.3,0.45],[1.0,0.3],[1.2,0.5],[1.3,0.5],[0.0,0.0],[1.2,0.4],[1.3,0.5],[1.0,0.3],[0.0,0.0],[0.0,0.0]],"smoke_t0":0.5,"smoke_span":1.1,"smoke_rise":0.27,"dust_colour":[0.55,0.52,0.48],"cool_colour":[0.7,0.8,1.0],"ember_lobe_amp":0.25},
   bolt: {"mode":"full","d_eng_m":[600.0,1500.0,4000.0],"d_eng_range":0.75,"w_px_target":3.0,"w_k":0.6,"f_ref":960.0,"ref_rows":1440.0,"w_cap_m":20.0,"heavy_k":0.91,"rest_w":[12.0,4.0,1.6,0.5],"sv_ref_mps":2000.0,"tail_tau_ms":[15.0,30.0,10.0,0.0,40.0],"tail_max_w":[8.0,12.0,4.0,0.0,20.0],"tail_root_w":[0.6,0.35,0.8,0.0,0.8],"tail_gain":[0.5,0.6,0.5,0.0,0.6],"core_r":0.4,"core_r_heavy":0.55,"halo_sigma_w":[0.8,0.7,0.9,0.6,1.0],"e_body":1.2,"e_halo":0.6,"e_halo_heavy":0.8,"h":[0.75,0.85,0.7,0.5],"head_gain":0.5,"head_ball_w":0.6,"tip_w":1.0,"slug_tail_white":0.6,"slug_tail_end":0.4,"streak_c":[1.0,1.0,0.5,0.0],"streak_c_simple":0.5,"core_min":1.2,"end_ms":60,"orb_freq":[3.0,6.4],"orb_boil_hz":3.0,"orb_lobes":5.0,"orb_lobe_amp":0.12,"orb_lobe_turns":0.5,"orb_stretch":1.3,"orb_h_lo":0.5,"orb_h_hi":0.9,"wave_span_w":6.0,"wave_sagitta":0.25,"wave_sheet_e":0.15,"wave_ring_c":0.4,"trim_rs":0.8,"rim":true,"rim_dark":0.4,"rim_band_w":[1.2,1.8],"rim_min_px":3.0,"halo_px_max":40.0,"floor_core_px":2.0,"floor_body_px":3.0,"floor_halo_px":1.5,"floor_len_px":24.0,"floor_endon_px":9.0,"own_body_max_px":16.0,"cockpit_native":false,"far_flag_k":32.0,"list_capacity":512,"beam_w_m":1.2},
   boom: {"mode":"full","tier_native":0,"tier_f":[2.0,1.5,0.9,0.6,3.5],"tier_min_m":[12.0,30.0,80.0,200.0,6.0],"tier_max_m":[50.0,160.0,600.0,1800.0,25.0],"tier_life_ms":[2000.0,3000.0,4000.0,6000.0,800.0],"tier_preroll_ms":[0.0,0.0,1500.0,3000.0,0.0],"tier_rise":[0.12,0.15,0.15,0.2,0.1],"tier_r0_obj":[0.5,0.5,0.0,0.0,0.5],"tier_r0_f":[0.0,0.0,0.5,0.5,0.0],"tier_embers":[32.0,64.0,128.0,160.0,12.0],"tier_shock":[0.0,1.0,1.0,1.0,1.0],"tier_shock_tau":[0.3,0.3,0.3,0.4,0.3],"body_grow":0.1,"body_hold":0.8,"body_cool":0.7,"body_e":1.5,"body_bias":0.5,"body_r_sphere":1.33,"body_floor_px":12.0,"core_gain":2.5,"core_x":0.35,"core_r":0.3,"core_soft":0.2,"star_arm":0.4,"star_core":0.08,"star_ms":40.0,"star_t":0.9,"star_cap_h":0.25,"shock_r_x":4.0,"shock_w":0.06,"shock_e":1.0,"shock_limb":0.15,"shock_end":0.25,"missile_shock":false,"ember_cones_lo":4.0,"ember_cones_hi":6.0,"ember_cone_deg":25.0,"ember_v_x":1.5,"ember_v_min":40.0,"ember_v_max":300.0,"ember_p0":0.3,"ember_speed_lo":0.5,"ember_speed_hi":1.5,"ember_life":[0.4,0.8,1.2],"ember_stagger":0.4,"ember_e":8.0,"ember_tau":0.5,"ember_w_px_lo":1.5,"ember_w_px_hi":2.5,"ember_len_max":0.35,"ember_len_lo":0.25,"ember_hide_r":0.8,"ember_hide_x0":0.5,"ember_hide_x1":0.9,"fragment_every":8.0,"fragment_v":0.5,"fragment_life":1.5,"fragment_w_px":3.0,"fragment_dark":0.6,"fragment_tip_t":0.6,"fragment_dark_r":1.0,"glow_r_x":1.6,"glow_r_max":2.0,"glow_e":0.33,"halo_soft":0.5,"halo_fade_x0":0.4,"halo_fade_x1":0.8,"cluster_r_x":2.0,"cluster_n0":1.6,"smoke_r":1.1,"smoke_t0":0.5,"smoke_span":1.1,"smoke_s0":0.45,"smoke_rise":0.27,"coverage_dim":false,"budget_weight_shock":0.36,"budget_weight_halo":0.4,"max_bodies":32,"max_quads":2048,"cone_element":32,"ember_element":64,"tier_swap":14,"tier_secondaries":[0.0,0.0,8.0,12.0,0.0],"tier_cadence":[0.0,0.0,0.7,0.8,0.0],"secondary_jitter":0.2,"secondary_r":0.35,"secondary_r_last":0.5,"secondary_r_big":0.6,"secondary_life":0.3,"secondary_rise":0.1,"secondary_inset":0.85,"secondary_capsule_len":1.4,"secondary_capsule_r":0.25,"secondary_cluster_n0":2.5,"secondary_embers":8,"max_secondaries":64,"secondary_element":512,"hull_light_r":1.0,"hull_light_e0":0.4,"hull_light_e1":0.8,"hull_light_t":0.6,"body_r_sphere_big":1.21,"sphere_px0":64.0,"sphere_px1":320.0,"budget_screens":2.5,"shock_tiers":0,"halo_big_r":1.15,"halo_big_e":0.2,"halo_big_x0":0.3,"halo_big_x1":0.6},
   muzzle: {"mode":"full","class_disc":[[0.6,0.7,4.0],[0.5,0.7,4.0],[0.8,0.6,4.0],[0.8,1.0,4.0],[0.5,0.5,4.0]],"disc_halo_w":0.4,"disc_halo_e":0.6,"class_flame":[[2.0,0.6,1.2],[1.2,0.5,1.2],[0.0,0.0,0.0],[3.0,0.8,1.2],[0.0,0.0,0.0]],"class_star":[0.0,1.2,0.0,0.0,0.8],"star_arms":[1.0,0.55,0.8,0.45],"star_width_w":0.12,"star_e":2.0,"bloom_w":[0.5,1.0],"bloom_e":1.2,"vent_w":1.2,"vent_ms":150.0,"vent_e":1.2,"afterglow_ms":250.0,"afterglow_e":1.2,"rise_ms":40.0,"class_smoke":[[0.0,0.0,0.0,0.0,0.0],[0.6,1.2,0.3,400.0,0.5],[0.0,0.0,0.0,0.0,0.0],[0.8,1.6,0.4,600.0,0.5],[0.6,1.2,0.3,400.0,0.0]],"class_glow":[[3.0,0.6],[2.5,0.6],[3.5,0.8],[4.0,1.0],[2.0,0.5]],"class_life":[120.0,60.0,180.0,80.0,80.0],"cap_core_rs":0.25,"cap_flame_rs":1.0,"endon_cos":0.8660254,"breath":0.25,"cluster_n0":2.5,"record_capacity":128}
@@ -1088,9 +1088,17 @@ function ionChannelCount(seq) {
   const HH = HEADER.hull;
   return HH.ion_channels_lo + ((elementHash(seq, 40) >>> 8) % (HH.ion_channels_hi - HH.ion_channels_lo + 1));
 }
-function ionStrikeCount(seq) {
+// stage::ion_period, ion_strike_count: strike j's hashed period (at least the floor); the strikes starting before the span.
+function ionSpan() { const HH = HEADER.hull; return Math.floor(HH.ion_strike_until * HH.ion_life_ms); }
+function ionStrikesMax() { return Math.ceil(ionSpan() / HEADER.hull.ion_period_lo_ms); }
+function ionPeriod(seq, j, floorMs) {
   const HH = HEADER.hull;
-  return HH.ion_strikes_lo + ((elementHash(seq, 41) >>> 8) % (HH.ion_strikes_hi - HH.ion_strikes_lo + 1));
+  return Math.max(HH.ion_period_lo_ms + ((elementHash(seq, 700 + j) >>> 8) % (HH.ion_period_hi_ms - HH.ion_period_lo_ms + 1)), floorMs);
+}
+function ionStrikeCount(seq, floorMs) {
+  let t = 0, n = 1;
+  while (n < ionStrikesMax() && (t += ionPeriod(seq, n - 1, floorMs)) < ionSpan()) n++;
+  return n;
 }
 function ionTurn(t, d) { const s = 1 / (1 + t * t), c = (1 - t * t) * s, n = 2 * t * s; return [c * d[0] - n * d[1], n * d[0] + c * d[1]]; }
 function ionWalk(o, d, L, n, h) {
@@ -1126,18 +1134,28 @@ function ionStrike(seq, strike) {
       branches++;
     }
   }
-  return {channels: count, branches, lines};
+  let r2 = 0;
+  for (const ln of lines) for (const [u, v] of ln.pts) r2 = Math.max(r2, u * u + v * v);
+  return {channels: count, branches, lines, extent: Math.sqrt(r2)};
 }
-// The strike drawn at game age (ms): the latest started strike while lit, then the residual flicker of the last.
+// stage::ion_phase: at game age (ms) the latest started strike's flash while lit, the afterglow of the strike before it (or
+// of the latest once its flash is over; the last one's to the life's end), both x the life's fade; the cold light's factor.
 function ionPhase(seq, age, floorMs) {
-  const HH = HEADER.hull, count = ionStrikeCount(seq), spacing = HH.ion_strike_window_ms / count;
-  const tRes = HH.ion_residual_ms + 40 * unitOf(elementHash(seq, 42));
-  const strikeLife = Math.max(HH.ion_strike_ms, floorMs), resLife = Math.max(HH.ion_end_ms - tRes, floorMs);
-  if (!(age >= 0)) return {lit: false};
-  if (age >= tRes) return age < tRes + resLife
-    ? {lit: true, residual: true, strike: count - 1, e: HH.ion_residual_e * (1 - HH.ion_strike_decay * (count - 1))} : {lit: false};
-  const j = Math.min(Math.floor(age / spacing), count - 1);
-  return age < j * spacing + strikeLife ? {lit: true, residual: false, strike: j, e: 1 - HH.ion_strike_decay * j} : {lit: false};
+  const HH = HEADER.hull, L = HH.ion_life_ms, span = ionSpan(), flashLife = Math.max(HH.ion_strike_ms, floorMs);
+  if (!(age >= 0) || !(age < L)) return {lit: false, flash: false, after: false, glow: 0};
+  let t = 0, tPrev = 0, p = ionPeriod(seq, 0, floorMs), j = 0;
+  while (j + 1 < ionStrikesMax() && t + p < span && t + p <= age) { tPrev = t; t += p; p = ionPeriod(seq, ++j, floorMs); }
+  const x0 = HH.ion_fade_from * L, fade = age < x0 ? 1 : (L - age) / (L - x0);
+  const eOf = (i, ti) => ti < HH.ion_late_ms ? 1 - HH.ion_strike_decay * i : HH.ion_late_e;
+  const wOf = ti => ti < HH.ion_late_ms ? 1 : HH.ion_late_w;
+  const ej = eOf(j, t), x = Math.min((age - t) / p, 1);
+  const ph = {lit: fade > 0, flash: false, after: false, latest: j, fade,
+              glow: ej * (HH.ion_glow_floor + (1 - HH.ion_glow_floor) * (1 - x)) * fade};
+  if (age < t + flashLife) {
+    Object.assign(ph, {flash: true, strike: j, e: ej * fade, w: wOf(t)});
+    if (j) Object.assign(ph, {after: true, after_strike: j - 1, after_e: HH.ion_after_e * eOf(j - 1, tPrev) * fade, after_w: wOf(tPrev)});
+  } else Object.assign(ph, {after: true, after_strike: j, after_e: HH.ion_after_e * ej * fade, after_w: wOf(t)});
+  return ph;
 }
 // stage::ion_tangents: the tangent plane normal to the contact point's direction from the owner's origin.
 function ionTangents(p) {
@@ -1696,47 +1714,62 @@ function renderHull(record, t) {
         refractions++;
       }
     }
-    // The ion's lightning (stage::ion_phase, ion_strike): the strike lit at this age, its channels and branches in the
-    // hit's tangent plane, each segment drawn on the hull under its projection within ion_depth_r r of its depth.
+    // The ion's lightning (stage::ion_phase, ion_strike): the strikes drawn at this age (the flash, the afterglow of the
+    // strike before it), their channels and branches in the hit's tangent plane, each segment drawn on the hull under
+    // its projection within ion_depth_r r of its depth; the cold light on the hull (ion_colour, ion_glow_r x the latest
+    // strike's extent, flickering with the strikes).
     const ph = an === AN.ion ? ionPhase(seq, a, floorMs) : {lit: false};
     if (ph.lit && (layers.ion_channels || layers.ion_branches)) {
-      const st = ionStrike(seq, ph.strike), [t1, t2] = ionPlane(hit.p, hull.ext), cv = toView(hit.p);
+      const [t1, t2] = ionPlane(hit.p, hull.ext), cv = toView(hit.p);
       // the pixel floors at 1440 rows of the full-size frame (5120 x 1440), shown at the canvas's scale
       const rowsScale = OH / 1440, rPx = rH * f / cv[2] / rowsScale;
-      const hwOf = br => 0.5 * Math.max((br ? 0.5 : 1) * HH.ion_core_w * rPx, Math.max((br ? HH.ion_branch_px : HH.ion_core_px), 1)) * rowsScale;
+      const hwOf = (br, wf) => 0.5 * Math.max(wf * Math.max((br ? 0.5 : 1) * HH.ion_core_w * rPx, Math.max((br ? HH.ion_branch_px : HH.ion_core_px), 1)), 1) * rowsScale;
       const tol = HH.ion_depth_r * rH, coreCol = HH.ion_colour.map(v => v + (1 - v) * HH.ion_core_white);
       const coronaCol = HH.ion_colour.map(v => v * HH.ion_corona_share);
-      let segs = 0;
-      for (const ln of st.lines) {
-        if (ln.branch ? !layers.ion_branches : !layers.ion_channels) continue;
-        const E = HH.ion_channel_e * ph.e * (ln.branch ? HH.ion_branch_e : 1), hw = hwOf(ln.branch), hc = HH.ion_corona_x * hw;
-        const pts = ln.pts.map(([u, v]) => toView(hit.p.map((x, i) => x + rH * (u * t1[i] + v * t2[i]))));
-        for (let i = 0; i + 1 < pts.length; i++) {
-          const A = pts[i], B = pts[i + 1];
-          if (!(A[2] > 0.1 && B[2] > 0.1)) continue;
-          const ax = OW / 2 + f * A[0] / A[2], ay = OH / 2 - f * A[1] / A[2], bx = OW / 2 + f * B[0] / B[2], by = OH / 2 - f * B[1] / B[2];
-          const q = hc + 1, x0 = Math.max(0, Math.floor(Math.min(ax, bx) - q)), x1 = Math.min(OW, Math.ceil(Math.max(ax, bx) + q));
-          const y0 = Math.max(0, Math.floor(Math.min(ay, by) - q)), y1 = Math.min(OH, Math.ceil(Math.max(ay, by) + q));
-          const abx = bx - ax, aby = by - ay, ab2 = Math.max(abx * abx + aby * aby, 1e-6);
-          for (let y = y0; y < y1; y++)
-            for (let x = x0; x < x1; x++) {
-              const i = y * OW + x, lane = depth[i];
-              if (lane === Infinity) continue; // never the sky
-              const px = x + 0.5 - ax, py = y + 0.5 - ay, tt = Math.max(0, Math.min(1, (px * abx + py * aby) / ab2));
-              const d = Math.hypot(px - abx * tt, py - aby * tt);
-              if (d >= q) continue;
-              const zs = A[2] + (B[2] - A[2]) * tt, win = Math.max(0, Math.min(1, 2 - 2 * Math.abs(lane - zs) / tol));
-              if (!(win > 0)) continue;
-              const k = Math.max(0, Math.min(1, hw + 0.5 - d)), cor = layers.ion_corona ? Math.max(0, 1 - d * d / (hc * hc)) : 0;
-              add(i, coreCol, E * k * win, EL.filament);
-              if (cor > 0) add(i, coronaCol, E * cor * (1 - k) * win, EL.filament);
-            }
-          segs++;
+      let segs = 0, channels = 0, branches = 0;
+      const parts = [];
+      if (ph.flash) parts.push([ph.strike, ph.e, ph.w]);
+      if (ph.after) parts.push([ph.after_strike, ph.after_e, ph.after_w]);
+      for (const [strike, ef, wf] of parts) {
+        const st = ionStrike(seq, strike);
+        channels = Math.max(channels, st.channels);
+        branches = Math.max(branches, st.branches);
+        for (const ln of st.lines) {
+          if (ln.branch ? !layers.ion_branches : !layers.ion_channels) continue;
+          const E = HH.ion_channel_e * ef * (ln.branch ? HH.ion_branch_e : 1), hw = hwOf(ln.branch, wf), hc = HH.ion_corona_x * hw;
+          const pts = ln.pts.map(([u, v]) => toView(hit.p.map((x, i) => x + rH * (u * t1[i] + v * t2[i]))));
+          for (let i = 0; i + 1 < pts.length; i++) {
+            const A = pts[i], B = pts[i + 1];
+            if (!(A[2] > 0.1 && B[2] > 0.1)) continue;
+            const ax = OW / 2 + f * A[0] / A[2], ay = OH / 2 - f * A[1] / A[2], bx = OW / 2 + f * B[0] / B[2], by = OH / 2 - f * B[1] / B[2];
+            const q = hc + 1, x0 = Math.max(0, Math.floor(Math.min(ax, bx) - q)), x1 = Math.min(OW, Math.ceil(Math.max(ax, bx) + q));
+            const y0 = Math.max(0, Math.floor(Math.min(ay, by) - q)), y1 = Math.min(OH, Math.ceil(Math.max(ay, by) + q));
+            const abx = bx - ax, aby = by - ay, ab2 = Math.max(abx * abx + aby * aby, 1e-6);
+            for (let y = y0; y < y1; y++)
+              for (let x = x0; x < x1; x++) {
+                const i = y * OW + x, lane = depth[i];
+                if (lane === Infinity) continue; // never the sky
+                const px = x + 0.5 - ax, py = y + 0.5 - ay, tt = Math.max(0, Math.min(1, (px * abx + py * aby) / ab2));
+                const d = Math.hypot(px - abx * tt, py - aby * tt);
+                if (d >= q) continue;
+                const zs = A[2] + (B[2] - A[2]) * tt, win = Math.max(0, Math.min(1, 2 - 2 * Math.abs(lane - zs) / tol));
+                if (!(win > 0)) continue;
+                const k = Math.max(0, Math.min(1, hw + 0.5 - d)), cor = layers.ion_corona ? Math.max(0, 1 - d * d / (hc * hc)) : 0;
+                add(i, coreCol, E * k * win, EL.filament);
+                if (cor > 0) add(i, coronaCol, E * cor * (1 - k) * win, EL.filament);
+              }
+            segs++;
+          }
         }
       }
       stats.filaments++;
       stats.ion_segments = (stats.ion_segments || 0) + segs;
-      stats.ion = {strike: ph.strike, residual: ph.residual, channels: st.channels, branches: st.branches};
+      stats.ion = {strike: ph.flash ? ph.strike : -1, flash: ph.flash, after: ph.after, latest: ph.latest, channels, branches,
+                   glow: ph.glow, fade: ph.fade};
+    }
+    if (layers.glow && an === AN.ion && ph.glow > 0) { // the cold light (stage: never the heat ramp)
+      glowAt(hit.p, HH.ion_glow_r * ionStrike(seq, ph.latest).extent * rH, HH.ion_colour.map(v => v * HH.ion_glow_e * ph.glow), EL.glow);
+      stats.glows++;
     }
     // The burst: the fireball impostor riding the owner (the plasma globe shrinking and mixing in its tint; the asteroid's
     // unlit dust), scaled by the cluster; its smoke from smoke_t0 L_b over smoke_span L_b.
@@ -1800,7 +1833,7 @@ function renderHull(record, t) {
     ['ion_channels', 'ion_branches', 'ion_corona', 'beam_colour'].filter(n => !layers[n]).map(n => n.replace('_', ' ')),
     layers.hull ? [] : ['hull body']);
   record.caption = `Hull hit, ${lineup ? 'the class lineup' : ANATOMIES[an0]} on a ${PATCH_TIERS[c.tier]}${hull.name !== 'sphere' ? ` (${hull.name})` : ''}, k ${k.toFixed(2)}, r_hit ${rHit.toFixed(1)} m, ${cam}${h.variant !== 'none' ? ', ' + h.variant : ''}${c.own ? ', own ship' : ''}${hidden.length ? ` (hidden: ${hidden.join(', ')})` : ''}`;
-  record.detail = `${stats.hits} hit(s), ${stats.flashes} flash, ${stats.streaks} streak, ${stats.bursts} puff, ${stats.sparks} sparks (${stats.chips} chips), ${stats.rings} ring, ${stats.filaments ? `${stats.ion_segments} lightning segments (strike ${stats.ion.strike + 1}${stats.ion.residual ? ', residual' : ''})` : '0 lightning'}, ${stats.glows} glow, ${stats.embers} ember, ${stats.scorches} scorch, ${stats.smokes} smoke\nSETA x${c.seta}, floor ${fmt(floorMs)} ms${c.own && c.cockpit ? `, cockpit gain x${HEADER.own_cockpit_gain}` : ''}`;
+  record.detail = `${stats.hits} hit(s), ${stats.flashes} flash, ${stats.streaks} streak, ${stats.bursts} puff, ${stats.sparks} sparks (${stats.chips} chips), ${stats.rings} ring, ${stats.filaments ? `${stats.ion_segments} lightning segments (strike ${stats.ion.latest + 1}${stats.ion.flash ? (stats.ion.after ? ' over the last one\'s afterglow' : '') : ', afterglow'})` : '0 lightning'}, ${stats.glows} glow, ${stats.embers} ember, ${stats.scorches} scorch, ${stats.smokes} smoke\nSETA x${c.seta}, floor ${fmt(floorMs)} ms${c.own && c.cockpit ? `, cockpit gain x${HEADER.own_cockpit_gain}` : ''}`;
   record.hullStats = stats;
 }
 const HULL_IDS = ['c_k', 'c_h_spark_x', 'c_h_min_frames', 'c_pulse_on', 'c_pulse_period', 'c_sweep', 'c_loop', 'c_incidence',

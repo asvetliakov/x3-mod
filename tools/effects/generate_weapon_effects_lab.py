@@ -82,9 +82,9 @@ NAMESPACES = {
              'ion_segments_lo', 'ion_segments_hi', 'ion_branches_lo', 'ion_branches_hi', 'ion_len', 'ion_len_spread',
              'ion_dir_jitter', 'ion_jag', 'ion_lateral', 'ion_branch_t_lo', 'ion_branch_t_hi', 'ion_branch_len',
              'ion_branch_e', 'ion_depth_r', 'ion_core_w', 'ion_core_px', 'ion_branch_px', 'ion_corona_x',
-             'ion_corona_share', 'ion_core_white', 'ion_channel_e', 'ion_strike_decay', 'ion_residual_e',
-             'ion_strikes_lo', 'ion_strikes_hi', 'ion_strike_window_ms', 'ion_strike_ms', 'ion_residual_ms', 'ion_end_ms',
-             'flicker_ms', 'ion_colour', 'beam_colour', 'beam_glow_mix', 'beam_core_mix', 'beam_colour_sat_min', 'hold_ms',
+             'ion_corona_share', 'ion_core_white', 'ion_channel_e', 'ion_strike_decay', 'ion_after_e', 'ion_late_w',
+             'ion_late_e', 'ion_life_ms', 'ion_period_lo_ms', 'ion_period_hi_ms', 'ion_strike_ms', 'ion_late_ms',
+             'ion_strike_until', 'ion_fade_from', 'ion_glow_r', 'ion_glow_e', 'ion_glow_floor', 'flicker_ms', 'ion_colour', 'beam_colour', 'beam_glow_mix', 'beam_core_mix', 'beam_colour_sat_min', 'hold_ms',
              'spot_fall_ms', 'spatter_period_ms', 'spatter_cap', 'hold_r', 'spot_core', 'spot_halo', 'trail_step_r',
              'budget_weight_ring', 'budget_weight_filament', 'budget_weight_scorch', 'budget_weight_flash',
              # the burst look (docs/architecture/hull-burst-look.md): the star, the burst's glow, the cluster rule, the

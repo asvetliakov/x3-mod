@@ -1,0 +1,23 @@
+before da8e8bcacc267786712c457ceca9d170a055b71e-dirty passed True | after 0093a702c79d7b934d83e65765b4e4d2db614b1f-dirty passed True failed []
+ 1920 -     filament_alone_fills_frame   filaments 1->1 screens 1.0->1.0 gpu 32.0->33.2 us x1.04
+ 1920 beam  capital_close_64_hits        filaments 0->0 screens 7.892->7.948 gpu 322.8->315.0 us x0.98
+ 1920 beam  fighter_200m_20_hits         filaments 0->0 screens 0.039->0.039 gpu 20.7->20.7 us x1.00
+ 1920 ion   capital_close_64_hits        filaments 1010->1075 screens 3.59->7.995 gpu 166.9->336.7 us x2.02
+ 1920 ion   fighter_200m_20_hits         filaments 792->1452 screens 0.042->0.088 gpu 33.1->48.8 us x1.47
+ 5120 -     filament_alone_fills_frame   filaments 1->1 screens 1.0->1.0 gpu 87.2->87.6 us x1.00
+ 5120 beam  capital_close_64_hits        filaments 0->0 screens 7.945->7.931 gpu 1098.6->1077.1 us x0.98
+ 5120 beam  fighter_200m_20_hits         filaments 0->0 screens 0.076->0.076 gpu 29.3->29.3 us x1.00
+ 5120 ion   capital_close_64_hits        filaments 994->504 screens 3.911->7.993 gpu 497.4->1105.9 us x2.22
+ 5120 ion   fighter_200m_20_hits         filaments 878->1501 screens 0.047->0.105 gpu 40.2->60.8 us x1.51
+cpu capital_64_mixed                 41.0->44.2 us
+cpu capital_64_mixed_sparks_only     29.9->30.4 us
+cpu capital_64_mixed_no_sparks       18.7->21.0 us
+cpu capital_64_mixed_no_cluster      37.6->40.7 us
+cpu capital_64_mixed_pairwise        40.8->44.1 us
+cpu capital_64_ion                   23.5->38.8 us
+row {"case": "beam_colour", "weapon_hue": 124.19, "ring_hue": 124.19, "hue_err_deg": 0.0, "ring_sat": 0.5707, "core_sat": 0.3625, "weapon_sat": 0.9512, "ring_px": 85984, "core_px": 540, "ember_boxes": 1, "scorches": 1, "ember_scorch_unchanged": 1}
+row {"case": "ion_law", "seeds": 16, "channels": "3..6", "branches": "1..3", "segments": "6..10", "strikes": "6..7", "bad": 0}
+row {"case": "ion_lightning", "segments": 91, "strikes": 6, "sky": 0, "lane": 2457, "lit": 4756, "frame_diff": 0.0, "strike_70": 1, "jaccard_0_70": 0.0596, "jaccard_moved": 1.0, "screens": 0.00499, "old_box_screens": 0.02826, "old_box_px": 68145}
+row {"case": "ion_profile", "rows": 1440, "core_hw": 1.0, "peak": 1.0, "fwhm_px": 2.293, "corona_extent_px": 3.75, "corona_over_hw": 3.75, "corona_level": 0.1865}
+row {"case": "ion_no_heat", "glows": 1, "cold": 1, "embers": 0, "bursts": 0, "scorches": 0, "marks": 0, "flashes": 1, "filaments": 1, "past_life": "0,0,0,0", "lit_past_life": 0}
+slots {'shape_vs': 10, 'ring_ps': 180, 'filament_ps': 64, 'lightning_vs': 301, 'lightning_vtf': '1,1', 'fireball_ps': 372, 'scorch_blend': 1, 'shape_vertex_bytes': 92, 'lightning_vertex_bytes': 64, 'fireball_vertex_bytes': 80, 'hull_state_bytes': 537360, 'spot_bytes': 100, 'mark_bytes': 36}

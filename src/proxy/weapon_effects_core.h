@@ -1891,22 +1891,33 @@ constexpr unsigned streak_ms = 60;
 // within ion_depth_r r of its depth carries it (never the sky). Profile across a segment (pixels, d from it): the core
 // saturate(hw + 1/2 - d) of half width hw = max(ion_core_w r, ion_core_px x H / 1440, 1) / 2 (branches ion_branch_px),
 // white mixed ion_core_white towards ion_colour, under it the corona ion_corona_share x saturate(1 - (d / hc)^2) in
-// ion_colour, hc = ion_corona_x hw. Timing (game ms from the first drawn frame, no stagger): the strikes, 3 or 4 (hashed),
-// re-seed the channels at j x ion_strike_window_ms / count, each lit for max(ion_strike_ms, the three-frame floor) at
-// ion_channel_e x (1 - ion_strike_decay j), the latest started strike drawn alone; then one residual flicker of the last
-// strike's channels at ion_residual_e x that from ion_residual_ms (+ 40 hashed) to ion_end_ms (at least the floor).
-// No heat elements (no puff, glow, ember, scorch) and no sparks. Kill switch for a web: ion_branches_lo = ion_branches_hi
-// = 0 (no branches; hull-impact-classes.md section 9).
-constexpr unsigned ion_channels_lo = 2, ion_channels_hi = 4, ion_segments_lo = 6, ion_segments_hi = 10;
-constexpr unsigned ion_branches_lo = 1, ion_branches_hi = 2;
+// ion_colour, hc = ion_corona_x hw. Timing (game ms from the first drawn frame, no stagger; 2026-11-07, user: "more
+// lightning, more lingering, and a light on the hull"): strike j starts at t_j (t_0 = 0, t_j+1 = t_j + P_j, the period
+// P_j hashed in ion_period_lo_ms..ion_period_hi_ms and at least the three-frame floor) while t_j < ion_strike_until x
+// ion_life_ms (5 to 8 strikes), its channels re-seeded; it flashes for max(ion_strike_ms, the floor) at ion_channel_e x
+// e_j (e_j = 1 - ion_strike_decay j for a strike starting before ion_late_ms, else ion_late_e, its widths x ion_late_w),
+// then lingers as the afterglow at ion_after_e x e_j for one re-strike period (to the life's end for the last strike), so
+// strike j's flash draws over strike j - 1's afterglow. Everything x the life's fade: 1 to ion_fade_from x ion_life_ms,
+// then linear to 0 at ion_life_ms (no hard cut). The cold light on the hull: the glow primitive at the hit in ion_colour
+// (never the heat ramp), radius ion_glow_r x the latest strike's extent (its farthest point from the hit), radiance
+// ion_glow_e x e_j x (ion_glow_floor + (1 - ion_glow_floor) (1 - x)) x the fade, x the share of strike j's period gone
+// (peak at each strike, decaying over its period). No heat elements (no puff, heat glow, ember, scorch) and no sparks.
+// Kill switch for a web: both ion_branches_lo and ion_branches_hi at 0 (no branches; hull-impact-classes.md section 9).
+constexpr unsigned ion_channels_lo = 3, ion_channels_hi = 6, ion_segments_lo = 6, ion_segments_hi = 10;
+constexpr unsigned ion_branches_lo = 1, ion_branches_hi = 3;
 constexpr float ion_len = 1.0f, ion_len_spread = 0.5f, ion_dir_jitter = 0.27f, ion_jag = 0.8f, ion_lateral = 0.3f;
 constexpr float ion_branch_t_lo = 0.2679f, ion_branch_t_hi = 0.5774f, ion_branch_len = 0.5f, ion_branch_e = 0.6f;
 constexpr float ion_depth_r = 1.0f;
 constexpr float ion_core_w = 0.01f, ion_core_px = 2.0f, ion_branch_px = 1.0f, ion_corona_x = 4.0f;
 constexpr float ion_corona_share = 0.25f, ion_core_white = 0.7f;
-constexpr float ion_channel_e = 3.0f, ion_strike_decay = 0.15f, ion_residual_e = 0.3f;
-constexpr unsigned ion_strikes_lo = 3, ion_strikes_hi = 4, ion_strike_window_ms = 200, ion_strike_ms = 40;
-constexpr unsigned ion_residual_ms = 280, ion_end_ms = 400, flicker_ms = 40;
+constexpr float ion_channel_e = 3.0f, ion_strike_decay = 0.15f, ion_after_e = 0.25f, ion_late_w = 0.6f, ion_late_e = 0.5f;
+constexpr unsigned ion_life_ms = 1200, ion_period_lo_ms = 120, ion_period_hi_ms = 200, ion_strike_ms = 40, ion_late_ms = 200;
+constexpr float ion_strike_until = 0.8f, ion_fade_from = 0.8f;
+constexpr float ion_glow_r = 1.2f, ion_glow_e = 0.3f, ion_glow_floor = 0.25f;
+constexpr unsigned flicker_ms = 40;
+// The strike span (ms; a held ion beam's strike cycle) and the most strikes a life holds (every period at its shortest).
+constexpr unsigned ion_strike_span_ms = unsigned(ion_strike_until * float(ion_life_ms));
+constexpr unsigned ion_strikes_max = (ion_strike_span_ms + ion_period_lo_ms - 1) / ion_period_lo_ms;
 constexpr float ion_colour[3] = {0.60f, 0.75f, 1.00f};
 // The lightning's reach from the hit (x r): a channel's longest (ion_len (1 + ion_len_spread / 2)) with its lateral
 // clamp, a branch from its end (ion_branch_len of that again).
@@ -1965,7 +1976,7 @@ static_assert(max_owners + hull::max_owners + boom::max_bodies <= VisibleOwners:
 // grown by the pixel floors), the same test its cull uses.
 constexpr float visible_radius_scale = 2.0f;
 // A hull hit's record life per anatomy (review 2026-11-07): its slowest element (an ember, a puff, a glow, a ring, the
-// flash, the streak, the ion's lightning to ion_end_ms (no stagger), a spark set at spark_life_hi; the scorches live in
+// flash, the streak, the ion's lightning to ion_life_ms (no stagger), a spark set at spark_life_hi; the scorches live in
 // their own store, the beam, repair and tug spots in theirs), so each class leaves the ring at its own end;
 // hull_lifetime_ms the slowest of them (the installed bound). Present keeps a record life_floor_ms longer. Compile-time
 // integers: the handler reads the table, never a float.
@@ -1977,7 +1988,7 @@ constexpr float hull_slowest_ms(unsigned a) noexcept {
                            hull::class_smoke[a][0] > 0.f ? (hull::smoke_t0 + hull::smoke_span) * burst : 0.f,
                            hull::class_ring[a][2] * st, hull::class_flash[a][2] * st,
                            a == hull::an_heavy ? float(hull::streak_ms) * st : 0.f,
-                           a == hull::an_ion ? float(hull::ion_end_ms) : 0.f};
+                           a == hull::an_ion ? float(hull::ion_life_ms) : 0.f};
     for (float c : cand) m = c > m ? c : m;
     for (unsigned k = 0; k < 3; ++k) {
         const float sl = (hull::class_sparks[3 * a + k][4] + hull::class_sparks[3 * a + k][5]) * hull::spark_life_hi;

@@ -209,7 +209,12 @@ class WeaponEffectsHookRecord(unittest.TestCase):
 # EVENT-fenced best of 60), and the 64 mixed hits' CPU bound. The close GPU bound 450 -> 600 at the burst look's merge
 # (2026-11-07: the ion's flash a star, its 64 stars 3.30 charged screens against the discs' 2.77; 497.8 measured against
 # 370.3; docs/verification/weapon-effects.md "Burst review fixes and the merge").
-ION_CPU_BOUND_US, ION_CLOSE_GPU_BOUND_US, MIXED_CPU_BOUND_US = 35.0, 600.0, 50.0
+# The ion CPU bound 35 -> 42.6 with the afterglow (two strikes a hit) and the cold light (2026-11-07: 35.5 best measured,
+# + 20 %; docs/verification/weapon-effects.md "Ion lightning: more and longer"), 46.6 with the segment cap at 2048
+# (38.8 measured, + 20 %); the close GPU bound 600 -> 1325.6 the
+# same day (1104.7 measured, + 20 %: the cold light's glows fill the 8-screen budget, 7.99 charged; the class gate holds
+# the frame within 8 x 177.5 us).
+ION_CPU_BOUND_US, ION_CLOSE_GPU_BOUND_US, MIXED_CPU_BOUND_US = 46.6, 1325.6, 50.0
 
 
 class WeaponEffectsD3DRecord(unittest.TestCase):

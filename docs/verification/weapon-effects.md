@@ -1371,6 +1371,79 @@ change 0.056 % (bound 2 %). The same release also gave the program a fifth verte
 core gain, stride 80; 0 for every hull burst and smoke): the full-frame body's cost rose 213.8 -> 224.5 us at
 5120x1440 [M] (the core's and the blend's instructions; the hull bursts pay the same few per pixel).
 
+## Ion lightning: more and longer (2026-11-07, dirty on `8795f0ad5`)
+
+User request: "more lightning, more lingering, and a light on the hull". `hull::ion_*` (hull-impact-classes.md 4.6):
+3..6 channels a hit, 1..3 branches a channel; a strike every 120..200 ms (hashed, at least the three-frame floor) while
+it starts before 0.8 x the 1,200 ms life (5..8 strikes), strikes starting at or after 200 ms x 0.6 width and x 0.5
+radiance; each flash (max(40 ms, floor)) lingers as an afterglow at 0.25 of its strike for one re-strike period (the
+last one's to the life's end), so a frame draws at most a flash and the previous strike's afterglow (two lightning jobs a
+hit, cut together by the 1,024-segment cap); the cold light: the glow primitive in `ion_colour` (never the heat ramp),
+radius 1.2 x the latest strike's extent, radiance 0.3 x e_j x (0.25 + 0.75 (1 - x)) over strike j's period; everything
+x the fade over the last 0.2 of the life; record life 601 -> 1,201 ms. A held ion beam restarts its schedule every
+960 ms of the hold (was 200). The strike cache entry grows to 6 channels of 3 branches (about 560 KB of .bss, was 290);
+the lightning job array doubles (2,048). No program changed (`generate_weapon_effects_programs.py --check` PASS).
+
+Native run (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py
+--host native`; record `verification/results/native-windows/weapon-effects/summary.json`, 302 checks, 3 failures, none
+ion: `death_stage_cpu_32_deaths` 58.7 us (bound 50; 38.3 in the committed record), `death_big_stage_cpu` 0.0981
+us/quad (0.08) and `bolt_budget_512_bolts_20_muzzles_5120` 100.1 us (100; 96.1 committed): boom and bolt code
+unchanged, every CPU row about 10..50 % slower on the host this session [M]). Rows from
+`python3 verification/results/weapon-effects-ion-lightning/ion_cost.py <committed summary at da8e8bcac> <this summary>`
+(`ion_more_longer_out.txt`) [M]:
+
+| Gate / row | Case | Measured |
+| --- | --- | --- |
+| `hull_ion_lightning_law_16_seeds` | `ion_law` | channels 3..6, branches 1..3, segments 6..10, strikes 6..7 (16 ms floor) |
+| `hull_ion_lightning_on_surface_restrikes` | `ion_lightning` | 91 segments, 0 sky px; strike 1 at its hashed start: Jaccard 0.0596 against strike 0 (its flash less strike 0's afterglow, a quarter of the peak); moved owner 1.0 |
+| `hull_ion_no_heat_post_hit` | `ion_no_heat` | 1 glow (cold), 0 embers, puffs, scorches; 0 lit px past the life |
+| `hull_ion_strikes_through_life`, `hull_ion_afterglow_between_strikes` | `ion_timeline` | 75 frames, 0 unlit, 7 strikes; 54 frames between flashes, 54 with the afterglow drawn |
+| `hull_ion_cold_light_flickers` | `ion_timeline` | the glow on 75 of 75 frames, hue 217.5 deg, radius 1.200 x the extent, 6 rises for 7 strikes |
+| `hull_ion_life_1201_fades_no_pop` | `ion_timeline` | life 1,201 ms; light over the last 0.2 non-increasing (0 rises), last lit frame 0.0169 of the first |
+| `hull_ion_beam_holds_one_record` | `ion_beam_hold` | 100 ticks: 1 record, 0 spots, 1 lit hit a frame, 24 lit frames past 1,200 ms, 99 merges, 0 records after |
+| `hull_compose_no_pop_per_class` | ion | 40 frames, 320 checks, 0 violations, released, life 1,201 |
+| `hull_cpu_64_hits_ion` | `capital_64_ion` | 35.8 best, 59.9 mean (was 23.5 / 26.9; 15 hits drawn, 49 cut by the cap); bound 35 -> 42.6 (35.5 best in the first run + 20 %) |
+| `hull_budget_20_hits_5120_ion` | fighter 20 hits | 49.5 us at 5120x1440 (was 40.2), 40.0 at 1080p; bound 45 -> 54.5 (45.4 in the first run + 20 %), then 67.7 with the cap at 2,048 (below) |
+| capital close 64 ion (record test) | 5120x1440 | 1,104.7 us (was 497.4), 7.993 charged screens (was 3.911): the cold light's glows fill the 8-screen budget; `ION_CLOSE_GPU_BOUND_US` 600 -> 1,325.6 (+ 20 %); the class gate (frame within 8 x 177.5 us) holds |
+| `hull_cpu_64_hits_mixed` | `capital_64_mixed` | 45.0 best (41.0 committed; bound 50) |
+
+Lab: `ionPhase` / `ionStrike` / the cold light mirror the stage; `test_weapon_effects_lab` gates the same timeline on
+both ion Scenarios (at least 4 flashes, the afterglow on every gap frame, the glow every frame in the ion hue, the fade
+non-increasing to at most 0.1, nothing past the life). Stage dump (`--dump`, `ion_single`, 1080p, 40 / 200 / 504 / 904 /
+1144 ms; crop and stats `python3 -I verification/results/weapon-effects-ion-lightning/ion_dump_crop.py <dump> <out>`):
+lit px 24,726 / 47,833 / 23,581 / 24,672 / 1,680; glow peak 0.190 / 0.169 / 0.098 / 0.053 / 0.007 at radius 108..153 px,
+colour ratio (0.60, 0.75, 1) throughout. Judged: the channels crawl and re-strike (a new set over the last one's
+afterglow at 200 ms), the later strikes visibly thinner, a faint set still at 1,144 ms, a soft cold glow under the
+channels with no lamp core. AP DLL `build-ion`: 0 warnings, `check_no_x87.py --edition ap` PASS.
+
+Segment cap and rerun (the same day, coordinator follow-up). The cap is `renderer::weapon_filament_boxes` (no
+`hull::ion_segment_cap` exists): 1,024 -> 2,048 segments a frame (the production vertex array and the fixture's sized
+with it, 2,048 x 4 x 64 B = 512 KB each; the index list is the sprite batch's 2,688 quads; the lightning job array
+already holds 2,048 jobs, two per hit). Whole hits are still cut, oldest first. The game was absent for the whole wait
+(`tasklist.exe`), but the Windows CPU stayed at 13..30 % for about 18 minutes in 60 s steps (`typeperf`: another agent's
+`weapon_effects_fixture` and VS Code); the one rerun then ran (302 checks, 2 failures) [M]:
+
+| Row | Before the cap | Cap 2,048 | Bound |
+| --- | --- | --- | --- |
+| `capital_64_ion` CPU | 15 hits drawn, 49 cut, 35.8 us best | 29 drawn, 35 cut, 1,996 segments; 38.8 best, 51.3 mean | 42.6 -> 46.6 (+ 20 %) |
+| ion fighter 20 hits, 5120x1440 GPU | 1,003 segments, 49.5 us | 1,501 segments, 56.4 us (FAIL against 54.5) | 54.5 -> 67.7 (+ 20 %) |
+| ion capital close 64, 5120x1440 GPU | 1,104.7 us | 1,111.8 us | 1,325.6 (record test) |
+| `ion_cap_shed` | 13 kept, 29 cut | 29 kept, 13 cut of 42; shed whole channels | gate PASS |
+
+Rows this change does not touch, against the committed record (`untouched_rows.py`, `untouched_rows_out.txt`) [M]:
+explosion CPU 38.3 -> 44.4 us (x1.16, bound 50: PASS), big-tier explosion 0.0673 -> 0.0928 us/quad (x1.38, bound 0.08:
+FAIL), 512 bolts GPU 96.1 -> 100.0 us (x1.04, bound 100: PASS). The explosion rows are more than 10 % slower on unchanged
+code; their bounds (50, 0.08, bolts 100) stay at their committed values. The two new ion bounds were set after the run:
+the record's source hash of `weapon_effects_class_cases.h` is stale until the next native run.
+
+Quiet-host rerun after merging `effects` `0093a702c` (the fireball drift law; `weapon_effects_core.h` merged without
+conflict): AP `build-ion` 0 warnings, `check_no_x87.py --edition ap` PASS; native run 304 checks, 0 failures, hook
+147/147; `test_weapon_effects_*` 99 tests OK [M]. The untouched rows against the committed record at `0093a702c`
+(`untouched_rows_out.txt`): explosion CPU 38.1 -> 38.3 us (x1.005), big-tier 0.067 -> 0.068 us/quad (x1.015), 512 bolts
+GPU 96.1 -> 96.4 us (x1.003), bolt CPU parity 4.0 -> 4.4 us (x1.10): the earlier slowdown was the busy host. Ion rows on the
+quiet host: `capital_64_ion` 38.8 best, 40.5 mean (29 drawn, 35 cut; bound 46.6), fighter 20 hits 60.8 us at 5120x1440
+(bound 67.7) and 48.8 at 1080p, capital close 64 1,105.9 us (bound 1,325.6), `capital_64_mixed` 44.2 (bound 50).
+
 ## Bolts and muzzle (step 4)
 
 Design `docs/architecture/bolt-muzzle-look.md` (ratified 2026-11-07). Base: `effects` at `98f095045` (reset into this
