@@ -858,8 +858,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     // at 600 m at 0.3 L draws >= 100 sparks with their head on screen (the ember part's local maxima recorded), its drawn
     // lengths' std >= 0.4 of their mean. death_exposure_meter_shift: the production meter (src/renderer/exposure.cpp,
     // Auto capped at +1.3 EV, gamma 2.2 decode) on the fighter at 300 m and at 120 m (enough bright tiles for the p99
-    // tile maximum: the highlight limit acts) at 5120x1440 over black sky and over a uniform dim scene (engine 0.15, the
-    // cap holds alone) and a lit one (0.5): the fresh target moves <= 0.5 EV at 0.025 ... 0.5 L against the scene alone.
+    // tile maximum: the highlight limit acts) at 5120x1440 over a uniform dim scene (engine 0.15, the cap holds alone)
+    // and a lit one (0.5): the fresh target moves <= 0.5 EV at 0.025 ... 0.5 L against the scene alone. Black sky is
+    // recorded, not gated: the meter scores an empty frame 0 EV and climbs to its cap on any signal, so that row measures
+    // the meter's black policy, not the death's highlight pull (coordinator decision 2026-11-07).
     {
         std::vector<double> core05;
         for (unsigned j = 0; j < 8; ++j) {
@@ -1032,7 +1034,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const float bgs[3] = {0.f, 0.15f, 0.5f};
             float base_ev[3];
             for (unsigned b = 0; b < 3; ++b) base_ev[b] = meter_ev(empty, bgs[b]);
-            double worst = 0;
+            double worst = 0, worst_black = 0; // the gate: dim and lit; black informational
             for (const unsigned dist_m : {300u, 120u}) {
                 boom::clear();
                 fighter(double(dist_m), 0x6d000u);
@@ -1049,7 +1051,8 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     float ev[3];
                     for (unsigned b = 0; b < 3; ++b) {
                         ev[b] = meter_ev(rgb, bgs[b]);
-                        worst = std::max(worst, std::fabs(double(ev[b] - base_ev[b])));
+                        double& w = b ? worst : worst_black;
+                        w = std::max(w, std::fabs(double(ev[b] - base_ev[b])));
                     }
                     std::printf("EXPLOSION case=meter tier=fighter_%um_5120 age_ms=%u ev_black=%.3f ev_dim=%.3f ev_lit=%.3f "
                                 "base=%.3f,%.3f,%.3f peak=%.2f\n",
@@ -1057,7 +1060,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 double(base_ev[2]), double(boom::peak(boom::luma(rgb))));
                 }
             }
-            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f\n", worst);
+            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f black_shift_ev=%.3f\n", worst, worst_black);
             report("death_exposure_meter_shift", worst <= 0.5, "");
             big.release();
         } else {

@@ -440,8 +440,10 @@ The 300 m fighter never moves it (0.0 EV at 0.025-0.5 L over black, a dim 0.15 a
 pixels (frame peaks 35 / 33 / 20 at 50 / 100 / 200 ms) fill fewer than the 19 tiles of 1,840 the p99 tile maximum
 needs. The 120 m fighter (added at review) does: over the dim scene the highlight limit pulls the target down 0.31 /
 0.39 EV at 200 / 400 ms, and over black sky the late dim cloud (frame peaks 3.0 / 2.3 at 600 / 1,000 ms) lifts the
-target from the empty frame's 0 to the +1.3 EV cap [M]: the gate fails at 1.3 EV against 0.5, bound kept (open: a
-judgement of whether the empty-frame baseline is the right reference). At engine 2.6 the limit is +1.0 EV, at 3.4 0 EV
+target from the empty frame's 0 to the +1.3 EV cap [M]. The gate therefore compares against the dim and lit scenes
+only (worst 0.39 EV, bound 0.5); the black-sky shift is recorded, not gated: the meter scores an empty frame 0 EV and
+climbs to its cap on any signal, its black policy rather than the death's highlight pull (coordinator decision
+2026-11-07). At engine 2.6 the limit is +1.0 EV, at 3.4 0 EV
 [I, the meter's arithmetic].
 
 | Gate (fixture, `EXPLOSION case=...` rows) | Built [M] | Bound |
@@ -450,7 +452,7 @@ judgement of whether the empty-frame baseline is the right reference). At engine
 | `death_rays_starburst` (300 m, 5120x1440, 4 seeds) | angular peaks at 1.5 R(t) at 0.1 L 31-39 (the count's 30-38); 0 at 0.6 L | >= 24; <= 2 |
 | `death_rays_differ` | two deaths' 360-bin profiles correlate 0.10 | < 0.3 |
 | `death_sparks_dense` (600 m, 0.3 L) | 217 heads on screen (173 local maxima); lengths std / mean 1.0 | >= 100; >= 0.4 |
-| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 1.30 EV over black, 0.39 over dim (fails) | <= 0.5 |
+| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.39 EV over dim, 0 over lit (black sky 1.30, informational) | <= 0.5 over dim / lit |
 | `death_rays_sparks_budget_5120` | fighter 600 m 20.9-21.9 us, 20 fighters 42.4-50.6 us (0.05 / 0.1 / 0.3 L) | <= 60; <= 150 |
 | `death_budget_capital_close_5120` | worst 354.0 us | <= 450 |
 
