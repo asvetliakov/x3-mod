@@ -2932,7 +2932,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     std::printf("EXPLOSION case=wave_hard_edge band_drops=%u hard_drops=%u worst_step=%.3f rays=%u "
                                 "outer_rises=%u worst_outer_fall=%.3f fall_at_we=%.2f peak_at_we=%.2f\n",
                                 drops, hard, worst_step, rays, rises, worst_fall, worst_at, peak_at);
-                    report("wave_no_hard_edge", hard == 0 && rays >= 18 && rises == 0 && worst_fall <= 0.3, "");
+                    // round 2 (fire-material.md section 12): the tongues lick outward past the front, so a ray may leave one
+                    // tongue and meet another's tip: rises on at most a tenth of the rays (was none; no second ring outside)
+                    report("wave_no_hard_edge", hard == 0 && rays >= 18 && 10 * rises <= rays && worst_fall <= 0.3, "");
                 }
                 // wave_fire_hue (v7, the user: beige / olive is not fire): over the lit pixels (10 % of the frame's peak) at
                 // 0.5 tau, in the dump's display encoding (sRGB of the linear value clamped to [0, 1]), the mean chroma (max
@@ -2971,7 +2973,13 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     static bool made = false;
                     if (!made) {
                         for (unsigned k = 0; k <= 100; ++k) {
-                            wc::heat_colour(0.2f + 0.8f * float(k) / 100.f, ramp[k]);
+                            // round 2 (fire-material.md section 12): the wave's own ramp since v8, look::fire_ramp (the
+                            // heat ramp it was compared with drifted off once the fire ramp's blue went to zero)
+                            const float T = 4.f * (0.2f + 0.8f * float(k) / 100.f);
+                            const unsigned i0 = std::min(3u, unsigned(T));
+                            const float fr = T - float(i0);
+                            for (unsigned q = 0; q < 3; ++q)
+                                ramp[k][q] = wc::look::fire_ramp[i0][q] + (wc::look::fire_ramp[i0 + 1][q] - wc::look::fire_ramp[i0][q]) * fr;
                             const float m = std::max(ramp[k][0], std::max(ramp[k][1], ramp[k][2]));
                             for (unsigned q = 0; q < 3; ++q) ramp[k][q] /= m;
                         }

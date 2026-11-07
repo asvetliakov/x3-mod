@@ -2169,10 +2169,11 @@ constexpr float cluster_glow_fire_n = 4.f;
 // body scale above), so N overlapping bursts sum to tongues over gaps, never a filled body; carried in the vertex's fire
 // weight as 1 + (1 - s(N)) (the program reads saturate(fire) for the weight).
 constexpr float fire_cluster_thr = 0.2f;
-// The tongues' fence (the budget's step 0c by the cluster, fire-material.md 7 and 12): past fire_fence screens of the
-// tongues' own charge (budget_weight_fire - budget_weight_fireball x share x the box) other owners' bursts drop the term,
-// farthest first, until under fireball_octave_return of it; held fireball_octave_hold frames (the 20 hits at 200 m: 88 us
-// against 80 with every tongue drawn).
+// The tongues' fence (the budget's step 0c by the cluster, fire-material.md 7 and 12): with more than cluster_glow_fire_n
+// other owners' bursts drawing tongues and past fire_fence screens of the tongues' own charge (budget_weight_fire -
+// budget_weight_fireball x share x the box), other owners' bursts drop the term, farthest first, until under
+// fireball_octave_return of it or the nearest cluster_glow_fire_n are left; held fireball_octave_hold frames (the 20 hits
+// at 200 m: 88 us against 80 with every tongue drawn; a single near burst is never fenced).
 constexpr float fire_fence = 0.08f;
 // Smoke (hull-burst-look.md section 5): the burst's impostor drawn in the scorch pass (multiply), over the lane's
 // surface only, riding the owner, from smoke_t0 L_b over smoke_span L_b: radius R over R_b x R_b, the burst's noise,

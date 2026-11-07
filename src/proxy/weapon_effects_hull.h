@@ -2797,21 +2797,26 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         }
         // the tongues' own fence (hull::fire_fence, round 2): past it in screens of the tongues' charge, other owners'
         // bursts drop the term farthest first until under fireball_octave_return of it; held fireball_octave_hold frames
+        // (a cluster: more than cluster_glow_fire_n other owners' bursts with tongues; the nearest that many keep theirs)
         float tongues = 0.f;
+        unsigned others = 0;
         for (unsigned g = 0; g < nb; ++g)
-            if (burst_fire[g] > 0.f)
+            if (burst_fire[g] > 0.f) {
                 tongues += burst_meta[g].area * extra * burst_fire[g] / (octave_weight(burst_fine[g]) + extra * burst_fire[g]);
+                others += !burst_meta[g].own;
+            }
+        constexpr unsigned keep = unsigned(hl::cluster_glow_fire_n);
         if (state.fire_fenced) {
             if (state.fence_frames >= core::look::fireball_octave_hold &&
                 tongues < core::look::fireball_octave_return * hl::fire_fence)
                 state.fire_fenced = false;
             else if (state.fence_frames < 255)
                 ++state.fence_frames;
-        } else if (tongues > hl::fire_fence && any) {
+        } else if (tongues > hl::fire_fence && others > keep) {
             state.fire_fenced = true;
             state.fence_frames = 1;
         }
-        while (state.fire_fenced && tongues > core::look::fireball_octave_return * hl::fire_fence) {
+        while (state.fire_fenced && others > keep && tongues > core::look::fireball_octave_return * hl::fire_fence) {
             unsigned sel = nb;
             for (unsigned g = 0; g < nb; ++g)
                 if (burst_fire[g] > 0.f && !burst_meta[g].own && (sel == nb || burst_depth[g] > burst_depth[sel])) sel = g;
@@ -2819,6 +2824,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             const float w = octave_weight(burst_fine[sel]) + extra * burst_fire[sel];
             const float cut = burst_meta[sel].area * extra * burst_fire[sel] / w;
             tongues -= cut;
+            --others;
             area -= cut;
             burst_area -= cut;
             burst_meta[sel].area -= cut;
