@@ -280,6 +280,10 @@ def fire_markdown():
              case != 'capital_close_all_shed']
     worst = max(close, key=lambda r: r['gpu_us'])
     on, off = ht[(5120, 'burst_alone_fire_tongues')]['gpu_us'], ht[(5120, 'burst_alone_fire_tongues_off')]['gpu_us']
+    hseam = sorted(r['seam'] for r in d3d['metrics']['class'] if r.get('case') == 'fire_hull')
+    hseam_med = 0.5 * (hseam[len(hseam) // 2 - 1] + hseam[len(hseam) // 2]) if len(hseam) % 2 == 0 else hseam[len(hseam) // 2]
+    att = row('attach')
+    hs, cs_ = d3d['metrics']['hull_slots'][0], d3d['metrics']['class_slots'][0]
     hb = lambda k: f"{h[k]}"
     bd = lambda k: f"{f[k]} / {c[k]}"
     out = [
@@ -293,8 +297,10 @@ def fire_markdown():
         f"| `hull_20_hits_no_white_sun` ({ok('hull_20_hits_no_white_sun')}) | cores on: worst share above 3.0 {sun['worst_share_above_3']} | <= 0.01 (cores off <= 3.0 as before) |",
         f"| `fire_small_reads` ({ok('fire_small_reads')}) | 30 px far hit at 0.4 L_b: holes {sm['dark_share']}, lobes {sm['lobe_max_over_min']}, lit share {sm['lit_share']} | >= 0.10; >= 1.2; >= 0.4 |",
         f"| `wave_not_a_tyre` ({ok('wave_not_a_tyre')}; 5 km face-on, 0.5 tau) | band mean / edge {w['mean_over_edge']}, dark share {w['dark_share']}, anisotropy {w['aniso']}, grey {w['grey_share']} | <= 0.35; >= 0.40; <= 0.75; <= 0.10 |",
-        f"| `fire_no_seam_hull`, `_death`, `_wave` ({ok('fire_no_seam_hull')}, {ok('fire_no_seam_death')}, {ok('fire_no_seam_wave')}) | worst {h['seam_max']}; {bd('seam_max')}; {w['seam']} | <= 0.1 |",
-        f"| `hull_fire_within_weight` ({ok('hull_fire_within_weight')}) | tongues on {on} us ({on / 177.5:.3f}), off {off} us ({off / 177.5:.3f}) at 5120x1440 | within 0.1 of budget_weight_fire |",
+        f"| `fire_no_seam_hull`, `_death`, `_wave` ({ok('fire_no_seam_hull')}, {ok('fire_no_seam_death')}, {ok('fire_no_seam_wave')}) | median over the seeds {hseam_med:.4f}; {bd('seam')}; {w['seam']} (worst seed {h['seam_max']}; {bd('seam_max')}) | <= 0.1 (median) |",
+        f"| program slots (device creation, max {att['max_ps_slots']}) | fireball_ps {hs['fireball_ps']}, wave_ps {att['wave_ps_slots']}, ring_ps {cs_['ring_ps']}; fireball vertex {hs['fireball_vertex_bytes']} bytes | the modern cap 32768 |",
+        f"| `hull_fire_within_weight` ({ok('hull_fire_within_weight')}) | tongues on {on} us ({on / 177.5:.3f}), off {off} us ({off / 177.5:.3f}) at 5120x1440: + {(on - off) / 177.5:.3f} a screen | within 0.1 of budget_weight_fire - budget_weight_fireball |",
+        f"| alone rows (5120x1440) | body {t5('body_alone_fills_frame')} us, wave {t5('wave_alone_fills_frame')} us (one octave {t5('wave_one_octave_alone')}), eye inside a fighter {t5('eye_inside_fighter')} us | eye inside <= 300 |",
         f"| `death_budget_capital_close_5120` ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}) | <= 450 |",
         f"| `death_budget_5120`, `death_rays_sparks_budget_5120` ({ok('death_budget_5120')}, {ok('death_rays_sparks_budget_5120')}) | fighter 600 m {t5('fighter_600m')} us, 20 fighters {t5('fighters_20_600m')} us | <= 60; <= 150 |",
         f"| `hull_budget_20_hits_5120`, `hull_budget_capital_close_64_within_budget` ({ok('hull_budget_20_hits_5120')}, {ok('hull_budget_capital_close_64_within_budget')}) | 20 hits {ht[(5120, 'fighter_200m_20_hits')]['gpu_us']} us, 60 m {ht[(5120, 'fighter_60m_20_hits')]['gpu_us']} us, capital 64 {ht[(5120, 'capital_close_64_hits')]['gpu_us']} us | <= 80; <= 1420 |",

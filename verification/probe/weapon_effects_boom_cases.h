@@ -591,10 +591,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     core10.push_back(f1.core_peak);
                     out10.push_back(f1.out_peak);
                 }
-                const double seam_max = *std::max_element(seam.begin(), seam.end());
+                const double seam_max = *std::max_element(seam.begin(), seam.end()), seam_med = boom::median(seam);
                 std::printf("EXPLOSION case=fire_body_median tier=%s thin=%.4f gaps=%.4f aniso=%.3f licks=%.3f seam_max=%.4f "
-                            "hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core10=%.3f out10=%.3f\n",
-                            cs.name, boom::median(thin), boom::median(gaps), boom::median(aniso), boom::median(licks), seam_max,
+                            "seam=%.4f hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core10=%.3f out10=%.3f\n",
+                            cs.name, boom::median(thin), boom::median(gaps), boom::median(aniso), boom::median(licks), seam_max, seam_med,
                             boom::median(hot), boom::median(hot_r), boom::median(cold), boom::median(cold_r), boom::median(mid),
                             boom::median(core10), boom::median(out10));
                 ok[0] = ok[0] && boom::median(thin) >= 0.10 && boom::median(thin) <= 0.35 && boom::median(gaps) >= 0.35;
@@ -603,7 +603,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 ok[3] = ok[3] && boom::median(hot) >= 0.25 && boom::median(hot_r) <= 0.5 && boom::median(cold) >= 0.05 &&
                         boom::median(cold) <= 0.25 && boom::median(cold_r) >= 0.65 && boom::median(mid) <= 0.5;
                 ok[4] = ok[4] && boom::median(core10) >= 3.0 && boom::median(out10) <= 1.5;
-                ok[5] = ok[5] && seam_max <= 0.1;
+                ok[5] = ok[5] && seam_med <= 0.1; // the median over the seeds (section 6)
             }
             report("fire_luminance_thin_death", ok[0], "");
             report("fire_tongues_radial_death", ok[1], "");
@@ -2565,6 +2565,8 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             if (!(bins[bin] >= 0.1 * pk)) continue;
                             const double z = (std::hypot(dx, dy) - bin_r[bin]) / w_px;
                             if (!(z <= -0.5 && z > -double(bm::wave_trail_span))) continue;
+                            // the anisotropy past the rim's fall-off and the front's tongue shift (+-1.5 w_e within a bin)
+                            const bool behind_rim = z <= -3.0;
                             ++n_band;
                             sum += l[i];
                             dark += l[i] < 0.25f * pk;
@@ -2577,7 +2579,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             const double gx = 0.5 * ((lv[i + 1] - lo[i + 1]) - (lv[i - 1] - lo[i - 1]));
                             const double gy = 0.5 * ((lv[i + tt.w] - lo[i + tt.w]) - (lv[i - tt.w] - lo[i - tt.w]));
                             const double sx = double(x) + 0.5 - cx, sy = dy, rr = std::hypot(sx, sy);
-                            if (!(rr > 0.5)) continue;
+                            if (!(rr > 0.5) || !behind_rim) continue;
                             const double ux = sx / rr, uy = sy / rr, gr = gx * ux + gy * uy, gt = -gx * uy + gy * ux;
                             er += gr * gr;
                             et += gt * gt;

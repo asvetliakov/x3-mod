@@ -2324,6 +2324,21 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     }
     n.smokes_shed = shed_largest(out.smokes, &nm, smoke_meta, &area, budget);
     n.shocks_shed = shed_largest(out.shocks, &ns, shock_meta, &area, budget);
+    // (0c, last) the bodies' remaining tongues (the newest death's, the own ship's), farthest first, before a wave goes
+    // (fire-material.md 7: they keep them until the fence's last step; bodies are never shed, so their indices hold)
+    while (area > budget) {
+        unsigned sel = nb;
+        for (unsigned g = 0; g < nb; ++g)
+            if (body_fire[g] > 0.f && (sel == nb || body_depth[g] > body_depth[sel])) sel = g;
+        if (sel == nb) break;
+        const float w = boom_fine_weight(body_fine[sel]) + boom_fire_extra * body_fire[sel];
+        const float cut = body_meta[sel].area * boom_fire_extra * body_fire[sel] / w;
+        area -= cut;
+        body_meta[sel].area -= cut;
+        body_fire[sel] = 0.f;
+        for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] = 0.f;
+        ++n.fire_shed;
+    }
     {   // the waves with their constants (the shed moves the last box into the freed place: the constants follow)
         unsigned before = nw;
         BoxMeta tmp[renderer::weapon_wave_boxes];

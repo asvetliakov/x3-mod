@@ -959,9 +959,9 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     fb[45] = wcore::boom::compose_soft_add; // c13.y: the composed body's soft add (the fireball program skips it)
     fb[46] = lk::fireball_octave_freq4;      // c13.zw: the fourth octave (both programs)
     fb[47] = lk::fireball_octave_w4;
-    // weapon_fireball_ps.hlsl c14..c23 (the fireball program only; the composed and shock programs read c2..c13): the fire
+    // weapon_fireball_ps.hlsl c14..c25 (the fireball program only; the composed and shock programs read c2..c13): the fire
     // ramp and the fire material's law (docs/architecture/fire-material.md section 2, look::fire_*)
-    float fire_c[10 * 4] = {};
+    float fire_c[12 * 4] = {};
     for (unsigned k = 0; k < 5; ++k)
         for (unsigned c = 0; c < 3; ++c) fire_c[4 * k + c] = lk::fire_ramp[k][c];
     {
@@ -971,6 +971,9 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                lk::fire_thr_r, 1.f / lk::fire_soft, lk::fire_gain, lk::fire_gain_small,
                                1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_oct2_w, lk::fire_oct2_big};
         for (unsigned k = 0; k < 20; ++k) fire_c[20 + k] = law[k];
+        const float tail[8] = {lk::fire_rim_cool, lk::fire_rim_r0, lk::fire_rim_r1, 0.f,
+                               lk::fire_core_r1, 1.f / (lk::fire_core_r1 - lk::fire_core_r0), 0.f, 0.f};
+        for (unsigned k = 0; k < 8; ++k) fire_c[40 + k] = tail[k];
     }
     if (SUCCEEDED(hr) && (scorch_boxes || smoke_boxes)) {
         step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
@@ -995,7 +998,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             step(WeaponEffectsStep::Smokes, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
             step(WeaponEffectsStep::Smokes, call<SetPsFn>(SetPixelShader)(d, fireball_ps_));
             step(WeaponEffectsStep::Smokes, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 12));
-            step(WeaponEffectsStep::Smokes, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 10));
+            step(WeaponEffectsStep::Smokes, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 12));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                     d, D3DPT_TRIANGLELIST, 0, smoke_boxes * 4, smoke_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.smokes,
@@ -1210,7 +1213,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         }
     }
     // The fireballs (the hull hits' bursts; look 2.10: after the patches, before the sprite batch): one batched draw of
-    // their screen rectangles (no cull); weapon_fireball_ps.hlsl c2..c13 (fb above), c14..c23 (fire_c).
+    // their screen rectangles (no cull); weapon_fireball_ps.hlsl c2..c13 (fb above), c14..c25 (fire_c).
     // Section 13.2: the composed death bodies first, one draw each with its table (weapon_compose_ps.hlsl c2..c13 of fb,
     // c14..c42 its WeaponComposeConstants), then the rest of the fireballs batched.
     if (SUCCEEDED(hr) && composed_boxes) {
@@ -1243,7 +1246,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Fireballs, call<SetPsFn>(SetPixelShader)(d, fireball_ps_));
         step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
         step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 12));
-        step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 10));
+        step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 12));
         // the boxes before the composed range (the muzzles') and after it (the secondaries, the hull bursts)
         const unsigned first = composed_boxes ? f.composed_first : 0u, after = first + composed_boxes;
         const unsigned ranges[2][2] = {{0u, first}, {after, fireball_boxes - after}};

@@ -2159,6 +2159,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         ws::HullTuning only_burst = only_flash;
         only_burst.flash = false;
         only_burst.burst = true;
+        double tongue_us = 0;
         for (unsigned c = 0; c < 13; ++c) {
             // 0: 20 hits on a fighter 60 m away (its hull a fifth of the frame: the stress row); 1: the same 200 m away
             // (the 3.1 budget's case); 2: 64 hits on a capital at close range; 3: one glow alone whose sphere holds the
@@ -2172,6 +2173,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             // side of the eye (every pixel's chord middle at |p| about 0.3, inside the tongues' band and the lobes), the fire
             // weight 1 at LOD 1 (11) or 0 (12): budget_weight_fire against budget_weight_fireball.
             const unsigned hits = c == 2 ? 64 : c >= 3 ? 1 : 20;
+            // the tongue rows (11, 12) restore the ring's sequence counter: the later gates' records keep their hashes
+            const std::uint32_t seq_before = stage_ring.next_sequence;
             const float owner_z = c == 0 ? 400.f : c == 1 ? 1100.f : c == 2 ? 2600.f : 120.f;
             hull_owner(owner_z, c == 2 ? 2000.f : 100.f);
             for (unsigned i = 0; i < hits; ++i) {
@@ -2284,9 +2287,14 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (c == 10 && size.first == 5120)
                 report("hull_ember_lobed_within_glow_weight",
                        std::fabs(best / 177.5 - double(wc::look::budget_weight_glow_lobed)) <= 0.1, "");
-            // the tongues' charge (look::budget_weight_fire, fire-material.md section 7): their full-screen cost within 0.1
-            if (c == 11 && size.first == 5120)
-                report("hull_fire_within_weight", std::fabs(best / 177.5 - double(wc::look::budget_weight_fire)) <= 0.1, "");
+            // the tongues' charge (look::budget_weight_fire - budget_weight_fireball, fire-material.md section 7): the
+            // tongues' full-screen cost over the same impostor without them (case 12) within 0.1 of it
+            if (c == 11) tongue_us = best;
+            if (c >= 11) stage_ring.next_sequence = seq_before;
+            if (c == 12 && size.first == 5120)
+                report("hull_fire_within_weight",
+                       std::fabs((tongue_us - best) / 177.5 - double(wc::look::budget_weight_fire - wc::look::budget_weight_fireball)) <= 0.1,
+                       "");
         }
         tt.release();
     }

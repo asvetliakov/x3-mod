@@ -193,6 +193,7 @@ struct HullTuning {
     unsigned set_mask = 7; // the spark sets drawn (bit 0 fast, 1 slow, 2 chips; the fixture isolates one)
     bool reach_cull = true; // a kept owner out of reach builds no elements (the fixture's pre-change image: false)
     bool fire_core = true;  // the fire classes' white-hot core (fire-material.md 2.3; the fixture's cores-off frame: false)
+    bool fire = true;       // the fire material (false: the previous law; the fixture's octave-step rows)
 };
 struct HullCounts {
     unsigned hits = 0, flashes = 0, sparks = 0, glows = 0, embers = 0, bursts = 0, rings = 0;
@@ -1983,7 +1984,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     const float gx = 1.f - x / hl::fire_core_x;
                     const float gcore = t.fire_core && x < hl::fire_core_x ? hl::class_fire_core[a] * gx * gx * sb * sb : 0.f;
                     if (puff_box(c_view, r_hit, burst_R, burst_T, pf[6] * gain * sb, x, core::look::fireball_advect * x,
-                                 e.sequence, tint4, age_ms, own, e.owner, false, hl::class_fire[a], gcore, age))
+                                 e.sequence, tint4, age_ms, own, e.owner, false, t.fire ? hl::class_fire[a] : 0.f, gcore, age))
                         n.floored += fl;
                 }
             }
@@ -2458,7 +2459,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 // the fire material without the core (a held spot's core would be a lamp for the whole hold)
                 puff_box(c_view, r_hit, R, T, pf[6] * gain, fall_age / L,
                          core::look::fireball_advect * float(age_first) * 1e-3f, sp.seed, tint4, rel, own, e.owner,
-                         false, hl::class_fire[a], 0.f, float(age_first));
+                         false, t.fire ? hl::class_fire[a] : 0.f, 0.f, float(age_first));
             }
             if (t.glow && !dust && T > 0.f && R > 0.f) {
                 float colour[3];

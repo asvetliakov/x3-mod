@@ -74,7 +74,8 @@ NAMESPACES = {
              'fire_enabled', 'fire_ramp', 'fire_cells', 'fire_s_cells', 'fire_warp_f', 'fire_warp_amp', 'fire_shear',
              'fire_blend_0', 'fire_blend_1', 'fire_flow_ms', 'fire_flick_ms', 'fire_flick_amp', 'fire_thr_0', 'fire_thr_t',
              'fire_thr_r', 'fire_soft', 'fire_gain', 'fire_gain_small', 'fire_heat_soft', 'fire_rim_t', 'fire_oct2_w',
-             'fire_oct2_big', 'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire'),
+             'fire_oct2_big', 'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire',
+             'fire_rim_cool', 'fire_rim_r0', 'fire_rim_r1', 'fire_core_r0', 'fire_core_r1'),
     # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
     'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'mode', 'spark_count_x',
              'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',

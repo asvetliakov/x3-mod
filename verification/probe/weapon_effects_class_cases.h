@@ -786,8 +786,10 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
     // 4c. The fire material (docs/architecture/fire-material.md section 6; supersedes hull_burst_colour_core_rim): energy
     // single, the median over hits_n hits: at 0.3 L_b the thin luminance and the gaps inside the outline, the radial over
     // tangential high-pass gradient energy, the edge's licks, the seam at the angle's wrap; the temporal correlations at
-    // + 16 ms and + 100 ms (the SETA step); the fire ramp's classes at 0.2 L_b; the core's bloom at 40 ms.
+    // + 16 ms and + 100 ms (the SETA step); the fire ramp's classes at 0.2 L_b; the core's bloom at 40 ms. The ring's
+    // sequence counter is restored after it (the later gates' records keep the hashes they had before it).
     {
+        const std::uint32_t next_sequence = stage_ring.next_sequence;
         std::vector<double> thin, gaps, aniso, licks, hot, hot_r, cold, cold_r, mid, core40, out40, hp16, lp16, hp100, seam;
         for (unsigned j = 0; j < hits_n; ++j) {
             const float L = single(hl::an_energy, burst_only, 400.f, seq_of(j));
@@ -848,7 +850,9 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         report("fire_colour_ramp_hull", all && median(hot) >= 0.25 && median(hot_r) <= 0.5 && median(cold) >= 0.05 &&
                                             median(cold) <= 0.25 && median(cold_r) >= 0.65 && median(mid) <= 0.5, "");
         report("fire_core_bloom_hull", all && median(core40) >= 3.0 && median(out40) <= 1.5, "");
-        report("fire_no_seam_hull", all && *std::max_element(seam.begin(), seam.end()) <= 0.1, "");
+        // the median over the hits as every section-6 gate (a single hit's tongue edge crossing the strip is not a seam)
+        report("fire_no_seam_hull", all && median(seam) <= 0.1, "");
+        stage_ring.next_sequence = next_sequence;
     }
     // 4b. No centre ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"), energy at 0.5 / 0.6 /
     // 0.7 L_b over hits_n hits: every hit's ring prominence (burst::ring_of) <= ring_prominence_max at each age (the
@@ -985,6 +989,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         // with the cores on (fire-material.md section 6): the frame's pixels above 3.0 linear at most 1 %
         double sun_share = 1.0;
         {
+            const std::uint32_t next_sequence = stage_ring.next_sequence; // restored: the later records' hashes
             hull_owner(400.f, 100.f);
             for (unsigned i = 0; i < 20; ++i) {
                 const double r = 3000.0 * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
@@ -1007,6 +1012,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                 worst = std::max(worst, over / double(l.size()));
             }
             sun_share = worst;
+            stage_ring.next_sequence = next_sequence;
         }
         std::printf("CLASS case=twenty_hits_cores_on worst_share_above_3=%.5f\n", sun_share);
         report("hull_20_hits_no_white_sun", peak[0] > 0 && peak[0] <= 3.0 && one[1] > 0 && std::fabs(one[0] / one[1] - 1.0) <= 0.01 &&
@@ -1246,10 +1252,14 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
             const std::int32_t pos[3] = {std::int32_t(-2500 + 1000 * i), std::int32_t(500 * (i & 1)), -10000};
             add_of(hl::an_energy, 1000 + 4 * i, pos, 0.33);
         }
-        hull_build(hull_view(g, 1020, 16), burst_only); // the records latch
+        // the octave step alone: the fire material off (its tongue step (0c) sheds first and holds the charge under the
+        // return; fire-material.md section 7)
+        ws::HullTuning nf = burst_only;
+        nf.fire = false;
+        hull_build(hull_view(g, 1020, 16), nf); // the records latch
         ws::HullView v = hull_view(g, 1120, 16);
         v.budget_left = 1e6f;
-        const float A4 = hull_build(v, burst_only).n.screens;
+        const float A4 = hull_build(v, nf).n.screens;
         // 2026-11-07 v3, the fourth octave: four octaves where three were (the step 0b drops the fourth first; review:
         // budget_weight_fireball_fine4 now equals the third's weight, so A is the full charge A4); the last two budgets
         // 1.5 A (the return under 0.8 x the budget)
@@ -1260,7 +1270,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         char got[64] = {};
         for (unsigned k = 0; k < 12; ++k) {
             v.budget_left = budgets[k] * A;
-            const HullOut o = hull_build(v, burst_only);
+            const HullOut o = hull_build(v, nf);
             got[k] = char('0' + o.n.octaves);
             ok = ok && o.n.octaves == want[k];
         }

@@ -895,8 +895,9 @@ static_assert(wave_band_x - wave_trail_span * wave_w_x < 1e-4f && wave_trail_spa
 // cooled towards wave_floor_t where it is dim, x (1 - wave_t_cool x); intensity min(1, rim + density); colour on
 // look::fire_ramp. wave_floor_a: the swept hulls' light behind the rim (no floor in the air).
 // fire_wave_thr_0: the note's 0.08 (the body's fire_thr_0) filled the band with merged tongues in the lab (a tyre with blots,
-// round 3); the kill step taken past its 0.2: the front's threshold near the noise's median, so the band is tongues and gaps.
-constexpr float fire_wave_cells = 48.f, fire_wave_aspect = 2.5f, fire_wave_thr_0 = 0.45f, fire_wave_thr_end = 0.7f;
+// round 3); the kill step taken past its 0.2: 0.45 / 0.7 in the lab's round 4 left the native sheet 0.21 R_f thick and a bin
+// dark (wave_sheet_thick 0.6, the circumference's 5 % floor), 0.3 / 0.6 between them.
+constexpr float fire_wave_cells = 48.f, fire_wave_aspect = 2.5f, fire_wave_thr_0 = 0.3f, fire_wave_thr_end = 0.6f;
 constexpr float fire_wave_gain = 0.6f;
 constexpr float wave_floor_a = 0.2f, wave_floor_t = 0.25f;
 constexpr float wave_lead = 0.1f, wave_ahead = 0.7f, wave_break_floor = 0.6f, wave_rim_noise = 0.4f;
@@ -937,9 +938,10 @@ constexpr float wave_refract_px = 6.f, wave_refract_band = 2.f;
 // octave shed); v7 (the material, three octaves; the budget's step 0a sheds the sheet's third) 1.71 / 1.53; v8 (the
 // tongues: four warp taps and two octaves; step 0a sheds the sheet's second) re-measured below; the box's pixels past the
 // window keep the early-out's 0.56 (that path unchanged).
-constexpr float budget_weight_wave = 1.71f, budget_weight_wave_miss = 0.56f;
+// v8 [M] 5120x1440 2026-11-07 (the fire material's first native run): alone 1.831, the sheet's second octave shed 1.682.
+constexpr float budget_weight_wave = 1.83f, budget_weight_wave_miss = 0.56f;
 // The sheet with two octaves (the budget's step 0a).
-constexpr float budget_weight_wave_one = 1.53f;
+constexpr float budget_weight_wave_one = 1.68f;
 // wave_quads: a wave is drawn as the eight octagon strips of its annulus [r - window_in w_e, r + window_out w_e] (each
 // an oriented screen quad about its sector, cut at the near plane and the screen), or as the slab's box when that is
 // smaller (the birth: the annulus near a disc); the charge is the drawn quads' screens.
@@ -1967,7 +1969,10 @@ constexpr float budget_weight_fireball_fine4 = 1.18f;
 // fire_flow_ms + w (the tongues stream outward), w, w2 = fire_warp_amp (2 vn(p fire_warp_f + o) - 1) two warp taps;
 // n_t = (1 - w_o2) vnp(a, s) + w_o2 vnp(2 a + 1/2, 2 s + 3.7) (w_o2 fire_oct2_w, + fire_oct2_big on a body past
 // fire_big_px_0 .. _1); the blend w_t = smoothstep(fire_blend_0, fire_blend_1, rq) x fire x w_px (w_px the size LOD
-// smoothstep(fire_px_0, fire_px_1, R px at 1440 rows)). Alpha d^gain x flick x column^column_pow x lobe, d = saturate((n
+// smoothstep(fire_px_0, fire_px_1, R px at 1440 rows); the threshold, softness, gain and heat law lerp from the previous
+// law's to the fire law's by w_px x min(fire, 1): a far hit keeps today's clumps and holes on the fire ramp, section 2.5,
+// and the plasma globe sits half way).
+// The fire law: alpha d^gain x flick x column^column_pow x lobe, d = saturate((n
 // - thr) / fire_soft), thr = fire_thr_0 + fire_thr_t x + fire_thr_r rq^2 (1 + fireball_erode_rt x), gain lerp(
 // fire_gain_small, fire_gain, w_px), flick = lerp(1, 1 - fire_flick_amp + fire_flick_amp vn1p(fire_cells u + t_g /
 // fire_flick_ms), w_t). Colour fire_ramp(T (fire_rim_t + (1 - fire_rim_t) m^0.75)), m = saturate((n - thr) /
@@ -1978,14 +1983,25 @@ constexpr float fire_ramp[5][3] = {{0.f, 0.f, 0.f}, {0.45f, 0.05f, 0.015f}, {1.0
                                    {1.0f, 0.97f, 0.85f}};
 constexpr float fire_cells = 23.f, fire_s_cells = 1.9f, fire_warp_f = 2.2f, fire_warp_amp = 0.6f, fire_shear = 1.0f;
 constexpr float fire_blend_0 = 0.12f, fire_blend_1 = 0.4f, fire_flow_ms = 120.f, fire_flick_ms = 65.f, fire_flick_amp = 0.3f;
-constexpr float fire_thr_0 = 0.08f, fire_thr_t = 0.50f, fire_thr_r = 0.45f, fire_soft = 0.10f;
-constexpr float fire_gain = 2.2f, fire_gain_small = 1.2f, fire_heat_soft = 0.55f, fire_rim_t = 0.30f;
+// The threshold, gain and colour against the section-6 gates (2026-11-07, the first native run and a numpy replica of
+// the program over 8 seeds, verification/results/explosion-look/fire_tune.py): the note's 0.08 / 0.30 / 0.45, gain 1.6,
+// heat_soft 0.55, rim_t 0.30 left no red pixel lit (0 % against 5-25 %) and the core lit past 0.5 R(t) (2.2 against
+// 1.5); the lab rounds' gain 2.2 / thr_t 0.5 kept the body filled. fire_rim_cool: T' x (1 - fire_rim_cool smoothstep(
+// fire_rim_r0, fire_rim_r1, |p|)), the tongues' tips red ("its edge and tip red", section 2.3, which the density alone
+// gave only where the alpha is under the lit set's 10 %). The fire core: g x saturate((fire_core_r1 - |p|) / (fire_core_r1
+// - fire_core_r0)) in R_s (the body's 0.3 / 0.5 R_s reached 0.67 R(t) on a death body's 1.33 R_s sphere).
+constexpr float fire_thr_0 = 0.12f, fire_thr_t = 0.43f, fire_thr_r = 0.57f, fire_soft = 0.10f;
+// fire_gain_small 1.2 -> 1.0 (section 8's step for far hits: the 600 m fighter's outline 0.67 of the law at 0.6 L).
+constexpr float fire_gain = 1.6f, fire_gain_small = 1.0f, fire_heat_soft = 0.48f, fire_rim_t = 0.18f;
+constexpr float fire_rim_cool = 0.63f, fire_rim_r0 = 0.45f, fire_rim_r1 = 0.95f, fire_core_r0 = 0.2f, fire_core_r1 = 0.35f;
 constexpr float fire_oct2_w = 0.35f, fire_oct2_big = 0.30f;
 constexpr float fire_px_0 = 48.f, fire_px_1 = 72.f, fire_big_px_0 = 160.f, fire_big_px_1 = 400.f;
 // The tongues' charge: a box screen with the tongue term x budget_weight_fire over its octave weight (the alone rows,
 // burst_alone_fills_frame with and without the term at 5120x1440); the budget's step (0c) drops the term from other
 // owners' boxes, farthest first, with the octave step's hysteresis.
-constexpr float budget_weight_fire = 1.25f;
+// [M] native 5120x1440 2026-11-07: tongues on 397.1 us, off 239.2 us on the same impostor (every pixel in the band):
+// + 0.89 a screen over budget_weight_fireball.
+constexpr float budget_weight_fire = 2.07f;
 // The vertex's fire terms (renderer::WeaponFireballVertex::core[1..3]): the size LOD w_px plus the big body's second polar
 // octave weight (0 .. 2: w_px saturate(lod), k2 saturate(lod - 1)), from the projected radius at 1440 rows.
 inline float fire_lod(float rpx_1440, bool body) noexcept {
