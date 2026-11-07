@@ -66,8 +66,35 @@ struct BoomSlot {
     float hull_c[3]{}, hull_ax[3][3]{}, hull_e[3]{};
     std::uint8_t hull_kind = 0;
 };
+// One sub-burst's hashed constants (per record: the stage caches them by sequence, BoomState::compose).
+struct ComposeEntry {
+    float cl[3], jl[3]; // its offset direction x compose_offset h1 and its jet axis (the hull frame; 0 for a sphere)
+    float rl, reach, delta, pace, ti;
+    std::uint8_t jet;
+};
+// The composed bodies' entries by record (the hashes taken once per record, not per frame; round robin over max_bodies).
+// One sub-burst's placement at unit 1 at the age x_ref and its slopes in the age (the stage's per-frame advance): the
+// rotated offset direction x compose_offset h1 (view), its jet axis, local radius and reach, rise, erosion compensation
+// (the body's loss over its own), its clocks x_i, x_e and its heat's factor.
+struct ComposeRef {
+    float off[3], axis[3];
+    float rl, reach, rise, drise, comp, dcomp, xi, dxi, xe, dxe, ti, cool;
+};
+struct ComposeCache {
+    std::uint32_t sequence = 0;
+    std::uint8_t spheres = 0, jets = 0, count = 0, valid = 0;
+    ComposeEntry en[core::boom::compose_max]{};
+    // the placement (refreshed on a compose_refresh_px move of the projected centre, every compose_refresh_frames
+    // builds, past compose_refresh_dx of the age, at the next birth or with another set) and the outline's estimate
+    ComposeRef ref[core::boom::compose_max]{};
+    float outline = 0.f, x_ref = -1.f, next_birth = 2.f, px[2]{};
+    std::uint8_t m = 0, set = 0xff, frames = 0;
+};
 struct BoomState {
     BoomSlot slots[core::ring_capacity];
+    ComposeCache compose[core::boom::max_bodies];
+    std::uint32_t compose_key[core::boom::max_bodies]{};
+    unsigned compose_next = 0;
     bool octaves_coarse = false; // the budget's step (1) with its hysteresis
     std::uint8_t coarse_frames = 0;
 };
@@ -75,6 +102,9 @@ inline void boom_clear(BoomState& s) noexcept {
     for (auto& v : s.slots) v = BoomSlot{};
     s.octaves_coarse = false;
     s.coarse_frames = 0;
+    for (auto& c : s.compose) c = ComposeCache{};
+    for (auto& k : s.compose_key) k = 0;
+    s.compose_next = 0;
 }
 // The element switches (the fixture isolates one part; the header's look by default).
 struct BoomTuning {
@@ -83,6 +113,12 @@ struct BoomTuning {
     bool secondaries = true, hull_light = true; // the big tiers' pre-roll: the secondaries (body, star, glow, embers) and the
                                                 // dying hull's light
     bool force_shock = false; // the fixture's shell gates and budget row: the missile's shell drawn though missile_shock is off
+    // Section 13: the fire wave (capital, station), its refraction request, and the composed body (off: the single
+    // sphere, the lab's "single body" toggle); force_shared / force_n: the fixture's compose rows (0: the law's).
+    bool wave = true, wave_shimmer = true, compose = true, force_shared = false;
+    bool wave_octave2 = true; // the sheet's second octave (the fixture's one-octave weight row: false)
+    unsigned force_n = 0, force_jets = 0xffu;
+    float box_scale = 1.f; // the fixture's compose_box_holds_spheres: the composed body's box grown
     float budget_screens = core::boom::budget_screens; // the family's own cap (the fixture's hysteresis gate lifts it)
     bool cluster = true, reach_cull = true;
     unsigned min_frames = core::look::min_frames;
@@ -102,6 +138,16 @@ struct BoomCounts {
     // unbiased: the cadence gate), hull lights drawn; records latched with the bubble cache's box or the axis capsule.
     unsigned secondaries = 0, secondaries_shed = 0, secondaries_born = 0, hull_lights = 0, bubble_cached = 0, capsules = 0;
     float born_at[3]{};
+    // Section 13: the fire waves drawn and shed, those in the view plane for unread rows (weapon_death wave_plane=), the
+    // newest wave's refraction strips (0: none or capped past the cap) and their screens; the composed bodies, those in
+    // the shared-noise mode, the spheres the LOD removed, the eye inside a cluster.
+    unsigned waves = 0, waves_shed = 0, wave_view_plane = 0, wave_strips = 0, wave_strips_capped = 0, wave_strips_dropped = 0;
+    float wave_strip_screens = 0.f;
+    // the drawn waves' quads (8 strips or 1 box each) and their screens (the strips' clipped sum or the box)
+    unsigned wave_quads = 0, wave_octaves_shed = 0;
+    float wave_screens = 0.f;
+    unsigned composed = 0, compose_shared = 0, compose_dropped = 0, compose_eye = 0;
+    float body_R0 = 0.f; // the law's radius R(t) (with its floor) of the first body box (view units)
 };
 // The frame's outputs (four vertices an element; nullptr / 0: none built). The caller hands each buffer past whatever
 // another family wrote into it.
@@ -120,6 +166,18 @@ struct BoomBuffers {
     unsigned shock_cap = 0, shock_boxes = 0;
     renderer::WeaponGlowVertex* halos = nullptr; // the bodies' halos in air (weapon_halo_ps.hlsl)
     unsigned halo_cap = 0, halo_boxes = 0;
+    // section 13.1: the fire waves (weapon_wave_ps.hlsl), 4 x renderer::weapon_wave_quads vertices a wave (its quads,
+    // WeaponWaveConstants::quads of them drawn); wave_cap counts waves
+    renderer::WeaponFireballVertex* waves = nullptr;
+    unsigned wave_cap = 0, wave_boxes = 0;
+    const renderer::WeaponWaveConstants* wave_constants = nullptr; // out: the waves' draw constants (the stage's storage)
+    // Section 13.2: the composed bodies' tables (room for boom::max_bodies; nullptr: the single body), one per body box;
+    // out: how many leading fireball boxes are composed.
+    renderer::WeaponComposeConstants* compose = nullptr;
+    unsigned composed_boxes = 0;
+    x3m::engine_shimmer::WaveRequest* wave_shimmer = nullptr; // the newest wave's refraction (nullptr: none)
+    unsigned wave_strip_room = x3m::engine_shimmer::max_rects; // the shimmer pass's rects left for the strips (the glue's)
+    unsigned wave_shimmer_count = 0;
 };
 // The tier's R_f (metres) of a record: tier_f R_obj clamped.
 inline float boom_r_f_m(const core::Event& e) noexcept {
@@ -316,11 +374,473 @@ inline void boom_hull_exit(const BoomSlot& s, const float d[3], float out[3]) no
     }
     for (unsigned c = 0; c < 3; ++c) out[c] = s.hull_c[c] + d[c] * t;
 }
+// Section 13.2: the composed body's table, the program's composed() in float32 (weapon_fireball_ps.hlsl; its hash2,
+// boom::compose_*): the spheres born at the body's age fraction x, view space about the cluster's centre C at `unit`
+// (the program's sphere.w), the hull frame's rows in view (ax), n drawn spheres of the hashed n_full, `jets` jets.
+inline float boom_frac(float x) noexcept {
+    return x - float(scalar::floor(double(x)));
+}
+inline float boom_hash2(float x, float y) noexcept {
+    float p0 = boom_frac(x * 0.1031f), p1 = boom_frac(y * 0.1031f), p2 = p0;
+    const float d = p0 * (p1 + 33.33f) + p1 * (p2 + 33.33f) + p2 * (p0 + 33.33f);
+    p0 += d;
+    p1 += d;
+    p2 += d;
+    return boom_frac((p0 + p1) * p2);
+}
+// sin and cos of 2 pi h, h in [0, 1) (quadrant reduction of sincos_quarter).
+inline void boom_sincos_turn(float h, float* s, float* c) noexcept {
+    float q4 = 4.f * boom_frac(h);
+    const float q = float(scalar::floor(double(q4)));
+    float s0, c0;
+    sincos_quarter((q4 - q) * 1.5707963f, &s0, &c0);
+    const int k = int(q) & 3;
+    *s = k == 0 ? s0 : k == 1 ? c0 : k == 2 ? -s0 : -c0;
+    *c = k == 0 ? c0 : k == 1 ? -s0 : k == 2 ? -c0 : s0;
+}
+struct ComposeSphere {
+    float c[3];    // centre (view)
+    float R;       // radius (a jet's short semi-axis)
+    float reach;   // its farthest extent along any axis (a jet's long semi-axis)
+    float axis[3]; // a jet's axis (view, unit; 0 for a sphere)
+    float xi, xe;  // its age clock x_i and its erosion and heat clock 1 - (1 - x_i)^k_i (its own pace)
+    float ti;      // its table index (the seeds' step)
+    float cool;    // its heat's factor (1 - compose_offset_cool |offset| / compose_offset)
+};
+// The table (the program draws it; the lab's composeTable mirrors it): sphere i < n of the hashed n_full has the local
+// radius compose_r_lo + compose_r_span (1 - (i + h0) / n_full) (the largest first: the LOD drops the last), sphere 0 at
+// the centre, the others offset compose_offset h1 along unit(lerp(u, +-z, compose_axis_blend)) (u from h3, h4; alone
+// without rows), born compose_spread h2 L; a jet (index n_full + j) a compose_jet_long : compose_jet_short spheroid along
+// (cos th cos ph, cos th sin ph, sin th), th = (2 h3 - 1) compose_jet_cone, ph = 2 pi h4, its centre (0, 0, (2 h1 - 1)
+// compose_offset) + its axis x long / 2, born compose_jet_birth0 + compose_jet_birth_span h2; its erosion paced by k =
+// compose_pace_lo + compose_pace_span h5 (2026-11-07: the outline changes between 0.3 and 0.6 L as the sub-bursts erode
+// at their own pace). The hashes from the record's noise seed: hash2(seed + compose_seed_step i, 3.1 + 1.7 j).
+inline unsigned boom_compose_entries(float seed, unsigned n, unsigned jets, unsigned n_full, bool valid,
+                                     ComposeEntry* out) noexcept {
+    namespace bm = core::boom;
+    unsigned m = 0;
+    for (unsigned i = 0; i < n + jets && i < bm::compose_max; ++i) {
+        const bool jet = i >= n;
+        const float ti = jet ? float(n_full + (i - n)) : float(i);
+        const float hs = seed + bm::compose_seed_step * ti;
+        const float h0 = boom_hash2(hs, 3.1f), h1 = boom_hash2(hs, 4.8f), h2 = boom_hash2(hs, 6.5f);
+        const float h3 = boom_hash2(hs, 8.2f), h4 = boom_hash2(hs, 9.9f), h5 = boom_hash2(hs, 11.6f);
+        ComposeEntry& o = out[m++];
+        o.jet = jet;
+        o.ti = ti;
+        o.delta = jet ? bm::compose_jet_birth0 + bm::compose_jet_birth_span * h2 : (ti > 0.5f ? bm::compose_spread * h2 : 0.f);
+        o.pace = bm::compose_pace_lo + bm::compose_pace_span * h5;
+        float sp, cp;
+        boom_sincos_turn(h4, &sp, &cp);
+        for (unsigned q = 0; q < 3; ++q) o.jl[q] = 0.f;
+        if (jet) {
+            const float th = (2.f * h3 - 1.f) * bm::compose_jet_cone;
+            float st, ct;
+            sincos_quarter(th < 0.f ? -th : th, &st, &ct);
+            if (th < 0.f) st = -st;
+            o.jl[0] = ct * cp;
+            o.jl[1] = ct * sp;
+            o.jl[2] = st;
+            for (unsigned q = 0; q < 3; ++q) o.cl[q] = o.jl[q] * (0.5f * bm::compose_jet_long);
+            o.cl[2] += (2.f * h1 - 1.f) * bm::compose_offset;
+            o.rl = bm::compose_jet_short;
+            o.reach = bm::compose_jet_long;
+        } else {
+            const float z = 2.f * h3 - 1.f, rr2 = 1.f - z * z, rr = rr2 > 0.f ? scalar::sqrt(rr2) : 0.f;
+            const float bl = valid ? bm::compose_axis_blend : 0.f;
+            const float u[3] = {rr * cp * (1.f - bl), rr * sp * (1.f - bl), z * (1.f - bl) + (z >= 0.f ? bl : -bl)};
+            const float uu = u[0] * u[0] + u[1] * u[1] + u[2] * u[2];
+            const float k = ti > 0.5f ? bm::compose_offset * (bm::compose_offset_min + (1.f - bm::compose_offset_min) * h1) *
+                                            rsqrt_nr(uu > 1e-8f ? uu : 1e-8f)
+                                      : 0.f;
+            for (unsigned q = 0; q < 3; ++q) o.cl[q] = u[q] * k;
+            o.rl = bm::compose_r_lo + bm::compose_r_span * (1.f - (ti + h0) / float(n_full > 0 ? n_full : 1u));
+            o.reach = o.rl;
+        }
+    }
+    return m;
+}
+// The single body's outline over R(t) by age (compose_erode_*: the measured loss past compose_erode_x0).
+inline float boom_outline_loss(float x) noexcept {
+    namespace bm = core::boom;
+    const float s = 1.f - bm::compose_erode_k * (x > bm::compose_erode_x0 ? x - bm::compose_erode_x0 : 0.f);
+    return s > 0.05f ? s : 0.05f;
+}
+// The sub-bursts now: the first n spheres and the first jets jets of the entries that are born at the body's age
+// fraction x, about C at `unit` in the hull frame's rows ax (view): radius and offset x unit x rise(x_i) (x_i = (x -
+// delta) / (1 - delta), rise = r0 + (1 - r0)(1 - e^(-x_i / rho)) + body_grow x_i). outline_k > 0: the outline's estimate
+// (R and reach x outline_k x boom_outline_loss(x_e) / boom_outline_loss(x)).
+inline unsigned boom_compose_place(const ComposeEntry* en, unsigned count, unsigned n, unsigned jets, const float C[3],
+                                   float unit, float x, float r0, float rho, const float ax[3][3], ComposeSphere* out,
+                                   float outline_k = 0.f) noexcept {
+    namespace bm = core::boom;
+    unsigned m = 0, spheres = 0, js = 0;
+    const float body_loss = outline_k > 0.f ? boom_outline_loss(x) : 1.f;
+    for (unsigned i = 0; i < count; ++i) {
+        const ComposeEntry& e = en[i];
+        if (e.jet ? js >= jets : spheres >= n) continue;
+        e.jet ? ++js : ++spheres;
+        const float xi = (x - e.delta) / (1.f - e.delta);
+        if (!(xi >= 0.f)) continue;
+        const float rise = r0 + (1.f - r0) * (1.f - core::exp_neg(-xi / (rho > 1e-3f ? rho : 1e-3f))) + bm::body_grow * xi;
+        const float left = 1.f - (xi < 1.f ? xi : 1.f);
+        const float ln_left = left > 0.f ? core::log10f_sse(left) * 2.30258509f : -1e30f;
+        const float xe = 1.f - core::exp_neg(e.pace * ln_left);
+        const float sc = unit * rise;
+        ComposeSphere& o = out[m++];
+        for (unsigned q = 0; q < 3; ++q) {
+            o.c[q] = C[q] + sc * (e.cl[0] * ax[0][q] + e.cl[1] * ax[1][q] + e.cl[2] * ax[2][q]);
+            o.axis[q] = e.jl[0] * ax[0][q] + e.jl[1] * ax[1][q] + e.jl[2] * ax[2][q];
+        }
+        const float k = outline_k > 0.f ? outline_k * boom_outline_loss(xe) / body_loss : 1.f;
+        o.R = sc * e.rl * k;
+        o.reach = sc * e.reach * k;
+        o.xi = xi;
+        o.xe = xe;
+        o.ti = e.ti;
+        const float ol = scalar::sqrt(e.cl[0] * e.cl[0] + e.cl[1] * e.cl[1] + e.cl[2] * e.cl[2]);
+        o.cool = 1.f - bm::compose_offset_cool * (ol < bm::compose_offset ? ol : bm::compose_offset) / bm::compose_offset;
+    }
+    return m;
+}
+// The stage's form (section 13.2, the CPU pass): the first n spheres and the first jets jets of the entries that are born
+// at the age x, at unit 1 in the hull frame's rows ax (view), with each sub-burst's erosion compensation (2026-11-07:
+// per sub-burst, not on the union): its radius x the body's loss over its own, comp = boom_outline_loss(x) /
+// boom_outline_loss(x_e) (both capped at compose_erode_cap), so its eroded outline follows the single body's and the
+// cluster's unit holds no erosion term; and the slopes of rise, comp and the clocks in x. *next_birth: the earliest
+// birth past x (2 without one).
+inline unsigned boom_compose_ref(const ComposeEntry* en, unsigned count, unsigned n, unsigned jets, float x, float r0,
+                                 float rho, const float ax[3][3], ComposeRef* out, float* next_birth) noexcept {
+    namespace bm = core::boom;
+    unsigned m = 0, spheres = 0, js = 0;
+    float nb = 2.f;
+    const float cap = bm::compose_erode_cap, xc = x < cap ? x : cap;
+    const float lb = boom_outline_loss(xc);
+    const float dlb = x < cap && x > bm::compose_erode_x0 && lb > 0.05f ? -bm::compose_erode_k : 0.f;
+    const float rh = rho > 1e-3f ? rho : 1e-3f;
+    for (unsigned i = 0; i < count; ++i) {
+        const ComposeEntry& e = en[i];
+        if (e.jet ? js >= jets : spheres >= n) continue;
+        e.jet ? ++js : ++spheres;
+        if (x < e.delta) {
+            nb = e.delta < nb ? e.delta : nb;
+            continue;
+        }
+        const float dxi = 1.f / (1.f - e.delta), xi = (x - e.delta) * dxi;
+        const float ex = core::exp_neg(-xi / rh);
+        const float rise = r0 + (1.f - r0) * (1.f - ex) + bm::body_grow * xi;
+        const float drise = ((1.f - r0) * ex / rh + bm::body_grow) * dxi;
+        const float left = 1.f - (xi < 1.f ? xi : 1.f);
+        const float ln_left = left > 0.f ? core::log10f_sse(left) * 2.30258509f : -1e30f;
+        const float xe = 1.f - core::exp_neg(e.pace * ln_left);
+        const float dxe = left > 1e-4f ? e.pace * (1.f - xe) / left * dxi : 0.f;
+        const float xec = xe < cap ? xe : cap, le = boom_outline_loss(xec);
+        const float dle = xe < cap && xe > bm::compose_erode_x0 && le > 0.05f ? -bm::compose_erode_k * dxe : 0.f;
+        ComposeRef& o = out[m++];
+        for (unsigned q = 0; q < 3; ++q) {
+            o.off[q] = e.cl[0] * ax[0][q] + e.cl[1] * ax[1][q] + e.cl[2] * ax[2][q];
+            o.axis[q] = e.jl[0] * ax[0][q] + e.jl[1] * ax[1][q] + e.jl[2] * ax[2][q];
+        }
+        o.rl = e.rl;
+        o.reach = e.reach;
+        o.rise = rise;
+        o.drise = drise;
+        o.comp = lb / le;
+        o.dcomp = (dlb * le - lb * dle) / (le * le);
+        o.xi = xi;
+        o.dxi = dxi;
+        o.xe = xe;
+        o.dxe = dxe;
+        o.ti = e.ti;
+        const float ol = scalar::sqrt(e.cl[0] * e.cl[0] + e.cl[1] * e.cl[1] + e.cl[2] * e.cl[2]);
+        o.cool = 1.f - bm::compose_offset_cool * (ol < bm::compose_offset ? ol : bm::compose_offset) / bm::compose_offset;
+    }
+    *next_birth = nb;
+    return m;
+}
+// The placement now from the reference at x_ref advanced to x (linear), about C at `unit`: ComposeSphere's R and reach
+// with the compensation (drawn), and est (nullable) the outline's estimate's spheres at unit 1 (R and reach without it,
+// over the drawn-sphere factor).
+inline void boom_compose_advance(const ComposeRef* ref, unsigned m, float x_ref, float x, const float C[3], float unit,
+                                 ComposeSphere* out) noexcept {
+    const float dx = x - x_ref;
+    for (unsigned i = 0; i < m; ++i) {
+        const ComposeRef& r = ref[i];
+        const float rise = r.rise + r.drise * dx, comp = r.comp + r.dcomp * dx;
+        const float sc = unit * (rise > 0.f ? rise : 0.f);
+        ComposeSphere& o = out[i];
+        for (unsigned q = 0; q < 3; ++q) {
+            o.c[q] = C[q] + sc * r.off[q];
+            o.axis[q] = r.axis[q];
+        }
+        o.R = sc * r.rl * comp;
+        o.reach = sc * r.reach * comp;
+        const float xi = r.xi + r.dxi * dx, xe = r.xe + r.dxe * dx;
+        o.xi = xi < 0.f ? 0.f : xi > 1.f ? 1.f : xi;
+        o.xe = xe < 0.f ? 0.f : xe > 1.f ? 1.f : xe;
+        o.ti = r.ti;
+        o.cool = r.cool;
+    }
+}
+// The table at once (the fixture's and the lab's form): the entries of n spheres and `jets` jets, placed.
+inline unsigned boom_compose_table(const float C[3], float unit, float x, float seed, unsigned n, unsigned jets,
+                                   unsigned n_full, bool valid, float r0, float rho, const float ax[3][3],
+                                   ComposeSphere* out, float outline_k = 0.f) noexcept {
+    ComposeEntry en[core::boom::compose_max];
+    const unsigned count = boom_compose_entries(seed, n, jets, n_full, valid, en);
+    return boom_compose_place(en, count, n, jets, C, unit, x, r0, rho, ax, out, outline_k);
+}
+// The mean of the cluster's projected outline over compose_bins rays from its centre (the 10 %-of-peak outline the
+// gates measure, a sphere's outline its drawn radius over the drawn-sphere factor: its R): the composed body's unit is
+// R(t) / this at unit 1.
+inline float boom_compose_outline(const float C[3], const ComposeSphere* sp, unsigned m) noexcept {
+    namespace bm = core::boom;
+    static constexpr float dirs[16][2] = {
+        {1.f, 0.f}, {0.92387953f, 0.38268343f}, {0.70710678f, 0.70710678f}, {0.38268343f, 0.92387953f},
+        {0.f, 1.f}, {-0.38268343f, 0.92387953f}, {-0.70710678f, 0.70710678f}, {-0.92387953f, 0.38268343f},
+        {-1.f, 0.f}, {-0.92387953f, -0.38268343f}, {-0.70710678f, -0.70710678f}, {-0.38268343f, -0.92387953f},
+        {0.f, -1.f}, {0.38268343f, -0.92387953f}, {0.70710678f, -0.70710678f}, {0.92387953f, -0.38268343f}};
+    static_assert(bm::compose_bins == 16, "the outline's rays");
+    float sum = 0.f;
+    for (unsigned k = 0; k < 16; ++k) {
+        float best = 0.f;
+        for (unsigned i = 0; i < m; ++i) {
+            const float ox = sp[i].c[0] - C[0], oy = sp[i].c[1] - C[1];
+            const float r = 0.5f * (sp[i].R + sp[i].reach);
+            const float b = dirs[k][0] * ox + dirs[k][1] * oy, q = r * r - (ox * ox + oy * oy) + b * b;
+            if (q > 0.f) {
+                const float t = b + scalar::sqrt(q);
+                best = t > best ? t : best;
+            }
+        }
+        sum += best;
+    }
+    return sum * (1.f / 16.f);
+}
+// The composed body's charge factor over the single body's (section 7, size_derivation.py; the *_alone rows pin it).
+inline float boom_compose_factor(unsigned n, bool shared) noexcept {
+    namespace bm = core::boom;
+    if (n < 2) return 1.f;
+    return shared ? bm::compose_cost_shared_base + bm::compose_cost_shared_per * float(n)
+                  : bm::compose_cost_base + bm::compose_cost_per * float(n);
+}
+// A body's octave weight 0 .. 2 (disc.w: the third octave's 0 .. 1, then the fourth's; 2026-11-07) from its projected
+// radius `over_px` (px at the target, the third's band start fine_px, the fourth's fine4_px, bands likewise), and its
+// charge per box screen: w2 + (w3 - w2) min(fine, 1) + (w4 - w3) max(fine - 1, 0).
+inline float boom_fine(float r_px, float fine_px, float band_px, float fine4_px, float band4_px) noexcept {
+    const float a = r_px - fine_px, b = r_px - fine4_px;
+    const float f3 = a <= 0.f ? 0.f : a >= band_px ? 1.f : a / band_px;
+    const float f4 = b <= 0.f ? 0.f : b >= band4_px ? 1.f : b / band4_px;
+    return f3 < 1.f ? f3 : 1.f + f4;
+}
+inline float boom_fine_weight(float fine) noexcept {
+    namespace lk = core::look;
+    const float f3 = fine < 1.f ? fine : 1.f, f4 = fine > 1.f ? fine - 1.f : 0.f;
+    return lk::budget_weight_fireball_coarse + (lk::budget_weight_fireball - lk::budget_weight_fireball_coarse) * f3 +
+           (lk::budget_weight_fireball_fine4 - lk::budget_weight_fireball) * f4;
+}
+// Whether the record carries the node's rows (row 2 in dir; boom_rows' fallback otherwise).
+inline bool boom_rows_valid(const core::Event& e) noexcept {
+    const float z[3] = {float(e.dir[0]), float(e.dir[1]), float(e.dir[2])};
+    const float x[3] = {float(std::int8_t(e.alt_rgb332)), float(std::int8_t(e.detail)), float(std::int8_t(e.calibre_q))};
+    return dot3(z, z) >= 0.25f * 127.f * 127.f && dot3(x, x) >= 0.25f * 127.f * 127.f * 0.25f;
+}
+// Section 13.1: the fire wave's front radius (view units) t game ms after the body's birth.
+inline float boom_wave_radius(float r0, float rmax, float tau, float t) noexcept {
+    namespace bm = core::boom;
+    if (rmax < r0) rmax = r0;
+    const float u = t / tau;
+    if (u <= 1.f) {
+        const float w = 1.f - (u > 0.f ? u : 0.f);
+        return r0 + (rmax - r0) * (1.f - w * w * w);
+    }
+    return rmax + bm::wave_creep * (rmax - r0) * (u - 1.f);
+}
+// Section 13.1: the wave's drawn quads, its annulus [ri, ro] (stretched in-plane distance) as eight octagon strips: each
+// the plane's rectangle about phi_k = k pi / 4 (radially ri cos(pi / 8) .. ro, tangentially +-ro sin(pi / 8): the sector
+// lies inside it; the long axis av stretched by `stretch`), +-hh along the normal nv, cut at the near plane (the box's
+// edges crossing it), projected, taken to the screen box oriented along its projected radial direction, one pixel
+// grown each side, and its screens clipped to the target. quad[k][4] the corners in NDC (back-left, back-right,
+// front-left, front-right), screens[k] each one's clipped screens; returns the strips made (those wholly behind the near
+// plane or off the target dropped). The caller keeps the strips only while their sum is under the slab's box.
+struct WaveQuad {
+    float ndc[4][2];
+    float zq;
+    float sector; // its sector k (the program shades the plane's angles (k -+ 1/2) pi / 4 there); -1 the box
+};
+inline float boom_clipped_quad_screens(const float q[4][2]) noexcept {
+    // the parallelogram (corners 0, 1, 3, 2 in order) clipped to [-1, 1]^2 (Sutherland-Hodgman), its area / 4
+    float a[12][2], b[12][2];
+    const unsigned order[4] = {0, 1, 3, 2};
+    unsigned n = 4;
+    for (unsigned i = 0; i < 4; ++i) {
+        a[i][0] = q[order[i]][0];
+        a[i][1] = q[order[i]][1];
+    }
+    for (unsigned e = 0; e < 4 && n; ++e) {
+        const unsigned axis = e >> 1;
+        const float sg = (e & 1u) ? -1.f : 1.f; // keep sg * v <= 1
+        unsigned m = 0;
+        for (unsigned i = 0; i < n; ++i) {
+            const float* p0 = a[i];
+            const float* p1 = a[(i + 1) % n];
+            const float d0 = 1.f - sg * p0[axis], d1 = 1.f - sg * p1[axis];
+            if (d0 >= 0.f && m < 12) {
+                b[m][0] = p0[0];
+                b[m][1] = p0[1];
+                ++m;
+            }
+            if ((d0 >= 0.f) != (d1 >= 0.f) && m < 12) {
+                const float t = d0 / (d0 - d1);
+                b[m][0] = p0[0] + t * (p1[0] - p0[0]);
+                b[m][1] = p0[1] + t * (p1[1] - p0[1]);
+                ++m;
+            }
+        }
+        n = m;
+        for (unsigned i = 0; i < n; ++i) {
+            a[i][0] = b[i][0];
+            a[i][1] = b[i][1];
+        }
+    }
+    float area = 0.f;
+    for (unsigned i = 0; i < n; ++i) {
+        const unsigned j = (i + 1) % n;
+        area += a[i][0] * a[j][1] - a[j][0] * a[i][1];
+    }
+    return 0.125f * (area < 0.f ? -area : area);
+}
+inline unsigned boom_wave_strips(const HullView& f, const float C[3], const float nv[3], const float av[3],
+                                 const float bv[3], float stretch, float ri, float ro, float hh, WaveQuad out[8],
+                                 float screens[8]) noexcept {
+    constexpr float c8 = 0.92387953f, s8 = 0.38268343f;
+    constexpr float cs[8][2] = {{1.f, 0.f}, {0.70710678f, 0.70710678f}, {0.f, 1.f}, {-0.70710678f, 0.70710678f},
+                                {-1.f, 0.f}, {-0.70710678f, -0.70710678f}, {0.f, -1.f}, {0.70710678f, -0.70710678f}};
+    const float u0 = (ri > 0.f ? ri : 0.f) * c8, u1 = ro, hv = ro * s8;
+    const float nz = f.near_z * 1.001f;
+    const float px_x = 2.f / (f.width > 1.f ? f.width : 1.f), px_y = 2.f / (f.height > 1.f ? f.height : 1.f);
+    unsigned made = 0;
+    for (unsigned k = 0; k < 8; ++k) {
+        const float co = cs[k][0], si = cs[k][1];
+        float p[8][3];
+        unsigned front = 0;
+        for (unsigned c = 0; c < 8; ++c) {
+            const float u = (c & 1u) ? u1 : u0, v = (c & 2u) ? hv : -hv, y = (c & 4u) ? hh : -hh;
+            const float ka = stretch * (u * co - v * si), kb = u * si + v * co;
+            for (unsigned q = 0; q < 3; ++q) p[c][q] = C[q] + ka * av[q] + kb * bv[q] + y * nv[q];
+            front += p[c][2] > nz;
+        }
+        if (!front) continue;
+        // the projected points: the corners in front, and where the box's edges cross the near plane
+        float pr[20][2];
+        unsigned np = 0;
+        float zmin = 1e30f;
+        const auto put = [&](const float* q3) {
+            pr[np][0] = f.cam.m00 * q3[0] / q3[2] + f.cam.m20;
+            pr[np][1] = f.cam.m11 * q3[1] / q3[2] + f.cam.m21;
+            ++np;
+            zmin = q3[2] < zmin ? q3[2] : zmin;
+        };
+        for (unsigned c = 0; c < 8; ++c)
+            if (p[c][2] > nz) put(p[c]);
+        if (front < 8)
+            for (unsigned c = 0; c < 8; ++c)
+                for (unsigned bit = 1; bit < 8; bit <<= 1) {
+                    const unsigned d = c | bit;
+                    if (d == c) continue;
+                    const bool fc = p[c][2] > nz, fd = p[d][2] > nz;
+                    if (fc == fd) continue;
+                    const float t = (nz - p[c][2]) / (p[d][2] - p[c][2]);
+                    float q3[3];
+                    for (unsigned q = 0; q < 3; ++q) q3[q] = p[c][q] + t * (p[d][q] - p[c][q]);
+                    q3[2] = nz;
+                    if (np < 20) put(q3);
+                }
+        // the strip's radial direction on screen (pixels): its mid-line's ends when in front, else the screen's x
+        float ax = 1.f, ay = 0.f;
+        {
+            float m0[3], m1[3];
+            for (unsigned q = 0; q < 3; ++q) {
+                m0[q] = C[q] + stretch * u0 * co * av[q] + u0 * si * bv[q];
+                m1[q] = C[q] + stretch * u1 * co * av[q] + u1 * si * bv[q];
+            }
+            if (m0[2] > nz && m1[2] > nz) {
+                const float dx = (f.cam.m00 * m1[0] / m1[2] - f.cam.m00 * m0[0] / m0[2]) / px_x,
+                            dy = (f.cam.m11 * m1[1] / m1[2] - f.cam.m11 * m0[1] / m0[2]) / px_y;
+                const float l2 = dx * dx + dy * dy;
+                if (l2 > 1e-6f) {
+                    const float inv = rsqrt_nr(l2);
+                    ax = dx * inv;
+                    ay = dy * inv;
+                }
+            }
+        }
+        float lo_s = 1e30f, hi_s = -1e30f, lo_t = 1e30f, hi_t = -1e30f;
+        for (unsigned i = 0; i < np; ++i) {
+            const float x = pr[i][0] / px_x, y = pr[i][1] / px_y; // pixels (y up)
+            const float sa = x * ax + y * ay, ta = -x * ay + y * ax;
+            lo_s = sa < lo_s ? sa : lo_s;
+            hi_s = sa > hi_s ? sa : hi_s;
+            lo_t = ta < lo_t ? ta : lo_t;
+            hi_t = ta > hi_t ? ta : hi_t;
+        }
+        lo_s -= 1.f;
+        hi_s += 1.f;
+        lo_t -= 1.f;
+        hi_t += 1.f;
+        WaveQuad& w = out[made];
+        for (unsigned c = 0; c < 4; ++c) {
+            const float sa = (c & 1u) ? hi_s : lo_s, ta = (c & 2u) ? hi_t : lo_t;
+            w.ndc[c][0] = (sa * ax - ta * ay) * px_x;
+            w.ndc[c][1] = (sa * ay + ta * ax) * px_y;
+        }
+        const float sc = boom_clipped_quad_screens(w.ndc);
+        if (!(sc > 0.f)) continue;
+        w.zq = zmin > 1.5f * f.near_z ? zmin : 1.5f * f.near_z;
+        w.sector = float(k);
+        screens[made++] = sc;
+    }
+    return made;
+}
 // Sheds the largest boxes of other owners while the charged screens exceed the budget (the last box moves into the
 // freed place). Returns the boxes shed.
+// stride: the vertices of one box (4; a wave's 4 x wave_quads). Past 16 boxes (2026-11-07 v3: the wave sheds last, so
+// a dense frame sheds most of its 128 glows first) the order is taken once (heap sort by area) and the survivors
+// compacted in their order, not one scan a shed box.
 template <class V>
-inline unsigned shed_largest(V* verts, unsigned* count, BoxMeta* meta, float* total, float budget) noexcept {
+inline unsigned shed_largest(V* verts, unsigned* count, BoxMeta* meta, float* total, float budget,
+                             unsigned stride = 4) noexcept {
     unsigned shed = 0;
+    if (*count > 16u && *count <= 255u && *total > budget) {
+        const unsigned n = *count;
+        std::uint8_t order[255];
+        float key[255];
+        bool gone[255];
+        for (unsigned g = 0; g < n; ++g) {
+            order[g] = std::uint8_t(g);
+            key[g] = meta[g].own ? 3.0e38f : -meta[g].area; // the largest first, the own ship's never
+            gone[g] = false;
+        }
+        renderer::sort_by_key(order, n, key);
+        for (unsigned k = 0; k < n && *total > budget; ++k) {
+            const unsigned g = order[k];
+            if (meta[g].own) break;
+            *total -= meta[g].area;
+            gone[g] = true;
+            ++shed;
+        }
+        unsigned w = 0;
+        for (unsigned g = 0; g < n; ++g) {
+            if (gone[g]) continue;
+            if (w != g) {
+                for (unsigned c = 0; c < stride; ++c) verts[stride * w + c] = verts[stride * g + c];
+                meta[w] = meta[g];
+            }
+            ++w;
+        }
+        *count = w;
+        return shed;
+    }
     while (*total > budget && *count) {
         unsigned big = *count;
         for (unsigned g = 0; g < *count; ++g)
@@ -329,7 +849,7 @@ inline unsigned shed_largest(V* verts, unsigned* count, BoxMeta* meta, float* to
         *total -= meta[big].area;
         const unsigned last = --*count;
         if (big != last) {
-            for (unsigned c = 0; c < 4; ++c) verts[4 * big + c] = verts[4 * last + c];
+            for (unsigned c = 0; c < stride; ++c) verts[stride * big + c] = verts[stride * last + c];
             meta[big] = meta[last];
         }
         ++shed;
@@ -346,7 +866,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     namespace bm = core::boom;
     BoomCounts n{};
     out.sprite_quads = out.glow_boxes = out.fireball_boxes = out.smoke_boxes = out.scorch_boxes = out.shock_boxes = 0;
-    out.halo_boxes = 0;
+    out.halo_boxes = out.wave_boxes = out.wave_shimmer_count = out.composed_boxes = 0;
     auto cap_of = [](const void* p, unsigned cap, unsigned most) { return p ? (cap < most ? cap : most) : 0u; };
     const unsigned sprite_cap = cap_of(out.sprites, out.sprite_cap, bm::max_quads);
     const unsigned glow_cap = cap_of(out.glows, out.glow_cap, renderer::weapon_glow_boxes);
@@ -355,6 +875,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     const unsigned dark_cap = cap_of(out.scorches, out.scorch_cap, renderer::weapon_scorch_boxes);
     const unsigned shock_cap = cap_of(out.shocks, out.shock_cap, renderer::weapon_shock_boxes);
     const unsigned halo_cap = cap_of(out.halos, out.halo_cap, renderer::weapon_halo_boxes);
+    const unsigned wave_cap = cap_of(out.waves, out.wave_cap, bm::max_waves < renderer::weapon_wave_boxes ? bm::max_waves
+                                                                                                           : renderer::weapon_wave_boxes);
     if (!(f.width > 0.f) || !(f.height > 0.f) || !(f.cam.m00 > 0.f) || !(f.cam.m11 > 0.f)) return n;
     const float frame_floor_ms = float(t.min_frames) * float(f.step_ms);
     const Screen sc = screen_of(f);
@@ -365,6 +887,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     const float far_z = visible ? visible->far_z : 0.f;
     const float fine_px = core::look::fireball_fine_px * f.height * (1.f / 1440.f);
     const float fine_band_px = t.fine_band_px * f.height * (1.f / 1440.f);
+    const float fine4_px = core::look::fireball_fine4_px * f.height * (1.f / 1440.f),
+                fine4_band_px = core::look::fireball_fine4_band_px * f.height * (1.f / 1440.f);
     const float view_per_m = metres_to_view(1.f);
     // (A) The live records this frame: latch the first frame, the age, the reach cull; gather the bodies for the cluster.
     struct Live {
@@ -424,6 +948,10 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         reach = reach > sm ? reach : sm;
         reach = reach > ember_reach ? reach : ember_reach;
         reach = reach > bm::shock_r_x * R_f ? reach : bm::shock_r_x * R_f;
+        if (bm::wave_tiers & (1u << tier)) { // the fire wave's box at its creep past r_max
+            const float rw = 1.1f * bm::wave_stretch * bm::wave_r_x * R_f * (1.f + bm::wave_creep);
+            reach = reach > rw ? reach : rw;
+        }
         if (s.hull_kind) { // the hull shape and what leaves it (the secondaries' embers through the pre-roll)
             const float ext = scalar::sqrt(dot3(s.hull_c, s.hull_c)) + scalar::sqrt(dot3(s.hull_e, s.hull_e));
             const float sec_t = age < pre + bm::secondary_life * L ? age : pre + bm::secondary_life * L;
@@ -481,8 +1009,63 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             if (sum > n.max_cluster) n.max_cluster = sum;
         }
     // (C) The elements.
-    unsigned nq = 0, ng = 0, nb = 0, nm = 0, nd = 0, ns = 0, nh = 0;
+    // the composed bodies' LOD by count (2026-11-07, the CPU pass): above compose_count_3 live bodies at most 3 sub-bursts
+    // a body, above compose_count_2 at most 2 (jets first)
+    unsigned live_bodies = 0;
+    for (unsigned a = 0; a < nl; ++a) live_bodies += live[a].R > 0.f;
+    const unsigned compose_cap = live_bodies > bm::compose_count_2 ? 2u : live_bodies > bm::compose_count_3 ? 3u : bm::compose_max;
+    unsigned nq = 0, ng = 0, nb = 0, nm = 0, nd = 0, ns = 0, nh = 0, nw = 0;
     static BoxMeta body_meta[bm::max_bodies], smoke_meta[bm::max_bodies], shock_meta[renderer::weapon_shock_boxes];
+    static BoxMeta wave_meta[renderer::weapon_wave_boxes];
+    // the composed bodies' LOD state (section 13.2): drawn spheres, jets, the hashed N, the shared mode, the charge
+    // before the factor
+    struct Comp {
+        std::uint8_t n, jets, full, shared, valid, jets_full;
+        float base;
+    };
+    static Comp body_comp[bm::max_bodies];
+    static ComposeSphere body_sp[bm::max_bodies][bm::compose_max];
+    static std::uint8_t body_m[bm::max_bodies];
+    static float body_seed[bm::max_bodies][4]; // the noise seed, the lobe seed, L, the body's age fraction
+    // The composed body g's draw constants (renderer::WeaponComposeConstants) from its table: the first c.n spheres and
+    // the first c.jets jets of what is born, each its centre and radius, its jet axis and squeeze, its erosion clock,
+    // seeds and heat, its core.
+    const auto write_compose = [&](unsigned g) {
+        renderer::WeaponComposeConstants& k = out.compose[g];
+        const Comp& c = body_comp[g];
+        unsigned spheres = 0, jets = 0, w = 0;
+        for (unsigned i = 0; i < body_m[g] && w < renderer::weapon_compose_spheres; ++i) {
+            const ComposeSphere& s = body_sp[g][i];
+            const bool jet = s.axis[0] != 0.f || s.axis[1] != 0.f || s.axis[2] != 0.f;
+            if (jet ? jets >= c.jets : spheres >= c.n) continue;
+            jet ? ++jets : ++spheres;
+            float(&q)[4][4] = k.sphere[w++];
+            for (unsigned j = 0; j < 3; ++j) {
+                q[0][j] = s.c[j];
+                q[1][j] = s.axis[j];
+            }
+            q[0][3] = s.R;
+            q[1][3] = jet ? 1.f - bm::compose_jet_short / bm::compose_jet_long : 0.f;
+            q[2][0] = s.xe;
+            q[2][1] = body_seed[g][0] + bm::compose_seed_step * s.ti;
+            q[2][2] = body_seed[g][1] + bm::compose_seed_step * s.ti;
+            q[2][3] = boom_heat_law(s.xi * body_seed[g][2], body_seed[g][2]) * s.cool; // the heat on the age clock
+            // the core on the body's clock (a late sub-burst carries no new white-hot core: a lamp in the frames), gone
+            // at compose_core_x (2026-11-07: N cores to 0.35 L drew white balloons)
+            const float xb = body_seed[g][3];
+            q[3][0] = t.core && xb < bm::compose_core_x ? bm::core_gain * (1.f - xb / bm::compose_core_x) : 0.f;
+            q[3][1] = q[3][2] = q[3][3] = 0.f;
+        }
+        k.head[0] = float(w);
+        k.head[1] = c.shared ? 1.f : 0.f;
+        k.head[2] = k.head[3] = 0.f;
+    };
+    static renderer::WeaponWaveConstants wave_const[renderer::weapon_wave_boxes];
+    static float wave_scr[renderer::weapon_wave_boxes]; // each wave's drawn screens
+    static_assert(bm::wave_quads == renderer::weapon_wave_quads, "the stage's and the pass's quads a wave");
+    float newest_wave = -1.f; // the newest wave's age (its refraction request)
+    x3m::engine_shimmer::WaveRequest wave_req{};
+    float strip_area = 0.f;
     static BoxMeta halo_meta[renderer::weapon_halo_boxes];
     static BoxMeta glow_meta[bm::max_glows];
     static float body_fine[bm::max_bodies];
@@ -708,20 +1291,14 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     bool full = false;
                     if (cb[2] + Rsph > f.near_z && sphere_rect(f, cb, Rsph, rect, &full)) {
                         if (nsec < bm::max_secondaries) {
-                            float fine = 1.f;
-                            if (!full) {
-                                const float over = R * px_x - fine_px * cb[2], band = fine_band_px * cb[2];
-                                fine = over <= 0.f ? 0.f : over >= band ? 1.f : over / band;
-                            }
+                            const float fine = full ? 1.f : boom_fine(R * px_x / cb[2], fine_px, fine_band_px, fine4_px, fine4_band_px);
                             const float look[4] = {T, bm::body_e, x, sseed};
                             const float tint4[4] = {0.f, 0.f, 0.f, 0.f};
                             const float disc[4] = {6.2831853f * unit_of(h_rot), 64.f * unit_of(mix32(h_rot)),
                                                    core::look::fireball_advect * x, fine};
                             const float g = t.core && x < bm::core_x ? bm::core_gain * (1.f - x / bm::core_x) : 0.f;
                             fireball_quad(f, cb, Rsph, rect, full, look, tint4, disc, sec_verts + 4 * nsec, g);
-                            constexpr float w2 = core::look::budget_weight_fireball_coarse,
-                                            w3 = core::look::budget_weight_fireball;
-                            sec_meta[nsec] = BoxMeta{age_ms, e.owner, rect_screens(rect) * (w2 + (w3 - w2) * fine),
+                            sec_meta[nsec] = BoxMeta{age_ms, e.owner, rect_screens(rect) * boom_fine_weight(fine),
                                                      std::uint8_t(keep || lv.own), std::uint8_t(fine > 0.f ? 1 : 0)};
                             sec_fine[nsec] = fine;
                             ++nsec;
@@ -789,29 +1366,184 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         const float seed = 64.f * unit_of(element_hash(seq, 4));
         // Body.
         if (t.body && lv.R > 0.f && body_cap) {
-            const float Rs = lv.R * (cb[2] > lv.R * bm::body_r_sphere && dot3(cb, cb) > lv.R * lv.R * bm::body_r_sphere * bm::body_r_sphere
-                                         ? boom_sphere_factor(lv.R * px_x / cb[2] * (1440.f / f.height))
-                                         : bm::body_r_sphere);
+            const float factor = cb[2] > lv.R * bm::body_r_sphere && dot3(cb, cb) > lv.R * lv.R * bm::body_r_sphere * bm::body_r_sphere
+                                     ? boom_sphere_factor(lv.R * px_x / cb[2] * (1440.f / f.height))
+                                     : bm::body_r_sphere;
+            const float Rs = lv.R * factor;
+            // Section 13.2: the composed body (N sub-bursts in this quad): the hashed N and jets, N compose_n_min under
+            // compose_small_px of R_f; the unit so the cluster's outline follows R(t); the box the cluster's bounding
+            // sphere; the eye inside the cluster: the shared-noise mode, N at most compose_eye_n (jets first).
+            Comp cp{0, 0, 0, 0, 0, 0, 0.f};
+            float Rbox = Rs;
+            ComposeSphere sp[bm::compose_max];
+            unsigned m = 0;
+            if (bm::compose_enabled && t.compose && !simple && out.compose && nb < bm::max_bodies) {
+                const std::uint32_t hc = element_hash(seq, bm::compose_element);
+                const unsigned span_n = bm::compose_n_hi[tier] - bm::compose_n_lo[tier] + 1u;
+                const unsigned span_j = bm::compose_jets_hi[tier] - bm::compose_jets_lo[tier] + 1u;
+                cp.full = std::uint8_t(bm::compose_n_lo[tier] + (hc >> 4) % span_n);
+                cp.n = t.force_n ? std::uint8_t(t.force_n) : cp.full;
+                cp.jets = std::uint8_t(t.force_jets != 0xffu ? t.force_jets : bm::compose_jets_lo[tier] + (hc >> 12) % span_j);
+                cp.jets_full = cp.jets;
+                const float rf_px = lv.c[2] > f.near_z ? lv.R_f * px_x / lv.c[2] * (1440.f / f.height) : 1e9f;
+                if (!t.force_n && rf_px < bm::compose_small_px) {
+                    cp.n = std::uint8_t(bm::compose_n_min);
+                    cp.jets = 0;
+                }
+                while (!t.force_n && cp.n + cp.jets > compose_cap) {
+                    if (cp.jets) --cp.jets;
+                    else --cp.n;
+                }
+                cp.valid = boom_rows_valid(e) ? 1 : 0;
+                const float r0c = lv.R_f > 0.f ? lv.R_0 / lv.R_f : 0.f;
+                // the record's entries (hashed once); its placement at unit 1 (rotated offsets, rise, compensation,
+                // clocks and their slopes) and the outline's estimate refreshed per compose_refresh_* (the CPU pass), each
+                // frame advanced linearly; the unit so the estimate (a sphere's outline its drawn radius over the drawn
+                // sphere's factor; no erosion term: each sub-burst carries its own) follows R(t); the table scales by it
+                // about the biased centre
+                const unsigned sph_full = cp.n > cp.full ? cp.n : cp.full, jets_full = cp.jets_full;
+                ComposeCache* cc = nullptr;
+                for (unsigned k = 0; k < bm::max_bodies; ++k) // the keys first (contiguous), the entry's counts then
+                    if (state.compose_key[k] == seq && state.compose[k].spheres == sph_full &&
+                        state.compose[k].jets == jets_full && state.compose[k].valid == cp.valid) {
+                        cc = &state.compose[k];
+                        break;
+                    }
+                if (!cc) {
+                    const unsigned at = state.compose_next++ % bm::max_bodies;
+                    cc = &state.compose[at];
+                    *cc = ComposeCache{};
+                    state.compose_key[at] = seq;
+                    cc->sequence = seq;
+                    cc->spheres = std::uint8_t(sph_full);
+                    cc->jets = std::uint8_t(jets_full);
+                    cc->valid = cp.valid;
+                    cc->count = std::uint8_t(boom_compose_entries(seed, sph_full, jets_full, cp.full, cp.valid, cc->en));
+                }
+                const std::uint8_t set = std::uint8_t(cp.n | (cp.jets << 3));
+                const float pxc[2] = {cb[2] > f.near_z ? px_x * cb[0] / cb[2] : 0.f,
+                                      cb[2] > f.near_z ? 0.5f * f.height * f.cam.m11 * cb[1] / cb[2] : 0.f};
+                const float mx = pxc[0] - cc->px[0], my = pxc[1] - cc->px[1], dxa = lv.x - cc->x_ref;
+                if (cc->set != set || cc->frames + 1u >= bm::compose_refresh_frames || lv.x >= cc->next_birth ||
+                    !(dxa < bm::compose_refresh_dx && dxa > -bm::compose_refresh_dx) ||
+                    !(mx * mx + my * my <= bm::compose_refresh_px * bm::compose_refresh_px)) {
+                    float rows[3][3], vr[3][3];
+                    boom_rows(e, rows);
+                    for (unsigned k = 0; k < 3; ++k) rotate_world_to_view(f.cam, rows[k], vr[k]);
+                    cc->m = std::uint8_t(boom_compose_ref(cc->en, cc->count, cp.n, cp.jets, lv.x, r0c, bm::tier_rise[tier], vr,
+                                                          cc->ref, &cc->next_birth));
+                    cc->x_ref = lv.x;
+                    cc->px[0] = pxc[0];
+                    cc->px[1] = pxc[1];
+                    cc->set = set;
+                    cc->frames = 0;
+                    ComposeSphere so[bm::compose_max];
+                    const float zero[3] = {0.f, 0.f, 0.f};
+                    boom_compose_advance(cc->ref, cc->m, lv.x, lv.x, zero, 1.f, so);
+                    const float k = 1.f / factor;
+                    for (unsigned i = 0; i < cc->m; ++i) { // the estimate: the radii without the compensation
+                        const float c = cc->ref[i].comp > 1e-6f ? k / cc->ref[i].comp : k;
+                        so[i].R *= c;
+                        so[i].reach *= c;
+                    }
+                    cc->outline = cc->m ? boom_compose_outline(zero, so, cc->m) : 0.f;
+                } else
+                    ++cc->frames;
+                m = cc->m;
+                const float mo = cc->outline;
+                const float unit = mo > 1e-4f ? bm::compose_size[tier] * lv.R / mo : Rs;
+                boom_compose_advance(cc->ref, m, cc->x_ref, lv.x, cb, unit, sp);
+                // the eye's sphere: the one holding it deepest (1 - |c|^2 / R^2 largest; its chords the longest)
+                float bound = 0.f, eye_depth = 0.f;
+                unsigned eye_at = m;
+                for (unsigned i = 0; i < m; ++i) {
+                    float o[3];
+                    for (unsigned q = 0; q < 3; ++q) o[q] = sp[i].c[q] - cb[q];
+                    const float ext = scalar::sqrt(dot3(o, o)) + sp[i].reach;
+                    bound = ext > bound ? ext : bound;
+                    const float R2 = sp[i].R * sp[i].R, depth = R2 > 0.f ? 1.f - dot3(sp[i].c, sp[i].c) / R2 : 0.f;
+                    if (depth > eye_depth) {
+                        eye_depth = depth;
+                        eye_at = i;
+                    }
+                }
+                Rbox = bm::compose_box_margin * (bound > 0.f ? bound : Rs) * t.box_scale;
+                cp.shared = std::uint8_t(eye_at < m || t.force_shared);
+                if (eye_at < m) { // the eye's sphere first (the shared noise is sampled there), N at most compose_eye_n
+                    ++n.compose_eye;
+                    const ComposeSphere first = sp[eye_at];
+                    for (unsigned i = eye_at; i > 0; --i) sp[i] = sp[i - 1];
+                    sp[0] = first;
+                    // the second: the sphere that fills most of the view from the eye (R^2 / |c|^2 largest; no jet)
+                    unsigned best = m;
+                    float best_k = -1.f;
+                    for (unsigned i = 1; i < m; ++i) {
+                        if (sp[i].axis[0] != 0.f || sp[i].axis[1] != 0.f || sp[i].axis[2] != 0.f) continue;
+                        const float d2 = dot3(sp[i].c, sp[i].c), k = sp[i].R * sp[i].R / (d2 > 1e-12f ? d2 : 1e-12f);
+                        if (k > best_k) {
+                            best_k = k;
+                            best = i;
+                        }
+                    }
+                    if (best < m && best > 1) {
+                        const ComposeSphere second = sp[best];
+                        for (unsigned i = best; i > 1; --i) sp[i] = sp[i - 1];
+                        sp[1] = second;
+                    }
+                    while (cp.n + cp.jets > bm::compose_eye_n) {
+                        if (cp.jets) --cp.jets;
+                        else --cp.n;
+                    }
+                }
+                if (!m) cp.n = 0;
+            }
             float rect[4];
             bool full = false;
-            if (cb[2] + Rs > f.near_z && sphere_rect(f, cb, Rs, rect, &full)) {
+            if (cb[2] + Rbox > f.near_z && sphere_rect(f, cb, Rbox, rect, &full)) {
                 if (nb < body_cap) {
-                    float fine = 1.f;
-                    if (!full) {
-                        const float over = lv.R * px_x - fine_px * cb[2], band = fine_band_px * cb[2];
-                        fine = over <= 0.f ? 0.f : over >= band ? 1.f : over / band;
-                    }
+                    // the eye inside (the box the whole screen): three octaves (2026-11-07 v4: the fourth put the eye-inside
+                    // fighter at 309.8 us against the 300 us fence [M])
+                    const float fine = full ? 1.f : boom_fine(lv.R * px_x / cb[2], fine_px, fine_band_px, fine4_px, fine4_band_px);
                     const float look[4] = {lv.T, bm::body_e * sb, lv.x, seed};
                     const float tint4[4] = {0.f, 0.f, 0.f, 0.f};
                     const float disc[4] = {6.2831853f * unit_of(h_rot), 64.f * unit_of(h_lobe),
                                            core::look::fireball_advect * lv.x, fine};
                     // the white-hot core (decision 2026-11-07): g = core_gain (1 - x / core_x) while x < core_x
                     const float g = t.core && lv.x < bm::core_x ? bm::core_gain * (1.f - lv.x / bm::core_x) : 0.f;
-                    fireball_quad(f, cb, Rs, rect, full, look, tint4, disc, out.fireballs + 4 * nb, g);
-                    constexpr float w2 = core::look::budget_weight_fireball_coarse, w3 = core::look::budget_weight_fireball;
-                    body_meta[nb] = BoxMeta{age_ms, e.owner, rect_screens(rect) * (w2 + (w3 - w2) * fine), lv.own,
+                    fireball_quad(f, cb, Rbox, rect, full, look, tint4, disc, out.fireballs + 4 * nb, g);
+                    if (cp.n >= bm::compose_n_min) {
+                        renderer::WeaponFireballVertex* v4 = out.fireballs + 4 * nb;
+                        for (unsigned k = 0; k < 4; ++k) v4[k].disc[2] = core::look::fireball_advect; // x each clock
+                        body_m[nb] = std::uint8_t(m);
+                        for (unsigned i = 0; i < m; ++i) body_sp[nb][i] = sp[i];
+                        body_seed[nb][0] = seed;
+                        body_seed[nb][1] = disc[1];
+                        body_seed[nb][2] = L;
+                        body_seed[nb][3] = lv.x;
+                        ++n.composed;
+                        n.compose_shared += cp.shared;
+                    }
+                    cp.base = rect_screens(rect) * boom_fine_weight(fine);
+                    body_meta[nb] = BoxMeta{age_ms, e.owner, cp.base * boom_compose_factor(cp.n + cp.jets, cp.shared), lv.own,
                                             std::uint8_t(fine > 0.f ? 1 : 0)};
+                    body_comp[nb] = cp;
                     body_fine[nb] = fine;
+                    if (cp.n >= bm::compose_n_min)
+                        write_compose(nb);
+                    else if (bm::compose_enabled && out.compose) { // the N 1 table (the composed draw takes every body box)
+                        renderer::WeaponComposeConstants& k1 = out.compose[nb];
+                        k1 = renderer::WeaponComposeConstants{};
+                        k1.head[0] = 1.f;
+                        float(&q)[4][4] = k1.sphere[0];
+                        for (unsigned j = 0; j < 3; ++j) q[0][j] = cb[j];
+                        q[0][3] = Rs;
+                        q[2][0] = lv.x;
+                        q[2][1] = seed;
+                        q[2][2] = disc[1];
+                        q[2][3] = lv.T;
+                        q[3][0] = g;
+                    }
+                    if (!nb) n.body_R0 = lv.R;
                     ++nb;
                     ++n.bodies;
                     n.fine += fine < 1.f;
@@ -865,6 +1597,195 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         ++n.shocks;
                     } else
                         ++n.capped;
+                }
+            }
+        }
+        // Section 13.1, the fire wave (capital, station): the slab's box from the body's birth to L_w, the plane of the
+        // rows 2 and 1 (the view plane without rows); the newest wave's refraction request through the shimmer pass.
+        if (t.wave && !simple && (bm::wave_tiers & (1u << tier)) && wave_cap) {
+            const float Lw = bm::wave_life_x * L, life = Lw > s.floor_ms ? Lw : s.floor_ms;
+            if (lv.tb < life) {
+                const float r0w = s.hull_kind ? s.hull_e[2] : 0.5f * bm::secondary_capsule_len * float(e.radius) * core::world_scale;
+                const float r = boom_wave_radius(r0w, bm::wave_r_x * lv.R_f, bm::wave_tau_x * L, lv.tb);
+                const float we = bm::wave_w_x * lv.R_f, hh = 0.5f * bm::wave_slab_x * lv.R_f;
+                const float fade = (1.f - lv.tb / life) * (1.f - lv.tb / life);
+                const float Tw = 1.f - bm::wave_t_cool * lv.tb / life; // the age's cooling factor on every T
+                float nv[3], av[3];
+                const bool rows_ok = boom_rows_valid(e);
+                if (rows_ok) {
+                    float rows[3][3];
+                    boom_rows(e, rows);
+                    rotate_world_to_view(f.cam, rows[0], nv);
+                    rotate_world_to_view(f.cam, rows[2], av);
+                } else { // the view plane: the normal to the eye, the long axis the view's x across it
+                    const float k = dist > 1e-6f ? -1.f / dist : 0.f;
+                    for (unsigned q = 0; q < 3; ++q) nv[q] = lv.c[q] * k;
+                    if (!(dist > 1e-6f)) nv[2] = -1.f;
+                    const float xn = nv[0];
+                    for (unsigned q = 0; q < 3; ++q) av[q] = (q == 0 ? 1.f : 0.f) - xn * nv[q];
+                    const float al = dot3(av, av);
+                    const float ka = al > 1e-8f ? rsqrt_nr(al) : 0.f;
+                    for (unsigned q = 0; q < 3; ++q) av[q] *= ka;
+                    if (!(al > 1e-8f)) av[1] = 1.f;
+                    ++n.wave_view_plane;
+                }
+                const float bv[3] = {nv[1] * av[2] - nv[2] * av[1], nv[2] * av[0] - nv[0] * av[2], nv[0] * av[1] - nv[1] * av[0]};
+                // the eye near the plane: the wave x smoothstep(0, wave_eye_fade_x R_f, the eye's in-plane distance from
+                // the band), weighted in within wave_eye_plane_x R_f of the plane (2026-11-07 v3: no white wall)
+                float eye_fade = 1.f;
+                {
+                    const float en = dot3(lv.c, nv), ea = dot3(lv.c, av) / bm::wave_stretch, eb = dot3(lv.c, bv);
+                    const float ad = en < 0.f ? -en : en, de = scalar::sqrt(ea * ea + eb * eb);
+                    const float near_w = (bm::wave_eye_plane_x * lv.R_f - ad) / (bm::wave_eye_plane_blend_x * lv.R_f);
+                    if (near_w > 0.f) {
+                        const float band = bm::wave_band_x * lv.R_f;
+                        const float out_d = de > r ? de - r : de < r - band ? r - band - de : 0.f;
+                        float u = out_d / (bm::wave_eye_fade_x * lv.R_f);
+                        u = u < 1.f ? u : 1.f;
+                        const float sm = u * u * (3.f - 2.f * u), w = near_w < 1.f ? near_w : 1.f;
+                        eye_fade = 1.f - w * (1.f - sm);
+                    }
+                }
+                // the box: the slab's eight corners; any at or behind the near plane: the whole screen
+                const float ro = r + bm::wave_window_out * we, ri = r - bm::wave_window_in * we;
+                float rect[4] = {1.f, 1.f, -1.f, -1.f}, zq = 1e30f;
+                bool full = false;
+                for (unsigned k = 0; k < 8 && !full; ++k) {
+                    const float sa = (k & 1u ? 1.f : -1.f) * bm::wave_stretch * ro, sb = (k & 2u ? 1.f : -1.f) * ro,
+                                sn = (k & 4u ? 1.f : -1.f) * hh;
+                    float p[3];
+                    for (unsigned q = 0; q < 3; ++q) p[q] = lv.c[q] + sa * av[q] + sb * bv[q] + sn * nv[q];
+                    if (!(p[2] > f.near_z)) {
+                        full = true;
+                        break;
+                    }
+                    const float x = f.cam.m00 * p[0] / p[2] + f.cam.m20, y = f.cam.m11 * p[1] / p[2] + f.cam.m21;
+                    rect[0] = x < rect[0] ? x : rect[0];
+                    rect[2] = x > rect[2] ? x : rect[2];
+                    rect[1] = y < rect[1] ? y : rect[1];
+                    rect[3] = y > rect[3] ? y : rect[3];
+                    zq = p[2] < zq ? p[2] : zq;
+                }
+                if (full) {
+                    rect[0] = rect[1] = -1.f;
+                    rect[2] = rect[3] = 1.f;
+                    zq = 1.5f * f.near_z;
+                } else {
+                    rect[0] = rect[0] > -1.f ? rect[0] : -1.f;
+                    rect[1] = rect[1] > -1.f ? rect[1] : -1.f;
+                    rect[2] = rect[2] < 1.f ? rect[2] : 1.f;
+                    rect[3] = rect[3] < 1.f ? rect[3] : 1.f;
+                }
+                // the drawn quads: the annulus's strips while their screens sum under the box's, else the box; none when no
+                // strip reaches the target (the wave wholly off screen or behind the near plane: nothing of it is seen)
+                WaveQuad strips[bm::wave_quads];
+                float sscr[bm::wave_quads];
+                const bool on_screen = rect[2] > rect[0] && rect[3] > rect[1];
+                const unsigned ns_made = on_screen && nw < wave_cap
+                                             ? boom_wave_strips(f, lv.c, nv, av, bv, bm::wave_stretch, ri, ro, hh, strips, sscr)
+                                             : 0u;
+                if (on_screen && nw >= wave_cap)
+                    ++n.capped;
+                else if (ns_made) {
+                    {
+                        float strip_sum = 0.f;
+                        for (unsigned k = 0; k < ns_made; ++k) strip_sum += sscr[k];
+                        const float box = rect_screens(rect);
+                        const bool use_strips = ns_made && strip_sum < box;
+                        unsigned quads = 1;
+                        if (use_strips) {
+                            quads = ns_made;
+                        } else {
+                            WaveQuad& b = strips[0];
+                            for (unsigned k = 0; k < 4; ++k) {
+                                b.ndc[k][0] = rect[k & 1u ? 2 : 0];
+                                b.ndc[k][1] = rect[k & 2u ? 3 : 1];
+                            }
+                            b.zq = zq;
+                            b.sector = -1.f;
+                        }
+                        renderer::WeaponFireballVertex* v4 = out.waves + 4 * bm::wave_quads * nw;
+                        const float s1 = 64.f * unit_of(element_hash(seq, bm::wave_seed_element));
+                        const float s2 = 64.f * unit_of(element_hash(seq, bm::wave_seed_element + 1u));
+                        for (unsigned qd = 0; qd < quads; ++qd) {
+                            const WaveQuad& wq = strips[qd];
+                            const float kx = wq.zq / f.cam.m00, ky = wq.zq / f.cam.m11;
+                            for (unsigned k = 0; k < 4; ++k) {
+                                renderer::WeaponFireballVertex& v = v4[4 * qd + k];
+                                v.corner[0] = (wq.ndc[k][0] - f.cam.m20) * kx;
+                                v.corner[1] = (wq.ndc[k][1] - f.cam.m21) * ky;
+                                v.corner[2] = wq.zq;
+                                for (unsigned q = 0; q < 3; ++q) {
+                                    v.sphere[q] = lv.c[q];
+                                    v.tint[q] = av[q];
+                                }
+                                v.sphere[3] = r;
+                                v.look[0] = we;
+                                v.look[1] = hh;
+                                v.look[2] = Tw;
+                                v.look[3] = bm::wave_e * fade * eye_fade;
+                                v.tint[3] = 1.f / bm::wave_stretch;
+                                v.disc[0] = 0.f;
+                                v.disc[1] = s1;
+                                v.disc[2] = s2;
+                                v.disc[3] = wq.sector;
+                                v.core = 0.f;
+                            }
+                        }
+                        renderer::WeaponWaveConstants& wc = wave_const[nw];
+                        for (unsigned q = 0; q < 3; ++q) wc.normal[q] = nv[q];
+                        wc.heat[0] = Tw;
+                        // the sheet noise's frequency: 1 / (wave_sheet_cell R_f (r / R_f)^wave_sheet_advect)
+                        {
+                            const float q = r / lv.R_f > 1e-3f ? r / lv.R_f : 1e-3f;
+                            const float lq = core::log10f_sse(q) * 2.30258509f * bm::wave_sheet_advect;
+                            const float grow = lq >= 0.f ? 1.f / core::exp_neg(-lq) : core::exp_neg(lq);
+                            wc.normal[3] = 1.f / (bm::wave_sheet_cell * lv.R_f * grow);
+                        }
+                        wc.heat[1] = t.wave_octave2 ? bm::wave_sheet_n_w[1] : 0.f; // the sheet's second octave (0: shed)
+                        wc.heat[2] = bm::wave_hole_cells;
+                        wc.heat[3] = 1.f / bm::wave_hole_stretch;
+                        for (unsigned q = 0; q < 4; ++q) wc.spare[q] = 0.f;
+                        wc.quads = quads;
+                        // the charge: the strips' screens x budget_weight_wave; the box: the annulus's projected screens x
+                        // budget_weight_wave, the rest of it x _miss
+                        float charge = 0.f;
+                        if (use_strips) {
+                            charge = strip_sum * (t.wave_octave2 ? bm::budget_weight_wave : bm::budget_weight_wave_one);
+                        } else {
+                            float ann = 0.f;
+                            const float eye_n = -dot3(lv.c, nv), eye_a = -dot3(lv.c, av) / bm::wave_stretch, eye_b = -dot3(lv.c, bv);
+                            const float d_eye = scalar::sqrt(eye_a * eye_a + eye_b * eye_b);
+                            if (d_eye < r && (eye_n < 0.f ? -eye_n : eye_n) < 3.f * hh) { // the eye in the ring's plane: the wall
+                                const float bar = 0.5f * f.cam.m11 * (2.f * hh + bm::wave_band_x * lv.R_f) / (r - d_eye > we ? r - d_eye : we);
+                                ann = bar < 1.f ? bar : 1.f;
+                            } else {
+                                const float cz = dist > f.near_z ? dist : f.near_z, cosv = (eye_n < 0.f ? -eye_n : eye_n) / (dist > 1e-6f ? dist : 1.f);
+                                const float rin = ri > 0.f ? ri : 0.f;
+                                const float area_w = 3.14159265f * bm::wave_stretch * (ro * ro - rin * rin) * cosv +
+                                                     4.f * bm::wave_stretch * ro * hh * scalar::sqrt(1.f - (cosv < 1.f ? cosv * cosv : 1.f));
+                                ann = 0.25f * area_w * f.cam.m00 * f.cam.m11 / (cz * cz);
+                            }
+                            ann = ann < box ? ann : box;
+                            charge = ann * bm::budget_weight_wave + (box - ann) * bm::budget_weight_wave_miss;
+                        }
+                        wave_scr[nw] = use_strips ? strip_sum : box;
+                        wave_meta[nw] = BoxMeta{age_ms, e.owner, charge, lv.own, 0};
+                        ++nw;
+                        ++n.waves;
+                        if (t.wave_shimmer && out.wave_shimmer && (newest_wave < 0.f || lv.tb < newest_wave)) {
+                            newest_wave = lv.tb;
+                            for (unsigned q = 0; q < 3; ++q) {
+                                wave_req.centre[q] = lv.c[q];
+                                wave_req.normal[q] = nv[q];
+                                wave_req.axis[q] = av[q];
+                            }
+                            wave_req.r = r;
+                            wave_req.band = bm::wave_refract_band * we;
+                            wave_req.stretch = bm::wave_stretch;
+                            wave_req.px = bm::wave_refract_px * f.height * (1.f / 1440.f) * fade;
+                        }
+                    }
                 }
             }
         }
@@ -949,9 +1870,11 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             ember_set(0u, main_embers, zero, s.hull_kind != 0, lv.R, lv.R_0, lv.R_f, lv.x, L, lv.tb, false);
         }
     }
-    // (D) The budget (section 7): past budget, (1) the third octave (hysteresis), (2) smoke largest first,
-    // (3) shocks largest first, (4) other owners' glows largest first, (5) the secondaries past the two newest live ones
-    // of each death, largest first; the bodies, stars, embers and fragments stay.
+    // (D) The budget (section 7; explosion-look.md D42): past budget, (0) the wave's refraction strips, (0a) the waves'
+    // sheet's second octave, (0b) the fourth octave, (1) the third octave (hysteresis), (1b, 1c) the composed bodies' LOD;
+    // then with a wave in the frame (2) other owners' glows and halos, (3) the secondaries past the two newest live ones of
+    // each death, (4) smoke, (5) shocks, (6) the waves; without one (2) smoke, (3) shocks, (4) glows and halos, (5) the
+    // secondaries; largest first each; the bodies, stars, embers and fragments stay.
     // the family's cap below the shared remainder (bm::budget_screens: the close capital's 450 us fence)
     const float budget = f.budget_left < t.budget_screens ? f.budget_left : t.budget_screens;
     float area = star_area, body_area = 0.f;
@@ -959,9 +1882,63 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     for (unsigned g = 0; g < nsec; ++g) area += sec_meta[g].area;
     for (unsigned g = 0; g < nm; ++g) area += smoke_meta[g].area;
     for (unsigned g = 0; g < ns; ++g) area += shock_meta[g].area;
+    for (unsigned g = 0; g < nw; ++g) area += wave_meta[g].area;
+    // the newest wave's refraction strips (charged x the shimmer's weight, shed first: step 0)
+    if (newest_wave >= 0.f) {
+        x3m::engine_shimmer::Projection pj{};
+        pj.m00 = f.cam.m00;
+        pj.m11 = f.cam.m11;
+        pj.m20 = f.cam.m20;
+        pj.m21 = f.cam.m21;
+        pj.width = f.width;
+        pj.height = f.height;
+        x3m::engine_shimmer::Rect strips[x3m::engine_shimmer::wave_strip_count];
+        float ss = 0.f;
+        n.wave_strips = x3m::engine_shimmer::wave_strips(wave_req, pj, f.near_z, strips, &ss);
+        n.wave_strip_screens = ss;
+        // no room left in the shimmer pass for the eight strips (its rects after the engines' and the hull's, the glue's
+        // last count): dropped, logged, not charged and no request (review 2026-11-07)
+        if (n.wave_strips && out.wave_strip_room < x3m::engine_shimmer::wave_strip_count) {
+            n.wave_strips = 0;
+            ++n.wave_strips_dropped;
+        } else if (n.wave_strips) {
+            strip_area = ss * core::hull::budget_weight_shimmer;
+            area += strip_area;
+        } else if (!n.wave_strips_dropped)
+            ++n.wave_strips_capped;
+    }
     for (unsigned g = 0; g < ng; ++g) area += glow_meta[g].area;
     for (unsigned g = 0; g < nh; ++g) area += halo_meta[g].area;
     area += body_area;
+    // (0) the wave's refraction strips past the budget
+    if (strip_area > 0.f && area > budget) {
+        area -= strip_area;
+        strip_area = 0.f;
+        n.wave_strips = 0;
+    }
+    // (0a) the waves' sheet loses its second octave (the charge x budget_weight_wave_one / budget_weight_wave), (0b) the
+    // bodies their fourth octave (the frame's octaves 3), before the third (2026-11-07)
+    for (unsigned g = 0; g < nw && area > budget; ++g)
+        if (wave_const[g].heat[1] > 0.f) {
+            const float now = wave_meta[g].area * (bm::budget_weight_wave_one / bm::budget_weight_wave);
+            area -= wave_meta[g].area - now;
+            wave_meta[g].area = now;
+            wave_const[g].heat[1] = 0.f;
+            ++n.wave_octaves_shed;
+        }
+    if (area > budget && n.octaves > 3u) {
+        const auto drop4 = [&](BoxMeta& mt, float& fine, bool body) {
+            if (!(fine > 1.f)) return;
+            const float now = mt.area * boom_fine_weight(1.f) / boom_fine_weight(fine);
+            area -= mt.area - now;
+            if (body) body_area -= mt.area - now;
+            mt.area = now;
+            fine = 1.f;
+        };
+        for (unsigned g = 0; g < nb; ++g) drop4(body_meta[g], body_fine[g], true);
+        for (unsigned g = 0; g < nsec; ++g) drop4(sec_meta[g], sec_fine[g], false);
+        n.octaves = 3;
+    }
     if (state.octaves_coarse) {
         if (state.coarse_frames >= core::look::fireball_octave_hold && area < core::look::fireball_octave_return * budget)
             state.octaves_coarse = false;
@@ -972,10 +1949,10 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         state.coarse_frames = 1;
     }
     if (state.octaves_coarse) {
-        constexpr float w2 = core::look::budget_weight_fireball_coarse, w3 = core::look::budget_weight_fireball;
+        constexpr float w2 = core::look::budget_weight_fireball_coarse;
         for (unsigned g = 0; g < nb; ++g)
             if (body_meta[g].rank) {
-                const float we = w2 + (w3 - w2) * body_fine[g];
+                const float we = boom_fine_weight(body_fine[g]);
                 const float cut = body_meta[g].area * (we - w2) / we;
                 area -= cut;
                 body_area -= cut;
@@ -983,19 +1960,94 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             }
         for (unsigned g = 0; g < nsec; ++g)
             if (sec_meta[g].rank) {
-                const float we = w2 + (w3 - w2) * sec_fine[g];
+                const float we = boom_fine_weight(sec_fine[g]);
                 const float cut = sec_meta[g].area * (we - w2) / we;
                 area -= cut;
                 sec_meta[g].area -= cut;
             }
         n.octaves = 2;
     }
+    // (1b) the composed bodies' shared-noise mode, (1c) their spheres down one at a time (the largest body first, its last
+    // sphere, then its jets), never under compose_n_min; while the third octave's step holds and the budget is passed
+    if (state.octaves_coarse && area > budget) {
+        const auto recharge = [&](unsigned g) {
+            const Comp& c = body_comp[g];
+            const float now = c.base * boom_compose_factor(c.n + c.jets, c.shared);
+            const float we = boom_fine_weight(body_fine[g]);
+            // the octave cut already applied leaves the coarse share of the charge
+            const float coarse = body_meta[g].rank ? core::look::budget_weight_fireball_coarse / we : 1.f;
+            area += now * coarse - body_meta[g].area;
+            body_area += now * coarse - body_meta[g].area;
+            body_meta[g].area = now * coarse;
+            write_compose(g);
+        };
+        for (unsigned g = 0; g < nb; ++g)
+            if (body_comp[g].n >= bm::compose_n_min && !body_comp[g].shared) {
+                body_comp[g].shared = 1;
+                ++n.compose_shared;
+                recharge(g);
+            }
+        while (area > budget) {
+            unsigned big = nb;
+            for (unsigned g = 0; g < nb; ++g)
+                if (body_comp[g].n >= bm::compose_n_min && body_comp[g].n + body_comp[g].jets > bm::compose_n_min &&
+                    (big == nb || body_meta[g].area > body_meta[big].area))
+                    big = g;
+            if (big == nb) break;
+            Comp& c = body_comp[big];
+            if (c.n > bm::compose_n_min) --c.n;
+            else --c.jets;
+            ++n.compose_dropped;
+            recharge(big);
+        }
+    }
+    // With a wave in the frame (2026-11-07 v3: the wave is the feature): (2) other owners' glows and halos, (3) the
+    // secondaries past the two newest live ones, (4) the smoke, (5) the shocks, (6) the waves last. Without one the
+    // previous order: (2) the smoke, (3) the shocks, (4) glows and halos, (5) the secondaries.
+    if (nw) {
+        n.glows_shed = shed_largest(out.glows, &ng, glow_meta, &area, budget);
+        n.glows_shed += shed_largest(out.halos, &nh, halo_meta, &area, budget);
+        n.secondaries_shed = shed_largest(sec_verts, &nsec, sec_meta, &area, budget);
+    }
     n.smokes_shed = shed_largest(out.smokes, &nm, smoke_meta, &area, budget);
     n.shocks_shed = shed_largest(out.shocks, &ns, shock_meta, &area, budget);
-    n.glows_shed = shed_largest(out.glows, &ng, glow_meta, &area, budget);
-    n.glows_shed += shed_largest(out.halos, &nh, halo_meta, &area, budget);
-    n.secondaries_shed = shed_largest(sec_verts, &nsec, sec_meta, &area, budget);
-    n.shed = n.smokes_shed + n.shocks_shed + n.glows_shed + n.secondaries_shed;
+    {   // the waves with their constants (the shed moves the last box into the freed place: the constants follow)
+        unsigned before = nw;
+        BoxMeta tmp[renderer::weapon_wave_boxes];
+        for (unsigned g = 0; g < nw; ++g) tmp[g] = wave_meta[g];
+        n.waves_shed = shed_largest(out.waves, &nw, wave_meta, &area, budget, 4u * bm::wave_quads);
+        // the survivors keep their own constants: match by the box's age and owner
+        renderer::WeaponWaveConstants kept[renderer::weapon_wave_boxes];
+        float kept_scr[renderer::weapon_wave_boxes];
+        for (unsigned g = 0; g < nw; ++g)
+            for (unsigned h = 0; h < before; ++h)
+                if (tmp[h].age == wave_meta[g].age && tmp[h].owner == wave_meta[g].owner) {
+                    kept[g] = wave_const[h];
+                    kept_scr[g] = wave_scr[h];
+                    break;
+                }
+        for (unsigned g = 0; g < nw; ++g) {
+            wave_const[g] = kept[g];
+            wave_scr[g] = kept_scr[g];
+            n.wave_quads += kept[g].quads;
+            n.wave_screens += kept_scr[g];
+        }
+    }
+    if (newest_wave >= 0.f && out.wave_shimmer && n.wave_strips) { // the request only while a wave is drawn
+        bool drawn = false;
+        for (unsigned g = 0; g < nw; ++g) drawn = drawn || out.waves[4 * bm::wave_quads * g].sphere[3] == wave_req.r;
+        if (drawn) {
+            *out.wave_shimmer = wave_req;
+            out.wave_shimmer_count = 1;
+        } else
+            n.wave_strips = 0;
+    }
+    if (!nw) {
+        n.glows_shed = shed_largest(out.glows, &ng, glow_meta, &area, budget);
+        n.glows_shed += shed_largest(out.halos, &nh, halo_meta, &area, budget);
+        n.secondaries_shed = shed_largest(sec_verts, &nsec, sec_meta, &area, budget);
+    }
+    n.shed = n.smokes_shed + n.shocks_shed + n.waves_shed + n.glows_shed + n.secondaries_shed;
     // the secondaries after the bodies in the fireball buffer
     {
         const unsigned room = out.fireballs && out.fireball_cap > nb ? out.fireball_cap - nb : 0u;
@@ -1017,7 +2069,11 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     out.scorch_boxes = nd;
     out.shock_boxes = ns;
     out.halo_boxes = nh;
+    out.wave_boxes = nw;
+    out.wave_constants = wave_const;
+    out.composed_boxes = n.composed ? nb : 0u;
     n.halos = nh;
+    n.waves = nw;
     return n;
 }
 } // namespace x3m::weapon_effects::stage

@@ -293,3 +293,9 @@ Body gates 1–4 take the median over 8 hits (one hit's coverage depends on its 
 rock spatter and the repair/tug spot per the coordinator's addendum (asteroid dust 2.14 r at peak 0.18 on black;
 repair glow 0.83 r at 0.30, no pixel warmer than blue). Size derivation kept the doubled R_b: the fighter target band
 is 6.3–7.2 m (at least 10 px at 1440 rows at the typical distance, at most a third of the hull) and 6.77 m sits inside it.
+
+**Composed hull bursts (explosion-look.md 13.2): deferred.** The capital-calibre rule (R_b ≥ `boom::compose_hull_r_m`
+60 m composes at N 3, no jets) is not built: every hull burst keeps the single sphere of `weapon_fireball_ps.hlsl`,
+whose source and bytecode the composed death body left unchanged (it draws with its own `weapon_compose_ps.hlsl`); the
+fourth octave (explosion-look.md D41, 2026-11-07) changed both: a burst past 160 px of projected radius blends it in, a
+burst with the eye inside keeps three.

@@ -51,8 +51,9 @@ constexpr float weapon_ring_band_px = 3.f;
 // up to the whole screen with the full program and the union copy (the stage arms no band past it either).
 constexpr float weapon_ring_max_screens = .25f;
 constexpr unsigned ring_slots = 2;            // the weapon rects' shock rings (weapon_max_rects; c68..c75)
-constexpr unsigned constant_vectors = 4 + 4 * max_rects + 3 * ring_slots + 2; // c0..c75 (c52..c67: the rects' strength,
-                                                                               // 2026-11-06; c68..c75 the rings, 2026-11-07)
+constexpr unsigned constant_vectors = 4 + 4 * max_rects + 4 * ring_slots + 2; // c0..c77 (c52..c67: the rects' strength,
+                                                                               // 2026-11-06; c68..c75 the rings, 2026-11-07;
+                                                                               // c76..c77 the rings' plane normals, 13.1)
 constexpr unsigned vertices_per_rect = 6;      // two triangles (TRIANGLELIST)
 
 // ----------------------------------------------------------------------------------------------------- options
@@ -118,6 +119,12 @@ struct Rect {
     // strength (0: no ring, every engine rect) and the unjittered projection's m00, m11, m20, m21, m22, m32.
     float ring_centre[3]{}, ring_r = 0.f, ring_axis[3]{}, ring_band = 0.f, ring_px[2]{}, ring_strength = 0.f;
     float ring_proj[6]{};
+    // A death fire wave's plane mode (docs/architecture/explosion-look.md 13.1; wave_strips): the ray through the pixel
+    // meets the plane (normal ring_normal, view, unit) through ring_centre; a point whose stretched distance lies in
+    // [ring_r, ring_r + ring_band] (sky included; a hull in front of the plane point excluded) is displaced outward from
+    // the centre's pixel by ring_strength pixels x 4 u (1 - u), u its share of the band, beside the amplitude's field.
+    float ring_normal[3]{};
+    float ring_plane = 0.f; // 1: the plane mode (c72+k.w)
 };
 // A weapon hit's request (the hull hits' plasma and heavy classes, docs/architecture/hull-impact-classes.md 3.8;
 // weapon_effects_hull.h builds them, the glue turns them into rects after the engines'): view space, the hit point, the
@@ -133,6 +140,14 @@ struct WeaponRequest {
     std::uint8_t own = 0, has_axis = 0;
     float ring_r = 0.f, ring_strength = 0.f, ring_stretch = 1.f;
 };
+// A death fire wave's refraction request (explosion-look.md 13.1; weapon_effects_boom.h builds the newest wave's): view
+// space, the wave's centre, its plane's normal and long axis (unit), the front's radius, the band ahead of it (view units),
+// the stretch along the long axis and the displacement (pixels at the target; 0: none).
+struct WaveRequest {
+    float centre[3]{}, normal[3]{}, axis[3]{};
+    float r = 0.f, band = 0.f, stretch = 1.f, px = 0.f;
+};
+constexpr unsigned wave_strip_count = 8;
 struct Stats {
     unsigned candidates = 0; // scene-view records
     unsigned behind = 0;     // nozzle at or behind the near plane
@@ -464,6 +479,9 @@ inline void constants(const Rect* rects, unsigned n, float amplitude, float seco
         rc[0] = r.ring_px[0];
         rc[1] = r.ring_px[1];
         rc[2] = r.ring_strength;
+        rc[3] = r.ring_plane;
+        float* rn = out + (4 + 4 * max_rects + 3 * ring_slots + 2 + rings) * 4;
+        for (unsigned j = 0; j < 3; ++j) rn[j] = r.ring_normal[j];
         if (!rings) {
             float* pr = out + (4 + 4 * max_rects + 3 * ring_slots) * 4;
             for (unsigned j = 0; j < 6; ++j) pr[j] = r.ring_proj[j];
@@ -560,6 +578,89 @@ inline bool weapon_ring(const float centre[3], float ring_r, const float* axis, 
     const float proj[6] = {p.m00, p.m11, p.m20, p.m21, p.m22, p.m32};
     for (unsigned j = 0; j < 6; ++j) r->ring_proj[j] = proj[j];
     return true;
+}
+// A death fire wave's band refraction (explosion-look.md 13.1): the band's eight octagon strips, each the plane's
+// rectangle about direction phi_k = k pi / 4 (in the stretched plane: radially from r cos(pi / 8) to r + band,
+// tangentially +-(r + band) sin(pi / 8), so the band's arc lies inside it) projected and taken to the screen's oriented
+// box along its projected radial direction; the strips draw no plume noise (half-width < 0 in the program: the mask is
+// skipped) and the first carries the plane-mode ring (one ring slot). Into out[0..7]; returns the strips made (0 with a
+// corner behind the near plane, a degenerate request or projection, or the strips' boxes summing past
+// weapon_ring_max_screens of the target: the wave is then drawn without its band), *screens their summed quads.
+inline unsigned wave_strips(const WaveRequest& w, const Projection& p, float near_z, Rect* out, float* screens) noexcept {
+    if (screens) *screens = 0.f;
+    if (!out || !(w.r > 0.f) || !(w.band > 0.f) || !(w.px > 0.f) || !(p.m00 > 0.f) || !(p.m11 > 0.f) || !(p.width > 0.f) ||
+        !(p.height > 0.f))
+        return 0;
+    const float s = w.stretch > 1.f ? w.stretch : 1.f;
+    const float b[3] = {w.normal[1] * w.axis[2] - w.normal[2] * w.axis[1], w.normal[2] * w.axis[0] - w.normal[0] * w.axis[2],
+                        w.normal[0] * w.axis[1] - w.normal[1] * w.axis[0]};
+    constexpr float c8 = 0.92387953f, s8 = 0.38268343f; // cos, sin pi / 8
+    constexpr float cs[8][2] = {{1.f, 0.f}, {0.70710678f, 0.70710678f}, {0.f, 1.f}, {-0.70710678f, 0.70710678f},
+                                {-1.f, 0.f}, {-0.70710678f, -0.70710678f}, {0.f, -1.f}, {0.70710678f, -0.70710678f}};
+    const float u0 = w.r * c8, u1 = w.r + w.band, hv = (w.r + w.band) * s8;
+    unsigned made = 0;
+    float total = 0.f;
+    for (unsigned k = 0; k < wave_strip_count; ++k) {
+        const float co = cs[k][0], si = cs[k][1];
+        // the plane point at stretched (u, v) about phi_k: C + s a (u cos - v sin) + b (u sin + v cos)
+        float pts[6][3];
+        const float uv[6][2] = {{u0, -hv}, {u0, hv}, {u1, -hv}, {u1, hv}, {u0, 0.f}, {u1, 0.f}};
+        for (unsigned c = 0; c < 6; ++c) {
+            const float ka = s * (uv[c][0] * co - uv[c][1] * si), kb = uv[c][0] * si + uv[c][1] * co;
+            for (unsigned j = 0; j < 3; ++j) pts[c][j] = w.centre[j] + ka * w.axis[j] + kb * b[j];
+            if (!(pts[c][2] > near_z)) return 0;
+        }
+        float px[6][2];
+        for (unsigned c = 0; c < 6; ++c) detail::project(p, pts[c], px[c]);
+        float axis[2] = {px[5][0] - px[4][0], px[5][1] - px[4][1]};
+        const float l2 = axis[0] * axis[0] + axis[1] * axis[1];
+        if (l2 > 1e-8f) {
+            const float inv = 1.f / x3m::scalar::sqrt(l2);
+            axis[0] *= inv;
+            axis[1] *= inv;
+        } else {
+            axis[0] = 1.f;
+            axis[1] = 0.f;
+        }
+        float lo = 0.f, hi = 0.f, half = 0.f;
+        for (unsigned c = 0; c < 4; ++c) {
+            const float rx = px[c][0] - px[4][0], ry = px[c][1] - px[4][1];
+            const float sa = rx * axis[0] + ry * axis[1], ta = -rx * axis[1] + ry * axis[0];
+            lo = sa < lo ? sa : lo;
+            hi = sa > hi ? sa : hi;
+            const float at = ta < 0.f ? -ta : ta;
+            half = at > half ? at : half;
+        }
+        Rect r{};
+        if (!detail::finite2(px[4]) || !make_rect(px[4], axis, hi + 1.f, half + 1.f, -lo + 1.f, 0.f, 0.f, 0.f, p.width,
+                                                  p.height, &r))
+            continue;
+        r.half_width = -1.f; // no plume noise: the program's mask test fails, the drawn quad and box stay
+        r.strength = 0.f;
+        total += (hi - lo + 4.f) * 2.f * (half + 2.f); // the drawn quad (the strip plus a pixel each side)
+        out[made++] = r;
+    }
+    total /= p.width * p.height;
+    if (screens) *screens = total;
+    if (!made || !(total <= weapon_ring_max_screens)) return 0;
+    Rect& f = out[0];
+    float origin[2];
+    detail::project(p, w.centre, origin);
+    const float k = x3m::scalar::sqrt(1.f - 1.f / (s * s));
+    for (unsigned j = 0; j < 3; ++j) {
+        f.ring_centre[j] = w.centre[j];
+        f.ring_axis[j] = w.axis[j] * k;
+        f.ring_normal[j] = w.normal[j];
+    }
+    f.ring_r = w.r;
+    f.ring_band = w.band;
+    f.ring_px[0] = origin[0];
+    f.ring_px[1] = origin[1];
+    f.ring_strength = w.px;
+    f.ring_plane = 1.f;
+    const float proj[6] = {p.m00, p.m11, p.m20, p.m21, p.m22, p.m32};
+    for (unsigned j = 0; j < 6; ++j) f.ring_proj[j] = proj[j];
+    return made;
 }
 inline void mask_at(const Rect& r, float px, float py, float* out) noexcept {
     const float rx = px - r.origin[0], ry = py - r.origin[1];

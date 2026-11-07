@@ -1293,7 +1293,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         report("hull_budget_shed", b.n.shed > 0 && (b.n.screens - b.n.flash_screens <= 0.5f || (b.boxes == 0 && b.bursts <= 2)) &&
                                        b.n.sparks == sparks_full && b.n.flashes == a.n.flashes && c.n.shed == 0 &&
                                        c.boxes == boxes_full, "");
-        report("hull_budget_burst_lod_then_shed", a.bursts > 0 && a.n.octaves == 3 && b.n.octaves == 2 && b.n.bursts_shed > 0 &&
+        report("hull_budget_burst_lod_then_shed", a.bursts > 0 && a.n.octaves == wc::look::fireball_octaves && b.n.octaves == 2 && b.n.bursts_shed > 0 &&
                                                       b.bursts + b.n.bursts_shed == a.bursts && b.rings == a.rings &&
                                                       c.bursts == a.bursts && c.n.bursts_shed == 0, "");
     }
@@ -2203,6 +2203,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     hq_smokes[q] = hq_fireballs[q];
                     for (unsigned k = 0; k < 3; ++k) hq_smokes[q].tint[k] = 0.3f * hl::scorch_colour[k];
                     hq_smokes[q].tint[3] = -1.f;
+                    // a smoke keeps three octaves (the stages cap its disc.w at 1; 2026-11-07 v3, the fourth octave)
+                    if (hq_smokes[q].disc[3] > 1.f) hq_smokes[q].disc[3] = 1.f;
                 }
                 f.smokes = hq_smokes;
                 f.smoke_boxes = o.bursts;

@@ -2257,6 +2257,9 @@ private:
     bool weapon_hull_requested_ = false;
     engine_shimmer::WeaponRequest weapon_shimmer_rects_[engine_shimmer::weapon_max_rects]{};
     unsigned weapon_shimmer_count_ = 0;
+    engine_shimmer::WaveRequest weapon_wave_shimmer_{}; // the newest death fire wave's refraction (explosion-look.md 13.1)
+    unsigned weapon_wave_shimmer_count_ = 0;
+    unsigned shimmer_rects_before_wave_ = 0; // the engines' and hull's shimmer rects last frame (the strips' room)
     std::uint64_t weapon_shimmer_frame_ = ~std::uint64_t(0);
     bool weapon_state_logged_ = false, weapon_logged_armed_ = false;
     // This frame's ownership inputs (core::stage_owned): the callback was set, it ran and returned S_OK / S_FALSE, and the

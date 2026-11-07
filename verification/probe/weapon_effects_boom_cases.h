@@ -15,16 +15,31 @@ rr::WeaponGlowVertex glows[rr::weapon_glow_boxes * 4], darks[rr::weapon_scorch_b
 constexpr unsigned body_boxes = bm::max_bodies + bm::max_secondaries;
 rr::WeaponFireballVertex bodies[body_boxes * 4], smokes[bm::max_bodies * 4], shocks[rr::weapon_shock_boxes * 4];
 rr::WeaponGlowVertex halos[rr::weapon_halo_boxes * 4];
+rr::WeaponFireballVertex waves[rr::weapon_wave_boxes * 4 * rr::weapon_wave_quads]; // section 13.1: the fire waves' quads
+x3m::engine_shimmer::WaveRequest wave_req;                 // the newest wave's refraction request
+rr::WeaponComposeConstants compose[bm::max_bodies];        // section 13.2: the composed bodies' tables
 struct Out {
     ws::BoomCounts n;
-    unsigned quads = 0, glows = 0, bodies = 0, smokes = 0, darks = 0, shocks = 0, halos = 0;
+    unsigned quads = 0, glows = 0, bodies = 0, smokes = 0, darks = 0, shocks = 0, halos = 0, waves = 0, wave_shimmer = 0;
+    unsigned composed = 0;
+    const rr::WeaponWaveConstants* wave_constants = nullptr;
 };
 // Parts (the dump's and the gates' isolation): bit per element.
 // p_secondary: the big tiers' secondaries (each with its star, glow and embers); the hull light rides on p_glow.
+// p_wave: section 13.1's fire wave (capital, station).
 enum Part : unsigned { p_flash = 1, p_body = 2, p_shock = 4, p_ember = 8, p_fragment = 16, p_glow = 32, p_smoke = 64,
-                       p_halo = 128, p_secondary = 256, p_all = 511 };
-const char* const part_names[9] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo", "secondary"};
-constexpr unsigned part_count = 9;
+                       p_halo = 128, p_secondary = 256, p_wave = 512, p_all = 1023 };
+const char* const part_names[10] = {"flash", "body", "shock", "ember", "fragment", "glow", "smoke", "halo", "secondary",
+                                    "wave"};
+constexpr unsigned part_count = 10;
+// Section 13.2's composed body in the builds (off: the single sphere; the drift-law ring gate measures one sphere), the
+// fixture's compose rows (force_n, force_shared, force_jets 0xff: the law's) and the box gate's growth.
+bool compose_on = true, force_shared = false;
+bool wave_octave2 = true; // the wave sheet's second octave (the one-octave weight row: false)
+bool wave_off = false;     // the CPU rows' reference without the waves
+unsigned octave_cap = 4;   // the frame's octaves at most (the fourth octave's timing row: 3)
+unsigned force_n = 0, force_jets = 0xffu;
+float box_scale = 1.f;
 // The body's white-hot core in the builds (the geometry gates, sizes and erosion, measure the law's outline with it off:
 // the core is a radiance term inside 0.5 R that would raise the 10 %-of-peak threshold).
 bool core_on = true;
@@ -50,6 +65,13 @@ ws::BoomTuning tuning(unsigned parts) {
     t.core = core_on;
     t.force_shock = force_shock;
     t.budget_screens = cap_screens;
+    t.wave = (parts & p_wave) && !wave_off;
+    t.compose = compose_on;
+    t.wave_octave2 = wave_octave2;
+    t.force_n = force_n;
+    t.force_jets = force_jets;
+    t.force_shared = force_shared;
+    t.box_scale = box_scale;
     return t;
 }
 ws::HullView view(const Target& t, std::uint32_t now, std::uint32_t step) {
@@ -112,6 +134,10 @@ Out build(const ws::HullView& v, unsigned parts = p_all) {
     b.halos = halos;
     b.halo_cap = rr::weapon_halo_boxes;
     b.shock_cap = rr::weapon_shock_boxes;
+    b.waves = waves;
+    b.wave_cap = rr::weapon_wave_boxes;
+    b.wave_shimmer = &wave_req;
+    b.compose = compose;
     o.n = ws::build_boom(stage_ring, state, v, tuning(parts), b, nullptr, bubbles);
     o.quads = b.sprite_quads;
     o.glows = b.glow_boxes;
@@ -120,6 +146,10 @@ Out build(const ws::HullView& v, unsigned parts = p_all) {
     o.darks = b.scorch_boxes;
     o.shocks = b.shock_boxes;
     o.halos = b.halo_boxes;
+    o.waves = b.wave_boxes;
+    o.wave_shimmer = b.wave_shimmer_count;
+    o.composed = b.composed_boxes;
+    o.wave_constants = b.wave_constants;
     return o;
 }
 rr::WeaponEffectsFrame frame(Target& t, const Out& o, const ws::HullView& v) {
@@ -132,7 +162,7 @@ rr::WeaponEffectsFrame frame(Target& t, const Out& o, const ws::HullView& v) {
     f.glow_boxes = o.glows;
     f.fireballs = bodies;
     f.fireball_boxes = o.bodies;
-    f.fireball_octaves = o.n.octaves;
+    f.fireball_octaves = o.n.octaves < octave_cap ? o.n.octaves : octave_cap;
     f.smokes = smokes;
     f.smoke_boxes = o.smokes;
     f.scorches = darks;
@@ -141,6 +171,11 @@ rr::WeaponEffectsFrame frame(Target& t, const Out& o, const ws::HullView& v) {
     f.shock_boxes = o.shocks;
     f.halos = halos;
     f.halo_boxes = o.halos;
+    f.waves = waves;
+    f.wave_boxes = o.waves;
+    f.wave_constants = o.wave_constants;
+    f.compose = compose;
+    f.composed_boxes = o.composed;
     return f;
 }
 std::vector<float> render(rr::WeaponEffectsPass& pass, Target& t, const Out& o, const ws::HullView& v,
@@ -251,16 +286,6 @@ std::vector<float> render_hull(rr::WeaponEffectsPass& pass, Target& t, const Out
     if (result) *result = hr;
     return read_rgb(t, t.scene_s.p);
 }
-// The drawn sphere's factor of body box k (its radius over R(t): the stage's boom_sphere_factor at the box's centre).
-double sphere_of(const Target& t, unsigned k) {
-    const ws::HullView v = view(t, 0, 16);
-    const float* s = bodies[4 * k].sphere;
-    const float r = s[3], z = s[2], px_x = 0.5f * float(t.w) * v.cam.m00;
-    // the factor depends on R px; R = r / factor: solve by two fixed-point steps from body_r_sphere
-    float fct = bm::body_r_sphere;
-    for (unsigned i = 0; i < 4; ++i) fct = ws::boom_sphere_factor(r / fct * px_x / z * 1440.f / float(t.h));
-    return fct;
-}
 // A big-tier death broadside to the identity camera: row 2 (the forward axis, the capsule's) along view +x, row 0 along
 // +z, row 1 = row 2 x row 0 (-y).
 void broadside(wc::Event* e) {
@@ -269,6 +294,15 @@ void broadside(wc::Event* e) {
     e->alt_rgb332 = 0;
     e->detail = 0;
     e->calibre_q = 127;
+}
+// The same hull seen from above (section 13.1's -above frames): row 2 along +x, row 0 along +y (the wave's plane, rows 2
+// and 1, the view's x-z plane: edge-on).
+void from_above(wc::Event* e) {
+    e->dir[0] = 127;
+    e->dir[1] = e->dir[2] = 0;
+    e->alt_rgb332 = 0;
+    e->detail = 127;
+    e->calibre_q = 0;
 }
 std::vector<float> luma(const std::vector<float>& rgb) {
     std::vector<float> l(rgb.size() / 3);
@@ -351,10 +385,12 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                            pass.caps().shock_ps_slots > 0 && pass.caps().halo_ps_slots > 0,
            pass.caps().boom_reason);
     std::printf("EXPLOSION case=attach boom=%u reason=%s shock=%u shock_reason=%s shock_ps_slots=%u halo_ps_slots=%u "
-                "max_ps_slots=%lu\n",
+                "wave=%u wave_reason=%s wave_ps_slots=%u fireball_ps_slots=%u max_ps_slots=%lu\n",
                 unsigned(pass.caps().boom_enabled), pass.caps().boom_reason, unsigned(pass.caps().shock_enabled),
                 pass.caps().shock_reason, pass.caps().shock_ps_slots, pass.caps().halo_ps_slots,
-                static_cast<unsigned long>(caps.MaxPixelShader30InstructionSlots));
+                unsigned(pass.caps().wave_enabled), pass.caps().wave_reason, pass.caps().wave_ps_slots,
+                pass.caps().fireball_ps_slots, static_cast<unsigned long>(caps.MaxPixelShader30InstructionSlots));
+    report("wave_program_attached", pass.caps().wave_enabled && pass.caps().wave_ps_slots > 0, pass.caps().wave_reason);
     const float m = ws::metres_to_view(1.f);
     // One death latched at t0 1000 (16 ms steps), then the frame at game age `age` (ms; the stage's age from its first
     // frame). The record's own builds advance the stage state (the first frame latches).
@@ -421,7 +457,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             float c[3];
             boom::body_centre(o, c);
             const ws::HullView v = boom::view(t1440, 0, 16);
-            floor_px = o.bodies ? double(boom::bodies[0].sphere[3]) / bm::body_r_sphere * 0.5 * t1440.w * v.cam.m00 / c[2] : 0;
+            floor_px = o.bodies ? double(o.n.body_R0) * 0.5 * t1440.w * v.cam.m00 / c[2] : 0;
             law_px = double(ws::boom_r_f_m(*e)) * m * 0.5 * t1440.w * v.cam.m00 / (3000.0 * m);
             t1440.release();
         }
@@ -496,6 +532,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         // gate's measure (classes::burst::ring_of about the drawn sphere's centre and R_s) on the same 16 fighter bodies at
         // 0.5 / 0.6 / 0.7 L: every body's prominence <= 0.15, the pooled annulus 0.3-0.45 R_s lit share <= 1.3 x its
         // neighbours'.
+        boom::compose_on = false; // one sphere: the drift law's measure about the drawn sphere (13.2: each sub-burst the same)
         bool ring_ok = true;
         for (float frac : {0.5f, 0.6f, 0.7f}) {
             std::vector<double> prom;
@@ -535,6 +572,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             ring_ok = ring_ok && worst <= 0.15 && ratio <= 1.3;
         }
         report("death_body_no_centre_ring", ring_ok, "");
+        boom::compose_on = true;
     }
     boom::core_on = true;
     // ---- 4b. death_body_white_hot_core (decision 2026-11-07): at 0.1 L the body itself carries the white heat: the median
@@ -582,7 +620,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (!fi && o.bodies) {
                 float c[3];
                 boom::body_centre(o, c);
-                first_px = double(boom::bodies[0].sphere[3]) / bm::body_r_sphere * 0.5 * g.w * v.cam.m00 / c[2];
+                first_px = double(o.n.body_R0) * 0.5 * g.w * v.cam.m00 / c[2];
                 r0_px = 0.5 * double(e->radius) * wc::world_scale * 0.5 * g.w * v.cam.m00 / c[2];
             }
         }
@@ -898,10 +936,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         latch(g);
         draw_lane(g, 605.f * m, 1.f);
         bool zero = true;
-        const float lives[9] = {bm::star_ms / Lf + 0.03f, 1.0f, bm::shock_end + 0.01f,
+        const float lives[10] = {bm::star_ms / Lf + 0.03f, 1.0f, bm::shock_end + 0.01f,
                                 bm::ember_life[2] * (1.f + 0.5f * bm::ember_stagger) + 0.01f,
                                 bm::fragment_life * (1.f + 0.5f * bm::ember_stagger) + 0.01f, 1.0f,
-                                bm::smoke_t0 + bm::smoke_span + 0.01f, 1.0f, 1.0f};
+                                bm::smoke_t0 + bm::smoke_span + 0.01f, 1.0f, 1.0f, bm::wave_life_x + 0.01f};
         for (unsigned p = 0; p < boom::part_count; ++p) {
             const Out o = at(g, lives[p] * Lf, 1u << p);
             const unsigned n = o.quads + o.glows + o.bodies + o.smokes + o.darks + o.shocks + o.halos;
@@ -927,8 +965,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         for (unsigned b = 0; b < 3 && b < o.bodies; ++b) {
             Out one = o;
             one.bodies = 1;
+            one.composed = o.composed ? 1u : 0u; // section 13.2: the body's own table
             rr::WeaponEffectsFrame f1 = boom::frame(g, one, v);
             f1.fireballs = boom::bodies + 4 * b;
+            f1.compose = boom::compose + b;
             dev->BeginScene();
             dev->SetRenderTarget(0, g.scene_s.p);
             dev->Clear(0, nullptr, D3DCLEAR_TARGET, black, 1.f, 0);
@@ -1041,12 +1081,14 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 }
                 return best;
             };
+            Out last_case; // the last run_case's build (the wave's drawn screens)
             const auto run_case = [&](const char* name, unsigned parts, float frac, auto&& place) {
                 boom::clear();
                 place();
                 boom::build(boom::view(tt, 1000, 16));
                 ws::HullView v = boom::view(tt, 1000 + std::uint32_t(frac * Lf), 16);
                 const Out o = boom::build(v, parts);
+                last_case = o;
                 const double us = time_frame(o, v);
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=%s bodies=%u quads=%u glows=%u smokes=%u shocks=%u "
                             "octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f\n",
@@ -1058,6 +1100,28 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const double fence_us = run_case("fence_empty", boom::p_all, 0.1f, [&] {}); // no death: the fence's own cost
             // the alone rows: an element whose box is the whole screen (the eye inside a body, a shell or a smoke)
             run_case("body_alone_fills_frame", boom::p_body, 0.3f, [&] { fighter(10.0); });
+            // the fourth octave (2026-11-07 v3; review: seen from outside, an eye-inside body keeps three): the single body
+            // with the eye at 2 R from its centre (R the drawn sphere's), four octaves against three; its weight per screen
+            // (budget_weight_fireball_fine4) as budget_weight_fireball x the ratio of the costs, the fence removed
+            {
+                boom::compose_on = false;
+                boom::clear();
+                const wc::Event* ef = fighter(600.0);
+                const float R_ff = ws::boom_r_f_m(*ef) * m, R0f = 0.5f * float(ef->radius) * wc::world_scale;
+                const double z2 = 2.0 * double(ws::boom_body_radius(bm::fighter, R_ff, R0f, 0.3f * Lf)) *
+                                  double(bm::body_r_sphere) / double(m);
+                const double u4 = run_case("body_four_octaves_fills_frame", boom::p_body, 0.3f, [&] { fighter(z2); });
+                const double scr = double(last_case.n.screens);
+                boom::octave_cap = 3;
+                const double u3 = run_case("body_three_octaves_fills_frame", boom::p_body, 0.3f, [&] { fighter(z2); });
+                boom::octave_cap = 4;
+                boom::compose_on = true;
+                std::printf("EXPLOSION_TIMING width=%u height=%u case=fine4_weight four_us=%.1f three_us=%.1f charged=%.3f "
+                            "weight4=%.3f pinned4=%.2f pinned3=%.2f\n",
+                            size.first, size.second, u4, u3, scr,
+                            u3 > fence_us ? double(wc::look::budget_weight_fireball) * (u4 - fence_us) / (u3 - fence_us) : 0.0,
+                            double(wc::look::budget_weight_fireball_fine4), double(wc::look::budget_weight_fireball));
+            }
             run_case("smoke_alone_fills_frame", boom::p_smoke, 0.8f, [&] { fighter(10.0); });
             // the missile's shell (forced on) 24 m in radius at 0.1 L about a point 30 m out: most of the screen; its weight
             // per screen against the decal's 177.5 us, the fence removed (budget_weight_shock)
@@ -1079,6 +1143,96 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             boom::force_shock = false;
             run_case("star_alone", boom::p_flash, 0.f, [&] { fighter(60.0); });
             run_case("halo_alone", boom::p_halo, 0.3f, [&] { fighter(45.0); }); // the eye just outside the body, inside its halo
+            // Section 13 (over sky): the fire wave's front on every pixel (the eye inside the slab 60 m from the plane, the
+            // front through the view's centre at 0.3 tau) and its box with no front in it (inside a station's ring at
+            // birth: the early-out everywhere); the composed body N 2 .. 5 (no jets), the shared mode at N 4 and the
+            // single body at one placement (a capital at 1.8 km, 0.3 L: the eye outside every sphere), the box's screens
+            // from its corners; the own death's chase view at N 4 (the shared mode, the eye-inside fence)
+            draw_lane(tt, 0.f, -1.f);
+            {
+                const float Lc = bm::tier_life_ms[bm::capital], Pc = bm::tier_preroll_ms[bm::capital];
+                const float tw = 0.3f * bm::wave_tau_x * Lc;
+                const float rw = ws::boom_wave_radius(0.5f * bm::secondary_capsule_len * 1288.f * m, bm::wave_r_x * 600.f * m,
+                                                      bm::wave_tau_x * Lc, tw);
+                const auto wave_at_front = [&] {
+                    wc::Event* e = boom::add(bm::capital, 1000, -double(rw) / double(m), 0, 60.0, 1288.0);
+                    e->table = 7;
+                    boom::broadside(e);
+                };
+                // the weights per drawn screen (the strips' clipped quads, or the box), the fence removed
+                const double wa = run_case("wave_alone_fills_frame", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
+                const double sa = double(last_case.n.wave_screens);
+                const unsigned qa = last_case.n.wave_quads;
+                boom::wave_octave2 = false;
+                const double w1 = run_case("wave_one_octave_alone", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
+                const double s1 = double(last_case.n.wave_screens);
+                boom::wave_octave2 = true;
+                // the slab's box at a station's birth from 300 m inside its front (the annulus a disc: the box drawn, every
+                // pixel inside the window since the sheet's 2026-11-07 widening; budget_weight_wave_miss stays the old
+                // shader's early-out row, that path unchanged)
+                const double wm = run_case("wave_box_alone", boom::p_wave, bm::tier_preroll_ms[bm::station] / Lf, [&] {
+                    wc::Event* e = boom::add(bm::station, 1000, 0, 0, 300.0, 1800.0);
+                    e->table = 6;
+                    boom::broadside(e);
+                });
+                const double sm = double(last_case.n.wave_screens);
+                const unsigned qm = last_case.n.wave_quads;
+                const auto per = [&](double us, double scr) { return scr > 0 ? (us - fence_us) / 177.5 / scr : 0.0; };
+                std::printf("EXPLOSION_TIMING width=%u height=%u case=wave_weight alone_weight=%.3f alone_screens=%.3f "
+                            "alone_quads=%u one_octave_weight=%.3f box_weight=%.3f box_screens=%.3f box_quads=%u "
+                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f\n",
+                            size.first, size.second, per(wa, sa), sa, qa, per(w1, s1), per(wm, sm), sm, qm,
+                            double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
+                            double(bm::budget_weight_wave_miss));
+                if (bm::compose_enabled) { // the composed body's rows (v4: skipped with the switch off)
+                const auto box_of = [&](const ws::HullView& v) {
+                    const rr::WeaponFireballVertex& a = boom::bodies[0];
+                    const rr::WeaponFireballVertex& b = boom::bodies[3];
+                    const double x0 = v.cam.m00 * a.corner[0] / a.corner[2], y0 = v.cam.m11 * a.corner[1] / a.corner[2];
+                    const double x1 = v.cam.m00 * b.corner[0] / b.corner[2], y1 = v.cam.m11 * b.corner[1] / b.corner[2];
+                    return 0.25 * std::fabs(x1 - x0) * std::fabs(y1 - y0);
+                };
+                const float age = (Pc + 0.3f * Lc) / Lf;
+                const auto place = [&] {
+                    wc::Event* e = boom::add(bm::capital, 1000, 0, 0, 1800.0, 1288.0);
+                    e->table = 7;
+                    boom::broadside(e);
+                };
+                boom::compose_on = false;
+                const double us1 = run_case("compose_single_fills_frame", boom::p_body, age, place);
+                const double box1 = box_of(boom::view(tt, 0, 16));
+                boom::compose_on = true;
+                boom::force_jets = 0;
+                const char* names[4] = {"compose_n2_fills_frame", "compose_n3_fills_frame", "compose_n4_fills_frame",
+                                        "compose_n5_fills_frame"};
+                for (unsigned nn = 2; nn <= 5; ++nn) {
+                    boom::force_n = nn;
+                    const double us = run_case(names[nn - 2], boom::p_body, age, place);
+                    const double box = box_of(boom::view(tt, 0, 16));
+                    std::printf("EXPLOSION_TIMING width=%u height=%u case=compose_factor n=%u shared=0 box_screens=%.3f "
+                                "single_box_screens=%.3f factor=%.3f pinned=%.3f\n",
+                                size.first, size.second, nn, box, box1,
+                                box > 0 && us1 > fence_us ? (us - fence_us) / box / ((us1 - fence_us) / box1) : 0.0,
+                                double(ws::boom_compose_factor(nn, false)));
+                }
+                boom::force_n = 4;
+                boom::force_shared = true;
+                {
+                    const double us = run_case("compose_n4_shared_fills_frame", boom::p_body, age, place);
+                    const double box = box_of(boom::view(tt, 0, 16));
+                    std::printf("EXPLOSION_TIMING width=%u height=%u case=compose_factor n=4 shared=1 box_screens=%.3f "
+                                "single_box_screens=%.3f factor=%.3f pinned=%.3f\n",
+                                size.first, size.second, box, box1,
+                                box > 0 && us1 > fence_us ? (us - fence_us) / box / ((us1 - fence_us) / box1) : 0.0,
+                                double(ws::boom_compose_factor(4, true)));
+                }
+                boom::force_shared = false;
+                }
+                run_case("eye_inside_fighter_n4", boom::p_all, 0.25f, [&] { fighter(24.0); });
+                boom::force_n = 0;
+                boom::force_jets = 0xffu;
+            }
+            draw_lane(tt, 5.f * m, 1.f);
             draw_lane(tt, 0.f, -1.f);
             const double f600 = run_case("fighter_600m", boom::p_all, 0.1f, [&] { fighter(600.0); });
             const double f20 = run_case("fighters_20_600m", boom::p_all, 0.1f, [&] {
@@ -1134,18 +1288,31 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         latch(g);
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
-        std::vector<double> us;
         Out o;
-        for (unsigned r = 0; r < 201; ++r) {
-            const ws::HullView v = boom::view(g, 1000 + std::uint32_t(0.3f * Lf) + (r & 1u), 16);
-            QueryPerformanceCounter(&a);
-            o = boom::build(v);
-            QueryPerformanceCounter(&b);
-            us.push_back(ticks_us(a, b, freq));
-        }
-        const double med = boom::median(us);
-        std::printf("EXPLOSION case=cpu deaths=32 bodies=%u quads=%u glows=%u median_us=%.1f bound_us=50\n", o.bodies, o.quads,
-                    o.glows, med);
+        // the median of 201 builds, repeated 5 times on the same inputs (2026-11-07 v3: the host's swing is the method's
+        // problem): the gate takes the median of the five, all five recorded
+        const auto rep_median = [&](bool compose) {
+            boom::compose_on = compose;
+            std::vector<double> reps;
+            for (unsigned k = 0; k < 5; ++k) {
+                std::vector<double> us;
+                for (unsigned r = 0; r < 201; ++r) {
+                    const ws::HullView v = boom::view(g, 1000 + std::uint32_t(0.3f * Lf) + (r & 1u), 16);
+                    QueryPerformanceCounter(&a);
+                    o = boom::build(v);
+                    QueryPerformanceCounter(&b);
+                    us.push_back(ticks_us(a, b, freq));
+                }
+                reps.push_back(boom::median(us));
+            }
+            boom::compose_on = true;
+            return reps;
+        };
+        const std::vector<double> single = rep_median(false), reps = rep_median(true);
+        const double med = boom::median(reps);
+        std::printf("EXPLOSION case=cpu deaths=32 bodies=%u quads=%u glows=%u median_us=%.1f single_body_us=%.1f "
+                    "repeats_us=%.1f,%.1f,%.1f,%.1f,%.1f bound_us=50\n",
+                    o.bodies, o.quads, o.glows, med, boom::median(single), reps[0], reps[1], reps[2], reps[3], reps[4]);
         report("death_stage_cpu_32_deaths", o.bodies == 32 && med <= 50.0, "");
     }
     // ---- 16. The big tiers (sections 2.5, 2.6, 3, 4 and 9; the native spawn ran through R', so the engine's carrier is
@@ -1247,7 +1414,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     const Out o = boom::build(boom::view(g, 1000 + a, 4), boom::p_all);
                     if (float(a) < P) bodies_before += o.n.bodies;
                     else if (!first_body_R && o.n.bodies)
-                        first_body_R = double(boom::bodies[0].sphere[3]) / boom::sphere_of(g, 0);
+                        first_body_R = double(o.n.body_R0);
                     for (unsigned k = 0; k < o.n.secondaries_born; ++k) {
                         births.push_back(float(a));
                         where.push_back({o.n.born_at[0], o.n.born_at[1], o.n.born_at[2]});
@@ -1350,7 +1517,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     if (!first && o.n.bodies) {
                         float c[3];
                         boom::body_centre(o, c);
-                        first = double(boom::bodies[0].sphere[3]) / boom::sphere_of(g, 0) / double(R0);
+                        first = double(o.n.body_R0) / double(R0);
                     }
                 }
                 if (b.tier == bm::capital) {
@@ -1461,7 +1628,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             report("death_big_light_and_fade", ok && left == 0, "");
         }
         // death_big_eye_inside_bounded (decision D2's law): the close capital (the eye 720 m from its centre, broadside):
-        // at 0.25 L after P the frame lit >= 90 % and not uniform (std >= 0.05 of the mean); at 0.6 L a dark share >= 0.15.
+        // at 0.25 L after P the frame lit >= 80 % and not uniform (std >= 0.05 of the mean); at 0.6 L a dark share >= 0.15.
         {
             bool ok = true;
             const float L = bm::tier_life_ms[bm::capital], P = bm::tier_preroll_ms[bm::capital];
@@ -1485,7 +1652,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const double cv = mean > 0 ? std::sqrt(var / double(l.size())) / mean : 0.0;
                 std::printf("EXPLOSION case=eye_inside tier=capital_720m eye_m=720 age_frac=%.2f lit_share=%.3f dark_share=%.3f "
                             "std_over_mean=%.3f peak=%.3f\n", double(frac), lit, dark, cv, double(pk));
-                if (frac < 0.3f) ok = ok && lit >= 0.9 && cv >= 0.05;
+                // 0.9 -> 0.8 with the composed body (the coordinator, 2026-11-07 v3): its eye-inside mode draws two
+                // sub-bursts set apart (D35), 0.84 of the view lit is a full wash; 0.9 for the single body (compose off)
+                if (frac < 0.3f) ok = ok && lit >= (bm::compose_enabled ? 0.8 : 0.9) && cv >= 0.05;
                 else ok = ok && dark >= 0.15;
             }
             report("death_big_eye_inside_bounded", ok, "");
@@ -1544,19 +1713,30 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 wc::Event* e = big(bigs[1], 0, 720.0);
                 const boom::Hull hull = boom::hull_of(*e);
                 double worst = 0, worst_at = 0;
-                unsigned worst_shed = 0;
+                unsigned worst_shed = 0, wave_frames = 0, wave_span = 0;
+                const float Lw = bm::wave_life_x * bm::tier_life_ms[bm::capital];
                 for (unsigned a = 0; a <= unsigned(P) + 2000; a += 50) {
                     const ws::HullView v = boom::view(tt, 1000 + a, 16);
                     const Out o = boom::build(v); // every 50 ms (the octave hysteresis sees a stream of frames)
+                    // the frames P .. P + L_w with the wave on screen (its strips reach the target: built, drawn or shed;
+                    // face-on at 720 m the front leaves the frame within ~0.2 s, the strips then build nothing)
+                    if (float(a) >= P && float(a) < P + Lw && o.waves + o.n.waves_shed > 0) {
+                        ++wave_span;
+                        wave_frames += o.waves > 0;
+                    }
                     if (float(a) + 100.f < P || (a % 100)) continue;
                     boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, float(a)));
                     const double us = time_frame(o, v);
                     std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_%dms bodies=%u quads=%u glows=%u "
                                 "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u "
-                                "secondaries_shed=%u smokes_shed=%u shocks_shed=%u glows_shed=%u\n",
+                                "secondaries_shed=%u smokes_shed=%u shocks_shed=%u glows_shed=%u waves=%u waves_shed=%u "
+                                "wave_quads=%u wave_screens=%.3f wave_octaves_shed=%u composed=%u compose_shared=%u "
+                                "compose_dropped=%u\n",
                                 int(a) - int(P), o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.n.octaves,
                                 double(o.n.screens), us, us / 177.5, o.n.secondaries, o.n.shed, o.n.secondaries_shed,
-                                o.n.smokes_shed, o.n.shocks_shed, o.n.glows_shed);
+                                o.n.smokes_shed, o.n.shocks_shed, o.n.glows_shed, o.waves, o.n.waves_shed, o.n.wave_quads,
+                                double(o.n.wave_screens), o.n.wave_octaves_shed, o.n.composed, o.n.compose_shared,
+                                o.n.compose_dropped);
                     if (us > worst) {
                         worst = us;
                         worst_at = double(a) - double(P);
@@ -1577,9 +1757,14 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             all_shed.bodies, all_shed.quads, all_shed.glows, all_shed.smokes, all_shed.shocks,
                             all_shed.n.octaves, double(all_shed.n.screens), shed_us, shed_us / 177.5, all_shed.n.secondaries,
                             all_shed.n.shed);
-                std::snprintf(detail, sizeof detail, "worst=%.1f at=%.0f shed=%u all_shed=%.1f", worst, worst_at, worst_shed,
-                              shed_us);
+                std::snprintf(detail, sizeof detail, "worst=%.1f at=%.0f shed=%u all_shed=%.1f wave_frames=%u/%u", worst, worst_at,
+                              worst_shed, shed_us, wave_frames, wave_span);
+                std::printf("EXPLOSION case=close_capital_wave wave_frames=%u span=%u share=%.3f\n", wave_frames, wave_span,
+                            wave_span ? double(wave_frames) / wave_span : 0.0);
                 report("death_budget_capital_close_5120", worst <= 450.0 && shed_us <= 300.0, detail);
+                // section 13.1: the wave drawn (not shed) on every frame P .. P + L_w it is on screen (2026-11-07 v3: the
+                // wave sheds last), within that fence
+                report("wave_drawn_close_capital", wave_span && wave_frames == wave_span, detail);
                 draw_lane(tt, 0.f, -1.f);
                 tt.release();
             } else
@@ -1595,21 +1780,38 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             latch(g);
             LARGE_INTEGER freq, a0, b0;
             QueryPerformanceFrequency(&freq);
-            std::vector<double> us;
             Out o;
-            for (unsigned r = 0; r < 201; ++r) {
-                const ws::HullView v = boom::view(g, 1000 + 1600 + (r & 1u), 16);
-                QueryPerformanceCounter(&a0);
-                o = boom::build(v);
-                QueryPerformanceCounter(&b0);
-                us.push_back(ticks_us(a0, b0, freq));
-            }
-            const double med = boom::median(us);
+            // the median of 201 builds, 5 repeats on the same inputs, the gate on their median (all five recorded); the
+            // single body's and the no-wave figures beside it (their shares; not gated)
+            const auto rep_median = [&](unsigned mode) {
+                boom::compose_on = mode != 1;
+                boom::wave_off = mode == 2;
+                std::vector<double> reps;
+                for (unsigned k = 0; k < 5; ++k) {
+                    std::vector<double> us;
+                    for (unsigned r = 0; r < 201; ++r) {
+                        const ws::HullView v = boom::view(g, 1000 + 1600 + (r & 1u), 16);
+                        QueryPerformanceCounter(&a0);
+                        const Out q = boom::build(v);
+                        QueryPerformanceCounter(&b0);
+                        if (!mode) o = q;
+                        us.push_back(ticks_us(a0, b0, freq));
+                    }
+                    reps.push_back(boom::median(us));
+                }
+                boom::compose_on = true;
+                boom::wave_off = false;
+                return reps;
+            };
+            const std::vector<double> single = rep_median(1), no_wave = rep_median(2), reps = rep_median(0);
+            const double med = boom::median(reps);
             // the stage's cost follows the quads it writes (the 32 fighters: 0.065 us a quad): bound 0.08 us a drawn quad
             // and 100 us in all
-            std::printf("EXPLOSION case=cpu deaths=32 big=6 bodies=%u secondaries=%u quads=%u glows=%u median_us=%.1f "
-                        "us_per_quad=%.4f bound_us_per_quad=0.08 bound_us=100\n",
-                        o.n.bodies, o.n.secondaries, o.quads, o.glows, med, o.quads ? med / o.quads : 0.0);
+            std::printf("EXPLOSION case=cpu deaths=32 big=6 bodies=%u secondaries=%u quads=%u glows=%u waves=%u median_us=%.1f "
+                        "single_body_us=%.1f no_wave_us=%.1f repeats_us=%.1f,%.1f,%.1f,%.1f,%.1f us_per_quad=%.4f "
+                        "bound_us_per_quad=0.08 bound_us=100\n",
+                        o.n.bodies, o.n.secondaries, o.quads, o.glows, o.waves, med, boom::median(single),
+                        boom::median(no_wave), reps[0], reps[1], reps[2], reps[3], reps[4], o.quads ? med / o.quads : 0.0);
             report("death_big_stage_cpu", o.n.secondaries > 0 && o.quads && med <= 0.08 * o.quads && med <= 100.0, "");
         }
     }
@@ -1666,6 +1868,36 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                                         rs.fireball_boxes >= 2 && rs.halo_boxes >= 1 && ns.shocks == 1 &&
                                                         rs.shock_boxes == 0, "");
         no_shock.detach();
+        // the wave program alone refused (fault bit 10; review 2026-11-07): the set enabled, a capital's death at P + 0.5
+        // tau drawn (its body) without its wave, wave_enabled false with its reason
+        const auto capital_wave = [&]() {
+            boom::clear();
+            wc::Event* ec = boom::add(bm::capital, 1000, 0, 0, 5000.0, 1288.0, 0x6b111u);
+            ec->table = 7;
+            boom::broadside(ec);
+            latch(g);
+            return at(g, bm::tier_preroll_ms[bm::capital] + 0.5f * bm::wave_tau_x * bm::tier_life_ms[bm::capital], boom::p_all);
+        };
+        {
+            rr::WeaponEffectsPass no_wave;
+            no_wave.set_faults(1024);
+            const HRESULT hw = no_wave.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true,
+                                              false, true);
+            const Out ow = capital_wave();
+            dev->BeginScene();
+            dev->SetRenderTarget(0, g.scene_s.p);
+            rr::WeaponEffectsReport rw{};
+            no_wave.run(boom::frame(g, ow, v), &rw);
+            dev->EndScene();
+            std::printf("EXPLOSION case=wave_refused attach=%08lx boom=%u wave=%u wave_reason=%s bodies_drawn=%u waves_built=%u "
+                        "waves_drawn=%u\n",
+                        hw, unsigned(no_wave.caps().boom_enabled), unsigned(no_wave.caps().wave_enabled),
+                        no_wave.caps().wave_reason, rw.fireball_boxes, ow.waves, rw.wave_boxes);
+            report("wave_refused_body_drawn", SUCCEEDED(hw) && no_wave.caps().boom_enabled && !no_wave.caps().wave_enabled &&
+                                                  !std::strcmp(no_wave.caps().wave_reason, "wave_program_create") &&
+                                                  rw.fireball_boxes >= 1 && ow.waves >= 1 && rw.wave_boxes == 0, "");
+            no_wave.detach();
+        }
         pass.before_reset();
         g.release();
         D3DPRESENT_PARAMETERS pp2 = pp;
@@ -1687,8 +1919,815 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             drew = SUCCEEDED(run) && boom::peak(l) > 0.f && pass.caps().boom_enabled && after.halo_boxes == o.halos &&
                    o.halos == 1;
         }
-        std::printf("EXPLOSION case=reset reset=%08lx ensure=%08lx drew=%u\n", reset, er, unsigned(drew));
-        report("death_reset_recovers", mt && SUCCEEDED(er) && pass.resources_ready() && drew, "");
+        // and a capital's wave after the Reset (review 2026-11-07): wave_enabled, its quads drawn
+        bool wave_drew = false;
+        if (mt && SUCCEEDED(er)) {
+            const Out ow = capital_wave();
+            rr::WeaponEffectsReport aw{};
+            dev->BeginScene();
+            dev->SetRenderTarget(0, g.scene_s.p);
+            pass.run(boom::frame(g, ow, v), &aw);
+            dev->EndScene();
+            wave_drew = pass.caps().wave_enabled && ow.waves >= 1 && aw.wave_boxes == ow.waves;
+        }
+        std::printf("EXPLOSION case=reset reset=%08lx ensure=%08lx drew=%u wave_enabled=%u wave_drew=%u\n", reset, er,
+                    unsigned(drew), unsigned(pass.caps().wave_enabled), unsigned(wave_drew));
+        report("death_reset_recovers", mt && SUCCEEDED(er) && pass.resources_ready() && drew && wave_drew, "");
+    }
+    // ---- 17. Section 13 (explosion-look.md 13.1, 13.2): the fire wave of the capital (and station) deaths and the
+    // composed body of every tier. The wave's geometry at 5120x1440 (the capital at 5 km face-on: the whole ring fits;
+    // at 1.5 km from above: the bar), its colour, its broken circumference, the swept hulls' light; the refraction
+    // request and its strips (the GPU half in engine_shimmer_fixture.cpp weapon_wave_case); the composed body's silhouette,
+    // connectedness, radiance, births, jets, eye inside, LOD floor and box over 8 seeds (fighter 600 m, capital 1.5 km,
+    // station 3 km at 1080p).
+    {
+        const float Lc = bm::tier_life_ms[bm::capital], Pc = bm::tier_preroll_ms[bm::capital];
+        const float tau = bm::wave_tau_x * Lc, Lw = bm::wave_life_x * Lc;
+        auto capital = [&](double z, bool above, std::uint32_t seq = 0, double x = 0.0) {
+            wc::Event* e = boom::add(bm::capital, 1000, x, 0, z, 1288.0, seq);
+            e->table = 7;
+            above ? boom::from_above(e) : boom::broadside(e);
+            return e;
+        };
+        // the wave alone at tb ms after the body's birth (the record latched at 0)
+        auto wave_at = [&](Target& t, float tb, unsigned parts = boom::p_wave) {
+            boom::build(boom::view(t, 1000, 16), 0u);
+            return boom::build(boom::view(t, 1000 + std::uint32_t(Pc + tb + 0.5f), 16), parts);
+        };
+        // 64 bins of the stretched in-plane angle about (cx, cy): each bin's peak and its outer radius above 10 % of that
+        // peak; over the bins whose peak is >= 10 % of the frame's (the lit arcs) the median outer radius, and (out) the
+        // lit bins' outer radii
+        auto wave_outer_median = [](const std::vector<float>& l, unsigned w, double cx, double cy, float pk,
+                                    std::vector<double>* radii, double* peak_median = nullptr) {
+            double bin_pk[64] = {}, bin_out[64] = {}, bin_at[64] = {};
+            for (std::size_t i = 0; i < l.size(); ++i) {
+                const double dx = (double(i % w) + 0.5 - cx) / double(bm::wave_stretch), dy = double(i / w) + 0.5 - cy;
+                const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                if (double(l[i]) > bin_pk[bin]) {
+                    bin_pk[bin] = double(l[i]);
+                    bin_at[bin] = std::hypot(dx, dy);
+                }
+            }
+            if (peak_median) {
+                std::vector<double> at;
+                for (unsigned b = 0; b < 64; ++b)
+                    if (bin_pk[b] >= 0.1 * double(pk) && bin_pk[b] > 0.0) at.push_back(bin_at[b]);
+                *peak_median = at.empty() ? 0.0 : boom::median(at);
+            }
+            for (std::size_t i = 0; i < l.size(); ++i) {
+                const double dx = (double(i % w) + 0.5 - cx) / double(bm::wave_stretch), dy = double(i / w) + 0.5 - cy;
+                const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                if (l[i] > 0.1 * bin_pk[bin]) bin_out[bin] = std::max(bin_out[bin], std::hypot(dx, dy));
+            }
+            std::vector<double> lit;
+            for (unsigned b = 0; b < 64; ++b)
+                if (bin_pk[b] >= 0.1 * double(pk) && bin_pk[b] > 0.0) lit.push_back(bin_out[b]);
+            if (radii) *radii = lit;
+            return lit.empty() ? 0.0 : boom::median(lit);
+        };
+        Target tt;
+        if (make_target(tt, 5120, 1440)) {
+            draw_lane(tt, 0.f, -1.f);
+            const ws::HullView v0 = boom::view(tt, 0, 16);
+            const double px_x = 0.5 * tt.w * double(v0.cam.m00);
+            const double cx = 0.5 * tt.w, cy = 0.5 * tt.h;
+            const float R_f = 600.f * m, we = bm::wave_w_x * R_f, r0w = 0.5f * bm::secondary_capsule_len * 1288.f * m;
+            auto law_r = [&](float tb) { return ws::boom_wave_radius(r0w, bm::wave_r_x * R_f, tau, tb); };
+            // (a) wave_radius_law, wave_never_brightest: the 10 %-of-peak outer radius in the stretched plane (the long
+            // axis is the view's x) against the law's outer 10 % point r(t) + sqrt(ln 10) w_e at 0.1 / 0.5 / 1.0 tau
+            bool radius_ok = true, bright_ok = true;
+            for (float u : {0.1f, 0.5f, 1.0f}) {
+                boom::clear();
+                capital(5000.0, false);
+                const Out o = wave_at(tt, u * tau);
+                const std::vector<float> l = boom::luma(boom::render(pass, tt, o, v0));
+                const float pk = boom::peak(l);
+                // the flame tongues shift the front both ways about r(t) (2026-11-07): the median over the lit angular bins
+                // of each bin's brightest pixel's radius (the edge's peak, z = 0) against r(t); the outer 10 % radius (each
+                // bin's own peak, the median: the bins' widest tongue) printed beside it
+                double front = 0;
+                const double outer = wave_outer_median(l, tt.w, cx, cy, pk, nullptr, &front);
+                const double law = double(law_r(u * tau)) * px_x / (5000.0 * m),
+                             law_outer = (double(law_r(u * tau)) + 1.5174 * double(we)) * px_x / (5000.0 * m);
+                boom::clear();
+                capital(5000.0, false);
+                const Out ob = wave_at(tt, u * tau, boom::p_body);
+                const float pb = boom::peak(boom::luma(boom::render(pass, tt, ob, v0)));
+                std::printf("EXPLOSION case=wave_radius tau_frac=%.1f waves=%u front_px=%.1f law_px=%.1f ratio=%.3f "
+                            "outer_px=%.1f law_outer_px=%.1f peak=%.3f body_peak=%.3f\n",
+                            double(u), o.waves, front, law, law > 0 ? front / law : 0.0, outer, law_outer, double(pk),
+                            double(pb));
+                radius_ok = radius_ok && o.waves == 1 && std::fabs(front / law - 1.0) <= 0.05;
+                bright_ok = bright_ok && pk <= pb;
+            }
+            boom::clear();
+            capital(5000.0, false);
+            const unsigned after = wave_at(tt, Lw + 20.f).waves;
+            unsigned others = 0;
+            for (unsigned tier : {unsigned(bm::fighter), unsigned(bm::corvette), unsigned(bm::missile)}) {
+                boom::clear();
+                boom::add(tier, 1000, 0, 0, 600.0, tier == bm::corvette ? 87.0 : 14.0);
+                boom::build(boom::view(tt, 1000, 16));
+                others += boom::build(boom::view(tt, 1100, 16)).waves;
+            }
+            std::printf("EXPLOSION case=wave_life after_life=%u other_tiers=%u\n", after, others);
+            report("wave_radius_law", radius_ok, "");
+            report("wave_never_brightest", bright_ok && after == 0 && others == 0, "");
+            // (b) wave_thick_not_a_line at 0.5 tau: face-on (5 km) the band's radial 10 % width along 16 rays (the median
+            // of the lit ones); edge-on (1.5 km from above) the bar's vertical 10 % thickness over 8 columns
+            double band_w = 0, bar_h = 0, edge_sheet = 0, sheet_07 = 0, tongue_depth = 0;
+            const double rf5 = double(R_f) * px_x / (5000.0 * m); // R_f in pixels at 5 km
+            {
+                boom::clear();
+                capital(5000.0, false);
+                const Out o = wave_at(tt, 0.5f * tau);
+                const std::vector<float> l = boom::luma(boom::render(pass, tt, o, v0));
+                const float pk = boom::peak(l);
+                std::vector<double> widths, ratios, at07;
+                for (unsigned k = 0; k < 16; ++k) {
+                    const double a = 6.2831853 * (k + 0.5) / 16.0, ux = std::cos(a) * double(bm::wave_stretch), uy = std::sin(a);
+                    float best = 0.f;
+                    std::vector<float> prof;
+                    for (double s = 0; s < 2.0 * tt.w; s += 1.0) {
+                        const double x = cx + s * ux, y = cy + s * uy;
+                        if (x < 0 || y < 0 || x >= tt.w || y >= tt.h) break;
+                        prof.push_back(l[std::size_t(y) * tt.w + std::size_t(x)]);
+                        best = std::max(best, prof.back());
+                    }
+                    if (!(best > 0.1f * pk)) continue;
+                    double lit = 0;
+                    for (float p : prof) lit += p > 0.1f * best;
+                    widths.push_back(lit);
+                    // the radial profile behind this ray's edge (its peak): the sheet's mean 0.2 .. 0.6 R_f behind, its
+                    // value 0.7 R_f behind
+                    std::size_t at = 0;
+                    for (std::size_t q = 0; q < prof.size(); ++q)
+                        if (prof[q] == best) at = q;
+                    double sum = 0, cnt = 0;
+                    for (double d = 0.2 * rf5; d <= 0.6 * rf5; d += 1.0)
+                        if (double(at) >= d) {
+                            sum += prof[at - std::size_t(d)];
+                            ++cnt;
+                        }
+                    if (cnt > 0 && sum > 0) ratios.push_back(double(best) / (sum / cnt));
+                    if (double(at) >= 0.7 * rf5) at07.push_back(prof[at - std::size_t(0.7 * rf5)] / double(best));
+                }
+                band_w = boom::median(widths);
+                edge_sheet = ratios.empty() ? 0.0 : boom::median(ratios);
+                sheet_07 = at07.empty() ? 0.0 : boom::median(at07);
+                // the flame tongues: the lit bins' outer radii (each above 10 % of its own peak), max - min over R_f
+                std::vector<double> radii;
+                wave_outer_median(l, tt.w, cx, cy, pk, &radii);
+                if (!radii.empty())
+                    tongue_depth = (*std::max_element(radii.begin(), radii.end()) - *std::min_element(radii.begin(), radii.end())) / rf5;
+                boom::clear();
+                capital(5000.0, true);
+                const Out oa = wave_at(tt, 0.5f * tau);
+                const std::vector<float> la = boom::luma(boom::render(pass, tt, oa, v0));
+                std::vector<double> heights;
+                for (unsigned k = 0; k < 8; ++k) {
+                    const unsigned x = unsigned(cx + (double(k) - 3.5) * 0.1 * cx);
+                    float best = 0.f;
+                    for (unsigned y = 0; y < tt.h; ++y) best = std::max(best, la[std::size_t(y) * tt.w + x]);
+                    if (!(best > 0.f)) continue;
+                    double lit = 0;
+                    for (unsigned y = 0; y < tt.h; ++y) lit += la[std::size_t(y) * tt.w + x] > 0.1f * best;
+                    heights.push_back(lit);
+                }
+                bar_h = boom::median(heights);
+            }
+            // the bar's need at the near crossing's depth (5 km less the front's radius: the column through the centre)
+            const double need5 = 0.2 * double(R_f) * px_x / (5000.0 * m),
+                         need15 = 0.2 * double(R_f) * px_x / (5000.0 * m - double(law_r(0.5f * tau)));
+            std::printf("EXPLOSION case=wave_thickness band_px=%.1f band_need_px=%.1f bar_px=%.1f bar_need_px=%.1f\n", band_w,
+                        need5, bar_h, need15);
+            report("wave_thick_not_a_line", band_w >= need5 && bar_h >= need15, "");
+            // the trailing sheet and the tongues (2026-11-07, the hoop's fix): band and sheet >= 0.6 R_f at 10 % of each
+            // ray's peak; the edge >= 1.4 x the sheet's mean 0.2 .. 0.6 R_f behind it and the sheet still >= 1 % of the
+            // peak 0.7 R_f behind (medians of the lit rays); the lit bins' outer radii spread >= 0.2 R_f
+            std::printf("EXPLOSION case=wave_sheet thick_rf=%.3f need_rf=0.60 edge_over_sheet=%.2f sheet_07=%.4f "
+                        "tongue_depth_rf=%.3f\n",
+                        band_w / rf5, edge_sheet, sheet_07, tongue_depth);
+            report("wave_sheet_thick", band_w >= 0.6 * rf5, "");
+            report("wave_hot_edge_trailing_sheet", edge_sheet >= 1.4 && sheet_07 >= 0.01, "");
+            report("wave_flame_tongues", tongue_depth >= 0.2, "");
+            // (c) wave_broken_circumference (64 bins of the stretched angle at 0.5 tau, 5 km), wave_fire_not_grey (the
+            // edge over the band along the brightest bin, the band's R / G, the hue at 0.2 / 0.9 L_w, the chroma)
+            {
+                boom::clear();
+                capital(5000.0, false);
+                const Out o = wave_at(tt, 0.5f * tau);
+                const std::vector<float> rgb = boom::render(pass, tt, o, v0);
+                const std::vector<float> l = boom::luma(rgb);
+                const float pk = boom::peak(l);
+                const double r_px = double(law_r(0.5f * tau)) * px_x / (5000.0 * m), w_px = double(we) * px_x / (5000.0 * m);
+                // per bin its peak and the peak's radius (the edge, shifted by the tongues), then the band's pixels about
+                // its centre behind each bin's own edge (wave_trail_span / 2 w_e): the edge over the band, the median of
+                // the lit bins; the band's colour summed over them
+                double bins[64] = {}, bin_r[64] = {}, bin_a[64] = {}, bin_ray[64] = {}, bin_band[64] = {}, band[3] = {};
+                (void)r_px;
+                unsigned band_n = 0;
+                for (std::size_t i = 0; i < l.size(); ++i) {
+                    const double dx = (double(i % tt.w) + 0.5 - cx) / double(bm::wave_stretch), dy = double(i / tt.w) + 0.5 - cy;
+                    const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                    if (double(l[i]) > bins[bin]) {
+                        bins[bin] = double(l[i]);
+                        bin_r[bin] = std::hypot(dx, dy);
+                        bin_a[bin] = std::atan2(dy, dx);
+                    }
+                }
+                // the band behind each bin's edge along that edge pixel's own ray (review 2026-11-07: across a whole bin
+                // the tongues put another part's edge into the window)
+                for (unsigned b = 0; b < 64; ++b) {
+                    if (!(bins[b] >= 0.1 * pk)) continue;
+                    for (double z = -0.5 * double(bm::wave_trail_span) - 0.4; z <= -0.5 * double(bm::wave_trail_span) + 0.4;
+                         z += 0.1) {
+                        const double rr = bin_r[b] + z * w_px;
+                        const double x = cx + double(bm::wave_stretch) * rr * std::cos(bin_a[b]), y = cy + rr * std::sin(bin_a[b]);
+                        if (x < 0 || y < 0 || x >= tt.w || y >= tt.h) continue;
+                        bin_ray[b] = std::max(bin_ray[b], double(l[std::size_t(y) * tt.w + std::size_t(x)]));
+                    }
+                }
+                const double bc = 0.5 * double(bm::wave_trail_span);
+                for (std::size_t i = 0; i < l.size(); ++i) {
+                    const double dx = (double(i % tt.w) + 0.5 - cx) / double(bm::wave_stretch), dy = double(i / tt.w) + 0.5 - cy;
+                    const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                    const double z = (std::hypot(dx, dy) - bin_r[bin]) / w_px;
+                    if (bins[bin] >= 0.1 * pk && z > -bc - 0.4 && z < -bc + 0.4) {
+                        for (unsigned q = 0; q < 3; ++q) band[q] += rgb[3 * i + q];
+                        bin_band[bin] = std::max(bin_band[bin], double(l[i]));
+                        ++band_n;
+                    }
+                }
+                std::vector<double> ebs;
+                for (unsigned b = 0; b < 64; ++b)
+                    if (bins[b] >= 0.1 * pk && bin_ray[b] > 0) ebs.push_back(bins[b] / bin_ray[b]);
+                const double edge_v = ebs.empty() ? 0.0 : boom::median(ebs), band_v = 1.0;
+                unsigned lit = 0;
+                double mx = 0, mn = 1e30;
+                for (double b : bins) {
+                    lit += b >= 0.1 * pk;
+                    mx = std::max(mx, b);
+                    mn = std::min(mn, b);
+                }
+                const double share = lit / 64.0, ratio = mn > 0 ? mx / mn : 1e9;
+                std::printf("EXPLOSION case=wave_circumference lit_share=%.3f max_over_min=%.2f\n", share, ratio);
+                report("wave_broken_circumference", share >= 0.40 && share <= 0.85 && ratio >= 2.0, "");
+                // review 2026-11-07: the break follows the record's seeds: another sequence's 64-bin peaks correlate < 0.5
+                {
+                    boom::clear();
+                    capital(5000.0, false, 0x5a3c1u);
+                    const Out o2 = wave_at(tt, 0.5f * tau);
+                    const std::vector<float> l2 = boom::luma(boom::render(pass, tt, o2, v0));
+                    double b2[64] = {};
+                    for (std::size_t i = 0; i < l2.size(); ++i) {
+                        const double dx = (double(i % tt.w) + 0.5 - cx) / double(bm::wave_stretch), dy = double(i / tt.w) + 0.5 - cy;
+                        const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                        b2[bin] = std::max(b2[bin], double(l2[i]));
+                    }
+                    double m1 = 0, m2 = 0, sxy = 0, sxx = 0, syy = 0;
+                    for (unsigned k = 0; k < 64; ++k) {
+                        m1 += bins[k] / 64.0;
+                        m2 += b2[k] / 64.0;
+                    }
+                    for (unsigned k = 0; k < 64; ++k) {
+                        sxy += (bins[k] - m1) * (b2[k] - m2);
+                        sxx += (bins[k] - m1) * (bins[k] - m1);
+                        syy += (b2[k] - m2) * (b2[k] - m2);
+                    }
+                    const double corr = sxx > 0 && syy > 0 ? sxy / std::sqrt(sxx * syy) : 1.0;
+                    std::printf("EXPLOSION case=wave_seeds break_correlation=%.3f\n", corr);
+                    report("wave_break_follows_seed", corr < 0.5, "");
+                }
+                // wave_no_strip_seam (review 2026-11-07): at the eight strip boundaries (k + 1/2) pi / 4 and across the
+                // angle's wrap (pi), the band's mean luminance 2 px either side (its radial span r - band .. r) differs by
+                // < 10 % of the frame's peak
+                {
+                    double worst = 0;
+                    const double band_px = double(bm::wave_band_x) * double(R_f) * px_x / (5000.0 * m);
+                    for (unsigned k = 0; k < 9; ++k) {
+                        const double phi = k < 8 ? (double(k) + 0.5) * 0.78539816 : 3.14159265;
+                        double side[2] = {};
+                        for (unsigned sd = 0; sd < 2; ++sd) {
+                            const double a2 = phi + (sd ? 2.0 : -2.0) / r_px;
+                            double sum = 0, n = 0;
+                            for (double rr = r_px - band_px; rr <= r_px; rr += 1.0) {
+                                const double x = cx + double(bm::wave_stretch) * rr * std::cos(a2), y = cy + rr * std::sin(a2);
+                                if (x < 0 || y < 0 || x >= tt.w || y >= tt.h) continue;
+                                sum += l[std::size_t(y) * tt.w + std::size_t(x)];
+                                ++n;
+                            }
+                            side[sd] = n > 0 ? sum / n : 0;
+                        }
+                        worst = std::max(worst, std::fabs(side[0] - side[1]) / double(pk));
+                    }
+                    std::printf("EXPLOSION case=wave_seam worst_over_peak=%.4f quads=%u\n", worst, o.n.wave_quads);
+                    report("wave_no_strip_seam", worst < 0.1, "");
+                }
+                // 2026-11-07 v3 (the coordinator: beige / olive and soot read as no fire): over the lit pixels (10 % of the
+                // frame's peak) the mean of each pixel's chroma, and the share whose colour (over its largest channel) lies
+                // within 0.1 of the body's heat ramp's (over its largest) at some T: the 0.5 tau frame and both ages
+                const auto ramp_stats = [](const std::vector<float>& c, const std::vector<float>& l, float p, double* ch,
+                                           double* on) {
+                    static float ramp[101][3];
+                    static bool made = false;
+                    if (!made) {
+                        for (unsigned k = 0; k <= 100; ++k) {
+                            wc::heat_colour(0.2f + 0.8f * float(k) / 100.f, ramp[k]);
+                            const float m = std::max(ramp[k][0], std::max(ramp[k][1], ramp[k][2]));
+                            for (unsigned q = 0; q < 3; ++q) ramp[k][q] /= m;
+                        }
+                        made = true;
+                    }
+                    double sc = 0, so = 0, n = 0;
+                    for (std::size_t i = 0; i < l.size(); ++i) {
+                        if (!(l[i] > 0.1f * p)) continue;
+                        const float* px = &c[3 * i];
+                        const float mx = std::max(px[0], std::max(px[1], px[2])), mn = std::min(px[0], std::min(px[1], px[2]));
+                        sc += mx > 0.f ? (mx - mn) / mx : 0.0;
+                        float best = 1e30f;
+                        for (unsigned k = 0; k <= 100; ++k) {
+                            float d = 0.f;
+                            for (unsigned q = 0; q < 3; ++q) d += (px[q] / mx - ramp[k][q]) * (px[q] / mx - ramp[k][q]);
+                            best = std::min(best, d);
+                        }
+                        so += best <= 0.01f;
+                        ++n;
+                    }
+                    *ch = n > 0 ? sc / n : 0.0;
+                    *on = n > 0 ? so / n : 0.0;
+                };
+                double pch[3] = {}, pon[3] = {};
+                ramp_stats(rgb, l, pk, &pch[0], &pon[0]);
+                double hue[2] = {}, chroma[2] = {};
+                const float ages[2] = {0.2f * Lw, 0.9f * Lw};
+                for (unsigned k = 0; k < 2; ++k) {
+                    boom::clear();
+                    capital(5000.0, false);
+                    const Out ok = wave_at(tt, ages[k]);
+                    const std::vector<float> ck = boom::render(pass, tt, ok, v0);
+                    const std::vector<float> lk = boom::luma(ck);
+                    const float pkk = boom::peak(lk);
+                    double s[3] = {};
+                    for (std::size_t i = 0; i < lk.size(); ++i)
+                        if (lk[i] > 0.1f * pkk)
+                            for (unsigned q = 0; q < 3; ++q) s[q] += ck[3 * i + q];
+                    hue[k] = classes::burst::nearest_stop(s);
+                    ramp_stats(ck, lk, pkk, &pch[k + 1], &pon[k + 1]);
+                    const double smx = std::max(s[0], std::max(s[1], s[2])), smn = std::min(s[0], std::min(s[1], s[2]));
+                    chroma[k] = smx > 0 ? (smx - smn) / smx : 0;
+                }
+                const double rg = band[1] > 0 ? band[0] / band[1] : 0, eb = band_v > 0 ? edge_v / band_v : 0;
+                std::printf("EXPLOSION case=wave_colour edge_over_band=%.2f band_r_over_g=%.2f band_px=%u hue_02=%.2f "
+                            "hue_09=%.2f chroma_02=%.3f chroma_09=%.3f\n",
+                            eb, rg, band_n, hue[0], hue[1], chroma[0], chroma[1]);
+                std::printf("EXPLOSION case=wave_ramp mean_chroma=%.3f,%.3f,%.3f on_ramp=%.3f,%.3f,%.3f\n", pch[0], pch[1],
+                            pch[2], pon[0], pon[1], pon[2]);
+                bool ramp_ok = true;
+                for (unsigned k = 0; k < 3; ++k) ramp_ok = ramp_ok && pch[k] >= 0.35 && pon[k] >= 0.9;
+                report("wave_fire_not_grey", eb >= 1.3 && rg >= 1.3 && hue[0] >= 0.5 && hue[1] <= 0.35 && chroma[0] >= 0.2 &&
+                                                 chroma[1] >= 0.2 && ramp_ok, "");
+            }
+            // (d) wave_refraction_strips_present_and_capped: the newest wave's request at 1.5 km face-on, its eight
+            // strips at the body's birth (r_0 592 px: 0.10 screens), none past the cap (drawn without a band) later; at
+            // r 1,000 px the strips' sum against the single box (wave_shimmer_strips_timing: <= 0.6, the GPU half in
+            // the engine shimmer fixture)
+            {
+                boom::clear();
+                capital(1500.0, false);
+                const Out early = wave_at(tt, 0.f);
+                boom::clear();
+                capital(1500.0, false);
+                const Out late = wave_at(tt, 200.f);
+                boom::clear();
+                capital(1500.0, false);
+                std::printf("EXPLOSION case=wave_strips early_strips=%u early_screens=%.3f early_request=%u late_waves=%u "
+                            "late_strips=%u late_capped=%u late_screens=%.3f\n",
+                            early.n.wave_strips, double(early.n.wave_strip_screens), early.wave_shimmer, late.waves,
+                            late.n.wave_strips, late.n.wave_strips_capped, double(late.n.wave_strip_screens));
+                x3m::engine_shimmer::Projection pj{};
+                pj.m00 = v0.cam.m00;
+                pj.m11 = v0.cam.m11;
+                pj.width = float(tt.w);
+                pj.height = float(tt.h);
+                x3m::engine_shimmer::WaveRequest w{};
+                const float z = 5000.f * m;
+                w.centre[2] = z;
+                w.normal[2] = 1.f;
+                w.axis[0] = 1.f;
+                w.r = float(1000.0 / px_x) * z;
+                w.band = 0.2f * R_f;
+                w.stretch = 1.f;
+                w.px = 6.f;
+                x3m::engine_shimmer::Rect strips[8];
+                float ss = 0.f;
+                const unsigned made = x3m::engine_shimmer::wave_strips(w, pj, v0.near_z, strips, &ss);
+                const double band_px = double(w.band) * px_x / double(z);
+                const double box = std::pow(2.0 * (1000.0 + band_px), 2.0) / (double(tt.w) * tt.h);
+                std::printf("EXPLOSION case=wave_strip_area r_px=1000 strips=%u strip_screens=%.3f box_screens=%.3f ratio=%.3f\n",
+                            made, double(ss), box, box > 0 ? double(ss) / box : 0.0);
+                report("wave_refraction_strips_present_and_capped",
+                       early.n.wave_strips == bm::wave_strips && early.wave_shimmer == 1 && late.waves == 1 &&
+                           late.n.wave_strips == 0 && late.n.wave_strips_capped == 1 && late.wave_shimmer == 0, "");
+                report("wave_shimmer_strips_area", made > 0 && ss > 0.f && double(ss) <= 0.6 * box, "");
+            }
+            // (e) wave_lights_swept_hulls: a hull plane through the wave's centre (5 km face-on): the light there (the
+            // frame over the plane less half the sky frame: the plane halves the slab's chord) at the pixel 2 R_f above
+            // the centre, while the front crosses it and at 0.5 tau
+            {
+                const float target = 2.f * R_f;
+                float t_cross = 0.f;
+                for (float t = 0.f; t < tau; t += 1.f)
+                    if (law_r(t) >= target) {
+                        t_cross = t;
+                        break;
+                    }
+                const std::size_t px = std::size_t(cy - double(target) * px_x / (5000.0 * m)) * tt.w + std::size_t(cx);
+                double light[2] = {}, sky_v[2] = {};
+                const float ts[2] = {t_cross, 0.5f * tau};
+                for (unsigned k = 0; k < 2; ++k) {
+                    boom::clear();
+                    capital(5000.0, false);
+                    const Out o = wave_at(tt, ts[k]);
+                    draw_lane(tt, 0.f, -1.f);
+                    const std::vector<float> sky = boom::luma(boom::render(pass, tt, o, v0));
+                    draw_lane(tt, 5000.f * m, 1.f);
+                    const std::vector<float> lane = boom::luma(boom::render(pass, tt, o, v0));
+                    draw_lane(tt, 0.f, -1.f);
+                    sky_v[k] = sky[px];
+                    light[k] = double(lane[px]) - 0.5 * double(sky[px]);
+                }
+                std::printf("EXPLOSION case=wave_swept_hull t_cross_ms=%.0f light_cross=%.3f light_late=%.3f sky_cross=%.3f "
+                            "sky_late=%.3f\n",
+                            double(t_cross), light[0], light[1], sky_v[0], sky_v[1]);
+                report("wave_lights_swept_hulls", light[0] >= 0.1 && std::fabs(light[1]) <= 0.02, "");
+            }
+            // (f) wave_eye_in_plane_no_whiteout (2026-11-07 v3): the eye in the wave's plane (the capital from above at 1.5
+            // km, every element, over sky), every 50 ms P .. P + L_w: the frame's mean of 1 - e^(-Y) (Y the linear Rec. 709
+            // luminance) <= 0.35 and no frame with more than 40 % of its pixels above 0.9
+            {
+                boom::clear();
+                capital(1500.0, true);
+                double worst_mean = 0, worst_share = 0, worst_at = 0;
+                for (unsigned a = 0; a <= unsigned(Pc + Lw); a += 50) {
+                    const Out o = boom::build(boom::view(tt, 1000 + a, 16));
+                    if (float(a) < Pc) continue;
+                    const std::vector<float> rgb = boom::render(pass, tt, o, v0);
+                    double sum = 0, hot = 0;
+                    const std::size_t npx = rgb.size() / 3;
+                    for (std::size_t i = 0; i < npx; ++i) {
+                        const double Y = 0.2126 * rgb[3 * i] + 0.7152 * rgb[3 * i + 1] + 0.0722 * rgb[3 * i + 2];
+                        const double tm = 1.0 - std::exp(-Y);
+                        sum += tm;
+                        hot += tm > 0.9;
+                    }
+                    const double mean = sum / double(npx), share = hot / double(npx);
+                    if (mean > worst_mean) {
+                        worst_mean = mean;
+                        worst_at = double(a) - double(Pc);
+                    }
+                    worst_share = std::max(worst_share, share);
+                }
+                std::printf("EXPLOSION case=wave_eye_in_plane worst_mean=%.3f at_ms=%.0f worst_hot_share=%.3f\n", worst_mean,
+                            worst_at, worst_share);
+                report("wave_eye_in_plane_no_whiteout", worst_mean <= 0.35 && worst_share <= 0.4, "");
+            }
+            tt.release();
+        } else
+            report("wave_radius_law", false, "target");
+        // ---- 13.2: the composed body. Silhouette (36-bin 10 %-of-peak outline about the box's centre) at 0.3 / 0.6 L,
+        // connectedness and radiance at 0.3 / 0.1 L against the single body, 8 seeds per tier, 1080p, core off for the
+        // geometry, on for the radiance. Only with boom::compose_enabled (2026-11-07 v4, the kill: off for the flight; the
+        // program stays built), else one row with the reason.
+        if (!bm::compose_enabled)
+            std::printf("EXPLOSION case=compose_skipped reason=compose_enabled_false\n");
+        else {
+            struct Tier {
+                unsigned tier;
+                double z, r;
+                const char* name;
+            } tiers[3] = {{bm::fighter, 600.0, 14.0, "fighter_600m"}, {bm::capital, 1500.0, 1288.0, "capital_1500m"},
+                          {bm::station, 3000.0, 1800.0, "station_3km"}};
+            auto one = [&](const Tier& tr, std::uint32_t seq) {
+                wc::Event* e = boom::add(tr.tier, 1000, 0, 0, tr.z, tr.r, seq);
+                if (tr.tier == bm::capital || tr.tier == bm::station) {
+                    e->table = tr.tier == bm::station ? 6 : 7;
+                    boom::broadside(e);
+                }
+                return e;
+            };
+            auto profile = [&](const std::vector<float>& l, double x, double y, double out[36]) {
+                const float p = boom::peak(l);
+                for (unsigned b = 0; b < 36; ++b) out[b] = 0;
+                for (std::size_t i = 0; i < l.size(); ++i) {
+                    if (!(l[i] > 0.1f * p)) continue;
+                    const double dx = double(i % g.w) + 0.5 - x, dy = double(i / g.w) + 0.5 - y, r = std::hypot(dx, dy);
+                    const unsigned bin = std::min(35u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 36.0));
+                    out[bin] = std::max(out[bin], r);
+                }
+            };
+            auto cv_of = [](const double p[36]) {
+                double mean = 0, var = 0;
+                for (unsigned b = 0; b < 36; ++b) mean += p[b] / 36.0;
+                for (unsigned b = 0; b < 36; ++b) var += (p[b] - mean) * (p[b] - mean) / 36.0;
+                return mean > 0 ? std::sqrt(var) / mean : 0.0;
+            };
+            struct Blob {
+                std::size_t n;
+                unsigned x0, y0, x1, y1;
+            };
+            auto blobs = [](unsigned w, unsigned h, const auto& in) {
+                std::vector<Blob> out;
+                std::vector<unsigned char> seen(std::size_t(w) * h, 0);
+                std::vector<std::size_t> stack;
+                for (std::size_t i = 0; i < seen.size(); ++i) {
+                    if (seen[i] || !in(i)) continue;
+                    Blob b{0, unsigned(i % w), unsigned(i / w), unsigned(i % w), unsigned(i / w)};
+                    stack.push_back(i);
+                    seen[i] = 1;
+                    while (!stack.empty()) {
+                        const std::size_t q = stack.back();
+                        stack.pop_back();
+                        ++b.n;
+                        const unsigned x = unsigned(q % w), y = unsigned(q / w);
+                        b.x0 = std::min(b.x0, x);
+                        b.x1 = std::max(b.x1, x);
+                        b.y0 = std::min(b.y0, y);
+                        b.y1 = std::max(b.y1, y);
+                        const std::size_t nb[4] = {x > 0 ? q - 1 : q, x + 1 < w ? q + 1 : q, y > 0 ? q - w : q, y + 1 < h ? q + w : q};
+                        for (std::size_t r : nb)
+                            if (!seen[r] && in(r)) {
+                                seen[r] = 1;
+                                stack.push_back(r);
+                            }
+                    }
+                    out.push_back(b);
+                }
+                return out;
+            };
+            bool cv_ok = true, change_ok = true, grapes_ok = true, sun_ok = true, clumps_ok = true, white_ok = true,
+                 structure_ok = false;
+            for (const Tier& tr : tiers) {
+                const float L = bm::tier_life_ms[tr.tier], P = bm::tier_preroll_ms[tr.tier];
+                std::vector<double> cv3, cv6, single3, corr, rms, blob, peak_ratio, mean_ratio, clumps, white, lit_in;
+                for (unsigned j = 0; j < 8; ++j) {
+                    const std::uint32_t seq = 0x6d000u + 977u * (j + 1);
+                    double prof[2][36];
+                    for (unsigned k = 0; k < 2; ++k) {
+                        boom::core_on = false;
+                        boom::clear();
+                        one(tr, seq);
+                        latch(g);
+                        const Out o = at(g, P + (k ? 0.6f : 0.3f) * L, boom::p_body);
+                        float c[3];
+                        boom::body_centre(o, c);
+                        const classes::burst::Disc d = boom::disc(g, boom::view(g, 0, 16), c, 1.0);
+                        const std::vector<float> l = boom::luma(boom::render(pass, g, o, boom::view(g, 0, 16)));
+                        profile(l, d.x, d.y, prof[k]);
+                        (k ? cv6 : cv3).push_back(cv_of(prof[k]));
+                        // the 4-connected blobs of the lit pixels (10 % of the frame's peak): at 0.3 L one holds them,
+                        // at 0.6 L the clumps survive (>= 2 blobs of >= 1 % of the lit pixels each)
+                        const float p = boom::peak(l);
+                        const std::vector<Blob> bl = blobs(g.w, g.h, [&](std::size_t i) { return l[i] > 0.1f * p; });
+                        std::size_t total = 0, best = 0;
+                        for (const Blob& b : bl) {
+                            total += b.n;
+                            best = std::max(best, b.n);
+                        }
+                        if (!k) blob.push_back(total ? double(best) / double(total) : 0.0);
+                        else {
+                            unsigned count = 0;
+                            for (const Blob& b : bl) count += b.n * 100 >= total;
+                            clumps.push_back(count);
+                            // the holes: the lit share of the pixels inside the 36-bin outline
+                            double in = 0, on = 0;
+                            for (std::size_t i = 0; i < l.size(); ++i) {
+                                const double dx = double(i % g.w) + 0.5 - d.x, dy = double(i / g.w) + 0.5 - d.y;
+                                const unsigned bin = std::min(35u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 36.0));
+                                if (std::hypot(dx, dy) <= prof[k][bin]) {
+                                    ++in;
+                                    on += l[i] > 0.1f * p;
+                                }
+                            }
+                            lit_in.push_back(in > 0 ? on / in : 1.0);
+                        }
+                    }
+                    double mean[2] = {}, sxy = 0, sxx = 0, syy = 0, d2 = 0;
+                    for (unsigned k = 0; k < 2; ++k)
+                        for (unsigned b = 0; b < 36; ++b) mean[k] += prof[k][b] / 36.0;
+                    for (unsigned b = 0; b < 36; ++b) {
+                        const double a = prof[0][b] - mean[0], c = prof[1][b] - mean[1];
+                        sxy += a * c;
+                        sxx += a * a;
+                        syy += c * c;
+                        const double na = mean[0] > 0 ? prof[0][b] / mean[0] : 0, nc = mean[1] > 0 ? prof[1][b] / mean[1] : 0;
+                        d2 += (na - nc) * (na - nc) / 36.0;
+                    }
+                    corr.push_back(sxx > 0 && syy > 0 ? sxy / std::sqrt(sxx * syy) : 1.0);
+                    rms.push_back(std::sqrt(d2));
+                    // the single body's silhouette (the lobed ball) for the record
+                    boom::compose_on = false;
+                    boom::clear();
+                    one(tr, seq);
+                    latch(g);
+                    {
+                        const Out o = at(g, P + 0.3f * L, boom::p_body);
+                        float c[3];
+                        boom::body_centre(o, c);
+                        const classes::burst::Disc d = boom::disc(g, boom::view(g, 0, 16), c, 1.0);
+                        double ps[36];
+                        profile(boom::luma(boom::render(pass, g, o, boom::view(g, 0, 16))), d.x, d.y, ps);
+                        single3.push_back(cv_of(ps));
+                    }
+                    // the radiance at 0.1 L (core on): the composed against the single body of the same seed
+                    boom::core_on = true;
+                    double pk[2], mr[2];
+                    for (unsigned k = 0; k < 2; ++k) {
+                        boom::compose_on = k == 0;
+                        boom::clear();
+                        one(tr, seq);
+                        latch(g);
+                        const Out o = at(g, P + 0.1f * L, boom::p_body);
+                        const std::vector<float> l = boom::luma(boom::render(pass, g, o, boom::view(g, 0, 16)));
+                        pk[k] = boom::peak(l);
+                        double s = 0, n = 0;
+                        for (float v : l)
+                            if (v > 0.1f * float(pk[k])) {
+                                s += v;
+                                ++n;
+                            }
+                        mr[k] = n > 0 ? s / n : 0;
+                    }
+                    boom::compose_on = true;
+                    peak_ratio.push_back(pk[1] > 0 ? pk[0] / pk[1] : 0);
+                    mean_ratio.push_back(mr[1] > 0 ? mr[0] / mr[1] : 0);
+                    // no white region past 0.3 L (core on): the widest 4-connected run of white pixels (luma >= 1.2, the
+                    // smallest channel >= 0.75 of the largest) at 0.3 / 0.6 L, over R_f on screen
+                    double wmax = 0;
+                    for (float frac : {0.3f, 0.6f}) {
+                        boom::clear();
+                        wc::Event* e = one(tr, seq);
+                        latch(g);
+                        const Out o = at(g, P + frac * L, boom::p_body);
+                        const std::vector<float> rgb = boom::render(pass, g, o, boom::view(g, 0, 16));
+                        const std::vector<float> l = boom::luma(rgb);
+                        const double rf_px = double(ws::boom_r_f_m(*e)) * double(m) * 0.5 * g.w * double(boom::view(g, 0, 16).cam.m00) / (tr.z * double(m));
+                        const std::vector<Blob> bl = blobs(g.w, g.h, [&](std::size_t i) {
+                            const float* c = &rgb[3 * i];
+                            const float mx = std::max(c[0], std::max(c[1], c[2])), mn = std::min(c[0], std::min(c[1], c[2]));
+                            return l[i] >= 1.2f && mx > 0.f && mn >= 0.75f * mx;
+                        });
+                        for (const Blob& b : bl)
+                            wmax = std::max(wmax, double(std::max(b.x1 - b.x0, b.y1 - b.y0) + 1) / rf_px);
+                    }
+                    boom::core_on = false;
+                    white.push_back(wmax);
+                }
+                const double c3 = boom::median(cv3), c6 = boom::median(cv6), s3 = boom::median(single3);
+                const double cr = boom::median(corr), rm = boom::median(rms), bl = boom::median(blob);
+                const double pr = boom::median(peak_ratio), mrr = boom::median(mean_ratio);
+                const double cl6 = boom::median(clumps), wh = boom::median(white), li6 = boom::median(lit_in);
+                if (tr.tier == bm::capital) structure_ok = cl6 >= 3.0 && li6 <= 0.75;
+                std::printf("EXPLOSION case=compose_silhouette tier=%s cv_03=%.3f cv_06=%.3f single_cv_03=%.3f corr=%.3f "
+                            "rms=%.3f blob_share=%.3f peak_over_single=%.3f mean_over_single=%.3f clumps_06=%.1f "
+                            "white_rf=%.3f lit_in_06=%.3f\n",
+                            tr.name, c3, c6, s3, cr, rm, bl, pr, mrr, cl6, wh, li6);
+                clumps_ok = clumps_ok && cl6 >= 2.0;
+                white_ok = white_ok && wh <= 0.3;
+                cv_ok = cv_ok && c3 >= 0.18 && c6 >= 0.18;
+                change_ok = change_ok && (cr <= 0.7 || rm >= 0.15);
+                grapes_ok = grapes_ok && bl >= 0.8;
+                sun_ok = sun_ok && pr <= 1.4 && mrr >= 0.7 && mrr <= 1.3;
+            }
+            boom::core_on = false;
+            report("compose_silhouette_cv", cv_ok, "");
+            report("compose_silhouette_changes", change_ok, "");
+            report("compose_not_grapes", grapes_ok, "");
+            report("compose_under_one_sun", sun_ok, "");
+            report("compose_clumps_survive", clumps_ok, "");
+            report("compose_no_white_region", white_ok, "");
+            // 2026-11-07 v3 (the fourth octave): the capital broadside at 0.6 L keeps >= 3 clumps and holes (the lit share
+            // inside its outline <= 0.75)
+            report("compose_capital_structure", structure_ok, "");
+            // births and jets (the stage's table, mirrored by the program): sphere 0 at the body's birth, every one born
+            // by compose_spread (jets by birth0 + span), the composed body gone at L; jets on the capital and station only,
+            // their long over short axis
+            bool births_ok = true, jets_ok = true;
+            for (const Tier& tr : tiers) {
+                for (unsigned j = 0; j < 8; ++j) {
+                    boom::clear();
+                    wc::Event* e = one(tr, 0x6d800u + 977u * (j + 1));
+                    const float L = bm::tier_life_ms[tr.tier], P = bm::tier_preroll_ms[tr.tier];
+                    latch(g);
+                    const Out o = at(g, P + 0.2f * L, boom::p_body);
+                    const std::uint32_t hc = ws::element_hash(e->sequence, bm::compose_element);
+                    const unsigned full = bm::compose_n_lo[tr.tier] + (hc >> 4) % (bm::compose_n_hi[tr.tier] - bm::compose_n_lo[tr.tier] + 1u);
+                    const unsigned jets = bm::compose_jets_lo[tr.tier] +
+                                          (hc >> 12) % (bm::compose_jets_hi[tr.tier] - bm::compose_jets_lo[tr.tier] + 1u);
+                    const unsigned n = full;
+                    float ax[3][3];
+                    ws::boom_rows(*e, ax);
+                    ws::ComposeSphere sp[bm::compose_max];
+                    const float zero[3] = {0.f, 0.f, 0.f};
+                    const float seed = boom::bodies[0].look[3];
+                    const unsigned at0 = ws::boom_compose_table(zero, 1.f, 0.f, seed, n, jets, full, true, 0.5f, 0.15f, ax, sp);
+                    const unsigned atx = ws::boom_compose_table(zero, 1.f, bm::compose_spread + 1e-4f, seed, n, jets, full, true,
+                                                                0.5f, 0.15f, ax, sp);
+                    const Out gone = at(g, P + L + 20.f, boom::p_body);
+                    births_ok = births_ok && o.n.composed == 1 && at0 >= 1 && atx == n + jets && gone.n.composed == 0;
+                    const bool big = tr.tier == bm::capital || tr.tier == bm::station;
+                    jets_ok = jets_ok && (big ? jets >= 1 && jets <= 2 : jets == 0);
+                    if (!j)
+                        std::printf("EXPLOSION case=compose_table tier=%s n=%u n_full=%u jets=%u born_at_0=%u born_by_spread=%u "
+                                    "gone_at_L=%u jet_ratio=%.2f\n",
+                                    tr.name, n, full, jets, at0, atx, gone.n.composed,
+                                    double(bm::compose_jet_long / bm::compose_jet_short));
+                }
+            }
+            report("compose_births_spread", births_ok, "");
+            report("compose_jets_capital", jets_ok && std::fabs(bm::compose_jet_long / bm::compose_jet_short - 2.f) <= 0.3f, "");
+            // the eye inside the cluster: the own death in the chase view (24 m) and the close capital (720 m, t_b + 0.3 s):
+            // the shared-noise mode and N at most compose_eye_n
+            {
+                boom::clear();
+                fighter(24.0);
+                latch(g);
+                const Out own = at(g, 0.25f * Lf, boom::p_body);
+                const float own_n = boom::compose[0].head[0], own_s = boom::compose[0].head[1];
+                boom::clear();
+                capital(720.0, false);
+                latch(g);
+                const Out close = at(g, Pc + 0.25f * Lc, boom::p_body);
+                const float cl_n = boom::compose[0].head[0], cl_s = boom::compose[0].head[1];
+                std::printf("EXPLOSION case=compose_eye own_eye=%u own_drawn=%.0f own_shared=%.0f close_eye=%u close_drawn=%.0f "
+                            "close_shared=%.0f\n",
+                            own.n.compose_eye, double(own_n), double(own_s), close.n.compose_eye, double(cl_n), double(cl_s));
+                report("compose_eye_inside_shared", own.n.compose_eye == 1 && own_s == 1.f && own_n >= 2.f && own_n <= 4.f &&
+                                                        close.n.compose_eye == 1 && cl_s == 1.f && cl_n >= 2.f && cl_n <= 4.f, "");
+            }
+            // the LOD floor: a capital's body over a budget of nothing after the octave step's hold: the shared mode, the
+            // spheres down to compose_n_min, then the jets, never under it
+            {
+                boom::clear();
+                capital(1500.0, false);
+                latch(g);
+                const float keep_cap = boom::cap_screens;
+                boom::cap_screens = 0.f;
+                Out o;
+                for (unsigned a = 0; a < 20; ++a)
+                    o = boom::build(boom::view(g, 1000 + unsigned(Pc + 0.3f * Lc) + 16 * a, 16), boom::p_body);
+                boom::cap_screens = keep_cap;
+                const float drawn = boom::compose[0].head[0], shared = boom::compose[0].head[1];
+                unsigned jets = 0;
+                for (unsigned k = 0; k < unsigned(drawn); ++k) jets += boom::compose[0].sphere[k][1][3] > 0.f;
+                std::printf("EXPLOSION case=compose_lod drawn=%.0f jets=%u shared=%.0f dropped=%u octaves=%u\n", double(drawn),
+                            jets, double(shared), o.n.compose_dropped, o.n.octaves);
+                report("compose_lod_floor", o.n.octaves == 2 && drawn == float(bm::compose_n_min) && jets == 0 && shared == 1.f &&
+                                                o.n.compose_dropped > 0, "");
+            }
+            // the box holds the spheres: the body drawn in its box and in one 1.6 x larger, 8 seeds of each tier, at 0.6 L
+            {
+                double worst = 0;
+                for (const Tier& tr : tiers)
+                    for (unsigned j = 0; j < 8; ++j) {
+                        // the normal box's pixels (its corners through the projection), then the body in a box 1.6 x
+                        // larger: its lit pixels outside the first
+                        double box[4] = {0, 0, 0, 0};
+                        std::vector<float> big;
+                        for (unsigned k = 0; k < 2; ++k) {
+                            boom::box_scale = k ? 1.6f : 1.f;
+                            boom::clear();
+                            one(tr, 0x6e800u + 977u * (j + 1));
+                            latch(g);
+                            const float L = bm::tier_life_ms[tr.tier], P = bm::tier_preroll_ms[tr.tier];
+                            const Out o = at(g, P + 0.6f * L, boom::p_body);
+                            const ws::HullView v = boom::view(g, 0, 16);
+                            if (!k) {
+                                const rr::WeaponFireballVertex& a = boom::bodies[0];
+                                const rr::WeaponFireballVertex& b = boom::bodies[3];
+                                box[0] = 0.5 * g.w * (1.0 + v.cam.m00 * a.corner[0] / a.corner[2]);
+                                box[2] = 0.5 * g.w * (1.0 + v.cam.m00 * b.corner[0] / b.corner[2]);
+                                box[1] = 0.5 * g.h * (1.0 - v.cam.m11 * b.corner[1] / b.corner[2]);
+                                box[3] = 0.5 * g.h * (1.0 - v.cam.m11 * a.corner[1] / a.corner[2]);
+                            } else
+                                big = boom::luma(boom::render(pass, g, o, v));
+                        }
+                        boom::box_scale = 1.f;
+                        const float pk = boom::peak(big);
+                        double outside = 0;
+                        for (std::size_t i = 0; i < big.size(); ++i) {
+                            const double x = double(i % g.w) + 0.5, y = double(i / g.w) + 0.5;
+                            const bool in = x >= std::min(box[0], box[2]) - 1 && x <= std::max(box[0], box[2]) + 1 &&
+                                            y >= std::min(box[1], box[3]) - 1 && y <= std::max(box[1], box[3]) + 1;
+                            outside += !in && big[i] > 0.01f * pk;
+                        }
+                        worst = std::max(worst, outside);
+                    }
+                std::printf("EXPLOSION case=compose_box worst_clipped_px=%.0f\n", worst);
+                report("compose_box_holds_spheres", worst == 0, "");
+            }
+        }
+        boom::core_on = true;
     }
     // ---- The dump (X3M_WEAPON_EFFECTS_DUMP=<dir>, X3M_WEAPON_EFFECTS_DUMP_CASES selects base names): the cases the look
     // is judged on at 1920x1080 and 5120x1440, at 0.1 / 0.3 / 0.6 / 0.8 / 1.0 L (the fighter's ages for the nested and
@@ -1713,13 +2752,19 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             double z, r;
             unsigned cw, ch;
             std::initializer_list<unsigned> ages;
+            bool above = false; // section 13.1: the hull seen from above (the wave edge-on)
         };
+        // section 13 (2026-11-07): the whole frame for the wave's cases (the ring passes any window), the broadside at P +
+        // 40 / 120 / 400 / 1,200 ms among its ages, the bar from above and the far capital; at 1920x1080 the -body and
+        // -wave parts as PFM beside each frame
         const BigCase big_cases[] = {
             {"boom_corvette_1500m", bm::corvette, 1500.0, 87.0, 1000, 600, {16, 100, 300, 600, 900, 1800, 3000}},
-            {"boom_capital_1500m_broadside", bm::capital, 1500.0, 1288.0, 2000, 1100,
-             {100, 600, 1100, 1450, 1540, 1900, 2300, 2700, 3900, 5500}},
+            {"boom_capital_1500m_broadside", bm::capital, 1500.0, 1288.0, 0, 0,
+             {100, 600, 1100, 1450, 1540, 1620, 1900, 2300, 2700, 3900, 5500}},
+            {"boom_capital_1500m_above", bm::capital, 1500.0, 1288.0, 0, 0, {1540, 1620, 1900, 2700}, true},
+            {"boom_capital_far_5km", bm::capital, 5000.0, 1288.0, 0, 0, {1540, 1620, 1900, 2700}},
             {"boom_capital_close_720m", bm::capital, 720.0, 1288.0, 0, 0, {600, 1450, 1540, 2500, 3900}},
-            {"boom_station_3km", bm::station, 3000.0, 1800.0, 1600, 1100, {200, 1500, 2800, 3060, 3600, 4200, 6600, 9000}}};
+            {"boom_station_3km", bm::station, 3000.0, 1800.0, 0, 0, {200, 1500, 2800, 3060, 3600, 4200, 6600, 9000}}};
         for (auto size : {std::pair<UINT, UINT>{1920, 1080}, std::pair<UINT, UINT>{5120, 1440}}) {
             Target tt;
             if (!make_target(tt, size.first, size.second)) continue;
@@ -1729,7 +2774,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     boom::clear();
                     wc::Event* e = boom::add(k.tier, 1000, 0, 0, k.z, k.r);
                     e->table = k.tier == bm::station ? 6 : 7;
-                    boom::broadside(e);
+                    k.above ? boom::from_above(e) : boom::broadside(e);
                     const boom::Hull hull = boom::hull_of(*e);
                     Out o;
                     for (unsigned t_ms = 0;; t_ms += 16) {
@@ -1748,9 +2793,23 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                     boom::write_ppm(path, rgb, tt.w, tt.h, unsigned(k.cw * s), unsigned(k.ch * s));
                     ok ? ++written : ++failed;
                     std::printf("EXPLOSION_DUMP case=%s width=%u height=%u age_ms=%u bodies=%u secondaries=%u quads=%u "
-                                "glows=%u smokes=%u shocks=%u darks=%u hull_alpha=%.2f screens=%.3f written=%u\n",
+                                "glows=%u smokes=%u shocks=%u darks=%u waves=%u wave_strips=%u composed=%u hull_alpha=%.2f "
+                                "screens=%.3f written=%u\n",
                                 k.name, size.first, size.second, age, o.n.bodies, o.n.secondaries, o.quads, o.glows, o.smokes,
-                                o.shocks, o.darks, double(alpha), double(o.n.screens), unsigned(ok));
+                                o.shocks, o.darks, o.waves, o.n.wave_strips, o.n.composed, double(alpha), double(o.n.screens),
+                                unsigned(ok));
+                    if (size.first == 1920)
+                        for (unsigned part : {unsigned(boom::p_body), unsigned(boom::p_wave)}) {
+                            static ws::BoomState saved;
+                            saved = boom::state;
+                            const Out po = boom::build(v, part);
+                            boom::state = saved;
+                            HRESULT ph = E_FAIL;
+                            const std::vector<float> prgb = boom::render_hull(pass, tt, po, v, &hull, 0.f, &ph);
+                            std::snprintf(path, sizeof path, "%s\\%s_%ux%u-%u-%s.pfm", dir, k.name, size.first, size.second, age,
+                                          part == boom::p_body ? "body" : "wave");
+                            (SUCCEEDED(ph) && !prgb.empty() && boom::write_pfm(path, prgb, tt.w, tt.h)) ? ++written : ++failed;
+                        }
                 }
             }
             draw_lane(tt, 0.f, -1.f);
@@ -1785,7 +2844,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 double(o.n.screens), unsigned(ok));
                     if (size.first != 1920) continue;
                     for (unsigned p = 0; p < boom::part_count; ++p) {
-                        if ((1u << p) == boom::p_secondary) continue; // none on these tiers
+                        if ((1u << p) == boom::p_secondary || (1u << p) == boom::p_wave) continue; // none on these tiers
                         // the part's own build at the same state (the switches select what the frame draws)
                         static ws::BoomState saved;
                         saved = boom::state;

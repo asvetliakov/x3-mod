@@ -355,7 +355,15 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         self.assertIsNone(r['bottle'])
         self.assertEqual(r['host']['name'], 'native-windows')
         self.assertEqual(r['report']['failed_checks'], [])
-        self.assertEqual(r['report']['check_count'], 63)  # 43 + the hull hits' weapon-rect cases (2026-11-06) + their ring (2026-11-07)
+        # 43 + the hull hits' weapon-rect cases (2026-11-06) + their ring (2026-11-07) + the death fire wave's band and
+        # strips at both sizes (explosion-look.md 13.1, 2026-11-07)
+        self.assertEqual(r['report']['check_count'], 73)
+        for x in r['report']['wave']:
+            self.assertEqual((x['strips'], x['beyond_diff'], x['front_diff'], x['outside_diff'], x['constants']), (8, 0, 0, 0, 1))
+            self.assertGreaterEqual(x['moved'], 0.8 * x['band'])
+            self.assertGreaterEqual(x['sky_moved'], 0.8 * x['sky_band'])
+        self.assertEqual([x['width'] for x in r['report']['wave_timing']], [5120])
+        self.assertLessEqual(r['report']['wave_timing'][0]['ratio'], 0.6)  # wave_shimmer_strips_timing
         # The caller's stream 0 tuple (buffer, offset 16, stride 24) survives the pass's restore (native D3D9's Capture
         # keeps a block's recorded stream offset: docs/verification/engine-effects.md, "Native stream offset").
         state = r['report']['state'][0]
@@ -386,8 +394,8 @@ class EngineShimmerFixtureRecord(unittest.TestCase):
         self.assertEqual(wine['bottle']['name'], 'X3')
         self.assertEqual(wine['report']['failed_checks'], [])
         # the native record's checks are the Wine record's plus the hull hits' weapon-rect cases (2026-11-06, native only:
-        # this host has no bottle)
-        native = [c[0] for c in self.record['report']['checks'] if not c[0].startswith('weapon_rect_')]
+        # this host has no bottle) and the death fire wave's (explosion-look.md 13.1, 2026-11-07)
+        native = [c[0] for c in self.record['report']['checks'] if not c[0].startswith(('weapon_rect_', 'wave_'))]
         self.assertEqual([c[0] for c in wine['report']['checks']], native)
 
 

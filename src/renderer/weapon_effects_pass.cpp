@@ -3,6 +3,7 @@
 #include "../proxy/cpu_state.h"
 #include "../proxy/sse_scalar.h"
 #include "../proxy/weapon_effects_core.h"
+#include <cstddef>
 #include <cstring>
 #include <initializer_list>
 #include <iterator>
@@ -169,6 +170,24 @@ constexpr std::uint32_t shock_ps_words[] = {
 constexpr std::uint32_t halo_ps_words[] = {
 #include "weapon_halo_pixel_program_inc.h"
 };
+// Section 13.1: the death fire wave (provenance: verification/results/weapon-wave-pixel-program.json).
+constexpr std::uint32_t wave_ps_words[] = {
+#include "weapon_wave_pixel_program_inc.h"
+};
+// Section 13.2: the composed death body (provenance: verification/results/weapon-compose-pixel-program.json).
+constexpr std::uint32_t compose_ps_words[] = {
+#include "weapon_compose_pixel_program_inc.h"
+};
+static_assert(sizeof(WeaponComposeConstants) == (1 + 4 * weapon_compose_spheres) * 16, "c14 .. c42 of weapon_compose_ps.hlsl");
+static_assert(offsetof(WeaponWaveConstants, spare) == 2 * 16 && offsetof(WeaponWaveConstants, quads) == 3 * 16,
+              "c13 .. c15 of weapon_wave_ps.hlsl, then the quad count");
+// Every drawn wave's quad count in 1 .. weapon_wave_quads (its vertices 4 x weapon_wave_quads a wave).
+static bool wave_quads_valid(const WeaponEffectsFrame& f) noexcept {
+    for (unsigned k = 0; f.wave_constants && k < f.wave_boxes && k < weapon_wave_boxes; ++k)
+        if (f.wave_constants[k].quads < 1 || f.wave_constants[k].quads > weapon_wave_quads) return false;
+    return true;
+}
+static_assert(wcore::look::fireball_column_pow == 0.25f, "weapon_compose_ps.hlsl takes column^0.25 as two square roots");
 constexpr D3DVERTEXELEMENT9 bolt_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -266,6 +285,8 @@ void WeaponEffectsPass::release_hull_objects() noexcept {
     drop(lightning_declaration_);
     drop(shock_ps_);
     drop(halo_ps_);
+    drop(wave_ps_);
+    drop(compose_ps_);
 }
 void WeaponEffectsPass::release_bolt_objects() noexcept {
     drop(bolt_vs_);
@@ -314,7 +335,7 @@ bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
            shell_declaration_ && decal_declaration_ && (!caps_.hull_enabled || hull_objects_ready()) &&
            (!caps_.bolt_enabled || bolt_objects_ready()) && (!caps_.boom_enabled || halo_ps_) &&
-           (!caps_.shock_enabled || shock_ps_);
+           (!caps_.shock_enabled || shock_ps_) && (!caps_.wave_enabled || wave_ps_) && (!caps_.compose_enabled || compose_ps_);
 }
 unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
@@ -332,7 +353,8 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(bolt_ps_), static_cast<const void*>(bolt_flag_ps_),
                           static_cast<const void*>(bolt_declaration_), static_cast<const void*>(bolt_vb_),
                           static_cast<const void*>(bolt_ib_), static_cast<const void*>(shock_ps_),
-                          static_cast<const void*>(halo_ps_)})
+                          static_cast<const void*>(halo_ps_), static_cast<const void*>(wave_ps_),
+                          static_cast<const void*>(compose_ps_)})
         n += p != nullptr;
     return n;
 }
@@ -443,6 +465,8 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (booms) {
         caps_.shock_ps_slots = ps3_program_slots(shock_ps_words, std::size(shock_ps_words));
         caps_.halo_ps_slots = ps3_program_slots(halo_ps_words, std::size(halo_ps_words));
+        caps_.wave_ps_slots = ps3_program_slots(wave_ps_words, std::size(wave_ps_words));
+        caps_.compose_ps_slots = ps3_program_slots(compose_ps_words, std::size(compose_ps_words));
         if (!caps_.hull_enabled)
             caps_.boom_reason = "boom_needs_hull";
         else if (!caps_.halo_ps_slots)
@@ -459,6 +483,18 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
                              : shock_ps_ ? "ok"
                                          : "shock_program_create";
         caps_.shock_enabled = caps_.boom_enabled && shock_ps_ != nullptr;
+        // the fire wave: optional likewise (a refusal keeps the deaths and drops only the waves)
+        caps_.wave_reason = !caps_.boom_enabled ? caps_.boom_reason
+                            : !caps_.wave_ps_slots ? "wave_compiled_program"
+                            : wave_ps_ ? "ok"
+                                       : "wave_program_create";
+        caps_.wave_enabled = caps_.boom_enabled && wave_ps_ != nullptr;
+        caps_.compose_reason = !caps_.boom_enabled ? caps_.boom_reason
+                               : !wcore::boom::compose_enabled ? "off"
+                               : !caps_.compose_ps_slots ? "compose_compiled_program"
+                               : compose_ps_ ? "ok"
+                                             : "compose_program_create";
+        caps_.compose_enabled = caps_.boom_enabled && compose_ps_ != nullptr;
     }
     // Step 4 (shields,hull,bolts only): the capsule programs, the MRT variant (independent write masks: the far flag's RT2
     // GREEN lane while RT1 stays masked), the quads' index limits, the multiply blend of the rim pass and the buffers. A
@@ -528,12 +564,23 @@ HRESULT WeaponEffectsPass::create_boom_objects() noexcept {
     if (FAILED(hr)) {
         drop(shock_ps_);
         drop(halo_ps_);
+        drop(wave_ps_);
+        drop(compose_ps_);
         return hr;
     }
     // the shock is optional: a refusal (or fixture fault bit 9) leaves it null and the set enabled
     if (!shock_ps_ && !(faults_ & 512u) && caps_.shock_ps_slots &&
         FAILED(call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(shock_ps_words), &shock_ps_)))
         drop(shock_ps_);
+    // the fire wave likewise (fixture fault bit 10)
+    if (!wave_ps_ && !(faults_ & 1024u) && caps_.wave_ps_slots &&
+        FAILED(call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(wave_ps_words), &wave_ps_)))
+        drop(wave_ps_);
+    // the composed body likewise (fixture fault bit 11)
+    // (not created while boom::compose_enabled is false: the kill, explosion-look.md D46; reason "off")
+    if (wcore::boom::compose_enabled && !compose_ps_ && !(faults_ & 2048u) && caps_.compose_ps_slots &&
+        FAILED(call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(compose_ps_words), &compose_ps_)))
+        drop(compose_ps_);
     return hr;
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
@@ -627,6 +674,14 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
     if (caps_.shock_enabled && (!caps_.boom_enabled || !shock_ps_)) {
         caps_.shock_enabled = false;
         caps_.shock_reason = "shock_program_create";
+    }
+    if (caps_.wave_enabled && (!caps_.boom_enabled || !wave_ps_)) {
+        caps_.wave_enabled = false;
+        caps_.wave_reason = "wave_program_create";
+    }
+    if (caps_.compose_enabled && (!caps_.boom_enabled || !compose_ps_)) {
+        caps_.compose_enabled = false;
+        caps_.compose_reason = wcore::boom::compose_enabled ? "compose_program_create" : "off";
     }
     return S_OK;
 }
@@ -816,11 +871,13 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         !finite(f.m20) || !finite(f.m21) || !(f.near_z > 0.f) || (f.sprite_quads && !f.sprites) ||
         (f.glow_boxes && !f.glows) || f.sprite_quads > weapon_sprite_quads || f.glow_boxes > weapon_glow_boxes ||
         (f.fireball_boxes && !f.fireballs) || f.fireball_boxes > weapon_fireball_boxes || (f.ring_quads && !f.rings) ||
-        f.ring_quads > weapon_ring_quads || ((f.fireball_boxes || f.smoke_boxes) && f.fireball_octaves != 2u && f.fireball_octaves != 3u) ||
+        f.ring_quads > weapon_ring_quads || ((f.fireball_boxes || f.smoke_boxes) && (f.fireball_octaves < 2u || f.fireball_octaves > 4u)) ||
         (f.smoke_boxes && !f.smokes) || f.smoke_boxes > weapon_smoke_boxes ||
         (f.filament_boxes && !f.filaments) || f.filament_boxes > weapon_filament_boxes ||
         (f.scorch_boxes && !f.scorches) || f.scorch_boxes > weapon_scorch_boxes || (f.shock_boxes && !f.shocks) ||
-        f.shock_boxes > weapon_shock_boxes || (f.halo_boxes && !f.halos) || f.halo_boxes > weapon_halo_boxes)
+        f.shock_boxes > weapon_shock_boxes || (f.halo_boxes && !f.halos) || f.halo_boxes > weapon_halo_boxes ||
+        (f.wave_boxes && (!f.waves || !f.wave_constants)) || f.wave_boxes > weapon_wave_boxes || !wave_quads_valid(f) ||
+        (f.composed_boxes && !f.compose) || f.composed_first + f.composed_boxes > f.fireball_boxes)
         return refuse(WeaponEffectsStep::Validate, E_INVALIDARG);
     // Without the hull programs the sprites, glows, fireballs, rings, filaments and scorches are not drawn (the glue
     // builds none then); without the multiply blend no scorch.
@@ -831,8 +888,11 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     const unsigned smoke_boxes = caps_.hull_enabled && caps_.scorch_enabled ? f.smoke_boxes : 0u;
     const unsigned shock_boxes = caps_.hull_enabled && caps_.shock_enabled ? f.shock_boxes : 0u;
     const unsigned halo_boxes = caps_.hull_enabled && caps_.boom_enabled ? f.halo_boxes : 0u;
+    const unsigned wave_boxes = caps_.hull_enabled && caps_.wave_enabled ? f.wave_boxes : 0u;
+    // the composed bodies with their program, else (refused: the stage builds none) drawn in the batch
+    const unsigned composed_boxes = caps_.hull_enabled && caps_.compose_enabled ? f.composed_boxes : 0u;
     if (!f.patch_count && !f.decal_count && !sprite_quads && !glow_boxes && !fireball_boxes && !ring_quads &&
-        !filament_boxes && !scorch_boxes && !smoke_boxes && !shock_boxes && !halo_boxes)
+        !filament_boxes && !scorch_boxes && !smoke_boxes && !shock_boxes && !halo_boxes && !wave_boxes)
         return finish(S_FALSE);
     const WeaponLook& l = f.look;
     if (!(l.ripple_speed > 0.f) || !(l.ring_width > 0.f) || !finite(l.centre_gain) || !finite(l.centre_fill) ||
@@ -888,7 +948,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     // weapon_fireball_ps.hlsl c2..c13: the projection, the screen and the frame's third-octave weight (0 past the budget's
     // step 1), the noise and erosion law, the ramp.
     namespace lk = wcore::look;
-    float fb[12 * 4] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, f.near_z, f.fireball_octaves == 3u ? 1.f : 0.f,
+    float fb[12 * 4] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, f.near_z, float(f.fireball_octaves) - 2.f,
                         lk::fireball_octave_freq[0], lk::fireball_octave_freq[1], lk::fireball_octave_freq[2], lk::fireball_lobes,
                         lk::fireball_octave_w[0], lk::fireball_octave_w[1], lk::fireball_octave_w[2], lk::fireball_rim_t,
                         lk::fireball_erode_0, lk::fireball_erode_t, lk::fireball_erode_r, lk::fireball_erode_soft,
@@ -896,6 +956,9 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     for (unsigned k = 0; k < 5; ++k)
         for (unsigned c = 0; c < 3; ++c) fb[24 + 4 * k + c] = lk::heat_ramp[k][c];
     fb[44] = lk::fireball_erode_rt;
+    fb[45] = wcore::boom::compose_soft_add; // c13.y: the composed body's soft add (the fireball program skips it)
+    fb[46] = lk::fireball_octave_freq4;      // c13.zw: the fourth octave (both programs)
+    fb[47] = lk::fireball_octave_w4;
     if (SUCCEEDED(hr) && (scorch_boxes || smoke_boxes)) {
         step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_SRCBLEND, DWORD(D3DBLEND_ZERO)));
@@ -1123,7 +1186,31 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     }
     // The fireballs (the hull hits' bursts; look 2.10: after the patches, before the sprite batch): one batched draw of
     // their screen rectangles (no cull); weapon_fireball_ps.hlsl c2..c13 (fb above).
-    if (SUCCEEDED(hr) && fireball_boxes) {
+    // Section 13.2: the composed death bodies first, one draw each with its table (weapon_compose_ps.hlsl c2..c13 of fb,
+    // c14..c42 its WeaponComposeConstants), then the rest of the fireballs batched.
+    if (SUCCEEDED(hr) && composed_boxes) {
+        const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+        step(WeaponEffectsStep::Composed, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Composed, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
+        step(WeaponEffectsStep::Composed, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
+        step(WeaponEffectsStep::Composed, call<SetPsFn>(SetPixelShader)(d, compose_ps_));
+        step(WeaponEffectsStep::Composed, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
+        step(WeaponEffectsStep::Composed, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 12));
+        for (unsigned k = 0; k < composed_boxes && SUCCEEDED(hr); ++k) {
+            step(WeaponEffectsStep::Composed, call<SetConstantsFn>(SetPixelShaderConstantF)(
+                                                  d, 14, f.compose[k].head, 1 + 4 * weapon_compose_spheres));
+            if (SUCCEEDED(hr)) {
+                const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                    d, D3DPT_TRIANGLELIST, 0, 4, 2, sprite_indices_, D3DFMT_INDEX16, f.fireballs + 4 * (f.composed_first + k),
+                    UINT(sizeof(WeaponFireballVertex))));
+                if (step(WeaponEffectsStep::Composed, draw)) {
+                    r.fireball_boxes = fireball_boxes;
+                    r.drew = true;
+                }
+            }
+        }
+    }
+    if (SUCCEEDED(hr) && fireball_boxes > composed_boxes) {
         const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
         step(WeaponEffectsStep::Fireballs, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Fireballs, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
@@ -1131,10 +1218,14 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Fireballs, call<SetPsFn>(SetPixelShader)(d, fireball_ps_));
         step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
         step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 12));
-        if (SUCCEEDED(hr)) {
+        // the boxes before the composed range (the muzzles') and after it (the secondaries, the hull bursts)
+        const unsigned first = composed_boxes ? f.composed_first : 0u, after = first + composed_boxes;
+        const unsigned ranges[2][2] = {{0u, first}, {after, fireball_boxes - after}};
+        for (const auto& range : ranges) {
+            if (!range[1] || FAILED(hr)) continue;
             const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
-                d, D3DPT_TRIANGLELIST, 0, fireball_boxes * 4, fireball_boxes * 2, sprite_indices_, D3DFMT_INDEX16,
-                f.fireballs, UINT(sizeof(WeaponFireballVertex))));
+                d, D3DPT_TRIANGLELIST, 0, range[1] * 4, range[1] * 2, sprite_indices_, D3DFMT_INDEX16,
+                f.fireballs + 4 * range[0], UINT(sizeof(WeaponFireballVertex))));
             if (step(WeaponEffectsStep::Fireballs, draw)) {
                 r.fireball_boxes = fireball_boxes;
                 r.drew = true;
@@ -1158,6 +1249,45 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             if (step(WeaponEffectsStep::Shocks, draw)) {
                 r.shock_boxes = shock_boxes;
                 r.drew = true;
+            }
+        }
+    }
+    // Section 13.1: the death fire waves (explosion-look.md 13.1; after the shocks, additive): their quads with the
+    // fireball's vertex program and declaration and weapon_wave_ps.hlsl, one draw a wave: c2, c3 of fb above, c4..c9 the
+    // front's profile, noise, light, sheet and temperatures (boom::wave_*), c13..c15 the wave's normal, sheet frequency
+    // and cooling, c16..c20 the heat ramp.
+    if (SUCCEEDED(hr) && wave_boxes) {
+        namespace wb = wcore::boom;
+        const float wv[8 * 4] = {fb[0], fb[1], fb[2], fb[3], fb[4], fb[5], fb[6], 0.f,
+                                 1.f / wb::wave_trail_span, wb::wave_wash, wb::wave_light, wb::wave_m_bias,
+                                 wb::wave_window_in, wb::wave_window_out, wb::wave_m_floor, wb::wave_m_contrast,
+                                 wb::wave_n_cells[0], wb::wave_n_cells[1], wb::wave_n_w[0], wb::wave_n_w[1],
+                                 wb::wave_tongue * wb::wave_trail_span, wb::wave_tongue_contrast, 1.f / wb::wave_sheet_span,
+                                 wb::wave_sheet_enabled ? wb::wave_sheet_gain : 0.f,
+                                 wb::wave_band_gain, wb::wave_hole_t, wb::wave_sheet_octave, wb::wave_hole_soft,
+                                 wb::wave_t_edge, wb::wave_t_band_end, wb::wave_t_sheet_end, wb::wave_wash_span};
+        float ramp[5 * 4] = {};
+        for (unsigned k = 0; k < 5; ++k)
+            for (unsigned c = 0; c < 3; ++c) ramp[4 * k + c] = lk::heat_ramp[k][c];
+        const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
+        step(WeaponEffectsStep::Waves, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+        step(WeaponEffectsStep::Waves, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
+        step(WeaponEffectsStep::Waves, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
+        step(WeaponEffectsStep::Waves, call<SetPsFn>(SetPixelShader)(d, wave_ps_));
+        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
+        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, wv, 8));
+        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 16, ramp, 5));
+        for (unsigned k = 0; k < wave_boxes && SUCCEEDED(hr); ++k) {
+            step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 13, f.wave_constants[k].normal, 3));
+            if (SUCCEEDED(hr)) {
+                const UINT q = f.wave_constants[k].quads;
+                const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                    d, D3DPT_TRIANGLELIST, 0, 4 * q, 2 * q, sprite_indices_, D3DFMT_INDEX16,
+                    f.waves + 4 * weapon_wave_quads * k, UINT(sizeof(WeaponFireballVertex))));
+                if (step(WeaponEffectsStep::Waves, draw)) {
+                    r.wave_boxes = k + 1;
+                    r.drew = true;
+                }
             }
         }
     }

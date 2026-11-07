@@ -1661,7 +1661,16 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     bool flash_own = false;
     const float fine_px = core::look::fireball_fine_px * f.height * (1.f / 1440.f);
     const float fine_band_px = t.fine_band_px * f.height * (1.f / 1440.f);
-    static float burst_fine[renderer::weapon_fireball_boxes]; // each burst box's third-octave weight (the step (1) cut)
+    static float burst_fine[renderer::weapon_fireball_boxes]; // each burst box's octave weight 0 .. 2 (the steps (0b), (1))
+    const float fine4_px = core::look::fireball_fine4_px * f.height * (1.f / 1440.f),
+                fine4_band_px = core::look::fireball_fine4_band_px * f.height * (1.f / 1440.f);
+    // a box screen's charge by its octave weight: w2 + (w3 - w2) min(fine, 1) + (w4 - w3) max(fine - 1, 0)
+    const auto octave_weight = [](float fine) {
+        namespace lk = core::look;
+        const float f3 = fine < 1.f ? fine : 1.f, f4 = fine > 1.f ? fine - 1.f : 0.f;
+        return lk::budget_weight_fireball_coarse + (lk::budget_weight_fireball - lk::budget_weight_fireball_coarse) * f3 +
+               (lk::budget_weight_fireball_fine4 - lk::budget_weight_fireball) * f4;
+    };
     // The element emitters (each counts its cap).
     auto glow_box = [&](const float c[3], float R, const float colour[3], std::uint32_t age_ms, bool own, std::uint32_t owner,
                         float weight, const float* lobe = nullptr) -> bool {
@@ -1697,14 +1706,21 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             ++n.capped;
             return false;
         }
+        // the octaves' weight 0 .. 2 (the third's, then from fireball_fine4_px the fourth's: 2026-11-07, the capital-size
+        // bursts share the death body's program); a smoke and a burst with the eye inside (the box the whole screen) keep
+        // three (explosion-look.md D49)
         float fine = 1.f;
         if (!full) {
-            const float over = R * f.width * 0.5f * f.cam.m00 - fine_px * c[2], band = fine_band_px * c[2];
-            fine = over <= 0.f ? 0.f : over >= band ? 1.f : over / band;
+            const float rpx = R * f.width * 0.5f * f.cam.m00 / c[2];
+            const float a3 = rpx - fine_px, a4 = rpx - fine4_px;
+            const float f3 = a3 <= 0.f ? 0.f : a3 >= fine_band_px ? 1.f : a3 / fine_band_px;
+            const float f4 = a4 <= 0.f ? 0.f : a4 >= fine4_band_px ? 1.f : a4 / fine4_band_px;
+            fine = f3 < 1.f ? f3 : 1.f + f4;
         }
         const float look[4] = {T, E, x, 64.f * unit_of(element_hash(seq, 4))};
         const float disc[4] = {6.2831853f * unit_of(element_hash(seq, hl::burst_rot_element)),
-                               64.f * unit_of(element_hash(seq, hl::burst_lobe_element)), advect, fine};
+                               64.f * unit_of(element_hash(seq, hl::burst_lobe_element)), advect,
+                               smoke && fine > 1.f ? 1.f : fine};
         if (smoke) {
             fireball_quad(f, c, Rs, rect, full, look, tint4, disc, out.smokes + 4 * nm);
             smoke_meta[nm] = BoxMeta{age_ms, owner, rect_screens(rect) * core::look::budget_weight_smoke, std::uint8_t(own), 0};
@@ -1714,8 +1730,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         }
         fireball_quad(f, c, Rs, rect, full, look, tint4, disc, out.fireballs + 4 * nb);
         // rank 1 marks a burst with a third octave for the budget's step (1) (the ranks are taken later)
-        constexpr float w2 = core::look::budget_weight_fireball_coarse, w3 = core::look::budget_weight_fireball;
-        burst_meta[nb] = BoxMeta{age_ms, owner, rect_screens(rect) * (w2 + (w3 - w2) * fine), std::uint8_t(own),
+        burst_meta[nb] = BoxMeta{age_ms, owner, rect_screens(rect) * octave_weight(fine), std::uint8_t(own),
                                  std::uint8_t(fine > 0.f ? 1 : 0)};
         burst_fine[nb] = fine;
         ++nb;
@@ -2694,6 +2709,18 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     // (1) every burst drops its third octave (the frame's octaves 2): entered when the charged screens pass the budget,
     // held at least fireball_octave_hold frames and left only under fireball_octave_return of the budget (judged on the
     // full charge, so leaving never re-enters on the next frame by itself).
+    // (0b) every burst drops its fourth octave first (the frame's octaves 3) past the budget
+    if (area > f.budget_left && n.octaves > 3u) {
+        for (unsigned g = 0; g < nb; ++g)
+            if (burst_fine[g] > 1.f) {
+                const float now = burst_meta[g].area * octave_weight(1.f) / octave_weight(burst_fine[g]);
+                area -= burst_meta[g].area - now;
+                burst_area -= burst_meta[g].area - now;
+                burst_meta[g].area = now;
+                burst_fine[g] = 1.f;
+            }
+        n.octaves = 3;
+    }
     if (state.octaves_coarse) {
         if (state.coarse_frames >= core::look::fireball_octave_hold && area < core::look::fireball_octave_return * f.budget_left)
             state.octaves_coarse = false;
@@ -2704,10 +2731,10 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         state.coarse_frames = 1;
     }
     if (state.octaves_coarse) {
-        constexpr float w2 = core::look::budget_weight_fireball_coarse, w3 = core::look::budget_weight_fireball;
+        constexpr float w2 = core::look::budget_weight_fireball_coarse;
         for (unsigned g = 0; g < nb; ++g)
             if (burst_meta[g].rank) {
-                const float we = w2 + (w3 - w2) * burst_fine[g];
+                const float we = octave_weight(burst_fine[g]);
                 const float cut = burst_meta[g].area * (we - w2) / we;
                 area -= cut;
                 burst_area -= cut;

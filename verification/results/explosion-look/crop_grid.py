@@ -15,7 +15,7 @@ CROPS = {'boom_fighter_600m': (360, 240), 'boom_fighter_600m_hull': (360, 240), 
          # the big tiers (2026-11-07): the fixture writes a centred window already (the scene model's hull and the
          # pre-roll); each tile scaled to WINDOW_ROWS rows, five ages to a row, the age printed in its corner
          'boom_corvette_1500m': 'window', 'boom_capital_1500m_broadside': 'window', 'boom_capital_close_720m': 'window',
-         'boom_station_3km': 'window'}
+         'boom_station_3km': 'window', 'boom_capital_1500m_above': 'window', 'boom_capital_far_5km': 'window'}
 WINDOW_ROWS, WINDOW_PER_ROW = 300, 5
 
 

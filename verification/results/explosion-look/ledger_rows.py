@@ -3,9 +3,10 @@
 verification/results/native-windows/weapon-effects/ (run_weapon_effects.py --host native): the hook fixture's death-site
 checks, the audit's death stubs and EXE windows, the forward state and the nested rows; the D3D fixture's death_* checks,
 the EXPLOSION rows and the EXPLOSION_TIMING rows (EVENT-fenced best of 60 at 1080p and 5120x1440).
-usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big]]
+usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave]]
 --markdown prints the ledger's gate table and budget line from the record (the ledger's numbers are pasted from it);
-with --big the big tiers' table ("Explosions: the big tiers": the clone row R', the swap, the pre-roll gates)."""
+with --big the big tiers' table ("Explosions: the big tiers": the clone row R', the swap, the pre-roll gates); with
+--wave section 13's ("Explosions: the fire wave and the composed body"), the engine shimmer record's wave rows with it."""
 import json
 import sys
 from pathlib import Path
@@ -148,7 +149,69 @@ def big_markdown():
     print('\n'.join(out))
 
 
+def wave_markdown():
+    """Section 13 (docs/verification/weapon-effects.md "Explosions: the fire wave and the composed body"): the D3D
+    fixture's wave_* and compose_* gates, their rows and timing, and the engine shimmer fixture's band and strip rows."""
+    ok = lambda name: 'PASS' if checks.get(name) else 'FAIL'
+    at = row('attach')
+    rad = sorted((r for r in rows if r.get('case') == 'wave_radius'), key=lambda r: r['tau_frac'])
+    life, th, circ, col = row('wave_life'), row('wave_thickness'), row('wave_circumference'), row('wave_colour')
+    sh, ep, rp = row('wave_sheet'), row('wave_eye_in_plane'), row('wave_ramp')
+    f4 = next((r for r in d3d['metrics']['explosion_timing'] if r.get('case') == 'fine4_weight' and r['width'] == 5120), {})
+    cpu = [r for r in rows if r.get('case') == 'cpu']
+    st, sa, sw = row('wave_strips'), row('wave_strip_area'), row('wave_swept_hull')
+    sil = {r['tier']: r for r in rows if r.get('case') == 'compose_silhouette'}
+    tab = {r['tier']: r for r in rows if r.get('case') == 'compose_table'}
+    opt = lambda case: next((r for r in rows if r.get('case') == case), {})
+    eye, lod, box, cw = opt('compose_eye'), opt('compose_lod'), opt('compose_box'), row('close_capital_wave')
+    shim = json.loads((HERE.parent / 'engine-shimmer/summary.json').read_text()) if (HERE.parent / 'engine-shimmer/summary.json').exists() else None
+    t5 = lambda case: timing[(5120, case)]['gpu_us']
+    ww = next(r for r in d3d['metrics']['explosion_timing'] if r.get('case') == 'wave_weight' and r['width'] == 5120)
+    cf = {(r['n'], r['shared']): r['factor'] for r in d3d['metrics']['explosion_timing']
+          if r.get('case') == 'compose_factor' and r['width'] == 5120}
+    close = [r for (wd, case), r in sorted(timing.items()) if wd == 5120 and case.startswith('capital_close_') and
+             case != 'capital_close_all_shed']
+    worst = max(close, key=lambda r: r['gpu_us'])
+    s = lambda t: sil[t]
+    compose = bool(sil)  # 2026-11-07 v4: the compose gates skipped with boom::compose_enabled false
+    out = [
+        '| Gate | Result [M] | Bound |', '| --- | --- | --- |',
+        *([] if compose else ["| `compose_*` | skipped: `boom::compose_enabled` false (the kill, 2026-11-07 v4) | |"]),
+        f"| `wave_program_attached` ({ok('wave_program_attached')}) | wave_ps {at['wave_ps_slots']} slots, compose_ps {at.get('compose_ps_slots', '-')} slots, the device's {at['max_ps_slots']} | created |",
+        f"| `wave_radius_law` ({ok('wave_radius_law')}; capital 5 km face-on) | the lit bins' median edge radius over r(t) at 0.1 / 0.5 / 1.0 tau: {' / '.join(str(r['ratio']) for r in rad)} (the median outer 10 % radius {' / '.join(str(r['outer_px']) for r in rad)} px against r(t) + 1.52 w_e {' / '.join(str(r['law_outer_px']) for r in rad)}: the tongues) | 5 % |",
+        f"| `wave_sheet_thick`, `wave_hot_edge_trailing_sheet`, `wave_flame_tongues` ({ok('wave_sheet_thick')}, {ok('wave_hot_edge_trailing_sheet')}, {ok('wave_flame_tongues')}; 5 km, 0.5 tau) | band + sheet {sh['thick_rf']} R_f at 10 % of each ray's peak; edge over the sheet's mean 0.2-0.6 R_f behind {sh['edge_over_sheet']}, the sheet at 0.7 R_f behind {sh['sheet_07']} of the peak; the lit bins' outer radii spread {sh['tongue_depth_rf']} R_f | >= 0.6; >= 1.4, >= 0.01; >= 0.2 |",
+        f"| `wave_never_brightest` ({ok('wave_never_brightest')}) | wave peak {' / '.join(str(r['peak']) for r in rad)} against the body's {' / '.join(str(r['body_peak']) for r in rad)}; after L_w {life['after_life']}, other tiers {life['other_tiers']} | <=; 0; 0 |",
+        f"| `wave_thick_not_a_line` ({ok('wave_thick_not_a_line')}) | face-on band {th['band_px']} px (need {th['band_need_px']}); edge-on bar from above {th['bar_px']} px (need {th['bar_need_px']}) | >= 0.2 R_f f / z |",
+        f"| `wave_broken_circumference` ({ok('wave_broken_circumference')}) | lit share of 64 bins {circ['lit_share']}, max / min {circ['max_over_min']} | 0.40-0.85; >= 2 |",
+        f"| `wave_fire_not_grey` ({ok('wave_fire_not_grey')}) | edge / band {col['edge_over_band']}, band R / G {col['band_r_over_g']}, hue {col['hue_02']} / {col['hue_09']} at 0.2 / 0.9 L_w, chroma {col['chroma_02']} / {col['chroma_09']} | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |",
+        f"| `wave_refraction_strips_present_and_capped` ({ok('wave_refraction_strips_present_and_capped')}; capital 1.5 km) | at birth {st['early_strips']} strips, {st['early_screens']} screens, request {st['early_request']}; at P + 200 ms wave {st['late_waves']}, strips {st['late_strips']} (capped {st['late_capped']}, {st['late_screens']} screens) | 8; <= 0.25 |",
+        f"| `wave_shimmer_strips_area` ({ok('wave_shimmer_strips_area')}) | at r 1,000 px: {sa['strips']} strips {sa['strip_screens']} screens against the box {sa['box_screens']}: {sa['ratio']} | <= 0.6 |",
+        f"| `wave_lights_swept_hulls` ({ok('wave_lights_swept_hulls')}; a hull plane through the centre, 2 R_f out) | {sw['light_cross']} while the front crosses ({sw['t_cross_ms']} ms), {sw['light_late']} at 0.5 tau | >= 0.1; 0 |",
+        *([f"| `compose_silhouette_cv` ({ok('compose_silhouette_cv')}; median of 8 seeds) | CV at 0.3 / 0.6 L: fighter {s('fighter_600m')['cv_03']} / {s('fighter_600m')['cv_06']}, capital {s('capital_1500m')['cv_03']} / {s('capital_1500m')['cv_06']}, station {s('station_3km')['cv_03']} / {s('station_3km')['cv_06']}; the single body {s('fighter_600m')['single_cv_03']} / {s('capital_1500m')['single_cv_03']} / {s('station_3km')['single_cv_03']} | >= 0.18 |"] if compose else []),
+        *([f"| `compose_silhouette_changes` ({ok('compose_silhouette_changes')}) | correlation / RMS between the ages: fighter {s('fighter_600m')['corr']} / {s('fighter_600m')['rms']}, capital {s('capital_1500m')['corr']} / {s('capital_1500m')['rms']}, station {s('station_3km')['corr']} / {s('station_3km')['rms']} | <= 0.7 or >= 0.15 |"] if compose else []),
+        *([f"| `compose_not_grapes`, `compose_under_one_sun` ({ok('compose_not_grapes')}, {ok('compose_under_one_sun')}) | largest blob {s('fighter_600m')['blob_share']} / {s('capital_1500m')['blob_share']} / {s('station_3km')['blob_share']}; peak over the single body {s('fighter_600m')['peak_over_single']} / {s('capital_1500m')['peak_over_single']} / {s('station_3km')['peak_over_single']}, mean lit {s('fighter_600m')['mean_over_single']} / {s('capital_1500m')['mean_over_single']} / {s('station_3km')['mean_over_single']} | >= 0.8; <= 1.4, 0.7-1.3 |"] if compose else []),
+        *([f"| `compose_births_spread`, `compose_jets_capital` ({ok('compose_births_spread')}, {ok('compose_jets_capital')}) | N / jets: fighter {tab['fighter_600m']['n']} / {tab['fighter_600m']['jets']}, capital {tab['capital_1500m']['n']} / {tab['capital_1500m']['jets']}, station {tab['station_3km']['n']} / {tab['station_3km']['jets']}; born at 0: {tab['capital_1500m']['born_at_0']}, by 0.15 L all; at L {tab['capital_1500m']['gone_at_L']}; jets {tab['capital_1500m']['jet_ratio']}:1 | |"] if compose else []),
+        *([f"| `compose_eye_inside_shared` ({ok('compose_eye_inside_shared')}) | own death (24 m): drawn {eye['own_drawn']}, shared {eye['own_shared']}; close capital at 0.25 L: drawn {eye['close_drawn']}, shared {eye['close_shared']} | <= 4, shared |"] if compose else []),
+        *([f"| `compose_lod_floor` ({ok('compose_lod_floor')}) | a budget of nothing: {lod['drawn']} drawn, jets {lod['jets']}, shared {lod['shared']}, {lod['dropped']} dropped | 2, 0 |"] if compose else []),
+        *([f"| `compose_box_holds_spheres` ({ok('compose_box_holds_spheres')}; 8 seeds x 3 tiers, a 1.6 x box) | lit pixels outside the box: {box['worst_clipped_px']} | 0 |"] if compose else []),
+        *([f"| `compose_clumps_survive`, `compose_no_white_region` ({ok('compose_clumps_survive')}, {ok('compose_no_white_region')}) | blobs of >= 1 % of the lit pixels at 0.6 L: fighter {s('fighter_600m')['clumps_06']}, capital {s('capital_1500m')['clumps_06']}, station {s('station_3km')['clumps_06']}; widest white run at 0.3 / 0.6 L (core on) {s('fighter_600m')['white_rf']} / {s('capital_1500m')['white_rf']} / {s('station_3km')['white_rf']} R_f | >= 2; <= 0.3 |"] if compose else []),
+        f"| `wave_fire_not_grey` ramp terms, `wave_eye_in_plane_no_whiteout` ({ok('wave_eye_in_plane_no_whiteout')}) | mean chroma (0.5 tau, 0.2 / 0.9 L_w) {rp['mean_chroma']}, on the ramp {rp['on_ramp']}; eye in the plane at 1.5 km: worst mean 1 - e^(-Y) {ep['worst_mean']} (P + {ep['at_ms']} ms), worst share above 0.9 {ep['worst_hot_share']} | >= 0.35, >= 0.9; <= 0.35, <= 0.4 |",
+        *([f"| `compose_capital_structure` ({ok('compose_capital_structure')}; capital 1.5 km, 0.6 L) | blobs {s('capital_1500m')['clumps_06']}, lit share inside the outline {s('capital_1500m')['lit_in_06']}; the fourth octave {f4.get('four_us')} us against three {f4.get('three_us')} us a frame-filling body: {f4.get('weight4')} a screen (pinned {f4.get('pinned4')}) | >= 3; <= 0.75 |"] if compose else []),
+        f"| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` ({ok('death_stage_cpu_32_deaths')}, {ok('death_big_stage_cpu')}) | 32 fighters {cpu[0]['median_us']} us (single body {cpu[0].get('single_body_us')}); the big set {cpu[1]['median_us']} us, {cpu[1]['us_per_quad']} a quad (repeats {cpu[0].get('repeats_us')} / {cpu[1].get('repeats_us')}) (single body {cpu[1].get('single_body_us')}, no wave {cpu[1].get('no_wave_us')}) | 50; 0.08 |",
+        f"| `death_budget_capital_close_5120` re-run ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}); the wave drawn on {cw['wave_frames']} of the {cw['span']} frames P .. P + L_w it is on screen (`wave_drawn_close_capital` {ok('wave_drawn_close_capital')}) | <= 450; >= 80 % |",
+        f"| timing (5120x1440) | wave alone {t5('wave_alone_fills_frame')} us ({ww['alone_screens']} screens drawn: {ww['alone_weight']:.3f} a screen), one octave {t5('wave_one_octave_alone')} us ({ww['one_octave_weight']:.3f}), the box at a station's birth {t5('wave_box_alone')} us ({ww['box_weight']:.3f}); compose factors N 2 / 3 / 4 / 5 {cf.get((2, 0))} / {cf.get((3, 0))} / {cf.get((4, 0))} / {cf.get((5, 0))}, shared N 4 {cf.get((4, 1))}; eye inside N 4 {t5('eye_inside_fighter_n4')} us, eye inside {t5('eye_inside_fighter')} us | pinned {ww['pinned']} / {ww['pinned_one']}; <= 300 |",
+    ]
+    if shim:
+        rep = shim.get('report') or {}
+        wv, wt = rep.get('wave') or [], rep.get('wave_timing') or []
+        for r in wv:
+            out.append(f"| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` ({r['width']}x{r['height']}) | band {r['band']} px, {r['moved']} moved, {r['outward']} outward, mean {r['mean_px']} px; sky band {r['sky_band']}, {r['sky_moved']} moved; beyond {r['beyond_diff']} / front hull {r['front_diff']} / outside {r['outside_diff']} changed | >= 80 %, 95 %; 0 |")
+        for r in wt:
+            out.append(f"| engine shimmer `wave_shimmer_strips_timing` ({r['width']}x{r['height']}, r {r['r_px']} px) | strips {r['strips_gpu_ms']} ms against the box {r['box_gpu_ms']} ms: {r['ratio']} (copy {r['strips_copy_px']} / {r['box_copy_px']} px) | <= 0.6 |")
+    print('\n'.join(out))
+
+
 if '--markdown' in sys.argv:
-    big_markdown() if '--big' in sys.argv else markdown()
+    wave_markdown() if '--wave' in sys.argv else big_markdown() if '--big' in sys.argv else markdown()
 else:
     plain()

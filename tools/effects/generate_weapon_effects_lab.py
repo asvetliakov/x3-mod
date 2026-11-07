@@ -67,7 +67,8 @@ NAMESPACES = {
              'budget_weight_patch', 'budget_weight_glow', 'fireball_octave_freq', 'fireball_octave_w', 'fireball_advect',
              'fireball_erode_0', 'fireball_erode_t', 'fireball_erode_r', 'fireball_erode_soft', 'fireball_erode_rt',
              'fireball_column_pow', 'fireball_lobes', 'fireball_lobe_amp', 'fireball_lobe_soft', 'fireball_heat_soft',
-             'fireball_rim_t', 'fireball_octaves', 'fireball_fine_px', 'fireball_fine_band_px', 'budget_weight_fireball',
+             'fireball_rim_t', 'fireball_octaves', 'fireball_fine_px', 'fireball_fine_band_px', 'fireball_fine4_px',
+             'fireball_fine4_band_px', 'fireball_octave_freq4', 'fireball_octave_w4', 'budget_weight_fireball_fine4', 'budget_weight_fireball',
              'budget_weight_fireball_coarse', 'budget_weight_smoke'),
     # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
     'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'mode', 'spark_count_x',
@@ -120,7 +121,24 @@ NAMESPACES = {
              'secondary_capsule_r', 'secondary_cluster_n0', 'secondary_embers', 'max_secondaries', 'secondary_element',
              'hull_light_r', 'hull_light_e0', 'hull_light_e1', 'hull_light_t', 'body_r_sphere_big', 'sphere_px0',
              'sphere_px1', 'budget_screens', 'shock_tiers', 'halo_big_r', 'halo_big_e', 'halo_big_x0',
-             'halo_big_x1'),
+             'halo_big_x1',
+             # section 13 (2026-11-07): the fire wave and the composed body
+             'wave_tiers', 'wave_r_x', 'wave_tau_x', 'wave_life_x', 'wave_creep', 'wave_stretch', 'wave_w_x', 'wave_band_x',
+             'wave_slab_x', 'wave_trail_span', 'wave_wash', 'wave_e', 'wave_t_edge', 'wave_t_band_end', 'wave_t_sheet_end',
+             'wave_t_cool', 'wave_band_gain', 'wave_hole_t', 'wave_hole_soft', 'wave_hole_cells', 'wave_hole_stretch', 'wave_eye_plane_x', 'wave_eye_plane_blend_x',
+             'wave_eye_fade_x', 'wave_sheet_enabled', 'compose_enabled', 'compose_count_3', 'compose_count_2',
+             'wave_window_in', 'wave_window_out', 'wave_light', 'wave_m_floor', 'wave_m_contrast', 'wave_n_cells',
+             'wave_n_w', 'wave_refract_px', 'budget_weight_wave', 'budget_weight_wave_miss', 'wave_seed_element',
+             'compose_n_lo', 'compose_n_hi', 'compose_jets_lo', 'compose_jets_hi', 'compose_n_min', 'compose_eye_n',
+             'compose_max', 'compose_r_lo', 'compose_r_span', 'compose_offset', 'compose_axis_blend', 'compose_spread',
+             'compose_seed_step', 'compose_jet_long', 'compose_jet_short', 'compose_jet_cone', 'compose_jet_birth0',
+             'compose_jet_birth_span', 'compose_size', 'compose_box_margin', 'compose_small_px', 'compose_element',
+             'compose_erode_x0', 'compose_erode_k', 'compose_erode_cap', 'compose_pace_lo', 'compose_pace_span', 'wave_m_bias',
+             'compose_cost_base', 'compose_cost_per', 'compose_cost_shared_base', 'compose_cost_shared_per',
+             'wave_sheet_x', 'wave_sheet_span', 'wave_sheet_gain', 'wave_sheet_cell', 'wave_sheet_advect',
+             'wave_sheet_octave', 'wave_sheet_n_w', 'wave_tongue',
+             'wave_tongue_contrast', 'wave_wash_span', 'compose_soft_add',
+             'compose_core_x', 'compose_offset_min', 'compose_offset_cool'),
     'muzzle': ('mode', 'class_disc', 'disc_halo_w', 'disc_halo_e', 'class_flame', 'class_star', 'star_arms', 'star_width_w',
                'star_e', 'bloom_w', 'bloom_e', 'vent_w', 'vent_ms', 'vent_e', 'afterglow_ms', 'afterglow_e', 'rise_ms',
                'class_smoke', 'class_glow', 'class_life', 'cap_core_rs', 'cap_flame_rs', 'endon_cos', 'breath', 'cluster_n0',
@@ -334,6 +352,9 @@ PRESETS = PRESETS + (
     _x('boom/corvette-m6-1500m', 'corvette', 1500, 87),
     _x('boom/freighter-ts-1500m', 'corvette', 1500, 50),
     _x('boom/capital-m2-1500m-preroll', 'capital', 1500, 1288, hull='lit'),
+    # section 13: the fire wave face-on (broadside) and edge-on (from above: the bar)
+    _x('boom/capital-m2-1500m-wave-broadside', 'capital', 1500, 1288),
+    _x('boom/capital-m2-1500m-wave-above', 'capital', 1500, 1288, scene='above'),
     _x('boom/capital-m7-far-5km', 'capital', 5000, 618),
     _x('boom/capital-m2-close-720m', 'capital', 720, 1288),
     _x('boom/station-factory-3km-preroll', 'station', 3000, 1800, hull='lit'),
@@ -365,7 +386,7 @@ def preset_problems(presets, data):
         boom = pr.get('family') == 'boom'
         if tuple(pr) != PRESET_KEYS + (BOLT_KEYS if step4 else BOOM_KEYS if boom else ()):
             out.append(f"{pr.get('id')}: keys {tuple(pr)}")
-        if boom and (pr.get('boom_tier') not in BOOM_TIERS or pr.get('scene') not in ('side', 'chase', 'cockpit') or
+        if boom and (pr.get('boom_tier') not in BOOM_TIERS or pr.get('scene') not in ('side', 'chase', 'cockpit', 'above') or
                      pr.get('hull') not in ('lit', 'space') or not 1 <= pr.get('nested', 0) <= 8):
             out.append(f"{pr.get('id')}: boom tier / scene / hull / nested")
         if step4 and (pr.get('scene') not in BOLT_SCENES[pr['family']] or pr.get('rows') not in (1440, 1080) or

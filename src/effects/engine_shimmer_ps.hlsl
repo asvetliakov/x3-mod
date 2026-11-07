@@ -16,7 +16,11 @@
 // c75; the sky never) whose stretched distance d' from the ring's centre lies within the band b of r - b (u = (r - d') /
 // b - 1, |u| < 2.5) adds strength e^(-u^2) along the pixel's direction from the centre's pixel: the band rides the hull
 // just inside the front like the ring's own shell. No ring (every plume frame): the branch is skipped, the plumes'
-// image as before bit for bit.
+// image as before bit for bit. A ring slot in the plane mode (c72+k.w 1; a death fire wave, docs/architecture/
+// explosion-look.md 13.1, engine_shimmer_core.h wave_strips): the pixel's ray meets the plane (normal c76+k) through the
+// centre at view depth t; a point whose stretched distance d' lies in [r, r + b] (u = (d' - r) / b) moves outward from
+// the centre's pixel by strength x 4 u (1 - u) pixels, sky included, not where the lane's surface is nearer than the
+// plane point; this displacement adds to the amplitude's field after its clamp.
 // Compiled with tools/shaders/generate_engine_shimmer_program.py.
 sampler2D scene_linear : register(s0);
 sampler2D scene_point : register(s1);
@@ -34,6 +38,7 @@ float4 ring_b[2] : register(c70);  // the heading x sqrt(1 - 1 / stretch^2) (vie
 float4 ring_c[2] : register(c72);  // the centre's pixel, the strength, 0
 float4 lane_proj : register(c74);  // m00, m11, m20, m21 of the unjittered projection
 float4 lane_law : register(c75);   // m22, m32 (view z = m32 / (d - m22)), 0, 0
+float4 ring_n[2] : register(c76);  // the plane mode's normal (view, unit), unused
 // The plume's value noise and its gradient in x and y: (d/dx, d/dy) of the smoothstep-trilinear interpolation.
 // The lattice index is exact, as in engine_plume_ps.hlsl vnoise: p - frac(p) is off an integer in its last bit when
 // fxc folds an integer offset out of the frc but keeps it in a mad that the driver fuses (NVIDIA, 2026-11-05);
@@ -86,26 +91,44 @@ float4 main(float2 uv : TEXCOORD0) : COLOR0 {
             total += (mask * rect_d[i].x) * v;
         }
     }
+    float2 wave = float2(0.0, 0.0); // the plane mode's displacement (pixels)
     [branch] if (frame.z > 0.0) { // uniform: a plume-only frame skips the rings whole
-        [branch] if (depth >= 0.0) {
-            const float zv = lane_law.y / (depth - lane_law.x);
-            const float2 ndc = float2(2.0 * uv.x - 1.0 - target.x, 1.0 - 2.0 * uv.y + target.y);
-            const float3 pv = float3((ndc.x - lane_proj.z) / lane_proj.x * zv, (ndc.y - lane_proj.w) / lane_proj.y * zv, zv);
-            [unroll] for (int k = 0; k < 2; ++k) {
-                const float3 d = pv - ring_a[k].xyz;
-                const float al = dot(d, ring_b[k].xyz);
-                const float u = (ring_a[k].w - sqrt(max(dot(d, d) - al * al, 0.0))) / ring_b[k].w - 1.0;
-                [branch] if (k < frame.z && abs(u) < 2.5) {
-                    const float2 rel = p - ring_c[k].xy;
-                    total += (ring_c[k].z * exp2(-1.442695 * u * u) * rsqrt(max(dot(rel, rel), 1e-4))) * rel;
+        const float2 ndc = float2(2.0 * uv.x - 1.0 - target.x, 1.0 - 2.0 * uv.y + target.y);
+        const float3 ray = float3((ndc.x - lane_proj.z) / lane_proj.x, (ndc.y - lane_proj.w) / lane_proj.y, 1.0);
+        const float zv = depth >= 0.0 ? lane_law.y / (depth - lane_law.x) : 3.402823466e38;
+        [unroll] for (int k = 0; k < 2; ++k) {
+            [branch] if (k < frame.z) {
+                [branch] if (ring_c[k].w > 0.5) {
+                    const float nd = dot(ring_n[k].xyz, ray);
+                    const float t = abs(nd) > 1e-7 ? dot(ring_n[k].xyz, ring_a[k].xyz) / nd : -1.0;
+                    [branch] if (t > 0.0 && t < zv) {
+                        const float3 d = ray * t - ring_a[k].xyz;
+                        const float al = dot(d, ring_b[k].xyz);
+                        const float u = (sqrt(max(dot(d, d) - al * al, 0.0)) - ring_a[k].w) / ring_b[k].w;
+                        [branch] if (u > 0.0 && u < 1.0) {
+                            const float2 rel = p - ring_c[k].xy;
+                            wave += (ring_c[k].z * 4.0 * u * (1.0 - u) * rsqrt(max(dot(rel, rel), 1e-4))) * rel;
+                        }
+                    }
+                } else {
+                    [branch] if (depth >= 0.0) {
+                        const float3 pv = ray * zv;
+                        const float3 d = pv - ring_a[k].xyz;
+                        const float al = dot(d, ring_b[k].xyz);
+                        const float u = (ring_a[k].w - sqrt(max(dot(d, d) - al * al, 0.0))) / ring_b[k].w - 1.0;
+                        [branch] if (abs(u) < 2.5) {
+                            const float2 rel = p - ring_c[k].xy;
+                            total += (ring_c[k].z * exp2(-1.442695 * u * u) * rsqrt(max(dot(rel, rel), 1e-4))) * rel;
+                        }
+                    }
                 }
             }
         }
     }
     const float m2 = dot(total, total);
-    [branch] if (m2 > 0.0) {
+    [branch] if (m2 > 0.0 || dot(wave, wave) > 0.0) {
         total *= m2 > 1.0 ? rsqrt(m2) : 1.0;
-        return tex2Dlod(scene_linear, float4(uv + total * frame.x * target.xy, 0.0, 0.0));
+        return tex2Dlod(scene_linear, float4(uv + (total * frame.x + wave) * target.xy, 0.0, 0.0));
     }
     return tex2Dlod(scene_point, float4(uv, 0.0, 0.0));
 }
