@@ -3,11 +3,12 @@
 verification/results/native-windows/weapon-effects/ (run_weapon_effects.py --host native): the hook fixture's death-site
 checks, the audit's death stubs and EXE windows, the forward state and the nested rows; the D3D fixture's death_* checks,
 the EXPLOSION rows and the EXPLOSION_TIMING rows (EVENT-fenced best of 60 at 1080p and 5120x1440).
-usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave | --rays]]
+usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave | --rays] | --fire]
 --markdown prints the ledger's gate table and budget line from the record (the ledger's numbers are pasted from it);
 with --big the big tiers' table ("Explosions: the big tiers": the clone row R', the swap, the pre-roll gates); with
 --wave section 13's ("Explosions: the fire wave and the composed body"), the engine shimmer record's wave rows with it;
-with --rays section 14's ("Explosions: radiance, rays and sparks")."""
+with --rays section 14's ("Explosions: radiance, rays and sparks"); --fire the fire material's gate table ("Fire material",
+docs/architecture/fire-material.md section 6) with its slots and cost rows."""
 import json
 import sys
 from pathlib import Path
@@ -93,7 +94,7 @@ def markdown():
         f"| `death_eye_inside_bounded` ({ok('death_eye_inside_bounded')}; D2, own death in chase, the eye 24 m out) | 0.25 L: lit {eye[(24, 0.25)]['lit_share']}, std / mean {eye[(24, 0.25)]['std_over_mean']}; 0.6 L: dark {eye[(24, 0.6)]['dark_share']}; the 10 m eye {eye[(10, 0.25)]['std_over_mean']} / {eye[(10, 0.6)]['dark_share']} (recorded); cost {t5('eye_inside_fighter')} us | lit >= 0.9 and >= 0.05; dark >= 0.15; <= 300 us |",
         f"| `death_octave_lod_hysteresis` ({ok('death_octave_lod_hysteresis')}) | entered on frame {lod['entered_frame']}, held {lod['coarse_frames']} frames, left on frame {lod['left_frame']} | hold 3 |",
         f"| `death_stage_cpu_32_deaths` ({ok('death_stage_cpu_32_deaths')}) | {cpu['bodies']} bodies, {cpu['quads']} streaks, {cpu['glows']} glows: {cpu['median_us']} us median of 201 builds | <= 50 us |",
-        f"| `death_budget_5120` ({ok('death_budget_5120')}) | fighter 600 m {t5('fighter_600m')}, 20 fighters {t5('fighters_20_600m')}, missile {t5('missile_300m')}, nested three {t5('nested_3_fighters')}, eye inside {t5('eye_inside_fighter')} us | the far cases <= 100 / 150, eye <= 300 |",
+        f"| `death_budget_5120` ({ok('death_budget_5120')}) | fighter 600 m {t5('fighter_600m')}, 20 fighters {t5('fighters_20_600m')}, missile {t5('missile_300m')}, nested three {t5('nested_3_fighters')}, eye inside {t5('eye_inside_fighter')} us | the far cases <= 100 / 150, eye <= 330 (300 until 2026-11-08) |",
         f"| `death_programs_attached`, `death_programs_refused_keep_hull`, `death_shock_refused_deaths_drawn`, `death_reset_recovers` ({ok('death_programs_attached')}, {ok('death_programs_refused_keep_hull')}, {ok('death_shock_refused_deaths_drawn')}, {ok('death_reset_recovers')}) | shock {att['shock_ps_slots']} and halo {att['halo_ps_slots']} slots (`MaxPixelShader30InstructionSlots` {att['max_ps_slots']}); fault bit 8: the hull kept, boom off ({ref['reason']}), {ref['bodies_drawn']} body drawn and {ref['halos_drawn']} halo; fault bit 9: the deaths kept (shock {shr['shock']}, {shr['shock_reason']}), {shr['bodies_drawn']} bodies and {shr['halos_drawn']} halos drawn, {shr['shocks_drawn']} of {shr['shocks_built']} shells; the halo drawn after a Reset | |",
         '',
         f"Budget rows (5120x1440, EVENT-fenced best of 60, gpu_us / weight over 177.5 us) [M]: the fence alone {t5('fence_empty')}; body alone (eye inside, 3 octaves, the core) {t5('body_alone_fills_frame')} / {timing[(5120, 'body_alone_fills_frame')]['weight']}; smoke alone {t5('smoke_alone_fills_frame')} / {timing[(5120, 'smoke_alone_fills_frame')]['weight']}; halo alone (the eye in its sphere) {t5('halo_alone')} / {timing[(5120, 'halo_alone')]['weight']}; star {t5('star_alone')}; the missile's shell (forced on) over {sw['area_screens']} screens {sw['gpu_us']} us: {sw['per_screen_weight']} a screen with the fence removed (`budget_weight_shock` {sw['pinned']}).",
@@ -206,7 +207,7 @@ def wave_markdown():
         *([f"| `compose_capital_structure` ({ok('compose_capital_structure')}; capital 1.5 km, 0.6 L) | blobs {s('capital_1500m')['clumps_06']}, lit share inside the outline {s('capital_1500m')['lit_in_06']}; the fourth octave {f4.get('four_us')} us against three {f4.get('three_us')} us a frame-filling body: {f4.get('weight4')} a screen (pinned {f4.get('pinned4')}) | >= 3; <= 0.75 |"] if compose else []),
         f"| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` ({ok('death_stage_cpu_32_deaths')}, {ok('death_big_stage_cpu')}) | 32 fighters {cpu[0]['median_us']} us (single body {cpu[0].get('single_body_us')}); the big set {cpu[1]['median_us']} us, {cpu[1]['us_per_quad']} a quad (repeats {cpu[0].get('repeats_us')} / {cpu[1].get('repeats_us')}) (single body {cpu[1].get('single_body_us')}, no wave {cpu[1].get('no_wave_us')}) | 50; 0.08 |",
         f"| `death_budget_capital_close_5120` re-run ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}); the wave drawn on {cw['wave_frames']} of the {cw['span']} frames P .. P + L_w it is on screen (`wave_drawn_close_capital` {ok('wave_drawn_close_capital')}) | <= 450; >= 80 % |",
-        f"| timing (5120x1440) | wave alone {t5('wave_alone_fills_frame')} us ({ww['alone_screens']} screens drawn: {ww['alone_weight']:.3f} a screen), the sheet's octave shed {t5('wave_one_octave_alone')} us ({ww['one_octave_weight']:.3f}), the box at a station's birth {t5('wave_box_alone')} us ({ww['box_weight']:.3f}); compose factors N 2 / 3 / 4 / 5 {cf.get((2, 0))} / {cf.get((3, 0))} / {cf.get((4, 0))} / {cf.get((5, 0))}, shared N 4 {cf.get((4, 1))}; eye inside N 4 {t5('eye_inside_fighter_n4')} us, eye inside {t5('eye_inside_fighter')} us | pinned {ww['pinned']} / {ww['pinned_one']}; <= 300 |",
+        f"| timing (5120x1440) | wave alone {t5('wave_alone_fills_frame')} us ({ww['alone_screens']} screens drawn: {ww['alone_weight']:.3f} a screen), the sheet's octave shed {t5('wave_one_octave_alone')} us ({ww['one_octave_weight']:.3f}), the box at a station's birth {t5('wave_box_alone')} us ({ww['box_weight']:.3f}); compose factors N 2 / 3 / 4 / 5 {cf.get((2, 0))} / {cf.get((3, 0))} / {cf.get((4, 0))} / {cf.get((5, 0))}, shared N 4 {cf.get((4, 1))}; eye inside N 4 {t5('eye_inside_fighter_n4')} us, eye inside {t5('eye_inside_fighter')} us | pinned {ww['pinned']} / {ww['pinned_one']}; N 4 <= 330, eye inside <= 330 |",
     ]
     if shim:
         rep = shim.get('report') or {}
@@ -267,7 +268,72 @@ def rays_markdown():
     print('\n'.join(out))
 
 
-if '--markdown' in sys.argv:
+def fire_markdown():
+    """docs/verification/weapon-effects.md "Fire material" (docs/architecture/fire-material.md section 6): the fire
+    gates on the hull burst (CLASS rows), the death bodies and the wave (EXPLOSION rows), the slots and the cost rows."""
+    ok = lambda name: 'PASS' if checks.get(name) else 'FAIL'
+    crow = lambda case, **m: next(r for r in d3d['metrics']['class'] if r.get('case') == case and
+                                  all(r.get(k) == v for k, v in m.items()))
+    h, sm, sun = crow('fire_hull_median'), crow('burst_small_median'), crow('twenty_hits_cores_on')
+    f, c = row('fire_body_median', tier='fighter_200m'), row('fire_body_median', tier='capital_3km')
+    w = row('wave_not_a_tyre')
+    ht = {(r['width'], r['case']): r for r in d3d['metrics']['hull_timing'] if 'gpu_us' in r}
+    t5 = lambda case: timing[(5120, case)]['gpu_us']
+    close = [r for (wd, case), r in sorted(timing.items()) if wd == 5120 and case.startswith('capital_close_') and
+             case != 'capital_close_all_shed']
+    worst = max(close, key=lambda r: r['gpu_us'])
+    on, off = ht[(5120, 'burst_alone_fire_tongues')]['gpu_us'], ht[(5120, 'burst_alone_fire_tongues_off')]['gpu_us']
+    hseam = sorted(r['seam'] for r in d3d['metrics']['class'] if r.get('case') == 'fire_hull')
+    hseam_med = 0.5 * (hseam[len(hseam) // 2 - 1] + hseam[len(hseam) // 2]) if len(hseam) % 2 == 0 else hseam[len(hseam) // 2]
+    att = row('attach')
+    hs, cs_ = d3d['metrics']['hull_slots'][0], d3d['metrics']['class_slots'][0]
+    h2 = crow('fire_hull_round2')
+    f2, c2 = row('fire_body_round2', tier='fighter_200m'), row('fire_body_round2', tier='capital_3km')
+    er, pg = crow('burst_erosion_median'), crow('plasma_globe')
+    rings = [r for r in d3d['metrics']['class'] if r.get('case') == 'burst_centre_ring_median']
+    fr = {(r['tier'], r['age_frac']): r.get('front_over_law') for r in rows if r.get('case') == 'size'}
+    so = {(r['tier'], r['age_frac']): r.get('outline_over_law') for r in rows if r.get('case') == 'size'}
+    wc_ = row('wave_circumference')
+    bc = next(r for r in d3d['metrics']['hull'] if r.get('case') == 'burst_colour')
+    b2, bb, co = row('body_round2'), row('body', tier='fighter_600m'), row('cooling', tier='fighter_600m')
+    he_, wcol, wr = row('wave_hard_edge'), row('wave_colour'), row('wave_ramp')
+    hb = lambda k: f"{h[k]}"
+    bd = lambda k: f"{f[k]} / {c[k]}"
+    out = [
+        '| Gate | Result [M] (hull; fighter / capital) | Bound |', '| --- | --- | --- |',
+        f"| `fire_luminance_thin_hull`, `_death` ({ok('fire_luminance_thin_hull')}, {ok('fire_luminance_thin_death')}) | share > 0.8 peak {hb('thin')}; {bd('thin')}; equal-area disc under 0.1 peak {h2['disc_dark']}; {f2['disc_dark']} / {c2['disc_dark']} (the outline's gaps under 0.25 peak {hb('gaps')}; {bd('gaps')}, printed) | 0.10-0.35; >= 0.20 (vanilla 0.096) |",
+        f"| `fire_not_pink_hull`, `_death` ({ok('fire_not_pink_hull')}, {ok('fire_not_pink_death')}) | AgX pink share at 0.2, 0.3, 0.5 L {h2['pink']}; {f2['pink']} / {c2['pink']} | the medians' largest < 0.02 |",
+        f"| `fire_quad_edge_dark_hull`, `_death` ({ok('fire_quad_edge_dark_hull')}, {ok('fire_quad_edge_dark_death')}) | the quad's boundary over the peak, worst hit {h2['quad_edge_worst']}; {f2['quad_edge_worst']} / {c2['quad_edge_worst']} | < 0.02 |",
+        f"| `fire_tongues_radial_hull`, `_death` ({ok('fire_tongues_radial_hull')}, {ok('fire_tongues_radial_death')}) | radial / tangential {hb('aniso')}; {bd('aniso')} | <= 0.75 |",
+        f"| `fire_edge_licks_hull`, `_death` ({ok('fire_edge_licks_hull')}, {ok('fire_edge_licks_death')}) | lit boundary / outline boundary {hb('licks')}; {bd('licks')} | >= 2.0 |",
+        f"| `fire_temporal_hull` ({ok('fire_temporal_hull')}) | high-pass corr +16 ms {h['hp16']}, +100 ms {h['hp100']}; low-pass +16 ms {h['lp16']} | 0.5-0.9; <= 0.6; >= 0.9 |",
+        f"| `fire_colour_ramp_hull`, `_death` ({ok('fire_colour_ramp_hull')}, {ok('fire_colour_ramp_death')}) | hot {hb('hot')} @ {hb('hot_r')}, red {hb('cold')} @ {hb('cold_r')}, mid {hb('mid')}; hot {bd('hot')} @ {bd('hot_r')}, red {bd('cold')} @ {bd('cold_r')}, mid {bd('mid')} | >= 0.25 @ <= 0.5; 0.05-0.25 @ >= 0.65; <= 0.5 |",
+        f"| `fire_core_bloom_hull`, `_death` ({ok('fire_core_bloom_hull')}, {ok('fire_core_bloom_death')}) | peak inside 0.3 R {hb('core40')} (40 ms), {bd('core10')} (0.1 L); outside 0.5 R {hb('out40')}; {bd('out10')} | >= 3.0; <= 1.5 |",
+        f"| `hull_20_hits_no_white_sun` ({ok('hull_20_hits_no_white_sun')}) | cores on: worst share above 3.0 {sun['worst_share_above_3']} | <= 0.01 (cores off <= 3.0 as before) |",
+        f"| `fire_small_reads` ({ok('fire_small_reads')}) | 30 px far hit at 0.4 L_b: holes {sm['dark_share']}, lobes {sm['lobe_max_over_min']}, equal-area radius / R(t) {sm.get('eq_r')} (lit share inside R(t) {sm['lit_share']}, printed) | >= 0.10; >= 1.2; >= 0.45 |",
+        f"| `wave_not_a_tyre` ({ok('wave_not_a_tyre')}; 5 km face-on, 0.5 tau) | band mean / edge {w['mean_over_edge']}, dark share {w['dark_share']}, anisotropy {w['aniso']}, grey {w['grey_share']}, longest rim arc >= 0.5 peak {w.get('rim_arc_deg')} deg | <= 0.35; >= 0.40; <= 0.75; <= 0.10; <= 60 |",
+        f"| `hull_burst_erodes_outside_in` ({ok('hull_burst_erodes_outside_in')}) | equal-area radius / R(t) {er.get('eq_r')}, over its 0.1 L_b value {er.get('eq_ratio')}; mean radius 0.8 / 0.2 {er['mean_r_ratio']}; after L_b {er['bursts_after']} (lit share {er['lit_share']}, printed) | 0.35-0.9, <= 0.4; <= 0.8; 0 |",
+        f"| `hull_burst_no_centre_ring` ({ok('hull_burst_no_centre_ring')}; over R_eq) | worst prominence {', '.join(str(r['prominence_max']) for r in rings)}; annulus ratio {', '.join(str(r['annulus_ratio']) for r in rings)} (0.5 / 0.6 / 0.7 L_b) | <= 0.15; <= 1.3 |",
+        f"| `death_tier_sizes`, `death_big_tier_sizes` ({ok('death_tier_sizes')}, {ok('death_big_tier_sizes')}) | the tongues' front / R(t) at 0.1 / 0.3 L: {'; '.join(f'{t} {fr[(t, 0.1)]} / {fr[(t, 0.3)]}' for t in ('fighter_600m', 'missile_300m', 'corvette_1500m', 'capital_1500m', 'station_3km'))} (mean outline {'; '.join(f'{t} {so[(t, 0.3)]}' for t in ('fighter_600m', 'capital_1500m'))} at 0.3 L) | 0.80-1.25 (the old gate: the mean outline within ±5 %) |",
+        f"| `wave_broken_circumference` ({ok('wave_broken_circumference')}) | longest run of bins under 5 % {wc_['dark_run_bins']} (min bin {wc_['min_bin_peak']}), arcs max / min {wc_['arc_max_over_min']} (passed by {wc_.get('arc_by', 'ratio')}), CV {wc_['arc_cv']} | <= 3; a bin at 0 or >= 2.0; >= 0.25 |",
+        f"| `hull_burst_colour_white_core_at_birth`, `_dark_red_at_end` ({ok('hull_burst_colour_white_core_at_birth')}, {ok('hull_burst_colour_dark_red_at_end')}) | birth g / r {bc['birth_g_over_r']}, b / r {bc['birth_b_over_r']}; end g / r {bc['end_g_over_r']}, b / r {bc['end_b_over_r']} | >= 0.75, >= 0.25; <= 0.35, <= 0.2 |",
+        f"| `death_body_erodes_outside_in`, `_colour_core_rim`, `death_cools_through_ramp` ({ok('death_body_erodes_outside_in')}, {ok('death_body_colour_core_rim')}, {ok('death_cools_through_ramp')}; fighter 600 m) | equal-area radius {b2['eq_r']}, ratio {b2['eq_ratio']}; core T {bb['core_T']}, rim T {bb['rim_T']}; T at 0.2 / 0.6 / 1.0 L {co['T_02']} / {co['T_06']} / {co['T_10']} | 0.35-0.9, <= 0.45; >= 0.5 and > rim, <= 0.5; >= 0.75, >= 0.25 and <= T(0.2), <= 0.25 |",
+        f"| `wave_no_hard_edge`, `wave_fire_not_grey` ({ok('wave_no_hard_edge')}, {ok('wave_fire_not_grey')}) | hard drops {he_['hard_drops']}, rays {he_['rays']}, rises {he_['outer_rises']}, worst fall {he_['worst_outer_fall']}; hue at 0.2 / 0.9 L_w {wcol['hue_02']} / {wcol['hue_09']}, on the fire ramp {wr['on_ramp']} | 0; >= 18; <= rays / 10; <= 0.3; >= 0.5 / <= 0.35; >= 0.9 |",
+        f"| `hull_plasma_globe_shrinks_reddens` ({ok('hull_plasma_globe_shrinks_reddens')}) | R {pg['R']} px; b / r {pg['b_over_r']} at 0.3 / 0.65 / 0.95 L | shrinks, reddens, lit at 0.95 L |",
+        f"| `fire_no_seam_hull`, `_death`, `_wave` ({ok('fire_no_seam_hull')}, {ok('fire_no_seam_death')}, {ok('fire_no_seam_wave')}) | median over the seeds {hseam_med:.4f}; {bd('seam')}; {w['seam']} (worst seed {h['seam_max']}; {bd('seam_max')}) | <= 0.1 (median) |",
+        f"| program slots (device creation, max {att['max_ps_slots']}) | fireball_ps {hs['fireball_ps']}, wave_ps {att['wave_ps_slots']}, ring_ps {cs_['ring_ps']}; fireball vertex {hs['fireball_vertex_bytes']} bytes | the modern cap 32768 |",
+        f"| `hull_fire_within_weight` ({ok('hull_fire_within_weight')}) | tongues on {on} us ({on / 177.5:.3f}), off {off} us ({off / 177.5:.3f}) at 5120x1440: + {(on - off) / 177.5:.3f} a screen | within 0.1 of budget_weight_fire - budget_weight_fireball |",
+        f"| alone rows (5120x1440) | body {t5('body_alone_fills_frame')} us, wave {t5('wave_alone_fills_frame')} us (one octave {t5('wave_one_octave_alone')}), eye inside a fighter {t5('eye_inside_fighter')} us | eye inside <= 330 |",
+        f"| `death_budget_capital_close_5120` ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}) | <= 450 |",
+        f"| `death_budget_5120`, `death_rays_sparks_budget_5120` ({ok('death_budget_5120')}, {ok('death_rays_sparks_budget_5120')}) | fighter 600 m {t5('fighter_600m')} us, 20 fighters {t5('fighters_20_600m')} us | <= 60; <= 150 |",
+        f"| `hull_budget_20_hits_5120`, `hull_budget_capital_close_64_within_budget` ({ok('hull_budget_20_hits_5120')}, {ok('hull_budget_capital_close_64_within_budget')}) | 20 hits {ht[(5120, 'fighter_200m_20_hits')]['gpu_us']} us, 60 m {ht[(5120, 'fighter_60m_20_hits')]['gpu_us']} us, capital 64 {ht[(5120, 'capital_close_64_hits')]['gpu_us']} us | <= 80; <= 1420 |",
+    ]
+    print('\n'.join(out))
+
+
+if '--fire' in sys.argv:
+    fire_markdown()
+elif '--markdown' in sys.argv:
     (rays_markdown() if '--rays' in sys.argv else wave_markdown() if '--wave' in sys.argv else
      big_markdown() if '--big' in sys.argv else markdown())
 else:

@@ -132,7 +132,10 @@ struct WeaponFireballVertex {
     float look[4];    // heat T, radiance E, age fraction x, seed
     float tint[4];    // a weapon tint (linear) and its share of the colour (0: the heat ramp alone; < 0: smoke)
     float disc[4];    // rotation (radians), lobe seed, advection (noise cells), the third and fourth octaves' weight 0 .. 2
-    float core = 0.f; // step 3: the white-hot core's gain g (0: none; the hull bursts and smokes; boom::core_*)
+    // step 3: the white-hot core's gain g (0: none; smokes; boom::core_*, hull::class_fire_core); the fire material
+    // (docs/architecture/fire-material.md): its weight (0: the previous law, dust, smoke, the eye inside a body; 0.5 the
+    // plasma globe; 1 fire), the size LOD look::fire_lod (0 .. 2), the element's game-time age in ms (the flow, flicker)
+    float core[4] = {0.f, 0.f, 0.f, 0.f};
 };
 // Section 13.2 (explosion-look.md): a composed death body's table, the pixel constants of its own draw
 // (weapon_compose_ps.hlsl c14..c42; the box is its fireball-layout quad, sphere.xyz the cluster's centre): spheres drawn

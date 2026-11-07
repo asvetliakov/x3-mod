@@ -414,6 +414,309 @@ Ring ring_of(const std::vector<float>& l, unsigned W, double x, double y, double
     }
     return r;
 }
+// The fire material's measures (docs/architecture/fire-material.md section 6; measure.py's 10 %-of-peak method) about a
+// disc (centre, R(t) px) on a linear RGB frame: the lit set (luma > 0.1 peak) inside 1.6 R, its filled outline (the lit
+// set with every hole closed: the box's unlit pixels not reachable from its border), thin = the lit share above 0.8 of the
+// peak, gaps = the outline's share under 0.25 of the peak, aniso = the high-pass (box R/4) gradient energy radial over
+// tangential on the outline eroded 4 px, licks = the lit set's 4-boundary over the 4-boundary of the disc of the outline's
+// area (8 sqrt(A / pi): a disc 1.0; the note's "the filled outline's boundary" read so that a tongue silhouette's bays,
+// which the hole fill keeps open, count; against the outline itself an open tongue shape is 1.0 by construction), the
+// nearest fire-ramp stop
+// per lit pixel (hot T >= 0.75, cold T 0.25, mid 0.5: shares and mean radius over R), the peak within 0.3 R and the
+// largest luma outside 0.5 R.
+double nearest_fire_stop(const double c[3]) {
+    const double m = std::max(c[0], std::max(c[1], c[2]));
+    if (!(m > 0)) return 0;
+    double best = 1e30, T = 0;
+    for (unsigned k = 1; k < 5; ++k) {
+        const float* s = wc::look::fire_ramp[k];
+        const double sm = std::max(s[0], std::max(s[1], s[2]));
+        double d = 0;
+        for (unsigned q = 0; q < 3; ++q) d += (c[q] / m - s[q] / sm) * (c[q] / m - s[q] / sm);
+        if (d < best) {
+            best = d;
+            T = 0.25 * k;
+        }
+    }
+    return T;
+}
+// Round 2 (fire-material.md section 12): disc_dark, the share under 0.1 of the peak within the equal-area disc of the lit
+// set (radius sqrt(lit / pi) about the centre); pink, the share of the lit pixels at most 0.8 of the peak whose display
+// colour (agx_display: tools/analysis/agx_reference.py's minimal AgX, decode 2.2, exposure 0) has B > 0.5 G and
+// G < 0.85 R (peach / pink).
+struct Fire {
+    double thin = 0, gaps = 0, aniso = 0, licks = 0, hot = 0, hot_r = 0, cold = 0, cold_r = 0, mid = 0, core_peak = 0,
+           out_peak = 0, lit = 0, disc_dark = 0, pink = 0;
+};
+inline void agx_display(const float c[3], double o[3]) {
+    static const double in[3][3] = {{0.842479062253094, 0.0784335999999992, 0.0792237451477643},
+                                    {0.0423282422610123, 0.878468636469772, 0.0791661274605434},
+                                    {0.0423756549057051, 0.0784336, 0.879142973793104}};
+    static const double out[3][3] = {{1.19687900512017, -0.0980208811401368, -0.0990297440797205},
+                                     {-0.0528968517574562, 1.15190312990417, -0.0989611408712536},
+                                     {-0.0529716355144438, -0.0980434501171241, 1.15107367264116}};
+    double lin[3], s[3];
+    for (unsigned k = 0; k < 3; ++k) lin[k] = std::pow(std::max(double(c[k]), 0.0), 2.2);
+    for (unsigned k = 0; k < 3; ++k) {
+        const double v = in[k][0] * lin[0] + in[k][1] * lin[1] + in[k][2] * lin[2];
+        const double e = std::min(4.026069, std::max(-12.47393, std::log2(std::max(v, 1e-10))));
+        const double x = (e + 12.47393) / (4.026069 + 12.47393), x2 = x * x;
+        s[k] = 15.5 * x2 * x2 * x2 - 40.14 * x2 * x2 * x + 31.96 * x2 * x2 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
+    }
+    for (unsigned k = 0; k < 3; ++k) o[k] = std::min(1.0, std::max(0.0, out[k][0] * s[0] + out[k][1] * s[1] + out[k][2] * s[2]));
+}
+inline bool agx_pink(const float c[3]) {
+    double o[3];
+    agx_display(c, o);
+    return o[2] > 0.5 * o[1] && o[1] < 0.85 * o[0];
+}
+// Round 2: the largest luma on a fireball quad's boundary rows and columns over the frame's peak (the quad the impostor's
+// screen rectangle, its corners at view depth z through m00 1.6 and m11 1.6 W / H, the fixture's camera); -1 when the
+// quad covers the screen or leaves it.
+inline double quad_edge_of(const std::vector<float>& rgb, unsigned W, unsigned H, const rr::WeaponFireballVertex* v) {
+    double x0 = 1e30, x1 = -1e30, y0 = 1e30, y1 = -1e30;
+    const double m11 = 1.6 * double(W) / double(H);
+    for (unsigned k = 0; k < 4; ++k) {
+        const double z = v[k].corner[2];
+        if (!(z > 0)) return -1.0;
+        const double x = 0.5 * W * (1.0 + 1.6 * double(v[k].corner[0]) / z), y = 0.5 * H * (1.0 - m11 * double(v[k].corner[1]) / z);
+        x0 = std::min(x0, x);
+        x1 = std::max(x1, x);
+        y0 = std::min(y0, y);
+        y1 = std::max(y1, y);
+    }
+    // the boundary pixels: the first and last column and row whose centres the rectangle covers
+    const int ix0 = int(std::ceil(x0 - 0.5)), ix1 = int(std::floor(x1 - 0.5)), iy0 = int(std::ceil(y0 - 0.5)),
+              iy1 = int(std::floor(y1 - 0.5));
+    if (ix0 < 1 || iy0 < 1 || ix1 + 2 > int(W) || iy1 + 2 > int(H) || ix1 <= ix0 || iy1 <= iy0) return -1.0;
+    double pk = 0, edge = 0;
+    for (std::size_t i = 0; i < rgb.size() / 3; ++i) pk = std::max(pk, double(std::max(rgb[3 * i], std::max(rgb[3 * i + 1], rgb[3 * i + 2]))));
+    if (!(pk > 0)) return 0.0;
+    const auto at = [&](int x, int y) {
+        const float* c = &rgb[(std::size_t(y) * W + x) * 3];
+        return double(std::max(c[0], std::max(c[1], c[2])));
+    };
+    for (int x = ix0; x <= ix1; ++x) edge = std::max(edge, std::max(at(x, iy0), at(x, iy1)));
+    for (int y = iy0; y <= iy1; ++y) edge = std::max(edge, std::max(at(ix0, y), at(ix1, y)));
+    return edge / pk;
+}
+struct Box {
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    int w() const { return x1 - x0; }
+    int h() const { return y1 - y0; }
+};
+inline Box box_of(const Disc& d, double k, unsigned W, unsigned H) {
+    Box b;
+    b.x0 = std::max(0, int(d.x - k * d.R) - 1);
+    b.x1 = std::min(int(W), int(d.x + k * d.R) + 2);
+    b.y0 = std::max(0, int(d.y - k * d.R) - 1);
+    b.y1 = std::min(int(H), int(d.y + k * d.R) + 2);
+    return b;
+}
+// a box filter of radius r (px) over the box's values (an integral image)
+inline std::vector<double> box_mean(const std::vector<double>& v, int bw, int bh, int r) {
+    std::vector<double> sum(std::size_t(bw + 1) * (bh + 1), 0.0), out(v.size(), 0.0);
+    for (int y = 0; y < bh; ++y)
+        for (int x = 0; x < bw; ++x)
+            sum[std::size_t(y + 1) * (bw + 1) + x + 1] = v[std::size_t(y) * bw + x] + sum[std::size_t(y) * (bw + 1) + x + 1] +
+                                                          sum[std::size_t(y + 1) * (bw + 1) + x] - sum[std::size_t(y) * (bw + 1) + x];
+    for (int y = 0; y < bh; ++y)
+        for (int x = 0; x < bw; ++x) {
+            const int ax = std::max(0, x - r), bx = std::min(bw, x + r + 1), ay = std::max(0, y - r), by = std::min(bh, y + r + 1);
+            out[std::size_t(y) * bw + x] = (sum[std::size_t(by) * (bw + 1) + bx] - sum[std::size_t(ay) * (bw + 1) + bx] -
+                                            sum[std::size_t(by) * (bw + 1) + ax] + sum[std::size_t(ay) * (bw + 1) + ax]) /
+                                           double((bx - ax) * (by - ay));
+        }
+    return out;
+}
+Fire fire_of(const std::vector<float>& rgb, const Disc& d, unsigned W, unsigned H) {
+    Fire f;
+    if (!(d.R > 1.0)) return f;
+    const Box b = box_of(d, 1.6, W, H);
+    const int bw = b.w(), bh = b.h();
+    if (bw < 3 || bh < 3) return f;
+    std::vector<double> l(std::size_t(bw) * bh, 0.0);
+    double pk = 0;
+    for (int y = 0; y < bh; ++y)
+        for (int x = 0; x < bw; ++x) {
+            const float* c = &rgb[(std::size_t(y + b.y0) * W + x + b.x0) * 3];
+            l[std::size_t(y) * bw + x] = std::max(c[0], std::max(c[1], c[2]));
+            pk = std::max(pk, l[std::size_t(y) * bw + x]);
+        }
+    if (!(pk > 0)) return f;
+    std::vector<std::uint8_t> lit(l.size()), filled(l.size(), 1), seen(l.size(), 0);
+    for (std::size_t i = 0; i < l.size(); ++i) lit[i] = l[i] > 0.1 * pk;
+    std::vector<int> stack;
+    for (int x = 0; x < bw; ++x) {
+        stack.push_back(x);
+        stack.push_back((bh - 1) * bw + x);
+    }
+    for (int y = 0; y < bh; ++y) {
+        stack.push_back(y * bw);
+        stack.push_back(y * bw + bw - 1);
+    }
+    while (!stack.empty()) {
+        const int i = stack.back();
+        stack.pop_back();
+        if (seen[i] || lit[i]) continue;
+        seen[i] = 1;
+        filled[i] = 0;
+        const int x = i % bw, y = i / bw;
+        if (x > 0) stack.push_back(i - 1);
+        if (x + 1 < bw) stack.push_back(i + 1);
+        if (y > 0) stack.push_back(i - bw);
+        if (y + 1 < bh) stack.push_back(i + bw);
+    }
+    double n_lit = 0, n_thin = 0, n_fill = 0, n_gap = 0, e_lit = 0, e_fill = 0;
+    double hot = 0, hot_r = 0, cold = 0, cold_r = 0, mid = 0, n_pink = 0;
+    for (int y = 0; y < bh; ++y)
+        for (int x = 0; x < bw; ++x) {
+            const std::size_t i = std::size_t(y) * bw + x;
+            const double r = std::hypot(x + b.x0 + 0.5 - d.x, y + b.y0 + 0.5 - d.y) / d.R;
+            if (r <= 0.3) f.core_peak = std::max(f.core_peak, l[i]);
+            if (r > 0.5) f.out_peak = std::max(f.out_peak, l[i]);
+            const auto nb = [&](const std::vector<std::uint8_t>& m, int dx, int dy) {
+                const int xx = x + dx, yy = y + dy;
+                return xx >= 0 && yy >= 0 && xx < bw && yy < bh && m[std::size_t(yy) * bw + xx];
+            };
+            if (filled[i]) {
+                ++n_fill;
+                n_gap += l[i] < 0.25 * pk;
+                e_fill += !nb(filled, 1, 0) + !nb(filled, -1, 0) + !nb(filled, 0, 1) + !nb(filled, 0, -1);
+            }
+            if (!lit[i]) continue;
+            ++n_lit;
+            n_thin += l[i] > 0.8 * pk;
+            e_lit += !nb(lit, 1, 0) + !nb(lit, -1, 0) + !nb(lit, 0, 1) + !nb(lit, 0, -1);
+            const float* c = &rgb[(std::size_t(y + b.y0) * W + x + b.x0) * 3];
+            const double cd[3] = {c[0], c[1], c[2]};
+            if (l[i] <= 0.8 * pk && agx_pink(c)) ++n_pink;
+            const double T = nearest_fire_stop(cd);
+            if (T >= 0.75) {
+                ++hot;
+                hot_r += r;
+            } else if (T <= 0.3) {
+                ++cold;
+                cold_r += r;
+            } else
+                ++mid;
+        }
+    f.lit = n_lit;
+    if (n_lit > 0) {
+        f.thin = n_thin / n_lit;
+        f.hot = hot / n_lit;
+        f.cold = cold / n_lit;
+        f.mid = mid / n_lit;
+        f.hot_r = hot > 0 ? hot_r / hot : 0;
+        f.cold_r = cold > 0 ? cold_r / cold : 0;
+    }
+    if (n_fill > 0) f.gaps = n_gap / n_fill;
+    if (n_lit > 0) {
+        f.pink = n_pink / n_lit;
+        // the equal-area disc of the lit set about the centre
+        const double Req = std::sqrt(n_lit / 3.14159265);
+        double nd = 0, dd = 0;
+        for (int y = 0; y < bh; ++y)
+            for (int x = 0; x < bw; ++x)
+                if (std::hypot(x + b.x0 + 0.5 - d.x, y + b.y0 + 0.5 - d.y) <= Req) {
+                    ++nd;
+                    dd += l[std::size_t(y) * bw + x] < 0.1 * pk;
+                }
+        f.disc_dark = nd > 0 ? dd / nd : 0;
+    }
+    f.licks = n_fill > 0 ? e_lit / (8.0 * std::sqrt(n_fill / 3.14159265)) : 0;
+    (void)e_fill;
+    // the anisotropy on the outline eroded 4 px (four 4-neighbour erosions)
+    std::vector<std::uint8_t> in = filled;
+    for (unsigned k = 0; k < 4; ++k) {
+        std::vector<std::uint8_t> nx = in;
+        for (int y = 0; y < bh; ++y)
+            for (int x = 0; x < bw; ++x) {
+                const std::size_t i = std::size_t(y) * bw + x;
+                if (!in[i]) continue;
+                if (x == 0 || y == 0 || x + 1 == bw || y + 1 == bh || !in[i - 1] || !in[i + 1] || !in[i - bw] || !in[i + bw]) nx[i] = 0;
+            }
+        in.swap(nx);
+    }
+    const std::vector<double> lo = box_mean(l, bw, bh, std::max(1, int(d.R / 4.0 + 0.5)));
+    double er = 0, et = 0;
+    for (int y = 1; y + 1 < bh; ++y)
+        for (int x = 1; x + 1 < bw; ++x) {
+            const std::size_t i = std::size_t(y) * bw + x;
+            if (!in[i]) continue;
+            const double gx = 0.5 * ((l[i + 1] - lo[i + 1]) - (l[i - 1] - lo[i - 1]));
+            const double gy = 0.5 * ((l[i + bw] - lo[i + bw]) - (l[i - bw] - lo[i - bw]));
+            const double dx = x + b.x0 + 0.5 - d.x, dy = y + b.y0 + 0.5 - d.y, rr = std::hypot(dx, dy);
+            if (!(rr > 0.5)) continue;
+            const double ux = dx / rr, uy = dy / rr, gr = gx * ux + gy * uy, gt = -gx * uy + gy * ux;
+            er += gr * gr;
+            et += gt * gt;
+        }
+    f.aniso = et > 0 ? er / et : 0;
+    return f;
+}
+// The temporal correlations of two frames about the disc (inside 1.2 R): the high-pass (box R/4) and the low-pass (box
+// R/2) Pearson correlations of the luma.
+void fire_corr(const std::vector<float>& a, const std::vector<float>& c, const Disc& d, unsigned W, unsigned H, double* hp,
+               double* lp) {
+    *hp = *lp = 0;
+    const Box b = box_of(d, 1.2, W, H);
+    const int bw = b.w(), bh = b.h();
+    if (bw < 3 || bh < 3) return;
+    std::vector<double> la(std::size_t(bw) * bh), lc(la.size());
+    for (int y = 0; y < bh; ++y)
+        for (int x = 0; x < bw; ++x) {
+            const float* p = &a[(std::size_t(y + b.y0) * W + x + b.x0) * 3];
+            const float* q = &c[(std::size_t(y + b.y0) * W + x + b.x0) * 3];
+            la[std::size_t(y) * bw + x] = std::max(p[0], std::max(p[1], p[2]));
+            lc[std::size_t(y) * bw + x] = std::max(q[0], std::max(q[1], q[2]));
+        }
+    const auto pearson = [](const std::vector<double>& u, const std::vector<double>& v) {
+        double mu = 0, mv = 0;
+        for (std::size_t i = 0; i < u.size(); ++i) {
+            mu += u[i];
+            mv += v[i];
+        }
+        mu /= double(u.size());
+        mv /= double(u.size());
+        double sxy = 0, sxx = 0, syy = 0;
+        for (std::size_t i = 0; i < u.size(); ++i) {
+            sxy += (u[i] - mu) * (v[i] - mv);
+            sxx += (u[i] - mu) * (u[i] - mu);
+            syy += (v[i] - mv) * (v[i] - mv);
+        }
+        return sxx > 0 && syy > 0 ? sxy / std::sqrt(sxx * syy) : 0.0;
+    };
+    const int r4 = std::max(1, int(d.R / 4.0 + 0.5)), r2 = std::max(1, int(d.R / 2.0 + 0.5));
+    const std::vector<double> a4 = box_mean(la, bw, bh, r4), c4 = box_mean(lc, bw, bh, r4);
+    std::vector<double> ha(la.size()), hc(la.size());
+    for (std::size_t i = 0; i < la.size(); ++i) {
+        ha[i] = la[i] - a4[i];
+        hc[i] = lc[i] - c4[i];
+    }
+    *hp = pearson(ha, hc);
+    *lp = pearson(box_mean(la, bw, bh, r2), box_mean(lc, bw, bh, r2));
+}
+// The seam at the angle's wrap: the mean luma of the strips 1 .. 3 px either side of the wrap's screen ray (unit u from
+// the centre, screen px) over r0 .. r1 px; |one side - the other| over the frame's peak.
+double seam_of(const std::vector<float>& rgb, unsigned W, unsigned H, double cx, double cy, double ux, double uy, double r0,
+               double r1) {
+    double s[2] = {0, 0}, n[2] = {0, 0}, pk = 0;
+    for (std::size_t i = 0; i < rgb.size() / 3; ++i)
+        pk = std::max(pk, double(std::max(rgb[3 * i], std::max(rgb[3 * i + 1], rgb[3 * i + 2]))));
+    for (double r = r0; r <= r1; r += 0.5)
+        for (int side = 0; side < 2; ++side)
+            for (double o = 1.0; o <= 3.0; o += 1.0) {
+                const double off = side ? o : -o;
+                const double x = cx + ux * r - uy * off, y = cy + uy * r + ux * off;
+                if (x < 0 || y < 0 || x >= W || y >= H) continue;
+                const std::size_t i = std::size_t(y) * W + std::size_t(x);
+                s[side] += std::max(rgb[3 * i], std::max(rgb[3 * i + 1], rgb[3 * i + 2]));
+                ++n[side];
+            }
+    if (!(pk > 0) || !n[0] || !n[1]) return 0;
+    return std::fabs(s[0] / n[0] - s[1] / n[1]) / pk;
+}
 // The centre-ring gates' frames for the eye (never a gate): with X3M_WEAPON_EFFECTS_DUMP set and
 // X3M_WEAPON_EFFECTS_DUMP_CASES naming centre_ring, <dir>\\<name>.pfm (the image as rendered, float RGB).
 void dump_ring(const char* name, const std::vector<float>& rgb, unsigned w, unsigned h) {
@@ -494,8 +797,11 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
     }
     // 3. Eroding from the outside in (energy): the lit share inside R(t) at 0.1 / 0.5 / 0.9 / 1.0 L_b, the lit pixels'
     // mean radius over R(t) at 0.8 against 0.2.
+    // Round 2 (fire-material.md section 12): the tongues' gaps are the material, so the lit share inside R(t) (>= 0.8,
+    // 0.35-0.75, <= 0.15) no longer measures the erosion; the equal-area disc of the lit set does: its radius at 0.5 L_b
+    // 0.35-0.9 of its radius at 0.1 L_b, at 0.9 L_b <= 0.4 of it (the shares printed beside).
     {
-        std::vector<double> sh[3], ratio;
+        std::vector<double> sh[3], eq[3], ratio;
         unsigned after = 0;
         const float fr[3] = {0.1f, 0.5f, 0.9f};
         for (unsigned j = 0; j < hits_n; ++j) {
@@ -503,9 +809,14 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
             double share[3] = {0, 0, 0}, mr[2] = {0, 0};
             for (unsigned i = 0; i < 3; ++i) {
                 const HullOut o = at(fr[i] * L, burst_only);
-                if (o.bursts)
-                    share[i] = burst::body_of(burst::luma(burst::render(pass, o)), burst::disc_of(hq_fireballs[0])).lit_share;
+                double re = 0;
+                if (o.bursts) {
+                    const std::vector<float> lu = burst::luma(burst::render(pass, o));
+                    share[i] = burst::body_of(lu, burst::disc_of(hq_fireballs[0])).lit_share;
+                    re = burst::eq_radius(lu) / burst::disc_of(hq_fireballs[0]).R;
+                }
                 sh[i].push_back(share[i]);
+                eq[i].push_back(re);
             }
             for (unsigned i = 0; i < 2; ++i) {
                 const HullOut o = at((i ? 0.8f : 0.2f) * L, burst_only);
@@ -517,9 +828,11 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                         double(L), share[0], share[1], share[2], mr[0], mr[1]);
         }
         const double m0 = median(sh[0]), m1 = median(sh[1]), m2 = median(sh[2]), mr = median(ratio);
-        std::printf("CLASS case=burst_erosion_median hits=%u lit_share=%.4f,%.4f,%.4f bursts_after=%u mean_r_ratio=%.4f\n", hits_n,
-                    m0, m1, m2, after, mr);
-        report("hull_burst_erodes_outside_in", m0 >= 0.8 && m1 >= 0.35 && m1 <= 0.75 && m2 <= 0.15 && after == 0 && mr <= 0.8, "");
+        const double e0 = median(eq[0]), e1 = median(eq[1]), e2 = median(eq[2]);
+        const double q1 = e0 > 0 ? e1 / e0 : 0.0, q2 = e0 > 0 ? e2 / e0 : 1.0;
+        std::printf("CLASS case=burst_erosion_median hits=%u lit_share=%.4f,%.4f,%.4f eq_r=%.4f,%.4f,%.4f eq_ratio=%.4f,%.4f "
+                    "bursts_after=%u mean_r_ratio=%.4f\n", hits_n, m0, m1, m2, e0, e1, e2, q1, q2, after, mr);
+        report("hull_burst_erodes_outside_in", e0 > 0 && q1 >= 0.35 && q1 <= 0.9 && q2 <= 0.4 && after == 0 && mr <= 0.8, "");
     }
     // 4. Colour, core and rim at 0.2 L_b (energy): the nearest ramp stop of the mean colour within 0.3 R and in 0.7..1.0 R.
     {
@@ -546,7 +859,103 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         }
         const double tc = median(tcs), tr = median(trs);
         std::printf("CLASS case=burst_colour_median hits=%u core_T=%.2f rim_T=%.2f\n", hits_n, tc, tr);
-        report("hull_burst_colour_core_rim", tc >= 0.75 && tr > 0 && tr <= 0.5, "");
+        // superseded by fire_colour_ramp_hull (fire-material.md section 6): printed, no longer a gate
+        (void)tc;
+        (void)tr;
+    }
+    // 4c. The fire material (docs/architecture/fire-material.md section 6; supersedes hull_burst_colour_core_rim): energy
+    // single, the median over hits_n hits: at 0.3 L_b the thin luminance and the gaps inside the outline, the radial over
+    // tangential high-pass gradient energy, the edge's licks, the seam at the angle's wrap; the temporal correlations at
+    // + 16 ms and + 100 ms (the SETA step); the fire ramp's classes at 0.2 L_b; the core's bloom at 40 ms. The ring's
+    // sequence counter is restored after it (the later gates' records keep the hashes they had before it).
+    {
+        const std::uint32_t next_sequence = stage_ring.next_sequence;
+        std::vector<double> thin, gaps, aniso, licks, hot, hot_r, cold, cold_r, mid, core40, out40, hp16, lp16, hp100, seam;
+        std::vector<double> disc_dark, pink2, pink3, pink5;
+        double edge_worst = 0;
+        for (unsigned j = 0; j < hits_n; ++j) {
+            const float L = single(hl::an_energy, burst_only, 400.f, seq_of(j));
+            const HullOut o = at(0.3f * L, burst_only);
+            if (!o.bursts) continue;
+            const burst::Disc d = burst::disc_of(hq_fireballs[0]);
+            const double th = double(hq_fireballs[0].disc[0]);
+            const std::vector<float> rgb = burst::render(pass, o);
+            const burst::Fire f3 = burst::fire_of(rgb, d, g.w, g.h);
+            edge_worst = std::max(edge_worst, burst::quad_edge_of(rgb, g.w, g.h, hq_fireballs));
+            // the wrap: p's angle pi, q along (-cos theta, sin theta) in view (the screen's y down)
+            const double sm = burst::seam_of(rgb, g.w, g.h, d.x, d.y, -std::cos(th), -std::sin(th), 0.3 * d.R, 0.9 * d.R);
+            double h16 = 0, l16 = 0, h100 = 0, l100 = 0;
+            {
+                // each frame rendered before the next build (the builds share the stage's vertex arrays)
+                const HullOut o16 = at(0.3f * L + 16.f, burst_only);
+                if (o16.bursts) burst::fire_corr(rgb, burst::render(pass, o16), d, g.w, g.h, &h16, &l16);
+                const HullOut o100 = at(0.3f * L + 100.f, burst_only);
+                if (o100.bursts) burst::fire_corr(rgb, burst::render(pass, o100), d, g.w, g.h, &h100, &l100);
+            }
+            burst::Fire f2{}, f0{};
+            const HullOut o2 = at(0.2f * L, burst_only);
+            if (o2.bursts) f2 = burst::fire_of(burst::render(pass, o2), burst::disc_of(hq_fireballs[0]), g.w, g.h);
+            const HullOut o0 = at(40.f, burst_only);
+            if (o0.bursts) {
+                const std::vector<float> rgb0 = burst::render(pass, o0);
+                f0 = burst::fire_of(rgb0, burst::disc_of(hq_fireballs[0]), g.w, g.h);
+                edge_worst = std::max(edge_worst, burst::quad_edge_of(rgb0, g.w, g.h, hq_fireballs));
+            }
+            burst::Fire f5{};
+            const HullOut o5 = at(0.5f * L, burst_only);
+            if (o5.bursts) f5 = burst::fire_of(burst::render(pass, o5), burst::disc_of(hq_fireballs[0]), g.w, g.h);
+            std::printf("CLASS case=fire_hull hit=%u R_px=%.1f thin=%.4f gaps=%.4f disc_dark=%.4f aniso=%.3f licks=%.3f seam=%.4f "
+                        "hp16=%.3f lp16=%.3f hp100=%.3f hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core40=%.3f "
+                        "out40=%.3f pink=%.4f,%.4f,%.4f\n",
+                        j, d.R, f3.thin, f3.gaps, f3.disc_dark, f3.aniso, f3.licks, sm, h16, l16, h100, f2.hot, f2.hot_r, f2.cold,
+                        f2.cold_r, f2.mid, f0.core_peak, f0.out_peak, f2.pink, f3.pink, f5.pink);
+            disc_dark.push_back(f3.disc_dark);
+            pink2.push_back(f2.pink);
+            pink3.push_back(f3.pink);
+            pink5.push_back(f5.pink);
+            thin.push_back(f3.thin);
+            gaps.push_back(f3.gaps);
+            aniso.push_back(f3.aniso);
+            licks.push_back(f3.licks);
+            seam.push_back(sm);
+            hp16.push_back(h16);
+            lp16.push_back(l16);
+            hp100.push_back(h100);
+            hot.push_back(f2.hot);
+            hot_r.push_back(f2.hot_r);
+            cold.push_back(f2.cold);
+            cold_r.push_back(f2.cold_r);
+            mid.push_back(f2.mid);
+            core40.push_back(f0.core_peak);
+            out40.push_back(f0.out_peak);
+        }
+        const unsigned n = unsigned(thin.size());
+        std::printf("CLASS case=fire_hull_median hits=%u thin=%.4f gaps=%.4f aniso=%.3f licks=%.3f seam_max=%.4f hp16=%.3f "
+                    "lp16=%.3f hp100=%.3f hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core40=%.3f out40=%.3f\n",
+                    n, median(thin), median(gaps), median(aniso), median(licks),
+                    seam.empty() ? 0.0 : *std::max_element(seam.begin(), seam.end()), median(hp16), median(lp16),
+                    median(hp100), median(hot), median(hot_r), median(cold), median(cold_r), median(mid), median(core40),
+                    median(out40));
+        const bool all = n == hits_n;
+        // round 2 (fire-material.md section 12): the gap clause the equal-area disc's dark share (>= 0.20; the outline's gap
+        // share >= 0.35 printed only); the pink share at 0.2 / 0.3 / 0.5 L_b (the medians' largest < 0.02); the quad's
+        // boundary at 40 ms and 0.3 L_b (the worst hit's edge luma < 0.02 of the frame's peak)
+        const double pink = std::max(median(pink2), std::max(median(pink3), median(pink5)));
+        std::printf("CLASS case=fire_hull_round2 disc_dark=%.4f pink=%.4f,%.4f,%.4f quad_edge_worst=%.4f\n", median(disc_dark),
+                    median(pink2), median(pink3), median(pink5), edge_worst);
+        report("fire_luminance_thin_hull", all && median(thin) >= 0.10 && median(thin) <= 0.35 && median(disc_dark) >= 0.20, "");
+        report("fire_not_pink_hull", all && pink < 0.02, "");
+        report("fire_quad_edge_dark_hull", all && edge_worst < 0.02, "");
+        report("fire_tongues_radial_hull", all && median(aniso) <= 0.75, "");
+        report("fire_edge_licks_hull", all && median(licks) >= 2.0, "");
+        report("fire_temporal_hull", all && median(hp16) >= 0.5 && median(hp16) <= 0.9 && median(hp100) <= 0.6 &&
+                                         median(lp16) >= 0.9, "");
+        report("fire_colour_ramp_hull", all && median(hot) >= 0.25 && median(hot_r) <= 0.5 && median(cold) >= 0.05 &&
+                                            median(cold) <= 0.25 && median(cold_r) >= 0.65 && median(mid) <= 0.5, "");
+        report("fire_core_bloom_hull", all && median(core40) >= 3.0 && median(out40) <= 1.5, "");
+        // the median over the hits as every section-6 gate (a single hit's tongue edge crossing the strip is not a seam)
+        report("fire_no_seam_hull", all && median(seam) <= 0.1, "");
+        stage_ring.next_sequence = next_sequence;
     }
     // 4b. No centre ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"), energy at 0.5 / 0.6 /
     // 0.7 L_b over hits_n hits: every hit's ring prominence (burst::ring_of) <= ring_prominence_max at each age (the
@@ -570,7 +979,11 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                 }
                 const burst::Disc d = burst::disc_of(hq_fireballs[0]);
                 const std::vector<float> rgb = burst::render(pass, o);
-                const burst::Ring r = burst::ring_of(burst::luma(rgb), g.w, d.x, d.y, d.R * (1.0 + double(wc::look::fireball_lobe_amp)));
+                // round 2 (fire-material.md section 12): the profile over the lit set's equal-area disc (0 .. 0.6 of the
+                // scale = 0 .. R_eq), not the drawn sphere's 0 .. 0.6 R_s: the tongues' bases sit at the fire blend's radius
+                // of the sphere, outside the body the eye sees as its centre
+                const std::vector<float> lu = burst::luma(rgb);
+                const burst::Ring r = burst::ring_of(lu, g.w, d.x, d.y, burst::eq_radius(lu) / 0.6);
                 char name[64];
                 std::snprintf(name, sizeof name, "centre_ring_hull_hit%u_%02.0f", j, double(fr) * 10.0);
                 burst::dump_ring(name, rgb, g.w, g.h);
@@ -643,6 +1056,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
             t.flash = t.sparks = false;
             t.cluster = rule != 1;
             t.cluster_fade = rule == 0;
+            t.fire_core = false; // the bound with the cores off (fire-material.md section 6); the cores' area below
             hull_owner(400.f, 100.f);
             for (unsigned i = 0; i < 20; ++i) {
                 const double r = 3000.0 * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
@@ -679,7 +1093,37 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         }
         std::printf("CLASS case=twenty_hits_peak age_ms=120 peak_rule=%.4f peak_no_rule=%.4f peak_hard_count=%.4f "
                     "single_rule=%.4f single_no_rule=%.4f\n", peak[0], peak[1], peak[2], one[0], one[1]);
-        report("hull_20_hits_no_white_sun", peak[0] > 0 && peak[0] <= 3.0 && one[1] > 0 && std::fabs(one[0] / one[1] - 1.0) <= 0.01,
+        // with the cores on (fire-material.md section 6): the frame's pixels above 3.0 linear at most 1 %
+        double sun_share = 1.0;
+        {
+            const std::uint32_t next_sequence = stage_ring.next_sequence; // restored: the later records' hashes
+            hull_owner(400.f, 100.f);
+            for (unsigned i = 0; i < 20; ++i) {
+                const double r = 3000.0 * std::sqrt(halton(i + 1, 2)), ang = 6.2831853 * halton(i + 1, 3);
+                const std::int32_t pos[3] = {std::int32_t(r * std::cos(ang)), std::int32_t(r * std::sin(ang)), -10000};
+                wc::Event* e = add_of(hl::an_energy, 1000 + 4 * i, pos, 0.33, wc::patch_fighter);
+                if (e) e->row = std::uint16_t(i);
+                if (e) e->sequence = 0x6c000u + 977u * (i + 1);
+            }
+            ws::HullTuning t = all;
+            t.flash = t.sparks = false;
+            HullOut o;
+            double worst = 0;
+            for (unsigned age = 8; age <= 120; age += 16) {
+                ws::HullView v = hull_view(g, 1076 + age, 16);
+                v.budget_left = wc::screen_budget;
+                o = hull_build(v, t);
+                const std::vector<float> l = burst::luma(burst::render(pass, o));
+                double over = 0;
+                for (float x : l) over += x > 3.f;
+                worst = std::max(worst, over / double(l.size()));
+            }
+            sun_share = worst;
+            stage_ring.next_sequence = next_sequence;
+        }
+        std::printf("CLASS case=twenty_hits_cores_on worst_share_above_3=%.5f\n", sun_share);
+        report("hull_20_hits_no_white_sun", peak[0] > 0 && peak[0] <= 3.0 && one[1] > 0 && std::fabs(one[0] / one[1] - 1.0) <= 0.01 &&
+                                                sun_share <= 0.01,
                "");
     }
     // 7. The flash: a star on exactly max(3 frames, 40 ms) frames (16 ms and 100 ms steps), its lit set's principal
@@ -790,23 +1234,30 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         const double R = double(hl::class_puff[hl::an_energy][0] * r33) * (1.0 - std::exp(-0.4 / double(law::puff_rise())));
         const double zb = R * 0.5 * g.w * 1.6 / 30.0, z = zb + double(hl::bias * r33);
         draw_lane(g, float(z), 1.f);
-        std::vector<double> dark, lobe;
+        std::vector<double> dark, lobe, lit, eqr;
         bool shape_ok = true;
         for (unsigned j = 0; j < hits_n; ++j) {
             const float L = single(hl::an_energy, burst_only, float(z) + 100.f, seq_of(j + 1));
             const HullOut o = at(0.4f * L, burst_only);
             const burst::Disc d = o.bursts ? burst::disc_of(hq_fireballs[0]) : burst::Disc{};
-            const burst::Body b = o.bursts ? burst::body_of(burst::luma(burst::render(pass, o)), d) : burst::Body{};
+            const std::vector<float> lu = o.bursts ? burst::luma(burst::render(pass, o)) : std::vector<float>();
+            const burst::Body b = o.bursts ? burst::body_of(lu, d) : burst::Body{};
+            eqr.push_back(o.bursts && d.R > 0 ? burst::eq_radius(lu) / d.R : 0.0);
             const double third = o.bursts ? double(hq_fireballs[0].disc[3]) : -1.0;
             std::printf("CLASS case=burst_small hit=%u R_px=%.1f third_octave=%.3f fine=%u dark_share=%.4f lobe_max_over_min=%.3f\n",
                         j, d.R, third, o.n.fine, b.dark_share, b.lobe_ratio);
             shape_ok = shape_ok && o.bursts == 1 && third == 0.0;
             dark.push_back(b.dark_share);
             lobe.push_back(std::min(b.lobe_ratio, 100.0));
+            lit.push_back(b.lit_share);
         }
-        std::printf("CLASS case=burst_small_median hits=%u dark_share=%.4f lobe_max_over_min=%.3f\n", hits_n, median(dark),
-                    median(lobe));
+        std::printf("CLASS case=burst_small_median hits=%u dark_share=%.4f lobe_max_over_min=%.3f lit_share=%.4f eq_r=%.4f\n",
+                    hits_n, median(dark), median(lobe), median(lit), median(eqr));
         report("hull_burst_small_has_structure", shape_ok && median(dark) >= 0.10 && median(lobe) >= 1.2, "");
+        // fire-material.md section 6: the gain must not empty a far hit. Round 2 (section 12): fire_px 24 / 40 at 1440 rows
+        // puts this 30 px (1080) hit at 40 px, the whole tongue law, whose gaps are the material: the lit share inside R(t)
+        // (>= 0.4, printed) becomes the lit set's equal-area radius >= 0.45 R(t) (an emptied hit is far under it)
+        report("fire_small_reads", shape_ok && median(dark) >= 0.10 && median(lobe) >= 1.2 && median(eqr) >= 0.45, "");
         draw_lane(g, 300.f, 1.f);
     }
     // 10 (addendum). The asteroid's dust readable: its 10 % radius >= 1.5 r at 120 ms, its peak >= 0.1 on black (the median
@@ -912,10 +1363,14 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
             const std::int32_t pos[3] = {std::int32_t(-2500 + 1000 * i), std::int32_t(500 * (i & 1)), -10000};
             add_of(hl::an_energy, 1000 + 4 * i, pos, 0.33);
         }
-        hull_build(hull_view(g, 1020, 16), burst_only); // the records latch
+        // the octave step alone: the fire material off (its tongue step (0c) sheds first and holds the charge under the
+        // return; fire-material.md section 7)
+        ws::HullTuning nf = burst_only;
+        nf.fire = false;
+        hull_build(hull_view(g, 1020, 16), nf); // the records latch
         ws::HullView v = hull_view(g, 1120, 16);
         v.budget_left = 1e6f;
-        const float A4 = hull_build(v, burst_only).n.screens;
+        const float A4 = hull_build(v, nf).n.screens;
         // 2026-11-07 v3, the fourth octave: four octaves where three were (the step 0b drops the fourth first; review:
         // budget_weight_fireball_fine4 now equals the third's weight, so A is the full charge A4); the last two budgets
         // 1.5 A (the return under 0.8 x the budget)
@@ -926,7 +1381,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         char got[64] = {};
         for (unsigned k = 0; k < 12; ++k) {
             v.budget_left = budgets[k] * A;
-            const HullOut o = hull_build(v, burst_only);
+            const HullOut o = hull_build(v, nf);
             got[k] = char('0' + o.n.octaves);
             ok = ok && o.n.octaves == want[k];
         }
