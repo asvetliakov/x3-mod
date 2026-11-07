@@ -2901,7 +2901,7 @@ function renderBoom(record, t) {
       const h = elementHash(seq, BM.ray_element + i), h1 = mix32((h ^ 0x2545f491) >>> 0);
       const len = Math.max((BM.ray_len_lo + (BM.ray_len_hi - BM.ray_len_lo) * byteUnit(h1, 0)) * rf, BM.ray_len_floor * rb) * grow;
       const wl = len / BM.ray_w_len_px / rows, w = (BM.ray_w_px_lo + (BM.ray_w_px_hi - BM.ray_w_px_lo) * byteUnit(h1, 8)) * rows * Math.sqrt(Math.max(1, wl));
-      const period = BM.ray_flicker_lo + (BM.ray_flicker_hi - BM.ray_flicker_lo) * byteUnit(h1, 24), q = tb / period, qi = Math.floor(q);
+      const period = Math.max(BM.ray_flicker_lo + (BM.ray_flicker_hi - BM.ray_flicker_lo) * byteUnit(h1, 24), step), q = tb / period, qi = Math.floor(q);
       const a0 = unitOf(mix32((h ^ Math.imul(qi, 0x9e3779b9)) >>> 0)), a1 = unitOf(mix32((h ^ Math.imul(qi + 1, 0x9e3779b9)) >>> 0));
       const fr = q - qi, sm = fr * fr * (3 - 2 * fr), flick = 1 - BM.ray_flicker * (a0 + (a1 - a0) * sm);
       const E = BM.ray_e * (BM.ray_e_lo + (1 - BM.ray_e_lo) * byteUnit(h1, 16)) * env * flick;
@@ -2957,8 +2957,9 @@ function renderBoom(record, t) {
       });
     }
     if (tb < 0) return;
-    // the core (section 14: 5 (1 - x / core_x)^2; a big tier's eased in over core_ramp_ms over its secondaries)
-    const gcore = (x < BM.core_x ? BM.core_gain * (1 - x / BM.core_x) ** 2 : 0) * (nSec && tb < BM.core_ramp_ms ? tb / BM.core_ramp_ms : 1);
+    // the core (section 14: 5 (1 - x / core_x)^2; a big tier's eased in over core_ramp_ms, or the floor when longer, over its secondaries)
+    const ramp = Math.max(BM.core_ramp_ms, floorMs);
+    const gcore = (x < BM.core_x ? BM.core_gain * (1 - x / BM.core_x) ** 2 : 0) * (nSec && tb < ramp ? tb / ramp : 1);
     if (live && layers.burst && (c.single || !BM.compose_enabled ? body(biased(cv, R), R, T, BM.body_e * sb, x, LK.fireball_advect * x, seq, 0, gcore)
                                            : composedBody(biased(cv, R), R, seq, BM.body_e * sb, x))) stats.bodies++;
     if (c.wave && (BM.wave_tiers & (1 << c.tier)) && layers.ring) fireWave(cv, seq);

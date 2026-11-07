@@ -225,6 +225,17 @@ def rays_markdown():
     core, sp, rs, ms = row('core_radiance'), row('sparks'), row('rays_summary'), row('meter_summary')
     rays = [r for r in rows if r.get('case') == 'rays']
     meter = [r for r in rows if r.get('case') == 'meter']
+
+    def meter_worst(d):
+        """The worst |ev - base| per scene (black, dim, lit) of the death at d m."""
+        out = [0.0, 0.0, 0.0]
+        for r in meter:
+            if r['tier'] != f'fighter_{d}m_5120':
+                continue
+            base = [float(x) for x in str(r['base']).split(',')]
+            for k, key in enumerate(('ev_black', 'ev_dim', 'ev_lit')):
+                out[k] = max(out[k], abs(r[key] - base[k]))
+        return out
     emb, sb = row('embers'), row('sparks_birth')
     nopop = [r for r in rows if r.get('case') == 'no_pop' and 'worst_rise' in r]
     cpu = [r for r in rows if r.get('case') == 'cpu']
@@ -243,12 +254,12 @@ def rays_markdown():
         f"| `death_rays_differ` ({ok('death_rays_differ')}) | two deaths' 360-bin profiles at 0.1 L correlate {rs['seed_correlation']} | < 0.3 |",
         f"| `death_sparks_dense` ({ok('death_sparks_dense')}; fighter 600 m, 0.3 L) | {sp['count']} sparks, {sp['drawn']} drawn, {sp['on_screen']} heads on screen, {sp['image_heads']} local maxima in the ember part; lengths {sp['len_mean_px']} +- {sp['len_std_px']} px (std / mean {sp['std_over_mean']}) | >= 100; >= 0.4 |",
         f"| `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` ({ok('death_embers_hidden_in_body')}, {ok('death_embers_lengths_and_widths')}, {ok('death_embers_random_and_cooling')}) | {sb['at_birth']} at birth, {sb['after_spread']} of {sb['count']} once the births are out (0.05 L); widths {emb['width_px']} px; seed correlation {emb['seed_correlation']}, T {emb['T_03']} / {emb['T_07']} / {emb['T_11']} at 0.3 / 0.7 / 1.1 L, farthest {emb['far_px']} px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |",
-        f"| `death_exposure_meter_shift` ({ok('death_exposure_meter_shift')}; fighter 300 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift {ms['worst_shift_ev']} EV over {len(meter)} ages x black / dim 0.15 / lit 0.5 scenes (frame peaks {' / '.join(str(r['peak']) for r in meter)}) | <= 0.5 EV |",
+        f"| `death_exposure_meter_shift` ({ok('death_exposure_meter_shift')}; the production meter's fresh target against the scene alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift {ms['worst_shift_ev']} EV; " + '; '.join(f"{d} m: black / dim 0.15 / lit 0.5 worst {' / '.join(f'{s:.3f}' for s in meter_worst(d))} EV (frame peaks {' / '.join(str(r['peak']) for r in meter if r['tier'] == f'fighter_{d}m_5120')})" for d in (300, 120)) + " | <= 0.5 EV |",
         f"| `death_no_pop_at_birth`, `death_big_no_pop_at_birth` ({ok('death_no_pop_at_birth')}, {ok('death_big_no_pop_at_birth')}) | worst frame-to-frame peak rise {', '.join(r['tier'] + ' ' + str(r['worst_rise']) for r in nopop)} | <= 2 |",
         f"| `death_rays_sparks_budget_5120` ({ok('death_rays_sparks_budget_5120')}) | fighter 600 m {t5('fighter_600m')} / {t5('fighter_600m_rays')} / {t5('fighter_600m_sparks')} us at 0.1 / 0.05 / 0.3 L; 20 fighters {t5('fighters_20_600m')} / {t5('fighters_20_600m_rays')} / {t5('fighters_20_600m_sparks')} us (spark halvings {shed['twenty_halvings']}: {shed['twenty_sparks']} drawn, {shed['twenty_shed']} shed, {shed['twenty_rays']} rays); fence {fence} us | <= 60; <= 150 |",
         f"| `death_budget_capital_close_5120` ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}) | <= 450 |",
         f"| rays alone (5120x1440) | fighter 300 m {t5('rays_alone_fighter_300m')} us ({timing[(5120, 'rays_alone_fighter_300m')]['quads']} quads), close capital {t5('rays_alone_capital_close_720m')} us ({timing[(5120, 'rays_alone_capital_close_720m')]['quads']} quads), the fence {fence} us | |",
-        f"| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` ({ok('death_stage_cpu_32_deaths')}, {ok('death_big_stage_cpu')}; known to fail on the host's state) | 32 fighters {cpu[0]['median_us']} us, {cpu[0]['quads']} quads; the big set {cpu[1]['median_us']} us, {cpu[1]['us_per_quad']} a quad | 50; 0.08 |",
+        f"| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` ({ok('death_stage_cpu_32_deaths')}, {ok('death_big_stage_cpu')}) | 32 fighters {cpu[0]['median_us']} us, {cpu[0]['quads']} quads (repeats {cpu[0]['repeats_us']}; the parent `d3e7698bf` 42.1 us, 588 quads); the big set {cpu[1]['median_us']} us, {cpu[1]['us_per_quad']} a quad | 50; 0.08 |",
     ]
     print('\n'.join(out))
 
