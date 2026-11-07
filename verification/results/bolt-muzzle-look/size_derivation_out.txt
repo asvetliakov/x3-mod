@@ -1,0 +1,75 @@
+f px per m at 1 m: 1440 rows 960 / 1280 ; 1080 rows 720 / 960 (vfov 73.74 / 58.72)
+mode mount
+# stock_ap 25 bolt weapons with a laser
+  fighter  n=13 range p10/med/p90 m 977 / 2000 / 3627; d_eng 600 = 0.30 of the median
+  corvette n= 6 range p10/med/p90 m 1443 / 3676 / 6623; d_eng 1500 = 0.41 of the median
+  capital  n= 6 range p10/med/p90 m 1980 / 4957 / 100000; d_eng 4000 = 0.81 of the median
+   EMP            slug   fighter  k=0.41 w= 2.34 L=   8.4 T=  17.6 m | d_eng 3.7 x  13.4 px | range   2002 m 1.1 x   4.0 px | 60 m  37.4 x  134.2 px
+   EBC            slug   fighter  k=0.33 w= 2.24 L=   8.1 T=  18.1 m | d_eng 3.6 x  12.9 px | range   2815 m 0.8 x   2.8 px | 60 m  35.9 x  129.4 px
+   FBL            slug   fighter  k=0.48 w= 2.42 L=   8.1 T=  10.8 m | d_eng 3.9 x  13.0 px | range   1974 m 1.2 x   4.0 px | 60 m  38.7 x  130.1 px
+   HEPT           tracer fighter  k=0.41 w= 2.34 L=  24.1 T=   6.5 m | d_eng 3.7 x  38.5 px | range   2310 m 1.0 x  10.0 px | 60 m  37.4 x  385.0 px
+   IRE            tracer fighter  k=0.00 w= 1.88 L=  23.4 T=  15.0 m | d_eng 3.0 x  37.5 px | range   1394 m 1.3 x  16.1 px | 60 m  30.0 x  374.6 px
+   MASS           tracer fighter  k=0.00 w= 1.88 L=  21.0 T=  11.1 m | d_eng 3.0 x  33.7 px | range    998 m 1.8 x  20.2 px | 60 m  30.0 x  336.5 px
+   MAM            orb    fighter  k=0.72 w= 2.69 L=   4.3 T=   4.5 m | d_eng 4.3 x   6.9 px | range   3627 m 0.7 x   1.1 px | 60 m  43.0 x   68.8 px
+   PAC            tracer fighter  k=0.29 w= 2.20 L=  24.5 T=  10.5 m | d_eng 3.5 x  39.2 px | range   1926 m 1.1 x  12.2 px | 60 m  35.3 x  391.8 px
+   PRG            tracer fighter  k=0.18 w= 2.07 L=  28.4 T=  16.6 m | d_eng 3.3 x  45.4 px | range   2324 m 0.9 x  11.7 px | 60 m  33.2 x  454.2 px
+   PD             wave   fighter  k=0.10 w= 1.95 L=   1.0 T=   0.0 m | d_eng 3.2 x   1.6 px | range    788 m 2.4 x   1.2 px | 60 m  31.2 x   15.6 px
+   PBE            tracer fighter  k=0.25 w= 2.16 L=  32.3 T=  17.2 m | d_eng 3.4 x  51.7 px | range    977 m 2.1 x  31.8 px | 60 m  34.5 x  517.3 px
+   TERANTIFIGHTER slug   fighter  k=0.92 w= 2.91 L=  14.6 T=  58.2 m | d_eng 4.7 x  23.3 px | range   2000 m 1.4 x   7.0 px | 60 m  46.6 x  232.8 px
+   CIG            tracer corvette k=0.71 w= 6.68 L=  68.5 T=   6.3 m | d_eng 4.3 x  43.9 px | range   3465 m 1.9 x  19.0 px | 60 m 106.9 x 1096.7 px
+   IPG            tracer corvette k=0.81 w= 6.97 L=  70.0 T=   5.2 m | d_eng 4.5 x  44.8 px | range   3886 m 1.7 x  17.3 px | 60 m 111.5 x 1119.5 px
+   ESR            tracer corvette k=0.47 w= 6.02 L=  63.2 T=   7.5 m | d_eng 3.9 x  40.5 px | range   3337 m 1.7 x  18.2 px | 60 m  96.4 x 1011.3 px
+   MINING         orb    corvette k=0.67 w= 6.57 L=  10.5 T=   0.8 m | d_eng 4.2 x   6.7 px | range   4830 m 1.3 x   2.1 px | 60 m 105.1 x  168.1 px
+   FLAK_CLUSTER   tracer capital  k=0.80 w= 6.86 L= 102.9 T=  33.0 m | d_eng 4.4 x  66.5 px | range   1980 m 3.3 x  49.9 px | 60 m 109.8 x 1646.4 px
+   FLAK_ALPHA     tracer capital  k=0.83 w= 7.43 L= 111.5 T=  59.5 m | d_eng 4.5 x  67.5 px | range   2115 m 3.4 x  50.6 px | 60 m 118.9 x 1784.1 px
+   GAUSS          slug   capital  k=0.99 w=17.88 L=  59.9 T=  14.1 m | d_eng 4.8 x  16.0 px | range   4787 m 3.6 x  12.0 px | 60 m 286.0 x  959.1 px
+   IBL            slug   capital  k=1.00 w=19.31 L=  63.9 T=  12.5 m | d_eng 4.8 x  15.9 px | range   5148 m 3.6 x  11.9 px | 60 m 308.9 x 1023.0 px
+   IONC           slug   capital  k=1.00 w=19.23 L=  65.1 T=  15.5 m | d_eng 4.8 x  16.3 px | range   5128 m 3.6 x  12.2 px | 60 m 307.7 x 1042.1 px
+   PSG            wave   corvette k=0.41 w= 4.22 L=   2.1 T=   0.0 m | d_eng 3.7 x   1.9 px | range   1443 m 2.8 x   1.4 px | 60 m  67.5 x   33.7 px
+   PPC            slug   corvette k=1.00 w= 7.50 L=  25.0 T=  13.3 m | d_eng 4.8 x  16.0 px | range   6623 m 1.1 x   3.6 px | 60 m 120.0 x  400.0 px
+   PSP            orb    fighter  k=1.00 w= 3.00 L=   4.8 T=   3.2 m | d_eng 4.8 x   7.7 px | range   6420 m 0.4 x   0.7 px | 60 m  48.0 x   76.8 px
+   DUMMY1         slug   capital  k=0.80 w=18.48 L=  92.4 T= 221.7 m | d_eng 4.4 x  22.2 px | range 100000 m 0.2 x   0.9 px | 60 m 295.6 x 1478.2 px
+  stream ratio top 5: ESR 0.517, MASS 0.444, HEPT 0.299, GAUSS 0.281, PRG 0.250
+  stream ratio (core + half tail) / spacing, one gun: median 0.113, max 0.517 (ESR), n=25
+# mayhem3 36 bolt weapons with a laser
+  fighter  n=17 range p10/med/p90 m 3450 / 3900 / 8400; d_eng 600 = 0.15 of the median
+  corvette n=13 range p10/med/p90 m 5000 / 5600 / 19950; d_eng 1500 = 0.27 of the median
+  capital  n= 6 range p10/med/p90 m 16750 / 18725 / 21700; d_eng 4000 = 0.21 of the median
+   AKE            slug   fighter  k=0.45 w= 2.38 L=  10.7 T=  28.6 m | d_eng 3.8 x  17.1 px | range   3450 m 0.7 x   3.0 px | 60 m  38.1 x  171.3 px
+   APC            slug   fighter  k=0.32 w= 2.23 L=  10.0 T=  26.8 m | d_eng 3.6 x  16.1 px | range   3000 m 0.7 x   3.2 px | 60 m  35.7 x  160.6 px
+   BKE            orb    fighter  k=0.93 w= 2.92 L=   4.7 T=  11.7 m | d_eng 4.7 x   7.5 px | range   5000 m 0.6 x   0.9 px | 60 m  46.7 x   74.7 px
+   EMPC           tracer fighter  k=0.61 w= 2.57 L=  34.6 T=  20.5 m | d_eng 4.1 x  55.4 px | range   3900 m 0.6 x   8.5 px | 60 m  41.1 x  554.3 px
+   EBC            tracer fighter  k=0.33 w= 2.25 L=  30.4 T=  18.0 m | d_eng 3.6 x  48.6 px | range   4500 m 0.5 x   6.5 px | 60 m  36.0 x  486.0 px
+   FBL            slug   fighter  k=0.72 w= 2.68 L=   9.4 T=  15.0 m | d_eng 4.3 x  15.0 px | range   3800 m 0.7 x   2.4 px | 60 m  42.9 x  150.1 px
+   GKE            tracer fighter  k=1.00 w= 3.00 L=  45.0 T=  60.0 m | d_eng 4.8 x  72.0 px | range  16800 m 0.2 x   2.6 px | 60 m  48.0 x  720.0 px
+   HEPT           orb    fighter  k=0.63 w= 2.59 L=   4.1 T=  10.0 m | d_eng 4.1 x   6.6 px | range   3900 m 0.6 x   1.0 px | 60 m  41.4 x   66.2 px
+   IRE            slug   fighter  k=0.33 w= 2.24 L=  10.1 T=  26.9 m | d_eng 3.6 x  16.2 px | range   3900 m 0.6 x   2.5 px | 60 m  35.9 x  161.6 px
+   ID             tracer fighter  k=0.64 w= 2.59 L=  35.0 T=  20.7 m | d_eng 4.1 x  56.0 px | range   4050 m 0.6 x   8.3 px | 60 m  41.5 x  559.7 px
+   MD             tracer fighter  k=0.38 w= 2.30 L=  34.5 T=  18.4 m | d_eng 3.7 x  55.2 px | range   4000 m 0.6 x   8.3 px | 60 m  36.8 x  552.2 px
+   RG             orb    fighter  k=0.97 w= 2.96 L=   4.7 T=  11.9 m | d_eng 4.7 x   7.6 px | range   8400 m 0.3 x   0.5 px | 60 m  47.4 x   75.8 px
+   PAC            tracer fighter  k=0.48 w= 2.42 L=  32.6 T=  19.3 m | d_eng 3.9 x  52.2 px | range   4050 m 0.6 x   7.7 px | 60 m  38.6 x  521.7 px
+   PRG            slug   fighter  k=0.53 w= 2.48 L=  11.1 T=  29.7 m | d_eng 4.0 x  17.8 px | range   3900 m 0.6 x   2.7 px | 60 m  39.6 x  178.3 px
+   PBG            tracer fighter  k=0.63 w= 2.59 L=  34.9 T=  20.7 m | d_eng 4.1 x  55.9 px | range   4050 m 0.6 x   8.3 px | 60 m  41.4 x  558.8 px
+   PG             orb    fighter  k=0.47 w= 2.41 L=   3.9 T=   9.6 m | d_eng 3.9 x   6.2 px | range   3450 m 0.7 x   1.1 px | 60 m  38.5 x   61.6 px
+   PBE            orb    fighter  k=0.47 w= 2.41 L=   3.9 T=   9.6 m | d_eng 3.9 x   6.2 px | range   3900 m 0.6 x   0.9 px | 60 m  38.5 x   61.6 px
+   CFA            tracer corvette k=0.85 w= 7.07 L=  84.8 T=  15.0 m | d_eng 4.5 x  54.3 px | range   5000 m 1.4 x  16.3 px | 60 m 113.1 x 1356.9 px
+   CIG            tracer corvette k=0.80 w= 6.94 L= 104.1 T=  30.0 m | d_eng 4.4 x  66.6 px | range   5400 m 1.2 x  18.5 px | 60 m 111.1 x 1666.1 px
+   FAA            slug   corvette k=0.78 w= 6.88 L=  27.5 T=  30.0 m | d_eng 4.4 x  17.6 px | range   5000 m 1.3 x   5.3 px | 60 m 110.2 x  440.6 px
+   GRC            tracer corvette k=0.65 w= 6.51 L=  97.7 T=  30.0 m | d_eng 4.2 x  62.5 px | range   5400 m 1.2 x  17.4 px | 60 m 104.2 x 1563.4 px
+   IPG            tracer corvette k=0.83 w= 7.03 L=  95.0 T=  22.5 m | d_eng 4.5 x  60.8 px | range   5550 m 1.2 x  16.4 px | 60 m 112.5 x 1519.4 px
+   ISR            slug   corvette k=0.79 w= 6.90 L=  34.5 T=  60.0 m | d_eng 4.4 x  22.1 px | range   5600 m 1.2 x   5.9 px | 60 m 110.4 x  552.1 px
+   MAML           tracer corvette k=0.56 w= 6.25 L=  93.8 T=  30.0 m | d_eng 4.0 x  60.0 px | range   5200 m 1.2 x  17.3 px | 60 m 100.0 x 1500.3 px
+   MDS            orb    corvette k=0.00 w= 4.69 L=   7.5 T=  10.0 m | d_eng 3.0 x   4.8 px | range   6000 m 0.8 x   1.2 px | 60 m  75.0 x  120.0 px
+   PALC           orb    corvette k=0.78 w= 6.88 L=  11.0 T=  20.0 m | d_eng 4.4 x   7.0 px | range   6000 m 1.1 x   1.8 px | 60 m 110.1 x  176.2 px
+   PSG            tracer corvette k=0.82 w= 6.98 L= 104.7 T=  30.0 m | d_eng 4.5 x  67.0 px | range   5800 m 1.2 x  17.3 px | 60 m 111.7 x 1675.8 px
+   SSC            tracer corvette k=0.74 w= 6.78 L= 101.6 T=  30.0 m | d_eng 4.3 x  65.0 px | range   5600 m 1.2 x  17.4 px | 60 m 108.4 x 1626.1 px
+   FBC            tracer corvette k=0.52 w= 6.15 L=  92.2 T=  49.2 m | d_eng 3.9 x  59.0 px | range  19950 m 0.3 x   4.4 px | 60 m  98.3 x 1475.2 px
+   GC             tracer capital  k=0.54 w=16.52 L= 247.8 T=  52.5 m | d_eng 4.0 x  59.5 px | range  21000 m 0.8 x  11.3 px | 60 m 264.4 x 3965.4 px
+   IBL            tracer capital  k=0.87 w=19.05 L= 285.7 T=  52.5 m | d_eng 4.6 x  68.6 px | range  18200 m 1.0 x  15.1 px | 60 m 304.8 x 4571.5 px
+   IC             tracer corvette k=0.73 w= 6.75 L= 101.2 T=  45.0 m | d_eng 4.3 x  64.8 px | range  20100 m 0.3 x   4.8 px | 60 m 107.9 x 1618.9 px
+   PAA            tracer capital  k=0.69 w=17.70 L= 265.6 T=  37.5 m | d_eng 4.2 x  63.7 px | range  16750 m 1.0 x  15.2 px | 60 m 283.3 x 4249.1 px
+   PPC            slug   capital  k=0.80 w=18.50 L=  92.5 T= 105.0 m | d_eng 4.4 x  22.2 px | range  19250 m 0.9 x   4.6 px | 60 m 296.0 x 1480.2 px
+   PSP            slug   capital  k=1.00 w=20.00 L= 100.0 T= 140.0 m | d_eng 4.8 x  24.0 px | range  21700 m 0.9 x   4.4 px | 60 m 320.0 x 1600.0 px
+   TBC            tracer capital  k=0.53 w=16.47 L= 247.0 T=  52.5 m | d_eng 4.0 x  59.3 px | range  17500 m 0.9 x  13.5 px | 60 m 263.5 x 3951.8 px
+  stream ratio top 5: TBC 0.117, PAA 0.083, GC 0.078, FBC 0.042, IC 0.038
+  stream ratio (core + half tail) / spacing, one gun: median 0.011, max 0.117 (TBC), n=36
