@@ -1,0 +1,6 @@
+vanilla_fireball.png: peak 1.000 lit 2066 hi0.8 0.456 hi0.5 0.576 gap 0.000 aniso 1.15 aniso_in 1.43 hp_aniso 0.68 hp_std 0.138 white 0.554@0.41 orange 0.423@0.71 red 0.023@0.78 edge2px 0.190
+lab_wave_rejected.png: peak 1.000 lit 39466 hi0.8 0.044 hi0.5 0.166 gap 0.006 aniso 1.12 aniso_in 0.83 hp_aniso 0.84 hp_std 0.187 white 0.928@0.32 orange 0.072@0.34 red 0.000@0.26 edge2px 0.107
+es-AB.png: peak 1.000 lit 44361 hi0.8 0.688 hi0.5 0.803 gap 0.000 aniso 2.51 aniso_in 2.39 hp_aniso 1.90 hp_std 0.160 white 0.000@nan orange 0.293@0.33 red 0.707@0.64 edge2px 0.034
+es-AB.png: peak 0.784 lit 23611 hi0.8 0.103 hi0.5 0.336 gap 0.000 aniso 2.01 aniso_in 1.95 hp_aniso 1.41 hp_std 0.144 white 0.000@nan orange 0.000@nan red 1.000@0.43 edge2px 0.059
+boom_capital_1500m_broadside_1920x1080.png: peak 1.000 lit 41081 hi0.8 0.393 hi0.5 0.440 gap 0.002 aniso 2.78 aniso_in 2.52 hp_aniso 2.30 hp_std 0.235 white 0.774@0.34 orange 0.226@0.24 red 0.000@nan edge2px 0.084
+boom_capital_1500m_broadside_1920x1080.png: peak 1.000 lit 32303 hi0.8 0.462 hi0.5 0.680 gap 0.009 aniso 1.20 aniso_in 1.17 hp_aniso 1.03 hp_std 0.196 white 0.259@0.14 orange 0.741@0.28 red 0.000@nan edge2px 0.057
