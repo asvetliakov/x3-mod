@@ -13,6 +13,12 @@
 // we_death_back, which records the exit state. The stand-in at 0x00413610 records the registers, the return address,
 // its three arguments and ESP; it can run nested deaths through the other window while it is entered (an area blast's
 // kills inside one outer call: the harness's saved-ESP stack is re-entrant).
+//
+// The big tiers (explosion-look.md section 1, spawn note 10): the fixture's engine model holds an Effects row table
+// (Globals::effects_rows: rows 40 / 37 / 201 with the census elements of 10.3) and a malloc stand-in at the region's
+// 0x005112c4 with _malloc's first five bytes (Globals::malloc_va), so Present builds the clone rows R' as in the game;
+// the stand-in callee snapshots the watched death columns at every entry (we_death_nested), so a case sees what the
+// forwarded 0x00413610 read and what the stub restored after it.
 extern "C" {
 void we_death_enter();
 void we_death_back();
@@ -128,6 +134,23 @@ _we_death_x87_b:
 )");
 
 namespace death_sites = x3m::weapon_effects::death_sites;
+// The engine model of the big tiers: the row table, the source rows' element arrays, the EXE malloc's pool; the death
+// columns the callee snapshots at each entry.
+alignas(16) unsigned char death_rows[core::layout::row_ids * core::layout::row_stride];
+alignas(16) unsigned char death_source[3][16 * core::layout::element_stride];
+alignas(16) unsigned char death_pool[64 * 1024];
+unsigned death_pool_used = 0, death_mallocs = 0;
+std::uint32_t death_malloc_size[16];
+std::uintptr_t death_watch[3];
+std::uint32_t death_seen[8][3];
+unsigned death_seen_n = 0;
+void* __cdecl death_malloc(std::size_t n) {
+    if (death_pool_used + n > sizeof death_pool) return nullptr;
+    void* p = death_pool + death_pool_used;
+    death_pool_used += unsigned((n + 15) & ~std::size_t(15));
+    death_malloc_size[death_mallocs++ & 15u] = std::uint32_t(n);
+    return p;
+}
 alignas(16) Obj death_obj[6];
 alignas(16) Node death_node[6];
 alignas(16) unsigned char death_frame[0x100]; // the kill routine's EBP frame: reason +8, killer +0xc, arg4 +0x10
@@ -220,8 +243,67 @@ bool death_windows_original() {
     return window_is(death_sites::area_window_va, death_sites::expected_area_window, death_sites::window_length) &&
            window_is(death_sites::other_window_va, death_sites::expected_other_window, death_sites::window_length);
 }
+// One element of a source row (spawn note 10.2): body, EEDF flags, start, timeout (+ the PROPAGATE child fields).
+struct DeathEl {
+    std::int32_t body;
+    std::uint32_t flags, start, timeout;
+};
+void death_source_row(unsigned id, unsigned k, std::uint32_t row_flags, const DeathEl* els, unsigned n) {
+    namespace L = core::layout;
+    unsigned char* a = death_source[k];
+    std::memset(a, 0, sizeof death_source[k]);
+    for (unsigned i = 0; i < n; ++i) {
+        unsigned char* e = a + i * L::element_stride;
+        w32(e, L::el_body, std::uint32_t(els[i].body));
+        w32(e, L::el_flags, els[i].flags);
+        w32(e, L::el_start, els[i].start);
+        w32(e, L::el_timeout, els[i].timeout);
+        w32(e, 0x08, 0x10000u + i); // size a: the copies keep every other field
+        if (els[i].flags & L::eedf_propagate) {
+            w32(e, 0x44, 149);
+            w32(e, 0x48, 30);
+            w32(e, 0x4c, 30);
+        }
+    }
+    unsigned char* row = death_rows + id * L::row_stride;
+    w32(row, L::row_count, n);
+    w32(row, L::row_flags, row_flags);
+    w32(row, L::row_8, 30000);
+    w32(row, L::row_c, 0x10000);
+    w32(row, L::row_elements, u32(a));
+}
+std::uint32_t death_row_u32(unsigned id, unsigned off) {
+    std::uint32_t v;
+    std::memcpy(&v, death_rows + id * core::layout::row_stride + off, 4);
+    return v;
+}
+std::uint32_t el_u32(std::uint32_t array, unsigned i, unsigned off) {
+    std::uint32_t v;
+    std::memcpy(&v, reinterpret_cast<const unsigned char*>(std::uintptr_t(array)) + i * core::layout::element_stride + off, 4);
+    return v;
+}
+bool logged(const char* needle, std::size_t from = 0) {
+    for (std::size_t i = from; i < log_lines.size(); ++i)
+        if (log_lines[i].find(needle) != std::string::npos) return true;
+    return false;
+}
+// A clone slot is no row the data references (the fixture's references: 995 a death column, 994 a PROPAGATE child).
+bool row_skips(unsigned slot) {
+    return slot && slot != 995 && slot != 994;
+}
+const core::CloneRow* death_clone(unsigned source) {
+    const core::HookState& hs = we::hook_state();
+    for (unsigned k = 0; k < hs.clone_count; ++k)
+        if (hs.clones[k].source == source && hs.clones[k].ready) return &hs.clones[k];
+    return nullptr;
+}
 } // namespace (the nested hook is called from the stand-in's asm)
 extern "C" void __cdecl we_death_nested() {
+    if (death_seen_n < 8) { // what the forwarded call read in the watched death columns
+        for (unsigned k = 0; k < 3; ++k)
+            death_seen[death_seen_n][k] = death_watch[k] ? *reinterpret_cast<const std::uint32_t*>(death_watch[k]) : 0u;
+        ++death_seen_n;
+    }
     if (!death_nest_count) return;
     const unsigned n = death_nest_count;
     death_nest_count = 0;
@@ -257,6 +339,19 @@ void death_checks() {
     death_dock_slot = death_factory_slot = u32(death_station_table.data());
     death_asteroid_slot = u32(death_asteroid_table.data());
     death_missile_count = death_dock_count = death_factory_count = death_asteroid_count = 4;
+    // the engine model of the big tiers: an empty row table (no source row loaded yet) and the malloc stand-in at the
+    // region's 0x005112c4: push ebp; mov ebp,[esp+8] (_malloc's first five bytes); push ebp; call death_malloc;
+    // add esp,4; pop ebp; ret
+    std::memset(death_rows, 0, sizeof death_rows);
+    hs.globals.effects_rows = u32(death_rows);
+    {
+        unsigned char* m = reinterpret_cast<unsigned char*>(at(0x005112c4));
+        const unsigned char code[] = {0x55, 0x8b, 0x6c, 0x24, 0x08, 0x55, 0xe8, 0, 0, 0, 0, 0x83, 0xc4, 0x04, 0x5d, 0xc3};
+        std::memcpy(m, code, sizeof code);
+        const std::uint32_t rel = u32f(reinterpret_cast<void (*)()>(&death_malloc)) - std::uint32_t(u32(m) + 11);
+        std::memcpy(m + 7, &rel, 4);
+        hs.globals.malloc_va = u32(m);
+    }
     hs.globals.missile_table_slot = reinterpret_cast<std::uintptr_t>(&death_missile_slot);
     hs.globals.missile_count_slot = reinterpret_cast<std::uintptr_t>(&death_missile_count);
     hs.globals.dock_table_slot = reinterpret_cast<std::uintptr_t>(&death_dock_slot);
@@ -289,11 +384,12 @@ void death_checks() {
           "death_mode_parse");
     // death_decision_seam: boom::decide is the one place a tier is ours or native (fighters and missiles ours; the big
     // tiers in boom::tier_native, the asteroid and any other class native).
+    // the big tiers swap the death column to R' (tier_swap; none native since 2026-11-07)
     check(core::boom::decide(core::boom::fighter) == core::boom::decide_ours &&
               core::boom::decide(core::boom::missile) == core::boom::decide_ours &&
-              core::boom::decide(core::boom::corvette) == core::boom::decide_native &&
-              core::boom::decide(core::boom::capital) == core::boom::decide_native &&
-              core::boom::decide(core::boom::station) == core::boom::decide_native &&
+              core::boom::decide(core::boom::corvette) == core::boom::decide_swap &&
+              core::boom::decide(core::boom::capital) == core::boom::decide_swap &&
+              core::boom::decide(core::boom::station) == core::boom::decide_swap && core::boom::tier_native == 0 &&
               core::boom::decide(core::boom::asteroid) == core::boom::decide_native &&
               core::boom::decide(core::boom::other) == core::boom::decide_native,
           "death_decision_seam");
@@ -367,19 +463,22 @@ void death_checks() {
               rec.style == core::boom::missile && rec.row == 39 && rec.table == 10 &&
               rec.lifetime_ms == core::boom::record_life_ms[core::boom::missile],
           "death_skips_missile_when_owned");
-    // death_forwards_big_tier_census: an M6 (corvette, boom::tier_native) and a factory (station) forward byte-exact
-    // while owned, each recorded census-only with its tier and row.
+    // death_forwards_big_tier_census: an M6 (corvette) and a factory (station) forward byte-exact while owned when their
+    // clone row R' is not ready (none built: no source row loaded), each recorded census-only with its tier, row and
+    // cause (the tier stays native for that death).
     std::memset(we_death_ca, 0, sizeof we_death_ca);
     err = run_death(1, &death_obj[2]);
     core::Event rc{}, rs{};
     const bool corvette = death_forward_exact(1, &death_obj[2], 1) && death_frame_kept(err, &death_obj[2]) &&
                           death_record(&death_obj[2], &rc) && (rc.flags & core::flag_forwarded) &&
-                          rc.style == core::boom::corvette && rc.row == 40;
+                          rc.style == core::boom::corvette && rc.row == 40 && rc.tier == core::boom::cause_clone_not_ready &&
+                          !(rc.flags & core::flag_stage) && rc.lifetime_ms == 0;
     std::memset(we_death_ca, 0, sizeof we_death_ca);
     err = run_death(1, &death_obj[5]);
     const bool station = death_forward_exact(1, &death_obj[5], 1) && death_frame_kept(err, &death_obj[5]) &&
                          death_record(&death_obj[5], &rs) && (rs.flags & core::flag_forwarded) &&
-                         rs.style == core::boom::station && rs.row == 201 && rs.table == 6;
+                         rs.style == core::boom::station && rs.row == 201 && rs.table == 6 &&
+                         rs.tier == core::boom::cause_clone_not_ready;
     check(corvette && station, "death_forwards_big_tier_census");
     // death_forwards_asteroid: an asteroid forwards byte-exact (rock geometry stays the engine's), census.
     std::memset(we_death_ca, 0, sizeof we_death_ca);
@@ -519,6 +618,400 @@ void death_checks() {
     check(death_forward_exact(1, &death_obj[0], 1) && death_frame_kept(err, &death_obj[0]) &&
               death_record(&death_obj[0], &rec) && (rec.flags & core::flag_forwarded),
           "death_forwards_without_boom_programs");
+
+    // ---- The big tiers' clone row R' (explosion-look.md section 1; spawn note 10.5 (b)). The source rows as the census
+    // has them (10.3): 40 (the corvette's: four elements, WRECK on one), 37 and 201 (the capital's and the station's:
+    // PROPAGATE first, FADEOUTBODY at start 0, WRECK, the 22 s debris scene; EDF_PROPAGATE on the row).
+    {
+        namespace L = core::layout;
+        namespace bm = core::boom;
+        const DeathEl row40[] = {{10670, L::eedf_timeout, 10, 8000},
+                                 {10670, L::eedf_timeout | 0x400u, 30, 9000},
+                                 {11998, L::eedf_timeout | L::eedf_wreck | 0x10000000u, 0, 3110},
+                                 {4264, L::eedf_timeout | 0x20u, 0, 1900}};
+        const DeathEl row37[] = {{-1, L::eedf_propagate, 0, 0},
+                                 {4262, L::eedf_timeout | 0x20u, 0, 3840},
+                                 {4262, L::eedf_timeout | 0x20u | L::eedf_wreck, 25, 3840},
+                                 {11999, L::eedf_timeout | 0x10000000u, 700, 2080},
+                                 {11994, L::eedf_timeout, 780, 3600},
+                                 {10664, L::eedf_timeout | L::eedf_fadeoutbody, 0, 7000},
+                                 {10670, L::eedf_timeout, 1400, 9900},
+                                 {-1, L::eedf_timeout, 0, 0},
+                                 {4264, L::eedf_timeout | 0x20u, 1800, 1900},
+                                 {4264, L::eedf_timeout | 0x20u, 1858, 1900},
+                                 {7000, L::eedf_timeout | 0x20u | 0x400000u | 0x800000u, 120, 22000}};
+        death_source_row(40, 0, 0, row40, 4);
+        death_source_row(37, 1, L::edf_propagate, row37, 11);
+        death_source_row(201, 2, L::edf_propagate, row37, 11);
+        hs.owned_next = 1;
+        hs.boom_ready = 1;
+        x3m::weapon_effects::StageFrame sf{};
+        sf.hull_ready = true;
+        sf.boom_ready = true;
+        // death_clone_malloc_prologue_refused: the allocator's first bytes changed: no clone built, one refusal row; the
+        // bytes back: every pair built at the next scan.
+        unsigned char* mbytes = reinterpret_cast<unsigned char*>(std::uintptr_t(hs.globals.malloc_va));
+        mbytes[1] ^= 0xff;
+        const std::size_t log0 = log_lines.size();
+        x3m::weapon_effects::present(600, false, true, sf);
+        const bool refused = !death_clone(40) && !death_clone(37) && !death_clone(201) && death_mallocs == 0 &&
+                             logged("weapon_boom_rows event=refused", log0) && logged("reason=malloc_prologue", log0);
+        mbytes[1] ^= 0xff;
+        check(refused, "death_clone_malloc_prologue_refused");
+        // death_clone_row_built: Present builds R' for the three (row, pre-roll) pairs of the type records we own (TShips
+        // 5 M6 row 40 at P 0, 6 M2 row 37 at P 1500, TFactories 1 row 201 at P 3000; the station records' row 0 is not
+        // loaded: source_missing), each in the highest free slot with an array from the EXE malloc: every source
+        // element but PROPAGATE copied DISTANT (FADEOUTBODY and WRECK cleared, start clamped to P), one empty FADEOUTBODY
+        // node from P for 1000 ms and one empty TIMEOUT node 0 .. P + 1000; the row's EDF_PROPAGATE cleared, +8 / +0xc
+        // copied, the source rows untouched.
+        const std::size_t log1 = log_lines.size();
+        x3m::weapon_effects::present(900, false, true, sf);
+        const core::CloneRow* c40 = death_clone(40);
+        const core::CloneRow* c37 = death_clone(37);
+        const core::CloneRow* c201 = death_clone(201);
+        // the scan's order: TShips 5 (row 40) and 6 (row 37), then the stations (row 201): slots 999, 998, 997
+        bool built = c40 && c37 && c201 && death_mallocs == 3 && c40->slot == bm::clone_slot_hi &&
+                     c37->slot == bm::clone_slot_hi - 1 && c201->slot == bm::clone_slot_hi - 2 &&
+                     c40->preroll_ms == 0 && c37->preroll_ms == 1500 && c201->preroll_ms == 3000 &&
+                     logged("weapon_boom_rows event=built", log1) && logged("source=37 slot=998", log1) &&
+                     logged("kept=2 masked=10 dropped=1", log1) && hs.clone_count == 3; // no pair for an unloaded row
+        unsigned distant = 0, propagate = 0, fade_start = 0, hold_end = 0, starts_over = 0;
+        if (built) {
+            const unsigned slot = c37->slot;
+            built = built && death_row_u32(slot, L::row_count) == 12 && death_row_u32(slot, L::row_flags) == 0 &&
+                    death_row_u32(slot, L::row_8) == 30000 && death_row_u32(slot, L::row_c) == 0x10000 &&
+                    death_row_u32(slot, L::row_elements) == c37->elements && c37->count == 12 &&
+                    death_malloc_size[1] == 12 * L::element_stride && death_row_u32(37, L::row_count) == 11 &&
+                    death_row_u32(37, L::row_flags) == L::edf_propagate;
+            for (unsigned i = 0; i < 12; ++i) {
+                const std::uint32_t f = el_u32(c37->elements, i, L::el_flags), st = el_u32(c37->elements, i, L::el_start);
+                distant += (f & L::eedf_distant) != 0;
+                propagate += (f & L::eedf_propagate) != 0;
+                starts_over += st > 1500;
+                if (i < 10) built = built && (f & L::eedf_distant) && !(f & (L::eedf_fadeoutbody | L::eedf_wreck)) &&
+                                    el_u32(c37->elements, i, 0x08) == 0x10000u + i + 1u;
+            }
+            fade_start = el_u32(c37->elements, 10, L::el_start);
+            hold_end = el_u32(c37->elements, 11, L::el_start) + el_u32(c37->elements, 11, L::el_timeout);
+            built = built && distant == 10 && propagate == 0 && starts_over == 0 &&
+                    el_u32(c37->elements, 10, L::el_flags) == (L::eedf_fadeoutbody | L::eedf_timeout) &&
+                    el_u32(c37->elements, 10, L::el_body) == 0 && fade_start == 1500 &&
+                    el_u32(c37->elements, 10, L::el_timeout) == 1000 &&
+                    el_u32(c37->elements, 11, L::el_flags) == L::eedf_timeout && el_u32(c37->elements, 11, L::el_body) == 0 &&
+                    hold_end == 2500;
+            // the corvette's clone: P 0 (the hull fades over the body's first second), every start clamped to 0
+            built = built && c40->count == 6 && el_u32(c40->elements, 0, L::el_start) == 0 &&
+                    el_u32(c40->elements, 1, L::el_start) == 0 && el_u32(c40->elements, 4, L::el_start) == 0 &&
+                    el_u32(c40->elements, 5, L::el_timeout) == 1000 &&
+                    !(el_u32(c40->elements, 2, L::el_flags) & L::eedf_wreck) && c201->count == 12 &&
+                    el_u32(c201->elements, 10, L::el_start) == 3000;
+            std::printf("DEATH_CLONE source=37 slot=%u count=%lu masked=10 kept=2 dropped=1 row_flags=%lu distant=%u "
+                        "propagate=%u fade_start=%u hold_end=%u mallocs=%u corvette_slot=%u corvette_count=%lu "
+                        "station_slot=%u station_fade_start=%lu\n",
+                        slot, static_cast<unsigned long>(c37->count),
+                        static_cast<unsigned long>(death_row_u32(slot, L::row_flags)), distant, propagate, fade_start,
+                        hold_end, death_mallocs, unsigned(c40->slot), static_cast<unsigned long>(c40->count),
+                        unsigned(c201->slot), static_cast<unsigned long>(el_u32(c201->elements, 10, L::el_start)));
+        }
+        check(built, "death_clone_row_built");
+        // The objects: 0 the M6 (TShips 5, row 40), 1 the M2 (TShips 6, row 37), 2 the factory (TFactories 1, row 201),
+        // 3 a second M2, 4 a second M6.
+        death_object(0, core::layout::class_ship, 5, 0, 87 * 500, 700000);
+        death_object(1, core::layout::class_ship, 6, 0, 1288 * 500, 710000);
+        death_object(2, core::layout::class_factory, 1, 0, 1800 * 500, 720000);
+        death_object(3, core::layout::class_ship, 6, 0, 1288 * 500, 730000);
+        death_object(4, core::layout::class_ship, 5, 0, 87 * 500, 740000);
+        const std::uintptr_t col_m6 = u32(ship_table.data() + 5 * core::layout::type_stride + core::layout::ship_death_row);
+        const std::uintptr_t col_m2 = u32(ship_table.data() + 6 * core::layout::type_stride + core::layout::ship_death_row);
+        const std::uintptr_t col_fac =
+            u32(death_station_table.data() + 1 * core::layout::type_stride + core::layout::station_death_row);
+        const auto col = [](std::uintptr_t a) { return *reinterpret_cast<const std::uint32_t*>(a); };
+        death_watch[0] = col_m6;
+        death_watch[1] = col_m2;
+        death_watch[2] = col_fac;
+        // death_swaps_death_column_big_tiers: the corvette, the capital and the station, each through the other window:
+        // the stand-in entered once with its type record's death column reading R' (the other two untouched), the
+        // original back after the return; the record the stage's with the native spawn forwarded (flag_swapped), its
+        // life; the caller's frame kept (registers, flags, MXCSR, the x87 control word and stack, LastError, ESP).
+        bool swaps = built;
+        const std::uint32_t restores0 = hs.counters.swap_restores, swapped0 = hs.counters.death_swapped;
+        struct Big {
+            unsigned obj, watch, tier;
+            const core::CloneRow* clone;
+            std::uint32_t original;
+        } bigs[3] = {{0, 0, bm::corvette, c40, 40}, {1, 1, bm::capital, c37, 37}, {2, 2, bm::station, c201, 201}};
+        std::uint32_t swap_ca[16] = {};
+        DWORD swap_err = 0;
+        for (const Big& b : bigs) {
+            if (!b.clone) {
+                swaps = false;
+                continue;
+            }
+            std::memset(we_death_ca, 0, sizeof we_death_ca);
+            death_seen_n = 0;
+            const DWORD err2 = run_death(1, &death_obj[b.obj]);
+            core::Event r{};
+            const bool rec = death_record(&death_obj[b.obj], &r);
+            const bool seen = death_seen_n == 1 && death_seen[0][b.watch] == b.clone->slot;
+            bool others = true;
+            for (unsigned k = 0; k < 3; ++k)
+                if (k != b.watch) others = others && death_seen[0][k] == bigs[k].original;
+            swaps = swaps && we_death_ca[12] == 1 && seen && others && col(death_watch[b.watch]) == b.original &&
+                    death_frame_kept(err2, &death_obj[b.obj]) && rec && (r.flags & core::flag_stage) &&
+                    (r.flags & core::flag_forwarded) && (r.flags & core::flag_swapped) && r.style == b.tier &&
+                    r.tier == bm::cause_swap && r.row == b.original && r.lifetime_ms == bm::record_life_ms[b.tier] &&
+                    hs.swap_depth == 0;
+            if (b.tier == bm::capital) {
+                std::memcpy(swap_ca, we_death_ca, sizeof swap_ca);
+                swap_err = err2;
+            }
+        }
+        check(swaps && hs.counters.swap_restores == restores0 + 3 && hs.counters.death_swapped == swapped0 + 3,
+              "death_swaps_death_column_big_tiers");
+        // death_swap_callee_state: the swap path's forwarded call (the capital's): the callee's EAX / ECX (arg4) / EDX (the
+        // killer) as the window left them, EBX / ESI / EDI / EBP, the flags, the three arguments, its return inside the
+        // stub and ESP 16 bytes below the plain forward's (the stub's three copies and its call).
+        const std::uint32_t stub_other = u32f(reinterpret_cast<void (*)()>(&x3m_weapon_effects_stub_death_other));
+        const bool callee_state = swap_ca[12] == 1 && swap_ca[0] == 0xa1a1a1a1u && swap_ca[1] == death_arg4 &&
+                                  swap_ca[2] == death_killer && swap_ca[3] == 0x5b5b5b5bu && swap_ca[4] == u32(death_frame) &&
+                                  swap_ca[5] == 0xe51e51e5u && swap_ca[6] == u32(&death_obj[1]) &&
+                                  (swap_ca[7] & flag_mask) == (death_entry_flags & flag_mask) && swap_ca[8] > stub_other &&
+                                  swap_ca[8] < stub_other + 0x80 && swap_ca[9] == u32(&death_obj[1]) &&
+                                  swap_ca[10] == death_killer && swap_ca[11] == death_arg4 &&
+                                  swap_ca[13] == we_death_saved_esp[0] - 32u && swap_err == sentinel_error;
+        check(callee_state, "death_swap_callee_state");
+        std::printf("DEATH_SWAP_STATE esp_frame=%08lx esp_callee=%08lx return=%08lx stub=%08lx eflags_entry=%08lx "
+                    "eflags_callee=%08lx ecx=%08lx edx=%08lx\n",
+                    static_cast<unsigned long>(we_death_saved_esp[0]), static_cast<unsigned long>(swap_ca[13]),
+                    static_cast<unsigned long>(swap_ca[8]), static_cast<unsigned long>(stub_other),
+                    static_cast<unsigned long>(death_entry_flags), static_cast<unsigned long>(swap_ca[7]),
+                    static_cast<unsigned long>(swap_ca[1]), static_cast<unsigned long>(swap_ca[2]));
+        // death_nested_lifo_restore: a capital whose forwarded call kills a corvette (another type: its own record) and a
+        // second capital (the same type: the column already reads R', written again and restored to R') through the other
+        // window while it is entered: three entries, each seeing its own R' (and the outer's), every column original
+        // after the outer returns, the stack empty, three restores; the outer's frame kept.
+        death_nest_objects[0] = u32(&death_obj[4]);
+        death_nest_objects[1] = u32(&death_obj[3]);
+        death_nest_count = 2;
+        death_seen_n = 0;
+        std::memset(we_death_ca, 0, sizeof we_death_ca);
+        const std::uint32_t restores1 = hs.counters.swap_restores;
+        const DWORD e_out = run_death(1, &death_obj[1]);
+        core::Event n0{}, n1{}, n2{};
+        const bool lifo = we_death_ca[12] == 3 && death_seen_n == 3 && death_seen[0][1] == c37->slot &&
+                          death_seen[0][0] == 40 && death_seen[1][0] == c40->slot && death_seen[1][1] == c37->slot &&
+                          death_seen[2][1] == c37->slot && death_seen[2][0] == 40 && col(col_m2) == 37 && col(col_m6) == 40 &&
+                          col(col_fac) == 201 && hs.swap_depth == 0 && hs.counters.swap_restores == restores1 + 3 &&
+                          death_frame_kept(e_out, &death_obj[1]) && death_record(&death_obj[1], &n0) &&
+                          death_record(&death_obj[4], &n1) && death_record(&death_obj[3], &n2) &&
+                          (n1.flags & core::flag_swapped) && (n2.flags & core::flag_swapped) && (n2.flags & core::flag_nested);
+        check(lifo, "death_nested_lifo_restore");
+        std::printf("DEATH_NESTED_SWAP entries=%lu seen=%u outer_m2=%lu inner_m6=%lu inner_m2=%lu after_m2=%lu after_m6=%lu "
+                    "depth=%lu restores=%lu\n",
+                    static_cast<unsigned long>(we_death_ca[12]), death_seen_n, static_cast<unsigned long>(death_seen[0][1]),
+                    static_cast<unsigned long>(death_seen[1][0]), static_cast<unsigned long>(death_seen[2][1]),
+                    static_cast<unsigned long>(col(col_m2)), static_cast<unsigned long>(col(col_m6)),
+                    static_cast<unsigned long>(hs.swap_depth),
+                    static_cast<unsigned long>(hs.counters.swap_restores - restores1));
+        // death_nested_after_return_swap: the engine's order (spawn note 6): a capital's call returns, then its blast
+        // kills a corvette and a capital through the other window in the same game millisecond: each swaps and restores
+        // on its own (one entry each), the columns original after each.
+        {
+            bool after = true;
+            for (unsigned o : {1u, 4u, 3u}) {
+                std::memset(we_death_ca, 0, sizeof we_death_ca);
+                death_seen_n = 0;
+                const DWORD e1 = run_death(1, &death_obj[o]);
+                const unsigned w = o == 4 ? 0u : 1u;
+                after = after && we_death_ca[12] == 1 && death_seen[0][w] == (w ? c37->slot : c40->slot) &&
+                        col(death_watch[w]) == (w ? 37u : 40u) && death_frame_kept(e1, &death_obj[o]) && hs.swap_depth == 0;
+            }
+            check(after, "death_nested_after_return_swap");
+        }
+        // death_clone_not_ready_forwards_exact: a reload zeroed the capital's clone slot (count and array 0): the capital
+        // forwards byte-exact with its column untouched, census (cause clone_not_ready: the native look for that death);
+        // a full swap stack likewise forwards (cause swap_full).
+        const unsigned slot37 = c37->slot;
+        std::memset(death_rows + slot37 * L::row_stride, 0, L::row_stride);
+        std::memset(we_death_ca, 0, sizeof we_death_ca);
+        death_seen_n = 0;
+        DWORD e2 = run_death(1, &death_obj[1]);
+        core::Event nr{};
+        const bool not_ready = death_forward_exact(1, &death_obj[1], 1) && death_frame_kept(e2, &death_obj[1]) &&
+                               death_seen[0][1] == 37 && col(col_m2) == 37 && death_record(&death_obj[1], &nr) &&
+                               (nr.flags & core::flag_forwarded) && !(nr.flags & core::flag_stage) &&
+                               nr.tier == bm::cause_clone_not_ready && nr.lifetime_ms == 0;
+        hs.swap_depth = bm::swap_depth_max; // the stack full (a deep nest): the corvette forwards
+        std::memset(we_death_ca, 0, sizeof we_death_ca);
+        e2 = run_death(1, &death_obj[0]);
+        const bool full = death_forward_exact(1, &death_obj[0], 1) && death_frame_kept(e2, &death_obj[0]) &&
+                          col(col_m6) == 40 && death_record(&death_obj[0], &nr) && nr.tier == bm::cause_swap_full &&
+                          hs.swap_depth == bm::swap_depth_max;
+        hs.swap_depth = 0;
+        check(not_ready && full, "death_clone_not_ready_forwards_exact");
+        // death_clone_rebuilt_after_reload: the next Present finds the slot zeroed (invalidated reason=zeroed), rebuilds R'
+        // in it from a fresh allocation (the reset freed the old array: never reused) and the capital swaps again.
+        const std::size_t log2 = log_lines.size();
+        const unsigned mallocs0 = death_mallocs;
+        const std::uint32_t builds0 = hs.counters.clone_builds;
+        x3m::weapon_effects::present(901, false, true, sf);
+        const core::CloneRow* r37 = death_clone(37);
+        std::memset(we_death_ca, 0, sizeof we_death_ca);
+        death_seen_n = 0;
+        e2 = run_death(1, &death_obj[1]);
+        const bool rebuilt = r37 && r37->slot == slot37 && death_mallocs == mallocs0 + 1 &&
+                             hs.counters.clone_builds == builds0 + 1 && death_row_u32(slot37, L::row_count) == 12 &&
+                             logged("reason=zeroed", log2) && logged("weapon_boom_rows event=rebuilt", log2) &&
+                             we_death_ca[12] == 1 && death_seen[0][1] == slot37 && col(col_m2) == 37 &&
+                             death_frame_kept(e2, &death_obj[1]);
+        check(rebuilt, "death_clone_rebuilt_after_reload");
+        // death_clone_slot_taken_refused: data loaded into the corvette's clone slot (another count and array): the
+        // corvette forwards native, the next Present gives the slot up (reason=taken; the data untouched) and builds R'
+        // in another free slot; the corvette swaps to it.
+        const unsigned slot40 = c40->slot;
+        alignas(16) static unsigned char foreign[3 * L::element_stride];
+        w32(death_rows + slot40 * L::row_stride, L::row_count, 3);
+        w32(death_rows + slot40 * L::row_stride, L::row_elements, u32(foreign));
+        std::memset(we_death_ca, 0, sizeof we_death_ca);
+        e2 = run_death(1, &death_obj[0]);
+        const bool native = death_forward_exact(1, &death_obj[0], 1) && col(col_m6) == 40;
+        const std::size_t log3 = log_lines.size();
+        x3m::weapon_effects::present(902, false, true, sf);
+        const core::CloneRow* n40 = death_clone(40);
+        std::memset(we_death_ca, 0, sizeof we_death_ca);
+        death_seen_n = 0;
+        e2 = run_death(1, &death_obj[0]);
+        const bool moved = native && n40 && n40->slot != slot40 && logged("reason=taken", log3) &&
+                           death_row_u32(slot40, L::row_count) == 3 && death_row_u32(slot40, L::row_elements) == u32(foreign) &&
+                           death_seen[0][0] == n40->slot && col(col_m6) == 40 && death_frame_kept(e2, &death_obj[0]);
+        check(moved, "death_clone_slot_taken_refused");
+        // death_swap_leak_restored_at_present: a swap whose call never came back through the stub (an unwind): the
+        // handler's swap left on the stack and the column at R'; the next Present writes the saved row back and empties
+        // the stack (swap_leaked, one leak_restored row).
+        {
+            std::uint32_t entry[4] = {0, u32(&death_obj[1]), death_killer, death_arg4};
+            const std::uint32_t leaked0 = hs.counters.swap_leaked;
+            const int d = x3m_weapon_death_other(entry, u32(death_frame));
+            const bool at_clone = d == core::death_swap && hs.swap_depth == 1 && col(col_m2) == slot37;
+            const std::size_t log4 = log_lines.size();
+            x3m::weapon_effects::present(903, false, true, sf);
+            check(at_clone && hs.swap_depth == 0 && col(col_m2) == 37 && hs.counters.swap_leaked == leaked0 + 1 &&
+                      logged("event=leak_restored", log4),
+                  "death_swap_leak_restored_at_present");
+        }
+        // ---- Review 2026-11-07 (A-C, L): pairs added only by a scan outside loading, dropped with their source; a changed
+        // source abandons its slot (never refilled in place) and builds in another; free slots skip referenced rows.
+        // References: TDocks/TFactories record 3's death column 995 (row 995 not loaded), row 201's PROPAGATE child 994.
+        w32(death_station_table.data() + 3 * core::layout::type_stride, core::layout::station_death_row, 995);
+        w32(death_station_table.data() + 2 * core::layout::type_stride, core::layout::station_death_row, 650);
+        death_source_row(650, 2, L::edf_propagate, row37, 11); // row 650 loaded (the station array's copy)
+        w32(death_source[2], 0x44, 994);                       // row 201 / 650's PROPAGATE element now names row 994
+        {
+            x3m::weapon_effects::StageFrame sfl = sf;
+            core::Scope loading{};
+            loading.loading = true;
+            const unsigned pairs0 = hs.clone_count, mallocs1 = death_mallocs;
+            x3m::weapon_effects::present(1300, false, true, sfl, loading); // a scan due, but the scope loads
+            const bool none = hs.clone_count == pairs0 && death_mallocs == mallocs1 && !death_clone(650);
+            x3m::weapon_effects::present(1301, false, true, sfl); // the scan after the load
+            const core::CloneRow* c650 = death_clone(650);
+            check(none && c650 && c650->preroll_ms == 3000 && c650->slot != 995 && c650->slot != 994 &&
+                      hs.clone_count == pairs0 + 1,
+                  "death_clone_scan_refused_while_loading");
+            std::printf("DEATH_SCAN loading_pairs=%u after_pairs=%u slot650=%u\n", pairs0, unsigned(hs.clone_count),
+                        c650 ? unsigned(c650->slot) : 0u);
+            // death_clone_source_vanished_drops: row 650 unloaded: its pair drops, its slot left as it is (abandoned);
+            // a station of that record forwards native
+            const unsigned slot650 = c650 ? c650->slot : 0u;
+            const std::uint32_t arr650 = c650 ? c650->elements : 0u;
+            const unsigned ab0 = we::clone_abandoned_slots();
+            std::memset(death_rows + 650 * L::row_stride, 0, L::row_stride);
+            const std::size_t logv = log_lines.size();
+            x3m::weapon_effects::present(1302, false, true, sfl);
+            death_object(2, core::layout::class_factory, 2, 0, 1800 * 500, 750000);
+            std::memset(we_death_ca, 0, sizeof we_death_ca);
+            const DWORD ev = run_death(1, &death_obj[2]);
+            core::Event rv{};
+            const bool vanished = slot650 && !death_clone(650) && hs.clone_count == pairs0 &&
+                                  death_row_u32(slot650, L::row_count) == 12 && death_row_u32(slot650, L::row_elements) == arr650 &&
+                                  we::clone_abandoned_slots() == ab0 + 1 && logged("reason=source_vanished", logv) &&
+                                  logged("weapon_boom_rows event=abandoned", logv) && death_forward_exact(1, &death_obj[2], 1) &&
+                                  death_frame_kept(ev, &death_obj[2]) && death_record(&death_obj[2], &rv) &&
+                                  rv.tier == bm::cause_clone_not_ready;
+            check(vanished, "death_clone_source_vanished_drops");
+            // death_clone_source_changed_new_slot: row 37's array moved (a copy): its pair drops, the old slot is left
+            // holding the old clone (abandoned, never refilled), R' is built again in another free slot (not 995 / 994:
+            // referenced), and the capital swaps to it
+            const core::CloneRow* o37 = death_clone(37);
+            const unsigned old37 = o37 ? o37->slot : 0u;
+            const std::uint32_t oldarr = o37 ? o37->elements : 0u;
+            alignas(16) static unsigned char moved[16 * L::element_stride];
+            std::memcpy(moved, death_source[1], sizeof moved);
+            w32(death_rows + 37 * L::row_stride, L::row_elements, u32(moved));
+            const std::size_t logc = log_lines.size();
+            x3m::weapon_effects::present(1303, false, true, sfl);
+            const core::CloneRow* n37 = death_clone(37);
+            std::memset(we_death_ca, 0, sizeof we_death_ca);
+            death_seen_n = 0;
+            const DWORD ec = run_death(1, &death_obj[1]);
+            const bool changed = old37 && n37 && n37->slot != old37 && n37->slot != 995 && n37->slot != 994 &&
+                                 death_row_u32(old37, L::row_count) == 12 && death_row_u32(old37, L::row_elements) == oldarr &&
+                                 logged("reason=source_changed", logc) && death_seen[0][1] == n37->slot &&
+                                 col(col_m2) == 37 && death_frame_kept(ec, &death_obj[1]);
+            check(changed, "death_clone_source_changed_new_slot");
+            check(row_skips(n37 ? n37->slot : 0u) && row_skips(slot650), "death_clone_free_slot_skips_referenced");
+            std::printf("DEATH_SLOTS slot650=%u old37=%u new37=%u abandoned=%u referenced=995,994\n", slot650, old37,
+                        n37 ? unsigned(n37->slot) : 0u, we::clone_abandoned_slots());
+        }
+        // death_clone_scan_time (L): the type-table scan over the installed tables' record counts (Mayhem 3: TShips 521,
+        // TDocks 76, TFactories 910, TMissiles 36, TAsteroids 10; the fixture's engine memory), median of 15 scans
+        {
+            static std::vector<unsigned char> ships(521 * core::layout::type_stride), docks(76 * core::layout::type_stride),
+                facts(910 * core::layout::type_stride), miss(36 * core::layout::type_stride), rocks(10 * core::layout::type_stride);
+            const std::int32_t classes[6] = {2023, 2024, 2026, 2030, 2022, 2027}; // M3 M4 M6 TS M2 M7
+            for (unsigned i = 0; i < 521; ++i) {
+                w32(ships.data() + i * core::layout::type_stride, core::layout::ship_class_id, std::uint32_t(classes[i % 6]));
+                w32(ships.data() + i * core::layout::type_stride, core::layout::ship_death_row, i % 6 < 2 ? 600 : i % 6 < 4 ? 601 : 602);
+            }
+            for (unsigned i = 0; i < 76; ++i) w32(docks.data() + i * core::layout::type_stride, core::layout::station_death_row, 602);
+            for (unsigned i = 0; i < 910; ++i) w32(facts.data() + i * core::layout::type_stride, core::layout::station_death_row, 602);
+            for (unsigned i = 0; i < 36; ++i) w32(miss.data() + i * core::layout::type_stride, core::layout::missile_death_row, 48);
+            for (unsigned i = 0; i < 10; ++i) w32(rocks.data() + i * core::layout::type_stride, core::layout::asteroid_death_row, 59 + i);
+            death_source_row(600, 0, 0, row40, 4);
+            death_source_row(601, 0, 0, row40, 4);
+            death_source_row(602, 1, L::edf_propagate, row37, 11);
+            static std::uint32_t sp, sc, dp, dc, fp, fc, mp, mc, ap, ac;
+            sp = u32(ships.data()); sc = 521; dp = u32(docks.data()); dc = 76; fp = u32(facts.data()); fc = 910;
+            mp = u32(miss.data()); mc = 36; ap = u32(rocks.data()); ac = 10;
+            const core::Globals saved = hs.globals;
+            hs.globals.ship_table_slot = u32(&sp); hs.globals.ship_count_slot = u32(&sc);
+            hs.globals.dock_table_slot = u32(&dp); hs.globals.dock_count_slot = u32(&dc);
+            hs.globals.factory_table_slot = u32(&fp); hs.globals.factory_count_slot = u32(&fc);
+            hs.globals.missile_table_slot = u32(&mp); hs.globals.missile_count_slot = u32(&mc);
+            hs.globals.asteroid_table_slot = u32(&ap); hs.globals.asteroid_count_slot = u32(&ac);
+            std::vector<double> us;
+            for (unsigned r = 0; r < 15; ++r) {
+                x3m::weapon_effects::present(2000 + 300ull * r, false, true, sf);
+                us.push_back(double(we::clone_scan_us()));
+            }
+            std::sort(us.begin(), us.end());
+            const double med = us[us.size() / 2];
+            const unsigned pairs = hs.clone_count;
+            hs.globals = saved;
+            std::printf("DEATH_SCAN_TIMING records=1553 pairs=%u median_us=%.1f max_us=%.1f bound_us=250\n", pairs, med, us.back());
+            check(med <= 250.0 && pairs == 3, "death_clone_scan_time");
+        }
+        std::printf("DEATH_SWAP swapped=%lu restores=%lu changed=%lu underflow=%lu leaked=%lu clone_missing=%lu swap_full=%lu "
+                    "builds=%lu invalidated=%lu clones=%lu mallocs=%u\n",
+                    static_cast<unsigned long>(hs.counters.death_swapped), static_cast<unsigned long>(hs.counters.swap_restores),
+                    static_cast<unsigned long>(hs.counters.swap_changed), static_cast<unsigned long>(hs.counters.swap_underflow),
+                    static_cast<unsigned long>(hs.counters.swap_leaked),
+                    static_cast<unsigned long>(hs.counters.death_clone_missing),
+                    static_cast<unsigned long>(hs.counters.death_swap_full), static_cast<unsigned long>(hs.counters.clone_builds),
+                    static_cast<unsigned long>(hs.counters.clone_invalidated), static_cast<unsigned long>(hs.clone_count),
+                    death_mallocs);
+        death_watch[0] = death_watch[1] = death_watch[2] = 0;
+    }
 
     // death_shutdown_restores_both: both windows (and the impact) back to the engine's bytes.
     we::shutdown();

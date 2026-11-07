@@ -11,7 +11,12 @@ from pathlib import Path
 from PIL import Image
 
 CROPS = {'boom_fighter_600m': (360, 240), 'boom_fighter_600m_hull': (360, 240), 'boom_missile_300m': (300, 200),
-         'boom_nested_3_fighters': (520, 260), 'boom_eye_inside_fighter': None}
+         'boom_nested_3_fighters': (520, 260), 'boom_eye_inside_fighter': None,
+         # the big tiers (2026-11-07): the fixture writes a centred window already (the scene model's hull and the
+         # pre-roll); each tile scaled to WINDOW_ROWS rows, five ages to a row, the age printed in its corner
+         'boom_corvette_1500m': 'window', 'boom_capital_1500m_broadside': 'window', 'boom_capital_close_720m': 'window',
+         'boom_station_3km': 'window'}
+WINDOW_ROWS, WINDOW_PER_ROW = 300, 5
 
 
 def load(p):
@@ -31,6 +36,25 @@ def main(src, dst):
         items.sort()
         crop = CROPS.get(case, (400, 260))
         tiles = []
+        if crop == 'window':
+            from PIL import ImageDraw
+            for ms, p in items:
+                im = load(p)
+                im = im.resize((round(im.width * WINDOW_ROWS / im.height), WINDOW_ROWS), Image.BILINEAR)
+                ImageDraw.Draw(im).text((6, 4), f'{ms} ms', fill=(220, 220, 90))
+                tiles.append(im)
+            rows = [tiles[i:i + WINDOW_PER_ROW] for i in range(0, len(tiles), WINDOW_PER_ROW)]
+            W = max(sum(t.width for t in r) + 4 * (len(r) - 1) for r in rows)
+            grid = Image.new('RGB', (W, len(rows) * (WINDOW_ROWS + 4) - 4), (40, 40, 48))
+            for j, r in enumerate(rows):
+                x = 0
+                for t in r:
+                    grid.paste(t, (x, j * (WINDOW_ROWS + 4)))
+                    x += t.width + 4
+            out = dst / f'{case}_{w}x{h}.png'
+            grid.save(out)
+            print(out.name, 'ages_ms=' + ','.join(str(ms) for ms, _ in items), f'size={grid.width}x{grid.height}')
+            continue
         for ms, p in items:
             im = load(p)
             if crop:

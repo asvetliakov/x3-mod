@@ -60,7 +60,16 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'death_retires_owner_hits', 'death_nested_stack', 'death_present_keeps_ours_releases_census',
                 'death_forwards_without_boom_programs', 'death_shutdown_restores_both',
                 'death_mode_without_token_leaves_sites', 'death_byte_mismatch_refused', 'death_rollback_restores_both',
-                'death_nested_after_return'}
+                'death_nested_after_return',
+                # the big tiers' clone row R' (explosion-look.md section 1, 2026-11-07): the engine model of the row table
+                'death_clone_malloc_prologue_refused', 'death_clone_row_built', 'death_swaps_death_column_big_tiers',
+                'death_swap_callee_state', 'death_nested_lifo_restore', 'death_nested_after_return_swap',
+                'death_clone_not_ready_forwards_exact', 'death_clone_rebuilt_after_reload', 'death_clone_slot_taken_refused',
+                'death_swap_leak_restored_at_present',
+                # review 2026-11-07: pairs only from a scan outside loading, dropped with their source, a changed source in
+                # a new slot (the old one abandoned), free slots skipping referenced rows, the scan's cost
+                'death_clone_scan_refused_while_loading', 'death_clone_source_vanished_drops',
+                'death_clone_source_changed_new_slot', 'death_clone_free_slot_skips_referenced', 'death_clone_scan_time'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -85,9 +94,11 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
         self.assertEqual(a['handler_calls'], {'_x3m_weapon_event': [], '_x3m_weapon_tap': [], '_x3m_weapon_bolt_tap': [],
                                               '_x3m_weapon_muzzle': [], '_x3m_weapon_flight': [],
-                                              '_x3m_weapon_death_area': [], '_x3m_weapon_death_other': []})
+                                              '_x3m_weapon_death_area': [], '_x3m_weapon_death_other': [],
+                                              '_x3m_weapon_death_restore': []})
         self.assertTrue(a['stub_ok'] and a['stub_bolt_tap_ok'] and a['stub_muzzle_ok'] and a['stub_flight_ok'])
-        # step 3: the death stubs pass EBP; both windows are the installed EXE's bytes
+        # step 3: the death stubs pass EBP and carry the swap path (the call, then the restore); both windows are the
+        # installed EXE's bytes
         self.assertEqual(a['stub_death_ok'], {'area': True, 'other': True})
         self.assertEqual(a['death_windows_exe'], {'area': True, 'other': True})
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
@@ -147,6 +158,34 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         self.assertEqual((int(f['ecx'], 16), int(f['edx'], 16)), (0x00a4a4a4, 0x00c0ffee))
         n = self.record['death_nested']
         self.assertEqual((n['records'], n['nested'], n['outer_entries']), (3, 2, 1))
+
+    def test_death_big_tier_swap(self):
+        # R' of row 37 (the capital's): ten copies DISTANT, PROPAGATE dropped, the FADEOUTBODY node from P = 1500 ms, the
+        # TIMEOUT node to P + 1 s, EDF_PROPAGATE cleared; three arrays from the EXE malloc
+        c = self.record['death_clone']
+        self.assertEqual((c['count'], c['masked'], c['kept'], c['dropped'], c['distant'], c['propagate'], c['row_flags']),
+                         (12, 10, 2, 1, 10, 0, 0))
+        self.assertEqual((c['fade_start'], c['hold_end'], c['mallocs'], c['corvette_count'], c['station_fade_start']),
+                         (1500, 2500, 3, 6, 3000))
+        # the swap path's callee: the window's registers and flags, its return inside the stub, ESP 16 bytes deeper
+        s = self.record['death_swap_state']
+        mask = 0xcd5
+        self.assertEqual(int(s['eflags_entry'], 16) & mask, int(s['eflags_callee'], 16) & mask)
+        self.assertEqual(int(s['esp_callee'], 16), int(s['esp_frame'], 16) - 32)
+        self.assertTrue(0 < int(s['return'], 16) - int(s['stub'], 16) < 0x80)
+        self.assertEqual((int(s['ecx'], 16), int(s['edx'], 16)), (0x00a4a4a4, 0x00c0ffee))
+        # nested inside the call: the outer capital's R', the corvette's own, the same capital's R' again; all restored
+        n = self.record['death_nested_swap']
+        self.assertEqual((n['entries'], n['seen'], n['after_m2'], n['after_m6'], n['depth'], n['restores']), (3, 3, 37, 40, 0, 3))
+        self.assertEqual((n['outer_m2'], n['inner_m2']), (c['slot'], c['slot']))
+        w = self.record['death_swap']
+        self.assertEqual((w['changed'], w['underflow'], w['leaked']), (0, 0, 1))
+        # the type-table scan over the installed tables' record counts, bounded
+        sc = self.record['death_scan_timing']
+        self.assertEqual((sc['records'], sc['pairs']), (1553, 3))
+        self.assertLessEqual(sc['median_us'], sc['bound_us'])
+        sl = self.record['death_slots']
+        self.assertNotIn(sl['new37'], (sl['old37'], 994, 995))
 
     def test_forward_state(self):
         f = {k: int(v, 16) for k, v in self.record['forward_state'].items()}
@@ -486,7 +525,13 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                     'death_programs_refused_keep_hull', 'death_reset_recovers', 'death_stage_cpu_32_deaths',
                     # the coordinator's decisions of 2026-11-07
                     'death_body_white_hot_core', 'death_embers_hidden_in_body', 'death_embers_lengths_and_widths',
-                    'death_halo_in_air', 'death_missile_shock_off', 'death_shock_refused_deaths_drawn')
+                    'death_halo_in_air', 'death_missile_shock_off', 'death_shock_refused_deaths_drawn',
+                    # the big tiers (2026-11-07: the clone row R', the pre-roll, section 9)
+                    'death_big_tier_sizes', 'death_preroll_cadence_and_hull_light', 'death_big_no_pop_at_birth',
+                    'death_big_shock_is_a_shell', 'death_big_light_and_fade', 'death_big_eye_inside_bounded',
+                    'death_big_seta6', 'death_budget_capital_close_5120', 'death_big_stage_cpu',
+                    # the coordinator's decisions D14 (no shell on any tier) and D15 (the big tiers' halo capped)
+                    'death_shock_off_all_tiers', 'death_big_halo_capped')
 
     def test_explosion_gates(self):
         checks = dict(self.record['checks'])
@@ -495,8 +540,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertTrue(checks[name], name)
         rows = self.record['metrics']['explosion']
         sizes = [r for r in rows if r.get('case') == 'size' and r['age_frac'] in (0.1, 0.3)]
-        self.assertEqual(len(sizes), 4)
+        self.assertEqual(len(sizes), 10)                                        # fighter, missile and the three big tiers
         self.assertTrue(all(abs(r['outline_over_law'] - 1.0) <= 0.05 for r in sizes))
+        pre = [r for r in rows if r.get('case') == 'preroll']
+        self.assertEqual([(r['box'], r['births'], r['inside'], r['bodies_before_P']) for r in pre], [(0, 8, 8, 0), (1, 8, 8, 0)])
         shock = [r for r in rows if r.get('case') == 'shock']                    # the limb only: interior 0
         self.assertTrue(all(r['interior_over_limb'] <= 0.02 for r in shock))
         core = next(r for r in rows if r.get('case') == 'core')
@@ -506,6 +553,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
         self.assertLessEqual(timing[(5120, 'eye_inside_fighter')]['gpu_us'], 300.0)
         self.assertLessEqual(timing[(5120, 'fighters_20_600m')]['gpu_us'], 8 * 177.5)
+        close = [r for (w, case), r in timing.items() if w == 5120 and case.startswith('capital_close_')]
+        self.assertGreaterEqual(len(close), 20)
+        self.assertTrue(all(r['gpu_us'] <= 450.0 for r in close if r['case'] != 'capital_close_all_shed'))
+        self.assertLessEqual(timing[(5120, 'capital_close_all_shed')]['gpu_us'], 300.0)
         for case in ('body_alone_fills_frame', 'shock_alone_fills_frame', 'smoke_alone_fills_frame', 'star_alone'):
             self.assertIn((5120, case), timing)
 

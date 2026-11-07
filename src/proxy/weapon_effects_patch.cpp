@@ -50,6 +50,7 @@ struct Period {
     std::uint32_t deaths = 0, deaths_ours = 0;
     unsigned boom_drawn = 0, boom_bodies = 0, boom_stars = 0, boom_shocks = 0, boom_embers = 0, boom_fragments = 0;
     unsigned boom_smokes = 0, boom_glows = 0, boom_shed = 0, boom_lod = 0, boom_out_of_reach = 0, boom_capped = 0;
+    unsigned boom_secondaries = 0, boom_hull_lights = 0; // the big tiers' pre-roll (stage::BoomCounts)
 } period_{};
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
@@ -63,6 +64,393 @@ std::uint32_t seen_overflow_ = 0, seen_evicted_visible_ = 0, seen_retired_ = 0, 
 // every weapon_effects_frame row).
 bool table_hull_key_missing_ = true;
 
+// Step 3, the big tiers' clone rows R' (docs/architecture/explosion-look.md section 1, spawn note 10.5 (b)), kept at
+// Present on the game thread (never inside the engine's call) and never while the scope is loading:
+// - the swap stack first (a swap whose forwarded call never returned through the stub, an unwind: its column is restored
+//   here, swap_leaked; shutdown() does the same before it restores the sites);
+// - every pair checked: a source row that vanished (count or array 0) or changed (another array or count) drops its pair,
+//   and the pair's slot is abandoned: left as it is, never written again and never freed (a live instance re-reads the
+//   row's count against the state array it sized at its spawn, so a slot is never refilled or regrown in place);
+//   at most clone_abandon_max abandoned slots (then no more builds, logged); a built slot that reads zeroed (a reload: the
+//   engine's reset 0x00412c80 has freed its array with 0x0050e1b0) is refilled only with the same count from a fresh
+//   allocation; a slot holding other data is given up;
+// - then, the first time, every clone_scan_period frames and after a drop or an invalidation, the scan: once the type
+//   tables read valid, the (death row, pre-roll) pairs of the type records of the classes we own (TShips whose class id is
+//   a corvette or capital class; TDocks and TFactories: the station tier), only rows that are loaded (count and array
+//   non-zero) and not one of our slots; pairs no longer found drop; and the referenced-row map: every death column of the
+//   TShips, TDocks, TFactories, TMissiles and TAsteroids records and every PROPAGATE element's child row (+0x44) of every
+//   loaded row, which no free slot may be. Timed (scan_us, the weapon_boom_frame row's scan_us_max).
+// - a pair is built once: the clone's elements (core::boom::clone_elements) in an array from the EXE's malloc
+//   (Globals::malloc_va, its first five bytes checked first: fail closed), the row's flags without EDF_PROPAGATE (no second
+//   carrier, no children), +8 / +0xc copied, the count written last, in the highest slot that reads empty and no row
+//   references. Never freed by us: instances keep &slot[R'] to their end.
+// Rows `weapon_boom_rows event=built|rebuilt|invalidated|dropped|abandoned|reclaimed|refused|scan|leak_restored ...`.
+constexpr unsigned long long clone_scan_period = 300;
+constexpr unsigned type_records_max = 8192, clone_abandon_max = 16;
+constexpr unsigned char malloc_prologue[5] = {0x55, 0x8b, 0x6c, 0x24, 0x08}; // push ebp; mov ebp,[esp+8] (_malloc)
+struct CloneSide {               // Present's own per-clone state beside core::CloneRow
+    std::uint32_t source_elements = 0, source_count = 0; // the source row as it was built from (0: never built)
+    std::uint8_t refused_logged = 0;
+};
+CloneSide clone_side_[x3m::weapon_effects::core::boom::clone_rows]{};
+std::uint16_t abandoned_[clone_abandon_max]{};
+unsigned abandoned_n_ = 0;
+std::uint32_t row_refs_[(x3m::weapon_effects::core::layout::row_ids + 31) / 32]{}; // rows referenced by data (a bit each)
+bool clones_scanned_ = false, scan_pending_ = false, clone_table_full_logged_ = false, abandon_full_logged_ = false;
+unsigned long long clone_scan_frame_ = 0;
+float scan_us_ = 0.f, scan_us_max_ = 0.f;
+unsigned scan_records_ = 0;
+bool malloc_refused_ = false; // the allocator's prologue did not match at the last build attempt (logged once)
+alignas(4) unsigned char clone_source_[x3m::weapon_effects::core::boom::clone_max_elements *
+                                       x3m::weapon_effects::core::layout::element_stride];
+alignas(4) unsigned char clone_out_[(x3m::weapon_effects::core::boom::clone_max_elements + 2) *
+                                    x3m::weapon_effects::core::layout::element_stride];
+bool mem(std::uintptr_t a, void* out, std::size_t n) {
+    return x3m::engine_memory::read(a, out, n);
+}
+std::uint32_t mem32(std::uintptr_t a, bool* ok) {
+    std::uint32_t v = 0;
+    if (!mem(a, &v, 4)) *ok = false;
+    return v;
+}
+void put32(std::uintptr_t a, std::uint32_t v) {
+    *reinterpret_cast<volatile std::uint32_t*>(a) = v;
+}
+std::uintptr_t slot_va(const core::HookState& s, unsigned id) {
+    return s.globals.effects_rows + std::uintptr_t(id) * core::layout::row_stride;
+}
+const char* tier_of_preroll(std::uint32_t pre) {
+    namespace bm = core::boom;
+    return pre == bm::preroll_ms(bm::capital) ? "capital" : pre == bm::preroll_ms(bm::station) ? "station" : "corvette";
+}
+void restore_leaked_swaps(core::HookState& s, unsigned long long frame) {
+    if (!s.swap_depth) return;
+    const unsigned depth = s.swap_depth > core::boom::swap_depth_max ? core::boom::swap_depth_max : s.swap_depth;
+    unsigned restored = 0;
+    for (unsigned k = depth; k-- > 0;) {
+        const core::Swap& w = s.swaps[k];
+        bool ok = true;
+        if (w.column && mem32(w.column, &ok) == w.wrote && ok) {
+            put32(w.column, w.saved);
+            ++restored;
+        }
+        ++s.counters.swap_leaked;
+    }
+    s.swap_depth = 0;
+    x3m::log("weapon_boom_rows event=leak_restored frame=%llu depth=%u restored=%u", frame, depth, restored);
+}
+bool is_abandoned(unsigned id) {
+    for (unsigned k = 0; k < abandoned_n_; ++k)
+        if (abandoned_[k] == id) return true;
+    return false;
+}
+bool is_ours(const core::HookState& s, unsigned id) {
+    for (unsigned k = 0; k < s.clone_count && k < core::boom::clone_rows; ++k)
+        if (s.clones[k].slot == id) return true;
+    return is_abandoned(id);
+}
+bool row_referenced(unsigned id) {
+    return id < core::layout::row_ids && (row_refs_[id >> 5] >> (id & 31u) & 1u);
+}
+// A free slot: empty (count and array 0), not ours or abandoned, referenced by no death column and no PROPAGATE child;
+// the highest first; 0 when none.
+unsigned free_slot(const core::HookState& s) {
+    namespace bm = core::boom;
+    for (unsigned id = bm::clone_slot_hi; id >= bm::clone_slot_lo; --id) {
+        if (is_ours(s, id) || row_referenced(id)) continue;
+        bool ok = true;
+        const std::uint32_t n = mem32(slot_va(s, id) + core::layout::row_count, &ok);
+        const std::uint32_t a = mem32(slot_va(s, id) + core::layout::row_elements, &ok);
+        if (ok && !n && !a) return id;
+    }
+    return 0;
+}
+void clone_refused(core::HookState& s, unsigned k, unsigned long long frame, const char* reason) {
+    CloneSide& side = clone_side_[k];
+    if (side.refused_logged) return;
+    side.refused_logged = 1;
+    x3m::log("weapon_boom_rows event=refused frame=%llu source=%u tier=%s reason=%s", frame, unsigned(s.clones[k].source),
+             tier_of_preroll(s.clones[k].preroll_ms), reason);
+}
+// Pair k gives its slot up: a slot still holding the clone is abandoned (left as it is, listed), any other is forgotten.
+void abandon_slot(core::HookState& s, unsigned k, unsigned long long frame, const char* why) {
+    namespace L = core::layout;
+    core::CloneRow& c = s.clones[k];
+    if (!c.slot) return;
+    bool ok = true;
+    const std::uint32_t n = mem32(slot_va(s, c.slot) + L::row_count, &ok), a = mem32(slot_va(s, c.slot) + L::row_elements, &ok);
+    if (ok && c.elements && n == c.count && a == c.elements && !is_abandoned(c.slot)) {
+        if (abandoned_n_ < clone_abandon_max) abandoned_[abandoned_n_++] = c.slot;
+        ++s.counters.clone_abandoned;
+        x3m::log("weapon_boom_rows event=abandoned frame=%llu source=%u slot=%u tier=%s reason=%s abandoned=%u", frame,
+                 unsigned(c.source), unsigned(c.slot), tier_of_preroll(c.preroll_ms), why, abandoned_n_);
+    }
+    c.slot = 0;
+    c.elements = 0;
+    c.count = 0;
+    c.ready = 0;
+}
+// Pair k leaves the table (its slot abandoned); the later pairs move down.
+void drop_pair(core::HookState& s, unsigned k, unsigned long long frame, const char* why) {
+    x3m::log("weapon_boom_rows event=dropped frame=%llu source=%u slot=%u tier=%s reason=%s", frame,
+             unsigned(s.clones[k].source), unsigned(s.clones[k].slot), tier_of_preroll(s.clones[k].preroll_ms), why);
+    abandon_slot(s, k, frame, why);
+    for (unsigned j = k + 1; j < s.clone_count && j < core::boom::clone_rows; ++j) {
+        s.clones[j - 1] = s.clones[j];
+        clone_side_[j - 1] = clone_side_[j];
+    }
+    --s.clone_count;
+    s.clones[s.clone_count] = core::CloneRow{};
+    clone_side_[s.clone_count] = CloneSide{};
+    scan_pending_ = true;
+}
+// Builds pair k from its source row; leaves it not ready (a refusal logged once) when it cannot.
+void build_clone(core::HookState& s, unsigned k, unsigned long long frame) {
+    namespace L = core::layout;
+    namespace bm = core::boom;
+    core::CloneRow& c = s.clones[k];
+    CloneSide& side = clone_side_[k];
+    const std::uintptr_t src = slot_va(s, c.source);
+    bool ok = true;
+    const std::uint32_t n = mem32(src + L::row_count, &ok), flags = mem32(src + L::row_flags, &ok);
+    const std::uint32_t r8 = mem32(src + L::row_8, &ok), rc = mem32(src + L::row_c, &ok);
+    const std::uint32_t elements = mem32(src + L::row_elements, &ok);
+    if (!ok || !n || !elements) return; // dropped at the next check
+    if (abandoned_n_ >= clone_abandon_max) {
+        if (!abandon_full_logged_)
+            x3m::log("weapon_boom_rows event=refused frame=%llu source=%u reason=abandoned_full abandoned=%u", frame,
+                     unsigned(c.source), abandoned_n_);
+        abandon_full_logged_ = true;
+        return;
+    }
+    if (n > bm::clone_max_elements) return clone_refused(s, k, frame, "source_too_long");
+    if (!mem(elements, clone_source_, std::size_t(n) * L::element_stride)) return clone_refused(s, k, frame, "source_unread");
+    { // the allocator's first bytes before every build (a build is rare); a refusal logged once until it matches again
+        unsigned char now[sizeof malloc_prologue] = {};
+        const bool match = mem(s.globals.malloc_va, now, sizeof now) && !std::memcmp(now, malloc_prologue, sizeof now);
+        if (!match && !malloc_refused_)
+            x3m::log("weapon_boom_rows event=refused frame=%llu reason=malloc_prologue va=%08lx bytes=%02x%02x%02x%02x%02x",
+                     frame, static_cast<unsigned long>(s.globals.malloc_va), now[0], now[1], now[2], now[3], now[4]);
+        malloc_refused_ = !match;
+        if (!match) return;
+    }
+    core::boom::CloneCounts counts;
+    const unsigned out = bm::clone_elements(clone_source_, n, c.preroll_ms, clone_out_, &counts);
+    // the slot: its own zeroed slot again only with the same count (a reload; an instance never meets a regrown row),
+    // else the highest free one
+    unsigned slot = 0;
+    const bool rebuild = c.slot != 0;
+    if (c.slot) {
+        const std::uint32_t sn = mem32(slot_va(s, c.slot) + L::row_count, &ok);
+        const std::uint32_t sa = mem32(slot_va(s, c.slot) + L::row_elements, &ok);
+        if (ok && !sn && !sa && c.count == out) slot = c.slot;
+        else abandon_slot(s, k, frame, "rebuild");
+    }
+    if (!slot) slot = free_slot(s);
+    if (!slot) return clone_refused(s, k, frame, "no_free_slot");
+    using Malloc = void*(__cdecl*)(std::size_t);
+    const std::uint32_t array = std::uint32_t(reinterpret_cast<std::uintptr_t>(
+        reinterpret_cast<Malloc>(s.globals.malloc_va)(std::size_t(out) * L::element_stride)));
+    if (!array) return clone_refused(s, k, frame, "alloc_failed");
+    std::memcpy(reinterpret_cast<void*>(std::uintptr_t(array)), clone_out_, std::size_t(out) * L::element_stride);
+    const std::uintptr_t dst = slot_va(s, slot);
+    put32(dst + L::row_count, 0);
+    put32(dst + L::row_elements, array);
+    put32(dst + L::row_flags, flags & ~L::edf_propagate);
+    put32(dst + L::row_8, r8);
+    put32(dst + L::row_c, rc);
+    put32(dst + L::row_count, out);
+    side.source_elements = elements;
+    side.source_count = n;
+    side.refused_logged = 0;
+    c.slot = std::uint16_t(slot);
+    c.elements = array;
+    c.count = out;
+    c.ready = 1;
+    ++s.counters.clone_builds;
+    x3m::log("weapon_boom_rows event=%s frame=%llu source=%u slot=%u tier=%s preroll_ms=%lu elements=%u kept=%u masked=%u "
+             "dropped=%u flags=%08lx source_flags=%08lx bytes=%u array=%08lx builds=%lu",
+             rebuild ? "rebuilt" : "built", frame, unsigned(c.source), slot, tier_of_preroll(c.preroll_ms),
+             static_cast<unsigned long>(c.preroll_ms), out, counts.kept, counts.masked, counts.dropped,
+             static_cast<unsigned long>(flags & ~L::edf_propagate), static_cast<unsigned long>(flags),
+             unsigned(out * L::element_stride), static_cast<unsigned long>(array),
+             static_cast<unsigned long>(s.counters.clone_builds));
+}
+// The scan: the referenced-row map and the pairs of the type records of the classes we own (see above). False (nothing
+// changed) while the ship table does not read valid.
+bool scan_types(core::HookState& s, unsigned long long frame) {
+    namespace bm = core::boom;
+    namespace L = core::layout;
+    LARGE_INTEGER f0, t0, t1;
+    QueryPerformanceFrequency(&f0);
+    QueryPerformanceCounter(&t0);
+    {
+        bool ok = true;
+        const std::uint32_t base = mem32(s.globals.ship_table_slot, &ok), count = mem32(s.globals.ship_count_slot, &ok);
+        if (!ok || !base || !count || count > type_records_max) return false;
+    }
+    // the row table in one read (1000 x 0x14 bytes; the scan's other reads are two dwords a type record)
+    static std::uint32_t rows[L::row_ids * L::row_stride / 4];
+    if (!mem(s.globals.effects_rows, rows, sizeof rows)) return false;
+    const auto row_word = [](unsigned id, unsigned off) { return rows[(id * L::row_stride + off) / 4]; };
+    struct Pair {
+        std::uint16_t row;
+        std::uint32_t pre;
+    };
+    static Pair found[bm::clone_rows * 2];
+    unsigned nf = 0, records = 0;
+    bool overflow = false;
+    for (auto& w : row_refs_) w = 0;
+    const auto ref = [](std::uint32_t row) {
+        if (row < L::row_ids) row_refs_[row >> 5] |= 1u << (row & 31u);
+    };
+    const auto loaded = [&](std::uint32_t row) {
+        return row < L::row_ids && row_word(row, L::row_count) && row_word(row, L::row_elements);
+    };
+    const auto add = [&](std::uint32_t row, std::uint32_t pre) {
+        if (row >= L::row_ids || is_ours(s, row) || !loaded(row)) return;
+        for (unsigned k = 0; k < nf; ++k)
+            if (found[k].row == row && found[k].pre == pre) return;
+        if (nf >= bm::clone_rows) {
+            overflow = true;
+            return;
+        }
+        found[nf++] = Pair{std::uint16_t(row), pre};
+    };
+    // tier: 0 the death column only (referenced), 1 the station tier, 2 a TShips record (its class id decides)
+    const auto table = [&](std::uintptr_t table_slot, std::uintptr_t count_slot, unsigned column, unsigned tier) {
+        bool ok = true;
+        const std::uint32_t base = mem32(table_slot, &ok), count = mem32(count_slot, &ok);
+        if (!ok || !base || !count || count > type_records_max) return;
+        for (std::uint32_t i = 0; i < count; ++i) {
+            const std::uintptr_t rec = std::uintptr_t(base) + std::uintptr_t(i) * L::type_stride;
+            bool rok = true;
+            const std::uint32_t row = mem32(rec + column, &rok);
+            if (!rok) return;
+            ++records;
+            ref(row);
+            if (tier == 1) add(row, bm::preroll_ms(bm::station));
+            if (tier != 2) continue;
+            const std::uint8_t t = core::patch_tier_of_ship(std::int32_t(mem32(rec + L::ship_class_id, &rok)));
+            if (!rok) return;
+            if (t == core::patch_corvette) add(row, bm::preroll_ms(bm::corvette));
+            if (t == core::patch_capital) add(row, bm::preroll_ms(bm::capital));
+        }
+    };
+    table(s.globals.ship_table_slot, s.globals.ship_count_slot, L::ship_death_row, 2);
+    table(s.globals.dock_table_slot, s.globals.dock_count_slot, L::station_death_row, 1);
+    table(s.globals.factory_table_slot, s.globals.factory_count_slot, L::station_death_row, 1);
+    table(s.globals.missile_table_slot, s.globals.missile_count_slot, L::missile_death_row, 0);
+    table(s.globals.asteroid_table_slot, s.globals.asteroid_count_slot, L::asteroid_death_row, 0);
+    // every loaded row's PROPAGATE children
+    for (unsigned id = 0; id < L::row_ids; ++id) {
+        const std::uint32_t n = row_word(id, L::row_count), a = row_word(id, L::row_elements);
+        if (!n || !a || !(row_word(id, L::row_flags) & L::edf_propagate) || n > 256) continue;
+        for (unsigned e = 0; e < n; ++e) {
+            bool eok = true;
+            const std::uintptr_t el = std::uintptr_t(a) + std::uintptr_t(e) * L::element_stride;
+            if (mem32(el + L::el_flags, &eok) & L::eedf_propagate) ref(mem32(el + 0x44, &eok));
+        }
+    }
+    // pairs no longer found drop (their slots abandoned); new ones join
+    bool changed = false;
+    for (unsigned k = s.clone_count; k-- > 0;) {
+        bool keep = false;
+        for (unsigned j = 0; j < nf && !keep; ++j)
+            keep = found[j].row == s.clones[k].source && found[j].pre == s.clones[k].preroll_ms;
+        if (!keep) {
+            drop_pair(s, k, frame, "not_found");
+            changed = true;
+        }
+    }
+    unsigned added = 0;
+    for (unsigned j = 0; j < nf; ++j) {
+        bool have = false;
+        for (unsigned k = 0; k < s.clone_count && !have; ++k)
+            have = s.clones[k].source == found[j].row && s.clones[k].preroll_ms == found[j].pre;
+        if (have || s.clone_count >= bm::clone_rows) continue;
+        core::CloneRow& c = s.clones[s.clone_count];
+        c = core::CloneRow{};
+        c.source = found[j].row;
+        c.preroll_ms = found[j].pre;
+        clone_side_[s.clone_count] = CloneSide{};
+        ++s.clone_count;
+        ++added;
+        changed = true;
+    }
+    if (overflow && !clone_table_full_logged_) {
+        x3m::log("weapon_boom_rows event=refused frame=%llu reason=clone_rows_full clones=%u", frame, bm::clone_rows);
+        clone_table_full_logged_ = true;
+    }
+    QueryPerformanceCounter(&t1);
+    scan_us_ = float(double(t1.QuadPart - t0.QuadPart) * 1e6 / double(f0.QuadPart));
+    if (scan_us_ > scan_us_max_) scan_us_max_ = scan_us_;
+    scan_records_ = records;
+    clones_scanned_ = true;
+    scan_pending_ = false;
+    clone_scan_frame_ = frame;
+    if (changed || frame == 0)
+        x3m::log("weapon_boom_rows event=scan frame=%llu records=%u pairs=%u added=%u scan_us=%.1f", frame, records,
+                 unsigned(s.clone_count), added, double(scan_us_));
+    return changed;
+}
+unsigned clones_ready(const core::HookState& s) {
+    unsigned n = 0;
+    for (unsigned k = 0; k < s.clone_count && k < core::boom::clone_rows; ++k) n += s.clones[k].ready;
+    return n;
+}
+void clone_upkeep(core::HookState& s, unsigned long long frame, bool loading) {
+    namespace L = core::layout;
+    restore_leaked_swaps(s, frame);
+    // abandoned slots a reload zeroed are free again (the reset freed their arrays; no instance outlives the reload)
+    for (unsigned k = abandoned_n_; k-- > 0;) {
+        bool ok = true;
+        const std::uint32_t n = mem32(slot_va(s, abandoned_[k]) + L::row_count, &ok);
+        const std::uint32_t a = mem32(slot_va(s, abandoned_[k]) + L::row_elements, &ok);
+        if (ok && !n && !a) {
+            x3m::log("weapon_boom_rows event=reclaimed frame=%llu slot=%u", frame, unsigned(abandoned_[k]));
+            abandoned_[k] = abandoned_[--abandoned_n_];
+            abandon_full_logged_ = false;
+        }
+    }
+    for (unsigned k = s.clone_count < core::boom::clone_rows ? s.clone_count : core::boom::clone_rows; k-- > 0;) {
+        core::CloneRow& c = s.clones[k];
+        const CloneSide& side = clone_side_[k];
+        bool ok = true;
+        const std::uintptr_t src = slot_va(s, c.source);
+        const std::uint32_t sn = mem32(src + L::row_count, &ok), se = mem32(src + L::row_elements, &ok);
+        if (!ok || !sn || !se) {
+            if (side.source_elements || c.slot) ++s.counters.clone_invalidated;
+            drop_pair(s, k, frame, "source_vanished");
+            continue;
+        }
+        if (side.source_elements && (se != side.source_elements || sn != side.source_count)) {
+            ++s.counters.clone_invalidated;
+            drop_pair(s, k, frame, "source_changed");
+            continue;
+        }
+        if (!c.ready) continue;
+        const std::uint32_t n = mem32(slot_va(s, c.slot) + L::row_count, &ok), a = mem32(slot_va(s, c.slot) + L::row_elements, &ok);
+        const char* why = !ok ? "unread" : !n && !a ? "zeroed" : n != c.count || a != c.elements ? "taken" : nullptr;
+        if (!why) continue;
+        c.ready = 0;
+        scan_pending_ = true;
+        ++s.counters.clone_invalidated;
+        x3m::log("weapon_boom_rows event=invalidated frame=%llu source=%u slot=%u tier=%s reason=%s", frame, unsigned(c.source),
+                 unsigned(c.slot), tier_of_preroll(c.preroll_ms), why);
+        if (std::strcmp(why, "zeroed")) { // not ours any more: forgotten, never written again
+            c.slot = 0;
+            c.elements = 0;
+        }
+    }
+    if (loading) return; // no scan and no build while the scope loads
+    if (!clones_scanned_ || scan_pending_ || frame - clone_scan_frame_ >= clone_scan_period) {
+        scan_types(s, frame);
+        if (!clones_scanned_) return; // the tables are not valid yet
+        for (unsigned k = 0; k < s.clone_count && k < core::boom::clone_rows; ++k)
+            if (!s.clones[k].ready) build_clone(s, k, frame);
+    }
+}
 bool window_matches(std::uintptr_t window, const unsigned char* expected, unsigned length) {
     unsigned char current[64]{};
     return length <= sizeof current && engine_patch::read_code(window, current, length) &&
@@ -441,6 +829,8 @@ bool initialize() {
     return applied;
 }
 bool shutdown() {
+    // Step 3: a swap an unwind left on the stack goes back before the sites are restored (a dynamic unload).
+    restore_leaked_swaps(hook_state(), 0);
     if (!patched_) return true;
     const DWORD error = GetLastError();
     installed_ = false;
@@ -476,6 +866,12 @@ const char* site_state(unsigned site) {
 const char* write_path(unsigned site) {
     if (site >= site_count || !written_[site]) return "none";
     return site_[site].atomic_write ? "atomic" : "plain";
+}
+float clone_scan_us() {
+    return scan_us_;
+}
+unsigned clone_abandoned_slots() {
+    return abandoned_n_;
 }
 std::uint32_t game_ms() {
     std::uint32_t cfg = 0, now = 0;
@@ -519,6 +915,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     s.hull_ready = std::uint8_t(core::hull_mode(mode_) && owned && stage.hull_ready);
     // Step 3: the death family's also needs the death programs (StageFrame::boom_ready: the shock beside the hull's).
     s.boom_ready = std::uint8_t(core::explosions_mode(mode_) && owned && stage.hull_ready && stage.boom_ready);
+    // Step 3, the big tiers: the swap stack and the clone rows R' (clone_upkeep above), between frames.
+    if (core::explosions_mode(mode_)) clone_upkeep(s, frame, scope.loading);
     period_.boom_drawn += stage.deaths;
     period_.boom_bodies += stage.boom_bodies;
     period_.boom_stars += stage.boom_stars;
@@ -531,6 +929,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.boom_lod += stage.boom_lod;
     period_.boom_out_of_reach += stage.boom_out_of_reach;
     period_.boom_capped += stage.boom_capped;
+    period_.boom_secondaries += stage.boom_secondaries;
+    period_.boom_hull_lights += stage.boom_hull_lights;
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
@@ -592,7 +992,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                 const float m = 1.f / core::engine_units_per_metre;
                 log("weapon_death frame=%llu seq=%lu tier=%s class=%u row=%u radius_m=%.1f ours=%u site=%s "
                     "reason=%u killer=%08lx nested=%u t0=%lu pos_m=%.1f,%.1f,%.1f class_id=%ld patch_tier=%s "
-                    "tier_source=%s owner=%08lx life_ms=%u decision=%s sample=%s",
+                    "tier_source=%s owner=%08lx life_ms=%u decision=%s cause=%s swapped=%u bubble_cached=%s "
+                    "row2=%d,%d,%d sample=%s",
                     frame, static_cast<unsigned long>(e.sequence), core::boom::tier_name(e.style), unsigned(e.table),
                     unsigned(e.row == 0xffffu ? 0xffffu : e.row), double(float(e.radius) * m),
                     unsigned((e.flags & core::flag_stage) != 0), e.tint_source ? "other" : "area", unsigned(e.shield_q),
@@ -601,7 +1002,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
                     double(float(e.pos[2]) * m), static_cast<long>(std::int32_t(e.tint_rgb)),
                     core::patch_tier_name(e.patch_tier), core::tier_source_name(e.tier_source),
                     static_cast<unsigned long>(e.owner), unsigned(e.lifetime_ms),
-                    core::boom::decide(e.style) == core::boom::decide_ours ? "ours" : "native", sample);
+                    core::boom::decision_name(core::boom::decide(e.style)), core::boom::cause_name(e.tier),
+                    unsigned((e.flags & core::flag_swapped) != 0),
+                    !(e.flags & core::flag_bubble_looked) ? "-" : (e.flags & core::flag_bubble_cached) ? "1" : "0",
+                    int(e.dir[0]), int(e.dir[1]), int(e.dir[2]), sample);
             }
         }
         if (!(e.flags & core::flag_logged)) {
@@ -666,7 +1070,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         log("weapon_boom_frame frame=%llu deaths=%lu ours=%lu calls=%lu no_node=%lu bullet=%lu rule_b=%lu nested=%lu "
             "fighter=%lu corvette=%lu capital=%lu station=%lu missile=%lu asteroid=%lu other=%lu boom_ready=%u drawn=%u "
             "bodies=%u stars=%u shocks=%u embers=%u fragments=%u smokes=%u glows=%u shed=%u lod=%u out_of_reach=%u "
-            "capped=%u floor_ms=%lu tier_native=%u",
+            "capped=%u floor_ms=%lu tier_native=%u tier_swap=%u swapped=%lu clone_missing=%lu swap_full=%lu "
+            "swap_restores=%lu swap_changed=%lu swap_underflow=%lu swap_leaked=%lu clones=%lu clones_ready=%u "
+            "clone_builds=%lu clone_invalidated=%lu clone_abandoned=%lu scan_us=%.1f scan_us_max=%.1f scan_records=%u "
+            "secondaries=%u hull_lights=%u",
             frame, static_cast<unsigned long>(period_.deaths), static_cast<unsigned long>(period_.deaths_ours),
             static_cast<unsigned long>(c.deaths - seen_.deaths), static_cast<unsigned long>(c.death_no_node - seen_.death_no_node),
             static_cast<unsigned long>(c.death_bullet - seen_.death_bullet),
@@ -681,7 +1088,17 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             static_cast<unsigned long>(c.death_tier[6] - seen_.death_tier[6]), unsigned(s.boom_ready), period_.boom_drawn,
             period_.boom_bodies, period_.boom_stars, period_.boom_shocks, period_.boom_embers, period_.boom_fragments,
             period_.boom_smokes, period_.boom_glows, period_.boom_shed, period_.boom_lod, period_.boom_out_of_reach,
-            period_.boom_capped, static_cast<unsigned long>(s.boom_floor_ms), unsigned(core::boom::tier_native));
+            period_.boom_capped, static_cast<unsigned long>(s.boom_floor_ms), unsigned(core::boom::tier_native),
+            unsigned(core::boom::tier_swap), static_cast<unsigned long>(c.death_swapped - seen_.death_swapped),
+            static_cast<unsigned long>(c.death_clone_missing - seen_.death_clone_missing),
+            static_cast<unsigned long>(c.death_swap_full - seen_.death_swap_full),
+            static_cast<unsigned long>(c.swap_restores - seen_.swap_restores),
+            static_cast<unsigned long>(c.swap_changed - seen_.swap_changed),
+            static_cast<unsigned long>(c.swap_underflow - seen_.swap_underflow),
+            static_cast<unsigned long>(c.swap_leaked - seen_.swap_leaked), static_cast<unsigned long>(s.clone_count),
+            clones_ready(s), static_cast<unsigned long>(c.clone_builds),
+            static_cast<unsigned long>(c.clone_invalidated), static_cast<unsigned long>(c.clone_abandoned), double(scan_us_),
+            double(scan_us_max_), scan_records_, period_.boom_secondaries, period_.boom_hull_lights);
     log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu staged=%lu "
         "patches=%u decals=%u retired=%u expired=%lu overflow=%lu evicted_visible=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "

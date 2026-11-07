@@ -21,7 +21,7 @@
     "verification/probe/weapon_effects_death_cases.h"
   ],
   "source": {
-    "commit": "d0c96e63771764ee4be3aab6dfad8dd83c5d4c63-dirty",
+    "commit": "da8e8bcacc267786712c457ceca9d170a055b71e-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h",
@@ -29,18 +29,16 @@
       "src/proxy/weapon_effects_patch.cpp",
       "src/proxy/weapon_effects_patch.h",
       "verification/probe/build_weapon_effects_hook.py",
-      "verification/probe/weapon_effects_hook_fixture.cpp",
-      "src/proxy/weapon_effects_death_sites.h",
       "verification/probe/weapon_effects_death_cases.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "1cfba66b586bab04f5a99650dc68e9dff072c0e74e1522d1900bb35ed7787deb",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
-      "verification/probe/build_weapon_effects_hook.py": "e04efac0720a6a679955285def7ace667037a0ca3c8a6b97d6ed350970ef22d9",
-      "src/proxy/weapon_effects_patch.cpp": "2e6adbf1af17e9f74e061ee2edfc8d127a70d8811ac6770c9837f88d13c23b7a",
-      "src/proxy/weapon_effects_patch.h": "9cb45e28d9a75a177f41f05395be221c98523cef4beeeaf7983665679585ab0b",
-      "src/proxy/weapon_effects_hook.cpp": "bbf9f85afea0646f295cf15097ec8a79e08f6df3a050d42117f31f87659e2d61",
-      "src/proxy/weapon_effects_core.h": "90aa7255e0cafedca5a6a57756aa799ab347d794c66cf304519e1c361e73feee",
+      "verification/probe/build_weapon_effects_hook.py": "2aac2a5684633b83dac327ca9d2e50b0db2cbdf6404afabd180f0a14c9f0cf03",
+      "src/proxy/weapon_effects_patch.cpp": "4fe1b5647d9119f6bcce9fee45f940cfb62515d4d06393eaeef20d0c7fedd6db",
+      "src/proxy/weapon_effects_patch.h": "4e46467ecd5219acba2690386db98c3cdc78ea2be6719293ae2323df86cdc05c",
+      "src/proxy/weapon_effects_hook.cpp": "1ecc3c96b507afed2aea3871b0aa6ee0a0118ba7bc9433af538e64de52175293",
+      "src/proxy/weapon_effects_core.h": "85b8ca06bf0eaf760d67c4749bcf45da450bcf7af24d26e995f02220fc8984c7",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "65b024f1400658c0399deb23bf53c9f08d9c10452b310de8b05073f24f8e5afc",
       "src/proxy/weapon_effects_bolt_sites.h": "b7a993efe66c19506c820eeeeddd8f1e108eb13a285e1579c5c3bbe3ddb1ee8b",
@@ -49,7 +47,7 @@
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/proxy/weapon_effects_death_sites.h": "8fb7d60a72bb7c9fe60c14929d4ec1ae7543852abda5028cb5d571d9b8c68dd6",
-      "verification/probe/weapon_effects_death_cases.h": "2307a4a72e467a686ef24254a51f3ddddc99161cec419d842a062fa884504f97"
+      "verification/probe/weapon_effects_death_cases.h": "ea1ce6845a46342dd380adb6a5a6a5ca08b74f13702e6a8aa2ba742d2df13c17"
     }
   },
   "build": {
@@ -65,7 +63,8 @@
         "_x3m_weapon_muzzle": [],
         "_x3m_weapon_flight": [],
         "_x3m_weapon_death_area": [],
-        "_x3m_weapon_death_other": []
+        "_x3m_weapon_death_other": [],
+        "_x3m_weapon_death_restore": []
       },
       "handler_instructions": {
         "_x3m_weapon_event": 1230,
@@ -73,8 +72,9 @@
         "_x3m_weapon_bolt_tap": 507,
         "_x3m_weapon_muzzle": 224,
         "_x3m_weapon_flight": 20,
-        "_x3m_weapon_death_area": 502,
-        "_x3m_weapon_death_other": 533
+        "_x3m_weapon_death_area": 698,
+        "_x3m_weapon_death_other": 700,
+        "_x3m_weapon_death_restore": 45
       },
       "handler_frame_bytes": 204,
       "stub_impact": [
@@ -173,7 +173,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "4d0d35844fee9bd8a6f79509be471f6363512159ca68df131604bd2f925d1fcd"
+    "executable_sha256": "8c83040411d24d2736bc7342a7476eef7e3904fb5b8699af00bc59fe76f54498"
   },
   "host": {
     "name": "native-windows",
@@ -192,7 +192,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 132,
+      "checks": 147,
       "failures": 0,
       "faults": 6,
       "verdict": "PASS"
@@ -831,6 +831,81 @@
       "detail": ""
     },
     {
+      "name": "death_clone_malloc_prologue_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_row_built",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_swaps_death_column_big_tiers",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_swap_callee_state",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_nested_lifo_restore",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_nested_after_return_swap",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_not_ready_forwards_exact",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_rebuilt_after_reload",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_slot_taken_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_swap_leak_restored_at_present",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_scan_refused_while_loading",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_source_vanished_drops",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_source_changed_new_slot",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_free_slot_skips_referenced",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_clone_scan_time",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "death_shutdown_restores_both",
       "passed": true,
       "detail": ""
@@ -861,15 +936,15 @@
       "detail": ""
     }
   ],
-  "check_count": 132,
+  "check_count": 147,
   "failed_checks": [],
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
-    "esp_frame": "00888780",
-    "esp_callee": "00888774",
-    "return": "00f36d8a",
-    "site": "00f36d85"
+    "esp_frame": "0088f780",
+    "esp_callee": "0088f774",
+    "return": "00fe6d8a",
+    "site": "00fe6d85"
   },
   "stack_depth": {
     "bytes": 240,
@@ -1198,7 +1273,7 @@
     "shields": 6,
     "best_us": 17.0,
     "median_us": 17.1,
-    "worst_us": 18.0,
+    "worst_us": 17.2,
     "target_us": 30
   },
   "overflow": {
@@ -1214,18 +1289,18 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 54.9,
-    "median_us": 54.9,
-    "worst_us": 66.3,
+    "best_us": 55.0,
+    "median_us": 55.1,
+    "worst_us": 67.2,
     "target_us": 150
   },
   "death_forward_state": {
     "eflags_entry": "000008c5",
     "eflags_callee": "00000ac7",
-    "esp_frame": "005ead08",
-    "esp_callee": "005eacf8",
-    "return": "00f37cb7",
-    "site": "00f37cb2",
+    "esp_frame": "005ea8b8",
+    "esp_callee": "005ea8a8",
+    "return": "00fe7cb7",
+    "site": "00fe7cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
@@ -1237,13 +1312,79 @@
     "inner_seq": "3233,3234"
   },
   "death_state": {
-    "deaths": 17,
-    "records": 14,
+    "deaths": 34,
+    "records": 31,
     "ours": 8,
     "no_node": 0,
     "bullet": 1,
     "rule_b": 2,
-    "nested": 11
+    "nested": 28
+  },
+  "death_clone": {
+    "source": 37,
+    "slot": 998,
+    "count": 12,
+    "masked": 10,
+    "kept": 2,
+    "dropped": 1,
+    "row_flags": 0,
+    "distant": 10,
+    "propagate": 0,
+    "fade_start": 1500,
+    "hold_end": 2500,
+    "mallocs": 3,
+    "corvette_slot": 999,
+    "corvette_count": 6,
+    "station_slot": 997,
+    "station_fade_start": 3000
+  },
+  "death_swap_state": {
+    "esp_frame": "005ea8b8",
+    "esp_callee": "005ea898",
+    "return": "0081211b",
+    "stub": "008120e0",
+    "eflags_entry": "000008c5",
+    "eflags_callee": "00000ac7",
+    "ecx": "00a4a4a4",
+    "edx": "00c0ffee"
+  },
+  "death_nested_swap": {
+    "entries": 3,
+    "seen": 3,
+    "outer_m2": 998,
+    "inner_m6": 999,
+    "inner_m2": 998,
+    "after_m2": 37,
+    "after_m6": 40,
+    "depth": 0,
+    "restores": 3
+  },
+  "death_swap": {
+    "swapped": 13,
+    "restores": 12,
+    "changed": 0,
+    "underflow": 0,
+    "leaked": 1,
+    "clone_missing": 6,
+    "swap_full": 1,
+    "builds": 10,
+    "invalidated": 4,
+    "clones": 3,
+    "mallocs": 10
+  },
+  "death_scan_timing": {
+    "records": 1553,
+    "pairs": 3,
+    "median_us": 9.4,
+    "max_us": 446.0,
+    "bound_us": 250
+  },
+  "death_slots": {
+    "slot650": 993,
+    "old37": 998,
+    "new37": 992,
+    "abandoned": 2,
+    "referenced": "995,994"
   },
   "passed": true
 }
