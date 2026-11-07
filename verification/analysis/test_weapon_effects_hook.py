@@ -11,6 +11,7 @@ No Wine, no game: the records are read, not produced.
 """
 import hashlib
 import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -564,6 +565,57 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLessEqual(timing[(5120, 'capital_close_all_shed')]['gpu_us'], 300.0)
         for case in ('body_alone_fills_frame', 'shock_alone_fills_frame', 'smoke_alone_fills_frame', 'star_alone'):
             self.assertIn((5120, case), timing)
+
+    # Section 13 (explosion-look.md 13.1, 13.2): the fire wave and the composed body.
+    SECTION13_CHECKS = ('wave_program_attached', 'wave_radius_law', 'wave_never_brightest', 'wave_thick_not_a_line',
+                        'wave_broken_circumference', 'wave_fire_not_grey', 'wave_refraction_strips_present_and_capped',
+                        'wave_shimmer_strips_area', 'wave_lights_swept_hulls', 'compose_silhouette_cv',
+                        'compose_silhouette_changes', 'compose_not_grapes', 'compose_under_one_sun', 'compose_births_spread',
+                        'compose_jets_capital', 'compose_eye_inside_shared', 'compose_lod_floor', 'compose_box_holds_spheres',
+                        'wave_sheet_thick', 'wave_hot_edge_trailing_sheet', 'wave_flame_tongues', 'wave_drawn_close_capital',
+                        'compose_clumps_survive', 'compose_no_white_region',
+                        'wave_eye_in_plane_no_whiteout', 'compose_capital_structure', 'wave_break_follows_seed',
+                        'wave_refused_body_drawn', 'wave_no_strip_seam')
+
+    def test_wave_and_compose_gates(self):
+        # 2026-11-07 v4: the composed body's gates and rows run only with boom::compose_enabled (the kill: off for the
+        # flight); the record then carries the skip row instead
+        compose = re.search(r'compose_enabled = (true|false)', (ROOT / 'src/proxy/weapon_effects_core.h').read_text()).group(1) == 'true'
+        checks = dict(self.record['checks'])
+        rows = self.record['metrics']['explosion']
+        for name in self.SECTION13_CHECKS:
+            if name.startswith('compose_') and not compose:
+                self.assertNotIn(name, checks)
+                continue
+            self.assertIn(name, checks)
+            self.assertTrue(checks[name], name)
+        radius = [r for r in rows if r.get('case') == 'wave_radius']
+        self.assertEqual(len(radius), 3)
+        self.assertTrue(all(abs(r['ratio'] - 1.0) <= 0.05 and r['peak'] <= r['body_peak'] for r in radius))
+        timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
+        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'eye_inside_fighter_n4']
+        if compose:
+            sil = {r['tier']: r for r in rows if r.get('case') == 'compose_silhouette'}
+            self.assertEqual(set(sil), {'fighter_600m', 'capital_1500m', 'station_3km'})
+            self.assertTrue(all(r['cv_03'] >= 0.18 and r['cv_06'] >= 0.18 for r in sil.values()))
+            cases += ['compose_single_fills_frame', 'compose_n2_fills_frame', 'compose_n5_fills_frame',
+                      'compose_n4_shared_fills_frame']
+        else:
+            self.assertTrue(any(r.get('case') == 'compose_skipped' for r in rows))
+        for case in cases:
+            self.assertIn((5120, case), timing)
+        self.assertLessEqual(timing[(5120, 'eye_inside_fighter_n4')]['gpu_us'], 300.0)
+        # the wave's weights (boom::budget_weight_wave, _one) bound their rows per drawn screen, the fence removed; the
+        # box at birth (every pixel inside the window) under the full weight
+        weight = next(r for r in self.record['metrics']['explosion_timing']
+                      if r.get('case') == 'wave_weight' and r['width'] == 5120)
+        self.assertLessEqual(weight['alone_weight'], weight['pinned'] + 0.03)
+        self.assertLessEqual(weight['one_octave_weight'], weight['pinned_one'] + 0.03)
+        self.assertLessEqual(weight['box_weight'], weight['pinned'] + 0.03)
+        # the fourth octave's weight pinned to its row (a body seen from outside, review 2026-11-07)
+        f4 = next(r for r in self.record['metrics']['explosion_timing']
+                  if r.get('case') == 'fine4_weight' and r['width'] == 5120)
+        self.assertAlmostEqual(f4['weight4'], f4['pinned4'], delta=0.05)
 
     def test_lightning_log_fields(self):
         """Review 2026-11-07: the device row logs the lightning's programs (filament_ps_slots, lightning_vs_slots, the

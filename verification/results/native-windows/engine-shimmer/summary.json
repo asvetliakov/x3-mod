@@ -12,25 +12,29 @@
     "src/renderer/quad_vertex_program_inc.h"
   ],
   "source": {
-    "commit": "98f0950455b360ba28d2d0bc33f314e0ee707eec-dirty",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "bfe904e97c19988cd9624c4c1262c86315f7b8b7-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/effects/engine_shimmer_ps.hlsl",
+      "src/proxy/engine_shimmer_core.h",
+      "src/renderer/engine_shimmer_pixel_program_inc.h"
+    ],
     "sha256": {
-      "src/proxy/engine_shimmer_core.h": "74542b3585baf767cb92a8ee44ceb9f36a9e49de7ee59a95160cb9bed468bd01",
+      "src/proxy/engine_shimmer_core.h": "28f1795ea2396c4815fce00f13aaa2ddae3d3e8b7f0cbe6df45a3bc00af8fac0",
       "src/proxy/engine_plumes_core.h": "80f4464855d38a99c1992a99727c8b76ff289fad07759aab84fe2474bdada7aa",
       "src/proxy/engine_effects_core.h": "52a2499653b6fca08f6f7844bf9d1896b64daf79ac5bbc78b28a15ff04406e75",
       "src/renderer/engine_shimmer_pass.h": "831ad197eb320e5ba83851394791ae0954d575257b499e579ed487a2cedf05ac",
       "src/renderer/engine_shimmer_pass.cpp": "d15f2f4e9b2e12004049f81d456860e4f2cc7601ea6be3f6edafe4b6ef5487a7",
-      "src/effects/engine_shimmer_ps.hlsl": "00bae503ce9b5a023ee7664fcb5ab8288e14bc70a5ad5016594ce0b6d4aae53c",
-      "src/renderer/engine_shimmer_pixel_program_inc.h": "ca0e736d250959786ab515f5348964f4f554b60d7f2cc78d799bfc9eb1cb3d31",
+      "src/effects/engine_shimmer_ps.hlsl": "e110e0d00603439ec094b7263c704a82f6bc0d425d2b3e149b0c8bfbdf515207",
+      "src/renderer/engine_shimmer_pixel_program_inc.h": "7d13dcd480dba227920b018120ca42a49418c5c7042ddabd89df7efa68307e6f",
       "src/renderer/quad_vertex_program.h": "bac269397080f5942b099193dbae1498b94c3ada69f9296f220cc7ac37b59fab",
       "src/renderer/quad_vertex_program_inc.h": "fbf84f4a87bc71d72091e964bbdfd0377bf72011b19d2d5b40d0b6c1346d8415"
     }
   },
   "program": {
     "source": "src/effects/engine_shimmer_ps.hlsl",
-    "word_count": 6805,
-    "bytecode_sha256": "77ae0b2db4c74c892ce3889cf86d26f1ee68eedbf4eef1b3ee3ef745d8e0efec",
+    "word_count": 7199,
+    "bytecode_sha256": "3e9364384aaea4049fdb418e86dc4f77b136ce383b684493949a103701e6c78d",
     "target": "ps_3_0"
   },
   "game_launched": false,
@@ -57,12 +61,12 @@
       "verification/probe/engine_shimmer_fixture.cpp",
       "src/renderer/engine_shimmer_pass.cpp",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a4e720aa851f86282/verification/probe/build/engine-shimmer/engine_shimmer_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
     "warnings": 0,
-    "executable_sha256": "4a715c30a6fd3f025f1e655168154af0bda4967bcb104e59dcb9fed9d5a3a7d7"
+    "executable_sha256": "f87e3cc5b828f27f77a979711773fc1bdea12d36c800f5412fcf13631545b475"
   },
   "host": {
     "name": "native-windows",
@@ -92,7 +96,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 63,
+      "checks": 73,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -106,7 +110,7 @@
         "held": 0,
         "result": 0,
         "reason": "ok",
-        "ps_slots": 1776,
+        "ps_slots": 1885,
         "max_ps_slots": 4096,
         "fp16_filter": 0,
         "references": 3
@@ -298,11 +302,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 215602,
         "copy_px": 222880,
-        "fenced_on_ms": 0.0361,
-        "fenced_off_ms": 0.0135,
-        "submit_ms": 0.0026,
-        "chain_ms": 0.0226,
-        "gpu_ms": 0.02,
+        "fenced_on_ms": 0.0375,
+        "fenced_off_ms": 0.0142,
+        "submit_ms": 0.0028,
+        "chain_ms": 0.0233,
+        "gpu_ms": 0.0205,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -314,11 +318,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 341388,
         "copy_px": 352128,
-        "fenced_on_ms": 0.0754,
-        "fenced_off_ms": 0.0138,
-        "submit_ms": 0.0026,
-        "chain_ms": 0.0616,
-        "gpu_ms": 0.059,
+        "fenced_on_ms": 0.0794,
+        "fenced_off_ms": 0.0149,
+        "submit_ms": 0.0029,
+        "chain_ms": 0.0645,
+        "gpu_ms": 0.0616,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -330,11 +334,11 @@
         "rect_area_share": 0.103,
         "scissor_px": 1525284,
         "copy_px": 1540560,
-        "fenced_on_ms": 0.2247,
-        "fenced_off_ms": 0.0171,
-        "submit_ms": 0.0029,
-        "chain_ms": 0.2076,
-        "gpu_ms": 0.2047,
+        "fenced_on_ms": 0.224,
+        "fenced_off_ms": 0.0146,
+        "submit_ms": 0.003,
+        "chain_ms": 0.2094,
+        "gpu_ms": 0.2064,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -346,11 +350,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 753420,
         "copy_px": 770784,
-        "fenced_on_ms": 0.0785,
-        "fenced_off_ms": 0.1804,
-        "submit_ms": 0.0026,
-        "chain_ms": -0.1019,
-        "gpu_ms": 0.0,
+        "fenced_on_ms": 0.0786,
+        "fenced_off_ms": 0.036,
+        "submit_ms": 0.0057,
+        "chain_ms": 0.0426,
+        "gpu_ms": 0.0369,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -362,11 +366,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 1198860,
         "copy_px": 1225440,
-        "fenced_on_ms": 0.2147,
-        "fenced_off_ms": 0.1868,
-        "submit_ms": 0.0027,
-        "chain_ms": 0.0279,
-        "gpu_ms": 0.0252,
+        "fenced_on_ms": 0.2088,
+        "fenced_off_ms": 0.0366,
+        "submit_ms": 0.0075,
+        "chain_ms": 0.1722,
+        "gpu_ms": 0.1647,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -378,11 +382,11 @@
         "rect_area_share": 0.101,
         "scissor_px": 5365932,
         "copy_px": 5398560,
-        "fenced_on_ms": 0.7577,
-        "fenced_off_ms": 0.0277,
-        "submit_ms": 0.0032,
-        "chain_ms": 0.73,
-        "gpu_ms": 0.7268,
+        "fenced_on_ms": 0.8986,
+        "fenced_off_ms": 0.0418,
+        "submit_ms": 0.0114,
+        "chain_ms": 0.8568,
+        "gpu_ms": 0.8454,
         "samples": 60,
         "calls": 97,
         "method": "tail_event_fenced"
@@ -473,10 +477,10 @@
         "box_share": 0.4903,
         "scissor_px": 1124401,
         "copy_px": 1138177,
-        "fenced_on_ms": 0.0771,
-        "fenced_off_ms": 0.0137,
+        "fenced_on_ms": 0.0762,
+        "fenced_off_ms": 0.0142,
         "submit_ms": 0.0027,
-        "gpu_ms": 0.0607,
+        "gpu_ms": 0.0593,
         "samples": 60,
         "drew": 1
       },
@@ -488,12 +492,76 @@
         "box_share": 0.4864,
         "scissor_px": 4877977,
         "copy_px": 4907905,
-        "fenced_on_ms": 0.2737,
-        "fenced_off_ms": 0.0268,
-        "submit_ms": 0.0028,
-        "gpu_ms": 0.2441,
+        "fenced_on_ms": 0.2879,
+        "fenced_off_ms": 0.0302,
+        "submit_ms": 0.006,
+        "gpu_ms": 0.2517,
         "samples": 60,
         "drew": 1
+      }
+    ],
+    "wave": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "result": 0,
+        "strips": 8,
+        "strip_screens": 0.0591,
+        "r_px": 162.0,
+        "band_px": 43.2,
+        "px": 4.5,
+        "band": 17694,
+        "moved": 17677,
+        "outward": 17584,
+        "mean_px": 3.96,
+        "sky_band": 8855,
+        "sky_moved": 8850,
+        "beyond": 69736,
+        "beyond_diff": 0,
+        "front": 12831,
+        "front_diff": 0,
+        "outside": 1891036,
+        "outside_diff": 0,
+        "constants": 1
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "result": 0,
+        "strips": 8,
+        "strip_screens": 0.0291,
+        "r_px": 216.0,
+        "band_px": 57.6,
+        "px": 6.0,
+        "band": 31153,
+        "moved": 31068,
+        "outward": 30424,
+        "mean_px": 5.404,
+        "sky_band": 15582,
+        "sky_moved": 15543,
+        "beyond": 120282,
+        "beyond_diff": 0,
+        "front": 22838,
+        "front_diff": 0,
+        "outside": 7053270,
+        "outside_diff": 0,
+        "constants": 1
+      }
+    ],
+    "wave_timing": [
+      {
+        "width": 5120,
+        "height": 1440,
+        "r_px": 1000.0,
+        "strip_screens": 0.1469,
+        "box_screens": 0.4414,
+        "strips_gpu_ms": 0.0836,
+        "box_gpu_ms": 0.1675,
+        "ratio": 0.499,
+        "strips_copy_px": 3264480,
+        "box_copy_px": 3263040,
+        "strips_scissor_px": 3255840,
+        "box_scissor_px": 3254400
       }
     ],
     "checks": [
@@ -575,6 +643,22 @@
       ],
       [
         "weapon_rect_ring_constants",
+        true
+      ],
+      [
+        "wave_strips_made",
+        true
+      ],
+      [
+        "wave_band_displaced_outward_sky_included",
+        true
+      ],
+      [
+        "wave_zero_outside_band_front_hull_and_strips",
+        true
+      ],
+      [
+        "wave_constants",
         true
       ],
       [
@@ -730,6 +814,22 @@
         true
       ],
       [
+        "wave_strips_made",
+        true
+      ],
+      [
+        "wave_band_displaced_outward_sky_included",
+        true
+      ],
+      [
+        "wave_zero_outside_band_front_hull_and_strips",
+        true
+      ],
+      [
+        "wave_constants",
+        true
+      ],
+      [
         "occlusion_hidden_byte_equal",
         true
       ],
@@ -746,34 +846,42 @@
         true
       ],
       [
+        "wave_strips_timing_made",
+        true
+      ],
+      [
+        "wave_shimmer_strips_timing",
+        true
+      ],
+      [
         "detach_released",
         true
       ]
     ],
     "result": {
-      "checks": 63,
+      "checks": 73,
       "failures": 0,
       "verdict": "PASS"
     },
-    "check_count": 63,
+    "check_count": 73,
     "failed_checks": []
   },
   "summary": {
     "timing_gpu_ms": {
-      "1920x1080_1": 0.02,
-      "1920x1080_4": 0.059,
-      "1920x1080_16": 0.2047,
-      "5120x1440_1": 0.0,
-      "5120x1440_4": 0.0252,
-      "5120x1440_16": 0.7268
+      "1920x1080_1": 0.0205,
+      "1920x1080_4": 0.0616,
+      "1920x1080_16": 0.2064,
+      "5120x1440_1": 0.0369,
+      "5120x1440_4": 0.1647,
+      "5120x1440_16": 0.8454
     },
     "timing_submit_ms": {
-      "1920x1080_1": 0.0026,
-      "1920x1080_4": 0.0026,
-      "1920x1080_16": 0.0029,
-      "5120x1440_1": 0.0026,
-      "5120x1440_4": 0.0027,
-      "5120x1440_16": 0.0032
+      "1920x1080_1": 0.0028,
+      "1920x1080_4": 0.0029,
+      "1920x1080_16": 0.003,
+      "5120x1440_1": 0.0057,
+      "5120x1440_4": 0.0075,
+      "5120x1440_16": 0.0114
     },
     "displace": {
       "1920x1080": {

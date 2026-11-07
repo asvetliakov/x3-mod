@@ -716,6 +716,52 @@ console.log(JSON.stringify(out));
         self.assertEqual((bm['shock_tiers'], birth['shocks'], js['corvette']['shocks']), (0, 0, 0))  # D14: no shell
         self.assertEqual((birth['halos'], js['cap_late']['halos']), (1, 1))                         # D15: drawn to 0.6 L
 
+    def test_boom_wave_and_composed_body(self):
+        """Section 13 (explosion-look.md 13.1, 13.2): the Boom tab's wave and compose controls and scenarios; renderBoom
+        draws the capital's fire wave from the body's birth to 0.4 L (face-on and from above) and none on a fighter, and
+        the composed body (the hashed N sub-bursts; the single-body toggle draws one)."""
+        ids = [p['id'] for p in gen.PRESETS if p['family'] == 'boom']
+        for want in ('capital-m2-1500m-wave-broadside', 'capital-m2-1500m-wave-above'):
+            self.assertIn('boom/' + want, ids)
+        for control in ('c_x_single', 'c_x_wave', 'c_x_above', 'c_x_wave_e', 'c_x_wave_w', 'c_x_wave_slab', 'c_x_comp_off',
+                        'c_x_comp_n'):
+            self.assertIn('id="%s"' % control, self.html)
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {c_x_smoke: true, c_x_wave: true};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const out = {};
+const run = (o, t) => {
+  Object.assign(vals, {c_family: 'boom', c_x_tier: 'fighter', c_x_dist: 600, c_x_radius: 14, c_x_nested: 1, c_x_seta: 1,
+                       c_x_seed: 1}, o.vals || {});
+  checks.c_x_single = !!o.single; checks.c_x_above = !!o.above;
+  const data = new Uint8ClampedArray(OW * OH * 4);
+  const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data: data.slice()}; }, putImageData() {}}};
+  renderOurs(rec, t);
+  return rec.boomStats;
+};
+const cap = {vals: {c_x_tier: 'capital', c_x_dist: 1500, c_x_radius: 1288}};
+out.face = run(cap, 1500 + 120);
+out.above = run(Object.assign({above: true}, cap), 1500 + 120);
+out.gone = run(cap, 1500 + 1700);
+out.fighter = run({}, 600);
+out.single = run({single: true}, 600);
+console.log(JSON.stringify(out));
+"""
+        js = self.run_node(probe)
+        self.assertEqual(js['face']['waves'], 1)
+        self.assertGreater(js['face']['light']['wave'], 0)
+        self.assertGreater(js['above']['light']['wave'], 0)
+        self.assertNotIn('waves', js['gone'])
+        self.assertNotIn('waves', js['fighter'])
+        # 2026-11-07 v4: boom::compose_enabled false (the kill) draws the single body in the lab too
+        if '"compose_enabled":false' in HTML.read_text().replace(' ', ''):
+            self.assertEqual(js['fighter']['bodies'], 1)
+            self.assertNotIn('composed', js['fighter'])
+        else:
+            self.assertEqual((js['fighter']['bodies'], js['fighter']['composed'], js['fighter']['spheres']), (1, 1, 3))
+        self.assertEqual(js['single']['bodies'], 1)
+        self.assertNotIn('composed', js['single'])
+
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_script_parses(self):
         script = re.search(r'<script>\n(.*)</script>', self.html, re.S).group(1)

@@ -125,7 +125,8 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
     // plumes' path below is the one it always was.
     shimmer_weapon_rects_ = 0;
     const bool plumes = plumes_armed_ && plumes_ran_ && plumes_report_.drew && engine_ring_ && engine_ring_->count;
-    const bool weapons = weapon_hull_requested_ && weapon_shimmer_frame_ == frame_ && weapon_shimmer_count_ > 0;
+    const bool weapons = weapon_hull_requested_ && weapon_shimmer_frame_ == frame_ &&
+                         (weapon_shimmer_count_ > 0 || weapon_wave_shimmer_count_ > 0);
     const char* idle = shimmer_failed_ || shimmer_attach_failed_        ? "failed"
                        : !plumes && !weapons                             ? "no_plumes"
                        : !output || !output_surface || !width || !height ? "output"
@@ -228,6 +229,15 @@ void MotionOutput::run_engine_shimmer(IDirect3DTexture9* output, IDirect3DSurfac
             ++count;
             ++shimmer_weapon_rects_;
         }
+    }
+    // The newest death fire wave's band (explosion-look.md 13.1): its eight octagon strips after the engines' and the
+    // hull's rects (4 + 2 + 8 <= max_rects), the first carrying the plane-mode ring; none past the strips' cap.
+    shimmer_rects_before_wave_ = count; // the next frame's room for the strips (the stage drops them past it)
+    if (weapons && weapon_wave_shimmer_count_ && count + engine_shimmer::wave_strip_count <= engine_shimmer::max_rects) {
+        const unsigned made = engine_shimmer::wave_strips(weapon_wave_shimmer_, projection, view.near_z, shimmer_rects_ + count,
+                                                          nullptr);
+        count += made;
+        shimmer_weapon_rects_ += made;
     }
     HRESULT hr = S_FALSE;
     const bool attached = count && attach_engine_shimmer();

@@ -89,7 +89,10 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       # step 3, the death explosion (docs/architecture/explosion-look.md)
                       'src/proxy/weapon_effects_boom.h', 'src/effects/weapon_shock_ps.hlsl',
                       'src/renderer/weapon_shock_pixel_program_inc.h', 'verification/probe/weapon_effects_boom_cases.h',
-                      'src/effects/weapon_halo_ps.hlsl', 'src/renderer/weapon_halo_pixel_program_inc.h')
+                      'src/effects/weapon_halo_ps.hlsl', 'src/renderer/weapon_halo_pixel_program_inc.h',
+                      # section 13 (explosion-look.md): the fire wave and the composed body
+                      'src/effects/weapon_wave_ps.hlsl', 'src/renderer/weapon_wave_pixel_program_inc.h',
+                      'src/effects/weapon_compose_ps.hlsl', 'src/renderer/weapon_compose_pixel_program_inc.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
@@ -117,6 +120,9 @@ PROGRAMS = {
     'weapon_shock_ps': ('verification/results/weapon-shock-pixel-program.json',
                         'src/renderer/weapon_shock_pixel_program_inc.h'),
     'weapon_halo_ps': ('verification/results/weapon-halo-pixel-program.json', 'src/renderer/weapon_halo_pixel_program_inc.h'),
+    'weapon_wave_ps': ('verification/results/weapon-wave-pixel-program.json', 'src/renderer/weapon_wave_pixel_program_inc.h'),
+    'weapon_compose_ps': ('verification/results/weapon-compose-pixel-program.json',
+                          'src/renderer/weapon_compose_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.

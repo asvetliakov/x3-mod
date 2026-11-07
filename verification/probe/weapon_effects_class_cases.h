@@ -915,9 +915,13 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         hull_build(hull_view(g, 1020, 16), burst_only); // the records latch
         ws::HullView v = hull_view(g, 1120, 16);
         v.budget_left = 1e6f;
-        const float A = hull_build(v, burst_only).n.screens;
-        const float budgets[12] = {10.f, 0.95f, 10.f, 10.f, 10.f, 0.95f, 1.05f, 1.05f, 1.05f, 1.05f, 1.3f, 1.3f};
-        const unsigned want[12] = {3, 2, 2, 2, 3, 2, 2, 2, 2, 2, 3, 3};
+        const float A4 = hull_build(v, burst_only).n.screens;
+        // 2026-11-07 v3, the fourth octave: four octaves where three were (the step 0b drops the fourth first; review:
+        // budget_weight_fireball_fine4 now equals the third's weight, so A is the full charge A4); the last two budgets
+        // 1.5 A (the return under 0.8 x the budget)
+        const float A = A4;
+        const float budgets[12] = {10.f, 0.95f, 10.f, 10.f, 10.f, 0.95f, 1.05f, 1.05f, 1.05f, 1.05f, 1.5f, 1.5f};
+        const unsigned want[12] = {4, 2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 4};
         bool ok = A > 0.f;
         char got[64] = {};
         for (unsigned k = 0; k < 12; ++k) {
@@ -926,8 +930,8 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
             got[k] = char('0' + o.n.octaves);
             ok = ok && o.n.octaves == want[k];
         }
-        std::printf("CLASS case=octave_hysteresis full_charge=%.4f budgets_over_A=10,.95,10,10,10,.95,1.05x4,1.3x2 "
-                    "octaves=%s want=322232222233\n", double(A), got);
+        std::printf("CLASS case=octave_hysteresis full_charge=%.4f four_octave_charge=%.4f "
+                    "budgets_over_A=10,.95,10,10,10,.95,1.05x4,1.5x2 octaves=%s want=422242222244\n", double(A), double(A4), got);
         report("hull_budget_octave_hysteresis", ok, "");
     }
     // 14 (review 2026-11-07). The cluster count falls with a neighbour's life: hit A at the front, hit B 1.0 R_b beside it

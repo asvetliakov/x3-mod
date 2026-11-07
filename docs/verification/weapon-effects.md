@@ -1995,3 +1995,227 @@ PASS; native run (`run_weapon_effects.py --host native` under the X3 lock, 1:51)
 (ap) and `build-drift-fl` (fl) 0 warnings; `check_no_x87.py --edition ap` no violations (1181 reachable functions). The
 Windows screen saver returned within 3 minutes of each kill and lost the device in two runs; the runs that count held a
 display-required execution state for their own duration only. Not flown.
+
+## Explosions: the fire wave and the composed body
+
+2026-11-07, uncommitted on `effects` at `bfe904e97`. Spec: [explosion-look.md](../architecture/explosion-look.md) section 13
+and its "Built numbers (section 13)". Table from `python3 verification/results/explosion-look/ledger_rows.py --markdown --wave`
+over the native records (`native-windows/weapon-effects/summary.json`: D3D 323 checks, 4 failed; hook 148 / 0;
+`native-windows/engine-shimmer/summary.json`: 73 / 0).
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `wave_program_attached` (PASS) | wave_ps 359 slots, compose_ps - slots, the device's 4096 | created |
+| `wave_radius_law` (PASS; capital 5 km face-on) | outer 10 % radius over the law's (r(t) + 1.52 w_e) at 0.1 / 0.5 / 1.0 tau: 1.001 / 1.002 / 1.003 | 5 % |
+| `wave_never_brightest` (PASS) | wave peak 0.938 / 0.495 / 0.138 against the body's 4.98 / 3.91 / 2.57; after L_w 0, other tiers 0 | <=; 0; 0 |
+| `wave_thick_not_a_line` (PASS) | face-on band 50.0 px (need 23.0); edge-on bar from above 129.0 px (need 95.0) | >= 0.2 R_f f / z |
+| `wave_broken_circumference` (PASS) | lit share of 64 bins 0.719, max / min 20.0 | 0.40-0.85; >= 2 |
+| `wave_fire_not_grey` (PASS) | edge / band 1.62, band R / G 2.69, hue 0.75 / 0.25 at 0.2 / 0.9 L_w, chroma 0.776 / 0.932 | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |
+| `wave_refraction_strips_present_and_capped` (PASS; capital 1.5 km) | at birth 8 strips, 0.123 screens, request 1; at P + 200 ms wave 1, strips 0 (capped 1, 0.514 screens) | 8; <= 0.25 |
+| `wave_shimmer_strips_area` (PASS) | at r 1,000 px: 6 strips 0.066 screens against the box 0.568: 0.116 | <= 0.6 |
+| `wave_lights_swept_hulls` (PASS; a hull plane through the centre, 2 R_f out) | 0.337 while the front crosses (32 ms), 0.0 at 0.5 tau | >= 0.1; 0 |
+| `compose_silhouette_cv` (PASS; median of 8 seeds) | CV at 0.3 / 0.6 L: fighter 0.193 / 0.204, capital 0.397 / 0.456, station 0.341 / 0.445; the single body 0.143 / 0.144 / 0.138 | >= 0.18 |
+| `compose_silhouette_changes` (PASS) | correlation / RMS between the ages: fighter 0.76 / 0.208, capital 0.892 / 0.219, station 0.879 / 0.222 | <= 0.7 or >= 0.15 |
+| `compose_not_grapes`, `compose_under_one_sun` (PASS, PASS) | largest blob 1.0 / 1.0 / 1.0; peak over the single body 1.0 / 1.0 / 1.0, mean lit 0.994 / 1.013 / 0.978 | >= 0.8; <= 1.4, 0.7-1.3 |
+| `compose_births_spread`, `compose_jets_capital` (PASS, PASS) | N / jets: fighter 3 / 0, capital 4 / 1, station 5 / 1; born at 0: 1, by 0.15 L all; at L 0; jets 2.0:1 | |
+| `compose_eye_inside_shared` (PASS) | own death (24 m): drawn 2, shared 1; close capital at 0.25 L: drawn 2, shared 1 | <= 4, shared |
+| `compose_lod_floor` (PASS) | a budget of nothing: 2 drawn, jets 0, shared 1, 3 dropped | 2, 0 |
+| `compose_box_holds_spheres` (PASS; 8 seeds x 3 tiers, a 1.6 x box) | lit pixels outside the box: 0 | 0 |
+| `death_budget_capital_close_5120` re-run (PASS) | worst 412.5 us (capital_close_700ms, shed 10); the wave drawn on 8 of 32 frames P .. P + L_w | <= 450; >= 80 % |
+| timing (5120x1440) | wave alone 99.7 us (weight 0.499), miss 111.2 us (0.564); compose factors N 2 / 3 / 4 / 5 0.729 / 0.845 / 0.932 / 1.011, shared N 4 0.804; eye inside N 4 285.3 us, eye inside 286.2 us | pinned 0.50 / 0.10; <= 300 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (1920x1080) | band 17694 px, 17677 moved, 17584 outward, mean 3.96 px; sky band 8855, 8850 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (5120x1440) | band 31153 px, 31068 moved, 30424 outward, mean 5.404 px; sky band 15582, 15543 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_shimmer_strips_timing` (5120x1440, r 1000.0 px) | strips 0.0884 ms against the box 0.1657 ms: 0.533 (copy 3264480 / 3263040 px) | <= 0.6 |
+
+**Open after this record.** `death_body_erodes_outside_in` (lit share inside R(t) at 0.9 L 0.246 > 0.20: the composed
+cluster keeps more lit pixels late than the single body), `death_stage_cpu_32_deaths` (64.2 us > 50) and
+`death_big_stage_cpu` (0.0838 us a quad > 0.08: the per-frame placement, outline and table writes), `wave_drawn_close_capital`
+(the wave drawn on 8 of 32 frames P .. P + L_w at the close capital: its box costs 0.56 a screen where the note assumed 0.10,
+so the budget sheds it at step 3; the worst frame 412.5 us within 450). Frames judged from the dump (local,
+`stage-dump-wave/`). Not flown.
+
+### The trailing sheet, the strips and the lobed body (2026-11-07, same dirty tree)
+
+The main session's judgement of the first frames (the wave a thin smooth hoop at 1.5 and 5 km, the composed capital body
+large smooth white balloons from P + 800 ms) and the four open gates above, implemented as explosion-look.md section
+13's D26-D35. Table from `ledger_rows.py --markdown --wave` over the native record of this tree (D3D 328 checks, 4 failed;
+hook 147 / 0; engine shimmer 73 / 0 on its second run, the first failed `wave_shimmer_strips_timing` at 0.759 with the
+strips' own time 0.128 ms against 0.084 on the rerun: host timing, no shimmer source changed):
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `wave_program_attached` (PASS) | wave_ps 524 slots, compose_ps - slots, the device's 4096 | created |
+| `wave_radius_law` (PASS; capital 5 km face-on) | the lit bins' median edge radius over r(t) at 0.1 / 0.5 / 1.0 tau: 1.016 / 1.009 / 1.01 (the median outer 10 % radius 393.2 / 775.5 / 857.1 px against r(t) + 1.52 w_e 362.2 / 744.7 / 823.9: the tongues) | 5 % |
+| `wave_sheet_thick`, `wave_hot_edge_trailing_sheet`, `wave_flame_tongues` (PASS, PASS, PASS; 5 km, 0.5 tau) | band + sheet 0.751 R_f at 10 % of each ray's peak; edge over the sheet's mean 0.2-0.6 R_f behind 7.53, the sheet at 0.7 R_f behind 0.0286 of the peak; the lit bins' outer radii spread 0.568 R_f | >= 0.6; >= 1.4, >= 0.01; >= 0.2 |
+| `wave_never_brightest` (PASS) | wave peak 3.514 / 1.891 / 0.537 against the body's 4.871 / 3.373 / 1.499; after L_w 0, other tiers 0 | <=; 0; 0 |
+| `wave_thick_not_a_line` (PASS) | face-on band 86.5 px (need 23.0); edge-on bar from above 166.0 px (need 95.0) | >= 0.2 R_f f / z |
+| `wave_broken_circumference` (PASS) | lit share of 64 bins 0.719, max / min 54.34 | 0.40-0.85; >= 2 |
+| `wave_fire_not_grey` (PASS) | edge / band 2.06, band R / G 1.96, hue 0.75 / 0.25 at 0.2 / 0.9 L_w, chroma 0.731 / 0.93 | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |
+| `wave_refraction_strips_present_and_capped` (PASS; capital 1.5 km) | at birth 8 strips, 0.123 screens, request 1; at P + 200 ms wave 1, strips 0 (capped 1, 0.514 screens) | 8; <= 0.25 |
+| `wave_shimmer_strips_area` (PASS) | at r 1,000 px: 6 strips 0.066 screens against the box 0.568: 0.116 | <= 0.6 |
+| `wave_lights_swept_hulls` (PASS; a hull plane through the centre, 2 R_f out) | 0.352 while the front crosses (32 ms), 0.0 at 0.5 tau | >= 0.1; 0 |
+| `compose_silhouette_cv` (PASS; median of 8 seeds) | CV at 0.3 / 0.6 L: fighter 0.323 / 0.327, capital 0.414 / 0.512, station 0.338 / 0.47; the single body 0.143 / 0.144 / 0.138 | >= 0.18 |
+| `compose_silhouette_changes` (PASS) | correlation / RMS between the ages: fighter 0.755 / 0.263, capital 0.898 / 0.252, station 0.839 / 0.247 | <= 0.7 or >= 0.15 |
+| `compose_not_grapes`, `compose_under_one_sun` (PASS, PASS) | largest blob 1.0 / 1.0 / 1.0; peak over the single body 0.898 / 0.898 / 0.898, mean lit 0.907 / 0.97 / 0.961 | >= 0.8; <= 1.4, 0.7-1.3 |
+| `compose_births_spread`, `compose_jets_capital` (PASS, PASS) | N / jets: fighter 3 / 0, capital 4 / 1, station 5 / 1; born at 0: 1, by 0.15 L all; at L 0; jets 2.0:1 | |
+| `compose_eye_inside_shared` (PASS) | own death (24 m): drawn 2, shared 1; close capital at 0.25 L: drawn 2, shared 1 | <= 4, shared |
+| `compose_lod_floor` (PASS) | a budget of nothing: 2 drawn, jets 0, shared 1, 3 dropped | 2, 0 |
+| `compose_box_holds_spheres` (PASS; 8 seeds x 3 tiers, a 1.6 x box) | lit pixels outside the box: 0 | 0 |
+| `compose_clumps_survive`, `compose_no_white_region` (PASS, PASS) | blobs of >= 1 % of the lit pixels at 0.6 L: fighter 2.0, capital 2.0, station 2.0; widest white run at 0.3 / 0.6 L (core on) 0.0 / 0.0 / 0.0 R_f | >= 2; <= 0.3 |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (FAIL, FAIL) | 32 fighters 60.5 us (single body 57.7); the big set 81.4 us, 0.1029 a quad (single body 78.3, no wave 77.1) | 50; 0.08 |
+| `death_budget_capital_close_5120` re-run (PASS) | worst 396.7 us (capital_close_700ms, shed 9); the wave drawn on 1 of the 6 frames P .. P + L_w it is on screen (`wave_drawn_close_capital` FAIL) | <= 450; >= 80 % |
+| timing (5120x1440) | wave alone 239.4 us (1.0 screens drawn: 1.283 a screen), one octave 216.0 us (1.151), the box at a station's birth 242.0 us (1.297); compose factors N 2 / 3 / 4 / 5 0.703 / 0.809 / 0.889 / 0.977, shared N 4 0.814; eye inside N 4 274.7 us, eye inside 272.6 us | pinned 1.26 / 1.11; <= 300 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (1920x1080) | band 17694 px, 17677 moved, 17584 outward, mean 3.96 px; sky band 8855, 8850 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (5120x1440) | band 31153 px, 31068 moved, 30424 outward, mean 5.404 px; sky band 15582, 15543 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_shimmer_strips_timing` (5120x1440, r 1000.0 px) | strips 0.0836 ms against the box 0.1675 ms: 0.499 (copy 3264480 / 3263040 px) | <= 0.6 |
+
+Also measured in that record: `death_big_eye_inside_bounded` FAIL (the close capital at 0.25 L lit share 0.842 against
+0.9, 0.922 before the stratified offsets; with the eye inside, N 2 sub-bursts set apart no longer fill the view as the
+single ball did), `death_body_erodes_outside_in` PASS (lit share 0.835 / 0.585 / 0.154 at 0.1 / 0.5 / 0.9 L in the dev
+runs), `death_cools_through_ramp` PASS (T 0.75 at 0.2 L only with `compose_core_x` 0.25; 0.50 at 0.2). The CPU rows
+swing with the host: over thirteen dev runs of this session (boom-only builds, logs not kept) the 32 fighters measured 40.0-61.0 us and the single body
+alone 38.7-57.9 us, the big set 59.0-81.9 us (0.075-0.103 a quad; the original record 64.2 / 0.0838); paired in one run
+the composed body's share (median - single_body_us) ranged -9.3 to +7.4 us, inside that swing, after the cached
+placement and the LOD by count (32 fighters: N 2; the big set: 30 bodies, N 2). `wave_drawn_close_capital` now counts the
+frames the wave is on screen (face-on at 720 m its front leaves the frame within ~0.2 s; the strips then build nothing):
+drawn on P + 0 (box, 0.827 screens, its second octave and 4 secondaries shed), shed at 50-200 ms: the wave's full-screen
+cost (1.28 a screen, 227 us) does not fit the 450 us fence beside the 316-372 us of the rest under the given order (2b
+octave, 2c secondaries, 3 the wave). Grids judged (local, `stage-dump-wave/v2/`): the wave a thick mottled fire disc
+with a hot broken edge and flame tongues, never a hoop; the body lobed with separate clumps to 0.6 L on every tier, no
+white region from 0.3 L; the large capital lobes at 2700 / 3900 ms are still smooth (the burst noise at that scale) and
+P + 800 ms (0.2 L) keeps a near-white region (E_b heat clipped in the dump, a fifth of the core). Not flown.
+
+
+### v3: the ramp's colour, the eye in the plane, the fourth octave, the wave last (2026-11-07, same dirty tree)
+
+The coordinator's seven decisions on the v2 grids, built as explosion-look.md D38-D45. Table from `ledger_rows.py
+--markdown --wave` over the last native record (D3D 330 checks, 3 failed; hook 147 / 0; the engine shimmer record above,
+its sources unchanged):
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `wave_program_attached` (PASS) | wave_ps 589 slots, compose_ps - slots, the device's 4096 | created |
+| `wave_radius_law` (PASS; capital 5 km face-on) | the lit bins' median edge radius over r(t) at 0.1 / 0.5 / 1.0 tau: 1.011 / 1.002 / 1.001 (the median outer 10 % radius 393.2 / 775.5 / 855.6 px against r(t) + 1.52 w_e 362.2 / 744.7 / 823.9: the tongues) | 5 % |
+| `wave_sheet_thick`, `wave_hot_edge_trailing_sheet`, `wave_flame_tongues` (PASS, PASS, PASS; 5 km, 0.5 tau) | band + sheet 0.977 R_f at 10 % of each ray's peak; edge over the sheet's mean 0.2-0.6 R_f behind 1.93, the sheet at 0.7 R_f behind 0.128 of the peak; the lit bins' outer radii spread 0.552 R_f | >= 0.6; >= 1.4, >= 0.01; >= 0.2 |
+| `wave_never_brightest` (PASS) | wave peak 0.878 / 0.473 / 0.141 against the body's 4.871 / 3.373 / 1.499; after L_w 0, other tiers 0 | <=; 0; 0 |
+| `wave_thick_not_a_line` (PASS) | face-on band 112.5 px (need 23.0); edge-on bar from above 150.0 px (need 95.0) | >= 0.2 R_f f / z |
+| `wave_broken_circumference` (PASS) | lit share of 64 bins 0.719, max / min 20.01 | 0.40-0.85; >= 2 |
+| `wave_fire_not_grey` (PASS) | edge / band 1.42, band R / G 1.59, hue 0.75 / 0.25 at 0.2 / 0.9 L_w, chroma 0.568 / 0.924 | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |
+| `wave_refraction_strips_present_and_capped` (PASS; capital 1.5 km) | at birth 8 strips, 0.123 screens, request 1; at P + 200 ms wave 1, strips 0 (capped 1, 0.514 screens) | 8; <= 0.25 |
+| `wave_shimmer_strips_area` (PASS) | at r 1,000 px: 6 strips 0.066 screens against the box 0.568: 0.116 | <= 0.6 |
+| `wave_lights_swept_hulls` (PASS; a hull plane through the centre, 2 R_f out) | 0.321 while the front crosses (32 ms), 0.0 at 0.5 tau | >= 0.1; 0 |
+| `compose_silhouette_cv` (PASS; median of 8 seeds) | CV at 0.3 / 0.6 L: fighter 0.323 / 0.327, capital 0.412 / 0.505, station 0.338 / 0.432; the single body 0.143 / 0.121 / 0.113 | >= 0.18 |
+| `compose_silhouette_changes` (PASS) | correlation / RMS between the ages: fighter 0.755 / 0.263, capital 0.931 / 0.175, station 0.915 / 0.193 | <= 0.7 or >= 0.15 |
+| `compose_not_grapes`, `compose_under_one_sun` (PASS, PASS) | largest blob 1.0 / 0.998 / 0.999; peak over the single body 0.898 / 0.898 / 0.898, mean lit 0.907 / 0.982 / 0.974 | >= 0.8; <= 1.4, 0.7-1.3 |
+| `compose_births_spread`, `compose_jets_capital` (PASS, PASS) | N / jets: fighter 3 / 0, capital 4 / 1, station 5 / 1; born at 0: 1, by 0.15 L all; at L 0; jets 2.0:1 | |
+| `compose_eye_inside_shared` (PASS) | own death (24 m): drawn 2, shared 1; close capital at 0.25 L: drawn 2, shared 1 | <= 4, shared |
+| `compose_lod_floor` (PASS) | a budget of nothing: 2 drawn, jets 0, shared 1, 3 dropped | 2, 0 |
+| `compose_box_holds_spheres` (PASS; 8 seeds x 3 tiers, a 1.6 x box) | lit pixels outside the box: 0 | 0 |
+| `compose_clumps_survive`, `compose_no_white_region` (PASS, PASS) | blobs of >= 1 % of the lit pixels at 0.6 L: fighter 2.0, capital 2.0, station 2.0; widest white run at 0.3 / 0.6 L (core on) 0.0 / 0.0 / 0.0 R_f | >= 2; <= 0.3 |
+| `wave_fire_not_grey` ramp terms, `wave_eye_in_plane_no_whiteout` (PASS) | mean chroma (0.5 tau, 0.2 / 0.9 L_w) 0.730,0.608,0.927, on the ramp 1.000,1.000,1.000; eye in the plane at 1.5 km: worst mean 1 - e^(-Y) 0.058 (P + 0 ms), worst share above 0.9 0.018 | >= 0.35, >= 0.9; <= 0.35, <= 0.4 |
+| `compose_capital_structure` (FAIL; capital 1.5 km, 0.6 L) | blobs 2.0, lit share inside the outline 0.68; the fourth octave 258.3 us against three 227.3 us a frame-filling body: 1.349 a screen (pinned 1.35) | >= 3; <= 0.75 |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, FAIL) | 32 fighters 46.3 us (single body 43.8); the big set 86.6 us, 0.1095 a quad (repeats 53.0,45.2,46.1,46.3,49.4 / 83.0,76.7,86.6,87.2,87.2) (single body 82.1, no wave 81.9) | 50; 0.08 |
+| `death_budget_capital_close_5120` re-run (PASS) | worst 403.8 us (capital_close_700ms, shed 9); the wave drawn on 6 of the 6 frames P .. P + L_w it is on screen (`wave_drawn_close_capital` PASS) | <= 450; >= 80 % |
+| timing (5120x1440) | wave alone 252.5 us (1.0 screens drawn: 1.361 a screen), one octave 226.7 us (1.216), the box at a station's birth 251.3 us (1.354); compose factors N 2 / 3 / 4 / 5 0.688 / 0.786 / 0.857 / 0.938, shared N 4 0.747; eye inside N 4 282.1 us, eye inside 281.8 us | pinned 1.35 / 1.22; <= 300 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (1920x1080) | band 17694 px, 17677 moved, 17584 outward, mean 3.96 px; sky band 8855, 8850 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (5120x1440) | band 31153 px, 31068 moved, 30424 outward, mean 5.404 px; sky band 15582, 15543 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_shimmer_strips_timing` (5120x1440, r 1000.0 px) | strips 0.0836 ms against the box 0.1675 ms: 0.499 (copy 3264480 / 3263040 px) | <= 0.6 |
+
+Three official runs of this tree: the second failed only `compose_capital_structure`, the CPU rows passing (32 fighters
+40.4 us, repeats 40.4-40.5; the big set 57.6 us, 0.0728 a quad, repeats 57.5-61.1) and the bolt budget 97.7 us; the
+third (the record) failed `death_big_stage_cpu` (repeats 76.7-87.2 us) and `bolt_budget_512_bolts_20_muzzles_5120`
+(106.0 us against 100, the bolt sources unchanged) with the host slow throughout. `compose_capital_structure`: the
+capital holds 2 blobs at 0.6 L, not 3 (lit share inside the outline 0.68 passes); faster sub-burst erosion (pace 1.4-2.8)
+left 2 and broke the eye-inside (0.779), clumps (1.5) and the fighter's size (0.939). Hull `heavy_capital_64`
+(class=heavy case=capital_close_64_hits): 351.1 / 1139.0 us at 1080p / 5120x1440 against 351.0 / 1143.5 before (within
+1 %, octaves 2 on that frame). Grids (local, `stage-dump-wave/v3/`): the wave a thick textured ring on the ramp with
+holes carved black, its high-T band still reads beige in the dump's clamped sRGB; from above the passing front is a dim
+grey wash, no white wall; the composed capital body shows the fourth octave's grain at 1900 / 2700 ms, the large
+right-hand lobe at 2700 / 3900 ms stays smooth. Not flown.
+
+
+### v4: the kill (composed body off), the wave's ramp lowered, flame gaps (2026-11-07, same dirty tree)
+
+The coordinator's kill criterion on the v3 frames, explosion-look.md D46-D49: `compose_enabled` false (the single body with
+the fourth octave), the wave on a lower ramp with soft, radially stretched holes. The acceptance run waited for the game
+(`tasklist.exe` showed no X3AP.exe at the first check) and passed: D3D 318 checks, 0 failed; hook 147 / 0; the engine
+shimmer record above (its sources unchanged). One run before it lost the device mid-run (every GPU row 0.8-0.9 us, the
+log cut at `death_big_no_pop_at_birth`); retried once. Table from `ledger_rows.py --markdown --wave` over that record:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `compose_*` | skipped: `boom::compose_enabled` false (the kill, 2026-11-07 v4) | |
+| `wave_program_attached` (PASS) | wave_ps 614 slots, compose_ps - slots, the device's 4096 | created |
+| `wave_radius_law` (PASS; capital 5 km face-on) | the lit bins' median edge radius over r(t) at 0.1 / 0.5 / 1.0 tau: 1.017 / 1.004 / 1.012 (the median outer 10 % radius 393.2 / 775.5 / 856.3 px against r(t) + 1.52 w_e 362.2 / 744.7 / 823.9: the tongues) | 5 % |
+| `wave_sheet_thick`, `wave_hot_edge_trailing_sheet`, `wave_flame_tongues` (PASS, PASS, PASS; 5 km, 0.5 tau) | band + sheet 0.964 R_f at 10 % of each ray's peak; edge over the sheet's mean 0.2-0.6 R_f behind 1.63, the sheet at 0.7 R_f behind 0.1118 of the peak; the lit bins' outer radii spread 0.552 R_f | >= 0.6; >= 1.4, >= 0.01; >= 0.2 |
+| `wave_never_brightest` (PASS) | wave peak 0.878 / 0.473 / 0.139 against the body's 4.98 / 3.91 / 2.57; after L_w 0, other tiers 0 | <=; 0; 0 |
+| `wave_thick_not_a_line` (PASS) | face-on band 111.0 px (need 23.0); edge-on bar from above 150.0 px (need 95.0) | >= 0.2 R_f f / z |
+| `wave_broken_circumference` (PASS) | lit share of 64 bins 0.719, max / min 20.01 | 0.40-0.85; >= 2 |
+| `wave_fire_not_grey` (PASS) | edge / band 1.46, band R / G 1.84, hue 0.75 / 0.25 at 0.2 / 0.9 L_w, chroma 0.707 / 0.932 | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |
+| `wave_refraction_strips_present_and_capped` (PASS; capital 1.5 km) | at birth 8 strips, 0.123 screens, request 1; at P + 200 ms wave 1, strips 0 (capped 1, 0.514 screens) | 8; <= 0.25 |
+| `wave_shimmer_strips_area` (PASS) | at r 1,000 px: 6 strips 0.066 screens against the box 0.568: 0.116 | <= 0.6 |
+| `wave_lights_swept_hulls` (PASS; a hull plane through the centre, 2 R_f out) | 0.321 while the front crosses (32 ms), 0.0 at 0.5 tau | >= 0.1; 0 |
+| `wave_fire_not_grey` ramp terms, `wave_eye_in_plane_no_whiteout` (PASS) | mean chroma (0.5 tau, 0.2 / 0.9 L_w) 0.797,0.734,0.934, on the ramp 1.000,1.000,1.000; eye in the plane at 1.5 km: worst mean 1 - e^(-Y) 0.056 (P + 0 ms), worst share above 0.9 0.016 | >= 0.35, >= 0.9; <= 0.35, <= 0.4 |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 41.5 us (single body 41.5); the big set 59.1 us, 0.0747 a quad (repeats 41.5,41.5,41.5,41.6,43.2 / 59.3,59.1,58.8,58.7,76.8) (single body 59.7, no wave 56.1) | 50; 0.08 |
+| `death_budget_capital_close_5120` re-run (PASS) | worst 353.8 us (capital_close_700ms, shed 9); the wave drawn on 6 of the 6 frames P .. P + L_w it is on screen (`wave_drawn_close_capital` PASS) | <= 450; >= 80 % |
+| timing (5120x1440) | wave alone 259.4 us (1.0 screens drawn: 1.401 a screen), one octave 231.3 us (1.242), the box at a station's birth 261.0 us (1.410); compose factors N 2 / 3 / 4 / 5 None / None / None / None, shared N 4 None; eye inside N 4 282.7 us, eye inside 279.5 us | pinned 1.35 / 1.22; <= 300 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (1920x1080) | band 17694 px, 17677 moved, 17584 outward, mean 3.96 px; sky band 8855, 8850 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (5120x1440) | band 31153 px, 31068 moved, 30424 outward, mean 5.404 px; sky band 15582, 15543 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_shimmer_strips_timing` (5120x1440, r 1000.0 px) | strips 0.0836 ms against the box 0.1675 ms: 0.499 (copy 3264480 / 3263040 px) | <= 0.6 |
+
+The CPU rows (median of 5 repeats): 32 fighters 41.5 us (41.5-43.2), the big set 59.1 us, 0.0747 a quad (58.7-76.8); the
+bolt budget 99.4 us; hull `heavy_capital_64` 353.8 / 1132.4 us (351.0 / 1143.5 before). The later boom-only dump run
+measured the big set at 77.5-77.7 us (failing 0.08 a quad on timing alone; the game's absence not checked for that run).
+`death_budget_5120`'s eye-inside fighter rose to 309.8 us with the fourth octave on the single body filling the screen;
+an eye-inside body keeps three octaves now (279.5 us). Grids (local, `stage-dump-wave/v4/`, capital broadside, above,
+far 5 km, station 3 km, fighter 600 m): the single body broken and lobed to 3900 ms with the fourth octave's grain; the
+wave a thick ring with soft radial gaps, its mid-intensity orange still reading tan in the dump's clamped sRGB. Not flown.
+
+
+### Review fixes (2026-11-07, same dirty tree)
+
+The review's seven findings, explosion-look.md D50-D51. The acceptance run waited for the game (`tasklist.exe`: no X3AP.exe
+at the first check): D3D 320 checks, 3 failed, all on timing alone; hook 147 / 0. The engine shimmer sources are
+unchanged (its record above stands; the glue's strip room lives in the proxy). Table from `ledger_rows.py --markdown
+--wave` over that record:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `compose_*` | skipped: `boom::compose_enabled` false (the kill, 2026-11-07 v4) | |
+| `wave_program_attached` (PASS) | wave_ps 614 slots, compose_ps - slots, the device's 4096 | created |
+| `wave_radius_law` (PASS; capital 5 km face-on) | the lit bins' median edge radius over r(t) at 0.1 / 0.5 / 1.0 tau: 0.998 / 1.0 / 1.001 (the median outer 10 % radius 390.6 / 765.3 / 844.8 px against r(t) + 1.52 w_e 362.2 / 744.7 / 823.9: the tongues) | 5 % |
+| `wave_sheet_thick`, `wave_hot_edge_trailing_sheet`, `wave_flame_tongues` (PASS, PASS, PASS; 5 km, 0.5 tau) | band + sheet 0.924 R_f at 10 % of each ray's peak; edge over the sheet's mean 0.2-0.6 R_f behind 2.85, the sheet at 0.7 R_f behind 0.0556 of the peak; the lit bins' outer radii spread 0.551 R_f | >= 0.6; >= 1.4, >= 0.01; >= 0.2 |
+| `wave_never_brightest` (PASS) | wave peak 0.878 / 0.473 / 0.139 against the body's 4.98 / 3.91 / 2.57; after L_w 0, other tiers 0 | <=; 0; 0 |
+| `wave_thick_not_a_line` (PASS) | face-on band 106.5 px (need 23.0); edge-on bar from above 161.0 px (need 95.0) | >= 0.2 R_f f / z |
+| `wave_broken_circumference` (PASS) | lit share of 64 bins 0.797, max / min 20.01 | 0.40-0.85; >= 2 |
+| `wave_fire_not_grey` (PASS) | edge / band 1.51, band R / G 1.85, hue 0.75 / 0.25 at 0.2 / 0.9 L_w, chroma 0.706 / 0.931 | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |
+| `wave_refraction_strips_present_and_capped` (PASS; capital 1.5 km) | at birth 8 strips, 0.123 screens, request 1; at P + 200 ms wave 1, strips 0 (capped 1, 0.514 screens) | 8; <= 0.25 |
+| `wave_shimmer_strips_area` (PASS) | at r 1,000 px: 6 strips 0.066 screens against the box 0.568: 0.116 | <= 0.6 |
+| `wave_lights_swept_hulls` (PASS; a hull plane through the centre, 2 R_f out) | 0.297 while the front crosses (32 ms), 0.0 at 0.5 tau | >= 0.1; 0 |
+| `wave_fire_not_grey` ramp terms, `wave_eye_in_plane_no_whiteout` (PASS) | mean chroma (0.5 tau, 0.2 / 0.9 L_w) 0.800,0.732,0.933, on the ramp 1.000,1.000,1.000; eye in the plane at 1.5 km: worst mean 1 - e^(-Y) 0.088 (P + 50 ms), worst share above 0.9 0.016 | >= 0.35, >= 0.9; <= 0.35, <= 0.4 |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (FAIL, FAIL) | 32 fighters 58.6 us (single body 58.5); the big set 79.1 us, 0.1 a quad (repeats 58.7,58.6,58.4,58.6,58.3 / 79.3,79.3,79.1,79.1,79.0) (single body 78.9, no wave 75.5) | 50; 0.08 |
+| `death_budget_capital_close_5120` re-run (PASS) | worst 351.7 us (capital_close_700ms, shed 9); the wave drawn on 6 of the 6 frames P .. P + L_w it is on screen (`wave_drawn_close_capital` PASS) | <= 450; >= 80 % |
+| timing (5120x1440) | wave alone 259.4 us (1.0 screens drawn: 1.399 a screen), one octave 229.8 us (1.233), the box at a station's birth 260.2 us (1.404); compose factors N 2 / 3 / 4 / 5 None / None / None / None, shared N 4 None; eye inside N 4 281.0 us, eye inside 278.7 us | pinned 1.4 / 1.24; <= 300 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (1920x1080) | band 17694 px, 17677 moved, 17584 outward, mean 3.96 px; sky band 8855, 8850 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (5120x1440) | band 31153 px, 31068 moved, 30424 outward, mean 5.404 px; sky band 15582, 15543 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_shimmer_strips_timing` (5120x1440, r 1000.0 px) | strips 0.0836 ms against the box 0.1675 ms: 0.499 (copy 3264480 / 3263040 px) | <= 0.6 |
+
+Timing-only failures in that record: `death_stage_cpu_32_deaths` 58.6 us (repeats 58.3-58.7; the single body alone 58.5,
+the composed body off), `death_big_stage_cpu` 79.1 us, 0.100 a quad (79.0-79.3), `bolt_budget_512_bolts_20_muzzles_5120`
+155.1 us (the bolt sources unchanged; 97.3-99.4 us in the two runs before). The same build passed them at 41.5 / 59.1 /
+99.4 us earlier the same day; the five repeats agree within 0.4 us inside a run while the runs differ by 40 %: the host's
+clock state between runs, not the stage. Also measured: `wave_break_follows_seed` correlation -0.470; the wave refused
+(fault bit 10): wave off with `wave_program_create`, 7 body boxes drawn, its wave not; after the Reset the capital's wave
+drawn (`wave_enabled` 1); the fourth octave on a body seen from outside 27.4 against 27.9 us over 0.27 screens (weight
+1.145 against 1.18); the wave's weights 1.399 / 1.233 / 1.404 against 1.40 / 1.24 (+0.03); hull `heavy_capital_64`
+348.1 / 1132.4 us; the octave hysteresis 422242222244 as wanted. Grids (local, `stage-dump-wave/v5/`, far 5 km and
+broadside): each wave its own break and gaps; a horizontal step through the centre is visible in the far frames at 1540 /
+1620 ms. Traced (the 1620 ms frame's rows): the centre row differs from its neighbours only across the dying hull's
+width (|x| 151-196 px: the scene model's panel line) and in one pixel; in the band the rows agree (e.g. 73 / 73 / 73
+from 324 to 344 px). The step is the scene model's hull, which the ring passes behind at 1540 ms (the lane hides the
+wave there), not a strip seam. Gate `wave_no_strip_seam` (the band's mean 2 px either side of the eight strip
+boundaries and of the angle's wrap at pi, 5 km, 0.5 tau, eight strips drawn): worst 0.0144 of the peak against 0.1
+[M]. On the quiet host (no game, the bolt row back to 98.1 us) the CPU rows still fail: 32 fighters repeats 44.7,
+57.8, 57.6, 57.9, 57.6 us (median 57.6), the big set 78.2-78.6 us (0.099 a quad); bounds untouched. v6 far grid local
+(`stage-dump-wave/v6/`). Not flown.
+

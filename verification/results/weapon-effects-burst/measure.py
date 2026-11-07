@@ -4,7 +4,8 @@ equivalent radius sqrt(A/pi) of the union, connected blobs (4-neighbour) count a
 for single-hit cases the max lit distance from the frame centre. Step 3 (docs/architecture/explosion-look.md 9): the death
 explosion's dump cases (weapon_effects_boom_cases.h, boom_*) write the parts -flash, -body, -shock, -ember, -fragment,
 -glow and -smoke the same way; each is measured likewise, with the max lit distance from the centre (one death on the
-axis; the nested case's three about it)."""
+axis; the nested case's three about it). Section 13: the big tiers' cases write -body (the composed cluster) and -wave
+(the fire wave) beside each frame; the wave's max lit distance is its front's reach from the centre."""
 import sys, numpy as np
 from pathlib import Path
 

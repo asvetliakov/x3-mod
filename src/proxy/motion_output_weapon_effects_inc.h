@@ -31,6 +31,7 @@ void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     weapon_bolt_reason_ = weapon_bolts_requested_ ? "pending" : "off";
     weapon_bolt_reason_logged_ = false;
     weapon_shimmer_count_ = 0;
+    weapon_wave_shimmer_count_ = 0;
     weapon_armed_ = false;
     weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_failures_ = 0;
@@ -75,14 +76,15 @@ bool MotionOutput::attach_weapon_effects() noexcept {
     }
     const bool attached = queried && SUCCEEDED(hr) && weapon_->caps().enabled;
     const auto& c = weapon_->caps();
-    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u filament_ps_slots=%u lightning_vs_slots=%u lightning_vtf=%u,%u hull=%u hull_reason=%s bolt=%u bolt_reason=%s bolt_vs_slots=%u bolt_ps_slots=%u bolt_flag_ps_slots=%u boom=%u boom_reason=%s shock=%u shock_reason=%s shock_ps_slots=%u halo_ps_slots=%u max_ps_slots=%lu retry=reset",
+    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u sprite_vs_slots=%u sprite_ps_slots=%u glow_vs_slots=%u glow_ps_slots=%u fireball_vs_slots=%u fireball_ps_slots=%u filament_ps_slots=%u lightning_vs_slots=%u lightning_vtf=%u,%u hull=%u hull_reason=%s bolt=%u bolt_reason=%s bolt_vs_slots=%u bolt_ps_slots=%u bolt_flag_ps_slots=%u boom=%u boom_reason=%s shock=%u shock_reason=%s shock_ps_slots=%u halo_ps_slots=%u wave=%u wave_reason=%s wave_ps_slots=%u compose=%u compose_reason=%s compose_ps_slots=%u max_ps_slots=%lu retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
         c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.sprite_vs_slots, c.sprite_ps_slots,
         c.glow_vs_slots, c.glow_ps_slots, c.fireball_vs_slots, c.fireball_ps_slots, c.filament_ps_slots, c.lightning_vs_slots,
         unsigned(c.lightning_vtf_four), unsigned(c.lightning_vtf_r32f), unsigned(c.hull_enabled), c.hull_reason,
         unsigned(c.bolt_enabled), c.bolt_reason, c.bolt_vs_slots, c.bolt_ps_slots, c.bolt_flag_ps_slots,
         unsigned(c.boom_enabled), c.boom_reason, unsigned(c.shock_enabled), c.shock_reason, c.shock_ps_slots, c.halo_ps_slots,
-        static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
+        unsigned(c.wave_enabled), c.wave_reason, c.wave_ps_slots, unsigned(c.compose_enabled), c.compose_reason,
+        c.compose_ps_slots, static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
     if (!attached) weapon_attach_failed_ = true;
     return attached;
 }
@@ -180,6 +182,8 @@ renderer::WeaponGlowVertex weapon_scorches[renderer::weapon_scorch_boxes * 4];
 weapon_effects::stage::BoomState weapon_boom_state;
 renderer::WeaponFireballVertex weapon_shocks[renderer::weapon_shock_boxes * 4];
 renderer::WeaponGlowVertex weapon_halos[renderer::weapon_halo_boxes * 4];
+renderer::WeaponFireballVertex weapon_waves[renderer::weapon_wave_boxes * 4 * renderer::weapon_wave_quads]; // 13.1: the fire waves' quads
+renderer::WeaponComposeConstants weapon_compose[weapon_effects::core::boom::max_bodies]; // section 13.2: the tables
 // Step 4: the bullet rows' looks, one read per row per frame (the in-place bolt draw and the muzzles; CPU data).
 weapon_effects::stage::BoltRowCache& weapon_bolt_rows() {
     static weapon_effects::stage::BoltRowCache cache;
@@ -290,7 +294,9 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     // HookState::life_floor_ms), the screens of the shared budget the patches left.
     weapon_effects::stage::HullCounts hn{};
     weapon_effects::stage::BoomCounts bn{}; // step 3: the deaths (built in the explosions modes)
-    unsigned boom_shocks = 0, boom_halos = 0;
+    unsigned boom_shocks = 0, boom_halos = 0, boom_waves = 0, boom_composed = 0, boom_first = 0;
+    const renderer::WeaponWaveConstants* boom_wave_constants = nullptr;
+    weapon_wave_shimmer_count_ = 0; // the newest fire wave's refraction request, built below in the explosions modes
     if (hull_mode) {
         weapon_effects::stage::HullView hv;
         hv.cam = camera;
@@ -394,10 +400,21 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
             bb.halos = weapon_halos;
             bb.shock_cap = weapon_->caps().shock_enabled ? bb.shock_cap : 0u; // the shells only with their program
             bb.halo_cap = renderer::weapon_halo_boxes;
+            bb.waves = weapon_waves;
+            bb.wave_cap = weapon_->caps().wave_enabled ? renderer::weapon_wave_boxes : 0u; // the waves only with their program
+            bb.wave_shimmer = &weapon_wave_shimmer_;
+            bb.wave_strip_room = shimmer_rects_before_wave_ < engine_shimmer::max_rects
+                                     ? engine_shimmer::max_rects - shimmer_rects_before_wave_ : 0u;
+            bb.compose = weapon_->caps().compose_enabled ? weapon_compose : nullptr; // composed only with its program
             bn = weapon_effects::stage::build_boom(weapon_effects::hook_state().ring, weapon_boom_state, hv,
                                                    weapon_effects::stage::BoomTuning{}, bb, &visible, &weapon_bubble_cache);
             boom_shocks = bb.shock_boxes;
             boom_halos = bb.halo_boxes;
+            boom_waves = bb.wave_boxes;
+            boom_wave_constants = bb.wave_constants;
+            boom_composed = bb.composed_boxes;
+            boom_first = mz_fireballs; // before the boom's boxes join the count below
+            weapon_wave_shimmer_count_ = bb.wave_shimmer_count;
             hb.sprites += 4 * bb.sprite_quads;
             hb.sprite_cap -= bb.sprite_quads;
             hb.glows += 4 * bb.glow_boxes;
@@ -439,14 +456,18 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 log("weapon_boom_capture device=%llu frame=%llu now=%lu step_ms=%lu deaths=%u bodies=%u stars=%u shocks=%u "
                     "embers=%u fragments=%u darks=%u glows=%u smokes=%u shed=%u octaves=%u fine=%u out_of_reach=%u "
                     "capped=%u floored=%u screens=%.3f body_screens=%.3f max_cluster=%.2f halos=%u embers_hidden=%u "
-                    "secondaries=%u secondaries_shed=%u secondaries_born=%u hull_lights=%u bubble_cached=%u capsules=%u",
+                    "secondaries=%u secondaries_shed=%u secondaries_born=%u hull_lights=%u bubble_cached=%u capsules=%u "
+                    "waves=%u waves_shed=%u wave_plane=%u wave_strips=%u wave_strips_capped=%u wave_strips_dropped=%u composed=%u "
+                    "compose_shared=%u compose_dropped=%u compose_eye=%u",
                     id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                     bn.deaths, bn.bodies, bn.stars, bn.shocks,
                     bn.embers, bn.fragments, bn.darks, bn.glows,
                     bn.smokes, bn.shed, bn.octaves, bn.fine,
                     bn.out_of_reach, bn.capped, bn.floored,
                     double(bn.screens), double(bn.body_screens), double(bn.max_cluster), bn.halos, bn.embers_hidden,
-                    bn.secondaries, bn.secondaries_shed, bn.secondaries_born, bn.hull_lights, bn.bubble_cached, bn.capsules);
+                    bn.secondaries, bn.secondaries_shed, bn.secondaries_born, bn.hull_lights, bn.bubble_cached, bn.capsules,
+                    bn.waves, bn.waves_shed, bn.wave_view_plane, bn.wave_strips, bn.wave_strips_capped, bn.wave_strips_dropped, bn.composed,
+                    bn.compose_shared, bn.compose_dropped, bn.compose_eye);
         }
         hn = weapon_effects::stage::build_hull(weapon_effects::hook_state().ring, weapon_hull_state, &weapon_effects_read,
                                                hv, weapon_effects::stage::HullTuning{}, hb, &visible);
@@ -469,6 +490,12 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         f.shock_boxes = boom_shocks;
         f.halos = weapon_halos;
         f.halo_boxes = boom_halos;
+        f.waves = weapon_waves;
+        f.wave_boxes = boom_waves;
+        f.wave_constants = boom_wave_constants;
+        f.compose = weapon_compose;
+        f.composed_first = boom_first; // the boom's bodies follow the muzzles' fireballs
+        f.composed_boxes = boom_composed;
         f.rings = weapon_rings;
         f.ring_quads = rings;
         f.filaments = weapon_filaments;

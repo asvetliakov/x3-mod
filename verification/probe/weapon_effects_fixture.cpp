@@ -999,6 +999,12 @@ int main(int argc, char** argv) {
                                               pass.caps().bubble_ps_slots < 2000, "");
     report("target_1080", make_target(g, 1920, 1080));
     draw_lane(g, 0.f, -1.f);
+    // X3M_WEAPON_EFFECTS_BOOM_ONLY=1 (a development run, never the record): the step-3 cases alone.
+    if (const char* only = std::getenv("X3M_WEAPON_EFFECTS_BOOM_ONLY"); only && *only == '1') {
+        boom_cases(pass, pp);
+        std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
+        return failures ? 1 : 0;
+    }
     rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, uniform = cells_only;
     cells_only.ring_gain = 0.f;
     ring_only.cell_gain = 0.f;

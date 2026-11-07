@@ -57,6 +57,16 @@ struct WeaponEffectsCaps {
     const char* boom_reason = "not_requested";
     const char* shock_reason = "not_requested";
     unsigned shock_ps_slots = 0, halo_ps_slots = 0;
+    // Section 13.1: the fire wave's program (weapon_wave_ps.hlsl, optional: its refusal leaves wave_enabled false and
+    // wave_reason, the deaths drawn without their waves).
+    bool wave_enabled = false;
+    const char* wave_reason = "not_requested";
+    unsigned wave_ps_slots = 0;
+    // Section 13.2: the composed body's program (weapon_compose_ps.hlsl, optional: its refusal leaves compose_enabled
+    // false, the deaths drawn as the single body).
+    bool compose_enabled = false;
+    const char* compose_reason = "not_requested";
+    unsigned compose_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
 };
 // Step 2, the hull hit (docs/architecture/weapon-look.md 2.5, 2.7, 2.8, 2.14, 3.1): two batched primitives, each one
@@ -102,7 +112,7 @@ struct WeaponGlowVertex {
 // outward advection (cells) and its third octave's weight (0 .. 1 by its projected size). The pixel program
 // (weapon_fireball_ps.hlsl, docs/architecture/hull-burst-look.md section 2) intersects the pixel's ray with the sphere,
 // integrates the radial density along the chord up to the lane (the part inside a hull is not drawn), erodes it by two
-// octaves of advected 2-D value noise and the third at min(its weight, WeaponEffectsFrame::fireball_octaves 3 ? 1 : 0)
+// octaves of advected 2-D value noise, the third and fourth at their weights within WeaponEffectsFrame::fireball_octaves
 // inside its lobed silhouette and shades it on
 // the heat ramp. The smokes (section 5) draw the same program under the scorches' multiply blend, over the lane's
 // surface only. Drawn through the sprite batch's quad index list.
@@ -121,8 +131,29 @@ struct WeaponFireballVertex {
     float sphere[4];  // view-space centre, radius
     float look[4];    // heat T, radiance E, age fraction x, seed
     float tint[4];    // a weapon tint (linear) and its share of the colour (0: the heat ramp alone; < 0: smoke)
-    float disc[4];    // rotation (radians), lobe seed, advection (noise cells), octaves (2 or 3)
+    float disc[4];    // rotation (radians), lobe seed, advection (noise cells), the third and fourth octaves' weight 0 .. 2
     float core = 0.f; // step 3: the white-hot core's gain g (0: none; the hull bursts and smokes; boom::core_*)
+};
+// Section 13.2 (explosion-look.md): a composed death body's table, the pixel constants of its own draw
+// (weapon_compose_ps.hlsl c14..c42; the box is its fireball-layout quad, sphere.xyz the cluster's centre): spheres drawn
+// and the shared-noise mode; per sphere (the CPU's table, stage::boom_compose_table) its view centre and radius, its jet
+// axis (view, unit) and the ray's squeeze 1 - short / long (0: a sphere), its erosion clock, noise and lobe seeds and
+// heat, its white-hot core's gain.
+constexpr unsigned weapon_compose_spheres = 7;
+struct WeaponComposeConstants {
+    float head[4] = {0.f, 0.f, 0.f, 0.f}; // spheres drawn, shared (1), unused x2
+    float sphere[weapon_compose_spheres][4][4]{};
+};
+// Section 13.1 (explosion-look.md): the death fire waves, weapon_wave_quads fireball-layout quads each (the annulus's
+// eight strips on screen, or the slab's box: `quads` of them drawn; sphere = the centre and the front's radius, look =
+// (w_e, h / 2, T_w, E), tint = the long axis and 1 / stretch, disc.y / disc.z the circumference's seeds),
+// weapon_wave_ps.hlsl, one draw each with its plane's normal, the sheet noise's frequency and its cooling in c13..c15.
+constexpr unsigned weapon_wave_boxes = 2, weapon_wave_quads = 8;
+struct WeaponWaveConstants {
+    float normal[4] = {0.f, 0.f, 1.f, 0.f}; // the plane's normal (view, unit), the sheet noise's frequency (per view unit)
+    float heat[4] = {1.f, 0.f, 0.f, 0.f};   // the age's cooling factor on T, the sheet's second octave's weight (0: shed)
+    float spare[4] = {0.f, 0.f, 0.f, 0.f};  // c15, unused
+    unsigned quads = 1;                     // the quads drawn (1 .. weapon_wave_quads; not uploaded)
 };
 // The hull classes' shaped glows (docs/architecture/hull-impact-classes.md 3.5, 3.6): the glow primitive's box (the
 // light sphere's screen rectangle, its centre and R) with a profile: the surface ring (weapon_ring_ps.hlsl: the sphere
@@ -296,7 +327,7 @@ struct WeaponEffectsFrame {
     // The hull hit's bursts (fireball impostors) and heavy rings (sprite quads), four vertices each.
     const WeaponFireballVertex* fireballs = nullptr;
     unsigned fireball_boxes = 0;
-    unsigned fireball_octaves = 3;       // 2 or 3: at most this many octaves (core::look::fireball_octaves, 2 past the budget)
+    unsigned fireball_octaves = 4;       // 2 .. 4: at most this many octaves (core::look::fireball_octaves; 3, then 2 past the budget)
     const WeaponFireballVertex* smokes = nullptr; // the bursts' smoke (fireball impostors under the scorch blend)
     unsigned smoke_boxes = 0;
     const WeaponShapeVertex* rings = nullptr; // the surface rings
@@ -309,15 +340,24 @@ struct WeaponEffectsFrame {
     unsigned shock_boxes = 0;
     const WeaponGlowVertex* halos = nullptr; // step 3: the death bodies' halos (after the shocks, additive)
     unsigned halo_boxes = 0;
+    // section 13.1: the fire waves (after the shocks, additive), 4 x weapon_wave_quads vertices a wave
+    const WeaponFireballVertex* waves = nullptr;
+    const WeaponWaveConstants* wave_constants = nullptr; // one per wave
+    unsigned wave_boxes = 0;
+    // Section 13.2: the first composed_boxes fireball boxes are composed death bodies, each drawn alone with its table
+    // (weapon_compose_ps.hlsl); the rest batched as before.
+    const WeaponComposeConstants* compose = nullptr;
+    unsigned composed_first = 0, composed_boxes = 0;
     WeaponLook look = default_weapon_look();
 };
 enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites, Fireballs,
-                                          Rings, Filaments, Scorches, Smokes, Shocks, Halos };
+                                          Rings, Filaments, Scorches, Smokes, Shocks, Halos,
+                                          Waves, Composed };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
     unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0, fireball_boxes = 0, ring_quads = 0;
-    unsigned filament_boxes = 0, scorch_boxes = 0, smoke_boxes = 0, shock_boxes = 0, halo_boxes = 0;
+    unsigned filament_boxes = 0, scorch_boxes = 0, smoke_boxes = 0, shock_boxes = 0, halo_boxes = 0, wave_boxes = 0;
     bool drew = false;
 };
 class WeaponEffectsPass {
@@ -363,7 +403,9 @@ public:
     // bit 5: the bolt programs refused at attach (bolt_reason bolt_program_create); bit 6: the next bolt draw's lock
     // fails; bit 7: the next bolt draw's second pass fails (the restore still runs); bit 8: the death programs refused
     // at attach (boom_reason boom_program_create, the hull kept); bit 9: the shock program alone refused (shock_reason
-    // shock_program_create, the deaths drawn without their shells).
+    // shock_program_create, the deaths drawn without their shells); bit 10: the wave program alone refused (wave_reason
+    // wave_program_create, the deaths drawn without their waves); bit 11: the composed body's program alone refused
+    // (compose_reason compose_program_create, the deaths drawn as single bodies).
 #endif
 private:
     template <class Fn> Fn call(unsigned slot) const noexcept {
@@ -406,6 +448,8 @@ private:
     IDirect3DPixelShader9* filament_ps_ = nullptr;
     IDirect3DPixelShader9* shock_ps_ = nullptr; // step 3 (released with the hull objects they draw with)
     IDirect3DPixelShader9* halo_ps_ = nullptr;
+    IDirect3DPixelShader9* wave_ps_ = nullptr;    // section 13.1 (optional, released with the hull objects)
+    IDirect3DPixelShader9* compose_ps_ = nullptr; // section 13.2 (optional, likewise)
     IDirect3DVertexDeclaration9* shape_declaration_ = nullptr;
     IDirect3DVertexShader9* lightning_vs_ = nullptr;
     IDirect3DVertexDeclaration9* lightning_declaration_ = nullptr;

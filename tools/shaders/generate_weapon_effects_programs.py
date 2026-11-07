@@ -35,7 +35,7 @@ PROGRAMS = {
     for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('sprite', ('vs', 'ps')),
                         ('glow', ('vs', 'ps')), ('fireball', ('vs', 'ps')), ('shape', ('vs',)), ('ring', ('ps',)),
                         ('filament', ('ps',)), ('lightning', ('vs',)), ('bolt', ('vs', 'ps')),
-                        ('bolt_flag', ('ps',)), ('shock', ('ps',)), ('halo', ('ps',))) for kind in kinds
+                        ('bolt_flag', ('ps',)), ('shock', ('ps',)), ('halo', ('ps',)), ('wave', ('ps',)), ('compose', ('ps',))) for kind in kinds
 }
 
 

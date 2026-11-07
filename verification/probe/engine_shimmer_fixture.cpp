@@ -13,8 +13,10 @@
 //   occlusion   a lane occluder nearer than the plume over the back half of the rect: byte-equal there, displaced in front
 //   ring        a weapon rect's shock ring on a lane plane: the band inside the front displaced outward, byte-equal beyond
 //               it, on the sky and outside the grown quad (weapon_ring_case)
+//   wave        a death fire wave's eight strips in the plane mode (explosion-look.md 13.1): the band moved outward, the
+//               sky's too, byte-equal beyond it, under a hull in front of the plane and outside the strips (weapon_wave_case)
 //   state       hostile caller state (RT0 another target, RT1, depth, viewport, scissor, blend, a texture, a constant, FVF
-//               mode) restored after the run; stream 0 and the index buffer restored, a constant past c75 and the target
+//               mode) restored after the run; stream 0 and the index buffer restored, a constant past c77 and the target
 //               bound on an unused sampler untouched (the recorded block); the pass's own scene without a caller scene;
 //               the scratch released while idle (never with a revert pending) and recreated by the next run
 //   refusal     a non-FP16 target, a recording caller, an empty rect list, zero amplitude: S_FALSE, the target unchanged
@@ -24,7 +26,8 @@
 //               while the Reset is pending is skipped (reset_pending, no device call); after Reset the next run recreates
 //               them and draws
 //   timing      EVENT-fenced run + revert in a frame tail for 1 / 4 / 16 rects of 10 % of the screen each; two hull rings
-//               at the cap's reach (weapon_ring_timing_case)
+//               at the cap's reach (weapon_ring_timing_case); a wave's eight strips against its single box at r 1,000 px
+//               (weapon_wave_timing_case)
 // Validation-only readback; never launches the game.
 #include "../../src/renderer/engine_shimmer_pass.h"
 #include <windows.h>
@@ -459,6 +462,116 @@ void weapon_ring_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pa
                                                                  outside > 0 && outside_diff == 0);
     report("weapon_rect_ring_constants", constants_ok);
 }
+// A death fire wave's band (docs/architecture/explosion-look.md 13.1; engine_shimmer::wave_strips): a face-on wave at view z
+// 1000 about the screen's centre, its front 0.15 target heights, its band 0.04, stretched 1.25 along the view's x, at
+// wave_refract_px 6 px at 1440 rows. The lane: a hull plane behind the wave (z 1500) over the left half, a hull in front
+// of it (z 600) over the top 35 % (the ring's top arc), the sky elsewhere. In the band (the replica's 0.2 < u < 0.8) every valid pixel
+// moves outward by about the request's pixels, the sky's too; outside the band (u < -0.3 or u > 1.3), under the hull in
+// front and outside the strips the image stays byte-equal; eight strips, the first carrying the plane-mode slot.
+void weapon_wave_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
+    const float Z = 1000.f, stretch = 1.25f, near_z = -projection_m32 / projection_m22;
+    const es::Projection p = projection_of(t);
+    const float ppu = t.ppu(Z);
+    es::WaveRequest w{};
+    w.centre[2] = Z;
+    w.normal[2] = 1.f;
+    w.axis[0] = 1.f;
+    w.r = .15f * float(t.h) / ppu;
+    w.band = .04f * float(t.h) / ppu;
+    w.stretch = stretch;
+    w.px = 6.f * float(t.h) / 1440.f;
+    es::Rect strips[es::wave_strip_count];
+    float screens = 0.f;
+    const unsigned made = es::wave_strips(w, p, near_z, strips, &screens);
+    report("wave_strips_made", made == es::wave_strip_count && strips[0].ring_plane == 1.f && screens > 0.f);
+    if (made != es::wave_strip_count) return;
+    float c[es::constant_vectors * 4];
+    es::constants(strips, made, 1.5f, 1.5f, float(t.w), float(t.h), c);
+    const float* rc = c + (4 + 4 * es::max_rects + 2 * es::ring_slots) * 4;
+    const float* rn = c + (4 + 4 * es::max_rects + 3 * es::ring_slots + 2) * 4;
+    const bool constants_ok = c[6] == 1.f && rc[3] == 1.f && rn[2] == 1.f && rc[2] == w.px;
+    t.upload(d);
+    const int split = int(t.w / 2), top = int(.35f * float(t.h)); // the far hull left, the near hull over the ring's top
+    // two lane regions: the far hull (left), the near hull (top) written over it
+    {
+        D3DLOCKED_RECT r{};
+        check("lock lane", t.lane_staging->LockRect(&r, nullptr, 0));
+        const float d_far = projection_m22 + projection_m32 / 1500.f, d_front = projection_m22 + projection_m32 / 600.f;
+        for (UINT y = 0; y < t.h; ++y) {
+            float* row = reinterpret_cast<float*>(static_cast<unsigned char*>(r.pBits) + y * r.Pitch);
+            for (UINT x = 0; x < t.w; ++x) row[x] = int(y) < top ? d_front : int(x) < split ? d_far : -1.f;
+        }
+        check("unlock lane", t.lane_staging->UnlockRect());
+        check("lane upload", d->UpdateSurface(t.lane_staging.p, nullptr, t.lane_s.p, nullptr));
+    }
+    const auto f = frame_for(t, strips, made, true);
+    const auto rep = run(d, pass, f);
+    const auto out = t.read(d);
+    const Field m = measure(t, out, strips, made);
+    const float k = std::sqrt(1.f - 1.f / (stretch * stretch));
+    std::size_t band = 0, moved = 0, outward = 0, sky_band = 0, sky_moved = 0, beyond = 0, beyond_diff = 0, front = 0,
+                front_diff = 0, outside = 0, outside_diff = 0;
+    double mean = 0.0;
+    for (UINT y = 0; y < t.h; ++y)
+        for (UINT x = 0; x < t.w; ++x) {
+            const std::size_t i = std::size_t(y) * t.w + x;
+            bool in_strip = false;
+            for (unsigned s = 0; s < made; ++s)
+                in_strip = in_strip || (int(x) >= strips[s].bounds[0] && int(x) < strips[s].bounds[2] &&
+                                        int(y) >= strips[s].bounds[1] && int(y) < strips[s].bounds[3]);
+            const bool diff = !same_pixel(out, t.pristine, i);
+            if (!in_strip) {
+                ++outside;
+                outside_diff += diff;
+                continue;
+            }
+            const float nx = 2.f * float(x) / float(t.w) - 1.f, ny = 1.f - 2.f * float(y) / float(t.h);
+            const float px = (nx - p.m20) / p.m00 * Z, py = (ny - p.m21) / p.m11 * Z, al = px * k;
+            const float dl = std::sqrt(std::max(px * px + py * py - al * al, 0.f));
+            const float u = (dl - w.r) / w.band;
+            if (int(y) < top) { // a hull in front of the plane point: excluded
+                if (u > -.3f && u < 1.3f) {
+                    ++front;
+                    front_diff += diff;
+                }
+                continue;
+            }
+            if (u < -.3f || u > 1.3f) {
+                ++beyond;
+                beyond_diff += diff;
+                continue;
+            }
+            if (u > .2f && u < .8f && m.valid[i]) {
+                ++band;
+                const double len = std::sqrt(double(m.dx[i]) * m.dx[i] + double(m.dy[i]) * m.dy[i]);
+                mean += len;
+                moved += len > .5 * double(w.px) * 4.0 * .16;
+                const double rx = double(x) + .5 - .5 * t.w, ry = double(y) + .5 - .5 * t.h;
+                outward += double(m.dx[i]) * rx + double(m.dy[i]) * ry > 0.0;
+                if (int(x) >= split) {
+                    ++sky_band;
+                    sky_moved += len > .5 * double(w.px) * 4.0 * .16;
+                }
+            }
+        }
+    mean = band ? mean / double(band) : 0.0;
+    check("scene begin", d->BeginScene());
+    pass.revert();
+    check("scene end", d->EndScene());
+    t.lane_fill(d, 0, 0, 0, 0, Z);
+    std::printf("WAVE width=%u height=%u result=%08lx strips=%u strip_screens=%.4f r_px=%.1f band_px=%.1f px=%.2f band=%zu "
+                "moved=%zu outward=%zu mean_px=%.3f sky_band=%zu sky_moved=%zu beyond=%zu beyond_diff=%zu front=%zu "
+                "front_diff=%zu outside=%zu outside_diff=%zu constants=%u\n",
+                t.w, t.h, rep.operation, made, double(screens), double(w.r * ppu), double(w.band * ppu), double(w.px), band,
+                moved, outward, mean, sky_band, sky_moved, beyond, beyond_diff, front, front_diff, outside, outside_diff,
+                unsigned(constants_ok));
+    report("wave_band_displaced_outward_sky_included", rep.drew && band > 0 && double(moved) >= .8 * double(band) &&
+                                                           double(outward) >= .95 * double(band) && sky_band > 0 &&
+                                                           double(sky_moved) >= .8 * double(sky_band));
+    report("wave_zero_outside_band_front_hull_and_strips", beyond > 0 && beyond_diff == 0 && front > 0 && front_diff == 0 &&
+                                                               outside > 0 && outside_diff == 0);
+    report("wave_constants", constants_ok);
+}
 void attach_case(IDirect3DDevice9* d, const D3DCAPS9& caps, D3DFORMAT format, rr::EngineShimmerPass& pass) {
     pass.set_faults(1);
     const HRESULT refused = pass.attach(d, *reinterpret_cast<void* const* const*>(d), caps, format);
@@ -665,7 +778,7 @@ void state_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
     check("stream", d->SetStreamSource(0, vb.p, 16, 24));
     check("indices", d->SetIndices(ib.p));
     const float outside[4] = {55.f, 66.f, 77.f, 88.f};
-    check("constant c80", d->SetPixelShaderConstantF(80, outside, 1)); // past the program's c0..c75
+    check("constant c80", d->SetPixelShaderConstantF(80, outside, 1)); // past the program's c0..c77
     check("texture s5", d->SetTexture(5, t.target.p));
     rr::EngineShimmerFrame f = frame_for(t, rects, n);
     f.caller_scene_open = false; // the pass opens and closes its own scene
@@ -983,6 +1096,74 @@ void weapon_ring_timing_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerP
                 std::max(0., chain - cpu), on.size(), unsigned(rep.drew));
     report("weapon_rect_ring_timing_drew", rep.drew && box <= 2.0 * double(es::weapon_ring_max_screens) * t.w * t.h);
 }
+// The wave's eight strips against its single box (explosion-look.md 13.1 wave_shimmer_strips_timing): a face-on wave at
+// r 1,000 px (at 1440 rows, scaled with the rows), band 128 px, over the sky, EVENT-fenced as timing_case; the box is one
+// rect over the ring's box carrying the same plane-mode slot (past the cap: the comparison only).
+void weapon_wave_timing_case(IDirect3DDevice9* d, Targets& t, rr::EngineShimmerPass& pass) {
+    if (t.w != 5120) return; // the note's figure (r 1,000 px at 5120x1440); at 1080 rows the strips pass the cap
+    const float Z = 20000.f, near_z = -projection_m32 / projection_m22, rows = float(t.h) / 1440.f;
+    const es::Projection p = projection_of(t);
+    const float ppu = t.ppu(Z);
+    es::WaveRequest w{};
+    w.centre[2] = Z;
+    w.normal[2] = 1.f;
+    w.axis[0] = 1.f;
+    w.r = 1000.f * rows / ppu;
+    w.band = 128.f * rows / ppu;
+    w.stretch = 1.f;
+    w.px = 6.f * rows;
+    es::Rect strips[es::wave_strip_count];
+    float screens = 0.f;
+    const unsigned made = es::wave_strips(w, p, near_z, strips, &screens);
+    es::Rect box{};
+    const float origin[2] = {.5f * float(t.w), .5f * float(t.h)}, axis[2] = {1.f, 0.f};
+    const float reach = (w.r + w.band) * ppu + 1.f;
+    const bool boxed = made && es::make_rect(origin, axis, reach, reach, reach, 0.f, 0.f, 0.f, float(t.w), float(t.h), &box);
+    if (boxed) {
+        const float keep_bounds[4] = {float(box.bounds[0]), float(box.bounds[1]), float(box.bounds[2]), float(box.bounds[3])};
+        const float corners[4][2] = {{box.corners[0][0], box.corners[0][1]}, {box.corners[1][0], box.corners[1][1]},
+                                     {box.corners[2][0], box.corners[2][1]}, {box.corners[3][0], box.corners[3][1]}};
+        box = strips[0];
+        for (unsigned c = 0; c < 4; ++c) {
+            box.bounds[c] = int(keep_bounds[c]);
+            box.corners[c][0] = corners[c][0];
+            box.corners[c][1] = corners[c][1];
+        }
+    }
+    report("wave_strips_timing_made", made > 0 && boxed); // at 1080 rows two strips lie past the frame
+    if (!boxed) return;
+    t.lane_fill(d, 0, 0, 0, 0, Z);
+    Fence fence(d);
+    double gpu[2] = {}, cpu[2] = {};
+    unsigned copy[2] = {}, scissor[2] = {};
+    for (unsigned k = 0; k < 2; ++k) {
+        rr::EngineShimmerFrame f = k ? frame_for(t, &box, 1, true) : frame_for(t, strips, made, true);
+        std::vector<double> on, off, submit;
+        for (unsigned i = 0; i < 126; ++i) {
+            const bool with = i % 2 == 0;
+            double s = 0;
+            const double v = tail_ms(d, t, pass, fence, with ? &f : nullptr, &s);
+            if (i < 6) continue;
+            (with ? on : off).push_back(v);
+            if (with) submit.push_back(s);
+        }
+        rr::EngineShimmerReport rep{};
+        check("scene begin", d->BeginScene());
+        pass.run(f, &rep);
+        pass.revert();
+        check("scene end", d->EndScene());
+        cpu[k] = median(submit);
+        gpu[k] = std::max(0., median(on) - median(off) - cpu[k]);
+        copy[k] = rep.copy_px;
+        scissor[k] = rep.scissor_px;
+    }
+    double box_area = double(box.bounds[2] - box.bounds[0]) * double(box.bounds[3] - box.bounds[1]);
+    std::printf("WAVE_TIMING width=%u height=%u r_px=%.1f strip_screens=%.4f box_screens=%.4f strips_gpu_ms=%.4f "
+                "box_gpu_ms=%.4f ratio=%.3f strips_copy_px=%u box_copy_px=%u strips_scissor_px=%u box_scissor_px=%u\n",
+                t.w, t.h, double(w.r * ppu), double(screens), box_area / (double(t.w) * t.h), gpu[0], gpu[1],
+                gpu[1] > 0 ? gpu[0] / gpu[1] : 0.0, copy[0], copy[1], scissor[0], scissor[1]);
+    report("wave_shimmer_strips_timing", gpu[0] <= .6 * gpu[1]);
+}
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
@@ -1046,6 +1227,7 @@ int main(int argc, char** argv) {
             if (wanted("displace")) displace_case(d, *t, pass);
             if (wanted("weapon")) weapon_rect_case(d, caps, mode.Format, *t, pass);
             if (wanted("weapon")) weapon_ring_case(d, *t, pass);
+            if (wanted("wave")) weapon_wave_case(d, *t, pass);
             if (wanted("occlusion")) occlusion_case(d, *t, pass);
             if (size.first == 1920) {
                 if (wanted("gate")) gate_case(d, *t, pass);
@@ -1057,6 +1239,7 @@ int main(int argc, char** argv) {
             if (wanted("timing"))
                 for (const unsigned n : {1u, 4u, 16u}) timing_case(d, *t, pass, n);
             if (wanted("timing")) weapon_ring_timing_case(d, *t, pass);
+            if (wanted("timing")) weapon_wave_timing_case(d, *t, pass);
             delete t;
         }
         pass.detach();

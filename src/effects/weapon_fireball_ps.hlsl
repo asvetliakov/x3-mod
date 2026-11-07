@@ -6,7 +6,8 @@
 // plane to the sphere's far side or the lane's surface, whichever is nearer (occlusion class 2: the half of a burst
 // inside a hull is not there, a hull in front hides it, the sky never hides, an invalid lane texel hides). At the
 // chord's middle q (normalised by R_s) the view-plane disc p = rot(theta) q.xy carries two octaves of 2-D value noise and
-// a third at w3 = min(disc.w, screen.w) (its size's weight, the frame's budget step; weights renormalised over
+// a third at w3 = saturate(min(disc.w, screen.w)) and a fourth at saturate(min(disc.w, screen.w) - 1) (disc.w 0 .. 2:
+// its size's weights; screen.w the frame's octaves - 2, the budget's steps; weights renormalised over
 // w1 + w2 + w3 w_3, mean 1/2: continuous in w3), advected outward by `advect` cells under the drift law (each
 // octave's radius u = |p| f cells sampled at u (1 - 1 / (2 sqrt(1 + (u / 2 advect)^2))): injective, no collapse) and
 // offset by the seed look.w; the alpha erosion d = saturate((n - thr) / soft), thr = erode_0 + erode_t x +
@@ -27,7 +28,7 @@ float4 weight : register(c5);  // the octaves' weights, rim_t
 float4 erode : register(c6);   // erode_0, erode_t, erode_r, erode_soft
 float4 shape : register(c7);   // column_pow, lobe_amp, lobe_soft, heat_soft
 float4 ramp[5] : register(c8); // the heat ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb)
-float4 erode2 : register(c13); // erode_rt (the radial term x (1 + erode_rt x)), unused x3
+float4 erode2 : register(c13); // erode_rt (the radial term x (1 + erode_rt x)), unused, the fourth octave's cells, weight
 float hash2(float2 q) {
     float3 p = frac(float3(q.x, q.y, q.x) * 0.1031);
     p += dot(p, p.yzx + 33.33);
@@ -91,10 +92,16 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 float n = weight.x * value_noise(p * (freq.x - g.x) + look.w * float2(1.7, 3.1)) +
                           weight.y * value_noise(p * (freq.y - g.y) + look.w * float2(3.1, 1.7) + 5.3);
                 float wsum = weight.x + weight.y;
-                float w3 = min(disc.w, screen.w) * weight.z;
+                float o3 = min(disc.w, screen.w), w3 = saturate(o3) * weight.z, w4 = saturate(o3 - 1.0) * erode2.w;
                 [branch] if (w3 > 0.0) {
                     n += w3 * value_noise(p * (freq.z - g.z) + look.w * float2(0.7, 2.3) + 11.1);
                     wsum += w3;
+                    // the fourth octave (2026-11-07: a body past fireball_fine4_px, disc.w 1 .. 2; the frame's octaves 4)
+                    [branch] if (w4 > 0.0) {
+                        float g4 = 0.5 * erode2.z * rsqrt(1.0 + dot(p, p) * erode2.z * erode2.z * (k * k));
+                        n += w4 * value_noise(p * (erode2.z - g4) + look.w * float2(2.9, 0.4) + 17.7);
+                        wsum += w4;
+                    }
                 }
                 n /= wsum;
                 float thr = erode.x + erode.y * look.z + erode.z * rq2 * (1.0 + erode2.x * look.z);

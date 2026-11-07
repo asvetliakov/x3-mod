@@ -777,6 +777,183 @@ inline unsigned clone_elements(const unsigned char* src, unsigned n, std::uint32
     }
     return k;
 }
+// Section 13.1, the fire wave (capital and station deaths; 2026-11-07): a thick planar fire front born on the body's
+// frame in the plane of the node's rows 2 (long) and 1 (up), normal row 0 (the view plane when the rows are unread:
+// weapon_death wave_plane=). In-plane distance d' with the long axis stretched by wave_stretch; the front's radius
+// r(t) = r_0 + (r_max - r_0)(1 - (1 - t / tau)^3) for t <= tau, then + wave_creep (r_max - r_0) per tau (never stops),
+// r_0 the hull shape's half length along row 2, r_max wave_r_x R_f, tau wave_tau_x L, gone at L_w = wave_life_x L by
+// (1 - t / L_w)^2. Profile in z = (d' - r) / w_e, w_e wave_w_x R_f: the white-hot edge e^(-z^2) at heat(T_w), the trailing
+// band 4 b (1 - b), b = saturate(-z / wave_trail_span), at wave_trail_gain heat(wave_trail_t T_w), the wash wave_wash
+// inside (tapered to 0 at the window); across the plane a slab wave_slab_x R_f thick, (1 - (2 y / h)^2), its chord
+// normalised as the body's column (edge-on a bar, never a line). T_w = 1 - wave_t_fall t / L_w; E_w wave_e. The
+// circumference broken as the hull ring's: m = wave_m_floor + (1 - wave_m_floor) saturate(0.5 + wave_m_contrast (n - 0.5)),
+// n = wave_n_w[0] vn1(wave_n_cells[0] phi / 2 pi + s) + wave_n_w[1] vn1(wave_n_cells[1] phi / 2 pi + s'), periodic.
+// The early-out window -wave_window_in < z < wave_window_out; the swept hulls: a lane point inside the slab's front
+// window adds the profile at wave_light E_w heat(T_w). Refraction ahead (the engine shimmer pass's plane mode): the
+// band [r, r + wave_refract_band w_e] displaced outward by wave_refract_px at 1440 rows x (1 - t / L_w)^2 through the
+// band's eight octagon strips (the newest wave only; past engine_shimmer::weapon_ring_max_screens drawn without a band).
+// Budget (section 7): the annulus's clipped screens x budget_weight_wave + the rest of the box x budget_weight_wave_miss;
+// shed at step 3 (after the smoke, before the glows and secondaries); the strips charged x hull::budget_weight_shimmer
+// and shed first. max_waves boxes a frame.
+constexpr std::uint8_t wave_tiers = 12; // (1 << capital) | (1 << station); a literal the lab reads
+static_assert(wave_tiers == ((1u << capital) | (1u << station)), "the fire wave: capitals and stations");
+constexpr float wave_r_x = 7.f, wave_tau_x = 0.25f, wave_life_x = 0.4f, wave_creep = 0.05f, wave_stretch = 1.25f;
+// Built (2026-11-07, the first native frames): wave_trail_gain 0.7 -> 0.45 and wave_wash 0.25 -> 0.15 (the edge measured
+// 0.84 of the band's peak: under the gate's 1.3), wave_t_fall 0.5 -> 0.8 (the hue at 0.9 L_w measured 0.50 against <= 0.35),
+// wave_m_floor 0.1 -> 0.05 with the wash broken too (every one of 64 bins lit at 0.1: no broken arc).
+// The kill step (2026-11-07, the frames: a thin smooth hoop at 1.5 and 5 km): wave_band_x 0.3 -> 0.5.
+constexpr float wave_w_x = 0.1f, wave_band_x = 0.5f, wave_slab_x = 0.3f;
+// T_w = wave_t0 - wave_t_fall t / L_w (the frames, 2026-11-07: from 1.0 the front read as a white-grey tyre; from 0.85 it
+// is yellow-white going orange-red).
+constexpr float wave_trail_span = 5.f, wave_wash = 0.15f, wave_e = 1.0f;
+// The colour (2026-11-07 v3, the coordinator: beige / olive with black soot read as no fire): the whole wave on the body's
+// heat ramp, T wave_t_edge at the front falling linearly to wave_t_band_end at the band's end (0.85 at its centre) and on
+// to wave_t_sheet_end at the sheet's end, every T x (1 - wave_t_cool t / L_w) with age (the hue at 0.9 L_w <= 0.35); the
+// intensity edge e^(-z^2) + holes x (wave_band_gain 4 b (1 - b) + wave_sheet_gain (1 - s)^2) + wash capped at 1 (the
+// slab never past the face-on brightness: E_w at most; the band's centre at 0.6: the edge >= 1.4 x it); the sheet's noise
+// carves holes, smoothstep(wave_hole_t -+ wave_hole_soft) of it, never darker material.
+// The kill criterion's switches (2026-11-07 v3, the coordinator): wave_sheet_enabled false draws the wave as the thick
+// textured ring (the sheet's gain 0, the colour kept); compose_enabled false draws every death body as the single lobed
+// ball (with the fourth octave). Header constants, never settings.
+// 2026-11-07 v4 (the kill criterion applied: the composed capital body read a smooth late lobe at 2700 / 3900 ms and a
+// white blob at 0.2 L): compose_enabled false for the flight.
+constexpr bool wave_sheet_enabled = true, compose_enabled = false;
+// v4 (the coordinator: a pale beige ring): T 0.9 at the front, 0.6 at the band's end (0.75 at its centre), 0.4 at the
+// sheet's end.
+constexpr float wave_t_edge = 0.9f, wave_t_band_end = 0.6f, wave_t_sheet_end = 0.4f, wave_t_cool = 0.72f;
+// v4: the holes soft flame gaps, the noise periodic in the angle (wave_hole_cells about the circumference) and stretched
+// 3:1 radially (wave_hole_stretch), the edge smoothstep(wave_hole_t -+ wave_hole_soft) (round black holes read as soot).
+constexpr float wave_band_gain = 0.1f, wave_hole_t = 0.3f, wave_hole_soft = 0.15f;
+constexpr float wave_hole_cells = 48.f, wave_hole_stretch = 3.f;
+// The eye near the plane (2026-11-07 v3: from above at 1.5 km the passing front was a full-screen white wall): within
+// wave_eye_plane_x R_f of the plane (blended in over wave_eye_plane_blend_x R_f) the wave x smoothstep(0, wave_eye_fade_x
+// R_f, the eye's in-plane distance from the band [r - band, r]): 0 inside the band, 1 a R_f outside it.
+constexpr float wave_eye_plane_x = 2.f, wave_eye_plane_blend_x = 0.5f, wave_eye_fade_x = 1.f;
+static_assert(wave_band_x - wave_trail_span * wave_w_x < 1e-4f && wave_trail_span * wave_w_x - wave_band_x < 1e-4f,
+              "the band is the trail's span of w_e");
+// The trailing fire sheet (2026-11-07, the hoop's fix): behind the front over wave_sheet_x R_f (wave_sheet_span w_e), s
+// the distance behind the front over that width, alpha (1 - s)^2 at wave_sheet_gain, its colour from heat(T_w) at the
+// front to heat(wave_trail_t T_w) at its end (the band's colour over wave_trail_gain), x a two-octave value noise of the
+// in-plane point (stretched) over wave_sheet_cell R_f x (r / R_f)^wave_sheet_advect (the pattern spreads outward with
+// the front at that power of its growth: a sheet streaming behind a hot edge), octave weights wave_sheet_n_w, the second
+// at wave_sheet_octave the first's frequency (weights wave_sheet_n_w; the budget's step 2b sheds the second, the first
+// then alone), mapped floor + (1 - floor) saturate(0.5 + contrast (n - 0.5)); the band takes the same modulation, only
+// behind the front. The flame tongues: the front's radius shifted by wave_tongue x the band (+-0.15 R_f) x
+// (2 saturate(0.5 + wave_tongue_contrast (n_t - 0.5)) - 1), n_t = w_1 n_0 - w_0 n_1 + w_0 of the circumference break's
+// two noises (wave_n_w, wave_n_cells: uncorrelated with the break's mix, mostly its finer noise; no further hash). The
+// wash keeps its old extent (wave_wash_span w_e).
+// Review 2026-11-07 (the seeds read right): the edge over the band read 1.09-1.14 at sheet 0.8, band 0.15 [M]: 0.6, 0.1.
+constexpr float wave_sheet_x = 1.0f, wave_sheet_span = 10.f, wave_sheet_gain = 0.6f, wave_sheet_cell = 0.15f;
+static_assert(wave_sheet_x - wave_sheet_span * wave_w_x < 1e-4f && wave_sheet_span * wave_w_x - wave_sheet_x < 1e-4f,
+              "the sheet is its span of w_e");
+constexpr float wave_sheet_advect = 0.5f, wave_sheet_octave = 2.13f, wave_sheet_n_w[2] = {0.65f, 0.35f};
+static_assert(wave_sheet_n_w[0] + wave_sheet_n_w[1] > 0.9999f && wave_sheet_n_w[0] + wave_sheet_n_w[1] < 1.0001f,
+              "the sheet's octaves sum to 1 (the first alone when the second is shed)");
+// The frames (2026-11-07): cells of 0.35 R_f left the band a smooth tyre.
+constexpr float wave_tongue = 0.3f, wave_tongue_contrast = 2.f, wave_wash_span = 3.f;
+// The window: the sheet and the deepest tongue inside, the edge's 2 w_e and the farthest tongue outside.
+constexpr float wave_window_in = 12.f, wave_window_out = 3.5f, wave_light = 0.33f;
+static_assert(wave_window_in + 1e-4f >= wave_sheet_span + wave_tongue * wave_trail_span &&
+                  wave_window_out + 1e-4f >= 2.f + wave_tongue * wave_trail_span,
+              "the window holds the sheet and the tongues (x87 evaluates 0.3f * 5.f past 1.5)");
+// The circumference's break (2026-11-07 [M]: at the hull ring's 0.5 and 2.5, 60 of 64 bins stayed above 10 % of the
+// ring's peak): m = wave_m_floor + (1 - wave_m_floor) saturate(0.5 + wave_m_contrast (n - wave_m_bias)).
+constexpr float wave_m_floor = 0.05f, wave_m_contrast = 4.f, wave_m_bias = 0.55f;
+constexpr float wave_n_cells[2] = {9.f, 23.f}, wave_n_w[2] = {0.7f, 0.3f};
+constexpr float wave_refract_px = 6.f, wave_refract_band = 2.f;
+// The weights measured 2026-11-07 (wave_alone_fills_frame 0.497, wave_miss_alone 0.563 a screen, the fence removed,
+// 5120x1440 [M]; the note's 0.10 for the early-out box was 5.6 x low: every pixel of the box pays the slab's chord).
+// 2026-11-07, the sheet and tongues: a drawn screen of the strips (or the box at birth) costs 1.26 with both of the
+// sheet's octaves and 1.11 with the first alone (v3, the ramp's colour and the capped intensity: 1.354 / 1.215; v4, the
+// lower ramp and the flame gaps: 1.401 / 1.242, pinned 1.40 / 1.24) (wave_alone_fills_frame, wave_one_octave_alone per drawn screen, 5120x1440
+// [M]); the box's pixels past the window keep the early-out's 0.56 (that path unchanged).
+constexpr float budget_weight_wave = 1.40f, budget_weight_wave_miss = 0.56f;
+// The sheet with its first octave alone (the budget's step 2b).
+constexpr float budget_weight_wave_one = 1.24f;
+// wave_quads: a wave is drawn as the eight octagon strips of its annulus [r - window_in w_e, r + window_out w_e] (each
+// an oriented screen quad about its sector, cut at the near plane and the screen), or as the slab's box when that is
+// smaller (the birth: the annulus near a disc); the charge is the drawn quads' screens.
+constexpr unsigned max_waves = 2, wave_strips = 8, wave_quads = 8;
+constexpr unsigned wave_seed_element = 40; // element_hash(sequence, wave_seed_element + j): the circumference's seeds
+constexpr unsigned compose_element = 42; // element_hash(sequence, compose_element): the composed body's N and jets
+// Section 13.2, the composed body (every tier): a death body is compose_n sub-bursts of the burst impostor in one quad
+// (weapon_fireball_ps.hlsl's composed branch; the table from the record's noise seed s by hash2, mirrored by
+// stage::boom_compose_table and the lab): sphere i < N has radius (compose_r_lo + compose_r_span (1 - (i + h0) / N))
+// (stratified, the largest first: the LOD drops the last), offset compose_offset h1 along unit(lerp(u_i, +-long axis,
+// compose_axis_blend)) (u_i from h3, h4; alone without rows), birth compose_spread h2 L (sphere 0 on the star's frame),
+// its clock x_i = (x - delta_i) / (1 - delta_i) so all end at L, radius and offset x rise(x_i) = r0 + (1 - r0)(1 -
+// e^(-x_i / rho)) + body_grow x_i, each its own seeds (+ compose_seed_step i), erosion, lobes and white-hot core; jets
+// (capital, station: compose_jets_lo..hi) a compose_jet_long : compose_jet_short spheroid along an axis within
+// compose_jet_cone of the hull's side normal at a point (2 h1 - 1) compose_offset along the long axis, its centre
+// compose_jet_long / 2 out, born compose_jet_birth0 + compose_jet_birth_span h2 of L. The densities compose as the union
+// 1 - prod(1 - d_i); the hottest sphere's heat and core (weighted by its density) colour the pixel: overlaps never add.
+// The quad is the cluster's bounding sphere (compose_box_margin); its unit compose_size x the drawn sphere / the CPU's
+// projected outline (mean of compose_bins rays), so the cluster's 10 %-of-peak outline follows R(t) as the single body's.
+// LOD (section 7 step 1): (1b) the shared-noise mode (one noise sample, the other spheres by chord and lobes), (1c)
+// spheres down one at a time (the last first), then the jets, never under compose_n_min; under compose_small_px of
+// R_f at 1440 rows N compose_n_min from birth; the eye inside the cluster: the shared mode and N at most compose_eye_n
+// (jets first). Charge: the box x the fireball's weight x (compose_cost_base + compose_cost_per N), shared
+// compose_cost_shared_base + compose_cost_shared_per N (the compose_factor rows: the program's cost per box screen over
+// the single body's, 5120x1440, 2026-11-07 [M]: N 2 / 3 / 4 / 5 0.75 / 0.86 / 0.95 / 1.04, shared N 4 0.82).
+constexpr unsigned compose_n_lo[5] = {3, 3, 4, 5, 3}, compose_n_hi[5] = {3, 4, 5, 5, 3};
+constexpr unsigned compose_jets_lo[5] = {0, 0, 1, 1, 0}, compose_jets_hi[5] = {0, 0, 2, 2, 0};
+// compose_eye_n 2 (the note's 4): the eye inside a fighter's cluster measured 336.5 us for the frame at N 3 shared
+// against the 300 us fence (the body 283, the single body's 225) [M].
+constexpr unsigned compose_n_min = 2, compose_eye_n = 2, compose_max = 7;
+static_assert(compose_n_hi[3] + compose_jets_hi[3] <= compose_max, "the program's loop bound");
+// The kill step "still a ball" applied (2026-11-07, the first native frames: the fighter's outline CV 0.144 / 0.166 at
+// 0.3 / 0.6 L against 0.18, the single body's 0.143 [M]): offsets 0.5 -> 0.7, radii 0.45-0.8 -> 0.35-0.7.
+// The offsets stratified (2026-11-07, the frames: smooth balloons; at 0.6 L one blob on every tier [M]): sphere i >= 1
+// at compose_offset (compose_offset_min + (1 - compose_offset_min) h1), so the rims between the sub-bursts erode open
+// into clumps by 0.6 L while they still join at 0.3 L.
+// The outer sub-bursts burn cooler: heat x (1 - compose_offset_cool |offset| / compose_offset) (the rim's colour stays
+// the single body's: an offset sub-burst's own hot centre lies in the cluster's rim).
+constexpr float compose_r_lo = 0.35f, compose_r_span = 0.35f, compose_offset = 0.85f, compose_axis_blend = 0.5f;
+constexpr float compose_offset_min = 0.7f, compose_offset_cool = 0.3f;
+constexpr float compose_spread = 0.15f, compose_seed_step = 7.3f;
+constexpr float compose_jet_long = 0.8f, compose_jet_short = 0.4f, compose_jet_cone = 0.78539816f;
+constexpr float compose_jet_birth0 = 0.05f, compose_jet_birth_span = 0.1f;
+// compose_size per tier (fighter, corvette, capital, station, missile): the capital's outline measured 1.051-1.053 of
+// R(t) at 0.3 L with the stratified offsets against the 5 % of death_big_tier_sizes, the missile's 0.966 [M]: the capital's
+// unit x 0.97.
+constexpr float compose_size[5] = {1.f, 1.f, 0.97f, 1.f, 1.f};
+constexpr float compose_box_margin = 1.1f, compose_small_px = 24.f;
+// The outline's estimate per sub-burst (a sphere's outline its drawn radius over the drawn sphere's factor) x the single
+// body's measured outline loss by age s(x) = 1 - compose_erode_k max(0, x - compose_erode_x0) (1.04 / 1.00 / 0.81 / 0.62
+// of R(t) at 0.1 / 0.3 / 0.6 / 0.8 L [M]) at the sphere's erosion clock over the body's: a sub-burst eroding ahead of the
+// body draws a smaller outline, so the unit grows to keep the cluster's on R(t).
+// The loss counted at compose_erode_k 0.5 (2026-11-07 [M]: at the measured 0.76 the capital's and station's outlines
+// read 1.061 / 1.048 of R(t) at 0.3 L, the big bodies hold their outline longer than the fighter's).
+// compose_erode_cap 1 (counted to the end): capped at 0.4 the fighter's outline read 0.911 of R(t) at 0.3 L [M]; uncapped the lit
+// share inside R(t) at 0.9 L reads 0.246 against the gate's 0.20 (open).
+constexpr float compose_erode_x0 = 0.3f, compose_erode_k = 0.5f, compose_erode_cap = 1.0f;
+// The CPU pass (2026-11-07: 32 deaths 64.2 us against 50): each record's placement at unit 1 (its rotated offsets,
+// rise, erosion clocks and their slopes in the age) and the outline's estimate are refreshed only when the projected
+// centre moved more than compose_refresh_px, every compose_refresh_frames builds, past compose_refresh_dx of the age,
+// at a sub-burst's birth or with another set drawn; between refreshes each frame advances them linearly in the age (no
+// exp or log: the radii never step at the refresh rate).
+constexpr unsigned compose_refresh_frames = 4;
+constexpr float compose_refresh_px = 2.f, compose_refresh_dx = 0.05f;
+// Each sub-burst's erosion and heat clock 1 - (1 - x_i)^k, k = compose_pace_lo + compose_pace_span h5 (2026-11-07: the
+// outline barely changed between 0.3 and 0.6 L with one shared clock, correlation 0.88-0.91 [M]).
+// 1.0-2.4 (the frames, 2026-11-07: at 0.4 the slowest sub-bursts stayed dense and smooth to 0.6 L, balloons; at 0.8 the
+// lit share inside R(t) at 0.9 L measured 0.258 against 0.20): no sub-burst erodes slower than the body.
+constexpr float compose_pace_lo = 1.0f, compose_pace_span = 1.4f;
+constexpr unsigned compose_bins = 16;
+// The LOD by count (the CPU pass's fallback, 2026-11-07): above compose_count_3 live death bodies a frame each composes
+// at most 3 sub-bursts, above compose_count_2 at most 2 (jets first).
+constexpr unsigned compose_count_3 = 16, compose_count_2 = 24;
+// The union and the core (2026-11-07, the frames: the union 1 - prod(1 - d_i) and one core per sub-burst on the body's
+// clock drew large smooth saturated-white balloons from P + 800 ms): the densest sub-burst's density plus
+// compose_soft_add of the others' (capped at 1: the radiance under E_b, overlaps never sum to white); each sub-burst's
+// white-hot core core_gain (1 - x / compose_core_x) on the body's clock x: none past compose_core_x (the single body's
+// core_x 0.35; a per-sub-burst age window drew a late sub-burst's white lamp at 0.2 L in the frames; at 0.2 the
+// fighter's hue at 0.2 L fell to 0.50 against death_cools_through_ramp's 0.75 [M]: 0.25, a fifth of the gain left there).
+constexpr float compose_soft_add = 0.25f, compose_core_x = 0.25f;
+constexpr float compose_cost_base = 0.47f, compose_cost_per = 0.115f, compose_cost_shared_base = 0.70f,
+                compose_cost_shared_per = 0.03f;
+// The hull bursts' composition (R_b >= compose_hull_r_m, N 3): deferred (hull-burst-look.md section 10).
+constexpr float compose_hull_r_m = 60.f;
 } // namespace boom
 // ---------------------------------------------------------------------------------------------- the handler (2.2)
 // mode_shields_hull (step 2, docs/architecture/weapon-look.md 3.1 and 2.12): the shield hit as in shields mode plus the
@@ -1691,9 +1868,15 @@ constexpr float fireball_erode_rt = 3.0f;
 constexpr float fireball_column_pow = 0.25f;
 constexpr float fireball_lobes = 5.f, fireball_lobe_amp = 0.25f, fireball_lobe_soft = 0.06f;
 constexpr float fireball_heat_soft = 0.20f, fireball_rim_t = 0.45f;
-constexpr unsigned fireball_octaves = 3;
+// fireball_octaves 4 (2026-11-07, the capital's 300-400 px lobes held no noise at that scale): a body or burst past
+// fireball_fine4_px of projected radius (1440 rows) blends a fourth octave in over fireball_fine4_band_px
+// (fireball_octave_freq4 cells per R_s at fireball_octave_w4; disc.w 1 .. 2, the frame's octaves 4); the budget sheds it
+// first (octaves 3), then the third (octaves 2).
+constexpr unsigned fireball_octaves = 4;
 constexpr float fireball_fine_px = 48.f; // under this projected radius (px at 1440 rows) a burst draws two octaves
 constexpr float fireball_fine_band_px = 16.f; // the third octave's weight 0 -> 1 over this much more radius
+constexpr float fireball_fine4_px = 160.f, fireball_fine4_band_px = 60.f;
+constexpr float fireball_octave_freq4 = 14.f, fireball_octave_w4 = 0.25f;
 constexpr float fireball_octave_return = 0.8f;
 constexpr unsigned fireball_octave_hold = 3;
 // One fireball rectangle filling the frame at 5120x1440 with every disc pixel taking the noise, EVENT-fenced (native
@@ -1702,6 +1885,10 @@ constexpr unsigned fireball_octave_hold = 3;
 // the lobes skip their outside, but a dense close-capital frame measured 0.73 per raster screen at two octaves
 // (docs/verification/weapon-effects.md "Burst body, glow, flash, smoke").
 constexpr float budget_weight_fireball = 1.18f, budget_weight_fireball_coarse = 1.03f, budget_weight_smoke = 1.20f;
+// A screen of bodies with the fourth octave (2026-11-07; review: measured on a body seen from outside, the eye at 2 R:
+// 27.4 against 27.6 us with three, 0.309 screens [M], the fourth's cost under the noise; an eye-inside body keeps three,
+// where it cost 1.35 a screen): pinned at the three-octave weight.
+constexpr float budget_weight_fireball_fine4 = 1.18f;
 } // namespace look
 // The hull hit (weapon-look.md 3.1): a 60 ms white flash, isotropic cooling sparks, a 150 ms glow on the hull and a
 // 1.2 s ember, all at the recorded contact point; r_hit = r_scale U (r_base + r_k k). mode full | simple (the kill fallback:
