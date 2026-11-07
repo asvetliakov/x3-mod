@@ -1,8 +1,8 @@
 // Weapon effects, the sprite batch's pixel program (docs/architecture/weapon-look.md 2.3, 2.7, 3.1). Two kinds by the
 // colour's alpha, both volumetric against the lane (weapon_soft_depth.hlsl): vis = saturate((z_lane - z) / (SOFT r)),
 // the sky never hides, an invalid lane texel hides.
-// - A streak (alpha 0, a spark): across its width a (1 - v^2)^2 profile (a death ember, shade.w < 0: a bright head and a
-//   fading tail), its ends feathered over a quarter of the
+// - A streak (alpha 0, a spark): across its width a (1 - v^2)^2 profile (a death spark, shade.w < 0: a Gaussian head in
+//   its halo and a tapering tail, below), its ends feathered over a quarter of the
 //   quad's half-length, at the interpolated view depth, SOFT = soft_core x its width (a hard test in practice: the
 //   lane hides the half of the sparks that flies into the hull).
 // - A flash (alpha > 0): a disc core of alpha x the quad's radius (anti-aliased over a quarter of it; white, or
@@ -21,10 +21,10 @@
 // - A cone (depth.y 4, step 4's muzzle flame, star arms and vents: bolt-muzzle-look.md 3.1): the stage's quad from the
 //   base (u 0) to the tip (u 1), v -1 / +1 across the base; its radius linear to 0 at the tip, across (1 - (v / r)^2)^2,
 //   radiance (1 - u)^1.5, at the plane's interpolated view depth, SOFT = depth.z (view units).
-// - A ray (depth.y 5, a death's starburst: explosion-look.md section 14): the stage's quad from the body's projected
-//   centre (u 0) to the ray's tip (u 1), shade.y the signed distance across in pixels; its half width depth.w px tapering
-//   to (1 - 0.6) of it at the tip, a box filter over a pixel across, radiance (1 - u)^1.5 along faded in over its first
-//   eighth (the rays' bases apart: no stack at the centre), at the quad's view depth, SOFT = depth.z (view units).
+// - A ray (depth.y 5, a death's soft spoke: explosion-look.md section 14): the stage's trapezoid from the ray's start
+//   (u 0) to its tip (u 1), shade.y the signed distance across in pixels; across a Gaussian of FWHM max(shade.w,
+//   depth.w (1 + u / 2)) px (2^(-4 (y / FWHM)^2)), along the sun's e^(-u) (1 - u)^2 faded in over u < 0.15 (smoothstep), at
+//   the quad's view depth, SOFT = depth.z (view units).
 // Radiance x the vertex's shade.z. Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp, defaults
 // weapon_effects_core.h look::.
 #include "weapon_soft_depth.hlsl"
@@ -46,11 +46,12 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
     float3 c = 0.0;
     [branch] if (depth.y > 4.5) {
         float u = saturate(shade.x);
-        float hw = depth.w * (1.0 - 0.6 * u);
-        float x = saturate(hw + 0.5 - abs(shade.y));
+        float fwhm = max(shade.w, depth.w * (1.0 + 0.5 * u));
+        float x = shade.y / fwhm;
         float f = 1.0 - u;
+        float s = saturate(u * (1.0 / 0.15));
         float vis = occluder ? saturate((lane - z) / max(depth.z, 1e-4)) : 1.0;
-        c = colour.rgb * (shade.z * f * sqrt(f) * saturate(8.0 * u) * x * vis);
+        c = colour.rgb * (shade.z * exp2(-4.0 * x * x - 1.442695 * u) * f * f * (s * s * (3.0 - 2.0 * s)) * vis);
     } else if (depth.y > 3.5) {
         float u = saturate(shade.x);
         float r = max(1.0 - u, 1e-3);
@@ -76,13 +77,26 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
         float vis = occluder ? saturate((lane - z) / max(depth.z, 1e-4)) : 1.0;
         c = colour.rgb * (shade.z * edge * inner * inner * vis);
     } else if (colour.a < 0.5 / 255.0) {
-        float across = saturate(1.0 - shade.y * shade.y);
-        // a death ember (shade.w < 0, the vertex program's pixel mode): a bright head and a fading tail, ((x + 1) / 2)^2
-        // from the tail (x -1) to the head (x +1), the head feathered over its last sixteenth
-        float along = shade.w < 0.0 ? 0.25 * (shade.x + 1.0) * (shade.x + 1.0) * saturate((1.0 - shade.x) * 8.0)
-                                    : saturate((1.0 - abs(shade.x)) * 4.0);
+        float profile;
+        [branch] if (shade.w < 0.0) {
+            // a death spark (the vertex program's pixel mode; shade.xy the offset from the head along / across in pixels,
+            // depth.z the head's radius r, depth.w the tail's length): the head 2^(-(d / r)^2) (FWHM 2r), its halo
+            // 0.12 x 2^(-(d / 2r)^2) windowed to 4r, the tail behind it (s 1 at the head .. 0 at its end) s^2 x a
+            // Gaussian of FWHM 1 + (r - 0.5) s px (0.5 + r at the head, 1 px at the end); the brightest of the three
+            float r = max(depth.z, 0.25);
+            float q = (shade.x * shade.x + shade.y * shade.y) / (r * r);
+            float win = saturate(1.0 - q * (1.0 / 16.0));
+            float halo = 0.12 * exp2(-0.25 * q) * win * win;
+            float s = shade.x < 0.0 ? saturate(1.0 + shade.x / max(depth.w, 1e-3)) : 0.0;
+            float ft = 1.0 + (r - 0.5) * s;
+            float tail = s * s * exp2(-4.0 * shade.y * shade.y / (ft * ft));
+            profile = max(max(exp2(-q), tail), halo);
+        } else {
+            float across = saturate(1.0 - shade.y * shade.y);
+            profile = across * across * saturate((1.0 - abs(shade.x)) * 4.0);
+        }
         float vis = occluder ? saturate((lane - z) / max(sprite_look.x * abs(shade.w), 1e-4)) : 1.0;
-        c = colour.rgb * (shade.z * across * across * along * vis);
+        c = colour.rgb * (shade.z * profile * vis);
     } else {
         float d2 = dot(shade.xy, shade.xy);
         float d = sqrt(d2);

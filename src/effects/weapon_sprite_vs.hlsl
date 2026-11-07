@@ -5,7 +5,8 @@
 //   arm unit A over the quad's half, c.z the width floor's half, both in quad units), 0 a flash (c.z its core's share
 //   of the halo colour: 0 a white core, the beam spot's weapon-coloured one); c.x 4 a cone (step 4's muzzle flame,
 //   star arm or vent: b = (u, v, radiance, unused), c.y its soft depth); c.x 5 a ray (a death's starburst, explosion-look.md
-//   section 14: b = (u, v in pixels, radiance, unused), c.y its soft depth, c.z its half width in pixels).
+//   section 14: b = (u, v in pixels, radiance, the FWHM's floor in pixels), c.y its soft depth, c.z the FWHM's
+//   slope: FWHM = max(b.w, c.z (1 + u / 2)) px).
 // - a streak (alpha 0, a spark; the performance pass moved its expansion here): a = its head (this frame's position,
 //   view space) and its radiance, b = its tail (the previous frame's position through the previous frame's view) and
 //   its width (view units), c = the corner (u -1 tail / +1 head, x the spark's rest-length factor; v -1 / +1 across)
@@ -14,7 +15,8 @@
 //   width, floor_len_px) x |c.x|, the lit width max(its width in pixels, floor_lit_px)), the tail moved back along the
 //   motion to it, the quad capped by half the lit width at both ends, and the radiance x rest / (rest + motion), not
 //   below the hold. The stage's CPU twin is stage::streak_corners (the fixture measures through it). Step 3's pixel
-//   mode (b.w < 0, the death embers): -b.w the lit width and |c.x| the length, both pixels, no floor, no dilution.
+//   mode (b.w < 0, the death sparks): -b.w the head's FWHM and |c.x| the tail's length, both pixels, no floor, no
+// dilution; the quad 2 FWHM + 0.5 px about the head and the tail (the head's halo window).
 // Compiled with tools/shaders/generate_weapon_effects_programs.py (vs_3_0).
 float4 projection : register(c0); // m00, m11, m20, m21 of the jittered projection
 float4 viewport : register(c1);   // W/2, H/2, 2/W, 2/H
@@ -51,14 +53,18 @@ Output main(float4 a : POSITION, float4 b : TEXCOORD0, float3 c : TEXCOORD1, flo
     float lit = px_mode ? -b.w : max(b.w * viewport.x * projection.x / a.z, limits.y);
     float rest = px_mode ? abs(c.x) : max(limits.z * lit, limits.w) * abs(c.x);
     float drawn = px_mode ? rest : clamp(motion, rest, streak.x * rest);
-    float hw = 0.5 * lit;
+    // the pixel mode's quad covers the head's halo window (2 x its FWHM, 4 head radii) about the head and the tail
+    float hw = px_mode ? 2.0 * lit + 0.5 : 0.5 * lit;
     float2 n = float2(-dir.y, dir.x) * hw;
-    float2 p = (c.x > 0.0 ? head + dir * hw : head - dir * (drawn + hw)) + n * c.y;
+    float along = c.x > 0.0 ? hw : -(drawn + hw);
+    float2 p = head + dir * along + n * c.y;
     float z = c.x > 0.0 ? a.z : b.z;
     o.position = float4((p.x * viewport.z - 1.0) * z, (1.0 - p.y * viewport.w) * z, z - limits.x, z);
-    // the pixel mode passes its width in view units negated (the pixel program's profile flag)
-    o.shade = float4(c.x > 0.0 ? 1.0 : -1.0, c.y, px_mode ? a.w : max(a.w * rest / (rest + motion), c.z),
+    // the pixel mode passes its width in view units negated (the pixel program's profile flag), its corner's offsets from
+    // the head in pixels (along, across) and depth.zw = the head's radius and the tail's length in pixels
+    o.shade = float4(px_mode ? along : (c.x > 0.0 ? 1.0 : -1.0), px_mode ? c.y * hw : c.y,
+                     px_mode ? a.w : max(a.w * rest / (rest + motion), c.z),
                      px_mode ? -lit * a.z / (viewport.x * projection.x) : b.w);
-    o.depth = float4(z, 0.0, 0.0, 0.0);
+    o.depth = float4(z, 0.0, px_mode ? 0.5 * lit : 0.0, px_mode ? drawn : 0.0);
     return o;
 }

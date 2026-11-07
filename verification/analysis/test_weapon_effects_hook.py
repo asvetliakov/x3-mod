@@ -539,7 +539,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                     # the coordinator's decisions D14 (no shell on any tier) and D15 (the big tiers' halo capped)
                     'death_shock_off_all_tiers', 'death_big_halo_capped',
                     # section 14 (explosion-look.md, 2026-11-07): the radiant core, the rays, the spark spray, the meter
-                    'death_core_radiance', 'death_rays_starburst', 'death_rays_differ', 'death_sparks_dense',
+                    'death_core_radiance', 'death_rays_starburst', 'death_rays_soft', 'death_rays_differ',
+                    'death_sparks_dense', 'death_spark_heads',
                     'death_exposure_meter_shift', 'death_rays_sparks_budget_5120')
 
     def test_explosion_gates(self):
