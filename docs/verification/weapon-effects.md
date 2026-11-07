@@ -1859,3 +1859,66 @@ tiers' distances, nothing native left. The v1 / v2 frames showed the rings, the 
 `schema.py --check`, `generate.py --check` PASS; native run D3D 298 / 0, hook 147 / 0 (built from these sources,
 `da8e8bcac-dirty`); `build-boom-big` (ap) and `build-boom-big-fl` (fl) clean builds 0 warnings; `check_no_x87.py --edition
 ap` no violations (1181 reachable functions); `manage.py launch --game-dir /mnt/c/X3 --config --dry-run` exit 0. Not flown.
+
+## Fireball drift law (2026-11-07)
+
+**The defect and the law.** `weapon_fireball_ps.hlsl` shifted every noise octave by a constant `advect` cells along
+p / |p|, so each octave's circle |p| = a / f_i collapsed onto one noise point and the disc inside it was a point-reflected
+copy: a dot with a ring at the centre of every hull burst and death body from about 0.5 L (octaves 2 and 3, inside about
+0.15 R_s; the 0.08 seed-direction blend of the pinhole fix hid only the centre point). The new law samples octave i at
+p (f_i - g_i), g_i = (f_i / 2) / sqrt(1 + (|p| f_i / 2a)^2): the radius u = |p| f_i cells moves to u - a y / sqrt(1 + y^2),
+y = u / 2a, strictly increasing (slope 1/2 at the centre, at least 1/2 everywhere), the full shift a far out (0.89 a at
+u = 4a), no direction and no division at the centre, so the seed-direction blend is gone. The lab's two body loops carry
+the same law (`test_fireball_drift_law_matches_the_program`). Program 1603 words (1618 before); fill rate unchanged:
+`body_alone_fills_frame` 5120x1440 224.4 us against 226.3 / 226.5 on the old program, `burst_alone_fills_frame` 107.9
+against 109.0 / 107.9 [M].
+
+**Retune.** The collapse had kept a hot dot alive late. With the law alone at least 3 of 5 plasma globes were dark at
+0.95 L (`hull_plasma_globe_shrinks_reddens` failed, as with the radial zoom of `zoom-attempt-2026-11-07.txt`), and the
+death body's lit share at 0.9 L went to 0.200-0.258 against its 0.20 bound as erode_t came down. Built:
+`fireball_erode_t` 0.30 -> 0.28, `fireball_erode_soft` 0.20 -> 0.28 (a softer edge drops the dim rim under 10 % of the
+peak without changing which pixels survive), `fireball_column_pow` 0.35 -> 0.25 (keeps the limb out to the size law at
+0.3 L: 0.953-0.994, bound 0.95) [M].
+
+**Gates** (`hull_burst_no_centre_ring`, `death_body_no_centre_ring`; `burst::ring_of`): at 0.5 / 0.6 / 0.7 L the body's
+mean luma over its peak in rings about the drawn sphere's centre; a local maximum at a ring k >= 1 centred inside 0.4 R_s
+(R_s the drawn radius; a monotone core at ring 0 never counts), its prominence against the minima within 0.1 R_s on either
+side (rings of 0.025 R_s, at least 1.5 px), every hit's (8 hull hits, 16 fighter deaths) at most 0.15; the pooled lit share
+of the annulus 0.3-0.45 R_s at most 1.3 x the mean of 0.15-0.3 and 0.45-0.6. The brief's wide form (rings of 0.05 R_s
+against the whole profile's minima) is printed as `prominence_wide`: worst hits 0.26-0.29 (hull) / 0.26-0.61 (death) on
+the old law, 0.15-0.20 / 0.13-0.16 on the new, where a wide hole with clumps about it scores; the local form keeps more
+margin and is the one gated. The annulus ratio does not separate the laws (0.95-1.07 old, 0.96-1.10 new): the doughnut is
+small and its ring lies inside 0.3 R_s.
+
+| Figure [M] | old law | drift law + retune |
+| --- | --- | --- |
+| hull worst-hit local prominence 0.5 / 0.6 / 0.7 L | 0.181 / 0.258 / 0.142 | 0.079 / 0.076 / 0.093 |
+| death worst-hit local prominence 0.5 / 0.6 / 0.7 L | 0.094 / 0.195 / 0.168 | 0.085 / 0.061 / 0.036 |
+| annulus ratio hull / death (0.6 L) | 0.990 / 1.064 | 0.962 / 1.054 |
+| hull erosion lit share 0.1 / 0.5 / 0.9 L, mean_r ratio | 0.870 / 0.504 / 0.063, 0.498 | 0.868 / 0.522 / 0.114, 0.640 |
+| death lit 0.1 / 0.5 / 0.9 L | 0.866 / 0.731 / 0.154 | 0.864 / 0.691 / 0.186 |
+| plasma globe b/r 0.3 / 0.65 / 0.95 L | 0.694 / 0.511 / 0.469 | 0.691 / 0.541 / 0.478 |
+| 20-hit peak at 120 ms (rule) | 2.731 | 2.650 (-2.9 %) |
+| bolt bloom peak / lit / eq_r; puff | 0.917 / 2453 / 27.94; 0.0332 / 45 / 3.78 | 0.917 / 2505 / 28.24; unchanged |
+| `energy_single` burst 40 ms peak / lit / eq_r / blobs | 1.383 / 19990 / 79.8 / 1 | 1.415 / 19816 / 79.4 / 2 |
+| 120 ms | 1.299 / 51338 / 127.8 / 1 | 1.354 / 50379 / 126.6 / 1 |
+| 296 ms | 0.263 / 11074 / 59.4 / 1 | 0.080 / 16254 / 71.9 / 2 |
+| 696 ms | 0 | 0 |
+| `heavy_capital_64` burst 296 ms peak / eq_r | 0.259 / 659.0 | 0.226 / 731.9 |
+| `boom_fighter_600m` body 1200 / 1600 ms peak | 1.432 / 0.960 | 0.691 / 0.260 |
+
+The 5 % match to the accepted frames holds at 40 and 120 ms (peak within +4.2 %, eq_r within 1 %; at 40 ms the
+body splits into two blobs at the 10 % threshold, median blob radius 56 px) and at 696 ms (nothing lit), not from 0.45 L on: there the old frames' peak is the defect itself (the
+brightest pixel of `energy_single` sits 6 px from the centre at 248 ms and 24 px at 296 ms, inside the fold's curl; the
+fighter death's 1200 / 1600 ms peak is its centre dot). No retune of this law family restores those figures without
+putting the hot centre back. Frames judged side by side (local, `stage-dump-drift/`): the burst keeps its clumps, holes
+and broken rim, the curls and dot-and-ring centres are gone from the hull singles, the capital-close bursts and the
+fighter death; the late hull frames (248-296 ms) are a dimmer, more even haze than before (the old ones held a hot curl);
+no lamp. The capital-close death at 1540 ms keeps its dark centre and twisted lobes unchanged: a different cause (open).
+Figures: `verification/results/weapon-effects-burst/drift-law-2026-11-07.txt` (`drift_compare.py`, `ring_rows.py`).
+
+**Acceptance** [M]: `test_weapon_effects_*` 99 OK; `generate_weapon_effects_programs.py --check` PASS, the lab's `--check`
+PASS; native run (`run_weapon_effects.py --host native` under the X3 lock, 1:51) D3D 300 / 0, hook 147 / 0; `build-drift`
+(ap) and `build-drift-fl` (fl) 0 warnings; `check_no_x87.py --edition ap` no violations (1181 reachable functions). The
+Windows screen saver returned within 3 minutes of each kill and lost the device in two runs; the runs that count held a
+display-required execution state for their own duration only. Not flown.

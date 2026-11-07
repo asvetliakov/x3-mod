@@ -7,8 +7,9 @@
 // inside a hull is not there, a hull in front hides it, the sky never hides, an invalid lane texel hides). At the
 // chord's middle q (normalised by R_s) the view-plane disc p = rot(theta) q.xy carries two octaves of 2-D value noise and
 // a third at w3 = min(disc.w, screen.w) (its size's weight, the frame's budget step; weights renormalised over
-// w1 + w2 + w3 w_3, mean 1/2: continuous in w3), advected outward along p / |p| by `advect`
-// cells and offset by the seed look.w; the alpha erosion d = saturate((n - thr) / soft), thr = erode_0 + erode_t x +
+// w1 + w2 + w3 w_3, mean 1/2: continuous in w3), advected outward by `advect` cells under the drift law (each
+// octave's radius u = |p| f cells sampled at u (1 - 1 / (2 sqrt(1 + (u / 2 advect)^2))): injective, no collapse) and
+// offset by the seed look.w; the alpha erosion d = saturate((n - thr) / soft), thr = erode_0 + erode_t x +
 // erode_r |q|^2 (1 + erode_rt x) (x = look.z, the age fraction); the lobed silhouette saturate((rho(phi) - |q|) / lobe_soft),
 // rho(phi) = (1 + lobe_amp (2 n_L - 1)) / (1 + lobe_amp), n_L a periodic value noise of `lobes` cells about the disc
 // (seed disc.z); density = d x column^column_pow x lobe. Heat T' = T (rim_t + (1 - rim_t) m), m = column x
@@ -16,8 +17,7 @@
 // globe's tint, the asteroid's dust at share 1). Smoke (tint.a < 0): over the lane's surface only (never the sky), the
 // output tint.rgb x density under the scorch pass's ZERO / INVSRCCOLOR (the scene x (1 - it)). Alpha 0. Constants:
 // renderer/weapon_effects_pass.cpp, defaults weapon_effects_core.h look::fireball_*.
-// Step 3: within 0.08 of the disc's centre the outward drift's direction blends to a seed-hashed one
-// (no pinhole at the centre); a death body's white-hot core (TEXCOORD5 g > 0: radiance x (1 + g), whitened, inside 0.3
+// Step 3: a death body's white-hot core (TEXCOORD5 g > 0: radiance x (1 + g), whitened, inside 0.3
 // of the radius falling to 0 at 0.5; boom::core_*).
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
@@ -80,20 +80,20 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
             float rho = (1.0 + shape.y * (2.0 * nl - 1.0)) / (1.0 + shape.y);
             float lobe = saturate((rho - rq) / shape.z);
             [branch] if (lobe > 0.0) {
-                // the outward drift's direction p / |p| is singular at the disc's centre (a pinhole there from about
-                // half the life): within 0.08 of the centre it blends to a fixed direction hashed from the seed,
-                // continuous at the boundary (2026-11-07)
-                float pr = sqrt(dot(p, p));
-                float th = 6.2831853 * frac(look.w * 0.6180340 + disc.z * 0.1);
-                float2 hdir;
-                sincos(th, hdir.y, hdir.x);
-                float2 drift = lerp(hdir, p / max(pr, 1e-4), saturate(pr / 0.08)) * advect;
-                float n = weight.x * value_noise(p * freq.x - drift + look.w * float2(1.7, 3.1)) +
-                          weight.y * value_noise(p * freq.y - drift + look.w * float2(3.1, 1.7) + 5.3);
+                // the drift law (2026-11-07, no collapse; the constant shift a p / |p| it replaces collapsed every
+                // circle |p| = a / f_i onto one noise point, a dot and a ring at the centre from half the life): octave i
+                // samples at p (f_i - g_i), g_i = (f_i / 2) / sqrt(1 + (|p| f_i / 2a)^2), the outward shift a y / sqrt(1 +
+                // y^2), y = u / 2a, of the radius u = |p| f_i cells: strictly increasing in u (slope 1/2 at the centre, a
+                // 2x zoom there, at least 1/2 everywhere), the full shift a far out (0.89 a at u = 4a), no direction and
+                // no division at the centre; a = advect -> 0 leaves the pattern
+                float k = 0.5 / max(advect, 1e-4);
+                float3 g = 0.5 * freq.xyz * rsqrt(1.0 + dot(p, p) * freq.xyz * freq.xyz * (k * k));
+                float n = weight.x * value_noise(p * (freq.x - g.x) + look.w * float2(1.7, 3.1)) +
+                          weight.y * value_noise(p * (freq.y - g.y) + look.w * float2(3.1, 1.7) + 5.3);
                 float wsum = weight.x + weight.y;
                 float w3 = min(disc.w, screen.w) * weight.z;
                 [branch] if (w3 > 0.0) {
-                    n += w3 * value_noise(p * freq.z - drift + look.w * float2(0.7, 2.3) + 11.1);
+                    n += w3 * value_noise(p * (freq.z - g.z) + look.w * float2(0.7, 2.3) + 11.1);
                     wsum += w3;
                 }
                 n /= wsum;

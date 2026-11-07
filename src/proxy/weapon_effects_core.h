@@ -1663,7 +1663,9 @@ constexpr float budget_weight_glow_lobed = 0.51f;
 // 2026-11-07; the explosions of step 3 at full size): a ray-sphere impostor (the chord's closed-form column of
 // rho(r) = 1 - r^2 / R^2, clipped at the lane) shaded at the chord's middle q (normalised by the sphere's R_s) in the
 // view-plane disc p = rot(theta) q.xy: three octaves of 2-D value noise n (fireball_octave_freq cells per R_s, weights
-// fireball_octave_w, advected outward by fireball_advect cells over the life), alpha-eroded by the threshold
+// fireball_octave_w, advected outward by fireball_advect cells over the life under the injective drift law of
+// weapon_fireball_ps.hlsl: octave i's radius u = |p| f_i cells sampled at u - a y / sqrt(1 + y^2), y = u / 2a), alpha-eroded
+// by the threshold
 // thr = erode_0 + erode_t x + erode_r |q|^2 (1 + erode_rt x) (density saturate((n - thr) / erode_soft) x column^column_pow x the lobed
 // silhouette: rho(phi) = (1 + lobe_amp (2 n_L - 1)) / (1 + lobe_amp), n_L a periodic 1-D value noise of fireball_lobes
 // cells about the disc, edge fireball_lobe_soft); heat T(t) x (rim_t + (1 - rim_t) m), m = column x saturate((n - thr) /
@@ -1677,11 +1679,16 @@ constexpr float fireball_octave_w[3] = {0.50f, 0.30f, 0.20f};
 // Against the note's numbers (2026-11-07, docs/verification/weapon-effects.md "Burst body, glow, flash, smoke"): the
 // note's erode_0 0.25, erode_soft 0.12, heat_soft 0.35, advect 1.5 and an age-free radial term failed the erosion and
 // colour gates on most hits (a numpy model of this law over 12 hits and the fixture agree); erode_rt couples the
-// radial term to age (the rim goes first, the note's "rising with age and radius").
+// radial term to age (the rim goes first, the note's "rising with age and radius"). The drift law (2026-11-07,
+// docs/verification/weapon-effects.md "Fireball drift law"): the old constant shift's collapse had kept a hot dot at the
+// centre late in the life; without it the bodies died on more seeds at 0.95 L (the plasma globe gate) and kept more rim
+// at 0.9 L (the death body's lit share 0.200 -> 0.258 at erode_t 0.28): erode_t 0.30 -> 0.28, erode_soft 0.20 -> 0.28 and
+// column_pow 0.35 -> 0.25 (a softer erosion edge lowers the dim rim's lit share without changing which pixels survive;
+// the lower column power keeps the limb out to the size law at 0.3 L).
 constexpr float fireball_advect = 1.0f; // outward drift of the pattern over the life (noise cells)
-constexpr float fireball_erode_0 = 0.10f, fireball_erode_t = 0.30f, fireball_erode_r = 0.20f, fireball_erode_soft = 0.20f;
+constexpr float fireball_erode_0 = 0.10f, fireball_erode_t = 0.28f, fireball_erode_r = 0.20f, fireball_erode_soft = 0.28f;
 constexpr float fireball_erode_rt = 3.0f;
-constexpr float fireball_column_pow = 0.35f;
+constexpr float fireball_column_pow = 0.25f;
 constexpr float fireball_lobes = 5.f, fireball_lobe_amp = 0.25f, fireball_lobe_soft = 0.06f;
 constexpr float fireball_heat_soft = 0.20f, fireball_rim_t = 0.45f;
 constexpr unsigned fireball_octaves = 3;
