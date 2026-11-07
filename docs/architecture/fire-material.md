@@ -1,6 +1,6 @@
 # Fire material: one law for the fireball program family
 
-Design note, 2026-11-07 (branch `effects`, HEAD a74671f26; not ratified, not built). Amends the body laws of
+Design note, 2026-11-07 (branch `effects`, HEAD a74671f26); built in two rounds, as built in section 12. Amends the body laws of
 [hull-burst-look.md](hull-burst-look.md) 2.2–2.5 (the hull burst), [explosion-look.md](explosion-look.md) 2.1 and 13.1
 (the death body, the fire wave) and [hull-impact-classes.md](hull-impact-classes.md) 3 item 5 (the shock ring's trailing
 band). It changes the *material* those elements are drawn with; sizes, lives, placement, occlusion, the glow, star, smoke,
@@ -329,6 +329,7 @@ constant and gate that differs from sections 2-7 and why; sections 1-11 are the 
 | The wave | band and sheet from tongues behind the front, the rim e^(-z^2) x m x (0.6 + 0.4 d) | `fire_wave_thr_0 / _end` 0.3 / 0.6, the radial cell `fire_wave_aspect` 2.5 x the arc (round 1); round 2: the noise continues ahead of the front and the threshold rises to 1 over `fire_wave_lick` 4 w_e ahead (`wave_window_out` 2.5 -> 4), so tongues point outward; the rim = `wave_rim_gain` 1 x the tongues' own front density x saturate((n - thr - `wave_rim_lift` 0.25) / fire_soft)^2 (never brighter than a tongue, broken between the spines); the second octave at `fire_fine_k` x the cells is the fine octave (jitter, luminance) | item 5: the round-1 lab wave was a drawn hoop (a thin continuous bright line with tongues trailing inward) |
 | The ring's band | a periodic 2-D noise | a value noise of the owner-frame direction (31 cells about, no seam) offset by -z / 3 | the ring program has no age: **open item**, the band does not flow with game time |
 | The budget | step (0c) by the frame's budget; `budget_weight_fire` about 1.45 | step (0c), and the tongues' own fence `hull::fire_fence` 0.08 screens of their charge: with more than 4 other owners' bursts drawing tongues and past the fence, they drop the term farthest first until under 0.8 of it or the nearest 4 are left, held 3 frames (the octave step's hysteresis); the own ship's keep it, a single near burst is never fenced, the deaths keep theirs (boom's own step 0c); `budget_weight_fire` 2.07 (round 1) -> 2.28 (round 2: on 439.0 us, off 244.3 us at 5120x1440, the fine octave's polar tap) | the 20 hits at 200 m: 88.2 us against 80 with every tongue drawn; the first fence (no cluster condition) shed a single near burst's tongues in the second record |
+| `budget_weight_fireball`, `_coarse` | 1.18, 1.03 (note's section 7: about 1.45 with the tongues) | unchanged; **open item**: the every-pixel rows read 242.0 / 212.9 us (1.36 / 1.20 a screen) and `test_weapon_effects_hook` asks them within 0.15; re-pinned to them the close capital's wave was shed on one frame of seven (`wave_drawn_close_capital`, a record on the re-pin), so a budget decision is owed (the fence, or the wave's order) | the eye-inside body's fence also sits within 2 us of 300 (298.5-299.9 on the round-2 records with the fire-0 path trimmed) |
 | The wave's colour | `wave_t_band0 / _band_end` 0.55 / 0.4 | 0.75 / 0.55; `fire_wave_thr_0` 0.3 -> 0.25; `wave_ahead` 0.7 -> 1.0 | round 2: the young wave's band classed red on the round-2 ramp; the spine-only rim left 4 bins dark in a run and fell 0.35 of its peak in a pixel |
 
 ### 12.2 Gates as built
@@ -355,7 +356,11 @@ constant and gate that differs from sections 2-7 and why; sections 1-11 are the 
 | `wave_no_hard_edge` | no rise outward past the peak on any ray | rises on at most a tenth of the rays; no hard drop, the fall <= 0.3 unchanged | the tongues lick outward past the front: a ray leaves one tongue and meets another's tip (2 of 30 rays) |
 | `death_big_stage_cpu`, `death_stage_cpu_32_deaths` | 0.08 us a quad, 50 us | unchanged | host CPU timing (X4.exe loaded the Windows host during the records): host-noise rows unless they fail three times on a quiet host |
 
-ROUND2_NATIVE
+The last record: 352 of 352 checks [M] (`run_weapon_effects.py --host native`; the ledger's "Round 2" table from
+`ledger_rows.py --fire`); `fireball_ps` 842 slots, `wave_ps` 790. Open items: the fireball's every-pixel weights (above),
+the eye-inside fighter's 4-octave row at 298.9-304.0 us against its 300 us test bound, the ring's band without age, and
+the hull ember's smooth lobed glow (heat ramp, outside this material) which outlives the cluster's bursts and reads tan at
+400 ms in the lab's 60 m cluster.
 
 ## Reproduce
 
@@ -369,4 +374,10 @@ python3 verification/results/weapon-effects-burst/fire_material_ref_stats.py "$S
 # the native dump the gates will run on (the lock serialises it), then measure.py
 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native --dump <dir>
 python3 verification/results/weapon-effects-burst/measure.py <dir>
+# round 2 (section 12): the replica's gates and the AgX pink sweep for the shipped constants, vanilla on the gap clause,
+# the ledger's table from the record
+python3 verification/results/explosion-look/fire_round2.py
+python3 verification/results/explosion-look/fire_pink.py
+python3 verification/results/explosion-look/vanilla_disc_dark.py "$S/reference/vanilla_fireball.png"
+python3 verification/results/explosion-look/ledger_rows.py --fire
 ```

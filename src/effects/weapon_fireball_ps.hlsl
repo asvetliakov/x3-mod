@@ -37,7 +37,7 @@
 // size) modulates the luminance by 1 - fire_fine_depth saturate(fire_fine_bias - 2 n_f) and jitters the threshold by
 // fire_fine_jitter (n_f - 1/2): ragged edges, structure inside every tongue; the threshold blends to the fire law by
 // w_px saturate(2 fire - 1) (the plasma globe, fire 0.5, keeps the previous threshold and its late-life floor); the
-// core whitens towards the fire ramp's top stop (yellow-white), never neutral white.
+// core (every body's, the eye-inside one too) whitens towards the fire ramp's top stop (yellow-white), never neutral white.
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
 float4 screen : register(c3);  // 2 / W, 2 / H, near view z, the third octave's weight at most (0: the budget's step 1)
@@ -139,10 +139,8 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 // the fire law's radius: the view-plane disc's |p| (the chord's middle q leaves the plane where the lane
                 // cuts the chord: a hull hit's tongues would meet at the screen centre with |q|)
                 // core.z < 0: the budget shed the tongues (step 0c, the fence), the law's size LOD -core.z kept
-                float fire = core.y, wpx = saturate(core.z), rp2 = dot(p, p), rp = sqrt(rp2), wlaw = saturate(abs(core.z));
+                float fire = core.y, wpx = saturate(core.z), rp2 = dot(p, p), rp = sqrt(rp2);
                 float wt = max(fire, 0.0) * wpx * smoothstep(fire2.y, fire2.z, rp);
-                float wl = wlaw * saturate(fire); // the law's blend: the size LOD x the fire weight (the plasma globe half)
-                float wth = wlaw * saturate(2.0 * fire - 1.0); // the threshold's (the plasma globe: the previous one)
                 float n = weight.x * value_noise(p * (freq.x - g.x) + look.w * float2(1.7, 3.1)) +
                           weight.y * value_noise(p * (freq.y - g.y) + look.w * float2(3.1, 1.7) + 5.3);
                 float wsum = weight.x + weight.y;
@@ -150,7 +148,7 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 float o3 = min(disc.w, screen.w), w3 = saturate(o3) * weight.z * (1.0 - wt), w4 = saturate(o3 - 1.0) * erode2.w;
                 // the third octave; on a fire body also the fine octave's Cartesian part (wt < 1) at any size
                 float n3 = 0.5;
-                [branch] if (w3 > 0.0 || (fire > 0.0 && wt < 1.0)) {
+                [branch] if (max(w3, fire * (1.0 - wt)) > 0.0) {
                     n3 = value_noise(p * (freq.z - g.z) + look.w * float2(0.7, 2.3) + 11.1);
                     n += w3 * n3;
                     wsum += w3;
@@ -189,7 +187,11 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     float density, T;
                     [branch] if (fire > 0.0) {
                         // the fire law blended in by the size LOD w_px: under fire_px_0 the previous erosion and heat law
-                        // (today's clumps and holes, section 2.5) on the fire ramp with the small gain
+                        // (today's clumps and holes, section 2.5) on the fire ramp with the small gain; wl the law's blend
+                        // (the size LOD x the fire weight: the plasma globe half), wth the threshold's (the plasma globe:
+                        // the previous one), both in this branch only (the eye-inside body's fence, 300 us)
+                        float wlaw = saturate(abs(core.z));
+                        float wl = wlaw * saturate(fire), wth = wlaw * saturate(2.0 * fire - 1.0);
                         float thr_o = erode.x + erode.y * look.z + erode.z * rq2 * (1.0 + erode2.x * look.z);
                         float thr_f = fire3.z + fire3.w * look.z + fire4.x * rp2 * (1.0 + erode2.x * look.z);
                         float thr = lerp(thr_o, thr_f, wth) + fire7.z * (nf - 0.5) + framp[1].w * saturate(fire - 1.0);
@@ -210,8 +212,7 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     // the white-hot core (core.x > 0: a death body, a fire class's hull burst): inside 0.3 of the radius
                     // the radiance x (1 + g) and the colour whitened by min(1, g), to 0 at 0.5
                     float g = core.x * (fire != 0.0 ? saturate((fire7.x - rp) * fire7.y) : saturate((0.5 - rq) / 0.2));
-                    c = lerp(lerp(heat(T, fire != 0.0), tint.rgb, tint.a), fire != 0.0 ? framp[4].rgb : float3(1.0, 1.0, 1.0),
-                             saturate(g)) *
+                    c = lerp(lerp(heat(T, fire != 0.0), tint.rgb, tint.a), framp[4].rgb, saturate(g)) *
                         (look.y * density * (1.0 + g));
                 }
             }

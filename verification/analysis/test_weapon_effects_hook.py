@@ -433,7 +433,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'stage_owners_1024_located_once',
                      # the burst look (docs/architecture/hull-burst-look.md section 8 and the addendum)
                      'hull_burst_contrast', 'hull_burst_silhouette_lobed', 'hull_burst_erodes_outside_in',
-                     'hull_burst_colour_core_rim', 'hull_glow_follows_burst', 'hull_20_hits_no_white_sun',
+                     # hull_burst_colour_core_rim superseded by fire_colour_ramp_hull (fire-material.md section 6)
+                     'fire_colour_ramp_hull', 'hull_glow_follows_burst', 'hull_20_hits_no_white_sun',
+                     # the fire material's round 2 (fire-material.md section 12)
+                     'fire_not_pink_hull', 'fire_quad_edge_dark_hull', 'fire_luminance_thin_hull', 'fire_small_reads',
                      'hull_flash_star_3_frames', 'hull_smoke_darkens_hull_only', 'hull_burst_small_has_structure',
                      'hull_asteroid_dust_readable', 'hull_repair_cool_spot',
                      # the burst look's review (2026-11-07): the octave blend and its hysteresis, the cluster's fade, the
@@ -551,7 +554,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         rows = self.record['metrics']['explosion']
         sizes = [r for r in rows if r.get('case') == 'size' and r['age_frac'] in (0.1, 0.3)]
         self.assertEqual(len(sizes), 10)                                        # fighter, missile and the three big tiers
-        self.assertTrue(all(abs(r['outline_over_law'] - 1.0) <= 0.05 for r in sizes))
+        # fire-material.md section 12: the tongues' front (the bins' 90th percentile) within 0.80-1.25 of the law
+        self.assertTrue(all(0.80 <= r['front_over_law'] <= 1.25 for r in sizes))
         pre = [r for r in rows if r.get('case') == 'preroll']
         self.assertEqual([(r['box'], r['births'], r['inside'], r['bodies_before_P']) for r in pre], [(0, 8, 8, 0), (1, 8, 8, 0)])
         shock = [r for r in rows if r.get('case') == 'shock']                    # the limb only: interior 0

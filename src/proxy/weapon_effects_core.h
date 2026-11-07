@@ -1978,6 +1978,9 @@ constexpr unsigned fireball_octave_hold = 3;
 // smoke_alone_fills_frame 213.5), over the decal's 177.5 us: the worst case. The alone rows read 0.94 / 0.64 / 0.58 since
 // the lobes skip their outside, but a dense close-capital frame measured 0.73 per raster screen at two octaves
 // (docs/verification/weapon-effects.md "Burst body, glow, flash, smoke").
+// Fire material round 2 (fire-material.md section 12): the every-pixel rows read 242.0 / 212.9 us [M] (1.36 / 1.20 a
+// screen; 1.35 / 1.17 before the fire material's second round); re-pinned to them the close capital's wave was shed on
+// one frame of seven (wave_drawn_close_capital), so the weights stay pending a budget decision.
 constexpr float budget_weight_fireball = 1.18f, budget_weight_fireball_coarse = 1.03f, budget_weight_smoke = 1.20f;
 // A screen of bodies with the fourth octave (2026-11-07; review: measured on a body seen from outside, the eye at 2 R:
 // 27.4 against 27.6 us with three, 0.309 screens [M], the fourth's cost under the noise; an eye-inside body keeps three,

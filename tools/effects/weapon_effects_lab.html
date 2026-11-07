@@ -1578,7 +1578,7 @@ function renderHull(record, t) {
         const tt = fl ? fl.T : T * (LK.fireball_rim_t + (1 - LK.fireball_rim_t) * m);
         const gc = gcore * fireCoreW(fire, rp, rq);
         const colr = (fire !== 0 ? fireRamp(tt) : heatRamp(tt, h.ramp)).map((v, j) => v + (col0[j] - v) * share)
-          .map((v, j) => v + ((fire !== 0 ? LK.fire_ramp[4][j] : 1) - v) * Math.min(1, gc)); // round 2: the top stop
+          .map((v, j) => v + (LK.fire_ramp[4][j] - v) * Math.min(1, gc)); // round 2: the top stop (every body)
         add(i, colr, E * dens * (1 + gc), EL.burst);
       }
     return true;
@@ -2715,13 +2715,15 @@ function renderBoom(record, t) {
           continue;
         }
         const hcol = fire !== 0 ? fireRamp(Tm) : heatRamp(Tm);
-        add(i, hcol.map((v, j) => v + ((fire !== 0 ? LK.fire_ramp[4][j] : 1) - v) * Math.min(1, gc)), E * dens * (1 + gc), el); // round 2: the top stop
+        add(i, hcol.map((v, j) => v + (LK.fire_ramp[4][j] - v) * Math.min(1, gc)), E * dens * (1 + gc), el); // round 2: the top stop (every body)
       }
     return true;
   };
   // section 13.2, the composed body (stage::boom_compose_table, weapon_fireball_ps.hlsl composed()): the hashed N and
   // jets, the unit so the outline follows R(t), each sphere the burst body into a sink, the union drawn once
-  const rows = c.above ? [[0, 1, 0], [0, 0, 1], [1, 0, 0]] : [[0, 0, -1], [0, 1, 0], [1, 0, 0]]; // rows 0, 1, 2 (view)
+  // rows 0, 1, 2 (view); the deck plane (rows 2 and 0, normal row 1: the wave's plane since 2026-11-08, 773a47f40) face-on
+  // broadside and edge-on from above, the fixture's broadside() / from_above() swap (row 1 = row 2 x row 0)
+  const rows = c.above ? [[0, 0, -1], [0, 1, 0], [1, 0, 0]] : [[0, -1, 0], [0, 0, -1], [1, 0, 0]];
   const composedBody = (cb, Rl, seq, E, xx) => {
     const hc = elementHash(seq, BM.compose_element) >>> 0, tier = c.tier;
     const nfull = BM.compose_n_lo[tier] + ((hc >>> 4) % (BM.compose_n_hi[tier] - BM.compose_n_lo[tier] + 1));
@@ -2788,7 +2790,7 @@ function renderBoom(record, t) {
     const r = u <= 1 ? r0w + (rmax - r0w) * (1 - (1 - u) ** 3) : rmax + BM.wave_creep * (rmax - r0w) * (u - 1);
     const we = c.wave_w * R_f, hh = 0.5 * c.wave_slab * R_f, fade = (1 - tb / life) ** 2, Tw = 1 - BM.wave_t_cool * tb / life;
     const xw = tb / life;
-    const n = rows[0], a = rows[2], b = [n[1] * a[2] - n[2] * a[1], n[2] * a[0] - n[0] * a[2], n[0] * a[1] - n[1] * a[0]];
+    const n = rows[1], a = rows[2], b = [n[1] * a[2] - n[2] * a[1], n[2] * a[0] - n[0] * a[2], n[0] * a[1] - n[1] * a[0]]; // the deck plane's normal
     // the eye near the plane: x smoothstep(0, wave_eye_fade_x R_f, its in-plane distance from the band)
     let eyeFade = 1;
     {

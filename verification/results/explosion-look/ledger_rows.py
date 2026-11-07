@@ -294,6 +294,9 @@ def fire_markdown():
     fr = {(r['tier'], r['age_frac']): r.get('front_over_law') for r in rows if r.get('case') == 'size'}
     so = {(r['tier'], r['age_frac']): r.get('outline_over_law') for r in rows if r.get('case') == 'size'}
     wc_ = row('wave_circumference')
+    bc = next(r for r in d3d['metrics']['hull'] if r.get('case') == 'burst_colour')
+    b2, bb, co = row('body_round2'), row('body', tier='fighter_600m'), row('cooling', tier='fighter_600m')
+    he_, wcol, wr = row('wave_hard_edge'), row('wave_colour'), row('wave_ramp')
     hb = lambda k: f"{h[k]}"
     bd = lambda k: f"{f[k]} / {c[k]}"
     out = [
@@ -312,7 +315,10 @@ def fire_markdown():
         f"| `hull_burst_erodes_outside_in` ({ok('hull_burst_erodes_outside_in')}) | equal-area radius / R(t) {er.get('eq_r')}, over its 0.1 L_b value {er.get('eq_ratio')}; mean radius 0.8 / 0.2 {er['mean_r_ratio']}; after L_b {er['bursts_after']} (lit share {er['lit_share']}, printed) | 0.35-0.9, <= 0.4; <= 0.8; 0 |",
         f"| `hull_burst_no_centre_ring` ({ok('hull_burst_no_centre_ring')}; over R_eq) | worst prominence {', '.join(str(r['prominence_max']) for r in rings)}; annulus ratio {', '.join(str(r['annulus_ratio']) for r in rings)} (0.5 / 0.6 / 0.7 L_b) | <= 0.15; <= 1.3 |",
         f"| `death_tier_sizes`, `death_big_tier_sizes` ({ok('death_tier_sizes')}, {ok('death_big_tier_sizes')}) | the tongues' front / R(t) at 0.1 / 0.3 L: {'; '.join(f'{t} {fr[(t, 0.1)]} / {fr[(t, 0.3)]}' for t in ('fighter_600m', 'missile_300m', 'corvette_1500m', 'capital_1500m', 'station_3km'))} (mean outline {'; '.join(f'{t} {so[(t, 0.3)]}' for t in ('fighter_600m', 'capital_1500m'))} at 0.3 L) | 0.80-1.15 |",
-        f"| `wave_broken_circumference` ({ok('wave_broken_circumference')}) | longest run of bins under 5 % {wc_['dark_run_bins']} (min bin {wc_['min_bin_peak']}), arcs max / min {wc_['arc_max_over_min']}, CV {wc_['arc_cv']} | <= 2; >= 2.0; >= 0.25 |",
+        f"| `wave_broken_circumference` ({ok('wave_broken_circumference')}) | longest run of bins under 5 % {wc_['dark_run_bins']} (min bin {wc_['min_bin_peak']}), arcs max / min {wc_['arc_max_over_min']}, CV {wc_['arc_cv']} | <= 3; >= 2.0; >= 0.25 |",
+        f"| `hull_burst_colour_white_core_at_birth`, `_dark_red_at_end` ({ok('hull_burst_colour_white_core_at_birth')}, {ok('hull_burst_colour_dark_red_at_end')}) | birth g / r {bc['birth_g_over_r']}, b / r {bc['birth_b_over_r']}; end g / r {bc['end_g_over_r']}, b / r {bc['end_b_over_r']} | >= 0.75, >= 0.25; <= 0.35, <= 0.2 |",
+        f"| `death_body_erodes_outside_in`, `_colour_core_rim`, `death_cools_through_ramp` ({ok('death_body_erodes_outside_in')}, {ok('death_body_colour_core_rim')}, {ok('death_cools_through_ramp')}; fighter 600 m) | equal-area radius {b2['eq_r']}, ratio {b2['eq_ratio']}; core T {bb['core_T']}, rim T {bb['rim_T']}; T at 0.2 / 0.6 / 1.0 L {co['T_02']} / {co['T_06']} / {co['T_10']} | 0.35-0.9, <= 0.45; >= 0.5 and > rim, <= 0.5; >= 0.75, >= 0.25 and <= T(0.2), <= 0.25 |",
+        f"| `wave_no_hard_edge`, `wave_fire_not_grey` ({ok('wave_no_hard_edge')}, {ok('wave_fire_not_grey')}) | hard drops {he_['hard_drops']}, rays {he_['rays']}, rises {he_['outer_rises']}, worst fall {he_['worst_outer_fall']}; hue at 0.2 / 0.9 L_w {wcol['hue_02']} / {wcol['hue_09']}, on the fire ramp {wr['on_ramp']} | 0; >= 18; <= rays / 10; <= 0.3; >= 0.5 / <= 0.35; >= 0.9 |",
         f"| `hull_plasma_globe_shrinks_reddens` ({ok('hull_plasma_globe_shrinks_reddens')}) | R {pg['R']} px; b / r {pg['b_over_r']} at 0.3 / 0.65 / 0.95 L | shrinks, reddens, lit at 0.95 L |",
         f"| `fire_no_seam_hull`, `_death`, `_wave` ({ok('fire_no_seam_hull')}, {ok('fire_no_seam_death')}, {ok('fire_no_seam_wave')}) | median over the seeds {hseam_med:.4f}; {bd('seam')}; {w['seam']} (worst seed {h['seam_max']}; {bd('seam_max')}) | <= 0.1 (median) |",
         f"| program slots (device creation, max {att['max_ps_slots']}) | fireball_ps {hs['fireball_ps']}, wave_ps {att['wave_ps_slots']}, ring_ps {cs_['ring_ps']}; fireball vertex {hs['fireball_vertex_bytes']} bytes | the modern cap 32768 |",
