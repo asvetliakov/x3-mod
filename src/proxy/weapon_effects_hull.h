@@ -525,7 +525,7 @@ inline StreakCorners streak_corners(const HullView& f, const renderer::WeaponSpr
         dx = 1.f;
         dy = 0.f;
     }
-    // step 3's pixel mode (b.w < 0, the death embers): -b.w the lit width and |c.x| the length, pixels, no floors
+    // step 3's pixel mode (b.w < 0, the death sparks): -b.w the head's FWHM and |c.x| the tail's length, pixels, no floors
     const bool px_mode = v[0].b[3] < 0.f;
     const float len_x = v[0].c[0] < 0.f ? -v[0].c[0] : v[0].c[0];
     float lit = px_mode ? -v[0].b[3] : v[0].b[3] * sc.hw * f.cam.m00 / v[0].a[2];
@@ -534,7 +534,8 @@ inline StreakCorners streak_corners(const HullView& f, const renderer::WeaponSpr
     o.rest = px_mode ? len_x : (rest_w > core::look::floor_len_px ? rest_w : core::look::floor_len_px) * len_x;
     const float cap = core::look::streak_cap * o.rest;
     const float drawn = px_mode ? o.rest : o.motion < o.rest ? o.rest : o.motion > cap ? cap : o.motion;
-    const float hw = 0.5f * o.lit, nx = -dy * hw, ny = dx * hw;
+    // the pixel mode's quad: the head's halo window (2 x its FWHM + 0.5 px) about the head and the tail
+    const float hw = px_mode ? 2.f * o.lit + 0.5f : 0.5f * o.lit, nx = -dy * hw, ny = dx * hw;
     for (unsigned c = 0; c < 4; ++c) {
         const bool at_head = v[c].c[0] > 0.f;
         const float along = at_head ? hw : -(drawn + hw);

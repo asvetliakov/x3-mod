@@ -403,14 +403,21 @@ spark cloud about three fireball radii across. Four new elements of the death st
    the record's latched three-frame floor when longer, so it still acts under SETA; without it the capital's peak rose 2.09 x in one frame at P [M]). A **halo spike** at birth: the sprite batch's flash
    kind at the body's front, its white core `spike_rf` 0.15 R_f on screen clamped to 4-8 px at 1080 rows, halo 4 core
    radii, E `spike_e` 6 (1 - x / 0.12)^2, gone at 0.12 L.
-2. **Rays [C, M].** A new sprite kind (`weapon_sprite_ps.hlsl` depth.y 5; the vertex program passes it through): one
-   screen-space quad a ray from 0.3 R(t) out from the projected centre (the bases apart: 40 bases on one pixel stacked
-   to E 50+), 24-40 rays a death at stratified hashed angles turned per death, length 1.2-2.0 R_f (at least 1.6 R(t)),
-   growing from 0.7 over the first 0.06 L, width 1-3 px at 1080 rows x sqrt(max(1, length / 110 px)) tapering to 0.4 at
-   the tip, radiance (1 - u)^1.5 faded in over the first eighth, brightness a hashed 0.45-1 of `ray_e` 2.4 x (1 - x /
-   0.5)^3 x a per-ray flicker (period 30-60 game ms, at least the frame step so SETA does not strobe it; the hash of the period's index blended smoothly into the next:
-   1 - 0.55 level), colour heat(0.9 -> 0.6), SOFT R_f against the lane, gone at 0.5 L. The exponent 3 replaced 1.5 after
-   the capital's frames (shafts of light at 0.3 L); the width's square root replaced a linear growth (shafts 9-27 px).
+2. **Rays [C, M].** A sprite kind (`weapon_sprite_ps.hlsl` depth.y 5; the vertex program passes it through). Since
+   2026-11-07 (the user on the corvette: "not so pronounced/thin ... they shouldn't read as some decal ... look into our
+   sun") the law is the own sun's spokes ([own-sun-look.md](own-sun-look.md) step 1d): an odd 9-15 rays a death (9, 11, 13
+   or 15, hashed), at stratified angles turned per death with the slot offsets hashed in 0.375-0.625 (two rays at least a
+   quarter slot off opposite), each one screen-space trapezoid from 0.3 R(t) (the white core's edge), its length
+   (0.4 + 1.6 g) R_f on screen, g = frac(0.618 (i + o)) the golden-ratio hash with o hashed per death (spread evenly from
+   short to long), growing from 0.7 over the first 0.06 L; across a Gaussian (2^(-4 (y / FWHM)^2), no edge) of FWHM
+   max(6 px at 1080 rows, 0.065 x its length x (1 + u / 2)), u 0 at the start to 1 at the tip (the spoke widening
+   outwards, mean 0.08 of the length), the trapezoid 1.4 FWHM each side at either end (the tail there under 0.5 %);
+   along the sun's e^(-u) (1 - u)^2, faded in over the first 0.15 of u (smoothstep: no bright base); brightness `ray_e`
+   0.4 x (0.6 + 0.6 g2), g2 = frac(0.755 (i + o) + 0.31), x (1 - x / 0.5)^3 x a per-ray flicker (period 150-300 game ms,
+   at least two frame steps, so under SETA a flicker level holds at least two frames; the hash of the period's index blended smoothly into the next:
+   1 - 0.3 level), colour heat(0.95 -> 0.8) (the lower end read as brown smoke shafts under AgX in the lab), SOFT R_f
+   against the lane, gone at 0.5 L. The 2026-11-07 starburst (24-40 rays of 1-3 px, length 1.2-2.0 R_f, `ray_e` 2.4,
+   flicker 30-60 ms at depth 0.55) read as a painted decal and is superseded.
    **Per-ray quads, not a ray sheet:** the sprite program grows 178 -> 201 slots (806 -> 895 words) [M], the starburst
    alone costs 4.2 us on the 300 m fighter and 8.8 us on the close capital over the fence (28 quads) [M]; the sheet
    variant (`verification/results/explosion-look/ray-sheet/`, three nearest rays a pixel) compiles to 464 slots [M] and
@@ -422,8 +429,14 @@ spark cloud about three fireball radii across. Four new elements of the death st
    on one ring stacked to E 50+), its radiance from 0.25 to whole over its first 0.02 L, from 0.55-1.0 R_0 out along its
    own direction (visible at birth), 60 % in the seed cones and 40 % in uniform directions, speeds 0.5-2.0 v_e leaning
    fast (sqrt of the hash), hidden only within 0.5 R(t) (soft over its inner fifth, the share fading with the erosion),
-   heads 1-2 px at 1080 rows, lengths 4-24 px (h^2) and one in 12 a 1 px streak of 40-80 px, the lengths x min(1, R_f on
-   screen / 28.8 px), E `ember_e` 2.6 e^(-t / 0.8 L) x (1 - t / life), T 1 - (t / life)^1.5 (yellow late), lives to 1.2 L
+   heads (since 2026-11-07, the user's "too thin": 1-2 px before, lengths 4-24 / 40-80 px) a Gaussian of FWHM 3-5 px at
+   1080 rows (hashed) x min(1, R_f on screen / 28.8 px), never under 3 px, in a halo of 0.12 of its radiance to 2 head
+   radii (2^(-(d / 2r)^2), windowed to 4r), the tail behind it s^2 along (1 at the head, 0 at its end) across a Gaussian
+   of FWHM 0.5 + 0.5 x the head's (2-3 px) at the head tapering to 1 px, the brightest of the three a pixel (the head's
+   peak `ember_e` x `spark_gain` 0.8 = 2.08, for the meter); lengths 6-36 px (h^2) and one in 20 a long streak of 30-60
+   px (its head 3 px, its tail 2 px at the head; 60-120 px one in 12 read as hard rays through the body in the 600 m
+   grid), the lengths x min(1, R_f on screen / 28.8 px), at most 1.2 R(t) on screen while the body draws (no streak
+   crosses the body), never under two head widths; a fragment's 3 px head takes the same profile; E `ember_e` 2.6 x 0.8 e^(-t / 0.8 L) x (1 - t / life), T 1 - (t / life)^1.5 (yellow late), lives to 1.2 L
    (x 1 +- 0.2) by thirds. `ember_e` 8 -> 2.6 is the meter's limit, not a look choice: at engine 2.6 a head decodes to 8.2
    linear, past the tonemap's white at the Auto cap. **Shed by half-counts:** a frame draws at most 512 ray quads and
    1,024 sparks within the sprite room the rays, stars and spikes leave (4 a death, and a big tier's secondaries' stars
@@ -431,6 +444,10 @@ spark cloud about three fireball radii across. Four new elements of the death st
    is left out, then every fourth (at most 3 / 4 halvings; an index is drawn when its low bits are all set, so the long
    streaks keep their share and the fragments, indices 7 mod 8, their full count through three halvings and half of it
    at the fourth). 20 fighters at 600 m: 2 halvings, 787 sparks drawn, 2,624 shed [M].
+   Since 2026-11-08 (review) the spark quads (2 FWHM + 0.5 px about head and tail) are charged to the family's budget
+   at `budget_weight_flash` a screen, as the rays and stars, and the frame's spark area, estimated before the build per
+   death from its mean quad (a 4 px head, a 16 px length, both x min(1, R_f on screen / 28.8 px)), takes at most a
+   quarter of that budget: past it another halving (within the four).
 4. **Contrast [C].** No change: the body's rim erosion is the shared program's (not this step's), and the frames show
    the blown core over the orange fringe with black around it; the glow and halo weights stay.
 
@@ -445,14 +462,21 @@ only (worst 0.39 EV, bound 0.5); the black-sky shift is recorded, not gated: the
 climbs to its cap on any signal, its black policy rather than the death's highlight pull (coordinator decision
 2026-11-07). At engine 2.6 the limit is +1.0 EV, at 3.4 0 EV
 [I, the meter's arithmetic].
+Since the 3-5 px Gaussian spark heads (2026-11-08) the 120 m fighter pulls the dim scene's target down 0.817 EV at
+400 ms (1.13 at the spark gain 1; the head puts its whole radiance on a pixel where the 1-2 px streak head sampled
+lower, and the p99 tile maximum follows it [I]); the 300 m fighter still moves nothing [M]. Coordinator decision
+2026-11-08: a death at 120 m may dim the scene, so the bound splits by case: the 300 m fighter <= 0.5 EV (sparks at
+normal range never drive the meter), the 120 m fighter <= 1.3 EV (Auto's upper limit, +1.3 EV).
 
 | Gate (fixture, `EXPLOSION case=...` rows) | Built [M] | Bound |
 | --- | --- | --- |
 | `death_core_radiance` (fighter 600 m, 8 seeds) | median inside 0.2 R(t) at 0.05 L 6.98 | >= 6 |
-| `death_rays_starburst` (300 m, 5120x1440, 4 seeds) | angular peaks at 1.5 R(t) at 0.1 L 31-39 (the count's 30-38); 0 at 0.6 L | >= 24; <= 2 |
+| `death_rays_starburst` (300 m, 5120x1440, 4 seeds; soft rays) | angular peaks at 0.1 L at 0.5 R(t) 9-14 for 9-13 rays drawn, at 1.5 R(t) 6-8; 0 at 0.6 L | drawn +- 1; >= 3; <= 2 |
+| `death_rays_soft` (300 m, 0.1 L) | median FWHM at 1.0 R(t) 7.03 px at 1080 rows; worst ray peak over the death under it at 0.5 R(t) 0.123 | >= 4; <= 0.4 |
 | `death_rays_differ` | two deaths' 360-bin profiles correlate 0.10 | < 0.3 |
 | `death_sparks_dense` (600 m, 0.3 L) | 217 heads on screen (173 local maxima); lengths std / mean 1.0 | >= 100; >= 0.4 |
-| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.39 EV over dim, 0 over lit (black sky 1.30, informational) | <= 0.5 over dim / lit |
+| `death_spark_heads` (600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows (116 heads) | >= 3 |
+| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.82 EV over dim since the 3-5 px spark heads (0.39 before), 0 over lit (black sky 1.30, informational) | 300 m <= 0.5, 120 m <= 1.3 over dim / lit |
 | `death_rays_sparks_budget_5120` | fighter 600 m 20.9-21.9 us, 20 fighters 42.4-50.6 us (0.05 / 0.1 / 0.3 L) | <= 60; <= 150 |
 | `death_budget_capital_close_5120` | worst 354.0 us | <= 450 |
 
@@ -462,7 +486,9 @@ std >= 0.4 of the mean (was 0.2, the mean under 0.35 R_f); `death_no_pop_at_birt
 the spike out with the star (worst rise 1.27 / 1.29). Frames: the lab (`boom/fighter-m5-300m-vanilla-compare` at 50 /
 150 / 400 / 900 / 1,500 ms beside the vanilla frame) and the native dump grids (fighter 300 / 600 m, the nested kill,
 the capital broadside through the main blast; clipped engine space and AgX from the 1080p frame) local. Kill: rays read
-as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads as noise -> `tier_sparks_hi` halved.
+as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads as noise -> `tier_sparks_hi` halved. Flight
+questions: do the rays read as soft glow spokes, not a decal; pumping (scene darkening and brightening with the spark
+cloud at point-blank range).
 
 ## Reproduce
 
