@@ -1253,30 +1253,37 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         }
     }
     // Section 13.1: the death fire waves (explosion-look.md 13.1; after the shocks, additive): their quads with the
-    // fireball's vertex program and declaration and weapon_wave_ps.hlsl, one draw a wave: c2, c3 of fb above, c4..c9 the
-    // front's profile, noise, light, sheet and temperatures (boom::wave_*), c13..c15 the wave's normal, sheet frequency
-    // and cooling, c16..c20 the heat ramp.
+    // fireball's vertex program and declaration and weapon_wave_ps.hlsl, one draw a wave: c2, c3 of fb above, c4..c12 the
+    // front's profile, break, tongues, the material's noise, erosion and floor (boom::wave_*, v7 D52), c13..c15 the wave's
+    // normal, age and cooling, c16..c20 the heat ramp, c21 the temperatures, c22 the rim.
     if (SUCCEEDED(hr) && wave_boxes) {
         namespace wb = wcore::boom;
-        const float wv[8 * 4] = {fb[0], fb[1], fb[2], fb[3], fb[4], fb[5], fb[6], 0.f,
-                                 1.f / wb::wave_trail_span, wb::wave_wash, wb::wave_light, wb::wave_m_bias,
-                                 wb::wave_window_in, wb::wave_window_out, wb::wave_m_floor, wb::wave_m_contrast,
-                                 wb::wave_n_cells[0], wb::wave_n_cells[1], wb::wave_n_w[0], wb::wave_n_w[1],
-                                 wb::wave_tongue * wb::wave_trail_span, wb::wave_tongue_contrast, 1.f / wb::wave_sheet_span,
-                                 wb::wave_sheet_enabled ? wb::wave_sheet_gain : 0.f,
-                                 wb::wave_band_gain, wb::wave_hole_t, wb::wave_sheet_octave, wb::wave_hole_soft,
-                                 wb::wave_t_edge, wb::wave_t_band_end, wb::wave_t_sheet_end, wb::wave_wash_span};
-        float ramp[5 * 4] = {};
+        const float s_end = wb::wave_sheet_enabled ? wb::wave_sheet_span / wb::wave_trail_span : 1.f;
+        const float wv[11 * 4] = {fb[0], fb[1], fb[2], fb[3], fb[4], fb[5], fb[6], 0.f,
+                                  1.f / wb::wave_trail_span, s_end, wb::wave_light, wb::wave_m_bias,
+                                  wb::wave_window_in, wb::wave_window_out, wb::wave_m_floor, wb::wave_m_contrast,
+                                  wb::wave_n_cells[0], wb::wave_n_cells[1], wb::wave_n_w[0], wb::wave_n_w[1],
+                                  wb::wave_tongue * wb::wave_trail_span, wb::wave_tongue_contrast, wb::wave_lobe_amp,
+                                  wb::wave_lobe_soft,
+                                  wb::wave_noise_cells[0], wb::wave_noise_cells[1], wb::wave_noise_cells[2], wb::wave_advect,
+                                  wb::wave_noise_radial[0], wb::wave_noise_radial[1], wb::wave_noise_radial[2], wb::wave_lead,
+                                  wb::wave_noise_w[0], wb::wave_noise_w[1], wb::wave_noise_w[2], wb::wave_break_floor,
+                                  wb::wave_erode_0, wb::wave_erode_t, wb::wave_erode_r, wb::wave_erode_soft,
+                                  wb::wave_erode_rt, wb::wave_heat_soft, wb::wave_floor_a, wb::wave_floor_t};
+        float ramp[7 * 4] = {};
         for (unsigned k = 0; k < 5; ++k)
             for (unsigned c = 0; c < 3; ++c) ramp[4 * k + c] = lk::heat_ramp[k][c];
+        const float tail[8] = {wb::wave_t_edge, wb::wave_t_band0, wb::wave_t_band_end, wb::wave_t_sheet_end,
+                               wb::wave_ahead, wb::wave_rim_noise, 0.f, 0.f};
+        for (unsigned k = 0; k < 8; ++k) ramp[20 + k] = tail[k];
         const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
         step(WeaponEffectsStep::Waves, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Waves, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
         step(WeaponEffectsStep::Waves, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
         step(WeaponEffectsStep::Waves, call<SetPsFn>(SetPixelShader)(d, wave_ps_));
         step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
-        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, wv, 8));
-        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 16, ramp, 5));
+        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, wv, 11));
+        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 16, ramp, 7));
         for (unsigned k = 0; k < wave_boxes && SUCCEEDED(hr); ++k) {
             step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 13, f.wave_constants[k].normal, 3));
             if (SUCCEEDED(hr)) {

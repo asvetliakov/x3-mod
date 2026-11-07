@@ -147,11 +147,12 @@ struct WeaponComposeConstants {
 // Section 13.1 (explosion-look.md): the death fire waves, weapon_wave_quads fireball-layout quads each (the annulus's
 // eight strips on screen, or the slab's box: `quads` of them drawn; sphere = the centre and the front's radius, look =
 // (w_e, h / 2, T_w, E), tint = the long axis and 1 / stretch, disc.y / disc.z the circumference's seeds),
-// weapon_wave_ps.hlsl, one draw each with its plane's normal, the sheet noise's frequency and its cooling in c13..c15.
+// weapon_wave_ps.hlsl, one draw each with its plane's normal, its age fraction, its cooling and the sheet's third
+// octave's weight in c13..c15.
 constexpr unsigned weapon_wave_boxes = 2, weapon_wave_quads = 8;
 struct WeaponWaveConstants {
-    float normal[4] = {0.f, 0.f, 1.f, 0.f}; // the plane's normal (view, unit), the sheet noise's frequency (per view unit)
-    float heat[4] = {1.f, 0.f, 0.f, 0.f};   // the age's cooling factor on T, the sheet's second octave's weight (0: shed)
+    float normal[4] = {0.f, 0.f, 1.f, 0.f}; // the plane's normal (view, unit), the age fraction t / L_w (the erosion's x)
+    float heat[4] = {1.f, 1.f, 0.f, 0.f};   // the age's cooling factor on T, the sheet's third octave's weight (0: shed)
     float spare[4] = {0.f, 0.f, 0.f, 0.f};  // c15, unused
     unsigned quads = 1;                     // the quads drawn (1 .. weapon_wave_quads; not uploaded)
 };
