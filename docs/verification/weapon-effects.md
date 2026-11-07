@@ -2219,3 +2219,49 @@ boundaries and of the angle's wrap at pi, 5 km, 0.5 tau, eight strips drawn): wo
 57.8, 57.6, 57.9, 57.6 us (median 57.6), the big set 78.2-78.6 us (0.099 a quad); bounds untouched. v6 far grid local
 (`stage-dump-wave/v6/`). Not flown.
 
+
+### v7: the wave as the fireball's material, the hard edge (2026-11-07, worktree on `effects` `a74671f26`, uncommitted)
+
+The user on the lab: the installed wave a beige / olive ring with black soot blots and a hard vertical cut on its right,
+"not fire"; the fireball beside it reads as fire. Built as explosion-look.md D52-D58: the band and sheet are now the
+fireball's noise, erosion and lobes on (the angle, the distance behind the shifted front), never transparent inside the
+band; the rim a thin T 0.9 line, the material 0.55 -> 0.4 -> 0.25, dim pixels cooled; E 1.6. The hard edge had two
+causes: the lab's unframed vanilla inset (a black third of the width over the top right; framed and a quarter now) and
+v6's sheet lit at full gain ahead of the front up to the window and the strips' reach (the ring's outer cut, lab and
+native). Acceptance run (`tasklist.exe`: no X3AP / X3FL before it; 20:48-20:50 including the lock): D3D 323 checks, 1
+failed (`death_big_stage_cpu`, the CPU row on today's host; the other CPU row passed at 42.1 us); hook 147 / 0. The
+engine shimmer sources are unchanged (its record above stands). Table from `python3
+verification/results/explosion-look/ledger_rows.py --markdown --wave` over that record:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `compose_*` | skipped: `boom::compose_enabled` false (the kill, 2026-11-07 v4) | |
+| `wave_program_attached` (PASS) | wave_ps 727 slots, compose_ps - slots, the device's 4096 | created |
+| `wave_radius_law` (PASS; capital 5 km face-on) | the lit bins' median edge radius over r(t) at 0.1 / 0.5 / 1.0 tau: 1.001 / 1.0 / 1.003 (the median outer 10 % radius 363.6 / 741.8 / 821.2 px against r(t) + 1.52 w_e 362.2 / 744.7 / 823.9: the tongues) | 5 % |
+| `wave_sheet_thick`, `wave_hot_edge_trailing_sheet`, `wave_flame_tongues` (PASS, PASS, PASS; 5 km, 0.5 tau) | band + sheet 0.629 R_f at 10 % of each ray's peak; edge over the sheet's mean 0.2-0.6 R_f behind 2.65, the sheet at 0.7 R_f behind 0.032 of the peak; the lit bins' outer radii spread 0.334 R_f | >= 0.6; >= 1.4, >= 0.01; >= 0.2 |
+| `wave_never_brightest` (PASS) | wave peak 1.406 / 0.756 / 0.225 against the body's 4.98 / 3.91 / 2.57; after L_w 0, other tiers 0 | <=; 0; 0 |
+| `wave_thick_not_a_line` (PASS) | face-on band 72.5 px (need 23.0); edge-on bar from above 145.0 px (need 95.0) | >= 0.2 R_f f / z |
+| `wave_broken_circumference` (PASS) | the 64 bins' band means max / min 19.92, CV 0.558; the dimmest bin's peak 0.149 of the ring's (lit share at 10 / 30 / 50 % 1.0 / 0.922 / 0.859) | >= 2, >= 0.25; >= 0.05 |
+| `wave_no_hard_edge` (PASS; 5 km, 0.5 tau) | along the band at 36 angles: 2 drops past 50 % over 2 degrees, the worst 0.25-degree step 0.204 of the brighter end (0 hard); outward of 35 lit rays' peaks: 0 rises, the worst 1-px fall 0.283 of the ray's peak | <= 0.35; >= 18, 0, <= 0.3 |
+| `wave_fire_hue` (PASS; 5 km, 0.5 tau, the dump's sRGB) | 301133 lit pixels: mean chroma 0.717, hue in 10-40 degrees 1.0, mean hue 23.9 | >= 0.5; >= 0.8 |
+| `wave_fire_not_grey` (PASS) | edge / band 1.76, band R / G 3.31, hue 0.5 / 0.25 at 0.2 / 0.9 L_w, chroma 0.891 / 0.934 | >= 1.3; >= 1.3; >= 0.5 / <= 0.35; >= 0.2 |
+| `wave_refraction_strips_present_and_capped` (PASS; capital 1.5 km) | at birth 8 strips, 0.123 screens, request 1; at P + 200 ms wave 1, strips 0 (capped 1, 0.514 screens) | 8; <= 0.25 |
+| `wave_shimmer_strips_area` (PASS) | at r 1,000 px: 6 strips 0.066 screens against the box 0.568: 0.116 | <= 0.6 |
+| `wave_lights_swept_hulls` (PASS; a hull plane through the centre, 2 R_f out) | 0.529 while the front crosses (32 ms), 0.0 at 0.5 tau | >= 0.1; 0 |
+| `wave_fire_not_grey` ramp terms, `wave_eye_in_plane_no_whiteout` (PASS) | mean chroma (0.5 tau, 0.2 / 0.9 L_w) 0.917,0.909,0.940, on the ramp 1.000,1.000,1.000; eye in the plane at 1.5 km: worst mean 1 - e^(-Y) 0.108 (P + 50 ms), worst share above 0.9 0.016 | >= 0.35, >= 0.9; <= 0.35, <= 0.4 |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, FAIL) | 32 fighters 42.1 us (single body 42.7); the big set 69.1 us, 0.0874 a quad (repeats 41.1,42.1,41.8,56.7,54.4 / 63.9,69.1,63.4,77.4,74.0) (single body 77.1, no wave 69.2) | 50; 0.08 |
+| `death_budget_capital_close_5120` re-run (PASS) | worst 351.3 us (capital_close_700ms, shed 9); the wave drawn on 7 of the 7 frames P .. P + L_w it is on screen (`wave_drawn_close_capital` PASS) | <= 450; >= 80 % |
+| timing (5120x1440) | wave alone 315.0 us (1.0 screens drawn: 1.712 a screen), the sheet's octave shed 282.6 us (1.529), the box at a station's birth 312.6 us (1.698); compose factors N 2 / 3 / 4 / 5 None / None / None / None, shared N 4 None; eye inside N 4 281.2 us, eye inside 280.7 us | pinned 1.71 / 1.53; <= 300 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (1920x1080) | band 17694 px, 17677 moved, 17584 outward, mean 3.96 px; sky band 8855, 8850 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_band_displaced_outward_sky_included`, `wave_zero_outside_band_front_hull_and_strips` (5120x1440) | band 31153 px, 31068 moved, 30424 outward, mean 5.404 px; sky band 15582, 15543 moved; beyond 0 / front hull 0 / outside 0 changed | >= 80 %, 95 %; 0 |
+| engine shimmer `wave_shimmer_strips_timing` (5120x1440, r 1000.0 px) | strips 0.0836 ms against the box 0.1675 ms: 0.499 (copy 3264480 / 3263040 px) | <= 0.6 |
+
+The close capital (5120x1440): the sheet's third octave shed on every wave frame (step 0a), the wave itself never shed,
+drawn on 7 of 7 on-screen frames, worst frame 351.3 us (capital_close_700ms; P + 0 / 100 / 200 / 300 ms 207.8 / 219.7 /
+279.2 / 342.8 us). Program 727 slots (614 in v6), 3,121 words. Development runs (boom only, not the record) before the
+pins: the first v7 program's outward fall 0.436 of a ray's peak where the rim is broken (the material began over 0.05
+R_f behind the front: its own edge); the material now falls off ahead as the rim does (0.283). Lab (headless Chromium,
+`shot_lab.py`, the capital broadside at 1540 / 1620 / 1900 / 2700 ms and far 5 km) and the native dump grids (far 5 km,
+broadside, station 3 km at both sizes) judged: an orange-red broken ring with clumps, dark-red gaps and a thin hot rim
+in the body's palette, no beige band, no black blots, no cut; frames local (`stage-dump-wave/v7/`, `wave7/lab-v7-*`).
+Late (P + 1,200 ms, x 0.75) the faded ring reads as a dim brown band of even width at 5 km. Also: host tests `test_weapon_effects_*` 101, 2 failing on the record's CPU row alone; programs, lab, schema and generate `--check` PASS; AP `build-wave2` (clean, d3d9.dll sha256 f06cab8544aa5e9a...) and FL `build-wave2-fl` 0 warnings; `check_no_x87.py --edition ap` PASS (1181 reachable functions); `manage.py launch --game-dir /mnt/c/X3 --config --dry-run` exit 0. Not flown.

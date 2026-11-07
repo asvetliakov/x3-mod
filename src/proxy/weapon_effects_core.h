@@ -782,14 +782,12 @@ inline unsigned clone_elements(const unsigned char* src, unsigned n, std::uint32
 // weapon_death wave_plane=). In-plane distance d' with the long axis stretched by wave_stretch; the front's radius
 // r(t) = r_0 + (r_max - r_0)(1 - (1 - t / tau)^3) for t <= tau, then + wave_creep (r_max - r_0) per tau (never stops),
 // r_0 the hull shape's half length along row 2, r_max wave_r_x R_f, tau wave_tau_x L, gone at L_w = wave_life_x L by
-// (1 - t / L_w)^2. Profile in z = (d' - r) / w_e, w_e wave_w_x R_f: the white-hot edge e^(-z^2) at heat(T_w), the trailing
-// band 4 b (1 - b), b = saturate(-z / wave_trail_span), at wave_trail_gain heat(wave_trail_t T_w), the wash wave_wash
-// inside (tapered to 0 at the window); across the plane a slab wave_slab_x R_f thick, (1 - (2 y / h)^2), its chord
-// normalised as the body's column (edge-on a bar, never a line). T_w = 1 - wave_t_fall t / L_w; E_w wave_e. The
-// circumference broken as the hull ring's: m = wave_m_floor + (1 - wave_m_floor) saturate(0.5 + wave_m_contrast (n - 0.5)),
+// (1 - t / L_w)^2. In z = (d' - r) / w_e, w_e wave_w_x R_f, the material of v7 below (the fireball's on the angle and the
+// distance behind the front); across the plane a slab wave_slab_x R_f thick, (1 - (2 y / h)^2), its chord normalised as
+// the body's column (edge-on a bar, never a line); E_w wave_e. The circumference broken as the hull ring's: m = wave_m_floor + (1 - wave_m_floor) saturate(0.5 + wave_m_contrast (n - 0.5)),
 // n = wave_n_w[0] vn1(wave_n_cells[0] phi / 2 pi + s) + wave_n_w[1] vn1(wave_n_cells[1] phi / 2 pi + s'), periodic.
 // The early-out window -wave_window_in < z < wave_window_out; the swept hulls: a lane point inside the slab's front
-// window adds the profile at wave_light E_w heat(T_w). Refraction ahead (the engine shimmer pass's plane mode): the
+// window adds the rim and the band's floor at wave_light E_w. Refraction ahead (the engine shimmer pass's plane mode): the
 // band [r, r + wave_refract_band w_e] displaced outward by wave_refract_px at 1440 rows x (1 - t / L_w)^2 through the
 // band's eight octagon strips (the newest wave only; past engine_shimmer::weapon_ring_max_screens drawn without a band).
 // Budget (section 7): the annulus's clipped screens x budget_weight_wave + the rest of the box x budget_weight_wave_miss;
@@ -798,78 +796,81 @@ inline unsigned clone_elements(const unsigned char* src, unsigned n, std::uint32
 constexpr std::uint8_t wave_tiers = 12; // (1 << capital) | (1 << station); a literal the lab reads
 static_assert(wave_tiers == ((1u << capital) | (1u << station)), "the fire wave: capitals and stations");
 constexpr float wave_r_x = 7.f, wave_tau_x = 0.25f, wave_life_x = 0.4f, wave_creep = 0.05f, wave_stretch = 1.25f;
-// Built (2026-11-07, the first native frames): wave_trail_gain 0.7 -> 0.45 and wave_wash 0.25 -> 0.15 (the edge measured
-// 0.84 of the band's peak: under the gate's 1.3), wave_t_fall 0.5 -> 0.8 (the hue at 0.9 L_w measured 0.50 against <= 0.35),
-// wave_m_floor 0.1 -> 0.05 with the wash broken too (every one of 64 bins lit at 0.1: no broken arc).
+// Built (2026-11-07, the first native frames): wave_m_floor 0.1 -> 0.05 (every one of 64 bins lit at 0.1: no broken arc).
 // The kill step (2026-11-07, the frames: a thin smooth hoop at 1.5 and 5 km): wave_band_x 0.3 -> 0.5.
 constexpr float wave_w_x = 0.1f, wave_band_x = 0.5f, wave_slab_x = 0.3f;
-// T_w = wave_t0 - wave_t_fall t / L_w (the frames, 2026-11-07: from 1.0 the front read as a white-grey tyre; from 0.85 it
-// is yellow-white going orange-red).
-constexpr float wave_trail_span = 5.f, wave_wash = 0.15f, wave_e = 1.0f;
-// The colour (2026-11-07 v3, the coordinator: beige / olive with black soot read as no fire): the whole wave on the body's
-// heat ramp, T wave_t_edge at the front falling linearly to wave_t_band_end at the band's end (0.85 at its centre) and on
-// to wave_t_sheet_end at the sheet's end, every T x (1 - wave_t_cool t / L_w) with age (the hue at 0.9 L_w <= 0.35); the
-// intensity edge e^(-z^2) + holes x (wave_band_gain 4 b (1 - b) + wave_sheet_gain (1 - s)^2) + wash capped at 1 (the
-// slab never past the face-on brightness: E_w at most; the band's centre at 0.6: the edge >= 1.4 x it); the sheet's noise
-// carves holes, smoothstep(wave_hole_t -+ wave_hole_soft) of it, never darker material.
+constexpr float wave_trail_span = 5.f; // the band in w_e
+static_assert(wave_band_x - wave_trail_span * wave_w_x < 1e-4f && wave_trail_span * wave_w_x - wave_band_x < 1e-4f,
+              "the band is the trail's span of w_e");
+// v7 (2026-11-07, explosion-look.md D52 on; the user on the lab: a beige / olive ring with black soot blots, "not fire"):
+// the wave is an annulus of the fireball's material. s = (r_t - d') / band, r_t the front shifted by the tongues: 0 the
+// leading edge, 1 the band's end, the sheet beyond to s_end = wave_sheet_span / wave_trail_span (1 with the sheet off) as
+// the eroded outer shell; rq = s / s_end the body's radial coordinate. The noise: three octaves (wave_noise_w) of a value
+// noise periodic in the angle (wave_noise_cells about the circumference: no seam at the wrap) over s - wave_advect x
+// (x = t / L_w, the material streaming back from the front) at wave_noise_radial cells a band, offset by the record's two
+// seeds. The erosion as the body's: thr = wave_erode_0 + wave_erode_t x + wave_erode_r rq^2 (1 + wave_erode_rt x), d =
+// saturate((n - thr) / wave_erode_soft), the heat's share h = saturate((n - thr) / wave_heat_soft). The lobes: rho = (1 +
+// wave_lobe_amp (2 n_b - 1)) / (1 + wave_lobe_amp) of the break's mix n_b, lobe = saturate((rho - rq) / wave_lobe_soft).
+// Density max(wave_floor_a (1 - smoothstep(1, s_end, s)), d lobe) x (1 - smoothstep(0.7, s_end, s)) x (ahead of the
+// front the rim's fall-off, the noise held at s 0) x (wave_break_floor + (1 - wave_break_floor) m): inside the band never under the floor (dark red at
+// wave_floor_t: no transparent hole). The rim: e^(-(z / wave_ahead)^2) ahead, 1 - smoothstep(0, wave_lead, s) behind, x m
+// x (1 - wave_rim_noise + wave_rim_noise d), at T wave_t_edge (over wave_lead, 0.05 R_f). The material's T profile:
+// wave_t_band0 at the front -> wave_t_band_end at the band's end, -> wave_t_sheet_end at the sheet's end; the
+// material's T = wave_floor_t + (T_profile - wave_floor_t) h; the pixel's T the intensity-weighted mean of the rim's and
+// the material's, x (1 - wave_t_cool x); intensity min(1, rim + density) (the slab never past the face-on brightness).
+// Nothing ahead of the shifted front but the rim's fall-off (v6's sheet ran at full gain to the window and the strip's
+// edge: the hard outer cut).
+constexpr float wave_noise_cells[3] = {40.f, 86.f, 175.f}; // integers: periodic about the circumference
+constexpr float wave_noise_radial[3] = {0.8f, 1.7f, 3.5f}; // cells a band at r = wave_noise_r_ref R_f (the body's sizes)
+// The radial cells x sqrt(wave_noise_r_ref R_f / r): the cells about the circumference grow as r, the radial ones as
+// sqrt(r); square at wave_noise_r_ref R_f (the fixed angular count alone streaked the young ring radially, 2:1 at 2 R_f)
+constexpr float wave_noise_r_ref = 4.f;
+constexpr float wave_noise_w[3] = {0.50f, 0.30f, 0.20f};   // the body's
+constexpr float wave_advect = 1.0f;                        // band units over L_w
+constexpr float wave_erode_0 = 0.2f, wave_erode_t = 0.2f, wave_erode_r = 0.5f, wave_erode_rt = 1.0f;
+constexpr float wave_erode_soft = 0.3f, wave_heat_soft = 0.3f;
+constexpr float wave_lobe_amp = 0.45f, wave_lobe_soft = 0.2f;
+constexpr float wave_floor_a = 0.2f, wave_floor_t = 0.25f;
+constexpr float wave_lead = 0.1f, wave_ahead = 0.7f, wave_break_floor = 0.6f, wave_rim_noise = 0.4f;
+constexpr float wave_t_edge = 0.9f, wave_t_band0 = 0.55f, wave_t_band_end = 0.4f, wave_t_sheet_end = 0.25f;
+constexpr float wave_t_cool = 0.5f, wave_e = 1.6f;
 // The kill criterion's switches (2026-11-07 v3, the coordinator): wave_sheet_enabled false draws the wave as the thick
-// textured ring (the sheet's gain 0, the colour kept); compose_enabled false draws every death body as the single lobed
+// textured ring (s_end 1: the material within the band); compose_enabled false draws every death body as the single lobed
 // ball (with the fourth octave). Header constants, never settings.
 // 2026-11-07 v4 (the kill criterion applied: the composed capital body read a smooth late lobe at 2700 / 3900 ms and a
 // white blob at 0.2 L): compose_enabled false for the flight.
 constexpr bool wave_sheet_enabled = true, compose_enabled = false;
-// v4 (the coordinator: a pale beige ring): T 0.9 at the front, 0.6 at the band's end (0.75 at its centre), 0.4 at the
-// sheet's end.
-constexpr float wave_t_edge = 0.9f, wave_t_band_end = 0.6f, wave_t_sheet_end = 0.4f, wave_t_cool = 0.72f;
-// v4: the holes soft flame gaps, the noise periodic in the angle (wave_hole_cells about the circumference) and stretched
-// 3:1 radially (wave_hole_stretch), the edge smoothstep(wave_hole_t -+ wave_hole_soft) (round black holes read as soot).
-constexpr float wave_band_gain = 0.1f, wave_hole_t = 0.3f, wave_hole_soft = 0.15f;
-constexpr float wave_hole_cells = 48.f, wave_hole_stretch = 3.f;
 // The eye near the plane (2026-11-07 v3: from above at 1.5 km the passing front was a full-screen white wall): within
 // wave_eye_plane_x R_f of the plane (blended in over wave_eye_plane_blend_x R_f) the wave x smoothstep(0, wave_eye_fade_x
 // R_f, the eye's in-plane distance from the band [r - band, r]): 0 inside the band, 1 a R_f outside it.
 constexpr float wave_eye_plane_x = 2.f, wave_eye_plane_blend_x = 0.5f, wave_eye_fade_x = 1.f;
-static_assert(wave_band_x - wave_trail_span * wave_w_x < 1e-4f && wave_trail_span * wave_w_x - wave_band_x < 1e-4f,
-              "the band is the trail's span of w_e");
-// The trailing fire sheet (2026-11-07, the hoop's fix): behind the front over wave_sheet_x R_f (wave_sheet_span w_e), s
-// the distance behind the front over that width, alpha (1 - s)^2 at wave_sheet_gain, its colour from heat(T_w) at the
-// front to heat(wave_trail_t T_w) at its end (the band's colour over wave_trail_gain), x a two-octave value noise of the
-// in-plane point (stretched) over wave_sheet_cell R_f x (r / R_f)^wave_sheet_advect (the pattern spreads outward with
-// the front at that power of its growth: a sheet streaming behind a hot edge), octave weights wave_sheet_n_w, the second
-// at wave_sheet_octave the first's frequency (weights wave_sheet_n_w; the budget's step 2b sheds the second, the first
-// then alone), mapped floor + (1 - floor) saturate(0.5 + contrast (n - 0.5)); the band takes the same modulation, only
-// behind the front. The flame tongues: the front's radius shifted by wave_tongue x the band (+-0.15 R_f) x
-// (2 saturate(0.5 + wave_tongue_contrast (n_t - 0.5)) - 1), n_t = w_1 n_0 - w_0 n_1 + w_0 of the circumference break's
-// two noises (wave_n_w, wave_n_cells: uncorrelated with the break's mix, mostly its finer noise; no further hash). The
-// wash keeps its old extent (wave_wash_span w_e).
-// Review 2026-11-07 (the seeds read right): the edge over the band read 1.09-1.14 at sheet 0.8, band 0.15 [M]: 0.6, 0.1.
-constexpr float wave_sheet_x = 1.0f, wave_sheet_span = 10.f, wave_sheet_gain = 0.6f, wave_sheet_cell = 0.15f;
+// The sheet behind the band (2026-11-07, the hoop's fix): out to wave_sheet_x R_f (wave_sheet_span w_e) behind the front.
+constexpr float wave_sheet_x = 1.0f, wave_sheet_span = 10.f;
 static_assert(wave_sheet_x - wave_sheet_span * wave_w_x < 1e-4f && wave_sheet_span * wave_w_x - wave_sheet_x < 1e-4f,
               "the sheet is its span of w_e");
-constexpr float wave_sheet_advect = 0.5f, wave_sheet_octave = 2.13f, wave_sheet_n_w[2] = {0.65f, 0.35f};
-static_assert(wave_sheet_n_w[0] + wave_sheet_n_w[1] > 0.9999f && wave_sheet_n_w[0] + wave_sheet_n_w[1] < 1.0001f,
-              "the sheet's octaves sum to 1 (the first alone when the second is shed)");
-// The frames (2026-11-07): cells of 0.35 R_f left the band a smooth tyre.
-constexpr float wave_tongue = 0.3f, wave_tongue_contrast = 2.f, wave_wash_span = 3.f;
-// The window: the sheet and the deepest tongue inside, the edge's 2 w_e and the farthest tongue outside.
-constexpr float wave_window_in = 12.f, wave_window_out = 3.5f, wave_light = 0.33f;
-static_assert(wave_window_in + 1e-4f >= wave_sheet_span + wave_tongue * wave_trail_span &&
-                  wave_window_out + 1e-4f >= 2.f + wave_tongue * wave_trail_span,
-              "the window holds the sheet and the tongues (x87 evaluates 0.3f * 5.f past 1.5)");
+// The flame tongues: the front's radius shifted by wave_tongue x the band (+-0.15 R_f) x (2 saturate(0.5 +
+// wave_tongue_contrast (n_t - 0.5)) - 1), n_t = w_1 n_0 - w_0 n_1 + w_0 of the circumference break's two noises (wave_n_w,
+// wave_n_cells: uncorrelated with the break's mix, mostly its finer noise; no further hash).
+constexpr float wave_tongue = 0.3f, wave_tongue_contrast = 2.f;
+// The window in z (w_e from the shifted front): the sheet inside, the rim's fall-off outside (e^(-(2.5 / 0.7)^2) ~ 3e-6);
+// the drawn quads reach r - (window_in + tongue) w_e .. r + (window_out + tongue) w_e (wave_reach_in / _out), so no lit
+// pixel lies outside them (v6 drew to r + 3.5 w_e while the tongues and the sheet lit to r + 5 w_e: a hard cut).
+constexpr float wave_window_in = 12.f, wave_window_out = 2.5f, wave_light = 0.33f;
+constexpr float wave_reach_in = wave_window_in + wave_tongue * wave_trail_span,
+                wave_reach_out = wave_window_out + wave_tongue * wave_trail_span;
+static_assert(wave_window_in + 1e-4f >= wave_sheet_span + wave_tongue * wave_trail_span && wave_window_out >= 2.f * wave_ahead,
+              "the window holds the sheet behind the deepest tongue and the rim's fall-off ahead");
 // The circumference's break (2026-11-07 [M]: at the hull ring's 0.5 and 2.5, 60 of 64 bins stayed above 10 % of the
 // ring's peak): m = wave_m_floor + (1 - wave_m_floor) saturate(0.5 + wave_m_contrast (n - wave_m_bias)).
 constexpr float wave_m_floor = 0.05f, wave_m_contrast = 4.f, wave_m_bias = 0.55f;
 constexpr float wave_n_cells[2] = {9.f, 23.f}, wave_n_w[2] = {0.7f, 0.3f};
 constexpr float wave_refract_px = 6.f, wave_refract_band = 2.f;
-// The weights measured 2026-11-07 (wave_alone_fills_frame 0.497, wave_miss_alone 0.563 a screen, the fence removed,
-// 5120x1440 [M]; the note's 0.10 for the early-out box was 5.6 x low: every pixel of the box pays the slab's chord).
-// 2026-11-07, the sheet and tongues: a drawn screen of the strips (or the box at birth) costs 1.26 with both of the
-// sheet's octaves and 1.11 with the first alone (v3, the ramp's colour and the capped intensity: 1.354 / 1.215; v4, the
-// lower ramp and the flame gaps: 1.401 / 1.242, pinned 1.40 / 1.24) (wave_alone_fills_frame, wave_one_octave_alone per drawn screen, 5120x1440
-// [M]); the box's pixels past the window keep the early-out's 0.56 (that path unchanged).
-constexpr float budget_weight_wave = 1.40f, budget_weight_wave_miss = 0.56f;
-// The sheet with its first octave alone (the budget's step 2b).
-constexpr float budget_weight_wave_one = 1.24f;
+// The weights, a drawn screen of the strips (or the box at birth), 5120x1440 [M]: v6 1.40 / 1.24 (the sheet's second
+// octave shed); v7 (the material, three octaves; the budget's step 0a sheds the sheet's third) re-measured below; the
+// box's pixels past the window keep the early-out's 0.56 (that path unchanged).
+constexpr float budget_weight_wave = 1.71f, budget_weight_wave_miss = 0.56f;
+// The sheet with two octaves (the budget's step 0a).
+constexpr float budget_weight_wave_one = 1.53f;
 // wave_quads: a wave is drawn as the eight octagon strips of its annulus [r - window_in w_e, r + window_out w_e] (each
 // an oriented screen quad about its sector, cut at the near plane and the screen), or as the slab's box when that is
 // smaller (the birth: the annulus near a disc); the charge is the drawn quads' screens.

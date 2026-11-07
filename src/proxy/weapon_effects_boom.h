@@ -116,7 +116,7 @@ struct BoomTuning {
     // Section 13: the fire wave (capital, station), its refraction request, and the composed body (off: the single
     // sphere, the lab's "single body" toggle); force_shared / force_n: the fixture's compose rows (0: the law's).
     bool wave = true, wave_shimmer = true, compose = true, force_shared = false;
-    bool wave_octave2 = true; // the sheet's second octave (the fixture's one-octave weight row: false)
+    bool wave_octave2 = true; // the sheet's third octave (v7; the fixture's one-octave weight row: false)
     unsigned force_n = 0, force_jets = 0xffu;
     float box_scale = 1.f; // the fixture's compose_box_holds_spheres: the composed body's box grown
     float budget_screens = core::boom::budget_screens; // the family's own cap (the fixture's hysteresis gate lifts it)
@@ -1647,7 +1647,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     }
                 }
                 // the box: the slab's eight corners; any at or behind the near plane: the whole screen
-                const float ro = r + bm::wave_window_out * we, ri = r - bm::wave_window_in * we;
+                // the drawn reach: the window about the front shifted by the tongues either way (v7: every lit pixel inside)
+                const float ro = r + bm::wave_reach_out * we, ri = r - bm::wave_reach_in * we;
                 float rect[4] = {1.f, 1.f, -1.f, -1.f}, zq = 1e30f;
                 bool full = false;
                 for (unsigned k = 0; k < 8 && !full; ++k) {
@@ -1734,17 +1735,12 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         }
                         renderer::WeaponWaveConstants& wc = wave_const[nw];
                         for (unsigned q = 0; q < 3; ++q) wc.normal[q] = nv[q];
+                        wc.normal[3] = lv.tb / life; // the age fraction: the material's erosion and advection (v7)
                         wc.heat[0] = Tw;
-                        // the sheet noise's frequency: 1 / (wave_sheet_cell R_f (r / R_f)^wave_sheet_advect)
-                        {
-                            const float q = r / lv.R_f > 1e-3f ? r / lv.R_f : 1e-3f;
-                            const float lq = core::log10f_sse(q) * 2.30258509f * bm::wave_sheet_advect;
-                            const float grow = lq >= 0.f ? 1.f / core::exp_neg(-lq) : core::exp_neg(lq);
-                            wc.normal[3] = 1.f / (bm::wave_sheet_cell * lv.R_f * grow);
-                        }
-                        wc.heat[1] = t.wave_octave2 ? bm::wave_sheet_n_w[1] : 0.f; // the sheet's second octave (0: shed)
-                        wc.heat[2] = bm::wave_hole_cells;
-                        wc.heat[3] = 1.f / bm::wave_hole_stretch;
+                        wc.heat[1] = t.wave_octave2 ? 1.f : 0.f; // the sheet's third octave (0: shed, the budget's step 0a)
+                        // the radial cells' scale sqrt(r_ref R_f / r): square cells at r_ref R_f (the angular ones grow as r)
+                        wc.heat[2] = scalar::sqrt(bm::wave_noise_r_ref * lv.R_f / (r > 1e-3f * lv.R_f ? r : 1e-3f * lv.R_f));
+                        wc.heat[3] = 0.f;
                         for (unsigned q = 0; q < 4; ++q) wc.spare[q] = 0.f;
                         wc.quads = quads;
                         // the charge: the strips' screens x budget_weight_wave; the box: the annulus's projected screens x
@@ -1871,7 +1867,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         }
     }
     // (D) The budget (section 7; explosion-look.md D42): past budget, (0) the wave's refraction strips, (0a) the waves'
-    // sheet's second octave, (0b) the fourth octave, (1) the third octave (hysteresis), (1b, 1c) the composed bodies' LOD;
+    // sheet's third octave, (0b) the fourth octave, (1) the third octave (hysteresis), (1b, 1c) the composed bodies' LOD;
     // then with a wave in the frame (2) other owners' glows and halos, (3) the secondaries past the two newest live ones of
     // each death, (4) smoke, (5) shocks, (6) the waves; without one (2) smoke, (3) shocks, (4) glows and halos, (5) the
     // secondaries; largest first each; the bodies, stars, embers and fragments stay.
@@ -1916,7 +1912,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         strip_area = 0.f;
         n.wave_strips = 0;
     }
-    // (0a) the waves' sheet loses its second octave (the charge x budget_weight_wave_one / budget_weight_wave), (0b) the
+    // (0a) the waves' sheet loses its third octave (the charge x budget_weight_wave_one / budget_weight_wave), (0b) the
     // bodies their fourth octave (the frame's octaves 3), before the third (2026-11-07)
     for (unsigned g = 0; g < nw && area > budget; ++g)
         if (wave_const[g].heat[1] > 0.f) {

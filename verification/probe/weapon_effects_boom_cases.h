@@ -2163,16 +2163,43 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 for (unsigned b = 0; b < 64; ++b)
                     if (bins[b] >= 0.1 * pk && bin_ray[b] > 0) ebs.push_back(bins[b] / bin_ray[b]);
                 const double edge_v = ebs.empty() ? 0.0 : boom::median(ebs), band_v = 1.0;
-                unsigned lit = 0;
+                unsigned lit = 0, lit30 = 0, lit50 = 0;
                 double mx = 0, mn = 1e30;
                 for (double b : bins) {
                     lit += b >= 0.1 * pk;
+                    lit30 += b >= 0.3 * pk;
+                    lit50 += b >= 0.5 * pk;
                     mx = std::max(mx, b);
                     mn = std::min(mn, b);
                 }
                 const double share = lit / 64.0, ratio = mn > 0 ? mx / mn : 1e9;
-                std::printf("EXPLOSION case=wave_circumference lit_share=%.3f max_over_min=%.2f\n", share, ratio);
-                report("wave_broken_circumference", share >= 0.40 && share <= 0.85 && ratio >= 2.0, "");
+                // v7 (D55): the band is never transparent (the dark-red floor), so every bin passes 10 % of the peak; the
+                // break is read from each bin's band (its mean luminance 0 .. wave_trail_span w_e behind its own edge):
+                // the arcs' max / min >= 2 and their coefficient of variation >= 0.25, and every bin's peak >= 5 % of the
+                // ring's (no transparent arc)
+                double bsum[64] = {}, bcnt[64] = {};
+                for (std::size_t i = 0; i < l.size(); ++i) {
+                    const double dx = (double(i % tt.w) + 0.5 - cx) / double(bm::wave_stretch), dy = double(i / tt.w) + 0.5 - cy;
+                    const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                    const double z = (std::hypot(dx, dy) - bin_r[bin]) / w_px;
+                    if (z <= 0.0 && z > -double(bm::wave_trail_span)) {
+                        bsum[bin] += l[i];
+                        ++bcnt[bin];
+                    }
+                }
+                double am = 0, amx = 0, amn = 1e30, av = 0;
+                for (unsigned b = 0; b < 64; ++b) {
+                    bsum[b] = bcnt[b] > 0 ? bsum[b] / bcnt[b] : 0.0;
+                    am += bsum[b] / 64.0;
+                    amx = std::max(amx, bsum[b]);
+                    amn = std::min(amn, bsum[b]);
+                }
+                for (unsigned b = 0; b < 64; ++b) av += (bsum[b] - am) * (bsum[b] - am) / 64.0;
+                const double arc_ratio = amn > 0 ? amx / amn : 1e9, arc_cv = am > 0 ? std::sqrt(av) / am : 0.0;
+                std::printf("EXPLOSION case=wave_circumference lit_share=%.3f lit30=%.3f lit50=%.3f max_over_min=%.2f "
+                            "min_bin_peak=%.3f arc_max_over_min=%.2f arc_cv=%.3f\n",
+                            share, lit30 / 64.0, lit50 / 64.0, ratio, mn / double(pk), arc_ratio, arc_cv);
+                report("wave_broken_circumference", arc_ratio >= 2.0 && arc_cv >= 0.25 && mn >= 0.05 * double(pk), "");
                 // review 2026-11-07: the break follows the record's seeds: another sequence's 64-bin peaks correlate < 0.5
                 {
                     boom::clear();
@@ -2223,6 +2250,100 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     }
                     std::printf("EXPLOSION case=wave_seam worst_over_peak=%.4f quads=%u\n", worst, o.n.wave_quads);
                     report("wave_no_strip_seam", worst < 0.1, "");
+                }
+                // wave_no_hard_edge (v7, 2026-11-07: the lab's ring ended in a vertical cut; v6's sheet ran at full gain
+                // ahead of the front to the window and the strip's edge): (a) along the band at 36 angles (10 degrees
+                // apart, the eight strips' boundaries among the 2-degree pairs' spans), the band's mean luminance (its
+                // radial span r - band .. r) sampled every 0.25 degrees over 2 degrees: where it drops past 50 % between the
+                // pair's ends (the brighter >= 10 % of the frame's peak), no single 0.25-degree step carries more than 35
+                // % of the brighter end (a noise hole's edge is soft: the erosion's +-0.15 of the noise); (b) outward from
+                // each lit ray's peak to r + (window_out + tongue + 2) w_e along 36 rays, no 1-px step rises, and none falls
+                // by more than 30 % of that ray's peak (nothing but the rim's fall-off ahead of the front; at 5 km a w_e is
+                // 11.5 px, v6's sheet fell by its whole value in one)
+                {
+                    const double band_px = double(bm::wave_band_x) * double(R_f) * px_x / (5000.0 * m);
+                    const auto band_mean = [&](double a2) {
+                        double sum = 0, n = 0;
+                        for (double rr = r_px - band_px; rr <= r_px; rr += 1.0) {
+                            const double x = cx + double(bm::wave_stretch) * rr * std::cos(a2), y = cy + rr * std::sin(a2);
+                            if (x < 0 || y < 0 || x >= tt.w || y >= tt.h) continue;
+                            sum += l[std::size_t(y) * tt.w + std::size_t(x)];
+                            ++n;
+                        }
+                        return n > 0 ? sum / n : 0.0;
+                    };
+                    unsigned drops = 0, hard = 0;
+                    double worst_step = 0;
+                    for (unsigned k = 0; k < 36; ++k) {
+                        double v[9];
+                        for (unsigned j = 0; j < 9; ++j)
+                            v[j] = band_mean((double(k) * 10.0 - 180.0 + 0.25 * double(j)) * 0.017453293);
+                        const double hi = std::max(v[0], v[8]), lo = std::min(v[0], v[8]);
+                        if (!(hi >= 0.1 * double(pk)) || lo >= 0.5 * hi) continue;
+                        ++drops;
+                        double step = 0;
+                        for (unsigned j = 0; j < 8; ++j) step = std::max(step, std::fabs(v[j + 1] - v[j]) / hi);
+                        worst_step = std::max(worst_step, step);
+                        hard += step > 0.35;
+                    }
+                    unsigned rays = 0, rises = 0;
+                    double worst_fall = 0, worst_at = 0, peak_at = 0;
+                    const double reach = r_px + (double(bm::wave_window_out) + double(bm::wave_tongue * bm::wave_trail_span) + 2.0) * w_px;
+                    for (unsigned k = 0; k < 36; ++k) {
+                        const double a2 = (double(k) + 0.5) * 0.17453293 - 3.14159265;
+                        std::vector<float> prof;
+                        for (double rr = r_px - band_px; rr <= reach; rr += 1.0) {
+                            const double x = cx + double(bm::wave_stretch) * rr * std::cos(a2), y = cy + rr * std::sin(a2);
+                            if (x < 0 || y < 0 || x >= tt.w || y >= tt.h) break;
+                            prof.push_back(l[std::size_t(y) * tt.w + std::size_t(x)]);
+                        }
+                        std::size_t at = 0;
+                        for (std::size_t q = 0; q < prof.size(); ++q)
+                            if (prof[q] > prof[at]) at = q;
+                        if (prof.empty() || !(prof[at] >= 0.1f * pk)) continue;
+                        ++rays;
+                        for (std::size_t q = at; q + 1 < prof.size(); ++q) {
+                            const double dv = double(prof[q + 1]) - double(prof[q]);
+                            rises += dv > 0.02 * double(prof[at]);
+                            if (-dv / double(prof[at]) > worst_fall) {
+                                worst_fall = -dv / double(prof[at]);
+                                worst_at = (double(q) - band_px) / w_px; // w_e from r(t)
+                                peak_at = (double(at) - band_px) / w_px;
+                            }
+                        }
+                    }
+                    std::printf("EXPLOSION case=wave_hard_edge band_drops=%u hard_drops=%u worst_step=%.3f rays=%u "
+                                "outer_rises=%u worst_outer_fall=%.3f fall_at_we=%.2f peak_at_we=%.2f\n",
+                                drops, hard, worst_step, rays, rises, worst_fall, worst_at, peak_at);
+                    report("wave_no_hard_edge", hard == 0 && rays >= 18 && rises == 0 && worst_fall <= 0.3, "");
+                }
+                // wave_fire_hue (v7, the user: beige / olive is not fire): over the lit pixels (10 % of the frame's peak) at
+                // 0.5 tau, in the dump's display encoding (sRGB of the linear value clamped to [0, 1]), the mean chroma (max
+                // - min) / max >= 0.5 and >= 80 % of them with a hue angle in 10 .. 40 degrees (orange-red, not yellow)
+                {
+                    const auto enc = [](double v) {
+                        v = v < 0.0 ? 0.0 : v > 1.0 ? 1.0 : v;
+                        return v <= 0.0031308 ? 12.92 * v : 1.055 * std::pow(v, 1.0 / 2.4) - 0.055;
+                    };
+                    double csum = 0, n = 0, in_band = 0, hsum = 0;
+                    for (std::size_t i = 0; i < l.size(); ++i) {
+                        if (!(l[i] > 0.1f * pk)) continue;
+                        const double R = enc(rgb[3 * i]), G = enc(rgb[3 * i + 1]), B = enc(rgb[3 * i + 2]);
+                        const double mx = std::max(R, std::max(G, B)), mn = std::min(R, std::min(G, B));
+                        csum += mx > 0 ? (mx - mn) / mx : 0.0;
+                        double h = 0;
+                        if (mx > mn) {
+                            h = mx == R ? 60.0 * std::fmod((G - B) / (mx - mn) + 6.0, 6.0)
+                                : mx == G ? 60.0 * ((B - R) / (mx - mn) + 2.0) : 60.0 * ((R - G) / (mx - mn) + 4.0);
+                        }
+                        in_band += h >= 10.0 && h <= 40.0;
+                        hsum += h;
+                        ++n;
+                    }
+                    const double chroma = n > 0 ? csum / n : 0, share = n > 0 ? in_band / n : 0;
+                    std::printf("EXPLOSION case=wave_fire_hue lit_px=%.0f mean_chroma=%.3f hue_10_40_share=%.3f mean_hue=%.1f\n",
+                                n, chroma, share, n > 0 ? hsum / n : 0.0);
+                    report("wave_fire_hue", n > 0 && chroma >= 0.5 && share >= 0.8, "");
                 }
                 // 2026-11-07 v3 (the coordinator: beige / olive and soot read as no fire): over the lit pixels (10 % of the
                 // frame's peak) the mean of each pixel's chroma, and the share whose colour (over its largest channel) lies
