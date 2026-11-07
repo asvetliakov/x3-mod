@@ -1,6 +1,6 @@
 # Death explosions: the look per tier (step 3)
 
-Ratified 2026-11-07 (main session) with the pre-roll conditional on the sprite mask; the Effects element layout goes to a disassemble task before implementation.
+Ratified 2026-11-07 (main session); the death-row disassembly ([spawn note §10](../reverse-engineering/weapon-effect-spawn.md#10-death-row-element-layout-and-the-mask-seam-2026-11-07)) folded in the same day: the mask is a clone row R′ selected by a death-column swap, no new patch site.
 
 Design note for step 3 of the weapon-effects pass, amending [weapon-look.md](weapon-look.md) 3.2 (the explosion plan)
 with the research of [explosion-references.md](../reference/explosion-references.md) and the burst body of
@@ -13,13 +13,13 @@ Sizes: `verification/results/explosion-look/size_derivation.py` → `size_deriva
 
 ## Outcome
 
-1. **Pre-roll: yes for capitals and stations, on the condition that the hull stays.** The native spawn `0x00413610`
-   runs for every death the stage owns with the row's *sprite* elements masked; its carrier (a copy of the dying body,
-   flagged wreck by the row's `EEDF_WRECK` element and faded by `FADEOUTBODY` over the row's own 9-22 s) stays
-   native. The pre-roll's secondaries then pop on a hull that is still there, light it from inside, and the final body
-   is born at its end. Without the mask (the one disassembly item of section 11) the three big tiers stay native in
-   the first flight and only fighters and missiles are ours; a capital that vanishes at t = 0 under a 1.5 s pre-roll is
-   the "delayed fireball" failure and is not flown.
+1. **Pre-roll: yes for capitals and stations, on the engine's own hull copy.** The native spawn `0x00413610` runs
+   for every big-tier death we own with the type record's death column pointing, for that one call, at a clone row R′
+   of its row: every sprite and scene element `DISTANT`, the `PROPAGATE` element dropped (our secondaries replace the
+   engine's 30 children), `FADEOUTBODY` kept and retimed to our body's birth P, one empty `TIMEOUT` element holding the
+   carrier to P + 1 s. The carrier (the dying root body) is the picture through the pre-roll; the body then eats it as
+   it fades over the engine's fixed 1 s. No wreck ever appears natively (the kill's third argument is 0 on every native
+   caller), so none is lost. Corvettes take the same R′ with P = 0; fighters and missiles skip the spawn.
 2. **One body law, the burst's**: the built three-octave eroding lobed impostor (erode 0.10 / 0.20, heat_soft 0.20,
    advect 1.0, radial term x (1 + 3x), lobes 5 at 0.25, rim_t 0.45) at R_f = f R_obj clamped per tier: fighter 2.0
    [12, 50] m, corvette 1.5 [30, 160], capital 0.9 [80, 600], station 0.6 [200, 1,800], missile 3.5 [6, 25]. Born at
@@ -34,10 +34,10 @@ Sizes: `verification/results/explosion-look/size_derivation.py` → `size_deriva
 5. **Embers and fragments** random per event: n from 4-6 seed cones at a constant speed clamp(1.5 R_f / s, 40, 300) m/s
    plus the hull's velocity, three lifetimes to 1.2 L, cooling on the ramp; one in eight a fragment (a dark multiply
    streak with a hot tip, 0.5 v_e, to 1.5 L). Big tiers launch them from the hull box's surface, not the centre.
-6. **Light**: the body's glow on nearby hulls and the wreck, R 5 R_f, 0.33 E_b, the body's heat and life; during the
+6. **Light**: the body's glow on nearby hulls and the fading hull copy, R 5 R_f, 0.33 E_b, the body's heat and life; during the
    pre-roll the dying hull is lit from t = 0 (E 0.4 → 0.8, T 0.6) plus each secondary's own glow.
 7. **Smoke on in the first flight** (amending 3.2): the burst's surface-bound multiply puff at 1.1 R_f from 0.5 L to
-   1.6 L; it darkens the wreck and neighbours, never the sky; it is the first thing shed on a close capital.
+   1.6 L; it darkens the hull copy and neighbours, never the sky; it is the first thing shed on a close capital.
 8. **Budget**: a close capital at the body's birth charges 373 µs with nothing shed, 346 with the third octave shed, 259
    with the shock and the secondaries shed [I from the measured weights]; the fence stays 450 µs. Shed order and the
    built hysteresis in section 7; the body, the flash and the embers are never shed.
@@ -46,44 +46,54 @@ Sizes: `verification/results/explosion-look/size_derivation.py` → `size_deriva
    saturation so they do not sum to a sun.
 10. **Proof before the flight**: dump cases per tier at the tier's distance, the close capital, the nested kill and the
     eye inside, at 1080p and 5120x1440, measured by `measure.py`'s 10 %-of-peak method with the dump split into parts;
-    kill criteria per tier in section 10. A flight settles only the drift unit, the wreck's native timing as seen, the
+    kill criteria per tier in section 10. A flight settles only the drift unit, whether the root-body carrier reads as the hull, the
     exposure in play and whether the pre-roll reads as suspense or as a wait.
 
 ## 1. The hull copy decides the pre-roll
 
-What the engine does at a death [S, spawn note §4; engine-effects.md]: `0x00413610` allocates a class-`0x1b` carrier
-whose subtype is the dying root body, copies position, rotation and velocity, and spawns the row on it. No ship or
-station death row has `HIDEOBJECT` (only asteroid rows 61-67 do), so **the carrier shows the dying hull** for the
-row's life; the capital rows 37 / 201 (stock; Mayhem's 600-602 sit on the same tiers, their flags are not in the census print: section 11, item 2) carry `EDF_PROPAGATE` (a second carrier with a copy of
-the scene for 30 propagated children) and one `EEDF_WRECK` element (`obj+0x40 |= 0x400` on the carrier [I,
-decompiler]) with `FADEOUTBODY`; the corvette row 40 has the wreck too (9 s); the fighter row 35 (also TS, TM, most TP)
-has a `CUT` element and no wreck (3.1 s). The original object is removed by the kill path [I] (`0x0044aab0`, the object removal, frees every
-effect instance of a removed object [S]); what the player sees for 22 s after a capital dies is the carrier copy,
-burning and fading. Skipping the spawn removes all of it at t = 0.
+What the engine does at a death [S, spawn note §4 and §10]: `0x00413610` allocates a class-`0x1b` carrier whose
+subtype is the dying root body (the root body only, not the part hierarchy), copies position, rotation and velocity,
+and spawns the row on it; no ship or station death row has `HIDEOBJECT`, so **the carrier shows the hull**. The row's
+elements are sprites and scenes with flags, not body operations: `CUT` makes a multi-part 2D scene (it does not cut
+the hull), `FADEOUTBODY` fades the carrier's root node over a fixed 1,000 ms from the element's start, `CUTKEEPBODY`
+is the 22 s debris scene, and `WRECK` fires only when the kill's third argument is non-zero, which every direct native
+caller (collision, area damage, five more sites, the KC native) passes as 0: **no wreck appears on a native death**.
+The capital rows 37 / 201 (stock) and 602 (Mayhem) carry `EDF_PROPAGATE`: before the main spawn the engine makes a
+second carrier (a full scene copy) and 30 (40) children of row 149 (CUT scene sprites, 3,840 ms) at staggered starts
+on its surface, and the main t0 is their last start: 1.8 s (stock 37), 1.6 s (201), 6.0-6.4 s (Mayhem 602). So the
+engine already has a pre-roll, and the hull copy fades over the second after it, not over 22 s; the corvette rows 40 /
+601 keep the hull to 9.03 s and the fighter row 35 / 600 to 3.11 s with no fade. The original object is removed by the
+kill path [I] (`0x0044aab0` frees every effect instance of a removed object [S]). Skipping the spawn removes the hull at
+t = 0; forwarding it unmasked plays the sprites beside ours.
 
-That is the fact the reference's pre-roll runs into: a chain of small bursts "then a wait, then a big blast" needs
-the hull in the frame during the wait. Hence the hook contract for this family **[C]**:
+Elements are never copied per instance (`inst+8` is the static row, re-read every update [S, §10.5]), so a per-instance
+mask is impossible. The hook contract **[C, ratified]**:
 
 - The death stub (the `claim_call` pattern of the impact and muzzle sites, spawn note §6: registers, SEH frame,
-  LastError and the x87 state preserved, the stack untouched) classifies the object (class 7 / 5 / 6 / 10 by the
-  reads of §8.1, the tier by `patch_tier_of_ship`), records the death, and **forwards the call with the row's sprite
-  elements masked**: the carrier, the propagation, the wreck flag and the fade run natively; the sprite and lens-flare
-  elements (`GROW`, `RANDOMROT`, `NOZTEST`, `CAMERARELATIVE`, the `CUT` sprites) do not. The mask is a per-call
-  substitution of the row's element list (the row at `0x00580068 + row x 0x14`, the element array built by
-  `0x00414ba0` from it [S]) restored after the callee returns; nested kills inside the call (area deaths, §6) each
-  run their own stub and their own substitution on a stack, never assuming one event per kill.
-- Rollback is the unmasked forward (`explosions` absent from the token, `boom::tier_native`, the asteroid tier, the
-  rule-(b) missile), byte-exact as today's observe forward.
-- **Until the element layout is pinned** (section 11, item 1): fighters and missiles (rows 35 / 39 / 158-161: no
-  wreck) **skip** the spawn as the shield hit does (`xor eax,eax; ret` into the caller's `add esp`; the carrier is
-  never made, the body goes at t = 0 as vanilla's `CUT` does moments later [I: the CUT time is in the data, not
-  yet printed]); corvettes, capitals and stations stay native (`tier_native` = corvette | capital | station). The
-  body born at R_0 = 0.5 R_obj hides a fighter's cut at 600 m (a 7 m ball plus a star over a 22 m hull for three
-  frames, then 22 m by 0.3 s).
+  LastError and the x87 state preserved, the stack untouched) classifies the object (class 7 / 5 / 6 / 10 by the reads
+  of §8.1, the tier by `patch_tier_of_ship`), records the death, and for the corvette, capital and station tiers
+  **writes R′ into the type record's death column** (TShips `rec+0xbc`, docks and factories `rec+0x60`), forwards
+  `0x00413610`, and restores the saved original after it returns. The write and restore are LIFO so that nested kills
+  inside one outer call (area deaths, §6) each save and restore their own column. No new patch site.
+- **R′** is a copy of row R in a free Effects slot (installed 901-999, stock 203-999; count, flags, `+8`, `+0xc`
+  copied, `EDF_PROPAGATE` cleared so no second carrier is made), its element array allocated with the EXE's own
+  `malloc` `0x005112c4` so the engine's reset frees it with its matching free `0x0050e1b0`. Per element: every sprite
+  and scene element `+0x3c |= DISTANT` (gone at its start, never drawn); the `PROPAGATE` element dropped; `FADEOUTBODY`
+  kept on an empty node with its start `+0x40` = P (capital 1,500 ms, station 3,000 ms, corvette 0); one empty
+  `TIMEOUT` element ending at P + 1,000 ms holds the instance and the carrier alive to the fade's end; nothing else
+  (no `WRECK` timer: it never ran natively). Built once per row at the latch or on first use, rebuilt when slot R′
+  reads count 0 (a reload zeroes it) or R's `+0x10` has changed; never freed by us (instances keep `&slot[R′]` to
+  their end).
+- Rollback is the unswapped forward (`explosions` absent from the token, `boom::tier_native`, the asteroid tier, the
+  rule-(b) missile), byte-exact as today's observe forward; the clone slots are inert data the engine's reset frees.
+- **Fighters and missiles** (rows 35 / 600, 39, 158-161) **skip** the spawn as the shield hit does (`xor eax,eax; ret`
+  into the caller's `add esp`): the carrier is never made and the body goes at t = 0; the body born at R_0 = 0.5 R_obj
+  hides it at 600 m (a 7 m ball plus a star over a 22 m hull for three frames, then 22 m by 0.3 s).
 
-The pre-roll is therefore not a delay of the native death (impossible: the node dies at the site) but a use of the
-time the engine already spends showing the hull. It ends where vanilla's own chain would still be going (22 s), so
-the user's "too short" history is on the side of the pre-roll, not against it.
+The pre-roll is therefore not a delay of the native death (the node dies at the site) but the engine's own hull-copy
+time, used for our secondaries instead of its children, with P 1.5 / 3.0 s close to the stock 1.8 s and well under
+Mayhem's 6 s; the user's "too short" history is on the side of the pre-roll, not against it. Whether the root-body
+carrier alone (no parts) reads as the hull is section 11, item 1.
 
 ## 2. The elements
 
@@ -141,7 +151,7 @@ p(t) = p0 + v t (a 1e6 s τ loses 6 % to float precision; the Expanse shell "nev
 - counts 32 / 64 / 128 / 160 / 12; the capital's and station's split: half from the secondaries during the pre-roll
   (8 per secondary), half at the body's birth.
 - fragments n / 8: thick (0.25 U) dark streaks at 0.5 v_e, life 1.5 L, tumbling by a hashed phase in the width; drawn
-  twice, in the scorch pass (ZERO / INVSRCCOLOR, darkening 0.6, surface-bound: over the wreck and neighbours, nothing
+  twice, in the scorch pass (ZERO / INVSRCCOLOR, darkening 0.6, surface-bound: over the hull copy and neighbours, nothing
   over sky, where a dark thing is invisible anyway) and additively as a 0.3-length hot tip at heat(0.6) cooling.
 
 ### 2.5 Secondaries and the pre-roll [C; cadence M arithmetic]
@@ -162,7 +172,7 @@ hull and a 0.75 s wait: the delay failure at small scale), fighters and missiles
 ### 2.6 Light on hulls [C]
 
 The glow primitive (one lane fetch, `(1 − d² / R²)²`, back faces) at R = 5 R_f, E_g = 0.33 E_b x T(t), drawn while the
-body is drawn: on neighbours and on the wreck alike (surface-bound: whatever the lane holds is lit). During the
+body is drawn: on neighbours and on the fading hull copy alike (surface-bound: whatever the lane holds is lit). During the
 pre-roll the dying hull carries a glow of R = R_obj at the hull's centre, E 0.4 → 0.8 linearly over the pre-roll, T
 0.6 (orange: burning before death), and each secondary its own 1.6 R(t) glow; the burst's per-owner cluster saturation
 (s(N) = 1 / (1 + (N − 1) / 2.5)) over the live secondaries' glows, so twelve on a station sum to under 2.5 E_g.
@@ -172,7 +182,7 @@ Nothing on sky. The three-frame floor applies to the glow as to every element.
 
 The burst's law: the same impostor with the smoke flag in the scorch pass, surface-bound, R_sm = 1.1 R_f, y = (t −
 0.5 L) / (1.1 L), strength s0 0.45 x min(1, y / 0.27) x (1 − y) / 0.73, the body's seed and rotation, the erosion over
-y. On a space death it darkens only what the lane holds: the wreck, neighbours, a station behind; the sky is untouched,
+y. On a space death it darkens only what the lane holds: the hull copy while it lasts, neighbours, a station behind; the sky is untouched,
 which is the vacuum look the references ask for. Life to 1.6 L is the record's slowest element (fragments 1.5 L).
 
 ### 2.8 Drift, placement, occlusion, time
@@ -188,7 +198,7 @@ fighter death is 0.33 s of wall time and 20 frames at 60 fps: seen; the star kee
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | fighter (M3-M5) | 14 (M5 12, M3 19) | 600 | 2.0 R, [12, 50] → 28 | 45 / 34 | 35 | 2.0 | star, body from 0.5 R_obj, embers, glow, smoke 1.0-3.2 s | 32 / 4 | none | none |
 | corvette (M6, M8, TS, TP, TM) | 87 (TS 50) | 1,500 | 1.5 R, [30, 160] → 130 | 84 / 63 | 83 | 3.0 | star, body from 0.5 R_obj, shock 0.9 s, embers, glow, smoke | 64 / 8 | yes | none |
-| capital (M1, M2, M7, TL) | 1,288 (M7 618) | 1,500 | 0.9 R, [80, 600] → 600 (M7 556) | 384 / 288 (0.53 H diameter) | 1,183 | 4.0 + 1.5 | hull glow from 0; 8 secondaries 0-1.5 s; star + body from 0.5 R_f at 1.5 s; shock to 2.7 s; embers to 6.3 s; smoke 3.5-7.9 s; the native wreck to 22 s | 128 / 16 | yes, largest | 8 (134 px each) |
+| capital (M1, M2, M7, TL) | 1,288 (M7 618) | 1,500 | 0.9 R, [80, 600] → 600 (M7 556) | 384 / 288 (0.53 H diameter) | 1,183 | 4.0 + 1.5 | hull glow from 0; 8 secondaries 0-1.5 s; star + body from 0.5 R_f at 1.5 s; shock to 2.7 s; embers to 6.3 s; smoke 3.5-7.9 s; the hull copy fades 1.5-2.5 s | 128 / 16 | yes, largest | 8 (134 px each) |
 | station (docks, factories) | 1,800 (0.5-52 km, loose spheres) | 3,000 | 0.6 R, [200, 1,800] → 1,080 | 346 / 259 | 1,152 | 6.0 + 3.0 | hull glow; 12 secondaries 0-3 s (two of 0.6 R_f); body from 0.5 R_f at 3 s, rise 1.2 s; shock to 5.4 s; embers to 10.2 s; smoke 6-12.6 s | 160 / 20 | yes, 0.4 L | 12 (121 px) |
 | missile | 3 [A] | 300 | 3.5 R, [6, 25] → 10.5 | 34 / 25 | 19 | 0.8 | star, body, shell 0.24 s, 12 embers | 12 / 0 | fast, thin | none |
 
@@ -198,7 +208,8 @@ loose sphere. Floors: a body never under 12 px of radius at 1440 rows (9 at 1080
 two octaves [M]; a fighter reaches the floor at 2.2 km, a missile at 840 m), the star core 3 px and arms 6 px, an
 ember 24 px; floors raise size, never radiance. The ceiling is the budget (section 7), not a pixel count: a station
 fills the view only with the eye inside it. Vanilla for scale [M]: rows end at 3.1 s (fighters), 9 s (M6), 22 s
-(capitals); ours are shorter in light and keep the native wreck for the rest.
+(capitals, the debris scene; the hull copy itself fades at 1.8 s stock, 6.0-6.4 s Mayhem); ours end at 7.9 s with the
+hull gone at P + 1 s, and the fragments and smoke are what is left behind.
 
 ## 4. The capital and station timeline
 
@@ -206,18 +217,18 @@ Capital at 1.5 km, L 4.0, pre-roll P 1.5 (station in brackets, P 3.0, L 6.0):
 
 | Game time | What is drawn |
 | --- | --- |
-| 0 | the native carrier shows the hull (masked spawn); our hull glow E 0.4 at T 0.6 over R_obj; secondary 1 (0.35 R_f, 134 px) with its star and 8 embers at a hashed hull-box point |
+| 0 | the carrier shows the root body (R′ spawn, no children, no second carrier); our hull glow E 0.4 at T 0.6 over R_obj; secondary 1 (0.35 R_f, 134 px) with its star and 8 embers at a hashed hull-box point |
 | 0 … P | secondaries 2-8 (2-12) at the geometric cadence, the hull glow rising to E 0.8, each secondary lighting the hull locally; the last two at 0.5 R_f (station: two of 0.6 R_f among them); half the embers launched; the hull is lit from inside and never hidden (the biggest secondary is a third of the body) |
-| P (t_b) | the star (arms 240 m / 154 px; 432 m / 138 px), the body born at 0.5 R_f, the shock from 0, the other half of the embers and all fragments from the hull box surface at 300 m/s, the glow on hulls at R 3 km (5.4 km) |
+| P (t_b) | the star (arms 240 m / 154 px; 432 m / 138 px), the body born at 0.5 R_f, the shock from 0, the other half of the embers and all fragments from the hull box surface at 300 m/s, the glow on hulls at R 3 km (5.4 km); the hull copy starts its 1 s fade (`FADEOUTBODY` retimed to P) inside the growing body |
 | t_b + 0.6 (1.2) | the body at R_f (rise ρ L); holes from t_b + 1.6 (2.4) |
+| t_b + 1.0 | the hull copy gone, the carrier removed (the `TIMEOUT` element ends); the body is 0.8 R_f and covers where it was |
 | t_b + 1.2 (2.4) | the shock at 4 R_f and gone |
-| t_b + 2.0 (3.0) | smoke begins over the wreck and neighbours; the body at T 0.5, orange, sparse clumps by 0.8 L |
-| t_b + 3.2 … 4.0 (4.8 … 6.0) | final fade; embers dark by t_b + 4.8 (7.2), fragments by t_b + 6 (9), smoke by t_b + 6.4 (9.6) |
-| … 22 s | the native wreck fades on its own law; nothing of ours |
+| t_b + 2.0 (3.0) | smoke begins over neighbours (the hull copy is gone); the body at T 0.5, orange, sparse clumps by 0.8 L |
+| t_b + 3.2 … 4.0 (4.8 … 6.0) | final fade; embers dark by t_b + 4.8 (7.2), fragments by t_b + 6 (9), smoke by t_b + 6.4 (9.6); nothing native remains (no wreck, no debris scene) |
 
-The wreck's own cut and fade timing (`CUTKEEPBODY`, `FADEOUTBODY` timeouts of rows 37 / 40 / 201 / 602) is in the
-Effects data; the census prints element flags today and not timeouts: section 11, item 2. If the hull is cut before P,
-P shortens to that time per row (a header table, not a rule change).
+Corvette: the same R′ with P = 0, so the hull fades over the first second of the body (R_0 = 0.5 R_obj at t = 0, R_f by
+0.45 s) and the carrier goes at 1 s; vanilla keeps it to 9 s. The engine's 1,000 ms fade is fixed (read from the static
+record every update); P is ours per tier and is the only timing in R′ we set.
 
 ## 5. Eye inside, own death, nested kills
 
@@ -241,7 +252,7 @@ P shortens to that time per row (a header table, not a rule change).
 ## 6. Hull light
 
 Section 2.6 is the law; what it buys per tier: a fighter lights a hull within 140 m (5 R_f) for 2 s at a third of the
-body; a capital lights 3 km around it for 4 s, and its wreck from inside for 1.5 s before; a station 5.4 km. The glow's
+body; a capital lights 3 km around it for 4 s, and its hull copy from inside for 1.5 s before; a station 5.4 km. The glow's
 box fills the screen in any capital death within 3 km, at 0.40 of the decal per screen: 71 µs always, and it is shed
 at step 4 on a close capital only.
 
@@ -291,7 +302,7 @@ dimming. The lab plays the same laws (the burst's noise is already mirrored).
 | `death_embers_random_and_cooling` | fighter, two seeds | the cone directions differ between seeds (angular histogram over 36 bins: correlation < 0.5); mean ember hue at 0.3 / 0.7 / 1.1 L on the ramp T ≥ 0.75 / 0.5 / ≤ 0.3; the farthest lit ember at 1.2 L within 10 % of v_e 1.2 L f / z; a fragment darkens a 0.5 hull by ≥ 0.3 at its tip's neighbour and is invisible over sky |
 | `death_preroll_cadence_and_hull_light` | capital 1.5 km | 8 secondary births at the cadence ± 20 %; each inside the hull box; the hull glow's peak at 0 / P in 0.4 / 0.8 x 0.33 E_b ± 10 %; the body absent before P and born at 0.5 R_f at P |
 | `death_glow_is_the_bodys_light` | fighter, capital at 0.1 / 0.3 L | glow peak / body peak ≤ 0.4; glow 10 % radius ≤ 5 R_f f / z; none on sky; none after L |
-| `death_smoke_darkens_surfaces_only` | capital over a 0.5 wreck and sky at 0.8 / 1.6 L | min ≤ 0.5 (1 − 0.6 s0) over the wreck; sky unchanged; nothing after 1.6 L; ≤ 1 code residual 8 frames later through `TemporalPass` |
+| `death_smoke_darkens_surfaces_only` | capital over a 0.5 hull (a neighbour) and sky at 0.8 / 1.6 L | min ≤ 0.5 (1 − 0.6 s0) over the hull; sky unchanged; nothing after 1.6 L; ≤ 1 code residual 8 frames later through `TemporalPass` |
 | `death_cools_through_ramp`, `_fades_to_zero_at_life` | each tier | mean hue at 0.2 / 0.6 / 1.0 L on T ≥ 0.75 / 0.5 / ≤ 0.25; every part 0 at its life (smoke 1.6 L) |
 | `death_eye_inside_bounded` | `capital-m2-close-720m` at t_b + 0.5, `own-death-chase` | the frame lit over ≥ 90 % of its area with dark share ≥ 0.15 (clumps, not a wash); ≤ 300 µs fenced at 5120x1440 |
 | `death_exposure_meter_shift` | the same frames through the production meter | ≤ 0.5 EV, else the coverage dimming on and the gate re-run |
@@ -300,7 +311,7 @@ dimming. The lab plays the same laws (the burst's noise is already mirrored).
 | `death_octave_lod_hysteresis` | the close capital crossing the budget | enters after 3 frames past it, leaves under 0.8; no frame-to-frame body image change > 2x the blended step's |
 | `death_temporal_energy` | fighter at 600 m through `TemporalPass` | energy ≥ 0.9 of the stage's |
 | `death_seta6_three_frame_floor` | every tier at SETA 6 | the star 3 frames; every element's game life unchanged; wall time 1/6 |
-| hook record | `death_skips_or_masks_native`, `death_forwards_asteroid_and_rule_b_missile`, `death_nested_stack`, `frame_kept` | callee skipped (fighter, missile) or entered with the mask and restored (big tiers, once built); forwarded byte-exact for asteroids and the rule-(b) missile; nested kills each recorded; EBX/ESI/EDI/EBP, DF, MXCSR, x87 CW, LastError, ESP as the impact stub's |
+| hook record | `death_skips_native_fighter_missile`, `death_swaps_death_column_big_tiers`, `death_forwards_asteroid_and_rule_b_missile`, `death_nested_lifo_restore`, `frame_kept` | callee skipped (fighter, missile); callee entered with the death column reading R′ and the original restored after return (corvette, capital, station), R′'s elements `DISTANT` except the `FADEOUTBODY` node at P and the `TIMEOUT` node at P + 1 s, `EDF_PROPAGATE` clear; forwarded byte-exact for asteroids and the rule-(b) missile; nested kills each save and restore their own column (LIFO); EBX/ESI/EDI/EBP, DF, MXCSR, x87 CW, LastError, ESP as the impact stub's; R′ rebuilt after a reload (slot count 0) |
 | budget rows | `body_alone_fills_frame` (3 / 2 octaves), `shock_alone_fills_frame`, `smoke_alone`, `star_alone` | weights pinned in the header |
 | Reset, fault, refusal, slots | as every family | programs created at the latch; `MaxPixelShader30InstructionSlots` logged; the native validator harness on every generated ps_3_0 |
 
@@ -327,28 +338,37 @@ The user judges the look from the dumped frames (both sizes) of `fighter-m5-600m
 
 | # | Unknown | Settles it |
 | --- | --- | --- |
-| 1 | The Effects row and element layout in memory (row `0x00580068 + row x 0x14`: flags at +4, count, element pointer; the element record: kind, `EEDF_*` flags, timeout, size) and which kinds are sprite / lens-flare against body operations (`CUT`, `CUTKEEPBODY`, `WRECK`, `FADEOUTBODY`, `PUSH`, `PROPAGATE`); the exact seam of the mask (the row's list during the call, or the instance's elements after `0x00414ba0`) | one `disassemble` task on `0x00414ba0`, `0x00414c10` / `0x00414cf0` (the first update that creates the sprite nodes) and the `EEDF_WRECK` write; its output is the mask the stub applies. The decision above does not wait for it: fighters and missiles fly first |
-| 2 | The timeouts of the body elements of rows 35 / 37 / 40 / 201 / 600-602 (when the hull is cut or starts fading) | the census (`weapon_effect_census.py`) printing per-element kind and timeout, no runtime needed; sets the per-row cap on P |
+| 1 | Whether the main carrier (the root body only, no part hierarchy) reads as the hull during the pre-roll, or whether the second carrier's full scene copy is what the player sees natively (both carriers drawn? [U, spawn note §10.4]) | the observe flight (native) beside the first R′ build: if the root body lacks the parts that make the silhouette, R′ keeps `EDF_PROPAGATE` with a child row R″ of one empty `TIMEOUT` element so the scene copy exists and the fade is applied to it instead |
+| 2 | The hull copy's native timing: **answered** [S, §10.4, census timelines]: `FADEOUTBODY` is a fixed 1,000 ms from the element's start, t0 = 1.8 s (37), 1.6 s (201), 6.0-6.4 s (602); rows 40 / 601 hold the hull to 9.03 s, 35 / 600 to 3.11 s, no fade. R′ sets the start to P | — |
+| 2a | Whether the combat-death script path (`"KilledBy"`) passes a non-zero third kill argument, which would have run `WRECK` natively | the observe flight logs `arg4` at the death stub; if ever non-zero, R′ needs the empty `WRECK` timer node of §10.5 (b) to keep the native wreck for that path |
+| 2b | When a scene part counts as finished (part `+0x1f4` bit 0) and so the real life of the 22 s debris element on native rows | not needed by R′ (every scene element is `DISTANT`); it bounds only the vanilla comparison in the lab |
+| 2c | R′'s lifetime past a device reset and across the engine's Effects reload (the reset frees the element arrays with `0x0050e1b0`, a reload zeroes the slot) | the fixture's Reset case plus a reload case: R′ rebuilt when the slot reads count 0, never freed by us; the hook record counts rebuilds |
 | 3 | The node velocity unit (drift) and the forward-axis row for the axis capsule | the observe flight's `weapon_death` rows (unknown 1 of weapon-look) |
 | 4 | Whether a dying owner is in the bubble cache (secondaries and ember launch points) | `weapon_death bubble_cached=`; under 0.5 the axis capsule is the default and the cache the bonus |
 | 5 | The shock's and the fragment's weights; the three-octave body at a full screen natively (the alone row measured 166.7 µs at 5120x1440, the dense-frame charge 1.18 = 209 µs [M]) | the `*_alone_fills_frame` rows |
 | 6 | The exposure meter under a frame-filling body (unknown 7 of weapon-look) | `death_exposure_meter_shift`, then the flight |
 | 7 | Whether the lobes and first octave carry enough low-frequency structure at 800 px | `death_body_low_frequency`; gradient shading (two slots per sample) if not |
-| 8 | Whether the pre-roll reads as suspense or as a delay, and whether the native wreck's burnt look sits with our light | only the flight (kill row in section 10) |
+| 8 | Whether the pre-roll reads as suspense or as a delay, and whether the 1 s hull fade inside the body reads as the ship coming apart or as a vanish | only the flight (kill row in section 10; the fade's kill step is P + 1 → P + 0.5 by moving the `TIMEOUT` end, the fade itself is fixed) |
 | 9 | Which deaths the user meets most (area kills, collisions, missiles) | the observe rows' reason-word histogram from the flight |
 
 ## 12. Options considered and why they lose
 
 - **The reference's pre-roll with the spawn skipped** (hull gone at t = 0, 1.5 s of small bursts in empty space, then
   the body): the "delayed fireball" failure and "nothing left"; the user would see a 1.8 km ship blink out. Lost to the
-  masked forward, which keeps the engine's own wreck.
+  R′ forward, which keeps the engine's own hull copy through the pre-roll.
 - **A hulk stand-in** (an ellipsoid variant of the impostor, dark, eroding, over the hull box during the pre-roll):
   a new program variant and a dark blob where the ship was, a soap bubble in black; lost to the native carrier, which
-  is the real model.
-- **Forward the spawn unmasked and draw ours over it**: vanilla sprites for 22 s beside ours; the acceptance ("no
+  is the real body.
+- **Forward the spawn unmasked and draw ours over it**: vanilla sprites, 30 children and the debris scene for 22 s beside ours; the acceptance ("no
   native explosion sprite") forbids it.
 - **A shipped Effects table override with sprite-less rows**: a data install footprint that conflicts with Mayhem's
-  own rows 600-602 and FL's; lost to a per-call in-memory mask behind the existing stub.
+  own rows 600-602 and FL's; lost to R′ in a free slot, built in memory behind the existing stub.
+- **A per-instance phase flip after the call** (spawn note §10.5 (a)): no allocation, but it cannot hold the carrier
+  alive to P + 1 s (a done element does not count for liveness) and must free start-0 nodes; lost to R′.
+- **A redirect of `0x0041367d`** (the row-choice call inside `0x00413610`): a second patch site that is not atomic
+  (it crosses `0x00413680`); the death-column swap needs none.
+- **Keeping the engine's 30 children as the pre-roll** (R′ with `PROPAGATE` kept): 3,840 ms 2D scene sprites at the
+  vanilla size and look beside our secondaries; the acceptance forbids native sprites, and our cadence is the design.
 - **3.2's secondaries after the body** (spread over 0 … 0.4 L beside a body born at t = 0): every reference puts the
   chain before the blast; kept as the capital's second kill step, not the first version.
 - **Damped embers** (the shared τ law at τ 1 s): they stop inside a capital's body and never form the shell that
@@ -358,7 +378,7 @@ The user judges the look from the dumped frames (both sizes) of `fighter-m5-600m
 - **A flat annulus mesh for the shock** (cheaper than the sphere box): a Praxis disc by construction; the chord law
   through a sphere box with an early-out costs ≤ 0.40 of a decal per screen and reads as a sphere.
 - **Smoke off in the first flight** (3.2): the burst's smoke passed its residual gate; off, a fighter death ends in
-  nothing and a capital's wreck is undarkened; the shed order handles the close case.
+  nothing and a neighbour's hull is undarkened; the shed order handles the close case.
 - **Gradient shading now**: 50 % more hashes for a quality the lobes and first octave may already give; the gate
   decides.
 - **A noise atlas**: the burst's fallback (hull-burst-look 2.8) if `body_alone_fills_frame` at three octaves breaks
