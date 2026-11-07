@@ -1299,16 +1299,19 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         }
     }
     // Step 3: the death bodies' halos (the glow's vertex program and declaration, weapon_halo_ps.hlsl: the light in air,
-    // occlusion class 1; c2, c3 the glow's, c4.x the soft cut's share of R).
+    // occlusion class 1; c2, c3 the glow's, c4 the soft cut's share of R, 1 / sigma, the tail, the inner ramp's start,
+    // c5 the tail window in d and 1 / (1 + tail): explosion-look.md section 14 item 1).
     if (SUCCEEDED(hr) && halo_boxes) {
-        const float halo_ps[12] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f, wcore::boom::halo_soft, 0.f,
-                                   0.f, 0.f};
+        namespace hb = wcore::boom;
+        const float halo_ps[16] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f,
+                                   hb::halo_soft, 1.f / hb::halo_sigma, hb::halo_tail, hb::halo_in,
+                                   hb::halo_win_x0 - 1.f, hb::halo_r_x - 1.f, 1.f / (1.f + hb::halo_tail), 0.f};
         step(WeaponEffectsStep::Halos, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Halos, call<SetDeclarationFn>(SetVertexDeclaration)(d, glow_declaration_));
         step(WeaponEffectsStep::Halos, call<SetVsFn>(SetVertexShader)(d, glow_vs_));
         step(WeaponEffectsStep::Halos, call<SetPsFn>(SetPixelShader)(d, halo_ps_));
         step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, glow_limits, 1));
-        step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, halo_ps, 3));
+        step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, halo_ps, 4));
         if (SUCCEEDED(hr)) {
             const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                 d, D3DPT_TRIANGLELIST, 0, halo_boxes * 4, halo_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.halos,

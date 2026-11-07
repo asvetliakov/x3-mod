@@ -692,12 +692,13 @@ console.log(JSON.stringify(out));
         lens = js['sky']['lengths']
         mean = sum(lens) / len(lens)
         self.assertGreaterEqual((sum((x - mean) ** 2 for x in lens) / len(lens)) ** 0.5, 0.4 * mean)
-        # the starburst and the halo spike at birth (24-40 rays), none by ray_x L
+        # the starburst and the halo spike at birth (15-25 rays), none by ray_x L
         self.assertTrue(bm['ray_n_lo'] <= js['birth']['rays'] <= bm['ray_n_hi'])
         self.assertEqual(js['birth']['spikes'], 1)
         self.assertNotIn('rays', js['sky'])
-        self.assertGreater(js['sky']['light']['halo'], 0)                         # the halo in air, over sky too
-        self.assertEqual(js['sky']['halos'], 1)
+        self.assertGreater(js['f03']['light']['halo'], 0)                         # the halo in air, over sky too
+        self.assertEqual(js['f03']['halos'], 1)
+        self.assertEqual(js['sky']['halos'], 0)                                   # faded out by halo_fade_x1 0.6 L
         self.assertEqual((js['missile']['shocks'], js['missile_late']['shocks']), (1 if bm['missile_shock'] else 0, 0))
         self.assertEqual(js['nested']['bodies'], 3)
         self.assertGreater(js['hull']['light']['glow'], 0)
@@ -722,7 +723,7 @@ console.log(JSON.stringify(out));
         self.assertEqual(js['station_pre']['bodies'], 0)
         self.assertEqual(bm['tier_secondaries'], [0, 0, 8, 12, 0])
         self.assertEqual((bm['shock_tiers'], birth['shocks'], js['corvette']['shocks']), (0, 0, 0))  # D14: no shell
-        self.assertEqual((birth['halos'], js['cap_late']['halos']), (1, 1))                         # D15: drawn to 0.6 L
+        self.assertEqual((birth['halos'], js['cap_late']['halos']), (1, 1))                         # drawn to 0.6 L
 
     def test_boom_wave_and_composed_body(self):
         """Section 13 (explosion-look.md 13.1, 13.2): the Boom tab's wave and compose controls and scenarios; renderBoom

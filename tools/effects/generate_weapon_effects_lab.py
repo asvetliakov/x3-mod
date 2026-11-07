@@ -120,8 +120,8 @@ NAMESPACES = {
              'secondary_r_big', 'secondary_life', 'secondary_rise', 'secondary_inset', 'secondary_capsule_len',
              'secondary_capsule_r', 'secondary_cluster_n0', 'secondary_embers', 'max_secondaries', 'secondary_element',
              'hull_light_r', 'hull_light_e0', 'hull_light_e1', 'hull_light_t', 'body_r_sphere_big', 'sphere_px0',
-             'sphere_px1', 'budget_screens', 'shock_tiers', 'halo_big_r', 'halo_big_e', 'halo_big_x0',
-             'halo_big_x1',
+             'sphere_px1', 'budget_screens', 'shock_tiers', 'halo_e', 'halo_r_x', 'halo_sigma',
+             'halo_tail', 'halo_win_x0', 'halo_in', 'halo_t',
              # section 13 (2026-11-07): the fire wave and the composed body
              'wave_tiers', 'wave_r_x', 'wave_tau_x', 'wave_life_x', 'wave_creep', 'wave_stretch', 'wave_w_x', 'wave_band_x',
              'wave_slab_x', 'wave_trail_span', 'wave_e', 'wave_t_edge', 'wave_t_band0', 'wave_t_band_end', 'wave_t_sheet_end',
@@ -143,7 +143,7 @@ NAMESPACES = {
              'compose_core_x', 'compose_offset_min', 'compose_offset_cool',
              # section 14 (2026-11-07): the radiant core, the halo spike, the rays, the spark spray
              'core_ramp_ms', 'spike_rf', 'spike_px_lo', 'spike_px_hi', 'spike_halo', 'spike_e', 'spike_x', 'spike_t',
-             'ray_n_lo', 'ray_n_hi', 'ray_jitter_lo', 'ray_jitter', 'ray_len_lo', 'ray_len_hi', 'ray_phi', 'ray_phi2',
+             'ray_n_lo', 'ray_n_hi', 'ray_jitter_lo', 'ray_jitter', 'ray_len_lo', 'ray_len_k', 'ray_top2', 'ray_top3', 'ray_rest', 'ray_phi', 'ray_phi2',
              'ray_grow0', 'ray_grow_x', 'ray_start', 'ray_fwhm_px', 'ray_fwhm_len', 'ray_in', 'ray_quad_w', 'ray_e',
              'ray_s_lo', 'ray_s_span', 'ray_x', 'ray_pow', 'ray_flicker_lo', 'ray_flicker_hi', 'ray_flicker', 'ray_t0', 'ray_t1',
              'ray_soft', 'ray_frame_cap', 'ray_shed_max', 'ray_element', 'tier_sparks_lo', 'tier_sparks_hi',
