@@ -638,17 +638,19 @@ constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_ha
                 spike_t = 0.95f;
 // Section 14, the rays (2026-11-07 soft rays, after the user's "not so pronounced/thin ... look into our sun": the sun's
 // spokes, own-sun-look.md step 1d): an odd ray_n_lo..hi rays a death (hashed: no two opposite), each a sprite of the ray
-// kind (weapon_sprite_ps.hlsl, depth.y 5) from ray_start R(t) out (the white core's edge) at a stratified hashed angle
+// kind (weapon_sprite_ps.hlsl, depth.y 5) from ray_start R(t) out (the body's rim: 2026-11-08, from 0.3 R(t) the body and
+// the rim halo swamped every short ray, the own sun's "why the rays vanished") at a stratified hashed angle
 // (slot i of N at (i + ray_jitter_lo + ray_jitter h) / N turns plus a hashed turn for the death: the slots' offsets within
 // 0.375 .. 0.625, so two rays sit at least a quarter slot off opposite), its length skewed (2026-11-08, the user's "3 big
-// rays which have almost the same length"): L(g) = (ray_len_lo + ray_len_k g^2) R_f on screen, g_i = frac(ray_phi (i +
+// rays which have almost the same length"): L(g) = (ray_len_lo + ray_len_k g^2) R_f on screen beyond the rim, g_i = frac(ray_phi (i +
 // o)) (the golden-ratio hash, o hashed per death), the three largest g of the death (their rank fixed per death) at L(g_1),
 // ray_top2 L(g_1) and ray_top3 L(g_1), every other ray at L(g) ray_rest ray_top3 L(g_1) / L(g_4) (g_4 the fourth largest:
 // it at ray_rest of the third), so the three longest differ by >= 25 % and most are short; x (ray_grow0 + (1 -
 // ray_grow0) min(1, x / ray_grow_x)); the along-profile in u = along / length, so each ray's visible tip follows its
 // length; across a Gaussian of FWHM max(ray_fwhm_px
 // px at 1080 rows (scaled with the rows), ray_fwhm_len x its length x (1 + u / 2)), u = 0 at the start .. 1 at the tip (the
-// spoke widening outwards); along e^(-u) (1 - u)^2 (the sun's), faded in over the first ray_in of it (smoothstep: no
+// spoke widening outwards); along e^(-u) (1 - u)^2 (the sun's, at full strength from the rim), faded in over the first
+// ray_in of it (smoothstep: no
 // bright base); its brightness (ray_s_lo + ray_s_span g2_i) of ray_e (g2_i = frac(ray_phi2 (i + o) + 0.31)) x (1 - x /
 // ray_x)^ray_pow x the flicker: per ray a hashed period ray_flicker_lo..hi game ms (at least two frame steps: under SETA
 // a level holds at least two frames), its level the hash of the period's index blended smoothly into the next one's, 1 -
@@ -657,12 +659,13 @@ constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_ha
 // (the Gaussian's tail there under 0.5 % of its peak). A frame draws at most ray_frame_cap ray quads (past it every second
 // ray of every death, then every fourth: the half-count shed, ray_shed_max halvings at most).
 constexpr float ray_n_lo = 15.f, ray_n_hi = 25.f, ray_jitter_lo = 0.375f, ray_jitter = 0.25f;
-constexpr float ray_len_lo = 0.3f, ray_len_k = 2.2f, ray_top2 = 0.78f, ray_top3 = 0.6f, ray_rest = 0.8f;
-constexpr float ray_phi = 0.6180340f, ray_phi2 = 0.7548777f, ray_grow0 = 0.7f, ray_grow_x = 0.06f, ray_start = 0.3f;
+constexpr float ray_len_lo = 0.4f, ray_len_k = 2.0f, ray_top2 = 0.78f, ray_top3 = 0.6f, ray_rest = 0.8f;
+constexpr float ray_phi = 0.6180340f, ray_phi2 = 0.7548777f, ray_grow0 = 0.7f, ray_grow_x = 0.06f, ray_start = 1.0f;
 static_assert(ray_top2 * 1.25f <= 1.f + 1e-6f && ray_top3 * 1.25f <= ray_top2 + 1e-6f && ray_rest * 1.25f <= 1.f + 1e-6f,
               "the three longest rays differ by at least 25 %, the fourth 25 % under the third");
-constexpr float ray_fwhm_px = 6.f, ray_fwhm_len = 0.065f, ray_in = 0.15f, ray_quad_w = 1.4f;
-constexpr float ray_e = 0.4f, ray_s_lo = 0.6f, ray_s_span = 0.6f, ray_x = 0.5f, ray_pow = 3.f;
+constexpr float ray_fwhm_px = 6.f, ray_fwhm_len = 0.065f, ray_in = 0.05f, ray_quad_w = 1.4f;
+// ray_e 1.0 (2026-11-08, was 0.4): a ray's base about 0.8-1.0 of the rim halo under it (halo_e 0.5 E_b T at the rim).
+constexpr float ray_e = 1.0f, ray_s_lo = 0.6f, ray_s_span = 0.6f, ray_x = 0.5f, ray_pow = 3.f;
 constexpr float ray_flicker_lo = 150.f, ray_flicker_hi = 300.f, ray_flicker = 0.3f;
 constexpr float ray_t0 = 0.95f, ray_t1 = 0.8f, ray_soft = 1.0f;
 constexpr unsigned ray_frame_cap = 512, ray_shed_max = 3;

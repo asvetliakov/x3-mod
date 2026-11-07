@@ -882,11 +882,11 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     // death_core_radiance: the body part's median radiance (the max channel) inside 0.2 R(t) at 0.05 L >= 6 (the fighter
     // at 600 m, median of 8 seeds). death_rays_starburst: the ray part alone about the screen centre (the fighter at
     // 300 m, 5120x1440, 4 seeds; soft rays 2026-11-07): the angular peaks of a circle (4096 bilinear samples, a peak above
-    // 0.1 of the profile's maximum, >= its left and > its right neighbour) at 0.5 R(t), 0.1 L: >= 9 distinct and <= drawn
-    // + 1 (2026-11-08, 15-25 rays: neighbours merge there; was drawn +- 1 for 9-15), at 1.5 R(t) >= 3 (the long rays out
+    // 0.1 of the profile's maximum, >= its left and > its right neighbour) at 1.25 R(t), 0.1 L: >= 12 distinct and <=
+    // drawn + 1 (2026-11-08, 15-25 rays from the rim; was drawn +- 1 at 0.5 R(t) for 9-15), at 1.5 R(t) >= 3 (the long rays out
     // past the body); the three longest each >= 1.25 x the next (the fourth too) and their visible tips (0.1 of the axis'
     // maximum) at the same fraction of their lengths within 0.15 and <= 2 at 0.6 L (600 m recorded); death_rays_soft: the median FWHM of the rays across the circle at 1.0
-    // R(t) >= 4 px at 1080 rows and every ray's peak at 0.5 R(t) <= 0.4 of what the rest of the death (all but the rays,
+    // R(t) >= 4 px at 1080 rows (now 1.25 R(t)) and every ray's peak there <= 1.2 (was 0.4 at 0.5 R(t)) of what the rest of the death (all but the rays,
     // sparks and fragments) puts under it; death_rays_differ: two seeds' 360-bin profiles at 0.1 L correlate < 0.3. death_sparks_dense: the fighter
     // at 600 m at 0.3 L draws >= 100 sparks with their head on screen (the ember part's local maxima recorded), its drawn
     // lengths' std >= 0.4 of their mean. death_exposure_meter_shift: the production meter (src/renderer/exposure.cpp,
@@ -1123,23 +1123,24 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     const std::vector<float> lu =
                         render_parts(seq, z, 0.1f, boom::p_all & ~(boom::p_ray | boom::p_ember | boom::p_fragment), nullptr, &R_un);
                     const std::vector<double> a = sample(lr, 1.5 * R_px), b = circle(seq, z, 0.6f, nullptr);
-                    const std::vector<double> c5 = sample(lr, 0.5 * R_px), u5 = sample(lu, 0.5 * R_px), c10 = sample(lr, R_px);
+                    // 2026-11-08: the rays start at the rim (R(t) at the body's front, 1.07 R_px at 300 m): every circle at 1.25 R(t)
+                    const std::vector<double> c5 = sample(lr, 1.25 * R_px), u5 = sample(lu, 1.25 * R_px), c10 = c5;
                     const double mx = *std::max_element(a.begin(), a.end());
                     const double mx5 = *std::max_element(c5.begin(), c5.end()), mx10 = *std::max_element(c10.begin(), c10.end());
                     const unsigned pa = peaks(a, 0.1 * mx), pb = peaks(b, 0.1 * mx), p5 = peaks(c5, 0.1 * mx5);
-                    // the softness: each ray's FWHM on the circle at 1.0 R(t) (arc px at 1080 rows) and its peak over what
-                    // the rest of the death (body, core, halo, glow, spike, star) puts under it at 0.5 R(t)
+                    // the softness: each ray's FWHM on the circle at 1.25 R(t) (arc px at 1080 rows) and its peak over what
+                    // the rest of the death (body, core, halo, glow, spike, star) puts under it there
                     std::vector<double> fw;
                     for (std::size_t i = 0; i < c10.size(); ++i)
                         if (peak_at(c10, i, 0.1 * mx10))
-                            fw.push_back(fwhm_samples(c10, i) * 6.283185307 * R_px / 4096.0 * 1080.0 / big.h);
+                            fw.push_back(fwhm_samples(c10, i) * 6.283185307 * 1.25 * R_px / 4096.0 * 1080.0 / big.h);
                     double ratio = 0;
                     for (std::size_t i = 0; i < c5.size(); ++i)
                         if (peak_at(c5, i, 0.1 * mx5)) ratio = std::max(ratio, u5[i] > 0 ? c5[i] / u5[i] : 1e9);
                     const double fmed = fw.empty() ? 0.0 : boom::median(fw);
                     float turn;
                     std::printf("EXPLOSION case=rays tier=fighter z_m=%.0f seed=%u rays=%u drawn=%u peaks_01=%u peaks_06=%u "
-                                "max_01=%.3f peaks_05R=%u fwhm_10R_px1080=%.2f peak_over_under_05R=%.3f R_px=%.1f\n",
+                                "max_01=%.3f peaks_125R=%u fwhm_125R_px1080=%.2f peak_over_under_125R=%.3f R_px=%.1f\n",
                                 z, j, ws::boom_ray_count(seq, &turn), drawn, pa, pb, mx, p5, fmed, ratio, R_px);
                     if (z < 400.0) {
                         double lens[4], vis[3];
@@ -1161,19 +1162,21 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         worst06 = std::max(worst06, pb);
                         worst05_lo = std::min(worst05_lo, p5);
                         worst05_hi = std::max(worst05_hi, p5);
-                        // 2026-11-08 (15-25 rays, skewed lengths): at 0.5 R(t) the slots sit 4.6-9 px apart against an
-                        // 8 px FWHM and the short rays near their tips, so neighbours merge: at least ray_n_lo_old 9
-                        // distinct peaks there (the old law's floor; was drawn +- 1 for 9-15 rays) and no more than drawn +
-                        // 1; every ray drawn (the count's 15-25); the long ones out past the body (1.5 R(t)); gone by 0.6 L
-                        rays_ok = rays_ok && drawn >= unsigned(bm::ray_n_lo) && drawn <= unsigned(bm::ray_n_hi) && p5 >= 9 &&
+                        // 2026-11-08 (15-25 rays from the rim, skewed lengths): at 1.25 R(t), just past the rim where
+                        // every ray is lit, >= 12 distinct spokes (the coordinator's count; neighbours a half slot apart
+                        // may merge) and no more than drawn + 1; every ray drawn (the count's 15-25); the long ones out
+                        // past the body (1.5 R(t)); gone by 0.6 L
+                        rays_ok = rays_ok && drawn >= unsigned(bm::ray_n_lo) && drawn <= unsigned(bm::ray_n_hi) && p5 >= 12 &&
                                   p5 <= drawn + 1 && pa >= 3 && pb <= 2;
                         fwhms.insert(fwhms.end(), fw.begin(), fw.end());
                         worst_ratio = std::max(worst_ratio, ratio);
                     }
                 }
             const double fwhm_median = fwhms.empty() ? 0.0 : boom::median(fwhms);
-            soft_ok = fwhm_median >= 4.0 && worst_ratio <= 0.4;
-            std::printf("EXPLOSION case=rays_soft fwhm_10R_median_px1080=%.2f fwhm_count=%zu worst_peak_over_under_05R=%.3f\n",
+            // the ray over what lies under it <= 1.2 (2026-11-08, was 0.4: a ray now starts at full strength at the rim over the
+            // rim halo, ray_e 1.0 for a base about 0.8-1.0 of the halo; a ray past 1.2 x its ground reads as a painted spoke)
+            soft_ok = fwhm_median >= 4.0 && worst_ratio <= 1.2;
+            std::printf("EXPLOSION case=rays_soft fwhm_125R_median_px1080=%.2f fwhm_count=%zu worst_peak_over_under_125R=%.3f\n",
                         fwhm_median, fwhms.size(), worst_ratio);
             // two deaths' starbursts: 360-bin profiles at 0.1 L (300 m)
             double corr = 1.0;
@@ -1195,7 +1198,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 }
                 corr = saa > 0 && sbb > 0 ? sab / std::sqrt(saa * sbb) : 1.0;
             }
-            std::printf("EXPLOSION case=rays_summary worst_peaks_01=%u worst_peaks_06=%u peaks_05R=%u..%u seed_correlation=%.3f "
+            std::printf("EXPLOSION case=rays_summary worst_peaks_01=%u worst_peaks_06=%u peaks_125R=%u..%u seed_correlation=%.3f "
                         "top3_spread_ok=%d visible_tip_over_len=%.3f..%.3f\n",
                         worst01, worst06, worst05_lo, worst05_hi, corr, int(lens_ok), vis_lo, vis_hi);
             report("death_rays_starburst", rays_ok && lens_ok && vis_hi - vis_lo <= 0.15, "");

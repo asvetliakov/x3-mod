@@ -1818,7 +1818,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 const float grow = bm::ray_grow0 + (1.f - bm::ray_grow0) * (lv.x < bm::ray_grow_x ? lv.x / bm::ray_grow_x : 1.f);
                 const float fall = 1.f - xr, env = fall * fall * fall; // (1 - x / ray_x)^3
                 static_assert(bm::ray_pow == 3.f, "env is (1 - x)^3");
-                static_assert(bm::ray_in == 0.15f, "weapon_sprite_ps.hlsl's ray branch: the fade-in over u < 0.15");
+                static_assert(bm::ray_in == 0.05f, "weapon_sprite_ps.hlsl's ray branch: the fade-in over u < 0.05");
                 float colour[3];
                 core::heat_colour(bm::ray_t0 + (bm::ray_t1 - bm::ray_t0) * xr, colour);
                 const std::uint32_t packed = pack_colour(colour, 1.f);
