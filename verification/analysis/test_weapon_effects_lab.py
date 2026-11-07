@@ -354,7 +354,7 @@ class GeneratorTest(unittest.TestCase):
                                                 # the heavy families (2026-11-06)
                                                 'heavy-plasma-corvette', 'heavy-flak-fighter', 'heavy-missile-hit',
                                                 # the hull-impact classes (hull-impact-classes.md section 7)
-                                                'energy-ire-fighter-side', 'ballistic-md-fighter-side',
+                                                'energy-ire-fighter-side', 'energy-fighter60-20hits', 'ballistic-md-fighter-side',
                                                 'ballistic-gauss-capital-300m', 'plasma-hept-corvette-flank',
                                                 'plasma-psp-capital-close', 'heavy-gke-capital-300m', 'heavy-rg-chase-nose',
                                                 'heavy-thin-wing-exit-jet', 'beam-pbc-pulsed-corvette',
@@ -453,11 +453,11 @@ class PageTest(unittest.TestCase):
         by_tab = {}
         for tab, cid, attrs in boxes:
             by_tab.setdefault(tab, []).append(cid)
-        self.assertEqual(by_tab['hull'], ['layer_flash', 'layer_flash_halo', 'layer_burst', 'layer_sparks', 'layer_chips',
-                                          'layer_streak', 'layer_ring', 'layer_ring_noise', 'layer_ring_refraction',
-                                          'layer_ring_wash', 'layer_glow', 'layer_ember', 'layer_scorch',
-                                          'layer_ion_channels', 'layer_ion_branches', 'layer_ion_corona',
-                                          'layer_beam_colour', 'layer_shimmer'])
+        self.assertEqual(by_tab['hull'], ['layer_flash', 'layer_star', 'layer_flash_halo', 'layer_burst', 'layer_sparks',
+                                          'layer_chips', 'layer_streak', 'layer_ring', 'layer_ring_noise',
+                                          'layer_ring_refraction', 'layer_ring_wash', 'layer_glow', 'layer_ember',
+                                          'layer_scorch', 'layer_smoke', 'layer_ion_channels', 'layer_ion_branches',
+                                          'layer_ion_corona', 'layer_beam_colour', 'layer_shimmer'])
         self.assertEqual(by_tab['shield hull'], ['layer_hull'])       # the hull body under both previews
         self.assertEqual(by_tab['shield'], ['layer_patch', 'layer_bubble', 'layer_native'])
         self.assertEqual(by_tab['vanilla'], ['tint', 'travel', 'flares', 'lights'])
@@ -470,10 +470,10 @@ class PageTest(unittest.TestCase):
         keys = json.loads(re.search(r'const LAYER_KEYS = (\[.*?\]);', self.html, re.S).group(1).replace("'", '"'))
         self.assertEqual(sorted(keys), sorted(re.findall(r'data-layer="(\w+)"', panel)))
         render_hull = self.html[self.html.index('function renderHull('):self.html.index('const HULL_IDS')]
-        for name in ('glow', 'flash', 'flash_halo', 'ember', 'ring', 'scorch', 'ion_channels', 'ion_branches', 'ion_corona',
-                     'beam_colour', 'burst'):
+        for name in ('glow', 'flash', 'star', 'flash_halo', 'ember', 'ring', 'scorch', 'smoke', 'ion_channels',
+                     'ion_branches', 'ion_corona', 'beam_colour', 'burst'):
             self.assertIn(f'layers.{name}', render_hull, name)
-        self.assertIn('if (layers.glow && gw[0] > 0 && a < glowLife)', render_hull)
+        self.assertIn('if (layers.glow && Rb > 0 && an !== AN.asteroid && a > 0 && a < puffLife)', render_hull)
         self.assertIn('layers.patch', self.html[self.html.index('function renderOurs('):self.html.index('function ourLoopMs(')])
         self.assertRegex(self.html, r"try \{\n  const saved = JSON\.parse\(localStorage\.getItem\('x3m\.weapon_lab\.layers'\)")
 
@@ -687,9 +687,9 @@ console.log(JSON.stringify(out));
                    'beam': {'flash', 'burst', 'glow'},
                    'missile': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
                    'asteroid': {'burst', 'sparks', 'chips'},
-                   'repair': {'glow', 'ember'}, 'tug': {'glow'}}
+                   'repair': {'flash', 'glow', 'ember'}, 'tug': {'glow'}}
         never_by = {'ion': {'burst', 'glow', 'ember', 'scorch', 'ring', 'sparks', 'chips'}, 'asteroid': {'flash', 'glow', 'ember', 'scorch'},
-                    'repair': {'flash', 'sparks', 'burst', 'scorch'}, 'tug': {'flash', 'sparks', 'burst', 'ember', 'scorch'},
+                    'repair': {'sparks', 'burst', 'scorch'}, 'tug': {'flash', 'sparks', 'burst', 'ember', 'scorch'},
                     'energy': {'ring', 'streak', 'filament'}, 'ballistic': {'ring', 'streak', 'filament'}}
         by_id = {p['id']: p for p in presets}
         for pid, st in js.items():
@@ -703,7 +703,7 @@ console.log(JSON.stringify(out));
             # below the canvas, the chase nose's ember sits inside the hull's outline seen from behind, the chase's sparks
             # clear the outline later (the fixture's 200 ms); the beam's spatter starts with its first 40 ms.
             unseen = {'hull/fighter-ire-cockpit-own': {'flash', 'sparks', 'ember', 'burst'},
-                      'hull/fighter-ire-chase-nose': {'ember', 'sparks'},
+                      'hull/fighter-ire-chase-nose': {'ember', 'sparks', 'glow'},  # the burst's light: R(t) small at 40 ms
                       'hull/heavy-rg-chase-nose': {'ember', 'sparks', 'chips', 'streak', 'ring', 'glow'}}.get(pid, set())
             for el in sorted(want | never):
                 lit = (st['light'][el], st['lit_px'][el])
@@ -1017,7 +1017,7 @@ for (const p of PRESETS.filter(x => x.family === 'hull')) {
   };
   const on = at();
   layers.glow = false; const noGlow = at(); layers.glow = true;
-  layers.flash_halo = false; const noHalo = at(); layers.flash_halo = true;
+  layers.star = false; const noHalo = at(); layers.star = true;
   layers.hull = false; const noBody = at(); layers.hull = true;
   let body = 0; // the pixels the hull body changes
   for (let i = 0; i < on.put.length; i += 4) body += on.put[i] !== noBody.put[i] || on.put[i + 2] !== noBody.put[i + 2];

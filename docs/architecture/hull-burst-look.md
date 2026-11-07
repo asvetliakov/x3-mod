@@ -268,3 +268,26 @@ no texture, no new API, no Wine dependency. Cross-compiled and fixture-verified,
 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native --dump verification/results/stage-dump
 python3 -I /tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/measure.py verification/results/stage-dump
 ```
+
+## 10. Built numbers (ratified 2026-11-07, main session)
+
+The implementation's own gates rejected five of the chosen numbers above; the built values stand and this
+section overrides the tables where they differ (ledger: "Burst body, glow, flash, smoke").
+
+| Item | Section above | Built | Why (measured) |
+| --- | --- | --- | --- |
+| Erosion constants erode_0 / soft / heat_soft / advect | 0.25 / 0.12 / 0.35 / 1.5 | 0.10 / 0.20 / 0.20 / 1.0 | the erosion and colour gates failed on most hits; a numpy model of the law matches the fixture (lit share 0.76 vs 0.768) |
+| Radial erosion term | constant over the life | grows with age, x(1 + 3x) | without it the rim did not go before the centre |
+| Glow radius | 1.5 R_b | 1.6 R(t), growing with the body | glow/body radius ratio was 1.18 at 0.1 L_b, below the 1.3 bound |
+| cluster_n0_burst | 3.0 | 2.0 | the 20-hit peak was 3.29 against the 3.0 bound (2.89 built) |
+| Smoke strength | peaks at 0.73 s0 | peaks at s0 | darkest pixel 0.39 against the 0.366 bound (0.346 built) |
+| Third octave (review) | on / off at 48 px | weighted in over 48-64 px; the budget's step with hysteresis (enter past the budget, 3 frames, leave under 0.8) | the hard step's own image change 191 against 86 blended |
+| Cluster N (review) | a hard count | neighbours by their remaining life fraction; cluster_n0_burst 1.6 | the survivor stepped 62 % at a neighbour's end, 2.2 % now; 20-hit peak 2.73 |
+| Ring classes' glow (review) | 1.6 R(t) | out to the ring's drawn radius while it lives | the annulus at 0.21 of the rim at 40 ms (heavy), 0.90 now |
+| Ember (review) | a disc | the burst's lobes, same seed | lobe std / mean 0.11 |
+
+Body gates 1–4 take the median over 8 hits (one hit's coverage depends on its seed). Additions: `star_floor_px` 6
+(minimum arm length on screen); asteroid smoke uses the ballistic values (1.0 R_b / 0.30); the asteroid dust body,
+rock spatter and the repair/tug spot per the coordinator's addendum (asteroid dust 2.14 r at peak 0.18 on black;
+repair glow 0.83 r at 0.30, no pixel warmer than blue). Size derivation kept the doubled R_b: the fighter target band
+is 6.3–7.2 m (at least 10 px at 1440 rows at the typical distance, at most a third of the hull) and 6.77 m sits inside it.

@@ -1,0 +1,75 @@
+passed True checks 206 / 206
+hull_burst_octave_blend_no_jump True
+hull_budget_octave_hysteresis True
+hull_cluster_neighbour_fades True
+hull_ring_class_no_dark_annulus True
+hull_ember_lobed_remnant True
+hull_20_hits_no_white_sun True
+hull_glow_follows_burst True
+hull_cpu_64_hits_mixed True
+hull_cpu_ring_1024_visible_64 True
+hull_cpu_ring_1024_visible_256 True
+{"case": "glow_follows_burst_median", "class": "energy", "age_frac": 0.1, "radius_ratio": 1.349, "peak_ratio": 0.3224}
+{"case": "glow_follows_burst_median", "class": "energy", "age_frac": 0.3, "radius_ratio": 1.466, "peak_ratio": 0.2657}
+{"case": "glow_follows_burst_median", "class": "heavy", "age_frac": 0.1, "radius_ratio": 1.352, "peak_ratio": 0.3239}
+{"case": "glow_follows_burst_median", "class": "heavy", "age_frac": 0.3, "radius_ratio": 1.436, "peak_ratio": 0.2628}
+{"case": "twenty_hits_peak", "age_ms": 120, "peak_rule": 2.7305, "peak_no_rule": 19.5469, "peak_hard_count": 2.2188, "single_rule": 2.1113, "single_no_rule": 2.1113}
+{"case": "octave_blend", "band_px": 16, "frames": 10, "median_diff": 526.303, "max_diff": 683.836, "at_frame": 10, "max_over_median": 1.299, "max_octave_diff": 86.235, "octave_over_median": 0.1639}
+{"case": "octave_blend", "band_px": 0, "frames": 10, "median_diff": 526.928, "max_diff": 683.836, "at_frame": 10, "max_over_median": 1.298, "max_octave_diff": 191.041, "octave_over_median": 0.3626}
+{"case": "octave_hysteresis", "full_charge": 0.4426, "budgets_over_A": "10,.95,10,10,10,.95,1.05x4,1.3x2", "octaves": 322232222233, "want": 322232222233}
+{"case": "cluster_neighbour_fade", "cluster_fade": 1, "frames": 25, "a_last_ms": 1448, "b_last_ms": 1608, "e_first": 1.137, "e_last": 1.5, "worst_step": 0.0215}
+{"case": "cluster_neighbour_fade", "cluster_fade": 0, "frames": 25, "a_last_ms": 1448, "b_last_ms": 1608, "e_first": 0.9231, "e_last": 1.5, "worst_step": 0.625}
+ring_annulus plasma to_ring 1 age 40 min/rim 0.831
+ring_annulus plasma to_ring 1 age 80 min/rim 0.91
+ring_annulus plasma to_ring 1 age 120 min/rim 0.919
+ring_annulus plasma to_ring 0 age 40 min/rim 0.109
+ring_annulus plasma to_ring 0 age 80 min/rim 0.859
+ring_annulus plasma to_ring 0 age 120 min/rim 0.905
+ring_annulus heavy to_ring 1 age 40 min/rim 0.901
+ring_annulus heavy to_ring 1 age 80 min/rim 0.937
+ring_annulus heavy to_ring 1 age 120 min/rim 0.927
+ring_annulus heavy to_ring 0 age 40 min/rim 0.206
+ring_annulus heavy to_ring 0 age 80 min/rim 0.227
+ring_annulus heavy to_ring 0 age 120 min/rim 0.902
+{"case": "ember_lobes_median", "class": "energy", "hits": 8, "lobe_std_over_mean": 0.1098}
+{"case": "ember_lobes_median", "class": "heavy", "hits": 8, "lobe_std_over_mean": 0.1159}
+cpu capital_64_mixed 41.6 42.79 30
+cpu capital_64_mixed_sparks_only 30.3 None None
+cpu capital_64_mixed_no_sparks 18.8 None None
+cpu capital_64_mixed_no_cluster 38.3 None None
+cpu capital_64_mixed_pairwise 41.7 None None
+cpu capital_64_ion 24.0 27.09 None
+cpu capital_64_hits 25.5 26.78 40
+cpu capital_64_hits_sparks_only 18.5 None None
+cpu capital_64_hits_no_sparks 15.4 None None
+cpu fighter_20_hits 8.4 8.61 40
+cpu ring_1024_visible_64 48.2 49.83 65
+cpu ring_1024_visible_64_no_cluster 43.2 None None
+cpu ring_1024_visible_64_pairwise 48.4 None None
+cpu ring_1024_visible_256 119.5 120.87 160
+cpu ring_1024_visible_256_no_cluster 102.3 None None
+cpu ring_1024_visible_256_pairwise 119.4 None None
+cpu ring_1024_one_owner_grid 1223.2 None None
+cpu ring_1024_one_owner_pairwise 2710.5 None None
+cpu ring_1024_one_owner_no_cluster 625.9 None None
+gpu5120 fighter_200m_20_hits 70.6 0.398
+gpu5120 glow_alone_fills_frame 71.1 0.401
+gpu5120 burst_alone_fills_frame 106.6 0.601
+gpu5120 burst_alone_fills_frame_coarse 150.8 0.85
+gpu5120 smoke_alone_fills_frame 146.1 0.823
+gpu5120 burst_alone_every_pixel_noise 212.9 1.199
+gpu5120 burst_alone_every_pixel_noise_coarse 185.3 1.044
+gpu5120 smoke_alone_every_pixel_noise 213.9 1.205
+gpu5120 ember_lobed_alone_fills_frame 88.6 0.499
+gpu5120 fighter_200m_20_hits 30.3 0.171
+gpu5120 fighter_200m_20_hits 26.9 0.152
+gpu5120 fighter_200m_20_hits 55.4 0.312
+gpu5120 fighter_200m_20_hits 53.3 0.3
+gpu5120 fighter_200m_20_hits 41.2 0.232
+gpu5120 fighter_200m_20_hits 28.5 0.161
+gpu5120 fighter_200m_20_hits 59.5 0.335
+gpu5120 fighter_200m_20_hits 21.9 0.123
+gpu5120 ring_alone_fills_frame 88.0 0.496
+gpu5120 filament_alone_fills_frame 88.0 0.496
+gpu5120 scorch_alone_fills_frame 86.2 0.486
+gpu5120 flash_alone_fills_frame 71.2 0.401

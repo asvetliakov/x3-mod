@@ -1183,3 +1183,180 @@ known on the CPU: an upper bound).
 
 Host `test_weapon_effects_*` 84 OK; `build-ion` 0 warnings, `check_no_x87.py --edition ap` PASS; lab `--check` PASS;
 `generate_weapon_effects_programs.py --check` PASS (every other record changes only in this tool's digest).
+
+## Burst body, glow, flash, smoke (2026-11-07, dirty on `8a785e58e`)
+
+[hull-burst-look.md](../architecture/hull-burst-look.md) built with the coordinator's addendum (asteroid dust, the repair
+and tug cool spot) and the size check; fixture-gated, not flown. Native host (WSL2, NVIDIA 0x2c05, driver 32.0.16.2114):
+`run_weapon_effects.py --host native` PASS 188 / 188; the record `verification/results/native-windows/weapon-effects/summary.json`.
+`fireball_ps` 353 slots (was 270 at two octaves of 3-D noise; the native compile 1524 words), `fireball_vs` 21; the
+fireball vertex 76 B (a disc float4: rotation, lobe seed, advection, octaves); sprite PS 147 slots with the star kind.
+
+**Against the note's numbers** (each a gate that failed on the note's value, measured on the fixture and on a numpy model
+of the same law over 12 hits, `verification/results/weapon-effects-burst/body_sim.py` (gates per variant: `python3 body_sim.py name:key=value,...`) and `body_search.py` (the grid), the model's lit share at 0.1 L_b
+0.76 against the fixture's 0.768):
+
+| Constant | Note | Built | Gate that failed, measured |
+| --- | --- | --- | --- |
+| `fireball_erode_0` / `_soft` / `heat_soft` / `advect` | 0.25 / 0.12 / 0.35 / 1.5 | 0.10 / 0.20 / 0.20 / 1.0 | erodes_outside_in (lit share 0.768 at 0.1 L_b, mean radius 0.70 at 0.8 L_b against 0.655 at 0.2); colour core T 0.5 on most hits |
+| radial erosion term | erode_r q^2 | erode_r q^2 (1 + erode_rt x), rt 3.0 | the same: the rim went no earlier than the centre; the note's own "rising with age and radius" |
+| `glow_r_x`, of | 1.5 R_b | 1.6 R(t) | glow_follows_burst: a fixed 1.5 R_b gives 2.8-3.1 at 0.1 L_b (the body half grown); 1.5 R(t) gave 1.18 (heavy, 0.1 L_b) |
+| `cluster_n0_burst` | 3.0 | 2.0 | 20_hits_no_white_sun: 3.29 linear (bursts 1.98 of it) |
+| smoke strength | s0 min(1, y / 0.27) (1 - y) | the same / (1 - 0.27) | smoke_darkens: 0.39 against 0.366 (the note's "s0 0.5 reads at 50 %" needs the peak at s0) |
+| body gates 1-4 | one hit | the median of 8 hits (each its own hashes) | a single hit's coverage spreads with its seed (model: lit share at 0.5 L_b 0.0-0.8 over 12 hits) |
+
+Every other number is the note's (frequencies 1.6 / 3.4 / 7.0, weights 0.5 / 0.3 / 0.2, erode_t 0.30, erode_r 0.20,
+column_pow 0.35, lobes 5, lobe_amp 0.25, lobe_soft 0.06, rim_t 0.45, fine_px 48, R_b doubled, glow_e_x 0.33,
+cluster_r_x 2.0, N0 glow 2.5, the star's arms and core, 40 ms, the smoke's sizes and timing).
+
+**Gates** (1080p, the dump's cases; [M] run of the record):
+
+| Gate | Bound | Measured |
+| --- | --- | --- |
+| hull_burst_contrast (median of 8, 0.3 L_b) | dark share >= 0.15, R/4 high-pass std / peak >= 0.10 | energy 0.245 / 0.143, heavy 0.240 / 0.143 |
+| hull_burst_silhouette_lobed | max / min >= 1.25, std / mean >= 0.06 | energy 1.66 / 0.159, heavy 1.88 / 0.184 |
+| hull_burst_erodes_outside_in (energy) | >= 0.8 / 0.35-0.75 / <= 0.15 / 0; radius 0.8 vs 0.2 L_b <= 0.8 | 0.858 / 0.420 / 0.046 / 0 bursts; 0.471 |
+| hull_burst_colour_core_rim (0.2 L_b) | core T >= 0.75, rim <= 0.5 | 0.75 / 0.50 |
+| hull_glow_follows_burst (median of 8) | radius ratio 1.3-2.0, peak ratio <= 0.4, none after L_b | energy 1.32 / 1.47, heavy 1.35 / 1.44 (0.1 / 0.3 L_b); peak 0.26-0.32; 0 |
+| hull_20_hits_no_white_sun (120 ms) | peak <= 3.0; single within 1 % | 2.89 (18.61 without the rule; parts: bursts 1.46, glows 0.54, glows + embers 1.46); single 2.111 both |
+| hull_flash_star_3_frames (8 classes) | 3 frames at 16 and 100 ms steps; moment ratio >= 2; <= 0.02 off the arms | 3 / 3 each; 3.16 (repair) - 5.71 (heavy); 0.0 |
+| hull_smoke_darkens_hull_only | <= 0.5 (1 - 0.6 s0) = 0.366; sky unchanged; none after 1.6 L_b; residual <= 1 code | 0.346; 0 sky px; 0; 0.0 |
+| hull_burst_small_has_structure (30 px) | holes >= 0.10, max / min >= 1.2, octaves 2 | 0.679, 3.13, 2 |
+| hull_asteroid_dust_readable (addendum) | 10 % radius >= 1.5 r at 120 ms, peak >= 0.1 | 2.14 r, 0.177 |
+| hull_repair_cool_spot (addendum) | glow 10 % radius <= 1.2 r, peak <= 0.3, no px R > B | 0.83 r, 0.300, 0 px; tug peak 0.150 |
+| hull_budget_20_hits_5120_energy | <= 50 us | 29.5 us |
+
+Existing gates rewritten for the new laws (the glow's decay on the burst's law `hull_light_peak_decay_burst_law`; the
+star's half and the glow at 100 ms in `hull_sizes_counts_per_tier_law`; the star's core in the placement and 2 km floor
+gates; the burst sphere x 1.25 and its eye bias in the radius, lane and anchor gates; the plasma bloom in the class arm
+ratio 2.0 / 1.2; the repair's star and cool colour, the asteroid's grey sparks; the no-pop gates per element with the
+cluster rule off, since a joining hit dims its cluster by design).
+
+**Budget** (5120x1440, EVENT-fenced; over the decal's 177.5 us). The alone rows with the lobes' early-out: burst 166.7 us
+at three octaves (0.94), 113.8 at two (0.64), smoke 103.0 (0.58), the star 70.5 (0.40) (the record's figures); before the
+early-out (every disc pixel taking the noise) 210.2 / 182.2 / 213.5 us (a dump-only measurement of the pre-early-out
+program, no case in this record; since the review the `*_alone_every_pixel_noise` cases measure it, next section). A dense close-capital frame (one owner, 22 bursts over 12.2 raster
+screens at two octaves) measured 1579 us at the 0.64 weight, 0.73 per raster screen, so the bursts and smoke are charged
+at the worst case: `budget_weight_fireball` 1.18, `_coarse` 1.03, `budget_weight_smoke` 1.20; `budget_weight_flash`
+0.49 -> 0.40 (the star). Gated now: `hull_budget_capital_close_64_within_budget` <= 1,420 us.
+
+| 5120x1440 frame | us |
+| --- | --- |
+| capital close, 64 hits, generic (energy; 22 bursts, two octaves) | 1006.2 (1579.1 at the alone-row weight 0.64) |
+| capital close, 64 hits: energy / ballistic / plasma / heavy | 1000.4 / 438.3 / 1186.9 / 1152.4 |
+| capital close, 64 hits: ion / beam / missile / asteroid | 1090.2 / 1054.8 / 1149.2 / 253.0 |
+| capital close, 128 plasma hits | 1197.2 |
+| fighter 200 m, 20 hits, generic, 96 ms in | 69.8 |
+| fighter 200 m, 20 hits, energy class, 16 ms in | 29.5 |
+
+`hull_budget_20_hits_5120` (generic energy, 96 ms in): 69.8 us in the record (70.3 at the first weights), the bound 70 -> 80 (R_b doubled,
+the glow 1.6 R(t)). CPU: 64 hits on a capital best 24.6 us, mean 25.3 (the cluster count included; bound 40).
+
+**Radii and peaks, before / after** (`measure.py`: 10 % of the element's own peak, equivalent radius px / peak; "glow"
+is the dump's glow part, glows and embers together; before = `measure.txt` of `a66967eeb`):
+
+| Case, element | 40 ms | 120 ms | 296 ms | 696 ms |
+| --- | --- | --- | --- | --- |
+| asteroid_single burst | 77 / 0.19 | 157 / 0.18 | 162 / 0.17 | 41 / 0.11 |
+| asteroid_single glow | 0 / 0.00 | 0 / 0.00 | 0 / 0.00 | 0 / 0.00 |
+| energy_fighter60_20 burst | 126 / 0.80 -> 187 / 0.69 | 174 / 1.05 -> 223 / 1.25 | 164 / 0.28 -> 182 / 0.22 | 0 / 0.00 -> 0 / 0.00 |
+| energy_fighter60_20 glow | 264 / 10.36 -> 173 / 1.36 | 253 / 4.05 -> 195 / 1.56 | 170 / 0.91 -> 176 / 1.03 | 171 / 0.45 -> 171 / 0.45 |
+| energy_single burst | 29 / 0.49 -> 86 / 1.39 | 58 / 0.46 -> 145 / 1.30 | 69 / 0.11 -> 94 / 0.40 | 0 / 0.00 -> 0 / 0.00 |
+| energy_single glow | 200 / 1.16 -> 94 / 0.92 | 182 / 0.73 -> 176 / 0.78 | 57 / 0.40 -> 64 / 0.39 | 57 / 0.23 -> 57 / 0.15 |
+| heavy_capital_64 burst | 804 / 0.40 | 812 / 0.34 | 682 / 0.12 | 0 / 0.00 |
+| heavy_capital_64 glow | 0 / 0.00 | 0 / 0.00 | 0 / 0.00 | 578 / 0.81 |
+| heavy_single burst | 33 / 0.54 -> 76 / 1.40 | 54 / 0.40 -> 124 / 1.32 | 57 / 0.04 -> 70 / 0.76 | 0 / 0.00 -> 0 / 0.00 |
+| heavy_single glow | 199 / 1.98 -> 80 / 1.28 | 190 / 1.45 -> 136 / 1.16 | 36 / 0.69 -> 81 / 0.83 | 36 / 0.40 -> 36 / 0.50 |
+| plasma_single burst | 55 / 1.44 | 137 / 1.30 | 168 / 1.10 | 0 / 0.00 |
+| plasma_single glow | 75 / 1.06 | 177 / 0.98 | 222 / 0.80 | 72 / 0.40 |
+| repair_single burst | 0 / 0.00 | 0 / 0.00 | 0 / 0.00 | 0 / 0.00 |
+| repair_single glow | 59 / 0.87 | 54 / 0.69 | 29 / 0.38 | 29 / 0.08 |
+
+**Size derivation** (the user, 2026-11-07: derive the size from the ships, ranges and screens). Script and output
+`verification/results/weapon-effects-burst/size_derivation.py` / `.txt`. Inputs: hull lengths [M] stock rows of
+`verification/results/engine-effects-census/ships.csv` (hull_len_z / 500 per metre); weapon range [M] median
+`range_m` (speed x lifetime) of the stock catalogue `tools/effects/weapon_catalog/stock_ap.json` by mounting class;
+projection [M] the launcher's default 58.7155 deg vertical (`docs/verification/field-of-view.md`, p11 1.778: 1280 px
+per metre-over-distance at 1440 rows, 960 at 1080); engagement distance [A] fighters 0.35 of the median range (they
+close to a third of it), corvettes 0.6, capitals 0.8; calibre [A] 0.33 / 0.5 / 0.8.
+
+| Tier | ships | median length m | median range m | distance m | R_b m (energy) | R(120 ms) m | px at 1440 / 1080 rows | R_b / length |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| fighter (M3-M5) | 132 | 21.6 | 2001 | 700 | 6.77 | 5.86 | 10.7 / 8.0 | 0.31 |
+| corvette (M6, M8) | 28 | 130.3 | 2200 | 1320 | 16.2 | 13.7 | 13.3 / 10.0 | 0.12 |
+| capital (M7, M2, M1, TL) | 71 | 1849 | 2317 | 1854 | 55.7 | 45.5 | 31.4 / 23.6 | 0.03 |
+
+Targets [A]: on a fighter at its median distance a burst of at least 10 px radius at 1440 rows by 120 ms, and R_b no
+more than a third of the fighter's length; on a capital a few per cent of the hull. The fighter band is R_b 6.3 m
+(10 px) to 7.2 m (a third of 21.6 m); the note's doubled R_b 6.77 m lies inside it (within +-30 %), so **the note's
+numbers stay**; the corvette (13 px, 12 % of the hull) and capital (31 px, 3 %) rows meet the targets with them. The
+other classes keep their ratios to the energy row (hull-impact-classes.md 4).
+
+Dump (`--dump`, cases energy / heavy / plasma / asteroid / repair single, energy_fighter60_20, heavy_capital_64 at
+40 / 120 / 296 / 696 ms, both sizes): 112 files, PNG under the session scratch `stage-dump-v2/`.
+
+Reproduce:
+
+```sh
+X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native
+X3M_WEAPON_EFFECTS_DUMP_CASES=energy_single,heavy_single,plasma_single,energy_fighter60_20,heavy_capital_64,asteroid_single,repair_single \
+X3M_WEAPON_EFFECTS_DUMP_MS=40,120,296,696 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py \
+  python3 verification/probe/run_weapon_effects.py --host native --dump <dir>
+python3 verification/results/weapon-effects-burst/measure.py <dir>
+python3 verification/results/weapon-effects-burst/size_derivation.py
+python3 verification/results/weapon-effects-burst/body_sim.py built:ert=3,et=0.3,er=0.2,adv=1.0,e0=0.1,soft=0.2,hsoft=0.2   # the note vs the built law, 12 hits
+```
+
+Host `test_weapon_effects_*` 84 OK; `build-burst` 0 warnings, `check_no_x87.py --edition ap` PASS; lab `--check`
+PASS, the new scenario `hull/energy-fighter60-20hits` (167 hits per s) and Layers `flash star`, `smoke`.
+
+## Burst review fixes and the merge (2026-11-07, dirty on `98f095045`)
+
+The burst change's review findings fixed and `effects` (beam colour, ion lightning, `98f095045`) merged in (the branch
+fast-forwarded, the burst diff re-applied and its conflicts resolved). Fixture-gated, not flown. Native host (WSL2, NVIDIA
+0x2c05, driver 32.0.16.2114): `run_weapon_effects.py --host native` PASS 206 / 206, build 0 warnings; the record
+`verification/results/native-windows/weapon-effects/summary.json`; the rows below by
+`verification/results/weapon-effects-burst/review_rows.py` (`review_rows.txt`). `fireball_ps` 356 slots, `glow_ps` 115
+(the lobes' branch), glow vertex 40 -> 48 bytes.
+
+| Finding | Built | Gate | Measured |
+| --- | --- | --- | --- |
+| third octave switched at 48 px | its weight 0 -> 1 over 48-64 px of the projected R (`fireball_fine_band_px` 16, disc.w continuous, charged between the two weights) | `hull_burst_octave_blend_no_jump`: no frame's change above 3 x the median (40 -> 80 px in 10 frames); the octave's own change at most half the hard step's | max / median 1.30 (the hard step also 1.30: the growth dominates the frame difference, so the octave's own change is gated too: 86.2 against 191.0, 0.45) |
+| budget step flipped 3 <-> 2 | hysteresis: two octaves past the budget, held 3 frames, three again under 0.8 of it | `hull_budget_octave_hysteresis` | 322232222233 as wanted (the old rule 323332333333) |
+| cluster N a hard count | each neighbour by its remaining life fraction; `cluster_n0_burst` 2.0 -> 1.6 | `hull_cluster_neighbour_fades`: the survivor's E under 10 % a frame over its neighbour's end | 2.2 % (hard count 62.5 %); `hull_20_hits_no_white_sun` 2.73 (3.03 at 2.0, the hard count 2.22, no rule 19.5) |
+| O(n^2) count per owner | a record's owner by address hash, owners out of reach skipped, a grid of the owner's reach from 128 bursts an owner (pairwise below: cheaper at 64, 41.7 against 43.1 us) | CPU rows, table below | |
+| `atan2(0, 0)` | guarded in `weapon_fireball_ps` and the new glow lobes | | |
+| spot puff / smoke drift reset every 1 s | one phase from the spot's birth | | |
+| `tug_colour` unused | removed; repair and tug take `cool_colour` (comment fixed) | | |
+| star angle shared the shimmer seed (element 9) | `star_element` 11 | `hull_flash_star_3_frames` | pass |
+| ledger figures | the burst section's alone rows and the 20-hit row as recorded | | 166.7 / 113.8 / 103.0 / 70.5, 69.8 |
+| weights' worst-case rows missing | `burst_alone_every_pixel_noise`, `_coarse`, `smoke_alone_every_pixel_noise` (the sphere about the eye: no pixel outside the lobes) | the weights within 0.15 of them (host test) | 212.9 / 185.3 / 213.9 us (1.20 / 1.04 / 1.21; built 1.18 / 1.03 / 1.20) |
+| lab 20-hit case an open stream | the preset's `count` 20 (the hull tab's "hits then stop") | lab tests | lab peak 3.86 at 120 ms, 4.23 at 234 ms (120 ms after the newest), stage 2.73: the lab's hits within 1.5 U, the stage's over 30 engine metres, so the two still differ |
+| dark annulus, heavy / plasma 40-120 ms | a ring class's glow out to the ring's drawn radius r(t) + 3 w, released as (1 - t / L_ring) | `hull_ring_class_no_dark_annulus`: the radial mean between R(t) and the ring's peak >= 0.3 of its value at R(t) | plasma 0.83 / 0.91 / 0.92, heavy 0.90 / 0.94 / 0.93 at 40 / 80 / 120 ms (without: 0.11 / 0.86 / 0.91, 0.21 / 0.23 / 0.90) |
+| ember a round lamp after 600 ms | a burst class's ember takes the burst's lobes (its seed, rotation; amp 0.25), charged at `budget_weight_glow_lobed` 0.51 | `hull_ember_lobed_remnant` (median lobe std / mean >= 0.1 at 700 ms), `hull_ember_lobed_within_glow_weight` | energy 0.110, heavy 0.116; 88.6 us full screen (0.50) |
+
+CPU, best of 200 (one owner's 1024 records best of 50), us:
+
+| Case | built | no cluster | pairwise on every owner | burst record before | bound |
+| --- | --- | --- | --- | --- | --- |
+| `capital_64_mixed` | 41.6 | 38.3 | 41.7 | 39.4 (34.2 before the burst) | 50 |
+| `ring_1024_visible_64` | 48.2 | 43.2 | 48.4 | 61.9 (42.5 before the burst) | 100 -> 65 |
+| `ring_1024_visible_256` | 119.5 | 102.3 | 119.4 | 128.4 | 300 -> 160 |
+| `ring_1024_one_owner` (report only) | 1223.2 (grid) | 625.9 | 2710.5 | | |
+
+The first O(n) version (grid from 24 bursts, the kept owners scanned per record) measured 43.1 / 67.5: the scan over the
+ring's 1024 records cost more than the pairwise count it replaced. The "before" figures are the burst record's, on the
+pre-merge base (no lightning).
+
+What the merge required: the sprite program's c.z serves both kinds (a star's width floor, a flash core's colour share);
+the record flash a star for every class, the ion's in `ion_colour` for 40 ms with no other heat (its puff, glow, ember,
+smoke and scorch rows zero, no sparks); the beam spot: the pulse star on the heat ramp, its core and halo in the colour
+mix, its boiling puff's glow (the burst's law since the burst look) in the weapon colour at the heat glow's mean radiance;
+the lightning's segment pass and its whole-channel shed at the burst's step (4) with the rings; the lab's layers, the
+spot's colour and caption from both; the hull frame log both sets of fields. The run's earlier cases moved the ring's
+sequence counter, so the unpinned single-record gates saw new hashes: `hull_asteroid_dust_readable` (1.47 r),
+`hull_classes_distinct_greyscale` (0.15) and `hull_plasma_globe_shrinks_reddens` (colour not monotonic) failed on one
+seed and now take medians over pinned records (dust 1.84 r / 0.178; small burst dark 0.37, lobes 2.24; greyscale 0.366;
+globe b/r 0.69 / 0.51 / 0.45); the 20-hit records pinned. The ion's close GPU bound 450 -> 600 (497.8 us: its 64 stars
+3.30 charged screens against the discs' 2.77, 370.3). The tip's engine-shimmer record was a `device` failure (the screen
+saver): re-run PASS.

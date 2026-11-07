@@ -16,7 +16,7 @@
     "src/proxy/engine_patch.h"
   ],
   "source": {
-    "commit": "d41a60f017149cfeb0529857d0203832323757f2-dirty",
+    "commit": "98f0950455b360ba28d2d0bc33f314e0ee707eec-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h"
@@ -28,7 +28,7 @@
       "src/proxy/weapon_effects_patch.cpp": "0ca0630368823f0e775db3da54c8356d91cdc3643e8c7e70fe863c2b096acf8e",
       "src/proxy/weapon_effects_patch.h": "3282ff7b7598b101bb537d77e5f9e4b8c7dce904660bc478ff8d33b20023b524",
       "src/proxy/weapon_effects_hook.cpp": "3993e3a1311e861180ebd8605c9091391338e1ee3875cbd577e6055feafccb43",
-      "src/proxy/weapon_effects_core.h": "2bb404998bd42ebc1c5022b5a465ef2896b2aebe861bf9f8b0424d5690d3a5df",
+      "src/proxy/weapon_effects_core.h": "e79798568bb8ac3b1a24b835bcd9baa22974c312ee0c5c3459d3af49869af8b5",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_table.h": "8b58ad833326bb00266a5a672cd317935ceee0f2116b141cff320211ea47656b",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
@@ -75,7 +75,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "d2731eaeb78418eae260a2b44055f6e6b418a086bee7ddc0737731fe86b031aa"
+    "executable_sha256": "f61d7283b5a8899bffa54cea1b48f8804804211874698ace670a54e088e097b3"
   },
   "host": {
     "name": "native-windows",
@@ -585,8 +585,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00869640",
     "esp_callee": "00869634",
-    "return": "00dc6d8a",
-    "site": "00dc6d85"
+    "return": "00ec6d8a",
+    "site": "00ec6d85"
   },
   "stack_depth": {
     "bytes": 240,
@@ -913,9 +913,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.1,
-    "median_us": 17.2,
-    "worst_us": 24.3,
+    "best_us": 17.0,
+    "median_us": 17.1,
+    "worst_us": 20.6,
     "target_us": 30
   },
   "overflow": {
@@ -931,9 +931,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 57.7,
-    "median_us": 57.9,
-    "worst_us": 58.2,
+    "best_us": 57.9,
+    "median_us": 58.1,
+    "worst_us": 69.7,
     "target_us": 150
   },
   "passed": true

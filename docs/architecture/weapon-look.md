@@ -369,6 +369,18 @@ capital, the own ship hit in chase and cockpit, one stretch under SETA. Rows: `w
 hit, visible on the own nose from behind, an ember for about a second, no native impact sprite, the hex patch
 unchanged on shielded hits, the repair laser without sparks.
 
+**2026-11-07, the burst look** ([hull-burst-look.md](hull-burst-look.md); built and fixture-gated, not flown; figures in
+the [ledger](../verification/weapon-effects.md) "Burst body, glow, flash, smoke"). Supersedes the flash, glow and burst
+rows above: the **burst body** is a lobed three-octave 2-D noise disc alpha-eroded by erode_0 + erode_t x + erode_r
+|q|^2 (1 + erode_rt x) (0.10, 0.30, 0.20, rt 3.0, soft 0.20), R_b doubled per class (energy 2 r_hit), two octaves under
+48 px at 1440 rows (never one), radiance heat(T') E density (no extra x T); the **glow** is its light, R_g 1.6 R(t),
+E_g 0.33 E_b, the burst's heat and life, saturated per owner cluster (N0 2.5 glow / 2.0 body within 2 R_b); the
+**flash** a 40 ms four-arm star of unequal arms (A 0.6-2.0 r per class, core 0.12 r, no halo); a dark **smoke** puff
+(the impostor in the scorch's multiply state, hull only) from 0.5 to 1.6 L_b. Budget weights: burst 1.18 / 1.03 (two
+octaves), smoke 1.20, star 0.40, glow 0.40; shed order (1) third octave, (2) other owners' smoke, then as before with
+bursts past two per owner after the glows. Asteroid: an unlit grey dust cloud (E 0.375, rise 0.08) and grey rock
+sparks; repair and tug: a cool spot (0.7, 0.8, 1.0) at E 0.3 / 0.15, R 1.0 r, repair's star A 0.6 r.
+
 ### 3.2 Explosions (step 3)
 
 **Records.** Both death sites (2.4 of the architecture), `tier` from `patch_tier_of_ship` for class 7, station for

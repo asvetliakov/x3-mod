@@ -1087,21 +1087,45 @@ constexpr float floor_core_px = 2.0f, floor_lit_px = 3.0f, floor_len_px = 24.0f,
 // screen at 5120x1440 (native fixture, glow_alone_fills_frame, 2026-11-06; four runs 71.0-72.3) / 177.5 = 0.40 (the
 // note's [I] was 0.25).
 constexpr float budget_weight_patch = 1.0f, budget_weight_glow = 0.40f;
-// The fireball impostor (2.14; the hull hit's hot-gas burst since 2026-11-06, the explosions of step 3 at full size): a
-// ray-sphere impostor whose column density is the closed-form chord integral of rho(r) = 1 - r^2 / R^2, clipped at the
-// lane (the half inside a hull is not there), times two octaves of value noise sampled at the chord's middle in the
-// sphere's normalised frame and advected outward with age (fireball_advect noise cells over the life), eroded as it
-// cools; its heat T x (1 - fireball_core_t (1 - column)) on the heat ramp, radiance ramp(T) x E x T x density.
-// fireball_octaves is the program's octave count (the budget's LOD drops it to 1, 2.11 (1)).
-constexpr float fireball_freq = 2.2f;     // noise cells per sphere radius
-constexpr float fireball_advect = 1.5f;   // outward drift of the pattern over the life (noise cells)
-constexpr float fireball_noise = 0.9f;    // the density's noise amplitude (1 +- this)
-constexpr float fireball_erode = 0.6f;    // the density lost at the end of the life (the ball breaks up as it cools)
-constexpr float fireball_core_t = 0.35f;  // the rim's heat below the core's
-constexpr unsigned fireball_octaves = 2;
-// One fireball rectangle filling the frame at 5120x1440, EVENT-fenced (native fixture, burst_alone_fills_frame,
-// 2026-11-06: 184.3 us at two octaves, 135.4 at one), over the decal's 177.5 us.
-constexpr float budget_weight_fireball = 1.04f, budget_weight_fireball_lod = 0.76f;
+// A burst class's lobed ember (the glow program's lobe branch, review 2026-11-07): ember_lobed_alone_fills_frame 89.7 us
+// at 5120x1440 against the round glow's 70.8 (native fixture 2026-11-07).
+constexpr float budget_weight_glow_lobed = 0.51f;
+// The fireball impostor (2.14; the hull hit's hot-gas burst, docs/architecture/hull-burst-look.md section 2 since
+// 2026-11-07; the explosions of step 3 at full size): a ray-sphere impostor (the chord's closed-form column of
+// rho(r) = 1 - r^2 / R^2, clipped at the lane) shaded at the chord's middle q (normalised by the sphere's R_s) in the
+// view-plane disc p = rot(theta) q.xy: three octaves of 2-D value noise n (fireball_octave_freq cells per R_s, weights
+// fireball_octave_w, advected outward by fireball_advect cells over the life), alpha-eroded by the threshold
+// thr = erode_0 + erode_t x + erode_r |q|^2 (1 + erode_rt x) (density saturate((n - thr) / erode_soft) x column^column_pow x the lobed
+// silhouette: rho(phi) = (1 + lobe_amp (2 n_L - 1)) / (1 + lobe_amp), n_L a periodic 1-D value noise of fireball_lobes
+// cells about the disc, edge fireball_lobe_soft); heat T(t) x (rim_t + (1 - rim_t) m), m = column x saturate((n - thr) /
+// heat_soft), radiance heat(T') x E x density. fireball_octaves is the program's count; a burst's third octave is
+// weighted in over fireball_fine_px .. + fireball_fine_band_px of its projected radius (at 1440 rows; review 2026-11-07:
+// no step as a burst grows or shrinks through it), and the budget's shed step (1) takes it from every burst (never the
+// second): entered when the charged screens pass the budget, left only after fireball_octave_hold frames and under
+// fireball_octave_return of it (no frame-to-frame flip at the budget's edge).
+constexpr float fireball_octave_freq[3] = {1.6f, 3.4f, 7.0f}; // noise cells per R_s
+constexpr float fireball_octave_w[3] = {0.50f, 0.30f, 0.20f};
+// Against the note's numbers (2026-11-07, docs/verification/weapon-effects.md "Burst body, glow, flash, smoke"): the
+// note's erode_0 0.25, erode_soft 0.12, heat_soft 0.35, advect 1.5 and an age-free radial term failed the erosion and
+// colour gates on most hits (a numpy model of this law over 12 hits and the fixture agree); erode_rt couples the
+// radial term to age (the rim goes first, the note's "rising with age and radius").
+constexpr float fireball_advect = 1.0f; // outward drift of the pattern over the life (noise cells)
+constexpr float fireball_erode_0 = 0.10f, fireball_erode_t = 0.30f, fireball_erode_r = 0.20f, fireball_erode_soft = 0.20f;
+constexpr float fireball_erode_rt = 3.0f;
+constexpr float fireball_column_pow = 0.35f;
+constexpr float fireball_lobes = 5.f, fireball_lobe_amp = 0.25f, fireball_lobe_soft = 0.06f;
+constexpr float fireball_heat_soft = 0.20f, fireball_rim_t = 0.45f;
+constexpr unsigned fireball_octaves = 3;
+constexpr float fireball_fine_px = 48.f; // under this projected radius (px at 1440 rows) a burst draws two octaves
+constexpr float fireball_fine_band_px = 16.f; // the third octave's weight 0 -> 1 over this much more radius
+constexpr float fireball_octave_return = 0.8f;
+constexpr unsigned fireball_octave_hold = 3;
+// One fireball rectangle filling the frame at 5120x1440 with every disc pixel taking the noise, EVENT-fenced (native
+// fixture 2026-11-07 before the lobes' early-out: burst_alone_fills_frame 210.2 us, _coarse at two octaves 182.2,
+// smoke_alone_fills_frame 213.5), over the decal's 177.5 us: the worst case. The alone rows read 0.94 / 0.64 / 0.58 since
+// the lobes skip their outside, but a dense close-capital frame measured 0.73 per raster screen at two octaves
+// (docs/verification/weapon-effects.md "Burst body, glow, flash, smoke").
+constexpr float budget_weight_fireball = 1.18f, budget_weight_fireball_coarse = 1.03f, budget_weight_smoke = 1.20f;
 } // namespace look
 // The hull hit (weapon-look.md 3.1): a 60 ms white flash, isotropic cooling sparks, a 150 ms glow on the hull and a
 // 1.2 s ember, all at the recorded contact point; r_hit = r_scale U (r_base + r_k k). mode full | simple (the kill fallback:
@@ -1123,25 +1147,37 @@ constexpr float r_scale = 2.0f;
 // where named), lives in game ms (x (1 +- stagger / 2) by hash, the three-frame floor). The lab reads every grid by name.
 enum Anatomy : std::uint8_t { an_energy = 0, an_ballistic = 1, an_plasma = 2, an_heavy = 3, an_ion = 4, an_beam = 5,
                               an_missile = 6, an_asteroid = 7, an_repair = 8, an_tug = 9, anatomy_count = 10 };
-// Flash: core r, halo r, life ms, halo heat, halo colour (0 heat, 1 the tint when saturated (plasma), 2 ion_colour (fixed,
-// ratified 2026-11-06), 3 the missile tint). A zero life: no flash. The heavy class adds the entry streak (streak_*).
-constexpr float class_flash[10][5] = {{0.25f, 1.0f, 60.f, 0.9f, 0.f}, {0.15f, 0.4f, 40.f, 1.0f, 0.f},
-                                      {0.35f, 2.0f, 60.f, 1.0f, 1.f}, {0.2f, 0.6f, 60.f, 0.9f, 0.f},
-                                      {0.2f, 1.0f, 60.f, 1.0f, 2.f}, {0.25f, 1.0f, 60.f, 0.9f, 0.f},
-                                      {0.25f, 1.0f, 60.f, 0.9f, 3.f}, {0.f, 0.f, 0.f, 0.f, 0.f},
-                                      {0.f, 0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f, 0.f}};
+// Flash (hull-burst-look.md section 4, 2026-11-07): a four-arm star (the sprite batch's star kind) at the angle
+// (pi / 2) unit(hash(seq, star_element)), arms star_arm_len x A along +u, +v, -u, -v, each (1 - s)^2 along it across
+// a width star_width A (1 - s) + star_width_px, a white disc core (>= floor_flash_px) at core_e, the arms the colour
+// source at core_e; no halo. Columns: core r, arm A r, life ms, arm heat, arm colour (0 heat, 1 the tint when
+// saturated (plasma), 2 ion_colour (fixed, ratified 2026-11-06), 3 the missile tint, 4 cool_colour (repair, at its
+// pulse start)). A zero life: no flash. The heavy class adds the entry streak (streak_*).
+constexpr float class_flash[10][5] = {{0.12f, 1.2f, 40.f, 0.9f, 0.f}, {0.12f, 0.6f, 40.f, 1.0f, 0.f},
+                                      {0.12f, 2.0f, 40.f, 1.0f, 1.f}, {0.12f, 1.0f, 40.f, 0.9f, 0.f},
+                                      {0.12f, 1.2f, 40.f, 1.0f, 2.f}, {0.12f, 1.2f, 40.f, 0.9f, 0.f},
+                                      {0.12f, 1.5f, 40.f, 0.9f, 3.f}, {0.f, 0.f, 0.f, 0.f, 0.f},
+                                      {0.12f, 0.6f, 40.f, 0.f, 4.f}, {0.f, 0.f, 0.f, 0.f, 0.f}};
+constexpr float star_arm_len[4] = {1.0f, 0.55f, 0.8f, 0.45f};
+constexpr float star_width = 0.10f, star_width_px = 2.f;
+constexpr float star_floor_px = 6.f; // the arm A never below this (px at the target's rows): a star, not a dot
+// the per-hit hashes (the star's its own since 2026-11-07: 9 is the shimmer rect's seed)
+constexpr unsigned star_element = 11, burst_rot_element = 8, burst_lobe_element = 10;
 // Puff (the fireball impostor riding the owner): R_b = rb_r r + U (rb_u + rb_uk k), L = life + life_k k ms, heat T0 -> 0
 // over L, body E (<= look::body_max), R(t) = R_b (1 - e^(-t / (rise L))) x (1 - shrink max(0, (t / L - 0.3) / 0.7)), the
 // tint mixed in at tint_mix (1 - t / L) when saturated (plasma). Columns: rb_r, rb_u, rb_uk, life, life_k, T0, E, rise,
 // shrink, tint_mix. A zero radius: no puff.
-constexpr float class_puff[10][10] = {{1.0f, 0.f, 0.f, 350.f, 150.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
-                                      {0.4f, 0.f, 0.f, 200.f, 0.f, 0.6f, 0.8f, 0.15f, 0.f, 0.f},
-                                      {1.5f, 0.f, 0.f, 600.f, 400.f, 1.0f, 1.5f, 0.2f, 0.5f, 0.5f},
-                                      {0.8f, 0.f, 0.f, 300.f, 200.f, 1.0f, 1.5f, 0.1f, 0.f, 0.f},
+// R_b doubled 2026-11-07 (hull-burst-look.md 2.6: the body fills the hit's footprint instead of the glow's lamp). The
+// asteroid's (2026-11-07 addendum): the unlit dust cloud, dust_colour at E 0.375 (a quarter of the energy body's) with
+// the same erosion, rising faster (rise 0.08) so the cloud reads at 120 ms.
+constexpr float class_puff[10][10] = {{2.0f, 0.f, 0.f, 350.f, 150.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
+                                      {0.8f, 0.f, 0.f, 200.f, 0.f, 0.6f, 0.8f, 0.15f, 0.f, 0.f},
+                                      {3.0f, 0.f, 0.f, 600.f, 400.f, 1.0f, 1.5f, 0.2f, 0.5f, 0.5f},
+                                      {1.6f, 0.f, 0.f, 300.f, 200.f, 1.0f, 1.5f, 0.1f, 0.f, 0.f},
                                       {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
-                                      {0.6f, 0.f, 0.f, 300.f, 0.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
-                                      {0.f, 1.0f, 1.0f, 500.f, 700.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
-                                      {1.2f, 0.f, 0.f, 800.f, 400.f, 0.3f, 0.5f, 0.15f, 0.f, 0.f},
+                                      {1.2f, 0.f, 0.f, 300.f, 0.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
+                                      {0.f, 2.0f, 2.0f, 500.f, 700.f, 1.0f, 1.5f, 0.15f, 0.f, 0.f},
+                                      {2.4f, 0.f, 0.f, 800.f, 400.f, 0.3f, 0.375f, 0.08f, 0.f, 0.f},
                                       {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
                                       {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}};
 // Spark sets, three per anatomy (row 3 a + set: 0 fast, 1 slow, 2 chips): n = n0 + nk k (x the count's spread), speed U/s
@@ -1174,26 +1210,55 @@ constexpr float class_sparks[30][13] = {
     {8.f, 12.f, 3.f, 0.3f, 1500.f, 0.f, 0.08f, 3.f, 1.0f, 8.f, 1.f, -0.3f, 0.3f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // asteroid: rock dust and chips
-    {8.f, 8.f, 3.f, 0.3f, 450.f, 150.f, 0.08f, 3.f, 0.45f, 1.5f, 0.3f, 0.f, 0.f},
-    {6.f, 6.f, 2.f, 0.5f, 600.f, 200.f, 0.12f, 1.5f, 1.0f, 1.5f, 0.25f, 0.f, 0.f},
+    {8.f, 8.f, 3.f, 0.3f, 450.f, 150.f, 0.08f, 3.f, 0.45f, 0.75f, 0.3f, 0.f, 0.f}, // dimmer, in dust_colour
+    {6.f, 6.f, 2.f, 0.5f, 600.f, 200.f, 0.12f, 1.5f, 1.0f, 0.75f, 0.25f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // repair
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}, // tug
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f},
     {0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f}};
-// Glow (the glow primitive at the hit): R r, life ms (a beam's and repair's: the fall after the hold), heat T, radiance
-// E (repair: the weapon tint, tug: tug_colour, at E). Ember (the post-hit light): R r, life + life_k k ms, heat T0
+// The burst's glow (hull-burst-look.md section 3, 2026-11-07): every class with a burst but the asteroid's dust lights
+// the hull with the glow primitive of R_g = glow_r_x R(t) (the burst's radius now), E_g = glow_e_x E_b, colour
+// heat(T(t)) E_g T(t), over the burst's life (its stagger hash, element 3). Per owner and frame its live burst records
+// within cluster_r_x R_b of a record (N = 1 + the others' remaining life fractions, at most 64: a neighbour fades out of
+// N, review 2026-11-07) scale its glow by 1 / (1 + (N - 1) / cluster_n0_glow) and its body by 1 / (1 + (N - 1) /
+// cluster_n0_burst).
+constexpr float glow_r_x = 1.6f, glow_e_x = 0.33f; // glow_r_x 1.5 in the note; 1.6 by the glow_follows_burst gate
+// cluster_n0_burst 3.0 in the note; 2.0 by the hull_20_hits_no_white_sun gate (3.29 linear measured at 3.0); 1.6 since
+// the neighbours count by their remaining life (review 2026-11-07: 3.03 measured at 2.0, the hard count 2.45)
+constexpr float cluster_r_x = 2.0f, cluster_n0_glow = 2.5f, cluster_n0_burst = 1.6f;
+// Smoke (hull-burst-look.md section 5): the burst's impostor drawn in the scorch pass (multiply), over the lane's
+// surface only, riding the owner, from smoke_t0 L_b over smoke_span L_b: radius R over R_b x R_b, the burst's noise,
+// seed and rotation, the erosion over its age y, strength s0 min(1, y / smoke_rise) (1 - y) / (1 - smoke_rise) x
+// scorch_colour (its peak s0 at smoke_rise, 0.8 L_b: the note's "at s0 0.5 the hull reads at 50 %"). Columns:
+// R over R_b, s0. A zero radius: none (ion, repair, tug; the asteroid's dust takes the ballistic dust's, addendum).
+constexpr float class_smoke[10][2] = {{1.3f, 0.45f}, {1.0f, 0.30f}, {1.2f, 0.50f}, {1.3f, 0.50f}, {0.f, 0.f},
+                                      {1.2f, 0.40f}, {1.3f, 0.50f}, {1.0f, 0.30f}, {0.f, 0.f},   {0.f, 0.f}};
+constexpr float smoke_t0 = 0.5f, smoke_span = 1.1f, smoke_rise = 0.27f;
+// The asteroid's rock dust (its body, its sparks: unlit, greyer than hull sparks) and the cool spot of repair and tug.
+constexpr float dust_colour[3] = {0.55f, 0.52f, 0.48f};
+constexpr float cool_colour[3] = {0.7f, 0.8f, 1.0f};
+// Glow (the glow primitive at the hit; since 2026-11-07 repair's and tug's only, the burst classes take the burst's
+// glow above): R r, life ms (the fall after the hold), heat T, radiance E (repair and tug: cool_colour, at E: 0.2 and
+// 0.1 of the energy body's 1.5). Ember (the post-hit light): R r, life + life_k k ms, heat T0
 // cooling to 0, E (radiance ramp(T) x E x T; repair: the tint x E fading); the beam's is its spots' trail ember.
-constexpr float class_glow[10][4] = {{3.f, 150.f, 0.85f, 1.0f}, {1.5f, 100.f, 0.9f, 0.6f}, {4.f, 250.f, 0.8f, 1.2f},
-                                     {3.f, 200.f, 0.9f, 1.5f},  {0.f, 0.f, 0.f, 0.f},       {2.5f, 150.f, 0.85f, 1.0f},
-                                     {4.f, 250.f, 0.85f, 1.5f}, {0.f, 0.f, 0.f, 0.f},       {2.f, 150.f, 0.f, 1.0f},
-                                     {2.f, 150.f, 0.f, 1.0f}};
+constexpr float class_glow[10][4] = {{0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f},
+                                     {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f},
+                                     {0.f, 0.f, 0.f, 0.f}, {0.f, 0.f, 0.f, 0.f}, {1.f, 150.f, 0.f, 0.3f},
+                                     {1.f, 150.f, 0.f, 0.15f}};
 constexpr float class_ember[10][5] = {{0.8f, 1500.f, 500.f, 0.6f, 0.8f}, {0.3f, 500.f, 0.f, 0.4f, 0.5f},
                                       {1.0f, 3000.f, 0.f, 0.6f, 1.0f},   {0.5f, 2000.f, 0.f, 0.7f, 1.2f},
                                       {0.f, 0.f, 0.f, 0.f, 0.f},         {0.8f, 1500.f, 0.f, 0.6f, 0.8f},
                                       {1.0f, 2000.f, 0.f, 0.6f, 1.0f},   {0.f, 0.f, 0.f, 0.f, 0.f},
                                       {0.4f, 800.f, 0.f, 0.f, 0.6f},     {0.f, 0.f, 0.f, 0.f, 0.f}};
+// The ember of a class with a burst takes the burst's lobed silhouette (review 2026-11-07: the late ember read as a round
+// lamp): its radius x rho(phi) = (1 + ember_lobe_amp (2 n_L - 1)) / (1 + ember_lobe_amp), the burst's own lobe noise
+// (look::fireball_lobes cells, its seed and rotation), so it is the body's clumped remnant.
+constexpr float ember_lobe_amp = 0.25f; // look::fireball_lobe_amp, the body's
+// Ring classes (a class_ring row): the burst's glow reaches the ring's drawn radius r(t) + ring_front_window w while the
+// ring lives, released with it: R_g = glow_r_x R(t) + max(0, that - glow_r_x R(t)) (1 - t / L_ring) (review 2026-11-07:
+// the body, glow and ring read as one event, no dark annulus between them).
 // Surface ring (the glow primitive with a shell profile, weapon_ring_ps.hlsl): E = heat(ring_t) x E x exp(-((d - r(t)) /
 // w)^2) x (1 - t / L)^2, r(t) = r_max (1 - e^(-t / (ring_rise L))), d the lane point's distance from the hit: the sphere
 // shell cut by whatever surface the lane holds, no normal. Columns: r_max r, w r, L ms, E. A zero radius: none.
@@ -1276,8 +1341,8 @@ constexpr float ion_reach_r = ion_len * (1.f + 0.5f * ion_len_spread) * (1.f + i
 // mean radiance. Only where a colour exists (review 2026-11-07): the record's tint_source a light or a texture colour
 // whose 8-bit saturation (max - min) / max is above beam_colour_sat_min; a white or grey beam (Mayhem 3's PBC: a white
 // light, no texture; stock PAL, FUSIONBEAM, TRIBEAM: grey lights) keeps the heat halo and glow. Everything heated stays
-// on the heat ramp: the pulse flash, the boiling puff, the spatter, the trail ember and the scorch line. Repair and tug
-// keep theirs (the tint, tug_colour).
+// on the heat ramp: the pulse star, the boiling puff, the smoke, the spatter, the trail ember and the scorch line. Repair
+// and tug keep cool_colour.
 constexpr bool beam_colour = true;
 constexpr float beam_glow_mix = 0.6f, beam_core_mix = 0.3f, beam_colour_sat_min = 0.15f;
 // Beam: the hold rule (section 3.9): a new beam record of a held spot's owner and (table, row) within hold_r r re-lights
@@ -1301,22 +1366,18 @@ constexpr float spark_width_lo = 0.8f, spark_width_hi = 1.2f; // x the width (be
 constexpr float spark_curl_share = 0.25f, spark_curl_x = 0.3f;
 constexpr float spark_rest_w = 3.0f; // the streak program's rest length in widths (a set's rest_w scales its len_x)
 constexpr float bias = 0.5f;         // the flash's centre towards the eye, x r_hit (its own surface does not halve it)
-constexpr float tug_colour[3] = {0.7f, 0.8f, 1.0f}; // the tug's glow (pale blue); repair: the weapon tint
 // The shared budget's weights of the new primitives (2.11, over the decal's 177.5 us at 5120x1440; the native fixture's
 // *_alone_fills_frame rows, 2026-11-06: the ring 71.6 us, the filament glow 153.2, the scorch 86.7, a flash's halo
-// holding the eye 87.3; the ring as a shock front 88.1-90.5 us, 2026-11-07): charged; the flashes are the shed order's
-// last step (other owners', oldest first). budget_weight_filament charges the ion's lightning segments (their quads'
-// screens): the lightning program on every pixel measured 87.9 us at 5120x1440 (0.50, 2026-11-07), the filament glow's
-// 0.86 kept as its bound.
+// holding the eye 87.3; the ring as a shock front 88.1-90.5 us, 2026-11-07; the star 71.7, 2026-11-07): charged; the
+// flashes are the shed order's last step (other owners', oldest first). budget_weight_filament charges the ion's
+// lightning segments (their quads' screens): the lightning program on every pixel measured 87.9 us at 5120x1440 (0.50,
+// 2026-11-07), the filament glow's 0.86 kept as its bound.
 constexpr float budget_weight_ring = 0.50f, budget_weight_filament = 0.86f, budget_weight_scorch = 0.49f;
-constexpr float budget_weight_flash = 0.49f;
+constexpr float budget_weight_flash = 0.40f;
 // A kept hull shimmer rect (with its ring's band) per screen of its drawn rect over the decal's 177.5 us per screen:
 // run_engine_shimmer.py --host native 2026-11-07, two rings at the cap's reach (WEAPON_RING_TIMING) 245.4 us for 0.486
 // screens of boxes at 5120x1440 (2.84; a plume rect of a tenth 44.2 us, 2.49).
 constexpr float budget_weight_shimmer = 2.85f;
-// The puffs' octave LOD at fighter range (section 6): a puff whose projected radius is under puff_lod_px (at 1440 rows,
-// scaled with the target's height) draws one noise octave (the sign of its seed), charged at budget_weight_fireball_lod.
-constexpr float puff_lod_px = 96.f;
 constexpr unsigned max_sparks = 2048;   // spark quads per frame (2.11)
 constexpr unsigned max_owners = 32;     // owners re-posed per frame
 } // namespace hull
@@ -1334,8 +1395,9 @@ constexpr float visible_radius_scale = 2.0f;
 constexpr float hull_slowest_ms(unsigned a) noexcept {
     const float st = 1.f + 0.5f * stagger;
     float m = 0.f;
-    const float cand[7] = {(hull::class_ember[a][1] + hull::class_ember[a][2]) * st,
-                           (hull::class_puff[a][3] + hull::class_puff[a][4]) * st, hull::class_glow[a][1] * st,
+    const float burst = (hull::class_puff[a][3] + hull::class_puff[a][4]) * st;
+    const float cand[8] = {(hull::class_ember[a][1] + hull::class_ember[a][2]) * st, burst, hull::class_glow[a][1] * st,
+                           hull::class_smoke[a][0] > 0.f ? (hull::smoke_t0 + hull::smoke_span) * burst : 0.f,
                            hull::class_ring[a][2] * st, hull::class_flash[a][2] * st,
                            a == hull::an_heavy ? float(hull::streak_ms) * st : 0.f,
                            a == hull::an_ion ? float(hull::ion_end_ms) : 0.f};

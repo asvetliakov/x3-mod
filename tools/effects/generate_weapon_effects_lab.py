@@ -57,14 +57,17 @@ SHIMMER = (('shimmer_px', 'src/proxy/engine_shimmer_core.h', 'default_px'),
 NUMBER = r'-?[0-9.]+(?:e-?[0-9]+)?'
 # The shared look and the hull hit (docs/architecture/weapon-look.md 5): the constants of `namespace look` and
 # `namespace hull` in weapon_effects_core.h, read inside their namespace (the same names recur in later families), as
-# HEADER.look and HEADER.hull; heat_ramp is a 5 x 3 array, tug_colour a 3-array, hull's mode the enum value's name.
+# HEADER.look and HEADER.hull; heat_ramp is a 5 x 3 array, hull's mode the enum value's name.
 NAMESPACES = {
     'look': ('heat_ramp', 'min_frames', 'soft_core', 'soft_halo', 'core_e', 'body_max', 'halo_max', 'halo_fold',
              'streak_cap', 'streak_core_min', 'floor_core_px', 'floor_lit_px', 'floor_len_px', 'floor_flash_px',
-             'budget_weight_patch', 'budget_weight_glow', 'fireball_freq', 'fireball_advect', 'fireball_noise',
-             'fireball_erode', 'fireball_core_t', 'fireball_octaves', 'budget_weight_fireball', 'budget_weight_fireball_lod'),
+             'budget_weight_patch', 'budget_weight_glow', 'fireball_octave_freq', 'fireball_octave_w', 'fireball_advect',
+             'fireball_erode_0', 'fireball_erode_t', 'fireball_erode_r', 'fireball_erode_soft', 'fireball_erode_rt',
+             'fireball_column_pow', 'fireball_lobes', 'fireball_lobe_amp', 'fireball_lobe_soft', 'fireball_heat_soft',
+             'fireball_rim_t', 'fireball_octaves', 'fireball_fine_px', 'fireball_fine_band_px', 'budget_weight_fireball',
+             'budget_weight_fireball_coarse', 'budget_weight_smoke'),
     # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
-    'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'tug_colour', 'mode', 'spark_count_x',
+    'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'mode', 'spark_count_x',
              'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',
              'spark_width_hi', 'spark_curl_share', 'spark_curl_x', 'class_flash', 'class_puff', 'class_sparks',
              'class_glow', 'class_ember', 'class_ring', 'ring_t', 'ring_rise', 'ring_lead_t', 'ring_trail_t',
@@ -81,7 +84,11 @@ NAMESPACES = {
              'flicker_ms', 'ion_colour', 'beam_colour', 'beam_glow_mix', 'beam_core_mix', 'beam_colour_sat_min', 'hold_ms',
              'spot_fall_ms', 'spatter_period_ms', 'spatter_cap', 'hold_r', 'spot_core', 'spot_halo', 'trail_step_r',
              'budget_weight_ring', 'budget_weight_filament', 'budget_weight_scorch', 'budget_weight_flash',
-             'puff_lod_px')}
+             # the burst look (docs/architecture/hull-burst-look.md): the star, the burst's glow, the cluster rule, the
+             # smoke, the asteroid's dust and the cool spot
+             'star_arm_len', 'star_width', 'star_width_px', 'star_floor_px', 'star_element', 'burst_rot_element',
+             'burst_lobe_element', 'glow_r_x', 'glow_e_x', 'cluster_r_x', 'cluster_n0_glow', 'cluster_n0_burst',
+             'class_smoke', 'smoke_t0', 'smoke_span', 'smoke_rise', 'dust_colour', 'cool_colour', 'ember_lobe_amp')}
 # The hull-impact class rule (docs/architecture/hull-impact-classes.md section 2; the DLL's core::hull_class_from, the
 # census script verification/results/weapon-effects/hull_class_census.py) on a catalogue row, then the override file's
 # `hull` pins (tools/effects/weapon_overrides.json by_id): the lab's `auto` class of a weapon (LAB_DATA weapons[].hc).
@@ -172,6 +179,11 @@ PRESETS = (
     dict(id='hull/energy-ire-fighter-side', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
          camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0],
          sweep=0, loop=0),
+    # the burst look's saturation case (docs/architecture/hull-burst-look.md 7: the dump's energy_fighter60_20, 20 energy
+    # hits within 120 ms on a fighter at 167 hits per s, then none: the stage's case, review 2026-11-07)
+    dict(id='hull/energy-fighter60-20hits', family='hull', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
+         camera='side', seta=1, hps=167, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0],
+         sweep=0, loop=0, count=20),
     dict(id='hull/ballistic-md-fighter-side', family='hull', view='mayhem3', weapon='SS_BULLET_MD', tier=0, hull='flat_top',
          camera='side', seta=1, hps=0, own=False, cockpit=False, variant='none', k=0.43, shield=0, cls='auto', pulse=[0, 0],
          sweep=0, loop=0),
@@ -218,9 +230,11 @@ PRESETS = (
          camera='side', seta=6, hps=0, own=False, cockpit=False, variant='none', k=0.33, shield=0, cls='lineup',
          pulse=[0, 0], sweep=0, loop=0),
 )
+# count: the hits of a stream before it stops (0: open-ended); the presets without one take 0.
+PRESETS = tuple(p if 'count' in p else dict(p, count=0) for p in PRESETS)
 
 PRESET_KEYS = ('id', 'family', 'view', 'weapon', 'tier', 'hull', 'camera', 'seta', 'hps', 'own', 'cockpit', 'variant', 'k',
-               'shield', 'cls', 'pulse', 'sweep', 'loop')
+               'shield', 'cls', 'pulse', 'sweep', 'loop', 'count')
 PRESET_CLASSES = ('auto', 'lineup') + CLASSES
 CAMERAS = ('side', 'chase', 'cockpit', 'far1', 'far2', 'far8')
 VARIANTS = ('none', 'repair', 'tug', 'missile', 'asteroid', 'flak')

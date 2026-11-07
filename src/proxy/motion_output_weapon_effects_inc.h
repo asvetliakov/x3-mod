@@ -156,9 +156,10 @@ weapon_effects::stage::BubbleCache weapon_bubble_cache;
 weapon_effects::stage::HullState weapon_hull_state;
 renderer::WeaponSpriteVertex weapon_sprites[renderer::weapon_sprite_quads * 4];
 renderer::WeaponGlowVertex weapon_glows[renderer::weapon_glow_boxes * 4];
-// The puffs (fireball impostors, about 61 KB), the surface rings and filament glows (24 KB and 12 KB) and the scorches
-// (20 KB), static as the sprites.
+// The bursts and their smoke (fireball impostors, about 78 KB each), the surface rings and filament glows (24 KB and
+// 12 KB) and the scorches (20 KB), static as the sprites.
 renderer::WeaponFireballVertex weapon_fireballs[renderer::weapon_fireball_boxes * 4];
+renderer::WeaponFireballVertex weapon_smokes[renderer::weapon_smoke_boxes * 4];
 renderer::WeaponShapeVertex weapon_rings[renderer::weapon_ring_quads * 4];
 renderer::WeaponLightningVertex weapon_filaments[renderer::weapon_filament_boxes * 4];
 renderer::WeaponGlowVertex weapon_scorches[renderer::weapon_scorch_boxes * 4];
@@ -296,6 +297,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         // The scorches need the multiply blend (the pass's attach caps); without it none are built.
         hb.scorches = weapon_->caps().scorch_enabled ? weapon_scorches : nullptr;
         hb.scorch_cap = renderer::weapon_scorch_boxes;
+        hb.smokes = weapon_->caps().scorch_enabled ? weapon_smokes : nullptr; // the smoke multiplies as the scorches
+        hb.smoke_cap = renderer::weapon_smoke_boxes;
         // The shimmer rects go to the engine shimmer pass after the resolve (motion_output_engine_shimmer_inc.h), this
         // frame only.
         hb.shimmer = weapon_shimmer_rects_;
@@ -322,6 +325,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         f.filament_boxes = hb.filament_boxes;
         f.scorches = weapon_scorches;
         f.scorch_boxes = hb.scorch_boxes;
+        f.smokes = weapon_smokes;
+        f.smoke_boxes = hb.smoke_boxes;
         // F8 (a capture frame): the frame's hull-hit figures, the step and the views the streaks used.
         if (capture_)
             log("weapon_hull_frame device=%llu frame=%llu now=%lu step_ms=%lu prev_view=%u own=%08lx cockpit=%u hits=%u "
@@ -331,7 +336,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 "spots=%u merges=%u spot_flashes=%u shimmer=%u shimmer_shed=%u scorches_shed=%u rings_shed=%u "
                 "filaments_shed=%u jet_no_dir=%u energy=%u ballistic=%u plasma=%u heavy=%u ion=%u beam=%u missile=%u "
                 "asteroid=%u repair=%u tug=%u done=%u flashes_shed=%u pulses=%u out_of_reach=%u owners_out_of_reach=%u "
-                "owners_located=%u ion_segments=%u",
+                "owners_located=%u smokes=%u smokes_shed=%u fine=%u ion_segments=%u",
                 id_, frame_, static_cast<unsigned long>(hv.now), static_cast<unsigned long>(hv.step_ms),
                 unsigned(hv.prev_valid), static_cast<unsigned long>(own), unsigned(hv.cockpit), hn.hits, hn.flashes,
                 hn.sparks, hn.glows, hn.embers, hn.shed, hn.orphans, hn.retired, hn.floored, hn.capped, hn.owners_dropped,
@@ -340,7 +345,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 hn.spot_flashes, hn.shimmer, hn.shimmer_shed, hn.scorches_shed, hn.rings_shed, hn.filaments_shed,
                 hn.dir_fallback, hn.anatomy[0], hn.anatomy[1], hn.anatomy[2], hn.anatomy[3], hn.anatomy[4], hn.anatomy[5],
                 hn.anatomy[6], hn.anatomy[7], hn.anatomy[8], hn.anatomy[9], hn.done, hn.flashes_shed, hn.pulses,
-                hn.out_of_reach, hn.owners_out_of_reach, visible.located_reads, hn.ion_segments);
+                hn.out_of_reach, hn.owners_out_of_reach, visible.located_reads, hn.smokes, hn.smokes_shed, hn.fine,
+                hn.ion_segments);
     }
     wcore::ring_stamp_hidden(weapon_effects::hook_state().ring, visible);
     weapon_retired_ += hn.retired;

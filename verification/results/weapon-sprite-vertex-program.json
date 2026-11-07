@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_sprite_vs.hlsl",
-  "source_sha256": "bb998e01651a5f45d741fb41c011c39fbad4ba8c7c6d7b32f5c03e831099a2a0",
+  "source_sha256": "003f0470b539575b5d104cd7f1a1815c60ba2b7ac87369fd4913a87e42cd4cf5",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
