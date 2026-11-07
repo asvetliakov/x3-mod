@@ -897,12 +897,12 @@ console.log(JSON.stringify(out));
                    'ballistic': {'flash', 'burst', 'sparks', 'chips', 'glow', 'ember'},
                    'plasma': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
                    'heavy': {'flash', 'streak', 'burst', 'sparks', 'ring', 'glow', 'ember'},
-                   'ion': {'flash', 'filament'},  # no sparks (the arc sparks dropped, review 2026-11-07)
+                   'ion': {'flash', 'filament', 'glow'},  # no sparks (dropped, review 2026-11-07); the glow its cold light
                    'beam': {'flash', 'burst', 'glow'},
                    'missile': {'flash', 'burst', 'sparks', 'ring', 'glow', 'ember'},
                    'asteroid': {'burst', 'sparks', 'chips'},
                    'repair': {'flash', 'glow', 'ember'}, 'tug': {'glow'}}
-        never_by = {'ion': {'burst', 'glow', 'ember', 'scorch', 'ring', 'sparks', 'chips'}, 'asteroid': {'flash', 'glow', 'ember', 'scorch'},
+        never_by = {'ion': {'burst', 'ember', 'scorch', 'ring', 'sparks', 'chips'}, 'asteroid': {'flash', 'glow', 'ember', 'scorch'},
                     'repair': {'sparks', 'burst', 'scorch'}, 'tug': {'flash', 'sparks', 'burst', 'ember', 'scorch'},
                     'energy': {'ring', 'streak', 'filament'}, 'ballistic': {'ring', 'streak', 'filament'}}
         by_id = {p['id']: p for p in presets}
@@ -946,10 +946,12 @@ console.log(JSON.stringify(out));
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_ion_lightning_and_beam_colour(self):
-        """2026-11-07 (hull-impact-classes.md 4.5, 4.6): the ion Scenarios draw the lightning (stage::ion_strike's law:
-        2..4 channels with 1..2 branches each over 16 sequences, 6..10 segments a channel; on the hull only), the layers
-        "ion: channels", "ion: branches" and "ion: corona" each removing light, a re-strike another channel set, nothing
-        at 400 ms game time; the beam Scenarios' held spot glow in the weapon colour's hue (within 10 degrees) with
+        """2026-11-07 (hull-impact-classes.md 4.5, 4.6; "more lightning, more lingering, a light on the hull" the same day):
+        the ion Scenarios draw the lightning (stage::ion_strike's law: 3..6 channels with 1..3 branches each over 16
+        sequences, 6..10 segments a channel, at least 4 strikes a life; on the hull only), the layers "ion: channels",
+        "ion: branches" and "ion: corona" each removing light; over 16 ms frames of the life at least 4 flashes, the
+        afterglow lit between them, the cold light (the layer "glow") in the ion hue every frame, the light over the last
+        0.2 of the life non-increasing to a tenth or less, nothing past ion_life_ms; the beam Scenarios' held spot glow in the weapon colour's hue (within 10 degrees) with
         "beam: weapon colour" on, the heat ramp's with it off, the trail ember the same either way."""
         presets = json.loads(re.search(r'const PRESETS = (\[.*?\]);', self.html).group(1))
         weapons = {}
@@ -966,7 +968,7 @@ for (let i = 0; i < 16; i++) {
   const per = [];
   st.lines.forEach((l, j) => { if (!l.branch) { let n = 0; for (let m = j + 1; m < st.lines.length && st.lines[m].branch; m++) n++; per.push(n); } });
   out.law.push({channels: st.channels, mains: mains.length, branches: per, segments: mains.map(l => l.pts.length - 1),
-                strikes: ionStrikeCount(1 + 7919 * i)});
+                strikes: ionStrikeCount(1 + 7919 * i, 48)});
 }
 const ids = ['hull/ion-id-fighter-side', 'hull/ion-ionc-capital', 'hull/beam-pbc-pulsed-corvette', 'hull/beam-pal-sustained-sweep'];
 for (const p of PRESETS.filter(x => ids.includes(x.id))) {
@@ -991,9 +993,25 @@ for (const p of PRESETS.filter(x => ids.includes(x.id))) {
     r.no_branches = at(40 / seta, ['ion_branches']).light.filament;
     r.no_corona = at(40 / seta, ['ion_corona']).light.filament;
     r.no_channels = at(40 / seta, ['ion_channels']).light.filament;
-    const s70 = at(70 / seta); r.strike70 = s70.ion ? s70.ion.strike : -1;
-    r.at400 = at(400 / seta).light.filament;
-    r.heat = ['burst', 'glow', 'ember', 'scorch'].map(k => s40.light[k]);
+    r.heat = ['burst', 'ember', 'scorch'].map(k => s40.light[k]);
+    r.glow_rgb = s40.rgb.glow;
+    const L = HEADER.hull.ion_life_ms, x0 = HEADER.hull.ion_fade_from * L;
+    r.tl = {flashes: 0, gaps: 0, after_lit: 0, glow_frames: 0, frames: 0, fade_first: -1, fade_last: 0, nonmono: 0};
+    let last = -1, prev = -1;
+    for (let t = 0; t < L; t += 16) {
+      const s = at(t / seta), tot = s.light.filament + s.light.glow + s.light.flash;
+      r.tl.frames++;
+      if (s.ion && s.ion.flash && s.ion.latest !== last) { r.tl.flashes++; last = s.ion.latest; }
+      if (s.ion && !s.ion.flash) { r.tl.gaps++; r.tl.after_lit += s.light.filament > 0 ? 1 : 0; }
+      r.tl.glow_frames += s.light.glow > 0 ? 1 : 0;
+      if (t >= x0) {
+        if (r.tl.fade_first < 0) r.tl.fade_first = tot;
+        if (prev >= 0 && tot > prev * (1 + 1e-6) + 1e-9) r.tl.nonmono++;
+        prev = tot; r.tl.fade_last = tot;
+      }
+    }
+    const end = at((L + 16) / seta);
+    r.at_end = end.light.filament + end.light.glow;
   } else {
     const on = at(100 / seta), off = at(100 / seta, ['beam_colour']);
     r.glow_on = on.rgb.glow; r.glow_off = off.rgb.glow; r.flash_on = on.rgb.flash;
@@ -1013,11 +1031,11 @@ console.log(JSON.stringify(out));
         js = self.run_node(probe)
         for row in js['law']:
             self.assertEqual(row['mains'], row['channels'])
-            self.assertTrue(2 <= row['channels'] <= 4, row)
-            self.assertTrue(all(1 <= n <= 2 for n in row['branches']), row)
+            self.assertTrue(3 <= row['channels'] <= 6, row)
+            self.assertTrue(all(1 <= n <= 3 for n in row['branches']), row)
             self.assertTrue(all(6 <= n <= 10 for n in row['segments']), row)
-            self.assertIn(row['strikes'], (3, 4))
-        self.assertEqual({r['channels'] for r in js['law']}, {2, 3, 4})
+            self.assertTrue(4 <= row['strikes'] <= 8, row)
+        self.assertEqual((min(r['channels'] for r in js['law']), max(r['channels'] for r in js['law'])), (3, 6))
 
         def hue(c):
             mx, mn = max(c), min(c)
@@ -1033,14 +1051,23 @@ console.log(JSON.stringify(out));
 
         for pid in ('hull/ion-id-fighter-side', 'hull/ion-ionc-capital'):
             r = js['scen'][pid]
-            self.assertTrue(2 <= r['ion']['channels'] <= 4, pid)
+            self.assertTrue(3 <= r['ion']['channels'] <= 6, pid)
             self.assertGreater(r['segments'], 0, pid)
             self.assertGreater(r['lit'], 0, pid)
             for k in ('no_branches', 'no_corona', 'no_channels'):
                 self.assertLess(r[k], r['light'], (pid, k))
-            self.assertEqual(r['strike70'], 1, pid)
-            self.assertEqual(r['at400'], 0, pid)
-            self.assertEqual(r['heat'], [0, 0, 0, 0], pid)
+            self.assertEqual(r['heat'], [0, 0, 0], pid)
+            g = r['glow_rgb']
+            self.assertTrue(g[2] > g[1] > g[0] > 0 and 200 <= hue(g) <= 235, (pid, g))  # cold: the ion hue, not warm
+            tl = r['tl']
+            self.assertGreaterEqual(tl['flashes'], 4, (pid, tl))
+            self.assertGreater(tl['gaps'], 0, (pid, tl))
+            self.assertEqual(tl['after_lit'], tl['gaps'], (pid, tl))  # the afterglow between strikes
+            self.assertEqual(tl['glow_frames'], tl['frames'], (pid, tl))
+            self.assertEqual(tl['nonmono'], 0, (pid, tl))
+            self.assertGreater(tl['fade_first'], 0, (pid, tl))
+            self.assertLessEqual(tl['fade_last'], 0.1 * tl['fade_first'], (pid, tl))  # no pop at the end
+            self.assertEqual(r['at_end'], 0, pid)
         for pid in ('hull/beam-pbc-pulsed-corvette', 'hull/beam-pal-sustained-sweep'):
             r = js['scen'][pid]
             self.assertGreater(sum(r['glow_on']), 0, pid)

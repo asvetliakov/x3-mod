@@ -2020,20 +2020,22 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         }
         draw_lane(g, 0.f, -1.f);
     }
-    // 11. Ion: the lightning (2026-11-07). (a) The law over 16 sequences: 2..4 channels, 1..2 branches each, 6..10
-    // segments a channel, 3..4 strikes. (b) On the half lane: the channels on the hull only (0 sky pixels); a strike the
-    // same image across its frames (age 0 and 16); the next strike another set (Jaccard under 0.3); riding a moving
-    // owner (shifted 128 px, Jaccard 1); its charged screens within the old filament box's (R 1.5 r x 0.86) at the same
-    // hit. (c) One segment's profile through the production program at 1440 rows: the core's full width at half maximum
-    // at the floor (2 px), the corona to 4 x the core's half width at about a quarter of the core. (d) No heat; nothing
-    // lit at 400 ms.
+    // 11. Ion: the lightning (2026-11-07; "more lightning, more lingering, a light on the hull" the same day). (a) The law
+    // over 16 sequences: 3..6 channels (both ends seen), 1..3 branches each, 6..10 segments a channel, at least 4
+    // strikes a life (at the 16 ms floor). (b) On the half lane: the channels on the hull only (0 sky pixels); a strike
+    // the same image across its frames (age 0 and 16); the next strike (at its hashed start) another set (Jaccard of the
+    // flash less the first strike's afterglow, under 0.3); riding a moving owner (shifted 128 px, Jaccard 1); its charged screens
+    // within the old filament box's (R 1.5 r x 0.86) at the same hit. (c) One segment's profile through the production
+    // program at 1440 rows: the core's full width at half maximum at the floor (2 px), the corona to 4 x the core's half
+    // width at about a quarter of the core. (d) No heat (the one glow the cold light); nothing lit past the life.
+    // (f) The timeline: strikes, afterglow, cold light and the fade.
     {
         unsigned law_bad = 0, ch_lo = 99, ch_hi = 0, br_lo = 99, br_hi = 0, sg_lo = 99, sg_hi = 0, sk_lo = 99, sk_hi = 0;
         for (unsigned i = 0; i < 16; ++i) {
             const std::uint32_t seq = 1u + 7919u * i;
             ws::IonStrike st;
             ws::ion_strike(seq, 0, &st);
-            const unsigned strikes = ws::ion_strike_count(seq);
+            const unsigned strikes = ws::ion_strike_count(seq, 48.f);
             sk_lo = std::min(sk_lo, strikes);
             sk_hi = std::max(sk_hi, strikes);
             ch_lo = std::min(ch_lo, st.channels);
@@ -2053,7 +2055,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         }
         const bool law_ok = law_bad == 0 && ch_lo >= hl::ion_channels_lo && ch_hi <= hl::ion_channels_hi && ch_lo < ch_hi &&
                             br_lo >= hl::ion_branches_lo && br_hi <= hl::ion_branches_hi && sg_lo >= hl::ion_segments_lo &&
-                            sg_hi <= hl::ion_segments_hi && sk_lo >= hl::ion_strikes_lo && sk_hi <= hl::ion_strikes_hi;
+                            sg_hi <= hl::ion_segments_hi && sk_lo >= 4 && sk_hi <= hl::ion_strikes_max &&
+                            ch_lo == hl::ion_channels_lo && ch_hi == hl::ion_channels_hi;
         std::printf("CLASS case=ion_law seeds=16 channels=%u..%u branches=%u..%u segments=%u..%u strikes=%u..%u bad=%u\n",
                     ch_lo, ch_hi, br_lo, br_hi, sg_lo, sg_hi, sk_lo, sk_hi, law_bad);
         report("hull_ion_lightning_law_16_seeds", law_ok, "");
@@ -2076,9 +2079,16 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         put32(fake_node, wc::layout::node_pos + 0, 2500u); // 25 view units: 128 px at view z 300
         const std::vector<std::uint8_t> s32 = lit_set(hull_render(pass, hull_build(hull_view(g, 1032, 16), only(FIL))), 0.25f);
         put32(fake_node, wc::layout::node_pos + 0, 0u);
-        const ws::IonPhase p70 = ws::ion_phase(seq, 70.f, 48.f);
-        const HullOut o70 = hull_build(hull_view(g, 1070, 16), only(FIL));
-        const std::vector<std::uint8_t> s0 = lit_set(l0, 0.25f), s70 = lit_set(hull_render(pass, o70), 0.25f);
+        // the second strike just after its hashed start (its flash over the first strike's afterglow)
+        const std::uint32_t t_next = std::uint32_t(ws::ion_period(seq, 0, 48.f)) + 4u;
+        const ws::IonPhase p70 = ws::ion_phase(seq, float(t_next), 48.f);
+        const HullOut o70 = hull_build(hull_view(g, 1000 + t_next, 16), only(FIL));
+        // its flash alone: the frame less strike 0's afterglow (the same channels as l0 at after_e of its radiance; the
+        // program is linear in it and the blend additive)
+        std::vector<float> l70 = hull_render(pass, o70);
+        const float after_share = p70.after ? p70.after_e / ws::ion_phase(seq, 0.f, 48.f).e : 0.f;
+        for (std::size_t i = 0; i < l70.size(); ++i) l70[i] = std::max(0.f, l70[i] - after_share * l0[i]);
+        const std::vector<std::uint8_t> s0 = lit_set(l0, 0.25f), s70 = lit_set(l70, 0.25f);
         const double next_strike = jaccard(s0, s70, g.w, 0), moved = jaccard(s0, s32, g.w, 128);
         // the charged screens against the old filament box at this hit (R filament 1.5 r x its weight 0.86)
         const float c_hit[3] = {0.f, 0.f, z_hit};
@@ -2092,10 +2102,10 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         const double box_px = double(box) / double(hl::budget_weight_filament) * g.w * g.h;
         std::printf("CLASS case=ion_lightning segments=%u strikes=%u sky=%u lane=%u lit=%u frame_diff=%.6f strike_70=%u "
                     "jaccard_0_70=%.4f jaccard_moved=%.4f screens=%.5f old_box_screens=%.5f old_box_px=%.0f\n",
-                    o0.n.ion_segments, ws::ion_strike_count(seq), sky, lane, lit0, double(frame_diff), p70.strike, next_strike,
+                    o0.n.ion_segments, ws::ion_strike_count(seq, 48.f), sky, lane, lit0, double(frame_diff), p70.strike, next_strike,
                     moved, double(o0.n.screens), double(box), box_px);
         report("hull_ion_lightning_on_surface_restrikes", h0.filaments > 0 && h0.n.filaments == 1 && sky == 0 && lane > 0 &&
-                                                              frame_diff == 0.f && p70.lit && p70.strike == 1 &&
+                                                              frame_diff == 0.f && p70.flash && p70.strike == 1 &&
                                                               next_strike < 0.3 && moved >= 0.95, "");
         report("hull_ion_lightning_within_filament_charge", o0.n.screens > 0.f && o0.n.screens <= box, "");
         // (c) one segment's profile at 1440 rows (a horizontal segment a quarter pixel below a row's centre)
@@ -2145,23 +2155,25 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             }
             report("hull_ion_core_floor_corona_4x", prof_ok, "");
         }
-        // (d) no heat, nothing at 400 ms
+        // (d) no heat (the one glow is the cold light: blue the largest channel), nothing past the life (1216 ms)
         hull_owner(400.f, 100.f);
         add_of(hl::an_ion, 1000, front, 0.33);
         const HullOut a0 = hull_build(hull_view(g, 1000, 16));
-        for (std::uint32_t t = 1016; t < 1400; t += 16) hull_build(hull_view(g, t, 16));
-        const HullOut a400 = hull_build(hull_view(g, 1400, 16));
+        const bool cold0 = a0.boxes == 1 && hq_glows[0].colour[2] > hq_glows[0].colour[1] &&
+                           hq_glows[0].colour[1] > hq_glows[0].colour[0];
+        for (std::uint32_t t = 1016; t < 1000 + hl::ion_life_ms + 16; t += 16) hull_build(hull_view(g, t, 16));
+        const HullOut a400 = hull_build(hull_view(g, 1000 + hl::ion_life_ms + 16, 16));
         const std::vector<float> l400 = hull_render(pass, a400);
         unsigned lit400 = 0;
         for (float v : l400) lit400 += v > 1e-4f;
-        std::printf("CLASS case=ion_no_heat glows=%u embers=%u bursts=%u scorches=%u marks=%u flashes=%u filaments=%u "
-                    "at400=%u,%u,%u,%u lit_400=%u\n",
-                    a0.n.glows, a0.n.embers, a0.bursts, a0.scorches, a0.n.marks, a0.n.flashes, a0.n.filaments, a400.n.flashes,
-                    a400.n.sparks, a400.filaments, a400.boxes, lit400);
-        report("hull_ion_no_heat_post_hit", a0.n.glows == 0 && a0.n.embers == 0 && a0.bursts == 0 && a0.scorches == 0 &&
-                                                a0.n.marks == 0 && a0.n.flashes == 1 && a0.n.filaments == 1 &&
-                                                a400.n.flashes == 0 && a400.n.sparks == 0 && a400.filaments == 0 &&
-                                                a400.boxes == 0 && lit400 == 0, "");
+        std::printf("CLASS case=ion_no_heat glows=%u cold=%u embers=%u bursts=%u scorches=%u marks=%u flashes=%u "
+                    "filaments=%u past_life=%u,%u,%u,%u lit_past_life=%u\n",
+                    a0.n.glows, unsigned(cold0), a0.n.embers, a0.bursts, a0.scorches, a0.n.marks, a0.n.flashes,
+                    a0.n.filaments, a400.n.flashes, a400.n.sparks, a400.filaments, a400.boxes, lit400);
+        report("hull_ion_no_heat_post_hit", a0.n.glows == 1 && cold0 && a0.n.embers == 0 && a0.bursts == 0 &&
+                                                a0.scorches == 0 && a0.n.marks == 0 && a0.n.flashes == 1 &&
+                                                a0.n.filaments == 1 && a400.n.flashes == 0 && a400.n.sparks == 0 &&
+                                                a400.filaments == 0 && a400.boxes == 0 && lit400 == 0, "");
         // (e) The tangent plane from the lane (review 2026-11-07): the narrow 1:1:6 hull (half-extents 6 b, b, b, its long
         // axis the owner's x across the screen, b = 4 r), one strike (the same sequence) straight on at the front's
         // centre, near its end seen edge-on (x 0.85 x 6 b on the front: the stage's plane, normal to the contact's
@@ -2216,6 +2228,86 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                         plane_ok = plane_ok && segs[1][c] > 0 && sky[1][c] == 0 && pr < 2.0 && cr >= 0.5 && cr <= 1.5;
                 }
             report("hull_ion_plane_on_narrow_hull", plane_ok, "");
+        }
+        // (f) The timeline (one hit straight on, 16 ms frames from its first to past its life): per frame the stage's
+        // phase (ion_phase at the record's 48 ms floor), the lightning drawn (only FIL), the cold light (only GLOW: its
+        // hue, its radius over the latest strike's extent x r, its rises at the strikes) and the whole hit's rendered
+        // light over the last ion_fade_from of the life (non-increasing, its last lit frame at most a tenth of the
+        // first: no pop at the end), nothing past the life.
+        {
+            hull_owner(400.f, 100.f);
+            draw_lane(g, z_hit, 1.f);
+            const std::uint32_t tseq = add_of(hl::an_ion, 1000, front, 0.33)->sequence;
+            const std::uint32_t life = hl::ion_life_ms, fade_from = std::uint32_t(hl::ion_fade_from * float(life));
+            unsigned frames = 0, unlit = 0, strikes = 0, gaps = 0, after_drawn = 0, glow_frames = 0, warm = 0, rises = 0;
+            unsigned nonmono = 0, late = 0, last_strike = ~0u;
+            double hue_lo = 360.0, hue_hi = 0.0, rad_lo = 1e9, rad_hi = 0.0, prev_glow = -1.0;
+            double lum_fade = -1.0, prev_lum = -1.0, last_lum = 0.0;
+            auto hue_of = [](const float* c) {
+                const double mx = std::max({c[0], c[1], c[2]}), mn = std::min({c[0], c[1], c[2]});
+                if (mx - mn <= 1e-9) return -1.0;
+                double h = mx == c[0] ? std::fmod((c[1] - c[2]) / (mx - mn) + 6.0, 6.0)
+                           : mx == c[1] ? (c[2] - c[0]) / (mx - mn) + 2.0
+                                        : (c[0] - c[1]) / (mx - mn) + 4.0;
+                return 60.0 * h;
+            };
+            for (std::uint32_t age = 0; age <= life + 32; age += 16) {
+                const ws::HullView v = hull_view(g, 1000 + age, 16);
+                const HullOut all = hull_build(v);
+                const double lum = total(hull_render(pass, all));
+                const HullOut fil = hull_build(v, only(FIL));
+                const HullOut glo = hull_build(v, only(GLOW));
+                if (age >= life) {
+                    late += all.filaments + all.boxes + all.n.flashes + fil.filaments + glo.boxes;
+                    continue;
+                }
+                ++frames;
+                const ws::IonPhase ph = ws::ion_phase(tseq, float(age), 48.f);
+                unlit += fil.n.filaments != 1 || fil.n.ion_segments == 0;
+                if (ph.flash && ph.strike != last_strike) {
+                    ++strikes;
+                    last_strike = ph.strike;
+                }
+                if (!ph.flash) {
+                    ++gaps;
+                    after_drawn += ph.after && fil.n.ion_segments > 0;
+                }
+                if (glo.boxes == 1) {
+                    ++glow_frames;
+                    const float* c = hq_glows[0].colour;
+                    const double hue = hue_of(c);
+                    warm += !(c[2] > c[0]) || hue < 0.0;
+                    hue_lo = std::min(hue_lo, hue);
+                    hue_hi = std::max(hue_hi, hue);
+                    ws::IonStrike st;
+                    ws::ion_strike(tseq, ph.latest, &st);
+                    const double rad = double(hq_glows[0].light[3]) / (double(st.extent) * double(r33));
+                    rad_lo = std::min(rad_lo, rad);
+                    rad_hi = std::max(rad_hi, rad);
+                    if (prev_glow >= 0.0 && double(c[2]) > 1.05 * prev_glow) ++rises;
+                    prev_glow = double(c[2]);
+                }
+                if (age >= fade_from) {
+                    if (lum_fade < 0.0) lum_fade = lum;
+                    if (prev_lum >= 0.0 && lum > prev_lum * (1.0 + 1e-3) + 1e-6) ++nonmono;
+                    prev_lum = lum;
+                    last_lum = lum;
+                }
+            }
+            const unsigned life_rec = wc::hull_lives.v[hl::an_ion];
+            std::printf("CLASS case=ion_timeline frames=%u unlit=%u strikes=%u strike_count=%u gaps=%u afterglow=%u "
+                        "glow_frames=%u warm=%u hue=%.1f..%.1f glow_r_over_extent=%.3f..%.3f glow_rises=%u life_ms=%u "
+                        "fade_lum=%.3f last_lum=%.4f last_over_fade=%.4f nonmonotone=%u past_life=%u\n",
+                        frames, unlit, strikes, ws::ion_strike_count(tseq, 48.f), gaps, after_drawn, glow_frames, warm,
+                        hue_lo, hue_hi, rad_lo, rad_hi, rises, life_rec, lum_fade, last_lum,
+                        lum_fade > 0.0 ? last_lum / lum_fade : -1.0, nonmono, late);
+            report("hull_ion_strikes_through_life", strikes >= 4 && unlit == 0 && frames > 0, "");
+            report("hull_ion_afterglow_between_strikes", gaps > 0 && after_drawn == gaps, "");
+            report("hull_ion_cold_light_flickers", glow_frames == frames && warm == 0 && hue_lo >= 200.0 && hue_hi <= 235.0 &&
+                                                       rad_hi <= 1.3 && rad_lo >= 1.1 && rises + 1 >= strikes && rises >= 3,
+                   "");
+            report("hull_ion_life_1201_fades_no_pop", life_rec == 1201 && lum_fade > 0.0 && nonmono == 0 &&
+                                                          last_lum <= 0.1 * lum_fade && late == 0, "");
         }
         draw_lane(g, 0.f, -1.f);
     }
@@ -2273,10 +2365,10 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                     ring_left, max_spots, flashes, bursts, sparks);
         report("hull_beam_on_asteroid_holds", ring_left <= 1 && max_spots == 1 && flashes == 0 && bursts > 0 && sparks > 0, "");
     }
-    // 12c. An ion beam (stock IOND: the beam bits on a pinned ion row, 2026-11-07): the hold rule in the ring: 60 ion
+    // 12c. An ion beam (stock IOND: the beam bits on a pinned ion row, 2026-11-07): the hold rule in the ring: 100 ion
     // ticks with the beam shape at one point leave one record (the first tick's sequence) and no spot, at most one
-    // lightning set a frame, strikes past the single hit's 400 ms while held (the timer re-strikes), and the record
-    // gone ion_end_ms after the hold ends.
+    // lit hit a frame, strikes past the single hit's ion_life_ms while held (the strike cycle restarts every
+    // ion_strike_span_ms), and the record gone within ion_life_ms after the hold ends.
     {
         hull_owner(400.f, 100.f);
         unsigned max_records = 0, min_records = 0xffffffffu, max_spots = 0, max_sets = 0, lit_late = 0, merges = 0;
@@ -2293,8 +2385,9 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             }
             return c;
         };
-        const std::uint32_t last = 1000 + 16 * 59;
-        for (unsigned i = 0; i < 60; ++i) {
+        constexpr unsigned ticks = 100;
+        const std::uint32_t last = 1000 + 16 * (ticks - 1);
+        for (unsigned i = 0; i < ticks; ++i) {
             const std::uint32_t t = 1000 + 16 * i;
             wc::Event* e = add_of(hl::an_ion, t, front, 0.33);
             e->style = std::uint8_t(wc::shape_beam);
@@ -2307,19 +2400,20 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             max_records = std::max(max_records, c);
             min_records = std::min(min_records, c);
             max_sets = std::max(max_sets, o.n.filaments);
-            lit_late += t - 1000 > hl::ion_end_ms && o.n.filaments > 0;
+            lit_late += t - 1000 > hl::ion_life_ms && o.n.filaments > 0;
             merges += o.n.merges;
         }
         unsigned after_records = 0;
-        for (std::uint32_t t = last + 16; t <= last + hl::ion_end_ms + 64; t += 16) {
+        for (std::uint32_t t = last + 16; t <= last + hl::ion_life_ms + 64; t += 16) {
             hull_build(hull_view(g, t, 16));
             after_records = records();
         }
-        std::printf("CLASS case=ion_beam_hold ticks=60 ring_records=%u..%u same_sequence=%u spots=%u max_sets_per_frame=%u "
-                    "lit_frames_past_400ms=%u merges=%u records_after_end=%u\n",
-                    min_records, max_records, unsigned(same_seq), max_spots, max_sets, lit_late, merges, after_records);
+        std::printf("CLASS case=ion_beam_hold ticks=%u ring_records=%u..%u same_sequence=%u spots=%u max_sets_per_frame=%u "
+                    "lit_frames_past_life=%u merges=%u records_after_end=%u\n",
+                    ticks, min_records, max_records, unsigned(same_seq), max_spots, max_sets, lit_late, merges, after_records);
         report("hull_ion_beam_holds_one_record", min_records == 1 && max_records == 1 && same_seq && max_spots == 0 &&
-                                                     max_sets == 1 && lit_late > 0 && merges == 59 && after_records == 0,
+                                                     max_sets == 1 && lit_late > 0 && merges == ticks - 1 &&
+                                                     after_records == 0,
                "");
     }
     // 13. Repair re-lit per tick: 60 ticks, one glow a frame at a single tick's colour.
@@ -2401,7 +2495,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                 const bool has_puff = hl::class_puff[a][0] > 0.f || hl::class_puff[a][1] > 0.f;
                 const unsigned want[8] = {alive(hl::class_flash[a][2], 0), sparks_alive(rec, kf, age, floor),
                                           (hl::class_glow[a][0] > 0.f && alive(hl::class_glow[a][1], 1)) ||
-                                              (has_puff && a != hl::an_asteroid && age > 0.f && alive(law::puff_ms(kf, a), 3)),
+                                              (has_puff && a != hl::an_asteroid && age > 0.f && alive(law::puff_ms(kf, a), 3)) ||
+                                              (a == hl::an_ion && ws::ion_phase(seq, age, floor).glow > 0.f),
                                           hl::class_ember[a][0] > 0.f && alive(law::ember_ms(kf, a), 2),
                                           has_puff && age > 0.f && alive(law::puff_ms(kf, a), 3),
                                           hl::class_ring[a][0] > 0.f && alive(hl::class_ring[a][2], 6),
@@ -2570,8 +2665,10 @@ void class_cases(rr::WeaponEffectsPass& pass) {
         std::printf("CLASS_CPU case=capital_64_ion hits=64 filaments=%u segments=%u quads=%u capped=%u flashes=%u "
                     "best_us=%.2f mean_us=%.2f\n",
                     o.n.filaments, o.n.ion_segments, o.filaments, o.n.capped, o.n.flashes, best, sum / 200.0);
-        // measured 23.5 best, 26.9 mean (2026-11-07): the bound 35
-        report("hull_cpu_64_hits_ion", o.n.filaments > 0 && o.n.capped > 0 && best <= 35.0, "");
+        // measured 23.5 best, 26.9 mean (2026-11-07): the bound 35; with the afterglow (two strikes a hit) and the cold
+        // light 35.5 best, 54.5 mean (2026-11-07, "Ion lightning: more and longer"): the bound 42.6 (+ 20 %); the segment cap
+        // 1024 -> 2048 the same day (29 hits drawn, 35 cut; was 15 and 49): 38.8 best, 51.3 mean, the bound 46.6 (+ 20 %)
+        report("hull_cpu_64_hits_ion", o.n.filaments > 0 && o.n.capped > 0 && best <= 46.6, "");
     }
     // 17c. The lightning's cap and shed (review 2026-11-07): 42 ion hits on a fighter-scale owner, all on screen, in three
     // frames 16 ms apart (ages 32, 16, 0: all in their first strike), more segments than the cap: the newest kept while
@@ -2579,7 +2676,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
     // shed takes whole channels (a channel with its branches) of the oldest kept hits first, each hit's from its last.
     {
         hull_owner(400.f, 100.f);
-        struct Rec { std::uint32_t seq, age; unsigned segs; unsigned chan[4]; unsigned channels; };
+        struct Rec { std::uint32_t seq, age; unsigned segs; unsigned chan[hl::ion_channels_hi]; unsigned channels; };
         std::vector<Rec> recs;
         for (unsigned frame = 0; frame < 3; ++frame) {
             for (unsigned i = 0; i < 14; ++i) {
@@ -2589,7 +2686,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                 wc::Event* e = add_of(hl::an_ion, 1000 + 16 * frame, pos, 0.33);
                 ws::IonStrike st;
                 ws::ion_strike(e->sequence, 0, &st);
-                Rec r{e->sequence, 32u - 16u * frame, 0, {0, 0, 0, 0}, 0};
+                Rec r{e->sequence, 32u - 16u * frame, 0, {}, 0};
                 for (unsigned l = 0; l < st.lines; ++l) {
                     if (!st.line[l].branch) ++r.channels;
                     r.chan[r.channels - 1] += st.line[l].points - 1u;
@@ -2724,7 +2821,9 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                     // the per-class bounds (us): the design's 50 is the aspiration; the measured shares of the glow and
                     // the puff set these (docs/verification/weapon-effects.md "Hull impact classes")
                     // energy 50 (hull-burst-look.md section 8, the burst rebuild's budget row)
-                    static const double bound[8] = {50.0, 40.0, 105.0, 70.0, 45.0, 55.0, 100.0, 30.0};
+                    // ion 45 until the afterglow and the cold light (2026-11-07): measured 45.4, the bound 54.5 (+ 20 %);
+                    // the segment cap 2048 (1501 segments drawn, was 1003 capped): 56.4, the bound 67.7 (+ 20 %)
+                    static const double bound[8] = {50.0, 40.0, 105.0, 70.0, 67.7, 55.0, 100.0, 30.0};
                     std::snprintf(detail, sizeof detail, "hull_budget_20_hits_5120_%s", anatomy_name(an));
                     report(detail, best <= bound[ci], "");
                     fighter_bad += best > 50.0;
@@ -2796,8 +2895,8 @@ void class_cases(rr::WeaponEffectsPass& pass) {
 }
 // The stage image dump (X3M_WEAPON_EFFECTS_DUMP=<dir>; off, with no row and no draw, when unset): representative hull-hit
 // scenes built through the production stage and drawn through the production pass at 1920x1080 and 5120x1440, one frame
-// every 16 ms of game time from 8 ms after the newest hit to 712 ms, the frames nearest X3M_WEAPON_EFFECTS_DUMP_MS
-// (default 40,120,300,700; "all": every frame) written as <dir>/<case>_<W>x<H>-<ms>.ppm: binary P6, 8 bits, the scene
+// every 16 ms of game time from 8 ms after the newest hit to 712 ms (the ion's to 1208 ms, its life), the frames nearest
+// X3M_WEAPON_EFFECTS_DUMP_MS (default 40,120,300,700; "all": every frame) written as <dir>/<case>_<W>x<H>-<ms>.ppm: binary P6, 8 bits, the scene
 // target's linear values clamped to [0, 1] (the readback the gates see; the fixture has no tonemap). At 1920x1080 the
 // cases marked `parts` also write the glow and the burst alone (cleared black) as float PFM, <case>_<W>x<H>-<ms>-glow.pfm
 // and -burst.pfm; X3M_WEAPON_EFFECTS_DUMP_FLOAT=1 adds the composite as PFM. X3M_WEAPON_EFFECTS_DUMP_CASES (comma-
@@ -2912,7 +3011,9 @@ void stage_dump(rr::WeaponEffectsPass& pass) {
             draw_lane(tt, k.lane_z, 1.f);
             std::vector<unsigned> picks;
             for (unsigned w : want) picks.push_back(w < 8 ? 0 : (w - 8 + 8) / 16);
-            for (unsigned fi = 0; fi <= 44; ++fi) {
+            // the ion's frames to its life's end (ion_life_ms: the fade to the last frame), the others to 712 ms
+            const unsigned last_fi = k.anatomy == hl::an_ion ? hl::ion_life_ms / 16 : 44;
+            for (unsigned fi = 0; fi <= last_fi; ++fi) {
                 const unsigned age = 8 + 16 * fi;
                 ws::HullView v = hull_view(tt, newest + age, 16);
                 if (!k.single) v.budget_left = wc::screen_budget;

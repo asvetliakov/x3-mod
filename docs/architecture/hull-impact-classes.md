@@ -317,8 +317,9 @@ gives way to its texture average 121, 82, 39: orange, halo (1.00, .66, .46)), th
 128, 0, 255) and the Kyon Gamma emitter (yellow light 255, 255, 0); the Ion Disruptor's blue light (50, 50, 255) no
 longer reaches the beam look (pinned ion, section 2), but it is still a beam: the hold rule follows the bullet's beam
 bits whatever the class (`stage::holds`), so an IOND beam keeps one ring record refreshed in place by each tick (no
-spot), its lightning re-striking while held (the 4.6 strike window restarts every 200 ms of the hold, from the hold's
-start) and ending within `ion_end_ms` 400 ms after the last tick (the current window's strikes, residual and end). Kyon Beta's light is white, PAL, FUSIONBEAM and TRIBEAM have grey
+spot), its lightning re-striking while held (the 4.6 strike schedule restarts every `ion_strike_span_ms` 960 ms of the
+hold, from the hold's start) and ending within `ion_life_ms` 1,200 ms after the last tick (the current schedule's
+strikes, afterglow and fade). Kyon Beta's light is white, PAL, FUSIONBEAM and TRIBEAM have grey
 lights and no texture: the heat look. On Mayhem 3 the one beam, PBC, has a white light and no texture: white, so every
 Mayhem 3 beam keeps the heat look (`verification/results/weapon-effects-ion-lightning/beam_tint_out.txt`).
 
@@ -337,21 +338,27 @@ the hold rule applies, the spot does not, and they keep their colours (the tint,
 
 ### 4.6 Ion / distortion (`0x200` / `0x400`; Mayhem ID, IC, ISR, IPG by pin; stock ESR, IONC; stock IPG, IOND by pin)
 
-Lightning, not a cloud (user, 2026-11-07: the noise filament glow read dense and chaotic): a blue-white flash, then 2 to
-4 thin jagged channels crawling over the hull from the hit, re-striking 3 or 4 times in the first 200 ms, one faint
-residual flicker to 400 ms, no scorch, nothing after. All constants `hull::ion_*` (weapon_effects_core.h); the lab's
-`ionStrike` / `ionPhase` mirror `stage::ion_strike` / `ion_phase`.
+Lightning, not a cloud (user, 2026-11-07: the noise filament glow read dense and chaotic), then "more lightning, more
+lingering, and a light on the hull" (user, the same day): a blue-white flash, then 3 to 6 thin jagged channels crawling
+over the hull from the hit, re-striking every 120 to 200 ms to 0.8 of the 1.2 s life, each strike lingering as a faint
+afterglow, a cold flickering light on the hull under them, the last 0.2 of the life fading out; no heat, no scorch. All
+constants `hull::ion_*` (weapon_effects_core.h); the lab's `ionStrike` / `ionPhase` mirror `stage::ion_strike` /
+`ion_phase`.
 
 | Order | Element | Size | Life | Colour | Motion / fade |
 | --- | --- | --- | --- | --- | --- |
 | 0 ms | Flash | core 0.2 r, halo 1.0 r | 60 | white core; halo `hull::ion_colour` (0.60, 0.75, 1.00) | linear |
-| strikes | Channels | 2..4 per hit (hashed on the sequence), each 6..10 segments, `ion_len` 1.0 r x (1 ± 0.25), directions at c x 360 / count ± 30° about a hashed base; each vertex steps up to `ion_jag` 0.8 of a segment sideways, clamped to 0.3 of the channel's length | each strike max(40 ms, the three-frame floor) | core white mixed 0.7 towards `ion_colour`, E 3.0 x (1 − 0.15 j); corona `ion_colour` x 0.25 | in the hull's tangent plane at the hit (the lane's normal at the contact pixel, 3.6), riding the owner; core width max(0.01 r, 2 px at 1440 rows, 1 px), corona 4 x the core |
-| strikes | Branches | 1..2 per channel from an inner vertex at 30..60°, half its length, half its segments (≥ 3) | as its strike | as the channels x 0.6 | core width max(0.005 r, 1 px at 1440 rows, 1 px) |
-| 0..200 ms | Re-strikes | 3 or 4 (hashed), strike j at j x 200 / count ms, a new channel set each (the count stays) | | | the latest started strike drawn alone: dark frames between strikes at 60 fps |
-| 280..400 ms | Residual | the last strike's channels | from 280 + 40 u ms to 400 ms (at least the floor) | x 0.3 | one flicker |
-| — | no sparks (the arc sparks dropped, review 2026-11-07: less dense, less chaotic), no puff, no glow, no ember, no scorch | | | | the class's identity is its absence of heat |
+| strikes | Channels | 3..6 per hit (hashed on the sequence), each 6..10 segments, `ion_len` 1.0 r x (1 ± 0.25), directions at c x 360 / count ± 30° about a hashed base; each vertex steps up to `ion_jag` 0.8 of a segment sideways, clamped to 0.3 of the channel's length | each flash max(40 ms, the three-frame floor) | core white mixed 0.7 towards `ion_colour`, E 3.0 x e_j: e_j = 1 − 0.15 j for a strike starting before `ion_late_ms` 200 ms, 0.5 after; corona `ion_colour` x 0.25 | in the hull's tangent plane at the hit (the lane's normal at the contact pixel, 3.6), riding the owner; core width max(0.01 r, 2 px at 1440 rows, 1 px), x `ion_late_w` 0.6 for the later strikes (at least 1 px), corona 4 x the core |
+| strikes | Branches | 1..3 per channel from an inner vertex at 30..60°, half its length, half its segments (≥ 3) | as its strike | as the channels x 0.6 | core width max(0.005 r, 1 px at 1440 rows, 1 px), x 0.6 for the later strikes |
+| 0..960 ms | Re-strikes | strike j + 1 at t_j + P_j, P_j hashed in 120..200 ms (at least the three-frame floor), while t_j < `ion_strike_until` 0.8 x 1,200 ms: 5 to 8 strikes at 60 fps, a new channel set each (the channel count stays) | | | the latest strike's flash over the previous strike's afterglow |
+| between strikes | Afterglow | the strike's own channels where it just was | one re-strike period after its flash (the last strike's to the life's end) | x `ion_after_e` 0.25 of its strike | at most one flash and one afterglow per hit a frame |
+| 0..1,200 ms | Cold light | the glow primitive at the hit, radius `ion_glow_r` 1.2 x the latest strike's extent (its farthest point from the hit) | the life | `ion_colour` x `ion_glow_e` 0.3 x e_j x (0.25 + 0.75 (1 − x)), x the share of strike j's period gone; never the heat ramp | peaks at each strike, decays over its period |
+| 960..1,200 ms | Fade | everything above | | x (1,200 − t) / 240 | linear to 0 at the life's end: no hard cut |
+| — | no sparks (the arc sparks dropped, review 2026-11-07: less dense, less chaotic), no puff, no heat glow, no ember, no scorch | | | | the class's identity is its absence of heat |
 
-Distinguishing element: the re-striking channels and the cold colour. The residual's 400 ms is the slow element.
+Distinguishing element: the re-striking channels and the cold colour. The lightning is the slow element: record life
+1,201 ms (was 601). A held ion beam restarts its strike schedule every `ion_strike_span_ms` 960 ms of the hold. The
+segment cap (`renderer::weapon_filament_boxes`, 1,024 -> 2,048 the same day) still cuts whole hits (a hit's flash and afterglow together), oldest first.
 
 ### 4.7 Missile (`missile_hit`)
 
@@ -486,12 +493,15 @@ Per class, on the distinguishing element:
 | beam | `hull_beam_hold_relights_not_appends` | 60 ticks at one point over 1 s: one spot, peak = a single tick's, ring occupancy 1 |
 | beam | `hull_beam_sweep_trail_without_strobe` and `hull_beam_pulse_flash_after_gap` | a contact moving 0.3 r per tick: spots 0.5 r apart, 0 flashes; a 1,322 ms gap: exactly one flash at the next tick; the fall 80 ms |
 | beam | `hull_beam_spot_weapon_colour` and `hull_beam_ember_scorch_stay_heat` | a green light colour: the mean hue at 0.6..2.0 r within 10° of the weapon's, the core (< 0.15 r) less saturated; the trail ember and scorch line bit for bit those with the colour off |
-| ion | `hull_ion_lightning_law_16_seeds` | over 16 sequences 2..4 channels (all three counts), 1..2 branches each, 6..10 segments, 3..4 strikes |
+| ion | `hull_ion_lightning_law_16_seeds` | over 16 sequences 3..6 channels (both ends seen), 1..3 branches each, 6..10 segments, at least 4 strikes a life |
 | ion | `hull_ion_lightning_on_surface_restrikes` and `hull_ion_lightning_within_filament_charge` | 0 sky pixels, lit on the lane; a strike the same image across its frames; the next strike Jaccard < 0.3; fixed to a moving owner (≥ 0.95); its charged screens within the old filament box's (1.5 r x 0.86) |
 | ion | `hull_ion_core_floor_corona_4x` | one segment at 1440 rows: the core's FWHM within 0.75 px of 2 px, the corona's extent 3..4.5 core half widths at 0.15..0.3 of the peak |
-| ion | `hull_ion_no_heat_post_hit` | 0 lit pixels of any ember, glow or scorch; 0 lit pixels at 400 ms |
+| ion | `hull_ion_no_heat_post_hit` | no ember, puff or scorch; the one glow the cold light (blue the largest channel); 0 lit pixels past the 1,200 ms life |
+| ion | `hull_ion_strikes_through_life`, `hull_ion_afterglow_between_strikes` | one hit at 16 ms frames: lightning drawn every frame of the life, at least 4 flashes; every frame between flashes draws the afterglow |
+| ion | `hull_ion_cold_light_flickers` | the cold light on every frame of the life, hue 200..235° (`ion_colour` 217.5°), radius 1.1..1.3 x the latest strike's extent, a rise at every strike |
+| ion | `hull_ion_life_1201_fades_no_pop` | record life 1,201 ms; the hit's rendered light non-increasing over the last 0.2 of the life, its last lit frame at most 0.1 of the first, nothing past the life |
 | ion | `hull_ion_plane_on_narrow_hull` | the 1:1:6 hull, one strike straight on, near the end seen edge-on and near the silhouette: 0 sky pixels, the peak under 2 x the straight-on case's, the channel (core) pixels 0.5..1.5 x its |
-| ion | `hull_ion_cap_cuts_whole_hits_oldest` and `hull_ion_shed_whole_channels_oldest` | 42 hits past the 1,024 segments: the newest kept while they fit, the rest cut whole; half the charge as budget: the shed a run of whole channels from the oldest kept hit |
+| ion | `hull_ion_cap_cuts_whole_hits_oldest` and `hull_ion_shed_whole_channels_oldest` | 42 hits past the 2,048 segments: the newest kept while they fit, the rest cut whole; half the charge as budget: the shed a run of whole channels from the oldest kept hit |
 | ion | `hull_cpu_64_hits_ion` | 64 lit ion hits on a capital, the strike cache holding them: the CPU bound of the ledger |
 | beam | `hull_beam_white_keeps_heat` and `hull_beam_stock_pbc_orange_mix` | a white light, a grey light and a white light read as a light: sprite and glow vertices bit for bit those with the colour off; stock PBC's texture 121, 82, 39: the glow proportional to the 0.6 mix, r > g > b |
 | missile | `hull_missile_debris_two_sets_and_ring` | counts 2 x the ballistic law; the slow set lit at 1,200 ms with a 0.3 duty; the ring as plasma's |

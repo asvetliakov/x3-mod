@@ -146,8 +146,9 @@ struct WeaponShapeVertex {
 // weapon_filament_ps.hlsl draws the lane under it within the depth window, the core and corona profile in the pass's
 // constant colours x the vertex's radiance. Corner k: its end (A for -along, B for +along) by the sign of c[3], its side
 // by the sign of d[3] (0: A -+, 1: B ++, 2: A --, 3: B +-). 64 bytes a vertex. weapon_filament_boxes: segments a frame
-// (about 40 an ion hit, at most 80), through the sprite batch's quad index list.
-constexpr unsigned weapon_filament_boxes = 1024;
+// (2026-11-07, "Ion lightning: more and longer": about 70 a strike, a hit's flash and afterglow two strikes, at most 300;
+// 1024 -> 2048 so 64 lit hits on a capital are not mostly cut), through the sprite batch's quad index list.
+constexpr unsigned weapon_filament_boxes = 2048;
 static_assert(weapon_filament_boxes <= weapon_sprite_quads, "the lightning shares the sprite quads' index list");
 struct WeaponLightningVertex {
     float a[4]; // the contact point (view), the radiance (x the pass's core and corona colours)
