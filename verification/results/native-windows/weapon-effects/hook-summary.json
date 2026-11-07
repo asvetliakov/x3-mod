@@ -21,11 +21,9 @@
     "verification/probe/weapon_effects_death_cases.h"
   ],
   "source": {
-    "commit": "ca3a02ef663bc165d0fb04c010c7604e86dd7393-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_core.h"
-    ],
+    "commit": "07ce288cb01acb91ca771468e154c4238ca34c75-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "1cfba66b586bab04f5a99650dc68e9dff072c0e74e1522d1900bb35ed7787deb",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
@@ -168,7 +166,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "6823ef9ce38d59b85eb7f3462a170603dd7b841c0f5f6dee975d24a6ce818c74"
+    "executable_sha256": "b53a84f7c70b1088f7823bd76907a4395d3f533752111d2dd72e28a508846c63"
   },
   "host": {
     "name": "native-windows",
@@ -938,8 +936,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "0088f780",
     "esp_callee": "0088f774",
-    "return": "00ee6d8a",
-    "site": "00ee6d85"
+    "return": "00e76d8a",
+    "site": "00e76d85"
   },
   "stack_depth": {
     "bytes": 240,
@@ -1266,9 +1264,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 18.0,
-    "median_us": 18.0,
-    "worst_us": 18.7,
+    "best_us": 17.8,
+    "median_us": 17.9,
+    "worst_us": 18.3,
     "target_us": 30
   },
   "overflow": {
@@ -1284,9 +1282,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 58.3,
-    "median_us": 58.5,
-    "worst_us": 59.9,
+    "best_us": 57.7,
+    "median_us": 57.8,
+    "worst_us": 59.1,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1294,8 +1292,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005ea8b8",
     "esp_callee": "005ea8a8",
-    "return": "00ee7cb7",
-    "site": "00ee7cb2",
+    "return": "00e77cb7",
+    "site": "00e77cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
@@ -1370,8 +1368,8 @@
   "death_scan_timing": {
     "records": 1553,
     "pairs": 3,
-    "median_us": 8.9,
-    "max_us": 458.6,
+    "median_us": 9.9,
+    "max_us": 535.5,
     "bound_us": 250
   },
   "death_slots": {

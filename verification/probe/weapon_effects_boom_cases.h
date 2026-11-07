@@ -1127,7 +1127,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const float bgs[3] = {0.f, 0.15f, 0.5f};
             float base_ev[3];
             for (unsigned b = 0; b < 3; ++b) base_ev[b] = meter_ev(empty, bgs[b]);
-            double worst = 0, worst_black = 0; // the gate: dim and lit; black informational
+            // the gate: dim and lit, per distance (coordinator decision 2026-11-08: the 300 m fighter <= 0.5 EV, sparks at
+            // normal range never drive the meter; the 120 m fighter <= 1.3 EV, the meter's own cap: a death that close may
+            // dim the scene); black informational
+            double worst = 0, worst_black = 0, worst_at[2] = {0, 0};
             for (const unsigned dist_m : {300u, 120u}) {
                 boom::clear();
                 fighter(double(dist_m), 0x6d000u);
@@ -1146,6 +1149,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         ev[b] = meter_ev(rgb, bgs[b]);
                         double& w = b ? worst : worst_black;
                         w = std::max(w, std::fabs(double(ev[b] - base_ev[b])));
+                        if (b) worst_at[dist_m < 200u] = std::max(worst_at[dist_m < 200u], std::fabs(double(ev[b] - base_ev[b])));
                     }
                     std::printf("EXPLOSION case=meter tier=fighter_%um_5120 age_ms=%u ev_black=%.3f ev_dim=%.3f ev_lit=%.3f "
                                 "base=%.3f,%.3f,%.3f peak=%.2f\n",
@@ -1153,8 +1157,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 double(base_ev[2]), double(boom::peak(boom::luma(rgb))));
                 }
             }
-            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f black_shift_ev=%.3f\n", worst, worst_black);
-            report("death_exposure_meter_shift", worst <= 0.5, "");
+            std::printf("EXPLOSION case=meter_summary worst_shift_ev=%.3f black_shift_ev=%.3f worst_300m_ev=%.3f worst_120m_ev=%.3f\n",
+                        worst, worst_black, worst_at[0], worst_at[1]);
+            report("death_exposure_meter_shift", worst_at[0] <= 0.5 && worst_at[1] <= 1.3, "");
             big.release();
         } else {
             report("death_rays_starburst", false, "target");

@@ -458,6 +458,11 @@ only (worst 0.39 EV, bound 0.5); the black-sky shift is recorded, not gated: the
 climbs to its cap on any signal, its black policy rather than the death's highlight pull (coordinator decision
 2026-11-07). At engine 2.6 the limit is +1.0 EV, at 3.4 0 EV
 [I, the meter's arithmetic].
+Since the 3-5 px Gaussian spark heads (2026-11-08) the 120 m fighter pulls the dim scene's target down 0.817 EV at
+400 ms (1.13 at the spark gain 1; the head puts its whole radiance on a pixel where the 1-2 px streak head sampled
+lower, and the p99 tile maximum follows it [I]); the 300 m fighter still moves nothing [M]. Coordinator decision
+2026-11-08: a death at 120 m may dim the scene, so the bound splits by case: the 300 m fighter <= 0.5 EV (sparks at
+normal range never drive the meter), the 120 m fighter <= 1.3 EV (the meter's own cap).
 
 | Gate (fixture, `EXPLOSION case=...` rows) | Built [M] | Bound |
 | --- | --- | --- |
@@ -467,7 +472,7 @@ climbs to its cap on any signal, its black policy rather than the death's highli
 | `death_rays_differ` | two deaths' 360-bin profiles correlate 0.10 | < 0.3 |
 | `death_sparks_dense` (600 m, 0.3 L) | 217 heads on screen (173 local maxima); lengths std / mean 1.0 | >= 100; >= 0.4 |
 | `death_spark_heads` (600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows (116 heads) | >= 3 |
-| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.82 EV over dim since the 3-5 px spark heads (0.39 before; FAILS, open), 0 over lit (black sky 1.30, informational) | <= 0.5 over dim / lit |
+| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.82 EV over dim since the 3-5 px spark heads (0.39 before), 0 over lit (black sky 1.30, informational) | 300 m <= 0.5, 120 m <= 1.3 over dim / lit |
 | `death_rays_sparks_budget_5120` | fighter 600 m 20.9-21.9 us, 20 fighters 42.4-50.6 us (0.05 / 0.1 / 0.3 L) | <= 60; <= 150 |
 | `death_budget_capital_close_5120` | worst 354.0 us | <= 450 |
 
@@ -477,7 +482,9 @@ std >= 0.4 of the mean (was 0.2, the mean under 0.35 R_f); `death_no_pop_at_birt
 the spike out with the star (worst rise 1.27 / 1.29). Frames: the lab (`boom/fighter-m5-300m-vanilla-compare` at 50 /
 150 / 400 / 900 / 1,500 ms beside the vanilla frame) and the native dump grids (fighter 300 / 600 m, the nested kill,
 the capital broadside through the main blast; clipped engine space and AgX from the 1080p frame) local. Kill: rays read
-as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads as noise -> `tier_sparks_hi` halved.
+as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads as noise -> `tier_sparks_hi` halved. Flight
+questions: do the rays read as soft glow spokes, not a decal; pumping (scene darkening and brightening with the spark
+cloud at point-blank range).
 
 ## Reproduce
 
