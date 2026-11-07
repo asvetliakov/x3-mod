@@ -1042,7 +1042,7 @@ int main(int argc, char** argv) {
     }
     if (!std::strcmp(argv[1], "hull")) {
         // Step 2 (docs/architecture/weapon-look.md 3.1): one stage-owned hull hit on owner 1 (k 0.5, a fighter): its
-        // first frame latches the contact point; 100 game ms later its flash is gone (60 ms x (1 +- 0.2) < 100, floor
+        // first frame latches the contact point; 100 game ms later its flash is gone (40 ms, the 48 ms floor < 100,
         // 48), its 16 sparks, glow (150 ms) and ember live; a shield hit and an unstaged hull hit draw nothing here; once
         // the owner dies the sparks stay (orphan) and the glow, ember and flash go; the mode words.
         owner(1, 40000, 10000);
@@ -1421,8 +1421,9 @@ class WeaponEffectsClassifier(unittest.TestCase):
         n = int(first['want'])
         self.assertTrue(3 <= n <= 9, n)
         a100, a110 = int(first['alive100']), int(first['alive110'])
-        self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, n, 1, 1))
-        self.assertEqual((first['quads'], first['boxes']), (n + 1, 2))  # the shield and the unstaged records drew nothing
+        # the glow is the burst's light (hull-burst-look.md 3): R(0) = 0 at the first frame, lit 100 ms later
+        self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, n, 0, 1))
+        self.assertEqual((first['quads'], first['boxes']), (n + 1, 1))  # the shield and the unstaged records drew nothing
         self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, a100, 1, 1))
         self.assertEqual((dead['orphans'], dead['sparks'], dead['flashes'], dead['glows'], dead['embers'], dead['retired']),
                          (1, a110, 0, 0, 0, 0))

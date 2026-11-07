@@ -118,6 +118,11 @@ table degrades to energy / plasma / heavy by body and damage, never to nothing.
 
 Everything below is one of the existing primitives with a different profile, or a rule on existing records.
 
+**Amended 2026-11-07** ([hull-burst-look.md](hull-burst-look.md), built and gated; figures in the
+[ledger](../verification/weapon-effects.md) "Burst body, glow, flash, smoke"): item 1's burst is the lobed, eroded
+three-octave noise body (R_s = R(t) x 1.25, biased 0.5 r to the eye, two octaves under 48 px), its glow the burst's light
+(1.6 R(t), 0.33 E_b, per-owner cluster saturation), the flash a 40 ms star, and a multiply smoke follows each burst.
+
 1. **Burst (puff).** The rebuild's hot-gas burst: the 3.2 fireball impostor at r_b, L_b per class, R(t) = r_b (1 −
    e^(−t / 0.15 L_b)), T 1 → 0 over L_b, two fbm octaves advected outward, body ≤ 1.5, occlusion class 2 (SOFT 1.0),
    biased 0.5 r toward the eye like the flash. **Anchored to the owner** (re-posed like the flash), so it inherits the
@@ -199,6 +204,16 @@ Everything below is one of the existing primitives with a different profile, or 
 10. **Re-light resets, never adds** (the shield cells' rule) holds for every element re-lit by a merge.
 
 ## 4. The anatomy per class
+
+**Amended 2026-11-07** ([hull-burst-look.md](hull-burst-look.md) 2.6, the addendum; the per-class rows below keep their
+structure, these numbers replace theirs): burst R_b energy 2.0 r, ballistic 0.8 r, plasma 3.0 r, heavy 1.6 r, beam 1.2 r,
+missile U (2 + 2 k), asteroid 2.4 r (an unlit dust cloud 0.55 / 0.52 / 0.48 at E 0.375, rise 0.08), lives and E unchanged;
+glow 1.6 R(t) at 0.33 E_b for every burst class but the asteroid (class_glow kept for repair and tug only: the cool
+0.7 / 0.8 / 1.0 spot R 1.0 r at E 0.3 and 0.15, the ember in the same colour); flash a 40 ms star of arm A energy 1.2,
+ballistic 0.6, plasma 2.0, heavy 1.0 (1.5 without a heading), ion 1.2, beam 1.2, missile 1.5, repair 0.6 r (its pulse
+start), none for asteroid and tug; smoke R / s0 energy 1.3 / 0.45, ballistic 1.0 / 0.30, plasma 1.2 / 0.50, heavy 1.3 /
+0.50, beam 1.2 / 0.40, missile 1.3 / 0.50, asteroid 1.0 / 0.30, none for ion, repair, tug; asteroid sparks E x 0.5 in
+the dust colour. The size derivation (ledger) keeps the doubled R_b.
 
 Sizes in r (= r_hit = 2 U (0.35 + 0.65 k) [S]) or U; lives in game ms, x (1 ± stagger / 2) by hash as 2.4; the
 three-frame floor on everything; the chase-nose gate (2.9) is met by the sparks of every class but repair, tug and

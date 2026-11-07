@@ -9,20 +9,24 @@ rr::WeaponFireballVertex hq_fireballs[rr::weapon_fireball_boxes * 4];
 rr::WeaponShapeVertex hq_rings[rr::weapon_ring_quads * 4];
 rr::WeaponLightningVertex hq_filaments[rr::weapon_filament_boxes * 4];
 rr::WeaponGlowVertex hq_scorches[rr::weapon_scorch_boxes * 4];
+rr::WeaponFireballVertex hq_smokes[rr::weapon_smoke_boxes * 4];
 ws::ShimmerRect hq_shimmer[wc::hull::shimmer_max];
 ws::HullState hq_state;
 // The 1024-record ring's CPU bounds (case 19b: build_hull and the overflow stamp, best of 200): set from the native
 // measurement of 2026-11-07 (docs/verification/weapon-effects.md, "Ring 1024").
 // 64 visible: 144.7 and 136.9 measured before the out-of-reach cull (2026-11-07), the bound 100 after it (its owners
-// behind the camera build nothing); 256 visible: 214.0 and 209.1 before.
-constexpr double ring_1024_cpu_64_us = 100.0, ring_1024_cpu_256_us = 300.0;
+// behind the camera build nothing); 256 visible: 214.0 and 209.1 before. Since the burst look's review (2026-11-07: the
+// cluster count skips owners out of reach, finds a record's owner in O(1) and takes a grid past 128 bursts an owner)
+// 48.3 and 118.0 measured (67.5 and 145.1 with the first O(n) count, 61.9 and 128.4 pairwise over every kept owner),
+// the bounds 65 and 160.
+constexpr double ring_1024_cpu_64_us = 65.0, ring_1024_cpu_256_us = 160.0;
 // The laws of the records the shared machinery's gates stage (the class nibble 0: the energy class, hull-impact-
 // classes.md 4.1; its sparks one set, the slow "spatter", so a spark's index is its set index), and of any anatomy.
 namespace law {
 namespace hl = wc::hull;
 constexpr unsigned E = hl::an_energy;
 inline float flash_ms(unsigned a = E) { return hl::class_flash[a][2]; }
-inline float flash_halo_r(unsigned a = E) { return hl::class_flash[a][1]; }
+inline float flash_arm_r(unsigned a = E) { return hl::class_flash[a][1]; }
 inline float glow_r(unsigned a = E) { return hl::class_glow[a][0]; }
 inline float glow_ms(unsigned a = E) { return hl::class_glow[a][1]; }
 inline float glow_t(unsigned a = E) { return hl::class_glow[a][2]; }
@@ -35,6 +39,15 @@ inline float puff_r(unsigned a = E) { return hl::class_puff[a][0]; }
 inline float puff_ms(float k, unsigned a = E) { return hl::class_puff[a][3] + hl::class_puff[a][4] * k; }
 inline float puff_e(unsigned a = E) { return hl::class_puff[a][6]; }
 inline float puff_rise(unsigned a = E) { return hl::class_puff[a][7]; }
+inline float puff_t0(unsigned a = E) { return hl::class_puff[a][5]; }
+// The burst's glow (hull-burst-look.md section 3) of a lone record at age t of the burst's life L: R_g = glow_r_x R(t),
+// its colour's red heat(T) E_g T, T = T0 (1 - t / L).
+inline float burst_glow_red(float age, float life, unsigned a = E) {
+    const float T = puff_t0(a) * (1.f - age / life);
+    float c[3];
+    wc::heat_colour(T, c);
+    return c[0] * hl::glow_e_x * puff_e(a) * T;
+}
 inline ws::SparkSet set(unsigned a = E, unsigned which = 1) { return ws::spark_set(a, which); }
 inline float spark_life(float k, unsigned a = E, unsigned which = 1) {
     const ws::SparkSet ss = ws::spark_set(a, which);
@@ -125,7 +138,7 @@ ws::HullView hull_view(const Target& t, std::uint32_t now, std::uint32_t step) {
 }
 struct HullOut {
     ws::HullCounts n;
-    unsigned quads = 0, boxes = 0, bursts = 0, rings = 0, filaments = 0, scorches = 0, shimmer = 0;
+    unsigned quads = 0, boxes = 0, bursts = 0, rings = 0, filaments = 0, scorches = 0, shimmer = 0, smokes = 0;
 };
 HullOut hull_build(const ws::HullView& v, const ws::HullTuning& t = ws::HullTuning{}, ws::HullState* st = &hq_state,
                    wc::Ring* ring = &stage_ring, ws::Reader rd = &fake_read, wc::VisibleOwners* visible = nullptr) {
@@ -143,6 +156,8 @@ HullOut hull_build(const ws::HullView& v, const ws::HullTuning& t = ws::HullTuni
     b.filament_cap = rr::weapon_filament_boxes;
     b.scorches = hq_scorches;
     b.scorch_cap = rr::weapon_scorch_boxes;
+    b.smokes = hq_smokes;
+    b.smoke_cap = rr::weapon_smoke_boxes;
     b.shimmer = hq_shimmer;
     b.shimmer_cap = wc::hull::shimmer_max;
     o.n = ws::build_hull(*ring, *st, rd, v, t, b, visible);
@@ -152,6 +167,7 @@ HullOut hull_build(const ws::HullView& v, const ws::HullTuning& t = ws::HullTuni
     o.rings = b.ring_quads;
     o.filaments = b.filament_boxes;
     o.scorches = b.scorch_boxes;
+    o.smokes = b.smoke_boxes;
     o.shimmer = b.shimmer_count;
     return o;
 }
@@ -170,10 +186,12 @@ rr::WeaponEffectsFrame hull_frame(Target& t, const HullOut& o) {
     f.filament_boxes = o.filaments;
     f.scorches = hq_scorches;
     f.scorch_boxes = o.scorches;
+    f.smokes = hq_smokes;
+    f.smoke_boxes = o.smokes;
     return f;
 }
 // One element kind alone of a build (the others' counts zeroed): 0 sprites, 1 glows, 2 bursts, 3 rings, 4 filaments,
-// 5 scorches.
+// 5 scorches, 6 smokes.
 HullOut hull_only(HullOut o, unsigned kind) {
     if (kind != 0) o.quads = 0;
     if (kind != 1) o.boxes = 0;
@@ -181,6 +199,7 @@ HullOut hull_only(HullOut o, unsigned kind) {
     if (kind != 3) o.rings = 0;
     if (kind != 4) o.filaments = 0;
     if (kind != 5) o.scorches = 0;
+    if (kind != 6) o.smokes = 0;
     return o;
 }
 // A spark's displacement from its hit point at game age t_s (world = view under the fixture's identity camera, the owner
@@ -469,7 +488,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         }
         ws::hull_clear(hq_state);
         const HullOut fl = hull_build(hull_view(g, 1000, 16), only_flash);
-        const Centroid cf = centroid(hull_render(pass, fl), g.w);
+        const std::vector<float> fl_l = hull_render(pass, fl);
+        float fl_peak = 0.f;
+        for (float v : fl_l) fl_peak = std::max(fl_peak, v);
+        const Centroid cf = centroid(fl_l, g.w, 0.9f * fl_peak); // the star's core (its unequal arms move the lit set's)
         const double spark_err_u = std::hypot(cs.x - cx, cs.y - cy) / ppu / U;
         const double quad_err_u = std::hypot(qx - cx, qy - cy) / ppu / U;
         const double flash_err = std::hypot(cf.x - cx, cf.y - cy) / ppu / r_hit;
@@ -535,8 +557,13 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     // plane: its centroid at the projected light (within 0.3 R).
     {
         hull_owner(400.f, 100.f);
-        add_hull_hit(1000, front, damage_of(0.33));
-        const HullOut o = hull_build(hull_view(g, 1000, 16), only_glow);
+        const wc::Event* ge = add_hull_hit(1000, front, damage_of(0.33));
+        hull_build(hull_view(g, 1000, 16), only_glow);
+        const HullOut o = hull_build(hull_view(g, 1120, 16), only_glow);
+        const float g_r = hl::r_scale * U * (hl::r_base + hl::r_k * 0.33f);
+        bool g_fl = false;
+        const float g_life = ws::element_life_ms(law::puff_ms(wc::calibre_of(ge->damage)), ws::element_hash(ge->sequence, 3),
+                                                 wc::stagger, 48.f, &g_fl);
         draw_lane(g, z_hit, 0.5f);
         const std::vector<float> half = hull_render(pass, o);
         unsigned on_sky = 0, on_lane = 0;
@@ -544,7 +571,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (half[i] > 1e-4f) ++((i % g.w) < g.w / 2 ? on_lane : on_sky);
         draw_lane(g, z_hit, 1.f);
         const Centroid c = centroid(hull_render(pass, o), g.w, 1e-4f);
-        const float R = law::glow_r() * hl::r_scale * U * (hl::r_base + hl::r_k * 0.33f);
+        const float R = hl::glow_r_x * ws::puff_radius(law::E, law::puff_r() * g_r, 120.f, g_life);
         const double err = std::hypot(c.x - cx, c.y - cy) / ppu / R;
         std::printf("HULL case=glow_surface boxes=%u lit_sky=%u lit_lane=%u on_lane_share=%.4f full_lit=%u centroid_err_R=%.4f "
                     "R_view=%.3f\n",
@@ -553,29 +580,27 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         report("hull_light_on_hull_not_sky", o.boxes == 1 && on_sky == 0 && on_lane > 0 && err <= 0.3, "");
         draw_lane(g, 0.f, -1.f);
     }
-    // 4. The glow's peak and decay: at its light point heat(glow_t) x glow_e x glow_t at age 0, half at half its life,
-    // nothing at its end (its life from the production hash, 150 ms x (1 +- stagger / 2)).
+    // 4. The glow's peak and decay (hull-burst-look.md section 3: the burst's light): at its light point heat(T) x E_g x T,
+    // T = T0 (1 - t / L) the burst's heat, at 0.1 and 0.5 of the burst's life L (its hash, element 3), nothing past it.
     {
         hull_owner(400.f, 100.f);
         const wc::Event* e = add_hull_hit(1000, front, damage_of(0.33));
         bool fl = false;
-        const float life = ws::element_life_ms(law::glow_ms(), ws::element_hash(e->sequence, 1), wc::stagger, 48.f, &fl);
+        const float life = ws::element_life_ms(law::puff_ms(wc::calibre_of(e->damage)), ws::element_hash(e->sequence, 3),
+                                               wc::stagger, 48.f, &fl);
         draw_lane(g, z_hit, 1.f);
         float at[3];
-        const std::uint32_t ages[3] = {0, std::uint32_t(life * 0.5f), std::uint32_t(life) + 1};
+        const std::uint32_t ages[3] = {std::uint32_t(life * 0.1f), std::uint32_t(life * 0.5f), std::uint32_t(life) + 1};
+        hull_build(hull_view(g, 1000, 16), only_glow);
         for (unsigned a = 0; a < 3; ++a) {
             const HullOut o = hull_build(hull_view(g, 1000 + ages[a], 16), only_glow);
             at[a] = centre_luma(hull_render(pass, o));
         }
-        float heat[3];
-        wc::heat_colour(law::glow_t(), heat);
-        const float peak = std::max(heat[0], std::max(heat[1], heat[2])) * law::glow_e() * law::glow_t();
-        const float half_expect = peak * (1.f - float(ages[1]) / life);
-        std::printf("HULL case=glow_decay life_ms=%.1f age0=%.4f expected0=%.4f age_half=%.4f expected_half=%.4f age_end=%.5f\n",
-                    double(life), double(at[0]), double(peak), double(at[1]), double(half_expect), double(at[2]));
-        report("hull_light_peak_decay_150ms", std::fabs(at[0] - peak) <= 0.01f * peak + 2e-3f &&
-                                                   std::fabs(at[1] - half_expect) <= 0.02f * peak + 2e-3f && at[2] == 0.f &&
-                                                   life >= 0.8f * law::glow_ms() && life <= 1.2f * law::glow_ms(), "");
+        const float want0 = law::burst_glow_red(float(ages[0]), life), want1 = law::burst_glow_red(float(ages[1]), life);
+        std::printf("HULL case=glow_decay life_ms=%.1f age_tenth=%.4f expected_tenth=%.4f age_half=%.4f expected_half=%.4f "
+                    "age_end=%.5f\n", double(life), double(at[0]), double(want0), double(at[1]), double(want1), double(at[2]));
+        report("hull_light_peak_decay_burst_law", std::fabs(at[0] - want0) <= 0.01f * want0 + 2e-3f &&
+                                                       std::fabs(at[1] - want1) <= 0.02f * want0 + 2e-3f && at[2] == 0.f, "");
         draw_lane(g, 0.f, -1.f);
     }
     // 5. The sparks' cooling: their colour on the heat ramp at 0 / 0.5 / ~1 of a life (vertex colours, 8-bit), and the
@@ -645,6 +670,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                          float(want_n) <= law_n * (1.f + hl::spark_count_spread) + 0.5f;
                 float flash_r = 0, glow_R = 0, ember_R = 0, width = 0, width_err = 0;
                 unsigned spark_q = 0;
+                // the star's half (view units at its biased depth): A r_hit (or its floor) + half the width floor
+                const float zb = (z_owner - 100.f) - hl::bias * r_hit, px_z = 0.5f * float(g.w) * 1.6f / zb;
+                const float A_px = std::max(law::flash_arm_r() * r_hit * px_z, hl::star_floor_px);
+                const float star_half = (A_px + 0.5f * hl::star_width_px) / px_z;
                 for (unsigned q = 0; q < o.quads; ++q)
                     if (is_flash(q))
                         flash_r = hq_sprites[4 * q].b[3];
@@ -653,14 +682,19 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         const float want_w = law::set().width * Ut * law::factors(seq, spark_q++).width_x;
                         width_err = std::max(width_err, std::fabs(width - want_w) / want_w);
                     }
-                for (unsigned b = 0; b < o.boxes; ++b) {
-                    const float R = hq_glows[4 * b].light[3];
-                    if (R > 2.f * r_hit) glow_R = R;
-                    else ember_R = R;
+                for (unsigned b = 0; b < o.boxes; ++b) ember_R = hq_glows[4 * b].light[3]; // age 0: the burst's glow R 0
+                {   // the burst's glow 100 ms in: glow_r_x R(t)
+                    static ws::HullState st;
+                    st = hq_state;
+                    const HullOut og = hull_build(hull_view(g, 1100, 16), only_glow, &st);
+                    for (unsigned b = 0; b < og.boxes; ++b) glow_R = hq_glows[4 * b].light[3];
                 }
+                bool g_fl = false;
+                const float g_life = ws::element_life_ms(law::puff_ms(kf), ws::element_hash(seq, 3), wc::stagger, 48.f, &g_fl);
+                const float glow_want = hl::glow_r_x * ws::puff_radius(law::E, law::puff_r() * r_hit, 100.f, g_life);
                 const bool s_ok = o.n.sparks == want_n && n_in_spread && o.n.flashes == 1 &&
-                                  std::fabs(flash_r - law::flash_halo_r() * r_hit) <= 0.05f * law::flash_halo_r() * r_hit &&
-                                  std::fabs(glow_R - law::glow_r() * r_hit) <= 0.01f * glow_R &&
+                                  std::fabs(flash_r - star_half) <= 0.02f * star_half &&
+                                  std::fabs(glow_R - glow_want) <= 0.01f * glow_want &&
                                   std::fabs(ember_R - law::ember_r() * r_hit) <= 0.01f * ember_R && width_err <= 0.01f;
                 // The reach at 200 ms: each spark's head against its law.
                 const HullOut o2 = hull_build(hull_view(g, 1100, 16), only_sparks);
@@ -710,18 +744,15 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     {
         hull_owner(10100.f, 100.f); // the hit 2 km away
         add_hull_hit(1000, front, damage_of(0.33));
-        hull_build(hull_view(g, 1000, 16));
-        const HullOut o = hull_build(hull_view(g, 1050, 16));
+        const HullOut o0 = hull_build(hull_view(g, 1000, 16));
         double min_w = 1e9, min_l = 1e9, core_px = 0, min_l_over_x = 1e9;
+        for (unsigned q = 0; q < o0.quads; ++q) // the star's core at its first frame: 2 x its half (px) x alpha
+            if (is_flash(q))
+                core_px = 2.0 * double(hq_sprites[4 * q].b[3]) * 0.5 * double(g.w) * 1.6 / double(hq_sprites[4 * q].a[3]) *
+                          double(hq_sprites[4 * q].colour >> 24) / 255.0;
+        const HullOut o = hull_build(hull_view(g, 1050, 16));
         for (unsigned q = 0; q < o.quads; ++q) {
-            if (is_flash(q)) {
-                const QuadPx p = quad_px(g, q);
-                (void)p;
-                const double halo = std::fabs(double(hq_sprites[4 * q + 1].a[0] - hq_sprites[4 * q].a[0]) /
-                                              double(hq_sprites[4 * q].a[3])) * 0.25 * double(g.w);
-                core_px = 2.0 * halo * double(hq_sprites[4 * q].colour >> 24) / 255.0;
-                continue;
-            }
+            if (is_flash(q)) continue;
             const QuadPx p = quad_px(g, q);
             min_w = std::min(min_w, p.width);
             min_l = std::min(min_l, p.length);
@@ -785,13 +816,15 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 add_hull_hit(now, pos, damage_of(0.33));
                 ++hits;
             }
-            const HullOut cur = hull_build(hull_view(g, now, 16));
+            ws::HullTuning per_element;
+            per_element.cluster = false; // a joining hit dims its cluster by design (hull_20_hits_no_white_sun)
+            const HullOut cur = hull_build(hull_view(g, now, 16), per_element);
             const std::vector<float> lc = hull_render(pass, cur);
             unsigned live = 0;
             for (unsigned i = 0; i < wc::ring_capacity; ++i) live += stage_ring.slots[i].sequence != 0;
             max_hits = std::max(max_hits, live);
             if (f) {
-                const HullOut aged = hull_build(hull_view(g, now, 16), ws::HullTuning{}, &before, &aged_ring);
+                const HullOut aged = hull_build(hull_view(g, now, 16), per_element, &before, &aged_ring);
                 const std::vector<float> la = hull_render(pass, aged);
                 for (std::size_t i = 0; i < lc.size(); ++i) {
                     const double d = double(la[i]) - double(lc[i]);
@@ -818,6 +851,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         add_hull_hit(1000, front, damage_of(0.33));
         unsigned reappeared = 0, frames = 0, prev_sparks = 1000;
         bool gone[4] = {false, false, false, false}, seen[4] = {false, false, false, false}; // flash, glow, ember, burst
+        // (the glow is the burst's light since 2026-11-07: its first frame has R 0 too)
         std::uint32_t now = 1000, step = 16;
         while (now <= 3000) {
             const HullOut o = hull_build(hull_view(g, now, step));
@@ -825,7 +859,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             for (unsigned k = 0; k < 4; ++k) { // the burst's first frame has R 0 (nothing drawn): tracked once seen
                 if (gone[k] && counts[k]) ++reappeared;
                 if (counts[k]) seen[k] = true;
-                else if (seen[k] || k < 3) gone[k] = true;
+                else if (seen[k] || k == 0 || k == 2) gone[k] = true;
             }
             if (o.n.sparks > prev_sparks) ++reappeared;
             prev_sparks = o.n.sparks;
@@ -857,6 +891,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         }
         ws::HullTuning statics;
         statics.sparks = false;
+        statics.cluster = false; // each element against its own law (the cluster's saturation has its own gate)
         unsigned checked = 0, violations = 0, frames = 0;
         double worst = 0;
         std::uint32_t now = 1150, step = 16; // every record drawn from its own first frame below
@@ -880,17 +915,16 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const float age = float(now - first_of[r]);
                 for (unsigned el = 0; el < 3; ++el) { // 0 flash, 1 glow, 2 ember
                     bool fl = false;
-                    const float law = el == 0 ? law::flash_ms() : el == 1 ? law::glow_ms()
-                                                                          : law::ember_ms(wc::calibre_of(damage_of(0.33)));
-                    const float life = ws::element_life_ms(law, ws::element_hash(seqs[r], el), wc::stagger, floor_of[r], &fl);
+                    const float kq = wc::calibre_of(damage_of(0.33));
+                    const float law = el == 0 ? law::flash_ms() : el == 1 ? law::puff_ms(kq) : law::ember_ms(kq);
+                    const float life = ws::element_life_ms(law, ws::element_hash(seqs[r], el == 1 ? 3u : el), wc::stagger,
+                                                           floor_of[r], &fl);
                     const float fade = 1.f - age / life;
                     float want = -1.f, got = -1.f;
                     if (age < life) {
                         if (el == 0) want = wc::look::core_e * fade;
                         else if (el == 1) {
-                            float c[3];
-                            wc::heat_colour(law::glow_t(), c);
-                            want = c[0] * law::glow_e() * law::glow_t() * fade;
+                            want = age > 0.f ? law::burst_glow_red(age, life) : -1.f; // R(0) = 0: no glow yet
                         } else {
                             const float T = law::ember_t() * fade;
                             float c[3];
@@ -909,7 +943,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             if (std::fabs(x - px[r]) < 2.f) got = hq_sprites[4 * q].b[2];
                         }
                     } else {
-                        const float R = (el == 1 ? law::glow_r() : law::ember_r()) * rr;
+                        const float R = el == 1 ? hl::glow_r_x * ws::puff_radius(law::E, law::puff_r() * rr, age, life)
+                                                : law::ember_r() * rr;
                         for (unsigned b = 0; b < o.boxes; ++b)
                             if (std::fabs(hq_glows[4 * b].light[0] - px[r]) < 0.5f &&
                                 std::fabs(hq_glows[4 * b].light[1] - py[r]) < 0.5f &&
@@ -1109,8 +1144,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const HullOut ro = hull_build(hull_view(g, 1000, 16));
         double gtint[3] = {0, 0, 0};
         for (unsigned k = 0; k < 3; ++k) gtint[k] = hq_glows[0].colour[k];
-        const bool repair_ok = ro.n.sparks == 0 && ro.n.flashes == 0 && ro.n.glows == 1 && ro.n.embers == 1 &&
-                               gtint[1] > 2.0 * gtint[0] && gtint[1] > 2.0 * gtint[2];
+        // the cool spot (2026-11-07 addendum): cool_colour whatever the weapon tint, its pulse start's star
+        const bool repair_ok = ro.n.sparks == 0 && ro.n.flashes == 1 && ro.n.glows == 1 && ro.n.embers == 1 &&
+                               gtint[2] > gtint[1] && gtint[1] > gtint[0];
         hull_owner(400.f, 100.f);
         add_hull_hit(1000, front, damage_of(0.33), wc::patch_fighter, wc::detail_tug);
         const HullOut to = hull_build(hull_view(g, 1000, 16));
@@ -1141,7 +1177,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         for (unsigned i = 0; i < wc::ring_capacity; ++i)
             if (stage_ring.slots[i].sequence) rock_e = &stage_ring.slots[i];
         const unsigned want_a = rock_e ? law::sparks_of(*rock_e, wc::calibre_of(rock_e->damage)) : 0;
-        const bool asteroid_ok = ao.n.sparks == want_a && ao.n.flashes == 0 && dust[0] < 0.9 && dust[1] < 0.5 * dust[0];
+        // the rock's sparks in dust_colour (greyer than the hull's, 2026-11-07 addendum)
+        const bool asteroid_ok = ao.n.sparks == want_a && ao.n.flashes == 0 &&
+                                 std::fabs(dust[0] - double(hl::dust_colour[0])) <= 0.01 &&
+                                 std::fabs(dust[1] - double(hl::dust_colour[1])) <= 0.01;
         std::printf("HULL case=variants repair_sparks=%u repair_flashes=%u repair_glows=%u repair_embers=%u repair_glow_rgb=%.3f,%.3f,%.3f "
                     "tug_glows=%u tug_embers=%u tug_R=%.3f missile_sparks=%u missile_want=%u missile_halo_g=%.3f missile_tint_g=%.3f "
                     "asteroid_sparks=%u asteroid_want=%u asteroid_flashes=%u asteroid_rgb=%.3f,%.3f,%.3f\n",
@@ -1232,7 +1271,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         static ws::HullState st; // static: 529 KB at 1024 records, off the fixture stack
         st = hq_state;
         ws::HullView full = hull_view(g, 1090, 16), tight = full;
-        full.budget_left = 1e6f; // nothing shed, the bursts at two octaves
+        full.budget_left = 1e6f; // nothing shed, the bursts at three octaves
         tight.budget_left = 0.5f;
         const HullOut a = hull_build(full, ws::HullTuning{}, &st);
         const unsigned sparks_full = a.n.sparks, boxes_full = a.boxes;
@@ -1251,10 +1290,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     c.n.bursts, c.n.bursts_shed, a.n.rings, b.n.rings);
         // the flashes are charged and never shed (hull-impact-classes.md section 6): the sheddable screens within the
         // budget, or nothing sheddable left
-        report("hull_budget_shed", b.n.shed > 0 && (b.n.screens - b.n.flash_screens <= 0.5f || (b.boxes == 0 && b.bursts == 0)) &&
+        report("hull_budget_shed", b.n.shed > 0 && (b.n.screens - b.n.flash_screens <= 0.5f || (b.boxes == 0 && b.bursts <= 2)) &&
                                        b.n.sparks == sparks_full && b.n.flashes == a.n.flashes && c.n.shed == 0 &&
                                        c.boxes == boxes_full, "");
-        report("hull_budget_burst_lod_then_shed", a.bursts > 0 && a.n.octaves == 2 && b.n.octaves == 1 && b.n.bursts_shed > 0 &&
+        report("hull_budget_burst_lod_then_shed", a.bursts > 0 && a.n.octaves == 3 && b.n.octaves == 2 && b.n.bursts_shed > 0 &&
                                                       b.bursts + b.n.bursts_shed == a.bursts && b.rings == a.rings &&
                                                       c.bursts == a.bursts && c.n.bursts_shed == 0, "");
     }
@@ -1394,7 +1433,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_burst);
             const double want = double(law::puff_r()) * double(r_hit) *
                                 (1.0 - std::exp(-double(age) / (double(law::puff_rise()) * double(life))));
-            const double got = o.bursts ? double(hq_fireballs[0].sphere[3]) : 0.0;
+            const double got = o.bursts ? double(hq_fireballs[0].sphere[3]) / (1.0 + double(wc::look::fireball_lobe_amp)) : 0.0;
             const double t_err = o.bursts ? std::fabs(double(hq_fireballs[0].look[0]) - (1.0 - double(age) / double(life))) : 1.0;
             const std::vector<float> l = hull_render(pass, o);
             double extent = 0;
@@ -1411,7 +1450,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             worst_extent = std::max(worst_extent, extent / r_px);
             best_extent = std::min(best_extent, extent / r_px);
         }
-        report("hull_burst_radius_law_3_ages", law_ok && worst_t <= 1e-5 && best_extent >= 0.75 && worst_extent <= 1.03, "");
+        // the lit extent about R(t): the lobes reach out to (1 + lobe_amp) R and the erosion eats the rim
+        report("hull_burst_radius_law_3_ages", law_ok && worst_t <= 1e-5 && best_extent >= 0.6 &&
+                                                   worst_extent <= 1.03 * (1.0 + double(wc::look::fireball_lobe_amp)), "");
         // (b) the colour: the brightest pixel at the first drawn frame (16 ms) and at 0.9 of the life.
         double gr[2] = {0, 0}, br[2] = {0, 0}, peak[2] = {0, 0};
         const std::uint32_t ages[2] = {16u, std::uint32_t(0.9 * double(life))};
@@ -1419,9 +1460,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const HullOut o = hull_build(hull_view(g, 1000 + ages[a], 16), only_burst);
             std::vector<float> rgb;
             hull_render(pass, o, &rgb);
-            std::size_t best = 0;
+            std::size_t best = 0; // the brightest pixel by its channels' sum (the red saturates over the body)
             for (std::size_t i = 0; i < rgb.size() / 3; ++i)
-                if (rgb[i * 3] > rgb[best * 3]) best = i;
+                if (rgb[i * 3] + rgb[i * 3 + 1] + rgb[i * 3 + 2] > rgb[best * 3] + rgb[best * 3 + 1] + rgb[best * 3 + 2]) best = i;
             peak[a] = rgb.empty() ? 0.0 : double(rgb[best * 3]);
             gr[a] = peak[a] > 0 ? double(rgb[best * 3 + 1]) / peak[a] : -1;
             br[a] = peak[a] > 0 ? double(rgb[best * 3 + 2]) / peak[a] : -1;
@@ -1430,16 +1471,17 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     "end_age_ms=%u end_r=%.5f end_g_over_r=%.3f end_b_over_r=%.3f\n",
                     ages[0], peak[0], gr[0], br[0], ages[1], peak[1], gr[1], br[1]);
         report("hull_burst_colour_white_core_at_birth", peak[0] > 0.1 && gr[0] >= 0.75 && br[0] >= 0.45, "");
-        report("hull_burst_colour_dark_red_at_end", peak[1] > 0 && peak[1] <= 0.1 * peak[0] && gr[1] <= 0.3 && br[1] <= 0.2, "");
+        // radiance heat(T') E density (hull-burst-look.md 2.5: no extra x T, the ramp's darkening carries the cooling)
+        report("hull_burst_colour_dark_red_at_end", peak[1] > 0 && peak[1] <= 0.3 * peak[0] && gr[1] <= 0.3 && br[1] <= 0.2, "");
         // (c) the lane.
         const std::uint32_t age = std::uint32_t(0.3 * double(life));
         const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_burst);
-        const float R = o.bursts ? hq_fireballs[0].sphere[3] : 0.f;
+        const float R = o.bursts ? hq_fireballs[0].sphere[3] : 0.f, zc = o.bursts ? hq_fireballs[0].sphere[2] : z_hit;
         draw_lane(g, 0.f, -1.f);
         const double sky = total(hull_render(pass, o));
         draw_lane(g, z_hit, 1.f);
         const double at_hit = total(hull_render(pass, o));
-        draw_lane(g, z_hit - R - 2.f, 1.f);
+        draw_lane(g, zc - R - 2.f, 1.f);
         const double in_front = total(hull_render(pass, o));
         draw_lane(g, z_hit + R + 50.f, 1.f);
         const double behind = total(hull_render(pass, o));
@@ -1447,8 +1489,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         std::printf("HULL case=burst_lane sky=%.3f at_hit=%.3f in_front=%.4f behind=%.3f hit_share=%.4f front_share=%.5f "
                     "behind_share=%.4f\n", sky, at_hit, in_front, behind, sky > 0 ? at_hit / sky : 0.0,
                     sky > 0 ? in_front / sky : 0.0, sky > 0 ? behind / sky : 0.0);
-        // at the hit: the front half's chord (its noise sampled at that half's middle: a half within the noise's spread)
-        report("hull_burst_half_hidden_by_lane", sky > 0 && at_hit / sky >= 0.35 && at_hit / sky <= 0.65 &&
+        // at the hit: the part inside the hull goes (the sphere biased bias r to the eye and the column^column_pow edge
+        // keep most of the visible part's density: hull-burst-look.md 2.1, 2.3)
+        report("hull_burst_half_hidden_by_lane", sky > 0 && at_hit / sky >= 0.35 && at_hit / sky <= 0.97 &&
                                                      in_front <= 1e-3 * sky && behind >= 0.99 * sky, "");
     }
     // 22. Randomised sparks: two hits of the same calibre at the same point (different sequences) differ in count and in
@@ -1575,8 +1618,8 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const ws::HullView hv = hull_view(g, 0, 16);
         const float c[3] = {0.f, 0.f, 300.f}, rect[4] = {-1.f, -1.f, 1.f, 1.f};
         const float look[4] = {0.7f, law::puff_e(), 0.3f, 3.f};
-        const float no_tint[4] = {0.f, 0.f, 0.f, 0.f};
-        ws::fireball_quad(hv, c, 25.f, rect, true, look, no_tint, fb);
+        const float no_tint[4] = {0.f, 0.f, 0.f, 0.f}, disc[4] = {0.7f, 11.f, 0.45f, 3.f};
+        ws::fireball_quad(hv, c, 25.f, rect, true, look, no_tint, disc, fb);
         float peak = 0.f;
         double residual = 1;
         const double ratio = made ? resolve_streak(pass, motion, motion_s, 0.f, 8, &peak, &residual, fb) : -1.0;
@@ -1753,6 +1796,62 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 report(v64 ? "hull_cpu_ring_1024_visible_64" : "hull_cpu_ring_1024_visible_256",
                        best <= (v64 ? ring_1024_cpu_64_us : ring_1024_cpu_256_us), "");
                 if (!v64) report("hull_ring_1024_visible_256_shed_within_budget", shed > 0 && o.n.screens <= budget + 1e-3f, "");
+                // the cluster count's share (review 2026-11-07: O(n) per owner): the same frame without it, and with the
+                // pairwise count on every owner (the grid never taken), best of 200 each (report only)
+                for (unsigned variant = 0; variant < 2; ++variant) {
+                    ws::HullTuning vt;
+                    if (variant == 0)
+                        vt.cluster = false;
+                    else
+                        vt.cluster_grid_min = 0xffffffffu;
+                    double vbest = 1e30;
+                    for (unsigned rep = 0; rep < 200; ++rep) {
+                        timed_ring = full_ring;
+                        timed_state = full_state;
+                        static wc::VisibleOwners vis;
+                        vis.reset(0.f);
+                        QueryPerformanceCounter(&a);
+                        hull_build(hull_view(g, now + 16, 16), vt, &timed_state, &timed_ring, rd, &vis);
+                        wc::ring_stamp_hidden(timed_ring, vis);
+                        QueryPerformanceCounter(&b);
+                        vbest = std::min(vbest, ticks_us(a, b, freq));
+                    }
+                    std::printf("HULL_CPU case=%s_%s best_us=%.2f\n", v64 ? "ring_1024_visible_64" : "ring_1024_visible_256",
+                                variant ? "pairwise" : "no_cluster", vbest);
+                }
+            }
+            { // the cluster count's worst case (review 2026-11-07): the whole ring on the one visible capital, by the grid
+              // and pairwise, best of 50 each (report only)
+                wc::ring_clear(full_ring);
+                ws::hull_clear(full_state);
+                make(0, 0.f, 4000.f);
+                for (unsigned i = 0; i < wc::ring_capacity; ++i) hit(0, i);
+                const std::uint32_t now = 1000 + 4 * wc::ring_capacity;
+                {
+                    static wc::VisibleOwners first;
+                    first.reset(0.f);
+                    hull_build(hull_view(g, now, 16), ws::HullTuning{}, &full_state, &full_ring, rd, &first);
+                    wc::ring_stamp_hidden(full_ring, first);
+                }
+                for (unsigned variant = 0; variant < 3; ++variant) {
+                    ws::HullTuning vt;
+                    if (variant == 1) vt.cluster_grid_min = 0xffffffffu;
+                    if (variant == 2) vt.cluster = false;
+                    double vbest = 1e30;
+                    HullOut vo;
+                    for (unsigned rep = 0; rep < 50; ++rep) {
+                        timed_ring = full_ring;
+                        timed_state = full_state;
+                        static wc::VisibleOwners vis;
+                        vis.reset(0.f);
+                        QueryPerformanceCounter(&a);
+                        vo = hull_build(hull_view(g, now + 16, 16), vt, &timed_state, &timed_ring, rd, &vis);
+                        QueryPerformanceCounter(&b);
+                        vbest = std::min(vbest, ticks_us(a, b, freq));
+                    }
+                    std::printf("HULL_CPU case=ring_1024_one_owner_%s hits=%u bursts=%u best_us=%.2f\n",
+                                variant == 0 ? "grid" : variant == 1 ? "pairwise" : "no_cluster", vo.n.hits, vo.bursts, vbest);
+                }
             }
             // Visible first (2026-11-07): 40 owners, 20 on screen (one hit each at t0 1000) and 20 behind the camera with
             // newer hits (t0 1040). The first frame (nothing stamped yet: every owner counts as visible) keeps the 32
@@ -2060,11 +2159,15 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         ws::HullTuning only_burst = only_flash;
         only_burst.flash = false;
         only_burst.burst = true;
-        for (unsigned c = 0; c < 6; ++c) {
+        for (unsigned c = 0; c < 11; ++c) {
             // 0: 20 hits on a fighter 60 m away (its hull a fifth of the frame: the stress row); 1: the same 200 m away
             // (the 3.1 budget's case); 2: 64 hits on a capital at close range; 3: one glow alone whose sphere holds the
             // eye (the whole screen once: the glow's full-screen cost, its budget weight against the decal's 177.5 us);
-            // 4, 5: one burst alone holding the eye at two octaves and at one (the LOD): the fireball's weights.
+            // 4, 5: one burst alone holding the eye at three octaves and at two (the budget's step 1): the fireball's
+            // weights; 6: the same impostor as smoke (the multiply pass, over the lane): the smoke's. 7, 8, 9: 4, 5, 6 with
+            // every pixel taking the noise (review 2026-11-07: the weights' worst case, no pixel outside the lobes): the
+            // sphere moved about the eye (centre at view z 300, R 1e5: the chord's middle near the centre on every ray).
+            // 10: 3 as a burst class's lobed ember (its lobes' seed set): the lobed glow's full-screen cost.
             const unsigned hits = c == 2 ? 64 : c >= 3 ? 1 : 20;
             const float owner_z = c == 0 ? 400.f : c == 1 ? 1100.f : c == 2 ? 2600.f : 120.f;
             hull_owner(owner_z, c == 2 ? 2000.f : 100.f);
@@ -2075,15 +2178,36 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 add_hull_hit(1000 + 4 * i, pos, damage_of(c == 2 ? 0.8 : c >= 3 ? 1.0 : 0.33),
                              c >= 2 ? wc::patch_capital : wc::patch_fighter);
             }
-            const ws::HullTuning& tune = c == 3 ? only_glow : c >= 4 ? only_burst : ws::HullTuning{};
+            const ws::HullTuning& tune = c == 3 || c == 10 ? only_glow : c >= 4 ? only_burst : ws::HullTuning{};
             ws::HullView v = hull_view(tt, 1000, 16);
             hull_build(v, tune);
             v.now = 1000 + 4 * hits + 16;
             const HullOut o = hull_build(v, tune);
-            const float lane_z = c == 2 ? 600.f : c == 3 ? 20.f : c >= 4 ? 600.f : owner_z - 100.f;
+            const float lane_z = c == 2 ? 600.f : c == 3 || c == 10 ? 20.f : c >= 4 ? 600.f : owner_z - 100.f;
             draw_lane(tt, lane_z, 1.f);
             rr::WeaponEffectsFrame f = hull_frame(tt, o);
-            if (c == 5) f.fireball_octaves = 1;
+            if (c >= 7)
+                for (unsigned q = 0; q < 4 * o.bursts; ++q) {
+                    hq_fireballs[q].sphere[0] = hq_fireballs[q].sphere[1] = 0.f;
+                    hq_fireballs[q].sphere[2] = 300.f;
+                    hq_fireballs[q].sphere[3] = 1e5f;
+                }
+            if (c == 10)
+                for (unsigned q = 0; q < 4 * o.boxes; ++q) {
+                    hq_glows[q].lobe[0] = 0.5f;
+                    hq_glows[q].lobe[1] = 17.f;
+                }
+            if (c == 5 || c == 8) f.fireball_octaves = 2;
+            if (c == 6 || c == 9) { // the bursts as smoke boxes (tint < 0: the darkening colour)
+                for (unsigned q = 0; q < 4 * o.bursts; ++q) {
+                    hq_smokes[q] = hq_fireballs[q];
+                    for (unsigned k = 0; k < 3; ++k) hq_smokes[q].tint[k] = 0.3f * hl::scorch_colour[k];
+                    hq_smokes[q].tint[3] = -1.f;
+                }
+                f.smokes = hq_smokes;
+                f.smoke_boxes = o.bursts;
+                f.fireball_boxes = 0;
+            }
             double best = 1e30;
             // 120 untimed runs first: the CPU-only cases before these rows leave the GPU idle, and best-of-60 of a short
             // fenced draw did not always bring its clock back (the glow-alone row read 71 or 109 us run to run).
@@ -2123,17 +2247,29 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                : c == 2 ? "capital_close_64_hits"
                                : c == 3 ? "glow_alone_fills_frame"
                                : c == 4 ? "burst_alone_fills_frame"
-                                        : "burst_alone_fills_frame_lod";
+                               : c == 5 ? "burst_alone_fills_frame_coarse"
+                               : c == 6 ? "smoke_alone_fills_frame"
+                               : c == 7 ? "burst_alone_every_pixel_noise"
+                               : c == 8 ? "burst_alone_every_pixel_noise_coarse"
+                               : c == 9 ? "smoke_alone_every_pixel_noise"
+                                        : "ember_lobed_alone_fills_frame";
             std::printf("HULL_TIMING width=%u height=%u case=%s hits=%u sparks=%u flashes=%u boxes=%u bursts=%u rings=%u "
                         "octaves=%u burst_screens=%.3f lit_share=%.4f raster_share=%.4f gpu_us=%.1f\n",
                         size.first, size.second, name, hits, o.n.sparks, o.n.flashes, o.boxes, o.bursts, o.rings,
                         f.fireball_octaves, double(o.n.burst_screens),
                         l.empty() ? 0.0 : double(lit_count(l)) / double(l.size()),
                         double(rasterized) / (double(size.first) * double(size.second)), best);
-            // 50 us before the burst (45.6 measured, 2026-11-06); the twenty bursts' impostors add their rectangles
-            if (c == 1 && size.first == 5120) report("hull_budget_20_hits_5120", best <= 70.0, "");
+            // 50 us before the burst (45.6 measured, 2026-11-06); the twenty bursts' impostors add their rectangles, and
+            // since the burst look (2026-11-07: R_b doubled, the glow 1.6 R(t)) 72.0 measured, the bound 80
+            if (c == 1 && size.first == 5120) report("hull_budget_20_hits_5120", best <= 80.0, "");
+            // the dense frame (one owner's 64 bursts over about 12 raster screens) within the budget's 8 x 177.5 us
+            if (c == 2 && size.first == 5120) report("hull_budget_capital_close_64_within_budget", best <= 1420.0, "");
             if (c >= 4 && size.first == 5120)
                 std::printf("HULL_TIMING case=%s weight=%.3f (gpu_us / 177.5)\n", name, best / 177.5);
+            // the lobed ember's charge (budget_weight_glow_lobed): its full-screen cost within 0.1 of it
+            if (c == 10 && size.first == 5120)
+                report("hull_ember_lobed_within_glow_weight",
+                       std::fabs(best / 177.5 - double(wc::look::budget_weight_glow_lobed)) <= 0.1, "");
         }
         tt.release();
     }

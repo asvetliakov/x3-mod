@@ -71,28 +71,38 @@ struct WeaponSpriteVertex {
 // The glow primitive (look 2.8): E = colour x saturate(1 - d^2 / R^2)^2 on the lane's surface point at distance d from
 // the light, no normal, the sky dark; one quad per element, the light sphere's exact screen rectangle (four corners in
 // view space at the sphere's front, the whole screen when it reaches the near plane; stage::sphere_rect), the light's
-// centre and R, and its radiance colour carried by every corner. Drawn through the sprite batch's quad index list.
+// centre and R, its radiance colour and its lobes carried by every corner (an ember's lobed silhouette: R x rho(phi), the
+// burst's lobe noise at its rotation and seed; a negative seed: round). Drawn through the sprite batch's quad index list.
 constexpr unsigned weapon_glow_boxes = 512; // a glow and an ember per live hull hit (the ring's 256)
 static_assert(weapon_glow_boxes <= weapon_sprite_quads, "the glows share the sprite quads' index list");
 struct WeaponGlowVertex {
     float corner[3];
     float light[4];   // the light's view-space centre, R
     float colour[3];  // linear radiance
+    float lobe[2];    // the lobes' rotation (radians) and seed (< 0: round)
 };
 // The fireball impostor (look 2.14; the hull hit's hot-gas burst, step 3's explosions at full size): one quad per
 // fireball, the sphere's exact screen rectangle as the glow's (the corners in view space at the sphere's front, the whole
 // screen when it reaches the near plane), each corner carrying the sphere (view-space centre, radius) and its look: the
-// heat T of the body at this age, its radiance E, the noise's outward advection (cells) and its seed. The pixel program
-// (weapon_fireball_ps.hlsl) intersects the pixel's ray with the sphere, integrates the radial density along the chord
-// up to the lane (the part inside a hull is not drawn), modulates it by WeaponEffectsFrame::fireball_octaves octaves of
-// advected value noise and shades it on the heat ramp. Drawn through the sprite batch's quad index list.
+// heat T of the body at this age, its radiance E, its age fraction x (the erosion's) and the noise's seed; its tint and
+// share (share < 0: smoke, the tint its darkening colour); its disc: rotation (radians), the lobes' seed, the noise's
+// outward advection (cells) and its third octave's weight (0 .. 1 by its projected size). The pixel program
+// (weapon_fireball_ps.hlsl, docs/architecture/hull-burst-look.md section 2) intersects the pixel's ray with the sphere,
+// integrates the radial density along the chord up to the lane (the part inside a hull is not drawn), erodes it by two
+// octaves of advected 2-D value noise and the third at min(its weight, WeaponEffectsFrame::fireball_octaves 3 ? 1 : 0)
+// inside its lobed silhouette and shades it on
+// the heat ramp. The smokes (section 5) draw the same program under the scorches' multiply blend, over the lane's
+// surface only. Drawn through the sprite batch's quad index list.
 constexpr unsigned weapon_fireball_boxes = 256; // a burst per live hull hit (the ring's 256)
-static_assert(weapon_fireball_boxes <= weapon_sprite_quads, "the fireballs share the sprite quads' index list");
+constexpr unsigned weapon_smoke_boxes = 256;    // a smoke per live hull hit
+static_assert(weapon_fireball_boxes <= weapon_sprite_quads && weapon_smoke_boxes <= weapon_sprite_quads,
+              "the fireballs and smokes share the sprite quads' index list");
 struct WeaponFireballVertex {
     float corner[3];
     float sphere[4];  // view-space centre, radius
-    float look[4];    // heat T, radiance E, advection (noise cells), seed
-    float tint[4];    // a weapon tint (linear) and its share of the colour (0: the heat ramp alone; the plasma globe)
+    float look[4];    // heat T, radiance E, age fraction x, seed
+    float tint[4];    // a weapon tint (linear) and its share of the colour (0: the heat ramp alone; < 0: smoke)
+    float disc[4];    // rotation (radians), lobe seed, advection (noise cells), octaves (2 or 3)
 };
 // The hull classes' shaped glows (docs/architecture/hull-impact-classes.md 3.5, 3.6): the glow primitive's box (the
 // light sphere's screen rectangle, its centre and R) with a profile: the surface ring (weapon_ring_ps.hlsl: the sphere
@@ -228,7 +238,9 @@ struct WeaponEffectsFrame {
     // The hull hit's bursts (fireball impostors) and heavy rings (sprite quads), four vertices each.
     const WeaponFireballVertex* fireballs = nullptr;
     unsigned fireball_boxes = 0;
-    unsigned fireball_octaves = 2;       // 1 or 2 (the budget's LOD: core::look::fireball_octaves, 1 past the budget)
+    unsigned fireball_octaves = 3;       // 2 or 3: at most this many octaves (core::look::fireball_octaves, 2 past the budget)
+    const WeaponFireballVertex* smokes = nullptr; // the bursts' smoke (fireball impostors under the scorch blend)
+    unsigned smoke_boxes = 0;
     const WeaponShapeVertex* rings = nullptr; // the surface rings
     unsigned ring_quads = 0;
     const WeaponLightningVertex* filaments = nullptr; // the ion class's lightning segments
@@ -238,12 +250,12 @@ struct WeaponEffectsFrame {
     WeaponLook look = default_weapon_look();
 };
 enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Glows, Sprites, Fireballs,
-                                          Rings, Filaments, Scorches };
+                                          Rings, Filaments, Scorches, Smokes };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
     unsigned calls = 0, patches = 0, decals = 0, sprite_quads = 0, glow_boxes = 0, fireball_boxes = 0, ring_quads = 0;
-    unsigned filament_boxes = 0, scorch_boxes = 0;
+    unsigned filament_boxes = 0, scorch_boxes = 0, smoke_boxes = 0;
     bool drew = false;
 };
 class WeaponEffectsPass {

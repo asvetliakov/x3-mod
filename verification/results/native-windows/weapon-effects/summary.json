@@ -48,28 +48,31 @@
     "src/renderer/weapon_lightning_vertex_program_inc.h"
   ],
   "source": {
-    "commit": "d41a60f017149cfeb0529857d0203832323757f2-dirty",
+    "commit": "98f0950455b360ba28d2d0bc33f314e0ee707eec-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/effects/weapon_filament_ps.hlsl",
+      "src/effects/weapon_fireball_ps.hlsl",
+      "src/effects/weapon_fireball_vs.hlsl",
+      "src/effects/weapon_glow_ps.hlsl",
+      "src/effects/weapon_glow_vs.hlsl",
       "src/effects/weapon_sprite_ps.hlsl",
       "src/effects/weapon_sprite_vs.hlsl",
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_hull.h",
       "src/renderer/weapon_effects_pass.cpp",
       "src/renderer/weapon_effects_pass.h",
-      "src/renderer/weapon_filament_pixel_program_inc.h",
+      "src/renderer/weapon_fireball_pixel_program_inc.h",
+      "src/renderer/weapon_fireball_vertex_program_inc.h",
+      "src/renderer/weapon_glow_pixel_program_inc.h",
+      "src/renderer/weapon_glow_vertex_program_inc.h",
       "src/renderer/weapon_sprite_pixel_program_inc.h",
-      "src/renderer/weapon_sprite_vertex_program_inc.h",
       "verification/probe/weapon_effects_class_cases.h",
-      "verification/probe/weapon_effects_hull_cases.h",
-      "src/effects/weapon_lightning_vs.hlsl",
-      "src/renderer/weapon_lightning_vertex_program_inc.h"
+      "verification/probe/weapon_effects_hull_cases.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "7eb27acc46eddce39c6ee3b1c1244f99432167ce8da85ddc406d94e4a99cabac",
-      "src/renderer/weapon_effects_pass.cpp": "8b1083e8c4ddcce29e86989725d6f3d3371ad42ec763be8994b70f4af7c79f6e",
-      "src/proxy/weapon_effects_core.h": "2bb404998bd42ebc1c5022b5a465ef2896b2aebe861bf9f8b0424d5690d3a5df",
+      "src/renderer/weapon_effects_pass.h": "2a457b26aadd1558b57c982a4243e60b3753f0f314247ee3111b5485af547d17",
+      "src/renderer/weapon_effects_pass.cpp": "ff8c07f70e258c22eadfa85b7ab0ed9a51d98870d5b63813867888e96bb2c41b",
+      "src/proxy/weapon_effects_core.h": "e79798568bb8ac3b1a24b835bcd9baa22974c312ee0c5c3459d3af49869af8b5",
       "src/proxy/weapon_effects_stage.h": "63acb1362ebeb3cbc3f6735d94121b3bd402a3692e912f03c8230880174c54a9",
       "src/proxy/weapon_effects_bubble.h": "1c04711082437ba86b78ac9453b1c609c7d388ee1694394b430b02477facc741",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
@@ -88,21 +91,21 @@
       "src/renderer/weapon_shell_pixel_program_inc.h": "40ba2b0582943626c7b3e559d1228d59b003fbea8c13f4e7478763a1fe6223a2",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
-      "src/proxy/weapon_effects_hull.h": "6ff3539958feb9d584a7f12fd5d6b12ebe31c121650916237093d3991669bdb1",
-      "src/effects/weapon_sprite_vs.hlsl": "bb998e01651a5f45d741fb41c011c39fbad4ba8c7c6d7b32f5c03e831099a2a0",
-      "src/effects/weapon_sprite_ps.hlsl": "bc6e1aa378c187b99c5d40bed996da9fea41771837f681d5c677fc798bdbca40",
-      "src/effects/weapon_glow_vs.hlsl": "33fd595188c09c020b325d4ef906e03cd6c565e1db145745eb81b4c754a1ae3c",
-      "src/effects/weapon_glow_ps.hlsl": "677be39d20faf35ff47e5295d7300de0018cb2e07cecca276740b8fe85c20eaa",
+      "src/proxy/weapon_effects_hull.h": "d59baea1d0e0411e0dfd361755b6975a2d2a56d00e61c97ce54a9f7b1f637f31",
+      "src/effects/weapon_sprite_vs.hlsl": "003f0470b539575b5d104cd7f1a1815c60ba2b7ac87369fd4913a87e42cd4cf5",
+      "src/effects/weapon_sprite_ps.hlsl": "f065f3d45db5c8bd6c5bcfca5642dbdd52b22ca7dce598c7a6d0ca0047302e75",
+      "src/effects/weapon_glow_vs.hlsl": "728460e261f144d92e5be2c203488805710029d7c244298bb71ba7317da64891",
+      "src/effects/weapon_glow_ps.hlsl": "ae3f537aa859e29eecb896aced286481cb59d43ce9121b8748e234f036c3dc4c",
       "src/renderer/weapon_sprite_vertex_program_inc.h": "0fbb917f233ac5b46999f5ba3bc265b513da53b3e098f1a51beb0f9e98db7bdb",
-      "src/renderer/weapon_sprite_pixel_program_inc.h": "fa24c1316b3fd9dafd3680c222afbb7e2fd80fba85ae1de91d4df07e3e88d842",
-      "src/renderer/weapon_glow_vertex_program_inc.h": "520bd2569e40436b8f6848596e28efcf0e0f6558595c424891cac237c74d7270",
-      "src/renderer/weapon_glow_pixel_program_inc.h": "d075e57e20989b6c67c2907d0d6207350fce85b912db454814ebfc9497155c7d",
-      "src/effects/weapon_fireball_vs.hlsl": "8b6a73e69011786d35dccc1fb5b578eaa85a35d0e81d26dc305a1c7279e96ca5",
-      "src/effects/weapon_fireball_ps.hlsl": "5654fa3f7a744cba763fff5aafd638e76a572fb878d267bccb700787d37be2fe",
-      "src/renderer/weapon_fireball_vertex_program_inc.h": "a812194efe038a09e9368497ea3bbeddef47fa84d156a076da7fe89e5e9aeacd",
-      "src/renderer/weapon_fireball_pixel_program_inc.h": "09c1dcffafeb4630a499ec9cf7cbf2d7f0a2fe39dc4712aadd819beef0588244",
-      "verification/probe/weapon_effects_hull_cases.h": "4fa846f93f9c764eee0dacf41a9051353cf1b008ba61fa6b2b104e56ed9a3857",
-      "verification/probe/weapon_effects_class_cases.h": "3eb9448e50279ea641dd3817d9676923dd7c25e06369746c5f91c78b609998b6",
+      "src/renderer/weapon_sprite_pixel_program_inc.h": "fdeff0adc54c378009824f300f9204a14e68e988456c89fefce37c6fca337065",
+      "src/renderer/weapon_glow_vertex_program_inc.h": "caadd9c87ed9b3a357295578a955ce0c06eb648eb8306bac0428f882fa623138",
+      "src/renderer/weapon_glow_pixel_program_inc.h": "16ca19c18d7413ab6887e2cec32ecd677f12038e01eff2d4f4f34d79cf218d51",
+      "src/effects/weapon_fireball_vs.hlsl": "779a6981f16b0a4f19ddac4469570eca23a686cfa69110df4e53b498622dafeb",
+      "src/effects/weapon_fireball_ps.hlsl": "3a2c50c2f272d0c4fb7bc49363becdf17ae862ec80d70e14620092edb92dde4e",
+      "src/renderer/weapon_fireball_vertex_program_inc.h": "bdccfa964b0fb03ba53a30c094ed9a8107b977d797b23e15e11f179c02872b8a",
+      "src/renderer/weapon_fireball_pixel_program_inc.h": "e03b318b43fd2c087908504ff540f6031cbf0a7f489537f26ea3a8a4c0f8656d",
+      "verification/probe/weapon_effects_hull_cases.h": "472aab21fc5f0c2dada6dff625d42d8f373910b56b0b970aca7651bded7b30c9",
+      "verification/probe/weapon_effects_class_cases.h": "89737f127040cd75d88b74531fd6a8bff79e96d995362992d1ee7af62285055e",
       "src/proxy/engine_shimmer_core.h": "74542b3585baf767cb92a8ee44ceb9f36a9e49de7ee59a95160cb9bed468bd01",
       "src/effects/weapon_shape_vs.hlsl": "ff72dafa8feff66007281d1664e243cf2684255575717c8ca89176a9acd2d824",
       "src/effects/weapon_ring_ps.hlsl": "c5eb23583d61533809a728b1f87e45696537a0c16273e1374dbe36af62c42b22",
@@ -153,32 +156,32 @@
     },
     "weapon_sprite_ps": {
       "source": "src/effects/weapon_sprite_ps.hlsl",
-      "word_count": 496,
-      "bytecode_sha256": "d87329d348ef09b10f5f94283238a1db850e6ce6d9214df56af2fddde72448d1",
+      "word_count": 684,
+      "bytecode_sha256": "cac216fd785b29d1df2d3b282a77e8dda52df37ff7b386a4a8746740ee75c2fb",
       "target": "ps_3_0"
     },
     "weapon_glow_vs": {
       "source": "src/effects/weapon_glow_vs.hlsl",
-      "word_count": 90,
-      "bytecode_sha256": "6d7df5f10671b851fb912d0b7a553182e1b035ec6008fbdec976864b04d6431c",
+      "word_count": 125,
+      "bytecode_sha256": "248d9300b0bc2590e1017a52516f297ce0f70ba582f66af02f211836a8daa959",
       "target": "vs_3_0"
     },
     "weapon_glow_ps": {
       "source": "src/effects/weapon_glow_ps.hlsl",
-      "word_count": 270,
-      "bytecode_sha256": "b51780192fa6731f4bbd8b7138abea5bbe62ab8fa3cf96df4b52788659768a80",
+      "word_count": 566,
+      "bytecode_sha256": "deef2bb335369aa553166e6c72dbda5b27fb8e01bdd5b34d10aa49773b6c3225",
       "target": "ps_3_0"
     },
     "weapon_fireball_vs": {
       "source": "src/effects/weapon_fireball_vs.hlsl",
-      "word_count": 92,
-      "bytecode_sha256": "1729e9642689d97010c214dcb1c70c5fe3405a786bdd9d22120e87ec78d52a8f",
+      "word_count": 132,
+      "bytecode_sha256": "52e102b752247ace0b1c2df116d3ccce6e3d0a418f21e9f646dc058b399d9762",
       "target": "vs_3_0"
     },
     "weapon_fireball_ps": {
       "source": "src/effects/weapon_fireball_ps.hlsl",
-      "word_count": 1316,
-      "bytecode_sha256": "edcec3c52fe36324e1da5bcc5a43fd00c5afbc76ab0a5f384d967778f9144b2c",
+      "word_count": 1540,
+      "bytecode_sha256": "b3b89e6c187f0e88b07ae947827ff964189072463c3a76cf2abf63352add212f",
       "target": "ps_3_0"
     },
     "weapon_shape_vs": {
@@ -232,12 +235,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -264,13 +267,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-ad75e013e507e0c93/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a33e22230dc8b4c0f/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "6a0ea8c73d404f29a4e301ffd85c078fd0d5bddf5638992853c924b8b90c7119"
+    "executable_sha256": "13020beadc8608005ea1f8cbc4d688c389c4f66ff5e721672f3585bc9d8fac20"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -303,7 +306,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 188,
+      "checks": 206,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -527,7 +530,7 @@
       true
     ],
     [
-      "hull_light_peak_decay_150ms",
+      "hull_light_peak_decay_burst_law",
       true
     ],
     [
@@ -787,6 +790,14 @@
       true
     ],
     [
+      "hull_budget_capital_close_64_within_budget",
+      true
+    ],
+    [
+      "hull_ember_lobed_within_glow_weight",
+      true
+    ],
+    [
       "hull_class_programs_attached",
       true
     ],
@@ -1004,6 +1015,70 @@
     ],
     [
       "hull_ion_shed_whole_channels_oldest",
+      true
+    ],
+    [
+      "hull_burst_contrast",
+      true
+    ],
+    [
+      "hull_burst_silhouette_lobed",
+      true
+    ],
+    [
+      "hull_burst_erodes_outside_in",
+      true
+    ],
+    [
+      "hull_burst_colour_core_rim",
+      true
+    ],
+    [
+      "hull_glow_follows_burst",
+      true
+    ],
+    [
+      "hull_20_hits_no_white_sun",
+      true
+    ],
+    [
+      "hull_flash_star_3_frames",
+      true
+    ],
+    [
+      "hull_smoke_darkens_hull_only",
+      true
+    ],
+    [
+      "hull_burst_small_has_structure",
+      true
+    ],
+    [
+      "hull_asteroid_dust_readable",
+      true
+    ],
+    [
+      "hull_repair_cool_spot",
+      true
+    ],
+    [
+      "hull_burst_octave_blend_no_jump",
+      true
+    ],
+    [
+      "hull_budget_octave_hysteresis",
+      true
+    ],
+    [
+      "hull_cluster_neighbour_fades",
+      true
+    ],
+    [
+      "hull_ring_class_no_dark_annulus",
+      true
+    ],
+    [
+      "hull_ember_lobed_remnant",
       true
     ],
     [
@@ -1565,16 +1640,16 @@
         "ok": 1,
         "reads": 894,
         "walk_best_us": 8.7,
-        "walk_mean_us": 9.2,
+        "walk_mean_us": 8.9,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.3,
-        "engine_memory_cold_mean_us": 12.7,
-        "engine_memory_warm_best_us": 11.6,
-        "engine_memory_warm_mean_us": 11.9,
-        "warm_best_us": 39.6,
-        "warm_mean_us": 42.9,
-        "cold_best_us": 48.7,
-        "cold_mean_us": 49.0,
+        "engine_memory_cold_best_us": 12.4,
+        "engine_memory_cold_mean_us": 12.6,
+        "engine_memory_warm_best_us": 11.9,
+        "engine_memory_warm_mean_us": 12.1,
+        "warm_best_us": 39.7,
+        "warm_mean_us": 44.0,
+        "cold_best_us": 48.8,
+        "cold_mean_us": 49.6,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1666,7 +1741,7 @@
       {
         "case": "ascending",
         "heap_us": 0.7,
-        "insertion_us": 0.0
+        "insertion_us": 0.1
       },
       {
         "case": "descending",
@@ -1908,8 +1983,8 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 29.3,
-        "mean_us": 29.9,
+        "best_us": 29.0,
+        "mean_us": 30.2,
         "target_us": 200
       },
       {
@@ -1921,8 +1996,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 89.1,
-        "mean_us": 90.1,
+        "best_us": 88.6,
+        "mean_us": 90.2,
         "target_us": 200
       },
       {
@@ -1934,7 +2009,7 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 14.6,
+        "best_us": 14.2,
         "mean_us": 14.8,
         "target_us": 200
       }
@@ -1972,10 +2047,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.51,
-        "last_drawn_ms": 473.5,
-        "frames": 21525,
-        "max_frame_ms": 1.108
+        "seta6_wall_ms": 473.52,
+        "last_drawn_ms": 473.48,
+        "frames": 19674,
+        "max_frame_ms": 0.392
       }
     ],
     "retired": [
@@ -2037,7 +2112,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.5
+        "gpu_us": 10.9
       },
       {
         "width": 1920,
@@ -2047,7 +2122,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.2
+        "gpu_us": 15.9
       },
       {
         "width": 1920,
@@ -2057,7 +2132,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.2
+        "gpu_us": 17.0
       },
       {
         "width": 1920,
@@ -2067,7 +2142,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 60.6
+        "gpu_us": 60.8
       },
       {
         "width": 1920,
@@ -2077,7 +2152,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 74.7
+        "gpu_us": 74.6
       },
       {
         "width": 1920,
@@ -2087,7 +2162,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 98.2
+        "gpu_us": 98.4
       },
       {
         "width": 1920,
@@ -2097,7 +2172,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 18.2
+        "gpu_us": 18.3
       },
       {
         "width": 1920,
@@ -2107,7 +2182,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 57.5
+        "gpu_us": 57.3
       },
       {
         "width": 1920,
@@ -2117,7 +2192,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 62.1
+        "gpu_us": 62.4
       },
       {
         "width": 1920,
@@ -2127,7 +2202,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 92.3
+        "gpu_us": 93.2
       },
       {
         "width": 1920,
@@ -2137,7 +2212,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.3
+        "gpu_us": 16.2
       },
       {
         "width": 1920,
@@ -2147,7 +2222,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 59.4
+        "gpu_us": 58.9
       },
       {
         "width": 1920,
@@ -2157,7 +2232,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 95.6
+        "gpu_us": 95.3
       },
       {
         "width": 1920,
@@ -2177,7 +2252,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 71.2
+        "gpu_us": 71.8
       },
       {
         "width": 5120,
@@ -2187,7 +2262,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.7
+        "gpu_us": 11.0
       },
       {
         "width": 5120,
@@ -2217,7 +2292,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 176.0
+        "gpu_us": 175.4
       },
       {
         "width": 5120,
@@ -2227,7 +2302,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 229.1
+        "gpu_us": 228.4
       },
       {
         "width": 5120,
@@ -2237,7 +2312,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 365.5
+        "gpu_us": 363.0
       },
       {
         "width": 5120,
@@ -2247,7 +2322,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 33.3
+        "gpu_us": 33.2
       },
       {
         "width": 5120,
@@ -2257,7 +2332,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 158.1
+        "gpu_us": 158.4
       },
       {
         "width": 5120,
@@ -2267,7 +2342,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 178.1
+        "gpu_us": 177.7
       },
       {
         "width": 5120,
@@ -2277,7 +2352,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 288.9
+        "gpu_us": 288.1
       },
       {
         "width": 5120,
@@ -2287,7 +2362,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.2
+        "gpu_us": 21.0
       },
       {
         "width": 5120,
@@ -2297,7 +2372,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 175.7
+        "gpu_us": 174.2
       },
       {
         "width": 5120,
@@ -2307,7 +2382,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 338.2
+        "gpu_us": 337.2
       },
       {
         "width": 5120,
@@ -2317,7 +2392,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.6
+        "gpu_us": 51.4
       },
       {
         "width": 5120,
@@ -2327,7 +2402,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 256.7
+        "gpu_us": 256.0
       }
     ],
     "hull": [
@@ -2338,8 +2413,8 @@
         "spark_centroid_err_u": 0.0173,
         "quad_centroid_err_u": 0.0056,
         "flashes": 1,
-        "flash_lit": 22773,
-        "flash_centroid_err_rhit": 0.0
+        "flash_lit": 64,
+        "flash_centroid_err_rhit": 0.0029
       },
       {
         "case": "half_hidden",
@@ -2360,19 +2435,19 @@
         "case": "glow_surface",
         "boxes": 1,
         "lit_sky": 0,
-        "lit_lane": 104862,
+        "lit_lane": 87360,
         "on_lane_share": 1.0,
-        "full_lit": 210241,
+        "full_lit": 175193,
         "centroid_err_R": 0.0,
-        "R_view": 50.805
+        "R_view": 46.519
       },
       {
         "case": "glow_decay",
-        "life_ms": 148.1,
-        "age0": 0.8496,
-        "expected0": 0.85,
-        "age_half": 0.4253,
-        "expected_half": 0.4254,
+        "life_ms": 476.5,
+        "age_tenth": 0.446,
+        "expected_tenth": 0.4462,
+        "age_half": 0.2477,
+        "expected_half": 0.2477,
         "age_end": 0.0
       },
       {
@@ -2393,9 +2468,9 @@
         "calibre": 0.0,
         "sparks": 3,
         "want": 3,
-        "flash_r": 10.5,
+        "flash_r": 13.183,
         "r_hit": 10.5,
-        "glow_R": 31.5,
+        "glow_R": 29.877,
         "ember_R": 8.4,
         "width": 1.2141,
         "reach_mean_u": 0.2451,
@@ -2410,9 +2485,9 @@
         "calibre": 0.5,
         "sparks": 7,
         "want": 7,
-        "flash_r": 20.25,
+        "flash_r": 24.879,
         "r_hit": 20.25,
-        "glow_R": 60.75,
+        "glow_R": 51.665,
         "ember_R": 16.2,
         "width": 1.0941,
         "reach_mean_u": 0.2907,
@@ -2427,9 +2502,9 @@
         "calibre": 1.0,
         "sparks": 9,
         "want": 9,
-        "flash_r": 30.0,
+        "flash_r": 36.576,
         "r_hit": 30.0,
-        "glow_R": 90.0,
+        "glow_R": 71.731,
         "ember_R": 24.0,
         "width": 1.3434,
         "reach_mean_u": 0.2577,
@@ -2444,9 +2519,9 @@
         "calibre": 0.0,
         "sparks": 4,
         "want": 4,
-        "flash_r": 21.0,
+        "flash_r": 26.17,
         "r_hit": 21.0,
-        "glow_R": 63.0,
+        "glow_R": 58.547,
         "ember_R": 16.8,
         "width": 2.3719,
         "reach_mean_u": 0.2279,
@@ -2461,9 +2536,9 @@
         "calibre": 0.5,
         "sparks": 8,
         "want": 8,
-        "flash_r": 40.5,
+        "flash_r": 49.563,
         "r_hit": 40.5,
-        "glow_R": 121.5,
+        "glow_R": 96.178,
         "ember_R": 32.4,
         "width": 2.3006,
         "reach_mean_u": 0.2834,
@@ -2478,9 +2553,9 @@
         "calibre": 1.0,
         "sparks": 8,
         "want": 8,
-        "flash_r": 60.0,
+        "flash_r": 72.957,
         "r_hit": 60.0,
-        "glow_R": 180.0,
+        "glow_R": 130.139,
         "ember_R": 48.0,
         "width": 2.3344,
         "reach_mean_u": 0.2522,
@@ -2495,9 +2570,9 @@
         "calibre": 0.0,
         "sparks": 5,
         "want": 5,
-        "flash_r": 56.0,
+        "flash_r": 69.46,
         "r_hit": 56.0,
-        "glow_R": 168.0,
+        "glow_R": 162.289,
         "ember_R": 44.8,
         "width": 6.215,
         "reach_mean_u": 0.2753,
@@ -2512,9 +2587,9 @@
         "calibre": 0.5,
         "sparks": 6,
         "want": 6,
-        "flash_r": 108.0,
+        "flash_r": 131.843,
         "r_hit": 108.0,
-        "glow_R": 324.0,
+        "glow_R": 274.548,
         "ember_R": 86.4,
         "width": 5.885,
         "reach_mean_u": 0.2318,
@@ -2529,9 +2604,9 @@
         "calibre": 1.0,
         "sparks": 7,
         "want": 7,
-        "flash_r": 160.0,
+        "flash_r": 194.227,
         "r_hit": 160.0,
-        "glow_R": 480.0,
+        "glow_R": 388.626,
         "ember_R": 128.0,
         "width": 6.145,
         "reach_mean_u": 0.2595,
@@ -2549,7 +2624,7 @@
         "min_width_px": 3.0,
         "min_length_px": 16.228,
         "min_length_over_len_x_px": 24.0,
-        "flash_core_px": 3.012
+        "flash_core_px": 3.02
       },
       {
         "case": "min_frames",
@@ -2599,8 +2674,8 @@
       {
         "case": "far_side",
         "far_sum": 0.0,
-        "near_flash_on_hull": 8969.7667,
-        "near_flash_on_sky": 8970.1208,
+        "near_flash_on_hull": 3029.5554,
+        "near_flash_on_sky": 3029.5554,
         "ratio": 1.0
       },
       {
@@ -2608,8 +2683,8 @@
         "age_ms": 200,
         "energy_sparks": 1,
         "energy_puffs": 1,
-        "energy_lit": 21341,
-        "energy_outside_lit": 21341,
+        "energy_lit": 106966,
+        "energy_outside_lit": 106740,
         "ballistic_sparks": 10,
         "ballistic_lit": 528,
         "ballistic_outside_lit": 528
@@ -2660,9 +2735,9 @@
       },
       {
         "case": "cockpit",
-        "chase": 71674.6744,
-        "own_cockpit": 25085.9614,
-        "other_cockpit": 71674.6744,
+        "chase": 4606.8587,
+        "own_cockpit": 1612.3533,
+        "other_cockpit": 4606.8587,
         "own_ratio": 0.35,
         "other_ratio": 1.0,
         "gain": 0.35
@@ -2670,13 +2745,13 @@
       {
         "case": "variants",
         "repair_sparks": 0,
-        "repair_flashes": 0,
+        "repair_flashes": 1,
         "repair_glows": 1,
         "repair_embers": 1,
-        "repair_glow_rgb": "0.029,1.000,0.029",
+        "repair_glow_rgb": "0.210,0.240,0.300",
         "tug_glows": 1,
         "tug_embers": 0,
-        "tug_R": 24.9,
+        "tug_R": 12.45,
         "missile_sparks": 37,
         "missile_want": 37,
         "missile_halo_g": 0.4,
@@ -2684,7 +2759,7 @@
         "asteroid_sparks": 27,
         "asteroid_want": 27,
         "asteroid_flashes": 0,
-        "asteroid_rgb": "0.639,0.165,0.043"
+        "asteroid_rgb": "0.549,0.522,0.478"
       },
       {
         "case": "velocity",
@@ -2714,11 +2789,11 @@
       {
         "case": "budget",
         "boxes": 24,
-        "screens": 19.084,
+        "screens": 29.552,
         "tight_boxes": 0,
         "tight_shed": 24,
-        "tight_screens": 0.49,
-        "tight_flash_screens": 0.49,
+        "tight_screens": 2.029,
+        "tight_flash_screens": 0.0,
         "sparks": 97,
         "tight_sparks": 97,
         "own_boxes": 24,
@@ -2727,11 +2802,11 @@
       {
         "case": "budget_bursts",
         "bursts": 12,
-        "burst_screens": 1.728,
-        "octaves": 2,
+        "burst_screens": 14.123,
+        "octaves": 3,
         "tight_bursts": 12,
-        "tight_bursts_shed": 12,
-        "tight_octaves": 1,
+        "tight_bursts_shed": 10,
+        "tight_octaves": 2,
         "own_bursts": 12,
         "own_bursts_shed": 0,
         "rings": 0,
@@ -2739,8 +2814,8 @@
       },
       {
         "case": "r32f_lane",
-        "four_channel": 37335.1416,
-        "r32f": 37335.1474,
+        "four_channel": 57241.617,
+        "r32f": 57241.5351,
         "ratio": 1.0
       },
       {
@@ -2779,61 +2854,61 @@
         "age_frac": 0.1,
         "age_ms": 37,
         "life_ms": 366.0,
-        "R_view": 8.3033,
-        "law_view": 8.3033,
+        "R_view": 16.6066,
+        "law_view": 16.6066,
         "r_hit": 16.934,
-        "R_px": 42.5,
-        "lit_extent_px": 43.2,
-        "extent_over_R": 1.0151,
+        "R_px": 85.0,
+        "lit_extent_px": 88.6,
+        "extent_over_R": 1.0422,
         "T": 0.8989,
-        "lit": 5609
+        "lit": 18799
       },
       {
         "case": "burst_radius",
         "age_frac": 0.3,
         "age_ms": 110,
         "life_ms": 366.0,
-        "R_view": 14.651,
-        "law_view": 14.651,
+        "R_view": 29.3019,
+        "law_view": 29.3019,
         "r_hit": 16.934,
-        "R_px": 75.0,
-        "lit_extent_px": 75.6,
-        "extent_over_R": 1.0083,
+        "R_px": 150.0,
+        "lit_extent_px": 156.9,
+        "extent_over_R": 1.0461,
         "T": 0.6994,
-        "lit": 17378
+        "lit": 52007
       },
       {
         "case": "burst_radius",
         "age_frac": 0.6,
         "age_ms": 220,
         "life_ms": 366.0,
-        "R_view": 16.6263,
-        "law_view": 16.6263,
+        "R_view": 33.2527,
+        "law_view": 33.2527,
         "r_hit": 16.934,
-        "R_px": 85.1,
-        "lit_extent_px": 85.4,
-        "extent_over_R": 1.0033,
+        "R_px": 170.3,
+        "lit_extent_px": 156.0,
+        "extent_over_R": 0.9162,
         "T": 0.3989,
-        "lit": 21648
+        "lit": 51259
       },
       {
         "case": "burst_colour",
         "birth_age_ms": 16,
-        "birth_r": 1.4033,
-        "birth_g_over_r": 0.881,
-        "birth_b_over_r": 0.702,
+        "birth_r": 1.499,
+        "birth_g_over_r": 0.885,
+        "birth_b_over_r": 0.713,
         "end_age_ms": 329,
-        "end_r": 0.02777,
+        "end_r": 0.33325,
         "end_g_over_r": 0.182,
         "end_b_over_r": 0.055
       },
       {
         "case": "burst_lane",
-        "sky": 4600.929,
-        "at_hit": 1998.927,
+        "sky": 49948.634,
+        "at_hit": 35307.947,
         "in_front": 0.0,
-        "behind": 4600.929,
-        "hit_share": 0.4345,
+        "behind": 49948.634,
+        "hit_share": 0.7069,
         "front_share": 0.0,
         "behind_share": 1.0
       },
@@ -2858,7 +2933,7 @@
         "case": "resolve_burst",
         "frames": 16,
         "core": 1.0,
-        "peak": 1.05,
+        "peak": 1.499,
         "residual_after_8": 0.0
       },
       {
@@ -2876,11 +2951,11 @@
         "class": "ballistic",
         "step": 0,
         "d": 10.0,
-        "margin": 449.3,
-        "lit_px": 505,
-        "edge_px": 471,
+        "margin": 489.2,
+        "lit_px": 1952,
+        "edge_px": 1105,
         "identical": 1,
-        "elements": 293,
+        "elements": 298,
         "streaks": 0,
         "unculled_quads": 274,
         "out_of_reach": 0
@@ -2889,12 +2964,12 @@
         "case": "reach",
         "class": "ballistic",
         "step": 1,
-        "d": 11.9,
-        "margin": 449.3,
-        "lit_px": 357,
-        "edge_px": 350,
+        "d": 14.1,
+        "margin": 489.2,
+        "lit_px": 1422,
+        "edge_px": 975,
         "identical": 1,
-        "elements": 293,
+        "elements": 290,
         "streaks": 0,
         "unculled_quads": 274,
         "out_of_reach": 0
@@ -2903,12 +2978,12 @@
         "case": "reach",
         "class": "ballistic",
         "step": 2,
-        "d": 13.7,
-        "margin": 449.3,
-        "lit_px": 238,
-        "edge_px": 238,
+        "d": 18.2,
+        "margin": 489.2,
+        "lit_px": 936,
+        "edge_px": 776,
         "identical": 1,
-        "elements": 285,
+        "elements": 290,
         "streaks": 0,
         "unculled_quads": 274,
         "out_of_reach": 0
@@ -2917,12 +2992,12 @@
         "case": "reach",
         "class": "ballistic",
         "step": 3,
-        "d": 15.6,
-        "margin": 449.3,
-        "lit_px": 125,
-        "edge_px": 125,
+        "d": 22.2,
+        "margin": 489.2,
+        "lit_px": 517,
+        "edge_px": 517,
         "identical": 1,
-        "elements": 284,
+        "elements": 290,
         "streaks": 0,
         "unculled_quads": 274,
         "out_of_reach": 0
@@ -2931,12 +3006,12 @@
         "case": "reach",
         "class": "ballistic",
         "step": 4,
-        "d": 17.5,
-        "margin": 449.3,
-        "lit_px": 60,
-        "edge_px": 60,
+        "d": 26.3,
+        "margin": 489.2,
+        "lit_px": 200,
+        "edge_px": 200,
         "identical": 1,
-        "elements": 277,
+        "elements": 290,
         "streaks": 0,
         "unculled_quads": 274,
         "out_of_reach": 0
@@ -2945,12 +3020,12 @@
         "case": "reach",
         "class": "ballistic",
         "step": 5,
-        "d": 19.4,
-        "margin": 449.3,
-        "lit_px": 24,
-        "edge_px": 24,
+        "d": 30.4,
+        "margin": 489.2,
+        "lit_px": 11,
+        "edge_px": 11,
         "identical": 1,
-        "elements": 277,
+        "elements": 290,
         "streaks": 0,
         "unculled_quads": 274,
         "out_of_reach": 0
@@ -2959,8 +3034,8 @@
         "case": "reach",
         "class": "ballistic",
         "step": 6,
-        "d": 459.3,
-        "margin": 449.3,
+        "d": 499.2,
+        "margin": 489.2,
         "lit_px": 0,
         "edge_px": 0,
         "identical": 1,
@@ -2973,8 +3048,8 @@
         "case": "reach",
         "class": "ballistic",
         "step": 7,
-        "d": 534.2,
-        "margin": 449.3,
+        "d": 580.7,
+        "margin": 489.2,
         "lit_px": 0,
         "edge_px": 0,
         "identical": 1,
@@ -2987,8 +3062,8 @@
         "case": "reach",
         "class": "ballistic",
         "step": 8,
-        "d": 609.1,
-        "margin": 449.3,
+        "d": 662.2,
+        "margin": 489.2,
         "lit_px": 0,
         "edge_px": 0,
         "identical": 1,
@@ -3001,16 +3076,16 @@
         "case": "reach_summary",
         "class": "ballistic",
         "r": 5.0,
-        "reach_attached": 66.0,
+        "reach_attached": 99.0,
         "reach_spark": 124.6,
         "floor_px": 318.3,
-        "floor_view": 248.8,
-        "d_lit": 19.4,
+        "floor_view": 255.6,
+        "d_lit": 30.4,
         "steps": 9,
         "identical": 9,
         "lit_steps": 6,
-        "min_lit_px": 24,
-        "max_edge_px": 471,
+        "min_lit_px": 11,
+        "max_edge_px": 1105,
         "streaks": 0,
         "beyond_elements": 0,
         "beyond_unculled_quads": 274,
@@ -3021,9 +3096,9 @@
         "class": "heavy",
         "step": 0,
         "d": 10.0,
-        "margin": 644.5,
-        "lit_px": 1317,
-        "edge_px": 663,
+        "margin": 709.7,
+        "lit_px": 2667,
+        "edge_px": 1236,
         "identical": 1,
         "elements": 318,
         "streaks": 8,
@@ -3034,12 +3109,12 @@
         "case": "reach",
         "class": "heavy",
         "step": 1,
-        "d": 15.4,
-        "margin": 644.5,
-        "lit_px": 851,
-        "edge_px": 344,
+        "d": 15.9,
+        "margin": 709.7,
+        "lit_px": 1810,
+        "edge_px": 1032,
         "identical": 1,
-        "elements": 314,
+        "elements": 318,
         "streaks": 8,
         "unculled_quads": 284,
         "out_of_reach": 0
@@ -3048,12 +3123,12 @@
         "case": "reach",
         "class": "heavy",
         "step": 2,
-        "d": 20.7,
-        "margin": 644.5,
-        "lit_px": 599,
-        "edge_px": 209,
+        "d": 21.8,
+        "margin": 709.7,
+        "lit_px": 1092,
+        "edge_px": 726,
         "identical": 1,
-        "elements": 302,
+        "elements": 310,
         "streaks": 8,
         "unculled_quads": 284,
         "out_of_reach": 0
@@ -3062,12 +3137,12 @@
         "case": "reach",
         "class": "heavy",
         "step": 3,
-        "d": 26.1,
-        "margin": 644.5,
-        "lit_px": 468,
-        "edge_px": 208,
+        "d": 27.7,
+        "margin": 709.7,
+        "lit_px": 534,
+        "edge_px": 313,
         "identical": 1,
-        "elements": 302,
+        "elements": 310,
         "streaks": 8,
         "unculled_quads": 284,
         "out_of_reach": 0
@@ -3076,12 +3151,12 @@
         "case": "reach",
         "class": "heavy",
         "step": 4,
-        "d": 31.5,
-        "margin": 644.5,
-        "lit_px": 338,
+        "d": 33.7,
+        "margin": 709.7,
+        "lit_px": 286,
         "edge_px": 208,
         "identical": 1,
-        "elements": 302,
+        "elements": 304,
         "streaks": 8,
         "unculled_quads": 284,
         "out_of_reach": 0
@@ -3090,10 +3165,10 @@
         "case": "reach",
         "class": "heavy",
         "step": 5,
-        "d": 36.9,
-        "margin": 644.5,
-        "lit_px": 208,
-        "edge_px": 208,
+        "d": 39.6,
+        "margin": 709.7,
+        "lit_px": 156,
+        "edge_px": 156,
         "identical": 1,
         "elements": 302,
         "streaks": 8,
@@ -3104,8 +3179,8 @@
         "case": "reach",
         "class": "heavy",
         "step": 6,
-        "d": 654.5,
-        "margin": 644.5,
+        "d": 719.7,
+        "margin": 709.7,
         "lit_px": 0,
         "edge_px": 0,
         "identical": 1,
@@ -3118,8 +3193,8 @@
         "case": "reach",
         "class": "heavy",
         "step": 7,
-        "d": 762.0,
-        "margin": 644.5,
+        "d": 838.0,
+        "margin": 709.7,
         "lit_px": 0,
         "edge_px": 0,
         "identical": 1,
@@ -3132,8 +3207,8 @@
         "case": "reach",
         "class": "heavy",
         "step": 8,
-        "d": 869.4,
-        "margin": 644.5,
+        "d": 956.3,
+        "margin": 709.7,
         "lit_px": 0,
         "edge_px": 0,
         "identical": 1,
@@ -3146,16 +3221,16 @@
         "case": "reach_summary",
         "class": "heavy",
         "r": 5.0,
-        "reach_attached": 150.0,
+        "reach_attached": 204.0,
         "reach_spark": 202.2,
         "floor_px": 318.3,
-        "floor_view": 282.3,
-        "d_lit": 36.9,
+        "floor_view": 293.5,
+        "d_lit": 39.6,
         "steps": 9,
         "identical": 9,
         "lit_steps": 6,
-        "min_lit_px": 208,
-        "max_edge_px": 663,
+        "min_lit_px": 156,
+        "max_edge_px": 1236,
         "streaks": 48,
         "beyond_elements": 0,
         "beyond_unculled_quads": 284,
@@ -3178,14 +3253,14 @@
     "hull_slots": [
       {
         "sprite_vs": 72,
-        "sprite_ps": 105,
-        "glow_vs": 6,
-        "glow_ps": 47,
-        "fireball_vs": 7,
-        "fireball_ps": 315,
+        "sprite_ps": 149,
+        "glow_vs": 19,
+        "glow_ps": 115,
+        "fireball_vs": 21,
+        "fireball_ps": 356,
         "sprite_vertex_bytes": 48,
-        "glow_vertex_bytes": 40,
-        "fireball_vertex_bytes": 60,
+        "glow_vertex_bytes": 48,
+        "fireball_vertex_bytes": 76,
         "hull_state_bytes": 537360
       }
     ],
@@ -3198,17 +3273,17 @@
         "boxes": 128,
         "bursts": 64,
         "rings": 0,
-        "best_us": 19.5,
-        "mean_us": 20.41,
+        "best_us": 25.5,
+        "mean_us": 26.78,
         "target_us": 40
       },
       {
         "case": "capital_64_hits_sparks_only",
-        "best_us": 13.6
+        "best_us": 18.5
       },
       {
         "case": "capital_64_hits_no_sparks",
-        "best_us": 9.8
+        "best_us": 15.4
       },
       {
         "case": "fighter_20_hits",
@@ -3218,8 +3293,8 @@
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "best_us": 6.9,
-        "mean_us": 7.72,
+        "best_us": 8.4,
+        "mean_us": 8.61,
         "target_us": 40
       },
       {
@@ -3239,14 +3314,22 @@
         "bursts_shed": 0,
         "flashes_shed": 0,
         "capped": 0,
-        "octaves": 2,
-        "screens": 6.189,
+        "octaves": 3,
+        "screens": 2.095,
         "budget": 8.0,
         "out_of_reach": 496,
         "owners_out_of_reach": 31,
-        "best_us": 44.0,
-        "mean_us": 44.63,
-        "target_us": 100
+        "best_us": 48.2,
+        "mean_us": 49.83,
+        "target_us": 65
+      },
+      {
+        "case": "ring_1024_visible_64_no_cluster",
+        "best_us": 43.2
+      },
+      {
+        "case": "ring_1024_visible_64_pairwise",
+        "best_us": 48.4
       },
       {
         "case": "ring_1024_visible_256",
@@ -3258,21 +3341,47 @@
         "owners_dropped": 20,
         "sparks": 1840,
         "flashes": 256,
-        "boxes": 28,
-        "bursts": 4,
+        "boxes": 21,
+        "bursts": 46,
         "rings": 0,
-        "shed": 168,
-        "bursts_shed": 28,
+        "shed": 76,
+        "bursts_shed": 0,
         "flashes_shed": 0,
         "capped": 0,
-        "octaves": 1,
-        "screens": 7.978,
+        "octaves": 2,
+        "screens": 7.939,
         "budget": 8.0,
         "out_of_reach": 448,
         "owners_out_of_reach": 28,
-        "best_us": 124.8,
-        "mean_us": 126.28,
-        "target_us": 300
+        "best_us": 119.5,
+        "mean_us": 120.87,
+        "target_us": 160
+      },
+      {
+        "case": "ring_1024_visible_256_no_cluster",
+        "best_us": 102.3
+      },
+      {
+        "case": "ring_1024_visible_256_pairwise",
+        "best_us": 119.4
+      },
+      {
+        "case": "ring_1024_one_owner_grid",
+        "hits": 1024,
+        "bursts": 2,
+        "best_us": 1223.2
+      },
+      {
+        "case": "ring_1024_one_owner_pairwise",
+        "hits": 1024,
+        "bursts": 2,
+        "best_us": 2710.5
+      },
+      {
+        "case": "ring_1024_one_owner_no_cluster",
+        "hits": 1024,
+        "bursts": 2,
+        "best_us": 625.9
       }
     ],
     "hull_timing": [
@@ -3286,11 +3395,11 @@
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "octaves": 2,
-        "burst_screens": 0.155,
-        "lit_share": 0.2184,
-        "raster_share": 3.1588,
-        "gpu_us": 70.8
+        "octaves": 3,
+        "burst_screens": 1.459,
+        "lit_share": 0.1701,
+        "raster_share": 3.4444,
+        "gpu_us": 104.8
       },
       {
         "width": 1920,
@@ -3302,11 +3411,11 @@
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "octaves": 2,
-        "burst_screens": 0.013,
-        "lit_share": 0.0197,
-        "raster_share": 0.2815,
-        "gpu_us": 22.6
+        "octaves": 3,
+        "burst_screens": 0.117,
+        "lit_share": 0.0155,
+        "raster_share": 0.3055,
+        "gpu_us": 36.9
       },
       {
         "width": 1920,
@@ -3315,14 +3424,14 @@
         "hits": 64,
         "sparks": 99,
         "flashes": 0,
-        "boxes": 38,
-        "bursts": 44,
+        "boxes": 0,
+        "bursts": 15,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 4.904,
-        "lit_share": 1.0,
-        "raster_share": 8.362,
-        "gpu_us": 260.6
+        "burst_screens": 7.957,
+        "lit_share": 0.9079,
+        "raster_share": 7.7442,
+        "gpu_us": 301.4
       },
       {
         "width": 1920,
@@ -3334,11 +3443,11 @@
         "boxes": 1,
         "bursts": 0,
         "rings": 0,
-        "octaves": 2,
+        "octaves": 3,
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 30.4
+        "gpu_us": 35.0
       },
       {
         "width": 1920,
@@ -3350,75 +3459,155 @@
         "boxes": 0,
         "bursts": 1,
         "rings": 0,
-        "octaves": 2,
-        "burst_screens": 1.04,
-        "lit_share": 1.0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 0.4688,
         "raster_share": 1.0,
-        "gpu_us": 64.2
+        "gpu_us": 58.8
       },
       {
         "width": 1920,
         "height": 1080,
-        "case": "burst_alone_fills_frame_lod",
+        "case": "burst_alone_fills_frame_coarse",
         "hits": 1,
         "sparks": 0,
         "flashes": 0,
         "boxes": 0,
         "bursts": 1,
         "rings": 0,
-        "octaves": 1,
-        "burst_screens": 1.04,
+        "octaves": 2,
+        "burst_screens": 1.18,
+        "lit_share": 0.3154,
+        "raster_share": 1.0,
+        "gpu_us": 50.5
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "smoke_alone_fills_frame",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 0.0,
+        "raster_share": 1.0,
+        "gpu_us": 53.5
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "burst_alone_every_pixel_noise",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 1.18,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 49.7
+        "gpu_us": 71.4
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "burst_alone_every_pixel_noise_coarse",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 1.18,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 63.5
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "smoke_alone_every_pixel_noise",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 0.0,
+        "raster_share": 1.0,
+        "gpu_us": 72.1
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "ember_lobed_alone_fills_frame",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 1,
+        "bursts": 0,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 0.0,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 32.2
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "fighter_60m_20_hits",
         "hits": 20,
-        "sparks": 114,
+        "sparks": 115,
         "flashes": 0,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "octaves": 2,
-        "burst_screens": 0.388,
-        "lit_share": 0.3569,
-        "raster_share": 5.6854,
-        "gpu_us": 364.3
+        "octaves": 3,
+        "burst_screens": 2.874,
+        "lit_share": 0.3009,
+        "raster_share": 6.6344,
+        "gpu_us": 574.2
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 108,
+        "sparks": 113,
         "flashes": 0,
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "octaves": 2,
-        "burst_screens": 0.025,
-        "lit_share": 0.0394,
-        "raster_share": 0.5555,
-        "gpu_us": 51.3
+        "octaves": 3,
+        "burst_screens": 0.249,
+        "lit_share": 0.0309,
+        "raster_share": 0.6017,
+        "gpu_us": 70.6
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 73,
+        "sparks": 82,
         "flashes": 0,
-        "boxes": 26,
-        "bursts": 29,
+        "boxes": 0,
+        "bursts": 13,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 4.686,
+        "burst_screens": 7.856,
         "lit_share": 1.0,
-        "raster_share": 8.0555,
-        "gpu_us": 855.6
+        "raster_share": 7.6407,
+        "gpu_us": 990.4
       },
       {
         "width": 5120,
@@ -3430,16 +3619,36 @@
         "boxes": 1,
         "bursts": 0,
         "rings": 0,
-        "octaves": 2,
+        "octaves": 3,
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 70.8
+        "gpu_us": 71.1
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "burst_alone_fills_frame",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 0.0567,
+        "raster_share": 1.0,
+        "gpu_us": 106.6
+      },
+      {
+        "case": "burst_alone_fills_frame",
+        "weight": 0.601
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "burst_alone_fills_frame_coarse",
         "hits": 1,
         "sparks": 0,
         "flashes": 0,
@@ -3447,34 +3656,114 @@
         "bursts": 1,
         "rings": 0,
         "octaves": 2,
-        "burst_screens": 1.04,
-        "lit_share": 1.0,
+        "burst_screens": 1.18,
+        "lit_share": 0.5738,
         "raster_share": 1.0,
-        "gpu_us": 191.0
+        "gpu_us": 150.8
       },
       {
-        "case": "burst_alone_fills_frame",
-        "weight": 1.076
+        "case": "burst_alone_fills_frame_coarse",
+        "weight": 0.85
       },
       {
         "width": 5120,
         "height": 1440,
-        "case": "burst_alone_fills_frame_lod",
+        "case": "smoke_alone_fills_frame",
         "hits": 1,
         "sparks": 0,
         "flashes": 0,
         "boxes": 0,
         "bursts": 1,
         "rings": 0,
-        "octaves": 1,
-        "burst_screens": 1.04,
-        "lit_share": 1.0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 0.0,
         "raster_share": 1.0,
-        "gpu_us": 142.8
+        "gpu_us": 146.1
       },
       {
-        "case": "burst_alone_fills_frame_lod",
-        "weight": 0.805
+        "case": "smoke_alone_fills_frame",
+        "weight": 0.823
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "burst_alone_every_pixel_noise",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 212.9
+      },
+      {
+        "case": "burst_alone_every_pixel_noise",
+        "weight": 1.199
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "burst_alone_every_pixel_noise_coarse",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 2,
+        "burst_screens": 1.18,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 185.3
+      },
+      {
+        "case": "burst_alone_every_pixel_noise_coarse",
+        "weight": 1.044
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "smoke_alone_every_pixel_noise",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 0,
+        "bursts": 1,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 1.18,
+        "lit_share": 0.0,
+        "raster_share": 1.0,
+        "gpu_us": 213.9
+      },
+      {
+        "case": "smoke_alone_every_pixel_noise",
+        "weight": 1.205
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "ember_lobed_alone_fills_frame",
+        "hits": 1,
+        "sparks": 0,
+        "flashes": 0,
+        "boxes": 1,
+        "bursts": 0,
+        "rings": 0,
+        "octaves": 3,
+        "burst_screens": 0.0,
+        "lit_share": 1.0,
+        "raster_share": 1.0,
+        "gpu_us": 88.6
+      },
+      {
+        "case": "ember_lobed_alone_fills_frame",
+        "weight": 0.499
       }
     ],
     "class": [
@@ -3560,7 +3849,7 @@
       },
       {
         "case": "scorch_multiply",
-        "seq": 1169,
+        "seq": 1189,
         "boxes": 1,
         "s": 0.3801,
         "sky_changed": 0,
@@ -3578,7 +3867,7 @@
         "marks_left": 0,
         "owner_marks": 16,
         "oldest_t0": 2010,
-        "first_seq": 1173,
+        "first_seq": 1193,
         "record_life_ms": 3601
       },
       {
@@ -3598,16 +3887,17 @@
       {
         "case": "greyscale_lineup",
         "classes": 9,
-        "min_pair_l1": 0.2108,
-        "pair": "energy,beam"
+        "records": 3,
+        "min_pair_l1": 0.3657,
+        "pair": "plasma,missile"
       },
       {
         "case": "energy_puff",
-        "life_ms": 384.7,
-        "R_b": 16.934,
+        "life_ms": 379.9,
+        "R_b": 33.868,
         "worst_radius_err": 0.0,
-        "hue_g_over_r": "0.614,0.362,0.182",
-        "anchor_dx": 20.0
+        "hue_g_over_r": "0.624,0.361,0.182",
+        "anchor_dx": 19.4368
       },
       {
         "case": "energy_spatter",
@@ -3619,8 +3909,8 @@
       {
         "case": "energy_spatter",
         "k": 0.5,
-        "sparks": 6,
-        "want": 6,
+        "sparks": 5,
+        "want": 5,
         "law": 6.0
       },
       {
@@ -3632,77 +3922,78 @@
       },
       {
         "case": "energy_ember",
-        "life_ms": 1540.8,
-        "flash_ms": 50.0,
+        "life_ms": 1678.8,
+        "flash_ms": 48.0,
         "peak": 0.48,
-        "at300": 0.3748,
-        "at1500": 0.00044,
+        "at300": 0.3889,
+        "at1500": 0.00719,
         "after": 0.0
       },
       {
         "case": "ballistic_lifetimes",
         "fast": "8,0,0",
-        "slow": "6,6,2",
-        "chips": "3,3,3",
+        "slow": "4,4,1",
+        "chips": "5,5,5",
         "fast_at_250": 0,
-        "slow_at_450": 4
+        "slow_at_450": 5
       },
       {
         "case": "ballistic_splash_back",
         "age_ms": 100,
-        "back_share": 0.346,
-        "isotropic_share": 0.0162
+        "back_share": 0.3372,
+        "isotropic_share": 0.0118
       },
       {
         "case": "ballistic_chips",
-        "slow_speed_share_600": 0.2886,
-        "chips_speed_share_600": 0.612,
+        "slow_speed_share_600": 0.2907,
+        "chips_speed_share_600": 0.5727,
         "law": "0.2636,0.5488"
       },
       {
         "case": "ballistic_no_fireball",
-        "puff_r": 0.4,
-        "lit": 5767,
+        "puff_r": 0.8,
+        "lit": 11002,
         "beyond_half_r": 0
       },
       {
         "case": "plasma_bloom",
-        "energy_halo": 16.934,
-        "plasma_halo": 33.868,
-        "ratio": 2.0,
-        "lit_energy": 16613,
-        "lit_plasma": 54401,
-        "lit_radius_ratio": 1.8096
+        "energy_halo": 20.511,
+        "plasma_halo": 34.058,
+        "ratio": 1.6605,
+        "lit_energy": 1872,
+        "lit_plasma": 4610,
+        "lit_radius_ratio": 1.5693
       },
       {
         "case": "plasma_globe",
-        "life_ms": 754.1,
-        "R": "19.725,18.316,13.500",
-        "b_over_r": "0.6537,0.4200,0.3576"
+        "records": 5,
+        "life_ms": 798.7,
+        "R": "49.310,45.807,33.738",
+        "b_over_r": "0.6936,0.5101,0.4536"
       },
       {
         "case": "plasma_ring",
-        "age_ms": 33,
+        "age_ms": 32,
         "radius_px": 131.14,
-        "law_px": 134.73
+        "law_px": 135.23
       },
       {
         "case": "plasma_ring",
-        "age_ms": 67,
+        "age_ms": 65,
         "radius_px": 183.16,
-        "law_px": 186.62
+        "law_px": 187.01
       },
       {
         "case": "plasma_ring",
-        "age_ms": 169,
+        "age_ms": 163,
         "radius_px": 211.34,
-        "law_px": 215.26
+        "law_px": 215.27
       },
       {
         "case": "plasma_ring_surface",
         "sky": 0,
-        "lane": 92737,
-        "worst_radius_err": 0.0266
+        "lane": 92833,
+        "worst_radius_err": 0.0302
       },
       {
         "case": "ring_front_noise",
@@ -3801,13 +4092,13 @@
       },
       {
         "case": "heavy_back_jet",
-        "sparks": 268,
-        "within_30": 0.903,
-        "within_25": 0.4403
+        "sparks": 259,
+        "within_30": 0.8919,
+        "within_25": 0.4556
       },
       {
         "case": "heavy_exit_jet",
-        "thin_beyond": "0,1489,2026",
+        "thin_beyond": "0,1328,1170",
         "thick_beyond": "0,0,0"
       },
       {
@@ -3828,7 +4119,7 @@
         "ring_records_left": 0,
         "flashes_after_first": 0,
         "core": "4.0000,4.0000",
-        "glow": "0.8500,0.8500"
+        "glow": "0.4950,0.4950"
       },
       {
         "case": "beam_sweep",
@@ -3853,7 +4144,7 @@
         "ring_hue": 124.19,
         "hue_err_deg": 0.0,
         "ring_sat": 0.5707,
-        "core_sat": 0.374,
+        "core_sat": 0.3625,
         "weapon_sat": 0.9512,
         "ring_px": 85984,
         "core_px": 540,
@@ -3882,16 +4173,16 @@
       },
       {
         "case": "ion_lightning",
-        "segments": 28,
-        "strikes": 4,
+        "segments": 50,
+        "strikes": 3,
         "sky": 0,
-        "lane": 889,
-        "lit": 1984,
+        "lane": 1801,
+        "lit": 2794,
         "frame_diff": 0.0,
         "strike_70": 1,
-        "jaccard_0_70": 0.0086,
+        "jaccard_0_70": 0.024,
         "jaccard_moved": 1.0,
-        "screens": 0.00181,
+        "screens": 0.00275,
         "old_box_screens": 0.02826,
         "old_box_px": 68145
       },
@@ -4004,13 +4295,13 @@
       {
         "case": "missile_debris",
         "table_2x": 1,
-        "fast": 28,
-        "slow": 19,
-        "sparks_first": 34,
+        "fast": 23,
+        "slow": 18,
+        "sparks_first": 29,
         "rings_50": 1,
-        "slow_lit": 121,
-        "slow_alive": 361,
-        "duty": 0.3352
+        "slow_lit": 125,
+        "slow_alive": 342,
+        "duty": 0.3655
       },
       {
         "case": "beam_on_asteroid",
@@ -4019,7 +4310,7 @@
         "max_spots": 1,
         "flashes": 0,
         "puff_frames": 59,
-        "sparks": 1043
+        "sparks": 1074
       },
       {
         "case": "ion_beam_hold",
@@ -4036,7 +4327,7 @@
         "case": "repair_relit",
         "ticks": 60,
         "one_glow": 1,
-        "glow_g": "1.0000,1.0000"
+        "glow_g": "0.2400,0.2400"
       },
       {
         "case": "asteroid_dust",
@@ -4045,8 +4336,8 @@
         "marks": 0,
         "scorches": 0,
         "flashes": 0,
-        "sparks": 17,
-        "puff_peak": 0.0183
+        "sparks": 21,
+        "puff_peak": 0.1874
       },
       {
         "case": "compose_no_pop",
@@ -4054,7 +4345,7 @@
         "frames": 40,
         "checked": 320,
         "violations": 0,
-        "worst_additive_err": 1e-05,
+        "worst_additive_err": 0.0,
         "additive_bad": 0,
         "released": 0,
         "life_ms": 2401
@@ -4065,7 +4356,7 @@
         "frames": 40,
         "checked": 320,
         "violations": 0,
-        "worst_additive_err": 2e-05,
+        "worst_additive_err": 1e-05,
         "additive_bad": 0,
         "released": 1,
         "life_ms": 1041
@@ -4087,7 +4378,7 @@
         "frames": 40,
         "checked": 320,
         "violations": 0,
-        "worst_additive_err": 7e-05,
+        "worst_additive_err": 1e-05,
         "additive_bad": 0,
         "released": 0,
         "life_ms": 2401
@@ -4098,7 +4389,7 @@
         "frames": 40,
         "checked": 320,
         "violations": 0,
-        "worst_additive_err": 0.0,
+        "worst_additive_err": 1e-05,
         "additive_bad": 0,
         "released": 1,
         "life_ms": 401
@@ -4109,7 +4400,7 @@
         "frames": 40,
         "checked": 320,
         "violations": 0,
-        "worst_additive_err": 4e-05,
+        "worst_additive_err": 0.0,
         "additive_bad": 0,
         "released": 0,
         "life_ms": 2401
@@ -4120,10 +4411,10 @@
         "frames": 40,
         "checked": 320,
         "violations": 0,
-        "worst_additive_err": 3e-05,
+        "worst_additive_err": 0.0,
         "additive_bad": 0,
-        "released": 1,
-        "life_ms": 1441
+        "released": 0,
+        "life_ms": 2305
       },
       {
         "case": "min_frames_seta6",
@@ -4188,16 +4479,1633 @@
       {
         "case": "ion_cap_shed",
         "hits": 42,
-        "total_segments": 1673,
+        "total_segments": 1761,
         "cap": 1024,
-        "kept_hits": 25,
-        "capped": 17,
-        "segments": 1009,
-        "screens": 0.057,
-        "budget": 0.0285,
-        "shed": 517,
+        "kept_hits": 23,
+        "capped": 19,
+        "segments": 971,
+        "screens": 0.0559,
+        "budget": 0.0279,
+        "shed": 479,
         "kept_after_shed": 492,
         "whole_channels": 1
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 0,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.5147,
+        "hp_std": 0.1335,
+        "lobe_max_over_min": 2.453,
+        "lobe_std_over_mean": 0.2542,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 1,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2454,
+        "hp_std": 0.1433,
+        "lobe_max_over_min": 1.398,
+        "lobe_std_over_mean": 0.0929,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 2,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2833,
+        "hp_std": 0.1383,
+        "lobe_max_over_min": 3.643,
+        "lobe_std_over_mean": 0.2551,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 3,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2447,
+        "hp_std": 0.1784,
+        "lobe_max_over_min": 1.549,
+        "lobe_std_over_mean": 0.1245,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 4,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2166,
+        "hp_std": 0.1248,
+        "lobe_max_over_min": 2.012,
+        "lobe_std_over_mean": 0.1727,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 5,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2214,
+        "hp_std": 0.1267,
+        "lobe_max_over_min": 1.757,
+        "lobe_std_over_mean": 0.1994,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 6,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.1921,
+        "hp_std": 0.1698,
+        "lobe_max_over_min": 1.435,
+        "lobe_std_over_mean": 0.1091,
+        "peak": 1.2959
+      },
+      {
+        "case": "burst_body",
+        "class": "energy",
+        "hit": 7,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.4503,
+        "hp_std": 0.1418,
+        "lobe_max_over_min": 2.985,
+        "lobe_std_over_mean": 0.2868,
+        "peak": 1.3037
+      },
+      {
+        "case": "burst_body_median",
+        "class": "energy",
+        "hits": 8,
+        "dark_share": 0.2451,
+        "hp_std": 0.14,
+        "lobe_max_over_min": 1.884,
+        "lobe_std_over_mean": 0.1861
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 0,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2642,
+        "hp_std": 0.1374,
+        "lobe_max_over_min": 1.85,
+        "lobe_std_over_mean": 0.1892,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 1,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2405,
+        "hp_std": 0.1435,
+        "lobe_max_over_min": 1.391,
+        "lobe_std_over_mean": 0.0901,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 2,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2791,
+        "hp_std": 0.1375,
+        "lobe_max_over_min": 3.638,
+        "lobe_std_over_mean": 0.2373,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 3,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2386,
+        "hp_std": 0.1765,
+        "lobe_max_over_min": 1.536,
+        "lobe_std_over_mean": 0.1211,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 4,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.2106,
+        "hp_std": 0.1238,
+        "lobe_max_over_min": 2.018,
+        "lobe_std_over_mean": 0.1713,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 5,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.218,
+        "hp_std": 0.1245,
+        "lobe_max_over_min": 1.743,
+        "lobe_std_over_mean": 0.1968,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 6,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.1856,
+        "hp_std": 0.1704,
+        "lobe_max_over_min": 1.418,
+        "lobe_std_over_mean": 0.1047,
+        "peak": 1.3115
+      },
+      {
+        "case": "burst_body",
+        "class": "heavy",
+        "hit": 7,
+        "age_frac": 0.3,
+        "octaves": 1,
+        "dark_share": 0.4407,
+        "hp_std": 0.1427,
+        "lobe_max_over_min": 2.983,
+        "lobe_std_over_mean": 0.2755,
+        "peak": 1.3184
+      },
+      {
+        "case": "burst_body_median",
+        "class": "heavy",
+        "hits": 8,
+        "dark_share": 0.2396,
+        "hp_std": 0.1401,
+        "lobe_max_over_min": 1.797,
+        "lobe_std_over_mean": 0.1803
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 0,
+        "life_ms": 435.7,
+        "lit_share": "0.8710,0.6723,0.1014",
+        "mean_r_02": 0.6294,
+        "mean_r_08": 0.4497
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 1,
+        "life_ms": 444.3,
+        "lit_share": "0.8345,0.6912,0.1280",
+        "mean_r_02": 0.6049,
+        "mean_r_08": 0.4615
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 2,
+        "life_ms": 457.9,
+        "lit_share": "0.9154,0.3909,0.0117",
+        "mean_r_02": 0.6924,
+        "mean_r_08": 0.2435
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 3,
+        "life_ms": 409.4,
+        "lit_share": "0.8476,0.4500,0.0184",
+        "mean_r_02": 0.6281,
+        "mean_r_08": 0.3762
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 4,
+        "life_ms": 381.9,
+        "lit_share": "0.8985,0.5556,0.0645",
+        "mean_r_02": 0.6695,
+        "mean_r_08": 0.3079
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 5,
+        "life_ms": 406.8,
+        "lit_share": "0.8874,0.5775,0.0557",
+        "mean_r_02": 0.6927,
+        "mean_r_08": 0.3118
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 6,
+        "life_ms": 407.6,
+        "lit_share": "0.8687,0.3729,0.0355",
+        "mean_r_02": 0.6351,
+        "mean_r_08": 0.3063
+      },
+      {
+        "case": "burst_erosion",
+        "hit": 7,
+        "life_ms": 356.5,
+        "lit_share": "0.7886,0.3856,0.0949",
+        "mean_r_02": 0.63,
+        "mean_r_08": 0.3237
+      },
+      {
+        "case": "burst_erosion_median",
+        "hits": 8,
+        "lit_share": "0.8699,0.5028,0.0601",
+        "bursts_after": 0,
+        "mean_r_ratio": 0.4981
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 0,
+        "core_rgb": "6366.7,3861.5,1428.1",
+        "core_T": 0.75,
+        "rim_rgb": "10959.1,4483.8,1112.1",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 1,
+        "core_rgb": "6360.9,3863.5,1430.5",
+        "core_T": 0.75,
+        "rim_rgb": "12187.6,5326.7,1402.0",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 2,
+        "core_rgb": "6141.1,3675.9,1345.2",
+        "core_T": 0.75,
+        "rim_rgb": "15969.8,6676.7,1680.5",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 3,
+        "core_rgb": "5713.8,3326.4,1189.2",
+        "core_T": 0.75,
+        "rim_rgb": "13669.7,5862.0,1507.9",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 4,
+        "core_rgb": "6352.0,3867.7,1434.9",
+        "core_T": 0.75,
+        "rim_rgb": "15428.5,6537.0,1661.2",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 5,
+        "core_rgb": "6336.6,3852.8,1427.6",
+        "core_T": 0.75,
+        "rim_rgb": "15861.7,6792.5,1737.7",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 6,
+        "core_rgb": "5387.3,3019.0,1042.9",
+        "core_T": 0.5,
+        "rim_rgb": "15420.2,6680.5,1733.3",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_core_rim",
+        "hit": 7,
+        "core_rgb": "6145.1,3692.2,1355.1",
+        "core_T": 0.75,
+        "rim_rgb": "8754.2,3639.9,921.2",
+        "rim_T": 0.5
+      },
+      {
+        "case": "burst_colour_median",
+        "hits": 8,
+        "core_T": 0.75,
+        "rim_T": 0.5
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 0,
+        "age_frac": 0.1,
+        "body_r_px": 81.0,
+        "glow_r_px": 111.4,
+        "radius_ratio": 1.376,
+        "body_peak": 1.3809,
+        "glow_peak": 0.4456,
+        "peak_ratio": 0.3227
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 1,
+        "age_frac": 0.1,
+        "body_r_px": 79.9,
+        "glow_r_px": 110.8,
+        "radius_ratio": 1.386,
+        "body_peak": 1.3828,
+        "glow_peak": 0.4458,
+        "peak_ratio": 0.3224
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 2,
+        "age_frac": 0.1,
+        "body_r_px": 89.9,
+        "glow_r_px": 112.0,
+        "radius_ratio": 1.245,
+        "body_peak": 1.3809,
+        "glow_peak": 0.4451,
+        "peak_ratio": 0.3223
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 3,
+        "age_frac": 0.1,
+        "body_r_px": 82.2,
+        "glow_r_px": 111.7,
+        "radius_ratio": 1.359,
+        "body_peak": 1.3809,
+        "glow_peak": 0.4453,
+        "peak_ratio": 0.3225
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 4,
+        "age_frac": 0.1,
+        "body_r_px": 86.8,
+        "glow_r_px": 111.3,
+        "radius_ratio": 1.282,
+        "body_peak": 1.3818,
+        "glow_peak": 0.4456,
+        "peak_ratio": 0.3224
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 5,
+        "age_frac": 0.1,
+        "body_r_px": 91.2,
+        "glow_r_px": 112.2,
+        "radius_ratio": 1.23,
+        "body_peak": 1.3809,
+        "glow_peak": 0.4451,
+        "peak_ratio": 0.3223
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 6,
+        "age_frac": 0.1,
+        "body_r_px": 83.7,
+        "glow_r_px": 112.1,
+        "radius_ratio": 1.34,
+        "body_peak": 1.3809,
+        "glow_peak": 0.4451,
+        "peak_ratio": 0.3223
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 7,
+        "age_frac": 0.1,
+        "body_r_px": 81.1,
+        "glow_r_px": 112.4,
+        "radius_ratio": 1.387,
+        "body_peak": 1.3799,
+        "glow_peak": 0.4448,
+        "peak_ratio": 0.3224
+      },
+      {
+        "case": "glow_follows_burst_median",
+        "class": "energy",
+        "age_frac": 0.1,
+        "radius_ratio": 1.349,
+        "peak_ratio": 0.3224
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 0,
+        "age_frac": 0.3,
+        "body_r_px": 122.3,
+        "glow_r_px": 198.4,
+        "radius_ratio": 1.622,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3462,
+        "peak_ratio": 0.2655
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 1,
+        "age_frac": 0.3,
+        "body_r_px": 135.2,
+        "glow_r_px": 198.3,
+        "radius_ratio": 1.466,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3467,
+        "peak_ratio": 0.2659
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 2,
+        "age_frac": 0.3,
+        "body_r_px": 135.3,
+        "glow_r_px": 198.2,
+        "radius_ratio": 1.465,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3467,
+        "peak_ratio": 0.2659
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 3,
+        "age_frac": 0.3,
+        "body_r_px": 135.4,
+        "glow_r_px": 198.5,
+        "radius_ratio": 1.466,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3462,
+        "peak_ratio": 0.2655
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 4,
+        "age_frac": 0.3,
+        "body_r_px": 143.0,
+        "glow_r_px": 198.6,
+        "radius_ratio": 1.389,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3457,
+        "peak_ratio": 0.2652
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 5,
+        "age_frac": 0.3,
+        "body_r_px": 147.0,
+        "glow_r_px": 198.4,
+        "radius_ratio": 1.35,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3464,
+        "peak_ratio": 0.2657
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 6,
+        "age_frac": 0.3,
+        "body_r_px": 139.9,
+        "glow_r_px": 198.2,
+        "radius_ratio": 1.418,
+        "body_peak": 1.2959,
+        "glow_peak": 0.3467,
+        "peak_ratio": 0.2675
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "hit": 7,
+        "age_frac": 0.3,
+        "body_r_px": 116.5,
+        "glow_r_px": 198.4,
+        "radius_ratio": 1.704,
+        "body_peak": 1.3037,
+        "glow_peak": 0.3464,
+        "peak_ratio": 0.2657
+      },
+      {
+        "case": "glow_follows_burst_median",
+        "class": "energy",
+        "age_frac": 0.3,
+        "radius_ratio": 1.466,
+        "peak_ratio": 0.2657
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "energy",
+        "glows": 0
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 0,
+        "age_frac": 0.1,
+        "body_r_px": 83.1,
+        "glow_r_px": 115.7,
+        "radius_ratio": 1.393,
+        "body_peak": 1.374,
+        "glow_peak": 0.4456,
+        "peak_ratio": 0.3243
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 1,
+        "age_frac": 0.1,
+        "body_r_px": 83.9,
+        "glow_r_px": 116.5,
+        "radius_ratio": 1.39,
+        "body_peak": 1.375,
+        "glow_peak": 0.4451,
+        "peak_ratio": 0.3237
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 2,
+        "age_frac": 0.1,
+        "body_r_px": 93.1,
+        "glow_r_px": 116.1,
+        "radius_ratio": 1.246,
+        "body_peak": 1.375,
+        "glow_peak": 0.4453,
+        "peak_ratio": 0.3239
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 3,
+        "age_frac": 0.1,
+        "body_r_px": 85.8,
+        "glow_r_px": 116.9,
+        "radius_ratio": 1.362,
+        "body_peak": 1.374,
+        "glow_peak": 0.4448,
+        "peak_ratio": 0.3237
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 4,
+        "age_frac": 0.1,
+        "body_r_px": 90.5,
+        "glow_r_px": 116.0,
+        "radius_ratio": 1.283,
+        "body_peak": 1.375,
+        "glow_peak": 0.4453,
+        "peak_ratio": 0.3239
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 5,
+        "age_frac": 0.1,
+        "body_r_px": 86.2,
+        "glow_r_px": 115.6,
+        "radius_ratio": 1.341,
+        "body_peak": 1.376,
+        "glow_peak": 0.4458,
+        "peak_ratio": 0.324
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 6,
+        "age_frac": 0.1,
+        "body_r_px": 86.0,
+        "glow_r_px": 115.4,
+        "radius_ratio": 1.341,
+        "body_peak": 1.376,
+        "glow_peak": 0.4458,
+        "peak_ratio": 0.324
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 7,
+        "age_frac": 0.1,
+        "body_r_px": 83.9,
+        "glow_r_px": 116.7,
+        "radius_ratio": 1.39,
+        "body_peak": 1.374,
+        "glow_peak": 0.4448,
+        "peak_ratio": 0.3237
+      },
+      {
+        "case": "glow_follows_burst_median",
+        "class": "heavy",
+        "age_frac": 0.1,
+        "radius_ratio": 1.352,
+        "peak_ratio": 0.3239
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 0,
+        "age_frac": 0.3,
+        "body_r_px": 130.7,
+        "glow_r_px": 174.3,
+        "radius_ratio": 1.334,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3467,
+        "peak_ratio": 0.263
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 1,
+        "age_frac": 0.3,
+        "body_r_px": 119.3,
+        "glow_r_px": 174.4,
+        "radius_ratio": 1.462,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3464,
+        "peak_ratio": 0.2628
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 2,
+        "age_frac": 0.3,
+        "body_r_px": 119.4,
+        "glow_r_px": 174.5,
+        "radius_ratio": 1.461,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3462,
+        "peak_ratio": 0.2626
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 3,
+        "age_frac": 0.3,
+        "body_r_px": 119.5,
+        "glow_r_px": 174.5,
+        "radius_ratio": 1.46,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3457,
+        "peak_ratio": 0.2622
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 4,
+        "age_frac": 0.3,
+        "body_r_px": 126.0,
+        "glow_r_px": 174.4,
+        "radius_ratio": 1.384,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3464,
+        "peak_ratio": 0.2628
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 5,
+        "age_frac": 0.3,
+        "body_r_px": 129.3,
+        "glow_r_px": 174.5,
+        "radius_ratio": 1.349,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3462,
+        "peak_ratio": 0.2626
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 6,
+        "age_frac": 0.3,
+        "body_r_px": 123.5,
+        "glow_r_px": 174.4,
+        "radius_ratio": 1.412,
+        "body_peak": 1.3115,
+        "glow_peak": 0.3464,
+        "peak_ratio": 0.2641
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "hit": 7,
+        "age_frac": 0.3,
+        "body_r_px": 103.3,
+        "glow_r_px": 174.4,
+        "radius_ratio": 1.688,
+        "body_peak": 1.3184,
+        "glow_peak": 0.3464,
+        "peak_ratio": 0.2628
+      },
+      {
+        "case": "glow_follows_burst_median",
+        "class": "heavy",
+        "age_frac": 0.3,
+        "radius_ratio": 1.436,
+        "peak_ratio": 0.2628
+      },
+      {
+        "case": "glow_follows_burst",
+        "class": "heavy",
+        "glows": 0
+      },
+      {
+        "case": "twenty_hits_parts",
+        "rule": 1,
+        "bursts": 20,
+        "burst_peak": 1.5283,
+        "glow_peak": 0.7178,
+        "glow_ember_peak": 1.6035
+      },
+      {
+        "case": "twenty_hits_parts",
+        "rule": 0,
+        "bursts": 20,
+        "burst_peak": 14.6719,
+        "glow_peak": 4.6641,
+        "glow_ember_peak": 7.3203
+      },
+      {
+        "case": "twenty_hits_parts",
+        "rule": 2,
+        "bursts": 20,
+        "burst_peak": 1.1396,
+        "glow_peak": 0.542,
+        "glow_ember_peak": 1.3828
+      },
+      {
+        "case": "twenty_hits_peak",
+        "age_ms": 120,
+        "peak_rule": 2.7305,
+        "peak_no_rule": 19.5469,
+        "peak_hard_count": 2.2188,
+        "single_rule": 2.1113,
+        "single_no_rule": 2.1113
+      },
+      {
+        "case": "flash_star",
+        "class": "energy",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 951,
+        "moment_ratio": 5.508,
+        "off_arm_max": 0.0,
+        "peak": 7.996
+      },
+      {
+        "case": "flash_star",
+        "class": "ballistic",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 433,
+        "moment_ratio": 3.125,
+        "off_arm_max": 0.0,
+        "peak": 8.0
+      },
+      {
+        "case": "flash_star",
+        "class": "plasma",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 2267,
+        "moment_ratio": 5.87,
+        "off_arm_max": 0.0,
+        "peak": 7.996
+      },
+      {
+        "case": "flash_star",
+        "class": "heavy",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 1363,
+        "moment_ratio": 5.55,
+        "off_arm_max": 0.0,
+        "peak": 7.996
+      },
+      {
+        "case": "flash_star",
+        "class": "ion",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 954,
+        "moment_ratio": 5.252,
+        "off_arm_max": 0.0,
+        "peak": 7.996
+      },
+      {
+        "case": "flash_star",
+        "class": "missile",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 1365,
+        "moment_ratio": 5.538,
+        "off_arm_max": 0.0,
+        "peak": 8.0
+      },
+      {
+        "case": "flash_star",
+        "class": "beam",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 944,
+        "moment_ratio": 5.476,
+        "off_arm_max": 0.0,
+        "peak": 8.0
+      },
+      {
+        "case": "flash_star",
+        "class": "repair",
+        "frames_16ms": 3,
+        "frames_100ms": 3,
+        "lit": 437,
+        "moment_ratio": 3.124,
+        "off_arm_max": 0.0,
+        "peak": 8.0
+      },
+      {
+        "case": "smoke",
+        "smokes": 1,
+        "darkest": 0.3396,
+        "bound": 0.3664,
+        "sky_changed": 0,
+        "hull_dark": 186496,
+        "smokes_after": 0,
+        "temporal_ratio": 1.0,
+        "residual_after_8": 0.0
+      },
+      {
+        "case": "burst_small",
+        "hit": 0,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.3096,
+        "lobe_max_over_min": 1.403
+      },
+      {
+        "case": "burst_small",
+        "hit": 1,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.5053,
+        "lobe_max_over_min": 3.255
+      },
+      {
+        "case": "burst_small",
+        "hit": 2,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.3882,
+        "lobe_max_over_min": 1.656
+      },
+      {
+        "case": "burst_small",
+        "hit": 3,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.3286,
+        "lobe_max_over_min": 2.115
+      },
+      {
+        "case": "burst_small",
+        "hit": 4,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.3075,
+        "lobe_max_over_min": 2.367
+      },
+      {
+        "case": "burst_small",
+        "hit": 5,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.3554,
+        "lobe_max_over_min": 1.973
+      },
+      {
+        "case": "burst_small",
+        "hit": 6,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.616,
+        "lobe_max_over_min": 3.332
+      },
+      {
+        "case": "burst_small",
+        "hit": 7,
+        "R_px": 30.0,
+        "third_octave": 0.0,
+        "fine": 1,
+        "dark_share": 0.8193,
+        "lobe_max_over_min": 1000000000.0
+      },
+      {
+        "case": "burst_small_median",
+        "hits": 8,
+        "dark_share": 0.3718,
+        "lobe_max_over_min": 2.241
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 0,
+        "radius_over_r": 1.713,
+        "peak": 0.1783
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 1,
+        "radius_over_r": 1.905,
+        "peak": 0.1786
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 2,
+        "radius_over_r": 1.811,
+        "peak": 0.1779
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 3,
+        "radius_over_r": 1.977,
+        "peak": 0.1775
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 4,
+        "radius_over_r": 2.031,
+        "peak": 0.1779
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 5,
+        "radius_over_r": 1.85,
+        "peak": 0.1779
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 6,
+        "radius_over_r": 1.836,
+        "peak": 0.1771
+      },
+      {
+        "case": "asteroid_dust_cloud",
+        "hit": 7,
+        "radius_over_r": 1.508,
+        "peak": 0.1775
+      },
+      {
+        "case": "asteroid_dust_cloud_median",
+        "hits": 8,
+        "radius_over_r": 1.843,
+        "peak": 0.1779
+      },
+      {
+        "case": "repair_cool_spot",
+        "radius_over_r": 0.827,
+        "peak": 0.2998,
+        "redder_px": 0,
+        "tug_peak": 0.1499
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 0,
+        "r_px_1440": 40,
+        "third_octave": 0.0,
+        "bursts": 1,
+        "diff": 0.0,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 1,
+        "r_px_1440": 44,
+        "third_octave": 0.0,
+        "bursts": 1,
+        "diff": 364.095,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 2,
+        "r_px_1440": 48,
+        "third_octave": 0.001,
+        "bursts": 1,
+        "diff": 401.875,
+        "octave_diff": 0.178
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 3,
+        "r_px_1440": 52,
+        "third_octave": 0.251,
+        "bursts": 1,
+        "diff": 437.071,
+        "octave_diff": 56.795
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 4,
+        "r_px_1440": 56,
+        "third_octave": 0.501,
+        "bursts": 1,
+        "diff": 471.432,
+        "octave_diff": 65.157
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 5,
+        "r_px_1440": 60,
+        "third_octave": 0.751,
+        "bursts": 1,
+        "diff": 506.855,
+        "octave_diff": 72.934
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 6,
+        "r_px_1440": 64,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 545.752,
+        "octave_diff": 86.235
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 7,
+        "r_px_1440": 68,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 576.368,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 8,
+        "r_px_1440": 72,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 619.66,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 9,
+        "r_px_1440": 76,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 648.859,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 16,
+        "frame": 10,
+        "r_px_1440": 80,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 683.836,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend",
+        "band_px": 16,
+        "frames": 10,
+        "median_diff": 526.303,
+        "max_diff": 683.836,
+        "at_frame": 10,
+        "max_over_median": 1.299,
+        "max_octave_diff": 86.235,
+        "octave_over_median": 0.1639
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 0,
+        "r_px_1440": 40,
+        "third_octave": 0.0,
+        "bursts": 1,
+        "diff": 0.0,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 1,
+        "r_px_1440": 44,
+        "third_octave": 0.0,
+        "bursts": 1,
+        "diff": 364.095,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 2,
+        "r_px_1440": 48,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 446.927,
+        "octave_diff": 191.041
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 3,
+        "r_px_1440": 52,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 435.794,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 4,
+        "r_px_1440": 56,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 470.957,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 5,
+        "r_px_1440": 60,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 509.202,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 6,
+        "r_px_1440": 64,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 544.654,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 7,
+        "r_px_1440": 68,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 576.368,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 8,
+        "r_px_1440": 72,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 619.66,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 9,
+        "r_px_1440": 76,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 648.859,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend_frame",
+        "band_px": 0,
+        "frame": 10,
+        "r_px_1440": 80,
+        "third_octave": 1.0,
+        "bursts": 1,
+        "diff": 683.836,
+        "octave_diff": 0.0
+      },
+      {
+        "case": "octave_blend",
+        "band_px": 0,
+        "frames": 10,
+        "median_diff": 526.928,
+        "max_diff": 683.836,
+        "at_frame": 10,
+        "max_over_median": 1.298,
+        "max_octave_diff": 191.041,
+        "octave_over_median": 0.3626
+      },
+      {
+        "case": "octave_hysteresis",
+        "full_charge": 0.4426,
+        "budgets_over_A": "10,.95,10,10,10,.95,1.05x4,1.3x2",
+        "octaves": 322232222233,
+        "want": 322232222233
+      },
+      {
+        "case": "cluster_neighbour_fade",
+        "cluster_fade": 1,
+        "frames": 25,
+        "a_last_ms": 1448,
+        "b_last_ms": 1608,
+        "e_first": 1.137,
+        "e_last": 1.5,
+        "worst_step": 0.0215
+      },
+      {
+        "case": "cluster_neighbour_fade",
+        "cluster_fade": 0,
+        "frames": 25,
+        "a_last_ms": 1448,
+        "b_last_ms": 1608,
+        "e_first": 0.9231,
+        "e_last": 1.5,
+        "worst_step": 0.625
+      },
+      {
+        "case": "ring_annulus",
+        "class": "plasma",
+        "glow_to_ring": 1,
+        "age_ms": 40,
+        "body_r_px": 58.3,
+        "ring_peak_px": 61,
+        "rim": 0.6034,
+        "min": 0.5014,
+        "at_px": 61,
+        "min_over_rim": 0.831,
+        "profile_rim_to_ring": "0.603,0.603,0.564,0.564,0.533,0.533,0.501"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "plasma",
+        "glow_to_ring": 1,
+        "age_ms": 80,
+        "body_r_px": 103.9,
+        "ring_peak_px": 107,
+        "rim": 0.3885,
+        "min": 0.3535,
+        "at_px": 107,
+        "min_over_rim": 0.91,
+        "profile_rim_to_ring": "0.388,0.388,0.379,0.379,0.366,0.366,0.353"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "plasma",
+        "glow_to_ring": 1,
+        "age_ms": 120,
+        "body_r_px": 139.6,
+        "ring_peak_px": 144,
+        "rim": 0.2693,
+        "min": 0.2476,
+        "at_px": 143,
+        "min_over_rim": 0.919,
+        "profile_rim_to_ring": "0.269,0.269,0.265,0.258,0.258,0.248,0.249"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "plasma",
+        "glow_to_ring": 0,
+        "age_ms": 40,
+        "body_r_px": 58.3,
+        "ring_peak_px": 164,
+        "rim": 0.3795,
+        "min": 0.0413,
+        "at_px": 89,
+        "min_over_rim": 0.109,
+        "profile_rim_to_ring": "0.380,0.080,0.043,0.059,0.078,0.213,0.351"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "plasma",
+        "glow_to_ring": 0,
+        "age_ms": 80,
+        "body_r_px": 103.9,
+        "ring_peak_px": 107,
+        "rim": 0.2728,
+        "min": 0.2344,
+        "at_px": 107,
+        "min_over_rim": 0.859,
+        "profile_rim_to_ring": "0.273,0.273,0.262,0.262,0.248,0.248,0.234"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "plasma",
+        "glow_to_ring": 0,
+        "age_ms": 120,
+        "body_r_px": 139.6,
+        "ring_peak_px": 144,
+        "rim": 0.235,
+        "min": 0.2128,
+        "at_px": 143,
+        "min_over_rim": 0.905,
+        "profile_rim_to_ring": "0.235,0.235,0.231,0.223,0.223,0.213,0.214"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "heavy",
+        "glow_to_ring": 1,
+        "age_ms": 40,
+        "body_r_px": 89.3,
+        "ring_peak_px": 92,
+        "rim": 0.4611,
+        "min": 0.4154,
+        "at_px": 92,
+        "min_over_rim": 0.901,
+        "profile_rim_to_ring": "0.461,0.461,0.442,0.442,0.437,0.437,0.415"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "heavy",
+        "glow_to_ring": 1,
+        "age_ms": 80,
+        "body_r_px": 122.8,
+        "ring_peak_px": 126,
+        "rim": 0.3127,
+        "min": 0.293,
+        "at_px": 126,
+        "min_over_rim": 0.937,
+        "profile_rim_to_ring": "0.313,0.313,0.307,0.307,0.301,0.301,0.293"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "heavy",
+        "glow_to_ring": 1,
+        "age_ms": 120,
+        "body_r_px": 135.3,
+        "ring_peak_px": 139,
+        "rim": 0.2281,
+        "min": 0.2115,
+        "at_px": 138,
+        "min_over_rim": 0.927,
+        "profile_rim_to_ring": "0.228,0.228,0.223,0.221,0.221,0.211,0.212"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "heavy",
+        "glow_to_ring": 0,
+        "age_ms": 40,
+        "body_r_px": 89.3,
+        "ring_peak_px": 213,
+        "rim": 0.2933,
+        "min": 0.0604,
+        "at_px": 135,
+        "min_over_rim": 0.206,
+        "profile_rim_to_ring": "0.293,0.108,0.062,0.073,0.094,0.169,0.395"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "heavy",
+        "glow_to_ring": 0,
+        "age_ms": 80,
+        "body_r_px": 122.8,
+        "ring_peak_px": 247,
+        "rim": 0.2204,
+        "min": 0.05,
+        "at_px": 184,
+        "min_over_rim": 0.227,
+        "profile_rim_to_ring": "0.220,0.107,0.066,0.050,0.061,0.106,0.234"
+      },
+      {
+        "case": "ring_annulus",
+        "class": "heavy",
+        "glow_to_ring": 0,
+        "age_ms": 120,
+        "body_r_px": 135.3,
+        "ring_peak_px": 138,
+        "rim": 0.1791,
+        "min": 0.1616,
+        "at_px": 138,
+        "min_over_rim": 0.902,
+        "profile_rim_to_ring": "0.179,0.179,0.174,0.174,0.172,0.172,0.162"
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 0,
+        "embers": 1,
+        "lobe_max_over_min": 1.312,
+        "lobe_std_over_mean": 0.0726,
+        "peak": 0.2067
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 1,
+        "embers": 1,
+        "lobe_max_over_min": 1.341,
+        "lobe_std_over_mean": 0.0951,
+        "peak": 0.179
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 2,
+        "embers": 1,
+        "lobe_max_over_min": 1.398,
+        "lobe_std_over_mean": 0.1067,
+        "peak": 0.1584
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 3,
+        "embers": 1,
+        "lobe_max_over_min": 1.445,
+        "lobe_std_over_mean": 0.1129,
+        "peak": 0.2067
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 4,
+        "embers": 1,
+        "lobe_max_over_min": 1.548,
+        "lobe_std_over_mean": 0.113,
+        "peak": 0.2075
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 5,
+        "embers": 1,
+        "lobe_max_over_min": 1.587,
+        "lobe_std_over_mean": 0.1727,
+        "peak": 0.1425
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 6,
+        "embers": 1,
+        "lobe_max_over_min": 1.335,
+        "lobe_std_over_mean": 0.1026,
+        "peak": 0.2318
+      },
+      {
+        "case": "ember_lobes",
+        "class": "energy",
+        "hit": 7,
+        "embers": 1,
+        "lobe_max_over_min": 1.472,
+        "lobe_std_over_mean": 0.1397,
+        "peak": 0.1991
+      },
+      {
+        "case": "ember_lobes_median",
+        "class": "energy",
+        "hits": 8,
+        "lobe_std_over_mean": 0.1098
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 0,
+        "embers": 1,
+        "lobe_max_over_min": 1.377,
+        "lobe_std_over_mean": 0.106,
+        "peak": 0.3867
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 1,
+        "embers": 1,
+        "lobe_max_over_min": 1.348,
+        "lobe_std_over_mean": 0.0935,
+        "peak": 0.4583
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 2,
+        "embers": 1,
+        "lobe_max_over_min": 1.415,
+        "lobe_std_over_mean": 0.1131,
+        "peak": 0.4192
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 3,
+        "embers": 1,
+        "lobe_max_over_min": 1.484,
+        "lobe_std_over_mean": 0.1186,
+        "peak": 0.5103
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 4,
+        "embers": 1,
+        "lobe_max_over_min": 1.576,
+        "lobe_std_over_mean": 0.1191,
+        "peak": 0.5122
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 5,
+        "embers": 1,
+        "lobe_max_over_min": 1.585,
+        "lobe_std_over_mean": 0.1517,
+        "peak": 0.3879
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 6,
+        "embers": 1,
+        "lobe_max_over_min": 1.329,
+        "lobe_std_over_mean": 0.0993,
+        "peak": 0.5571
+      },
+      {
+        "case": "ember_lobes",
+        "class": "heavy",
+        "hit": 7,
+        "embers": 1,
+        "lobe_max_over_min": 1.503,
+        "lobe_std_over_mean": 0.1433,
+        "peak": 0.4966
+      },
+      {
+        "case": "ember_lobes_median",
+        "class": "heavy",
+        "hits": 8,
+        "lobe_std_over_mean": 0.1159
       }
     ],
     "class_slots": [
@@ -4207,11 +6115,11 @@
         "filament_ps": 64,
         "lightning_vs": 301,
         "lightning_vtf": "1,1",
-        "fireball_ps": 315,
+        "fireball_ps": 356,
         "scorch_blend": 1,
         "shape_vertex_bytes": 92,
         "lightning_vertex_bytes": 64,
-        "fireball_vertex_bytes": 60,
+        "fireball_vertex_bytes": 76,
         "hull_state_bytes": 537360,
         "spot_bytes": 100,
         "mark_bytes": 36
@@ -4221,36 +6129,44 @@
       {
         "case": "capital_64_mixed",
         "hits": 64,
-        "sparks": 1015,
+        "sparks": 995,
         "flashes": 64,
         "boxes": 112,
         "bursts": 56,
         "rings": 24,
-        "filaments": 315,
+        "filaments": 294,
         "scorches": 16,
         "streaks": 8,
-        "best_us": 36.5,
-        "mean_us": 37.57,
+        "best_us": 41.6,
+        "mean_us": 42.79,
         "target_us": 30
       },
       {
         "case": "capital_64_mixed_sparks_only",
-        "best_us": 26.2
+        "best_us": 30.3
       },
       {
         "case": "capital_64_mixed_no_sparks",
-        "best_us": 13.4
+        "best_us": 18.8
+      },
+      {
+        "case": "capital_64_mixed_no_cluster",
+        "best_us": 38.3
+      },
+      {
+        "case": "capital_64_mixed_pairwise",
+        "best_us": 41.7
       },
       {
         "case": "capital_64_ion",
         "hits": 64,
-        "filaments": 24,
-        "segments": 995,
-        "quads": 995,
-        "capped": 40,
+        "filaments": 27,
+        "segments": 977,
+        "quads": 977,
+        "capped": 37,
         "flashes": 64,
-        "best_us": 23.8,
-        "mean_us": 24.16
+        "best_us": 24.0,
+        "mean_us": 27.09
       }
     ],
     "class_timing": [
@@ -4260,7 +6176,7 @@
         "class": "energy",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 96,
+        "sparks": 112,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4269,14 +6185,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.119,
-        "flash_screens": 0.013,
+        "octaves": 3,
+        "screens": 0.044,
+        "flash_screens": 0.016,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 22.4
+        "gpu_us": 65.9
       },
       {
         "width": 1920,
@@ -4284,23 +6200,23 @@
         "class": "energy",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 429,
+        "sparks": 464,
         "flashes": 64,
         "streaks": 0,
-        "boxes": 32,
-        "bursts": 2,
+        "boxes": 74,
+        "bursts": 34,
         "rings": 0,
         "filaments": 0,
-        "scorches": 0,
+        "scorches": 8,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.95,
-        "flash_screens": 2.761,
-        "shed": 70,
-        "bursts_shed": 22,
-        "scorches_shed": 8,
+        "octaves": 3,
+        "screens": 7.808,
+        "flash_screens": 3.189,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 305.8
+        "gpu_us": 298.4
       },
       {
         "width": 1920,
@@ -4308,7 +6224,7 @@
         "class": "ballistic",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 430,
+        "sparks": 426,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4317,14 +6233,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.028,
-        "flash_screens": 0.002,
+        "octaves": 3,
+        "screens": 0.015,
+        "flash_screens": 0.004,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 24.2
+        "gpu_us": 24.5
       },
       {
         "width": 1920,
@@ -4332,23 +6248,23 @@
         "class": "ballistic",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 2041,
+        "sparks": 2027,
         "flashes": 64,
         "streaks": 0,
-        "boxes": 79,
-        "bursts": 23,
+        "boxes": 58,
+        "bursts": 30,
         "rings": 0,
         "filaments": 0,
         "scorches": 6,
         "spots": 0,
-        "octaves": 2,
-        "screens": 5.103,
-        "flash_screens": 0.437,
+        "octaves": 3,
+        "screens": 2.806,
+        "flash_screens": 0.816,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 241.8
+        "gpu_us": 149.6
       },
       {
         "width": 1920,
@@ -4356,7 +6272,7 @@
         "class": "plasma",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 92,
+        "sparks": 87,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4365,14 +6281,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.29,
-        "flash_screens": 0.052,
+        "octaves": 3,
+        "screens": 0.147,
+        "flash_screens": 0.044,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 29.6
+        "gpu_us": 24.5
       },
       {
         "width": 1920,
@@ -4381,7 +6297,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 17.1
+        "gpu_us": 17.3
       },
       {
         "width": 1920,
@@ -4389,23 +6305,23 @@
         "class": "plasma",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 447,
+        "sparks": 439,
         "flashes": 64,
         "streaks": 0,
         "boxes": 0,
-        "bursts": 0,
+        "bursts": 19,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.923,
-        "flash_screens": 7.923,
-        "shed": 108,
-        "bursts_shed": 23,
+        "octaves": 2,
+        "screens": 7.983,
+        "flash_screens": 7.58,
+        "shed": 96,
+        "bursts_shed": 10,
         "scorches_shed": 13,
-        "rings_shed": 55,
-        "gpu_us": 275.4
+        "rings_shed": 56,
+        "gpu_us": 363.3
       },
       {
         "width": 1920,
@@ -4414,7 +6330,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 11.0
+        "gpu_us": 10.8
       },
       {
         "width": 1920,
@@ -4422,7 +6338,7 @@
         "class": "heavy",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 474,
+        "sparks": 467,
         "flashes": 20,
         "streaks": 20,
         "boxes": 40,
@@ -4431,14 +6347,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.173,
-        "flash_screens": 0.005,
+        "octaves": 3,
+        "screens": 0.137,
+        "flash_screens": 0.011,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 26.2
+        "gpu_us": 26.8
       },
       {
         "width": 1920,
@@ -4447,7 +6363,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 17.9
+        "gpu_us": 17.8
       },
       {
         "width": 1920,
@@ -4455,23 +6371,23 @@
         "class": "heavy",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1989,
+        "sparks": 2042,
         "flashes": 64,
         "streaks": 64,
-        "boxes": 42,
-        "bursts": 2,
+        "boxes": 46,
+        "bursts": 37,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.79,
-        "flash_screens": 1.002,
-        "shed": 53,
-        "bursts_shed": 23,
+        "octaves": 2,
+        "screens": 7.911,
+        "flash_screens": 2.286,
+        "shed": 41,
+        "bursts_shed": 0,
         "scorches_shed": 8,
-        "rings_shed": 60,
-        "gpu_us": 344.1
+        "rings_shed": 59,
+        "gpu_us": 343.1
       },
       {
         "width": 1920,
@@ -4494,17 +6410,17 @@
         "boxes": 0,
         "bursts": 0,
         "rings": 0,
-        "filaments": 838,
+        "filaments": 792,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.04,
-        "flash_screens": 0.013,
+        "octaves": 3,
+        "screens": 0.042,
+        "flash_screens": 0.016,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 33.5
+        "gpu_us": 33.0
       },
       {
         "width": 1920,
@@ -4518,17 +6434,17 @@
         "boxes": 0,
         "bursts": 0,
         "rings": 0,
-        "filaments": 1024,
+        "filaments": 1010,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 3.111,
-        "flash_screens": 2.761,
+        "octaves": 3,
+        "screens": 3.59,
+        "flash_screens": 3.23,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 127.8
+        "gpu_us": 166.5
       },
       {
         "width": 1920,
@@ -4545,14 +6461,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 20,
-        "octaves": 2,
-        "screens": 0.093,
-        "flash_screens": 0.018,
+        "octaves": 3,
+        "screens": 0.039,
+        "flash_screens": 0.02,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 20.5
+        "gpu_us": 20.3
       },
       {
         "width": 1920,
@@ -4563,20 +6479,20 @@
         "sparks": 128,
         "flashes": 94,
         "streaks": 0,
-        "boxes": 34,
-        "bursts": 2,
+        "boxes": 65,
+        "bursts": 31,
         "rings": 0,
         "filaments": 0,
-        "scorches": 0,
+        "scorches": 9,
         "spots": 64,
-        "octaves": 1,
-        "screens": 7.964,
-        "flash_screens": 3.224,
-        "shed": 44,
-        "bursts_shed": 22,
-        "scorches_shed": 9,
+        "octaves": 2,
+        "screens": 7.892,
+        "flash_screens": 3.554,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 303.5
+        "gpu_us": 311.7
       },
       {
         "width": 1920,
@@ -4584,7 +6500,7 @@
         "class": "missile",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 504,
+        "sparks": 568,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4593,14 +6509,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.252,
-        "flash_screens": 0.013,
+        "octaves": 3,
+        "screens": 0.131,
+        "flash_screens": 0.025,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 29.0
+        "gpu_us": 28.3
       },
       {
         "width": 1920,
@@ -4609,7 +6525,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 17.2
+        "gpu_us": 17.7
       },
       {
         "width": 1920,
@@ -4620,20 +6536,20 @@
         "sparks": 2048,
         "flashes": 64,
         "streaks": 0,
-        "boxes": 23,
-        "bursts": 2,
+        "boxes": 33,
+        "bursts": 26,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.67,
-        "flash_screens": 2.761,
-        "shed": 85,
-        "bursts_shed": 19,
+        "octaves": 2,
+        "screens": 7.98,
+        "flash_screens": 4.85,
+        "shed": 65,
+        "bursts_shed": 0,
         "scorches_shed": 13,
-        "rings_shed": 59,
-        "gpu_us": 321.6
+        "rings_shed": 58,
+        "gpu_us": 355.1
       },
       {
         "width": 1920,
@@ -4650,7 +6566,7 @@
         "class": "asteroid",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 375,
+        "sparks": 376,
         "flashes": 0,
         "streaks": 0,
         "boxes": 0,
@@ -4659,14 +6575,14 @@
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.0,
+        "octaves": 3,
+        "screens": 0.009,
         "flash_screens": 0.0,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 20.9
+        "gpu_us": 21.2
       },
       {
         "width": 1920,
@@ -4674,23 +6590,23 @@
         "class": "asteroid",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1642,
+        "sparks": 1576,
         "flashes": 0,
         "streaks": 0,
         "boxes": 0,
-        "bursts": 22,
+        "bursts": 34,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.047,
+        "octaves": 3,
+        "screens": 1.799,
         "flash_screens": 0.0,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 45.6
+        "gpu_us": 95.5
       },
       {
         "width": 1920,
@@ -4698,14 +6614,14 @@
         "class": "plasma",
         "case": "capital_close_128_hits",
         "flashes": 128,
-        "flashes_shed": 80,
+        "flashes_shed": 64,
         "boxes": 0,
-        "bursts": 0,
+        "bursts": 2,
         "rings": 0,
         "scorches": 0,
-        "screens": 7.923,
-        "flash_screens": 7.923,
-        "gpu_us": 284.3
+        "screens": 7.924,
+        "flash_screens": 7.877,
+        "gpu_us": 363.3
       },
       {
         "width": 1920,
@@ -4716,8 +6632,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 0.5,
-        "gpu_us": 30.9,
-        "weight": 0.174
+        "gpu_us": 31.1,
+        "weight": 0.175
       },
       {
         "width": 1920,
@@ -4728,8 +6644,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 1.0,
-        "gpu_us": 32.1,
-        "weight": 0.181
+        "gpu_us": 31.6,
+        "weight": 0.178
       },
       {
         "width": 1920,
@@ -4740,8 +6656,8 @@
         "scorches": 1,
         "flashes": 0,
         "screens": 0.49,
-        "gpu_us": 30.2,
-        "weight": 0.17
+        "gpu_us": 30.4,
+        "weight": 0.171
       },
       {
         "width": 1920,
@@ -4751,9 +6667,9 @@
         "filaments": 0,
         "scorches": 0,
         "flashes": 1,
-        "screens": 0.49,
-        "gpu_us": 30.7,
-        "weight": 0.173
+        "screens": 0.291,
+        "gpu_us": 30.3,
+        "weight": 0.171
       },
       {
         "width": 5120,
@@ -4761,7 +6677,7 @@
         "class": "energy",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 99,
+        "sparks": 110,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4770,14 +6686,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.237,
-        "flash_screens": 0.026,
+        "octaves": 3,
+        "screens": 0.088,
+        "flash_screens": 0.031,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 51.5
+        "gpu_us": 30.3
       },
       {
         "width": 5120,
@@ -4785,23 +6701,23 @@
         "class": "energy",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 462,
+        "sparks": 477,
         "flashes": 64,
         "streaks": 0,
-        "boxes": 27,
-        "bursts": 2,
+        "boxes": 46,
+        "bursts": 19,
         "rings": 0,
         "filaments": 0,
-        "scorches": 0,
+        "scorches": 5,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.922,
-        "flash_screens": 2.768,
-        "shed": 61,
-        "bursts_shed": 12,
-        "scorches_shed": 5,
+        "octaves": 3,
+        "screens": 7.823,
+        "flash_screens": 3.203,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 1056.8
+        "gpu_us": 1027.9
       },
       {
         "width": 5120,
@@ -4809,7 +6725,7 @@
         "class": "ballistic",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 449,
+        "sparks": 435,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4818,9 +6734,9 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.056,
-        "flash_screens": 0.004,
+        "octaves": 3,
+        "screens": 0.028,
+        "flash_screens": 0.008,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
@@ -4833,23 +6749,23 @@
         "class": "ballistic",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 2048,
+        "sparks": 2042,
         "flashes": 64,
         "streaks": 0,
-        "boxes": 56,
-        "bursts": 14,
+        "boxes": 33,
+        "bursts": 18,
         "rings": 0,
         "filaments": 0,
         "scorches": 4,
         "spots": 0,
-        "octaves": 2,
-        "screens": 5.189,
-        "flash_screens": 0.439,
+        "octaves": 3,
+        "screens": 2.789,
+        "flash_screens": 0.789,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 766.8
+        "gpu_us": 420.1
       },
       {
         "width": 5120,
@@ -4857,7 +6773,7 @@
         "class": "plasma",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 86,
+        "sparks": 94,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -4866,14 +6782,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.582,
-        "flash_screens": 0.104,
+        "octaves": 3,
+        "screens": 0.288,
+        "flash_screens": 0.086,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 93.3
+        "gpu_us": 55.4
       },
       {
         "width": 5120,
@@ -4882,7 +6798,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 25.8
+        "gpu_us": 26.2
       },
       {
         "width": 5120,
@@ -4890,23 +6806,23 @@
         "class": "plasma",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 455,
+        "sparks": 461,
         "flashes": 64,
         "streaks": 0,
         "boxes": 0,
-        "bursts": 0,
+        "bursts": 2,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.962,
-        "flash_screens": 7.962,
-        "shed": 95,
-        "bursts_shed": 12,
+        "octaves": 2,
+        "screens": 7.969,
+        "flash_screens": 7.875,
+        "shed": 72,
+        "bursts_shed": 14,
         "scorches_shed": 10,
-        "rings_shed": 41,
-        "gpu_us": 944.6
+        "rings_shed": 43,
+        "gpu_us": 1201.2
       },
       {
         "width": 5120,
@@ -4923,7 +6839,7 @@
         "class": "heavy",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 465,
+        "sparks": 501,
         "flashes": 20,
         "streaks": 20,
         "boxes": 40,
@@ -4932,14 +6848,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.342,
-        "flash_screens": 0.009,
+        "octaves": 3,
+        "screens": 0.266,
+        "flash_screens": 0.022,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 64.5
+        "gpu_us": 53.3
       },
       {
         "width": 5120,
@@ -4948,7 +6864,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 28.9
+        "gpu_us": 29.7
       },
       {
         "width": 5120,
@@ -4956,23 +6872,23 @@
         "class": "heavy",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1989,
+        "sparks": 2048,
         "flashes": 64,
         "streaks": 64,
-        "boxes": 35,
-        "bursts": 2,
+        "boxes": 38,
+        "bursts": 21,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.741,
-        "flash_screens": 0.961,
-        "shed": 45,
-        "bursts_shed": 12,
+        "octaves": 2,
+        "screens": 7.927,
+        "flash_screens": 2.201,
+        "shed": 27,
+        "bursts_shed": 0,
         "scorches_shed": 5,
-        "rings_shed": 49,
-        "gpu_us": 1125.4
+        "rings_shed": 51,
+        "gpu_us": 1139.9
       },
       {
         "width": 5120,
@@ -4981,7 +6897,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 10.8
+        "gpu_us": 11.3
       },
       {
         "width": 5120,
@@ -4995,17 +6911,17 @@
         "boxes": 0,
         "bursts": 0,
         "rings": 0,
-        "filaments": 740,
+        "filaments": 878,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.039,
-        "flash_screens": 0.026,
+        "octaves": 3,
+        "screens": 0.047,
+        "flash_screens": 0.031,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 36.1
+        "gpu_us": 41.2
       },
       {
         "width": 5120,
@@ -5019,17 +6935,17 @@
         "boxes": 0,
         "bursts": 0,
         "rings": 0,
-        "filaments": 993,
+        "filaments": 994,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 3.387,
-        "flash_screens": 2.768,
+        "octaves": 3,
+        "screens": 3.911,
+        "flash_screens": 3.296,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 370.3
+        "gpu_us": 497.8
       },
       {
         "width": 5120,
@@ -5046,14 +6962,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 20,
-        "octaves": 2,
-        "screens": 0.187,
-        "flash_screens": 0.035,
+        "octaves": 3,
+        "screens": 0.076,
+        "flash_screens": 0.039,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 44.1
+        "gpu_us": 28.5
       },
       {
         "width": 5120,
@@ -5064,20 +6980,20 @@
         "sparks": 128,
         "flashes": 94,
         "streaks": 0,
-        "boxes": 27,
-        "bursts": 2,
+        "boxes": 40,
+        "bursts": 18,
         "rings": 0,
         "filaments": 0,
-        "scorches": 0,
+        "scorches": 7,
         "spots": 64,
-        "octaves": 1,
-        "screens": 7.706,
-        "flash_screens": 3.256,
-        "shed": 37,
-        "bursts_shed": 12,
-        "scorches_shed": 7,
+        "octaves": 2,
+        "screens": 7.945,
+        "flash_screens": 3.733,
+        "shed": 0,
+        "bursts_shed": 0,
+        "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 1011.3
+        "gpu_us": 1081.6
       },
       {
         "width": 5120,
@@ -5085,7 +7001,7 @@
         "class": "missile",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 561,
+        "sparks": 556,
         "flashes": 20,
         "streaks": 0,
         "boxes": 40,
@@ -5094,14 +7010,14 @@
         "filaments": 0,
         "scorches": 16,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.51,
-        "flash_screens": 0.026,
+        "octaves": 3,
+        "screens": 0.264,
+        "flash_screens": 0.049,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 92.0
+        "gpu_us": 59.5
       },
       {
         "width": 5120,
@@ -5110,7 +7026,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 29.3
+        "gpu_us": 29.4
       },
       {
         "width": 5120,
@@ -5121,20 +7037,20 @@
         "sparks": 2048,
         "flashes": 64,
         "streaks": 0,
-        "boxes": 21,
-        "bursts": 2,
+        "boxes": 28,
+        "bursts": 15,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 1,
-        "screens": 7.737,
-        "flash_screens": 2.768,
-        "shed": 74,
-        "bursts_shed": 10,
+        "octaves": 2,
+        "screens": 7.987,
+        "flash_screens": 4.866,
+        "shed": 47,
+        "bursts_shed": 0,
         "scorches_shed": 10,
-        "rings_shed": 45,
-        "gpu_us": 1073.7
+        "rings_shed": 48,
+        "gpu_us": 1163.9
       },
       {
         "width": 5120,
@@ -5143,7 +7059,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 10.9
+        "gpu_us": 11.0
       },
       {
         "width": 5120,
@@ -5151,7 +7067,7 @@
         "class": "asteroid",
         "case": "fighter_200m_20_hits",
         "hits": 20,
-        "sparks": 365,
+        "sparks": 387,
         "flashes": 0,
         "streaks": 0,
         "boxes": 0,
@@ -5160,14 +7076,14 @@
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.001,
+        "octaves": 3,
+        "screens": 0.02,
         "flash_screens": 0.0,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 21.4
+        "gpu_us": 21.9
       },
       {
         "width": 5120,
@@ -5175,23 +7091,23 @@
         "class": "asteroid",
         "case": "capital_close_64_hits",
         "hits": 64,
-        "sparks": 1642,
+        "sparks": 1621,
         "flashes": 0,
         "streaks": 0,
         "boxes": 0,
-        "bursts": 13,
+        "bursts": 19,
         "rings": 0,
         "filaments": 0,
         "scorches": 0,
         "spots": 0,
-        "octaves": 2,
-        "screens": 0.062,
+        "octaves": 3,
+        "screens": 1.692,
         "flash_screens": 0.0,
         "shed": 0,
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 62.3
+        "gpu_us": 247.9
       },
       {
         "width": 5120,
@@ -5199,14 +7115,14 @@
         "class": "plasma",
         "case": "capital_close_128_hits",
         "flashes": 128,
-        "flashes_shed": 80,
+        "flashes_shed": 66,
         "boxes": 0,
-        "bursts": 0,
+        "bursts": 2,
         "rings": 0,
         "scorches": 0,
-        "screens": 7.962,
-        "flash_screens": 7.962,
-        "gpu_us": 949.3
+        "screens": 7.932,
+        "flash_screens": 7.818,
+        "gpu_us": 1190.3
       },
       {
         "width": 5120,
@@ -5217,8 +7133,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 0.5,
-        "gpu_us": 88.4,
-        "weight": 0.498
+        "gpu_us": 88.0,
+        "weight": 0.496
       },
       {
         "width": 5120,
@@ -5229,8 +7145,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 1.0,
-        "gpu_us": 87.5,
-        "weight": 0.493
+        "gpu_us": 88.0,
+        "weight": 0.496
       },
       {
         "width": 5120,
@@ -5241,7 +7157,7 @@
         "scorches": 1,
         "flashes": 0,
         "screens": 0.49,
-        "gpu_us": 86.3,
+        "gpu_us": 86.2,
         "weight": 0.486
       },
       {
@@ -5252,9 +7168,9 @@
         "filaments": 0,
         "scorches": 0,
         "flashes": 1,
-        "screens": 0.49,
-        "gpu_us": 87.0,
-        "weight": 0.49
+        "screens": 0.248,
+        "gpu_us": 71.2,
+        "weight": 0.401
       }
     ],
     "fade": {

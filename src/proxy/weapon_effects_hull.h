@@ -15,11 +15,15 @@
 // and the impact's calibre k (calibre_of: the running damage total, or the override's): r = r_hit = r_scale U (r_base +
 // r_k k). Its anatomy (anatomy_of: the asteroid victim, then repair, tug, a missile source, the class nibble of
 // Event::detail the hook wrote) selects one row of each core::hull::class_* table:
-// - flash: a white disc core in a halo at the class's heat or colour, linear over its life, biased towards the eye by
-//   bias r; the heavy class adds the entry streak along the shot (P - streak_back r a to P + streak_front r a; without
-//   Event::dir the flash at streak_fallback_halo r instead);
-// - puff: the fireball impostor riding the owner, R(t) = R_b (1 - e^(-t / (rise L))) (the plasma globe shrinking over
-//   the last 0.7 L), heat T0 -> 0, the tint mixed in for the plasma globe; the lane clips its chord;
+// - flash (docs/architecture/hull-burst-look.md section 4): a four-arm star of unequal arms at a hashed angle, a white
+//   core, no halo, linear over its 40 ms (three frames at least), biased towards the eye by bias r; the heavy class adds
+//   the entry streak along the shot (P - streak_back r a to P + streak_front r a; without Event::dir the star's arms at
+//   streak_fallback_halo r instead);
+// - burst (section 2): the fireball impostor riding the owner, R(t) = R_b (1 - e^(-t / (rise L))) (the plasma globe
+//   shrinking over the last 0.7 L), heat T0 -> 0, the eroded three-octave noise body in its lobed silhouette (the third
+//   octave weighted in over look::fireball_fine_px .. + fireball_fine_band_px), the tint mixed in for the plasma globe, the asteroid's unlit dust; the lane clips its
+//   chord; scaled per owner cluster (section 3); its smoke (section 5) the same impostor in the multiply boxes from
+//   smoke_t0 L to (smoke_t0 + smoke_span) L;
 // - spark sets (fast, slow, chips): per hit round(n (1 +- spark_count_spread)) about n = n0 + nk k, in antipodal pairs
 //   of hashed isotropic directions u, each launched along normalize(+-u + b a) (a the shot heading in world, b the set's
 //   bias: b < 0 back towards the shooter, b > 0 through the hull; b 0 without Event::dir), each spark's speed, life,
@@ -27,10 +31,11 @@
 //   frame, closed form p(t) = p0 + v0 tau (1 - e^(-t / tau)) + w t in world (they leave the owner and outlive it); drawn
 //   from the previous frame's screen position to the current one (the streak rule); radiance E f, heat T0 f with f the
 //   life fraction (the ion's in ion_colour); a set with a duty is lit in that share of flicker_ms slots;
-// - glow and ember (the glow primitive at the hit), the surface ring (the sphere shell cut by the lane), the ion's
-//   lightning (ion_phase: 3 or 4 strikes re-seeding its channels over ion_strike_window_ms, then a faint residual to
-//   ion_end_ms; ion_strike: 2 to 4 jagged channels with 1 or 2 branches each in the hit's tangent plane riding the owner,
-//   one segment quad each drawn on the lane under it) and the plasma / heavy shimmer rect;
+// - glow (the burst's light: glow_r_x R(t), its heat and life, the cluster's saturation; repair's and tug's cool spot) and
+//   ember (the glow primitive at the hit), the surface ring (the sphere shell cut by the lane), the ion's lightning
+//   (ion_phase: 3 or 4 strikes re-seeding its channels over ion_strike_window_ms, then a faint residual to ion_end_ms;
+//   ion_strike: 2 to 4 jagged channels with 1 or 2 branches each in the hit's tangent plane riding the owner, one
+//   segment quad each drawn on the lane under it) and the plasma / heavy shimmer rect;
 // - the scorch: at a record's first frame a mark enters the per-owner scorch store (scorch_per_owner, scorch_store; it
 //   outlives the record), drawn every frame as a multiply decal s0 min(1, t / L_ember) (1 - t / L_s) until L_s.
 // Beams, repair and tug follow the hold rule (section 3.9): a new record of an owner and (table, row) within hold_r r of
@@ -38,8 +43,9 @@
 // only when the owner held no spot of that (table, row). A spot is held while now - t_last <= max(hold_ms, 2 steps),
 // then falls; the beam's spot draws a core, a boiling puff, spatter (closed form: two sparks per spatter_period_ms of
 // its hold), a glow and a trail ember from its fall, and lays a scorch mark every trail_step_r r it crawls (the spot's
-// halo, core and glow in the weapon colour mixed with white, beam_glow_mix / beam_core_mix; the rest heat); repair
-// draws a tinted glow and ember, tug a pale glow.
+// halo, core and glow in the weapon colour mixed with white, beam_glow_mix / beam_core_mix; the pulse star, puff, smoke,
+// spatter, ember and scorch heat); repair draws a cool star at its pulse start, a cool glow and ember, tug a fainter
+// cool glow.
 // Every life is game time from the record's first stage frame (age 0 on its first drawn frame) and never shorter than
 // min_frames x its first frame's game step (the three-frame floor), each element's life x (1 +- stagger / 2) by a hash
 // of its record and index. The owner-attached elements ride the owner (re-posed every frame through its rows, validated
@@ -47,12 +53,13 @@
 // whose owner never validated leaves the ring (retired); a spot or scorch whose owner went is freed. The own ship in
 // the cockpit view: every element of a hit on it at own_cockpit_gain (look 2.9).
 // The shared budget (look 2.11 as amended by hull-impact-classes.md section 6): each box is charged its screen rectangle
-// x its family weight; past the screens the patches left: (0) the shimmer rects of other owners, (1) the puffs' second
-// octave, then other owners' puffs past two per owner, (2) other owners' scorches, oldest first, (3) their rings and
-// lightning segments, (4) their glows and embers, oldest first, then their remaining puffs, last their flashes. Entry
+// x its family weight; past the screens the patches left (hull-burst-look.md section 6): (0) the shimmer rects of other
+// owners, (1) every burst's third octave, (2) other owners' smoke, oldest first, (3) their scorches, (4) their rings and
+// lightning segments, (5) their glows and embers, oldest first, then their bursts past two per owner, last their
+// flashes. Entry
 // streaks, sparks, chips, beam spot cores and anything of the own ship are never shed (count caps: hull::max_sparks;
 // renderer::weapon_sprite_quads, weapon_glow_boxes, weapon_fireball_boxes, weapon_ring_quads, weapon_filament_boxes,
-// weapon_scorch_boxes; hull::max_spots, scorch_store, shimmer_max).
+// weapon_scorch_boxes, weapon_smoke_boxes; hull::max_spots, scorch_store, shimmer_max).
 //
 // State: HullState holds, per ring slot, the record's first stage frame (its game ms, its world contact point, the
 // owner's velocity then, the shot heading in world, the three-frame floor of that frame's step, kept for the record's
@@ -123,6 +130,10 @@ struct HullState {
     std::uint32_t use = 0;
     std::uint32_t prev_now = 0; // the previous stage call's game ms (has_prev)
     bool has_prev = false;
+    // The budget's octave step (1) with its hysteresis (look::fireball_octave_hold, fireball_octave_return): whether the
+    // bursts draw two octaves and the frames since it began.
+    bool octaves_coarse = false;
+    std::uint8_t coarse_frames = 0;
 };
 // A load, a sector change or a new load epoch (the ring's scope): the spots and the scorch marks name engine objects of
 // the old scope and go with the ring's records.
@@ -138,6 +149,8 @@ inline void hull_clear(HullState& s) noexcept {
     s.use = 0;
     s.prev_now = 0;
     s.has_prev = false;
+    s.octaves_coarse = false;
+    s.coarse_frames = 0;
 }
 // The frame: the current view with its jittered projection (cam.m00, m11, m20, m21) and the previous frame's view
 // (prev_valid false: the current view stands for it), the target's size, the near plane, the game clock and step, the
@@ -158,6 +171,13 @@ struct HullTuning {
     bool streak = true, filament = true, scorch = core::hull::scorch, shimmer = true, spots = true;
     bool beam_colour = core::hull::beam_colour; // the beam spot's halo, core and glow in the weapon colour
     bool ring_noise = true, ring_wash = true, ring_refraction = true; // the shock front's parts (the lab's sub-layers)
+    bool smoke = true;     // the bursts' smoke (hull-burst-look.md section 5)
+    bool cluster = true;   // the per-owner cluster saturation of the bursts and their glows (section 3)
+    bool spot_core = true; // a beam spot's held core (the fixture isolates the pulse's star)
+    bool glow_to_ring = true; // a ring class's glow out to the ring (the fixture's before image: false)
+    bool cluster_fade = true; // a neighbour counted by its remaining life fraction (the fixture's hard count: false)
+    unsigned cluster_grid_min = 128; // an owner's bursts from which the cluster count takes the grid (the fixture times both)
+    float fine_band_px = core::look::fireball_fine_band_px; // the third octave's blend (the fixture's hard step: 0)
     float cell_m[core::patch_tier_count] = {core::cell_m[0], core::cell_m[1], core::cell_m[2]};
     float stagger = core::stagger;
     float own_gain = core::own_cockpit_gain;
@@ -178,7 +198,9 @@ struct HullCounts {
     unsigned out_of_reach = 0, owners_out_of_reach = 0; // records (and kept owners) that built no elements: out of reach
     unsigned shimmer = 0, shimmer_shed = 0, scorches_shed = 0, rings_shed = 0, filaments_shed = 0, dir_fallback = 0;
     unsigned anatomy[core::hull::anatomy_count]{}; // live records (and spots) per anatomy this frame
-    unsigned octaves = core::look::fireball_octaves; // the puffs' noise octaves this frame (1: the budget's LOD)
+    unsigned octaves = core::look::fireball_octaves; // the bursts' noise octaves at most this frame (2: the budget's step 1)
+    unsigned fine = 0;   // bursts drawn without their full third octave by their size (under fine_px + fine_band_px)
+    unsigned smokes = 0, smokes_shed = 0; // the bursts' smoke boxes (the multiply pass) and the budget's shed of them
     float screens = 0.f; // the boxes' charged screens after shedding
     float burst_screens = 0.f; // of them the puffs'
     float flash_screens = 0.f; // of them the flashes' (charged, shed last)
@@ -198,6 +220,8 @@ struct HullBuffers {
     unsigned filament_cap = 0, filament_boxes = 0;
     renderer::WeaponGlowVertex* scorches = nullptr;
     unsigned scorch_cap = 0, scorch_boxes = 0;
+    renderer::WeaponFireballVertex* smokes = nullptr; // nullptr: no smoke (no multiply blend)
+    unsigned smoke_cap = 0, smoke_boxes = 0;
     ShimmerRect* shimmer = nullptr;
     unsigned shimmer_cap = 0, shimmer_count = 0;
 };
@@ -536,7 +560,7 @@ inline float rect_screens(const float r[4]) noexcept {
 // The glow's four corners: the rectangle at view depth z_q (the sphere's front, or 1.5 x the near plane for the whole
 // screen), each corner carrying the light (centre, R) and its radiance colour.
 inline void glow_quad(const HullView& f, const float c[3], float R, const float rect[4], bool full, const float colour[3],
-                      renderer::WeaponGlowVertex* out) noexcept {
+                      renderer::WeaponGlowVertex* out, const float* lobe = nullptr) noexcept {
     const float zq = full ? 1.5f * f.near_z : c[2] - R;
     const float kx = zq / f.cam.m00, ky = zq / f.cam.m11;
     for (unsigned k = 0; k < 4; ++k) {
@@ -549,13 +573,15 @@ inline void glow_quad(const HullView& f, const float c[3], float R, const float 
         out[k].light[2] = c[2];
         out[k].light[3] = R;
         for (unsigned i = 0; i < 3; ++i) out[k].colour[i] = colour[i];
+        out[k].lobe[0] = lobe ? lobe[0] : 0.f;
+        out[k].lobe[1] = lobe ? lobe[1] : -1.f;
     }
 }
 // A fireball's four corners (the glow's rectangle, weapon_fireball_vs.hlsl): at view depth z_q (the sphere's front, or
-// 1.5 x the near plane for the whole screen), each corner carrying the sphere, its look (T, E, advection, seed) and its
-// tint (rgb, share).
+// 1.5 x the near plane for the whole screen), each corner carrying the sphere, its look (T, E, age fraction, seed), its
+// tint (rgb, share; share < 0 smoke) and its disc (rotation, lobe seed, advection, the third octave's weight).
 inline void fireball_quad(const HullView& f, const float c[3], float R, const float rect[4], bool full, const float look[4],
-                          const float tint[4], renderer::WeaponFireballVertex* out) noexcept {
+                          const float tint[4], const float disc[4], renderer::WeaponFireballVertex* out) noexcept {
     const float zq = full ? 1.5f * f.near_z : c[2] - R;
     const float kx = zq / f.cam.m00, ky = zq / f.cam.m11;
     for (unsigned k = 0; k < 4; ++k) {
@@ -567,7 +593,61 @@ inline void fireball_quad(const HullView& f, const float c[3], float R, const fl
         out[k].sphere[3] = R;
         for (unsigned i = 0; i < 4; ++i) out[k].look[i] = look[i];
         for (unsigned i = 0; i < 4; ++i) out[k].tint[i] = tint[i];
+        for (unsigned i = 0; i < 4; ++i) out[k].disc[i] = disc[i];
     }
+}
+// sin and cos of a in [0, pi / 2] (the star's angle): Taylor terms about pi / 4 (error below 1e-8), no libm, no x87.
+inline void sincos_quarter(float a, float* s, float* c) noexcept {
+    const float d = a - 0.78539816f, d2 = d * d;
+    const float sd = d * (1.f - d2 / 6.f * (1.f - d2 / 20.f * (1.f - d2 / 42.f * (1.f - d2 / 72.f))));
+    const float cd = 1.f - d2 / 2.f * (1.f - d2 / 12.f * (1.f - d2 / 30.f * (1.f - d2 / 56.f)));
+    *c = 0.70710678f * (cd - sd);
+    *s = 0.70710678f * (sd + cd);
+}
+// A star's quad (the sprite batch's star kind, the hull hit's flash: hull-burst-look.md section 4): its centre c (view)
+// biased towards the eye by bias r_hit; the arm unit A = arm_r r_hit (>= star_floor_px), the quad's half A + half the
+// width floor, rotated by the angle on screen so (u, v) run along the arms; the core core_frac r_hit (>=
+// floor_flash_px); the arms' colour, the radiance. False when behind the near plane.
+inline bool star_quad(const HullView& f, const Screen& sc, const float c_view[3], float r_hit, float core_frac, float arm_r,
+                      float angle, const float colour[3], float radiance, renderer::WeaponSpriteVertex* v,
+                      float* screens) noexcept {
+    namespace hl = core::hull;
+    const float px_x = 0.5f * f.width * f.cam.m00;
+    const float dist = scalar::sqrt(dot3(c_view, c_view));
+    const float b = dist > 1e-6f ? 1.f - hl::bias * r_hit / dist : 1.f;
+    const float c[3] = {c_view[0] * b, c_view[1] * b, c_view[2] * b};
+    if (!(c[2] > f.near_z)) return false;
+    const Px p = to_px(f, sc, c);
+    const float r_px = r_hit * px_x * p.iz;
+    float A_px = arm_r * r_px;
+    if (A_px < hl::star_floor_px) A_px = hl::star_floor_px;
+    float core_px = core_frac * r_px;
+    if (core_px < 0.5f * core::look::floor_flash_px) core_px = 0.5f * core::look::floor_flash_px;
+    const float fw_px = 0.5f * hl::star_width_px, half = A_px + fw_px;
+    if (core_px > half) core_px = half;
+    const float r_view = half * c[2] / px_x;
+    const std::uint32_t packed = pack_colour(colour, core_px / half);
+    float sn, cs;
+    sincos_quarter(angle, &sn, &cs);
+    // its charge: the rotated square's bounding box clipped to the screen, x the square's share of the box
+    const float e = half * (cs + sn);
+    const float x0 = p.x - e > 0.f ? p.x - e : 0.f, x1 = p.x + e < f.width ? p.x + e : f.width;
+    const float y0 = p.y - e > 0.f ? p.y - e : 0.f, y1 = p.y + e < f.height ? p.y + e : f.height;
+    *screens = x1 > x0 && y1 > y0 ? (x1 - x0) * (y1 - y0) * (half * half) / (e * e * f.width * f.height) : 0.f;
+    const float sx[4] = {-1.f, 1.f, -1.f, 1.f}, sy[4] = {1.f, 1.f, -1.f, -1.f};
+    for (unsigned q = 0; q < 4; ++q) {
+        const float du = half * (sx[q] * cs - sy[q] * sn), dv = half * (sx[q] * sn + sy[q] * cs);
+        px_clip(f, sc, p.x + du, p.y - dv, c[2], v[q].a);
+        v[q].b[0] = sx[q];
+        v[q].b[1] = sy[q];
+        v[q].b[2] = radiance;
+        v[q].b[3] = r_view;
+        v[q].c[0] = 3.f;
+        v[q].c[1] = A_px / half;
+        v[q].c[2] = fw_px / half;
+        v[q].colour = packed;
+    }
+    return true;
 }
 // The stretched ring's box (the shock front, 2026-11-07): the ellipsoid |M d| <= R0, s times longer along the unit
 // heading a, lies inside the capsule of radius R0 about the segment c +- (s - 1) R0 a (its distance from the segment is
@@ -985,7 +1065,7 @@ inline void record_reach(const core::Event& e, const HullTuning& t, float frame_
     const float k = record_calibre(e);
     const float U = hull_unit(e, t), r_hit = hl::r_scale * U * (hl::r_base + hl::r_k * k);
     const float* fr = hl::class_flash[a];
-    float m = fr[1] > hl::streak_fallback_halo ? fr[1] : hl::streak_fallback_halo;
+    float m = fr[1] > hl::streak_fallback_halo ? fr[1] : hl::streak_fallback_halo; // the star's arm
     const float streak = (hl::streak_front > hl::streak_back ? hl::streak_front : hl::streak_back) + hl::streak_width;
     const float* rg = hl::class_ring[a];
     const float* gw = hl::class_glow[a];
@@ -994,9 +1074,17 @@ inline void record_reach(const core::Event& e, const HullTuning& t, float frame_
     const float ring = hl::ring_stretch * (rg[0] + 3.f * rg[1]);
     for (const float v : {streak, ring, a == hl::an_ion ? hl::ion_reach_r : 0.f, hl::class_shimmer[a], gw[0], em[0]})
         m = v > m ? v : m;
+    // the burst (its lobed sphere biased bias r towards the eye), its glow (glow_r_x R(t) <= glow_r_x R_b), its smoke
     const float* pf = hl::class_puff[a];
     const float R_b = pf[0] * r_hit + U * (pf[1] + pf[2] * k);
-    *attached = m * r_hit + (R_b > 0.f ? R_b : 0.f);
+    float burst = 0.f;
+    if (R_b > 0.f) {
+        const float body = R_b * (1.f + core::look::fireball_lobe_amp) + hl::bias * r_hit;
+        const float glow = hl::glow_r_x * R_b, smoke = hl::class_smoke[a][0] * R_b * (1.f + core::look::fireball_lobe_amp);
+        burst = body > glow ? body : glow;
+        burst = smoke > burst ? smoke : burst;
+    }
+    *attached = m * r_hit + burst;
     float sp = 0.f;
     for (unsigned set = 0; set < 3; ++set) {
         const SparkSet ss = spark_set(a, set);
@@ -1012,8 +1100,8 @@ inline void record_reach(const core::Event& e, const HullTuning& t, float frame_
     *spark = sp;
 }
 // The pixel floors' reach (px) past any world bound: a spark streak's floored rest length (streak_cap x (spark_rest_w
-// floor_lit_px + floor_len_px) x the largest length factor, half the lit floor) and the flash's floored halo (half
-// floor_flash_px x the largest halo over core).
+// floor_lit_px + floor_len_px) x the largest length factor, half the lit floor), the star's floored half (star_floor_px
+// and half the width floor) and a beam spot core's floored halo (half floor_flash_px x spot_halo over spot_core).
 constexpr float reach_floor_px() noexcept {
     namespace hl = core::hull;
     float m = 0.f;
@@ -1023,14 +1111,10 @@ constexpr float reach_floor_px() noexcept {
                             len_x + 0.5f * core::look::floor_lit_px;
         m = v > m ? v : m;
     }
-    for (unsigned a = 0; a < 10; ++a) {
-        const float core_frac = hl::class_flash[a][0];
-        if (!(core_frac > 0.f)) continue;
-        const float halo = hl::class_flash[a][1] > hl::streak_fallback_halo ? hl::class_flash[a][1] : hl::streak_fallback_halo;
-        const float v = 0.5f * core::look::floor_flash_px * halo / core_frac;
-        m = v > m ? v : m;
-    }
-    return m;
+    const float star = hl::star_floor_px + 0.5f * hl::star_width_px;
+    const float spot = 0.5f * core::look::floor_flash_px * hl::spot_halo / hl::spot_core;
+    m = star > m ? star : m;
+    return spot > m ? spot : m;
 }
 // Whether a view-space sphere grown by the pixel floors at its far depth is outside the view volume (an element there
 // cannot reach a pixel). px: view units per pixel at depth 1 (the larger of the two axes').
@@ -1049,9 +1133,9 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                              HullBuffers& out, core::VisibleOwners* visible = nullptr) noexcept {
     namespace hl = core::hull;
     HullCounts n{};
-    unsigned nq = 0, ng = 0, nb = 0, nr = 0, nf = 0, ns = 0;
+    unsigned nq = 0, ng = 0, nb = 0, nr = 0, nf = 0, ns = 0, nm = 0;
     out.sprite_quads = out.glow_boxes = out.fireball_boxes = out.ring_quads = out.filament_boxes = out.scorch_boxes =
-        out.shimmer_count = 0;
+        out.smoke_boxes = out.shimmer_count = 0;
     auto cap_of = [](const void* p, unsigned cap, unsigned most) { return p ? (cap < most ? cap : most) : 0u; };
     const unsigned sprite_cap = cap_of(out.sprites, out.sprite_cap, renderer::weapon_sprite_quads);
     const unsigned glow_cap = cap_of(out.glows, out.glow_cap, renderer::weapon_glow_boxes);
@@ -1059,6 +1143,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     const unsigned ring_cap = cap_of(out.rings, out.ring_cap, renderer::weapon_ring_quads);
     const unsigned filament_cap = cap_of(out.filaments, out.filament_cap, renderer::weapon_filament_boxes);
     const unsigned scorch_cap = cap_of(out.scorches, out.scorch_cap, renderer::weapon_scorch_boxes);
+    const unsigned smoke_cap = cap_of(out.smokes, out.smoke_cap, renderer::weapon_smoke_boxes);
     const unsigned shimmer_cap = cap_of(out.shimmer, out.shimmer_cap, hl::shimmer_max);
     if (!(f.width > 0.f) || !(f.height > 0.f) || !(f.cam.m00 > 0.f) || !(f.cam.m11 > 0.f)) return n;
     const float frame_floor_ms = float(t.min_frames) * float(f.step_ms);
@@ -1359,6 +1444,142 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         sn.out = sn.reached = 0;
         return &sn;
     };
+    // The cluster saturation (hull-burst-look.md section 3): each kept owner's live burst records (their owner-frame
+    // point and R_b in engine units) bucketed by owner (a counting sort over static scratch, no allocation); a record's
+    // N = 1 + the sum over its owner's other live bursts within cluster_r_x of its own R_b of their remaining life
+    // fractions (review 2026-11-07: a neighbour fades out of N with its life instead of stepping N down at its end).
+    // Per owner the neighbours come from a uniform grid of the owner's largest reach (each record's 27 cells about its
+    // own, the exact distance test kept; a counted cell's records only, so a hash collision never counts twice): O(n)
+    // per owner for spread hits, the pairwise loop under HullTuning::cluster_grid_min records (cheaper there: 64 measured
+    // 2.2 us under the grid). N stops at cluster_n_cap (a dense pile's scan bound). An owner out of reach is skipped.
+    static float cluster_n[core::ring_capacity];
+    static std::uint16_t burst_rec[core::ring_capacity], burst_sorted[core::ring_capacity];
+    static std::uint8_t burst_owner[core::ring_capacity];
+    static float burst_reach2[core::ring_capacity], burst_weight[core::ring_capacity];
+    if (t.cluster) {
+        constexpr unsigned grid_buckets = 2048, no_cell = 0xffffu;
+        constexpr float cluster_n_cap = 64.f;
+        static_assert(grid_buckets >= 2 * core::ring_capacity && (grid_buckets & (grid_buckets - 1)) == 0, "grid");
+        static std::int32_t cell_of[core::ring_capacity][3];
+        static std::uint16_t bucket_head[grid_buckets], cell_next[core::ring_capacity];
+        static std::uint32_t bucket_stamp[grid_buckets], grid_stamp = 0;
+        unsigned owner_bursts[hl::max_owners + 1] = {}, start[hl::max_owners + 1] = {};
+        unsigned nbr = 0;
+        // the kept owners by address (open addressing, 64 slots for at most 32: a record's owner in O(1), not a scan of
+        // the kept list per record); an owner out of reach draws no burst (its reach holds the bursts'), so its records
+        // count for nothing and are not entered
+        constexpr unsigned owner_slots = 64;
+        static_assert(owner_slots >= 2 * hl::max_owners, "owner slots");
+        std::uint32_t slot_owner[owner_slots];
+        std::uint8_t slot_ko[owner_slots];
+        for (unsigned q = 0; q < owner_slots; ++q) slot_ko[q] = 0xff;
+        auto owner_hash = [](std::uint32_t o) { return ((o >> 3) * 2654435761u) >> 26; };
+        for (unsigned k = 0; k < keep; ++k) {
+            if (seen[k].status != OwnerStatus::ok || (t.reach_cull && seen[k].out)) continue;
+            unsigned q = owner_hash(seen[k].owner);
+            while (slot_ko[q] != 0xff && slot_owner[q] != seen[k].owner) q = (q + 1) & (owner_slots - 1);
+            if (slot_ko[q] == 0xff) {
+                slot_owner[q] = seen[k].owner;
+                slot_ko[q] = std::uint8_t(k);
+            }
+        }
+        for (unsigned i = 0; i < core::ring_capacity; ++i) {
+            cluster_n[i] = 1.f;
+            const core::Event& e = ring.slots[i];
+            if (!e.sequence || e.role != core::role_hull_hit || !(e.flags & core::flag_stage)) continue;
+            const HullSlot& hs = state.slots[i];
+            if (hs.sequence != e.sequence || hs.orphan) continue;
+            unsigned q = owner_hash(e.owner);
+            while (slot_ko[q] != 0xff && slot_owner[q] != e.owner) q = (q + 1) & (owner_slots - 1);
+            if (slot_ko[q] == 0xff) continue;
+            const unsigned ko = slot_ko[q];
+            const unsigned a = anatomy_of(e);
+            const float* pf = hl::class_puff[a];
+            const float k = record_calibre(e);
+            const float U = hull_unit(e, t), r_hit = hl::r_scale * U * (hl::r_base + hl::r_k * k);
+            const float R_b = pf[0] * r_hit + U * (pf[1] + pf[2] * k);
+            if (!(R_b > 0.f)) continue;
+            const std::uint32_t age = hs.latched ? f.now - hs.first_ms : 0u;
+            bool fl = false;
+            const float life = element_life_ms(pf[3] + pf[4] * k, element_hash(e.sequence, 3), t.stagger,
+                                               hs.latched ? hs.floor_ms : frame_floor_ms, &fl);
+            if (age > 60000u || !(float(age) < life)) continue;
+            const float reach = hl::cluster_r_x * R_b * engine_per_view;
+            burst_rec[nbr] = std::uint16_t(i);
+            burst_owner[nbr] = std::uint8_t(ko);
+            burst_reach2[i] = reach * reach;
+            burst_weight[i] = t.cluster_fade ? 1.f - float(age) / life : 1.f;
+            ++owner_bursts[ko];
+            ++nbr;
+        }
+        for (unsigned k = 1; k <= keep; ++k) start[k] = start[k - 1] + owner_bursts[k - 1];
+        for (unsigned b = 0; b < nbr; ++b) burst_sorted[start[burst_owner[b]]++] = burst_rec[b];
+        auto within = [&](unsigned i, unsigned j) {
+            const std::int32_t* pi = ring.slots[i].pos;
+            const std::int32_t* pj = ring.slots[j].pos;
+            const float dx = float(core::wrap_sub(pi[0], pj[0])), dy = float(core::wrap_sub(pi[1], pj[1]));
+            const float dz = float(core::wrap_sub(pi[2], pj[2]));
+            return dx * dx + dy * dy + dz * dz <= burst_reach2[i];
+        };
+        auto bucket_of = [](std::int32_t x, std::int32_t y, std::int32_t z) {
+            return (std::uint32_t(x) * 73856093u ^ std::uint32_t(y) * 19349663u ^ std::uint32_t(z) * 83492791u) &
+                   (grid_buckets - 1);
+        };
+        unsigned at = 0;
+        for (unsigned k = 0; k < keep; ++k) {
+            const unsigned end = at + owner_bursts[k];
+            if (end - at < t.cluster_grid_min) {
+                for (unsigned b = at; b < end; ++b) {
+                    const unsigned i = burst_sorted[b];
+                    float sum = 1.f;
+                    for (unsigned c = at; c < end; ++c)
+                        if (c != b && within(i, burst_sorted[c])) sum += burst_weight[burst_sorted[c]];
+                    cluster_n[i] = sum < cluster_n_cap ? sum : cluster_n_cap;
+                }
+                at = end;
+                continue;
+            }
+            float cell = 0.f;
+            for (unsigned b = at; b < end; ++b) cell = burst_reach2[burst_sorted[b]] > cell ? burst_reach2[burst_sorted[b]] : cell;
+            cell = scalar::sqrt(cell);
+            const float inv = cell > 0.f ? 1.f / cell : 0.f;
+            const std::int32_t* origin = ring.slots[burst_sorted[at]].pos;
+            ++grid_stamp;
+            for (unsigned b = at; b < end; ++b) {
+                const unsigned i = burst_sorted[b];
+                for (unsigned q = 0; q < 3; ++q) {
+                    const float x = float(core::wrap_sub(ring.slots[i].pos[q], origin[q])) * inv;
+                    std::int32_t c = std::int32_t(x);
+                    c -= float(c) > x; // floor without libm
+                    cell_of[i][q] = c;
+                }
+                const std::uint32_t h = bucket_of(cell_of[i][0], cell_of[i][1], cell_of[i][2]);
+                if (bucket_stamp[h] != grid_stamp) {
+                    bucket_stamp[h] = grid_stamp;
+                    bucket_head[h] = std::uint16_t(no_cell);
+                }
+                cell_next[i] = bucket_head[h];
+                bucket_head[h] = std::uint16_t(i);
+            }
+            for (unsigned b = at; b < end; ++b) {
+                const unsigned i = burst_sorted[b];
+                const std::int32_t* ci = cell_of[i];
+                float sum = 1.f;
+                for (int dz = -1; dz <= 1 && sum < cluster_n_cap; ++dz)
+                    for (int dy = -1; dy <= 1 && sum < cluster_n_cap; ++dy)
+                        for (int dx = -1; dx <= 1 && sum < cluster_n_cap; ++dx) {
+                            const std::int32_t cx = ci[0] + dx, cy = ci[1] + dy, cz = ci[2] + dz;
+                            const std::uint32_t h = bucket_of(cx, cy, cz);
+                            if (bucket_stamp[h] != grid_stamp) continue;
+                            for (unsigned j = bucket_head[h]; j != no_cell; j = cell_next[j])
+                                if (j != i && cell_of[j][0] == cx && cell_of[j][1] == cy && cell_of[j][2] == cz && within(i, j))
+                                    sum += burst_weight[j];
+                        }
+                cluster_n[i] = sum < cluster_n_cap ? sum : cluster_n_cap;
+            }
+            at = end;
+        }
+    }
     // The budget's bookkeeping per box.
     static_assert(renderer::weapon_glow_boxes <= 0xffff && renderer::weapon_fireball_boxes <= 0xffff, "box indices");
     BoxMeta glow_meta[renderer::weapon_glow_boxes];
@@ -1370,6 +1591,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     static std::uint16_t ion_order[core::ring_capacity];
     unsigned n_ion_jobs = 0;
     BoxMeta scorch_meta[renderer::weapon_scorch_boxes];
+    BoxMeta smoke_meta[renderer::weapon_smoke_boxes];
     ShimmerRect shimmer_cand[16];
     float shimmer_screens[16];
     unsigned shimmer_cands = 0;
@@ -1385,10 +1607,12 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     unsigned nfl = 0;
     std::uint32_t flash_age = 0, flash_owner = 0;
     bool flash_own = false;
-    const float lod_px = hl::puff_lod_px * f.height * (1.f / 1440.f);
+    const float fine_px = core::look::fireball_fine_px * f.height * (1.f / 1440.f);
+    const float fine_band_px = t.fine_band_px * f.height * (1.f / 1440.f);
+    static float burst_fine[renderer::weapon_fireball_boxes]; // each burst box's third-octave weight (the step (1) cut)
     // The element emitters (each counts its cap).
     auto glow_box = [&](const float c[3], float R, const float colour[3], std::uint32_t age_ms, bool own, std::uint32_t owner,
-                        float weight) -> bool {
+                        float weight, const float* lobe = nullptr) -> bool {
         if (!(c[2] + R > f.near_z)) return false;
         float rect[4];
         bool full = false;
@@ -1397,29 +1621,73 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             ++n.capped;
             return false;
         }
-        glow_quad(f, c, R, rect, full, colour, out.glows + 4 * ng);
+        glow_quad(f, c, R, rect, full, colour, out.glows + 4 * ng, lobe);
         glow_meta[ng] = BoxMeta{age_ms, owner, rect_screens(rect) * weight, std::uint8_t(own), 0};
         ++ng;
         return true;
     };
-    auto puff_box = [&](const float c[3], float R, float T, float E, float advect, float seed, const float tint4[4],
-                        std::uint32_t age_ms, bool own, std::uint32_t owner) -> bool {
+    // A burst body or its smoke (hull-burst-look.md sections 2 and 5): the sphere of the mean radius R (x (1 + lobe_amp)
+    // for the lobes) about the hit biased bias r_hit towards the eye; its disc rotation, lobe seed and noise seed hashed
+    // from the record (elements burst_rot_element, burst_lobe_element, 4); the third octave's weight 0 under fine_px, 1
+    // past fine_px + fine_band_px of the projected R, linear between (charged between the two weights); x the erosion's
+    // age fraction. Smoke: tint4 its darkening colour and -1, into the multiply boxes.
+    auto puff_box = [&](const float c_hit[3], float r_hit, float R, float T, float E, float x, float advect, std::uint32_t seq,
+                        const float tint4[4], std::uint32_t age_ms, bool own, std::uint32_t owner, bool smoke) -> bool {
+        if (!(R > 0.f)) return false;
+        const float dist = scalar::sqrt(dot3(c_hit, c_hit));
+        const float bb = dist > 1e-6f ? 1.f - hl::bias * r_hit / dist : 1.f;
+        const float c[3] = {c_hit[0] * bb, c_hit[1] * bb, c_hit[2] * bb};
+        const float Rs = R * (1.f + core::look::fireball_lobe_amp);
         float rect[4];
         bool full = false;
-        if (!(R > 0.f) || !(c[2] + R > f.near_z) || !sphere_rect(f, c, R, rect, &full)) return false;
-        if (nb >= fireball_cap) {
+        if (!(c[2] + Rs > f.near_z) || !sphere_rect(f, c, Rs, rect, &full)) return false;
+        if (smoke ? nm >= smoke_cap : nb >= fireball_cap) {
             ++n.capped;
             return false;
         }
-        // the octave LOD at fighter range: a puff under lod_px draws one octave (a negative seed)
-        const bool one = !full && R * f.width * 0.5f * f.cam.m00 < lod_px * c[2];
-        const float look[4] = {T, E, advect, one ? -seed : seed}; // seed > 0: the sign alone carries the LOD
-        fireball_quad(f, c, R, rect, full, look, tint4, out.fireballs + 4 * nb);
-        burst_meta[nb] = BoxMeta{age_ms, owner,
-                                 rect_screens(rect) * (one ? core::look::budget_weight_fireball_lod : core::look::budget_weight_fireball),
-                                 std::uint8_t(own), std::uint8_t(one ? 1 : 0)};
+        float fine = 1.f;
+        if (!full) {
+            const float over = R * f.width * 0.5f * f.cam.m00 - fine_px * c[2], band = fine_band_px * c[2];
+            fine = over <= 0.f ? 0.f : over >= band ? 1.f : over / band;
+        }
+        const float look[4] = {T, E, x, 64.f * unit_of(element_hash(seq, 4))};
+        const float disc[4] = {6.2831853f * unit_of(element_hash(seq, hl::burst_rot_element)),
+                               64.f * unit_of(element_hash(seq, hl::burst_lobe_element)), advect, fine};
+        if (smoke) {
+            fireball_quad(f, c, Rs, rect, full, look, tint4, disc, out.smokes + 4 * nm);
+            smoke_meta[nm] = BoxMeta{age_ms, owner, rect_screens(rect) * core::look::budget_weight_smoke, std::uint8_t(own), 0};
+            ++nm;
+            ++n.smokes;
+            return true;
+        }
+        fireball_quad(f, c, Rs, rect, full, look, tint4, disc, out.fireballs + 4 * nb);
+        // rank 1 marks a burst with a third octave for the budget's step (1) (the ranks are taken later)
+        constexpr float w2 = core::look::budget_weight_fireball_coarse, w3 = core::look::budget_weight_fireball;
+        burst_meta[nb] = BoxMeta{age_ms, owner, rect_screens(rect) * (w2 + (w3 - w2) * fine), std::uint8_t(own),
+                                 std::uint8_t(fine > 0.f ? 1 : 0)};
+        burst_fine[nb] = fine;
         ++nb;
         ++n.bursts;
+        n.fine += fine < 1.f;
+        return true;
+    };
+    // A star (the hull hit's flash, hull-burst-look.md section 4) at its hashed angle, charged as a flash.
+    auto emit_star = [&](const float c_view[3], float r_hit, float core_frac, float arm_r, std::uint32_t seq,
+                         const float colour[3], float radiance) -> bool {
+        if (nq >= sprite_cap) {
+            if (c_view[2] > f.near_z) ++n.capped;
+            return false;
+        }
+        float screens = 0.f;
+        const float angle = 1.5707963f * unit_of(element_hash(seq, hl::star_element));
+        if (!star_quad(f, sc, c_view, r_hit, core_frac, arm_r, angle, colour, radiance, out.sprites + 4 * nq, &screens))
+            return false;
+        flash_area += screens * hl::budget_weight_flash;
+        if (nfl < flash_meta_cap) {
+            flash_quad_of[nfl] = std::uint16_t(nq);
+            flash_meta[nfl++] = BoxMeta{flash_age, flash_owner, screens * hl::budget_weight_flash, std::uint8_t(flash_own), 0};
+        }
+        ++nq;
         return true;
     };
     auto emit_flash = [&](const float c_view[3], float r_hit, float core_frac, float halo_frac, const float halo[3],
@@ -1568,10 +1836,13 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     for (unsigned q = 0; q < 3; ++q) halo[q] = hl::ion_colour[q];
                 } else if (mode == 3) {
                     for (unsigned q = 0; q < 3; ++q) halo[q] = tint[q];
+                } else if (mode == 4) {
+                    for (unsigned q = 0; q < 3; ++q) halo[q] = hl::cool_colour[q];
                 } else
                     core::heat_colour(fr[3], halo);
-                const float halo_r = a == hl::an_heavy && !hs.has_axis ? hl::streak_fallback_halo : fr[1];
-                if (emit_flash(c_view, r_hit, fr[0], halo_r, halo, core::look::core_e * (1.f - age / life) * gain)) {
+                // the heavy hit without a heading: the longer arms instead of the streak
+                const float arm_r = a == hl::an_heavy && !hs.has_axis ? hl::streak_fallback_halo : fr[1];
+                if (emit_star(c_view, r_hit, fr[0], arm_r, e.sequence, halo, core::look::core_e * (1.f - age / life) * gain)) {
                     ++n.flashes;
                     n.floored += fl;
                 }
@@ -1598,19 +1869,41 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 }
             }
         }
-        // Puff: the fireball impostor at the contact point riding the owner.
+        // Burst: the fireball impostor at the contact point riding the owner (hull-burst-look.md section 2; the asteroid's
+        // unlit dust cloud at share 1), scaled by its owner's cluster (section 3), and its smoke (section 5): from
+        // smoke_t0 L_b over smoke_span L_b, the burst's noise and seeds, eroded over its own age y.
         const float* pf = hl::class_puff[a];
         const float R_b = pf[0] * r_hit + U * (pf[1] + pf[2] * k);
-        if (t.burst && fireball_cap && !hs.orphan && R_b > 0.f) {
+        const float cn = t.cluster ? cluster_n[i] : 1.f;
+        float burst_R = 0.f, burst_T = 0.f; // the burst now (radius, heat) for its glow
+        bool burst_alive = false;
+        if (!hs.orphan && R_b > 0.f) {
             const float life = element_life_ms(pf[3] + pf[4] * k, element_hash(e.sequence, 3), t.stagger, floor_ms, &fl);
+            const bool dust = a == hl::an_asteroid;
             if (age < life) {
-                const float R = puff_radius(a, R_b, age, life);
                 const float x = age / life;
-                const float mix = pf[9] > 0.f && saturated ? pf[9] * (1.f - x) : 0.f;
-                const float tint4[4] = {tint[0], tint[1], tint[2], mix};
-                if (puff_box(c_view, R, pf[5] * (1.f - x), pf[6] * gain, core::look::fireball_advect * x,
-                             64.f * unit_of(element_hash(e.sequence, 4)) + 1e-3f, tint4, age_ms, own, e.owner))
-                    n.floored += fl;
+                burst_R = puff_radius(a, R_b, age, life);
+                burst_T = pf[5] * (1.f - x);
+                burst_alive = true;
+                if (t.burst && fireball_cap) {
+                    const float mix = pf[9] > 0.f && saturated ? pf[9] * (1.f - x) : 0.f;
+                    const float tint4[4] = {dust ? hl::dust_colour[0] : tint[0], dust ? hl::dust_colour[1] : tint[1],
+                                            dust ? hl::dust_colour[2] : tint[2], dust ? 1.f : mix};
+                    const float sb = 1.f / (1.f + (cn - 1.f) * (1.f / hl::cluster_n0_burst));
+                    if (puff_box(c_view, r_hit, burst_R, burst_T, pf[6] * gain * sb, x, core::look::fireball_advect * x,
+                                 e.sequence, tint4, age_ms, own, e.owner, false))
+                        n.floored += fl;
+                }
+            }
+            const float* sm = hl::class_smoke[a];
+            if (t.smoke && smoke_cap && sm[0] > 0.f) {
+                const float y = (age - hl::smoke_t0 * life) / (hl::smoke_span * life);
+                if (y > 0.f && y < 1.f) {
+                    const float sv = sm[1] * (y < hl::smoke_rise ? y / hl::smoke_rise : 1.f) * (1.f - y) * (1.f / (1.f - hl::smoke_rise)) * gain;
+                    const float tint4[4] = {sv * hl::scorch_colour[0], sv * hl::scorch_colour[1], sv * hl::scorch_colour[2], -1.f};
+                    puff_box(c_view, r_hit, sm[0] * R_b, 0.f, 0.f, y, core::look::fireball_advect * (age / life), e.sequence,
+                             tint4, age_ms, own, e.owner, true);
+                }
             }
         }
         // Surface ring: the expanding sphere shell cut by the lane (no normal), drawn as the shock front (weapon_ring_ps.hlsl:
@@ -1797,8 +2090,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 for (unsigned j = 0; j < cache; ++j) pair_direction(e.sequence, j, hs.pair_dir[j]);
                 hs.pairs = std::uint8_t(cache);
             }
-            const bool ion = a == hl::an_ion;
-            const std::uint32_t ion_packed = pack_colour(hl::ion_colour, 0.f);
+            const bool ion = a == hl::an_ion, rock = a == hl::an_asteroid;
+            const std::uint32_t ion_packed = pack_colour(rock ? hl::dust_colour : hl::ion_colour, 0.f);
             unsigned g0 = 0;
             for (unsigned set = 0; set < 3; ++set) {
                 const unsigned count = counts[set];
@@ -1846,7 +2139,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     const float speed = speed0 * sf.speed_x;
                     const float fr2 = 1.f - age / life;
                     const float e_raw = ss.e * fr2;
-                    const std::uint32_t packed = ion ? ion_packed : heat_packed(ss.t0 * fr2);
+                    const std::uint32_t packed = ion || rock ? ion_packed : heat_packed(ss.t0 * fr2);
                     const float hold = e_raw < core::look::streak_core_min ? e_raw : core::look::streak_core_min;
                     const float sv = speed * inv;
                     float dn[3], dp[3];
@@ -1886,8 +2179,29 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 }
             }
         }
-        // Glow and ember (the owner live).
+        // Glow and ember (the owner live): the burst's glow (section 3: glow_r_x R(t), glow_e_x E_b, the burst's heat and
+        // life, the cluster's saturation), repair's and tug's cool glow (class_glow), the ember.
         if (!hs.orphan) {
+            if (t.glow && burst_alive && burst_R > 0.f && a != hl::an_asteroid) {
+                float colour[3];
+                core::heat_colour(burst_T, colour);
+                const float sg = 1.f / (1.f + (cn - 1.f) * (1.f / hl::cluster_n0_glow));
+                const float e0 = hl::glow_e_x * pf[6] * burst_T * sg * gain;
+                for (unsigned q = 0; q < 3; ++q) colour[q] *= e0;
+                float Rg = hl::glow_r_x * burst_R;
+                if (rg[0] > 0.f && t.glow_to_ring) { // a ring class: out to the ring's current radius while it lives (core.h, ember_lobe_amp)
+                    bool rfl = false;
+                    const float rlife = element_life_ms(rg[2], element_hash(e.sequence, 6), t.stagger, floor_ms, &rfl);
+                    if (age < rlife) {
+                        const float xr = age / rlife;
+                        // the ring's drawn reach (its front's window past r(t)): the glow still lit under its band
+                        const float rr = rg[0] * r_hit * (1.f - core::exp_neg(-xr / hl::ring_rise)) +
+                                         hl::ring_front_window * rg[1] * r_hit;
+                        if (rr > Rg) Rg += (rr - Rg) * (1.f - xr);
+                    }
+                }
+                if (glow_box(c_view, Rg, colour, age_ms, own, e.owner, core::look::budget_weight_glow)) ++n.glows;
+            }
             const float* gw = hl::class_glow[a];
             const float* em = hl::class_ember[a];
             const bool repair = a == hl::an_repair, tug = a == hl::an_tug;
@@ -1902,7 +2216,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 float colour[3];
                 if (repair || tug) {
                     const float e0 = is_glow ? gw[3] : em[4];
-                    for (unsigned q = 0; q < 3; ++q) colour[q] = (tug ? hl::tug_colour[q] : tint[q]) * e0 * fade;
+                    for (unsigned q = 0; q < 3; ++q) colour[q] = hl::cool_colour[q] * e0 * fade;
                 } else if (is_glow) {
                     core::heat_colour(gw[2], colour);
                     for (unsigned q = 0; q < 3; ++q) colour[q] *= gw[3] * gw[2] * fade;
@@ -1912,7 +2226,15 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     for (unsigned q = 0; q < 3; ++q) colour[q] *= em[4] * T;
                 }
                 for (unsigned q = 0; q < 3; ++q) colour[q] *= gain;
-                if (glow_box(c_view, R, colour, age_ms, own, e.owner, core::look::budget_weight_glow)) {
+                // a burst class's ember: the burst's lobed silhouette (its rotation and lobe seed), the body's remnant
+                const bool lobed = !is_glow && R_b > 0.f && hl::ember_lobe_amp > 0.f;
+                float lobe[2] = {0.f, -1.f};
+                if (lobed) {
+                    lobe[0] = 6.2831853f * unit_of(element_hash(e.sequence, hl::burst_rot_element));
+                    lobe[1] = 64.f * unit_of(element_hash(e.sequence, hl::burst_lobe_element));
+                }
+                if (glow_box(c_view, R, colour, age_ms, own, e.owner,
+                             lobed ? core::look::budget_weight_glow_lobed : core::look::budget_weight_glow, lobed ? lobe : nullptr)) {
                     if (is_glow)
                         ++n.glows;
                     else
@@ -1945,7 +2267,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         const float fall_age = held ? 0.f : float(rel - hold_window);
         const float tail_ms = a == hl::an_beam       ? 1500.f + float(hl::spot_fall_ms)
                               : a == hl::an_repair   ? hl::class_ember[a][1] + hl::class_glow[a][1]
-                              : a == hl::an_asteroid ? hl::class_puff[a][3] + float(hl::spot_fall_ms)
+                              : a == hl::an_asteroid ? (hl::smoke_t0 + hl::smoke_span) * hl::class_puff[a][3] +
+                                                           float(hl::spot_fall_ms)
                                                      : hl::class_glow[a][1];
         if (fall_age > tail_ms + sp.floor_ms || f.now - sp.first_ms > 600000u) {
             sp = Spot{};
@@ -1986,18 +2309,19 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             // The pulse start's flash, then the held spot's core (re-posed each tick: the beam's crawl), falling after
             // (not on rock: the asteroid takes no flash).
             const float* fr = hl::class_flash[a];
-            if (t.flash && sp.flash && a == hl::an_beam) {
+            if (t.flash && sp.flash && a == hl::an_beam) { // the pulse start's star
                 const float life = element_life_ms(fr[2], element_hash(sp.seed, 0), t.stagger, sp.floor_ms, &fl);
                 float halo[3];
                 core::heat_colour(fr[3], halo);
                 if (float(age_first) < life &&
-                    emit_flash(c_view, r_hit, fr[0], fr[1], halo, core::look::core_e * (1.f - float(age_first) / life) * gain)) {
+                    emit_star(c_view, r_hit, fr[0], fr[1], sp.seed, halo,
+                              core::look::core_e * (1.f - float(age_first) / life) * gain)) {
                     ++n.flashes;
                     ++n.spot_flashes;
                 }
             }
             const float env = 1.f - fall_age / float(hl::spot_fall_ms);
-            if (t.flash && env > 0.f && a == hl::an_beam) {
+            if (t.flash && t.spot_core && env > 0.f && a == hl::an_beam) {
                 float halo[3];
                 if (beam_lit)
                     for (unsigned q = 0; q < 3; ++q) halo[q] = beam_c[q];
@@ -2007,15 +2331,39 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                                beam_lit ? hl::beam_core_mix / hl::beam_glow_mix : 0.f))
                     ++n.flashes;
             }
-            // The boiling puff: grown from the spot's birth, its heat re-lit at each tick (never added).
+            // The boiling puff: grown from the spot's birth, its heat re-lit at each tick (never added), eroding over its
+            // fall (on rock the unlit dust); its glow (the burst's law, not on rock) and its smoke over the fall; its noise
+            // drifts outward with the spot's age (one phase from its birth, no reset).
             const float* pf = hl::class_puff[a];
             const float L = pf[3];
             const float T = pf[5] * (1.f - fall_age / L);
+            const bool dust = a == hl::an_asteroid;
+            const float R = pf[0] * r_hit * (1.f - core::exp_neg(-float(age_first) / (pf[7] * L)));
             if (t.burst && fireball_cap && T > 0.f) {
-                const float R = pf[0] * r_hit * (1.f - core::exp_neg(-float(age_first) / (pf[7] * L)));
-                const float tint4[4] = {0.f, 0.f, 0.f, 0.f};
-                puff_box(c_view, R, T, pf[6] * gain, core::look::fireball_advect * float(age_first % 1000u) * 1e-3f,
-                         64.f * unit_of(element_hash(sp.seed, 4)) + 1e-3f, tint4, rel, own, e.owner);
+                const float tint4[4] = {dust ? hl::dust_colour[0] : 0.f, dust ? hl::dust_colour[1] : 0.f,
+                                        dust ? hl::dust_colour[2] : 0.f, dust ? 1.f : 0.f};
+                puff_box(c_view, r_hit, R, T, pf[6] * gain, fall_age / L,
+                         core::look::fireball_advect * float(age_first) * 1e-3f, sp.seed, tint4, rel, own, e.owner,
+                         false);
+            }
+            if (t.glow && !dust && T > 0.f && R > 0.f) {
+                float colour[3];
+                core::heat_colour(T, colour);
+                if (beam_lit) { // the weapon colour at the heat glow's mean radiance
+                    const float m = (colour[0] + colour[1] + colour[2]) / (beam_c[0] + beam_c[1] + beam_c[2]);
+                    for (unsigned q = 0; q < 3; ++q) colour[q] = beam_c[q] * m;
+                }
+                for (unsigned q = 0; q < 3; ++q) colour[q] *= hl::glow_e_x * pf[6] * T * gain;
+                if (glow_box(c_view, hl::glow_r_x * R, colour, rel, own, e.owner, core::look::budget_weight_glow)) ++n.glows;
+            }
+            const float* sm = hl::class_smoke[a];
+            const float y = (fall_age - hl::smoke_t0 * L) / (hl::smoke_span * L);
+            if (t.smoke && smoke_cap && sm[0] > 0.f && y > 0.f && y < 1.f) {
+                const float sv = sm[1] * (y < hl::smoke_rise ? y / hl::smoke_rise : 1.f) * (1.f - y) * (1.f / (1.f - hl::smoke_rise)) * gain;
+                const float tint4[4] = {sv * hl::scorch_colour[0], sv * hl::scorch_colour[1], sv * hl::scorch_colour[2], -1.f};
+                puff_box(c_view, r_hit, sm[0] * pf[0] * r_hit, 0.f, 0.f, y,
+                         core::look::fireball_advect * float(age_first) * 1e-3f, sp.seed, tint4, rel, own, e.owner,
+                         true);
             }
             // The spatter: two sparks born every spatter_period_ms of the hold (closed form from the spot's birth), each
             // from the spot's current point (owner-anchored), at most spatter_cap live; on rock the asteroid's dust row.
@@ -2057,7 +2405,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                         const float fr2 = 1.f - sage / life, e_raw = ss.e * fr2;
                         const float hold = e_raw < core::look::streak_core_min ? e_raw : core::look::streak_core_min;
                         streak_vertices(head, tail, e_raw * gain, hold * gain, ss.width * U * sf.width_x,
-                                        heat_packed(ss.t0 * fr2), out.sprites + 4 * nq, sf.len_x);
+                                        dust ? pack_colour(hl::dust_colour, 0.f) : heat_packed(ss.t0 * fr2),
+                                        out.sprites + 4 * nq, sf.len_x);
                         ++nq;
                         ++n.sparks;
                         --sparks_left;
@@ -2066,24 +2415,23 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 }
             }
         }
-        // The glow: held, then its fall (repair: the weapon tint, tug: tug_colour).
+        // Repair's pulse start: a small cool star (class_flash, no halo; the tug takes none).
+        if (a == hl::an_repair && t.flash && sp.flash) {
+            const float* fr = hl::class_flash[a];
+            const float life = element_life_ms(fr[2], element_hash(sp.seed, 0), t.stagger, sp.floor_ms, &fl);
+            if (float(age_first) < life &&
+                emit_star(c_view, r_hit, fr[0], fr[1], sp.seed, hl::cool_colour,
+                          core::look::core_e * (1.f - float(age_first) / life) * gain)) {
+                ++n.flashes;
+                ++n.spot_flashes;
+            }
+        }
+        // The cool glow of repair and tug (class_glow: held, then its fall; the beam's is its puff's above).
         const float* gw = hl::class_glow[a];
-        const float genv = 1.f - fall_age / gw[1];
+        const float genv = gw[1] > 0.f ? 1.f - fall_age / gw[1] : 0.f;
         if (t.glow && gw[0] > 0.f && genv > 0.f) {
             float colour[3];
-            if (a == hl::an_repair)
-                for (unsigned q = 0; q < 3; ++q) colour[q] = tint[q] * gw[3] * genv;
-            else if (a == hl::an_tug)
-                for (unsigned q = 0; q < 3; ++q) colour[q] = hl::tug_colour[q] * gw[3] * genv;
-            else {
-                core::heat_colour(gw[2], colour);
-                if (beam_lit) { // the weapon colour at the heat glow's mean radiance
-                    const float m = (colour[0] + colour[1] + colour[2]) / (beam_c[0] + beam_c[1] + beam_c[2]);
-                    for (unsigned q = 0; q < 3; ++q) colour[q] = beam_c[q] * m;
-                }
-                for (unsigned q = 0; q < 3; ++q) colour[q] *= gw[3] * gw[2] * genv;
-            }
-            for (unsigned q = 0; q < 3; ++q) colour[q] *= gain;
+            for (unsigned q = 0; q < 3; ++q) colour[q] = hl::cool_colour[q] * gw[3] * genv * gain;
             if (glow_box(c_view, gw[0] * r_hit, colour, rel, own, e.owner, core::look::budget_weight_glow)) ++n.glows;
         }
         // The ember: the beam's trail ember from the spot's fall; repair's for ember life after its last tick.
@@ -2094,7 +2442,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             if (a == hl::an_repair) {
                 const float fade = 1.f - float(rel) / em[1];
                 if (fade > 0.f) {
-                    for (unsigned q = 0; q < 3; ++q) colour[q] = tint[q] * em[4] * fade * gain;
+                    for (unsigned q = 0; q < 3; ++q) colour[q] = hl::cool_colour[q] * em[4] * fade * gain;
                     lit = true;
                 }
             } else if (!held) {
@@ -2230,12 +2578,13 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             n.ion_segments += nf - j.first;
         }
     }
-    // (F) The shared budget (look 2.11 as amended): past the screens the patches left, (0) the shimmer rects of other
-    // owners, (1) the puffs' second octave, then other owners' puffs past two per owner, (2) other owners' scorches, (3)
-    // their rings and lightning segments, (4) their glows and embers, then their remaining puffs (oldest first, O(boxes x
-    // shed), only while over budget), last other owners' flashes. Streaks, sparks, chips, spot cores and anything of the
-    // own ship are never shed.
+    // (F) The shared budget (look 2.11 as amended by hull-burst-look.md section 6): past the screens the patches left,
+    // (0) the shimmer rects of other owners, (1) every burst's third octave, (2) other owners' smoke, (3) their
+    // scorches, (4) their rings and filament glows, (5) their glows and embers, then their bursts past two per owner
+    // (oldest first, O(boxes x shed), only while over budget), last other owners' flashes. Streaks, sparks, chips, spot
+    // cores and anything of the own ship are never shed.
     float area = 0.f, burst_area = 0.f;
+    for (unsigned g = 0; g < nm; ++g) area += smoke_meta[g].area;
     for (unsigned g = 0; g < ng; ++g) area += glow_meta[g].area;
     for (unsigned g = 0; g < nb; ++g) burst_area += burst_meta[g].area;
     for (unsigned g = 0; g < nr; ++g) area += ring_meta[g].area;
@@ -2265,31 +2614,34 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     }
     for (unsigned c = 0; c < shimmer_cands; ++c) n.shimmer_shed += !taken[c];
     n.shimmer = out.shimmer_count;
-    if (area > f.budget_left && nb) { // the puffs not already at one octave drop theirs
-        constexpr float lod = core::look::budget_weight_fireball_lod / core::look::budget_weight_fireball;
+    // (1) every burst drops its third octave (the frame's octaves 2): entered when the charged screens pass the budget,
+    // held at least fireball_octave_hold frames and left only under fireball_octave_return of the budget (judged on the
+    // full charge, so leaving never re-enters on the next frame by itself).
+    if (state.octaves_coarse) {
+        if (state.coarse_frames >= core::look::fireball_octave_hold && area < core::look::fireball_octave_return * f.budget_left)
+            state.octaves_coarse = false;
+        else if (state.coarse_frames < 255)
+            ++state.coarse_frames;
+    } else if (area > f.budget_left && nb) {
+        state.octaves_coarse = true;
+        state.coarse_frames = 1;
+    }
+    if (state.octaves_coarse) {
+        constexpr float w2 = core::look::budget_weight_fireball_coarse, w3 = core::look::budget_weight_fireball;
         for (unsigned g = 0; g < nb; ++g)
-            if (!burst_meta[g].rank) {
-                const float cut = burst_meta[g].area * (1.f - lod);
+            if (burst_meta[g].rank) {
+                const float we = w2 + (w3 - w2) * burst_fine[g];
+                const float cut = burst_meta[g].area * (we - w2) / we;
                 area -= cut;
                 burst_area -= cut;
                 burst_meta[g].area -= cut;
             }
-        n.octaves = 1;
+        n.octaves = 2;
     }
-    if (area > f.budget_left && nb) { // each owner's puffs ranked newest first
-        for (unsigned g = 0; g < nb; ++g) {
-            unsigned rank = 0;
-            for (unsigned q = 0; q < nb; ++q)
-                if (q != g && burst_meta[q].owner == burst_meta[g].owner &&
-                    (burst_meta[q].age < burst_meta[g].age || (burst_meta[q].age == burst_meta[g].age && q < g)))
-                    ++rank;
-            burst_meta[g].rank = std::uint8_t(rank < 255 ? rank : 255);
-        }
-        n.bursts_shed += shed_oldest(out.fireballs, &nb, burst_meta, &area, f.budget_left, 2, &burst_area);
-    }
+    n.smokes_shed += shed_oldest(out.smokes, &nm, smoke_meta, &area, f.budget_left, 0);
     n.scorches_shed += shed_oldest(out.scorches, &ns, scorch_meta, &area, f.budget_left, 0);
     n.rings_shed += shed_oldest(out.rings, &nr, ring_meta, &area, f.budget_left, 0);
-    // The lightning (step 3 with the rings; review 2026-11-07: one pass, whole channels): other owners' hits oldest first,
+    // The lightning (step 4 with the rings; review 2026-11-07: one pass, whole channels): other owners' hits oldest first,
     // each hit's channels from its last (a channel goes with its branches), while over budget; then the kept segments
     // move down in one pass. n.filaments_shed counts the segments shed.
     if (area > f.budget_left && nf) {
@@ -2320,8 +2672,17 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         }
     }
     n.shed += shed_oldest(out.glows, &ng, glow_meta, &area, f.budget_left, 0);
-    for (unsigned g = 0; g < nb; ++g) burst_meta[g].rank = 0;
-    n.bursts_shed += shed_oldest(out.fireballs, &nb, burst_meta, &area, f.budget_left, 0, &burst_area);
+    if (area > f.budget_left && nb) { // each owner's bursts ranked newest first; past two per owner shed
+        for (unsigned g = 0; g < nb; ++g) {
+            unsigned rank = 0;
+            for (unsigned q = 0; q < nb; ++q)
+                if (q != g && burst_meta[q].owner == burst_meta[g].owner &&
+                    (burst_meta[q].age < burst_meta[g].age || (burst_meta[q].age == burst_meta[g].age && q < g)))
+                    ++rank;
+            burst_meta[g].rank = std::uint8_t(rank < 255 ? rank : 255);
+        }
+        n.bursts_shed += shed_oldest(out.fireballs, &nb, burst_meta, &area, f.budget_left, 2, &burst_area);
+    }
     // (5) last, other owners' flashes, oldest first (review 2026-11-07: about 80 plasma blooms on a close capital passed
     // the budget's 1.42 ms with nothing else left to shed): the freed quad takes the batch's last one.
     while (area > f.budget_left && nfl) {
@@ -2351,6 +2712,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     out.ring_quads = nr;
     out.filament_boxes = nf;
     out.scorch_boxes = ns;
+    out.smoke_boxes = nm;
+    n.smokes = nm;
     return n;
 }
 } // namespace x3m::weapon_effects::stage

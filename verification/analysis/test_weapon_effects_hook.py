@@ -142,8 +142,10 @@ class WeaponEffectsHookRecord(unittest.TestCase):
 
 # The lightning's bounds (us; 2026-11-07, set from the native measurement in docs/verification/weapon-effects.md "Beam
 # colour and ion lightning"): 64 lit ion hits on a capital (CPU, best of 200), the same 64 at close range (GPU, 5120x1440,
-# EVENT-fenced best of 60), and the 64 mixed hits' CPU bound.
-ION_CPU_BOUND_US, ION_CLOSE_GPU_BOUND_US, MIXED_CPU_BOUND_US = 35.0, 450.0, 50.0
+# EVENT-fenced best of 60), and the 64 mixed hits' CPU bound. The close GPU bound 450 -> 600 at the burst look's merge
+# (2026-11-07: the ion's flash a star, its 64 stars 3.30 charged screens against the discs' 2.77; 497.8 measured against
+# 370.3; docs/verification/weapon-effects.md "Burst review fixes and the merge").
+ION_CPU_BOUND_US, ION_CLOSE_GPU_BOUND_US, MIXED_CPU_BOUND_US = 35.0, 600.0, 50.0
 
 
 class WeaponEffectsD3DRecord(unittest.TestCase):
@@ -305,7 +307,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         r = self.record
         names = {n for n, ok in r['checks'] if ok}
         for gate in ('hull_programs_attached', 'hull_sparks_born_at_recorded_pos', 'hull_flash_centroid_at_projected_hit',
-                     'hull_half_of_sparks_hidden_by_flat_lane', 'hull_light_on_hull_not_sky', 'hull_light_peak_decay_150ms',
+                     'hull_half_of_sparks_hidden_by_flat_lane', 'hull_light_on_hull_not_sky', 'hull_light_peak_decay_burst_law',
                      'hull_spark_cooling_hue_half_life', 'hull_spark_cooling_ramp', 'hull_sizes_counts_per_tier_law',
                      'hull_spark_reach_law_100ms', 'hull_spark_reach_asymptote_energy_1_35u', 'hull_spark_lives_law',
                      'hull_streak_min_footprint_3px_24px', 'hull_min_frames_under_seta6', 'hull_min_frames_under_seta10',
@@ -348,7 +350,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'hull_missile_debris_two_sets_and_ring', 'hull_repair_relit_per_tick',
                      'hull_asteroid_no_glow_no_scorch_dim_puff', 'hull_compose_no_pop_per_class',
                      'hull_min_frames_under_seta6_per_class', 'hull_class_faults_reported_and_recover',
-                     'hull_cpu_64_hits_mixed', 'hull_budget_capital_close_within_8_screens',
+                     'hull_cpu_64_hits_mixed', 'hull_budget_capital_close_within_8_screens', 'hull_budget_capital_close_64_within_budget',
                      # the 1024-record ring (2026-11-07): the stamp, the CPU bounds, the shed order past 256 hits
                      'hull_ring_1024_visible_64_stamp', 'hull_ring_1024_visible_256_stamp', 'hull_cpu_ring_1024_visible_64',
                      'hull_cpu_ring_1024_visible_256', 'hull_ring_1024_visible_256_shed_within_budget',
@@ -358,7 +360,16 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      # owner past a cap read once a frame for both stages
                      'hull_reach_heavy_edge_unchanged', 'hull_reach_heavy_beyond_margin_builds_nothing',
                      'hull_reach_moving_owner_sparks_kept', 'stage_owners_512_located_once',
-                     'stage_owners_1024_located_once') + tuple(
+                     'stage_owners_1024_located_once',
+                     # the burst look (docs/architecture/hull-burst-look.md section 8 and the addendum)
+                     'hull_burst_contrast', 'hull_burst_silhouette_lobed', 'hull_burst_erodes_outside_in',
+                     'hull_burst_colour_core_rim', 'hull_glow_follows_burst', 'hull_20_hits_no_white_sun',
+                     'hull_flash_star_3_frames', 'hull_smoke_darkens_hull_only', 'hull_burst_small_has_structure',
+                     'hull_asteroid_dust_readable', 'hull_repair_cool_spot',
+                     # the burst look's review (2026-11-07): the octave blend and its hysteresis, the cluster's fade, the
+                     # ring classes' annulus, the ember's lobes
+                     'hull_burst_octave_blend_no_jump', 'hull_budget_octave_hysteresis', 'hull_cluster_neighbour_fades',
+                     'hull_ring_class_no_dark_annulus', 'hull_ember_lobed_remnant', 'hull_ember_lobed_within_glow_weight') + tuple(
                          'hull_budget_20_hits_5120_' + c for c in ('energy', 'ballistic', 'plasma', 'heavy', 'ion', 'beam',
                                                                    'missile', 'asteroid')):
             self.assertIn(gate, names)
@@ -411,7 +422,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertEqual((cpu[case]['live'], cpu[case]['hidden']), (1024, hidden), case)
             self.assertLessEqual(cpu[case]['best_us'], cpu[case]['target_us'], case)
         timing = {(x['width'], x['case']): x for x in m['hull_timing'] if 'width' in x}
-        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 70.0)  # 50 before the bursts
+        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 80.0)  # 50 before the bursts, 70 before the burst look
         # the glow's budget weight (core::look::budget_weight_glow) against its measured full-screen cost / 177.5 us
         core_h = (ROOT / 'src/proxy/weapon_effects_core.h').read_text()
         import re
@@ -427,11 +438,18 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         weight = float(re.search(r'budget_weight_glow = ([0-9.]+)f', core_h).group(1))
         measured = timing[(5120, 'glow_alone_fills_frame')]['gpu_us'] / 177.5
         self.assertAlmostEqual(weight, measured, delta=0.1)
-        # the fireball's (the burst's) at two octaves and at one (the LOD)
+        # the fireball's (the burst's) at three octaves and at two (the budget's step 1), and as smoke: charged at the
+        # worst case (every disc pixel taking the noise), never below the alone rows (the lobes skip their outside there)
         for name, case in (('budget_weight_fireball', 'burst_alone_fills_frame'),
-                           ('budget_weight_fireball_lod', 'burst_alone_fills_frame_lod')):
+                           ('budget_weight_fireball_coarse', 'burst_alone_fills_frame_coarse'),
+                           ('budget_weight_smoke', 'smoke_alone_fills_frame')):
             weight = float(re.search(r'\b%s = ([0-9.]+)f' % name, core_h).group(1))
-            self.assertAlmostEqual(weight, timing[(5120, case)]['gpu_us'] / 177.5, delta=0.1, msg=name)
+            self.assertGreaterEqual(weight, timing[(5120, case)]['gpu_us'] / 177.5 - 0.1, msg=name)
+            # review 2026-11-07: the worst case itself is a row (every pixel taking the noise), the weight its cost
+            worst = timing[(5120, case.replace('fills_frame', 'every_pixel_noise'))]['gpu_us'] / 177.5
+            self.assertAlmostEqual(weight, worst, delta=0.15, msg=name)
+        # the dense frame within the budget's 8 x 177.5 us
+        self.assertLessEqual(timing[(5120, 'capital_close_64_hits')]['gpu_us'], 1420.0)
 
     def test_lightning_log_fields(self):
         """Review 2026-11-07: the device row logs the lightning's programs (filament_ps_slots, lightning_vs_slots, the

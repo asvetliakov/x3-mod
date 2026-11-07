@@ -12,17 +12,40 @@
 // - A ring (depth.y 2, the heavy shock ring): a band of shade.w of the radius inside the plane square's unit circle,
 //   brightest at its leading (outer) edge (anti-aliased over a quarter band), (1 - x)^2 across it, at the plane's
 //   interpolated view depth, SOFT = depth.z (view units).
+// - A star (depth.y 3, the hull hit's flash since 2026-11-07, hull-burst-look.md section 4): the stage rotated the
+//   quad into the star's frame, so (u, v) are along its arms (+u, +v, -u, -v at star_len x A, A = depth.z of the
+//   quad's half): each arm (1 - s)^2 along it, across (1 - (d / w)^2)^2 within the half width w = star_width A (1 - s) / 2
+//   + depth.w (the pixel floor's half), in the vertex colour; a white disc core of alpha x the quad's half (anti-aliased
+//   over a quarter of it); no halo; at the quad's view depth, SOFT = soft_core x its half (view units, shade.w).
 // Radiance x the vertex's shade.z. Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp, defaults
 // weapon_effects_core.h look::.
 #include "weapon_soft_depth.hlsl"
 float4 sprite_look : register(c2); // soft_core, soft_halo, halo_max, halo_fold
+float4 star_len : register(c3);    // the star's arm lengths over A: +u, +v, -u, -v
+float4 star_shape : register(c4);  // star_width, unused x3
+float arm(float along, float across, float len, float A, float floor_w) {
+    float s = along / len;
+    float w = 0.5 * star_shape.x * A * saturate(1.0 - s) + floor_w;
+    float x = saturate(1.0 - (across * across) / (w * w));
+    float f = saturate(1.0 - s);
+    return f * f * x * x;
+}
 float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOORD1, float4 depth : TEXCOORD2) : COLOR0 {
     bool occluder;
     float lane = lane_view_depth(vpos, occluder);
     bool valid = !occluder || (lane > 0.0 && lane <= 3.402823466e38);
     float z = depth.x;
     float3 c = 0.0;
-    [branch] if (depth.y > 1.5) {
+    [branch] if (depth.y > 2.5) {
+        float2 q = shade.xy;
+        float A = depth.z;
+        float lu = (q.x >= 0.0 ? star_len.x : star_len.z) * A, lv = (q.y >= 0.0 ? star_len.y : star_len.w) * A;
+        float arms = max(arm(abs(q.x), abs(q.y), lu, A, depth.w), arm(abs(q.y), abs(q.x), lv, A, depth.w));
+        float core = colour.a;
+        float disc = saturate((core - sqrt(dot(q, q))) / max(0.25 * core, 1e-3));
+        float vis = occluder ? saturate((lane - z) / max(sprite_look.x * shade.w, 1e-4)) : 1.0;
+        c = (disc + colour.rgb * arms) * (shade.z * vis);
+    } else if (depth.y > 1.5) {
         float d = sqrt(dot(shade.xy, shade.xy));
         float band = max(shade.w, 1e-3);
         float x = (1.0 - d) / band;
