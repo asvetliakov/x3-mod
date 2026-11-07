@@ -2485,7 +2485,7 @@ under it); width, flicker, count and fall-off unchanged. Gates moved with the st
 1.25 R(t), >= 12 distinct and <= drawn + 1 (was >= 9 at 0.5 R(t)); `death_rays_soft` measures there, the ray over what
 lies under it <= 1.2 (was 0.4: a ray now sits at full strength over the rim halo; past 1.2 x its ground it reads as a
 painted spoke). Lab (`stage-dump-rays-halo/lab/r3-*`, one round; the spoke count from
-`scratchpad/count_spokes.py`, local): the fighter at 300 m shows 21 spokes at 1.2 rim radii in the rays-only frame at
+`verification/results/explosion-look/count_spokes.py rays-only.png frame.png ...` on the local shots): the fighter at 300 m shows 21 spokes at 1.2 rim radii in the rays-only frame at
 150 ms, 14 / 21 in the full frame at 50 / 150 ms, short rays visible past the halo [M, lab]. Record:
 `run_weapon_effects.py --host native` under the X3 lock, no dump: D3D 333 checks, 0 failed; hook 147 / 0. Host tests
 `test_weapon_effects_hook` and `_lab` 59, all pass; programs and lab `--check` PASS; AP `build-rays` 0 warnings
