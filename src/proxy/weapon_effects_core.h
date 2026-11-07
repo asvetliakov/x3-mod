@@ -278,6 +278,11 @@ struct Table {
     std::uint32_t texture_rgb[table_capacity]{};
     std::uint32_t override_rgb[table_capacity]{};
     std::uint8_t hull_class[table_capacity]{}; // the override's class pin (HullClass, with row_hull_class)
+    // Step 4 (docs/architecture/bolt-muzzle-look.md section 1): the weapon's mount tier (0 fighter, 1 corvette, 2 capital:
+    // the smallest ship class that mounts it; a row the generator did not resolve keeps 0, the fighter fallback,
+    // unknown 7) and its range in metres (speed x lifetime; 0: unknown, the stage takes the live record's).
+    std::uint8_t mount_tier[table_capacity]{};
+    std::uint16_t range_m[table_capacity]{};
 };
 
 // ---------------------------------------------------------------------------------------------- 16.16 arithmetic
@@ -479,18 +484,33 @@ inline void ring_stamp_hidden(Ring& r, const VisibleOwners& v) noexcept {
 // ---------------------------------------------------------------------------------------------- the handler (2.2)
 // mode_shields_hull (step 2, docs/architecture/weapon-look.md 3.1 and 2.12): the shield hit as in shields mode plus the
 // hull hit (family_hull). Both are the stage's modes (stage_mode): the ownership latch, the ring's scope and the stage.
-enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2, mode_shields_hull = 3 };
+// mode_shields_hull_bolts (step 4, docs/architecture/bolt-muzzle-look.md): the hull mode plus the bolts and the muzzle
+// (family_bolts: the per-bullet tap 0x0045ac7d, the muzzle site 0x00446268 and the flight-effect skip 0x004146c0,
+// weapon_effects_bolt.h); hull_mode() is true for both hull modes.
+enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2, mode_shields_hull = 3,
+                           mode_shields_hull_bolts = 4 };
 inline const char* mode_name(unsigned m) noexcept {
-    return m == mode_observe ? "observe" : m == mode_shields ? "shields" : m == mode_shields_hull ? "shields,hull" : "native";
+    return m == mode_observe              ? "observe"
+           : m == mode_shields            ? "shields"
+           : m == mode_shields_hull       ? "shields,hull"
+           : m == mode_shields_hull_bolts ? "shields,hull,bolts"
+                                          : "native";
 }
 inline bool stage_mode(unsigned m) noexcept {
-    return m == mode_shields || m == mode_shields_hull;
+    return m == mode_shields || m == mode_shields_hull || m == mode_shields_hull_bolts;
 }
-// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe" or "shields", or the family list "shields,hull" in either
-// order ("hull,shields"); spaces around each token are ignored. Unset or empty = native (note 2.6). Any other token
-// ("explosions", "bolts", "beams": later steps), "hull" alone, an empty or repeated token is refused.
+inline bool hull_mode(unsigned m) noexcept {
+    return m == mode_shields_hull || m == mode_shields_hull_bolts;
+}
+inline bool bolts_mode(unsigned m) noexcept {
+    return m == mode_shields_hull_bolts;
+}
+// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe" or "shields", or the family list "shields,hull" or
+// "shields,hull,bolts" in any order ("hull,shields", "bolts,shields,hull"); spaces around each token are ignored. Unset or
+// empty = native (note 2.6). Any other token ("explosions", "beams": later steps), "hull" or "bolts" without the
+// families below them, an empty or repeated token is refused.
 template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mode* out) noexcept {
-    static const char* const words[4] = {"native", "observe", "shields", "hull"};
+    static const char* const words[5] = {"native", "observe", "shields", "hull", "bolts"};
     if (!text || !n) return false;
     unsigned seen = 0, tokens = 0, single = 4;
     std::size_t at = 0;
@@ -501,7 +521,7 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
         while (a < b && text[a] == Char(' ')) ++a;
         while (b > a && text[b - 1] == Char(' ')) --b;
         unsigned w = 0;
-        for (; w < 4; ++w) {
+        for (; w < 5; ++w) {
             std::size_t len = 0;
             while (words[w][len]) ++len;
             if (b - a != len) continue;
@@ -509,7 +529,7 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
             for (std::size_t i = 0; i < len && same; ++i) same = text[a + i] == Char(words[w][i]);
             if (same) break;
         }
-        if (w >= 4 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
+        if (w >= 5 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
         seen |= 1u << w;
         single = w;
         ++tokens;
@@ -524,10 +544,14 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
         *out = mode_shields_hull;
         return true;
     }
+    if (tokens == 3 && seen == ((1u << 2) | (1u << 3) | (1u << 4))) {
+        *out = mode_shields_hull_bolts;
+        return true;
+    }
     return false;
 }
 constexpr Mode default_mode = mode_native;
-constexpr unsigned setting_capacity = 16;
+constexpr unsigned setting_capacity = 32; // "shields,hull,bolts" with spaces (16 until step 4)
 
 struct PosCheck {           // observe mode: the handler's pos against the inner tap's (weapon_pos_check)
     std::uint32_t owner = 0, sequence = 0;
@@ -563,7 +587,7 @@ struct HookState {
     PosCheck check{};
     Counters counters{};
 };
-constexpr std::uint8_t family_shields = 1, family_hull = 2;
+constexpr std::uint8_t family_shields = 1, family_hull = 2, family_bolts = 4;
 
 inline std::uint32_t rd32(std::uintptr_t a) noexcept {
     return *reinterpret_cast<const volatile std::uint32_t*>(a);
@@ -842,7 +866,7 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     // records unseen, so it stays native only.
     const bool shield_stage =
         stage_mode(s.mode) && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
-    const bool hull_stage = s.mode == mode_shields_hull && s.owned_next && s.hull_ready && (s.armed & family_hull) &&
+    const bool hull_stage = hull_mode(s.mode) && s.owned_next && s.hull_ready && (s.armed & family_hull) &&
                             role == role_hull_hit && !hit_dying;
     const bool stage = shield_stage || hull_stage;
     const bool skip = shield_stage ? s.suppress_native != 0 : hull_stage && s.suppress_native_hull != 0;
@@ -1535,4 +1559,137 @@ inline void event_tint(const Event& e, float mix, float out[3]) noexcept {
     const float t = mix > 1.f ? 1.f : mix;
     for (unsigned i = 0; i < 3; ++i) out[i] += (alt[i] - out[i]) * t;
 }
+
+// ---------------------------------------------------------------------------------------------- bolts and muzzle (step 4)
+// docs/architecture/bolt-muzzle-look.md section 8 (ratified 2026-11-07): the look's header constants, read by name by
+// tools/effects/generate_weapon_effects_lab.py (HEADER.bolt, HEADER.muzzle) and re-pinned by the fixture. Styles index
+// 0 tracer, 1 slug, 2 orb, 3 wave, 4 heavy (the heavy class modifies a tracer or slug: k >= heavy_k); w is the bolt width
+// in metres (section 1), radiance linear before the TAA and AgX. mode full | simple (the kill fallback: core + body + halo,
+// no tail, no rim, c_s 0.5, orb smooth) is a header decision, never a setting.
+namespace bolt {
+enum Mode : std::uint8_t { full = 0, simple = 1 };
+constexpr Mode mode = full;
+enum Style : std::uint8_t { tracer = 0, slug = 1, orb = 2, wave = 3, heavy = 4, style_count = 5 };
+// Section 1, the width law: w = (w_px_target x d_eng / f_ref) x (1 + w_k k) m, d_eng = min(d_eng_m[tier], d_eng_range x
+// range); f_ref the pixels per metre at 1 m at ref_rows rows and the vanilla vertical FOV 73.74 deg (field-of-view.md):
+// (1440 / 2) / tan(36.87 deg) = 960. w never above w_cap_m (the capital kill step's first lever).
+constexpr float d_eng_m[3] = {600.f, 1500.f, 4000.f}; // fighter, corvette, capital mounts
+constexpr float d_eng_range = 0.75f;
+constexpr float w_px_target = 3.0f;
+constexpr float w_k = 0.6f;
+constexpr float f_ref = 960.0f;
+constexpr float ref_rows = 1440.0f;
+constexpr float w_cap_m = 20.0f;
+constexpr float heavy_k = 0.91f; // the heavy class (hull-impact-classes rule 5/7: the heavy damage band)
+// Section 2.2, per style: the rest length in w (tracer and slug x s_v = 0.75 + 0.5 min(v / sv_ref_mps, 1); the orb's
+// diameter; the wave's thickness), the tail T = min(v tail_tau, tail_max_w w) with its root width (w) and gain, the halo
+// sigma (w; the orb's of its own diameter), the core's whiteness h (heavy 1).
+constexpr float rest_w[4] = {12.f, 4.f, 1.6f, 0.5f};
+constexpr float sv_ref_mps = 2000.f;
+constexpr float tail_tau_ms[5] = {15.f, 30.f, 10.f, 0.f, 40.f};
+constexpr float tail_max_w[5] = {8.f, 12.f, 4.f, 0.f, 20.f};
+constexpr float tail_root_w[5] = {0.6f, 0.35f, 0.8f, 0.f, 0.8f};
+constexpr float tail_gain[5] = {0.5f, 0.6f, 0.5f, 0.f, 0.6f};
+constexpr float core_r = 0.4f, core_r_heavy = 0.55f;   // the core's radius in rho (body half widths)
+constexpr float halo_sigma_w[5] = {0.8f, 0.7f, 0.9f, 0.6f, 1.0f};
+constexpr float e_body = 1.2f;
+constexpr float e_halo = 0.6f, e_halo_heavy = 0.8f;
+constexpr float h[4] = {0.75f, 0.85f, 0.7f, 0.5f};
+constexpr float head_gain = 0.5f;     // the ball head: the core x (1 + head_gain (1 - s)) over its front 1 w
+constexpr float head_ball_w = 0.6f;   // heavy: a disc of this radius (w) at core_e on the head
+constexpr float tip_w = 1.0f;         // the tracer's pointed tip and the head's span, w
+constexpr float slug_tail_white = 0.6f, slug_tail_end = 0.4f; // the slug tail: white -> t (at 0.6) -> 0.4 t
+// Section 2.3, the streak: at most (1 + streak_c) rest lengths, energy kept (the stretch's (1 - u)^2 fall, the whole bolt
+// x g_s = L / (L + e / 3)), the core held at core_min.
+constexpr float streak_c[4] = {1.f, 1.f, 0.5f, 0.f};
+constexpr float streak_c_simple = 0.5f;
+constexpr float core_min = 1.2f;
+// Section 2.5, expiry: x saturate((t_exp - now) / max(end_ms, 3 steps)).
+constexpr unsigned end_ms = 60;
+// The orb (2.2): the boil (two octaves of value noise at orb_freq cells per orb diameter, advected at orb_boil_hz game
+// time; body x (0.75 + 0.5 n)), the silhouette lobes (hull-burst 2.4), the halo stretched along the travel, the wisp.
+constexpr float orb_freq[2] = {3.0f, 6.4f};
+constexpr float orb_boil_hz = 3.0f;
+constexpr float orb_lobes = 5.f, orb_lobe_amp = 0.12f, orb_lobe_turns = 0.5f;
+constexpr float orb_stretch = 1.3f;
+constexpr float orb_h_lo = 0.5f, orb_h_hi = 0.9f; // the centre's whiteness breathing with the noise
+// The wave (2.2): a crescent of chord S = wave_span_w w (col 18 once its unit is pinned), sagitta wave_sagitta S bowing
+// forward, thickness rest_w[3] w, a sheet behind the arc at wave_sheet_e; foreshortened (c < wave_ring_c) a ring.
+constexpr float wave_span_w = 6.f, wave_sagitta = 0.25f, wave_sheet_e = 0.15f, wave_ring_c = 0.4f;
+// Section 2.7, the trim rule: a stream ratio above trim_rs cuts the core to trim_rs v / f - T / 2.
+constexpr float trim_rs = 0.8f;
+// Section 2.1, the rim: a multiply band at rim_band_w (w from the axis) darkening by rim_dark, drawn only where the band
+// is at least rim_min_px wide; rim false keeps it off (the kill step, or a failed bolt_rim_survives_resolve).
+constexpr bool rim = true;
+constexpr float rim_dark = 0.4f;
+constexpr float rim_band_w[2] = {1.2f, 1.8f};
+constexpr float rim_min_px = 3.0f;
+// Section 2.6, the floors and ceilings (render px at ref_rows; body and halo floors not row-scaled).
+constexpr float halo_px_max = 40.0f;
+constexpr float floor_core_px = 2.0f, floor_body_px = 3.0f, floor_halo_px = 1.5f, floor_len_px = 24.0f;
+// Section 2.4's end-on footprint (lit diameter at 10 % of the peak >= 7 px at 1440 rows): with a 3 px body and a halo of
+// sigma 1.5 px at E_h 0.6 the 10 % level (about 0.66 of a 6.6 peak) is never reached outside the body, so an end-on
+// line's body floor rises to floor_endon_px x rows / 1440 while its projected axis is shorter than that, falling to the
+// side-on floor linearly with the axis (fixture bolt_endon_disc, 2026-11-07). A size floor: radiance unchanged.
+constexpr float floor_endon_px = 9.0f;
+constexpr float own_body_max_px = 16.0f;
+// Another ship's bolt passing the eye: its back end, clipped to the eye plane, never wider than its head or back_w_own_x
+// x the own ceiling, whichever is wider (one frame near the eye would otherwise draw a frame-filling quad; review
+// 2026-11-07 note 15).
+constexpr float back_w_own_x = 4.0f;
+constexpr bool cockpit_native = false;
+// The far flag of the late bullet draw (bolts-through-taa.md B'): oC2 = far_flag_k x max(rgb).
+constexpr float far_flag_k = 32.0f;
+// Capacities (weapon-look 2.11): the tap list, the capsule quads of a frame (the bolts and the muzzles' elements).
+constexpr unsigned list_capacity = 512;
+constexpr unsigned capsule_quads = 1024;
+// The tap past list_capacity (O(1) a call): each overflowing call examines the next far_window records from the list's
+// ring cursor and keeps the farthest non-own one as the replacement candidate; the object table's probes stop after
+// key_probes (a bullet whose key is not found within them is recorded without one).
+constexpr unsigned far_window = 8, key_probes = 64;
+// The parity rule (weapon-look 3.3, unknown 14): instances matched within parity_tol_px + the instance's own on-screen
+// radius, among at most parity_window instances of the x-sorted list around the record; the row bodies learned from the
+// first parity_learn records of every frame.
+constexpr float parity_tol_px = 6.0f;
+constexpr unsigned parity_window = 48, parity_learn = 32, parity_instances = 256;
+// A beam object (flags 0x2 / 0x4) the tap sees: step 5 owns its look; until then the in-place draw keeps it visible as a
+// plain line capsule from its node along its z row for ext+0x78 (engine units, unknown 3) at beam_w_m, because every
+// bullet draw of the frame is suppressed.
+constexpr float beam_w_m = 1.2f;
+} // namespace bolt
+// The muzzle flash (bolt-muzzle-look.md section 3): per class 0 energy (default, ion), 1 ballistic (ammunition 0x40), 2
+// plasma (orb / wave body), 3 heavy (k >= bolt::heavy_k), 4 flak (0x100 / 0x1000); sizes in the weapon's w, capped by the
+// shooter's radius R_s (obj+0xa4 / 500): core and star <= cap_core_rs R_s, flame and vents <= cap_flame_rs R_s; life in
+// game ms (max(life, 3 steps), +-stagger / 2); re-lit by reset (one record per (ship, gun slot)).
+namespace muzzle {
+enum Mode : std::uint8_t { full = 0, simple = 1 };
+constexpr Mode mode = full;
+enum Class : std::uint8_t { energy = 0, ballistic = 1, plasma = 2, heavy = 3, flak = 4, class_count = 5 };
+constexpr float class_disc[5][3] = {{0.6f, 0.7f, 4.f}, {0.5f, 0.7f, 4.f}, {0.8f, 0.6f, 4.f}, {0.8f, 1.0f, 4.f},
+                                    {0.5f, 0.5f, 4.f}}; // diameter (w), whiteness h, radiance
+constexpr float disc_halo_w = 0.4f, disc_halo_e = 0.6f;
+constexpr float class_flame[5][3] = {{2.0f, 0.6f, 1.2f}, {1.2f, 0.5f, 1.2f}, {0.f, 0.f, 0.f}, {3.0f, 0.8f, 1.2f},
+                                     {0.f, 0.f, 0.f}}; // cone length (w), base (w), radiance x (1 - s)^1.5
+constexpr float class_star[5] = {0.f, 1.2f, 0.f, 0.f, 0.8f}; // the star's arm scale (w)
+constexpr float star_arms[4] = {1.0f, 0.55f, 0.8f, 0.45f};
+constexpr float star_width_w = 0.12f, star_e = 2.0f;
+constexpr float bloom_w[2] = {0.5f, 1.0f}; // plasma: the noise bloom's radius over its life (w)
+constexpr float bloom_e = 1.2f;
+constexpr float vent_w = 1.2f, vent_ms = 150.f, vent_e = 1.2f; // heavy: two jets across the gun axis
+constexpr float afterglow_ms = 250.f, afterglow_e = 1.2f;       // heavy: the disc's afterglow
+constexpr float rise_ms = 40.f;                                  // heavy: the cone's rise
+constexpr float class_smoke[5][5] = {{0.f, 0.f, 0.f, 0.f, 0.f}, {0.6f, 1.2f, 0.3f, 400.f, 0.5f}, {0.f, 0.f, 0.f, 0.f, 0.f},
+                                     {0.8f, 1.6f, 0.4f, 600.f, 0.5f}, {0.6f, 1.2f, 0.3f, 400.f, 0.f}};
+                                     // r0, r1 (w), strength s0, life ms, drift along the gun axis (w)
+constexpr float class_glow[5][2] = {{3.0f, 0.6f}, {2.5f, 0.6f}, {3.5f, 0.8f}, {4.0f, 1.0f}, {2.0f, 0.5f}}; // R (w), E
+constexpr float class_life[5] = {120.f, 60.f, 180.f, 80.f, 80.f};
+constexpr float cap_core_rs = 0.25f, cap_flame_rs = 1.0f;
+// The view rule (2026-11-07, the chase frames): a gun axis within 30 degrees of the eye ray (|cos| >= endon_cos) collapses
+// the cone into its disc, so the cone is replaced by the hull burst's four-arm star (the sprite batch's star kind 3, the
+// unequal arms of hull::star_arm_len) of the cone's length about the disc, at star_e, for the cone's life.
+constexpr float endon_cos = 0.8660254f;
+constexpr float breath = 0.25f;
+constexpr float cluster_n0 = 2.5f;
+constexpr unsigned record_capacity = 128; // live (ship, slot) records (weapon-look 2.11's muzzle cap)
+} // namespace muzzle
 } // namespace x3m::weapon_effects::core

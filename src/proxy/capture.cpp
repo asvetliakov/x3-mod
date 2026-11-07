@@ -2133,6 +2133,15 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
             SetLastError(saved_error);
         }
         weapon_effects::present(ctx.frame, ctx.capture, owned, stage, scope);
+        // Step 4 (shields,hull,bolts): the bolt and muzzle latches and the per-frame list generation. The in-place
+        // capsule draw (docs/architecture/bolt-muzzle-look.md 5; motion_output) reports its frame (drew: the flight
+        // skip's latch; muzzle_owned: the muzzle skip's), the arming reason and the frame's ownership start over, and the
+        // generation advances so the tap's next list is fresh.
+        if (weapon_effects::core::bolts_mode(weapon_effects::mode())) {
+            weapon_effects::BoltFrame bolts;
+            ctx.motion_output.weapon_bolts_take_frame(&bolts);
+            weapon_effects::present_bolts(ctx.frame, ctx.capture, bolts);
+        }
     }
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one

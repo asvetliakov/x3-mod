@@ -20,7 +20,10 @@ bool lost(HRESULT hr) noexcept {
     return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET;
 }
 enum Slot : unsigned {
-    GetDirect3D = 6, GetCreationParameters = 9, SetRenderState = 57, SetTexture = 65, SetSamplerState = 69,
+    GetDirect3D = 6, GetCreationParameters = 9, CreateVertexBuffer = 26, CreateIndexBuffer = 27, GetRenderState = 58,
+    DrawIndexedPrimitive = 82, GetVertexDeclaration = 88, GetVertexShader = 93, SetStreamSource = 100,
+    GetStreamSource = 101, GetStreamSourceFreq = 103, SetIndices = 104, GetIndices = 105, GetPixelShader = 108,
+    GetPixelShaderConstantF = 110, SetRenderState = 57, SetTexture = 65, SetSamplerState = 69,
     DrawPrimitiveUP = 83, DrawIndexedPrimitiveUP = 84, CreateVertexDeclaration = 86, SetVertexDeclaration = 87,
     CreateVertexShader = 91, SetVertexShader = 92, SetVertexShaderConstantF = 94, CreatePixelShader = 106,
     SetPixelShader = 107, SetPixelShaderConstantF = 109
@@ -40,6 +43,19 @@ using SetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9*);
 using CreatePsFn = HRESULT(WINAPI*)(D, const DWORD*, IDirect3DPixelShader9**);
 using SetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9*);
 using SetConstantsFn = HRESULT(WINAPI*)(D, UINT, const float*, UINT);
+using GetConstantsFn = HRESULT(WINAPI*)(D, UINT, float*, UINT);
+using GetRsFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD*);
+using CreateVbFn = HRESULT(WINAPI*)(D, UINT, DWORD, DWORD, D3DPOOL, IDirect3DVertexBuffer9**, HANDLE*);
+using CreateIbFn = HRESULT(WINAPI*)(D, UINT, DWORD, D3DFORMAT, D3DPOOL, IDirect3DIndexBuffer9**, HANDLE*);
+using DrawIndexedFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
+using GetDeclarationFn = HRESULT(WINAPI*)(D, IDirect3DVertexDeclaration9**);
+using GetVsFn = HRESULT(WINAPI*)(D, IDirect3DVertexShader9**);
+using GetPsFn = HRESULT(WINAPI*)(D, IDirect3DPixelShader9**);
+using SetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9*, UINT, UINT);
+using GetStreamFn = HRESULT(WINAPI*)(D, UINT, IDirect3DVertexBuffer9**, UINT*, UINT*);
+using GetStreamFreqFn = HRESULT(WINAPI*)(D, UINT, UINT*);
+using SetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9*);
+using GetIndicesFn = HRESULT(WINAPI*)(D, IDirect3DIndexBuffer9**);
 // Only our authored shaders are embedded (provenance: verification/results/weapon-{shell,decal}-{vertex,pixel}-program.json).
 constexpr std::uint32_t shell_vs_words[] = {
 #include "weapon_shell_vertex_program_inc.h"
@@ -133,6 +149,30 @@ template <std::size_t N> std::uint32_t vs3_slots(const std::uint32_t (&words)[N]
     copy[0] = ps3_version_token;
     return ps3_program_slots(copy, N);
 }
+// Step 4, the bolt capsule (provenance: verification/results/weapon-bolt-{vertex,pixel}-program.json and
+// weapon-bolt_flag-pixel-program.json, the far flag's MRT variant of the same source).
+constexpr std::uint32_t bolt_vs_words[] = {
+#include "weapon_bolt_vertex_program_inc.h"
+};
+constexpr std::uint32_t bolt_ps_words[] = {
+#include "weapon_bolt_pixel_program_inc.h"
+};
+constexpr std::uint32_t bolt_flag_ps_words[] = {
+#include "weapon_bolt_flag_pixel_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 bolt_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 16, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 32, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 48, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2},
+    {0, 64, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 3},
+    {0, 80, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 4},
+    {0, 96, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 5},
+    {0, 112, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 6}, D3DDECL_END()};
+static_assert(sizeof(WeaponBoltVertex) == 128, "the bolt declaration follows the vertex");
+constexpr UINT bolt_vb_bytes = UINT(weapon_bolt_quads * 4 * sizeof(WeaponBoltVertex));
+constexpr UINT bolt_ib_bytes = UINT(weapon_bolt_quads * 6 * sizeof(std::uint16_t));
+static_assert(weapon_bolt_quads * 4 <= 0x10000, "16-bit bolt indices");
 constexpr D3DVERTEXELEMENT9 shell_elements[] = {{0, 0, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
                                                 D3DDECL_END()};
 static_assert(sizeof(WeaponEffectsPass::CellVertex) == 16, "the patch declaration follows the vertex");
@@ -216,7 +256,16 @@ void WeaponEffectsPass::release_hull_objects() noexcept {
     drop(lightning_vs_);
     drop(lightning_declaration_);
 }
+void WeaponEffectsPass::release_bolt_objects() noexcept {
+    drop(bolt_vs_);
+    drop(bolt_ps_);
+    drop(bolt_flag_ps_);
+    drop(bolt_declaration_);
+    drop(bolt_vb_);
+    drop(bolt_ib_);
+}
 void WeaponEffectsPass::release_objects() noexcept {
+    release_bolt_objects();
     drop(shell_vs_);
     drop(shell_ps_);
     drop(bubble_ps_);
@@ -247,9 +296,13 @@ bool WeaponEffectsPass::hull_objects_ready() const noexcept {
            fireball_ps_ && fireball_declaration_ && shape_vs_ && ring_ps_ && filament_ps_ && shape_declaration_ &&
            lightning_vs_ && lightning_declaration_;
 }
+bool WeaponEffectsPass::bolt_objects_ready() const noexcept {
+    return bolt_vs_ && bolt_ps_ && bolt_flag_ps_ && bolt_declaration_ && bolt_vb_ && bolt_ib_;
+}
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
-           shell_declaration_ && decal_declaration_ && (!caps_.hull_enabled || hull_objects_ready());
+           shell_declaration_ && decal_declaration_ && (!caps_.hull_enabled || hull_objects_ready()) &&
+           (!caps_.bolt_enabled || bolt_objects_ready());
 }
 unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
@@ -263,11 +316,15 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(fireball_declaration_), static_cast<const void*>(shape_vs_),
                           static_cast<const void*>(ring_ps_), static_cast<const void*>(filament_ps_),
                           static_cast<const void*>(shape_declaration_), static_cast<const void*>(lightning_vs_),
-                          static_cast<const void*>(lightning_declaration_)})
+                          static_cast<const void*>(lightning_declaration_), static_cast<const void*>(bolt_vs_),
+                          static_cast<const void*>(bolt_ps_), static_cast<const void*>(bolt_flag_ps_),
+                          static_cast<const void*>(bolt_declaration_), static_cast<const void*>(bolt_vb_),
+                          static_cast<const void*>(bolt_ib_)})
         n += p != nullptr;
     return n;
 }
-HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMAT format, bool hull) noexcept {
+HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps, D3DFORMAT format, bool hull,
+                                  bool bolts) noexcept {
     PreserveCpuState guard;
     detach();
     auto refuse = [&](const char* reason, HRESULT hr = D3DERR_NOTAVAILABLE) {
@@ -367,7 +424,65 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
             caps_.hull_reason = "ok";
         }
     }
+    // Step 4 (shields,hull,bolts only): the capsule programs, the MRT variant (independent write masks: the far flag's RT2
+    // GREEN lane while RT1 stays masked), the quads' index limits, the multiply blend of the rim pass and the buffers. A
+    // refusal leaves the game's bullets (bolt_enabled false, bolt_reason); the hull and shields keep drawing. The program
+    // slots are logged (bolt_vs_slots / bolt_ps_slots); none is refused for its count.
+    caps_.bolt_reason = "not_requested";
+    if (bolts) {
+        caps_.bolt_vs_slots = vs3_slots(bolt_vs_words);
+        caps_.bolt_ps_slots = ps3_program_slots(bolt_ps_words, std::size(bolt_ps_words));
+        caps_.bolt_flag_ps_slots = ps3_program_slots(bolt_flag_ps_words, std::size(bolt_flag_ps_words));
+        if (!caps_.bolt_vs_slots || !caps_.bolt_ps_slots || !caps_.bolt_flag_ps_slots)
+            caps_.bolt_reason = "bolt_compiled_program";
+        else if (caps.MaxPrimitiveCount < 2u * weapon_bolt_quads || caps.MaxVertexIndex < 4u * weapon_bolt_quads - 1u ||
+                 caps.NumSimultaneousRTs < 3u)
+            caps_.bolt_reason = "bolt_limits";
+        else if (!(caps.SrcBlendCaps & D3DPBLENDCAPS_ZERO) || !(caps.DestBlendCaps & D3DPBLENDCAPS_INVSRCCOLOR))
+            caps_.bolt_reason = "bolt_blend_caps";
+        else if (FAILED(create_bolt_objects()))
+            caps_.bolt_reason = "bolt_program_create";
+        else {
+            caps_.bolt_enabled = true;
+            caps_.bolt_reason = "ok";
+            caps_.bolt_rim_undo = (caps.SrcBlendCaps & D3DPBLENDCAPS_DESTCOLOR) != 0;
+        }
+    }
     return S_OK;
+}
+HRESULT WeaponEffectsPass::create_bolt_objects() noexcept {
+    D d = device_;
+    HRESULT hr = (faults_ & 32u) ? E_FAIL : S_OK; // fixture fault bit 5: the bolt programs refused
+    if (SUCCEEDED(hr) && !bolt_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(bolt_vs_words), &bolt_vs_);
+    if (SUCCEEDED(hr) && !bolt_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(bolt_ps_words), &bolt_ps_);
+    if (SUCCEEDED(hr) && !bolt_flag_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(bolt_flag_ps_words), &bolt_flag_ps_);
+    if (SUCCEEDED(hr) && !bolt_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, bolt_elements, &bolt_declaration_);
+    if (SUCCEEDED(hr) && !bolt_vb_)
+        hr = call<CreateVbFn>(CreateVertexBuffer)(d, bolt_vb_bytes, D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0,
+                                                  D3DPOOL_DEFAULT, &bolt_vb_, nullptr);
+    if (SUCCEEDED(hr) && !bolt_ib_) {
+        hr = call<CreateIbFn>(CreateIndexBuffer)(d, bolt_ib_bytes, D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_DEFAULT,
+                                                 &bolt_ib_, nullptr);
+        void* bits = nullptr;
+        if (SUCCEEDED(hr)) hr = bolt_ib_->Lock(0, 0, &bits, 0);
+        if (SUCCEEDED(hr)) {
+            auto* idx = static_cast<std::uint16_t*>(bits);
+            for (unsigned q = 0; q < weapon_bolt_quads; ++q) {
+                const std::uint16_t b = std::uint16_t(4 * q);
+                const std::uint16_t six[6] = {b, std::uint16_t(b + 1), std::uint16_t(b + 2), std::uint16_t(b + 2),
+                                              std::uint16_t(b + 1), std::uint16_t(b + 3)};
+                std::memcpy(idx + 6 * q, six, sizeof six);
+            }
+            hr = bolt_ib_->Unlock();
+        }
+    }
+    if (SUCCEEDED(hr) && !bolt_objects_ready()) hr = E_FAIL;
+    if (FAILED(hr)) release_bolt_objects();
+    return hr;
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
     D d = device_;
@@ -434,11 +549,23 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
     if (resources_ready()) return S_OK;
     PreserveCpuState guard;
     const HRESULT hr = create_objects();
-    if (FAILED(hr) || !caps_.hull_enabled) return hr;
+    if (FAILED(hr)) return hr;
+    if (!caps_.hull_enabled) {
+        if (caps_.bolt_enabled && FAILED(create_bolt_objects())) {
+            caps_.bolt_enabled = false;
+            caps_.bolt_reason = "bolt_program_create";
+        }
+        return hr;
+    }
     // The hull programs after a Reset: a refusal now turns the hull off (the shields keep drawing).
     if (FAILED(create_hull_objects())) {
         caps_.hull_enabled = false;
         caps_.hull_reason = "hull_program_create";
+    }
+    // The bolt objects and buffers after a Reset: a refusal turns the bolts off (the game's bullets draw).
+    if (caps_.bolt_enabled && FAILED(create_bolt_objects())) {
+        caps_.bolt_enabled = false;
+        caps_.bolt_reason = "bolt_program_create";
     }
     return S_OK;
 }
@@ -978,5 +1105,206 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     }
     if (FAILED(hr) && lost(hr)) reset_pending_ = true;
     return finish(hr);
+}
+// Step 4: the in-place bolt draw (weapon_effects_pass.h). The saved state is read before the first setter; a failed read
+// refuses the draw before anything is set (the caller forwards the game's own bullets). The restore runs whatever
+// happened after the first setter and returns its first failure in report.restored.
+namespace {
+constexpr D3DRENDERSTATETYPE bolt_states[] = {
+    D3DRS_ALPHABLENDENABLE, D3DRS_SRCBLEND, D3DRS_DESTBLEND, D3DRS_BLENDOP, D3DRS_SEPARATEALPHABLENDENABLE,
+    D3DRS_ZENABLE, D3DRS_ZWRITEENABLE, D3DRS_ZFUNC, D3DRS_CULLMODE, D3DRS_ALPHATESTENABLE, D3DRS_COLORWRITEENABLE,
+    D3DRS_COLORWRITEENABLE1, D3DRS_COLORWRITEENABLE2, D3DRS_FOGENABLE, D3DRS_STENCILENABLE, D3DRS_SCISSORTESTENABLE,
+    D3DRS_SRGBWRITEENABLE, D3DRS_FILLMODE, D3DRS_CLIPPLANEENABLE};
+constexpr unsigned bolt_state_count = sizeof bolt_states / sizeof bolt_states[0];
+// The capsule pass's values (the rim pass changes the blend pair and the two extra masks): additive ONE / ONE, depth
+// tested LESSEQUAL without writes, both windings, colour into RT0 (the masks of RT1 / RT2 are the caller's).
+constexpr DWORD bolt_values[bolt_state_count] = {
+    TRUE, D3DBLEND_ONE, D3DBLEND_ONE, D3DBLENDOP_ADD, FALSE, D3DZB_TRUE, FALSE, D3DCMP_LESSEQUAL, D3DCULL_NONE, FALSE,
+    D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA, 0, 0,
+    FALSE, FALSE, FALSE, FALSE, D3DFILL_SOLID, 0};
+constexpr unsigned bolt_mask1 = 11, bolt_mask2 = 12; // the two indices the capsule pass leaves at their saved values
+} // namespace
+HRESULT WeaponEffectsPass::draw_bolts(const WeaponBoltDraw& f, WeaponBoltReport* output) noexcept {
+    PreserveCpuState guard;
+    WeaponBoltReport local{};
+    WeaponBoltReport& r = output ? *output : local;
+    r = WeaponBoltReport{};
+    calls_ = 0;
+    const unsigned total = f.lines + f.orbs + f.waves;
+    auto done = [&](HRESULT hr) {
+        r.operation = hr;
+        r.calls = calls_;
+        return hr;
+    };
+    if (!device_ || !caps_.enabled || !caps_.bolt_enabled || total > weapon_bolt_quads || f.rim_lines > f.lines ||
+        f.rim_orbs > f.orbs || (total && !f.quads)) {
+        r.failed = WeaponBoltStep::Validate;
+        return done(E_INVALIDARG);
+    }
+    if (!total) return done(S_FALSE);
+    // After a Reset the stage's run() recreates the objects at the resolve, later in the frame than this draw: recreate
+    // them here (resource creation is legal inside a scene), so the first frame after a Reset draws ours.
+    if (!reset_pending_ && !bolt_objects_ready()) ensure_resources();
+    if (reset_pending_ || !bolt_objects_ready()) {
+        r.failed = WeaponBoltStep::Resources;
+        return done(D3DERR_INVALIDCALL);
+    }
+    D d = device_;
+    // Save: every value set below, read first (documented Get*; the proxy keeps the device non-pure).
+    DWORD saved[bolt_state_count]{};
+    IDirect3DVertexShader9* old_vs = nullptr;
+    IDirect3DPixelShader9* old_ps = nullptr;
+    IDirect3DVertexDeclaration9* old_decl = nullptr;
+    IDirect3DVertexBuffer9* old_vb = nullptr;
+    IDirect3DIndexBuffer9* old_ib = nullptr;
+    UINT old_offset = 0, old_stride = 0, frequency = 1;
+    float old_constants[16]{};
+    HRESULT hr = S_OK;
+    for (unsigned i = 0; i < bolt_state_count && SUCCEEDED(hr); ++i)
+        hr = call<GetRsFn>(GetRenderState)(d, bolt_states[i], &saved[i]);
+    if (SUCCEEDED(hr)) hr = call<GetVsFn>(GetVertexShader)(d, &old_vs);
+    if (SUCCEEDED(hr)) hr = call<GetPsFn>(GetPixelShader)(d, &old_ps);
+    if (SUCCEEDED(hr)) hr = call<GetDeclarationFn>(GetVertexDeclaration)(d, &old_decl);
+    if (SUCCEEDED(hr)) hr = call<GetStreamFn>(GetStreamSource)(d, 0, &old_vb, &old_offset, &old_stride);
+    if (SUCCEEDED(hr)) hr = call<GetStreamFreqFn>(GetStreamSourceFreq)(d, 0, &frequency);
+    if (SUCCEEDED(hr)) hr = call<GetIndicesFn>(GetIndices)(d, &old_ib);
+    if (SUCCEEDED(hr)) hr = call<GetConstantsFn>(GetPixelShaderConstantF)(d, 0, old_constants, 4);
+    if (SUCCEEDED(hr) && frequency != 1) hr = D3DERR_INVALIDCALL; // an instanced stream 0 is not the bullet batch's
+    auto release_saved = [&] {
+        drop(old_vs);
+        drop(old_ps);
+        drop(old_decl);
+        drop(old_vb);
+        drop(old_ib);
+    };
+    if (FAILED(hr)) {
+        release_saved();
+        r.failed = WeaponBoltStep::Save;
+        if (lost(hr)) reset_pending_ = true;
+        return done(hr);
+    }
+    // The quads into the dynamic buffer (one DISCARD lock; four vertices a quad, the constant interpolants repeated).
+    void* bits = nullptr;
+    hr = (faults_ & 64u) ? E_FAIL : bolt_vb_->Lock(0, UINT(total * 4 * sizeof(WeaponBoltVertex)), &bits, D3DLOCK_DISCARD);
+    faults_ &= ~64u;
+    if (SUCCEEDED(hr)) {
+        auto* v = static_cast<WeaponBoltVertex*>(bits);
+        for (unsigned q = 0; q < total; ++q) {
+            const WeaponBoltQuad& src = f.quads[q];
+            for (unsigned c = 0; c < 4; ++c, ++v) {
+                std::memcpy(v->clip, src.clip[c], sizeof v->clip);
+                std::memcpy(v->p, src.p, sizeof v->p);
+            }
+        }
+        hr = bolt_vb_->Unlock();
+    }
+    if (FAILED(hr)) {
+        release_saved();
+        r.failed = WeaponBoltStep::Lock;
+        if (lost(hr)) reset_pending_ = true;
+        return done(hr);
+    }
+    // Set, then draw: the rim pass first (its prefixes), then the capsules.
+    HRESULT first = S_OK;
+    auto step = [&](WeaponBoltStep at, HRESULT h) {
+        if (SUCCEEDED(first) && FAILED(h)) {
+            first = h;
+            r.failed = at;
+        }
+        return SUCCEEDED(first);
+    };
+    step(WeaponBoltStep::State, call<SetDeclarationFn>(SetVertexDeclaration)(d, bolt_declaration_));
+    step(WeaponBoltStep::State, call<SetVsFn>(SetVertexShader)(d, bolt_vs_));
+    step(WeaponBoltStep::State, call<SetPsFn>(SetPixelShader)(d, f.far_flag ? bolt_flag_ps_ : bolt_ps_));
+    step(WeaponBoltStep::State,
+         call<SetStreamFn>(SetStreamSource)(d, 0, bolt_vb_, 0, UINT(sizeof(WeaponBoltVertex))));
+    step(WeaponBoltStep::State, call<SetIndicesFn>(SetIndices)(d, bolt_ib_));
+    for (unsigned i = 0; i < bolt_state_count && SUCCEEDED(first); ++i)
+        if (i != bolt_mask1 && i != bolt_mask2)
+            step(WeaponBoltStep::State, call<SetRsFn>(SetRenderState)(d, bolt_states[i], bolt_values[i]));
+    auto draw_range = [&](WeaponBoltStep at, unsigned start, unsigned count) {
+        if (!count || FAILED(first)) return;
+        HRESULT h = E_FAIL;
+        if (at == WeaponBoltStep::Capsules && (faults_ & 128u))
+            faults_ &= ~128u; // fixture fault bit 7: the capsule draw refused (nothing drawn)
+        else
+            h = call<DrawIndexedFn>(DrawIndexedPrimitive)(d, D3DPT_TRIANGLELIST, 0, 0, total * 4, start * 6, count * 2);
+        if (step(at, h)) ++r.draws;
+    };
+    float look[16];
+    std::memcpy(look, f.look, sizeof look);
+    if (f.rim && (f.rim_lines || f.rim_orbs) && SUCCEEDED(first)) {
+        look[6] = 1.f; // c1.z: the rim pass
+        step(WeaponBoltStep::Rim, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, look, 4));
+        step(WeaponBoltStep::Rim, call<SetRsFn>(SetRenderState)(d, D3DRS_SRCBLEND, D3DBLEND_ZERO));
+        step(WeaponBoltStep::Rim, call<SetRsFn>(SetRenderState)(d, D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR));
+        step(WeaponBoltStep::Rim, call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE1, 0));
+        step(WeaponBoltStep::Rim, call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE2, 0));
+        look[12] = 0.f; // c3.x: the line kind
+        step(WeaponBoltStep::Rim, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, look, 4));
+        draw_range(WeaponBoltStep::Rim, 0, f.rim_lines);
+        look[12] = 1.f;
+        if (f.rim_orbs) step(WeaponBoltStep::Rim, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, look, 4));
+        draw_range(WeaponBoltStep::Rim, f.lines, f.rim_orbs);
+        r.rim_quads = f.rim_lines + f.rim_orbs;
+        step(WeaponBoltStep::Capsules, call<SetRsFn>(SetRenderState)(d, D3DRS_SRCBLEND, D3DBLEND_ONE));
+        step(WeaponBoltStep::Capsules, call<SetRsFn>(SetRenderState)(d, D3DRS_DESTBLEND, D3DBLEND_ONE));
+        step(WeaponBoltStep::Capsules, call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE1, saved[bolt_mask1]));
+        step(WeaponBoltStep::Capsules, call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE2, saved[bolt_mask2]));
+    }
+    const bool rim_drew = SUCCEEDED(first) && r.rim_quads;
+    look[6] = 0.f;
+    const unsigned ranges[3][2] = {{0, f.lines}, {f.lines, f.orbs}, {f.lines + f.orbs, f.waves}};
+    for (unsigned kind = 0; kind < 3; ++kind) {
+        if (!ranges[kind][1]) continue;
+        look[12] = float(kind);
+        step(WeaponBoltStep::Capsules, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, look, 4));
+        draw_range(WeaponBoltStep::Capsules, ranges[kind][0], ranges[kind][1]);
+    }
+    // The capsule pass failed after the rim darkened the scene (review 2026-11-07, note 14): the rim's band is divided
+    // back out where the target can (a lost device presents nothing: no undo): the same ranges again with the program's
+    // undo output s / (1 - s) under DESTCOLOR / ONE, dest (1 + s / (1 - s)) = dest / (1 - s); RT1 / RT2 stay masked.
+    // DESTCOLOR as the source factor: D3DPBLENDCAPS_DESTCOLOR, checked; without it the rim's band stays for this frame.
+    if (rim_drew && FAILED(first) && r.failed == WeaponBoltStep::Capsules && !lost(first) &&
+        caps_.bolt_rim_undo) {
+        HRESULT u = call<SetRsFn>(SetRenderState)(d, D3DRS_SRCBLEND, D3DBLEND_DESTCOLOR);
+        if (SUCCEEDED(u)) u = call<SetRsFn>(SetRenderState)(d, D3DRS_DESTBLEND, D3DBLEND_ONE);
+        if (SUCCEEDED(u)) u = call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE1, 0);
+        if (SUCCEEDED(u)) u = call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE2, 0);
+        look[6] = 2.f;
+        const unsigned undo_ranges[2][3] = {{0, f.rim_lines, 0}, {f.lines, f.rim_orbs, 1}};
+        for (const auto& ur : undo_ranges) {
+            if (!ur[1] || FAILED(u)) continue;
+            look[12] = float(ur[2]);
+            u = call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, look, 4);
+            if (SUCCEEDED(u))
+                u = call<DrawIndexedFn>(DrawIndexedPrimitive)(d, D3DPT_TRIANGLELIST, 0, 0, total * 4, ur[0] * 6, ur[1] * 2);
+        }
+        r.rim_undone = SUCCEEDED(u);
+    }
+    if (SUCCEEDED(first)) {
+        r.quads = total;
+        r.drew = true;
+    }
+    // Restore in reverse order: render states, constants, indices, stream, declaration, programs.
+    HRESULT back = S_OK;
+    auto undo = [&](HRESULT h) {
+        if (SUCCEEDED(back) && FAILED(h)) back = h;
+    };
+    for (unsigned i = bolt_state_count; i-- > 0;) undo(call<SetRsFn>(SetRenderState)(d, bolt_states[i], saved[i]));
+    undo(call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, old_constants, 4));
+    undo(call<SetIndicesFn>(SetIndices)(d, old_ib));
+    undo(call<SetStreamFn>(SetStreamSource)(d, 0, old_vb, old_offset, old_stride));
+    undo(call<SetDeclarationFn>(SetVertexDeclaration)(d, old_decl));
+    undo(call<SetPsFn>(SetPixelShader)(d, old_ps));
+    undo(call<SetVsFn>(SetVertexShader)(d, old_vs));
+    release_saved();
+    r.restored = SUCCEEDED(back);
+    if (FAILED(back) && SUCCEEDED(first)) {
+        first = back;
+        r.failed = WeaponBoltStep::Restore;
+    }
+    if (FAILED(first) && lost(first)) reset_pending_ = true;
+    return done(FAILED(first) ? first : S_OK);
 }
 } // namespace x3m::renderer

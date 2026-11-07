@@ -89,7 +89,7 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
             self.assertIsNone(data['weapon_effects_table'])
 
     def test_observe_and_shields_send_the_variable_and_table_path(self):
-        for value in ('observe', 'shields', 'shields,hull'):
+        for value in ('observe', 'shields', 'shields,hull', 'shields,hull,bolts'):
             code, data, error = self.launch('--weapon-effects', value, inherited={'X3M_WEAPON_EFFECTS': 'native'})
             self.assertEqual(code, 0, error)
             self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], value)
@@ -136,7 +136,12 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
             self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], 'shields,hull', given)
             self.assertEqual(data['weapon_effects'], 'shields,hull', given)
             self.assertIn('weapon effects: shields,hull (X3M_WEAPON_EFFECTS)', error)
-        for bad in ('hull', 'shields,shields', 'shields,hull,bolts', 'shields;hull'):
+        for given in ('shields,hull,bolts', 'bolts,hull,shields', ' shields , hull , bolts '):
+            code, data, error = self.launch('--weapon-effects', given)
+            self.assertEqual(code, 0, error)
+            self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], 'shields,hull,bolts', given)
+            self.assertEqual(data['weapon_effects'], 'shields,hull,bolts', given)
+        for bad in ('hull', 'bolts', 'shields,bolts', 'shields,shields', 'shields,hull,bolts,beams', 'shields;hull'):
             code, _, error = self.launch('--weapon-effects', bad)
             self.assertEqual(code, 2, bad)
             self.assertIn('invalid choice', error)

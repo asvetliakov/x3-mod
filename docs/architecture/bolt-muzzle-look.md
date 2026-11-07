@@ -6,7 +6,8 @@ Design note, 2026-11-07 (design agent, Opus 5.5), chosen by the main session ove
 (`bolt-muzzle-look-fable.md`, to be archived), whose stronger points are folded in (section 10 lists them). Amends the look of
 [weapon-look.md](weapon-look.md) 3.3; its records, hooks, in-place draw, presets and gates stand unless a line here
 replaces them. Reuses [hull-burst-look.md](hull-burst-look.md) (star, eroded noise body, cluster rule, scorch-state smoke).
-Not implemented. Inputs: [bolt-muzzle-references.md](../reference/bolt-muzzle-references.md) [R],
+Implemented 2026-11-07 (unflown): the in-place draw, the muzzle, the fixture gates and the lab; state and the
+deviations the gates forced in [weapon-effects.md](../verification/weapon-effects.md), "Bolts and muzzle (step 4)". Inputs: [bolt-muzzle-references.md](../reference/bolt-muzzle-references.md) [R],
 [weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md) §2, 5, 6, 8.2, [weapon-effects.md](weapon-effects.md)
 4.1–4.4, [hull-impact-classes.md](hull-impact-classes.md) (class rule),
 [game-scale-and-ship-classes.md](../reverse-engineering/game-scale-and-ship-classes.md) §4 (ship sizes),
@@ -33,7 +34,8 @@ event (energy disc and cone, ballistic star and puff, plasma noise bloom, heavy 
 and puff) sized in w and capped by the shooter's radius, 60–250 ms game with the three-frame floor, re-lit by reset, with
 a glow on the shooter's hull, 0.35 in the own cockpit, cluster-saturated on broadsides; station guns get none until
 their fire routine is traced, missile launches none until a launch site is claimed. GPU bound for 512 bolts and 20
-muzzles at 5120x1440: 60 µs [I]; CPU 150 µs [I]. If the lab or the flight rejects the capital widths, `w_cap_m` and then
+muzzles at 5120x1440: 100 µs fenced wall clock [M 89.8 µs, 2026-11-07; the first 60 µs came from a 90-slot estimate,
+the pixel program has 673 slots]; CPU 150 µs [I]. If the lab or the flight rejects the capital widths, `w_cap_m` and then
 the parallel note's reach-scaled width are the fallback (section 8).
 
 ## 1. Size derivation
@@ -202,6 +204,10 @@ an enemy fighter's muzzle at 600 m is the 3 px floor plus halo, with the glow on
 - **Breathing:** flame and star length x (1 + a (2 h − 1)), h = hash(ship, k, shot count), a = 0.25 x
   saturate(Δt_shot / (3 step_game)). At 1x a 10 Hz gun pulses visibly per shot; when shots arrive faster than three
   frames (SETA 6 at 10 Hz: one per frame) the flame is steady, so nothing alternates frame to frame.
+- **View rule (2026-11-07, the chase frames):** a gun axis within 30° of the eye ray (`endon_cos`) collapses the cone
+  into its disc, so energy and heavy muzzles draw the hull burst's four-arm star (sprite kind 3, unequal arms
+  `star_arm_len`, A = the cone's length, `star_e`, the cone's life) about the disc instead; ballistic and flak keep their
+  own star. An own muzzle in the chase view keeps structure; a gun across the view keeps its cone.
 - **Own cockpit:** flash, flame and glow x `own_cockpit_gain` 0.35 (weapon-look 2.9); the smoke puff is not drawn in
   the cockpit (it would sit on the camera).
 - **Heavy rise:** the heavy cone grows to its length over its first 40 ms game (three-frame floor); there is no
@@ -228,8 +234,10 @@ never the own ship. Weights to pin: `bolt_alone_fills_frame` (capsule per kind, 
 (disc + cone, star, bloom), smoke as the burst's. **Frame bound at 5120x1440:** 512 bolts, 32 near (≤ 200 m, ≤ 60 x 400 px quads) and 480 floored (about
 15 x 40 px) cover about 1.06 Mpx = 0.14 screens; at about 90 PS slots and 1 µs per slot per screen (AGENTS budget) that
 is 13 µs, plus the VS; 20 muzzles (one own in chase about 0.1 Mpx, 19 small, their glows at the measured 0.40 weight)
-under 10 µs; the rim draw (about 20 slots, where its band is ≥ 3 px: near bolts only) under 5 µs. Bound: **60 µs GPU**
-for 512 bolts + 20 muzzles; CPU (tap, keys, projection of prev, VB 128 KB) **150 µs**.
+under 10 µs; the rim draw (about 20 slots, where its band is ≥ 3 px: near bolts only) under 5 µs. Bound: **100 µs GPU**
+fenced wall clock for 512 bolts + 20 muzzles (measured 89.8 µs fenced, 43.9 µs by timestamps, 2026-11-07 [M]: the 60 µs
+first set here came from the 90-slot estimate above, while the pixel program has 673 slots); CPU (tap, keys,
+projection of prev, VB 128 KB) **150 µs**.
 
 ## 5. Drawing
 
@@ -327,7 +335,7 @@ On 1080p dumps of the in-place draw through the production bolt program into the
 | `muzzle_broadside_cluster` | 12 turrets along a capital hull | summed glow peak ≤ 2.3 x one glow; core count 12 |
 | `muzzle_smoke_surface_only` | ballistic over hull and sky; the own cockpit | sky unchanged; hull min ≥ 1 − s0 − 0.02; no puff in the cockpit view |
 | `muzzle_heavy_rise_and_vents` | heavy on a capital at 600 m | cone reaches 3 w at 40 ms (± 1 frame); two vents ⊥ the gun axis within 5°; afterglow fades to t, ≤ 1.2 after 80 ms |
-| 3.3's muzzle rows (cockpit gain, placement, light on hull, stub records, 20 guns ≤ 30 µs); budget rows | `bolt_alone_fills_frame`, `muzzle_alone_fills_frame`, 512 bolts + 20 muzzles at 5120x1440 | weights pinned; ≤ 60 µs GPU; CPU ≤ 150 µs (i686 fixture) |
+| 3.3's muzzle rows (cockpit gain, placement, light on hull, stub records, 20 guns ≤ 30 µs); budget rows | `bolt_alone_fills_frame`, `muzzle_alone_fills_frame`, 512 bolts + 20 muzzles at 5120x1440 | weights pinned; ≤ 100 µs GPU fenced (measured 89.8); CPU ≤ 150 µs (i686 fixture) |
 
 ## 8. Header constants, kill criteria and the flight
 

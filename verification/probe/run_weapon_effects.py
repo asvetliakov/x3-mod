@@ -79,7 +79,13 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_shape_vs.hlsl', 'src/effects/weapon_ring_ps.hlsl', 'src/effects/weapon_filament_ps.hlsl',
                       'src/renderer/weapon_shape_vertex_program_inc.h', 'src/renderer/weapon_ring_pixel_program_inc.h',
                       'src/renderer/weapon_filament_pixel_program_inc.h', 'src/effects/weapon_lightning_vs.hlsl',
-                      'src/renderer/weapon_lightning_vertex_program_inc.h')
+                      'src/renderer/weapon_lightning_vertex_program_inc.h',
+                      # step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md)
+                      'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_stage.h',
+                      'src/effects/weapon_bolt_vs.hlsl', 'src/effects/weapon_bolt_ps.hlsl',
+                      'src/effects/weapon_bolt_flag_ps.hlsl', 'src/renderer/weapon_bolt_vertex_program_inc.h',
+                      'src/renderer/weapon_bolt_pixel_program_inc.h', 'src/renderer/weapon_bolt_flag_pixel_program_inc.h',
+                      'verification/probe/weapon_effects_bolt_draw_cases.h')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
@@ -100,6 +106,10 @@ PROGRAMS = {
                            'src/renderer/weapon_filament_pixel_program_inc.h'),
     'weapon_lightning_vs': ('verification/results/weapon-lightning-vertex-program.json',
                             'src/renderer/weapon_lightning_vertex_program_inc.h'),
+    'weapon_bolt_vs': ('verification/results/weapon-bolt-vertex-program.json', 'src/renderer/weapon_bolt_vertex_program_inc.h'),
+    'weapon_bolt_ps': ('verification/results/weapon-bolt-pixel-program.json', 'src/renderer/weapon_bolt_pixel_program_inc.h'),
+    'weapon_bolt_flag_ps': ('verification/results/weapon-bolt_flag-pixel-program.json',
+                            'src/renderer/weapon_bolt_flag_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -110,7 +120,8 @@ SHELL_PINS = {'two_shells_1080_us': 61.3, 'two_shells_5120_us': 201.8, 'fullscre
 HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verification/probe/weapon_effects_hook_fixture_shim.h',
                 'verification/probe/build_weapon_effects_hook.py', 'src/proxy/weapon_effects_patch.cpp',
                 'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
-                'src/proxy/weapon_effects_sites.h', 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp',
+                'src/proxy/weapon_effects_sites.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_sites.h',
+                'verification/probe/weapon_effects_bolt_cases.h', 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp',
                 'src/proxy/engine_patch.h')
 
 
@@ -175,7 +186,7 @@ def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING', 'HULL', 'HULL_SLOTS', 'HULL_CPU', 'HULL_TIMING', 'CLASS', 'CLASS_SLOTS', 'CLASS_CPU',
-            'CLASS_TIMING')
+            'CLASS_TIMING', 'BOLT', 'BOLT_SLOTS', 'BOLT_CPU', 'BOLT_TIMING', 'MUZZLE', 'BOLT_DUMP')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -330,7 +341,8 @@ def main():
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'hull', 'hull_slots', 'hull_cpu', 'hull_timing',
-                                                 'class', 'class_slots', 'class_cpu', 'class_timing')}
+                                                 'class', 'class_slots', 'class_cpu', 'class_timing', 'bolt', 'bolt_slots',
+                                                 'bolt_cpu', 'bolt_timing', 'muzzle')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])
@@ -339,6 +351,7 @@ def main():
     out_path.write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({'exit': returncode, 'result': report['result'], 'failed': report['failed_checks'],
                       'timing': report['timing'], 'hull_timing': report['hull_timing'], 'hull_cpu': report['hull_cpu'],
+                      'bolt_timing': report['bolt_timing'], 'bolt_cpu': report['bolt_cpu'],
                       'record': str(out_path.relative_to(ROOT))}, indent=1))
     return 0 if passed and hook_passed is not False else 1
 

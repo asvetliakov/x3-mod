@@ -731,20 +731,23 @@ WEAPON_EFFECTS_WORDS = ('native', 'observe', 'shields')
 
 
 def weapon_effects_mode(text):
-    """--weapon-effects: native, observe, shields, or the family list shields,hull in either order with spaces around
-    the tokens (the DLL's core::parse_mode rule), resolved to its canonical word (`shields,hull`)."""
+    """--weapon-effects: native, observe, shields, or the family lists shields,hull and shields,hull,bolts in any order
+    with spaces around the tokens (the DLL's core::parse_mode rule), resolved to its canonical word."""
     tokens = [t.strip() for t in str(text).split(',')]
     if len(tokens) == 1 and tokens[0] in WEAPON_EFFECTS_WORDS:
         return tokens[0]
     if len(tokens) == 2 and sorted(tokens) == ['hull', 'shields']:
         return 'shields,hull'
-    raise argparse.ArgumentTypeError(f"invalid choice: {text!r} (choose from native, observe, shields, shields,hull)")
+    if len(tokens) == 3 and sorted(tokens) == ['bolts', 'hull', 'shields']:
+        return 'shields,hull,bolts'
+    raise argparse.ArgumentTypeError(
+        f"invalid choice: {text!r} (choose from native, observe, shields, shields,hull, shields,hull,bolts)")
 
 
 def weapon_effects_line(game, mode):
     """The `weapon effects table:` launch line for --weapon-effects observe|shields|shields,hull, None otherwise
     (informational)."""
-    if mode not in ('observe', 'shields', 'shields,hull'):
+    if mode not in ('observe', 'shields', 'shields,hull', 'shields,hull,bolts'):
         return None
     path = game / WEAPON_EFFECTS_GAME_FILE
     if not path.is_file():
@@ -2754,7 +2757,7 @@ def main():
             env.pop('X3M_WEAPON_EFFECTS', None)
         else:
             env['X3M_WEAPON_EFFECTS'] = args.weapon_effects
-            if args.weapon_effects in ('observe', 'shields', 'shields,hull'):
+            if args.weapon_effects in ('observe', 'shields', 'shields,hull', 'shields,hull,bolts'):
                 env['X3M_WEAPON_EFFECTS_TABLE'] = game_windows_path(game / WEAPON_EFFECTS_GAME_FILE)
         # The plume preset: likewise sent only when given (the DLL default is "default"); dropped under --vanilla.
         if args.vanilla or args.engine_effects_preset is None:

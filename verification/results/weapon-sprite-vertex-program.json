@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_sprite_vs.hlsl",
-  "source_sha256": "003f0470b539575b5d104cd7f1a1815c60ba2b7ac87369fd4913a87e42cd4cf5",
+  "source_sha256": "ec38084c31cbdb3290f252466566b2a184be6f4455f8a15474fa520fe9099f5b",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -16,7 +16,7 @@
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
-    "tools/shaders/generate_weapon_effects_programs.py": "6574eed4b45e365cb599c8b6ca99ebcaaa0808f351d12722dc6b686852f95c94"
+    "tools/shaders/generate_weapon_effects_programs.py": "eaf38535572193f712728a7dc63c2cf5a569ffb63b774ba0d01e3be19a7d2f64"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "source": "src/effects/weapon_bolt_vs.hlsl",
+  "source_sha256": "4a92d0381239a763edff5f4b557b8818f06b8bb4f10e631d92699e19662dfd5c",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "vs_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": null,
+  "word_count": 97,
+  "bytecode_sha256": "251348e8b9669030b3d7c59000104f174a4bef0020fa9c0b1f9d648cf00b9c96",
+  "header_sha256": "91b9b873ab3bd2657ae156dcf76cbb1751f05227d4a273ec11edbcb5c406a539",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
+    "tools/shaders/generate_weapon_effects_programs.py": "eaf38535572193f712728a7dc63c2cf5a569ffb63b774ba0d01e3be19a7d2f64"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

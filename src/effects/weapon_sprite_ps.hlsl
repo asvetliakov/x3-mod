@@ -17,6 +17,9 @@
 //   quad's half): each arm (1 - s)^2 along it, across (1 - (d / w)^2)^2 within the half width w = star_width A (1 - s) / 2
 //   + depth.w (the pixel floor's half), in the vertex colour; a white disc core of alpha x the quad's half (anti-aliased
 //   over a quarter of it); no halo; at the quad's view depth, SOFT = soft_core x its half (view units, shade.w).
+// - A cone (depth.y 4, step 4's muzzle flame, star arms and vents: bolt-muzzle-look.md 3.1): the stage's quad from the
+//   base (u 0) to the tip (u 1), v -1 / +1 across the base; its radius linear to 0 at the tip, across (1 - (v / r)^2)^2,
+//   radiance (1 - u)^1.5, at the plane's interpolated view depth, SOFT = depth.z (view units).
 // Radiance x the vertex's shade.z. Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp, defaults
 // weapon_effects_core.h look::.
 #include "weapon_soft_depth.hlsl"
@@ -36,7 +39,14 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
     bool valid = !occluder || (lane > 0.0 && lane <= 3.402823466e38);
     float z = depth.x;
     float3 c = 0.0;
-    [branch] if (depth.y > 2.5) {
+    [branch] if (depth.y > 3.5) {
+        float u = saturate(shade.x);
+        float r = max(1.0 - u, 1e-3);
+        float q = saturate(1.0 - (shade.y / r) * (shade.y / r));
+        float along = pow(1.0 - u, 1.5) * saturate(shade.x * 8.0 + 1.0);
+        float vis = occluder ? saturate((lane - z) / max(depth.z, 1e-4)) : 1.0;
+        c = colour.rgb * (shade.z * q * q * along * vis);
+    } else if (depth.y > 2.5) {
         float2 q = shade.xy;
         float A = depth.z;
         float lu = (q.x >= 0.0 ? star_len.x : star_len.z) * A, lv = (q.y >= 0.0 ? star_len.y : star_len.w) * A;

@@ -499,7 +499,7 @@ constexpr Entry entries[entry_count] = {
     {"X3M_VOLUMETRIC_FOG_RANGE", "volumetric_fog_range", Type::Enum, "stored", nullptr, 139, 0, 21, 0, 0, "stored|legacy", 0, -1},
     {"X3M_VOLUMETRIC_FOG_STRENGTH", "volumetric_fog_strength", Type::Float, "0.02", nullptr, 139, 1, 21, 0, 0, "", 0, -1},
     {"X3M_VOLUMETRIC_FOG_TIMING", "volumetric_fog_timing", Type::Bool, nullptr, nullptr, 140, 0, 21, 0, 0, "", 0, -1},
-    {"X3M_WEAPON_EFFECTS", "weapon_effects", Type::Enum, nullptr, nullptr, 140, 0, 21, 0, 0, "native|observe|shields|shields,hull|hull,shields", 0, -1},
+    {"X3M_WEAPON_EFFECTS", "weapon_effects", Type::Enum, nullptr, nullptr, 140, 0, 21, 0, 0, "native|observe|shields|shields,hull|hull,shields|shields,hull,bolts", 0, -1},
     {"X3M_WEAPON_EFFECTS_TABLE", "weapon_effects_table", Type::Path, nullptr, nullptr, 140, 0, 21, 0, 0, "", 1, -1},
     {"X3M_WINDOW_MONITOR_RECT", "window_monitor_rect", Type::Bool, "1", nullptr, 140, 0, 21, 0, 0, "", 0, -1},
     {"X3M_WINDOW_MONITOR_RECT_DEFAULT", "window_monitor_rect_default", Type::Bool, "1", nullptr, 140, 0, 21, 0, 0, "", 3, 308},
