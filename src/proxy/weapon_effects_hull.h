@@ -91,7 +91,11 @@ struct HullSlot {
     // ember) and from the spark origin (sparks and chips)
     float reach_attached = 0.f, reach_spark = 0.f;
     std::uint8_t latched = 0, orphan = 0, has_axis = 0;
+    // The budget took this record's tongues (step 0c or the fence): shed for the rest of its life (review 2026-11-08: no
+    // pop back when the depth order or the count changes). The slot's last padding byte.
+    std::uint8_t fire_shed = 0;
 };
+static_assert(sizeof(HullSlot) == 512, "the slot stays 512 bytes");
 struct OwnerTrack {
     std::uint32_t owner = 0, node = 0, handle = 0, ms = 0, used = 0;
     std::int32_t pos[3]{};
@@ -104,6 +108,7 @@ struct Spot {
     float floor_ms = 0.f;
     std::int32_t trail[3]{};
     std::uint8_t used = 0, flash = 0;
+    std::uint8_t fire_shed = 0; // the budget took its burst's tongues: shed for the spot's life (HullSlot::fire_shed)
 };
 // A scorch mark (the per-owner store, 36 bytes): its owner (validated as a record's), the game ms it was laid, the
 // owner-frame point, r_hit then (view units), the development time (the ember's law, game ms), the anatomy and its
@@ -161,6 +166,8 @@ inline void hull_clear(HullState& s) noexcept {
     s.coarse_frames = 0;
     s.fire_coarse = false;
     s.fire_frames = 0;
+    s.fire_fenced = false;
+    s.fence_frames = 0;
 }
 // The frame: the current view with its jittered projection (cam.m00, m11, m20, m21) and the previous frame's view
 // (prev_valid false: the current view stands for it), the target's size, the near plane, the game clock and step, the
@@ -1286,6 +1293,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     hit->first_ms = f.now;
                     hit->flash = 1;
                     hit->seed = e.sequence;
+                    hit->fire_shed = 0; // a new burst
                     ++n.pulses;
                 }
                 float d2 = 0.f;
@@ -1677,6 +1685,8 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     static float burst_fine[renderer::weapon_fireball_boxes]; // each burst box's octave weight 0 .. 2 (the steps (0b), (1))
     // each burst box's tongue share (fire x w_px, 0 .. 1: its charge's fire part) and view depth (the step (0c))
     static float burst_fire[renderer::weapon_fireball_boxes], burst_depth[renderer::weapon_fireball_boxes];
+    // each burst box's latch (its record's or spot's fire_shed: set when the budget takes its tongues)
+    static std::uint8_t* burst_latch[renderer::weapon_fireball_boxes];
     const float fine4_px = core::look::fireball_fine4_px * f.height * (1.f / 1440.f),
                 fine4_band_px = core::look::fireball_fine4_band_px * f.height * (1.f / 1440.f);
     // a box screen's charge by its octave weight: w2 + (w3 - w2) min(fine, 1) + (w4 - w3) max(fine - 1, 0)
@@ -1711,7 +1721,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
     // burst's game-time age in ms (the tongues' flow and flicker); none for a smoke or with the eye inside (fire-material.md 3)
     auto puff_box = [&](const float c_hit[3], float r_hit, float R, float T, float E, float x, float advect, std::uint32_t seq,
                         const float tint4[4], std::uint32_t age_ms, bool own, std::uint32_t owner, bool smoke,
-                        float fire = 0.f, float gcore = 0.f, float tg = 0.f) -> bool {
+                        float fire = 0.f, float gcore = 0.f, float tg = 0.f, std::uint8_t* latch = nullptr) -> bool {
         if (!(R > 0.f)) return false;
         const float dist = scalar::sqrt(dot3(c_hit, c_hit));
         const float bb = dist > 1e-6f ? 1.f - hl::bias * r_hit / dist : 1.f;
@@ -1737,8 +1747,10 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             lod = core::look::fire_lod(rpx * (1440.f / f.height), false);
         }
         const float fw = smoke || full ? 0.f : core::look::fire_enabled ? fire : (fire > 0.f ? -1.f : 0.f);
-        const float core4[4] = {smoke ? 0.f : gcore, fw, lod, tg};
-        const float fire_share = (fw > 0.f ? (fw < 1.f ? fw : 1.f) : 0.f) * (lod < 1.f ? lod : 1.f);
+        // a latched box (its tongues once shed) keeps the law at its size LOD without them, charged so
+        const bool shed = latch && *latch && fw > 0.f;
+        const float core4[4] = {smoke ? 0.f : gcore, fw, shed ? -(lod < 1.f ? lod : 1.f) : lod, tg};
+        const float fire_share = shed ? 0.f : (fw > 0.f ? (fw < 1.f ? fw : 1.f) : 0.f) * (lod < 1.f ? lod : 1.f);
         const float look[4] = {T, E, x, 64.f * unit_of(element_hash(seq, 4))};
         const float disc[4] = {6.2831853f * unit_of(element_hash(seq, hl::burst_rot_element)),
                                64.f * unit_of(element_hash(seq, hl::burst_lobe_element)), advect,
@@ -1760,6 +1772,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
         burst_fine[nb] = fine;
         burst_fire[nb] = fire_share;
         burst_depth[nb] = c[2];
+        burst_latch[nb] = latch;
         ++nb;
         ++n.bursts;
         n.fine += fine < 1.f;
@@ -1990,7 +2003,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     // round 2: a fire class's weight 1 + (1 - s(N)), the cluster's thinning (hull::fire_cluster_thr)
                     const float fire_w = !t.fire ? 0.f : hl::class_fire[a] >= 1.f ? 2.f - sb : hl::class_fire[a];
                     if (puff_box(c_view, r_hit, burst_R, burst_T, pf[6] * gain * sb, x, core::look::fireball_advect * x,
-                                 e.sequence, tint4, age_ms, own, e.owner, false, fire_w, gcore, age))
+                                 e.sequence, tint4, age_ms, own, e.owner, false, fire_w, gcore, age, &hs.fire_shed))
                         n.floored += fl;
                 }
             }
@@ -2474,7 +2487,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                 // the fire material without the core (a held spot's core would be a lamp for the whole hold)
                 puff_box(c_view, r_hit, R, T, pf[6] * gain, fall_age / L,
                          core::look::fireball_advect * float(age_first) * 1e-3f, sp.seed, tint4, rel, own, e.owner,
-                         false, t.fire ? hl::class_fire[a] : 0.f, 0.f, float(age_first));
+                         false, t.fire ? hl::class_fire[a] : 0.f, 0.f, float(age_first), &sp.fire_shed);
             }
             if (t.glow && !dust && T > 0.f && R > 0.f) {
                 float colour[3];
@@ -2791,6 +2804,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             burst_area -= cut;
             burst_meta[sel].area -= cut;
             burst_fire[sel] = 0.f;
+            if (burst_latch[sel]) *burst_latch[sel] = 1;
             for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
                     -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
             ++n.fire_shed;
@@ -2829,6 +2843,7 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
             burst_area -= cut;
             burst_meta[sel].area -= cut;
             burst_fire[sel] = 0.f;
+            if (burst_latch[sel]) *burst_latch[sel] = 1;
             for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
                     -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
             ++n.fire_shed;

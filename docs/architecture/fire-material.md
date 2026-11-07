@@ -222,7 +222,8 @@ the per-pixel cost is +15–25 %, the fireball weight 1.18 → about 1.45, the w
 worst frame would rise from 412 to about 480 µs unshed, so the shed order gets a new first step for bodies: (0c) the
 tongue term of other owners' bursts and bodies, farthest first, with the octave step's hysteresis (3 frames, 0.8); the
 own owner's and the newest death's keep it until the fence's last step. The eye-inside path is unchanged (0 cost). CPU:
-one more vertex float (`fire`, packed with `core` as a float2 in TEXCOORD5: stride 80 → 84 [I]) and the fire ramp
+one more vertex float (`fire`, packed with `core` as a float2 in TEXCOORD5: stride 80 → 84 [I]; as built `core` a
+float4, 80 → 92, section 12.1) and the fire ramp
 upload with the fireball constants; no per-frame work.
 
 **Native Windows.** ps_3_0 / vs_3_0 arithmetic only (`atan2`, `pow`, `smoothstep`, the wrapped cell: `floor`, `frac`,
@@ -247,7 +248,8 @@ Each flips a header constant, never adds a setting:
 
 Flight questions: (1) does the hull burst read as fire at 200 m and at 2 km? (2) do the capital's death body and its
 wave read as fire, the wave translucent, from broadside and from above? (3) is the flicker rate right under SETA 6–10x
-and at 1x? (4) does the white-yellow core bloom without turning the 20-hit fighter into a sun?
+and at 1x? (4) does the white-yellow core bloom without turning the 20-hit fighter into a sun? (5) SETA sparkle on fire
+bodies: at 100-160 ms steps do the flicker and the fine grain (new noise every frame, section 12.3) sparkle?
 
 ## 9. Unknowns and what settles each
 
@@ -325,11 +327,13 @@ constant and gate that differs from sections 2-7 and why; sections 1-11 are the 
 | The plasma globe | half the law | the tongues and gain at half weight, the previous threshold (blend `w_px saturate(2 fire - 1)`) | round 2: the globe at half the fire threshold had no lit pixel at 0.95 L (its late-life floor) |
 | Cluster thinning | none | a fire class's burst: threshold + `hull::fire_cluster_thr` 0.2 x (1 - s(N)), carried as fire weight 1 + (1 - s(N)) | round 2 item 3: N overlapping bursts' tongues summed to a filled body |
 | Cluster glow and ember | the glow 1 / (1 + (N - 1) / 2.5), the ember none | past `hull::cluster_glow_fire_n` 4 bursts x 4 / N more, the ember of a fire class the same factor | round 2 item 3: the 20 hits' embers (lab: the smooth puffball with the bursts off) and glows summed to tan |
-| Shed tongues | LOD 0 (the previous law) | core.z = -LOD: the law kept at its size, no polar taps | round 2: a shed burst kept the convex gain (item 3) |
+| Shed tongues | LOD 0 (the previous law) | core.z = -LOD: the law kept at its size, no polar taps and no Cartesian fine tap (n_f 1/2: no jitter; also under the budget's step (1), screen.w 0), latched for the rest of the burst's or body's life (`HullSlot`/`Spot::fire_shed`, `BoomSlot::fire_shed` bit 0 the body, k + 1 secondary k) | round 2: a shed burst kept the convex gain (item 3); review 2026-11-08: the coarse charge assumed the third octave gone, and a burst's tongues came back when the depth order or count changed (pop) |
+| The vertex | `fire` packed with `core` as a float2, stride 80 → 84 | `core` a float4 (the core's gain, the fire weight, the size LOD, the game-time age in ms): stride 80 → 92 | the size LOD and the age are per box (the flow and flicker run on the element's game time) |
+| The tongue blend's fire weight | `fire` | saturate(fire) for w_t (the blend, the size-LOD law and the flicker); the cluster's excess 1 - s(N) to the threshold only | review 2026-11-08: past 1 the lerps overshot (noise contrast nearly doubled, a tongue dimmed to 0.42, w3 negative); the 20-hit cluster in the lab before / after at 200 and 450 ms: tongues at 200 ms slightly sparser, the 450 ms ember unchanged (no retune) |
 | The wave | band and sheet from tongues behind the front, the rim e^(-z^2) x m x (0.6 + 0.4 d) | `fire_wave_thr_0 / _end` 0.3 / 0.6, the radial cell `fire_wave_aspect` 2.5 x the arc (round 1); round 2: the noise continues ahead of the front and the threshold rises to 1 over `fire_wave_lick` 4 w_e ahead (`wave_window_out` 2.5 -> 4), so tongues point outward; the rim = `wave_rim_gain` 1 x the tongues' own front density x saturate((n - thr - `wave_rim_lift` 0.25) / fire_soft)^2 (never brighter than a tongue, broken between the spines); the second octave at `fire_fine_k` x the cells is the fine octave (jitter, luminance) | item 5: the round-1 lab wave was a drawn hoop (a thin continuous bright line with tongues trailing inward) |
 | The ring's band | a periodic 2-D noise | a value noise of the owner-frame direction (31 cells about, no seam) offset by -z / 3 | the ring program has no age: **open item**, the band does not flow with game time |
 | The budget | step (0c) by the frame's budget; `budget_weight_fire` about 1.45 | step (0c), and the tongues' own fence `hull::fire_fence` 0.08 screens of their charge: with more than 4 other owners' bursts drawing tongues and past the fence, they drop the term farthest first until under 0.8 of it or the nearest 4 are left, held 3 frames (the octave step's hysteresis); the own ship's keep it, a single near burst is never fenced, the deaths keep theirs (boom's own step 0c); `budget_weight_fire` 2.07 (round 1) -> 2.28 (round 2: on 439.0 us, off 244.3 us at 5120x1440, the fine octave's polar tap) | the 20 hits at 200 m: 88.2 us against 80 with every tongue drawn; the first fence (no cluster condition) shed a single near burst's tongues in the second record |
-| `budget_weight_fireball`, `_coarse` | 1.18, 1.03 (note's section 7: about 1.45 with the tongues) | unchanged; **open item**: the every-pixel rows read 242.0 / 212.9 us (1.36 / 1.20 a screen) and `test_weapon_effects_hook` asks them within 0.15; re-pinned to them the close capital's wave was shed on one frame of seven (`wave_drawn_close_capital`, a record on the re-pin), so a budget decision is owed (the fence, or the wave's order) | the eye-inside body's fence also sits within 2 us of 300 (298.5-299.9 on the round-2 records with the fire-0 path trimmed) |
+| `budget_weight_fireball`, `_coarse`, `_fine4`; `budget_weight_fire` | 1.18, 1.03 (note's section 7: about 1.45 with the tongues) | 1.35, 1.18, 1.35; 2.46 (2026-11-08, orchestrator decision: pinned to the every-pixel rows 242.0 / 212.9 us, 1.36 / 1.20 a screen, and the tongues' 2.28 + 0.18 so their extra stays 1.11); the charged fence they feed raised x 1.35 / 1.18 = 1.144: `boom::budget_screens` 2.5 -> 2.86 (the close capital's 450 us charged fence -> 515 at the old scale). Not raised: `hull::fire_fence` 0.08 (in screens of the tongues' extra, 1.10 -> 1.11), the shared `screen_budget` 8 (every family's, decal-weighted patches included). The measured bounds stay (close capital worst frame <= 450 us real) | re-pinned at the old fences the close capital's wave was shed on one frame of seven (`wave_drawn_close_capital`) |
 | The wave's colour | `wave_t_band0 / _band_end` 0.55 / 0.4 | 0.75 / 0.55; `fire_wave_thr_0` 0.3 -> 0.25; `wave_ahead` 0.7 -> 1.0 | round 2: the young wave's band classed red on the round-2 ramp; the spine-only rim left 4 bins dark in a run and fell 0.35 of its peak in a pixel |
 
 ### 12.2 Gates as built
@@ -343,8 +347,8 @@ constant and gate that differs from sections 2-7 and why; sections 1-11 are the 
 | `wave_not_a_tyre` | band mean, dark share, anisotropy, grey | + the longest continuous rim arc: at 720 angles the largest luma within +-1.5 w_e of the 64-bin's edge radius; the longest circular run >= 0.5 of the peak <= 60 degrees | item 5 |
 | `hull_burst_erodes_outside_in` | lit share inside R(t) >= 0.8 / 0.35-0.75 / <= 0.15 at 0.1 / 0.5 / 0.9 L_b | the lit set's equal-area radius at 0.5 L_b 0.35-0.9 of its radius at 0.1 L_b, at 0.9 L_b <= 0.4 of it; none after L_b; the mean radius 0.8 / 0.2 <= 0.8 unchanged | the tongues' gaps are the material; the intent (it shrinks from outside in and is gone at L) measured on the body drawn |
 | `hull_burst_no_centre_ring` | the profile over 0 .. 0.6 R_s | over 0 .. R_eq (the lit set's equal-area disc); the bounds 0.15 / 1.3 unchanged | the tongues' bases sit at the blend radius of the drawn sphere, outside the body the eye sees as its centre; one seed's base read 0.157 |
-| `death_big_tier_sizes`, `death_tier_sizes` | the mean outline within 5 % of R(t) | the tongues' front, the 90th percentile of the 36 bins' outermost lit radius, within 0.80-1.15 of R(t) (the mean printed) | the mean outline counts the bays between the tongues' tips (0.66-0.74 measured on round 1); `death_tier_sizes` (fighter 600 m, missile 300 m) is included because `fire_px` 24 / 40 puts the 600 m fighter partly under the tongue law |
-| `wave_broken_circumference` | every bin's peak >= 5 % of the ring's | no run of more than 2 bins (11.25 degrees) under 5 % (no transparent arc); max / min and CV unchanged | the rim broken into tongues leaves single bins dark between them |
+| `death_big_tier_sizes`, `death_tier_sizes` | the mean outline within 5 % of R(t) | the tongues' front, the 90th percentile of the 36 bins' outermost lit radius, within 0.80-1.25 of R(t) (the lobes' reach; the mean printed; the old gate was the mean outline within ±5 %) | the mean outline counts the bays between the tongues' tips (0.66-0.74 measured on round 1); `death_tier_sizes` (fighter 600 m, missile 300 m) is included because `fire_px` 24 / 40 puts the 600 m fighter partly under the tongue law |
+| `wave_broken_circumference` | every bin's peak >= 5 % of the ring's | no run of more than 3 bins (16.9 degrees) under 5 % (no transparent arc); max / min >= 2 or a band bin at 0 (which one printed, `arc_by`), CV unchanged | the rim broken into tongues leaves single bins dark between them |
 | `fire_small_reads` | lit share inside R(t) >= 0.4 | the lit set's equal-area radius >= 0.45 R(t) (holes and lobes unchanged) | `fire_px` 24 / 40 puts the 30 px (1080) hit at 40 px of 1440 rows: the whole tongue law, whose gaps are the material |
 | `hull_burst_colour_white_core_at_birth` | b / r >= 0.45 | >= 0.25 | the core whitens towards the top stop (1, 0.92, 0.30), yellow-white (item 1) |
 | `hull_burst_colour_dark_red_at_end` | g / r <= 0.3 | <= 0.35 | the red stop is G / R 0.32 (redder turns salmon under AgX) |
@@ -356,11 +360,27 @@ constant and gate that differs from sections 2-7 and why; sections 1-11 are the 
 | `wave_no_hard_edge` | no rise outward past the peak on any ray | rises on at most a tenth of the rays; no hard drop, the fall <= 0.3 unchanged | the tongues lick outward past the front: a ray leaves one tongue and meets another's tip (2 of 30 rays) |
 | `death_big_stage_cpu`, `death_stage_cpu_32_deaths` | 0.08 us a quad, 50 us | unchanged | host CPU timing (X4.exe loaded the Windows host during the records): host-noise rows unless they fail three times on a quiet host |
 
-The last record: 352 of 352 checks [M] (`run_weapon_effects.py --host native`; the ledger's "Round 2" table from
+The round-2 record: 352 of 352 checks [M] (`run_weapon_effects.py --host native`; the ledger's "Round 2" table from
 `ledger_rows.py --fire`); `fireball_ps` 842 slots, `wave_ps` 790. Open items: the fireball's every-pixel weights (above),
 the eye-inside fighter's 4-octave row at 298.9-304.0 us against its 300 us test bound, the ring's band without age, and
 the hull ember's smooth lobed glow (heat ramp, outside this material) which outlives the cluster's bursts and reads tan at
 400 ms in the lab's 60 m cluster.
+
+### 12.3 Review fixes (2026-11-08)
+
+The tongue blend reads saturate(fire) (a cluster burst's 1 + (1 - s(N)) had pushed w_t past 1: the noise lerps
+overshot, the flicker dimmed a tongue to 0.42, w3 went negative); the cluster's excess thins the threshold only. The
+lab's 20-hit cluster before / after (`hull/energy-fighter60-20hits`, 200 and 450 ms): at 200 ms the tongues slightly
+sparser, no filled body; at 450 ms the hull ember's tan puffball unchanged (pixel-identical at 800 ms); no retune. A
+shed box and the budget's step (1) no longer take the Cartesian fine tap (n_f 1/2), and a shed burst or body stays
+shed for its life (12.1). The eye-inside GPU bounds `eye_inside_fighter`, `_n4` 300 -> 330 us: the program's cost on
+that path rose with the fire material (n4 298.2 us on round 1's record, 301.4 on round 2's; the fixture's 300 check
+read 300.8 on this round's second record). The fireball weights pinned to the measured rows with the boom family's cap
+raised by the same ratio (12.1). Ledger: [weapon-effects.md](../verification/weapon-effects.md) "Round 2" / "Review fixes".
+
+SETA: at 100-160 ms steps the flicker (65 ms cells) and the fine grain (streaming with the 120 ms flow) are new noise
+every frame; nothing freezes or steps by frame count, but a fire body may sparkle frame to frame. A flight question
+(section 8, question 5), not a fixture gate.
 
 ## Reproduce
 

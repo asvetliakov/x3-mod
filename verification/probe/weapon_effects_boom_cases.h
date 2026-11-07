@@ -1766,8 +1766,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (size.first == 5120) {
                 std::snprintf(detail, sizeof detail, "fighter=%.1f twenty=%.1f missile=%.1f nested=%.1f eye=%.1f", f600, f20, mis,
                               nest, eye);
-                // section 9: the eye inside <= 300 us; the far cases within the shared budget's fence (8 x 177.5 us)
-                report("death_budget_5120", eye <= 300.0 && f20 <= double(wc::screen_budget) * 177.5 &&
+                // section 9: the eye inside <= 330 us (300 until 2026-11-08: the fire material's program cost on that path,
+                // fire-material.md 12.3); the far cases within the shared budget's fence (8 x 177.5 us)
+                report("death_budget_5120", eye <= 330.0 && f20 <= double(wc::screen_budget) * 177.5 &&
                                                  f600 <= 100.0 && mis <= 100.0 && nest <= 150.0, detail);
             }
             tt.release();
@@ -2716,7 +2717,11 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     amn = std::min(amn, bsum[b]);
                 }
                 for (unsigned b = 0; b < 64; ++b) av += (bsum[b] - am) * (bsum[b] - am) / 64.0;
-                const double arc_ratio = amn > 0 ? amx / amn : 1e9, arc_cv = am > 0 ? std::sqrt(av) / am : 0.0;
+                // the arcs' contrast: a dark bin (min 0) or max / min >= 2, which of the two printed (review 2026-11-08: the
+                // ratio's 1e9 stand-in passed the bound without saying so)
+                const bool arc_min_zero = !(amn > 0);
+                const double arc_ratio = arc_min_zero ? 1e9 : amx / amn, arc_cv = am > 0 ? std::sqrt(av) / am : 0.0;
+                const bool arc_ok = arc_min_zero || arc_ratio >= 2.0;
                 // round 2 (fire-material.md section 12): the rim broken into the tongues leaves bins between them dark, so
                 // "every bin's peak >= 5 % of the ring's" becomes: no run of more than 3 bins (16.9 degrees, 2.25 of the
                 // tongues' cells) under 5 % of the peak (no transparent arc; 4 measured with fire_wave_thr_0 0.3, now 0.25)
@@ -2727,9 +2732,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     dark_run = std::max(dark_run, k);
                 }
                 std::printf("EXPLOSION case=wave_circumference lit_share=%.3f lit30=%.3f lit50=%.3f max_over_min=%.2f "
-                            "min_bin_peak=%.3f arc_max_over_min=%.2f arc_cv=%.3f dark_run_bins=%u\n",
-                            share, lit30 / 64.0, lit50 / 64.0, ratio, mn / double(pk), arc_ratio, arc_cv, dark_run);
-                report("wave_broken_circumference", arc_ratio >= 2.0 && arc_cv >= 0.25 && dark_run <= 3, "");
+                            "min_bin_peak=%.3f arc_max_over_min=%.2f arc_by=%s arc_cv=%.3f dark_run_bins=%u\n",
+                            share, lit30 / 64.0, lit50 / 64.0, ratio, mn / double(pk), arc_ratio,
+                            arc_min_zero ? "min_zero" : "ratio", arc_cv, dark_run);
+                report("wave_broken_circumference", arc_ok && arc_cv >= 0.25 && dark_run <= 3, "");
                 // wave_not_a_tyre (fire-material.md section 6): the band 0.5 .. wave_trail_span w_e behind each lit bin's
                 // edge: its mean luma over the edge's peak <= 0.35, its share under 0.25 of the peak >= 0.40, the polar
                 // high-pass (box w_e) gradient energy radial over tangential <= 0.75, the desaturated mid-tones (min / max

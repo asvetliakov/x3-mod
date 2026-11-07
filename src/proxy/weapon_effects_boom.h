@@ -69,6 +69,9 @@ struct BoomSlot {
     // (the box's; the capsule's radius, radius, half-length); kind 0 none, 1 the bubble cache's box, 2 the axis capsule.
     float hull_c[3]{}, hull_ax[3][3]{}, hull_e[3]{};
     std::uint8_t hull_kind = 0;
+    // The budget took the body's tongues (bit 0) or secondary k's (bit k + 1): shed for the rest of its life (review
+    // 2026-11-08: no pop back when the depth order or the count changes).
+    std::uint16_t fire_shed = 0;
 };
 // One sub-burst's hashed constants (per record: the stage caches them by sequence, BoomState::compose).
 struct ComposeEntry {
@@ -1122,7 +1125,12 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     static BoxMeta sec_meta[bm::max_secondaries];
     static float sec_fine[bm::max_secondaries];
     static float sec_fire[bm::max_secondaries], sec_depth[bm::max_secondaries];
+    // each body's and secondary's latch (its record's slot, the bit of BoomSlot::fire_shed), read at the step (0c)
+    static std::uint16_t body_slot[bm::max_bodies], sec_slot[bm::max_secondaries];
+    static std::uint8_t sec_bit[bm::max_secondaries];
     static_assert(bm::tier_secondaries[bm::capital] <= 12 && bm::tier_secondaries[bm::station] <= 12, "births[12]");
+    static_assert(bm::tier_secondaries[bm::capital] < 16 && bm::tier_secondaries[bm::station] < 16,
+                  "BoomSlot::fire_shed: a bit a secondary after the body's");
     float star_area = 0.f;
     float star_colour[3];
     core::heat_colour(bm::star_t, star_colour);
@@ -1470,14 +1478,18 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                             const float g = t.core && x < bm::core_x ? bm::core_gain * gx * gx : 0.f;
                             // the fire material (fire-material.md 3: every body; none with the eye inside)
                             const float lod = full ? 0.f : core::look::fire_lod(R * px_x / cb[2] * (1440.f / f.height), true);
-                            const float core4[4] = {g, boom_fire_weight(full), lod, a};
+                            // a latched secondary (its tongues once shed) keeps the law at its size LOD without them
+                            const bool shed = (s.fire_shed >> (k + 1u)) & 1u;
+                            const float core4[4] = {g, boom_fire_weight(full), shed ? -(lod < 1.f ? lod : 1.f) : lod, a};
                             fireball_quad(f, cb, Rsph, rect, full, look, tint4, disc, sec_verts + 4 * nsec, core4);
-                            const float fs = boom_fire_share(core4);
+                            const float fs = shed ? 0.f : boom_fire_share(core4);
                             sec_meta[nsec] = BoxMeta{age_ms, e.owner, rect_screens(rect) * (boom_fine_weight(fine) + boom_fire_extra * fs),
                                                      std::uint8_t(keep || lv.own), std::uint8_t(fine > 0.f ? 1 : 0)};
                             sec_fine[nsec] = fine;
                             sec_fire[nsec] = fs;
                             sec_depth[nsec] = cb[2];
+                            sec_slot[nsec] = lv.slot;
+                            sec_bit[nsec] = std::uint8_t(k + 1u);
                             ++nsec;
                         } else
                             ++n.capped;
@@ -1693,9 +1705,12 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     if (bm::tier_secondaries[tier] && lv.tb < ramp) g *= lv.tb / ramp;
                     // the fire material (fire-material.md 3: every tier's body; none with the eye inside or composed)
                     const float lod = full ? 0.f : core::look::fire_lod(lv.R * px_x / cb[2] * (1440.f / f.height), true);
-                    const float core4[4] = {g, cp.n >= bm::compose_n_min ? 0.f : boom_fire_weight(full), lod, lv.tb};
+                    // a latched body (its tongues once shed) keeps the law at its size LOD without them
+                    const bool shed = s.fire_shed & 1u;
+                    const float core4[4] = {g, cp.n >= bm::compose_n_min ? 0.f : boom_fire_weight(full),
+                                            shed ? -(lod < 1.f ? lod : 1.f) : lod, lv.tb};
                     fireball_quad(f, cb, Rbox, rect, full, look, tint4, disc, out.fireballs + 4 * nb, core4);
-                    const float fs = boom_fire_share(core4);
+                    const float fs = shed ? 0.f : boom_fire_share(core4);
                     if (cp.n >= bm::compose_n_min) {
                         renderer::WeaponFireballVertex* v4 = out.fireballs + 4 * nb;
                         for (unsigned k = 0; k < 4; ++k) v4[k].disc[2] = core::look::fireball_advect; // x each clock
@@ -1715,6 +1730,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     body_fine[nb] = fine;
                     body_fire[nb] = fs;
                     body_depth[nb] = cb[2];
+                    body_slot[nb] = lv.slot;
                     if (cp.n >= bm::compose_n_min)
                         write_compose(nb);
                     else if (bm::compose_enabled && out.compose) { // the N 1 table (the composed draw takes every body box)
@@ -2283,6 +2299,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             if (body) body_area -= cut;
             mt.area -= cut;
             fs = 0.f;
+            state.slots[body ? body_slot[g] : sec_slot[g]].fire_shed |= std::uint16_t(1u << (body ? 0u : sec_bit[g]));
             renderer::WeaponFireballVertex* v4 = body ? out.fireballs + 4 * g : sec_verts + 4 * g;
             for (unsigned k = 0; k < 4; ++k) // the law kept at its size LOD, no tongues
                 v4[k].core[2] = -(v4[k].core[2] < 1.f ? v4[k].core[2] : 1.f);
@@ -2371,8 +2388,10 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         const float w = boom_fine_weight(body_fine[sel]) + boom_fire_extra * body_fire[sel];
         const float cut = body_meta[sel].area * boom_fire_extra * body_fire[sel] / w;
         area -= cut;
+        body_area -= cut;
         body_meta[sel].area -= cut;
         body_fire[sel] = 0.f;
+        state.slots[body_slot[sel]].fire_shed |= 1u;
         for (unsigned k = 0; k < 4; ++k) out.fireballs[4 * sel + k].core[2] =
                     -(out.fireballs[4 * sel + k].core[2] < 1.f ? out.fireballs[4 * sel + k].core[2] : 1.f); // the law kept, no tongues
         ++n.fire_shed;

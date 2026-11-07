@@ -790,8 +790,10 @@ constexpr bool coverage_dim = false;
 constexpr float budget_weight_shock = 0.36f, budget_weight_halo = 0.40f;
 // The family's own cap (screens charged before the shed order runs, below the shared screen_budget's remainder): the
 // close capital's 450 us fence at 5120x1440 (the note's 3-screen ceiling 532 us less its margin; 2026-11-07: without it
-// six live secondaries near the eye charged 6.6 screens, 907 us [M]).
-constexpr float budget_screens = 2.5f;
+// six live secondaries near the eye charged 6.6 screens, 907 us [M]). 2.5 -> 2.86 (2026-11-08, x 1.35 / 1.18 with the
+// fireball weights' pin, the charged fence 450 -> 515 us at the old weights' scale; the measured worst frame's 450 us
+// bound stays).
+constexpr float budget_screens = 2.86f;
 constexpr unsigned max_bodies = 32, max_quads = 2048;
 // The record's element hashes (stage::element_hash(sequence, k)): the body's rotation, lobes and noise seed are the
 // burst's elements 8 / 10 / 4, the star's 11; the cones from cone_element, an ember's from ember_element + its index
@@ -1980,12 +1982,14 @@ constexpr unsigned fireball_octave_hold = 3;
 // (docs/verification/weapon-effects.md "Burst body, glow, flash, smoke").
 // Fire material round 2 (fire-material.md section 12): the every-pixel rows read 242.0 / 212.9 us [M] (1.36 / 1.20 a
 // screen; 1.35 / 1.17 before the fire material's second round); re-pinned to them the close capital's wave was shed on
-// one frame of seven (wave_drawn_close_capital), so the weights stay pending a budget decision.
-constexpr float budget_weight_fireball = 1.18f, budget_weight_fireball_coarse = 1.03f, budget_weight_smoke = 1.20f;
+// one frame of seven (wave_drawn_close_capital) at the old fences. Pinned 2026-11-08 (orchestrator decision, review
+// finding 8): 1.18 / 1.03 -> 1.35 / 1.18 (the charge honest) with the fences in charged units fed by them raised x 1.35 /
+// 1.18 = 1.144 (boom::budget_screens 2.5 -> 2.86); the measured-GPU bounds stay.
+constexpr float budget_weight_fireball = 1.35f, budget_weight_fireball_coarse = 1.18f, budget_weight_smoke = 1.20f;
 // A screen of bodies with the fourth octave (2026-11-07; review: measured on a body seen from outside, the eye at 2 R:
 // 27.4 against 27.6 us with three, 0.309 screens [M], the fourth's cost under the noise; an eye-inside body keeps three,
-// where it cost 1.35 a screen): pinned at the three-octave weight.
-constexpr float budget_weight_fireball_fine4 = 1.18f;
+// where it cost 1.35 a screen): pinned at the three-octave weight (1.35 since 2026-11-08 with it).
+constexpr float budget_weight_fireball_fine4 = 1.35f;
 // The fire material (docs/architecture/fire-material.md sections 2-3, 2026-11-07; the user on the Run245 frames: "viscous
 // blobs / lava instead of fire"): the fireball family's body (the hull bursts of the fire classes, every death body, the
 // wave's tongues, the hull ring's trailing band) drawn as thin bright tongues over dark gaps. In the band rq >
@@ -2043,8 +2047,9 @@ constexpr float fire_fine_k = 4.f, fire_fine_depth = 0.35f, fire_fine_jitter = 0
 // [M] native 5120x1440 2026-11-07: tongues on 397.1 us, off 239.2 us on the same impostor (every pixel in the band):
 // + 0.89 a screen over budget_weight_fireball.
 // Round 2 [M] native 5120x1440: tongues on 439.0 us, off 244.3 us (the fine octave's polar tap where the third octave
-// was weighted out): + 1.10 a screen.
-constexpr float budget_weight_fire = 2.28f;
+// was weighted out): + 1.10 a screen. Pinned 2026-11-08 with budget_weight_fireball: 2.28 -> 2.46 (the tongue term's
+// extra 1.10 -> 1.11 a screen, so hull::fire_fence, in screens of that extra, keeps 0.08).
+constexpr float budget_weight_fire = 2.46f;
 // The vertex's fire terms (renderer::WeaponFireballVertex::core[1..3]): the size LOD w_px plus the big body's second polar
 // octave weight (0 .. 2: w_px saturate(lod), k2 saturate(lod - 1)), from the projected radius at 1440 rows.
 inline float fire_lod(float rpx_1440, bool body) noexcept {
@@ -2170,7 +2175,8 @@ constexpr float cluster_r_x = 2.0f, cluster_n0_glow = 2.5f, cluster_n0_burst = 1
 constexpr float cluster_glow_fire_n = 4.f;
 // Round 2: a fire class's burst in a cluster thins its own tongues, its threshold + fire_cluster_thr (1 - s(N)) (s(N) the
 // body scale above), so N overlapping bursts sum to tongues over gaps, never a filled body; carried in the vertex's fire
-// weight as 1 + (1 - s(N)) (the program reads saturate(fire) for the weight).
+// weight as 1 + (1 - s(N)): the program's tongue blend, size-LOD law and flicker take saturate(fire), only the
+// threshold reads the excess (fire_cluster_thr saturate(fire - 1); review 2026-11-08: the blend had read max(fire, 0)).
 constexpr float fire_cluster_thr = 0.2f;
 // The tongues' fence (the budget's step 0c by the cluster, fire-material.md 7 and 12): with more than cluster_glow_fire_n
 // other owners' bursts drawing tongues and past fire_fence screens of the tongues' own charge (budget_weight_fire -

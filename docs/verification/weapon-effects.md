@@ -2564,7 +2564,7 @@ the orchestrator's 0.20; the gate keeps 0.20 as asked.
 | `wave_not_a_tyre` (PASS; 5 km face-on, 0.5 tau) | band mean / edge 0.182, dark share 0.676, anisotropy 0.277, grey 0.0, longest rim arc >= 0.5 peak 9.0 deg | <= 0.35; >= 0.40; <= 0.75; <= 0.10; <= 60 |
 | `hull_burst_erodes_outside_in` (PASS) | equal-area radius / R(t) 0.7492,0.5379,0.1640, over its 0.1 L_b value 0.7180,0.2189; mean radius 0.8 / 0.2 0.5707; after L_b 0 (lit share 0.5606,0.2893,0.0269, printed) | 0.35-0.9, <= 0.4; <= 0.8; 0 |
 | `hull_burst_no_centre_ring` (PASS; over R_eq) | worst prominence 0.0657, 0.0642, 0.0243; annulus ratio 1.05, 1.06, 1.044 (0.5 / 0.6 / 0.7 L_b) | <= 0.15; <= 1.3 |
-| `death_tier_sizes`, `death_big_tier_sizes` (PASS, PASS) | the tongues' front / R(t) at 0.1 / 0.3 L: fighter_600m 1.145 / 0.928; missile_300m 1.167 / 0.971; corvette_1500m 1.101 / 0.911; capital_1500m 1.111 / 1.027; station_3km 1.058 / 1.002 (mean outline fighter_600m 0.722; capital_1500m 0.84 at 0.3 L) | 0.80-1.15 |
+| `death_tier_sizes`, `death_big_tier_sizes` (PASS, PASS) | the tongues' front / R(t) at 0.1 / 0.3 L: fighter_600m 1.145 / 0.928; missile_300m 1.167 / 0.971; corvette_1500m 1.101 / 0.911; capital_1500m 1.111 / 1.027; station_3km 1.058 / 1.002 (mean outline fighter_600m 0.722; capital_1500m 0.84 at 0.3 L) | 0.80-1.25 (printed 0.80-1.15 until the 2026-11-08 review; the old gate: the mean outline within ±5 %) |
 | `wave_broken_circumference` (PASS) | longest run of bins under 5 % 1 (min bin 0.0), arcs max / min 1000000000.0, CV 0.556 | <= 3; >= 2.0; >= 0.25 |
 | `hull_burst_colour_white_core_at_birth`, `_dark_red_at_end` (PASS, PASS) | birth g / r 0.92, b / r 0.3; end g / r 0.319, b / r 0.0 | >= 0.75, >= 0.25; <= 0.35, <= 0.2 |
 | `death_body_erodes_outside_in`, `_colour_core_rim`, `death_cools_through_ramp` (PASS, PASS, PASS; fighter 600 m) | equal-area radius 0.9648,0.5242,0.1036,0.0000, ratio 0.5433,0.1074; core T 0.5, rim T 0.25; T at 0.2 / 0.6 / 1.0 L 0.75 / 0.25 / 0.0 | 0.35-0.9, <= 0.45; >= 0.5 and > rim, <= 0.5; >= 0.75, >= 0.25 and <= T(0.2), <= 0.25 |
@@ -2608,3 +2608,64 @@ tongues with fine streaks over a smooth orange centre mid-life (no peach), dim r
 orange tongues over gaps (no tan body); the capital broadside a yellow-white core with orange tongues, a star of
 orange tongues at 2700 ms; the nested fighters at 900 ms orange stars of tongues; the 5 km wave broken amber arcs with
 short bright spine segments, see-through, tongues trailing in and licking out. Not flown.
+
+### Review fixes (2026-11-08, worktree on `a4c408e93`, uncommitted at the record)
+
+The round-2 review's findings, each fixed: (1) the tongue blend reads saturate(fire) in the program, the lab and
+`fire_model.py` (a cluster burst's weight up to about 1.9 had overshot the n, n_f and flicker lerps; the excess now only
+thins the threshold); the lab's 20-hit cluster (`hull/energy-fighter60-20hits`) before / after at 200 / 450 / 800 ms:
+tongues at 200 ms slightly sparser, no filled body, the 450 ms ember unchanged, 800 ms pixel-identical [M, headless
+Chromium], no retune. (2) `ledger_rows.py`, this ledger's round-2 row and fire-material.md print the fixture's tier-size
+bound 0.80-1.25 (the old gate ±5 %). (3) fire-material.md says no run of more than 3 bins; `wave_broken_circumference`
+passes on a band bin at 0 or max / min >= 2, printing which (`arc_by`): this record passes by `min_zero` (the ratio's 1e9
+stand-in had hidden that). (4) `hull_clear` resets the fence state. (5) boom's last (0c) loop subtracts its cut from
+`body_screens`. (6) A shed box (core.z < 0) and the budget's step (1) (screen.w 0) skip the Cartesian fine tap (n_f
+1/2): a mul and a min, `fireball_ps` 842 -> 843 slots [M]. (7) A shed burst or body stays shed for its life
+(`HullSlot::fire_shed` in the slot's last padding byte, 512 bytes asserted; `Spot::fire_shed`, cleared at a pulse start;
+`BoomSlot::fire_shed` bit 0 the body, bit k + 1 secondary k), set by the (0c) step, the fence and boom's last loop; no
+per-frame allocation (static pointer / index arrays). (8) Budget pins (orchestrator decision): `budget_weight_fireball`
+1.18 -> 1.35, `_coarse` 1.03 -> 1.18, `_fine4` 1.18 -> 1.35 (pinned at the three-octave weight), `budget_weight_fire`
+2.28 -> 2.46; the charged fence they feed `boom::budget_screens` 2.5 -> 2.86 (x 1.144, the close capital's 450 -> 515 us
+charged); `hull::fire_fence` (in the tongues' extra, 1.10 -> 1.11) and the shared `screen_budget` unchanged. The close
+capital's wave drawn on 7 of 7 on-screen frames, worst frame 329.3 us (<= 450) [M]. The eye-inside GPU bounds 300 ->
+330 us (`eye_inside_fighter_n4` 298.2 on round 1's record, 301.4 on round 2's; `eye_inside_fighter` too, which read
+300.8 on this round's second record): 299.7 / 315.4 us on the last [M]. (9) fire-material.md section 7's stride reads
+80 -> 84 as designed, 80 -> 92 as built (12.1 row). SETA: at 100-160 ms steps the flicker and the fine grain are new
+noise every frame (no freeze; possible sparkle): flight question 5 (fire-material.md 8, 12.3).
+
+Records (`run_weapon_effects.py --host native`, RTX 5070 Ti, X4.exe loading the host): the first 349 of 352
+(`death_budget_5120` eye inside 304.6 us against 300, `death_big_stage_cpu`, `bolt_budget_512_bolts_20_muzzles_5120`
+100.9 us against 100), the second 350 of 352 (eye inside 300.8; `death_stage_cpu_32_deaths`), the last **351 of 352**
+[M]: `bolt_budget_512_bolts_20_muzzles_5120` 101.1 us against 100 (99.5 on the second; no bolt code changed). Host suite
+`test_weapon_effects_*` on the last record: 99 of 101, failing `test_passed_with_the_step_gates` (the bolt row) and
+`test_wave_and_compose_gates` (the wave's one-octave weight 1.725 against 1.68 + 0.03; 1.687 on round 2's record, the
+wave program unchanged). Both GPU rows under the host's X4.exe load; to re-record on a quiet host.
+
+| Gate | Result [M] (hull; fighter / capital) | Bound |
+| --- | --- | --- |
+| `fire_luminance_thin_hull`, `_death` (PASS, PASS) | share > 0.8 peak 0.1538; 0.1238 / 0.1131; equal-area disc under 0.1 peak 0.2195; 0.2053 / 0.2046 (the outline's gaps under 0.25 peak 0.1211; 0.1049 / 0.1165, printed) | 0.10-0.35; >= 0.20 (vanilla 0.096) |
+| `fire_not_pink_hull`, `_death` (PASS, PASS) | AgX pink share at 0.2, 0.3, 0.5 L 0.0057,0.0001,0.0000; 0.0057,0.0000,0.0000 / 0.0042,0.0000,0.0000 | the medians' largest < 0.02 |
+| `fire_quad_edge_dark_hull`, `_death` (PASS, PASS) | the quad's boundary over the peak, worst hit 0.0; 0.0 / 0.0 | < 0.02 |
+| `fire_tongues_radial_hull`, `_death` (PASS, PASS) | radial / tangential 0.29; 0.191 / 0.238 | <= 0.75 |
+| `fire_edge_licks_hull`, `_death` (PASS, PASS) | lit boundary / outline boundary 2.158; 2.129 / 2.435 | >= 2.0 |
+| `fire_temporal_hull` (PASS) | high-pass corr +16 ms 0.846, +100 ms 0.237; low-pass +16 ms 0.998 | 0.5-0.9; <= 0.6; >= 0.9 |
+| `fire_colour_ramp_hull`, `_death` (PASS, PASS) | hot 0.39 @ 0.309, red 0.211 @ 0.714, mid 0.391; hot 0.42 / 0.408 @ 0.321 / 0.327, red 0.206 / 0.188 @ 0.749 / 0.746, mid 0.388 / 0.382 | >= 0.25 @ <= 0.5; 0.05-0.25 @ >= 0.65; <= 0.5 |
+| `fire_core_bloom_hull`, `_death` (PASS, PASS) | peak inside 0.3 R 3.237 (40 ms), 5.318 / 5.318 (0.1 L); outside 0.5 R 1.242; 1.296 / 1.341 | >= 3.0; <= 1.5 |
+| `hull_20_hits_no_white_sun` (PASS) | cores on: worst share above 3.0 0.0 | <= 0.01 (cores off <= 3.0 as before) |
+| `fire_small_reads` (PASS) | 30 px far hit at 0.4 L_b: holes 0.6652, lobes 3.573, equal-area radius / R(t) 0.5793 (lit share inside R(t) 0.3348, printed) | >= 0.10; >= 1.2; >= 0.45 |
+| `wave_not_a_tyre` (PASS; 5 km face-on, 0.5 tau) | band mean / edge 0.182, dark share 0.676, anisotropy 0.277, grey 0.0, longest rim arc >= 0.5 peak 9.0 deg | <= 0.35; >= 0.40; <= 0.75; <= 0.10; <= 60 |
+| `hull_burst_erodes_outside_in` (PASS) | equal-area radius / R(t) 0.7492,0.5379,0.1640, over its 0.1 L_b value 0.7180,0.2189; mean radius 0.8 / 0.2 0.5707; after L_b 0 (lit share 0.5606,0.2893,0.0269, printed) | 0.35-0.9, <= 0.4; <= 0.8; 0 |
+| `hull_burst_no_centre_ring` (PASS; over R_eq) | worst prominence 0.0657, 0.0642, 0.0243; annulus ratio 1.05, 1.06, 1.044 (0.5 / 0.6 / 0.7 L_b) | <= 0.15; <= 1.3 |
+| `death_tier_sizes`, `death_big_tier_sizes` (PASS, PASS) | the tongues' front / R(t) at 0.1 / 0.3 L: fighter_600m 1.145 / 0.928; missile_300m 1.167 / 0.971; corvette_1500m 1.101 / 0.911; capital_1500m 1.111 / 1.027; station_3km 1.058 / 1.002 (mean outline fighter_600m 0.722; capital_1500m 0.84 at 0.3 L) | 0.80-1.25 (the old gate: the mean outline within ±5 %) |
+| `wave_broken_circumference` (PASS) | longest run of bins under 5 % 1 (min bin 0.0), arcs max / min 1000000000.0 (passed by min_zero), CV 0.556 | <= 3; a bin at 0 or >= 2.0; >= 0.25 |
+| `hull_burst_colour_white_core_at_birth`, `_dark_red_at_end` (PASS, PASS) | birth g / r 0.92, b / r 0.3; end g / r 0.319, b / r 0.0 | >= 0.75, >= 0.25; <= 0.35, <= 0.2 |
+| `death_body_erodes_outside_in`, `_colour_core_rim`, `death_cools_through_ramp` (PASS, PASS, PASS; fighter 600 m) | equal-area radius 0.9648,0.5242,0.1036,0.0000, ratio 0.5433,0.1074; core T 0.5, rim T 0.25; T at 0.2 / 0.6 / 1.0 L 0.75 / 0.25 / 0.0 | 0.35-0.9, <= 0.45; >= 0.5 and > rim, <= 0.5; >= 0.75, >= 0.25 and <= T(0.2), <= 0.25 |
+| `wave_no_hard_edge`, `wave_fire_not_grey` (PASS, PASS) | hard drops 0, rays 30, rises 2, worst fall 0.287; hue at 0.2 / 0.9 L_w 0.5 / 0.25, on the fire ramp 1.000,1.000,1.000 | 0; >= 18; <= rays / 10; <= 0.3; >= 0.5 / <= 0.35; >= 0.9 |
+| `hull_plasma_globe_shrinks_reddens` (PASS) | R 49.310,45.807,33.738 px; b / r 0.8855,0.6445,0.6370 at 0.3 / 0.65 / 0.95 L | shrinks, reddens, lit at 0.95 L |
+| `fire_no_seam_hull`, `_death`, `_wave` (PASS, PASS, PASS) | median over the seeds 0.0440; 0.0666 / 0.0771; 0.0036 (worst seed 0.1557; 0.111 / 0.1322) | <= 0.1 (median) |
+| program slots (device creation, max 4096) | fireball_ps 843, wave_ps 790, ring_ps 292; fireball vertex 92 bytes | the modern cap 32768 |
+| `hull_fire_within_weight` (PASS) | tongues on 431.8 us (2.433), off 242.2 us (1.365) at 5120x1440: + 1.068 a screen | within 0.1 of budget_weight_fire - budget_weight_fireball |
+| alone rows (5120x1440) | body 212.2 us, wave 337.7 us (one octave 317.1), eye inside a fighter 299.7 us | eye inside <= 330 |
+| `death_budget_capital_close_5120` (PASS) | worst 329.3 us (capital_close_300ms, shed 10) | <= 450 |
+| `death_budget_5120`, `death_rays_sparks_budget_5120` (PASS, PASS) | fighter 600 m 21.8 us, 20 fighters 52.4 us | <= 60; <= 150 |
+| `hull_budget_20_hits_5120`, `hull_budget_capital_close_64_within_budget` (PASS, PASS) | 20 hits 77.3 us, 60 m 662.3 us, capital 64 1015.0 us | <= 80; <= 1420 |

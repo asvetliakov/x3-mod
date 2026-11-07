@@ -140,15 +140,21 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 // cuts the chord: a hull hit's tongues would meet at the screen centre with |q|)
                 // core.z < 0: the budget shed the tongues (step 0c, the fence), the law's size LOD -core.z kept
                 float fire = core.y, wpx = saturate(core.z), rp2 = dot(p, p), rp = sqrt(rp2);
-                float wt = max(fire, 0.0) * wpx * smoothstep(fire2.y, fire2.z, rp);
+                // saturate: a cluster's fire weight 1 + (1 - s(N)) carries its thinning to the threshold only (review
+                // 2026-11-08: past 1 the lerps below overshot, the flicker dimmed a tongue to 0.42 and w3 went negative)
+                float wt = saturate(fire) * wpx * smoothstep(fire2.y, fire2.z, rp);
                 float n = weight.x * value_noise(p * (freq.x - g.x) + look.w * float2(1.7, 3.1)) +
                           weight.y * value_noise(p * (freq.y - g.y) + look.w * float2(3.1, 1.7) + 5.3);
                 float wsum = weight.x + weight.y;
                 // the third octave, replaced by the tongues where they are (its fine grain never shows under them)
                 float o3 = min(disc.w, screen.w), w3 = saturate(o3) * weight.z * (1.0 - wt), w4 = saturate(o3 - 1.0) * erode2.w;
-                // the third octave; on a fire body also the fine octave's Cartesian part (wt < 1) at any size
+                // the third octave; on a fire body also the fine octave's Cartesian part (wt < 1) at any size, unless the
+                // budget took it (screen.w 0: the step (1); core.z < 0: the box's tongues shed, the coarse charge): there
+                // n3 stays 1/2 (no threshold jitter, the fine luminance flat). A mul and a min (the eye-inside body's fence):
+                // screen.w >= 0, and a shed box's core.z <= -LOD < 0 (a box is shed only with LOD > 0)
                 float n3 = 0.5;
-                [branch] if (max(w3, fire * (1.0 - wt)) > 0.0) {
+                float wfc = min(fire * (1.0 - wt) * screen.w, core.z + 1e-6);
+                [branch] if (max(w3, wfc) > 0.0) {
                     n3 = value_noise(p * (freq.z - g.z) + look.w * float2(0.7, 2.3) + 11.1);
                     n += w3 * n3;
                     wsum += w3;

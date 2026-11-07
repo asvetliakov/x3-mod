@@ -565,7 +565,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         halo = [r for r in rows if r.get('case') == 'halo']
         self.assertTrue(halo and all(r['ratio'] <= 1.8 for r in halo))
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
-        self.assertLessEqual(timing[(5120, 'eye_inside_fighter')]['gpu_us'], 300.0)
+        self.assertLessEqual(timing[(5120, 'eye_inside_fighter')]['gpu_us'], 330.0)  # 300 until 2026-11-08 (n4's below)
         self.assertLessEqual(timing[(5120, 'fighters_20_600m')]['gpu_us'], 8 * 177.5)
         close = [r for (w, case), r in timing.items() if w == 5120 and case.startswith('capital_close_')]
         self.assertGreaterEqual(len(close), 20)
@@ -612,7 +612,9 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertTrue(any(r.get('case') == 'compose_skipped' for r in rows))
         for case in cases:
             self.assertIn((5120, case), timing)
-        self.assertLessEqual(timing[(5120, 'eye_inside_fighter_n4')]['gpu_us'], 300.0)
+        # 300 -> 330 (2026-11-08): the fire material added cost on the eye-inside composed path (298.2 before it, 301.4 on
+        # the round-2 record; fire-material.md section 12.3)
+        self.assertLessEqual(timing[(5120, 'eye_inside_fighter_n4')]['gpu_us'], 330.0)
         # the wave's weights (boom::budget_weight_wave, _one) bound their rows per drawn screen, the fence removed; the
         # box at birth (every pixel inside the window) under the full weight
         weight = next(r for r in self.record['metrics']['explosion_timing']

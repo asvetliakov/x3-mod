@@ -57,7 +57,7 @@ def render(N, R_px, x, T, E, g, tg, seed, lod, k, fire=1.0, rs_over_r=1.25):
     g0, g1, g2 = [0.5 * f / np.sqrt(1 + pp * f * f) for f in fq]
     o = seed
     wpx = min(lod, 1.0)
-    wt = fire * wpx * ss(k['blend0'], k['blend1'], rq)
+    wt = min(max(fire, 0.0), 1.0) * wpx * ss(k['blend0'], k['blend1'], rq)
     n = w[0] * vn(px * (fq[0] - g0) + o * 1.7, py * (fq[0] - g0) + o * 3.1) + w[1] * vn(px * (fq[1] - g1) + o * 3.1 + 5.3, py * (fq[1] - g1) + o * 1.7 + 5.3)
     w3 = w[2] * (1 - wt)
     n3 = vn(px * (fq[2] - g2) + o * 0.7 + 11.1, py * (fq[2] - g2) + o * 2.3 + 11.1)
