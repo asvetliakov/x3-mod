@@ -1,0 +1,65 @@
+Fireball drift law (2026-11-07), native fixture (run_weapon_effects.py --host native --dump, X3 wine_lock wrapper). before: the old program (constant shift) under this change's fixture; after: the drift law and the retune (erode_t 0.28, erode_soft 0.28, column_pow 0.25). Producers: drift_compare.py <before> <after> <cases> on the measure.py tables saved from the local dumps (raw dumps deleted), ring_rows.py <fixture.log>.
+## hull cases (energy_single, heavy_capital_64, energy_fighter60_20; -burst part)
+case ms part peak_before peak_after lit_before lit_after eq_r_before eq_r_after blobs_before blobs_after peak_change eq_r_change
+energy_fighter60_20 40 burst 0.6572 0.6777 114301 109168 190.7 186.4 5 4 +3.12% -2.25%
+energy_fighter60_20 120 burst 1.6348 1.5654 147462 144622 216.7 214.6 1 1 -4.25% -0.97%
+energy_fighter60_20 200 burst 1.4102 1.3711 134743 129809 207.1 203.3 1 1 -2.77% -1.83%
+energy_fighter60_20 248 burst 1.0469 1.0791 134022 120759 206.5 196.1 2 1 +3.08% -5.04%
+energy_fighter60_20 296 burst 0.8315 0.8208 124197 105714 198.8 183.4 1 1 -1.29% -7.75%
+energy_fighter60_20 696 burst 0.0000 0.0000 0 0 0.0 0.0 0 0 +0.00% +0.00%
+energy_single 40 burst 1.3828 1.4150 19990 19816 79.8 79.4 1 2 +2.33% -0.50%
+energy_single 120 burst 1.2988 1.3535 51338 50379 127.8 126.6 1 1 +4.21% -0.94%
+energy_single 200 burst 0.8994 0.7666 37580 45390 109.4 120.2 1 1 -14.77% +9.87%
+energy_single 248 burst 0.6021 0.3508 16364 28366 72.2 95.0 3 2 -41.74% +31.58%
+energy_single 296 burst 0.2634 0.0798 11074 16254 59.4 71.9 1 2 -69.70% +21.04%
+energy_single 696 burst 0.0000 0.0000 0 0 0.0 0.0 0 0 +0.00% +0.00%
+heavy_capital_64 40 burst 0.3132 0.3210 2051324 2028861 808.1 803.6 1 1 +2.49% -0.56%
+heavy_capital_64 120 burst 0.3772 0.3652 2055906 2049740 809.0 807.7 1 1 -3.18% -0.16%
+heavy_capital_64 200 burst 0.3525 0.3428 1944118 1959094 786.7 789.7 1 1 -2.75% +0.38%
+heavy_capital_64 248 burst 0.2917 0.2830 1695440 1828185 734.6 762.8 1 1 -2.98% +3.84%
+heavy_capital_64 296 burst 0.2588 0.2257 1364179 1682802 659.0 731.9 2 1 -12.79% +11.06%
+heavy_capital_64 696 burst 0.0000 0.0000 0 0 0.0 0.0 0 0 +0.00% +0.00%
+worst_relative_change 69.70% bound 5% blobs_equal 0 FAIL
+
+## fighter death (boom_fighter_600m; -body part)
+case ms part peak_before peak_after lit_before lit_after eq_r_before eq_r_after blobs_before blobs_after peak_change eq_r_change
+boom_fighter_600m 200 body 4.1758 4.1758 1790 1761 23.9 23.7 1 1 +0.00% -0.84%
+boom_fighter_600m 600 body 2.0352 1.9658 3338 3312 32.6 32.5 1 1 -3.41% -0.31%
+boom_fighter_600m 1200 body 1.4316 0.6914 1651 2282 22.9 27.0 2 1 -51.70% +17.90%
+boom_fighter_600m 1600 body 0.9600 0.2598 623 1296 14.1 20.3 1 1 -72.94% +43.97%
+boom_fighter_600m 2000 body 0.0000 0.0000 0 0 0.0 0.0 0 0 +0.00% +0.00%
+worst_relative_change 72.94% bound 5% blobs_equal 0 FAIL
+
+## gate rows (before: old law, after: drift law + retune)
+# beforeC-fixture.log
+CLASS case=plasma_globe records=5 life_ms=798.7 R=49.310,45.807,33.738 b_over_r=0.6937,0.5111,0.4689
+CHECK hull_plasma_globe_shrinks_reddens PASS
+CLASS case=burst_erosion_median hits=8 lit_share=0.8699,0.5040,0.0632 bursts_after=0 mean_r_ratio=0.4982
+CLASS case=burst_centre_ring_median age_frac=0.5 hits=8 prominence=0.0279 prominence_max=0.1814 annulus_ratio=1.056
+CLASS case=burst_centre_ring_median age_frac=0.6 hits=8 prominence=0.0582 prominence_max=0.2584 annulus_ratio=0.990
+CLASS case=burst_centre_ring_median age_frac=0.7 hits=8 prominence=0.0428 prominence_max=0.1419 annulus_ratio=0.945
+CHECK hull_burst_no_centre_ring FAIL
+CLASS case=twenty_hits_peak age_ms=120 peak_rule=2.7305 peak_no_rule=19.5469 peak_hard_count=2.2188 single_rule=2.1113 single_no_rule=2.1113
+EXPLOSION case=body tier=fighter_600m dark_share=0.1946 hp_std=0.1253 lobe_max_over_min=1.857 lit_01=0.866 lit_05=0.731 lit_09=0.154 lit_10=0.000 core_T=0.75 rim_T=0.50
+CHECK death_body_erodes_outside_in PASS
+EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=0.5 prominence=0.0073 prominence_max=0.0943 annulus_ratio=1.069
+EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=0.6 prominence=0.0219 prominence_max=0.1946 annulus_ratio=1.064
+EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=0.7 prominence=0.0273 prominence_max=0.1677 annulus_ratio=1.072
+CHECK death_body_no_centre_ring FAIL
+MUZZLE gate=fireball_measure blooms=1 bloom_peak=0.9170 bloom_lit=2453 bloom_eq_r=27.94 puffs=1 puff_peak=0.0332 puff_lit=45 puff_eq_r=3.78
+# after-fixture.log
+CLASS case=plasma_globe records=5 life_ms=798.7 R=49.310,45.807,33.738 b_over_r=0.6912,0.5408,0.4783
+CHECK hull_plasma_globe_shrinks_reddens PASS
+CLASS case=burst_erosion_median hits=8 lit_share=0.8681,0.5216,0.1139 bursts_after=0 mean_r_ratio=0.6402
+CLASS case=burst_centre_ring_median age_frac=0.5 hits=8 prominence=0.0000 prominence_max=0.0792 annulus_ratio=1.061
+CLASS case=burst_centre_ring_median age_frac=0.6 hits=8 prominence=0.0006 prominence_max=0.0763 annulus_ratio=0.962
+CLASS case=burst_centre_ring_median age_frac=0.7 hits=8 prominence=0.0000 prominence_max=0.0926 annulus_ratio=0.964
+CHECK hull_burst_no_centre_ring PASS
+CLASS case=twenty_hits_peak age_ms=120 peak_rule=2.6504 peak_no_rule=18.8906 peak_hard_count=2.1621 single_rule=2.1641 single_no_rule=2.1641
+EXPLOSION case=body tier=fighter_600m dark_share=0.2064 hp_std=0.1157 lobe_max_over_min=1.907 lit_01=0.864 lit_05=0.691 lit_09=0.186 lit_10=0.000 core_T=0.75 rim_T=0.50
+CHECK death_body_erodes_outside_in PASS
+EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=0.5 prominence=0.0000 prominence_max=0.0846 annulus_ratio=1.037
+EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=0.6 prominence=0.0000 prominence_max=0.0607 annulus_ratio=1.054
+EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=0.7 prominence=0.0000 prominence_max=0.0355 annulus_ratio=1.102
+CHECK death_body_no_centre_ring PASS
+MUZZLE gate=fireball_measure blooms=1 bloom_peak=0.9170 bloom_lit=2505 bloom_eq_r=28.24 puffs=1 puff_peak=0.0332 puff_lit=45 puff_eq_r=3.78

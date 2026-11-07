@@ -1323,6 +1323,29 @@ console.log(JSON.stringify(out));
         self.assertIn('window.labReady = Promise.resolve();', script)    # no data block: nothing to wait for
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_fireball_drift_law_matches_the_program(self):
+        """The fireball noise's drift law (2026-11-07, docs/verification/weapon-effects.md "Fireball drift law"): the
+        program and both lab body loops (the hull burst's puffAt, the death body) sample octave i at p (f_i - g_i), g_i =
+        (f_i / 2) / sqrt(1 + (|p| f_i / 2a)^2); no seed-hashed centre direction (the old pinhole blend) is left. The radial
+        map u -> u - a y / sqrt(1 + y^2), y = u / 2a, is strictly increasing (slope >= 1/2: no circle collapses onto one
+        noise point) and tends to the full shift u - a."""
+        ps = (ROOT / 'src/effects/weapon_fireball_ps.hlsl').read_text()
+        self.assertIn('float k = 0.5 / max(advect, 1e-4);', ps)
+        self.assertIn('float3 g = 0.5 * freq.xyz * rsqrt(1.0 + dot(p, p) * freq.xyz * freq.xyz * (k * k));', ps)
+        for k in 'xyz':
+            self.assertIn(f'value_noise(p * (freq.{k} - g.{k})', ps)
+        self.assertNotIn('hdir', ps)
+        self.assertEqual(self.html.count('const gk = 0.5 / Math.max(adv, 1e-4), pp = (px * px + py * py) * gk * gk;'), 2)
+        for i in range(3):
+            self.assertEqual(self.html.count(f'g{i} = 0.5 * fq[{i}] / Math.sqrt(1 + pp * fq[{i}] * fq[{i}])'), 2)
+            self.assertEqual(self.html.count(f'valueNoise2(px * (fq[{i}] - g{i})'), 2)
+        self.assertNotIn('pr / 0.08', self.html)
+        for a in (0.05, 0.5, 1.0):
+            u = np.linspace(0.0, 400.0 * a, 40001)
+            rho = u - 0.5 * u / np.sqrt(1.0 + (u / (2 * a)) ** 2)
+            self.assertGreaterEqual(float(np.diff(rho).min() / (u[1] - u[0])), 0.5 - 1e-6, a)
+            self.assertAlmostEqual(float(rho[-1]), float(u[-1] - a), delta=1e-4 * a)
+
     def test_lab_classes_match_the_census(self):
         """The lab's `auto` class of every catalogued weapon (LAB_DATA weapons[].hc: the generator's rule and the override
         file's pins) is the census script's (verification/results/weapon-effects/hull_class_census.py)."""

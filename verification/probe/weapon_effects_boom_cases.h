@@ -492,6 +492,49 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                                    boom::median(lit[1]) <= 0.75 && boom::median(lit[2]) <= 0.20 &&
                                                    boom::median(lit[3]) == 0.0, "");
         report("death_body_colour_core_rim", boom::median(core_t) >= 0.75 && boom::median(rim_t) <= 0.5, "");
+        // 4a. death_body_no_centre_ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"): the burst
+        // gate's measure (classes::burst::ring_of about the drawn sphere's centre and R_s) on the same 16 fighter bodies at
+        // 0.5 / 0.6 / 0.7 L: every body's prominence <= 0.15, the pooled annulus 0.3-0.45 R_s lit share <= 1.3 x its
+        // neighbours'.
+        bool ring_ok = true;
+        for (float frac : {0.5f, 0.6f, 0.7f}) {
+            std::vector<double> prom;
+            double rl[3] = {}, rn[3] = {};
+            for (unsigned j = 0; j < 16; ++j) {
+                boom::clear();
+                fighter(600.0, 0x6c000u + 977u * (j + 1));
+                latch(g);
+                const Out o = at(g, frac * Lf, boom::p_body);
+                if (!o.bodies) {
+                    prom.push_back(0.0);
+                    continue;
+                }
+                float c[3];
+                boom::body_centre(o, c);
+                const classes::burst::Disc d = boom::disc(g, boom::view(g, 0, 16), c, double(boom::bodies[0].sphere[3]));
+                const std::vector<float> rgb = boom::render(pass, g, o, boom::view(g, 0, 16));
+                const classes::burst::Ring r = classes::burst::ring_of(boom::luma(rgb), g.w, d.x, d.y, d.R);
+                char name[64];
+                std::snprintf(name, sizeof name, "centre_ring_death_hit%u_%02.0f", j, double(frac) * 10.0);
+                classes::burst::dump_ring(name, rgb, g.w, g.h);
+                prom.push_back(r.prominence);
+                for (unsigned a = 0; a < 3; ++a) {
+                    rl[a] += r.lit[a];
+                    rn[a] += r.n[a];
+                }
+                std::printf("EXPLOSION case=body_centre_ring_hit hit=%u age_frac=%.1f R_s_px=%.1f prominence=%.4f "
+                            "prominence_wide=%.4f\n", j, double(frac), d.R, r.prominence, r.prominence_wide);
+            }
+            double s[3];
+            for (unsigned a = 0; a < 3; ++a) s[a] = rn[a] > 0 ? rl[a] / rn[a] : 0.0;
+            const double nb = 0.5 * (s[0] + s[2]), ratio = nb > 0 ? s[1] / nb : (s[1] > 0 ? 1e9 : 0.0);
+            const double worst = *std::max_element(prom.begin(), prom.end());
+            std::printf("EXPLOSION case=body_centre_ring tier=fighter_600m age_frac=%.1f prominence=%.4f prominence_max=%.4f "
+                        "annulus_lit=%.4f,%.4f,%.4f annulus_ratio=%.3f\n", double(frac), boom::median(prom), worst, s[0], s[1],
+                        s[2], ratio);
+            ring_ok = ring_ok && worst <= 0.15 && ratio <= 1.3;
+        }
+        report("death_body_no_centre_ring", ring_ok, "");
     }
     boom::core_on = true;
     // ---- 4b. death_body_white_hot_core (decision 2026-11-07): at 0.1 L the body itself carries the white heat: the median

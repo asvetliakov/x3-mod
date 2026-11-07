@@ -355,6 +355,79 @@ double nearest_stop(const double c[3]) {
     }
     return T;
 }
+// The centre-ring measure (the doughnut, docs/verification/weapon-effects.md "Fireball drift law"): about (x, y) the mean
+// luma over the image's peak in rings out to 0.6 R_s (R_s the drawn sphere's radius, px), and the lit share (above 10 %
+// of the peak). Two prominences of a local maximum of that profile at a ring k >= 1 centred inside 0.4 R_s (a monotone
+// core, the maximum at ring 0, is never one): wide, rings of 0.05 R_s measured against the lower of the profile's inner
+// minimum (rings < k) and outer minimum (rings > k); local, rings of 0.025 R_s (at least 1.5 px) measured against the
+// minima within 0.1 R_s on either side: the doughnut is small (a dot and a ring inside about 0.15 R_s: octaves 2 and 3
+// collapsed at a / f), a wide hole with clumps about it rises over more than 0.1 R_s and stays low on it.
+// lit[]: the lit and counted pixels of the annuli 0.15-0.3, 0.3-0.45, 0.45-0.6 R_s (pooled over hits by the caller).
+struct Ring {
+    double prominence = 0, prominence_wide = 0;
+    double lit[3] = {}, n[3] = {};
+};
+Ring ring_of(const std::vector<float>& l, unsigned W, double x, double y, double Rs) {
+    Ring r;
+    float p = 0.f;
+    for (float v : l) p = std::max(p, v);
+    if (!(p > 0.f) || !(Rs > 0)) return r;
+    constexpr unsigned nw = 12, nmax = 24;
+    const double bw = std::max(0.025, 1.5 / Rs);
+    const unsigned nb = std::min(nmax, unsigned(0.6 / bw + 0.5)), win = unsigned(std::ceil(0.1 / bw - 1e-9));
+    double sum[nmax] = {}, cnt[nmax] = {}, sw[nw] = {}, cw[nw] = {};
+    const unsigned H = unsigned(l.size() / W);
+    const int x0 = std::max(0, int(x - 0.6 * Rs) - 1), x1 = std::min(int(W), int(x + 0.6 * Rs) + 2);
+    const int y0 = std::max(0, int(y - 0.6 * Rs) - 1), y1 = std::min(int(H), int(y + 0.6 * Rs) + 2);
+    for (int py = y0; py < y1; ++py)
+        for (int px = x0; px < x1; ++px) {
+            const double s = std::hypot(px + 0.5 - x, py + 0.5 - y) / Rs;
+            if (s >= 0.6) continue;
+            const double v = double(l[std::size_t(py) * W + px]) / double(p);
+            const unsigned b = std::min(nb - 1, unsigned(s / bw)), bwide = std::min(nw - 1, unsigned(s / 0.05));
+            sum[b] += v;
+            ++cnt[b];
+            sw[bwide] += v;
+            ++cw[bwide];
+            const int a = s < 0.15 ? -1 : s < 0.3 ? 0 : s < 0.45 ? 1 : 2;
+            if (a >= 0) {
+                r.n[a] += 1;
+                r.lit[a] += v > 0.1;
+            }
+        }
+    double P[nmax], Q[nw];
+    for (unsigned b = 0; b < nb; ++b) P[b] = cnt[b] > 0 ? sum[b] / cnt[b] : 0.0;
+    for (unsigned b = 0; b < nw; ++b) Q[b] = cw[b] > 0 ? sw[b] / cw[b] : 0.0;
+    for (unsigned k = 1; k + 1 < nb && (k + 0.5) * bw < 0.4; ++k) {
+        if (P[k] < P[k - 1] || P[k] < P[k + 1]) continue;
+        double in = P[k - 1], out = P[k + 1];
+        for (unsigned j = k > win ? k - win : 0; j < k; ++j) in = std::min(in, P[j]);
+        for (unsigned j = k + 1; j < nb && j <= k + win; ++j) out = std::min(out, P[j]);
+        r.prominence = std::max(r.prominence, P[k] - std::max(in, out));
+    }
+    for (unsigned k = 1; k < 8; ++k) { // ring centres 0.075 .. 0.375 R_s
+        if (Q[k] < Q[k - 1] || Q[k] < Q[k + 1]) continue;
+        double in = Q[0], out = Q[k + 1];
+        for (unsigned j = 0; j < k; ++j) in = std::min(in, Q[j]);
+        for (unsigned j = k + 1; j < nw; ++j) out = std::min(out, Q[j]);
+        r.prominence_wide = std::max(r.prominence_wide, Q[k] - std::max(in, out));
+    }
+    return r;
+}
+// The centre-ring gates' frames for the eye (never a gate): with X3M_WEAPON_EFFECTS_DUMP set and
+// X3M_WEAPON_EFFECTS_DUMP_CASES naming centre_ring, <dir>\\<name>.pfm (the image as rendered, float RGB).
+void dump_ring(const char* name, const std::vector<float>& rgb, unsigned w, unsigned h) {
+    const char* dir = std::getenv("X3M_WEAPON_EFFECTS_DUMP");
+    const char* list = std::getenv("X3M_WEAPON_EFFECTS_DUMP_CASES");
+    if (!dir || !*dir || !list || !std::strstr(list, "centre_ring") || rgb.size() != std::size_t(w) * h * 3) return;
+    char path[1024];
+    std::snprintf(path, sizeof path, "%s\\%s.pfm", dir, name);
+    FILE* f = std::fopen(path, "wb");
+    if (!f) return;
+    std::fprintf(f, "PF\n%u %u\n-1.0\n", w, h);
+    for (unsigned y = h; y-- > 0;) std::fwrite(rgb.data() + std::size_t(y) * w * 3, sizeof(float), std::size_t(w) * 3, f);
+    std::fclose(f);
+}
 } // namespace burst
 void burst_look_gates(rr::WeaponEffectsPass& pass) {
     namespace hl = wc::hull;
@@ -474,6 +547,53 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         const double tc = median(tcs), tr = median(trs);
         std::printf("CLASS case=burst_colour_median hits=%u core_T=%.2f rim_T=%.2f\n", hits_n, tc, tr);
         report("hull_burst_colour_core_rim", tc >= 0.75 && tr > 0 && tr <= 0.5, "");
+    }
+    // 4b. No centre ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"), energy at 0.5 / 0.6 /
+    // 0.7 L_b over hits_n hits: every hit's ring prominence (burst::ring_of) <= ring_prominence_max at each age (the
+    // defect is on every body; a median over seeds hides it: 0.02-0.07 on the old law against a worst hit of 0.29), and the
+    // pooled lit share of the annulus 0.3-0.45 R_s at most 1.3 x the mean of its neighbours (0.15-0.3, 0.45-0.6 R_s).
+    {
+        constexpr double ring_prominence_max = 0.15, annulus_ratio_max = 1.3;
+        // the ring's sequence counter is restored after the gate: the stage dump's own records (energy_single, the accepted
+        // frames) keep the seeds they had before it
+        const std::uint32_t next_sequence = stage_ring.next_sequence;
+        bool ok = true;
+        for (float fr : {0.5f, 0.6f, 0.7f}) {
+            std::vector<double> prom;
+            double lit[3] = {}, n[3] = {};
+            for (unsigned j = 0; j < hits_n; ++j) {
+                const float L = single(hl::an_energy, burst_only, 400.f, seq_of(j));
+                const HullOut o = at(fr * L, burst_only);
+                if (!o.bursts) {
+                    prom.push_back(0.0);
+                    continue;
+                }
+                const burst::Disc d = burst::disc_of(hq_fireballs[0]);
+                const std::vector<float> rgb = burst::render(pass, o);
+                const burst::Ring r = burst::ring_of(burst::luma(rgb), g.w, d.x, d.y, d.R * (1.0 + double(wc::look::fireball_lobe_amp)));
+                char name[64];
+                std::snprintf(name, sizeof name, "centre_ring_hull_hit%u_%02.0f", j, double(fr) * 10.0);
+                burst::dump_ring(name, rgb, g.w, g.h);
+                prom.push_back(r.prominence);
+                for (unsigned a = 0; a < 3; ++a) {
+                    lit[a] += r.lit[a];
+                    n[a] += r.n[a];
+                }
+                std::printf("CLASS case=burst_centre_ring hit=%u age_frac=%.1f prominence=%.4f prominence_wide=%.4f "
+                            "annulus_lit=%.4f,%.4f,%.4f\n", j, double(fr), r.prominence, r.prominence_wide, r.n[0] > 0 ? r.lit[0] / r.n[0] : 0.0, r.n[1] > 0 ? r.lit[1] / r.n[1] : 0.0,
+                            r.n[2] > 0 ? r.lit[2] / r.n[2] : 0.0);
+            }
+            double s[3];
+            for (unsigned a = 0; a < 3; ++a) s[a] = n[a] > 0 ? lit[a] / n[a] : 0.0;
+            const double nb = 0.5 * (s[0] + s[2]), ratio = nb > 0 ? s[1] / nb : (s[1] > 0 ? 1e9 : 0.0);
+            const double worst = *std::max_element(prom.begin(), prom.end());
+            std::printf("CLASS case=burst_centre_ring_median age_frac=%.1f hits=%u prominence=%.4f prominence_max=%.4f "
+                        "annulus_lit=%.4f,%.4f,%.4f annulus_ratio=%.3f\n", double(fr), hits_n, median(prom), worst, s[0], s[1],
+                        s[2], ratio);
+            ok = ok && worst <= ring_prominence_max && ratio <= annulus_ratio_max;
+        }
+        stage_ring.next_sequence = next_sequence;
+        report("hull_burst_no_centre_ring", ok, "");
     }
     // 5. The glow follows the burst (energy, heavy at 0.1 and 0.3 L_b; the ember off): its 10 % radius over the body's,
     // its peak over the body's (the medians over hits_n hits), none after L_b.
@@ -1345,6 +1465,9 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                     sb += rgb[3 * q + 2];
                 }
                 brs[i].push_back(sr > 0 ? sb / sr : -1.0);
+                if (i == 2)
+                    std::printf("CLASS case=plasma_globe_record record=%u age_frac=0.95 red_sum=%.4f b_over_r=%.4f\n", j, sr,
+                                brs[i].back());
             }
         }
         auto mid = [](std::vector<double> v) {
