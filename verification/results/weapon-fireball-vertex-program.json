@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_fireball_vs.hlsl",
-  "source_sha256": "1f2c13200637ab2ab0a1c8c35548f4f12827c2f0b3d4b141022f6914cfdaa319",
+  "source_sha256": "e10600b4ba1a22b1230c565c851fe8cceedf2d14b0b615c55ad0cb66f0f21656",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -11,8 +11,8 @@
   "defines": null,
   "includes": null,
   "word_count": 141,
-  "bytecode_sha256": "07c9b91a746a522d9bbefe6ed8d5dceefd81396d95f42efbf38777cdc205fda6",
-  "header_sha256": "eee1384a47418176442264c916eaa10b4c680d154755e600b449a87e38e01375",
+  "bytecode_sha256": "7563badc03d9b9157a3277d62186c5c132b765b175c415756e077ca732dd2c77",
+  "header_sha256": "7ade3cb9a114355cdb27a8bc14142b428f85d93cfb05a39ed46251338963bc81",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

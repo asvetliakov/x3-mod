@@ -86,6 +86,8 @@ switchable in the Layers panel; the Vanilla tab draws the four slots of the vani
   <div id="scenario_bar">
     <label title="docs/architecture/weapon-look.md 6: a prepared case (data set, weapon, victim, camera, SETA, hits per game second, own ship, variant); choosing one sets the controls and its tab">Scenario <select id="preset"><option value="">(none)</option></select></label>
     <span id="scenario_mod"></span>
+    <label title="docs/architecture/fire-material.md 5: the fireball family's material (fire: the tongue law; today: the previous eroded noise ball on the heat ramp; the wave keeps the tongues)">material <select id="c_fire_material"><option value="fire">fire</option><option value="today">today</option></select></label>
+    <label title="docs/architecture/fire-material.md 5: the frame at t, t + 16 ms and t + 100 ms (the SETA step) side by side, the centre third of each"><input type="checkbox" id="c_fire_pair"> pair t / +16 / +100 ms</label>
     <div id="scenario_desc"></div>
   </div>
   <nav id="tabs" role="tablist">
@@ -393,10 +395,10 @@ const HEADER = {
   shimmer_px: 1.5,
   shimmer_rows: 1440.0,
   ring_band_px: 3.0,
-  look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4,"fireball_octave_freq":[1.6,3.4,7.0],"fireball_octave_w":[0.5,0.3,0.2],"fireball_advect":1.0,"fireball_erode_0":0.1,"fireball_erode_t":0.28,"fireball_erode_r":0.2,"fireball_erode_soft":0.28,"fireball_erode_rt":3.0,"fireball_column_pow":0.25,"fireball_lobes":5.0,"fireball_lobe_amp":0.25,"fireball_lobe_soft":0.06,"fireball_heat_soft":0.2,"fireball_rim_t":0.45,"fireball_octaves":4,"fireball_fine_px":48.0,"fireball_fine_band_px":16.0,"fireball_fine4_px":160.0,"fireball_fine4_band_px":60.0,"fireball_octave_freq4":14.0,"fireball_octave_w4":0.25,"budget_weight_fireball_fine4":1.18,"budget_weight_fireball":1.18,"budget_weight_fireball_coarse":1.03,"budget_weight_smoke":1.2},
-  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.12,1.2,40.0,0.9,0.0],[0.12,0.6,40.0,1.0,0.0],[0.12,2.0,40.0,1.0,1.0],[0.12,1.0,40.0,0.9,0.0],[0.12,1.2,40.0,1.0,2.0],[0.12,1.2,40.0,0.9,0.0],[0.12,1.5,40.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.12,0.6,40.0,0.0,4.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[2.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.8,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[3.0,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[1.6,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[1.2,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,2.0,2.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[2.4,0.0,0.0,800.0,400.0,0.3,0.375,0.08,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,0.75,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,0.75,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[1.0,150.0,0.0,0.3],[1.0,150.0,0.0,0.15]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"ring_lead_t":1.0,"ring_trail_t":0.35,"ring_trail_gain":0.55,"ring_trail_span":3.0,"ring_noise_freq":1.3,"ring_noise_depth":0.9,"ring_noise_contrast":2.5,"ring_wash_gain":0.25,"ring_wash_fall":0.35,"ring_stretch":1.25,"ring_refract":1.0,"ring_seed_axis":[1.7,3.1,0.7],"ring_seed_scale":64.0,"ring_noise_window":2.5,"ring_front_window":3.0,"ring_seed_element":7,"budget_weight_shimmer":2.85,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"ion_channels_lo":3,"ion_channels_hi":6,"ion_segments_lo":6,"ion_segments_hi":10,"ion_branches_lo":1,"ion_branches_hi":3,"ion_len":1.0,"ion_len_spread":0.5,"ion_dir_jitter":0.27,"ion_jag":0.8,"ion_lateral":0.3,"ion_branch_t_lo":0.2679,"ion_branch_t_hi":0.5774,"ion_branch_len":0.5,"ion_branch_e":0.6,"ion_depth_r":1.0,"ion_core_w":0.01,"ion_core_px":2.0,"ion_branch_px":1.0,"ion_corona_x":4.0,"ion_corona_share":0.25,"ion_core_white":0.7,"ion_channel_e":3.0,"ion_strike_decay":0.15,"ion_after_e":0.25,"ion_late_w":0.6,"ion_late_e":0.5,"ion_life_ms":1200,"ion_period_lo_ms":120,"ion_period_hi_ms":200,"ion_strike_ms":40,"ion_late_ms":200,"ion_strike_until":0.8,"ion_fade_from":0.8,"ion_glow_r":1.2,"ion_glow_e":0.3,"ion_glow_floor":0.25,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"beam_colour":true,"beam_glow_mix":0.6,"beam_core_mix":0.3,"beam_colour_sat_min":0.15,"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.5,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.4,"star_arm_len":[1.0,0.55,0.8,0.45],"star_width":0.1,"star_width_px":2.0,"star_floor_px":6.0,"star_element":11,"burst_rot_element":8,"burst_lobe_element":10,"glow_r_x":1.6,"glow_e_x":0.33,"cluster_r_x":2.0,"cluster_n0_glow":2.5,"cluster_n0_burst":1.6,"class_smoke":[[1.3,0.45],[1.0,0.3],[1.2,0.5],[1.3,0.5],[0.0,0.0],[1.2,0.4],[1.3,0.5],[1.0,0.3],[0.0,0.0],[0.0,0.0]],"smoke_t0":0.5,"smoke_span":1.1,"smoke_rise":0.27,"dust_colour":[0.55,0.52,0.48],"cool_colour":[0.7,0.8,1.0],"ember_lobe_amp":0.25},
+  look: {"heat_ramp":[[0.0,0.0,0.0],[0.55,0.1,0.03],[1.0,0.42,0.1],[1.0,0.72,0.3],[1.0,0.92,0.8]],"min_frames":3,"soft_core":0.15,"soft_halo":1.0,"core_e":4.0,"body_max":1.5,"halo_max":0.2,"halo_fold":1.5,"streak_cap":6.0,"streak_core_min":1.2,"floor_core_px":2.0,"floor_lit_px":3.0,"floor_len_px":24.0,"floor_flash_px":3.0,"budget_weight_patch":1.0,"budget_weight_glow":0.4,"fireball_octave_freq":[1.6,3.4,7.0],"fireball_octave_w":[0.5,0.3,0.2],"fireball_advect":1.0,"fireball_erode_0":0.1,"fireball_erode_t":0.28,"fireball_erode_r":0.2,"fireball_erode_soft":0.28,"fireball_erode_rt":3.0,"fireball_column_pow":0.25,"fireball_lobes":5.0,"fireball_lobe_amp":0.25,"fireball_lobe_soft":0.06,"fireball_heat_soft":0.2,"fireball_rim_t":0.45,"fireball_octaves":4,"fireball_fine_px":48.0,"fireball_fine_band_px":16.0,"fireball_fine4_px":160.0,"fireball_fine4_band_px":60.0,"fireball_octave_freq4":14.0,"fireball_octave_w4":0.25,"budget_weight_fireball_fine4":1.18,"budget_weight_fireball":1.18,"budget_weight_fireball_coarse":1.03,"budget_weight_smoke":1.2,"fire_enabled":true,"fire_ramp":[[0.0,0.0,0.0],[0.45,0.05,0.015],[1.0,0.33,0.05],[1.0,0.8,0.3],[1.0,0.97,0.85]],"fire_cells":23.0,"fire_s_cells":1.9,"fire_warp_f":2.2,"fire_warp_amp":0.6,"fire_shear":1.0,"fire_blend_0":0.12,"fire_blend_1":0.4,"fire_flow_ms":120.0,"fire_flick_ms":65.0,"fire_flick_amp":0.3,"fire_thr_0":0.08,"fire_thr_t":0.5,"fire_thr_r":0.45,"fire_soft":0.1,"fire_gain":2.2,"fire_gain_small":1.2,"fire_heat_soft":0.55,"fire_rim_t":0.3,"fire_oct2_w":0.35,"fire_oct2_big":0.3,"fire_px_0":48.0,"fire_px_1":72.0,"fire_big_px_0":160.0,"fire_big_px_1":400.0,"budget_weight_fire":1.25},
+  hull: {"r_base":0.35,"r_k":0.65,"r_scale":2.0,"flash_halo_t":0.9,"spark_rest_w":3.0,"bias":0.5,"mode":"full","spark_count_x":1.0,"spark_count_spread":0.4,"spark_life_lo":0.7,"spark_life_hi":1.3,"spark_len_lo":0.6,"spark_len_hi":1.6,"spark_width_lo":0.8,"spark_width_hi":1.2,"spark_curl_share":0.25,"spark_curl_x":0.3,"class_flash":[[0.12,1.2,40.0,0.9,0.0],[0.12,0.6,40.0,1.0,0.0],[0.12,2.0,40.0,1.0,1.0],[0.12,1.0,40.0,0.9,0.0],[0.12,1.2,40.0,1.0,2.0],[0.12,1.2,40.0,0.9,0.0],[0.12,1.5,40.0,0.9,3.0],[0.0,0.0,0.0,0.0,0.0],[0.12,0.6,40.0,0.0,4.0],[0.0,0.0,0.0,0.0,0.0]],"class_puff":[[2.0,0.0,0.0,350.0,150.0,1.0,1.5,0.15,0.0,0.0],[0.8,0.0,0.0,200.0,0.0,0.6,0.8,0.15,0.0,0.0],[3.0,0.0,0.0,600.0,400.0,1.0,1.5,0.2,0.5,0.5],[1.6,0.0,0.0,300.0,200.0,1.0,1.5,0.1,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[1.2,0.0,0.0,300.0,0.0,1.0,1.5,0.15,0.0,0.0],[0.0,2.0,2.0,500.0,700.0,1.0,1.5,0.15,0.0,0.0],[2.4,0.0,0.0,800.0,400.0,0.3,0.375,0.08,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_sparks":[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[4.0,4.0,3.0,0.3,150.0,100.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,12.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.6,0.0],[4.0,6.0,4.0,0.3,450.0,150.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[3.0,3.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,1.5,0.3,-0.3,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[3.0,5.0,3.0,0.4,400.0,200.0,0.1,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[12.0,12.0,10.0,0.4,300.0,200.0,0.08,3.0,0.45,8.0,1.0,-2.0,0.0],[6.0,6.0,12.0,0.3,400.0,200.0,0.08,3.0,0.45,8.0,1.0,2.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[2.0,0.0,4.0,0.4,300.0,0.0,0.08,3.0,0.45,8.0,1.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[16.0,24.0,8.0,0.3,150.0,50.0,0.08,3.0,0.45,8.0,1.0,-0.3,0.0],[8.0,12.0,3.0,0.3,1500.0,0.0,0.08,3.0,1.0,8.0,1.0,-0.3,0.3],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[8.0,8.0,3.0,0.3,450.0,150.0,0.08,3.0,0.45,0.75,0.3,0.0,0.0],[6.0,6.0,2.0,0.5,600.0,200.0,0.12,1.5,1.0,0.75,0.25,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"class_glow":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[1.0,150.0,0.0,0.3],[1.0,150.0,0.0,0.15]],"class_ember":[[0.8,1500.0,500.0,0.6,0.8],[0.3,500.0,0.0,0.4,0.5],[1.0,3000.0,0.0,0.6,1.0],[0.5,2000.0,0.0,0.7,1.2],[0.0,0.0,0.0,0.0,0.0],[0.8,1500.0,0.0,0.6,0.8],[1.0,2000.0,0.0,0.6,1.0],[0.0,0.0,0.0,0.0,0.0],[0.4,800.0,0.0,0.0,0.6],[0.0,0.0,0.0,0.0,0.0]],"class_ring":[[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[2.5,0.15,300.0,1.0],[3.0,0.12,250.0,1.2],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[3.0,0.15,300.0,1.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0]],"ring_t":0.9,"ring_rise":0.1,"ring_lead_t":1.0,"ring_trail_t":0.35,"ring_trail_gain":0.55,"ring_trail_span":3.0,"ring_noise_freq":1.3,"ring_noise_depth":0.9,"ring_noise_contrast":2.5,"ring_wash_gain":0.25,"ring_wash_fall":0.35,"ring_stretch":1.25,"ring_refract":1.0,"ring_seed_axis":[1.7,3.1,0.7],"ring_seed_scale":64.0,"ring_noise_window":2.5,"ring_front_window":3.0,"ring_seed_element":7,"budget_weight_shimmer":2.85,"scorch":true,"class_scorch":[[0.6,12000.0,0.45],[0.3,10000.0,0.5],[1.2,20000.0,0.6],[0.6,15000.0,0.7],[0.0,0.0,0.0],[0.8,15000.0,0.5],[1.5,20000.0,0.6],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],"scorch_colour":[0.75,0.8,0.85],"scorch_per_owner":16,"class_shimmer":[0.0,0.0,3.0,3.0,0.0,0.0,0.0,0.0,0.0,0.0],"shimmer_ms":400,"shimmer_max":2,"streak_back":1.5,"streak_front":0.5,"streak_width":0.3,"streak_e":4.0,"streak_fallback_halo":1.5,"streak_ms":60,"ion_channels_lo":3,"ion_channels_hi":6,"ion_segments_lo":6,"ion_segments_hi":10,"ion_branches_lo":1,"ion_branches_hi":3,"ion_len":1.0,"ion_len_spread":0.5,"ion_dir_jitter":0.27,"ion_jag":0.8,"ion_lateral":0.3,"ion_branch_t_lo":0.2679,"ion_branch_t_hi":0.5774,"ion_branch_len":0.5,"ion_branch_e":0.6,"ion_depth_r":1.0,"ion_core_w":0.01,"ion_core_px":2.0,"ion_branch_px":1.0,"ion_corona_x":4.0,"ion_corona_share":0.25,"ion_core_white":0.7,"ion_channel_e":3.0,"ion_strike_decay":0.15,"ion_after_e":0.25,"ion_late_w":0.6,"ion_late_e":0.5,"ion_life_ms":1200,"ion_period_lo_ms":120,"ion_period_hi_ms":200,"ion_strike_ms":40,"ion_late_ms":200,"ion_strike_until":0.8,"ion_fade_from":0.8,"ion_glow_r":1.2,"ion_glow_e":0.3,"ion_glow_floor":0.25,"flicker_ms":40,"ion_colour":[0.6,0.75,1.0],"beam_colour":true,"beam_glow_mix":0.6,"beam_core_mix":0.3,"beam_colour_sat_min":0.15,"hold_ms":60,"spot_fall_ms":80,"spatter_period_ms":40,"spatter_cap":24,"hold_r":0.5,"spot_core":0.2,"spot_halo":0.6,"trail_step_r":0.5,"budget_weight_ring":0.5,"budget_weight_filament":0.86,"budget_weight_scorch":0.49,"budget_weight_flash":0.4,"star_arm_len":[1.0,0.55,0.8,0.45],"star_width":0.1,"star_width_px":2.0,"star_floor_px":6.0,"star_element":11,"burst_rot_element":8,"burst_lobe_element":10,"glow_r_x":1.3,"glow_e_x":0.25,"cluster_r_x":2.0,"cluster_n0_glow":2.5,"cluster_n0_burst":1.6,"class_smoke":[[1.3,0.45],[1.0,0.3],[1.2,0.5],[1.3,0.5],[0.0,0.0],[1.2,0.4],[1.3,0.5],[1.0,0.3],[0.0,0.0],[0.0,0.0]],"smoke_t0":0.5,"smoke_span":1.1,"smoke_rise":0.27,"dust_colour":[0.55,0.52,0.48],"cool_colour":[0.7,0.8,1.0],"ember_lobe_amp":0.25,"class_fire":[1.0,0.0,0.5,1.0,0.0,1.0,1.0,0.0,0.0,0.0],"class_fire_core":[2.0,0.0,1.0,2.0,0.0,2.0,2.0,0.0,0.0,0.0],"fire_core_x":0.5,"ring_fire_cells":31.0,"ring_fire_z":3.0,"ring_fire_thr":0.35},
   bolt: {"mode":"full","d_eng_m":[600.0,1500.0,4000.0],"d_eng_range":0.75,"w_px_target":3.0,"w_k":0.6,"f_ref":960.0,"ref_rows":1440.0,"w_cap_m":20.0,"heavy_k":0.91,"rest_w":[12.0,4.0,1.6,0.5],"sv_ref_mps":2000.0,"tail_tau_ms":[15.0,30.0,10.0,0.0,40.0],"tail_max_w":[8.0,12.0,4.0,0.0,20.0],"tail_root_w":[0.6,0.35,0.8,0.0,0.8],"tail_gain":[0.5,0.6,0.5,0.0,0.6],"core_r":0.4,"core_r_heavy":0.55,"halo_sigma_w":[0.8,0.7,0.9,0.6,1.0],"e_body":1.2,"e_halo":0.6,"e_halo_heavy":0.8,"h":[0.75,0.85,0.7,0.5],"head_gain":0.5,"head_ball_w":0.6,"tip_w":1.0,"slug_tail_white":0.6,"slug_tail_end":0.4,"streak_c":[1.0,1.0,0.5,0.0],"streak_c_simple":0.5,"core_min":1.2,"end_ms":60,"orb_freq":[3.0,6.4],"orb_boil_hz":3.0,"orb_lobes":5.0,"orb_lobe_amp":0.12,"orb_lobe_turns":0.5,"orb_stretch":1.3,"orb_h_lo":0.5,"orb_h_hi":0.9,"wave_span_w":6.0,"wave_sagitta":0.25,"wave_sheet_e":0.15,"wave_ring_c":0.4,"trim_rs":0.8,"rim":true,"rim_dark":0.4,"rim_band_w":[1.2,1.8],"rim_min_px":3.0,"halo_px_max":40.0,"floor_core_px":2.0,"floor_body_px":3.0,"floor_halo_px":1.5,"floor_len_px":24.0,"floor_endon_px":9.0,"own_body_max_px":16.0,"cockpit_native":false,"far_flag_k":32.0,"list_capacity":512,"beam_w_m":1.2},
-  boom: {"mode":"full","tier_native":0,"tier_f":[2.0,1.5,0.9,0.6,3.5],"tier_min_m":[12.0,30.0,80.0,200.0,6.0],"tier_max_m":[50.0,160.0,600.0,1800.0,25.0],"tier_life_ms":[2000.0,3000.0,4000.0,6000.0,800.0],"tier_preroll_ms":[0.0,0.0,1500.0,3000.0,0.0],"tier_rise":[0.12,0.15,0.15,0.2,0.1],"tier_r0_obj":[0.5,0.5,0.0,0.0,0.5],"tier_r0_f":[0.0,0.0,0.5,0.5,0.0],"tier_embers":[32.0,64.0,128.0,160.0,12.0],"tier_shock":[0.0,1.0,1.0,1.0,1.0],"tier_shock_tau":[0.3,0.3,0.3,0.4,0.3],"body_grow":0.1,"body_hold":0.8,"body_cool":0.7,"body_e":1.5,"body_bias":0.5,"body_r_sphere":1.33,"body_floor_px":12.0,"core_gain":5.0,"core_x":0.35,"core_r":0.3,"core_soft":0.2,"star_arm":0.4,"star_core":0.08,"star_ms":40.0,"star_t":0.9,"star_cap_h":0.25,"shock_r_x":4.0,"shock_w":0.06,"shock_e":1.0,"shock_limb":0.15,"shock_end":0.25,"missile_shock":false,"ember_cones_lo":4.0,"ember_cones_hi":6.0,"ember_cone_deg":25.0,"ember_v_x":1.5,"ember_v_min":40.0,"ember_v_max":300.0,"ember_p0":0.3,"ember_speed_lo":0.5,"ember_speed_hi":2.0,"ember_life":[0.4,0.8,1.2],"ember_stagger":0.4,"ember_e":2.6,"ember_tau":0.8,"ember_w_px_lo":1.0,"ember_w_px_hi":2.0,"ember_len_max":0.35,"ember_len_lo":0.25,"ember_hide_r":0.5,"ember_hide_x0":0.5,"ember_hide_x1":0.9,"fragment_every":8.0,"fragment_v":0.5,"fragment_life":1.5,"fragment_w_px":3.0,"fragment_dark":0.6,"fragment_tip_t":0.6,"fragment_dark_r":1.0,"glow_r_x":1.6,"glow_r_max":2.0,"glow_e":0.33,"halo_soft":0.5,"halo_fade_x0":0.4,"halo_fade_x1":0.8,"cluster_r_x":2.0,"cluster_n0":1.6,"smoke_r":1.1,"smoke_t0":0.5,"smoke_span":1.1,"smoke_s0":0.45,"smoke_rise":0.27,"coverage_dim":false,"budget_weight_shock":0.36,"budget_weight_halo":0.4,"max_bodies":32,"max_quads":2048,"cone_element":32,"ember_element":2048,"tier_swap":14,"tier_secondaries":[0.0,0.0,8.0,12.0,0.0],"tier_cadence":[0.0,0.0,0.7,0.8,0.0],"secondary_jitter":0.2,"secondary_r":0.35,"secondary_r_last":0.5,"secondary_r_big":0.6,"secondary_life":0.3,"secondary_rise":0.1,"secondary_inset":0.85,"secondary_capsule_len":1.4,"secondary_capsule_r":0.25,"secondary_cluster_n0":2.5,"secondary_embers":8,"max_secondaries":64,"secondary_element":512,"hull_light_r":1.0,"hull_light_e0":0.4,"hull_light_e1":0.8,"hull_light_t":0.6,"body_r_sphere_big":1.21,"sphere_px0":64.0,"sphere_px1":320.0,"budget_screens":2.5,"shock_tiers":0,"halo_big_r":1.15,"halo_big_e":0.2,"halo_big_x0":0.3,"halo_big_x1":0.6,"wave_tiers":12,"wave_r_x":7.0,"wave_tau_x":0.25,"wave_life_x":0.4,"wave_creep":0.05,"wave_stretch":1.25,"wave_w_x":0.1,"wave_band_x":0.5,"wave_slab_x":0.3,"wave_trail_span":5.0,"wave_e":1.6,"wave_t_edge":0.9,"wave_t_band0":0.55,"wave_t_band_end":0.4,"wave_t_sheet_end":0.25,"wave_t_cool":0.5,"wave_noise_cells":[40.0,86.0,175.0],"wave_noise_radial":[0.8,1.7,3.5],"wave_noise_r_ref":4.0,"wave_noise_w":[0.5,0.3,0.2],"wave_advect":1.0,"wave_erode_0":0.2,"wave_erode_t":0.2,"wave_erode_r":0.5,"wave_erode_rt":1.0,"wave_erode_soft":0.3,"wave_heat_soft":0.3,"wave_lobe_amp":0.45,"wave_lobe_soft":0.2,"wave_floor_a":0.2,"wave_floor_t":0.25,"wave_lead":0.1,"wave_ahead":0.7,"wave_break_floor":0.6,"wave_rim_noise":0.4,"wave_eye_plane_x":2.0,"wave_eye_plane_blend_x":0.5,"wave_eye_fade_x":1.0,"wave_sheet_enabled":true,"compose_enabled":false,"compose_count_3":16,"compose_count_2":24,"wave_window_in":12.0,"wave_window_out":2.5,"wave_light":0.33,"wave_m_floor":0.05,"wave_m_contrast":4.0,"wave_n_cells":[9.0,23.0],"wave_n_w":[0.7,0.3],"wave_refract_px":6.0,"budget_weight_wave":1.71,"budget_weight_wave_miss":0.56,"wave_seed_element":40,"compose_n_lo":[3.0,3.0,4.0,5.0,3.0],"compose_n_hi":[3.0,4.0,5.0,5.0,3.0],"compose_jets_lo":[0.0,0.0,1.0,1.0,0.0],"compose_jets_hi":[0.0,0.0,2.0,2.0,0.0],"compose_n_min":2,"compose_eye_n":2,"compose_max":7,"compose_r_lo":0.35,"compose_r_span":0.35,"compose_offset":0.85,"compose_axis_blend":0.5,"compose_spread":0.15,"compose_seed_step":7.3,"compose_jet_long":0.8,"compose_jet_short":0.4,"compose_jet_cone":0.78539816,"compose_jet_birth0":0.05,"compose_jet_birth_span":0.1,"compose_size":[1.0,1.0,0.97,1.0,1.0],"compose_box_margin":1.1,"compose_small_px":24.0,"compose_element":42,"compose_erode_x0":0.3,"compose_erode_k":0.5,"compose_erode_cap":1.0,"compose_pace_lo":1.0,"compose_pace_span":1.4,"wave_m_bias":0.55,"compose_cost_base":0.47,"compose_cost_per":0.115,"compose_cost_shared_base":0.7,"compose_cost_shared_per":0.03,"wave_sheet_x":1.0,"wave_sheet_span":10.0,"wave_tongue":0.3,"wave_tongue_contrast":2.0,"compose_soft_add":0.25,"compose_core_x":0.25,"compose_offset_min":0.7,"compose_offset_cool":0.3,"core_ramp_ms":48.0,"spike_rf":0.15,"spike_px_lo":4.0,"spike_px_hi":8.0,"spike_halo":4.0,"spike_e":6.0,"spike_x":0.12,"spike_t":0.95,"ray_n_lo":24.0,"ray_n_hi":40.0,"ray_jitter_lo":0.1,"ray_jitter":0.8,"ray_len_lo":1.2,"ray_len_hi":2.0,"ray_len_floor":1.6,"ray_grow0":0.7,"ray_grow_x":0.06,"ray_start":0.3,"ray_w_px_lo":1.0,"ray_w_px_hi":3.0,"ray_taper":0.6,"ray_fall":1.5,"ray_w_len_px":110.0,"ray_e":2.4,"ray_e_lo":0.45,"ray_x":0.5,"ray_pow":3.0,"ray_flicker_lo":30.0,"ray_flicker_hi":60.0,"ray_flicker":0.55,"ray_t0":0.9,"ray_t1":0.6,"ray_soft":1.0,"ray_frame_cap":512,"ray_shed_max":3,"ray_element":1024,"tier_sparks_lo":[120.0,160.0,240.0,240.0,40.0],"tier_sparks_hi":[240.0,300.0,400.0,400.0,80.0],"spark_frame_cap":1024,"spark_shed_max":4,"spark_r0_lo":0.55,"spark_r0_span":0.45,"spark_cone_share":0.6,"spark_hide_soft":0.2,"spark_len_lo":4.0,"spark_len_hi":24.0,"spark_long_every":12.0,"spark_long_lo":40.0,"spark_long_hi":80.0,"spark_long_w":1.0,"spark_long_e":1.0,"spark_ref_px":28.8,"spark_t0":1.0,"spark_birth_x":0.05,"spark_birth_now":0.15,"spark_in_x":0.02,"spark_in0":0.25,"spark_cool_pow":1.5},
+  boom: {"mode":"full","tier_native":0,"tier_f":[2.0,1.5,0.9,0.6,3.5],"tier_min_m":[12.0,30.0,80.0,200.0,6.0],"tier_max_m":[50.0,160.0,600.0,1800.0,25.0],"tier_life_ms":[2000.0,3000.0,4000.0,6000.0,800.0],"tier_preroll_ms":[0.0,0.0,1500.0,3000.0,0.0],"tier_rise":[0.12,0.15,0.15,0.2,0.1],"tier_r0_obj":[0.5,0.5,0.0,0.0,0.5],"tier_r0_f":[0.0,0.0,0.5,0.5,0.0],"tier_embers":[32.0,64.0,128.0,160.0,12.0],"tier_shock":[0.0,1.0,1.0,1.0,1.0],"tier_shock_tau":[0.3,0.3,0.3,0.4,0.3],"body_grow":0.1,"body_hold":0.8,"body_cool":0.7,"body_e":1.5,"body_bias":0.5,"body_r_sphere":1.33,"body_floor_px":12.0,"core_gain":5.0,"core_x":0.35,"core_r":0.3,"core_soft":0.2,"star_arm":0.4,"star_core":0.08,"star_ms":40.0,"star_t":0.9,"star_cap_h":0.25,"shock_r_x":4.0,"shock_w":0.06,"shock_e":1.0,"shock_limb":0.15,"shock_end":0.25,"missile_shock":false,"ember_cones_lo":4.0,"ember_cones_hi":6.0,"ember_cone_deg":25.0,"ember_v_x":1.5,"ember_v_min":40.0,"ember_v_max":300.0,"ember_p0":0.3,"ember_speed_lo":0.5,"ember_speed_hi":2.0,"ember_life":[0.4,0.8,1.2],"ember_stagger":0.4,"ember_e":2.6,"ember_tau":0.8,"ember_w_px_lo":1.0,"ember_w_px_hi":2.0,"ember_len_max":0.35,"ember_len_lo":0.25,"ember_hide_r":0.5,"ember_hide_x0":0.5,"ember_hide_x1":0.9,"fragment_every":8.0,"fragment_v":0.5,"fragment_life":1.5,"fragment_w_px":3.0,"fragment_dark":0.6,"fragment_tip_t":0.6,"fragment_dark_r":1.0,"glow_r_x":1.6,"glow_r_max":2.0,"glow_e":0.33,"halo_soft":0.5,"halo_fade_x0":0.4,"halo_fade_x1":0.8,"cluster_r_x":2.0,"cluster_n0":1.6,"smoke_r":1.1,"smoke_t0":0.5,"smoke_span":1.1,"smoke_s0":0.45,"smoke_rise":0.27,"coverage_dim":false,"budget_weight_shock":0.36,"budget_weight_halo":0.4,"max_bodies":32,"max_quads":2048,"cone_element":32,"ember_element":2048,"tier_swap":14,"tier_secondaries":[0.0,0.0,8.0,12.0,0.0],"tier_cadence":[0.0,0.0,0.7,0.8,0.0],"secondary_jitter":0.2,"secondary_r":0.35,"secondary_r_last":0.5,"secondary_r_big":0.6,"secondary_life":0.3,"secondary_rise":0.1,"secondary_inset":0.85,"secondary_capsule_len":1.4,"secondary_capsule_r":0.25,"secondary_cluster_n0":2.5,"secondary_embers":8,"max_secondaries":64,"secondary_element":512,"hull_light_r":1.0,"hull_light_e0":0.4,"hull_light_e1":0.8,"hull_light_t":0.6,"body_r_sphere_big":1.21,"sphere_px0":64.0,"sphere_px1":320.0,"budget_screens":2.5,"shock_tiers":0,"halo_big_r":1.15,"halo_big_e":0.2,"halo_big_x0":0.3,"halo_big_x1":0.6,"wave_tiers":12,"wave_r_x":7.0,"wave_tau_x":0.25,"wave_life_x":0.4,"wave_creep":0.05,"wave_stretch":1.25,"wave_w_x":0.1,"wave_band_x":0.5,"wave_slab_x":0.3,"wave_trail_span":5.0,"wave_e":1.6,"wave_t_edge":0.9,"wave_t_band0":0.55,"wave_t_band_end":0.4,"wave_t_sheet_end":0.25,"wave_t_cool":0.5,"fire_wave_cells":48.0,"fire_wave_aspect":2.5,"fire_wave_thr_0":0.45,"fire_wave_thr_end":0.7,"fire_wave_gain":0.6,"wave_floor_a":0.2,"wave_floor_t":0.25,"wave_lead":0.1,"wave_ahead":0.7,"wave_break_floor":0.6,"wave_rim_noise":0.4,"wave_eye_plane_x":2.0,"wave_eye_plane_blend_x":0.5,"wave_eye_fade_x":1.0,"wave_sheet_enabled":true,"compose_enabled":false,"compose_count_3":16,"compose_count_2":24,"wave_window_in":12.0,"wave_window_out":2.5,"wave_light":0.33,"wave_m_floor":0.05,"wave_m_contrast":4.0,"wave_n_cells":[9.0,23.0],"wave_n_w":[0.7,0.3],"wave_refract_px":6.0,"budget_weight_wave":1.71,"budget_weight_wave_miss":0.56,"wave_seed_element":40,"compose_n_lo":[3.0,3.0,4.0,5.0,3.0],"compose_n_hi":[3.0,4.0,5.0,5.0,3.0],"compose_jets_lo":[0.0,0.0,1.0,1.0,0.0],"compose_jets_hi":[0.0,0.0,2.0,2.0,0.0],"compose_n_min":2,"compose_eye_n":2,"compose_max":7,"compose_r_lo":0.35,"compose_r_span":0.35,"compose_offset":0.85,"compose_axis_blend":0.5,"compose_spread":0.15,"compose_seed_step":7.3,"compose_jet_long":0.8,"compose_jet_short":0.4,"compose_jet_cone":0.78539816,"compose_jet_birth0":0.05,"compose_jet_birth_span":0.1,"compose_size":[1.0,1.0,0.97,1.0,1.0],"compose_box_margin":1.1,"compose_small_px":24.0,"compose_element":42,"compose_erode_x0":0.3,"compose_erode_k":0.5,"compose_erode_cap":1.0,"compose_pace_lo":1.0,"compose_pace_span":1.4,"wave_m_bias":0.55,"compose_cost_base":0.47,"compose_cost_per":0.115,"compose_cost_shared_base":0.7,"compose_cost_shared_per":0.03,"wave_sheet_x":1.0,"wave_sheet_span":10.0,"wave_tongue":0.3,"wave_tongue_contrast":2.0,"compose_soft_add":0.25,"compose_core_x":0.25,"compose_offset_min":0.7,"compose_offset_cool":0.3,"core_ramp_ms":48.0,"spike_rf":0.15,"spike_px_lo":4.0,"spike_px_hi":8.0,"spike_halo":4.0,"spike_e":6.0,"spike_x":0.12,"spike_t":0.95,"ray_n_lo":24.0,"ray_n_hi":40.0,"ray_jitter_lo":0.1,"ray_jitter":0.8,"ray_len_lo":1.2,"ray_len_hi":2.0,"ray_len_floor":1.6,"ray_grow0":0.7,"ray_grow_x":0.06,"ray_start":0.3,"ray_w_px_lo":1.0,"ray_w_px_hi":3.0,"ray_taper":0.6,"ray_fall":1.5,"ray_w_len_px":110.0,"ray_e":2.4,"ray_e_lo":0.45,"ray_x":0.5,"ray_pow":3.0,"ray_flicker_lo":30.0,"ray_flicker_hi":60.0,"ray_flicker":0.55,"ray_t0":0.9,"ray_t1":0.6,"ray_soft":1.0,"ray_frame_cap":512,"ray_shed_max":3,"ray_element":1024,"tier_sparks_lo":[120.0,160.0,240.0,240.0,40.0],"tier_sparks_hi":[240.0,300.0,400.0,400.0,80.0],"spark_frame_cap":1024,"spark_shed_max":4,"spark_r0_lo":0.55,"spark_r0_span":0.45,"spark_cone_share":0.6,"spark_hide_soft":0.2,"spark_len_lo":4.0,"spark_len_hi":24.0,"spark_long_every":12.0,"spark_long_lo":40.0,"spark_long_hi":80.0,"spark_long_w":1.0,"spark_long_e":1.0,"spark_ref_px":28.8,"spark_t0":1.0,"spark_birth_x":0.05,"spark_birth_now":0.15,"spark_in_x":0.02,"spark_in0":0.25,"spark_cool_pow":1.5},
   muzzle: {"mode":"full","class_disc":[[0.6,0.7,4.0],[0.5,0.7,4.0],[0.8,0.6,4.0],[0.8,1.0,4.0],[0.5,0.5,4.0]],"disc_halo_w":0.4,"disc_halo_e":0.6,"class_flame":[[2.0,0.6,1.2],[1.2,0.5,1.2],[0.0,0.0,0.0],[3.0,0.8,1.2],[0.0,0.0,0.0]],"class_star":[0.0,1.2,0.0,0.0,0.8],"star_arms":[1.0,0.55,0.8,0.45],"star_width_w":0.12,"star_e":2.0,"bloom_w":[0.5,1.0],"bloom_e":1.2,"vent_w":1.2,"vent_ms":150.0,"vent_e":1.2,"afterglow_ms":250.0,"afterglow_e":1.2,"rise_ms":40.0,"class_smoke":[[0.0,0.0,0.0,0.0,0.0],[0.6,1.2,0.3,400.0,0.5],[0.0,0.0,0.0,0.0,0.0],[0.8,1.6,0.4,600.0,0.5],[0.6,1.2,0.3,400.0,0.0]],"class_glow":[[3.0,0.6],[2.5,0.6],[3.5,0.8],[4.0,1.0],[2.0,0.5]],"class_life":[120.0,60.0,180.0,80.0,80.0],"cap_core_rs":0.25,"cap_flame_rs":1.0,"endon_cos":0.8660254,"breath":0.25,"cluster_n0":2.5,"record_capacity":128}
 };
 /* @end */
@@ -1273,6 +1275,58 @@ function noise1Periodic(phi, cells, seed) { // phi in radians; cells about the d
   const i1 = i0 + 1 > cells - 0.5 ? 0 : i0 + 1, s = f * f * (3 - 2 * f);
   return hash2(i0, seed) + (hash2(i1, seed) - hash2(i0, seed)) * s;
 }
+// The fire material (docs/architecture/fire-material.md 2; weapon_fireball_ps.hlsl's fire branch; HEADER.look.fire_*).
+// valueNoise2Periodic: periodic in a over `cells` cells (the tongues' angle, no seam); noise1PeriodicT: a 1-D value noise
+// periodic over cells (the flicker); fireRamp: the fire ramp's five stops.
+function valueNoise2Periodic(a, s, cells) {
+  const ia = Math.floor(a), iy = Math.floor(s), fx = a - ia, fy = s - iy, ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  const ix = ia - cells * Math.floor(ia / cells), i1 = ix + 1 > cells - 0.5 ? 0 : ix + 1;
+  const A = hash2(ix, iy), B = hash2(i1, iy), C = hash2(ix, iy + 1), D = hash2(i1, iy + 1);
+  return (A + (B - A) * ux) * (1 - uy) + (C + (D - C) * ux) * uy;
+}
+function noise1PeriodicT(t, cells, seed) {
+  const i = Math.floor(t), f = t - i, i0 = i - cells * Math.floor(i / cells), i1 = i0 + 1 > cells - 0.5 ? 0 : i0 + 1;
+  const sm = f * f * (3 - 2 * f);
+  return hash2(i0, seed) + (hash2(i1, seed) - hash2(i0, seed)) * sm;
+}
+function fireRamp(T) { return heatRamp(T, HEADER.look.fire_ramp); }
+// hull::class_fire by anatomy, -1 x it with fire_enabled false (the previous law on the fire ramp)
+function fireToday() { const e = typeof document !== 'undefined' ? document.getElementById('c_fire_material') : null; return !!(e && e.value === 'today'); }
+function fireOf(an) {
+  const v = HEADER.hull.class_fire[an] || 0;
+  return fireToday() ? 0 : HEADER.look.fire_enabled ? v : (v > 0 ? -1 : 0);
+}
+const fireSmooth = (a, b, v) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+// look::fire_lod: the size LOD w_px (0 .. 1) plus a body's second polar octave weight (0 .. 1), R px at 1440 rows
+function fireLod(rpx1440, body) {
+  const LK = HEADER.look;
+  return fireSmooth(LK.fire_px_0, LK.fire_px_1, rpx1440) + (body ? fireSmooth(LK.fire_big_px_0, LK.fire_big_px_1, rpx1440) : 0);
+}
+// The tongues at the disc point (px, py), rq: the blend weight wt, the tongue noise nt and the flicker (fire.wt 0: none).
+// n_c the Cartesian noise (octaves 1-2, the third weighted out by wt by the caller); returns {n, flick}.
+function fireTongues(nc, px, py, rq, o, tg, wt, lod) {
+  if (!(wt > 0)) return {n: nc, flick: 1};
+  const LK = HEADER.look, wf = LK.fire_warp_f;
+  const wa = LK.fire_warp_amp * (2 * valueNoise2(px * wf + o * 0.9 + 21.3, py * wf + o * 2.7 + 21.3) - 1);
+  const wb = LK.fire_warp_amp * (2 * valueNoise2(px * wf + o * 2.1 + 31.7, py * wf + o * 0.5 + 31.7) - 1);
+  const u = (px * px + py * py > 1e-12 ? Math.atan2(py, px) : 0) / (2 * Math.PI) + 0.5, C = LK.fire_cells;
+  const a = C * u + LK.fire_shear * rq * wb + 1.3 * o;
+  const s = rq * LK.fire_s_cells - tg / LK.fire_flow_ms + wa + 0.7 * o;
+  const wo = LK.fire_oct2_w + LK.fire_oct2_big * Math.max(0, Math.min(1, lod - 1));
+  const nt = (1 - wo) * valueNoise2Periodic(a, s, C) + wo * valueNoise2Periodic(2 * a + 0.5, 2 * s + 3.7, 2 * C);
+  const fl = 1 - LK.fire_flick_amp + LK.fire_flick_amp * noise1PeriodicT(C * u + tg / LK.fire_flick_ms, C, o);
+  return {n: nc + (nt - nc) * wt, flick: 1 + (fl - 1) * wt};
+}
+// The fire law's density and T' (fire > 0): the hard threshold with the convex gain, the density-driven heat.
+function fireLaw(n, rq2, x, T, colpow, lobe, flick, wpx) {
+  const LK = HEADER.look;
+  const thr = LK.fire_thr_0 + LK.fire_thr_t * x + LK.fire_thr_r * rq2 * (1 + LK.fireball_erode_rt * x);
+  const d = Math.max(0, Math.min(1, (n - thr) / LK.fire_soft));
+  const gain = LK.fire_gain_small + (LK.fire_gain - LK.fire_gain_small) * wpx;
+  const dens = d > 1e-6 ? Math.pow(d, gain) * flick * colpow * lobe : 0;
+  const m = Math.max(0, Math.min(1, (n - thr) / LK.fire_heat_soft));
+  return {dens, T: T * (LK.fire_rim_t + (1 - LK.fire_rim_t) * Math.pow(m, 0.75))};
+}
 // A beam preview's spot at game time g (the hold rule, section 3.9): pulsed (on / period ms) or sustained; held while
 // the pulse is on, falling after; the contact crawling sweep r_hit per 16.7 ms tick along the face (the trail marks every
 // trail_step_r r of it). null before the first tick.
@@ -1305,7 +1359,15 @@ function shockFront(q, rr, w, seed, washGain) {
     const n = valueNoise(q.map((v, j) => v * inv * HH.ring_noise_freq + seed * HH.ring_seed_axis[j]));
     m = 1 - HH.ring_noise_depth + HH.ring_noise_depth * Math.max(0, Math.min(1, 0.5 + HH.ring_noise_contrast * (n - 0.5)));
   }
-  return {m, lead: Math.exp(-z * z), band: 4 * b * (1 - b), wash};
+  // the band's tongues (fire-material.md 3; weapon_ring_ps.hlsl): a value noise of the direction x ring_fire_cells / 2 pi
+  // offset by (-z) / ring_fire_z, thresholded at ring_fire_thr over fire_soft with the gain (seed < 0: none)
+  let tongue = 1;
+  if (seed >= 0 && b > 0) {
+    const inv = 1 / Math.max(dl, 1e-9), k = HH.ring_fire_cells / (2 * Math.PI), ax = HH.ring_seed_axis;
+    const n = valueNoise([q[0] * inv * k + seed * ax[2] + 7.1, q[1] * inv * k + seed * ax[0] + 7.1, q[2] * inv * k - z / HH.ring_fire_z + seed * ax[1] + 7.1]);
+    tongue = Math.pow(Math.max(Math.min(1, (n - HH.ring_fire_thr) / HEADER.look.fire_soft), 1e-6), HEADER.look.fire_gain);
+  }
+  return {m, lead: Math.exp(-z * z), band: 4 * b * (1 - b) * tongue, wash};
 }
 // The ring's refraction (approximate: the shimmer pass displaces the resolved image, engine_shimmer_ps.hlsl's ring loop):
 // the lit hull's pixels whose stretched distance from the hit lies a band (ring_band_px) inside the front push the drawn
@@ -1427,7 +1489,9 @@ function renderHull(record, t) {
   // p, two or three octaves of 2-D value noise advected outward, the threshold erode_0 + erode_t x + erode_r |q|^2
   // (1 + erode_rt x), the lobes, the colour from the clumps (dust: its colour at share 1). smoke > 0: the multiply
   // buffer x (1 - smoke density scorch_colour) over the hull only.
-  const puffAt = (pv, rH, R, T, E, x, adv, seq, mix, dust, smoke) => {
+  // fx (the fire material, fire-material.md 2-3): {fire: the weight (0 the previous law), core: the white-hot core's gain
+  // g, tg: the burst's game-time age in ms}
+  const puffAt = (pv, rH, R, T, E, x, adv, seq, mix, dust, smoke, fx = null) => {
     if (!(smoke > 0 ? layers.smoke : layers.burst) || !(R > 0 && pv[2] > 0)) return false;
     const dist = Math.hypot(...pv), bb = dist > 0 ? 1 - HH.bias * rH / dist : 1, cv = pv.map(v => v * bb);
     const Rs = R * (1 + LK.fireball_lobe_amp), near = 0.1;
@@ -1441,6 +1505,10 @@ function renderHull(record, t) {
     const o = 64 * unitOf(elementHash(seq, 4)), lseed = 64 * unitOf(elementHash(seq, HH.burst_lobe_element));
     const fq = LK.fireball_octave_freq, w = LK.fireball_octave_w, cc = dot3(cv, cv), R2 = Rs * Rs;
     const col0 = dust ? HH.dust_colour : tint, share = dust ? 1 : mix;
+    // the fire material: the weight (none for smoke, dust or the eye inside), the size LOD, the core, the age
+    const inside = !(cv[2] - Rs > near), fire = !(smoke > 0) && fx && !inside ? fx.fire : 0;
+    const lod = fireLod(R * f / cv[2] * 1440 / OH, false), wpx = Math.max(0, Math.min(1, lod));
+    const gcore = fx && !(smoke > 0) ? fx.core : 0, tg = fx ? fx.tg : 0;
     for (let y = y0; y < y1; y++)
       for (let xx = x0; xx < x1; xx++) {
         const i = y * OW + xx, lane = depth[i];
@@ -1461,16 +1529,23 @@ function renderHull(record, t) {
         const gk = 0.5 / Math.max(adv, 1e-4), pp = (px * px + py * py) * gk * gk;
         const g0 = 0.5 * fq[0] / Math.sqrt(1 + pp * fq[0] * fq[0]), g1 = 0.5 * fq[1] / Math.sqrt(1 + pp * fq[1] * fq[1]),
               g2 = 0.5 * fq[2] / Math.sqrt(1 + pp * fq[2] * fq[2]);
+        // the fire law's radius: the view-plane disc's |p| (the chord's middle q leaves the plane where the lane cuts it)
+        const rp2 = px * px + py * py, rp = Math.sqrt(rp2), rf = fire !== 0 ? rp : rq;
+        const wt = Math.max(fire, 0) * wpx * fireSmooth(LK.fire_blend_0, LK.fire_blend_1, rp);
         let n = w[0] * valueNoise2(px * (fq[0] - g0) + o * 1.7, py * (fq[0] - g0) + o * 3.1) +
                 w[1] * valueNoise2(px * (fq[1] - g1) + o * 3.1 + 5.3, py * (fq[1] - g1) + o * 1.7 + 5.3), ws = w[0] + w[1];
-        if (fine > 0 && LK.fireball_octaves > 2) {
-          n += fine * w[2] * valueNoise2(px * (fq[2] - g2) + o * 0.7 + 11.1, py * (fq[2] - g2) + o * 2.3 + 11.1);
-          ws += fine * w[2];
+        if (fine > 0 && LK.fireball_octaves > 2 && wt < 1) {
+          n += fine * w[2] * (1 - wt) * valueNoise2(px * (fq[2] - g2) + o * 0.7 + 11.1, py * (fq[2] - g2) + o * 2.3 + 11.1);
+          ws += fine * w[2] * (1 - wt);
         }
         n /= ws;
+        const tf = fireTongues(n, px, py, rp, o, tg, wt, lod);
+        n = tf.n;
+        const colpow = Math.pow(Math.max(column, 1e-6), LK.fireball_column_pow);
         const thr = LK.fireball_erode_0 + LK.fireball_erode_t * x + LK.fireball_erode_r * rq2 * (1 + LK.fireball_erode_rt * x);
+        const fl = fire > 0 ? fireLaw(n, rp2, x, T, colpow, lobe, tf.flick, wpx) : null;
         const d = Math.max(0, Math.min(1, (n - thr) / LK.fireball_erode_soft));
-        const dens = d * Math.pow(Math.max(column, 1e-6), LK.fireball_column_pow) * lobe;
+        const dens = fl ? fl.dens : d * colpow * lobe;
         if (!(dens > 0)) continue;
         if (smoke > 0) {
           for (let k = 0; k < 3; k++) mul[i * 3 + k] *= Math.max(0, 1 - smoke * dens * dim * HH.scorch_colour[k]);
@@ -1479,9 +1554,11 @@ function renderHull(record, t) {
           continue;
         }
         const m = column * Math.max(0, Math.min(1, (n - thr) / LK.fireball_heat_soft));
-        const tt = T * (LK.fireball_rim_t + (1 - LK.fireball_rim_t) * m);
-        const colr = heatRamp(tt, h.ramp).map((v, j) => v + (col0[j] - v) * share);
-        add(i, colr, E * dens, EL.burst);
+        const tt = fl ? fl.T : T * (LK.fireball_rim_t + (1 - LK.fireball_rim_t) * m);
+        const gc = gcore * Math.max(0, Math.min(1, (0.5 - rf) / 0.2));
+        const colr = (fire !== 0 ? fireRamp(tt) : heatRamp(tt, h.ramp)).map((v, j) => v + (col0[j] - v) * share)
+          .map(v => v + (1 - v) * Math.min(1, gc));
+        add(i, colr, E * dens * (1 + gc), EL.burst);
       }
     return true;
   };
@@ -1604,7 +1681,7 @@ function renderHull(record, t) {
                                beamLit ? beamCore : [1, 1, 1])) stats.flashes++;
         const T = pf[5] * (1 - sp.fall / pf[3]), Rsp = pf[0] * rH * (1 - Math.exp(-age0 / (pf[7] * pf[3])));
         const advS = LK.fireball_advect * age0 / 1000;
-        if (T > 0 && puffAt(pv, rH, Rsp, T, pf[6], sp.fall / pf[3], advS, seq, 0, false, 0)) stats.bursts++;
+        if (T > 0 && puffAt(pv, rH, Rsp, T, pf[6], sp.fall / pf[3], advS, seq, 0, false, 0, {fire: fireOf(an), core: 0, tg: age0})) stats.bursts++;
         if (layers.glow && T > 0 && Rsp > 0) { // the boiling puff's light (the burst's glow law)
           const heat = heatRamp(T, h.ramp), m = beamLit ? heat.reduce((x, y) => x + y) / beamGlow.reduce((x, y) => x + y) : 1;
           glowAt(sp.p, HH.glow_r_x * Rsp, (beamLit ? beamGlow.map(v => v * m) : heat).map(v => v * HH.glow_e_x * pf[6] * T), EL.glow);
@@ -1693,7 +1770,7 @@ function renderHull(record, t) {
     if (layers.ring && rg[0] > 0 && a < ringLife) {
       const x = a / ringLife, rr = rg[0] * rH * (1 - Math.exp(-x / HH.ring_rise)), wd = rg[1] * rH;
       const ax = hit.axis, E = ax ? HH.ring_stretch : 1, kq = 1 - 1 / E;
-      const lead = heatRamp(HH.ring_lead_t, h.ramp), trailC = heatRamp(HH.ring_trail_t, h.ramp);
+      const lead = heatRamp(HH.ring_lead_t, h.ramp), trailC = fireRamp(HH.ring_trail_t); // the band on the fire ramp
       const e0 = rg[3] * HH.ring_t * (1 - x) * (1 - x), trail = trailC.map((v, j) => HH.ring_trail_gain * v / Math.max(lead[j], 1e-6));
       const seed = layers.ring_noise ? HH.ring_seed_scale * unitOf(elementHash(seq, HH.ring_seed_element)) : -1;
       const wash = layers.ring_wash ? HH.ring_wash_gain : 0;
@@ -1783,7 +1860,10 @@ function renderHull(record, t) {
     // unlit dust), scaled by the cluster; its smoke from smoke_t0 L_b over smoke_span L_b.
     if (Rb > 0 && a < puffLife && a > 0) {
       const mix = pf[9] > 0 && saturated ? pf[9] * (1 - xb) : 0;
-      if (puffAt(pv, rH, Rt, Tb, pf[6] * sb, xb, LK.fireball_advect * xb, seq, mix, an === AN.asteroid, 0)) stats.bursts++;
+      // the fire material's weight and the white-hot core (hull::class_fire, class_fire_core x (1 - x / fire_core_x)^2 x s(N)^2)
+      const gx = 1 - xb / HH.fire_core_x, gcore = xb < HH.fire_core_x ? HH.class_fire_core[an] * gx * gx * sb * sb : 0;
+      if (puffAt(pv, rH, Rt, Tb, pf[6] * sb, xb, LK.fireball_advect * xb, seq, mix, an === AN.asteroid, 0,
+                 {fire: fireOf(an), core: gcore, tg: a})) stats.bursts++;
     }
     const ysm = (a - HH.smoke_t0 * puffLife) / (HH.smoke_span * puffLife);
     if (Rb > 0 && smokeOf(an, ysm) > 0 &&
@@ -2556,6 +2636,10 @@ function renderBoom(record, t) {
     const th = hs ? hs.th : 2 * Math.PI * unitOf(elementHash(seq, HH.burst_rot_element)), cs = Math.cos(th), sn = Math.sin(th);
     const o = hs ? hs.o : 64 * unitOf(elementHash(seq, 4)), lseed = hs ? hs.lseed : 64 * unitOf(elementHash(seq, HH.burst_lobe_element));
     const fq = LK.fireball_octave_freq, w = LK.fireball_octave_w, cc = dot3(cv, cv), R2 = Rs * Rs;
+    // the fire material (fire-material.md 3: every death body; none for the smoke, the composed union or the eye inside)
+    const inside = !(cv[2] - Rs > near) || (opt && opt.box);
+    const fire = smoke > 0 || inside || (opt && opt.sink) || fireToday() ? 0 : (LK.fire_enabled ? 1 : -1);
+    const lod = fireLod(Rl * f / cv[2] / scale, true), wpx = Math.max(0, Math.min(1, lod)), tgf = opt && opt.tg ? opt.tg : 0;
     for (let y = y0; y < y1; y++)
       for (let xp = x0; xp < x1; xp++) {
         const i = y * OW + xp, dp = depth[i];
@@ -2575,16 +2659,22 @@ function renderBoom(record, t) {
         const gk = 0.5 / Math.max(adv, 1e-4), pp = (px * px + py * py) * gk * gk;
         const g0 = 0.5 * fq[0] / Math.sqrt(1 + pp * fq[0] * fq[0]), g1 = 0.5 * fq[1] / Math.sqrt(1 + pp * fq[1] * fq[1]),
               g2 = 0.5 * fq[2] / Math.sqrt(1 + pp * fq[2] * fq[2]);
+        const rp2 = px * px + py * py, rp = Math.sqrt(rp2), rf = fire !== 0 ? rp : rq; // the fire law's radius |p|
+        const wt = Math.max(fire, 0) * wpx * fireSmooth(LK.fire_blend_0, LK.fire_blend_1, rp);
         let n = w[0] * valueNoise2(px * (fq[0] - g0) + o * 1.7, py * (fq[0] - g0) + o * 3.1) +
                 w[1] * valueNoise2(px * (fq[1] - g1) + o * 3.1 + 5.3, py * (fq[1] - g1) + o * 1.7 + 5.3), ws = w[0] + w[1];
-        if (fine > 0) { n += fine * w[2] * valueNoise2(px * (fq[2] - g2) + o * 0.7 + 11.1, py * (fq[2] - g2) + o * 2.3 + 11.1); ws += fine * w[2]; }
+        if (fine > 0 && wt < 1) { n += fine * w[2] * (1 - wt) * valueNoise2(px * (fq[2] - g2) + o * 0.7 + 11.1, py * (fq[2] - g2) + o * 2.3 + 11.1); ws += fine * w[2] * (1 - wt); }
         if (fine >= 1 && fine4 > 0) {
           const f4 = LK.fireball_octave_freq4, g4 = 0.5 * f4 / Math.sqrt(1 + pp * f4 * f4), w4 = fine4 * LK.fireball_octave_w4;
           n += w4 * valueNoise2(px * (f4 - g4) + o * 2.9 + 17.7, py * (f4 - g4) + o * 0.4 + 17.7); ws += w4;
         }
         n /= ws;
+        const tf = fireTongues(n, px, py, rp, o, tgf, wt, lod);
+        n = tf.n;
+        const colpow = Math.pow(Math.max(column, 1e-6), LK.fireball_column_pow);
         const thr = LK.fireball_erode_0 + LK.fireball_erode_t * xx + LK.fireball_erode_r * rq2 * (1 + LK.fireball_erode_rt * xx);
-        const dens = Math.max(0, Math.min(1, (n - thr) / LK.fireball_erode_soft)) * Math.pow(Math.max(column, 1e-6), LK.fireball_column_pow) * lobe;
+        const fl = fire > 0 ? fireLaw(n, rp2, xx, Tt, colpow, lobe, tf.flick, wpx) : null;
+        const dens = fl ? fl.dens : Math.max(0, Math.min(1, (n - thr) / LK.fireball_erode_soft)) * colpow * lobe;
         if (!(dens > 0)) continue;
         if (smoke > 0) {
           for (let k = 0; k < 3; k++) mul[i * 3 + k] *= Math.max(0, 1 - smoke * dens * HH.scorch_colour[k]);
@@ -2593,13 +2683,13 @@ function renderBoom(record, t) {
         }
         const m = column * Math.max(0, Math.min(1, (n - thr) / LK.fireball_heat_soft));
         // the white-hot core (boom::core_*): radiance x (1 + g), whitened by min(1, g), inside 0.3 R falling to 0 at 0.5
-        const gc = core * Math.max(0, Math.min(1, (0.5 - rq) / 0.2)), Tm = Tt * (LK.fireball_rim_t + (1 - LK.fireball_rim_t) * m);
+        const gc = core * Math.max(0, Math.min(1, (0.5 - rf) / 0.2)), Tm = fl ? fl.T : Tt * (LK.fireball_rim_t + (1 - LK.fireball_rim_t) * m);
         if (opt && opt.sink) { // the union (13.2): the densest plus a soft share of the others, the density-weighted heat and core
           const s = opt.sink;
           s.dmax[i] = Math.max(s.dmax[i], Math.min(1, dens)); s.w[i] += dens; s.T[i] += dens * Tm; s.g[i] += dens * gc;
           continue;
         }
-        const hcol = heatRamp(Tm);
+        const hcol = fire !== 0 ? fireRamp(Tm) : heatRamp(Tm);
         add(i, hcol.map(v => v + (1 - v) * Math.min(1, gc)), E * dens * (1 + gc), el);
       }
     return true;
@@ -2697,9 +2787,9 @@ function renderBoom(record, t) {
     const vn2p = (x, y, cells) => { const ix = Math.floor(x), iy = Math.floor(y), fx = x - ix, fy = y - iy, i0 = ix - cells * Math.floor(ix / cells), i1 = i0 + 1 > cells - 0.5 ? 0 : i0 + 1;
       const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy), a0 = hash2(i0, iy), b0 = hash2(i1, iy), c0 = hash2(i0, iy + 1), d0 = hash2(i1, iy + 1);
       return (a0 + (b0 - a0) * ux) * (1 - uy) + (c0 + (d0 - c0) * ux) * uy; };
-    const NC = BM.wave_noise_cells, NR = BM.wave_noise_radial, NW = BM.wave_noise_w;
-    // the radial cells grow with the front as sqrt(r) (square at wave_noise_r_ref R_f; the angular ones as r)
-    const radScale = Math.sqrt(BM.wave_noise_r_ref * R_f / Math.max(r, 1e-3 * R_f));
+    // the fire material's tongues (fire-material.md 3; weapon_wave_ps.hlsl): fire_wave_cells about the circumference, a
+    // radial cell fire_wave_aspect x the arc at r long (sl w_e), streaming back at 1 cell / fire_flow_ms of game time
+    const WC = BM.fire_wave_cells, sl = BM.fire_wave_aspect * 2 * Math.PI * r / (WC * we), wo2 = LK.fire_oct2_w;
     const nd0 = dot3(n, cv), win0 = BM.wave_window_in, win1 = BM.wave_window_out, tongueAmp = BM.wave_tongue * BM.wave_trail_span;
     const da0 = dot3(a, cv) * s, db0 = dot3(b, cv);
     for (let y = 0; y < OH; y++) for (let xp = 0; xp < OW; xp++) {
@@ -2736,27 +2826,26 @@ function renderBoom(record, t) {
           const integral = Math.abs(nd) > 1e-7 ? (zhi - zlo) - (yb ** 3 - ya ** 3) / (3 * hh * hh * nd) : (zhi - zlo) * (1 - ya * ya / (hh * hh));
           const column = sat(integral * l / (1.3333333 * hh));
           const m = BM.wave_m_floor + (1 - BM.wave_m_floor) * sat(0.5 + BM.wave_m_contrast * (nn - BM.wave_m_bias));
-          // the material on (the angle, s): three octaves periodic about the circumference (the sheet's third shed with
-          // the budget's step 0a, never in the lab), the body's erosion with rq = s / s_end and the age, the lobes
-          const sb = -zz / BM.wave_trail_span, sp = Math.max(sb, 0), rq = sp / sEnd, yv = (sp - BM.wave_advect * xw) * radScale;
-          let nz = NW[0] * vn2p(uu * NC[0] + 1.7 * s1, yv * NR[0] + 3.1 * s2, NC[0]) +
-                   NW[1] * vn2p(uu * NC[1] + 3.1 * s1 + 5.3, yv * NR[1] + 1.7 * s2 + 5.3, NC[1]) +
-                   NW[2] * vn2p(uu * NC[2] + 0.7 * s1 + 10.6, yv * NR[2] + 2.3 * s2 + 10.6, NC[2]);
-          nz /= NW[0] + NW[1] + NW[2];
-          const thr = BM.wave_erode_0 + BM.wave_erode_t * xw + BM.wave_erode_r * rq * rq * (1 + BM.wave_erode_rt * xw);
-          const d = sat((nz - thr) / BM.wave_erode_soft), mh = sat((nz - thr) / BM.wave_heat_soft);
-          const rho = (1 + BM.wave_lobe_amp * (2 * nn - 1)) / (1 + BM.wave_lobe_amp), lobe = sat((rho - rq) / BM.wave_lobe_soft);
-          const flo = BM.wave_floor_a * (1 - sstep(1, sEnd, sb));
+          // the tongues on (the angle, s): sw w_e behind the shifted front, the warp (two taps periodic in the angle), the
+          // shear growing behind the front, two periodic octaves; the threshold rising from fire_wave_thr_0 at the front to
+          // fire_wave_thr_end at the sheet's end (tongues trailing from the edge, tips to the rear)
+          const sb = -zz / BM.wave_trail_span, sp = Math.max(sb, 0), sw = Math.max(-zz, 0), ss = sw / BM.wave_sheet_span;
+          const aw = uu * WC / 4, wa = LK.fire_warp_amp * (2 * valueNoise2Periodic(aw + 1.7 * s1, sw / sl * 0.5 + 3.1 * s2, WC / 4) - 1);
+          const wb = LK.fire_warp_amp * (2 * valueNoise2Periodic(aw + 3.1 * s1 + 5.3, sw / sl * 0.5 + 1.7 * s2 + 5.3, WC / 4) - 1);
+          const at = uu * WC + LK.fire_shear * Math.min(ss, 1) * wb + 1.3 * s1, st = sw / sl - tb / LK.fire_flow_ms + wa + 0.7 * s2;
+          const nz = (1 - wo2) * valueNoise2Periodic(at, st, WC) + wo2 * valueNoise2Periodic(2 * at + 0.5, 2 * st + 3.7, 2 * WC); // the sheet's second octave: the budget's step 0a, never shed in the lab
+          const thr = BM.fire_wave_thr_0 + (BM.fire_wave_thr_end - BM.fire_wave_thr_0) * Math.min(ss, 1);
+          const d = sat((nz - thr) / LK.fire_soft), mh = sat((nz - thr) / LK.fire_heat_soft);
           // ahead of the shifted front the material falls off as the rim does (a broken rim's edge is the material's)
           const ahead = zz > 0 ? Math.exp(-(zz * zz) / (BM.wave_ahead * BM.wave_ahead)) : 1;
-          const dens = Math.max(flo, d * lobe) * (1 - sstep(0.7, sEnd, sb)) * ahead * (BM.wave_break_floor + (1 - BM.wave_break_floor) * m);
+          const dens = BM.fire_wave_gain * (d > 1e-6 ? Math.pow(d, LK.fire_gain) : 0) * (1 - sstep(0.7, sEnd, sb)) * ahead *
+                       (BM.wave_break_floor + (1 - BM.wave_break_floor) * m);
           const rim = rimProfile(zz, sb) * m * (1 - BM.wave_rim_noise + BM.wave_rim_noise * d);
-          const tm = BM.wave_floor_t + (tProfile(sp) - BM.wave_floor_t) * mh, tot = rim + dens;
+          const tm = tProfile(sp) * (LK.fire_rim_t + (1 - LK.fire_rim_t) * Math.pow(mh, 0.75)), tot = rim + dens;
           const inten = Math.min(tot, 1);
-          // the intensity-weighted T of rim and material, cooled towards the floor's T where the wave is dim (a dim
-          // yellow-white reads grey or olive, never fire)
+          // the intensity-weighted T of rim and material, cooled towards the floor's T where the wave is dim
           const T = BM.wave_floor_t + ((BM.wave_t_edge * rim + tm * dens) / Math.max(tot, 1e-4) - BM.wave_floor_t) * Math.sqrt(inten);
-          const hc = heatRamp(T * Tw);
+          const hc = fireRamp(T * Tw);
           col = [0, 1, 2].map(k => inten * hc[k] * column);
           e = 1;
         }
@@ -2767,7 +2856,7 @@ function renderBoom(record, t) {
         if (Math.abs(yy) < 1 && zz > -win0 && zz < win1) {
           const sb = -zz / BM.wave_trail_span;
           const ri = rimProfile(zz, sb), fl = sb >= 0 ? BM.wave_floor_a * (1 - sstep(0.7, sEnd, sb)) : 0, inten = Math.min(1, ri + fl);
-          const hc = heatRamp((BM.wave_t_edge * ri + tProfile(Math.max(sb, 0)) * fl) / Math.max(ri + fl, 1e-4) * Tw);
+          const hc = fireRamp((BM.wave_t_edge * ri + tProfile(Math.max(sb, 0)) * fl) / Math.max(ri + fl, 1e-4) * Tw);
           col = col.map((v, k) => v + BM.wave_light * (1 - yy * yy) * inten * hc[k]);
           e = 1;
         }
@@ -2948,7 +3037,7 @@ function renderBoom(record, t) {
         const hs = {th: 2 * Math.PI * unitOf(hrot), lseed: 64 * unitOf(mix32(hrot)), o: 64 * unitOf(elementHash(seq, BM.secondary_element + 4 * kk + 3))};
         if (Rn > 0 && Tn > 0) {
           const g = xn < BM.core_x ? BM.core_gain * (1 - xn / BM.core_x) ** 2 : 0;
-          if (body(biased(sc, Rn), Rn, Tn, BM.body_e, xn, LK.fireball_advect * xn, seq, 0, g, hs, 'secondary')) stats.secondaries++;
+          if (body(biased(sc, Rn), Rn, Tn, BM.body_e, xn, LK.fireball_advect * xn, seq, 0, g, hs, 'secondary', {tg: a})) stats.secondaries++;
           glow(sc, Math.min(BM.glow_r_x * Rn, BM.glow_r_max * Rs), heatRamp(Tn), BM.glow_e * BM.body_e * Tn * sg, 'secondary');
         }
         const slife = Math.max(BM.star_ms, floorMs);
@@ -2959,7 +3048,7 @@ function renderBoom(record, t) {
     if (tb < 0) return;
     // the core (section 14: 5 (1 - x / core_x)^2; a big tier's eased in over core_ramp_ms over its secondaries)
     const gcore = (x < BM.core_x ? BM.core_gain * (1 - x / BM.core_x) ** 2 : 0) * (nSec && tb < BM.core_ramp_ms ? tb / BM.core_ramp_ms : 1);
-    if (live && layers.burst && (c.single || !BM.compose_enabled ? body(biased(cv, R), R, T, BM.body_e * sb, x, LK.fireball_advect * x, seq, 0, gcore)
+    if (live && layers.burst && (c.single || !BM.compose_enabled ? body(biased(cv, R), R, T, BM.body_e * sb, x, LK.fireball_advect * x, seq, 0, gcore, null, 'body', {tg: tb})
                                            : composedBody(biased(cv, R), R, seq, BM.body_e * sb, x))) stats.bodies++;
     if (c.wave && (BM.wave_tiers & (1 << c.tier)) && layers.ring) fireWave(cv, seq);
     // the star: arms star_arm R_f (capped at star_cap_h of the rows), core star_core R_f, star_ms with the floor
@@ -3743,6 +3832,21 @@ function draw() {
       const rec = makeRecord(SLOTS.find(s => s.key === 'impact'));
       renderOurs(rec, state.t);
       if (state.tab === 'shield' && layers.native) drawNative(rec, state.t);
+      // the fire material's pair view (fire-material.md 5): t, t + 16 ms, t + 100 ms, the centre third of each
+      if ((state.tab === 'hull' || state.tab === 'boom') && $('c_fire_pair') && $('c_fire_pair').checked && rec.ctx) {
+        const cv = rec.ctx.canvas, W = cv.width, H = cv.height, w3 = Math.floor(W / 3), shots = [];
+        for (const dt of [0, 16, 100]) {
+          if (dt) renderOurs(makeRecord(SLOTS.find(s => s.key === 'impact')), state.t + dt);
+          const tmp = document.createElement('canvas');
+          tmp.width = w3; tmp.height = H;
+          tmp.getContext('2d').drawImage(cv, Math.floor((W - w3) / 2), 0, w3, H, 0, 0, w3, H);
+          shots.push(tmp);
+        }
+        const ctx = cv.getContext('2d');
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+        shots.forEach((sh, k) => { ctx.drawImage(sh, k * w3, 0); ctx.fillStyle = '#aaa'; ctx.fillText(['t', '+16 ms', '+100 ms'][k], k * w3 + 6, 14); });
+      }
       setText('caption', rec.caption || '');
       setText('caption_detail', rec.detail || '');
     }
@@ -3819,6 +3923,7 @@ function init() {
   $('tier').onchange = e => { state.tier = +e.target.value; fillRows(); updateInfo(); state.dirty = true; };
   $('drow').onchange = e => { state.drow = +e.target.value; updateInfo(); state.dirty = true; };
   $('play').onclick = () => { state.playing = !state.playing; $('play').textContent = state.playing ? 'Pause' : 'Play'; };
+  for (const id of ['c_fire_material', 'c_fire_pair']) if ($(id)) $(id).onchange = () => { state.dirty = true; };
   $('scrub').oninput = e => { state.t = +e.target.value; state.playing = false; $('play').textContent = 'Play'; state.dirty = true; };
   $('speed').onchange = e => { state.speed = +e.target.value; };
   $('reseed').onclick = () => { state.seed++; state.dirty = true; };

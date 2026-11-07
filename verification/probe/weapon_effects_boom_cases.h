@@ -515,8 +515,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         if (r >= 0.7 && r <= 1.0) rc[q] += px[q];
                     }
                 }
-            core_t.push_back(classes::burst::nearest_stop(cc));
-            rim_t.push_back(classes::burst::nearest_stop(rc));
+            // the body's ramp: the fire ramp (fire-material.md 2.3)
+            core_t.push_back(classes::burst::nearest_fire_stop(cc));
+            rim_t.push_back(classes::burst::nearest_fire_stop(rc));
         }
         std::printf("EXPLOSION case=body tier=fighter_600m dark_share=%.4f hp_std=%.4f lobe_max_over_min=%.3f lit_01=%.3f "
                     "lit_05=%.3f lit_09=%.3f lit_10=%.3f core_T=%.2f rim_T=%.2f\n",
@@ -530,6 +531,88 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                                    boom::median(lit[1]) <= 0.75 && boom::median(lit[2]) <= 0.20 &&
                                                    boom::median(lit[3]) == 0.0, "");
         report("death_body_colour_core_rim", boom::median(core_t) >= 0.75 && boom::median(rim_t) <= 0.5, "");
+        // ---- 4c. The fire material (docs/architecture/fire-material.md section 6) on the death body, the core on: the fighter
+        // at 200 m (its body past the tongues' size LOD, fire_px_1 at 1440 rows; at 600 m a 1080p fighter is the small size's
+        // material) and the capital at 3 km broadside, 8 seeds each, the median: at 0.3 L the thin luminance, the gaps, the
+        // radial over tangential high-pass energy, the licks and the seam at the wrap; the fire ramp's classes at 0.2 L; the
+        // core's bloom at 0.1 L.
+        {
+            boom::core_on = true;
+            struct Case {
+                unsigned tier;
+                double z, r;
+                const char* name;
+            } cases[2] = {{bm::fighter, 200.0, 14.0, "fighter_200m"}, {bm::capital, 3000.0, 1288.0, "capital_3km"}};
+            bool ok[7] = {true, true, true, true, true, true, true};
+            for (const Case& cs : cases) {
+                const float L = bm::tier_life_ms[cs.tier], P = bm::tier_preroll_ms[cs.tier];
+                std::vector<double> thin, gaps, aniso, licks, seam, hot, hot_r, cold, cold_r, mid, core10, out10;
+                for (unsigned j = 0; j < 8; ++j) {
+                    boom::clear();
+                    wc::Event* e = boom::add(cs.tier, 1000, 0.0, 0.0, cs.z, cs.r, 0x6d000u + 977u * (j + 1));
+                    if (cs.tier == bm::capital) {
+                        e->table = 7;
+                        boom::broadside(e);
+                    }
+                    latch(g);
+                    const float R_f = ws::boom_r_f_m(*e) * m;
+                    const float R0 = bm::tier_r0_obj[cs.tier] * float(e->radius) * wc::world_scale + bm::tier_r0_f[cs.tier] * R_f;
+                    auto body_at = [&](float frac, classes::burst::Disc* d, double* th) {
+                        const Out o = at(g, P + frac * L, boom::p_body);
+                        float c[3];
+                        boom::body_centre(o, c);
+                        *d = boom::disc(g, boom::view(g, 0, 16), c, ws::boom_body_radius(cs.tier, R_f, R0, frac * L));
+                        if (th) *th = o.bodies ? double(boom::bodies[0].disc[0]) : 0.0;
+                        return o.bodies ? boom::render(pass, g, o, boom::view(g, 0, 16)) : std::vector<float>(std::size_t(g.w) * g.h * 3, 0.f);
+                    };
+                    classes::burst::Disc d;
+                    double th = 0;
+                    const std::vector<float> rgb3 = body_at(0.3f, &d, &th);
+                    const classes::burst::Fire f3 = classes::burst::fire_of(rgb3, d, g.w, g.h);
+                    const double sm = classes::burst::seam_of(rgb3, g.w, g.h, d.x, d.y, -std::cos(th), -std::sin(th), 0.3 * d.R, 0.9 * d.R);
+                    const std::vector<float> rgb2 = body_at(0.2f, &d, nullptr);
+                    const classes::burst::Fire f2 = classes::burst::fire_of(rgb2, d, g.w, g.h);
+                    const std::vector<float> rgb1 = body_at(0.1f, &d, nullptr);
+                    const classes::burst::Fire f1 = classes::burst::fire_of(rgb1, d, g.w, g.h);
+                    std::printf("EXPLOSION case=fire_body tier=%s seed=%u R_px=%.1f thin=%.4f gaps=%.4f aniso=%.3f licks=%.3f "
+                                "seam=%.4f hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core10=%.3f out10=%.3f\n",
+                                cs.name, j, d.R, f3.thin, f3.gaps, f3.aniso, f3.licks, sm, f2.hot, f2.hot_r, f2.cold, f2.cold_r,
+                                f2.mid, f1.core_peak, f1.out_peak);
+                    thin.push_back(f3.thin);
+                    gaps.push_back(f3.gaps);
+                    aniso.push_back(f3.aniso);
+                    licks.push_back(f3.licks);
+                    seam.push_back(sm);
+                    hot.push_back(f2.hot);
+                    hot_r.push_back(f2.hot_r);
+                    cold.push_back(f2.cold);
+                    cold_r.push_back(f2.cold_r);
+                    mid.push_back(f2.mid);
+                    core10.push_back(f1.core_peak);
+                    out10.push_back(f1.out_peak);
+                }
+                const double seam_max = *std::max_element(seam.begin(), seam.end());
+                std::printf("EXPLOSION case=fire_body_median tier=%s thin=%.4f gaps=%.4f aniso=%.3f licks=%.3f seam_max=%.4f "
+                            "hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core10=%.3f out10=%.3f\n",
+                            cs.name, boom::median(thin), boom::median(gaps), boom::median(aniso), boom::median(licks), seam_max,
+                            boom::median(hot), boom::median(hot_r), boom::median(cold), boom::median(cold_r), boom::median(mid),
+                            boom::median(core10), boom::median(out10));
+                ok[0] = ok[0] && boom::median(thin) >= 0.10 && boom::median(thin) <= 0.35 && boom::median(gaps) >= 0.35;
+                ok[1] = ok[1] && boom::median(aniso) <= 0.75;
+                ok[2] = ok[2] && boom::median(licks) >= 2.0;
+                ok[3] = ok[3] && boom::median(hot) >= 0.25 && boom::median(hot_r) <= 0.5 && boom::median(cold) >= 0.05 &&
+                        boom::median(cold) <= 0.25 && boom::median(cold_r) >= 0.65 && boom::median(mid) <= 0.5;
+                ok[4] = ok[4] && boom::median(core10) >= 3.0 && boom::median(out10) <= 1.5;
+                ok[5] = ok[5] && seam_max <= 0.1;
+            }
+            report("fire_luminance_thin_death", ok[0], "");
+            report("fire_tongues_radial_death", ok[1], "");
+            report("fire_edge_licks_death", ok[2], "");
+            report("fire_colour_ramp_death", ok[3], "");
+            report("fire_core_bloom_death", ok[4], "");
+            report("fire_no_seam_death", ok[5], "");
+            boom::core_on = false;
+        }
         // 4a. death_body_no_centre_ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"): the burst
         // gate's measure (classes::burst::ring_of about the drawn sphere's centre and R_s) on the same 16 fighter bodies at
         // 0.5 / 0.6 / 0.7 L: every body's prominence <= 0.15, the pooled annulus 0.3-0.45 R_s lit share <= 1.3 x its
@@ -1142,7 +1225,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 double s[3] = {};
                 for (std::size_t i = 0; i < rgb.size() / 3; ++i)
                     for (unsigned q = 0; q < 3; ++q) s[q] += rgb[3 * i + q];
-                Ts[k].push_back(s[0] + s[1] + s[2] > 0 ? classes::burst::nearest_stop(s) : 0.0);
+                Ts[k].push_back(s[0] + s[1] + s[2] > 0 ? classes::burst::nearest_fire_stop(s) : 0.0); // the body's ramp
             }
         }
         for (unsigned k = 0; k < 3; ++k) T[k] = boom::median(Ts[k]);
@@ -2449,6 +2532,64 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             "min_bin_peak=%.3f arc_max_over_min=%.2f arc_cv=%.3f\n",
                             share, lit30 / 64.0, lit50 / 64.0, ratio, mn / double(pk), arc_ratio, arc_cv);
                 report("wave_broken_circumference", arc_ratio >= 2.0 && arc_cv >= 0.25 && mn >= 0.05 * double(pk), "");
+                // wave_not_a_tyre (fire-material.md section 6): the band 0.5 .. wave_trail_span w_e behind each lit bin's
+                // edge: its mean luma over the edge's peak <= 0.35, its share under 0.25 of the peak >= 0.40, the polar
+                // high-pass (box w_e) gradient energy radial over tangential <= 0.75, the desaturated mid-tones (min / max
+                // >= 0.6 at luma < 0.5 peak) <= 0.10 of its lit pixels; fire_no_seam_wave: the band's mean 1 .. 3 px either
+                // side of the angle's wrap (the in-plane direction -a) within 0.1 of the peak
+                {
+                    const int box = std::max(1, int(w_px + 0.5));
+                    std::vector<double> lv(l.begin(), l.end());
+                    const std::vector<double> lo = classes::burst::box_mean(lv, int(tt.w), int(tt.h), box);
+                    double sum = 0, n_band = 0, dark = 0, n_lit = 0, grey = 0, er = 0, et = 0;
+                    for (unsigned y = 1; y + 1 < tt.h; ++y)
+                        for (unsigned x = 1; x + 1 < tt.w; ++x) {
+                            const std::size_t i = std::size_t(y) * tt.w + x;
+                            const double dx = (double(x) + 0.5 - cx) / double(bm::wave_stretch), dy = double(y) + 0.5 - cy;
+                            const unsigned bin = std::min(63u, unsigned((std::atan2(dy, dx) + 3.14159265) / 6.2831853 * 64.0));
+                            if (!(bins[bin] >= 0.1 * pk)) continue;
+                            const double z = (std::hypot(dx, dy) - bin_r[bin]) / w_px;
+                            if (!(z <= -0.5 && z > -double(bm::wave_trail_span))) continue;
+                            ++n_band;
+                            sum += l[i];
+                            dark += l[i] < 0.25f * pk;
+                            if (l[i] > 0.1f * pk) {
+                                ++n_lit;
+                                const float* c = &rgb[3 * i];
+                                const float mx = std::max(c[0], std::max(c[1], c[2])), mn = std::min(c[0], std::min(c[1], c[2]));
+                                grey += l[i] < 0.5f * pk && mx > 0.f && mn >= 0.6f * mx;
+                            }
+                            const double gx = 0.5 * ((lv[i + 1] - lo[i + 1]) - (lv[i - 1] - lo[i - 1]));
+                            const double gy = 0.5 * ((lv[i + tt.w] - lo[i + tt.w]) - (lv[i - tt.w] - lo[i - tt.w]));
+                            const double sx = double(x) + 0.5 - cx, sy = dy, rr = std::hypot(sx, sy);
+                            if (!(rr > 0.5)) continue;
+                            const double ux = sx / rr, uy = sy / rr, gr = gx * ux + gy * uy, gt = -gx * uy + gy * ux;
+                            er += gr * gr;
+                            et += gt * gt;
+                        }
+                    const double mean_b = n_band > 0 ? sum / n_band / double(pk) : 1.0, dark_b = n_band > 0 ? dark / n_band : 0.0;
+                    const double grey_b = n_lit > 0 ? grey / n_lit : 1.0, aniso_b = et > 0 ? er / et : 1e9;
+                    // the wrap: -a on screen (view y up, the screen's down), r over the band at the median edge's radius
+                    const float* av = boom::waves[0].tint;
+                    double ux = -double(av[0]), uy = double(av[1]);
+                    const double un = std::hypot(ux, uy);
+                    double seam = 1.0;
+                    if (un > 1e-6) {
+                        ux /= un;
+                        uy /= un;
+                        std::vector<double> er_;
+                        for (unsigned b = 0; b < 64; ++b)
+                            if (bins[b] >= 0.1 * pk) er_.push_back(bin_r[b]);
+                        const double k = std::hypot(ux * double(bm::wave_stretch), uy), r_e = boom::median(er_) * k;
+                        seam = classes::burst::seam_of(rgb, tt.w, tt.h, cx, cy, ux, uy, r_e - double(bm::wave_trail_span) * w_px * k,
+                                                       r_e - 0.5 * w_px * k);
+                    }
+                    std::printf("EXPLOSION case=wave_not_a_tyre band_px=%.0f mean_over_edge=%.3f dark_share=%.3f aniso=%.3f "
+                                "grey_share=%.3f seam=%.4f\n",
+                                n_band, mean_b, dark_b, aniso_b, grey_b, seam);
+                    report("wave_not_a_tyre", n_band > 0 && mean_b <= 0.35 && dark_b >= 0.40 && aniso_b <= 0.75 && grey_b <= 0.10, "");
+                    report("fire_no_seam_wave", seam <= 0.1, "");
+                }
                 // review 2026-11-07: the break follows the record's seeds: another sequence's 64-bin peaks correlate < 0.5
                 {
                     boom::clear();
@@ -2642,7 +2783,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     for (std::size_t i = 0; i < lk.size(); ++i)
                         if (lk[i] > 0.1f * pkk)
                             for (unsigned q = 0; q < 3; ++q) s[q] += ck[3 * i + q];
-                    hue[k] = classes::burst::nearest_stop(s);
+                    hue[k] = classes::burst::nearest_fire_stop(s); // v8: the wave on the fire ramp
                     ramp_stats(ck, lk, pkk, &pch[k + 1], &pon[k + 1]);
                     const double smx = std::max(s[0], std::max(s[1], s[2])), smn = std::min(s[0], std::min(s[1], s[2]));
                     chroma[k] = smx > 0 ? (smx - smn) / smx : 0;

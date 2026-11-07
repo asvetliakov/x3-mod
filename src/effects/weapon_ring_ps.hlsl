@@ -12,6 +12,11 @@
 // saturate((r - d') / w) 2^(-max(r - d', 0) light.w) inside the front only (shape.w 0: none; light.w = log2(e) /
 // (ring_wash_fall r), the exponent clamped so a newborn ring's tiny r never makes 0 x inf). The colour carries the edge's
 // heat, the radiance and the (1 - t / L)^2 fade; only the wash outside -span < z < c7.x. Alpha 0 under ONE/ONE.
+// The fire material (docs/architecture/fire-material.md section 3): the trailing band x the tongue factor saturate((n -
+// ring_fire_thr) / fire_soft)^fire_gain, n one octave of value noise of the owner-frame direction x ring_fire_cells / 2 pi
+// (that many cells about the hit, no seam: a direction has no wrap) offset by (-z) / ring_fire_z along the third axis
+// (tongues ring_fire_z w long behind the edge, riding the front) and the record's seed; the band's colour (c4) on the fire
+// ramp; the leading edge unchanged.
 // Constants: renderer/weapon_effects_pass.cpp.
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);   // m00, m11, m20, m21
@@ -19,7 +24,9 @@ float4 screen : register(c3); // 2 / W, 2 / H, unused x2
 float4 trail : register(c4);  // the trailing band's colour over the leading edge's (x ring_trail_gain), 1 / its span (w)
 float4 front : register(c5);  // noise frequency, contrast, depth, the band's span (w)
 float4 seeds : register(c6);  // the seed's axis (hull::ring_seed_axis), the noise's window (ring_noise_window, w)
-float4 windows : register(c7); // the front's window (ring_front_window, w), unused x3
+float4 windows : register(c7); // the front's window (ring_front_window, w), ring_fire_cells / 2 pi, 1 / ring_fire_z,
+                               // ring_fire_thr
+float4 fire : register(c8);    // 1 / fire_soft, fire_gain, unused x2
 // The filament's value noise (weapon_filament_ps.hlsl; the lab's valueNoise).
 float hash3(float3 p) {
     p = frac(p * 0.1031);
@@ -57,7 +64,13 @@ float4 main(float2 vpos : VPOS, float4 light : TEXCOORD0, float4 colour : TEXCOO
                 float n = value_noise(q * (front.x / max(dl, 1e-6)) + shape.z * seeds.xyz);
                 m = 1.0 - front.z + front.z * saturate(0.5 + front.y * (n - 0.5));
             }
-            e += m * (exp2(-1.442695 * x * x) + (4.0 * b * (1.0 - b)) * trail.rgb);
+            // the band's tongues (none without a seed)
+            float tongue = 1.0;
+            [branch] if (shape.z >= 0.0 && b > 0.0) {
+                float n = value_noise(q * (windows.y / max(dl, 1e-6)) + float3(0.0, 0.0, -x * windows.z) + shape.z * seeds.zxy + 7.1);
+                tongue = pow(max(saturate((n - windows.w) * fire.x), 1e-6), fire.y);
+            }
+            e += m * (exp2(-1.442695 * x * x) + (4.0 * b * (1.0 - b) * tongue) * trail.rgb);
         }
         c = colour.rgb * e;
     }

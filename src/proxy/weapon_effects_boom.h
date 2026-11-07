@@ -101,11 +101,15 @@ struct BoomState {
     unsigned compose_next = 0;
     bool octaves_coarse = false; // the budget's step (1) with its hysteresis
     std::uint8_t coarse_frames = 0;
+    bool fire_coarse = false; // the budget's tongue step (0c) with the same hysteresis (fire-material.md section 7)
+    std::uint8_t fire_frames = 0;
 };
 inline void boom_clear(BoomState& s) noexcept {
     for (auto& v : s.slots) v = BoomSlot{};
     s.octaves_coarse = false;
     s.coarse_frames = 0;
+    s.fire_coarse = false;
+    s.fire_frames = 0;
     for (auto& c : s.compose) c = ComposeCache{};
     for (auto& k : s.compose_key) k = 0;
     s.compose_next = 0;
@@ -121,7 +125,7 @@ struct BoomTuning {
     // Section 13: the fire wave (capital, station), its refraction request, and the composed body (off: the single
     // sphere, the lab's "single body" toggle); force_shared / force_n: the fixture's compose rows (0: the law's).
     bool wave = true, wave_shimmer = true, compose = true, force_shared = false;
-    bool wave_octave2 = true; // the sheet's third octave (v7; the fixture's one-octave weight row: false)
+    bool wave_octave2 = true; // the sheet's second tongue octave (v8; the fixture's one-octave weight row: false)
     unsigned force_n = 0, force_jets = 0xffu;
     float box_scale = 1.f; // the fixture's compose_box_holds_spheres: the composed body's box grown
     float budget_screens = core::boom::budget_screens; // the family's own cap (the fixture's hysteresis gate lifts it)
@@ -138,6 +142,7 @@ struct BoomCounts {
     unsigned rays = 0, spikes = 0, embers_on_screen = 0, sparks_shed = 0, rays_shed = 0, spark_halvings = 0, ray_halvings = 0;
     unsigned out_of_reach = 0, capped = 0, floored = 0, shed = 0, smokes_shed = 0, shocks_shed = 0, glows_shed = 0;
     unsigned octaves = core::look::fireball_octaves; // 2: the budget's step (1) this frame
+    unsigned fire_shed = 0; // the bodies whose tongues the budget's step (0c) took this frame (fire-material.md 7)
     unsigned fine = 0;      // bodies drawn without their full third octave by their size
     float screens = 0.f, body_screens = 0.f;
     float max_floor_ms = 0.f; // the largest floor a live record latched (Present's keep, HookState::boom_floor_ms)
@@ -661,6 +666,14 @@ inline float boom_fine(float r_px, float fine_px, float band_px, float fine4_px,
     const float f4 = b <= 0.f ? 0.f : b >= band4_px ? 1.f : b / band4_px;
     return f3 < 1.f ? f3 : 1.f + f4;
 }
+// The fire material's weight of a body (fire-material.md 3): 1, 0 with the eye inside (the Cartesian path, no tongue
+// cost on the eye-inside fence), -1 with look::fire_enabled false (the previous law on the fire ramp); its charged share
+// (the weight x the size LOD w_px) and the charge's extra weight a screen at share 1.
+inline float boom_fire_weight(bool full) noexcept { return full ? 0.f : core::look::fire_enabled ? 1.f : -1.f; }
+inline float boom_fire_share(const float core4[4]) noexcept {
+    return core4[1] > 0.f ? (core4[2] < 1.f ? core4[2] : 1.f) : 0.f;
+}
+constexpr float boom_fire_extra = core::look::budget_weight_fire - core::look::budget_weight_fireball;
 inline float boom_fine_weight(float fine) noexcept {
     namespace lk = core::look;
     const float f3 = fine < 1.f ? fine : 1.f, f4 = fine > 1.f ? fine - 1.f : 0.f;
@@ -1097,11 +1110,14 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     static BoxMeta halo_meta[renderer::weapon_halo_boxes];
     static BoxMeta glow_meta[bm::max_glows];
     static float body_fine[bm::max_bodies];
+    // each body's and secondary's tongue share (0 .. 1: its charge's fire part) and view depth (the budget's step (0c))
+    static float body_fire[bm::max_bodies], body_depth[bm::max_bodies];
     // the big tiers' secondaries (bodies built here, shed at step 5, then placed after the bodies)
     unsigned nsec = 0;
     static renderer::WeaponFireballVertex sec_verts[bm::max_secondaries * 4];
     static BoxMeta sec_meta[bm::max_secondaries];
     static float sec_fine[bm::max_secondaries];
+    static float sec_fire[bm::max_secondaries], sec_depth[bm::max_secondaries];
     static_assert(bm::tier_secondaries[bm::capital] <= 12 && bm::tier_secondaries[bm::station] <= 12, "births[12]");
     float star_area = 0.f;
     float star_colour[3];
@@ -1388,10 +1404,16 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                                                    core::look::fireball_advect * x, fine};
                             const float gx = 1.f - x / bm::core_x;
                             const float g = t.core && x < bm::core_x ? bm::core_gain * gx * gx : 0.f;
-                            fireball_quad(f, cb, Rsph, rect, full, look, tint4, disc, sec_verts + 4 * nsec, g);
-                            sec_meta[nsec] = BoxMeta{age_ms, e.owner, rect_screens(rect) * boom_fine_weight(fine),
+                            // the fire material (fire-material.md 3: every body; none with the eye inside)
+                            const float lod = full ? 0.f : core::look::fire_lod(R * px_x / cb[2] * (1440.f / f.height), true);
+                            const float core4[4] = {g, boom_fire_weight(full), lod, a};
+                            fireball_quad(f, cb, Rsph, rect, full, look, tint4, disc, sec_verts + 4 * nsec, core4);
+                            const float fs = boom_fire_share(core4);
+                            sec_meta[nsec] = BoxMeta{age_ms, e.owner, rect_screens(rect) * (boom_fine_weight(fine) + boom_fire_extra * fs),
                                                      std::uint8_t(keep || lv.own), std::uint8_t(fine > 0.f ? 1 : 0)};
                             sec_fine[nsec] = fine;
+                            sec_fire[nsec] = fs;
+                            sec_depth[nsec] = cb[2];
                             ++nsec;
                         } else
                             ++n.capped;
@@ -1604,7 +1626,11 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     const float gx = 1.f - lv.x / bm::core_x;
                     float g = t.core && lv.x < bm::core_x ? bm::core_gain * gx * gx : 0.f;
                     if (bm::tier_secondaries[tier] && lv.tb < bm::core_ramp_ms) g *= lv.tb * (1.f / bm::core_ramp_ms);
-                    fireball_quad(f, cb, Rbox, rect, full, look, tint4, disc, out.fireballs + 4 * nb, g);
+                    // the fire material (fire-material.md 3: every tier's body; none with the eye inside or composed)
+                    const float lod = full ? 0.f : core::look::fire_lod(lv.R * px_x / cb[2] * (1440.f / f.height), true);
+                    const float core4[4] = {g, cp.n >= bm::compose_n_min ? 0.f : boom_fire_weight(full), lod, lv.tb};
+                    fireball_quad(f, cb, Rbox, rect, full, look, tint4, disc, out.fireballs + 4 * nb, core4);
+                    const float fs = boom_fire_share(core4);
                     if (cp.n >= bm::compose_n_min) {
                         renderer::WeaponFireballVertex* v4 = out.fireballs + 4 * nb;
                         for (unsigned k = 0; k < 4; ++k) v4[k].disc[2] = core::look::fireball_advect; // x each clock
@@ -1617,11 +1643,13 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         ++n.composed;
                         n.compose_shared += cp.shared;
                     }
-                    cp.base = rect_screens(rect) * boom_fine_weight(fine);
+                    cp.base = rect_screens(rect) * (boom_fine_weight(fine) + boom_fire_extra * fs);
                     body_meta[nb] = BoxMeta{age_ms, e.owner, cp.base * boom_compose_factor(cp.n + cp.jets, cp.shared), lv.own,
                                             std::uint8_t(fine > 0.f ? 1 : 0)};
                     body_comp[nb] = cp;
                     body_fine[nb] = fine;
+                    body_fire[nb] = fs;
+                    body_depth[nb] = cb[2];
                     if (cp.n >= bm::compose_n_min)
                         write_compose(nb);
                     else if (bm::compose_enabled && out.compose) { // the N 1 table (the composed draw takes every body box)
@@ -1927,17 +1955,21 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                                 v.disc[1] = s1;
                                 v.disc[2] = s2;
                                 v.disc[3] = wq.sector;
-                                v.core = 0.f;
+                                for (unsigned q = 0; q < 4; ++q) v.core[q] = 0.f;
                             }
                         }
                         renderer::WeaponWaveConstants& wc = wave_const[nw];
                         for (unsigned q = 0; q < 3; ++q) wc.normal[q] = nv[q];
                         wc.normal[3] = lv.tb / life; // the age fraction: the material's erosion and advection (v7)
                         wc.heat[0] = Tw;
-                        wc.heat[1] = t.wave_octave2 ? 1.f : 0.f; // the sheet's third octave (0: shed, the budget's step 0a)
-                        // the radial cells' scale sqrt(r_ref R_f / r): square cells at r_ref R_f (the angular ones grow as r)
-                        wc.heat[2] = scalar::sqrt(bm::wave_noise_r_ref * lv.R_f / (r > 1e-3f * lv.R_f ? r : 1e-3f * lv.R_f));
-                        wc.heat[3] = 0.f;
+                        wc.heat[1] = t.wave_octave2 ? 1.f : 0.f; // the sheet's second octave (0: shed, the budget's step 0a)
+                        // v8, the fire material: 1 / l_s in w_e (the tongues' radial cell fire_wave_aspect x the arc 2 pi r /
+                        // fire_wave_cells: fire_wave_aspect : 1 along the radius) and the wave's game-time age (the flow)
+                        {
+                            const float arc = 6.2831853f * (r > 1e-3f * lv.R_f ? r : 1e-3f * lv.R_f) / bm::fire_wave_cells;
+                            wc.heat[2] = we / (bm::fire_wave_aspect * arc);
+                        }
+                        wc.heat[3] = lv.tb;
                         for (unsigned q = 0; q < 4; ++q) wc.spare[q] = 0.f;
                         wc.quads = quads;
                         // the charge: the strips' screens x budget_weight_wave; the box: the annulus's projected screens x
@@ -2064,7 +2096,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         }
     }
     // (D) The budget (section 7; explosion-look.md D42): past budget, (0) the wave's refraction strips, (0a) the waves'
-    // sheet's third octave, (0b) the fourth octave, (1) the third octave (hysteresis), (1b, 1c) the composed bodies' LOD;
+    // sheet's second tongue octave, (0b) the fourth octave, (0c) other owners' tongues farthest first (hysteresis;
+    // fire-material.md 7), (1) the third octave (hysteresis), (1b, 1c) the composed bodies' LOD;
     // then with a wave in the frame (2) other owners' glows and halos, (3) the secondaries past the two newest live ones of
     // each death, (4) smoke, (5) shocks, (6) the waves; without one (2) smoke, (3) shocks, (4) glows and halos, (5) the
     // secondaries; largest first each; the bodies, stars, embers and fragments stay.
@@ -2109,7 +2142,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         strip_area = 0.f;
         n.wave_strips = 0;
     }
-    // (0a) the waves' sheet loses its third octave (the charge x budget_weight_wave_one / budget_weight_wave), (0b) the
+    // (0a) the waves' sheet loses its second octave (the charge x budget_weight_wave_one / budget_weight_wave), (0b) the
     // bodies their fourth octave (the frame's octaves 3), before the third (2026-11-07)
     for (unsigned g = 0; g < nw && area > budget; ++g)
         if (wave_const[g].heat[1] > 0.f) {
@@ -2120,17 +2153,70 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             ++n.wave_octaves_shed;
         }
     if (area > budget && n.octaves > 3u) {
-        const auto drop4 = [&](BoxMeta& mt, float& fine, bool body) {
+        const auto drop4 = [&](BoxMeta& mt, float& fine, float fs, bool body) {
             if (!(fine > 1.f)) return;
-            const float now = mt.area * boom_fine_weight(1.f) / boom_fine_weight(fine);
+            const float fx = boom_fire_extra * fs;
+            const float now = mt.area * (boom_fine_weight(1.f) + fx) / (boom_fine_weight(fine) + fx);
             area -= mt.area - now;
             if (body) body_area -= mt.area - now;
             mt.area = now;
             fine = 1.f;
         };
-        for (unsigned g = 0; g < nb; ++g) drop4(body_meta[g], body_fine[g], true);
-        for (unsigned g = 0; g < nsec; ++g) drop4(sec_meta[g], sec_fine[g], false);
+        for (unsigned g = 0; g < nb; ++g) drop4(body_meta[g], body_fine[g], body_fire[g], true);
+        for (unsigned g = 0; g < nsec; ++g) drop4(sec_meta[g], sec_fine[g], sec_fire[g], false);
         n.octaves = 3;
+    }
+    // (0c) the tongues of other owners' bodies and secondaries, farthest first, the newest death's body and the own
+    // ship's kept (fire-material.md section 7; a box without them draws the small size's material, LOD 0): entered past the
+    // budget, held at least fireball_octave_hold frames and left only under fireball_octave_return of it; while held,
+    // taken until the charge is under that return
+    {
+        unsigned newest = nb;
+        for (unsigned g = 0; g < nb; ++g)
+            if (newest == nb || body_meta[g].age < body_meta[newest].age) newest = g;
+        const auto takeable = [&](unsigned g, bool body) {
+            return body ? body_fire[g] > 0.f && !body_meta[g].own && g != newest : sec_fire[g] > 0.f && !sec_meta[g].own;
+        };
+        bool any = false;
+        for (unsigned g = 0; g < nb && !any; ++g) any = takeable(g, true);
+        for (unsigned g = 0; g < nsec && !any; ++g) any = takeable(g, false);
+        if (state.fire_coarse) {
+            if (state.fire_frames >= core::look::fireball_octave_hold && area < core::look::fireball_octave_return * budget)
+                state.fire_coarse = false;
+            else if (state.fire_frames < 255)
+                ++state.fire_frames;
+        } else if (area > budget && any) {
+            state.fire_coarse = true;
+            state.fire_frames = 1;
+        }
+        while (state.fire_coarse && area > core::look::fireball_octave_return * budget) {
+            unsigned sel = nb + nsec;
+            float sel_z = 0.f;
+            for (unsigned g = 0; g < nb; ++g)
+                if (takeable(g, true) && (sel == nb + nsec || body_depth[g] > sel_z)) {
+                    sel = g;
+                    sel_z = body_depth[g];
+                }
+            for (unsigned g = 0; g < nsec; ++g)
+                if (takeable(g, false) && (sel == nb + nsec || sec_depth[g] > sel_z)) {
+                    sel = nb + g;
+                    sel_z = sec_depth[g];
+                }
+            if (sel == nb + nsec) break;
+            const bool body = sel < nb;
+            const unsigned g = body ? sel : sel - nb;
+            BoxMeta& mt = body ? body_meta[g] : sec_meta[g];
+            float& fs = body ? body_fire[g] : sec_fire[g];
+            const float w = boom_fine_weight(body ? body_fine[g] : sec_fine[g]) + boom_fire_extra * fs;
+            const float cut = mt.area * boom_fire_extra * fs / w;
+            area -= cut;
+            if (body) body_area -= cut;
+            mt.area -= cut;
+            fs = 0.f;
+            renderer::WeaponFireballVertex* v4 = body ? out.fireballs + 4 * g : sec_verts + 4 * g;
+            for (unsigned k = 0; k < 4; ++k) v4[k].core[2] = 0.f;
+            ++n.fire_shed;
+        }
     }
     if (state.octaves_coarse) {
         if (state.coarse_frames >= core::look::fireball_octave_hold && area < core::look::fireball_octave_return * budget)
@@ -2146,7 +2232,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         for (unsigned g = 0; g < nb; ++g)
             if (body_meta[g].rank) {
                 const float we = boom_fine_weight(body_fine[g]);
-                const float cut = body_meta[g].area * (we - w2) / we;
+                const float cut = body_meta[g].area * (we - w2) / (we + boom_fire_extra * body_fire[g]);
                 area -= cut;
                 body_area -= cut;
                 body_meta[g].area -= cut;
@@ -2154,7 +2240,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         for (unsigned g = 0; g < nsec; ++g)
             if (sec_meta[g].rank) {
                 const float we = boom_fine_weight(sec_fine[g]);
-                const float cut = sec_meta[g].area * (we - w2) / we;
+                const float cut = sec_meta[g].area * (we - w2) / (we + boom_fire_extra * sec_fire[g]);
                 area -= cut;
                 sec_meta[g].area -= cut;
             }

@@ -3,11 +3,12 @@
 verification/results/native-windows/weapon-effects/ (run_weapon_effects.py --host native): the hook fixture's death-site
 checks, the audit's death stubs and EXE windows, the forward state and the nested rows; the D3D fixture's death_* checks,
 the EXPLOSION rows and the EXPLOSION_TIMING rows (EVENT-fenced best of 60 at 1080p and 5120x1440).
-usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave | --rays]]
+usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave | --rays] | --fire]
 --markdown prints the ledger's gate table and budget line from the record (the ledger's numbers are pasted from it);
 with --big the big tiers' table ("Explosions: the big tiers": the clone row R', the swap, the pre-roll gates); with
 --wave section 13's ("Explosions: the fire wave and the composed body"), the engine shimmer record's wave rows with it;
-with --rays section 14's ("Explosions: radiance, rays and sparks")."""
+with --rays section 14's ("Explosions: radiance, rays and sparks"); --fire the fire material's gate table ("Fire material",
+docs/architecture/fire-material.md section 6) with its slots and cost rows."""
 import json
 import sys
 from pathlib import Path
@@ -253,7 +254,46 @@ def rays_markdown():
     print('\n'.join(out))
 
 
-if '--markdown' in sys.argv:
+def fire_markdown():
+    """docs/verification/weapon-effects.md "Fire material" (docs/architecture/fire-material.md section 6): the fire
+    gates on the hull burst (CLASS rows), the death bodies and the wave (EXPLOSION rows), the slots and the cost rows."""
+    ok = lambda name: 'PASS' if checks.get(name) else 'FAIL'
+    crow = lambda case, **m: next(r for r in d3d['metrics']['class'] if r.get('case') == case and
+                                  all(r.get(k) == v for k, v in m.items()))
+    h, sm, sun = crow('fire_hull_median'), crow('burst_small_median'), crow('twenty_hits_cores_on')
+    f, c = row('fire_body_median', tier='fighter_200m'), row('fire_body_median', tier='capital_3km')
+    w = row('wave_not_a_tyre')
+    ht = {(r['width'], r['case']): r for r in d3d['metrics']['hull_timing'] if 'gpu_us' in r}
+    t5 = lambda case: timing[(5120, case)]['gpu_us']
+    close = [r for (wd, case), r in sorted(timing.items()) if wd == 5120 and case.startswith('capital_close_') and
+             case != 'capital_close_all_shed']
+    worst = max(close, key=lambda r: r['gpu_us'])
+    on, off = ht[(5120, 'burst_alone_fire_tongues')]['gpu_us'], ht[(5120, 'burst_alone_fire_tongues_off')]['gpu_us']
+    hb = lambda k: f"{h[k]}"
+    bd = lambda k: f"{f[k]} / {c[k]}"
+    out = [
+        '| Gate | Result [M] (hull; fighter / capital) | Bound |', '| --- | --- | --- |',
+        f"| `fire_luminance_thin_hull`, `_death` ({ok('fire_luminance_thin_hull')}, {ok('fire_luminance_thin_death')}) | share > 0.8 peak {hb('thin')}; {bd('thin')}; gaps under 0.25 peak {hb('gaps')}; {bd('gaps')} | 0.10-0.35; >= 0.35 |",
+        f"| `fire_tongues_radial_hull`, `_death` ({ok('fire_tongues_radial_hull')}, {ok('fire_tongues_radial_death')}) | radial / tangential {hb('aniso')}; {bd('aniso')} | <= 0.75 |",
+        f"| `fire_edge_licks_hull`, `_death` ({ok('fire_edge_licks_hull')}, {ok('fire_edge_licks_death')}) | lit boundary / outline boundary {hb('licks')}; {bd('licks')} | >= 2.0 |",
+        f"| `fire_temporal_hull` ({ok('fire_temporal_hull')}) | high-pass corr +16 ms {h['hp16']}, +100 ms {h['hp100']}; low-pass +16 ms {h['lp16']} | 0.5-0.9; <= 0.6; >= 0.9 |",
+        f"| `fire_colour_ramp_hull`, `_death` ({ok('fire_colour_ramp_hull')}, {ok('fire_colour_ramp_death')}) | hot {hb('hot')} @ {hb('hot_r')}, red {hb('cold')} @ {hb('cold_r')}, mid {hb('mid')}; hot {bd('hot')} @ {bd('hot_r')}, red {bd('cold')} @ {bd('cold_r')}, mid {bd('mid')} | >= 0.25 @ <= 0.5; 0.05-0.25 @ >= 0.65; <= 0.5 |",
+        f"| `fire_core_bloom_hull`, `_death` ({ok('fire_core_bloom_hull')}, {ok('fire_core_bloom_death')}) | peak inside 0.3 R {hb('core40')} (40 ms), {bd('core10')} (0.1 L); outside 0.5 R {hb('out40')}; {bd('out10')} | >= 3.0; <= 1.5 |",
+        f"| `hull_20_hits_no_white_sun` ({ok('hull_20_hits_no_white_sun')}) | cores on: worst share above 3.0 {sun['worst_share_above_3']} | <= 0.01 (cores off <= 3.0 as before) |",
+        f"| `fire_small_reads` ({ok('fire_small_reads')}) | 30 px far hit at 0.4 L_b: holes {sm['dark_share']}, lobes {sm['lobe_max_over_min']}, lit share {sm['lit_share']} | >= 0.10; >= 1.2; >= 0.4 |",
+        f"| `wave_not_a_tyre` ({ok('wave_not_a_tyre')}; 5 km face-on, 0.5 tau) | band mean / edge {w['mean_over_edge']}, dark share {w['dark_share']}, anisotropy {w['aniso']}, grey {w['grey_share']} | <= 0.35; >= 0.40; <= 0.75; <= 0.10 |",
+        f"| `fire_no_seam_hull`, `_death`, `_wave` ({ok('fire_no_seam_hull')}, {ok('fire_no_seam_death')}, {ok('fire_no_seam_wave')}) | worst {h['seam_max']}; {bd('seam_max')}; {w['seam']} | <= 0.1 |",
+        f"| `hull_fire_within_weight` ({ok('hull_fire_within_weight')}) | tongues on {on} us ({on / 177.5:.3f}), off {off} us ({off / 177.5:.3f}) at 5120x1440 | within 0.1 of budget_weight_fire |",
+        f"| `death_budget_capital_close_5120` ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}) | <= 450 |",
+        f"| `death_budget_5120`, `death_rays_sparks_budget_5120` ({ok('death_budget_5120')}, {ok('death_rays_sparks_budget_5120')}) | fighter 600 m {t5('fighter_600m')} us, 20 fighters {t5('fighters_20_600m')} us | <= 60; <= 150 |",
+        f"| `hull_budget_20_hits_5120`, `hull_budget_capital_close_64_within_budget` ({ok('hull_budget_20_hits_5120')}, {ok('hull_budget_capital_close_64_within_budget')}) | 20 hits {ht[(5120, 'fighter_200m_20_hits')]['gpu_us']} us, 60 m {ht[(5120, 'fighter_60m_20_hits')]['gpu_us']} us, capital 64 {ht[(5120, 'capital_close_64_hits')]['gpu_us']} us | <= 80; <= 1420 |",
+    ]
+    print('\n'.join(out))
+
+
+if '--fire' in sys.argv:
+    fire_markdown()
+elif '--markdown' in sys.argv:
     (rays_markdown() if '--rays' in sys.argv else wave_markdown() if '--wave' in sys.argv else
      big_markdown() if '--big' in sys.argv else markdown())
 else:

@@ -69,7 +69,12 @@ NAMESPACES = {
              'fireball_column_pow', 'fireball_lobes', 'fireball_lobe_amp', 'fireball_lobe_soft', 'fireball_heat_soft',
              'fireball_rim_t', 'fireball_octaves', 'fireball_fine_px', 'fireball_fine_band_px', 'fireball_fine4_px',
              'fireball_fine4_band_px', 'fireball_octave_freq4', 'fireball_octave_w4', 'budget_weight_fireball_fine4', 'budget_weight_fireball',
-             'budget_weight_fireball_coarse', 'budget_weight_smoke'),
+             'budget_weight_fireball_coarse', 'budget_weight_smoke',
+             # the fire material (docs/architecture/fire-material.md)
+             'fire_enabled', 'fire_ramp', 'fire_cells', 'fire_s_cells', 'fire_warp_f', 'fire_warp_amp', 'fire_shear',
+             'fire_blend_0', 'fire_blend_1', 'fire_flow_ms', 'fire_flick_ms', 'fire_flick_amp', 'fire_thr_0', 'fire_thr_t',
+             'fire_thr_r', 'fire_soft', 'fire_gain', 'fire_gain_small', 'fire_heat_soft', 'fire_rim_t', 'fire_oct2_w',
+             'fire_oct2_big', 'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire'),
     # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
     'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'mode', 'spark_count_x',
              'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',
@@ -92,7 +97,8 @@ NAMESPACES = {
              # smoke, the asteroid's dust and the cool spot
              'star_arm_len', 'star_width', 'star_width_px', 'star_floor_px', 'star_element', 'burst_rot_element',
              'burst_lobe_element', 'glow_r_x', 'glow_e_x', 'cluster_r_x', 'cluster_n0_glow', 'cluster_n0_burst',
-             'class_smoke', 'smoke_t0', 'smoke_span', 'smoke_rise', 'dust_colour', 'cool_colour', 'ember_lobe_amp'),
+             'class_smoke', 'smoke_t0', 'smoke_span', 'smoke_rise', 'dust_colour', 'cool_colour', 'ember_lobe_amp',
+             'class_fire', 'class_fire_core', 'fire_core_x', 'ring_fire_cells', 'ring_fire_z', 'ring_fire_thr'),
     # step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md section 8): HEADER.bolt, HEADER.muzzle
     'bolt': ('mode', 'd_eng_m', 'd_eng_range', 'w_px_target', 'w_k', 'f_ref', 'ref_rows', 'w_cap_m', 'heavy_k', 'rest_w',
              'sv_ref_mps', 'tail_tau_ms', 'tail_max_w', 'tail_root_w', 'tail_gain', 'core_r', 'core_r_heavy', 'halo_sigma_w',
@@ -125,9 +131,8 @@ NAMESPACES = {
              # section 13 (2026-11-07): the fire wave and the composed body
              'wave_tiers', 'wave_r_x', 'wave_tau_x', 'wave_life_x', 'wave_creep', 'wave_stretch', 'wave_w_x', 'wave_band_x',
              'wave_slab_x', 'wave_trail_span', 'wave_e', 'wave_t_edge', 'wave_t_band0', 'wave_t_band_end', 'wave_t_sheet_end',
-             'wave_t_cool', 'wave_noise_cells', 'wave_noise_radial', 'wave_noise_r_ref', 'wave_noise_w', 'wave_advect', 'wave_erode_0',
-             'wave_erode_t', 'wave_erode_r', 'wave_erode_rt', 'wave_erode_soft', 'wave_heat_soft', 'wave_lobe_amp',
-             'wave_lobe_soft', 'wave_floor_a', 'wave_floor_t', 'wave_lead', 'wave_ahead', 'wave_break_floor',
+             'wave_t_cool', 'fire_wave_cells', 'fire_wave_aspect', 'fire_wave_thr_0', 'fire_wave_thr_end', 'fire_wave_gain',
+             'wave_floor_a', 'wave_floor_t', 'wave_lead', 'wave_ahead', 'wave_break_floor',
              'wave_rim_noise', 'wave_eye_plane_x', 'wave_eye_plane_blend_x',
              'wave_eye_fade_x', 'wave_sheet_enabled', 'compose_enabled', 'compose_count_3', 'compose_count_2',
              'wave_window_in', 'wave_window_out', 'wave_light', 'wave_m_floor', 'wave_m_contrast', 'wave_n_cells',

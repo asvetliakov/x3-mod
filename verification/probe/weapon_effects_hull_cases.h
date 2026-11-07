@@ -2159,7 +2159,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         ws::HullTuning only_burst = only_flash;
         only_burst.flash = false;
         only_burst.burst = true;
-        for (unsigned c = 0; c < 11; ++c) {
+        for (unsigned c = 0; c < 13; ++c) {
             // 0: 20 hits on a fighter 60 m away (its hull a fifth of the frame: the stress row); 1: the same 200 m away
             // (the 3.1 budget's case); 2: 64 hits on a capital at close range; 3: one glow alone whose sphere holds the
             // eye (the whole screen once: the glow's full-screen cost, its budget weight against the decal's 177.5 us);
@@ -2167,7 +2167,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             // weights; 6: the same impostor as smoke (the multiply pass, over the lane): the smoke's. 7, 8, 9: 4, 5, 6 with
             // every pixel taking the noise (review 2026-11-07: the weights' worst case, no pixel outside the lobes): the
             // sphere moved about the eye (centre at view z 300, R 1e5: the chord's middle near the centre on every ray).
-            // 10: 3 as a burst class's lobed ember (its lobes' seed set): the lobed glow's full-screen cost.
+            // 10: 3 as a burst class's lobed ember (its lobes' seed set): the lobed glow's full-screen cost. 11, 12: the fire
+            // material's tongues on and off (docs/architecture/fire-material.md section 7): 7's sphere moved 0.3 R to the
+            // side of the eye (every pixel's chord middle at |p| about 0.3, inside the tongues' band and the lobes), the fire
+            // weight 1 at LOD 1 (11) or 0 (12): budget_weight_fire against budget_weight_fireball.
             const unsigned hits = c == 2 ? 64 : c >= 3 ? 1 : 20;
             const float owner_z = c == 0 ? 400.f : c == 1 ? 1100.f : c == 2 ? 2600.f : 120.f;
             hull_owner(owner_z, c == 2 ? 2000.f : 100.f);
@@ -2186,11 +2189,18 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             const float lane_z = c == 2 ? 600.f : c == 3 || c == 10 ? 20.f : c >= 4 ? 600.f : owner_z - 100.f;
             draw_lane(tt, lane_z, 1.f);
             rr::WeaponEffectsFrame f = hull_frame(tt, o);
-            if (c >= 7)
+            if (c >= 7 && c != 10)
                 for (unsigned q = 0; q < 4 * o.bursts; ++q) {
                     hq_fireballs[q].sphere[0] = hq_fireballs[q].sphere[1] = 0.f;
                     hq_fireballs[q].sphere[2] = 300.f;
                     hq_fireballs[q].sphere[3] = 1e5f;
+                    if (c >= 11) {
+                        hq_fireballs[q].sphere[0] = 3e4f;
+                        hq_fireballs[q].sphere[2] = 0.f;
+                        hq_fireballs[q].core[1] = c == 11 ? 1.f : 0.f;
+                        hq_fireballs[q].core[2] = 1.f;
+                        hq_fireballs[q].core[3] = 150.f;
+                    }
                 }
             if (c == 10)
                 for (unsigned q = 0; q < 4 * o.boxes; ++q) {
@@ -2254,7 +2264,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                : c == 7 ? "burst_alone_every_pixel_noise"
                                : c == 8 ? "burst_alone_every_pixel_noise_coarse"
                                : c == 9 ? "smoke_alone_every_pixel_noise"
-                                        : "ember_lobed_alone_fills_frame";
+                               : c == 10 ? "ember_lobed_alone_fills_frame"
+                               : c == 11 ? "burst_alone_fire_tongues"
+                                         : "burst_alone_fire_tongues_off";
             std::printf("HULL_TIMING width=%u height=%u case=%s hits=%u sparks=%u flashes=%u boxes=%u bursts=%u rings=%u "
                         "octaves=%u burst_screens=%.3f lit_share=%.4f raster_share=%.4f gpu_us=%.1f\n",
                         size.first, size.second, name, hits, o.n.sparks, o.n.flashes, o.boxes, o.bursts, o.rings,
@@ -2272,6 +2284,9 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             if (c == 10 && size.first == 5120)
                 report("hull_ember_lobed_within_glow_weight",
                        std::fabs(best / 177.5 - double(wc::look::budget_weight_glow_lobed)) <= 0.1, "");
+            // the tongues' charge (look::budget_weight_fire, fire-material.md section 7): their full-screen cost within 0.1
+            if (c == 11 && size.first == 5120)
+                report("hull_fire_within_weight", std::fabs(best / 177.5 - double(wc::look::budget_weight_fire)) <= 0.1, "");
         }
         tt.release();
     }
