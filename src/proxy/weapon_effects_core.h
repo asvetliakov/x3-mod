@@ -638,13 +638,19 @@ constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_ha
                 spike_t = 0.95f;
 // Section 14, the rays (2026-11-07 soft rays, after the user's "not so pronounced/thin ... look into our sun": the sun's
 // spokes, own-sun-look.md step 1d): an odd ray_n_lo..hi rays a death (hashed: no two opposite), each a sprite of the ray
-// kind (weapon_sprite_ps.hlsl, depth.y 5) from ray_start R(t) out (the white core's edge) at a stratified hashed angle
+// kind (weapon_sprite_ps.hlsl, depth.y 5) from ray_start R(t) out (the body's rim: 2026-11-08, from 0.3 R(t) the body and
+// the rim halo swamped every short ray, the own sun's "why the rays vanished") at a stratified hashed angle
 // (slot i of N at (i + ray_jitter_lo + ray_jitter h) / N turns plus a hashed turn for the death: the slots' offsets within
-// 0.375 .. 0.625, so two rays sit at least a quarter slot off opposite), its length (ray_len_lo + (ray_len_hi -
-// ray_len_lo) g_i) R_f on screen, g_i = frac(ray_phi (i + o)) (the golden-ratio hash, o hashed per death: spread evenly
-// from short to long), x (ray_grow0 + (1 - ray_grow0) min(1, x / ray_grow_x)); across a Gaussian of FWHM max(ray_fwhm_px
+// 0.375 .. 0.625, so two rays sit at least a quarter slot off opposite), its length skewed (2026-11-08, the user's "3 big
+// rays which have almost the same length"): L(g) = (ray_len_lo + ray_len_k g^2) R_f on screen beyond the rim, g_i = frac(ray_phi (i +
+// o)) (the golden-ratio hash, o hashed per death), the three largest g of the death (their rank fixed per death) at L(g_1),
+// ray_top2 L(g_1) and ray_top3 L(g_1), every other ray at L(g) ray_rest ray_top3 L(g_1) / L(g_4) (g_4 the fourth largest:
+// it at ray_rest of the third), so the three longest differ by >= 25 % and most are short; x (ray_grow0 + (1 -
+// ray_grow0) min(1, x / ray_grow_x)); the along-profile in u = along / length, so each ray's visible tip follows its
+// length; across a Gaussian of FWHM max(ray_fwhm_px
 // px at 1080 rows (scaled with the rows), ray_fwhm_len x its length x (1 + u / 2)), u = 0 at the start .. 1 at the tip (the
-// spoke widening outwards); along e^(-u) (1 - u)^2 (the sun's), faded in over the first ray_in of it (smoothstep: no
+// spoke widening outwards); along e^(-u) (1 - u)^2 (the sun's, at full strength from the rim), faded in over the first
+// ray_in of it (smoothstep: no
 // bright base); its brightness (ray_s_lo + ray_s_span g2_i) of ray_e (g2_i = frac(ray_phi2 (i + o) + 0.31)) x (1 - x /
 // ray_x)^ray_pow x the flicker: per ray a hashed period ray_flicker_lo..hi game ms (at least two frame steps: under SETA
 // a level holds at least two frames), its level the hash of the period's index blended smoothly into the next one's, 1 -
@@ -652,17 +658,21 @@ constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_ha
 // ray_soft R_f against the lane; gone at ray_x L. The quad a trapezoid of half width ray_quad_w x the FWHM at either end
 // (the Gaussian's tail there under 0.5 % of its peak). A frame draws at most ray_frame_cap ray quads (past it every second
 // ray of every death, then every fourth: the half-count shed, ray_shed_max halvings at most).
-constexpr float ray_n_lo = 9.f, ray_n_hi = 15.f, ray_jitter_lo = 0.375f, ray_jitter = 0.25f;
-constexpr float ray_len_lo = 0.4f, ray_len_hi = 2.0f, ray_phi = 0.6180340f, ray_phi2 = 0.7548777f, ray_grow0 = 0.7f,
-                ray_grow_x = 0.06f, ray_start = 0.3f;
-constexpr float ray_fwhm_px = 6.f, ray_fwhm_len = 0.065f, ray_in = 0.15f, ray_quad_w = 1.4f;
-constexpr float ray_e = 0.4f, ray_s_lo = 0.6f, ray_s_span = 0.6f, ray_x = 0.5f, ray_pow = 3.f;
+constexpr float ray_n_lo = 15.f, ray_n_hi = 25.f, ray_jitter_lo = 0.375f, ray_jitter = 0.25f;
+constexpr float ray_len_lo = 0.4f, ray_len_k = 2.0f, ray_top2 = 0.78f, ray_top3 = 0.6f, ray_rest = 0.8f;
+constexpr float ray_phi = 0.6180340f, ray_phi2 = 0.7548777f, ray_grow0 = 0.7f, ray_grow_x = 0.06f, ray_start = 1.0f;
+static_assert(ray_top2 * 1.25f <= 1.f + 1e-6f && ray_top3 * 1.25f <= ray_top2 + 1e-6f && ray_rest * 1.25f <= 1.f + 1e-6f,
+              "the three longest rays differ by at least 25 %, the fourth 25 % under the third");
+constexpr float ray_fwhm_px = 6.f, ray_fwhm_len = 0.065f, ray_in = 0.05f, ray_quad_w = 1.4f;
+// ray_e 1.0 (2026-11-08, was 0.4): a ray's base about 0.8-1.0 of the rim halo under it (halo_e 0.5 E_b T at the rim).
+constexpr float ray_e = 1.0f, ray_s_lo = 0.6f, ray_s_span = 0.6f, ray_x = 0.5f, ray_pow = 3.f;
 constexpr float ray_flicker_lo = 150.f, ray_flicker_hi = 300.f, ray_flicker = 0.3f;
 constexpr float ray_t0 = 0.95f, ray_t1 = 0.8f, ray_soft = 1.0f;
 constexpr unsigned ray_frame_cap = 512, ray_shed_max = 3;
 // The ray hashes: element_hash(sequence, ray_element + i) per ray (angle, length, width, brightness, period), the count
 // and the death's turn from ray_element - 1; past the secondaries' (secondary_element + 4 x 12).
 constexpr unsigned ray_element = 1024;
+static_assert(unsigned(ray_n_hi) <= 64u, "the rays' hashes stay below ember_element");
 // 2.2 the flash: the burst's star at A = star_arm R_f, core star_core R_f, white at look::core_e, the arms heat(star_t),
 // star_ms game ms (three-frame floor), its arm on screen capped at star_cap_h of the target's rows.
 constexpr float star_arm = 0.4f, star_core = 0.08f, star_ms = 40.f, star_t = 0.9f, star_cap_h = 0.25f;
@@ -735,16 +745,23 @@ constexpr float fragment_dark = 0.6f, fragment_tip_t = 0.6f, fragment_dark_r = 1
 // 2.6 the light (decision 2026-11-07: the note's 5 R_f read as a lamp over a hull; the burst's accepted law instead,
 // hull-burst-look.md section 3): the glow primitive on the lane's surfaces at R = min(glow_r_x R(t), glow_r_max R_f),
 // E_g = glow_e E_b T(t) heat(T(t)), while the body draws; and the same light in air about the body (the halo,
-// weapon_halo_ps.hlsl: occlusion class 1, its soft cut halo_soft R_h; R = glow_r_x R(t)), so a body has its own soft
-// bloom; not drawn with the eye inside the body. The cluster rule over the event frame's bodies (N by remaining life
-// within cluster_r_x R_i, cluster_n0).
-// The halo also fades with the body's erosion, x (1 - smoothstep(halo_fade_x0, halo_fade_x1, x)) (2026-11-07: kept at
-// 1.6 R(t) to the end it read as a balloon around the eroded body in the frames).
-constexpr float glow_r_x = 1.6f, glow_r_max = 2.0f, glow_e = 0.33f, halo_soft = 0.5f, halo_fade_x0 = 0.4f, halo_fade_x1 = 0.8f;
-// The halo of corvettes and up (coordinator decision D15, 2026-11-07: at 1.6 R(t) it read as a smooth balloon about the
-// body from 0.3 L): radius halo_big_r R(t), radiance at most halo_big_e E_b, faded out over halo_big_x0 .. halo_big_x1 of
-// L (smoothstep); fighters and missiles keep the law above.
-constexpr float halo_big_r = 1.15f, halo_big_e = 0.2f, halo_big_x0 = 0.3f, halo_big_x1 = 0.6f;
+// weapon_halo_ps.hlsl: occlusion class 1, its soft cut halo_soft x its quad's radius), so a body has its own bloom; not
+// drawn with the eye inside the body. The cluster rule over the event frame's bodies (N by remaining life within
+// cluster_r_x R_i, cluster_n0).
+// The halo (2026-11-08, the user: "a halo which falls off from the heat source: on the edges it should be bright then
+// fall off"; the own sun's corona, own-sun-look.md step 1d), every tier: a rim glow about the body's 10 %-of-peak
+// outline R = R(t), radiance halo_e E_b T(t) heat(halo_t T(t)) (the cluster's saturation; the body's rim heat, its
+// orange fringe: heat(T) read as a grey disc under AgX in the lab) x p(r), r the pixel's ray's distance
+// from the centre (the impact parameter), d = (r - R) / R: p = (e^(-(d / halo_sigma)^2) + halo_tail w(d) / (1 + d^2)) /
+// (1 + halo_tail) outside R (peak 1 at the rim), w = 1 - smoothstep(halo_win_x0 - 1, halo_r_x - 1, d) (0 at halo_r_x
+// R), inside R the rim's value x smoothstep(halo_in, 1, r / R) (no fill: the body is not a balloon, the rise hidden
+// under the body's rim); the quad to halo_r_x R(t); faded out over halo_fade_x0 .. halo_fade_x1 of L (smoothstep, with
+// the core). It replaces the 2026-11-07 filled glow in air (1.6 R(t), D15's 1.15 R(t) and 0.2 E_b cap on the big tiers:
+// it read as a balloon). At d = 1 (2 R(t)) p = 0.050, its 10 % radius 1.80 R(t) [I, the law] (the first lab round's
+// halo_tail 0.4 windowed from 1.8 R(t), 0.114 and 2.04 R(t), read as a disc with an edge).
+constexpr float glow_r_x = 1.6f, glow_r_max = 2.0f, glow_e = 0.33f, halo_soft = 0.5f, halo_fade_x0 = 0.3f, halo_fade_x1 = 0.6f;
+constexpr float halo_e = 0.5f, halo_r_x = 2.5f, halo_sigma = 0.35f, halo_tail = 0.25f, halo_win_x0 = 1.5f, halo_in = 0.9f,
+                halo_t = 0.8f;
 constexpr float cluster_r_x = 2.0f, cluster_n0 = 1.6f;
 // 2.7 the smoke: the burst's surface-bound multiply puff at smoke_r R_f, y = (t - smoke_t0 L) / (smoke_span L),
 // strength smoke_s0 min(1, y / smoke_rise) (1 - y) / (1 - smoke_rise), the body's seed and rotation.

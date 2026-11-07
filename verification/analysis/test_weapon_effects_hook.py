@@ -541,6 +541,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                     'death_big_seta6', 'death_budget_capital_close_5120', 'death_big_stage_cpu',
                     # the coordinator's decisions D14 (no shell on any tier) and D15 (the big tiers' halo capped)
                     'death_shock_off_all_tiers', 'death_big_halo_capped',
+                    # 2026-11-08: the rim halo (every tier)
+                    'death_halo_rim',
                     # section 14 (explosion-look.md, 2026-11-07): the radiant core, the rays, the spark spray, the meter
                     'death_core_radiance', 'death_rays_starburst', 'death_rays_soft', 'death_rays_differ',
                     'death_sparks_dense', 'death_spark_heads',
@@ -563,7 +565,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         core = next(r for r in rows if r.get('case') == 'core')
         self.assertGreaterEqual(core['median_core_01'], 3.0)
         halo = [r for r in rows if r.get('case') == 'halo']
-        self.assertTrue(halo and all(r['ratio'] <= 1.8 for r in halo))
+        self.assertTrue(halo and all(r['ratio'] <= 2.2 for r in halo))                  # the rim law's 10 % at 2.04 R(t)
+        rim = [r for r in rows if r.get('case') == 'halo_rim']
+        self.assertTrue(rim and all(abs(r['peak_r_over_R'] - 1.0) <= 0.1 and r['at_2R_over_peak'] < 0.15 and
+                                    r['inside_085R_max'] == 0 for r in rim))
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
         self.assertLessEqual(timing[(5120, 'eye_inside_fighter')]['gpu_us'], 330.0)  # 300 until 2026-11-08 (n4's below)
         self.assertLessEqual(timing[(5120, 'fighters_20_600m')]['gpu_us'], 8 * 177.5)

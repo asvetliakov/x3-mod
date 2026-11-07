@@ -405,17 +405,38 @@ spark cloud about three fireball radii across. Four new elements of the death st
    the record's latched three-frame floor when longer, so it still acts under SETA; without it the capital's peak rose 2.09 x in one frame at P [M]). A **halo spike** at birth: the sprite batch's flash
    kind at the body's front, its white core `spike_rf` 0.15 R_f on screen clamped to 4-8 px at 1080 rows, halo 4 core
    radii, E `spike_e` 6 (1 - x / 0.12)^2, gone at 0.12 L.
+   **The rim halo** (2026-11-08, the user: "a halo which falls off from the heat source: on the edges it should be
+   bright/intensive then fall off"; the own sun's corona, [own-sun-look.md](own-sun-look.md) step 1d), every tier,
+   replacing the filled glow in air (D3's 1.6 R(t) and D15's 1.15 R(t) at <= 0.2 E_b on the big tiers, both read as a
+   balloon): `weapon_halo_ps.hlsl` with the glow's vertex program, the quad to `halo_r_x` 2.5 R(t), the rim R = R(t)
+   (the body's 10 %-of-peak outline, 0.91-1.14 R(t) measured) in the glow's lobe slot. With r the pixel ray's impact
+   parameter over R and d = max(r - 1, 0): p = (e^(-(d / 0.35)^2) + 0.25 w(d) / (1 + d^2)) / 1.25, w = 1 -
+   smoothstep(0.5, 1.5, d) (0 at 2.5 R(t)), x smoothstep(0.9, 1, r): 0 inside 0.9 R(t) (no fill; the rise sits under
+   the body's rim), the peak 1 at the rim, 0.050 at 2 R(t), its 10 % radius 1.80 R(t) [I, the law]. Radiance `halo_e`
+   0.5 E_b T(t) x the cluster's saturation, colour heat(`halo_t` 0.8 T(t)) (the body's orange fringe), faded out over
+   0.3-0.6 L (smoothstep, with the core), occlusion class 1, not with the eye inside the body. The first lab round
+   (tail weight 0.4 windowed from 1.8 R(t), heat(T)) read as a grey disc with an edge out to 2 R(t) under AgX; the
+   second (these constants) as a warm glow falling off the rim. Budget: the quad's box at `budget_weight_halo` 0.40,
+   shed at step (2) with a wave and (4) without, as before.
 2. **Rays [C, M].** A sprite kind (`weapon_sprite_ps.hlsl` depth.y 5; the vertex program passes it through). Since
    2026-11-07 (the user on the corvette: "not so pronounced/thin ... they shouldn't read as some decal ... look into our
-   sun") the law is the own sun's spokes ([own-sun-look.md](own-sun-look.md) step 1d): an odd 9-15 rays a death (9, 11, 13
-   or 15, hashed), at stratified angles turned per death with the slot offsets hashed in 0.375-0.625 (two rays at least a
-   quarter slot off opposite), each one screen-space trapezoid from 0.3 R(t) (the white core's edge), its length
-   (0.4 + 1.6 g) R_f on screen, g = frac(0.618 (i + o)) the golden-ratio hash with o hashed per death (spread evenly from
-   short to long), growing from 0.7 over the first 0.06 L; across a Gaussian (2^(-4 (y / FWHM)^2), no edge) of FWHM
+   sun") the law is the own sun's spokes ([own-sun-look.md](own-sun-look.md) step 1d): an odd 15-25 rays a death (15, 17,
+   ..., 25, hashed; 9-15 until 2026-11-08, the user: "can we increase number of rays ... make them various length - I see
+   still 3 big rays which have almost the same length"), at stratified angles turned per death with the slot offsets
+   hashed in 0.375-0.625 (two rays at least a quarter slot off opposite), each one screen-space trapezoid from the body's
+   rim, 1.0 R(t) at its front (from 0.3 R(t), the white core's edge, until the 2026-11-08 grids: the body and the rim
+   halo swamped every ray but the longest, the own sun's "why the rays vanished"), its length beyond the rim skewed:
+   L(g) = (0.4 + 2.0 g^2) R_f on screen, g = frac(0.618 (i + o)) the
+   golden-ratio hash with o hashed per death; the death's three largest g (their rank fixed per death, one O(N) pass a
+   frame, no sort) at L(g_1), 0.78 L(g_1) and 0.6 L(g_1); every other ray at L(g) x 0.8 x 0.6 L(g_1) / L(g_4) (the fourth
+   at 0.8 of the third: without it the fourth, unscaled, outgrows the scaled second and third), so the three longest
+   differ by 28 % and 30 % and most rays are short (`ray_len_lo`, `ray_len_k`, `ray_top2`, `ray_top3`, `ray_rest`; was
+   (0.4 + 1.6 g) R_f, evenly spread, whose top three sat within a few per cent); growing from 0.7 over the first 0.06 L;
+   the along-profile is in u = along / length, so each ray's visible tip is the same fraction of its length; across a Gaussian (2^(-4 (y / FWHM)^2), no edge) of FWHM
    max(6 px at 1080 rows, 0.065 x its length x (1 + u / 2)), u 0 at the start to 1 at the tip (the spoke widening
    outwards, mean 0.08 of the length), the trapezoid 1.4 FWHM each side at either end (the tail there under 0.5 %);
-   along the sun's e^(-u) (1 - u)^2, faded in over the first 0.15 of u (smoothstep: no bright base); brightness `ray_e`
-   0.4 x (0.6 + 0.6 g2), g2 = frac(0.755 (i + o) + 0.31), x (1 - x / 0.5)^3 x a per-ray flicker (period 150-300 game ms,
+   along the sun's e^(-u) (1 - u)^2 at full strength from the rim, faded in over the first 0.05 of u (0.15 before);
+   brightness `ray_e` 1.0 x (0.6 + 0.6 g2) (0.4 before: a ray's base now about 0.8-1.0 of the rim halo under it), g2 = frac(0.755 (i + o) + 0.31), x (1 - x / 0.5)^3 x a per-ray flicker (period 150-300 game ms,
    at least two frame steps, so under SETA a flicker level holds at least two frames; the hash of the period's index blended smoothly into the next:
    1 - 0.3 level), colour heat(0.95 -> 0.8) (the lower end read as brown smoke shafts under AgX in the lab), SOFT R_f
    against the lane, gone at 0.5 L. The 2026-11-07 starburst (24-40 rays of 1-3 px, length 1.2-2.0 R_f, `ray_e` 2.4,
@@ -451,7 +472,8 @@ spark cloud about three fireball radii across. Four new elements of the death st
    death from its mean quad (a 4 px head, a 16 px length, both x min(1, R_f on screen / 28.8 px)), takes at most a
    quarter of that budget: past it another halving (within the four).
 4. **Contrast [C].** No change: the body's rim erosion is the shared program's (not this step's), and the frames show
-   the blown core over the orange fringe with black around it; the glow and halo weights stay.
+   the blown core over the orange fringe with black around it; the glow and halo weights stay (the halo's law changed
+   in item 1, 2026-11-08).
 
 The meter: `death_exposure_meter_shift` runs the production meter (`src/renderer/exposure.cpp`, Auto capped at +1.3 EV,
 gamma 2.2 decode) at 5120x1440 and measures the fresh target's shift against the scene alone, not a head's radiance.
@@ -473,14 +495,19 @@ normal range never drive the meter), the 120 m fighter <= 1.3 EV (Auto's upper l
 | Gate (fixture, `EXPLOSION case=...` rows) | Built [M] | Bound |
 | --- | --- | --- |
 | `death_core_radiance` (fighter 600 m, 8 seeds) | median inside 0.2 R(t) at 0.05 L 6.98 | >= 6 |
-| `death_rays_starburst` (300 m, 5120x1440, 4 seeds; soft rays) | angular peaks at 0.1 L at 0.5 R(t) 9-14 for 9-13 rays drawn, at 1.5 R(t) 6-8; 0 at 0.6 L | drawn +- 1; >= 3; <= 2 |
-| `death_rays_soft` (300 m, 0.1 L) | median FWHM at 1.0 R(t) 7.03 px at 1080 rows; worst ray peak over the death under it at 0.5 R(t) 0.123 | >= 4; <= 0.4 |
-| `death_rays_differ` | two deaths' 360-bin profiles correlate 0.10 | < 0.3 |
+| `death_rays_starburst` (300 m, 5120x1440, 4 seeds; 15-25 rays from the rim since 2026-11-08) | 21, 17, 23, 15 rays drawn; angular peaks at 0.1 L at 1.25 R(t) 21, 17, 23, 15 (every ray), at 1.5 R(t) 10-13; 0 at 0.6 L | >= 12 and <= drawn + 1 (was drawn +- 1 at 0.5 R(t)); >= 3; <= 2 |
+| ray lengths beyond the rim (part of `death_rays_starburst`; 300 m, 0.1 L) | the three longest 2.13-2.29 / 1.66-1.78 / 1.28-1.37 R_f (seed 0: 162 / 126 / 97 px at 1080 rows), every other ray <= 1.02-1.10 R_f; each visible tip (0.1 of its axis' maximum) at 0.600-0.610 of its length | each >= 1.25 x the next; spread <= 0.15 |
+| `death_rays_soft` (300 m, 0.1 L) | median FWHM at 1.25 R(t) 6.10 px at 1080 rows; worst ray peak over the death under it (the rim halo) there 0.92 | >= 4; <= 1.2 (was <= 0.4 at 0.5 R(t): a ray now starts at full strength over the halo, `ray_e` 1.0) |
+| `death_rays_differ` | two deaths' 360-bin profiles correlate -0.04 | < 0.3 |
+| `death_halo_rim` (fighter 600 m, the halo alone; 2026-11-08) | radial profile peak at 1.022 / 1.030 R(t) at 0.1 / 0.3 L, 0.056 / 0.050 of it at 2 R(t), 0 inside 0.85 R(t) | within 0.1 R(t); < 0.15; 0 |
+| `death_halo_in_air` (fighter 600 m) | farthest 10 % pixel 1.83 R(t) at 0.1-0.55 L; none from 0.62 L, after L or with the eye inside | <= 2.2 R(t) (1.8 before; the law's 1.80) |
+| `death_big_halo_capped` (capital 1.5 km, 0.2 L; re-derived to the rim law) | farthest 10 % pixel at impact parameter 1.80 R(t) (599 px; R(t)'s silhouette 274 px), peak 0.62, the profile's peak at 1.003 of the rim's silhouette, 0.050 at 2 R(t), 0 inside 0.85 R(t), none at 0.62 L | <= 2.2 R(t) (D15 1.25 R(t)); <= 0.5 E_b (D15 0.2 E_b); within 0.1, < 0.15, 0; 0 |
 | `death_sparks_dense` (600 m, 0.3 L) | 217 heads on screen (173 local maxima); lengths std / mean 1.0 | >= 100; >= 0.4 |
 | `death_spark_heads` (600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows (116 heads) | >= 3 |
 | `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.82 EV over dim since the 3-5 px spark heads (0.39 before), 0 over lit (black sky 1.30, informational) | 300 m <= 0.5, 120 m <= 1.3 over dim / lit |
-| `death_rays_sparks_budget_5120` | fighter 600 m 20.9-21.9 us, 20 fighters 42.4-50.6 us (0.05 / 0.1 / 0.3 L) | <= 60; <= 150 |
-| `death_budget_capital_close_5120` | worst 354.0 us | <= 450 |
+| `death_rays_sparks_budget_5120` | fighter 600 m 21.7 us at 0.1 L, 20 fighters 54.8 us; rays alone fighter 300 m 15.0 us, close capital 27.0 us (2026-11-08: 15-25 rays from the rim, `ray_e` 1.0, the 2.5 R(t) halo) | <= 60; <= 150 |
+| `death_budget_capital_close_5120` | worst 284.1 us | <= 450 |
+| halo alone (the eye in its sphere, 5120x1440) | 71.8 us, 0.405 a screen (halo program 60 -> 90 slots, 470 words) | `budget_weight_halo` 0.40 |
 
 Gates changed with the law: `death_embers_hidden_in_body` (D5: at most half drawn at birth, none over the young body) now
 asks for some drawn at birth and >= 80 % once the births are out (41, then 207 of 221); `death_embers_lengths_and_widths`

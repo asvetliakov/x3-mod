@@ -2430,6 +2430,87 @@ with another project's X4.exe running on the Windows side: `death_stage_cpu_32_d
 PASS; host tests `test_weapon_effects_hook` and `_lab` 59, 2 failing on those CPU rows; AP `build-rays` 0 warnings
 (d3d9.dll sha256 70be38ab567405f2...), `check_no_x87.py --edition ap` PASS (1181 reachable functions).
 
+**More rays, the rim halo** (2026-11-08, on `773a47f40`; the user: "increase number of rays ... various length - I see
+still 3 big rays which have almost the same length" and "a halo which falls off from the heat source: on the edges it
+should be bright/intensive then fall off"; law in [explosion-look.md](../architecture/explosion-look.md) section 14
+items 1 and 2). Rays: an odd 15-25 a death, lengths (0.3 + 2.2 g^2) R_f with the death's three largest golden-ratio
+hashes at L(g_1), 0.78 L(g_1), 0.6 L(g_1) and every other ray scaled so the fourth sits at 0.8 of the third (one O(N)
+pass a frame); width, brightness, flicker and the shed unchanged; the sprite program unchanged (235 slots). Halo: every
+tier a rim glow (`weapon_halo_ps.hlsl`, 60 -> 90 slots, 470 words [M]): 0 inside 0.9 R(t), peak 0.5 E_b T
+heat(0.8 T) at R(t), (e^(-(d / 0.35)^2) + 0.25 w(d) / (1 + d^2)) / 1.25 outside, the quad to 2.5 R(t), faded over
+0.3-0.6 L; it replaces D3's 1.6 R(t) glow and D15's 1.15 R(t) / 0.2 E_b cap. Gates re-derived with the law (old ->
+new): `death_halo_in_air` farthest 10 % pixel <= 1.8 -> 2.2 R(t) at 0.1 / 0.3 / 0.45 / 0.55 L (was 0.6 / 0.75 L, now
+faded) and none from 0.62 L; `death_big_halo_capped` <= 1.25 R(t), <= 0.2 E_b -> <= 2.2 R(t) as impact parameter (the
+capital at 1.5 km spans a third of the view: its 10 % pixel at 2.34 R f / z is 1.80 R(t)), <= 0.5 E_b, the profile's
+peak within 0.1 of the rim's silhouette, < 0.15 at 2 R(t), 0 inside 0.85 R(t); `death_rays_starburst` peaks at 0.5
+R(t) drawn +- 1 -> >= 9 and <= drawn + 1 (at 0.5 R(t) the 15-25 slots sit 4.6-9 px apart against an 8 px FWHM), plus
+the three longest each >= 1.25 x the next and their visible tips at one fraction of the length (spread <= 0.15). New
+`death_halo_rim`. Lab: two rounds (`stage-dump-rays-halo/lab/`, fighter 300 m and corvette 1,500 m at 50 / 150 / 400 /
+900 ms): the first (tail weight 0.4 windowed from 1.8 R(t), heat(T)) read as a grey disc with an edge out to 2 R(t),
+the second (tail 0.25 windowed from 1.5 R(t), heat(0.8 T)) as a warm glow falling off the rim; the one long ray and the
+two shorter ones read as different lengths, the short rays sit mostly under the body and the halo. Native grids
+(`stage-dump-rays-halo/`, fighter 300 / 600 m, nested, capital broadside; AgX from the 1080p frame): the same warm rim
+glow, no balloon fill. Record: `run_weapon_effects.py --host native` under the X3 lock (the judging dump first; the
+committed record after the two gate corrections, no dump): D3D 333 checks, 1 failed, `bolt_budget_512_bolts_20_muzzles_5120`
+(a bolt timing row this change does not touch, X4.exe running on the host; it failed the same way on load before);
+hook 147 / 0. The dump record also failed `death_stage_cpu_32_deaths` 53.2 us (the committed record 48.5, bound 50) and
+the hull CPU rows, host load. Programs `--check` PASS; host tests `test_weapon_effects_hook` and `_lab` 59, 1 failing
+(the record's overall pass, the bolt row); AP `build-rays` 0 warnings (d3d9.dll sha256 4c29dd71bf55f754...),
+`check_no_x87.py --edition ap` PASS (1181 reachable functions). Not flown. Table from
+`python3 verification/results/explosion-look/ledger_rows.py --markdown --rays`:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `death_core_radiance` (PASS; fighter 600 m, 8 seeds) | median radiance inside 0.2 R(t) at 0.05 L 6.984 (seeds 4.492..6.984); `death_body_white_hot_core` median at 0.1 L 5.273 | >= 6 |
+| `death_rays_starburst` (PASS; 5120x1440, 4 seeds) | angular peaks at 0.1 L, 300 m: at 0.5 R(t) 13, 16, 11, 15 for 21, 17, 23, 15 rays drawn; at 1.5 R(t) 5, 4, 5, 4; at 0.6 L 0; 600 m (recorded) 7, 7, 12, 7 / 5, 4, 4, 3 | >= 9 and <= drawn + 1 (2026-11-08; drawn +- 1 before); >= 3; <= 2 |
+| ray lengths (2026-11-08; 300 m, 0.1 L, part of `death_rays_starburst`) | the three longest over R_f 2.336,1.822,1.402 (rest <= 1.121; 167.7,130.8,100.6 px at 1080 rows); 2.199,1.715,1.319 (rest <= 1.055; 157.8,123.1,94.7 px at 1080 rows); 2.271,1.772,1.363 (rest <= 1.09; 163.0,127.2,97.8 px at 1080 rows); 2.375,1.853,1.425 (rest <= 1.14; 170.5,133.0,102.3 px at 1080 rows); visible tip over length 0.645..0.654 | each >= 1.25 x the next; spread <= 0.15 |
+| `death_halo_rim` (PASS; fighter 600 m, the halo alone) | 0.1 L: profile peak at 1.022 R(t), 0.056 of it at 2 R(t), inside 0.85 R(t) 0.0; 0.3 L: profile peak at 1.03 R(t), 0.05 of it at 2 R(t), inside 0.85 R(t) 0.0; capital 1.5 km at 0.2 L: peak at 1.003 of the rim's silhouette, 0.05 at 2 R(t)'s, peak 0.619, farthest 10 % pixel at 1.801 R(t) (`death_big_halo_capped` PASS) | within 0.1 R(t); < 0.15; 0 |
+| `death_rays_soft` (PASS; 300 m, 0.1 L) | median FWHM across the rays at 1.0 R(t) 6.31 px at 1080 rows (31 rays; per seed 6.21, 7.05, 6.14, 7.07); the worst ray peak over the death under it at 0.5 R(t) 0.237 (per seed 0.034, 0.237, 0.044, 0.024) | >= 4; <= 0.4 |
+| `death_rays_differ` (PASS) | two deaths' 360-bin profiles at 0.1 L correlate -0.057 | < 0.3 |
+| `death_sparks_dense` (PASS; fighter 600 m, 0.3 L) | 221 sparks, 217 drawn, 217 heads on screen, 116 local maxima in the ember part; lengths 16.0 +- 8.4 px (std / mean 0.528) | >= 100; >= 0.4 |
+| `death_spark_heads` (PASS; fighter 600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows over 116 image heads (the narrowest of the row, column and diagonal half widths) | >= 3 |
+| `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` (PASS, PASS, PASS) | 41 at birth, 207 of 221 once the births are out (0.05 L); widths 3.00..4.98 px; seed correlation -0.186, T 0.75 / 0.5 / 0.25 at 0.3 / 0.7 / 1.1 L, farthest 221.3 px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |
+| `death_exposure_meter_shift` (PASS; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift over dim / lit 300 m 0.0 EV, 120 m 0.588 EV (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; 1.3 EV); 300 m: black / dim 0.15 / lit 0.5 worst 0.000 / 0.000 / 0.000 EV (frame peaks 34.5 / 34.56 / 17.8 / 7.13 / 3.48 / 2.29); 120 m: black / dim 0.15 / lit 0.5 worst 1.300 / 0.588 / 0.000 EV (frame peaks 17.45 / 15.22 / 9.74 / 4.77 / 2.96 / 2.3) | 300 m <= 0.5 EV; 120 m <= 1.3 EV (Auto's upper limit) |
+| `death_no_pop_at_birth`, `death_big_no_pop_at_birth` (PASS, PASS) | worst frame-to-frame peak rise corvette_1500m 1.277, capital_1500m 1.456 | <= 2 |
+| `death_rays_sparks_budget_5120` (PASS) | fighter 600 m 22.5 / 21.9 / 22.6 us at 0.1 / 0.05 / 0.3 L; 20 fighters 57.3 / 50.8 / 64.5 us (spark halvings 2: 787 drawn, 2624 shed, 382 rays); fence 10.8 us | <= 60; <= 150 |
+| `death_budget_capital_close_5120` (PASS) | worst 283.9 us (capital_close_2000ms, shed 0) | <= 450 |
+| rays alone (5120x1440) | fighter 300 m 16.6 us (23 quads), close capital 49.7 us (23 quads), the fence 10.8 us | |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 48.5 us, 993 quads (repeats 48.8,43.9,48.2,49.1,48.5; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 39.7 us, 0.0735 a quad | 50; 0.08 |
+
+Rays from the rim (2026-11-08, coordinator on the native grids: the halo accepted; the rays vanished, at 50 / 150 ms
+the fighter a bright ball in its halo with one faint spoke). The own sun's rule (own-sun-look.md "why the rays
+vanished"): every ray starts at the body's rim, 1.0 R(t) at its front (`ray_start` 0.3 -> 1.0), at full strength (the
+fade-in 0.15 -> 0.05 of its length, `weapon_sprite_ps.hlsl`, still 235 slots / 1,022 words), lengths beyond the rim
+(0.4 + 2.0 g^2) R_f with the top-three rule kept, `ray_e` 0.4 -> 1.0 (a ray's base about 0.8-1.0 of the rim halo
+under it); width, flicker, count and fall-off unchanged. Gates moved with the start: `death_rays_starburst` counts at
+1.25 R(t), >= 12 distinct and <= drawn + 1 (was >= 9 at 0.5 R(t)); `death_rays_soft` measures there, the ray over what
+lies under it <= 1.2 (was 0.4: a ray now sits at full strength over the rim halo; past 1.2 x its ground it reads as a
+painted spoke). Lab (`stage-dump-rays-halo/lab/r3-*`, one round; the spoke count from
+`verification/results/explosion-look/count_spokes.py rays-only.png frame.png ...` on the local shots): the fighter at 300 m shows 21 spokes at 1.2 rim radii in the rays-only frame at
+150 ms, 14 / 21 in the full frame at 50 / 150 ms, short rays visible past the halo [M, lab]. Record:
+`run_weapon_effects.py --host native` under the X3 lock, no dump: D3D 333 checks, 0 failed; hook 147 / 0. Host tests
+`test_weapon_effects_hook` and `_lab` 59, all pass; programs and lab `--check` PASS; AP `build-rays` 0 warnings
+(d3d9.dll sha256 bfa2f676bbd645f0...), `check_no_x87.py --edition ap` PASS (1181 reachable functions). Not flown.
+Table:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `death_core_radiance` (PASS; fighter 600 m, 8 seeds) | median radiance inside 0.2 R(t) at 0.05 L 6.984 (seeds 4.492..6.984); `death_body_white_hot_core` median at 0.1 L 5.273 | >= 6 |
+| `death_rays_starburst` (PASS; 5120x1440, 4 seeds) | angular peaks at 0.1 L, 300 m: at 1.25 R(t) 21, 17, 23, 15 for 21, 17, 23, 15 rays drawn; at 1.5 R(t) 13, 10, 13, 10; at 0.6 L 0; 600 m (recorded) 19, 18, 18, 15 / 12, 9, 13, 9 | >= 12 and <= drawn + 1 (2026-11-08, from the rim; drawn +- 1 at 0.5 R(t) before); >= 3; <= 2 |
+| ray lengths (2026-11-08; 300 m, 0.1 L, part of `death_rays_starburst`) | the three longest over R_f 2.251,1.756,1.351 (rest <= 1.08; 161.6,126.0,96.9 px at 1080 rows); 2.126,1.658,1.276 (rest <= 1.021; 152.6,119.1,91.6 px at 1080 rows); 2.192,1.710,1.315 (rest <= 1.052; 157.4,122.7,94.4 px at 1080 rows); 2.286,1.783,1.372 (rest <= 1.097; 164.1,128.0,98.5 px at 1080 rows); visible tip over length 0.600..0.610 | each >= 1.25 x the next; spread <= 0.15 |
+| `death_halo_rim` (PASS; fighter 600 m, the halo alone) | 0.1 L: profile peak at 1.022 R(t), 0.056 of it at 2 R(t), inside 0.85 R(t) 0.0; 0.3 L: profile peak at 1.03 R(t), 0.05 of it at 2 R(t), inside 0.85 R(t) 0.0; capital 1.5 km at 0.2 L: peak at 1.003 of the rim's silhouette, 0.05 at 2 R(t)'s, peak 0.619, farthest 10 % pixel at 1.801 R(t) (`death_big_halo_capped` PASS) | within 0.1 R(t); < 0.15; 0 |
+| `death_rays_soft` (PASS; 300 m, 0.1 L) | median FWHM across the rays at 1.25 R(t) 6.1 px at 1080 rows (76 rays; per seed 6.11, 6.11, 6.09, 6.1); the worst ray peak over the death under it at 1.25 R(t) 0.92 (per seed 0.792, 0.626, 0.626, 0.92) | >= 4; <= 1.2 (2026-11-08, was 0.4) |
+| `death_rays_differ` (PASS) | two deaths' 360-bin profiles at 0.1 L correlate -0.044 | < 0.3 |
+| `death_sparks_dense` (PASS; fighter 600 m, 0.3 L) | 221 sparks, 217 drawn, 217 heads on screen, 116 local maxima in the ember part; lengths 16.0 +- 8.4 px (std / mean 0.528) | >= 100; >= 0.4 |
+| `death_spark_heads` (PASS; fighter 600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows over 116 image heads (the narrowest of the row, column and diagonal half widths) | >= 3 |
+| `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` (PASS, PASS, PASS) | 41 at birth, 207 of 221 once the births are out (0.05 L); widths 3.00..4.98 px; seed correlation -0.186, T 0.75 / 0.5 / 0.25 at 0.3 / 0.7 / 1.1 L, farthest 221.3 px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |
+| `death_exposure_meter_shift` (PASS; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift over dim / lit 300 m 0.0 EV, 120 m 0.584 EV (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; 1.3 EV); 300 m: black / dim 0.15 / lit 0.5 worst 0.000 / 0.000 / 0.000 EV (frame peaks 34.5 / 34.56 / 17.8 / 7.13 / 3.48 / 2.29); 120 m: black / dim 0.15 / lit 0.5 worst 1.300 / 0.584 / 0.000 EV (frame peaks 17.45 / 15.22 / 9.74 / 4.77 / 2.96 / 2.3) | 300 m <= 0.5 EV; 120 m <= 1.3 EV (Auto's upper limit) |
+| `death_no_pop_at_birth`, `death_big_no_pop_at_birth` (PASS, PASS) | worst frame-to-frame peak rise corvette_1500m 1.277, capital_1500m 1.456 | <= 2 |
+| `death_rays_sparks_budget_5120` (PASS) | fighter 600 m 21.7 / 21.1 / 21.3 us at 0.1 / 0.05 / 0.3 L; 20 fighters 54.8 / 49.3 / 62.3 us (spark halvings 2: 787 drawn, 2624 shed, 382 rays); fence 10.9 us | <= 60; <= 150 |
+| `death_budget_capital_close_5120` (PASS) | worst 284.1 us (capital_close_2000ms, shed 0) | <= 450 |
+| rays alone (5120x1440) | fighter 300 m 15.0 us (23 quads), close capital 27.0 us (23 quads), the fence 10.9 us | |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 43.9 us, 993 quads (repeats 43.6,43.9,44.0,43.9,43.8; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 35.8 us, 0.0663 a quad | 50; 0.08 |
+
 ## Fire material (2026-11-07)
 
 [docs/architecture/fire-material.md](../architecture/fire-material.md) built through the shared fireball program: the

@@ -23,7 +23,7 @@
 //   radiance (1 - u)^1.5, at the plane's interpolated view depth, SOFT = depth.z (view units).
 // - A ray (depth.y 5, a death's soft spoke: explosion-look.md section 14): the stage's trapezoid from the ray's start
 //   (u 0) to its tip (u 1), shade.y the signed distance across in pixels; across a Gaussian of FWHM max(shade.w,
-//   depth.w (1 + u / 2)) px (2^(-4 (y / FWHM)^2)), along the sun's e^(-u) (1 - u)^2 faded in over u < 0.15 (smoothstep), at
+//   depth.w (1 + u / 2)) px (2^(-4 (y / FWHM)^2)), along the sun's e^(-u) (1 - u)^2 faded in over u < 0.05 (smoothstep), at
 //   the quad's view depth, SOFT = depth.z (view units).
 // Radiance x the vertex's shade.z. Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp, defaults
 // weapon_effects_core.h look::.
@@ -49,7 +49,7 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
         float fwhm = max(shade.w, depth.w * (1.0 + 0.5 * u));
         float x = shade.y / fwhm;
         float f = 1.0 - u;
-        float s = saturate(u * (1.0 / 0.15));
+        float s = saturate(u * (1.0 / 0.05));
         float vis = occluder ? saturate((lane - z) / max(depth.z, 1e-4)) : 1.0;
         c = colour.rgb * (shade.z * exp2(-4.0 * x * x - 1.442695 * u) * f * f * (s * s * (3.0 - 2.0 * s)) * vis);
     } else if (depth.y > 3.5) {

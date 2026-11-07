@@ -23,11 +23,11 @@
 //   surface-bound, nothing over sky);
 // - glow (2.6, as amended 2026-11-07: the burst's law): the glow primitive at R = min(glow_r_x R(t), glow_r_max R_f),
 //   E_g = glow_e E_b T(t) heat(T(t)), the cluster's saturation, while the body draws (surface-bound: the lane's hulls
-//   only); and the same light in air about the body (the halo, weapon_halo_ps.hlsl, occlusion class 1) unless the eye is
-//   inside the body; the body's white-hot core (boom::core_*: the program's gain g in the core, 0 from core_x L);
+//   only); and a rim glow in air about the body (the halo, weapon_halo_ps.hlsl, occlusion class 1: brightest at R(t),
+//   falling off to halo_r_x R(t), nothing inside) unless the eye is inside the body; the body's white-hot core (boom::core_*: the program's gain g in the core, 0 from core_x L);
 // - smoke (2.7): the body's impostor in the scorch pass at smoke_r R_f from smoke_t0 L over smoke_span L;
 // - section 14 (the vanilla frames: a blazing core, rays, a dense spark spray): the core's gain 5 (1 - x / core_x)^2, a
-//   halo spike at birth (the flash kind, spike_*), the sun's soft spokes, 9-15 hashed flickering rays (the ray kind, ray_*) at
+//   halo spike at birth (the flash kind, spike_*), the sun's soft spokes, 15-25 hashed flickering rays (the ray kind, ray_*) at
 //   the body's front, and the embers as a spray of 120-400 sparks a death (tier_sparks_*, spark_*) visible from birth;
 //   rays and sparks past ray_frame_cap / spark_frame_cap or the sprite room shed by half-counts.
 // Every life is game time from the record's first stage frame (age 0 on its first drawn frame), never shorter than the
@@ -239,6 +239,48 @@ inline unsigned boom_ray_count(std::uint32_t sequence, float* turn, float* offse
     *turn = unit_of(mix32(h ^ 0x68e31da4u));
     if (offset) *offset = unit_of(mix32(h ^ 0x3c6ef372u));
     return unsigned(bm::ray_n_lo) + 2u * ((h >> 8) % (unsigned(bm::ray_n_hi - bm::ray_n_lo) / 2u + 1u));
+}
+// Section 14 (2026-11-08): a ray's length over R_f. g_i = frac(ray_phi (i + o)) (the golden-ratio hash), L(g) = ray_len_lo
+// + ray_len_k g^2; the death's three largest g (their rank fixed per death, one pass over its N) at L(g_1), ray_top2
+// L(g_1), ray_top3 L(g_1); the others L(g) x ray_rest ray_top3 L(g_1) / L(g_4) (the fourth at ray_rest of the third).
+struct RayLengths {
+    unsigned top[3] = {~0u, ~0u, ~0u};
+    float l1 = 0.f, rest = 1.f;
+};
+inline float boom_ray_g(unsigned i, float o) noexcept {
+    const float g = (float(i) + o) * core::boom::ray_phi;
+    return g - float(scalar::floor(double(g)));
+}
+inline float boom_ray_law(float g) noexcept {
+    return core::boom::ray_len_lo + core::boom::ray_len_k * g * g;
+}
+inline void boom_ray_lengths(unsigned N, float o, RayLengths* r) noexcept {
+    namespace bm = core::boom;
+    float best[4] = {-1.f, -1.f, -1.f, -1.f};
+    unsigned idx[4] = {~0u, ~0u, ~0u, ~0u};
+    for (unsigned i = 0; i < N; ++i) {
+        const float g = boom_ray_g(i, o);
+        unsigned k = 4;
+        while (k > 0 && g > best[k - 1]) --k;
+        if (k >= 4) continue;
+        for (unsigned j = 3; j > k; --j) {
+            best[j] = best[j - 1];
+            idx[j] = idx[j - 1];
+        }
+        best[k] = g;
+        idx[k] = i;
+    }
+    for (unsigned k = 0; k < 3; ++k) r->top[k] = idx[k];
+    r->l1 = boom_ray_law(best[0] > 0.f ? best[0] : 0.f);
+    const float l4 = boom_ray_law(best[3] > 0.f ? best[3] : 0.f);
+    r->rest = bm::ray_rest * bm::ray_top3 * r->l1 / l4;
+}
+inline float boom_ray_length(const RayLengths& r, unsigned i, float o) noexcept {
+    namespace bm = core::boom;
+    if (i == r.top[0]) return r.l1;
+    if (i == r.top[1]) return bm::ray_top2 * r.l1;
+    if (i == r.top[2]) return bm::ray_top3 * r.l1;
+    return boom_ray_law(boom_ray_g(i, o)) * r.rest;
 }
 // The smallest number of halvings (at most most) that brings demand within room: the half-count shed.
 inline unsigned boom_halvings(unsigned demand, unsigned room, unsigned most) noexcept {
@@ -1806,9 +1848,9 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     ++n.capped;
             }
         }
-        // The rays: the sun's soft spokes (an odd N, stratified angles turned per death, golden-ratio lengths and
-        // strengths, a Gaussian across widening outwards, e^(-u) (1 - u)^2 along faded in), each its flicker period
-        // hashed; gone at ray_x L.
+        // The rays: the sun's soft spokes (an odd N, stratified angles turned per death, skewed golden-ratio lengths with
+        // the three longest spread by rank, golden-ratio strengths, a Gaussian across widening outwards, e^(-u) (1 - u)^2
+        // along faded in), each its flicker period hashed; gone at ray_x L.
         if (t.rays && front_ok && cf[2] > f.near_z) {
             const float life = bm::ray_x * L > s.floor_ms ? bm::ray_x * L : s.floor_ms;
             if (lv.tb < life) {
@@ -1820,7 +1862,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 const float grow = bm::ray_grow0 + (1.f - bm::ray_grow0) * (lv.x < bm::ray_grow_x ? lv.x / bm::ray_grow_x : 1.f);
                 const float fall = 1.f - xr, env = fall * fall * fall; // (1 - x / ray_x)^3
                 static_assert(bm::ray_pow == 3.f, "env is (1 - x)^3");
-                static_assert(bm::ray_in == 0.15f, "weapon_sprite_ps.hlsl's ray branch: the fade-in over u < 0.15");
+                static_assert(bm::ray_in == 0.05f, "weapon_sprite_ps.hlsl's ray branch: the fade-in over u < 0.05");
                 float colour[3];
                 core::heat_colour(bm::ray_t0 + (bm::ray_t1 - bm::ray_t0) * xr, colour);
                 const std::uint32_t packed = pack_colour(colour, 1.f);
@@ -1828,14 +1870,17 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 const float floor_px = bm::ray_fwhm_px * rows, r0 = bm::ray_start * rb_px;
                 // the flicker's period at least two frame steps (SETA: each level holds at least two frames)
                 const float step_ms = float(f.step_ms);
+                // the lengths' ranks (fixed per death): the three largest golden-ratio hashes and the fourth's length
+                RayLengths rl;
+                boom_ray_lengths(N, o, &rl);
                 // the half-count shed: only the indices whose low ray_shift bits are all set, the others counted
                 n.rays_shed += N - (ray_mask < N ? ((N - 1u - ray_mask) >> ray_shift) + 1u : 0u);
                 for (unsigned i = ray_mask; i < N; i += ray_mask + 1u) {
                     const std::uint32_t h = element_hash(seq, bm::ray_element + i), h1 = mix32(h ^ 0x2545f491u);
                     // the golden-ratio hashes (own_sun_ps.hlsl's spoke): lengths and strengths spread evenly
-                    const float k = float(i) + o, g1 = k * bm::ray_phi, g2 = k * bm::ray_phi2 + 0.31f;
-                    const float gl = g1 - float(scalar::floor(double(g1))), gs = g2 - float(scalar::floor(double(g2)));
-                    const float len_px = (bm::ray_len_lo + (bm::ray_len_hi - bm::ray_len_lo) * gl) * rf_px * grow;
+                    const float k = float(i) + o, g2 = k * bm::ray_phi2 + 0.31f;
+                    const float gs = g2 - float(scalar::floor(double(g2)));
+                    const float len_px = boom_ray_length(rl, i, o) * rf_px * grow;
                     // the FWHM at the start and the tip (max(floor, ray_fwhm_len len (1 + u / 2)): convex, so the
                     // trapezoid between the ends' half widths covers it)
                     const float wk = bm::ray_fwhm_len * len_px;
@@ -2121,25 +2166,21 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 ++n.glows;
             }
         }
-        // the halo: the burst's law; corvettes and up (D15) at halo_big_r R(t), at most halo_big_e E_b, faded out
-        // over halo_big_x0 .. x1 of L
-        const bool big_halo = tier == bm::corvette || tier == bm::capital || tier == bm::station;
-        const float hx0 = big_halo ? bm::halo_big_x0 : bm::halo_fade_x0, hx1 = big_halo ? bm::halo_big_x1 : bm::halo_fade_x1;
-        float halo_fade = (lv.x - hx0) / (hx1 - hx0);
+        // the halo (2026-11-08, every tier): the rim glow about R(t) (weapon_halo_ps.hlsl: 0 inside, its peak halo_e E_b
+        // T heat(halo_t T) at the rim, the corona's fall-off and tail to halo_r_x R(t)), faded out over halo_fade_x0 .. x1 of L
+        float halo_fade = (lv.x - bm::halo_fade_x0) / (bm::halo_fade_x1 - bm::halo_fade_x0);
         halo_fade = halo_fade < 0.f ? 1.f : halo_fade > 1.f ? 0.f : 1.f - halo_fade * halo_fade * (3.f - 2.f * halo_fade);
-        if (big_halo && lv.R > 0.f) { // the radiance cap: E_g = glow_e E_b T sb above halo_big_e E_b scaled down to it
-            const float e_g = bm::glow_e * bm::body_e * lv.T * sb, cap = bm::halo_big_e * bm::body_e;
-            if (e_g > cap) halo_fade *= cap / e_g;
-        }
         if (t.halo && lv.R > 0.f && halo_cap && dist > lv.R * bm::body_r_sphere && halo_fade > 0.f) {
-            const float Rh = (big_halo ? bm::halo_big_r : bm::glow_r_x) * lv.R;
-            const float halo_colour[3] = {light_colour[0] * halo_fade, light_colour[1] * halo_fade,
-                                          light_colour[2] * halo_fade};
+            const float Rh = bm::halo_r_x * lv.R, kh = bm::halo_e * bm::body_e * lv.T * sb * halo_fade;
+            float halo_colour[3];
+            core::heat_colour(bm::halo_t * lv.T, halo_colour);
+            for (unsigned q = 0; q < 3; ++q) halo_colour[q] *= kh;
+            const float rim[2] = {0.f, lv.R}; // the glow's lobe slot: the pixel program's TEXCOORD2.z, the rim radius
             float rect[4];
             bool full = false;
             if (lv.c[2] + Rh > f.near_z && sphere_rect(f, lv.c, Rh, rect, &full)) {
                 if (nh < halo_cap) {
-                    glow_quad(f, lv.c, Rh, rect, full, halo_colour, out.halos + 4 * nh);
+                    glow_quad(f, lv.c, Rh, rect, full, halo_colour, out.halos + 4 * nh, rim);
                     halo_meta[nh] = BoxMeta{age_ms, e.owner, rect_screens(rect) * bm::budget_weight_halo, lv.own, 0};
                     ++nh;
                     ++n.halos;
