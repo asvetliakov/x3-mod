@@ -537,7 +537,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                     'death_big_shock_is_a_shell', 'death_big_light_and_fade', 'death_big_eye_inside_bounded',
                     'death_big_seta6', 'death_budget_capital_close_5120', 'death_big_stage_cpu',
                     # the coordinator's decisions D14 (no shell on any tier) and D15 (the big tiers' halo capped)
-                    'death_shock_off_all_tiers', 'death_big_halo_capped')
+                    'death_shock_off_all_tiers', 'death_big_halo_capped',
+                    # section 14 (explosion-look.md, 2026-11-07): the radiant core, the rays, the spark spray, the meter
+                    'death_core_radiance', 'death_rays_starburst', 'death_rays_differ', 'death_sparks_dense',
+                    'death_exposure_meter_shift', 'death_rays_sparks_budget_5120')
 
     def test_explosion_gates(self):
         checks = dict(self.record['checks'])

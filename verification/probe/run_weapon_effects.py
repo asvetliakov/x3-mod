@@ -50,7 +50,7 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function
          '-mstackrealign', '-mincoming-stack-boundary=2', '-static', '-static-libgcc', '-static-libstdc++',
          '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-DX3M_WEAPON_EFFECTS_FIXTURE']
 SOURCES = ('verification/probe/weapon_effects_fixture.cpp', 'src/renderer/weapon_effects_pass.cpp',
-           'src/renderer/temporal_pass.cpp')
+           'src/renderer/temporal_pass.cpp', 'src/renderer/exposure.cpp')
 # The production reader the hull walk is timed through (review F4), compiled as the DLL compiles it (CMakeLists.txt:
 # no SSE / MMX) into its own object.
 NO_SSE_SOURCES = ('src/proxy/engine_memory.cpp',)
@@ -61,6 +61,8 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/proxy/engine_memory.h', 'src/proxy/engine_memory.cpp',
                       'src/renderer/weapon_bubble_pixel_program_inc.h',
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp',
+                      # section 14's death_exposure_meter_shift: the production meter (explosion-look.md 14)
+                      'src/renderer/exposure.h', 'src/renderer/exposure.cpp',
                       'src/effects/weapon_shell_vs.hlsl', 'src/effects/weapon_shell_ps.hlsl',
                       'src/effects/weapon_decal_vs.hlsl', 'src/effects/weapon_decal_ps.hlsl', 'src/effects/weapon_soft_depth.hlsl',
                       'src/effects/weapon_hex_patch.hlsl',

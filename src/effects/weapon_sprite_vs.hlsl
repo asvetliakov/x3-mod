@@ -4,7 +4,8 @@
 //   z - near z, z), b = (u, v, radiance, r) passed through; c.x 2 marks a ring (c.y its soft radius), 3 a star (c.y its
 //   arm unit A over the quad's half, c.z the width floor's half, both in quad units), 0 a flash (c.z its core's share
 //   of the halo colour: 0 a white core, the beam spot's weapon-coloured one); c.x 4 a cone (step 4's muzzle flame,
-//   star arm or vent: b = (u, v, radiance, unused), c.y its soft depth).
+//   star arm or vent: b = (u, v, radiance, unused), c.y its soft depth); c.x 5 a ray (a death's starburst, explosion-look.md
+//   section 14: b = (u, v in pixels, radiance, unused), c.y its soft depth, c.z its half width in pixels).
 // - a streak (alpha 0, a spark; the performance pass moved its expansion here): a = its head (this frame's position,
 //   view space) and its radiance, b = its tail (the previous frame's position through the previous frame's view) and
 //   its width (view units), c = the corner (u -1 tail / +1 head, x the spark's rest-length factor; v -1 / +1 across)

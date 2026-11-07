@@ -2265,3 +2265,57 @@ R_f behind the front: its own edge); the material now falls off ahead as the rim
 broadside, station 3 km at both sizes) judged: an orange-red broken ring with clumps, dark-red gaps and a thin hot rim
 in the body's palette, no beige band, no black blots, no cut; frames local (`stage-dump-wave/v7/`, `wave7/lab-v7-*`).
 Late (P + 1,200 ms, x 0.75) the faded ring reads as a dim brown band of even width at 5 km. Also: host tests `test_weapon_effects_*` 101, 2 failing on the record's CPU row alone; programs, lab, schema and generate `--check` PASS; AP `build-wave2` (clean, d3d9.dll sha256 f06cab8544aa5e9a...) and FL `build-wave2-fl` 0 warnings; `check_no_x87.py --edition ap` PASS (1181 reachable functions); `manage.py launch --game-dir /mnt/c/X3 --config --dry-run` exit 0. Not flown.
+
+## Explosions: radiance, rays and sparks
+
+2026-11-07, committed as `2eb405fc9` on `effects` `d3e7698bf`. Spec: [explosion-look.md](../architecture/explosion-look.md)
+section 14 (the user's three vanilla frames). First record (`2eb405fc9`, with the judging dump): D3D 322 checks, 1
+failed: `death_stage_cpu_32_deaths` 59.3 us with 1164 quads against the parent `d3e7698bf`'s 42.1 us with 588 quads on
+the same host, a regression of this change (the sparks and rays doubled the sprite quads), not the host's state.
+
+Review fixes (2026-11-07, on `2eb405fc9`): the spark loop visits only the indices the half-count shed keeps, takes its
+per-set invariants (the clock's scales, the launch centre's two views, the lengths' reference) out of the per-spark
+work and divides by none; the on-screen spark count moved from the stage to the fixture (from the drawn quads); the
+ray loop steps over the shed indices. Bound unchanged (50 us). The core's ramp is max(`core_ramp_ms`, the record's
+three-frame floor) and the ray flicker's period at least the frame step (SETA); the spark budget reserves a big tier's
+secondaries' stars through the pre-roll; comments say the fragments keep their full count through three halvings.
+`death_exposure_meter_shift` measures the production meter's shift (no head-radiance claim) and gains a fighter at
+120 m, where the highlight limit acts: 0.386 EV over the dim scene (at 400 ms, downwards), 0 over the lit one, bound
+0.5 EV. Black sky is excluded from the gate (coordinator decision 2026-11-07) and kept as an informational value
+(`black_shift_ev` 1.300 at 600 / 1000 ms): the meter scores an empty frame 0 EV and climbs to its +1.3 EV cap on any
+signal, so that row measures the meter's black policy, not the death's highlight pull. Record: `run_weapon_effects.py --host native` under the X3 lock, no dump (game
+absent; the Windows screensaver killed first: with it up the device was lost mid-run, then refused): D3D 329 checks
+(the 322 plus the seven fault and Reset rows a dump run skips), 0 failed; hook 147 / 0. Table from
+`python3 verification/results/explosion-look/ledger_rows.py --markdown --rays` over that record:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `death_core_radiance` (PASS; fighter 600 m, 8 seeds) | median radiance inside 0.2 R(t) at 0.05 L 6.984 (seeds 4.492..6.984); `death_body_white_hot_core` median at 0.1 L 5.273 | >= 6 |
+| `death_rays_starburst` (PASS; 5120x1440, 4 seeds) | angular peaks at 1.5 R(t), 0.1 L, 300 m: 39, 34, 31, 38 for 38, 34, 30, 37 rays; at 0.6 L 0; 600 m (recorded) 39, 36, 30, 40 | >= 24; <= 2 |
+| `death_rays_differ` (PASS) | two deaths' 360-bin profiles at 0.1 L correlate 0.101 | < 0.3 |
+| `death_sparks_dense` (PASS; fighter 600 m, 0.3 L) | 221 sparks, 217 drawn, 217 heads on screen, 173 local maxima in the ember part; lengths 12.8 +- 12.7 px (std / mean 0.997) | >= 100; >= 0.4 |
+| `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` (PASS, PASS, PASS) | 41 at birth, 207 of 221 once the births are out (0.05 L); widths 1.00..1.99 px; seed correlation -0.141, T 0.75 / 0.5 / 0.25 at 0.3 / 0.7 / 1.1 L, farthest 219.5 px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |
+| `death_exposure_meter_shift` (PASS; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift 0.386 EV over dim / lit (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; 1.3 EV); 300 m: black / dim 0.15 / lit 0.5 worst 0.000 / 0.000 / 0.000 EV (frame peaks 35.06 / 32.91 / 19.83 / 8.1 / 3.65 / 2.38); 120 m: black / dim 0.15 / lit 0.5 worst 1.300 / 0.386 / 0.000 EV (frame peaks 19.25 / 16.06 / 9.9 / 4.63 / 3.03 / 2.33) | <= 0.5 EV |
+| `death_no_pop_at_birth`, `death_big_no_pop_at_birth` (PASS, PASS) | worst frame-to-frame peak rise corvette_1500m 1.267, capital_1500m 1.288 | <= 2 |
+| `death_rays_sparks_budget_5120` (PASS) | fighter 600 m 19.7 / 19.7 / 20.4 us at 0.1 / 0.05 / 0.3 L; 20 fighters 38.8 / 38.1 / 41.1 us (spark halvings 2: 787 drawn, 2624 shed, 322 rays); fence 11.0 us | <= 60; <= 150 |
+| `death_budget_capital_close_5120` (PASS) | worst 347.7 us (capital_close_600ms, shed 9) | <= 450 |
+| rays alone (5120x1440) | fighter 300 m 15.0 us (28 quads), close capital 19.4 us (28 quads), the fence 11.0 us | |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 45.0 us, 1164 quads (repeats 45.1,45.1,44.8,45.0,45.0; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 35.9 us, 0.0617 a quad | 50; 0.08 |
+
+The ray sheet (one quad a death, the three nearest rays a pixel; `verification/results/explosion-look/ray-sheet/slots.py`,
+`slots_out.txt`): 464 instruction slots against the sprite program's 178 -> 201 with the ray kind [M]; per-ray quads
+chosen (section 14 item 2). Development runs (boom only, not the record) before the pins: the rays' bases stacked at the
+centre (capital peak rise 3.91 x at P), the sparks' heads on the launch ring (corvette ember peak 55.8 at birth), the
+big body's core over its secondaries (2.09 x): fixed by the ray start, the spark births spread over 0.05 L with a fade-in,
+and the core's ramp (now 1.29 x). Frames judged (local): `stage-dump-rays/` (fighter 300 m and 600 m, the nested kill, the
+capital broadside P - 50 .. P + 1,200 ms; clipped engine space at 5120x1440 and AgX from the 1080p frame) and
+`stage-dump-rays/lab/` (`boom/fighter-m5-300m-vanilla-compare` at 50 / 150 / 400 / 900 / 1,500 ms beside the vanilla
+frame): a blown white core with a hard starburst to 150 ms, sparks around the eroding body from 400 ms, a wide yellow-orange
+spray at 900 ms; the capital's rays fade by its 0.3 L. First record's checks: host tests `test_weapon_effects_*` 101,
+2 failing on the record's CPU row alone; programs, lab, schema and generate `--check` PASS; AP `build-rays` (clean,
+d3d9.dll sha256 ec08dbf0d6968e27...) and FL `build-rays-fl` (af664635b7c177ab...) 0 warnings; `check_no_x87.py
+--edition ap` PASS (1181 reachable functions); `manage.py launch --game-dir /mnt/c/X3 --config --dry-run` exit 0. Review
+fixes: `test_weapon_effects_hook` and `_lab` 59, all pass; programs `--check` PASS; AP
+`build-rays` 0 warnings (d3d9.dll sha256 b049f07f490ab7f5...), `check_no_x87.py --edition ap` PASS (1181 reachable
+functions). Not flown.
+

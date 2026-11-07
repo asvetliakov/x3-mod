@@ -585,6 +585,16 @@ constexpr float tier_rise[5] = {0.12f, 0.15f, 0.15f, 0.20f, 0.10f};
 constexpr float tier_r0_obj[5] = {0.5f, 0.5f, 0.f, 0.f, 0.5f};
 constexpr float tier_r0_f[5] = {0.f, 0.f, 0.5f, 0.5f, 0.f};
 constexpr float tier_embers[5] = {32.f, 64.f, 128.f, 160.f, 12.f};
+// Section 14 (2026-11-07, the vanilla frames: a dense spark spray): the sparks a death, hashed per death in
+// [tier_sparks_lo, tier_sparks_hi] (the secondaries' share secondary_embers each part of it); tier_embers stays the span of
+// the main set's indices the fragments come from (one in fragment_every of the first tier_embers), so the fragments keep
+// their count. A frame draws at most spark_frame_cap sparks and what the sprite room leaves: past either every second
+// spark of every death is shed, then every fourth (the half-count shed, spark_shed_max halvings at most; the long
+// streaks keep their share, the fragments (indices 7 mod fragment_every) their full count through three halvings and
+// half of it at the fourth).
+constexpr float tier_sparks_lo[5] = {120.f, 160.f, 240.f, 240.f, 40.f};
+constexpr float tier_sparks_hi[5] = {240.f, 300.f, 400.f, 400.f, 80.f};
+constexpr unsigned spark_frame_cap = 1024, spark_shed_max = 4;
 constexpr float tier_shock[5] = {0.f, 1.f, 1.f, 1.f, 1.f};
 constexpr float tier_shock_tau[5] = {0.3f, 0.3f, 0.3f, 0.4f, 0.3f};
 // 2.1 the body: the burst program unchanged (look::fireball_*), R(t) = R_0 + (R_f - R_0) (1 - e^(-t / (rho L))) +
@@ -605,9 +615,50 @@ constexpr float body_r_sphere_big = 1.21f, sphere_px0 = 64.f, sphere_px1 = 320.f
 constexpr float body_floor_px = 12.f;
 // The white-hot core (coordinator decision 2026-11-07, after the first frames: the body itself carries the birth's white
 // heat, not the embers): the fireball program's radiance x (1 + g) and its colour whitened by min(1, g) inside core_r of
-// the body's radius (falling to 0 at core_r + core_soft), g = core_gain (1 - x / core_x) while x < core_x (x = t / L):
-// at 0.1 L the core is E_b (1 + 1.79) = 4.2 [I], over 3; gone by 0.35 L.
-constexpr float core_gain = 2.5f, core_x = 0.35f, core_r = 0.3f, core_soft = 0.2f;
+// the body's radius (falling to 0 at core_r + core_soft), g = core_gain (1 - x / core_x)^2 while x < core_x (x = t / L).
+// Section 14 (2026-11-07, the vanilla frames: a blazing core): core_gain 2.5 -> 5 and the decay squared (linear, the
+// capital's core stayed a white blob at 0.3 L in the frames), so at 0.05 L the core is E_b (1 + 3.67) = 7.0 x the
+// column (>= 6 inside 0.2 R, the HDR path blooms it), at 0.1 L E_b (1 + 2.55), at 0.2 L E_b (1 + 0.92), gone by core_x
+// 0.35 L (it was 2.5 (1 - x / 0.35): E_b (1 + 1.79) at 0.1 L).
+constexpr float core_gain = 5.0f, core_x = 0.35f, core_r = 0.3f, core_soft = 0.2f;
+// A big tier's body is born over its burning secondaries (the pre-roll): its core gain eases in over core_ramp_ms game ms
+// (three frames at 16 ms) or the record's latched three-frame floor when longer (SETA), so the main blast never doubles
+// the frame's peak at once (death_big_no_pop_at_birth: 2.09 x without).
+constexpr float core_ramp_ms = 48.f;
+// Section 14, the halo spike at birth: the sprite batch's flash kind (a white disc core and its e-folded halo) at the
+// body's centre biased to its front, its core spike_rf of R_f on screen clamped to spike_px_lo..hi px at 1080 rows (scaled
+// with the rows), its halo spike_halo core radii, radiance spike_e (1 - x / spike_x)^2, gone at spike_x L (the three-frame
+// floor), the halo heat(spike_t).
+constexpr float spike_rf = 0.15f, spike_px_lo = 4.f, spike_px_hi = 8.f, spike_halo = 4.f, spike_e = 6.f, spike_x = 0.12f,
+                spike_t = 0.95f;
+// Section 14, the rays (a starburst on screen, the vanilla glare): ray_n_lo..hi rays a death (hashed), each a sprite of
+// the ray kind (weapon_sprite_ps.hlsl, depth.y 5) from the body's projected centre outwards at a stratified hashed angle
+// (slot i of N at (i + ray_jitter_lo + ray_jitter h) / N turns plus a hashed turn for the death), its length a hashed
+// ray_len_lo..hi of R_f on screen (at least ray_len_floor of the drawn body's radius), x (ray_grow0 + (1 - ray_grow0)
+// min(1, x / ray_grow_x)), starting ray_start of the body's radius R(t) out from the centre (the rays' bases apart: 40
+// bases on one pixel stacked to E 50+ in the first frames), its width a hashed ray_w_px_lo..hi px at 1080 rows (scaled
+// with the rows; its half tapering to 1 - ray_taper at the tip, anti-aliased over a pixel), radiance along (1 - u)^ray_fall
+// faded in over its first eighth; its brightness a hashed
+// ray_e_lo..1 of ray_e x (1 - x / ray_x)^ray_pow, x the flicker: per ray a hashed period ray_flicker_lo..hi game ms (at
+// least the frame step: under SETA a shorter period strobed), its level the hash of the period's index blended smoothly into the next one's, 1 - ray_flicker x level; colour heat(T) on
+// T ray_t0 at birth to ray_t1 at ray_x L; at the body's front (z - R(t)), SOFT ray_soft R_f against the lane; gone at
+// ray_x L. A frame draws at most ray_frame_cap ray quads (past it every second ray of every death, then every fourth:
+// the half-count shed, ray_shed_max halvings at most).
+constexpr float ray_n_lo = 24.f, ray_n_hi = 40.f, ray_jitter_lo = 0.1f, ray_jitter = 0.8f;
+constexpr float ray_len_lo = 1.2f, ray_len_hi = 2.0f, ray_len_floor = 1.6f, ray_grow0 = 0.7f, ray_grow_x = 0.06f,
+                ray_start = 0.3f;
+constexpr float ray_w_px_lo = 1.f, ray_w_px_hi = 3.f, ray_taper = 0.6f, ray_fall = 1.5f;
+// A ray longer than ray_w_len_px px at 1080 rows widens with its length (a capital's 600 px rays at 1-3 px read as
+// scratches across the screen in the frames; linear in the length, shafts): width x sqrt(max(1, length / ray_w_len_px)).
+constexpr float ray_w_len_px = 110.f;
+// ray_pow 3 (1.5 kept the capital's rays as shafts of light at 0.3 L in the frames: the starburst is the birth's)
+constexpr float ray_e = 2.4f, ray_e_lo = 0.45f, ray_x = 0.5f, ray_pow = 3.f;
+constexpr float ray_flicker_lo = 30.f, ray_flicker_hi = 60.f, ray_flicker = 0.55f;
+constexpr float ray_t0 = 0.9f, ray_t1 = 0.6f, ray_soft = 1.0f;
+constexpr unsigned ray_frame_cap = 512, ray_shed_max = 3;
+// The ray hashes: element_hash(sequence, ray_element + i) per ray (angle, length, width, brightness, period), the count
+// and the death's turn from ray_element - 1; past the secondaries' (secondary_element + 4 x 12).
+constexpr unsigned ray_element = 1024;
 // 2.2 the flash: the burst's star at A = star_arm R_f, core star_core R_f, white at look::core_e, the arms heat(star_t),
 // star_ms game ms (three-frame floor), its arm on screen capped at star_cap_h of the target's rows.
 constexpr float star_arm = 0.4f, star_core = 0.08f, star_ms = 40.f, star_t = 0.9f, star_cap_h = 0.25f;
@@ -638,13 +689,35 @@ constexpr std::uint8_t shock_tiers = 0;
 // One in fragment_every a fragment: fragment_v v_e, fragment_life L, width fragment_w_px px, half an ember's length, a
 // hot tip at heat(fragment_tip_t) cooling and a dark box under it (the scorch pass, darkening fragment_dark,
 // surface-bound), hidden inside the body likewise.
+// Section 14 (2026-11-07, the vanilla's spray from t = 0; supersedes the D5 hiding and the R_f-scaled lengths): a spark
+// of a body's set leaves from spark_r0_lo..spark_r0_lo + spark_r0_span of R_0 out along its own direction (visible at
+// birth); spark_cone_share of them in the seed cones, the rest in a uniform direction; speeds ember_speed_lo..hi v_e;
+// hidden only within ember_hide_r R(t) (fading in over the inner spark_hide_soft of that radius), the hiding fading with
+// the body's erosion from ember_hide_x0 to ember_hide_x1 of L; its head ember_w_px_lo..hi px wide at 1080 rows, its length
+// a hashed spark_len_lo..hi px at 1080 rows (h^2: more short ones), one in spark_long_every a long thin streak of
+// spark_long_lo..hi px, spark_long_w px wide, its head x spark_long_e; lengths x min(1, R_f on screen / spark_ref_px at
+// 1080 rows), never under two widths; head radiance ember_e e^(-t / (ember_tau L)) T x vis on heat(spark_t0 T) (ember_e
+// 2.6: a head decodes to 8.2 linear, the tonemap's white at the Auto cap [I, the meter's arithmetic];
+// death_exposure_meter_shift measures the production meter's shift on a fighter at 300 m and 120 m, not that limit).
 constexpr float ember_cones_lo = 4.f, ember_cones_hi = 6.f, ember_cone_deg = 25.f;
 constexpr float ember_v_x = 1.5f, ember_v_min = 40.f, ember_v_max = 300.f, ember_p0 = 0.3f;
-constexpr float ember_speed_lo = 0.5f, ember_speed_hi = 1.5f;
+constexpr float ember_speed_lo = 0.5f, ember_speed_hi = 2.0f;
 constexpr float ember_life[3] = {0.4f, 0.8f, 1.2f};
-constexpr float ember_stagger = 0.4f, ember_e = 8.f, ember_tau = 0.5f;
-constexpr float ember_w_px_lo = 1.5f, ember_w_px_hi = 2.5f, ember_len_max = 0.35f, ember_len_lo = 0.25f;
-constexpr float ember_hide_r = 0.8f, ember_hide_x0 = 0.5f, ember_hide_x1 = 0.9f;
+constexpr float ember_stagger = 0.4f, ember_e = 2.6f, ember_tau = 0.8f;
+constexpr float ember_w_px_lo = 1.f, ember_w_px_hi = 2.f, ember_len_max = 0.35f, ember_len_lo = 0.25f;
+constexpr float ember_hide_r = 0.5f, ember_hide_x0 = 0.5f, ember_hide_x1 = 0.9f;
+constexpr float spark_r0_lo = 0.55f, spark_r0_span = 0.45f, spark_cone_share = 0.6f, spark_hide_soft = 0.2f;
+constexpr float spark_len_lo = 4.f, spark_len_hi = 24.f, spark_long_every = 12.f, spark_long_lo = 40.f, spark_long_hi = 80.f;
+constexpr float spark_long_w = 1.f, spark_long_e = 1.0f, spark_ref_px = 28.8f, spark_t0 = 1.0f;
+// A spark leaves at a hashed delay in [0, spark_birth_x L) of its set, spark_birth_now of them at once (a spray from
+// t = 0, not one stacked burst: 200 heads on one ring at birth summed to E 50+ in the first frames); its clock, life and
+// cooling start then, its radiance from spark_in0 of it to the whole over its first spark_in_x L (a fresh spark sits in
+// the crowd at the launch ring).
+constexpr float spark_birth_x = 0.05f, spark_birth_now = 0.15f, spark_in_x = 0.02f, spark_in0 = 0.25f;
+// The spray's speeds lean fast (ember_speed_lo + (hi - lo) sqrt(h): a spray beyond the core, not a ball inside it) and a
+// spark stays hot most of its life: T = spark_t0 (1 - (t / life)^spark_cool_pow) (the vanilla's yellow sparks late; a
+// linear T read orange from 0.4 L in the frames).
+constexpr float spark_cool_pow = 1.5f;
 constexpr float fragment_every = 8.f, fragment_v = 0.5f, fragment_life = 1.5f, fragment_w_px = 3.f;
 constexpr float fragment_dark = 0.6f, fragment_tip_t = 0.6f, fragment_dark_r = 1.f;
 // 2.6 the light (decision 2026-11-07: the note's 5 R_f read as a lamp over a hull; the burst's accepted law instead,
@@ -709,8 +782,10 @@ constexpr float budget_weight_shock = 0.36f, budget_weight_halo = 0.40f;
 constexpr float budget_screens = 2.5f;
 constexpr unsigned max_bodies = 32, max_quads = 2048;
 // The record's element hashes (stage::element_hash(sequence, k)): the body's rotation, lobes and noise seed are the
-// burst's elements 8 / 10 / 4, the star's 11; the cones from cone_element, an ember's from ember_element + its index.
-constexpr unsigned cone_element = 32, ember_element = 64;
+// burst's elements 8 / 10 / 4, the star's 11; the cones from cone_element, an ember's from ember_element + its index
+// (2048 since section 14: up to 400 + 12 x 8 sparks a death stay clear of the secondaries' and the rays' hashes).
+constexpr unsigned cone_element = 32, ember_element = 2048;
+static_assert(ember_element > ray_element + 64u && ray_element > secondary_element + 4u * 12u, "the hash ranges apart");
 // The record's life (game ms): the pre-roll plus the slowest element's (the smoke's (smoke_t0 + smoke_span) L).
 constexpr std::uint16_t record_life(unsigned t) noexcept {
     return std::uint16_t(tier_preroll_ms[t] + (smoke_t0 + smoke_span) * tier_life_ms[t]) + 1u;

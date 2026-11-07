@@ -634,7 +634,8 @@ console.log(JSON.stringify(out));
         shock_end L, the nested case's three bodies, the glow and smoke only over the hull plane, the halo in air, embers
         random per seed, hidden inside the body, of varied lengths (decisions of 2026-11-07)."""
         ids = [p['id'] for p in gen.PRESETS if p['family'] == 'boom']
-        for want in ('fighter-m5-600m-side', 'fighter-m3-2km-floor', 'corvette-m6-1500m', 'freighter-ts-1500m',
+        for want in ('fighter-m5-600m-side', 'fighter-m5-300m-vanilla-compare', 'fighter-m3-2km-floor',
+                     'corvette-m6-1500m', 'freighter-ts-1500m',
                      'capital-m2-1500m-preroll', 'capital-m7-far-5km', 'capital-m2-close-720m',
                      'station-factory-3km-preroll', 'missile-300m', 'missile-near-own-ship-40m', 'nested-3-fighters-area',
                      'own-death-chase', 'own-death-cockpit', 'seta6'):
@@ -655,6 +656,7 @@ const run = (o, t) => {
 };
 out.birth = run({}, 0);
 out.f03 = run({}, 600);
+out.f03_count = boomSparkCount(boomEvents(boomControls())[0].seq, 0); // section 14: the death's hashed spark count
 out.missile = run({vals: {c_x_tier: 'missile', c_x_dist: 300, c_x_radius: 3}}, 80);
 out.missile_late = run({vals: {c_x_tier: 'missile', c_x_dist: 300, c_x_radius: 3}}, 400);
 out.nested = run({vals: {c_x_nested: 3}}, 600);
@@ -683,11 +685,17 @@ console.log(JSON.stringify(out));
         self.assertAlmostEqual(js['f03']['R'], want, places=4)
         self.assertEqual((js['birth']['stars'], js['f03']['stars']), (1, 0))
         self.assertEqual((js['f03']['bodies'], js['f03']['shocks']), (1, 0))       # no shock for fighters
-        # every ember drawn or hidden inside the body (decision 2026-11-07); lengths not uniform, under the cap
-        self.assertEqual(js['f03']['embers'] + js['f03']['fragments'] + js['f03']['hidden'], int(bm['tier_embers'][0]))
+        # every spark drawn or hidden inside the body: the death's hashed count (section 14, 2026-11-07: 120-240 for a
+        # fighter); lengths spread (std >= 0.4 of the mean)
+        self.assertEqual(js['f03']['embers'] + js['f03']['fragments'] + js['f03']['hidden'], js['f03_count'])
+        self.assertTrue(bm['tier_sparks_lo'][0] <= js['f03_count'] <= bm['tier_sparks_hi'][0])
         lens = js['sky']['lengths']
         mean = sum(lens) / len(lens)
-        self.assertGreaterEqual((sum((x - mean) ** 2 for x in lens) / len(lens)) ** 0.5, 0.2 * mean)
+        self.assertGreaterEqual((sum((x - mean) ** 2 for x in lens) / len(lens)) ** 0.5, 0.4 * mean)
+        # the starburst and the halo spike at birth (24-40 rays), none by ray_x L
+        self.assertTrue(bm['ray_n_lo'] <= js['birth']['rays'] <= bm['ray_n_hi'])
+        self.assertEqual(js['birth']['spikes'], 1)
+        self.assertNotIn('rays', js['sky'])
         self.assertGreater(js['sky']['light']['halo'], 0)                         # the halo in air, over sky too
         self.assertEqual(js['sky']['halos'], 1)
         self.assertEqual((js['missile']['shocks'], js['missile_late']['shocks']), (1 if bm['missile_shock'] else 0, 0))

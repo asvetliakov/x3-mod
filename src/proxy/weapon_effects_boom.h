@@ -25,7 +25,11 @@
 //   E_g = glow_e E_b T(t) heat(T(t)), the cluster's saturation, while the body draws (surface-bound: the lane's hulls
 //   only); and the same light in air about the body (the halo, weapon_halo_ps.hlsl, occlusion class 1) unless the eye is
 //   inside the body; the body's white-hot core (boom::core_*: the program's gain g in the core, 0 from core_x L);
-// - smoke (2.7): the body's impostor in the scorch pass at smoke_r R_f from smoke_t0 L over smoke_span L.
+// - smoke (2.7): the body's impostor in the scorch pass at smoke_r R_f from smoke_t0 L over smoke_span L;
+// - section 14 (the vanilla frames: a blazing core, rays, a dense spark spray): the core's gain 5 (1 - x / core_x)^2, a
+//   halo spike at birth (the flash kind, spike_*), a starburst of 24-40 hashed flickering rays (the ray kind, ray_*) at
+//   the body's front, and the embers as a spray of 120-400 sparks a death (tier_sparks_*, spark_*) visible from birth;
+//   rays and sparks past ray_frame_cap / spark_frame_cap or the sprite room shed by half-counts.
 // Every life is game time from the record's first stage frame (age 0 on its first drawn frame), never shorter than the
 // three-frame floor latched then (min_frames x that frame's step). The big tiers (corvette, capital, station: the native
 // spawn ran through the clone row R', so the engine's carrier shows the hull through the pre-roll and fades it over
@@ -110,6 +114,7 @@ inline void boom_clear(BoomState& s) noexcept {
 struct BoomTuning {
     bool body = true, star = true, shock = true, embers = true, fragments = true, glow = true, smoke = true;
     bool halo = true, core = true; // the body's halo in air and its white-hot core (the fixture's geometry gates: core off)
+    bool rays = true, spike = true; // section 14: the starburst and the halo spike at birth
     bool secondaries = true, hull_light = true; // the big tiers' pre-roll: the secondaries (body, star, glow, embers) and the
                                                 // dying hull's light
     bool force_shock = false; // the fixture's shell gates and budget row: the missile's shell drawn though missile_shock is off
@@ -128,6 +133,9 @@ struct BoomTuning {
 struct BoomCounts {
     unsigned deaths = 0, bodies = 0, stars = 0, shocks = 0, embers = 0, fragments = 0, glows = 0, smokes = 0, darks = 0;
     unsigned halos = 0, embers_hidden = 0; // the bodies' halos; embers inside their body (not drawn this frame)
+    // Section 14: the rays and halo spikes drawn, the sparks and ray quads the half-count shed left out and its halvings
+    // this frame (the sparks whose head is on screen: the fixture's count over the drawn quads)
+    unsigned rays = 0, spikes = 0, sparks_shed = 0, rays_shed = 0, spark_halvings = 0, ray_halvings = 0;
     unsigned out_of_reach = 0, capped = 0, floored = 0, shed = 0, smokes_shed = 0, shocks_shed = 0, glows_shed = 0;
     unsigned octaves = core::look::fireball_octaves; // 2: the budget's step (1) this frame
     unsigned fine = 0;      // bodies drawn without their full third octave by their size
@@ -205,6 +213,26 @@ inline float boom_ember_speed_m(float R_f_m) noexcept {
     namespace bm = core::boom;
     const float v = bm::ember_v_x * R_f_m;
     return v < bm::ember_v_min ? bm::ember_v_min : v > bm::ember_v_max ? bm::ember_v_max : v;
+}
+// Section 14: a death's spark count (hashed in [tier_sparks_lo, tier_sparks_hi], the secondaries' share inside it) and
+// its ray count (hashed in [ray_n_lo, ray_n_hi]) with the death's turn of the starburst.
+inline unsigned boom_spark_count(std::uint32_t sequence, unsigned tier) noexcept {
+    namespace bm = core::boom;
+    const unsigned t = tier < bm::drawn_tiers ? tier : 0u, lo = unsigned(bm::tier_sparks_lo[t]);
+    const unsigned span = unsigned(bm::tier_sparks_hi[t]) - lo + 1u;
+    return lo + (element_hash(sequence, bm::ember_element - 1u) >> 8) % span;
+}
+inline unsigned boom_ray_count(std::uint32_t sequence, float* turn) noexcept {
+    namespace bm = core::boom;
+    const std::uint32_t h = element_hash(sequence, bm::ray_element - 1u);
+    *turn = unit_of(mix32(h ^ 0x68e31da4u));
+    return unsigned(bm::ray_n_lo) + (h >> 8) % (unsigned(bm::ray_n_hi - bm::ray_n_lo) + 1u);
+}
+// The smallest number of halvings (at most most) that brings demand within room: the half-count shed.
+inline unsigned boom_halvings(unsigned demand, unsigned room, unsigned most) noexcept {
+    unsigned k = 0;
+    while (k < most && (demand >> k) > room) ++k;
+    return k;
 }
 // A seed cone's axis (world, unit): an isotropic direction from the record's hashes (the hull's rejection draw).
 inline void boom_cone_axis(std::uint32_t sequence, unsigned c, float d[3]) noexcept {
@@ -1079,6 +1107,39 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
     float star_colour[3];
     core::heat_colour(bm::star_t, star_colour);
     const bool simple = bm::mode == bm::simple;
+    // Section 14, the half-count shed: the frame's ray quads within ray_frame_cap, its sparks within spark_frame_cap and
+    // the sprite room the rays, the stars and the spikes leave (4 a death reserved, and a big tier's secondaries' stars
+    // through the pre-roll: tier_secondaries more); past either every second one of every death is left out, then every
+    // fourth (an index is drawn when its low bits are all set: the long streaks keep their share, the fragments, indices
+    // 7 mod fragment_every, their full count through three halvings and half of it at the fourth).
+    unsigned ray_demand = 0, spark_demand = 0, star_reserve = 0;
+    {
+        constexpr float spark_end = (bm::fragment_life > bm::ember_life[2] ? bm::fragment_life : bm::ember_life[2]) *
+                                        (1.f + 0.5f * bm::ember_stagger) +
+                                    bm::spark_birth_x;
+        for (unsigned k = 0; k < nl; ++k) {
+            const Live& lv = live[k];
+            const std::uint32_t sq = ring.slots[lv.slot].sequence;
+            const float L = bm::tier_life_ms[lv.tier], fl = state.slots[lv.slot].floor_ms;
+            float turn;
+            if (t.rays && lv.tb >= 0.f && lv.tb < (bm::ray_x * L > fl ? bm::ray_x * L : fl)) ray_demand += boom_ray_count(sq, &turn);
+            if (lv.age < bm::tier_preroll_ms[lv.tier] + spark_end * L + fl)
+                spark_demand += unsigned(float(boom_spark_count(sq, lv.tier)) * (simple ? 0.5f : 1.f) + 0.5f);
+            // the secondaries' stars (born by P, each star_ms or the floor): as the secondaries' loop draws them
+            if (t.star && !simple && t.secondaries && state.slots[lv.slot].hull_kind &&
+                lv.age < bm::tier_preroll_ms[lv.tier] + (bm::star_ms > fl ? bm::star_ms : fl))
+                star_reserve += bm::tier_secondaries[lv.tier];
+        }
+    }
+    const unsigned ray_shift = boom_halvings(ray_demand, bm::ray_frame_cap, bm::ray_shed_max);
+    const unsigned spark_reserve = (ray_demand >> ray_shift) + 4u * nl + star_reserve;
+    const unsigned spark_room_left = sprite_cap > spark_reserve ? sprite_cap - spark_reserve : 0u;
+    const unsigned spark_shift = boom_halvings(spark_demand, spark_room_left < bm::spark_frame_cap ? spark_room_left
+                                                                                                   : bm::spark_frame_cap,
+                                               bm::spark_shed_max);
+    const unsigned ray_mask = (1u << ray_shift) - 1u, spark_mask = (1u << spark_shift) - 1u;
+    n.ray_halvings = ray_shift;
+    n.spark_halvings = spark_shift;
     for (unsigned k = 0; k < nl; ++k) {
         const Live& lv = live[k];
         const core::Event& e = ring.slots[lv.slot];
@@ -1094,86 +1155,145 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         to_view(prev, s.p0, p_prev);
         const float rows = f.height * (1.f / 1080.f);
         const unsigned every = unsigned(bm::fragment_every);
-        // One set: count embers from hash index index0 (the fragment rule and the life thirds by the index), launched
-        // from cen (world offset from the death point, view units) plus the launch offset within the unit ball (at most
-        // ember_p0 Rfb, never past ember_hide_r R0b), or from the hull shape's surface along their direction (surface);
-        // hidden while inside the body about cen (Rb now, xb its age share), speeds from Rfb, lives from Lset, at the
-        // set's age tset (game ms). Closed form from the hashes; never shed.
+        // One set: count sparks from hash index index0 (the fragment rule and the life thirds by the index; past the
+        // half-count shed only every 2^spark_shift-th index), launched from cen (world offset from the death point, view
+        // units) out along their direction by spark_r0_lo..+span of R0b (section 14: visible at birth), or from the hull
+        // shape's surface along it (surface); hidden only within ember_hide_r of the body about cen (Rb now, xb its age
+        // share), speeds from Rfb, lives from Lset, at the set's age tset (game ms). Closed form from the hashes.
         const auto ember_set = [&](unsigned index0, unsigned count, const float cen[3], bool surface, float Rb, float R0b,
                                    float Rfb, float xb, float Lset, float tset, bool own_switch) {
             // own_switch: the set is a secondary's (drawn under its switch, not the embers' and fragments')
             const bool want_embers = own_switch || t.embers, want_fragments = own_switch || t.fragments;
             if ((!want_embers && !want_fragments) || !(tset >= 0.f)) return;
             const float v_e = boom_ember_speed_m(Rfb / view_per_m) * view_per_m; // view units per game s
-            const float t_now = tset * 1e-3f, t_prev = t_now > step_s ? t_now - step_s : 0.f;
-            const bool first = !(t_now > t_prev);
             float hide = (xb - bm::ember_hide_x0) / (bm::ember_hide_x1 - bm::ember_hide_x0);
             hide = hide < 0.f ? 0.f : hide > 1.f ? 1.f : hide;
             const float hide_a = Rb > 0.f ? 1.f - hide : 0.f; // the body's hiding share (1 young, 0 once eroded)
-            const float o_max = bm::ember_hide_r * R0b, o = bm::ember_p0 * Rfb < o_max ? bm::ember_p0 * Rfb : o_max;
-            for (unsigned j = 0; j < count; ++j) {
+            const float hide_r = bm::ember_hide_r * Rb, hide_k = Rb > 0.f ? 1.f / (bm::spark_hide_soft * hide_r) : 0.f;
+            const float hide_r2 = hide_r * hide_r;
+            const unsigned frag_span = unsigned(bm::tier_embers[tier]);
+            // The set's invariants (the performance pass): its clock's scales, the lengths' reference, and the centre's
+            // views (a launch off the centre is cen + r0 d: its view the centre's plus r0 times d's)
+            const float inv_L = 1.f / Lset;
+            const float birth_k = bm::spark_birth_x * Lset * (1.f / (1.f - bm::spark_birth_now));
+            const float tau_k = -inv_L * (1.f / bm::ember_tau);
+            const float in_x = bm::spark_in_x * Lset, in_k = (1.f - bm::spark_in0) * inv_L * (1.f / bm::spark_in_x);
+            const float rf_k = Rfb * px_x, ref = bm::spark_ref_px * rows, inv_ref = 1.f / ref;
+            float base_n[3] = {p_now[0], p_now[1], p_now[2]}, base_p[3] = {p_prev[0], p_prev[1], p_prev[2]};
+            if (!surface) {
+                float cn[3], cp[3];
+                rotate_world_to_view(f.cam, cen, cn);
+                rotate_world_to_view(prev, cen, cp);
+                for (unsigned q = 0; q < 3; ++q) {
+                    base_n[q] += cn[q];
+                    base_p[q] += cp[q];
+                }
+            }
+            // the half-count shed: only the indices whose low spark_shift bits are all set (the first at j0, then every
+            // 2^spark_shift-th), the others counted without being visited
+            const unsigned stride = spark_mask + 1u, j0 = (spark_mask - (index0 & spark_mask)) & spark_mask;
+            n.sparks_shed += count - (j0 < count ? ((count - 1u - j0) >> spark_shift) + 1u : 0u);
+            for (unsigned j = j0; j < count; j += stride) {
                 const unsigned m = index0 + j;
-                const bool fragment = every && (m % every) == every - 1u;
+                const bool fragment = every && (m % every) == every - 1u && m < frag_span;
                 if (fragment ? !want_fragments : !want_embers) continue;
                 const std::uint32_t h = element_hash(seq, bm::ember_element + m), h2 = mix32(h + 0x9e3779b9u);
                 const float law = fragment ? bm::fragment_life * Lset : bm::ember_life[m % 3u] * Lset;
                 const float life_law = law * (1.f + bm::ember_stagger * (byte_unit(h2, 0) - 0.5f));
                 const bool fl = s.floor_ms > life_law;
                 const float life = fl ? s.floor_ms : life_law;
-                if (!(tset < life)) continue;
-                float d[3], off[3], launch[3];
-                boom_ember_dir(s.cone[(h >> 8) % (s.cones ? s.cones : 1u)], mix32(h ^ 0x5bd1e995u), d);
+                // its own clock from its hashed delay (section 14: a spray from t = 0)
+                const std::uint32_t h3 = mix32(h2 ^ 0x27d4eb2fu);
+                const float ub = byte_unit(h3, 24) - bm::spark_birth_now;
+                const float ts = tset - (ub > 0.f ? birth_k * ub : 0.f);
+                if (!(ts >= 0.f) || !(ts < life)) continue;
+                const float t_now = ts * 1e-3f, t_prev = t_now > step_s ? t_now - step_s : 0.f;
+                const bool first = !(t_now > t_prev);
+                float d[3];
+                if (fragment || byte_unit(h3, 8) < bm::spark_cone_share) {
+                    boom_ember_dir(s.cone[(h >> 8) % (s.cones ? s.cones : 1u)], mix32(h ^ 0x5bd1e995u), d);
+                } else { // a uniform direction (the cube point's, normalised)
+                    cube_point(mix32(h ^ 0x5bd1e995u), d);
+                    const float r2 = dot3(d, d), k = r2 > 1e-6f ? rsqrt_nr(r2) : 0.f;
+                    for (unsigned q = 0; q < 3; ++q) d[q] *= k;
+                    if (!(r2 > 1e-6f)) d[2] = 1.f;
+                }
                 const float speed = (fragment ? bm::fragment_v : 1.f) * v_e *
-                                    (bm::ember_speed_lo + (bm::ember_speed_hi - bm::ember_speed_lo) * byte_unit(h2, 8));
-                if (surface) {
+                                    (bm::ember_speed_lo +
+                                     (bm::ember_speed_hi - bm::ember_speed_lo) * scalar::sqrt(byte_unit(h2, 8)));
+                float launch[3];
+                float r0 = 0.f;
+                if (surface)
                     boom_hull_exit(s, d, launch);
-                } else {
-                    cube_point(mix32(h2 ^ 0x27d4eb2fu), off);
-                    const float r2 = dot3(off, off), k = r2 > 1.f ? rsqrt_nr(r2) : 1.f;
-                    for (unsigned q = 0; q < 3; ++q) launch[q] = cen[q] + off[q] * k * o;
+                else
+                    r0 = (bm::spark_r0_lo + bm::spark_r0_span * byte_unit(h3, 0)) * R0b;
+                // hidden only within ember_hide_r R(t) (fading in over its inner spark_hide_soft), the share fading with
+                // the body's erosion (off the centre: its distance r0 + speed t along the unit d)
+                float vis = 1.f;
+                if (hide_a > 0.f) {
+                    float r_e = r0 + speed * t_now;
+                    if (surface) {
+                        float rel[3];
+                        for (unsigned q = 0; q < 3; ++q) rel[q] = launch[q] - cen[q] + d[q] * speed * t_now;
+                        const float r2 = dot3(rel, rel);
+                        r_e = r2 < hide_r2 ? scalar::sqrt(r2) : hide_r;
+                    }
+                    float inside = (hide_r - r_e) * hide_k;
+                    inside = inside < 0.f ? 0.f : inside > 1.f ? 1.f : inside;
+                    vis = 1.f - hide_a * inside;
+                    if (!(vis > 0.01f)) {
+                        ++n.embers_hidden;
+                        continue;
+                    }
                 }
-                // hidden while inside the body: fully within ember_hide_r R(t), visible past R(t), the share fading with
-                // the body's erosion
-                float rel[3];
-                for (unsigned q = 0; q < 3; ++q) rel[q] = launch[q] - cen[q] + d[q] * speed * t_now;
-                const float r_e = scalar::sqrt(dot3(rel, rel));
-                float inside = Rb > 0.f ? (Rb - r_e) / ((1.f - bm::ember_hide_r) * Rb) : 0.f;
-                inside = inside < 0.f ? 0.f : inside > 1.f ? 1.f : inside;
-                const float vis = 1.f - hide_a * inside;
-                if (!(vis > 0.01f)) {
-                    ++n.embers_hidden;
-                    continue;
-                }
-                float dn[3], dp[3], ln[3], lp[3];
+                float dn[3], dp[3], head[3], tail[3];
                 rotate_world_to_view(f.cam, d, dn);
                 rotate_world_to_view(prev, d, dp);
-                rotate_world_to_view(f.cam, launch, ln);
-                rotate_world_to_view(prev, launch, lp);
-                float head[3], tail[3];
-                for (unsigned q = 0; q < 3; ++q) {
-                    head[q] = p_now[q] + ln[q] + dn[q] * speed * t_now;
-                    tail[q] = p_prev[q] + lp[q] + dp[q] * speed * t_prev;
+                if (surface) {
+                    float ln[3], lp[3];
+                    rotate_world_to_view(f.cam, launch, ln);
+                    rotate_world_to_view(prev, launch, lp);
+                    for (unsigned q = 0; q < 3; ++q) {
+                        head[q] = base_n[q] + ln[q] + dn[q] * speed * t_now;
+                        tail[q] = base_p[q] + lp[q] + dp[q] * speed * t_prev;
+                    }
+                } else {
+                    const float a_n = r0 + speed * t_now, a_p = r0 + speed * t_prev;
+                    for (unsigned q = 0; q < 3; ++q) {
+                        head[q] = base_n[q] + dn[q] * a_n;
+                        tail[q] = base_p[q] + dp[q] * a_p;
+                    }
                 }
                 if (!(head[2] > f.near_z) || !(tail[2] > f.near_z)) continue;
                 if (first)
                     for (unsigned q = 0; q < 3; ++q) tail[q] = head[q] - dn[q] * speed * 1e-3f;
-                const float fade = 1.f - tset / life;
+                const float tl = ts * rcp_nr(life), fade = 1.f - tl;
                 if (nq >= sprite_cap) {
                     ++n.capped;
                     continue;
                 }
-                // the pixel mode: a hashed width in pixels (scaled with the rows), a hashed length of the cap 0.35 R_f
-                // on screen (half for a fragment), never under two widths; the motion's direction only
+                // the pixel mode (section 14): a hashed head width in pixels at 1080 rows (a long streak's thin), a hashed
+                // length in pixels (h^2: more short ones; one in spark_long_every a long streak), both scaled with the rows,
+                // the lengths x min(1, R_f on screen over spark_ref_px), never under two widths; the motion's direction
+                const float iz = rcp_nr(head[2]);
+                const bool lng = !fragment && byte_unit(h3, 16) * bm::spark_long_every < 1.f;
                 const float w_px = (fragment ? bm::fragment_w_px
+                                    : lng    ? bm::spark_long_w
                                              : bm::ember_w_px_lo + (bm::ember_w_px_hi - bm::ember_w_px_lo) * byte_unit(h2, 16)) *
                                    rows;
-                const float cap_px = bm::ember_len_max * Rfb * px_x / head[2];
-                float len_px =
-                    (bm::ember_len_lo + (1.f - bm::ember_len_lo) * byte_unit(h2, 24)) * cap_px * (fragment ? 0.5f : 1.f);
+                const float rf_px = rf_k * iz;
+                const float sl = rf_px < ref ? rf_px * inv_ref : 1.f, u = byte_unit(h2, 24);
+                float len_px = (lng ? bm::spark_long_lo + (bm::spark_long_hi - bm::spark_long_lo) * u
+                                    : (bm::spark_len_lo + (bm::spark_len_hi - bm::spark_len_lo) * u * u) * (fragment ? 0.5f : 1.f)) *
+                               rows * sl;
                 len_px = len_px > 2.f * w_px ? len_px : 2.f * w_px;
                 if (!fragment) {
-                    const float e_raw = bm::ember_e * core::exp_neg(-tset / (bm::ember_tau * Lset)) * fade * vis; // E x T
-                    streak_vertices(head, tail, e_raw, e_raw, -w_px, heat_packed(fade), out.sprites + 4 * nq, len_px);
+                    const float in = ts < in_x ? bm::spark_in0 + ts * in_k : 1.f;
+                    const float e_raw = bm::ember_e * (lng ? bm::spark_long_e : 1.f) * core::exp_neg(ts * tau_k) * fade * vis *
+                                        in; // E x T
+                    static_assert(bm::spark_cool_pow == 1.5f, "the cooling's power below");
+                    streak_vertices(head, tail, e_raw, e_raw, -w_px, heat_packed(bm::spark_t0 * (1.f - tl * scalar::sqrt(tl))),
+                                    out.sprites + 4 * nq, len_px);
                     ++nq;
                     ++n.embers;
                 } else {
@@ -1199,7 +1319,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
         };
         // The embers: the tier's count, the secondaries' share (secondary_embers each) launched with them, the rest at
         // the body's birth (big tiers: from the hull shape's surface).
-        const unsigned ember_total = unsigned(bm::tier_embers[tier] * (simple ? 0.5f : 1.f) + 0.5f);
+        const unsigned ember_total = unsigned(float(boom_spark_count(seq, tier)) * (simple ? 0.5f : 1.f) + 0.5f);
         const unsigned sec_count = simple || !t.secondaries || !s.hull_kind ? 0u : bm::tier_secondaries[tier];
         const unsigned sec_embers = sec_count * bm::secondary_embers;
         const unsigned main_embers = ember_total > sec_embers ? ember_total - sec_embers : 0u;
@@ -1236,8 +1356,10 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             const float Ls = bm::secondary_life * L;
             const float star_life = bm::star_ms > s.floor_ms ? bm::star_ms : s.floor_ms;
             const float blife = Ls > s.floor_ms ? Ls : s.floor_ms;
-            const float ember_end = (bm::fragment_life > bm::ember_life[2] ? bm::fragment_life : bm::ember_life[2]) * Ls *
-                                    (1.f + 0.5f * bm::ember_stagger);
+            const float ember_end = ((bm::fragment_life > bm::ember_life[2] ? bm::fragment_life : bm::ember_life[2]) *
+                                         (1.f + 0.5f * bm::ember_stagger) +
+                                     bm::spark_birth_x) *
+                                    Ls;
             float cn = 0.f;
             unsigned live_n = 0;
             for (unsigned k = 0; k < sec_count; ++k) {
@@ -1296,7 +1418,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                             const float tint4[4] = {0.f, 0.f, 0.f, 0.f};
                             const float disc[4] = {6.2831853f * unit_of(h_rot), 64.f * unit_of(mix32(h_rot)),
                                                    core::look::fireball_advect * x, fine};
-                            const float g = t.core && x < bm::core_x ? bm::core_gain * (1.f - x / bm::core_x) : 0.f;
+                            const float gx = 1.f - x / bm::core_x;
+                            const float g = t.core && x < bm::core_x ? bm::core_gain * gx * gx : 0.f;
                             fireball_quad(f, cb, Rsph, rect, full, look, tint4, disc, sec_verts + 4 * nsec, g);
                             sec_meta[nsec] = BoxMeta{age_ms, e.owner, rect_screens(rect) * boom_fine_weight(fine),
                                                      std::uint8_t(keep || lv.own), std::uint8_t(fine > 0.f ? 1 : 0)};
@@ -1508,8 +1631,12 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     const float tint4[4] = {0.f, 0.f, 0.f, 0.f};
                     const float disc[4] = {6.2831853f * unit_of(h_rot), 64.f * unit_of(h_lobe),
                                            core::look::fireball_advect * lv.x, fine};
-                    // the white-hot core (decision 2026-11-07): g = core_gain (1 - x / core_x) while x < core_x
-                    const float g = t.core && lv.x < bm::core_x ? bm::core_gain * (1.f - lv.x / bm::core_x) : 0.f;
+                    // the white-hot core (decision 2026-11-07): g = core_gain (1 - x / core_x)^2 while x < core_x; a big tier's
+                    // eased in over core_ramp_ms or the record's three-frame floor when longer (section 14)
+                    const float gx = 1.f - lv.x / bm::core_x;
+                    float g = t.core && lv.x < bm::core_x ? bm::core_gain * gx * gx : 0.f;
+                    const float ramp = bm::core_ramp_ms > s.floor_ms ? bm::core_ramp_ms : s.floor_ms; // SETA: the floor
+                    if (bm::tier_secondaries[tier] && lv.tb < ramp) g *= lv.tb / ramp;
                     fireball_quad(f, cb, Rbox, rect, full, look, tint4, disc, out.fireballs + 4 * nb, g);
                     if (cp.n >= bm::compose_n_min) {
                         renderer::WeaponFireballVertex* v4 = out.fireballs + 4 * nb;
@@ -1570,6 +1697,110 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     }
                 } else
                     ++n.capped;
+            }
+        }
+        // Section 14: the halo spike and the rays at the body's front (its centre moved R(t) towards the eye), so a hull
+        // the body sits in (the big tiers' carrier) does not hide them; none with the eye inside the body.
+        const bool front_ok = lv.R > 0.f && dist > lv.R;
+        float cf[3] = {lv.c[0], lv.c[1], lv.c[2]};
+        if (front_ok)
+            for (unsigned q = 0; q < 3; ++q) cf[q] = lv.c[q] * (1.f - lv.R / dist);
+        // The halo spike: the flash kind at birth, its core spike_rf R_f on screen in spike_px_lo..hi px at 1080 rows,
+        // radiance spike_e (1 - x / spike_x)^2 over its life (the three-frame floor).
+        if (t.spike && front_ok && cf[2] > f.near_z) {
+            const float life = bm::spike_x * L > s.floor_ms ? bm::spike_x * L : s.floor_ms;
+            if (lv.tb < life) {
+                if (nq < sprite_cap) {
+                    const float rows = f.height * (1.f / 1080.f);
+                    float core_px = bm::spike_rf * lv.R_f * px_x / cf[2];
+                    core_px = core_px < bm::spike_px_lo * rows ? bm::spike_px_lo * rows
+                              : core_px > bm::spike_px_hi * rows ? bm::spike_px_hi * rows
+                                                                 : core_px;
+                    float colour[3];
+                    core::heat_colour(bm::spike_t, colour);
+                    const float a = 1.f - lv.tb / life;
+                    float screens = 0.f;
+                    if (flash_quad(f, sc, cf, core_px * cf[2] / px_x, 1.f, bm::spike_halo, colour, bm::spike_e * a * a,
+                                   out.sprites + 4 * nq, &screens)) {
+                        ++nq;
+                        ++n.spikes;
+                        star_area += screens * core::hull::budget_weight_flash;
+                    }
+                } else
+                    ++n.capped;
+            }
+        }
+        // The rays: a starburst of N hashed radial streaks (the ray kind), stratified angles turned per death, each its
+        // length, width, brightness and flicker period hashed; gone at ray_x L.
+        if (t.rays && front_ok && cf[2] > f.near_z) {
+            const float life = bm::ray_x * L > s.floor_ms ? bm::ray_x * L : s.floor_ms;
+            if (lv.tb < life) {
+                float turn;
+                const unsigned N = boom_ray_count(seq, &turn);
+                const float xr = lv.tb / life, rows = f.height * (1.f / 1080.f);
+                const Px pc = to_px(f, sc, cf);
+                const float k_px = px_x * pc.iz, rf_px = lv.R_f * k_px, rb_px = lv.R * k_px;
+                const float grow = bm::ray_grow0 + (1.f - bm::ray_grow0) * (lv.x < bm::ray_grow_x ? lv.x / bm::ray_grow_x : 1.f);
+                const float fall = 1.f - xr, env = fall * fall * fall; // (1 - x / ray_x)^3
+                static_assert(bm::ray_pow == 3.f, "env is (1 - x)^3");
+                static_assert(bm::ray_taper == 0.6f && bm::ray_fall == 1.5f, "weapon_sprite_ps.hlsl's ray branch");
+                float colour[3];
+                core::heat_colour(bm::ray_t0 + (bm::ray_t1 - bm::ray_t0) * xr, colour);
+                const std::uint32_t packed = pack_colour(colour, 1.f);
+                const float soft = bm::ray_soft * lv.R_f, inv_n = 1.f / float(N);
+                // the flicker's period at least the frame step (SETA: a shorter one strobed)
+                const float step_ms = float(f.step_ms);
+                // the half-count shed: only the indices whose low ray_shift bits are all set, the others counted
+                n.rays_shed += N - (ray_mask < N ? ((N - 1u - ray_mask) >> ray_shift) + 1u : 0u);
+                for (unsigned i = ray_mask; i < N; i += ray_mask + 1u) {
+                    const std::uint32_t h = element_hash(seq, bm::ray_element + i), h1 = mix32(h ^ 0x2545f491u);
+                    float len_px = (bm::ray_len_lo + (bm::ray_len_hi - bm::ray_len_lo) * byte_unit(h1, 0)) * rf_px;
+                    len_px = len_px > bm::ray_len_floor * rb_px ? len_px : bm::ray_len_floor * rb_px;
+                    len_px *= grow;
+                    const float wl = len_px * (1.f / bm::ray_w_len_px) / rows;
+                    const float w_px =
+                        (bm::ray_w_px_lo + (bm::ray_w_px_hi - bm::ray_w_px_lo) * byte_unit(h1, 8)) * rows *
+                        (wl > 1.f ? scalar::sqrt(wl) : 1.f);
+                    const float hq = 0.5f * w_px + 1.5f; // the quad's half width: the line and a pixel of its filter
+                    // off screen entirely: nothing to draw
+                    const float reach = bm::ray_start * rb_px + len_px + hq;
+                    if (pc.x + reach < 0.f || pc.x - reach > f.width || pc.y + reach < 0.f || pc.y - reach > f.height)
+                        continue;
+                    if (nq >= sprite_cap) {
+                        ++n.capped;
+                        continue;
+                    }
+                    // the flicker: the hash of the period's index blended smoothly into the next one's
+                    float period = bm::ray_flicker_lo + (bm::ray_flicker_hi - bm::ray_flicker_lo) * byte_unit(h1, 24);
+                    period = period > step_ms ? period : step_ms;
+                    const float q = lv.tb / period;
+                    const float qf = float(scalar::floor(double(q)));
+                    const std::uint32_t qi = std::uint32_t(qf);
+                    const float a0 = unit_of(mix32(h ^ (qi * 0x9e3779b9u))), a1 = unit_of(mix32(h ^ ((qi + 1u) * 0x9e3779b9u)));
+                    const float fr = q - qf, sm = fr * fr * (3.f - 2.f * fr);
+                    const float flick = 1.f - bm::ray_flicker * (a0 + (a1 - a0) * sm);
+                    const float E = bm::ray_e * (bm::ray_e_lo + (1.f - bm::ray_e_lo) * byte_unit(h1, 16)) * env * flick;
+                    float sn, cs;
+                    boom_sincos_turn(turn + (float(i) + bm::ray_jitter_lo + bm::ray_jitter * unit_of(h)) * inv_n, &sn, &cs);
+                    const float r0 = bm::ray_start * rb_px, bx = pc.x + cs * r0, by = pc.y + sn * r0;
+                    const float nx = -sn * hq, ny = cs * hq, tx = bx + cs * len_px, ty = by + sn * len_px;
+                    renderer::WeaponSpriteVertex* v = out.sprites + 4 * nq;
+                    const float xs[4] = {bx - nx, bx + nx, tx - nx, tx + nx}, ys[4] = {by - ny, by + ny, ty - ny, ty + ny};
+                    for (unsigned c = 0; c < 4; ++c) {
+                        px_clip(f, sc, xs[c], ys[c], cf[2], v[c].a);
+                        v[c].b[0] = c >= 2 ? 1.f : 0.f;
+                        v[c].b[1] = (c & 1u) ? hq : -hq;
+                        v[c].b[2] = E;
+                        v[c].b[3] = 0.f;
+                        v[c].c[0] = 5.f;
+                        v[c].c[1] = soft;
+                        v[c].c[2] = 0.5f * w_px;
+                        v[c].colour = packed;
+                    }
+                    ++nq;
+                    ++n.rays;
+                    star_area += len_px * 2.f * hq / (f.width * f.height) * core::hull::budget_weight_flash;
+                }
             }
         }
         // Shock: a shell of the tier's law, the limb only, the body's heat, gone at shock_end L; not drawn once the eye

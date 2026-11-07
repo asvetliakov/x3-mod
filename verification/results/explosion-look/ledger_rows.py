@@ -3,10 +3,11 @@
 verification/results/native-windows/weapon-effects/ (run_weapon_effects.py --host native): the hook fixture's death-site
 checks, the audit's death stubs and EXE windows, the forward state and the nested rows; the D3D fixture's death_* checks,
 the EXPLOSION rows and the EXPLOSION_TIMING rows (EVENT-fenced best of 60 at 1080p and 5120x1440).
-usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave]]
+usage: python3 verification/results/explosion-look/ledger_rows.py [--markdown [--big | --wave | --rays]]
 --markdown prints the ledger's gate table and budget line from the record (the ledger's numbers are pasted from it);
 with --big the big tiers' table ("Explosions: the big tiers": the clone row R', the swap, the pre-roll gates); with
---wave section 13's ("Explosions: the fire wave and the composed body"), the engine shimmer record's wave rows with it."""
+--wave section 13's ("Explosions: the fire wave and the composed body"), the engine shimmer record's wave rows with it;
+with --rays section 14's ("Explosions: radiance, rays and sparks")."""
 import json
 import sys
 from pathlib import Path
@@ -217,7 +218,54 @@ def wave_markdown():
     print('\n'.join(out))
 
 
+def rays_markdown():
+    """Section 14 (docs/verification/weapon-effects.md "Explosions: radiance, rays and sparks"): the radiant core, the
+    starburst, the spark spray, the meter and their timing rows."""
+    ok = lambda name: 'PASS' if checks.get(name) else 'FAIL'
+    core, sp, rs, ms = row('core_radiance'), row('sparks'), row('rays_summary'), row('meter_summary')
+    rays = [r for r in rows if r.get('case') == 'rays']
+    meter = [r for r in rows if r.get('case') == 'meter']
+
+    def meter_worst(d):
+        """The worst |ev - base| per scene (black, dim, lit) of the death at d m."""
+        out = [0.0, 0.0, 0.0]
+        for r in meter:
+            if r['tier'] != f'fighter_{d}m_5120':
+                continue
+            base = [float(x) for x in str(r['base']).split(',')]
+            for k, key in enumerate(('ev_black', 'ev_dim', 'ev_lit')):
+                out[k] = max(out[k], abs(r[key] - base[k]))
+        return out
+    emb, sb = row('embers'), row('sparks_birth')
+    nopop = [r for r in rows if r.get('case') == 'no_pop' and 'worst_rise' in r]
+    cpu = [r for r in rows if r.get('case') == 'cpu']
+    t5 = lambda case: timing[(5120, case)]['gpu_us']
+    fence = t5('fence_empty')
+    shed = timing[(5120, 'spark_shed')]
+    close = [r for (wd, case), r in sorted(timing.items()) if wd == 5120 and case.startswith('capital_close_') and
+             case != 'capital_close_all_shed']
+    worst = max(close, key=lambda r: r['gpu_us'])
+    r300 = [r for r in rays if r['z_m'] == 300]
+    r600 = [r for r in rays if r['z_m'] == 600]
+    out = [
+        '| Gate | Result [M] | Bound |', '| --- | --- | --- |',
+        f"| `death_core_radiance` ({ok('death_core_radiance')}; fighter 600 m, 8 seeds) | median radiance inside 0.2 R(t) at 0.05 L {core['median_02R_005']} (seeds {core['min']}..{core['max']}); `death_body_white_hot_core` median at 0.1 L {row('core')['median_core_01']} | >= 6 |",
+        f"| `death_rays_starburst` ({ok('death_rays_starburst')}; 5120x1440, 4 seeds) | angular peaks at 1.5 R(t), 0.1 L, 300 m: {', '.join(str(r['peaks_01']) for r in r300)} for {', '.join(str(r['rays']) for r in r300)} rays; at 0.6 L {max(r['peaks_06'] for r in r300)}; 600 m (recorded) {', '.join(str(r['peaks_01']) for r in r600)} | >= 24; <= 2 |",
+        f"| `death_rays_differ` ({ok('death_rays_differ')}) | two deaths' 360-bin profiles at 0.1 L correlate {rs['seed_correlation']} | < 0.3 |",
+        f"| `death_sparks_dense` ({ok('death_sparks_dense')}; fighter 600 m, 0.3 L) | {sp['count']} sparks, {sp['drawn']} drawn, {sp['on_screen']} heads on screen, {sp['image_heads']} local maxima in the ember part; lengths {sp['len_mean_px']} +- {sp['len_std_px']} px (std / mean {sp['std_over_mean']}) | >= 100; >= 0.4 |",
+        f"| `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` ({ok('death_embers_hidden_in_body')}, {ok('death_embers_lengths_and_widths')}, {ok('death_embers_random_and_cooling')}) | {sb['at_birth']} at birth, {sb['after_spread']} of {sb['count']} once the births are out (0.05 L); widths {emb['width_px']} px; seed correlation {emb['seed_correlation']}, T {emb['T_03']} / {emb['T_07']} / {emb['T_11']} at 0.3 / 0.7 / 1.1 L, farthest {emb['far_px']} px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |",
+        f"| `death_exposure_meter_shift` ({ok('death_exposure_meter_shift')}; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift {ms['worst_shift_ev']} EV over dim / lit (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; {ms['black_shift_ev']} EV); " + '; '.join(f"{d} m: black / dim 0.15 / lit 0.5 worst {' / '.join(f'{s:.3f}' for s in meter_worst(d))} EV (frame peaks {' / '.join(str(r['peak']) for r in meter if r['tier'] == f'fighter_{d}m_5120')})" for d in (300, 120)) + " | <= 0.5 EV |",
+        f"| `death_no_pop_at_birth`, `death_big_no_pop_at_birth` ({ok('death_no_pop_at_birth')}, {ok('death_big_no_pop_at_birth')}) | worst frame-to-frame peak rise {', '.join(r['tier'] + ' ' + str(r['worst_rise']) for r in nopop)} | <= 2 |",
+        f"| `death_rays_sparks_budget_5120` ({ok('death_rays_sparks_budget_5120')}) | fighter 600 m {t5('fighter_600m')} / {t5('fighter_600m_rays')} / {t5('fighter_600m_sparks')} us at 0.1 / 0.05 / 0.3 L; 20 fighters {t5('fighters_20_600m')} / {t5('fighters_20_600m_rays')} / {t5('fighters_20_600m_sparks')} us (spark halvings {shed['twenty_halvings']}: {shed['twenty_sparks']} drawn, {shed['twenty_shed']} shed, {shed['twenty_rays']} rays); fence {fence} us | <= 60; <= 150 |",
+        f"| `death_budget_capital_close_5120` ({ok('death_budget_capital_close_5120')}) | worst {worst['gpu_us']} us ({worst['case']}, shed {worst['shed']}) | <= 450 |",
+        f"| rays alone (5120x1440) | fighter 300 m {t5('rays_alone_fighter_300m')} us ({timing[(5120, 'rays_alone_fighter_300m')]['quads']} quads), close capital {t5('rays_alone_capital_close_720m')} us ({timing[(5120, 'rays_alone_capital_close_720m')]['quads']} quads), the fence {fence} us | |",
+        f"| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` ({ok('death_stage_cpu_32_deaths')}, {ok('death_big_stage_cpu')}) | 32 fighters {cpu[0]['median_us']} us, {cpu[0]['quads']} quads (repeats {cpu[0]['repeats_us']}; the parent `d3e7698bf` 42.1 us, 588 quads); the big set {cpu[1]['median_us']} us, {cpu[1]['us_per_quad']} a quad | 50; 0.08 |",
+    ]
+    print('\n'.join(out))
+
+
 if '--markdown' in sys.argv:
-    wave_markdown() if '--wave' in sys.argv else big_markdown() if '--big' in sys.argv else markdown()
+    (rays_markdown() if '--rays' in sys.argv else wave_markdown() if '--wave' in sys.argv else
+     big_markdown() if '--big' in sys.argv else markdown())
 else:
     plain()

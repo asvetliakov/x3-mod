@@ -21,6 +21,10 @@
 // - A cone (depth.y 4, step 4's muzzle flame, star arms and vents: bolt-muzzle-look.md 3.1): the stage's quad from the
 //   base (u 0) to the tip (u 1), v -1 / +1 across the base; its radius linear to 0 at the tip, across (1 - (v / r)^2)^2,
 //   radiance (1 - u)^1.5, at the plane's interpolated view depth, SOFT = depth.z (view units).
+// - A ray (depth.y 5, a death's starburst: explosion-look.md section 14): the stage's quad from the body's projected
+//   centre (u 0) to the ray's tip (u 1), shade.y the signed distance across in pixels; its half width depth.w px tapering
+//   to (1 - 0.6) of it at the tip, a box filter over a pixel across, radiance (1 - u)^1.5 along faded in over its first
+//   eighth (the rays' bases apart: no stack at the centre), at the quad's view depth, SOFT = depth.z (view units).
 // Radiance x the vertex's shade.z. Alpha 0 under ONE/ONE. Constants: renderer/weapon_effects_pass.cpp, defaults
 // weapon_effects_core.h look::.
 #include "weapon_soft_depth.hlsl"
@@ -40,7 +44,14 @@ float4 main(float2 vpos : VPOS, float4 shade : TEXCOORD0, float4 colour : TEXCOO
     bool valid = !occluder || (lane > 0.0 && lane <= 3.402823466e38);
     float z = depth.x;
     float3 c = 0.0;
-    [branch] if (depth.y > 3.5) {
+    [branch] if (depth.y > 4.5) {
+        float u = saturate(shade.x);
+        float hw = depth.w * (1.0 - 0.6 * u);
+        float x = saturate(hw + 0.5 - abs(shade.y));
+        float f = 1.0 - u;
+        float vis = occluder ? saturate((lane - z) / max(depth.z, 1e-4)) : 1.0;
+        c = colour.rgb * (shade.z * f * sqrt(f) * saturate(8.0 * u) * x * vis);
+    } else if (depth.y > 3.5) {
         float u = saturate(shade.x);
         float r = max(1.0 - u, 1e-3);
         float q = saturate(1.0 - (shade.y / r) * (shade.y / r));
