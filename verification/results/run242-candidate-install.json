@@ -1,0 +1,28 @@
+{
+ "run": 242,
+ "what": "weapon effects step 2 complete per class: burst body/glow/star/smoke rebuild, shock front, beam colour, ion lightning, ring 1024 with reach cull; lab rework; Flight G reopened as AP 242 A",
+ "commit": "c41af8a3796803164681b284407e2294c6192824",
+ "branch": "effects",
+ "candidate_record": "verification/results/run242-candidate-build.json",
+ "dll_sha256": "8ca628193859c326c47f91afae94a81abeaa8563933f75b07eb47c7543abf84f",
+ "dll_bytes": 64955775,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run242/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 241,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run241",
+  "sha256": "ca186878df76608fb86efb7bf4b9c8aa80d601f824989863bd89fa5114b793de",
+  "ini_copy": "C:\\X3\\x3m.ini.run241",
+  "table_copy": "C:\\X3\\x3m\\weapon_effects.json.run241 (45e42190)"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "unchanged from run 241 (weapon_effects = shields,hull)",
+ "tables": {
+  "weapon_effects.json": "45e42190e06dd74745ad5a2242c89c971e4586ca59b197f2d5ce23c740e7c3f5 (unchanged: the installed Mayhem 3 table has no IOND row; 38 rows, class pins present)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "lab": "C:\\X3\\x3m\\weapon_effects_lab.html copied from tools/effects (tabs, layers, scenarios, hull body)",
+ "dry_run": "ok, weapon_effects_table null",
+ "installed_at": "2026-11-07T06:05",
+ "open": "AP 242 A",
+ "host_note": "the Windows screen saver (Bubbles.scr, 180 s) switches the input desktop and makes D3D9 CreateDevice fail (0x8876086c) for native fixtures; dismissed at 04:35 and a session-only keep-awake (C:\\X3\\x3m\\keepawake-session.ps1, SetThreadExecutionState loop, no settings changed) started at 04:43; kill it when done"
+}

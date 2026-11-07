@@ -1,0 +1,48 @@
+{
+  "recorded_utc": "2026-11-07T06:05:00+00:00",
+  "run": 242,
+  "source": {
+    "commit": "c41af8a3796803164681b284407e2294c6192824",
+    "head": "c41af8a3796803164681b284407e2294c6192824",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (HEAD == commit; merges: ring 1024 ade4de383, shock front d41a60f01, beam colour + ion lightning 98f095045, burst body c41af8a37)",
+    "marker": "X3M_SOURCE_COMMIT=c41af8a3796803164681b284407e2294c6192824",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run242/d3d9.dll",
+    "stripped": false,
+    "sha256": "8ca628193859c326c47f91afae94a81abeaa8563933f75b07eb47c7543abf84f",
+    "bytes": 64955775
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run242",
+    "command": "cmake -S . -B build-run242 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run242 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run242.configure.log",
+      "build-run242.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 1162,
+    "violations": 0
+  },
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 206/0), hook-summary.json (95/0)}, engine-shimmer/summary.json (63/0, plume image byte-identical), all bound to the committed sources; frames: scratchpad crops-v3/singles_grid.png (every class at 40/120/296/696 ms, viewed by the main session)",
+    "host_tests": "test_weapon_effects_* 86 OK; test_engine_shimmer 9 OK; lab --check PASS (37 lab tests)",
+    "reviews": "docs/verification/weapon-effects.md sections: Ring 1024 and the reach cull (one review round at high, 10 findings fixed), Shock front (10 fixed), Beam colour and ion lightning (9 fixed + IOND hold), Burst body / Burst review fixes and the merge (3 should-fix + notes fixed); design notes hull-burst-look.md (section 10 built numbers ratified), hull-impact-classes.md, bolt-muzzle-look.md (not in this build)"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: ok, weapon_effects_table null (DLL default <exe dir>\\x3m\\weapon_effects.json)"
+}
