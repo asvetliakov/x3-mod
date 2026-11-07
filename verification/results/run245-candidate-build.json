@@ -1,0 +1,49 @@
+{
+  "recorded_utc": "2026-11-07T12:30:00+00:00",
+  "run": 245,
+  "status": "candidate built, not installed (waits for the AP 244 A flight)",
+  "source": {
+    "commit": "213667af094369ee739db13483dd2e3986c2ff8f",
+    "head": "213667af094369ee739db13483dd2e3986c2ff8f",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (merge of the big-tier explosions 618000e8a into effects dc597da9c, plus a ledger-only commit)",
+    "marker": "X3M_SOURCE_COMMIT=213667af094369ee739db13483dd2e3986c2ff8f",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run245/d3d9.dll",
+    "stripped": false,
+    "sha256": "ccce4d326b458627949726b75140f533c9897fb0b06182c35f4685d4d1317f7b",
+    "bytes": 65734396
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run245",
+    "command": "cmake -S . -B build-run245 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run245 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run245.configure.log",
+      "build-run245.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 1181,
+    "violations": 0
+  },
+  "config_check": "PASS 311 settings, 151 in the template",
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 298/0), hook-summary.json (147/0)} recorded in the big-tier worktree on the committed sources (618000e8a content); frames: scratchpad stage-dump-boom-big/v3 (corvette 1.5 km, capital broadside and close, station 3 km) viewed by the main session",
+    "host_tests": "test_weapon_effects_* 98 OK on the merged tree",
+    "reviews": "docs/verification/weapon-effects.md section Explosions: the big tiers (one review round at high: no blocker, should-fixes A-F, H, K, L applied, notes G, I, J, M in the open items); design explosion-look.md Built numbers (the big tiers) D9-D15"
+  },
+  "install_plan": "after AP 244 A: rollback copies run244, ini unchanged (weapon_effects = shields,hull,bolts,explosions), table unchanged; flight AP 245 A judges corvette/capital/station deaths (the hull through the pre-roll, secondaries on real geometry, the fade)"
+}
