@@ -2080,7 +2080,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[36]{};
+        unsigned drops[49]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
@@ -2119,6 +2119,20 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.hull_merges = drops[33];
         stage.hull_shimmer = drops[34];
         stage.hull_dir_fallback = drops[35];
+        // step 3: the death explosion's figures and the pass's death programs (Present's boom latch)
+        stage.deaths = drops[36];
+        stage.boom_bodies = drops[37];
+        stage.boom_stars = drops[38];
+        stage.boom_shocks = drops[39];
+        stage.boom_embers = drops[40];
+        stage.boom_fragments = drops[41];
+        stage.boom_smokes = drops[42];
+        stage.boom_glows = drops[43];
+        stage.boom_shed = drops[44];
+        stage.boom_lod = drops[45];
+        stage.boom_out_of_reach = drops[46];
+        stage.boom_capped = drops[47];
+        stage.boom_ready = drops[48] != 0;
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();

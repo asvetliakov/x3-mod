@@ -21,6 +21,7 @@
 #include "../../src/proxy/weapon_effects_patch.h"
 #include "../../src/proxy/weapon_effects_sites.h"
 #include "../../src/proxy/weapon_effects_bolt_sites.h"
+#include "../../src/proxy/weapon_effects_death_sites.h"
 #include "../../src/proxy/weapon_effects_table.h"
 #include "../../src/proxy/engine_patch.h"
 #include <windows.h>
@@ -623,6 +624,7 @@ void core_checks() {
           "age_law_game_time");
 }
 #include "weapon_effects_bolt_cases.h"
+#include "weapon_effects_death_cases.h"
 }
 
 int main() {
@@ -1523,6 +1525,7 @@ int main() {
     fault_read_at = 0;
 
     bolt_checks(); // step 4: the per-bullet tap, the muzzle and the flight-effect skip (while the window is still open)
+    death_checks(); // step 3: the two death sites (while the window is still open)
 
     engine_patch::close_install_window("fixture");
     SetLastError(sentinel_error);

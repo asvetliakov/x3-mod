@@ -303,7 +303,7 @@ class GeneratorTest(unittest.TestCase):
         shell = (f'<script>\n{gen.HEADER_BEGIN}\nconst HEADER = {{}};\n{gen.HEADER_END}\n'
                  f'{gen.BEGIN}\nconst LAB_DATA = {{}};\n{gen.END}\n{gen.PRESETS_BEGIN}\nconst PRESETS = [];\n{gen.END}\n'
                  f'rest();\n</script>')
-        step4 = [next(p for p in gen.PRESETS if p['family'] == f) for f in ('bolt', 'muzzle')]
+        step4 = [next(p for p in gen.PRESETS if p['family'] == f) for f in ('bolt', 'muzzle', 'boom')]
         presets = [dict(gen.PRESETS[0], view='stock_ap', weapon='SS_BULLET_X'),
                    dict(gen.PRESETS[2], view='stock_ap', weapon='SS_BULLET_X')] + \
                   [dict(p, view='stock_ap', weapon='SS_BULLET_X') for p in step4]
@@ -414,10 +414,11 @@ class PageTest(unittest.TestCase):
         every control's id kept, and the controls of the other tabs hidden by their data-tabs."""
         tabs = re.findall(r'<button type="button" class="tab" role="tab" data-tab="(\w+)"( disabled)?[^>]*>([^<]+)(?:<small>([^<]*)</small>)?',
                           self.html)
+        # step 3 (2026-11-07): the Explosion tab became the enabled Boom tab
         self.assertEqual([(t[0], t[2].strip()) for t in tabs],
                          [('shield', 'Shield hit'), ('hull', 'Hull hit'), ('vanilla', 'Vanilla'),
-                          ('explosion', 'Explosion'), ('bolt', 'Bolt'), ('muzzle', 'Muzzle'), ('beam', 'Beam')])
-        self.assertEqual([t[0] for t in tabs if not t[1]], ['shield', 'hull', 'vanilla', 'bolt', 'muzzle'])
+                          ('boom', 'Boom'), ('bolt', 'Bolt'), ('muzzle', 'Muzzle'), ('beam', 'Beam')])
+        self.assertEqual([t[0] for t in tabs if not t[1]], ['shield', 'hull', 'vanilla', 'boom', 'bolt', 'muzzle'])
         self.assertTrue(all(t[3] == 'later step' for t in tabs if t[1]))
         legends = re.findall(r'<fieldset id="p_(\w+)"[^>]*><legend>(\w+)</legend>', self.html)
         self.assertEqual(legends, [('scene', 'Scene'), ('weapon', 'Weapon'), ('playback', 'Playback'),
@@ -624,6 +625,69 @@ console.log(JSON.stringify(out));
         self.assertFalse(js['ballistic'])
         self.assertAlmostEqual(js['cos'], 0.8660254, places=6)
         self.assertIn('muzzle/ire-own-side-cone', [p['id'] for p in gen.PRESETS])
+
+    @unittest.skipUnless(shutil.which('node'), 'node not installed')
+    def test_boom_tab_presets_and_laws(self):
+        """Step 3 (docs/architecture/explosion-look.md 8): the Boom tab, its fourteen scenarios, and renderBoom's laws
+        against the stage's (src/proxy/weapon_effects_boom.h, the header's HEADER.boom): the fighter's body radius at 0.3 L
+        R_0 + (R_f - R_0)(1 - e^(-0.3 / rho)) + 0.03 R_f, the star only within its 40 ms, the missile's shock only within
+        shock_end L, the nested case's three bodies, the glow and smoke only over the hull plane, the halo in air, embers
+        random per seed, hidden inside the body, of varied lengths (decisions of 2026-11-07)."""
+        ids = [p['id'] for p in gen.PRESETS if p['family'] == 'boom']
+        for want in ('fighter-m5-600m-side', 'fighter-m3-2km-floor', 'corvette-m6-1500m', 'freighter-ts-1500m',
+                     'capital-m2-1500m-preroll', 'capital-m7-far-5km', 'capital-m2-close-720m',
+                     'station-factory-3km-preroll', 'missile-300m', 'missile-near-own-ship-40m', 'nested-3-fighters-area',
+                     'own-death-chase', 'own-death-cockpit', 'seta6'):
+            self.assertIn('boom/' + want, ids)
+        self.assertIn('<button type="button" class="tab" role="tab" data-tab="boom">Boom</button>', self.html)
+        probe = self.ours_script() + self.CONTROLS + r"""
+const checks = {c_x_smoke: true};
+function $(id) { return {value: vals[id], checked: !!checks[id]}; }
+const out = {};
+const run = (o, t) => {
+  Object.assign(vals, {c_family: 'boom', c_x_tier: 'fighter', c_x_dist: 600, c_x_radius: 14, c_x_nested: 1, c_x_seta: 1,
+                       c_x_seed: 1}, o.vals || {});
+  checks.c_x_hull = !!o.hull;
+  const data = new Uint8ClampedArray(OW * OH * 4);
+  const rec = {slot: 'impact', ctx: {setTransform() {}, getImageData() { return {data: data.slice()}; }, putImageData() {}}};
+  renderOurs(rec, t);
+  return rec.boomStats;
+};
+out.birth = run({}, 0);
+out.f03 = run({}, 600);
+out.missile = run({vals: {c_x_tier: 'missile', c_x_dist: 300, c_x_radius: 3}}, 80);
+out.missile_late = run({vals: {c_x_tier: 'missile', c_x_dist: 300, c_x_radius: 3}}, 400);
+out.nested = run({vals: {c_x_nested: 3}}, 600);
+out.hull = run({hull: true}, 1200);
+out.sky = run({}, 1200);
+out.seed2 = run({vals: {c_x_seed: 2}}, 600);
+vals.c_family = 'boom'; out.loop = ourLoopMs();
+out.boom = HEADER.boom;
+console.log(JSON.stringify(out));
+"""
+        js = self.run_node(probe)
+        bm = js['boom']
+        R_f = min(max(bm['tier_f'][0] * 14, bm['tier_min_m'][0]), bm['tier_max_m'][0])
+        R_0 = bm['tier_r0_obj'][0] * 14
+        import math
+        want = R_0 + (R_f - R_0) * (1 - math.exp(-0.3 / bm['tier_rise'][0])) + bm['body_grow'] * R_f * 0.3
+        self.assertAlmostEqual(js['f03']['R'], want, places=4)
+        self.assertEqual((js['birth']['stars'], js['f03']['stars']), (1, 0))
+        self.assertEqual((js['f03']['bodies'], js['f03']['shocks']), (1, 0))       # no shock for fighters
+        # every ember drawn or hidden inside the body (decision 2026-11-07); lengths not uniform, under the cap
+        self.assertEqual(js['f03']['embers'] + js['f03']['fragments'] + js['f03']['hidden'], int(bm['tier_embers'][0]))
+        lens = js['sky']['lengths']
+        mean = sum(lens) / len(lens)
+        self.assertGreaterEqual((sum((x - mean) ** 2 for x in lens) / len(lens)) ** 0.5, 0.2 * mean)
+        self.assertGreater(js['sky']['light']['halo'], 0)                         # the halo in air, over sky too
+        self.assertEqual(js['sky']['halos'], 1)
+        self.assertEqual((js['missile']['shocks'], js['missile_late']['shocks']), (1 if bm['missile_shock'] else 0, 0))
+        self.assertEqual(js['nested']['bodies'], 3)
+        self.assertGreater(js['hull']['light']['glow'], 0)
+        self.assertGreater(js['hull']['light']['smoke'], 0)
+        self.assertEqual((js['sky']['light']['glow'], js['sky']['light']['smoke']), (0, 0))  # surface-bound
+        self.assertNotEqual(js['f03']['light']['ember'], js['seed2']['light']['ember'])
+        self.assertAlmostEqual(js['loop'], (bm['smoke_t0'] + bm['smoke_span']) * bm['tier_life_ms'][0] + 250, places=3)
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_script_parses(self):

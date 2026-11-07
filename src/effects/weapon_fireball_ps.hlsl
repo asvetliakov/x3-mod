@@ -16,6 +16,9 @@
 // globe's tint, the asteroid's dust at share 1). Smoke (tint.a < 0): over the lane's surface only (never the sky), the
 // output tint.rgb x density under the scorch pass's ZERO / INVSRCCOLOR (the scene x (1 - it)). Alpha 0. Constants:
 // renderer/weapon_effects_pass.cpp, defaults weapon_effects_core.h look::fireball_*.
+// Step 3: within 0.08 of the disc's centre the outward drift's direction blends to a seed-hashed one
+// (no pinhole at the centre); a death body's white-hot core (TEXCOORD5 g > 0: radiance x (1 + g), whitened, inside 0.3
+// of the radius falling to 0 at 0.5; boom::core_*).
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
 float4 screen : register(c3);  // 2 / W, 2 / H, near view z, the third octave's weight at most (0: the budget's step 1)
@@ -45,7 +48,7 @@ float3 heat(float t) {
     return lerp(lo, hi, f);
 }
 float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOORD1, float4 tint : TEXCOORD2,
-            float4 disc : TEXCOORD3, float advect : TEXCOORD4) : COLOR0 {
+            float4 disc : TEXCOORD3, float advect : TEXCOORD4, float core : TEXCOORD5) : COLOR0 {
     float2 ndc = float2(vpos.x * screen.x - 1.0, 1.0 - vpos.y * screen.y);
     float3 dir = float3((ndc.x - proj.z) / proj.x, (ndc.y - proj.w) / proj.y, 1.0); // the point at view depth z: dir z
     float R = max(sphere.w, 1e-6), R2 = R * R;
@@ -77,7 +80,14 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
             float rho = (1.0 + shape.y * (2.0 * nl - 1.0)) / (1.0 + shape.y);
             float lobe = saturate((rho - rq) / shape.z);
             [branch] if (lobe > 0.0) {
-                float2 drift = p / max(sqrt(dot(p, p)), 1e-4) * advect;
+                // the outward drift's direction p / |p| is singular at the disc's centre (a pinhole there from about
+                // half the life): within 0.08 of the centre it blends to a fixed direction hashed from the seed,
+                // continuous at the boundary (2026-11-07)
+                float pr = sqrt(dot(p, p));
+                float th = 6.2831853 * frac(look.w * 0.6180340 + disc.z * 0.1);
+                float2 hdir;
+                sincos(th, hdir.y, hdir.x);
+                float2 drift = lerp(hdir, p / max(pr, 1e-4), saturate(pr / 0.08)) * advect;
                 float n = weight.x * value_noise(p * freq.x - drift + look.w * float2(1.7, 3.1)) +
                           weight.y * value_noise(p * freq.y - drift + look.w * float2(3.1, 1.7) + 5.3);
                 float wsum = weight.x + weight.y;
@@ -95,7 +105,10 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 } else {
                     float m = column * saturate((n - thr) / shape.w);
                     float T = look.x * (weight.w + (1.0 - weight.w) * m);
-                    c = lerp(heat(T), tint.rgb, tint.a) * (look.y * density);
+                    // step 3: the death body's white-hot core (core > 0 only for a death body): inside 0.3 of the radius
+                    // the radiance x (1 + g) and the colour whitened by min(1, g), to 0 at 0.5
+                    float g = core * saturate((0.5 - rq) / 0.2);
+                    c = lerp(lerp(heat(T), tint.rgb, tint.a), float3(1.0, 1.0, 1.0), saturate(g)) * (look.y * density * (1.0 + g));
                 }
             }
         }

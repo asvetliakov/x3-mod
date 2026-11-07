@@ -18,10 +18,15 @@ own). Step 4 (docs/architecture/bolt-muzzle-look.md): the bolt-tap stub has the 
 eax,[esp+0x10], push, call, add, pop x3, popf, jmp [continue]), the flight stub the impact's, the muzzle stub passes EAX
 and EDX (pushf, push x3, cld, push edx, push eax, lea eax,[esp+0x18], push, call, add esp,0xc, test, pop x3, jne, popf,
 jmp [continue], popf, xor, ret), and the three handler entry points _x3m_weapon_bolt_tap / _x3m_weapon_muzzle /
-_x3m_weapon_flight contain no call.
+_x3m_weapon_flight contain no call. Step 3 (docs/architecture/explosion-look.md): the two death stubs pass EBP (pushf, push
+x3, cld, push ebp, lea eax,[esp+0x14], push, call, add esp,0x8, test, pop x3, jne, popf, jmp [continue], popf, xor,
+ret), the handler entry points _x3m_weapon_death_area / _x3m_weapon_death_other contain no call, and the two death
+windows of src/proxy/weapon_effects_death_sites.h equal the installed EXE's bytes (/mnt/c/X3/X3AP.exe, read through its
+PE section table; recorded as death_windows_exe; an absent EXE fails the audit).
 """
 import json
 import re
+import struct
 import subprocess
 from pathlib import Path
 from run_chase_aim_trace import FLAGS
@@ -37,7 +42,40 @@ STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'add', 't
 TAP_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'add', 'pop', 'pop', 'pop', 'popf', 'jmp']
 MUZZLE_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'push', 'lea', 'push', 'call', 'add', 'test', 'pop', 'pop',
                'pop', 'jne', 'popf', 'jmp', 'popf', 'xor', 'ret']
-HANDLERS = ('_x3m_weapon_event', '_x3m_weapon_tap', '_x3m_weapon_bolt_tap', '_x3m_weapon_muzzle', '_x3m_weapon_flight')
+DEATH_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'lea', 'push', 'call', 'add', 'test', 'pop', 'pop', 'pop',
+              'jne', 'popf', 'jmp', 'popf', 'xor', 'ret']
+HANDLERS = ('_x3m_weapon_event', '_x3m_weapon_tap', '_x3m_weapon_bolt_tap', '_x3m_weapon_muzzle', '_x3m_weapon_flight',
+            '_x3m_weapon_death_area', '_x3m_weapon_death_other')
+GAME_EXE = Path('/mnt/c/X3/X3AP.exe')
+DEATH_SITES = ROOT / 'src/proxy/weapon_effects_death_sites.h'
+
+
+def exe_bytes(path, va, n):
+    """n bytes at virtual address va of a PE image (its section table; the preferred image base)."""
+    d = path.read_bytes()
+    pe = struct.unpack_from('<I', d, 0x3c)[0]
+    sections, opt = struct.unpack_from('<H', d, pe + 6)[0], struct.unpack_from('<H', d, pe + 20)[0]
+    base = struct.unpack_from('<I', d, pe + 24 + 28)[0]
+    for i in range(sections):
+        vsize, vaddr, rsize, raw = struct.unpack_from('<IIII', d, pe + 24 + opt + 40 * i + 8)
+        if vaddr <= va - base < vaddr + max(vsize, rsize):
+            off = va - base - vaddr + raw
+            return d[off:off + n]
+    raise ValueError(f'{va:#x} outside the image')
+
+
+def death_windows_exe(path=GAME_EXE, header=DEATH_SITES):
+    """The header's two death windows against the installed EXE: {'area': bool, 'other': bool}, None without it."""
+    if not path.is_file():
+        return None
+    text = header.read_text()
+    out = {}
+    for name in ('area', 'other'):
+        va = int(re.search(r'\b%s_window_va = (0x[0-9a-f]+)' % name, text).group(1), 16)
+        body = re.search(r'expected_%s_window\[window_length\] = \{([^}]*)\}' % name, text).group(1)
+        expected = bytes(int(v, 16) for v in re.findall(r'0x[0-9a-f]+', body))
+        out[name] = exe_bytes(path, va, len(expected)) == expected
+    return out
 X87 = re.compile(r'^\s*[0-9a-f]+:\s+(f[a-z0-9]+|emms)\b|\b(st\(\d\)|mm[0-7])\b')
 
 
@@ -82,6 +120,12 @@ def audit(objects):
                  m_ops[10] == 'esp,0xc' and m_ops[17].startswith('DWORD PTR ds:'))
     f_mn, f_ops = stub(hlist, '_x3m_weapon_effects_stub_flight')
     flight_ok = f_mn == STUB and f_ops[5] == 'eax,[esp+0x10]' and f_ops[15].startswith('DWORD PTR ds:')
+    death_ok = {}
+    for name in ('area', 'other'):
+        d_mn, d_ops = stub(hlist, f'_x3m_weapon_effects_stub_death_{name}')
+        death_ok[name] = (d_mn == DEATH_STUB and d_ops[5] == 'ebp' and d_ops[6] == 'eax,[esp+0x14]' and
+                          d_ops[9] == 'esp,0x8' and d_ops[16].startswith('DWORD PTR ds:'))
+    exe = death_windows_exe()
     handler_calls = {name: [line.strip() for line in body(hlist, name) if re.search(r'\bcall\b', line)]
                      for name in HANDLERS}
     handler_rows = {name: len(body(hlist, name)) for name in handler_calls}
@@ -97,9 +141,11 @@ def audit(objects):
               'handler_instructions': handler_rows, 'handler_frame_bytes': frame[0] if frame else 0,
               'stub_impact': i_mn, 'stub_ok': stub_ok, 'stub_bolt_tap': b_mn, 'stub_bolt_tap_ok': bolt_tap_ok,
               'stub_muzzle': m_mn, 'stub_muzzle_ok': muzzle_ok, 'stub_flight': f_mn, 'stub_flight_ok': flight_ok,
+              'stub_death_ok': death_ok, 'death_windows_exe': exe,
               'module_imports_own_protect': module_own_protect,
               'engine_patch_lock_cmpxchg8b': len(re.findall(r'lock cmpxchg8b', patch))}
     if (undefined or handler_x87 or not stub_ok or not bolt_tap_ok or not muzzle_ok or not flight_ok or
+            not all(death_ok.values()) or exe is None or not all(exe.values()) or
             module_own_protect or record['engine_patch_lock_cmpxchg8b'] < 1 or
             any(handler_calls.values()) or not all(handler_rows.values())):
         raise RuntimeError('fixture build audit failed: ' + json.dumps(record))

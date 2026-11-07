@@ -6,6 +6,7 @@
 #include "object_trace.h"
 #include "sse_scalar.h"
 #include "weapon_effects_bolt_sites.h"
+#include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
 #include "weapon_effects_table.h"
 #include <windows.h>
@@ -20,12 +21,13 @@ namespace engine_patch = x3m::engine_patch;
 namespace sites = x3m::weapon_effects::sites;
 namespace core = x3m::weapon_effects::core;
 namespace bolt_sites = x3m::weapon_effects::bolt_sites;
-constexpr unsigned site_count = 6; // impact, tap1, tap2; step 4: bolt_tap, muzzle, flight
+namespace death_sites = x3m::weapon_effects::death_sites;
+constexpr unsigned site_count = 8; // impact, tap1, tap2; step 4: bolt_tap, muzzle, flight; step 3: death_area, death_other
 bool patched_ = false, installed_ = false;
 core::Mode mode_ = core::mode_native;
 const char* state_ = "not_initialized";
-const char* site_state_[site_count] = {"not_initialized", "not_initialized", "not_initialized",
-                                      "not_initialized", "not_initialized", "not_initialized"};
+const char* site_state_[site_count] = {"not_initialized", "not_initialized", "not_initialized", "not_initialized",
+                                      "not_initialized", "not_initialized", "not_initialized", "not_initialized"};
 bool written_[site_count] = {};
 engine_patch::CallSite site_[site_count]{};
 core::Table* table_ = nullptr;
@@ -44,7 +46,14 @@ struct Period {
     unsigned streaks = 0, chips = 0, filaments = 0, scorches = 0, spots = 0, merges = 0, shimmer = 0, jet_no_dir = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
+    // step 3: death records seen (ours, census), the stage's death figures
+    std::uint32_t deaths = 0, deaths_ours = 0;
+    unsigned boom_drawn = 0, boom_bodies = 0, boom_stars = 0, boom_shocks = 0, boom_embers = 0, boom_fragments = 0;
+    unsigned boom_smokes = 0, boom_glows = 0, boom_shed = 0, boom_lod = 0, boom_out_of_reach = 0, boom_capped = 0;
 } period_{};
+// weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
+constexpr unsigned death_row_budget = 64, death_period_budget = 16;
+unsigned logged_deaths_ = 0, period_deaths_ = 0;
 core::Counters seen_{};
 core::ScopeLatch scope_{};
 std::uint32_t scope_clears_ = 0, scope_changes_ = 0;
@@ -181,7 +190,8 @@ void load_table() {
              static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
 const char* site_name(unsigned i) {
-    static const char* const names[site_count] = {"impact", "tap1", "tap2", "bolt_tap", "muzzle", "flight"};
+    static const char* const names[site_count] = {"impact", "tap1", "tap2", "bolt_tap", "muzzle", "flight", "death_area",
+                                                  "death_other"};
     return i < site_count ? names[i] : "?";
 }
 std::uintptr_t site_va(unsigned i) {
@@ -189,7 +199,9 @@ std::uintptr_t site_va(unsigned i) {
            : i < 3  ? sites::tap_site_va[i - 1]
            : i == 3 ? bolt_sites::tap_site_va
            : i == 4 ? bolt_sites::muzzle_site_va
-                    : bolt_sites::flight_site_va;
+           : i == 5 ? bolt_sites::flight_site_va
+           : i == 6 ? death_sites::area_site_va
+                    : death_sites::other_site_va;
 }
 // Step 4: a bolt site's window, offset, callee and stub (3 bolt_tap, 4 muzzle, 5 flight).
 struct BoltSite {
@@ -198,7 +210,16 @@ struct BoltSite {
     const unsigned char* expected;
     void* stub;
 };
+// Step 3: a death site's window, offset, callee and stub (6 death_area, 7 death_other).
+BoltSite death_site(const x3m::weapon_effects::Addresses& a, unsigned i) {
+    if (i == 6)
+        return {a.death_area_window, a.death_target, death_sites::site_offset, death_sites::window_length,
+                death_sites::expected_area_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_area)};
+    return {a.death_other_window, a.death_target, death_sites::site_offset, death_sites::window_length,
+            death_sites::expected_other_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_other)};
+}
 BoltSite bolt_site(const x3m::weapon_effects::Addresses& a, unsigned i) {
+    if (i >= 6) return death_site(a, i);
     if (i == 3)
         return {a.bolt_tap_window, a.bolt_tap_target, bolt_sites::tap_site_offset, bolt_sites::tap_window_length,
                 bolt_sites::expected_tap_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_bolt_tap)};
@@ -238,13 +259,16 @@ bool install_at(const Addresses& a, core::Mode mode) {
     }
     const bool taps = mode == core::mode_observe;
     const bool bolts = core::bolts_mode(mode);
+    const bool booms = core::explosions_mode(mode);
     if (!taps) site_state_[1] = site_state_[2] = "not_used";
     if (!bolts) site_state_[3] = site_state_[4] = site_state_[5] = "not_used";
-    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : bolts); };
+    if (!booms) site_state_[6] = site_state_[7] = "not_used";
+    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : i < 6 ? bolts : booms); };
     if (mode == core::mode_native) return done("native", false);
     if (!a.impact_window || !a.impact_target || !a.prologue || (taps && (!a.tap_window[0] || !a.tap_window[1] || !a.tap_target)) ||
         (bolts && (!a.bolt_tap_window || !a.bolt_tap_target || !a.muzzle_window || !a.muzzle_target || !a.flight_window ||
-                   !a.flight_target))) {
+                   !a.flight_target)) ||
+        (booms && (!a.death_area_window || !a.death_other_window || !a.death_target))) {
         site_state_[0] = "invalid_site";
         return done("invalid_site", false);
     }
@@ -269,12 +293,20 @@ bool install_at(const Addresses& a, core::Mode mode) {
                 return done("bytes_mismatch_tap", false);
             }
     if (bolts)
-        for (unsigned i = 3; i < site_count; ++i) {
+        for (unsigned i = 3; i < 6; ++i) {
             const BoltSite b = bolt_site(a, i);
             if (!window_matches(b.window, b.expected, b.length)) {
                 site_state_[i] = "bytes_mismatch";
                 return done(i == 3 ? "bytes_mismatch_bolt_tap" : i == 4 ? "bytes_mismatch_muzzle" : "bytes_mismatch_flight",
                             false);
+            }
+        }
+    if (booms)
+        for (unsigned i = 6; i < site_count; ++i) {
+            const BoltSite b = death_site(a, i);
+            if (!window_matches(b.window, b.expected, b.length)) {
+                site_state_[i] = "bytes_mismatch";
+                return done(i == 6 ? "bytes_mismatch_death_area" : "bytes_mismatch_death_other", false);
             }
         }
     if (!pin_self()) {
@@ -285,10 +317,14 @@ bool install_at(const Addresses& a, core::Mode mode) {
     core::ring_clear(s.ring);
     s.table = table_;
     s.mode = std::uint8_t(mode);
-    s.armed = mode == core::mode_shields   ? core::family_shields
-              : bolts                      ? std::uint8_t(core::family_shields | core::family_hull | core::family_bolts)
-              : core::hull_mode(mode)      ? std::uint8_t(core::family_shields | core::family_hull)
-                                           : std::uint8_t(0);
+    s.armed = mode == core::mode_shields ? core::family_shields
+              : core::hull_mode(mode)
+                  ? std::uint8_t(core::family_shields | core::family_hull | (bolts ? core::family_bolts : 0) |
+                                 (booms ? core::family_boom : 0))
+                  : std::uint8_t(0);
+    s.boom_ready = 0;
+    s.boom_floor_ms = 0;
+    s.death_ms = 0;
     core::BoltHookState& bs = bolt_hook_state();
     bs.armed = 0; // set once every site is live
     bs.owned = 0;
@@ -307,10 +343,11 @@ bool install_at(const Addresses& a, core::Mode mode) {
         x3m_weapon_effects_continue_muzzle = a.muzzle_target;
         x3m_weapon_effects_continue_flight = a.flight_target;
     }
+    if (booms) x3m_weapon_effects_continue_death = a.death_target;
     for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
-    // Atomic sites first (the taps, the muzzle, the flight effect), then the plain copies (the bolt tap, the impact);
-    // all or none.
-    const unsigned order[site_count] = {1, 2, 4, 5, 3, 0};
+    // Atomic sites first (the taps, the muzzle, the flight effect, the other death site), then the plain copies (the bolt
+    // tap, the area death site, the impact); all or none.
+    const unsigned order[site_count] = {1, 2, 4, 5, 7, 3, 6, 0};
     unsigned claimed[site_count]{};
     unsigned n = 0;
     for (unsigned k = 0; k < site_count; ++k) {
@@ -380,12 +417,13 @@ bool initialize() {
         reason = "executable_mismatch";
     else {
         load_table();
-        const Addresses a{sites::impact_window_va,     sites::impact_target_va,
-                          sites::prologue_va,          {sites::tap_window_va[0], sites::tap_window_va[1]},
-                          sites::tap_target_va,        bolt_sites::tap_window_va,
-                          bolt_sites::tap_target_va,   bolt_sites::muzzle_window_va,
-                          bolt_sites::muzzle_target_va, bolt_sites::flight_window_va,
-                          bolt_sites::flight_target_va};
+        const Addresses a{sites::impact_window_va,       sites::impact_target_va,
+                          sites::prologue_va,            {sites::tap_window_va[0], sites::tap_window_va[1]},
+                          sites::tap_target_va,          bolt_sites::tap_window_va,
+                          bolt_sites::tap_target_va,     bolt_sites::muzzle_window_va,
+                          bolt_sites::muzzle_target_va,  bolt_sites::flight_window_va,
+                          bolt_sites::flight_target_va,  death_sites::area_window_va,
+                          death_sites::other_window_va,  death_sites::target_va};
         applied = install_at(a, mode);
     }
     if (reason) {
@@ -410,7 +448,7 @@ bool shutdown() {
     bolt_hook_state().armed = 0;
     bolt_hook_state().owned = 0;
     bolt_hook_state().muzzle_owned = 0;
-    static constexpr unsigned reverse[site_count] = {0, 3, 5, 4, 2, 1}; // the reverse of the install order
+    static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
     for (unsigned k = 0; k < site_count; ++k) {
         const unsigned i = reverse[k];
         if (!site_[i].patched_in) continue;
@@ -479,6 +517,20 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // hull programs (StageFrame::hull_ready).
     s.owned_next = std::uint8_t(core::stage_mode(mode_) && owned);
     s.hull_ready = std::uint8_t(core::hull_mode(mode_) && owned && stage.hull_ready);
+    // Step 3: the death family's also needs the death programs (StageFrame::boom_ready: the shock beside the hull's).
+    s.boom_ready = std::uint8_t(core::explosions_mode(mode_) && owned && stage.hull_ready && stage.boom_ready);
+    period_.boom_drawn += stage.deaths;
+    period_.boom_bodies += stage.boom_bodies;
+    period_.boom_stars += stage.boom_stars;
+    period_.boom_shocks += stage.boom_shocks;
+    period_.boom_embers += stage.boom_embers;
+    period_.boom_fragments += stage.boom_fragments;
+    period_.boom_smokes += stage.boom_smokes;
+    period_.boom_glows += stage.boom_glows;
+    period_.boom_shed += stage.boom_shed;
+    period_.boom_lod += stage.boom_lod;
+    period_.boom_out_of_reach += stage.boom_out_of_reach;
+    period_.boom_capped += stage.boom_capped;
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
@@ -527,6 +579,31 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     for (unsigned i = 0; i < core::ring_capacity; ++i) {
         core::Event& e = r.slots[i];
         if (!e.sequence) continue;
+        if (!(e.flags & core::flag_logged) && e.role == core::role_explosion) {
+            // Step 3: a death record (core::death): its tier, class, subtype, death row, radius, ours or forwarded, the
+            // site (area 0x0044ac64 / other 0x0044acb2), the reason word, the killer argument (pointer or id [u]),
+            // nested (another death in the same game ms), the world position (m) and the TShips class id.
+            e.flags |= core::flag_logged;
+            ++period_.deaths;
+            if (e.flags & core::flag_stage) ++period_.deaths_ours;
+            if (capture || logged_deaths_ < death_row_budget || period_deaths_ < death_period_budget) {
+                const char* sample = capture ? "capture" : logged_deaths_ < death_row_budget ? "start" : "period";
+                if (!capture) ++(logged_deaths_ < death_row_budget ? logged_deaths_ : period_deaths_);
+                const float m = 1.f / core::engine_units_per_metre;
+                log("weapon_death frame=%llu seq=%lu tier=%s class=%u row=%u radius_m=%.1f ours=%u site=%s "
+                    "reason=%u killer=%08lx nested=%u t0=%lu pos_m=%.1f,%.1f,%.1f class_id=%ld patch_tier=%s "
+                    "tier_source=%s owner=%08lx life_ms=%u decision=%s sample=%s",
+                    frame, static_cast<unsigned long>(e.sequence), core::boom::tier_name(e.style), unsigned(e.table),
+                    unsigned(e.row == 0xffffu ? 0xffffu : e.row), double(float(e.radius) * m),
+                    unsigned((e.flags & core::flag_stage) != 0), e.tint_source ? "other" : "area", unsigned(e.shield_q),
+                    static_cast<unsigned long>(std::uint32_t(e.damage)), unsigned((e.flags & core::flag_nested) != 0),
+                    static_cast<unsigned long>(e.t0_game_ms), double(float(e.pos[0]) * m), double(float(e.pos[1]) * m),
+                    double(float(e.pos[2]) * m), static_cast<long>(std::int32_t(e.tint_rgb)),
+                    core::patch_tier_name(e.patch_tier), core::tier_source_name(e.tier_source),
+                    static_cast<unsigned long>(e.owner), unsigned(e.lifetime_ms),
+                    core::boom::decide(e.style) == core::boom::decide_ours ? "ours" : "native", sample);
+            }
+        }
         if (!(e.flags & core::flag_logged)) {
             e.flags |= core::flag_logged;
             ++period_.events;
@@ -569,7 +646,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         }
         // Census-only records leave once logged; the stage's at the end of their game-time life (a hull hit's, its
         // floored elements included: the stage's life_floor_ms).
-        const std::uint32_t extra = e.role == core::role_hull_hit ? s.life_floor_ms : 0u;
+        const std::uint32_t extra = e.role == core::role_hull_hit    ? s.life_floor_ms
+                                    : e.role == core::role_explosion ? s.boom_floor_ms
+                                                                     : 0u;
         if (!(e.flags & core::flag_stage) || (now && core::expired(now, e, extra))) {
             if (e.flags & core::flag_stage) ++period_.expired;
             core::ring_release(r, i);
@@ -583,6 +662,26 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     }
     if (frame % frame_row_period) return;
     const core::Counters& c = s.counters;
+    if (core::explosions_mode(mode_))
+        log("weapon_boom_frame frame=%llu deaths=%lu ours=%lu calls=%lu no_node=%lu bullet=%lu rule_b=%lu nested=%lu "
+            "fighter=%lu corvette=%lu capital=%lu station=%lu missile=%lu asteroid=%lu other=%lu boom_ready=%u drawn=%u "
+            "bodies=%u stars=%u shocks=%u embers=%u fragments=%u smokes=%u glows=%u shed=%u lod=%u out_of_reach=%u "
+            "capped=%u floor_ms=%lu tier_native=%u",
+            frame, static_cast<unsigned long>(period_.deaths), static_cast<unsigned long>(period_.deaths_ours),
+            static_cast<unsigned long>(c.deaths - seen_.deaths), static_cast<unsigned long>(c.death_no_node - seen_.death_no_node),
+            static_cast<unsigned long>(c.death_bullet - seen_.death_bullet),
+            static_cast<unsigned long>(c.death_rule_b - seen_.death_rule_b),
+            static_cast<unsigned long>(c.death_nested - seen_.death_nested),
+            static_cast<unsigned long>(c.death_tier[0] - seen_.death_tier[0]),
+            static_cast<unsigned long>(c.death_tier[1] - seen_.death_tier[1]),
+            static_cast<unsigned long>(c.death_tier[2] - seen_.death_tier[2]),
+            static_cast<unsigned long>(c.death_tier[3] - seen_.death_tier[3]),
+            static_cast<unsigned long>(c.death_tier[4] - seen_.death_tier[4]),
+            static_cast<unsigned long>(c.death_tier[5] - seen_.death_tier[5]),
+            static_cast<unsigned long>(c.death_tier[6] - seen_.death_tier[6]), unsigned(s.boom_ready), period_.boom_drawn,
+            period_.boom_bodies, period_.boom_stars, period_.boom_shocks, period_.boom_embers, period_.boom_fragments,
+            period_.boom_smokes, period_.boom_glows, period_.boom_shed, period_.boom_lod, period_.boom_out_of_reach,
+            period_.boom_capped, static_cast<unsigned long>(s.boom_floor_ms), unsigned(core::boom::tier_native));
     log("weapon_effects_frame frame=%llu mode=%s frames=%lu events=%lu hits=%lu skipped=%lu forwarded=%lu staged=%lu "
         "patches=%u decals=%u retired=%u expired=%lu overflow=%lu evicted_visible=%lu owned=%lu drew=%lu stage_us=%.1f stage_us_max=%.1f "
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
@@ -623,6 +722,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     seen_retired_ = r.retired;
     period_ = {};
     period_events_ = 0;
+    period_deaths_ = 0;
 }
 // Step 4: the bolt latch for the next frame, the generation advance and the weapon_bolts_frame row (every 300 frames,
 // and on a capture frame) with the in-place draw's period figures and the hooks' counters since the last row.

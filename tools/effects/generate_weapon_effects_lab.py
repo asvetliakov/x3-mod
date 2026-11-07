@@ -101,6 +101,19 @@ NAMESPACES = {
              'wave_ring_c', 'trim_rs', 'rim', 'rim_dark', 'rim_band_w', 'rim_min_px', 'halo_px_max', 'floor_core_px',
              'floor_body_px', 'floor_halo_px', 'floor_len_px', 'floor_endon_px', 'own_body_max_px', 'cockpit_native',
              'far_flag_k', 'list_capacity', 'beam_w_m'),
+    # step 3, the death explosion (docs/architecture/explosion-look.md): HEADER.boom, the Boom tab's laws and defaults
+    'boom': ('mode', 'tier_native', 'tier_f', 'tier_min_m', 'tier_max_m', 'tier_life_ms', 'tier_preroll_ms', 'tier_rise',
+             'tier_r0_obj', 'tier_r0_f', 'tier_embers', 'tier_shock', 'tier_shock_tau', 'body_grow', 'body_hold', 'body_cool',
+             'body_e', 'body_bias', 'body_r_sphere', 'body_floor_px', 'core_gain', 'core_x', 'core_r', 'core_soft',
+             'star_arm', 'star_core', 'star_ms', 'star_t', 'star_cap_h', 'shock_r_x', 'shock_w', 'shock_e', 'shock_limb',
+             'shock_end', 'missile_shock', 'ember_cones_lo', 'ember_cones_hi', 'ember_cone_deg', 'ember_v_x',
+             'ember_v_min', 'ember_v_max', 'ember_p0', 'ember_speed_lo', 'ember_speed_hi', 'ember_life', 'ember_stagger',
+             'ember_e', 'ember_tau', 'ember_w_px_lo', 'ember_w_px_hi', 'ember_len_max', 'ember_len_lo', 'ember_hide_r',
+             'ember_hide_x0', 'ember_hide_x1', 'fragment_every', 'fragment_v', 'fragment_life', 'fragment_w_px',
+             'fragment_dark', 'fragment_tip_t', 'fragment_dark_r', 'glow_r_x', 'glow_r_max', 'glow_e', 'halo_soft',
+             'halo_fade_x0', 'halo_fade_x1',
+             'cluster_r_x', 'cluster_n0', 'smoke_r', 'smoke_t0', 'smoke_span', 'smoke_s0', 'smoke_rise', 'coverage_dim',
+             'budget_weight_shock', 'budget_weight_halo', 'max_bodies', 'max_quads', 'cone_element', 'ember_element'),
     'muzzle': ('mode', 'class_disc', 'disc_halo_w', 'disc_halo_e', 'class_flame', 'class_star', 'star_arms', 'star_width_w',
                'star_e', 'bloom_w', 'bloom_e', 'vent_w', 'vent_ms', 'vent_e', 'afterglow_ms', 'afterglow_e', 'rise_ms',
                'class_smoke', 'class_glow', 'class_life', 'cap_core_rs', 'cap_flame_rs', 'endon_cos', 'breath', 'cluster_n0',
@@ -150,7 +163,7 @@ def hull_class_of(entry, pins):
 # game ms; 0: sustained) and sweep (r_hit per tick) and the loop (game ms; 0: the record life). Families: shield (step
 # 1, accepted) and hull (step 2: the 3.1 list and one preset per class of hull-impact-classes.md section 7; --check
 # fails when a class has none).
-FAMILIES = ('shield', 'hull', 'bolt', 'muzzle')
+FAMILIES = ('shield', 'hull', 'bolt', 'muzzle', 'boom')
 PRESETS = (
     dict(id='shield/fighter-ire-side', family='shield', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull='flat_top',
          camera='side', seta=1, hps=4, own=False, cockpit=False, variant='none', k=0.33, shield=100, cls='auto', pulse=[0, 0], sweep=0, loop=0),
@@ -299,6 +312,33 @@ PRESETS = PRESETS + (
     _b('muzzle/ire-own-side-cone', 'stock_ap', 'SS_BULLET_IRE', 'own_side', camera='side', own=True, hps=4, k=0.0),
 )
 
+# Step 3 (docs/architecture/explosion-look.md 8): the Boom tab's scenarios, the vanilla death row beside ours. BOOM_KEYS:
+# the scene (side, chase or cockpit: the own death's views), the distance (m), the death tier, the dying object's
+# radius (m), the deaths in one frame (60 m apart); `hull` lit puts a hull plane behind (the glow and smoke land on it).
+def _x(id, boom_tier, dist_m, radius_m, nested=1, seta=1, camera='side', own=False, cockpit=False, hull='space', scene='side'):
+    return dict(id=id, family='boom', view='mayhem3', weapon='SS_BULLET_IRE', tier=0, hull=hull, camera=camera, seta=seta,
+                hps=0, own=own, cockpit=cockpit, variant='none', k=0.33, shield=0, cls='auto', pulse=[0, 0], sweep=0, loop=0,
+                count=0, scene=scene, dist_m=dist_m, boom_tier=boom_tier, radius_m=radius_m, nested=nested)
+
+
+PRESETS = PRESETS + (
+    _x('boom/fighter-m5-600m-side', 'fighter', 600, 12),
+    _x('boom/fighter-m3-2km-floor', 'fighter', 2000, 19),
+    _x('boom/corvette-m6-1500m', 'corvette', 1500, 87),
+    _x('boom/freighter-ts-1500m', 'corvette', 1500, 50),
+    _x('boom/capital-m2-1500m-preroll', 'capital', 1500, 1288, hull='lit'),
+    _x('boom/capital-m7-far-5km', 'capital', 5000, 618),
+    _x('boom/capital-m2-close-720m', 'capital', 720, 1288),
+    _x('boom/station-factory-3km-preroll', 'station', 3000, 1800, hull='lit'),
+    _x('boom/missile-300m', 'missile', 300, 3),
+    _x('boom/missile-near-own-ship-40m', 'missile', 40, 3, hull='lit'),
+    _x('boom/nested-3-fighters-area', 'fighter', 600, 14, nested=3),
+    _x('boom/own-death-chase', 'fighter', 24, 14, camera='chase', own=True, scene='chase'),
+    _x('boom/own-death-cockpit', 'fighter', 4, 14, camera='cockpit', own=True, cockpit=True, scene='cockpit'),
+    _x('boom/seta6', 'fighter', 600, 14, seta=6),
+)
+BOOM_KEYS = ('scene', 'dist_m', 'boom_tier', 'radius_m', 'nested')
+BOOM_TIERS = ('fighter', 'corvette', 'capital', 'station', 'missile')
 PRESET_KEYS = ('id', 'family', 'view', 'weapon', 'tier', 'hull', 'camera', 'seta', 'hps', 'own', 'cockpit', 'variant', 'k',
                'shield', 'cls', 'pulse', 'sweep', 'loop', 'count')
 BOLT_KEYS = ('scene', 'dist_m', 'angle', 'rows', 'fov')
@@ -315,8 +355,12 @@ def preset_problems(presets, data):
     out = []
     for pr in presets:
         step4 = pr.get('family') in BOLT_SCENES
-        if tuple(pr) != PRESET_KEYS + (BOLT_KEYS if step4 else ()):
+        boom = pr.get('family') == 'boom'
+        if tuple(pr) != PRESET_KEYS + (BOLT_KEYS if step4 else BOOM_KEYS if boom else ()):
             out.append(f"{pr.get('id')}: keys {tuple(pr)}")
+        if boom and (pr.get('boom_tier') not in BOOM_TIERS or pr.get('scene') not in ('side', 'chase', 'cockpit') or
+                     pr.get('hull') not in ('lit', 'space') or not 1 <= pr.get('nested', 0) <= 8):
+            out.append(f"{pr.get('id')}: boom tier / scene / hull / nested")
         if step4 and (pr.get('scene') not in BOLT_SCENES[pr['family']] or pr.get('rows') not in (1440, 1080) or
                       pr.get('fov') not in ('vanilla', 'remap') or pr.get('hull') not in ('lit', 'space')):
             out.append(f"{pr.get('id')}: scene {pr.get('scene')!r} / rows / fov / hull")

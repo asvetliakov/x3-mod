@@ -383,6 +383,13 @@ sparks; repair and tug: a cool spot (0.7, 0.8, 1.0) at E 0.3 / 0.15, R 1.0 r, re
 
 ### 3.2 Explosions (step 3)
 
+**Built 2026-11-07 for fighters and missiles** (corvettes, capitals and stations forwarded native: `boom::tier_native`):
+the look, sizes and laws are [explosion-look.md](explosion-look.md) (ratified; it amends the table and the smoke rule
+below), its built numbers in that note's "Built numbers (step 3)", the gates and measurements in
+[the ledger](../verification/weapon-effects.md) "Explosions (step 3)". The mode token is `explosions`
+(`shields,hull,explosions`, `shields,hull,bolts,explosions`). The records, the asteroid and the rule-(b) missile below
+stand as built.
+
 **Records.** Both death sites (2.4 of the architecture), `tier` from `patch_tier_of_ship` for class 7, station for
 classes 5/6, missile for class 10, burst for class 0 with flag `0x100` (step 7). `weapon_death` logs class id, col 47 row
 and radius; `tier_mismatch` stays the cross-check against rows 35 / 40 / 37.

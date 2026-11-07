@@ -395,3 +395,38 @@ X3M_WEAPON_EFFECTS_DUMP_MS=40,120,296,696 X3M_FIXTURE_BOTTLE=X3 python3 verifica
   python3 verification/probe/run_weapon_effects.py --host native --dump <dir>
 python3 verification/results/weapon-effects-burst/measure.py <dir>
 ```
+
+## Built numbers (step 3, 2026-11-07)
+
+Built for the first flight's tiers (fighter, missile); the corvette, capital and station records are census-only and
+forwarded byte-exact (`boom::tier_native` = 14). The header constants are `namespace boom` in
+`src/proxy/weapon_effects_core.h` (the lab reads them by name); the stage is `src/proxy/weapon_effects_boom.h`, the shock
+`src/effects/weapon_shock_ps.hlsl` (drawn with the fireball's vertex program), the halo `src/effects/weapon_halo_ps.hlsl`
+(with the glow's), the hook `core::death` with the sites of `src/proxy/weapon_effects_death_sites.h`. Gates and
+measurements: the ledger's "Explosions (step 3)". The coordinator's decisions of 2026-11-07 after the first frames
+(marked D1-D7) override the sections above where they differ:
+
+| Item | Above | Built | Why |
+| --- | --- | --- | --- |
+| The seam | "one function" | `core::boom::decide(tier)`: ours when not in `tier_native` (fighter, missile); section 1's clone-row swap replaces its `native` answer for the big tiers later | no R' or swap in this step |
+| Drawn sphere | R(t) x (1 + lobe_amp) = 1.25 R (the burst's rule) | `body_r_sphere` 1.33 | with 1.25 the body's mean outline (36 bins, 10 % of its peak) was 0.97 / 0.91 R(t) at 0.1 / 0.3 L [M]; with 1.33, 1.04 / 0.97 (fighter), 1.03 / 0.96 (missile) [M] |
+| Size vs erosion (D1) | `death_tier_sizes` within 5 % at five ages; `_erodes_outside_in` lit share <= 0.15 at 0.9 L | sizes gated at 0.1 / 0.3 L (0.6 / 0.8 L recorded: the erosion shrinks the outline from 0.4 L); erosion at 0.9 L <= **0.20** | the pair cannot both hold: the larger sphere that meets the derived size lifts the lit share inside R(t) to 0.156 at 0.9 L [M] |
+| Body floor | 12 px at 1440 rows | `body_floor_px` 12, at the centre's depth | a fighter at 3 km: law 7.7 px, drawn 12.1 [M] |
+| Body bias | 0.5 R(t) towards the eye | 0.5 R(t), eased in over the first 2 R of the eye's distance | an eye inside the body would otherwise move the centre onto it |
+| White-hot core (D5) | the star and white embers carry the birth | the fireball program's core gain g = `core_gain` 2.5 (1 - x / `core_x` 0.35): radiance x (1 + g) and whitened inside 0.3 R, to 0 at 0.5 R (a new vertex float, stride 80; 0 for the hull bursts and smokes) | the embers' white tangle over the young body; the body carries E >= 3 in its core at 0.1 L |
+| Pinhole (D4) | the burst program unchanged | within 0.08 of the disc's centre the outward drift's direction blends to a seed-hashed one, continuous at the boundary | a dark dot at every body's centre from about 0.5 L (p / |p| singular); the hull burst moves under 0.1 % (ledger). A ring and a bright centre (the "doughnut") remain from 0.5 L: the constant-length radial shift collapses each octave on the circle r = advect / freq. The planned fix is a radial zoom (sample p / (1 + advect)); tried 2026-11-07 and reverted: the hull burst `energy_single` at 296 ms lost 28 % of its lit area and `hull_plasma_globe_shrinks_reddens` failed [M] (`verification/results/weapon-effects-burst/zoom-attempt-2026-11-07.txt`), so the zoom needs the burst's erosion retuned with it |
+| Eye inside (D2) | dark share >= 0.15 at t_b + 0.5 s | the wash is the picture: at 0.25 L lit >= 90 % and not uniform (std >= 0.05 of the mean); dark share >= 0.15 at 0.6 L | a hot wash is correct inside a fireball; no extra noise sample (slots) |
+| Light on hulls (D3) | R 5 R_f | R = min(1.6 R(t), 2 R_f) at 0.33 E_b T heat(T) (hull-burst-look section 3) | the 5 R_f disc read as a lamp over a hull |
+| Halo in air (D3) | none | the glow primitive's light in air about the body (`weapon_halo_ps`, occlusion class 1, its soft cut 0.5 R_h): R 1.6 R(t), 0.33 E_b T heat(T), x (1 - smoothstep(0.4, 0.8, x)) (`halo_fade_x0` / `_x1`); not drawn with the eye inside the body; weight 0.40 | a body on black read as a cut-out blob; its 10 % radius <= 1.8 R(t) (a lamp fails); the erosion fade added after the v2 frames: kept full to the end, the halo read as a balloon around the eroded body |
+| Embers (D5) | U-wide streaks at v_e, the streak rule's floors | launched inside the newborn body (the offset within the unit ball, never past 0.8 R_0: none drawn at birth); hidden inside the body (fully within 0.8 R(t), visible past R(t), the hiding fading with the erosion from 0.5 to 0.9 L); widths 1.5-2.5 px at 1080 (hashed, the sprite program's new pixel mode: no floors); length a hashed 0.25-1 of 0.35 R_f on screen (never under two widths), a bright head and a fading tail; speeds 0.5-1.5 v_e; E x T | the tangle of white sticks at birth and the uniform rods later |
+| Fragments | 0.25 U dark streak + tip | 3 px wide, half an ember's length, the tip at heat(0.6) cooling, a dark box of 1 m (x U / 3) under it, hidden as the embers | |
+| Shock (D6) | a shell 0.17 inside, heat(0.9), alpha to 0 at 0.3 L | the limb only (the chord's density x a ramp from 0.15 r inside the limb: interior 0), heat(T(t)) of the body's age, gone at `shock_end` 0.25 L (r(t) keeps tau 0.3 L); **`missile_shock` false: off for the first flight** | the filled shell read as a grey disc; the limb-only shell (interior 0, outline 32.6 px against the law's 31.9 [M]) then read as a flat ring in the v2 frames, so decision 6's fallback applies; corvettes and up keep the law for when they are ours |
+| Shock weight (D7) | <= 0.40 | `budget_weight_shock` **0.36** (D7 said 0.76) | the review's reproducible row (`shock_weight`, the missile's shell forced on by the fixture's `BoomTuning::force_shock`) measures 0.356 and 0.318 a screen at 5120x1440 in two runs (0.318 in the record) and 0.118 at 1080p once the fence's 14 us is removed [M]; 0.36 is the larger; the earlier 0.76 divided a fence-dominated time by a smaller area. The shell is optional: a refused shock program leaves the deaths drawn (`death_shock_refused_deaths_drawn`) |
+| Nested (D8) | peak <= 2 E_b | three fighters 12 m apart (overlapping): the three's peak of body, light and halo at 0.1 L <= 1.4 x one death's, the cluster rule engaged (max N > 1); silhouettes judged per body rendered alone | the core makes one body's own peak 4+, so the bound is relative |
+| Pre-roll, secondaries, hull light | sections 2.5, 2.6, 4 | not built (the big tiers are native) | the masked forward's step |
+| Counts | 32 bodies, 2,048 quads | `max_bodies` 32, `max_quads` 2,048, 32 shock and 32 halo boxes | |
+| Records | | life = pre-roll + 1.6 L + 1 ms (fighter 3,201, missile 1,281 game ms); Present keeps one the stage's latched floor longer | |
+
+Shed order (section 7 as built): (1) every body's third octave (the burst's hysteresis); (2) smoke, largest first; (3)
+shocks, largest first, charged 0.36 a screen; (4) other owners' glows and halos, largest first (0.40); never shed: the
+body with its core, the star, the embers and fragments, anything of the own ship.
