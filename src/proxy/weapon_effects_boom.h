@@ -1183,6 +1183,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             const float tau_k = -inv_L * (1.f / bm::ember_tau);
             const float in_x = bm::spark_in_x * Lset, in_k = (1.f - bm::spark_in0) * inv_L * (1.f / bm::spark_in_x);
             const float rf_k = Rfb * px_x, ref = bm::spark_ref_px * rows, inv_ref = 1.f / ref;
+            const float cap_k = bm::spark_cap_r * Rb * px_x; // the length's cap, R(t) on screen x the head's depth
             float base_n[3] = {p_now[0], p_now[1], p_now[2]}, base_p[3] = {p_prev[0], p_prev[1], p_prev[2]};
             if (!surface) {
                 float cn[3], cp[3];
@@ -1293,10 +1294,12 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 float len_px = (lng ? bm::spark_long_lo + (bm::spark_long_hi - bm::spark_long_lo) * u
                                     : (bm::spark_len_lo + (bm::spark_len_hi - bm::spark_len_lo) * u * u) * (fragment ? 0.5f : 1.f)) *
                                rows * sl;
+                const float cap_px = cap_k * iz;
+                len_px = Rb > 0.f && len_px > cap_px ? cap_px : len_px;
                 len_px = len_px > 2.f * w_px ? len_px : 2.f * w_px;
                 if (!fragment) {
                     const float in = ts < in_x ? bm::spark_in0 + ts * in_k : 1.f;
-                    const float e_raw = bm::ember_e * (lng ? bm::spark_long_e : 1.f) * core::exp_neg(ts * tau_k) * fade * vis *
+                    const float e_raw = bm::ember_e * bm::spark_gain * (lng ? bm::spark_long_e : 1.f) * core::exp_neg(ts * tau_k) * fade * vis *
                                         in; // E x T
                     static_assert(bm::spark_cool_pow == 1.5f, "the cooling's power below");
                 static_assert(bm::spark_halo_r == 2.f && bm::spark_halo_e == 0.12f, "weapon_sprite_ps.hlsl's pixel-mode halo");

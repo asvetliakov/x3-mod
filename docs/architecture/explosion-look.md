@@ -433,8 +433,10 @@ spark cloud about three fireball radii across. Four new elements of the death st
    1080 rows (hashed) x min(1, R_f on screen / 28.8 px), never under 3 px, in a halo of 0.12 of its radiance to 2 head
    radii (2^(-(d / 2r)^2), windowed to 4r), the tail behind it s^2 along (1 at the head, 0 at its end) across a Gaussian
    of FWHM 0.5 + 0.5 x the head's (2-3 px) at the head tapering to 1 px, the brightest of the three a pixel (the head's
-   peak stays `ember_e`); lengths 6-36 px (h^2) and one in 12 a long streak of 60-120 px (its head 3 px), the lengths x
-   min(1, R_f on screen / 28.8 px), never under two head widths; a fragment's 3 px head takes the same profile; E `ember_e` 2.6 e^(-t / 0.8 L) x (1 - t / life), T 1 - (t / life)^1.5 (yellow late), lives to 1.2 L
+   peak `ember_e` x `spark_gain` 0.8 = 2.08, for the meter); lengths 6-36 px (h^2) and one in 20 a long streak of 30-60
+   px (its head 3 px, its tail 2 px at the head; 60-120 px one in 12 read as hard rays through the body in the 600 m
+   grid), the lengths x min(1, R_f on screen / 28.8 px), at most 1.2 R(t) on screen while the body draws (no streak
+   crosses the body), never under two head widths; a fragment's 3 px head takes the same profile; E `ember_e` 2.6 x 0.8 e^(-t / 0.8 L) x (1 - t / life), T 1 - (t / life)^1.5 (yellow late), lives to 1.2 L
    (x 1 +- 0.2) by thirds. `ember_e` 8 -> 2.6 is the meter's limit, not a look choice: at engine 2.6 a head decodes to 8.2
    linear, past the tonemap's white at the Auto cap. **Shed by half-counts:** a frame draws at most 512 ray quads and
    1,024 sparks within the sprite room the rays, stars and spikes leave (4 a death, and a big tier's secondaries' stars
@@ -464,8 +466,8 @@ climbs to its cap on any signal, its black policy rather than the death's highli
 | `death_rays_soft` (300 m, 0.1 L) | median FWHM at 1.0 R(t) 7.03 px at 1080 rows; worst ray peak over the death under it at 0.5 R(t) 0.123 | >= 4; <= 0.4 |
 | `death_rays_differ` | two deaths' 360-bin profiles correlate 0.10 | < 0.3 |
 | `death_sparks_dense` (600 m, 0.3 L) | 217 heads on screen (173 local maxima); lengths std / mean 1.0 | >= 100; >= 0.4 |
-| `death_spark_heads` (600 m, 1080p, 0.3 L) | median head FWHM 4.46 px at 1080 rows (113 heads) | >= 3 |
-| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.39 EV over dim, 0 over lit (black sky 1.30, informational) | <= 0.5 over dim / lit |
+| `death_spark_heads` (600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows (116 heads) | >= 3 |
+| `death_exposure_meter_shift` (300 m and 120 m, 5120x1440) | 300 m 0.0 EV; 120 m 0.82 EV over dim since the 3-5 px spark heads (0.39 before; FAILS, open), 0 over lit (black sky 1.30, informational) | <= 0.5 over dim / lit |
 | `death_rays_sparks_budget_5120` | fighter 600 m 20.9-21.9 us, 20 fighters 42.4-50.6 us (0.05 / 0.1 / 0.3 L) | <= 60; <= 150 |
 | `death_budget_capital_close_5120` | worst 354.0 us | <= 450 |
 

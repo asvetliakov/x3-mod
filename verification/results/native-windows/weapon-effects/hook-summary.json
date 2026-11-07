@@ -21,7 +21,7 @@
     "verification/probe/weapon_effects_death_cases.h"
   ],
   "source": {
-    "commit": "7650e6828c436f784f9dec07335eb53168994697-dirty",
+    "commit": "ca3a02ef663bc165d0fb04c010c7604e86dd7393-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h"
@@ -33,7 +33,7 @@
       "src/proxy/weapon_effects_patch.cpp": "4fe1b5647d9119f6bcce9fee45f940cfb62515d4d06393eaeef20d0c7fedd6db",
       "src/proxy/weapon_effects_patch.h": "4e46467ecd5219acba2690386db98c3cdc78ea2be6719293ae2323df86cdc05c",
       "src/proxy/weapon_effects_hook.cpp": "1ecc3c96b507afed2aea3871b0aa6ee0a0118ba7bc9433af538e64de52175293",
-      "src/proxy/weapon_effects_core.h": "d471ffb695e32561799fb139e623e767ffe7f40028259cbf57259167f384bc41",
+      "src/proxy/weapon_effects_core.h": "960e2362fca32a4552cbbe2a916a79093e362e6fc301be1c722628c8d8e411f7",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "65b024f1400658c0399deb23bf53c9f08d9c10452b310de8b05073f24f8e5afc",
       "src/proxy/weapon_effects_bolt_sites.h": "b7a993efe66c19506c820eeeeddd8f1e108eb13a285e1579c5c3bbe3ddb1ee8b",
@@ -168,7 +168,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "b681aa2d7f93b72250e8cd6136b0fb5edfae45d947a336e26c3e9a6be77bfd50"
+    "executable_sha256": "6823ef9ce38d59b85eb7f3462a170603dd7b841c0f5f6dee975d24a6ce818c74"
   },
   "host": {
     "name": "native-windows",
@@ -938,8 +938,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "0088f780",
     "esp_callee": "0088f774",
-    "return": "00f36d8a",
-    "site": "00f36d85"
+    "return": "00ee6d8a",
+    "site": "00ee6d85"
   },
   "stack_depth": {
     "bytes": 240,
@@ -1266,9 +1266,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.7,
-    "median_us": 17.7,
-    "worst_us": 18.6,
+    "best_us": 18.0,
+    "median_us": 18.0,
+    "worst_us": 18.7,
     "target_us": 30
   },
   "overflow": {
@@ -1284,9 +1284,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 57.0,
-    "median_us": 57.7,
-    "worst_us": 79.7,
+    "best_us": 58.3,
+    "median_us": 58.5,
+    "worst_us": 59.9,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1294,8 +1294,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005ea8b8",
     "esp_callee": "005ea8a8",
-    "return": "00f37cb7",
-    "site": "00f37cb2",
+    "return": "00ee7cb7",
+    "site": "00ee7cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
@@ -1370,8 +1370,8 @@
   "death_scan_timing": {
     "records": 1553,
     "pairs": 3,
-    "median_us": 8.8,
-    "max_us": 478.6,
+    "median_us": 8.9,
+    "max_us": 458.6,
     "bound_us": 250
   },
   "death_slots": {

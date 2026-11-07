@@ -109,7 +109,7 @@ NAMESPACES = {
              'star_arm', 'star_core', 'star_ms', 'star_t', 'star_cap_h', 'shock_r_x', 'shock_w', 'shock_e', 'shock_limb',
              'shock_end', 'missile_shock', 'ember_cones_lo', 'ember_cones_hi', 'ember_cone_deg', 'ember_v_x',
              'ember_v_min', 'ember_v_max', 'ember_p0', 'ember_speed_lo', 'ember_speed_hi', 'ember_life', 'ember_stagger',
-             'ember_e', 'ember_tau', 'ember_w_px_lo', 'ember_w_px_hi', 'ember_w_px_floor', 'spark_halo_r', 'spark_halo_e', 'ember_len_max', 'ember_len_lo', 'ember_hide_r',
+             'ember_e', 'ember_tau', 'ember_w_px_lo', 'ember_w_px_hi', 'ember_w_px_floor', 'spark_halo_r', 'spark_halo_e', 'spark_cap_r', 'spark_gain', 'ember_len_max', 'ember_len_lo', 'ember_hide_r',
              'ember_hide_x0', 'ember_hide_x1', 'fragment_every', 'fragment_v', 'fragment_life', 'fragment_w_px',
              'fragment_dark', 'fragment_tip_t', 'fragment_dark_r', 'glow_r_x', 'glow_r_max', 'glow_e', 'halo_soft',
              'halo_fade_x0', 'halo_fade_x1',

@@ -697,8 +697,9 @@ constexpr std::uint8_t shock_tiers = 0;
 // spark_halo_e of its radiance to spark_halo_r head radii (2^(-(d / (spark_halo_r r))^2), windowed to 2 spark_halo_r r),
 // its tail a Gaussian of FWHM 0.5 + 0.5 x the head's at the head (2-3 px) to 1 px at the tail's end, (s)^2 along; its
 // length a hashed spark_len_lo..hi px at 1080 rows (h^2: more short ones), one in spark_long_every a long streak of
-// spark_long_lo..hi px with a spark_long_w px head (the floor), its head x spark_long_e; lengths x min(1, R_f on screen /
-// spark_ref_px at 1080 rows), never under two head widths; a fragment's head fragment_w_px, its profile the spark's; head radiance ember_e e^(-t / (ember_tau L)) T x vis on heat(spark_t0 T) (ember_e
+// spark_long_lo..hi px with a spark_long_w px head (the floor: its tail 2 px at the head), its head x spark_long_e;
+// lengths x min(1, R_f on screen / spark_ref_px at 1080 rows), at most spark_cap_r R(t) on screen while the body draws,
+// never under two head widths; a fragment's head fragment_w_px, its profile the spark's; head radiance ember_e e^(-t / (ember_tau L)) T x vis on heat(spark_t0 T) (ember_e
 // 2.6: a head decodes to 8.2 linear, the tonemap's white at the Auto cap [I, the meter's arithmetic];
 // death_exposure_meter_shift measures the production meter's shift on a fighter at 300 m and 120 m, not that limit).
 constexpr float ember_cones_lo = 4.f, ember_cones_hi = 6.f, ember_cone_deg = 25.f;
@@ -710,7 +711,10 @@ constexpr float ember_w_px_lo = 3.f, ember_w_px_hi = 5.f, ember_w_px_floor = 3.f
 constexpr float ember_len_max = 0.35f, ember_len_lo = 0.25f;
 constexpr float ember_hide_r = 0.5f, ember_hide_x0 = 0.5f, ember_hide_x1 = 0.9f;
 constexpr float spark_r0_lo = 0.55f, spark_r0_span = 0.45f, spark_cone_share = 0.6f, spark_hide_soft = 0.2f;
-constexpr float spark_len_lo = 6.f, spark_len_hi = 36.f, spark_long_every = 12.f, spark_long_lo = 60.f, spark_long_hi = 120.f;
+constexpr float spark_len_lo = 6.f, spark_len_hi = 36.f, spark_long_every = 20.f, spark_long_lo = 30.f, spark_long_hi = 60.f;
+// A spark's drawn length at most spark_cap_r R(t) on screen (2026-11-07: the long streaks crossed the whole body as hard
+// rays in the frames); its radiance x spark_gain (the head's peak ember_e spark_gain: the meter, death_exposure_meter_shift).
+constexpr float spark_cap_r = 1.2f, spark_gain = 0.8f;
 constexpr float spark_long_w = 3.f, spark_long_e = 1.0f, spark_ref_px = 28.8f, spark_t0 = 1.0f;
 // A spark leaves at a hashed delay in [0, spark_birth_x L) of its set, spark_birth_now of them at once (a spray from
 // t = 0, not one stacked burst: 200 heads on one ring at birth summed to E 50+ in the first frames); its clock, life and

@@ -69,22 +69,16 @@
     "src/renderer/weapon_compose_pixel_program_inc.h"
   ],
   "source": {
-    "commit": "7650e6828c436f784f9dec07335eb53168994697-dirty",
+    "commit": "ca3a02ef663bc165d0fb04c010c7604e86dd7393-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/effects/weapon_sprite_ps.hlsl",
-      "src/effects/weapon_sprite_vs.hlsl",
       "src/proxy/weapon_effects_boom.h",
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_hull.h",
-      "src/renderer/weapon_sprite_pixel_program_inc.h",
-      "src/renderer/weapon_sprite_vertex_program_inc.h",
-      "verification/probe/weapon_effects_boom_cases.h"
+      "src/proxy/weapon_effects_core.h"
     ],
     "sha256": {
       "src/renderer/weapon_effects_pass.h": "44381ba7c1a46525caa27a53e74253a26c1643f449df30f5028aa7f7372daa5a",
       "src/renderer/weapon_effects_pass.cpp": "e348a1d15ce16394d5d9940289266ee02b68906312ae9dec49c258c559ec4182",
-      "src/proxy/weapon_effects_core.h": "d471ffb695e32561799fb139e623e767ffe7f40028259cbf57259167f384bc41",
+      "src/proxy/weapon_effects_core.h": "960e2362fca32a4552cbbe2a916a79093e362e6fc301be1c722628c8d8e411f7",
       "src/proxy/weapon_effects_stage.h": "63acb1362ebeb3cbc3f6735d94121b3bd402a3692e912f03c8230880174c54a9",
       "src/proxy/weapon_effects_bubble.h": "79c33fd781918d6c30401e14e17ed1ab3f393e1ade0a7b7d5635225241f11620",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
@@ -138,7 +132,7 @@
       "src/renderer/weapon_bolt_pixel_program_inc.h": "dc09dc883775be42729567876cccee71e4615691024adcbf55cf26d09f3dadc9",
       "src/renderer/weapon_bolt_flag_pixel_program_inc.h": "4a6641174561e98248a1b446b0405a0cdb39aae1262aacb666f878c46c511a2d",
       "verification/probe/weapon_effects_bolt_draw_cases.h": "72c1f1ed5e541e84aa7c41cf01adae71a05d609e5e4de42fc607f6a566bf2835",
-      "src/proxy/weapon_effects_boom.h": "09c9ee9c98e211bef71200ad1758258fc38438c84f56fbfc9287ffa62165b428",
+      "src/proxy/weapon_effects_boom.h": "90561ac9613c08a2059b22b38158cd05a76341311223da92b803e73aa5230c6d",
       "src/effects/weapon_shock_ps.hlsl": "174d8fffbe276785b73ca28300be7a27cf25188584af3f38063f9cc47fca28ac",
       "src/renderer/weapon_shock_pixel_program_inc.h": "f430b1ab339658c43d7dda6a137a75fc9bc4332e8564971350d6a4ce045d9229",
       "verification/probe/weapon_effects_boom_cases.h": "4508db4a7b6908839504063a545f8bad6c8537f172ed408e5c6f6b42f4d7f099",
@@ -349,7 +343,7 @@
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "8f66a00a4dbccae4f8e1551fec470ff5694a038b5d002c7dbd1e65d7206dc098"
+    "executable_sha256": "84ad653e095df46fc85986848c007f5f94d71a6876e6bb6c7bda914ee0e9582d"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -383,7 +377,7 @@
     "exit_code": 1,
     "result": {
       "checks": 331,
-      "failures": 2,
+      "failures": 1,
       "verdict": "FAIL"
     },
     "log": "verification/probe/build/weapon-effects/fixture.log"
@@ -1403,7 +1397,7 @@
     ],
     [
       "death_big_stage_cpu",
-      false
+      true
     ],
     [
       "death_programs_refused_keep_hull",
@@ -1715,8 +1709,7 @@
     ]
   ],
   "failed_checks": [
-    "death_exposure_meter_shift",
-    "death_big_stage_cpu"
+    "death_exposure_meter_shift"
   ],
   "metrics": {
     "attach": [
@@ -2218,17 +2211,17 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 8.8,
-        "walk_mean_us": 9.0,
+        "walk_best_us": 9.0,
+        "walk_mean_us": 9.1,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.8,
-        "engine_memory_cold_mean_us": 13.3,
-        "engine_memory_warm_best_us": 12.3,
-        "engine_memory_warm_mean_us": 12.6,
-        "warm_best_us": 40.4,
-        "warm_mean_us": 45.7,
-        "cold_best_us": 49.4,
-        "cold_mean_us": 56.5,
+        "engine_memory_cold_best_us": 12.4,
+        "engine_memory_cold_mean_us": 14.8,
+        "engine_memory_warm_best_us": 11.9,
+        "engine_memory_warm_mean_us": 12.4,
+        "warm_best_us": 41.1,
+        "warm_mean_us": 45.6,
+        "cold_best_us": 50.2,
+        "cold_mean_us": 50.7,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -2314,7 +2307,7 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 0.9,
+        "heap_us": 0.7,
         "insertion_us": 1.3
       },
       {
@@ -2325,7 +2318,7 @@
       {
         "case": "descending",
         "heap_us": 0.6,
-        "insertion_us": 2.4
+        "insertion_us": 2.5
       }
     ],
     "attach_slots": [
@@ -2562,8 +2555,8 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 29.7,
-        "mean_us": 37.6,
+        "best_us": 30.1,
+        "mean_us": 30.8,
         "target_us": 200
       },
       {
@@ -2575,8 +2568,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 90.6,
-        "mean_us": 116.8,
+        "best_us": 91.2,
+        "mean_us": 95.2,
         "target_us": 200
       },
       {
@@ -2588,8 +2581,8 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 14.6,
-        "mean_us": 22.5,
+        "best_us": 14.7,
+        "mean_us": 15.0,
         "target_us": 200
       }
     ],
@@ -2626,10 +2619,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.76,
-        "last_drawn_ms": 472.82,
-        "frames": 15228,
-        "max_frame_ms": 1.546
+        "seta6_wall_ms": 473.51,
+        "last_drawn_ms": 473.49,
+        "frames": 21013,
+        "max_frame_ms": 0.879
       }
     ],
     "retired": [
@@ -2691,7 +2684,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.0
+        "gpu_us": 11.2
       },
       {
         "width": 1920,
@@ -2701,7 +2694,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.0
+        "gpu_us": 16.8
       },
       {
         "width": 1920,
@@ -2711,7 +2704,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.0
+        "gpu_us": 17.8
       },
       {
         "width": 1920,
@@ -2721,7 +2714,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 60.9
+        "gpu_us": 61.6
       },
       {
         "width": 1920,
@@ -2731,7 +2724,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 74.5
+        "gpu_us": 75.9
       },
       {
         "width": 1920,
@@ -2741,7 +2734,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 97.9
+        "gpu_us": 99.9
       },
       {
         "width": 1920,
@@ -2751,7 +2744,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 19.1
+        "gpu_us": 19.0
       },
       {
         "width": 1920,
@@ -2761,7 +2754,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 57.4
+        "gpu_us": 58.7
       },
       {
         "width": 1920,
@@ -2771,7 +2764,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 62.3
+        "gpu_us": 63.5
       },
       {
         "width": 1920,
@@ -2781,7 +2774,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 92.4
+        "gpu_us": 94.1
       },
       {
         "width": 1920,
@@ -2791,7 +2784,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.3
+        "gpu_us": 17.3
       },
       {
         "width": 1920,
@@ -2801,7 +2794,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 59.2
+        "gpu_us": 60.1
       },
       {
         "width": 1920,
@@ -2811,7 +2804,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 96.0
+        "gpu_us": 97.0
       },
       {
         "width": 1920,
@@ -2821,7 +2814,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 21.0
+        "gpu_us": 21.2
       },
       {
         "width": 1920,
@@ -2831,7 +2824,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 71.1
+        "gpu_us": 74.9
       },
       {
         "width": 5120,
@@ -2841,7 +2834,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.9
+        "gpu_us": 10.7
       },
       {
         "width": 5120,
@@ -2851,7 +2844,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 21.1
+        "gpu_us": 21.2
       },
       {
         "width": 5120,
@@ -2861,7 +2854,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 22.1
+        "gpu_us": 23.6
       },
       {
         "width": 5120,
@@ -2871,7 +2864,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 176.2
+        "gpu_us": 178.6
       },
       {
         "width": 5120,
@@ -2881,7 +2874,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 229.5
+        "gpu_us": 230.2
       },
       {
         "width": 5120,
@@ -2891,7 +2884,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 366.9
+        "gpu_us": 366.5
       },
       {
         "width": 5120,
@@ -2901,7 +2894,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 33.5
+        "gpu_us": 34.2
       },
       {
         "width": 5120,
@@ -2911,7 +2904,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 159.4
+        "gpu_us": 159.0
       },
       {
         "width": 5120,
@@ -2921,7 +2914,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 177.9
+        "gpu_us": 179.1
       },
       {
         "width": 5120,
@@ -2931,7 +2924,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 291.8
+        "gpu_us": 291.3
       },
       {
         "width": 5120,
@@ -2941,7 +2934,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.1
+        "gpu_us": 21.3
       },
       {
         "width": 5120,
@@ -2951,7 +2944,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 175.4
+        "gpu_us": 177.3
       },
       {
         "width": 5120,
@@ -2961,7 +2954,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 339.4
+        "gpu_us": 340.4
       },
       {
         "width": 5120,
@@ -2971,7 +2964,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.9
+        "gpu_us": 53.0
       },
       {
         "width": 5120,
@@ -2981,7 +2974,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 256.8
+        "gpu_us": 259.1
       }
     ],
     "hull": [
@@ -3853,16 +3846,16 @@
         "bursts": 64,
         "rings": 0,
         "best_us": 26.1,
-        "mean_us": 28.16,
+        "mean_us": 27.03,
         "target_us": 40
       },
       {
         "case": "capital_64_hits_sparks_only",
-        "best_us": 18.9
+        "best_us": 18.6
       },
       {
         "case": "capital_64_hits_no_sparks",
-        "best_us": 15.7
+        "best_us": 15.5
       },
       {
         "case": "fighter_20_hits",
@@ -3872,8 +3865,8 @@
         "boxes": 40,
         "bursts": 20,
         "rings": 0,
-        "best_us": 8.5,
-        "mean_us": 13.5,
+        "best_us": 8.6,
+        "mean_us": 8.9,
         "target_us": 40
       },
       {
@@ -3898,17 +3891,17 @@
         "budget": 8.0,
         "out_of_reach": 496,
         "owners_out_of_reach": 31,
-        "best_us": 49.9,
-        "mean_us": 66.85,
+        "best_us": 49.5,
+        "mean_us": 55.83,
         "target_us": 65
       },
       {
         "case": "ring_1024_visible_64_no_cluster",
-        "best_us": 44.9
+        "best_us": 44.2
       },
       {
         "case": "ring_1024_visible_64_pairwise",
-        "best_us": 49.8
+        "best_us": 49.4
       },
       {
         "case": "ring_1024_visible_256",
@@ -3932,35 +3925,35 @@
         "budget": 8.0,
         "out_of_reach": 448,
         "owners_out_of_reach": 28,
-        "best_us": 122.2,
-        "mean_us": 144.47,
+        "best_us": 120.4,
+        "mean_us": 124.7,
         "target_us": 160
       },
       {
         "case": "ring_1024_visible_256_no_cluster",
-        "best_us": 105.3
+        "best_us": 103.8
       },
       {
         "case": "ring_1024_visible_256_pairwise",
-        "best_us": 122.3
+        "best_us": 121.6
       },
       {
         "case": "ring_1024_one_owner_grid",
         "hits": 1024,
         "bursts": 2,
-        "best_us": 1360.1
+        "best_us": 1264.5
       },
       {
         "case": "ring_1024_one_owner_pairwise",
         "hits": 1024,
         "bursts": 2,
-        "best_us": 2943.8
+        "best_us": 2825.5
       },
       {
         "case": "ring_1024_one_owner_no_cluster",
         "hits": 1024,
         "bursts": 2,
-        "best_us": 637.8
+        "best_us": 616.8
       }
     ],
     "hull_timing": [
@@ -3978,7 +3971,7 @@
         "burst_screens": 1.459,
         "lit_share": 0.1701,
         "raster_share": 3.4444,
-        "gpu_us": 110.6
+        "gpu_us": 107.3
       },
       {
         "width": 1920,
@@ -3994,7 +3987,7 @@
         "burst_screens": 0.117,
         "lit_share": 0.0155,
         "raster_share": 0.3055,
-        "gpu_us": 26.5
+        "gpu_us": 26.9
       },
       {
         "width": 1920,
@@ -4010,7 +4003,7 @@
         "burst_screens": 7.957,
         "lit_share": 0.9748,
         "raster_share": 7.7442,
-        "gpu_us": 307.7
+        "gpu_us": 305.2
       },
       {
         "width": 1920,
@@ -4026,7 +4019,7 @@
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 30.6
+        "gpu_us": 30.3
       },
       {
         "width": 1920,
@@ -4042,7 +4035,7 @@
         "burst_screens": 1.18,
         "lit_share": 0.4689,
         "raster_share": 1.0,
-        "gpu_us": 56.6
+        "gpu_us": 55.8
       },
       {
         "width": 1920,
@@ -4058,7 +4051,7 @@
         "burst_screens": 1.18,
         "lit_share": 0.3155,
         "raster_share": 1.0,
-        "gpu_us": 46.5
+        "gpu_us": 46.4
       },
       {
         "width": 1920,
@@ -4074,7 +4067,7 @@
         "burst_screens": 1.18,
         "lit_share": 0.0,
         "raster_share": 1.0,
-        "gpu_us": 50.9
+        "gpu_us": 50.0
       },
       {
         "width": 1920,
@@ -4090,7 +4083,7 @@
         "burst_screens": 1.18,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 75.3
+        "gpu_us": 74.1
       },
       {
         "width": 1920,
@@ -4106,7 +4099,7 @@
         "burst_screens": 1.18,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 67.1
+        "gpu_us": 64.9
       },
       {
         "width": 1920,
@@ -4122,7 +4115,7 @@
         "burst_screens": 1.18,
         "lit_share": 0.0,
         "raster_share": 1.0,
-        "gpu_us": 76.1
+        "gpu_us": 75.4
       },
       {
         "width": 1920,
@@ -4138,7 +4131,7 @@
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 33.5
+        "gpu_us": 32.0
       },
       {
         "width": 5120,
@@ -4154,7 +4147,7 @@
         "burst_screens": 2.874,
         "lit_share": 0.3009,
         "raster_share": 6.6344,
-        "gpu_us": 638.5
+        "gpu_us": 632.7
       },
       {
         "width": 5120,
@@ -4186,7 +4179,7 @@
         "burst_screens": 7.856,
         "lit_share": 0.9997,
         "raster_share": 7.6407,
-        "gpu_us": 1023.8
+        "gpu_us": 1019.5
       },
       {
         "width": 5120,
@@ -4202,7 +4195,7 @@
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 73.3
+        "gpu_us": 71.1
       },
       {
         "width": 5120,
@@ -4218,11 +4211,11 @@
         "burst_screens": 1.18,
         "lit_share": 0.0568,
         "raster_share": 1.0,
-        "gpu_us": 107.9
+        "gpu_us": 106.9
       },
       {
         "case": "burst_alone_fills_frame",
-        "weight": 0.608
+        "weight": 0.602
       },
       {
         "width": 5120,
@@ -4238,11 +4231,11 @@
         "burst_screens": 1.18,
         "lit_share": 0.574,
         "raster_share": 1.0,
-        "gpu_us": 156.1
+        "gpu_us": 154.5
       },
       {
         "case": "burst_alone_fills_frame_coarse",
-        "weight": 0.879
+        "weight": 0.87
       },
       {
         "width": 5120,
@@ -4258,11 +4251,11 @@
         "burst_screens": 1.18,
         "lit_share": 0.0,
         "raster_share": 1.0,
-        "gpu_us": 153.2
+        "gpu_us": 150.0
       },
       {
         "case": "smoke_alone_fills_frame",
-        "weight": 0.863
+        "weight": 0.845
       },
       {
         "width": 5120,
@@ -4278,11 +4271,11 @@
         "burst_screens": 1.18,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 228.4
+        "gpu_us": 225.0
       },
       {
         "case": "burst_alone_every_pixel_noise",
-        "weight": 1.287
+        "weight": 1.268
       },
       {
         "width": 5120,
@@ -4298,11 +4291,11 @@
         "burst_screens": 1.18,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 195.3
+        "gpu_us": 192.2
       },
       {
         "case": "burst_alone_every_pixel_noise_coarse",
-        "weight": 1.1
+        "weight": 1.083
       },
       {
         "width": 5120,
@@ -4318,11 +4311,11 @@
         "burst_screens": 1.18,
         "lit_share": 0.0,
         "raster_share": 1.0,
-        "gpu_us": 228.6
+        "gpu_us": 226.4
       },
       {
         "case": "smoke_alone_every_pixel_noise",
-        "weight": 1.288
+        "weight": 1.275
       },
       {
         "width": 5120,
@@ -4338,11 +4331,11 @@
         "burst_screens": 0.0,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 89.7
+        "gpu_us": 88.7
       },
       {
         "case": "ember_lobed_alone_fills_frame",
-        "weight": 0.505
+        "weight": 0.5
       }
     ],
     "class": [
@@ -6992,25 +6985,25 @@
         "filaments": 524,
         "scorches": 16,
         "streaks": 8,
-        "best_us": 45.2,
-        "mean_us": 51.32,
+        "best_us": 44.9,
+        "mean_us": 46.45,
         "target_us": 30
       },
       {
         "case": "capital_64_mixed_sparks_only",
-        "best_us": 30.8
+        "best_us": 30.9
       },
       {
         "case": "capital_64_mixed_no_sparks",
-        "best_us": 21.0
+        "best_us": 20.9
       },
       {
         "case": "capital_64_mixed_no_cluster",
-        "best_us": 41.6
+        "best_us": 41.7
       },
       {
         "case": "capital_64_mixed_pairwise",
-        "best_us": 45.3
+        "best_us": 45.1
       },
       {
         "case": "capital_64_ion",
@@ -7020,8 +7013,8 @@
         "quads": 1996,
         "capped": 35,
         "flashes": 64,
-        "best_us": 39.0,
-        "mean_us": 50.34
+        "best_us": 38.9,
+        "mean_us": 42.15
       }
     ],
     "class_timing": [
@@ -7047,7 +7040,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 23.1
+        "gpu_us": 21.4
       },
       {
         "width": 1920,
@@ -7071,7 +7064,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 321.2
+        "gpu_us": 317.0
       },
       {
         "width": 1920,
@@ -7095,7 +7088,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 25.5
+        "gpu_us": 25.1
       },
       {
         "width": 1920,
@@ -7119,7 +7112,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 153.8
+        "gpu_us": 150.3
       },
       {
         "width": 1920,
@@ -7143,7 +7136,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 28.3
+        "gpu_us": 24.4
       },
       {
         "width": 1920,
@@ -7152,7 +7145,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 19.1
+        "gpu_us": 17.2
       },
       {
         "width": 1920,
@@ -7176,7 +7169,7 @@
         "bursts_shed": 22,
         "scorches_shed": 13,
         "rings_shed": 55,
-        "gpu_us": 363.1
+        "gpu_us": 356.6
       },
       {
         "width": 1920,
@@ -7185,7 +7178,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 11.5
+        "gpu_us": 10.6
       },
       {
         "width": 1920,
@@ -7209,7 +7202,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 33.1
+        "gpu_us": 26.5
       },
       {
         "width": 1920,
@@ -7218,7 +7211,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 19.1
+        "gpu_us": 17.7
       },
       {
         "width": 1920,
@@ -7242,7 +7235,7 @@
         "bursts_shed": 0,
         "scorches_shed": 8,
         "rings_shed": 59,
-        "gpu_us": 346.2
+        "gpu_us": 343.1
       },
       {
         "width": 1920,
@@ -7251,7 +7244,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 11.0
+        "gpu_us": 10.6
       },
       {
         "width": 1920,
@@ -7275,7 +7268,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 49.8
+        "gpu_us": 47.7
       },
       {
         "width": 1920,
@@ -7299,7 +7292,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 342.6
+        "gpu_us": 335.5
       },
       {
         "width": 1920,
@@ -7323,7 +7316,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 21.3
+        "gpu_us": 20.3
       },
       {
         "width": 1920,
@@ -7347,7 +7340,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 325.4
+        "gpu_us": 312.9
       },
       {
         "width": 1920,
@@ -7371,7 +7364,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 31.6
+        "gpu_us": 28.3
       },
       {
         "width": 1920,
@@ -7380,7 +7373,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 18.8
+        "gpu_us": 17.6
       },
       {
         "width": 1920,
@@ -7404,7 +7397,7 @@
         "bursts_shed": 0,
         "scorches_shed": 13,
         "rings_shed": 58,
-        "gpu_us": 365.6
+        "gpu_us": 353.6
       },
       {
         "width": 1920,
@@ -7413,7 +7406,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 11.1
+        "gpu_us": 10.7
       },
       {
         "width": 1920,
@@ -7437,7 +7430,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 22.0
+        "gpu_us": 20.9
       },
       {
         "width": 1920,
@@ -7461,7 +7454,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 109.6
+        "gpu_us": 108.4
       },
       {
         "width": 1920,
@@ -7476,7 +7469,7 @@
         "scorches": 0,
         "screens": 7.982,
         "flash_screens": 7.92,
-        "gpu_us": 378.8
+        "gpu_us": 373.7
       },
       {
         "width": 1920,
@@ -7487,8 +7480,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 0.5,
-        "gpu_us": 32.3,
-        "weight": 0.182
+        "gpu_us": 31.3,
+        "weight": 0.176
       },
       {
         "width": 1920,
@@ -7499,8 +7492,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 1.0,
-        "gpu_us": 32.8,
-        "weight": 0.185
+        "gpu_us": 31.7,
+        "weight": 0.179
       },
       {
         "width": 1920,
@@ -7511,8 +7504,8 @@
         "scorches": 1,
         "flashes": 0,
         "screens": 0.49,
-        "gpu_us": 31.5,
-        "weight": 0.177
+        "gpu_us": 30.5,
+        "weight": 0.172
       },
       {
         "width": 1920,
@@ -7523,8 +7516,8 @@
         "scorches": 0,
         "flashes": 1,
         "screens": 0.207,
-        "gpu_us": 31.5,
-        "weight": 0.177
+        "gpu_us": 30.3,
+        "weight": 0.171
       },
       {
         "width": 5120,
@@ -7548,7 +7541,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 33.1
+        "gpu_us": 30.2
       },
       {
         "width": 5120,
@@ -7572,7 +7565,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 1030.7
+        "gpu_us": 1026.3
       },
       {
         "width": 5120,
@@ -7596,7 +7589,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 27.6
+        "gpu_us": 25.6
       },
       {
         "width": 5120,
@@ -7620,7 +7613,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 451.1
+        "gpu_us": 448.0
       },
       {
         "width": 5120,
@@ -7644,7 +7637,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 57.1
+        "gpu_us": 55.1
       },
       {
         "width": 5120,
@@ -7653,7 +7646,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 26.3
+        "gpu_us": 26.0
       },
       {
         "width": 5120,
@@ -7677,7 +7670,7 @@
         "bursts_shed": 13,
         "scorches_shed": 10,
         "rings_shed": 44,
-        "gpu_us": 1177.1
+        "gpu_us": 1180.8
       },
       {
         "width": 5120,
@@ -7710,7 +7703,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 51.9
+        "gpu_us": 50.9
       },
       {
         "width": 5120,
@@ -7719,7 +7712,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 29.4
+        "gpu_us": 28.8
       },
       {
         "width": 5120,
@@ -7743,7 +7736,7 @@
         "bursts_shed": 0,
         "scorches_shed": 5,
         "rings_shed": 49,
-        "gpu_us": 1130.9
+        "gpu_us": 1123.8
       },
       {
         "width": 5120,
@@ -7752,7 +7745,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 11.2
+        "gpu_us": 10.9
       },
       {
         "width": 5120,
@@ -7776,7 +7769,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 57.8
+        "gpu_us": 54.1
       },
       {
         "width": 5120,
@@ -7824,7 +7817,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 29.2
+        "gpu_us": 29.1
       },
       {
         "width": 5120,
@@ -7848,7 +7841,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 1075.5
+        "gpu_us": 1074.4
       },
       {
         "width": 5120,
@@ -7872,7 +7865,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 59.4
+        "gpu_us": 58.4
       },
       {
         "width": 5120,
@@ -7881,7 +7874,7 @@
         "case": "fighter_200m_20_hits_ring_only",
         "hits": 20,
         "rings": 20,
-        "gpu_us": 28.5
+        "gpu_us": 28.3
       },
       {
         "width": 5120,
@@ -7905,7 +7898,7 @@
         "bursts_shed": 0,
         "scorches_shed": 10,
         "rings_shed": 49,
-        "gpu_us": 1184.8
+        "gpu_us": 1173.9
       },
       {
         "width": 5120,
@@ -7914,7 +7907,7 @@
         "case": "capital_close_64_hits_ring_only",
         "hits": 64,
         "rings": 0,
-        "gpu_us": 11.7
+        "gpu_us": 10.7
       },
       {
         "width": 5120,
@@ -7938,7 +7931,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 22.8
+        "gpu_us": 22.3
       },
       {
         "width": 5120,
@@ -7962,7 +7955,7 @@
         "bursts_shed": 0,
         "scorches_shed": 0,
         "rings_shed": 0,
-        "gpu_us": 290.6
+        "gpu_us": 289.8
       },
       {
         "width": 5120,
@@ -7977,7 +7970,7 @@
         "scorches": 0,
         "screens": 7.923,
         "flash_screens": 7.818,
-        "gpu_us": 1217.9
+        "gpu_us": 1224.1
       },
       {
         "width": 5120,
@@ -7988,8 +7981,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 0.5,
-        "gpu_us": 87.8,
-        "weight": 0.495
+        "gpu_us": 89.8,
+        "weight": 0.506
       },
       {
         "width": 5120,
@@ -8000,8 +7993,8 @@
         "scorches": 0,
         "flashes": 0,
         "screens": 1.0,
-        "gpu_us": 87.1,
-        "weight": 0.491
+        "gpu_us": 88.0,
+        "weight": 0.496
       },
       {
         "width": 5120,
@@ -8012,8 +8005,8 @@
         "scorches": 1,
         "flashes": 0,
         "screens": 0.49,
-        "gpu_us": 86.6,
-        "weight": 0.488
+        "gpu_us": 87.1,
+        "weight": 0.491
       },
       {
         "width": 5120,
@@ -8024,8 +8017,8 @@
         "scorches": 0,
         "flashes": 1,
         "screens": 0.208,
-        "gpu_us": 71.5,
-        "weight": 0.403
+        "gpu_us": 71.1,
+        "weight": 0.401
       }
     ],
     "bolt": [
@@ -9082,16 +9075,16 @@
         "matched": 256,
         "learned": 0,
         "compared": 767,
-        "best_us": 4.0,
-        "median_us": 4.1,
+        "best_us": 7.3,
+        "median_us": 7.5,
         "bound_us": 60,
         "ok": 1
       },
       {
         "bolts": 512,
-        "build_us": 37.9,
-        "draw_call_us": 10.1,
-        "total_us": 48.0,
+        "build_us": 38.5,
+        "draw_call_us": 10.2,
+        "total_us": 48.7,
         "bound_us": 150
       }
     ],
@@ -9103,28 +9096,28 @@
       },
       {
         "case": "no_rim",
-        "gpu_us": 62.5
+        "gpu_us": 63.4
       },
       {
         "case": "one_far_bolt",
-        "gpu_us": 15.9
+        "gpu_us": 16.1
       },
       {
         "case": "collapsed_512",
-        "gpu_us": 32.1
+        "gpu_us": 32.9
       },
       {
         "case": "bolt_alone_fills_frame_ts",
-        "gpu_us": 158.3,
-        "weight": 0.892
+        "gpu_us": 160.1,
+        "weight": 0.902
       },
       {
         "case": "timestamps",
         "clear_us": 3.2,
-        "bolts_us": 41.6,
-        "muzzles_us": 2.8,
-        "bolts_and_muzzles_us": 46.7,
-        "frame_gpu_us": 43.4
+        "bolts_us": 42.2,
+        "muzzles_us": 2.9,
+        "bolts_and_muzzles_us": 47.9,
+        "frame_gpu_us": 44.7
       },
       {
         "width": 5120,
@@ -9134,19 +9127,19 @@
         "orbs": 91,
         "waves": 43,
         "rims": 32,
-        "gpu_bolts_us": 75.6,
-        "gpu_muzzles_us": 19.5,
+        "gpu_bolts_us": 78.1,
+        "gpu_muzzles_us": 21.9,
         "muzzles": 20,
         "muzzle_sprites": 57,
         "muzzle_glows": 20,
-        "gpu_total_us": 95.1,
+        "gpu_total_us": 100.0,
         "bound_us": 100,
-        "timestamps_us": 43.4
+        "timestamps_us": 44.7
       },
       {
         "case": "bolt_alone_fills_frame",
-        "gpu_us": 176.7,
-        "weight": 0.995
+        "gpu_us": 177.6,
+        "weight": 1.001
       }
     ],
     "muzzle": [
@@ -10180,18 +10173,18 @@
       {
         "case": "embers",
         "tier": "fighter_600m",
-        "seed_correlation": -0.16,
+        "seed_correlation": -0.186,
         "T_03": 0.75,
         "T_07": 0.5,
         "T_11": 0.25,
-        "far_px": 221.5,
+        "far_px": 221.3,
         "reach_px": 120.0,
-        "lit_over_body_01": 0.993,
+        "lit_over_body_01": 0.992,
         "at_birth": 41,
         "count": 221,
         "drawn_06": 144,
-        "len_mean_px": 19.6,
-        "len_std_px": 20.3,
+        "len_mean_px": 15.5,
+        "len_std_px": 8.7,
         "cap_px": 11.8,
         "width_px": "3.00..4.98"
       },
@@ -10218,13 +10211,13 @@
         "drawn": 217,
         "on_screen": 217,
         "hidden": 0,
-        "image_heads": 113,
-        "len_mean_px": 19.7,
-        "len_std_px": 19.0,
-        "std_over_mean": 0.964,
+        "image_heads": 116,
+        "len_mean_px": 16.0,
+        "len_std_px": 8.4,
+        "std_over_mean": 0.528,
         "halvings": 0,
-        "head_fwhm_median_px1080": 4.46,
-        "head_fwhm_n": 113
+        "head_fwhm_median_px1080": 4.37,
+        "head_fwhm_n": 116
       },
       {
         "case": "rays",
@@ -10367,7 +10360,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 50.97
+        "peak": 35.03
       },
       {
         "case": "meter",
@@ -10377,7 +10370,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 51.41
+        "peak": 35.06
       },
       {
         "case": "meter",
@@ -10387,7 +10380,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 30.05
+        "peak": 18.27
       },
       {
         "case": "meter",
@@ -10397,7 +10390,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 12.29
+        "peak": 7.54
       },
       {
         "case": "meter",
@@ -10407,7 +10400,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 5.54
+        "peak": 3.84
       },
       {
         "case": "meter",
@@ -10417,7 +10410,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 2.72
+        "peak": 2.52
       },
       {
         "case": "meter",
@@ -10427,7 +10420,7 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 24.23
+        "peak": 17.94
       },
       {
         "case": "meter",
@@ -10437,37 +10430,37 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 21.19
+        "peak": 15.7
       },
       {
         "case": "meter",
         "tier": "fighter_120m_5120",
         "age_ms": 200,
-        "ev_black": -0.193,
-        "ev_dim": 0.211,
-        "ev_lit": -0.118,
+        "ev_black": -0.182,
+        "ev_dim": 0.985,
+        "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 13.16
+        "peak": 10.2
       },
       {
         "case": "meter",
         "tier": "fighter_120m_5120",
         "age_ms": 400,
-        "ev_black": -0.063,
-        "ev_dim": 0.17,
-        "ev_lit": -0.158,
+        "ev_black": -0.058,
+        "ev_dim": 0.483,
+        "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 5.65
+        "peak": 5.18
       },
       {
         "case": "meter",
         "tier": "fighter_120m_5120",
         "age_ms": 600,
-        "ev_black": 1.157,
+        "ev_black": 1.161,
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 3.65
+        "peak": 3.32
       },
       {
         "case": "meter",
@@ -10477,11 +10470,11 @@
         "ev_dim": 1.3,
         "ev_lit": -0.068,
         "base": "0.000,1.300,-0.068",
-        "peak": 2.57
+        "peak": 2.52
       },
       {
         "case": "meter_summary",
-        "worst_shift_ev": 1.13,
+        "worst_shift_ev": 0.817,
         "black_shift_ev": 1.3
       },
       {
@@ -10562,7 +10555,7 @@
         "peak_lit_01": 5.312,
         "single_lit_01": 5.426,
         "ratio": 0.979,
-        "peak_embers_01": 76.438
+        "peak_embers_01": 46.812
       },
       {
         "case": "eye_inside",
@@ -10617,9 +10610,9 @@
         "bodies": 32,
         "quads": 1075,
         "glows": 32,
-        "median_us": 47.9,
-        "single_body_us": 48.0,
-        "repeats_us": "47.5,47.9,51.2,46.7,50.7",
+        "median_us": 48.9,
+        "single_body_us": 48.8,
+        "repeats_us": "48.8,48.4,48.9,66.8,74.9",
         "bound_us": 50
       },
       {
@@ -10711,7 +10704,7 @@
         "tier": "corvette_1500m",
         "first_over_r0": 1.0,
         "rise_ok": 1,
-        "worst_rise": 1.405,
+        "worst_rise": 1.271,
         "star_half_px": 0.0,
         "cap_px": 270.0
       },
@@ -10720,7 +10713,7 @@
         "tier": "capital_1500m",
         "first_over_r0": 1.007,
         "rise_ok": 1,
-        "worst_rise": 1.23,
+        "worst_rise": 1.195,
         "star_half_px": 145.0,
         "cap_px": 270.0
       },
@@ -10813,11 +10806,11 @@
         "quads": 508,
         "glows": 0,
         "waves": 1,
-        "median_us": 48.0,
-        "single_body_us": 48.0,
-        "no_wave_us": 44.6,
-        "repeats_us": "48.2,48.0,48.3,47.1,47.9",
-        "us_per_quad": 0.0945,
+        "median_us": 36.0,
+        "single_body_us": 34.4,
+        "no_wave_us": 36.1,
+        "repeats_us": "34.4,38.9,34.6,36.0,48.7",
+        "us_per_quad": 0.0709,
         "bound_us_per_quad": 0.08,
         "bound_us": 100
       },
@@ -10997,7 +10990,7 @@
         "case": "wave_eye_in_plane",
         "worst_mean": 0.109,
         "at_ms": 50,
-        "worst_hot_share": 0.017
+        "worst_hot_share": 0.016
       },
       {
         "case": "compose_skipped",
@@ -11016,8 +11009,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.0,
-        "gpu_us": 11.0,
-        "weight": 0.062
+        "gpu_us": 11.2,
+        "weight": 0.063
       },
       {
         "width": 1920,
@@ -11030,8 +11023,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 1.03,
-        "gpu_us": 66.2,
-        "weight": 0.373
+        "gpu_us": 65.7,
+        "weight": 0.37
       },
       {
         "width": 1920,
@@ -11044,8 +11037,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.54,
-        "gpu_us": 22.4,
-        "weight": 0.126
+        "gpu_us": 22.1,
+        "weight": 0.125
       },
       {
         "width": 1920,
@@ -11058,17 +11051,17 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.54,
-        "gpu_us": 22.5,
-        "weight": 0.127
+        "gpu_us": 21.8,
+        "weight": 0.123
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "fine4_weight",
-        "four_us": 22.4,
-        "three_us": 22.5,
+        "four_us": 22.1,
+        "three_us": 21.8,
         "charged": 0.54,
-        "weight4": 1.17,
+        "weight4": 1.213,
         "pinned4": 1.18,
         "pinned3": 1.18
       },
@@ -11083,8 +11076,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 1.2,
-        "gpu_us": 67.0,
-        "weight": 0.377
+        "gpu_us": 66.2,
+        "weight": 0.373
       },
       {
         "width": 1920,
@@ -11097,8 +11090,8 @@
         "shocks": 1,
         "octaves": 4,
         "screens": 0.36,
-        "gpu_us": 31.5,
-        "weight": 0.177
+        "gpu_us": 31.2,
+        "weight": 0.176
       },
       {
         "width": 1920,
@@ -11106,9 +11099,9 @@
         "case": "shock_weight",
         "shocks": 1,
         "area_screens": 1.0,
-        "gpu_us": 31.5,
-        "fence_us": 11.0,
-        "per_screen_weight": 0.115,
+        "gpu_us": 31.2,
+        "fence_us": 11.2,
+        "per_screen_weight": 0.113,
         "pinned": 0.36
       },
       {
@@ -11122,8 +11115,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.024,
-        "gpu_us": 16.6,
-        "weight": 0.094
+        "gpu_us": 15.7,
+        "weight": 0.088
       },
       {
         "width": 1920,
@@ -11136,8 +11129,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.4,
-        "gpu_us": 32.4,
-        "weight": 0.183
+        "gpu_us": 31.2,
+        "weight": 0.176
       },
       {
         "width": 1920,
@@ -11150,8 +11143,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.16,
-        "gpu_us": 100.5,
-        "weight": 0.566
+        "gpu_us": 99.5,
+        "weight": 0.561
       },
       {
         "width": 1920,
@@ -11164,8 +11157,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.16,
-        "gpu_us": 91.3,
-        "weight": 0.514
+        "gpu_us": 91.0,
+        "weight": 0.513
       },
       {
         "width": 1920,
@@ -11178,18 +11171,18 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.086,
-        "gpu_us": 98.7,
-        "weight": 0.556
+        "gpu_us": 98.4,
+        "weight": 0.554
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "wave_weight",
-        "alone_weight": 0.504,
+        "alone_weight": 0.497,
         "alone_screens": 1.0,
         "alone_quads": 1,
-        "one_octave_weight": 0.452,
-        "box_weight": 0.494,
+        "one_octave_weight": 0.45,
+        "box_weight": 0.491,
         "box_screens": 1.0,
         "box_quads": 1,
         "pinned": 1.71,
@@ -11207,8 +11200,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.58,
-        "gpu_us": 94.8,
-        "weight": 0.534
+        "gpu_us": 95.1,
+        "weight": 0.536
       },
       {
         "width": 1920,
@@ -11221,8 +11214,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.006,
-        "gpu_us": 22.9,
-        "weight": 0.129
+        "gpu_us": 23.0,
+        "weight": 0.13
       },
       {
         "width": 1920,
@@ -11235,8 +11228,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.109,
-        "gpu_us": 45.4,
-        "weight": 0.256
+        "gpu_us": 43.4,
+        "weight": 0.245
       },
       {
         "width": 1920,
@@ -11249,8 +11242,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.004,
-        "gpu_us": 22.6,
-        "weight": 0.127
+        "gpu_us": 21.2,
+        "weight": 0.119
       },
       {
         "width": 1920,
@@ -11263,8 +11256,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.009,
-        "gpu_us": 20.9,
-        "weight": 0.118
+        "gpu_us": 21.9,
+        "weight": 0.123
       },
       {
         "width": 1920,
@@ -11277,8 +11270,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.075,
-        "gpu_us": 43.9,
-        "weight": 0.247
+        "gpu_us": 42.5,
+        "weight": 0.239
       },
       {
         "width": 1920,
@@ -11291,8 +11284,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.177,
-        "gpu_us": 45.0,
-        "weight": 0.254
+        "gpu_us": 43.0,
+        "weight": 0.242
       },
       {
         "width": 1920,
@@ -11314,8 +11307,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.003,
-        "gpu_us": 15.5,
-        "weight": 0.087
+        "gpu_us": 15.1,
+        "weight": 0.085
       },
       {
         "width": 1920,
@@ -11328,8 +11321,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.982,
-        "gpu_us": 27.6,
-        "weight": 0.155
+        "gpu_us": 26.9,
+        "weight": 0.152
       },
       {
         "width": 1920,
@@ -11342,8 +11335,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.005,
-        "gpu_us": 19.5,
-        "weight": 0.11
+        "gpu_us": 21.1,
+        "weight": 0.119
       },
       {
         "width": 1920,
@@ -11356,8 +11349,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.018,
-        "gpu_us": 31.8,
-        "weight": 0.179
+        "gpu_us": 32.1,
+        "weight": 0.181
       },
       {
         "width": 1920,
@@ -11370,8 +11363,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.58,
-        "gpu_us": 96.0,
-        "weight": 0.541
+        "gpu_us": 92.8,
+        "weight": 0.523
       },
       {
         "width": 1920,
@@ -11384,8 +11377,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.18,
-        "gpu_us": 75.2,
-        "weight": 0.424
+        "gpu_us": 75.0,
+        "weight": 0.423
       },
       {
         "width": 1920,
@@ -11398,8 +11391,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.4,
-        "gpu_us": 30.1,
-        "weight": 0.17
+        "gpu_us": 30.3,
+        "weight": 0.171
       },
       {
         "width": 1920,
@@ -11412,8 +11405,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.0,
-        "gpu_us": 19.3,
-        "weight": 0.109
+        "gpu_us": 18.5,
+        "weight": 0.104
       },
       {
         "width": 1920,
@@ -11426,8 +11419,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 1.43,
-        "gpu_us": 86.1,
-        "weight": 0.485
+        "gpu_us": 83.3,
+        "weight": 0.469
       },
       {
         "width": 5120,
@@ -11440,8 +11433,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.0,
-        "gpu_us": 11.1,
-        "weight": 0.063
+        "gpu_us": 11.4,
+        "weight": 0.064
       },
       {
         "width": 5120,
@@ -11454,8 +11447,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 1.03,
-        "gpu_us": 194.1,
-        "weight": 1.094
+        "gpu_us": 193.9,
+        "weight": 1.092
       },
       {
         "width": 5120,
@@ -11468,8 +11461,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.27,
-        "gpu_us": 28.5,
-        "weight": 0.161
+        "gpu_us": 27.8,
+        "weight": 0.157
       },
       {
         "width": 5120,
@@ -11489,10 +11482,10 @@
         "width": 5120,
         "height": 1440,
         "case": "fine4_weight",
-        "four_us": 28.5,
+        "four_us": 27.8,
         "three_us": 27.5,
         "charged": 0.27,
-        "weight4": 1.252,
+        "weight4": 1.202,
         "pinned4": 1.18,
         "pinned3": 1.18
       },
@@ -11507,8 +11500,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 1.2,
-        "gpu_us": 194.8,
-        "weight": 1.097
+        "gpu_us": 195.2,
+        "weight": 1.1
       },
       {
         "width": 5120,
@@ -11521,8 +11514,8 @@
         "shocks": 1,
         "octaves": 4,
         "screens": 0.185,
-        "gpu_us": 45.2,
-        "weight": 0.255
+        "gpu_us": 43.9,
+        "weight": 0.247
       },
       {
         "width": 5120,
@@ -11530,9 +11523,9 @@
         "case": "shock_weight",
         "shocks": 1,
         "area_screens": 0.515,
-        "gpu_us": 45.2,
-        "fence_us": 11.1,
-        "per_screen_weight": 0.373,
+        "gpu_us": 43.9,
+        "fence_us": 11.4,
+        "per_screen_weight": 0.356,
         "pinned": 0.36
       },
       {
@@ -11560,8 +11553,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.4,
-        "gpu_us": 72.0,
-        "weight": 0.406
+        "gpu_us": 71.3,
+        "weight": 0.402
       },
       {
         "width": 5120,
@@ -11574,8 +11567,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.16,
-        "gpu_us": 314.6,
-        "weight": 1.772
+        "gpu_us": 315.2,
+        "weight": 1.776
       },
       {
         "width": 5120,
@@ -11588,8 +11581,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.16,
-        "gpu_us": 285.4,
-        "weight": 1.608
+        "gpu_us": 285.1,
+        "weight": 1.606
       },
       {
         "width": 5120,
@@ -11602,18 +11595,18 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.086,
-        "gpu_us": 315.7,
-        "weight": 1.779
+        "gpu_us": 314.9,
+        "weight": 1.774
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "wave_weight",
-        "alone_weight": 1.71,
+        "alone_weight": 1.712,
         "alone_screens": 1.0,
         "alone_quads": 1,
-        "one_octave_weight": 1.545,
-        "box_weight": 1.716,
+        "one_octave_weight": 1.542,
+        "box_weight": 1.71,
         "box_screens": 1.0,
         "box_quads": 1,
         "pinned": 1.71,
@@ -11631,8 +11624,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.58,
-        "gpu_us": 287.7,
-        "weight": 1.621
+        "gpu_us": 286.8,
+        "weight": 1.616
       },
       {
         "width": 5120,
@@ -11645,8 +11638,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.003,
-        "gpu_us": 23.1,
-        "weight": 0.13
+        "gpu_us": 21.6,
+        "weight": 0.122
       },
       {
         "width": 5120,
@@ -11659,8 +11652,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.054,
-        "gpu_us": 49.3,
-        "weight": 0.278
+        "gpu_us": 48.6,
+        "weight": 0.274
       },
       {
         "width": 5120,
@@ -11673,8 +11666,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.002,
-        "gpu_us": 22.2,
-        "weight": 0.125
+        "gpu_us": 21.9,
+        "weight": 0.123
       },
       {
         "width": 5120,
@@ -11687,8 +11680,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.005,
-        "gpu_us": 22.4,
-        "weight": 0.126
+        "gpu_us": 23.3,
+        "weight": 0.131
       },
       {
         "width": 5120,
@@ -11701,8 +11694,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.037,
-        "gpu_us": 48.0,
-        "weight": 0.27
+        "gpu_us": 48.2,
+        "weight": 0.272
       },
       {
         "width": 5120,
@@ -11715,8 +11708,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.088,
-        "gpu_us": 51.4,
-        "weight": 0.29
+        "gpu_us": 51.2,
+        "weight": 0.288
       },
       {
         "width": 5120,
@@ -11738,8 +11731,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.002,
-        "gpu_us": 15.3,
-        "weight": 0.086
+        "gpu_us": 15.9,
+        "weight": 0.09
       },
       {
         "width": 5120,
@@ -11752,8 +11745,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.491,
-        "gpu_us": 48.2,
-        "weight": 0.272
+        "gpu_us": 48.0,
+        "weight": 0.27
       },
       {
         "width": 5120,
@@ -11766,8 +11759,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.003,
-        "gpu_us": 19.7,
-        "weight": 0.111
+        "gpu_us": 23.7,
+        "weight": 0.134
       },
       {
         "width": 5120,
@@ -11780,8 +11773,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.009,
-        "gpu_us": 35.0,
-        "weight": 0.197
+        "gpu_us": 34.2,
+        "weight": 0.193
       },
       {
         "width": 5120,
@@ -11794,8 +11787,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.58,
-        "gpu_us": 284.8,
-        "weight": 1.605
+        "gpu_us": 283.9,
+        "weight": 1.599
       },
       {
         "width": 5120,
@@ -11808,8 +11801,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.18,
-        "gpu_us": 225.6,
-        "weight": 1.271
+        "gpu_us": 226.0,
+        "weight": 1.273
       },
       {
         "width": 5120,
@@ -11822,8 +11815,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.4,
-        "gpu_us": 70.8,
-        "weight": 0.399
+        "gpu_us": 71.2,
+        "weight": 0.401
       },
       {
         "width": 5120,
@@ -11836,8 +11829,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 0.0,
-        "gpu_us": 18.3,
-        "weight": 0.103
+        "gpu_us": 18.6,
+        "weight": 0.105
       },
       {
         "width": 5120,
@@ -11850,8 +11843,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 1.43,
-        "gpu_us": 249.7,
-        "weight": 1.407
+        "gpu_us": 251.4,
+        "weight": 1.416
       },
       {
         "width": 5120,
@@ -11864,8 +11857,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.673,
-        "gpu_us": 263.2,
-        "weight": 1.483,
+        "gpu_us": 263.4,
+        "weight": 1.484,
         "secondaries": 5,
         "shed": 0,
         "secondaries_shed": 0,
@@ -11892,8 +11885,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.325,
-        "gpu_us": 209.9,
-        "weight": 1.183,
+        "gpu_us": 203.9,
+        "weight": 1.149,
         "secondaries": 5,
         "shed": 12,
         "secondaries_shed": 2,
@@ -11920,8 +11913,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.343,
-        "gpu_us": 229.7,
-        "weight": 1.294,
+        "gpu_us": 212.9,
+        "weight": 1.199,
         "secondaries": 1,
         "shed": 16,
         "secondaries_shed": 6,
@@ -11948,8 +11941,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.492,
-        "gpu_us": 277.5,
-        "weight": 1.563,
+        "gpu_us": 261.5,
+        "weight": 1.473,
         "secondaries": 4,
         "shed": 11,
         "secondaries_shed": 2,
@@ -11976,8 +11969,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.271,
-        "gpu_us": 282.5,
-        "weight": 1.592,
+        "gpu_us": 283.4,
+        "weight": 1.597,
         "secondaries": 3,
         "shed": 12,
         "secondaries_shed": 3,
@@ -12004,8 +11997,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.447,
-        "gpu_us": 290.4,
-        "weight": 1.636,
+        "gpu_us": 287.9,
+        "weight": 1.622,
         "secondaries": 3,
         "shed": 12,
         "secondaries_shed": 3,
@@ -12032,8 +12025,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.378,
-        "gpu_us": 265.2,
-        "weight": 1.494,
+        "gpu_us": 262.8,
+        "weight": 1.481,
         "secondaries": 2,
         "shed": 13,
         "secondaries_shed": 4,
@@ -12060,8 +12053,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.33,
-        "gpu_us": 243.3,
-        "weight": 1.371,
+        "gpu_us": 236.3,
+        "weight": 1.331,
         "secondaries": 1,
         "shed": 12,
         "secondaries_shed": 4,
@@ -12088,8 +12081,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.485,
-        "gpu_us": 235.7,
-        "weight": 1.328,
+        "gpu_us": 232.3,
+        "weight": 1.309,
         "secondaries": 0,
         "shed": 13,
         "secondaries_shed": 5,
@@ -12116,8 +12109,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 2.742,
-        "gpu_us": 233.9,
-        "weight": 1.318,
+        "gpu_us": 230.6,
+        "weight": 1.299,
         "secondaries": 0,
         "shed": 11,
         "secondaries_shed": 4,
@@ -12144,8 +12137,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 3.022,
-        "gpu_us": 230.3,
-        "weight": 1.297,
+        "gpu_us": 229.7,
+        "weight": 1.294,
         "secondaries": 0,
         "shed": 10,
         "secondaries_shed": 4,
@@ -12172,8 +12165,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 3.323,
-        "gpu_us": 232.3,
-        "weight": 1.309,
+        "gpu_us": 228.4,
+        "weight": 1.287,
         "secondaries": 0,
         "shed": 7,
         "secondaries_shed": 3,
@@ -12200,8 +12193,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 3.642,
-        "gpu_us": 229.9,
-        "weight": 1.295,
+        "gpu_us": 226.7,
+        "weight": 1.277,
         "secondaries": 0,
         "shed": 5,
         "secondaries_shed": 2,
@@ -12228,8 +12221,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 3.977,
-        "gpu_us": 227.1,
-        "weight": 1.279,
+        "gpu_us": 225.7,
+        "weight": 1.272,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12256,8 +12249,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 4.325,
-        "gpu_us": 226.4,
-        "weight": 1.275,
+        "gpu_us": 225.3,
+        "weight": 1.269,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12284,8 +12277,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 4.682,
-        "gpu_us": 225.3,
-        "weight": 1.269,
+        "gpu_us": 223.7,
+        "weight": 1.26,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12312,8 +12305,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 5.048,
-        "gpu_us": 224.3,
-        "weight": 1.264,
+        "gpu_us": 222.5,
+        "weight": 1.254,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12340,8 +12333,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 5.419,
-        "gpu_us": 223.2,
-        "weight": 1.257,
+        "gpu_us": 222.2,
+        "weight": 1.252,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12368,8 +12361,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 5.795,
-        "gpu_us": 222.5,
-        "weight": 1.254,
+        "gpu_us": 221.0,
+        "weight": 1.245,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12396,8 +12389,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 6.174,
-        "gpu_us": 218.6,
-        "weight": 1.232,
+        "gpu_us": 219.6,
+        "weight": 1.237,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12424,8 +12417,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 6.555,
-        "gpu_us": 217.6,
-        "weight": 1.226,
+        "gpu_us": 218.3,
+        "weight": 1.23,
         "secondaries": 0,
         "shed": 1,
         "secondaries_shed": 0,
@@ -12452,8 +12445,8 @@
         "shocks": 0,
         "octaves": 4,
         "screens": 1.58,
-        "gpu_us": 282.0,
-        "weight": 1.589,
+        "gpu_us": 284.9,
+        "weight": 1.605,
         "secondaries": 0,
         "shed": 0,
         "secondaries_shed": 0,
@@ -12480,8 +12473,8 @@
         "shocks": 0,
         "octaves": 2,
         "screens": 0.76,
-        "gpu_us": 109.2,
-        "weight": 0.615,
+        "gpu_us": 110.4,
+        "weight": 0.622,
         "secondaries": 0,
         "shed": 1
       }

@@ -2361,4 +2361,32 @@ Table from `python3 verification/results/explosion-look/ledger_rows.py --markdow
 | rays alone (5120x1440) | fighter 300 m 15.3 us (9 quads), close capital 48.2 us (9 quads), the fence 11.1 us | |
 | `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, FAIL) | 32 fighters 47.9 us, 1075 quads (repeats 47.5,47.9,51.2,46.7,50.7; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 48.0 us, 0.0945 a quad | 50; 0.08 |
 
+Follow-up (2026-11-08, coordinator on the grids: rays accepted; the long spark streaks read as hard rays through the
+body at 600 m): long streaks one in 20 (was 12), 30-60 px (was 60-120), head 3 px with its tail 2 px at the head; every
+streak at most 1.2 R(t) on screen while the body draws (`spark_cap_r`); the sparks' radiance x `spark_gain` 0.8 (head
+peak 2.08 engine). The 600 m grid (`stage-dump-rays-soft/fighter_600m_1080_agx.png`) shows no needles at 50 / 150 ms
+and none across the body at 900 ms [frames]. Meter: 0.817 EV (the 120 m fighter over the dim scene at 400 ms; 1.13 at
+gain 1), still over the 0.5 bound; per the coordinator no further head change, bound left. `death_big_stage_cpu` on a
+quiet host (no cmake / cc1plus during the runs but three 20 s samples in the third): 0.0656, 0.0669, 0.0709 us a quad
+over three records (33.3, 34.0, 36.0 us), all under 0.08: the 0.0945 above was host load. Records: the first with the
+judging dump (D3D 331 checks, 2 failed: the meter and `bolt_budget_512_bolts_20_muzzles_5120` at 102.0 us of 100, its
+bolt draw 80.3 us against 75.6 in the previous record with the same programs: GPU timing noise [I]); the second and
+third without (331 / 1 failed, the meter); the committed record is the third, hook 147 / 0. Host tests
+`test_weapon_effects_hook` and `_lab` 59, 2 failing on the meter row; AP `build-rays` 0 warnings (d3d9.dll sha256
+2f13edaed19ed5a5...), `check_no_x87.py --edition ap` PASS (1181 reachable functions). Table (third record):
 
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `death_core_radiance` (PASS; fighter 600 m, 8 seeds) | median radiance inside 0.2 R(t) at 0.05 L 6.984 (seeds 4.492..6.984); `death_body_white_hot_core` median at 0.1 L 5.273 | >= 6 |
+| `death_rays_starburst` (PASS; 5120x1440, 4 seeds) | angular peaks at 0.1 L, 300 m: at 0.5 R(t) 11, 11, 9, 14 for 11, 11, 9, 13 rays drawn; at 1.5 R(t) 6, 7, 6, 8; at 0.6 L 0; 600 m (recorded) 8, 14, 10, 16 / 6, 7, 5, 8 | drawn +- 1; >= 3; <= 2 |
+| `death_rays_soft` (PASS; 300 m, 0.1 L) | median FWHM across the rays at 1.0 R(t) 7.03 px at 1080 rows (37 rays; per seed 7.38, 6.68, 6.7, 7.33); the worst ray peak over the death under it at 0.5 R(t) 0.123 (per seed 0.033, 0.123, 0.037, 0.029) | >= 4; <= 0.4 |
+| `death_rays_differ` (PASS) | two deaths' 360-bin profiles at 0.1 L correlate -0.033 | < 0.3 |
+| `death_sparks_dense` (PASS; fighter 600 m, 0.3 L) | 221 sparks, 217 drawn, 217 heads on screen, 116 local maxima in the ember part; lengths 16.0 +- 8.4 px (std / mean 0.528) | >= 100; >= 0.4 |
+| `death_spark_heads` (PASS; fighter 600 m, 1080p, 0.3 L) | median head FWHM 4.37 px at 1080 rows over 116 image heads (the narrowest of the row, column and diagonal half widths) | >= 3 |
+| `death_embers_hidden_in_body`, `death_embers_lengths_and_widths`, `death_embers_random_and_cooling` (PASS, PASS, PASS) | 41 at birth, 207 of 221 once the births are out (0.05 L); widths 3.00..4.98 px; seed correlation -0.186, T 0.75 / 0.5 / 0.25 at 0.3 / 0.7 / 1.1 L, farthest 221.3 px | > 0, >= 80 %; std >= 0.4 mean; < 0.5, >= 0.75 / >= 0.5 / <= 0.3 |
+| `death_exposure_meter_shift` (FAIL; the production meter's fresh target against the dim and lit scenes alone; fighter 300 m and 120 m, 5120x1440, Auto <= +1.3 EV, gamma 2.2) | worst shift 0.817 EV over dim / lit (black sky informational, not gated: an empty frame scores 0 EV and any signal lifts it to the cap; 1.3 EV); 300 m: black / dim 0.15 / lit 0.5 worst 0.000 / 0.000 / 0.000 EV (frame peaks 35.03 / 35.06 / 18.27 / 7.54 / 3.84 / 2.52); 120 m: black / dim 0.15 / lit 0.5 worst 1.300 / 0.817 / 0.000 EV (frame peaks 17.94 / 15.7 / 10.2 / 5.18 / 3.32 / 2.52) | <= 0.5 EV |
+| `death_no_pop_at_birth`, `death_big_no_pop_at_birth` (PASS, PASS) | worst frame-to-frame peak rise corvette_1500m 1.271, capital_1500m 1.195 | <= 2 |
+| `death_rays_sparks_budget_5120` (PASS) | fighter 600 m 21.6 / 21.9 / 23.3 us at 0.1 / 0.05 / 0.3 L; 20 fighters 48.6 / 48.2 / 51.2 us (spark halvings 2: 787 drawn, 2624 shed, 250 rays); fence 11.4 us | <= 60; <= 150 |
+| `death_budget_capital_close_5120` (PASS) | worst 287.9 us (capital_close_400ms, shed 12) | <= 450 |
+| rays alone (5120x1440) | fighter 300 m 15.9 us (9 quads), close capital 48.0 us (9 quads), the fence 11.4 us | |
+| `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 48.9 us, 1075 quads (repeats 48.8,48.4,48.9,66.8,74.9; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 36.0 us, 0.0709 a quad | 50; 0.08 |
