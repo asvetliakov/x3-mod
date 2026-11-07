@@ -22,3 +22,41 @@ close capital: R_f 600 m, eye at 720 m, body radius 800 px (> 720: the screen)
   sum at t_b + 0.1 s, no shed (smoke not yet): 373 us; third octave shed: 346 us; secondaries and shock shed: 259 us; fence 450 us; the 3-screen ceiling 532 us
   smoke at 0.5 L adds 213 us: shed first on a close capital
   capital at 1.5 km: body box 0.080 screens = 17 us at three octaves
+
+== 13. the fire ring (capital, station): r_0 = the hull half length, r_max = 7 R_f over tau = 0.25 L (cubic ease-out), band 0.3 R_f, slab 0.3 R_f, life 0.4 L ==
+capital: R_f 600 m, r_0 924 m, r_max 4200 m, tau 1.00 s, band 180 m, slab 180 m, fade by 1.6 s; speed at birth 9.8 km/s, mean 3.3 km/s
+  at 1500 m, 5120x1440: band 115 px, slab (edge-on bar) 115 px, r_0 592 px, r_max 2688 px; face-on the front passes the half height at 21 ms, the half width at 606 ms; the box refraction rect passes the 0.25 cap at r 881 m, 0 ms
+  at 1500 m, 1920x1080: band 86 px, slab (edge-on bar) 86 px, r_0 444 px, r_max 2016 px; face-on the front passes the half height at 21 ms, the half width at 124 ms; the box refraction rect passes the 0.25 cap at r 570 m, 0 ms
+  at 5000 m, 5120x1440: band 35 px, slab (edge-on bar) 35 px, r_0 178 px, r_max 806 px; face-on the front passes the half height at 484 ms, the half width at never; the box refraction rect passes the 0.25 cap at r 3356 m, 364 ms
+  at 5000 m, 1920x1080: band 26 px, slab (edge-on bar) 26 px, r_0 133 px, r_max 605 px; face-on the front passes the half height at 484 ms, the half width at never; the box refraction rect passes the 0.25 cap at r 2320 m, 169 ms
+  refraction strips at r 1000 px, band 128 px: 8 strips 1.25 Mpx = 0.170 screens (86 us at 2.85) against the box 4.00 Mpx = 0.543 screens; ratio 0.31
+  refraction strips at r 679 px, band 128 px: 8 strips 0.75 Mpx = 0.101 screens (51 us at 2.85) against the box 1.84 Mpx = 0.250 screens; ratio 0.41
+station: R_f 1080 m, r_0 1800 m, r_max 7560 m, tau 1.50 s, band 324 m, slab 324 m, fade by 2.4 s; speed at birth 11.5 km/s, mean 3.8 km/s
+  at 3000 m, 5120x1440: band 104 px, slab (edge-on bar) 104 px, r_0 576 px, r_max 2419 px; face-on the front passes the half height at 40 ms, the half width at never; the box refraction rect passes the 0.25 cap at r 1797 m, 0 ms
+  at 3000 m, 1920x1080: band 78 px, slab (edge-on bar) 78 px, r_0 432 px, r_max 1814 px; face-on the front passes the half height at 40 ms, the half width at 222 ms; the box refraction rect passes the 0.25 cap at r 1176 m, 0 ms
+  refraction strips at r 1000 px, band 128 px: 8 strips 1.25 Mpx = 0.170 screens (86 us at 2.85) against the box 4.00 Mpx = 0.543 screens; ratio 0.31
+  refraction strips at r 679 px, band 128 px: 8 strips 0.75 Mpx = 0.101 screens (51 us at 2.85) against the box 1.84 Mpx = 0.250 screens; ratio 0.41
+
+close capital (eye 720 m, in the wave plane: the worst case, the slab seen edge-on from inside):
+  t 0.00 s: r 924 m, the wall 204 m ahead, 845 px tall across the width: 0.59 screens of band x 0.50 + 1 screen of box x 0.10 = 70 us
+  t 0.05 s: r 1392 m, the wall 672 m ahead, 257 px tall across the width: 0.18 screens of band x 0.50 + 1 screen of box x 0.10 = 34 us
+  t 0.12 s: r 1968 m, the wall 1248 m ahead, 138 px tall across the width: 0.10 screens of band x 0.50 + 1 screen of box x 0.10 = 26 us
+  t 0.30 s: r 3077 m, the wall 2357 m ahead, 73 px tall across the width: 0.05 screens of band x 0.50 + 1 screen of box x 0.10 = 22 us
+  t 0.70 s: r 4112 m, the wall 3392 m ahead, 51 px tall across the width: 0.04 screens of band x 0.50 + 1 screen of box x 0.10 = 21 us
+  t 1.00 s: r 4200 m, the wall 3480 m ahead, 50 px tall across the width: 0.03 screens of band x 0.50 + 1 screen of box x 0.10 = 21 us
+  the measured worst close-capital frame (P + 700 ms, shed 9) 361.4 us + the wave at 0.7 s 21 us = 382 us [I]; the design frame at t_b + 0.1 s without the shock (D14) 373 - 71 = 302 us + the wave 28 us
+  capital at 1.5 km face-on at r 2 R_f: the annulus 2 pi r w / screen = 0.075 screens x 0.50 + the clipped box 1 x 0.10: 24 us
+
+== 13. the composed body: N sub-bursts of radius 0.45-0.8 R_f, offsets to 0.5 R_f, in one quad (N spheres in the program) ==
+fighter : sub-burst radii 20-36 px, offsets to 22 px, cluster extent 58 px (the single body 45 px); N 3 + jets 0 (2:1, 36 x 18 px); box 0.002 screens (single 0.002); per-pixel factor 1.70: 1 us against 0 us [I]
+corvette: sub-burst radii 38-67 px, offsets to 42 px, cluster extent 109 px (the single body 84 px); N 3 + jets 0 (2:1, 67 x 33 px); box 0.008 screens (single 0.007); per-pixel factor 1.70: 3 us against 1 us [I]
+capital : sub-burst radii 173-307 px, offsets to 192 px, cluster extent 499 px (the single body 384 px); N 4 + jets 1 (2:1, 307 x 154 px); box 0.164 screens (single 0.117); per-pixel factor 1.84: 63 us against 25 us [I]
+station : sub-burst radii 156-276 px, offsets to 173 px, cluster extent 449 px (the single body 346 px); N 5 + jets 2 (2:1, 276 x 138 px); box 0.133 screens (single 0.095); per-pixel factor 1.98: 55 us against 20 us [I]
+missile : sub-burst radii 15-27 px, offsets to 17 px, cluster extent 44 px (the single body 34 px); N 3 + jets 0 (2:1, 27 x 13 px); box 0.001 screens (single 0.001); per-pixel factor 1.70: 0 us against 0 us [I]
+eye inside the cluster (own death, the close capital), the shared-noise mode forced (one noise sample at the sphere holding the eye, the others by chord and lobes only, ~0.15 each [I]):
+  N 2: 1 screen x (1.18 + 1 x 0.15) x 177.5 = 236 us; every sphere sampled instead: 419 us
+  N 3: 1 screen x (1.18 + 2 x 0.15) x 177.5 = 263 us; every sphere sampled instead: 628 us
+  N 4: 1 screen x (1.18 + 3 x 0.15) x 177.5 = 289 us; every sphere sampled instead: 838 us
+  N 5: 1 screen x (1.18 + 4 x 0.15) x 177.5 = 316 us; every sphere sampled instead: 1047 us
+  N 6: 1 screen x (1.18 + 5 x 0.15) x 177.5 = 343 us; every sphere sampled instead: 1257 us
+slots [I]: the fireball 356 + the sphere table derivation (~40) + the ellipsoid transform (~12) + the union composition and loop (~15) = ~420 rolled; unrolled 5 x ~300 = ~1,500 (the plan caps 32,768; the native validator decides)
