@@ -1,0 +1,52 @@
+diff --git a/src/renderer/weapon_effects_pass.cpp b/tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/mdiag/tree/src/renderer/weapon_effects_pass.cpp
+index 92f25161f..742250d87 100644
+--- a/src/renderer/weapon_effects_pass.cpp
++++ b/tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/mdiag/tree/src/renderer/weapon_effects_pass.cpp
+@@ -1,3 +1,4 @@
++#include <cstdio>
+ #include "weapon_effects_pass.h"
+ #include "ps3_program_slots.h"
+ #include "../proxy/cpu_state.h"
+@@ -854,6 +855,17 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
+     WeaponEffectsReport r{};
+     const unsigned initial = calls_;
+     auto finish = [&](HRESULT hr) {
++        {
++            static unsigned diag_n = 0, diag_total = 0;
++            ++diag_total;
++            if ((FAILED(hr) || r.failed != WeaponEffectsStep::None) && diag_n < 80) {
++                ++diag_n;
++                std::printf("DIAG run#%u hr=%08lx failed_step=%u reset_pending=%u enabled=%u hull=%u boom=%u fb=%u halo=%u\n",
++                            diag_total, (unsigned long)hr, unsigned(r.failed), unsigned(reset_pending_), unsigned(caps_.enabled),
++                            unsigned(caps_.hull_enabled), unsigned(caps_.boom_enabled), f.fireball_boxes, f.halo_boxes);
++                std::fflush(stdout);
++            }
++        }
+         r.operation = hr;
+         r.calls = calls_ - initial;
+         if (output) *output = r;
+diff --git a/verification/probe/weapon_effects_boom_cases.h b/tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/mdiag/tree/verification/probe/weapon_effects_boom_cases.h
+index 49950e627..a61d6511b 100644
+--- a/verification/probe/weapon_effects_boom_cases.h
++++ b/tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/mdiag/tree/verification/probe/weapon_effects_boom_cases.h
+@@ -1620,6 +1620,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
+                 if (eye > 20.0 && frac > 0.5f) ok = ok && dark >= 0.15;
+             }
+         report("death_eye_inside_bounded", ok, "");
++        std::printf("DIAG after_s12 tcl=%08lx\n", (unsigned long)dev->TestCooperativeLevel());
+     }
+     // ---- 15. Budget rows and the cases' cost, EVENT-fenced (best of 60), 1080p and 5120x1440: each element alone
+     // filling the frame (their weights against the decal's 177.5 us), the fighter at 600 m, 20 fighters at 600 m, the
+@@ -1669,10 +1670,12 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
+                             double(o.n.screens), us, us / 177.5);
+                 return us;
+             };
++            std::printf("DIAG s15_start w=%u tcl=%08lx\n", size.first, (unsigned long)dev->TestCooperativeLevel());
+             draw_lane(tt, 5.f * m, 1.f); // a hull everywhere just past the eye: the glows and smoke draw where they can
+             const double fence_us = run_case("fence_empty", boom::p_all, 0.1f, [&] {}); // no death: the fence's own cost
+             // the alone rows: an element whose box is the whole screen (the eye inside a body, a shell or a smoke)
+             run_case("body_alone_fills_frame", boom::p_body, 0.3f, [&] { fighter(10.0); });
++            std::printf("DIAG after_body_alone tcl=%08lx\n", (unsigned long)dev->TestCooperativeLevel());
+             // the fourth octave (2026-11-07 v3; review: seen from outside, an eye-inside body keeps three): the single body
+             // with the eye at 2 R from its centre (R the drawn sphere's), four octaves against three; its weight per screen
+             // (budget_weight_fireball_fine4) as budget_weight_fireball x the ratio of the costs, the fence removed

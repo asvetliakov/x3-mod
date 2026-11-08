@@ -582,8 +582,8 @@ console.log(JSON.stringify(out));
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_muzzle_light_counting(self):
         """Section 3.2's broadside: 12 turrets along a capital hull cast 12 lights whose cluster factor s(N) bounds their
-        summed glow to <= 2.3 single glows (12 / 5.4 = 2.2); the own fighter's two guns in the cockpit cast theirs at the
-        cockpit gain 0.35."""
+        summed glow to <= 2.3 single glows (12 / 5.4 = 2.2); the own fighter's guns cast none in the cockpit (2026-11-08,
+        bolt-muzzle-look.md 11 #7: the glow coloured the whole view) and theirs in the chase view."""
         probe = self.ours_script() + self.BOLT + r'''
 const out = {};
 vals.c_m_scene = 'broadside_12'; vals.c_m_hz = 0.33;
@@ -599,9 +599,9 @@ console.log(JSON.stringify(out));
         self.assertEqual(max(js['n']), 12)
         self.assertLessEqual(js['sum'], 2.3 * js['single'] + 1e-9)
         self.assertGreaterEqual(js['sum'], 2.0 * js['single'])
-        self.assertEqual(len(js['chase']), len(js['cockpit']))
-        for a, b in zip(js['chase'], js['cockpit']):
-            self.assertAlmostEqual(b, 0.35 * a, places=6)
+        self.assertGreaterEqual(len(js['chase']), 1)
+        self.assertTrue(all(e > 0 for e in js['chase']))
+        self.assertEqual(js['cockpit'], [])
 
     @unittest.skipUnless(shutil.which('node'), 'node not installed')
     def test_muzzle_view_rule(self):

@@ -317,7 +317,6 @@ float side_on_px(const bs::BoltView& v, float metres, float dist_m) {
     return metres * v.cam.m11 * 0.5f * v.height / dist_m;
 }
 const float along_x[3] = {1.f, 0.f, 0.f};
-float wx3_floor_flash();
 float wx3_stagger_lo();
 float wx3_own_gain();
 
@@ -1837,6 +1836,8 @@ struct MuzzleOut {
     bs::MuzzleCounts n;
     bs::MuzzleBuffers b;
 };
+// A look for every record instead of the row's (the stock PBE of the stream gate, not a fixture row); null: the rows.
+const bs::BoltLook* mz_look_override = nullptr;
 MuzzleOut muzzles(const ws::HullView& h, const std::vector<wc::MuzzleRecord>& recs, bs::MuzzleTuning t = {}) {
     MuzzleOut o;
     o.b.sprites = mz_sprites;
@@ -1848,7 +1849,10 @@ MuzzleOut muzzles(const ws::HullView& h, const std::vector<wc::MuzzleRecord>& re
     o.b.scorches = mz_scorches;
     o.b.scorch_cap = 64;
     o.n = bs::build_muzzles(&mz_read, recs.data(), unsigned(recs.size()), h, t,
-                            [](unsigned row) -> const bs::BoltLook& { return look_of(row); }, o.b);
+                            [](unsigned row) -> const bs::BoltLook& {
+                                return mz_look_override ? *mz_look_override : look_of(row);
+                            },
+                            o.b);
     return o;
 }
 std::vector<float> render_muzzles(rr::WeaponEffectsPass& pass, BoltTarget& bt, const MuzzleOut& o, float clear,
@@ -1902,12 +1906,19 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
             // the disc's core radius px from its quad (b = disc coordinate, alpha the core share) against the table
             const float w_view = l.w_m * upm, ppm = v.cam.m11 * 0.5f * v.height / (z * upm);
             float disc_r = 0.5f * wm::class_disc[c][0] * w_view;
+            // the core scales with its body when the shooter's radius caps the body (2026-11-08)
+            const bool own_star = wm::class_star[c] > 0.f;
+            const float body_law = own_star ? wm::class_star[c] * w_view
+                                   : c == wm::plasma ? wm::bloom_w[1] * w_view
+                                                     : wm::class_flame[c][0] * w_view;
+            const float body_cap = (own_star ? wm::cap_core_rs : wm::cap_flame_rs) * rs * upm;
+            if (body_law > body_cap) disc_r *= body_cap / body_law;
             disc_r = std::min(disc_r, wm::cap_core_rs * rs * upm);
             float want_disc_px = disc_r * ppm;
             const rr::WeaponSpriteVertex* q = mz_sprites;
             const float quad_px = (q[1].a[0] / q[1].a[3] - q[0].a[0] / q[0].a[3]) * 0.25f * v.width;
             const float core_px = quad_px * float(q[0].colour >> 24) / 255.f;
-            want_disc_px = std::max(want_disc_px, 0.5f * wx3_floor_flash());
+            want_disc_px = std::max(want_disc_px, 0.5f * wm::floor_disc_px * v.height / 1440.f);
             const bool disc_ok = std::fabs(core_px - want_disc_px) <= std::max(0.5f, 0.03f * want_disc_px) + 1.f / 255.f * quad_px;
             // the cone (energy, ballistic, heavy): its quad's length
             float cone_px = 0.f, want_cone = 0.f;
@@ -1926,12 +1937,31 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
                 want_cone = len;
                 cone_ok = std::fabs(cone_px - want_cone) <= std::max(0.03f * want_cone, 0.05f) * 1.f + 0.26f * want_cone;
             }
-            size_ok = size_ok && disc_ok && cone_ok;
+            // the star of its own (ballistic, flak: its four arms the last quads): each arm's lit root width (the cone
+            // profile's 10 % width, 0.83 of its base) over its length >= 0.15 (2026-11-08 #1, #9; was 0.10 x 0.83)
+            float arm_share = 1.f;
+            bool arm_ok = true;
+            if (wm::class_star[c] > 0.f) {
+                arm_ok = o.n.stars == 4;
+                for (unsigned s = o.b.sprite_quads - (o.n.stars < o.b.sprite_quads ? o.n.stars : 0); s < o.b.sprite_quads; ++s) {
+                    const rr::WeaponSpriteVertex* a = mz_sprites + 4 * s;
+                    auto sx = [&](unsigned k) { return (a[k].a[0] / a[k].a[3] + 1.f) * 0.5f * v.width; };
+                    auto sy = [&](unsigned k) { return (1.f - a[k].a[1] / a[k].a[3]) * 0.5f * v.height; };
+                    const float wide = std::hypot(sx(1) - sx(0), sy(1) - sy(0));
+                    const float len = std::hypot(0.5f * (sx(2) + sx(3) - sx(0) - sx(1)), 0.5f * (sy(2) + sy(3) - sy(0) - sy(1))) -
+                                      0.125f * wide;
+                    if (a[0].c[0] != 4.f || !(len > 0.f)) continue;
+                    arm_share = std::min(arm_share, 0.83f * wide / len);
+                }
+                arm_ok = arm_ok && arm_share >= 0.15f;
+            }
+            size_ok = size_ok && disc_ok && cone_ok && arm_ok;
             std::printf("MUZZLE gate=size class=%s capital=%u w_m=%.2f disc_px=%.2f want_px=%.2f cone_m=%.2f want_m=%.2f "
-                        "discs=%u cones=%u stars=%u vents=%u blooms=%u glows=%u puffs=%u capped=%u ok=%u,%u\n",
+                        "arm_lit_width_share=%.3f discs=%u cones=%u stars=%u vents=%u blooms=%u glows=%u puffs=%u capped=%u "
+                        "ok=%u,%u,%u\n",
                         class_names[c], unsigned(capital), double(l.w_m), double(core_px), double(want_disc_px),
-                        double(cone_px), double(want_cone), o.n.discs, o.n.cones, o.n.stars, o.n.vents, o.n.blooms, o.n.glows,
-                        o.n.puffs, o.n.capped, unsigned(disc_ok), unsigned(cone_ok));
+                        double(cone_px), double(want_cone), double(arm_share), o.n.discs, o.n.cones, o.n.stars, o.n.vents,
+                        o.n.blooms, o.n.glows, o.n.puffs, o.n.capped, unsigned(disc_ok), unsigned(cone_ok), unsigned(arm_ok));
         }
     }
     // The own fighter's energy disc in the chase view at 1440 rows: >= 40 px across (the note's target).
@@ -1969,9 +1999,13 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         shooter(0.f, 0.f, 200.f, 15.f);
         const bs::BoltView v = view_of(bt.t.w, bt.t.h);
         const ws::HullView h = muzzle_view(v);
-        const MuzzleOut single = muzzles(h, {muzzle(0.f, 0.f, 0.f, v.now, 0, 0)});
+        // the core alone (2026-11-08: the star's rotation and breathing change per shot by design, so its arms' sub-pixel
+        // overlap at the centre would move the peak by a few per cent)
+        bs::MuzzleTuning disc_only;
+        disc_only.cone = disc_only.star = disc_only.glow = disc_only.smoke = disc_only.bloom = disc_only.vents = false;
+        const MuzzleOut single = muzzles(h, {muzzle(0.f, 0.f, 0.f, v.now, 0, 0)}, disc_only);
         const std::vector<float> a = render_muzzles(pass, bt, single, 0.f, 0.f);
-        const MuzzleOut relit = muzzles(h, {muzzle(0.f, 0.f, 0.f, v.now, v.now - 30, 0, 0, 2)});
+        const MuzzleOut relit = muzzles(h, {muzzle(0.f, 0.f, 0.f, v.now, v.now - 30, 0, 0, 2)}, disc_only);
         const std::vector<float> b = render_muzzles(pass, bt, relit, 0.f, 0.f);
         const Img ia{&a, bt.t.w, bt.t.h}, ib{&b, bt.t.w, bt.t.h};
         const float pa = ia.peak(), pb = ib.peak();
@@ -2044,19 +2078,49 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         for (unsigned s = 0; s < o.b.sprite_quads * 4; ++s) mz_sprites[s].b[2] = 0.f;
         const std::vector<float> hull = render_muzzles(pass, bt, o, 1.f, 199.f * upm);
         const std::vector<float> sky = render_muzzles(pass, bt, o, 0.f, 0.f);
-        const Img ih{&hull, bt.t.w, bt.t.h}, is{&sky, bt.t.w, bt.t.h};
-        float hull_min = 1e9f;
+        // the hull surface through the gun (the gun sits on its hull): the puff's darkening where it reads
+        const std::vector<float> on = render_muzzles(pass, bt, o, 1.f, 200.f * upm);
+        const Img ih{&hull, bt.t.w, bt.t.h}, is{&sky, bt.t.w, bt.t.h}, io{&on, bt.t.w, bt.t.h};
+        float hull_min = 1e9f, on_min = 1e9f;
         for (unsigned y = 0; y < ih.h; y += 2)
-            for (unsigned x = 0; x < ih.w; x += 2) hull_min = std::min(hull_min, ih.px(x, y));
+            for (unsigned x = 0; x < ih.w; x += 2) {
+                hull_min = std::min(hull_min, ih.px(x, y));
+                on_min = std::min(on_min, io.px(x, y));
+            }
         const float sky_max = is.peak();
         const float s0 = wm::class_smoke[1][2];
         // the own ship in the cockpit: no puff
         const ws::HullView hc = muzzle_view(v, true, std::uint32_t(std::uintptr_t(mz_node)));
         const MuzzleOut c = muzzles(hc, {muzzle(0.f, 0.f, 0.f, 100000, 0, 10)}, smoke_only);
+        // 2026-11-08 #9: s0 0.3 -> 0.5, and the puff visibly darker than the hull it sits on (the surface through the gun
+        // darkened by >= 0.3 s0 at 150 ms, 0.625 of its life left; was: any darkening on a lane 1 m in front, < 0.999)
+        // A stream (review 2026-11-08, finding 1): the stock EBC (ballistic slug, k 0.33, #c0c010) at 6.58 shots/s, its
+        // third shot (the refire period 152 ms on the record), 150 ms after it: the puff keeps its own 400 ms life (the
+        // flash's refire cap would end it at 76 ms) and darkens the surface through the gun as the single shot's does.
+        float stream_min = 1e9f;
+        unsigned stream_puffs = 0;
+        {
+            const float ebc_tint[3] = {1.f, 1.f, 0.01f};
+            const bs::BoltLook ebc = bs::bolt_look_from(0x40, wc::shape_slug, 0.328f, 0, 2814.6f, ebc_tint);
+            mz_look_override = &ebc;
+            const std::uint32_t period = 152, t0 = 100000 + 2 * period;
+            const bs::BoltView vs = view_of(bt.t.w, bt.t.h, t0 + 150);
+            const MuzzleOut st = muzzles(muzzle_view(vs), {muzzle(0.f, 0.f, 0.f, t0, t0 - period, 0, 0, 3)}, smoke_only);
+            mz_look_override = nullptr;
+            for (unsigned q = 0; q < st.b.sprite_quads * 4; ++q) mz_sprites[q].b[2] = 0.f;
+            stream_puffs = st.n.puffs;
+            const std::vector<float> sv = render_muzzles(pass, bt, st, 1.f, 200.f * upm);
+            const Img is2{&sv, bt.t.w, bt.t.h};
+            for (unsigned y = 0; y < is2.h; y += 2)
+                for (unsigned x = 0; x < is2.w; x += 2) stream_min = std::min(stream_min, is2.px(x, y));
+        }
+        const bool stream_ok = stream_puffs == 1 && stream_min <= 1.f - 0.3f * s0 && stream_min >= 1.f - s0 - 0.02f;
         const bool ok = o.n.puffs == 1 && sky_max <= 1e-4f && hull_min >= 1.f - s0 - 0.02f && hull_min < 0.999f &&
-                        c.n.puffs == 0;
-        std::printf("MUZZLE gate=smoke puffs=%u hull_min=%.4f floor=%.3f sky_max=%.5f cockpit_puffs=%u ok=%u\n", o.n.puffs,
-                    double(hull_min), double(1.f - s0 - 0.02f), double(sky_max), c.n.puffs, unsigned(ok));
+                        on_min >= 1.f - s0 - 0.02f && on_min <= 1.f - 0.3f * s0 && c.n.puffs == 0 && stream_ok;
+        std::printf("MUZZLE gate=smoke puffs=%u hull_min=%.4f on_gun_min=%.4f floor=%.3f darker_bound=%.3f sky_max=%.5f "
+                    "cockpit_puffs=%u stream_puffs=%u stream_on_gun_min=%.4f ok=%u\n",
+                    o.n.puffs, double(hull_min), double(on_min), double(1.f - s0 - 0.02f), double(1.f - 0.3f * s0),
+                    double(sky_max), c.n.puffs, stream_puffs, double(stream_min), unsigned(ok));
         report("muzzle_smoke_surface_only", ok, "");
     }
     // The fireball program's two muzzle uses measured (2026-11-07, the death step's fireball changes are compared on
@@ -2187,6 +2251,213 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         const bool light = ih.peak() > 0.05f && is.peak() <= 1e-4f;
         std::printf("MUZZLE gate=light hull_peak=%.4f sky_peak=%.5f ok=%u\n", double(ih.peak()), double(is.peak()), unsigned(light));
         report("muzzle_light_on_own_hull_not_sky", light, "");
+    }
+    // ---- the muzzle rework (2026-11-08, bolt-muzzle-look.md 11 #1, #7, #8, #11; section 7's rows)
+    // #11: an orb or wave body is plasma before the flak flag (row 7 the stock PSP orb with flags 0x2100, row 9 the PSG
+    // wave); a flak tracer keeps the flak muzzle (row 5 FLAK_ALPHA).
+    {
+        const bool ok = look_of(7).mclass == wm::plasma && look_of(9).mclass == wm::plasma && look_of(5).mclass == wm::flak;
+        std::printf("MUZZLE gate=class_order psp_orb_flak=%u psg_wave=%u flak_tracer=%u ok=%u\n", unsigned(look_of(7).mclass),
+                    unsigned(look_of(9).mclass), unsigned(look_of(5).mclass), unsigned(ok));
+        report("muzzle_class_orb_before_flak", ok, "");
+    }
+    // Review 2026-11-08 finding 3: the refire cap binds. The stock IRE (row 0) at 6.67 shots/s (the record's period 150
+    // ms): its flash lives min(120 ms x stagger, 75 ms) = 75 ms at 1x (16 ms frames): drawn at 64 ms, gone at 80 ms; a
+    // first shot (no previous) still drawn at 96 ms (the law's 108-132 ms).
+    {
+        shooter(0.f, 0.f, 200.f, 15.f);
+        auto drawn_at = [&](std::uint32_t age, std::uint32_t prev_gap) {
+            const std::uint32_t t0 = 500000;
+            const bs::BoltView v = view_of(bt.t.w, bt.t.h, t0 + age, 16u);
+            return muzzles(muzzle_view(v), {muzzle(0.f, 0.f, 0.f, t0, prev_gap ? t0 - prev_gap : 0, 0, 0, 2)}).n.discs;
+        };
+        const unsigned at64 = drawn_at(64, 150), at80 = drawn_at(80, 150), first96 = drawn_at(96, 0);
+        const bool ok = at64 == 1 && at80 == 0 && first96 == 1;
+        std::printf("MUZZLE gate=refire_cap period_ms=150 life_ms=75 drawn_at64=%u drawn_at80=%u first_shot_at96=%u ok=%u\n",
+                    at64, at80, first96, unsigned(ok));
+        report("muzzle_refire_cap_binds", ok, "");
+    }
+    // Review 2026-11-08 finding 2: under SETA a refire period under the three-frame floor holds the flash at full value
+    // (no (1 - x)^2 fade), so nothing alternates frame to frame: the IRE at 10 shots per game second, SETA 6 (96 ms
+    // frames) and SETA 10 (160 ms), each frame with the latest shot and its previous one on the record; the core's and the
+    // star arms' radiance change frame to frame <= 2 %.
+    {
+        shooter(0.f, 0.f, 200.f, 15.f);
+        bool ok = true;
+        for (std::uint32_t step : {96u, 160u}) {
+            float lo = 1e9f, hi = 0.f, change = 0.f, last = -1.f;
+            const std::uint32_t start = 600000, period = 100;
+            for (unsigned fi = 0; fi < 12; ++fi) {
+                const std::uint32_t now = start + 7 + fi * step, k = (now - start) / period, t0 = start + k * period;
+                const bs::BoltView v = view_of(bt.t.w, bt.t.h, now, step);
+                const MuzzleOut o = muzzles(muzzle_view(v), {muzzle(0.f, 0.f, 0.f, t0, t0 - period, 0, 0, k + 2)});
+                float e = 0.f;
+                for (unsigned q = 0; q < o.b.sprite_quads; ++q) e += mz_sprites[4 * q].b[2]; // core + arms
+                lo = std::min(lo, e);
+                hi = std::max(hi, e);
+                if (last > 0.f) change = std::max(change, std::fabs(e - last) / last);
+                last = e;
+            }
+            const bool row_ok = lo > 0.f && change <= 0.02f;
+            ok = ok && row_ok;
+            std::printf("MUZZLE gate=seta_no_alternation step_ms=%u period_ms=100 min_e=%.3f max_e=%.3f frame_change=%.4f ok=%u\n",
+                        step, double(lo), double(hi), double(change), unsigned(row_ok));
+        }
+        report("muzzle_seta_no_alternation", ok, "");
+    }
+    // #1: the own fighter's IRE and PAC muzzles in the chase view (the F3 camera 24 m behind, the wing gun at (-3, -1, 3) m),
+    // 20 ms after a shot, alone over black: of the lit area (>= 10 % of its peak, max channel) the share at >= 0.8 of the
+    // peak <= 0.15 (a flat disc is all peak: the disc alone is printed as the control).
+    {
+        bool ok = true;
+        for (unsigned row : {0u, 1u}) {
+            shooter(0.f, -3.f, 24.f, 12.f);
+            const bs::BoltView v = view_of(bt.t.w, bt.t.h, 300020u, 16u);
+            const ws::HullView h = muzzle_view(v, false, std::uint32_t(std::uintptr_t(mz_node)));
+            auto share = [&](const MuzzleOut& o, double* lit_px) {
+                const std::vector<float> img = render_muzzles(pass, bt, o, 0.f, 0.f);
+                const Img im{&img, bt.t.w, bt.t.h};
+                const float pk = im.peak();
+                unsigned lit = 0, hot = 0;
+                for (unsigned y = 0; y < im.h; ++y)
+                    for (unsigned x = 0; x < im.w; ++x) {
+                        const float q = im.px(x, y);
+                        lit += q >= 0.1f * pk;
+                        hot += q >= 0.8f * pk;
+                    }
+                *lit_px = lit;
+                return lit ? double(hot) / double(lit) : 1.0;
+            };
+            const wc::MuzzleRecord rec = muzzle(-3.f, -1.f, 3.f, 300000u, 0, std::uint16_t(row));
+            const MuzzleOut full = muzzles(h, {rec});
+            double lit = 0, lit_disc = 0;
+            const double s_full = share(full, &lit);
+            bs::MuzzleTuning disc_only;
+            disc_only.cone = disc_only.star = disc_only.glow = disc_only.smoke = disc_only.bloom = disc_only.vents = false;
+            const MuzzleOut disc = muzzles(h, {rec}, disc_only);
+            const double s_disc = share(disc, &lit_disc);
+            const bool row_ok = full.n.discs == 1 && full.n.stars == 4 && s_full <= 0.15;
+            ok = ok && row_ok;
+            std::printf("MUZZLE gate=not_a_lamp row=%u hot_share=%.3f lit_px=%.0f stars=%u endon=%u disc_only_hot_share=%.3f "
+                        "disc_only_lit_px=%.0f ok=%u\n",
+                        row, s_full, lit, full.n.stars, full.n.endon, s_disc, lit_disc, unsigned(row_ok));
+        }
+        report("muzzle_not_a_lamp", ok, "");
+    }
+    // #1: the stock PBE (energy tracer, 19.23 shots/s, k 0.25, fighter, range 977 m, #5b7681) firing for one game second at
+    // 1x (16 ms frames) in the own chase view: the frames whose peak reaches half a fresh shot's peak <= 0.6 of the frames
+    // (a stream of flashes, not a steady light). Printed beside it: the frames with any element (the three-frame floor
+    // keeps that near 1 at 1x) and the mean frame peak over the fresh peak.
+    {
+        const float tint[3] = {0.105f, 0.181f, 0.219f}; // #5b7681 linear, normalised below by bolt_look_from's caller
+        const float mx = std::max(tint[0], std::max(tint[1], tint[2]));
+        const float tn[3] = {tint[0] / mx, tint[1] / mx, tint[2] / mx};
+        const bs::BoltLook pbe = bs::bolt_look_from(0x0, wc::shape_tracer, 0.249f, 0, 977.2f, tn);
+        mz_look_override = &pbe;
+        shooter(0.f, -3.f, 24.f, 12.f);
+        const std::uint32_t period = 52, start = 400000;
+        auto frame_peak = [&](std::uint32_t now, unsigned* drawn) {
+            const std::uint32_t k = (now - start) / period, t0 = start + k * period;
+            const bs::BoltView v = view_of(bt.t.w, bt.t.h, now, 16u);
+            const MuzzleOut o =
+                muzzles(muzzle_view(v, false, std::uint32_t(std::uintptr_t(mz_node))), {muzzle(-3.f, -1.f, 3.f, t0, t0 - period, 0, 0, k + 2)});
+            *drawn = o.n.discs;
+            const std::vector<float> img = render_muzzles(pass, bt, o, 0.f, 0.f);
+            return Img{&img, bt.t.w, bt.t.h}.peak();
+        };
+        unsigned d0 = 0;
+        const float fresh = frame_peak(start, &d0);
+        unsigned frames = 0, lit = 0, any = 0;
+        double sum = 0;
+        for (std::uint32_t now = start + 7; now < start + 7 + 1000; now += 16) {
+            unsigned drawn = 0;
+            const float pk = frame_peak(now, &drawn);
+            ++frames;
+            lit += pk >= 0.5f * fresh;
+            any += drawn > 0;
+            sum += pk;
+        }
+        mz_look_override = nullptr;
+        const double frac = double(lit) / double(frames);
+        const bool ok = fresh > 0.f && pbe.mclass == wm::energy && frac <= 0.6;
+        std::printf("MUZZLE gate=stream_not_steady shots_per_s=%.2f frames=%u half_peak_frames=%u lit_fraction=%.3f "
+                    "drawn_fraction=%.3f mean_peak_share=%.3f ok=%u\n",
+                    1000.0 / period, frames, lit, frac, double(any) / frames, sum / frames / (fresh > 0 ? fresh : 1.f),
+                    unsigned(ok));
+        report("muzzle_stream_not_steady", ok, "");
+    }
+    // #8: an enemy fighter's IRE at 600 m at 1440 rows: the core's diameter >= floor_disc_px (6) and the star's longest
+    // arm >= floor_arm_px (12) end-on; across the view the cone >= floor_arm_px.
+    {
+        const bs::BoltView v = view_of(2560, 1440, 300020u, 16u);
+        auto px_of = [&](const rr::WeaponSpriteVertex& a, float* x, float* y) {
+            *x = (a.a[0] / a.a[3] + 1.f) * 0.5f * v.width;
+            *y = (1.f - a.a[1] / a.a[3]) * 0.5f * v.height;
+        };
+        auto longest = [&](const MuzzleOut& o) {
+            float best = 0.f;
+            for (unsigned s = 0; s < o.b.sprite_quads; ++s) {
+                const rr::WeaponSpriteVertex* a = mz_sprites + 4 * s;
+                if (a[0].c[0] != 4.f) continue;
+                float x0, y0, x1, y1, x2, y2, x3, y3;
+                px_of(a[0], &x0, &y0);
+                px_of(a[1], &x1, &y1);
+                px_of(a[2], &x2, &y2);
+                px_of(a[3], &x3, &y3);
+                const float wide = std::hypot(x1 - x0, y1 - y0);
+                best = std::max(best, std::hypot(0.5f * (x2 + x3 - x0 - x1), 0.5f * (y2 + y3 - y0 - y1)) - 0.125f * wide);
+            }
+            return best;
+        };
+        shooter(0.f, 0.f, 600.f, 12.f);
+        const MuzzleOut endon = muzzles(muzzle_view(v), {muzzle(0.f, 0.f, 0.f, 300000u, 0, 0)});
+        float dx0, dy0, dx1, dy1;
+        px_of(mz_sprites[0], &dx0, &dy0);
+        px_of(mz_sprites[1], &dx1, &dy1);
+        const float disc_d = std::fabs(dx1 - dx0) * float(mz_sprites[0].colour >> 24) / 255.f; // the quad's core share
+        const float arm = longest(endon);
+        const float rot[9] = {0.f, 0.f, -1.f, 0.f, 1.f, 0.f, 1.f, 0.f, 0.f}; // a 90-degree yaw: the gun across the view
+        shooter(0.f, 0.f, 600.f, 12.f, rot);
+        const MuzzleOut side = muzzles(muzzle_view(v), {muzzle(0.f, 0.f, 0.f, 300000u, 0, 0)});
+        const float cone = longest(side);
+        const bool ok = endon.n.stars == 4 && side.n.cones == 1 && disc_d >= wm::floor_disc_px - 0.05f &&
+                        arm >= wm::floor_arm_px - 0.05f && cone >= wm::floor_arm_px - 0.05f;
+        std::printf("MUZZLE gate=floors_at_range rows=1440 dist_m=600 disc_px=%.2f arm_px=%.2f cone_px=%.2f stars=%u cones=%u "
+                    "ok=%u\n",
+                    double(disc_d), double(arm), double(cone), endon.n.stars, side.n.cones, unsigned(ok));
+        report("muzzle_floors_at_range", ok, "");
+    }
+    // #7: the own cockpit draws disc and star only (no cone, glow, vents or smoke), its longest arm <= cockpit_body_px
+    // (at the rows); energy (IRE), ballistic (MD) and heavy (GKE) with the guns 3 m beside and 2 m ahead of a 6 m eye.
+    {
+        bool ok = true;
+        const bs::BoltView v = view_of(bt.t.w, bt.t.h, 300020u, 16u);
+        for (unsigned row : {0u, 10u, 3u}) {
+            shooter(0.f, -2.f, 6.f, 12.f);
+            const MuzzleOut o = muzzles(muzzle_view(v, true, std::uint32_t(std::uintptr_t(mz_node))),
+                                        {muzzle(-3.f, 0.f, 2.f, 300000u, 0, std::uint16_t(row))});
+            float arm = 0.f;
+            for (unsigned s = 0; s < o.b.sprite_quads; ++s) {
+                const rr::WeaponSpriteVertex* a = mz_sprites + 4 * s;
+                if (a[0].c[0] != 4.f) continue;
+                const float ax = (a[2].a[0] / a[2].a[3] + a[3].a[0] / a[3].a[3] - a[0].a[0] / a[0].a[3] - a[1].a[0] / a[1].a[3]) *
+                                 0.25f * v.width,
+                            ay = (a[2].a[1] / a[2].a[3] + a[3].a[1] / a[3].a[3] - a[0].a[1] / a[0].a[3] - a[1].a[1] / a[1].a[3]) *
+                                 0.25f * v.height;
+                const float bx = (a[1].a[0] / a[1].a[3] - a[0].a[0] / a[0].a[3]) * 0.5f * v.width,
+                            by = (a[1].a[1] / a[1].a[3] - a[0].a[1] / a[0].a[3]) * 0.5f * v.height;
+                arm = std::max(arm, std::hypot(ax, ay) - 0.125f * std::hypot(bx, by)); // less the base's quarter-radius
+            }
+            const float cap = wm::cockpit_body_px * v.height / 1440.f;
+            const bool row_ok = o.n.discs == 1 && o.n.stars == 4 && o.n.cones == 0 && o.n.glows == 0 && o.n.vents == 0 &&
+                                o.n.puffs == 0 && arm <= cap + 1.f;
+            ok = ok && row_ok;
+            std::printf("MUZZLE gate=cockpit_disc_and_star row=%u discs=%u stars=%u cones=%u glows=%u vents=%u puffs=%u "
+                        "arm_px=%.1f cap_px=%.1f ok=%u\n",
+                        row, o.n.discs, o.n.stars, o.n.cones, o.n.glows, o.n.vents, o.n.puffs, double(arm), double(cap),
+                        unsigned(row_ok));
+        }
+        report("muzzle_cockpit_disc_and_star", ok, "");
     }
 }
 // ------------------------------------------------------------------ review 2026-11-07 (findings 2, 6, 14, 15; the view rule)
@@ -2359,9 +2630,6 @@ void review_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
                     o.n.endon, o.n.stars, o.n.cones, ratio, cm.ratio * cm.ratio, m.n, side.n.cones, side.n.endon, unsigned(ok));
         report("muzzle_endon_star_side_cone", ok, "");
     }
-}
-float wx3_floor_flash() {
-    return x3m::weapon_effects::core::look::floor_flash_px;
 }
 float wx3_stagger_lo() {
     return -0.5f * x3m::weapon_effects::core::stagger;

@@ -1797,6 +1797,70 @@ Host: `test_weapon_effects_*` 102 tests, 5 failures, all the D3D / hook records'
 recorded on `a4c408e93`-dirty, before the explosion commits of the base: their bound sources already differ at
 `d3adfe275`, `death_halo_rim` absent, `passed` false) [M]. `build-bolt` (ap) 0 warnings, `check_no_x87.py --edition
 ap` PASS (1181 reachable), d3d9.dll sha256 `917d6dfbff849745f339a54689b7f04d9899729b277218f4956acc188ed3e62d` after the review fixes [M].
+### Muzzle rework (2026-11-08, `7c13d540d` on `effects` `d3adfe275`)
+
+The muzzle items of the visual re-review ([bolt-muzzle-look.md](../architecture/bolt-muzzle-look.md) 11 #1, #7, #8, #9,
+#11; the laws in its section 3 with the old values): every class draws a 0.25 w white core [0.5–0.8 w], scaled with its
+body when the shooter's radius caps the body, inside a structured body at E 4 [cone 1.2, star 2]. The body is the cone
+across the view, a four-arm star of cone sprites across the gun axis end-on, in the own cockpit and for ballistic and
+flak, each arm 0.3 of its length wide [a fixed 0.12 w], or for plasma the noise bloom at E 3 [1.2]. The flash lives
+max(min(law, 0.5 refire period), 3 steps) under (1 − x)² [linear]. Floors at 1440 rows: core 6 px, longest arm, cone and
+bloom 12 px. The own cockpit draws disc and star only, its longest arm ≤ 48 px. Puff s0 0.5 [0.3]. An orb or wave is
+plasma before the flak flag. Stage `src/proxy/weapon_effects_bolt_stage.h` (`muzzle_elements`, `muzzle_class_of`,
+`cone_quad`'s floor and width share, `disc_quad`'s floor), constants `core::muzzle`, the lab's Muzzle tab mirrored, no
+shader change.
+
+Lab, two rounds (`batch_shots.py` on the muzzle-only plan, 336 frames; scripts and the per-weapon numbers in
+`verification/results/bolt-muzzle-look/muzzle-rework-2026-11-08/`, `muzzle_rework_lab.csv` [M]). Round 1 left a
+corvette or capital gun on the lab fighter a ball: the core was capped but its body was capped harder. Round 2 scales
+the core with its body and sets arms 0.22 → 0.3. In the own chase view the stock IRE's core is 16.7 px inside a 146 px
+star [40 px disc], and the second gun is dark half a period later. The EBC reads as a star with a dark puff, HEPT and PSP
+as a noise bloom with a hot point, PPC, GAUSS and FLAK as a core in a star. At 600 m every gun is a 6 px core in a 12 px
+star [2–3 px disc]. The cockpit muzzle sits outside the lab's centre window (unknown 9).
+
+Native host (`run_weapon_effects.py --host native`, `summary.json` at `d3adfe275`-dirty, RTX 5070 Ti), the muzzle rows:
+
+| Gate | Result [M] | Bound (old) |
+| --- | --- | --- |
+| `muzzle_not_a_lamp` | hot share 0.029 (IRE, 789 lit px), 0.029 (PAC, 1307 px); the disc alone 0.242 / 0.251 | ≤ 0.15 (new) |
+| `muzzle_stream_not_steady` | stock PBE 19.23/s, 63 frames: 15 at ≥ half a fresh peak = 0.238; any element drawn 0.921 (the three-frame floor); mean peak 0.295 of fresh | ≤ 0.6 (new) |
+| `muzzle_floors_at_range` | IRE at 600 m, 1440 rows: core 6.0 px, arm 12.0 px, cone 12.0 px | ≥ 6 / 12 / 12 (new) |
+| `muzzle_cockpit_disc_and_star` | IRE, MD, GKE: 1 disc, 4 arms, 0 cones, glows, vents, puffs; arm 36.0 / 36.0 / 15.0 px at 1080 | ≤ 36 px at 1080 (new) |
+| `muzzle_class_orb_before_flak` | PSP orb 0x2100 → plasma, PSG wave → plasma, FLAK_ALPHA → flak | (PSP was flak) |
+| `muzzle_size_per_class` | cores within the law (IRE 6.17 / 6.25 px, flak scaled with its capped star 12.75 / 12.5 px, floors 2.25 px at 1080); own-star arms' lit root width 0.249–0.277 of their length | ± 0.5 px or 3 %; arms ≥ 0.15 (new) [floor 1.5 px] |
+| `muzzle_smoke_surface_only` | lane 1 m in front 0.944 [0.967]; on the gun's surface 0.731 | ≥ 0.48; on the surface ≤ 0.85 (new) [≥ 0.68, < 0.999] |
+| `muzzle_relight_resets_not_adds` | 4.7969 = 4.7969, the core alone | ± 1 % |
+| `muzzle_endon_star_side_cone` | 4 arms, moment ratio 5.44 [2.13] | ≥ 2 |
+| `bolt_budget_512_bolts_20_muzzles_5120` | 96.2 µs fenced (bolts 76.5, muzzles 19.7, 85 muzzle sprites [57]); timestamps 44.4 µs, muzzles 2.6 | ≤ 100 [the record at `6dd25f264`: 101.1, failing] |
+
+Every other muzzle row is unchanged and passing (life, breathing, broadside 1.278, heavy, cockpit gain, placement,
+axis, light, ownership). That run (`7c13d540d`) had 6 `death_big_*` failures (the big-tier bodies rendered 0). They did
+not reproduce in the review-fix run below with the display hold on and the screensaver killed, so they were host state,
+not the explosions code.
+
+**Review fixes (2026-11-08).**
+1. The smoke puff keeps its own life; it was cut to half the refire period with the flash.
+2. A refire period under the three-frame floor holds the flash at full value with no fade, so nothing alternates
+   1 / 0.44 under SETA.
+3. The refire cap is now exercised by a gate.
+4. The lab's muzzle class comes from production's rule. The override file's hull pin (LAB_DATA `hp`) applies, never the
+   hull-class rule's own answer (`hc`). The stock MAM and MAM_1 were ballistic in the lab and are now plasma: a bloom with
+   a hot core (re-shot sheets `s_MAM__muzzle.png`, `s_MAM_1__muzzle.png`, kept local).
+5. Section 3.2 now notes that a heavy gun faster than about 3.1 shots/s has no afterglow (by design, from the cap) and
+   that `muzzle_pose` accepts a radius ≤ 0 (pre-existing; the floors keep extents positive).
+
+Native host, one run:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `muzzle_smoke_surface_only` (stream added) | EBC third shot at 6.58/s, 150 ms on: 1 puff, the surface through the gun 0.737; the single shot 0.731 | ≤ 0.85 |
+| `muzzle_refire_cap_binds` | IRE, period 150 ms: drawn at 64 ms, gone at 80 ms; a first shot drawn at 96 ms | life 75 ms |
+| `muzzle_seta_no_alternation` | IRE 10/s, SETA 6 and 10: core + arms 20.0 every frame, change 0.0 | ≤ 2 % |
+| `bolt_budget_512_bolts_20_muzzles_5120` | 91.2 µs fenced (bolts 71.3, muzzles 19.9) | ≤ 100 |
+
+Totals: D3D fixture 360 checks, 0 failures; hook fixture 147 checks, 0 failures. Host `test_weapon_effects_*` 101 OK.
+`build-muzzle` (ap) 0 warnings; `check_no_x87.py` PASS. `generate_weapon_effects_programs.py --check`, `generate.py
+--check` and the lab's `--check` PASS.
 
 ## Explosions (step 3)
 

@@ -1,0 +1,61 @@
+.claude/worktrees/agent-aed6a2ca5f0297dad/verification/probe/build/weapon-effects/fixture.log
+  low-gpu frames with bodies/halos: 55 lines (950, 1073)
+  215: HULL case=reset result=00000000 references_before_reset=0 ensure=00000000 drew=1
+  950: EXPLOSION_TIMING width=1920 height=1080 case=body_alone_fills_frame bodies=1 quads=0 glows=0 smokes=0 shocks=0 octaves=2 screens=1.180 gpu_us=0.5 weight=0.003
+  983: EXPLOSION_TIMING width=5120 height=1440 case=body_alone_fills_frame bodies=1 quads=0 glows=0 smokes=0 shocks=0 octaves=2 screens=1.180 gpu_us=0.5 weight=0.003
+  1024: EXPLOSION case=size tier=capital_1500m age_frac=0.1 expected_px=255.4 outline_over_law=0.000 front_over_law=0.000
+  1025: EXPLOSION case=size tier=capital_1500m age_frac=0.3 expected_px=343.2 outline_over_law=0.000 front_over_law=0.000
+  1029: CHECK death_big_tier_sizes FAIL
+  1036: CHECK death_big_no_pop_at_birth PASS
+  1039: CHECK death_big_shock_is_a_shell FAIL
+  1042: EXPLOSION case=halo_big tier=capital_1500m age_frac=0.2 peak=0.000 max_r_px=0.0 R_t_px=255.8 ratio=0.000 ratio_b=0.000 sil_R_px=273.7 peak_r_over_R=0.000 at_2R_over_peak=
+  1043: CHECK death_big_halo_capped FAIL
+  1045: CHECK death_big_light_and_fade FAIL
+  1048: CHECK death_big_eye_inside_bounded FAIL
+  1050: CHECK death_big_seta6 PASS
+  1078: CHECK death_big_stage_cpu PASS
+  1085: EXPLOSION case=reset reset=00000000 ensure=00000000 drew=1 wave_enabled=1 wave_drew=1
+  1086: CHECK death_reset_recovers PASS
+  1476: RESULT FAIL checks=358 failures=6
+/tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/mdiag/build/fixture.log
+  low-gpu frames with bodies/halos: 0 lines None
+  197: DIAG after_s12 tcl=00000000
+  198: DIAG s15_start w=1920 tcl=00000000
+  200: EXPLOSION_TIMING width=1920 height=1080 case=body_alone_fills_frame bodies=1 quads=0 glows=0 smokes=0 shocks=0 octaves=2 screens=1.180 gpu_us=74.4 weight=0.419
+  201: DIAG after_body_alone tcl=00000000
+  233: DIAG s15_start w=5120 tcl=00000000
+  235: EXPLOSION_TIMING width=5120 height=1440 case=body_alone_fills_frame bodies=1 quads=0 glows=0 smokes=0 shocks=0 octaves=2 screens=1.180 gpu_us=209.9 weight=1.183
+  236: DIAG after_body_alone tcl=00000000
+  277: EXPLOSION case=size tier=capital_1500m age_frac=0.1 expected_px=255.4 outline_over_law=0.913 front_over_law=1.111
+  278: EXPLOSION case=size tier=capital_1500m age_frac=0.3 expected_px=343.2 outline_over_law=0.840 front_over_law=1.027
+  282: CHECK death_big_tier_sizes PASS
+  289: CHECK death_big_no_pop_at_birth PASS
+  292: CHECK death_big_shock_is_a_shell PASS
+  295: EXPLOSION case=halo_big tier=capital_1500m age_frac=0.2 peak=0.619 max_r_px=599.4 R_t_px=255.8 ratio=2.343 ratio_b=1.801 sil_R_px=273.7 peak_r_over_R=1.003 at_2R_over_pea
+  296: CHECK death_big_halo_capped PASS
+  298: CHECK death_big_light_and_fade PASS
+  301: CHECK death_big_eye_inside_bounded PASS
+  303: CHECK death_big_seta6 PASS
+  331: CHECK death_big_stage_cpu PASS
+  338: EXPLOSION case=reset reset=00000000 ensure=00000000 drew=1 wave_enabled=1 wave_drew=1
+  339: CHECK death_reset_recovers PASS
+  377: RESULT PASS checks=84 failures=0
+.claude/worktrees/agent-a3c4ad6df5dd6cf77/verification/probe/build/weapon-effects/fixture.log
+  low-gpu frames with bodies/halos: 0 lines None
+  215: HULL case=reset result=00000000 references_before_reset=0 ensure=00000000 drew=1
+  943: EXPLOSION_TIMING width=1920 height=1080 case=body_alone_fills_frame bodies=1 quads=0 glows=0 smokes=0 shocks=0 octaves=2 screens=1.180 gpu_us=70.9 weight=0.399
+  976: EXPLOSION_TIMING width=5120 height=1440 case=body_alone_fills_frame bodies=1 quads=0 glows=0 smokes=0 shocks=0 octaves=2 screens=1.180 gpu_us=212.2 weight=1.195
+  1017: EXPLOSION case=size tier=capital_1500m age_frac=0.1 expected_px=255.4 outline_over_law=0.913 front_over_law=1.111
+  1018: EXPLOSION case=size tier=capital_1500m age_frac=0.3 expected_px=343.2 outline_over_law=0.840 front_over_law=1.027
+  1022: CHECK death_big_tier_sizes PASS
+  1029: CHECK death_big_no_pop_at_birth PASS
+  1032: CHECK death_big_shock_is_a_shell PASS
+  1035: EXPLOSION case=halo_big tier=capital_1500m age_frac=0.2 peak=0.300 max_r_px=259.1 R_t_px=255.8 ratio=1.013 halos_06=0
+  1036: CHECK death_big_halo_capped PASS
+  1038: CHECK death_big_light_and_fade PASS
+  1041: CHECK death_big_eye_inside_bounded PASS
+  1043: CHECK death_big_seta6 PASS
+  1071: CHECK death_big_stage_cpu PASS
+  1078: EXPLOSION case=reset reset=00000000 ensure=00000000 drew=1 wave_enabled=1 wave_drew=1
+  1079: CHECK death_reset_recovers PASS
+  1456: RESULT FAIL checks=352 failures=1

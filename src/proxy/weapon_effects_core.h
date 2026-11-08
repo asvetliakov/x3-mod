@@ -2659,27 +2659,44 @@ constexpr float beam_w_m = 1.2f;
 // The muzzle flash (bolt-muzzle-look.md section 3): per class 0 energy (default, ion), 1 ballistic (ammunition 0x40), 2
 // plasma (orb / wave body), 3 heavy (k >= bolt::heavy_k), 4 flak (0x100 / 0x1000); sizes in the weapon's w, capped by the
 // shooter's radius R_s (obj+0xa4 / 500): core and star <= cap_core_rs R_s, flame and vents <= cap_flame_rs R_s; life in
-// game ms (max(life, 3 steps), +-stagger / 2); re-lit by reset (one record per (ship, gun slot)).
+// game ms (max(min(life, refire_share x the refire period), 3 steps), +-stagger / 2); re-lit by reset (one record per
+// (ship, gun slot)).
+// The rework of 2026-11-08 (section 11 #1, #7, #8, #9, #11): every class draws a small hot core (0.25 w, white) inside a
+// structured body that carries the size at the core's radiance (the cone, the four-arm star or the plasma bloom), the
+// flash envelope (1 - x)^flash_pow so a stream reads as flashes, pixel floors at range and a cockpit of disc and star.
 namespace muzzle {
 enum Mode : std::uint8_t { full = 0, simple = 1 };
 constexpr Mode mode = full;
 enum Class : std::uint8_t { energy = 0, ballistic = 1, plasma = 2, heavy = 3, flak = 4, class_count = 5 };
-constexpr float class_disc[5][3] = {{0.6f, 0.7f, 4.f}, {0.5f, 0.7f, 4.f}, {0.8f, 0.6f, 4.f}, {0.8f, 1.0f, 4.f},
-                                    {0.5f, 0.5f, 4.f}}; // diameter (w), whiteness h, radiance
+constexpr float class_disc[5][3] = {{0.25f, 1.0f, 4.f}, {0.25f, 1.0f, 4.f}, {0.25f, 1.0f, 4.f}, {0.25f, 1.0f, 4.f},
+                                    {0.25f, 1.0f, 4.f}}; // diameter (w), whiteness h, radiance (was 0.5-0.8 w, h 0.5-1)
 constexpr float disc_halo_w = 0.4f, disc_halo_e = 0.6f;
-constexpr float class_flame[5][3] = {{2.0f, 0.6f, 1.2f}, {1.2f, 0.5f, 1.2f}, {0.f, 0.f, 0.f}, {3.0f, 0.8f, 1.2f},
-                                     {0.f, 0.f, 0.f}}; // cone length (w), base (w), radiance x (1 - s)^1.5
+constexpr float class_flame[5][3] = {{2.0f, 0.6f, 4.f}, {1.2f, 0.5f, 4.f}, {0.f, 0.f, 0.f}, {3.0f, 0.8f, 4.f},
+                                     {0.f, 0.f, 0.f}}; // cone length (w), base (w), radiance x (1 - s)^1.5 (was 1.2)
 constexpr float class_star[5] = {0.f, 1.2f, 0.f, 0.f, 0.8f}; // the star's arm scale (w)
 constexpr float star_arms[4] = {1.0f, 0.55f, 0.8f, 0.45f};
-constexpr float star_width_w = 0.12f, star_e = 2.0f;
+// Every star (the ballistic and flak star, the energy and heavy end-on star, the cockpit's) is four cone arms across the
+// gun axis, each arm_width of its length wide at its root (was a fixed 0.12 w: hairlines), at star_e (was 2). The
+// core shrinks with its body when the shooter's radius caps the body (core / body stays the law's ratio).
+constexpr float arm_width = 0.3f, star_e = 4.0f;
 constexpr float bloom_w[2] = {0.5f, 1.0f}; // plasma: the noise bloom's radius over its life (w)
-constexpr float bloom_e = 1.2f;
+constexpr float bloom_e = 3.0f;           // was 1.2
+// The flash (core, cone or star, bloom, glow) lives max(min(law, refire_share x the refire period), 3 steps) and fades
+// as (1 - age / life)^flash_pow (was linear): a fast gun reads as a stream of flashes, not a steady light. A refire
+// period under the three-frame floor holds the flash at full value (no fade: nothing alternates under SETA). The smoke
+// keeps its own life.
+constexpr float refire_share = 0.5f, flash_pow = 2.f;
+// Pixel floors at ref_rows (bolt::ref_rows, scaled by the rows): the core's diameter, the longest arm or the cone.
+constexpr float floor_disc_px = 6.f, floor_arm_px = 12.f;
+// The own cockpit: no cone (energy and heavy draw the star), no glow, no vents, no smoke; the muzzle scaled so its longest
+// arm (the bloom's radius) is at most cockpit_body_px at ref_rows.
+constexpr float cockpit_body_px = 48.f;
 constexpr float vent_w = 1.2f, vent_ms = 150.f, vent_e = 1.2f; // heavy: two jets across the gun axis
 constexpr float afterglow_ms = 250.f, afterglow_e = 1.2f;       // heavy: the disc's afterglow
 constexpr float rise_ms = 40.f;                                  // heavy: the cone's rise
-constexpr float class_smoke[5][5] = {{0.f, 0.f, 0.f, 0.f, 0.f}, {0.6f, 1.2f, 0.3f, 400.f, 0.5f}, {0.f, 0.f, 0.f, 0.f, 0.f},
-                                     {0.8f, 1.6f, 0.4f, 600.f, 0.5f}, {0.6f, 1.2f, 0.3f, 400.f, 0.f}};
-                                     // r0, r1 (w), strength s0, life ms, drift along the gun axis (w)
+constexpr float class_smoke[5][5] = {{0.f, 0.f, 0.f, 0.f, 0.f}, {0.6f, 1.2f, 0.5f, 400.f, 0.5f}, {0.f, 0.f, 0.f, 0.f, 0.f},
+                                     {0.8f, 1.6f, 0.4f, 600.f, 0.5f}, {0.6f, 1.2f, 0.5f, 400.f, 0.f}};
+                                     // r0, r1 (w), strength s0 (ballistic, flak 0.3 -> 0.5), life ms, drift (w)
 constexpr float class_glow[5][2] = {{3.0f, 0.6f}, {2.5f, 0.6f}, {3.5f, 0.8f}, {4.0f, 1.0f}, {2.0f, 0.5f}}; // R (w), E
 constexpr float class_life[5] = {120.f, 60.f, 180.f, 80.f, 80.f};
 constexpr float cap_core_rs = 0.25f, cap_flame_rs = 1.0f;
