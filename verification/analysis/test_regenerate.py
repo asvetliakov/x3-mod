@@ -69,12 +69,19 @@ def engine_members():
             ('dds/tex_jet.dds', dds_rgba(red_blue()))]
 
 
+def weapon_members():
+    """The type tables the weapon effects step reads (tools/effects/weapon_effects_table.generate), with no rows."""
+    names = ('TBullets', 'Effects', 'TShields', 'TShips', 'TDocks', 'TFactories', 'TAsteroids', 'TMissiles', 'Particles3',
+             'TLaser', 'TCockpits')
+    return [(f'types/{name}.txt', b'0;0;\r\n') for name in names]
+
+
 def make_root(folder, mod='Big'):
     """The game directory <folder>/drive_c/X3; with mod, addon/mods/<mod>.cat selected in <folder>/user.reg."""
     game = Path(folder) / 'drive_c' / 'X3'
     game.mkdir(parents=True)
     (game / 'X3AP.exe').write_bytes(b'MZ stub')
-    write_catalogue(game / '01.cat', atlas_textures() + fog_members() + engine_members())
+    write_catalogue(game / '01.cat', atlas_textures() + fog_members() + engine_members() + weapon_members())
     write_catalogue(game / '02.cat', [
         ('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
         ('objects/ships/x/mixed.pbb', packed(mixed_tree())),
@@ -125,6 +132,7 @@ class Regenerate(unittest.TestCase):
             engine = json.loads((game / 'x3m/engine_bodies.json').read_text())
             self.assertEqual((engine['tool'], sorted(engine['bodies'])), ('tools/effects/engine_bodies.py', ['effects\\engines\\fx_t']))
             self.assertIn('fog families: check passed after the LOD overlay', text)
+            self.assertIn('weapon effects summary: 0 TBullets rows', text)
             self.assertIn('all done', text)
             self.assertIn('   | batch: game', log)                           # the tool detail, log only
             self.assertNotIn('batch: game', text)
@@ -262,7 +270,7 @@ class Regenerate(unittest.TestCase):
             (game / 'X3FL.exe').write_bytes(b'MZ stub')
             (game / 'X3AP.exe').write_bytes(b'MZ stub')
             engine = [('addon2/' + m, d) if m == 'types/Bodies.txt' else (m, d) for m, d in engine_members()]
-            write_catalogue(game / '01.cat', atlas_textures() + engine)
+            write_catalogue(game / '01.cat', atlas_textures() + engine + [('addon2/' + m, d) for m, d in weapon_members()])
             write_catalogue(game / 'addon2/01.cat', [('objects/ships/x/good.pbb', packed(atlas_tree_lod0())),
                                                      ('objects/stations/y/good.pbb',
                                                       packed(with_threshold(atlas_tree_lod0(), 160)))]

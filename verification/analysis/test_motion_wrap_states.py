@@ -69,7 +69,12 @@ class MotionWrapStatesTests(unittest.TestCase):
         # Restore application bindings before either optional color bracket.
         # Card replacement and composition are exclusive; additive follows.
         self.assertLess(before.index('restore_bindings_checked()'), before.index('prepare_fog_card(call, route)'))
-        self.assertIn('} else if (route.submit) {\n            if (shadow_.fog_card_source) prepare_fog_card(call, route);', before)
+        # Step 4 (weapon effects bolts, AP) runs first in the submit branch and may clear route.submit (a frame ours
+        # took), so the card replacement re-tests it.
+        submit = before.index('} else if (route.submit) {')
+        self.assertLess(submit, before.index('weapon_bolts_in_place(call, route);'))
+        self.assertLess(before.index('weapon_bolts_in_place(call, route);'),
+                        before.index('if (shadow_.fog_card_source && route.submit) prepare_fog_card(call, route);'))
         self.assertIn('if (!route.fog_card_mask.masked && route.submit) prepare_composition(call, route);', before)
         self.assertLess(before.index('prepare_composition(call, route);'),
                         before.index('prepare_screen_additive(call, route);'))

@@ -29,12 +29,12 @@ verifies exactly like the shipped one.
   stamp groups' `verify_bytes` preflight, or a module `memcmp` window (lod_scale,
   point_light_admission, pause_key_only, scene_hook, object_trace's call bytes,
   object_lifetime's six region fingerprints). Unchanged by this rule.
-* **Engine globals**: 62 anchors, one per global the proxy reads (or a ui_scale stub re-reads:
+* **Engine globals**: 75 anchors, one per global the proxy reads (or a ui_scale stub re-reads:
   `0x0057fc64` at `0x0041e474`, `0x00608508` at `0x0041e412`, added 2026-10-22 with claims I/J;
   the KC `TexBltImage` image cache `0x006085c8` at `0x00495fce` and `0x006085cc` at `0x00496050`,
   added 2026-10-26 with the text-density image claim, both inside the case
   `0x00495fc1` and outside its claimed span `0x004960c0`; the 13 SETA anchors below,
-  added 2026-10-27). Each anchor
+  added 2026-10-27; the 13 weapon-effects anchors below, added 2026-11-08). Each anchor
   is a whole `.text` instruction whose absolute operand is that global
   (prefix + le32(global) [+ imm8]), chosen from objdump's linear sweep; the
   verifier re-confirms every anchor VA is an instruction start. No anchor
@@ -43,12 +43,14 @@ verifies exactly like the shipped one.
   `0x00606f44` (media record list head, read by music_keep) at `0x004971d3`, a
   branch target outside the music patch sites (`0x004982b0`, `0x004982db`,
   `0x00498810`, `0x00498c90`, `0x00498d54`).
-  Every data-range literal under `src/proxy` is anchored except eight in the
+  Every data-range literal under `src/proxy` is anchored except nine in the
   test's `NOT_READ` map: two comment range ends, the `.data` start `0x00573000`
   in a `music_alert_core.h` comment, three d3dx9_37 addresses in
   `loading_trace.cpp`, the 16.16 value `0x00640000`, and the SETA counter byte
   `0x0057ff0b` (a `static_assert` of `0x0057fc68 + 675`: the engine only indexes
-  the array, so no instruction names the byte; the array base is anchored);
+  the array, so no instruction names the byte; the array base is anchored),
+  and the TAsteroids count `0x0060707c` (`0x00607038 + 4·17`: likewise only
+  indexed, no instruction names it; the count array is anchored);
   `test_exe_identity` enforces this.
 
   SETA anchors (seta_key_latch key-latch rows read by `seta_restore.cpp`; the
@@ -68,6 +70,25 @@ verifies exactly like the shipped one.
   | `0x0060903c` | the iteration's ring read (u16) | `0x004042a2` | `66 89 35` mov [g],si (the store the latch note names) |
   | `0x00608e40` / `44` / `48` / `4c` | ship-view and view-flag mouse axis types | `0x0040fa92` / `0x0040fa9c` / `0x0040fa97` / `0x0040faa1` | `a3` mov [g],eax |
   | `0x00608e50` / `78` / `a0` | yaw / pitch / roll controller records | `0x00410c0a` / `0x00410c25` / `0x00410c3e` | `d9 1d` fstp dword [g] |
+
+  Weapon-effects anchors (2026-11-08; the type tables and the Effects row table that `weapon_effects_core.h`
+  reads, [weapon-effect-spawn.md](weapon-effect-spawn.md) sections 1, 8.1, 9 and 10 (10.1 for the row table), [engine-effects.md](engine-effects.md)
+  for `0x00580068`, [sector-collide.md](sector-collide.md) for the type-table loader), each a whole instruction in
+  objdump's linear sweep, at least 1,500 bytes from every claimed site
+  (`verification/results/executable-identity/weapon_effect_anchor_candidates.py`, PASS on the shipped image; it
+  also confirms `0x0060707c` has no naming instruction). Count/table pairs are taken from one bound-check-then-load
+  sequence where the engine has one:
+
+  | Global | Read as | Anchor | Instruction |
+  |---|---|---|---|
+  | `0x00580068` | Effects row table (`+ id·0x14`; spawn note 10.1) | `0x004126ec` | `b8` mov eax,g (the row loader `0x004126d0`, before its clear loop `0x00412700`) |
+  | `0x00606fb8` | type tables by class (`+ 4·class`) | `0x00436277` | `89 0c 85` mov [eax*4+g],ecx (the type-table loader `0x0043626e`, class < 32) |
+  | `0x00607038` | type-table row counts by class | `0x0043627e` | `89 0c 85` mov [eax*4+g],ecx (same loader) |
+  | `0x00606fcc` / `0x00606fd0` / `0x00606ffc` | TDocks / TFactories / TAsteroids tables | `0x0041309a` / `0x00413080` / `0x004130b4` | `8b 15` mov edx,[g] (the loads before the `rec+0x60` reads `0x004130a9` / `0x0041308f`, spawn note 10.5) |
+  | `0x0060704c` / `0x00607050` | TDocks / TFactories counts | `0x004340d3` / `0x004340bf` | `3b 05` cmp eax,[g] (before the table loads `0x004340db` / `0x004340c7`) |
+  | `0x00607054` | TShips count | `0x00466710` | `3b 05` cmp eax,[g] (before `mov edx,[0x00606fd4]` at `0x0046671c`) |
+  | `0x0060705c` / `0x00606fdc` | TShields count / table | `0x00464f4b` / `0x00464f57` | `3b 05` cmp eax,[g] / `8b 0d` mov ecx,[g] |
+  | `0x00607060` / `0x00606fe0` | TMissiles count / table | `0x004669fd` / `0x00466a09` | `3b 05` cmp eax,[g] / `8b 0d` mov ecx,[g] |
 * **Engine call targets**: the bodies of fixed engine callees a module calls
   or redirects to are each module's responsibility and are not covered by the
   anchors; collide_memo, resource_reader and music_keep already hash theirs.
@@ -82,7 +103,7 @@ Module audit (every caller of `object_trace::executable_verified()`):
 | object_lifetime (own gate) | six region fingerprints | same structure + anchors + size |
 | occlusion_engine_cull | delegated: `cull_small_parts::site_chainable`/`chain_stub` (check_site's window `memcmp`, patch_site's `engine_patch::claim`) before the stub is emitted and again before the write; `DELEGATED` in `test_exe_identity` | none of its own |
 
-Enforced in `object_trace::verified_image()` (cached once per process; ~62 short
+Enforced in `object_trace::verified_image()` (cached once per process; ~75 short
 reads and one `GetFileSizeEx`, no 2 MB hash) and `object_lifetime::initialize()`.
 Host verifiers (`verify_*_site(s).py`, `verify_pause_sites.py`,
 `verify_music_restart_sites.py`, `inspect_object_lifetimes.py`,

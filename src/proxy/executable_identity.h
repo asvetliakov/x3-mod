@@ -52,6 +52,7 @@ constexpr Anchor anchors[] = {
     {0x0041e474, 0x0057fc64, 2, {0x8b, 0x15}},       // ui_scale (the KC VM slot the map label stub re-reads; its load 0x0041eab2 is the site)
     {0x004106f3, 0x0057fc68, 2, {0x80, 0x83}, 1, 0x01}, // seta_restore (the key latch's action counters; SETA byte +675)
     {0x00410f0c, 0x0057fe74, 2, {0x80, 0x3d}, 1, 0x00}, // seta_restore (key latch rows: the steering counters 524..529)
+    {0x004126ec, 0x00580068, 1, {0xb8}},             // weapon_effects (Effects row table base; the row loader 0x004126d0, mov eax,g)
     {0x00433cbe, 0x00587b88, 2, {0x89, 0x15}},       // chase_aim_trace
     {0x004d3f23, 0x00595ee8, 3, {0x8a, 0x04, 0x85}}, // seta_restore (key latch rows: the key ring's slots)
     {0x004e21c7, 0x00596928, 2, {0xd9, 0x05}},       // collide_memo
@@ -65,9 +66,21 @@ constexpr Anchor anchors[] = {
     {0x00401bb0, 0x00606f38, 2, {0x8b, 0x0d}},       // chase_camera/aim/fire/lead
     {0x0040258b, 0x00606f3c, 1, {0xa1}},             // game_phases
     {0x004971d3, 0x00606f44, 1, {0xa1}},             // music_keep (media record list head; outside the music patch sites)
+    {0x00436277, 0x00606fb8, 3, {0x89, 0x0c, 0x85}}, // weapon_effects (type tables by class; the type-table loader 0x0043626e clears them)
     {0x0041efd6, 0x00606fc0, 2, {0x8b, 0x35}},       // sector_background
+    {0x0041309a, 0x00606fcc, 2, {0x8b, 0x15}},       // weapon_effects (TDocks table; read before rec+0x60 at 0x004130a9)
+    {0x00413080, 0x00606fd0, 2, {0x8b, 0x15}},       // weapon_effects (TFactories table; read before rec+0x60 at 0x0041308f)
     {0x0041305f, 0x00606fd4, 2, {0x8b, 0x15}},       // chase_aim_trace
+    {0x00464f57, 0x00606fdc, 2, {0x8b, 0x0d}},       // weapon_effects (TShields table; after the count bound at 0x00464f4b)
+    {0x00466a09, 0x00606fe0, 2, {0x8b, 0x0d}},       // weapon_effects (TMissiles table; after the count bound at 0x004669fd)
+    {0x004130b4, 0x00606ffc, 2, {0x8b, 0x15}},       // weapon_effects (TAsteroids table, beside the TDocks/TFactories rec+0x60 reads)
+    {0x0043627e, 0x00607038, 3, {0x89, 0x0c, 0x85}}, // weapon_effects (type-table counts by class; cleared by the loader 0x0043626e)
     {0x004343e6, 0x00607040, 2, {0x8b, 0x2d}},       // sector_background
+    {0x004340d3, 0x0060704c, 2, {0x3b, 0x05}},       // weapon_effects (TDocks count; the bound before the table load 0x004340db)
+    {0x004340bf, 0x00607050, 2, {0x3b, 0x05}},       // weapon_effects (TFactories count; the bound before the table load 0x004340c7)
+    {0x00466710, 0x00607054, 2, {0x3b, 0x05}},       // weapon_effects (TShips count; the bound before the table load 0x0046671c)
+    {0x00464f4b, 0x0060705c, 2, {0x3b, 0x05}},       // weapon_effects (TShields count)
+    {0x004669fd, 0x00607060, 2, {0x3b, 0x05}},       // weapon_effects (TMissiles count)
     {0x0042ab24, 0x00607c64, 2, {0x83, 0x3d}, 1, 0x00}, // ui_scale (the steering state; its store 0x004074d6 is in the cursor window)
     {0x00445a3a, 0x00607ce8, 2, {0x83, 0x3d}, 1, 0x00}, // chase_aim_trace, chase_fire (0x004074de is a chase_aim_trace site)
     {0x0040e8dd, 0x00607cec, 2, {0x8b, 0x15}},       // ui_scale (the script cursor x; its store 0x004074f4 follows the ui_scale site)
