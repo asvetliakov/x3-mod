@@ -2926,22 +2926,40 @@ int main(int argc, char** argv) {
             }
         report("projectile_core_width_rule_both_fovs", widths_ok, "");
         report("projectile_length_follows_live_projection", fov_ok, "");
-        // (2) SETA invariance: at 1 km and 1000 m/s, steps 16 ms (1x) and 96 ms (6x): the drawn length per game ms
-        // (the half-maximum run along the axis less the core's width) is the same within 3 %, below the cap.
+        // (2) SETA invariance and the stretch rule from the family's constants: at 1 km, steps 16 ms (1x) and 96 ms (6x),
+        // the speed chosen so the 6x stretch is 80 % of length_cap_m: the drawn length per game ms (the half-maximum run
+        // along the axis less the core's width) is the same within 3 % and equals stretch_k v step f / d within 3 %; at
+        // the IRE's 1162 m/s and 6x the stretch is length_cap_m.
         double per_ms[2] = {0, 0};
+        bool rule_ok = true;
+        const float f_px = proj_view(pt, 1.6f).m11 * 0.5f * float(pt.h);
+        const float seta_speed = 0.8f * core_only.length_cap_m / (core_only.stretch_k * 0.096f);
         for (unsigned k = 0; k < 2; ++k) {
             const float step = k ? 96.f : 16.f;
             rr::WeaponProjectileVertex v[4];
             ps::BoltShape shape;
-            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), core_only, look, bolt_at(1000.f, 1000.f, step), v, &shape);
+            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), core_only, look, bolt_at(1000.f, seta_speed, step), v, &shape);
             proj_draw(proj, pt, v, built ? 1u : 0u);
             const std::vector<float> l = proj_scene(pt);
             const double run = fwhm_through(l, pt.w, pt.h, cx, cy, 1, 0);
             per_ms[k] = (run - double(shape.core_px)) / double(step);
-            std::printf("PROJECTILE case=seta step_ms=%.0f stretch_m=%.2f length_px=%.2f run_px=%.2f px_per_game_ms=%.4f\n",
-                        double(step), double(shape.stretch_m), double(shape.length_px), run, per_ms[k]);
+            const double rule_px = double(core_only.stretch_k) * seta_speed * step * 1e-3 * f_px / 1000.0;
+            rule_ok = rule_ok && std::fabs((run - double(shape.core_px)) / rule_px - 1.0) < 0.03;
+            std::printf("PROJECTILE case=seta step_ms=%.0f speed_mps=%.1f stretch_m=%.2f rule_px=%.2f length_px=%.2f run_px=%.2f "
+                        "px_per_game_ms=%.4f\n",
+                        double(step), double(seta_speed), double(shape.stretch_m), rule_px, double(shape.length_px), run,
+                        per_ms[k]);
         }
-        report("projectile_seta_invariant_stretch", per_ms[0] > 0.0 && std::fabs(per_ms[1] / per_ms[0] - 1.0) < 0.03, "");
+        {
+            rr::WeaponProjectileVertex v[4];
+            ps::BoltShape shape;
+            ps::bolt_vertices(proj_view(pt, 1.6f), core_only, look, bolt_at(1000.f, 1162.f, 96.f), v, &shape);
+            rule_ok = rule_ok && std::fabs(shape.stretch_m / core_only.length_cap_m - 1.f) < 0.01f;
+            std::printf("PROJECTILE case=cap step_ms=96 speed_mps=1162 stretch_m=%.2f cap_m=%.1f\n", double(shape.stretch_m),
+                        double(core_only.length_cap_m));
+        }
+        report("projectile_seta_invariant_stretch",
+               per_ms[0] > 0.0 && std::fabs(per_ms[1] / per_ms[0] - 1.0) < 0.03 && rule_ok, "");
         // (3) the far flag: the lane's green lane carries 32 max(rgb) on the bolt (> 1 at its core), the other lanes and
         // every pixel away from it keep the cleared 0 (COLORWRITEENABLE1 = GREEN).
         {
@@ -2979,7 +2997,10 @@ int main(int argc, char** argv) {
                 std::printf("PROJECTILE case=lod distance_m=%.0f dot=%u length_px=%.2f run_px=%.2f dim=%.3f\n", double(d),
                             unsigned(shape.dot), double(shape.length_px), runs[k], double(shape.dim));
             }
-            report("projectile_dot_past_lod", dots[1] && !dots[0] && runs[1] <= 2.0 && runs[0] > 10.0, "");
+            // inside: the stretch rule's length (min(stretch_k v step, length_cap_m) f / d) less a pixel of tolerance
+            const double inside_px = double(std::min(t.stretch_k * 1162.f * 0.096f, t.length_cap_m)) *
+                                     double(proj_view(pt, 1.6f).m11 * 0.5f * float(pt.h)) / (double(t.lod_dot_m) * 0.9);
+            report("projectile_dot_past_lod", dots[1] && !dots[0] && runs[1] <= 2.0 && runs[0] >= inside_px - 1.0, "");
         }
         // (5) nothing outside the bolt's quad: a diagonal stretched bolt with the glow; every lit pixel lies inside the
         // quad's four raster corners (1 px tolerance).

@@ -46,7 +46,9 @@ struct Family {
 constexpr const char* fighter_tracer_rows[] = {"SS_BULLET_IRE"};
 constexpr unsigned family_count = 1;
 constexpr Family families[family_count] = {
-    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 1.f, 0.3f, 3000.f, 116.f, 2.f}},
+    // stretch_k 0.4 and length_cap_m 30 (coordinator, 2026-11-08, from the fixture's look frames: 1.0 / 116 drew a 48 px
+    // dash at 500 m at 1x and full-cap beams under SETA 6, the bulk the user rejected)
+    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 0.4f, 0.3f, 3000.f, 30.f, 2.f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {

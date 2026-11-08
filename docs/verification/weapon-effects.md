@@ -3205,3 +3205,14 @@ Builds `build-ire-fl` and `build-ire-ap` (RelWithDebInfo, `X3M_DEV_TUNING` ON in
 clamp, refusal, reload rule, row resolution with the shared body and the family refusal). The producing one-liner is
 [`projectile_rows.py`](../../verification/results/native-windows/weapon-effects/projectile_rows.py). Not flown: the
 batch skip, the traversal drop and the look in the game are FL run 59's.
+
+**Defaults retuned (2026-11-08, after the look frames).** The baked `stretch_k` 1.0 → 0.4 and `length_cap_m` 116 → 30
+(`weapon_projectile_family.h`; the coordinator's judgement of the three `fixture-ire-*.png` crops: a 48 px dash at
+500 m at 1x and full-cap beams under SETA 6 read as the rejected bulk). The fixture's stretch checks now derive from the
+constants: the SETA pair runs at the speed whose 6x stretch is 80 % of the cap (625 m/s) and must match
+stretch_k v step f / d within 3 % (6.10 vs 6.14 px at 16 ms, 36.69 vs 36.86 px at 96 ms; 0.3813 / 0.3821 px per game ms,
++0.2 %), the IRE's 1162 m/s at 96 ms stretches exactly to the cap (30.0 m), the inside-LOD bolt at least the rule's
+length (18.17 px run at 2700 m). Retaken natively [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **70 of 70**;
+the 512-bolt budget CPU 67.6 µs, GPU fenced 32.0 µs (fence 10.7 µs), 2.75 % of the frame lit. The look frames,
+regenerated: 200 m / 500 m / 1 km dashes 56 / 19 / 8 px at 1x (16.7 ms) and 215 / 74 / 31 px at SETA 6 (100 ms, the
+30 m cap), the bolts at 0.8 of their speed across the view [M].

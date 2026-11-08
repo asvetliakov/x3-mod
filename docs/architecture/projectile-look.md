@@ -94,7 +94,7 @@ Projection at 1440 rows: f = 1,280 px x m per metre of distance at the launcher 
 | --- | --- | --- |
 | core width | `core_px` at d_ref, so w_core = core_px x d_ref / f = 0.78 m in the world; w_px = w_core f / d; under 1 px it is drawn 1 px wide at radiance x w_px (a far bolt dims, it does not fatten) | 5.0 / 2.0 / 1.0 / 0.33 → 1 px at a third |
 | glow | a Gaussian of σ = `glow_ratio` x core_px / 2 in screen px at d_ref, scaled with distance like the core, floor σ 1.5 px; colour the gun's tint; radiance `glow_gain` x scene white. The wide halo is the bloom's: the core's own energy feeds the extract, so the drawn glow is only the near field | σ 7.5 / 3 / 1.5 / 1.5 px |
-| motion stretch | a segment along v̂ of `stretch_k` x v x Δt_game (cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]), centred on the body origin (section 3), capped at `length_cap_m` metres and at the distance flown since birth (ext+8). As built (mock B, the user's choice) the core's radiance is not spread along it: the dash keeps the core's radiance | 124 / 50 / 25 / 8 px; under SETA 6 (step 100 ms) 116 m, the `length_cap_m` start |
+| motion stretch | a segment along v̂ of `stretch_k` x v x Δt_game (cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]), centred on the body origin (section 3), capped at `length_cap_m` metres and at the distance flown since birth (ext+8). As built (mock B, the user's choice) the core's radiance is not spread along it: the dash keeps the core's radiance | with the baked `stretch_k` 0.4: 50 / 20 / 10 / 3 px; under SETA 6 (step 100 ms, 46 m) capped at `length_cap_m` 30 m: 192 / 77 / 38 / 13 px |
 | nothing behind | no smoke, no fading streak, no history: an IRE fires 6.7 shots/s per gun at 1,162 m/s, so a trail would turn a stream into a beam and persist where the TAA would smear it; a short fading streak is acceptable only for a slug or a kinetic round (MASS, EBC: a burning tracer has one) and is that family's decision | — |
 | hot centre | the core colour is lerp(tint, white, `hot_share` x (1 + k)); the IRE at 0.3 keeps its orange, the HEPT at 0.42 goes pale | — |
 | distance LOD | past `lod_dot_m` the stretch is dropped and the bolt is a 1–2 px dot with the glow at its floor; never a rim, an outline or a flat disc (a decal) | at 3 km a 1 px dot of 8 px length, or a dot past the limit |
@@ -168,10 +168,10 @@ tapped (the list is sector-wide) and culled by the stage.
 | `core_px` | 2.0 | 0.5–8 | core full width (FWHM, px) at d_ref = 500 m, at the live projection |
 | `glow_ratio` | 3.0 | 1–12 | glow σ over the core radius |
 | `glow_gain` | 0.2 | 0–2 | glow radiance in scene white |
-| `stretch_k` | 1.0 | 0–3 | stretch = k x v x Δt_game |
+| `stretch_k` | 0.4 | 0–3 | stretch = k x v x Δt_game (1.0 at first; 0.4 baked after the fixture's look frames, see "Implementation") |
 | `hot_share` | 0.3 | 0–1 | white share of the core colour (x (1 + k) per gun) |
 | `lod_dot_m` | 3000 | 500–20000 | past this view depth (m), no stretch: a dot |
-| `length_cap_m` | 116 | 5–500 | the stretch's cap in metres (116 m: the stretch of SETA 6 at 60 fps; the engine's own 116 m figure is the collision hull, section 3) |
+| `length_cap_m` | 30 | 5–500 | the stretch's cap in metres (116 at first, the stretch of SETA 6 at 60 fps; 30 baked after the look frames; the engine's own 116 m figure is the collision hull, section 3) |
 | `stops` | 2.0 | −2–6 | core radiance 2^(stops + k) x scene white |
 
 The proxy checks the file's last-write time at most once a second on the Present thread (`GetFileAttributesExW`,
@@ -260,8 +260,10 @@ normalised to a largest channel of 1 (the IRE's (121, 82, 39) → (1.0, 0.44, 0.
 row's override, else clamp(log10(d / 300) / 2, 0, 1) over TBullets `+0x44` (IRE 220 → 0). Speed, position, birth and end
 are the live bullet's.
 
-**Constants (the starting values, `Tune` of `fighter_tracer`):** core_px 2, glow_ratio 3, glow_gain 0.2, stretch_k 1,
-hot_share 0.3, lod_dot_m 3000, length_cap_m 116, stops 2. Fixed: reference distance 500 m (`reference_m`, the
+**Constants (the baked values, `Tune` of `fighter_tracer`):** core_px 2, glow_ratio 3, glow_gain 0.2, stretch_k 0.4,
+hot_share 0.3, lod_dot_m 3000, length_cap_m 30, stops 2. stretch_k and length_cap_m were 1.0 and 116 (the section 4
+starting values) until the fixture's look frames: a 48 px dash at 500 m at 1x and full-cap beams of 287–857 px under
+SETA 6, the bulk the user rejected (coordinator, 2026-11-08). Fixed: reference distance 500 m (`reference_m`, the
 tuning numbers' reference, never in the program), 5 view units per metre, glow σ floor 1.5 px (its radiance scaled by
 (σ / 1.5)²), the quad's reach where both Gaussians fall below 1/256 of scene white plus 0.5 px, the far flag
 K = 32, pool 512 entries / 1024 slots / 32 probes, 64 bodies.
@@ -296,12 +298,13 @@ set, it is baked into `families[fighter_tracer].tune` and the file deleted; a re
 
 **Verified (native fixture, ledger "Projectile IRE on FL (2026-11-08)").** The width rule within 0.5 px at 200 m / 500 m /
 1 km / 3 km at two fields of view, SETA invariance, the far flag, the dot, nothing outside the quad, depth occlusion,
-the pool's retire paths, Reset, the 512-bolt budget at 5120x1440 (CPU 67.9 µs, GPU fenced 43.1 µs [M]). Not flown.
+the pool's retire paths, Reset, the 512-bolt budget at 5120x1440 (CPU 67.6 µs, GPU fenced 32.0 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
-sRGB-encoded as the mocks, no bloom, AgX or TAA), cropped to 800 px: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms step: 139 / 48 /
-20 px dashes, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png) (the same at
-100 ms: every stretch at the 116 m cap, 857 / 287 / 120 px), [lod](../../verification/results/projectile-look/fixture-ire-lod.png)
-(3 km, exactly at `lod_dot_m` so still an 8.7 px dash at a third of the radiance, beside 300 m).
+sRGB-encoded as the mocks, no bloom, AgX or TAA), cropped to 800 px: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms step: 56 / 19 /
+8 px dashes, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png) (the same at
+100 ms: every stretch at the 30 m cap, 215 / 74 / 31 px), [lod](../../verification/results/projectile-look/fixture-ire-lod.png)
+(3 km, exactly at `lod_dot_m` so still a 3.5 px dash at a third of the radiance, beside 300 m at 29 px). The bolts
+move at 0.8 of their speed across the view, so the drawn lengths are 0.8 of the stretch's.
 
 ## 8. Options considered and why they lose
 

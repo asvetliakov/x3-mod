@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
 }
 '''
 
-DEFAULTS = [2.0, 3.0, 0.2, 1.0, 0.3, 3000.0, 116.0, 2.0]
+DEFAULTS = [2.0, 3.0, 0.2, 0.4, 0.3, 3000.0, 30.0, 2.0]  # weapon_projectile_family.h, fighter_tracer
 KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'stretch_k', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops']
 
 
@@ -99,7 +99,7 @@ class ProjectileTune(unittest.TestCase):
     def parse(self, text):
         return self.run_mode('parse', text)
 
-    def test_defaults_are_the_design_starting_values(self):
+    def test_defaults_are_the_baked_values(self):
         r = self.parse('{}')
         self.assertEqual(r['ok'], 1)
         self.assertEqual(r['seen'], 0)
