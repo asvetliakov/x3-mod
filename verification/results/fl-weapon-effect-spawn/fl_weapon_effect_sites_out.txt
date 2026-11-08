@@ -36,7 +36,7 @@ witness 0x013f3d, 14: ff 76 40 0f b7 56 4a 8b cf e8 95 f9 ff ff; relocated none;
 AP death B 0x0044acb2 -> 0x00413610: FL has no second site (one E8 caller of 0x013ed0: ['0x0543b3'])
 non-call direct edges to the targets: 0x014440: none; 0x015270: none; 0x0150e0: none; 0x014d90: none; 0x013ed0: none
 
-anchors: layout 57, impact-frame 102, taps 37, spawner 13, flight 21, object 13, muzzle 52, death 81, fade 65; total 441, failures 0
+anchors: layout 57, impact-frame 102, taps 37, spawner 13, flight 21, object 13, muzzle 52, death 81, fade 65, bubble 31; total 472, failures 0; AP twins 22, failures 0
 fire routine writers: [ebp-0x88] (gun slot) ['0x04e4a8'], [ebp-0x24] (bullet index * 0xdb8) ['0x04e548'], [ebp-0x18] (laser) ['0x04e46d']
 damage routine writers: [esp+0x10] ['0x053085', '0x0530f6', '0x053131', '0x053151', '0x05316f', '0x05318d'], [esp+0x14] ['0x05307f', '0x053129', '0x05314d', '0x053196'], EBP ['0x053075', '0x053149', '0x053194', '0x053264', '0x0532a9', '0x0532bd', '0x0532e3', '0x0532fd'], ESI ['0x053083', '0x0530ad', '0x0530b9', '0x0530c0', '0x05319a', '0x05319f', '0x0531d6', '0x05323d', '0x05329f', '0x0532b1', '0x0532db']
 test [..+0x58], imm (immediate: AP count / FL count): 0x1: 0/2, 0x2: 4/5, 0x4: 1/1, 0x6: 1/5, 0x8: 0/1, 0xe: 2/2, 0x20: 1/1, 0x40: 2/4, 0x80: 1/1, 0xa0: 1/1, 0x100: 3/3, 0x200: 2/2, 0x400: 2/3, 0x800: 2/3, 0x1000: 1/2, 0x2000: 1/3, 0x2006: 0/1
