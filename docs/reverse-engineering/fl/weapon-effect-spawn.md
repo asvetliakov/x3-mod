@@ -112,9 +112,20 @@ one dummy dword (`push ecx` at `0x05338b`) and pops it.
 
 **Absorbed at the FL stub.** AP's look rule is `absorbed == 1 && !(class-0 source && flag 0x20)`. On FL, the first half
 of that rule (absorbed and no flag-`0x20` bypass) is exactly the path where ESI = 1 survives to the call. Read it as
-`ESI == 1 && [esp+0x1c] == 0 && EBP == (victim+0x40 & 2 ? min([esp+0x18], 50000) : [esp+0x18])`. The hull path
-leaves EBP = T + h for h > 0 and ESI = h, so one case is ambiguous. That case is a piloted victim with T ≥ 50,000 whose
-hull stage ran with the shield damage fully used and a final hull term of exactly 1 [s paths; i rarity]. A
+`ESI == 1 && [esp+0x1c] == 0 && EBP == (victim+0x40 & 2 ? min([esp+0x18], 50000) : [esp+0x18])`. Proof over
+`0x053070..0x0533b3` (re-traced 2026-11-08 for the port review) [s]: the absorbed path `0x053161..0x05319d` stores
+T (`0x05318d`), clears the remaining (`0x053196`), sets ESI = 1 (`0x05319a`) and, without the flag-`0x20` bypass
+(`0x0531c5` → `0x0531d6`, where ESI becomes the hull argument), jumps to the reload `mov ebp,[esp+0x10]` at `0x0532e3`;
+the piloted `cmovg` at `0x0532fd` then clamps, and no ESI write follows. The hull path never runs that reload: it
+reaches `0x0532e7` with EBP = T + h (`0x053264` reload, `add ebp,esi` `0x0532a9`) or EBP = T with ESI ≤ 0
+(`jle` `0x05326a`), and ESI = h from `0x05323d` / `0x05329f` / `0x0532b1` / `0x0532db`. So ESI == 1 alone is not
+sufficient (h can be 1), but with EBP == T it is unique for an unclamped victim. The one case the clamp hides is a
+piloted victim with T ≥ 50,000 whose hull stage ran with remaining 0 and a final term of 1. Remaining 0 on the hull path
+means the walk drained every shield to 0 (`0x053155`): a shield still holding energy sends the next walk step to the
+absorb branch (`0x05311d` `jg 0x053161`). The port therefore compares EBP with the clamped T and reads that residual
+case as absorbed; the impact handler's drained-shield rule (post-hit shields below 0.5 %, here 0) records it as a hull
+hit, while a genuinely absorbed hit leaves its absorbing shield above 0. Absorbed hits with T ≥ 50,000 on a piloted
+victim (the PSP, IONC, PPC and IBL rows) stay staged shield hits. A
 flag-`0x20` hit through charged shields reads absorbed = 0 on FL but 1 on AP. `role_from` already makes it a hull hit,
 so only the event's `flag_absorbed` bit differs [i]. The shield energies at the stub are post-hit as on AP. The
 recipe of AP section 9 applies unchanged with the FL TShields slot `0x1a83ec`, count `0x1a8354` and the walk
@@ -373,7 +384,6 @@ window**: the object tap `0x0645bd` (crosses `0x0645c0`), which runs only in the
 
 ## Unknown
 
-- Whether the FL stubs' ESI / EBP reads at the impact site meet the 50,000-clamp ambiguity in play (section 2.1).
 - The use of the memory-accounting counters a non-accounted allocation would unbalance (moot once the clone row R'
   is stripped, section 5).
 - The FL script-path callers of `0x015270` (`0x06e5e5`, `0x06e6d5`), which are not traced.

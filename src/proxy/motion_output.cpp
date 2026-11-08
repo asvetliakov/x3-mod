@@ -41,10 +41,8 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "chase_camera.h"
 #include "own_sun_hook.h"
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
-#if !X3M_EDITION_FL
 #include "weapon_effects_patch.h" // X3M_WEAPON_EFFECTS=shields: the impact ring (motion_output_weapon_effects_inc.h)
 #include "weapon_effects_stage.h" // the shield hit's stage
-#endif
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
 #include "../renderer/material_motion.h"
@@ -592,9 +590,7 @@ void MotionOutput::release_resources() noexcept {
     }
     release_engine_plumes(); // the plume stage's programs and DEFAULT buffers (motion_output_engine_plumes_inc.h)
     release_own_sun(); // the own sun's programs and declaration (motion_output_own_sun_inc.h)
-#if !X3M_EDITION_FL
     release_weapon_effects(); // the weapon stage's programs and declarations (motion_output_weapon_effects_inc.h)
-#endif
     release_sky_stars(); // the star batch's programs, declaration and MANAGED buffers (motion_output_sky_stars_inc.h)
     release_sky_nebula(); // the deband pair (motion_output_sky_nebula_inc.h)
     release_engine_shimmer(); // the heat shimmer's programs, block and scratch (motion_output_engine_shimmer_inc.h)
@@ -2516,7 +2512,6 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 } else
                     own_sun_no_probe();
             }
-#if !X3M_EDITION_FL
             // Weapon effects (motion_output_weapon_effects_inc.h): armed at every resolve (Present latches the ownership
             // for the next frame's impact hooks); drawn when the ring holds a stage-owned record, chained after the
             // callback set above (the plumes, or the own sun with the plumes). A cut clears the stage-owned records.
@@ -2532,7 +2527,6 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                     weapon_callback_set_ = true;
                 }
             }
-#endif
             // Phase timing of the run (telemetry only): the pass stamps its own
             // five phases; the whole call is timed here and nests them.
             taa_->configure_timing(telemetry_);
@@ -2555,13 +2549,11 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 taa_->invalidate();
             } else
                 hr = taa_->run(in, &out);
-#if !X3M_EDITION_FL
             // The weapon stage's ownership for the next frame's hooks (note 2.6, review F8): armed, the resolve completed,
             // and the callback (when set) ran and drew or had nothing to draw.
             if (weapon_requested_)
                 weapon_owned_ = weapon_effects::core::stage_owned(weapon_armed_, SUCCEEDED(hr), weapon_callback_set_,
                                                                   weapon_callback_ok_);
-#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
             fixture_shimmer_after_resolve(hr, out.used_history, out.color);
 #endif
@@ -4303,11 +4295,9 @@ void MotionOutput::before_reset() noexcept {
     weapon_attach_failed_ = weapon_failed_out_ = false;
     weapon_disarmed_until_ = 0;
     weapon_failures_ = 0;
-#if !X3M_EDITION_FL
     if (weapon_requested_) {
         weapon_effects::clear_owned();
     }
-#endif
     own_sun_lane_ = nullptr;
     own_sun_attach_failed_ = own_sun_failed_out_ = false;
     own_sun_disarmed_until_ = 0;
@@ -13007,9 +12997,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_material_strength_inc.h"
 #include "motion_output_engine_shimmer_inc.h"
 #include "motion_output_own_sun_inc.h"
-#if !X3M_EDITION_FL
 #include "motion_output_weapon_effects_inc.h"
-#endif
 namespace {
 // Sky stars, the sky_stars_match row only (invariant 1): the level-0 size, format and level count of the star texture.
 void sky_stars_texture_desc(IDirect3DBaseTexture9* texture, unsigned* width, unsigned* height, unsigned* levels,

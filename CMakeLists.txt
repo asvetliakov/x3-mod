@@ -188,6 +188,9 @@ else()
   target_sources(d3d9 PRIVATE src/engine/fl/sun_occlusion_fl.cpp)
   # The engine-effects call redirects (docs/architecture/engine-effects-modern.md, "FL port, step 1").
   target_sources(d3d9 PRIVATE src/engine/fl/engine_effects_fl.cpp)
+  # The weapon-effects hooks: one source pair for both editions, the FL build claims X3FL.exe's seven calls at module
+  # base + RVA through FL entry shims (src/engine/fl/weapon_effects_sites_fl.h; docs/architecture/weapon-effects.md 2.10).
+  target_sources(d3d9 PRIVATE src/proxy/weapon_effects_patch.cpp src/proxy/weapon_effects_hook.cpp)
   # The small-parts cull stub and the two one-byte LOD patches (docs/verification/cull-small-parts.md, "FL port").
   target_sources(d3d9 PRIVATE src/engine/fl/cull_small_parts_fl.cpp src/engine/fl/terran_station_lod_fl.cpp
     src/engine/fl/lod_occlusion_fl.cpp)

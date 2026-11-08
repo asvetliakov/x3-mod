@@ -185,7 +185,13 @@ FL_EXTERN_ROOTS = [
     # ship steering and avoidance (ship_steering_fl.cpp, ship_avoidance_fl.cpp): leaf/loop stubs, handlers, warn-test stub
     '_x3m_fl_ship_steering_a0_stub', '_x3m_fl_ship_steering_a1_stub', '_x3m_fl_ship_steering_a2_stub',
     '_x3m_fl_ship_steering_b_stub', '_x3m_fl_ship_steering_enter', '_x3m_fl_ship_steering_clamp',
-    '_x3m_fl_ship_avoid_e_stub', '_x3m_fl_ship_avoid_suppress']
+    '_x3m_fl_ship_avoid_e_stub', '_x3m_fl_ship_avoid_suppress',
+    # the weapon-effects FL entry shims and their handlers (src/proxy/weapon_effects_hook.cpp, X3M_EDITION_FL) inside the
+    # engine's damage, impact, sector-update, fire and kill routines; integer only, no call out
+    '_x3m_weapon_effects_stub_impact_fl', '_x3m_weapon_effects_stub_tap_fl', '_x3m_weapon_effects_stub_bolt_tap_fl',
+    '_x3m_weapon_effects_stub_muzzle_fl', '_x3m_weapon_effects_stub_flight_fl', '_x3m_weapon_effects_stub_death_fl',
+    '_x3m_weapon_event_fl', '_x3m_weapon_tap_fl', '_x3m_weapon_bolt_tap_fl', '_x3m_weapon_muzzle_fl',
+    '_x3m_weapon_flight_fl', '_x3m_weapon_death_fl']
 EDITION_ROOTS = {'ap': AP_EXTERN_ROOTS, 'fl': FL_EXTERN_ROOTS}
 # The lock view without the FNSAVE/FRSTOR shell (src/ownership/d3d9_ownership.cpp,
 # route-per-draw-cost.md lever 2a): called only from the draw hooks' route, it

@@ -19,17 +19,19 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "7a9a10b575ce009ec53d4238f055591df62ba2bf",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_core.h"
+    ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "dfc060f3ad44ce0e1346d72827d178762ce2a8357a14222e1ecaa5c1f98d72a7",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "3ad4a58ff2a835743c5f91691eae32e8ae817f8b19d4d08611662ffe520fe16e",
-      "src/proxy/weapon_effects_patch.cpp": "edbf21c84ce4d4f3fa4e960dca5b761795314ba1d08136b958c6e27c435bb39d",
-      "src/proxy/weapon_effects_patch.h": "f4f1f585ba76d10eb8f6c533c28c72f3dc16312148804e89da2104d6ca4d3bdd",
-      "src/proxy/weapon_effects_hook.cpp": "7260056d88db5fa857be87b72d6d4a86bae6ec9305f92ac1f44bb0b2aa78f95c",
-      "src/proxy/weapon_effects_core.h": "e6d0a82b52c5d625a2b1e4c06dd43dac52ba1ce170578a42a4ebd60bef6d0cbd",
+      "src/proxy/weapon_effects_patch.cpp": "a2cb23dfc56d7b4c2b8276be88b069ac8b097640e94cb25a9fe53d5daf1855c0",
+      "src/proxy/weapon_effects_patch.h": "fb84599896a7ec079e6afe7e9ce1381f74179beb7a409527b3761f93769f1341",
+      "src/proxy/weapon_effects_hook.cpp": "fe2a71dc300eb802544408894088d06105e5943aa9950fd3069214cc6d3f8176",
+      "src/proxy/weapon_effects_core.h": "562685cbef3f21b907b1bef33b54ec6abf7d44a36aea6f0a1e47d5f70cdff711",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_bolt_sites.h": "8d789cfd70563535977abe9ef7962c5a1c64d47f50151f7977724c205cd7f1a9",
@@ -160,7 +162,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "7b4ab2648e4d08ac7e950ab9a386d4cd7cbed704c1a16e0f8b7c76ceb365acb2"
+    "executable_sha256": "936e7fadff40c0ed036e96ba9d9c092da00caa36dc2731af7753fcd3f47b5d40"
   },
   "host": {
     "name": "native-windows",
@@ -850,8 +852,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00888780",
     "esp_callee": "00888774",
-    "return": "00eb6d8a",
-    "site": "00eb6d85"
+    "return": "00f56d8a",
+    "site": "00f56d85"
   },
   "stack_depth": {
     "bytes": 236,
@@ -1178,9 +1180,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.2,
-    "median_us": 17.3,
-    "worst_us": 27.4,
+    "best_us": 17.1,
+    "median_us": 17.2,
+    "worst_us": 24.9,
     "target_us": 30
   },
   "overflow": {
@@ -1196,9 +1198,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.2,
+    "best_us": 55.1,
     "median_us": 55.3,
-    "worst_us": 55.9,
+    "worst_us": 56.5,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1206,8 +1208,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005ead98",
     "esp_callee": "005ead88",
-    "return": "00eb7cb7",
-    "site": "00eb7cb2",
+    "return": "00f57cb7",
+    "site": "00f57cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },

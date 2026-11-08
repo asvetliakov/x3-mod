@@ -1,0 +1,533 @@
+{
+  "fixture": "weapon_effects_hook_fl",
+  "edition": "fl",
+  "bottle": null,
+  "game_launched": false,
+  "sources": [
+    "verification/probe/weapon_effects_hook_fixture_fl.cpp",
+    "verification/probe/weapon_effects_hook_fixture_shim.h",
+    "verification/probe/build_weapon_effects_hook_fl.py",
+    "src/proxy/weapon_effects_patch.cpp",
+    "src/proxy/weapon_effects_patch.h",
+    "src/proxy/weapon_effects_hook.cpp",
+    "src/proxy/weapon_effects_core.h",
+    "src/engine/fl/weapon_effects_sites_fl.h",
+    "src/proxy/weapon_effects_bolt.h",
+    "src/proxy/weapon_effects_bubble.h",
+    "src/proxy/weapon_effects_table.h",
+    "src/proxy/engine_patch.cpp",
+    "src/proxy/engine_patch.h",
+    "src/engine/fl/executable_identity_fl.h"
+  ],
+  "source": {
+    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_core.h",
+      "verification/probe/build_weapon_effects_hook_fl.py",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp"
+    ],
+    "sha256": {
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "31d2c0a7def4032710ad233e0edbaf82307528f47d6e9d3594fd7e336637125b",
+      "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
+      "verification/probe/build_weapon_effects_hook_fl.py": "2aef9b042968afb7319dc1a1b6781e63395df4ed1255cf306cb8b4cddcfc4ee5",
+      "src/proxy/weapon_effects_patch.cpp": "a2cb23dfc56d7b4c2b8276be88b069ac8b097640e94cb25a9fe53d5daf1855c0",
+      "src/proxy/weapon_effects_patch.h": "fb84599896a7ec079e6afe7e9ce1381f74179beb7a409527b3761f93769f1341",
+      "src/proxy/weapon_effects_hook.cpp": "fe2a71dc300eb802544408894088d06105e5943aa9950fd3069214cc6d3f8176",
+      "src/proxy/weapon_effects_core.h": "562685cbef3f21b907b1bef33b54ec6abf7d44a36aea6f0a1e47d5f70cdff711",
+      "src/engine/fl/weapon_effects_sites_fl.h": "14e73332927de57da9d23ad5dfb14446cc067747cd98bf227b09c17ae6eb1a41",
+      "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
+      "src/proxy/weapon_effects_bubble.h": "c918f799b41611d964c0b64bb9a0cf5f924bccda63eb367f5edcde379dfe5087",
+      "src/proxy/weapon_effects_table.h": "00d0e8dd93b18f6223d70d931b4e738afed960b6e5b8f6d1e1bb671c741648c5",
+      "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
+      "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
+      "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82"
+    }
+  },
+  "build": {
+    "binary": "build/verification/weapon-effects-hook-fl/weapon_effects_hook_fixture_fl.exe",
+    "toolchain": "i686-w64-mingw32-g++ (GCC) 16-posix",
+    "audit": {
+      "handler_undefined": [],
+      "handler_x87": [],
+      "handler_calls": {
+        "_x3m_weapon_event_fl": [],
+        "_x3m_weapon_tap_fl": [],
+        "_x3m_weapon_bolt_tap_fl": [],
+        "_x3m_weapon_muzzle_fl": [],
+        "_x3m_weapon_flight_fl": [],
+        "_x3m_weapon_death_fl": []
+      },
+      "handler_instructions": {
+        "_x3m_weapon_event_fl": 1244,
+        "_x3m_weapon_tap_fl": 45,
+        "_x3m_weapon_bolt_tap_fl": 498,
+        "_x3m_weapon_muzzle_fl": 226,
+        "_x3m_weapon_flight_fl": 20,
+        "_x3m_weapon_death_fl": 569
+      },
+      "handler_frame_bytes": 200,
+      "stubs": {
+        "_x3m_weapon_effects_stub_impact_fl": [
+          "pushf",
+          "push",
+          "push",
+          "push",
+          "cld",
+          "push",
+          "push",
+          "push",
+          "push",
+          "lea",
+          "push",
+          "call",
+          "add",
+          "test",
+          "pop",
+          "pop",
+          "pop",
+          "jne",
+          "popf",
+          "jmp",
+          "popf",
+          "xor",
+          "ret"
+        ],
+        "_x3m_weapon_effects_stub_tap_fl": [
+          "pushf",
+          "push",
+          "push",
+          "push",
+          "cld",
+          "lea",
+          "push",
+          "call",
+          "add",
+          "pop",
+          "pop",
+          "pop",
+          "popf",
+          "jmp"
+        ],
+        "_x3m_weapon_effects_stub_bolt_tap_fl": [
+          "pushf",
+          "push",
+          "push",
+          "push",
+          "cld",
+          "push",
+          "call",
+          "add",
+          "pop",
+          "pop",
+          "pop",
+          "popf",
+          "jmp"
+        ],
+        "_x3m_weapon_effects_stub_muzzle_fl": [
+          "pushf",
+          "push",
+          "push",
+          "push",
+          "cld",
+          "push",
+          "push",
+          "lea",
+          "push",
+          "call",
+          "add",
+          "test",
+          "pop",
+          "pop",
+          "pop",
+          "jne",
+          "popf",
+          "jmp",
+          "popf",
+          "xor",
+          "ret"
+        ],
+        "_x3m_weapon_effects_stub_flight_fl": [
+          "pushf",
+          "push",
+          "push",
+          "push",
+          "cld",
+          "lea",
+          "push",
+          "call",
+          "add",
+          "test",
+          "pop",
+          "pop",
+          "pop",
+          "jne",
+          "popf",
+          "jmp",
+          "popf",
+          "xor",
+          "ret"
+        ],
+        "_x3m_weapon_effects_stub_death_fl": [
+          "pushf",
+          "push",
+          "push",
+          "push",
+          "cld",
+          "push",
+          "push",
+          "push",
+          "lea",
+          "push",
+          "call",
+          "add",
+          "cmp",
+          "pop",
+          "pop",
+          "pop",
+          "je",
+          "popf",
+          "jmp",
+          "popf",
+          "xor",
+          "ret"
+        ]
+      },
+      "stub_ok": {
+        "_x3m_weapon_effects_stub_impact_fl": true,
+        "_x3m_weapon_effects_stub_tap_fl": true,
+        "_x3m_weapon_effects_stub_bolt_tap_fl": true,
+        "_x3m_weapon_effects_stub_muzzle_fl": true,
+        "_x3m_weapon_effects_stub_flight_fl": true,
+        "_x3m_weapon_effects_stub_death_fl": true
+      },
+      "windows_match_exe": {
+        "impact": true,
+        "tap1": true,
+        "tap2": true,
+        "bolt_tap": true,
+        "muzzle": true,
+        "flight": true,
+        "death": true
+      },
+      "module_imports_own_protect": [],
+      "engine_patch_lock_cmpxchg8b": 1
+    },
+    "executable_sha256": "c885271624a1a560f7544c4d957a558a48edc3cc6564258f3839942d3fe9a0df"
+  },
+  "host": {
+    "name": "native-windows",
+    "windows": {
+      "version": "10.0.26300.9818",
+      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+    },
+    "adapter": {
+      "description": null,
+      "driver": null
+    },
+    "interop": "/proc/sys/fs/binfmt_misc/WSLInterop",
+    "d3d9_dll": null,
+    "d3dx9_37_dll": null
+  },
+  "run": {
+    "exit_code": 0,
+    "result": {
+      "checks": 56,
+      "failures": 0,
+      "faults": 1,
+      "verdict": "PASS"
+    },
+    "log": "build/verification/weapon-effects-hook-fl/fixture.log"
+  },
+  "checks": [
+    {
+      "name": "image_64k_aligned",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "window_hashes_measured",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "window_calls_reach_callees",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_esi1_total_matches",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_esi0",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_hull_total_differs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_remaining_nonzero",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_piloted_clamped_total",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_piloted_unclamped_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_piloted_hull_term_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_piloted_below_clamp",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_site_tag_other",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_site_tag_area",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "every_window_bit_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "windows_restored_after_flips",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "bolt_tap_fixup_other_base_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "muzzle_fixup_other_base_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "installed_all_sites_active",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "globals_bound_base_plus_rva",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "write_paths_atomic_except_object_tap",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "shutdown_restores_all",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "rollback_restores_all",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "init_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "init_shields_installs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "init_logs_one_row_per_site",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reinstall_observe_for_runs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_forward_caller_kept",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_forward_reaches_callee_ecx_edx_return",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_forward_callee_eflags",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_forward_records_shield_hit_absorbed",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap1_hit_pos_slots_match",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap1_pos_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap1_hit_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap2_hit_pos_slots_match",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap2_pos_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap2_hit_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "reinstall_family_for_runs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_skip_no_callee_eax_zero",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_skip_record_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_piloted_clamped_absorbed_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_ecx_edx_swapped_differs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_piloted_drained_shields_hull_hit",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "object_tap_forwards_ecx",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "object_tap_handler_records_ecx_object",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "muzzle_forward_reaches_callee_ship",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "muzzle_skip_no_callee",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "muzzle_handler_slot_row_pos_orient",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "flight_forward_reaches_callee_bullet",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "flight_skip_no_callee",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_forward_reaches_callee_obj_killer_arg4",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_forward_records_other_tag_reason_killer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_skip_no_callee_eax_zero",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "fl_bubble_walk_reads_node_body_0x144",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "fl_node_body_offset",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "late_claim_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "fixture_stack_margin",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "check_count": 56,
+  "failed_checks": [],
+  "stack_depth": {
+    "bytes": 244,
+    "margin": 3072,
+    "site": 0
+  },
+  "stack_ok": true,
+  "passed": true
+}
