@@ -1728,6 +1728,52 @@ functions). The own fire chase dump at 5120x1440 (`--dump`, `X3M_WEAPON_EFFECTS_
 plain record restored after it): at 50 ms one muzzle, its disc 40.3 px, the star for the cone; the 4x crop by
 `verification/results/bolt-muzzle-look/muzzle_crop.py` (the BOLT_DUMP row's `muzzle_x` / `muzzle_y`), kept local.
 
+### Muzzle rework (2026-11-08)
+
+The muzzle items of the visual re-review ([bolt-muzzle-look.md](../architecture/bolt-muzzle-look.md) 11 #1, #7, #8, #9,
+#11; the laws in its section 3 with the old values): every class draws a 0.25 w white core [0.5–0.8 w], scaled with its
+body when the shooter's radius caps the body, inside a structured body at E 4 [cone 1.2, star 2]. The body is the cone
+across the view, a four-arm star of cone sprites across the gun axis end-on, in the own cockpit and for ballistic and
+flak, each arm 0.3 of its length wide [a fixed 0.12 w], or for plasma the noise bloom at E 3 [1.2]. The flash lives
+max(min(law, 0.5 refire period), 3 steps) under (1 − x)² [linear]. Floors at 1440 rows: core 6 px, longest arm, cone and
+bloom 12 px. The own cockpit draws disc and star only, its longest arm ≤ 48 px. Puff s0 0.5 [0.3]. An orb or wave is
+plasma before the flak flag. Stage `src/proxy/weapon_effects_bolt_stage.h` (`muzzle_elements`, `muzzle_class_of`,
+`cone_quad`'s floor and width share, `disc_quad`'s floor), constants `core::muzzle`, the lab's Muzzle tab mirrored, no
+shader change.
+
+Lab, two rounds (`batch_shots.py` on the muzzle-only plan, 336 frames; scripts and the per-weapon numbers in
+`verification/results/bolt-muzzle-look/muzzle-rework-2026-11-08/`, `muzzle_rework_lab.csv` [M]). Round 1 left a
+corvette or capital gun on the lab fighter a ball: the core was capped but its body was capped harder. Round 2 scales
+the core with its body and sets arms 0.22 → 0.3. In the own chase view the stock IRE's core is 16.7 px inside a 146 px
+star [40 px disc], and the second gun is dark half a period later. The EBC reads as a star with a dark puff, HEPT and PSP
+as a noise bloom with a hot point, PPC, GAUSS and FLAK as a core in a star. At 600 m every gun is a 6 px core in a 12 px
+star [2–3 px disc]. The cockpit muzzle sits outside the lab's centre window (unknown 9).
+
+Native host (`run_weapon_effects.py --host native`, `summary.json` at `d3adfe275`-dirty, RTX 5070 Ti), the muzzle rows:
+
+| Gate | Result [M] | Bound (old) |
+| --- | --- | --- |
+| `muzzle_not_a_lamp` | hot share 0.029 (IRE, 789 lit px), 0.029 (PAC, 1307 px); the disc alone 0.242 / 0.251 | ≤ 0.15 (new) |
+| `muzzle_stream_not_steady` | stock PBE 19.23/s, 63 frames: 15 at ≥ half a fresh peak = 0.238; any element drawn 0.921 (the three-frame floor); mean peak 0.295 of fresh | ≤ 0.6 (new) |
+| `muzzle_floors_at_range` | IRE at 600 m, 1440 rows: core 6.0 px, arm 12.0 px, cone 12.0 px | ≥ 6 / 12 / 12 (new) |
+| `muzzle_cockpit_disc_and_star` | IRE, MD, GKE: 1 disc, 4 arms, 0 cones, glows, vents, puffs; arm 36.0 / 36.0 / 15.0 px at 1080 | ≤ 36 px at 1080 (new) |
+| `muzzle_class_orb_before_flak` | PSP orb 0x2100 → plasma, PSG wave → plasma, FLAK_ALPHA → flak | (PSP was flak) |
+| `muzzle_size_per_class` | cores within the law (IRE 6.17 / 6.25 px, flak scaled with its capped star 12.75 / 12.5 px, floors 2.25 px at 1080); own-star arms' lit root width 0.249–0.277 of their length | ± 0.5 px or 3 %; arms ≥ 0.15 (new) [floor 1.5 px] |
+| `muzzle_smoke_surface_only` | lane 1 m in front 0.944 [0.967]; on the gun's surface 0.731 | ≥ 0.48; on the surface ≤ 0.85 (new) [≥ 0.68, < 0.999] |
+| `muzzle_relight_resets_not_adds` | 4.7969 = 4.7969, the core alone | ± 1 % |
+| `muzzle_endon_star_side_cone` | 4 arms, moment ratio 5.44 [2.13] | ≥ 2 |
+| `bolt_budget_512_bolts_20_muzzles_5120` | 96.2 µs fenced (bolts 76.5, muzzles 19.7, 85 muzzle sprites [57]); timestamps 44.4 µs, muzzles 2.6 | ≤ 100 [the record at `6dd25f264`: 101.1, failing] |
+
+Every other muzzle row is unchanged and passing (life, breathing, broadside 1.278, heavy, cockpit gain, placement,
+axis, light, ownership). D3D fixture 358 checks, 6 failures, all `death_big_*` (tier sizes, pre-roll and hull light,
+shock shell, halo cap, light and fade, eye inside; the big-tier bodies render 0). The boom stage and its cases do not
+include the muzzle code. The record these passed in (`6dd25f264`) predates the three explosion commits since, so the
+failures belong to the explosions step [I, not rerun at `d3adfe275` clean]. Hook fixture 147 checks, 0 failures. Host
+`test_weapon_effects_*` 101 run, 2 failures, the same `death_big_*` rows read from the record. The lab test's cockpit
+light assertion was changed to none in the cockpit. `check_no_x87.py --edition ap` PASS (1181 reachable functions);
+`build-muzzle` (ap) 0 warnings; `generate_weapon_effects_programs.py --check`, `generate.py --check` and the lab's
+`--check` PASS.
+
 ## Explosions (step 3)
 
 2026-11-07, uncommitted on the `effects` branch at `d0c96e637` (merged into the worktree; that commit's amendment of

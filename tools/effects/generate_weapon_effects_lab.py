@@ -158,9 +158,10 @@ NAMESPACES = {
              'spark_len_lo', 'spark_len_hi', 'spark_long_every', 'spark_long_lo', 'spark_long_hi', 'spark_long_w',
              'spark_long_e', 'spark_ref_px', 'spark_t0', 'spark_birth_x', 'spark_birth_now', 'spark_in_x', 'spark_in0',
              'spark_cool_pow'),
-    'muzzle': ('mode', 'class_disc', 'disc_halo_w', 'disc_halo_e', 'class_flame', 'class_star', 'star_arms', 'star_width_w',
+    'muzzle': ('mode', 'class_disc', 'disc_halo_w', 'disc_halo_e', 'class_flame', 'class_star', 'star_arms', 'arm_width',
                'star_e', 'bloom_w', 'bloom_e', 'vent_w', 'vent_ms', 'vent_e', 'afterglow_ms', 'afterglow_e', 'rise_ms',
                'class_smoke', 'class_glow', 'class_life', 'cap_core_rs', 'cap_flame_rs', 'endon_cos', 'breath', 'cluster_n0',
+               'refire_share', 'flash_pow', 'floor_disc_px', 'floor_arm_px', 'cockpit_body_px',
                'record_capacity')}
 # The hull-impact class rule (docs/architecture/hull-impact-classes.md section 2; the DLL's core::hull_class_from, the
 # census script verification/results/weapon-effects/hull_class_census.py) on a catalogue row, then the override file's

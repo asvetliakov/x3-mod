@@ -183,20 +183,31 @@ phase can step by most of a spacing per frame (a crawl); that is motion, and cov
 
 Every element is in the shooter's frame (`&pos`, orientation from EDX, re-posed through the owner's rows each frame),
 in the stage sprite batch, occlusion class 2. Sizes are capped by the shooter's radius R_s = `obj+0xa4` / 500: core and
-star ≤ 0.25 R_s, flame and vents ≤ 1.0 R_s. Life is in game ms, effective max(life, 3 step_game), linear fade with the
-±20 % stagger; m columns are fighter (w 2.2) / capital (w 18.5).
+star ≤ 0.25 R_s, flame and vents ≤ 1.0 R_s; when a cap shortens the body (the star's arm, the cone, the bloom), the
+core shrinks by the same factor, so core / body stays the law's ratio. Life is in game ms; the flash (core, cone or star,
+bloom, glow) lives max(min(life, 0.5 x the refire period), 3 step_game) and fades as (1 − x)², x = age / life, with the
+±20 % stagger; vents, afterglow and smoke keep their own lives (the first two also capped by the refire period); m
+columns are fighter (w 2.2) / capital (w 18.5).
+
+**Rework of 2026-11-08** (section 11 #1, #7, #8, #9, #11; built, see the ledger's "Muzzle rework (2026-11-08)"): every
+class draws a small hot white core inside a structured body that carries the size at the core's radiance. Old values in
+brackets.
 
 | Class (cue) | Core | Flame / shape | Secondary | Smoke (scorch state, surface only) | Hull glow (2.8 primitive) | Life |
 | --- | --- | --- | --- | --- | --- | --- |
-| energy (default, ion) | disc 0.6 w (1.3 / 11 m), E 4, h 0.7; halo σ 0.4 w at 0.6 | forward cone along the gun axis, length 2 w (4.4 / 37 m), base 0.6 w, radius linear to 0, tint E 1.2 x (1 − s)^1.5 | — | — | R 3 w, E 0.6, tint | 120 ms |
-| ballistic (ammunition `0x40`) | disc 0.5 w, lerp(t, white, 0.7) | the hull-burst star (4 unequal arms {1, 0.55, 0.8, 0.45} x 1.2 w, rotated per shot) + cone 1.2 w | — | puff 0.6 → 1.2 w over 400 ms, s0 0.3, drifting 0.5 w along the gun axis | R 2.5 w, E 0.6, tint | 60 ms |
-| plasma (orb / wave body) | disc 0.8 w, h 0.6 | a noise bloom: the hull-burst body law (two octaves, erosion, lobes) in the tint, R 0.5 → 1.0 w | — | — | R 3.5 w, E 0.8, tint | 180 ms |
-| heavy (k ≥ 0.91) | disc 0.8 w, white, then afterglow: E ≤ 1.2 fading from white to t to 250 ms | cone 3 w, base 0.8 w | two vent jets 1.2 w across the gun axis (the orientation's side row, ±), 150 ms | puff 0.8 → 1.6 w over 600 ms, s0 0.4 | R 4 w, E 1.0, tint | 80 ms flash, 250 ms afterglow |
-| flak (bullet flag `0x100` / `0x1000`) | disc 0.5 w, lerp(t, white, 0.5) | star 0.8 w | — | puff 0.6 → 1.2 w over 400 ms, s0 0.3 | R 2 w, E 0.5, tint | 80 ms |
+| energy (default, ion) | disc 0.25 w, white (h 1), E 4 [0.6 w, h 0.7]; halo 0.4 w at 0.6 | forward cone along the gun axis, length 2 w (4.4 / 37 m), base 0.6 w, radius linear to 0, tint E 4 x (1 − s)^1.5 [E 1.2]; end-on and in the own cockpit the four-arm star of the cone's length | — | — | R 3 w, E 0.6, tint | 120 ms |
+| ballistic (ammunition `0x40`) | disc 0.25 w, white [0.5 w, lerp(t, white, 0.7)] | the four-arm star ({1, 0.55, 0.8, 0.45} x 1.2 w, rotated per shot, E 4 [2], each arm 0.3 of its length wide at its root [a fixed 0.12 w]) + cone 1.2 w | — | puff 0.6 → 1.2 w over 400 ms, s0 0.5 [0.3], drifting 0.5 w along the gun axis | R 2.5 w, E 0.6, tint | 60 ms |
+| plasma (orb / wave body, before the flak flag [after it]) | disc 0.25 w, white [0.8 w, h 0.6] | a noise bloom: the hull-burst body law (two octaves, erosion, lobes) in the tint, R 0.5 → 1.0 w, E 3 [1.2] | — | — | R 3.5 w, E 0.8, tint | 180 ms |
+| heavy (k ≥ 0.91) | disc 0.25 w, white [0.8 w], then afterglow: E ≤ 1.2 fading from white to t to 250 ms | cone 3 w, base 0.8 w, E 4 [1.2]; end-on and in the cockpit the star | two vent jets 1.2 w across the gun axis (the orientation's side row, ±), 150 ms | puff 0.8 → 1.6 w over 600 ms, s0 0.4 | R 4 w, E 1.0, tint | 80 ms flash, 250 ms afterglow |
+| flak (bullet flag `0x100` / `0x1000`, not an orb or wave) | disc 0.25 w, white [0.5 w, lerp(t, white, 0.5)] | star 0.8 w, E 4, arms 0.3 wide [2, 0.12 w] | — | puff 0.6 → 1.2 w over 400 ms, s0 0.5 [0.3] | R 2 w, E 0.5, tint | 80 ms |
 | missile launch | not built: missiles do not fire through `0x00445170` (only class 7 lasers do [S, spawn §2]); the launch is carried by the missile's own plume until a launch site is traced (unknown 8) | | | | | |
 
-Own fighter in the chase view: an energy disc of 1.3 m at 27 m is 46 px, its cone 156 px (target ≥ 40 px met [M arithmetic]);
-an enemy fighter's muzzle at 600 m is the 3 px floor plus halo, with the glow on its nose.
+Every star is four cone sprites (kind 4) across the gun axis in the plane of the gun's side and up rows [the energy and
+heavy end-on star was one hull-burst star sprite, kind 3, at its 0.10 width]. **Floors** at 1440 rows (scaled by the
+rows): the core's diameter ≥ 6 px [3 px], the star's longest arm, the cone and the bloom's diameter ≥ 12 px [none; the
+arms' 6 px star floor of the kind-3 star end-on only]. Own fighter in the chase view: the energy core of 0.47 m at 27 m
+is 17 px, its end-on star 146 px [disc 46 px, star 100 px] [M, lab detail rows]; an enemy fighter's muzzle at 600 m is a
+6 px core in a 12 px star [a 2–3 px disc].
 
 ### 3.2 Laws [C]
 
@@ -205,11 +216,17 @@ an enemy fighter's muzzle at 600 m is the 3 px floor plus halo, with the glow on
   saturate(Δt_shot / (3 step_game)). At 1x a 10 Hz gun pulses visibly per shot; when shots arrive faster than three
   frames (SETA 6 at 10 Hz: one per frame) the flame is steady, so nothing alternates frame to frame.
 - **View rule (2026-11-07, the chase frames):** a gun axis within 30° of the eye ray (`endon_cos`) collapses the cone
-  into its disc, so energy and heavy muzzles draw the hull burst's four-arm star (sprite kind 3, unequal arms
-  `star_arm_len`, A = the cone's length, `star_e`, the cone's life) about the disc instead; ballistic and flak keep their
-  own star. An own muzzle in the chase view keeps structure; a gun across the view keeps its cone.
-- **Own cockpit:** flash, flame and glow x `own_cockpit_gain` 0.35 (weapon-look 2.9); the smoke puff is not drawn in
-  the cockpit (it would sit on the camera).
+  into its disc, so energy and heavy muzzles draw the four-arm star (since 2026-11-08 four cone arms across the gun axis,
+  `star_arms`, A = the cone's length, `star_e`, the cone's life; before, the hull burst's star sprite kind 3) about the
+  disc instead; ballistic and flak keep their own star. An own muzzle in the chase view keeps structure; a gun across the view keeps its cone.
+- **Own cockpit (2026-11-08 #7):** disc and star only at `own_cockpit_gain` 0.35 (weapon-look 2.9): no cone (energy and
+  heavy draw the star of the cone's length), no glow, no vents, no smoke (plasma keeps its bloom as its body); the whole
+  muzzle scaled so its longest arm (the bloom's radius) is at most 48 px at 1440 rows (`cockpit_body_px`) [flash, flame
+  and glow x 0.35, the cone a 700 px streak and the glow colouring the view].
+- **A stream, not a steady light (2026-11-08 #1):** the flash lives at most 0.5 of the refire period (the record's
+  t0 − prev_t0, game ms) above the three-frame floor, under the (1 − x)² envelope; a 19 shots/s gun at 1x (period 52 ms,
+  life 48 ms by the floor) is at half its fresh peak on about a quarter of the frames [linear fade over 120 ms: lit on
+  every frame, IRE 0.80 to PBE 1.0 of the time].
 - **Heavy rise:** the heavy cone grows to its length over its first 40 ms game (three-frame floor); there is no
   pre-glow, since nothing precedes the shot at the site.
 - **Capital broadside:** per shooter, a muzzle's glow and halo take s(N) = 1 / (1 + (N − 1) / 2.5), N = the shooter's
@@ -328,12 +345,17 @@ On 1080p dumps of the in-place draw through the production bolt program into the
 | `bolt_over_bright_hull_contrast` | the stream over a 1.0 hull, through the production resolve | core / hull ≥ 3 : 1 after the resolve |
 | `bolt_convergent_barrage` | eight capital guns on one point at 2 km | peak ≤ 8 linear before AgX (else the halo cluster kill step) |
 | weapon-look 3.3's bolt rows | resolve survival, far flag, tap, col 19 skip, VB, cockpit gate | as 3.3 (≥ 0.95 at 0 / 4 / 8 px; ≤ 1 code after 8 frames; ≥ 0.9 over a far hull) |
-| `muzzle_size_per_class` | each class on a fighter (F3 camera) and a capital at 600 m | disc / star / cone extents within 0.5 px or 3 % of the table; ≤ the R_s caps |
+| `muzzle_size_per_class` | each class on a fighter (F3 camera) and a capital at 600 m | disc / star / cone extents within 0.5 px or 3 % of the table (the core scaled with a capped body; floor 6 px at 1440 rows [3 px]); ≤ the R_s caps; each own-star arm's lit root width (0.83 of its base) ≥ 0.15 of its length (2026-11-08) |
 | `muzzle_life_min_frames` | each class at 1x, SETA 6 and 10 | lit on max(life, 3 frames) frames; heavy afterglow ≤ 1.2 after 80 ms |
-| `muzzle_relight_resets_not_adds` | two shots 30 ms apart | peak = a single shot's (± 1 %) |
+| `muzzle_relight_resets_not_adds` | two shots 30 ms apart, the core alone (2026-11-08: the star's rotation and breathing change per shot) | peak = a single shot's (± 1 %) |
 | `muzzle_breathing_suppressed` | 10 Hz at 1x and SETA 6 | 1x: flame length varies per shot within ± 25 %; SETA 6: frame-to-frame flame length change ≤ 2 % |
 | `muzzle_broadside_cluster` | 12 turrets along a capital hull | summed glow peak ≤ 2.3 x one glow; core count 12 |
-| `muzzle_smoke_surface_only` | ballistic over hull and sky; the own cockpit | sky unchanged; hull min ≥ 1 − s0 − 0.02; no puff in the cockpit view |
+| `muzzle_smoke_surface_only` | ballistic over hull and sky; the own cockpit; (2026-11-08) the hull surface through the gun at 150 ms | sky unchanged; hull min ≥ 1 − s0 − 0.02 (s0 0.5 [0.3]); on the gun's surface ≤ 1 − 0.3 s0 (darker than the hull) [any darkening]; no puff in the cockpit view |
+| `muzzle_not_a_lamp` (2026-11-08 #1) | own chase IRE and PAC, the wing gun 27 m from the eye, 20 ms after a shot, over black | of the lit area (≥ 10 % of its peak, max channel) the share ≥ 0.8 of the peak ≤ 0.15; the disc alone printed as the control |
+| `muzzle_stream_not_steady` (#1) | stock PBE (energy, 19.23 shots/s) in the own chase view, 1x, one game second of 16 ms frames | frames at ≥ half a fresh shot's peak ≤ 0.6 of the frames |
+| `muzzle_floors_at_range` (#8) | an enemy fighter's IRE at 600 m, 1440 rows, end-on and across the view | core diameter ≥ 6 px, longest star arm ≥ 12 px, cone ≥ 12 px |
+| `muzzle_cockpit_disc_and_star` (#7) | own cockpit, IRE, MD, GKE, the gun 3 m beside and 2 m ahead of a 6 m eye | one disc, four arms, no cone, glow, vents or puff; longest arm ≤ 48 px at 1440 rows (36 at 1080) |
+| `muzzle_class_orb_before_flak` (#11) | the stock PSP orb (flags 0x2100), the PSG wave, FLAK_ALPHA | plasma, plasma, flak |
 | `muzzle_heavy_rise_and_vents` | heavy on a capital at 600 m | cone reaches 3 w at 40 ms (± 1 frame); two vents ⊥ the gun axis within 5°; afterglow fades to t, ≤ 1.2 after 80 ms |
 | 3.3's muzzle rows (cockpit gain, placement, light on hull, stub records, 20 guns ≤ 30 µs); budget rows | `bolt_alone_fills_frame`, `muzzle_alone_fills_frame`, 512 bolts + 20 muzzles at 5120x1440 | weights pinned; ≤ 100 µs GPU fenced (measured 89.8); CPU ≤ 150 µs (i686 fixture) |
 
@@ -345,7 +367,7 @@ On 1080p dumps of the in-place draw through the production bolt program into the
 `e_halo` 0.6 / 0.8, `h[4]` {0.75, 0.85, 0.7, 0.5}, `head_gain` 0.5, `head_ball_w` 0.6, `streak_c[4]` {1, 1, 0.5, 0},
 `end_ms` 60, `wave_span_w` 6, `wave_sagitta` 0.25, `trim_rs` 0.8, `w_cap_m` 20, `rim_dark` 0.4, `rim_band_w` {1.2, 1.8}, `rim_min_px` 3, `halo_px_max` 40, `floor_core_px` 2, `floor_body_px` 3, `floor_halo_px` 1.5, `floor_len_px` 24,
 `own_body_max_px` 16, `cockpit_native` false. `muzzle::` `mode`, per class {disc, flame, star, vent, smoke r0/r1/s0/life,
-glow R/E, life}, `cap_core_rs` 0.25, `cap_flame_rs` 1.0, `breath` 0.25, `cluster_n0` 2.5. Shared: `core_e`, `min_frames`,
+glow R/E, life}, `cap_core_rs` 0.25, `cap_flame_rs` 1.0, `breath` 0.25, `cluster_n0` 2.5, (2026-11-08) `arm_width` 0.3, `star_e` 4, `bloom_e` 3, `refire_share` 0.5, `flash_pow` 2, `floor_disc_px` 6, `floor_arm_px` 12, `cockpit_body_px` 48. Shared: `core_e`, `min_frames`,
 `stagger`, `own_cockpit_gain`.
 
 | Element | Kill criterion (observed in flight) | Step (once), then simple mode, then off |

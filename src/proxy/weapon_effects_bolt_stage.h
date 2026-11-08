@@ -50,11 +50,13 @@ inline float bolt_width_m(unsigned tier, float range_m, float k) noexcept {
     const float w = bolt::w_px_target * bolt_d_eng_m(tier, range_m) / bolt::f_ref * (1.f + bolt::w_k * k);
     return w < bolt::w_cap_m ? w : bolt::w_cap_m;
 }
+// The class rule (section 3.1; 2026-11-08 #11: an orb or wave body is plasma before the flak flag, so the stock PSP and
+// M/AM, area_flak singularity guns, take the plasma bloom, not the flak star and puff).
 inline std::uint8_t muzzle_class_of(std::uint32_t flags, std::uint8_t style, float k) noexcept {
+    if (style == bolt::orb || style == bolt::wave) return mz::plasma;
     if (flags & core::bullet_burst_bits) return mz::flak;
     if (k >= bolt::heavy_k) return mz::heavy;
     if (flags & core::bullet_ammunition_bit) return mz::ballistic;
-    if (style == bolt::orb || style == bolt::wave) return mz::plasma;
     return mz::energy;
 }
 // The look from the parts (the fixture's and the lab's twin; bolt_look_of reads them from the game).
@@ -110,7 +112,7 @@ inline BoltLook bolt_look_of(Reader rd, const core::Globals& g, const core::Tabl
                                 tint);
     // The table's class pin (hull-impact-classes.md section 2, weapon_overrides.json `hull`) sets the muzzle class too (a
     // Mayhem mass driver carries no ammunition flag; its pin is ballistic); a flak row keeps the flak muzzle.
-    if ((bits & core::row_hull_class) && !(flags & core::bullet_burst_bits)) {
+    if ((bits & core::row_hull_class) && l.mclass != mz::flak) {
         const std::uint8_t pin = t->hull_class[row];
         l.mclass = pin == core::class_ballistic ? std::uint8_t(mz::ballistic)
                    : pin == core::class_plasma  ? std::uint8_t(mz::plasma)
@@ -879,9 +881,12 @@ inline bool muzzle_pose(Reader rd, const core::MuzzleRecord& m, const Camera& ca
     return true;
 }
 // One cone sprite (the sprite program's kind 4): base c (view), along a unit axis for `len` view units, base radius r
-// (view units), radiance e, colour (linear, packed with alpha 1/255).
+// (view units), radiance e, colour (linear, packed with alpha 1/255). Its projected length never under min_len_px (the
+// pixel floor, 2026-11-08 #8: extended along its projected direction; an axis on the eye ray keeps the disc of its base)
+// and its base radius never under width_frac / 2 of that length (a star arm's width share, #1 / #9).
 inline bool cone_quad(const HullView& f, const float c[3], const float a[3], float len, float r, float e,
-                      const float colour[3], renderer::WeaponSpriteVertex* out) noexcept {
+                      const float colour[3], renderer::WeaponSpriteVertex* out, float min_len_px = 0.f,
+                      float width_frac = 0.f) noexcept {
     const float tip[3] = {c[0] + a[0] * len, c[1] + a[1] * len, c[2] + a[2] * len};
     if (!(c[2] > f.near_z) || !(tip[2] > f.near_z)) return false;
     const Screen sc = screen_of(f);
@@ -890,16 +895,19 @@ inline bool cone_quad(const HullView& f, const float c[3], const float a[3], flo
     const float l = scalar::sqrt(dx * dx + dy * dy);
     const float px_x = 0.5f * f.width * f.cam.m00;
     float rb = r * px_x * pb.iz;
-    if (rb < 0.5f * core::look::floor_lit_px) rb = 0.5f * core::look::floor_lit_px;
+    float L = l;
     if (l > 1e-3f) {
         dx /= l;
         dy /= l;
+        if (L < min_len_px) L = min_len_px;
     } else {
         dx = 1.f;
         dy = 0.f;
     }
+    if (rb < 0.5f * width_frac * L) rb = 0.5f * width_frac * L;
+    if (rb < 0.5f * core::look::floor_lit_px) rb = 0.5f * core::look::floor_lit_px;
     const float nx = -dy, ny = dx;
-    const float L = l > rb ? l : rb; // an end-on cone keeps a disc of its base
+    if (L < rb) L = rb; // an end-on cone keeps a disc of its base
     const float u[4] = {0.f, 0.f, 1.f, 1.f}, v[4] = {-1.f, 1.f, -1.f, 1.f};
     const std::uint32_t col = pack_colour(colour, 1.f / 255.f);
     for (unsigned k = 0; k < 4; ++k) {
@@ -919,16 +927,16 @@ inline bool cone_quad(const HullView& f, const float c[3], const float a[3], flo
     return true;
 }
 // The muzzle disc: the sprite batch's flash (core radius r, the halo to R, view units) at the gun, no eye bias (the hull
-// flash's bias keeps a contact flash out of its hull; the gun's disc sits on it). The core never under half the flash
-// floor in pixels. False off the near plane.
+// flash's bias keeps a contact flash out of its hull; the gun's disc sits on it). The core's radius never under
+// min_core_px (the muzzle's floor_disc_px / 2 at the rows). False off the near plane.
 inline bool disc_quad(const HullView& f, const float c[3], float r, float R, const float colour[3], float radiance,
-                      float core_share, renderer::WeaponSpriteVertex* v) noexcept {
+                      float core_share, renderer::WeaponSpriteVertex* v, float min_core_px) noexcept {
     if (!(c[2] > f.near_z)) return false;
     const Screen sc = screen_of(f);
     const Px p = to_px(f, sc, c);
     const float px_x = 0.5f * f.width * f.cam.m00;
     float core_px = r * px_x * p.iz, halo_px = R * px_x * p.iz;
-    if (core_px < 0.5f * core::look::floor_flash_px) core_px = 0.5f * core::look::floor_flash_px;
+    if (core_px < min_core_px) core_px = min_core_px;
     if (halo_px < core_px) halo_px = core_px;
     const float r_view = halo_px * c[2] / px_x;
     const std::uint32_t col = pack_colour(colour, core_px / halo_px);
@@ -963,7 +971,13 @@ inline float muzzle_life_ms(unsigned cls) noexcept {
     return smoke > l ? smoke : l;
 }
 // One muzzle's elements at age `age_ms` (game). Sizes in the weapon's w (look.w_m), capped by the shooter's radius.
-// `cluster` the broadside factor s(N) on its glow and halo; `gain` the cockpit gain. Appends to b; counts in n.
+// `cluster` the broadside factor s(N) on its glow and halo; `gain` the cockpit gain (< 1 only for the own ship in the
+// cockpit view, which draws disc and star only, scaled to cockpit_body_px). Appends to b; counts in n.
+// The 2026-11-08 rework (section 3.1, 11 #1, #7, #8, #9): a small hot core (0.25 w, white) inside the structured body that
+// carries the size at the core's radiance: the cone across the view, the four-arm star (cone arms across the gun axis,
+// arm_width of their length wide) end-on, in the cockpit and for ballistic and flak, the noise bloom for plasma; the flash
+// lives max(min(law, refire_share x the refire period), 3 steps) under the (1 - x)^2 envelope; floors at range.
+static_assert(mz::flash_pow == 2.f, "the flash envelope is evaluated as (1 - x)^2");
 inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const BoltLook& look, const core::MuzzleRecord& m,
                             float age_ms, float cluster, float gain, const MuzzleTuning& t, MuzzleBuffers& b,
                             MuzzleCounts* n) noexcept {
@@ -975,8 +989,12 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
     const float floor_ms = float(t.min_frames) * float(f.step_ms);
     const std::uint32_t h = mix32(m.seed);
     const float stagger = 1.f + core::stagger * (unit_of(h) - 0.5f);
+    // The refire period (game ms, the record's previous shot; none for a first shot): a flash lives at most refire_share
+    // of it, then never under the three-frame floor (SETA keeps the floor).
+    const float refire = m.prev_t0 ? float(std::int32_t(m.t0 - m.prev_t0)) : 0.f;
     auto life_of = [&](float law) {
-        const float l = law * stagger;
+        float l = law * stagger;
+        if (refire > 0.f && l > mz::refire_share * refire) l = mz::refire_share * refire;
         return l > floor_ms ? l : floor_ms;
     };
     const float life = life_of(mz::class_life[cls]);
@@ -990,7 +1008,28 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
     const float breathe = 1.f + a * (2.f * unit_of(mix32(h + m.shots)) - 1.f);
     const float* tint = look.tint;
     const bool flash_live = age_ms < life;
-    const float fl = flash_live ? 1.f - age_ms / life : 0.f;
+    const float fx = flash_live ? 1.f - age_ms / life : 0.f;
+    const float fl = fx * fx;
+    const bool cockpit = pose.own && gain < 1.f;
+    const bool own_star = mz::class_star[cls] > 0.f;
+    // Pixels: the rows' scale of the floors, px per view unit at the gun (its depth).
+    const float rows = f.height / bolt::ref_rows;
+    const float px_x = 0.5f * f.width * f.cam.m00;
+    const float ppx = pose.pos[2] > f.near_z ? px_x / pose.pos[2] : 0.f;
+    const float floor_arm = mz::floor_arm_px * rows;
+    // The flame's full length (the cone, or the end-on star's arm scale), the star's arm scale, the bloom's end radius.
+    float flame = mz::class_flame[cls][0] * w * breathe;
+    if (flame > cap_flame) flame = cap_flame;
+    const float star_a = mz::class_star[cls] * w * breathe;
+    float bloom_end = mz::bloom_w[1] * w;
+    if (bloom_end > cap_flame) bloom_end = cap_flame;
+    // The own cockpit: the whole muzzle scaled so its longest arm (the bloom's radius) is at most cockpit_body_px.
+    float ck = 1.f;
+    if (cockpit && ppx > 0.f) {
+        const float body = own_star ? (star_a < cap_core ? star_a : cap_core) : cls == mz::plasma ? bloom_end : flame;
+        const float body_px = body * ppx, cap_px = mz::cockpit_body_px * rows;
+        if (body_px > cap_px) ck = cap_px / body_px;
+    }
     // Room in the batches: an element a full batch refuses counts as starved (the muzzle latch).
     auto sprite_room = [&] {
         if (b.sprite_quads < b.sprite_cap) return true;
@@ -1001,15 +1040,22 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
     const float pd = scalar::sqrt(pose.pos[0] * pose.pos[0] + pose.pos[1] * pose.pos[1] + pose.pos[2] * pose.pos[2]);
     const float ac = pd > 1e-6f ? (pose.axis[0] * pose.pos[0] + pose.axis[1] * pose.pos[1] + pose.axis[2] * pose.pos[2]) / pd
                                 : 0.f;
-    const bool endon = t.endon_star && (ac >= mz::endon_cos || -ac >= mz::endon_cos) && mz::class_star[cls] <= 0.f;
-    // The core disc (and the heavy's afterglow).
+    const bool endon = t.endon_star && (ac >= mz::endon_cos || -ac >= mz::endon_cos) && !own_star;
+    // The core disc (and the heavy's afterglow): 0.25 w, white, scaled with its body when the shooter's radius caps the
+    // body (the star's longest arm, the cone, the bloom), its diameter never under floor_disc_px.
     {
-        const float dw = mz::class_disc[cls][0] * w;
-        float r = 0.5f * dw;
+        const float body_law = own_star ? mz::class_star[cls] * w : cls == mz::plasma ? mz::bloom_w[1] * w : mz::class_flame[cls][0] * w;
+        const float body_cap = own_star ? cap_core : cap_flame;
+        float r = 0.5f * mz::class_disc[cls][0] * w;
+        if (body_law > body_cap && body_law > 0.f) {
+            r *= body_cap / body_law;
+            ++n->capped;
+        }
         if (r > cap_core) {
             r = cap_core;
             ++n->capped;
         }
+        r *= ck;
         float e = mz::class_disc[cls][2] * fl;
         const float wh = mz::class_disc[cls][1];
         float core_share = 1.f - wh; // the core's tint share (0 white)
@@ -1022,63 +1068,32 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
             }
         }
         if (e > 0.f && sprite_room()) {
-            const float halo_r = r + 2.f * mz::disc_halo_w * w * cluster;
+            const float halo_r = r + 2.f * mz::disc_halo_w * w * cluster * ck;
             const float colour[3] = {tint[0], tint[1], tint[2]};
-            if (disc_quad(f, pose.pos, r, halo_r, colour, e * gain, core_share, b.sprites + 4 * b.sprite_quads)) {
+            if (disc_quad(f, pose.pos, r, halo_r, colour, e * gain, core_share, b.sprites + 4 * b.sprite_quads,
+                          0.5f * mz::floor_disc_px * rows)) {
                 ++b.sprite_quads;
                 ++n->discs;
             }
         }
     }
-    // The flame: a forward cone (energy, ballistic, heavy with its 40 ms rise); end-on (the view rule) the hull burst's
-    // four-arm star of the cone's length about the disc instead (energy, heavy: the classes without a star of their own).
-    if (t.cone && flash_live && mz::class_flame[cls][0] > 0.f && sprite_room()) {
-        float len = mz::class_flame[cls][0] * w * breathe;
-        if (cls == mz::heavy) {
-            const float rise = mz::rise_ms > floor_ms ? mz::rise_ms : floor_ms;
-            len *= age_ms < rise ? age_ms / rise : 1.f;
-        }
-        if (len > cap_flame) {
-            len = cap_flame;
-            ++n->capped;
-        }
-        const float base = 0.5f * mz::class_flame[cls][1] * w;
-        if (endon) {
-            // the star's unit is the disc's core radius, its arms (hull::star_arm_len x A) A = the cone's length; its
-            // angle hashed per shot in [0, pi / 2) (the unequal arms take the rest of the turn)
-            const float r = 0.5f * mz::class_disc[cls][0] * w < cap_core ? 0.5f * mz::class_disc[cls][0] * w : cap_core;
-            const float angle = 1.5707963f * unit_of(mix32(h ^ 0x3c6ef372u));
-            float screens = 0.f;
-            if (len > 0.f && r > 0.f &&
-                star_quad(f, screen_of(f), pose.pos, r, 0.f, len / r, angle, tint, mz::star_e * fl * gain,
-                          b.sprites + 4 * b.sprite_quads, &screens)) {
-                ++b.sprite_quads;
-                ++n->stars;
-                ++n->endon;
-            }
-        } else if (len > 0.f && cone_quad(f, pose.pos, pose.axis, len, base < cap_core ? base : cap_core,
-                                          mz::class_flame[cls][2] * fl * gain, tint, b.sprites + 4 * b.sprite_quads)) {
-            ++b.sprite_quads;
-            ++n->cones;
-        }
-    }
-    // The star (ballistic, flak): four unequal arms rotated per shot, as cones from the core.
-    if (t.star && flash_live && mz::class_star[cls] > 0.f) {
+    // The star: four cone arms across the gun axis (side and up = axis x side), the unequal arms star_arms x A rotated per
+    // shot, each arm_width of its length wide at its root, each at least its share of floor_arm px long; an arm longer
+    // than `cap` is capped (then the cockpit scale).
+    auto star = [&](float A, float cap, float e) -> unsigned {
         const float rot = 6.2831853f * unit_of(mix32(h ^ 0x51ed270bu));
-        // the arms in the plane across the gun axis: side and up = axis x side
         const float* s = pose.side;
         const float* ax = pose.axis;
         const float up[3] = {ax[1] * s[2] - ax[2] * s[1], ax[2] * s[0] - ax[0] * s[2], ax[0] * s[1] - ax[1] * s[0]};
         // cos / sin of rot (its quarter turn reduced into [0, pi / 2): sincos_quarter's 1e-8), then each arm's exact
-        // quarter turn (cs, sn) -> (-sn, cs); the old truncated series on [-pi, pi] was off by 4.4 degrees / 2.2 %
-        // at the interval's ends (review note 11)
+        // quarter turn (cs, sn) -> (-sn, cs)
         float cs, sn;
         {
             const unsigned quarter = unsigned(rot * (1.f / 1.5707963f)) & 3u;
-            float a = rot - 1.5707963f * float(quarter);
-            a = a < 0.f ? 0.f : a > 1.5707963f ? 1.5707963f : a;
+            float q = rot - 1.5707963f * float(quarter);
+            q = q < 0.f ? 0.f : q > 1.5707963f ? 1.5707963f : q;
             float qs, qc;
-            sincos_quarter(a, &qs, &qc);
+            sincos_quarter(q, &qs, &qc);
             cs = qc;
             sn = qs;
             for (unsigned k = 0; k < quarter; ++k) {
@@ -1087,6 +1102,7 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
                 sn = t0;
             }
         }
+        unsigned drawn = 0;
         for (unsigned arm = 0; arm < 4; ++arm) {
             if (!sprite_room()) break;
             if (arm) {
@@ -1095,20 +1111,47 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
                 sn = t0;
             }
             const float dir[3] = {s[0] * cs + up[0] * sn, s[1] * cs + up[1] * sn, s[2] * cs + up[2] * sn};
-            float len = mz::star_arms[arm] * mz::class_star[cls] * w * breathe;
-            if (len > cap_core) {
-                len = cap_core;
+            float len = mz::star_arms[arm] * A;
+            if (len > cap) {
+                len = cap;
                 ++n->capped;
             }
-            if (cone_quad(f, pose.pos, dir, len, 0.5f * mz::star_width_w * w, mz::star_e * fl * gain, tint,
-                          b.sprites + 4 * b.sprite_quads)) {
+            len *= ck;
+            if (len > 0.f && cone_quad(f, pose.pos, dir, len, 0.5f * mz::arm_width * len, e, tint,
+                                       b.sprites + 4 * b.sprite_quads, mz::star_arms[arm] * floor_arm, mz::arm_width)) {
                 ++b.sprite_quads;
                 ++n->stars;
+                ++drawn;
+            }
+        }
+        return drawn;
+    };
+    // The flame: a forward cone (energy, ballistic, heavy with its 40 ms rise), at least floor_arm px long; end-on (the
+    // view rule) and in the own cockpit the four-arm star of the cone's length instead (energy, heavy: the classes without
+    // a star of their own; ballistic draws no cone in the cockpit).
+    if (t.cone && flash_live && mz::class_flame[cls][0] > 0.f && !(cockpit && own_star)) {
+        float len = flame;
+        if (cls == mz::heavy) {
+            const float rise = mz::rise_ms > floor_ms ? mz::rise_ms : floor_ms;
+            len *= age_ms < rise ? age_ms / rise : 1.f;
+        }
+        if (endon || cockpit) {
+            if (len > 0.f && star(len, cap_flame, mz::star_e * fl * gain) && endon) ++n->endon;
+        } else if (len > 0.f && sprite_room()) {
+            if (len >= cap_flame) ++n->capped;
+            const float base = 0.5f * mz::class_flame[cls][1] * w;
+            if (cone_quad(f, pose.pos, pose.axis, len, base < cap_core ? base : cap_core, mz::class_flame[cls][2] * fl * gain,
+                          tint, b.sprites + 4 * b.sprite_quads, floor_arm,
+                          mz::class_flame[cls][1] / mz::class_flame[cls][0])) {
+                ++b.sprite_quads;
+                ++n->cones;
             }
         }
     }
-    // The heavy's vents: two jets across the gun axis (the side row, +-), 150 ms.
-    if (t.vents && cls == mz::heavy) {
+    // The star of its own (ballistic, flak).
+    if (t.star && flash_live && own_star) star(star_a, cap_core, mz::star_e * fl * gain);
+    // The heavy's vents: two jets across the gun axis (the side row, +-), 150 ms; not in the cockpit.
+    if (t.vents && cls == mz::heavy && !cockpit) {
         const float vl = life_of(mz::vent_ms);
         if (age_ms < vl)
             for (int sgn = -1; sgn <= 1 && sprite_room(); sgn += 2) {
@@ -1122,12 +1165,15 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
                 }
             }
     }
-    // The plasma bloom: the burst's noise body in the tint (a fireball impostor of radius 0.5 -> 1.0 w).
+    // The plasma bloom: the burst's noise body in the tint (a fireball impostor of radius 0.5 -> 1.0 w) at the body's
+    // radiance, its diameter never under floor_arm px.
     if (t.bloom && cls == mz::plasma && flash_live && b.fireball_boxes >= b.fireball_cap) ++n->starved;
     if (t.bloom && cls == mz::plasma && flash_live && b.fireball_boxes < b.fireball_cap) {
         const float x = age_ms / life;
         float R = (mz::bloom_w[0] + (mz::bloom_w[1] - mz::bloom_w[0]) * x) * w;
         if (R > cap_flame) R = cap_flame;
+        R *= ck;
+        if (ppx > 0.f && R * ppx < 0.5f * floor_arm) R = 0.5f * floor_arm / ppx;
         float rect[4];
         bool full = false;
         if (sphere_rect(f, pose.pos, R, rect, &full)) {
@@ -1141,9 +1187,10 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
             ++n->blooms;
         }
     }
-    // The hull glow (the light on the shooter's hull, 2.8): R, E in the tint, the cluster factor.
-    if (t.glow && flash_live && b.glow_boxes >= b.glow_cap) ++n->starved;
-    if (t.glow && flash_live && b.glow_boxes < b.glow_cap) {
+    // The hull glow (the light on the shooter's hull, 2.8): R, E in the tint, the cluster factor; not in the own cockpit
+    // (it coloured the whole view, #7).
+    if (t.glow && flash_live && !cockpit && b.glow_boxes >= b.glow_cap) ++n->starved;
+    if (t.glow && flash_live && !cockpit && b.glow_boxes < b.glow_cap) {
         const float R = mz::class_glow[cls][0] * w;
         float rect[4];
         bool full = false;
@@ -1157,7 +1204,7 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
     }
     // The smoke puff (ballistic, heavy, flak): the scorch-state multiply on the surface, drifting along the gun axis; not
     // in the own cockpit.
-    if (t.smoke && b.scorches && mz::class_smoke[cls][3] > 0.f && !(pose.own && gain < 1.f)) {
+    if (t.smoke && b.scorches && mz::class_smoke[cls][3] > 0.f && !cockpit) {
         const float sl = life_of(mz::class_smoke[cls][3]);
         if (age_ms < sl && b.scorch_boxes >= b.scorch_cap) ++n->starved;
         if (age_ms < sl && b.scorch_boxes < b.scorch_cap) {
