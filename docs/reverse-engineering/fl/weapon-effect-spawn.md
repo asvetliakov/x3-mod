@@ -22,7 +22,7 @@ atomic-write geometry reverses: six of the seven FL calls lie inside one aligned
 straddles one. The type records, the shield list, the bullet extension, the Effects row and element layouts and the
 FADEOUTBODY fade are unchanged. The game clock moved to cfg `+0x708`, the node body id to `+0x144`, and every global
 moved; the type-count array now sits below the table array. So the claim and window machinery carries over with RVA,
-module base and relocation-masked witnesses, but every stub needs an FL entry shim (section 5, Q1).
+module base and relocation-masked witnesses, but every stub needs an FL entry shim (section 6, Q1).
 
 ## Reproduce
 
@@ -36,7 +36,7 @@ python3 -I verification/results/fl-weapon-effect-spawn/fl_weapon_effect_sites.py
 over `tools/analysis/inspect_x3.py`'s PE reader and reads `.reloc`. It checks both input hashes and runs a linear
 direct-edge census of `.text`: 72,230 edges on FL. It also scans every image dword. For each of the 7 windows it
 prints the masked bytes, the relocations, the qword geometry, branch targets and callers, and it prints 9 frame
-witnesses. It asserts **441 whole-instruction anchors, 0 failures**, the type loader's class-0 dispatch to the TBullets case, and the E8 caller counts of the routines named below. Finally it runs a TBullets / TShips / Effects
+witnesses. It asserts **472 whole-instruction anchors on FL and 22 AP twins, 0 failures**, the type loader's class-0 dispatch to the TBullets case, and the E8 caller counts of the routines named below. Finally it runs a TBullets / TShips / Effects
 census of the FL installation (`addon2/04.cat`). Output is deterministic: two runs are byte-identical. All figures below
 are **[s]** from that output unless tagged otherwise. Raw listings and decompiler output stayed in the session
 scratchpad.
@@ -238,7 +238,7 @@ clone-row seam (column swap around the forwarded call) carries over, with these 
 | node velocity / rot row 2 (`bolt_layout`) | `+0x100` / `+0x60` | same | `0x014db4`, `0x013fb0..0x013fce`; `0x0145ab` | identical |
 | node flags | `+0x12c` | same | `0x053347` | identical |
 | **node body id** (`node_body`, the bubble walk) | `+0x140` | **`+0x144`** | `0x01400a`, `0x013f2e`; engine-effects.md node walk | **changed** |
-| node walk read size (`node_walk_bytes`) | `0x144` | must reach `+0x148` [i] | follows the body offset | **changed** [i] |
+| node walk read size (`node_walk_bytes`) | `0x144` | at least `0x148` (the node block is `0x270`) | follows the body offset | **changed** (section 5) |
 | node children / sentinel / scales | `+0xc` / `+0x10` / `+0x70`, `+0x80..+0x88` | same | engine-effects.md "node walk" | identical (cited) |
 | bullet ext expiry / owner / created / laser / length | `+0` / `+4` / `+8` / `+0x70` / `+0x78` | same | `0x049b3d`, `0x04f98d`, `0x049b4d`, `0x04f99b`, `0x04a766` | identical |
 | shield list and node | `ext+0x6c`; `+0`, `+0x4a`, `+0x50`, energy `+4`, full `0x3e80000`, capacity TShields `+0x48` | same | `0x0530c0`, `0x0530b9`, `0x0530de`, `0x0530d4`, `0x0530d7`, `0x053102`, `0x0530ee` | identical |
@@ -257,7 +257,7 @@ clone-row seam (column swap around the forwarded call) carries over, with these 
 | **type counts** | `0x00607038 + 4c` (table + `0x80`) | RVA **`0x1a8330 + 4c`** (table **− `0x98`**) | `0x04e510` (0), `0x03d8a5` (7), `0x03d8c6` (6), `0x03d8da` (5), `0x06f732` (9), `0x043e85` (10) | **changed layout**: the `Globals` static_assert relation `count = table + 0x80` does not hold |
 | Effects rows | `0x00580068` | RVA **`0x21c8a0`** | `0x01534a` | changed (relocated) |
 | body cache root | `0x00608518` | RVA **`0x1aa100`** | `0x0867c1` | changed (relocated) |
-| body cache hash `+0x14`, model LODs `+0xc`, LOD extent `+0x20` | | | not checked | **[u]** (FL resolves bodies through `0x0867c0`'s slot index; engine-effects.md §4) |
+| body cache hash `+0x14`, model LODs `+0xc` / count `+0x10`, LOD extent `+0x20` | | same | section 5 | identical |
 | malloc / free | `0x005112c4` / `0x0050e1b0` | RVA `0x131395` / `0x12f4e5`; loader allocator `0x0d8fc0` | section 2.6 | changed |
 | fixed-point rotate | `0x004f0da0`: `imul`, `+0x8000`, `adc`, `shrd 16` | `0x10e0c0`, same rounding | `0x10e0dc..0x10e0ee` | identical arithmetic [s]; the summation order differs, and the exact 32-bit sum makes the result the same [i] |
 
@@ -277,7 +277,62 @@ relocated absolute operand (object: the gate slot `0x1a82ec`; muzzle: the TBulle
 rel32 is relocated. Data-side changes are the clock offset, the node body offset, the relocated globals and the count
 array's position.
 
-## 5. Questions
+## 5. Shield-hit runtime reads
+
+Everything the shield-hit path reads from game memory at runtime, from `src/proxy/weapon_effects_core.h` (the impact
+handler `impact()` and the shield read), `weapon_effects_stage.h` (the owner rows read at scene end, before Present)
+and `weapon_effects_bubble.h` (the hull walk behind the ship bubble, budgeted per frame and cached per owner). The
+bubble anchors are paired with their AP twins in the producer (group `bubble`: 31 FL, 22 AP, 0 failures) **[s]**
+unless tagged.
+
+| Read (when) | AP | FL | FL evidence (RVA) | Verdict |
+| --- | --- | --- | --- | --- |
+| impact inputs: victim, source, running total, absorbed (impact) | `[esp+4]`, `[esp+8]`, `[esp+0x1c]`, `[esp+0x24]` | ECX, EDX, **EBP**, derived from **ESI** + `[esp+0x18]`/`[esp+0x1c]` | section 2.1 | **changed (site ABI)** |
+| classes, flags, subtype, radius of victim/source (impact) | obj `+0x48/+0x40/+0x4a/+0xa4` | same | section 3 | identical |
+| contact point: smaller body's node rot `+0x40`, contact `+0x180`, pos `+0x30`; hit node pos/rot (impact) | node offsets | same | `0x01449d`, `0x0144a0`, `0x0144ab` | identical |
+| node live `+0x1c`, handle `+0x28` (impact, stage) | | same | `0x014463`, `0x0a22a8` | identical |
+| projectile node rot row 2 `+0x60` (impact) | | same | `0x0145ab` | identical |
+| TBullets flags `+0x58`, light `+0x5c..`, shield/hull damage `+0x44`/`+0x80` (impact) | table `0x00606fb8`, count `0x00607038` | table RVA `0x1a83c8`, count RVA **`0x1a8330`** | `0x014e60`, `0x04e510`; section 3 | offsets identical; slots changed |
+| TShips class id `+0xc8` for the tier (impact) | table `0x00606fd4`, count `0x00607054` | RVA `0x1a83e4`, `0x1a834c` | `0x0413d2`, `0x03d8a5`/`0x03d8ad` | offsets identical; slots changed |
+| shield gate: class 7/1/`0x12` or `+0x40 & 0x100000` (impact) | | same | `0x05308d..0x0530a3`, `0x053096` | identical |
+| shield list `ext+0x6c`, node next `+0`, index `+0x4a`, ext `+0x50`, energy `+4` (full `0x3e80000`), TShields capacity `+0x48` (impact) | TShields `0x00606fdc`, count `0x0060705c` | RVA `0x1a83ec`, count `0x1a8354` | `0x0530c0..0x0530ee`, `0x053102`, `0x06f732` | offsets identical; slots changed |
+| game clock (impact `t0`, stage `now`, bubble retry) | `[0x00606f34] + 0x718` | `[RVA 0x1a83b0] + **0x708**` | `0x049b47`, `0x015591` | **changed** |
+| owner rows (stage, every frame): `obj+0x70` node, `+0x40` flags (dying `0x8000000`), node `+0x28` handle, `+0x30` pos, `+0x40` 48-byte rows, `obj+0xa4` radius | | same | section 3 | identical |
+| bubble key: root `+0xc` first child (≠ sentinel `+0x10`), its body id (stage, per owner) | body `+0x140` | body **`+0x144`** | `0x013f2e`, `0x01400a`; engine-effects.md node walk (setter `0x0a365d`) | **changed** |
+| child list `c = [n+0xc]`, `while [c]`, next `[c]`, sentinel `n+0x10` (bubble) | | same | `0x094382`/`0x094385`; engine-effects.md node walk | identical |
+| node block read per child (bubble) | `0x144` bytes (body at `+0x140`) | **`0x148`** to reach body `+0x144`; the node is `0x270` bytes | engine-effects.md (`push 0x270`) | **changed** |
+| part filter: body > 0, not `+0x12c & 0x8000000` (bubble) | | same | `0x097b5c`, `0x097c5e`, `0x0a6836` ↔ AP `0x0047ebd8`, `0x0047ecf5`, `0x0048ae1f` | identical |
+| placement: offset `+0x30` in the parent frame, × parent `+0x80/+0x84/+0x88` unless parent `+0x12c & 0x10000`, × parent `+0x70` when `+0x12c & 0x40`; basis `+0x40` (bubble) | `0x0047b564..0x0047b648` | same rule | `0x09438e..0x09441c` (`0x0943a8`, `0x0943b6/d2/ee`, `0x09440f`, `0x09441c`) | identical |
+| part scale `+0x70`, axis scales `+0x80..+0x88` (bubble) | | same | `0x0943b6..0x0943ee` (as parent), engine-effects.md | identical |
+| body cache root (bubble) | `0x00608518` | RVA **`0x1aa100`** | `0x099870`, `0x0867c1` | changed (relocated) |
+| body cache hash: `H = [root+0x14]`, buckets `[H]`, size `[H+4]` (power of two, `& (size−1)`), key = id + 1, entries {next `+0`, key `+4`, model `+8`} (bubble) | `0x004863e2..0x00486419`, hit `0x00486464` | same | the read-only lookup **`0x099870`** (ECX = id; `inc ecx`, `[eax+0x14]`, `dec; and`, `cmp [eax+4]`, `mov eax,[eax+8]`, plain `ret`) | **identical** |
+| model LODs: count int16 `+0x10`, array `+0xc`, `L_i = [arr + 4i]` (bubble) | `0x004c6c59`, `0x004861c9` | same | `0x0a17eb`, `0x0a17f1`, `0x0a17f6`, `0x0a1843` | identical |
+| LOD extents `L+0x20/+0x24/+0x28` (bubble) | stored `0x004861b2` from `0x0047f350` | same, stored as one 16-byte `movups` (`+0x2c` alongside) | `0x0a182a` (`0x098560`), `0x0a183f` | identical |
+| own ship root node (stage, cockpit dimming / eye sphere) | cockpit registry `0x00608504` | registry RVA `0x1a82e4` through `sector_background_fl` | `motion_output_shadow_adaptive_inc.h` (FL branch), [own-ship.md](own-ship.md) | already ported (FL adapter) |
+| cockpit view mode (stage) | cockpit `+0x150` via `chase_camera::stats()` | `+0x150` | `chase_camera_sites_fl.h`, [chase-camera.md](chase-camera.md) | identical; needs the FL chase camera installed (else no dimming, as on AP) |
+
+**The EXE's allocator.** In this tree (base `10880db5e`) the only weapon-effects code that calls into game memory
+management is the clone-row builder R' (`weapon_effects_patch.cpp`: `Globals::malloc_va`, the `malloc_prologue`
+check, the array copy, and the death-column swap). The impact handler, the stage and the bubble only read
+(`engine_memory::read`; the bubble header: "no allocation") **[s: grep of `weapon_effects_*` and
+`motion_output_weapon_effects_inc.h` for allocator calls and game-memory writes]**. With R' stripped, nothing left
+allocates with the EXE's allocator or writes game memory except the call-site claims themselves. The FL `malloc` thunk
+and the accounting question of section 2.6 then do not matter.
+
+**Q4.** Yes: the shield-hit path is portable with offset and global changes only. No walk differs structurally. The
+body-cache hash, the model → LOD array, the LOD extents, the child list with its sentinel, the placement rules and the
+shield list have the same layout and arithmetic on FL **[s]**. What changes is data:
+* the node body id `+0x144` and a `0x148`-byte node read;
+* the clock at cfg `+0x708`;
+* the relocated slots (cfg `0x1a83b0`, tables `0x1a83c8 + 4c`, counts `0x1a8330 + 4c`, body cache `0x1aa100`), all
+  base-relative.
+
+The one non-data difference is the impact site's input ABI (section 2.1): total in EBP, absorbed derived from ESI, and
+victim/source in ECX/EDX. That belongs to the stub, not to any walk. The `Globals` `static_assert` that puts counts at
+table + `0x80` must become an edition parameter. The hull-extent bound `[0, 0x20000]` assumes FL bodies keep AP's
+normalised extents **[i]**: the producer of the extents (`0x098560`) is not compared instruction by instruction.
+
+## 6. Questions
 
 **Q1 — reuse of the AP site machinery.** The installer carries over with RVA + module base: `claim_call`, whole-window
 compare before any write, both-or-none rollback, read-back, and the atomic/plain choice by qword geometry. The windows
@@ -319,8 +374,8 @@ window**: the object tap `0x0645bd` (crosses `0x0645c0`), which runs only in the
 ## Unknown
 
 - Whether the FL stubs' ESI / EBP reads at the impact site meet the 50,000-clamp ambiguity in play (section 2.1).
-- The body-cache hash and model LOD offsets for the shield-bubble walk on FL (section 3).
-- The use of the memory-accounting counters a non-accounted clone allocation would unbalance.
+- The use of the memory-accounting counters a non-accounted allocation would unbalance (moot once the clone row R'
+  is stripped, section 5).
 - The FL script-path callers of `0x015270` (`0x06e5e5`, `0x06e6d5`), which are not traced.
 - Everything section 6 and "Unknown" of the AP note leave open, which FL inherits: the contact point's node `+0x180`,
   the missile extension, and the kill third argument on the script death path.

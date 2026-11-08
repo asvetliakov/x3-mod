@@ -391,6 +391,53 @@ def anchors(f):
         a(g, va, t)
 
 
+def bubble_anchors(fl, ap):
+    """The shield-hit bubble's hull walk (weapon_effects_bubble.h; render-node-bounds.md 6.1): FL reader and AP twin."""
+    pairs = [
+        # body id -> model: H = [[root]+0x14], buckets [H], size [H+4], key id+1, entries {next, key, model}
+        ((0x499870, 'mov eax, dword ptr [0x5aa100]'), (0x4863e2, 'mov eax, dword ptr [0x608518]')),
+        ((0x499875, 'inc ecx'), (0x4863f8, 'lea edx, [edi + 1]')),
+        ((0x499876, 'mov eax, dword ptr [eax + 0x14]'), (0x4863e7, 'mov eax, dword ptr [eax + 0x14]')),
+        ((0x499879, 'mov edx, dword ptr [eax]'), (0x4863ea, 'mov ecx, dword ptr [eax]')),
+        ((0x49987f, 'mov eax, dword ptr [eax + 4]'), (0x4863fd, 'mov eax, dword ptr [eax + 4]')),
+        ((0x499883, 'and eax, ecx'), (0x486403, 'and eax, edx')),
+        ((0x499885, 'mov eax, dword ptr [edx + eax*4]'), (0x486405, 'mov eax, dword ptr [ecx + eax*4]')),
+        ((0x499890, 'cmp dword ptr [eax + 4], ecx'), (0x486410, 'cmp dword ptr [eax + 4], edx')),
+        ((0x499895, 'mov eax, dword ptr [eax]'), (0x486415, 'mov eax, dword ptr [eax]')),
+        ((0x49989e, 'mov eax, dword ptr [eax + 8]'), (0x486464, 'mov eax, dword ptr [eax + 8]')),
+        ((0x4998a1, 'ret'), None),
+        # model -> LOD records: count int16 +0x10, array +0xc, L_i = [arr + 4 i]; extents L+0x20.. stored at load
+        ((0x4a17eb, 'cmp ax, word ptr [edi + 0x10]'), (0x4861c9, 'movsx edx, word ptr [esi + 0x10]')),
+        ((0x4a17f1, 'mov eax, dword ptr [edi + 0xc]'), (0x4c6c59, 'mov eax, dword ptr [ecx + 0xc]')),
+        ((0x4a17f6, 'mov esi, dword ptr [eax + ecx*4]'), (0x4c6c60, 'mov edx, dword ptr [eax]')),
+        ((0x4a182a, 'call 0x498560'), (0x48619b, 'call 0x47f350')),
+        ((0x4a183f, 'movups xmmword ptr [esi + 0x20], xmm0'), (0x4861b2, 'mov dword ptr [edi + 0x20], ecx')),
+        ((0x4a1843, 'movsx eax, word ptr [edi + 0x10]'), None),
+        # placement: child list [n+0xc], offset +0x30 through the parent's world basis +0xc0, x parent +0x80.. unless
+        # parent +0x12c & 0x10000, x parent +0x70 when child +0x12c & 0x40
+        ((0x494382, 'mov esi, dword ptr [ebx + 0xc]'), None),
+        ((0x494385, 'cmp dword ptr [esi], 0'), None),
+        ((0x49438e, 'lea eax, [ebx + 0xc0]'), (0x47b56d, 'lea ecx, [ebx + 0xc0]')),
+        ((0x49439d, 'lea ecx, [esi + 0x30]'), (0x47b56a, 'lea esi, [eax + 0x30]')),
+        ((0x4943a8, 'test dword ptr [ebx + 0x12c], 0x10000'), (0x47b578, 'test dword ptr [ebx + 0x12c], 0x10000')),
+        ((0x4943b6, 'imul dword ptr [ebx + 0x80]'), None),
+        ((0x4943d2, 'imul dword ptr [ebx + 0x84]'), None),
+        ((0x4943ee, 'imul dword ptr [ebx + 0x88]'), None),
+        ((0x49440f, 'test byte ptr [esi + 0x12c], 0x40'), None),
+        ((0x49441c, 'mov ecx, dword ptr [ebx + 0x70]'), None),
+        # no collision tree: node +0x12c & 0x8000000 (build test / set, narrow-phase filter)
+        ((0x497b5c, 'test dword ptr [edi + 0x12c], 0x8000000'), (0x47ebd8, 'test dword ptr [edi + 0x12c], 0x8000000')),
+        ((0x497c5e, 'or dword ptr [edi + 0x12c], 0x8000000'), (0x47ecf5, 'or dword ptr [edi + 0x12c], 0x8000000')),
+        ((0x4a6836, 'test dword ptr [edi + 0x12c], 0x8000000'), (0x48ae1f, 'test dword ptr [edi + 0x12c], 0x8000000')),
+        # node body id +0x144 (AP +0x140): the cull-pass reject of id <= 0 in AP, the death carrier's body in FL
+        ((0x413f2e, 'mov ecx, dword ptr [ecx + 0x144]'), (0x4c6aee, 'cmp dword ptr [ebx + 0x140], 0')),
+    ]
+    for f, a in pairs:
+        fl.at('bubble', *f)
+        if a:
+            ap.at('bubble-ap', *a)
+
+
 def sweep_writes(img, start, end, operand):
     """Instructions in [start, end) whose first operand is `operand` and that write it (mov/lea/add/sub/...)."""
     out = []
@@ -566,9 +613,11 @@ def main():
     print('non-call direct edges to the targets: ' + '; '.join(f'{rva(t)}: {v or "none"}' for t, v in other_refs.items()))
     print()
     anchors(fl)
+    bubble_anchors(fl, ap)
     print('anchors: ' + ', '.join(f'{g} {n}' for g, n in fl.checks.items()) +
-          f'; total {sum(fl.checks.values())}, failures {len(fl.fails)}')
-    for x in fl.fails:
+          f'; total {sum(fl.checks.values())}, failures {len(fl.fails)}; AP twins {sum(ap.checks.values())}, '
+          f'failures {len(ap.fails)}')
+    for x in fl.fails + ap.fails:
         print('  FAIL ' + x)
     # single writers of the muzzle frame slots and of the impact routine's locals
     w88 = sweep_writes(fl, 0x44e310, 0x44ff46, 'dword ptr [ebp - 0x88]')
