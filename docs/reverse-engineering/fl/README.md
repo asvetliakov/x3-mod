@@ -35,3 +35,6 @@ Notes added for the current port (static, checked against the hash above; not ye
 
 - [weapon-effect-spawn.md](weapon-effect-spawn.md): the FL counterparts of the weapon-effect call sites (impact,
   inner taps, bolt flight and object tap, muzzle, death), their windows, frames and record offsets (2026-11-08).
+- [bullet-draw-batch.md](bullet-draw-batch.md): the instanced bullet batch (loop, submit, records, draw shape), one
+  body per draw, the traversal fallback, the per-body identity at `0x097af8`, the bullet record units and the
+  corrected bolt length rule (2026-11-08).
