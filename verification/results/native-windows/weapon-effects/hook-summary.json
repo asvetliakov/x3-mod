@@ -21,24 +21,22 @@
     "verification/probe/weapon_effects_death_cases.h"
   ],
   "source": {
-    "commit": "681122efee5a3fff88ad912864377b38116a702e-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_core.h"
-    ],
+    "commit": "b59a8ca2374a4aba5cc2b9509328ed36ca19af7c-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "1cfba66b586bab04f5a99650dc68e9dff072c0e74e1522d1900bb35ed7787deb",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "2aac2a5684633b83dac327ca9d2e50b0db2cbdf6404afabd180f0a14c9f0cf03",
-      "src/proxy/weapon_effects_patch.cpp": "4fe1b5647d9119f6bcce9fee45f940cfb62515d4d06393eaeef20d0c7fedd6db",
+      "src/proxy/weapon_effects_patch.cpp": "6d8cdbb78027fdc6205626911d9c60f48bc0ca7a806cd8d45620fe26c037747a",
       "src/proxy/weapon_effects_patch.h": "4e46467ecd5219acba2690386db98c3cdc78ea2be6719293ae2323df86cdc05c",
       "src/proxy/weapon_effects_hook.cpp": "1ecc3c96b507afed2aea3871b0aa6ee0a0118ba7bc9433af538e64de52175293",
-      "src/proxy/weapon_effects_core.h": "f8262b14abb16028f07f46935cae680e5df40e512843d50e6fe8e99e5affe329",
+      "src/proxy/weapon_effects_core.h": "528991c99a894477786435957480530611636c181fb0710d5bfae428e04e2fd2",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "65b024f1400658c0399deb23bf53c9f08d9c10452b310de8b05073f24f8e5afc",
       "src/proxy/weapon_effects_bolt_sites.h": "b7a993efe66c19506c820eeeeddd8f1e108eb13a285e1579c5c3bbe3ddb1ee8b",
       "verification/probe/weapon_effects_bolt_cases.h": "90fc7453daa281fd9b6618de07509a184b3c82af929925940df81ae32ad25b6e",
-      "src/proxy/weapon_effects_table.h": "63aeae2e3d2d7623c5d39cb94a776e6d12d88ef15c6afdb9af71221f79e12004",
+      "src/proxy/weapon_effects_table.h": "00d0e8dd93b18f6223d70d931b4e738afed960b6e5b8f6d1e1bb671c741648c5",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/proxy/weapon_effects_death_sites.h": "8fb7d60a72bb7c9fe60c14929d4ec1ae7543852abda5028cb5d571d9b8c68dd6",
@@ -62,16 +60,16 @@
         "_x3m_weapon_death_restore": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event": 1230,
+        "_x3m_weapon_event": 1236,
         "_x3m_weapon_tap": 47,
         "_x3m_weapon_bolt_tap": 507,
         "_x3m_weapon_muzzle": 224,
         "_x3m_weapon_flight": 20,
-        "_x3m_weapon_death_area": 698,
+        "_x3m_weapon_death_area": 700,
         "_x3m_weapon_death_other": 700,
         "_x3m_weapon_death_restore": 45
       },
-      "handler_frame_bytes": 204,
+      "handler_frame_bytes": 200,
       "stub_impact": [
         "pushf",
         "push",
@@ -168,7 +166,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "04b14030520fd60e2b5e62983f511ea1f4917baa15c5138fb3520513f55e1e00"
+    "executable_sha256": "802b244f4b3a5f65bb0eaf66ae0542740775e141e55331ed389400775b89168b"
   },
   "host": {
     "name": "native-windows",
@@ -936,13 +934,13 @@
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
-    "esp_frame": "0088f780",
-    "esp_callee": "0088f774",
-    "return": "00eb6d8a",
-    "site": "00eb6d85"
+    "esp_frame": "00890780",
+    "esp_callee": "00890774",
+    "return": "00ea6d8a",
+    "site": "00ea6d85"
   },
   "stack_depth": {
-    "bytes": 240,
+    "bytes": 236,
     "margin": 1536
   },
   "shield": [
@@ -1266,9 +1264,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.1,
-    "median_us": 17.1,
-    "worst_us": 17.3,
+    "best_us": 17.0,
+    "median_us": 17.7,
+    "worst_us": 29.7,
     "target_us": 30
   },
   "overflow": {
@@ -1284,9 +1282,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.4,
-    "median_us": 55.5,
-    "worst_us": 55.8,
+    "best_us": 55.0,
+    "median_us": 55.8,
+    "worst_us": 66.4,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1294,8 +1292,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005ea8b8",
     "esp_callee": "005ea8a8",
-    "return": "00eb7cb7",
-    "site": "00eb7cb2",
+    "return": "00ea7cb7",
+    "site": "00ea7cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
@@ -1336,8 +1334,8 @@
   "death_swap_state": {
     "esp_frame": "005ea8b8",
     "esp_callee": "005ea898",
-    "return": "0081211b",
-    "stub": "008120e0",
+    "return": "008121db",
+    "stub": "008121a0",
     "eflags_entry": "000008c5",
     "eflags_callee": "00000ac7",
     "ecx": "00a4a4a4",
@@ -1370,8 +1368,8 @@
   "death_scan_timing": {
     "records": 1553,
     "pairs": 3,
-    "median_us": 9.5,
-    "max_us": 464.6,
+    "median_us": 8.9,
+    "max_us": 459.2,
     "bound_us": 250
   },
   "death_slots": {

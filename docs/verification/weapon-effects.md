@@ -3053,3 +3053,18 @@ octave 3's local-cell floor, fire-material.md 13.5 [I]. The rest as the second r
 | `death_budget_capital_close_5120` (PASS) | worst 440.5 us (capital_close_1100ms, shed 2) | <= 450 |
 | rays alone (5120x1440) | fighter 300 m 15.3 us (23 quads), close capital 26.7 us (23 quads), the fence 10.8 us | |
 | `death_stage_cpu_32_deaths`, `death_big_stage_cpu` (PASS, PASS) | 32 fighters 46.7 us, 993 quads (repeats 46.8,46.7,46.7,46.8,46.7; the parent `d3e7698bf` 42.1 us, 588 quads); the big set 38.4 us, 0.0711 a quad | 50; 0.08 |
+
+## Run246 candidate records on the merged tree (2026-11-08)
+
+`effects` `b59a8ca23` (fire material round 3, collapse, wave band, bolt and muzzle re-review, host-suite debts), RTX
+5070 Ti, `run_weapon_effects.py --host native` through `wine_lock.py`, run twice: the D3D fixture **367 of 368**
+on both, the hook fixture 147 of 147 [M]. The one failure, `bolt_budget_512_bolts_20_muzzles_5120`: 153.0 / 155.1 us
+fenced against 100 (bolts 126.1 / 127.6, muzzles 26.9 / 27.5; rims 469 of 512, muzzle sprites 85), its timestamps
+42.7 us on both (bolts 40.5 / 41.0, muzzles 2.5 / 2.6) [M]. The bolt branch measured this row at 94.7 us with the same
+469 rims, and the fire-material record at 32a3ab3fd read the same 155.1 us once on a tree without the bolt changes
+(96.9 us on the next record), so the fenced wall clock is host-state sensitive while the timestamps hold [M; cause
+inferred, not isolated]. Bound unchanged. Slots at device creation: `fireball_ps` 872, `halo_ps` 90, `wave_ps` 874,
+`shock_ps` 95, `sprite_ps` 240, `bolt_ps` 755 (flag 761), max 4096 reported [M]. `run_engine_effects.py --host native
+--programs /mnt/c/X3/x3-modern-captures` (the previous record's program hashes): 299 of 299 over the eight modes [M].
+Candidate and install: [build](../../verification/results/run246-candidate-build.json),
+[install](../../verification/results/run246-candidate-install.json); open run AP 246 A.

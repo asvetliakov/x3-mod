@@ -1,0 +1,62 @@
+{
+  "recorded_utc": "2026-11-08T03:45:00+00:00",
+  "run": 246,
+  "status": "built and installed",
+  "source": {
+    "commit": "b59a8ca2374a4aba5cc2b9509328ed36ca19af7c",
+    "head": "b59a8ca2374a4aba5cc2b9509328ed36ca19af7c",
+    "branch": "effects",
+    "tracked_changes": 0,
+    "production_diff_vs_commit": "none (merges on effects since Run245: fire material a760a3014, soft rays and bigger sparks 7cb52314c, rays from the rim and rim halo 90988bcdc, deck-plane wave band 773a47f40, bolt tunings 6fc962ddd, muzzle rework 195666dc1, host-suite debts 386afb852, fire material round 3 / collapse / wave band b59a8ca23); the three refreshed native records were set aside during the build and restored after it",
+    "marker": "X3M_SOURCE_COMMIT=b59a8ca2374a4aba5cc2b9509328ed36ca19af7c",
+    "marker_count": 1
+  },
+  "candidate": {
+    "dll": "/home/asvetl/x3-mod/build-run246/d3d9.dll",
+    "stripped": false,
+    "sha256": "7785b0b55dcc56ecbb0b50c77f53ecdc212d2a6f5242ecde5d8be61bab0352fa",
+    "bytes": 66642251
+  },
+  "toolchain": {
+    "compiler": "i686-w64-mingw32-g++ 16.2.0 (posix; package 16.2.0-3ubuntu1+29ubuntu3)",
+    "toolchain_file": "cmake/mingw-i686.cmake",
+    "configuration": "RelWithDebInfo",
+    "edition": "ap"
+  },
+  "build": {
+    "directory": "/home/asvetl/x3-mod/build-run246",
+    "command": "cmake -S . -B build-run246 -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-i686.cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON; cmake --build build-run246 -j4",
+    "configure_exit": 0,
+    "build_exit": 0,
+    "warnings": 0,
+    "logs": [
+      "build-run246.configure.log",
+      "build-run246.build.log"
+    ]
+  },
+  "no_x87": {
+    "result": "PASS",
+    "reachable_functions": 1181,
+    "violations": 0
+  },
+  "config_check": "PASS 311 settings, 151 in the template",
+  "program_slots": {
+    "source": "verification/results/native-windows/weapon-effects/summary.json metrics (at device creation, max 4096 reported)",
+    "fireball_ps": 872,
+    "fireball_vs": 22,
+    "halo_ps": 90,
+    "wave_ps": 874,
+    "shock_ps": 95,
+    "sprite_ps": 240,
+    "sprite_vs": 93,
+    "bolt_ps": 755,
+    "bolt_flag_ps": 761,
+    "bolt_vs": 8
+  },
+  "evidence": {
+    "native_records": "verification/results/native-windows/weapon-effects/{summary.json (D3D 368 checks: 367 pass; bolt_budget_512_bolts_20_muzzles_5120 fails on both runs at 153.0 / 155.1 us fenced against 100 (bolts 126.1 / 127.6, muzzles 26.9 / 27.5; rims 469, muzzle sprites 85) while its timestamps read 42.7 us; the same 155.1 us was ledgered once before on an explosion-only tree (32a3ab3fd) and read 96.9 us on the next record; bound unchanged), hook-summary.json (147/0)}, engine-effects/summary.json (299/0: main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 35, armed_refused 7; programs from C:\\X3\\x3-modern-captures, the hashes of the previous record)",
+    "host_tests": "run_host_suite.py: 368 modules, 3631 tests, 10 failing modules: test_hull_emissive_widening (GetLevelDesc twice, fails on main too), test_weapon_effects_hook (the D3D record's passed=false from the bolt row above), and eight zero-test modules skipping for the missing /tmp/x3-shader-sweep corpus (test_original_sun_share, test_linear_sun_share, test_glass_material_transformer, test_linear_emission_sm1_transformer, test_xt_fixture_execution, test_xt_pixel_execution, test_xt_material_transformer, test_screen_emission_additive_transform); test_engine_effects passes on the refreshed record",
+    "reviews": "docs/verification/weapon-effects.md: fire material rounds 1-3, collapse, deck-plane wave band, soft rays / rim halo / sparks, bolt and muzzle visual re-review with their review fixes"
+  },
+  "dry_run": "python3 tools/manage.py launch --game-dir /mnt/c/X3 --config --dry-run after install: exit 0"
+}

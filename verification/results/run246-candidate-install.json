@@ -1,0 +1,28 @@
+{
+ "run": 246,
+ "what": "weapon effects: fire material on the whole fireball family (turbulent connected blob, rim flame tongues, dark gaps, red tips, white core), the collapse (body shrinks to a third and cools to red in the spark cloud), the fire wave as a deck-plane turbulent band with a close-range LOD, 15-25 soft rays from the rim and the rim halo, bigger sparks, the exposure dip at point-blank deaths, the bolt tunings of the visual re-review (hostile capital ceiling, own-fire halo cap, mount tiers, PSG/PD end-on lens, MD/HEPT/FBL pins, Mayhem texture tints) and the muzzle rework (hot core in a star/cone/bloom per class, flash stream on fast guns, no own-cockpit cone); AP 245 A folded into AP 246 A unflown",
+ "commit": "b59a8ca2374a4aba5cc2b9509328ed36ca19af7c",
+ "branch": "effects",
+ "candidate_record": "verification/results/run246-candidate-build.json",
+ "dll_sha256": "7785b0b55dcc56ecbb0b50c77f53ecdc212d2a6f5242ecde5d8be61bab0352fa",
+ "dll_bytes": 66642251,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run246/d3d9.dll; bytes verified by sha256 after install",
+ "previous": {
+  "run": 245,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run245",
+  "sha256": "7c42acc2a71348956a497c2276f8caff5f90a7faa232de63e76fae250acb97a0",
+  "ini_copy": "C:\\X3\\x3m.ini.run245 (50fd569b)",
+  "table_copy": "C:\\X3\\x3m\\weapon_effects.json.run245 (19573464)"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "unchanged from run 245 (diff against x3m.ini.run245 empty; weapon_effects = shields,hull,bolts,explosions)",
+ "tables": {
+  "weapon_effects.json": "1a33a37f74c737d089427febc476ed0b83d5fd2abd681c38fe87be360186e1d6 (regenerated: 38 bullet rows; new bolt pin fields bolt_e_body / bolt_halo / bolt_tint / bolt_w_orb on SS_BULLET_MD and SS_BULLET_FBL, HEPT style slug, IC and FBC mount_tier corvette -> capital; counts capital 6 -> 8, corvette 14 -> 12)",
+  "engine_bodies.json": "cae0f236fbca894005f41f15dd216ca80b29d056c7db5bd826c07cdfc6e34d83 (unchanged)"
+ },
+ "lab": "C:\\X3\\x3m\\weapon_effects_lab.html copied from tools/effects (byte-equal)",
+ "dry_run": "exit 0",
+ "installed_at": "2026-11-08T07:47",
+ "open": "AP 246 A",
+ "host_note": "the native D3D record fails only bolt_budget_512_bolts_20_muzzles_5120 (153.0 / 155.1 us fenced against 100 on two runs, timestamps 42.7 us); bound unchanged"
+}
