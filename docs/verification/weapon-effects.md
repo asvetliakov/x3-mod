@@ -3291,3 +3291,13 @@ D3D **74 of 74**.
 
 Builds FL and AP 0 warnings; `check_no_x87.py` 0 violations (FL 1060, AP 1161 functions); `--check` PASS; host
 `test_weapon_effects*.py` 95 OK. Look crops regenerated on `7bd316f2f` (near unchanged; seta and lod redrawn).
+
+**FL 59 A end-on correction (2026-11-08, `79f2d5e24`).** The review's length-scaled energy for motions under a core
+width dimmed straight-ahead fire (a bolt along the line of sight barely moves on screen). The energy rule is now only a
+dimming for long travel: radiance factor min(1, `length_cap_m` / |v| Δt_game), the world travel that frame; a travel
+under the cap keeps 1 whatever its on-screen length (paused too), and a motion under the core's width (and the dot) is a
+spot of the core's width centred on the motion, its along profile normalised to full core radiance at its centre.
+Records on the clean `79f2d5e24` [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **74 of 74**; a bolt along the
+view axis at 500 m: centre 4.1992, the side-on streak's 4.1992 (ratio 1.0000), energy 1; slow 0.5 px and paused: a 2 px
+spot at factor 1; the dot 0.2689 = the streak's; seams unchanged (gap 0.0000 px; spread 2.3–4.5 %); the SETA look
+frame back to 0.258 for every bolt; budget CPU 71.3 µs, GPU fenced 42.2 µs. Crops regenerated on `79f2d5e24`.

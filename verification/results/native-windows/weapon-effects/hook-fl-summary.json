@@ -21,7 +21,7 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "7bd316f2fa195fd7e1d83e1094c4fe3ef0ae5644",
+    "commit": "79f2d5e2445b03ce8f9078868dda932599808729",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -234,7 +234,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "50a3076d93876b791f14e902f294319cbe7eee5d968c2ccc92926735ac74a9d6"
+    "executable_sha256": "14c01c46ba59c156be580e5c269364c5f3edc4f6a7b8fb7a2df87fea1a0373e7"
   },
   "host": {
     "name": "native-windows",

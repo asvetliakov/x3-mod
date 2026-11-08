@@ -352,8 +352,8 @@ camera turning 1° between them (no gap, the summed light uniform within 10 %), 
 never-backwards hold and the jump, the cut (a first-frame streak), the end-on, slow and paused spots at full core
 radiance (the end-on centre equal to a side-on streak's), the far flag's write
 (not the write-back, above), the dot with the streak's energy, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
-(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 70.6 µs, GPU fenced
-41.2 µs [M]). Not flown.
+(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 71.3 µs, GPU fenced
+42.2 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA; first frames, so each streak is |v| x the step), cropped around the
 bolts: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms
