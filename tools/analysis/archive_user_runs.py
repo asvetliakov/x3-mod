@@ -5,14 +5,23 @@
 completed-run table (AGENTS.md, Documentation). Three things grow without
 bound and are moved here into `docs/archive/user-runs-completed.md`:
 
-1. table rows older than the `--keep` highest run numbers, appended unchanged
-   to `## Completed-run table (archived rows)`;
-2. `**Run N (queued ...)**` instruction blocks for runs that are no longer
-   named as queued in the trailing paragraph, appended under
-   `## Run N (completed <date>: ...)`;
+1. table rows older than the `--keep` newest run ids of their edition,
+   appended unchanged to `## Completed-run table (archived rows)`. A row id is
+   an optional edition prefix (`AP`, `FL`; `Run` or none means AP), a number
+   and an optional letter suffix: `AP 240 A`, `FL 57 A`, `204 A`, `13`. AP and
+   FL number independently, so each edition keeps its own newest `--keep` ids,
+   ranked by (number, suffix); `203 A` and `203 B` are distinct ids;
+2. `**Run N (queued ...)**` or `**AP N A (queued ...)**` instruction blocks
+   for runs that are no longer named as queued in the trailing paragraph,
+   appended under `## Run N (completed <date>: ...)` (`## AP N A (...` for an
+   edition-prefixed block);
 3. the tail of the trailing paragraph beyond the queued sentence and the
-   sentences about the immediately previous run, appended under
-   `## Run history paragraphs`.
+   sentences about the immediately previous run, and any earlier status
+   paragraph (`Run N A is open ...`, `AP N A is the only queued run ...`) for
+   a run that is no longer queued, appended under `## Run history paragraphs`.
+
+Blocks, paragraphs and the queued sentence use the table's id grammar; a run
+is matched on (edition, number), the letter suffix is not compared.
 
 Moved text is unchanged except for relative Markdown link targets, which are
 rewritten to resolve from docs/archive/ (`rewrite_links`). The block of the
@@ -30,12 +39,17 @@ from pathlib import Path
 
 TABLE_HEADER_RE = re.compile(r"^\|\s*Run\s*\|")
 TABLE_SEP_RE = re.compile(r"^\|\s*-+\s*\|")
-ROW_RE = re.compile(r"^\|\s*(\d+)")
-BLOCK_START_RE = re.compile(r"^\*\*Run\s+(\d+)\b")
+ROW_RE = re.compile(r"^\|\s*(?:(AP|FL)\s+|Run\s+)?(\d+)(?:\s+([A-Z])(?![A-Za-z]))?")
+DEFAULT_EDITION = "AP"
+BLOCK_START_RE = re.compile(r"^\*\*(?:(AP|FL)\s+|Run\s+)(\d+)\b(?:\s+([A-Z])(?![A-Za-z]))?")
 QUEUED_PARAGRAPH_RE = re.compile(
-    r"^Runs?\s+\d[^.]*\bqueued\s+runs?\b", re.IGNORECASE
+    r"^(?:AP\s+|FL\s+|Runs?\s+)\d[^.]*\bqueued\s+runs?\b", re.IGNORECASE
 )
-SENTENCE_RUN_RE = re.compile(r"(?:\A|(?<=\.\s))Run\s+(\d+)\b")
+STATUS_PARAGRAPH_RE = re.compile(
+    r"^(?:(AP|FL)\s+|Run\s+)(\d+)(?:\s+[A-Z])?\s+is\s+(?:open\b|the\s+only\s+queued\s+run\b)"
+)
+SENTENCE_RUN_RE = re.compile(r"(?:\A|(?<=\.\s))(?:(AP|FL)\s+|Run\s+)(\d+)\b")
+QUEUED_ID_RE = re.compile(r"(?:\b(AP|FL)\s+)?\b(\d+)\b")
 RUN_TOKEN_RE = re.compile(r"\brun\d+\b")
 
 ARCHIVED_TABLE_HEADING = "## Completed-run table (archived rows)"
@@ -96,11 +110,29 @@ def find_table(lines):
     raise DocError("no completed-run table found")
 
 
-def row_run_number(row):
+def row_run_id(row):
+    """(edition, number, suffix) of a table row: '| FL 57 A |' -> ('FL', 57, 'A')."""
     match = ROW_RE.match(row)
     if not match:
         raise DocError("table row without a run number: %r" % row[:60])
-    return int(match.group(1))
+    return (match.group(1) or DEFAULT_EDITION, int(match.group(2)), match.group(3) or "")
+
+
+def row_run_number(row):
+    return row_run_id(row)[1]
+
+
+def kept_run_ids(rows, keep):
+    """The `keep` newest (number, suffix) ids of each edition among `rows`."""
+    by_edition = {}
+    for row in rows:
+        edition, number, suffix = row_run_id(row)
+        by_edition.setdefault(edition, set()).add((number, suffix))
+    kept = set()
+    for edition, ids in by_edition.items():
+        for number, suffix in sorted(ids, reverse=True)[:keep]:
+            kept.add((edition, number, suffix))
+    return kept
 
 
 def row_key(row):
@@ -122,10 +154,10 @@ def find_trailing_paragraph(lines):
 def split_paragraph(paragraph):
     """Split the trailing paragraph into run-labelled segments.
 
-    Returns a list of (run_number, text) in document order; the first segment
-    is the queued sentence.
+    Returns a list of ((edition, number), text) in document order; the first
+    segment is the queued sentence.
     """
-    starts = [(m.start(), int(m.group(1))) for m in SENTENCE_RUN_RE.finditer(paragraph)]
+    starts = [(m.start(), _run(m.group(1), m.group(2))) for m in SENTENCE_RUN_RE.finditer(paragraph)]
     if not starts or starts[0][0] != 0:
         return [(None, paragraph)]
     segments = []
@@ -135,13 +167,53 @@ def split_paragraph(paragraph):
     return segments
 
 
+def _run(edition, number):
+    return (edition or DEFAULT_EDITION, int(number))
+
+
+def run_label(run):
+    """'Run 19' for an unprefixed AP run id, 'FL 57' otherwise (plan text)."""
+    edition, number = run
+    return "Run %d" % number if edition == DEFAULT_EDITION else "%s %d" % run
+
+
 def queued_runs(paragraph):
+    """(edition, number) ids named in the queued sentence."""
     first = paragraph.split(". ")[0]
-    return sorted(int(n) for n in re.findall(r"\b(\d+)\b", first))
+    return sorted(_run(e, n) for e, n in QUEUED_ID_RE.findall(first))
+
+
+def find_status_paragraphs(lines, start, limit, skip):
+    """Return [(run, start, end)] for run-status paragraphs in [start, limit).
+
+    A status paragraph starts after a blank line with `Run N A is open` or
+    `AP N A is the only queued run` and runs to the next blank line. Lines in
+    code fences or in `skip` (instruction blocks) are never matched.
+    """
+    fences = _fence_map(lines)
+    found = []
+    i = start
+    while i < limit:
+        if fences[i] or i in skip or (i > 0 and lines[i - 1].strip() != ""):
+            i += 1
+            continue
+        match = STATUS_PARAGRAPH_RE.match(lines[i])
+        if not match:
+            i += 1
+            continue
+        end = i + 1
+        while end < limit and lines[end].strip() != "" and end not in skip:
+            end += 1
+        found.append((_run(match.group(1), match.group(2)), i, end))
+        i = end
+    return found
 
 
 def find_blocks(lines, table_end, trailing_index):
-    """Return [(run, start, end)] for each `**Run N ...**` instruction block."""
+    """Return [(run, start, end, label)] for each `**Run N ...**` block.
+
+    `label` is the archive heading's id: `Run N`, or `AP N A` as written.
+    """
     limit = trailing_index if trailing_index is not None else len(lines)
     fences = _fence_map(lines)
     starts = []
@@ -150,16 +222,21 @@ def find_blocks(lines, table_end, trailing_index):
             continue
         match = BLOCK_START_RE.match(lines[i])
         if match:
-            starts.append((i, int(match.group(1))))
+            edition, number, suffix = match.groups()
+            if edition:
+                label = " ".join(x for x in (edition, number, suffix) if x)
+            else:
+                label = "Run %s" % number
+            starts.append((i, (_run(edition, number), label)))
     blocks = []
-    for idx, (start, run) in enumerate(starts):
+    for idx, (start, (run, label)) in enumerate(starts):
         end = starts[idx + 1][0] if idx + 1 < len(starts) else limit
         while end > start and lines[end - 1].strip() == "":
             end -= 1
         text = "\n".join(lines[start:end])
         if "(queued" not in text:
             continue
-        blocks.append((run, start, end))
+        blocks.append((run, start, end, label))
     return blocks
 
 
@@ -312,11 +389,10 @@ def build_plan(runs_text, archive_text, keep, today):
 
     # (1) table rows
     rows = [line for line in runs_lines[sep + 1 : table_end] if line.startswith("|")]
-    numbers = sorted({row_run_number(r) for r in rows}, reverse=True)
-    keep_numbers = set(numbers[:keep])
+    keep_ids = kept_run_ids(rows, keep)
     kept_rows, old_rows = [], []
     for row in rows:
-        (kept_rows if row_run_number(row) in keep_numbers else old_rows).append(row)
+        (kept_rows if row_run_id(row) in keep_ids else old_rows).append(row)
 
     existing_keys = archived_row_keys(archive_lines)
     new_archive_rows = [r for r in old_rows if row_key(r) not in existing_keys]
@@ -326,7 +402,7 @@ def build_plan(runs_text, archive_text, keep, today):
             "table: move %d row(s) (runs %s), keep %d; %d already archived"
             % (
                 len(old_rows),
-                ", ".join(str(row_run_number(r)) for r in old_rows),
+                ", ".join(row_key(r) for r in old_rows),
                 len(kept_rows),
                 duplicate_rows,
             )
@@ -337,19 +413,31 @@ def build_plan(runs_text, archive_text, keep, today):
     headings = archive_headings(archive_lines)
     move_ranges = []
     block_appends = []
-    for run, start, end in blocks:
+    block_lines = set()
+    for run, start, end, label in blocks:
+        block_lines.update(range(start, end))
         if run in open_runs:
             continue
-        heading_prefix = "## Run %d (" % run
+        heading_prefix = "## %s (" % label
         if any(h.startswith(heading_prefix) for h in headings):
-            plan.append("block Run %d: removed, already in the archive" % run)
+            plan.append("block %s: removed, already in the archive" % label)
             move_ranges.append((start, end, True))
             continue
         detail = _block_detail(run, segments, runs_lines[start])
-        heading = "## Run %d (completed %s: %s)" % (run, today, detail)
+        heading = "## %s (completed %s: %s)" % (label, today, detail)
         block_appends.append((heading, rewrite_moved_lines(runs_lines[start:end])))
         move_ranges.append((start, end, True))
-        plan.append("block Run %d -> %s" % (run, heading))
+        plan.append("block %s -> %s" % (label, heading))
+
+    # (2b) stale status paragraphs before the trailing paragraph
+    status_limit = trailing_index if trailing_index is not None else len(runs_lines)
+    stale_paragraphs = []
+    for run, start, end in find_status_paragraphs(runs_lines, table_end, status_limit, block_lines):
+        if run in open_runs:
+            continue
+        stale_paragraphs.append("\n".join(rewrite_moved_lines(runs_lines[start:end])))
+        move_ranges.append((start, end, True))
+        plan.append("status paragraph %s: move to the run history" % run_label(run))
 
     # (3) trailing paragraph
     paragraph_tail = []
@@ -357,7 +445,7 @@ def build_plan(runs_text, archive_text, keep, today):
     if len(segments) > 1:
         tail_runs = [run for run, _ in segments[1:] if run is not None]
         if tail_runs:
-            previous = max(tail_runs)
+            previous = max(tail_runs, key=lambda r: r[1])
             keep_segments = [segments[0]] + [
                 s for s in segments[1:] if s[0] == previous
             ]
@@ -366,12 +454,12 @@ def build_plan(runs_text, archive_text, keep, today):
                 new_paragraph = " ".join(text for _, text in keep_segments)
                 paragraph_tail = [rewrite_links(text) for _, text in drop_segments]
                 plan.append(
-                    "paragraph: keep queued sentence + Run %d, move %d sentence(s) "
-                    "about runs %s"
+                    "paragraph: keep queued sentence + %s, move %d sentence(s) "
+                    "about %s"
                     % (
-                        previous,
+                        run_label(previous),
                         len(drop_segments),
-                        ", ".join(str(s[0]) for s in drop_segments),
+                        ", ".join(run_label(s[0]) for s in drop_segments),
                     )
                 )
 
@@ -381,11 +469,10 @@ def build_plan(runs_text, archive_text, keep, today):
         new_runs_lines[trailing_index] = new_paragraph
     table_ranges = []
     if old_rows:
-        keep_set = set(keep_numbers)
         table_ranges = [
             (i, i + 1, False)
             for i in range(sep + 1, table_end)
-            if (new_runs_lines[i].startswith("|") and row_run_number(new_runs_lines[i]) not in keep_set)
+            if (new_runs_lines[i].startswith("|") and row_run_id(new_runs_lines[i]) not in keep_ids)
             or new_runs_lines[i].strip() == ""
         ]
     new_runs_lines = _drop_lines(new_runs_lines, table_ranges + move_ranges)
@@ -401,11 +488,14 @@ def build_plan(runs_text, archive_text, keep, today):
         if section_end(new_archive_lines, ARCHIVED_TABLE_HEADING) is None:
             body = list(TABLE_COLUMNS) + body
         append_section(new_archive_lines, ARCHIVED_TABLE_HEADING, body)
+    paragraph_tail = stale_paragraphs + paragraph_tail
     if paragraph_tail:
+        # a blank separator when the section already holds paragraphs
+        lead = [""] if section_end(new_archive_lines, PARAGRAPH_HEADING) is not None else []
         append_section(
             new_archive_lines,
             PARAGRAPH_HEADING,
-            ["Moved from `user-runs.md` on %s:" % today, ""]
+            lead + ["Moved from `user-runs.md` on %s:" % today, ""]
             + [line for text in paragraph_tail for line in (text, "")][:-1],
         )
     new_archive_text = "\n".join(new_archive_lines)
@@ -456,7 +546,7 @@ def repo_root():
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--keep", type=int, default=8,
-                        help="completed-run table rows to keep (default 8)")
+                        help="completed-run table ids to keep per edition (default 8)")
     parser.add_argument("--runs-file", type=Path,
                         default=repo_root() / "docs/verification/user-runs.md")
     parser.add_argument("--archive-file", type=Path,
