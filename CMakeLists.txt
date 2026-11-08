@@ -72,6 +72,12 @@ set_source_files_properties("${X3M_COMPOSITOR_ASM}" "${X3M_COMPOSITOR_SEH}"
 # Game edition (docs/architecture/farnhams-legacy-build.md): one source tree, two d3d9.dll builds.
 # ap: X3: Albion Prelude (X3AP.exe, the existing DLL). fl: X3: Farnham's Legacy (X3FL.exe): the shared
 # D3D/renderer sources, the AP engine modules they link against (inert) and the FL identity.
+if(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+  set(X3M_DEV_TUNING_DEFAULT ON)
+else()
+  set(X3M_DEV_TUNING_DEFAULT OFF)
+endif()
+option(X3M_DEV_TUNING "Dev-only projectile tuning file reader (FL; never in a release package)" ${X3M_DEV_TUNING_DEFAULT})
 set(X3M_EDITION "ap" CACHE STRING "Game edition: ap (X3: Albion Prelude) or fl (X3: Farnham's Legacy)")
 set_property(CACHE X3M_EDITION PROPERTY STRINGS ap fl)
 if(NOT X3M_EDITION STREQUAL "ap" AND NOT X3M_EDITION STREQUAL "fl")
@@ -262,6 +268,14 @@ else()
     src/proxy/loading_trace_light.cpp src/engine/fl/gz_buffer_fl.cpp src/engine/fl/crypt_cache_fl.cpp
     src/proxy/resource_reader_core.cpp src/engine/fl/resource_reader_fl.cpp)
   target_compile_definitions(d3d9 PRIVATE X3M_EDITION_FL=1)
+  # The projectile stage's dev-only in-flight tuning file <game>\x3m\projectile_tune.json
+  # (docs/architecture/projectile-look.md section 4): compiled in only with X3M_DEV_TUNING (default ON for a
+  # RelWithDebInfo build, OFF otherwise; tools/release/release.py configures OFF, so a release DLL has neither the
+  # reader nor the file path and the families' baked constants apply).
+  if(X3M_DEV_TUNING)
+    target_sources(d3d9 PRIVATE src/proxy/weapon_projectile_tune.cpp)
+    target_compile_definitions(d3d9 PRIVATE X3M_DEV_TUNING=1)
+  endif()
 endif()
 x3m_add_fog_field_assets(d3d9)
 target_compile_features(d3d9 PRIVATE cxx_std_17)
