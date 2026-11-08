@@ -176,7 +176,10 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     // octave 1's ridges at a quarter inside the polar band (its cracks across the dense centre), its
                     // envelope everywhere
                     float w1 = saturate(lw - 1.0) * (0.25 + 0.75 * wp), w2 = saturate(0.5 * lw - 1.0) * wp;
-                    float w3 = saturate(0.25 * lw - 1.0) * wp * on;
+                    // octave 3's angular cell shrinks towards the polar band's start (2 pi rp / fire_turb_n3: half its
+                    // nominal 0.083 R_s at rp 0.35, 1 px cells there; review 2026-11-08): its weight floors the local
+                    // cell at fire_cell_px, the nominal one where it is larger
+                    float w3 = saturate(0.25 * lw * min(1.0, 25.132741 * rp * fire1.x / fire2.y) - 1.0) * wp * on;
                     // octaves 4-5 also off in a cluster's burst (fire > 1: N overlapping bursts sum their fine detail
                     // away, and pay it N times)
                     float on4 = on * step(fire, 1.05);

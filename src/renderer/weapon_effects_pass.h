@@ -155,8 +155,8 @@ struct WeaponComposeConstants {
 constexpr unsigned weapon_wave_boxes = 2, weapon_wave_quads = 8;
 struct WeaponWaveConstants {
     float normal[4] = {0.f, 0.f, 1.f, 0.f}; // the plane's normal (view, unit), the age fraction t / L_w (the erosion's x)
-    float heat[4] = {1.f, 1.f, 1.f, 0.f};   // the age's cooling factor on T, the finest two octaves' weight (0: shed),
-                                            // the warp's scale (0: the close LOD's level 2), the game-time age (ms)
+    float heat[4] = {1.f, 1.f, 0.f, 0.f};   // the age's cooling factor on T, the finest two octaves' weight (0: shed),
+                                            // unused, the game-time age (ms)
     float spare[4] = {0.f, 0.f, 0.f, 0.f};  // c15, unused
     unsigned quads = 1;                     // the quads drawn (1 .. weapon_wave_quads; not uploaded)
 };
@@ -315,6 +315,9 @@ struct WeaponLook {
 WeaponLook default_weapon_look() noexcept; // the header constants of weapon_effects_core.h
 struct WeaponEffectsFrame {
     UINT width = 0, height = 0;          // the lane's (= the target's) size
+    // The frame's game step (game ms; 0 unknown): the fire law's fine octaves re-seed at most every two steps (SETA,
+    // fire-material.md 13.5), as the rays' flicker.
+    float step_ms = 0.f;
     IDirect3DTexture9* lane = nullptr;   // the completed RT2 (borrowed)
     bool four_channel = false;           // the lane's .b carries the view depth (else R32F device z/w)
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0; // the jittered projection

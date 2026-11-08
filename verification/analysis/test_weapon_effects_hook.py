@@ -523,8 +523,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             # review 2026-11-07: the worst case itself is a row (every pixel taking the noise), the weight its cost
             worst = timing[(5120, case.replace('fills_frame', 'every_pixel_noise'))]['gpu_us'] / 177.5
             self.assertAlmostEqual(weight, worst, delta=0.15, msg=name)
-        # the dense frame within the budget's 8 x 177.5 us
-        self.assertLessEqual(timing[(5120, 'capital_close_64_hits')]['gpu_us'], 1680.0)  # 1420 before fire round 3 (a changed-code bound)
+        # the dense frame (64 hits on a close capital): the changed-code bound 1680 us (the round-3 record's 1527.5 + 10 %;
+        # fire-material.md 13.3), over the budget's 8 x 177.5 = 1420 us since fire round 3 (1529 on its records), which
+        # was the bound before it
+        self.assertLessEqual(timing[(5120, 'capital_close_64_hits')]['gpu_us'], 1680.0)
 
     # Step 3, the death explosion (docs/architecture/explosion-look.md section 9; weapon_effects_boom_cases.h).
     DEATH_CHECKS = ('death_programs_attached', 'death_tier_sizes', 'death_body_contrast', 'death_body_silhouette_lobed',
@@ -619,8 +621,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertTrue(all(0.70 <= r['ratio'] <= 0.95 and 0.85 <= r['outer_px'] / r['law_px'] <= 1.10 and
                             r['peak'] <= r['body_peak'] for r in radius))
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
-        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'wave_lod1_alone', 'wave_lod2_alone',
-                 'eye_inside_fighter_n4']
+        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'wave_lod1_alone', 'eye_inside_fighter_n4']
         if compose:
             sil = {r['tier']: r for r in rows if r.get('case') == 'compose_silhouette'}
             self.assertEqual(set(sil), {'fighter_600m', 'capital_1500m', 'station_3km'})
@@ -641,9 +642,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLessEqual(weight['alone_weight'], weight['pinned'] + 0.03)
         self.assertLessEqual(weight['one_octave_weight'], weight['pinned_one'] + 0.03)
         self.assertLessEqual(weight['box_weight'], weight['pinned'] + 0.03)
-        # the close-range LOD's levels (fire-material.md 13.5) pinned to their rows
+        # the close-range LOD (fire-material.md 13.5) pinned to its row
         self.assertLessEqual(weight['lod1_weight'], weight['pinned_lod1'] + 0.03)
-        self.assertLessEqual(weight['lod2_weight'], weight['pinned_lod2'] + 0.03)
         # the fourth octave's weight pinned to its row (a body seen from outside, review 2026-11-07)
         f4 = next(r for r in self.record['metrics']['explosion_timing']
                   if r.get('case') == 'fine4_weight' and r['width'] == 5120)

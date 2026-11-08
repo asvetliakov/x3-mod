@@ -966,10 +966,12 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         for (unsigned c = 0; c < 3; ++c) fire_c[4 * k + c] = lk::fire_ramp[k][c];
     fire_c[7] = wcore::hull::fire_cluster_thr;       // c15.w
     {
-        // round 3 (fire-material.md section 13): the turbulence law, c19..c25
+        // round 3 (fire-material.md section 13): the turbulence law, c19..c25; the fine octaves' re-seed every
+        // fire_jit_ms of game time, at least two frame steps (SETA: a 160 ms step re-seeded every frame; 13.5)
+        const float jit = lk::fire_jit_ms > 2.f * f.step_ms ? lk::fire_jit_ms : 2.f * f.step_ms;
         const float law[20] = {lk::fire_turb_f, lk::fire_turb_a, lk::fire_turb_k, lk::fire_turb_c,
                                lk::fire_turb_n2, lk::fire_turb_n3, 1.f / lk::fire_stretch, lk::fire_turb_warp,
-                               lk::fire_flow_v * 0.001f, 1.f / lk::fire_jit_ms, lk::fire_thr_0, lk::fire_thr_t,
+                               lk::fire_flow_v * 0.001f, 1.f / jit, lk::fire_thr_0, lk::fire_thr_t,
                                lk::fire_thr_r, 1.f / lk::fire_soft, lk::fire_gain, lk::fire_gain_small,
                                1.f / lk::fire_heat_soft, lk::fire_red_cut, lk::fire_env_amp, lk::fire_env_rate};
         for (unsigned k = 0; k < 20; ++k) fire_c[20 + k] = law[k];
@@ -1296,6 +1298,8 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     if (SUCCEEDED(hr) && wave_boxes) {
         namespace wb = wcore::boom;
         const float s_end = wb::wave_sheet_enabled ? wb::wave_sheet_span / wb::wave_trail_span : 1.f;
+        // the fine octaves' re-seed: fire_jit_ms, at least two frame steps (SETA; fire-material.md 13.5)
+        const float wave_jit = lk::fire_jit_ms > 2.f * f.step_ms ? lk::fire_jit_ms : 2.f * f.step_ms;
         const float wv[11 * 4] = {fb[0], fb[1], fb[2], fb[3], fb[4], fb[5], fb[6], 0.f,
                                   1.f / wb::wave_trail_span, s_end, wb::wave_light, wb::wave_m_bias,
                                   wb::wave_window_in, wb::wave_window_out, wb::wave_m_floor, wb::wave_m_contrast,
@@ -1305,7 +1309,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                   wb::fire_wave_thr_0, wb::fire_wave_thr_out, wb::fire_wave_thr_in, wb::wave_lead,
                                   lk::fire_turb_a, wb::fire_wave_gain, lk::fire_gain, wb::wave_break_floor,
                                   1.f / lk::fire_soft, 1.f / lk::fire_heat_soft, wb::fire_wave_tongue, lk::fire_turb_c,
-                                  1.f / lk::fire_jit_ms, wb::wave_band_we, wb::wave_floor_a, wb::wave_floor_t};
+                                  1.f / wave_jit, wb::wave_band_we, wb::wave_floor_a, wb::wave_floor_t};
         float ramp[9 * 4] = {};
         for (unsigned k = 0; k < 5; ++k)
             for (unsigned c = 0; c < 3; ++c) ramp[4 * k + c] = lk::fire_ramp[k][c]; // v8: the fire ramp

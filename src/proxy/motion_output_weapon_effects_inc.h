@@ -310,6 +310,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         hv.near_z = f.near_z;
         hv.now = weapon_effects::game_ms();
         hv.step_ms = weapon_game_step_ms();
+        f.step_ms = float(hv.step_ms); // the fire law's re-seed floor (two steps; fire-material.md 13.5)
         hv.own_node = own;
         hv.cockpit = weapon_cockpit_;
         hv.budget_left = tuning.screen_budget - n.screens;

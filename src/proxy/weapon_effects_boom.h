@@ -72,9 +72,9 @@ struct BoomSlot {
     // The budget took the body's tongues (bit 0) or secondary k's (bit k + 1): shed for the rest of its life (review
     // 2026-11-08: no pop back when the depth order or the count changes).
     std::uint16_t fire_shed = 0;
-    // The wave's close-range LOD (0 the full law, 1 the finest two octaves off and the band at wave_band_r_lod, 2 the
-    // warp off too) and the frames it has been held (fire-material.md 13.5).
-    std::uint8_t wave_lod = 0, wave_lod_frames = 0;
+    // The wave's close-range LOD (0 the full law, 1 the finest two octaves off and the band at wave_band_r_lod), the
+    // frames it has been held and its cross-fade's step (0 .. fireball_octave_hold) (fire-material.md 13.5).
+    std::uint8_t wave_lod = 0, wave_lod_frames = 0, wave_lod_step = 0;
 };
 // One sub-burst's hashed constants (per record: the stage caches them by sequence, BoomState::compose).
 struct ComposeEntry {
@@ -132,7 +132,7 @@ struct BoomTuning {
     // sphere, the lab's "single body" toggle); force_shared / force_n: the fixture's compose rows (0: the law's).
     bool wave = true, wave_shimmer = true, compose = true, force_shared = false;
     bool wave_octave2 = true; // the sheet's second tongue octave (v8; the fixture's one-octave weight row: false)
-    int wave_lod = -1;        // the wave's LOD forced (0 .. 2; the fixture's weight rows), -1 the law's
+    int wave_lod = -1;        // the wave's LOD forced (0 or 1, its cross-fade complete; the weight rows), -1 the law's
     unsigned force_n = 0, force_jets = 0xffu;
     float box_scale = 1.f; // the fixture's compose_box_holds_spheres: the composed body's box grown
     float budget_screens = core::boom::budget_screens; // the family's own cap (the fixture's hysteresis gate lifts it)
@@ -166,7 +166,8 @@ struct BoomCounts {
     // the drawn waves' quads (8 strips or 1 box each) and their screens (the strips' clipped sum or the box)
     unsigned wave_quads = 0, wave_octaves_shed = 0;
     float wave_screens = 0.f;
-    // the largest close-range LOD level built, the largest LOD key (the band's screens at the full law) and the waves' charge
+    // the largest close-range LOD step built (0 .. fireball_octave_hold, the hold the full LOD), the largest LOD key (the
+    // band's screens at the full law) and the waves' charge
     // before the shed (fire-material.md 13.5)
     unsigned wave_lod = 0;
     float wave_key = 0.f, wave_charge = 0.f;
@@ -2124,37 +2125,44 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 // The close-range LOD (fire round 3, 2026-11-08; fire-material.md 13.5): the key is the band's charged
                 // screen area at the full law (its 0.35 r(t) annulus's projected screens, the area charged at the band's
                 // weight, before the clip to the drawn quads: a close wave's band runs past the screen); past
-                // wave_lod_screens the band drops its finest two octaves and narrows to wave_band_r_lod
-                // r(t) (level 1), past twice that it also drops the warp (level 2); entered at once, held
-                // fireball_octave_hold frames and left only under fireball_octave_return of the level's threshold (the
-                // bodies' octave hysteresis), per record.
+                // wave_lod_screens the band drops its finest two octaves and narrows to wave_band_r_lod r(t); entered at
+                // once, held fireball_octave_hold frames and left only under fireball_octave_return of the threshold (the
+                // bodies' octave hysteresis), per record. The switch cross-fades over the hold (review 2026-11-08: a hard
+                // switch popped the 1.5 km broadside at P + 50 ms): a step counter moves one a frame towards the level,
+                // m = step / hold, the band's width lerp(full, LOD, m) and the finest two octaves' weight 1 - m; the LOD's
+                // weight charged only at m = 1. (A second level dropping the warp measured nothing, 1.688 against 1.686,
+                // and could not trigger with the eye in the plane, the key capped at 1 there: removed.)
                 Cover cv;
                 cover(we, cv);
-                std::uint8_t lod = 0;
-                float we_d = we;
+                float mix = 0.f, we_d = we;
+                unsigned lod_step = 0;
                 if (cv.ns) {
+                    constexpr unsigned hold = core::look::fireball_octave_hold;
                     const float key = cv.ann_raw;
                     n.wave_key = key > n.wave_key ? key : n.wave_key;
-                    const std::uint8_t want = key > 2.f * bm::wave_lod_screens ? 2u : key > bm::wave_lod_screens ? 1u : 0u;
                     BoomSlot& ws_ = state.slots[lv.slot];
-                    if (want > ws_.wave_lod) {
-                        ws_.wave_lod = want;
-                        ws_.wave_lod_frames = 1;
-                    } else if (want < ws_.wave_lod) {
-                        const float back = core::look::fireball_octave_return * bm::wave_lod_screens * float(ws_.wave_lod);
-                        if (ws_.wave_lod_frames >= core::look::fireball_octave_hold && key < back) {
-                            ws_.wave_lod = key < core::look::fireball_octave_return * bm::wave_lod_screens ? 0u : 1u;
-                            ws_.wave_lod = ws_.wave_lod > want ? ws_.wave_lod : want;
+                    if (key > bm::wave_lod_screens) {
+                        if (!ws_.wave_lod) {
+                            ws_.wave_lod = 1;
                             ws_.wave_lod_frames = 1;
                         } else if (ws_.wave_lod_frames < 255)
                             ++ws_.wave_lod_frames;
-                    } else if (ws_.wave_lod_frames < 255)
-                        ++ws_.wave_lod_frames;
-                    lod = ws_.wave_lod;
-                    if (t.wave_lod >= 0) lod = std::uint8_t(t.wave_lod);
-                    if (lod) {
-                        const float wl = bm::wave_band_r_lod * r * (1.f / bm::wave_band_we);
-                        we_d = wl > we_min ? wl : we_min;
+                    } else if (ws_.wave_lod) {
+                        if (ws_.wave_lod_frames >= hold && key < core::look::fireball_octave_return * bm::wave_lod_screens) {
+                            ws_.wave_lod = 0;
+                            ws_.wave_lod_frames = 1;
+                        } else if (ws_.wave_lod_frames < 255)
+                            ++ws_.wave_lod_frames;
+                    }
+                    if (ws_.wave_lod && ws_.wave_lod_step < hold)
+                        ++ws_.wave_lod_step;
+                    else if (!ws_.wave_lod && ws_.wave_lod_step > 0)
+                        --ws_.wave_lod_step;
+                    lod_step = t.wave_lod >= 0 ? (t.wave_lod ? hold : 0u) : ws_.wave_lod_step;
+                    mix = float(lod_step) * (1.f / float(hold));
+                    if (lod_step) {
+                        const float wl = bm::wave_band_r_lod * r * (1.f / bm::wave_band_we), w_lod = wl > we_min ? wl : we_min;
+                        we_d = we + (w_lod - we) * mix;
                         cover(we_d, cv);
                     }
                 }
@@ -2212,22 +2220,22 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         for (unsigned q = 0; q < 3; ++q) wc.normal[q] = nv[q];
                         wc.normal[3] = lv.tb / life; // the age fraction: the material's erosion and advection (v7)
                         wc.heat[0] = Tw;
-                        // the finest two octaves (0: shed, the budget's step 0a or the LOD), the warp's scale (0: the LOD's
-                        // level 2)
-                        wc.heat[1] = t.wave_octave2 && !lod ? 1.f : 0.f;
-                        wc.heat[2] = lod >= 2 ? 0.f : 1.f;
+                        // the finest two octaves' weight (0: shed, the budget's step 0a; 1 - m under the LOD's cross-fade)
+                        wc.heat[1] = t.wave_octave2 ? 1.f - mix : 0.f;
+                        wc.heat[2] = 0.f;
                         wc.heat[3] = lv.tb;
                         for (unsigned q = 0; q < 4; ++q) wc.spare[q] = 0.f;
                         wc.quads = quads;
                         // the charge: the annulus's projected screens x budget_weight_wave (x _one under step 0a, x the LOD's
-                        // weight), the rest of the drawn quads (the strips' or the box's screens) x _miss, the shader's
+                        // weight at the cross-fade's end), the rest of the drawn quads (the strips' or the box's screens) x _miss, the shader's
                         // early-out (fire round 3's band, 2026-11-08: the strips were charged whole at the full weight, which
                         // the band's 0.35 r(t) made several screens at the close capital; the box always had this split)
                         const float drawn = use_strips ? strip_sum : box;
-                        const float w_band = lod ? bm::budget_weight_wave_lod[lod - 1]
-                                                 : t.wave_octave2 ? bm::budget_weight_wave : bm::budget_weight_wave_one;
+                        const float w_band = mix >= 1.f      ? bm::budget_weight_wave_lod
+                                             : t.wave_octave2 ? bm::budget_weight_wave
+                                                              : bm::budget_weight_wave_one;
                         const float charge = cv.ann * w_band + (drawn - cv.ann) * bm::budget_weight_wave_miss;
-                        n.wave_lod = lod > n.wave_lod ? lod : n.wave_lod;
+                        n.wave_lod = lod_step > n.wave_lod ? lod_step : n.wave_lod;
                         n.wave_charge += charge;
                         wave_scr[nw] = use_strips ? strip_sum : box;
                         wave_meta[nw] = BoxMeta{age_ms, e.owner, charge, lv.own, 0};

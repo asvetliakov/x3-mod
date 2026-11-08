@@ -1378,6 +1378,7 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         const unsigned refs_reset = pass.references();
         g.release();
         D3DPRESENT_PARAMETERS pp2 = pp;
+        device_guard("before_reset"); // a loss before the Reset is seen, not reset away
         const HRESULT reset = dev->Reset(&pp2);
         pass.after_reset(reset);
         if (r32f_ps) {

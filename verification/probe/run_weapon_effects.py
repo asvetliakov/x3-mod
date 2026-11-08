@@ -75,6 +75,8 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/renderer/weapon_glow_vertex_program_inc.h', 'src/renderer/weapon_glow_pixel_program_inc.h',
                       'src/effects/weapon_fireball_vs.hlsl', 'src/effects/weapon_fireball_ps.hlsl',
                       'src/renderer/weapon_fireball_vertex_program_inc.h', 'src/renderer/weapon_fireball_pixel_program_inc.h',
+                      # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
+                      'verification/probe/weapon_effects_fixture.cpp',
                       'verification/probe/weapon_effects_hull_cases.h',
                       # the hull-impact classes (docs/architecture/hull-impact-classes.md)
                       'verification/probe/weapon_effects_class_cases.h', 'src/proxy/engine_shimmer_core.h',

@@ -2557,6 +2557,7 @@ int main(int argc, char** argv) {
         pass.before_reset();
         g.release();                       // only DEFAULT-pool targets are lost across Reset; shaders survive
         D3DPRESENT_PARAMETERS pp2 = pp;
+        device_guard("before_reset"); // a loss before the Reset is seen, not reset away
         const HRESULT reset = dev->Reset(&pp2);
         pass.after_reset(reset);
         std::printf("RESET result=%08lx\n", reset);

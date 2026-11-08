@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_fireball_ps.hlsl",
-  "source_sha256": "436e184e2497e00f41ea0792ee03960fdc38a89b6e326a40c7067af8b3e25d76",
+  "source_sha256": "0193fb9ecf59bbf4ce1a6cf822abe3f51391409e9a0d2bcbb646232437bb20e3",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -12,9 +12,9 @@
   "includes": {
     "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709"
   },
-  "word_count": 3583,
-  "bytecode_sha256": "6a94d4bc939c41cda08d53bfcc4e3bcd8eec8f3b85f44f7447ea83142cbbcb45",
-  "header_sha256": "59129399b523d09e578cde3cb19d23226c527a154caf9a2b666650669ebc53fc",
+  "word_count": 3615,
+  "bytecode_sha256": "894ba807a25886e00c4fa7b31dc9f146f4d7bd2ea537b60988e9ea5282336705",
+  "header_sha256": "d668ebf45cbdefc3a55d2910aa0a846478adc01408521b042c94c7b0c9fd3884",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

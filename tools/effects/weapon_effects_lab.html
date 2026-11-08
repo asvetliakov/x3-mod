@@ -1325,14 +1325,20 @@ function fireLod(rpx1440, body) {
 // radius over R_s; x the age fraction, Tt the body's T(t), o the seed, tg the game-time age (ms), adv the drift, rpx the
 // projected R_s in px, fire the fire weight (its excess over 1 the cluster's thinning), shed: octaves 3-5 off, oct the
 // frame's octaves - 2 (2: none shed).
+// The frame's game step the stage draws at (1000 / 60 x SETA): the fire law's fine octaves re-seed every fire_jit_ms, at
+// least two steps (fire-material.md 13.5, SETA: a 160 ms step re-seeded every frame); set by the hull and death stages.
+let FIRE_STEP_MS = 0;
+const fireJitMs = () => Math.max(HEADER.look.fire_jit_ms, 2 * FIRE_STEP_MS);
 function fireTurb(px, py, rp, x, Tt, colpow, lobe, o, tg, adv, rpx, fire, shed = false, oct = 2) {
   const LK = HEADER.look, f0 = LK.fire_turb_f, a1 = LK.fire_turb_a, a2 = a1 * a1, sat = v => Math.max(0, Math.min(1, v));
   const lw = rpx / f0 / LK.fire_cell_px, on = shed ? 0 : 1, wp = fireSmooth(LK.fire_polar_r0, LK.fire_polar_r1, rp);
-  const w1 = sat(lw - 1) * (0.25 + 0.75 * wp), w2 = sat(0.5 * lw - 1) * wp, w3 = sat(0.25 * lw - 1) * wp * on; // octave 1's ridges a quarter inside
+  // octave 1's ridges a quarter inside; octave 3's angular cell floored at fire_cell_px where it shrinks (2 pi rp / n3)
+  const w1 = sat(lw - 1) * (0.25 + 0.75 * wp), w2 = sat(0.5 * lw - 1) * wp;
+  const w3 = sat(0.25 * lw * Math.min(1, 8 * Math.PI * rp * f0 / LK.fire_turb_n3) - 1) * wp * on;
   const on4 = fire > 1.05 ? 0 : on; // octaves 4-5 off in a cluster's burst
   const w4 = sat(0.125 * lw - 1) * on4 * sat(oct), w5 = sat(0.0625 * lw - 1) * on4 * sat(oct - 1);
   // octaves 4-5: Cartesian, re-seeded every fire_jit_ms of game time
-  const jit = Math.floor(tg / LK.fire_jit_ms), jx = jit * 7.31 + o * 2.9, jy = jit * 3.97 + o * 0.4;
+  const jit = Math.floor(tg / fireJitMs()), jx = jit * 7.31 + o * 2.9, jy = jit * 3.97 + o * 0.4;
   let n2 = 0.5, n3 = 0.5, n4 = 0.5, n5 = 0.5;
   if (w5 > 0) n5 = valueNoise2(px * 16 * f0 + jx + 41.3, py * 16 * f0 + jy + 41.3);
   if (w4 > 0) n4 = valueNoise2(px * 8 * f0 + jy + 23.9, py * 8 * f0 + jx + 23.9);
@@ -1440,6 +1446,7 @@ function renderHull(record, t) {
   const U = c.cell_m[c.tier], kOf = a => a === AN.tug ? 0.1 : h.k, rOf = a => HH.r_scale * U * (HH.r_base + HH.r_k * kOf(a));
   const rHit = rOf(an0), k = kOf(an0);
   const step = 1000 / 60 * Math.max(c.seta, 1e-3), floorMs = h.min_frames * step, scale = OW / 5120;
+  FIRE_STEP_MS = step;
   const f = OH / (2 * Math.tan(20 * Math.PI / 180));
   const hits = hullHits(t, c, h, hull, U, floorMs, an0);
   if (h.incidence > 0) { // the shot incidence: each heading tilted off the inward normal towards the view's +x
@@ -2651,6 +2658,7 @@ function boomEvents(c) {
 function renderBoom(record, t) {
   const ctx = record.ctx, c = boomControls(), BM = HEADER.boom, LK = HEADER.look, HH = HEADER.hull;
   const f = 0.5 * OH * 1.3333333, scale = OH / 1440, near = 0.1, tg = t * c.seta, step = 1000 / 60 * c.seta;
+  FIRE_STEP_MS = step;
   const floorMs = c.min_frames * step;
   const R_f = Math.max(c.lo, Math.min(c.hi, c.f * c.radius)), U = HEADER.cell_m[c.tier === 1 ? 1 : c.tier === 2 || c.tier === 3 ? 2 : 0];
   const R_0 = BM.tier_r0_obj[c.tier] * c.radius + BM.tier_r0_f[c.tier] * R_f, pre = c.pre, tb = tg - pre;
@@ -2924,7 +2932,7 @@ function renderBoom(record, t) {
           const v = -zz / BM.wave_band_we, tw = tb / BM.fire_wave_flow_ms, W = LK.fire_turb_warp, a1 = LK.fire_turb_a, a2 = a1 * a1;
           const lw = 2 * Math.PI * dr / WC * f / Math.max(zr, 1e-3) / LK.fire_cell_px;
           const w1 = sat(0.5 * lw - 1), w2 = sat(0.25 * lw - 1), w3 = sat(0.125 * lw - 1), w4 = sat(0.0625 * lw - 1);
-          const jit = Math.floor(tb / LK.fire_jit_ms), jx = jit * 7.31, jy = jit * 3.97, q = 2 * v, qs = q / 1.5;
+          const jit = Math.floor(tb / fireJitMs()), jx = jit * 7.31, jy = jit * 3.97, q = 2 * v, qs = q / 1.5;
           let q1 = 0.5, q2 = 0.5, q3 = 0.5, q4 = 0.5;
           if (w4 > 0) q4 = vn2p(16 * WC * uu + 4.1 * s1 + jy, 16 * q + 3.84 * tw + jx, 16 * WC);
           if (w3 > 0) q3 = vn2p(8 * WC * uu + W * (2 * q4 - 1) + 3.3 * s1 + jx, 8 * qs + 2.744 * tw + jy, 8 * WC);

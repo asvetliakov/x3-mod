@@ -1035,13 +1035,13 @@ constexpr float budget_weight_wave = 2.05f, budget_weight_wave_miss = 0.56f;
 constexpr float budget_weight_wave_one = 1.68f;
 // The close-range LOD (fire round 3, 2026-11-08; fire-material.md 13.5; the close capital at 720 m shed the 0.35 r(t)
 // band on 28 of 32 frames at the 2.86-screen fence): keyed on the band's charged screen area at the full law (its
-// annulus's projected screens before the clip to the drawn quads); past wave_lod_screens the band drops its finest two octaves and narrows to wave_band_r_lod
-// r(t), past twice that it also drops the warp; charged per band screen at budget_weight_wave_lod[level - 1] [M] (the
-// wave alone at each level). The 5 km face-on gate views (0.07-0.47 screens) keep the full law.
+// annulus's projected screens before the clip to the drawn quads); past wave_lod_screens the band drops its finest two
+// octaves and narrows to wave_band_r_lod r(t), cross-faded over fireball_octave_hold frames; charged per band screen at
+// budget_weight_wave_lod once the fade is complete [M] (the wave alone, the LOD forced: 1.685 on the development run,
+// 1.711 and 1.686 on the two records). The 5 km face-on gate views (0.07-0.47 screens) keep the full law. A second level
+// dropping the warp measured 1.687 / 1.689 / 1.688 (nothing) and could not trigger with the eye in the plane: removed.
 constexpr float wave_lod_screens = 0.6f, wave_band_r_lod = 0.25f;
-// [M] 5120x1440 2026-11-08 (the development run): level 1 1.685, level 2 1.687 (the finest two off at 0.35 r(t) 1.691):
-// the warp's drop costs nothing measurable, the width none per drawn screen.
-constexpr float budget_weight_wave_lod[2] = {1.69f, 1.69f};
+constexpr float budget_weight_wave_lod = 1.69f;
 // wave_quads: a wave is drawn as the eight octagon strips of its annulus [r - window_in w_e, r + window_out w_e] (each
 // an oriented screen quad about its sector, cut at the near plane and the screen), or as the slab's box when that is
 // smaller (the birth: the annulus near a disc); the charge is the drawn quads' screens.

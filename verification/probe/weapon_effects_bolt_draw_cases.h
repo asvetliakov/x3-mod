@@ -2532,6 +2532,7 @@ void reset_and_faults(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp, Bo
     bt.release();
     g.release();
     D3DPRESENT_PARAMETERS pp2 = pp;
+    device_guard("before_reset"); // a loss before the Reset is seen, not reset away
     const HRESULT reset = dev->Reset(&pp2);
     pass.after_reset(reset);
     const bool made = SUCCEEDED(reset) && make_target(g, 1920, 1080) && bt.make(1920, 1080);

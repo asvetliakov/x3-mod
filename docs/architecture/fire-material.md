@@ -249,7 +249,9 @@ Each flips a header constant, never adds a setting:
 Flight questions: (1) does the hull burst read as fire at 200 m and at 2 km? (2) do the capital's death body and its
 wave read as fire, the wave translucent, from broadside and from above? (3) is the flicker rate right under SETA 6–10x
 and at 1x? (4) does the white-yellow core bloom without turning the 20-hit fighter into a sun? (5) SETA sparkle on fire
-bodies: at 100-160 ms steps do the flicker and the fine grain (new noise every frame, section 12.3) sparkle?
+bodies: at 100-160 ms steps do the flicker and the fine grain (new noise every frame, section 12.3) sparkle? Since
+2026-11-08 (13.5) the fine octaves re-seed at most every two frame steps, as the rays: does the grain still sparkle, or
+does it now step visibly at SETA 6-10?
 
 ## 9. Unknowns and what settles each
 
@@ -483,7 +485,7 @@ sheet at 0.7 R_f 0.0006 against 0.01), `wave_no_hard_edge` (fall 0.523), `wave_f
 | `hull_burst_no_centre_ring`: worst prominence | <= 0.15 | <= 0.255 | the record's 0.18 + 10 % was 0.198; the completion's hotter interior (`fire_white_share` 0.5) measured 0.232, + 10 % |
 | `hull_burst_half_hidden_by_lane`: at the hit / sky | <= 0.97 | <= 0.979 | 10 % margin on the hidden share (1 - 0.977) |
 | `hull_budget_20_hits_5120` | <= 80 us | <= 107 us | changed-code bound: the record's 97.4 + 10 %; one burst's every-pixel cost fell 431.8 -> 332.5 us while the cluster's bursts keep more octaves |
-| `hull_budget_capital_close_64_within_budget` | <= 1420 us | <= 1680 us | changed-code bound: 1527.5 + 10 %, as above |
+| `hull_budget_capital_close_64_within_budget` | <= 1420 us | <= 1680 us | changed-code bound: 1527.5 + 10 %, as above; the row is no longer within the 8-screen budget (8 x 177.5 = 1420 us), the check keeps its name |
 
 **The wave (13.5), gates re-derived to the band (old -> new; the dev records' values):** `wave_radius_law` the edge
 radius within 5 % of r(t) -> the brightest per bin within 0.70-0.95 of r(t) (0.79-0.83: the band's middle) and the
@@ -560,21 +562,26 @@ full weight). Removed: `fire_wave_thr_end`, `fire_wave_heat_soft`, `fire_wave_as
 **The close-range LOD (orchestrator decision 2026-11-08).** Per wave (per record), keyed on the band's charged screen
 area at the full law: the 0.35 r(t) annulus's projected screens (the wall's bar with the eye in the plane), before the
 clip to the drawn quads, so a close band that runs past the screen still reads large. Past `wave_lod_screens` 0.6 the
-band drops its finest two octaves (the step-0a mechanism, `heat[1]` 0) and narrows to `wave_band_r_lod` 0.25 r(t)
-(level 1); past 1.2 it also drops the warp (`heat[2]`, c14.z, 0: level 2). Entered at once, held
-`fireball_octave_hold` 3 frames and left only under `fireball_octave_return` 0.8 of the level's threshold. The LOD'd
-band is charged at `budget_weight_wave_lod` {1.69, 1.69}: the wave alone at 5120x1440 measured 1.685 (level 1) and 1.687
-(level 2) against 1.691 for the finest two off at 0.35 r(t) on the development run, 1.711 / 1.689 / 1.687 on the record
-[M]; the warp's drop saves nothing measurable and the width
-changes nothing per drawn screen, so the LOD's saving at the close capital is its geometry: the 0.25 r(t) band's inner
+band drops its finest two octaves (the step-0a weight, `heat[1]`) and narrows to `wave_band_r_lod` 0.25 r(t).
+Entered at once, held `fireball_octave_hold` 3 frames and left only under `fireball_octave_return` 0.8 of the
+threshold. The switch cross-fades over the hold (review 2026-11-08: the hard switch popped the 1.5 km broadside at P +
+50 / 150 ms): a step counter moves one a frame towards the level, m = step / 3, the band's width lerp(0.35, 0.25, m)
+r(t) and the finest two octaves' weight 1 - m; the band is charged at the full weight until m = 1, then at
+`budget_weight_wave_lod` 1.69: the wave alone at 5120x1440 measured 1.685 on the development run, 1.711 and 1.686 on
+the first two records, against 1.687-1.691 for the finest two off at 0.35 r(t) [M]. A second level (past 1.2, the warp
+dropped) was built and removed: it measured 1.687 / 1.689 / 1.688, nothing against level 1, and could not trigger with
+the eye in the plane, where the key is the wall's bar, capped at 1 [M]. The width changes nothing per drawn screen, so the LOD's saving at the close capital is its geometry: the 0.25 r(t) band's inner
 reach (0.59 r(t) against 0.42) leaves the frame at P + 700 ms, where the full band stayed on screen to P + 1550 ms.
 `wave_drawn_close_capital` 14 of 14 on-screen frames on the development run and the record (32 frames before, 4
 drawn); the record's frames with the wave 242.8-290.3 us against the 450 us fence [M]. The keys
 (`verification/results/explosion-look/wave_lod_charges.cpp`, the stage on the CPU, the fixture's stream row for row):
 the 5 km face-on gate views 0.03-0.48 screens (the full law: `wave_band_width` 0.217, `wave_not_a_tyre` arc 44 degrees
-unchanged), the 1.5 km broadside level 1 from P + 50 ms and level 2 from P + 150 ms, the close capital level 2 from P
-[M, CPU]. The weight leaves little room: at P + 150 ms the close capital's other charges, everything else shed, are 1.156
-screens, so a band weight over 1.70 sheds the wave on that frame [M, CPU].
+unchanged), the 1.5 km broadside entering at P + 50 ms (faded in by P + 150 ms), the close capital from P (faded in by P +
+100 ms at the fixture's 50 ms steps) [M, CPU]. The lab draws the wave at the full law, without the LOD; natively the band
+narrows and loses its finest two octaves at 1.5 km and closer (at 5120x1440), so the lab's broadside at 1540-1700 ms
+shows more of the band than the game will. The weight leaves little room: at P + 150 ms the close capital's other
+charges, everything else shed and the rays clipped, are 1.117 screens, so a band weight over about 1.74 sheds the wave on
+that frame [M, CPU].
 
 **The rays' charge clipped (orchestrator decision 2026-11-08).** Not the wave's: from P + 700 ms the close capital's
 starburst charged 1.2-4.5 screens unclipped (its quads' |b - a| (h0 + h1) far past the frame; the embers' share is
@@ -588,7 +595,28 @@ read 308.8-441.0 us (221-232 before; the worst 441.0 at P + 1100 ms against the 
 
 **Weights re-pinned (orchestrator decision 2026-11-08).** `budget_weight_wave` 2.0 -> 2.05 (the record's alone 2.039,
 box 2.051); `budget_weight_smoke` 1.20 -> 1.39 (the every-pixel row 246.6 us, 1.389 a screen; 1.41 on the round-3
-record) [M].
+record) [M]. Pinned within +0.03 of the measured rows, not on them: on the second record `_one` 1.68 and the smoke's
+1.39 sit under their rows (1.687, 1.402) [M].
+
+**The fine octaves' re-seed under SETA (review 2026-11-08).** Octaves 4-5 of the body and the band's finest two re-seed
+every `fire_jit_ms` 66.7 ms of game time; at a 160 ms SETA step that was a new pattern every frame, where the rays'
+flicker already holds each level at least two steps. The re-seed period is now max(`fire_jit_ms`, 2 x the frame's game
+step): `WeaponEffectsFrame::step_ms` (the glue's `weapon_game_step_ms`, 0 unknown) into c21.y (`weapon_fireball_ps`)
+and c12.x (`weapon_wave_ps`); the lab's `fireJitMs()` the same at its 1000 / 60 x SETA step. At 1x (16.7 ms) nothing
+changes; at SETA 6-10 the grain changes every second frame.
+
+**Octave 3's polar cell (review 2026-11-08).** The polar octaves' angular cell is 2 pi rp / n: octave 3's (n 53) is its
+nominal 0.083 R_s at rp 0.7 but half that at 0.35, where the polar band starts (1 px cells at the size where the nominal
+one is 2 px). Its weight now uses the local cell, floored at `fire_cell_px` 2 px: saturate(lw / 4 x min(1, 8 pi rp
+f / n_3) - 1); the nominal one where the cell is larger. Octave 2 (cells twice as large) is unchanged. On its record
+`death_body_no_centre_ring` failed: the fighter at 600 m (R_s 37 px at 0.5 L), worst hit 0.1931 against 0.15 (0.1077 on
+the record before) [M]. At that size octave 3's nominal weight is about 0.5 and the local floor takes it to 0 near rp
+0.35-0.45, so the fine detail steps radially inside the gate's 0.3-0.45 R_s annulus: the floor draws the ring the gate
+measures [I]. Open: revert the floor, or floor the cell size there instead of the weight (another lookup).
+
+**The collapse at mid range (design note, no change).** The collapse shrinks R(t) to 0.35 R_f, so a body that is
+inside the law's size LOD early can fall under `fire_px_1` late in its life and blend back towards the erosion law: the
+fighter at 600 m reads 16.9 px at 0.8 L. Accepted: at that size and age the body is a dim red ember either way.
 
 **The wave's gain.** `wave_e` 1.6 -> 2.4 -> 3.2 (the user: the band reads dimmer than the four references; 3.2 by
 the orchestrator's decision, the gain that matches them, with `wave_fire_hue`'s share re-derived 0.43 -> 0.41: the

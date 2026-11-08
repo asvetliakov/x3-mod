@@ -38,7 +38,7 @@ constexpr double sparks_1024_bound_us = 48.1; // 38.5 us measured on the first r
 // fixture's compose rows (force_n, force_shared, force_jets 0xff: the law's) and the box gate's growth.
 bool compose_on = true, force_shared = false;
 bool wave_octave2 = true; // the wave sheet's second octave (the one-octave weight row: false)
-int wave_lod = -1;         // the wave's close-range LOD forced (the weight rows: 0 .. 2), -1 the law's
+int wave_lod = -1;         // the wave's close-range LOD forced (the weight rows: 0 or 1, faded in), -1 the law's
 bool wave_off = false;     // the CPU rows' reference without the waves
 unsigned octave_cap = 4;   // the frame's octaves at most (the fourth octave's timing row: 3)
 unsigned force_n = 0, force_jets = 0xffu;
@@ -1788,7 +1788,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     boom::broadside(e);
                 };
                 // the weights per drawn screen (the strips' clipped quads, or the box), the fence removed; the full law
-                // (the close-range LOD held at 0), then each LOD level (fire-material.md 13.5)
+                // (the close-range LOD held at 0), then the LOD (fire-material.md 13.5)
                 boom::wave_lod = 0;
                 const double wa = run_case("wave_alone_fills_frame", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
                 const double sa = double(last_case.n.wave_screens);
@@ -1810,20 +1810,16 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 boom::wave_lod = 1;
                 const double wl1 = run_case("wave_lod1_alone", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
                 const double sl1 = double(last_case.n.wave_screens);
-                boom::wave_lod = 2;
-                const double wl2 = run_case("wave_lod2_alone", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
-                const double sl2 = double(last_case.n.wave_screens);
                 boom::wave_lod = -1;
                 const auto per = [&](double us, double scr) { return scr > 0 ? (us - fence_us) / 177.5 / scr : 0.0; };
                 device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=wave_weight alone_weight=%.3f alone_screens=%.3f "
                             "alone_quads=%u one_octave_weight=%.3f box_weight=%.3f box_screens=%.3f box_quads=%u "
-                            "lod1_weight=%.3f lod1_screens=%.3f lod2_weight=%.3f lod2_screens=%.3f "
-                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f pinned_lod1=%.2f pinned_lod2=%.2f\n",
+                            "lod1_weight=%.3f lod1_screens=%.3f "
+                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f pinned_lod1=%.2f\n",
                             size.first, size.second, per(wa, sa), sa, qa, per(w1, s1), per(wm, sm), sm, qm, per(wl1, sl1),
-                            sl1, per(wl2, sl2), sl2, double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
-                            double(bm::budget_weight_wave_miss), double(bm::budget_weight_wave_lod[0]),
-                            double(bm::budget_weight_wave_lod[1]));
+                            sl1, double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
+                            double(bm::budget_weight_wave_miss), double(bm::budget_weight_wave_lod));
                 if (bm::compose_enabled) { // the composed body's rows (v4: skipped with the switch off)
                 const auto box_of = [&](const ws::HullView& v) {
                     const rr::WeaponFireballVertex& a = boom::bodies[0];
@@ -2625,6 +2621,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         pass.before_reset();
         g.release();
         D3DPRESENT_PARAMETERS pp2 = pp;
+        device_guard("before_reset"); // a loss before the Reset is seen, not reset away
         const HRESULT reset = dev->Reset(&pp2);
         pass.after_reset(reset);
         const bool mt = SUCCEEDED(reset) && make_target(g, 1920, 1080);
