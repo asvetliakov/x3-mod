@@ -21,15 +21,15 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "d7d52d086cdcdd2b1982b5c2dbf2f23462229de4-dirty",
+    "commit": "f76822490d6569c38a4d5ded738e5de8cea68d01",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "46132ceeb4e8440308fa1c0bd091d3d0d19e99c52d78b33cf7e4f0bf076d64b4",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "95766bc71c76906090ab5164047f8371fec2afb2dbfb698d24d8461ef0bcd926",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "08a272c80cf5568cd371a0f96eb01689cf8bca8146b1a16863c6e907453354f0",
-      "src/proxy/weapon_effects_patch.cpp": "c7144097594e6871093cc207dc178a51f81d3d2a5d1b253877e2e19b9570c0a8",
-      "src/proxy/weapon_effects_patch.h": "d1d438eeed9744edb796333e69665b8e4de03a907eb9358471d0a9cc29746ae7",
+      "src/proxy/weapon_effects_patch.cpp": "457d115853b1f5f44af4ce4a6a46c4679f95a29f6e48aa9f00bee653cbca66d4",
+      "src/proxy/weapon_effects_patch.h": "50599a6b118e79f8cbdca944aa2e9933bd23e35dd335c15830271c75b1097a26",
       "src/proxy/weapon_effects_hook.cpp": "c33661b694b15cacf311212fd10e765821c9692d4e8f1cce0e7d3cba60b80774",
       "src/proxy/weapon_effects_core.h": "c48cbf89c85f6e8eb37ba47cd6915a9eec2f7da208a1d7453fa542cea083272e",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
@@ -39,7 +39,7 @@
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
-      "src/proxy/weapon_effects_projectile.h": "de68e290166794028cafc9634c37e50f2509937a17ae0f45e8cf249245c97cb1"
+      "src/proxy/weapon_effects_projectile.h": "25559ed6a80cba4503a8ebb2b72cd1edbfed1b7329edc366da77550d2dbef191"
     }
   },
   "build": {
@@ -59,7 +59,7 @@
       "handler_instructions": {
         "_x3m_weapon_event_fl": 1244,
         "_x3m_weapon_tap_fl": 45,
-        "_x3m_weapon_bolt_tap_fl": 718,
+        "_x3m_weapon_bolt_tap_fl": 735,
         "_x3m_weapon_muzzle_fl": 226,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 569
@@ -234,7 +234,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "1e78fbe4ed386e9ba2bf72312d6bcad9273220721988b8162388ee2553cfe96a"
+    "executable_sha256": "d0bfe4daa6e9812eb10b8ffeb2696529f5a526b1616826c7364c2e6518f674b8"
   },
   "host": {
     "name": "native-windows",

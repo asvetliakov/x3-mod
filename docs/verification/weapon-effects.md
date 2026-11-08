@@ -3175,7 +3175,7 @@ behaviour change on AP; not flown on FL (the stage has not run in the game).
 The projectile stage ([projectile-look.md](../architecture/projectile-look.md) "Implementation (2026-11-08)"): the
 batch-submit claim `0x097af8`, the enabled-body pool on the object tap, the per-frame builder and one draw, the dev
 tuning file. Commits `740fba710` (hook), `165335c52` (stage and program), `65e142146` (tuning), `44855cd05`
-(fixtures), `01d863272` (records). `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+(fixtures), `01d863272` (the first records, taken at `44855cd05`); later records below. `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
 verification/probe/run_weapon_effects.py --host native` at `44855cd05` [M]:
 
 | Fixture | Result |
@@ -3216,3 +3216,18 @@ length (18.17 px run at 2700 m). Retaken natively [M]: AP hook **131 of 131**, F
 the 512-bolt budget CPU 67.6 µs, GPU fenced 32.0 µs (fence 10.7 µs), 2.75 % of the frame lit. The look frames,
 regenerated: 200 m / 500 m / 1 km dashes 56 / 19 / 8 px at 1x (16.7 ms) and 215 / 74 / 31 px at SETA 6 (100 ms, the
 30 m cap), the bolts at 0.8 of their speed across the view [M].
+
+**Review fixes (2026-11-08, `f76822490`).** The stage's result is never S_FALSE after a projectile result other than
+S_FALSE (the resolve normalizes again after a failed draw); the object tap stamps entries with the game ms and an
+entry not tapped for max(250 ms, three game steps) retires, the pool is emptied on a load or sector change; a stale
+table (its TBullets row count not the engine's) enables no body; `projectile_unpooled` counts, on sampled frames,
+scoped draws of an enabled body whose node is not pooled; the MRT rule reads the HDR target's format; the tuning parser
+refuses non-JSON (missing or trailing commas, `+2`, bare words); the batch stub is a `check_no_x87.py` root. The depth
+case is now a partial occluder: depth at the 400 m value (0.9995009), the 300 m bolt drawn (centre 4.199), the 500 m
+bolt hidden (0 over its half of the frame); the pool case adds the unseen retirement (drawn 1/0/1/0/0: drawn, recycled,
+tapped 250 ms ago still drawn, 251 ms retired, expired). Records retaken on the clean `f76822490` (the runner's dirty
+flag no longer counts its own record directory) [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **70 of 70**;
+budget CPU 68.3 µs, GPU fenced 34.6 µs (fence 11.0 µs). Builds FL and AP 0 warnings; `check_no_x87.py --edition fl` 0
+violations over 1060 functions (the batch stub rooted), `--edition ap` 0 over 1161; host `test_weapon_effects*.py` OK.
+The far flag is verified as a write only (the write-back seam through `TemporalPass` did not run; projectile-look.md
+"Implementation").
