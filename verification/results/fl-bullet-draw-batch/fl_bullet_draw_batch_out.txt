@@ -1,0 +1,132 @@
+FL /mnt/c/X3FL/X3FL.exe sha256 e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8
+AP /mnt/c/X3AP-orig/X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+FL direct edges 72230
+site batch_submit: call 0x097af8 -> 0x0e0b40, window 0x097af0..0x097b07 (23 bytes)
+  0x097af0 8b4c2414       mov ecx, dword ptr [esp + 0x14]
+  0x097af4 8bd3           mov edx, ebx
+  0x097af6 57             push edi
+  0x097af7 56             push esi
+  0x097af8 e843900400     call 0x4e0b40
+  0x097afd 8b36           mov esi, dword ptr [esi]
+  0x097aff 83c408         add esp, 8
+  0x097b02 833e00         cmp dword ptr [esi], 0
+  0x097b05 75e9           jne 0x497af0
+  masked bytes 8b4c24148bd35756e8439004008b3683c408833e0075e9 fnv1a32 0xf86f890b
+  relocated dwords in window: none
+  call bytes in one aligned qword: True; rel32 in one qword: True
+  direct branch targets inside the window: 0x097af0 (from 0x097b05)
+  direct branches into the call bytes 1..4: 0
+  image dwords naming call bytes 1..4: 0
+  E8 callers of 0x0e0b40: 1 0x097af8
+  E8 callers of the view submit 0x0978e0: 5 0x08ba73 0x08ba7f 0x08bca9 0x097892 0x09789d
+relocated dwords in the batch loop 0x097ad9..0x097b17: 0: 
+relocated dwords in the submit routine 0x0e0b40..0x0e0ea3: 17: 0x0e0b45+1->0x14ef20 0x0e0bc2+1->0x1aaf94 0x0e0c2f+1->0x1740e0 0x0e0c4b+1->0x174344 0x0e0c5f+1->0x174344 0x0e0c7d+1->0x1aae78 0x0e0c90+1->0x1aaf94 0x0e0ccb+1->0x18fc74 0x0e0cd2+1->0x18fc88 0x0e0d0a+1->0x18fa2c 0x0e0d4e+1->0x18fc94 0x0e0d79+2->0x1aae78 0x0e0da9+2->0x150340 0x0e0e04+1->0x1aaf94 0x0e0e09+2->0x1aaed8 0x0e0e18+1->0x1aaf94 0x0e0e32+1->0x1aaf94
+declaration slot [0x5aaed8] (RVA 0x1aaed8) <- CreateVertexDeclaration at 0x0eb05e with elements at RVA 0x17c410:
+  stream 0 offset  0 FLOAT3 method 0 POSITION0
+  stream 0 offset 12 FLOAT2 method 0 TEXCOORD0
+  stream 0 offset 20 D3DCOLOR method 0 COLOR0
+  END
+string RVA 0x18fc74 (technique): 'INSTANCE_BULLETS'
+string RVA 0x18fc88 (technique): 'INSTANCE'
+string RVA 0x18fa2c (parameter): 't_DiffuseTexture'
+string RVA 0x18fc94 (parameter): 'g_mViewProjection'
+string RVA 0x174344 (effect): 'effects'
+anchors FL bullet=22 collect=15 fire=9 loop=25 mover=6 submit=47 total 124; AP 14; failures 0
+FL bullets: 45 rows, 30 distinct bodies (layers ['01.cat', '02.cat', '03.cat', '04.cat', '05.cat', '06.cat', '07.cat', '08.cat', '09.cat', '10.cat', '11.cat', '12.cat', '13.cat', 'addon2/01.cat', 'addon2/02.cat', 'addon2/03.cat', 'addon2/04.cat', 'addon2/05.cat', 'addon2/06.cat', 'addon2/07.cat'])
+  objects/effects/weapons/bullet_ls_alpha      rows [0, 37, 38, 39] member 01.cat:objects/effects/weapons/bullet_LS_alpha.pbb lods 1 lod0_value 16207 lod0 faces 22 max_tris_per_group 22 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets_diff.tga                  vertices_per_instance   66 uv_signature b8237bbfe385
+  objects/effects/weapons/bullet_pr_alpha      rows [1] member addon2/01.cat:objects/effects/weapons/bullet_PR_alpha.pbb lods 1 lod0_value 8099 lod0 faces 18 max_tris_per_group 18 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets_diff.tga                  vertices_per_instance   54 uv_signature 42cd1759bf28
+  objects/v/10436                              rows [2] UNPARSED (FormatError) textures ['id:282', 'id:36', 'id:364', 'id:380']
+  objects/effects/weapons/bullet_repeat        rows [3] member 01.cat:objects/effects/weapons/bullet_Repeat.pbb lods 1 lod0_value 3122 lod0 faces 78 max_tris_per_group 78 instanced no z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance  234 uv_signature 6d9ef58e5e55
+  objects/effects/weapons/bullet_energybolt    rows [4] member 01.cat:objects/effects/weapons/bullet_EnergyBolt.pbb lods 1 lod0_value 1062 lod0 faces 28 max_tris_per_group 28 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   84 uv_signature 5c3f0e98d975
+  objects/effects/weapons/bullet_fragbomb      rows [5] member 01.cat:objects/effects/weapons/bullet_FragBomb.pbb lods 1 lod0_value 1740 lod0 faces 30 max_tris_per_group 30 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   90 uv_signature d9a55d114c8a
+  objects/effects/weapons/bullet_pl_alpha      rows [6] member 01.cat:objects/effects/weapons/bullet_PL_alpha.pbb lods 1 lod0_value 16072 lod0 faces 22 max_tris_per_group 22 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets_diff.tga                  vertices_per_instance   66 uv_signature 8ec5dbcaebac
+  objects/v/00300                              rows [7, 19, 43] UNPARSED (FormatError) textures ['id:70']
+  objects/v/10458                              rows [8, 15, 16] member 01.cat:objects/v/10458.pbd lods 1 lod0_value 20171 lod0 faces 26 max_tris_per_group 16 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 18 kind classic effect None technique None blend None zwrite None
+      material 1: flags 18 kind classic effect None technique None blend None zwrite None
+      texture id:907                                               vertices_per_instance   48 uv_signature 141e5263de4b
+      texture id:409                                               vertices_per_instance   30 uv_signature fa91374fecbc
+  objects/effects/weapons/bullet_flamethrower  rows [9] member 01.cat:objects/effects/weapons/bullet_flamethrower.pbb lods 1 lod0_value 43632 lod0 faces 24 max_tris_per_group 24 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      texture material#-92                                         vertices_per_instance   72 uv_signature bf0d7dae38a9
+  objects/v/00517                              rows [10, 41] member addon2/01.cat:objects/v/00517.pbb lods 1 lod0_value 784 lod0 faces 24 max_tris_per_group 24 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 0 kind classic effect None technique None blend None zwrite None
+      texture 380.jpg                                              vertices_per_instance   72 uv_signature 9635ed2b0eee
+  objects/effects/weapons/bullet_push          rows [11] member 01.cat:objects/effects/weapons/bullet_push.pbd lods 1 lod0_value 13704 lod0 faces 56 max_tris_per_group 56 instanced no z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/ONE zwrite False
+      texture effects\weapons\fx_bullet_push_diff.tga              vertices_per_instance  168 uv_signature c22574c61bef
+  objects/effects/weapons/bullet_ionpulse      rows [12] member 01.cat:objects/effects/weapons/bullet_IonPulse.pbb lods 1 lod0_value 5340 lod0 faces 28 max_tris_per_group 28 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   84 uv_signature 5ebc2d36a2dd
+  objects/effects/weapons/bullet_electrospike  rows [13] member 01.cat:objects/effects/weapons/bullet_ElectroSpike.pbb lods 1 lod0_value 3950 lod0 faces 30 max_tris_per_group 30 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   90 uv_signature f20f370617a9
+  objects/effects/weapons/bullet_mam           rows [14, 42] member 01.cat:objects/effects/weapons/bullet_MAM.pbb lods 1 lod0_value 3460 lod0 faces 12 max_tris_per_group 12 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   36 uv_signature fb7ad683cb3f
+  objects/v/10385                              rows [17, 26, 27] member 01.cat:objects/v/10385.pbd lods 1 lod0_value 168993 lod0 faces 16 max_tris_per_group 16 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 18 kind classic effect None technique None blend None zwrite None
+      texture id:796                                               vertices_per_instance   48 uv_signature be8898f3584e
+  objects/v/00225                              rows [18, 40] member 01.cat:objects/v/00225.pbd lods 1 lod0_value 11770 lod0 faces 1584 max_tris_per_group 1584 instanced no z_extent 1.7650 z_range -0.8825..0.8825
+      material 0: flags 0 kind classic effect None technique None blend None zwrite None
+      texture id:235                                               vertices_per_instance 4752 uv_signature c19a09cac7ad
+  objects/v/00518                              rows [20] member 01.cat:objects/v/00518.pbd lods 1 lod0_value 12682 lod0 faces 70 max_tris_per_group 70 instanced no z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance  210 uv_signature f45dd4d6f9cb
+  objects/effects/weapons/bullet_ioncannon     rows [21] member 01.cat:objects/effects/weapons/bullet_IonCannon.pbb lods 1 lod0_value 9973 lod0 faces 22 max_tris_per_group 22 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   66 uv_signature 52c38523742b
+  objects/effects/weapons/bullet_gausscannon   rows [22] member 01.cat:objects/effects/weapons/bullet_GaussCannon.pbb lods 1 lod0_value 2637 lod0 faces 28 max_tris_per_group 28 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   84 uv_signature 6f4ce6eeeb97
+  objects/effects/weapons/bullet_firebomb      rows [23] member 01.cat:objects/effects/weapons/bullet_FireBomb.pbb lods 1 lod0_value 8489 lod0 faces 36 max_tris_per_group 36 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance  108 uv_signature 3955abeb1e76
+  objects/effects/weapons/bullet_pointsing     rows [24] member 01.cat:objects/effects/weapons/bullet_PointSing.pbb lods 1 lod0_value 16293 lod0 faces 8 max_tris_per_group 8 instanced yes z_extent 1.9980 z_range -0.9990..0.9990
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   24 uv_signature 4341ed225834
+  objects/effects/x3ap/weapons/tol_bullet      rows [25] member addon2/01.cat:objects/effects/x3ap/weapons/TOL_bullet.pbb lods 1 lod0_value 870 lod0 faces 16 max_tris_per_group 16 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/ONE zwrite False
+      texture effects\weapons\fx_bullets_diff.tga                  vertices_per_instance   48 uv_signature c1865a30524d
+  objects/v/10678                              rows [28] member addon2/01.cat:objects/v/10678.pbb lods 1 lod0_value 500 lod0 faces 24 max_tris_per_group 24 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 0 kind classic effect None technique None blend None zwrite None
+      texture 380.jpg                                              vertices_per_instance   72 uv_signature 9635ed2b0eee
+  objects/v/00525                              rows [29, 31, 32] UNPARSED (FormatError) textures ['id:155']
+  objects/v/10459                              rows [30, 44] member 01.cat:objects/v/10459.pbd lods 3 lod0_value 659 lod0 faces 556 max_tris_per_group 556 instanced no z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 0 kind classic effect None technique None blend None zwrite None
+      texture id:282                                               vertices_per_instance 1668 uv_signature 17556afe900f
+  objects/v/00526                              rows [33] UNPARSED (FormatError) textures ['id:155']
+  objects/v/00527                              rows [34] UNPARSED (FormatError) textures ['id:155']
+  objects/effects/weapons/bullet_repair        rows [35] member 01.cat:objects/effects/weapons/bullet_Repair.pbb lods 1 lod0_value 966 lod0 faces 24 max_tris_per_group 24 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_beams_diff.tga                    vertices_per_instance   72 uv_signature 80a71a3dd82f
+  objects/effects/weapons/bullet_fragbomb_fragment rows [36] member 01.cat:objects/effects/weapons/bullet_FragBomb_Fragment.pbb lods 1 lod0_value 1354 lod0 faces 30 max_tris_per_group 30 instanced yes z_extent 2.0000 z_range -1.0000..1.0000
+      material 0: flags 33554432 kind effect effect effects.fx technique 1 blend ONE/INVSRCCOLOR zwrite False
+      texture effects\weapons\fx_bullets2_diff.tga                 vertices_per_instance   90 uv_signature d9a55d114c8a
+textures shared by more than one bullet body:
+  380.jpg: objects/v/00517 (72 v, uv 9635ed2b0eee); objects/v/10678 (72 v, uv 9635ed2b0eee)
+  effects\weapons\fx_bullets2_diff.tga: objects/effects/weapons/bullet_repeat (234 v, uv 6d9ef58e5e55); objects/effects/weapons/bullet_energybolt (84 v, uv 5c3f0e98d975); objects/effects/weapons/bullet_ionpulse (84 v, uv 5ebc2d36a2dd); objects/effects/weapons/bullet_gausscannon (84 v, uv 6f4ce6eeeb97); objects/effects/weapons/bullet_fragbomb (90 v, uv d9a55d114c8a); objects/effects/weapons/bullet_electrospike (90 v, uv f20f370617a9); objects/effects/weapons/bullet_fragbomb_fragment (90 v, uv d9a55d114c8a); objects/effects/weapons/bullet_mam (36 v, uv fb7ad683cb3f); objects/v/00518 (210 v, uv f45dd4d6f9cb); objects/effects/weapons/bullet_ioncannon (66 v, uv 52c38523742b); objects/effects/weapons/bullet_firebomb (108 v, uv 3955abeb1e76); objects/effects/weapons/bullet_pointsing (24 v, uv 4341ed225834)
+  effects\weapons\fx_bullets_diff.tga: objects/effects/weapons/bullet_ls_alpha (66 v, uv b8237bbfe385); objects/effects/weapons/bullet_pl_alpha (66 v, uv 8ec5dbcaebac); objects/effects/weapons/bullet_pr_alpha (54 v, uv 42cd1759bf28); objects/effects/x3ap/weapons/tol_bullet (48 v, uv c1865a30524d)
+  3 shared textures
+(texture, vertices per instance) pairs held by more than one body:
+  380.jpg 72: objects/v/00517 uv 9635ed2b0eee, objects/v/10678 uv 9635ed2b0eee
+  effects\weapons\fx_bullets2_diff.tga 84: objects/effects/weapons/bullet_energybolt uv 5c3f0e98d975, objects/effects/weapons/bullet_ionpulse uv 5ebc2d36a2dd, objects/effects/weapons/bullet_gausscannon uv 6f4ce6eeeb97
+  effects\weapons\fx_bullets2_diff.tga 90: objects/effects/weapons/bullet_fragbomb uv d9a55d114c8a, objects/effects/weapons/bullet_electrospike uv f20f370617a9, objects/effects/weapons/bullet_fragbomb_fragment uv d9a55d114c8a
+  effects\weapons\fx_bullets_diff.tga 66: objects/effects/weapons/bullet_ls_alpha uv b8237bbfe385, objects/effects/weapons/bullet_pl_alpha uv 8ec5dbcaebac
+  4 ambiguous pairs
+IRE body objects/effects/weapons/bullet_ls_alpha: rows 0 SS_BULLET_IRE, 37 SS_BULLET_FLAK_CLUSTER_FRAG, 38 SS_BULLET_FLAK_CLUSTER_FRAG_FRAG, 39 SS_BULLET_FLAK_ALPHA_FRAG
+  row 0: speed col11 581000 lifetime col10 1200 ms size cols16/17 [0.07, 0.07] flags 0 col24 0
+  row 37: speed col11 1050000 lifetime col10 400 ms size cols16/17 [12.0, 12.0] flags 256 col24 0
+  row 38: speed col11 600000 lifetime col10 200 ms size cols16/17 [12.0, 12.0] flags 256 col24 0
+  row 39: speed col11 581000 lifetime col10 1200 ms size cols16/17 [0.07, 0.07] flags 256 col24 0
