@@ -24,13 +24,13 @@ options considered for the rest are in section 8.
 A fighter tracer is **a line of light, not a sprite**: a core of `core_px` (start 2 px) full width at the reference
 distance 500 m, whose world width therefore follows from the pixel figure and the projection and shrinks with distance
 to a 1 px dot whose radiance falls with its lost area; a Gaussian glow of the weapon's colour at `glow_ratio` x the core
-radius (start 3) and `glow_gain` (start 0.2 of scene white), the wide halo left to the bloom chain; a stretch along
-the velocity of `stretch_k` x speed x the game-time frame step (start 1.0: the distance the bolt flew this frame, so SETA
-lengthens it and `length_cap_m` bounds it; as built, mock B, the dash keeps the core's radiance);
+radius (start 3) and `glow_gain` (start 0.2 of scene white), the wide halo left to the bloom chain; a streak from the
+previous frame's drawn head to this frame's (the distance the bolt flew this frame, so SETA lengthens it; consecutive
+frames meet end to end, FL 59 A), flat along its length, dimmed by `length_cap_m` / length past the cap (section 2);
 a hot centre of `hot_share` white (start 0.3 for the IRE, the dimmest gun); radiance 2^`stops` x scene white
 (start +2 stops) written into the FP16 scene with the far flag, so the bolt is composited after the TAA resolve and
 never enters the history; nothing behind it. Every position, direction, speed, birth and end is the engine's (the live
-node's, read per frame); the only authored numbers are the eight tuning values, calibrated in flight against the game's own bolt
+node's, read per frame); the only authored numbers are the seven tuning values, calibrated in flight against the game's own bolt
 and baked after the user accepts them. The stage replaces the game's bullet draw per body (one instanced batch per
 bullet body) and draws every tapped bullet of the accepted rows; every other body keeps the game's draw untouched.
 Mock **B** (`mock-stretched.png`) is the recommended starting look.
@@ -63,8 +63,8 @@ The beam-flagged rows in these families (Kha'ak, IOND, PAL, tri-beam, fusion bea
 [S, classifier 4.1]) take their family's tier and colour but their body is the beam step's, flown after the bolts; the
 waves (PD, PSG, Terran AF fragment, flag `0x8`) likewise keep their flag's body inside their family.
 
-**Shared within a family:** the eight tuning values of section 4 (core px at the reference, glow ratio and strength,
-stretch factor, hot-centre share, dot distance, length cap, brightness). **Per gun, from the game:** colour (the
+**Shared within a family:** the seven tuning values of section 4 (core px at the reference, glow ratio and strength,
+hot-centre share, dot distance, length cap, brightness). **Per gun, from the game:** colour (the
 body texture's alpha-weighted mean `texture_rgb`, or the override tint; the IRE's is sRGB (121, 82, 39), normalised to
 linear (1.0, 0.44, 0.11) = sRGB (255, 177, 92) at full radiance [M, `render_mocks.py`]), speed (TBullets col 11: IRE
 581,000 units/s = 1,162 m/s [M]; the stage reads the live velocity instead), lifetime (col 10: 1,200 ms) and calibre
@@ -94,18 +94,47 @@ Projection at 1440 rows: f = 1,280 px x m per metre of distance at the launcher 
 | --- | --- | --- |
 | core width | **w_px = core_px x 500 / d** (d the view depth in metres), independent of the projection: only the length (and the position) depends on the live projection. (At fov 90, f = 1280, that is a world width of 0.78 m.) Under 1 px it is drawn 1 px wide at radiance x w_px (a far bolt dims, it does not fatten) | 5.0 / 2.0 / 1.0 / 0.33 → 1 px at a third |
 | glow | a Gaussian of σ = `glow_ratio` x core_px / 2 in screen px at d_ref, scaled with distance like the core, floor σ 1.5 px; colour the gun's tint; radiance `glow_gain` x scene white. The wide halo is the bloom's: the core's own energy feeds the extract, so the drawn glow is only the near field | σ 7.5 / 3 / 1.5 / 1.5 px |
-| motion stretch | a segment along v̂ of `stretch_k` x v x Δt_game (cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]), centred on the body origin (section 3), capped at `length_cap_m` metres and at the distance flown since birth (ext+8). As built (mock B, the user's choice) the core's radiance is not spread along it: the dash keeps the core's radiance | with the baked `stretch_k` 0.4: 50 / 20 / 10 / 3 px; under SETA 6 (step 100 ms, 46 m) capped at `length_cap_m` 30 m: 192 / 77 / 38 / 13 px |
-| nothing behind | no smoke, no fading streak, no history: an IRE fires 6.7 shots/s per gun at 1,162 m/s, so a trail would turn a stream into a beam and persist where the TAA would smear it; a short fading streak is acceptable only for a slug or a kinetic round (MASS, EBC: a burning tracer has one) and is that family's decision | — |
+| motion streak (bridged on screen, FL 59 A) | a segment **on screen** from the previous frame's projected head to this frame's projected head P (the body origin, section 3), both through the unjittered projection (the bolt never enters the TAA history; jitter would only misalign the seam): **bridged by construction**, so one frame's streak ends exactly where the next one starts at any frame rate, SETA and camera motion, translation or turn, and the eye's integration of successive frames is one unbroken line. The pool entry keeps the head's raster position and view depth. A first frame (a new bullet, a jump, a camera cut, a frame the stage did not run) is the projection of P − v_rel min(Δt_game, age) (v_rel = v less the camera's translation per step: the node velocity includes the shooter's; cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]; never behind the muzzle). No multiplier (the former `stretch_k`): the length is the on-screen motion. Along the axis the profile is flat with logistic end ramps whose half maximum sits at the ends, Φ(x + h) − Φ(x − h); the previous frame's ramp and this one's telescope, so the seam is neither a gap nor a bead. Width, glow and depth (occlusion) are the head's. **Energy (a dimming for long travel only):** the radiance factor is min(1, `length_cap_m` / the world travel this frame, \|v\| Δt_game): past the cap the streak keeps its full length and dims (a fast or SETA bolt is a longer, fainter streak, never a chopped dash); a travel under the cap keeps full radiance whatever its on-screen length (a paused game, step 0, too); an on-screen motion under the core's width (an end-on bolt) is a spot of the core's width centred on the motion, at full core radiance at its centre | at 60 fps (19.4 m): 124 / 50 / 25 / 8 px; at 144 fps (8.1 m): 52 / 21 / 10 / 3 px; under SETA 6 (100 ms, 116 m) the full 116 m at 30 / 116 = 0.26 of the radiance (arithmetic, f = 1280) |
+| nothing behind | no smoke, no fading streak, no history beyond the previous frame's head (the streak is one frame's travel): an IRE fires 6.7 shots/s per gun at 1,162 m/s, so a trail would turn a stream into a beam and persist where the TAA would smear it; a short fading streak is acceptable only for a slug or a kinetic round (MASS, EBC: a burning tracer has one) and is that family's decision | — |
 | hot centre | the core colour is lerp(tint, white, `hot_share` x (1 + k)); the IRE at 0.3 keeps its orange, the HEPT at 0.42 goes pale | — |
 | distance LOD | past `lod_dot_m` the stretch is dropped and the bolt is a 1–2 px dot with the glow at its floor; never a rim, an outline or a flat disc (a decal) | at 3 km a 1 px dot of 8 px length, or a dot past the limit |
 | HDR | radiance 2^`stops` x scene white (the lit hull's white, 1.0 linear) into the FP16 scene (ONE/ONE), under the same auto exposure (capped +1.3 EV) and AgX as every light; the bolt is energy in the scene, not a sprite with a glow painted on | +2 stops: 4.0 linear, clips white at the core through AgX |
 | TAA | the pixel program writes the far flag (RT2's lane, `oC2 = 32 max(rgb)`, the production B' route of bolts-through-taa.md) so the write-back composites the bolt from the current frame and it never enters the history: no clamp attenuation of a 2 px line, no scar over a hull, no ghost; the Gaussian edges are the anti-aliasing; the half-pixel jitter is nothing against 50 px of motion per frame | — |
 
-End-on (the chase view looks along the flight axis) the segment projects to a point and the bolt is a disc of the core's
-width with its glow, by construction. Birth: never longer than flown (head − v̂ min(stretch, v x age)), so it grows out
-of the muzzle over its first frame. End: absent from the tap list (hit or expiry) means not drawn; the impact family
-covers the cut. A camera turn is not smeared (the stretch is the bullet's motion, not the screen's); that is honest
-motion and costs no previous-frame lookup.
+End-on (a bolt flying along the line of sight: straight-ahead fire in first person, the most common view) the on-screen
+motion is under the core's width and the bolt is a spot of the core's width at full core radiance at its centre (its
+along profile normalised by 1 / (Φ(h) − Φ(−h)), 1 within 2^-15 for a streak of a few core widths); it is never dimmed
+by its small on-screen motion. The dot past `lod_dot_m` is the same spot on the head with the streak's factor
+min(1, cap / travel), so the SETA transition does not pop.
+Birth: never longer than flown (P − v_rel min(Δt, age)), so it grows out of the muzzle over its first frame. End:
+absent from the tap list (hit or expiry) means not drawn; the impact family covers the cut. A camera turn moves the
+streak's tail with the screen (the streak is the bolt's on-screen path between the two frames, the motion the eye
+integrates); a cut (the resolve's cut detector, rotation bound or chase snap) starts every bridge over.
+
+**Why bridged (FL 59 A, 2026-11-08).** With the streak at 0.4 of the per-frame travel (capped at 30 m) the user saw each
+IRE near the ship as a dashed line, "--- --- ---", in motion only (a single frame shows one dash; `stretch_k` 0 did not
+change it): a phantom array, the eye integrating successive frames' short dashes at their new positions with the gaps
+between them; the game's fat long mesh overlaps frame to frame and hides it. At `stretch_k` 1.0 and 1.5 the gaps went
+(the diagnosis held) but the seams showed hot beads: the round Gaussian end caps of two consecutive dashes overlap and
+add. The streak is therefore the bridged travel with complementary end ramps (no multiplier: a k above 1 overlaps, below
+1 leaves gaps), and the cap conserves energy instead of cutting the length. The bridge is on screen because the
+artefact is a perception of screen motion: a bridge in world space overlaps a forward shot from the moving ship by the
+ship's travel per frame (the node velocity includes the shooter's) and gaps an approaching one, and one relative to the
+eye's position still misses the seam when the camera turns (a chase camera turning at 60°/s moves the screen by
+1280 x tan 1° ≈ 22 px per frame at 60 fps and fov 90 [inferred]; the fixture measures 26.85 px at its projection).
+
+**Static frames (the logic-tick question).** The stage keeps, per pool entry, the read position and the drawn head of
+its last stage frame. An entry whose node +0x30 did not change since the previous stage frame counts
+`projectile_static` and its head is extrapolated by v x the game time since the change, accumulated per static frame as
+the render dt (the proxy's QPC between stage frames, 0 past 0.25 s) x the engine's SETA rate (cfg `+0xbc/+0xc0`, the
+plumes' `seta_read`; 1 when refused), bounded at two game steps (a paused game or a stopped bullet holds instead of
+flying on); its tail stays the previous head, so it never freezes and never gaps. An entry whose read position is
+farther than 1 m + a quarter of the frame's travel from read position + v x (game ms since its change) counts
+`projectile_jumped` and draws as a first frame. A head extrapolated last frame past this frame's position (against the
+on-screen motion of the velocity relative to the camera) holds on screen (never backwards). An entry bridges only from
+the device frame just before (a frame the stage did not run, the weapon stage unarmed or refused, makes the next one a
+first frame) and never across a cut. Both counters are summed in the `weapon_effects_frame` row: FL 59 A's flight settles whether the engine
+advances node +0x30 less often than the render frame.
 
 **The three mocks** (`verification/results/projectile-look/render_mocks.py` → `mock-{thin,stretched,glow}.png`,
 512x256, one IRE bolt at 500 m on black beside a dim hull edge, linear light exposed and sRGB-encoded; no bloom, AgX or
@@ -117,8 +146,8 @@ TAA, so the halo the bloom would add is absent; `mocks_summary.json` holds every
 | **B** | `mock-stretched.png` | as A | as A | 6:1 (12 px) | a short bright dash: the bolt in flight at a quarter of its 1x per-frame motion |
 | C | `mock-glow.png` | as A | σ 8 px, 0.4 | none | a soft ball: the glow outgrows the core, the balloon the archive's review named |
 
-**Recommendation: B.** The stretch is what makes a 2 px core a bolt rather than a star; at 1x and 60 fps the in-game
-dash is 50 px at 500 m (`stretch_k` 1), so B's 12 px is the conservative end of the range the user will tune. A is the
+**Recommendation: B.** The streak is what makes a 2 px core a bolt rather than a star; at 1x and 60 fps the in-game
+streak is 50 px at 500 m (the bridged travel, FL 59 A), so B's 12 px was the conservative end. A is the
 dot the far LOD collapses to; C is rejected as the body (section 8), its glow level is what the bloom should supply.
 
 ## 3. The engine anchor
@@ -160,7 +189,7 @@ tapped (the list is sector-wide) and culled by the stage.
 
 ## 4. Calibration in flight [D]
 
-`C:\X3FL\x3m\projectile_tune.json`, dev only, at most eight numbers for the family; the starting values and bounds
+`C:\X3FL\x3m\projectile_tune.json`, dev only, at most seven numbers for the family; the starting values and bounds
 (`weapon_projectile_family.h`):
 
 | Key | Start | Bounds | Meaning |
@@ -168,10 +197,9 @@ tapped (the list is sector-wide) and culled by the stage.
 | `core_px` | 2.0 | 0.5–8 | core full width (FWHM, px) at d_ref = 500 m, at the live projection |
 | `glow_ratio` | 3.0 | 1–12 | glow σ over the core radius |
 | `glow_gain` | 0.2 | 0–2 | glow radiance in scene white |
-| `stretch_k` | 0.4 | 0–3 | stretch = k x v x Δt_game (1.0 at first; 0.4 baked after the fixture's look frames, see "Implementation") |
 | `hot_share` | 0.3 | 0–1 | white share of the core colour (x (1 + k) per gun) |
 | `lod_dot_m` | 3000 | 500–20000 | past this view depth (m), no stretch: a dot |
-| `length_cap_m` | 30 | 5–500 | the stretch's cap in metres (116 at first, the stretch of SETA 6 at 60 fps; 30 baked after the look frames; the engine's own 116 m figure is the collision hull, section 3) |
+| `length_cap_m` | 30 | 5–500 | **energy-conserving** since FL 59 A: a streak longer than this (metres) keeps its full length and its radiance scales by cap / length (before: a hard cap that cut the length; 116 at first, 30 baked after the look frames; the engine's own 116 m figure is the collision hull, section 3). The former `stretch_k` key is gone (the streak is the bridged travel); a file still carrying it is read without it and without a row |
 | `stops` | 2.0 | −2–6 | core radiance 2^(stops + k) x scene white |
 
 The proxy checks the file's last-write time at most once a second on the Present thread (`GetFileAttributesExW`,
@@ -184,7 +212,7 @@ starred); a malformed file logs one `projectile_tune refused` row and keeps the 
 the baked values with one `source=defaults` row; a file that never existed logs nothing.
 Nothing per frame but the one-second timer. **It never ships:** the reader (`weapon_projectile_tune.cpp`) compiles only
 under the CMake option `X3M_DEV_TUNING` (default ON for a RelWithDebInfo build, OFF otherwise; `tools/release/release.py`
-configures OFF), so a release DLL has the constants of `weapon_projectile_family.h` and no file code or path. **Protocol:** the user edits the file, flies, reports the eight
+configures OFF), so a release DLL has the constants of `weapon_projectile_family.h` and no file code or path. **Protocol:** the user edits the file, flies, reports the seven
 numbers and a screenshot; we bake them as the family's constants in the header, the user deletes the file. One gun at a
 time: the IRE's accepted values are the family's; PAC and HEPT are then flown on them and may move only the per-gun
 inputs (colour, hot share via k), unless the user asks.
@@ -235,7 +263,7 @@ FL only (`X3M_EDITION_FL`); the AP build installs no new hook and creates no pro
 **fighter-tracer family's stage with the IRE as its only enabled row**, not as IRE code.
 
 **Where things live.** `src/proxy/weapon_projectile_family.h` (the families: shape, mount tier, the enabled TBullets ids,
-the eight-number `Tune`; `resolve_rows`), `weapon_effects_projectile.h` (the game-thread pool and enabled-body set,
+the seven-number `Tune`; `resolve_rows`), `weapon_effects_projectile.h` (the game-thread pool and enabled-body set,
 integer only), `weapon_projectile_stage.h` (the per-frame builder), `weapon_projectile_tune_core.h` /
 `weapon_projectile_tune.{h,cpp}` (the dev file), `src/effects/weapon_projectile_{vs,ps}.hlsl` (one family-generic
 program pair: every colour, width and stretch is per vertex), `WeaponEffectsPass::run_projectiles`
@@ -260,8 +288,9 @@ normalised to a largest channel of 1 (the IRE's (121, 82, 39) → (1.0, 0.44, 0.
 row's override, else clamp(log10(d / 300) / 2, 0, 1) over TBullets `+0x44` (IRE 220 → 0). Speed, position, birth and end
 are the live bullet's.
 
-**Constants (the baked values, `Tune` of `fighter_tracer`):** core_px 2, glow_ratio 3, glow_gain 0.2, stretch_k 0.4,
-hot_share 0.3, lod_dot_m 3000, length_cap_m 30, stops 2. stretch_k and length_cap_m were 1.0 and 116 (the section 4
+**Constants (the baked values, `Tune` of `fighter_tracer`):** core_px 2, glow_ratio 3, glow_gain 0.2,
+hot_share 0.3, lod_dot_m 3000, length_cap_m 30 (energy-conserving since FL 59 A), stops 2; the `stretch_k` multiplier
+was removed at FL 59 A (it had been 1.0, then 0.4). stretch_k and length_cap_m were 1.0 and 116 (the section 4
 starting values) until the fixture's look frames: a 48 px dash at 500 m at 1x and full-cap beams of 287–857 px under
 SETA 6, the bulk the user rejected (coordinator, 2026-11-08). Fixed: reference distance 500 m (`reference_m`, the
 tuning numbers' reference, never in the program), 5 view units per metre, glow σ floor 1.5 px (its radiance scaled by
@@ -277,13 +306,17 @@ every capture frame a scoped draw whose node is not pooled is read too, and one 
 an entry not tapped for max(250 ms, three game steps) retires (absent from the update pass means not drawn), as do an
 expired, recycled or unreadable one, and Present empties the pool on a load or a sector change. A table whose TBullets
 row count is not the engine's resolves no body (`projectile_rows state=stale`, the stage stays off). At the resolve the
-stage walks the pool (one bounded node read per entry), builds one quad
-per bolt from the jittered live projection and the eye in engine units (the adjugate inverse of the view basis, so the
+stage walks the pool (one bounded node read per entry), bridges each entry from its previous head on screen (section
+2: the entry keeps its read position, the head's raster position and view depth as float bits, the game ms of its last
+change, its extrapolated game µs and the device frame that wrote them, all integer fields; the object tap zeroes the
+frame on a registration and a recycled node), builds one quad per bolt from the unjittered live projection and the eye
+in engine units (the adjugate inverse of the view basis, so the
 per-bolt math is float without the far-from-origin error), and draws all of them in one `DrawIndexedPrimitiveUP`
 (48-byte vertices: float32 position and local frame, float4 radiance scales and 1/(2σ²), two D3DCOLOR tints; a
 FLOAT16 attribute measured five times the submit cost natively) into RT0 and the lane at RT1 (COLORWRITEENABLE1 GREEN)
-with the scene's depth surface captured at the resolve, LESSEQUAL, Z writes off, ONE/ONE. The pixel program is 16 ps_3_0
-slots. Capabilities checked at attach with their own verdict (`projectile_device` row; a refusal keeps the shield
+with the scene's depth surface captured at the resolve, LESSEQUAL, Z writes off, ONE/ONE. The pixel program is 39 ps_3_0
+slots since FL 59 A (16 before: the two logistic end ramps per Gaussian; a segment's integral along the axis is its
+drawn length exactly, so the energy rules are radiance scales on the CPU). Capabilities checked at attach with their own verdict (`projectile_device` row; a refusal keeps the shield
 effect and the game's bolts): two simultaneous targets, independent write masks, MRT post-pixel-shader blending,
 LESSEQUAL, the primitive limits, blending of a four-lane lane format, and per frame the lane's format and the MRT bit-depth
 rule, the depth surface's size and multisampling (`projectile_state` row on a change of verdict).
@@ -292,7 +325,9 @@ rule, the depth surface's size and multisampling (`projectile_state` row on a ch
 family=fighter_tracer rows=0,37,38,39 refused= shared=` once; `projectile_device` per attach; `projectile_state` per
 change; the `weapon_effects_frame` row (every 300 frames) gains `projectile_owned`, `_skipped` (batch submits),
 `_dropped` (traversal draws), `_unhandled`, `_bolts`, `_tracked`, `_retired`, `_overflow`, `_recycled`, `_bodies`,
-`_us_max`, `_unpooled` and `_sampled` (the frames that looked for unpooled draws).
+`_us_max`, `_unpooled`, `_sampled` (the frames that looked for unpooled draws), and since FL 59 A `_static` (entry-frames
+whose node +0x30 did not change since the previous stage frame: drawn extrapolated) and `_jumped` (entry-frames whose
+position left the velocity prediction: drawn as a first frame), summed over the row's frames.
 
 **The far flag, what is and is not verified.** The fixture verifies the write: the lane's green lane takes 32 max(rgb)
 at the bolt and nothing else changes. It does not run the stage through `TemporalPass` and the write-back, so the
@@ -303,22 +338,30 @@ only on the camera-gate path, where its s1 is the current lane (`temporal_pass.c
 callback ran, so a flag the stage writes is not seen there and the bolt goes through the resolve as scene colour.
 
 **Tuning protocol (dev builds; the user, FL run 59 onwards).** Create `C:\X3FL\x3m\projectile_tune.json` while the
-game runs, for example `{"core_px": 2.0, "stretch_k": 1.0, "glow_gain": 0.2}`; save it; within a second the log shows
+game runs, for example `{"core_px": 2.0, "glow_ratio": 3.0, "glow_gain": 0.2}`; save it; within a second the log shows
 `projectile_tune reloaded … values=…` and the next frame uses them. Change one number at a time, fly a burst at 1x and
-under SETA, and report the eight values from the last `reloaded` row with a screenshot or an F8 capture. A clamped
+under SETA, and report the seven values from the last `reloaded` row with a screenshot or an F8 capture. A clamped
 value logs which key and its bounds; a malformed file is refused and the last values stay. When the user accepts a
 set, it is baked into `families[fighter_tracer].tune` and the file deleted; a release build never reads it.
 
-**Verified (native fixture, ledger "Projectile IRE on FL (2026-11-08)").** The width rule within 0.5 px at 200 m / 500 m /
-1 km / 3 km at two fields of view, the stretch rule and SETA invariance from the constants, the far flag's write (not the
-write-back, above), the dot, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden
-behind the 400 m depth), the pool's retire paths (recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 (CPU 67.6 µs, GPU fenced 32.0 µs [M]). Not flown.
+**Verified (native fixture, ledger "Projectile IRE on FL (2026-11-08)" and "FL 59 A: dashed-trail fix (2026-11-08)").**
+The width rule within 0.5 px at 200 m / 500 m / 1 km / 3 km at two fields of view, the bridged rule and SETA invariance
+from the constants, the energy-conserving cap (the full length, the centre's radiance at cap / length), the seam of two
+consecutive frames through the production builder at 60 and 144 fps, with the camera moving along the bolt and with the
+camera turning 1° between them (no gap, the summed light uniform within 10 %), the static-frame extrapolation, the
+never-backwards hold and the jump, the cut (a first-frame streak), the end-on, slow and paused spots at full core
+radiance (the end-on centre equal to a side-on streak's), the far flag's write
+(not the write-back, above), the dot with the streak's energy, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
+(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 71.3 µs, GPU fenced
+42.2 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
-sRGB-encoded as the mocks, no bloom, AgX or TAA), cropped to 800 px: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms step: 56 / 19 /
-8 px dashes, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png) (the same at
-100 ms: every stretch at the 30 m cap, 215 / 74 / 31 px), [lod](../../verification/results/projectile-look/fixture-ire-lod.png)
-(3 km, exactly at `lod_dot_m` so still a 3.5 px dash at a third of the radiance, beside 300 m at 29 px). The bolts
-move at 0.8 of their speed across the view, so the drawn lengths are 0.8 of the stretch's.
+sRGB-encoded as the mocks, no bloom, AgX or TAA; first frames, so each streak is |v| x the step), cropped around the
+bolts: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms
+step: 148 / 49 / 20 px streaks, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png)
+(the same at 100 ms: the full 116 m, 1278 / 332 / 129 px, past the 30 m cap at 30 / 116 = 0.258 of the radiance),
+[lod](../../verification/results/projectile-look/fixture-ire-lod.png) (3 km, exactly at `lod_dot_m` so still an 8.7 px
+streak at a third of the radiance, beside 300 m at 75 px). The bolts move at 0.8 of their speed across the view and
+recede at 0.6 [M].
 
 ## 8. Options considered and why they lose
 

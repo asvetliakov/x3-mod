@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
 }
 '''
 
-DEFAULTS = [2.0, 3.0, 0.2, 0.4, 0.3, 3000.0, 30.0, 2.0]  # weapon_projectile_family.h, fighter_tracer
-KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'stretch_k', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops']
+DEFAULTS = [2.0, 3.0, 0.2, 0.3, 3000.0, 30.0, 2.0]  # weapon_projectile_family.h, fighter_tracer
+KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops']
 
 
 class ProjectileTune(unittest.TestCase):
@@ -107,10 +107,10 @@ class ProjectileTune(unittest.TestCase):
             self.assertAlmostEqual(got, want, places=5)
 
     def test_every_key_read(self):
-        values = [2.5, 4.0, 0.3, 1.5, 0.5, 4000.0, 80.0, 2.5]
+        values = [2.5, 4.0, 0.3, 0.5, 4000.0, 80.0, 2.5]
         text = json.dumps(dict(zip(KEYS, values)), indent=2)
         r = self.parse(text)
-        self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, 255, 0))
+        self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, 127, 0))
         for got, want in zip(r['values'], values):
             self.assertAlmostEqual(got, want, places=4)
 
@@ -120,12 +120,23 @@ class ProjectileTune(unittest.TestCase):
         self.assertAlmostEqual(r['values'][0], 3.0)
         self.assertAlmostEqual(r['values'][3], DEFAULTS[3])
 
+    def test_former_stretch_k_is_an_unknown_key(self):
+        # FL 59 A: the streak is the bridged travel, no multiplier; a file still carrying stretch_k (the user's 0.4 and
+        # 0) parses, sets nothing and clamps nothing (the reader logs no row for it)
+        for text in ('{"stretch_k": 0.4, "core_px": 1, "glow_ratio": 2}', '{"stretch_k": 0}'):
+            r = self.parse(text)
+            self.assertEqual((r['ok'], r['clamped']), (1, 0), text)
+            self.assertEqual(len(r['values']), 7)
+        r = self.parse('{"stretch_k": 0.4, "core_px": 1, "glow_ratio": 2}')
+        self.assertEqual(r['seen'], (1 << 0) | (1 << 1))
+        self.assertEqual(r['values'][2:], DEFAULTS[2:])
+
     def test_out_of_bounds_clamped_and_named(self):
         r = self.parse('{"core_px": 40, "stops": -9, "glow_ratio": 0.2}')
         self.assertEqual(r['ok'], 1)
-        self.assertEqual(r['clamped'], (1 << 0) | (1 << 7) | (1 << 1))
+        self.assertEqual(r['clamped'], (1 << 0) | (1 << 6) | (1 << 1))
         self.assertAlmostEqual(r['values'][0], 8.0)
-        self.assertAlmostEqual(r['values'][7], -2.0)
+        self.assertAlmostEqual(r['values'][6], -2.0)
         self.assertAlmostEqual(r['values'][1], 1.0)
 
     def test_malformed_refused_whole(self):

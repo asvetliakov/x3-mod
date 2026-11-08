@@ -234,7 +234,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
 
     def test_projectile_gates(self):
         # docs/architecture/projectile-look.md "Implementation (2026-11-08)": the width rule at both fields of view, SETA
-        # invariance, the far flag, the dot, nothing outside the quad, the 512-bolt budget at 5120x1440
+        # invariance, the far flag, the dot, nothing outside the quad, the 512-bolt budget at 5120x1440; FL 59 A: the
+        # seam of two consecutive frames (no gap, the light uniform within 10 %) at 60 and 144 fps, the static frame
         rows = self.record['metrics']['projectile']
         width = [x for x in rows if x.get('case') == 'width']
         self.assertEqual(len(width), 8)
@@ -244,8 +245,28 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         flag = next(x for x in rows if x.get('case') == 'far_flag')
         self.assertAlmostEqual(flag['ratio'], 32.0, delta=0.5)
         self.assertEqual(next(x for x in rows if x.get('case') == 'quad')['outside'], 0)
+        seam = [x for x in rows if x.get('case') == 'seam']
+        self.assertEqual(sorted((x['fps'], x['tune'], x['camera_mps'], x['turn_deg']) for x in seam),
+                         [(60, 'baked', 0, 0), (60, 'baked', 0, 1), (60, 'baked', 200, 0), (60, 'flown', 0, 0),
+                          (144, 'baked', 0, 0), (144, 'flown', 0, 0)])
+        for x in seam:
+            self.assertLessEqual(abs(x['gap_px']), 0.05)
+            self.assertLessEqual(x['spread'], 0.10)
+            self.assertEqual(x['jumped'], 0)
+        static = next(x for x in rows if x.get('case') == 'static')
+        self.assertEqual(static['statics'], '0/1/0/1/0/0')
+        self.assertEqual(static['jumped'], '0/0/0/0/0/1')
+        self.assertEqual(static['held'], 1)
+        cut = next(x for x in rows if x.get('case') == 'cut')
+        self.assertLess(abs(cut['cut_length_px'] - cut['rule_px']), 0.01)
+        endon = next(x for x in rows if x.get('case') == 'endon')
+        self.assertLess(abs(endon['centre_ratio'] - 1.0), 0.02)  # straight-ahead fire at full core radiance
+        self.assertEqual((endon['endon_energy'], endon['slow_energy'], endon['paused_energy']), (1.0, 1.0, 1.0))
+        cap = next(x for x in rows if x.get('case') == 'cap')
+        self.assertLess(abs(cap['centre_ratio'] / cap['want_energy'] - 1.0), 0.03)
         budget = next(x for x in rows if x.get('case') == 'budget')
         self.assertEqual((budget['bolts'], budget['drawn']), (512, 512))
+        self.assertEqual((budget['statics'], budget['jumped']), (0, 0))
         self.assertLess(budget['cpu_us'], 100.0)
         self.assertLess(budget['gpu_us'], 50.0)
         self.assertLess(next(x for x in rows if 'attach' in x)['ps_slots'], 200)

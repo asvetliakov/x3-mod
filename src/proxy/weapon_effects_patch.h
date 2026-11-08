@@ -117,6 +117,9 @@ struct StageFrame {
     // scoped draws of an enabled body whose node is not pooled (a child node, or a bullet the pool missed), counted on
     // the sampled frames (every 60th and every capture frame), and those frames
     unsigned projectile_unpooled = 0, projectile_sampled = 0;
+    // evaluated entries whose node +0x30 did not change since the previous stage frame (extrapolated), and those whose
+    // position left the velocity prediction (drawn as a first frame): the logic-tick question of FL 59 A
+    unsigned projectile_static = 0, projectile_jumped = 0;
     float projectile_us = 0.f;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a

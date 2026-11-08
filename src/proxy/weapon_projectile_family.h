@@ -6,32 +6,33 @@
 //
 // A family is (shape, mount tier) as the table generator classifies every TBullets row (weapon_effects.json: shape from
 // the body's elongation, mount tier from the ship catalogue; weapon_overrides.json for exceptions), with one Tune (the
-// eight look numbers) and one compile-time list of enabled TBullets ids. A row is drawn by the stage when its id is in
+// seven look numbers) and one compile-time list of enabled TBullets ids. A row is drawn by the stage when its id is in
 // its family's list and the table puts it in that family; every other row sharing its body (the batch is per body) is
 // drawn with it. Adding a family is a second Family entry with its own list and Tune, not a code path.
 //
 // THE PLACE A ROW IS ENABLED: the *_rows lists below. Today only SS_BULLET_IRE (and, through its body bullet_ls_alpha,
 // rows 37-39, the cluster and alpha flak fragments).
 namespace x3m::weapon_effects::projectile_family {
-// The eight numbers of a family's look (projectile-look.md section 4; the dev tuning file's keys).
+// The seven numbers of a family's look (projectile-look.md section 4; the dev tuning file's keys). The streak has no
+// multiplier: its length is the bolt's travel since the previous frame (the bridged law, projectile-look.md section 2),
+// so the file's former `stretch_k` key is an unknown key, ignored without a row.
 struct Tune {
     float core_px;      // core full width (FWHM, px) at the 500 m reference, at the live projection
     float glow_ratio;   // glow sigma over the core radius
     float glow_gain;    // glow radiance in scene white
-    float stretch_k;    // stretch = k x |v| x the game-time frame step
     float hot_share;    // white share of the core colour (x (1 + calibre))
-    float lod_dot_m;    // past it (view depth, metres) no stretch: a dot
-    float length_cap_m; // the stretch's cap (metres)
+    float lod_dot_m;    // past it (view depth, metres) no streak: a dot
+    float length_cap_m; // past this streak length (metres) the radiance scales by cap / length (energy conserved)
     float stops;        // core radiance 2^(stops + calibre) x scene white
 };
-constexpr unsigned tune_keys = 8;
-constexpr const char* tune_key_names[tune_keys] = {"core_px", "glow_ratio", "glow_gain", "stretch_k",
-                                                   "hot_share", "lod_dot_m", "length_cap_m", "stops"};
-constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 0.f, 500.f, 5.f, -2.f};
-constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 3.f, 1.f, 20000.f, 500.f, 6.f};
+constexpr unsigned tune_keys = 7;
+constexpr const char* tune_key_names[tune_keys] = {"core_px", "glow_ratio", "glow_gain", "hot_share",
+                                                   "lod_dot_m", "length_cap_m", "stops"};
+constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f};
+constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f};
 inline float& tune_at(Tune& t, unsigned k) noexcept {
-    float* const fields[tune_keys] = {&t.core_px, &t.glow_ratio, &t.glow_gain, &t.stretch_k,
-                                      &t.hot_share, &t.lod_dot_m, &t.length_cap_m, &t.stops};
+    float* const fields[tune_keys] = {&t.core_px, &t.glow_ratio, &t.glow_gain, &t.hot_share,
+                                      &t.lod_dot_m, &t.length_cap_m, &t.stops};
     return *fields[k < tune_keys ? k : 0];
 }
 constexpr float reference_m = 500.f; // the tuning numbers' reference distance, never a constant in the program
@@ -46,14 +47,13 @@ struct Family {
 constexpr const char* fighter_tracer_rows[] = {"SS_BULLET_IRE"};
 constexpr unsigned family_count = 1;
 constexpr Family families[family_count] = {
-    // stretch_k 0.4 and length_cap_m 30 (coordinator, 2026-11-08, from the fixture's look frames: 1.0 / 116 drew a 48 px
-    // dash at 500 m at 1x and full-cap beams under SETA 6, the bulk the user rejected)
-    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 0.4f, 0.3f, 3000.f, 30.f, 2.f}},
+    // length_cap_m 30 (coordinator, 2026-11-08, from the fixture's look frames); since FL 59 A (2026-11-08) it dims a
+    // longer streak instead of cutting it, and the former stretch_k multiplier is gone (the streak is the travel)
+    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 0.3f, 3000.f, 30.f, 2.f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
-    const float v[tune_keys] = {t.core_px, t.glow_ratio, t.glow_gain, t.stretch_k,
-                                t.hot_share, t.lod_dot_m, t.length_cap_m, t.stops};
+    const float v[tune_keys] = {t.core_px, t.glow_ratio, t.glow_gain, t.hot_share, t.lod_dot_m, t.length_cap_m, t.stops};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;

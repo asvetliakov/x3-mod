@@ -89,8 +89,9 @@ ps::BodyLook ire_look() {
 // builder and run_projectiles at 1920x1080 and the fixture's projection (m00 1.6), the IRE row's look and the
 // fighter-tracer family's baked Tune, on black with a dim hull panel (linear 0.02) in the lower right. Each frame's
 // FP16 scene is written as linear RGB PFM <dir>\<name>.pfm (run_weapon_effects.py --dump encodes the PNGs); no check
-// and no record. Frames: near (IRE at 200 m, 500 m, 1 km, a 16.7 ms step), seta (the same at 100 ms: SETA 6), lod
-// (3 km beside 300 m, 16.7 ms).
+// and no record. Each bolt is a first frame (its streak from P - v dt to the head P, the bridged law's, no multiplier;
+// past length_cap_m dimmed by cap / length). Frames: near (IRE at 200 m, 500 m, 1 km, a 16.7 ms step), seta (the same
+// at 100 ms: SETA 6), lod (3 km beside 300 m, 16.7 ms).
 bool write_pfm(const char* path, ProjTarget& t) {
     if (FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) return false;
     D3DLOCKED_RECT lr{};
@@ -148,10 +149,11 @@ int projectile_dump(const char* dir) {
             ps::BoltShape shape;
             if (ps::bolt_vertices(view, tune, look, in, v + 4 * n, &shape)) {
                 ++n;
-                std::printf("DUMP_BOLT frame=%s distance_m=%.0f core_px=%.2f dim=%.3f length_px=%.1f stretch_m=%.1f glow_sigma_px=%.2f "
+                std::printf("DUMP_BOLT frame=%s distance_m=%.0f core_px=%.2f dim=%.3f length_px=%.1f streak_m=%.1f energy=%.3f glow_sigma_px=%.2f "
                             "reach_px=%.2f dot=%u\n",
                             fr.name, double(b.d_m), double(shape.core_px), double(shape.dim), double(shape.length_px),
-                            double(shape.stretch_m), double(shape.glow_sigma_px), double(shape.ext_px), unsigned(shape.dot));
+                            double(shape.streak_m), double(shape.energy), double(shape.glow_sigma_px), double(shape.ext_px),
+                            unsigned(shape.dot));
             }
         }
         dev->BeginScene();

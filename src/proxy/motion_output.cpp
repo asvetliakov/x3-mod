@@ -2529,6 +2529,7 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
                 // The projectile stage draws in every armed frame (its ownership latches the next frame's batch skip):
                 // the scene's depth surface as the application left it bound, borrowed for the run.
                 projectile_frame_ = projectile_ran_ = projectile_owned_ = false;
+                projectile_cut_ = in.cut;
                 if (projectile_depth_) {
                     projectile_depth_->Release();
                     projectile_depth_ = nullptr;

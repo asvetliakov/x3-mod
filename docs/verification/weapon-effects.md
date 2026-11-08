@@ -3231,3 +3231,73 @@ budget CPU 68.3 µs, GPU fenced 34.6 µs (fence 11.0 µs). Builds FL and AP 0 wa
 violations over 1060 functions (the batch stub rooted), `--edition ap` 0 over 1161; host `test_weapon_effects*.py` OK.
 The far flag is verified as a write only (the write-back seam through `TemporalPass` did not run; projectile-look.md
 "Implementation").
+
+**FL 59 A: dashed-trail fix (2026-11-08, `964499113`, `7b2147c52`).** The user (FL run 59, `3fbc26ef5`) saw each IRE
+near the ship as a dashed line in motion only, unchanged at `stretch_k` 0; at 1.0 and 1.5 the gaps went but the seams
+showed hot beads. Read as a phantom array (successive frames' short dashes integrated with gaps), then as overlapping
+round end caps; projectile-look.md section 2 "Why bridged". Change: each bolt's streak runs from the previous stage
+frame's drawn head to this frame's head (camera-relative in translation: the node velocity includes the shooter's, so a
+world-space bridge would overlap a forward shot by the ship's travel per frame); a first frame or a jump from
+P − (v Δt_game − the camera's travel); along the axis flat with logistic end ramps (half maximum at the ends) that
+telescope across the seam; `stretch_k` removed (the tuning file ignores the key, no row); `length_cap_m` keeps the full
+length and scales the radiance by cap / length; a static entry (node +0x30 unchanged) is extrapolated by v x render dt x
+SETA rate, bounded at two game steps; `weapon_effects_frame` gains `projectile_static` and `projectile_jumped`. Pixel
+program 16 → 39 ps_3_0 slots. Fixture (native, records on the clean `7b2147c52`) [M]: AP hook **131 of 131**, FL hook
+**67 of 67**, D3D **72 of 72**.
+
+| Case | Result [M] |
+| --- | --- |
+| seam, 200 m, baked tune, 60 / 144 fps | gap 0.0000 px both; streaks 151.71 → 148.73 px / 62.47 → 61.98 px; the two frames' summed light along the axis spread 2.8 % / 2.3 % (lo 4.082 / 4.102, hi 4.199), the seam 4.195 / 4.199 against the plateau 4.199 |
+| seam, 200 m, flown file values (core_px 1, glow_ratio 2, glow_gain 2, hot_share 0.9, length_cap_m 5), 60 / 144 fps | gap 0.0000 px; spread 6.1 % / 4.4 %; energy 0.258 / 0.620 (the 5 m cap) |
+| seam, 60 fps, camera moving along the bolt at 200 m/s | gap 0.0000 px; second streak 123.13 px (the relative travel, 962 of 1162 m/s); spread 2.5 % |
+| static frame | statics 0/1/0/1/0, jumped 0/0/0/0/1 over five frames (first, static, caught up, static under SETA 6, a 120 m teleport); head error −0.006 px, tail at the previous head 0.000 px, the catch-up seam 0.0009 px, the SETA 6 head held at two steps (34 ms) 0.000 px, the teleport drawn as a first frame 151.71 px = |v| step |
+| SETA / bridged rule | at 1 km, 250 m/s: 0.3912 / 0.3846 px per game ms at 16 / 96 ms (−1.7 %); runs 6.26 / 36.92 px against the rule 6.14 / 36.86 |
+| energy-conserving cap | 1162 m/s at 96 ms: streak 111.55 m at full length (run 171.21 px, rule 171.34), energy 0.2689 = 30 / 111.55, the centre's radiance over a 16 ms bolt's 0.2688 |
+| width, far flag, dot, quad, depth, pool, Reset | unchanged rules pass: widths within 0.5 px at both FOVs; flag ratio 32.006; 3300 m dot run 1.09 px; 8,447 lit, 0 outside the quad; 300 m drawn (4.199), 500 m hidden; pool 1/0/1/0/0 |
+| budget, 5120x1440, 512 bolts, every bolt bridged and moving | CPU 76.7 µs (best of 40; 125.3 µs before the per-bolt exp2/log2/divisions were made conditional), GPU fenced 42.2 µs (fence 10.7 µs), 5.22 % lit, statics 0, jumped 0 |
+
+Look frames regenerated (first frames, |v| x step): near 200 m / 500 m / 1 km 148 / 49 / 20 px; SETA 6 the full 116 m,
+1278 / 332 / 129 px at 0.258 of the radiance; lod 3 km 8.7 px at a third, 300 m 75 px; the dump on `7b2147c52`
+reproduces the tracked crops byte for byte. Builds `build-bridge-fl` and `build-bridge-ap` (RelWithDebInfo) 0 warnings;
+`check_no_x87.py --edition fl` 0 violations over 1060 functions, `--edition ap` 0 over 1161;
+`generate_weapon_effects_programs.py --check` PASS; host `test_weapon_effects*.py` 95 tests OK. The figures come from
+[`projectile_rows.py`](../../verification/results/native-windows/weapon-effects/projectile_rows.py). Not flown: whether
+the engine advances node +0x30 less often than the render frame is the next flight's `projectile_static` /
+`projectile_jumped`.
+
+**FL 59 A review fixes (2026-11-08, `7bd316f2f`).** The bridge is on screen: each entry keeps its head's unjittered
+raster position and view depth, and the next frame's streak starts there, so camera translation and rotation keep the
+seam closed (the eye-relative bridge of `7b2147c52` missed it by the turn: 26.85 px at 1°/frame in the fixture). A camera
+cut (the resolve's `in.cut`) or a frame the stage did not run (the bridge keyed on the device frame) draws a first frame,
+the projection of P − v_rel min(Δt_game, age). The never-backwards hold uses the on-screen motion of the
+camera-relative velocity. An on-screen motion under the core's width draws the core's width at the energy of its length
+(paused, step 0: full); the dot keeps the streak's energy factor; the cap measures the on-screen length in metres at the
+head's depth (so the SETA look frame's receding bolts take 0.180 / 0.278 / 0.358 instead of a uniform 0.258).
+**`length_cap_m` in the tuning file changed meaning** at FL 59 A (it dims a longer streak, it no longer cuts it) and
+`stretch_k` is gone: the install owner resets `C:\X3FL\x3m\projectile_tune.json` to the defaults, keeping only the
+user's `core_px` 1 and `glow_ratio` 2. Records on the clean `7bd316f2f` [M]: AP hook **131 of 131**, FL hook **67 of 67**,
+D3D **74 of 74**.
+
+| Case | Result [M] |
+| --- | --- |
+| seam, camera turning 1° between the frames (60°/s at 60 fps) | gap 0.0000 px; second streak 175.63 px (148.73 + the turn); spread 2.8 %; an eye-relative bridge would miss by 26.85 px |
+| seam, camera moving 200 m/s along the bolt | gap 0.0000 px; second streak 123.13 px; spread 2.5 % (a world bridge would overlap 25.60 px) |
+| seam, 60 / 144 fps, baked and flown values | unchanged: gap 0.0000 px; spread 2.8 / 2.3 % baked, 6.1 / 4.4 % flown |
+| cut, a 20° turn in one frame | with the cut 171.545 px = the first-frame rule through the turned view (171.545); without it the bridge would draw 718.73 px |
+| static, held | statics 0/1/0/1/0/0, jumped 0/0/0/0/0/1; the read behind the SETA-extrapolated head holds on screen (0.0000 px, energy 0) |
+| slow / paused | 0.5 px of motion at 500 m: a 2 px segment at energy 0.25; paused: 2 px at 1.0; the frame's light over a 2.1 px streak's 0.2359 against the length ratio 0.2381 (−0.9 %) |
+| dot past `lod_dot_m` | energy 0.2689 = the 2700 m streak's (no SETA pop); its half-maximum run 2.04 px (a core-width segment with the ramps; the bound is now 2.5 px) |
+| budget, 512 bridged bolts, 5120x1440 | CPU 70.6 µs, GPU fenced 41.2 µs (fence 10.5 µs) |
+
+Builds FL and AP 0 warnings; `check_no_x87.py` 0 violations (FL 1060, AP 1161 functions); `--check` PASS; host
+`test_weapon_effects*.py` 95 OK. Look crops regenerated on `7bd316f2f` (near unchanged; seta and lod redrawn).
+
+**FL 59 A end-on correction (2026-11-08, `79f2d5e24`).** The review's length-scaled energy for motions under a core
+width dimmed straight-ahead fire (a bolt along the line of sight barely moves on screen). The energy rule is now only a
+dimming for long travel: radiance factor min(1, `length_cap_m` / |v| Δt_game), the world travel that frame; a travel
+under the cap keeps 1 whatever its on-screen length (paused too), and a motion under the core's width (and the dot) is a
+spot of the core's width centred on the motion, its along profile normalised to full core radiance at its centre.
+Records on the clean `79f2d5e24` [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **74 of 74**; a bolt along the
+view axis at 500 m: centre 4.1992, the side-on streak's 4.1992 (ratio 1.0000), energy 1; slow 0.5 px and paused: a 2 px
+spot at factor 1; the dot 0.2689 = the streak's; seams unchanged (gap 0.0000 px; spread 2.3–4.5 %); the SETA look
+frame back to 0.258 for every bolt; budget CPU 71.3 µs, GPU fenced 42.2 µs. Crops regenerated on `79f2d5e24`.

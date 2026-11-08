@@ -315,7 +315,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
 #if X3M_EDITION_FL
 // The projectile stage's frame (docs/architecture/projectile-look.md, "Implementation (2026-11-08)"): the families'
 // tuning (the dev file when compiled in), the pool's bolts through the stage builder (validated engine reads, the live
-// jittered projection, the engine's game-time step), one draw. projectile_ran_ is the ownership's input: the frame
+// jittered projection, the engine's game-time step; the render dt since the previous stage frame from QPC and the
+// engine's SETA rate for a static entry's extrapolation), one draw. projectile_ran_ is the ownership's input: the frame
 // drew or had nothing to draw; a refusal (lane, depth, MRT) logs one row per change of reason.
 HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noexcept {
     namespace ps = weapon_effects::projectile_stage;
@@ -327,10 +328,12 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     ps::View view;
     for (unsigned i = 0; i < 9; ++i) view.r[i] = camera_scene_.r[i];
     for (unsigned i = 0; i < 3; ++i) view.t[i] = camera_scene_.t[i];
+    // the unjittered projection: the bolts never enter the TAA history, and the jitter would only misalign the seam
+    // between two frames' streaks on screen
     view.m00 = f.m00;
     view.m11 = f.m11;
-    view.m20 = f.m20;
-    view.m21 = f.m21;
+    view.m20 = camera_scene_.m20;
+    view.m21 = camera_scene_.m21;
     view.m22 = f.m22;
     view.m32 = f.m32;
     view.width = float(f.width);
@@ -341,9 +344,31 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     static ps::Looks looks;
     if (looks.resolved > x3m_projectile_pool.body_count) looks.resolved = 0;
     const std::uint32_t now = weapon_effects::game_ms(), step = weapon_effects::game_step_ms();
+    // The render dt since the previous stage frame (0 on the first, and past 0.25 s: a stall extrapolates nothing) and
+    // the SETA rate (engine_effects::seta_read, one bounded read; 1 when refused or invalid).
+    const std::uint64_t frequency = engine_qpc_frequency();
+    const std::uint64_t stamp = std::uint64_t(begin.QuadPart);
+    const std::uint64_t since = projectile_qpc_ && stamp > projectile_qpc_ ? stamp - projectile_qpc_ : 0u;
+    projectile_qpc_ = stamp;
+    const float render_dt = frequency && frequency < 0x80000000ull && since < frequency / 4u
+                                ? float(double(std::int32_t(since)) / double(std::int32_t(frequency)))
+                                : 0.f;
+    float seta_rate = 1.f;
+    {
+        std::uint32_t warp = engine_plumes::seta_one, mult = engine_plumes::seta_one;
+        bool engaged = false;
+        float requested = 1.f;
+        if (engine_effects::seta_read(&warp, &mult) != engine_effects::SetaStatus::ok ||
+            !engine_plumes::seta_decode(warp, mult, &engaged, &requested, &seta_rate))
+            seta_rate = 1.f;
+    }
+    // the device frame (a frame the stage did not run breaks every bridge) and the resolve's camera cut
     const ps::Counts n = ps::build(x3m_projectile_pool, &weapon_effects_read, weapon_effects::hook_state().table, looks,
-                                   now, step, view, projectile_tune_, vertices, renderer::weapon_projectile_max_bolts);
+                                   std::uint32_t(frame_), projectile_cut_, now, step, render_dt, seta_rate, view,
+                                   projectile_tune_, vertices, renderer::weapon_projectile_max_bolts);
     projectile_retired_ += n.expired + n.invalid;
+    projectile_statics_ += n.statics;
+    projectile_jumped_ += n.jumped;
     renderer::WeaponProjectileFrame pf;
     pf.width = f.width;
     pf.height = f.height;
@@ -358,7 +383,6 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     QueryPerformanceCounter(&end);
     projectile_ran_ = hr == S_OK || hr == S_FALSE;
     projectile_bolts_ += report.bolts;
-    const std::uint64_t frequency = engine_qpc_frequency();
     const std::uint64_t ticks = std::uint64_t(end.QuadPart - begin.QuadPart);
     const float us = frequency && frequency < 0x80000000ull && ticks < 0x80000000ull
                          ? float(double(std::int32_t(ticks)) * 1e6 / double(std::int32_t(frequency)))
@@ -414,10 +438,12 @@ bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
 }
 void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled,
                                          unsigned* retired, float* stage_us, unsigned* unpooled,
-                                         unsigned* sampled) noexcept {
+                                         unsigned* sampled, unsigned* statics, unsigned* jumped) noexcept {
     *unpooled = projectile_unpooled_;
     *sampled = projectile_sampled_;
-    projectile_unpooled_ = projectile_sampled_ = 0;
+    *statics = projectile_statics_;
+    *jumped = projectile_jumped_;
+    projectile_unpooled_ = projectile_sampled_ = projectile_statics_ = projectile_jumped_ = 0;
     *owned = weapon_requested_ && projectile_owned_frame_;
     *bolts = projectile_bolts_;
     *dropped = projectile_dropped_;

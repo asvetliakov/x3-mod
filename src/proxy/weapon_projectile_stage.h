@@ -7,17 +7,24 @@
 
 // The projectile stage's CPU half (docs/architecture/projectile-look.md section 2 and "Implementation (2026-11-08)"):
 // every live pool entry (weapon_effects_projectile.h) validated through the bounded reader, its node read once (live,
-// handle, position +0x30, velocity +0x100, body +0x144; one read, no object read: a recycled node changes handle) and turned into one screen-space quad of four vertices: a line of
-// light from P - s/2 v^ to P + s/2 v^ (P the body origin, the mesh is centred there), s = stretch_k |v| dt_game (the
-// engine's game-time step of the frame, so SETA lengthens it) capped by length_cap_m and by the distance flown since
-// birth, none past lod_dot_m (a dot). The core's full width is core_px at the 500 m reference through the live
+// handle, position +0x30, velocity +0x100, body +0x144; one read, no object read: a recycled node changes handle) and
+// turned into one screen-space quad of four vertices: a streak of light on screen from the previous frame's projected
+// head to this frame's projected head P (P the body origin, where the vanilla mesh is centred; both through the
+// unjittered projection), so consecutive frames' streaks meet end to end on screen at any frame rate and whatever the
+// camera did (the FL 59 A dashed trail was the gap between short dashes); a first frame (a jump, a cut, a frame the
+// stage did not run) from the projection of P - v_rel dt_game (v_rel relative to the camera; the engine's game-time
+// step, so SETA lengthens it), never behind the muzzle. A static frame (node +0x30 unchanged) extrapolates the head by
+// v x render dt x SETA rate. No multiplier; the radiance factor is min(1, length_cap_m / the world travel |v| dt_game);
+// a motion under the core's width (end-on) is a spot of the core's width at full core radiance; past lod_dot_m a spot. Along the
+// axis the profile is flat with logistic end ramps whose half maximum sits at each end, so two consecutive streaks add
+// to one flat streak. The core's full width is core_px at the 500 m reference through the live
 // projection: its world width is core_px x 500 m / f (f = m11 H / 2, the frame's projection, never a fixed focal
 // length), drawn at w = world width x f / z px; under 1 px it is drawn 1 px wide at radiance x w (a far bolt dims, it
 // never fattens). A Gaussian glow of sigma glow_ratio x w / 2 (floor 1.5 px, its radiance scaled by the floor's lost
 // area) in the row's colour at glow_gain; the core colour lerp(tint, white, hot_share (1 + calibre)) at
 // 2^(stops + calibre). The quad spans the segment plus, on every side, the larger of the two Gaussians' reach to
-// radiance_cut (1/256 of scene white) and half a pixel; the pixel program
-// (weapon_projectile_ps.hlsl) evaluates the two Gaussians of the distance to the segment. Depth per end
+// radiance_cut (1/256 of scene white) and half a pixel (along, the logistic ramps' reach); the pixel program
+// (weapon_projectile_ps.hlsl) evaluates the two Gaussians across times their along profiles. Depth the head's
 // (m22 + m32 / z). The row's look (colour from texture_rgb or the override tint, calibre from the override or the
 // damage per shot) is resolved once per body. No allocation, no libm (the exp2/log2 below are SSE polynomials).
 namespace x3m::weapon_effects::projectile_stage {
@@ -111,16 +118,24 @@ struct View {
     float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0;
     float width = 0, height = 0, near_z = 1.f;
 };
-// One bolt in view units: its origin (view space), its velocity (view units per second, view space), the game-time
-// step and its age (seconds).
+// One bolt: its head (view space, view units; the body origin, or extrapolated on a static frame), its velocity (view
+// units per second) and the camera's translation over the frame (view space), the previous frame's head on screen
+// (unjittered raster px) when the entry was drawn in the previous frame (has_tail) and whether that head was
+// extrapolated, the game-time step (0: the game is paused) and its age (seconds).
 struct BoltIn {
-    float p[3]{}, v[3]{};
+    float p[3]{}, v[3]{}, cam[3]{};
+    float tail_px[2]{};
     float step_s = 0.f, age_s = 1e6f;
+    bool has_tail = false, tail_extrapolated = false;
 };
-struct BoltShape { // diagnostics and the fixture's rule checks
-    float depth_m = 0, stretch_m = 0, length_px = 0, core_px = 0, dim = 1, glow_sigma_px = 0, ext_px = 0;
-    float raster[4][2]{};
-    bool dot = false;
+struct BoltShape { // diagnostics, the bridge's next tail and the fixture's rule checks
+    float depth_m = 0;
+    float streak_m = 0;  // the world travel this frame, |v| dt_game (metres: the cap's length)
+    float length_px = 0; // the on-screen motion (tail to head)
+    float drawn_px = 0;  // the drawn segment (at least the core's width)
+    float core_px = 0, dim = 1, energy = 1, glow_sigma_px = 0, ext_px = 0, ext_along_px = 0;
+    float raster[4][2]{}, head[2]{}, tail[2]{}; // the quad's corners; the drawn segment's ends (unjittered raster)
+    bool dot = false, held = false, projected = false; // projected: head[] is the bridge's next tail
 };
 inline void rotate_view(const View& c, const float w[3], float out[3]) noexcept {
     for (unsigned j = 0; j < 3; ++j) out[j] = w[0] * c.r[j] + w[1] * c.r[3 + j] + w[2] * c.r[6 + j];
@@ -183,57 +198,75 @@ inline BodyFrame body_frame(const pf::Tune& tune, const BodyLook& look) noexcept
 inline float reach(float sigma, float log2_ratio) noexcept {
     return log2_ratio > 0.f ? sigma * scalar::sqrt(2.f * 0.69314718f * log2_ratio) : 0.f;
 }
-// The four vertices of one bolt (false: culled, behind the near plane, off the target or degenerate).
+// The along-axis profile's logistic CDF slope: Phi(u) = 1 / (1 + 2^(-logistic_slope u / sigma)) (1.702 / ln 2; the
+// logistic's largest gap to the normal CDF is under 0.01). The pixel program evaluates Phi(x + h) - Phi(x - h): two
+// segments sharing an end sum to Phi(x + h1) - Phi(x - h2) whatever Phi is (they telescope), so consecutive frames'
+// streaks add to one flat streak with no bead and no gap at the seam.
+constexpr float logistic_slope = 2.45546f;
+// 1 / (Phi(h) - Phi(-h)) for half length h and slope m / sigma (the centre's along profile at 1).
+inline float along_norm(float h, float m_over_sigma) noexcept {
+    const float e = exp2f_poly(-m_over_sigma * h);
+    return (1.f + e) / (1.f - e);
+}
+// The four vertices of one bolt (false: culled, the head behind the near plane, off the target or degenerate), in
+// screen space through the caller's projection (the stage passes the unjittered one: the bolt never enters the TAA
+// history, and jitter would only misalign the seam). The streak runs from the tail to the head on screen: the previous
+// frame's projected head (in.tail_px) when the entry was drawn in the previous frame, so the streak covers the bolt's
+// on-screen path between the two frames whatever the camera did (translation and rotation); else (a first frame, a jump,
+// a cut) the projection of P - v_rel min(dt_game, age), v_rel the velocity relative to the camera (never behind the
+// muzzle). A head extrapolated last frame past this frame's position (against the on-screen motion) holds there. No
+// multiplier. Energy: the radiance factor is min(1, length_cap_m / the world travel |v| dt_game) (a fast or SETA bolt is
+// a longer, fainter streak; a travel under the cap keeps full radiance whatever its on-screen length); an on-screen
+// motion under the core's width (an end-on bolt flying along the line of sight) is a spot of the core's width at full
+// core radiance at its centre; past lod_dot_m the same spot on the head with the streak's factor. Width, glow and depth
+// (occlusion) are the head's.
 inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tune, const BodyFrame& body,
                           const BoltIn& in, renderer::WeaponProjectileVertex out[4], BoltShape* shape = nullptr) noexcept {
     if (!vf.ok || !(in.p[2] > vf.zn)) return false;
     const float zn = vf.zn;
     const float inv_z = 1.f / in.p[2];
     const float depth_m = in.p[2] * (1.f / view_units_per_metre);
-    const float speed2 = in.v[0] * in.v[0] + in.v[1] * in.v[1] + in.v[2] * in.v[2];
-    const float speed = scalar::sqrt(speed2);
-    float dir[3] = {1.f, 0.f, 0.f};
-    if (speed > 1e-3f) {
-        const float inv = 1.f / speed;
-        for (unsigned k = 0; k < 3; ++k) dir[k] = in.v[k] * inv;
+    const auto raster = [&](const float q[3], float r[2]) {
+        const float iz = 1.f / q[2];
+        r[0] = (c.m00 * q[0] * iz + c.m20 + 1.f) * vf.half_w;
+        r[1] = (1.f - c.m11 * q[1] * iz - c.m21) * vf.half_h;
+    };
+    float rb[2];
+    raster(in.p, rb);
+    const float step = in.step_s > 0.f ? in.step_s : 0.f;
+    const float speed_m = scalar::sqrt(in.v[0] * in.v[0] + in.v[1] * in.v[1] + in.v[2] * in.v[2]) *
+                          (1.f / view_units_per_metre);
+    // the velocity relative to the camera (a cut's travel, longer than the bolt's, is not subtracted)
+    float rel[3] = {in.v[0], in.v[1], in.v[2]};
+    if (step > 0.f) {
+        const float c2 = in.cam[0] * in.cam[0] + in.cam[1] * in.cam[1] + in.cam[2] * in.cam[2];
+        const float v2 = (rel[0] * rel[0] + rel[1] * rel[1] + rel[2] * rel[2]) * step * step;
+        if (c2 <= v2)
+            for (unsigned k = 0; k < 3; ++k) rel[k] -= in.cam[k] / step;
     }
-    float s = tune.stretch_k * speed * (in.step_s > 0.f ? in.step_s : 0.f);
-    const float cap = tune.length_cap_m * view_units_per_metre, flown = speed * (in.age_s > 0.f ? in.age_s : 0.f);
-    s = s < cap ? s : cap;
-    s = s < flown ? s : flown;
-    const bool dot = depth_m > tune.lod_dot_m;
-    if (dot || !(s > 0.f)) s = 0.f;
-    float a[3], b[3];
-    for (unsigned k = 0; k < 3; ++k) {
-        a[k] = in.p[k] - 0.5f * s * dir[k];
-        b[k] = in.p[k] + 0.5f * s * dir[k];
+    // its on-screen velocity at the head (px per second)
+    const float sx = vf.half_w * c.m00 * (rel[0] * in.p[2] - in.p[0] * rel[2]) * inv_z * inv_z;
+    const float sy = -vf.half_h * c.m11 * (rel[1] * in.p[2] - in.p[1] * rel[2]) * inv_z * inv_z;
+    float ra[2];
+    bool held = false;
+    if (in.has_tail) {
+        ra[0] = in.tail_px[0];
+        ra[1] = in.tail_px[1];
+        if (in.tail_extrapolated && (rb[0] - ra[0]) * sx + (rb[1] - ra[1]) * sy < 0.f) { // never backwards on screen
+            rb[0] = ra[0];
+            rb[1] = ra[1];
+            held = true;
+        }
+    } else {
+        const float age = in.age_s > 0.f ? in.age_s : 0.f, t = step < age ? step : age;
+        float a[3];
+        for (unsigned k = 0; k < 3; ++k) a[k] = in.p[k] - rel[k] * t;
+        if (a[2] < zn) { // the tail clipped to the near plane (the head is in front)
+            const float u = (zn - in.p[2]) / (a[2] - in.p[2]);
+            for (unsigned k = 0; k < 3; ++k) a[k] = in.p[k] + u * (a[k] - in.p[k]);
+        }
+        raster(a, ra);
     }
-    // the segment clipped to the near plane (the centre is in front)
-    if (a[2] < zn) {
-        const float u = (zn - b[2]) / (a[2] - b[2]);
-        for (unsigned k = 0; k < 3; ++k) a[k] = b[k] + u * (a[k] - b[k]);
-    }
-    if (b[2] < zn) {
-        const float u = (zn - a[2]) / (b[2] - a[2]);
-        for (unsigned k = 0; k < 3; ++k) b[k] = a[k] + u * (b[k] - a[k]);
-    }
-    // raster positions (D3D9: pixel centres at integer coordinates, ndc = 2 r / size - 1)
-    const float ia = 1.f / a[2], ib = s > 0.f ? 1.f / b[2] : ia;
-    const float ra[2] = {(c.m00 * a[0] * ia + c.m20 + 1.f) * vf.half_w, (1.f - c.m11 * a[1] * ia - c.m21) * vf.half_h};
-    const float rb[2] = {(c.m00 * b[0] * ib + c.m20 + 1.f) * vf.half_w, (1.f - c.m11 * b[1] * ib - c.m21) * vf.half_h};
-    // the width through the live projection (view_frame); under 1 px drawn at 1 px with the radiance scaled
-    const float w_true = vf.world_w_per_px * inv_z;
-    const float w = w_true > 1.f ? w_true : 1.f, dim = w_true > 1.f ? 1.f : w_true;
-    const float sigma_c = w * (1.f / 2.35482f);
-    const float sigma_raw = tune.glow_ratio * w_true * 0.5f;
-    const float sigma_g = sigma_raw > glow_floor_px ? sigma_raw : glow_floor_px;
-    const float glow_area = sigma_raw > glow_floor_px ? 1.f : sigma_raw * (1.f / glow_floor_px);
-    const float glow_scale = glow_area * glow_area;
-    const float kc = 0.5f / (sigma_c * sigma_c), kg = 0.5f / (sigma_g * sigma_g);
-    const float lc = body.log2_core + (dim < 1.f ? log2f_poly(dim) : 0.f);
-    const float lg = body.log2_glow + (glow_scale < 1.f ? log2f_poly(glow_scale) : 0.f);
-    const float rc = reach(sigma_c, lc), rg = reach(sigma_g, lg);
-    const float ext = (rc > rg ? rc : rg) + quad_margin_px;
     float ux = rb[0] - ra[0], uy = rb[1] - ra[1];
     const float len = scalar::sqrt(ux * ux + uy * uy);
     if (len > 1e-4f) {
@@ -241,27 +274,67 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
         ux *= inv;
         uy *= inv;
     } else {
-        ux = 1.f;
-        uy = 0.f;
+        const float sl = scalar::sqrt(sx * sx + sy * sy);
+        ux = sl > 1e-6f ? sx / sl : 1.f;
+        uy = sl > 1e-6f ? sy / sl : 0.f;
     }
-    const float nx = -uy, ny = ux, half = len > 1e-4f ? 0.5f * len : 0.f;
-    const float shape4[4] = {body.core_scale * dim, body.glow_scale * glow_scale, kc, kg};
-    const float za = c.m22 + c.m32 * ia, zb = c.m22 + c.m32 * ib;
-    const float zs[2] = {za < 0.f ? 0.f : za > 1.f ? 1.f : za, zb < 0.f ? 0.f : zb > 1.f ? 1.f : zb};
-    // corners: A - u ext -+ n ext, B + u ext -+ n ext; local (along, across) about the segment's centre
+    // the width through the live projection (view_frame); under 1 px drawn at 1 px with the radiance scaled
+    const float w_true = vf.world_w_per_px * inv_z;
+    const float w = w_true > 1.f ? w_true : 1.f, dim = w_true > 1.f ? 1.f : w_true;
+    const float sigma_c = w * (1.f / 2.35482f), inv_sc = 2.35482f / w;
+    const float sigma_raw = tune.glow_ratio * w_true * 0.5f;
+    const float sigma_g = sigma_raw > glow_floor_px ? sigma_raw : glow_floor_px, inv_sg = 1.f / sigma_g;
+    const float glow_area = sigma_raw > glow_floor_px ? 1.f : sigma_raw * (1.f / glow_floor_px);
+    const float glow_scale = glow_area * glow_area;
+    const float kc = 0.5f * inv_sc * inv_sc, kg = 0.5f * inv_sg * inv_sg;
+    // energy: the radiance factor min(1, length_cap_m / the world travel this frame, |v| dt_game); a travel under the
+    // cap (or a paused game) keeps 1, whatever its on-screen length; the dot keeps the same factor
+    const float travel_m = speed_m * step;
+    const float cap = tune.length_cap_m;
+    const float energy = travel_m > cap ? cap / travel_m : 1.f;
+    const bool dot = depth_m > tune.lod_dot_m;
+    // a motion under the core's width (an end-on or a slow bolt) and the dot: a spot of the core's width centred on the
+    // motion (the dot on the head), its along profile normalised to 1 at its centre (full core radiance)
+    const bool spot = dot || len < w;
+    const float drawn = spot ? w : len;
+    float ta[2] = {ra[0], ra[1]}, tb[2] = {rb[0], rb[1]}; // the drawn ends
+    if (spot) {
+        const float mx = dot ? rb[0] : 0.5f * (ra[0] + rb[0]), my = dot ? rb[1] : 0.5f * (ra[1] + rb[1]);
+        ta[0] = mx - 0.5f * w * ux, ta[1] = my - 0.5f * w * uy;
+        tb[0] = mx + 0.5f * w * ux, tb[1] = my + 0.5f * w * uy;
+    }
+    const float half = 0.5f * drawn;
+    // 1 / (Phi(h) - Phi(-h)) per Gaussian (past 16 / m the ramps no longer meet: 1 within 2^-15, no exp2): a streak of a
+    // few core widths and longer is unchanged, a spot reaches the full radiance at its centre
+    const float mc = logistic_slope * inv_sc, mg = logistic_slope * inv_sg;
+    const float nc = mc * half < 16.f ? along_norm(half, mc) : 1.f, ng = mg * half < 16.f ? along_norm(half, mg) : 1.f;
+    const float fc = dim * energy * nc, fg = glow_scale * energy * ng;
+    const float core_k = body.core_scale * fc, glow_k = body.glow_scale * fg;
+    const float lc = body.log2_core + (fc != 1.f ? log2f_poly(fc) : 0.f);
+    const float lg = body.log2_glow + (fg != 1.f ? log2f_poly(fg) : 0.f);
+    // the quad's reach: across, where both Gaussians fall under radiance_cut; along past the ends, the logistic's tail
+    // (peak 2^(-m z), m = logistic_slope / sigma) under it
+    const float rc = reach(sigma_c, lc), rg = reach(sigma_g, lg);
+    const float ext = (rc > rg ? rc : rg) + quad_margin_px;
+    const float ac = lc > 0.f ? lc * sigma_c * (1.f / logistic_slope) : 0.f;
+    const float ag = lg > 0.f ? lg * sigma_g * (1.f / logistic_slope) : 0.f;
+    const float ext_a = (ac > ag ? ac : ag) + quad_margin_px;
+    const float nx = -uy, ny = ux;
+    const float shape4[4] = {core_k, glow_k, kc, kg};
+    const float zb = c.m22 + c.m32 * inv_z, zd = zb < 0.f ? 0.f : zb > 1.f ? 1.f : zb; // the head's depth
+    // corners: A - u ext_a -+ n ext, B + u ext_a -+ n ext; local (along, across) about the segment's centre
     static constexpr float corner[4][3] = {{-1.f, -1.f, 0.f}, {-1.f, 1.f, 0.f}, {1.f, -1.f, 1.f}, {1.f, 1.f, 1.f}};
     float minx = 1e30f, maxx = -1e30f, miny = 1e30f, maxy = -1e30f;
     for (unsigned i = 0; i < 4; ++i) {
         const float* e = corner[i];
-        const bool end_b = e[2] > 0.5f;
-        const float* base = end_b ? rb : ra;
-        const float px = base[0] + ux * ext * e[0] + nx * ext * e[1];
-        const float py = base[1] + uy * ext * e[0] + ny * ext * e[1];
+        const float* base = e[2] > 0.5f ? tb : ta;
+        const float px = base[0] + ux * ext_a * e[0] + nx * ext * e[1];
+        const float py = base[1] + uy * ext_a * e[0] + ny * ext * e[1];
         renderer::WeaponProjectileVertex& v = out[i];
         v.pos[0] = px * vf.ndc_x - 1.f;
         v.pos[1] = 1.f - py * vf.ndc_y;
-        v.pos[2] = zs[end_b ? 1 : 0];
-        v.local[0] = e[0] * (half + ext);
+        v.pos[2] = zd;
+        v.local[0] = e[0] * (half + ext_a);
         v.local[1] = e[1] * ext;
         v.local[2] = half;
         for (unsigned k = 0; k < 4; ++k) v.shape[k] = shape4[k];
@@ -278,13 +351,21 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     }
     if (shape) {
         shape->depth_m = depth_m;
-        shape->stretch_m = s / view_units_per_metre;
+        shape->streak_m = travel_m;
         shape->length_px = len;
+        shape->drawn_px = drawn;
         shape->core_px = w;
         shape->dim = dim;
+        shape->energy = energy;
         shape->glow_sigma_px = sigma_g;
         shape->ext_px = ext;
+        shape->ext_along_px = ext_a;
+        shape->head[0] = rb[0], shape->head[1] = rb[1];
+        shape->tail[0] = ta[0], shape->tail[1] = ta[1];
         shape->dot = dot;
+        shape->held = held;
+        shape->projected = rb[0] == rb[0] && rb[1] == rb[1] && rb[0] < 1e30f && rb[0] > -1e30f && rb[1] < 1e30f &&
+                           rb[1] > -1e30f;
     }
     // off the target (a pixel centre lies in [-0.5, size - 0.5]); a non-finite corner (never from finite engine
     // integers in front of the near plane) is culled, never drawn
@@ -299,19 +380,36 @@ inline bool bolt_vertices(const View& c, const pf::Tune& tune, const BodyLook& l
 }
 struct Counts {
     unsigned tracked = 0, drawn = 0, culled = 0, expired = 0, invalid = 0, dots = 0;
+    // evaluated entries whose node +0x30 did not change since the previous stage frame (drawn extrapolated), and those
+    // whose read position left the velocity prediction by more than the tolerance (drawn as a first frame)
+    unsigned statics = 0, jumped = 0;
 };
 // The per-body looks, resolved once per body (the pool's body list only grows until the next install).
 struct Looks {
     unsigned resolved = 0;
     BodyLook look[core::projectile::max_bodies];
 };
+// A jump: the read position farther from read_pos + v x (game time since its change) than this (engine units) plus a
+// quarter of the frame's travel.
+constexpr float jump_tolerance_units = 500.f; // 1 m
+// A static entry's head is extrapolated by at most this many game steps (a paused game, a bullet the engine stopped
+// moving: the head holds instead of flying on).
+constexpr std::uint32_t max_static_steps = 2;
 // The frame's bolts: walks the pool from the last entry (a retired entry is swap-removed), reads each entry's node
 // (live, handle, position, velocity, body) in one bounded read, retires an expired entry, one the tap has not seen for
 // max(stale_ms, three game steps), a recycled node (another handle or body) or an unreadable one, and writes up to max_bolts quads into out. tunes[family] are the families'
 // numbers (the baked constants or the dev tuning file's). now_ms / step_ms: cfg +0x708 / +0x704 (FL), game ms.
-inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* table, Looks& looks, std::uint32_t now_ms,
-                    std::uint32_t step_ms, const View& view, const pf::Tune* tunes,
-                    renderer::WeaponProjectileVertex* out, unsigned max_bolts) noexcept {
+// frame: the device's frame number (an entry bridges only from the frame just before: a frame the stage did not run
+// makes the next one a first frame); cut: the resolve's camera cut (every entry a first frame, no camera travel).
+// render_dt_s: the proxy's frame timer since the previous stage frame (seconds); seta_rate: the engine's effective SETA
+// rate (1 off): a static entry's head moves on by v x render dt x seta_rate per frame (game time, as the stage's step).
+// view: the unjittered projection. Each evaluated entry keeps its read position and its head on screen
+// (ProjectileEntry): the next frame's streak starts there. shapes (the fixture's, else null): each drawn bolt's
+// BoltShape, max_bolts of them.
+inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* table, Looks& looks, std::uint32_t frame,
+                    bool cut, std::uint32_t now_ms, std::uint32_t step_ms, float render_dt_s, float seta_rate,
+                    const View& view, const pf::Tune* tunes, renderer::WeaponProjectileVertex* out, unsigned max_bolts,
+                    BoltShape* shapes = nullptr) noexcept {
     Counts n;
     for (; looks.resolved < pool.body_count; ++looks.resolved)
         looks.look[looks.resolved] = body_look(table, pool.bodies[looks.resolved], rd, pool.globals);
@@ -319,6 +417,11 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     const float step_s = float(step_ms < 1000u ? step_ms : 1000u) * 1e-3f;
     // not seen by the object tap for stale_ms game ms, at least three game steps (SETA-aware): retired
     const std::uint32_t unseen_ms = 3u * step_ms > core::projectile::stale_ms ? 3u * step_ms : core::projectile::stale_ms;
+    // a static frame's extrapolation: render dt x the SETA rate (game us), bounded per entry by max_static_steps steps
+    const float dt_game = (render_dt_s > 0.f && render_dt_s < 1.f ? render_dt_s : 0.f) *
+                          (seta_rate > 0.f && seta_rate < 64.f ? seta_rate : 1.f);
+    const std::uint32_t static_add_us = std::uint32_t(dt_game * 1e6f);
+    const std::uint32_t static_max_us = max_static_steps * (step_ms < 1000u ? step_ms : 1000u) * 1000u;
     constexpr unsigned node_at = core::layout::node_live, node_span = core::layout::node_body + 4 - node_at;
     unsigned char nb[node_span];
     const auto u32 = [](const unsigned char* b, unsigned off) {
@@ -342,6 +445,15 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     const std::int32_t eye_i[3] = {std::int32_t(eye[0]), std::int32_t(eye[1]), std::int32_t(eye[2])};
     const float eye_f[3] = {float(eye[0] - double(eye_i[0])), float(eye[1] - double(eye_i[1])),
                             float(eye[2] - double(eye_i[2]))};
+    // The camera's translation since the previous stage frame (0 without one or across a cut): a first frame's streak
+    // is the bolt's travel relative to the camera (its velocity includes the shooter's).
+    float cam_world[3] = {0.f, 0.f, 0.f}, cam[3];
+    if (!cut && pool.stage_eye_frame && pool.stage_eye_frame + 1u == frame)
+        for (unsigned k = 0; k < 3; ++k)
+            cam_world[k] = float(std::int32_t(std::uint32_t(eye_i[k]) - std::uint32_t(pool.stage_eye[k]))) * core::world_scale;
+    for (unsigned k = 0; k < 3; ++k) pool.stage_eye[k] = eye_i[k];
+    pool.stage_eye_frame = frame;
+    rotate_view(view, cam_world, cam);
     // per family the view constants, per body the frame's radiance
     ViewFrame vfs[pf::family_count];
     for (unsigned f = 0; f < pf::family_count; ++f) vfs[f] = view_frame(view, tunes[f].core_px);
@@ -349,7 +461,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     for (unsigned b = 0; b < pool.body_count && b < core::projectile::max_bodies; ++b)
         bodies[b] = body_frame(tunes[looks.look[b].family], looks.look[b]);
     for (unsigned i = pool.count; i-- > 0;) {
-        const core::ProjectileEntry e = pool.entries[i];
+        core::ProjectileEntry& e = pool.entries[i];
         ++n.tracked;
         if ((e.expiry && std::int32_t(e.expiry - now_ms) <= 0) || std::int32_t(now_ms - e.seen_ms) > std::int32_t(unseen_ms)) {
             ++n.expired;
@@ -364,24 +476,78 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
             continue;
         }
         if (n.drawn >= max_bolts) continue;
-        BoltIn in;
-        float rel[3], vel[3];
+        std::int32_t pos[3];
+        float vel[3], speed2 = 0.f; // engine units per second
         for (unsigned k = 0; k < 3; ++k) {
-            const std::int32_t pos = std::int32_t(u32(nb, core::layout::node_pos - node_at + 4 * k));
-            rel[k] = (float(std::int32_t(std::uint32_t(pos) - std::uint32_t(eye_i[k]))) - eye_f[k]) * core::world_scale;
-            vel[k] = float(std::int32_t(u32(nb, core::projectile::node_velocity - node_at + 4 * k))) * core::world_scale;
+            pos[k] = std::int32_t(u32(nb, core::layout::node_pos - node_at + 4 * k));
+            vel[k] = float(std::int32_t(u32(nb, core::projectile::node_velocity - node_at + 4 * k)));
+            speed2 += vel[k] * vel[k];
         }
-        rotate_view(view, rel, in.p);
-        rotate_view(view, vel, in.v);
+        // The bridge: an entry evaluated in the frame just before starts its streak at that frame's head on screen
+        // (none across a cut or when that head was not projected). Its position unchanged since then (a static frame):
+        // the head moves on by v x the extrapolated game time. Changed but far from the velocity's prediction (a jump):
+        // a first frame.
+        const bool consecutive = e.stage_frame && e.stage_frame + 1u == frame;
+        bool bridged = consecutive;
+        const bool was_extrapolated = e.static_us != 0;
+        float ext_s = 0.f;
+        if (consecutive && pos[0] == e.read_pos[0] && pos[1] == e.read_pos[1] && pos[2] == e.read_pos[2]) {
+            ++n.statics;
+            const std::uint32_t us = e.static_us + static_add_us;
+            e.static_us = us < static_max_us ? us : static_max_us;
+            ext_s = float(e.static_us) * 1e-6f;
+        } else {
+            if (consecutive) {
+                const std::int32_t since = std::int32_t(now_ms - e.changed_ms);
+                const float dt = since > 0 ? float(since) * 1e-3f : 0.f;
+                float err2 = 0.f;
+                for (unsigned k = 0; k < 3; ++k) {
+                    const float d = float(std::int32_t(std::uint32_t(pos[k]) - std::uint32_t(e.read_pos[k]))) - vel[k] * dt;
+                    err2 += d * d;
+                }
+                const float tol = jump_tolerance_units + 0.25f * scalar::sqrt(speed2) * step_s;
+                if (err2 > tol * tol) {
+                    ++n.jumped;
+                    bridged = false;
+                }
+            }
+            e.changed_ms = now_ms;
+            e.static_us = 0;
+        }
+        BoltIn in;
+        float head[3], v[3];
+        for (unsigned k = 0; k < 3; ++k) {
+            head[k] = (float(std::int32_t(std::uint32_t(pos[k]) - std::uint32_t(eye_i[k]))) - eye_f[k] + vel[k] * ext_s) *
+                      core::world_scale;
+            v[k] = vel[k] * core::world_scale;
+        }
+        rotate_view(view, head, in.p);
+        rotate_view(view, v, in.v);
+        for (unsigned k = 0; k < 3; ++k) in.cam[k] = cam[k];
+        float tail_z = 0.f;
+        std::memcpy(&in.tail_px[0], &e.head_px[0], 4);
+        std::memcpy(&in.tail_px[1], &e.head_px[1], 4);
+        std::memcpy(&tail_z, &e.head_z, 4);
+        in.has_tail = bridged && !cut && tail_z > 0.f;
+        in.tail_extrapolated = was_extrapolated;
         in.step_s = step_s;
         in.age_s = e.created ? float(std::int32_t(now_ms - e.created)) * 1e-3f : 1e6f;
+        for (unsigned k = 0; k < 3; ++k) e.read_pos[k] = pos[k];
+        e.stage_frame = frame;
         const unsigned family = looks.look[e.body].family;
         BoltShape shape;
-        if (!bolt_vertices(view, vfs[family], tunes[family], bodies[e.body], in, out + 4 * n.drawn, &shape)) {
+        const bool built = bolt_vertices(view, vfs[family], tunes[family], bodies[e.body], in, out + 4 * n.drawn, &shape);
+        // the next frame's tail: this frame's head on screen and its depth (0: none, the next frame is a first frame)
+        const float head_z = shape.projected ? in.p[2] : 0.f;
+        std::memcpy(&e.head_px[0], &shape.head[0], 4);
+        std::memcpy(&e.head_px[1], &shape.head[1], 4);
+        std::memcpy(&e.head_z, &head_z, 4);
+        if (!built) {
             ++n.culled;
             continue;
         }
         n.dots += shape.dot;
+        if (shapes) shapes[n.drawn] = shape;
         ++n.drawn;
     }
     return n;
