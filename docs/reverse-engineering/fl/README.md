@@ -30,3 +30,8 @@ Read them with these caveats:
 
 New FL findings go into new notes in this folder, written only when the code
 depends on the fact and the fact has been checked against the game.
+
+Notes added for the current port (static, checked against the hash above; not yet confirmed in flight):
+
+- [weapon-effect-spawn.md](weapon-effect-spawn.md): the FL counterparts of the weapon-effect call sites (impact,
+  inner taps, bolt flight and object tap, muzzle, death), their windows, frames and record offsets (2026-11-08).

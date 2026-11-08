@@ -1,0 +1,60 @@
+X3FL.exe sha256 e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8; DllCharacteristics 0x8140 (DYNAMIC_BASE True); HIGHLOW fixups 38327
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+FL direct edges in .text (linear sweep): 72230
+
+site | FL call RVA -> target RVA | AP twin VA -> target | window RVA, length | relocated dwords (off: target RVA) | call in one qword / rel32 in one qword | branches into call bytes 1..4 | branch targets inside window (RVA: sources) | image dwords into bytes 1..4 | E8 callers of target (FL / AP)
+impact | 0x053390 e8 ab 10 fc ff -> 0x014440 (ok) | 0x00449d85 -> 0x00413c40 | 0x05338b, 43 | none | True / True | none | 0x05338b: jne 0x053362,je 0x053368,jne 0x053373,je 0x053380; 0x053398: jne 0x053389; 0x0533ac: je 0x053345,jne 0x053351,jne 0x05335b,je 0x0533a1 | 0 | 1 [0x053390] / 1
+  window bytes (relocated dwords zeroed) 51 8b d3 8b cf e8 ab 10 fc ff 83 c4 04 8b cf e8 e1 69 00 00 85 c0 74 09 8b d3 8b cf e8 94 46 fc ff 5f 5e 5d 5b 83 c4 08 c2 0c 00; FNV-1a 32 de6f8702; SHA-256 98ccf58872f2e057; call offset 5
+tap1 | 0x014583 e8 e8 0c 00 00 -> 0x015270 (ok) | 0x00413da8 -> 0x00414a70 | 0x014572, 27 | none | True / True | none | none | 0 | 4 [0x014583 0x014650 0x06e5e5 0x06e6d5] / 3
+  window bytes (relocated dwords zeroed) 8b 57 08 8d 44 24 18 6a 00 50 53 56 b9 03 00 00 00 e8 e8 0c 00 00 8b c8 83 c4 18; FNV-1a 32 c5cdd97d; SHA-256 eba84163df910cb7; call offset 17
+tap2 | 0x014650 e8 1b 0c 00 00 -> 0x015270 (ok) | 0x00413e79 -> 0x00414a70 | 0x01463f, 27 | none | True / True | none | none | 0 | 4 [0x014583 0x014650 0x06e5e5 0x06e6d5] / 3
+  window bytes (relocated dwords zeroed) 8b 53 08 8d 44 24 18 6a 00 50 57 56 b9 03 00 00 00 e8 1b 0c 00 00 8b c8 83 c4 18; FNV-1a 32 73ecdfa4; SHA-256 bc4dabe16fdee71e; call offset 17
+flight | 0x014eaa e8 31 02 00 00 -> 0x0150e0 (ok) | 0x004146c0 -> 0x004148a0 | 0x014e95, 29 | none | True / True | none | none | 0 | 10 [0x013e74 0x0142c3 0x014310 0x0148ae 0x014bd2 0x014eaa 0x015075 0x0152f4 0x015323 0x04f639] / 10
+  window bytes (relocated dwords zeroed) 6a 00 6a 00 8d 44 24 48 33 c9 50 6a 00 6a 00 6a 00 57 52 33 d2 e8 31 02 00 00 83 c4 20; FNV-1a 32 38c0ec0e; SHA-256 362d553ae28f6852; call offset 21
+object | 0x0645bd e8 ce 07 fb ff -> 0x014d90 (ok) | 0x0045ac7d -> 0x00414590 | 0x0645ad, 31 | +1: 0x1a82ec | False / False | none | 0x0645ad: jne 0x064136,jne 0x06414e,je 0x06415c,jne 0x064167,jl 0x064174,jmp 0x06417f,jle 0x0641ac,jmp 0x06426d,jmp 0x064359,jmp 0x0643de,jmp 0x0644e2,jge 0x0645a5 | 0 | 1 [0x0645bd] / 1
+  window bytes (relocated dwords zeroed) a1 00 00 00 00 83 38 00 0f 84 7f 07 00 00 8b cb e8 ce 07 fb ff 0f b7 73 48 0f bf c6 83 f8 0a; FNV-1a 32 d392394d; SHA-256 31c5d331b6a1a38b; call offset 16
+muzzle | 0x04f639 e8 a2 5a fc ff -> 0x0150e0 (ok) | 0x00446268 -> 0x00413c00 | 0x04f603, 62 | +1: 0x1a83c8 | True / True | none | none | 0 | 10 [0x013e74 0x0142c3 0x014310 0x0148ae 0x014bd2 0x014eaa 0x015075 0x0152f4 0x015323 0x04f639] / 1
+  window bytes (relocated dwords zeroed) a1 00 00 00 00 83 c4 08 8b 75 dc 8b 44 06 7c 85 c0 74 2b 8b 95 78 ff ff ff 8d 8d 20 fd ff ff 51 6a 00 8d 8d e0 fe ff ff 51 6a 00 6a 00 6a 00 57 50 b9 04 00 00 00 e8 a2 5a fc ff 83 c4 20; FNV-1a 32 35569ad2; SHA-256 8051d28beb769f6c; call offset 54
+death | 0x0543b3 e8 18 fb fb ff -> 0x013ed0 (ok) | 0x0044ac64 -> 0x00413610 | 0x0543ac, 22 | none | True / True | none | none | 0 | 1 [0x0543b3] / 2
+  window bytes (relocated dwords zeroed) ff 75 10 8b d3 8b ce e8 18 fb fb ff 83 c4 04 8b ce e8 be 59 00 00; FNV-1a 32 6452f5c6; SHA-256 9c8924c8d6177d9c; call offset 7
+type loader class dispatch: byte table 0x042b60[class 0] = 0, jump table 0x042b1c (relocated: True) -> 0x04074b (ok: the TBullets case)
+E8 callers of damage routine 0x053070: 10 [0x0593ed 0x06797d 0x068185 0x0682b1 0x0683eb 0x068517 0x068b16 0x068b24 0x068f41 0x06d82b]
+E8 callers of kill routine 0x0542f0: 10 [0x052b4a 0x05d256 0x05d986 0x067a1b 0x068c88 0x068da2 0x069003 0x06d782 0x06d7ab 0x06d7cd]
+E8 callers of death function 0x013ed0: 1 [0x0543b3]
+E8 callers of area damage 0x068db0: 1 [0x054445]
+E8 callers of fire routine 0x04e310: 4 [0x06bb81 0x06bb9f 0x06bbe4 0x06bc03]
+E8 callers of death row chooser 0x0138e0: 4 [0x013ae2 0x013b22 0x013bcc 0x013f46]
+witness 0x053070, 25: 83 ec 08 53 55 8b 6c 24 18 33 db 56 57 8b f9 89 6c 24 14 33 f6 89 5c 24 10; relocated none; FNV-1a 32 bc88bb15  impact prologue 0x453070 (sub esp,8 .. mov [esp+0x10],ebx)
+witness 0x05318d, 4: 89 5c 24 10; relocated none; FNV-1a 32 f219b05c  impact shield-walk total, absorb path (mov [esp+0x10],ebx)
+witness 0x053194, 9: 33 ed 89 6c 24 14 8d 75 01; relocated none; FNV-1a 32 50eb691d  impact absorbed -> ESI = 1 (xor ebp,ebp; mov [esp+0x14],ebp; lea esi,[ebp+1])
+witness 0x0531a1, 53: 8b 5c 24 1c 0f b7 53 48 66 85 d2 75 1e 0f bf 43 4a 8b 0d 00 00 00 00 69 c0 b8 0d 00 00 f6 44 08 58 20 74 07 b9 01 00 00 00 eb 0a 33 c9 85 f6 0f 85 0d 01 00 00; relocated +19: 0x1a83c8; FNV-1a 32 db3502e9  impact source reload + flag 0x20 test (mov ebx,[esp+0x1c] .. jne 0x4532e3)
+witness 0x0532a9, 2: 03 ee; relocated none; FNV-1a 32 e1788ad4  impact hull add (add ebp,esi)
+witness 0x0532e3, 29: 8b 6c 24 10 8b 47 40 d1 e8 a8 01 74 50 8b 87 a0 00 00 00 b9 50 c3 00 00 3b e9 0f 4f e9; relocated none; FNV-1a 32 8b9c0d87  impact total reload + piloted clamp (mov ebp,[esp+0x10] .. cmovg ebp,ecx)
+witness 0x04e4a4, 10: 0f bf 40 04 89 85 78 ff ff ff; relocated none; FNV-1a 32 147dd4e6  muzzle gun slot (movsx eax,[eax+4]; mov [ebp-0x88],eax)
+witness 0x04e4f9, 11: 0f b7 4c 02 4c 89 8d 74 ff ff ff; relocated none; FNV-1a 32 5a1c3936  muzzle bullet index (movzx ecx,[edx+eax+0x4c]; mov [ebp-0x8c],ecx)
+witness 0x013f3d, 14: ff 76 40 0f b7 56 4a 8b cf e8 95 f9 ff ff; relocated none; FNV-1a 32 8410e620  death row chooser call (push [esi+0x40] .. call 0x4138e0)
+AP death B 0x0044acb2 -> 0x00413610: FL has no second site (one E8 caller of 0x013ed0: ['0x0543b3'])
+non-call direct edges to the targets: 0x014440: none; 0x015270: none; 0x0150e0: none; 0x014d90: none; 0x013ed0: none
+
+anchors: layout 57, impact-frame 102, taps 37, spawner 13, flight 21, object 13, muzzle 52, death 81, fade 65; total 441, failures 0
+fire routine writers: [ebp-0x88] (gun slot) ['0x04e4a8'], [ebp-0x24] (bullet index * 0xdb8) ['0x04e548'], [ebp-0x18] (laser) ['0x04e46d']
+damage routine writers: [esp+0x10] ['0x053085', '0x0530f6', '0x053131', '0x053151', '0x05316f', '0x05318d'], [esp+0x14] ['0x05307f', '0x053129', '0x05314d', '0x053196'], EBP ['0x053075', '0x053149', '0x053194', '0x053264', '0x0532a9', '0x0532bd', '0x0532e3', '0x0532fd'], ESI ['0x053083', '0x0530ad', '0x0530b9', '0x0530c0', '0x05319a', '0x05319f', '0x0531d6', '0x05323d', '0x05329f', '0x0532b1', '0x0532db']
+test [..+0x58], imm (immediate: AP count / FL count): 0x1: 0/2, 0x2: 4/5, 0x4: 1/1, 0x6: 1/5, 0x8: 0/1, 0xe: 2/2, 0x20: 1/1, 0x40: 2/4, 0x80: 1/1, 0xa0: 1/1, 0x100: 3/3, 0x200: 2/2, 0x400: 2/3, 0x800: 2/3, 0x1000: 1/2, 0x2000: 1/3, 0x2006: 0/1
+FL-only immediates and their sites: 0x1: ['0x13b9f6', '0x1423de']; 0x8: ['0x04fd81']; 0x2006: ['0x04f9ae']
+
+TBullets addon2/04.cat: file version 55, 45 rows, columns per row [(50, 45)]
+flag values (col 12): 0x0x8, 0x1x2, 0x2x8, 0x8x2, 0x40x2, 0x60x1, 0xa2x1, 0x100x4, 0x140x2, 0x214x1, 0x300x1, 0x400x1, 0x800x1, 0x802x1, 0x808x1, 0x1000x1, 0x1200x1, 0x2000x1, 0x2100x2, 0x2600x1, 0x2800x1, 0x3000x2
+bits present (rows): 0x1:2 0x2:10 0x4:1 0x8:3 0x10:1 0x20:2 0x40:5 0x80:1 0x100:9 0x200:4 0x400:2 0x800:4 0x1000:4 0x2000:7
+bits outside the classifier's cues (beam 0x6, wave 0x8, 0x20, 0x40, 0x80, burst 0x1100, on-hit 0x600): ['0x1', '0x10', '0x2000', '0x800']
+col 19 flight: non-zero 3, zero 42, distinct 2
+col 20 impact: non-zero 45, zero 0, distinct 26
+col 21 muzzle: non-zero 40, zero 5, distinct 21
+col 23 trail: non-zero 1, zero 44, distinct 1
+col 19 flight rows missing from Effects (addon2/04.cat, 130 rows): none
+col 20 impact rows missing from Effects (addon2/04.cat, 130 rows): none
+col 21 muzzle rows missing from Effects (addon2/04.cat, 130 rows): none
+light colour cols 13-15 non-zero: 45 / 45
+rows with muzzle col 21 = 0 (no FL muzzle-site call): ['SS_BULLET_TUG', 'SS_BULLET_KH_ALPHA', 'SS_BULLET_KH_BETA', 'SS_BULLET_KH_GAMMA', 'SS_BULLET_REPAIR']
+TShips addon2/04.cat rows whose col 52 id falls outside patch_tier_of_ship (col 52, col 5, death row col 47): ('0', 'SG_SH_M3', '0') x1, ('0', 'SG_SH_M3', '35') x2, ('0', 'SG_SH_M5', '35') x2, ('2061', 'SG_SH_M5', '35') x7, ('OBJ_RELAYBEACON', 'SG_SH_M5', '35') x1
+FL-only ship ids (col 52, death row col 47): ('2153', '37') x1, ('OBJ_SHIP_DRONECARRIER', '37') x7, ('OBJ_SHIP_MISSILE_FRIGATE', '37') x8, ('OBJ_SHIP_SPECIALDRONE', '35') x7
+TShips death rows (col 47) missing from Effects: none

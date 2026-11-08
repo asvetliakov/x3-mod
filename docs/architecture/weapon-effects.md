@@ -237,7 +237,10 @@ the key behaves as native until a family is accepted. Instances created before a
 X3FL.exe is relocatable and has none of these sites traced; the FL edition compiles the families out
 (`X3M_EDITION_FL`: the hooks are not installed, `weapon_effects` reports `edition_unsupported`) until an FL
 reverse-engineering note names the four sites and the `absorbed` slot, as [fl/engine-effects.md](../reverse-engineering/fl/engine-effects.md)
-did for the plumes. The FL weapon census has the same 45 rows and ids as stock AP; the record fields differ only in
+did for the plumes. [fl/weapon-effect-spawn.md](../reverse-engineering/fl/weapon-effect-spawn.md) (2026-11-08, static)
+now names the FL sites: they move their arguments into ECX/EDX, merge the two death calls into one site, inline the
+muzzle wrapper and keep the impact total in EBP with no `absorbed` slot (derived from ESI), so each needs an FL stub
+shim. The FL weapon census has the same 45 rows and ids as stock AP; the record fields differ only in
 PD's lifetime (1,800 vs 2,100 ms), speed (355 vs 375 m/s) and damage (351/80 vs 468/120), and the PAC body's scale
 (8,099 vs 16,171; elongation 24.5 vs 24.7), so the classifier gives the same style for all 45 [M, `fl.json`,
 `classify_preview_out.txt`]; the classifier and overrides carry over unchanged.
