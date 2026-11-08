@@ -57,6 +57,7 @@ struct ProjectileEntry {
     std::uint32_t ring_px[projectile::trail_ring][2];
     std::uint32_t ring_us[projectile::trail_ring];
     std::uint32_t ring_count;
+    std::uint32_t spot_state; // the last frame's: 1 a spot, 2 a streak or comet (the spot's hysteresis)
 };
 struct ProjectileBody {
     std::uint32_t id;         // the engine body id (node +0x144)
@@ -88,6 +89,7 @@ struct ProjectilePool {
     ProjectileCounters counters{};
     std::int32_t stage_eye[3]{};   // the eye (engine units) of the stage frame stage_eye_frame (a first frame's camera travel)
     std::uint32_t stage_eye_frame = 0;
+    std::uint32_t stage_wanted = 0; // the quads the last stage frame's bolts wanted untrimmed (the adaptive ring)
 };
 static_assert(offsetof(ProjectilePool, skip_on) == 0 && offsetof(ProjectilePool, skipped) == 4 &&
                   offsetof(ProjectilePool, bits) == 8,

@@ -3454,7 +3454,7 @@ int main(int argc, char** argv) {
             static ps::Looks looks;
             static rr::WeaponProjectileVertex verts[4];
             const ps::View view = proj_view(pt, 1.6f);
-            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const pf::Tune tunes[pf::family_count] = {flat}; // the bridge's rules (the comet's are (7f) to (7j))
             const float dt = 1.f / 60.f;
             const std::int32_t x1 = -20000;
             const std::int32_t p1[3] = {x1, 0, 200 * 500};
@@ -3607,8 +3607,8 @@ int main(int argc, char** argv) {
         // (7f) the comet's seam (FL 60 A): the seam variants of (7b) with the comet (trail_ms 40, head_gain 1.5; the flown
         // values with the comet's defaults) over 5 frames at 60 fps and 7 at 144 fps (the ring full), the last frame read
         // along the axis row: from three core widths behind the head to the trail's end one monotonic falloff (no rise
-        // above 10 % over the running minimum while F >= 0.02: no bump at a seam, no saw-tooth) on the law C F(age)
-        // within 10 % where F >= 0.1, the age piecewise through the frames' heads; every frame bridged (no jump, no static)
+        // above 5 % over the running minimum while F >= 0.02: no bump at a seam, no saw-tooth) on the law C F(age)
+        // within 3 % where F >= 0.1, the age piecewise through the frames' heads; every frame bridged (no jump, no static)
         // and the trail drawn to F = 10 % (0.745 trail_ms: 1 ring segment at 60 fps, 4 at 144): in one quad where the
         // path is straight at a steady screen speed (merged), and with the camera's turn accelerating (1, 2, 3, 4 degrees
         // per frame) in segments (1 + 1 quads), so the seam between segments is read too.
@@ -3635,7 +3635,7 @@ int main(int argc, char** argv) {
                                       (!accelerating || !s.merged);
                 segmented += !s.merged;
                 const bool ok = r.drawn == r.frames && r.jumped == 0 && r.statics == 0 && drawn_ok && pr.c > 0.0 &&
-                                pr.bump <= 0.10 && pr.dev <= 0.10;
+                                pr.bump <= 0.05 && pr.dev <= 0.03;
                 ok_all = ok_all && ok;
                 std::printf("PROJECTILE case=comet_seam fps=%u tune=%s camera_mps=%u turn_deg=%s distance_m=200 frames=%u "
                             "quads=%u ring=%u merged=%u core_px=%.2f c=%.4f head_ratio=%.4f dev=%.4f bump=%.4f age50_ms=%.2f "
@@ -3673,28 +3673,139 @@ int main(int argc, char** argv) {
                        std::fabs(double(s.trail_age_s) * 1e3 - double(ps::trail_drawn * tune.trail_ms)) < 1.0,
                    "");
         }
-        // (7h) SETA invariance of the trail in game time: the IRE at 500 m at 1x (60 fps, 17 ms steps, five frames: the
-        // trail over three segments) and under SETA 6 (100 ms steps, two frames: one segment clipped at trail_ms); the
-        // game ms at which the row falls under 50 % and 20 % of the trail's start agree within 5 % and with the law's
-        // (11.07 and 23.17 ms at trail_ms 40) within 5 %.
+        // (7h) the trail in game time under SETA: the IRE at 500 m at 1x (17 ms steps, five frames) and at 23 ms steps
+        // (SETA 1.4, the step still under trail_drawn x trail_ms / trail_cover) the trail is trail_ms: the game ms at which
+        // the row falls under 50 % and 20 % of the trail's start agree within 5 % and with the law's (11.07 and 23.16 ms
+        // at 40 ms) within 5 %. Under SETA 6 (100 ms steps, two frames) the trail is never shorter than the frame's
+        // motion: the bolt's segment is drawn in full (its drawn length the motion within 0.5 %), the comet runs on to
+        // trail_cover x the step (125 ms) into the previous segment with T = 125 / trail_drawn ms, the 50 % and 20 %
+        // ages on that law within 5 %, and the energy factor is length_cap_m over the drawn world length |v| 125 ms
+        // within 1 %.
         {
             const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
             const CometRun one = comet_run(proj, pt, tune, 500.f, 5, 17, 1.0 / 60.0, 0.0, 0.0, 0.3, 600);
             const CometProfile p1 = comet_profile(one, tune);
+            const CometRun mid = comet_run(proj, pt, tune, 500.f, 5, 23, 1.0 / 60.0, 0.0, 0.0, 0.3, 610);
+            const CometProfile pm = comet_profile(mid, tune);
             const CometRun six = comet_run(proj, pt, tune, 500.f, 2, 100, 1.0 / 60.0, 0.0, 0.0, 0.3, 620);
-            const CometProfile p6 = comet_profile(six, tune);
-            const double law50 = double(tune.trail_ms) * std::log2(8.0 / (1.0 + 7.0 * 0.5)) / 3.0;
-            const double law20 = double(tune.trail_ms) * std::log2(8.0 / (1.0 + 7.0 * 0.2)) / 3.0;
-            std::printf("PROJECTILE case=comet_seta distance_m=500 age50_1x_ms=%.2f age50_6x_ms=%.2f age20_1x_ms=%.2f "
-                        "age20_6x_ms=%.2f law50_ms=%.2f law20_ms=%.2f quads_1x=%u quads_6x=%u energy_6x=%.4f\n",
-                        p1.age50_ms, p6.age50_ms, p1.age20_ms, p6.age20_ms, law50, law20, one.shape[one.frames - 1].quads,
-                        six.shape[six.frames - 1].quads, double(six.shape[six.frames - 1].energy));
+            const ps::BoltShape& s6 = six.shape[six.frames - 1];
+            pf::Tune long_tune = tune;
+            long_tune.trail_ms = s6.trail_s * 1e3f; // the effective trail of the SETA 6 frame (the profile's law)
+            const CometProfile p6 = comet_profile(six, long_tune);
+            const auto law = [](double trail, double f) { return trail * std::log2(8.0 / (1.0 + 7.0 * f)) / 3.0; };
+            const double law50 = law(tune.trail_ms, 0.5), law20 = law(tune.trail_ms, 0.2);
+            const double law50_6 = law(long_tune.trail_ms, 0.5), law20_6 = law(long_tune.trail_ms, 0.2);
+            const double want_energy = double(tune.length_cap_m) / (1162.0 * 0.125);
+            std::printf("PROJECTILE case=comet_seta distance_m=500 age50_1x_ms=%.2f age50_1_4x_ms=%.2f age20_1x_ms=%.2f "
+                        "age20_1_4x_ms=%.2f law50_ms=%.2f law20_ms=%.2f trail_6x_ms=%.2f drawn_6x_ms=%.2f age50_6x_ms=%.2f "
+                        "age20_6x_ms=%.2f law50_6x_ms=%.2f law20_6x_ms=%.2f motion_6x_px=%.2f own_drawn_6x_px=%.2f "
+                        "trail_age_6x_ms=%.2f energy_6x=%.4f want_energy_6x=%.4f drawn_6x_m=%.2f energy_1x=%.4f quads_6x=%u\n",
+                        p1.age50_ms, pm.age50_ms, p1.age20_ms, pm.age20_ms, law50, law20, double(s6.trail_s) * 1e3,
+                        double(s6.drawn_s) * 1e3, p6.age50_ms, p6.age20_ms, law50_6, law20_6, double(s6.length_px),
+                        double(s6.own_px), double(s6.trail_age_s) * 1e3, double(s6.energy), want_energy,
+                        double(s6.drawn_m), double(one.shape[one.frames - 1].energy), s6.quads);
             const auto within5 = [](double a, double b) { return a > 0.0 && b > 0.0 && std::fabs(a / b - 1.0) < 0.05; };
-            report("projectile_comet_seta_invariant_trail_game_ms",
-                   one.drawn == one.frames && six.drawn == six.frames && one.jumped + six.jumped == 0 &&
-                       within5(p1.age50_ms, p6.age50_ms) && within5(p1.age20_ms, p6.age20_ms) && within5(p1.age50_ms, law50) &&
-                       within5(p6.age20_ms, law20),
+            report("projectile_comet_seta_trail_game_ms_never_under_motion",
+                   one.drawn == one.frames && mid.drawn == mid.frames && six.drawn == six.frames &&
+                       one.jumped + mid.jumped + six.jumped == 0 && within5(p1.age50_ms, pm.age50_ms) &&
+                       within5(p1.age20_ms, pm.age20_ms) && within5(p1.age50_ms, law50) && within5(pm.age20_ms, law20) &&
+                       std::fabs(double(s6.own_px) / double(s6.length_px) - 1.0) < 0.005 &&
+                       std::fabs(double(s6.drawn_s) - 0.125) < 1e-4 && double(s6.trail_age_s) > 0.1 &&
+                       within5(p6.age50_ms, law50_6) && within5(p6.age20_ms, law20_6) &&
+                       std::fabs(double(s6.energy) / want_energy - 1.0) < 0.01,
                    "");
+        }
+        // (7i) the spot's hysteresis: one IRE at 500 m (core 2 px) whose whole drawn path (its motion and one ring
+        // segment) alternates 1.1 and 0.9 core widths over four frames, the spot state carried from frame to frame; once
+        // from a comet and once from a spot. The bolt keeps its mode in each run and the frame's brightest pixel (the
+        // head, or the spot) changes by under 5 % from frame to frame.
+        {
+            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const ps::View view = proj_view(pt, 1.6f);
+            const ps::ViewFrame vf = ps::view_frame(view, tune.core_px);
+            const ps::BodyFrame body = ps::body_frame(tune, ire_look());
+            double worst = 0.0;
+            unsigned flips = 0;
+            for (unsigned run = 0; run < 2; ++run) {
+                unsigned state = 0;
+                double prev = 0.0;
+                bool prev_spot = false;
+                for (unsigned f = 0; f < 4; ++f) {
+                    const float w = 2.f, path = w * (((f + run) & 1u) ? 0.9f : 1.1f);
+                    ps::BoltIn in;
+                    in.p[2] = 500.f * ps::view_units_per_metre;
+                    in.v[0] = 1.f;
+                    in.step_s = 0.007f;
+                    in.age_s = 10.f;
+                    in.has_tail = true;
+                    const float cx = 0.5f * float(pt.w), cy = 0.5f * float(pt.h);
+                    in.tail_px[0] = cx - 0.3f * path, in.tail_px[1] = cy;
+                    in.tail_age_s = 0.007f;
+                    in.ring_count = 1;
+                    in.ring_px[0][0] = cx - path, in.ring_px[0][1] = cy;
+                    in.ring_span_s[0] = 0.007f;
+                    in.spot_state = state;
+                    rr::WeaponProjectileVertex v[rr::weapon_projectile_quads_per_bolt * 4];
+                    ps::BoltShape shape;
+                    const unsigned q = ps::bolt_quads(view, vf, tune, body, in, v, rr::weapon_projectile_quads_per_bolt, &shape);
+                    proj_draw(proj, pt, v, q);
+                    const std::vector<float> l = proj_scene(pt);
+                    double peak = 0.0;
+                    for (float x : l) peak = std::max(peak, double(x));
+                    if (f) {
+                        worst = std::max(worst, std::fabs(peak / prev - 1.0));
+                        flips += shape.spot != prev_spot;
+                    }
+                    std::printf("PROJECTILE case=spot_hysteresis run=%u frame=%u path_px=%.2f spot=%u quads=%u peak=%.4f\n", run, f,
+                                double(shape.path_px), unsigned(shape.spot), q, peak);
+                    prev = peak;
+                    prev_spot = shape.spot;
+                    state = shape.spot ? 1u : 2u;
+                }
+            }
+            report("projectile_spot_hysteresis_no_flip", flips == 0 && worst < 0.05, "");
+        }
+        // (7j) the merge's tolerance: an IRE at 200 m (core 5 px), its motion 150 px and one ring segment of 150 px at
+        // 17 ms each, the motion's tail moved sideways by 0.5 and by 0.65 px (0.43 and 0.56 px, 0.086 and 0.112 core
+        // widths, off the line from the drawn trail's end to the head: one quad, then two; the tolerance is 0.1 core
+        // widths), the same ages: the column's light summed across the comet 200 px behind the head changes by under 3 %.
+        {
+            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const ps::View view = proj_view(pt, 1.6f);
+            const ps::ViewFrame vf = ps::view_frame(view, tune.core_px);
+            const ps::BodyFrame body = ps::body_frame(tune, ire_look());
+            double sums[2] = {0.0, 0.0};
+            unsigned quads[2] = {0, 0};
+            bool merged[2] = {false, false};
+            for (unsigned k = 0; k < 2; ++k) {
+                ps::BoltIn in;
+                in.p[2] = 200.f * ps::view_units_per_metre;
+                in.p[0] = 150.f / (0.5f * float(pt.w) * view.m00) * in.p[2]; // the head 150 px right of the centre
+                in.v[0] = 1162.f * ps::view_units_per_metre;
+                in.step_s = 0.017f;
+                in.age_s = 10.f;
+                in.has_tail = true;
+                const float cx = 0.5f * float(pt.w) + 150.f, cy = 0.5f * float(pt.h);
+                in.tail_px[0] = cx - 150.f, in.tail_px[1] = cy + (k ? 0.65f : 0.5f);
+                in.tail_age_s = 0.017f;
+                in.ring_count = 1;
+                in.ring_px[0][0] = cx - 300.f, in.ring_px[0][1] = cy;
+                in.ring_span_s[0] = 0.017f;
+                in.spot_state = 2;
+                rr::WeaponProjectileVertex v[rr::weapon_projectile_quads_per_bolt * 4];
+                ps::BoltShape shape;
+                quads[k] = ps::bolt_quads(view, vf, tune, body, in, v, rr::weapon_projectile_quads_per_bolt, &shape);
+                merged[k] = shape.merged;
+                proj_draw(proj, pt, v, quads[k]);
+                const std::vector<float> l = proj_scene(pt);
+                const int xm = int(std::lround(cx - 200.0)); // in the ring segment's span
+                for (UINT y = 0; y < pt.h && !l.empty(); ++y) sums[k] += l[std::size_t(y) * pt.w + xm];
+            }
+            const double change = sums[0] > 0.0 ? std::fabs(sums[1] / sums[0] - 1.0) : 1.0;
+            std::printf("PROJECTILE case=merge_flip distance_m=200 quads=%u/%u merged=%u/%u column_sum=%.3f/%.3f change=%.4f\n",
+                        quads[0], quads[1], unsigned(merged[0]), unsigned(merged[1]), sums[0], sums[1], change);
+            report("projectile_merge_flip_under_3pct", merged[0] && !merged[1] && quads[0] == 1 && quads[1] == 2 &&
+                                                           change < 0.03, "");
         }
         // (8) Reset: the programs go before it and come back after; the next frame draws again.
         {
@@ -3855,6 +3966,91 @@ int main(int argc, char** argv) {
                                                       gpu_best < 50.0 && lit > 0 && bridged_statics == 0 &&
                                                       bridged_jumped == 0 && n.comets + n.dots == n.drawn &&
                                                       n.comets > 0, "");
+            // (9b) the worst case: the same 512 bolts at 144 fps (7 ms steps) with the camera yawing faster every frame
+            // (0.05 degrees x k at frame k: 43 degrees/s at the timed frame), so no comet's ages are linear on screen and
+            // none merges: seven frames per repetition
+            // (the ring full), the seventh timed, CPU best of 40 and GPU fenced best of 60. A frame after one whose bolts
+            // wanted more than ring_trim_above quads redraws at most ring_trimmed_segments ring segments per comet.
+            {
+                const auto place7 = [&](std::uint32_t now, int steps) {
+                    put32(cfg, wc::layout::cfg_game_ms, now);
+                    for (unsigned i = 0; i < bullets.size(); ++i) {
+                        Bullet& u = bullets[i];
+                        put32(u.node, wc::layout::node_pos + 0, std::uint32_t(base[2 * i] + std::int32_t(581000.0 * 0.8 * 0.007 * steps)));
+                        put32(u.node, wc::layout::node_pos + 8, std::uint32_t(base[2 * i + 1] + std::int32_t(581000.0 * 0.6 * 0.007 * steps)));
+                        wc::projectile_tap(reinterpret_cast<std::uintptr_t>(u.obj), pool);
+                    }
+                };
+                const auto yawed = [&](int k) {
+                    ps::View v = view;
+                    const double yaw = 0.05 * 0.5 * double(k) * double(k + 1) * 3.14159265358979 / 180.0;
+                    v.r[0] = v.r[8] = float(std::cos(yaw));
+                    v.r[6] = float(std::sin(yaw));
+                    v.r[2] = -float(std::sin(yaw));
+                    return v;
+                };
+                double cpu_w = 1e30;
+                ps::Counts nw, before;
+                unsigned w_statics = 0, w_jumped = 0;
+                for (int rep = 0; rep < 40; ++rep) {
+                    const std::uint32_t now = 20000u + 64u * unsigned(rep), frame0 = 3000u + 8u * unsigned(rep);
+                    for (int k = 0; k < 6; ++k) {
+                        place7(now + 7u * unsigned(k), k);
+                        x3m::engine_memory::next_frame();
+                        before = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, frame0 + unsigned(k), false,
+                                           now + 7u * unsigned(k), 7, 1.f / 144.f, 1.f, yawed(k), tunes, verts,
+                                           rr::weapon_projectile_max_bolts, rr::weapon_projectile_max_quads);
+                    }
+                    place7(now + 42, 6);
+                    x3m::engine_memory::next_frame();
+                    const ps::View last = yawed(6);
+                    QueryPerformanceCounter(&a);
+                    nw = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, frame0 + 6u, false, now + 42, 7, 1.f / 144.f,
+                                   1.f, last, tunes, verts, rr::weapon_projectile_max_bolts, rr::weapon_projectile_max_quads);
+                    QueryPerformanceCounter(&b);
+                    cpu_w = std::min(cpu_w, ticks_us(a, b, freq));
+                    w_statics += nw.statics;
+                    w_jumped += nw.jumped;
+                }
+                double gpu_w = 1e30;
+                f.quads = nw.quads;
+                bool drew_w = true;
+                for (int rep = 0; rep < 60; ++rep) {
+                    dev->BeginScene();
+                    dev->SetDepthStencilSurface(bt.depth_s.p);
+                    dev->SetRenderTarget(0, bt.scene_s.p);
+                    dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+                    dev->SetDepthStencilSurface(nullptr);
+                    fence(ev.p);
+                    QueryPerformanceCounter(&a);
+                    rr::WeaponEffectsReport r{};
+                    const HRESULT hr = proj.run_projectiles(f, &r);
+                    fence(ev.p);
+                    QueryPerformanceCounter(&b);
+                    dev->EndScene();
+                    drew_w = drew_w && hr == S_OK && r.quads == nw.quads;
+                    gpu_w = std::min(gpu_w, ticks_us(a, b, freq));
+                }
+                const std::vector<float> lw = proj_scene(bt);
+                unsigned lit_w = 0;
+                for (float x : lw) lit_w += x > 0.f;
+                device_guard("projectile_timing_worst");
+                std::printf("PROJECTILE case=budget_worst width=5120 height=1440 step_ms=7 bolts=%u drawn=%u comets=%u merged=%u "
+                            "quads=%u wanted=%u trimmed=%u previous_wanted=%u cpu_us=%.1f gpu_us=%.1f fence_us=%.1f lit_share=%.4f "
+                            "statics=%u jumped=%u\n",
+                            pool.count, nw.drawn, nw.comets, nw.merged, nw.quads, nw.wanted, nw.trimmed, before.wanted, cpu_w,
+                            gpu_w, fence_best, lw.empty() ? 0.0 : double(lit_w) / double(lw.size()), w_statics, w_jumped);
+                // the rule's mechanics gate; the timing is reported against the bounds (100 us CPU, 50 us GPU fenced),
+                // not gated: at 7 ms steps under a 43 degrees/s turn the comets' lit area alone exceeds the GPU bound
+                // (docs/verification/weapon-effects.md, "FL 60 A review")
+                std::printf("PROJECTILE case=budget_worst_bounds cpu_within=%u gpu_within=%u\n", unsigned(cpu_w < 100.0),
+                            unsigned(gpu_w < 50.0));
+                report("projectile_budget_worst_trims_unmerged_144fps_turning",
+                       drew_w && nw.drawn >= 480 && nw.merged * 50 <= nw.comets && nw.comets + nw.dots == nw.drawn &&
+                           before.wanted > ps::ring_trim_above && nw.trimmed > 0 &&
+                           nw.quads <= nw.drawn * (1u + ps::ring_trimmed_segments) && w_statics == 0 && w_jumped == 0,
+                       "");
+            }
         }
         bt.release();
     }

@@ -371,6 +371,7 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     projectile_retired_ += n.expired + n.invalid;
     projectile_statics_ += n.statics;
     projectile_jumped_ += n.jumped;
+    projectile_ring_trimmed_ += n.trimmed;
     renderer::WeaponProjectileFrame pf;
     pf.width = f.width;
     pf.height = f.height;
@@ -440,12 +441,14 @@ bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
 }
 void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled,
                                          unsigned* retired, float* stage_us, unsigned* unpooled,
-                                         unsigned* sampled, unsigned* statics, unsigned* jumped) noexcept {
+                                         unsigned* sampled, unsigned* statics, unsigned* jumped,
+                                         unsigned* ring_trimmed) noexcept {
     *unpooled = projectile_unpooled_;
     *sampled = projectile_sampled_;
     *statics = projectile_statics_;
     *jumped = projectile_jumped_;
-    projectile_unpooled_ = projectile_sampled_ = projectile_statics_ = projectile_jumped_ = 0;
+    *ring_trimmed = projectile_ring_trimmed_;
+    projectile_unpooled_ = projectile_sampled_ = projectile_statics_ = projectile_jumped_ = projectile_ring_trimmed_ = 0;
     *owned = weapon_requested_ && projectile_owned_frame_;
     *bolts = projectile_bolts_;
     *dropped = projectile_dropped_;
