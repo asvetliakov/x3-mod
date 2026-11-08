@@ -2,6 +2,7 @@
 #include <cstdint>
 #include "weapon_effects_core.h"
 #include "weapon_effects_bolt.h"
+#include "weapon_effects_projectile.h"
 
 // Weapon effects, step 1: the shield hit (X3M_WEAPON_EFFECTS=native|observe|shields; the scratched families' names
 // hull, bolts and explosions are accepted beside shields and ignored, a weapon_effects_ignored row each; unset = native;
@@ -80,7 +81,7 @@ bool installed();
 core::Mode mode();
 const char* state();
 // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
-// (the one FL call), no 7
+// (the one FL call), 7 batch (the projectile stage's batch submit 0x097af8; with the object tap in every stage mode)
 const char* site_state(unsigned site);
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
@@ -108,6 +109,15 @@ struct StageFrame {
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     float stage_us = 0.f;
     bool drew = false;
+    // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the
+    // next frame's batch-skip latch), bolts drawn, traversal draws dropped by the draw hook and those it could not see,
+    // pool entries retired, the stage's CPU time.
+    bool projectile_owned = false;
+    unsigned projectile_bolts = 0, projectile_dropped = 0, projectile_unhandled = 0, projectile_retired = 0;
+    // scoped draws of an enabled body whose node is not pooled (a child node, or a bullet the pool missed), counted on
+    // the sampled frames (every 60th and every capture frame), and those frames
+    unsigned projectile_unpooled = 0, projectile_sampled = 0;
+    float projectile_us = 0.f;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
 // sector change or a new load epoch (note 3.1), before the frame's upkeep.
@@ -118,10 +128,15 @@ void clear_owned();
 // cache when the count moved since its last frame.
 std::uint32_t scope_changes();
 std::uint32_t game_ms(); // cfg+0x718 (FL +0x708) through engine_memory (0 when unreadable; hook_state().globals' slot)
+// The engine's game-time step of the frame, cfg +0x714 (FL +0x704), ms with SETA (0 when unreadable).
+std::uint32_t game_step_ms();
 }
 #if X3M_EDITION_FL
 extern "C" {
 void x3m_weapon_effects_stub_impact_fl();
+void x3m_weapon_effects_stub_batch_fl();
+extern std::uintptr_t x3m_weapon_effects_continue_batch;
+extern x3m::weapon_effects::core::ProjectilePool x3m_projectile_pool;
 void x3m_weapon_effects_stub_tap_fl();
 void x3m_weapon_effects_stub_bolt_tap_fl();
 void x3m_weapon_effects_stub_muzzle_fl();

@@ -20,7 +20,10 @@ the surface case, the no-pop runs (fighter and spread capital on a flat face, th
 sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
 and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
-fighter, two on a capital at close range, the worst case of one owner). Never launches the game. The hull-hit, explosion
+fighter, two on a capital at close range, the worst case of one owner); the projectile stage
+(docs/architecture/projectile-look.md: the core width rule at 200 m / 500 m / 1 km / 3 km at two fields of view, SETA
+invariance, the far flag, the dot LOD, nothing outside the quad, depth occlusion, the pool's draw and retirement, Reset,
+the 512-bolt budget at 5120x1440; PROJECTILE rows). Never launches the game. The hull-hit, explosion
 and bolt cases left with the look layer on 2026-11-08 (docs/archive/effects-look-2026-11-08/index.md); the hook
 fixture keeps the bolt and death sites' hook cases.
 
@@ -69,6 +72,11 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_hex_patch.hlsl',
                       'src/renderer/weapon_shell_vertex_program_inc.h', 'src/renderer/weapon_shell_pixel_program_inc.h',
                       'src/renderer/weapon_decal_vertex_program_inc.h', 'src/renderer/weapon_decal_pixel_program_inc.h',
+                      # the projectile stage (docs/architecture/projectile-look.md)
+                      'src/proxy/weapon_projectile_stage.h', 'src/proxy/weapon_projectile_family.h',
+                      'src/proxy/weapon_effects_projectile.h', 'src/effects/weapon_projectile_vs.hlsl',
+                      'src/effects/weapon_projectile_ps.hlsl', 'src/renderer/weapon_projectile_vertex_program_inc.h',
+                      'src/renderer/weapon_projectile_pixel_program_inc.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
                       'verification/probe/weapon_effects_fixture.cpp')
 PROGRAMS = {
@@ -77,6 +85,10 @@ PROGRAMS = {
     'weapon_decal_vs': ('verification/results/weapon-decal-vertex-program.json', 'src/renderer/weapon_decal_vertex_program_inc.h'),
     'weapon_decal_ps': ('verification/results/weapon-decal-pixel-program.json', 'src/renderer/weapon_decal_pixel_program_inc.h'),
     'weapon_bubble_ps': ('verification/results/weapon-bubble-pixel-program.json', 'src/renderer/weapon_bubble_pixel_program_inc.h'),
+    'weapon_projectile_vs': ('verification/results/weapon-projectile-vertex-program.json',
+                             'src/renderer/weapon_projectile_vertex_program_inc.h'),
+    'weapon_projectile_ps': ('verification/results/weapon-projectile-pixel-program.json',
+                             'src/renderer/weapon_projectile_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -97,7 +109,7 @@ HOOK_FL_SOURCES = ('verification/probe/weapon_effects_hook_fixture_fl.cpp', 'ver
                    'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
                    'src/engine/fl/weapon_effects_sites_fl.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bubble.h',
                    'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
-                   'src/engine/fl/executable_identity_fl.h')
+                   'src/engine/fl/executable_identity_fl.h', 'src/proxy/weapon_effects_projectile.h')
 
 
 def sha(path):
@@ -108,7 +120,10 @@ def source_binding(paths=PRODUCTION_SOURCES):
     def git(*a):
         return subprocess.run(['git', '-C', str(ROOT), *a], capture_output=True, text=True, check=True).stdout
     changed = [line[3:] for line in git('status', '--porcelain', '--', *paths).splitlines()]
-    commit = git('rev-parse', 'HEAD').strip() + ('-dirty' if git('status', '--porcelain', '--untracked-files=no').strip() else '')
+    # The run's own records (written one after the other in this directory) do not make the checkout dirty.
+    dirty = git('status', '--porcelain', '--untracked-files=no', '--', '.',
+                ':(exclude)verification/results/native-windows/weapon-effects').strip()
+    commit = git('rev-parse', 'HEAD').strip() + ('-dirty' if dirty else '')
     return {'commit': commit, 'production_sources_dirty': bool(changed), 'dirty_paths': changed,
             'sha256': {p: sha(ROOT / p) for p in paths}}
 
@@ -160,7 +175,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING')
+            'REFUSED', 'TIMING', 'PROJECTILE')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -296,6 +311,37 @@ def run_fixture(args):
     return done.returncode, text
 
 
+def dump(args):
+    """--dump DIR: the projectile look frames only (weapon_effects_projectile_dump.cpp, a separate program so the D3D
+    record's source binding stays): it writes linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0,
+    clamp, sRGB; no bloom, AgX or TAA, as the design mocks); no hook fixture, no record."""
+    import numpy as np
+    from PIL import Image
+    out = Path(args.dump)
+    out.mkdir(parents=True, exist_ok=True)
+    raw = BUILD / 'dump'
+    raw.mkdir(parents=True, exist_ok=True)
+    BUILD.mkdir(parents=True, exist_ok=True)
+    exe = BUILD / 'weapon_effects_projectile_dump.exe'
+    command = ['i686-w64-mingw32-g++', *FLAGS, str(ROOT / 'verification/probe/weapon_effects_projectile_dump.cpp'),
+               str(ROOT / 'src/renderer/weapon_effects_pass.cpp'), '-o', str(exe), '-luser32']
+    built = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    if built.returncode or re.search(r'\bwarning:', built.stdout + built.stderr):
+        raise SystemExit('dump build failed:\n' + built.stdout + built.stderr)
+    done, text = native_host.run_native(exe, ['dump'], BUILD, args.timeout, log=BUILD / 'dump-fixture')
+    print('\n'.join(line for line in text.splitlines() if line.startswith(('DUMP', 'RESULT'))))
+    for pfm in sorted(raw.glob('*.pfm')):
+        data = pfm.read_bytes()
+        head = data.split(b'\n', 3)
+        w, h = (int(v) for v in head[1].split())
+        img = np.frombuffer(head[3], dtype='<f4', count=w * h * 3).reshape(h, w, 3)[::-1]
+        c = np.clip(img, 0.0, 1.0)
+        srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
+        Image.fromarray((srgb * 255 + 0.5).astype(np.uint8)).save(out / (pfm.stem + '.png'))
+        print('PNG', out / (pfm.stem + '.png'))
+    return done.returncode
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
@@ -303,6 +349,8 @@ def main():
     parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
                         help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
                              'WSL2 host through interop (native_host.py), never a fallback')
+    parser.add_argument('--dump', help='write the projectile look frames as PNG into this directory (native host only); '
+                                       'no other fixture runs and no record is written')
     args = parser.parse_args()
     native = args.host == 'native'
     if native:
@@ -310,6 +358,8 @@ def main():
             raise SystemExit('--host native needs ' + '; '.join(native_host.missing()))
         if game_running() or native_host.game_running_windows():
             raise SystemExit('the game is running')
+        if args.dump:
+            return dump(args)
         results = native_host.results_dir(ROOT, 'weapon-effects')
     else:
         if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':
@@ -337,7 +387,7 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing')}
+                                                 'refused', 'timing', 'projectile')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

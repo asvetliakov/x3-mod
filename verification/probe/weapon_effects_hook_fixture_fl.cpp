@@ -9,7 +9,11 @@
 // forwards to a planted fake callee (plain RET, records every register/EFLAGS/ESP and the stack) or skips
 // (`xor eax,eax; ret`); a planted jump at the site's return RVA lands both on fl_return, which records the caller-side
 // state and restores. So every FL shim is checked against the FL register/stack contract (sections 2 and 4 of
-// docs/reverse-engineering/fl/weapon-effect-spawn.md), with CPU flags, DF and LastError preserved.
+// docs/reverse-engineering/fl/weapon-effect-spawn.md), with CPU flags, DF and LastError preserved. The projectile
+// stage's batch submit 0x097af8 (docs/reverse-engineering/fl/bullet-draw-batch.md section 5) is driven with a fake batch
+// record: skipped (EAX 1, no callee) when its body id is in the enabled set while the latch is on, forwarded with every
+// register, the stack and EFLAGS otherwise; its read-back fault rolls every site back; the object tap registers a
+// bullet of an enabled body into the projectile pool.
 #include "../../src/proxy/weapon_effects_patch.h"
 #include "../../src/proxy/weapon_effects_core.h"
 #include "../../src/proxy/weapon_effects_bolt.h"
@@ -435,7 +439,8 @@ void (*fl_stub(unsigned i))() {
     case 3: return x3m_weapon_effects_stub_bolt_tap_fl;
     case 4: return x3m_weapon_effects_stub_muzzle_fl;
     case 5: return x3m_weapon_effects_stub_flight_fl;
-    default: return x3m_weapon_effects_stub_death_fl;
+    case 6: return x3m_weapon_effects_stub_death_fl;
+    default: return x3m_weapon_effects_stub_batch_fl;
     }
 }
 // The stub preserved the caller's state: EBX/ESI/EDI/EBP (the stub saves only EAX/ECX/EDX), DF and LastError. ESP is
@@ -486,10 +491,10 @@ int main() {
     // A mode that uses each window (taps only in observe, the bolts in a bolts mode, death in an explosions mode): a
     // flipped window that the mode does not use would be skipped by the compare, so each is flipped under a using mode.
     const auto mode_for = [](unsigned i) {
-        return i == 0 ? core::mode_shields
-               : i < 3 ? core::mode_observe
-               : i < 6 ? core::mode_shields_hull_bolts
-                       : core::mode_shields_hull_explosions;
+        return i == 0 || i == 7 ? core::mode_shields
+               : i < 3          ? core::mode_observe
+               : i < 6          ? core::mode_shields_hull_bolts
+                                : core::mode_shields_hull_explosions;
     };
     unsigned flips = 0, refused = 0, fixup_flips = 0, fixup_refused = 0;
     for (unsigned i = 0; i < S::site_count; ++i) {
@@ -564,6 +569,26 @@ int main() {
     const bool rb = we::install_base(base, core::mode_shields_hull_bolts_explosions);
     check(!rb && GetLastError() == sentinel_error && !we::installed() && windows_original(), "rollback_restores_all");
     fault_read_at = 0;
+    // The batch site's read-back refused (claimed after the death, before the impact and the object tap): every site
+    // back, the pool disarmed, LastError kept.
+    fault_read_at = base + S::sites[7].window.rva + S::sites[7].call_offset;
+    SetLastError(sentinel_error);
+    const bool rb7 = we::install_base(base, core::mode_shields_hull_bolts_explosions);
+    check(!rb7 && GetLastError() == sentinel_error && !we::installed() && windows_original() &&
+              !x3m_projectile_pool.armed && !x3m_projectile_pool.skip_on && std::strcmp(we::site_state(7), "active"),
+          "batch_rollback_restores_all", we::site_state(7));
+    fault_read_at = 0;
+    // Shields mode (the production setting) claims the object tap and the batch site for the projectile stage.
+    SetLastError(sentinel_error);
+    {
+        const bool ok_s = we::install_base(base, core::mode_shields);
+        check(ok_s && !std::strcmp(we::site_state(7), "active") && !std::strcmp(we::site_state(3), "active") &&
+                  site_redirected(7, fl_stub(7)) && !std::strcmp(we::write_path(7), "atomic") &&
+                  !std::strcmp(we::site_state(4), "not_used") && x3m_projectile_pool.armed,
+              "shields_mode_claims_batch_and_object_tap", we::state());
+        we::shutdown();
+        check(windows_original() && !x3m_projectile_pool.armed, "shields_mode_shutdown_restores_batch");
+    }
 
     // initialize() rows: native (nothing claimed), then shields (one weapon_effects_patch row per site, edition=fl).
     set_setting(L"native");
@@ -577,6 +602,10 @@ int main() {
     for (const std::string& l : log_lines)
         if (l.find("weapon_effects_patch site=") != std::string::npos && l.find(" edition=fl ") != std::string::npos) ++fl_rows;
     check(fl_rows == S::site_count, "init_logs_one_row_per_site");
+    unsigned projectile_rows = 0;
+    for (const std::string& l : log_lines)
+        if (l.find("projectile_site state=claimed rva=097af8") != std::string::npos) ++projectile_rows;
+    check(projectile_rows == 1, "init_logs_projectile_site_claimed_once");
     we::shutdown();
 
     // Phase 2a (observe: the impact and the two taps): install, plant the return jumps (they overwrite the window bytes
@@ -865,6 +894,86 @@ int main() {
         const bool walked = stage::hull_bounds(rd, body_cache_slot, u32(root), &box, &extent);
         check(walked && box.parts == 1 && !extent, "fl_bubble_walk_reads_node_body_0x144");
         check(core::layout::node_body == 0x144 && core::layout::node_walk_bytes == 0x148, "fl_node_body_offset");
+    }
+
+    // The projectile stage's batch submit (shields mode): a fake batch record whose body id sits at +0x0c, ECX the scene,
+    // [esp+4] the material, [esp+8] the view. Forward: the callee sees every register, the stack and the flags; skip
+    // (latch on, body enabled): no callee, EAX 1, the rest as the caller left them; the stub's skip count advances.
+    we::shutdown();
+    restore_windows();
+    SetLastError(sentinel_error);
+    check(we::install_base(base, core::mode_shields) && we::installed(), "reinstall_shields_for_batch_runs");
+    plant_returns();
+    {
+        core::ProjectilePool& pool = x3m_projectile_pool;
+        alignas(16) static unsigned char batch[0x40];
+        std::memset(batch, 0, sizeof batch);
+        const std::uint32_t body = 0x1234;
+        pool.bits[body >> 5] |= 1u << (body & 31u);
+        const auto run_batch = [&](std::uint32_t id, std::uint32_t latch, bool* skipped) {
+            w32(batch, S::batch_body, id);
+            pool.skip_on = latch;
+            const std::uint32_t before = pool.skipped;
+            Entry e;
+            e.ecx = 0x5ce4e000;
+            e.edx = u32(batch);
+            e.nstack = 2;
+            e.stack[0] = 0x3a7e0001; // material
+            e.stack[1] = 0x71e70002; // view
+            run_site(7, e);
+            *skipped = pool.skipped == before + 1;
+            const bool forwarded = t_calls == 1 && t_eax == e.eax && t_ecx == e.ecx && t_edx == e.edx && t_ebx == e.ebx &&
+                                   t_esi == e.esi && t_edi == e.edi && t_ebp == e.ebp && t_stack[1] == e.stack[0] &&
+                                   t_stack[2] == e.stack[1] &&
+                                   t_stack[0] == std::uint32_t(base + S::sites[7].window.rva + S::sites[7].call_offset + 5) &&
+                                   (t_flags & flag_mask) == (entry_flags & flag_mask) && t_esp == esp_before_call - 4;
+            const bool skip = t_calls == 0 && out_eax == 1 && out_ecx == e.ecx && out_edx == e.edx &&
+                              (out_flags & flag_mask) == (entry_flags & flag_mask) && out_esp == esp_before_call;
+            return caller_kept(e) && (*skipped ? skip : forwarded && !*skipped);
+        };
+        bool skipped = false;
+        check(run_batch(body, 0, &skipped) && !skipped, "batch_latch_off_forwards_registers_stack_flags");
+        check(run_batch(body + 1, 1, &skipped) && !skipped, "batch_other_body_forwards_registers_stack_flags");
+        check(run_batch(0x10000 | body, 1, &skipped) && !skipped, "batch_body_above_word_forwards");
+        check(run_batch(body, 1, &skipped) && skipped, "batch_enabled_body_skipped_eax1_no_callee");
+        std::printf("BATCH skipped=%lu body=%04lx\n", static_cast<unsigned long>(pool.skipped),
+                    static_cast<unsigned long>(body));
+        // The object tap registers a bullet of an enabled body (its node +0x144) once, refreshes it on the next pass,
+        // and ignores a bullet of another body.
+        pool.skip_on = 0;
+        pool.resolved = 1;
+        pool.body_count = 1;
+        bind_globals(); // the tap's game-clock read: the fixture's heap cfg instead of the image's 0xcc slots
+        pool.globals = we::hook_state().globals;
+        pool.bodies[0].id = body;
+        core::projectile_clear(pool);
+        alignas(16) static unsigned char bullet[0x100], node[0x200], ext[0x80];
+        std::memset(bullet, 0, sizeof bullet);
+        std::memset(node, 0, sizeof node);
+        std::memset(ext, 0, sizeof ext);
+        w16(bullet, core::layout::obj_class, core::layout::class_bullet);
+        w32(bullet, core::layout::obj_node, u32(node));
+        w32(bullet, core::layout::obj_ext, u32(ext));
+        w32(node, core::layout::node_live, 1);
+        w32(node, core::layout::node_handle, 0x77);
+        w32(node, core::layout::node_body, body);
+        w32(ext, core::projectile::ext_expiry, 5000);
+        w32(ext, core::projectile::ext_created, 3800);
+        Entry e;
+        e.ecx = u32(bullet);
+        run_site(3, e);
+        run_site(3, e);
+        const bool registered = pool.count == 1 && pool.entries[0].node == u32(node) && pool.entries[0].obj == u32(bullet) &&
+                                pool.entries[0].handle == 0x77 && pool.entries[0].expiry == 5000 &&
+                                pool.entries[0].created == 3800 && core::projectile_known(pool, u32(node));
+        w32(node, core::layout::node_body, body + 1);
+        alignas(16) static unsigned char node2[0x200];
+        std::memcpy(node2, node, sizeof node2);
+        w32(bullet, core::layout::obj_node, u32(node2));
+        run_site(3, e);
+        check(caller_kept(e) && t_calls == 1 && registered && pool.count == 1, "object_tap_registers_enabled_body_once");
+        core::projectile_remove(pool, 0);
+        check(pool.count == 0 && !core::projectile_known(pool, u32(node)), "projectile_remove_empties_slot");
     }
 
     // The late window, last (closing it is permanent; the planted returns leave the windows non-pristine, so only the

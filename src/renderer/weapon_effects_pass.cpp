@@ -21,7 +21,7 @@ bool lost(HRESULT hr) noexcept {
     return hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICENOTRESET;
 }
 enum Slot : unsigned {
-    GetDirect3D = 6, GetCreationParameters = 9, SetRenderState = 57, SetTexture = 65, SetSamplerState = 69,
+    GetDirect3D = 6, GetCreationParameters = 9, SetRenderTarget = 37, SetDepthStencilSurface = 39, SetRenderState = 57, SetTexture = 65, SetSamplerState = 69,
     DrawPrimitiveUP = 83, DrawIndexedPrimitiveUP = 84, CreateVertexDeclaration = 86, SetVertexDeclaration = 87,
     CreateVertexShader = 91, SetVertexShader = 92, SetVertexShaderConstantF = 94, CreatePixelShader = 106,
     SetPixelShader = 107, SetPixelShaderConstantF = 109
@@ -30,6 +30,8 @@ using D = IDirect3DDevice9*;
 using GetD3DFn = HRESULT(WINAPI*)(D, IDirect3D9**);
 using GetCreationFn = HRESULT(WINAPI*)(D, D3DDEVICE_CREATION_PARAMETERS*);
 using SetRsFn = HRESULT(WINAPI*)(D, D3DRENDERSTATETYPE, DWORD);
+using SetRtFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DSurface9*);
+using SetDepthFn = HRESULT(WINAPI*)(D, IDirect3DSurface9*);
 using SetTextureFn = HRESULT(WINAPI*)(D, DWORD, IDirect3DBaseTexture9*);
 using SetSamplerFn = HRESULT(WINAPI*)(D, DWORD, D3DSAMPLERSTATETYPE, DWORD);
 using DrawUpFn = HRESULT(WINAPI*)(D, D3DPRIMITIVETYPE, UINT, const void*, UINT);
@@ -57,6 +59,24 @@ constexpr std::uint32_t decal_vs_words[] = {
 constexpr std::uint32_t decal_ps_words[] = {
 #include "weapon_decal_pixel_program_inc.h"
 };
+constexpr std::uint32_t projectile_vs_words[] = {
+#include "weapon_projectile_vertex_program_inc.h"
+};
+constexpr std::uint32_t projectile_ps_words[] = {
+#include "weapon_projectile_pixel_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 projectile_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 24, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 40, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2},
+    {0, 44, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 3},
+    D3DDECL_END()};
+static_assert(sizeof(WeaponProjectileVertex) == 48, "the projectile declaration follows the vertex");
+// Bits per pixel of the formats the stage binds together (the MRT bit-depth rule).
+unsigned format_bits(D3DFORMAT f) noexcept {
+    return f == D3DFMT_A32B32G32R32F ? 128u : f == D3DFMT_A16B16G16R16F || f == D3DFMT_G32R32F ? 64u : 32u;
+}
 template <std::size_t N> std::uint32_t vs3_slots(const std::uint32_t (&words)[N]) noexcept {
     std::uint32_t copy[N];
     std::memcpy(copy, words, sizeof copy);
@@ -126,6 +146,9 @@ void WeaponEffectsPass::release_objects() noexcept {
     drop(decal_ps_);
     drop(shell_declaration_);
     drop(decal_declaration_);
+    drop(projectile_vs_);
+    drop(projectile_ps_);
+    drop(projectile_declaration_);
 }
 void WeaponEffectsPass::detach() noexcept {
     PreserveCpuState guard;
@@ -151,7 +174,9 @@ unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
     for (const void* p : {static_cast<const void*>(shell_vs_), static_cast<const void*>(shell_ps_),
                           static_cast<const void*>(bubble_ps_), static_cast<const void*>(decal_vs_), static_cast<const void*>(decal_ps_),
-                          static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_)})
+                          static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_),
+                          static_cast<const void*>(projectile_vs_), static_cast<const void*>(projectile_ps_),
+                          static_cast<const void*>(projectile_declaration_)})
         n += p != nullptr;
     return n;
 }
@@ -211,7 +236,77 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (FAILED(hr)) return refuse("program_create", hr);
     caps_.enabled = true;
     caps_.reason = "ok";
+    // The projectile programs (FL's stage only): their own verdict; a refusal keeps the shield effect.
+    caps_.projectile_enabled = false;
+    caps_.projectile_reason = "not_requested";
+    if (projectiles_requested_) {
+        const auto no = [&](const char* why) { caps_.projectile_reason = why; };
+        caps_.projectile_vs_slots = vs3_slots(projectile_vs_words);
+        caps_.projectile_ps_slots = ps3_program_slots(projectile_ps_words, std::size(projectile_ps_words));
+        IDirect3D9* api2 = nullptr;
+        HRESULT q32 = E_FAIL, q16 = E_FAIL;
+        if (SUCCEEDED(call<GetD3DFn>(GetDirect3D)(d, &api2)) && api2) {
+            q32 = api2->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, format,
+                                          D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
+                                          D3DRTYPE_TEXTURE, D3DFMT_A32B32G32R32F);
+            q16 = api2->CheckDeviceFormat(creation.AdapterOrdinal, creation.DeviceType, format,
+                                          D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING,
+                                          D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F);
+        }
+        drop(api2);
+        caps_.lane32_blending = q32 == D3D_OK;
+        caps_.lane16_blending = q16 == D3D_OK;
+        caps_.mrt_bit_depths = (caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS) != 0;
+        if (!caps_.projectile_vs_slots || !caps_.projectile_ps_slots)
+            no("compiled_program");
+        else if (faults_ & 16u)
+            no("fixture_fault");
+        else if (caps.NumSimultaneousRTs < 2 || !(caps.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS) ||
+                 !(caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING))
+            no("mrt_caps");
+        else if (!(caps.ZCmpCaps & D3DPCMPCAPS_LESSEQUAL))
+            no("z_caps");
+        else if (caps.MaxPrimitiveCount < 2 * weapon_projectile_max_bolts ||
+                 caps.MaxVertexIndex < 4 * weapon_projectile_max_bolts - 1)
+            no("limits");
+        else if (!caps_.lane32_blending && !caps_.lane16_blending)
+            no("lane_blending");
+        else {
+            for (unsigned i = 0; i < weapon_projectile_max_bolts; ++i) {
+                static constexpr std::uint16_t quad[6] = {0, 1, 2, 2, 1, 3};
+                for (unsigned k = 0; k < 6; ++k) projectile_indices_[6 * i + k] = std::uint16_t(4 * i + quad[k]);
+            }
+            const HRESULT created = create_projectile_objects();
+            if (FAILED(created))
+                no("program_create");
+            else {
+                caps_.projectile_enabled = true;
+                caps_.projectile_reason = "ok";
+            }
+        }
+    }
     return S_OK;
+}
+HRESULT WeaponEffectsPass::create_projectile_objects() noexcept {
+    D d = device_;
+    HRESULT hr = S_OK;
+    if (!projectile_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(projectile_vs_words), &projectile_vs_);
+    if (SUCCEEDED(hr) && !projectile_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(projectile_ps_words), &projectile_ps_);
+    if (SUCCEEDED(hr) && !projectile_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, projectile_elements, &projectile_declaration_);
+    if (SUCCEEDED(hr) && !(projectile_vs_ && projectile_ps_ && projectile_declaration_)) hr = E_FAIL;
+    if (FAILED(hr)) {
+        drop(projectile_vs_);
+        drop(projectile_ps_);
+        drop(projectile_declaration_);
+    }
+    return hr;
+}
+bool WeaponEffectsPass::projectiles_ready() const noexcept {
+    return device_ && caps_.enabled && caps_.projectile_enabled && !reset_pending_ && projectile_vs_ && projectile_ps_ &&
+           projectile_declaration_;
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
     D d = device_;
@@ -241,6 +336,92 @@ HRESULT WeaponEffectsPass::ensure_resources() noexcept {
     if (resources_ready()) return S_OK;
     PreserveCpuState guard;
     return create_objects();
+}
+HRESULT WeaponEffectsPass::run_projectiles(const WeaponProjectileFrame& f, WeaponEffectsReport* output) noexcept {
+    PreserveCpuState guard;
+    WeaponEffectsReport r{};
+    const unsigned initial = calls_;
+    auto finish = [&](HRESULT hr) {
+        r.operation = hr;
+        r.calls = calls_ - initial;
+        if (output) *output = r;
+        return hr;
+    };
+    auto refuse = [&](const char* why, HRESULT hr) {
+        r.failed = WeaponEffectsStep::Projectiles;
+        r.refused = why;
+        if (lost(hr)) reset_pending_ = true;
+        return finish(hr);
+    };
+    if (!device_ || !caps_.enabled || !caps_.projectile_enabled) return refuse("not_attached", E_INVALIDARG);
+    if (reset_pending_) return refuse("reset_pending", E_FAIL);
+    if (!f.width || !f.height || f.bolts > weapon_projectile_max_bolts || (f.bolts && !f.vertices))
+        return refuse("frame", E_INVALIDARG);
+    if (!f.bolts) return finish(S_FALSE);
+    if (!f.lane || !f.depth) return refuse(!f.lane ? "lane" : "depth", D3DERR_NOTAVAILABLE);
+    D3DSURFACE_DESC lane{}, depth{};
+    if (FAILED(f.lane->GetDesc(&lane)) || lane.Width != f.width || lane.Height != f.height ||
+        !(lane.Format == D3DFMT_A32B32G32R32F ? caps_.lane32_blending
+          : lane.Format == D3DFMT_A16B16G16R16F ? caps_.lane16_blending
+                                                : false))
+        return refuse("lane", D3DERR_NOTAVAILABLE);
+    if (format_bits(lane.Format) != format_bits(f.scene_format) && !caps_.mrt_bit_depths)
+        return refuse("mrt_bit_depths", D3DERR_NOTAVAILABLE);
+    if (FAILED(f.depth->GetDesc(&depth)) || depth.Width < f.width || depth.Height < f.height ||
+        depth.MultiSampleType != D3DMULTISAMPLE_NONE || !(depth.Usage & D3DUSAGE_DEPTHSTENCIL))
+        return refuse("depth", D3DERR_NOTAVAILABLE);
+    if (!projectiles_ready()) {
+        HRESULT hr = create_projectile_objects();
+        if (FAILED(hr)) return refuse("resources", hr);
+    }
+    D d = device_;
+    HRESULT hr = S_OK;
+    auto step = [&](HRESULT value) {
+        if (FAILED(value) && SUCCEEDED(hr)) {
+            hr = value;
+            r.failed = WeaponEffectsStep::Projectiles;
+        }
+        return SUCCEEDED(hr);
+    };
+    // The lane is sampled by the patches at s0: unbound before it becomes a target.
+    step(call<SetTextureFn>(SetTexture)(d, 0, nullptr));
+    step(call<SetRtFn>(SetRenderTarget)(d, 1, f.lane));
+    step(call<SetDepthFn>(SetDepthStencilSurface)(d, f.depth));
+    for (auto s : {std::pair{D3DRS_CLIPPING, DWORD(TRUE)}, std::pair{D3DRS_ALPHABLENDENABLE, DWORD(TRUE)},
+                   std::pair{D3DRS_SRCBLEND, DWORD(D3DBLEND_ONE)}, std::pair{D3DRS_DESTBLEND, DWORD(D3DBLEND_ONE)},
+                   std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)}, std::pair{D3DRS_ZENABLE, DWORD(D3DZB_TRUE)},
+                   std::pair{D3DRS_ZFUNC, DWORD(D3DCMP_LESSEQUAL)}, std::pair{D3DRS_ZWRITEENABLE, DWORD(FALSE)},
+                   std::pair{D3DRS_ALPHATESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_SEPARATEALPHABLENDENABLE, DWORD(FALSE)},
+                   std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)},
+                   std::pair{D3DRS_COLORWRITEENABLE1, DWORD(D3DCOLORWRITEENABLE_GREEN)},
+                   std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)}, std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)},
+                   std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}, std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)},
+                   std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_SOLID)}})
+        step(call<SetRsFn>(SetRenderState)(d, s.first, s.second));
+    step(call<SetDeclarationFn>(SetVertexDeclaration)(d, projectile_declaration_));
+    step(call<SetVsFn>(SetVertexShader)(d, projectile_vs_));
+    step(call<SetPsFn>(SetPixelShader)(d, projectile_ps_));
+    if (SUCCEEDED(hr)) {
+        HRESULT draw = call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(d, D3DPT_TRIANGLELIST, 0, 4 * f.bolts, 2 * f.bolts,
+                                                                     projectile_indices_, D3DFMT_INDEX16, f.vertices,
+                                                                     sizeof(WeaponProjectileVertex));
+        if (faults_ & 6u) {
+            faults_ &= ~2u;
+            draw = E_FAIL;
+        }
+        if (step(draw)) {
+            r.bolts = f.bolts;
+            r.drew = true;
+        }
+    }
+    // The undo of what the bracket's normalize does not reset: RT1, the depth surface, RT1's mask and the Z test.
+    const HRESULT undo_rt = call<SetRtFn>(SetRenderTarget)(d, 1, nullptr);
+    const HRESULT undo_ds = call<SetDepthFn>(SetDepthStencilSurface)(d, nullptr);
+    const HRESULT undo_mask = call<SetRsFn>(SetRenderState)(d, D3DRS_COLORWRITEENABLE1, 15);
+    const HRESULT undo_z = call<SetRsFn>(SetRenderState)(d, D3DRS_ZENABLE, D3DZB_FALSE);
+    for (HRESULT u : {undo_rt, undo_ds, undo_mask, undo_z}) step(u);
+    if (lost(hr)) reset_pending_ = true;
+    return finish(hr);
 }
 namespace {
 // The pixel constants of one draw (src/effects/weapon_hex_patch.hlsl): c2..c18 lattice, colour, patch, timing, gains,

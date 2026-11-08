@@ -187,7 +187,12 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
                 'object_tap_handler_records_ecx_object', 'muzzle_handler_slot_row_pos_orient', 'muzzle_skip_no_callee',
                 'flight_forward_reaches_callee_bullet', 'flight_skip_no_callee',
                 'death_forward_records_other_tag_reason_killer', 'death_skip_no_callee_eax_zero',
-                'fl_bubble_walk_reads_node_body_0x144', 'fixture_stack_margin'}
+                'fl_bubble_walk_reads_node_body_0x144', 'fixture_stack_margin',
+                # the projectile stage's batch submit (bullet-draw-batch.md section 5)
+                'batch_latch_off_forwards_registers_stack_flags', 'batch_other_body_forwards_registers_stack_flags',
+                'batch_enabled_body_skipped_eax1_no_callee', 'batch_rollback_restores_all',
+                'shields_mode_claims_batch_and_object_tap', 'init_logs_projectile_site_claimed_once',
+                'object_tap_registers_enabled_body_once'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -205,11 +210,11 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
     def test_build_audit_and_stack(self):
         a = self.record['build']['audit']
         self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
-        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 6)
+        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 7)  # six shims and the batch stub
         self.assertEqual(len(a['handler_calls']), 6)
         self.assertTrue(all(not v for v in a['handler_calls'].values()))
         self.assertEqual(a['windows_match_exe'], {k: True for k in ('impact', 'tap1', 'tap2', 'bolt_tap', 'muzzle', 'flight',
-                                                                     'death')})
+                                                                     'death', 'batch')})
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
         self.assertTrue(self.record['stack_ok'])
         self.assertEqual(self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x2c)
@@ -226,6 +231,24 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
+
+    def test_projectile_gates(self):
+        # docs/architecture/projectile-look.md "Implementation (2026-11-08)": the width rule at both fields of view, SETA
+        # invariance, the far flag, the dot, nothing outside the quad, the 512-bolt budget at 5120x1440
+        rows = self.record['metrics']['projectile']
+        width = [x for x in rows if x.get('case') == 'width']
+        self.assertEqual(len(width), 8)
+        self.assertTrue(all(abs(x['measured_px'] - x['rule_px']) <= 0.5 for x in width))
+        seta = [x['px_per_game_ms'] for x in rows if x.get('case') == 'seta']
+        self.assertLess(abs(seta[1] / seta[0] - 1.0), 0.03)
+        flag = next(x for x in rows if x.get('case') == 'far_flag')
+        self.assertAlmostEqual(flag['ratio'], 32.0, delta=0.5)
+        self.assertEqual(next(x for x in rows if x.get('case') == 'quad')['outside'], 0)
+        budget = next(x for x in rows if x.get('case') == 'budget')
+        self.assertEqual((budget['bolts'], budget['drawn']), (512, 512))
+        self.assertLess(budget['cpu_us'], 100.0)
+        self.assertLess(budget['gpu_us'], 50.0)
+        self.assertLess(next(x for x in rows if 'attach' in x)['ps_slots'], 200)
 
     def test_passed_with_the_step_gates(self):
         r = self.record

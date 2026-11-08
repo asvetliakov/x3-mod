@@ -33,6 +33,35 @@ struct WeaponEffectsCaps {
     const char* reason = "not_attached";
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
+    // The projectile programs (configure_projectiles(true) before attach; FL): their own verdict, so a refusal keeps
+    // the shield effect. lane32_blending / lane16_blending: post-pixel-shader blending of the four-lane formats.
+    bool projectile_enabled = false;
+    const char* projectile_reason = "not_requested";
+    unsigned projectile_vs_slots = 0, projectile_ps_slots = 0;
+    bool lane32_blending = false, lane16_blending = false, mrt_bit_depths = false;
+};
+// The projectile stage's vertex (weapon_projectile_vs/ps.hlsl, stride 48): the clip position (window-exact, w = 1, z
+// the end's depth); the pixel's offset from the segment's centre along and across it and the half length (px); the core
+// and glow radiance scales and 1 / (2 sigma^2) of each; the core and glow colours (D3DCOLOR, linear, largest channel 1
+// for the glow's tint). Float32 and D3DCOLOR only (a FLOAT16 attribute measured 5x the submit cost on the native host).
+struct WeaponProjectileVertex {
+    float pos[3];
+    float local[3];
+    float shape[4];
+    std::uint32_t core_tint, glow_tint;
+};
+// One projectile draw: every bolt of the frame as one indexed list of quads through DrawIndexedPrimitiveUP, into RT0
+// (the bound FP16 scene) and the lane at RT1 (COLORWRITEENABLE1 = GREEN: the far flag g += 32 max(rgb), the production
+// B' route of docs/architecture/bolts-through-taa.md), depth-tested LESSEQUAL against the scene's depth surface with Z
+// writes off, ONE/ONE.
+constexpr unsigned weapon_projectile_max_bolts = 512;
+struct WeaponProjectileFrame {
+    UINT width = 0, height = 0;
+    const WeaponProjectileVertex* vertices = nullptr; // 4 per bolt
+    unsigned bolts = 0;
+    IDirect3DSurface9* lane = nullptr;  // level 0 of the four-lane RT2 (borrowed): the far flag's target
+    IDirect3DSurface9* depth = nullptr; // the scene's depth-stencil surface (borrowed)
+    D3DFORMAT scene_format = D3DFMT_A16B16G16R16F;
 };
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
 // frame perpendicular to the face's axis), their box and the face's newest hits still in their ring. Plane and axis
@@ -128,12 +157,13 @@ struct WeaponEffectsFrame {
     unsigned decal_count = 0;
     WeaponLook look = default_weapon_look();
 };
-enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals };
+enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Projectiles };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
-    unsigned calls = 0, patches = 0, decals = 0;
+    unsigned calls = 0, patches = 0, decals = 0, bolts = 0;
     bool drew = false;
+    const char* refused = nullptr; // run_projectiles: the frame's refusal (lane, depth, mrt, ...), nothing drawn
 };
 class WeaponEffectsPass {
 public:
@@ -155,11 +185,19 @@ public:
     bool resources_ready() const noexcept;
     // S_FALSE with no device call when nothing is to be drawn; D3DERR_DEVICELOST codes pass through.
     HRESULT run(const WeaponEffectsFrame&, WeaponEffectsReport*) noexcept;
+    // The projectile programs are created at attach only when requested (the FL stage; AP keeps its object set).
+    void configure_projectiles(bool on) noexcept { projectiles_requested_ = on; }
+    bool projectiles_ready() const noexcept;
+    // The frame's bolts (S_FALSE with no device call for none; D3DERR_NOTAVAILABLE with report->refused when the lane,
+    // the depth surface or the MRT capabilities refuse the frame). Leaves RT1 and the depth surface unbound,
+    // COLORWRITEENABLE1 15 and Z off; the caller's bracket normalizes the rest.
+    HRESULT run_projectiles(const WeaponProjectileFrame&, WeaponEffectsReport*) noexcept;
     unsigned references() const noexcept;
     const std::uint16_t* cell_indices() const noexcept { return indices_; }
 #if defined(X3M_WEAPON_EFFECTS_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
     // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the next draw, bit 2 every draw,
-    // bit 3 refuses the program creation (attach: program_create, no object kept).
+    // bit 3 refuses the program creation (attach: program_create, no object kept), bit 4 refuses the projectile
+    // programs' capabilities at attach.
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
 #endif
 private:
@@ -168,6 +206,7 @@ private:
         return reinterpret_cast<Fn>(vtable_[slot]);
     }
     HRESULT create_objects() noexcept;
+    HRESULT create_projectile_objects() noexcept;
     void release_objects() noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
@@ -184,5 +223,10 @@ private:
     IDirect3DVertexDeclaration9* decal_declaration_ = nullptr;
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
+    bool projectiles_requested_ = false;
+    IDirect3DVertexShader9* projectile_vs_ = nullptr;
+    IDirect3DPixelShader9* projectile_ps_ = nullptr;
+    IDirect3DVertexDeclaration9* projectile_declaration_ = nullptr;
+    std::uint16_t projectile_indices_[weapon_projectile_max_bolts * 6]{}; // two triangles per quad, built at attach
 };
 } // namespace x3m::renderer

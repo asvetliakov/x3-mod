@@ -38,6 +38,8 @@ struct IDirect3DTexture9;
 struct IDirect3DVertexShader9;
 struct IDirect3DPixelShader9;
 struct IDirect3DVertexDeclaration9;
+struct IDirect3DSurface9;
+#define D3DFMT_A16B16G16R16F ((D3DFORMAT)113)
 '''
 
 HARNESS = r'''

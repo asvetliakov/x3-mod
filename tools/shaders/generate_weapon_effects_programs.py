@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Compile the weapon effects' programs (docs/architecture/weapon-effects.md 5.1, step 1: the shield-hit hull decal, the
-ship bubble and the flat decal): src/effects/weapon_{shell,decal}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the bubble draws
-with the shell's vertex program) -> src/renderer/weapon_{shell,decal,bubble}_{vertex,pixel}_program_inc.h, provenance
-verification/results/weapon-{shell,decal,bubble}-{vertex,pixel}-program.json; the pixel programs include
+ship bubble and the flat decal; the projectile stage's bolts, docs/architecture/projectile-look.md):
+src/effects/weapon_{shell,decal,projectile}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the bubble draws with the shell's vertex
+program) -> src/renderer/weapon_{shell,decal,bubble,projectile}_{vertex,pixel}_program_inc.h, provenance
+verification/results/weapon-{shell,decal,bubble,projectile}-{vertex,pixel}-program.json; the patch pixel programs include
 src/effects/weapon_soft_depth.hlsl. The look layer's programs (hull hit, explosions, bolts) were removed on 2026-11-08
 (docs/archive/effects-look-2026-11-08/index.md).
 
@@ -31,7 +32,8 @@ PROGRAMS = {
                                   header=ROOT / f'src/renderer/weapon_{part}_{"vertex" if kind == "vs" else "pixel"}_program_inc.h',
                                   provenance=ROOT / f'verification/results/weapon-{part}-{"vertex" if kind == "vs" else "pixel"}-program.json',
                                   target=f'{kind}_3_0')
-    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',))) for kind in kinds
+    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('projectile', ('vs', 'ps')))
+    for kind in kinds
 }
 
 

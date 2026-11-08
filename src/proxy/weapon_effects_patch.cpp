@@ -10,6 +10,7 @@
 #include "weapon_effects_sites.h"
 #include "weapon_effects_table.h"
 #if X3M_EDITION_FL
+#include "weapon_projectile_family.h"
 #include "../engine/fl/executable_identity_fl.h"
 #include "../engine/fl/weapon_effects_sites_fl.h"
 #endif
@@ -27,7 +28,7 @@ namespace core = x3m::weapon_effects::core;
 namespace bolt_sites = x3m::weapon_effects::bolt_sites;
 namespace death_sites = x3m::weapon_effects::death_sites;
 #if X3M_EDITION_FL
-constexpr unsigned site_count = 7; // impact, tap1, tap2, bolt_tap, muzzle, flight, death (the one FL call)
+constexpr unsigned site_count = 8; // impact, tap1, tap2, bolt_tap, muzzle, flight, death (the one FL call), batch
 #else
 constexpr unsigned site_count = 8; // impact, tap1, tap2; step 4: bolt_tap, muzzle, flight; step 3: death_area, death_other
 #endif
@@ -53,6 +54,11 @@ struct Period {
     float stage_us_max = 0.f, stage_us_sum = 0.f;
     // step 3: death records seen (ours, census)
     std::uint32_t deaths = 0, deaths_ours = 0;
+    // the projectile stage (FL): frames it owned, bolts drawn, traversal draws dropped, entries retired, traversal draws
+    // of an enabled body the hook could not see (no scope), the stage's worst CPU time
+    std::uint32_t projectile_owned = 0, projectile_bolts = 0, projectile_dropped = 0, projectile_retired = 0;
+    std::uint32_t projectile_unhandled = 0, projectile_unpooled = 0, projectile_sampled = 0;
+    float projectile_us_max = 0.f;
 } period_{};
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
@@ -259,10 +265,15 @@ void* fl_stub(unsigned i) {
     case 3: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_bolt_tap_fl);
     case 4: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_muzzle_fl);
     case 5: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_flight_fl);
-    default: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_fl);
+    case 6: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_fl);
+    default: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_batch_fl);
     }
 }
 std::uintptr_t bound_base_ = 0; // the base the sites were claimed at (the rows' va)
+// The projectile stage's enabled rows of the loaded table (weapon_projectile_family.h resolve_rows), built at install.
+x3m::weapon_effects::projectile_family::Resolution projectile_rows_{};
+std::uint32_t projectile_seen_skipped_ = 0;
+x3m::weapon_effects::core::ProjectileCounters projectile_seen_{};
 #endif
 // The bolt hooks' period (present_bolts): frames since the last weapon_bolts_frame row and the counters it last saw.
 std::uint32_t bolt_frames_ = 0;
@@ -498,10 +509,20 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     const bool taps = mode == core::mode_observe;
     const bool bolts = core::bolts_mode(mode);
     const bool booms = core::explosions_mode(mode);
+    // The projectile stage (every stage mode on FL): the object tap registers the enabled bodies' bullets and the batch
+    // submit skips their instanced draw while the stage owns the frame.
+    const bool projectiles = core::stage_mode(mode);
     if (!taps) site_state_[1] = site_state_[2] = "not_used";
-    if (!bolts) site_state_[3] = site_state_[4] = site_state_[5] = "not_used";
+    if (!bolts) site_state_[4] = site_state_[5] = "not_used";
+    if (!bolts && !projectiles) site_state_[3] = "not_used";
     if (!booms) site_state_[6] = "not_used";
-    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : i < 6 ? bolts : booms); };
+    if (!projectiles) site_state_[7] = "not_used";
+    const auto used = [&](unsigned i) {
+        return i == 0 || (i < 3 ? taps : i == 3 ? bolts || projectiles : i < 6 ? bolts : i == 6 ? booms : projectiles);
+    };
+    core::ProjectilePool& pool = x3m_projectile_pool;
+    pool.skip_on = 0;
+    pool.armed = 0;
     if (mode == core::mode_native) return done("native", false);
     if (!base || (base & 0xffffu)) {
         site_state_[0] = "invalid_site";
@@ -514,7 +535,8 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     }
     static const char* const mismatch[site_count] = {"bytes_mismatch_impact", "bytes_mismatch_tap", "bytes_mismatch_tap",
                                                      "bytes_mismatch_bolt_tap", "bytes_mismatch_muzzle",
-                                                     "bytes_mismatch_flight", "bytes_mismatch_death"};
+                                                     "bytes_mismatch_flight", "bytes_mismatch_death",
+                                                     "bytes_mismatch_batch"};
     for (unsigned i = 0; i < site_count; ++i) {
         if (!used(i)) continue;
         if (!fl_window_matches(base, S::sites[i].window)) {
@@ -562,15 +584,35 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     s.life_floor_ms = 0;
     s.suppress_native = core::suppress_native_shield_hit;
     s.suppress_native_hull = core::suppress_native_hull_hit;
+    // The projectile pool: empty, the enabled rows of the loaded table (none without one: nothing is ever skipped), the
+    // bodies resolved by the first tap that can read the engine's TBullets.
+    core::projectile_clear(pool);
+    pool.globals = s.globals;
+    pool.resolved = 0;
+    pool.stale = 0;
+    pool.engine_rows = 0;
+    pool.table_rows = table_ ? table_->rows : 0;
+    pool.body_count = 0;
+    for (std::uint32_t& w : pool.bits) w = 0;
+    projectile_rows_ = table_ ? x3m::weapon_effects::projectile_family::resolve_rows(*table_)
+                              : x3m::weapon_effects::projectile_family::Resolution{};
+    pool.row_count = projectile_rows_.count;
+    for (unsigned i = 0; i < projectile_rows_.count; ++i) {
+        pool.rows[i] = projectile_rows_.row[i];
+        pool.row_family[i] = projectile_rows_.family[i];
+    }
+    projectile_seen_skipped_ = pool.skipped;
+    projectile_seen_ = pool.counters;
     // Published before the redirects go live.
     x3m_weapon_effects_continue_impact = base + S::sites[0].target_rva;
     x3m_weapon_effects_continue_tap = base + S::sites[1].target_rva;
     x3m_weapon_effects_continue_bolt_tap = base + S::sites[3].target_rva;
     x3m_weapon_effects_continue_spawner = base + S::sites[4].target_rva;
     x3m_weapon_effects_continue_death = base + S::sites[6].target_rva;
+    x3m_weapon_effects_continue_batch = base + S::sites[7].target_rva;
     bound_base_ = base;
     for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
-    const unsigned order[site_count] = {1, 2, 4, 5, 6, 0, 3};
+    const unsigned order[site_count] = {1, 2, 4, 5, 6, 7, 0, 3};
     unsigned claimed[site_count]{};
     unsigned n = 0;
     for (unsigned k = 0; k < site_count; ++k) {
@@ -594,6 +636,8 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
             s.mode = core::mode_native;
             s.armed = 0;
             bs.armed = 0;
+            pool.armed = 0;
+            pool.skip_on = 0;
             return done(patched_ || !back ? "rollback_failed" : failed, false);
         }
         site_state_[i] = "active";
@@ -602,6 +646,7 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     patched_ = installed_ = true;
     mode_ = mode;
     bs.armed = std::uint8_t(bolts);
+    pool.armed = std::uint8_t(projectiles);
     return done("ok", true);
 }
 #ifdef X3M_WEAPON_EFFECTS_SHIM
@@ -660,6 +705,35 @@ bool initialize() {
             S::sites[i].window.name, static_cast<unsigned long>(base ? base + rva : 0), static_cast<unsigned long>(rva),
             site_state_[i], state_, parsed ? core::mode_name(mode) : "-", setting, write_path(i));
     }
+    // The projectile stage's claim (one row a session) and its enabled rows (weapon_projectile_family.h).
+    {
+        const char* b = site_state_[7];
+        const char* verdict = !std::strcmp(b, "active")                                         ? "claimed"
+                              : !std::strcmp(b, "rolled_back") || !std::strcmp(b, "rollback_failed") ||
+                                        !std::strcmp(b, "readback_rolled_back")
+                                    ? "rollback"
+                                                                                                        : "refused";
+        const std::uint32_t rva = S::sites[7].window.rva + S::sites[7].call_offset;
+        log("projectile_site state=%s rva=%06lx va=%08lx reason=%s site=%s object_tap=%s rows=%u bodies_pending=%u",
+            verdict, static_cast<unsigned long>(rva), static_cast<unsigned long>(base ? base + rva : 0), state_, b,
+            site_state_[3], projectile_rows_.count, unsigned(!x3m_projectile_pool.resolved));
+        namespace pf = x3m::weapon_effects::projectile_family;
+        for (unsigned f = 0; f < pf::family_count && !std::strcmp(b, "active"); ++f) {
+            char rows[pf::max_rows * 4 + 2];
+            unsigned at = 0;
+            for (unsigned i = 0; i < projectile_rows_.count; ++i) {
+                if (projectile_rows_.family[i] != f) continue;
+                const unsigned r = projectile_rows_.row[i];
+                if (at) rows[at++] = ',';
+                if (r >= 100) rows[at++] = char('0' + r / 100);
+                if (r >= 10) rows[at++] = char('0' + r / 10 % 10);
+                rows[at++] = char('0' + r % 10);
+            }
+            rows[at] = 0;
+            log("projectile_rows family=%s rows=%s refused=%u shared=%u", pf::families[f].name, at ? rows : "-",
+                projectile_rows_.refused, projectile_rows_.shared);
+        }
+    }
     SetLastError(error);
     return applied;
 }
@@ -673,7 +747,9 @@ bool shutdown() {
     bolt_hook_state().owned = 0;
     bolt_hook_state().muzzle_owned = 0;
 #if X3M_EDITION_FL
-    static constexpr unsigned reverse[site_count] = {3, 0, 6, 5, 4, 2, 1}; // the reverse of install_base's order
+    static constexpr unsigned reverse[site_count] = {3, 0, 7, 6, 5, 4, 2, 1}; // the reverse of install_base's order
+    x3m_projectile_pool.skip_on = 0; // the batch stub forwards from here on
+    x3m_projectile_pool.armed = 0;
 #else
     static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
 #endif
@@ -711,6 +787,12 @@ std::uint32_t game_ms() {
     if (!engine_memory::read(g.cfg_slot, &cfg, 4) || !cfg) return 0;
     return engine_memory::read(cfg + core::layout::cfg_game_ms, &now, 4) ? now : 0;
 }
+std::uint32_t game_step_ms() {
+    std::uint32_t cfg = 0, step = 0;
+    const core::Globals& g = hook_state().globals;
+    if (!engine_memory::read(g.cfg_slot, &cfg, 4) || !cfg) return 0;
+    return engine_memory::read(cfg + core::projectile::cfg_step_ms, &step, 4) ? step : 0;
+}
 static unsigned clear_owned_count() {
     core::Ring& r = hook_state().ring;
     unsigned n = 0;
@@ -727,12 +809,37 @@ std::uint32_t scope_changes() {
 void clear_owned() {
     if (installed_) clear_owned_count();
 }
+#if X3M_EDITION_FL
+// The projectile stage's figures in weapon_effects_frame (FL only; the AP row is unchanged): frames owned, batch
+// submits skipped, traversal draws dropped and unseen, bolts drawn, entries tracked now, retired, the pool's overflow and
+// recycled nodes since the last row, the stage's worst CPU time.
+#define X3M_PROJECTILE_FIELDS                                                                                          \
+    " projectile_owned=%lu projectile_skipped=%lu projectile_dropped=%lu projectile_unhandled=%lu projectile_bolts=%lu " \
+    "projectile_tracked=%lu projectile_retired=%lu projectile_overflow=%lu projectile_recycled=%lu projectile_bodies=%lu " \
+    "projectile_us_max=%.1f projectile_unpooled=%lu projectile_sampled=%lu"
+#define X3M_PROJECTILE_ARGS                                                                                            \
+    , static_cast<unsigned long>(period_.projectile_owned),                                                           \
+        static_cast<unsigned long>(x3m_projectile_pool.skipped - projectile_seen_skipped_),                             \
+        static_cast<unsigned long>(period_.projectile_dropped), static_cast<unsigned long>(period_.projectile_unhandled), \
+        static_cast<unsigned long>(period_.projectile_bolts), static_cast<unsigned long>(x3m_projectile_pool.count),     \
+        static_cast<unsigned long>(period_.projectile_retired),                                                         \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.overflow - projectile_seen_.overflow),                 \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.recycled - projectile_seen_.recycled),                 \
+        static_cast<unsigned long>(x3m_projectile_pool.body_count), double(period_.projectile_us_max),                \
+        static_cast<unsigned long>(period_.projectile_unpooled), static_cast<unsigned long>(period_.projectile_sampled)
+#else
+#define X3M_PROJECTILE_FIELDS ""
+#define X3M_PROJECTILE_ARGS
+#endif
 void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage, const core::Scope& scope) {
     if (!installed_) return;
     core::HookState& s = hook_state();
     // A load, a sector change or a new load epoch: the stage-owned records of the scene that went leave the ring.
     if (scope_.changed(scope) && core::stage_mode(mode_)) {
         ++scope_changes_;
+#if X3M_EDITION_FL
+        core::projectile_clear(x3m_projectile_pool); // a load or a sector change: the scene's bullets went with it
+#endif
         const unsigned cleared = clear_owned_count();
         if (cleared) {
             ++scope_clears_;
@@ -746,6 +853,26 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     s.owned_next = std::uint8_t(core::stage_mode(mode_) && owned);
     s.hull_ready = 0;
     s.boom_ready = 0;
+#if X3M_EDITION_FL
+    // The projectile stage's latch for the next frame's batch submits and traversal draws: it drew (or had nothing to
+    // draw while armed) this frame and the enabled bodies are resolved.
+    core::ProjectilePool& pool = x3m_projectile_pool;
+    pool.skip_on = std::uint32_t(pool.armed && stage.projectile_owned && pool.body_count && !pool.stale);
+    static bool stale_logged = false;
+    if (pool.stale && !stale_logged) {
+        stale_logged = true;
+        log("projectile_rows state=stale table_rows=%lu engine_rows=%lu (the stage stays off: regenerate weapon_effects.json)",
+            static_cast<unsigned long>(pool.table_rows), static_cast<unsigned long>(pool.engine_rows));
+    }
+    if (stage.projectile_owned) ++period_.projectile_owned;
+    period_.projectile_bolts += stage.projectile_bolts;
+    period_.projectile_dropped += stage.projectile_dropped;
+    period_.projectile_retired += stage.projectile_retired;
+    period_.projectile_unhandled += stage.projectile_unhandled;
+    period_.projectile_unpooled += stage.projectile_unpooled;
+    period_.projectile_sampled += stage.projectile_sampled;
+    if (stage.projectile_us > period_.projectile_us_max) period_.projectile_us_max = stage.projectile_us;
+#endif
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
@@ -878,7 +1005,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
-        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u",
+        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u"
+        X3M_PROJECTILE_FIELDS,
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
         static_cast<unsigned long>(period_.forwarded), static_cast<unsigned long>(period_.staged), period_.patches,
@@ -899,7 +1027,11 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.area_dropped, static_cast<unsigned long>(c.drained - seen_.drained), period_.bubbles,
         period_.bubble_fallback, period_.bubble_walks, period_.bubble_failures, period_.bubble_held, period_.bubble_deferred,
         period_.bubble_clamped, static_cast<unsigned long>(period_.hull_staged), static_cast<unsigned long>(s.life_floor_ms),
-        unsigned(table_hull_key_missing_));
+        unsigned(table_hull_key_missing_) X3M_PROJECTILE_ARGS);
+#if X3M_EDITION_FL
+    projectile_seen_skipped_ = x3m_projectile_pool.skipped;
+    projectile_seen_ = x3m_projectile_pool.counters;
+#endif
     seen_ = c;
     seen_overflow_ = r.overflow;
     seen_evicted_visible_ = r.evicted_visible;

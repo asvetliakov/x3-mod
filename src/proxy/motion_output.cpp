@@ -43,6 +43,12 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
 #include "weapon_effects_patch.h" // X3M_WEAPON_EFFECTS=shields: the impact ring (motion_output_weapon_effects_inc.h)
 #include "weapon_effects_stage.h" // the shield hit's stage
+#if X3M_EDITION_FL
+#include "weapon_projectile_stage.h" // the projectile stage (docs/architecture/projectile-look.md)
+#if X3M_DEV_TUNING
+#include "weapon_projectile_tune.h" // the dev-only in-flight tuning file (never in a release build)
+#endif
+#endif
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
 #include "../renderer/material_motion.h"
@@ -2518,8 +2524,25 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (weapon_requested_) {
                 if (in.cut) weapon_effects::clear_owned();
                 weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
-                if (weapon_effects_arm(hdr_scene != nullptr, depth, in.width, in.height) &&
-                    weapon_effects::core::ring_owned_live(weapon_effects::hook_state().ring)) {
+                const bool weapon_armed = weapon_effects_arm(hdr_scene != nullptr, depth, in.width, in.height);
+#if X3M_EDITION_FL
+                // The projectile stage draws in every armed frame (its ownership latches the next frame's batch skip):
+                // the scene's depth surface as the application left it bound, borrowed for the run.
+                projectile_frame_ = projectile_ran_ = projectile_owned_ = false;
+                if (projectile_depth_) {
+                    projectile_depth_->Release();
+                    projectile_depth_ = nullptr;
+                }
+                if (weapon_armed && projectile_requested_ && weapon_ && weapon_->caps().projectile_enabled) {
+                    IDirect3DSurface9* ds = nullptr;
+                    if (SUCCEEDED(native<GetDepthFn>(GetDepthStencilSurface)(device_, &ds))) projectile_depth_ = ds;
+                    projectile_frame_ = true;
+                }
+                if (weapon_armed &&
+                    (projectile_frame_ || weapon_effects::core::ring_owned_live(weapon_effects::hook_state().ring))) {
+#else
+                if (weapon_armed && weapon_effects::core::ring_owned_live(weapon_effects::hook_state().ring)) {
+#endif
                     weapon_prior_callback_ = in.stage_callback;
                     weapon_prior_context_ = in.stage_context;
                     in.stage_callback = &MotionOutput::weapon_effects_stage_callback;
@@ -2554,6 +2577,16 @@ HRESULT MotionOutput::resolve(IDirect3DSurface9* main_surface, IDirect3DTexture9
             if (weapon_requested_)
                 weapon_owned_ = weapon_effects::core::stage_owned(weapon_armed_, SUCCEEDED(hr), weapon_callback_set_,
                                                                   weapon_callback_ok_);
+#if X3M_EDITION_FL
+            if (weapon_requested_) {
+                projectile_owned_ = projectile_frame_ && SUCCEEDED(hr) && projectile_ran_;
+                projectile_owned_frame_ = projectile_owned_frame_ || projectile_owned_;
+                if (projectile_depth_) {
+                    projectile_depth_->Release();
+                    projectile_depth_ = nullptr;
+                }
+            }
+#endif
 #ifdef X3M_MOTION_OUTPUT_FIXTURE
             fixture_shimmer_after_resolve(hr, out.used_history, out.color);
 #endif
@@ -4290,6 +4323,9 @@ void MotionOutput::before_reset() noexcept {
     // next armed resolve after a successful Reset); the refusal, the disarm window and the failure count start over.
     if (weapon_) taa_call([&] { weapon_->before_reset(); });
     weapon_armed_ = false;
+#if X3M_EDITION_FL
+    projectile_frame_ = projectile_ran_ = projectile_owned_ = false;
+#endif
     weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_lane_ = nullptr;
     weapon_attach_failed_ = weapon_failed_out_ = false;
@@ -6162,6 +6198,11 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Engine effects (X3M_ENGINE_EFFECTS=off|plumes): a recognised glow-jet draw is recorded and not forwarded
     // (route.submit = false, D3D_OK) before any route work; one bool test with the option off.
     if (engine_hook_ && engine_effects_draw(call, route)) return route;
+#if X3M_EDITION_FL
+    // The projectile stage's traversal drop (a lone or over-budget bolt of an enabled body drawn through the material
+    // submit while the batch skip is latched): one load with the latch off.
+    if (x3m_projectile_pool.skip_on && projectile_drop(route)) return route;
+#endif
     route.evaluated = true;
     route.sun_color_writer = sun_lane_active_ && call.primitives &&
                              selector_.state() == renderer::BoundaryState::Scene && !counters_.hook_scene_end &&

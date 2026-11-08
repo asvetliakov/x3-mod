@@ -17,27 +17,29 @@
     "src/proxy/weapon_effects_table.h",
     "src/proxy/engine_patch.cpp",
     "src/proxy/engine_patch.h",
-    "src/engine/fl/executable_identity_fl.h"
+    "src/engine/fl/executable_identity_fl.h",
+    "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "0eaf8f34b732b96a081897ad7631784de041ac96-dirty",
+    "commit": "f76822490d6569c38a4d5ded738e5de8cea68d01",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "31d2c0a7def4032710ad233e0edbaf82307528f47d6e9d3594fd7e336637125b",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "95766bc71c76906090ab5164047f8371fec2afb2dbfb698d24d8461ef0bcd926",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
-      "verification/probe/build_weapon_effects_hook_fl.py": "2aef9b042968afb7319dc1a1b6781e63395df4ed1255cf306cb8b4cddcfc4ee5",
-      "src/proxy/weapon_effects_patch.cpp": "a2cb23dfc56d7b4c2b8276be88b069ac8b097640e94cb25a9fe53d5daf1855c0",
-      "src/proxy/weapon_effects_patch.h": "fb84599896a7ec079e6afe7e9ce1381f74179beb7a409527b3761f93769f1341",
-      "src/proxy/weapon_effects_hook.cpp": "fe2a71dc300eb802544408894088d06105e5943aa9950fd3069214cc6d3f8176",
-      "src/proxy/weapon_effects_core.h": "562685cbef3f21b907b1bef33b54ec6abf7d44a36aea6f0a1e47d5f70cdff711",
-      "src/engine/fl/weapon_effects_sites_fl.h": "14e73332927de57da9d23ad5dfb14446cc067747cd98bf227b09c17ae6eb1a41",
+      "verification/probe/build_weapon_effects_hook_fl.py": "08a272c80cf5568cd371a0f96eb01689cf8bca8146b1a16863c6e907453354f0",
+      "src/proxy/weapon_effects_patch.cpp": "457d115853b1f5f44af4ce4a6a46c4679f95a29f6e48aa9f00bee653cbca66d4",
+      "src/proxy/weapon_effects_patch.h": "50599a6b118e79f8cbdca944aa2e9933bd23e35dd335c15830271c75b1097a26",
+      "src/proxy/weapon_effects_hook.cpp": "c33661b694b15cacf311212fd10e765821c9692d4e8f1cce0e7d3cba60b80774",
+      "src/proxy/weapon_effects_core.h": "c48cbf89c85f6e8eb37ba47cd6915a9eec2f7da208a1d7453fa542cea083272e",
+      "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_bubble.h": "c918f799b41611d964c0b64bb9a0cf5f924bccda63eb367f5edcde379dfe5087",
-      "src/proxy/weapon_effects_table.h": "00d0e8dd93b18f6223d70d931b4e738afed960b6e5b8f6d1e1bb671c741648c5",
+      "src/proxy/weapon_effects_table.h": "1476a1cb9afa0686592347eace80cd3f97148cd7924c99ee3674723a68b7c8af",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
-      "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82"
+      "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
+      "src/proxy/weapon_effects_projectile.h": "25559ed6a80cba4503a8ebb2b72cd1edbfed1b7329edc366da77550d2dbef191"
     }
   },
   "build": {
@@ -57,13 +59,34 @@
       "handler_instructions": {
         "_x3m_weapon_event_fl": 1244,
         "_x3m_weapon_tap_fl": 45,
-        "_x3m_weapon_bolt_tap_fl": 498,
+        "_x3m_weapon_bolt_tap_fl": 735,
         "_x3m_weapon_muzzle_fl": 226,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 569
       },
       "handler_frame_bytes": 200,
       "stubs": {
+        "_x3m_weapon_effects_stub_batch_fl": [
+          "pushf",
+          "cmp",
+          "je",
+          "push",
+          "mov",
+          "cmp",
+          "ja",
+          "bt",
+          "pop",
+          "jb",
+          "popf",
+          "jmp",
+          "pop",
+          "popf",
+          "jmp",
+          "add",
+          "popf",
+          "mov",
+          "ret"
+        ],
         "_x3m_weapon_effects_stub_impact_fl": [
           "pushf",
           "push",
@@ -190,6 +213,7 @@
         ]
       },
       "stub_ok": {
+        "_x3m_weapon_effects_stub_batch_fl": true,
         "_x3m_weapon_effects_stub_impact_fl": true,
         "_x3m_weapon_effects_stub_tap_fl": true,
         "_x3m_weapon_effects_stub_bolt_tap_fl": true,
@@ -204,12 +228,13 @@
         "bolt_tap": true,
         "muzzle": true,
         "flight": true,
-        "death": true
+        "death": true,
+        "batch": true
       },
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "1d84afc029aca4368d0ad3c619bf85f337dc81c06782dafddd8809efba07bfe8"
+    "executable_sha256": "d0bfe4daa6e9812eb10b8ffeb2696529f5a526b1616826c7364c2e6518f674b8"
   },
   "host": {
     "name": "native-windows",
@@ -228,9 +253,9 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 56,
+      "checks": 67,
       "failures": 0,
-      "faults": 1,
+      "faults": 2,
       "verdict": "PASS"
     },
     "log": "build/verification/weapon-effects-hook-fl/fixture.log"
@@ -347,6 +372,21 @@
       "detail": ""
     },
     {
+      "name": "batch_rollback_restores_all",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "shields_mode_claims_batch_and_object_tap",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "shields_mode_shutdown_restores_batch",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "init_native",
       "passed": true,
       "detail": ""
@@ -358,6 +398,11 @@
     },
     {
       "name": "init_logs_one_row_per_site",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "init_logs_projectile_site_claimed_once",
       "passed": true,
       "detail": ""
     },
@@ -507,6 +552,41 @@
       "detail": ""
     },
     {
+      "name": "reinstall_shields_for_batch_runs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "batch_latch_off_forwards_registers_stack_flags",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "batch_other_body_forwards_registers_stack_flags",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "batch_body_above_word_forwards",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "batch_enabled_body_skipped_eax1_no_callee",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "object_tap_registers_enabled_body_once",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "projectile_remove_empties_slot",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "late_claim_refused",
       "passed": true,
       "detail": ""
@@ -517,7 +597,7 @@
       "detail": ""
     }
   ],
-  "check_count": 56,
+  "check_count": 67,
   "failed_checks": [],
   "stack_depth": {
     "bytes": 244,
