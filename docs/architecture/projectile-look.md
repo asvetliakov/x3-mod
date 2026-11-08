@@ -399,15 +399,19 @@ radiance (the end-on centre equal to a side-on streak's), the far flag's write
 (not the write-back, above), the dot with the streak's energy, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
 (recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 71.3 µs, GPU fenced
 42.2 µs [M]). Not flown.
-**Verified for the comet (native fixture, ledger "FL 60 A: comet head and trail (2026-11-08)").** `trail_ms` 0
-reproduces FL run 60's seam profiles exactly (the largest relative difference over 24 pinned values 0.0000); the comet's
-profile along the axis follows C F(age) within 1.2 % and never rises walking back from the head (60
-and 144 fps, the flown values, the camera moving or turning, and an accelerating turn drawn as two segments); the head
-is the row's maximum 2 px behind the head at 1.44 x the trail's start (the core alone 1.475, head_gain 1.5); the row at
-the age `trail_ms` is 0; the trail's 50 % and 20 % points are 11.07 / 23.16 game ms at 1x and 11.06 / 23.16 under
-SETA 6 (the law 11.07 / 23.16); the end-on spot keeps full radiance (no trail, no head); the 512-bolt budget at
-5120x1440 with the ring full: CPU 87.3 µs, GPU fenced 45.1 µs (fence 10.9 µs), 518 quads, 500 of 506 comets one quad,
-6 dots [M]. Not flown.
+**Verified for the comet (native fixture, ledger "FL 60 A: comet head and trail (2026-11-08)" and "FL 60 A review
+(2026-11-09)").** `trail_ms` 0 reproduces FL run 60's seam profiles exactly (the largest relative difference over 24
+pinned values 0.0000); the comet's profile along the axis follows C F(age) within 1.2 % and never rises walking back
+from the head (60 and 144 fps, the flown values, the camera moving or turning, and an accelerating turn drawn as two
+segments); the head is the row's maximum 2 px behind the head at 1.44 x the trail's start (the core alone 1.476,
+head_gain 1.5); the row at the age `trail_ms` is 0; the trail's 50 % and 20 % points are 11.07 / 23.16 game ms at 17
+and 23 ms steps (the law 11.07 / 23.16); under SETA 6 the bolt's own segment is drawn in full (357.0 px of 357.0), the
+comet to 125 ms with T 167.8 ms (50 % / 20 % at 46.44 / 97.18 ms, the law 46.44 / 97.17) at energy 0.2065 = 30 / 145.25
+m; the spot's hysteresis holds the mode over four frames at 0.9 / 1.1 core widths (peaks within 2.4 %); one quad against
+two across the merge tolerance changes the light by 0.1 %; the end-on spot keeps full radiance (no trail, no head); the
+512-bolt budget at 5120x1440 with the ring full: CPU 90.4 µs, GPU fenced 45.9 µs (fence 10.6 µs), 532 quads, 486 of 506
+comets one quad, 6 dots. **Not within budget:** the worst case (512 curved comets at 144 fps under a 43°/s turn) with
+the adaptive ring, 1516 quads, CPU 115.3 µs, GPU fenced 68.0 µs [M]. Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA; since FL 60 A the last of consecutive stage frames through the
 production builder, so each bolt is its comet), cropped around the bolts:

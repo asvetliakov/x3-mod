@@ -3337,3 +3337,35 @@ frames, so each bolt is its comet) plus `fixture-ire-comet.png` (one IRE at 500 
 stacked). Builds `build-comet-fl` and `build-comet-ap` (RelWithDebInfo) 0 warnings; `check_no_x87.py` 0 violations
 (FL 1060, AP 1161 functions); host `test_weapon_effects*.py` 96 OK. Figures from
 [`projectile_rows.py`](../../verification/results/native-windows/weapon-effects/projectile_rows.py). Not flown.
+
+**FL 60 A review (2026-11-09, `335b5f3f4`).** Review fixes on the comet (projectile-look.md section 2, the comet row
+and "The comet's construction"). A (design call): the comet is drawn to D = max(0.745 `trail_ms`, 1.25 x the frame's
+span), T = D / 0.745 — the coordinator's "max(trail_ms, 1.25 x step)" applied to the drawn age, because the drawn trail
+ends at F = 10 % (0.745 T): with T = 1.25 x step the bolt's own segment would still be clipped at 0.93 x step; the energy
+factor divides by the drawn world length (|v| D), so **a 1x IRE comet is now dimmed to 0.867** (34.6 m drawn against
+the 30 m cap) and the flown values' (5 m cap) to 0.144. B: the spot only when the whole drawn path is under one core
+width, hysteresis 0.8 / 1.2 core widths (state per pool entry). C: merge within 0.1 core widths and 1 % of T. E: the
+previous head joins the ring whenever game time advanced, a held head included (with constant velocity a held head's
+time does not advance, so the ring then waits). F: the along profile normalised over the whole drawn path. H: seam
+limits 5 % / 3 %. D: the worst-case row and the adaptive ring (past 1536 wanted quads, two ring segments; the frame's
+untrimmed demand decides, so a trimmed frame does not alternate; `projectile_ring_trimmed` in `weapon_effects_frame`).
+Records on the clean `335b5f3f4` [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **81 of 81**.
+
+| Case | Result [M] |
+| --- | --- |
+| SETA 6, 500 m, two frames | own segment 356.97 px drawn of 356.97; D 125.0 ms, T 167.83 ms; 50 % / 20 % at 46.44 / 97.18 ms (law 46.44 / 97.17); energy 0.2065 = 30 / 145.25 m |
+| 17 / 23 ms steps (SETA 1.4) | 50 % 11.07 / 11.07 ms, 20 % 23.16 / 23.16 ms (law 11.07 / 23.16) |
+| spot hysteresis, 500 m, path 1.1 / 0.9 core widths alternating, four frames | from a comet: comet throughout, peaks 5.020 / 5.141 (2.4 %); from a spot: spot throughout, 4.074 / 4.016 (1.4 %); a real transition spot ↔ comet changes the peak by about 25 % (4.07 → 5.14) |
+| merge tolerance, 200 m, the knot 0.43 / 0.56 px off the line (0.086 / 0.112 core widths) | one quad / two; the column's light 4.506 / 4.511 (0.1 %) |
+| comet seam, 7 variants (limits now 5 % / 3 %) | rise 0.0000 everywhere; deviation 0.07–1.12 %; the accelerating turn two quads |
+| `trail_ms` 0 against run 60 | 0.0000 |
+| budget, 512 bolts, 60 fps, ring full | CPU 90.4 µs, GPU fenced 45.9 µs (fence 10.6), 532 quads, 486 of 506 comets merged |
+| worst case: 512 bolts, 144 fps, yaw rising 0.05° per frame each frame (43°/s at the timed frame), 5120x1440 | untrimmed (development run, yaw rising 0.3° per frame): 2520 quads, CPU 133.7 µs, GPU 147.1 µs, 23.95 % lit; with the adaptive ring, 2 segments: 1516 quads of 2520 wanted, 502 trimmed, 5 merged, CPU 115.3 µs, GPU fenced 68.0 µs, 7.57 % lit (development run with 1 segment: 1014 quads, CPU 109.3, GPU 53.6) — **over both bounds**; the fixture gates the rule's mechanics and reports the timing (`budget_worst_bounds` cpu_within 0, gpu_within 0) |
+
+The worst case's cost follows the lit area, which the turn lengthens on screen (7.57 % against 5.82 % straight), plus
+the quad count; neither trim depth meets 50 µs. Settling it is the coordinator's: a lower bound for this synthetic case,
+a shorter drawn trail under load, or a cheaper lane format. Nit (G): the shell pixel program's X4121 fix of
+`d22ae6246` moved it from 457 to 468 ps_3_0 slots; its single-run timings moved within the run-to-run spread (1080p
+worst four regions 98.6 → 104.6 µs, one run each). Builds FL and AP 0 warnings; `check_no_x87.py` 0 violations (FL 1060,
+AP 1161); `--check` PASS, no compiler warning; host `test_weapon_effects*.py` 96 OK; look crops regenerated (the SETA
+frame's comets now run past their motion: 200 m 1278 px and off the frame's left edge). Not flown.
