@@ -63,6 +63,10 @@ constexpr unsigned char muzzle_bytes[62] = {
     0x00, 0x6a, 0x00, 0x6a, 0x00, 0x57, 0x50, 0xb9, 0x04, 0x00, 0x00, 0x00, 0xe8, 0xa2, 0x5a, 0xfc, 0xff, 0x83, 0xc4, 0x20};
 constexpr unsigned char flight_bytes[29] = {0x6a, 0x00, 0x6a, 0x00, 0x8d, 0x44, 0x24, 0x48, 0x33, 0xc9, 0x50, 0x6a, 0x00, 0x6a, 0x00,
                                             0x6a, 0x00, 0x57, 0x52, 0x33, 0xd2, 0xe8, 0x31, 0x02, 0x00, 0x00, 0x83, 0xc4, 0x20};
+// The bullet batch submit (docs/reverse-engineering/fl/bullet-draw-batch.md section 5, Q2): mov ecx,[esp+0x14]; mov
+// edx,ebx; push edi; push esi; call 0x0e0b40; mov esi,[esi]; add esp,8; cmp dword [esi],0; jne 0x097af0 (the next material).
+constexpr unsigned char batch_bytes[23] = {0x8b, 0x4c, 0x24, 0x14, 0x8b, 0xd3, 0x57, 0x56, 0xe8, 0x43, 0x90, 0x04,
+                                           0x00, 0x8b, 0x36, 0x83, 0xc4, 0x08, 0x83, 0x3e, 0x00, 0x75, 0xe9};
 constexpr unsigned char death_bytes[22] = {0xff, 0x75, 0x10, 0x8b, 0xd3, 0x8b, 0xce, 0xe8, 0x18, 0xfb, 0xfb,
                                            0xff, 0x83, 0xc4, 0x04, 0x8b, 0xce, 0xe8, 0xbe, 0x59, 0x00, 0x00};
 // ---- the frame witnesses (read only)
@@ -86,8 +90,9 @@ constexpr unsigned char row_chooser_bytes[14] = {0xff, 0x76, 0x40, 0x0f, 0xb7, 0
 constexpr std::uint32_t cfg_slot_rva = 0x1a83b0, type_table_rva = 0x1a83c8, type_count_rva = 0x1a8330;
 constexpr std::uint32_t body_cache_rva = 0x1aa100, gate_slot_rva = 0x1a82ec;
 
-// Site indices follow the module's rows: 0 impact, 1 tap1, 2 tap2, 3 bolt_tap (object), 4 muzzle, 5 flight, 6 death.
-constexpr unsigned site_count = 7;
+// Site indices follow the module's rows: 0 impact, 1 tap1, 2 tap2, 3 bolt_tap (object), 4 muzzle, 5 flight, 6 death,
+// 7 batch (the projectile stage's per-body skip of the instanced bullet draw, bullet-draw-batch.md section 5).
+constexpr unsigned site_count = 8;
 constexpr Site sites[site_count] = {
     {{"impact", 0x05338b, 43, impact_bytes, no_fixup, 0, 0xde6f8702}, 5, 0x014440},
     {{"tap1", 0x014572, 27, tap1_bytes, no_fixup, 0, 0xc5cdd97d}, 17, 0x015270},
@@ -96,7 +101,12 @@ constexpr Site sites[site_count] = {
     {{"muzzle", 0x04f603, 62, muzzle_bytes, 1, type_table_rva, 0x35569ad2}, 54, 0x0150e0},
     {{"flight", 0x014e95, 29, flight_bytes, no_fixup, 0, 0x38c0ec0e}, 21, 0x0150e0},
     {{"death", 0x0543ac, 22, death_bytes, no_fixup, 0, 0x6452f5c6}, 7, 0x013ed0},
+    {{"batch", 0x097af0, 23, batch_bytes, no_fixup, 0, 0xf86f890b}, 8, 0x0e0b40},
 };
+// The batch submit's ABI at stub entry (bullet-draw-batch.md section 1): ECX the scene, EDX the batch record, [esp+4]
+// the material record, [esp+8] the view; the callee has a plain ret, the caller pops 8 (add esp,8 rewrites EFLAGS) and
+// never reads EAX, ECX or EDX after it. The batch's body id (= node +0x144 of its bullets) is at EDX + batch_body.
+constexpr unsigned batch_body = 0x0c;
 // The frame witnesses by the family that relies on them: the impact (the damage routine's frame: T, the remaining
 // shield-stage damage, ESI = 1 on the absorbed path, the hull add into EBP, the total reload and the 50,000 clamp), the
 // muzzle (the gun slot's and bullet index's writers) and the death (the row chooser call of the forwarded callee).
@@ -172,7 +182,7 @@ constexpr bool in_one_qword(const Site& s) {
     return ((s.window.rva + s.call_offset) & 7u) + call_length <= 8u;
 }
 static_assert(site_ok(sites[0]) && site_ok(sites[1]) && site_ok(sites[2]) && site_ok(sites[3]) && site_ok(sites[4]) &&
-                  site_ok(sites[5]) && site_ok(sites[6]),
+                  site_ok(sites[5]) && site_ok(sites[6]) && site_ok(sites[7]),
               "every window is the measured one and its call reaches the callee");
 static_assert(window_ok(impact_witnesses[0]) && window_ok(impact_witnesses[1]) && window_ok(impact_witnesses[2]) &&
                   window_ok(impact_witnesses[3]) && window_ok(impact_witnesses[4]) && window_ok(impact_witnesses[5]) &&
@@ -181,11 +191,15 @@ static_assert(window_ok(impact_witnesses[0]) && window_ok(impact_witnesses[1]) &
 static_assert(sites[0].window.rva + sites[0].call_offset == 0x053390 && sites[1].window.rva + sites[1].call_offset == 0x014583 &&
                   sites[2].window.rva + sites[2].call_offset == 0x014650 && sites[3].window.rva + sites[3].call_offset == 0x0645bd &&
                   sites[4].window.rva + sites[4].call_offset == 0x04f639 && sites[5].window.rva + sites[5].call_offset == 0x014eaa &&
-                  sites[6].window.rva + sites[6].call_offset == 0x0543b3,
-              "the call RVAs of the note's section 1");
+                  sites[6].window.rva + sites[6].call_offset == 0x0543b3 &&
+                  sites[7].window.rva + sites[7].call_offset == 0x097af8,
+              "the call RVAs of the note's section 1 (the batch: bullet-draw-batch.md section 1)");
 static_assert(in_one_qword(sites[0]) && in_one_qword(sites[1]) && in_one_qword(sites[2]) && !in_one_qword(sites[3]) &&
-                  in_one_qword(sites[4]) && in_one_qword(sites[5]) && in_one_qword(sites[6]),
-              "six calls in one aligned qword (atomic), the object tap straddles (plain, install window)");
+                  in_one_qword(sites[4]) && in_one_qword(sites[5]) && in_one_qword(sites[6]) && in_one_qword(sites[7]),
+              "seven calls in one aligned qword (atomic), the object tap straddles (plain, install window)");
+static_assert(batch_bytes[4] == 0x8b && batch_bytes[5] == 0xd3 && batch_bytes[6] == 0x57 && batch_bytes[7] == 0x56 &&
+                  batch_bytes[15] == 0x83 && batch_bytes[16] == 0xc4 && batch_bytes[17] == 0x08,
+              "mov edx,ebx (the batch); push edi (view); push esi (material); the caller pops 8 after the call");
 // The impact window: push ecx (the dummy); mov edx,ebx (source); mov ecx,edi (victim); call; add esp,4; ... the four
 // pops, add esp,8 (the two locals) and ret 0xc (three stack arguments): the frame the slots are derived from.
 static_assert(impact_bytes[0] == 0x51 && impact_bytes[1] == 0x8b && impact_bytes[2] == 0xd3 && impact_bytes[3] == 0x8b &&

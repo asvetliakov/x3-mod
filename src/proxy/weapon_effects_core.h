@@ -361,7 +361,18 @@ struct Table {
     std::uint8_t bolt_pin[table_capacity]{};
     std::uint8_t bolt_e_body_q[table_capacity]{};
     std::uint8_t bolt_w_orb_q[table_capacity]{};
+    // The projectile stage's row identity (weapon_projectile_family.h): FNV-1a 32 of the entry's "id" and "body"
+    // strings (0: absent or longer than 63 characters), so an enabled TBullets id finds its row and the rows sharing
+    // its body without keeping the strings.
+    std::uint32_t id_hash[table_capacity]{};
+    std::uint32_t body_hash[table_capacity]{};
 };
+// FNV-1a 32 of a NUL-terminated string (the table's id and body hashes; constexpr for the enabled lists).
+constexpr std::uint32_t name_hash(const char* s) noexcept {
+    std::uint32_t h = 0x811c9dc5u;
+    for (; *s; ++s) h = (h ^ std::uint8_t(*s)) * 0x01000193u;
+    return h ? h : 1u;
+}
 enum BoltPin : std::uint8_t { pin_halo_off = 1, pin_tint_texture = 2, pin_e_body = 4, pin_w_orb = 8 };
 
 // ---------------------------------------------------------------------------------------------- 16.16 arithmetic

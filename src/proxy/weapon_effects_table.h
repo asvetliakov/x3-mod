@@ -68,6 +68,7 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     bool range_present = false;
     std::uint8_t pin = 0, e_body_q = 0, w_orb_q = 0; // the bolt hand pins (bolt_e_body, bolt_w_orb, bolt_halo, bolt_tint)
     bool bad_pin = false;
+    std::uint32_t id_hash = 0, body_hash = 0; // the projectile stage's row identity (0: absent or too long)
     if (!c.accept('}'))
         for (;;) {
             char key[24];
@@ -77,6 +78,13 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                 if (!c.skip_value()) return false;
             } else if (!std::strcmp(key, "row")) {
                 if (!c.number(&row)) return false;
+            } else if (!std::strcmp(key, "id") || !std::strcmp(key, "body")) {
+                if (!c.literal("null")) {
+                    char name[64];
+                    bool name_fits;
+                    if (!c.string(name, sizeof name, &name_fits)) return false;
+                    (key[0] == 'i' ? id_hash : body_hash) = name_fits ? core::name_hash(name) : 0u;
+                }
             } else if (!std::strcmp(key, "z_over_xy")) {
                 if (!c.number_or_null(&e, &e_present)) return false;
             } else if (!std::strcmp(key, "calibre")) {
@@ -192,6 +200,8 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     t->bolt_pin[i] = pin;
     t->bolt_e_body_q[i] = e_body_q;
     t->bolt_w_orb_q[i] = w_orb_q;
+    t->id_hash[i] = id_hash;
+    t->body_hash[i] = body_hash;
     if (pin) ++st->bolt_pins;
     if (bits & (core::row_style_override | core::row_tint_override | core::row_calibre_override | core::row_hull_repair |
                 core::row_hull_tug | core::row_hull_class))

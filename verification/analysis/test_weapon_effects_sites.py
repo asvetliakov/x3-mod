@@ -122,7 +122,7 @@ FL_PREFERRED_BASE = 0x400000
 
 
 def fl_windows():
-    """The seven FL site windows and the nine frame witnesses: list of (name, rva, bytes, fixup_offset, fixup_rva)."""
+    """The eight FL site windows and the nine frame witnesses: list of (name, rva, bytes, fixup_offset, fixup_rva)."""
     text = FL_HEADER.read_text()
     arrays = {m.group(1): bytes(int(x, 16) for x in re.findall(r'0x([0-9a-f]{2})', m.group(2)))
               for m in re.finditer(r'constexpr unsigned char (\w+)\[\d+\] = \{([^}]*)\}', text)}
@@ -164,7 +164,7 @@ class FlWeaponEffectsSites(unittest.TestCase):
 
     def test_every_fl_window_matches_the_executable_with_the_fixup_masked(self):
         windows = fl_windows()
-        self.assertEqual(len(windows), 16)  # seven sites, six impact witnesses, two muzzle, one death
+        self.assertEqual(len(windows), 17)  # eight sites (the batch submit too), six impact witnesses, two muzzle, one death
         self.assertEqual(sum(1 for w in windows if w[3] is not None), 3)  # object, muzzle, source_test
         relocs = fl_relocations(self.data)
         for name, rva, expected, fixoff, fixrva in windows:

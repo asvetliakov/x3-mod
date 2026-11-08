@@ -10,6 +10,7 @@
 #include "weapon_effects_sites.h"
 #if X3M_EDITION_FL
 #include "../engine/fl/weapon_effects_sites_fl.h"
+#include "weapon_effects_projectile.h"
 #endif
 
 static_assert(sizeof(void*) == 4, "x86 code patching only");
@@ -242,6 +243,10 @@ std::uintptr_t x3m_weapon_effects_continue_tap = 0;
 std::uintptr_t x3m_weapon_effects_continue_bolt_tap = 0;
 std::uintptr_t x3m_weapon_effects_continue_spawner = 0; // the muzzle's and the flight's callee (base + 0x0150e0)
 std::uintptr_t x3m_weapon_effects_continue_death = 0;
+std::uintptr_t x3m_weapon_effects_continue_batch = 0; // the bullet batch submit (base + 0x0e0b40)
+// The projectile stage's pool and enabled-body set (weapon_effects_projectile.h): the object tap registers, the batch
+// stub reads skip_on / bits and bumps skipped at their fixed offsets, the stage and Present own the rest.
+x3m::weapon_effects::core::ProjectilePool x3m_projectile_pool;
 // Impact 0x053390 -> 0x014440: ECX victim, EDX source, [esp+0x18] T, [esp+0x1c] the remaining shield-stage damage, EBP
 // the running total, ESI the absorbed path's 1. AP slots: [1] victim, [2] source, [7] total, [9] absorbed.
 int __cdecl x3m_weapon_event_fl(const std::uint32_t* entry, std::uint32_t ecx, std::uint32_t edx, std::uint32_t ebp,
@@ -267,6 +272,7 @@ void __cdecl x3m_weapon_bolt_tap_fl(std::uint32_t ecx) {
     std::uint32_t ap[2];
     ap[1] = ecx;
     core::bolt_tap(ap, bolt_state_);
+    core::projectile_tap(ecx, x3m_projectile_pool); // the projectile stage's registration (stage modes)
 }
 // Muzzle 0x04f639 -> 0x0150e0: EDX the gun slot, [esp+8] ship, [esp+0x18] &pos, [esp+0x20] &orientation, ESI the
 // TBullets record offset. AP: [1] ship, [2] slot, [3] &pos, EAX the TBullets index, EDX &orientation.
@@ -431,8 +437,39 @@ _x3m_weapon_effects_stub_death_fl:
     popfd
     xor eax, eax
     ret
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_batch_fl
+_x3m_weapon_effects_stub_batch_fl:
+    pushfd
+    cmp dword ptr [_x3m_projectile_pool], 0
+    je .Lx3m_weapon_effects_batch_fl_forward
+    push eax
+    mov eax, dword ptr [edx+0x0c]
+    cmp eax, 0xffff
+    ja .Lx3m_weapon_effects_batch_fl_forward_eax
+    bt dword ptr [_x3m_projectile_pool+8], eax
+    pop eax
+    jc .Lx3m_weapon_effects_batch_fl_skip
+.Lx3m_weapon_effects_batch_fl_forward:
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_batch]
+.Lx3m_weapon_effects_batch_fl_forward_eax:
+    pop eax
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_batch]
+.Lx3m_weapon_effects_batch_fl_skip:
+    add dword ptr [_x3m_projectile_pool+4], 1
+    popfd
+    mov eax, 1
+    ret
     .att_syntax
 )");
+// The batch submit 0x097af8 -> 0x0e0b40 (bullet-draw-batch.md section 5, Q2): ECX scene, EDX batch, [esp+4] material,
+// [esp+8] view. While Present latched skip_on (the stage drew the previous frame) and the batch's body id [EDX+0x0c] is
+// in the enabled set, the call is skipped with the callee's own plain ret and EAX = 1 (the caller pops its two words
+// and never reads EAX, ECX, EDX or EFLAGS); otherwise the stub forwards with EAX, ECX, EDX, EFLAGS and the stack as the
+// call left them. No call, no XMM, no string instruction: LastError, DF and every other register are the engine's.
+static_assert(S::batch_body == 0x0c && sizeof(core::ProjectilePool::skip_on) == 4, "the batch stub's operands");
 static_assert(S::impact_total_slot == 6 && S::impact_remaining_slot == 7 && S::tap_hit_slot == 2 && S::tap_pos_slot == 3 &&
                   S::spawner_object_slot == 2 && S::spawner_pos_slot == 6 && S::spawner_orient_slot == 8 &&
                   S::death_arg4_slot == 1,
