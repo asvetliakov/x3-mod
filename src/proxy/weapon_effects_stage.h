@@ -231,7 +231,7 @@ struct Counts {
     unsigned area_dropped = 0; // face draws past the frame's screen-area budget (the oldest newest hit first)
     unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their bubble; of them on the fallback sphere
     BubbleStats bubble;                        // the frame's walks, failures, held retries, deferred walks, clamps
-    float screens = 0.f;                       // the drawn patches' screens (the shared budget's patch share, look 2.11)
+    float screens = 0.f;                       // the drawn patches' screens
     unsigned eye_spheres = 0;                  // owners drawn on the eye sphere (the own ship in the cockpit)
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
@@ -907,7 +907,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         --n.patches;
         ++n.area_dropped;
     }
-    n.screens = area * core::look::budget_weight_patch;
+    n.screens = area;
     return n;
 }
 } // namespace x3m::weapon_effects::stage

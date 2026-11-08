@@ -6,17 +6,17 @@ round is needed per family: hull impacts (step 2, next), bolts and their trails,
 area bursts, missile impacts and deaths, and the death tiers (fighter / corvette / capital, stations, asteroids).
 Shield hits are done and accepted (Run239 Flight F) and set the vocabulary; this note stays consistent with them.
 
-Inputs: [weapon-effects.md](weapon-effects.md) (the ratified hooks, `Event`, classifier, steps; 5.1.1 the accepted
-shield look), [weapon-effects.md ledger](../verification/weapon-effects.md) (what the six placement and look rounds
-tried and what the user rejected), [weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md) (what each
-site provides), [weapon-catalog.md](../reference/weapon-catalog.md) and `tools/effects/weapon_catalog/*.json`, the
+Inputs: [weapon-effects.md](../../architecture/weapon-effects.md) (the ratified hooks, `Event`, classifier, steps; 5.1.1 the accepted
+shield look), [weapon-effects.md ledger](../../verification/weapon-effects.md) (what the six placement and look rounds
+tried and what the user rejected), [weapon-effect-spawn.md](../../reverse-engineering/weapon-effect-spawn.md) (what each
+site provides), [weapon-catalog.md](../../reference/weapon-catalog.md) and `tools/effects/weapon_catalog/*.json`, the
 census `verification/results/weapon-effects-census/stock_ap.json` (Effects rows with element kinds and durations),
 `tools/effects/weapon_effects_lab.html`, `src/proxy/weapon_effects_core.h` (the step-1 constants), the dropped
-[effects-modernisation-opus.md](effects-modernisation-opus.md) sections 2.2–2.5 and 3.1–3.5 (the stage model and
+[effects-modernisation-opus.md](../../architecture/effects-modernisation-opus.md) sections 2.2–2.5 and 3.1–3.5 (the stage model and
 per-class sketches the ratified note keeps), and the engine-effect work the user accepted:
-[engine-effects-modern.md](engine-effects-modern.md), [engine-exhaust-look-critique.md](engine-exhaust-look-critique.md),
-[engine-light.md](engine-light.md), [bolts-through-taa.md](bolts-through-taa.md), [bolt-footprint.md](bolt-footprint.md)
-and the [engine-effects ledger](../verification/engine-effects.md).
+[engine-effects-modern.md](../../architecture/engine-effects-modern.md), [engine-exhaust-look-critique.md](../../architecture/engine-exhaust-look-critique.md),
+[engine-light.md](../../architecture/engine-light.md), [bolts-through-taa.md](../../architecture/bolts-through-taa.md), [bolt-footprint.md](../../architecture/bolt-footprint.md)
+and the [engine-effects ledger](../../verification/engine-effects.md).
 
 Marks: **[M]** measured (a cited ledger row, listing or census number), **[I]** inferred, **[S]** static (code or
 archive read), **[U]** unknown. Costs are for 5120x1440 unless a line says otherwise. Metres: 500 engine units = 1 m

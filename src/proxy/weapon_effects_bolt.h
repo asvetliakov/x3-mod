@@ -1,7 +1,7 @@
 #pragma once
 #include "weapon_effects_core.h"
 
-// Step 4, the bolts and the muzzle: the game-thread half (docs/architecture/bolt-muzzle-look.md, weapon-look.md 3.3; the
+// Step 4, the bolts and the muzzle: the game-thread half (docs/archive/effects-look-2026-11-08/bolt-muzzle-look.md, weapon-look.md 3.3; the
 // sites in weapon_effects_bolt_sites.h). Integer only: compiled into weapon_effects_hook.cpp with -mno-sse -mfpmath=387
 // and holding no floating point; no call, no allocation, no Win32 or CRT. Portable (the host tests and both fixtures
 // compile it).

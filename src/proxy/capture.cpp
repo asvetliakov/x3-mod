@@ -2080,7 +2080,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[51]{};
+        unsigned drops[13]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
@@ -2096,45 +2096,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.bubble_held = drops[10];
         stage.bubble_deferred = drops[11];
         stage.bubble_clamped = drops[12];
-        stage.hull_hits = drops[13];
-        stage.flashes = drops[14];
-        stage.sparks = drops[15];
-        stage.glows = drops[16];
-        stage.embers = drops[17];
-        stage.budget_shed = drops[18];
-        stage.orphans = drops[19];
-        stage.floored = drops[20];
-        stage.owners_dropped = drops[21];
-        stage.capped = drops[22];
-        stage.bursts = drops[23];
-        stage.rings = drops[24];
-        stage.bursts_shed = drops[25];
-        stage.burst_lod = drops[26];
-        stage.hull_ready = drops[27] != 0;
-        stage.hull_streaks = drops[28];
-        stage.hull_chips = drops[29];
-        stage.hull_filaments = drops[30];
-        stage.hull_scorches = drops[31];
-        stage.hull_spots = drops[32];
-        stage.hull_merges = drops[33];
-        stage.hull_shimmer = drops[34];
-        stage.hull_dir_fallback = drops[35];
-        // step 3: the death explosion's figures and the pass's death programs (Present's boom latch)
-        stage.deaths = drops[36];
-        stage.boom_bodies = drops[37];
-        stage.boom_stars = drops[38];
-        stage.boom_shocks = drops[39];
-        stage.boom_embers = drops[40];
-        stage.boom_fragments = drops[41];
-        stage.boom_smokes = drops[42];
-        stage.boom_glows = drops[43];
-        stage.boom_shed = drops[44];
-        stage.boom_lod = drops[45];
-        stage.boom_out_of_reach = drops[46];
-        stage.boom_capped = drops[47];
-        stage.boom_ready = drops[48] != 0;
-        stage.boom_secondaries = drops[49];
-        stage.boom_hull_lights = drops[50];
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();
@@ -2149,15 +2110,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
             SetLastError(saved_error);
         }
         weapon_effects::present(ctx.frame, ctx.capture, owned, stage, scope);
-        // Step 4 (shields,hull,bolts): the bolt and muzzle latches and the per-frame list generation. The in-place
-        // capsule draw (docs/architecture/bolt-muzzle-look.md 5; motion_output) reports its frame (drew: the flight
-        // skip's latch; muzzle_owned: the muzzle skip's), the arming reason and the frame's ownership start over, and the
-        // generation advances so the tap's next list is fresh.
-        if (weapon_effects::core::bolts_mode(weapon_effects::mode())) {
-            weapon_effects::BoltFrame bolts;
-            ctx.motion_output.weapon_bolts_take_frame(&bolts);
-            weapon_effects::present_bolts(ctx.frame, ctx.capture, bolts);
-        }
+        // Step 4 (the bolt hooks, installed only in a family mode): the per-frame list generation, so the tap's next
+        // list is fresh, and the hooks' counters row; no in-place draw latches the bolts since the look layer was
+        // scratched (2026-11-08).
+        if (weapon_effects::core::bolts_mode(weapon_effects::mode())) weapon_effects::present_bolts(ctx.frame, ctx.capture);
     }
     collide_memo::present(ctx.id, ctx.frame, ctx.capture); // X3M_COLLIDE_MEMO=1 only: advances the memo's frame
                                                            // (entries expire after one frame untouched); one

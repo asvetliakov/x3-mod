@@ -1,6 +1,6 @@
 # Ship and station death explosions: references for the explosion pass
 
-Reference note for step 3 of the weapon-effects pass (`docs/architecture/weapon-look.md`
+Reference note for step 3 of the weapon-effects pass (`docs/archive/effects-look-2026-11-08/weapon-look.md`
 section 3.2). Sibling of `impact-effect-references.md` and `bolt-muzzle-references.md`;
 same marking rules. Scope: how modern space games and films draw the death of a fighter,
 a corvette, a capital ship, a station and a missile, what reads as modern, and which

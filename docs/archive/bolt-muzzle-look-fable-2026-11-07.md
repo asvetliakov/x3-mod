@@ -1,10 +1,10 @@
 # Bolt and muzzle look: projectiles in flight and the event that launches them
 
-Design note, 2026-11-07 (design agent, Fable 5.1), for step 4 of [weapon-look.md](weapon-look.md) 3.3 (ratified, unbuilt).
+Design note, 2026-11-07 (design agent, Fable 5.1), for step 4 of [weapon-look.md](effects-look-2026-11-08/weapon-look.md) 3.3 (ratified, unbuilt).
 It fixes the laws of every projectile the proxy draws (tracer, slug, orb, wave, the heavy band) and of the muzzle flash,
 with numbers an implementer builds and the lab previews. Hooks, records and the in-place draw of 3.3 stand (section 5
-says where they are amended); nothing here edits source. Inputs: [bolt-muzzle-references.md](../reference/bolt-muzzle-references.md)
-(games, films, techniques, its section 4 anatomy), weapon-look.md 2.1–2.14 and 3.3, [hull-burst-look.md](hull-burst-look.md)
+says where they are amended); nothing here edits source. Inputs: [bolt-muzzle-references.md](effects-look-2026-11-08/bolt-muzzle-references.md)
+(games, films, techniques, its section 4 anatomy), weapon-look.md 2.1–2.14 and 3.3, [hull-burst-look.md](effects-look-2026-11-08/hull-burst-look.md)
 (the vocabulary reused: erosion, cluster saturation, the star, multiply smoke), [weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md)
 2, 5, 6, 8.2 and [weapon-effects.md](weapon-effects.md) 4.1–4.4. Marks: **[M]** measured (file named), **[S]** read in
 code or a note, **[R]** the reference study, **[C]** chosen here, **[I]** inferred, **[A]** assumed (an observe row settles it).

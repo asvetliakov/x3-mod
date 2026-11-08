@@ -16,7 +16,7 @@
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
-    "tools/shaders/generate_weapon_effects_programs.py": "6fa0ba4c6d5ad210767d9ef3f7f731b4caed4a95509d3ad07239ed6ae23c43d9"
+    "tools/shaders/generate_weapon_effects_programs.py": "5fb877a36b1b72ac4336100539f11a7fe5ba29fd5c3b0d1db1f8dae513b610c6"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

@@ -52,11 +52,6 @@ int __cdecl x3m_weapon_death_area(const std::uint32_t* entry, std::uint32_t ebp)
 int __cdecl x3m_weapon_death_other(const std::uint32_t* entry, std::uint32_t ebp) {
     return x3m::weapon_effects::core::death(entry, ebp, 1, state_);
 }
-// The big tiers' swap (core::death returned death_swap): after the forwarded 0x00413610 returned, the saved death column
-// back (LIFO).
-void __cdecl x3m_weapon_death_restore() {
-    x3m::weapon_effects::core::death_restore(state_);
-}
 }
 // In: the engine's call at 0x00449d85 (impact) or 0x00413da8 / 0x00413e79 (taps); [esp] the return address. The saved
 // block is EDX ECX EAX EFLAGS above the return address, so `lea eax,[esp+0x10]` is the stack at stub entry.
@@ -66,12 +61,8 @@ void __cdecl x3m_weapon_death_restore() {
 // the return address) and forwards both unchanged, or skips like the impact.
 // Step 3: the death sites 0x0044ac64 / 0x0044acb2 pass EBP (the kill routine's frame: the reason word) as the handler's
 // second argument (`lea eax,[esp+0x14]`: the saved block and the push above the return address) and skip like the
-// impact (handler 1: `xor eax,eax; ret`, the caller pops its three arguments), forward with every register unchanged
-// (handler 0: the tail jump), or, for a big tier swapped to the clone row R' (handler 2), call 0x00413610 themselves with
-// the three arguments copied (EAX / ECX / EDX, EBX / ESI / EDI / EBP and EFLAGS as the call left them; the callee sees
-// this stub's return address and ESP 16 bytes deeper), then x3m_weapon_death_restore (the saved column back; EAX, ECX
-// and EDX kept around it, DF cleared, EFLAGS dead) and return to the caller's `add esp,0xc`. An unwind through the call
-// skips the restore: Present restores what the swap stack still holds (weapon_effects_patch.cpp).
+// impact (handler 1: `xor eax,eax; ret`, the caller pops its three arguments) or forward with every register unchanged
+// (handler 0: the tail jump).
 asm(R"(
     .intel_syntax noprefix
     .text
@@ -198,28 +189,11 @@ _x3m_weapon_effects_stub_death_area:
     pop ecx
     pop eax
     je .Lx3m_weapon_effects_death_area_skip
-    ja .Lx3m_weapon_effects_death_area_swap
     popfd
     jmp dword ptr [_x3m_weapon_effects_continue_death]
 .Lx3m_weapon_effects_death_area_skip:
     popfd
     xor eax, eax
-    ret
-.Lx3m_weapon_effects_death_area_swap:
-    popfd
-    push dword ptr [esp+0xc]
-    push dword ptr [esp+0xc]
-    push dword ptr [esp+0xc]
-    call dword ptr [_x3m_weapon_effects_continue_death]
-    add esp, 0xc
-    push eax
-    push ecx
-    push edx
-    cld
-    call _x3m_weapon_death_restore
-    pop edx
-    pop ecx
-    pop eax
     ret
     .p2align 4
     .globl _x3m_weapon_effects_stub_death_other
@@ -239,28 +213,11 @@ _x3m_weapon_effects_stub_death_other:
     pop ecx
     pop eax
     je .Lx3m_weapon_effects_death_other_skip
-    ja .Lx3m_weapon_effects_death_other_swap
     popfd
     jmp dword ptr [_x3m_weapon_effects_continue_death]
 .Lx3m_weapon_effects_death_other_skip:
     popfd
     xor eax, eax
-    ret
-.Lx3m_weapon_effects_death_other_swap:
-    popfd
-    push dword ptr [esp+0xc]
-    push dword ptr [esp+0xc]
-    push dword ptr [esp+0xc]
-    call dword ptr [_x3m_weapon_effects_continue_death]
-    add esp, 0xc
-    push eax
-    push ecx
-    push edx
-    cld
-    call _x3m_weapon_death_restore
-    pop edx
-    pop ecx
-    pop eax
     ret
     .att_syntax
 )");

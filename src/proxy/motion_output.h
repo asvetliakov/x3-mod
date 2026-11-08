@@ -100,9 +100,6 @@ inline constexpr std::size_t motion_matrix_windows_max = 4;
 inline constexpr std::size_t motion_shadow_state_count = 32;
 }
 
-namespace x3m::weapon_effects {
-struct BoltFrame; // step 4: the in-place bolt draw's per-frame figures (weapon_effects_patch.h)
-}
 namespace x3m {
 struct MotionDrawCall {
     bool indexed = false, user_memory = false;
@@ -1210,17 +1207,10 @@ public:
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[51]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
+                                   unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
                                                                  // faces_culled, area_dropped, bubbles,
                                                                  // bubble_fallback, the walks (run, failed, held,
-                                                                 // deferred), bubble_clamped; the hull hit's (13..20):
-                                                                 // hits, flashes, sparks, glows, embers, budget_shed,
-                                                                 // orphans, floored, owners_dropped, capped; 23..26:
-                                                                 // bursts, rings, bursts_shed, burst_lod; 27: the
-                                                                 // pass holds the hull programs
-    // Step 4 (shields,hull,bolts): the in-place bolt draw's figures since the last call (weapon_effects::BoltFrame), the
-    // frame's arming reason and the muzzle latch; Present calls it once a frame (docs/architecture/bolt-muzzle-look.md 5).
-    void weapon_bolts_take_frame(x3m::weapon_effects::BoltFrame* bolt_frame) noexcept;
+                                                                 // deferred), bubble_clamped
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2252,15 +2242,6 @@ private:
     // (the ownership Present latches for the hooks), the lane the callback borrows, the callback the stage chains after
     // (the plumes' or the own sun's), and the frame's figures for weapon_effects_frame.
     bool weapon_requested_ = false, weapon_attach_failed_ = false, weapon_failed_out_ = false, weapon_armed_ = false;
-    // shields,hull requested (the engine shimmer pass then exists without the plumes: hull-impact-classes.md 3.8) and the
-    // frame's hull-hit shimmer rects (view space; the weapon stage's, read by run_engine_shimmer that frame).
-    bool weapon_hull_requested_ = false;
-    engine_shimmer::WeaponRequest weapon_shimmer_rects_[engine_shimmer::weapon_max_rects]{};
-    unsigned weapon_shimmer_count_ = 0;
-    engine_shimmer::WaveRequest weapon_wave_shimmer_{}; // the newest death fire wave's refraction (explosion-look.md 13.1)
-    unsigned weapon_wave_shimmer_count_ = 0;
-    unsigned shimmer_rects_before_wave_ = 0; // the engines' and hull's shimmer rects last frame (the strips' room)
-    std::uint64_t weapon_shimmer_frame_ = ~std::uint64_t(0);
     bool weapon_state_logged_ = false, weapon_logged_armed_ = false;
     // This frame's ownership inputs (core::stage_owned): the callback was set, it ran and returned S_OK / S_FALSE, and the
     // latch they give after the resolve.
@@ -2275,39 +2256,11 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    // 36..47 the death explosion's (stage::BoomCounts: deaths, bodies, stars, shocks, embers, fragments, smokes, glows,
-    // shed, lod, out_of_reach, capped); 48 (take_frame only) the pass holds the death programs; 49, 50 the big tiers'
-    // secondaries and hull lights drawn
-    unsigned weapon_drops_[51]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
+    unsigned weapon_drops_[13]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
                                   // area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures, held, deferred,
-                                  // clamped; HullCounts hits, flashes, sparks, glows, embers, shed, orphans, floored,
-                                  // owners_dropped, capped, bursts, rings, bursts_shed, the burst LOD frames; 28..35
-                                  // the classes' streaks, chips, filaments, scorches, spots, merges, shimmer rects and
-                                  // the jet classes' records without Event::dir (27 unused: the take's hull latch)
-                                 // since the last take
+                                  // clamped, since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
-    // Step 4 (shields,hull,bolts): the in-place bolt draw's figures since the last take (weapon_bolts_take_frame), set by
-    // the capsule draw when it replaces the frame's late bullet draw.
-    bool weapon_bolt_drew_ = false;
-    unsigned weapon_bolt_count_ = 0, weapon_bolt_suppressed_ = 0, weapon_bolt_culled_ = 0, weapon_bolt_beams_ = 0,
-             weapon_bolt_parity_ = 0;
-    float weapon_bolt_build_us_ = 0.f;
-    // The in-place draw (motion_output_weapon_effects_inc.h weapon_bolts_in_place; the frame's ownership is the inc's
-    // stage::BoltOwnership): requested at configure (shields,hull,bolts), the muzzles the stage built (its figures for the
-    // BoltFrame: drawn, native, end-on, starved; built and drawn this frame, the muzzle latch's inputs), the rims,
-    // refusals and the failure latch (three consecutive failed draws: off until Reset; one: 64 frames native), the
-    // arming reason cached per frame.
-    bool weapon_bolts_requested_ = false, weapon_bolt_failed_out_ = false;
-    bool weapon_bolt_muzzle_built_ = false, weapon_bolt_muzzle_drew_ = false, weapon_bolt_armed_ = false;
-    unsigned weapon_bolt_failures_ = 0, weapon_bolt_muzzles_ = 0, weapon_bolt_muzzle_elements_ = 0,
-             weapon_bolt_muzzle_glows_ = 0, weapon_bolt_muzzle_puffs_ = 0, weapon_bolt_rims_ = 0, weapon_bolt_refused_ = 0;
-    unsigned weapon_bolt_muzzle_native_ = 0, weapon_bolt_muzzle_endon_ = 0, weapon_bolt_muzzle_starved_ = 0;
-    unsigned long long weapon_bolt_disarmed_until_ = 0, weapon_bolt_armed_frame_ = ~0ull;
-    const char* weapon_bolt_reason_ = "off";
-    bool weapon_bolt_reason_logged_ = false;
-    bool weapon_bolts_in_place(const MotionDrawCall&, MotionRoute&) noexcept;
-    bool weapon_bolts_armed() noexcept;
     bool weapon_cockpit_ = false; // this frame: the view is the cockpit (chase_camera's last active-control visit, mode 1)
     static constexpr unsigned weapon_failure_limit = 3;
     bool weapon_effects_arm(bool fp16_route, IDirect3DTexture9* lane, UINT width, UINT height) noexcept;
@@ -2323,7 +2276,6 @@ private:
     bool shimmer_requested_ = false, shimmer_attach_failed_ = false, shimmer_failed_ = false;
     float shimmer_px_ = engine_shimmer::default_px;
     unsigned shimmer_max_ = engine_shimmer::default_max; // X3M_ENGINE_SHIMMER_MAX, 0..16
-    unsigned shimmer_weapon_rects_ = 0; // this frame's hull-hit rects after the engines' (the engine_shimmer row)
     std::unique_ptr<renderer::EngineShimmerPass> shimmer_;
     renderer::EngineShimmerReport shimmer_report_{};
     engine_shimmer::Stats shimmer_stats_{};

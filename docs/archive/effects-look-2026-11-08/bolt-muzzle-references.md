@@ -1,6 +1,6 @@
 # Bolts, tracers, orbs, flak and muzzle flashes: references for the bolt pass
 
-Reference note for step 4 of the weapon-effects pass (`docs/architecture/weapon-look.md`
+Reference note for step 4 of the weapon-effects pass (`docs/archive/effects-look-2026-11-08/weapon-look.md`
 section 3.3). Sibling of `impact-effect-references.md`; same marking rules. Scope: how
 modern space games and films draw an energy bolt, a ballistic tracer, a plasma orb, a flak
 shell and the muzzle event that launches them, and which techniques fit a closed-form

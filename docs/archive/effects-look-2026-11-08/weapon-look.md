@@ -6,21 +6,21 @@ session) found that this note lacked: the three-frame age floor, isotropic spark
 engine-effects plume path, the explosion's exposure cap and smoke switch, and its more specific gates, presets and
 kill criteria; where it argued otherwise and lost, section 8 says why. Not implemented; no source edited. It fixes the
 look of every family the proxy will draw through the ratified hook architecture of
-[weapon-effects.md](weapon-effects.md) (sites, `Event`, classifier, ring, stage, modes; section 5.1.1 is the accepted
+[weapon-effects.md](../../architecture/weapon-effects.md) (sites, `Event`, classifier, ring, stage, modes; section 5.1.1 is the accepted
 shield look this note keeps word for word), so that steps 2 to 7 are briefed from this note without another design
 round. Hooks, the record schema and suppression are not redesigned here; where a family needs a hook the
 architecture did not claim (the per-bullet tap of the spawn note 8.2), it is named with its evidence.
 
-Inputs: the architecture and its ledger [weapon-effects.md](../verification/weapon-effects.md) (Run235 A to Run239 F),
-[weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md), the catalogue
-[weapon-catalog.md](../reference/weapon-catalog.md) / `tools/effects/weapon_catalog/*.json`, the lab
+Inputs: the architecture and its ledger [weapon-effects.md](../../verification/weapon-effects.md) (Run235 A to Run239 F),
+[weapon-effect-spawn.md](../../reverse-engineering/weapon-effect-spawn.md), the catalogue
+[weapon-catalog.md](../../reference/weapon-catalog.md) / `tools/effects/weapon_catalog/*.json`, the lab
 `tools/effects/weapon_effects_lab.html` (and its generator), the dropped per-class rendering
-[effects-modernisation-opus.md](effects-modernisation-opus.md) 2.2 to 3.5, and the accepted engine work
-[engine-effects-modern.md](engine-effects-modern.md), [engine-exhaust-look-critique.md](engine-exhaust-look-critique.md),
-[engine-light.md](engine-light.md), [bolts-through-taa.md](bolts-through-taa.md), [bolt-footprint.md](bolt-footprint.md)
-and the ledger [engine-effects.md](../verification/engine-effects.md). Vanilla timings and beam envelopes quoted below
-come from [`vanilla_timings.py`](../../verification/results/weapon-look/vanilla_timings.py) →
-[`vanilla_timings_out.txt`](../../verification/results/weapon-look/vanilla_timings_out.txt).
+[effects-modernisation-opus.md](../../architecture/effects-modernisation-opus.md) 2.2 to 3.5, and the accepted engine work
+[engine-effects-modern.md](../../architecture/engine-effects-modern.md), [engine-exhaust-look-critique.md](../../architecture/engine-exhaust-look-critique.md),
+[engine-light.md](../../architecture/engine-light.md), [bolts-through-taa.md](../../architecture/bolts-through-taa.md), [bolt-footprint.md](../../architecture/bolt-footprint.md)
+and the ledger [engine-effects.md](../../verification/engine-effects.md). Vanilla timings and beam envelopes quoted below
+come from [`vanilla_timings.py`](../../../verification/results/weapon-look/vanilla_timings.py) →
+[`vanilla_timings_out.txt`](../../../verification/results/weapon-look/vanilla_timings_out.txt).
 
 Marks: **[M]** measured (a cited ledger row, census or script output), **[S]** static (code or archive read),
 **[I]** inferred. Every number without a mark is a proposed header constant, to be tuned in the lab and pinned by the
@@ -153,7 +153,7 @@ nothing. Exact under SETA, deterministic for the fixture, no pool to age.
 No family needs a surface normal. Sparks are isotropic and the lane hides the half that flies into the hull, so a
 spray always reads as leaving the surface; a normal estimated from the hull box, the centre or the bolt's travel would
 bring the two rejected placement rules back through a side door (section 8). **Amended 2026-11-06**
-([hull-impact-classes.md](hull-impact-classes.md) 3.4, ratified): the hull hit's ballistic, heavy and missile classes
+([hull-impact-classes.md](../../architecture/hull-impact-classes.md) 3.4, ratified): the hull hit's ballistic, heavy and missile classes
 bias a spark set along the recorded shot heading, v = speed normalize(u + b a) with u the hashed isotropic direction and
 a = `Event::dir` through the owner's rows at the record's first frame (data, not an estimate; b < 0 back towards the
 shooter, b > 0 through the hull, b 0 when `dir` is zero); the bias moves no anchor and needs no normal. The shock ring
@@ -175,7 +175,7 @@ of 3.1's burst rebuild no longer takes a normal either: it is the surface ring (
 ### 2.8 Light: one glow primitive
 
 `E = colour x saturate(1 − d² / R²)²`, d the 3D distance from the light point to the scene point the lane rebuilds (the
-decal's reconstruction through the jittered projection), the falloff of [engine-light.md](engine-light.md); no N·L, no
+decal's reconstruction through the jittered projection), the falloff of [engine-light.md](../../architecture/engine-light.md); no N·L, no
 normal (one lane fetch per pixel, the decal's code). Drawn as a box of radius R, back faces only, additive. Used for the
 hull-hit glow and ember, the muzzle's light on its own hull, the explosion's light on nearby hulls and the burst's. The
 engine's bullet light node (cols 13–15, `0x00444a70`) is not a spawn and stays native.
@@ -215,7 +215,7 @@ by the own ship (thin or small, bounded by count caps). Count caps (CPU, static)
 2,048 quads, bolts 512, beams 64, fireballs 32 + 64 secondaries, bursts 64, muzzles 128. Flight targets: `stage_us`
 p90 ≤ 0.3 ms in a normal fight, the budget ≤ 1.5 ms worst.
 
-**Amended 2026-11-06** ([hull-impact-classes.md](hull-impact-classes.md) section 6, ratified; built, not flown). The
+**Amended 2026-11-06** ([hull-impact-classes.md](../../architecture/hull-impact-classes.md) section 6, ratified; built, not flown). The
 hull stage's order over budget: (0) the heat-shimmer rects of owners other than the own ship (past `hull::shimmer_max`
 2 always); (1) the puffs' second octave (a puff under `hull::puff_lod_px` 96 px at 1440 rows draws one octave at any
 budget), then other owners' puffs past two per owner, oldest first; (2) other owners' scorches, oldest first; (3) their
@@ -283,7 +283,7 @@ every race and class, as the shield.
 
 **2026-11-06, after Run240 Flight G** (the user: "need good modern effects, not lazy flashes; that's a downgrade";
 "sparks read as the same decals appearing and disappearing"). Built, not flown; figures in the
-[ledger](../verification/weapon-effects.md) "Burst, randomised sparks, heavy ring". (1) **A hot-gas burst on every hull
+[ledger](../../verification/weapon-effects.md) "Burst, randomised sparks, heavy ring". (1) **A hot-gas burst on every hull
 hit** (not the repair, tug or asteroid variants): the fireball impostor of 3.2 (`weapon_fireball_{vs,ps}.hlsl`, one
 program whose radius, life, heat, radiance, advection and seed are per-vertex inputs and the octave count a constant,
 so step 3 draws explosions with it at full size) at the contact point, riding the owner: R(t) = R_b (1 − e^(−t /
@@ -308,8 +308,8 @@ it for weapon puffs would need a lifetime change; skipped as the brief allows. T
 `hull/heavy-plasma-corvette`, `hull/heavy-flak-fighter`, `hull/heavy-missile-hit`) with the stage's own hashes, on a
 720 x 405 preview framed on 4 U and one glow radius.
 
-**2026-11-06, the hull-impact classes** ([hull-impact-classes.md](hull-impact-classes.md), ratified; built, not
-flown; figures in the [ledger](../verification/weapon-effects.md) "Hull impact classes"). The hit's anatomy now follows
+**2026-11-06, the hull-impact classes** ([hull-impact-classes.md](../../architecture/hull-impact-classes.md), ratified; built, not
+flown; figures in the [ledger](../../verification/weapon-effects.md) "Hull impact classes"). The hit's anatomy now follows
 its class (energy, ballistic, plasma, heavy, ion, beam; missile, asteroid, repair and tug by their own cues), decided at
 the hook into `Event::detail` bits 4-7 and pinned per id by the override's `hull` key; the burst becomes each class's
 puff, the tangent-plane ring the surface ring, and the classes add the entry streak, two spark lifetimes and chips with
@@ -370,7 +370,7 @@ hit, visible on the own nose from behind, an ember for about a second, no native
 unchanged on shielded hits, the repair laser without sparks.
 
 **2026-11-07, the burst look** ([hull-burst-look.md](hull-burst-look.md); built and fixture-gated, not flown; figures in
-the [ledger](../verification/weapon-effects.md) "Burst body, glow, flash, smoke"). Supersedes the flash, glow and burst
+the [ledger](../../verification/weapon-effects.md) "Burst body, glow, flash, smoke"). Supersedes the flash, glow and burst
 rows above: the **burst body** is a lobed three-octave 2-D noise disc alpha-eroded by erode_0 + erode_t x + erode_r
 |q|^2 (1 + erode_rt x) (0.10, 0.30, 0.20, rt 3.0, soft 0.20), R_b doubled per class (energy 2 r_hit), two octaves under
 48 px at 1440 rows (never one), radiance heat(T') E density (no extra x T); the **glow** is its light, R_g 1.6 R(t),
@@ -387,7 +387,7 @@ sparks; repair and tug: a cool spot (0.7, 0.8, 1.0) at E 0.3 / 0.15, R 1.0 r, re
 spawn forwarded through the clone row R', `boom::tier_swap`, with the capital's and station's pre-roll of secondaries and
 hull light): the look, sizes and laws are [explosion-look.md](explosion-look.md) (ratified; it amends the table and the
 smoke rule below), its built numbers in that note's "Built numbers (step 3)" and "Built numbers (the big tiers)", the
-gates and measurements in [the ledger](../verification/weapon-effects.md) "Explosions (step 3)" and "Explosions: the big
+gates and measurements in [the ledger](../../verification/weapon-effects.md) "Explosions (step 3)" and "Explosions: the big
 tiers". The mode token is `explosions`
 (`shields,hull,explosions`, `shields,hull,bolts,explosions`). The records, the asteroid and the rule-(b) missile below
 stand as built.
@@ -480,7 +480,7 @@ collisions) for the tuning that follows.
 The look, sizes, anatomy and laws of the bolts and the muzzle are ratified in
 [bolt-muzzle-look.md](bolt-muzzle-look.md) (2026-11-07), which amends this section; its numbers, gates and kill
 criteria stand where they differ from the sketch below. The hook sites, the in-place late-bullet draw, the records and
-the modes of this section stand. Implementation state: [weapon-effects.md](../verification/weapon-effects.md), "Bolts
+the modes of this section stand. Implementation state: [weapon-effects.md](../../verification/weapon-effects.md), "Bolts
 and muzzle (step 4)".
 
 **Records.** The per-bullet tap at the sector update's call site **`0x0045ac7d`** (`E8` → `0x00414590`, one argument,
@@ -624,7 +624,7 @@ the user flies it; a beam over a capital's hull against one over space.
 the emitter sprite and the Particles3 trail forward for class 10 at redirects A `0x004147eb` and B `0x0041482c`, and
 the plumes note promises missiles plumes "like ships" in its phase 2 [S, engine-effects-modern 1]. The redirects, the
 JET records and the ribbon builder (accepted for ships, Run 172 "trails attached to the plume end") belong to that
-feature, its `engine_effects` option and its ledger [engine-effects.md](../verification/engine-effects.md), so the trail
+feature, its `engine_effects` option and its ledger [engine-effects.md](../../verification/engine-effects.md), so the trail
 is armed and flown there, not in `weapon_effects`: skip A and B for class 10, feed the missile's JET records to the
 ribbon builder. The look this note hands to it, in the language above: the plume the missile already has, plus an
 ember core on the ribbon (heat T 0.9 → 0.3 over 0.4 s, the plume's width) and a faint warm ribbon in the missile tint

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cstring>
 
-// The three call sites of step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md, weapon-look.md 3.3,
+// The three call sites of step 4, the bolts and the muzzle (docs/archive/effects-look-2026-11-08/bolt-muzzle-look.md, weapon-look.md 3.3,
 // docs/reverse-engineering/weapon-effect-spawn.md sections 2, 6 and 8.2; X3AP.exe SHA-256 fdbf3418...f8ab, preferred
 // VAs). No Windows dependency: the host tests and the hook fixture compile it. Each window is compared whole before any
 // write (fail closed); bytes read from the installed EXE with verification/results/weapon-effects-bolt/bolt_sites.py.

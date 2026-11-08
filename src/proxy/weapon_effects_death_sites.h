@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <cstring>
 
-// The two death sites of step 3, the death explosion (docs/architecture/explosion-look.md section 1,
+// The two death sites of step 3, the death explosion (docs/archive/effects-look-2026-11-08/explosion-look.md section 1,
 // docs/reverse-engineering/weapon-effect-spawn.md sections 4, 6 and 8.1; X3AP.exe SHA-256 fdbf3418...f8ab, preferred
 // VAs). No Windows dependency: the host tests and the hook fixture compile it. Both windows are compared whole before
 // any write (fail closed); the bytes are the installed EXE's (verification/probe/build_weapon_effects_hook.py reads them
