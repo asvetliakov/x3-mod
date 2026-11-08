@@ -389,11 +389,30 @@ inline void curl_drift(std::uint32_t h, const float d[3], float out[3]) noexcept
 }
 // A puff's radius at age t (game ms) of a life L (anatomy row of class_puff): R_b (1 - e^(-t / (rise L))) x (1 - shrink
 // max(0, (t / L - 0.3) / 0.7)) (the plasma globe shrinks to (1 - shrink) R_b over the last 0.7 L).
+// The collapse's radius factor c(s) = body_end_r + (1 - body_end_r) (1 - s)^1.5 at the age fraction x
+// (core::boom::collapse_s; (1 - s)^1.5 as (1 - s) sqrtss(1 - s)); 1 to body_hold_x.
+inline float collapse_r(float x) noexcept {
+    namespace bm = core::boom;
+    const float u = 1.f - bm::collapse_s(x);
+    return bm::body_end_r + (1.f - bm::body_end_r) * u * scalar::sqrt(u);
+}
+// The death halo's peak radius over R(t) at the age fraction x (core::boom halo_lit_*, weapon_halo_ps.hlsl): the body's
+// lit radius under the fire material's threshold age terms, halo_lit_0 sqrt((1 - fire_thr_t x / halo_lit_a) / (1 +
+// fire_thr_rt x)).
+inline float halo_lit_r(float x) noexcept {
+    namespace bm = core::boom;
+    namespace lk = core::look;
+    const float v = (1.f - lk::fire_thr_t * x * (1.f / bm::halo_lit_a)) / (1.f + lk::fire_thr_rt * x);
+    return bm::halo_lit_0 * scalar::sqrt(v > 0.f ? v : 0.f);
+}
+// round 3 (fire-material.md section 13): a fire class's burst (class_fire >= 1; not the plasma globe, which keeps its own
+// shrink) also contracts with the collapse over its own life.
 inline float puff_radius(unsigned anatomy, float R_b, float age_ms, float life_ms) noexcept {
     const float* p = core::hull::class_puff[anatomy];
     float R = R_b * (1.f - core::exp_neg(-age_ms / (p[7] * life_ms)));
     const float late = (age_ms / life_ms - 0.3f) * (1.f / 0.7f);
     if (p[8] > 0.f && late > 0.f) R *= 1.f - p[8] * (late < 1.f ? late : 1.f);
+    if (core::hull::class_fire[anatomy] >= 1.f) R *= collapse_r(age_ms / life_ms);
     return R;
 }
 // The record's calibre and r_hit (view units).
@@ -2002,8 +2021,11 @@ static inline HullCounts build_hull(core::Ring& ring, HullState& state, Reader r
                     const float gcore = t.fire_core && x < hl::fire_core_x ? hl::class_fire_core[a] * gx * gx * sb * sb : 0.f;
                     // round 2: a fire class's weight 1 + (1 - s(N)), the cluster's thinning (hull::fire_cluster_thr)
                     const float fire_w = !t.fire ? 0.f : hl::class_fire[a] >= 1.f ? 2.f - sb : hl::class_fire[a];
-                    if (puff_box(c_view, r_hit, burst_R, burst_T, pf[6] * gain * sb, x, core::look::fireball_advect * x,
-                                 e.sequence, tint4, age_ms, own, e.owner, false, fire_w, gcore, age, &hs.fire_shed))
+                    // round 3, the collapse (fire classes): the radiance x c(s)^2, the material's clock slowing to rest
+                    const bool fc = hl::class_fire[a] >= 1.f;
+                    const float cr = fc ? collapse_r(x) : 1.f, tg = fc ? core::boom::collapse_clock(age, life) : age;
+                    if (puff_box(c_view, r_hit, burst_R, burst_T, pf[6] * gain * sb * cr * cr, x, core::look::fireball_advect * x,
+                                 e.sequence, tint4, age_ms, own, e.owner, false, fire_w, gcore, tg, &hs.fire_shed))
                         n.floored += fl;
                 }
             }

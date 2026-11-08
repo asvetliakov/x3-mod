@@ -1,0 +1,4 @@
+old (the round-3 record: lum0 0.6) hull hot=0.372 hot_r=0.307 cold=0.018 cold_r=0.664 mid=0.606 pink=0.000 core3=0.291 hf3=0.061 bounds: hot>=0.25 hot_r<=0.5 cold 0.05-0.25 cold_r>=0.65 mid<=0.65 pink<0.02
+old (the round-3 record: lum0 0.6) death hot=0.414 hot_r=0.351 cold=0.001 cold_r=0.606 mid=0.585 pink=0.000 core3=0.110 hf3=0.107 bounds: hot>=0.25 hot_r<=0.5 cold 0.05-0.25 cold_r>=0.65 mid<=0.65 pink<0.02
+band hull hot=0.469 hot_r=0.367 cold=0.192 cold_r=0.691 mid=0.335 pink=0.001 core3=0.402 hf3=0.062 bounds: hot>=0.25 hot_r<=0.5 cold 0.05-0.25 cold_r>=0.65 mid<=0.65 pink<0.02
+band death hot=0.509 hot_r=0.406 cold=0.145 cold_r=0.741 mid=0.345 pink=0.000 core3=0.122 hf3=0.109 bounds: hot>=0.25 hot_r<=0.5 cold 0.05-0.25 cold_r>=0.65 mid<=0.65 pink<0.02

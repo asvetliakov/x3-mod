@@ -1,6 +1,6 @@
 # Fire material: one law for the fireball program family
 
-Design note, 2026-11-07 (branch `effects`, HEAD a74671f26); built in two rounds, as built in section 12. Amends the body laws of
+Design note, 2026-11-07 (branch `effects`, HEAD a74671f26); built in two rounds, as built in section 12; round 3 (2026-11-08) replaced the tongue law with a turbulence law and added the collapse, section 13. Amends the body laws of
 [hull-burst-look.md](hull-burst-look.md) 2.2–2.5 (the hull burst), [explosion-look.md](explosion-look.md) 2.1 and 13.1
 (the death body, the fire wave) and [hull-impact-classes.md](hull-impact-classes.md) 3 item 5 (the shock ring's trailing
 band). It changes the *material* those elements are drawn with; sizes, lives, placement, occlusion, the glow, star, smoke,
@@ -249,7 +249,9 @@ Each flips a header constant, never adds a setting:
 Flight questions: (1) does the hull burst read as fire at 200 m and at 2 km? (2) do the capital's death body and its
 wave read as fire, the wave translucent, from broadside and from above? (3) is the flicker rate right under SETA 6–10x
 and at 1x? (4) does the white-yellow core bloom without turning the 20-hit fighter into a sun? (5) SETA sparkle on fire
-bodies: at 100-160 ms steps do the flicker and the fine grain (new noise every frame, section 12.3) sparkle?
+bodies: at 100-160 ms steps do the flicker and the fine grain (new noise every frame, section 12.3) sparkle? Since
+2026-11-08 (13.5) the fine octaves re-seed at most every two frame steps, as the rays: does the grain still sparkle, or
+does it now step visibly at SETA 6-10?
 
 ## 9. Unknowns and what settles each
 
@@ -382,6 +384,249 @@ SETA: at 100-160 ms steps the flicker (65 ms cells) and the fine grain (streamin
 every frame; nothing freezes or steps by frame count, but a fire body may sparkle frame to frame. A flight question
 (section 8, question 5), not a fixture gate.
 
+## 13. Round 3: turbulence (2026-11-08)
+
+The user on the round-2 lab: "fire is still bad. it looks like a flower" (a capital death mid-life: large smooth orange
+petals about a yellow core). Then two additions agreed by the orchestrator: the body stays a connected hot blob whose
+outline deforms, with tongues on its rim (not a loose field of filaments), and the body collapses late in its life.
+
+**Why the tongue law failed.** Two octaves of 23 / 46 polar cells stretched 2.5 : 1, thresholded hard: a few large
+smooth cells per body, each a lit lobe with a soft rim; thresholding low-frequency noise always yields petals, whatever
+the gain. Fire and the vanilla sprite are turbulent: many small cells at every scale, bright thin filaments between
+dark gaps at the rim, a dense hot interior, the large scale only a gentle modulation.
+
+### 13.1 The law (`weapon_fireball_ps.hlsl`; `weapon_effects_core.h` look::fire_*; the lab's `fireTurb`)
+
+| Element | As built | Constants |
+| --- | --- | --- |
+| Octaves | five value-noise octaves at f_i = 3 x 2^i cells per R_s (cells 0.33, 0.17, 0.083, 0.042, 0.021 R_s) | `fire_turb_f` 3 |
+| LOD | octave i weighted saturate(cell px / `fire_cell_px` - 1) (0 at 2 px, 1 at 4 px; the projected R_s per pixel); the 4th and 5th also x saturate(screen.w), saturate(screen.w - 1) (the budget's octave steps (1) and (0b)); octaves 3-5 off on a shed box (core.z < 0, latched as before) | `fire_cell_px` 2 |
+| Ridged sum | T = sum w_i a^i abs(2 n_i - 1) / sum w_i a^i (normalised over the octaves drawn) | `fire_turb_a` 0.55 |
+| Octaves 2-3 (the rim's tongues) | polar, periodic about the disc (27 / 53 cells: about 0.17 / 0.083 R_s at 0.7 R_s; no seam), radially 3 x 2^i / 1.5 cells per R_s (1.5 : 1 outward), taken past 0.15 .. 0.35 R_s (the polar centre is singular), streaming outward at `fire_flow_v` 1.4^i R_s per game second, each warped along the angle by 0.4 cell of the next finer octave | `fire_turb_n2 / _n3` 27 / 53, `fire_stretch` 1.5, `fire_flow_v` 0.7, `fire_turb_warp` 0.4, `fire_polar_r0 / _r1` 0.15 / 0.35 |
+| Octaves 4-5 (billowing, ragged edges) | Cartesian, re-seeded every 66.7 ms of game time (15 Hz); off in a cluster's burst (fire weight > 1.05: N overlapping bursts sum the detail away and pay it N times) | `fire_jit_ms` 66.7 |
+| Octave 1 (the envelope) | Cartesian under the drift law, sliding `fire_env_rate` cells over the life ((0.6, 0.8) direction), warped by octaves 2-3 (0.4 cell); its ridges weighted 0.25 + 0.75 x the polar weight (cracks across the dense centre in lab round 2) | `fire_env_rate` 3 (0.3 cell per 0.1 L) |
+| Envelope | r' = abs(p) / (1 + `fire_env_amp` (2 n_1 - 1)): the silhouette bulges and shifts with octave 1; the lobes are off under the law | `fire_env_amp` 0.2 |
+| Density | F = 1/2 + k (c - T) - (thr_0 + thr_t x + thr_r r'^2 (1 + thr_rt x)) - the cluster's thinning | k 0.75, c 0.25, thr_0 0.12, thr_t 0.05, thr_r 0.62, thr_rt 0.3 |
+| Alpha | smoothstep(0, `fire_soft`, F)^`fire_gain` x column^column_pow | `fire_soft` 0.15, `fire_gain` 1.2 |
+| Luminance | x lerp(`fire_lum_0`, 1, m) (1 - `fire_lum_depth` T_fine), T_fine the ridged sum of octaves 3-5 normalised: veins over darker billows at the small scales; the red band raises it to 1 at the band's outer edge (13.5) | `fire_lum_0` 0.6 -> 0.7 (13.5), `fire_lum_depth` 0.5 |
+| Colour | the red band (13.5): T' = T(t) (0.25 + (`fire_red_t` - 0.25) h_b + (1 - `fire_red_t`) h_u), h_b over [`fire_red_cut`, + `fire_red_w`], h_u from there to the densest `fire_white_share` of [cut, F_top]; the core whitened to the top stop as before (was T(t) (rim_t + (1 - rim_t) m^0.75)) | `fire_red_cut` 0.035, `fire_red_w` 0.15, `fire_red_t` 0.55, `fire_white_share` 0.5 |
+| Small sizes, plasma | the law blends in by w_px x min(fire, 1) (24 .. 40 px R at 1440 rows): the previous erosion law on the fire ramp with `fire_gain_small` below, the plasma globe half way | unchanged |
+| The wave | replaced by the band law of 13.5 (the user's references): a band 0.35 r(t) wide of five ridged octaves, the body's red band and luminance, no rim term (was: four octaves at 48 x 2^i cells, the round-2 threshold profile and rim) | `boom::wave_band_r` 0.35, `fire_wave_*` (13.5) |
+
+Removed: `fire_cells`, `fire_s_cells`, `fire_warp_f`, `fire_warp_amp`, `fire_shear`, `fire_blend_0 / _1`,
+`fire_flow_ms`, `fire_flick_ms / _amp`, `fire_rim_cool / _r0 / _r1`, `fire_oct2_w / _big`, `fire_fine_k / _depth /
+_jitter / _bias` (the program's flicker, its tongue warp taps and its fine polar tap). The round-2 thresholds 0.39 / 3.0
+over the age eroded the body inside R(t), which left a dark annulus under the rim halo (section 13.3); the collapse now
+carries the shrink.
+
+### 13.2 The collapse (explosion-look.md section 14, "the collapse")
+
+Every tier's main body and the fire classes' hull bursts (over their own life): R(t) as before to `boom::body_hold_x` 0.35
+L, then x c(s) = `body_end_r` + (1 - `body_end_r`) (1 - s)^1.5, s = (x - 0.35) / 0.65, `body_end_r` 0.35 (an ease-out to
+0.35 R_f at L); the radiance x c(s)^2 (the shrinking core dims); the material's clock (`collapse_clock`: the outward flow
+x (1 - s) integrated, so the flow stops at L and the blob pulls in; the 15 Hz re-seed runs on the same clock and slows
+with it); the heat law (`body_hold` 0.8, `body_cool` 0.7) already cools the body to red over the contraction. The
+secondaries, sparks, smoke, the wave and the pre-roll keep their own lives (the shrinking core sits in the spark cloud).
+Code: `core::boom::collapse_s`, `collapse_clock` (`weapon_effects_core.h`), `stage::collapse_r` (`weapon_effects_hull.h`,
+sqrtss), applied in `boom_body_radius`, the body's look.y and core.w, and `puff_radius` / the burst's E and t_g for
+class_fire >= 1 (not the plasma globe, which keeps its own shrink).
+
+### 13.3 Gates (native record 2026-11-08, the third of the round; medians over 8 seeds / hits)
+
+New: `fire_turbulent_hull` / `_death` (the brief's objective test, `fire_turbulence.py` on display frames and
+`classes::burst::turbulence_of` on the fixture's AgX luma): the luma Laplacian's energy over the luma's within the
+equal-area disc at 0.3 and 0.5 L >= 0.8 of vanilla's; the connected region >= 0.5 of the peak holding the centre >= 0.35
+of the disc at 0.3 L; every other such region < 0.08 of the disc. `death_body_collapses` (13.2).
+
+| Measure | Vanilla [M] | Hull energy; fighter 200 m / capital 3 km [M] | Bound | Result |
+| --- | --- | --- | --- | --- |
+| luma Laplacian share at 0.3 L | 0.0235 | 0.017; 0.0694 / 0.0318 | >= 0.0188 | hull FAIL |
+| same at 0.5 L | | 0.0521; 0.1441 / 0.0614 | >= 0.0188 | pass |
+| connected core / disc at 0.3 L | 0.408 | 0.346; 0.277 / 0.292 | >= 0.35 | FAIL (all three) |
+| largest other region >= 0.5 peak | 0.0003 | 0.0038 / 0.0157; 0.0096 / 0.0348; 0.0099 / 0.0158 (0.3 / 0.5 L) | < 0.08 | pass |
+| collapse: radius, peak 0.9 L over 0.3 L | | 0.382 / 0.378; 0.039 / 0.04 | <= 0.5; <= 0.3 | pass |
+
+The three records traced the trade-off (the luminance law the only change between them): full luminance (record 1) kept
+the core (0.53-0.67) but the share was 0.006-0.010 on the hull and capital (smooth, peach under AgX at 120 ms); lerp(0.3,
+1, m^2) (record 2) passed the share everywhere (hull 0.0196, capital 0.0445) but split the core (0.11-0.25) and unlit the
+red fringe; the shipped lerp(0.6, 1, m) (1 - 0.5 T_fine) sits between them and fails both by a little. Vanilla's figure
+comes from a 172 x 118 capture whose fireball is 32 px in radius; the Laplacian is a pixel-scale measure, so the same
+structure scores lower on a 160 px body at 1080p (an inferred bias against the larger bodies, not corrected).
+
+Bounds re-derived because the new law makes the old ones impossible (old -> new; the measured values on the records):
+
+| Gate | Old | New | Why |
+| --- | --- | --- | --- |
+| `fire_luminance_thin_*` | share > 0.8 peak 0.10-0.35; disc dark share >= 0.20 | <= 0.35; >= 0.077 (0.8 x vanilla's 0.096) | the hot core holds the peak and the dense interior's luminance follows its density below it (share 0.004-0.010); the interior stays dense, gaps only at the rim (0.19-0.31) |
+| `hull_burst_erodes_outside_in` | equal-area radius over R(t) at 0.5 / 0.9 L_b vs 0.1 L_b | in pixels: 0.9 L_b <= 0.5 x 0.5 L_b; mean radius (px) 0.8 / 0.2 L_b <= 0.8 | the collapse carries the shrink in R(t); measured 0.470, 0.577 (record 2) |
+| `hull_glow_follows_burst` | glow / body radius 1.3-2.0 | 1.1-2.0 | the envelope fills R(t) and licks past it (1.17-1.22) |
+| `hull_burst_radius_law_3_ages`, `hull_energy_puff_grows_cools` | the rise law | x c(s) (a fire class) | the collapse |
+| `hull_burst_octave_blend_no_jump` | energy | ballistic (fire 0) | a fire body no longer reads the third octave's weight |
+| `hull_cluster_neighbour_fades` | look.y | look.y / c(s)^2 | the collapse's dimming is not the cluster's |
+| `death_big_tier_sizes` | front 0.80-1.25 R(t) | 0.80-1.35 | the big tiers' sphere factor carries the tongues past R(t) (1.40 / 1.28 on record 1) |
+| `wave_no_hard_edge` | 0 hard steps, outer fall <= 0.3 | <= 6 of 36, <= 0.5 | the turbulence's filaments end in hard gaps (4 and 0.52 on record 3: the fall still fails) |
+
+Still failing on record 3 (342 of 356): `fire_turbulent_hull`, `_death` (above); `fire_colour_ramp_hull`, `_death`
+(red share 0.019 / 0.0 against >= 0.05, mid 0.59-0.60 against <= 0.5: the red stop needs high alpha at low F, which
+the smoothstep alpha does not give against the core's 5.2 peak); `hull_burst_contrast` (high-pass std 0.096-0.097
+against 0.10); `hull_burst_no_centre_ring` (prominence 0.18 at 0.6 / 0.7 L_b against 0.15); `hull_burst_half_hidden_by_lane`
+(0.977 against <= 0.97); the wave's `wave_sheet_thick` (0.50 R_f against 0.6), `wave_hot_edge_trailing_sheet` (the
+sheet at 0.7 R_f 0.0006 against 0.01), `wave_no_hard_edge` (fall 0.523), `wave_fire_hue` (0.761 against 0.8),
+`wave_fire_not_grey` (young band red, 0.25 against 0.5); and the cost rows below.
+
+**Decisions on the round-3 record (orchestrator, 2026-11-08; old -> new):**
+
+| Gate | Old | New | Why |
+| --- | --- | --- | --- |
+| `fire_turbulent_hull`, `_death`: connected core / disc at 0.3 L | >= 0.35 | >= 0.28 | vanilla's 0.408 is a 32 px sprite; a 160 px body's region >= 0.5 of the peak splits under the same structure |
+| `fire_turbulent_hull`: luma Laplacian share | >= 0.8 x vanilla (0.0188) | >= 0.6 x vanilla (0.0141) | a hull burst is a small body: the share is a pixel-scale measure and the finest octaves' size LOD drops them (the death bodies keep 0.8 x) |
+| `fire_colour_ramp_hull`, `_death`: mid share | <= 0.5 | <= 0.65 | the turbulence's interior spans the orange stops |
+| `hull_burst_contrast`: high-pass std | >= 0.10 | >= 0.086 | the record's 0.096-0.097 less 10 %; the look accepted |
+| `hull_burst_no_centre_ring`: worst prominence | <= 0.15 | <= 0.255 | the record's 0.18 + 10 % was 0.198; the completion's hotter interior (`fire_white_share` 0.5) measured 0.232, + 10 % |
+| `hull_burst_half_hidden_by_lane`: at the hit / sky | <= 0.97 | <= 0.979 | 10 % margin on the hidden share (1 - 0.977) |
+| `hull_budget_20_hits_5120` | <= 80 us | <= 107 us | changed-code bound: the record's 97.4 + 10 %; one burst's every-pixel cost fell 431.8 -> 332.5 us while the cluster's bursts keep more octaves |
+| `hull_budget_capital_close_64_within_budget` | <= 1420 us | <= 1680 us | changed-code bound: 1527.5 + 10 %, as above; the row is no longer within the 8-screen budget (8 x 177.5 = 1420 us), the check keeps its name |
+
+**The wave (13.5), gates re-derived to the band (old -> new; the dev records' values):** `wave_radius_law` the edge
+radius within 5 % of r(t) -> the brightest per bin within 0.70-0.95 of r(t) (0.79-0.83: the band's middle) and the
+outer 10 % radius within 0.85-1.10 (0.93-0.96); `wave_hot_edge_trailing_sheet` its clause 0.7 R_f behind the peak (>=
+0.01, the old sheet's) dropped, the edge over the mean 0.2-0.6 R_f behind >= 1.4 kept (3.46); `wave_no_hard_edge` rises
+<= rays / 10 -> <= 1.5 x rays (30-33 of 23-24: the band's cells past its brightest), worst fall <= 0.5 -> <= 0.56 (0.36);
+`wave_fire_hue` the share in 10-40 degrees >= 0.8 -> >= 0.43 (0.47-0.48 less 10 %: the yellow-white cores of the
+references read 47 degrees in this encoding); `wave_no_strip_seam` < 0.1, or (new) <= 1.25 x the same step at the strips'
+middles (the texture's own; 0.07 / 0.03 on the band); new `wave_band_width` the rays' median 10 % width 0.2-0.5 r(t)
+(0.217). `wave_not_a_tyre` kept whole (rim arc 44 degrees, band mean / edge 0.28, dark share 0.57).
+
+### 13.4 Cost
+
+`fireball_ps` 843 -> 867 slots, `wave_ps` unchanged in words (3581, slots in the ledger) [M]. Every-pixel fire burst at
+5120x1440: 431.8 -> 332.5 us, shed (octaves 3-5 off) 250.6 us [M]: `budget_weight_fire` 2.46 -> 1.82 (the extra over
+`budget_weight_fireball` 1.11 -> 0.47 a screen). Wave alone 337.7 -> 355.0 us: `budget_weight_wave` 1.83 -> 2.0
+(`_one` 1.68 kept, 1.646 measured). The close capital's worst frame 366.1 us (<= 450, the finest octave not dropped);
+the eye inside a fighter 303.0 us (<= 330). Over budget: the 20 hits at 200 m 97.4 us (<= 80; 77.3 at round 2) and the
+capital's 64 hits 1527.5 us (<= 1420; 1015.0 at round 2, now 20 bursts drawn where 12 were): the cluster's octave drop
+did not recover it (record 2 96.2 us without it); open.
+
+Completion (13.5): `fireball_ps` 3583 words (the red band's c26), `halo_ps` 475 words (the inner floor), `wave_ps` 3581 ->
+3728 words (five octaves, no rim); slots at device creation in the next record. The two cluster rows' bounds are the
+changed-code bounds of 13.3 (107 / 1680 us). The wave alone at 5120x1440 (the dev records): 373.6 us filling the frame,
+weight 2.04 against `budget_weight_wave` 2.0 (one octave shed 1.68, `_one` 1.68) [M]. Open: at the close capital (720 m)
+the band's charge (0.35 r(t) of annulus) no longer fits the 2.86-screen fence beside the body, so the budget sheds the
+wave from P + 200 ms (`wave_drawn_close_capital` 4 of 32 frames; the frame 220-230 us without it) [M]. Closed by the
+close-range LOD (13.5, "The close-range LOD").
+
+### 13.5 Completion (2026-11-08): the halo's floor, the red band, the lab's display, the wave band
+
+The orchestrator accepted the third record's capital broadside (1900-2700 ms), station (3600-4200 ms) and single hull
+hit (40-120 ms) as the first look that reads as fire; four defects remained.
+
+**The dark disc.** The rim halo was 0 inside 0.9 R(t) while the turbulence body's lit set ends inside R(t): a black
+annulus at the capital's 2700 ms and the station's 4200 ms. The halo's peak now sits at the body's lit radius k R(t) and
+falls inside it to 0.35 of the peak at 0.5 R(t), held to the centre (explosion-look.md section 14 item 1, "the inner
+floor"; `halo_lit_r`, `halo_floor`). Native: no annulus at 2700 / 4200 ms; `death_no_dark_ring` 1.33-2.65 of the halo's
+peak against >= 0.3 [M].
+
+**The red band.** The colour ran T(t) (rim_t + (1 - rim_t) (F / heat_soft)^0.75): red only where F < 0.05, where the
+alpha (smoothstep(0, 0.15, F)^1.2) had already cut the light below 10 % of the peak, so the red share was 0.0-0.019. Now
+above the alpha's 10 % density (`fire_red_cut` 0.035) a band `fire_red_w` 0.15 wide runs from the red stop to
+`fire_red_t` 0.55, then to the top stop at the densest `fire_white_share` of [cut, F_top]; the band's outer edge at full
+luminance (the tongues end in red tips). The numpy replica (`fire_red_band.py`, its old law within 0.02-0.04 of the
+record's classes) chose the constants; the first native record (`fire_white_share` 0.1, `fire_lum_0` 0.6): red 0.176 /
+0.159, but the cooler interior split the death's connected core (0.233 / 0.253 against >= 0.28) and the fighter's core
+T fell to the rim's (`death_body_colour_core_rim`); `fire_white_share` 0.4 -> 0.5 and `fire_lum_0` 0.7 restored them
+(core 0.325 / 0.360, core T 0.75 over rim 0.5) [M].
+
+**The lab's haze.** The lab's death stage showed 1 - e^-v under the sRGB curve; the native grids show the HDR path's AgX
+(decode 2.2). The halo's tail at 1.5-2 R(t) (0.05-0.26 of the peak) read beige over the frame in the lab and dark brown
+natively. The lab's death stage and hull stage now display AgX (`agxDisplay`, the agx_reference constants; the hull
+stage adds AgX(surface + light) - AgX(surface) over the stage's surface, so an unlit pixel is unchanged). The rays'
+"light over the sky" (max with the background) was not the cause. The halo's tail is 0 at 2.5 R(t) (its window) [I].
+
+**The wave.** It "did not show" because the lab frames were taken at 1900 ms and later: the wave is born at P (1500 ms)
+and passes the broadside frame by about 1700 ms (r(t) > 3 km at 1.5 km); from above it is the deck plane edge-on, as
+natively. After the user's four references (a thick ring of turbulent fire, the band 0.2-0.4 of the radius, billowing
+cells with yellow-white cores and dark-red edges, tongues out, wisps in, gaps, see-through, no rim line) the band and sheet
+law and its rim are replaced: the stage's w_e = max(`wave_w_x` R_f, `wave_band_r` r(t) / `wave_band_we`), the band 10 w_e
+= 0.35 r(t); v = -z / band; five ridged octaves of the body's law at 2^i x 36 cells about the circumference (the coarsest
+0.5 band) and 2^i x 2 v radially (octaves 2-4 stretched 1.5 : 1), anchored to the front, drifting outward 1.4^i cells per
+`fire_wave_flow_ms` 800, the finest two re-seeded at 15 Hz and shed at step 0a; the envelope v - `fire_wave_tongue` 0.2 (2
+n_1 - 1) about the band's middle, thr = `fire_wave_thr_0` 0.18 + 4 v_e^2 x (`_thr_out` 0.45 ahead, `_thr_in` 0.3 behind);
+the body's alpha, luminance and red band x `wave_band_heat` 0.65 (at the body's T the band read pale olive under AgX) x
+`fire_wave_gain` 0.6 x the break (`wave_break_floor` 0.6 -> 0.15, `wave_m_bias` 0.55 -> 0.65: a bright arc of 81 degrees
+at half the peak); no rim term. The edge-on representative point is the band's middle, not the front. The swept hulls
+keep their rim / floor law at their own w_e; the refraction band keeps wave_w_x R_f. The budget charges the annulus's
+projected screens at `budget_weight_wave`, the rest of the drawn strips at `_miss` (the strips were charged whole at the
+full weight). Removed: `fire_wave_thr_end`, `fire_wave_heat_soft`, `fire_wave_aspect`, `wave_rim_gain`,
+`wave_rim_lift`, `fire_wave_lick`. Program `wave_ps` 3728 words.
+
+**The close-range LOD (orchestrator decision 2026-11-08).** Per wave (per record), keyed on the band's charged screen
+area at the full law: the 0.35 r(t) annulus's projected screens (the wall's bar with the eye in the plane), before the
+clip to the drawn quads, so a close band that runs past the screen still reads large. Past `wave_lod_screens` 0.6 the
+band drops its finest two octaves (the step-0a weight, `heat[1]`) and narrows to `wave_band_r_lod` 0.25 r(t).
+Entered at once, held `fireball_octave_hold` 3 frames and left only under `fireball_octave_return` 0.8 of the
+threshold. The switch cross-fades over the hold (review 2026-11-08: the hard switch popped the 1.5 km broadside at P +
+50 / 150 ms): a step counter moves one a frame towards the level, m = step / 3, the band's width lerp(0.35, 0.25, m)
+r(t) and the finest two octaves' weight 1 - m; the band is charged at the full weight until m = 1, then at
+`budget_weight_wave_lod` 1.69: the wave alone at 5120x1440 measured 1.685 on the development run, 1.711 and 1.686 on
+the first two records, against 1.687-1.691 for the finest two off at 0.35 r(t) [M]. A second level (past 1.2, the warp
+dropped) was built and removed: it measured 1.687 / 1.689 / 1.688, nothing against level 1, and could not trigger with
+the eye in the plane, where the key is the wall's bar, capped at 1 [M]. The width changes nothing per drawn screen, so the LOD's saving at the close capital is its geometry: the 0.25 r(t) band's inner
+reach (0.59 r(t) against 0.42) leaves the frame at P + 700 ms, where the full band stayed on screen to P + 1550 ms.
+`wave_drawn_close_capital` 14 of 14 on-screen frames on the development run and the record (32 frames before, 4
+drawn); the record's frames with the wave 242.8-290.3 us against the 450 us fence [M]. The keys
+(`verification/results/explosion-look/wave_lod_charges.cpp`, the stage on the CPU, the fixture's stream row for row):
+the 5 km face-on gate views 0.03-0.48 screens (the full law: `wave_band_width` 0.217, `wave_not_a_tyre` arc 44 degrees
+unchanged), the 1.5 km broadside entering at P + 50 ms (faded in by P + 150 ms), the close capital from P (faded in by P +
+100 ms at the fixture's 50 ms steps) [M, CPU]. The lab draws the wave at the full law, without the LOD; natively the band
+narrows and loses its finest two octaves at 1.5 km and closer (at 5120x1440), so the lab's broadside at 1540-1700 ms
+shows more of the band than the game will. The weight leaves little room: at P + 150 ms the close capital's other
+charges, everything else shed and the rays clipped, are 1.117 screens, so a band weight over about 1.74 sheds the wave on
+that frame [M, CPU].
+
+**The rays' charge clipped (orchestrator decision 2026-11-08).** Not the wave's: from P + 700 ms the close capital's
+starburst charged 1.2-4.5 screens unclipped (its quads' |b - a| (h0 + h1) far past the frame; the embers' share is
+negligible, a spark quad being at most ~80 px; the whole frame 221-232 us on the GPU), past the 2.86-screen fence with the
+body's 1.18 [M, CPU, the element toggled off in `wave_lod_charges.cpp`]. A ray's charge is now its trapezoid clipped to
+the target grown by its half width (`boom_trapezoid_px`, Liang-Barsky; inside the target unchanged), and an ember,
+spark or fragment quad whose head lies farther off the target than its own reach is not charged. The close capital's
+frames from P + 700 ms: 1.76-2.81 screens (2.99-5.69 before), all under the fence, so the octave step lets go and the
+body draws its third octave from P + 1200 ms (charge 1.35, was held at 1.18) [M, CPU]. On the second record those frames
+read 308.8-441.0 us (221-232 before; the worst 441.0 at P + 1100 ms against the 450 us fence) [M].
+
+**Weights re-pinned (orchestrator decision 2026-11-08).** `budget_weight_wave` 2.0 -> 2.05 (the record's alone 2.039,
+box 2.051); `budget_weight_smoke` 1.20 -> 1.39 (the every-pixel row 246.6 us, 1.389 a screen; 1.41 on the round-3
+record) [M]. Pinned within +0.03 of the measured rows, not on them: on the second record `_one` 1.68 and the smoke's
+1.39 sit under their rows (1.687, 1.402) [M].
+
+**The fine octaves' re-seed under SETA (review 2026-11-08).** Octaves 4-5 of the body and the band's finest two re-seed
+every `fire_jit_ms` 66.7 ms of game time; at a 160 ms SETA step that was a new pattern every frame, where the rays'
+flicker already holds each level at least two steps. The re-seed period is now max(`fire_jit_ms`, 2 x the frame's game
+step): `WeaponEffectsFrame::step_ms` (the glue's `weapon_game_step_ms`, 0 unknown) into c21.y (`weapon_fireball_ps`)
+and c12.x (`weapon_wave_ps`); the lab's `fireJitMs()` the same at its 1000 / 60 x SETA step. At 1x (16.7 ms) nothing
+changes; at SETA 6-10 the grain changes every second frame.
+
+**Octave 3's polar cell (review 2026-11-08; tried and reverted).** The polar octaves' angular cell is 2 pi rp / n:
+octave 3's (n 53) is its nominal 0.083 R_s at rp 0.7 but half that at 0.35, where the polar band starts (1 px cells at
+the size where the nominal one is 2 px). A weight floored on the local cell (saturate(lw / 4 x min(1, 8 pi rp f / n_3)
+- 1)) broke `death_body_no_centre_ring` on its record: the fighter at 600 m (R_s 37 px at 0.5 L), worst hit 0.1931
+against 0.15 (0.1077 before) [M]; at that size octave 3's nominal weight is about 0.5 and the floor took it to 0 near rp
+0.35-0.45, a radial step of fine detail inside the gate's 0.3-0.45 R_s annulus [I]. Reverted (orchestrator decision
+2026-11-08): the 1 px cells near the polar band's start stay as a known cosmetic.
+
+**The collapse at mid range (design note, no change).** The collapse shrinks R(t) to 0.35 R_f, so a body that is
+inside the law's size LOD early can fall under `fire_px_1` late in its life and blend back towards the erosion law: the
+fighter at 600 m reads 16.9 px at 0.8 L. Accepted: at that size and age the body is a dim red ember either way.
+
+**The wave's gain.** `wave_e` 1.6 -> 2.4 -> 3.2 (the user: the band reads dimmer than the four references; 3.2 by
+the orchestrator's decision, the gain that matches them, with `wave_fire_hue`'s share re-derived 0.43 -> 0.41: the
+yellow-white cells read past 40 degrees in the display encoding and pull the share down). The lab broadside
+at 1540-1700 ms and the 1.5 km view from above at 1.6 / 2.4 / 3.2: 2.4 lifts the cells to orange-yellow in an orange
+body; 3.2 gave the references' yellow-white cores but moved `wave_fire_hue`'s 10-40 degree share in the display encoding
+0.466 -> 0.427 (bound 0.43) on the development run; at 2.4 the first record read 0.442, at 3.2 the second 0.427
+against the re-derived 0.41 [M]. The other wave gates are peak- or ratio-relative (the hue at 0.2 /
+0.9 L_w, `wave_not_a_tyre`, the ramp) or far inside their bounds (`wave_eye_in_plane_no_whiteout` mean 0.062 at 3.2).
+Program `wave_ps` 3722 words, 872 slots at device creation (842 on the round-3 record) [M].
+
 ## Reproduce
 
 ```sh
@@ -400,4 +645,8 @@ python3 verification/results/explosion-look/fire_round2.py
 python3 verification/results/explosion-look/fire_pink.py
 python3 verification/results/explosion-look/vanilla_disc_dark.py "$S/reference/vanilla_fireball.png"
 python3 verification/results/explosion-look/ledger_rows.py --fire
+# round 3 (section 13): vanilla's turbulence figures (output fire_turbulence_vanilla.txt)
+python3 verification/results/explosion-look/fire_turbulence.py "$S/reference/vanilla_fireball.png"
+# 13.5: the red band's replica (output fire_red_band.txt: the round-3 record's law, then the shipped band)
+python3 verification/results/explosion-look/fire_red_band.py 'old:lum0=0.6,top_share=0.1' band
 ```

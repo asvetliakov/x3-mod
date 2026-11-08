@@ -418,6 +418,21 @@ spark cloud about three fireball radii across. Four new elements of the death st
    (tail weight 0.4 windowed from 1.8 R(t), heat(T)) read as a grey disc with an edge out to 2 R(t) under AgX; the
    second (these constants) as a warm glow falling off the rim. Budget: the quad's box at `budget_weight_halo` 0.40,
    shed at step (2) with a wave and (4) without, as before.
+   **The inner floor** (2026-11-08, fire round 3's native grids: a black disc between the lit body and the halo at the
+   capital's 2700 ms and the station's 4200 ms; the halo was 0 inside 0.9 R(t) while the turbulence body's lit set ends
+   inside R(t)). The peak moves to the body's lit radius k R(t), k = `halo_lit_0` 0.98 sqrt((1 - `fire_thr_t` x /
+   `halo_lit_a` 0.23) / (1 + `fire_thr_rt` x)) (the stage's `halo_lit_r`: the material's 10 %-of-peak edge under its
+   threshold's age terms, 0.955 / 0.908 / 0.841 at 0.1 / 0.3 / 0.6 L [I, the law]; the five tiers' measured mean outline
+   0.96 / 0.92 / 0.76 [M, round 3]); R(t) carries the collapse, so the peak follows the shrinking body. d = max(r - k, 0)
+   in R(t), the outside law unchanged; inside the peak p = `halo_floor` 0.35 + 0.65 smoothstep(`halo_floor_r` 0.5, k,
+   r): 0.35 of the peak from 0.5 R(t) to the centre, never 0 (no dark ring), under half the peak (not a balloon). The
+   lit radius rides in the lobe slot; R(t) is the quad's radius over `halo_r_x` (c5.w); c6 carries the floor. Gates:
+   `death_halo_rim` (the peak within 0.1 R(t) of the body's measured lit radius, rings inside 0.5 R(t) 0.25-0.45 of the
+   peak), `death_big_halo_capped` (the same on the capital), `death_no_dark_ring` (the frame's smallest ring mean between
+   0.5 R(t) and the halo's peak >= 0.3 of the halo's peak: fighter 300 m at 0.1 / 0.3 L, capital broadside at 1900 /
+   2700 ms). The lab's death and hull stages show the frame through the HDR path's AgX (the dump grids' view; the
+   previous 1 - e^-v under the sRGB curve lifted the halo's tail to a beige haze over the frame). The collapse below
+   stays.
 2. **Rays [C, M].** A sprite kind (`weapon_sprite_ps.hlsl` depth.y 5; the vertex program passes it through). Since
    2026-11-07 (the user on the corvette: "not so pronounced/thin ... they shouldn't read as some decal ... look into our
    sun") the law is the own sun's spokes ([own-sun-look.md](own-sun-look.md) step 1d): an odd 15-25 rays a death (15, 17,
@@ -518,6 +533,18 @@ the capital broadside through the main blast; clipped engine space and AgX from 
 as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads as noise -> `tier_sparks_hi` halved. Flight
 questions: do the rays read as soft glow spokes, not a decal; pumping (scene darkening and brightening with the spark
 cloud at point-blank range).
+
+**The collapse (2026-11-08, the user's addition to the fire material's round 3; fire-material.md section 13.2).** The body
+grew, held at full size for most of its life and eroded in place. Now every tier's main body rises as before, holds to
+`boom::body_hold_x` 0.35 L, then contracts: R(t) x c(s), c(s) = `body_end_r` + (1 - `body_end_r`) (1 - s)^1.5, s = (x -
+0.35) / 0.65, to 0.35 R_f at L (ease-out); its radiance x c(s)^2 (the shrinking core dims); its material's outward flow x
+(1 - s) (the clock `collapse_clock`), so the blob reads as pulling in; the heat law (`body_hold` 0.8, `body_cool` 0.7)
+already cools it to red over the contraction. The fire classes' hull bursts take the same law over their own life. The
+secondaries, sparks, smoke, the wave, the pre-roll and the wave's birth keep their lives, so the shrinking core sits
+inside the spark cloud. Gate `death_body_collapses` (fighter 200 m, capital 3 km broadside: the fire-body cases; medians
+over 8 seeds): the lit set's equal-area radius at 0.9 L <= 0.5 of its 0.3 L value and the peak <= 0.3 of it; the
+connected core of `fire_turbulent_death` (>= 0.35 of the disc at 0.3 L) holds. Rows in the ledger's "Fire material /
+Round 3".
 
 ## Reproduce
 

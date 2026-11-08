@@ -2764,6 +2764,7 @@ void budget(rr::WeaponEffectsPass& pass) {
                         double(quads[q].p[3][0]), double(quads[q].p[3][2]), double(quads[q].p[1][3]), double(quads[q].p[5][0]),
                         double(quads[q].clip[0][3]));
     }
+    device_guard("timing");
     std::printf("BOLT_TIMING case=coverage quad_mpx=%.3f screens=%.3f\n", quad_px * 1e-6, quad_px / (double(v.width) * v.height));
     // the same frame without the rim pass (its share of the cost)
     double gpu_no_rim = 1e30;
@@ -2784,6 +2785,7 @@ void budget(rr::WeaponEffectsPass& pass) {
             if (i >= 0) gpu_no_rim = std::min(gpu_no_rim, ticks_us(a, b, freq));
         }
     }
+    device_guard("timing");
     std::printf("BOLT_TIMING case=no_rim gpu_us=%.1f\n", gpu_no_rim);
     // the fixed cost: one floored bolt 8 km out (the state, the lock, two draws and the fence)
     double gpu_one = 1e30;
@@ -2804,6 +2806,7 @@ void budget(rr::WeaponEffectsPass& pass) {
         }
         f = build(v, cur, prev); // the frame's quads again (the global array)
     }
+    device_guard("timing");
     std::printf("BOLT_TIMING case=one_far_bolt gpu_us=%.1f\n", gpu_one);
     // the same 512 quads collapsed to a point (no pixel): the upload, the vertex work and the draws alone
     double gpu_collapsed = 1e30;
@@ -2827,6 +2830,7 @@ void budget(rr::WeaponEffectsPass& pass) {
         }
         std::memcpy(quads, saved, sizeof saved);
     }
+    device_guard("timing");
     std::printf("BOLT_TIMING case=collapsed_512 gpu_us=%.1f\n", gpu_collapsed);
     {
         rr::WeaponEffectsFrame mf = base_frame(bt.t);
@@ -2936,8 +2940,10 @@ void budget(rr::WeaponEffectsPass& pass) {
             dev->EndScene();
         },
         load, 30, 60);
+    device_guard("timing");
     std::printf("BOLT_TIMING case=bolt_alone_fills_frame_ts gpu_us=%.1f weight=%.3f (minus clear, / 177.5)\n",
                 fill_ts - ts_clear, (fill_ts - ts_clear) / 177.5);
+    device_guard("timing");
     std::printf("BOLT_TIMING case=timestamps clear_us=%.1f bolts_us=%.1f muzzles_us=%.1f bolts_and_muzzles_us=%.1f "
                 "frame_gpu_us=%.1f (both - clear, reported)\n",
                 ts_clear, ts_bolts - ts_clear, ts_muzzles - ts_clear, ts_both, gpu_frame);
@@ -2948,6 +2954,7 @@ void budget(rr::WeaponEffectsPass& pass) {
     const double fenced_frame = gpu_bolts + gpu_muzzles;
     const bool gpu_ok = fenced_frame <= fenced_bound_us, cpu_ok = cpu_build + cpu_draw <= 150.0,
                muzzle_ok = (ts_muzzles >= 0 && ts_clear >= 0 ? ts_muzzles - ts_clear : gpu_muzzles) <= 30.0;
+    device_guard("timing");
     std::printf("BOLT_TIMING width=5120 height=1440 bolts=%u lines=%u orbs=%u waves=%u rims=%u gpu_bolts_us=%.1f "
                 "gpu_muzzles_us=%.1f muzzles=%u muzzle_sprites=%u muzzle_glows=%u gpu_total_us=%.1f bound_us=%.0f "
                 "timestamps_us=%.1f\n",
@@ -2955,6 +2962,7 @@ void budget(rr::WeaponEffectsPass& pass) {
                 mo.n.drawn, mo.b.sprite_quads, mo.b.glow_boxes, fenced_frame, fenced_bound_us, gpu_frame);
     std::printf("BOLT_CPU bolts=%u build_us=%.1f draw_call_us=%.1f total_us=%.1f bound_us=150\n", f.n.drawn, cpu_build, cpu_draw,
                 cpu_build + cpu_draw);
+    device_guard("timing");
     std::printf("BOLT_TIMING case=bolt_alone_fills_frame gpu_us=%.1f weight=%.3f (gpu_us / 177.5)\n", fill_bolt,
                 fill_bolt / 177.5);
     report("bolt_budget_512_bolts_20_muzzles_5120", gpu_ok, "");
@@ -2992,6 +3000,7 @@ void reset_and_faults(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp, Bo
     bt.release();
     g.release();
     D3DPRESENT_PARAMETERS pp2 = pp;
+    device_guard("before_reset"); // a loss before the Reset is seen, not reset away
     const HRESULT reset = dev->Reset(&pp2);
     pass.after_reset(reset);
     const bool made = SUCCEEDED(reset) && make_target(g, 1920, 1080) && bt.make(1920, 1080);

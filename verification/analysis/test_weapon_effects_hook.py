@@ -437,6 +437,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'fire_colour_ramp_hull', 'hull_glow_follows_burst', 'hull_20_hits_no_white_sun',
                      # the fire material's round 2 (fire-material.md section 12)
                      'fire_not_pink_hull', 'fire_quad_edge_dark_hull', 'fire_luminance_thin_hull', 'fire_small_reads',
+                     # round 3 (fire-material.md section 13): the turbulence
+                     'fire_turbulent_hull',
                      'hull_flash_star_3_frames', 'hull_smoke_darkens_hull_only', 'hull_burst_small_has_structure',
                      'hull_asteroid_dust_readable', 'hull_repair_cool_spot',
                      # the burst look's review (2026-11-07): the octave blend and its hysteresis, the cluster's fade, the
@@ -495,7 +497,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertEqual((cpu[case]['live'], cpu[case]['hidden']), (1024, hidden), case)
             self.assertLessEqual(cpu[case]['best_us'], cpu[case]['target_us'], case)
         timing = {(x['width'], x['case']): x for x in m['hull_timing'] if 'width' in x}
-        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 80.0)  # 50 before the bursts, 70 before the burst look
+        self.assertLessEqual(timing[(5120, 'fighter_200m_20_hits')]['gpu_us'], 107.0)  # 50 before the bursts, 70 before the burst look, 80 before fire round 3
         # the glow's budget weight (core::look::budget_weight_glow) against its measured full-screen cost / 177.5 us
         core_h = (ROOT / 'src/proxy/weapon_effects_core.h').read_text()
         import re
@@ -521,12 +523,15 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             # review 2026-11-07: the worst case itself is a row (every pixel taking the noise), the weight its cost
             worst = timing[(5120, case.replace('fills_frame', 'every_pixel_noise'))]['gpu_us'] / 177.5
             self.assertAlmostEqual(weight, worst, delta=0.15, msg=name)
-        # the dense frame within the budget's 8 x 177.5 us
-        self.assertLessEqual(timing[(5120, 'capital_close_64_hits')]['gpu_us'], 1420.0)
+        # the dense frame (64 hits on a close capital): the changed-code bound 1680 us (the round-3 record's 1527.5 + 10 %;
+        # fire-material.md 13.3), over the budget's 8 x 177.5 = 1420 us since fire round 3 (1529 on its records), which
+        # was the bound before it
+        self.assertLessEqual(timing[(5120, 'capital_close_64_hits')]['gpu_us'], 1680.0)
 
     # Step 3, the death explosion (docs/architecture/explosion-look.md section 9; weapon_effects_boom_cases.h).
     DEATH_CHECKS = ('death_programs_attached', 'death_tier_sizes', 'death_body_contrast', 'death_body_silhouette_lobed',
                     'death_body_erodes_outside_in', 'death_body_colour_core_rim', 'death_no_pop_at_birth',
+                    'fire_turbulent_death', 'death_body_collapses',  # round 3 (fire-material.md section 13)
                     'death_flash_star_3_frames', 'death_seta6_three_frame_floor', 'death_shock_is_a_shell',
                     'death_embers_random_and_cooling', 'death_glow_is_the_bodys_light', 'death_smoke_darkens_surfaces_only',
                     'death_cools_through_ramp', 'death_fades_to_zero_at_life', 'death_nested_three_drawn',
@@ -541,8 +546,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                     'death_big_seta6', 'death_budget_capital_close_5120', 'death_big_stage_cpu',
                     # the coordinator's decisions D14 (no shell on any tier) and D15 (the big tiers' halo capped)
                     'death_shock_off_all_tiers', 'death_big_halo_capped',
-                    # 2026-11-08: the rim halo (every tier)
-                    'death_halo_rim',
+                    # 2026-11-08: the rim halo (every tier); its inner floor (fire round 3's dark annulus)
+                    'death_halo_rim', 'death_no_dark_ring',
                     # section 14 (explosion-look.md, 2026-11-07): the radiant core, the rays, the spark spray, the meter
                     'death_core_radiance', 'death_rays_starburst', 'death_rays_soft', 'death_rays_differ',
                     'death_sparks_dense', 'death_spark_heads',
@@ -556,8 +561,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         rows = self.record['metrics']['explosion']
         sizes = [r for r in rows if r.get('case') == 'size' and r['age_frac'] in (0.1, 0.3)]
         self.assertEqual(len(sizes), 10)                                        # fighter, missile and the three big tiers
-        # fire-material.md section 12: the tongues' front (the bins' 90th percentile) within 0.80-1.25 of the law
-        self.assertTrue(all(0.80 <= r['front_over_law'] <= 1.25 for r in sizes))
+        # fire-material.md section 12: the tongues' front (the bins' 90th percentile) within 0.80-1.25 of the law; the big
+        # tiers 0.80-1.35 since round 3 (13.3: their sphere factor carries the tongues past R(t); the fixture's bound)
+        big = ('corvette', 'capital', 'station')
+        self.assertTrue(all(0.80 <= r['front_over_law'] <= (1.35 if r['tier'].startswith(big) else 1.25) for r in sizes))
         pre = [r for r in rows if r.get('case') == 'preroll']
         self.assertEqual([(r['box'], r['births'], r['inside'], r['bodies_before_P']) for r in pre], [(0, 8, 8, 0), (1, 8, 8, 0)])
         shock = [r for r in rows if r.get('case') == 'shock']                    # the limb only: interior 0
@@ -567,8 +574,13 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         halo = [r for r in rows if r.get('case') == 'halo']
         self.assertTrue(halo and all(r['ratio'] <= 2.2 for r in halo))                  # the rim law's 10 % at 2.04 R(t)
         rim = [r for r in rows if r.get('case') == 'halo_rim']
-        self.assertTrue(rim and all(abs(r['peak_r_over_R'] - 1.0) <= 0.1 and r['at_2R_over_peak'] < 0.15 and
-                                    r['inside_085R_max'] == 0 for r in rim))
+        # the peak at the body's lit radius, the inner floor 0.25-0.45 of it inside 0.5 R(t) (2026-11-08: no dark ring)
+        self.assertTrue(rim and all(abs(r['peak_r_over_R'] - r['lit_r_over_R']) <= 0.1 + 1.0 / r['R_t_px'] and
+                                    r['at_2R_over_peak'] < 0.15 and 0.25 <= r['inside_05R_lo'] and
+                                    r['inside_05R_hi'] <= 0.45 for r in rim))
+        ring = [r for r in rows if r.get('case') == 'dark_ring']
+        self.assertEqual(len(ring), 4)
+        self.assertTrue(all(r['ratio'] >= 0.3 for r in ring))
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
         self.assertLessEqual(timing[(5120, 'eye_inside_fighter')]['gpu_us'], 330.0)  # 300 until 2026-11-08 (n4's below)
         self.assertLessEqual(timing[(5120, 'fighters_20_600m')]['gpu_us'], 8 * 177.5)
@@ -585,7 +597,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                         'wave_shimmer_strips_area', 'wave_lights_swept_hulls', 'compose_silhouette_cv',
                         'compose_silhouette_changes', 'compose_not_grapes', 'compose_under_one_sun', 'compose_births_spread',
                         'compose_jets_capital', 'compose_eye_inside_shared', 'compose_lod_floor', 'compose_box_holds_spheres',
-                        'wave_sheet_thick', 'wave_hot_edge_trailing_sheet', 'wave_flame_tongues', 'wave_drawn_close_capital',
+                        'wave_sheet_thick', 'wave_band_width', 'wave_hot_edge_trailing_sheet', 'wave_flame_tongues', 'wave_drawn_close_capital',
                         'compose_clumps_survive', 'compose_no_white_region',
                         'wave_eye_in_plane_no_whiteout', 'compose_capital_structure', 'wave_break_follows_seed',
                         'wave_refused_body_drawn', 'wave_no_strip_seam')
@@ -604,9 +616,12 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertTrue(checks[name], name)
         radius = [r for r in rows if r.get('case') == 'wave_radius']
         self.assertEqual(len(radius), 3)
-        self.assertTrue(all(abs(r['ratio'] - 1.0) <= 0.05 and r['peak'] <= r['body_peak'] for r in radius))
+        # fire round 3's band (fire-material.md 13.3, the fixture's wave_radius_law): the brightest within 0.70-0.95 of
+        # r(t), the outer 10 % radius within 0.85-1.10 of it (was the edge within 5 %)
+        self.assertTrue(all(0.70 <= r['ratio'] <= 0.95 and 0.85 <= r['outer_px'] / r['law_px'] <= 1.10 and
+                            r['peak'] <= r['body_peak'] for r in radius))
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
-        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'eye_inside_fighter_n4']
+        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'wave_lod1_alone', 'eye_inside_fighter_n4']
         if compose:
             sil = {r['tier']: r for r in rows if r.get('case') == 'compose_silhouette'}
             self.assertEqual(set(sil), {'fighter_600m', 'capital_1500m', 'station_3km'})
@@ -627,6 +642,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLessEqual(weight['alone_weight'], weight['pinned'] + 0.03)
         self.assertLessEqual(weight['one_octave_weight'], weight['pinned_one'] + 0.03)
         self.assertLessEqual(weight['box_weight'], weight['pinned'] + 0.03)
+        # the close-range LOD (fire-material.md 13.5) pinned to its row
+        self.assertLessEqual(weight['lod1_weight'], weight['pinned_lod1'] + 0.03)
         # the fourth octave's weight pinned to its row (a body seen from outside, review 2026-11-07)
         f4 = next(r for r in self.record['metrics']['explosion_timing']
                   if r.get('case') == 'fine4_weight' and r['width'] == 5120)

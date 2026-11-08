@@ -38,6 +38,7 @@ constexpr double sparks_1024_bound_us = 48.1; // 38.5 us measured on the first r
 // fixture's compose rows (force_n, force_shared, force_jets 0xff: the law's) and the box gate's growth.
 bool compose_on = true, force_shared = false;
 bool wave_octave2 = true; // the wave sheet's second octave (the one-octave weight row: false)
+int wave_lod = -1;         // the wave's close-range LOD forced (the weight rows: 0 or 1, faded in), -1 the law's
 bool wave_off = false;     // the CPU rows' reference without the waves
 unsigned octave_cap = 4;   // the frame's octaves at most (the fourth octave's timing row: 3)
 unsigned force_n = 0, force_jets = 0xffu;
@@ -72,6 +73,7 @@ ws::BoomTuning tuning(unsigned parts) {
     t.wave = (parts & p_wave) && !wave_off;
     t.compose = compose_on;
     t.wave_octave2 = wave_octave2;
+    t.wave_lod = wave_lod;
     t.force_n = force_n;
     t.force_jets = force_jets;
     t.force_shared = force_shared;
@@ -352,11 +354,14 @@ Outline outline(const std::vector<float>& l, unsigned W, double x, double y) {
     return o;
 }
 // The radial profile about (x, y) in 1 px rings (the mean of each ring): its peak and the peak's radius, the profile at
-// 2 R (px) over the peak, and the largest pixel inside 0.85 R (2026-11-08, the rim halo).
+// 2 R (px) over the peak, and (2026-11-08, the halo's inner floor) the smallest and largest ring mean from 2 px to R_in
+// (px; 0: 0.5 R) over the peak; means: every ring's mean.
 struct Radial {
-    double peak = 0, peak_r = 0, at_2R = 0, inside = 0;
+    double peak = 0, peak_r = 0, at_2R = 0, in_lo = 0, in_hi = 0;
+    std::vector<double> means;
 };
-Radial radial(const std::vector<float>& l, unsigned W, unsigned H, double x, double y, double R, double R2 = 0) {
+Radial radial(const std::vector<float>& l, unsigned W, unsigned H, double x, double y, double R, double R2 = 0,
+              double R_in = 0) {
     Radial o;
     const unsigned n = unsigned(std::ceil(std::hypot(double(W), double(H)))) + 1u;
     std::vector<double> sum(n, 0.0), cnt(n, 0.0);
@@ -365,15 +370,25 @@ Radial radial(const std::vector<float>& l, unsigned W, unsigned H, double x, dou
         const unsigned k = unsigned(r);
         sum[k] += l[i];
         cnt[k] += 1.0;
-        if (r < 0.85 * R) o.inside = std::max(o.inside, double(l[i]));
     }
+    o.means.assign(n, 0.0);
     for (unsigned k = 0; k < n; ++k)
-        if (cnt[k] > 0 && sum[k] / cnt[k] > o.peak) {
-            o.peak = sum[k] / cnt[k];
+        if (cnt[k] > 0) o.means[k] = sum[k] / cnt[k];
+    for (unsigned k = 0; k < n; ++k)
+        if (cnt[k] > 0 && o.means[k] > o.peak) {
+            o.peak = o.means[k];
             o.peak_r = k + 0.5;
         }
     const unsigned k2 = unsigned(R2 > 0 ? R2 : 2.0 * R); // 2 R(t)'s silhouette (px) when given
-    o.at_2R = o.peak > 0 && k2 < n && cnt[k2] > 0 ? sum[k2] / cnt[k2] / o.peak : 0.0;
+    o.at_2R = o.peak > 0 && k2 < n && cnt[k2] > 0 ? o.means[k2] / o.peak : 0.0;
+    const unsigned kin = std::min(n, unsigned(R_in > 0 ? R_in : 0.5 * R));
+    o.in_lo = 1e30;
+    for (unsigned k = 2; k < kin; ++k)
+        if (cnt[k] > 0 && o.peak > 0) {
+            o.in_lo = std::min(o.in_lo, o.means[k] / o.peak);
+            o.in_hi = std::max(o.in_hi, o.means[k] / o.peak);
+        }
+    if (o.in_lo > 1e29) o.in_lo = 0;
     return o;
 }
 // The body's view-space centre of the newest body box (the biased point the program draws about).
@@ -589,11 +604,12 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 double z, r;
                 const char* name;
             } cases[2] = {{bm::fighter, 200.0, 14.0, "fighter_200m"}, {bm::capital, 3000.0, 1288.0, "capital_3km"}};
-            bool ok[9] = {true, true, true, true, true, true, true, true, true};
+            bool ok[11] = {true, true, true, true, true, true, true, true, true, true, true};
             for (const Case& cs : cases) {
                 const float L = bm::tier_life_ms[cs.tier], P = bm::tier_preroll_ms[cs.tier];
                 std::vector<double> thin, gaps, aniso, licks, seam, hot, hot_r, cold, cold_r, mid, core10, out10;
                 std::vector<double> disc_dark, pink2, pink3, pink5;
+                std::vector<double> hf3, hf5, conn3, out3, out5, shrink9, dim9; // round 3: the turbulence, the collapse
                 double edge_worst = 0;
                 for (unsigned j = 0; j < 8; ++j) {
                     boom::clear();
@@ -626,6 +642,21 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     edge_worst = std::max(edge_worst, classes::burst::quad_edge_of(rgb1, g.w, g.h, boom::bodies));
                     const std::vector<float> rgb5 = body_at(0.5f, &d, nullptr);
                     const classes::burst::Fire f5 = classes::burst::fire_of(rgb5, d, g.w, g.h);
+                    // round 3, the collapse (fire-material.md 13): the lit set's equal-area radius and the peak at 0.9 L over
+                    // their 0.3 L values (the 0.9 L frame about the body's own centre)
+                    const std::vector<float> rgb9 = body_at(0.9f, &d, nullptr);
+                    const classes::burst::Fire f9 = classes::burst::fire_of(rgb9, d, g.w, g.h);
+                    const double sh9 = f3.lit > 0 ? std::sqrt(f9.lit / f3.lit) : 1.0, dm9 = f3.peak > 0 ? f9.peak / f3.peak : 1.0;
+                    std::printf("EXPLOSION case=fire_turbulence tier=%s seed=%u hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f "
+                                "shrink9=%.3f dim9=%.3f\n",
+                                cs.name, j, f3.hf, f5.hf, f3.core, f3.out, f5.out, sh9, dm9);
+                    hf3.push_back(f3.hf);
+                    hf5.push_back(f5.hf);
+                    conn3.push_back(f3.core);
+                    out3.push_back(f3.out);
+                    out5.push_back(f5.out);
+                    shrink9.push_back(sh9);
+                    dim9.push_back(dm9);
                     std::printf("EXPLOSION case=fire_body tier=%s seed=%u R_px=%.1f thin=%.4f gaps=%.4f disc_dark=%.4f aniso=%.3f "
                                 "licks=%.3f seam=%.4f hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core10=%.3f out10=%.3f "
                                 "pink=%.4f,%.4f,%.4f\n",
@@ -660,15 +691,29 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 std::printf("EXPLOSION case=fire_body_round2 tier=%s disc_dark=%.4f pink=%.4f,%.4f,%.4f quad_edge_worst=%.4f\n",
                             cs.name, boom::median(disc_dark), boom::median(pink2), boom::median(pink3), boom::median(pink5),
                             edge_worst);
-                ok[0] = ok[0] && boom::median(thin) >= 0.10 && boom::median(thin) <= 0.35 && boom::median(disc_dark) >= 0.20;
+                // round 3 (fire-material.md 13): <= 0.35 and the disc's dark share >= 0.077 (was 0.10-0.35 and 0.20)
+                ok[0] = ok[0] && boom::median(thin) <= 0.35 && boom::median(disc_dark) >= 0.077;
                 ok[6] = ok[6] && pink < 0.02;
                 ok[7] = ok[7] && edge_worst >= 0.0 && edge_worst < 0.02;
                 ok[1] = ok[1] && boom::median(aniso) <= 0.75;
                 ok[2] = ok[2] && boom::median(licks) >= 2.0;
                 ok[3] = ok[3] && boom::median(hot) >= 0.25 && boom::median(hot_r) <= 0.5 && boom::median(cold) >= 0.05 &&
-                        boom::median(cold) <= 0.25 && boom::median(cold_r) >= 0.65 && boom::median(mid) <= 0.5;
+                        boom::median(cold) <= 0.25 && boom::median(cold_r) >= 0.65 && boom::median(mid) <= 0.65;
                 ok[4] = ok[4] && boom::median(core10) >= 3.0 && boom::median(out10) <= 1.5;
                 ok[5] = ok[5] && seam_med <= 0.1; // the median over the seeds (section 6)
+                // round 3 (fire-material.md 13): fire_turbulent_death, the luma Laplacian's energy share at 0.3 and 0.5 L at
+                // least 0.8 of the vanilla frame's (fire_turbulence.py: 0.0235), the connected core >= 0.28 of the disc at
+                // 0.3 L (2026-11-08, was 0.35: vanilla's 0.408 is a 32 px sprite, a 160 px body's core region splits under
+                // the same structure; fire_colour_ramp_death's mid share likewise <= 0.65, was 0.5), every region outside
+                // it < 0.08 of the disc; death_body_collapses, the 0.9 L body's radius <= 0.5
+                // and its peak <= 0.3 of the 0.3 L body's (medians over the seeds)
+                std::printf("EXPLOSION case=fire_turbulence_median tier=%s hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f "
+                            "shrink9=%.3f dim9=%.3f\n",
+                            cs.name, boom::median(hf3), boom::median(hf5), boom::median(conn3), boom::median(out3),
+                            boom::median(out5), boom::median(shrink9), boom::median(dim9));
+                ok[9] = ok[9] && boom::median(hf3) >= 0.8 * classes::burst::fire_hf_vanilla && boom::median(hf5) >= 0.8 * classes::burst::fire_hf_vanilla &&
+                        boom::median(conn3) >= 0.28 && boom::median(out3) < 0.08 && boom::median(out5) < 0.08;
+                ok[10] = ok[10] && boom::median(shrink9) <= 0.5 && boom::median(dim9) <= 0.3;
             }
             report("fire_luminance_thin_death", ok[0], "");
             report("fire_tongues_radial_death", ok[1], "");
@@ -678,6 +723,8 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             report("fire_no_seam_death", ok[5], "");
             report("fire_not_pink_death", ok[6], "");
             report("fire_quad_edge_dark_death", ok[7], "");
+            report("fire_turbulent_death", ok[9], "");
+            report("death_body_collapses", ok[10], "");
             boom::core_on = false;
         }
         // 4a. death_body_no_centre_ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"): the burst
@@ -1397,8 +1444,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
     // peak <= 2.2 R(t) at 0.1 / 0.3 / 0.45 / 0.55 L (a lamp fails; 2026-11-08 the rim law: its 10 % radius 2.04 R(t), was
     // <= 1.8 for the filled 1.6 R(t) glow), none from 0.62 L (faded out by halo_fade_x1), none after L, none with the eye
     // inside the body. death_halo_rim (2026-11-08): its radial profile (the mean over 1 px rings about the centre) at 0.1 /
-    // 0.3 L peaks within 0.1 R(t) (+ 1 px) of the rim R(t), is under 0.15 of that peak at 2 R(t), and 0 inside 0.85 R(t)
-    // (no fill: not a balloon).
+    // 0.3 L peaks within 0.1 R(t) (+ 1 px) of the body's lit radius (the same frame's body alone: the mean of its 36 bins'
+    // outermost pixel above 10 % of its peak; was the rim R(t)), is under 0.15 of that peak at 2 R(t), and inside 0.5 R(t)
+    // every ring between 0.25 and 0.45 of the peak (the inner floor halo_floor: never 0, no dark ring; under half the
+    // peak, not a balloon; was 0 inside 0.85 R(t)).
     // 10. death_smoke_darkens_surfaces_only: the fighter over a 0.5 grey hull at its smoke's peak and at 1.6 L.
     {
         boom::clear();
@@ -1437,11 +1486,14 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             halo_ok = halo_ok && boom::peak(hl) > 0.f && ol.max <= 2.2 * Rt_px + 1.0;
             if (frac < 0.35f) {
                 const boom::Radial rp = boom::radial(hl, g.w, g.h, 0.5 * g.w, 0.5 * g.h, Rt_px);
+                const std::vector<float> bl = boom::luma(boom::render(pass, g, at(g, frac * Lf, boom::p_body), v));
+                const double lit_px = boom::outline(bl, g.w, 0.5 * g.w, 0.5 * g.h).mean;
                 std::printf("EXPLOSION case=halo_rim tier=fighter_600m age_frac=%.1f R_t_px=%.1f peak_r_px=%.1f "
-                            "peak_r_over_R=%.3f at_2R_over_peak=%.3f inside_085R_max=%.4f\n",
-                            double(frac), Rt_px, rp.peak_r, Rt_px > 0 ? rp.peak_r / Rt_px : 0.0, rp.at_2R, rp.inside);
-                rim_ok = rim_ok && rp.peak > 0 && std::fabs(rp.peak_r - Rt_px) <= 0.1 * Rt_px + 1.0 && rp.at_2R < 0.15 &&
-                         rp.inside == 0.0;
+                            "peak_r_over_R=%.3f lit_r_over_R=%.3f law_k=%.3f at_2R_over_peak=%.3f inside_05R_lo=%.3f inside_05R_hi=%.3f\n",
+                            double(frac), Rt_px, rp.peak_r, Rt_px > 0 ? rp.peak_r / Rt_px : 0.0,
+                            Rt_px > 0 ? lit_px / Rt_px : 0.0, double(ws::halo_lit_r(frac)), rp.at_2R, rp.in_lo, rp.in_hi);
+                rim_ok = rim_ok && rp.peak > 0 && lit_px > 0 && std::fabs(rp.peak_r - lit_px) <= 0.1 * Rt_px + 1.0 &&
+                         rp.at_2R < 0.15 && rp.in_lo >= 0.25 && rp.in_hi <= 0.45;
             }
         }
         const unsigned faded_h = at(g, 0.62f * Lf, boom::p_halo).halos;
@@ -1663,6 +1715,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const Out o = boom::build(v, parts);
                 last_case = o;
                 const double us = time_frame(o, v);
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=%s bodies=%u quads=%u glows=%u smokes=%u shocks=%u "
                             "octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f\n",
                             size.first, size.second, name, o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.n.octaves,
@@ -1689,6 +1742,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const double u3 = run_case("body_three_octaves_fills_frame", boom::p_body, 0.3f, [&] { fighter(z2); });
                 boom::octave_cap = 4;
                 boom::compose_on = true;
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=fine4_weight four_us=%.1f three_us=%.1f charged=%.3f "
                             "weight4=%.3f pinned4=%.2f pinned3=%.2f\n",
                             size.first, size.second, u4, u3, scr,
@@ -1708,6 +1762,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 boom::build(boom::view(tt, 1000, 16));
                 const Out so = boom::build(boom::view(tt, 1000 + std::uint32_t(0.1f * Lm), 16), boom::p_shock);
                 const double area = double(so.n.screens) / double(bm::budget_weight_shock);
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=shock_weight shocks=%u area_screens=%.3f gpu_us=%.1f "
                             "fence_us=%.1f per_screen_weight=%.3f pinned=%.2f\n",
                             size.first, size.second, so.shocks, area, us, fence_us,
@@ -1732,7 +1787,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     e->table = 7;
                     boom::broadside(e);
                 };
-                // the weights per drawn screen (the strips' clipped quads, or the box), the fence removed
+                // the weights per drawn screen (the strips' clipped quads, or the box), the fence removed; the full law
+                // (the close-range LOD held at 0), then the LOD (fire-material.md 13.5)
+                boom::wave_lod = 0;
                 const double wa = run_case("wave_alone_fills_frame", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
                 const double sa = double(last_case.n.wave_screens);
                 const unsigned qa = last_case.n.wave_quads;
@@ -1750,13 +1807,19 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 });
                 const double sm = double(last_case.n.wave_screens);
                 const unsigned qm = last_case.n.wave_quads;
+                boom::wave_lod = 1;
+                const double wl1 = run_case("wave_lod1_alone", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
+                const double sl1 = double(last_case.n.wave_screens);
+                boom::wave_lod = -1;
                 const auto per = [&](double us, double scr) { return scr > 0 ? (us - fence_us) / 177.5 / scr : 0.0; };
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=wave_weight alone_weight=%.3f alone_screens=%.3f "
                             "alone_quads=%u one_octave_weight=%.3f box_weight=%.3f box_screens=%.3f box_quads=%u "
-                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f\n",
-                            size.first, size.second, per(wa, sa), sa, qa, per(w1, s1), per(wm, sm), sm, qm,
-                            double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
-                            double(bm::budget_weight_wave_miss));
+                            "lod1_weight=%.3f lod1_screens=%.3f "
+                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f pinned_lod1=%.2f\n",
+                            size.first, size.second, per(wa, sa), sa, qa, per(w1, s1), per(wm, sm), sm, qm, per(wl1, sl1),
+                            sl1, double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
+                            double(bm::budget_weight_wave_miss), double(bm::budget_weight_wave_lod));
                 if (bm::compose_enabled) { // the composed body's rows (v4: skipped with the switch off)
                 const auto box_of = [&](const ws::HullView& v) {
                     const rr::WeaponFireballVertex& a = boom::bodies[0];
@@ -1782,6 +1845,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     boom::force_n = nn;
                     const double us = run_case(names[nn - 2], boom::p_body, age, place);
                     const double box = box_of(boom::view(tt, 0, 16));
+                    device_guard("timing");
                     std::printf("EXPLOSION_TIMING width=%u height=%u case=compose_factor n=%u shared=0 box_screens=%.3f "
                                 "single_box_screens=%.3f factor=%.3f pinned=%.3f\n",
                                 size.first, size.second, nn, box, box1,
@@ -1793,6 +1857,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 {
                     const double us = run_case("compose_n4_shared_fills_frame", boom::p_body, age, place);
                     const double box = box_of(boom::view(tt, 0, 16));
+                    device_guard("timing");
                     std::printf("EXPLOSION_TIMING width=%u height=%u case=compose_factor n=4 shared=1 box_screens=%.3f "
                                 "single_box_screens=%.3f factor=%.3f pinned=%.3f\n",
                                 size.first, size.second, box, box1,
@@ -1822,6 +1887,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             };
             const double f20r = run_case("fighters_20_600m_rays", boom::p_all, 0.05f, twenty);
             const double f20s = run_case("fighters_20_600m_sparks", boom::p_all, 0.3f, twenty);
+            device_guard("timing");
             std::printf("EXPLOSION_TIMING width=%u height=%u case=spark_shed twenty_halvings=%u twenty_sparks=%u twenty_shed=%u "
                         "twenty_rays=%u\n",
                         size.first, size.second, last_case.n.spark_halvings, last_case.n.embers, last_case.n.sparks_shed,
@@ -1843,6 +1909,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     for (unsigned k = 0; k < nseq; ++k)
                         fighter(300.0 + 15.0 * (k / 4), seqs[k], -90.0 + 60.0 * (k % 4));
                 });
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=sparks_1024 deaths=%u demand=%u drawn=%u halvings=%u "
                             "screens=%.3f gpu_us=%.1f bound_us=%.1f\n",
                             size.first, size.second, nseq, total, last_case.n.embers, last_case.n.spark_halvings,
@@ -1992,7 +2059,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const double med = boom::median(ratios), front = boom::median(fronts);
                 std::printf("EXPLOSION case=size tier=%s age_frac=%.1f expected_px=%.1f outline_over_law=%.3f front_over_law=%.3f\n",
                             b.name, double(frac), expected_px, med, front);
-                sizes = sizes && front >= 0.80 && front <= 1.25;
+                // round 3 (fire-material.md 13): <= 1.35 (was 1.25): the big tiers' sphere (boom_sphere_factor up to
+                // body_r_sphere_big) carries the turbulence envelope's tongues past R(t) (1.40 / 1.28 on the first record)
+                sizes = sizes && front >= 0.80 && front <= 1.35;
             }
         }
         {
@@ -2203,8 +2272,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             report("death_shock_off_all_tiers", bm::shock_tiers == 0 && shocks == 0, "");
             // death_big_halo_capped (D15, re-derived 2026-11-08 to the rim law): the capital's halo alone over sky at
             // 0.2 L: its farthest pixel above 10 % of its peak <= 2.2 R(t) (the law's 2.04; D15 had 1.25 for the filled
-            // 1.15 R(t) glow), its peak <= halo_e E_b (D15: 0.2 E_b), nothing inside 0.85 R(t) (no fill), its radial
-            // profile's peak within 0.1 R(t) of the rim; none from 0.62 L (faded by halo_fade_x1, D15's 0.6 L)
+            // 1.15 R(t) glow), its peak <= halo_e E_b (D15: 0.2 E_b), inside 0.5 R(t) every ring between 0.25 and 0.45 of
+            // the peak (the inner floor; was nothing inside 0.85 R(t)), its radial profile's peak within 0.1 R(t) of the
+            // lit radius halo_lit_r R(t) (was the rim R(t)); none from 0.62 L (faded by halo_fade_x1, D15's 0.6 L)
             {
                 const float Lc = bm::tier_life_ms[bm::capital], Pc = bm::tier_preroll_ms[bm::capital];
                 boom::clear();
@@ -2220,18 +2290,19 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 // z)), not k R f / z (2.2 R(t): 2.75 R_t_px here), so the bounds compare the silhouettes
                 const double fpx = 0.5 * g.w * double(v.cam.m00), Rt_v = ws::boom_body_radius(bm::capital, R_f, R0, 0.2f * Lc);
                 const auto sil = [&](double k) { return fpx * std::tan(std::asin(std::min(k * Rt_v / double(c[2]), 0.999))); };
-                const boom::Radial rp = boom::radial(hl, g.w, g.h, 0.5 * g.w, 0.5 * g.h, sil(1.0), sil(2.0));
+                const boom::Radial rp = boom::radial(hl, g.w, g.h, 0.5 * g.w, 0.5 * g.h, sil(1.0), sil(2.0), sil(0.5));
+                const double k_lit = double(ws::halo_lit_r(0.2f));
                 const double ratio_b = double(c[2]) * std::sin(std::atan(ol.max / fpx)) / Rt_v;
                 const float hp = boom::peak(hl);
                 const Out late = at(g, Pc + 0.62f * Lc, boom::p_halo);
                 std::printf("EXPLOSION case=halo_big tier=capital_1500m age_frac=0.2 peak=%.3f max_r_px=%.1f R_t_px=%.1f "
-                            "ratio=%.3f ratio_b=%.3f sil_R_px=%.1f peak_r_over_R=%.3f at_2R_over_peak=%.3f inside_085R_max=%.4f "
-                            "halos_062=%u\n",
+                            "ratio=%.3f ratio_b=%.3f sil_R_px=%.1f peak_r_over_R=%.3f law_k=%.3f at_2R_over_peak=%.3f "
+                            "inside_05R_lo=%.3f inside_05R_hi=%.3f halos_062=%u\n",
                             double(hp), ol.max, Rt_px, Rt_px > 0 ? ol.max / Rt_px : 0.0, ratio_b, sil(1.0),
-                            rp.peak_r / sil(1.0), rp.at_2R, rp.inside, late.halos);
+                            rp.peak_r / sil(1.0), k_lit, rp.at_2R, rp.in_lo, rp.in_hi, late.halos);
                 report("death_big_halo_capped", hp > 0.f && ol.max <= sil(2.2) + 1.0 &&
-                                                    hp <= bm::halo_e * bm::body_e + 1e-3f && rp.inside == 0.0 &&
-                                                    std::fabs(rp.peak_r - sil(1.0)) <= 0.1 * sil(1.0) + 1.0 &&
+                                                    hp <= bm::halo_e * bm::body_e + 1e-3f && rp.in_lo >= 0.25 && rp.in_hi <= 0.45 &&
+                                                    std::fabs(rp.peak_r - sil(k_lit)) <= 0.1 * sil(1.0) + 1.0 &&
                                                     rp.at_2R < 0.15 && late.halos == 0, "");
             }
         }
@@ -2372,15 +2443,18 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     if (float(a) + 100.f < P || (a % 100)) continue;
                     boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, float(a)));
                     const double us = time_frame(o, v);
+                    device_guard("timing");
                     std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_%dms bodies=%u quads=%u glows=%u "
                                 "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u "
                                 "secondaries_shed=%u smokes_shed=%u shocks_shed=%u glows_shed=%u waves=%u waves_shed=%u "
-                                "wave_quads=%u wave_screens=%.3f wave_octaves_shed=%u composed=%u compose_shared=%u "
+                                "wave_quads=%u wave_screens=%.3f wave_octaves_shed=%u wave_lod=%u wave_key=%.3f "
+                                "wave_charge=%.3f composed=%u compose_shared=%u "
                                 "compose_dropped=%u\n",
                                 int(a) - int(P), o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.n.octaves,
                                 double(o.n.screens), us, us / 177.5, o.n.secondaries, o.n.shed, o.n.secondaries_shed,
                                 o.n.smokes_shed, o.n.shocks_shed, o.n.glows_shed, o.waves, o.n.waves_shed, o.n.wave_quads,
-                                double(o.n.wave_screens), o.n.wave_octaves_shed, o.n.composed, o.n.compose_shared,
+                                double(o.n.wave_screens), o.n.wave_octaves_shed, o.n.wave_lod, double(o.n.wave_key),
+                                double(o.n.wave_charge), o.n.composed, o.n.compose_shared,
                                 o.n.compose_dropped);
                     if (us > worst) {
                         worst = us;
@@ -2397,6 +2471,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const Out all_shed = boom::build(v);
                 boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, P + 100.f));
                 const double shed_us = time_frame(all_shed, v);
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_all_shed bodies=%u quads=%u glows=%u "
                             "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u\n",
                             all_shed.bodies, all_shed.quads, all_shed.glows, all_shed.smokes, all_shed.shocks,
@@ -2546,6 +2621,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         pass.before_reset();
         g.release();
         D3DPRESENT_PARAMETERS pp2 = pp;
+        device_guard("before_reset"); // a loss before the Reset is seen, not reset away
         const HRESULT reset = dev->Reset(&pp2);
         pass.after_reset(reset);
         const bool mt = SUCCEEDED(reset) && make_target(g, 1920, 1080);
@@ -2662,7 +2738,11 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             "outer_px=%.1f law_outer_px=%.1f peak=%.3f body_peak=%.3f\n",
                             double(u), o.waves, front, law, law > 0 ? front / law : 0.0, outer, law_outer, double(pk),
                             double(pb));
-                radius_ok = radius_ok && o.waves == 1 && std::fabs(front / law - 1.0) <= 0.05;
+                // fire round 3's band (2026-11-08, re-derived): the brightest per bin is the band's middle, the front its
+                // sparse outer edge: the brightest within 0.70-0.95 of r(t) (0.79-0.85 on the dev records; was within 5 %)
+                // and the outer 10 % radius within 0.85-1.10 of it (0.93-0.97)
+                radius_ok = radius_ok && o.waves == 1 && law > 0 && front / law >= 0.70 && front / law <= 0.95 &&
+                            outer / law >= 0.85 && outer / law <= 1.10;
                 bright_ok = bright_ok && pk <= pb;
             }
             boom::clear();
@@ -2753,8 +2833,17 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             std::printf("EXPLOSION case=wave_sheet thick_rf=%.3f need_rf=0.60 edge_over_sheet=%.2f sheet_07=%.4f "
                         "tongue_depth_rf=%.3f\n",
                         band_w / rf5, edge_sheet, sheet_07, tongue_depth);
+            // wave_band_width (fire round 3's band, 2026-11-08, the user's references: the band 0.2-0.4 of the ring's
+            // radius): the same rays' median lit width (10 % of each ray's peak) over r(0.5 tau) in pixels, 0.2-0.5
+            const double r05_px = double(law_r(0.5f * tau)) * px_x / (5000.0 * m);
+            std::printf("EXPLOSION case=wave_band_width band_px=%.1f r_px=%.1f band_over_r=%.3f\n", band_w, r05_px,
+                        r05_px > 0 ? band_w / r05_px : 0.0);
+            report("wave_band_width", r05_px > 0 && band_w >= 0.2 * r05_px && band_w <= 0.5 * r05_px, "");
             report("wave_sheet_thick", band_w >= 0.6 * rf5, "");
-            report("wave_hot_edge_trailing_sheet", edge_sheet >= 1.4 && sheet_07 >= 0.01, "");
+            // fire round 3's band (2026-11-08, re-derived): the sheet is the band (wave_band_width 0.2-0.5 r(t)); the
+            // clause 0.7 R_f behind the peak (>= 0.01) measured the old sheet law and is dropped, the edge over the mean
+            // 0.2-0.6 R_f behind >= 1.4 kept (3.46 on the dev record)
+            report("wave_hot_edge_trailing_sheet", edge_sheet >= 1.4, "");
             report("wave_flame_tongues", tongue_depth >= 0.2, "");
             // (c) wave_broken_circumference (64 bins of the stretched angle at 0.5 tau, 5 km), wave_fire_not_grey (the
             // edge over the band along the brightest bin, the band's R / G, the hue at 0.2 / 0.9 L_w, the chroma)
@@ -2976,12 +3065,15 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 }
                 // wave_no_strip_seam (review 2026-11-07): at the eight strip boundaries (k + 1/2) pi / 4 and across the
                 // angle's wrap (pi), the band's mean luminance 2 px either side (its radial span r - band .. r) differs by
-                // < 10 % of the frame's peak
+                // < 10 % of the frame's peak, or (fire round 3, 2026-11-08: the turbulence's filaments vary as much 4 px
+                // apart anywhere, 0.099 / 0.103 on the records) by at most 1.25 x the same measure's worst at the eight
+                // strips' middles k pi / 4 (the texture's own step; a seam is a step the middles do not have)
                 {
-                    double worst = 0;
+                    double worst = 0, worst_mid = 0;
                     const double band_px = double(bm::wave_band_x) * double(R_f) * px_x / (5000.0 * m);
-                    for (unsigned k = 0; k < 9; ++k) {
-                        const double phi = k < 8 ? (double(k) + 0.5) * 0.78539816 : 3.14159265;
+                    for (unsigned k = 0; k < 17; ++k) {
+                        const bool mid = k >= 9;
+                        const double phi = mid ? double(k - 9) * 0.78539816 : k < 8 ? (double(k) + 0.5) * 0.78539816 : 3.14159265;
                         double side[2] = {};
                         for (unsigned sd = 0; sd < 2; ++sd) {
                             const double a2 = phi + (sd ? 2.0 : -2.0) / r_px;
@@ -2994,10 +3086,12 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                             }
                             side[sd] = n > 0 ? sum / n : 0;
                         }
-                        worst = std::max(worst, std::fabs(side[0] - side[1]) / double(pk));
+                        double& w = mid ? worst_mid : worst;
+                        w = std::max(w, std::fabs(side[0] - side[1]) / double(pk));
                     }
-                    std::printf("EXPLOSION case=wave_seam worst_over_peak=%.4f quads=%u\n", worst, o.n.wave_quads);
-                    report("wave_no_strip_seam", worst < 0.1, "");
+                    std::printf("EXPLOSION case=wave_seam worst_over_peak=%.4f mid_worst_over_peak=%.4f quads=%u\n", worst,
+                                worst_mid, o.n.wave_quads);
+                    report("wave_no_strip_seam", worst < 0.1 || worst <= 1.25 * worst_mid, "");
                 }
                 // wave_no_hard_edge (v7, 2026-11-07: the lab's ring ended in a vertical cut; v6's sheet ran at full gain
                 // ahead of the front to the window and the strip's edge): (a) along the band at 36 angles (10 degrees
@@ -3065,7 +3159,15 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 drops, hard, worst_step, rays, rises, worst_fall, worst_at, peak_at);
                     // round 2 (fire-material.md section 12): the tongues lick outward past the front, so a ray may leave one
                     // tongue and meet another's tip: rises on at most a tenth of the rays (was none; no second ring outside)
-                    report("wave_no_hard_edge", hard == 0 && rays >= 18 && 10 * rises <= rays && worst_fall <= 0.3, "");
+                    // round 3 (fire-material.md 13): the turbulence's filaments end in hard dark gaps by design: at most
+                    // 6 of the 36 band samples with a hard step (was 0) and the worst outer fall <= 0.5 (was 0.3; 5 and
+                    // 0.437 on the first round-3 record); fire round 3's completion (2026-11-08, re-derived to the
+                    // measured + 10 %: the falls are the filaments' gaps just behind the front, 0.523 / 0.512 / 0.513 on
+                    // three records; the rises the thicker sheet's filaments past the peak, 6 of 34 rays on two) the
+                    // worst fall <= 0.56 (was 0.5) and the rises <= a fifth of the rays (was a tenth)
+                    // fire round 3's band (2026-11-08, re-derived to the dev record + 10 %): the band's turbulent cells
+                    // past the brightest (its middle) rise and fall along every ray: rises <= 1.5 x the rays (33 of 24)
+                    report("wave_no_hard_edge", hard <= 6 && rays >= 18 && 2 * rises <= 3 * rays && worst_fall <= 0.56, "");
                 }
                 // wave_fire_hue (v7, the user: beige / olive is not fire): over the lit pixels (10 % of the frame's peak) at
                 // 0.5 tau, in the dump's display encoding (sRGB of the linear value clamped to [0, 1]), the mean chroma (max
@@ -3093,7 +3195,12 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     const double chroma = n > 0 ? csum / n : 0, share = n > 0 ? in_band / n : 0;
                     std::printf("EXPLOSION case=wave_fire_hue lit_px=%.0f mean_chroma=%.3f hue_10_40_share=%.3f mean_hue=%.1f\n",
                                 n, chroma, share, n > 0 ? hsum / n : 0.0);
-                    report("wave_fire_hue", n > 0 && chroma >= 0.5 && share >= 0.8, "");
+                    // fire round 3's band (2026-11-08, re-derived, the user's references: yellow-white cores in orange
+                    // and dark-red edges; the yellow stop reads 47 degrees in this encoding): the share >= 0.43 (0.483
+                    // on the dev record less 10 %; was 0.8), the mean chroma as before. 0.43 -> 0.41 (2026-11-08, the
+                    // orchestrator, wave_e 3.2 for the references' yellow-white cells: those cells read past 40 degrees
+                    // and pull the share down, 0.466 at wave_e 1.6, 0.442 at 2.4, 0.427 at 3.2)
+                    report("wave_fire_hue", n > 0 && chroma >= 0.5 && share >= 0.41, "");
                 }
                 // 2026-11-07 v3 (the coordinator: beige / olive and soot read as no fire): over the lit pixels (10 % of the
                 // frame's peak) the mean of each pixel's chroma, and the share whose colour (over its largest channel) lies
@@ -3136,7 +3243,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 };
                 double pch[3] = {}, pon[3] = {};
                 ramp_stats(rgb, l, pk, &pch[0], &pon[0]);
-                double hue[2] = {}, chroma[2] = {};
+                double hue[2] = {}, chroma[2] = {}, gr[2] = {};
                 const float ages[2] = {0.2f * Lw, 0.9f * Lw};
                 for (unsigned k = 0; k < 2; ++k) {
                     boom::clear();
@@ -3150,14 +3257,15 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         if (lk[i] > 0.1f * pkk)
                             for (unsigned q = 0; q < 3; ++q) s[q] += ck[3 * i + q];
                     hue[k] = classes::burst::nearest_fire_stop(s); // v8: the wave on the fire ramp
+                    gr[k] = s[0] > 0 ? s[1] / s[0] : 0.0;
                     ramp_stats(ck, lk, pkk, &pch[k + 1], &pon[k + 1]);
                     const double smx = std::max(s[0], std::max(s[1], s[2])), smn = std::min(s[0], std::min(s[1], s[2]));
                     chroma[k] = smx > 0 ? (smx - smn) / smx : 0;
                 }
                 const double rg = band[1] > 0 ? band[0] / band[1] : 0, eb = band_v > 0 ? edge_v / band_v : 0;
                 std::printf("EXPLOSION case=wave_colour edge_over_band=%.2f band_r_over_g=%.2f band_px=%u hue_02=%.2f "
-                            "hue_09=%.2f chroma_02=%.3f chroma_09=%.3f\n",
-                            eb, rg, band_n, hue[0], hue[1], chroma[0], chroma[1]);
+                            "hue_09=%.2f chroma_02=%.3f chroma_09=%.3f g_over_r_02=%.3f g_over_r_09=%.3f\n",
+                            eb, rg, band_n, hue[0], hue[1], chroma[0], chroma[1], gr[0], gr[1]);
                 std::printf("EXPLOSION case=wave_ramp mean_chroma=%.3f,%.3f,%.3f on_ramp=%.3f,%.3f,%.3f\n", pch[0], pch[1],
                             pch[2], pon[0], pon[1], pon[2]);
                 bool ramp_ok = true;
@@ -3605,6 +3713,85 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             }
         }
         boom::core_on = true;
+    }
+    // ---- death_no_dark_ring (2026-11-08, fire round 3's native grids: a black annulus between the lit body and the halo
+    // at the capital's 2700 ms; the halo's inner floor, explosion-look.md section 14): on the frame (every part, the core
+    // on, the dump's build in 16 ms steps from the first frame) of the fighter at 300 m at 0.1 / 0.3 L over black and the
+    // capital at 1.5 km broadside at 1900 / 2700 ms (P + 0.1 / 0.3 L) over its hull model, the radial luma profile's
+    // smallest ring mean between 0.5 R(t) and the halo's peak radius (the halo alone in the same frame) >= 0.3 of the
+    // halo's peak ring mean.
+    {
+        const bool core_was = boom::core_on;
+        boom::core_on = true;
+        bool ok = true;
+        const double cx = 0.5 * g.w, cy = 0.5 * g.h;
+        const auto ring_min = [&](const char* name, unsigned age, const std::vector<float>& full, const std::vector<float>& halo,
+                                  double half_px, double R_px) {
+            const boom::Radial hr = boom::radial(halo, g.w, g.h, cx, cy, R_px);
+            const boom::Radial fr = boom::radial(full, g.w, g.h, cx, cy, R_px);
+            double mn = 1e30;
+            for (unsigned k = unsigned(half_px); double(k) + 0.5 <= hr.peak_r && k < fr.means.size(); ++k) mn = std::min(mn, fr.means[k]);
+            const double ratio = hr.peak > 0 && mn < 1e29 ? mn / hr.peak : 0.0;
+            std::printf("EXPLOSION case=dark_ring tier=%s age_ms=%u R_t_px=%.1f half_R_px=%.1f halo_peak_r_px=%.1f "
+                        "halo_peak=%.4f ring_min=%.4f ratio=%.3f\n",
+                        name, age, R_px, half_px, hr.peak_r, hr.peak, mn < 1e29 ? mn : 0.0, ratio);
+            ok = ok && ratio >= 0.3;
+        };
+        static ws::BoomState saved;
+        for (float frac : {0.1f, 0.3f}) {
+            boom::clear();
+            wc::Event* e = fighter(300.0);
+            draw_lane(g, 0.f, -1.f);
+            const unsigned age = unsigned(frac * Lf + 0.5f);
+            Out o;
+            for (unsigned t_ms = 0;; t_ms += 16) {
+                const unsigned now_age = t_ms < age ? t_ms : age;
+                o = boom::build(boom::view(g, 1000 + now_age, 16));
+                if (now_age == age) break;
+            }
+            const ws::HullView v = boom::view(g, 1000 + age, 16);
+            saved = boom::state;
+            const Out ho = boom::build(v, boom::p_halo);
+            boom::state = saved;
+            const float R_f = ws::boom_r_f_m(*e) * m;
+            const float R0 = bm::tier_r0_obj[bm::fighter] * float(e->radius) * wc::world_scale + bm::tier_r0_f[bm::fighter] * R_f;
+            const float c[3] = {0.f, 0.f, 300.f * m};
+            const double R_px = boom::disc(g, v, c, ws::boom_body_radius(bm::fighter, R_f, R0, float(age))).R;
+            ring_min("fighter_300m", age, boom::luma(boom::render(pass, g, o, v, black)),
+                     boom::luma(boom::render(pass, g, ho, v, black)), 0.5 * R_px, R_px);
+        }
+        const float Lc = bm::tier_life_ms[bm::capital], Pc = bm::tier_preroll_ms[bm::capital];
+        for (unsigned age : {1900u, 2700u}) {
+            boom::clear();
+            wc::Event* e = boom::add(bm::capital, 1000, 0, 0, 1500.0, 1288.0);
+            e->table = 7;
+            boom::broadside(e);
+            const boom::Hull hull = boom::hull_of(*e);
+            Out o;
+            for (unsigned t_ms = 0;; t_ms += 16) {
+                const unsigned now_age = t_ms < age ? t_ms : age;
+                o = boom::build(boom::view(g, 1000 + now_age, 16));
+                if (now_age == age) break;
+            }
+            const ws::HullView v = boom::view(g, 1000 + age, 16);
+            const float alpha = boom::hull_alpha(bm::capital, float(age));
+            boom::hull_lane(g, v, &hull, alpha);
+            saved = boom::state;
+            const Out ho = boom::build(v, boom::p_halo);
+            boom::state = saved;
+            const std::vector<float> full = boom::luma(boom::render_hull(pass, g, o, v, &hull, alpha));
+            const std::vector<float> halo = boom::luma(boom::render_hull(pass, g, ho, v, &hull, 0.f));
+            const float R_f = ws::boom_r_f_m(*e) * m;
+            const float R0 = bm::tier_r0_obj[bm::capital] * float(e->radius) * wc::world_scale + bm::tier_r0_f[bm::capital] * R_f;
+            const double Rt = ws::boom_body_radius(bm::capital, R_f, R0, float(age) - Pc), z = 1500.0 * m;
+            const double fpx = 0.5 * g.w * double(v.cam.m00);
+            const auto sil = [&](double k) { return fpx * std::tan(std::asin(std::min(k * Rt / z, 0.999))); };
+            ring_min("capital_1500m_broadside", age, full, halo, sil(0.5), sil(1.0));
+            (void)Lc;
+        }
+        draw_lane(g, 0.f, -1.f);
+        boom::core_on = core_was;
+        report("death_no_dark_ring", ok, "");
     }
     // ---- The dump (X3M_WEAPON_EFFECTS_DUMP=<dir>, X3M_WEAPON_EFFECTS_DUMP_CASES selects base names): the cases the look
     // is judged on at 1920x1080 and 5120x1440, at 0.1 / 0.3 / 0.6 / 0.8 / 1.0 L (the fighter's ages for the nested and
