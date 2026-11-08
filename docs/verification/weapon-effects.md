@@ -3125,17 +3125,18 @@ stays Run246's DLL with `weapon_effects = shields` in the ini (main session, 202
 
 ## FL hook port (2026-11-08)
 
-The weapon-effects families now install on Farnham's Legacy. `weapon_effects = shields` / `observe` / `native` behave
-on X3FL.exe (SHA-256 `e7f3aad8…401dfbb8`, `C:\X3FL`, `-DX3M_EDITION=fl`) as on AP; `edition_unsupported` is gone
+The weapon-effects families now install on Farnham's Legacy. `weapon_effects = shields` / `observe` / `native` are
+expected to behave on X3FL.exe (SHA-256 `e7f3aad8…401dfbb8`, `C:\X3FL`, `-DX3M_EDITION=fl`) as on AP; `edition_unsupported` is gone
 (weapon-effects.md 2.10). The installer carries over with module base + RVA: `install_base`
 (`weapon_effects_patch.cpp`) compares each of X3FL.exe's seven windows with its relocated absolute operand masked (the
-object tap's gate `0x1a82ec`, the muzzle's TBullets slot `0x1a83c8`), FNV-1a/`memcmp` the rest, then claims six by
+object tap's gate `0x1a82ec`, the muzzle's TBullets slot `0x1a83c8`, each checked against base + its target), `memcmp`
+the rest (FNV-1a only as the compile-time `static_assert` on the recorded bytes), then claims six by
 `lock cmpxchg8b` (impact `0x053390`, taps `0x014583`/`0x014650`, flight `0x014eaa`, muzzle `0x04f639`, death
 `0x0543b3`) and the object tap `0x0645bd` by plain copy inside the install window (it straddles a qword), all or none,
 each read back. Per-site FL entry shims (`weapon_effects_hook.cpp`) rebuild the AP stub contract from FL's ECX/EDX and
 stack geometry, with the skip return `xor eax,eax; ret` and CPU flags, DF and LastError preserved as on AP. The impact
 `absorbed` flag is derived from the FL path (`core::fl_absorbed`: `ESI == 1`, cleared remaining shield-stage damage,
-`EBP == T`; the piloted-clamp ambiguity read conservatively as not absorbed). The one FL death call serves both AP
+EBP equal to T clamped to 50,000 for a piloted victim). The one FL death call serves both AP
 death roles, its area/other tag rebuilt from AP's own branch (`core::fl_death_site`). The edition constants are the
 game clock (cfg `+0x708`), the node body id (`+0x144`, a `0x148`-byte node read) and the relocated globals (cfg
 `0x1a83b0`, tables `0x1a83c8 + 4·class`, counts `0x1a8330 + 4·class` with the count relation an edition parameter,
@@ -3144,14 +3145,27 @@ walk is portable with those changes (fl/weapon-effect-spawn.md section 5); its L
 inference kept as the runtime guard, logging one `weapon_bubble_extent edition=fl state=refused` row on its first
 refusal (the only gated constant, folded in from the shield-hit runtime-reads follow-up merge `c178e46bc`).
 
-**Records (RTX 5070 Ti, `run_weapon_effects.py --host native` through `wine_lock.py`):** the FL hook fixture
-(`weapon_effects_hook_fixture_fl.cpp`, FL frames and the FL EXE's window bytes) **43 of 43**, PASS, failures 0
-(`verification/results/native-windows/weapon-effects/hook-fl-summary.json`); the AP hook fixture unchanged at
-**131 of 131** and the AP native D3D fixture **53 of 53**, both PASS. Clean builds AP (`build-flhooks`) and FL
-(`build-flhooks-fl`) 0 warnings; `check_no_x87.py --edition ap` 0 violations over 1161 functions and `--edition fl`
-0 over 1058 (the twelve FL weapon shims and handlers rooted). Host suite modules
-`test_weapon_effects_sites` (with FL cases: every FL window's masked bytes match X3FL.exe), `_hook`, `_core`,
-`_launch` green (33 tests). `generate_weapon_effects_programs.py --check` PASS (programs unchanged). The producing
-one-liner is
+**Records (RTX 5070 Ti, `run_weapon_effects.py --host native` through `wine_lock.py`; after the independent review's
+fixes):** the FL hook fixture (`weapon_effects_hook_fixture_fl.cpp`, FL frames and the FL EXE's window bytes)
+**56 of 56**, PASS, failures 0 (`verification/results/native-windows/weapon-effects/hook-fl-summary.json`): every
+window bit refused (1,928 flips, the 64 fixup bits included), a rebased fixup refused, install / globals / write paths /
+shutdown / rollback / late window, and per shim the slots the handler reads (the taps' hit and &pos against the observe
+impact's own, the object tap's listed object, the muzzle's EDX slot and ESI/0xdb8 row with ship, pos and orientation,
+the flight's bullet, the death's object, killer, arg4, reason and its skip path, the impact with ECX/EDX swapped
+recording a hull hit instead of the staged shield hit, the piloted clamp and the drained residual case); STACK_DEPTH
+244 bytes = the audited handler frame 0xc8 + the FL impact stub's 0x2c, gated in the record (AP: 236 = 0xc8 + 0x24).
+The AP hook fixture unchanged at **131 of 131** and the AP native D3D fixture **53 of 53**, both PASS. Clean builds AP
+(`build-flhooks`) and FL (`build-flhooks-fl`) 0 warnings; `check_no_x87.py --edition ap` 0 violations over 1161
+functions and `--edition fl` 0 over 1058 (the twelve FL weapon shims and handlers rooted). Host modules
+`test_weapon_effects_sites` (FL: 16 windows parsed, every masked dword = 0x400000 + its target RVA and the only `.reloc`
+entry inside its window, every window's bytes = X3FL.exe's), `_hook` (with the FL record), `_core`, `_launch` green (36
+tests). `generate_weapon_effects_programs.py --check` PASS (programs unchanged). The review's independent byte check
+is [`fl_windows_check.py`](../../verification/results/fl-weapon-effect-spawn/fl_windows_check.py) →
+[`_out.txt`](../../verification/results/fl-weapon-effect-spawn/fl_windows_check_out.txt) (16 of 16 equal). The absorbed
+rule was re-traced for the review: the reviewer's "ESI == 1 alone" does not hold (the hull path's last term at
+`0x05329f` can be 1), but the hull path skips the `0x0532e3` reload, so EBP against the clamped T is exact except the
+clamp-hidden case, which needs every shield drained (`0x053155`) and is caught by the drained-shield rule; the
+T ≥ 50,000 guard of the first version is gone, so the four ≥ 50,000-shield-damage rows (PSP, IONC, PPC, IBL; the
+review's count) keep their staged shield hits on the player's ship. The producing one-liner is
 [`fl_hook_summary.py`](../../verification/results/native-windows/weapon-effects/fl_hook_summary.py). No runtime
 behaviour change on AP; not flown on FL (the stage has not run in the game).

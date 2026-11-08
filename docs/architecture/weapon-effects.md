@@ -238,15 +238,18 @@ X3FL.exe (SHA-256 `e7f3aad8…401dfbb8`, relocatable, `C:\X3FL`) runs the same f
 seven call sites, module base + RVA ([fl/weapon-effect-spawn.md](../reverse-engineering/fl/weapon-effect-spawn.md),
 2026-11-08; the table is [weapon_effects_sites_fl.h](../../src/engine/fl/weapon_effects_sites_fl.h), the shims
 `weapon_effects_hook.cpp`, the install `weapon_effects_patch.cpp::install_base`). The windows are compared with each
-relocated absolute operand masked (the object tap's gate `0x1a82ec`, the muzzle's TBullets slot `0x1a83c8`), the rest
-FNV-1a against the recorded bytes, fail closed; six calls fit one aligned qword (`lock cmpxchg8b`), the object tap
+relocated absolute operand checked against base + its target and masked (the object tap's gate `0x1a82ec`, the muzzle's
+TBullets slot `0x1a83c8`), the rest byte-compared (`memcmp`) with the recorded bytes, fail closed (the recorded bytes'
+FNV-1a is pinned by a compile-time `static_assert`); six calls fit one aligned qword (`lock cmpxchg8b`), the object tap
 straddles one (plain copy inside the install window). The ABI moved: FL passes the first one or two arguments in
 ECX/EDX and keeps the rest on the stack, merges the two AP death calls into one site that serves both roles (the
 area/other tag is rebuilt from AP's own branch, `core::fl_death_site`), inlines the AP muzzle wrapper, and keeps the
 impact running total in EBP with no stored `absorbed` flag — it is derived from `ESI == 1` with a cleared remaining
-shield-stage damage and `EBP == T`, reading the one piloted-clamp ambiguity (a piloted victim with `T ≥ 50,000` and a
-final hull term of 1) conservatively as not absorbed (`core::fl_absorbed`, a census hull hit, never a staged shield hit
-over a hull hit). So each site has an FL entry shim that rebuilds the AP stub contract from the FL registers and frame,
+shield-stage damage and EBP equal to T clamped to 50,000 for a piloted victim (`core::fl_absorbed`). The hull path
+never runs the total reload at `0x0532e3` (it ends at `0x0532e7` with EBP = T + h), so the rule is exact except where
+the clamp hides h = 1 for a piloted victim with T ≥ 50,000; that path needs every shield drained to 0 (`0x053155`), so
+the drained-shield rule records it as a hull hit, and absorbed hits of the four ≥ 50,000-damage weapons (PSP, IONC,
+PPC, IBL) on the player's ship stay staged shield hits (proof RVAs in the FL note's section 2.1). So each site has an FL entry shim that rebuilds the AP stub contract from the FL registers and frame,
 with the skip return `xor eax,eax; ret`, CPU flags, DF and LastError preserved as on AP. The data differs only by the
 game clock (cfg `+0x708`), the node body id (`+0x144`, a `0x148`-byte node read) and the relocated globals (cfg
 `0x1a83b0`, type tables `0x1a83c8 + 4·class`, counts `0x1a8330 + 4·class` — the `Globals` count relation is an edition
@@ -257,8 +260,8 @@ fallback sphere and logs one `weapon_bubble_extent edition=fl state=refused` row
 census has the same 45 rows and ids as stock AP; the record fields differ only in PD's lifetime (1,800 vs 2,100 ms),
 speed (355 vs 375 m/s) and damage (351/80 vs 468/120), and the PAC body's scale (8,099 vs 16,171; elongation 24.5 vs
 24.7), so the classifier gives the same style for all 45 [M, `fl.json`, `classify_preview_out.txt`]; the classifier and
-overrides carry over unchanged. The FL hook fixture (`weapon_effects_hook_fixture_fl.cpp`, 43 checks) exercises every FL
-shim with the FL frames and the FL EXE's window bytes; `edition_unsupported` is gone.
+overrides carry over unchanged. The FL hook fixture (`weapon_effects_hook_fixture_fl.cpp`, 56 checks) exercises every FL
+shim's slots with the FL frames and the FL EXE's window bytes; `edition_unsupported` is gone.
 
 ## 3. Record schema and the override file (question 2)
 

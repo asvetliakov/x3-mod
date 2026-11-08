@@ -25,16 +25,15 @@
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "c178e46bcf498af318aa2a99301c8379fd3f02ad-dirty",
+    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_bubble.h",
       "src/proxy/weapon_effects_core.h"
     ],
     "sha256": {
       "src/renderer/weapon_effects_pass.h": "7c29bad600df97ea2a728603e75a394e9bd3de70d55e0590b156668699744975",
       "src/renderer/weapon_effects_pass.cpp": "174d23a40987e8110597f2c0c5e7e4799a12b0de5237dc9850adf0c3d80d031a",
-      "src/proxy/weapon_effects_core.h": "4e3ecf39cd9037da6039000d31becd08ca3e1ca9dd534c6902be3a272660721a",
+      "src/proxy/weapon_effects_core.h": "562685cbef3f21b907b1bef33b54ec6abf7d44a36aea6f0a1e47d5f70cdff711",
       "src/proxy/weapon_effects_stage.h": "510ba12dadc86f97974d816001b98e1a477e23e0886cd0c37918baae3b9f4b96",
       "src/proxy/weapon_effects_bubble.h": "c918f799b41611d964c0b64bb9a0cf5f924bccda63eb367f5edcde379dfe5087",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
@@ -152,7 +151,7 @@
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "168ccee4b5dc6301576c5ff5e24ff682f8f6d8cce14e95ff87a787fbb5ea0357"
+    "executable_sha256": "1e156b7410c41eeb1b112734e1976f35bc2f8317d6ee51895932d23f7a329df1"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -907,16 +906,16 @@
         "ok": 1,
         "reads": 894,
         "walk_best_us": 8.8,
-        "walk_mean_us": 14.4,
+        "walk_mean_us": 9.3,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.5,
-        "engine_memory_cold_mean_us": 17.4,
+        "engine_memory_cold_best_us": 12.3,
+        "engine_memory_cold_mean_us": 17.6,
         "engine_memory_warm_best_us": 12.0,
-        "engine_memory_warm_mean_us": 16.6,
-        "warm_best_us": 40.0,
-        "warm_mean_us": 60.8,
-        "cold_best_us": 49.2,
-        "cold_mean_us": 71.3,
+        "engine_memory_warm_mean_us": 16.3,
+        "warm_best_us": 40.5,
+        "warm_mean_us": 57.8,
+        "cold_best_us": 49.5,
+        "cold_mean_us": 67.4,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1012,7 +1011,7 @@
       },
       {
         "case": "descending",
-        "heap_us": 0.7,
+        "heap_us": 0.6,
         "insertion_us": 3.4
       }
     ],
@@ -1250,8 +1249,8 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 29.1,
-        "mean_us": 35.1,
+        "best_us": 29.4,
+        "mean_us": 34.5,
         "target_us": 200
       },
       {
@@ -1263,8 +1262,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 89.3,
-        "mean_us": 118.1,
+        "best_us": 91.2,
+        "mean_us": 105.3,
         "target_us": 200
       },
       {
@@ -1276,8 +1275,8 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 14.4,
-        "mean_us": 19.7,
+        "best_us": 14.2,
+        "mean_us": 17.1,
         "target_us": 200
       }
     ],
@@ -1314,10 +1313,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.51,
-        "last_drawn_ms": 473.49,
-        "frames": 19639,
-        "max_frame_ms": 1.434
+        "seta6_wall_ms": 473.5,
+        "last_drawn_ms": 473.48,
+        "frames": 20418,
+        "max_frame_ms": 0.324
       }
     ],
     "retired": [
@@ -1389,7 +1388,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.3
+        "gpu_us": 17.1
       },
       {
         "width": 1920,
@@ -1399,7 +1398,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 18.2
+        "gpu_us": 17.8
       },
       {
         "width": 1920,
@@ -1409,7 +1408,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 61.6
+        "gpu_us": 61.7
       },
       {
         "width": 1920,
@@ -1419,7 +1418,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 75.6
+        "gpu_us": 75.4
       },
       {
         "width": 1920,
@@ -1429,7 +1428,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 99.0
+        "gpu_us": 98.6
       },
       {
         "width": 1920,
@@ -1439,7 +1438,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 19.4
+        "gpu_us": 19.3
       },
       {
         "width": 1920,
@@ -1449,7 +1448,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 57.6
+        "gpu_us": 58.2
       },
       {
         "width": 1920,
@@ -1459,7 +1458,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 63.5
+        "gpu_us": 63.1
       },
       {
         "width": 1920,
@@ -1469,7 +1468,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 93.6
+        "gpu_us": 93.9
       },
       {
         "width": 1920,
@@ -1489,7 +1488,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 58.9
+        "gpu_us": 60.2
       },
       {
         "width": 1920,
@@ -1499,7 +1498,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 97.3
+        "gpu_us": 96.3
       },
       {
         "width": 1920,
@@ -1519,7 +1518,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 72.9
+        "gpu_us": 73.1
       },
       {
         "width": 5120,
@@ -1529,7 +1528,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.9
+        "gpu_us": 11.2
       },
       {
         "width": 5120,
@@ -1549,7 +1548,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 23.3
+        "gpu_us": 22.5
       },
       {
         "width": 5120,
@@ -1559,7 +1558,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 176.7
+        "gpu_us": 176.6
       },
       {
         "width": 5120,
@@ -1569,7 +1568,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 229.7
+        "gpu_us": 229.6
       },
       {
         "width": 5120,
@@ -1579,7 +1578,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 365.7
+        "gpu_us": 365.6
       },
       {
         "width": 5120,
@@ -1599,7 +1598,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 161.0
+        "gpu_us": 159.5
       },
       {
         "width": 5120,
@@ -1609,7 +1608,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 179.3
+        "gpu_us": 181.5
       },
       {
         "width": 5120,
@@ -1619,7 +1618,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 291.8
+        "gpu_us": 293.7
       },
       {
         "width": 5120,
@@ -1629,7 +1628,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.3
+        "gpu_us": 21.2
       },
       {
         "width": 5120,
@@ -1639,7 +1638,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 175.6
+        "gpu_us": 175.8
       },
       {
         "width": 5120,
@@ -1649,7 +1648,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 340.9
+        "gpu_us": 340.5
       },
       {
         "width": 5120,
@@ -1659,7 +1658,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 52.6
+        "gpu_us": 52.4
       },
       {
         "width": 5120,
@@ -1669,7 +1668,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 257.9
+        "gpu_us": 258.7
       }
     ],
     "fade": {

@@ -1245,20 +1245,28 @@ static inline __attribute__((always_inline)) int death(const std::uint32_t* esp,
 // (weapon_effects_hook.cpp) rebuild the AP stub contract from the FL registers and frame with these two rules and hand
 // it to the same handlers. Integer only, plain loads, no call.
 //
-// The absorbed flag (section 2.1). ESI is 1 on the absorbed, hull-skipped path (`lea esi,[ebp+1]` after `xor ebp,ebp`,
-// 0x053194), the remaining shield-stage damage is 0 there (0x053196) and the total reload leaves EBP = T, clamped to
-// 50,000 for a victim with obj+0x40 & 2 (`cmovg`, 0x0532e3). The hull path leaves EBP = T + h and ESI = h (h > 0): only
-// h = 1 matches ESI = 1, and then EBP differs from T unless the clamp hides the difference, i.e. a piloted victim with
-// T >= 50,000 (the clamped value is 50,000 either way). That ambiguous case is read as not absorbed: the hit forwards
-// to the native effect and is a census hull hit, never a stage shield hit over a hull hit. A flag-0x20 hit through
-// charged shields reads 0 here (AP: 1); role_from makes it a hull hit on either edition.
+// The absorbed flag (section 2.1; the damage routine 0x053070..0x0533b3). The absorbed path (0x053161..0x05319d) sets
+// [esp+0x10] = T (0x05318d), clears the remaining shield-stage damage [esp+0x14] (0x053196), sets ESI = 1
+// (`lea esi,[ebp+1]` after `xor ebp,ebp`, 0x05319a) and, unless the flag-0x20 bypass sends it to the hull stage
+// (0x0531c5 -> 0x0531d6, where ESI becomes the hull argument), jumps to the total reload `mov ebp,[esp+0x10]` at
+// 0x0532e3; for a victim with obj+0x40 & 2 the `cmovg` at 0x0532fd then clamps EBP to 50,000, and no ESI write follows.
+// The hull path never runs that reload: it ends at 0x0532e7 with EBP = T + h (0x053264 reload, `add ebp,esi` 0x0532a9)
+// or EBP = T with ESI <= 0 (0x05326a), and ESI = h, the last term written at 0x05323d / 0x05329f / 0x0532b1 / 0x0532db,
+// which can be 1. So ESI = 1, a cleared remaining and EBP = the clamped T identify the absorbed path, except where the
+// clamp hides h = 1: a piloted victim with T >= 50,000 whose hull stage ran with remaining 0. Remaining 0 on the hull
+// path means the walk drained every shield to 0 (0x053155): a shield still holding energy sends the next step to the
+// absorb branch (0x05311d `jg 0x053161`). That residual case therefore reads absorbed here and the impact handler's
+// drained-shield rule (post-hit shields below drained_shield_q: here 0) records it as a hull hit; a genuinely absorbed
+// hit leaves the absorbing shield above 0. A flag-0x20 hit through charged shields reads 0 here (AP: 1); role_from
+// makes it a hull hit on either edition.
 constexpr std::int32_t fl_piloted_clamp = 50000;
 constexpr std::uint32_t fl_obj_piloted = 2;
 inline std::uint32_t fl_absorbed(std::uint32_t esi, std::uint32_t ebp, std::uint32_t walk_total, std::uint32_t remaining,
                                  std::uint32_t victim_flags) noexcept {
     if (esi != 1 || remaining != 0) return 0;
-    if ((victim_flags & fl_obj_piloted) && std::int32_t(walk_total) >= fl_piloted_clamp) return 0; // ambiguous: native
-    return ebp == walk_total ? 1u : 0u;
+    std::int32_t t = std::int32_t(walk_total);
+    if ((victim_flags & fl_obj_piloted) && t > fl_piloted_clamp) t = fl_piloted_clamp; // the cmovg at 0x0532fd
+    return std::int32_t(ebp) == t ? 1u : 0u;
 }
 // The FL death call serves both AP death sites (section 2.6: the area-bullet path joins the common tail). Its census tag
 // (Event::tint_source, AP's site) is rebuilt from AP's own branch: 0 (the area site) for an object with

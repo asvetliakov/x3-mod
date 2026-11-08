@@ -106,6 +106,10 @@ bool fixture_restore_call(CallSite& site) {
 extern "C" {
 std::uint32_t in_eax, in_ebx, in_ecx, in_edx, in_esi, in_edi, in_ebp;
 std::uint32_t in_nstack, in_stack[12], fl_site, saved_esp, esp_before_call, entry_flags;
+// The private stack every run executes on (filled with stack_fill before a run, to measure how deep the stub and the
+// handler wrote below the call; the AP fixture's STACK_DEPTH).
+alignas(16) unsigned char fl_stack[0x1000];
+std::uint32_t fl_stack_top;
 std::uint32_t out_eax, out_ebx, out_ecx, out_edx, out_esi, out_edi, out_ebp, out_esp, out_flags;
 // The fake callee's record: entry registers, EFLAGS, ESP and nine stack dwords from [esp]; one counter.
 std::uint32_t t_eax, t_ebx, t_ecx, t_edx, t_esi, t_edi, t_ebp, t_esp, t_flags, t_stack[9], t_calls;
@@ -121,6 +125,7 @@ asm(R"(
 _fl_enter:
     pushad
     mov dword ptr [_saved_esp], esp
+    mov esp, dword ptr [_fl_stack_top]
     mov ecx, dword ptr [_in_nstack]
     lea esi, [_in_stack + ecx*4]
 .Lpush:
@@ -376,6 +381,8 @@ void set_shields(std::int32_t cap, std::int32_t energy) {
 }
 
 // ---------------------------------------------------------------------------- running a site
+constexpr unsigned char stack_fill = 0x5a;
+unsigned max_stack_depth = 0, deepest_site = 0;
 struct Entry {
     std::uint32_t eax = 0xa1a1a1a1, ebx = 0x5b5b5b5b, ecx = 0xc1c1c1c1, edx = 0xd1d1d1d1, esi = 0x5e5e5e5e,
                   edi = 0xed1ed1ed, ebp = 0xeb9eb9eb, df = 1;
@@ -396,7 +403,16 @@ void run_site(unsigned i, const Entry& e) {
     fl_site = std::uint32_t(base + S::sites[i].window.rva + S::sites[i].call_offset);
     t_calls = 0;
     SetLastError(sentinel_error);
+    std::memset(fl_stack, stack_fill, sizeof fl_stack);
+    fl_stack_top = u32(fl_stack + 0xc00);
     fl_enter();
+    const unsigned char* lowest = fl_stack;
+    while (lowest < fl_stack + 0xc00 && *lowest == stack_fill) ++lowest;
+    const unsigned depth = unsigned(esp_before_call - u32(lowest)); // bytes below the call the stub and handler wrote
+    if (depth > max_stack_depth) {
+        max_stack_depth = depth;
+        deepest_site = i;
+    }
 }
 bool newest_record(std::uint32_t owner, core::Event* out) {
     const core::Ring& r = we::hook_state().ring;
@@ -453,7 +469,12 @@ int main() {
     check(core::fl_absorbed(0, 1200, 1200, 0, 0) == 0, "absorbed_esi0");
     check(core::fl_absorbed(1, 1300, 1200, 0, 0) == 0, "absorbed_hull_total_differs");
     check(core::fl_absorbed(1, 1200, 1200, 5, 0) == 0, "absorbed_remaining_nonzero");
-    check(core::fl_absorbed(1, 50000, 60000, 0, core::fl_obj_piloted) == 0, "absorbed_piloted_clamp_ambiguous_native");
+    // A piloted victim: EBP is T clamped to 50,000 (cmovg 0x0532fd), so T >= 50,000 still reads absorbed (the PSP/IONC/
+    // PPC/IBL shots, shield damage >= 50,000); an unclamped EBP above 50,000 cannot be the piloted absorbed path, and
+    // the hull path's T + 1 below the clamp is refused.
+    check(core::fl_absorbed(1, 50000, 60000, 0, core::fl_obj_piloted) == 1, "absorbed_piloted_clamped_total");
+    check(core::fl_absorbed(1, 60000, 60000, 0, core::fl_obj_piloted) == 0, "absorbed_piloted_unclamped_refused");
+    check(core::fl_absorbed(1, 40001, 40000, 0, core::fl_obj_piloted) == 0, "absorbed_piloted_hull_term_refused");
     check(core::fl_absorbed(1, 40000, 40000, 0, core::fl_obj_piloted) == 1, "absorbed_piloted_below_clamp");
 
     build_world(7, 0, 4, 0x0, 100000);
@@ -595,17 +616,46 @@ int main() {
                   (rec.flags & core::flag_absorbed) && (rec.flags & core::flag_forwarded),
               "impact_forward_records_shield_hit_absorbed");
     }
-    // Taps (observe forwards always): [esp+8] hit, [esp+0xc] &pos, ECX/EDX forwarded.
-    hs.owned_next = 0;
-    for (unsigned i : {1u, 2u}) {
+    // Taps (observe forwards always): ECX/EDX forwarded, and the handler reads [esp+8] hit and [esp+0xc] &pos: after an
+    // observe impact the right hit and the record's pos compare at error 0, a pos 1000 units off reads error 1000, and a
+    // wrong hit is unmatched.
+    const auto observe_impact = [&]() {
+        Entry e;
+        e.ecx = u32(&victim_obj);
+        e.edx = u32(&source_obj);
+        e.ebp = 1200;
+        e.esi = 1;
+        e.nstack = 7;
+        e.stack[5] = 1200;
+        run_site(0, e);
+    };
+    static std::int32_t tap_pos[3];
+    const auto run_tap = [&](unsigned i, std::uint32_t hit, std::int32_t off) {
+        observe_impact();
+        core::Event rec{};
+        newest_record(u32(&victim_obj), &rec);
+        for (unsigned k = 0; k < 3; ++k) tap_pos[k] = rec.pos[k] + (k == 0 ? off : 0);
         Entry e;
         e.nstack = 4;
-        e.stack[0] = 0xeeeeeeee;
-        e.stack[1] = u32(&victim_obj);
-        e.stack[2] = 0;
+        e.stack[0] = 0xeeeeeeee; // eff
+        e.stack[1] = hit;        // [esp+8]
+        e.stack[2] = u32(tap_pos); // [esp+0xc]
         run_site(i, e);
-        check(caller_kept(e) && t_calls == 1 && t_ecx == e.ecx && t_edx == e.edx,
-              i == 1 ? "tap1_forwards_ecx_edx" : "tap2_forwards_ecx_edx");
+        return caller_kept(e) && t_calls == 1 && t_ecx == e.ecx && t_edx == e.edx;
+    };
+    hs.owned_next = 0;
+    hs.check.pending = false; // the impact-forward run above left its comparison pending (no tap followed it)
+    for (unsigned i : {1u, 2u}) {
+        const std::uint32_t compared = hs.check.compared, unmatched = hs.check.unmatched;
+        hs.check.max_error = 0;
+        const bool fwd = run_tap(i, u32(&victim_obj), 0);
+        check(fwd && hs.check.compared == compared + 1 && hs.check.unmatched == unmatched && hs.check.max_error == 0,
+              i == 1 ? "tap1_hit_pos_slots_match" : "tap2_hit_pos_slots_match");
+        const bool off = run_tap(i, u32(&victim_obj), 1000);
+        check(off && hs.check.max_error == 1000, i == 1 ? "tap1_pos_slot_read" : "tap2_pos_slot_read");
+        const std::uint32_t before = hs.check.unmatched;
+        const bool wrong = run_tap(i, u32(&source_obj), 0);
+        check(wrong && hs.check.unmatched == before + 1, i == 1 ? "tap1_hit_slot_read" : "tap2_hit_slot_read");
     }
 
     // Phase 2b (shields,hull,bolts,explosions: the impact skip, the object tap, the muzzle, the flight, the death):
@@ -637,6 +687,46 @@ int main() {
         check(newest_record(u32(&victim_obj), &rec) && (rec.flags & core::flag_stage) && !(rec.flags & core::flag_forwarded),
               "impact_skip_record_staged");
     }
+    // A piloted victim (obj+0x40 & 2) hit with T = 60,000: EBP is the clamped 50,000, ESI = 1, remaining 0. With
+    // ECX = the ship it is absorbed (a staged shield hit, the callee skipped); with ECX/EDX swapped the victim flags read
+    // are the bullet's (not piloted), EBP != T, so the same hit records a hull hit and forwards: the shim reads ECX as
+    // the victim and EDX as the source.
+    const auto piloted_hit = [&](bool swapped) {
+        core::ring_clear(hs.ring);
+        Entry e;
+        e.ecx = swapped ? u32(&source_obj) : u32(&victim_obj);
+        e.edx = swapped ? u32(&victim_obj) : u32(&source_obj);
+        e.ebp = 50000;
+        e.esi = 1;
+        e.nstack = 7;
+        e.stack[5] = 60000;
+        run_site(0, e);
+        return caller_kept(e);
+    };
+    w32(&victim_obj, core::layout::obj_flags, core::fl_obj_piloted);
+    {
+        const bool kept = piloted_hit(false);
+        core::Event rec{};
+        check(kept && t_calls == 0 && out_eax == 0 && newest_record(u32(&victim_obj), &rec) &&
+                  rec.role == core::role_shield_hit && (rec.flags & core::flag_absorbed) && rec.damage == 50000,
+              "impact_piloted_clamped_absorbed_staged");
+        const bool kept_swapped = piloted_hit(true);
+        core::Event swapped{};
+        check(kept_swapped && t_calls == 1 && newest_record(u32(&victim_obj), &swapped) &&
+                  swapped.role == core::role_hull_hit && !(swapped.flags & core::flag_absorbed),
+              "impact_ecx_edx_swapped_differs");
+        // The residual case: the same registers after a hull stage that drained every shield to 0 (0x053155): read
+        // absorbed, then the drained-shield rule records a hull hit and forwards.
+        set_shields(1000000, 0);
+        const bool kept_drained = piloted_hit(false);
+        core::Event drained{};
+        check(kept_drained && t_calls == 1 && newest_record(u32(&victim_obj), &drained) &&
+                  drained.role == core::role_hull_hit && (drained.flags & core::flag_absorbed) &&
+                  (drained.detail & core::detail_drained),
+              "impact_piloted_drained_shields_hull_hit");
+        set_shields(1000000, core::layout::shield_full);
+    }
+    w32(&victim_obj, core::layout::obj_flags, 0);
 
 
     // Object tap (bolt_tap): ECX = object, forwarded. The bolt handler follows the bullet extension, so give it a null
@@ -648,6 +738,10 @@ int main() {
         e.nstack = 0;
         run_site(3, e);
         check(caller_kept(e) && t_calls == 1 && t_ecx == u32(&source_obj), "object_tap_forwards_ecx");
+        const core::BoltList& l = core::bolt_list_current(bs);
+        bool listed = false;
+        for (unsigned k = 0; k < core::bolt_list_count(bs, l); ++k) listed = listed || l.records[k].obj == u32(&source_obj);
+        check(listed, "object_tap_handler_records_ecx_object");
     }
 
     // Muzzle: EDX slot, [esp+8] ship, [esp+0x18] &pos, [esp+0x20] &orient, ESI record offset; forward / skip.
@@ -668,6 +762,14 @@ int main() {
             check(caller_kept(e) && out_eax == 0 && t_calls == 0, "muzzle_skip_no_callee");
         else
             check(caller_kept(e) && t_calls == 1 && t_stack[2] == u32(&victim_obj), "muzzle_forward_reaches_callee_ship");
+    }
+    {
+        const core::MuzzleRecord* m = nullptr;
+        for (const core::MuzzleRecord& r : bs.muzzles)
+            if (r.sequence && r.ship == u32(&victim_obj)) m = &r;
+        check(m && m->slot == 2 && m->row == 4 && m->pos[0] == 1 && m->pos[1] == 2 && m->pos[2] == 3 &&
+                  m->orient[0] == 0x10000 && m->orient[4] == 0x10000 && m->orient[8] == 0x10000,
+              "muzzle_handler_slot_row_pos_orient");
     }
 
     // Flight: [esp+8] bullet; forward / skip.
@@ -701,9 +803,28 @@ int main() {
               "death_forward_reaches_callee_obj_killer_arg4");
         core::Event rec{};
         check(newest_record(u32(&victim_obj), &rec) && rec.role == core::role_explosion && rec.tint_source == 1 &&
-                  rec.shield_q == 0x2a,
-              "death_forward_records_other_tag_reason");
+                  rec.shield_q == 0x2a && std::uint32_t(rec.damage) == 0xdeadbeefu,
+              "death_forward_records_other_tag_reason_killer");
     }
+    // The death skip (cmp eax,1; je; xor eax,eax; ret): a fighter death while the stage latched its death programs is
+    // ours, the callee is not entered and EAX is 0.
+    hs.owned_next = 1;
+    hs.boom_ready = 1;
+    {
+        Entry e;
+        e.ecx = u32(&victim_obj);
+        e.edx = 0x0b0b0b0b;
+        e.ebp = u32(kill_frame);
+        e.nstack = 1;
+        e.stack[0] = 0x44332211;
+        run_site(6, e);
+        core::Event rec{};
+        check(caller_kept(e) && t_calls == 0 && out_eax == 0 && newest_record(u32(&victim_obj), &rec) &&
+                  (rec.flags & core::flag_stage) && std::uint32_t(rec.damage) == 0x0b0b0b0bu,
+              "death_skip_no_callee_eax_zero");
+    }
+    hs.owned_next = 0;
+    hs.boom_ready = 0;
 
     // The ship bubble's hull walk on FL: a root with one part whose body id sits at node +0x144, reachable through the
     // body-cache hash; hull_bounds must read the FL node body offset and succeed.
@@ -758,7 +879,11 @@ int main() {
 
 
 
-    std::printf("STACK_DEPTH ok=1\n");
+    // The deepest run (the impact's: the stub's return, EFLAGS and three saves, four inputs, the entry pointer and the
+    // handler call's return = 0x2c, then the handler's own frame) stays well inside the private stack's 0xc00; the
+    // runner gates it against the audited handler frame (run_weapon_effects.py run_hook_fl).
+    std::printf("STACK_DEPTH bytes=%u margin=%u site=%u\n", max_stack_depth, 0xc00u, deepest_site);
+    check(max_stack_depth > 0x2c && max_stack_depth < 0x400 && deepest_site == 0, "fixture_stack_margin");
     std::printf("RESULT %s checks=%u failures=%u faults=%u\n", failures ? "FAIL" : "PASS", checks, failures, faults_taken);
     return failures ? 1 : 0;
 }

@@ -119,12 +119,17 @@ def audit(objects):
     stub_ok = {name: stubs[name] == want for name, want in STUBS.items()}
     handler_calls = {name: [line.strip() for line in body(hlist, name) if re.search(r'\bcall\b', line)] for name in HANDLERS}
     handler_rows = {name: len(body(hlist, name)) for name in HANDLERS}
+    # The impact handler's own frame (its entry `sub esp,N`): the fixture's STACK_DEPTH is this plus the impact stub's
+    # 0x2c (return, EFLAGS and three saves, four inputs, the entry pointer, the handler call's return).
+    entry = body(hlist, '_x3m_weapon_event_fl')[:8]
+    frame = [int(m.group(1), 16) for m in (re.search(r'sub\s+esp,0x([0-9a-f]+)', line) for line in entry) if m]
     module = tool('nm', str(objects['module']))
     module_own_protect = [l.strip() for l in module.splitlines() if re.search(r'__imp__VirtualProtect@', l)]
     patch = tool('objdump', '-d', '--no-show-raw-insn', str(objects['patch']))
     exe = windows_match_exe()
     record = {'handler_undefined': undefined, 'handler_x87': handler_x87, 'handler_calls': handler_calls,
-              'handler_instructions': handler_rows, 'stubs': stubs, 'stub_ok': stub_ok,
+              'handler_instructions': handler_rows, 'handler_frame_bytes': frame[0] if frame else 0,
+              'stubs': stubs, 'stub_ok': stub_ok,
               'windows_match_exe': exe, 'module_imports_own_protect': module_own_protect,
               'engine_patch_lock_cmpxchg8b': len(re.findall(r'lock cmpxchg8b', patch))}
     if (undefined or handler_x87 or not all(stub_ok.values()) or module_own_protect or

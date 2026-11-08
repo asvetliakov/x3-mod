@@ -117,20 +117,38 @@ def fl_exe_at(data, rva, size):
     raise AssertionError(f'RVA {rva:#x} not in any section')
 
 
+FL_SLOTS = {'gate_slot_rva': 0x1a82ec, 'type_table_rva': 0x1a83c8}
+FL_PREFERRED_BASE = 0x400000
+
+
 def fl_windows():
-    """The seven FL site windows and the frame witnesses: list of (name, rva, bytes, fixup_offset)."""
+    """The seven FL site windows and the nine frame witnesses: list of (name, rva, bytes, fixup_offset, fixup_rva)."""
     text = FL_HEADER.read_text()
     arrays = {m.group(1): bytes(int(x, 16) for x in re.findall(r'0x([0-9a-f]{2})', m.group(2)))
               for m in re.finditer(r'constexpr unsigned char (\w+)\[\d+\] = \{([^}]*)\}', text)}
     out = []
-    for name, rva, length, var, fixoff in re.findall(
-            r'\{\{"(\w+)", (0x[0-9a-f]+), (\d+), (\w+), (no_fixup|\d+), [^,]+, 0x[0-9a-f]+\}, \d+, 0x[0-9a-f]+\}', text):
-        out.append((name, int(rva, 16), arrays[var], None if fixoff == 'no_fixup' else int(fixoff)))
-    for name, rva, length, var, fixoff in re.findall(
-            r'\{"(\w+)", (0x[0-9a-f]+), (\d+), (\w+), (no_fixup|\d+|\w+), [^,]+, 0x[0-9a-f]+\}', text):
-        if var in arrays and name not in {n for n, *_ in out}:
-            # a witness: its fixup offset is numeric (source_test) or none
-            out.append((name, int(rva, 16), arrays[var], int(fixoff) if fixoff.isdigit() else None))
+    for name, rva, length, var, fixoff, fixrva in re.findall(
+            r'\{"(\w+)", (0x[0-9a-f]+), (\d+), (\w+), (no_fixup|\d+), (\w+), 0x[0-9a-f]+\}', text):
+        out.append((name, int(rva, 16), arrays[var], None if fixoff == 'no_fixup' else int(fixoff),
+                    FL_SLOTS.get(fixrva)))
+    return out
+
+
+def fl_relocations(data):
+    """Every HIGHLOW base relocation RVA of the image (.reloc through the data directory)."""
+    pe = struct.unpack_from('<I', data, 0x3c)[0]
+    rva, size = struct.unpack_from('<II', data, pe + 24 + 96 + 8 * 5)
+    out, at, end = set(), rva, rva + size
+    while at < end:
+        page, block = struct.unpack('<II', fl_exe_at(data, at, 8))
+        if block < 8:
+            break
+        entries = fl_exe_at(data, at + 8, block - 8)
+        for k in range(0, len(entries), 2):
+            e = struct.unpack_from('<H', entries, k)[0]
+            if e >> 12 == 3:
+                out.add(page + (e & 0xfff))
+        at += block
     return out
 
 
@@ -145,10 +163,20 @@ class FlWeaponEffectsSites(unittest.TestCase):
         self.assertEqual(hashlib.sha256(self.data).hexdigest(), FL_EXE_SHA256)
 
     def test_every_fl_window_matches_the_executable_with_the_fixup_masked(self):
-        for name, rva, expected, fixoff in fl_windows():
+        windows = fl_windows()
+        self.assertEqual(len(windows), 16)  # seven sites, six impact witnesses, two muzzle, one death
+        self.assertEqual(sum(1 for w in windows if w[3] is not None), 3)  # object, muzzle, source_test
+        relocs = fl_relocations(self.data)
+        for name, rva, expected, fixoff, fixrva in windows:
             live = bytearray(fl_exe_at(self.data, rva, len(expected)))
+            inside = sorted(r - rva for r in relocs if rva <= r < rva + len(expected))
             if fixoff is not None:
+                # the masked dword is the preferred-base address of its target, and the loader's only fixup in the window
+                self.assertEqual(struct.unpack_from('<I', live, fixoff)[0], FL_PREFERRED_BASE + fixrva, name)
+                self.assertEqual(inside, [fixoff], f'FL window {name}: relocations {inside}')
                 live[fixoff:fixoff + 4] = b'\0\0\0\0'
+            else:
+                self.assertEqual(inside, [], f'FL window {name}: relocations {inside}')
             self.assertEqual(bytes(live), expected, f'FL window {name} at rva {rva:#x}')
 
     def test_fl_header_static_asserts_compile(self):

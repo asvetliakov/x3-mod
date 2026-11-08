@@ -1,0 +1,19 @@
+sha256 e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8
+base 0x400000 dllch 0x8140 reloc 0x37d000 79964
+HIGHLOW 38327
+impact       rva=0x05338b len=43 eq=True relocs_at=[] fixup=None fixok=True call@0x53390 tgt=0x14440 exp=0x014440 q8=in
+tap1         rva=0x014572 len=27 eq=True relocs_at=[] fixup=None fixok=True call@0x14583 tgt=0x15270 exp=0x015270 q8=in
+tap2         rva=0x01463f len=27 eq=True relocs_at=[] fixup=None fixok=True call@0x14650 tgt=0x15270 exp=0x015270 q8=in
+bolt_tap     rva=0x0645ad len=31 eq=True relocs_at=[1] fixup=1 fixok=True call@0x645bd tgt=0x14d90 exp=0x014d90 q8=STRADDLE
+muzzle       rva=0x04f603 len=62 eq=True relocs_at=[1] fixup=1 fixok=True call@0x4f639 tgt=0x150e0 exp=0x0150e0 q8=in
+flight       rva=0x014e95 len=29 eq=True relocs_at=[] fixup=None fixok=True call@0x14eaa tgt=0x150e0 exp=0x0150e0 q8=in
+death        rva=0x0543ac len=22 eq=True relocs_at=[] fixup=None fixok=True call@0x543b3 tgt=0x13ed0 exp=0x013ed0 q8=in
+prologue     rva=0x053070 len=25 eq=True relocs_at=[] fixup=None fixok=True
+absorb_total rva=0x05318d len=4 eq=True relocs_at=[] fixup=None fixok=True
+absorbed_esi rva=0x053194 len=9 eq=True relocs_at=[] fixup=None fixok=True
+source_test  rva=0x0531a1 len=53 eq=True relocs_at=[19] fixup=19 fixok=True
+hull_add     rva=0x0532a9 len=2 eq=True relocs_at=[] fixup=None fixok=True
+clamp        rva=0x0532e3 len=29 eq=True relocs_at=[] fixup=None fixok=True
+gun_slot     rva=0x04e4a4 len=10 eq=True relocs_at=[] fixup=None fixok=True
+bullet_index rva=0x04e4f9 len=11 eq=True relocs_at=[] fixup=None fixok=True
+row_chooser  rva=0x013f3d len=14 eq=True relocs_at=[] fixup=None fixok=True

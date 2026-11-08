@@ -171,6 +171,56 @@ class WeaponEffectsHookRecord(unittest.TestCase):
 
 
 
+class WeaponEffectsHookFlRecord(unittest.TestCase):
+    """hook-fl-summary.json, the FL hook fixture (weapon_effects_hook_fixture_fl.cpp; docs/architecture/weapon-effects.md
+    2.10): every check passed, every FL shim's slots exercised, the audit clean against X3FL.exe, the stack depth the
+    audited handler frame plus the FL impact stub's 0x2c, bound to its sources."""
+    PATH = RESULTS / 'hook-fl-summary.json'
+    REQUIRED = {'every_window_bit_refused', 'bolt_tap_fixup_other_base_refused', 'muzzle_fixup_other_base_refused',
+                'installed_all_sites_active', 'globals_bound_base_plus_rva', 'write_paths_atomic_except_object_tap',
+                'shutdown_restores_all', 'rollback_restores_all', 'init_logs_one_row_per_site', 'late_claim_refused',
+                'absorbed_piloted_clamped_total', 'impact_forward_reaches_callee_ecx_edx_return',
+                'impact_forward_records_shield_hit_absorbed', 'impact_skip_no_callee_eax_zero',
+                'impact_piloted_clamped_absorbed_staged', 'impact_ecx_edx_swapped_differs',
+                'impact_piloted_drained_shields_hull_hit', 'tap1_hit_pos_slots_match', 'tap1_pos_slot_read',
+                'tap1_hit_slot_read', 'tap2_hit_pos_slots_match', 'tap2_pos_slot_read', 'tap2_hit_slot_read',
+                'object_tap_handler_records_ecx_object', 'muzzle_handler_slot_row_pos_orient', 'muzzle_skip_no_callee',
+                'flight_forward_reaches_callee_bullet', 'flight_skip_no_callee',
+                'death_forward_records_other_tag_reason_killer', 'death_skip_no_callee_eax_zero',
+                'fl_bubble_walk_reads_node_body_0x144', 'fixture_stack_margin'}
+
+    def setUp(self):
+        self.record = json.loads(self.PATH.read_text())
+
+    def test_every_check_passed(self):
+        r = self.record
+        self.assertTrue(r['passed'])
+        self.assertEqual((r['edition'], r['game_launched'], r['host']['name']), ('fl', False, 'native-windows'))
+        self.assertEqual((r['run']['exit_code'], r['run']['result']['verdict'], r['run']['result']['failures']),
+                         (0, 'PASS', 0))
+        self.assertEqual(r['run']['result']['checks'], r['check_count'])
+        self.assertEqual(r['failed_checks'], [])
+        self.assertLessEqual(self.REQUIRED, {c['name'] for c in r['checks']})
+
+    def test_build_audit_and_stack(self):
+        a = self.record['build']['audit']
+        self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
+        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 6)
+        self.assertEqual(len(a['handler_calls']), 6)
+        self.assertTrue(all(not v for v in a['handler_calls'].values()))
+        self.assertEqual(a['windows_match_exe'], {k: True for k in ('impact', 'tap1', 'tap2', 'bolt_tap', 'muzzle', 'flight',
+                                                                     'death')})
+        self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
+        self.assertTrue(self.record['stack_ok'])
+        self.assertEqual(self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x2c)
+
+    def test_bound_to_its_sources(self):
+        import run_weapon_effects as runner
+        self.assertEqual(self.record['sources'], list(runner.HOOK_FL_SOURCES))
+        for path, recorded in self.record['source']['sha256'].items():
+            self.assertEqual(sha(path), recorded, path + ': changed since the record: rerun run_weapon_effects.py --host native')
+
+
 class WeaponEffectsD3DRecord(unittest.TestCase):
     PATH = RESULTS / 'summary.json'
 

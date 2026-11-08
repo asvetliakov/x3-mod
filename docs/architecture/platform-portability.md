@@ -1270,7 +1270,7 @@ shell 43.7 / 151.9 µs, an empty fence 10.8 / 10.2 µs; the 0.2 ms flight target
 two-shell figure. These replace the Wine/wined3d figures of the dropped stage as the stage's only native costs; the
 hooks' own per-frame cost is unmeasured until the observe flight. FL (2026-11-08): the same families install at
 X3FL.exe's seven call sites, module base + RVA, through FL entry shims that rebuild the AP stub contract from the
-moved ECX/EDX/EBP/ESI geometry (weapon-effects.md 2.10, `weapon_effects_sites_fl.h`); the FL hook fixture is 43 of 43
+moved ECX/EDX/EBP/ESI geometry (weapon-effects.md 2.10, `weapon_effects_sites_fl.h`); the FL hook fixture is 56 of 56
 with the FL EXE's window bytes, and `edition_unsupported` is gone. The ship-bubble hull walk's LOD-extent bound on FL
 is an inference kept as the runtime guard (`weapon_bubble_extent edition=fl`); the stage has not flown on FL.
 Not flown on either platform. **2026-11-06, the hex patch of weapon-effects.md 5.1.1** replaces the shell (same

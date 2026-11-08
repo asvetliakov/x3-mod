@@ -20,26 +20,21 @@
     "src/engine/fl/executable_identity_fl.h"
   ],
   "source": {
-    "commit": "c178e46bcf498af318aa2a99301c8379fd3f02ad-dirty",
+    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_bubble.h",
       "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_hook.cpp",
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "src/engine/fl/weapon_effects_sites_fl.h",
       "verification/probe/build_weapon_effects_hook_fl.py",
       "verification/probe/weapon_effects_hook_fixture_fl.cpp"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "4099eefe1dddd333dacfd23d1b5d68eb19a0fb6506ea791055b559cd0b026840",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "31d2c0a7def4032710ad233e0edbaf82307528f47d6e9d3594fd7e336637125b",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
-      "verification/probe/build_weapon_effects_hook_fl.py": "3afcca54e9bb3bf83c0347140ceb36f95c3111f42c672c45c26433988d8a3467",
+      "verification/probe/build_weapon_effects_hook_fl.py": "2aef9b042968afb7319dc1a1b6781e63395df4ed1255cf306cb8b4cddcfc4ee5",
       "src/proxy/weapon_effects_patch.cpp": "a2cb23dfc56d7b4c2b8276be88b069ac8b097640e94cb25a9fe53d5daf1855c0",
       "src/proxy/weapon_effects_patch.h": "fb84599896a7ec079e6afe7e9ce1381f74179beb7a409527b3761f93769f1341",
       "src/proxy/weapon_effects_hook.cpp": "fe2a71dc300eb802544408894088d06105e5943aa9950fd3069214cc6d3f8176",
-      "src/proxy/weapon_effects_core.h": "4e3ecf39cd9037da6039000d31becd08ca3e1ca9dd534c6902be3a272660721a",
+      "src/proxy/weapon_effects_core.h": "562685cbef3f21b907b1bef33b54ec6abf7d44a36aea6f0a1e47d5f70cdff711",
       "src/engine/fl/weapon_effects_sites_fl.h": "14e73332927de57da9d23ad5dfb14446cc067747cd98bf227b09c17ae6eb1a41",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_bubble.h": "c918f799b41611d964c0b64bb9a0cf5f924bccda63eb367f5edcde379dfe5087",
@@ -64,13 +59,14 @@
         "_x3m_weapon_death_fl": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event_fl": 1240,
+        "_x3m_weapon_event_fl": 1244,
         "_x3m_weapon_tap_fl": 45,
         "_x3m_weapon_bolt_tap_fl": 498,
         "_x3m_weapon_muzzle_fl": 226,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 569
       },
+      "handler_frame_bytes": 200,
       "stubs": {
         "_x3m_weapon_effects_stub_impact_fl": [
           "pushf",
@@ -217,7 +213,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "0ac9483f8494140f34a6fc285d057b6e7591f47b75824dafb03bb7c9ddd54131"
+    "executable_sha256": "c885271624a1a560f7544c4d957a558a48edc3cc6564258f3839942d3fe9a0df"
   },
   "host": {
     "name": "native-windows",
@@ -236,7 +232,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 43,
+      "checks": 56,
       "failures": 0,
       "faults": 1,
       "verdict": "PASS"
@@ -280,7 +276,17 @@
       "detail": ""
     },
     {
-      "name": "absorbed_piloted_clamp_ambiguous_native",
+      "name": "absorbed_piloted_clamped_total",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_piloted_unclamped_refused",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "absorbed_piloted_hull_term_refused",
       "passed": true,
       "detail": ""
     },
@@ -385,12 +391,32 @@
       "detail": ""
     },
     {
-      "name": "tap1_forwards_ecx_edx",
+      "name": "tap1_hit_pos_slots_match",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "tap2_forwards_ecx_edx",
+      "name": "tap1_pos_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap1_hit_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap2_hit_pos_slots_match",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap2_pos_slot_read",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "tap2_hit_slot_read",
       "passed": true,
       "detail": ""
     },
@@ -410,7 +436,27 @@
       "detail": ""
     },
     {
+      "name": "impact_piloted_clamped_absorbed_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_ecx_edx_swapped_differs",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "impact_piloted_drained_shields_hull_hit",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "object_tap_forwards_ecx",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "object_tap_handler_records_ecx_object",
       "passed": true,
       "detail": ""
     },
@@ -421,6 +467,11 @@
     },
     {
       "name": "muzzle_skip_no_callee",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "muzzle_handler_slot_row_pos_orient",
       "passed": true,
       "detail": ""
     },
@@ -440,7 +491,12 @@
       "detail": ""
     },
     {
-      "name": "death_forward_records_other_tag_reason",
+      "name": "death_forward_records_other_tag_reason_killer",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "death_skip_no_callee_eax_zero",
       "passed": true,
       "detail": ""
     },
@@ -458,12 +514,20 @@
       "name": "late_claim_refused",
       "passed": true,
       "detail": ""
+    },
+    {
+      "name": "fixture_stack_margin",
+      "passed": true,
+      "detail": ""
     }
   ],
-  "check_count": 43,
+  "check_count": 56,
   "failed_checks": [],
   "stack_depth": {
-    "ok": 1
+    "bytes": 244,
+    "margin": 3072,
+    "site": 0
   },
+  "stack_ok": true,
   "passed": true
 }

@@ -19,13 +19,10 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "c178e46bcf498af318aa2a99301c8379fd3f02ad-dirty",
+    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_hook.cpp",
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h"
+      "src/proxy/weapon_effects_core.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "dfc060f3ad44ce0e1346d72827d178762ce2a8357a14222e1ecaa5c1f98d72a7",
@@ -34,7 +31,7 @@
       "src/proxy/weapon_effects_patch.cpp": "a2cb23dfc56d7b4c2b8276be88b069ac8b097640e94cb25a9fe53d5daf1855c0",
       "src/proxy/weapon_effects_patch.h": "fb84599896a7ec079e6afe7e9ce1381f74179beb7a409527b3761f93769f1341",
       "src/proxy/weapon_effects_hook.cpp": "fe2a71dc300eb802544408894088d06105e5943aa9950fd3069214cc6d3f8176",
-      "src/proxy/weapon_effects_core.h": "4e3ecf39cd9037da6039000d31becd08ca3e1ca9dd534c6902be3a272660721a",
+      "src/proxy/weapon_effects_core.h": "562685cbef3f21b907b1bef33b54ec6abf7d44a36aea6f0a1e47d5f70cdff711",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_bolt_sites.h": "8d789cfd70563535977abe9ef7962c5a1c64d47f50151f7977724c205cd7f1a9",
@@ -165,7 +162,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "45fd4404bd893284b9083d41cade6552af1413e8ae587412ec85cb6916d07f0a"
+    "executable_sha256": "936e7fadff40c0ed036e96ba9d9c092da00caa36dc2731af7753fcd3f47b5d40"
   },
   "host": {
     "name": "native-windows",
@@ -1183,9 +1180,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.0,
+    "best_us": 17.1,
     "median_us": 17.2,
-    "worst_us": 31.3,
+    "worst_us": 24.9,
     "target_us": 30
   },
   "overflow": {
@@ -1201,9 +1198,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.0,
-    "median_us": 55.1,
-    "worst_us": 55.3,
+    "best_us": 55.1,
+    "median_us": 55.3,
+    "worst_us": 56.5,
     "target_us": 150
   },
   "death_forward_state": {

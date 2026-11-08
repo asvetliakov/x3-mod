@@ -268,8 +268,12 @@ def run_hook_fl(args, results):
     record['failed_checks'] = report['failed_checks']
     record['stack_depth'] = report['stack_depth']
     result = report['result'] or {}
+    # The deepest run is the impact: the handler's audited frame plus the FL impact stub's 0x2c.
+    frame = record['build']['audit']['handler_frame_bytes']
+    record['stack_ok'] = bool(frame and report['stack_depth'] and report['stack_depth'].get('bytes') == frame + 0x2c)
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
-                        result.get('checks') == len(report['checks']) and result.get('failures') == 0)
+                        result.get('checks') == len(report['checks']) and result.get('failures') == 0 and
+                        record['stack_ok'])
     out_path = results / 'hook-fl-summary.json'
     out_path.write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({'hook_fl_exit': done.returncode, 'hook_fl_result': report['result'],
