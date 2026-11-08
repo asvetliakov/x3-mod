@@ -1,0 +1,64 @@
+{
+ "texture_rgb_srgb8": [
+  121,
+  82,
+  39
+ ],
+ "tint_linear_normalised": [
+  1.0,
+  0.4413,
+  0.1061
+ ],
+ "tint_srgb8_at_full": [
+  255,
+  177,
+  92
+ ],
+ "f_px_per_m_at_1m": 1280.0,
+ "d_ref_m": 500.0,
+ "px_per_m_at_ref": 2.56,
+ "ire_speed_mps": 1162.0,
+ "stretch_1x_60fps_m": 19.37,
+ "stretch_1x_60fps_px_at_ref": 49.6,
+ "mocks": {
+  "thin": {
+   "core_px_fwhm": 2.0,
+   "glow_sigma_over_core_radius": 3.0,
+   "glow_strength": 0.2,
+   "stretch_px": 0.0,
+   "hot_share": 0.3,
+   "core_stops": 2.0,
+   "size": [
+    512,
+    256
+   ],
+   "file": "mock-thin.png"
+  },
+  "stretched": {
+   "core_px_fwhm": 2.0,
+   "glow_sigma_over_core_radius": 3.0,
+   "glow_strength": 0.2,
+   "stretch_px": 12.0,
+   "hot_share": 0.3,
+   "core_stops": 2.0,
+   "size": [
+    512,
+    256
+   ],
+   "file": "mock-stretched.png"
+  },
+  "glow": {
+   "core_px_fwhm": 2.0,
+   "glow_sigma_over_core_radius": 8.0,
+   "glow_strength": 0.4,
+   "stretch_px": 0.0,
+   "hot_share": 0.3,
+   "core_stops": 2.0,
+   "size": [
+    512,
+    256
+   ],
+   "file": "mock-glow.png"
+  }
+ }
+}
