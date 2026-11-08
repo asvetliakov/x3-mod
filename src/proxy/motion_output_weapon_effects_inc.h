@@ -339,8 +339,9 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     view.width = float(f.width);
     view.height = float(f.height);
     view.near_z = f.near_z;
-    // The frame's quads (512 x 4 x 48 B = 96 KB: static, off the game thread's stack; consumed before returning).
-    static renderer::WeaponProjectileVertex vertices[renderer::weapon_projectile_max_bolts * ps::vertices_per_bolt];
+    // The frame's quads (512 bolts x 5 quads x 4 x 48 B = 480 KB: static, off the game thread's stack; consumed before
+    // returning).
+    static renderer::WeaponProjectileVertex vertices[renderer::weapon_projectile_max_quads * ps::vertices_per_quad];
     static ps::Looks looks;
     if (looks.resolved > x3m_projectile_pool.body_count) looks.resolved = 0;
     const std::uint32_t now = weapon_effects::game_ms(), step = weapon_effects::game_step_ms();
@@ -365,7 +366,8 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     // the device frame (a frame the stage did not run breaks every bridge) and the resolve's camera cut
     const ps::Counts n = ps::build(x3m_projectile_pool, &weapon_effects_read, weapon_effects::hook_state().table, looks,
                                    std::uint32_t(frame_), projectile_cut_, now, step, render_dt, seta_rate, view,
-                                   projectile_tune_, vertices, renderer::weapon_projectile_max_bolts);
+                                   projectile_tune_, vertices, renderer::weapon_projectile_max_bolts,
+                                   renderer::weapon_projectile_max_quads);
     projectile_retired_ += n.expired + n.invalid;
     projectile_statics_ += n.statics;
     projectile_jumped_ += n.jumped;
@@ -373,7 +375,7 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     pf.width = f.width;
     pf.height = f.height;
     pf.vertices = vertices;
-    pf.bolts = n.drawn;
+    pf.quads = n.quads;
     pf.lane = depth_surface_;
     pf.depth = projectile_depth_;
     D3DSURFACE_DESC scene{};
@@ -382,7 +384,7 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     const HRESULT hr = weapon_->run_projectiles(pf, &report);
     QueryPerformanceCounter(&end);
     projectile_ran_ = hr == S_OK || hr == S_FALSE;
-    projectile_bolts_ += report.bolts;
+    projectile_bolts_ += report.drew ? n.drawn : 0u;
     const std::uint64_t ticks = std::uint64_t(end.QuadPart - begin.QuadPart);
     const float us = frequency && frequency < 0x80000000ull && ticks < 0x80000000ull
                          ? float(double(std::int32_t(ticks)) * 1e6 / double(std::int32_t(frequency)))

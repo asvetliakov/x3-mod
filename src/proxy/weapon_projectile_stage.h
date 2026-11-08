@@ -8,7 +8,7 @@
 // The projectile stage's CPU half (docs/architecture/projectile-look.md section 2 and "Implementation (2026-11-08)"):
 // every live pool entry (weapon_effects_projectile.h) validated through the bounded reader, its node read once (live,
 // handle, position +0x30, velocity +0x100, body +0x144; one read, no object read: a recycled node changes handle) and
-// turned into one screen-space quad of four vertices: a streak of light on screen from the previous frame's projected
+// turned into one to five screen-space quads of four vertices: a streak of light on screen from the previous frame's projected
 // head to this frame's projected head P (P the body origin, where the vanilla mesh is centred; both through the
 // unjittered projection), so consecutive frames' streaks meet end to end on screen at any frame rate and whatever the
 // camera did (the FL 59 A dashed trail was the gap between short dashes); a first frame (a jump, a cut, a frame the
@@ -16,8 +16,11 @@
 // step, so SETA lengthens it), never behind the muzzle. A static frame (node +0x30 unchanged) extrapolates the head by
 // v x render dt x SETA rate. No multiplier; the radiance factor is min(1, length_cap_m / the world travel |v| dt_game);
 // a motion under the core's width (end-on) is a spot of the core's width at full core radiance; past lod_dot_m a spot. Along the
-// axis the profile is flat with logistic end ramps whose half maximum sits at each end, so two consecutive streaks add
-// to one flat streak. The core's full width is core_px at the 500 m reference through the live
+// axis each segment has logistic end ramps whose half maximum sits at each end, so two segments sharing an end add to
+// one streak; with trail_ms (FL 60 A) the comet: the brightness falls off with the age of each point along the path
+// (trail_falloff), the bolt's own segment carries the head (head_gain) and the entry's ring of up to trail_ring older
+// heads is redrawn behind it with the continued falloff; trail_ms 0 is the flat streak of FL run 60. The core's full
+// width is core_px at the 500 m reference through the live
 // projection: its world width is core_px x 500 m / f (f = m11 H / 2, the frame's projection, never a fixed focal
 // length), drawn at w = world width x f / z px; under 1 px it is drawn 1 px wide at radiance x w (a far bolt dims, it
 // never fattens). A Gaussian glow of sigma glow_ratio x w / 2 (floor 1.5 px, its radiance scaled by the floor's lost
@@ -35,7 +38,9 @@ constexpr float view_units_per_metre = 5.f; // engine units (500 per metre) x wo
 constexpr float glow_floor_px = 1.5f, quad_margin_px = 0.5f, near_margin = 1.001f;
 // The quad ends where both Gaussians fall below this radiance (scene white 1): r = sigma sqrt(2 ln(peak / cut)).
 constexpr float radiance_cut = 1.f / 256.f;
-constexpr unsigned vertices_per_bolt = 4, indices_per_bolt = 6;
+constexpr unsigned vertices_per_quad = 4, indices_per_quad = 6;
+static_assert(1u + core::projectile::trail_ring == renderer::weapon_projectile_quads_per_bolt,
+              "a bolt is its own segment and the comet's ring");
 // 2^x and log2 x in float without libm (|error| < 2e-6 relative over the used ranges).
 inline float exp2f_poly(float x) noexcept {
     if (!(x > -126.f)) return 0.f;
@@ -121,20 +126,33 @@ struct View {
 // One bolt: its head (view space, view units; the body origin, or extrapolated on a static frame), its velocity (view
 // units per second) and the camera's translation over the frame (view space), the previous frame's head on screen
 // (unjittered raster px) when the entry was drawn in the previous frame (has_tail) and whether that head was
-// extrapolated, the game-time step (0: the game is paused) and its age (seconds).
+// extrapolated, the game-time step (0: the game is paused) and its age (seconds). With a tail, the comet's ring: the
+// game time from that head to this one (tail_age_s) and the heads drawn before it (raster px, newest first), each with
+// the game time from it to the newer head (ring_span_s[0]: to tail_px).
 struct BoltIn {
     float p[3]{}, v[3]{}, cam[3]{};
     float tail_px[2]{};
     float step_s = 0.f, age_s = 1e6f;
     bool has_tail = false, tail_extrapolated = false;
+    float tail_age_s = 0.f;
+    float ring_px[core::projectile::trail_ring][2]{};
+    float ring_span_s[core::projectile::trail_ring]{};
+    unsigned ring_count = 0;
 };
 struct BoltShape { // diagnostics, the bridge's next tail and the fixture's rule checks
     float depth_m = 0;
     float streak_m = 0;  // the world travel this frame, |v| dt_game (metres: the cap's length)
     float length_px = 0; // the on-screen motion (tail to head)
-    float drawn_px = 0;  // the drawn segment (at least the core's width)
+    float drawn_px = 0;  // the drawn segment (at least the core's width; a segment past trail_ms clipped there)
     float core_px = 0, dim = 1, energy = 1, glow_sigma_px = 0, ext_px = 0, ext_along_px = 0;
     float raster[4][2]{}, head[2]{}, tail[2]{}; // the quad's corners; the drawn segment's ends (unjittered raster)
+    float motion_tail[2]{}; // the motion's tail on screen (a first frame's: the next frame's first ring head)
+    float tail_age_s = 0;   // the game time over the motion (tail to head; 0 when held)
+    float trail_age_s = 0;  // the age at the drawn comet's far end (0: no trail)
+    float trail_end[2]{};   // that end on screen
+    float head_gain = 1;    // the head's core over the trail's start as written (1: no head)
+    unsigned quads = 0, trail_quads = 0; // quads written; the ring's segments drawn (in one quad when merged)
+    bool merged = false;                 // the comet drawn as one quad (its knots on one line, its ages linear)
     bool dot = false, held = false, projected = false; // projected: head[] is the bridge's next tail
 };
 inline void rotate_view(const View& c, const float w[3], float out[3]) noexcept {
@@ -208,21 +226,52 @@ inline float along_norm(float h, float m_over_sigma) noexcept {
     const float e = exp2f_poly(-m_over_sigma * h);
     return (1.f + e) / (1.f - e);
 }
-// The four vertices of one bolt (false: culled, the head behind the near plane, off the target or degenerate), in
+// The comet (FL 60 A, projectile-look.md section 2): along the bolt's on-screen path the brightness is a function of the
+// age a of each point (the game time since the head passed it), F(a) = (8 2^(-3 a / trail_ms) - 1) / 7: 1 at the head,
+// 0 at trail_ms, monotonic. A frame draws its segment (the previous head to this head) and up to trail_ring older
+// segments from the entry's ring, each with F over its own age span, so neighbouring segments meet at a shared end with
+// equal values (the ramps telescope as before) and the profile is one falloff. The comet is drawn while F >=
+// trail_floor, to the age trail_drawn x trail_ms, with the end ramp beyond it (the budget: the faint end of the law costs
+// its area; at 5 % the 512-bolt case measured 50.0 and 50.6 us of the 50 us GPU budget, at 10 % see the ledger); a ring
+// segment whose newer end is past it is not drawn, the one crossing it is clipped there. weapon_projectile_ps.hlsl
+// evaluates saturate((8 2^e - 1) / 7) with e = -3 a / trail_ms linear along the segment (e = 0 without a trail: F = 1).
+constexpr float trail_k = 3.f, trail_floor = 0.1f;
+constexpr float trail_drawn = 0.74482f; // log2(8 / (1 + 7 trail_floor)) / trail_k
+inline float trail_falloff(float age_s, float inv_trail_s) noexcept {
+    const float f = (8.f * exp2f_poly(-trail_k * age_s * inv_trail_s) - 1.f) * (1.f / 7.f);
+    return f < 0.f ? 0.f : f > 1.f ? 1.f : f;
+}
+// The head: the core of the bolt's own segment adds 4 a (Phi(x - h + L) - Phi(x - h)) over its last L = head_widths core
+// widths (m L = head_widths x 2.35482 x logistic_slope = 8.67327, the program's constant), a in the core colour's alpha:
+// at the window's centre (L / 2 behind the head) the segment's own profile is head_ramp (its end ramp) and the window
+// head_window, so a = (head_gain - head_ramp) / head_window / 4 puts the head's core at head_gain x the trail's start.
+constexpr float head_widths = 1.5f;
+constexpr float head_ramp = 0.95294f;   // 1 - 1 / (1 + 2^4.33664), m L / 2 = 4.33664
+constexpr float head_window = 0.90574f; // (1 - 2^-4.33664) / (1 + 2^-4.33664)
+// One quad for the whole comet when its knots (the segments' ends) lie on the line from its far end to the head within
+// merge_px and their ages are linear along it within merge_age x trail_ms (a straight on-screen path at a steady screen
+// speed, the common case: a 3D line projects to a line); else one quad per segment.
+constexpr float merge_px = 0.25f, merge_age = 0.02f;
+// The program's across coordinate q: exp2(-q^2) = exp(-y^2 / (2 sigma^2)) for q = y q_per_sigma / sigma.
+constexpr float q_per_sigma = 0.84932180f; // 1 / sqrt(2 ln 2)
+// The quads of one bolt (0: culled, the head behind the near plane, off the target or degenerate), at most max_quads, in
 // screen space through the caller's projection (the stage passes the unjittered one: the bolt never enters the TAA
-// history, and jitter would only misalign the seam). The streak runs from the tail to the head on screen: the previous
-// frame's projected head (in.tail_px) when the entry was drawn in the previous frame, so the streak covers the bolt's
-// on-screen path between the two frames whatever the camera did (translation and rotation); else (a first frame, a jump,
-// a cut) the projection of P - v_rel min(dt_game, age), v_rel the velocity relative to the camera (never behind the
-// muzzle). A head extrapolated last frame past this frame's position (against the on-screen motion) holds there. No
-// multiplier. Energy: the radiance factor is min(1, length_cap_m / the world travel |v| dt_game) (a fast or SETA bolt is
-// a longer, fainter streak; a travel under the cap keeps full radiance whatever its on-screen length); an on-screen
-// motion under the core's width (an end-on bolt flying along the line of sight) is a spot of the core's width at full
-// core radiance at its centre; past lod_dot_m the same spot on the head with the streak's factor. Width, glow and depth
-// (occlusion) are the head's.
-inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tune, const BodyFrame& body,
-                          const BoltIn& in, renderer::WeaponProjectileVertex out[4], BoltShape* shape = nullptr) noexcept {
-    if (!vf.ok || !(in.p[2] > vf.zn)) return false;
+// history, and jitter would only misalign the seam). The bolt's segment runs from the tail to the head on screen: the
+// previous frame's projected head (in.tail_px) when the entry was drawn in the previous frame, so the streak covers the
+// bolt's on-screen path between the two frames whatever the camera did (translation and rotation); else (a first frame,
+// a jump, a cut) the projection of P - v_rel min(dt_game, age), v_rel the velocity relative to the camera (never behind
+// the muzzle). A head extrapolated last frame past this frame's position (against the on-screen motion) holds there. No
+// multiplier. Energy: the radiance factor is min(1, length_cap_m / the world travel |v| dt_game) over the whole comet (a
+// fast or SETA bolt is a longer, fainter streak; a travel under the cap keeps full radiance whatever its on-screen
+// length); an on-screen motion under the core's width (an end-on bolt flying along the line of sight) is a spot of the
+// core's width at full core radiance at its centre, no trail and no head; past lod_dot_m the same spot on the head with
+// the streak's factor. With trail_ms the comet: the segment's falloff from the head over its age span, the head on its
+// core and the ring's older segments behind it (with a tail and max_quads > 1). Width, glow and depth (occlusion) are
+// the head's. The bolt's own segment is out[0..3], the ring's follow.
+inline unsigned bolt_quads(const View& c, const ViewFrame& vf, const pf::Tune& tune, const BodyFrame& body,
+                           const BoltIn& in, renderer::WeaponProjectileVertex* out, unsigned max_quads,
+                           BoltShape* shape = nullptr) noexcept {
+    if (!vf.ok || !(in.p[2] > vf.zn) || !max_quads) return 0;
     const float zn = vf.zn;
     const float inv_z = 1.f / in.p[2];
     const float depth_m = in.p[2] * (1.f / view_units_per_metre);
@@ -249,21 +298,26 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     const float sy = -vf.half_h * c.m11 * (rel[1] * in.p[2] - in.p[1] * rel[2]) * inv_z * inv_z;
     float ra[2];
     bool held = false;
+    float motion_age = 0.f; // the game time over the motion (its tail's age)
     if (in.has_tail) {
         ra[0] = in.tail_px[0];
         ra[1] = in.tail_px[1];
+        motion_age = in.tail_age_s > 0.f ? in.tail_age_s : 0.f;
         if (in.tail_extrapolated && (rb[0] - ra[0]) * sx + (rb[1] - ra[1]) * sy < 0.f) { // never backwards on screen
             rb[0] = ra[0];
             rb[1] = ra[1];
             held = true;
+            motion_age = 0.f; // the head is the previous one: the trail's ages start there
         }
     } else {
         const float age = in.age_s > 0.f ? in.age_s : 0.f, t = step < age ? step : age;
         float a[3];
         for (unsigned k = 0; k < 3; ++k) a[k] = in.p[k] - rel[k] * t;
+        motion_age = t;
         if (a[2] < zn) { // the tail clipped to the near plane (the head is in front)
             const float u = (zn - in.p[2]) / (a[2] - in.p[2]);
             for (unsigned k = 0; k < 3; ++k) a[k] = in.p[k] + u * (a[k] - in.p[k]);
+            motion_age = t * u;
         }
         raster(a, ra);
     }
@@ -286,7 +340,6 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     const float sigma_g = sigma_raw > glow_floor_px ? sigma_raw : glow_floor_px, inv_sg = 1.f / sigma_g;
     const float glow_area = sigma_raw > glow_floor_px ? 1.f : sigma_raw * (1.f / glow_floor_px);
     const float glow_scale = glow_area * glow_area;
-    const float kc = 0.5f * inv_sc * inv_sc, kg = 0.5f * inv_sg * inv_sg;
     // energy: the radiance factor min(1, length_cap_m / the world travel this frame, |v| dt_game); a travel under the
     // cap (or a paused game) keeps 1, whatever its on-screen length; the dot keeps the same factor
     const float travel_m = speed_m * step;
@@ -294,60 +347,173 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     const float energy = travel_m > cap ? cap / travel_m : 1.f;
     const bool dot = depth_m > tune.lod_dot_m;
     // a motion under the core's width (an end-on or a slow bolt) and the dot: a spot of the core's width centred on the
-    // motion (the dot on the head), its along profile normalised to 1 at its centre (full core radiance)
+    // motion (the dot on the head), its along profile normalised to 1 at its centre (full core radiance), no trail
     const bool spot = dot || len < w;
-    const float drawn = spot ? w : len;
+    const bool trail = !spot && tune.trail_ms > 0.f;
+    const float inv_trail = trail ? 1000.f / tune.trail_ms : 0.f;
+    const float trail_s = tune.trail_ms * 1e-3f * trail_drawn; // the drawn comet's age (F = trail_floor)
     float ta[2] = {ra[0], ra[1]}, tb[2] = {rb[0], rb[1]}; // the drawn ends
+    float drawn = spot ? w : len, seg_age = trail ? motion_age : 0.f;
     if (spot) {
         const float mx = dot ? rb[0] : 0.5f * (ra[0] + rb[0]), my = dot ? rb[1] : 0.5f * (ra[1] + rb[1]);
         ta[0] = mx - 0.5f * w * ux, ta[1] = my - 0.5f * w * uy;
         tb[0] = mx + 0.5f * w * ux, tb[1] = my + 0.5f * w * uy;
+    } else if (trail && seg_age > trail_s) { // the comet ends inside this segment (a SETA step)
+        const float u = trail_s / seg_age;
+        ta[0] = rb[0] + (ra[0] - rb[0]) * u, ta[1] = rb[1] + (ra[1] - rb[1]) * u;
+        drawn = len * u;
+        seg_age = trail_s;
+    }
+    // The ring's older segments behind the motion's tail (newest first): drawn while their newer end is younger than the
+    // drawn comet's age (F >= trail_floor), the one crossing it clipped there; a zero-length one is skipped (its time
+    // still counts).
+    constexpr unsigned ring_max = core::projectile::trail_ring;
+    float seg_end[ring_max][2][2], seg_ages[ring_max][2], seg_f[ring_max];
+    unsigned ring_n = 0;
+    float trail_end_age = trail ? seg_age : 0.f, trail_end[2] = {ta[0], ta[1]};
+    if (trail && in.has_tail && motion_age < trail_s) {
+        float age = motion_age;
+        const float* newer = ra;
+        const unsigned count = in.ring_count < ring_max ? in.ring_count : ring_max;
+        for (unsigned k = 0; k < count && ring_n + 1u < max_quads && age < trail_s; ++k) {
+            const float f = trail_falloff(age, inv_trail);
+            const float span = in.ring_span_s[k] > 0.f ? in.ring_span_s[k] : 0.f;
+            const float* older = in.ring_px[k];
+            float end[2] = {older[0], older[1]}, old_age = age + span;
+            if (old_age > trail_s) {
+                const float u = (trail_s - age) / span;
+                end[0] = newer[0] + (older[0] - newer[0]) * u, end[1] = newer[1] + (older[1] - newer[1]) * u;
+                old_age = trail_s;
+            }
+            const float dx = newer[0] - end[0], dy = newer[1] - end[1];
+            if (dx * dx + dy * dy > 1e-8f) {
+                seg_end[ring_n][0][0] = end[0], seg_end[ring_n][0][1] = end[1];
+                seg_end[ring_n][1][0] = newer[0], seg_end[ring_n][1][1] = newer[1];
+                seg_ages[ring_n][0] = old_age, seg_ages[ring_n][1] = age;
+                seg_f[ring_n] = f;
+                trail_end_age = old_age;
+                trail_end[0] = end[0], trail_end[1] = end[1];
+                ++ring_n;
+            }
+            newer = older;
+            age += span;
+        }
+    }
+    const bool lone = ring_n == 0;
+    bool merged = false;
+    if (ring_n) {
+        const float ex = tb[0] - trail_end[0], ey = tb[1] - trail_end[1], el = scalar::sqrt(ex * ex + ey * ey);
+        if (el > 1e-3f) {
+            const float inv = 1.f / el, mx = ex * inv, my = ey * inv, slope = trail_end_age * inv; // age per px
+            const float tol = merge_age * trail_s;
+            const auto fits = [&](const float k[2], float age) {
+                const float dx = tb[0] - k[0], dy = tb[1] - k[1];
+                const float behind = dx * mx + dy * my, off = dx * my - dy * mx;
+                return (off < 0.f ? -off : off) <= merge_px && (behind * slope - age < 0.f ? age - behind * slope
+                                                                                           : behind * slope - age) <= tol;
+            };
+            merged = fits(ta, seg_age);
+            for (unsigned k = 0; merged && k + 1u < ring_n; ++k) merged = fits(seg_end[k][0], seg_ages[k][0]);
+            if (merged) {
+                ta[0] = trail_end[0], ta[1] = trail_end[1];
+                drawn = el;
+                seg_age = trail_end_age;
+                ux = mx, uy = my;
+            }
+        }
     }
     const float half = 0.5f * drawn;
-    // 1 / (Phi(h) - Phi(-h)) per Gaussian (past 16 / m the ramps no longer meet: 1 within 2^-15, no exp2): a streak of a
-    // few core widths and longer is unchanged, a spot reaches the full radiance at its centre
+    // 1 / (Phi(h) - Phi(-h)) per Gaussian for a lone segment (past 16 / m the ramps no longer meet: 1 within 2^-15, no
+    // exp2): a streak of a few core widths and longer is unchanged, a spot reaches the full radiance at its centre; the
+    // comet's segments are not normalised (they telescope with their neighbours)
     const float mc = logistic_slope * inv_sc, mg = logistic_slope * inv_sg;
-    const float nc = mc * half < 16.f ? along_norm(half, mc) : 1.f, ng = mg * half < 16.f ? along_norm(half, mg) : 1.f;
+    const float nc = lone && mc * half < 16.f ? along_norm(half, mc) : 1.f;
+    const float ng = lone && mg * half < 16.f ? along_norm(half, mg) : 1.f;
     const float fc = dim * energy * nc, fg = glow_scale * energy * ng;
     const float core_k = body.core_scale * fc, glow_k = body.glow_scale * fg;
-    const float lc = body.log2_core + (fc != 1.f ? log2f_poly(fc) : 0.f);
-    const float lg = body.log2_glow + (fg != 1.f ? log2f_poly(fg) : 0.f);
-    // the quad's reach: across, where both Gaussians fall under radiance_cut; along past the ends, the logistic's tail
-    // (peak 2^(-m z), m = logistic_slope / sigma) under it
-    const float rc = reach(sigma_c, lc), rg = reach(sigma_g, lg);
-    const float ext = (rc > rg ? rc : rg) + quad_margin_px;
-    const float ac = lc > 0.f ? lc * sigma_c * (1.f / logistic_slope) : 0.f;
-    const float ag = lg > 0.f ? lg * sigma_g * (1.f / logistic_slope) : 0.f;
-    const float ext_a = (ac > ag ? ac : ag) + quad_margin_px;
-    const float nx = -uy, ny = ux;
-    const float shape4[4] = {core_k, glow_k, kc, kg};
+    const float lc0 = body.log2_core + (fc != 1.f ? log2f_poly(fc) : 0.f);
+    const float lg0 = body.log2_glow + (fg != 1.f ? log2f_poly(fg) : 0.f);
+    // the head (the comet only): its gain over 4 in the core colour's alpha byte
+    const float gain = trail ? (tune.head_gain > 1.f ? tune.head_gain : 1.f) : 0.f;
+    const float head_a = gain > head_ramp ? (gain - head_ramp) * (0.25f / head_window) : 0.f;
+    const std::uint32_t head_byte = std::uint32_t((head_a < 1.f ? head_a : 1.f) * 255.f + 0.5f);
+    const std::uint32_t core_trail = body.core_tint & 0x00ffffffu, core_head = core_trail | head_byte << 24;
+    const float lh = gain > 1.f ? log2f_poly(gain) : 0.f; // the head's peak over the trail's start
     const float zb = c.m22 + c.m32 * inv_z, zd = zb < 0.f ? 0.f : zb > 1.f ? 1.f : zb; // the head's depth
-    // corners: A - u ext_a -+ n ext, B + u ext_a -+ n ext; local (along, across) about the segment's centre
-    static constexpr float corner[4][3] = {{-1.f, -1.f, 0.f}, {-1.f, 1.f, 0.f}, {1.f, -1.f, 1.f}, {1.f, 1.f, 1.f}};
+    const float qc = q_per_sigma * inv_sc, ratio = sigma_c * inv_sg;
     float minx = 1e30f, maxx = -1e30f, miny = 1e30f, maxy = -1e30f;
-    for (unsigned i = 0; i < 4; ++i) {
-        const float* e = corner[i];
-        const float* base = e[2] > 0.5f ? tb : ta;
-        const float px = base[0] + ux * ext_a * e[0] + nx * ext * e[1];
-        const float py = base[1] + uy * ext_a * e[0] + ny * ext * e[1];
-        renderer::WeaponProjectileVertex& v = out[i];
-        v.pos[0] = px * vf.ndc_x - 1.f;
-        v.pos[1] = 1.f - py * vf.ndc_y;
-        v.pos[2] = zd;
-        v.local[0] = e[0] * (half + ext_a);
-        v.local[1] = e[1] * ext;
-        v.local[2] = half;
-        for (unsigned k = 0; k < 4; ++k) v.shape[k] = shape4[k];
-        v.core_tint = body.core_tint;
-        v.glow_tint = body.glow_tint;
-        minx = px < minx ? px : minx;
-        maxx = px > maxx ? px : maxx;
-        miny = py < miny ? py : miny;
-        maxy = py > maxy ? py : maxy;
-        if (shape) {
-            shape->raster[i][0] = px;
-            shape->raster[i][1] = py;
+    // One segment's quad from a (older) to b (newer) along the unit (dx, dy), half length h, ages age_a / age_b, peaks
+    // lc / lg (log2 over the cut) at b, g_b = 2^(-trail_k age_b / trail_ms), the core colour word; its reach across (at b)
+    // and along into ext / ext_a. With the trail the quad tapers to a's end: the reach r = sigma sqrt(2 ln 2 (l +
+    // log2 F)) is concave in the age, so its tangent at b bounds it over the segment: r_a = r_b (1 - s), s = (-d log2 F
+    // / d age at b) (age_a - age_b) / (2 l), -d log2 F / d age = trail_k 8 g / (7 F trail_ms) (every attribute is affine
+    // over the trapezoid, so the interpolation stays exact).
+    const auto emit = [&](renderer::WeaponProjectileVertex* v, const float a[2], const float b[2], float dx, float dy,
+                          float h, float age_a, float age_b, float lc, float lg, float g_b, std::uint32_t core_word,
+                          float& ext, float& ext_a, float (*corners)[2]) {
+        // across, where both Gaussians fall under radiance_cut; along past the ends, the logistic's tail (peak
+        // 2^(-m z), m = logistic_slope / sigma) under it
+        const float rc = reach(sigma_c, lc), rg = reach(sigma_g, lg);
+        ext = (rc > rg ? rc : rg) + quad_margin_px;
+        float ext_old = ext;
+        if (trail) {
+            const float f_b = (8.f * g_b - 1.f) * (1.f / 7.f);
+            const float d = f_b > 1e-3f ? trail_k * 8.f * g_b * inv_trail * (age_a - age_b) / (7.f * f_b) : 0.f;
+            const float sc = lc > 0.f ? 1.f - d * 0.5f / lc : 0.f, sg = lg > 0.f ? 1.f - d * 0.5f / lg : 0.f;
+            const float tc = rc * (sc > 0.f ? sc : 0.f), tg = rg * (sg > 0.f ? sg : 0.f);
+            ext_old = (tc > tg ? tc : tg) + quad_margin_px;
         }
+        const float ac = lc > 0.f ? lc * sigma_c * (1.f / logistic_slope) : 0.f;
+        const float ag = lg > 0.f ? lg * sigma_g * (1.f / logistic_slope) : 0.f;
+        ext_a = (ac > ag ? ac : ag) + quad_margin_px;
+        // the falloff's exponent e = -trail_k age / trail_ms, linear along the segment: e0 at its centre, e1 per px
+        const float e0 = -trail_k * 0.5f * (age_a + age_b) * inv_trail;
+        const float e1 = h > 1e-6f ? trail_k * (age_a - age_b) * inv_trail * 0.5f / h : 0.f;
+        const float nx = -dy, ny = dx;
+        static constexpr float corner[4][3] = {{-1.f, -1.f, 0.f}, {-1.f, 1.f, 0.f}, {1.f, -1.f, 1.f}, {1.f, 1.f, 1.f}};
+        for (unsigned i = 0; i < 4; ++i) {
+            const float* e = corner[i];
+            const bool newer = e[2] > 0.5f;
+            const float* base = newer ? b : a;
+            const float across = newer ? ext : ext_old;
+            const float px = base[0] + dx * ext_a * e[0] + nx * across * e[1];
+            const float py = base[1] + dy * ext_a * e[0] + ny * across * e[1];
+            const float x = e[0] * (h + ext_a); // along, about the segment's centre (+ towards the head)
+            renderer::WeaponProjectileVertex& o = v[i];
+            o.pos[0] = px * vf.ndc_x - 1.f;
+            o.pos[1] = 1.f - py * vf.ndc_y;
+            o.pos[2] = zd;
+            o.local[0] = e[1] * across * qc;
+            o.local[1] = -mc * (x + h);
+            o.local[2] = -mc * (x - h);
+            o.local[3] = e0 + e1 * x;
+            o.shape[0] = core_k;
+            o.shape[1] = glow_k;
+            o.shape[2] = ratio;
+            o.core_tint = core_word;
+            o.glow_tint = body.glow_tint;
+            minx = px < minx ? px : minx;
+            maxx = px > maxx ? px : maxx;
+            miny = py < miny ? py : miny;
+            maxy = py > maxy ? py : maxy;
+            if (corners) {
+                corners[i][0] = px;
+                corners[i][1] = py;
+            }
+        }
+    };
+    float ext = 0.f, ext_a = 0.f, ring_ext = 0.f, ring_ext_a = 0.f;
+    emit(out, ta, tb, ux, uy, half, seg_age, 0.f, lc0 + lh, lg0, 1.f, head_byte ? core_head : core_trail, ext, ext_a,
+         shape ? shape->raster : nullptr);
+    const unsigned ring_quads = merged ? 0u : ring_n;
+    for (unsigned k = 0; k < ring_quads; ++k) {
+        const float* a = seg_end[k][0];
+        const float* b = seg_end[k][1];
+        float dx = b[0] - a[0], dy = b[1] - a[1];
+        const float l = scalar::sqrt(dx * dx + dy * dy), inv = 1.f / l;
+        const float lf = log2f_poly(seg_f[k]);
+        emit(out + 4 * (k + 1), a, b, dx * inv, dy * inv, 0.5f * l, seg_ages[k][0], seg_ages[k][1], lc0 + lf, lg0 + lf,
+             (7.f * seg_f[k] + 1.f) * 0.125f, core_trail, ring_ext, ring_ext_a, nullptr);
     }
     if (shape) {
         shape->depth_m = depth_m;
@@ -362,6 +528,14 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
         shape->ext_along_px = ext_a;
         shape->head[0] = rb[0], shape->head[1] = rb[1];
         shape->tail[0] = ta[0], shape->tail[1] = ta[1];
+        shape->motion_tail[0] = ra[0], shape->motion_tail[1] = ra[1];
+        shape->tail_age_s = motion_age;
+        shape->trail_age_s = trail_end_age;
+        shape->trail_end[0] = trail_end[0], shape->trail_end[1] = trail_end[1];
+        shape->head_gain = head_byte ? head_ramp + float(head_byte) * (4.f / 255.f) * head_window : 1.f;
+        shape->quads = 1 + ring_quads;
+        shape->trail_quads = ring_n;
+        shape->merged = merged;
         shape->dot = dot;
         shape->held = held;
         shape->projected = rb[0] == rb[0] && rb[1] == rb[1] && rb[0] < 1e30f && rb[0] > -1e30f && rb[1] < 1e30f &&
@@ -369,20 +543,25 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     }
     // off the target (a pixel centre lies in [-0.5, size - 0.5]); a non-finite corner (never from finite engine
     // integers in front of the near plane) is culled, never drawn
-    return minx == minx && maxx == maxx && miny == miny && maxy == maxy && maxx < 1e30f && minx > -1e30f &&
-           maxy < 1e30f && miny > -1e30f &&
-           !(maxx < -0.5f || maxy < -0.5f || minx > c.width - 0.5f || miny > c.height - 0.5f);
+    const bool keep = minx == minx && maxx == maxx && miny == miny && maxy == maxy && maxx < 1e30f && minx > -1e30f &&
+                      maxy < 1e30f && miny > -1e30f &&
+                      !(maxx < -0.5f || maxy < -0.5f || minx > c.width - 0.5f || miny > c.height - 0.5f);
+    return keep ? 1u + ring_quads : 0u;
 }
-// The single-bolt form (the fixture's rule checks): the view and body constants of this call alone.
+// The single-segment form (the fixture's rule checks): the view and body constants of this call alone, the bolt's own
+// segment only (with trail_ms its falloff and head, no ring).
 inline bool bolt_vertices(const View& c, const pf::Tune& tune, const BodyLook& look, const BoltIn& in,
                           renderer::WeaponProjectileVertex out[4], BoltShape* shape = nullptr) noexcept {
-    return bolt_vertices(c, view_frame(c, tune.core_px), tune, body_frame(tune, look), in, out, shape);
+    return bolt_quads(c, view_frame(c, tune.core_px), tune, body_frame(tune, look), in, out, 1, shape) != 0;
 }
 struct Counts {
     unsigned tracked = 0, drawn = 0, culled = 0, expired = 0, invalid = 0, dots = 0;
     // evaluated entries whose node +0x30 did not change since the previous stage frame (drawn extrapolated), and those
     // whose read position left the velocity prediction by more than the tolerance (drawn as a first frame)
     unsigned statics = 0, jumped = 0;
+    // the quads written (each drawn bolt's own and its comet's ring segments), of them the ring's, and the drawn bolts
+    // with a trail behind their own segment (comets; merged: drawn as one quad)
+    unsigned quads = 0, trail = 0, comets = 0, merged = 0;
 };
 // The per-body looks, resolved once per body (the pool's body list only grows until the next install).
 struct Looks {
@@ -397,19 +576,23 @@ constexpr float jump_tolerance_units = 500.f; // 1 m
 constexpr std::uint32_t max_static_steps = 2;
 // The frame's bolts: walks the pool from the last entry (a retired entry is swap-removed), reads each entry's node
 // (live, handle, position, velocity, body) in one bounded read, retires an expired entry, one the tap has not seen for
-// max(stale_ms, three game steps), a recycled node (another handle or body) or an unreadable one, and writes up to max_bolts quads into out. tunes[family] are the families'
+// max(stale_ms, three game steps), a recycled node (another handle or body) or an unreadable one, and writes up to
+// max_bolts bolts of at most 1 + trail_ring quads each, max_quads quads in all, into out (4 vertices a quad; a bolt
+// whose own segment no longer fits is not drawn, one whose ring does not fit draws fewer ring segments). tunes[family] are the families'
 // numbers (the baked constants or the dev tuning file's). now_ms / step_ms: cfg +0x708 / +0x704 (FL), game ms.
 // frame: the device's frame number (an entry bridges only from the frame just before: a frame the stage did not run
 // makes the next one a first frame); cut: the resolve's camera cut (every entry a first frame, no camera travel).
 // render_dt_s: the proxy's frame timer since the previous stage frame (seconds); seta_rate: the engine's effective SETA
 // rate (1 off): a static entry's head moves on by v x render dt x seta_rate per frame (game time, as the stage's step).
 // view: the unjittered projection. Each evaluated entry keeps its read position and its head on screen
-// (ProjectileEntry): the next frame's streak starts there. shapes (the fixture's, else null): each drawn bolt's
-// BoltShape, max_bolts of them.
+// (ProjectileEntry): the next frame's streak starts there; and the comet's ring: the head's game time (the last
+// change's ms x 1000 + the extrapolated us) and the heads before it with theirs (a held head keeps the ring, a first
+// frame restarts it from its motion's tail). shapes (the fixture's, else null): each drawn bolt's BoltShape, max_bolts
+// of them.
 inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* table, Looks& looks, std::uint32_t frame,
                     bool cut, std::uint32_t now_ms, std::uint32_t step_ms, float render_dt_s, float seta_rate,
                     const View& view, const pf::Tune* tunes, renderer::WeaponProjectileVertex* out, unsigned max_bolts,
-                    BoltShape* shapes = nullptr) noexcept {
+                    unsigned max_quads, BoltShape* shapes = nullptr) noexcept {
     Counts n;
     for (; looks.resolved < pool.body_count; ++looks.resolved)
         looks.look[looks.resolved] = body_look(table, pool.bodies[looks.resolved], rd, pool.globals);
@@ -475,7 +658,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
             core::projectile_remove(pool, i);
             continue;
         }
-        if (n.drawn >= max_bolts) continue;
+        if (n.drawn >= max_bolts || n.quads >= max_quads) continue;
         std::int32_t pos[3];
         float vel[3], speed2 = 0.f; // engine units per second
         for (unsigned k = 0; k < 3; ++k) {
@@ -532,21 +715,69 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
         in.tail_extrapolated = was_extrapolated;
         in.step_s = step_s;
         in.age_s = e.created ? float(std::int32_t(now_ms - e.created)) * 1e-3f : 1e6f;
+        // the head's game time (us, wrapping) and, with the bridge, the comet's ring from the entry
+        const std::uint32_t head_us = e.changed_ms * 1000u + e.static_us;
+        const auto span_s = [](std::uint32_t newer, std::uint32_t older) {
+            const std::int32_t d = std::int32_t(newer - older);
+            return d > 0 ? float(d) * 1e-6f : 0.f;
+        };
+        if (in.has_tail) {
+            in.tail_age_s = span_s(head_us, e.head_us);
+            in.ring_count = e.ring_count < core::projectile::trail_ring ? e.ring_count : core::projectile::trail_ring;
+            for (unsigned k = 0; k < in.ring_count; ++k) {
+                std::memcpy(&in.ring_px[k][0], &e.ring_px[k][0], 4);
+                std::memcpy(&in.ring_px[k][1], &e.ring_px[k][1], 4);
+                in.ring_span_s[k] = span_s(k ? e.ring_us[k - 1] : e.head_us, e.ring_us[k]);
+            }
+        }
         for (unsigned k = 0; k < 3; ++k) e.read_pos[k] = pos[k];
         e.stage_frame = frame;
         const unsigned family = looks.look[e.body].family;
         BoltShape shape;
-        const bool built = bolt_vertices(view, vfs[family], tunes[family], bodies[e.body], in, out + 4 * n.drawn, &shape);
+        unsigned room = max_quads - n.quads;
+        room = room < 1u + core::projectile::trail_ring ? room : 1u + core::projectile::trail_ring;
+        const unsigned quads = bolt_quads(view, vfs[family], tunes[family], bodies[e.body], in, out + 4 * n.quads, room,
+                                          &shape);
+        // the comet's ring: the previous head joins it when the game time advanced (a held head, a paused game keep it
+        // and its time); a first frame restarts it from its motion's tail
+        if (in.has_tail) {
+            if (!shape.held && std::int32_t(head_us - e.head_us) > 0) {
+                for (unsigned k = core::projectile::trail_ring; k-- > 1;) {
+                    e.ring_px[k][0] = e.ring_px[k - 1][0], e.ring_px[k][1] = e.ring_px[k - 1][1];
+                    e.ring_us[k] = e.ring_us[k - 1];
+                }
+                e.ring_px[0][0] = e.head_px[0], e.ring_px[0][1] = e.head_px[1];
+                e.ring_us[0] = e.head_us;
+                e.ring_count = e.ring_count < core::projectile::trail_ring ? e.ring_count + 1u : core::projectile::trail_ring;
+                e.head_us = head_us;
+            }
+        } else {
+            const bool finite = shape.motion_tail[0] == shape.motion_tail[0] && shape.motion_tail[1] == shape.motion_tail[1] &&
+                                shape.motion_tail[0] < 1e30f && shape.motion_tail[0] > -1e30f &&
+                                shape.motion_tail[1] < 1e30f && shape.motion_tail[1] > -1e30f;
+            const bool ring = finite && shape.tail_age_s > 0.f;
+            if (ring) {
+                std::memcpy(&e.ring_px[0][0], &shape.motion_tail[0], 4);
+                std::memcpy(&e.ring_px[0][1], &shape.motion_tail[1], 4);
+                e.ring_us[0] = head_us - std::uint32_t(shape.tail_age_s * 1e6f + 0.5f);
+            }
+            e.ring_count = ring ? 1u : 0u;
+            e.head_us = head_us;
+        }
         // the next frame's tail: this frame's head on screen and its depth (0: none, the next frame is a first frame)
         const float head_z = shape.projected ? in.p[2] : 0.f;
         std::memcpy(&e.head_px[0], &shape.head[0], 4);
         std::memcpy(&e.head_px[1], &shape.head[1], 4);
         std::memcpy(&e.head_z, &head_z, 4);
-        if (!built) {
+        if (!quads) {
             ++n.culled;
             continue;
         }
         n.dots += shape.dot;
+        n.quads += quads;
+        n.trail += quads - 1u;
+        n.comets += shape.trail_quads != 0;
+        n.merged += shape.merged;
         if (shapes) shapes[n.drawn] = shape;
         ++n.drawn;
     }

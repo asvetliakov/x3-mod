@@ -89,9 +89,11 @@ ps::BodyLook ire_look() {
 // builder and run_projectiles at 1920x1080 and the fixture's projection (m00 1.6), the IRE row's look and the
 // fighter-tracer family's baked Tune, on black with a dim hull panel (linear 0.02) in the lower right. Each frame's
 // FP16 scene is written as linear RGB PFM <dir>\<name>.pfm (run_weapon_effects.py --dump encodes the PNGs); no check
-// and no record. Each bolt is a first frame (its streak from P - v dt to the head P, the bridged law's, no multiplier;
-// past length_cap_m dimmed by cap / length). Frames: near (IRE at 200 m, 500 m, 1 km, a 16.7 ms step), seta (the same
-// at 100 ms: SETA 6), lod (3 km beside 300 m, 16.7 ms).
+// and no record. Each frame is the last of consecutive stage frames through the production builder (the pool, the
+// bridge and the comet's ring, FL 60 A; a plain reader), so each bolt is its comet: the segment from the previous head
+// and the trail behind it, past length_cap_m dimmed by cap / travel. Frames: near (IRE at 200 m, 500 m, 1 km, the
+// fourth of 17 ms steps), seta (the same, the second of 100 ms steps: SETA 6), lod (3 km beside 300 m, 17 ms), comet-0
+// to comet-2 (one IRE at 500 m, the third to fifth of 17 ms steps).
 bool write_pfm(const char* path, ProjTarget& t) {
     if (FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) return false;
     D3DLOCKED_RECT lr{};
@@ -112,6 +114,21 @@ bool write_pfm(const char* path, ProjTarget& t) {
     t.scene_sys.p->UnlockRect();
     return ok;
 }
+void put32(unsigned char* base, unsigned off, std::uint32_t v) { std::memcpy(base + off, &v, 4); }
+bool plain_read(std::uintptr_t address, void* out, std::size_t size) {
+    std::memcpy(out, reinterpret_cast<const void*>(address), size);
+    return true;
+}
+struct alignas(16) DumpBullet {
+    unsigned char obj[0x80], node[0x150], ext[0x10];
+};
+struct Bolt { float d_m, ndc_x, ndc_y; };
+struct Frame {
+    const char* name;
+    std::uint32_t step_ms;
+    unsigned frames, count, dumped; // stage frames run; bolts; the last `dumped` frames are written (name, name-1, ...)
+    Bolt bolts[3];
+};
 int projectile_dump(const char* dir) {
     rr::WeaponEffectsPass proj;
     proj.configure_projectiles(true);
@@ -123,68 +140,104 @@ int projectile_dump(const char* dir) {
     }
     CreateDirectoryA(dir, nullptr);
     const ps::View view = proj_view(t, 1.6f);
-    const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
-    const ps::BodyLook look = ire_look();
-    struct Bolt { float d_m, ndc_x, ndc_y; };
-    struct Frame { const char* name; float step_ms; unsigned count; Bolt bolts[3]; };
-    const Frame frames[3] = {{"near", 16.7f, 3, {{200.f, -0.35f, 0.25f}, {500.f, 0.f, 0.f}, {1000.f, 0.35f, -0.25f}}},
-                             {"seta", 100.f, 3, {{200.f, -0.35f, 0.25f}, {500.f, 0.f, 0.f}, {1000.f, 0.35f, -0.25f}}},
-                             {"lod", 16.7f, 2, {{3000.f, -0.2f, 0.f}, {300.f, 0.2f, 0.f}}}};
-    unsigned failures = 0;
+    const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+    // near, seta and lod: the last of 4 (60 fps) or 2 (SETA 6) frames; comet: one IRE at 500 m, the frames 3, 4 and 5 of
+    // five (the ring full), each written
+    const Frame frames[4] = {{"near", 17, 4, 3, 1, {{200.f, -0.35f, 0.25f}, {500.f, 0.f, 0.f}, {1000.f, 0.35f, -0.25f}}},
+                             {"seta", 100, 2, 3, 1, {{200.f, -0.35f, 0.25f}, {500.f, 0.f, 0.f}, {1000.f, 0.35f, -0.25f}}},
+                             {"lod", 17, 4, 2, 1, {{3000.f, -0.2f, 0.f}, {300.f, 0.2f, 0.f}}},
+                             {"comet", 17, 5, 1, 3, {{500.f, 0.1f, 0.f}}}};
+    static wc::ProjectilePool pool;
+    static DumpBullet bullets[3];
+    alignas(16) static unsigned char cfg[0x800];
+    static std::uint32_t cfg_slot;
+    static ps::Looks looks;
+    static rr::WeaponProjectileVertex v[3 * rr::weapon_projectile_quads_per_bolt * 4];
+    unsigned failures = 0, written = 0, device_frame = 1;
     for (const Frame& fr : frames) {
-        rr::WeaponProjectileVertex v[12];
-        unsigned n = 0;
-        for (unsigned i = 0; i < fr.count; ++i) {
-            const Bolt& b = fr.bolts[i];
-            ps::BoltIn in;
-            const float z = b.d_m * ps::view_units_per_metre;
-            in.p[0] = b.ndc_x * z / view.m00;
-            in.p[1] = b.ndc_y * z / view.m11;
-            in.p[2] = z;
-            const float speed = 1162.f * ps::view_units_per_metre; // IRE: 581,000 engine units/s
-            in.v[0] = 0.8f * speed;                                // mostly across the view, receding
-            in.v[2] = 0.6f * speed;
-            in.step_s = fr.step_ms * 1e-3f;
-            in.age_s = 10.f;
-            ps::BoltShape shape;
-            if (ps::bolt_vertices(view, tune, look, in, v + 4 * n, &shape)) {
-                ++n;
-                std::printf("DUMP_BOLT frame=%s distance_m=%.0f core_px=%.2f dim=%.3f length_px=%.1f streak_m=%.1f energy=%.3f glow_sigma_px=%.2f "
-                            "reach_px=%.2f dot=%u\n",
-                            fr.name, double(b.d_m), double(shape.core_px), double(shape.dim), double(shape.length_px),
-                            double(shape.streak_m), double(shape.energy), double(shape.glow_sigma_px), double(shape.ext_px),
-                            unsigned(shape.dot));
+        wc::projectile_clear(pool);
+        pool.armed = 1;
+        pool.resolved = 1;
+        pool.body_count = 1;
+        pool.bodies[0].id = 0x55;
+        pool.bits[0x55 >> 5] |= 1u << (0x55 & 31u);
+        cfg_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(cfg));
+        pool.globals.cfg_slot = reinterpret_cast<std::uintptr_t>(&cfg_slot);
+        looks.look[0] = ire_look(); // the IRE row's look (no table here)
+        looks.resolved = 1;
+        // the IRE (581,000 engine units/s) mostly across the view, receding: 0.8 along +x, 0.6 along +z
+        const double vx = 0.8 * 581000.0, vz = 0.6 * 581000.0, step_s = double(fr.step_ms) * 1e-3;
+        for (unsigned f = 0; f < fr.frames; ++f) {
+            const std::uint32_t now = 5000u + f * fr.step_ms;
+            put32(cfg, wc::layout::cfg_game_ms, now);
+            for (unsigned i = 0; i < fr.count; ++i) {
+                const Bolt& b = fr.bolts[i];
+                DumpBullet& u = bullets[i];
+                const double z = double(b.d_m) * 500.0, back = step_s * double(fr.frames - 1 - f); // engine units, s
+                const std::int32_t pos[3] = {std::int32_t(double(b.ndc_x) * z / double(view.m00) - vx * back),
+                                             std::int32_t(double(b.ndc_y) * z / double(view.m11)),
+                                             std::int32_t(z - vz * back)};
+                if (!f) {
+                    std::memset(&u, 0, sizeof u);
+                    put32(u.obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(u.node)));
+                    put32(u.obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(u.ext)));
+                    put32(u.node, wc::layout::node_live, 1);
+                    put32(u.node, wc::layout::node_handle, 50 + i);
+                    put32(u.node, wc::layout::node_body, 0x55);
+                    put32(u.node, wc::projectile::node_velocity + 0, std::uint32_t(std::int32_t(vx)));
+                    put32(u.node, wc::projectile::node_velocity + 8, std::uint32_t(std::int32_t(vz)));
+                    put32(u.ext, wc::projectile::ext_expiry, 100000000);
+                    put32(u.ext, wc::projectile::ext_created, 1);
+                }
+                for (unsigned k = 0; k < 3; ++k) put32(u.node, wc::layout::node_pos + 4 * k, std::uint32_t(pos[k]));
+                wc::projectile_tap(reinterpret_cast<std::uintptr_t>(u.obj), pool);
             }
+            ps::BoltShape shapes[3];
+            const ps::Counts n = ps::build(pool, &plain_read, nullptr, looks, device_frame++, false, now, fr.step_ms,
+                                           1.f / 60.f, 1.f, view, tunes, v, 3, 3 * rr::weapon_projectile_quads_per_bolt, shapes);
+            const unsigned from_end = fr.frames - 1 - f;
+            if (from_end >= fr.dumped) continue;
+            for (unsigned i = 0; i < n.drawn; ++i)
+                std::printf("DUMP_BOLT frame=%s stage_frame=%u distance_m=%.0f core_px=%.2f dim=%.3f length_px=%.1f drawn_px=%.1f "
+                            "streak_m=%.1f energy=%.3f glow_sigma_px=%.2f reach_px=%.2f quads=%u trail_ms=%.1f head_gain=%.2f dot=%u\n",
+                            fr.name, f, double(shapes[i].depth_m), double(shapes[i].core_px), double(shapes[i].dim),
+                            double(shapes[i].length_px), double(shapes[i].drawn_px), double(shapes[i].streak_m),
+                            double(shapes[i].energy), double(shapes[i].glow_sigma_px), double(shapes[i].ext_px),
+                            shapes[i].quads, double(shapes[i].trail_age_s) * 1e3, double(shapes[i].head_gain),
+                            unsigned(shapes[i].dot));
+            dev->BeginScene();
+            dev->SetDepthStencilSurface(t.depth_s.p);
+            dev->SetRenderTarget(0, t.lane_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            dev->SetRenderTarget(0, t.scene_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+            const D3DRECT hull{LONG(t.w * 0.62f), LONG(t.h * 0.58f), LONG(t.w), LONG(t.h)};
+            dev->Clear(1, &hull, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 5, 5, 6), 1.f, 0); // a dim hull panel, linear ~0.02
+            dev->SetDepthStencilSurface(nullptr);
+            rr::WeaponProjectileFrame pf_frame;
+            pf_frame.width = t.w;
+            pf_frame.height = t.h;
+            pf_frame.vertices = v;
+            pf_frame.quads = n.quads;
+            pf_frame.lane = t.lane_s.p;
+            pf_frame.depth = t.depth_s.p;
+            rr::WeaponEffectsReport r{};
+            const HRESULT hr = proj.run_projectiles(pf_frame, &r);
+            dev->EndScene();
+            char name[64], path[MAX_PATH];
+            if (fr.dumped > 1) std::snprintf(name, sizeof name, "%s-%u", fr.name, fr.dumped - 1 - from_end);
+            else std::snprintf(name, sizeof name, "%s", fr.name);
+            std::snprintf(path, sizeof path, "%s\\%s.pfm", dir, name);
+            const bool ok = hr == S_OK && n.drawn == fr.count && r.quads == n.quads && write_pfm(path, t);
+            failures += !ok;
+            ++written;
+            std::printf("DUMP name=%s bolts=%u quads=%u step_ms=%u result=%08lx written=%u\n", name, n.drawn, n.quads,
+                        unsigned(fr.step_ms), static_cast<unsigned long>(hr), unsigned(ok));
         }
-        dev->BeginScene();
-        dev->SetDepthStencilSurface(t.depth_s.p);
-        dev->SetRenderTarget(0, t.lane_s.p);
-        dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
-        dev->SetRenderTarget(0, t.scene_s.p);
-        dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
-        const D3DRECT hull{LONG(t.w * 0.62f), LONG(t.h * 0.58f), LONG(t.w), LONG(t.h)};
-        dev->Clear(1, &hull, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 5, 5, 6), 1.f, 0); // a dim hull panel, linear ~0.02
-        dev->SetDepthStencilSurface(nullptr);
-        rr::WeaponProjectileFrame f;
-        f.width = t.w;
-        f.height = t.h;
-        f.vertices = v;
-        f.bolts = n;
-        f.lane = t.lane_s.p;
-        f.depth = t.depth_s.p;
-        rr::WeaponEffectsReport r{};
-        const HRESULT hr = proj.run_projectiles(f, &r);
-        dev->EndScene();
-        char path[MAX_PATH];
-        std::snprintf(path, sizeof path, "%s\\%s.pfm", dir, fr.name);
-        const bool ok = hr == S_OK && r.bolts == n && write_pfm(path, t);
-        failures += !ok;
-        std::printf("DUMP name=%s bolts=%u step_ms=%.1f result=%08lx written=%u\n", fr.name, n, double(fr.step_ms),
-                    static_cast<unsigned long>(hr), unsigned(ok));
     }
     t.release();
     proj.detach();
-    std::printf("RESULT %s checks=3 failures=%u\n", failures ? "FAIL" : "PASS", failures);
+    std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", written, failures);
     return failures ? 1 : 0;
 }
 } // namespace
