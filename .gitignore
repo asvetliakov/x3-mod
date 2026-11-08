@@ -102,3 +102,4 @@ verification/results/weapon-effects-census/*.json
 # weapon effects lab assets: decoded game textures (PNG) and body geometry, regenerated in ~5 s by
 # tools/effects/weapon_effects_lab_assets.py; copyrighted game bytes, keep local
 verification/results/weapon-effects-lab/
+verification/results/native-windows/weapon-effects/summary-partial.json

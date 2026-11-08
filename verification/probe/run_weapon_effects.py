@@ -312,17 +312,27 @@ def run_hook(args, results):
 
 
 DUMP_VARIABLES = ('X3M_WEAPON_EFFECTS_DUMP_CASES', 'X3M_WEAPON_EFFECTS_DUMP_MS', 'X3M_WEAPON_EFFECTS_DUMP_FLOAT')
+# Development selectors (weapon_effects_fixture.cpp: the step-3 or step-4 cases alone). Forwarded through WSLENV on
+# --host native like the dump variables; until 2026-11-08 they were not, so a "bolts-only" native run was the full
+# fixture (docs/verification/weapon-effects.md, "Bolt tunings", CPU cost). A run with one set is partial and never
+# the record: its summary goes to summary-partial.json.
+ONLY_VARIABLES = ('X3M_WEAPON_EFFECTS_BOLTS_ONLY', 'X3M_WEAPON_EFFECTS_BOOM_ONLY')
+
+
+def partial_run():
+    return any(os.environ.get(k) == '1' for k in ONLY_VARIABLES)
 
 
 def dump_environment(args):
     """--dump <dir>: the fixture's image dump (X3M_WEAPON_EFFECTS_DUMP as the Windows path of <dir>, with the dump's
-    case, frame and float selectors passed through); empty without it (no dump, the fixture unchanged)."""
+    case, frame and float selectors passed through); without it only the development selectors, if set."""
+    env = {k: os.environ[k] for k in ONLY_VARIABLES if os.environ.get(k)}
     if not args.dump:
-        return {}
+        return env
     path = Path(args.dump).resolve()
     path.mkdir(parents=True, exist_ok=True)
     target = native_host.windows_path(path) if args.host == 'native' else 'Z:' + str(path).replace('/', '\\')
-    return {'X3M_WEAPON_EFFECTS_DUMP': target, **{k: os.environ[k] for k in DUMP_VARIABLES if os.environ.get(k)}}
+    return {**env, 'X3M_WEAPON_EFFECTS_DUMP': target, **{k: os.environ[k] for k in DUMP_VARIABLES if os.environ.get(k)}}
 
 
 def run_fixture(args):
@@ -391,7 +401,7 @@ def main():
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])
     record['passed'] = passed
-    out_path = results / 'summary.json'
+    out_path = results / ('summary-partial.json' if partial_run() else 'summary.json')
     out_path.write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({'exit': returncode, 'result': report['result'], 'failed': report['failed_checks'],
                       'timing': report['timing'], 'hull_timing': report['hull_timing'], 'hull_cpu': report['hull_cpu'],

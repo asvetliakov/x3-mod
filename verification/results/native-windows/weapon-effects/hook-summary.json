@@ -21,7 +21,7 @@
     "verification/probe/weapon_effects_death_cases.h"
   ],
   "source": {
-    "commit": "b59a8ca2374a4aba5cc2b9509328ed36ca19af7c-dirty",
+    "commit": "7ae44c4e86846d6e084f7f88569de4b684bea03c-dirty",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -166,7 +166,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "802b244f4b3a5f65bb0eaf66ae0542740775e141e55331ed389400775b89168b"
+    "executable_sha256": "99e52086736aa16592a6b85ac2794b1cfa34eb37bcc9f9b668d11549470b7ec9"
   },
   "host": {
     "name": "native-windows",
@@ -936,8 +936,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00890780",
     "esp_callee": "00890774",
-    "return": "00ea6d8a",
-    "site": "00ea6d85"
+    "return": "00e96d8a",
+    "site": "00e96d85"
   },
   "stack_depth": {
     "bytes": 236,
@@ -1265,8 +1265,8 @@
     "events": 50,
     "shields": 6,
     "best_us": 17.0,
-    "median_us": 17.7,
-    "worst_us": 29.7,
+    "median_us": 17.1,
+    "worst_us": 17.3,
     "target_us": 30
   },
   "overflow": {
@@ -1282,9 +1282,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.0,
-    "median_us": 55.8,
-    "worst_us": 66.4,
+    "best_us": 55.1,
+    "median_us": 55.2,
+    "worst_us": 70.3,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1292,8 +1292,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005ea8b8",
     "esp_callee": "005ea8a8",
-    "return": "00ea7cb7",
-    "site": "00ea7cb2",
+    "return": "00e97cb7",
+    "site": "00e97cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
@@ -1368,8 +1368,8 @@
   "death_scan_timing": {
     "records": 1553,
     "pairs": 3,
-    "median_us": 8.9,
-    "max_us": 459.2,
+    "median_us": 9.4,
+    "max_us": 456.4,
     "bound_us": 250
   },
   "death_slots": {

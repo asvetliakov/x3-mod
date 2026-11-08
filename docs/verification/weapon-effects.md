@@ -3084,3 +3084,10 @@ inferred, not isolated]. Bound unchanged. Slots at device creation: `fireball_ps
 --programs /mnt/c/X3/x3-modern-captures` (the previous record's program hashes): 299 of 299 over the eight modes [M].
 Candidate and install: [build](../../verification/results/run246-candidate-build.json),
 [install](../../verification/results/run246-candidate-install.json); open run AP 246 A.
+
+Retake on the quiet host (2026-11-08 08:10, `effects` after the fenced-row investigation under "Bolt tunings",
+same production sources as `b59a8ca23`): the D3D fixture **368 of 368**, hook 147 of 147 [M]. The budget row 96.7 us
+fenced (bolts 76.8, muzzles 19.9; rims 469, muzzle sprites 85), timestamps 43.0 us, stage build 39.8 us [M]; this is
+the committed record. Same run: `run_weapon_effects.py` now forwards `X3M_WEAPON_EFFECTS_BOLTS_ONLY` /
+`_BOOM_ONLY` through `WSLENV` on `--host native` and writes such a partial run to `summary-partial.json`
+(untracked), so a selector run can no longer pass as the full record or overwrite it.
