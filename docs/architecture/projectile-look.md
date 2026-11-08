@@ -92,7 +92,7 @@ Projection at 1440 rows: f = 1,280 px x m per metre of distance at the launcher 
 
 | Property | Rule | IRE at 200 m / 500 m / 1 km / 3 km (fov 90, 60 fps, SETA 1) |
 | --- | --- | --- |
-| core width | `core_px` at d_ref, so w_core = core_px x d_ref / f = 0.78 m in the world; w_px = w_core f / d; under 1 px it is drawn 1 px wide at radiance x w_px (a far bolt dims, it does not fatten) | 5.0 / 2.0 / 1.0 / 0.33 → 1 px at a third |
+| core width | **w_px = core_px x 500 / d** (d the view depth in metres), independent of the projection: only the length (and the position) depends on the live projection. (At fov 90, f = 1280, that is a world width of 0.78 m.) Under 1 px it is drawn 1 px wide at radiance x w_px (a far bolt dims, it does not fatten) | 5.0 / 2.0 / 1.0 / 0.33 → 1 px at a third |
 | glow | a Gaussian of σ = `glow_ratio` x core_px / 2 in screen px at d_ref, scaled with distance like the core, floor σ 1.5 px; colour the gun's tint; radiance `glow_gain` x scene white. The wide halo is the bloom's: the core's own energy feeds the extract, so the drawn glow is only the near field | σ 7.5 / 3 / 1.5 / 1.5 px |
 | motion stretch | a segment along v̂ of `stretch_k` x v x Δt_game (cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]), centred on the body origin (section 3), capped at `length_cap_m` metres and at the distance flown since birth (ext+8). As built (mock B, the user's choice) the core's radiance is not spread along it: the dash keeps the core's radiance | with the baked `stretch_k` 0.4: 50 / 20 / 10 / 3 px; under SETA 6 (step 100 ms, 46 m) capped at `length_cap_m` 30 m: 192 / 77 / 38 / 13 px |
 | nothing behind | no smoke, no fading streak, no history: an IRE fires 6.7 shots/s per gun at 1,162 m/s, so a trail would turn a stream into a beam and persist where the TAA would smear it; a short fading streak is acceptable only for a slug or a kinetic round (MASS, EBC: a burning tracer has one) and is that family's decision | — |
@@ -271,8 +271,13 @@ K = 32, pool 512 entries / 1024 slots / 32 probes, 64 bodies.
 **Per frame.** Present latches `skip_on` from the frame's stage (armed, the resolve completed, the projectile draw ran:
 drew or had nothing to draw) and the resolved bodies. The batch stub (`0x097af8`) skips an enabled body's batch under
 the latch; the draw hook drops a material-submit draw whose object-trace node is pooled and whose body id (one bounded
-read) is enabled; without the scope those draws are counted `projectile_unhandled` (frames). At the resolve the
-stage walks the pool (one bounded node read per entry; expired, recycled or unreadable entries retire), builds one quad
+read) is enabled; without the scope those draws are counted `projectile_unhandled` (frames). On every 60th frame and
+every capture frame a scoped draw whose node is not pooled is read too, and one of an enabled body is counted
+`projectile_unpooled` (a child node, or a bullet the pool missed). The object tap stamps each entry with the game ms;
+an entry not tapped for max(250 ms, three game steps) retires (absent from the update pass means not drawn), as do an
+expired, recycled or unreadable one, and Present empties the pool on a load or a sector change. A table whose TBullets
+row count is not the engine's resolves no body (`projectile_rows state=stale`, the stage stays off). At the resolve the
+stage walks the pool (one bounded node read per entry), builds one quad
 per bolt from the jittered live projection and the eye in engine units (the adjugate inverse of the view basis, so the
 per-bolt math is float without the far-from-origin error), and draws all of them in one `DrawIndexedPrimitiveUP`
 (48-byte vertices: float32 position and local frame, float4 radiance scales and 1/(2σ²), two D3DCOLOR tints; a
@@ -287,7 +292,15 @@ rule, the depth surface's size and multisampling (`projectile_state` row on a ch
 family=fighter_tracer rows=0,37,38,39 refused= shared=` once; `projectile_device` per attach; `projectile_state` per
 change; the `weapon_effects_frame` row (every 300 frames) gains `projectile_owned`, `_skipped` (batch submits),
 `_dropped` (traversal draws), `_unhandled`, `_bolts`, `_tracked`, `_retired`, `_overflow`, `_recycled`, `_bodies`,
-`_us_max`.
+`_us_max`, `_unpooled` and `_sampled` (the frames that looked for unpooled draws).
+
+**The far flag, what is and is not verified.** The fixture verifies the write: the lane's green lane takes 32 max(rgb)
+at the bolt and nothing else changes. It does not run the stage through `TemporalPass` and the write-back, so the
+seam case of section 5 item 4 (a bolt over a far-depth quad surviving the write-back at `bolt_far_show`) is not
+verified for the stage's bolts. One constraint carries over from the game's bolts unchanged: the resolve reads the flag
+only on the camera-gate path, where its s1 is the current lane (`temporal_pass.cpp`, the resolve's `SetTexture(1, camera
+? in.current_depth : depths_[next])`); on the other path the lane was copied into `depths_[next]` before the stage
+callback ran, so a flag the stage writes is not seen there and the bolt goes through the resolve as scene colour.
 
 **Tuning protocol (dev builds; the user, FL run 59 onwards).** Create `C:\X3FL\x3m\projectile_tune.json` while the
 game runs, for example `{"core_px": 2.0, "stretch_k": 1.0, "glow_gain": 0.2}`; save it; within a second the log shows
@@ -297,8 +310,9 @@ value logs which key and its bounds; a malformed file is refused and the last va
 set, it is baked into `families[fighter_tracer].tune` and the file deleted; a release build never reads it.
 
 **Verified (native fixture, ledger "Projectile IRE on FL (2026-11-08)").** The width rule within 0.5 px at 200 m / 500 m /
-1 km / 3 km at two fields of view, SETA invariance, the far flag, the dot, nothing outside the quad, depth occlusion,
-the pool's retire paths, Reset, the 512-bolt budget at 5120x1440 (CPU 67.6 µs, GPU fenced 32.0 µs [M]). Not flown.
+1 km / 3 km at two fields of view, the stretch rule and SETA invariance from the constants, the far flag's write (not the
+write-back, above), the dot, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden
+behind the 400 m depth), the pool's retire paths (recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 (CPU 67.6 µs, GPU fenced 32.0 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA), cropped to 800 px: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms step: 56 / 19 /
 8 px dashes, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png) (the same at

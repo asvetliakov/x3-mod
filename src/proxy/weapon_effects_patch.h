@@ -114,6 +114,9 @@ struct StageFrame {
     // pool entries retired, the stage's CPU time.
     bool projectile_owned = false;
     unsigned projectile_bolts = 0, projectile_dropped = 0, projectile_unhandled = 0, projectile_retired = 0;
+    // scoped draws of an enabled body whose node is not pooled (a child node, or a bullet the pool missed), counted on
+    // the sampled frames (every 60th and every capture frame), and those frames
+    unsigned projectile_unpooled = 0, projectile_sampled = 0;
     float projectile_us = 0.f;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a

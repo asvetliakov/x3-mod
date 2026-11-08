@@ -2099,7 +2099,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         // The projectile stage (docs/architecture/projectile-look.md): its ownership latches the next frame's batch skip.
         ctx.motion_output.projectile_take_frame(&stage.projectile_owned, &stage.projectile_bolts, &stage.projectile_dropped,
                                                 &stage.projectile_unhandled, &stage.projectile_retired,
-                                                &stage.projectile_us);
+                                                &stage.projectile_us, &stage.projectile_unpooled,
+                                                &stage.projectile_sampled);
 #endif
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {

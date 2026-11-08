@@ -1211,7 +1211,7 @@ public:
     // The projectile stage (FL, motion_output_weapon_effects_inc.h; docs/architecture/projectile-look.md): the frame's
     // ownership (the next frame's batch skip) and figures since the last call, into the weapon_effects_frame row.
     void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
-                               float* stage_us) noexcept;
+                               float* stage_us, unsigned* unpooled, unsigned* sampled) noexcept;
 #endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
@@ -2286,7 +2286,8 @@ private:
     IDirect3DSurface9* projectile_depth_ = nullptr;
     unsigned projectile_bolts_ = 0, projectile_dropped_ = 0, projectile_unhandled_ = 0, projectile_retired_ = 0;
     float projectile_us_ = 0.f;
-    std::uint64_t projectile_unhandled_frame_ = ~std::uint64_t(0);
+    std::uint64_t projectile_unhandled_frame_ = ~std::uint64_t(0), projectile_sampled_frame_ = ~std::uint64_t(0);
+    unsigned projectile_unpooled_ = 0, projectile_sampled_ = 0;
     const char* projectile_logged_refusal_ = nullptr;
     weapon_effects::projectile_family::Tune projectile_tune_[weapon_effects::projectile_family::family_count]{};
     HRESULT run_projectiles(const renderer::WeaponEffectsFrame& f) noexcept;

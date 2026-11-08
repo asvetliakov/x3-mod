@@ -275,8 +275,11 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     // skip is simply not latched); a lost device ends the frame.
     if (projectile_frame_ && hr != D3DERR_DEVICELOST && hr != D3DERR_DEVICENOTRESET) {
         const HRESULT ph = run_projectiles(f);
+        // Any projectile result but S_FALSE may have left state bound (a failed draw or undo): the stage's result must
+        // then not be S_FALSE, so the resolve normalizes again. A projectile failure is its own (projectile_state row,
+        // no batch-skip latch); it does not disarm the shield stage.
         if (ph == D3DERR_DEVICELOST || ph == D3DERR_DEVICENOTRESET) hr = ph;
-        else if (ph == S_OK && hr == S_FALSE) hr = S_OK;
+        else if (ph != S_FALSE && hr == S_FALSE) hr = S_OK;
     }
 #endif
     QueryPerformanceCounter(&end);
@@ -333,7 +336,7 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     view.width = float(f.width);
     view.height = float(f.height);
     view.near_z = f.near_z;
-    // The frame's quads (512 x 4 x 64 B = 128 KB: static, off the game thread's stack; consumed before returning).
+    // The frame's quads (512 x 4 x 48 B = 96 KB: static, off the game thread's stack; consumed before returning).
     static renderer::WeaponProjectileVertex vertices[renderer::weapon_projectile_max_bolts * ps::vertices_per_bolt];
     static ps::Looks looks;
     if (looks.resolved > x3m_projectile_pool.body_count) looks.resolved = 0;
@@ -348,6 +351,8 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     pf.bolts = n.drawn;
     pf.lane = depth_surface_;
     pf.depth = projectile_depth_;
+    D3DSURFACE_DESC scene{};
+    if (hdr_ && hdr_->target() && SUCCEEDED(hdr_->target()->GetDesc(&scene))) pf.scene_format = scene.Format;
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run_projectiles(pf, &report);
     QueryPerformanceCounter(&end);
@@ -379,14 +384,26 @@ bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
         }
         return false;
     }
-    if (!object_trace::scope_node(&descriptor, &node) || !node ||
-        !weapon_effects::core::projectile_known(x3m_projectile_pool, std::uint32_t(node)))
-        return false;
+    if (!object_trace::scope_node(&descriptor, &node) || !node) return false;
+    const bool pooled = weapon_effects::core::projectile_known(x3m_projectile_pool, std::uint32_t(node));
+    // On a sampled frame (every 60th, every capture frame) a scoped draw whose node is not pooled is read too: an
+    // enabled body there is a child node or a bullet the pool missed (projectile_unpooled), told apart from "no lone
+    // bolts" by numbers. Otherwise only pooled nodes cost a read.
+    const bool sampled = capture_ || frame_ % 60 == 0;
+    if (sampled && projectile_sampled_frame_ != frame_) {
+        projectile_sampled_frame_ = frame_;
+        ++projectile_sampled_;
+    }
+    if (!pooled && !sampled) return false;
     const DWORD error = GetLastError();
     std::uint32_t body = 0;
     const bool read = engine_memory::read(node + weapon_effects::core::layout::node_body, &body, 4);
     SetLastError(error);
     if (!read || !weapon_effects::core::projectile_body_enabled(x3m_projectile_pool, body)) return false;
+    if (!pooled) {
+        ++projectile_unpooled_;
+        return false;
+    }
     route.submit = false;
     route.submission_error = D3D_OK;
     route.sun_color_writer = false;
@@ -396,7 +413,11 @@ bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
     return true;
 }
 void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled,
-                                         unsigned* retired, float* stage_us) noexcept {
+                                         unsigned* retired, float* stage_us, unsigned* unpooled,
+                                         unsigned* sampled) noexcept {
+    *unpooled = projectile_unpooled_;
+    *sampled = projectile_sampled_;
+    projectile_unpooled_ = projectile_sampled_ = 0;
     *owned = weapon_requested_ && projectile_owned_frame_;
     *bolts = projectile_bolts_;
     *dropped = projectile_dropped_;

@@ -130,7 +130,9 @@ class ProjectileTune(unittest.TestCase):
 
     def test_malformed_refused_whole(self):
         for text in ('', 'core_px: 2', '{"core_px": "big"}', '{"core_px": 2', '{"core_px": 2} x', '{"a": {"b": 1}}',
-                     '{"core_px": 2, ' + ' ' * 1100 + '}'):
+                     '{"core_px": 2, ' + ' ' * 1100 + '}', '{"core_px": 2,}', '{"core_px": 2 "stops": 1}',
+                     '{"core_px": +2}', '{"note": big}', '{,"core_px": 2}', '{"core_px": .5}', '{"core_px": 2,,"stops": 1}',
+                     '{"x": [1]}'):
             self.assertEqual(self.parse(text)['ok'], 0, text[:40])
 
     def test_reload_rule(self):

@@ -9,10 +9,11 @@
 // verification/analysis/test_weapon_effects_projectile_tune.py compiles it); the file reader around it
 // (weapon_projectile_tune.cpp) exists only in an X3M_DEV_TUNING build.
 //
-// The file is one flat JSON object of "key": number pairs; unknown keys are ignored, a missing key takes the family's
-// baked value (each reload starts from the defaults, so the file states every deviation), a value outside its bounds is
-// clamped (one row naming the key). Anything else (not an object, a known key whose value is not a number, a nested
-// value, more than file_capacity - 1 bytes) refuses the whole file and the last applied values stay.
+// The file is one flat JSON object of "key": number pairs; unknown keys (with a number, string, true, false or null)
+// are ignored, a missing key takes the family's baked value (each reload starts from the defaults, so the file states
+// every deviation), a value outside its bounds is clamped (one row naming the key). Anything else (not an object, a
+// known key whose value is not a number, a nested value, a missing or trailing comma, a leading '+', a bare word, more
+// than file_capacity - 1 bytes) refuses the whole file with one row and the last applied values stay.
 namespace x3m::weapon_effects::projectile_tune {
 namespace pf = x3m::weapon_effects::projectile_family;
 constexpr unsigned file_capacity = 1024;   // the reader's fixed buffer
@@ -25,26 +26,27 @@ struct Result {
 inline bool space(char c) noexcept {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
-// A JSON number at text[*at] (no exponent beyond 2 digits, no hex); false when none.
+// A JSON number at text[*at] (an optional '-', an integer part, an optional fraction and exponent of at most three
+// digits); false when none (a leading '+', a bare '.', a word).
 inline bool number(const char* t, std::size_t n, std::size_t* at, double* out) noexcept {
     std::size_t i = *at;
-    bool neg = false, digits = false;
-    if (i < n && (t[i] == '-' || t[i] == '+')) neg = t[i++] == '-';
-    double v = 0.0;
-    while (i < n && t[i] >= '0' && t[i] <= '9') {
-        v = v * 10.0 + double(t[i++] - '0');
-        digits = true;
+    bool neg = false;
+    if (i < n && t[i] == '-') {
+        neg = true;
+        ++i;
     }
+    if (!(i < n && t[i] >= '0' && t[i] <= '9')) return false;
+    double v = 0.0;
+    while (i < n && t[i] >= '0' && t[i] <= '9') v = v * 10.0 + double(t[i++] - '0');
     if (i < n && t[i] == '.') {
         ++i;
+        if (!(i < n && t[i] >= '0' && t[i] <= '9')) return false;
         double scale = 0.1;
         while (i < n && t[i] >= '0' && t[i] <= '9') {
             v += double(t[i++] - '0') * scale;
             scale *= 0.1;
-            digits = true;
         }
     }
-    if (!digits) return false;
     if (i < n && (t[i] == 'e' || t[i] == 'E')) {
         ++i;
         bool eneg = false;
@@ -61,20 +63,32 @@ inline bool number(const char* t, std::size_t n, std::size_t* at, double* out) n
     *at = i;
     return true;
 }
-// Parses text into *tune (which the caller set to the family's defaults); *tune is written only when ok.
+inline bool word(const char* t, std::size_t n, std::size_t* at, const char* w) noexcept {
+    std::size_t k = 0;
+    while (w[k] && *at + k < n && t[*at + k] == w[k]) ++k;
+    if (w[k]) return false;
+    *at += k;
+    return true;
+}
+// Parses text into *tune (which the caller set to the family's defaults); *tune is written only when ok. The text must
+// be one flat JSON object: members separated by single commas (none missing, none trailing), every value a number, a
+// string, true, false or null; a known key's value a number; nothing but whitespace after the closing brace.
 inline Result parse(const char* t, std::size_t n, pf::Tune* tune) noexcept {
     Result r;
     if (!t || n >= file_capacity) return r;
     pf::Tune out = *tune;
     std::size_t i = 0;
-    while (i < n && space(t[i])) ++i;
+    const auto ws = [&] {
+        while (i < n && space(t[i])) ++i;
+    };
+    ws();
     if (i >= n || t[i] != '{') return r;
     ++i;
-    for (;;) {
-        while (i < n && (space(t[i]) || t[i] == ',')) ++i;
-        if (i >= n) return r;
-        if (t[i] == '}') break;
-        if (t[i] != '"') return r;
+    ws();
+    bool empty = i < n && t[i] == '}';
+    if (empty) ++i;
+    while (!empty) {
+        if (i >= n || t[i] != '"') return r; // a key (a missing member after a comma, a trailing comma)
         char key[24];
         unsigned k = 0;
         bool fits = true;
@@ -86,10 +100,10 @@ inline Result parse(const char* t, std::size_t n, pf::Tune* tune) noexcept {
         if (i >= n) return r;
         ++i;
         key[k] = 0;
-        while (i < n && space(t[i])) ++i;
+        ws();
         if (i >= n || t[i] != ':') return r;
         ++i;
-        while (i < n && space(t[i])) ++i;
+        ws();
         unsigned which = pf::tune_keys;
         for (unsigned q = 0; fits && q < pf::tune_keys; ++q) {
             const char* name = pf::tune_key_names[q];
@@ -98,31 +112,40 @@ inline Result parse(const char* t, std::size_t n, pf::Tune* tune) noexcept {
             if (!name[c] && !key[c]) which = q;
         }
         double v = 0.0;
-        if (!number(t, n, &i, &v)) {
-            if (which < pf::tune_keys) return r; // a known key must carry a number
-            // an unknown key: a string, true/false/null or a number is skipped; a nested value refuses the file
-            if (i < n && t[i] == '"') {
-                for (++i; i < n && t[i] != '"'; ++i)
-                    if (t[i] == '\\') ++i;
-                if (i >= n) return r;
-                ++i;
-            } else {
-                while (i < n && t[i] >= 'a' && t[i] <= 'z') ++i;
+        if (number(t, n, &i, &v)) {
+            if (which < pf::tune_keys) {
+                const float raw = float(v);
+                float c = raw;
+                if (!(c >= pf::tune_min[which])) c = pf::tune_min[which];
+                if (c > pf::tune_max[which]) c = pf::tune_max[which];
+                r.raw[which] = raw;
+                r.seen |= 1u << which;
+                if (c != raw) r.clamped |= 1u << which;
+                pf::tune_at(out, which) = c;
             }
+        } else if (which < pf::tune_keys) {
+            return r; // a known key must carry a number
+        } else if (i < n && t[i] == '"') { // an unknown key's string
+            for (++i; i < n && t[i] != '"'; ++i)
+                if (t[i] == '\\') ++i;
+            if (i >= n) return r;
+            ++i;
+        } else if (!word(t, n, &i, "true") && !word(t, n, &i, "false") && !word(t, n, &i, "null")) {
+            return r; // a bare word, a nested value, a sign the grammar has not
+        }
+        ws();
+        if (i < n && t[i] == ',') {
+            ++i;
+            ws();
             continue;
         }
-        if (which >= pf::tune_keys) continue;
-        const float raw = float(v);
-        float c = raw;
-        if (!(c >= pf::tune_min[which])) c = pf::tune_min[which];
-        if (c > pf::tune_max[which]) c = pf::tune_max[which];
-        r.raw[which] = raw;
-        r.seen |= 1u << which;
-        if (c != raw) r.clamped |= 1u << which;
-        pf::tune_at(out, which) = c;
+        if (i < n && t[i] == '}') {
+            ++i;
+            break;
+        }
+        return r; // a missing comma
     }
-    ++i;
-    while (i < n && space(t[i])) ++i;
+    ws();
     if (i != n) return r; // trailing bytes
     r.ok = true;
     *tune = out;

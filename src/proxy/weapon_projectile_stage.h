@@ -306,8 +306,8 @@ struct Looks {
     BodyLook look[core::projectile::max_bodies];
 };
 // The frame's bolts: walks the pool from the last entry (a retired entry is swap-removed), reads each entry's node
-// (live, handle, position, velocity, body) in one bounded read, retires an expired entry, a recycled node (another
-// handle or body) or an unreadable one, and writes up to max_bolts quads into out. tunes[family] are the families'
+// (live, handle, position, velocity, body) in one bounded read, retires an expired entry, one the tap has not seen for
+// max(stale_ms, three game steps), a recycled node (another handle or body) or an unreadable one, and writes up to max_bolts quads into out. tunes[family] are the families'
 // numbers (the baked constants or the dev tuning file's). now_ms / step_ms: cfg +0x708 / +0x704 (FL), game ms.
 inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* table, Looks& looks, std::uint32_t now_ms,
                     std::uint32_t step_ms, const View& view, const pf::Tune* tunes,
@@ -317,6 +317,8 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
         looks.look[looks.resolved] = body_look(table, pool.bodies[looks.resolved], rd, pool.globals);
     if (!pool.count) return n;
     const float step_s = float(step_ms < 1000u ? step_ms : 1000u) * 1e-3f;
+    // not seen by the object tap for stale_ms game ms, at least three game steps (SETA-aware): retired
+    const std::uint32_t unseen_ms = 3u * step_ms > core::projectile::stale_ms ? 3u * step_ms : core::projectile::stale_ms;
     constexpr unsigned node_at = core::layout::node_live, node_span = core::layout::node_body + 4 - node_at;
     unsigned char nb[node_span];
     const auto u32 = [](const unsigned char* b, unsigned off) {
@@ -349,7 +351,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     for (unsigned i = pool.count; i-- > 0;) {
         const core::ProjectileEntry e = pool.entries[i];
         ++n.tracked;
-        if (e.expiry && std::int32_t(e.expiry - now_ms) <= 0) {
+        if ((e.expiry && std::int32_t(e.expiry - now_ms) <= 0) || std::int32_t(now_ms - e.seen_ms) > std::int32_t(unseen_ms)) {
             ++n.expired;
             core::projectile_remove(pool, i);
             continue;

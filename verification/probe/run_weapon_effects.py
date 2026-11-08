@@ -120,7 +120,10 @@ def source_binding(paths=PRODUCTION_SOURCES):
     def git(*a):
         return subprocess.run(['git', '-C', str(ROOT), *a], capture_output=True, text=True, check=True).stdout
     changed = [line[3:] for line in git('status', '--porcelain', '--', *paths).splitlines()]
-    commit = git('rev-parse', 'HEAD').strip() + ('-dirty' if git('status', '--porcelain', '--untracked-files=no').strip() else '')
+    # The run's own records (written one after the other in this directory) do not make the checkout dirty.
+    dirty = git('status', '--porcelain', '--untracked-files=no', '--', '.',
+                ':(exclude)verification/results/native-windows/weapon-effects').strip()
+    commit = git('rev-parse', 'HEAD').strip() + ('-dirty' if dirty else '')
     return {'commit': commit, 'production_sources_dirty': bool(changed), 'dirty_paths': changed,
             'sha256': {p: sha(ROOT / p) for p in paths}}
 

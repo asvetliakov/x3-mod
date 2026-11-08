@@ -3034,16 +3034,31 @@ int main(int argc, char** argv) {
                         double(shape.length_px), double(shape.ext_px));
             report("projectile_no_pixels_outside_quad", built && lit > 50 && outside == 0, "");
         }
-        // (6) the scene's depth occludes (LESSEQUAL against the depth surface, Z writes off): cleared to 0, nothing.
+        // (6) the scene's depth occludes (LESSEQUAL against the depth surface, Z writes off): the depth cleared to the
+        // projection's value at 400 m, a bolt at 300 m (left of centre) is drawn and one at 500 m (right) is hidden, so a
+        // wrong depth law or ordering fails.
         {
-            rr::WeaponProjectileVertex v[4];
-            ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look, bolt_at(500.f, 1162.f, 16.f), v);
+            const ps::View view = proj_view(pt, 1.6f);
+            rr::WeaponProjectileVertex v[8];
+            ps::BoltIn near_in = bolt_at(300.f, 1162.f, 16.f), far_in = bolt_at(500.f, 1162.f, 16.f);
+            near_in.p[0] = -0.3f * near_in.p[2] / view.m00; // ndc x -0.3
+            far_in.p[0] = 0.3f * far_in.p[2] / view.m00;    // ndc x +0.3
+            const bool built = ps::bolt_vertices(view, pf::families[pf::fighter_tracer].tune, look, near_in, v) &&
+                               ps::bolt_vertices(view, pf::families[pf::fighter_tracer].tune, look, far_in, v + 4);
+            const float z400 = view.m22 + view.m32 / (400.f * ps::view_units_per_metre);
             rr::WeaponEffectsReport r{};
-            const HRESULT hr = proj_draw(proj, pt, v, 1, 0.f, &r);
+            const HRESULT hr = proj_draw(proj, pt, v, 2, z400, &r);
             const std::vector<float> l = proj_scene(pt);
-            double sum = 0.0;
-            for (float x : l) sum += x;
-            report("projectile_depth_occludes", hr == S_OK && r.bolts == 1 && !l.empty() && sum == 0.0, "");
+            const int xn = int(0.35f * float(pt.w)), xf = int(0.65f * float(pt.w)); // ndc -0.3 / +0.3
+            double near_sum = 0.0, far_sum = 0.0;
+            for (UINT y = 0; y < pt.h && !l.empty(); ++y)
+                for (UINT x = 0; x < pt.w; ++x) (int(x) < int(pt.w / 2) ? near_sum : far_sum) += l[std::size_t(y) * pt.w + x];
+            const float near_c = l.empty() ? 0.f : l[std::size_t(cy) * pt.w + xn];
+            const float far_c = l.empty() ? 0.f : l[std::size_t(cy) * pt.w + xf];
+            std::printf("PROJECTILE case=depth z400=%.7f near_centre=%.3f far_centre=%.3f near_sum=%.1f far_sum=%.1f\n",
+                        double(z400), double(near_c), double(far_c), near_sum, far_sum);
+            report("projectile_depth_occludes",
+                   built && hr == S_OK && r.bolts == 2 && near_c > 1.f && far_c == 0.f && near_sum > 0.0 && far_sum == 0.0, "");
             // a refused frame: no depth surface
             rr::WeaponProjectileFrame f;
             f.width = pt.w;
@@ -3058,10 +3073,17 @@ int main(int argc, char** argv) {
             report("projectile_refuses_without_depth", FAILED(no_depth) && rr2.refused && !std::strcmp(rr2.refused, "depth"), "");
         }
         // (7) the pool through the production builder and engine reader: a bullet registered by the object tap's
-        // projectile half is drawn; recycled (handle changed) or expired, it is retired and drawn no more.
+        // projectile half is drawn; recycled (handle changed), not tapped for longer than stale_ms (the game clock the
+        // tap stamps), or expired, it is retired and drawn no more.
         {
             static wc::ProjectilePool pool;
             wc::projectile_clear(pool);
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            cfg_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(cfg));
+            pool.globals.cfg_slot = reinterpret_cast<std::uintptr_t>(&cfg_slot);
+            const auto clock = [&](std::uint32_t ms) { put32(cfg, wc::layout::cfg_game_ms, ms); };
+            clock(1000);
             pool.armed = 1;
             pool.resolved = 1;
             pool.body_count = 1;
@@ -3091,13 +3113,21 @@ int main(int argc, char** argv) {
             const ps::Counts b = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1016, 16,
                                            proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
             put32(node, wc::layout::node_handle, 9);
+            clock(1016);
             wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
-            const ps::Counts c = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 2000, 16,
+            const ps::Counts c = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1016 + wc::projectile::stale_ms, 16,
                                            proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
-            std::printf("PROJECTILE case=pool drawn=%u/%u/%u invalid=%u expired=%u count=%u\n", a.drawn, b.drawn, c.drawn,
-                        b.invalid, c.expired, pool.count);
-            report("projectile_pool_draws_and_retires", a.drawn == 1 && b.drawn == 0 && b.invalid == 1 && c.drawn == 0 &&
-                                                            c.expired == 1 && pool.count == 0, "");
+            const ps::Counts d = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1017 + wc::projectile::stale_ms, 16,
+                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+            clock(1990);
+            wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
+            const ps::Counts e = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 2000, 16,
+                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+            std::printf("PROJECTILE case=pool drawn=%u/%u/%u/%u/%u invalid=%u unseen=%u expired=%u count=%u\n", a.drawn,
+                        b.drawn, c.drawn, d.drawn, e.drawn, b.invalid, d.expired, e.expired, pool.count);
+            report("projectile_pool_draws_and_retires", a.drawn == 1 && b.drawn == 0 && b.invalid == 1 && c.drawn == 1 &&
+                                                            d.drawn == 0 && d.expired == 1 && e.drawn == 0 &&
+                                                            e.expired == 1 && pool.count == 0, "");
         }
         // (8) Reset: the programs go before it and come back after; the next frame draws again.
         {
@@ -3134,6 +3164,11 @@ int main(int argc, char** argv) {
             pool.body_count = 1;
             pool.bodies[0].id = 0x55;
             pool.bits[0x55 >> 5] |= 1u << (0x55 & 31u);
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            cfg_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(cfg));
+            pool.globals.cfg_slot = reinterpret_cast<std::uintptr_t>(&cfg_slot);
+            put32(cfg, wc::layout::cfg_game_ms, 5000);
             struct alignas(16) Bullet { unsigned char obj[0x80], node[0x150], ext[0x10]; };
             static std::vector<Bullet> bullets(rr::weapon_projectile_max_bolts);
             for (unsigned i = 0; i < bullets.size(); ++i) {

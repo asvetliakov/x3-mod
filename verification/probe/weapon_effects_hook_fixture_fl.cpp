@@ -943,6 +943,8 @@ int main() {
         pool.skip_on = 0;
         pool.resolved = 1;
         pool.body_count = 1;
+        bind_globals(); // the tap's game-clock read: the fixture's heap cfg instead of the image's 0xcc slots
+        pool.globals = we::hook_state().globals;
         pool.bodies[0].id = body;
         core::projectile_clear(pool);
         alignas(16) static unsigned char bullet[0x100], node[0x200], ext[0x80];

@@ -57,7 +57,7 @@ struct Period {
     // the projectile stage (FL): frames it owned, bolts drawn, traversal draws dropped, entries retired, traversal draws
     // of an enabled body the hook could not see (no scope), the stage's worst CPU time
     std::uint32_t projectile_owned = 0, projectile_bolts = 0, projectile_dropped = 0, projectile_retired = 0;
-    std::uint32_t projectile_unhandled = 0;
+    std::uint32_t projectile_unhandled = 0, projectile_unpooled = 0, projectile_sampled = 0;
     float projectile_us_max = 0.f;
 } period_{};
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
@@ -589,6 +589,9 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     core::projectile_clear(pool);
     pool.globals = s.globals;
     pool.resolved = 0;
+    pool.stale = 0;
+    pool.engine_rows = 0;
+    pool.table_rows = table_ ? table_->rows : 0;
     pool.body_count = 0;
     for (std::uint32_t& w : pool.bits) w = 0;
     projectile_rows_ = table_ ? x3m::weapon_effects::projectile_family::resolve_rows(*table_)
@@ -813,7 +816,7 @@ void clear_owned() {
 #define X3M_PROJECTILE_FIELDS                                                                                          \
     " projectile_owned=%lu projectile_skipped=%lu projectile_dropped=%lu projectile_unhandled=%lu projectile_bolts=%lu " \
     "projectile_tracked=%lu projectile_retired=%lu projectile_overflow=%lu projectile_recycled=%lu projectile_bodies=%lu " \
-    "projectile_us_max=%.1f"
+    "projectile_us_max=%.1f projectile_unpooled=%lu projectile_sampled=%lu"
 #define X3M_PROJECTILE_ARGS                                                                                            \
     , static_cast<unsigned long>(period_.projectile_owned),                                                           \
         static_cast<unsigned long>(x3m_projectile_pool.skipped - projectile_seen_skipped_),                             \
@@ -822,7 +825,8 @@ void clear_owned() {
         static_cast<unsigned long>(period_.projectile_retired),                                                         \
         static_cast<unsigned long>(x3m_projectile_pool.counters.overflow - projectile_seen_.overflow),                 \
         static_cast<unsigned long>(x3m_projectile_pool.counters.recycled - projectile_seen_.recycled),                 \
-        static_cast<unsigned long>(x3m_projectile_pool.body_count), double(period_.projectile_us_max)
+        static_cast<unsigned long>(x3m_projectile_pool.body_count), double(period_.projectile_us_max),                \
+        static_cast<unsigned long>(period_.projectile_unpooled), static_cast<unsigned long>(period_.projectile_sampled)
 #else
 #define X3M_PROJECTILE_FIELDS ""
 #define X3M_PROJECTILE_ARGS
@@ -833,6 +837,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // A load, a sector change or a new load epoch: the stage-owned records of the scene that went leave the ring.
     if (scope_.changed(scope) && core::stage_mode(mode_)) {
         ++scope_changes_;
+#if X3M_EDITION_FL
+        core::projectile_clear(x3m_projectile_pool); // a load or a sector change: the scene's bullets went with it
+#endif
         const unsigned cleared = clear_owned_count();
         if (cleared) {
             ++scope_clears_;
@@ -850,12 +857,20 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // The projectile stage's latch for the next frame's batch submits and traversal draws: it drew (or had nothing to
     // draw while armed) this frame and the enabled bodies are resolved.
     core::ProjectilePool& pool = x3m_projectile_pool;
-    pool.skip_on = std::uint32_t(pool.armed && stage.projectile_owned && pool.body_count);
+    pool.skip_on = std::uint32_t(pool.armed && stage.projectile_owned && pool.body_count && !pool.stale);
+    static bool stale_logged = false;
+    if (pool.stale && !stale_logged) {
+        stale_logged = true;
+        log("projectile_rows state=stale table_rows=%lu engine_rows=%lu (the stage stays off: regenerate weapon_effects.json)",
+            static_cast<unsigned long>(pool.table_rows), static_cast<unsigned long>(pool.engine_rows));
+    }
     if (stage.projectile_owned) ++period_.projectile_owned;
     period_.projectile_bolts += stage.projectile_bolts;
     period_.projectile_dropped += stage.projectile_dropped;
     period_.projectile_retired += stage.projectile_retired;
     period_.projectile_unhandled += stage.projectile_unhandled;
+    period_.projectile_unpooled += stage.projectile_unpooled;
+    period_.projectile_sampled += stage.projectile_sampled;
     if (stage.projectile_us > period_.projectile_us_max) period_.projectile_us_max = stage.projectile_us;
 #endif
     ++period_.frames;

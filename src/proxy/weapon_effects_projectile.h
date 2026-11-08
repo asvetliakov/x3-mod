@@ -14,10 +14,12 @@
 // enabled rows (weapon_projectile_family.h resolve_rows), and the first tap that can read the engine's TBullets turns
 // each row into its body id (word +0 of the row) in a fixed list of at most 64 bodies and a 65536-bit set (the batch
 // stub's and the draw hook's test). A seen entry refreshes its object, handle (node +0x28: a recycled node starts over),
-// expiry ext+0 and birth ext+8. A full pool counts the overflow: that bullet is drawn by nobody while the batch skip is
-// latched, so the overflow is the kill criterion for raising the capacity. The stage (render thread = the game thread
-// in X3) validates each entry through the bounded engine reader before every read and retires an expired, recycled or
-// unreadable one.
+// expiry ext+0, birth ext+8 and the game ms of this tap. A full pool counts the overflow: that bullet is drawn by nobody
+// while the batch skip is latched, so the overflow is the kill criterion for raising the capacity. The stage (render
+// thread = the game thread in X3) validates each entry through the bounded engine reader before every read and retires
+// an expired, recycled or unreadable one, and one the tap has not seen for stale_ms game ms (at least three game
+// steps: SETA-aware); Present empties the pool on a load or a sector change. A table generated from another TBullets
+// (its row count differs from the engine's) resolves no body: the stage stays off (stale).
 namespace x3m::weapon_effects::core {
 namespace projectile {
 constexpr unsigned pool_capacity = 512, slot_count = 1024, max_probes = 32;
@@ -27,12 +29,16 @@ constexpr unsigned node_velocity = 0x100;              // engine units per secon
 constexpr unsigned ext_expiry = 0, ext_created = 8;    // game ms
 // The engine's game-time step of the frame (fl/seta.md: AP cfg +0x714, FL +0x704; ms, SETA included).
 constexpr unsigned cfg_step_ms = edition_fl ? 0x704 : 0x714;
+// An entry the object tap has not seen for this long (game ms; at least three game steps) retires: absent from the
+// update pass means not drawn.
+constexpr std::uint32_t stale_ms = 250;
 static_assert((slot_count & (slot_count - 1u)) == 0 && slot_count >= 2 * pool_capacity, "half full at most");
 }
 struct ProjectileEntry {
     std::uint32_t node, obj, handle; // the key, its object and node +0x28 at the last tap
     std::uint32_t expiry, created;   // ext+0 / ext+8 at the last tap (game ms)
     std::uint32_t body;              // index into ProjectilePool::bodies (its per-body look, resolved once)
+    std::uint32_t seen_ms;           // the game ms (cfg +0x708) of the last tap that saw it
 };
 struct ProjectileBody {
     std::uint32_t id;         // the engine body id (node +0x144)
@@ -49,6 +55,9 @@ struct ProjectilePool {
     std::uint32_t bits[projectile::body_bits / 32]{}; // the enabled bodies
     std::uint8_t armed = 0;             // the object tap registers (FL stage modes, set at install)
     std::uint8_t resolved = 0;          // the rows became bodies (the engine's TBullets was readable)
+    std::uint8_t stale = 0;             // resolved, but the table's row count is not the engine's: no body enabled
+    std::uint32_t table_rows = 0;       // TBullets rows the table was generated from (core::Table::rows; 0 no table)
+    std::uint32_t engine_rows = 0;      // the engine's count at the resolve
     std::uint32_t row_count = 0;        // the enabled rows of the table load (resolve_rows)
     std::uint16_t rows[projectile::max_bodies]{};
     std::uint8_t row_family[projectile::max_bodies]{};
@@ -127,6 +136,12 @@ inline bool projectile_resolve(ProjectilePool& p) noexcept {
     const std::uintptr_t table = rd32(g.bullet_table_slot);
     const std::int32_t rows = std::int32_t(rd32(g.bullet_count_slot));
     if (!table || rows <= 0) return false;
+    p.engine_rows = std::uint32_t(rows);
+    if (p.table_rows && p.table_rows != std::uint32_t(rows)) { // core's stale_table rule: never a wrong body
+        p.stale = 1;
+        p.resolved = 1;
+        return true;
+    }
     for (unsigned i = 0; i < p.row_count && p.body_count < projectile::max_bodies; ++i) {
         if (std::int32_t(p.rows[i]) >= rows) continue;
         const std::uint32_t id = rd16(table + std::uintptr_t(p.rows[i]) * layout::type_stride + projectile::type_body);
@@ -155,6 +170,8 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
     const std::uint32_t handle = rd32(node + layout::node_handle);
     const std::uint32_t expiry = ext ? rd32(ext + projectile::ext_expiry) : 0u;
     const std::uint32_t created = ext ? rd32(ext + projectile::ext_created) : 0u;
+    const std::uintptr_t cfg = p.globals.cfg_slot ? rd32(p.globals.cfg_slot) : 0u;
+    const std::uint32_t now = cfg ? rd32(cfg + layout::cfg_game_ms) : 0u;
     unsigned h = projectile_home(std::uint32_t(node)), free_slot = projectile::slot_count;
     for (unsigned k = 0; k < projectile::max_probes; ++k, h = (h + 1u) & (projectile::slot_count - 1u)) {
         const unsigned s = p.slots[h];
@@ -170,6 +187,7 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
         e.expiry = expiry;
         e.created = created;
         e.body = body;
+        e.seen_ms = now;
         return;
     }
     if (p.count >= projectile::pool_capacity) {
@@ -187,6 +205,7 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
     e.expiry = expiry;
     e.created = created;
     e.body = body;
+    e.seen_ms = now;
     p.slots[free_slot] = std::uint16_t(p.count + 1u);
     ++p.count;
     ++p.counters.registered;
