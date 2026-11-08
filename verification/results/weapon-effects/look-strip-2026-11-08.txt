@@ -1,0 +1,30 @@
+# The look-layer strip on `weapons` (2026-11-08): the commands and the figures the ledger cites
+# (docs/verification/weapon-effects.md, "Look layer scratched (2026-11-08)"). Base 10880db5e.
+
+$ git diff --shortstat 10880db5e 323a61f2c            # code strip
+ 78 files changed, 227 insertions(+), 16912 deletions(-)
+$ git diff --shortstat 323a61f2c 7a9a10b57            # fixtures, lab, host tests
+ 17 files changed, 1223 insertions(+), 19628 deletions(-)
+$ git diff --shortstat 10880db5e 7a9a10b57 -- src
+ 52 files changed, 197 insertions(+), 16453 deletions(-)
+
+$ X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native
+  (14:01:27 -> 14:02:04) hook-summary.json: passed, 131 checks, 0 failures (6 faults injected); summary.json: passed,
+  53 checks, 0 failures, build warnings 0; both bound to 7a9a10b57, production sources clean
+$ X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py --host native \
+      --programs /mnt/c/X3/x3-modern-captures --cmake-build build-strip
+  (14:05:28 -> 14:06:30) passed; main 174, native 11, unverified 6, unpatched 11, timing 20, plumes 35, armed 35,
+  armed_refused 7 (299 checks, 0 failed): rebinds motion_output.h, capture.cpp, motion_output_engine_shimmer_inc.h
+
+$ python3 tools/shaders/generate_weapon_effects_programs.py --check     # 5 programs (shell vs/ps, decal vs/ps, bubble ps)
+  PASS; headers unchanged, the records' tool_sources hash moved with the generator
+$ cmake (clean build-strip, ap / build-strip-fl, fl; RelWithDebInfo, X3M_GNU_PE_NO_SAFESEH=ON) && cmake --build -j4
+  ap: 141 C++ units, 0 warnings; fl: 126 units, 0 warnings
+$ python3 verification/probe/check_no_x87.py --edition ap build-strip/d3d9.dll
+  1161 reachable functions, 0 violations
+
+$ /usr/bin/python3 verification/probe/run_host_suite.py
+  10880db5e: 368 modules, 3633 tests, 10 failing: test_glass_material_transformer test_hull_emissive_widening
+    test_linear_emission_sm1_transformer test_linear_sun_share test_mesh_adjacency_native_bench test_original_sun_share
+    test_screen_emission_additive_transform test_xt_fixture_execution test_xt_material_transformer test_xt_pixel_execution
+  stripped tree: see the ledger paragraph (no module that passed on 10880db5e fails)

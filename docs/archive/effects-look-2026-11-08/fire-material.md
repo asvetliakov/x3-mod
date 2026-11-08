@@ -2,7 +2,7 @@
 
 Design note, 2026-11-07 (branch `effects`, HEAD a74671f26); built in two rounds, as built in section 12; round 3 (2026-11-08) replaced the tongue law with a turbulence law and added the collapse, section 13. Amends the body laws of
 [hull-burst-look.md](hull-burst-look.md) 2.2–2.5 (the hull burst), [explosion-look.md](explosion-look.md) 2.1 and 13.1
-(the death body, the fire wave) and [hull-impact-classes.md](hull-impact-classes.md) 3 item 5 (the shock ring's trailing
+(the death body, the fire wave) and [hull-impact-classes.md](../../architecture/hull-impact-classes.md) 3 item 5 (the shock ring's trailing
 band). It changes the *material* those elements are drawn with; sizes, lives, placement, occlusion, the glow, star, smoke,
 ember and secondary elements keep their notes. Context: the user's judgement of the Run245 frames, "viscous blobs / lava
 instead of fire", on the hull burst, the shock ring, the death body and the fire wave, against vanilla's fireball (a
@@ -23,7 +23,7 @@ slow shape rate and a 15 Hz flicker in game time.** One program (`weapon_firebal
 `weapon_wave_ps.hlsl` and the ring's trailing band; the Cartesian octaves of today stay as the core-region and small-size
 material, so nothing is lost under 48 px or with the eye inside. Cost is bounded by replacing, not adding, octaves beyond
 half the radius (+15–25 % per pixel [I], weight 1.18 → ~1.45, to measure) with the tongue term the first thing the budget
-sheds. No atlas, no flipbook (section 10). Note: `docs/architecture/fire-material.md`.
+sheds. No atlas, no flipbook (section 10). Note: `docs/archive/effects-look-2026-11-08/fire-material.md`.
 
 ## 1. Why the current material reads as lava
 
@@ -297,7 +297,7 @@ diffusion flame is soot incandescence near 2000 K; "the hottest parts near the g
 cooler upper parts appear red"; a microgravity flame is spherical and bluer); Febucci, *Fire shader* (the 2-D fire
 shader: scrolling noise stepped against a gradient along the flow, three stepped colour bands); Bridson, Hourihan, Nordenstam,
 *Curl-noise for procedural fluid flow* (SIGGRAPH 2007; PDF fetched, not parsed: cited for the divergence-free potential
-construction from memory). Project references used: `docs/reference/explosion-references.md` 3 and 5 (impostor fireball,
+construction from memory). Project references used: `docs/archive/effects-look-2026-11-08/explosion-references.md` 3 and 5 (impostor fireball,
 flipbook vs procedural, the lamp / balloon / disc failure modes), `impact-effect-references.md` 3 (stepped alpha for
 punch, motion-vector blending). From memory, not fetched (blocked hosts): the 10–20 Hz flicker band of small flames and
 the puffing law f ≈ 1.5 / √D Hz of pool fires (Cetegen & Ahmed 1993); fire shading as emission from a temperature field
@@ -307,7 +307,7 @@ lifetimes of 50–150 ms and advection of 2–5 R/s [I from flame footage, not a
 ## 12. As built
 
 Built 2026-11-07 in two rounds through the shared fireball, wave and ring programs; the measured rows are in the ledger
-([weapon-effects.md](../verification/weapon-effects.md) "Fire material" and its "Round 2"). This section records every
+([weapon-effects.md](../../verification/weapon-effects.md) "Fire material" and its "Round 2"). This section records every
 constant and gate that differs from sections 2-7 and why; sections 1-11 are the design as ratified.
 
 ### 12.1 Law changes
@@ -378,7 +378,7 @@ shed box and the budget's step (1) no longer take the Cartesian fine tap (n_f 1/
 shed for its life (12.1). The eye-inside GPU bounds `eye_inside_fighter`, `_n4` 300 -> 330 us: the program's cost on
 that path rose with the fire material (n4 298.2 us on round 1's record, 301.4 on round 2's; the fixture's 300 check
 read 300.8 on this round's second record). The fireball weights pinned to the measured rows with the boom family's cap
-raised by the same ratio (12.1). Ledger: [weapon-effects.md](../verification/weapon-effects.md) "Round 2" / "Review fixes".
+raised by the same ratio (12.1). Ledger: [weapon-effects.md](../../verification/weapon-effects.md) "Round 2" / "Review fixes".
 
 SETA: at 100-160 ms steps the flicker (65 ms cells) and the fine grain (streaming with the 120 ms flow) are new noise
 every frame; nothing freezes or steps by frame count, but a fire body may sparkle frame to frame. A flight question

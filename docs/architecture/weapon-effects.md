@@ -14,6 +14,14 @@ plumes), the weapon census `verification/results/weapon-effects-census/{stock_ap
 Marks: **[M]** measured (a cited row, listing or census number), **[I]** inferred, **[S]** static (code or archive
 read). Costs are for 5120x1440 unless a line says otherwise.
 
+**Look layer scratched (2026-11-08).** Steps 2 to 4 (hull hit, explosions, bolts and muzzle) were built and removed
+after Run246; the code is on branch `effects-look-archive-2026-11-08`, the notes in
+[the archive](../archive/effects-look-2026-11-08/index.md). Production keeps the hooks of section 2 (every site,
+install and rollback), the record and classifier of sections 3 and 4 and step 1 (5.1, 5.1.1). The setting takes
+`native`, `observe` and `shields`; the family modes are reached through `install_at` only (the hook fixture), and no
+stage latches them, so their records forward native. The redo starts from projectiles anchored to the game's own
+geometry.
+
 ## Outcome
 
 Hook the engine's four weapon-effect spawn call sites (impact `0x00449d85`, muzzle `0x00446268`, death
@@ -180,9 +188,9 @@ a bullet whose col 19 is 0 (42 of 45 stock rows, 33 of 38 Mayhem) is **unknown**
 - **Modes** (`weapon_effects = native | observe | <families>`, key in `tools/config/schema.py`, launcher
   `--weapon-effects`): `native` patches nothing; the family list arms steps independently (`shields`, `hull`,
   `explosions`, `bolts`, `beams`); the DLL default is the set of flown-and-accepted families (none until step 1
-  lands), as `engine_effects` defaults to `plumes` after Run 123 A [S, config-file.md]. The built lists today are
-  `shields`, `shields,hull` and `shields,hull,bolts` (the last adds the bolt tap, the muzzle and the in-place capsule
-  draw of step 4, `docs/architecture/bolt-muzzle-look.md`; any token order).
+  lands), as `engine_effects` defaults to `plumes` after Run 123 A [S, config-file.md]. Since 2026-11-08 the setting
+  takes `native`, `observe` and `shields`; `hull`, `bolts` and `explosions` beside `shields` (the lists built until
+  then) run as `shields` with one `weapon_effects_ignored name=` row each.
 
 ### 2.7 Nested kills and missiles
 
@@ -729,43 +737,17 @@ every hit, so a diagnosis flight still sees vanilla.
 
 ### 5.2 Step 2: hull hit
 
-**Superseded by [weapon-look.md](weapon-look.md) 3.1** (ratified 2026-11-06), which is the step's brief: built as
-`weapon_effects = shields,hull` (dirty on `9ae410d6d`; ledger [weapon-effects.md](../verification/weapon-effects.md)
-"Hull hit, step 2"). Where this paragraph and the look note disagree the look note wins: the sparks are isotropic in
-antipodal pairs, not a cone on the ellipsoid gradient (no surface normal), closed-form in game time (no `pos += v ·
-step_game` integration), 8 + 16 k of them (2 x for missile sources and asteroids), not 16–24; the flash, glow and
-ember follow the heat ramp with a three-frame floor; drained shields are staged hull hits; the repair (and tug)
-variant is pinned by the override's new `hull` key, not by `style = repair`. The paragraph below is kept as history.
-
-Arms `hull_hit` at the same site (no new patch): sparks (16–24 CPU particles, drag, 250–500 ms game time), the
-depth-aware hit light on the hull (150 ms) and the flash of the dropped 3.4, replacing the native sprite and its
-`EEDF_LIGHT`. The sparks' cone is the ellipsoid gradient at `pos`; the owner's velocity is the node's frame delta
-read at scene end. Fixture adds: spark count and cooling ramp, the light's falloff against the lane, the resolve
-survival of streaks, the SETA law for the particle integration (`pos += v · step_game`). Flight: a hit on an
-unshielded hull shows sparks and a brief glow, a shielded hit shows the shell only; the repair laser (flag `0x80`,
-`absorbed = 1` with the hull stage) shows a hull-hit variant without sparks (the override sets `style = repair`).
+Built and removed with the look layer (2026-11-08): [archive](../archive/effects-look-2026-11-08/index.md).
 
 ### 5.3 Step 3: explosions
 
-Claims both death sites (2.4). The noise-sphere fireball, shockwave, spark and debris streaks and flash of the
-dropped 3.5, sized by tier (fighter / corvette / capital / station / asteroid / missile / burst) and `radius`,
-positioned at the dying object's world position plus its velocity × age (the record is world-space; the node is not
-read again). The capital tier replaces the engine's `PROPAGATE` scene-copy debris with streaks. Fixture adds: tier
-sizes, the octave LOD above 20 % coverage, the exposure meter's response to a capital fireball (unknown 8 of the
-dropped note), the cost of a close capital explosion (0.22–0.45 ms expected [I]). Flight: kills of an M5, an M6 and a
-freighter plus one asteroid; what the user must see is a fireball that cools into smoke over 1–2 s of game time, no
-native explosion sprite, nested kills (a missile's area kill) each with their own fireball.
+Built and removed with the look layer (2026-11-08), the clone row R' with it (its EXE anchors stay in
+[weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md) section 10): [archive](../archive/effects-look-2026-11-08/index.md).
 
 ### 5.4 Step 4: bolts and muzzle
 
-Claims the muzzle site and, if the decompile of 2.5 shows `0x004146c0` is reached for every bullet, the flight site
-as a per-bullet per-frame tap (position, velocity, subtype: no matching at all). Otherwise bolts keep the dropped
-3.1 instance derivation from the `INSTANCE_BULLETS` draw and match instances to muzzle records by predicted position
-(`muzzle + axis · speed · age`, ≤ 64 × 256 compares ≈ 20 µs [I]). Either way the bullet draw is recorded and
-suppressed at the draw (the one draw-time suppression left: the bullet draw's forward path is the existing additive
-route, proven in phase 1 [M]). The muzzle flash replaces the native sprite, light and lens flare (13 of 21 stock
-rows). Styles: tracer / slug / orb / wave with the streak law; `+burst` draws a small burst at the bullet's own death
-record. Flight: chase and first-person views (the dropped open question: the user decides per view).
+Built and removed with the look layer (2026-11-08); the bolt tap, muzzle and flight hooks stay:
+[archive](../archive/effects-look-2026-11-08/index.md).
 
 ### 5.5 Step 5: beams
 

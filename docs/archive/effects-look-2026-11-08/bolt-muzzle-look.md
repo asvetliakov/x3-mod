@@ -7,13 +7,13 @@ Design note, 2026-11-07 (design agent, Opus 5.5), chosen by the main session ove
 [weapon-look.md](weapon-look.md) 3.3; its records, hooks, in-place draw, presets and gates stand unless a line here
 replaces them. Reuses [hull-burst-look.md](hull-burst-look.md) (star, eroded noise body, cluster rule, scorch-state smoke).
 Implemented 2026-11-07 (unflown): the in-place draw, the muzzle, the fixture gates and the lab; state and the
-deviations the gates forced in [weapon-effects.md](../verification/weapon-effects.md), "Bolts and muzzle (step 4)". Inputs: [bolt-muzzle-references.md](../reference/bolt-muzzle-references.md) [R],
-[weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md) §2, 5, 6, 8.2, [weapon-effects.md](weapon-effects.md)
-4.1–4.4, [hull-impact-classes.md](hull-impact-classes.md) (class rule),
-[game-scale-and-ship-classes.md](../reverse-engineering/game-scale-and-ship-classes.md) §4 (ship sizes),
-[field-of-view.md](../reverse-engineering/field-of-view.md) (projection). Size figures:
-[`size_derivation.py`](../../verification/results/bolt-muzzle-look/size_derivation.py) →
-[`size_derivation_out.txt`](../../verification/results/bolt-muzzle-look/size_derivation_out.txt) over the catalogue.
+deviations the gates forced in [weapon-effects.md](../../verification/weapon-effects.md), "Bolts and muzzle (step 4)". Inputs: [bolt-muzzle-references.md](bolt-muzzle-references.md) [R],
+[weapon-effect-spawn.md](../../reverse-engineering/weapon-effect-spawn.md) §2, 5, 6, 8.2, [weapon-effects.md](../../architecture/weapon-effects.md)
+4.1–4.4, [hull-impact-classes.md](../../architecture/hull-impact-classes.md) (class rule),
+[game-scale-and-ship-classes.md](../../reverse-engineering/game-scale-and-ship-classes.md) §4 (ship sizes),
+[field-of-view.md](../../reverse-engineering/field-of-view.md) (projection). Size figures:
+[`size_derivation.py`](../../../verification/results/bolt-muzzle-look/size_derivation.py) →
+[`size_derivation_out.txt`](../../../verification/results/bolt-muzzle-look/size_derivation_out.txt) over the catalogue.
 Marks: [M] measured or read from data, [S] static, [R] reference, [C] chosen, [A] assumed, [I] inferred. w is the bolt
 width in metres (section 1); E is linear radiance before the TAA and AgX.
 

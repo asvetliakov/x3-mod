@@ -545,7 +545,7 @@ instance **keeps a pointer to the static row** (`inst+8`) and re-reads the share
 It owns only 0x14 bytes of state per element. So a per-call mask that keeps the body operations needs a **clone row**
 (option b): sprite elements made `DISTANT`, the `WRECK` element and a life timer turned into empty timed nodes,
 `FADEOUTBODY` kept. Select the clone for one call by swapping the type record's death column around the forwarded
-`0x00413610`. Two findings correct [explosion-look.md](../architecture/explosion-look.md) §1:
+`0x00413610`. Two findings correct [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md) §1:
 
 * `CUT` makes the element a multi-part scene. It does not cut the hull.
 * The capital hull copy fades over 1 s once the propagation pre-roll ends: about 1.8 s stock, 6.0-6.4 s on Mayhem

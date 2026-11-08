@@ -483,7 +483,7 @@ Open:
 
 The user accepted the look ("good now"): ships on the ellipsoid bubble, stations on the hull decal, no stand-off, hex only on shield hits, drained shields as hull hits, own-ship cockpit dim. Shield-hit step 1 closes on Run239 (`77a8ba3e5`, DLL `5735959d…`). Open items carried to step 2: the cockpit cull decision (drawn at 0.35), the untested R32F lane form, the bubble on winged or thin hulls (no complaint in Flight F), the 8-screen area budget as the GPU bound. [M] none: the flight was judged by eye, no log triage requested.
 
-## Hull hit, step 2 (dirty on `9ae410d6d`, 2026-11-06; [weapon-look.md](../architecture/weapon-look.md) 3.1)
+## Hull hit, step 2 (dirty on `9ae410d6d`, 2026-11-06; [weapon-look.md](../archive/effects-look-2026-11-08/weapon-look.md) 3.1)
 
 Built as the look note specifies, not flown. **Mode** `weapon_effects = shields,hull` (ini key, schema,
 `manage.py --weapon-effects`; `observe` and `shields` unchanged). `core::parse_mode` also takes `hull,shields` and
@@ -650,7 +650,7 @@ margin; the budget sheds glows by screens (8), not by this cost. The lab's spark
 ### Burst, randomised sparks, heavy ring (2026-11-06, dirty on `826d5ebc6`)
 
 After Run240 Flight G (the user: "need good modern effects, not lazy flashes"; "sparks read as the same decals
-appearing and disappearing"). The look is [weapon-look.md](../architecture/weapon-look.md) 3.1's dated paragraph.
+appearing and disappearing"). The look is [weapon-look.md](../archive/effects-look-2026-11-08/weapon-look.md) 3.1's dated paragraph.
 Built, not flown. **Stage** (`weapon_effects_hull.h`): the burst (the fireball impostor, `renderer::
 WeaponFireballVertex`, 44 B, at most 256 a frame) on every hull hit but repair, tug and asteroid; the flash halo 0.5
 r_hit; sparks with a hashed count (x 1 ± 0.4), hashed pair directions (antipodal, rejection from the cube), per-spark
@@ -1053,7 +1053,7 @@ draws alone of the same build, about 11 us of it the pass's base):
 
 Net of the base the 20-hit rings cost 1.3-1.4x; under the 1.5x line, so the noise stays. Ring PS 51 -> 180 slots.
 
-Budget weights (2.11 of [weapon-look.md](../architecture/weapon-look.md), over the decal's 177.5 us at 5120x1440): the
+Budget weights (2.11 of [weapon-look.md](../archive/effects-look-2026-11-08/weapon-look.md), over the decal's 177.5 us at 5120x1440): the
 frame-filling ring 89.6 us in the record (0.505), so `budget_weight_ring` 0.40 -> 0.50 (decision 2026-11-07); the shed
 order is unchanged; the hull shimmer rects are charged from now on.
 
@@ -1186,7 +1186,7 @@ Host `test_weapon_effects_*` 84 OK; `build-ion` 0 warnings, `check_no_x87.py --e
 
 ## Burst body, glow, flash, smoke (2026-11-07, dirty on `8a785e58e`)
 
-[hull-burst-look.md](../architecture/hull-burst-look.md) built with the coordinator's addendum (asteroid dust, the repair
+[hull-burst-look.md](../archive/effects-look-2026-11-08/hull-burst-look.md) built with the coordinator's addendum (asteroid dust, the repair
 and tug cool spot) and the size check; fixture-gated, not flown. Native host (WSL2, NVIDIA 0x2c05, driver 32.0.16.2114):
 `run_weapon_effects.py --host native` PASS 188 / 188; the record `verification/results/native-windows/weapon-effects/summary.json`.
 `fireball_ps` 353 slots (was 270 at two octaves of 3-D noise; the native compile 1524 words), `fireball_vs` 21; the
@@ -1446,7 +1446,7 @@ quiet host: `capital_64_ion` 38.8 best, 40.5 mean (29 drawn, 35 cut; bound 46.6)
 
 ## Bolts and muzzle (step 4)
 
-Design `docs/architecture/bolt-muzzle-look.md` (ratified 2026-11-07). Base: `effects` at `98f095045` (reset into this
+Design `docs/archive/effects-look-2026-11-08/bolt-muzzle-look.md` (ratified 2026-11-07). Base: `effects` at `98f095045` (reset into this
 worktree). The per-bullet tap, the muzzle site and the flight-effect skip, the mode `shields,hull,bolts`, the header
 constants, the capsule programs and the stage/draw contract. The hull-burst merge runs in a separate worktree; the
 bolt and muzzle code is in new files (`src/proxy/weapon_effects_bolt.h`, `weapon_effects_bolt_sites.h`,
@@ -1815,7 +1815,7 @@ Rows: `verification/results/weapon-effects-bolt-fence-2026-11-08/fence_rows.py` 
 fixture.
 ### Muzzle rework (2026-11-08, `7c13d540d` on `effects` `d3adfe275`)
 
-The muzzle items of the visual re-review ([bolt-muzzle-look.md](../architecture/bolt-muzzle-look.md) 11 #1, #7, #8, #9,
+The muzzle items of the visual re-review ([bolt-muzzle-look.md](../archive/effects-look-2026-11-08/bolt-muzzle-look.md) 11 #1, #7, #8, #9,
 #11; the laws in its section 3 with the old values): every class draws a 0.25 w white core [0.5–0.8 w], scaled with its
 body when the shooter's radius caps the body, inside a structured body at E 4 [cone 1.2, star 2]. The body is the cone
 across the view, a four-arm star of cone sprites across the gun axis end-on, in the own cockpit and for ballistic and
@@ -1881,9 +1881,9 @@ Totals: D3D fixture 360 checks, 0 failures; hook fixture 147 checks, 0 failures.
 ## Explosions (step 3)
 
 2026-11-07, uncommitted on the `effects` branch at `d0c96e637` (merged into the worktree; that commit's amendment of
-explosion-look.md sections 1, 4 and 11 is the seam below). Spec: [explosion-look.md](../architecture/explosion-look.md)
+explosion-look.md sections 1, 4 and 11 is the seam below). Spec: [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md)
 (ratified) with its "Built numbers (step 3)" (the coordinator's decisions D1-D8 after the first frames);
-[weapon-look.md](../architecture/weapon-look.md) 3.2 where it is silent. Built for fighters and missiles; corvettes,
+[weapon-look.md](../archive/effects-look-2026-11-08/weapon-look.md) 3.2 where it is silent. Built for fighters and missiles; corvettes,
 capitals and stations are recorded, logged (`weapon_death`) and forwarded byte-exact. Numbers from
 `verification/results/explosion-look/ledger_rows.py` over the native records of
 `verification/results/native-windows/weapon-effects/` (RTX 5070 Ti, the native Windows d3d9.dll).
@@ -1995,7 +1995,7 @@ cada0404...); `check_no_x87.py --edition ap` no violations (1181 reachable funct
 
 ## Explosions: the big tiers
 
-2026-11-07, uncommitted on the `effects` branch at `da8e8bcac`. Spec: [explosion-look.md](../architecture/explosion-look.md)
+2026-11-07, uncommitted on the `effects` branch at `da8e8bcac`. Spec: [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md)
 sections 1, 2.5, 2.6, 4, 7, 9 and its "Built numbers (the big tiers)"; the engine facts of
 [weapon-effect-spawn.md](../reverse-engineering/weapon-effect-spawn.md) section 10. Numbers from
 `python3 verification/results/explosion-look/ledger_rows.py --markdown --big` over the native records of
@@ -2148,7 +2148,7 @@ display-required execution state for their own duration only. Not flown.
 
 ## Explosions: the fire wave and the composed body
 
-2026-11-07, uncommitted on `effects` at `bfe904e97`. Spec: [explosion-look.md](../architecture/explosion-look.md) section 13
+2026-11-07, uncommitted on `effects` at `bfe904e97`. Spec: [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md) section 13
 and its "Built numbers (section 13)". Table from `python3 verification/results/explosion-look/ledger_rows.py --markdown --wave`
 over the native records (`native-windows/weapon-effects/summary.json`: D3D 323 checks, 4 failed; hook 148 / 0;
 `native-windows/engine-shimmer/summary.json`: 73 / 0).
@@ -2418,7 +2418,7 @@ Late (P + 1,200 ms, x 0.75) the faded ring reads as a dim brown band of even wid
 
 ## Explosions: radiance, rays and sparks
 
-2026-11-07, committed as `2eb405fc9` on `effects` `d3e7698bf`. Spec: [explosion-look.md](../architecture/explosion-look.md)
+2026-11-07, committed as `2eb405fc9` on `effects` `d3e7698bf`. Spec: [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md)
 section 14 (the user's three vanilla frames). First record (`2eb405fc9`, with the judging dump): D3D 322 checks, 1
 failed: `death_stage_cpu_32_deaths` 59.3 us with 1164 quads against the parent `d3e7698bf`'s 42.1 us with 588 quads on
 the same host, a regression of this change (the sparks and rays doubled the sprite quads), not the host's state.
@@ -2471,7 +2471,7 @@ functions). Not flown.
 
 
 **Soft rays and bigger sparks** (2026-11-07, worktree on `7650e6828`; the user on the corvette: rays "not so
-pronounced/thin ... look into our sun", sparks "too thin"; law in [explosion-look.md](../architecture/explosion-look.md)
+pronounced/thin ... look into our sun", sparks "too thin"; law in [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md)
 section 14 items 2 and 3). Rays: the sun's spokes, an odd 9-15 a death, golden-ratio lengths 0.4-2.0 R_f, a Gaussian
 across of FWHM max(6 px at 1080 rows, 0.065 L (1 + u / 2)), e^(-u) (1 - u)^2 along faded in over u < 0.15, `ray_e`
 0.4 x 0.6-1.2, flicker 150-300 ms at depth 0.3, heat 0.95 -> 0.8. Sparks: heads a 3-5 px Gaussian (x min(1, R_f / 28.8
@@ -2582,7 +2582,7 @@ PASS; host tests `test_weapon_effects_hook` and `_lab` 59, 2 failing on those CP
 
 **More rays, the rim halo** (2026-11-08, on `773a47f40`; the user: "increase number of rays ... various length - I see
 still 3 big rays which have almost the same length" and "a halo which falls off from the heat source: on the edges it
-should be bright/intensive then fall off"; law in [explosion-look.md](../architecture/explosion-look.md) section 14
+should be bright/intensive then fall off"; law in [explosion-look.md](../archive/effects-look-2026-11-08/explosion-look.md) section 14
 items 1 and 2). Rays: an odd 15-25 a death, lengths (0.3 + 2.2 g^2) R_f with the death's three largest golden-ratio
 hashes at L(g_1), 0.78 L(g_1), 0.6 L(g_1) and every other ray scaled so the fourth sits at 0.8 of the third (one O(N)
 pass a frame); width, brightness, flicker and the shed unchanged; the sprite program unchanged (235 slots). Halo: every
@@ -2663,7 +2663,7 @@ Table:
 
 ## Fire material (2026-11-07)
 
-[docs/architecture/fire-material.md](../architecture/fire-material.md) built through the shared fireball program: the
+[docs/archive/effects-look-2026-11-08/fire-material.md](../archive/effects-look-2026-11-08/fire-material.md) built through the shared fireball program: the
 hull bursts of the fire classes (energy, heavy, beam, missile 1; the plasma globe 0.5; dust and smoke 0), every death
 body and secondary (none with the eye inside: the Cartesian path and no tongue cost), the wave's band and sheet, the hull
 ring's trailing band. `WeaponFireballVertex` 80 -> 92 bytes (`core[4]`: the core's gain, the fire weight, the size LOD
@@ -2763,7 +2763,7 @@ red body late. Not flown.
 
 The orchestrator's judgement of the round-1 frames: pink / peach mid-life, flat tongues (petals), a tan cloud on the
 20-hit cluster, straight cuts on the far capital, the wave a drawn hoop, the nested fighters smooth blobs at 900 ms. What
-changed is in [fire-material.md](../architecture/fire-material.md) section 12 (every constant and gate against the
+changed is in [fire-material.md](../archive/effects-look-2026-11-08/fire-material.md) section 12 (every constant and gate against the
 note): the ramp (green before blue, the red and orange stops dim, the core towards the yellow-white top stop), the fine
 octave (polar under the tongues, streaming; Cartesian elsewhere; luminance x 0.65-1, threshold jitter 0.10),
 `fire_px` 24 / 40, the plasma globe on the previous threshold, the cluster's thinning, glow and ember saturation, the
@@ -2906,7 +2906,7 @@ wave program unchanged). Both GPU rows under the host's X4.exe load; to re-recor
 
 The tongue law (lab: "it looks like a flower") replaced by a turbulence law (five ridged octaves, polar 1.5 : 1 tongues
 on the rim, a connected dense core, colour and luminance from density) and the body's collapse past 0.35 L
-(docs/architecture/fire-material.md section 13). Three native records (`run_weapon_effects.py --host native`, RTX 5070
+(docs/archive/effects-look-2026-11-08/fire-material.md section 13). Three native records (`run_weapon_effects.py --host native`, RTX 5070
 Ti, X4.exe running on the host), the first two with the dump: 335, 344 and **342 of 356** [M]; host suite
 `test_weapon_effects_*` 97 of 101 on the last (the four record tests that read the failing gates). Vanilla's figures:
 `verification/results/explosion-look/fire_turbulence.py` (`fire_turbulence_vanilla.txt`): hf 0.0235, core 0.408, out
@@ -3091,3 +3091,34 @@ fenced (bolts 76.8, muzzles 19.9; rims 469, muzzle sprites 85), timestamps 43.0 
 the committed record. Same run: `run_weapon_effects.py` now forwards `X3M_WEAPON_EFFECTS_BOLTS_ONLY` /
 `_BOOM_ONLY` through `WSLENV` on `--host native` and writes such a partial run to `summary-partial.json`
 (untracked), so a selector run can no longer pass as the full record or overwrite it.
+
+## Look layer scratched (2026-11-08)
+
+After flying Run246 the user judged every weapon look except the shield hit wrong in kind, not in tuning (hull
+splashes, bolt bodies, muzzle flashes, death bodies, rays, sparks, halo, wave, collapse). The look layer's code is
+preserved on branch `effects-look-archive-2026-11-08`, its notes in
+[the archive](../archive/effects-look-2026-11-08/index.md); the redo restarts on `weapons` from projectiles anchored
+to the game's own geometry. The strip, from `10880db5e`: production `323a61f2c` (78 files, −16,912 / +227 lines; `src`
+−16,453), fixtures, lab and host tests `7a9a10b57` (17 files, −19,628 / +1,223, most of the additions the bolt and
+death hook cases moved into the hook fixture) [M, `git diff --shortstat`]. Removed: `weapon_effects_hull.h`,
+`_boom.h`, `_bolt_stage.h`, the 13 non-shield programs with their headers and records, the pass's non-shield
+draws, layouts and caps, the motion-output hull/death builds, the in-place bolt draw and the weapon shimmer rects, the
+clone row R' (Present's builder, the handler's swap and the death stubs' restore path; its anchors stay in the spawn
+note section 10), the look constants of `weapon_effects_core.h` (the staged lifetimes frozen as integers: hull
+3601 ms, deaths 3201 / 4801 / 7901 / 12601 / 1281 ms), the D3D fixture's hull, class, boom and bolt-draw cases, the
+lab's Hull hit, Boom, Bolt and Muzzle tabs and the host tests of all of it. Kept: every spawn-site hook (impact, taps,
+bolt tap, muzzle, flight, both death sites) with install, rollback and the census rows, the record, classifier and
+weapon table, the stage and the ship bubble with the shell, decal and bubble programs. The setting takes `native`,
+`observe` and `shields`; `hull`, `bolts`, `explosions` beside `shields` run as `shields` with one
+`weapon_effects_ignored name=` row each; the family modes stay reachable through `install_at` (the hook fixture), and
+since no stage latches `hull_ready`, `boom_ready` or the bolt latches their records forward native. Records on
+`7a9a10b57`, RTX 5070 Ti, `run_weapon_effects.py --host native` through `wine_lock.py` (37 s): the D3D fixture
+**53 of 53** (build warnings 0; slots shell_ps 457, bubble_ps 873, decal_ps 129), the hook fixture **131 of 131**
+(the 15 R' cases and the two old parse cases gone, `mode_parse_ignores_scratched_families` new; the death stubs
+audited without the swap tail) [M]. The strip changed `motion_output.h`, `capture.cpp` and the shimmer glue, so
+`run_engine_effects.py --host native --programs /mnt/c/X3/x3-modern-captures` was retaken: 299 of 299 over the eight
+modes [M]. Clean builds AP and FL 0 warnings, `check_no_x87.py --edition ap` 0 violations over 1161 functions,
+`generate_weapon_effects_programs.py --check` PASS (headers unchanged), host suite 368 modules, 3611 tests, the 9
+failing modules all failing on `10880db5e` too [M]. Commands and figures:
+[look-strip-2026-11-08.txt](../../verification/results/weapon-effects/look-strip-2026-11-08.txt). The installed build
+stays Run246's DLL with `weapon_effects = shields` in the ini (main session, 2026-11-08).

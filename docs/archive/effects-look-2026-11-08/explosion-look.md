@@ -1,9 +1,9 @@
 # Death explosions: the look per tier (step 3)
 
-Ratified 2026-11-07 (main session); the death-row disassembly ([spawn note §10](../reverse-engineering/weapon-effect-spawn.md#10-death-row-element-layout-and-the-mask-seam-2026-11-07)) folded in the same day: the mask is a clone row R′ selected by a death-column swap, no new patch site. Section 13 (the fire ring, the composed body) added the same day from two user requests; built 2026-11-07 (its Built numbers at the end), not flown.
+Ratified 2026-11-07 (main session); the death-row disassembly ([spawn note §10](../../reverse-engineering/weapon-effect-spawn.md#10-death-row-element-layout-and-the-mask-seam-2026-11-07)) folded in the same day: the mask is a clone row R′ selected by a death-column swap, no new patch site. Section 13 (the fire ring, the composed body) added the same day from two user requests; built 2026-11-07 (its Built numbers at the end), not flown.
 
 Design note for step 3 of the weapon-effects pass, amending [weapon-look.md](weapon-look.md) 3.2 with the research of
-[explosion-references.md](../reference/explosion-references.md) and the burst body of [hull-burst-look.md](hull-burst-look.md)
+[explosion-references.md](explosion-references.md) and the burst body of [hull-burst-look.md](hull-burst-look.md)
 (`src/effects/weapon_fireball_ps.hlsl`, its built constants in section 10 there). Marks: **[C]** chosen, **[S]** from a
 source, **[M]** measured, **[I]** inferred, **[A]** assumed, **[U]** unknown. Where this note is silent, 3.2 stands.
 Sizes: `verification/results/explosion-look/size_derivation.py` → `size_derivation_out.txt` (every pixel figure below).
@@ -406,7 +406,7 @@ spark cloud about three fireball radii across. Four new elements of the death st
    kind at the body's front, its white core `spike_rf` 0.15 R_f on screen clamped to 4-8 px at 1080 rows, halo 4 core
    radii, E `spike_e` 6 (1 - x / 0.12)^2, gone at 0.12 L.
    **The rim halo** (2026-11-08, the user: "a halo which falls off from the heat source: on the edges it should be
-   bright/intensive then fall off"; the own sun's corona, [own-sun-look.md](own-sun-look.md) step 1d), every tier,
+   bright/intensive then fall off"; the own sun's corona, [own-sun-look.md](../../architecture/own-sun-look.md) step 1d), every tier,
    replacing the filled glow in air (D3's 1.6 R(t) and D15's 1.15 R(t) at <= 0.2 E_b on the big tiers, both read as a
    balloon): `weapon_halo_ps.hlsl` with the glow's vertex program, the quad to `halo_r_x` 2.5 R(t), the rim R = R(t)
    (the body's 10 %-of-peak outline, 0.91-1.14 R(t) measured) in the glow's lobe slot. With r the pixel ray's impact
@@ -435,7 +435,7 @@ spark cloud about three fireball radii across. Four new elements of the death st
    stays.
 2. **Rays [C, M].** A sprite kind (`weapon_sprite_ps.hlsl` depth.y 5; the vertex program passes it through). Since
    2026-11-07 (the user on the corvette: "not so pronounced/thin ... they shouldn't read as some decal ... look into our
-   sun") the law is the own sun's spokes ([own-sun-look.md](own-sun-look.md) step 1d): an odd 15-25 rays a death (15, 17,
+   sun") the law is the own sun's spokes ([own-sun-look.md](../../architecture/own-sun-look.md) step 1d): an odd 15-25 rays a death (15, 17,
    ..., 25, hashed; 9-15 until 2026-11-08, the user: "can we increase number of rays ... make them various length - I see
    still 3 big rays which have almost the same length"), at stratified angles turned per death with the slot offsets
    hashed in 0.375-0.625 (two rays at least a quarter slot off opposite), each one screen-space trapezoid from the body's

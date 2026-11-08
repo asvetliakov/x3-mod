@@ -1,13 +1,13 @@
 # Hull burst look: the fireball body, its glow and its flash
 
 Design note, 2026-11-07, ratified 2026-11-07 (main session). Amends the shared body laws of [weapon-look.md](weapon-look.md) 3.1 (the hot-gas burst, the
-glow, the flash) and [hull-impact-classes.md](hull-impact-classes.md) 3.1 / 4 (the per-class anatomy keeps its
+glow, the flash) and [hull-impact-classes.md](../../architecture/hull-impact-classes.md) 3.1 / 4 (the per-class anatomy keeps its
 structure; the numbers of its puff, glow and flash rows change here). It does not edit either note. Context: two
 flights rejected the staged hull hit as a lamp ("need good modern effects, not lazy flashes, that's a downgrade";
 "sizes always start too small"). Ground truth is the native fixture's own stage dump (`stage_dump`,
 `run_weapon_effects.py --host native --dump`, linear, clamped, 1080p; measured by `verification/results/weapon-effects-burst/measure.py`: lit pixels
 above 10 % of the element's own peak, equivalent radius). Markers: [M] measured from that dump; [S] in the source on
-`effects` `a66967eeb`; [R] the reference study [impact-effect-references.md](../reference/impact-effect-references.md);
+`effects` `a66967eeb`; [R] the reference study [impact-effect-references.md](../../reference/impact-effect-references.md);
 [C] chosen here; [I] inferred. r = r_hit = 2 U (0.35 + 0.65 k) [S]; x = t / L_b the burst's age fraction.
 
 ## Outcome
@@ -20,7 +20,7 @@ that open mid-life and clumps that are the last to go. The glow becomes the ligh
 1/3 of the body's, the body's own heat and life, scaled per owner cluster by 1 / (1 + (N − 1) / 2.5) so 20 hits do not
 add to a sun. The flash becomes a 40 ms four-arm star of unequal arms with a 0.12 r core and no halo. A dark smoke
 puff (the same impostor in the scorch pass's multiply state, over the hull only) runs from 0.5 L_b to 1.6 L_b. No
-noise atlas now; it is the fallback if the three-octave program fails its budget row. Note: `docs/architecture/hull-burst-look.md`.
+noise atlas now; it is the fallback if the three-octave program fails its budget row. Note: `docs/archive/effects-look-2026-11-08/hull-burst-look.md`.
 
 ## 1. What the dump shows and why it reads as a lamp
 
