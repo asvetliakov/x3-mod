@@ -48,7 +48,11 @@ NOT_READ = {0x0059695f: 'collide_memo_core.h: end of the root block comment',
             0x006243cc: 'chase_transition_restore_core.h: FL game root (X3FL.exe VA, FL branch only)',
             # The sector key's FL table (sector_key_core.h core::fl): X3FL.exe's VM global, rebased from the module base
             # by the FL build only; the AP table's VM global 0x006085e4 is anchored.
-            0x005aa174: 'sector_key_core.h: FL VM global (X3FL.exe VA, the fl edition table only)'}
+            0x005aa174: 'sector_key_core.h: FL VM global (X3FL.exe VA, the fl edition table only)',
+            # weapon_effects_core.h's TAsteroids count (class 17 of the count array 0x00607038 + 4 class): the engine
+            # indexes the array, no .text instruction names the slot (weapon_effect_anchor_candidates.py: 0 references);
+            # the array base 0x00607038 is anchored at 0x0043627e.
+            0x0060707c: 'weapon_effects_core.h: TAsteroids count, an indexed slot of the anchored count array 0x00607038'}
 # Modules that call executable_verified() and patch nothing: they only read
 # engine globals, which the gate anchors.
 READ_ONLY = {'camera_state.cpp', 'capture.cpp', 'sun_light_poll.cpp', 'motion_output_shadow_adaptive_inc.h',
@@ -402,7 +406,7 @@ class OtherGameExecutable(unittest.TestCase):
         self.assertEqual({k for k, ok in checks.items() if not ok},
                          {'size', 'time_date_stamp', 'image_size', 'entry_point', 'sections'})
         self.assertEqual(sum(ident.anchors(X3TC).values()), 0)
-        self.assertEqual(len(ident.ANCHORS), 62)
+        self.assertEqual(len(ident.ANCHORS), 75)  # 62 + 13 weapon_effects anchors (2026-11-08)
         self.assertFalse(ident.identity_ok(X3TC))
 
 

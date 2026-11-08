@@ -304,6 +304,12 @@ class PerFrameRowTiers(unittest.TestCase):
         'window_msg_frame': 'window_trace.cpp records only with X3M_WINDOW_TRACE, a --debug member',
         'game_phase_slow_frame': 'game_phases.cpp is armed only by X3M_GAME_PHASES, a --draw-trace member',
         'profile_frame': 'the sampling profiler runs only with --profile, a developer option',
+        # 2026-11-08: the weapon-effects period rows reach the plain log on purpose (user-runs.md asks for them from
+        # flights without --perf); no log_tier gate keeps a 300-frame row in the always tier. One row per
+        # frame_row_period (300) frames and on a capture frame, never at stride 1; only with weapon_effects set.
+        'weapon_boom_frame': 'every frame_row_period (300) frames in every tier, explosions mode only (weapon_effects ini)',
+        'weapon_effects_frame': 'every frame_row_period (300) frames in every tier, only with weapon_effects installed',
+        'weapon_bolts_frame': 'every frame_row_period (300) frames and on a capture frame, bolts mode only',
     }
     CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
 

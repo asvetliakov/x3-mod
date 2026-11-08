@@ -320,6 +320,7 @@ public:
     Pass* ribbons_ = nullptr; // engine ribbons (phase 3): likewise
     Pass* shimmer_ = nullptr; // engine heat shimmer (exhaust gap 9): likewise, through its own forwarder
     Pass* own_sun_ = nullptr; // own procedural sun (step 1, AP): after_reset forwards to the pass when one is attached
+    Pass* weapon_ = nullptr;  // weapon effects stage (AP): likewise
     void engine_shimmer_after_reset(HRESULT result) noexcept {
         if (shimmer_) shimmer_->after_reset(result);
     }

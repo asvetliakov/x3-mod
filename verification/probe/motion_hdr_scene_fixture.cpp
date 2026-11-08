@@ -227,6 +227,7 @@ renderer::EngineShimmerPass::~EngineShimmerPass() = default;   // likewise (engi
 renderer::OwnSunPass::~OwnSunPass() = default;                 // likewise (own sun, 5d10a8ac2)
 renderer::SkyStarsPass::~SkyStarsPass() = default;             // likewise (sky stars, sector-background-modern.md)
 renderer::SkyNebulaPass::~SkyNebulaPass() = default;           // likewise (nebula deband, Decision C1)
+renderer::WeaponEffectsPass::~WeaponEffectsPass() = default;   // likewise (weapon effects, weapon_effects_fixture.cpp)
 // The scene-end apply quad is gated on sun_apply_requested_, which no scenario
 // here sets; inert so it cannot perturb the recorded call sequences.
 void MotionOutput::run_sun_shadow_apply() noexcept {}
