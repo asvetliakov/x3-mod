@@ -71,12 +71,14 @@ NAMESPACES = {
              'fireball_fine4_band_px', 'fireball_octave_freq4', 'fireball_octave_w4', 'budget_weight_fireball_fine4', 'budget_weight_fireball',
              'budget_weight_fireball_coarse', 'budget_weight_smoke',
              # the fire material (docs/architecture/fire-material.md)
-             'fire_enabled', 'fire_ramp', 'fire_cells', 'fire_s_cells', 'fire_warp_f', 'fire_warp_amp', 'fire_shear',
-             'fire_blend_0', 'fire_blend_1', 'fire_flow_ms', 'fire_flick_ms', 'fire_flick_amp', 'fire_thr_0', 'fire_thr_t',
-             'fire_thr_r', 'fire_soft', 'fire_gain', 'fire_gain_small', 'fire_heat_soft', 'fire_rim_t', 'fire_oct2_w',
-             'fire_oct2_big', 'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire',
-             'fire_rim_cool', 'fire_rim_r0', 'fire_rim_r1', 'fire_core_r0', 'fire_core_r1',
-             'fire_fine_k', 'fire_fine_depth', 'fire_fine_jitter', 'fire_fine_bias'),
+             'fire_enabled', 'fire_ramp', 'fire_thr_0', 'fire_thr_t',
+             'fire_thr_r', 'fire_soft', 'fire_gain', 'fire_gain_small', 'fire_heat_soft', 'fire_rim_t',
+             'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire',
+             'fire_core_r0', 'fire_core_r1',
+             # round 3 (fire-material.md section 13): the turbulence law
+             'fire_turb_f', 'fire_turb_a', 'fire_turb_k', 'fire_turb_c', 'fire_turb_n2', 'fire_turb_n3', 'fire_stretch',
+             'fire_turb_warp', 'fire_flow_v', 'fire_jit_ms', 'fire_env_amp', 'fire_env_rate', 'fire_polar_r0',
+             'fire_polar_r1', 'fire_cell_px', 'fire_thr_rt', 'fire_lum_0', 'fire_lum_depth'),
     # the hull-impact classes (docs/architecture/hull-impact-classes.md): one row per Anatomy of each class_* grid
     'hull': ('r_base', 'r_k', 'r_scale', 'flash_halo_t', 'spark_rest_w', 'bias', 'mode', 'spark_count_x',
              'spark_count_spread', 'spark_life_lo', 'spark_life_hi', 'spark_len_lo', 'spark_len_hi', 'spark_width_lo',
@@ -113,7 +115,7 @@ NAMESPACES = {
     # step 3, the death explosion (docs/architecture/explosion-look.md): HEADER.boom, the Boom tab's laws and defaults
     'boom': ('mode', 'tier_native', 'tier_f', 'tier_min_m', 'tier_max_m', 'tier_life_ms', 'tier_preroll_ms', 'tier_rise',
              'tier_r0_obj', 'tier_r0_f', 'tier_embers', 'tier_shock', 'tier_shock_tau', 'body_grow', 'body_hold', 'body_cool',
-             'body_e', 'body_bias', 'body_r_sphere', 'body_floor_px', 'core_gain', 'core_x', 'core_r', 'core_soft',
+             'body_e', 'body_bias', 'body_r_sphere', 'body_hold_x', 'body_end_r', 'body_floor_px', 'core_gain', 'core_x', 'core_r', 'core_soft',
              'star_arm', 'star_core', 'star_ms', 'star_t', 'star_cap_h', 'shock_r_x', 'shock_w', 'shock_e', 'shock_limb',
              'shock_end', 'missile_shock', 'ember_cones_lo', 'ember_cones_hi', 'ember_cone_deg', 'ember_v_x',
              'ember_v_min', 'ember_v_max', 'ember_p0', 'ember_speed_lo', 'ember_speed_hi', 'ember_life', 'ember_stagger',
@@ -133,7 +135,7 @@ NAMESPACES = {
              # section 13 (2026-11-07): the fire wave and the composed body
              'wave_tiers', 'wave_r_x', 'wave_tau_x', 'wave_life_x', 'wave_creep', 'wave_stretch', 'wave_w_x', 'wave_band_x',
              'wave_slab_x', 'wave_trail_span', 'wave_e', 'wave_t_edge', 'wave_t_band0', 'wave_t_band_end', 'wave_t_sheet_end',
-             'wave_t_cool', 'fire_wave_cells', 'fire_wave_aspect', 'fire_wave_thr_0', 'fire_wave_thr_end', 'fire_wave_gain',
+             'wave_t_cool', 'fire_wave_cells', 'fire_wave_aspect', 'fire_wave_thr_0', 'fire_wave_thr_end', 'fire_wave_gain', 'fire_wave_flow_ms', 'fire_wave_heat_soft',
              'wave_floor_a', 'wave_floor_t', 'wave_lead', 'wave_ahead', 'wave_break_floor',
              'wave_rim_gain', 'wave_rim_lift', 'fire_wave_lick', 'wave_eye_plane_x', 'wave_eye_plane_blend_x',
              'wave_eye_fade_x', 'wave_sheet_enabled', 'compose_enabled', 'compose_count_3', 'compose_count_2',

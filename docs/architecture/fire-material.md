@@ -1,6 +1,6 @@
 # Fire material: one law for the fireball program family
 
-Design note, 2026-11-07 (branch `effects`, HEAD a74671f26); built in two rounds, as built in section 12. Amends the body laws of
+Design note, 2026-11-07 (branch `effects`, HEAD a74671f26); built in two rounds, as built in section 12; round 3 (2026-11-08) replaced the tongue law with a turbulence law and added the collapse, section 13. Amends the body laws of
 [hull-burst-look.md](hull-burst-look.md) 2.2–2.5 (the hull burst), [explosion-look.md](explosion-look.md) 2.1 and 13.1
 (the death body, the fire wave) and [hull-impact-classes.md](hull-impact-classes.md) 3 item 5 (the shock ring's trailing
 band). It changes the *material* those elements are drawn with; sizes, lives, placement, occlusion, the glow, star, smoke,
@@ -382,6 +382,106 @@ SETA: at 100-160 ms steps the flicker (65 ms cells) and the fine grain (streamin
 every frame; nothing freezes or steps by frame count, but a fire body may sparkle frame to frame. A flight question
 (section 8, question 5), not a fixture gate.
 
+## 13. Round 3: turbulence (2026-11-08)
+
+The user on the round-2 lab: "fire is still bad. it looks like a flower" (a capital death mid-life: large smooth orange
+petals about a yellow core). Then two additions agreed by the orchestrator: the body stays a connected hot blob whose
+outline deforms, with tongues on its rim (not a loose field of filaments), and the body collapses late in its life.
+
+**Why the tongue law failed.** Two octaves of 23 / 46 polar cells stretched 2.5 : 1, thresholded hard: a few large
+smooth cells per body, each a lit lobe with a soft rim; thresholding low-frequency noise always yields petals, whatever
+the gain. Fire and the vanilla sprite are turbulent: many small cells at every scale, bright thin filaments between
+dark gaps at the rim, a dense hot interior, the large scale only a gentle modulation.
+
+### 13.1 The law (`weapon_fireball_ps.hlsl`; `weapon_effects_core.h` look::fire_*; the lab's `fireTurb`)
+
+| Element | As built | Constants |
+| --- | --- | --- |
+| Octaves | five value-noise octaves at f_i = 3 x 2^i cells per R_s (cells 0.33, 0.17, 0.083, 0.042, 0.021 R_s) | `fire_turb_f` 3 |
+| LOD | octave i weighted saturate(cell px / `fire_cell_px` - 1) (0 at 2 px, 1 at 4 px; the projected R_s per pixel); the 4th and 5th also x saturate(screen.w), saturate(screen.w - 1) (the budget's octave steps (1) and (0b)); octaves 3-5 off on a shed box (core.z < 0, latched as before) | `fire_cell_px` 2 |
+| Ridged sum | T = sum w_i a^i abs(2 n_i - 1) / sum w_i a^i (normalised over the octaves drawn) | `fire_turb_a` 0.55 |
+| Octaves 2-3 (the rim's tongues) | polar, periodic about the disc (27 / 53 cells: about 0.17 / 0.083 R_s at 0.7 R_s; no seam), radially 3 x 2^i / 1.5 cells per R_s (1.5 : 1 outward), taken past 0.15 .. 0.35 R_s (the polar centre is singular), streaming outward at `fire_flow_v` 1.4^i R_s per game second, each warped along the angle by 0.4 cell of the next finer octave | `fire_turb_n2 / _n3` 27 / 53, `fire_stretch` 1.5, `fire_flow_v` 0.7, `fire_turb_warp` 0.4, `fire_polar_r0 / _r1` 0.15 / 0.35 |
+| Octaves 4-5 (billowing, ragged edges) | Cartesian, re-seeded every 66.7 ms of game time (15 Hz); off in a cluster's burst (fire weight > 1.05: N overlapping bursts sum the detail away and pay it N times) | `fire_jit_ms` 66.7 |
+| Octave 1 (the envelope) | Cartesian under the drift law, sliding `fire_env_rate` cells over the life ((0.6, 0.8) direction), warped by octaves 2-3 (0.4 cell); its ridges weighted 0.25 + 0.75 x the polar weight (cracks across the dense centre in lab round 2) | `fire_env_rate` 3 (0.3 cell per 0.1 L) |
+| Envelope | r' = abs(p) / (1 + `fire_env_amp` (2 n_1 - 1)): the silhouette bulges and shifts with octave 1; the lobes are off under the law | `fire_env_amp` 0.2 |
+| Density | F = 1/2 + k (c - T) - (thr_0 + thr_t x + thr_r r'^2 (1 + thr_rt x)) - the cluster's thinning | k 0.75, c 0.25, thr_0 0.12, thr_t 0.05, thr_r 0.62, thr_rt 0.3 |
+| Alpha | smoothstep(0, `fire_soft`, F)^`fire_gain` x column^column_pow | `fire_soft` 0.15, `fire_gain` 1.2 |
+| Luminance | x lerp(`fire_lum_0`, 1, m) (1 - `fire_lum_depth` T_fine), T_fine the ridged sum of octaves 3-5 normalised: veins over darker billows at the small scales | `fire_lum_0` 0.6, `fire_lum_depth` 0.5 |
+| Colour | T' = T(t) (rim_t + (1 - rim_t) m^0.75), m = saturate(F / heat_soft), on the fire ramp: the filaments' edges red, the dense interior at T(t); the core whitened to the top stop as before | `fire_heat_soft` 0.50, `fire_rim_t` 0.21 |
+| Small sizes, plasma | the law blends in by w_px x min(fire, 1) (24 .. 40 px R at 1440 rows): the previous erosion law on the fire ramp with `fire_gain_small` below, the plasma globe half way | unchanged |
+| The wave | the band and sheet take the same law in the ring's frame: four ridged octaves at 48 x 2^i cells about the circumference and 2^i x the radial cell, streaming backward at 1.4^i / `fire_wave_flow_ms`, the finest two re-seeded at 15 Hz and shed behind the band at step 0a, each dropped under 2 px; F = 1/2 + k (c - T) - thr with the round-2 threshold profile, the rim on F, the colour on F over its own heat softness | `boom::fire_wave_flow_ms` 120, `boom::fire_wave_heat_soft` 0.42 |
+
+Removed: `fire_cells`, `fire_s_cells`, `fire_warp_f`, `fire_warp_amp`, `fire_shear`, `fire_blend_0 / _1`,
+`fire_flow_ms`, `fire_flick_ms / _amp`, `fire_rim_cool / _r0 / _r1`, `fire_oct2_w / _big`, `fire_fine_k / _depth /
+_jitter / _bias` (the program's flicker, its tongue warp taps and its fine polar tap). The round-2 thresholds 0.39 / 3.0
+over the age eroded the body inside R(t), which left a dark annulus under the rim halo (section 13.3); the collapse now
+carries the shrink.
+
+### 13.2 The collapse (explosion-look.md section 14, "the collapse")
+
+Every tier's main body and the fire classes' hull bursts (over their own life): R(t) as before to `boom::body_hold_x` 0.35
+L, then x c(s) = `body_end_r` + (1 - `body_end_r`) (1 - s)^1.5, s = (x - 0.35) / 0.65, `body_end_r` 0.35 (an ease-out to
+0.35 R_f at L); the radiance x c(s)^2 (the shrinking core dims); the material's clock (`collapse_clock`: the outward flow
+x (1 - s) integrated, so the flow stops at L and the blob pulls in; the 15 Hz re-seed runs on the same clock and slows
+with it); the heat law (`body_hold` 0.8, `body_cool` 0.7) already cools the body to red over the contraction. The
+secondaries, sparks, smoke, the wave and the pre-roll keep their own lives (the shrinking core sits in the spark cloud).
+Code: `core::boom::collapse_s`, `collapse_clock` (`weapon_effects_core.h`), `stage::collapse_r` (`weapon_effects_hull.h`,
+sqrtss), applied in `boom_body_radius`, the body's look.y and core.w, and `puff_radius` / the burst's E and t_g for
+class_fire >= 1 (not the plasma globe, which keeps its own shrink).
+
+### 13.3 Gates (native record 2026-11-08, the third of the round; medians over 8 seeds / hits)
+
+New: `fire_turbulent_hull` / `_death` (the brief's objective test, `fire_turbulence.py` on display frames and
+`classes::burst::turbulence_of` on the fixture's AgX luma): the luma Laplacian's energy over the luma's within the
+equal-area disc at 0.3 and 0.5 L >= 0.8 of vanilla's; the connected region >= 0.5 of the peak holding the centre >= 0.35
+of the disc at 0.3 L; every other such region < 0.08 of the disc. `death_body_collapses` (13.2).
+
+| Measure | Vanilla [M] | Hull energy; fighter 200 m / capital 3 km [M] | Bound | Result |
+| --- | --- | --- | --- | --- |
+| luma Laplacian share at 0.3 L | 0.0235 | 0.017; 0.0694 / 0.0318 | >= 0.0188 | hull FAIL |
+| same at 0.5 L | | 0.0521; 0.1441 / 0.0614 | >= 0.0188 | pass |
+| connected core / disc at 0.3 L | 0.408 | 0.346; 0.277 / 0.292 | >= 0.35 | FAIL (all three) |
+| largest other region >= 0.5 peak | 0.0003 | 0.0038 / 0.0157; 0.0096 / 0.0348; 0.0099 / 0.0158 (0.3 / 0.5 L) | < 0.08 | pass |
+| collapse: radius, peak 0.9 L over 0.3 L | | 0.382 / 0.378; 0.039 / 0.04 | <= 0.5; <= 0.3 | pass |
+
+The three records traced the trade-off (the luminance law the only change between them): full luminance (record 1) kept
+the core (0.53-0.67) but the share was 0.006-0.010 on the hull and capital (smooth, peach under AgX at 120 ms); lerp(0.3,
+1, m^2) (record 2) passed the share everywhere (hull 0.0196, capital 0.0445) but split the core (0.11-0.25) and unlit the
+red fringe; the shipped lerp(0.6, 1, m) (1 - 0.5 T_fine) sits between them and fails both by a little. Vanilla's figure
+comes from a 172 x 118 capture whose fireball is 32 px in radius; the Laplacian is a pixel-scale measure, so the same
+structure scores lower on a 160 px body at 1080p (an inferred bias against the larger bodies, not corrected).
+
+Bounds re-derived because the new law makes the old ones impossible (old -> new; the measured values on the records):
+
+| Gate | Old | New | Why |
+| --- | --- | --- | --- |
+| `fire_luminance_thin_*` | share > 0.8 peak 0.10-0.35; disc dark share >= 0.20 | <= 0.35; >= 0.077 (0.8 x vanilla's 0.096) | the hot core holds the peak and the dense interior's luminance follows its density below it (share 0.004-0.010); the interior stays dense, gaps only at the rim (0.19-0.31) |
+| `hull_burst_erodes_outside_in` | equal-area radius over R(t) at 0.5 / 0.9 L_b vs 0.1 L_b | in pixels: 0.9 L_b <= 0.5 x 0.5 L_b; mean radius (px) 0.8 / 0.2 L_b <= 0.8 | the collapse carries the shrink in R(t); measured 0.470, 0.577 (record 2) |
+| `hull_glow_follows_burst` | glow / body radius 1.3-2.0 | 1.1-2.0 | the envelope fills R(t) and licks past it (1.17-1.22) |
+| `hull_burst_radius_law_3_ages`, `hull_energy_puff_grows_cools` | the rise law | x c(s) (a fire class) | the collapse |
+| `hull_burst_octave_blend_no_jump` | energy | ballistic (fire 0) | a fire body no longer reads the third octave's weight |
+| `hull_cluster_neighbour_fades` | look.y | look.y / c(s)^2 | the collapse's dimming is not the cluster's |
+| `death_big_tier_sizes` | front 0.80-1.25 R(t) | 0.80-1.35 | the big tiers' sphere factor carries the tongues past R(t) (1.40 / 1.28 on record 1) |
+| `wave_no_hard_edge` | 0 hard steps, outer fall <= 0.3 | <= 6 of 36, <= 0.5 | the turbulence's filaments end in hard gaps (4 and 0.52 on record 3: the fall still fails) |
+
+Still failing on record 3 (342 of 356): `fire_turbulent_hull`, `_death` (above); `fire_colour_ramp_hull`, `_death`
+(red share 0.019 / 0.0 against >= 0.05, mid 0.59-0.60 against <= 0.5: the red stop needs high alpha at low F, which
+the smoothstep alpha does not give against the core's 5.2 peak); `hull_burst_contrast` (high-pass std 0.096-0.097
+against 0.10); `hull_burst_no_centre_ring` (prominence 0.18 at 0.6 / 0.7 L_b against 0.15); `hull_burst_half_hidden_by_lane`
+(0.977 against <= 0.97); the wave's `wave_sheet_thick` (0.50 R_f against 0.6), `wave_hot_edge_trailing_sheet` (the
+sheet at 0.7 R_f 0.0006 against 0.01), `wave_no_hard_edge` (fall 0.523), `wave_fire_hue` (0.761 against 0.8),
+`wave_fire_not_grey` (young band red, 0.25 against 0.5); and the cost rows below.
+
+### 13.4 Cost
+
+`fireball_ps` 843 -> 867 slots, `wave_ps` unchanged in words (3581, slots in the ledger) [M]. Every-pixel fire burst at
+5120x1440: 431.8 -> 332.5 us, shed (octaves 3-5 off) 250.6 us [M]: `budget_weight_fire` 2.46 -> 1.82 (the extra over
+`budget_weight_fireball` 1.11 -> 0.47 a screen). Wave alone 337.7 -> 355.0 us: `budget_weight_wave` 1.83 -> 2.0
+(`_one` 1.68 kept, 1.646 measured). The close capital's worst frame 366.1 us (<= 450, the finest octave not dropped);
+the eye inside a fighter 303.0 us (<= 330). Over budget: the 20 hits at 200 m 97.4 us (<= 80; 77.3 at round 2) and the
+capital's 64 hits 1527.5 us (<= 1420; 1015.0 at round 2, now 20 bursts drawn where 12 were): the cluster's octave drop
+did not recover it (record 2 96.2 us without it); open.
+
 ## Reproduce
 
 ```sh
@@ -400,4 +500,6 @@ python3 verification/results/explosion-look/fire_round2.py
 python3 verification/results/explosion-look/fire_pink.py
 python3 verification/results/explosion-look/vanilla_disc_dark.py "$S/reference/vanilla_fireball.png"
 python3 verification/results/explosion-look/ledger_rows.py --fire
+# round 3 (section 13): vanilla's turbulence figures (output fire_turbulence_vanilla.txt)
+python3 verification/results/explosion-look/fire_turbulence.py "$S/reference/vanilla_fireball.png"
 ```

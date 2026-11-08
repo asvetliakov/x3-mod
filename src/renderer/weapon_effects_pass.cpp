@@ -964,18 +964,17 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     float fire_c[12 * 4] = {};
     for (unsigned k = 0; k < 5; ++k)
         for (unsigned c = 0; c < 3; ++c) fire_c[4 * k + c] = lk::fire_ramp[k][c];
-    fire_c[3] = lk::fire_fine_bias;                  // c14.w
     fire_c[7] = wcore::hull::fire_cluster_thr;       // c15.w
     {
-        const float law[20] = {lk::fire_cells, lk::fire_s_cells, lk::fire_warp_f, lk::fire_warp_amp,
-                               lk::fire_shear, lk::fire_blend_0, lk::fire_blend_1, 1.f / lk::fire_flow_ms,
-                               1.f / lk::fire_flick_ms, lk::fire_flick_amp, lk::fire_thr_0, lk::fire_thr_t,
+        // round 3 (fire-material.md section 13): the turbulence law, c19..c25
+        const float law[20] = {lk::fire_turb_f, lk::fire_turb_a, lk::fire_turb_k, lk::fire_turb_c,
+                               lk::fire_turb_n2, lk::fire_turb_n3, 1.f / lk::fire_stretch, lk::fire_turb_warp,
+                               lk::fire_flow_v * 0.001f, 1.f / lk::fire_jit_ms, lk::fire_thr_0, lk::fire_thr_t,
                                lk::fire_thr_r, 1.f / lk::fire_soft, lk::fire_gain, lk::fire_gain_small,
-                               1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_oct2_w, lk::fire_oct2_big};
+                               1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_env_amp, lk::fire_env_rate};
         for (unsigned k = 0; k < 20; ++k) fire_c[20 + k] = law[k];
-        const float tail[8] = {lk::fire_rim_cool, lk::fire_rim_r0, lk::fire_rim_r1, lk::fire_fine_depth,
-                               lk::fire_core_r1, 1.f / (lk::fire_core_r1 - lk::fire_core_r0), lk::fire_fine_jitter,
-                               lk::fire_fine_k};
+        const float tail[8] = {lk::fire_polar_r0, lk::fire_polar_r1, 1.f / lk::fire_cell_px, lk::fire_thr_rt,
+                               lk::fire_core_r1, 1.f / (lk::fire_core_r1 - lk::fire_core_r0), lk::fire_lum_0, lk::fire_lum_depth};
         for (unsigned k = 0; k < 8; ++k) fire_c[40 + k] = tail[k];
     }
     if (SUCCEEDED(hr) && (scorch_boxes || smoke_boxes)) {
@@ -1296,15 +1295,15 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                   wb::wave_window_in, wb::wave_window_out, wb::wave_m_floor, wb::wave_m_contrast,
                                   wb::wave_n_cells[0], wb::wave_n_cells[1], wb::wave_n_w[0], wb::wave_n_w[1],
                                   wb::wave_tongue * wb::wave_trail_span, wb::wave_tongue_contrast, 0.f, 0.f,
-                                  wb::fire_wave_cells, lk::fire_warp_amp, lk::fire_shear, 1.f / lk::fire_flow_ms,
+                                  wb::fire_wave_cells, lk::fire_turb_warp, lk::fire_turb_k, 1.f / wb::fire_wave_flow_ms,
                                   wb::fire_wave_thr_0, wb::fire_wave_thr_end, 1.f / wb::wave_sheet_span, wb::wave_lead,
-                                  lk::fire_oct2_w, wb::fire_wave_gain, lk::fire_gain, wb::wave_break_floor,
-                                  1.f / lk::fire_soft, 1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_fine_k,
-                                  lk::fire_fine_depth, lk::fire_fine_jitter, wb::wave_floor_a, wb::wave_floor_t};
+                                  lk::fire_turb_a, wb::fire_wave_gain, lk::fire_gain, wb::wave_break_floor,
+                                  1.f / lk::fire_soft, 1.f / wb::fire_wave_heat_soft, lk::fire_rim_t, lk::fire_turb_c,
+                                  1.f / lk::fire_jit_ms, 0.f, wb::wave_floor_a, wb::wave_floor_t};
         float ramp[7 * 4] = {};
         for (unsigned k = 0; k < 5; ++k)
             for (unsigned c = 0; c < 3; ++c) ramp[4 * k + c] = lk::fire_ramp[k][c]; // v8: the fire ramp
-        ramp[3] = lk::fire_fine_bias; // c16.w
+        ramp[3] = 1.f / lk::fire_cell_px; // c16.w (round 3: the octaves' screen floor)
         const float tail[8] = {wb::wave_t_edge, wb::wave_t_band0, wb::wave_t_band_end, wb::wave_t_sheet_end,
                                wb::wave_ahead, wb::wave_rim_gain, 1.f / wb::fire_wave_lick, wb::wave_rim_lift};
         for (unsigned k = 0; k < 8; ++k) ramp[20 + k] = tail[k];

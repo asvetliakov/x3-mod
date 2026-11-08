@@ -519,6 +519,18 @@ as a lamp or scratches in flight -> `ray_x` 0.5 -> 0.25; the spark cloud reads a
 questions: do the rays read as soft glow spokes, not a decal; pumping (scene darkening and brightening with the spark
 cloud at point-blank range).
 
+**The collapse (2026-11-08, the user's addition to the fire material's round 3; fire-material.md section 13.2).** The body
+grew, held at full size for most of its life and eroded in place. Now every tier's main body rises as before, holds to
+`boom::body_hold_x` 0.35 L, then contracts: R(t) x c(s), c(s) = `body_end_r` + (1 - `body_end_r`) (1 - s)^1.5, s = (x -
+0.35) / 0.65, to 0.35 R_f at L (ease-out); its radiance x c(s)^2 (the shrinking core dims); its material's outward flow x
+(1 - s) (the clock `collapse_clock`), so the blob reads as pulling in; the heat law (`body_hold` 0.8, `body_cool` 0.7)
+already cools it to red over the contraction. The fire classes' hull bursts take the same law over their own life. The
+secondaries, sparks, smoke, the wave, the pre-roll and the wave's birth keep their lives, so the shrinking core sits
+inside the spark cloud. Gate `death_body_collapses` (fighter 200 m, capital 3 km broadside: the fire-body cases; medians
+over 8 seeds): the lit set's equal-area radius at 0.9 L <= 0.5 of its 0.3 L value and the peak <= 0.3 of it; the
+connected core of `fire_turbulent_death` (>= 0.35 of the disc at 0.3 L) holds. Rows in the ledger's "Fire material /
+Round 3".
+
 ## Reproduce
 
 ```sh

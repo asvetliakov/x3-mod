@@ -304,8 +304,14 @@ def fire_markdown():
     he_, wcol, wr = row('wave_hard_edge'), row('wave_colour'), row('wave_ramp')
     hb = lambda k: f"{h[k]}"
     bd = lambda k: f"{f[k]} / {c[k]}"
+    # round 3 (fire-material.md section 13): the turbulence and the collapse (vanilla's hf 0.0235, fire_turbulence.py)
+    ht3 = crow('fire_hull_turbulence_median')
+    f3_, c3_ = row('fire_turbulence_median', tier='fighter_200m'), row('fire_turbulence_median', tier='capital_3km')
+    t3 = lambda k: f"{ht3[k]}; {f3_[k]} / {c3_[k]}"
     out = [
         '| Gate | Result [M] (hull; fighter / capital) | Bound |', '| --- | --- | --- |',
+        f"| `fire_turbulent_hull`, `_death` ({ok('fire_turbulent_hull')}, {ok('fire_turbulent_death')}) | AgX luma Laplacian share at 0.3 L {t3('hf3')}, at 0.5 L {t3('hf5')}; connected core / disc at 0.3 L {t3('core3')}; largest other region >= 0.5 peak at 0.3 / 0.5 L {t3('out3')}, {t3('out5')} | >= 0.0188 (0.8 x vanilla 0.0235); >= 0.35; < 0.08 |",
+        f"| `death_body_collapses` ({ok('death_body_collapses')}) | 0.9 L over 0.3 L: radius {f3_['shrink9']} / {c3_['shrink9']}, peak {f3_['dim9']} / {c3_['dim9']} | <= 0.5; <= 0.3 |",
         f"| `fire_luminance_thin_hull`, `_death` ({ok('fire_luminance_thin_hull')}, {ok('fire_luminance_thin_death')}) | share > 0.8 peak {hb('thin')}; {bd('thin')}; equal-area disc under 0.1 peak {h2['disc_dark']}; {f2['disc_dark']} / {c2['disc_dark']} (the outline's gaps under 0.25 peak {hb('gaps')}; {bd('gaps')}, printed) | 0.10-0.35; >= 0.20 (vanilla 0.096) |",
         f"| `fire_not_pink_hull`, `_death` ({ok('fire_not_pink_hull')}, {ok('fire_not_pink_death')}) | AgX pink share at 0.2, 0.3, 0.5 L {h2['pink']}; {f2['pink']} / {c2['pink']} | the medians' largest < 0.02 |",
         f"| `fire_quad_edge_dark_hull`, `_death` ({ok('fire_quad_edge_dark_hull')}, {ok('fire_quad_edge_dark_death')}) | the quad's boundary over the peak, worst hit {h2['quad_edge_worst']}; {f2['quad_edge_worst']} / {c2['quad_edge_worst']} | < 0.02 |",

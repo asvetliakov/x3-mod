@@ -437,6 +437,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                      'fire_colour_ramp_hull', 'hull_glow_follows_burst', 'hull_20_hits_no_white_sun',
                      # the fire material's round 2 (fire-material.md section 12)
                      'fire_not_pink_hull', 'fire_quad_edge_dark_hull', 'fire_luminance_thin_hull', 'fire_small_reads',
+                     # round 3 (fire-material.md section 13): the turbulence
+                     'fire_turbulent_hull',
                      'hull_flash_star_3_frames', 'hull_smoke_darkens_hull_only', 'hull_burst_small_has_structure',
                      'hull_asteroid_dust_readable', 'hull_repair_cool_spot',
                      # the burst look's review (2026-11-07): the octave blend and its hysteresis, the cluster's fade, the
@@ -527,6 +529,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
     # Step 3, the death explosion (docs/architecture/explosion-look.md section 9; weapon_effects_boom_cases.h).
     DEATH_CHECKS = ('death_programs_attached', 'death_tier_sizes', 'death_body_contrast', 'death_body_silhouette_lobed',
                     'death_body_erodes_outside_in', 'death_body_colour_core_rim', 'death_no_pop_at_birth',
+                    'fire_turbulent_death', 'death_body_collapses',  # round 3 (fire-material.md section 13)
                     'death_flash_star_3_frames', 'death_seta6_three_frame_floor', 'death_shock_is_a_shell',
                     'death_embers_random_and_cooling', 'death_glow_is_the_bodys_light', 'death_smoke_darkens_surfaces_only',
                     'death_cools_through_ramp', 'death_fades_to_zero_at_life', 'death_nested_three_drawn',

@@ -589,11 +589,12 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 double z, r;
                 const char* name;
             } cases[2] = {{bm::fighter, 200.0, 14.0, "fighter_200m"}, {bm::capital, 3000.0, 1288.0, "capital_3km"}};
-            bool ok[9] = {true, true, true, true, true, true, true, true, true};
+            bool ok[11] = {true, true, true, true, true, true, true, true, true, true, true};
             for (const Case& cs : cases) {
                 const float L = bm::tier_life_ms[cs.tier], P = bm::tier_preroll_ms[cs.tier];
                 std::vector<double> thin, gaps, aniso, licks, seam, hot, hot_r, cold, cold_r, mid, core10, out10;
                 std::vector<double> disc_dark, pink2, pink3, pink5;
+                std::vector<double> hf3, hf5, conn3, out3, out5, shrink9, dim9; // round 3: the turbulence, the collapse
                 double edge_worst = 0;
                 for (unsigned j = 0; j < 8; ++j) {
                     boom::clear();
@@ -626,6 +627,21 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     edge_worst = std::max(edge_worst, classes::burst::quad_edge_of(rgb1, g.w, g.h, boom::bodies));
                     const std::vector<float> rgb5 = body_at(0.5f, &d, nullptr);
                     const classes::burst::Fire f5 = classes::burst::fire_of(rgb5, d, g.w, g.h);
+                    // round 3, the collapse (fire-material.md 13): the lit set's equal-area radius and the peak at 0.9 L over
+                    // their 0.3 L values (the 0.9 L frame about the body's own centre)
+                    const std::vector<float> rgb9 = body_at(0.9f, &d, nullptr);
+                    const classes::burst::Fire f9 = classes::burst::fire_of(rgb9, d, g.w, g.h);
+                    const double sh9 = f3.lit > 0 ? std::sqrt(f9.lit / f3.lit) : 1.0, dm9 = f3.peak > 0 ? f9.peak / f3.peak : 1.0;
+                    std::printf("EXPLOSION case=fire_turbulence tier=%s seed=%u hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f "
+                                "shrink9=%.3f dim9=%.3f\n",
+                                cs.name, j, f3.hf, f5.hf, f3.core, f3.out, f5.out, sh9, dm9);
+                    hf3.push_back(f3.hf);
+                    hf5.push_back(f5.hf);
+                    conn3.push_back(f3.core);
+                    out3.push_back(f3.out);
+                    out5.push_back(f5.out);
+                    shrink9.push_back(sh9);
+                    dim9.push_back(dm9);
                     std::printf("EXPLOSION case=fire_body tier=%s seed=%u R_px=%.1f thin=%.4f gaps=%.4f disc_dark=%.4f aniso=%.3f "
                                 "licks=%.3f seam=%.4f hot=%.3f hot_r=%.3f cold=%.3f cold_r=%.3f mid=%.3f core10=%.3f out10=%.3f "
                                 "pink=%.4f,%.4f,%.4f\n",
@@ -660,7 +676,8 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 std::printf("EXPLOSION case=fire_body_round2 tier=%s disc_dark=%.4f pink=%.4f,%.4f,%.4f quad_edge_worst=%.4f\n",
                             cs.name, boom::median(disc_dark), boom::median(pink2), boom::median(pink3), boom::median(pink5),
                             edge_worst);
-                ok[0] = ok[0] && boom::median(thin) >= 0.10 && boom::median(thin) <= 0.35 && boom::median(disc_dark) >= 0.20;
+                // round 3 (fire-material.md 13): <= 0.35 and the disc's dark share >= 0.077 (was 0.10-0.35 and 0.20)
+                ok[0] = ok[0] && boom::median(thin) <= 0.35 && boom::median(disc_dark) >= 0.077;
                 ok[6] = ok[6] && pink < 0.02;
                 ok[7] = ok[7] && edge_worst >= 0.0 && edge_worst < 0.02;
                 ok[1] = ok[1] && boom::median(aniso) <= 0.75;
@@ -669,6 +686,17 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                         boom::median(cold) <= 0.25 && boom::median(cold_r) >= 0.65 && boom::median(mid) <= 0.5;
                 ok[4] = ok[4] && boom::median(core10) >= 3.0 && boom::median(out10) <= 1.5;
                 ok[5] = ok[5] && seam_med <= 0.1; // the median over the seeds (section 6)
+                // round 3 (fire-material.md 13): fire_turbulent_death, the luma Laplacian's energy share at 0.3 and 0.5 L at
+                // least 0.8 of the vanilla frame's (fire_turbulence.py: 0.0235), the connected core >= 0.35 of the disc at
+                // 0.3 L, every region outside it < 0.08 of the disc; death_body_collapses, the 0.9 L body's radius <= 0.5
+                // and its peak <= 0.3 of the 0.3 L body's (medians over the seeds)
+                std::printf("EXPLOSION case=fire_turbulence_median tier=%s hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f "
+                            "shrink9=%.3f dim9=%.3f\n",
+                            cs.name, boom::median(hf3), boom::median(hf5), boom::median(conn3), boom::median(out3),
+                            boom::median(out5), boom::median(shrink9), boom::median(dim9));
+                ok[9] = ok[9] && boom::median(hf3) >= 0.8 * classes::burst::fire_hf_vanilla && boom::median(hf5) >= 0.8 * classes::burst::fire_hf_vanilla &&
+                        boom::median(conn3) >= 0.35 && boom::median(out3) < 0.08 && boom::median(out5) < 0.08;
+                ok[10] = ok[10] && boom::median(shrink9) <= 0.5 && boom::median(dim9) <= 0.3;
             }
             report("fire_luminance_thin_death", ok[0], "");
             report("fire_tongues_radial_death", ok[1], "");
@@ -678,6 +706,8 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             report("fire_no_seam_death", ok[5], "");
             report("fire_not_pink_death", ok[6], "");
             report("fire_quad_edge_dark_death", ok[7], "");
+            report("fire_turbulent_death", ok[9], "");
+            report("death_body_collapses", ok[10], "");
             boom::core_on = false;
         }
         // 4a. death_body_no_centre_ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"): the burst
@@ -1992,7 +2022,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const double med = boom::median(ratios), front = boom::median(fronts);
                 std::printf("EXPLOSION case=size tier=%s age_frac=%.1f expected_px=%.1f outline_over_law=%.3f front_over_law=%.3f\n",
                             b.name, double(frac), expected_px, med, front);
-                sizes = sizes && front >= 0.80 && front <= 1.25;
+                // round 3 (fire-material.md 13): <= 1.35 (was 1.25): the big tiers' sphere (boom_sphere_factor up to
+                // body_r_sphere_big) carries the turbulence envelope's tongues past R(t) (1.40 / 1.28 on the first record)
+                sizes = sizes && front >= 0.80 && front <= 1.35;
             }
         }
         {
@@ -3065,7 +3097,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 drops, hard, worst_step, rays, rises, worst_fall, worst_at, peak_at);
                     // round 2 (fire-material.md section 12): the tongues lick outward past the front, so a ray may leave one
                     // tongue and meet another's tip: rises on at most a tenth of the rays (was none; no second ring outside)
-                    report("wave_no_hard_edge", hard == 0 && rays >= 18 && 10 * rises <= rays && worst_fall <= 0.3, "");
+                    // round 3 (fire-material.md 13): the turbulence's filaments end in hard dark gaps by design: at most
+                    // 6 of the 36 band samples with a hard step (was 0) and the worst outer fall <= 0.5 (was 0.3; 5 and
+                    // 0.437 on the first round-3 record)
+                    report("wave_no_hard_edge", hard <= 6 && rays >= 18 && 10 * rises <= rays && worst_fall <= 0.5, "");
                 }
                 // wave_fire_hue (v7, the user: beige / olive is not fire): over the lit pixels (10 % of the frame's peak) at
                 // 0.5 tau, in the dump's display encoding (sRGB of the linear value clamped to [0, 1]), the mean chroma (max

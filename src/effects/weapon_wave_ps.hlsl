@@ -28,8 +28,11 @@
 // Round 2 (2026-11-07, fire-material.md section 12; the lab wave a drawn hoop): the noise continues ahead of the shifted
 // front (s signed) and the threshold rises to 1 over fire_wave_lick w_e ahead of it, so the tongues point outward from the
 // front with pointed tips (no fall-off of a held noise); the rim is wave_rim_gain x the tongues' own density at the front
-// spines (over a threshold wave_rim_lift higher: never brighter than a tongue, broken between them); the second octave at fire_fine_k x the cells (c11.w) is the
-// fine octave: its luminance modulation (c12.x) and threshold jitter (c12.y) as the body's, ragged edges.
+// spines (over a threshold wave_rim_lift higher: never brighter than a tongue, broken between them).
+// Round 3 (2026-11-08, fire-material.md section 13; the lab: petals): the tongue noise and its fine octave are replaced
+// by the body's turbulence law in the ring's frame (four ridged octaves, each dropped under fire_cell_px on screen, the
+// finest two re-seeded at 15 Hz of game time; F = 1/2 + fire_turb_k (fire_turb_c - T) - thr), the alpha smoothstep(0,
+// fire_soft, F)^fire_gain, the colour from F.
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
 float4 screen : register(c3);  // 2 / W, 2 / H, near view z, unused
@@ -37,15 +40,15 @@ float4 prof : register(c4);    // 1 / the band (w_e), the sheet's end (band unit
 float4 win : register(c5);     // window in, window out (w_e), m floor, m contrast
 float4 noise : register(c6);   // the break's cells 1, 2, weights 1, 2
 float4 shape : register(c7);   // the front's tongues' amplitude (w_e), their contrast, unused x2
-float4 cells : register(c8);   // fire_wave_cells about the circumference, fire_warp_amp, fire_shear, 1 / fire_flow_ms
+float4 cells : register(c8);   // fire_wave_cells about the circumference, fire_turb_warp, fire_turb_k, 1 / fire_wave_flow_ms
 float4 rad : register(c9);     // fire_wave_thr_0, fire_wave_thr_end, 1 / wave_sheet_span (w_e), the rim's lead (band units)
-float4 wts : register(c10);    // fire_oct2_w, fire_wave_gain, fire_gain, the material's share under a broken rim
-float4 erode : register(c11);  // 1 / fire_soft, 1 / fire_heat_soft, fire_rim_t, fire_fine_k
-float4 erode2 : register(c12); // fire_fine_depth, fire_fine_jitter, the swept hulls' floor density, the floor's T
+float4 wts : register(c10);    // fire_turb_a, fire_wave_gain, fire_gain, the material's share under a broken rim
+float4 erode : register(c11);  // 1 / fire_soft, 1 / boom::fire_wave_heat_soft, fire_rim_t, fire_turb_c
+float4 erode2 : register(c12); // 1 / fire_jit_ms, unused, the swept hulls' floor density, the floor's T
 float4 plane : register(c13);  // the plane's normal (view, unit), the age fraction x = t / L_w
-float4 heat_c : register(c14); // the age's cooling factor (x every T), the sheet's second octave's weight (0: shed),
+float4 heat_c : register(c14); // the age's cooling factor (x every T), the finest two octaves' weight behind the band (0: shed),
                                // 1 / l_s (w_e), the game-time age t_g (ms)
-float4 ramp[5] : register(c16); // the fire ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb); c16.w fire_fine_bias
+float4 ramp[5] : register(c16); // the fire ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb); c16.w 1 / fire_cell_px
 float4 temp : register(c21);   // T at the edge, at the band's start, at its end, at the sheet's end
 float4 edge_c : register(c22); // the rim's fall-off ahead (w_e), wave_rim_gain, 1 / fire_wave_lick (w_e), wave_rim_lift
 float hash2(float2 q) {
@@ -154,33 +157,39 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                                                 : (zhi - zlo) * (1.0 - ya * ya / (hh * hh));
                 float column = saturate(integral * l / (1.3333333 * hh));
                 float m = win.z + (1.0 - win.z) * saturate(0.5 + win.w * (nn - prof.w));
-                // v8: the tongues on (the angle, s): sw w_e behind the shifted front, the warp (two taps periodic in the
-                // angle at a quarter of the cells), the shear growing behind the front, two periodic octaves; the threshold
-                // rising from the front's to the sheet end's (the tongues' tips to the rear)
-                // s signed: the noise continues ahead of the front (the tongues lick outward)
+                // round 3 (fire-material.md section 13): the turbulence law on (the angle, s), s the radial cells
+                // behind the shifted front (signed: the noise continues ahead, the tongues lick outward). Four octaves at
+                // 2^i x fire_wave_cells about the circumference (periodic: no seam) and 2^i x s, streaming backward at
+                // 1.4^i x the flow, each warped along the angle by fire_turb_warp cells of the next finer; the finest two
+                // re-seeded every fire_jit_ms of game time; each dropped under fire_cell_px on screen, the finest two
+                // also behind the band where the budget's step 0a sheds the sheet's (heat_c.y). T the ridged sum, F =
+                // 1/2 + fire_turb_k (fire_turb_c - T) - thr; thr rising from the front's to the sheet end's behind, to 1
+                // over fire_wave_lick ahead (the tongues' tips outward)
                 float sb = -zz * prof.x, sp = max(sb, 0.0), sw = max(-zz, 0.0), ss = min(sw * rad.z, 1.0);
-                float ls = -zz * heat_c.z, c4 = 0.25 * cells.x;
-                float wa = cells.y * (2.0 * vn2p(float2(u * c4 + 1.7 * disc.z, 0.5 * ls + 3.1 * advect), c4) - 1.0);
-                float wb = cells.y * (2.0 * vn2p(float2(u * c4 + 3.1 * disc.z + 5.3, 0.5 * ls + 1.7 * advect + 5.3), c4) - 1.0);
-                float at = u * cells.x + cells.z * ss * wb + 1.3 * disc.z, st = ls - heat_c.w * cells.w + wa + 0.7 * advect;
-                float w2 = wts.x * (sb > 1.0 ? heat_c.y : 1.0);
-                float nz = (1.0 - wts.x) * vn2p(float2(at, st), cells.x), nf = 0.5;
-                // the second octave the fine one (fire_fine_k x the cells): its jitter and luminance (none once shed)
-                [branch] if (w2 > 0.0) {
-                    nf = vn2p(float2(erode.w * at + 0.5, erode.w * st + 3.7), erode.w * cells.x);
-                    nz += w2 * nf;
-                }
-                nz /= 1.0 - wts.x + w2;
-                // the threshold rising from the front's to the sheet end's behind, to 1 over fire_wave_lick ahead (the
-                // tongues' tips outward), jittered by the fine octave
-                float thr = rad.x + (rad.y - rad.x) * ss + (1.0 - rad.x) * saturate(zz * edge_c.z) + erode2.y * (nf - 0.5);
-                float d = saturate((nz - thr) * erode.x), mh = saturate((nz - thr) * erode.y);
-                float front = wts.y * pow(max(d, 1e-6), wts.z) * step(1e-6, d) * (wts.w + (1.0 - wts.w) * m) *
-                              (1.0 - erode2.x * saturate(ramp[0].w - 2.0 * nf));
+                float ls = -zz * heat_c.z, N = cells.x, tw = heat_c.w * cells.w;
+                float lw = 6.2831853 * dr / N * proj.x / (max(zr, 1e-3) * screen.x) * ramp[0].w;
+                float sh = sb > 1.0 ? heat_c.y : 1.0, a1 = wts.x, a2 = a1 * a1;
+                float w0 = saturate(lw - 1.0), w1 = saturate(0.5 * lw - 1.0), w2 = saturate(0.25 * lw - 1.0) * sh;
+                float w3 = saturate(0.125 * lw - 1.0) * sh;
+                float2 jo = floor(heat_c.w * erode2.x) * float2(7.31, 3.97);
+                float nz0, nz1 = 0.5, nz2 = 0.5, nz3 = 0.5;
+                [branch] if (w3 > 0.0) nz3 = vn2p(float2(8.0 * N * u + 3.3 * disc.z + jo.x, 8.0 * (ls - 2.744 * tw) + jo.y), 8.0 * N);
+                [branch] if (w2 > 0.0)
+                    nz2 = vn2p(float2(4.0 * N * u + cells.y * (2.0 * nz3 - 1.0) + 2.1 * disc.z + jo.y, 4.0 * (ls - 1.96 * tw) + 1.1 * advect + jo.x), 4.0 * N);
+                [branch] if (w1 > 0.0)
+                    nz1 = vn2p(float2(2.0 * N * u + cells.y * (2.0 * nz2 - 1.0) + 1.3 * disc.z, 2.0 * (ls - 1.4 * tw) + 0.7 * advect), 2.0 * N);
+                nz0 = vn2p(float2(N * u + cells.y * (2.0 * nz1 - 1.0) + 1.7 * disc.z, ls - tw + 0.5 * advect + cells.y * (2.0 * nz2 - 1.0)), N);
+                float ws = w0 + a1 * w1 + a2 * w2 + a1 * a2 * w3;
+                float T0 = (w0 * abs(2.0 * nz0 - 1.0) + a1 * w1 * abs(2.0 * nz1 - 1.0) + a2 * w2 * abs(2.0 * nz2 - 1.0) +
+                            a1 * a2 * w3 * abs(2.0 * nz3 - 1.0)) / max(ws, 1e-4);
+                float thr = rad.x + (rad.y - rad.x) * ss + (1.0 - rad.x) * saturate(zz * edge_c.z);
+                float F = 0.5 + cells.z * (erode.w - T0) - thr;
+                float sF = saturate(F * erode.x), d = sF * sF * (3.0 - 2.0 * sF), mh = saturate(F * erode.y);
+                float front = wts.y * pow(max(d, 1e-6), wts.z) * step(1e-6, d) * (wts.w + (1.0 - wts.w) * m);
                 float dens = front * (1.0 - smoothstep(0.7, prof.y, sb));
-                // the rim: the tongues' spines at the front (their density over a threshold wave_rim_lift higher, over
-                // 2 fire_soft) x wave_rim_gain: never brighter than a tongue, broken between the spines
-                float ds = saturate((nz - thr - edge_c.w) * 0.5 * erode.x);
+                // the rim: the turbulence's densest at the front (its density over a threshold wave_rim_lift higher, over
+                // 2 fire_soft) x wave_rim_gain: never brighter than the material, broken between its filaments
+                float ds = saturate((F - edge_c.w) * 0.5 * erode.x);
                 float rim = rim_profile(zz, sb) * edge_c.y * front * ds;
                 float tm = t_profile(sp) * (erode.z + (1.0 - erode.z) * pow(max(mh, 1e-6), 0.75));
                 float tot = rim + dens, inten = min(tot, 1.0);

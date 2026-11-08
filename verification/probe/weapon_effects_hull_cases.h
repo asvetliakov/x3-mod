@@ -1431,8 +1431,10 @@ void hull_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
         for (unsigned a = 0; a < 3; ++a) {
             const std::uint32_t age = std::uint32_t(fracs[a] * double(life) + 0.5);
             const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only_burst);
+            // round 3 (fire-material.md 13): the energy class contracts with the collapse past body_hold_x
             const double want = double(law::puff_r()) * double(r_hit) *
-                                (1.0 - std::exp(-double(age) / (double(law::puff_rise()) * double(life))));
+                                (1.0 - std::exp(-double(age) / (double(law::puff_rise()) * double(life)))) *
+                                double(ws::collapse_r(float(age) / life));
             const double got = o.bursts ? double(hq_fireballs[0].sphere[3]) / (1.0 + double(wc::look::fireball_lobe_amp)) : 0.0;
             const double t_err = o.bursts ? std::fabs(double(hq_fireballs[0].look[0]) - (1.0 - double(age) / double(life))) : 1.0;
             const std::vector<float> l = hull_render(pass, o);

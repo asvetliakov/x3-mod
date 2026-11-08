@@ -1,0 +1,2 @@
+vanilla_fireball.png: lit 3133 px, R_eq 31.6 px, hf 0.0235, core 0.408, out 0.0003, components 2
+7.png: lit 11464 px, R_eq 60.4 px, hf 0.0831, core 0.399, out 0.0023, components 124

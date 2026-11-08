@@ -424,6 +424,9 @@ Ring ring_of(const std::vector<float>& l, unsigned W, double x, double y, double
 // nearest fire-ramp stop
 // per lit pixel (hot T >= 0.75, cold T 0.25, mid 0.5: shares and mean radius over R), the peak within 0.3 R and the
 // largest luma outside 0.5 R.
+// Round 3 (fire-material.md section 13): the vanilla fireball frame's luma Laplacian energy share within its equal-area disc
+// (verification/results/explosion-look/fire_turbulence.py on the reference capture, measured 2026-11-08).
+constexpr double fire_hf_vanilla = 0.0235;
 double nearest_fire_stop(const double c[3]) {
     const double m = std::max(c[0], std::max(c[1], c[2]));
     if (!(m > 0)) return 0;
@@ -447,6 +450,12 @@ double nearest_fire_stop(const double c[3]) {
 struct Fire {
     double thin = 0, gaps = 0, aniso = 0, licks = 0, hot = 0, hot_r = 0, cold = 0, cold_r = 0, mid = 0, core_peak = 0,
            out_peak = 0, lit = 0, disc_dark = 0, pink = 0;
+    // round 3 (fire-material.md section 13; verification/results/explosion-look/fire_turbulence.py, the same arithmetic on
+    // the vanilla frame): on the AgX display luma (Rec.709 of agx_display), within the equal-area disc of its lit set (> 0.1
+    // of its peak) about the centre: hf = the 4-neighbour Laplacian's energy over the luma's; core = the 4-connected region
+    // >= 0.5 of the peak holding the centre (else the nearest), its area over the disc's; out = the largest other such
+    // region over the disc's. peak: the largest linear max channel.
+    double hf = 0, core = 0, out = 0, peak = 0;
 };
 inline void agx_display(const float c[3], double o[3]) {
     static const double in[3][3] = {{0.842479062253094, 0.0784335999999992, 0.0792237451477643},
@@ -528,6 +537,77 @@ inline std::vector<double> box_mean(const std::vector<double>& v, int bw, int bh
                                            double((bx - ax) * (by - ay));
         }
     return out;
+}
+// Round 3: Fire::hf, core, out on the box b about the disc's centre (see Fire).
+inline void turbulence_of(const std::vector<float>& rgb, const Box& b, const Disc& d, unsigned W, Fire* f) {
+    const int bw = b.w(), bh = b.h();
+    std::vector<double> l(std::size_t(bw) * bh, 0.0);
+    double pk = 0;
+    for (int y = 0; y < bh; ++y)
+        for (int x = 0; x < bw; ++x) {
+            double o[3];
+            agx_display(&rgb[(std::size_t(y + b.y0) * W + x + b.x0) * 3], o);
+            const double v = 0.2126 * o[0] + 0.7152 * o[1] + 0.0722 * o[2];
+            l[std::size_t(y) * bw + x] = v;
+            pk = std::max(pk, v);
+        }
+    if (!(pk > 0)) return;
+    double n_lit = 0;
+    for (double v : l) n_lit += v > 0.1 * pk;
+    const double Req = std::sqrt(n_lit / 3.14159265);
+    const double cx = d.x - b.x0, cy = d.y - b.y0;
+    double nd = 0, el = 0, ell = 0;
+    for (int y = 1; y + 1 < bh; ++y)
+        for (int x = 1; x + 1 < bw; ++x) {
+            if (std::hypot(x + 0.5 - cx, y + 0.5 - cy) > Req) continue;
+            const std::size_t i = std::size_t(y) * bw + x;
+            const double lap = 4.0 * l[i] - l[i - 1] - l[i + 1] - l[i - bw] - l[i + bw];
+            ++nd;
+            el += lap * lap;
+            ell += l[i] * l[i];
+        }
+    if (!(nd > 0)) return;
+    f->hf = ell > 0 ? el / ell : 0;
+    // the regions >= 0.5 of the peak (4-connected)
+    std::vector<int> lab(l.size(), 0), area(1, 0), stack;
+    for (std::size_t i0 = 0; i0 < l.size(); ++i0) {
+        if (lab[i0] || !(l[i0] >= 0.5 * pk)) continue;
+        const int k = int(area.size());
+        area.push_back(0);
+        stack.push_back(int(i0));
+        lab[i0] = k;
+        while (!stack.empty()) {
+            const int i = stack.back();
+            stack.pop_back();
+            ++area[k];
+            const int x = i % bw, y = i / bw;
+            const int nb[4] = {x > 0 ? i - 1 : -1, x + 1 < bw ? i + 1 : -1, y > 0 ? i - bw : -1, y + 1 < bh ? i + bw : -1};
+            for (int j : nb)
+                if (j >= 0 && !lab[j] && l[j] >= 0.5 * pk) {
+                    lab[j] = k;
+                    stack.push_back(j);
+                }
+        }
+    }
+    int kc = 0;
+    const int ix = int(cx), iy = int(cy);
+    if (ix >= 0 && iy >= 0 && ix < bw && iy < bh) kc = lab[std::size_t(iy) * bw + ix];
+    if (!kc) {
+        double best = 1e30;
+        for (std::size_t i = 0; i < l.size(); ++i)
+            if (lab[i]) {
+                const double r = std::hypot(int(i % bw) + 0.5 - cx, int(i / bw) + 0.5 - cy);
+                if (r < best) {
+                    best = r;
+                    kc = lab[i];
+                }
+            }
+    }
+    int other = 0;
+    for (int k = 1; k < int(area.size()); ++k)
+        if (k != kc) other = std::max(other, area[k]);
+    f->core = kc ? area[kc] / nd : 0;
+    f->out = other / nd;
 }
 Fire fire_of(const std::vector<float>& rgb, const Disc& d, unsigned W, unsigned H) {
     Fire f;
@@ -653,6 +733,8 @@ Fire fire_of(const std::vector<float>& rgb, const Disc& d, unsigned W, unsigned 
             et += gt * gt;
         }
     f.aniso = et > 0 ? er / et : 0;
+    f.peak = pk;
+    turbulence_of(rgb, b, d, W, &f);
     return f;
 }
 // The temporal correlations of two frames about the disc (inside 1.2 R): the high-pass (box R/4) and the low-pass (box
@@ -800,13 +882,16 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
     // Round 2 (fire-material.md section 12): the tongues' gaps are the material, so the lit share inside R(t) (>= 0.8,
     // 0.35-0.75, <= 0.15) no longer measures the erosion; the equal-area disc of the lit set does: its radius at 0.5 L_b
     // 0.35-0.9 of its radius at 0.1 L_b, at 0.9 L_b <= 0.4 of it (the shares printed beside).
+    // Round 3 (fire-material.md 13): the collapse carries the shrink in R(t) and the envelope fills it, so the radii are
+    // taken in pixels, not over R(t): at 0.9 L_b <= 0.5 of the 0.5 L_b radius (death_body_collapses' bound), none after
+    // L_b, the lit pixels' mean radius (px) at 0.8 L_b <= 0.8 of its 0.2 L_b value (the ratios over R(t) printed).
     {
-        std::vector<double> sh[3], eq[3], ratio;
+        std::vector<double> sh[3], eq[3], eqp[3], ratio, ratio_px;
         unsigned after = 0;
         const float fr[3] = {0.1f, 0.5f, 0.9f};
         for (unsigned j = 0; j < hits_n; ++j) {
             const float L = single(hl::an_energy, burst_only, 400.f, seq_of(j));
-            double share[3] = {0, 0, 0}, mr[2] = {0, 0};
+            double share[3] = {0, 0, 0}, mr[2] = {0, 0}, mrp[2] = {0, 0};
             for (unsigned i = 0; i < 3; ++i) {
                 const HullOut o = at(fr[i] * L, burst_only);
                 double re = 0;
@@ -814,16 +899,21 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                     const std::vector<float> lu = burst::luma(burst::render(pass, o));
                     share[i] = burst::body_of(lu, burst::disc_of(hq_fireballs[0])).lit_share;
                     re = burst::eq_radius(lu) / burst::disc_of(hq_fireballs[0]).R;
+                    eqp[i].push_back(burst::eq_radius(lu));
                 }
                 sh[i].push_back(share[i]);
                 eq[i].push_back(re);
             }
             for (unsigned i = 0; i < 2; ++i) {
                 const HullOut o = at((i ? 0.8f : 0.2f) * L, burst_only);
-                if (o.bursts) mr[i] = burst::body_of(burst::luma(burst::render(pass, o)), burst::disc_of(hq_fireballs[0])).mean_r;
+                if (o.bursts) {
+                    mr[i] = burst::body_of(burst::luma(burst::render(pass, o)), burst::disc_of(hq_fireballs[0])).mean_r;
+                    mrp[i] = mr[i] * burst::disc_of(hq_fireballs[0]).R;
+                }
             }
             after += at(L + 1.f, burst_only).bursts;
             ratio.push_back(mr[0] > 0 ? mr[1] / mr[0] : 1.0);
+            ratio_px.push_back(mrp[0] > 0 ? mrp[1] / mrp[0] : 1.0);
             std::printf("CLASS case=burst_erosion hit=%u life_ms=%.1f lit_share=%.4f,%.4f,%.4f mean_r_02=%.4f mean_r_08=%.4f\n", j,
                         double(L), share[0], share[1], share[2], mr[0], mr[1]);
         }
@@ -832,7 +922,10 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         const double q1 = e0 > 0 ? e1 / e0 : 0.0, q2 = e0 > 0 ? e2 / e0 : 1.0;
         std::printf("CLASS case=burst_erosion_median hits=%u lit_share=%.4f,%.4f,%.4f eq_r=%.4f,%.4f,%.4f eq_ratio=%.4f,%.4f "
                     "bursts_after=%u mean_r_ratio=%.4f\n", hits_n, m0, m1, m2, e0, e1, e2, q1, q2, after, mr);
-        report("hull_burst_erodes_outside_in", e0 > 0 && q1 >= 0.35 && q1 <= 0.9 && q2 <= 0.4 && after == 0 && mr <= 0.8, "");
+        const double p1 = median(eqp[1]), p2 = median(eqp[2]), mrpx = median(ratio_px);
+        std::printf("CLASS case=burst_erosion_px eq_r_px=%.2f,%.2f,%.2f r09_over_r05=%.4f mean_r_px_ratio=%.4f\n", median(eqp[0]),
+                    p1, p2, p1 > 0 ? p2 / p1 : 1.0, mrpx);
+        report("hull_burst_erodes_outside_in", p1 > 0 && p2 <= 0.5 * p1 && after == 0 && mrpx <= 0.8, "");
     }
     // 4. Colour, core and rim at 0.2 L_b (energy): the nearest ramp stop of the mean colour within 0.3 R and in 0.7..1.0 R.
     {
@@ -872,6 +965,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         const std::uint32_t next_sequence = stage_ring.next_sequence;
         std::vector<double> thin, gaps, aniso, licks, hot, hot_r, cold, cold_r, mid, core40, out40, hp16, lp16, hp100, seam;
         std::vector<double> disc_dark, pink2, pink3, pink5;
+        std::vector<double> hf3, hf5, conn3, out3, out5; // round 3: the turbulence
         double edge_worst = 0;
         for (unsigned j = 0; j < hits_n; ++j) {
             const float L = single(hl::an_energy, burst_only, 400.f, seq_of(j));
@@ -909,6 +1003,13 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                         "out40=%.3f pink=%.4f,%.4f,%.4f\n",
                         j, d.R, f3.thin, f3.gaps, f3.disc_dark, f3.aniso, f3.licks, sm, h16, l16, h100, f2.hot, f2.hot_r, f2.cold,
                         f2.cold_r, f2.mid, f0.core_peak, f0.out_peak, f2.pink, f3.pink, f5.pink);
+            std::printf("CLASS case=fire_hull_turbulence hit=%u hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f\n", j, f3.hf,
+                        f5.hf, f3.core, f3.out, f5.out);
+            hf3.push_back(f3.hf);
+            hf5.push_back(f5.hf);
+            conn3.push_back(f3.core);
+            out3.push_back(f3.out);
+            out5.push_back(f5.out);
             disc_dark.push_back(f3.disc_dark);
             pink2.push_back(f2.pink);
             pink3.push_back(f3.pink);
@@ -943,7 +1044,10 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         const double pink = std::max(median(pink2), std::max(median(pink3), median(pink5)));
         std::printf("CLASS case=fire_hull_round2 disc_dark=%.4f pink=%.4f,%.4f,%.4f quad_edge_worst=%.4f\n", median(disc_dark),
                     median(pink2), median(pink3), median(pink5), edge_worst);
-        report("fire_luminance_thin_hull", all && median(thin) >= 0.10 && median(thin) <= 0.35 && median(disc_dark) >= 0.20, "");
+        // round 3 (fire-material.md 13): the share > 0.8 peak <= 0.35 only (was 0.10-0.35: the hot core holds the peak,
+        // the dense interior's luminance follows its density below it); the disc's dark share >= 0.077 (was 0.20: 0.8 x
+        // vanilla's 0.096; the interior stays dense, gaps only at the rim)
+        report("fire_luminance_thin_hull", all && median(thin) <= 0.35 && median(disc_dark) >= 0.077, "");
         report("fire_not_pink_hull", all && pink < 0.02, "");
         report("fire_quad_edge_dark_hull", all && edge_worst < 0.02, "");
         report("fire_tongues_radial_hull", all && median(aniso) <= 0.75, "");
@@ -955,6 +1059,11 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         report("fire_core_bloom_hull", all && median(core40) >= 3.0 && median(out40) <= 1.5, "");
         // the median over the hits as every section-6 gate (a single hit's tongue edge crossing the strip is not a seam)
         report("fire_no_seam_hull", all && median(seam) <= 0.1, "");
+        // round 3 (fire-material.md section 13): fire_turbulent_hull, the death gate's bounds at 0.3 and 0.5 L_b
+        std::printf("CLASS case=fire_hull_turbulence_median hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f\n", median(hf3),
+                    median(hf5), median(conn3), median(out3), median(out5));
+        report("fire_turbulent_hull", all && median(hf3) >= 0.8 * burst::fire_hf_vanilla && median(hf5) >= 0.8 * burst::fire_hf_vanilla &&
+                                          median(conn3) >= 0.35 && median(out3) < 0.08 && median(out5) < 0.08, "");
         stage_ring.next_sequence = next_sequence;
     }
     // 4b. No centre ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"), energy at 0.5 / 0.6 /
@@ -1036,7 +1145,9 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                 }
                 std::printf("CLASS case=glow_follows_burst_median class=%s age_frac=%.1f radius_ratio=%.3f peak_ratio=%.4f\n",
                             anatomy_name(a), double(x), median(rr), median(pr));
-                ok = ok && median(rr) >= 1.3 && median(rr) <= 2.0 && median(pr) <= 0.4;
+                // round 3 (fire-material.md 13): >= 1.1 (was 1.3; the envelope fills R(t) and its tongues lick past
+                // it, 1.17-1.22 measured on the first round-3 record)
+                ok = ok && median(rr) >= 1.1 && median(rr) <= 2.0 && median(pr) <= 0.4;
             }
             const float L = single(a, glow_alone);
             const HullOut after = at(L + 1.f, glow_alone);
@@ -1301,7 +1412,10 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
     // frame's third-octave weight against its own; the blend's largest J at most half the hard step's (the band at 0,
     // the review's case, the witness rows).
     {
-        const double Rv = double(hl::class_puff[hl::an_energy][0] * r33) * (1.0 - std::exp(-0.4 / double(law::puff_rise())));
+        // round 3 (fire-material.md 13): on the ballistic class (fire 0, the previous law's third octave): a fire class's
+        // body no longer reads the third octave's weight (the turbulence law's octaves blend by their own pixel size)
+        const double Rv = double(hl::class_puff[hl::an_ballistic][0] * r33) *
+                          (1.0 - std::exp(-0.4 / double(hl::class_puff[hl::an_ballistic][7])));
         bool ok = false;
         double blend_j = 0;
         for (float band : {wc::look::fireball_fine_band_px, 0.f}) {
@@ -1315,7 +1429,7 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                 const double px = (40.0 + 4.0 * fr) * double(g.h) / 1440.0;
                 const double z = Rv * 0.5 * g.w * 1.6 / px + double(hl::bias * r33);
                 draw_lane(g, float(z), 1.f);
-                const float L = single(hl::an_energy, t, float(z) + 100.f, seq_of(1));
+                const float L = single(hl::an_ballistic, t, float(z) + 100.f, seq_of(1));
                 const HullOut o = at(0.4f * L, t);
                 const std::vector<float> l = burst::luma(burst::render(pass, o));
                 const double w3 = o.bursts ? double(hq_fireballs[0].disc[3]) : -1.0;
@@ -1415,8 +1529,10 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
                 double eb = -1;
                 bool a_live = false;
                 for (unsigned q = 0; q < o.bursts; ++q) {
-                    if (hq_fireballs[4 * q].sphere[0] > 0.5f * Rb)
-                        eb = hq_fireballs[4 * q].look[1];
+                    if (hq_fireballs[4 * q].sphere[0] > 0.5f * Rb) { // round 3: over the collapse's c(s)^2 (its own age)
+                        const double cr = double(ws::collapse_r(hq_fireballs[4 * q].look[2]));
+                        eb = hq_fireballs[4 * q].look[1] / (cr * cr);
+                    }
                     else
                         a_live = true;
                 }
@@ -1723,7 +1839,9 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             const std::uint32_t age = std::uint32_t(fr[i] * L);
             const HullOut o = hull_build(hull_view(g, 1000 + age, 16), only(PUFF));
             const double R = o.bursts ? double(hq_fireballs[0].sphere[3]) / (1.0 + double(wc::look::fireball_lobe_amp)) : 0.0;
-            const double want = double(R_b) * (1.0 - std::exp(-double(age) / (double(law::puff_rise()) * double(L))));
+            // round 3: x the collapse (a fire class)
+            const double want = double(R_b) * (1.0 - std::exp(-double(age) / (double(law::puff_rise()) * double(L)))) *
+                                double(ws::collapse_r(float(age) / L));
             worst_r = std::max(worst_r, std::fabs(R - want) / want);
             std::vector<float> rgb;
             hull_render(pass, o, &rgb);

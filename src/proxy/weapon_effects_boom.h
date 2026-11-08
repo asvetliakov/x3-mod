@@ -206,7 +206,9 @@ inline float boom_r_f_m(const core::Event& e) noexcept {
 inline float boom_body_radius(unsigned tier, float R_f, float R_0, float t_ms) noexcept {
     namespace bm = core::boom;
     const float L = bm::tier_life_ms[tier];
-    return R_0 + (R_f - R_0) * (1.f - core::exp_neg(-t_ms / (bm::tier_rise[tier] * L))) + bm::body_grow * R_f * t_ms / L;
+    // round 3, the collapse (fire-material.md 13): x c(s) past body_hold_x L
+    return (R_0 + (R_f - R_0) * (1.f - core::exp_neg(-t_ms / (bm::tier_rise[tier] * L))) + bm::body_grow * R_f * t_ms / L) *
+           collapse_r(t_ms / L);
 }
 // The body's heat law (2.1): 1 - body_cool t / (body_hold L) to body_hold L, then linear to 0 at L.
 inline float boom_body_heat(unsigned tier, float t_ms) noexcept {
@@ -1735,7 +1737,9 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     // the eye inside (the box the whole screen): three octaves (2026-11-07 v4: the fourth put the eye-inside
                     // fighter at 309.8 us against the 300 us fence [M])
                     const float fine = full ? 1.f : boom_fine(lv.R * px_x / cb[2], fine_px, fine_band_px, fine4_px, fine4_band_px);
-                    const float look[4] = {lv.T, bm::body_e * sb, lv.x, seed};
+                    // round 3, the collapse: the radiance x c(s)^2 (fire-material.md 13)
+                    const float cr = collapse_r(lv.x);
+                    const float look[4] = {lv.T, bm::body_e * sb * cr * cr, lv.x, seed};
                     const float tint4[4] = {0.f, 0.f, 0.f, 0.f};
                     const float disc[4] = {6.2831853f * unit_of(h_rot), 64.f * unit_of(h_lobe),
                                            core::look::fireball_advect * lv.x, fine};
@@ -1750,7 +1754,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     // a latched body (its tongues once shed) keeps the law at its size LOD without them
                     const bool shed = s.fire_shed & 1u;
                     const float core4[4] = {g, cp.n >= bm::compose_n_min ? 0.f : boom_fire_weight(full),
-                                            shed ? -(lod < 1.f ? lod : 1.f) : lod, lv.tb};
+                                            shed ? -(lod < 1.f ? lod : 1.f) : lod,
+                                            bm::collapse_clock(lv.tb, bm::tier_life_ms[tier])}; // the flow slows to rest
                     fireball_quad(f, cb, Rbox, rect, full, look, tint4, disc, out.fireballs + 4 * nb, core4);
                     const float fs = shed ? 0.f : boom_fire_share(core4);
                     if (cp.n >= bm::compose_n_min) {
