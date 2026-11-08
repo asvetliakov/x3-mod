@@ -20,13 +20,9 @@
     "src/engine/fl/executable_identity_fl.h"
   ],
   "source": {
-    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "verification/probe/build_weapon_effects_hook_fl.py",
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp"
-    ],
+    "commit": "0eaf8f34b732b96a081897ad7631784de041ac96-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "31d2c0a7def4032710ad233e0edbaf82307528f47d6e9d3594fd7e336637125b",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
@@ -213,7 +209,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "c885271624a1a560f7544c4d957a558a48edc3cc6564258f3839942d3fe9a0df"
+    "executable_sha256": "1d84afc029aca4368d0ad3c619bf85f337dc81c06782dafddd8809efba07bfe8"
   },
   "host": {
     "name": "native-windows",

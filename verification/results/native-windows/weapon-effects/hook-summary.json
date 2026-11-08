@@ -19,11 +19,9 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "5e4f8a22217f13b0297f60988359cbdcb25809d3-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_core.h"
-    ],
+    "commit": "0eaf8f34b732b96a081897ad7631784de041ac96-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "dfc060f3ad44ce0e1346d72827d178762ce2a8357a14222e1ecaa5c1f98d72a7",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
@@ -162,7 +160,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "936e7fadff40c0ed036e96ba9d9c092da00caa36dc2731af7753fcd3f47b5d40"
+    "executable_sha256": "1fb4d31848fa882f1e69d35b1f2b2f219f783a49cfe5237e53a8a7fc7ddc258d"
   },
   "host": {
     "name": "native-windows",
@@ -852,8 +850,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00888780",
     "esp_callee": "00888774",
-    "return": "00f56d8a",
-    "site": "00f56d85"
+    "return": "00f86d8a",
+    "site": "00f86d85"
   },
   "stack_depth": {
     "bytes": 236,
@@ -1180,9 +1178,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.1,
-    "median_us": 17.2,
-    "worst_us": 24.9,
+    "best_us": 17.4,
+    "median_us": 17.6,
+    "worst_us": 22.7,
     "target_us": 30
   },
   "overflow": {
@@ -1198,9 +1196,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.1,
-    "median_us": 55.3,
-    "worst_us": 56.5,
+    "best_us": 56.1,
+    "median_us": 56.2,
+    "worst_us": 80.4,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1208,8 +1206,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005ead98",
     "esp_callee": "005ead88",
-    "return": "00f57cb7",
-    "site": "00f57cb2",
+    "return": "00f87cb7",
+    "site": "00f87cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
