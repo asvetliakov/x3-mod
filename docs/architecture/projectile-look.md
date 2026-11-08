@@ -341,8 +341,8 @@ from the constants, the energy-conserving cap (the full length, the centre's rad
 consecutive frames through the production builder at 60 and 144 fps and with the camera moving along the bolt (no gap,
 the summed light uniform within 10 %), the static-frame extrapolation and the jump, the far flag's write (not the
 write-back, above), the dot, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
-(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 76.6 µs, GPU fenced
-41.1 µs [M]). Not flown.
+(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 76.7 µs, GPU fenced
+42.2 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA; first frames, so each streak is |v| x the step), cropped around the
 bolts: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms

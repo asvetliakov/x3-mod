@@ -3231,3 +3231,36 @@ budget CPU 68.3 µs, GPU fenced 34.6 µs (fence 11.0 µs). Builds FL and AP 0 wa
 violations over 1060 functions (the batch stub rooted), `--edition ap` 0 over 1161; host `test_weapon_effects*.py` OK.
 The far flag is verified as a write only (the write-back seam through `TemporalPass` did not run; projectile-look.md
 "Implementation").
+
+**FL 59 A: dashed-trail fix (2026-11-08, `964499113`, `7b2147c52`).** The user (FL run 59, `3fbc26ef5`) saw each IRE
+near the ship as a dashed line in motion only, unchanged at `stretch_k` 0; at 1.0 and 1.5 the gaps went but the seams
+showed hot beads. Read as a phantom array (successive frames' short dashes integrated with gaps), then as overlapping
+round end caps; projectile-look.md section 2 "Why bridged". Change: each bolt's streak runs from the previous stage
+frame's drawn head to this frame's head (camera-relative in translation: the node velocity includes the shooter's, so a
+world-space bridge would overlap a forward shot by the ship's travel per frame); a first frame or a jump from
+P − (v Δt_game − the camera's travel); along the axis flat with logistic end ramps (half maximum at the ends) that
+telescope across the seam; `stretch_k` removed (the tuning file ignores the key, no row); `length_cap_m` keeps the full
+length and scales the radiance by cap / length; a static entry (node +0x30 unchanged) is extrapolated by v x render dt x
+SETA rate, bounded at two game steps; `weapon_effects_frame` gains `projectile_static` and `projectile_jumped`. Pixel
+program 16 → 39 ps_3_0 slots. Fixture (native, records on the clean `7b2147c52`) [M]: AP hook **131 of 131**, FL hook
+**67 of 67**, D3D **72 of 72**.
+
+| Case | Result [M] |
+| --- | --- |
+| seam, 200 m, baked tune, 60 / 144 fps | gap 0.0000 px both; streaks 151.71 → 148.73 px / 62.47 → 61.98 px; the two frames' summed light along the axis spread 2.8 % / 2.3 % (lo 4.082 / 4.102, hi 4.199), the seam 4.195 / 4.199 against the plateau 4.199 |
+| seam, 200 m, flown file values (core_px 1, glow_ratio 2, glow_gain 2, hot_share 0.9, length_cap_m 5), 60 / 144 fps | gap 0.0000 px; spread 6.1 % / 4.4 %; energy 0.258 / 0.620 (the 5 m cap) |
+| seam, 60 fps, camera moving along the bolt at 200 m/s | gap 0.0000 px; second streak 123.13 px (the relative travel, 962 of 1162 m/s); spread 2.5 % |
+| static frame | statics 0/1/0/1/0, jumped 0/0/0/0/1 over five frames (first, static, caught up, static under SETA 6, a 120 m teleport); head error −0.006 px, tail at the previous head 0.000 px, the catch-up seam 0.0009 px, the SETA 6 head held at two steps (34 ms) 0.000 px, the teleport drawn as a first frame 151.71 px = |v| step |
+| SETA / bridged rule | at 1 km, 250 m/s: 0.3912 / 0.3846 px per game ms at 16 / 96 ms (−1.7 %); runs 6.26 / 36.92 px against the rule 6.14 / 36.86 |
+| energy-conserving cap | 1162 m/s at 96 ms: streak 111.55 m at full length (run 171.21 px, rule 171.34), energy 0.2689 = 30 / 111.55, the centre's radiance over a 16 ms bolt's 0.2688 |
+| width, far flag, dot, quad, depth, pool, Reset | unchanged rules pass: widths within 0.5 px at both FOVs; flag ratio 32.006; 3300 m dot run 1.09 px; 8,447 lit, 0 outside the quad; 300 m drawn (4.199), 500 m hidden; pool 1/0/1/0/0 |
+| budget, 5120x1440, 512 bolts, every bolt bridged and moving | CPU 76.7 µs (best of 40; 125.3 µs before the per-bolt exp2/log2/divisions were made conditional), GPU fenced 42.2 µs (fence 10.7 µs), 5.22 % lit, statics 0, jumped 0 |
+
+Look frames regenerated (first frames, |v| x step): near 200 m / 500 m / 1 km 148 / 49 / 20 px; SETA 6 the full 116 m,
+1278 / 332 / 129 px at 0.258 of the radiance; lod 3 km 8.7 px at a third, 300 m 75 px; the dump on `7b2147c52`
+reproduces the tracked crops byte for byte. Builds `build-bridge-fl` and `build-bridge-ap` (RelWithDebInfo) 0 warnings;
+`check_no_x87.py --edition fl` 0 violations over 1060 functions, `--edition ap` 0 over 1161;
+`generate_weapon_effects_programs.py --check` PASS; host `test_weapon_effects*.py` 95 tests OK. The figures come from
+[`projectile_rows.py`](../../verification/results/native-windows/weapon-effects/projectile_rows.py). Not flown: whether
+the engine advances node +0x30 less often than the render frame is the next flight's `projectile_static` /
+`projectile_jumped`.
