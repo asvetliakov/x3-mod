@@ -1,0 +1,7 @@
+stock_ap: 3 of 45 rows change tier
+  SS_BULLET_PSG                size=big     corvette -> capital k=0.41 w 4.22 -> 4.22 m d_eng 1082 -> 1082 m
+  SS_BULLET_PPC                size=big     corvette -> capital k=1.00 w 7.50 -> 20.00 m d_eng 1500 -> 4000 m
+  SS_BULLET_PSP                size=big     fighter -> capital k=1.00 w 3.00 -> 20.00 m d_eng 600 -> 4000 m
+mayhem3: 2 of 38 rows change tier
+  SS_BULLET_FBC                size=big     corvette -> capital k=0.52 w 6.15 -> 16.39 m d_eng 1500 -> 4000 m
+  SS_BULLET_IC                 size=big     corvette -> capital k=0.73 w 6.75 -> 17.99 m d_eng 1500 -> 4000 m

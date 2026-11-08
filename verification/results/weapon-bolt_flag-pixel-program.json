@@ -10,11 +10,11 @@
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
   "includes": {
-    "src/effects/weapon_bolt_ps.hlsl": "6d52a7b4a8fc6c0ce6b0d02f3dbdfccc0dcb682f0ce97db8b1846614507b7eab"
+    "src/effects/weapon_bolt_ps.hlsl": "13e5215f2b12bdc10a87065c1bdc47895e721c5de99c9c330fc70d36183cbd5c"
   },
-  "word_count": 2722,
-  "bytecode_sha256": "8528c635308d85e17eb527911d5d6ccf1c1d52a4dfcb72f73ae4c5c5f79d4462",
-  "header_sha256": "4a6641174561e98248a1b446b0405a0cdb39aae1262aacb666f878c46c511a2d",
+  "word_count": 2938,
+  "bytecode_sha256": "add4be6f91e16a03fc2655fe11b8fa586c906139f23af7875b90d6b9c16029e7",
+  "header_sha256": "686018ee3d66f64f3385f3e9bf1a09f3e1b3adf1945b90771672884efc603604",
   "tool_sources": {
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",

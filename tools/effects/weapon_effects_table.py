@@ -11,11 +11,14 @@ diffuse texture's alpha-weighted mean colour as 8-bit sRGB (engine_bodies.py's t
 that decodes), the shape the elongation gives (weapon_effects_core.h tracer/slug/orb thresholds, informational: the
 DLL applies the same thresholds to z_over_xy and the live flag word), and the curated override fields from
 tools/effects/weapon_overrides.json resolved to the row (style, tint as 8-bit sRGB, calibre; by_table wins over by_id).
-Schema 2 (step 4, docs/architecture/bolt-muzzle-look.md section 1) adds per row the mount tier (mount_tier: the smallest
-ship class whose TShips/TCockpits laser masks admit a TLaser row firing the bullet, tools/effects/weapon_catalog.py's
-used-by rule: any of M5/M4/M3 -> fighter, only M1/M2/M7/TL -> capital, else corvette; a bullet no laser fires, the
-fragments, or no mounting row -> fighter, the note's unknown 7 fallback) and the range (range_m: lifetime ms x speed /
-1000 / 500, metres; null when either column is missing).
+Schema 2 (step 4, docs/architecture/bolt-muzzle-look.md section 1) adds per row the mount tier (mount_tier: the
+catalogue's `size` of the TShips/TCockpits rows whose laser masks admit a TLaser row firing the bullet,
+tools/effects/weapon_catalog.py's size_of: the smallest tier holding at least 10 % of the mounting tier-class rows,
+small -> fighter, medium -> corvette, big -> capital; 2026-11-08 #4, before it any fighter row made a fighter mount, so
+one odd M3 row fitting the PSP set its width; a bullet no laser fires, the fragments, or no mounting row -> fighter,
+the note's unknown 7 fallback) and the range (range_m: lifetime ms x speed / 1000 / 500, metres; null when either column
+is missing). The bolt hand pins of an override (bolt-muzzle-look.md 11.5) are written as the entry's bolt_e_body,
+bolt_w_orb, bolt_halo and bolt_tint keys only where pinned (the DLL reads them; an older DLL skips them).
 Per TMissiles row only the count. Also the TBullets table's decoded hash and row count (the DLL compares the count
 with the live *0x00607038 and disables the lookups on a mismatch), the generator's schema and its `tool` field (the
 ownership mark manage.py and x3m-regenerate test before replacing or removing the file). Only names, numbers and
@@ -48,6 +51,10 @@ SHAPES = ('tracer', 'slug', 'orb', 'wave', 'beam')
 HULL_VARIANTS = ('repair', 'tug', 'energy', 'ballistic', 'plasma', 'heavy', 'ion')
 # The override file's schemas: 1 (the variants only) and 2 (the classes, 2026-11-06).
 OVERRIDE_SCHEMAS = (1, 2)
+# The bolt hand pins (docs/architecture/bolt-muzzle-look.md 11.5, 2026-11-08): the body radiance E_b (0..2.55), the orb
+# diameter in w (0..2.55], the halo (false: none) and the tint source ('texture': the texture mean even over a saturated
+# light colour), written under the same names.
+BOLT_PINS = ('bolt_e_body', 'bolt_w_orb', 'bolt_halo', 'bolt_tint')
 
 
 class GenerateError(Exception):
@@ -55,32 +62,39 @@ class GenerateError(Exception):
 
 
 # Step 4 (bolt-muzzle-look.md section 1): the mount tiers by OBJ_SHIP_* class (prefix removed).
-FIGHTER_CLASSES, CAPITAL_CLASSES = frozenset(('M5', 'M4', 'M3')), frozenset(('M1', 'M2', 'M7', 'TL'))
 MOUNT_TIERS = ('fighter', 'corvette', 'capital')
+SIZE_TIERS = {'small': 'fighter', 'medium': 'corvette', 'big': 'capital'}  # weapon_catalog.SIZE_TIERS' names
 
 
 def mount_tier_of(classes):
-    """The mount tier from the classes that mount the weapon ({class: rows} or any iterable of class names)."""
-    u = set(classes)
-    if not u or u & FIGHTER_CLASSES:
-        return 'fighter'
-    return 'capital' if u <= CAPITAL_CLASSES else 'corvette'
+    """The mount tier from the ship rows that mount the weapon ({class: rows}; an iterable of class names counts one row
+    each): the catalogue's size (weapon_catalog.size_of, the 10 % rule) by SIZE_TIERS; 'other' and unmounted -> fighter."""
+    counts = dict(classes) if isinstance(classes, dict) else {c: 1 for c in classes}
+    return SIZE_TIERS.get(weapon_catalog.size_of(counts), 'fighter')
 
 
 def mount_classes(assets):
-    """{bullet index: set of OBJ_SHIP_* classes mounting a laser that fires it} from the selected layers' TLaser,
-    TShips and TCockpits (weapon_catalog's mask rule and excluded rows)."""
+    """{bullet index: {OBJ_SHIP_* class: ship rows mounting a laser that fires it}} from the selected layers' TLaser,
+    TShips and TCockpits (weapon_catalog's mask rule and excluded rows; a ship row counted once per bullet, as the
+    catalogue's used_by union)."""
     texts = {}
     for name in ('TLaser', 'TShips', 'TCockpits'):
         data, _ = assets.get(f'types/{name}.txt')
         texts[name] = data.decode('latin1')
     lasers = weapon_catalog.parse_tlaser(texts['TLaser'], lambda page, ident: None)
     ships, _, _ = weapon_catalog.ship_masks(texts['TShips'], weapon_catalog.parse_tcockpits(texts['TCockpits']))
-    out = {}
+    bits = {}
     for laser in lasers:
-        if laser['bullet'] is None:
-            continue
-        out.setdefault(laser['bullet'], set()).update(weapon_catalog.used_by(laser['subtype_bit'], ships))
+        if laser['bullet'] is not None and laser['subtype_bit'] is not None:
+            bits.setdefault(laser['bullet'], set()).add(laser['subtype_bit'])
+    out = {}
+    for bullet, bs in bits.items():
+        counts = {}
+        for cls, mask in ships:
+            if any(mask >> b & 1 for b in bs):
+                counts[cls] = counts.get(cls, 0) + 1
+        if counts:
+            out[bullet] = counts
     return out
 
 
@@ -119,7 +133,7 @@ def override_for(overrides, table_hash, weapon_id):
     """The merged override fields of one row ({} when none): by_id, then by_table[hash][id] on top."""
     out = dict(overrides['by_id'].get(weapon_id, {}))
     out.update((overrides['by_table'].get(table_hash) or {}).get(weapon_id, {}) or {})
-    return {k: v for k, v in out.items() if k in ('style', 'tint', 'calibre', 'hull')}
+    return {k: v for k, v in out.items() if k in ('style', 'tint', 'calibre', 'hull') + BOLT_PINS}
 
 
 def diffuse_names(body):
@@ -162,6 +176,20 @@ def row_entry(w, body, colour, override, mounts=None):
         if override['hull'] not in HULL_VARIANTS:
             raise GenerateError(f"override for {w['weapon_id']}: unknown hull variant {override['hull']!r}")
         entry['hull'] = override['hull']
+    for key in ('bolt_e_body', 'bolt_w_orb'):
+        if key in override:
+            v = float(override[key])
+            if not 0.0 <= v <= 2.55 or (key == 'bolt_w_orb' and v <= 0.0):
+                raise GenerateError(f"override for {w['weapon_id']}: {key} {v} outside the table's range")
+            entry[key] = round(v, 2)
+    if 'bolt_halo' in override:
+        if override['bolt_halo'] is not False:
+            raise GenerateError(f"override for {w['weapon_id']}: bolt_halo pins only false")
+        entry['bolt_halo'] = False
+    if 'bolt_tint' in override:
+        if override['bolt_tint'] != 'texture':
+            raise GenerateError(f"override for {w['weapon_id']}: bolt_tint pins only 'texture'")
+        entry['bolt_tint'] = 'texture'
     return entry
 
 
@@ -211,8 +239,8 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
         rules=dict(tracer_min_elongation=TRACER_MIN_ELONGATION, slug_min_elongation=SLUG_MIN_ELONGATION,
                    texture_rgb='alpha-weighted mean of the first decodable body texture, 8-bit sRGB',
                    tint='override tint, linear -> 8-bit sRGB',
-                   mount_tier='smallest mounting class: any of M5/M4/M3 fighter, only M1/M2/M7/TL capital, else '
-                              'corvette; unmounted fighter',
+                   mount_tier='the catalogue size of the mounting ship rows (weapon_catalog.size_of, the 10 % rule): '
+                              'small fighter, medium corvette, big capital; other or unmounted fighter',
                    range_m='lifetime_ms x speed / 1000 / 500 m'),
         counts=dict(bullets=len(entries), missiles=missile_rows, textures=sum(1 for e in entries if e['texture_rgb']),
                     overrides=applied, mount_fallback=sum(1 for e in entries if e['mount_fallback']),

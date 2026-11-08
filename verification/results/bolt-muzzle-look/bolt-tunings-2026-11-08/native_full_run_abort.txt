@@ -1,0 +1,4 @@
+CHECK death_stage_cpu_32_deaths PASS
+CHECK death_big_tier_sizes FAIL
+CHECK death_preroll_cadence_and_hull_light FAIL
+CHECK death_big_no_pop_at_birth PASS

@@ -27,7 +27,7 @@ inside a tinted body with a cooler, more saturated edge, a tight halo, a ball he
 screen streak to the previous position capped at one rest length whose falling stretch keeps the rest image's total
 radiance (so SETA never makes a stick), a length never longer than flown, and a thin multiply rim over lit hulls where it
 is wide enough to survive the resolve. Tracer, slug, orb and
-wave differ by length, tip, tail and boil; the heavy class adds a fatter white core, a head ball and a long tail. End-on a
+wave differ by length, tip, tail and boil; the heavy class adds a fatter white core with a round head and a long tail. End-on a
 bolt is a disc with a halo by construction. The pixel floors (core 2, body 3, halo σ 1.5, length 24 px at 1440 rows)
 carry bolts past their engagement distance; own bolts never draw a body wider than 16 px. The muzzle is a per-class
 event (energy disc and cone, ballistic star and puff, plasma noise bloom, heavy flash with vents and afterglow, flak star
@@ -46,7 +46,7 @@ the parallel note's reach-scaled width are the fallback (section 8).
 | Ship radius, median (Mayhem / stock) | M5 10 / 12, M4 11 / 14, M3 15 / 19, M6 90 / 87, M7 560 / 618, M2 1,337 / 1,288, M1 1,170 / 1,064, TL 1,135 / 1,403 m | [M] game-scale §4 |
 | Turn radius v / ω at full speed | Mayhem M3 267 m/s / 92.8°/s = 165 m, M5 541 / 147.7 = 210 m; stock M3 66 / 127 = 30 m | [M] game-scale §4, arithmetic |
 | Weapon range (speed x lifetime), median by mount tier | stock fighter 2,000 m (p10 977, p90 3,627), corvette 3,676, capital 4,957; Mayhem fighter 3,900, corvette 5,600, capital 18,725 | [M] size_derivation_out |
-| Mount tier | the smallest class that mounts the weapon (TShips compatibility in the catalogue): any of M5/M4/M3 → fighter; only M1/M2/M7/TL → capital; else corvette; a bullet no laser fires (fragments) → fighter. 30 / 19 / 12 rows over both views | [M] catalogue `used_by` |
+| Mount tier | the catalogue's `size` of the ship rows that mount the weapon (the smallest tier holding at least 10 % of them): small → fighter, medium → corvette, big → capital; a bullet no laser fires (fragments) → fighter. 29 / 15 / 17 rows over both views (2026-11-08, #4; before: any of M5/M4/M3 → fighter, only M1/M2/M7/TL → capital, else corvette, 30 / 19 / 12, which let one M3 row in twelve make the stock PSP a fighter gun) | [M] catalogue `size` |
 | Engagement distance d_eng | min(600 / 1,500 / 4,000 m, 0.75 range). Fighters: about three turn radii of a Mayhem M3/M5 (500–630 m), 0.30 of stock's and 0.15 of Mayhem's median fighter range (dogfights close inside a fraction of range). Corvettes: between. Capitals: hull-to-hull of two Mayhem M2 is at least 2.7 km; 0.81 of stock's capital median range. The 0.75 range cap keeps short-range capital guns (stock flak, range 2,115 m) at a fighter-fight distance | [A] no engagement-distance census exists (unknown 1) |
 | Readability target at d_eng | body 3 px wide at 1440 rows and f 960 (the smallest blob whose interior survives the resolve's 3x3 clamp, bolt-footprint §1); tracer ≥ 36 px long; own muzzle disc ≥ 40 px on a fighter in the chase view (guns about 27 m from the eye: the F3 camera sits 24 m behind the hull centre); an enemy muzzle ≥ the floors at d_eng | [C], [S] bolt-footprint §1, [M] ledger F3 camera |
 
@@ -82,23 +82,34 @@ segment ∪ streak segment, 2.3) in px; ρ = r / (w_px / 2), so ρ = 1 is the bo
     core   c = 1 − smoothstep(0.75 c_r, 1.25 c_r, ρ)        c_r 0.4 (heavy 0.55); core radius ≥ 1 px
     body   m = 1 − smoothstep(0.8, 1.0, ρ)
     halo   g = exp(−(ρ w_px / 2)² / (2 σ_px²))              σ = 0.8 w (slug 0.7, heavy 1.0, orb 0.9 w_orb);
-                                                              1.5 ≤ σ_px ≤ `halo_px_max` 40 (30 at 1080), every bolt
-    rim    multiply by 1 − rim_dark x saturate((ρ − 2.4) / 0.4) x saturate((3.6 − ρ) / 0.4), rim_dark 0.4,
-           in a first draw before the additive one (5.1), only while the band (1.2–1.8 w off the axis) is ≥ 3 px wide
-    L      = a(s) x fade x [E_c c C_core + E_b max(m − c, 0) C_body + E_h g C_edge]
-             E_c 4 (core_e), E_b 1.2 (inside body_max), E_h 0.6 (0.15 of the core, under halo_max 0.2; heavy 0.8)
+                                                              1.5 ≤ σ_px ≤ `halo_px_max` 40 (30 at 1080), every bolt;
+                                                              an own bolt's σ_px ≤ `own_body_max_px` 16 (12 at 1080)
+    rim    multiply by 1 − rim_dark x saturate((ρ − lo) / 0.4) x saturate((hi − ρ) / 0.4), rim_dark 0.4,
+           in a first draw before the additive one (5.1); [lo, hi] = [2.4, 3.6] (1.2–1.8 w off the axis) from 7 px of
+           body, the pixel band [w_px/2 + 1, w_px/2 + 4] px under 5 px, linear between: every line and orb carries a
+           band ≥ 3 px wide, about the core's capsule (round caps; the tail and streak carry none)
+    L      = a(s) x fade x [E_c c C_core + E_b max(m − c, 0) C_body + E_h' g C_edge]
+             E_c 4 (core_e), E_b 1.2 (inside body_max; a hand pin may lower it, 11.5), E_h 0.6 (0.15 of the core,
+             under halo_max 0.2; heavy 0.8); E_h' = E_h x σ_cap / σ_world where the cap binds (the larger end's)
+
+2026-11-08 (11, #3, #5): the halo cap conserves energy and an own bolt's σ is capped at its body ceiling (before: σ at
+40 px at full E_h, a fog dome over half the chase view); the rim band is in pixels under 5 px of body (before: off under a
+3 px band, so a floor-width fighter bolt over a lit hull was a pale dash); the core's whiteness is h x saturate((w_px −
+3) / 3), so a floor-width bolt's core is its tint (before: h at every width).
 
 Colour: t = the classifier tint normalised to max 1; t_c = t² / max(t²) (the same hue, deeper and more saturated: a
 cooler edge for warm tints, a deeper blue for blue ones; t_c = t when the tint's saturation is under 0.25);
 C_core = lerp(t, white, h), h per style (2.2) and 1 for heavy; C_body = lerp(t, t_c, smoothstep(0.5, 1, ρ)); C_edge = t_c.
 So the centre clips white, the body holds the tint at 1.2 where AgX keeps the hue, the rim and halo are the saturated
 tint. Axial a(s), s measured from the head backward in w: the **head** is a ball, the core x (1 + 0.5 (1 − saturate(s)))
-over the front 1 w; heavy adds a disc of radius 0.6 w at E_c on the head. No star heads (the lens-flare family the user
+over the front 1 w; the heavy's head is the same round cap at c_r 0.55 with that 1.5x front boost (2026-11-08, #6;
+before: a disc of radius 0.6 w at E_c on the head, a bead on a stick). No star heads (the lens-flare family the user
 cut, Run 127/128 [M]). The **tip** is the capsule's round cap, pointed for tracers (radius x sqrt(saturate(−s_f / 1 w))
 over the front 1 w). The **tail** (2.2) continues behind the core with a linear radius taper to 0 and radiance
 E_b x tail gain x (1 − s_t / T), s_t from the tail root. Under the streak's energy law (2.3) body and halo scale by g_s,
 the core by max(g_s E_c, 1.2) / E_c. The halo cap is the rule against walls of light from any bolt in any view (an
-enemy fighter bolt 5 m from the cockpit camera would light 360 px); E_h is unchanged by it.
+enemy fighter bolt 5 m from the cockpit camera would light 360 px); it scales E_h by σ_cap / σ_world (before 2026-11-08:
+E_h unchanged by it).
 
 **The rim** [C, from the parallel note]: over a lit hull an additive bolt has no edge; a thin multiply band just outside
 the halo's bright part gives one. Over black space it multiplies black and does nothing. It sits at 1.2–1.8 w from the
@@ -115,9 +126,13 @@ production resolve). The rim is a full-mode element behind that gate: if the gat
 | --- | --- | --- | --- | --- | --- | --- |
 | tracer (e ≥ 4) | 12 w x s_v, s_v = 0.75 + 0.5 min(v / 2,000 m/s, 1) | pointed 1 w; ball head; core tapers over its back 2 w into the tail root | τ 15 ms, T_max 8 w, root 0.6 w, tint, gain 0.5 | σ 0.8 w | 0.75 | the film proportion: 9–15 w long [R] |
 | slug (1.5 ≤ e < 4) | 4 w x s_v | round; ball head | τ 30 ms, T_max 12 w, thin root 0.35 w, colour white → t (at 0.6 of its length) → 0.4 t at the end (a burning tracer in the weapon's own colour: the weapon owns no heat orange, weapon-look 2.1), gain 0.6 | σ 0.7 w | 0.85 | reads by its tail at range |
-| orb (e < 1.5) | a disc of diameter w_orb = 1.6 w | sphere; the whole orb is the head | wisp: τ 10 ms, T_max 4 w, root 0.8 w_orb, broken by x saturate((n − 0.35) / 0.2) | σ 0.9 w_orb, stretched 1.3 : 1 along the travel | 0.5–0.9, breathing with n | boil: body x (0.75 + 0.5 n), n = two octaves of the burst's value noise at 3 and 6.4 cells per w_orb, advected at 3 Hz game; silhouette lobes of hull-burst 2.4 (5 lobes, amp 0.12, 0.5 turn/s); streak cap 0.5 |
-| wave (flag `0x8`) | a crescent across the travel: an arc of chord S, sagitta 0.25 S bowing forward, thickness 0.5 w, a sheet behind the arc at E 0.15; S = col 18 in metres once its unit and axis are pinned (stock PSG 1.0, PD 0.5, TERRAN_FRAG 4.0 [M census]; the axis, across or along the travel, is assumed across [A]), until then 6 w | — | none | σ 0.6 w | 0.5 | the arc lies in the plane of the travel and the screen's perpendicular to it, so side-on it is the crescent; foreshortened (c < 0.4) it blends to the ring of diameter S, end-on a glowing ring; no streak (it moves along its normal) |
-| heavy (modifies tracer or slug) | as the style | head ball 0.6 w at E_c | τ 40 ms, T_max 20 w, root 0.8 w, tint, gain 0.6 | σ 1.0 w, E_h 0.8 | 1 | c_r 0.55: a fat white core; heavy orbs (PSP) keep the orb law at their w |
+| orb (e < 1.5) | a disc of diameter w_orb = 1.6 w (a hand pin may set it: FBL 2.0 w) | sphere; the whole orb is the head | wisp: τ 10 ms, T_max 4 w, root 0.8 w_orb, broken by x saturate((n − 0.35) / 0.2) | σ 0.9 w_orb, stretched 1.3 : 1 along the travel | 0.5–0.9, breathing with n | boil: body x (0.75 + 0.5 n), n = two octaves of the burst's value noise at 3 and 6.4 cells per w_orb, advected at 3 Hz game; silhouette lobes of hull-burst 2.4 (7–9 lobes by the bolt's seed, amp 0.05, 0.5 turn/s; before 2026-11-08, #10: 5 lobes at 0.12, a pentagon decal near the eye); streak cap 0.5 |
+| wave (flag `0x8`) | a crescent across the travel: an arc of chord S, sagitta 0.25 S bowing forward, thickness 0.5 w, a sheet behind the arc at E 0.15; S = col 18 in metres once its unit and axis are pinned (stock PSG 1.0, PD 0.5, TERRAN_FRAG 4.0 [M census]; the axis, across or along the travel, is assumed across [A]), until then 6 w; an own bolt's S ≤ 6 x `own_body_max_px` | — | none | σ 0.6 w | 0.5 | the arc lies in the plane of the travel and the screen's perpendicular to it, so side-on it is the crescent; foreshortened (c < 0.4) a soft filled lens of diameter S with no arc: E 0.15 at the centre rising as (r / R)⁴ to the tinted rim at 1.2 (no white core), the halo about the rim; the crescent fades in over c 0.4–0.5 (2026-11-08, #2; before: blending to a ring of diameter S, end-on a neon hoop with the edge-on arc as a seam, own fire a tunnel); no streak (it moves along its normal) |
+| heavy (modifies tracer or slug) | as the style | the core's round cap at c_r 0.55, the 1.5x front boost (before 2026-11-08: a head ball 0.6 w at E_c) | τ 40 ms, T_max 20 w, root 0.8 w, tint, gain 0.6 | σ 1.0 w, E_h 0.8 | 1 | c_r 0.55: a fat white core; heavy orbs (PSP) keep the orb law at their w |
+
+**Hand pins** (11.5, `tools/effects/weapon_overrides.json` `by_id`, written into the table as `bolt_*` keys): MASS and MD
+style slug, E_b 0.6, no halo, the tint from the texture mean (a kinetic slug, not the brightest laser); HEPT style slug
+(its 30 ms tail; not a laser); FBL style orb at w_orb 2.0 w.
 
 ### 2.3 Streak and SETA [C]
 
@@ -158,8 +173,8 @@ over in the same frame (their flash covers the cut).
 | body width | 3 | 3 | always (the TAA survival width, not row-scaled) |
 | halo σ | 1.5 | 1.5 | always |
 | length (core + tail) | 24 x c | 18 x c | scaled by the foreshortening c |
-| own-bolt body ceiling | 16 | 12 | own ship's bolts, both views |
-| halo σ ceiling `halo_px_max` | 40 | 30 | every bolt, every view (radiance unchanged) |
+| own-bolt body ceiling | 16 | 12 | own ship's bolts, both views; also the own bolt's halo σ ceiling (2026-11-08) |
+| halo σ ceiling `halo_px_max` | 40 | 30 | every bolt, every view; E_h x σ_cap / σ_world where it binds (2026-11-08; before: radiance unchanged) |
 
 Floors raise size, never radiance. The floor is the net past d_eng; the ceiling keeps own fire from building walls in
 the cockpit and right behind the chase camera (a fighter bolt reaches 16 px inside 113 m).
@@ -431,20 +446,22 @@ with the scripts in `verification/results/bolt-muzzle-look/visual-review-2026-11
 | # | Change | Cost | Evidence |
 | --- | --- | --- | --- |
 | 1 | **Muzzle core is a lamp.** Every class draws a flat white disc with a soft edge (40–85 px on a fighter in the chase view, 120–213 px for corvette and capital guns) and a hairline star; stock guns re-light it 63–100 % of the time (IRE 0.80, HEPT 0.85, PRG and PBE 1.0 [M, `weapons.csv` lit_fraction]), so the nose carries a steady ping-pong ball, not a flash. Rework the core: a hot core of 0.25 w (h 1) inside a structured body that carries the size (the four-arm star or the plasma bloom at full E, arms ≥ 0.15 of their length wide), and life ≤ 0.5 of the refire period above the three-frame floor | design change (3.1 core law) | `grid_stock_ap_muzzle_chase.png`, `s_IRE__muzzle.png`, `m_GKE__muzzle.png` |
-| 2 | **Wave end-on is a neon hoop; own fire is a hoop tunnel.** PSG/PD foreshortened draw a thin bright ring of diameter S with a seam line across it (the edge-on arc), and the chase view's eight live bolts nest into a tunnel. Rework the foreshortened wave as a soft lens: a filled disc whose E falls from a thin rim to 0.15 at the centre, the arc hidden below c 0.4 (no seam), and the ring's screen diameter under the own-bolt ceiling x 6 | design change (2.2 wave kind) | `s_PSG__bolt.png` rows 3–4, `grid_stock_ap_b_in60.png` (PD, PSG) |
-| 3 | **Own-fire halo fog.** The 40 px σ cap keeps full radiance, so own bolts near the chase camera (σ_world 100+ px for corvette guns) light a dome over half the frame; fighter bolts carry a 30 px σ blob (HEPT, PAC). Tune: scale E_h by σ_cap / σ_world when the cap binds (energy-conserving cap), and cap σ at the own body ceiling (16 px) for own bolts | small tuning (2.1, 2.6) | `grid_stock_ap_bolt_own.png`, `grid_mayhem3_bolt_own.png` |
-| 4 | **Mount tier by the catalogue's 10 % rule.** "Any M3 mounts it → fighter" puts the stock PSP (M3:1 of 12 rows) at w 3.0 m (a 3 px dot at 2 km, 1.5 px long) and the stock PPC (M6:2 of 36) at 7.5 m; the catalogue's `size` column already says big. Tune the generator: `mount_tier` from `size` | small tuning (1) | `grid_stock_ap_bolt_side.png` row 4 (PSP, PPC vs GAUSS) |
-| 5 | **Fighter bolts vanish over a lit hull.** At the 3 px floor the rim band (1.2–1.8 w = 0.9 px) is off and the core clips white, so a stream over a 1.0 hull is a row of pale dashes (IRE, PAC, HEPT, PRG, EBC). Tune: the rim band in pixels when w_px < 5 ([w_px/2 + 1, w_px/2 + 4] px, so it is 3 px wide at the floor), and the core's h x saturate((w_px − 3) / 3) so a floor-width bolt keeps its tint | small tuning (2.1, 2.6) | `grid_stock_ap_b_stream.png` rows 1–2, `s_IRE__bolt.png` row 2 |
-| 6 | **Heavy head ball is a bead on a stick.** GKE (168 px needle with a bead), Mayhem PSP and stock SSC (a thermometer), GAUSS/IBL (a lollipop). Tune: no separate E_c disc; the head is the core's round cap at c_r 0.55 with the 1.5x front boost only | small tuning (2.1 heavy) | `grid_mayhem3_bolt_side.png` (GKE, PSP), `grid_stock_ap_bolt_side.png` (TERANTIFIGHTER, GAUSS, IBL) |
+| 2 | **Wave end-on is a neon hoop; own fire is a hoop tunnel.** PSG/PD foreshortened draw a thin bright ring of diameter S with a seam line across it (the edge-on arc), and the chase view's eight live bolts nest into a tunnel. Rework the foreshortened wave as a soft lens: a filled disc whose E falls from a thin rim to 0.15 at the centre, the arc hidden below c 0.4 (no seam), and the ring's screen diameter under the own-bolt ceiling x 6 | design change (2.2 wave kind) | `s_PSG__bolt.png` rows 3–4, `grid_stock_ap_b_in60.png` (PD, PSG) <br>Built 2026-11-08: option (c), the lens (2.2); `bolt_wave_endon_no_hoop` centre / rim 0.113, worst rim bin 1.052 [M]. |
+| 3 | **Own-fire halo fog.** The 40 px σ cap keeps full radiance, so own bolts near the chase camera (σ_world 100+ px for corvette guns) light a dome over half the frame; fighter bolts carry a 30 px σ blob (HEPT, PAC). Tune: scale E_h by σ_cap / σ_world when the cap binds (energy-conserving cap), and cap σ at the own body ceiling (16 px) for own bolts | small tuning (2.1, 2.6) | `grid_stock_ap_bolt_own.png`, `grid_mayhem3_bolt_own.png` <br>Built 2026-11-08: the energy-conserving cap and the own σ ≤ 16 px (2.1, 2.6); `bolt_own_halo_bounded` reach ≤ 25.7 px of 30 (1080) [M]. |
+| 4 | **Mount tier by the catalogue's 10 % rule.** "Any M3 mounts it → fighter" puts the stock PSP (M3:1 of 12 rows) at w 3.0 m (a 3 px dot at 2 km, 1.5 px long) and the stock PPC (M6:2 of 36) at 7.5 m; the catalogue's `size` column already says big. Tune the generator: `mount_tier` from `size` | small tuning (1) | `grid_stock_ap_bolt_side.png` row 4 (PSP, PPC vs GAUSS) <br>Built 2026-11-08: `mount_tier` from `size` (1); PSP 3.0 → 20.0 m, PPC 7.5 → 20.0 m, FBC 6.15 → 16.39 m, IC 6.75 → 17.99 m [M]. |
+| 5 | **Fighter bolts vanish over a lit hull.** At the 3 px floor the rim band (1.2–1.8 w = 0.9 px) is off and the core clips white, so a stream over a 1.0 hull is a row of pale dashes (IRE, PAC, HEPT, PRG, EBC). Tune: the rim band in pixels when w_px < 5 ([w_px/2 + 1, w_px/2 + 4] px, so it is 3 px wide at the floor), and the core's h x saturate((w_px − 3) / 3) so a floor-width bolt keeps its tint | small tuning (2.1, 2.6) | `grid_stock_ap_b_stream.png` rows 1–2, `s_IRE__bolt.png` row 2 <br>Built 2026-11-08 (2.1): the pixel rim band and the floor-width tint; a 3 px IRE band 0.617 over a 1.0 hull, core = tint [M]; the outlined pill over a bright hull remains (rim_dark 0.4). |
+| 6 | **Heavy head ball is a bead on a stick.** GKE (168 px needle with a bead), Mayhem PSP and stock SSC (a thermometer), GAUSS/IBL (a lollipop). Tune: no separate E_c disc; the head is the core's round cap at c_r 0.55 with the 1.5x front boost only | small tuning (2.1 heavy) | `grid_mayhem3_bolt_side.png` (GKE, PSP), `grid_stock_ap_bolt_side.png` (TERANTIFIGHTER, GAUSS, IBL) <br>Built 2026-11-08 (2.1, 2.2): heavy head / mid-core width 0.778 [M]. |
 | 7 | **Cockpit muzzle is a beam and a wash.** The cone from the lab's gun offsets (3 m beside, 2 m ahead of the eye) is a 700 px diagonal streak and the glow (R 3 w at 6 m) colours the whole frame even at gain 0.35. Tune: in the own cockpit no cone (disc and star only) and no glow; the real gun offsets are unknown 9 | small tuning (3.2) | `grid_stock_ap_m_cockpit.png`, `s_PAC__muzzle.png` row 2 |
 | 8 | **An enemy fighter's muzzle at 600 m is invisible.** 2–3 px disc plus a 9 px glow at E 0.6 on a lit hull reads as nothing (IRE, PAC, EBC, MASS, PBE, PRG, every Mayhem fighter gun). Tune: muzzle floors of 6 px for the disc and 12 px for the star arms (the star is what reads at range: PPC, PAA, TBC at 600 m) | small tuning (3.1 floors) | `grid_stock_ap_m_range.png`, `grid_mayhem3_m_range.png` |
 | 9 | **Ballistic and flak star and puff do not read.** The star arms are hairlines beside a 40 px disc and the grey puff is invisible on the grey hull (MD, EBC, MASS, FAA, CFA, FLAK). Tune: arm width ≥ 0.15 of length (shared with #1), puff s0 0.3 → 0.5 and darker than the hull | small tuning (3.1) | `m_MD__muzzle.png`, `s_EBC__muzzle.png`, `s_FLAK_ALPHA__muzzle.png` |
-| 10 | **Orb silhouette lobes read as a pentagon decal** near the eye (stock PSP and MAM at 60 m: a five-point blob). Tune: lobe amp 0.12 → 0.05, 7–9 lobes, or noise-only erosion | small tuning (2.2 orb) | `grid_stock_ap_b_in60.png` (PSP, MAM) |
+| 10 | **Orb silhouette lobes read as a pentagon decal** near the eye (stock PSP and MAM at 60 m: a five-point blob). Tune: lobe amp 0.12 → 0.05, 7–9 lobes, or noise-only erosion | small tuning (2.2 orb) | `grid_stock_ap_b_in60.png` (PSP, MAM) <br>Built 2026-11-08 (2.2): 7–9 lobes at amp 0.05. |
 | 11 | **The flak flag out-ranks the orb style**: stock PSP and MAM (area_flak) get the flak star-and-puff muzzle on a singularity gun. Tune: style orb/wave → plasma before the flag test | small tuning (3.1 class rule) | `weapons.csv` mclass |
-| 12 | **The lab draws every Mayhem weapon white** (0 of 103 bodies carry a texture `mean` in `assets.js`; production reads the table's texture mean, 4.2, which the lab cannot show), so Mayhem colour and the white stock weapons (FLAK, CIG, MAM, SSC) could not be judged: flak, concussion and anti-matter are identical white rods. Fix the asset extractor's means before the Mayhem colour review | tooling (lab) | `grid_mayhem3_bolt_side.png`, `grid_stock_ap_bolt_side.png` row 5 |
+| 12 | **The lab draws every Mayhem weapon white** (0 of 103 bodies carry a texture `mean` in `assets.js`; production reads the table's texture mean, 4.2, which the lab cannot show), so Mayhem colour and the white stock weapons (FLAK, CIG, MAM, SSC) could not be judged: flak, concussion and anti-matter are identical white rods. Fix the asset extractor's means before the Mayhem colour review | tooling (lab) | `grid_mayhem3_bolt_side.png`, `grid_stock_ap_bolt_side.png` row 5 <br>Built 2026-11-08: the extractor writes the table's texture means; 26 stock and 37 Mayhem rows equal the table [M]; Mayhem textures are grey, so its unsaturated rows stay white in production too. |
 
 Also found, not ranked: the lab multiplies the rim into the summed bolt light (a dark lattice through dense streams,
-`grid_stock_ap_b_stream.png` GAUSS/IBL), which production's rim-then-capsule order (5.1) cannot do: a lab fix. The
+`grid_stock_ap_b_stream.png` GAUSS/IBL), which production's rim-then-capsule order (5.1) cannot do: a lab fix.
+Corrected 2026-11-08: the lab already composes hull x Π(1 − rim) + Σ capsules, production's order; the lattice is one
+bolt's cap rim across the next bolt's body in an end-to-end stream and production draws it too (open). The
 rim's dark outline around corvette and capital pills over a bright hull (CIG, FLAK_CLUSTER streams) is the design and
 reads as a sticker edge at `rim_dark` 0.4; section 8's kill criterion (0.4 → 0.2) should be applied on the first flight
 that shows it, not after.
@@ -571,6 +588,7 @@ flash there (lit ≤ 0.18) and the lamp of #1 is a per-shot ball, not a steady o
 - **MASS/MD, HEPT, FBL cues.** (a) Leave the census (mechanical, documented): the mass driver stays the brightest laser.
   (b) Chosen: three hand pins in `weapon_overrides.json` (MASS/MD: style slug, E_b 0.6, halo off, tint from the texture
   mean; HEPT: style slug with the 30 ms tail; FBL: style orb at w_orb 2.0 w), each a documented `by_id` row, no new law.
+  Built 2026-11-08 (the table's `bolt_*` keys, 2.2).
 - **Own halo cap.** (a) `halo_px_max` 40 → 24 (section 8's kill step): still full radiance in a smaller blob. (b)
   Chosen: energy-conserving cap (E_h x σ_cap / σ_world) plus the own-bolt σ ≤ body ceiling: the fog goes, the halo at
   range is unchanged.

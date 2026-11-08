@@ -93,9 +93,9 @@ const Weapon weapons[] = {
     {"psg_mayhem", wc::shape_tracer, 1, 0.816f, 5800.f, 2000.f, 2900.f, {0.45f, 1.f, 0.35f}, 0x0},          // 4
     {"flak_alpha_stock", wc::shape_tracer, 2, 0.832f, 2115.3f, 7051.f, 300.f, {1.f, 1.f, 1.f}, 0x2100},     // 5
     {"ppc_mayhem_slug", wc::shape_slug, 2, 0.800f, 19250.f, 3500.f, 5500.f, {0.3f, 0.6f, 1.f}, 0x0},        // 6
-    {"psp_stock_orb", wc::shape_orb, 0, 1.000f, 6420.f, 321.f, 20000.f, {1.f, 0.6f, 0.2f}, 0x2100},         // 7
+    {"psp_stock_orb", wc::shape_orb, 2, 1.000f, 6420.f, 321.f, 20000.f, {1.f, 0.6f, 0.2f}, 0x2100},         // 7
     {"pbe_mayhem_orb", wc::shape_orb, 0, 0.472f, 3900.f, 1500.f, 2600.f, {0.3f, 1.f, 0.4f}, 0x0},           // 8
-    {"psg_stock_wave", wc::shape_wave, 1, 0.412f, 1443.2f, 254.f, 5682.f, {0.78f, 0.5f, 1.f}, 0x8},         // 9
+    {"psg_stock_wave", wc::shape_wave, 2, 0.412f, 1443.2f, 254.f, 5682.f, {0.78f, 0.5f, 1.f}, 0x8},         // 9
     {"md_mayhem_ballistic", wc::shape_tracer, 0, 0.379f, 4000.f, 2500.f, 1600.f, {1.f, 0.8f, 0.5f}, 0x40}, // 10
     {"ire_orange", wc::shape_tracer, 0, 0.000f, 1394.4f, 1162.f, 1200.f, {1.f, 0.5f, 0.1f}, 0x0},           // 11
     {"ire_blue", wc::shape_tracer, 0, 0.000f, 1394.4f, 1162.f, 1200.f, {0.2f, 0.4f, 1.f}, 0x0},             // 12
@@ -546,13 +546,25 @@ void rim_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     const float m_rim = band_min(a), m_none = band_min(b);
     double sky_diff = 0;
     for (std::size_t i = 0; i < on_sky.size(); ++i) sky_diff = std::max(sky_diff, double(std::fabs(on_sky[i] - no_rim_sky[i])));
-    // a narrow bolt (band under 3 px): no rim
+    // a floor-width bolt (2026-11-08 #5; before: no rim under a 3 px band): the pixel band [w/2 + 1, w/2 + 4] px darkens
+    // a 1.0 hull to <= 0.75 at its middle
     Frame narrow = build(v, side_on(v, 0, 1200.f), {});
-    const bool narrow_none = narrow.out.rim_lines == 0;
-    const bool darkens = f.out.rim_lines == 1 && m_rim <= 0.75f && sky_diff < 1e-3 && narrow_none;
-    std::printf("BOLT gate=rim w_px=%.2f band_px=%.2f band_min=%.3f without_rim=%.3f sky_max_diff=%.5f narrow_rims=%u ok=%u\n",
-                double(wpx), double(0.6f * wpx), double(m_rim), double(m_none), sky_diff, f.out.rim_lines * 0 + narrow.out.rim_lines,
-                unsigned(darkens));
+    const rr::WeaponBoltQuad nq = quads[0];
+    float narrow_min = 1e9f;
+    {
+        const std::vector<float> nimg = render(pass, bt, v, narrow, 1.f);
+        const Img ni{&nimg, bt.t.w, bt.t.h};
+        const float nx0 = nq.p[0][0] + nq.p[0][2] * 0.5f * nq.p[1][1], ny0 = nq.p[0][1] + nq.p[0][3] * 0.5f * nq.p[1][1];
+        const float hw = 0.5f * nq.p[3][0];
+        for (float dd = hw + 2.f; dd <= hw + 3.f; dd += 0.25f)
+            for (float sg : {-1.f, 1.f}) narrow_min = std::min(narrow_min, ni.at(nx0 - nq.p[0][3] * dd * sg, ny0 + nq.p[0][2] * dd * sg));
+    }
+    const bool narrow_rim = narrow.out.rim_lines == 1 && narrow_min <= 0.75f;
+    const bool darkens = f.out.rim_lines == 1 && m_rim <= 0.75f && sky_diff < 1e-3 && narrow_rim;
+    std::printf("BOLT gate=rim w_px=%.2f band_px=%.2f band_min=%.3f without_rim=%.3f sky_max_diff=%.5f narrow_rims=%u "
+                "narrow_w_px=%.2f narrow_band_min=%.3f ok=%u\n",
+                double(wpx), double(0.6f * wpx), double(m_rim), double(m_none), sky_diff, narrow.out.rim_lines,
+                double(nq.p[3][0]), double(narrow_min), unsigned(darkens));
     report("bolt_rim_darkens_hull", darkens, "");
     // Through the production resolve, 8 frames (the bolt static under the jitter): the darkening kept >= 0.5.
     std::vector<float> cur_rim, cur_none;
@@ -580,15 +592,65 @@ void rim_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     report("bolt_rim_survives_resolve", survives, "");
 }
 void halo_cap(rr::WeaponEffectsPass&, BoltTarget& bt) {
-    // An enemy IRE passing 5 m from the cockpit camera: sigma_px <= 40 x rows / 1440, E_h unchanged.
+    // An enemy IRE passing 5 m from the cockpit camera: sigma_px <= 40 x rows / 1440 and the cap conserves energy
+    // (2026-11-08 #3; before: E_h unchanged): E_h = e_halo x cap / sigma_world within 1 %.
     const bs::BoltView v = view_of(bt.t.w, bt.t.h);
     Frame f = build(v, side_on(v, 0, 5.f, 0.f, false), {});
     const float cap = wb::halo_px_max * v.height / 1440.f;
-    const bool ok = f.n.drawn == 1 && quads[0].p[3][2] <= cap + 1e-3f && quads[0].p[6][3] == wb::e_halo &&
+    const float sigma_world = wb::halo_sigma_w[0] * look_of(0).w_m * side_on_px(v, 1.f, 5.f);
+    const float want = wb::e_halo * cap / sigma_world;
+    const bool ok = f.n.drawn == 1 && quads[0].p[3][2] <= cap + 1e-3f && std::fabs(quads[0].p[6][3] - want) <= 0.01f * want &&
                     f.n.capped_halo >= 1;
-    std::printf("BOLT gate=halo_cap rows=%u sigma_px=%.2f cap=%.1f e_halo=%.2f ok=%u\n", bt.t.h, double(quads[0].p[3][2]),
-                double(cap), double(quads[0].p[6][3]), unsigned(ok));
+    std::printf("BOLT gate=halo_cap rows=%u sigma_px=%.2f cap=%.1f sigma_world=%.1f e_halo=%.4f want=%.4f ok=%u\n", bt.t.h,
+                double(quads[0].p[3][2]), double(cap), double(sigma_world), double(quads[0].p[6][3]), double(want),
+                unsigned(ok));
     report("bolt_halo_px_cap", ok, "");
+}
+void own_halo_bounded(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
+    // Own fire from the chase camera (2026-11-08 #3): two wing guns 3 m beside and 4 m below the eye, bolts flying away
+    // at 25 .. 80 m, a fighter gun (IRE) and a corvette gun (Mayhem PSG); the halo term (full minus halo off) lit to
+    // 10 % of its peak never farther than own_body_max_px x 2.5 from the bolt's core polyline (before: sigma at the 40 px
+    // cap at full E_h, a fog dome over half the frame).
+    const bs::BoltView v = view_of(bt.t.w, bt.t.h);
+    const float rows = v.height / wb::ref_rows, bound = wb::own_body_max_px * 2.5f * rows;
+    const float away[3] = {0.f, 0.f, 1.f};
+    bool ok = true;
+    for (unsigned row : {0u, 4u}) {
+        for (float z : {25.f, 40.f, 80.f}) {
+            wc::BoltRecord r = record(3.f, -4.f, z, away, v.now, 1e5f, 1e5f, std::uint16_t(row), true);
+            alive(r, v.now);
+            Frame f = build(v, {r}, {});
+            if (!f.n.drawn) {
+                ok = false;
+                continue;
+            }
+            const rr::WeaponBoltQuad q = quads[0];
+            const std::vector<float> full = render(pass, bt, v, f);
+            Frame fb = f;
+            halo_off(fb);
+            const std::vector<float> body = render(pass, bt, v, fb);
+            const Img fi{&full, bt.t.w, bt.t.h}, bi{&body, bt.t.w, bt.t.h};
+            float hpeak = 0.f;
+            for (unsigned y = 0; y < bt.t.h; ++y)
+                for (unsigned x = 0; x < bt.t.w; ++x) hpeak = std::max(hpeak, fi.px(x, y) - bi.px(x, y));
+            const float hx = q.p[0][0], hy = q.p[0][1], ax = q.p[0][2], ay = q.p[0][3], A = q.p[1][0];
+            float reach = 0.f;
+            for (unsigned y = 0; y < bt.t.h; ++y)
+                for (unsigned x = 0; x < bt.t.w; ++x)
+                    if (fi.px(x, y) - bi.px(x, y) >= 0.1f * hpeak) {
+                        const float dx = float(x) - hx, dy = float(y) - hy;
+                        const float s = std::min(std::max(dx * ax + dy * ay, 0.f), A);
+                        reach = std::max(reach, std::hypot(dx - ax * s, dy - ay * s));
+                    }
+            const bool row_ok = hpeak > 0.f && reach <= bound && q.p[3][2] <= wb::own_body_max_px * rows + 1e-3f;
+            ok = ok && row_ok;
+            std::printf("BOLT gate=own_halo case=%s rows=%u z_m=%.0f sigma_px=%.2f e_halo=%.4f halo_peak=%.4f reach_10pct_px=%.1f "
+                        "bound=%.1f ok=%u\n",
+                        weapons[row].name, bt.t.h, double(z), double(q.p[3][2]), double(q.p[6][3]), double(hpeak),
+                        double(reach), double(bound), unsigned(row_ok));
+        }
+    }
+    report("bolt_own_halo_bounded", ok, "");
 }
 void orb_breathes(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     // PSP and PBE: the centre's whiteness h over one boil period (0..333 ms, 2 km) and the boil and lobes on a disc large
@@ -644,8 +706,10 @@ void orb_breathes(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
                 n += 1;
             }
         const double sd = n ? std::sqrt(std::max(0.0, s2 / n - (s / n) * (s / n))) / double(peak) : 0;
+        // the silhouette (2026-11-08 #10, lobes 7-9 at amp 0.05; before: rmax / rmin >= 1.1 at five lobes, amp 0.12): a
+        // wobble, not a polygon (the 10 % reach also carries the boil: a 23 px PBE measured 1.26, so no upper bound)
         const bool row_ok = hmin >= 0.45f && hmax <= 0.95f && hmax - hmin >= 0.1f && sd >= 0.08 && rmin > 0.f &&
-                            rmax / rmin >= 1.1f;
+                            rmax / rmin >= 1.03f;
         ok = ok && row_ok;
         std::printf("BOLT gate=orb_breathes case=%s h_min=%.3f h_max=%.3f boil_sd=%.3f r_max_over_min=%.3f r_px=%.1f ok=%u\n",
                     weapons[row].name, double(hmin), double(hmax), sd, double(rmin > 0 ? rmax / rmin : 0), double(R),
@@ -702,7 +766,8 @@ void wave_crescent(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         std::printf("BOLT gate=wave_45 drawn=%u c=%.3f\n", f.n.drawn, double(f.n.drawn ? quads[0].p[6][1] : -1.f));
         ok = ok && f.n.drawn == 1 && quads[0].p[6][1] > 0.4f && quads[0].p[6][1] < 0.95f;
     }
-    // end-on: a ring of diameter S (second-moment ratio <= 1.2)
+    // end-on: the lens of diameter S (2026-11-08 #2; was a ring): its half-peak annulus at 0.9 .. 1.0 S, round (second-moment
+    // ratio <= 1.2)
     {
         const float dir[3] = {0.f, 0.f, -1.f};
         wc::BoltRecord r = record(0.f, 0.f, d, dir, v.now, 1e5f, 1e5f, std::uint16_t(row));
@@ -712,12 +777,57 @@ void wave_crescent(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         const std::vector<float> img = render(pass, bt, v, f);
         const Img im{&img, bt.t.w, bt.t.h};
         const Moments m = moments(im, 0.5f * im.peak());
-        const bool end_ok = std::fabs(2.0 * m.r_mean - double(S)) <= 0.1 * double(S) && m.ratio <= 1.2;
+        const bool end_ok = std::fabs(2.0 * m.r_mean - 0.95 * double(S)) <= 0.1 * double(S) && m.ratio <= 1.2;
         ok = ok && end_ok;
         std::printf("BOLT gate=wave_endon diameter_px=%.1f want=%.1f moment_ratio=%.3f ok=%u\n", 2.0 * m.r_mean, double(S),
                     m.ratio, unsigned(end_ok));
     }
     report("bolt_wave_crescent", ok, "");
+}
+void wave_endon_no_hoop(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
+    // The stock PSG end-on at 300 m (2026-11-08 #2): a soft filled lens, not a neon hoop with a seam. The lens centre
+    // (max(rgb) within 0.15 R of it) >= 0.1 of the rim (the mean of 72 angular bins' peaks over 0.7 .. 1.3 R), no rim
+    // bin more than 2x the mean of its neighbours, and no interior bin at 0.5 R more than 2x its ring's median (the
+    // edge-on arc drew a seam line across it).
+    const unsigned row = 9;
+    const bs::BoltView v = view_of(bt.t.w, bt.t.h);
+    const float dir[3] = {0.f, 0.f, -1.f};
+    wc::BoltRecord r = record(0.f, 0.f, 300.f, dir, v.now, 1e5f, 1e5f, std::uint16_t(row));
+    alive(r, v.now);
+    Frame f = build(v, {r}, {});
+    bool ok = f.n.drawn == 1 && f.out.waves == 1;
+    float centre = 0.f, rim_mean = 0.f, worst_rim = 0.f, worst_in = 0.f;
+    if (ok) {
+        const std::vector<float> img = render(pass, bt, v, f);
+        const Img im{&img, bt.t.w, bt.t.h};
+        const float hx = quads[0].p[0][0], hy = quads[0].p[0][1], R = 0.5f * quads[0].p[6][2];
+        for (float dy = -0.15f * R; dy <= 0.15f * R; dy += 0.5f)
+            for (float dx = -0.15f * R; dx <= 0.15f * R; dx += 0.5f) centre = std::max(centre, im.at(hx + dx, hy + dy));
+        constexpr unsigned bins = 72;
+        float rim[bins], in[bins];
+        for (unsigned k = 0; k < bins; ++k) {
+            const float a = 6.2831853f * (float(k) + 0.5f) / float(bins), ca = std::cos(a), sa = std::sin(a);
+            rim[k] = 0.f;
+            for (float rr_ = 0.7f * R; rr_ <= 1.3f * R; rr_ += 0.25f) rim[k] = std::max(rim[k], im.at(hx + ca * rr_, hy + sa * rr_));
+            in[k] = im.at(hx + ca * 0.5f * R, hy + sa * 0.5f * R);
+            rim_mean += rim[k] / float(bins);
+        }
+        float sorted[bins];
+        std::copy(in, in + bins, sorted);
+        std::sort(sorted, sorted + bins);
+        const float in_median = sorted[bins / 2];
+        for (unsigned k = 0; k < bins; ++k) {
+            const float nb = 0.5f * (rim[(k + bins - 1) % bins] + rim[(k + 1) % bins]);
+            worst_rim = std::max(worst_rim, rim[k] / std::max(nb, 1e-6f));
+            worst_in = std::max(worst_in, in[k] / std::max(in_median, 1e-6f));
+        }
+        ok = centre >= 0.1f * rim_mean && worst_rim <= 2.f && worst_in <= 2.f;
+        std::printf("BOLT gate=wave_endon_no_hoop R_px=%.1f centre=%.4f rim_mean=%.4f centre_over_rim=%.3f worst_rim_bin_over_nb=%.3f "
+                    "worst_interior_over_median=%.3f ok=%u\n",
+                    double(R), double(centre), double(rim_mean), double(centre / std::max(rim_mean, 1e-6f)), double(worst_rim),
+                    double(worst_in), unsigned(ok));
+    }
+    report("bolt_wave_endon_no_hoop", ok, "");
 }
 void floors(rr::WeaponEffectsPass& pass, BoltTarget& t1080, BoltTarget& t1440) {
     // IRE and Mayhem PPC at 10 km, side-on and end-on: core >= 2 px, body >= 3 px, lit length >= 24 c (18 c at 1080),
@@ -805,6 +915,21 @@ void style_shapes(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     float tracer_core = 0.f, heavy_core = 0.f;
     const float tr = ratio(0, &tracer_core), sl = ratio(2, nullptr), orb = ratio(8, nullptr);
     ratio(3, &heavy_core);
+    // the heavy head (2026-11-08 #6; before: a disc of radius 0.6 w at E_c, a bead on a stick): the core's lit width
+    // (>= 2) half a body width behind the head <= 1.15 x its width mid-core
+    float head_over_mid = 0.f;
+    {
+        Frame hf = build(v, side_on(v, 3, 200.f), {});
+        halo_off(hf);
+        tail_off(hf);
+        const std::vector<float> img = render(pass, bt, v, hf);
+        const Img im{&img, bt.t.w, bt.t.h};
+        const float hx = quads[0].p[0][0], hy = quads[0].p[0][1], ax = quads[0].p[0][2], ay = quads[0].p[0][3];
+        const float Lc = quads[0].p[1][1], wpx = quads[0].p[3][0];
+        const float mid = width_along(im, hx + ax * 0.5f * Lc, hy + ay * 0.5f * Lc, -ay, ax, 2.f, 100.f);
+        const float head = width_along(im, hx + ax * 0.5f * wpx, hy + ay * 0.5f * wpx, -ay, ax, 2.f, 100.f);
+        head_over_mid = head / std::max(mid, 1e-3f);
+    }
     // the wave end-on
     const unsigned row = 9;
     const float dir[3] = {0.f, 0.f, -1.f};
@@ -814,9 +939,11 @@ void style_shapes(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     if (!f.n.drawn) std::printf("BOLT gate=style_shapes wave_not_drawn\n");
     const float wave = quads[0].p[6][2] / std::max(quads[0].p[3][0], 1e-3f);
     const bool ok = tr >= 9.f && tr <= 15.f + 2.f && sl >= 3.f && sl <= 5.f + 1.f && orb >= 1.f && orb <= 1.4f &&
-                    wave >= 8.f && heavy_core >= 1.3f * tracer_core;
-    std::printf("BOLT gate=style_shapes tracer=%.2f slug=%.2f orb=%.2f wave_ring=%.2f heavy_core=%.3f tracer_core=%.3f ok=%u\n",
-                double(tr), double(sl), double(orb), double(wave), double(heavy_core), double(tracer_core), unsigned(ok));
+                    wave >= 8.f && heavy_core >= 1.3f * tracer_core && head_over_mid <= 1.15f;
+    std::printf("BOLT gate=style_shapes tracer=%.2f slug=%.2f orb=%.2f wave_ring=%.2f heavy_core=%.3f tracer_core=%.3f "
+                "heavy_head_over_mid=%.3f ok=%u\n",
+                double(tr), double(sl), double(orb), double(wave), double(heavy_core), double(tracer_core), double(head_over_mid),
+                unsigned(ok));
     report("bolt_style_shapes", ok, "");
 }
 void hue_sat(const float c[3], float* hue, float* sat) {
@@ -891,6 +1018,32 @@ void colour_core_rim(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
                     "white_beyond_0.6=%.3f halo_over_core=%.3f ok=%u\n",
                     weapons[row].name, double(centre_err), double(he), double(ht), double(se), double(st), double(white),
                     double(halo_peak / std::max(core_peak, 1e-3f)), unsigned(row_ok));
+    }
+    // a floor-width bolt keeps its tint (2026-11-08 #5): the orange and blue IRE at 1500 m (3 px), their core's colour
+    // within 0.1 of the tint per channel (h x saturate((w_px - 3) / 3) = 0; before: h 0.75, a white dash)
+    for (unsigned row : {11u, 12u}) {
+        Frame f = build(v, side_on(v, row, 1500.f), {});
+        halo_off(f);
+        const std::vector<float> img = render(pass, bt, v, f);
+        const Img im{&img, bt.t.w, bt.t.h};
+        const float hx = quads[0].p[0][0], hy = quads[0].p[0][1], ax = quads[0].p[0][2], ay = quads[0].p[0][3];
+        const float Lc = quads[0].p[1][1];
+        float c[3];
+        // the pixel row through the axis (the bolt lies along a row): the brightest pixel of the core's middle column
+        const unsigned x = unsigned(std::lround(hx + ax * 0.5f * Lc));
+        unsigned yb = unsigned(std::lround(hy + ay * 0.5f * Lc));
+        for (unsigned y = yb > 3 ? yb - 3 : 0; y < yb + 4 && y < bt.t.h; ++y)
+            if (im.px(x, y) > im.px(x, yb)) yb = y;
+        for (unsigned k = 0; k < 3; ++k) c[k] = im.px(x, yb, k);
+        const float cm = std::max(c[0], std::max(c[1], c[2]));
+        const float* t = look_of(row).tint;
+        float err = 0.f;
+        for (unsigned k = 0; k < 3; ++k) err = std::max(err, std::fabs(c[k] / std::max(cm, 1e-6f) - t[k]));
+        const bool row_ok = quads[0].p[3][0] <= 3.5f && err <= 0.1f;
+        ok = ok && row_ok;
+        std::printf("BOLT gate=colour_floor case=%s w_px=%.2f core=%.3f,%.3f,%.3f tint=%.2f,%.2f,%.2f err=%.3f ok=%u\n",
+                    weapons[row].name, double(quads[0].p[3][0]), double(c[0] / cm), double(c[1] / cm), double(c[2] / cm),
+                    double(t[0]), double(t[1]), double(t[2]), double(err), unsigned(row_ok));
     }
     report("bolt_colour_core_rim", ok, "");
 }
@@ -2794,8 +2947,10 @@ void bolt_draw_cases(D3DPRESENT_PARAMETERS& pp) {
     rim_cases(pass, t1080);
     halo_cap(pass, t1080);
     halo_cap(pass, t1440);
+    own_halo_bounded(pass, t1080);
     orb_breathes(pass, t1080);
     wave_crescent(pass, t1080);
+    wave_endon_no_hoop(pass, t1080);
     floors(pass, t1080, t1440);
     own_ceiling(pass, t1080, t1440);
     style_shapes(pass, t1080);

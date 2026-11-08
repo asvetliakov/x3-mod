@@ -39,6 +39,8 @@ int main(int argc, char** argv) {
                     (unsigned long)(table.override_rgb[row] & 0xffffff), table.calibre_q[row],
                     (table.bits[row] & core::row_hull_class) ? core::hull_class_name(table.hull_class[row]) : "-");
         std::printf("mount_tier=%u range_m=%u mount_keys=%u\n", table.mount_tier[row], table.range_m[row], st.mount_keys);
+        std::printf("bolt_pin=%u e_body_q=%u w_orb_q=%u bolt_pins=%u\n", table.bolt_pin[row], table.bolt_e_body_q[row],
+                    table.bolt_w_orb_q[row], st.bolt_pins);
     }
     return ok ? 0 : 1;
 }
@@ -67,7 +69,11 @@ def sample_table():
             {'row': 8, 'id': 'SS_BULLET_PPC', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
              'calibre': None, 'mount_tier': 'capital', 'range_m': 4957.4},
             {'row': 9, 'id': 'SS_BULLET_PSG', 'z_over_xy': None, 'texture_rgb': None, 'style': None, 'tint': None,
-             'calibre': None, 'mount_tier': 'corvette', 'range_m': None}]},
+             'calibre': None, 'mount_tier': 'corvette', 'range_m': None},
+            {'row': 10, 'id': 'SS_BULLET_MD', 'z_over_xy': None, 'texture_rgb': [66, 66, 66], 'style': 'slug', 'tint': None,
+             'calibre': None, 'bolt_e_body': 0.6, 'bolt_halo': False, 'bolt_tint': 'texture'},
+            {'row': 11, 'id': 'SS_BULLET_FBL', 'z_over_xy': None, 'texture_rgb': None, 'style': 'orb', 'tint': None,
+             'calibre': None, 'bolt_w_orb': 2.0}]},
         'missiles': {'rows': 36}}}
 
 
@@ -95,7 +101,10 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         self.assertEqual(wt.override_for(hull, 'abc', 'SS_BULLET_TUG'), {'hull': 'tug', 'calibre': 0.1})
 
     def test_mount_tier_rule(self):
-        # docs/architecture/bolt-muzzle-look.md section 1: the smallest mounting class decides; unmounted is a fighter
+        # docs/architecture/bolt-muzzle-look.md section 1 (2026-11-08 #4): the catalogue's size, the smallest tier holding
+        # 10 % of the mounting rows; unmounted is a fighter. One odd M3 row of twelve (the stock PSP) no longer decides.
+        self.assertEqual(wt.mount_tier_of({'M3': 1, 'M2': 11}), 'capital')
+        self.assertEqual(wt.mount_tier_of({'M3': 1, 'M6': 2, 'M2': 9}), 'corvette')
         self.assertEqual(wt.mount_tier_of({'M3': 4, 'M6': 2, 'M2': 1}), 'fighter')
         self.assertEqual(wt.mount_tier_of({'M6': 2, 'M2': 1}), 'corvette')
         self.assertEqual(wt.mount_tier_of({'M7': 1, 'TL': 2}), 'capital')
@@ -113,19 +122,18 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         self.assertEqual([e['row'] for e in wt.mount_fallback_rows(table)], [3])
 
     def test_mount_tiers_match_the_catalogue(self):
-        # the generator's rule over the tracked catalogue's used-by (both AP views): the size_derivation counts 30/19/12
+        # the generator's rule over the tracked catalogue's used-by (both AP views): 29/15/17 by the size rule (2026-11-08;
+        # the old any-fighter rule gave size_derivation's 30/19/12), and equal to the catalogue's own size column
         tiers = {}
         for view in ('stock_ap', 'mayhem3'):
             data = json.loads((ROOT / f'tools/effects/weapon_catalog/{view}.json').read_text())
             for e in data['weapons']:
                 if e['style'].split('+')[0] == 'beam' or not e.get('lasers'):
                     continue
-                u = set()
-                for laser in e['lasers']:
-                    u |= set((laser.get('used_by') or {}).keys())
-                t = wt.mount_tier_of(u)
+                t = wt.mount_tier_of(e['used_by'])
+                self.assertEqual(t, wt.SIZE_TIERS.get(e['size'], 'fighter'), e['id'])
                 tiers[t] = tiers.get(t, 0) + 1
-        self.assertEqual((tiers['fighter'], tiers['corvette'], tiers['capital']), (30, 19, 12))
+        self.assertEqual((tiers['fighter'], tiers['corvette'], tiers['capital']), (29, 15, 17))
 
     def test_shipped_overrides_file_schema(self):
         data = json.loads(OVERRIDES.read_text())
@@ -134,11 +142,22 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         # by_id hull keys are exactly the census script's pin list, the tug's calibre beside it
         sys.path.insert(0, str(ROOT / 'verification/results/weapon-effects'))
         import hull_class_census as census  # noqa: E402
-        self.assertEqual({k: v['hull'] for k, v in data['by_id'].items()}, census.PINS)
+        self.assertEqual({k: v['hull'] for k, v in data['by_id'].items() if 'hull' in v}, census.PINS)
         self.assertEqual(data['by_id']['SS_BULLET_TUG'], {'hull': 'tug', 'calibre': 0.1})
         for entry in data['by_id'].values():
-            self.assertIn(entry.get('hull'), wt.HULL_VARIANTS)
-            self.assertNotEqual(entry.get('hull'), 'beam')
+            if 'hull' in entry:
+                self.assertIn(entry['hull'], wt.HULL_VARIANTS)
+                self.assertNotEqual(entry['hull'], 'beam')
+        # the bolt hand pins (bolt-muzzle-look.md 11.5): MASS/MD a dim haloless slug in the texture tint, HEPT a slug,
+        # FBL an orb at 2.0 w; every other row carries none
+        pins = {k: {f: v[f] for f in ('style',) + wt.BOLT_PINS if f in v} for k, v in data['by_id'].items()}
+        pins = {k: v for k, v in pins.items() if v}
+        dim = {'style': 'slug', 'bolt_e_body': 0.6, 'bolt_halo': False, 'bolt_tint': 'texture'}
+        self.assertEqual(pins, {'SS_BULLET_MD': dim, 'SS_BULLET_MASS': dim, 'SS_BULLET_HEPT': {'style': 'slug'},
+                                'SS_BULLET_FBL': {'style': 'orb', 'bolt_w_orb': 2.0}})
+        w = {'index': 0, 'weapon_id': 'SS_BULLET_MD', 'body_key': None, 'speed': None, 'lifetime_ms': None}
+        e = wt.row_entry(w, None, None, wt.override_for(data, 'none', 'SS_BULLET_MD'))
+        self.assertEqual((e['style'], e['bolt_e_body'], e['bolt_halo'], e['bolt_tint']), ('slug', 0.6, False, 'texture'))
         self.assertEqual(set(data['by_table']),
                          {'be762076cdc38b03', '7b4ab0a6cea2cb07', 'f0cb79fd63c46318'})  # stock AP, Mayhem 3, FL
         self.assertIsInstance(wt.load_overrides(OVERRIDES), dict)
@@ -172,7 +191,7 @@ class WeaponEffectsTableReader(unittest.TestCase):
     def test_reader_round_trips_a_generated_table(self):
         code, f = self.read(sample_table(), row=0)
         self.assertEqual(code, 0)
-        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '10'))
+        self.assertEqual((f['ok'], f['rows'], f['missile_rows'], f['entries']), ('1', '45', '36', '12'))
         self.assertEqual(f['shape'], 'tracer')          # row 0: from elongation 18.5
         self.assertEqual(f['texture'], '275279')        # 121,82,39 -> r|g<<8|b<<16
         _, f1 = self.read(sample_table(), row=1)
@@ -194,7 +213,7 @@ class WeaponEffectsTableReader(unittest.TestCase):
         _, f7 = self.read(sample_table(), row=7)
         self.assertEqual((int(f6['bits']) & 0xe0, f6['hull_class']), (0x80, 'ballistic'))
         self.assertEqual((int(f7['bits']) & 0xe0, f7['hull_class']), (0, '-'))
-        self.assertEqual(f['overrides'], '4')            # rows 1, 3, 4 (its calibre the same row) and 6; none for 5, 7
+        self.assertEqual(f['overrides'], '6')            # rows 1, 3, 4 (its calibre the same row), 6, 10, 11 (style); none for 5, 7
         # step 4: mount_tier (0 fighter, 1 corvette, 2 capital; absent = fighter) and range_m (metres; null = 0)
         _, f8 = self.read(sample_table(), row=8)
         _, f9 = self.read(sample_table(), row=9)
@@ -204,6 +223,12 @@ class WeaponEffectsTableReader(unittest.TestCase):
         schema2 = sample_table()
         schema2['schema'] = 2
         self.assertEqual(self.read(schema2, row=8)[1]['mount_tier'], '2')
+        # the bolt hand pins (bolt-muzzle-look.md 11.5): pin_halo_off 1, pin_tint_texture 2, pin_e_body 4, pin_w_orb 8
+        _, f10 = self.read(sample_table(), row=10)
+        _, f11 = self.read(sample_table(), row=11)
+        self.assertEqual((f10['bolt_pin'], f10['e_body_q'], f10['w_orb_q']), ('7', '60', '0'))
+        self.assertEqual((f11['bolt_pin'], f11['e_body_q'], f11['w_orb_q'], f11['shape']), ('8', '0', '200', 'orb'))
+        self.assertEqual((f['bolt_pin'], f['bolt_pins']), ('0', '2'))
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 3, 'tables': {}})

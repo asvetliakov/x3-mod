@@ -12,6 +12,9 @@
 //                   "mount_tier": "fighter"|"corvette"|"capital"|null, "range_m": m|null, ...}, ...]},
 //      "missiles": {"rows": M, ...}}}
 // Schema 2 (step 4) adds mount_tier and range_m; a schema 1 table reads as every row a fighter mount of unknown range.
+// The optional bolt hand pins (bolt-muzzle-look.md 11.5, schema 2, absent on most rows): "bolt_e_body": E_b (0..2.55),
+// "bolt_w_orb": the orb diameter in w (0..2.55], "bolt_halo": false (no halo), "bolt_tint": "texture" (the texture mean
+// even when the light colour is saturated).
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -23,6 +26,7 @@ struct Stats {
     unsigned schema = 0;
     unsigned hull_keys = 0; // entries carrying the "hull" key (0: a table generated before step 2, or no variant row)
     unsigned mount_keys = 0; // entries carrying "mount_tier" (step 4; 0: a table generated before it)
+    unsigned bolt_pins = 0;  // entries carrying a bolt hand pin (bolt_e_body, bolt_w_orb, bolt_halo false, bolt_tint)
 };
 inline bool parse_rgb(json::Cursor& c, std::uint32_t* out, bool* present) noexcept {
     *present = false;
@@ -59,6 +63,7 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     std::uint8_t mount = 0; // step 4: the mount tier (fighter when absent or unknown)
     float range = 0.f;
     bool range_present = false;
+    std::uint8_t pin = 0, e_body_q = 0, w_orb_q = 0; // the bolt hand pins (bolt_e_body, bolt_w_orb, bolt_halo, bolt_tint)
     if (!c.accept('}'))
         for (;;) {
             char key[24];
@@ -115,6 +120,32 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                 }
             } else if (!std::strcmp(key, "range_m")) {
                 if (!c.number_or_null(&range, &range_present)) return false;
+            } else if (!std::strcmp(key, "bolt_e_body")) {
+                float v = 0.f;
+                bool present = false;
+                if (!c.number_or_null(&v, &present)) return false;
+                if (present && v >= 0.f && v <= 2.55f) {
+                    pin |= core::pin_e_body;
+                    e_body_q = std::uint8_t(v * 100.f + 0.5f);
+                }
+            } else if (!std::strcmp(key, "bolt_w_orb")) {
+                float v = 0.f;
+                bool present = false;
+                if (!c.number_or_null(&v, &present)) return false;
+                if (present && v > 0.f && v <= 2.55f) {
+                    pin |= core::pin_w_orb;
+                    w_orb_q = std::uint8_t(v * 100.f + 0.5f);
+                }
+            } else if (!std::strcmp(key, "bolt_halo")) {
+                if (c.literal("false")) pin |= core::pin_halo_off;
+                else if (!c.literal("true") && !c.literal("null")) return false;
+            } else if (!std::strcmp(key, "bolt_tint")) {
+                if (!c.literal("null")) {
+                    char name[16];
+                    bool name_fits;
+                    if (!c.string(name, sizeof name, &name_fits)) return false;
+                    if (name_fits && !std::strcmp(name, "texture")) pin |= core::pin_tint_texture;
+                }
             } else if (!c.skip_value())
                 return false;
             if (c.accept('}')) break;
@@ -149,6 +180,10 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     t->hull_class[i] = hull_class;
     t->mount_tier[i] = mount;
     t->range_m[i] = range_present && range > 0.f ? std::uint16_t(range < 65535.f ? range + 0.5f : 65535.f) : std::uint16_t(0);
+    t->bolt_pin[i] = pin;
+    t->bolt_e_body_q[i] = e_body_q;
+    t->bolt_w_orb_q[i] = w_orb_q;
+    if (pin) ++st->bolt_pins;
     if (bits & (core::row_style_override | core::row_tint_override | core::row_calibre_override | core::row_hull_repair |
                 core::row_hull_tug | core::row_hull_class))
         ++st->overrides;
