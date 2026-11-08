@@ -959,9 +959,9 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     fb[45] = wcore::boom::compose_soft_add; // c13.y: the composed body's soft add (the fireball program skips it)
     fb[46] = lk::fireball_octave_freq4;      // c13.zw: the fourth octave (both programs)
     fb[47] = lk::fireball_octave_w4;
-    // weapon_fireball_ps.hlsl c14..c25 (the fireball program only; the composed and shock programs read c2..c13): the fire
+    // weapon_fireball_ps.hlsl c14..c26 (the fireball program only; the composed and shock programs read c2..c13): the fire
     // ramp and the fire material's law (docs/architecture/fire-material.md section 2, look::fire_*)
-    float fire_c[12 * 4] = {};
+    float fire_c[13 * 4] = {};
     for (unsigned k = 0; k < 5; ++k)
         for (unsigned c = 0; c < 3; ++c) fire_c[4 * k + c] = lk::fire_ramp[k][c];
     fire_c[7] = wcore::hull::fire_cluster_thr;       // c15.w
@@ -971,11 +971,17 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                lk::fire_turb_n2, lk::fire_turb_n3, 1.f / lk::fire_stretch, lk::fire_turb_warp,
                                lk::fire_flow_v * 0.001f, 1.f / lk::fire_jit_ms, lk::fire_thr_0, lk::fire_thr_t,
                                lk::fire_thr_r, 1.f / lk::fire_soft, lk::fire_gain, lk::fire_gain_small,
-                               1.f / lk::fire_heat_soft, lk::fire_rim_t, lk::fire_env_amp, lk::fire_env_rate};
+                               1.f / lk::fire_heat_soft, lk::fire_red_cut, lk::fire_env_amp, lk::fire_env_rate};
         for (unsigned k = 0; k < 20; ++k) fire_c[20 + k] = law[k];
         const float tail[8] = {lk::fire_polar_r0, lk::fire_polar_r1, 1.f / lk::fire_cell_px, lk::fire_thr_rt,
                                lk::fire_core_r1, 1.f / (lk::fire_core_r1 - lk::fire_core_r0), lk::fire_lum_0, lk::fire_lum_depth};
         for (unsigned k = 0; k < 8; ++k) fire_c[40 + k] = tail[k];
+        // the red band (c26): 1 / width, the band's end heat, its end density, 1 / (the white density - that)
+        const float band_end = lk::fire_red_cut + lk::fire_red_w;
+        fire_c[48] = 1.f / lk::fire_red_w;
+        fire_c[49] = lk::fire_red_t;
+        fire_c[50] = band_end;
+        fire_c[51] = 1.f / (lk::fire_white_f - band_end);
     }
     if (SUCCEEDED(hr) && (scorch_boxes || smoke_boxes)) {
         step(WeaponEffectsStep::Scorches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
@@ -1000,7 +1006,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             step(WeaponEffectsStep::Smokes, call<SetVsFn>(SetVertexShader)(d, fireball_vs_));
             step(WeaponEffectsStep::Smokes, call<SetPsFn>(SetPixelShader)(d, fireball_ps_));
             step(WeaponEffectsStep::Smokes, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 12));
-            step(WeaponEffectsStep::Smokes, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 12));
+            step(WeaponEffectsStep::Smokes, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 13));
             if (SUCCEEDED(hr)) {
                 const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                     d, D3DPT_TRIANGLELIST, 0, smoke_boxes * 4, smoke_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.smokes,
@@ -1215,7 +1221,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         }
     }
     // The fireballs (the hull hits' bursts; look 2.10: after the patches, before the sprite batch): one batched draw of
-    // their screen rectangles (no cull); weapon_fireball_ps.hlsl c2..c13 (fb above), c14..c25 (fire_c).
+    // their screen rectangles (no cull); weapon_fireball_ps.hlsl c2..c13 (fb above), c14..c26 (fire_c).
     // Section 13.2: the composed death bodies first, one draw each with its table (weapon_compose_ps.hlsl c2..c13 of fb,
     // c14..c42 its WeaponComposeConstants), then the rest of the fireballs batched.
     if (SUCCEEDED(hr) && composed_boxes) {
@@ -1248,7 +1254,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Fireballs, call<SetPsFn>(SetPixelShader)(d, fireball_ps_));
         step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
         step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, fb, 12));
-        step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 12));
+        step(WeaponEffectsStep::Fireballs, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 14, fire_c, 13));
         // the boxes before the composed range (the muzzles') and after it (the secondaries, the hull bursts)
         const unsigned first = composed_boxes ? f.composed_first : 0u, after = first + composed_boxes;
         const unsigned ranges[2][2] = {{0u, first}, {after, fireball_boxes - after}};
@@ -1286,7 +1292,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
     // Section 13.1: the death fire waves (explosion-look.md 13.1; after the shocks, additive): their quads with the
     // fireball's vertex program and declaration and weapon_wave_ps.hlsl, one draw a wave: c2, c3 of fb above, c4..c12 the
     // front's profile, break, tongues and the fire material's (boom::fire_wave_*, look::fire_*; v8), c13..c15 the wave's
-    // normal, age, cooling, the radial cell and its game-time age, c16..c20 the fire ramp, c21 the temperatures, c22 the rim.
+    // normal, age, cooling, the radial cell and its game-time age, c16..c20 the fire ramp, c21 the temperatures, c22 the rim, c23..c24 the red band (fire round 3).
     if (SUCCEEDED(hr) && wave_boxes) {
         namespace wb = wcore::boom;
         const float s_end = wb::wave_sheet_enabled ? wb::wave_sheet_span / wb::wave_trail_span : 1.f;
@@ -1296,17 +1302,22 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                                   wb::wave_n_cells[0], wb::wave_n_cells[1], wb::wave_n_w[0], wb::wave_n_w[1],
                                   wb::wave_tongue * wb::wave_trail_span, wb::wave_tongue_contrast, 0.f, 0.f,
                                   wb::fire_wave_cells, lk::fire_turb_warp, lk::fire_turb_k, 1.f / wb::fire_wave_flow_ms,
-                                  wb::fire_wave_thr_0, wb::fire_wave_thr_end, 1.f / wb::wave_sheet_span, wb::wave_lead,
+                                  wb::fire_wave_thr_0, wb::fire_wave_thr_out, wb::fire_wave_thr_in, wb::wave_lead,
                                   lk::fire_turb_a, wb::fire_wave_gain, lk::fire_gain, wb::wave_break_floor,
-                                  1.f / lk::fire_soft, 1.f / wb::fire_wave_heat_soft, lk::fire_rim_t, lk::fire_turb_c,
-                                  1.f / lk::fire_jit_ms, 0.f, wb::wave_floor_a, wb::wave_floor_t};
-        float ramp[7 * 4] = {};
+                                  1.f / lk::fire_soft, 1.f / lk::fire_heat_soft, wb::fire_wave_tongue, lk::fire_turb_c,
+                                  1.f / lk::fire_jit_ms, wb::wave_band_we, wb::wave_floor_a, wb::wave_floor_t};
+        float ramp[9 * 4] = {};
         for (unsigned k = 0; k < 5; ++k)
             for (unsigned c = 0; c < 3; ++c) ramp[4 * k + c] = lk::fire_ramp[k][c]; // v8: the fire ramp
         ramp[3] = 1.f / lk::fire_cell_px; // c16.w (round 3: the octaves' screen floor)
-        const float tail[8] = {wb::wave_t_edge, wb::wave_t_band0, wb::wave_t_band_end, wb::wave_t_sheet_end,
-                               wb::wave_ahead, wb::wave_rim_gain, 1.f / wb::fire_wave_lick, wb::wave_rim_lift};
-        for (unsigned k = 0; k < 8; ++k) ramp[20 + k] = tail[k];
+        // c21 the swept hulls' T profile, c22 their rim's fall-off ahead; c23, c24 the body's red band and luminance
+        // (fire round 3's band, 2026-11-08)
+        const float band_end = lk::fire_red_cut + lk::fire_red_w;
+        const float tail[16] = {wb::wave_t_edge, wb::wave_t_band0, wb::wave_t_band_end, wb::wave_t_sheet_end,
+                                wb::wave_ahead, 2.f * wb::wave_w_x / wb::wave_slab_x, 0.f, 0.f,
+                                lk::fire_red_cut, 1.f / lk::fire_red_w, lk::fire_red_t, band_end,
+                                1.f / (lk::fire_white_f - band_end), lk::fire_lum_0, lk::fire_lum_depth, wb::wave_band_heat};
+        for (unsigned k = 0; k < 16; ++k) ramp[20 + k] = tail[k];
         const float limits[4] = {f.near_z, 0.f, 0.f, 0.f};
         step(WeaponEffectsStep::Waves, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Waves, call<SetDeclarationFn>(SetVertexDeclaration)(d, fireball_declaration_));
@@ -1314,7 +1325,7 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         step(WeaponEffectsStep::Waves, call<SetPsFn>(SetPixelShader)(d, wave_ps_));
         step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, limits, 1));
         step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, wv, 11));
-        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 16, ramp, 7));
+        step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 16, ramp, 9));
         for (unsigned k = 0; k < wave_boxes && SUCCEEDED(hr); ++k) {
             step(WeaponEffectsStep::Waves, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 13, f.wave_constants[k].normal, 3));
             if (SUCCEEDED(hr)) {
@@ -1330,19 +1341,21 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
         }
     }
     // Step 3: the death bodies' halos (the glow's vertex program and declaration, weapon_halo_ps.hlsl: the light in air,
-    // occlusion class 1; c2, c3 the glow's, c4 the soft cut's share of R, 1 / sigma, the tail, the inner ramp's start,
-    // c5 the tail window in d and 1 / (1 + tail): explosion-look.md section 14 item 1).
+    // occlusion class 1; c2, c3 the glow's, c4 the soft cut's share of R, 1 / sigma, the tail, unused, c5 the tail
+    // window in d, 1 / (1 + tail), 1 / halo_r_x (R(t) from the quad's radius), c6 the inner floor and its radius over
+    // R(t): explosion-look.md section 14 item 1).
     if (SUCCEEDED(hr) && halo_boxes) {
         namespace hb = wcore::boom;
-        const float halo_ps[16] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f,
-                                   hb::halo_soft, 1.f / hb::halo_sigma, hb::halo_tail, hb::halo_in,
-                                   hb::halo_win_x0 - 1.f, hb::halo_r_x - 1.f, 1.f / (1.f + hb::halo_tail), 0.f};
+        const float halo_ps[20] = {f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f,
+                                   hb::halo_soft, 1.f / hb::halo_sigma, hb::halo_tail, 0.f,
+                                   hb::halo_win_x0 - 1.f, hb::halo_r_x - 1.f, 1.f / (1.f + hb::halo_tail), 1.f / hb::halo_r_x,
+                                   hb::halo_floor, hb::halo_floor_r, 0.f, 0.f};
         step(WeaponEffectsStep::Halos, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
         step(WeaponEffectsStep::Halos, call<SetDeclarationFn>(SetVertexDeclaration)(d, glow_declaration_));
         step(WeaponEffectsStep::Halos, call<SetVsFn>(SetVertexShader)(d, glow_vs_));
         step(WeaponEffectsStep::Halos, call<SetPsFn>(SetPixelShader)(d, halo_ps_));
         step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, glow_limits, 1));
-        step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, halo_ps, 4));
+        step(WeaponEffectsStep::Halos, call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, halo_ps, 5));
         if (SUCCEEDED(hr)) {
             const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
                 d, D3DPT_TRIANGLELIST, 0, halo_boxes * 4, halo_boxes * 2, sprite_indices_, D3DFMT_INDEX16, f.halos,

@@ -33,6 +33,10 @@
 // by the body's turbulence law in the ring's frame (four ridged octaves, each dropped under fire_cell_px on screen, the
 // finest two re-seeded at 15 Hz of game time; F = 1/2 + fire_turb_k (fire_turb_c - T) - thr), the alpha smoothstep(0,
 // fire_soft, F)^fire_gain, the colour from F.
+// Fire round 3's band (2026-11-08, the user's references; fire-material.md 13.5): the band and sheet law and its rim are
+// replaced by a band 0.35 r(t) wide (the stage's w_e) of the body's five-octave turbulence with the body's red band and
+// luminance, its tongues and wisps from the envelope's medium octave, no rim term (below, at "the band"); the swept hulls
+// keep the rim / floor law.
 #include "weapon_soft_depth.hlsl"
 float4 proj : register(c2);    // m00, m11, m20, m21
 float4 screen : register(c3);  // 2 / W, 2 / H, near view z, unused
@@ -41,16 +45,18 @@ float4 win : register(c5);     // window in, window out (w_e), m floor, m contra
 float4 noise : register(c6);   // the break's cells 1, 2, weights 1, 2
 float4 shape : register(c7);   // the front's tongues' amplitude (w_e), their contrast, unused x2
 float4 cells : register(c8);   // fire_wave_cells about the circumference, fire_turb_warp, fire_turb_k, 1 / fire_wave_flow_ms
-float4 rad : register(c9);     // fire_wave_thr_0, fire_wave_thr_end, 1 / wave_sheet_span (w_e), the rim's lead (band units)
-float4 wts : register(c10);    // fire_turb_a, fire_wave_gain, fire_gain, the material's share under a broken rim
-float4 erode : register(c11);  // 1 / fire_soft, 1 / boom::fire_wave_heat_soft, fire_rim_t, fire_turb_c
-float4 erode2 : register(c12); // 1 / fire_jit_ms, unused, the swept hulls' floor density, the floor's T
+float4 rad : register(c9);     // fire_wave_thr_0, the envelope's outer and inner rise, the swept hulls' rim lead (band units)
+float4 wts : register(c10);    // fire_turb_a, fire_wave_gain, fire_gain, the material's share under a broken arc
+float4 erode : register(c11);  // 1 / fire_soft, 1 / fire_heat_soft, the envelope's tongue (band units), fire_turb_c
+float4 erode2 : register(c12); // 1 / fire_jit_ms, the band (w_e), the swept hulls' floor density, the floor's T
 float4 plane : register(c13);  // the plane's normal (view, unit), the age fraction x = t / L_w
-float4 heat_c : register(c14); // the age's cooling factor (x every T), the finest two octaves' weight behind the band (0: shed),
-                               // 1 / l_s (w_e), the game-time age t_g (ms)
+float4 heat_c : register(c14); // the age's cooling factor (x every T), the finest two octaves' weight (0: shed, step 0a),
+                               // unused, the game-time age t_g (ms)
 float4 ramp[5] : register(c16); // the fire ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb); c16.w 1 / fire_cell_px
 float4 temp : register(c21);   // T at the edge, at the band's start, at its end, at the sheet's end
-float4 edge_c : register(c22); // the rim's fall-off ahead (w_e), wave_rim_gain, 1 / fire_wave_lick (w_e), wave_rim_lift
+float4 edge_c : register(c22); // the swept hulls' rim fall-off ahead (w_e), their w_e over h / 2 (wave_w_x R_f), unused x2
+float4 fire_c : register(c23); // look::fire_red_cut, 1 / fire_red_w, fire_red_t, the red band's end density
+float4 fire_c2 : register(c24); // 1 / (the white density - the band's end), fire_lum_0, fire_lum_depth, wave_band_heat
 float hash2(float2 q) {
     float3 p = frac(float3(q.x, q.y, q.x) * 0.1031);
     p += dot(p, p.yzx + 33.33);
@@ -122,8 +128,11 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
             float zc = clamp(B / A, z0, z1);
             float q0 = max(A * zc * zc - 2.0 * B * zc + Cq, 0.0);
             float zr = zc;
-            if (q0 < r * r) {
-                float disc2 = B * B - A * (Cq - r * r), sq = sqrt(max(disc2, 0.0));
+            // the target radius: the band's middle (fire round 3's band: its density peaks there, the front itself is
+            // its sparse outer edge; edge-on the bar is the band's, not the front's tongues)
+            float rt = max(r - 0.5 * erode2.y * we, 0.5 * r);
+            if (q0 < rt * rt) {
+                float disc2 = B * B - A * (Cq - rt * rt), sq = sqrt(max(disc2, 0.0));
                 float zm = (B - sq) / A, zp = (B + sq) / A;
                 float q1 = max(A * z0 * z0 - 2.0 * B * z0 + Cq, 0.0), q2 = max(A * z1 * z1 - 2.0 * B * z1 + Cq, 0.0);
                 zr = zm >= z0 && zm <= z1 ? zm : zp >= z0 && zp <= z1 ? zp : (q1 > q2 ? z0 : z1);
@@ -157,45 +166,45 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                                                 : (zhi - zlo) * (1.0 - ya * ya / (hh * hh));
                 float column = saturate(integral * l / (1.3333333 * hh));
                 float m = win.z + (1.0 - win.z) * saturate(0.5 + win.w * (nn - prof.w));
-                // round 3 (fire-material.md section 13): the turbulence law on (the angle, s), s the radial cells
-                // behind the shifted front (signed: the noise continues ahead, the tongues lick outward). Four octaves at
-                // 2^i x fire_wave_cells about the circumference (periodic: no seam) and 2^i x s, streaming backward at
-                // 1.4^i x the flow, each warped along the angle by fire_turb_warp cells of the next finer; the finest two
-                // re-seeded every fire_jit_ms of game time; each dropped under fire_cell_px on screen, the finest two
-                // also behind the band where the budget's step 0a sheds the sheet's (heat_c.y). T the ridged sum, F =
-                // 1/2 + fire_turb_k (fire_turb_c - T) - thr; thr rising from the front's to the sheet end's behind, to 1
-                // over fire_wave_lick ahead (the tongues' tips outward)
-                float sb = -zz * prof.x, sp = max(sb, 0.0), sw = max(-zz, 0.0), ss = min(sw * rad.z, 1.0);
-                float ls = -zz * heat_c.z, N = cells.x, tw = heat_c.w * cells.w;
+                // the band (fire round 3's completion, 2026-11-08, the user's references: a thick ring of turbulent
+                // fire, billowing cells with yellow-white cores and dark-red edges, tongues out, wisps in, gaps inside,
+                // no rim line): v = -zz / band (0 at the shifted front, 1 at the band's inner end; the stage's w_e is
+                // band_r r(t) / band); five ridged octaves of the body's law at 2^i x fire_wave_cells about the
+                // circumference (the coarsest 0.5 band) and 2^i x 2 v radially (the medium three stretched 1.5 : 1
+                // outward: the tongues), anchored to the front (the band rides it) and drifting inward at 1.4^i cells /
+                // flow, each warped along the angle by the next finer, the finest two re-seeded at 15 Hz of game time and
+                // off under the budget's step 0a (heat_c.y); each dropped under fire_cell_px. The envelope v_e = v -
+                // tongue (2 n_1 - 1); thr = thr_0 + thr_r (v_e - 1/2)^2 / (1/2)^2 (thr_r the outer's ahead of the
+                // middle, the inner's behind it); F = 1/2 + fire_turb_k (fire_turb_c - T) - thr. Density: the body's
+                // alpha and luminance x fire_wave_gain x the circumference's break; colour the body's red band x the
+                // age's cooling (heat_c.x). No rim term: the edge's light is the density's.
+                float v = -zz / erode2.y, N = cells.x, tw = heat_c.w * cells.w, a1 = wts.x, a2 = a1 * a1;
                 float lw = 6.2831853 * dr / N * proj.x / (max(zr, 1e-3) * screen.x) * ramp[0].w;
-                float sh = sb > 1.0 ? heat_c.y : 1.0, a1 = wts.x, a2 = a1 * a1;
-                float w0 = saturate(lw - 1.0), w1 = saturate(0.5 * lw - 1.0), w2 = saturate(0.25 * lw - 1.0) * sh;
-                float w3 = saturate(0.125 * lw - 1.0) * sh;
+                float sh = heat_c.y;
+                float w1 = saturate(0.5 * lw - 1.0), w2 = saturate(0.25 * lw - 1.0), w3 = saturate(0.125 * lw - 1.0) * sh;
+                float w4 = saturate(0.0625 * lw - 1.0) * sh;
                 float2 jo = floor(heat_c.w * erode2.x) * float2(7.31, 3.97);
-                float nz0, nz1 = 0.5, nz2 = 0.5, nz3 = 0.5;
-                [branch] if (w3 > 0.0) nz3 = vn2p(float2(8.0 * N * u + 3.3 * disc.z + jo.x, 8.0 * (ls - 2.744 * tw) + jo.y), 8.0 * N);
+                float q = 2.0 * v, qs = q * 0.6666667;
+                float nz1 = 0.5, nz2 = 0.5, nz3 = 0.5, nz4 = 0.5;
+                [branch] if (w4 > 0.0) nz4 = vn2p(float2(16.0 * N * u + 4.1 * disc.z + jo.y, 16.0 * q + 3.84 * tw + jo.x), 16.0 * N);
+                [branch] if (w3 > 0.0) nz3 = vn2p(float2(8.0 * N * u + cells.y * (2.0 * nz4 - 1.0) + 3.3 * disc.z + jo.x, 8.0 * qs + 2.744 * tw + jo.y), 8.0 * N);
                 [branch] if (w2 > 0.0)
-                    nz2 = vn2p(float2(4.0 * N * u + cells.y * (2.0 * nz3 - 1.0) + 2.1 * disc.z + jo.y, 4.0 * (ls - 1.96 * tw) + 1.1 * advect + jo.x), 4.0 * N);
+                    nz2 = vn2p(float2(4.0 * N * u + cells.y * (2.0 * nz3 - 1.0) + 2.1 * disc.z, 4.0 * qs + 1.96 * tw + 1.1 * advect), 4.0 * N);
                 [branch] if (w1 > 0.0)
-                    nz1 = vn2p(float2(2.0 * N * u + cells.y * (2.0 * nz2 - 1.0) + 1.3 * disc.z, 2.0 * (ls - 1.4 * tw) + 0.7 * advect), 2.0 * N);
-                nz0 = vn2p(float2(N * u + cells.y * (2.0 * nz1 - 1.0) + 1.7 * disc.z, ls - tw + 0.5 * advect + cells.y * (2.0 * nz2 - 1.0)), N);
-                float ws = w0 + a1 * w1 + a2 * w2 + a1 * a2 * w3;
-                float T0 = (w0 * abs(2.0 * nz0 - 1.0) + a1 * w1 * abs(2.0 * nz1 - 1.0) + a2 * w2 * abs(2.0 * nz2 - 1.0) +
-                            a1 * a2 * w3 * abs(2.0 * nz3 - 1.0)) / max(ws, 1e-4);
-                float thr = rad.x + (rad.y - rad.x) * ss + (1.0 - rad.x) * saturate(zz * edge_c.z);
+                    nz1 = vn2p(float2(2.0 * N * u + cells.y * (2.0 * nz2 - 1.0) + 1.3 * disc.z, 2.0 * qs + 1.4 * tw + 0.7 * advect), 2.0 * N);
+                float nz0 = vn2p(float2(N * u + cells.y * (2.0 * nz1 - 1.0) + 1.7 * disc.z, q + tw + 0.5 * advect), N);
+                float wf = a2 * w2 + a1 * a2 * w3 + a2 * a2 * w4, ws = 1.0 + a1 * w1 + wf;
+                float tf = a2 * w2 * abs(2.0 * nz2 - 1.0) + a1 * a2 * w3 * abs(2.0 * nz3 - 1.0) + a2 * a2 * w4 * abs(2.0 * nz4 - 1.0);
+                float T0 = (abs(2.0 * nz0 - 1.0) + a1 * w1 * abs(2.0 * nz1 - 1.0) + tf) / ws;
+                float ve = v - erode.z * (2.0 * nz1 - 1.0) - 0.5;
+                float thr = rad.x + (ve < 0.0 ? rad.y : rad.z) * 4.0 * ve * ve;
                 float F = 0.5 + cells.z * (erode.w - T0) - thr;
-                float sF = saturate(F * erode.x), d = sF * sF * (3.0 - 2.0 * sF), mh = saturate(F * erode.y);
-                float front = wts.y * pow(max(d, 1e-6), wts.z) * step(1e-6, d) * (wts.w + (1.0 - wts.w) * m);
-                float dens = front * (1.0 - smoothstep(0.7, prof.y, sb));
-                // the rim: the turbulence's densest at the front (its density over a threshold wave_rim_lift higher, over
-                // 2 fire_soft) x wave_rim_gain: never brighter than the material, broken between its filaments
-                float ds = saturate((F - edge_c.w) * 0.5 * erode.x);
-                float rim = rim_profile(zz, sb) * edge_c.y * front * ds;
-                float tm = t_profile(sp) * (erode.z + (1.0 - erode.z) * pow(max(mh, 1e-6), 0.75));
-                float tot = rim + dens, inten = min(tot, 1.0);
-                // the intensity-weighted T of rim and material, cooled towards the floor's where the wave is dim (a dim
-                // yellow-white reads grey or olive, never fire)
-                float T = erode2.w + ((temp.x * rim + tm * dens) / max(tot, 1e-4) - erode2.w) * sqrt(inten);
+                float sF = saturate(F * erode.x), d = sF * sF * (3.0 - 2.0 * sF), mf = saturate(F * erode.y);
+                float hb = saturate((F - fire_c.x) * fire_c.y), hu = saturate((F - fire_c.w) * fire_c2.x);
+                float lum = lerp(1.0, lerp(fire_c2.y, 1.0, mf), hb) * (1.0 - fire_c2.z * tf / max(wf, 1e-4));
+                float dens = wts.y * pow(max(d, 1e-6), wts.z) * step(1e-6, d) * (wts.w + (1.0 - wts.w) * m) * lum;
+                float inten = min(dens, 1.0);
+                float T = (0.25 + (fire_c.z - 0.25) * hb + (1.0 - fire_c.z) * hu) * fire_c2.w;
                 c = heat(T * heat_c.x) * (inten * column);
             }
         }
@@ -204,7 +213,7 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
             float3 pl = dir * lane - C;
             float y = dot(n, pl) / hh;
             float xa = dot(a, pl) * s, xb = dot(b, pl);
-            float zz = (sqrt(xa * xa + xb * xb) - r) / we;
+            float zz = (sqrt(xa * xa + xb * xb) - r) / (hh * edge_c.y); // their own w_e (wave_w_x R_f), not the band's
             float sector = floor(frac(atan2(xb, xa) * 0.15915494 + 0.0625) * 8.0);
             [branch] if ((disc.w < -0.5 || abs(sector - disc.w) < 0.5) && abs(y) < 1.0 && zz > -win.x && zz < win.y) {
                 float sb = -zz * prof.x;

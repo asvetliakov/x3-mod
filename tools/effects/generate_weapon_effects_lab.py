@@ -73,6 +73,7 @@ NAMESPACES = {
              # the fire material (docs/architecture/fire-material.md)
              'fire_enabled', 'fire_ramp', 'fire_thr_0', 'fire_thr_t',
              'fire_thr_r', 'fire_soft', 'fire_gain', 'fire_gain_small', 'fire_heat_soft', 'fire_rim_t',
+             'fire_red_cut', 'fire_red_w', 'fire_red_t', 'fire_white_share',
              'fire_px_0', 'fire_px_1', 'fire_big_px_0', 'fire_big_px_1', 'budget_weight_fire',
              'fire_core_r0', 'fire_core_r1',
              # round 3 (fire-material.md section 13): the turbulence law
@@ -131,13 +132,13 @@ NAMESPACES = {
              'secondary_capsule_r', 'secondary_cluster_n0', 'secondary_embers', 'max_secondaries', 'secondary_element',
              'hull_light_r', 'hull_light_e0', 'hull_light_e1', 'hull_light_t', 'body_r_sphere_big', 'sphere_px0',
              'sphere_px1', 'budget_screens', 'shock_tiers', 'halo_e', 'halo_r_x', 'halo_sigma',
-             'halo_tail', 'halo_win_x0', 'halo_in', 'halo_t',
+             'halo_tail', 'halo_win_x0', 'halo_t', 'halo_floor', 'halo_floor_r', 'halo_lit_0', 'halo_lit_a',
              # section 13 (2026-11-07): the fire wave and the composed body
              'wave_tiers', 'wave_r_x', 'wave_tau_x', 'wave_life_x', 'wave_creep', 'wave_stretch', 'wave_w_x', 'wave_band_x',
              'wave_slab_x', 'wave_trail_span', 'wave_e', 'wave_t_edge', 'wave_t_band0', 'wave_t_band_end', 'wave_t_sheet_end',
-             'wave_t_cool', 'fire_wave_cells', 'fire_wave_aspect', 'fire_wave_thr_0', 'fire_wave_thr_end', 'fire_wave_gain', 'fire_wave_flow_ms', 'fire_wave_heat_soft',
+             'wave_t_cool', 'fire_wave_cells', 'fire_wave_thr_0', 'fire_wave_thr_out', 'fire_wave_thr_in', 'fire_wave_tongue', 'fire_wave_gain', 'fire_wave_flow_ms', 'wave_band_r', 'wave_band_we', 'wave_band_heat',
              'wave_floor_a', 'wave_floor_t', 'wave_lead', 'wave_ahead', 'wave_break_floor',
-             'wave_rim_gain', 'wave_rim_lift', 'fire_wave_lick', 'wave_eye_plane_x', 'wave_eye_plane_blend_x',
+             'wave_eye_plane_x', 'wave_eye_plane_blend_x',
              'wave_eye_fade_x', 'wave_sheet_enabled', 'compose_enabled', 'compose_count_3', 'compose_count_2',
              'wave_window_in', 'wave_window_out', 'wave_light', 'wave_m_floor', 'wave_m_contrast', 'wave_n_cells',
              'wave_n_w', 'wave_refract_px', 'budget_weight_wave', 'budget_weight_wave_miss', 'wave_seed_element',

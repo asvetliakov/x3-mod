@@ -34,8 +34,9 @@
 // normalised by its weights. The envelope: the radius r' = |p| / (1 + fire_env_amp (2 n_1 - 1)) (the blob's silhouette
 // bulges and shifts with octave 1); F = 1/2 + fire_turb_k (fire_turb_c - T) - (fire_thr_0 + fire_thr_t x + fire_thr_r r'^2
 // (1 + fire_thr_rt x)) - the cluster's thinning. alpha smoothstep(0, fire_soft, F)^fire_gain x column^column_pow (the lobes
-// off under the law: the envelope is the silhouette); T' = T(t) (fire_rim_t + (1 - fire_rim_t) m^0.75), m = saturate(F /
-// fire_heat_soft): colour from density (the filaments' edges red, the dense interior at T(t)), the luminance x
+// off under the law: the envelope is the silhouette); T' = T(t) (0.25 + (fire_red_t - 0.25) h_b + (1 - fire_red_t) h_u),
+// h_b = saturate((F - fire_red_cut) / fire_red_w), h_u from the band's end to the densest fire_white_share of [cut, F_top]
+// (the red band above the alpha's cut, the tips red, the dense interior at T(t)), the luminance lerp(1, x, h_b) of x
 // lerp(fire_lum_0, 1, m) (1 - fire_lum_depth T_fine), T_fine the ridged sum of octaves 3-5. The fire core inside
 // fire_core_r0 falling to 0 at fire_core_r1 of R_s (c25), whitened towards the fire ramp's top stop, never neutral white.
 // fire 0: the previous law on the heat ramp (dust, smoke, the eye inside a body); fire < 0: on the fire ramp (the kill
@@ -55,9 +56,10 @@ float4 fire1 : register(c19);   // fire_turb_f, fire_turb_a, fire_turb_k, fire_t
 float4 fire2 : register(c20);   // fire_turb_n2, fire_turb_n3, 1 / fire_stretch, fire_turb_warp
 float4 fire3 : register(c21);   // fire_flow_v / 1000 (R_s per game ms), 1 / fire_jit_ms, fire_thr_0, fire_thr_t
 float4 fire4 : register(c22);   // fire_thr_r, 1 / fire_soft, fire_gain, fire_gain_small
-float4 fire5 : register(c23);   // 1 / fire_heat_soft, fire_rim_t, fire_env_amp, fire_env_rate
+float4 fire5 : register(c23);   // 1 / fire_heat_soft, fire_red_cut, fire_env_amp, fire_env_rate
 float4 fire6 : register(c24);   // fire_polar_r0, fire_polar_r1, 1 / fire_cell_px, fire_thr_rt
 float4 fire7 : register(c25);   // fire_core_r1, 1 / (fire_core_r1 - fire_core_r0), fire_lum_0, fire_lum_depth
+float4 fire8 : register(c26);   // 1 / fire_red_w, fire_red_t, fire_red_cut + fire_red_w, 1 / (F_white - that)
 float hash2(float2 q) {
     float3 p = frac(float3(q.x, q.y, q.x) * 0.1031);
     p += dot(p, p.yzx + 33.33);
@@ -216,10 +218,14 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                     // the luminance follows the density, lerp(fire_lum_0, 1, m), and the fine octaves' ridges, x (1 -
                     // fire_lum_depth T_fine): bright veins over darker billows at the small scales, the dense core kept
                     // (an orange at full alpha x E turns peach under AgX)
+                    // the colour (2026-11-08, the red band): above the alpha's 10 % density (fire_red_cut) the band
+                    // fire_red_w wide runs from the red stop to fire_red_t, then to the top stop at the densest
+                    // fire_white_share; the band's outer edge at full luminance (the tongues end in red tips)
                     float mf = saturate(F * fire5.x), tfn = tf3 / max(wf, 1e-4);
-                    dens_f = pow(max(al, 1e-6), fire4.z) * step(1e-6, al) * colpow * lobe * lerp(fire7.z, 1.0, mf) *
-                             (1.0 - fire7.w * tfn);
-                    T_f = look.x * (fire5.y + (1.0 - fire5.y) * pow(max(mf, 1e-6), 0.75));
+                    float hb = saturate((F - fire5.y) * fire8.x), hu = saturate((F - fire8.z) * fire8.w);
+                    dens_f = pow(max(al, 1e-6), fire4.z) * step(1e-6, al) * colpow * lobe *
+                             lerp(1.0, lerp(fire7.z, 1.0, mf), hb) * (1.0 - fire7.w * tfn);
+                    T_f = look.x * (0.25 + (fire8.y - 0.25) * hb + (1.0 - fire8.y) * hu);
                 }
                 float density = lerp(dens_o, dens_f, wl), T = lerp(T_o, T_f, wl);
                 if (smoke) {

@@ -396,6 +396,15 @@ inline float collapse_r(float x) noexcept {
     const float u = 1.f - bm::collapse_s(x);
     return bm::body_end_r + (1.f - bm::body_end_r) * u * scalar::sqrt(u);
 }
+// The death halo's peak radius over R(t) at the age fraction x (core::boom halo_lit_*, weapon_halo_ps.hlsl): the body's
+// lit radius under the fire material's threshold age terms, halo_lit_0 sqrt((1 - fire_thr_t x / halo_lit_a) / (1 +
+// fire_thr_rt x)).
+inline float halo_lit_r(float x) noexcept {
+    namespace bm = core::boom;
+    namespace lk = core::look;
+    const float v = (1.f - lk::fire_thr_t * x * (1.f / bm::halo_lit_a)) / (1.f + lk::fire_thr_rt * x);
+    return bm::halo_lit_0 * scalar::sqrt(v > 0.f ? v : 0.f);
+}
 // round 3 (fire-material.md section 13): a fire class's burst (class_fire >= 1; not the plasma globe, which keeps its own
 // shrink) also contracts with the collapse over its own life.
 inline float puff_radius(unsigned anatomy, float R_b, float age_ms, float life_ms) noexcept {

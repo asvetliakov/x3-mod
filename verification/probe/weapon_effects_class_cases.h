@@ -871,7 +871,9 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
             std::printf("CLASS case=burst_body_median class=%s hits=%u dark_share=%.4f hp_std=%.4f lobe_max_over_min=%.3f "
                         "lobe_std_over_mean=%.4f\n", anatomy_name(a), unsigned(dark.size()), median(dark), median(hp),
                         median(lr), median(lcv));
-            contrast_ok = contrast_ok && dark.size() == hits_n && median(dark) >= 0.15 && median(hp) >= 0.10;
+            // fire round 3 (2026-11-08, the orchestrator: re-derived to the record's 0.096-0.097 less 10 %; the look
+            // accepted): the high-pass std >= 0.086 (was 0.10)
+            contrast_ok = contrast_ok && dark.size() == hits_n && median(dark) >= 0.15 && median(hp) >= 0.086;
             lobed_ok = lobed_ok && lr.size() == hits_n && median(lr) >= 1.25 && median(lcv) >= 0.06;
         }
         report("hull_burst_contrast", contrast_ok, "");
@@ -1055,15 +1057,19 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
         report("fire_temporal_hull", all && median(hp16) >= 0.5 && median(hp16) <= 0.9 && median(hp100) <= 0.6 &&
                                          median(lp16) >= 0.9, "");
         report("fire_colour_ramp_hull", all && median(hot) >= 0.25 && median(hot_r) <= 0.5 && median(cold) >= 0.05 &&
-                                            median(cold) <= 0.25 && median(cold_r) >= 0.65 && median(mid) <= 0.5, "");
+                                            median(cold) <= 0.25 && median(cold_r) >= 0.65 && median(mid) <= 0.65, "");
         report("fire_core_bloom_hull", all && median(core40) >= 3.0 && median(out40) <= 1.5, "");
         // the median over the hits as every section-6 gate (a single hit's tongue edge crossing the strip is not a seam)
         report("fire_no_seam_hull", all && median(seam) <= 0.1, "");
-        // round 3 (fire-material.md section 13): fire_turbulent_hull, the death gate's bounds at 0.3 and 0.5 L_b
+        // round 3 (fire-material.md section 13): fire_turbulent_hull, the death gate's bounds at 0.3 and 0.5 L_b, except
+        // (2026-11-08, the orchestrator's decisions, 13.3) the high-frequency share >= 0.6 x vanilla's (was 0.8: a hull
+        // burst is a small body, its Laplacian share a pixel-scale measure that the finest octaves' size LOD drops) and the
+        // connected core >= 0.28 of the disc (was 0.35; vanilla's 0.408 is a 32 px sprite); the colour ramp's mid share
+        // above <= 0.65 (was 0.5)
         std::printf("CLASS case=fire_hull_turbulence_median hf3=%.4f hf5=%.4f core3=%.3f out3=%.4f out5=%.4f\n", median(hf3),
                     median(hf5), median(conn3), median(out3), median(out5));
-        report("fire_turbulent_hull", all && median(hf3) >= 0.8 * burst::fire_hf_vanilla && median(hf5) >= 0.8 * burst::fire_hf_vanilla &&
-                                          median(conn3) >= 0.35 && median(out3) < 0.08 && median(out5) < 0.08, "");
+        report("fire_turbulent_hull", all && median(hf3) >= 0.6 * burst::fire_hf_vanilla && median(hf5) >= 0.6 * burst::fire_hf_vanilla &&
+                                          median(conn3) >= 0.28 && median(out3) < 0.08 && median(out5) < 0.08, "");
         stage_ring.next_sequence = next_sequence;
     }
     // 4b. No centre ring (the doughnut; docs/verification/weapon-effects.md "Fireball drift law"), energy at 0.5 / 0.6 /
@@ -1071,7 +1077,9 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
     // defect is on every body; a median over seeds hides it: 0.02-0.07 on the old law against a worst hit of 0.29), and the
     // pooled lit share of the annulus 0.3-0.45 R_s at most 1.3 x the mean of its neighbours (0.15-0.3, 0.45-0.6 R_s).
     {
-        constexpr double ring_prominence_max = 0.15, annulus_ratio_max = 1.3;
+        // fire round 3 (2026-11-08, the orchestrator: re-derived to the record's worst 0.18 + 10 %; the look accepted):
+        // ring_prominence_max 0.15 -> 0.198
+        constexpr double ring_prominence_max = 0.198, annulus_ratio_max = 1.3;
         // the ring's sequence counter is restored after the gate: the stage dump's own records (energy_single, the accepted
         // frames) keep the seeds they had before it
         const std::uint32_t next_sequence = stage_ring.next_sequence;

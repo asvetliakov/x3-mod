@@ -770,14 +770,21 @@ constexpr float fragment_dark = 0.6f, fragment_tip_t = 0.6f, fragment_dark_r = 1
 // orange fringe: heat(T) read as a grey disc under AgX in the lab) x p(r), r the pixel's ray's distance
 // from the centre (the impact parameter), d = (r - R) / R: p = (e^(-(d / halo_sigma)^2) + halo_tail w(d) / (1 + d^2)) /
 // (1 + halo_tail) outside R (peak 1 at the rim), w = 1 - smoothstep(halo_win_x0 - 1, halo_r_x - 1, d) (0 at halo_r_x
-// R), inside R the rim's value x smoothstep(halo_in, 1, r / R) (no fill: the body is not a balloon, the rise hidden
-// under the body's rim); the quad to halo_r_x R(t); faded out over halo_fade_x0 .. halo_fade_x1 of L (smoothstep, with
-// the core). It replaces the 2026-11-07 filled glow in air (1.6 R(t), D15's 1.15 R(t) and 0.2 E_b cap on the big tiers:
-// it read as a balloon). At d = 1 (2 R(t)) p = 0.050, its 10 % radius 1.80 R(t) [I, the law] (the first lab round's
-// halo_tail 0.4 windowed from 1.8 R(t), 0.114 and 2.04 R(t), read as a disc with an edge).
+// R); the quad to halo_r_x R(t); faded out over halo_fade_x0 .. halo_fade_x1 of L (smoothstep, with the core). It
+// replaces the 2026-11-07 filled glow in air (1.6 R(t), D15's 1.15 R(t) and 0.2 E_b cap on the big tiers: it read as a
+// balloon). At d = 1 (2 R(t)) p = 0.050, its 10 % radius 1.80 R(t) [I, the law] (the first lab round's halo_tail 0.4
+// windowed from 1.8 R(t), 0.114 and 2.04 R(t), read as a disc with an edge).
+// The inner side (2026-11-08, fire round 3's native grids: a black annulus between the lit body and the halo at the
+// capital's 2700 ms and the station's 4200 ms, the halo 0 inside 0.9 R(t) while the body's lit set ends inside R(t)):
+// the peak sits at the body's lit radius R_lit = R(t) k(x) (the stage's halo_lit_r: k = halo_lit_0 sqrt((1 - fire_thr_t x
+// / halo_lit_a) / (1 + fire_thr_rt x)), the material's 10 %-of-peak edge under its threshold's age terms; halo_lit_0
+// the five tiers' measured mean outline over R(t) at 0.1-0.3 L, halo_lit_a the density margin at the edge; R(t) carries
+// the collapse, so the peak follows the shrinking body), d = r - k in R(t); inside the peak p falls by a smoothstep to
+// halo_floor at halo_floor_r R(t) and holds it to the centre (never 0 inside: no dark ring; under half the peak: not a
+// balloon).
 constexpr float glow_r_x = 1.6f, glow_r_max = 2.0f, glow_e = 0.33f, halo_soft = 0.5f, halo_fade_x0 = 0.3f, halo_fade_x1 = 0.6f;
-constexpr float halo_e = 0.5f, halo_r_x = 2.5f, halo_sigma = 0.35f, halo_tail = 0.25f, halo_win_x0 = 1.5f, halo_in = 0.9f,
-                halo_t = 0.8f;
+constexpr float halo_e = 0.5f, halo_r_x = 2.5f, halo_sigma = 0.35f, halo_tail = 0.25f, halo_win_x0 = 1.5f, halo_t = 0.8f;
+constexpr float halo_floor = 0.35f, halo_floor_r = 0.5f, halo_lit_0 = 0.98f, halo_lit_a = 0.23f;
 constexpr float cluster_r_x = 2.0f, cluster_n0 = 1.6f;
 // 2.7 the smoke: the burst's surface-bound multiply puff at smoke_r R_f, y = (t - smoke_t0 L) / (smoke_span L),
 // strength smoke_s0 min(1, y / smoke_rise) (1 - y) / (1 - smoke_rise), the body's seed and rotation.
@@ -947,22 +954,34 @@ static_assert(wave_band_x - wave_trail_span * wave_w_x < 1e-4f && wave_trail_spa
 // round 3); the kill step taken past its 0.2: 0.45 / 0.7 in the lab's round 4 left the native sheet 0.21 R_f thick and a bin
 // dark (wave_sheet_thick 0.6, the circumference's 5 % floor), 0.3 / 0.6 between them.
 // Round 2: fire_wave_thr_0 0.3 -> 0.25 (the spine-only rim left 4 bins of 64 dark in a run: a transparent arc).
-constexpr float fire_wave_cells = 48.f, fire_wave_aspect = 2.5f, fire_wave_thr_0 = 0.25f, fire_wave_thr_end = 0.6f;
-constexpr float fire_wave_gain = 0.6f;
-// Round 3 (fire-material.md section 13): the band and sheet take the body's turbulence law in the ring's frame; its flow
-// in the band's radial cells (l_s) per game ms, the round-2 tongues' rate; its own heat softness (the band's F sits
-// low under the front's threshold: at 0.6 the young band classed red, wave_fire_not_grey 0.25 vs 0.5; at 0.3 the band
-// left the orange hues, wave_fire_hue 0.565 vs 0.8, and the sheet thinned, 0.49 vs 0.6 R_f).
-constexpr float fire_wave_flow_ms = 120.f, fire_wave_heat_soft = 0.42f;
+// The band (fire round 3's completion, 2026-11-08, the user's four references: a thick ring of turbulent fire, the band
+// 0.2-0.4 of the ring's radius, billowing cells with yellow-white cores and dark-red edges, tongues licking out, wisps
+// trailing in, dark gaps, see-through inside, no bright rim line; fire-material.md 13.5): the stage's w_e = max(wave_w_x
+// R_f, wave_band_r r(t) / wave_band_we), the band wave_band_we w_e = 0.35 r(t) wide behind the front. v = -z / band (0
+// at the front shifted by the circumference's tongues, 1 at the band's inner end); five ridged octaves of the body's law
+// (fire_turb_a, k, c) at 2^i fire_wave_cells about the circumference (the coarsest cell 0.5 band: 2 pi / (0.5 x 0.35) =
+// 36) and 2^i x 2 v radially (octaves 2-4 stretched 1.5 : 1 outward: tongues and wisps), anchored to the front (the
+// band rides it) and drifting outward at 1.4^i cells per fire_wave_flow_ms of game time, each warped along the angle by
+// fire_turb_warp cells of the next finer, the finest two re-seeded every fire_jit_ms and shed at the budget's step 0a;
+// each dropped under fire_cell_px on screen. The envelope v_e = v - fire_wave_tongue (2 n_1 - 1) - 1/2, thr =
+// fire_wave_thr_0 + 4 v_e^2 x (fire_wave_thr_out ahead of the middle, fire_wave_thr_in behind it); F = 1/2 + fire_turb_k
+// (fire_turb_c - T) - thr. Density fire_wave_gain smoothstep(0, fire_soft, F)^fire_gain x the body's luminance law x
+// (wave_break_floor + (1 - wave_break_floor) m); intensity min(1, density); colour the body's red band (look::fire_red_*)
+// x wave_band_heat x the age's cooling (1 - wave_t_cool x). The swept hulls' window keeps w_e = wave_w_x R_f. No rim term: the edge's light is the density's, so no hoop. The swept hulls
+// keep the rim / floor law below (wave_lead, wave_ahead, wave_t_*, wave_floor_*).
+constexpr float wave_band_r = 0.35f, wave_band_we = 10.f;
+// wave_band_heat: the red band's T scaled (the lab's first band at the body's T read a pale olive-yellow under AgX).
+constexpr float fire_wave_cells = 36.f, fire_wave_thr_0 = 0.18f, fire_wave_thr_out = 0.45f, fire_wave_thr_in = 0.3f;
+constexpr float fire_wave_tongue = 0.2f, fire_wave_gain = 0.6f, fire_wave_flow_ms = 800.f, wave_band_heat = 0.65f;
 constexpr float wave_floor_a = 0.2f, wave_floor_t = 0.25f;
-// Round 2: wave_ahead 0.7 -> 1.0 (the spine-only rim fell 0.35 of its peak in a pixel ahead: wave_no_hard_edge).
-constexpr float wave_lead = 0.1f, wave_ahead = 1.0f, wave_break_floor = 0.6f, wave_rim_gain = 1.0f, wave_rim_lift = 0.25f;
-// Round 2 (fire-material.md section 12; the lab wave a drawn hoop): the noise continues ahead of the shifted front and the
-// threshold rises to 1 over fire_wave_lick w_e ahead of it (the tongues point outward with pointed tips).
-constexpr float fire_wave_lick = 4.f;
+// Round 2: wave_ahead 0.7 -> 1.0 (the spine-only rim fell 0.35 of its peak in a pixel ahead: wave_no_hard_edge). Since
+// fire round 3's band (2026-11-08) the rim / lead / ahead / T profile light the swept hulls only.
+// Fire round 3's band (2026-11-08): wave_break_floor 0.6 -> 0.15 (the first native band kept a bright arc of 81.5 degrees
+// at half the peak, 76 at 0.3, wave_not_a_tyre's 60).
+constexpr float wave_lead = 0.1f, wave_ahead = 1.0f, wave_break_floor = 0.15f;
 // Round 2: wave_t_band0 / _band_end 0.55 / 0.4 -> 0.75 / 0.55 (on the round-2 ramp, whose orange stop is dimmer and
 // redder-classed, the young wave's band read red: wave_fire_not_grey's hue at 0.2 L_w 0.25 against >= 0.5).
-constexpr float wave_t_edge = 0.9f, wave_t_band0 = 0.75f, wave_t_band_end = 0.55f, wave_t_sheet_end = 0.25f;
+constexpr float wave_t_edge = 0.9f, wave_t_band0 = 0.55f, wave_t_band_end = 0.45f, wave_t_sheet_end = 0.25f;
 constexpr float wave_t_cool = 0.5f, wave_e = 1.6f;
 // The kill criterion's switches (2026-11-07 v3, the coordinator): wave_sheet_enabled false draws the wave as the thick
 // textured ring (s_end 1: the material within the band); compose_enabled false draws every death body as the single lobed
@@ -985,15 +1004,19 @@ constexpr float wave_tongue = 0.3f, wave_tongue_contrast = 2.f;
 // The window in z (w_e from the shifted front): the sheet inside, the rim's fall-off outside (e^(-(2.5 / 0.7)^2) ~ 3e-6);
 // the drawn quads reach r - (window_in + tongue) w_e .. r + (window_out + tongue) w_e (wave_reach_in / _out), so no lit
 // pixel lies outside them (v6 drew to r + 3.5 w_e while the tongues and the sheet lit to r + 5 w_e: a hard cut).
-constexpr float wave_window_in = 12.f, wave_window_out = 4.f, wave_light = 0.33f; // round 2: out 2.5 -> 4 (the licks)
+// Fire round 3's band (2026-11-08): window 12 / 4 -> 15 / 5 w_e (the band's wisps to 1.2 band behind the envelope's
+// tongue, its tongues 0.3 band ahead).
+constexpr float wave_window_in = 15.f, wave_window_out = 5.f, wave_light = 0.33f; // round 2: out 2.5 -> 4 (the licks)
 constexpr float wave_reach_in = wave_window_in + wave_tongue * wave_trail_span,
                 wave_reach_out = wave_window_out + wave_tongue * wave_trail_span;
-static_assert(wave_window_in + 1e-4f >= wave_sheet_span + wave_tongue * wave_trail_span && wave_window_out >= 2.f * wave_ahead &&
-                  wave_window_out >= fire_wave_lick,
-              "the window holds the sheet behind the deepest tongue, the rim's fall-off and the tongues' licks ahead");
+static_assert(wave_window_in + 1e-4f >= (1.2f + fire_wave_tongue) * wave_band_we &&
+                  wave_window_out + 1e-4f >= (0.3f + fire_wave_tongue) * wave_band_we && wave_window_out >= 2.f * wave_ahead,
+              "the window holds the band's wisps behind, its tongues and the swept rim's fall-off ahead");
 // The circumference's break (2026-11-07 [M]: at the hull ring's 0.5 and 2.5, 60 of 64 bins stayed above 10 % of the
 // ring's peak): m = wave_m_floor + (1 - wave_m_floor) saturate(0.5 + wave_m_contrast (n - wave_m_bias)).
-constexpr float wave_m_floor = 0.05f, wave_m_contrast = 4.f, wave_m_bias = 0.55f;
+// Fire round 3's band (2026-11-08): wave_m_bias 0.55 -> 0.65 (bright arcs of 81 degrees at half the peak on the first
+// native band records against wave_not_a_tyre's 60).
+constexpr float wave_m_floor = 0.05f, wave_m_contrast = 4.f, wave_m_bias = 0.65f;
 constexpr float wave_n_cells[2] = {9.f, 23.f}, wave_n_w[2] = {0.7f, 0.3f};
 constexpr float wave_refract_px = 6.f, wave_refract_band = 2.f;
 // The weights, a drawn screen of the strips (or the box at birth), 5120x1440 [M]: v6 1.40 / 1.24 (the sheet's second
@@ -2058,8 +2081,8 @@ constexpr float fire_ramp[5][3] = {{0.f, 0.f, 0.f}, {0.47f, 0.15f, 0.f}, {0.62f,
 // 4-5 Cartesian, re-seeded every fire_jit_ms of game time (15 Hz); octave 1 Cartesian under the drift law, sliding
 // fire_env_rate cells over the life, warped by octaves 2-3. The envelope: r' = |p| / (1 + fire_env_amp (2 n_1 - 1)) (the
 // silhouette bulges and shifts); F = 1/2 + fire_turb_k (fire_turb_c - T) - (fire_thr_0 + fire_thr_t x + fire_thr_r r'^2
-// (1 + fireball_erode_rt x)); alpha smoothstep(0, fire_soft, F)^fire_gain; T' = T(t) (fire_rim_t + (1 - fire_rim_t)
-// saturate(F / fire_heat_soft)^0.75) (colour from density). The lobes are off under the law. The wave's band and sheet
+// (1 + fireball_erode_rt x)); alpha smoothstep(0, fire_soft, F)^fire_gain; T' = T(t) x the red band's law below (colour
+// from density; fire_rim_t the wave's). The lobes are off under the law. The wave's band and sheet
 // take the same law in the ring's frame (boom::fire_wave_*).
 constexpr float fire_turb_f = 3.f, fire_turb_a = 0.55f, fire_turb_k = 0.75f, fire_turb_c = 0.25f;
 constexpr float fire_turb_n2 = 27.f, fire_turb_n3 = 53.f, fire_stretch = 1.5f, fire_turb_warp = 0.4f;
@@ -2075,8 +2098,21 @@ constexpr float fire_core_r0 = 0.2f, fire_core_r1 = 0.35f;
 // fire_heat_soft), T_fine the ridged sum of octaves 3-5 normalised (the first native frames: the hull burst's dense
 // interior at full alpha read peach under AgX at 120 ms, the 20 hits a tan cloud, the luma's high-pass share 0.006-0.010
 // against vanilla's 0.0235; the second: lerp(0.3, 1, m^2) split the connected core, 0.11-0.25 of the disc, and unlit the
-// red fringe).
-constexpr float fire_lum_0 = 0.6f, fire_lum_depth = 0.5f;
+// red fringe); fire_lum_0 0.6 -> 0.7 with the red band (2026-11-08: the band's cooler interior split the death's
+// connected core to 0.233 / 0.253 of the disc against >= 0.28; 0.271 / 0.299 at 0.65 and fire_white_share 0.4).
+constexpr float fire_lum_0 = 0.7f, fire_lum_depth = 0.5f;
+// The red band (2026-11-08, round 3's records: the red share 0.0-0.019 against >= 0.05, the alpha's cut removed the low
+// density band before it turned red): above fire_red_cut (the alpha's 10 % density: smoothstep(0, fire_soft, F)^fire_gain
+// = 0.1) a band fire_red_w wide runs from the ramp's red stop (0.25) to fire_red_t, then on to the top stop at the
+// densest fire_white_share of [cut, F_top] (F_top = 1/2 + fire_turb_k fire_turb_c - fire_thr_0, T 0 at the centre); the
+// band's luminance lerp(1, lerp(fire_lum_0, 1, m), h_b): its outer edge, the tongues' tips, at full luminance (red tips
+// as vanilla's). verification/results/explosion-look/fire_red_band.py (the replica, its old law within 0.04 of the
+// round-3 record's classes; the first native record of the band at fire_white_share 0.1: red 0.176 / 0.159, mid 0.50,
+// hot 0.31-0.35, the replica within 0.02) and fire_white_share 0.1 -> 0.4 (the interior's orange split the connected
+// core; the replica's hull core 0.27 -> 0.40 with fire_lum_0 0.7) -> 0.5 (the second: the fighter's core 0.271).
+constexpr float fire_red_cut = 0.035f, fire_red_w = 0.15f, fire_red_t = 0.55f, fire_white_share = 0.5f;
+constexpr float fire_top_f = 0.5f + fire_turb_k * fire_turb_c - fire_thr_0;
+constexpr float fire_white_f = fire_top_f - fire_white_share * (fire_top_f - fire_red_cut);
 // The size LOD: under fire_px_0 .. _1 of R px at 1440 rows the previous erosion law on the fire ramp blends in (a far
 // hit keeps its clumps and holes); fire_big_px only feeds fire_lod's second term, which the program no longer reads.
 constexpr float fire_px_0 = 24.f, fire_px_1 = 40.f, fire_big_px_0 = 160.f, fire_big_px_1 = 400.f;

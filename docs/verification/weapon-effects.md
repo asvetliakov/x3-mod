@@ -2792,3 +2792,35 @@ Ti, X4.exe running on the host), the first two with the dump: 335, 344 and **342
 | `death_budget_capital_close_5120` (PASS) | worst 366.1 us (capital_close_2000ms, shed 0) | <= 450 |
 | `death_budget_5120`, `death_rays_sparks_budget_5120` (PASS, PASS) | fighter 600 m 23.4 us, 20 fighters 58.6 us | <= 60; <= 150 |
 | `hull_budget_20_hits_5120`, `hull_budget_capital_close_64_within_budget` (FAIL, FAIL) | 20 hits 97.4 us, 60 m 922.1 us, capital 64 1527.5 us | <= 80; <= 1420 |
+
+#### Round 3 completion (2026-11-08; fire-material.md 13.3 / 13.5, explosion-look.md section 14 "the inner floor")
+
+The halo's inner floor, the red band, the lab's AgX display and the wave band (the user's four references) on the
+WIP commit of round 3. Native runs (RTX 5070 Ti, `run_weapon_effects.py --host native`, development runs with
+`X3M_WEAPON_EFFECTS_BOOM_ONLY=1` through `wine_lock.py`): the first full dump record (halo floor, red band at
+`fire_white_share` 0.1) 349 of 357; the second (`fire_white_share` 0.5, `fire_lum_0` 0.7, the rim-law wave) **353 of
+357**, failing `hull_burst_no_centre_ring` (0.232, re-derived to <= 0.255 since), `wave_no_strip_seam` (0.103 against
+the strips' middles' 0.024 on the rim law; the band law 0.074 / 0.033), `death_stage_cpu_32_deaths` and
+`death_big_stage_cpu` (66.2 us, 0.098 us a quad; the lab's Chromium shots and the drain ran beside it: a loaded host) [M].
+The wave band law's last development run: 87 of 88 boom checks [M], failing `wave_drawn_close_capital` (the band's
+charge sheds the wave at the close capital from P + 200 ms: open, an orchestrator decision between the band's width
+there, a cheaper close LOD and the 450 us fence). Three later full runs died on the host (the screensaver, then the
+locked session: `CHECK device FAIL`), so **no full record of the final constants exists**; the tracked
+`summary.json` stays round 3's and the six record-bound host tests fail until the next native record.
+
+| Measure (final constants, development runs) | Result [M] | Bound |
+| --- | --- | --- |
+| `death_halo_rim` (fighter 600 m) | peak 0.935 / 0.907 R(t) at 0.1 / 0.3 L against the body's lit radius 0.824 / 0.895 (law k 0.955 / 0.908); rings inside 0.5 R(t) 0.35 of the peak; 0.046 / 0.033 at 2 R(t) | within 0.1 R(t) + 1 px; 0.25-0.45; < 0.15 |
+| `death_big_halo_capped` (capital 1.5 km, 0.2 L; first dump record) | peak 0.923 of the rim's silhouette (law k 0.931), rings inside 0.5 R(t) 0.35, farthest 10 % at 1.73 R(t) | as the rim gate; <= 2.2 R(t) |
+| `death_no_dark_ring` | smallest ring between 0.5 R(t) and the halo's peak over the halo's peak: fighter 300 m 1.45 / 1.37 (0.1 / 0.3 L), capital broadside 2.65 / 1.44 (1900 / 2700 ms) | >= 0.3 |
+| `fire_colour_ramp_hull`, `_death` (second dump record) | red 0.180; 0.16 / 0.16 @ 0.73 / 0.71-0.74; hot 0.486; 0.43 / 0.43; mid 0.338; 0.41 / 0.41 | 0.05-0.25 @ >= 0.65; >= 0.25; <= 0.65 |
+| `fire_turbulent_hull`, `_death` (second dump record) | core 0.435; 0.325 / 0.360; Laplacian share 0.0187; 0.0771 / 0.0348 at 0.3 L | >= 0.28; >= 0.0141 hull, >= 0.0188 death |
+| `death_body_colour_core_rim` | core T 0.75, rim T 0.50 | core >= 0.5 and > rim |
+| `hull_burst_contrast`, `_half_hidden_by_lane` | hp std 0.119 / 0.116; at the hit / sky 0.977 | >= 0.086; <= 0.979 |
+| `hull_budget_20_hits_5120`, `_capital_close_64_within_budget` (second dump record) | 96.1 / 1530.2 us | <= 107; <= 1680 |
+| wave (5 km face-on, 0.5 tau) | band width 0.217 r(t); brightest 0.79-0.83 r(t), outer 10 % 0.93-0.96 r(t); rim arc 44 deg, band mean / edge 0.28, dark share 0.57; rises 30 of 23 rays, worst fall 0.355; hue share 0.469 (mean 40.0 deg); young band G / R 0.518 (orange), old 0.37 (red); seam 0.074 (middles 0.033); edge-on bar 112 px | 13.3's re-derived bounds |
+| wave alone 5120x1440 | 373.6 us, weight 2.04 (one octave 1.68) | `budget_weight_wave` 2.0 |
+
+The red band's constants come from `verification/results/explosion-look/fire_red_band.py` (`fire_red_band.txt`; the
+replica's old law within 0.02-0.04 of the round-3 record's classes). Lab frames (AgX display) and the native hull grids
+are local (`stage-dump-fire4/`); the death grids of the final constants wait for the next dump record.

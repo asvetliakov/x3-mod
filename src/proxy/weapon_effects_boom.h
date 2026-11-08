@@ -1968,7 +1968,9 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             if (lv.tb < life) {
                 const float r0w = s.hull_kind ? s.hull_e[2] : 0.5f * bm::secondary_capsule_len * float(e.radius) * core::world_scale;
                 const float r = boom_wave_radius(r0w, bm::wave_r_x * lv.R_f, bm::wave_tau_x * L, lv.tb);
-                const float we = bm::wave_w_x * lv.R_f, hh = 0.5f * bm::wave_slab_x * lv.R_f;
+                // w_e: the band (wave_band_we w_e) wave_band_r r(t) wide, never under wave_w_x R_f (fire round 3's band)
+                const float we_band = bm::wave_band_r * r * (1.f / bm::wave_band_we), we_min = bm::wave_w_x * lv.R_f;
+                const float we = we_band > we_min ? we_band : we_min, hh = 0.5f * bm::wave_slab_x * lv.R_f;
                 const float fade = (1.f - lv.tb / life) * (1.f - lv.tb / life);
                 const float Tw = 1.f - bm::wave_t_cool * lv.tb / life; // the age's cooling factor on every T
                 float nv[3], av[3];
@@ -2099,25 +2101,24 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         wc.normal[3] = lv.tb / life; // the age fraction: the material's erosion and advection (v7)
                         wc.heat[0] = Tw;
                         wc.heat[1] = t.wave_octave2 ? 1.f : 0.f; // the sheet's second octave (0: shed, the budget's step 0a)
-                        // v8, the fire material: 1 / l_s in w_e (the tongues' radial cell fire_wave_aspect x the arc 2 pi r /
-                        // fire_wave_cells: fire_wave_aspect : 1 along the radius) and the wave's game-time age (the flow)
-                        {
-                            const float arc = 6.2831853f * (r > 1e-3f * lv.R_f ? r : 1e-3f * lv.R_f) / bm::fire_wave_cells;
-                            wc.heat[2] = we / (bm::fire_wave_aspect * arc);
-                        }
+                        // the wave's game-time age (the flow); heat[2] unused since fire round 3's band (its radial cells
+                        // are the band's)
+                        wc.heat[2] = 0.f;
                         wc.heat[3] = lv.tb;
                         for (unsigned q = 0; q < 4; ++q) wc.spare[q] = 0.f;
                         wc.quads = quads;
-                        // the charge: the strips' screens x budget_weight_wave; the box: the annulus's projected screens x
-                        // budget_weight_wave, the rest of it x _miss
+                        // the charge: the annulus's projected screens x budget_weight_wave (x _one under step 0a), the rest
+                        // of the drawn quads (the strips' or the box's screens) x _miss, the shader's early-out (fire round
+                        // 3's band, 2026-11-08: the strips were charged whole at the full weight, which the band's 0.35 r(t)
+                        // made several screens at the close capital; the box always had this split)
                         float charge = 0.f;
-                        if (use_strips) {
-                            charge = strip_sum * (t.wave_octave2 ? bm::budget_weight_wave : bm::budget_weight_wave_one);
-                        } else {
+                        {
                             float ann = 0.f;
                             const float eye_n = -dot3(lv.c, nv), eye_a = -dot3(lv.c, av) / bm::wave_stretch, eye_b = -dot3(lv.c, bv);
                             const float d_eye = scalar::sqrt(eye_a * eye_a + eye_b * eye_b);
-                            if (d_eye < r && (eye_n < 0.f ? -eye_n : eye_n) < 3.f * hh) { // the eye in the ring's plane: the wall
+                            // the eye in the ring's plane: the wall, its height the slab's and the edge-on band's (calibrated
+                            // on the 2026-11-07 band, kept: edge-on the band's width runs in depth)
+                            if (d_eye < r && (eye_n < 0.f ? -eye_n : eye_n) < 3.f * hh) {
                                 const float bar = 0.5f * f.cam.m11 * (2.f * hh + bm::wave_band_x * lv.R_f) / (r - d_eye > we ? r - d_eye : we);
                                 ann = bar < 1.f ? bar : 1.f;
                             } else {
@@ -2127,8 +2128,10 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                                                      4.f * bm::wave_stretch * ro * hh * scalar::sqrt(1.f - (cosv < 1.f ? cosv * cosv : 1.f));
                                 ann = 0.25f * area_w * f.cam.m00 * f.cam.m11 / (cz * cz);
                             }
-                            ann = ann < box ? ann : box;
-                            charge = ann * bm::budget_weight_wave + (box - ann) * bm::budget_weight_wave_miss;
+                            const float drawn = use_strips ? strip_sum : box;
+                            ann = ann < drawn ? ann : drawn;
+                            charge = ann * (t.wave_octave2 ? bm::budget_weight_wave : bm::budget_weight_wave_one) +
+                                     (drawn - ann) * bm::budget_weight_wave_miss;
                         }
                         wave_scr[nw] = use_strips ? strip_sum : box;
                         wave_meta[nw] = BoxMeta{age_ms, e.owner, charge, lv.own, 0};
@@ -2142,7 +2145,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                                 wave_req.axis[q] = av[q];
                             }
                             wave_req.r = r;
-                            wave_req.band = bm::wave_refract_band * we;
+                            wave_req.band = bm::wave_refract_band * we_min; // the refraction's band as before the band law
                             wave_req.stretch = bm::wave_stretch;
                             wave_req.px = bm::wave_refract_px * f.height * (1.f / 1440.f) * fade;
                         }
@@ -2171,8 +2174,9 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 ++n.glows;
             }
         }
-        // the halo (2026-11-08, every tier): the rim glow about R(t) (weapon_halo_ps.hlsl: 0 inside, its peak halo_e E_b
-        // T heat(halo_t T) at the rim, the corona's fall-off and tail to halo_r_x R(t)), faded out over halo_fade_x0 .. x1 of L
+        // the halo (2026-11-08, every tier): the rim glow about the body (weapon_halo_ps.hlsl: its peak halo_e E_b T
+        // heat(halo_t T) at the lit radius R(t) halo_lit_r(x), falling inside to halo_floor at halo_floor_r R(t), the
+        // corona's fall-off and tail to halo_r_x R(t)), faded out over halo_fade_x0 .. x1 of L
         float halo_fade = (lv.x - bm::halo_fade_x0) / (bm::halo_fade_x1 - bm::halo_fade_x0);
         halo_fade = halo_fade < 0.f ? 1.f : halo_fade > 1.f ? 0.f : 1.f - halo_fade * halo_fade * (3.f - 2.f * halo_fade);
         if (t.halo && lv.R > 0.f && halo_cap && dist > lv.R * bm::body_r_sphere && halo_fade > 0.f) {
@@ -2180,7 +2184,8 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
             float halo_colour[3];
             core::heat_colour(bm::halo_t * lv.T, halo_colour);
             for (unsigned q = 0; q < 3; ++q) halo_colour[q] *= kh;
-            const float rim[2] = {0.f, lv.R}; // the glow's lobe slot: the pixel program's TEXCOORD2.z, the rim radius
+            // the glow's lobe slot: the pixel program's TEXCOORD2.z, the lit radius (the quad's light.w is halo_r_x R(t))
+            const float rim[2] = {0.f, lv.R * halo_lit_r(lv.x)};
             float rect[4];
             bool full = false;
             if (lv.c[2] + Rh > f.near_z && sphere_rect(f, lv.c, Rh, rect, &full)) {
