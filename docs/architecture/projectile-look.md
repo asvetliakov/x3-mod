@@ -350,13 +350,14 @@ consecutive frames through the production builder at 60 and 144 fps, with the ca
 camera turning 1° between them (no gap, the summed light uniform within 10 %), the static-frame extrapolation, the
 never-backwards hold and the jump, the cut (a first-frame streak), the slow and the paused segment, the far flag's write
 (not the write-back, above), the dot with the streak's energy, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
-(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 76.7 µs, GPU fenced
-42.2 µs [M]). Not flown.
+(recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 70.6 µs, GPU fenced
+41.2 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA; first frames, so each streak is |v| x the step), cropped around the
 bolts: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms
 step: 148 / 49 / 20 px streaks, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png)
-(the same at 100 ms: the full 116 m, 1278 / 332 / 129 px, at 0.258 of the radiance past the 30 m cap),
+(the same at 100 ms: the full 116 m, 1278 / 332 / 129 px, past the 30 m cap at 0.180 / 0.278 / 0.358 of the radiance,
+the on-screen length in metres at each head's depth),
 [lod](../../verification/results/projectile-look/fixture-ire-lod.png) (3 km, exactly at `lod_dot_m` so still an 8.7 px
 streak at a third of the radiance, beside 300 m at 75 px). The bolts move at 0.8 of their speed across the view and
 recede at 0.6 [M].

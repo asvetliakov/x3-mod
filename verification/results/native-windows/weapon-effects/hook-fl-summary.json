@@ -21,7 +21,7 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "7b2147c52ed0cd8090e5f881f9193f640403071d",
+    "commit": "7bd316f2fa195fd7e1d83e1094c4fe3ef0ae5644",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -39,7 +39,7 @@
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
-      "src/proxy/weapon_effects_projectile.h": "09d560797727f955e75162b8df3d82d7ee825ff49b7751cf19baf9986cdacb0d"
+      "src/proxy/weapon_effects_projectile.h": "bfa9205075d6962b3eefedf7ee0b4f85a7cf60e81a4743076182b65b9e2fb438"
     }
   },
   "build": {
@@ -234,7 +234,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "0b27e7665c97e0c5a84e2029f245334b457f389e03f1e6364a2e99088bb3221b"
+    "executable_sha256": "50a3076d93876b791f14e902f294319cbe7eee5d968c2ccc92926735ac74a9d6"
   },
   "host": {
     "name": "native-windows",
