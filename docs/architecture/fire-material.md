@@ -576,14 +576,27 @@ unchanged), the 1.5 km broadside level 1 from P + 50 ms and level 2 from P + 150
 [M, CPU]. The weight leaves little room: at P + 150 ms the close capital's other charges, everything else shed, are 1.156
 screens, so a band weight over 1.70 sheds the wave on that frame [M, CPU].
 
-Not the wave's: from P + 700 ms the close capital's embers alone charge 1.8-4.5 screens (their quads' unclipped
-area; the whole frame 221-232 us on the GPU), past the 2.86-screen fence with the body's 1.18 [M, CPU]; no wave charge
-could fit those frames. Open (not changed here).
+**The rays' charge clipped (orchestrator decision 2026-11-08).** Not the wave's: from P + 700 ms the close capital's
+starburst charged 1.2-4.5 screens unclipped (its quads' |b - a| (h0 + h1) far past the frame; the embers' share is
+negligible, a spark quad being at most ~80 px; the whole frame 221-232 us on the GPU), past the 2.86-screen fence with the
+body's 1.18 [M, CPU, the element toggled off in `wave_lod_charges.cpp`]. A ray's charge is now its trapezoid clipped to
+the target grown by its half width (`boom_trapezoid_px`, Liang-Barsky; inside the target unchanged), and an ember,
+spark or fragment quad whose head lies farther off the target than its own reach is not charged. The close capital's
+frames from P + 700 ms: 1.76-2.81 screens (2.99-5.69 before), all under the fence, so the octave step lets go and the
+body draws its third octave from P + 1200 ms (charge 1.35, was held at 1.18) [M, CPU]. On the second record those frames
+read 308.8-441.0 us (221-232 before; the worst 441.0 at P + 1100 ms against the 450 us fence) [M].
 
-**The wave's gain.** `wave_e` 1.6 -> 2.4 (the user: the band reads dimmer than the four references). The lab broadside
+**Weights re-pinned (orchestrator decision 2026-11-08).** `budget_weight_wave` 2.0 -> 2.05 (the record's alone 2.039,
+box 2.051); `budget_weight_smoke` 1.20 -> 1.39 (the every-pixel row 246.6 us, 1.389 a screen; 1.41 on the round-3
+record) [M].
+
+**The wave's gain.** `wave_e` 1.6 -> 2.4 -> 3.2 (the user: the band reads dimmer than the four references; 3.2 by
+the orchestrator's decision, the gain that matches them, with `wave_fire_hue`'s share re-derived 0.43 -> 0.41: the
+yellow-white cells read past 40 degrees in the display encoding and pull the share down). The lab broadside
 at 1540-1700 ms and the 1.5 km view from above at 1.6 / 2.4 / 3.2: 2.4 lifts the cells to orange-yellow in an orange
 body; 3.2 gave the references' yellow-white cores but moved `wave_fire_hue`'s 10-40 degree share in the display encoding
-0.466 -> 0.427 (bound 0.43) on the development run; at 2.4 the record reads 0.442 [M]. The other wave gates are peak- or ratio-relative (the hue at 0.2 /
+0.466 -> 0.427 (bound 0.43) on the development run; at 2.4 the first record read 0.442, at 3.2 the second 0.427
+against the re-derived 0.41 [M]. The other wave gates are peak- or ratio-relative (the hue at 0.2 /
 0.9 L_w, `wave_not_a_tyre`, the ramp) or far inside their bounds (`wave_eye_in_plane_no_whiteout` mean 0.062 at 3.2).
 Program `wave_ps` 3722 words, 872 slots at device creation (842 on the round-3 record) [M].
 

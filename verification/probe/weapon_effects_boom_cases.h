@@ -1715,6 +1715,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const Out o = boom::build(v, parts);
                 last_case = o;
                 const double us = time_frame(o, v);
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=%s bodies=%u quads=%u glows=%u smokes=%u shocks=%u "
                             "octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f\n",
                             size.first, size.second, name, o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.n.octaves,
@@ -1741,6 +1742,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const double u3 = run_case("body_three_octaves_fills_frame", boom::p_body, 0.3f, [&] { fighter(z2); });
                 boom::octave_cap = 4;
                 boom::compose_on = true;
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=fine4_weight four_us=%.1f three_us=%.1f charged=%.3f "
                             "weight4=%.3f pinned4=%.2f pinned3=%.2f\n",
                             size.first, size.second, u4, u3, scr,
@@ -1760,6 +1762,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 boom::build(boom::view(tt, 1000, 16));
                 const Out so = boom::build(boom::view(tt, 1000 + std::uint32_t(0.1f * Lm), 16), boom::p_shock);
                 const double area = double(so.n.screens) / double(bm::budget_weight_shock);
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=shock_weight shocks=%u area_screens=%.3f gpu_us=%.1f "
                             "fence_us=%.1f per_screen_weight=%.3f pinned=%.2f\n",
                             size.first, size.second, so.shocks, area, us, fence_us,
@@ -1812,6 +1815,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const double sl2 = double(last_case.n.wave_screens);
                 boom::wave_lod = -1;
                 const auto per = [&](double us, double scr) { return scr > 0 ? (us - fence_us) / 177.5 / scr : 0.0; };
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=wave_weight alone_weight=%.3f alone_screens=%.3f "
                             "alone_quads=%u one_octave_weight=%.3f box_weight=%.3f box_screens=%.3f box_quads=%u "
                             "lod1_weight=%.3f lod1_screens=%.3f lod2_weight=%.3f lod2_screens=%.3f "
@@ -1845,6 +1849,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     boom::force_n = nn;
                     const double us = run_case(names[nn - 2], boom::p_body, age, place);
                     const double box = box_of(boom::view(tt, 0, 16));
+                    device_guard("timing");
                     std::printf("EXPLOSION_TIMING width=%u height=%u case=compose_factor n=%u shared=0 box_screens=%.3f "
                                 "single_box_screens=%.3f factor=%.3f pinned=%.3f\n",
                                 size.first, size.second, nn, box, box1,
@@ -1856,6 +1861,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 {
                     const double us = run_case("compose_n4_shared_fills_frame", boom::p_body, age, place);
                     const double box = box_of(boom::view(tt, 0, 16));
+                    device_guard("timing");
                     std::printf("EXPLOSION_TIMING width=%u height=%u case=compose_factor n=4 shared=1 box_screens=%.3f "
                                 "single_box_screens=%.3f factor=%.3f pinned=%.3f\n",
                                 size.first, size.second, box, box1,
@@ -1885,6 +1891,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
             };
             const double f20r = run_case("fighters_20_600m_rays", boom::p_all, 0.05f, twenty);
             const double f20s = run_case("fighters_20_600m_sparks", boom::p_all, 0.3f, twenty);
+            device_guard("timing");
             std::printf("EXPLOSION_TIMING width=%u height=%u case=spark_shed twenty_halvings=%u twenty_sparks=%u twenty_shed=%u "
                         "twenty_rays=%u\n",
                         size.first, size.second, last_case.n.spark_halvings, last_case.n.embers, last_case.n.sparks_shed,
@@ -1906,6 +1913,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     for (unsigned k = 0; k < nseq; ++k)
                         fighter(300.0 + 15.0 * (k / 4), seqs[k], -90.0 + 60.0 * (k % 4));
                 });
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=sparks_1024 deaths=%u demand=%u drawn=%u halvings=%u "
                             "screens=%.3f gpu_us=%.1f bound_us=%.1f\n",
                             size.first, size.second, nseq, total, last_case.n.embers, last_case.n.spark_halvings,
@@ -2439,6 +2447,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     if (float(a) + 100.f < P || (a % 100)) continue;
                     boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, float(a)));
                     const double us = time_frame(o, v);
+                    device_guard("timing");
                     std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_%dms bodies=%u quads=%u glows=%u "
                                 "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u "
                                 "secondaries_shed=%u smokes_shed=%u shocks_shed=%u glows_shed=%u waves=%u waves_shed=%u "
@@ -2466,6 +2475,7 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 const Out all_shed = boom::build(v);
                 boom::hull_lane(tt, v, &hull, boom::hull_alpha(bm::capital, P + 100.f));
                 const double shed_us = time_frame(all_shed, v);
+                device_guard("timing");
                 std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_all_shed bodies=%u quads=%u glows=%u "
                             "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u\n",
                             all_shed.bodies, all_shed.quads, all_shed.glows, all_shed.smokes, all_shed.shocks,
@@ -3190,8 +3200,10 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                                 n, chroma, share, n > 0 ? hsum / n : 0.0);
                     // fire round 3's band (2026-11-08, re-derived, the user's references: yellow-white cores in orange
                     // and dark-red edges; the yellow stop reads 47 degrees in this encoding): the share >= 0.43 (0.483
-                    // on the dev record less 10 %; was 0.8), the mean chroma as before
-                    report("wave_fire_hue", n > 0 && chroma >= 0.5 && share >= 0.43, "");
+                    // on the dev record less 10 %; was 0.8), the mean chroma as before. 0.43 -> 0.41 (2026-11-08, the
+                    // orchestrator, wave_e 3.2 for the references' yellow-white cells: those cells read past 40 degrees
+                    // and pull the share down, 0.466 at wave_e 1.6, 0.442 at 2.4, 0.427 at 3.2)
+                    report("wave_fire_hue", n > 0 && chroma >= 0.5 && share >= 0.41, "");
                 }
                 // 2026-11-07 v3 (the coordinator: beige / olive and soot read as no fire): over the lit pixels (10 % of the
                 // frame's peak) the mean of each pixel's chroma, and the share whose colour (over its largest channel) lies

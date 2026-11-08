@@ -768,6 +768,34 @@ struct WaveQuad {
     float zq;
     float sector; // its sector k (the program shades the plane's angles (k -+ 1/2) pi / 4 there); -1 the box
 };
+// The pixels of a trapezoid quad on the target (the budget's charge, 2026-11-08: a close death's rays were charged
+// unclipped, up to 4.5 screens past the frame): the axis a -> b (pixels) with half widths h0 at a and h1 at b, the
+// segment clipped to the target grown by the larger half width (Liang-Barsky; the whole quad inside: no clip), the
+// trapezoid's area over the clipped part. Unclipped it is |b - a| (h0 + h1), the previous charge.
+inline float boom_trapezoid_px(float ax, float ay, float bx, float by, float h0, float h1, float W, float H) noexcept {
+    const float m = h0 > h1 ? h0 : h1, x0 = -m, y0 = -m, x1 = W + m, y1 = H + m;
+    const float dx = bx - ax, dy = by - ay;
+    float t0 = 0.f, t1 = 1.f;
+    if (!(ax >= x0 && ax <= x1 && bx >= x0 && bx <= x1 && ay >= y0 && ay <= y1 && by >= y0 && by <= y1)) {
+        const float pk[4] = {-dx, dx, -dy, dy}, qk[4] = {ax - x0, x1 - ax, ay - y0, y1 - ay};
+        for (unsigned k = 0; k < 4; ++k) {
+            if (pk[k] == 0.f) {
+                if (qk[k] < 0.f) return 0.f;
+                continue;
+            }
+            const float r = qk[k] / pk[k];
+            if (pk[k] < 0.f) {
+                if (r > t1) return 0.f;
+                t0 = r > t0 ? r : t0;
+            } else {
+                if (r < t0) return 0.f;
+                t1 = r < t1 ? r : t1;
+            }
+        }
+    }
+    const float len = scalar::sqrt(dx * dx + dy * dy);
+    return len * (t1 - t0) * (2.f * h0 + (h1 - h0) * (t0 + t1));
+}
 inline float boom_clipped_quad_screens(const float q[4][2]) noexcept {
     // the parallelogram (corners 0, 1, 3, 2 in order) clipped to [-1, 1]^2 (Sutherland-Hodgman), its area / 4
     float a[12][2], b[12][2];
@@ -1391,9 +1419,13 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                 len_px = Rb > 0.f && len_px > cap_px ? cap_px : len_px;
                 len_px = len_px > 2.f * w_px ? len_px : 2.f * w_px;
                 // the quad's area charged to the family's budget (weapon_sprite_vs.hlsl: 2 w + 0.5 px about the head and
-                // the tail)
-                const float hq_px = 2.f * w_px + 0.5f;
-                star_area += (len_px + 2.f * hq_px) * 2.f * hq_px * inv_screen_w;
+                // the tail); none when the head lies farther off the target than the quad reaches (2026-11-08: the
+                // charge clipped to the screen; a spark quad is at most ~80 px long, so the on-screen ones keep it whole)
+                const float hq_px = 2.f * w_px + 0.5f, reach_px = len_px + 2.f * hq_px;
+                const float hx = (f.cam.m00 * head[0] * iz + f.cam.m20 + 1.f) * 0.5f * f.width;
+                const float hy = (1.f - f.cam.m11 * head[1] * iz - f.cam.m21) * 0.5f * f.height;
+                if (hx > -reach_px && hx < f.width + reach_px && hy > -reach_px && hy < f.height + reach_px)
+                    star_area += reach_px * 2.f * hq_px * inv_screen_w;
                 if (!fragment) {
                     const float in = ts < in_x ? bm::spark_in0 + ts * in_k : 1.f;
                     const float e_raw = bm::ember_e * bm::spark_gain * (lng ? bm::spark_long_e : 1.f) * core::exp_neg(ts * tau_k) * fade * vis *
@@ -1936,7 +1968,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                     }
                     ++nq;
                     ++n.rays;
-                    star_area += len_px * (h0 + h1q) / (f.width * f.height) * core::hull::budget_weight_flash;
+                    star_area += boom_trapezoid_px(bx, by, tx, ty, h0, h1q, f.width, f.height) * inv_screen_w; // clipped
                 }
             }
         }

@@ -1078,8 +1078,9 @@ void burst_look_gates(rr::WeaponEffectsPass& pass) {
     // pooled lit share of the annulus 0.3-0.45 R_s at most 1.3 x the mean of its neighbours (0.15-0.3, 0.45-0.6 R_s).
     {
         // fire round 3 (2026-11-08, the orchestrator: re-derived to the record's worst 0.18 + 10 %; the look accepted):
-        // ring_prominence_max 0.15 -> 0.198
-        constexpr double ring_prominence_max = 0.198, annulus_ratio_max = 1.3;
+        // ring_prominence_max 0.15 -> 0.198; 0.198 -> 0.255 (the completion's hotter interior, fire_white_share 0.5:
+        // 0.232 + 10 %; ratified in fire-material.md 13.3, written here 2026-11-08 after the record still read 0.198)
+        constexpr double ring_prominence_max = 0.255, annulus_ratio_max = 1.3;
         // the ring's sequence counter is restored after the gate: the stage dump's own records (energy_single, the accepted
         // frames) keep the seeds they had before it
         const std::uint32_t next_sequence = stage_ring.next_sequence;
@@ -3381,6 +3382,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                 const HullOut o = hull_build(v);
                 draw_lane(tt, c ? 600.f : owner_z - 100.f, 1.f);
                 const double best = time_frame(hull_frame(tt, o));
+                device_guard("timing");
                 std::printf("CLASS_TIMING width=%u height=%u class=%s case=%s hits=%u sparks=%u flashes=%u streaks=%u boxes=%u "
                             "bursts=%u rings=%u filaments=%u scorches=%u spots=%u octaves=%u screens=%.3f flash_screens=%.3f "
                             "shed=%u bursts_shed=%u scorches_shed=%u rings_shed=%u gpu_us=%.1f\n",
@@ -3393,6 +3395,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                 // front"): the ring draws alone (hull_only kind 3), for the classes that carry one.
                 if (an == hl::an_heavy || an == hl::an_plasma || an == hl::an_missile) {
                     const double ring_us = time_frame(hull_frame(tt, hull_only(o, 3)));
+                    device_guard("timing");
                     std::printf("CLASS_TIMING width=%u height=%u class=%s case=%s_ring_only hits=%u rings=%u gpu_us=%.1f\n",
                                 size.first, size.second, anatomy_name(an),
                                 c ? "capital_close_64_hits" : "fighter_200m_20_hits", hits, o.rings, ring_us);
@@ -3431,6 +3434,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
             const HullOut o = hull_build(v);
             draw_lane(tt, 600.f, 1.f);
             const double best = time_frame(hull_frame(tt, o));
+            device_guard("timing");
             std::printf("CLASS_TIMING width=%u height=%u class=plasma case=capital_close_128_hits flashes=%u flashes_shed=%u "
                         "boxes=%u bursts=%u rings=%u scorches=%u screens=%.3f flash_screens=%.3f gpu_us=%.1f\n",
                         size.first, size.second, o.n.flashes, o.n.flashes_shed, o.boxes, o.bursts, o.rings, o.scorches,
@@ -3466,6 +3470,7 @@ void class_cases(rr::WeaponEffectsPass& pass) {
                                : kind == 1 ? "filament_alone_fills_frame"
                                : kind == 2 ? "scorch_alone_fills_frame"
                                            : "flash_alone_fills_frame";
+            device_guard("timing");
             std::printf("CLASS_TIMING width=%u height=%u case=%s rings=%u filaments=%u scorches=%u flashes=%u screens=%.3f "
                         "gpu_us=%.1f weight=%.3f\n",
                         size.first, size.second, name, o.rings, o.filaments, o.scorches, o.n.flashes, double(o.n.screens),

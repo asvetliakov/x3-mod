@@ -85,6 +85,22 @@ float half_to_float(std::uint16_t h) {
     return f;
 }
 IDirect3DDevice9* dev = nullptr;
+// The lost-device guard (2026-11-08: a screensaver lost the device mid-run and 55 blank frames were read as passing
+// timing rows): after each section, at each target and before every timing row the device's TestCooperativeLevel;
+// anything but D3D_OK prints CHECK device_lost FAIL section=<n> and stops the run with a non-zero exit.
+unsigned guard_section = 0;
+void device_guard(const char* at) {
+    const HRESULT hr = dev ? dev->TestCooperativeLevel() : D3D_OK;
+    if (hr == D3D_OK) return;
+    std::printf("CHECK device_lost FAIL section=%u at=%s hr=%08lx\nRESULT FAIL checks=%u failures=%u\n", guard_section, at,
+                static_cast<unsigned long>(hr), checks + 1, failures + 1);
+    std::fflush(stdout);
+    std::_Exit(3);
+}
+void guard_next_section(const char* name) {
+    ++guard_section;
+    device_guard(name);
+}
 D3DCAPS9 caps{};
 D3DFORMAT adapter_format = D3DFMT_X8R8G8B8;
 HMODULE d3dx = nullptr;
@@ -153,6 +169,7 @@ struct Target {
     void release() { scene_s.release(); lane_s.release(); sysmem.release(); scene_tex.release(); lane_tex.release(); }
 };
 bool make_target(Target& t, UINT w, UINT h) {
+    device_guard("make_target");
     t.w = w;
     t.h = h;
     return SUCCEEDED(dev->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &t.scene_tex.p, nullptr)) &&
@@ -956,6 +973,7 @@ int main(int argc, char** argv) {
     // X3M_WEAPON_EFFECTS_BOLTS_ONLY=1 (a development run, never the record): the step-4 cases alone.
     if (const char* only = std::getenv("X3M_WEAPON_EFFECTS_BOLTS_ONLY"); only && *only == '1') {
         bolt_draw_cases(pp);
+        guard_next_section("bolts_only");
         std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
         return failures ? 1 : 0;
     }
@@ -1003,6 +1021,7 @@ int main(int argc, char** argv) {
     // X3M_WEAPON_EFFECTS_BOOM_ONLY=1 (a development run, never the record): the step-3 cases alone.
     if (const char* only = std::getenv("X3M_WEAPON_EFFECTS_BOOM_ONLY"); only && *only == '1') {
         boom_cases(pass, pp);
+        guard_next_section("boom_only");
         std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
         return failures ? 1 : 0;
     }
@@ -2492,12 +2511,16 @@ int main(int argc, char** argv) {
         }
         draw_lane(g, 0.f, -1.f);
     }
+    guard_next_section("step1");
     // Step 2: the hull hit (weapon_effects_hull_cases.h; its own Reset and fault cases before the patches' below).
     hull_cases(pass, pp);
+    guard_next_section("step2");
     // Step 3: the death explosion (weapon_effects_boom_cases.h; its own Reset and refusal cases).
     boom_cases(pass, pp);
+    guard_next_section("step3");
     // Step 4: the bolts and the muzzle (weapon_effects_bolt_draw_cases.h; its own pass, Reset and fault cases).
     bolt_draw_cases(pp);
+    guard_next_section("step4");
     // Program creation refused (fault bit 3): attach refuses with program_create and keeps no object; run refuses at once.
     {
         rr::WeaponEffectsPass refused;
@@ -2724,6 +2747,7 @@ int main(int argc, char** argv) {
                 }
             }
             const std::vector<float> l = read_luma(tt, tt.scene_s.p);
+            device_guard("timing");
             std::printf("TIMING width=%u height=%u case=%s patches=%u drawn=%u lit_share=%.4f raster_share=%.4f gpu_us=%.1f\n",
                         size.first, size.second, c.name, c.count, drawn,
                         l.empty() ? 0.0 : double(lit_count(l)) / double(l.size()),
@@ -2733,6 +2757,7 @@ int main(int argc, char** argv) {
     }
 
     pass.detach();
+    guard_next_section("end");
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;
 }

@@ -982,10 +982,10 @@ constexpr float wave_lead = 0.1f, wave_ahead = 1.0f, wave_break_floor = 0.15f;
 // Round 2: wave_t_band0 / _band_end 0.55 / 0.4 -> 0.75 / 0.55 (on the round-2 ramp, whose orange stop is dimmer and
 // redder-classed, the young wave's band read red: wave_fire_not_grey's hue at 0.2 L_w 0.25 against >= 0.5).
 constexpr float wave_t_edge = 0.9f, wave_t_band0 = 0.55f, wave_t_band_end = 0.45f, wave_t_sheet_end = 0.25f;
-// wave_e 1.6 -> 2.4 (fire round 3, 2026-11-08, the user's references: the band read dimmer; the lab broadside at
-// 1540-1700 ms: 2.4 lifts the cells to orange-yellow in an orange body, 3.2 reads yellow-white cores but moved
-// wave_fire_hue's 10-40 degree share (the display encoding) 0.466 -> 0.427 against >= 0.43 on the development run).
-constexpr float wave_t_cool = 0.5f, wave_e = 2.4f;
+// wave_e 1.6 -> 3.2 (fire round 3, 2026-11-08, the user's references: the band read dimmer; the lab broadside at
+// 1540-1700 ms: 2.4 lifts the cells to orange-yellow, 3.2 reads the references' yellow-white cores in an orange body;
+// wave_fire_hue's 10-40 degree share 0.466 -> 0.427, its bound re-derived 0.43 -> 0.41 by the orchestrator).
+constexpr float wave_t_cool = 0.5f, wave_e = 3.2f;
 // The kill criterion's switches (2026-11-07 v3, the coordinator): wave_sheet_enabled false draws the wave as the thick
 // textured ring (s_end 1: the material within the band); compose_enabled false draws every death body as the single lobed
 // ball (with the fourth octave). Header constants, never settings.
@@ -1029,7 +1029,8 @@ constexpr float wave_refract_px = 6.f, wave_refract_band = 2.f;
 // v8 [M] 5120x1440 2026-11-07 (the fire material's first native run): alone 1.831, the sheet's second octave shed 1.682.
 // Round 3 [M] 5120x1440 2026-11-08 (the turbulence law, four ridged octaves; step 0a sheds the finest two behind the
 // band): alone 354.6 us = 1.998, shed 292.0 us = 1.645 (budget_weight_wave_one 1.68 kept: within its 0.03).
-constexpr float budget_weight_wave = 2.0f, budget_weight_wave_miss = 0.56f;
+// Fire round 3's band (the 2026-11-08 record): alone 2.039, the box at birth 2.051: 2.0 -> 2.05.
+constexpr float budget_weight_wave = 2.05f, budget_weight_wave_miss = 0.56f;
 // The sheet with two octaves (the budget's step 0a).
 constexpr float budget_weight_wave_one = 1.68f;
 // The close-range LOD (fire round 3, 2026-11-08; fire-material.md 13.5; the close capital at 720 m shed the 0.35 r(t)
@@ -2059,8 +2060,10 @@ constexpr unsigned fireball_octave_hold = 3;
 // screen; 1.35 / 1.17 before the fire material's second round); re-pinned to them the close capital's wave was shed on
 // one frame of seven (wave_drawn_close_capital) at the old fences. Pinned 2026-11-08 (orchestrator decision, review
 // finding 8): 1.18 / 1.03 -> 1.35 / 1.18 (the charge honest) with the fences in charged units fed by them raised x 1.35 /
-// 1.18 = 1.144 (boom::budget_screens 2.5 -> 2.86); the measured-GPU bounds stay.
-constexpr float budget_weight_fireball = 1.35f, budget_weight_fireball_coarse = 1.18f, budget_weight_smoke = 1.20f;
+// 1.18 = 1.144 (boom::budget_screens 2.5 -> 2.86); the measured-GPU bounds stay. budget_weight_smoke 1.20 -> 1.39
+// (2026-11-08, the orchestrator: the smoke's every-pixel row 246.6 us on the round-3 completion record, 1.389 a screen;
+// 1.41 on the round-3 record).
+constexpr float budget_weight_fireball = 1.35f, budget_weight_fireball_coarse = 1.18f, budget_weight_smoke = 1.39f;
 // A screen of bodies with the fourth octave (2026-11-07; review: measured on a body seen from outside, the eye at 2 R:
 // 27.4 against 27.6 us with three, 0.309 screens [M], the fourth's cost under the noise; an eye-inside body keeps three,
 // where it cost 1.35 a screen): pinned at the three-octave weight (1.35 since 2026-11-08 with it).
