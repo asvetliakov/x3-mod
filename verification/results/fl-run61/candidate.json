@@ -1,0 +1,51 @@
+{
+ "run": "fl-run61",
+ "edition": "FL",
+ "installed": "2026-11-09",
+ "what": "dev candidate: the IRE comet (FL 60 A request): a white head at head_gain over the trail start and a trail fading behind it in game time (trail_ms, at least 1.25 x the frame's game step so SETA frames are drawn in full), older segments redrawn from a ring of 4 heads, straight comets one quad, energy factor min(1, cap/drawn) with the cap default 60 m, spot-mode hysteresis, adaptive ring trim under load; the X4121 warnings in weapon_shell_ps fixed (no shield metric changed)",
+ "commit": "606d417d9",
+ "branch": "weapons",
+ "dirty": false,
+ "build": "build-run61-fl RelWithDebInfo mingw-i686 -DX3M_EDITION=fl -DX3M_GNU_PE_NO_SAFESEH=ON (X3M_DEV_TUNING ON), clean, 0 warnings, check_no_x87 --edition fl PASS, X3M_SOURCE_COMMIT=606d417d9e9e52fc82037ae4df5ea815686485e8 (unstripped)",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "ec42989b25220aa94e76e077d074fd1314f4bce43df5df9b2ed7bd92574362f5",
+  "bytes": 60876846,
+  "source": "build-run61-fl/d3d9.dll"
+ },
+ "rollback": {
+  "dll": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run60 (fd1add65\u2026)",
+  "ini": "C:\\X3FL\\rollback-d3d9\\x3m.ini.run60",
+  "tuning_file": "C:\\X3FL\\rollback-d3d9\\projectile_tune.json.run60"
+ },
+ "ini": "unchanged (weapon_effects = shields)",
+ "tables": {
+  "weapon_effects.json": "a699e0d2\u2026 (unchanged)"
+ },
+ "tuning_file": {
+  "path": "C:\\X3FL\\x3m\\projectile_tune.json",
+  "content": {
+   "core_px": 1.0,
+   "glow_ratio": 2.0,
+   "glow_gain": 0.3,
+   "hot_share": 0.4,
+   "lod_dot_m": 3000,
+   "length_cap_m": 60,
+   "stops": 2.0,
+   "trail_ms": 40,
+   "head_gain": 1.5
+  },
+  "note": "the user's values kept; length_cap_m 60 (new default), trail_ms 40 and head_gain 1.5 added"
+ },
+ "exe_sha256_prefix": "e7f3aad8d728e021",
+ "dry_run": "manage.py launch --game-dir /mnt/c/X3FL --dry-run exit 0",
+ "evidence": [
+  "verification/results/native-windows/weapon-effects/summary.json (D3D 81/81 on b572c35de, same production sources as 606d417d9)",
+  "hook-fl-summary.json (FL hook 67/67)",
+  "hook-summary.json (AP 131/131)",
+  "verification/results/projectile-look/fixture-ire-{near,seta,lod,comet}.png",
+  "review (medium): no blocker; A-H fixed or decided (ledger: FL 60 A review, FL 60 A decisions)",
+  "FL 60 A log: projectile_static 0 and projectile_jumped 0 over 255 frames (bullets move every frame)"
+ ],
+ "open": "FL 61 A"
+}
