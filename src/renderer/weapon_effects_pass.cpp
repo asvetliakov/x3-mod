@@ -67,12 +67,13 @@ constexpr std::uint32_t projectile_ps_words[] = {
 };
 constexpr D3DVERTEXELEMENT9 projectile_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
-    {0, 12, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
-    {0, 24, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
+    {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    {0, 28, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 1},
     {0, 40, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 2},
     {0, 44, D3DDECLTYPE_D3DCOLOR, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 3},
     D3DDECL_END()};
 static_assert(sizeof(WeaponProjectileVertex) == 48, "the projectile declaration follows the vertex");
+static_assert(4 * weapon_projectile_max_quads <= 65536, "the projectile quads index with 16 bits");
 // Bits per pixel of the formats the stage binds together (the MRT bit-depth rule).
 unsigned format_bits(D3DFORMAT f) noexcept {
     return f == D3DFMT_A32B32G32R32F ? 128u : f == D3DFMT_A16B16G16R16F || f == D3DFMT_G32R32F ? 64u : 32u;
@@ -266,13 +267,13 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
             no("mrt_caps");
         else if (!(caps.ZCmpCaps & D3DPCMPCAPS_LESSEQUAL))
             no("z_caps");
-        else if (caps.MaxPrimitiveCount < 2 * weapon_projectile_max_bolts ||
-                 caps.MaxVertexIndex < 4 * weapon_projectile_max_bolts - 1)
+        else if (caps.MaxPrimitiveCount < 2 * weapon_projectile_max_quads ||
+                 caps.MaxVertexIndex < 4 * weapon_projectile_max_quads - 1)
             no("limits");
         else if (!caps_.lane32_blending && !caps_.lane16_blending)
             no("lane_blending");
         else {
-            for (unsigned i = 0; i < weapon_projectile_max_bolts; ++i) {
+            for (unsigned i = 0; i < weapon_projectile_max_quads; ++i) {
                 static constexpr std::uint16_t quad[6] = {0, 1, 2, 2, 1, 3};
                 for (unsigned k = 0; k < 6; ++k) projectile_indices_[6 * i + k] = std::uint16_t(4 * i + quad[k]);
             }
@@ -355,9 +356,9 @@ HRESULT WeaponEffectsPass::run_projectiles(const WeaponProjectileFrame& f, Weapo
     };
     if (!device_ || !caps_.enabled || !caps_.projectile_enabled) return refuse("not_attached", E_INVALIDARG);
     if (reset_pending_) return refuse("reset_pending", E_FAIL);
-    if (!f.width || !f.height || f.bolts > weapon_projectile_max_bolts || (f.bolts && !f.vertices))
+    if (!f.width || !f.height || f.quads > weapon_projectile_max_quads || (f.quads && !f.vertices))
         return refuse("frame", E_INVALIDARG);
-    if (!f.bolts) return finish(S_FALSE);
+    if (!f.quads) return finish(S_FALSE);
     if (!f.lane || !f.depth) return refuse(!f.lane ? "lane" : "depth", D3DERR_NOTAVAILABLE);
     D3DSURFACE_DESC lane{}, depth{};
     if (FAILED(f.lane->GetDesc(&lane)) || lane.Width != f.width || lane.Height != f.height ||
@@ -402,7 +403,7 @@ HRESULT WeaponEffectsPass::run_projectiles(const WeaponProjectileFrame& f, Weapo
     step(call<SetVsFn>(SetVertexShader)(d, projectile_vs_));
     step(call<SetPsFn>(SetPixelShader)(d, projectile_ps_));
     if (SUCCEEDED(hr)) {
-        HRESULT draw = call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(d, D3DPT_TRIANGLELIST, 0, 4 * f.bolts, 2 * f.bolts,
+        HRESULT draw = call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(d, D3DPT_TRIANGLELIST, 0, 4 * f.quads, 2 * f.quads,
                                                                      projectile_indices_, D3DFMT_INDEX16, f.vertices,
                                                                      sizeof(WeaponProjectileVertex));
         if (faults_ & 6u) {
@@ -410,7 +411,7 @@ HRESULT WeaponEffectsPass::run_projectiles(const WeaponProjectileFrame& f, Weapo
             draw = E_FAIL;
         }
         if (step(draw)) {
-            r.bolts = f.bolts;
+            r.quads = f.quads;
             r.drew = true;
         }
     }

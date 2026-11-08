@@ -59,6 +59,7 @@ struct Period {
     std::uint32_t projectile_owned = 0, projectile_bolts = 0, projectile_dropped = 0, projectile_retired = 0;
     std::uint32_t projectile_unhandled = 0, projectile_unpooled = 0, projectile_sampled = 0;
     std::uint32_t projectile_static = 0, projectile_jumped = 0; // entry-frames: position unchanged / off the prediction
+    std::uint32_t projectile_ring_trimmed = 0;                  // bolt-frames whose comet ring was trimmed
     float projectile_us_max = 0.f;
 } period_{};
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
@@ -814,11 +815,13 @@ void clear_owned() {
 // The projectile stage's figures in weapon_effects_frame (FL only; the AP row is unchanged): frames owned, batch
 // submits skipped, traversal draws dropped and unseen, bolts drawn, entries tracked now, retired, the pool's overflow and
 // recycled nodes since the last row, the stage's worst CPU time, and the entry-frames whose position did not change
-// since the previous stage frame (static) or left the velocity prediction (jumped).
+// since the previous stage frame (static) or left the velocity prediction (jumped), and the bolt-frames whose comet ring
+// the adaptive rule trimmed (ring_trimmed; projectile-look.md section 2).
 #define X3M_PROJECTILE_FIELDS                                                                                          \
     " projectile_owned=%lu projectile_skipped=%lu projectile_dropped=%lu projectile_unhandled=%lu projectile_bolts=%lu " \
     "projectile_tracked=%lu projectile_retired=%lu projectile_overflow=%lu projectile_recycled=%lu projectile_bodies=%lu " \
-    "projectile_us_max=%.1f projectile_unpooled=%lu projectile_sampled=%lu projectile_static=%lu projectile_jumped=%lu"
+    "projectile_us_max=%.1f projectile_unpooled=%lu projectile_sampled=%lu projectile_static=%lu projectile_jumped=%lu " \
+    "projectile_ring_trimmed=%lu"
 #define X3M_PROJECTILE_ARGS                                                                                            \
     , static_cast<unsigned long>(period_.projectile_owned),                                                           \
         static_cast<unsigned long>(x3m_projectile_pool.skipped - projectile_seen_skipped_),                             \
@@ -829,7 +832,8 @@ void clear_owned() {
         static_cast<unsigned long>(x3m_projectile_pool.counters.recycled - projectile_seen_.recycled),                 \
         static_cast<unsigned long>(x3m_projectile_pool.body_count), double(period_.projectile_us_max),                \
         static_cast<unsigned long>(period_.projectile_unpooled), static_cast<unsigned long>(period_.projectile_sampled), \
-        static_cast<unsigned long>(period_.projectile_static), static_cast<unsigned long>(period_.projectile_jumped)
+        static_cast<unsigned long>(period_.projectile_static), static_cast<unsigned long>(period_.projectile_jumped), \
+        static_cast<unsigned long>(period_.projectile_ring_trimmed)
 #else
 #define X3M_PROJECTILE_FIELDS ""
 #define X3M_PROJECTILE_ARGS
@@ -876,6 +880,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.projectile_sampled += stage.projectile_sampled;
     period_.projectile_static += stage.projectile_static;
     period_.projectile_jumped += stage.projectile_jumped;
+    period_.projectile_ring_trimmed += stage.projectile_ring_trimmed;
     if (stage.projectile_us > period_.projectile_us_max) period_.projectile_us_max = stage.projectile_us;
 #endif
     ++period_.frames;

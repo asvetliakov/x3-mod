@@ -71,8 +71,8 @@ int main(int argc, char** argv) {
 }
 '''
 
-DEFAULTS = [2.0, 3.0, 0.2, 0.3, 3000.0, 30.0, 2.0]  # weapon_projectile_family.h, fighter_tracer
-KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops']
+DEFAULTS = [2.0, 3.0, 0.2, 0.3, 3000.0, 60.0, 2.0, 40.0, 1.5]  # weapon_projectile_family.h, fighter_tracer
+KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops', 'trail_ms', 'head_gain']
 
 
 class ProjectileTune(unittest.TestCase):
@@ -107,10 +107,10 @@ class ProjectileTune(unittest.TestCase):
             self.assertAlmostEqual(got, want, places=5)
 
     def test_every_key_read(self):
-        values = [2.5, 4.0, 0.3, 0.5, 4000.0, 80.0, 2.5]
+        values = [2.5, 4.0, 0.3, 0.5, 4000.0, 80.0, 2.5, 60.0, 2.0]
         text = json.dumps(dict(zip(KEYS, values)), indent=2)
         r = self.parse(text)
-        self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, 127, 0))
+        self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, 511, 0))
         for got, want in zip(r['values'], values):
             self.assertAlmostEqual(got, want, places=4)
 
@@ -126,10 +126,21 @@ class ProjectileTune(unittest.TestCase):
         for text in ('{"stretch_k": 0.4, "core_px": 1, "glow_ratio": 2}', '{"stretch_k": 0}'):
             r = self.parse(text)
             self.assertEqual((r['ok'], r['clamped']), (1, 0), text)
-            self.assertEqual(len(r['values']), 7)
+            self.assertEqual(len(r['values']), 9)
         r = self.parse('{"stretch_k": 0.4, "core_px": 1, "glow_ratio": 2}')
         self.assertEqual(r['seen'], (1 << 0) | (1 << 1))
         self.assertEqual(r['values'][2:], DEFAULTS[2:])
+
+    def test_comet_keys_bounds_and_flat_streak(self):
+        # FL 60 A: trail_ms 0..200 (0 the flat streak of FL run 60), head_gain 1..4
+        r = self.parse('{"trail_ms": 0, "head_gain": 1}')
+        self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, (1 << 7) | (1 << 8), 0))
+        self.assertEqual(r['values'][7:], [0.0, 1.0])
+        r = self.parse('{"trail_ms": 500, "head_gain": 0.5}')
+        self.assertEqual(r['clamped'], (1 << 7) | (1 << 8))
+        self.assertEqual(r['values'][7:], [200.0, 1.0])
+        r = self.parse('{"trail_ms": -3, "head_gain": 9}')
+        self.assertEqual(r['values'][7:], [0.0, 4.0])
 
     def test_out_of_bounds_clamped_and_named(self):
         r = self.parse('{"core_px": 40, "stops": -9, "glow_ratio": 0.2}')

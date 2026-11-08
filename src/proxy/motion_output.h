@@ -1212,7 +1212,7 @@ public:
     // ownership (the next frame's batch skip) and figures since the last call, into the weapon_effects_frame row.
     void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
                                float* stage_us, unsigned* unpooled, unsigned* sampled, unsigned* statics,
-                               unsigned* jumped) noexcept;
+                               unsigned* jumped, unsigned* ring_trimmed) noexcept;
 #endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
@@ -2292,6 +2292,7 @@ private:
     // the stage's static and jumped entries (projectile_stage::Counts) and the previous stage frame's QPC stamp (the
     // render dt of a static entry's extrapolation)
     unsigned projectile_statics_ = 0, projectile_jumped_ = 0;
+    unsigned projectile_ring_trimmed_ = 0; // bolt-frames whose comet ring the adaptive rule trimmed (projectile_stage)
     bool projectile_cut_ = false; // the resolve's camera cut of this frame (the bridge starts over)
     std::uint64_t projectile_qpc_ = 0;
     const char* projectile_logged_refusal_ = nullptr;

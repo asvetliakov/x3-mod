@@ -50,14 +50,19 @@ float4 main(float2 vpos : VPOS) : COLOR0 {
     float3 p = to_owner(vc - owner_centre.xyz);
     float3 f = float3(dot(p, anchor[1].xyz), dot(p, anchor[2].xyz), dot(p, anchor[0].xyz)); // (u, v, a)
     // The gradients outside the branches: the view point's (the normal) and the plane point's in cells (the edge band's
-    // anti-aliasing: fwidth of the hexagon distance is the active border form's |a . dg|, taken in the branch).
-    float3 nv = cross(ddx(vc), ddy(vc));
+    // anti-aliasing: fwidth of the hexagon distance is the active border form's |b . dg|, one per border form b, the
+    // branch selects one). Both are consumed by the branch's condition, or the compiler sinks the ddx / ddy into the
+    // branch (X4121): n is 0 only where the face then takes no share (w = 0 below, nothing drawn), each fw is at least
+    // 1e-5, so the added terms change no pixel.
+    float3 n = to_owner(cross(ddx(vc), ddy(vc)));
     float2 gx = ddx(f.xy) * lattice.x, gy = ddy(f.xy) * lattice.x;
-    float3 shade = 0.0;
-    [branch] if (z < 1e29 && all(f >= box_lo.xyz) && all(f <= box_hi.xyz)) {
-    float3 n = to_owner(nv);
+    const float2 b0 = float2(1.0, 0.0), b1 = float2(0.5, 0.8660254), b2 = float2(0.5, -0.8660254);
+    float3 fws = max(abs(float3(dot(b0, gx), dot(b1, gx), dot(b2, gx))) + abs(float3(dot(b0, gy), dot(b1, gy), dot(b2, gy))),
+                     1e-5);
     n = dot(n, n) > 1e-30 && dot(n, n) < 1e30 ? n : eye.xyz - p;
     n = (dot(n, eye.xyz - p) < 0.0 ? -n : n) * rsqrt(max(dot(n, n), 1e-30)); // outward: towards the eye
+    float3 shade = 0.0;
+    [branch] if (z < 1e29 && all(f >= box_lo.xyz) && all(f <= box_hi.xyz) && dot(n, n) > 0.0 && fws.x + fws.y + fws.z > 0.0) {
     float3 m = pow(max(abs(n), 1e-6), screen.w);
     float3 t = max(m / (m.x + m.y + m.z) - eye.w, 0.0); // the floor: a face past its steep side takes nothing
     float w = dot(n, anchor[0].xyz) > 0.0 ? dot(t, abs(anchor[0].xyz)) / max(t.x + t.y + t.z, 1e-6) : 0.0;
@@ -65,10 +70,8 @@ float4 main(float2 vpos : VPOS) : COLOR0 {
         float2 k;
         float3 c = hex_cell(f.xy * lattice.x, k);
         // The hexagon distance's border form at the pixel (max of |l.x|, |l.x / 2 +- l.y sqrt 3 / 2|) and its fwidth.
-        float2 b0 = float2(1.0, 0.0), b1 = float2(0.5, 0.8660254), b2 = float2(0.5, -0.8660254);
         float d0 = abs(c.x), d1 = abs(dot(c.xy, b1)), d2 = abs(dot(c.xy, b2));
-        float2 bf = d0 >= d1 && d0 >= d2 ? b0 : d1 >= d2 ? b1 : b2;
-        float fw = max(abs(dot(bf, gx)) + abs(dot(bf, gy)), 1e-5);
+        float fw = d0 >= d1 && d0 >= d2 ? fws.x : d1 >= d2 ? fws.y : fws.z;
         // Keys are integers below 2^24 and unique: 1 - |key - packed| saturates to 1 on the match and 0 elsewhere.
         float packed = (k.x + 2048.0) * 4096.0 + (k.y + 2048.0);
         float4 found = 0.0, clock4 = 0.0;

@@ -6,16 +6,17 @@
 //
 // A family is (shape, mount tier) as the table generator classifies every TBullets row (weapon_effects.json: shape from
 // the body's elongation, mount tier from the ship catalogue; weapon_overrides.json for exceptions), with one Tune (the
-// seven look numbers) and one compile-time list of enabled TBullets ids. A row is drawn by the stage when its id is in
+// nine look numbers) and one compile-time list of enabled TBullets ids. A row is drawn by the stage when its id is in
 // its family's list and the table puts it in that family; every other row sharing its body (the batch is per body) is
 // drawn with it. Adding a family is a second Family entry with its own list and Tune, not a code path.
 //
 // THE PLACE A ROW IS ENABLED: the *_rows lists below. Today only SS_BULLET_IRE (and, through its body bullet_ls_alpha,
 // rows 37-39, the cluster and alpha flak fragments).
 namespace x3m::weapon_effects::projectile_family {
-// The seven numbers of a family's look (projectile-look.md section 4; the dev tuning file's keys). The streak has no
+// The nine numbers of a family's look (projectile-look.md section 4; the dev tuning file's keys). The streak has no
 // multiplier: its length is the bolt's travel since the previous frame (the bridged law, projectile-look.md section 2),
-// so the file's former `stretch_k` key is an unknown key, ignored without a row.
+// so the file's former `stretch_k` key is an unknown key, ignored without a row. The comet (FL 60 A): trail_ms and
+// head_gain; trail_ms 0 is the flat streak of FL run 60 (no trail, no head).
 struct Tune {
     float core_px;      // core full width (FWHM, px) at the 500 m reference, at the live projection
     float glow_ratio;   // glow sigma over the core radius
@@ -24,15 +25,17 @@ struct Tune {
     float lod_dot_m;    // past it (view depth, metres) no streak: a dot
     float length_cap_m; // past this streak length (metres) the radiance scales by cap / length (energy conserved)
     float stops;        // core radiance 2^(stops + calibre) x scene white
+    float trail_ms;     // the trail behind the head covers the bolt's travel over this many game ms (0: no trail)
+    float head_gain;    // the head's radiance over the trail's start (with a trail)
 };
-constexpr unsigned tune_keys = 7;
-constexpr const char* tune_key_names[tune_keys] = {"core_px", "glow_ratio", "glow_gain", "hot_share",
-                                                   "lod_dot_m", "length_cap_m", "stops"};
-constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f};
-constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f};
+constexpr unsigned tune_keys = 9;
+constexpr const char* tune_key_names[tune_keys] = {"core_px", "glow_ratio", "glow_gain", "hot_share", "lod_dot_m",
+                                                   "length_cap_m", "stops", "trail_ms", "head_gain"};
+constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f};
+constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f};
 inline float& tune_at(Tune& t, unsigned k) noexcept {
-    float* const fields[tune_keys] = {&t.core_px, &t.glow_ratio, &t.glow_gain, &t.hot_share,
-                                      &t.lod_dot_m, &t.length_cap_m, &t.stops};
+    float* const fields[tune_keys] = {&t.core_px,      &t.glow_ratio, &t.glow_gain, &t.hot_share, &t.lod_dot_m,
+                                      &t.length_cap_m, &t.stops,      &t.trail_ms,  &t.head_gain};
     return *fields[k < tune_keys ? k : 0];
 }
 constexpr float reference_m = 500.f; // the tuning numbers' reference distance, never a constant in the program
@@ -47,13 +50,16 @@ struct Family {
 constexpr const char* fighter_tracer_rows[] = {"SS_BULLET_IRE"};
 constexpr unsigned family_count = 1;
 constexpr Family families[family_count] = {
-    // length_cap_m 30 (coordinator, 2026-11-08, from the fixture's look frames); since FL 59 A (2026-11-08) it dims a
-    // longer streak instead of cutting it, and the former stretch_k multiplier is gone (the streak is the travel)
-    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 0.3f, 3000.f, 30.f, 2.f}},
+    // length_cap_m 60 since the FL 60 A review (2026-11-09: the 1x comet, about 35 m drawn, is not dimmed; was 30, the
+    // coordinator's from the fixture's look frames, 2026-11-08); since FL 59 A (2026-11-08) it dims a
+    // longer streak instead of cutting it, and the former stretch_k multiplier is gone (the streak is the travel); the
+    // comet's trail_ms 40 and head_gain 1.5 since FL 60 A (2026-11-08, the user's request; starting values)
+    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
-    const float v[tune_keys] = {t.core_px, t.glow_ratio, t.glow_gain, t.hot_share, t.lod_dot_m, t.length_cap_m, t.stops};
+    const float v[tune_keys] = {t.core_px,      t.glow_ratio, t.glow_gain, t.hot_share, t.lod_dot_m,
+                                t.length_cap_m, t.stops,      t.trail_ms,  t.head_gain};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;

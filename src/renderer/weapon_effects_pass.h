@@ -41,24 +41,27 @@ struct WeaponEffectsCaps {
     bool lane32_blending = false, lane16_blending = false, mrt_bit_depths = false;
 };
 // The projectile stage's vertex (weapon_projectile_vs/ps.hlsl, stride 48): the clip position (window-exact, w = 1, z
-// the end's depth); the pixel's offset from the segment's centre along and across it and the half length (px); the core
-// and glow radiance scales and 1 / (2 sigma^2) of each; the core and glow colours (D3DCOLOR, linear, largest channel 1
-// for the glow's tint). Float32 and D3DCOLOR only (a FLOAT16 attribute measured 5x the submit cost on the native host).
+// the end's depth); four values linear over the quad (the core's across offset in units of sqrt(2 ln 2) sigma, the
+// exponents of the core's two logistic end ramps, the trail falloff's exponent); the core and glow radiance scales and
+// the core's sigma over the glow's; the core and glow colours (D3DCOLOR, linear, largest channel 1 for the glow's tint;
+// the core's alpha the head's gain over 4, 0 off the head segment). Float32 and D3DCOLOR only (a FLOAT16 attribute
+// measured 5x the submit cost on the native host).
 struct WeaponProjectileVertex {
     float pos[3];
-    float local[3];
-    float shape[4];
+    float local[4];
+    float shape[3];
     std::uint32_t core_tint, glow_tint;
 };
-// One projectile draw: every bolt of the frame as one indexed list of quads through DrawIndexedPrimitiveUP, into RT0
-// (the bound FP16 scene) and the lane at RT1 (COLORWRITEENABLE1 = GREEN: the far flag g += 32 max(rgb), the production
-// B' route of docs/architecture/bolts-through-taa.md), depth-tested LESSEQUAL against the scene's depth surface with Z
-// writes off, ONE/ONE.
-constexpr unsigned weapon_projectile_max_bolts = 512;
+// One projectile draw: every quad of the frame (a bolt is one to five: its segment and the comet's trail) as one indexed
+// list through DrawIndexedPrimitiveUP, into RT0 (the bound FP16 scene) and the lane at RT1 (COLORWRITEENABLE1 = GREEN:
+// the far flag g += 32 max(rgb), the production B' route of docs/architecture/bolts-through-taa.md), depth-tested
+// LESSEQUAL against the scene's depth surface with Z writes off, ONE/ONE.
+constexpr unsigned weapon_projectile_max_bolts = 512, weapon_projectile_quads_per_bolt = 5;
+constexpr unsigned weapon_projectile_max_quads = weapon_projectile_max_bolts * weapon_projectile_quads_per_bolt;
 struct WeaponProjectileFrame {
     UINT width = 0, height = 0;
-    const WeaponProjectileVertex* vertices = nullptr; // 4 per bolt
-    unsigned bolts = 0;
+    const WeaponProjectileVertex* vertices = nullptr; // 4 per quad
+    unsigned quads = 0;
     IDirect3DSurface9* lane = nullptr;  // level 0 of the four-lane RT2 (borrowed): the far flag's target
     IDirect3DSurface9* depth = nullptr; // the scene's depth-stencil surface (borrowed)
     D3DFORMAT scene_format = D3DFMT_A16B16G16R16F;
@@ -161,7 +164,7 @@ enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patc
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
-    unsigned calls = 0, patches = 0, decals = 0, bolts = 0;
+    unsigned calls = 0, patches = 0, decals = 0, quads = 0;
     bool drew = false;
     const char* refused = nullptr; // run_projectiles: the frame's refusal (lane, depth, mrt, ...), nothing drawn
 };
@@ -227,6 +230,6 @@ private:
     IDirect3DVertexShader9* projectile_vs_ = nullptr;
     IDirect3DPixelShader9* projectile_ps_ = nullptr;
     IDirect3DVertexDeclaration9* projectile_declaration_ = nullptr;
-    std::uint16_t projectile_indices_[weapon_projectile_max_bolts * 6]{}; // two triangles per quad, built at attach
+    std::uint16_t projectile_indices_[weapon_projectile_max_quads * 6]{}; // two triangles per quad, built at attach
 };
 } // namespace x3m::renderer

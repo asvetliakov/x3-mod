@@ -94,8 +94,8 @@ Projection at 1440 rows: f = 1,280 px x m per metre of distance at the launcher 
 | --- | --- | --- |
 | core width | **w_px = core_px x 500 / d** (d the view depth in metres), independent of the projection: only the length (and the position) depends on the live projection. (At fov 90, f = 1280, that is a world width of 0.78 m.) Under 1 px it is drawn 1 px wide at radiance x w_px (a far bolt dims, it does not fatten) | 5.0 / 2.0 / 1.0 / 0.33 → 1 px at a third |
 | glow | a Gaussian of σ = `glow_ratio` x core_px / 2 in screen px at d_ref, scaled with distance like the core, floor σ 1.5 px; colour the gun's tint; radiance `glow_gain` x scene white. The wide halo is the bloom's: the core's own energy feeds the extract, so the drawn glow is only the near field | σ 7.5 / 3 / 1.5 / 1.5 px |
-| motion streak (bridged on screen, FL 59 A) | a segment **on screen** from the previous frame's projected head to this frame's projected head P (the body origin, section 3), both through the unjittered projection (the bolt never enters the TAA history; jitter would only misalign the seam): **bridged by construction**, so one frame's streak ends exactly where the next one starts at any frame rate, SETA and camera motion, translation or turn, and the eye's integration of successive frames is one unbroken line. The pool entry keeps the head's raster position and view depth. A first frame (a new bullet, a jump, a camera cut, a frame the stage did not run) is the projection of P − v_rel min(Δt_game, age) (v_rel = v less the camera's translation per step: the node velocity includes the shooter's; cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]; never behind the muzzle). No multiplier (the former `stretch_k`): the length is the on-screen motion. Along the axis the profile is flat with logistic end ramps whose half maximum sits at the ends, Φ(x + h) − Φ(x − h); the previous frame's ramp and this one's telescope, so the seam is neither a gap nor a bead. Width, glow and depth (occlusion) are the head's. **Energy (a dimming for long travel only):** the radiance factor is min(1, `length_cap_m` / the world travel this frame, \|v\| Δt_game): past the cap the streak keeps its full length and dims (a fast or SETA bolt is a longer, fainter streak, never a chopped dash); a travel under the cap keeps full radiance whatever its on-screen length (a paused game, step 0, too); an on-screen motion under the core's width (an end-on bolt) is a spot of the core's width centred on the motion, at full core radiance at its centre | at 60 fps (19.4 m): 124 / 50 / 25 / 8 px; at 144 fps (8.1 m): 52 / 21 / 10 / 3 px; under SETA 6 (100 ms, 116 m) the full 116 m at 30 / 116 = 0.26 of the radiance (arithmetic, f = 1280) |
-| nothing behind | no smoke, no fading streak, no history beyond the previous frame's head (the streak is one frame's travel): an IRE fires 6.7 shots/s per gun at 1,162 m/s, so a trail would turn a stream into a beam and persist where the TAA would smear it; a short fading streak is acceptable only for a slug or a kinetic round (MASS, EBC: a burning tracer has one) and is that family's decision | — |
+| motion streak (bridged on screen, FL 59 A) | a segment **on screen** from the previous frame's projected head to this frame's projected head P (the body origin, section 3), both through the unjittered projection (the bolt never enters the TAA history; jitter would only misalign the seam): **bridged by construction**, so one frame's streak ends exactly where the next one starts at any frame rate, SETA and camera motion, translation or turn, and the eye's integration of successive frames is one unbroken line. The pool entry keeps the head's raster position and view depth. A first frame (a new bullet, a jump, a camera cut, a frame the stage did not run) is the projection of P − v_rel min(Δt_game, age) (v_rel = v less the camera's translation per step: the node velocity includes the shooter's; cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]; never behind the muzzle). No multiplier (the former `stretch_k`): the length is the on-screen motion. Along the axis the profile is flat with logistic end ramps whose half maximum sits at the ends, Φ(x + h) − Φ(x − h); the previous frame's ramp and this one's telescope, so the seam is neither a gap nor a bead. Width, glow and depth (occlusion) are the head's. **Energy (a dimming for long travel only; the comet's in the comet row):** the radiance factor is min(1, `length_cap_m` / the world travel this frame, \|v\| Δt_game): past the cap the streak keeps its full length and dims (a fast or SETA bolt is a longer, fainter streak, never a chopped dash); a travel under the cap keeps full radiance whatever its on-screen length (a paused game, step 0, too); an on-screen motion under the core's width (an end-on bolt) is a spot of the core's width centred on the motion, at full core radiance at its centre | at 60 fps (19.4 m): 124 / 50 / 25 / 8 px; at 144 fps (8.1 m): 52 / 21 / 10 / 3 px; under SETA 6 (100 ms, 116 m) the full 116 m at 60 / 116 = 0.52 of the radiance (arithmetic, f = 1280) |
+| comet (FL 60 A) | a bright **head** and a **trail** fading behind it, the brightness along the on-screen path a function of each point's age a (the game time since the head passed it): F(a) = (8 · 2^(−3a/T) − 1) / 7, 1 at the head, monotonic, 0 at the effective trail T; the core and the glow both follow it; the head adds `head_gain` x the trail's start on the core over the last 1.5 core widths. **SETA-aware time bounds:** the comet is drawn to the age D = max(0.745 `trail_ms` (where F = 10 %), 1.25 x the frame's span (the game step, or the motion's age span if longer)), T = D / 0.745: at 1x D = 0.745 `trail_ms`; under SETA the trail lengthens with the step, so the bolt's own segment is always drawn in full and the fade runs on into the previous one (never shorter than the frame's motion: no FL 59 A gap). `trail_ms` 0 is the flat streak above (FL run 60). **Energy:** min(1, cap / the drawn world length), the comet's \|v\| D (the dot past `lod_dot_m` takes the comet's; the flat streak's and the spot's the travel \|v\| Δt_game). The spot (no trail, no head) is used only when the whole drawn path, ring included, is under one core width, with hysteresis: entered under 0.8 core widths, left over 1.2 | at 40 ms, 1x: half brightness 11.1 ms behind the head (13 m at 1162 m/s), 20 % at 23.2 ms, drawn to 29.8 ms (35 m: 89 px at 500 m, f 1280), energy 1 (34.6 m under the 60 m cap); SETA 6 (100 ms): D 125 ms, T 168 ms, 145 m at 60 / 145 = 0.41 |
 | hot centre | the core colour is lerp(tint, white, `hot_share` x (1 + k)); the IRE at 0.3 keeps its orange, the HEPT at 0.42 goes pale | — |
 | distance LOD | past `lod_dot_m` the stretch is dropped and the bolt is a 1–2 px dot with the glow at its floor; never a rim, an outline or a flat disc (a decal) | at 3 km a 1 px dot of 8 px length, or a dot past the limit |
 | HDR | radiance 2^`stops` x scene white (the lit hull's white, 1.0 linear) into the FP16 scene (ONE/ONE), under the same auto exposure (capped +1.3 EV) and AgX as every light; the bolt is energy in the scene, not a sprite with a glow painted on | +2 stops: 4.0 linear, clips white at the core through AgX |
@@ -110,6 +110,37 @@ Birth: never longer than flown (P − v_rel min(Δt, age)), so it grows out of t
 absent from the tap list (hit or expiry) means not drawn; the impact family covers the cut. A camera turn moves the
 streak's tail with the screen (the streak is the bolt's on-screen path between the two frames, the motion the eye
 integrates); a cut (the resolve's cut detector, rotation bound or chase snap) starts every bridge over.
+
+**The comet's construction (FL 60 A, 2026-11-08).** Each frame draws the bolt's own segment (the bridged one: the
+previous frame's head on screen to this head, its age span the game time between the two heads) and redraws the older
+segments from a ring of up to four earlier heads per pool entry (raster position and game time), each with F over its
+own age span, so neighbouring segments meet at a shared end with equal values and the ramps telescope as before: within
+one frame the profile from the head back is one falloff with no seam and no saw-tooth, and across frames each point
+keeps dimming with its age. A ring segment whose newer end is older than the drawn age D is not drawn and the one
+crossing it is clipped there (the bolt's own segment never is: D ≥ 1.25 x its span). When the comet's knots lie within
+0.1 core widths of the line from its far end to the head and their ages are linear along it within 1 % of T (a straight
+on-screen path at a steady screen speed, the common case: a 3D line projects to a line), the whole comet is one quad;
+else one quad per segment (at most five). Each quad tapers towards its older end along the tangent of its reach at the
+head (r(a) ≤ r(0) (1 − (24/7) a / (2 l T)), l the peak's log2 over the cut), which bounds the shrinking glow and core
+from above (the reach is concave in the age; every attribute is affine, so the trapezoid interpolates exactly). The along
+profile is normalised over the whole drawn path, so a short comet, its first frame and a spot all reach full radiance
+at the centre (the first frame of a short streak is no brighter than its second). The head's time is the last change's
+game ms plus the extrapolated µs, so a static frame keeps the law; the previous head joins the ring whenever the game
+time advanced, a held head (an extrapolated head past the next real position) included; a paused game keeps the ring;
+a first frame (a jump, a cut, a new bullet) restarts it from its motion's tail. Drawn to F = 10 %, not 5 %: at 5 % the
+512-bolt budget measured 50.0 and 50.6 µs GPU fenced against the 50 µs bound, its cost following the lit area (+26 % over
+FL run 60's streak), at 10 % 45.1 µs. **The adaptive ring:** when the previous stage frame's bolts wanted more than 1536
+quads untrimmed, a comet that is not one quad redraws at most its two youngest ring segments this frame (the frame's
+untrimmed demand decides, so a trimmed frame stays trimmed while the demand lasts instead of alternating); the
+`weapon_effects_frame` row counts the trimmed bolt-frames as `projectile_ring_trimmed`. In the fixture's worst case
+(512 curved comets at 144 fps under a 43°/s turn) it does not bring the frame inside the budget (ledger "FL 60 A
+review").
+
+**Why a comet (FL 60 A, 2026-11-08).** The user flew the bridged streak (FL run 60): continuous, no dashes, not
+beam-like, and asked for a bright head with a trail that fades behind it, a comet, offered as a shape change that keeps
+the frames seamless. The section 2 rule "nothing behind" (a trail would turn a stream into a beam) is the user's to
+override; the trail is short in game time (drawn about two frames at 60 fps, four to five at 144) and fades out, so a stream stays a
+row of comets.
 
 **Why bridged (FL 59 A, 2026-11-08).** With the streak at 0.4 of the per-frame travel (capped at 30 m) the user saw each
 IRE near the ship as a dashed line, "--- --- ---", in motion only (a single frame shows one dash; `stretch_k` 0 did not
@@ -189,7 +220,7 @@ tapped (the list is sector-wide) and culled by the stage.
 
 ## 4. Calibration in flight [D]
 
-`C:\X3FL\x3m\projectile_tune.json`, dev only, at most seven numbers for the family; the starting values and bounds
+`C:\X3FL\x3m\projectile_tune.json`, dev only, at most nine numbers for the family; the starting values and bounds
 (`weapon_projectile_family.h`):
 
 | Key | Start | Bounds | Meaning |
@@ -199,8 +230,10 @@ tapped (the list is sector-wide) and culled by the stage.
 | `glow_gain` | 0.2 | 0–2 | glow radiance in scene white |
 | `hot_share` | 0.3 | 0–1 | white share of the core colour (x (1 + k) per gun) |
 | `lod_dot_m` | 3000 | 500–20000 | past this view depth (m), no stretch: a dot |
-| `length_cap_m` | 30 | 5–500 | **energy-conserving** since FL 59 A: a streak longer than this (metres) keeps its full length and its radiance scales by cap / length (before: a hard cap that cut the length; 116 at first, 30 baked after the look frames; the engine's own 116 m figure is the collision hull, section 3). The former `stretch_k` key is gone (the streak is the bridged travel); a file still carrying it is read without it and without a row |
+| `length_cap_m` | 60 | 5–500 | **energy-conserving** since FL 59 A: a streak longer than this (metres) keeps its full length and its radiance scales by cap / length; since FL 60 A the length is the drawn one (the comet's \|v\| D) (before: a hard cap that cut the length; 116 at first, 30 baked after the look frames, 60 since the FL 60 A review so the 1x comet, about 35 m drawn, is not dimmed; the engine's own 116 m figure is the collision hull, section 3). The former `stretch_k` key is gone (the streak is the bridged travel); a file still carrying it is read without it and without a row |
 | `stops` | 2.0 | −2–6 | core radiance 2^(stops + k) x scene white |
+| `trail_ms` | 40 | 0–200 | the comet's trail (FL 60 A): it covers the bolt's travel over this many game ms, F falling to 0 there (drawn to F = 10 %, 0.745 of it; under SETA at least 1.25 x the step); 0 is the flat streak of FL run 60 (no trail, no head) |
+| `head_gain` | 1.5 | 1–4 | the head's core over the trail's start (with a trail) |
 
 The proxy checks the file's last-write time at most once a second on the Present thread (`GetFileAttributesExW`,
 `ftLastWriteTime`), reads a changed file into a fixed 1 KB buffer, parses it once with a flat key-number scanner (no
@@ -212,7 +245,7 @@ starred); a malformed file logs one `projectile_tune refused` row and keeps the 
 the baked values with one `source=defaults` row; a file that never existed logs nothing.
 Nothing per frame but the one-second timer. **It never ships:** the reader (`weapon_projectile_tune.cpp`) compiles only
 under the CMake option `X3M_DEV_TUNING` (default ON for a RelWithDebInfo build, OFF otherwise; `tools/release/release.py`
-configures OFF), so a release DLL has the constants of `weapon_projectile_family.h` and no file code or path. **Protocol:** the user edits the file, flies, reports the seven
+configures OFF), so a release DLL has the constants of `weapon_projectile_family.h` and no file code or path. **Protocol:** the user edits the file, flies, reports the nine
 numbers and a screenshot; we bake them as the family's constants in the header, the user deletes the file. One gun at a
 time: the IRE's accepted values are the family's; PAC and HEPT are then flown on them and may move only the per-gun
 inputs (colour, hot share via k), unless the user asks.
@@ -234,6 +267,12 @@ how it sits beside the game's muzzle blob (still the game's in this step), the b
 against the sun, and whether 2 px is "accurate" or already too thin at 5120x1440.
 
 ## 6. Performance budget
+
+**Since FL 60 A (measured, ledger "FL 60 A review"):** the flight bound stays 100 µs CPU and 50 µs GPU fenced for 512
+bolts at 5120x1440 (the main fixture row: every bolt a comet with its ring full); the flight evidence is the
+`weapon_effects_frame` row's `projectile_us_max`. The fixture's worst case (512 curved comets on screen at 144 fps during
+a 43°/s turn, the adaptive ring trimming) is a synthetic case far beyond any flight and is gated only as a regression
+tripwire at 150 µs CPU and 100 µs GPU fenced.
 
 5120x1440, 512 bolts (the tap's cap), one draw. Quad per bolt: (stretch + 6σ) x 6σ px: 1.2 kpx at 500 m, 7.6 kpx at
 200 m; 32 near + 480 far ≈ 0.8 Mpx = 0.11 screens [I]. Pixel program about 40 slots (distance to a segment, two
@@ -263,7 +302,7 @@ FL only (`X3M_EDITION_FL`); the AP build installs no new hook and creates no pro
 **fighter-tracer family's stage with the IRE as its only enabled row**, not as IRE code.
 
 **Where things live.** `src/proxy/weapon_projectile_family.h` (the families: shape, mount tier, the enabled TBullets ids,
-the seven-number `Tune`; `resolve_rows`), `weapon_effects_projectile.h` (the game-thread pool and enabled-body set,
+the nine-number `Tune`; `resolve_rows`), `weapon_effects_projectile.h` (the game-thread pool and enabled-body set,
 integer only), `weapon_projectile_stage.h` (the per-frame builder), `weapon_projectile_tune_core.h` /
 `weapon_projectile_tune.{h,cpp}` (the dev file), `src/effects/weapon_projectile_{vs,ps}.hlsl` (one family-generic
 program pair: every colour, width and stretch is per vertex), `WeaponEffectsPass::run_projectiles`
@@ -289,13 +328,20 @@ row's override, else clamp(log10(d / 300) / 2, 0, 1) over TBullets `+0x44` (IRE 
 are the live bullet's.
 
 **Constants (the baked values, `Tune` of `fighter_tracer`):** core_px 2, glow_ratio 3, glow_gain 0.2,
-hot_share 0.3, lod_dot_m 3000, length_cap_m 30 (energy-conserving since FL 59 A), stops 2; the `stretch_k` multiplier
+hot_share 0.3, lod_dot_m 3000, length_cap_m 60 (energy-conserving since FL 59 A; 30 until the FL 60 A review), stops 2, trail_ms 40 and head_gain
+1.5 (the comet, FL 60 A, starting values); the `stretch_k` multiplier
 was removed at FL 59 A (it had been 1.0, then 0.4). stretch_k and length_cap_m were 1.0 and 116 (the section 4
 starting values) until the fixture's look frames: a 48 px dash at 500 m at 1x and full-cap beams of 287–857 px under
 SETA 6, the bulk the user rejected (coordinator, 2026-11-08). Fixed: reference distance 500 m (`reference_m`, the
 tuning numbers' reference, never in the program), 5 view units per metre, glow σ floor 1.5 px (its radiance scaled by
 (σ / 1.5)²), the quad's reach where both Gaussians fall below 1/256 of scene white plus 0.5 px, the far flag
-K = 32, pool 512 entries / 1024 slots / 32 probes, 64 bodies.
+K = 32, pool 512 entries / 1024 slots / 32 probes, 64 bodies; the comet's falloff F = (8 · 2^(−3a/trail_ms) − 1) / 7
+(`trail_k` 3), drawn to the age D = max(0.745 trail_ms (F = 10 %, `trail_floor`), 1.25 x the frame's span
+(`trail_cover`)), T = D / 0.745, a ring of 4 earlier heads per entry (`trail_ring`: at most 5 quads per bolt), the head
+over the last 1.5 core widths, one quad for the comet when its knots lie within 0.1 core widths of a line and its ages
+within 1 % of T of linear (`merge_core`, `merge_age`), the spot entered under 0.8 and left over 1.2 core widths of
+drawn path (`spot_enter`, `spot_leave`), the adaptive ring past 1536 wanted quads (`ring_trim_above`, two ring
+segments).
 
 **Per frame.** Present latches `skip_on` from the frame's stage (armed, the resolve completed, the projectile draw ran:
 drew or had nothing to draw) and the resolved bodies. The batch stub (`0x097af8`) skips an enabled body's batch under
@@ -309,14 +355,19 @@ row count is not the engine's resolves no body (`projectile_rows state=stale`, t
 stage walks the pool (one bounded node read per entry), bridges each entry from its previous head on screen (section
 2: the entry keeps its read position, the head's raster position and view depth as float bits, the game ms of its last
 change, its extrapolated game µs and the device frame that wrote them, all integer fields; the object tap zeroes the
-frame on a registration and a recycled node), builds one quad per bolt from the unjittered live projection and the eye
-in engine units (the adjugate inverse of the view basis, so the
-per-bolt math is float without the far-from-origin error), and draws all of them in one `DrawIndexedPrimitiveUP`
-(48-byte vertices: float32 position and local frame, float4 radiance scales and 1/(2σ²), two D3DCOLOR tints; a
-FLOAT16 attribute measured five times the submit cost natively) into RT0 and the lane at RT1 (COLORWRITEENABLE1 GREEN)
-with the scene's depth surface captured at the resolve, LESSEQUAL, Z writes off, ONE/ONE. The pixel program is 39 ps_3_0
-slots since FL 59 A (16 before: the two logistic end ramps per Gaussian; a segment's integral along the axis is its
-drawn length exactly, so the energy rules are radiance scales on the CPU). Capabilities checked at attach with their own verdict (`projectile_device` row; a refusal keeps the shield
+frame on a registration and a recycled node; since FL 60 A also the head's game time and the comet's ring of four
+earlier heads with theirs), builds one to five quads per bolt (its segment and the comet's trail, section 2; one quad
+when the comet is straight) from the unjittered live projection and the eye in engine units (the adjugate inverse of
+the view basis, so the per-bolt math is float without the far-from-origin error), and draws all of them (at most 2560
+quads) in one `DrawIndexedPrimitiveUP` (48-byte vertices: float32 position; a float4 of values affine over the quad,
+the core's across offset in units of √2 ln 2 σ, the exponents of the core's two logistic end ramps and the trail's
+falloff; a float3 of the core and glow radiance scales and σ_core / σ_glow; two D3DCOLOR tints, the core's alpha the
+head's gain / 4; affine values interpolate exactly over a tapered quad; a FLOAT16 attribute measured five times the
+submit cost natively) into RT0 and the lane at RT1 (COLORWRITEENABLE1 GREEN) with the scene's depth surface captured at
+the resolve, LESSEQUAL, Z writes off, ONE/ONE. The pixel program is 43 ps_3_0 slots since FL 60 A (39 at FL 59 A, 16
+before: the two logistic end ramps per Gaussian, the falloff, the head window; a pixel under 1/256 of scene white,
+the quads' radiance cut, is discarded: no blend, no flag). The attach requires MaxPrimitiveCount ≥ 5120 and
+MaxVertexIndex ≥ 10239 (the 2560 quads). Capabilities checked at attach with their own verdict (`projectile_device` row; a refusal keeps the shield
 effect and the game's bolts): two simultaneous targets, independent write masks, MRT post-pixel-shader blending,
 LESSEQUAL, the primitive limits, blending of a four-lane lane format, and per frame the lane's format and the MRT bit-depth
 rule, the depth surface's size and multisampling (`projectile_state` row on a change of verdict).
@@ -338,9 +389,9 @@ only on the camera-gate path, where its s1 is the current lane (`temporal_pass.c
 callback ran, so a flag the stage writes is not seen there and the bolt goes through the resolve as scene colour.
 
 **Tuning protocol (dev builds; the user, FL run 59 onwards).** Create `C:\X3FL\x3m\projectile_tune.json` while the
-game runs, for example `{"core_px": 2.0, "glow_ratio": 3.0, "glow_gain": 0.2}`; save it; within a second the log shows
-`projectile_tune reloaded … values=…` and the next frame uses them. Change one number at a time, fly a burst at 1x and
-under SETA, and report the seven values from the last `reloaded` row with a screenshot or an F8 capture. A clamped
+game runs, for example `{"core_px": 2.0, "glow_ratio": 3.0, "glow_gain": 0.2}` or the comet's `{"trail_ms": 60,
+"head_gain": 2}`; save it; within a second the log shows `projectile_tune reloaded … values=…` and the next frame uses
+them. Change one number at a time, fly a burst at 1x and under SETA, and report the nine values from the last `reloaded` row with a screenshot or an F8 capture. A clamped
 value logs which key and its bounds; a malformed file is refused and the last values stay. When the user accepts a
 set, it is baked into `families[fighter_tracer].tune` and the file deleted; a release build never reads it.
 
@@ -354,14 +405,30 @@ radiance (the end-on centre equal to a side-on streak's), the far flag's write
 (not the write-back, above), the dot with the streak's energy, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
 (recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 71.3 µs, GPU fenced
 42.2 µs [M]). Not flown.
+**Verified for the comet (native fixture, ledger "FL 60 A: comet head and trail (2026-11-08)" and "FL 60 A review
+(2026-11-09)").** `trail_ms` 0 reproduces FL run 60's seam profiles exactly (the largest relative difference over 24
+pinned values 0.0000); the comet's profile along the axis follows C F(age) within 1.2 % and never rises walking back
+from the head (60 and 144 fps, the flown values, the camera moving or turning, and an accelerating turn drawn as two
+segments); the head is the row's maximum 2 px behind the head at 1.44 x the trail's start (the core alone 1.476,
+head_gain 1.5); the row at the age `trail_ms` is 0; the trail's 50 % and 20 % points are 11.07 / 23.16 game ms at 17
+and 23 ms steps (the law 11.07 / 23.16); under SETA 6 the bolt's own segment is drawn in full (357.0 px of 357.0), the
+comet to 125 ms with T 167.8 ms (50 % / 20 % at 46.44 / 97.18 ms, the law 46.44 / 97.17) at energy 0.2065 = 30 / 145.25
+m (with the cap then 30; 0.4131 at 60); the spot's hysteresis holds the mode over four frames at 0.9 / 1.1 core widths (peaks within 2.4 %); one quad against
+two across the merge tolerance changes the light by 0.1 %; the end-on spot keeps full radiance (no trail, no head); the
+512-bolt budget at 5120x1440 with the ring full: CPU 88.0 µs, GPU fenced 46.4 µs (fence 10.7 µs), 532 quads; the synthetic worst case (512 curved comets at 144 fps under a 43°/s turn, the adaptive ring trimming) CPU 115.2 µs, GPU fenced 67.5 µs, inside its 150 / 100 µs tripwire (section 6) [M]. Energy since `length_cap_m` 60: 1.0 at 1x, 0.4131 under SETA 6. Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
-sRGB-encoded as the mocks, no bloom, AgX or TAA; first frames, so each streak is |v| x the step), cropped around the
-bolts: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms
-step: 148 / 49 / 20 px streaks, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png)
-(the same at 100 ms: the full 116 m, 1278 / 332 / 129 px, past the 30 m cap at 30 / 116 = 0.258 of the radiance),
-[lod](../../verification/results/projectile-look/fixture-ire-lod.png) (3 km, exactly at `lod_dot_m` so still an 8.7 px
-streak at a third of the radiance, beside 300 m at 75 px). The bolts move at 0.8 of their speed across the view and
-recede at 0.6 [M].
+sRGB-encoded as the mocks, no bloom, AgX or TAA; since FL 60 A the last of consecutive stage frames through the
+production builder, so each bolt is its comet), cropped around the bolts:
+[near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km, the fourth 17 ms frame:
+comets of 150 / 89 / 37 px drawn, the motion 150 / 50 / 21 px, cores 5 / 2 / 1 px),
+[seta](../../verification/results/projectile-look/fixture-ire-seta.png) (100 ms steps: the comet 381 / 99 / 38 px of
+the 1278 / 332 / 129 px motion, at 0.258 of the radiance past the 30 m cap),
+[lod](../../verification/results/projectile-look/fixture-ire-lod.png) (3 km, at `lod_dot_m`: a 16 px comet at a third,
+beside 300 m at 76 px of motion), [comet](../../verification/results/projectile-look/fixture-ire-comet.png) (one IRE
+at 500 m, three consecutive 17 ms frames stacked: the white head and the trail fading behind it, 94 / 89 / 85 px). The
+bolts move at 0.8 of their speed across the view and recede at 0.6 [M]. In the clamped encoding the core saturates
+for most of the trail (4.0 linear at F = 1, still 1.0 at F = 0.25), so the fade shows over the trail's last third;
+under the game's exposure and AgX the gradient starts nearer the head [inferred].
 
 ## 8. Options considered and why they lose
 

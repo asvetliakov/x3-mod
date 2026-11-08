@@ -32,6 +32,9 @@ constexpr unsigned cfg_step_ms = edition_fl ? 0x704 : 0x714;
 // An entry the object tap has not seen for this long (game ms; at least three game steps) retires: absent from the
 // update pass means not drawn.
 constexpr std::uint32_t stale_ms = 250;
+// The comet's ring (projectile-look.md section 2, FL 60 A): the heads drawn before the previous frame's, at most this
+// many, so a bolt is at most 1 + trail_ring quads.
+constexpr unsigned trail_ring = 4;
 static_assert((slot_count & (slot_count - 1u)) == 0 && slot_count >= 2 * pool_capacity, "half full at most");
 }
 struct ProjectileEntry {
@@ -47,6 +50,14 @@ struct ProjectileEntry {
     std::uint32_t changed_ms;  // the game ms of the last stage frame whose read position changed
     std::uint32_t static_us;   // game us the head was extrapolated since then (render dt x SETA rate, bounded)
     std::uint32_t stage_frame; // the device frame of that stage frame (0: none, the next frame is a first frame)
+    // The comet's trail (valid only with a bridge from stage_frame): the game time of head_px (game us, wrapping: the
+    // last change's ms x 1000 + static_us), and the ring of the heads before it, newest first (raster px, float bits),
+    // with their game times; ring_count of them are valid.
+    std::uint32_t head_us;
+    std::uint32_t ring_px[projectile::trail_ring][2];
+    std::uint32_t ring_us[projectile::trail_ring];
+    std::uint32_t ring_count;
+    std::uint32_t spot_state; // the last frame's: 1 a spot, 2 a streak or comet (the spot's hysteresis)
 };
 struct ProjectileBody {
     std::uint32_t id;         // the engine body id (node +0x144)
@@ -78,6 +89,7 @@ struct ProjectilePool {
     ProjectileCounters counters{};
     std::int32_t stage_eye[3]{};   // the eye (engine units) of the stage frame stage_eye_frame (a first frame's camera travel)
     std::uint32_t stage_eye_frame = 0;
+    std::uint32_t stage_wanted = 0; // the quads the last stage frame's bolts wanted untrimmed (the adaptive ring)
 };
 static_assert(offsetof(ProjectilePool, skip_on) == 0 && offsetof(ProjectilePool, skipped) == 4 &&
                   offsetof(ProjectilePool, bits) == 8,

@@ -3301,3 +3301,82 @@ Records on the clean `79f2d5e24` [M]: AP hook **131 of 131**, FL hook **67 of 67
 view axis at 500 m: centre 4.1992, the side-on streak's 4.1992 (ratio 1.0000), energy 1; slow 0.5 px and paused: a 2 px
 spot at factor 1; the dot 0.2689 = the streak's; seams unchanged (gap 0.0000 px; spread 2.3–4.5 %); the SETA look
 frame back to 0.258 for every bolt; budget CPU 71.3 µs, GPU fenced 42.2 µs. Crops regenerated on `79f2d5e24`.
+
+**FL 60 A: comet head and trail (2026-11-08, `d22ae6246`).** The user flew the bridged streak (FL run 60, `f14f95837`):
+continuous, no dashes, not beam-like, and asked for a bright head with a trail fading behind it. Change
+(projectile-look.md section 2 "The comet's construction" and "Why a comet"): the brightness along the on-screen path is
+F(age) = (8 · 2^(−3 age / `trail_ms`) − 1) / 7 (1 at the head, 0 at `trail_ms`), on the core and the glow; the head adds
+`head_gain` x the trail's start on the core over the last 1.5 core widths; each frame redraws the older segments from a
+ring of four earlier heads per pool entry (raster position and game time: the last change's ms x 1000 + the
+extrapolated µs), drawn while F ≥ 10 % (0.745 `trail_ms`); a straight comet (knots within 0.25 px of a line, ages
+within 2 % of `trail_ms` of linear) is one quad, else one per segment (at most five), each tapered along its reach's
+tangent; the end-on spot and the dot keep no trail and no head; the cap dims the whole comet. Tuning keys `trail_ms`
+(0–200, 40; 0 = FL run 60's flat streak) and `head_gain` (1–4, 1.5). The vertex stays 48 B (affine interpolants: the
+across offset, the ramp and falloff exponents; the head gain in the core colour's alpha); the pixel program 39 → 43
+ps_3_0 slots and discards a pixel under the 1/256 radiance cut; a draw takes up to 2560 quads (attach needs
+MaxPrimitiveCount ≥ 5120). Also: `weapon_shell_ps` compiled with three X4121 warnings (the compiler sank its ddx/ddy
+into the branch); the normal and the three border-form widths are now consumed by the branch condition with terms
+that change no pixel, `generate_weapon_effects_programs.py --check` PASS with no compiler warning (shell PS 1983 →
+2023 words). Records on the clean `d22ae6246` [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **78 of 78**.
+
+| Case | Result [M] |
+| --- | --- |
+| `trail_ms` 0 reproduces FL run 60 | the six two-frame seam variants' lo / hi / seam / plateau against the run 60 record (`79f2d5e24`): largest relative difference 0.0000 |
+| comet seam, 200 m: baked and flown values at 60 / 144 fps, camera moving 200 m/s, turning 1°/frame | one quad each (merged; ring 1 at 60 fps, 4 at 144); the row from 3 core widths behind the head to the trail's end: largest rise over the running minimum 0.0000, deviation from C F(age) 0.06–1.1 % (1.1 % turning); the flown values' energy 0.253 / 0.615 |
+| comet seam, the turn accelerating 1+2+3+4°/frame | two quads (not merged: the screen speed changes per frame); rise 0.0000, deviation 0.31 % across the seam |
+| head and trail, IRE at 500 m, 60 fps | the row's maximum 2.0 px behind the head at 1.443 x the trail's start (the core alone 1.475, `head_gain` 1.5, written 1.507); the row at the age `trail_ms` 0.0000 of the start; drawn to 29.79 ms (0.745 x 40) |
+| SETA invariance of the trail, 500 m | 50 % at 11.07 / 11.06 game ms (1x 17 ms steps / SETA 6 100 ms steps), 20 % at 23.16 / 23.16, the law 11.07 / 23.16; SETA 6 in one segment at energy 0.258 |
+| end-on, far flag, quad, depth, static, cut, pool, Reset, width, flat-law SETA / cap / dot | unchanged results (end-on centre 4.1992 = the flat side-on streak's, no head; flag 32.005; 3,873 lit, 0 outside the tapered quad; widths within 0.5 px) |
+| budget, 5120x1440, 512 bolts, every bolt bridged with the ring full (fourth frame) | CPU 87.3 µs (best of 40), GPU fenced 45.1 µs (fence 10.9 µs), 518 quads: 506 comets of which 500 one quad, 6 dots (receding past `lod_dot_m`), 6.02 % lit, statics 0, jumped 0 |
+
+The budget's path [M, development runs on the uncommitted tree]: one quad per segment 1524 quads, CPU 119.4 µs, GPU
+76.0 µs; merging straight comets 540 quads, 93.9 / 53.1 µs; tapering 51.1 µs; drawn to F = 5 % (the brief's rule)
+50.0 and 50.6 µs (6.58 % lit); an early bound discard in the pixel program changed nothing (51.0 µs: the cost follows
+the blended area); drawn to F = 10 % 45.1 µs. Look crops regenerated through the production builder (consecutive
+frames, so each bolt is its comet) plus `fixture-ire-comet.png` (one IRE at 500 m over three consecutive frames,
+stacked). Builds `build-comet-fl` and `build-comet-ap` (RelWithDebInfo) 0 warnings; `check_no_x87.py` 0 violations
+(FL 1060, AP 1161 functions); host `test_weapon_effects*.py` 96 OK. Figures from
+[`projectile_rows.py`](../../verification/results/native-windows/weapon-effects/projectile_rows.py). Not flown.
+
+**FL 60 A review (2026-11-09, `335b5f3f4`).** Review fixes on the comet (projectile-look.md section 2, the comet row
+and "The comet's construction"). A (design call): the comet is drawn to D = max(0.745 `trail_ms`, 1.25 x the frame's
+span), T = D / 0.745 — the coordinator's "max(trail_ms, 1.25 x step)" applied to the drawn age, because the drawn trail
+ends at F = 10 % (0.745 T): with T = 1.25 x step the bolt's own segment would still be clipped at 0.93 x step; the energy
+factor divides by the drawn world length (|v| D), so **a 1x IRE comet is now dimmed to 0.867** (34.6 m drawn against
+the 30 m cap) and the flown values' (5 m cap) to 0.144. B: the spot only when the whole drawn path is under one core
+width, hysteresis 0.8 / 1.2 core widths (state per pool entry). C: merge within 0.1 core widths and 1 % of T. E: the
+previous head joins the ring whenever game time advanced, a held head included (with constant velocity a held head's
+time does not advance, so the ring then waits). F: the along profile normalised over the whole drawn path. H: seam
+limits 5 % / 3 %. D: the worst-case row and the adaptive ring (past 1536 wanted quads, two ring segments; the frame's
+untrimmed demand decides, so a trimmed frame does not alternate; `projectile_ring_trimmed` in `weapon_effects_frame`).
+Records on the clean `335b5f3f4` [M]: AP hook **131 of 131**, FL hook **67 of 67**, D3D **81 of 81**.
+
+| Case | Result [M] |
+| --- | --- |
+| SETA 6, 500 m, two frames | own segment 356.97 px drawn of 356.97; D 125.0 ms, T 167.83 ms; 50 % / 20 % at 46.44 / 97.18 ms (law 46.44 / 97.17); energy 0.2065 = 30 / 145.25 m |
+| 17 / 23 ms steps (SETA 1.4) | 50 % 11.07 / 11.07 ms, 20 % 23.16 / 23.16 ms (law 11.07 / 23.16) |
+| spot hysteresis, 500 m, path 1.1 / 0.9 core widths alternating, four frames | from a comet: comet throughout, peaks 5.020 / 5.141 (2.4 %); from a spot: spot throughout, 4.074 / 4.016 (1.4 %); a real transition spot ↔ comet changes the peak by about 25 % (4.07 → 5.14) |
+| merge tolerance, 200 m, the knot 0.43 / 0.56 px off the line (0.086 / 0.112 core widths) | one quad / two; the column's light 4.506 / 4.511 (0.1 %) |
+| comet seam, 7 variants (limits now 5 % / 3 %) | rise 0.0000 everywhere; deviation 0.07–1.12 %; the accelerating turn two quads |
+| `trail_ms` 0 against run 60 | 0.0000 |
+| budget, 512 bolts, 60 fps, ring full | CPU 90.4 µs, GPU fenced 45.9 µs (fence 10.6), 532 quads, 486 of 506 comets merged |
+| worst case: 512 bolts, 144 fps, yaw rising 0.05° per frame each frame (43°/s at the timed frame), 5120x1440 | untrimmed (development run, yaw rising 0.3° per frame): 2520 quads, CPU 133.7 µs, GPU 147.1 µs, 23.95 % lit; with the adaptive ring, 2 segments: 1516 quads of 2520 wanted, 502 trimmed, 5 merged, CPU 115.3 µs, GPU fenced 68.0 µs, 7.57 % lit (development run with 1 segment: 1014 quads, CPU 109.3, GPU 53.6) — **over both bounds**; the fixture gates the rule's mechanics and reports the timing (`budget_worst_bounds` cpu_within 0, gpu_within 0) |
+
+The worst case's cost follows the lit area, which the turn lengthens on screen (7.57 % against 5.82 % straight), plus
+the quad count; neither trim depth meets 50 µs. Settling it is the coordinator's: a lower bound for this synthetic case,
+a shorter drawn trail under load, or a cheaper lane format. Nit (G): the shell pixel program's X4121 fix of
+`d22ae6246` moved it from 457 to 468 ps_3_0 slots; its single-run timings moved within the run-to-run spread (1080p
+worst four regions 98.6 → 104.6 µs, one run each). Builds FL and AP 0 warnings; `check_no_x87.py` 0 violations (FL 1060,
+AP 1161); `--check` PASS, no compiler warning; host `test_weapon_effects*.py` 96 OK; look crops regenerated (the SETA
+frame's comets now run past their motion: 200 m 1278 px and off the frame's left edge). Not flown.
+
+**FL 60 A decisions (2026-11-09, `b572c35de`).** (1) `length_cap_m` 30 → 60 m (its meaning unchanged: the radiance
+scales by cap / the drawn length past it), so the 1x comet (about 35 m drawn at IRE speed) is not dimmed; under SETA 6
+the dimming still applies (60 / 145.25 m = 0.4131). (2) The worst case (512 curved comets on screen during a 43°/s turn
+at 144 fps) is a synthetic case far beyond any flight, gated as a regression tripwire at CPU 150 µs and GPU 100 µs
+fenced with the trim active; the flight budget stays the main row's 100 / 50 µs and the flight evidence is the
+`weapon_effects_frame` row's `projectile_us_max`. Records on the clean `b572c35de` [M]: AP hook **131 of 131**, FL hook
+**67 of 67**, D3D **81 of 81**; comet energy at 1x 1.0000, SETA 6 0.4131 (want 0.4131); flat cap case 0.5379 = 60 /
+111.55; seams rise 0.0000, deviation ≤ 1.12 %; main budget CPU 88.0 µs, GPU fenced 46.4 µs (532 quads, 6.01 % lit);
+worst case CPU 115.2 µs, GPU fenced 67.5 µs (1516 quads, 7.80 % lit), inside the tripwire. Host `test_weapon_effects*.py`
+96 OK; look crops regenerated (1x comets at full radiance, the SETA frame at 0.41).
