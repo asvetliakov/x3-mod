@@ -3369,3 +3369,14 @@ a shorter drawn trail under load, or a cheaper lane format. Nit (G): the shell p
 worst four regions 98.6 → 104.6 µs, one run each). Builds FL and AP 0 warnings; `check_no_x87.py` 0 violations (FL 1060,
 AP 1161); `--check` PASS, no compiler warning; host `test_weapon_effects*.py` 96 OK; look crops regenerated (the SETA
 frame's comets now run past their motion: 200 m 1278 px and off the frame's left edge). Not flown.
+
+**FL 60 A decisions (2026-11-09, `b572c35de`).** (1) `length_cap_m` 30 → 60 m (its meaning unchanged: the radiance
+scales by cap / the drawn length past it), so the 1x comet (about 35 m drawn at IRE speed) is not dimmed; under SETA 6
+the dimming still applies (60 / 145.25 m = 0.4131). (2) The worst case (512 curved comets on screen during a 43°/s turn
+at 144 fps) is a synthetic case far beyond any flight, gated as a regression tripwire at CPU 150 µs and GPU 100 µs
+fenced with the trim active; the flight budget stays the main row's 100 / 50 µs and the flight evidence is the
+`weapon_effects_frame` row's `projectile_us_max`. Records on the clean `b572c35de` [M]: AP hook **131 of 131**, FL hook
+**67 of 67**, D3D **81 of 81**; comet energy at 1x 1.0000, SETA 6 0.4131 (want 0.4131); flat cap case 0.5379 = 60 /
+111.55; seams rise 0.0000, deviation ≤ 1.12 %; main budget CPU 88.0 µs, GPU fenced 46.4 µs (532 quads, 6.01 % lit);
+worst case CPU 115.2 µs, GPU fenced 67.5 µs (1516 quads, 7.80 % lit), inside the tripwire. Host `test_weapon_effects*.py`
+96 OK; look crops regenerated (1x comets at full radiance, the SETA frame at 0.41).

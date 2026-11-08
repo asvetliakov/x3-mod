@@ -413,11 +413,9 @@ segments); the head is the row's maximum 2 px behind the head at 1.44 x the trai
 head_gain 1.5); the row at the age `trail_ms` is 0; the trail's 50 % and 20 % points are 11.07 / 23.16 game ms at 17
 and 23 ms steps (the law 11.07 / 23.16); under SETA 6 the bolt's own segment is drawn in full (357.0 px of 357.0), the
 comet to 125 ms with T 167.8 ms (50 % / 20 % at 46.44 / 97.18 ms, the law 46.44 / 97.17) at energy 0.2065 = 30 / 145.25
-m; the spot's hysteresis holds the mode over four frames at 0.9 / 1.1 core widths (peaks within 2.4 %); one quad against
+m (with the cap then 30; 0.4131 at 60); the spot's hysteresis holds the mode over four frames at 0.9 / 1.1 core widths (peaks within 2.4 %); one quad against
 two across the merge tolerance changes the light by 0.1 %; the end-on spot keeps full radiance (no trail, no head); the
-512-bolt budget at 5120x1440 with the ring full: CPU 90.4 µs, GPU fenced 45.9 µs (fence 10.6 µs), 532 quads, 486 of 506
-comets one quad, 6 dots. **Not within budget:** the worst case (512 curved comets at 144 fps under a 43°/s turn) with
-the adaptive ring, 1516 quads, CPU 115.3 µs, GPU fenced 68.0 µs [M]. Not flown.
+512-bolt budget at 5120x1440 with the ring full: CPU 88.0 µs, GPU fenced 46.4 µs (fence 10.7 µs), 532 quads; the synthetic worst case (512 curved comets at 144 fps under a 43°/s turn, the adaptive ring trimming) CPU 115.2 µs, GPU fenced 67.5 µs, inside its 150 / 100 µs tripwire (section 6) [M]. Energy since `length_cap_m` 60: 1.0 at 1x, 0.4131 under SETA 6. Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA; since FL 60 A the last of consecutive stage frames through the
 production builder, so each bolt is its comet), cropped around the bolts:
