@@ -34,14 +34,11 @@
 #include <d3d9.h>
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
-#include "../../src/proxy/weapon_effects_hull.h"
-#include "../../src/proxy/weapon_effects_boom.h"
-#include "../../src/proxy/weapon_effects_bolt_stage.h"
+#include "../../src/proxy/weapon_effects_stage.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
-#include "../../src/renderer/exposure.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -894,13 +891,16 @@ unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
     }
     return n;
 }
-void class_cases(rr::WeaponEffectsPass& pass);
-#include "weapon_effects_hull_cases.h"
-#include "weapon_effects_class_cases.h"
-void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp);
-#include "weapon_effects_boom_cases.h"
-void bolt_draw_cases(D3DPRESENT_PARAMETERS& pp);
-#include "weapon_effects_bolt_draw_cases.h"
+// One run of the pass into a cleared target inside its own scene (the cockpit cases' draw).
+std::pair<HRESULT, rr::WeaponEffectsReport> draw_on(rr::WeaponEffectsPass& pass, Target& t, const rr::WeaponEffectsFrame& f) {
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.scene_s.p);
+    dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+    rr::WeaponEffectsReport r{};
+    const HRESULT hr = pass.run(f, &r);
+    dev->EndScene();
+    return {hr, r};
+}
 }
 
 int main(int argc, char** argv) {
@@ -952,10 +952,7 @@ int main(int argc, char** argv) {
     report("d3dx_lane_shader", compile_helpers(), compile_shader ? "" : "D3DXCompileShader unavailable");
 
     rr::WeaponEffectsPass pass;
-    // shields,hull: the hull programs too (weapon_effects_hull_cases.h refuses them on a second pass, review 5).
-    // step 3: the death programs too (weapon_effects_boom_cases.h)
-    const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true,
-                                         false, true);
+    const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
     report("attach", SUCCEEDED(attached) && pass.caps().enabled, pass.caps().reason);
     std::printf("ATTACH result=%08lx shell_vs=%u shell_ps=%u decal_vs=%u decal_ps=%u fp16=%08lx max_ps=%lu patch_vertices=%u patch_triangles=%u\n",
                 attached, pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().decal_vs_slots,
@@ -970,13 +967,6 @@ int main(int argc, char** argv) {
                 pass.caps().shell_vs_slots, pass.caps().shell_ps_slots, pass.caps().bubble_ps_slots, pass.caps().decal_vs_slots,
                 pass.caps().decal_ps_slots, unsigned(sizeof(rr::WeaponPatch)),
                 unsigned(sizeof(rr::WeaponPatch) * wc::max_patches));
-    // X3M_WEAPON_EFFECTS_BOLTS_ONLY=1 (a development run, never the record): the step-4 cases alone.
-    if (const char* only = std::getenv("X3M_WEAPON_EFFECTS_BOLTS_ONLY"); only && *only == '1') {
-        bolt_draw_cases(pp);
-        guard_next_section("bolts_only");
-        std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
-        return failures ? 1 : 0;
-    }
     // The cell map's sort (review F5): rr::sort_by_key (heap sort) against the insertion sort it replaced, on 128 keys
     // shuffled, ascending and descending (best of 2000 sorts each, us).
     {
@@ -1018,13 +1008,6 @@ int main(int argc, char** argv) {
                                               pass.caps().bubble_ps_slots < 2000, "");
     report("target_1080", make_target(g, 1920, 1080));
     draw_lane(g, 0.f, -1.f);
-    // X3M_WEAPON_EFFECTS_BOOM_ONLY=1 (a development run, never the record): the step-3 cases alone.
-    if (const char* only = std::getenv("X3M_WEAPON_EFFECTS_BOOM_ONLY"); only && *only == '1') {
-        boom_cases(pass, pp);
-        guard_next_section("boom_only");
-        std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
-        return failures ? 1 : 0;
-    }
     rr::WeaponLook cells_only = rr::default_weapon_look(), ring_only = cells_only, uniform = cells_only;
     cells_only.ring_gain = 0.f;
     ring_only.cell_gain = 0.f;
@@ -2035,7 +2018,8 @@ int main(int argc, char** argv) {
                                                               uncovered == 0 && std::fabs(radius_seen - 150.0) < 0.5, "");
         report("cockpit_eye_sphere_chase_unchanged", made && chase_changed == 0 && eye_draws > 0, "");
         tt.release();
-        hull_owner(400.f, 100.f);
+        stage_owner(400.f, 100.f, 0); // the staged owner back at view (0, 0, 400 m), radius 100, an empty ring
+        wc::ring_clear(stage_ring);
         draw_lane(g, 0.f, -1.f);
     }
     // 12 hits per second on one owner through the production builder, frames of 1/60 s game time for 4 s (the cell
@@ -2512,20 +2496,11 @@ int main(int argc, char** argv) {
         draw_lane(g, 0.f, -1.f);
     }
     guard_next_section("step1");
-    // Step 2: the hull hit (weapon_effects_hull_cases.h; its own Reset and fault cases before the patches' below).
-    hull_cases(pass, pp);
-    guard_next_section("step2");
-    // Step 3: the death explosion (weapon_effects_boom_cases.h; its own Reset and refusal cases).
-    boom_cases(pass, pp);
-    guard_next_section("step3");
-    // Step 4: the bolts and the muzzle (weapon_effects_bolt_draw_cases.h; its own pass, Reset and fault cases).
-    bolt_draw_cases(pp);
-    guard_next_section("step4");
     // Program creation refused (fault bit 3): attach refuses with program_create and keeps no object; run refuses at once.
     {
         rr::WeaponEffectsPass refused;
         refused.set_faults(8);
-        const HRESULT hr = refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format, true);
+        const HRESULT hr = refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
         rr::WeaponEffectsFrame f = base_frame(g);
         const rr::WeaponPatch p = make_patch(fighter, {{0.f, 0.f, 0.f}});
         f.patches = &p;

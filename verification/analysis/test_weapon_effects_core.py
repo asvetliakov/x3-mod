@@ -38,14 +38,11 @@ struct IDirect3DTexture9;
 struct IDirect3DVertexShader9;
 struct IDirect3DPixelShader9;
 struct IDirect3DVertexDeclaration9;
-struct IDirect3DVertexBuffer9; // step 4: the bolt draw's buffers
-struct IDirect3DIndexBuffer9;
 '''
 
 HARNESS = r'''
 #include "weapon_effects_core.h"
 #include "weapon_effects_stage.h"
-#include "weapon_effects_hull.h"
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -97,30 +94,6 @@ static core::Event* hit(core::Ring& ring, unsigned k, std::uint32_t t0, std::int
     e->pos[2] = pz;
     e->radius = 20000;
     return e;
-}
-// The hull stage into the sprite and glow buffers only (weapon_effects_hull.h HullBuffers).
-static st::HullCounts build_hull2(core::Ring& ring, st::HullState& hs, const st::HullView& v, x3m::renderer::WeaponSpriteVertex* spr,
-                                  x3m::renderer::WeaponGlowVertex* glw, unsigned* q, unsigned* b) {
-    st::HullBuffers o;
-    o.sprites = spr;
-    o.sprite_cap = 2304;
-    o.glows = glw;
-    o.glow_cap = 512;
-    const st::HullCounts n = st::build_hull(ring, hs, &rd, v, st::HullTuning{}, o);
-    *q = o.sprite_quads;
-    *b = o.glow_boxes;
-    return n;
-}
-// The energy class's spatter of a record alive at `age` (its one set, the slow one: its count, factors and floor).
-static unsigned spatter_alive(const core::Event& e, float k, float age, float floor_ms) {
-    const unsigned n = st::spark_count(e, k, st::HullTuning{}, core::hull::an_energy, 1);
-    const st::SparkSet ss = st::spark_set(core::hull::an_energy, 1);
-    unsigned alive = 0;
-    for (unsigned sp = 0; sp < n; ++sp) {
-        const float law = (ss.life + ss.life_k * k) * st::spark_factors(e.sequence, sp, ss.speed_spread).life_x;
-        alive += age < (law > floor_ms ? law : floor_ms);
-    }
-    return alive;
 }
 static unsigned live(const core::Ring& r) {
     unsigned n = 0;
@@ -857,8 +830,7 @@ int main(int argc, char** argv) {
             oldest_gone &= ring.slots[i].sequence != oldest;
         }
         // The stage's drawn owners: the shield stage adds an owner in front of the camera (1), not one behind it (2), past
-        // the side planes (3) or past the far plane (4); the hull stage adds its kept owners in view (hull::max_owners of
-        // 40, the newest hits) and the stamp marks the 8 others' records hidden.
+        // the side planes (3) or past the far plane (4).
         core::ring_clear(ring);
         owner(1, 40000, 10000);
         owner(2, -40000, 10000);
@@ -881,50 +853,6 @@ int main(int argc, char** argv) {
         for (unsigned i = 0; i < core::ring_capacity; ++i)
             shield_hidden += ring.slots[i].sequence && (ring.hidden[i] & core::hidden_undrawn);
         const bool shield_ok = shield_drawn.count == 1 && shield_drawn.owner[0] == obj(1) && shield_hidden == 3;
-        core::ring_clear(ring);
-        for (unsigned k = 1; k <= 40; ++k) {
-            owner(k, 40000, 10000);
-            core::Event* e = core::ring_acquire(ring);
-            const std::uint32_t seq = e->sequence;
-            std::memset(e, 0, sizeof *e);
-            e->sequence = seq;
-            e->role = core::role_hull_hit;
-            e->flags = core::flag_stage;
-            e->table = core::table_bullets;
-            e->t0_game_ms = 1000 + k;
-            e->lifetime_ms = core::hull_lifetime_ms;
-            e->damage = 3000;
-            e->owner = obj(k);
-            e->node = node(k);
-            e->handle = 0xd000 + k;
-            e->pos[2] = -10000;
-            e->radius = 10000;
-        }
-        static st::HullState hs;
-        st::hull_clear(hs);
-        static x3m::renderer::WeaponSpriteVertex spr[x3m::renderer::weapon_sprite_quads * 4];
-        static x3m::renderer::WeaponGlowVertex glw[x3m::renderer::weapon_glow_boxes * 4];
-        st::HullView v;
-        v.cam = cam;
-        v.width = 1920;
-        v.height = 1080;
-        v.near_z = 6;
-        v.step_ms = 16;
-        v.now = 1100;
-        st::HullBuffers o;
-        o.sprites = spr;
-        o.sprite_cap = 2304;
-        o.glows = glw;
-        o.glow_cap = 512;
-        core::VisibleOwners hull_drawn;
-        st::build_hull(ring, hs, &rd, v, st::HullTuning{}, o, &hull_drawn);
-        core::ring_stamp_hidden(ring, hull_drawn);
-        unsigned hull_hidden = 0, hidden_old = 0;
-        for (unsigned i = 0; i < core::ring_capacity; ++i)
-            if (ring.slots[i].sequence && (ring.hidden[i] & core::hidden_undrawn)) {
-                ++hull_hidden;
-                hidden_old += ring.slots[i].t0_game_ms <= 1008;
-            }
         // Visible first in the shield stage: 40 owners with one shield hit each, 20 in view (t0 1000) and 20 behind the
         // camera with newer hits (t0 1005). Unstamped, the 16 newest are all behind (nothing drawn); after the stamp the
         // next frame draws 16 owners, all in view.
@@ -969,145 +897,14 @@ int main(int argc, char** argv) {
             else others_in_view += !(ring.hidden[i] & core::hidden_off_screen);
         }
         std::printf("hidden=%u census_hidden=%u census_drawn=%u staged_hidden=%u staged_drawn=%u order_ok=%u "
-                    "fresh_kept=%u oldest_gone=%u overflow=%u shield_drawn_ok=%u hull_drawn=%u hull_hidden=%u "
-                    "hull_hidden_oldest=%u vf_frame1_drawn=%u vf_frame2_drawn=%u vf_on_screen=%u "
+                    "fresh_kept=%u oldest_gone=%u overflow=%u shield_drawn_ok=%u vf_frame1_drawn=%u vf_frame2_drawn=%u vf_on_screen=%u "
                     "vf_dropped_in_view=%u vf_bad_handle_off=%u vf_others_in_view=%u\n",
                     hidden, per[0], per[1], per[2], per[3], order_ok, unsigned(fresh_kept), unsigned(oldest_gone),
-                    overflowed, unsigned(shield_ok), hull_drawn.count, hull_hidden, hidden_old, vf_drawn[0], vf_drawn[1],
+                    overflowed, unsigned(shield_ok), vf_drawn[0], vf_drawn[1],
                     vf_on_screen, dropped_in_view, bad_off, others_in_view);
         return 0;
     }
     if (!std::strcmp(argv[1], "stage")) return stage_cases();
-    if (!std::strcmp(argv[1], "owners")) {
-        // Review 3: 40 owners with one stage-owned hull hit each (owner k's at t0 1000 + k: the higher k the newer). Past
-        // hull::max_owners the oldest newest hits are not drawn: owners 1..8, the same set on the next frame (no
-        // blinking); a new hit on owner 1 then brings it in and drops owner 9 (the oldest of those kept).
-        static core::Ring ring;
-        core::ring_clear(ring);
-        for (unsigned k = 1; k <= 40; ++k) {
-            owner(k, 40000, 10000);
-            core::Event* e = core::ring_acquire(ring);
-            const std::uint32_t seq = e->sequence;
-            std::memset(e, 0, sizeof *e);
-            e->sequence = seq;
-            e->role = core::role_hull_hit;
-            e->flags = core::flag_stage;
-            e->table = core::table_bullets;
-            e->t0_game_ms = 1000 + k;
-            e->lifetime_ms = core::hull_lifetime_ms;
-            e->damage = 3000;
-            e->owner = obj(k);
-            e->node = node(k);
-            e->handle = 0xd000 + k;
-            e->pos[2] = -10000;
-            e->radius = 10000;
-        }
-        static st::HullState hs;
-        st::hull_clear(hs);
-        static x3m::renderer::WeaponSpriteVertex spr[x3m::renderer::weapon_sprite_quads * 4];
-        static x3m::renderer::WeaponGlowVertex glw[x3m::renderer::weapon_glow_boxes * 4];
-        st::HullView v;
-        v.cam.r[0] = v.cam.r[4] = v.cam.r[8] = 1.f;
-        v.cam.m00 = 1.6f;
-        v.cam.m11 = 1.6f * 16.f / 9.f;
-        v.width = 1920;
-        v.height = 1080;
-        v.near_z = 6;
-        v.step_ms = 16;
-        auto drawn = [&](unsigned k) {
-            for (unsigned i = 0; i < core::ring_capacity; ++i)
-                if (ring.slots[i].sequence && ring.slots[i].owner == obj(k)) return hs.slots[i].latched != 0;
-            return false;
-        };
-        auto frame = [&](std::uint32_t now, const char* name) {
-            v.now = now;
-            unsigned q = 0, b = 0;
-            const st::HullCounts n = build_hull2(ring, hs, v, spr, glw, &q, &b);
-            unsigned mask_lo = 0, mask_hi = 0;
-            for (unsigned k = 1; k <= 40; ++k)
-                if (drawn(k)) (k <= 20 ? mask_lo : mask_hi) |= 1u << ((k - 1) % 20);
-            std::printf("%s hits=%u owners_dropped=%u lo=%u hi=%u d1=%u d8=%u d9=%u d40=%u\n", name, n.hits, n.owners_dropped,
-                        mask_lo, mask_hi, unsigned(drawn(1)), unsigned(drawn(8)), unsigned(drawn(9)), unsigned(drawn(40)));
-        };
-        frame(1100, "first");
-        frame(1116, "second");
-        core::Event* e = core::ring_acquire(ring);
-        const std::uint32_t seq = e->sequence;
-        *e = ring.slots[0];
-        e->sequence = seq;
-        e->t0_game_ms = 1130;
-        e->owner = obj(1);
-        e->node = node(1);
-        e->handle = 0xd001;
-        frame(1132, "third");
-        return 0;
-    }
-    if (!std::strcmp(argv[1], "hull")) {
-        // Step 2 (docs/architecture/weapon-look.md 3.1): one stage-owned hull hit on owner 1 (k 0.5, a fighter): its
-        // first frame latches the contact point; 100 game ms later its flash is gone (40 ms, the 48 ms floor < 100,
-        // 48), its 16 sparks, glow (150 ms) and ember live; a shield hit and an unstaged hull hit draw nothing here; once
-        // the owner dies the sparks stay (orphan) and the glow, ember and flash go; the mode words.
-        owner(1, 40000, 10000);
-        static core::Ring ring;
-        core::ring_clear(ring);
-        core::Event* e = core::ring_acquire(ring);
-        const std::uint32_t seq = e->sequence;
-        std::memset(e, 0, sizeof *e);
-        e->sequence = seq;
-        e->role = core::role_hull_hit;
-        e->flags = core::flag_stage;
-        e->table = core::table_bullets;
-        e->tint_rgb = 0xffffff | core::rgb_present;
-        e->t0_game_ms = 1000;
-        e->lifetime_ms = core::hull_lifetime_ms;
-        e->damage = 3000;
-        e->owner = obj(1);
-        e->node = node(1);
-        e->handle = 0xd001;
-        e->pos[2] = -10000;
-        e->radius = 10000;
-        core::Event* sh = core::ring_acquire(ring);
-        *sh = *e;
-        sh->sequence = seq + 1;
-        sh->role = core::role_shield_hit;
-        core::Event* un = core::ring_acquire(ring);
-        *un = *e;
-        un->sequence = seq + 2;
-        un->flags = 0;
-        static st::HullState hs;
-        st::hull_clear(hs);
-        static x3m::renderer::WeaponSpriteVertex spr[x3m::renderer::weapon_sprite_quads * 4];
-        static x3m::renderer::WeaponGlowVertex glw[x3m::renderer::weapon_glow_boxes * 4];
-        st::HullView v;
-        v.cam.r[0] = v.cam.r[4] = v.cam.r[8] = 1.f;
-        v.cam.m00 = 1.6f;
-        v.cam.m11 = 1.6f * 16.f / 9.f;
-        v.width = 1920;
-        v.height = 1080;
-        v.near_z = 6;
-        v.now = 1000;
-        v.step_ms = 16;
-        unsigned q = 0, b = 0;
-        const st::HullCounts first = build_hull2(ring, hs, v, spr, glw, &q, &b);
-        const float k0 = st::hull_calibre(ring.slots[0]);
-        const unsigned want = st::spark_count(ring.slots[0], k0, st::HullTuning{}, core::hull::an_energy, 1);
-        const unsigned alive100 = spatter_alive(ring.slots[0], k0, 100.f, 48.f), alive110 = spatter_alive(ring.slots[0], k0, 110.f, 48.f);
-        std::printf("first hits=%u flashes=%u sparks=%u glows=%u embers=%u quads=%u boxes=%u want=%u alive100=%u alive110=%u\n",
-                    first.hits, first.flashes, first.sparks, first.glows, first.embers, q, b, want, alive100, alive110);
-        v.now = 1100;
-        const st::HullCounts later = build_hull2(ring, hs, v, spr, glw, &q, &b);
-        std::printf("later hits=%u flashes=%u sparks=%u glows=%u embers=%u floored=%u\n", later.hits, later.flashes,
-                    later.sparks, later.glows, later.embers, later.floored);
-        put(obj(1) + core::layout::obj_flags, core::layout::obj_dying);
-        v.now = 1110;
-        const st::HullCounts dead = build_hull2(ring, hs, v, spr, glw, &q, &b);
-        std::printf("dead orphans=%u sparks=%u flashes=%u glows=%u embers=%u retired=%u\n", dead.orphans, dead.sparks,
-                    dead.flashes, dead.glows, dead.embers, dead.retired);
-        core::Mode m = core::mode_native;
-        std::printf("mode parsed=%u value=%u hull_word=%u lifetime=%u\n", unsigned(core::parse_mode("shields,hull", 12, &m)),
-                    unsigned(m), unsigned(core::parse_mode("hull", 4, &m)), core::hull_lifetime_ms);
-        return 0;
-    }
     if (!std::strcmp(argv[1], "latch")) {
         core::ScopeLatch l;
         const bool first = l.changed(core::Scope{0x111, 0, false});    // the first known key: no change
@@ -1198,7 +995,7 @@ class WeaponEffectsClassifier(unittest.TestCase):
         # 2026-11-07: the 1024-record ring's overflow order with the stage's per-slot stamp (core::ring_stamp_hidden):
         # census-only records of an undrawn owner, then the drawn owner's, then the staged records likewise, each oldest
         # first; a record acquired since the stamp is never hidden; the shield stage draws only an owner in the view
-        # volume (not behind, beside or past the far plane), the hull stage its kept owners (hull::max_owners of 40).
+        # volume (not behind, beside or past the far plane).
         out = subprocess.run([str(self.exe), 'evict'], capture_output=True, text=True, check=True).stdout
         f = {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', out)}
         self.assertEqual(f['hidden'], 512)
@@ -1206,7 +1003,6 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual(f['order_ok'], 1)
         self.assertEqual((f['fresh_kept'], f['oldest_gone'], f['overflow']), (1, 1, 1))
         self.assertEqual(f['shield_drawn_ok'], 1)
-        self.assertEqual((f['hull_drawn'], f['hull_hidden'], f['hull_hidden_oldest']), (32, 8, 8))
         # visible first (shield stage, cap 16): unstamped the 16 newest are behind the camera; stamped, 16 in view
         self.assertEqual((f['vf_frame1_drawn'], f['vf_frame2_drawn'], f['vf_on_screen']), (0, 16, 16))
         # the 4 on-screen owners past the cap are located in view; one whose handle no longer matches is off screen
@@ -1404,33 +1200,6 @@ class WeaponEffectsClassifier(unittest.TestCase):
                          (0, 0, 1, 1, 2, 2, 2, 255))
         self.assertEqual((t['r10m'], t['r50m'], t['r200m']), (0, 1, 2))
 
-    def test_hull_owner_cap_drops_the_oldest_stably(self):
-        r = self.run_case('owners')
-        first, second, third = r['first'], r['second'], r['third']
-        self.assertEqual((first['hits'], first['owners_dropped']), (32, 8))
-        self.assertEqual((first['d1'], first['d8'], first['d9'], first['d40']), (0, 0, 1, 1))
-        self.assertEqual((second['lo'], second['hi'], second['owners_dropped']), (first['lo'], first['hi'], 8))  # stable
-        self.assertEqual(int(first['lo']), sum(1 << (k - 1) for k in range(9, 21)))
-        # owner 1's new hit brings it in; owner 9's old one goes (its record stays latched, not drawn this frame)
-        self.assertEqual((third['d1'], third['owners_dropped']), (1, 8))
-        self.assertEqual(third['hits'], 33)                       # owner 1's two records, 31 other owners
-
-    def test_hull_build_first_frame_later_and_orphan(self):
-        r = self.run_case('hull')
-        first, later, dead, mode = r['first'], r['later'], r['dead'], r['mode']
-        # the energy class (the nibble 0, hull-impact-classes.md 4.1): its spatter round((4 + 4 k) x (1 +- 0.4)), hashed
-        # from the sequence (spark_count), living (150 + 100 k) ms x its factor
-        n = int(first['want'])
-        self.assertTrue(3 <= n <= 9, n)
-        a100, a110 = int(first['alive100']), int(first['alive110'])
-        # the glow is the burst's light (hull-burst-look.md 3): R(0) = 0 at the first frame, lit 100 ms later
-        self.assertEqual((first['hits'], first['flashes'], first['sparks'], first['glows'], first['embers']), (1, 1, n, 0, 1))
-        self.assertEqual((first['quads'], first['boxes']), (n + 1, 1))  # the shield and the unstaged records drew nothing
-        self.assertEqual((later['flashes'], later['sparks'], later['glows'], later['embers']), (0, a100, 1, 1))
-        self.assertEqual((dead['orphans'], dead['sparks'], dead['flashes'], dead['glows'], dead['embers'], dead['retired']),
-                         (1, a110, 0, 0, 0, 0))
-        self.assertEqual((mode['parsed'], mode['value'], mode['hull_word'], mode['lifetime']), (1, 3, 0, 3601))
-
     def test_present_latch_and_ring_scope(self):
         r = self.run_case('latch')
         scope = {k: int(v) for k, v in r['scope'].items()}
@@ -1441,120 +1210,6 @@ class WeaponEffectsClassifier(unittest.TestCase):
         # armed + resolve completed + (callback ran and drew / had nothing) owns; a failed resolve or callback does not
         self.assertEqual(owned, {'drew': 1, 'nothing_to_draw': 1, 'callback_unset': 1, 'failed_resolve': 0,
                                  'callback_failed': 0, 'unarmed': 0})
-
-
-# Step 4, review 2026-11-07 finding 1: the previous frame's index (src/proxy/weapon_effects_bolt_stage.h BoltPrevIndex)
-# stamped per build. Two build_bolts calls on consecutive frames (400 bolts; 8 new at the front, 8 expired), each
-# bolt's previous record must be its own (object and creation) or none for a new one. The stamp the production glue
-# passes (the hooks' Present generation, one per frame) against the stamp it replaced (frame | 1, equal on frames 2k and
-# 2k + 1: the reviewer's model verification/results/bolt-muzzle-look/prev_index_stamp.py printed 5 -> 24..45 probes and
-# wrong records on odd frames); a second build in the same frame (the same stamp) keeps the index.
-BOLT_HARNESS = r"""
-#include "weapon_effects_bolt_stage.h"
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
-#include <vector>
-namespace core = x3m::weapon_effects::core;
-namespace st = x3m::weapon_effects::stage;
-static st::BoltScratch scratch;
-static x3m::renderer::WeaponBoltQuad quads[x3m::renderer::weapon_bolt_quads];
-static st::BoltPrevIndex index_;
-static std::vector<core::BoltRecord> frame_list(unsigned frame) {
-    // bolts 1000 + i of creation 7000 + i; each frame the 8 oldest expire and 8 new ones lead the list (the tap's order)
-    std::vector<core::BoltRecord> v;
-    for (unsigned k = 0; k < 8; ++k) {
-        core::BoltRecord r{};
-        r.obj = 0x9000000u + 16u * frame + k;
-        r.created = 5000u + frame;
-        v.push_back(r);
-    }
-    for (unsigned i = 8 * (frame + 1); i < 8 * (frame + 1) + 392; ++i) {
-        core::BoltRecord r{};
-        r.obj = 0x1000000u + 16u * i;
-        r.created = 7000u + i;
-        v.push_back(r);
-    }
-    for (unsigned i = 0; i < v.size(); ++i) {
-        v[i].pos[0] = std::int32_t((i % 20) * 500) - 5000;
-        v[i].pos[1] = std::int32_t((i / 20) * 300) - 3000;
-        v[i].pos[2] = 200000;
-        v[i].vel[0] = 65536;
-        v[i].expiry = v[i].created + 100000u;
-        v[i].row = 0;
-    }
-    return v;
-}
-int main(int argc, char** argv) {
-    const bool old_stamp = argc > 1 && !std::strcmp(argv[1], "frame_or_1");
-    const float tint[3] = {1.f, 0.5f, 0.2f};
-    const st::BoltLook look = st::bolt_look_from(0, core::shape_tracer, 0.3f, 0, 2000.f, tint);
-    st::BoltView v;
-    for (unsigned i = 0; i < 9; ++i) v.cam.r[i] = (i % 4 == 0) ? 1.f : 0.f;
-    v.cam.m11 = 1.3333333f;
-    v.cam.m00 = 0.75f;
-    v.width = 1920.f;
-    v.height = 1080.f;
-    v.near_z = 5.f;
-    v.now = 6000u;
-    v.step_ms = 16u;
-    unsigned wrong = 0, lost = 0, checked = 0, generation = 40;
-    for (unsigned frame = 4; frame < 8; ++frame, ++generation) {
-        const std::vector<core::BoltRecord> prev = frame_list(frame - 1), cur = frame_list(frame);
-        const std::uint32_t stamp = old_stamp ? (frame | 1u) : generation;
-        st::BoltFrameOut out;
-        out.quads = quads;
-        for (unsigned again = 0; again < 2; ++again) // the second: a second build in the same frame (the same stamp)
-            st::build_bolts(v, cur.data(), unsigned(cur.size()), prev.data(), unsigned(prev.size()), index_, stamp, nullptr,
-                            [&](unsigned) -> const st::BoltLook& { return look; }, scratch, out);
-        for (const core::BoltRecord& r : cur) {
-            const int i = st::bolt_prev_find(index_, r.obj, r.created);
-            bool listed = false;
-            for (const core::BoltRecord& p : prev) listed = listed || (p.obj == r.obj && p.created == r.created);
-            ++checked;
-            if (i >= 0 && (prev[unsigned(i)].obj != r.obj || prev[unsigned(i)].created != r.created)) ++wrong;
-            if (i < 0 && listed) ++lost;
-        }
-    }
-    std::printf("checked=%u wrong=%u lost=%u\n", checked, wrong, lost);
-    return 0;
-}
-"""
-
-
-class WeaponBoltPrevIndex(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        compiler = shutil.which('clang++') or shutil.which('c++') or shutil.which('g++')
-        if not compiler:
-            raise unittest.SkipTest('a host C++ compiler is required')
-        cls.tmp = tempfile.TemporaryDirectory(prefix='x3-weapon-bolt-')
-        src = Path(cls.tmp.name) / 'b.cpp'
-        src.write_text(BOLT_HARNESS)
-        stub = Path(cls.tmp.name) / 'stub'
-        stub.mkdir()
-        (stub / 'd3d9.h').write_text(D3D9_STUB)
-        cls.exe = Path(cls.tmp.name) / 'b'
-        subprocess.run([compiler, '-std=c++17', '-O2', '-I', str(stub), '-I', str(ROOT / 'src/proxy'), str(src), '-o',
-                        str(cls.exe)], check=True)
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.tmp.cleanup()
-
-    def run_harness(self, *args):
-        out = subprocess.run([str(self.exe), *args], capture_output=True, text=True, check=True).stdout
-        return {k: int(v) for k, v in re.findall(r'(\w+)=(\d+)', out)}
-
-    def test_previous_record_is_its_own_on_consecutive_frames(self):
-        r = self.run_harness()
-        self.assertEqual(r['checked'], 4 * 400)
-        self.assertEqual((r['wrong'], r['lost']), (0, 0))
-
-    def test_the_replaced_frame_or_1_stamp_hands_out_other_records(self):
-        # the negative control: the old stamp repeats on frames 4/5 and 6/7, so odd frames read the even frame's slots
-        r = self.run_harness('frame_or_1')
-        self.assertGreater(r['wrong'] + r['lost'], 0)
 
 
 if __name__ == '__main__':

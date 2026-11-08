@@ -20,7 +20,9 @@ the surface case, the no-pop runs (fighter and spread capital on a flat face, th
 sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
 and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
-fighter, two on a capital at close range, the worst case of one owner). Never launches the game.
+fighter, two on a capital at close range, the worst case of one owner). Never launches the game. The hull-hit, explosion
+and bolt cases left with the look layer on 2026-11-08 (docs/archive/effects-look-2026-11-08/index.md); the hook
+fixture keeps the bolt and death sites' hook cases.
 
 Two hosts, chosen explicitly: --host native (native_host.py; the WSL2 host, no bottle) runs the binary on the Windows
 side through WSL interop with the system d3d9.dll and the game's C:\\X3\\d3dx9_37.dll, into
@@ -50,7 +52,7 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function
          '-mstackrealign', '-mincoming-stack-boundary=2', '-static', '-static-libgcc', '-static-libstdc++',
          '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-DX3M_WEAPON_EFFECTS_FIXTURE']
 SOURCES = ('verification/probe/weapon_effects_fixture.cpp', 'src/renderer/weapon_effects_pass.cpp',
-           'src/renderer/temporal_pass.cpp', 'src/renderer/exposure.cpp')
+           'src/renderer/temporal_pass.cpp')
 # The production reader the hull walk is timed through (review F4), compiled as the DLL compiles it (CMakeLists.txt:
 # no SSE / MMX) into its own object.
 NO_SSE_SOURCES = ('src/proxy/engine_memory.cpp',)
@@ -61,72 +63,19 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/proxy/engine_memory.h', 'src/proxy/engine_memory.cpp',
                       'src/renderer/weapon_bubble_pixel_program_inc.h',
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp',
-                      # section 14's death_exposure_meter_shift: the production meter (explosion-look.md 14)
-                      'src/renderer/exposure.h', 'src/renderer/exposure.cpp',
                       'src/effects/weapon_shell_vs.hlsl', 'src/effects/weapon_shell_ps.hlsl',
                       'src/effects/weapon_decal_vs.hlsl', 'src/effects/weapon_decal_ps.hlsl', 'src/effects/weapon_soft_depth.hlsl',
                       'src/effects/weapon_hex_patch.hlsl',
                       'src/renderer/weapon_shell_vertex_program_inc.h', 'src/renderer/weapon_shell_pixel_program_inc.h',
                       'src/renderer/weapon_decal_vertex_program_inc.h', 'src/renderer/weapon_decal_pixel_program_inc.h',
-                      # step 2, the hull hit (docs/architecture/weapon-look.md 3.1)
-                      'src/proxy/weapon_effects_hull.h', 'src/effects/weapon_sprite_vs.hlsl',
-                      'src/effects/weapon_sprite_ps.hlsl', 'src/effects/weapon_glow_vs.hlsl', 'src/effects/weapon_glow_ps.hlsl',
-                      'src/renderer/weapon_sprite_vertex_program_inc.h', 'src/renderer/weapon_sprite_pixel_program_inc.h',
-                      'src/renderer/weapon_glow_vertex_program_inc.h', 'src/renderer/weapon_glow_pixel_program_inc.h',
-                      'src/effects/weapon_fireball_vs.hlsl', 'src/effects/weapon_fireball_ps.hlsl',
-                      'src/renderer/weapon_fireball_vertex_program_inc.h', 'src/renderer/weapon_fireball_pixel_program_inc.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
-                      'verification/probe/weapon_effects_fixture.cpp',
-                      'verification/probe/weapon_effects_hull_cases.h',
-                      # the hull-impact classes (docs/architecture/hull-impact-classes.md)
-                      'verification/probe/weapon_effects_class_cases.h', 'src/proxy/engine_shimmer_core.h',
-                      'src/effects/weapon_shape_vs.hlsl', 'src/effects/weapon_ring_ps.hlsl', 'src/effects/weapon_filament_ps.hlsl',
-                      'src/renderer/weapon_shape_vertex_program_inc.h', 'src/renderer/weapon_ring_pixel_program_inc.h',
-                      'src/renderer/weapon_filament_pixel_program_inc.h', 'src/effects/weapon_lightning_vs.hlsl',
-                      'src/renderer/weapon_lightning_vertex_program_inc.h',
-                      # step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md)
-                      'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_stage.h',
-                      'src/effects/weapon_bolt_vs.hlsl', 'src/effects/weapon_bolt_ps.hlsl',
-                      'src/effects/weapon_bolt_flag_ps.hlsl', 'src/renderer/weapon_bolt_vertex_program_inc.h',
-                      'src/renderer/weapon_bolt_pixel_program_inc.h', 'src/renderer/weapon_bolt_flag_pixel_program_inc.h',
-                      'verification/probe/weapon_effects_bolt_draw_cases.h',
-                      # step 3, the death explosion (docs/architecture/explosion-look.md)
-                      'src/proxy/weapon_effects_boom.h', 'src/effects/weapon_shock_ps.hlsl',
-                      'src/renderer/weapon_shock_pixel_program_inc.h', 'verification/probe/weapon_effects_boom_cases.h',
-                      'src/effects/weapon_halo_ps.hlsl', 'src/renderer/weapon_halo_pixel_program_inc.h',
-                      # section 13 (explosion-look.md): the fire wave and the composed body
-                      'src/effects/weapon_wave_ps.hlsl', 'src/renderer/weapon_wave_pixel_program_inc.h',
-                      'src/effects/weapon_compose_ps.hlsl', 'src/renderer/weapon_compose_pixel_program_inc.h')
+                      'verification/probe/weapon_effects_fixture.cpp')
 PROGRAMS = {
     'weapon_shell_vs': ('verification/results/weapon-shell-vertex-program.json', 'src/renderer/weapon_shell_vertex_program_inc.h'),
     'weapon_shell_ps': ('verification/results/weapon-shell-pixel-program.json', 'src/renderer/weapon_shell_pixel_program_inc.h'),
     'weapon_decal_vs': ('verification/results/weapon-decal-vertex-program.json', 'src/renderer/weapon_decal_vertex_program_inc.h'),
     'weapon_decal_ps': ('verification/results/weapon-decal-pixel-program.json', 'src/renderer/weapon_decal_pixel_program_inc.h'),
     'weapon_bubble_ps': ('verification/results/weapon-bubble-pixel-program.json', 'src/renderer/weapon_bubble_pixel_program_inc.h'),
-    'weapon_sprite_vs': ('verification/results/weapon-sprite-vertex-program.json', 'src/renderer/weapon_sprite_vertex_program_inc.h'),
-    'weapon_sprite_ps': ('verification/results/weapon-sprite-pixel-program.json', 'src/renderer/weapon_sprite_pixel_program_inc.h'),
-    'weapon_glow_vs': ('verification/results/weapon-glow-vertex-program.json', 'src/renderer/weapon_glow_vertex_program_inc.h'),
-    'weapon_glow_ps': ('verification/results/weapon-glow-pixel-program.json', 'src/renderer/weapon_glow_pixel_program_inc.h'),
-    'weapon_fireball_vs': ('verification/results/weapon-fireball-vertex-program.json',
-                           'src/renderer/weapon_fireball_vertex_program_inc.h'),
-    'weapon_fireball_ps': ('verification/results/weapon-fireball-pixel-program.json',
-                           'src/renderer/weapon_fireball_pixel_program_inc.h'),
-    'weapon_shape_vs': ('verification/results/weapon-shape-vertex-program.json', 'src/renderer/weapon_shape_vertex_program_inc.h'),
-    'weapon_ring_ps': ('verification/results/weapon-ring-pixel-program.json', 'src/renderer/weapon_ring_pixel_program_inc.h'),
-    'weapon_filament_ps': ('verification/results/weapon-filament-pixel-program.json',
-                           'src/renderer/weapon_filament_pixel_program_inc.h'),
-    'weapon_lightning_vs': ('verification/results/weapon-lightning-vertex-program.json',
-                            'src/renderer/weapon_lightning_vertex_program_inc.h'),
-    'weapon_bolt_vs': ('verification/results/weapon-bolt-vertex-program.json', 'src/renderer/weapon_bolt_vertex_program_inc.h'),
-    'weapon_bolt_ps': ('verification/results/weapon-bolt-pixel-program.json', 'src/renderer/weapon_bolt_pixel_program_inc.h'),
-    'weapon_bolt_flag_ps': ('verification/results/weapon-bolt_flag-pixel-program.json',
-                            'src/renderer/weapon_bolt_flag_pixel_program_inc.h'),
-    'weapon_shock_ps': ('verification/results/weapon-shock-pixel-program.json',
-                        'src/renderer/weapon_shock_pixel_program_inc.h'),
-    'weapon_halo_ps': ('verification/results/weapon-halo-pixel-program.json', 'src/renderer/weapon_halo_pixel_program_inc.h'),
-    'weapon_wave_ps': ('verification/results/weapon-wave-pixel-program.json', 'src/renderer/weapon_wave_pixel_program_inc.h'),
-    'weapon_compose_ps': ('verification/results/weapon-compose-pixel-program.json',
-                          'src/renderer/weapon_compose_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -138,9 +87,8 @@ HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verificat
                 'verification/probe/build_weapon_effects_hook.py', 'src/proxy/weapon_effects_patch.cpp',
                 'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
                 'src/proxy/weapon_effects_sites.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_sites.h',
-                'verification/probe/weapon_effects_bolt_cases.h', 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp',
-                'src/proxy/engine_patch.h', 'src/proxy/weapon_effects_death_sites.h',
-                'verification/probe/weapon_effects_death_cases.h')
+                'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
+                'src/proxy/weapon_effects_death_sites.h')
 
 
 def sha(path):
@@ -203,9 +151,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'HULL', 'HULL_SLOTS', 'HULL_CPU', 'HULL_TIMING', 'CLASS', 'CLASS_SLOTS', 'CLASS_CPU',
-            'CLASS_TIMING', 'BOLT', 'BOLT_SLOTS', 'BOLT_CPU', 'BOLT_TIMING', 'MUZZLE', 'BOLT_DUMP', 'EXPLOSION',
-            'EXPLOSION_TIMING')
+            'REFUSED', 'TIMING')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -249,25 +195,11 @@ def parse_hook(text):
                           if line.startswith('DEATH_FORWARD_STATE ')), None)
     death_nested = [fields(line) for line in text.splitlines() if line.startswith('DEATH_NESTED ')]
     death_state = [fields(line) for line in text.splitlines() if line.startswith('DEATH_STATE ')]
-    # the big tiers' clone row R' (explosion-look.md section 1): the built clone, the swap path's callee state, the
-    # nested swaps, the counters
-    death_clone = [fields(line) for line in text.splitlines() if line.startswith('DEATH_CLONE ')]
-    death_swap_state = next((dict(re.findall(r'(\w+)=(\S+)', line)) for line in text.splitlines()
-                             if line.startswith('DEATH_SWAP_STATE ')), None)
-    death_nested_swap = [fields(line) for line in text.splitlines() if line.startswith('DEATH_NESTED_SWAP ')]
-    death_swap = [fields(line) for line in text.splitlines() if line.startswith('DEATH_SWAP ')]
-    death_scan_timing = [fields(line) for line in text.splitlines() if line.startswith('DEATH_SCAN_TIMING ')]
-    death_slots = [fields(line) for line in text.splitlines() if line.startswith('DEATH_SLOTS ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
             'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode, 'hull_class': hull_class,
             'event_cost': cost[-1] if cost else None, 'overflow': overflow[-1] if overflow else None,
             'event_cost_full': cost_full[-1] if cost_full else None, 'death_forward_state': death_forward,
             'death_nested': death_nested[-1] if death_nested else None, 'death_state': death_state[-1] if death_state else None,
-            'death_clone': death_clone[-1] if death_clone else None, 'death_swap_state': death_swap_state,
-            'death_nested_swap': death_nested_swap[-1] if death_nested_swap else None,
-            'death_swap': death_swap[-1] if death_swap else None,
-            'death_scan_timing': death_scan_timing[-1] if death_scan_timing else None,
-            'death_slots': death_slots[-1] if death_slots else None,
             'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -299,8 +231,6 @@ def run_hook(args, results):
     record['death_forward_state'] = report['death_forward_state']
     record['death_nested'] = report['death_nested']
     record['death_state'] = report['death_state']
-    for key in ('death_clone', 'death_swap_state', 'death_nested_swap', 'death_swap', 'death_scan_timing', 'death_slots'):
-        record[key] = report[key]
     result = report['result'] or {}
     record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
                         result.get('checks') == len(report['checks']) and result.get('failures') == 0)
@@ -311,39 +241,14 @@ def run_hook(args, results):
     return record['passed']
 
 
-DUMP_VARIABLES = ('X3M_WEAPON_EFFECTS_DUMP_CASES', 'X3M_WEAPON_EFFECTS_DUMP_MS', 'X3M_WEAPON_EFFECTS_DUMP_FLOAT')
-# Development selectors (weapon_effects_fixture.cpp: the step-3 or step-4 cases alone). Forwarded through WSLENV on
-# --host native like the dump variables; until 2026-11-08 they were not, so a "bolts-only" native run was the full
-# fixture (docs/verification/weapon-effects.md, "Bolt tunings", CPU cost). A run with one set is partial and never
-# the record: its summary goes to summary-partial.json.
-ONLY_VARIABLES = ('X3M_WEAPON_EFFECTS_BOLTS_ONLY', 'X3M_WEAPON_EFFECTS_BOOM_ONLY')
-
-
-def partial_run():
-    return any(os.environ.get(k) == '1' for k in ONLY_VARIABLES)
-
-
-def dump_environment(args):
-    """--dump <dir>: the fixture's image dump (X3M_WEAPON_EFFECTS_DUMP as the Windows path of <dir>, with the dump's
-    case, frame and float selectors passed through); without it only the development selectors, if set."""
-    env = {k: os.environ[k] for k in ONLY_VARIABLES if os.environ.get(k)}
-    if not args.dump:
-        return env
-    path = Path(args.dump).resolve()
-    path.mkdir(parents=True, exist_ok=True)
-    target = native_host.windows_path(path) if args.host == 'native' else 'Z:' + str(path).replace('/', '\\')
-    return {**env, 'X3M_WEAPON_EFFECTS_DUMP': target, **{k: os.environ[k] for k in DUMP_VARIABLES if os.environ.get(k)}}
-
-
 def run_fixture(args):
     if args.host == 'native':
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
-        done, text = native_host.run_native(EXE, [d3dx], BUILD, args.timeout, env=dump_environment(args),
-                                            log=BUILD / 'fixture')
+        done, text = native_host.run_native(EXE, [d3dx], BUILD, args.timeout, log=BUILD / 'fixture')
         return done.returncode, text
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE),
                r'C:\X3\d3dx9_37.dll']
-    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b', **dump_environment(args)),
+    done = subprocess.run(command, capture_output=True, env=dict(os.environ, WINEDLLOVERRIDES='d3d9=b'),
                           timeout=args.timeout)
     text = done.stdout.decode('utf-8', 'replace').replace('\r\n', '\n')
     (BUILD / 'fixture.log').write_text(text)
@@ -355,9 +260,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
     parser.add_argument('--timeout', type=int, default=900)
-    parser.add_argument('--dump', metavar='DIR',
-                        help='write the stage image dump (weapon_effects_class_cases.h stage_dump) into DIR; '
-                             'X3M_WEAPON_EFFECTS_DUMP_CASES / _MS / _FLOAT select cases, frames and float composites')
     parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
                         help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
                              'WSL2 host through interop (native_host.py), never a fallback')
@@ -394,19 +296,15 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing', 'hull', 'hull_slots', 'hull_cpu', 'hull_timing',
-                                                 'class', 'class_slots', 'class_cpu', 'class_timing', 'bolt', 'bolt_slots',
-                                                 'bolt_cpu', 'bolt_timing', 'muzzle', 'explosion', 'explosion_timing')}
+                                                 'refused', 'timing')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])
     record['passed'] = passed
-    out_path = results / ('summary-partial.json' if partial_run() else 'summary.json')
+    out_path = results / 'summary.json'
     out_path.write_text(json.dumps(record, indent=2) + '\n')
     print(json.dumps({'exit': returncode, 'result': report['result'], 'failed': report['failed_checks'],
-                      'timing': report['timing'], 'hull_timing': report['hull_timing'], 'hull_cpu': report['hull_cpu'],
-                      'bolt_timing': report['bolt_timing'], 'bolt_cpu': report['bolt_cpu'],
-                      'explosion_timing': report['explosion_timing'],
+                      'timing': report['timing'],
                       'record': str(out_path.relative_to(ROOT))}, indent=1))
     return 0 if passed and hook_passed is not False else 1
 

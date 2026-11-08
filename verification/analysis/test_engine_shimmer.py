@@ -307,8 +307,9 @@ class Options(unittest.TestCase):
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER"', inc)), 1)
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_PX"', inc)), 1)
         self.assertEqual(len(re.findall(r'config::get\(L"X3M_ENGINE_SHIMMER_MAX"', inc)), 1)
-        # the plumes' request unchanged; the hull hits' (shields,hull) request the pass too (hull-impact-classes.md 3.8)
-        self.assertIn('shimmer_requested_ = ((plumes_requested_ && limit > 0) || weapon_hull_requested_) && on && px > 0.f;', inc)
+        # the plumes' request alone (the hull hits' rects left with the weapon look layer on 2026-11-08)
+        self.assertIn('shimmer_requested_ = plumes_requested_ && limit > 0 && on && px > 0.f;', inc)
+        self.assertNotIn('weapon_hull_requested_', inc)
         self.assertIn('&shimmer_stats_,\n                                        plumes_requested_ ? shimmer_max_ : 0u, &dynamics);', inc)
         self.assertIn('dynamics.travel = engine_travel_weight_;', inc)
 
