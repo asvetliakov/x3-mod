@@ -1728,7 +1728,7 @@ functions). The own fire chase dump at 5120x1440 (`--dump`, `X3M_WEAPON_EFFECTS_
 plain record restored after it): at 50 ms one muzzle, its disc 40.3 px, the star for the cone; the 4x crop by
 `verification/results/bolt-muzzle-look/muzzle_crop.py` (the BOLT_DUMP row's `muzzle_x` / `muzzle_y`), kept local.
 
-### Muzzle rework (2026-11-08)
+### Muzzle rework (2026-11-08, `7c13d540d` on `effects` `d3adfe275`)
 
 The muzzle items of the visual re-review ([bolt-muzzle-look.md](../architecture/bolt-muzzle-look.md) 11 #1, #7, #8, #9,
 #11; the laws in its section 3 with the old values): every class draws a 0.25 w white core [0.5–0.8 w], scaled with its
