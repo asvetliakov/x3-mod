@@ -418,6 +418,176 @@ muzzles read as fire on the gun, not as lamps on the hull; the own cockpit stays
   engagement spread: Mayhem PPC 25 m wide at 1.8 px at its 13 km trading distance, GKE 29 m from a fighter. It is the
   fallback law of section 8, reproducible as `size_derivation.py --mode reach`.
 
+## 11. Visual re-review (2026-11-08)
+
+**Outcome.** Reviewed from 840 lab frames (56 weapons x 15 views, stock AP and Mayhem 3, headless Chromium at the lab's
+1:1 canvas), judged from the pictures. The bolt laws hold up side-on at the engagement distance: a tinted capsule with a
+white core, a pointed tip and a tail reads as a bolt for every tracer, the slug reads as a comet, the PBE as a needle,
+the wave as a crescent, and SETA 6 makes a longer, dimmer bolt rather than a stick. The muzzle does not hold up: on every
+weapon it is a flat white ball. Recommended changes in priority order (cost; evidence frame; all frames under
+`/tmp/claude-1000/-home-asvetl-x3-mod/d5061608-f60a-47d6-b9b2-30b0b574851f/scratchpad/bolt-muzzle-review/`, regenerable
+with the scripts in `verification/results/bolt-muzzle-look/visual-review-2026-11-08/`):
+
+| # | Change | Cost | Evidence |
+| --- | --- | --- | --- |
+| 1 | **Muzzle core is a lamp.** Every class draws a flat white disc with a soft edge (40–85 px on a fighter in the chase view, 120–213 px for corvette and capital guns) and a hairline star; stock guns re-light it 63–100 % of the time (IRE 0.80, HEPT 0.85, PRG and PBE 1.0 [M, `weapons.csv` lit_fraction]), so the nose carries a steady ping-pong ball, not a flash. Rework the core: a hot core of 0.25 w (h 1) inside a structured body that carries the size (the four-arm star or the plasma bloom at full E, arms ≥ 0.15 of their length wide), and life ≤ 0.5 of the refire period above the three-frame floor | design change (3.1 core law) | `grid_stock_ap_muzzle_chase.png`, `s_IRE__muzzle.png`, `m_GKE__muzzle.png` |
+| 2 | **Wave end-on is a neon hoop; own fire is a hoop tunnel.** PSG/PD foreshortened draw a thin bright ring of diameter S with a seam line across it (the edge-on arc), and the chase view's eight live bolts nest into a tunnel. Rework the foreshortened wave as a soft lens: a filled disc whose E falls from a thin rim to 0.15 at the centre, the arc hidden below c 0.4 (no seam), and the ring's screen diameter under the own-bolt ceiling x 6 | design change (2.2 wave kind) | `s_PSG__bolt.png` rows 3–4, `grid_stock_ap_b_in60.png` (PD, PSG) |
+| 3 | **Own-fire halo fog.** The 40 px σ cap keeps full radiance, so own bolts near the chase camera (σ_world 100+ px for corvette guns) light a dome over half the frame; fighter bolts carry a 30 px σ blob (HEPT, PAC). Tune: scale E_h by σ_cap / σ_world when the cap binds (energy-conserving cap), and cap σ at the own body ceiling (16 px) for own bolts | small tuning (2.1, 2.6) | `grid_stock_ap_bolt_own.png`, `grid_mayhem3_bolt_own.png` |
+| 4 | **Mount tier by the catalogue's 10 % rule.** "Any M3 mounts it → fighter" puts the stock PSP (M3:1 of 12 rows) at w 3.0 m (a 3 px dot at 2 km, 1.5 px long) and the stock PPC (M6:2 of 36) at 7.5 m; the catalogue's `size` column already says big. Tune the generator: `mount_tier` from `size` | small tuning (1) | `grid_stock_ap_bolt_side.png` row 4 (PSP, PPC vs GAUSS) |
+| 5 | **Fighter bolts vanish over a lit hull.** At the 3 px floor the rim band (1.2–1.8 w = 0.9 px) is off and the core clips white, so a stream over a 1.0 hull is a row of pale dashes (IRE, PAC, HEPT, PRG, EBC). Tune: the rim band in pixels when w_px < 5 ([w_px/2 + 1, w_px/2 + 4] px, so it is 3 px wide at the floor), and the core's h x saturate((w_px − 3) / 3) so a floor-width bolt keeps its tint | small tuning (2.1, 2.6) | `grid_stock_ap_b_stream.png` rows 1–2, `s_IRE__bolt.png` row 2 |
+| 6 | **Heavy head ball is a bead on a stick.** GKE (168 px needle with a bead), Mayhem PSP and stock SSC (a thermometer), GAUSS/IBL (a lollipop). Tune: no separate E_c disc; the head is the core's round cap at c_r 0.55 with the 1.5x front boost only | small tuning (2.1 heavy) | `grid_mayhem3_bolt_side.png` (GKE, PSP), `grid_stock_ap_bolt_side.png` (TERANTIFIGHTER, GAUSS, IBL) |
+| 7 | **Cockpit muzzle is a beam and a wash.** The cone from the lab's gun offsets (3 m beside, 2 m ahead of the eye) is a 700 px diagonal streak and the glow (R 3 w at 6 m) colours the whole frame even at gain 0.35. Tune: in the own cockpit no cone (disc and star only) and no glow; the real gun offsets are unknown 9 | small tuning (3.2) | `grid_stock_ap_m_cockpit.png`, `s_PAC__muzzle.png` row 2 |
+| 8 | **An enemy fighter's muzzle at 600 m is invisible.** 2–3 px disc plus a 9 px glow at E 0.6 on a lit hull reads as nothing (IRE, PAC, EBC, MASS, PBE, PRG, every Mayhem fighter gun). Tune: muzzle floors of 6 px for the disc and 12 px for the star arms (the star is what reads at range: PPC, PAA, TBC at 600 m) | small tuning (3.1 floors) | `grid_stock_ap_m_range.png`, `grid_mayhem3_m_range.png` |
+| 9 | **Ballistic and flak star and puff do not read.** The star arms are hairlines beside a 40 px disc and the grey puff is invisible on the grey hull (MD, EBC, MASS, FAA, CFA, FLAK). Tune: arm width ≥ 0.15 of length (shared with #1), puff s0 0.3 → 0.5 and darker than the hull | small tuning (3.1) | `m_MD__muzzle.png`, `s_EBC__muzzle.png`, `s_FLAK_ALPHA__muzzle.png` |
+| 10 | **Orb silhouette lobes read as a pentagon decal** near the eye (stock PSP and MAM at 60 m: a five-point blob). Tune: lobe amp 0.12 → 0.05, 7–9 lobes, or noise-only erosion | small tuning (2.2 orb) | `grid_stock_ap_b_in60.png` (PSP, MAM) |
+| 11 | **The flak flag out-ranks the orb style**: stock PSP and MAM (area_flak) get the flak star-and-puff muzzle on a singularity gun. Tune: style orb/wave → plasma before the flag test | small tuning (3.1 class rule) | `weapons.csv` mclass |
+| 12 | **The lab draws every Mayhem weapon white** (0 of 103 bodies carry a texture `mean` in `assets.js`; production reads the table's texture mean, 4.2, which the lab cannot show), so Mayhem colour and the white stock weapons (FLAK, CIG, MAM, SSC) could not be judged: flak, concussion and anti-matter are identical white rods. Fix the asset extractor's means before the Mayhem colour review | tooling (lab) | `grid_mayhem3_bolt_side.png`, `grid_stock_ap_bolt_side.png` row 5 |
+
+Also found, not ranked: the lab multiplies the rim into the summed bolt light (a dark lattice through dense streams,
+`grid_stock_ap_b_stream.png` GAUSS/IBL), which production's rim-then-capsule order (5.1) cannot do: a lab fix. The
+rim's dark outline around corvette and capital pills over a bright hull (CIG, FLAK_CLUSTER streams) is the design and
+reads as a sticker edge at `rim_dark` 0.4; section 8's kill criterion (0.4 → 0.2) should be applied on the first flight
+that shows it, not after.
+
+### 11.1 Method
+
+`batch_shots.py` drives the lab page once per run (view, weapon, tab, scene, distance, angle, SETA, hull, own, shots/s),
+draws at a chosen time and screenshots the 720x405 canvas (the centre of a 1440-row screen at 1:1 [S, lab]). Per weapon:
+bolt side-on at d_eng (600 / 1,500 / 2,000 m by catalogue size; two times), over a 1.0 lit hull, at SETA 6, own fire
+from the chase camera (two times), incoming in the cockpit at 300 m and 60 m, a 10-per-second stream over a lit hull at
+1 km; muzzle in the own chase view 20 ms after a shot and half a refire period later, own cockpit, guns across the view,
+a capital at 600 m, SETA 6. Shots per second are the catalogue's `shots_per_min` / 60 (stock IRE 6.67, Mayhem IRE 0.5).
+Side-on cells in the sheets are 3x centre crops (a 3 px bolt is otherwise unjudgeable); the lab's numbers in each caption
+are the lab's `detail` row [M]. Contact sheets: `<tag>__bolt.png` (10 cells) and `<tag>__muzzle.png` (6 cells) per
+weapon, tag `s_<ID>` stock, `m_<ID>` Mayhem; cross-weapon grids `grid_<view>_<shot>.png`. Numbers: `weapons.csv`.
+Limits: the lab's muzzle scenes mount every weapon on a 12 m fighter (corvette and capital guns are capped by R_s there and
+their chase frames are not a real case; the `capital at 600 m` cell is); the own-fire scene fires 4 per second per gun
+regardless of the weapon; the lab has no texture means (#12).
+
+### 11.2 Stock AP, weapon by weapon
+
+Columns: (1) does the style, size, colour and tail make sense for the weapon; (2) motion (two times, SETA 6); (3) blend
+(space, lit hull, cockpit); (M) the muzzle: class, disc px in the chase view / at 600 m, lit fraction at the fire rate,
+what it reads as. Sizes [M, `weapons.csv`]; judgements from the frames.
+
+| Weapon | Style, w, tint | (1) sense | (2) motion | (3) blend | (M) muzzle | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| IRE | tracer, 1.88 m, blue | A short blue dart for the lightest gun: right. Core white, halo blue: the hue sits only in the halo | 61 px at 600 m, tail fades; SETA 6 a 136 px line at g_s 0.75, still a bolt | over black good; over the lit hull a white dash with no blue; in the chase view 16 x 21 px pills (the bolts fly away end-on) | energy, 40 px / 2 px, lit 0.80: a steady lamp pair with a faint star | tune #1, #5, #8 |
+| PAC | tracer, 2.20 m, violet | right: a heavier IRE | 56 px; SETA 6 fine | as IRE; own fire 16 x 47 px capsule with a 21 px σ halo blob | energy, 47 px, lit 0.63: lamp | tune #1, #3, #5 |
+| HEPT | tracer, 2.34 m, green | a plasma thrower drawn as a laser tracer with a 6.5 m tail: the vanilla HEPT is a fat green blob; a slug (short core, long tail) would read closer | 49 px; fine | own fire: a 16 x 86 px green bar inside a 30 px σ green cloud (fog) | plasma, 66 px, lit 0.85: a white ball with a faint green bloom, no structure | tune #1, #3; consider style slug |
+| EBC | slug, 2.24 m, yellow | a chaingun comet: short white core, long yellow tail. Right | 42 px; the tail reads | fine; own fire a pointed teardrop | ballistic, 40 px / 2 px, lit 0.39: a true flash, but a flat disc; star hairline, puff invisible | keep bolt; tune #9 |
+| PBE | tracer, 2.16 m, grey-blue | a 79 px needle at 6,980 m/s, 19 shots/s: right for a pulsed beam | long thin needle; SETA 6 a line | own fire: already 551 m out in 80 ms (a dot) | energy, 46 px, lit 1.0: a permanent lamp at 19/s | keep bolt; #1 is for it |
+| MASS | tracer, 1.88 m, white (light #303030 under the saturation test, texture mean unknown in the lab) | a kinetic slug drawn as a bright white laser rod: wrong cue; it should be the dimmest, shortest tracer with no halo | 51 px line | over the hull a white dash | ballistic, 33 px, lit 0.74 | rework: style slug, E_b 0.6, halo off (option, 11.5) |
+| PRG | tracer, 2.07 m, yellow | right: a repeater's long yellow dart | 72 px; fine | own fire 14 x 15 px dots (bolts leave fast) | energy, 44 px, lit 1.0: lamp | tune #1 |
+| PD (Terran PBG) | wave, 1.95 m, lavender, S 0.5 (6 w until pinned) | a crescent 12 m across: plausible for a burst generator side-on | side-on fine | end-on and own fire: hoops and a tunnel, a seam line | plasma, 56 px, lit 0.16: a lavender fog | rework #2 |
+| PSG | wave, 4.22 m (corvette tier), lavender | the shockwave's crescent reads at 2 km side-on | a chain of ")" at 10/s | hoop tunnel in own fire; a 33 px hoop at 60 m | plasma, 120 px, lit 0.23: a big lavender fog | rework #2 |
+| PSP (Terran) | orb, 3.0 m (fighter tier: the M3:1 row), yellow | the biggest gun in the game is a 3 px dot at 2 km and a 7 px blob at 600 m: wrong size; the orb itself is right | SETA 6 fine | at 60 m a 77 px pentagon-lobed blob | flak (area_flak), 53 px, lit 0.01 | tune #4, #10, #11 |
+| PPC | heavy slug, 7.5 m (corvette tier: the M6:2 rows), yellow | half the size it should be; a fat yellow pill with a white core | 24 px pill at 2 km | at 60 m a 120 px flat white disc | heavy, 213 px (capped by the fighter R_s) / 11 px at 600 m with a yellow fog | tune #4, #6 |
+| FLAK_ALPHA | tracer, 7.43 m, white, L 112 m | a flak shell as a 112 m white neon tube: the length comes from 7,051 m/s x 15 ms; the vanilla cue is a fast white streak that bursts, so the length is right, the uniform white rod is not (no tint to shape it) | an 82 px tapered rod; fine | own fire tiny (fast) | flak, 132 px / 6.6 px, lit 0.07: on a capital at 600 m a dot with a faint puff | keep; #12 for colour |
+| FLAK_CLUSTER | tracer, 6.86 m, white | identical to FLAK_ALPHA | same | same | flak, 122 px / 6 px | keep; #12 |
+| CIG | tracer, 6.68 m, white | a concussion gun as a white rod identical to flak | 48 px | own fire (M6): a 16 x 96 px bar in a white fog dome; the stream over a hull: outlined white pills (sticker edge) | energy, 143 px / 7 px, lit 0.15 | #12, #3; rim 0.4 → 0.2 |
+| ESR (ion shard) | tracer, 6.02 m, green | an ion railgun as a green tracer: fine | 45 px | own fire fog dome | energy (hull class ion), 129 px / 6 px, lit 0.46 | tune #3 |
+| EMP (Terran EMPC) | slug, 2.34 m, yellow | a comet like EBC: fine | 42 px | fine | plasma, 66 px, lit 0.47: ball | tune #1 |
+| MAM (Terran M/AM) | orb, 2.69 m, white | an anti-matter orb as a 7 px white cotton ball | 7 px blob | at 60 m a 69 px lobed pentagon in a white fog | flak (area_flak), 48 px | tune #10, #11, #12 |
+| TERANTIFIGHTER (Terran SSC) | heavy slug, 2.91 m, white, T 58 m | a 116 px white rod with a ball head and a long thin tail: a thermometer | same | own fire: a white ball with a bead | plasma, 83 px, lit 0.11 | tune #6, #12 |
+| GAUSS | heavy slug, 17.9 m, yellow | a lollipop: fat rod, white ball head, yellow glow blob | 36 px pill at 2 km | at 60 m a 286 px flat white disc | heavy, 25 px at 600 m with a 130 px yellow glow: a soft lamp on the hull | tune #6 |
+| IBL | heavy slug, 19.3 m, yellow | as GAUSS (class plasma from the hull pin) | same | same | plasma, 28 px at 600 m | tune #6 |
+| IPG | tracer, 6.97 m, green | fine | 48 px | fog dome in own fire | flak (fragments flag), 124 px / 6 px | tune #3, #11 |
+
+### 11.3 Mayhem 3, weapon by weapon
+
+All white in the lab (#12); style, size and tail only. Mayhem guns fire at 0.05–1.5 shots/s, so every muzzle is a true
+flash there (lit ≤ 0.18) and the lamp of #1 is a per-shot ball, not a steady one.
+
+| Weapon | Style, w | (1) sense | (2) motion | (3) blend | (M) muzzle | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| IRE | slug, 2.24 m, T 27 m | a short core and a long tail: a comet, right for Mayhem's IRE | 59 px | own fire 15 x 12 px dots | energy, 48 px / 2.4 px, lit 0.06 | keep; #8 |
+| PAC | tracer, 2.42 m | an 83 px dart | fine | own fire 16 x 20 px | energy, 52 px, lit 0.03 | keep; #8 |
+| HEPT | orb, 2.59 m | a 7 px cotton ball at 600 m; the boil cannot read under 10 px | blob | at 60 m a 66 px blob | plasma, 74 px: ball | keep; #10 |
+| EBC | tracer, 2.25 m | a 77 px dart (Mayhem's EBC is a laser) | fine | fine | energy, 48 px | keep |
+| PBE | orb, 2.41 m | a pulsed beam emitter as an orb (the catalogue's style): a 6 px blob | blob | 62 px blob at 60 m | plasma, 68 px | keep (style is the census's) |
+| MD | tracer, 2.30 m, ballistic | a mass driver as an 85 px white laser dart: wrong cue (as stock MASS) | fine | fine | ballistic, 41 px, lit 0.02: a flash with hairline spikes, puff invisible | rework as MASS (11.5); #9 |
+| PRG | slug, 2.48 m, T 30 m | comet: fine | 65 px | fine | energy, 53 px | keep |
+| PBG | tracer, 2.59 m | plasma burst generator as a tracer; the census says so | 89 px | fine | plasma, 74 px | keep |
+| PSG | tracer, 6.98 m (corvette), L 105 m | Mayhem's PSG is a tracer, not a wave: a 86 px rod | fine | own fire (M6) a 16 x 87 px bar in fog | plasma, 199 px / 10 px | #3 |
+| PSP | heavy slug, 20 m (capital), T 140 m | a thermometer: a thick rod with a ball head and a long faint tail, 115 px at 2 km | SETA 6 a 211 px rod | at 60 m a 320 px white disc | plasma, 28 px at 600 m with a soft fog | tune #6 |
+| PPC | slug, 18.5 m, T 105 m | fat rod with a long tail (not heavy: class energy from the hull pin) | 95 px | 296 px disc at 60 m | energy, 20 px at 600 m with a visible four-arm star: reads as a flash | keep muzzle; #6 n/a |
+| GKE | heavy tracer, 3.0 m, L 45 + T 60 m | a 168 px needle with a bead for a 94k-damage fighter gun: the length is right (3,500 m/s), the bead is not; a fat white core would carry the weight | SETA 6 a 312 px line, g_s 0.75 | own fire 10 x 9 px dots at 290 m | heavy, 85 px, lit 0.00: a white ball with a hairline star and a white fog; the vents are not visible in the chase view | tune #6, #1 |
+| ISR | slug, 6.9 m, T 60 m | an ion shard railgun as a comet with a long tail: fine | 61 px | fog dome in own fire | energy (ion), 147 px / 7 px | #3 |
+| FAA | slug, 6.88 m | flak as a comet | 37 px | fog | ballistic, 122 px / 6 px | #9 |
+| CFA | tracer, 7.07 m | cluster flak as an 64 px rod | fine | fog | ballistic, 126 px / 6 px | #9 |
+| CIG | tracer, 6.94 m, L 104 m | an 86 px rod | fine | fog | energy, 148 px / 7 px | #3 |
+| EMPC | tracer, 2.57 m | an 88 px dart | fine | fine | plasma, 73 px | keep |
+| SSC | tracer, 6.78 m | an 84 px rod | fine | fog | plasma, 193 px / 10 px | #3 |
+| MAML | tracer, 6.25 m | a 79 px rod | fine | fog | energy, 133 px / 7 px | #3 |
+| PAA | tracer, 17.7 m, L 266 m | a 146 px fat white rod at 2 km: right for a photon artillery shell | fine | 283 px disc at 60 m; own fire (M2) a 16 x 155 px bar in fog | energy, 19 px at 600 m with a four-arm star: reads | keep |
+| GC | tracer, 16.5 m, ballistic | a 144 px rod | fine | fog | ballistic, 15 px at 600 m | keep; #9 |
+| IBL | tracer, 19.1 m, L 286 m | a 162 px rod (not heavy here) | fine | fog | plasma, 27 px at 600 m, soft fog | keep |
+| APC, AKE | slug, 2.2–2.4 m | comets | 59–63 px | fine | energy, 48–51 px | keep |
+| PG | orb, 2.41 m | a 6 px blob | blob | 62 px blob | plasma, 69 px | keep; #10 |
+| ID | tracer, 2.59 m | an 89 px dart for the ion disruptor | fine | fine | energy (ion), 55 px | keep |
+| GRC | tracer, 6.51 m | an 82 px rod | fine | fog | energy, 139 px / 7 px | #3 |
+| FBL | slug, 2.68 m, T 15 m | a fragmentation bomb as a 39 px comet: a slower, fatter orb would cue the bomb | fine | fine | ballistic, 48 px | keep (minor) |
+| BKE, RG | orb, 2.9–3.0 m, heavy | 7.5 px blobs with a bright centre for 21k–26k-damage guns: under-sized at 600 m (fighter tier, k 1.0) | blob | 75 px blob at 60 m | heavy, 83–84 px white ball, lit 0.01–0.02 | tune #4 (tier) does not apply; consider orb w_orb 1.6 → 2.2 w for heavy orbs |
+| TBC | tracer, 16.5 m, L 247 m | a 144 px rod | fine | fog | energy, 18 px at 600 m with a star: reads | keep |
+| FBC | tracer, 6.15 m, blue (#0a0aff, the one saturated Mayhem light) | a blue rod: the only coloured Mayhem bolt; 3 px body at 1.5 km | fine | fine | energy, 131 px / 7 px, blue fog | keep |
+| IC | tracer, 6.75 m | a 70 px rod | fine | fog | energy (ion), 144 px / 7 px | #3 |
+| PALC | orb, 6.88 m | a 7 px blob at 1.5 km | blob | 176 px blob at 60 m | plasma, 196 px / 10 px | keep; #10 |
+| IPG | tracer, 7.03 m | a 75 px rod | fine | fog | energy, 150 px / 7.5 px | #3 |
+
+### 11.4 Cross-weapon findings
+
+- **A lamp**: every muzzle core (the flat white disc, h 0.6–1 at E 4, 0.5–0.8 w) on every class and view; the star and
+  cone are hairlines beside it. The one element that reads as a flash is the four-arm star of capital guns at 600 m.
+- **A balloon**: own-fire halos under the 40 px cap (fog domes for corvette guns, a 30 px σ cloud on a fighter bolt);
+  the end-on heavy at 60 m (a 286–320 px flat disc); orbs within 100 m (a cotton ball, lobed into a pentagon).
+- **A stick**: not under SETA 6 (the energy law keeps the far end dim), but the heavy head ball makes a bead on a stick
+  (GKE, SSC, PSP, GAUSS, IBL), and the cockpit cone is a 700 px diagonal stick.
+- **A disc**: an incoming fighter bolt at 60 m (30–37 px, by construction, acceptable with its halo); the wave end-on is a
+  hoop, not a disc, and should become one (#2).
+- **A decal**: the rim's dark outline around corvette and capital pills over a bright hull; the orb's five lobes.
+- **The same on weapons that should differ**: all white lights (stock FLAK, FLAK_CLUSTER, CIG, MAM, SSC; every Mayhem
+  weapon in the lab) draw the same white rod or ball; IRE, PAC, PRG, PBE differ only by hue and length; MASS/MD (kinetic)
+  draw as the brightest laser; HEPT (plasma) draws as a laser. The style census is the catalogue's elongation reading, so
+  the cues are mechanical; the three mis-cues worth a hand pin are MASS/MD, HEPT and FBL (11.5).
+- **Stream or strobe**: stock guns at 5–19 shots/s with 60–180 ms lives are a steady lamp (lit 0.63–1.0), the ballistic
+  60 ms is a strobe at 6.6/s (EBC: lit 0.39, which is right for a chaingun); Mayhem guns are single flashes.
+- **Blend**: over black every bolt reads; over a 1.0 hull fighter bolts are pale white dashes (#5) and bigger bolts are
+  outlined pills; in the cockpit the glow colours the frame (#7).
+
+### 11.5 Options considered for the reworks
+
+- **#1 muzzle core.** (a) Keep the disc, cut E to 1.5 and h to 0.5: still a ball, just a tinted one (the ball is the
+  shape, not the brightness). (b) The hull burst's noise body for every class: the plasma bloom at 66 px already reads as
+  a ball because the disc sits on top of it at E 4. (c) Chosen: a small hot core (0.25 w) with the star or bloom carrying
+  the size at full E, and life capped at 0.5 of the refire period so a flash is a flash; fast guns (PBE 19/s, PRG 10/s)
+  then show a steady small ember, which is honest. (d) A flipbook sprite per class: an asset, and the same per-shot seed
+  gives variety analytically (section 10 stands).
+- **#2 wave end-on.** (a) Keep the ring, thin it to 0.25 w: still hoops, still a tunnel. (b) Draw the wave as a billboard
+  disc always (vanilla's cue): loses the side-on crescent that reads well at 2 km. (c) Chosen: the crescent side-on, a
+  soft filled lens below c 0.4 with the rim at E 1.2 and the fill at 0.15, no arc below c 0.4 (the seam), and the lens
+  diameter capped at 6 x `own_body_max_px` for own bolts so eight live PSG bolts cannot tile the view. (d) No end-on
+  draw: the wave moves along its normal, so an end-on wave is the common case for the target; it must draw.
+- **MASS/MD, HEPT, FBL cues.** (a) Leave the census (mechanical, documented): the mass driver stays the brightest laser.
+  (b) Chosen: three hand pins in `weapon_overrides.json` (MASS/MD: style slug, E_b 0.6, halo off, tint from the texture
+  mean; HEPT: style slug with the 30 ms tail; FBL: style orb at w_orb 2.0 w), each a documented `by_id` row, no new law.
+- **Own halo cap.** (a) `halo_px_max` 40 → 24 (section 8's kill step): still full radiance in a smaller blob. (b)
+  Chosen: energy-conserving cap (E_h x σ_cap / σ_world) plus the own-bolt σ ≤ body ceiling: the fog goes, the halo at
+  range is unchanged.
+
+### 11.6 Unknowns this review adds
+
+| # | Unknown | Settles it |
+| --- | --- | --- |
+| 9 | The own guns' offsets from the cockpit eye and from the F3 camera per ship class (the lab assumes ±3 m, 2 m ahead in the cockpit, 24 m behind for the chase camera) | the observe flight logs the first own muzzle's eye distance and screen position in both views |
+| 10 | The production tint of white-light weapons (the table's texture means, 36 of 38 Mayhem rows): whether they are grey (all alike) or carry a hue | dump `tint_rgb` per row from the loaded table (one log row at table load) and feed the means into the lab assets |
+| 11 | Whether the muzzle disc at 40 px reads as a lamp after the TAA resolve and bloom in the game (the lab has neither) | the first flight's own-fire frames in the chase view |
+
+Evidence: `verification/results/bolt-muzzle-look/visual-review-2026-11-08/weapons.csv` (56 rows: style, tier, w, L, T,
+tint, muzzle class, shots/s, the lab's pixel sizes per view, lit fraction) and its scripts (`make_plan.py`,
+`batch_shots.py`, `make_sheets.py`, `make_grid.py`, `summarize.py`); frames and sheets in the scratch directory named
+above (regenerable: `python3 batch_shots.py tools/effects/weapon_effects_lab.html <outdir> plan.json`).
+
 ## Reproduce
 
 ```sh
