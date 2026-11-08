@@ -634,6 +634,8 @@ def view_record(view, census, manifest, catalog=None):
             w['mt'] = MOUNT_TIERS.index(weapon_effects_table.mount_tier_of(used))
             w['rg'] = entries[w['id']].get('range_m')
         w['hc'] = hull_class_of(entries.get(w['id'], {'id': w['id']}), pins)
+        if w['id'] in pins:  # the override file's pin alone (the DLL table's row_hull_class): the muzzle class reads it
+            w['hp'] = pins[w['id']]
     tiers = tier_rows(census['death_rows'])
     ids = reachable(weapons, tiers, effects)
     tex = manifest['textures']

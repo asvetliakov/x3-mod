@@ -1894,12 +1894,33 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         const MuzzleOut c = muzzles(hc, {muzzle(0.f, 0.f, 0.f, 100000, 0, 10)}, smoke_only);
         // 2026-11-08 #9: s0 0.3 -> 0.5, and the puff visibly darker than the hull it sits on (the surface through the gun
         // darkened by >= 0.3 s0 at 150 ms, 0.625 of its life left; was: any darkening on a lane 1 m in front, < 0.999)
+        // A stream (review 2026-11-08, finding 1): the stock EBC (ballistic slug, k 0.33, #c0c010) at 6.58 shots/s, its
+        // third shot (the refire period 152 ms on the record), 150 ms after it: the puff keeps its own 400 ms life (the
+        // flash's refire cap would end it at 76 ms) and darkens the surface through the gun as the single shot's does.
+        float stream_min = 1e9f;
+        unsigned stream_puffs = 0;
+        {
+            const float ebc_tint[3] = {1.f, 1.f, 0.01f};
+            const bs::BoltLook ebc = bs::bolt_look_from(0x40, wc::shape_slug, 0.328f, 0, 2814.6f, ebc_tint);
+            mz_look_override = &ebc;
+            const std::uint32_t period = 152, t0 = 100000 + 2 * period;
+            const bs::BoltView vs = view_of(bt.t.w, bt.t.h, t0 + 150);
+            const MuzzleOut st = muzzles(muzzle_view(vs), {muzzle(0.f, 0.f, 0.f, t0, t0 - period, 0, 0, 3)}, smoke_only);
+            mz_look_override = nullptr;
+            for (unsigned q = 0; q < st.b.sprite_quads * 4; ++q) mz_sprites[q].b[2] = 0.f;
+            stream_puffs = st.n.puffs;
+            const std::vector<float> sv = render_muzzles(pass, bt, st, 1.f, 200.f * upm);
+            const Img is2{&sv, bt.t.w, bt.t.h};
+            for (unsigned y = 0; y < is2.h; y += 2)
+                for (unsigned x = 0; x < is2.w; x += 2) stream_min = std::min(stream_min, is2.px(x, y));
+        }
+        const bool stream_ok = stream_puffs == 1 && stream_min <= 1.f - 0.3f * s0 && stream_min >= 1.f - s0 - 0.02f;
         const bool ok = o.n.puffs == 1 && sky_max <= 1e-4f && hull_min >= 1.f - s0 - 0.02f && hull_min < 0.999f &&
-                        on_min >= 1.f - s0 - 0.02f && on_min <= 1.f - 0.3f * s0 && c.n.puffs == 0;
+                        on_min >= 1.f - s0 - 0.02f && on_min <= 1.f - 0.3f * s0 && c.n.puffs == 0 && stream_ok;
         std::printf("MUZZLE gate=smoke puffs=%u hull_min=%.4f on_gun_min=%.4f floor=%.3f darker_bound=%.3f sky_max=%.5f "
-                    "cockpit_puffs=%u ok=%u\n",
+                    "cockpit_puffs=%u stream_puffs=%u stream_on_gun_min=%.4f ok=%u\n",
                     o.n.puffs, double(hull_min), double(on_min), double(1.f - s0 - 0.02f), double(1.f - 0.3f * s0),
-                    double(sky_max), c.n.puffs, unsigned(ok));
+                    double(sky_max), c.n.puffs, stream_puffs, double(stream_min), unsigned(ok));
         report("muzzle_smoke_surface_only", ok, "");
     }
     // The fireball program's two muzzle uses measured (2026-11-07, the death step's fireball changes are compared on
@@ -2039,6 +2060,50 @@ void muzzle_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         std::printf("MUZZLE gate=class_order psp_orb_flak=%u psg_wave=%u flak_tracer=%u ok=%u\n", unsigned(look_of(7).mclass),
                     unsigned(look_of(9).mclass), unsigned(look_of(5).mclass), unsigned(ok));
         report("muzzle_class_orb_before_flak", ok, "");
+    }
+    // Review 2026-11-08 finding 3: the refire cap binds. The stock IRE (row 0) at 6.67 shots/s (the record's period 150
+    // ms): its flash lives min(120 ms x stagger, 75 ms) = 75 ms at 1x (16 ms frames): drawn at 64 ms, gone at 80 ms; a
+    // first shot (no previous) still drawn at 96 ms (the law's 108-132 ms).
+    {
+        shooter(0.f, 0.f, 200.f, 15.f);
+        auto drawn_at = [&](std::uint32_t age, std::uint32_t prev_gap) {
+            const std::uint32_t t0 = 500000;
+            const bs::BoltView v = view_of(bt.t.w, bt.t.h, t0 + age, 16u);
+            return muzzles(muzzle_view(v), {muzzle(0.f, 0.f, 0.f, t0, prev_gap ? t0 - prev_gap : 0, 0, 0, 2)}).n.discs;
+        };
+        const unsigned at64 = drawn_at(64, 150), at80 = drawn_at(80, 150), first96 = drawn_at(96, 0);
+        const bool ok = at64 == 1 && at80 == 0 && first96 == 1;
+        std::printf("MUZZLE gate=refire_cap period_ms=150 life_ms=75 drawn_at64=%u drawn_at80=%u first_shot_at96=%u ok=%u\n",
+                    at64, at80, first96, unsigned(ok));
+        report("muzzle_refire_cap_binds", ok, "");
+    }
+    // Review 2026-11-08 finding 2: under SETA a refire period under the three-frame floor holds the flash at full value
+    // (no (1 - x)^2 fade), so nothing alternates frame to frame: the IRE at 10 shots per game second, SETA 6 (96 ms
+    // frames) and SETA 10 (160 ms), each frame with the latest shot and its previous one on the record; the core's and the
+    // star arms' radiance change frame to frame <= 2 %.
+    {
+        shooter(0.f, 0.f, 200.f, 15.f);
+        bool ok = true;
+        for (std::uint32_t step : {96u, 160u}) {
+            float lo = 1e9f, hi = 0.f, change = 0.f, last = -1.f;
+            const std::uint32_t start = 600000, period = 100;
+            for (unsigned fi = 0; fi < 12; ++fi) {
+                const std::uint32_t now = start + 7 + fi * step, k = (now - start) / period, t0 = start + k * period;
+                const bs::BoltView v = view_of(bt.t.w, bt.t.h, now, step);
+                const MuzzleOut o = muzzles(muzzle_view(v), {muzzle(0.f, 0.f, 0.f, t0, t0 - period, 0, 0, k + 2)});
+                float e = 0.f;
+                for (unsigned q = 0; q < o.b.sprite_quads; ++q) e += mz_sprites[4 * q].b[2]; // core + arms
+                lo = std::min(lo, e);
+                hi = std::max(hi, e);
+                if (last > 0.f) change = std::max(change, std::fabs(e - last) / last);
+                last = e;
+            }
+            const bool row_ok = lo > 0.f && change <= 0.02f;
+            ok = ok && row_ok;
+            std::printf("MUZZLE gate=seta_no_alternation step_ms=%u period_ms=100 min_e=%.3f max_e=%.3f frame_change=%.4f ok=%u\n",
+                        step, double(lo), double(hi), double(change), unsigned(row_ok));
+        }
+        report("muzzle_seta_no_alternation", ok, "");
     }
     // #1: the own fighter's IRE and PAC muzzles in the chase view (the F3 camera 24 m behind, the wing gun at (-3, -1, 3) m),
     // 20 ms after a shot, alone over black: of the lit area (>= 10 % of its peak, max channel) the share at >= 0.8 of the

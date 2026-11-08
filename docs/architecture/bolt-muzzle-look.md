@@ -186,7 +186,7 @@ in the stage sprite batch, occlusion class 2. Sizes are capped by the shooter's 
 star ≤ 0.25 R_s, flame and vents ≤ 1.0 R_s; when a cap shortens the body (the star's arm, the cone, the bloom), the
 core shrinks by the same factor, so core / body stays the law's ratio. Life is in game ms; the flash (core, cone or star,
 bloom, glow) lives max(min(life, 0.5 x the refire period), 3 step_game) and fades as (1 − x)², x = age / life, with the
-±20 % stagger; vents, afterglow and smoke keep their own lives (the first two also capped by the refire period); m
+±20 % stagger (held at full, no fade, when the refire period is under the floor); vents, afterglow and smoke keep their own lives (the first two also capped by the refire period, the smoke never); m
 columns are fighter (w 2.2) / capital (w 18.5).
 
 **Rework of 2026-11-08** (section 11 #1, #7, #8, #9, #11; built, see the ledger's "Muzzle rework (2026-11-08)"): every
@@ -226,7 +226,14 @@ is 17 px, its end-on star 146 px [disc 46 px, star 100 px] [M, lab detail rows];
 - **A stream, not a steady light (2026-11-08 #1):** the flash lives at most 0.5 of the refire period (the record's
   t0 − prev_t0, game ms) above the three-frame floor, under the (1 − x)² envelope; a 19 shots/s gun at 1x (period 52 ms,
   life 48 ms by the floor) is at half its fresh peak on about a quarter of the frames [linear fade over 120 ms: lit on
-  every frame, IRE 0.80 to PBE 1.0 of the time].
+  every frame, IRE 0.80 to PBE 1.0 of the time]. When the refire period is under the three-frame floor (SETA, or a gun
+  firing within three frames) the flash holds its full value for the floor with no fade, so nothing alternates frame to
+  frame (the envelope would give 1 / 0.44) [review 2026-11-08]. The smoke puff keeps its own life, never the refire cap.
+- **By design, from the cap:** a heavy gun firing faster than about 3.1 shots/s (refire period under 2 x 160 ms, the
+  80 ms flash's cap) has no afterglow: the afterglow's 250 ms is capped at half the refire period too, so it ends with
+  the flash. The vents are capped the same way.
+- **Pre-existing, noted:** `muzzle_pose` accepts a shooter radius ≤ 0 (`obj+0xa4` is not validated); the caps then reach
+  0, and the pixel floors keep every element's extent positive.
 - **Heavy rise:** the heavy cone grows to its length over its first 40 ms game (three-frame floor); there is no
   pre-glow, since nothing precedes the shot at the site.
 - **Capital broadside:** per shooter, a muzzle's glow and halo take s(N) = 1 / (1 + (N − 1) / 2.5), N = the shooter's
@@ -350,11 +357,13 @@ On 1080p dumps of the in-place draw through the production bolt program into the
 | `muzzle_relight_resets_not_adds` | two shots 30 ms apart, the core alone (2026-11-08: the star's rotation and breathing change per shot) | peak = a single shot's (± 1 %) |
 | `muzzle_breathing_suppressed` | 10 Hz at 1x and SETA 6 | 1x: flame length varies per shot within ± 25 %; SETA 6: frame-to-frame flame length change ≤ 2 % |
 | `muzzle_broadside_cluster` | 12 turrets along a capital hull | summed glow peak ≤ 2.3 x one glow; core count 12 |
-| `muzzle_smoke_surface_only` | ballistic over hull and sky; the own cockpit; (2026-11-08) the hull surface through the gun at 150 ms | sky unchanged; hull min ≥ 1 − s0 − 0.02 (s0 0.5 [0.3]); on the gun's surface ≤ 1 − 0.3 s0 (darker than the hull) [any darkening]; no puff in the cockpit view |
+| `muzzle_smoke_surface_only` | ballistic over hull and sky; the own cockpit; (2026-11-08) the hull surface through the gun at 150 ms | sky unchanged; hull min ≥ 1 − s0 − 0.02 (s0 0.5 [0.3]); on the gun's surface ≤ 1 − 0.3 s0 (darker than the hull) [any darkening], also for the stock EBC's third shot at 6.58 shots/s 150 ms on (the puff's own life, not the refire cap); no puff in the cockpit view |
 | `muzzle_not_a_lamp` (2026-11-08 #1) | own chase IRE and PAC, the wing gun 27 m from the eye, 20 ms after a shot, over black | of the lit area (≥ 10 % of its peak, max channel) the share ≥ 0.8 of the peak ≤ 0.15; the disc alone printed as the control |
 | `muzzle_stream_not_steady` (#1) | stock PBE (energy, 19.23 shots/s) in the own chase view, 1x, one game second of 16 ms frames | frames at ≥ half a fresh shot's peak ≤ 0.6 of the frames |
 | `muzzle_floors_at_range` (#8) | an enemy fighter's IRE at 600 m, 1440 rows, end-on and across the view | core diameter ≥ 6 px, longest star arm ≥ 12 px, cone ≥ 12 px |
 | `muzzle_cockpit_disc_and_star` (#7) | own cockpit, IRE, MD, GKE, the gun 3 m beside and 2 m ahead of a 6 m eye | one disc, four arms, no cone, glow, vents or puff; longest arm ≤ 48 px at 1440 rows (36 at 1080) |
+| `muzzle_refire_cap_binds` (review 2026-11-08) | IRE, the record's refire period 150 ms, 1x | drawn at 64 ms, gone at 80 ms (life 75 ms); a first shot still drawn at 96 ms |
+| `muzzle_seta_no_alternation` (review 2026-11-08) | IRE at 10 shots per game second, SETA 6 and 10, the previous shot on the record | core + arm radiance frame-to-frame change ≤ 2 % |
 | `muzzle_class_orb_before_flak` (#11) | the stock PSP orb (flags 0x2100), the PSG wave, FLAK_ALPHA | plasma, plasma, flak |
 | `muzzle_heavy_rise_and_vents` | heavy on a capital at 600 m | cone reaches 3 w at 40 ms (± 1 frame); two vents ⊥ the gun axis within 5°; afterglow fades to t, ≤ 1.2 after 80 ms |
 | 3.3's muzzle rows (cockpit gain, placement, light on hull, stub records, 20 guns ≤ 30 µs); budget rows | `bolt_alone_fills_frame`, `muzzle_alone_fills_frame`, 512 bolts + 20 muzzles at 5120x1440 | weights pinned; ≤ 100 µs GPU fenced (measured 89.8); CPU ≤ 150 µs (i686 fixture) |

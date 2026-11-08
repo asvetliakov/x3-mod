@@ -2650,7 +2650,9 @@ constexpr float arm_width = 0.3f, star_e = 4.0f;
 constexpr float bloom_w[2] = {0.5f, 1.0f}; // plasma: the noise bloom's radius over its life (w)
 constexpr float bloom_e = 3.0f;           // was 1.2
 // The flash (core, cone or star, bloom, glow) lives max(min(law, refire_share x the refire period), 3 steps) and fades
-// as (1 - age / life)^flash_pow (was linear): a fast gun reads as a stream of flashes, not a steady light.
+// as (1 - age / life)^flash_pow (was linear): a fast gun reads as a stream of flashes, not a steady light. A refire
+// period under the three-frame floor holds the flash at full value (no fade: nothing alternates under SETA). The smoke
+// keeps its own life.
 constexpr float refire_share = 0.5f, flash_pow = 2.f;
 // Pixel floors at ref_rows (bolt::ref_rows, scaled by the rows): the core's diameter, the longest arm or the cone.
 constexpr float floor_disc_px = 6.f, floor_arm_px = 12.f;

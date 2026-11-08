@@ -997,6 +997,11 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
         if (refire > 0.f && l > mz::refire_share * refire) l = mz::refire_share * refire;
         return l > floor_ms ? l : floor_ms;
     };
+    // The smoke keeps its own life (never the refire cap): the puff outlives the flash.
+    auto own_life_of = [&](float law) {
+        const float l = law * stagger;
+        return l > floor_ms ? l : floor_ms;
+    };
     const float life = life_of(mz::class_life[cls]);
     // Breathing (3.2): x (1 + a (2 h - 1)), a = breath x saturate(dt_shot / (3 steps) - 1): full when a shot's three frames
     // are its own, none when shots arrive within three frames (the gate's steady flame under SETA; the note's literal
@@ -1009,7 +1014,10 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
     const float* tint = look.tint;
     const bool flash_live = age_ms < life;
     const float fx = flash_live ? 1.f - age_ms / life : 0.f;
-    const float fl = fx * fx;
+    // Shots closer than the three-frame floor (SETA, or a gun faster than 3 frames): the flash holds its full value for
+    // the floor, no fade, so nothing alternates frame to frame (a 1 / 0.44 flicker under the envelope otherwise).
+    const bool held = refire > 0.f && refire < floor_ms;
+    const float fl = held ? (flash_live ? 1.f : 0.f) : fx * fx;
     const bool cockpit = pose.own && gain < 1.f;
     const bool own_star = mz::class_star[cls] > 0.f;
     // Pixels: the rows' scale of the floors, px per view unit at the gun (its depth).
@@ -1205,7 +1213,7 @@ inline void muzzle_elements(const HullView& f, const MuzzlePose& pose, const Bol
     // The smoke puff (ballistic, heavy, flak): the scorch-state multiply on the surface, drifting along the gun axis; not
     // in the own cockpit.
     if (t.smoke && b.scorches && mz::class_smoke[cls][3] > 0.f && !cockpit) {
-        const float sl = life_of(mz::class_smoke[cls][3]);
+        const float sl = own_life_of(mz::class_smoke[cls][3]);
         if (age_ms < sl && b.scorch_boxes >= b.scorch_cap) ++n->starved;
         if (age_ms < sl && b.scorch_boxes < b.scorch_cap) {
             const float x = age_ms / sl;

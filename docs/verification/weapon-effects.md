@@ -1765,14 +1765,33 @@ Native host (`run_weapon_effects.py --host native`, `summary.json` at `d3adfe275
 | `bolt_budget_512_bolts_20_muzzles_5120` | 96.2 µs fenced (bolts 76.5, muzzles 19.7, 85 muzzle sprites [57]); timestamps 44.4 µs, muzzles 2.6 | ≤ 100 [the record at `6dd25f264`: 101.1, failing] |
 
 Every other muzzle row is unchanged and passing (life, breathing, broadside 1.278, heavy, cockpit gain, placement,
-axis, light, ownership). D3D fixture 358 checks, 6 failures, all `death_big_*` (tier sizes, pre-roll and hull light,
-shock shell, halo cap, light and fade, eye inside; the big-tier bodies render 0). The boom stage and its cases do not
-include the muzzle code. The record these passed in (`6dd25f264`) predates the three explosion commits since, so the
-failures belong to the explosions step [I, not rerun at `d3adfe275` clean]. Hook fixture 147 checks, 0 failures. Host
-`test_weapon_effects_*` 101 run, 2 failures, the same `death_big_*` rows read from the record. The lab test's cockpit
-light assertion was changed to none in the cockpit. `check_no_x87.py --edition ap` PASS (1181 reachable functions);
-`build-muzzle` (ap) 0 warnings; `generate_weapon_effects_programs.py --check`, `generate.py --check` and the lab's
-`--check` PASS.
+axis, light, ownership). That run (`7c13d540d`) had 6 `death_big_*` failures (the big-tier bodies rendered 0). They did
+not reproduce in the review-fix run below with the display hold on and the screensaver killed, so they were host state,
+not the explosions code.
+
+**Review fixes (2026-11-08).**
+1. The smoke puff keeps its own life; it was cut to half the refire period with the flash.
+2. A refire period under the three-frame floor holds the flash at full value with no fade, so nothing alternates
+   1 / 0.44 under SETA.
+3. The refire cap is now exercised by a gate.
+4. The lab's muzzle class comes from production's rule. The override file's hull pin (LAB_DATA `hp`) applies, never the
+   hull-class rule's own answer (`hc`). The stock MAM and MAM_1 were ballistic in the lab and are now plasma: a bloom with
+   a hot core (re-shot sheets `s_MAM__muzzle.png`, `s_MAM_1__muzzle.png`, kept local).
+5. Section 3.2 now notes that a heavy gun faster than about 3.1 shots/s has no afterglow (by design, from the cap) and
+   that `muzzle_pose` accepts a radius ≤ 0 (pre-existing; the floors keep extents positive).
+
+Native host, one run:
+
+| Gate | Result [M] | Bound |
+| --- | --- | --- |
+| `muzzle_smoke_surface_only` (stream added) | EBC third shot at 6.58/s, 150 ms on: 1 puff, the surface through the gun 0.737; the single shot 0.731 | ≤ 0.85 |
+| `muzzle_refire_cap_binds` | IRE, period 150 ms: drawn at 64 ms, gone at 80 ms; a first shot drawn at 96 ms | life 75 ms |
+| `muzzle_seta_no_alternation` | IRE 10/s, SETA 6 and 10: core + arms 20.0 every frame, change 0.0 | ≤ 2 % |
+| `bolt_budget_512_bolts_20_muzzles_5120` | 91.2 µs fenced (bolts 71.3, muzzles 19.9) | ≤ 100 |
+
+Totals: D3D fixture 360 checks, 0 failures; hook fixture 147 checks, 0 failures. Host `test_weapon_effects_*` 101 OK.
+`build-muzzle` (ap) 0 warnings; `check_no_x87.py` PASS. `generate_weapon_effects_programs.py --check`, `generate.py
+--check` and the lab's `--check` PASS.
 
 ## Explosions (step 3)
 
