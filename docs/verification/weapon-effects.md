@@ -1728,6 +1728,76 @@ functions). The own fire chase dump at 5120x1440 (`--dump`, `X3M_WEAPON_EFFECTS_
 plain record restored after it): at 50 ms one muzzle, its disc 40.3 px, the star for the cone; the 4x crop by
 `verification/results/bolt-muzzle-look/muzzle_crop.py` (the BOLT_DUMP row's `muzzle_x` / `muzzle_y`), kept local.
 
+### Bolt tunings (2026-11-08, worktree on `effects` `d3adfe275`)
+
+The bolt items of the visual re-review (bolt-muzzle-look.md 11: #2, #3, #4, #5, #6, #10, the three hand pins of 11.5,
+#12) and the rim pass's cost; the laws in bolt-muzzle-look.md 1-2. Rows from the native host's bolts-only fixture mode
+(`X3M_WEAPON_EFFECTS_BOLTS_ONLY=1`, a development run: the full run aborts in the explosion cases before reaching the
+bolts, `native_full_run_abort.txt`), in
+`verification/results/bolt-muzzle-look/bolt-tunings-2026-11-08/native_bolts_only_rows.txt` (57 checks, 0 failures [M]).
+
+| Gate | Old law | New law | Measured (native) |
+| --- | --- | --- | --- |
+| `bolt_halo_px_cap` | sigma <= 40 x rows / 1440, E_h unchanged | bounded cap: sigma <= cap, E_h x cap / sigma_world at that end | IRE at 5 m: E_h 0.0833 = 0.6 x 30 / 216 (1080), x 40 / 288 (1440) |
+| `bolt_own_halo_bounded` (new) | - | own fire, chase: halo 10 %-of-peak reach <= 16 x 2.5 x rows / 1440 | IRE 24.8-25.7 px, Mayhem PSG 23.5 px (bound 30 at 1080), sigma 12 px |
+| `bolt_rim_darkens_hull` | a 3 px bolt draws no rim | the pixel band [w/2 + 1, w/2 + 4] px under 5 px of body | IRE at 1200 m (3.0 px): rim drawn, band 0.617 over a 1.0 hull; 150 m band 0.690 |
+| `bolt_rim_survives_resolve` | kept >= 0.5 | unchanged | kept 1.008 |
+| `bolt_colour_core_rim` | centre h, edge hue | + a floor-width core keeps the tint (h x saturate((w - 3) / 3)) | orange and blue IRE at 1500 m (3.0 px): core = tint, err 0.000 |
+| `bolt_style_shapes` | heavy core share >= 1.3 x tracer | + heavy head width <= 1.15 x mid-core (no disc) | heavy head / mid 0.778, core shares 0.678 / 0.504 |
+| `bolt_orb_breathes` | r_max / r_min >= 1.1 (5 lobes, amp 0.12) | >= 1.03 (7-9 lobes, amp 0.05) | PSP (now capital, 192 px) 1.106, PBE (23 px) 1.259 (boil) |
+| `bolt_wave_crescent` end-on | ring: half-peak diameter = S +- 10 % | lens: half-peak annulus 0.95 S +- 0.1 S | 57.6 px of S 60.7, moment ratio 1.000 |
+| `bolt_wave_endon_no_hoop` (new) | - | PSG end-on 300 m: centre >= 0.1 rim, no rim bin > 2x its neighbours, no interior bin > 2x the median | centre / rim 0.113, worst rim bin 1.052, worst interior 1.002 |
+| `bolt_budget_512_bolts_20_muzzles_5120` | <= 100 us fenced | unchanged | 94.7 us (bolts 74.6, muzzles 20.1; rims 469 of 512, before 32); timestamps 41.6 us; base record 101.1 us |
+
+The first build (the rim computed inside the capsule's line path) measured 105.0 us fenced with 469 rims; the rim pass
+now evaluates only its band (review fix 5: along the core's silhouette) and the orb's rim before its noise: bolts 84.6 -> 74.6 us [M]. Pixel program 684 -> 735 slots (flag 741) [M, BOLT_SLOTS]; CPU 49.9 us of
+150 [M].
+
+**Mount tier (#4).** `mount_tier` is the catalogue's `size` (weapon_catalog.size_of, the 10 % rule): stock PSP fighter
+-> capital, w 3.00 -> 20.00 m (the w_cap_m cap); stock PPC corvette -> capital, 7.50 -> 20.00 m; stock PSG corvette ->
+capital, 4.22 m unchanged (d_eng 1082 m by 0.75 range); Mayhem FBC corvette -> capital, 6.15 -> 16.39 m; Mayhem IC
+corvette -> capital, 6.75 -> 17.99 m [M, `tier_change.py` -> `tier_change_out.txt`]. Over both AP views 30 / 19 / 12 ->
+29 / 15 / 17 fighter / corvette / capital rows [M, `test_mount_tiers_match_the_catalogue`]. Tables regenerated
+(`weapon_effects_table.py --game-root /mnt/c/X3`, after the review fixes below): stock (`--stock-only`) sha256
+`32966822d1ca7d84603e261e8485331e7f184ef30fe435e4a234ebfb2f5deb3a`, 27 / 6 / 12, 13 overrides; Mayhem 3 (installed)
+`1a33a37f74c737d089427febc476ed0b83d5fd2abd681c38fe87be360186e1d6`, 18 / 12 / 8, 22 overrides; the pins: MASS slug,
+bolt_e_body 0.6, bolt_halo false (its body has no decodable texture, texture_rgb null, so no tint pin); MD the same plus
+bolt_tint texture; FBL orb, bolt_w_orb 2.0; HEPT slug [M, `tint_check.py` -> `tint_check_out.txt`].
+
+**Lab texture means (#12).** The asset extractor writes each weapon body's `mean` by the table generator's rule; all 26
+stock and 37 Mayhem rows with a texture equal the table's `texture_rgb` [M, `tint_check_out.txt`; e.g. stock PAC
+[121, 82, 39], CIG [19, 20, 43], MAM [134, 120, 139]; Mayhem PAC and MD [66, 66, 66]]. Unknown 10 is answered for
+Mayhem: its weapon textures are grey, so its unsaturated-light rows draw white in production as in the lab [M].
+
+**Lab rim order (5.1).** The lab already composes `hull x prod(1 - rim) + sum(capsules)`, which is production's
+rim-then-capsule order: the dark lattice in dense streams (GAUSS, IBL) is the rim of one bolt's round cap lying across
+the next bolt's body in an end-to-end stream, and production draws it the same way [I from the two compositions]. Lab
+rounds: one full bolt round (504 frames), grids under the session scratch `bolt-rework/`.
+
+**Review fixes (2026-11-08).** (1) A hostile ceiling: another ship's line or orb (either end) and a wave's chord never
+wider than `hostile_body_max_px` 0.25 of the view height, radiance unchanged; `bolt_hostile_ceiling` at 1080 rows: PSP
+side-on 20 m 270 px quad, footprint 258.5 px; PPC end-on 20 m 270 / 61.2 px, footprint 242.9 px (bound 400.8 = 270 +
+2 x 2.146 sigma_cap + 2); the PPC side-on row measured 0 (its core's middle off screen) and now samples on screen, not
+yet rerun [M, `native_bolts_only_rows_review.txt`]. (2) The halo cap is named a bounded cap (E_h x cap / sigma_world at
+sigma = cap: it bounds the halo, it does not conserve its energy) and applied per end (a line's back-end E_h in p2.z,
+interpolated along the axis; its streak's rest length is read from p1.y): own fire keeps E_h 0.17-0.53 (IRE) and
+0.045-0.14 (Mayhem PSG) of 0.6 at 25-80 m instead of 0.0100 / 0.0027 under the shared minimum, the 10 % reach still
+25.5-25.7 px of 30 [M]. (3) Stock MASS's no-op texture-tint pin dropped (E_b 0.6 kept); the impact handler honours
+`pin_tint_texture` where a texture exists (Mayhem MD), so its impacts and bolt share the tint. (4) The table reader drops
+a row whose bolt pin is outside its range (a zero E_b, a w_orb stored as 0, another bolt_tint name) and counts it
+(`bolt_rejected`, logged with `bolt_pins` in the `weapon_effects_table` row); a pin of the wrong JSON type makes the file
+malformed; `test_reader_handles_malformed_bolt_pins`. (5) The rim follows the core's own silhouette (the tracer's
+pointed tip, no back cap across a tail root). Native bolts-only run: 58 checks, 1 failure, the budget row: 153.7 us
+fenced (bolts 126.5, muzzles 27.2) against 94.7 the run before, while the GPU timestamps moved 41.6 -> 43.1 us
+(bolts 39.0 -> 41.7) and the unchanged cases rose alike (collapsed_512 32.4 -> 84.7 us, no_rim 63.5 -> 114.2 us, the
+muzzles 20.1 -> 27.2 us): the fence overhead of the host, not the pixel work [I]; the row is to be rerun. Pixel program
+755 slots (flag 761) [M].
+
+Host: `test_weapon_effects_*` 102 tests, 5 failures, all the D3D / hook records' (`summary.json`, `hook-summary.json`,
+recorded on `a4c408e93`-dirty, before the explosion commits of the base: their bound sources already differ at
+`d3adfe275`, `death_halo_rim` absent, `passed` false) [M]. `build-bolt` (ap) 0 warnings, `check_no_x87.py --edition
+ap` PASS (1181 reachable), d3d9.dll sha256 `917d6dfbff849745f339a54689b7f04d9899729b277218f4956acc188ed3e62d` after the review fixes [M].
+
 ## Explosions (step 3)
 
 2026-11-07, uncommitted on the `effects` branch at `d0c96e637` (merged into the worktree; that commit's amendment of

@@ -40,6 +40,9 @@ struct BoltLook {
     std::uint32_t flags = 0;
     float k = 0.f, w_m = 1.f, range_m = 0.f;
     float tint[3] = {1.f, 1.f, 1.f};
+    // the hand pins (bolt-muzzle-look.md 11.5, the table's bolt_* keys): the body radiance, the orb diameter (w), no halo
+    float e_body = bolt::e_body, w_orb = bolt::rest_w[2];
+    std::uint8_t halo_off = 0;
 };
 inline float bolt_d_eng_m(unsigned tier, float range_m) noexcept {
     const float d = bolt::d_eng_m[tier < 3 ? tier : 0];
@@ -96,8 +99,11 @@ inline BoltLook bolt_look_of(Reader rd, const core::Globals& g, const core::Tabl
     const std::uint32_t lw = core::pack_rgb(core::clamp_channel(light[0]), core::clamp_channel(light[1]),
                                             core::clamp_channel(light[2]));
     std::uint32_t word = 0xffffffu | core::rgb_present;
+    const std::uint8_t pin = table_ok ? t->bolt_pin[row] : 0;
     if (bits & core::row_tint_override)
         word = t->override_rgb[row];
+    else if ((pin & core::pin_tint_texture) && (bits & core::row_texture))
+        word = t->texture_rgb[row];
     else if (core::light_saturated(light[0], light[1], light[2]))
         word = lw;
     else if (bits & core::row_texture)
@@ -108,6 +114,9 @@ inline BoltLook bolt_look_of(Reader rd, const core::Globals& g, const core::Tabl
                                                         : core::calibre_of(shield > hull ? shield : hull);
     BoltLook l = bolt_look_from(flags, shape, k, table_ok ? t->mount_tier[row] : 0, table_ok ? float(t->range_m[row]) : 0.f,
                                 tint);
+    if (pin & core::pin_e_body) l.e_body = float(t->bolt_e_body_q[row]) * 0.01f;
+    if (pin & core::pin_w_orb) l.w_orb = float(t->bolt_w_orb_q[row]) * 0.01f;
+    l.halo_off = (pin & core::pin_halo_off) ? 1 : 0;
     // The table's class pin (hull-impact-classes.md section 2, weapon_overrides.json `hull`) sets the muzzle class too (a
     // Mayhem mass driver carries no ammunition flag; its pin is ballistic); a flak row keeps the flak muzzle.
     if ((bits & core::row_hull_class) && !(flags & core::bullet_burst_bits)) {
@@ -140,6 +149,7 @@ struct BoltLaw {
     float w_m = 1.f, L_m = 0.f, T_m = 0.f; // body width (orb: the orb diameter; wave: the thickness), core and tail length
     float sigma_w = 0.8f, h = 0.75f, tail_root = 0.6f, tail_gain = 0.5f, e_halo = bolt::e_halo, streak_c = 1.f;
     float chord_m = 0.f;                    // the wave's chord S
+    float e_body = bolt::e_body;            // the body radiance E_b (a hand pin may lower it)
     std::uint8_t kind = 0;                  // 0 line, 1 orb, 2 wave
     float code = 0.f;                       // the pixel program's style code (0..3, + 4 heavy)
 };
@@ -151,7 +161,8 @@ inline BoltLaw bolt_law(const BoltLook& l, float v_mps, bool simple) noexcept {
     const unsigned ts = l.heavy ? unsigned(bolt::heavy) : s; // the tail, halo and h index (heavy modifies)
     o.sigma_w = bolt::halo_sigma_w[ts];
     o.h = l.heavy ? 1.f : bolt::h[s];
-    o.e_halo = l.heavy ? bolt::e_halo_heavy : bolt::e_halo;
+    o.e_halo = l.halo_off ? 0.f : l.heavy ? bolt::e_halo_heavy : bolt::e_halo;
+    o.e_body = l.e_body;
     o.tail_root = bolt::tail_root_w[ts];
     o.tail_gain = bolt::tail_gain[ts];
     o.streak_c = simple ? (s == bolt::wave ? 0.f : bolt::streak_c_simple) : bolt::streak_c[s];
@@ -166,8 +177,8 @@ inline BoltLaw bolt_law(const BoltLook& l, float v_mps, bool simple) noexcept {
     }
     if (s == bolt::orb) {
         o.kind = 1;
-        o.w_m = bolt::rest_w[2] * w; // the orb's diameter w_orb
-        o.sigma_w = bolt::halo_sigma_w[2] * bolt::rest_w[2]; // 0.9 w_orb in units of w
+        o.w_m = l.w_orb * w; // the orb's diameter w_orb (rest_w[2], or the hand pin's)
+        o.sigma_w = bolt::halo_sigma_w[2] * l.w_orb; // 0.9 w_orb in units of w
         o.T_m = simple ? 0.f : (v_mps * tau_s < bolt::tail_max_w[2] * w ? v_mps * tau_s : bolt::tail_max_w[2] * w);
         o.tail_root = bolt::tail_root_w[2];
         o.h = bolt::orb_h_hi;
@@ -197,6 +208,18 @@ inline float bolt_trimmed_core(float L_m, float T_m, float v_mps, float interval
     return cut > 0.f ? cut : 0.f;
 }
 
+// The rim band in rho (body half widths) for a body w_px wide (2.1, 2026-11-08 #5): under rim_px_w px the band lies
+// rim_px_band px past the body's edge, from rim_px_blend_w the w-relative 2 rim_band_w, linear in w_px between (the
+// pixel program's twin, weapon_bolt_ps.hlsl rim_rho).
+inline void bolt_rim_rho(float wpx, float* lo, float* hi) noexcept {
+    const float half = 0.5f * (wpx > 1e-3f ? wpx : 1e-3f);
+    const float plo = 1.f + bolt::rim_px_band[0] / half, phi = 1.f + bolt::rim_px_band[1] / half;
+    float t = (wpx - bolt::rim_px_w) / (bolt::rim_px_blend_w - bolt::rim_px_w);
+    t = t < 0.f ? 0.f : t > 1.f ? 1.f : t;
+    *lo = plo + (2.f * bolt::rim_band_w[0] - plo) * t;
+    *hi = phi + (2.f * bolt::rim_band_w[1] - phi) * t;
+}
+
 // ---------------------------------------------------------------------------------------------- the frame
 struct BoltView {
     Camera cam{}, prev{};    // this frame's view (jittered projection) and the previous frame's rows
@@ -212,6 +235,7 @@ struct BoltCounts {
     unsigned listed = 0, drawn = 0, behind = 0, offscreen = 0, expired = 0, invalid = 0, beams = 0;
     unsigned lines = 0, orbs = 0, waves = 0, rim_lines = 0, rim_orbs = 0, streaks = 0, no_prev = 0, discs = 0;
     unsigned floored_len = 0, floored_body = 0, capped_own = 0, capped_halo = 0, parity_dropped = 0, capped_back = 0;
+    unsigned capped_hostile = 0; // ends (and wave chords) held at hostile_body_max_px of the view height
 };
 // The previous frame's records by (object, creation): 1024 open-addressed slots stamped per build. The stamp must be
 // unique per previous list (the caller passes the hooks' Present generation, monotonic): a stamp repeated on another list
@@ -316,6 +340,9 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     const float ppm_h = upm * fy / hv[2], ppm_b = upm * fy / bv[2];
     // Per-end widths, floors, ceilings.
     const float own_max = bolt::own_body_max_px * rows, halo_max = bolt::halo_px_max * rows;
+    // another ship's bolt near the eye (review 2026-11-08): body (and the wave's chord) never above hostile_body_max_px of
+    // the view height at either end, radiance unchanged (the own ceiling's rule), so no hostile bolt fills the view
+    const float hostile_max = bolt::hostile_body_max_px * v.height;
     // another ship's back end near the eye (note 15): never wider than the head or back_w_own_x x the own ceiling,
     // whichever is wider (a bolt the head of which is that wide, or one side-on, is untouched)
     float back_max = bolt::back_w_own_x * own_max;
@@ -332,20 +359,30 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
             w = back_max;
             ++n->capped_back;
         }
+        if (!in.own && w > hostile_max) {
+            w = hostile_max;
+            ++n->capped_hostile;
+        }
         return w;
     };
-    auto sigma_at = [&](float ppm) {
+    // The bounded halo cap (2026-11-08, #3): sigma at most the cap (an own bolt's at its body ceiling) and, at an end the
+    // cap binds, E_h x cap / sigma_world there (per end: a far head keeps its halo when its near back end is capped).
+    const float halo_cap = in.own && own_max < halo_max ? own_max : halo_max;
+    auto sigma_at = [&](float ppm, float* k) {
         float s = law.sigma_w * look.w_m * ppm;
         if (s < bolt::floor_halo_px) s = bolt::floor_halo_px;
-        if (s > halo_max) {
-            s = halo_max;
+        *k = 1.f;
+        if (s > halo_cap) {
+            *k = halo_cap / s;
+            s = halo_cap;
             ++n->capped_halo;
         }
         return s;
     };
     const float wh = width_at(ppm_h, false);
     back_max = back_max > wh ? back_max : wh;
-    const float wb = width_at(ppm_b, true), sh = sigma_at(ppm_h), sb = sigma_at(ppm_b);
+    float kh = 1.f, kb = 1.f;
+    const float wb = width_at(ppm_b, true), sh = sigma_at(ppm_h, &kh), sb = sigma_at(ppm_b, &kb);
     // The projected axis, its foreshortening c and the length floor (x c x the flown share).
     float ax = bx - hx, ay = by - hy;
     float A = scalar::sqrt(ax * ax + ay * ay);
@@ -444,19 +481,30 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
         ++n->no_prev;
     if (D < 0.5f) D = 0.f;
     // The quad: around the head, the back end and the streak's end, R past them: the halo's 3 sigma, and where the rim
-    // draws, its band's outer edge (rim_band_w[1] w from the axis; an orb's of its lobed radius) plus a pixel, so a bolt
+    // draws, its band's outer edge (bolt_rim_rho's; an orb's of its lobed radius) plus a pixel, so a bolt
     // wider than about 90 px keeps its whole rim (review 2026-11-07, finding 6).
     const float big_w = wh_e > wb_e ? wh_e : wb_e, big_s = sh > sb ? sh : sb;
-    const bool rim = v.rim && !v.simple && law.kind < 2 && 0.6f * wh >= bolt::rim_min_px;
+    // the rim band in rho of the body (an orb's of its diameter), its outer edge on the lobed radius
+    const float rim_w = law.kind == 1 ? wh : big_w;
+    float rim_lo = 0.f, rim_hi = 0.f;
+    bolt_rim_rho(rim_w, &rim_lo, &rim_hi);
+    const bool rim = v.rim && !v.simple && law.kind < 2 && 0.5f * (rim_hi - rim_lo) * rim_w >= bolt::rim_min_px - 1e-3f;
     float R = 0.5f * big_w + 3.f * big_s;
     float S_px = 0.f;
     if (law.kind == 1) R = 0.5f * wh * (1.f + bolt::orb_lobe_amp) + 3.f * big_s * bolt::orb_stretch;
     if (rim) {
-        const float edge = bolt::rim_band_w[1] * (law.kind == 1 ? wh * (1.f + bolt::orb_lobe_amp) : big_w) + 1.f;
+        const float edge = 0.5f * rim_hi * rim_w * (law.kind == 1 ? 1.f + bolt::orb_lobe_amp : 1.f) + 1.f;
         R = R > edge ? R : edge;
     }
     if (law.kind == 2) {
         S_px = law.chord_m * ppm_h;
+        // an own wave's lens (and crescent) never wider than wave_lens_own_x body ceilings (2026-11-08, #2)
+        const float s_own = bolt::wave_lens_own_x * own_max;
+        if (in.own && S_px > s_own) S_px = s_own;
+        if (!in.own && S_px > hostile_max) {
+            S_px = hostile_max;
+            ++n->capped_hostile;
+        }
         R = 0.5f * S_px + 0.5f * big_w + 3.f * big_s;
     }
     const float px[3] = {hx, hx + ax * A, hx + sdx * D}, py[3] = {hy, hy + ay * A, hy + sdy * D};
@@ -532,7 +580,8 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     p[1][3] = D;
     p[2][0] = sdx;
     p[2][1] = sdy;
-    p[2][2] = stretch_at;
+    // lines: the back end's E_h (their streak's rest length is the core's, p1.y); orbs: where the stretch begins
+    p[2][2] = law.kind == 0 ? law.e_halo * kb : stretch_at;
     p[2][3] = g_s;
     p[3][0] = wh_e;
     p[3][1] = wb_e;
@@ -546,15 +595,16 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     p[5][1] = fade;
     p[5][2] = law.tail_root;
     p[5][3] = law.tail_gain;
-    p[6][0] = in.seed;
+    p[6][0] = law.kind == 0 ? law.e_body : in.seed; // line kinds: the body radiance E_b; orbs and waves: the seed
     p[6][1] = c;
     p[6][2] = S_px;
-    p[6][3] = law.e_halo;
-    // The rim: drawn where its band (0.6 w) is at least rim_min_px wide (line and orb kinds, full mode).
+    p[6][3] = law.e_halo * kh; // the head's E_h (an orb's or wave's only)
+    // The rim: drawn where its band is at least rim_min_px wide (line and orb kinds, full mode; the pixel band of a
+    // narrow bolt is 3 px, so every line and orb carries one).
     *rim_ok = rim;
     return true;
 }
-// The pixel constants (weapon_bolt_ps.hlsl c0..c3; c1.z and c3.x the pass sets per draw).
+// The pixel constants (weapon_bolt_ps.hlsl c0..c3; c1.z and c3.x the pass sets per draw). c3.y the orbs' fewest lobes.
 inline void bolt_pixel_constants(std::uint32_t now_ms, bool simple, float out[4][4]) noexcept {
     out[0][0] = core::look::core_e;
     out[0][1] = bolt::e_body;

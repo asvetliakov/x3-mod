@@ -1,0 +1,92 @@
+BOLT_SLOTS attached=00000000 bolt=1 reason=ok vs=8 ps=735 flag_ps=741 max_ps_slots=4096 quads=544 vertex_bytes=128
+CHECK bolt_attach PASS ok
+CHECK bolt_parity_rule PASS
+BOLT_CPU case=parity records=512 instances=256 dropped=256 matched=256 learned=0 compared=767 best_us=6.6 median_us=7.5 bound_us=60 ok=1
+CHECK bolt_parity_cpu_512_256 PASS
+CHECK bolt_frame_ownership PASS
+CHECK bolt_width_law PASS
+CHECK bolt_length_law PASS
+CHECK bolt_radial_profile PASS
+BOLT gate=rim w_px=9.00 band_px=5.40 band_min=0.690 without_rim=1.049 sky_max_diff=0.00000 narrow_rims=1 narrow_w_px=3.00 narrow_band_min=0.617 ok=1
+CHECK bolt_rim_darkens_hull PASS
+BOLT gate=rim_resolve before=0.3590 after=0.3620 kept=1.008 ok=1
+CHECK bolt_rim_survives_resolve PASS
+BOLT gate=halo_cap rows=1080 sigma_px=30.00 cap=30.0 sigma_world=216.0 e_halo=0.0833 want=0.0833 ok=1
+CHECK bolt_halo_px_cap PASS
+BOLT gate=halo_cap rows=1440 sigma_px=40.00 cap=40.0 sigma_world=288.0 e_halo=0.0833 want=0.0833 ok=1
+CHECK bolt_halo_px_cap PASS
+BOLT gate=own_halo case=ire_stock rows=1080 z_m=25 sigma_px=12.00 e_halo=0.0100 halo_peak=0.0117 reach_10pct_px=24.8 bound=30.0 ok=1
+BOLT gate=own_halo case=ire_stock rows=1080 z_m=40 sigma_px=12.00 e_halo=0.0106 halo_peak=0.0117 reach_10pct_px=25.1 bound=30.0 ok=1
+BOLT gate=own_halo case=ire_stock rows=1080 z_m=80 sigma_px=12.00 e_halo=0.2773 halo_peak=0.2773 reach_10pct_px=25.7 bound=30.0 ok=1
+BOLT gate=own_halo case=psg_mayhem rows=1080 z_m=25 sigma_px=12.00 e_halo=0.0027 halo_peak=0.0039 reach_10pct_px=23.5 bound=30.0 ok=1
+BOLT gate=own_halo case=psg_mayhem rows=1080 z_m=40 sigma_px=12.00 e_halo=0.0027 halo_peak=0.0039 reach_10pct_px=23.5 bound=30.0 ok=1
+BOLT gate=own_halo case=psg_mayhem rows=1080 z_m=80 sigma_px=12.00 e_halo=0.0027 halo_peak=0.0039 reach_10pct_px=23.5 bound=30.0 ok=1
+CHECK bolt_own_halo_bounded PASS
+BOLT gate=orb_breathes case=psp_stock_orb h_min=0.581 h_max=0.804 boil_sd=0.097 r_max_over_min=1.106 r_px=192.0 ok=1
+BOLT gate=orb_breathes case=pbe_mayhem_orb h_min=0.581 h_max=0.804 boil_sd=0.095 r_max_over_min=1.259 r_px=23.1 ok=1
+CHECK bolt_orb_breathes PASS
+BOLT gate=wave_side chord_px=57.9 want=60.7 sagitta_px=12.7 want=13.7 head=960,540 ok=1
+BOLT gate=wave_45 drawn=1 c=0.705
+BOLT gate=wave_endon diameter_px=57.6 want=60.7 moment_ratio=1.000 ok=1
+CHECK bolt_wave_crescent PASS
+BOLT gate=wave_endon_no_hoop R_px=30.4 centre=0.1524 rim_mean=1.3546 centre_over_rim=0.113 worst_rim_bin_over_nb=1.052 worst_interior_over_median=1.002 ok=1
+CHECK bolt_wave_endon_no_hoop PASS
+CHECK bolt_floors PASS
+CHECK bolt_own_ceiling PASS
+BOLT gate=style_shapes tracer=12.31 slug=5.42 orb=1.10 wave_ring=12.00 heavy_core=0.678 tracer_core=0.504 heavy_head_over_mid=0.778 ok=1
+CHECK bolt_style_shapes PASS
+BOLT gate=colour_floor case=ire_orange w_px=3.00 core=1.000,0.500,0.100 tint=1.00,0.50,0.10 err=0.000 ok=1
+BOLT gate=colour_floor case=ire_blue w_px=3.00 core=0.200,0.400,1.000 tint=0.20,0.40,1.00 err=0.000 ok=1
+CHECK bolt_colour_core_rim PASS
+CHECK bolt_tail_law PASS
+CHECK bolt_streak_covers_previous_position PASS
+CHECK bolt_seta_cap_and_energy PASS
+BOLT gate=endon d_m=10000 moment_ratio=1.000 diameter_px=7.90 lit=49 ok=1
+BOLT gate=endon d_m=600 moment_ratio=1.000 diameter_px=7.90 lit=49 ok=1
+CHECK bolt_endon_disc PASS
+CHECK bolt_near_plane_clip PASS
+CHECK bolt_birth_and_death PASS
+CHECK bolt_stream_no_strobe PASS
+CHECK bolt_no_scar_8_frames PASS
+CHECK bolt_two_draws_state_restored PASS
+BOLT gate=over_bright_hull frames=8 core_over_hull=7.457 ok=1
+CHECK bolt_over_bright_hull_contrast PASS
+CHECK bolt_convergent_barrage PASS
+CHECK bolt_resolve_core_survival PASS
+CHECK bolt_vb_bytes_and_instances PASS
+CHECK bolt_hard_end_at_hull_depth PASS
+CHECK muzzle_size_per_class PASS
+CHECK muzzle_life_min_frames PASS
+CHECK muzzle_relight_resets_not_adds PASS
+CHECK muzzle_breathing_suppressed PASS
+CHECK muzzle_broadside_cluster PASS
+CHECK muzzle_smoke_surface_only PASS
+CHECK muzzle_heavy_rise_and_vents PASS
+CHECK muzzle_cockpit_gain PASS
+CHECK muzzle_at_recorded_gun_pos PASS
+CHECK muzzle_streak_along_orientation PASS
+CHECK muzzle_light_on_own_hull_not_sky PASS
+BOLT gate=rim_wide w_px=133.2 back_px=133.2 quad_across_px=481.5 want_px=479.5 at_1p7w=0.800 ok=1
+CHECK bolt_rim_whole_on_wide_bolt PASS
+CHECK bolt_back_end_capped_near_eye PASS
+BOLT gate=rim_undo hull=1.0 undone=1 restored=1 worst_rel=0.00098 darkest_whole=0.600 ok=1
+BOLT gate=rim_undo hull=2.5 undone=1 restored=1 worst_rel=0.00078 darkest_whole=1.500 ok=1
+CHECK bolt_rim_undone_when_capsules_fail PASS
+CHECK muzzle_ownership_exact PASS
+CHECK muzzle_endon_star_side_cone PASS
+BOLT_TIMING case=coverage quad_mpx=1.375 screens=0.186
+BOLT_TIMING case=no_rim gpu_us=63.5
+BOLT_TIMING case=one_far_bolt gpu_us=16.2
+BOLT_TIMING case=collapsed_512 gpu_us=32.4
+BOLT_TIMING case=bolt_alone_fills_frame_ts gpu_us=133.6 weight=0.753 (minus clear, / 177.5)
+BOLT_TIMING case=timestamps clear_us=3.2 bolts_us=39.0 muzzles_us=3.5 bolts_and_muzzles_us=44.8 frame_gpu_us=41.6 (both - clear, reported)
+BOLT_TIMING width=5120 height=1440 bolts=512 lines=378 orbs=91 waves=43 rims=469 gpu_bolts_us=74.6 gpu_muzzles_us=20.1 muzzles=20 muzzle_sprites=57 muzzle_glows=20 gpu_total_us=94.7 bound_us=100 timestamps_us=41.6
+BOLT_CPU bolts=512 build_us=40.0 draw_call_us=9.9 total_us=49.9 bound_us=150
+BOLT_TIMING case=bolt_alone_fills_frame gpu_us=151.4 weight=0.853 (gpu_us / 177.5)
+CHECK bolt_budget_512_bolts_20_muzzles_5120 PASS
+CHECK bolt_cpu_512_bolts PASS
+CHECK muzzle_budget_20_guns_5120 PASS
+CHECK bolt_fault_reported_and_restored PASS
+CHECK bolt_reset_recovers PASS
+CHECK bolt_program_create_refused PASS
+RESULT PASS checks=57 failures=0

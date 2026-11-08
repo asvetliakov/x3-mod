@@ -1,0 +1,9 @@
+  stock_ap SS_BULLET_PAC: table texture_rgb=[121, 82, 39] lab mean=[121, 82, 39] tier=fighter
+  stock_ap SS_BULLET_CIG: table texture_rgb=[19, 20, 43] lab mean=[19, 20, 43] tier=corvette
+  stock_ap SS_BULLET_MAM: table texture_rgb=[134, 120, 139] lab mean=[134, 120, 139] tier=fighter
+stock_ap: sha256=32966822d1ca7d84603e261e8485331e7f184ef30fe435e4a234ebfb2f5deb3a tbullets=be762076cdc38b03 counts={'fighter': 27, 'corvette': 6, 'capital': 12, 'overrides': 13} means same=26 differ=0 one-sided=0 pins={'SS_BULLET_MASS': {'style': 'slug', 'bolt_e_body': 0.6, 'bolt_halo': False}, 'SS_BULLET_FBL': {'style': 'orb', 'bolt_w_orb': 2.0}}
+  mayhem3 SS_BULLET_PAC: table texture_rgb=[66, 66, 66] lab mean=[66, 66, 66] tier=fighter
+  mayhem3 SS_BULLET_MD: table texture_rgb=[66, 66, 66] lab mean=[66, 66, 66] tier=fighter
+  mayhem3 SS_BULLET_CIG: table texture_rgb=[24, 36, 34] lab mean=[24, 36, 34] tier=corvette
+  mayhem3 SS_BULLET_PSG: table texture_rgb=[58, 67, 76] lab mean=[58, 67, 76] tier=corvette
+mayhem3: sha256=1a33a37f74c737d089427febc476ed0b83d5fd2abd681c38fe87be360186e1d6 tbullets=7b4ab0a6cea2cb07 counts={'fighter': 18, 'corvette': 12, 'capital': 8, 'overrides': 22} means same=37 differ=0 one-sided=0 pins={'SS_BULLET_MD': {'style': 'slug', 'bolt_e_body': 0.6, 'bolt_halo': False, 'bolt_tint': 'texture'}, 'SS_BULLET_FBL': {'style': 'orb', 'bolt_w_orb': 2.0}}

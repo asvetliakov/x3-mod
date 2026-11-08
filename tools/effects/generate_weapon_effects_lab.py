@@ -104,11 +104,13 @@ NAMESPACES = {
     # step 4, the bolts and the muzzle (docs/architecture/bolt-muzzle-look.md section 8): HEADER.bolt, HEADER.muzzle
     'bolt': ('mode', 'd_eng_m', 'd_eng_range', 'w_px_target', 'w_k', 'f_ref', 'ref_rows', 'w_cap_m', 'heavy_k', 'rest_w',
              'sv_ref_mps', 'tail_tau_ms', 'tail_max_w', 'tail_root_w', 'tail_gain', 'core_r', 'core_r_heavy', 'halo_sigma_w',
-             'e_body', 'e_halo', 'e_halo_heavy', 'h', 'head_gain', 'head_ball_w', 'tip_w', 'slug_tail_white', 'slug_tail_end',
-             'streak_c', 'streak_c_simple', 'core_min', 'end_ms', 'orb_freq', 'orb_boil_hz', 'orb_lobes', 'orb_lobe_amp',
+             'e_body', 'e_halo', 'e_halo_heavy', 'h', 'head_gain', 'tip_w', 'core_h_w0', 'core_h_span', 'slug_tail_white',
+             'slug_tail_end', 'streak_c', 'streak_c_simple', 'core_min', 'end_ms', 'orb_freq', 'orb_boil_hz', 'orb_lobes',
+             'orb_lobes_spread', 'orb_lobe_amp',
              'orb_lobe_turns', 'orb_stretch', 'orb_h_lo', 'orb_h_hi', 'wave_span_w', 'wave_sagitta', 'wave_sheet_e',
-             'wave_ring_c', 'trim_rs', 'rim', 'rim_dark', 'rim_band_w', 'rim_min_px', 'halo_px_max', 'floor_core_px',
-             'floor_body_px', 'floor_halo_px', 'floor_len_px', 'floor_endon_px', 'own_body_max_px', 'cockpit_native',
+             'wave_ring_c', 'wave_lens_rim_e', 'wave_lens_fill_e', 'wave_lens_blend_c', 'wave_lens_own_x', 'trim_rs', 'rim',
+             'rim_dark', 'rim_band_w', 'rim_min_px', 'rim_px_band', 'rim_px_w', 'rim_px_blend_w', 'halo_px_max', 'floor_core_px',
+             'floor_body_px', 'floor_halo_px', 'floor_len_px', 'floor_endon_px', 'own_body_max_px', 'hostile_body_max_px', 'cockpit_native',
              'far_flag_k', 'list_capacity', 'beam_w_m'),
     # step 3, the death explosion (docs/architecture/explosion-look.md): HEADER.boom, the Boom tab's laws and defaults
     'boom': ('mode', 'tier_native', 'tier_f', 'tier_min_m', 'tier_max_m', 'tier_life_ms', 'tier_preroll_ms', 'tier_rise',
@@ -191,6 +193,20 @@ def hull_class_rule(flags, damage, elongation):
 def hull_pins(path=OVERRIDES):
     data = json.loads(pathlib.Path(path).read_text())
     return {k: v['hull'] for k, v in data.get('by_id', {}).items() if isinstance(v, dict) and 'hull' in v}
+
+
+def bolt_pins(path=OVERRIDES):
+    """{id: {style, bolt_e_body, bolt_w_orb, bolt_halo, bolt_tint}} of the overrides' by_id rows (bolt-muzzle-look.md
+    11.5: the bolt hand pins and the style override the DLL's table carries)."""
+    data = json.loads(pathlib.Path(path).read_text())
+    keys = ('style',) + weapon_effects_table.BOLT_PINS
+    out = {}
+    for k, v in data.get('by_id', {}).items():
+        if isinstance(v, dict):
+            pin = {key: v[key] for key in keys if key in v}
+            if pin:
+                out[k] = pin
+    return out
 
 
 def hull_class_of(entry, pins):
@@ -623,15 +639,16 @@ def view_record(view, census, manifest, catalog=None):
     weapons = [compact_weapon(w) for w in census['weapons']]
     entries = {e['id']: e for e in (catalog or {}).get('weapons', [])}
     pins = hull_pins()
+    bpins = bolt_pins()
     for w in weapons:
         if w['id'] in entries:
             w['cat'] = cat_entry(entries[w['id']])
-            # step 4: the mount tier (0 fighter, 1 corvette, 2 capital; weapon_effects_table.py's rule) and range (m)
-            used = set()
-            for laser in entries[w['id']].get('lasers', []):
-                used |= set((laser.get('used_by') or {}).keys())
-            w['mt'] = MOUNT_TIERS.index(weapon_effects_table.mount_tier_of(used))
+            # step 4: the mount tier (0 fighter, 1 corvette, 2 capital; weapon_effects_table.py's rule: the catalogue's
+            # size, the 10 % rule) and range (m)
+            w['mt'] = MOUNT_TIERS.index(weapon_effects_table.SIZE_TIERS.get(entries[w['id']].get('size'), 'fighter'))
             w['rg'] = entries[w['id']].get('range_m')
+        if w['id'] in bpins:
+            w['bp'] = bpins[w['id']]
         w['hc'] = hull_class_of(entries.get(w['id'], {'id': w['id']}), pins)
     tiers = tier_rows(census['death_rows'])
     ids = reachable(weapons, tiers, effects)

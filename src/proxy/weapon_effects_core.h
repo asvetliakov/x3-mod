@@ -326,7 +326,13 @@ struct Table {
     // unknown 7) and its range in metres (speed x lifetime; 0: unknown, the stage takes the live record's).
     std::uint8_t mount_tier[table_capacity]{};
     std::uint16_t range_m[table_capacity]{};
+    // The bolt hand pins (bolt-muzzle-look.md 11.5, weapon_overrides.json `bolt_*`): BoltPin bits, the body radiance E_b
+    // x 100 and the orb diameter w_orb in w x 100 where their bit is set.
+    std::uint8_t bolt_pin[table_capacity]{};
+    std::uint8_t bolt_e_body_q[table_capacity]{};
+    std::uint8_t bolt_w_orb_q[table_capacity]{};
 };
+enum BoltPin : std::uint8_t { pin_halo_off = 1, pin_tint_texture = 2, pin_e_body = 4, pin_w_orb = 8 };
 
 // ---------------------------------------------------------------------------------------------- 16.16 arithmetic
 // The engine's product: (int64(a) * b + 0x8000) >> 16, low 32 bits (0x004f0da0 / 0x004f0c00: imul, add 0x8000, adc,
@@ -1453,6 +1459,13 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
                 alt = saturated ? light : texture;
                 tint_source = tint_override;
                 eflags |= flag_override_applied;
+            } else if (texture && (t->bolt_pin[subtype] & pin_tint_texture)) { // texture set: the table is ok
+                // the bolt hand pin's tint (bolt-muzzle-look.md 11.5): the texture mean even over a saturated light, so
+                // the impact and the bolt agree
+                tint = texture;
+                alt = light;
+                tint_source = tint_texture;
+                eflags |= flag_override_applied;
             } else if (saturated) {
                 tint = light;
                 alt = texture;
@@ -2562,9 +2575,11 @@ constexpr float halo_sigma_w[5] = {0.8f, 0.7f, 0.9f, 0.6f, 1.0f};
 constexpr float e_body = 1.2f;
 constexpr float e_halo = 0.6f, e_halo_heavy = 0.8f;
 constexpr float h[4] = {0.75f, 0.85f, 0.7f, 0.5f};
-constexpr float head_gain = 0.5f;     // the ball head: the core x (1 + head_gain (1 - s)) over its front 1 w
-constexpr float head_ball_w = 0.6f;   // heavy: a disc of this radius (w) at core_e on the head
+constexpr float head_gain = 0.5f;     // the ball head: the core x (1 + head_gain (1 - s)) over its front 1 w; the heavy's
+                                      // head is the same round cap at core_r_heavy (no separate disc: 2026-11-08, #6)
 constexpr float tip_w = 1.0f;         // the tracer's pointed tip and the head's span, w
+// A floor-width bolt keeps its tint (2026-11-08, #5): the core's whiteness h x saturate((w_px - core_h_w0) / core_h_span).
+constexpr float core_h_w0 = 3.0f, core_h_span = 3.0f;
 constexpr float slug_tail_white = 0.6f, slug_tail_end = 0.4f; // the slug tail: white -> t (at 0.6) -> 0.4 t
 // Section 2.3, the streak: at most (1 + streak_c) rest lengths, energy kept (the stretch's (1 - u)^2 fall, the whole bolt
 // x g_s = L / (L + e / 3)), the core held at core_min.
@@ -2574,24 +2589,38 @@ constexpr float core_min = 1.2f;
 // Section 2.5, expiry: x saturate((t_exp - now) / max(end_ms, 3 steps)).
 constexpr unsigned end_ms = 60;
 // The orb (2.2): the boil (two octaves of value noise at orb_freq cells per orb diameter, advected at orb_boil_hz game
-// time; body x (0.75 + 0.5 n)), the silhouette lobes (hull-burst 2.4), the halo stretched along the travel, the wisp.
+// time; body x (0.75 + 0.5 n)), the silhouette lobes (hull-burst 2.4; orb_lobes + 0..orb_lobes_spread per bolt from its
+// seed, amplitude orb_lobe_amp: 5 lobes at 0.12 read as a pentagon decal, 2026-11-08 #10), the halo stretched along the
+// travel, the wisp.
 constexpr float orb_freq[2] = {3.0f, 6.4f};
 constexpr float orb_boil_hz = 3.0f;
-constexpr float orb_lobes = 5.f, orb_lobe_amp = 0.12f, orb_lobe_turns = 0.5f;
+constexpr float orb_lobes = 7.f, orb_lobes_spread = 2.f, orb_lobe_amp = 0.05f, orb_lobe_turns = 0.5f;
 constexpr float orb_stretch = 1.3f;
 constexpr float orb_h_lo = 0.5f, orb_h_hi = 0.9f; // the centre's whiteness breathing with the noise
 // The wave (2.2): a crescent of chord S = wave_span_w w (col 18 once its unit is pinned), sagitta wave_sagitta S bowing
-// forward, thickness rest_w[3] w, a sheet behind the arc at wave_sheet_e; foreshortened (c < wave_ring_c) a ring.
+// forward, thickness rest_w[3] w, a sheet behind the arc at wave_sheet_e. Foreshortened (c < wave_ring_c) a soft filled
+// lens of diameter S, no arc (2026-11-08, #2: the ring was a neon hoop with the edge-on arc as a seam): radiance
+// wave_lens_fill_e at the centre rising as (r / R)^4 to wave_lens_rim_e at the rim (the tinted body, no white core), the
+// halo outside; the crescent fades in over c wave_ring_c .. wave_ring_c + wave_lens_blend_c. An own bolt's S never above
+// wave_lens_own_x x own_body_max_px (eight live own waves cannot tile the view).
 constexpr float wave_span_w = 6.f, wave_sagitta = 0.25f, wave_sheet_e = 0.15f, wave_ring_c = 0.4f;
+constexpr float wave_lens_rim_e = 1.2f, wave_lens_fill_e = 0.15f, wave_lens_blend_c = 0.1f, wave_lens_own_x = 6.f;
 // Section 2.7, the trim rule: a stream ratio above trim_rs cuts the core to trim_rs v / f - T / 2.
 constexpr float trim_rs = 0.8f;
 // Section 2.1, the rim: a multiply band at rim_band_w (w from the axis) darkening by rim_dark, drawn only where the band
-// is at least rim_min_px wide; rim false keeps it off (the kill step, or a failed bolt_rim_survives_resolve).
+// is at least rim_min_px wide; rim false keeps it off (the kill step, or a failed bolt_rim_survives_resolve). Under
+// rim_px_w body pixels the band is in pixels, rim_px_band past the body's edge ([w_px / 2 + 1, w_px / 2 + 4]: 3 px wide,
+// so a floor-width fighter bolt keeps an edge over a lit hull, 2026-11-08 #5), blending to the w band by rim_px_blend_w.
 constexpr bool rim = true;
 constexpr float rim_dark = 0.4f;
 constexpr float rim_band_w[2] = {1.2f, 1.8f};
 constexpr float rim_min_px = 3.0f;
-// Section 2.6, the floors and ceilings (render px at ref_rows; body and halo floors not row-scaled).
+constexpr float rim_px_band[2] = {1.0f, 4.0f};
+constexpr float rim_px_w = 5.0f, rim_px_blend_w = 7.0f;
+// Section 2.6, the floors and ceilings (render px at ref_rows; body and halo floors not row-scaled). The halo cap is a
+// bounded cap (2026-11-08, #3): at an end where sigma_world exceeds the cap, sigma = cap and E_h x cap / sigma_world
+// there (per end; it bounds the halo, it does not conserve its energy); an own bolt's sigma never above own_body_max_px
+// (its body ceiling), so own fire builds no fog dome.
 constexpr float halo_px_max = 40.0f;
 constexpr float floor_core_px = 2.0f, floor_body_px = 3.0f, floor_halo_px = 1.5f, floor_len_px = 24.0f;
 // Section 2.4's end-on footprint (lit diameter at 10 % of the peak >= 7 px at 1440 rows): with a 3 px body and a halo of
@@ -2600,6 +2629,9 @@ constexpr float floor_core_px = 2.0f, floor_body_px = 3.0f, floor_halo_px = 1.5f
 // side-on floor linearly with the axis (fixture bolt_endon_disc, 2026-11-07). A size floor: radiance unchanged.
 constexpr float floor_endon_px = 9.0f;
 constexpr float own_body_max_px = 16.0f;
+// Another ship's bolt (line, orb, the wave's chord) never wider than this share of the view height at either end, radiance
+// unchanged (review 2026-11-08: a capital PSP at w 20 m was 512 px at 60 m and 1536 px at 20 m).
+constexpr float hostile_body_max_px = 0.25f;
 // Another ship's bolt passing the eye: its back end, clipped to the eye plane, never wider than its head or back_w_own_x
 // x the own ceiling, whichever is wider (one frame near the eye would otherwise draw a frame-filling quad; review
 // 2026-11-07 note 15).
