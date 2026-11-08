@@ -35,6 +35,7 @@
 #include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
 #include "../../src/proxy/weapon_effects_stage.h"
+#include "../../src/proxy/weapon_projectile_stage.h"
 #include "../../src/proxy/engine_memory.h"
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
@@ -902,6 +903,138 @@ std::pair<HRESULT, rr::WeaponEffectsReport> draw_on(rr::WeaponEffectsPass& pass,
     return {hr, r};
 }
 }
+
+namespace {
+// ------------------------------------------------------------------ projectiles (docs/architecture/projectile-look.md)
+// The projectile stage's cases: a scene target (A16B16G16R16F), the four-lane lane (A32B32G32R32F, the far flag's
+// RT1) and a D24S8 depth surface; bolts built by the production projectile_stage::bolt_vertices / build and drawn by
+// the production WeaponEffectsPass::run_projectiles. The view is the identity rotation (view = world), the projection
+// m00 (1.6 or a second FOV), m11 = m00 W / H, near 1 view unit (0.2 m), far 1e6.
+namespace ps = x3m::weapon_effects::projectile_stage;
+namespace pf = x3m::weapon_effects::projectile_family;
+float scalar_len(float a, float b) { return std::sqrt(a * a + b * b); }
+struct ProjTarget {
+    UINT w = 0, h = 0;
+    Com<IDirect3DTexture9> scene_tex, lane_tex;
+    Com<IDirect3DSurface9> scene_s, lane_s, depth_s, scene_sys, lane_sys;
+    void release() {
+        scene_s.release(); lane_s.release(); depth_s.release(); scene_sys.release(); lane_sys.release();
+        scene_tex.release(); lane_tex.release();
+    }
+};
+bool make_proj_target(ProjTarget& t, UINT w, UINT h) {
+    device_guard("make_proj_target");
+    t.w = w;
+    t.h = h;
+    return SUCCEEDED(dev->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &t.scene_tex.p, nullptr)) &&
+           SUCCEEDED(t.scene_tex.p->GetSurfaceLevel(0, &t.scene_s.p)) &&
+           SUCCEEDED(dev->CreateTexture(w, h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F, D3DPOOL_DEFAULT, &t.lane_tex.p, nullptr)) &&
+           SUCCEEDED(t.lane_tex.p->GetSurfaceLevel(0, &t.lane_s.p)) &&
+           SUCCEEDED(dev->CreateDepthStencilSurface(w, h, D3DFMT_D24S8, D3DMULTISAMPLE_NONE, 0, FALSE, &t.depth_s.p, nullptr)) &&
+           SUCCEEDED(dev->CreateOffscreenPlainSurface(w, h, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &t.scene_sys.p, nullptr)) &&
+           SUCCEEDED(dev->CreateOffscreenPlainSurface(w, h, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &t.lane_sys.p, nullptr));
+}
+ps::View proj_view(const ProjTarget& t, float m00) {
+    ps::View v;
+    v.r[0] = v.r[4] = v.r[8] = 1.f;
+    v.m00 = m00;
+    v.m11 = m00 * float(t.w) / float(t.h);
+    const float n = 1.f, f = 1e6f;
+    v.m22 = f / (f - n);
+    v.m32 = -n * f / (f - n);
+    v.width = float(t.w);
+    v.height = float(t.h);
+    v.near_z = n;
+    return v;
+}
+ps::BodyLook ire_look() {
+    ps::BodyLook l;
+    ps::tint_of(wc::pack_rgb(121, 82, 39), l.tint); // the IRE row's texture_rgb (weapon_effects.json row 0)
+    l.valid = 1;
+    return l;
+}
+// A bolt at view depth d_m metres on the screen centre moving along view +x at speed_mps; age long past.
+ps::BoltIn bolt_at(float d_m, float speed_mps, float step_ms, float dir_y = 0.f) {
+    ps::BoltIn in;
+    in.p[2] = d_m * ps::view_units_per_metre;
+    const float n = scalar_len(1.f, dir_y);
+    in.v[0] = speed_mps * ps::view_units_per_metre / n;
+    in.v[1] = speed_mps * ps::view_units_per_metre * dir_y / n;
+    in.step_s = step_ms * 1e-3f;
+    in.age_s = 10.f;
+    return in;
+}
+HRESULT proj_draw(rr::WeaponEffectsPass& p, ProjTarget& t, const rr::WeaponProjectileVertex* v, unsigned bolts,
+                  float clear_z = 1.f, rr::WeaponEffectsReport* rep = nullptr) {
+    dev->BeginScene();
+    dev->SetDepthStencilSurface(t.depth_s.p);
+    dev->SetRenderTarget(0, t.lane_s.p);
+    dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+    dev->SetRenderTarget(0, t.scene_s.p);
+    dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, clear_z, 0);
+    dev->SetDepthStencilSurface(nullptr); // the stage callback's state: the depth surface unbound
+    rr::WeaponProjectileFrame f;
+    f.width = t.w;
+    f.height = t.h;
+    f.vertices = v;
+    f.bolts = bolts;
+    f.lane = t.lane_s.p;
+    f.depth = t.depth_s.p;
+    rr::WeaponEffectsReport r{};
+    const HRESULT hr = p.run_projectiles(f, &r);
+    dev->EndScene();
+    if (rep) *rep = r;
+    return hr;
+}
+// The scene's max(r, g, b) per pixel, or the lane's four lanes per pixel.
+std::vector<float> proj_scene(ProjTarget& t) {
+    std::vector<float> out;
+    if (FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) return out;
+    D3DLOCKED_RECT lr{};
+    if (FAILED(t.scene_sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
+    out.resize(std::size_t(t.w) * t.h);
+    for (UINT y = 0; y < t.h; ++y) {
+        const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
+        for (UINT x = 0; x < t.w; ++x)
+            out[std::size_t(y) * t.w + x] =
+                std::max(half_to_float(row[x * 4]), std::max(half_to_float(row[x * 4 + 1]), half_to_float(row[x * 4 + 2])));
+    }
+    t.scene_sys.p->UnlockRect();
+    return out;
+}
+std::vector<float> proj_lane(ProjTarget& t) {
+    std::vector<float> out;
+    if (FAILED(dev->GetRenderTargetData(t.lane_s.p, t.lane_sys.p))) return out;
+    D3DLOCKED_RECT lr{};
+    if (FAILED(t.lane_sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
+    out.resize(std::size_t(t.w) * t.h * 4);
+    for (UINT y = 0; y < t.h; ++y)
+        std::memcpy(&out[std::size_t(y) * t.w * 4], static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch, t.w * 16);
+    t.lane_sys.p->UnlockRect();
+    return out;
+}
+// The full width at half maximum through pixel (x, y) along (dx, dy), linear between the samples straddling half.
+double fwhm_through(const std::vector<float>& l, UINT w, UINT h, int x, int y, int dx, int dy) {
+    if (l.empty()) return -1.0;
+    const double peak = l[std::size_t(y) * w + x];
+    if (!(peak > 0.0)) return 0.0;
+    double sum = 0.0;
+    for (int s : {1, -1}) {
+        double prev = peak;
+        for (int k = 1;; ++k) {
+            const int xx = x + s * k * dx, yy = y + s * k * dy;
+            if (xx < 0 || yy < 0 || xx >= int(w) || yy >= int(h)) return -1.0;
+            const double v = l[std::size_t(yy) * w + xx];
+            if (v < 0.5 * peak) {
+                sum += double(k - 1) + (prev - 0.5 * peak) / (prev - v);
+                break;
+            }
+            prev = v;
+        }
+    }
+    return sum;
+}
+} // namespace
 
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -2732,6 +2865,344 @@ int main(int argc, char** argv) {
         tt.release();
     }
 
+    // ---- projectiles (docs/architecture/projectile-look.md "Implementation (2026-11-08)"): the production stage builder
+    // and run_projectiles on a pass attached with the projectile programs (the shield pass above keeps its object set).
+    guard_next_section("projectiles");
+    {
+        rr::WeaponEffectsPass refused;
+        refused.configure_projectiles(true);
+        refused.set_faults(16);
+        refused.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
+        report("projectile_caps_refusal_keeps_shields", refused.caps().enabled && !refused.caps().projectile_enabled &&
+                                                            !refused.projectiles_ready(),
+               refused.caps().projectile_reason);
+        refused.detach();
+    }
+    rr::WeaponEffectsPass proj;
+    proj.configure_projectiles(true);
+    proj.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
+    const rr::WeaponEffectsCaps& pc = proj.caps();
+    std::printf("PROJECTILE attach=%u reason=%s vs_slots=%u ps_slots=%u lane32_blending=%u lane16_blending=%u mrt_bit_depths=%u "
+                "num_rts=%lu\n",
+                unsigned(pc.projectile_enabled), pc.projectile_reason, pc.projectile_vs_slots, pc.projectile_ps_slots,
+                unsigned(pc.lane32_blending), unsigned(pc.lane16_blending), unsigned(pc.mrt_bit_depths),
+                static_cast<unsigned long>(caps.NumSimultaneousRTs));
+    report("projectile_attach", pc.enabled && pc.projectile_enabled && proj.projectiles_ready(), pc.projectile_reason);
+    report("projectile_program_under_200_slots", pc.projectile_ps_slots > 0 && pc.projectile_ps_slots < 200 &&
+                                                     pc.projectile_vs_slots > 0 && pc.projectile_vs_slots < 200, "");
+    ProjTarget pt;
+    report("projectile_target_1080", make_proj_target(pt, 1920, 1080));
+    if (pc.projectile_enabled && pt.depth_s.p) {
+        const ps::BodyLook look = ire_look();
+        pf::Tune core_only = pf::families[pf::fighter_tracer].tune;
+        core_only.glow_gain = 0.f; // the core's own width
+        // (1) the core width rule at 200 m / 500 m / 1 km / 3 km, at m00 1.6 and a second FOV (m00 1.0): the measured
+        // full width at half maximum across the axis equals max(1, core_px 500 / d) within 0.5 px at both, and the
+        // stretch's pixel length follows the live focal length (the ratio of the two m00).
+        bool widths_ok = true, fov_ok = true;
+        const int cx = int(pt.w / 2), cy = int(pt.h / 2);
+        for (float m00 : {1.6f, 1.0f})
+            for (float d : {200.f, 500.f, 1000.f, 3000.f}) {
+                const ps::View view = proj_view(pt, m00);
+                rr::WeaponProjectileVertex v[4];
+                ps::BoltShape shape;
+                const bool built = ps::bolt_vertices(view, core_only, look, bolt_at(d, 1162.f, 16.f), v, &shape);
+                proj_draw(proj, pt, v, built ? 1u : 0u);
+                const std::vector<float> l = proj_scene(pt);
+                const double measured = fwhm_through(l, pt.w, pt.h, cx, cy, 0, 1);
+                const double rule = std::max(1.0, double(core_only.core_px) * 500.0 / double(d));
+                const bool ok = built && std::fabs(measured - rule) <= 0.5;
+                widths_ok = widths_ok && ok;
+                ps::BoltShape other;
+                rr::WeaponProjectileVertex v2[4];
+                ps::bolt_vertices(proj_view(pt, m00 == 1.6f ? 1.0f : 1.6f), core_only, look, bolt_at(d, 1162.f, 16.f), v2, &other);
+                const double ratio = other.length_px > 0.f ? double(shape.length_px) / double(other.length_px) : 0.0;
+                const double want = m00 == 1.6f ? 1.6 : 1.0 / 1.6;
+                fov_ok = fov_ok && std::fabs(ratio / want - 1.0) < 0.01;
+                std::printf("PROJECTILE case=width m00=%.2f distance_m=%.0f rule_px=%.3f measured_px=%.3f drawn_px=%.3f dim=%.3f "
+                            "length_px=%.2f stretch_m=%.2f\n",
+                            double(m00), double(d), rule, measured, double(shape.core_px), double(shape.dim),
+                            double(shape.length_px), double(shape.stretch_m));
+            }
+        report("projectile_core_width_rule_both_fovs", widths_ok, "");
+        report("projectile_length_follows_live_projection", fov_ok, "");
+        // (2) SETA invariance: at 1 km and 1000 m/s, steps 16 ms (1x) and 96 ms (6x): the drawn length per game ms
+        // (the half-maximum run along the axis less the core's width) is the same within 3 %, below the cap.
+        double per_ms[2] = {0, 0};
+        for (unsigned k = 0; k < 2; ++k) {
+            const float step = k ? 96.f : 16.f;
+            rr::WeaponProjectileVertex v[4];
+            ps::BoltShape shape;
+            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), core_only, look, bolt_at(1000.f, 1000.f, step), v, &shape);
+            proj_draw(proj, pt, v, built ? 1u : 0u);
+            const std::vector<float> l = proj_scene(pt);
+            const double run = fwhm_through(l, pt.w, pt.h, cx, cy, 1, 0);
+            per_ms[k] = (run - double(shape.core_px)) / double(step);
+            std::printf("PROJECTILE case=seta step_ms=%.0f stretch_m=%.2f length_px=%.2f run_px=%.2f px_per_game_ms=%.4f\n",
+                        double(step), double(shape.stretch_m), double(shape.length_px), run, per_ms[k]);
+        }
+        report("projectile_seta_invariant_stretch", per_ms[0] > 0.0 && std::fabs(per_ms[1] / per_ms[0] - 1.0) < 0.03, "");
+        // (3) the far flag: the lane's green lane carries 32 max(rgb) on the bolt (> 1 at its core), the other lanes and
+        // every pixel away from it keep the cleared 0 (COLORWRITEENABLE1 = GREEN).
+        {
+            rr::WeaponProjectileVertex v[4];
+            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look,
+                                                 bolt_at(500.f, 1162.f, 16.f), v);
+            proj_draw(proj, pt, v, built ? 1u : 0u);
+            const std::vector<float> lane = proj_lane(pt);
+            const std::vector<float> l = proj_scene(pt);
+            bool others_zero = !lane.empty(), away_zero = !lane.empty();
+            for (std::size_t i = 0; i < lane.size() / 4; ++i) {
+                others_zero = others_zero && lane[4 * i] == 0.f && lane[4 * i + 2] == 0.f && lane[4 * i + 3] == 0.f;
+                if (!l.empty() && l[i] == 0.f) away_zero = away_zero && lane[4 * i + 1] < 1e-3f;
+            }
+            const float g = lane.empty() ? 0.f : lane[(std::size_t(cy) * pt.w + cx) * 4 + 1];
+            const float c = l.empty() ? 0.f : l[std::size_t(cy) * pt.w + cx];
+            std::printf("PROJECTILE case=far_flag lane_g=%.3f scene_max=%.3f ratio=%.3f\n", double(g), double(c),
+                        c > 0.f ? double(g / c) : 0.0);
+            report("projectile_far_flag_written", g > 1.f && std::fabs(g / c - 32.f) < 0.5f && away_zero, "");
+            report("projectile_far_flag_green_lane_only", others_zero, "");
+        }
+        // (4) the dot LOD: past lod_dot_m no stretch (a dot of the core's width), inside it the stretch.
+        {
+            pf::Tune t = core_only;
+            double runs[2] = {0, 0};
+            bool dots[2] = {false, false};
+            for (unsigned k = 0; k < 2; ++k) {
+                const float d = k ? t.lod_dot_m * 1.1f : t.lod_dot_m * 0.9f;
+                rr::WeaponProjectileVertex v[4];
+                ps::BoltShape shape;
+                const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), t, look, bolt_at(d, 1162.f, 96.f), v, &shape);
+                proj_draw(proj, pt, v, built ? 1u : 0u);
+                runs[k] = fwhm_through(proj_scene(pt), pt.w, pt.h, cx, cy, 1, 0);
+                dots[k] = shape.dot && shape.length_px == 0.f;
+                std::printf("PROJECTILE case=lod distance_m=%.0f dot=%u length_px=%.2f run_px=%.2f dim=%.3f\n", double(d),
+                            unsigned(shape.dot), double(shape.length_px), runs[k], double(shape.dim));
+            }
+            report("projectile_dot_past_lod", dots[1] && !dots[0] && runs[1] <= 2.0 && runs[0] > 10.0, "");
+        }
+        // (5) nothing outside the bolt's quad: a diagonal stretched bolt with the glow; every lit pixel lies inside the
+        // quad's four raster corners (1 px tolerance).
+        {
+            rr::WeaponProjectileVertex v[4];
+            ps::BoltShape shape;
+            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look,
+                                                 bolt_at(300.f, 1162.f, 50.f, 0.6f), v, &shape);
+            proj_draw(proj, pt, v, built ? 1u : 0u);
+            const std::vector<float> l = proj_scene(pt);
+            // corners 0, 1, 3, 2 in order around the quad
+            const int order[4] = {0, 1, 3, 2};
+            unsigned lit = 0, outside = 0;
+            for (UINT y = 0; y < pt.h && !l.empty(); ++y)
+                for (UINT x = 0; x < pt.w; ++x) {
+                    if (!(l[std::size_t(y) * pt.w + x] > 0.f)) continue;
+                    ++lit;
+                    bool in = true;
+                    double sign = 0.0;
+                    for (int e = 0; e < 4; ++e) {
+                        const float* a = shape.raster[order[e]];
+                        const float* b = shape.raster[order[(e + 1) % 4]];
+                        const double ex = b[0] - a[0], ey = b[1] - a[1], len = std::sqrt(ex * ex + ey * ey);
+                        const double cross = (ex * (double(y) - a[1]) - ey * (double(x) - a[0])) / (len > 0 ? len : 1);
+                        if (sign == 0.0) sign = cross >= 0 ? 1.0 : -1.0;
+                        if (cross * sign < -1.0) in = false;
+                    }
+                    outside += !in;
+                }
+            std::printf("PROJECTILE case=quad lit=%u outside=%u length_px=%.2f ext_px=%.2f\n", lit, outside,
+                        double(shape.length_px), double(shape.ext_px));
+            report("projectile_no_pixels_outside_quad", built && lit > 50 && outside == 0, "");
+        }
+        // (6) the scene's depth occludes (LESSEQUAL against the depth surface, Z writes off): cleared to 0, nothing.
+        {
+            rr::WeaponProjectileVertex v[4];
+            ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look, bolt_at(500.f, 1162.f, 16.f), v);
+            rr::WeaponEffectsReport r{};
+            const HRESULT hr = proj_draw(proj, pt, v, 1, 0.f, &r);
+            const std::vector<float> l = proj_scene(pt);
+            double sum = 0.0;
+            for (float x : l) sum += x;
+            report("projectile_depth_occludes", hr == S_OK && r.bolts == 1 && !l.empty() && sum == 0.0, "");
+            // a refused frame: no depth surface
+            rr::WeaponProjectileFrame f;
+            f.width = pt.w;
+            f.height = pt.h;
+            f.vertices = v;
+            f.bolts = 1;
+            f.lane = pt.lane_s.p;
+            rr::WeaponEffectsReport rr2{};
+            dev->BeginScene();
+            const HRESULT no_depth = proj.run_projectiles(f, &rr2);
+            dev->EndScene();
+            report("projectile_refuses_without_depth", FAILED(no_depth) && rr2.refused && !std::strcmp(rr2.refused, "depth"), "");
+        }
+        // (7) the pool through the production builder and engine reader: a bullet registered by the object tap's
+        // projectile half is drawn; recycled (handle changed) or expired, it is retired and drawn no more.
+        {
+            static wc::ProjectilePool pool;
+            wc::projectile_clear(pool);
+            pool.armed = 1;
+            pool.resolved = 1;
+            pool.body_count = 1;
+            pool.bodies[0].id = 0x55;
+            pool.bits[0x55 >> 5] |= 1u << (0x55 & 31u);
+            alignas(16) static unsigned char obj[0x100], node[0x200], ext[0x80];
+            std::memset(obj, 0, sizeof obj);
+            std::memset(node, 0, sizeof node);
+            std::memset(ext, 0, sizeof ext);
+            put32(obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(node)));
+            put32(obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(ext)));
+            put32(node, wc::layout::node_live, 1);
+            put32(node, wc::layout::node_handle, 9);
+            put32(node, wc::layout::node_body, 0x55);
+            put32(node, wc::layout::node_pos + 8, std::uint32_t(500 * 500)); // 500 m ahead (engine units)
+            put32(node, wc::projectile::node_velocity, std::uint32_t(581000));
+            put32(ext, wc::projectile::ext_expiry, 2000);
+            put32(ext, wc::projectile::ext_created, 800);
+            wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
+            static ps::Looks looks;
+            looks.resolved = 0;
+            static rr::WeaponProjectileVertex verts[rr::weapon_projectile_max_bolts * 4];
+            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const ps::Counts a = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1000, 16,
+                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+            put32(node, wc::layout::node_handle, 10); // the node recycled
+            const ps::Counts b = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1016, 16,
+                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+            put32(node, wc::layout::node_handle, 9);
+            wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
+            const ps::Counts c = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 2000, 16,
+                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+            std::printf("PROJECTILE case=pool drawn=%u/%u/%u invalid=%u expired=%u count=%u\n", a.drawn, b.drawn, c.drawn,
+                        b.invalid, c.expired, pool.count);
+            report("projectile_pool_draws_and_retires", a.drawn == 1 && b.drawn == 0 && b.invalid == 1 && c.drawn == 0 &&
+                                                            c.expired == 1 && pool.count == 0, "");
+        }
+        // (8) Reset: the programs go before it and come back after; the next frame draws again.
+        {
+            proj.before_reset();
+            const bool gone = !proj.projectiles_ready();
+            pt.release();
+            g.release();
+            D3DPRESENT_PARAMETERS pp3 = pp;
+            device_guard("projectile_before_reset");
+            const HRESULT reset = dev->Reset(&pp3);
+            proj.after_reset(reset);
+            pass.after_reset(reset);
+            const bool remade = SUCCEEDED(reset) && make_proj_target(pt, 1920, 1080) && make_target(g, 1920, 1080);
+            rr::WeaponProjectileVertex v[4];
+            ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look, bolt_at(500.f, 1162.f, 16.f), v);
+            rr::WeaponEffectsReport r{};
+            const HRESULT hr = remade ? proj_draw(proj, pt, v, 1, 1.f, &r) : E_FAIL;
+            const std::vector<float> l = remade ? proj_scene(pt) : std::vector<float>{};
+            report("projectile_reset_recovers", gone && remade && hr == S_OK && r.drew && !l.empty() &&
+                                                    l[std::size_t(cy) * pt.w + cx] > 1.f, "");
+        }
+    }
+    // (9) the budget at 5120x1440: 512 bolts (32 near, 480 far, spread over the frame) through the production builder
+    // (the pool walk, the engine reader's validation, the quads) and one draw, CPU best of 40 and GPU fenced best of 60.
+    if (pc.projectile_enabled) {
+        ProjTarget bt;
+        const bool made = make_proj_target(bt, 5120, 1440);
+        report("projectile_budget_target", made);
+        if (made) {
+            static wc::ProjectilePool pool;
+            wc::projectile_clear(pool);
+            pool.armed = 1;
+            pool.resolved = 1;
+            pool.body_count = 1;
+            pool.bodies[0].id = 0x55;
+            pool.bits[0x55 >> 5] |= 1u << (0x55 & 31u);
+            struct alignas(16) Bullet { unsigned char obj[0x80], node[0x150], ext[0x10]; };
+            static std::vector<Bullet> bullets(rr::weapon_projectile_max_bolts);
+            for (unsigned i = 0; i < bullets.size(); ++i) {
+                Bullet& b = bullets[i];
+                std::memset(&b, 0, sizeof b);
+                put32(b.obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(b.node)));
+                put32(b.obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(b.ext)));
+                put32(b.node, wc::layout::node_live, 1);
+                put32(b.node, wc::layout::node_handle, 100 + i);
+                put32(b.node, wc::layout::node_body, 0x55);
+                const double d = i < 32 ? 200.0 + 10.0 * i : 600.0 + 5.0 * (i - 32); // metres
+                const double ax = (halton(i + 1, 2) - 0.5) * 1.8, ay = (halton(i + 1, 3) - 0.5) * 1.8; // ndc
+                put32(b.node, wc::layout::node_pos + 0, std::uint32_t(std::int32_t(ax / 1.6 * d * 500.0)));
+                put32(b.node, wc::layout::node_pos + 4, std::uint32_t(std::int32_t(ay / (1.6 * 5120.0 / 1440.0) * d * 500.0)));
+                put32(b.node, wc::layout::node_pos + 8, std::uint32_t(std::int32_t(d * 500.0)));
+                put32(b.node, wc::projectile::node_velocity + 0, std::uint32_t(std::int32_t(581000.0 * 0.8)));
+                put32(b.node, wc::projectile::node_velocity + 8, std::uint32_t(std::int32_t(581000.0 * 0.6)));
+                put32(b.ext, wc::projectile::ext_expiry, 1000000);
+                put32(b.ext, wc::projectile::ext_created, 1);
+                wc::projectile_tap(reinterpret_cast<std::uintptr_t>(b.obj), pool);
+            }
+            static ps::Looks looks;
+            looks.resolved = 0;
+            static rr::WeaponProjectileVertex verts[rr::weapon_projectile_max_bolts * 4];
+            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const ps::View view = proj_view(bt, 1.6f);
+            LARGE_INTEGER freq{}, a{}, b{};
+            QueryPerformanceFrequency(&freq);
+            double cpu_best = 1e30;
+            ps::Counts n;
+            for (int rep = 0; rep < 40; ++rep) {
+                x3m::engine_memory::next_frame();
+                QueryPerformanceCounter(&a);
+                n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 5000, 16, view, tunes, verts,
+                              rr::weapon_projectile_max_bolts);
+                QueryPerformanceCounter(&b);
+                cpu_best = std::min(cpu_best, ticks_us(a, b, freq));
+            }
+            Com<IDirect3DQuery9> ev;
+            dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
+            double gpu_best = 1e30;
+            rr::WeaponProjectileFrame f;
+            f.width = bt.w;
+            f.height = bt.h;
+            f.vertices = verts;
+            f.bolts = n.drawn;
+            f.lane = bt.lane_s.p;
+            f.depth = bt.depth_s.p;
+            bool drew = true;
+            for (int rep = 0; rep < 60; ++rep) {
+                dev->BeginScene();
+                dev->SetDepthStencilSurface(bt.depth_s.p);
+                dev->SetRenderTarget(0, bt.scene_s.p);
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+                dev->SetDepthStencilSurface(nullptr);
+                fence(ev.p);
+                QueryPerformanceCounter(&a);
+                rr::WeaponEffectsReport r{};
+                const HRESULT hr = proj.run_projectiles(f, &r);
+                fence(ev.p);
+                QueryPerformanceCounter(&b);
+                dev->EndScene();
+                drew = drew && hr == S_OK && r.bolts == n.drawn;
+                gpu_best = std::min(gpu_best, ticks_us(a, b, freq));
+            }
+            double fence_best = 1e30; // the fence pair alone (the figure the wall clock carries)
+            for (int rep = 0; rep < 60; ++rep) {
+                dev->BeginScene();
+                fence(ev.p);
+                QueryPerformanceCounter(&a);
+                fence(ev.p);
+                QueryPerformanceCounter(&b);
+                dev->EndScene();
+                fence_best = std::min(fence_best, ticks_us(a, b, freq));
+            }
+            const std::vector<float> l = proj_scene(bt);
+            unsigned lit = 0;
+            for (float x : l) lit += x > 0.f;
+            device_guard("projectile_timing");
+            std::printf("PROJECTILE case=budget width=5120 height=1440 bolts=%u drawn=%u cpu_us=%.1f gpu_us=%.1f fence_us=%.1f "
+                        "lit_share=%.4f vertex_bytes=%u\n",
+                        pool.count, n.drawn, cpu_best, gpu_best, fence_best, l.empty() ? 0.0 : double(lit) / double(l.size()),
+                        unsigned(sizeof(rr::WeaponProjectileVertex)));
+            report("projectile_budget_512_bolts", drew && n.drawn == rr::weapon_projectile_max_bolts && cpu_best < 100.0 &&
+                                                      gpu_best < 50.0 && lit > 0, "");
+        }
+        bt.release();
+    }
+    pt.release();
+    proj.detach();
     pass.detach();
     guard_next_section("end");
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
