@@ -50,11 +50,11 @@ struct Family {
 constexpr const char* fighter_tracer_rows[] = {"SS_BULLET_IRE"};
 constexpr unsigned family_count = 1;
 constexpr Family families[family_count] = {
-    // length_cap_m 60 since the FL 60 A review (2026-11-09: the 1x comet, about 35 m drawn, is not dimmed; was 30, the
-    // coordinator's from the fixture's look frames, 2026-11-08); since FL 59 A (2026-11-08) it dims a
-    // longer streak instead of cutting it, and the former stretch_k multiplier is gone (the streak is the travel); the
-    // comet's trail_ms 40 and head_gain 1.5 since FL 60 A (2026-11-08, the user's request; starting values)
-    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, 1, {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f}},
+    // Baked from FL 61 A (2026-11-09): the user accepted the IRE look with the dev file's values, so a missing file
+    // reproduces it exactly. The comet is off (trail_ms 0: at the user's frame rate, with the core saturating, it made
+    // no visible difference); the mechanism stays and head_gain keeps its 1.5 for a trail turned on from the file.
+    {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, sizeof(fighter_tracer_rows) / sizeof(fighter_tracer_rows[0]),
+     {0.5f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {

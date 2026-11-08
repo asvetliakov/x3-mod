@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
 }
 '''
 
-DEFAULTS = [2.0, 3.0, 0.2, 0.3, 3000.0, 60.0, 2.0, 40.0, 1.5]  # weapon_projectile_family.h, fighter_tracer
+DEFAULTS = [0.5, 2.0, 0.3, 0.4, 3000.0, 60.0, 2.0, 0.0, 1.5]  # weapon_projectile_family.h, fighter_tracer (FL 61 A)
 KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops', 'trail_ms', 'head_gain']
 
 
