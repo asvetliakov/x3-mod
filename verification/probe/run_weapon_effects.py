@@ -308,6 +308,33 @@ def run_fixture(args):
     return done.returncode, text
 
 
+def dump(args):
+    """--dump DIR: the projectile look frames only (weapon_effects_fixture.cpp projectile_dump): the fixture writes
+    linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0, clamp, sRGB; no bloom, AgX or TAA, as
+    the design mocks); no hook fixture, no record."""
+    import numpy as np
+    from PIL import Image
+    out = Path(args.dump)
+    out.mkdir(parents=True, exist_ok=True)
+    raw = BUILD / 'dump'
+    raw.mkdir(parents=True, exist_ok=True)
+    if not args.no_build:
+        build()
+    d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
+    done, text = native_host.run_native(EXE, [d3dx, '--dump', 'dump'], BUILD, args.timeout, log=BUILD / 'dump-fixture')
+    print('\n'.join(line for line in text.splitlines() if line.startswith(('DUMP', 'RESULT'))))
+    for pfm in sorted(raw.glob('*.pfm')):
+        data = pfm.read_bytes()
+        head = data.split(b'\n', 3)
+        w, h = (int(v) for v in head[1].split())
+        img = np.frombuffer(head[3], dtype='<f4', count=w * h * 3).reshape(h, w, 3)[::-1]
+        c = np.clip(img, 0.0, 1.0)
+        srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
+        Image.fromarray((srgb * 255 + 0.5).astype(np.uint8)).save(out / (pfm.stem + '.png'))
+        print('PNG', out / (pfm.stem + '.png'))
+    return done.returncode
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--no-build', action='store_true')
@@ -315,6 +342,8 @@ def main():
     parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
                         help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
                              'WSL2 host through interop (native_host.py), never a fallback')
+    parser.add_argument('--dump', help='write the projectile look frames as PNG into this directory (native host only); '
+                                       'no other fixture runs and no record is written')
     args = parser.parse_args()
     native = args.host == 'native'
     if native:
@@ -322,6 +351,8 @@ def main():
             raise SystemExit('--host native needs ' + '; '.join(native_host.missing()))
         if game_running() or native_host.game_running_windows():
             raise SystemExit('the game is running')
+        if args.dump:
+            return dump(args)
         results = native_host.results_dir(ROOT, 'weapon-effects')
     else:
         if os.environ.get('X3M_FIXTURE_BOTTLE') != 'X3':

@@ -297,6 +297,11 @@ set, it is baked into `families[fighter_tracer].tune` and the file deleted; a re
 **Verified (native fixture, ledger "Projectile IRE on FL (2026-11-08)").** The width rule within 0.5 px at 200 m / 500 m /
 1 km / 3 km at two fields of view, SETA invariance, the far flag, the dot, nothing outside the quad, depth occlusion,
 the pool's retire paths, Reset, the 512-bolt budget at 5120x1440 (CPU 67.9 µs, GPU fenced 43.1 µs [M]). Not flown.
+Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
+sRGB-encoded as the mocks, no bloom, AgX or TAA), cropped to 800 px: [near](../../verification/results/projectile-look/fixture-ire-near.png) (200 m / 500 m / 1 km at a 16.7 ms step: 139 / 48 /
+20 px dashes, cores 5 / 2 / 1 px), [seta](../../verification/results/projectile-look/fixture-ire-seta.png) (the same at
+100 ms: every stretch at the 116 m cap, 857 / 287 / 120 px), [lod](../../verification/results/projectile-look/fixture-ire-lod.png)
+(3 km, exactly at `lod_dot_m` so still an 8.7 px dash at a third of the radiance, beside 300 m).
 
 ## 8. Options considered and why they lose
 
