@@ -70,6 +70,7 @@
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (docs/architecture/weapon-effects.md)
+#include "weapon_projectile_family.h"       // the projectile stage's families (FL; docs/architecture/projectile-look.md)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
 #include "sky_nebula_core.h"
@@ -1206,6 +1207,12 @@ public:
     // call, for weapon_effects::present.
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
+#if X3M_EDITION_FL
+    // The projectile stage (FL, motion_output_weapon_effects_inc.h; docs/architecture/projectile-look.md): the frame's
+    // ownership (the next frame's batch skip) and figures since the last call, into the weapon_effects_frame row.
+    void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
+                               float* stage_us) noexcept;
+#endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
                                                                  // faces_culled, area_dropped, bubbles,
@@ -2270,6 +2277,21 @@ private:
     void note_weapon_state(bool armed, const char* reason) noexcept;
     static HRESULT weapon_effects_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_weapon_effects() noexcept;
+#if X3M_EDITION_FL
+    // The projectile stage (FL): requested when the batch site is active; drawn in the weapon stage's callback into RT0
+    // and the lane (the far flag), depth-tested against the scene's depth surface captured at the resolve (borrowed for
+    // the run); the traversal draws of a pooled enabled body dropped in before_draw while the batch skip is latched.
+    bool projectile_requested_ = false, projectile_frame_ = false, projectile_ran_ = false, projectile_owned_ = false;
+    bool projectile_owned_frame_ = false;
+    IDirect3DSurface9* projectile_depth_ = nullptr;
+    unsigned projectile_bolts_ = 0, projectile_dropped_ = 0, projectile_unhandled_ = 0, projectile_retired_ = 0;
+    float projectile_us_ = 0.f;
+    std::uint64_t projectile_unhandled_frame_ = ~std::uint64_t(0);
+    const char* projectile_logged_refusal_ = nullptr;
+    weapon_effects::projectile_family::Tune projectile_tune_[weapon_effects::projectile_family::family_count]{};
+    HRESULT run_projectiles(const renderer::WeaponEffectsFrame& f) noexcept;
+    bool projectile_drop(MotionRoute& route) noexcept;
+#endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.
