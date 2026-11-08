@@ -21,7 +21,7 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "79f2d5e2445b03ce8f9078868dda932599808729",
+    "commit": "d22ae6246a07f2416086529ea051ba8b70cedff1",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -39,7 +39,7 @@
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
-      "src/proxy/weapon_effects_projectile.h": "bfa9205075d6962b3eefedf7ee0b4f85a7cf60e81a4743076182b65b9e2fb438"
+      "src/proxy/weapon_effects_projectile.h": "fb5a6d13ddf3eb7e244c14a8ceb4070cc6e98307324a8585b959449fb28008d1"
     }
   },
   "build": {
@@ -59,7 +59,7 @@
       "handler_instructions": {
         "_x3m_weapon_event_fl": 1244,
         "_x3m_weapon_tap_fl": 45,
-        "_x3m_weapon_bolt_tap_fl": 750,
+        "_x3m_weapon_bolt_tap_fl": 745,
         "_x3m_weapon_muzzle_fl": 226,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 567
@@ -234,7 +234,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "14c01c46ba59c156be580e5c269364c5f3edc4f6a7b8fb7a2df87fea1a0373e7"
+    "executable_sha256": "4f924f8e69d7e97fef730a13d5f958f10f08a82ff63240355ceb66dfc74d0611"
   },
   "host": {
     "name": "native-windows",

@@ -124,7 +124,7 @@ Each quad tapers towards its older end along the tangent of its reach, which bou
 above (the reach is concave in the age). The head's time is the last change's game ms plus the extrapolated µs, so a
 static frame keeps the law; a held head and a paused game keep the ring; a first frame (a jump, a cut, a new bullet)
 restarts it from its motion's tail. Drawn to F = 10 %, not 5 %: at 5 % the 512-bolt budget measured 50.0 and 50.6 µs
-GPU fenced against the 50 µs bound, its cost following the lit area (+26 % over FL run 60's streak), at 10 % 45.4 µs.
+GPU fenced against the 50 µs bound, its cost following the lit area (+26 % over FL run 60's streak), at 10 % 45.1 µs.
 
 **Why a comet (FL 60 A, 2026-11-08).** The user flew the bridged streak (FL run 60): continuous, no dashes, not
 beam-like, and asked for a bright head with a trail that fades behind it, a comet, offered as a shape change that keeps
@@ -388,12 +388,12 @@ radiance (the end-on centre equal to a side-on streak's), the far flag's write
 42.2 µs [M]). Not flown.
 **Verified for the comet (native fixture, ledger "FL 60 A: comet head and trail (2026-11-08)").** `trail_ms` 0
 reproduces FL run 60's seam profiles exactly (the largest relative difference over 24 pinned values 0.0000); the comet's
-profile along the axis follows C F(age) within 1.3 % and never rises by more than 0.3 % walking back from the head (60
+profile along the axis follows C F(age) within 1.2 % and never rises walking back from the head (60
 and 144 fps, the flown values, the camera moving or turning, and an accelerating turn drawn as two segments); the head
 is the row's maximum 2 px behind the head at 1.44 x the trail's start (the core alone 1.475, head_gain 1.5); the row at
 the age `trail_ms` is 0; the trail's 50 % and 20 % points are 11.07 / 23.16 game ms at 1x and 11.06 / 23.16 under
 SETA 6 (the law 11.07 / 23.16); the end-on spot keeps full radiance (no trail, no head); the 512-bolt budget at
-5120x1440 with the ring full: CPU 89.1 µs, GPU fenced 45.4 µs (fence 10.9 µs), 518 quads, 500 of 506 comets one quad,
+5120x1440 with the ring full: CPU 87.3 µs, GPU fenced 45.1 µs (fence 10.9 µs), 518 quads, 500 of 506 comets one quad,
 6 dots [M]. Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and
 sRGB-encoded as the mocks, no bloom, AgX or TAA; since FL 60 A the last of consecutive stage frames through the
