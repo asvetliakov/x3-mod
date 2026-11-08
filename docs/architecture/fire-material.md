@@ -605,14 +605,13 @@ step): `WeaponEffectsFrame::step_ms` (the glue's `weapon_game_step_ms`, 0 unknow
 and c12.x (`weapon_wave_ps`); the lab's `fireJitMs()` the same at its 1000 / 60 x SETA step. At 1x (16.7 ms) nothing
 changes; at SETA 6-10 the grain changes every second frame.
 
-**Octave 3's polar cell (review 2026-11-08).** The polar octaves' angular cell is 2 pi rp / n: octave 3's (n 53) is its
-nominal 0.083 R_s at rp 0.7 but half that at 0.35, where the polar band starts (1 px cells at the size where the nominal
-one is 2 px). Its weight now uses the local cell, floored at `fire_cell_px` 2 px: saturate(lw / 4 x min(1, 8 pi rp
-f / n_3) - 1); the nominal one where the cell is larger. Octave 2 (cells twice as large) is unchanged. On its record
-`death_body_no_centre_ring` failed: the fighter at 600 m (R_s 37 px at 0.5 L), worst hit 0.1931 against 0.15 (0.1077 on
-the record before) [M]. At that size octave 3's nominal weight is about 0.5 and the local floor takes it to 0 near rp
-0.35-0.45, so the fine detail steps radially inside the gate's 0.3-0.45 R_s annulus: the floor draws the ring the gate
-measures [I]. Open: revert the floor, or floor the cell size there instead of the weight (another lookup).
+**Octave 3's polar cell (review 2026-11-08; tried and reverted).** The polar octaves' angular cell is 2 pi rp / n:
+octave 3's (n 53) is its nominal 0.083 R_s at rp 0.7 but half that at 0.35, where the polar band starts (1 px cells at
+the size where the nominal one is 2 px). A weight floored on the local cell (saturate(lw / 4 x min(1, 8 pi rp f / n_3)
+- 1)) broke `death_body_no_centre_ring` on its record: the fighter at 600 m (R_s 37 px at 0.5 L), worst hit 0.1931
+against 0.15 (0.1077 before) [M]; at that size octave 3's nominal weight is about 0.5 and the floor took it to 0 near rp
+0.35-0.45, a radial step of fine detail inside the gate's 0.3-0.45 R_s annulus [I]. Reverted (orchestrator decision
+2026-11-08): the 1 px cells near the polar band's start stay as a known cosmetic.
 
 **The collapse at mid range (design note, no change).** The collapse shrinks R(t) to 0.35 R_f, so a body that is
 inside the law's size LOD early can fall under `fire_px_1` late in its life and blend back towards the erosion law: the

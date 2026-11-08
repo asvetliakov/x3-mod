@@ -1332,9 +1332,7 @@ const fireJitMs = () => Math.max(HEADER.look.fire_jit_ms, 2 * FIRE_STEP_MS);
 function fireTurb(px, py, rp, x, Tt, colpow, lobe, o, tg, adv, rpx, fire, shed = false, oct = 2) {
   const LK = HEADER.look, f0 = LK.fire_turb_f, a1 = LK.fire_turb_a, a2 = a1 * a1, sat = v => Math.max(0, Math.min(1, v));
   const lw = rpx / f0 / LK.fire_cell_px, on = shed ? 0 : 1, wp = fireSmooth(LK.fire_polar_r0, LK.fire_polar_r1, rp);
-  // octave 1's ridges a quarter inside; octave 3's angular cell floored at fire_cell_px where it shrinks (2 pi rp / n3)
-  const w1 = sat(lw - 1) * (0.25 + 0.75 * wp), w2 = sat(0.5 * lw - 1) * wp;
-  const w3 = sat(0.25 * lw * Math.min(1, 8 * Math.PI * rp * f0 / LK.fire_turb_n3) - 1) * wp * on;
+  const w1 = sat(lw - 1) * (0.25 + 0.75 * wp), w2 = sat(0.5 * lw - 1) * wp, w3 = sat(0.25 * lw - 1) * wp * on; // octave 1's ridges a quarter inside
   const on4 = fire > 1.05 ? 0 : on; // octaves 4-5 off in a cluster's burst
   const w4 = sat(0.125 * lw - 1) * on4 * sat(oct), w5 = sat(0.0625 * lw - 1) * on4 * sat(oct - 1);
   // octaves 4-5: Cartesian, re-seeded every fire_jit_ms of game time
