@@ -1,0 +1,12 @@
+failing_b59a8ca23: commit=b59a8ca23 checks=368 failed=['bolt_budget_512_bolts_20_muzzles_5120'] sources_identical=67/67
+  stage build_us=40.0 draw_call_us=10.0
+  fenced total=155.1 bolts=127.6 muzzles=27.5 no_rim=114.3 one_far=20.4 collapsed_512=82.1
+  timestamps frame=42.7 bolts=41.0 muzzles=2.6 rims=469
+run1_2a01138b2: commit=2a01138b2 checks=368 failed=[] sources_identical=67/67
+  stage build_us=40.1 draw_call_us=9.9
+  fenced total=96.2 bolts=76.3 muzzles=19.9 no_rim=63.2 one_far=15.6 collapsed_512=31.8
+  timestamps frame=42.2 bolts=40.9 muzzles=2.6 rims=469
+run2_2a01138b2: commit=2a01138b2 checks=368 failed=[] sources_identical=67/67
+  stage build_us=39.8 draw_call_us=10.0
+  fenced total=96.2 bolts=76.5 muzzles=19.7 no_rim=63.0 one_far=16.1 collapsed_512=32.1
+  timestamps frame=42.8 bolts=41.8 muzzles=2.6 rims=469

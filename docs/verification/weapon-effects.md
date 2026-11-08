@@ -1797,6 +1797,22 @@ Host: `test_weapon_effects_*` 102 tests, 5 failures, all the D3D / hook records'
 recorded on `a4c408e93`-dirty, before the explosion commits of the base: their bound sources already differ at
 `d3adfe275`, `death_halo_rim` absent, `passed` false) [M]. `build-bolt` (ap) 0 warnings, `check_no_x87.py --edition
 ap` PASS (1181 reachable), d3d9.dll sha256 `917d6dfbff849745f339a54689b7f04d9899729b277218f4956acc188ed3e62d` after the review fixes [M].
+
+**CPU cost (2026-11-08, `effects` `2a01138b2`).** There is no added CPU cost in the bolt stage, so no code changed. The
+fenced bracket of `bolt_budget_512_bolts_20_muzzles_5120` holds only `pass.draw_bolts` (the draw-call CPU and the fence
+wait) and `pass.run` for the muzzles. The stage build is timed apart in `BOLT_CPU`, and it read 40.0 us on the failing
+record against 40.1 / 39.8 us here (draw call 10.0 / 9.9 / 10.0) [M]. Run twice on `2a01138b2` through `wine_lock.py`,
+with all 67 bound sources byte-identical to the failing `b59a8ca23` record: 96.2 / 96.2 us fenced (bolts 76.3 / 76.5,
+muzzles 19.9 / 19.7), timestamps 42.2 / 42.8 us, 368 of 368 checks passing. The failing record read 155.1 us (bolts
+127.6, muzzles 27.5) with timestamps of 42.7 us [M]. The cases no bolt change touches moved with the row:
+`collapsed_512` (no pixels) 82.1 -> 31.8 us, `no_rim` 114.3 -> 63.2, `one_far_bolt` 20.4 -> 15.6 [M]. So the +59 us is
+fence or submission latency of the host state between runs. It is not stage CPU work and not GPU work. Before the runs
+the idle GPU sat at P8 with PCIe link gen 1 of 5 [M]; a link or clock state that scales the 128 KB VB upload is the
+likely mechanism [I, not isolated]. The 153.7 us "bolts-only" reading after `55f5322b8` is the same effect. With no
+regression to bisect, no code was disabled.
+Rows: `verification/results/weapon-effects-bolt-fence-2026-11-08/fence_rows.py` and `fence_rows_out.txt`.
+`X3M_WEAPON_EFFECTS_BOLTS_ONLY` is not forwarded through `WSLENV` on `--host native`, so both runs were the full D3D
+fixture.
 ### Muzzle rework (2026-11-08, `7c13d540d` on `effects` `d3adfe275`)
 
 The muzzle items of the visual re-review ([bolt-muzzle-look.md](../architecture/bolt-muzzle-look.md) 11 #1, #7, #8, #9,

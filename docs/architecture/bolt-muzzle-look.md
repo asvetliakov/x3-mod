@@ -280,7 +280,11 @@ is 13 µs, plus the VS; 20 muzzles (one own in chase about 0.1 Mpx, 19 small, th
 under 10 µs; the rim draw (about 20 slots, where its band is ≥ 3 px: near bolts only) under 5 µs. Bound: **100 µs GPU**
 fenced wall clock for 512 bolts + 20 muzzles (measured 89.8 µs fenced, 43.9 µs by timestamps, 2026-11-07 [M]: the 60 µs
 first set here came from the 90-slot estimate above, while the pixel program has 673 slots); CPU (tap, keys,
-projection of prev, VB 128 KB) **150 µs**.
+projection of prev, VB 128 KB) **150 µs**. The fenced bracket holds the draw call and the fence wait, not the
+stage build (`BOLT_CPU` times that apart, about 40 µs at 512 bolts). On identical sources it read 155.1 µs on one record
+and 96.2 µs on two others, with timestamps of 42-43 µs on all three, and the unchanged no-pixel case `collapsed_512` moved
+82 -> 32 µs with it [M, 2026-11-08]. A fenced failure whose timestamps hold is therefore host latency until a rerun
+reproduces it; it is not stage CPU (weapon-effects ledger, "Bolt tunings", CPU cost).
 
 ## 5. Drawing
 
