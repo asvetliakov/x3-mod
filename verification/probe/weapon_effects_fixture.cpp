@@ -1034,107 +1034,6 @@ double fwhm_through(const std::vector<float>& l, UINT w, UINT h, int x, int y, i
     }
     return sum;
 }
-// ------------------------------------------------------------------ projectile look dump (--dump <dir>)
-// The look frames of the projectile stage (docs/architecture/projectile-look.md, "Implementation"): the production
-// builder and run_projectiles at 1920x1080 and the fixture's projection (m00 1.6), the IRE row's look and the
-// fighter-tracer family's baked Tune, on black with a dim hull panel (linear 0.02) in the lower right. Each frame's
-// FP16 scene is written as linear RGB PFM <dir>\<name>.pfm (run_weapon_effects.py --dump encodes the PNGs); no check
-// and no record. Frames: near (IRE at 200 m, 500 m, 1 km, a 16.7 ms step), seta (the same at 100 ms: SETA 6), lod
-// (3 km beside 300 m, 16.7 ms).
-bool write_pfm(const char* path, ProjTarget& t) {
-    if (FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) return false;
-    D3DLOCKED_RECT lr{};
-    if (FAILED(t.scene_sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return false;
-    std::FILE* f = std::fopen(path, "wb");
-    bool ok = f != nullptr;
-    if (ok) {
-        std::fprintf(f, "PF\n%u %u\n-1.0\n", t.w, t.h);
-        std::vector<float> row(std::size_t(t.w) * 3);
-        for (UINT y = t.h; y-- > 0;) { // PFM rows run bottom to top
-            const auto* src = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
-            for (UINT x = 0; x < t.w; ++x)
-                for (unsigned k = 0; k < 3; ++k) row[std::size_t(x) * 3 + k] = half_to_float(src[x * 4 + k]);
-            ok = ok && std::fwrite(row.data(), sizeof(float), row.size(), f) == row.size();
-        }
-        std::fclose(f);
-    }
-    t.scene_sys.p->UnlockRect();
-    return ok;
-}
-int projectile_dump(const char* dir) {
-    rr::WeaponEffectsPass proj;
-    proj.configure_projectiles(true);
-    proj.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);
-    ProjTarget t;
-    if (!proj.caps().projectile_enabled || !make_proj_target(t, 1920, 1080)) {
-        std::printf("DUMP_FAIL reason=%s\nRESULT FAIL checks=1 failures=1\n", proj.caps().projectile_reason);
-        return 1;
-    }
-    CreateDirectoryA(dir, nullptr);
-    const ps::View view = proj_view(t, 1.6f);
-    const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
-    const ps::BodyLook look = ire_look();
-    struct Bolt { float d_m, ndc_x, ndc_y; };
-    struct Frame { const char* name; float step_ms; unsigned count; Bolt bolts[3]; };
-    const Frame frames[3] = {{"near", 16.7f, 3, {{200.f, -0.35f, 0.25f}, {500.f, 0.f, 0.f}, {1000.f, 0.35f, -0.25f}}},
-                             {"seta", 100.f, 3, {{200.f, -0.35f, 0.25f}, {500.f, 0.f, 0.f}, {1000.f, 0.35f, -0.25f}}},
-                             {"lod", 16.7f, 2, {{3000.f, -0.2f, 0.f}, {300.f, 0.2f, 0.f}}}};
-    unsigned failures = 0;
-    for (const Frame& fr : frames) {
-        rr::WeaponProjectileVertex v[12];
-        unsigned n = 0;
-        for (unsigned i = 0; i < fr.count; ++i) {
-            const Bolt& b = fr.bolts[i];
-            ps::BoltIn in;
-            const float z = b.d_m * ps::view_units_per_metre;
-            in.p[0] = b.ndc_x * z / view.m00;
-            in.p[1] = b.ndc_y * z / view.m11;
-            in.p[2] = z;
-            const float speed = 1162.f * ps::view_units_per_metre; // IRE: 581,000 engine units/s
-            in.v[0] = 0.8f * speed;                                // mostly across the view, receding
-            in.v[2] = 0.6f * speed;
-            in.step_s = fr.step_ms * 1e-3f;
-            in.age_s = 10.f;
-            ps::BoltShape shape;
-            if (ps::bolt_vertices(view, tune, look, in, v + 4 * n, &shape)) {
-                ++n;
-                std::printf("DUMP_BOLT frame=%s distance_m=%.0f core_px=%.2f dim=%.3f length_px=%.1f stretch_m=%.1f glow_sigma_px=%.2f "
-                            "reach_px=%.2f dot=%u\n",
-                            fr.name, double(b.d_m), double(shape.core_px), double(shape.dim), double(shape.length_px),
-                            double(shape.stretch_m), double(shape.glow_sigma_px), double(shape.ext_px), unsigned(shape.dot));
-            }
-        }
-        dev->BeginScene();
-        dev->SetDepthStencilSurface(t.depth_s.p);
-        dev->SetRenderTarget(0, t.lane_s.p);
-        dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
-        dev->SetRenderTarget(0, t.scene_s.p);
-        dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
-        const D3DRECT hull{LONG(t.w * 0.62f), LONG(t.h * 0.58f), LONG(t.w), LONG(t.h)};
-        dev->Clear(1, &hull, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 5, 5, 6), 1.f, 0); // a dim hull panel, linear ~0.02
-        dev->SetDepthStencilSurface(nullptr);
-        rr::WeaponProjectileFrame f;
-        f.width = t.w;
-        f.height = t.h;
-        f.vertices = v;
-        f.bolts = n;
-        f.lane = t.lane_s.p;
-        f.depth = t.depth_s.p;
-        rr::WeaponEffectsReport r{};
-        const HRESULT hr = proj.run_projectiles(f, &r);
-        dev->EndScene();
-        char path[MAX_PATH];
-        std::snprintf(path, sizeof path, "%s\\%s.pfm", dir, fr.name);
-        const bool ok = hr == S_OK && r.bolts == n && write_pfm(path, t);
-        failures += !ok;
-        std::printf("DUMP name=%s bolts=%u step_ms=%.1f result=%08lx written=%u\n", fr.name, n, double(fr.step_ms),
-                    static_cast<unsigned long>(hr), unsigned(ok));
-    }
-    t.release();
-    proj.detach();
-    std::printf("RESULT %s checks=3 failures=%u\n", failures ? "FAIL" : "PASS", failures);
-    return failures ? 1 : 0;
-}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -1184,7 +1083,6 @@ int main(int argc, char** argv) {
     dev->GetDisplayMode(0, &mode);
     adapter_format = mode.Format;
     report("d3dx_lane_shader", compile_helpers(), compile_shader ? "" : "D3DXCompileShader unavailable");
-    if (argc > 3 && !std::strcmp(argv[2], "--dump")) return projectile_dump(argv[3]); // the look frames only
 
     rr::WeaponEffectsPass pass;
     const HRESULT attached = pass.attach(dev, *reinterpret_cast<void* const* const*>(dev), caps, adapter_format);

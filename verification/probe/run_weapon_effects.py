@@ -309,19 +309,23 @@ def run_fixture(args):
 
 
 def dump(args):
-    """--dump DIR: the projectile look frames only (weapon_effects_fixture.cpp projectile_dump): the fixture writes
-    linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0, clamp, sRGB; no bloom, AgX or TAA, as
-    the design mocks); no hook fixture, no record."""
+    """--dump DIR: the projectile look frames only (weapon_effects_projectile_dump.cpp, a separate program so the D3D
+    record's source binding stays): it writes linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0,
+    clamp, sRGB; no bloom, AgX or TAA, as the design mocks); no hook fixture, no record."""
     import numpy as np
     from PIL import Image
     out = Path(args.dump)
     out.mkdir(parents=True, exist_ok=True)
     raw = BUILD / 'dump'
     raw.mkdir(parents=True, exist_ok=True)
-    if not args.no_build:
-        build()
-    d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
-    done, text = native_host.run_native(EXE, [d3dx, '--dump', 'dump'], BUILD, args.timeout, log=BUILD / 'dump-fixture')
+    BUILD.mkdir(parents=True, exist_ok=True)
+    exe = BUILD / 'weapon_effects_projectile_dump.exe'
+    command = ['i686-w64-mingw32-g++', *FLAGS, str(ROOT / 'verification/probe/weapon_effects_projectile_dump.cpp'),
+               str(ROOT / 'src/renderer/weapon_effects_pass.cpp'), '-o', str(exe), '-luser32']
+    built = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
+    if built.returncode or re.search(r'\bwarning:', built.stdout + built.stderr):
+        raise SystemExit('dump build failed:\n' + built.stdout + built.stderr)
+    done, text = native_host.run_native(exe, ['dump'], BUILD, args.timeout, log=BUILD / 'dump-fixture')
     print('\n'.join(line for line in text.splitlines() if line.startswith(('DUMP', 'RESULT'))))
     for pfm in sorted(raw.glob('*.pfm')):
         data = pfm.read_bytes()
