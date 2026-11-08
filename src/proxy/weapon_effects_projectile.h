@@ -39,6 +39,13 @@ struct ProjectileEntry {
     std::uint32_t expiry, created;   // ext+0 / ext+8 at the last tap (game ms)
     std::uint32_t body;              // index into ProjectilePool::bodies (its per-body look, resolved once)
     std::uint32_t seen_ms;           // the game ms (cfg +0x708) of the last tap that saw it
+    // The stage's bridge state (weapon_projectile_stage.h build; integers only, the tap only zeroes stage_frame on a
+    // registration and a recycled node): the next frame's streak starts where this frame's ended.
+    std::int32_t read_pos[3];  // node +0x30 at the stage frame stage_frame (engine units)
+    std::int32_t drawn[3];     // the head drawn at that frame (engine units, rounded): the next frame's tail
+    std::uint32_t changed_ms;  // the game ms of the last stage frame whose read position changed
+    std::uint32_t static_us;   // game us the head was extrapolated since then (render dt x SETA rate, bounded)
+    std::uint32_t stage_frame; // ProjectilePool::stage_frame of that frame (0: none, the next frame is a first frame)
 };
 struct ProjectileBody {
     std::uint32_t id;         // the engine body id (node +0x144)
@@ -68,6 +75,7 @@ struct ProjectilePool {
     std::uint16_t slots[projectile::slot_count]{}; // entry index + 1, 0 empty
     Globals globals{};
     ProjectileCounters counters{};
+    std::uint32_t stage_frame = 0; // the stage's frame stamp (weapon_projectile_stage.h build; never 0 once counted)
 };
 static_assert(offsetof(ProjectilePool, skip_on) == 0 && offsetof(ProjectilePool, skipped) == 4 &&
                   offsetof(ProjectilePool, bits) == 8,
@@ -181,7 +189,10 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
         }
         ProjectileEntry& e = p.entries[s - 1u];
         if (e.node != std::uint32_t(node)) continue;
-        if (e.obj != std::uint32_t(obj) || e.handle != handle) ++p.counters.recycled;
+        if (e.obj != std::uint32_t(obj) || e.handle != handle) {
+            ++p.counters.recycled;
+            e.stage_frame = 0; // another bullet: no bridge from the old one's streak
+        }
         e.obj = std::uint32_t(obj);
         e.handle = handle;
         e.expiry = expiry;
@@ -206,6 +217,7 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
     e.created = created;
     e.body = body;
     e.seen_ms = now;
+    e.stage_frame = 0;
     p.slots[free_slot] = std::uint16_t(p.count + 1u);
     ++p.count;
     ++p.counters.registered;

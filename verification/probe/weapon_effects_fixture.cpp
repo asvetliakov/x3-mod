@@ -953,7 +953,8 @@ ps::BodyLook ire_look() {
     l.valid = 1;
     return l;
 }
-// A bolt at view depth d_m metres on the screen centre moving along view +x at speed_mps; age long past.
+// A first-frame bolt at view depth d_m metres moving along view +x at speed_mps (age long past): its streak (P - v dt to
+// the head P) centred on the screen centre, so the head sits half the travel ahead of it.
 ps::BoltIn bolt_at(float d_m, float speed_mps, float step_ms, float dir_y = 0.f) {
     ps::BoltIn in;
     in.p[2] = d_m * ps::view_units_per_metre;
@@ -962,7 +963,42 @@ ps::BoltIn bolt_at(float d_m, float speed_mps, float step_ms, float dir_y = 0.f)
     in.v[1] = speed_mps * ps::view_units_per_metre * dir_y / n;
     in.step_s = step_ms * 1e-3f;
     in.age_s = 10.f;
+    in.p[0] = 0.5f * in.v[0] * in.step_s;
+    in.p[1] = 0.5f * in.v[1] * in.step_s;
     return in;
+}
+// One pool bullet for the builder cases: the object, its node (live, handle, body 0x55, position and velocity in engine
+// units) and its extension (expiry far ahead, born at 1 ms), registered by the object tap.
+struct PoolBullet {
+    alignas(16) unsigned char obj[0x80], node[0x150], ext[0x10];
+};
+void pool_bullet(wc::ProjectilePool& pool, PoolBullet& b, std::uint32_t handle, const std::int32_t pos[3],
+                 const std::int32_t vel[3]) {
+    std::memset(&b, 0, sizeof b);
+    put32(b.obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(b.node)));
+    put32(b.obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(b.ext)));
+    put32(b.node, wc::layout::node_live, 1);
+    put32(b.node, wc::layout::node_handle, handle);
+    put32(b.node, wc::layout::node_body, 0x55);
+    for (unsigned k = 0; k < 3; ++k) {
+        put32(b.node, wc::layout::node_pos + 4 * k, std::uint32_t(pos[k]));
+        put32(b.node, wc::projectile::node_velocity + 4 * k, std::uint32_t(vel[k]));
+    }
+    put32(b.ext, wc::projectile::ext_expiry, 100000000);
+    put32(b.ext, wc::projectile::ext_created, 1);
+    wc::projectile_tap(reinterpret_cast<std::uintptr_t>(b.obj), pool);
+}
+// A pool with the one enabled body 0x55 and the game clock at cfg +0x708 (the tap's stamp).
+void pool_reset(wc::ProjectilePool& pool, unsigned char* cfg, std::uint32_t* cfg_slot, std::uint32_t now) {
+    wc::projectile_clear(pool);
+    pool.armed = 1;
+    pool.resolved = 1;
+    pool.body_count = 1;
+    pool.bodies[0].id = 0x55;
+    pool.bits[0x55 >> 5] |= 1u << (0x55 & 31u);
+    *cfg_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(cfg));
+    pool.globals.cfg_slot = reinterpret_cast<std::uintptr_t>(cfg_slot);
+    put32(cfg, wc::layout::cfg_game_ms, now);
 }
 HRESULT proj_draw(rr::WeaponEffectsPass& p, ProjTarget& t, const rr::WeaponProjectileVertex* v, unsigned bolts,
                   float clear_z = 1.f, rr::WeaponEffectsReport* rep = nullptr) {
@@ -2920,20 +2956,22 @@ int main(int argc, char** argv) {
                 const double want = m00 == 1.6f ? 1.6 : 1.0 / 1.6;
                 fov_ok = fov_ok && std::fabs(ratio / want - 1.0) < 0.01;
                 std::printf("PROJECTILE case=width m00=%.2f distance_m=%.0f rule_px=%.3f measured_px=%.3f drawn_px=%.3f dim=%.3f "
-                            "length_px=%.2f stretch_m=%.2f\n",
+                            "length_px=%.2f streak_m=%.2f\n",
                             double(m00), double(d), rule, measured, double(shape.core_px), double(shape.dim),
-                            double(shape.length_px), double(shape.stretch_m));
+                            double(shape.length_px), double(shape.streak_m));
             }
         report("projectile_core_width_rule_both_fovs", widths_ok, "");
         report("projectile_length_follows_live_projection", fov_ok, "");
-        // (2) SETA invariance and the stretch rule from the family's constants: at 1 km, steps 16 ms (1x) and 96 ms (6x),
-        // the speed chosen so the 6x stretch is 80 % of length_cap_m: the drawn length per game ms (the half-maximum run
-        // along the axis less the core's width) is the same within 3 % and equals stretch_k v step f / d within 3 %; at
-        // the IRE's 1162 m/s and 6x the stretch is length_cap_m.
+        // (2) SETA invariance and the bridged rule from the constants: at 1 km, first-frame steps 16 ms (1x) and 96 ms
+        // (6x), the speed chosen so the 6x streak is 80 % of length_cap_m: the drawn length per game ms (the half-maximum
+        // run along the axis; the end ramps' half maximum sits at the ends) is the same within 3 % and equals |v| step f /
+        // d within 3 %. Past the cap (the IRE's 1162 m/s at 96 ms) the streak keeps its full length |v| step and its
+        // radiance scales by cap / length (energy conserved): the run within 3 % of the rule and the centre's radiance
+        // over an uncapped bolt's (16 ms) within 3 % of cap / length.
         double per_ms[2] = {0, 0};
         bool rule_ok = true;
         const float f_px = proj_view(pt, 1.6f).m11 * 0.5f * float(pt.h);
-        const float seta_speed = 0.8f * core_only.length_cap_m / (core_only.stretch_k * 0.096f);
+        const float seta_speed = 0.8f * core_only.length_cap_m / 0.096f;
         for (unsigned k = 0; k < 2; ++k) {
             const float step = k ? 96.f : 16.f;
             rr::WeaponProjectileVertex v[4];
@@ -2942,23 +2980,39 @@ int main(int argc, char** argv) {
             proj_draw(proj, pt, v, built ? 1u : 0u);
             const std::vector<float> l = proj_scene(pt);
             const double run = fwhm_through(l, pt.w, pt.h, cx, cy, 1, 0);
-            per_ms[k] = (run - double(shape.core_px)) / double(step);
-            const double rule_px = double(core_only.stretch_k) * seta_speed * step * 1e-3 * f_px / 1000.0;
-            rule_ok = rule_ok && std::fabs((run - double(shape.core_px)) / rule_px - 1.0) < 0.03;
-            std::printf("PROJECTILE case=seta step_ms=%.0f speed_mps=%.1f stretch_m=%.2f rule_px=%.2f length_px=%.2f run_px=%.2f "
-                        "px_per_game_ms=%.4f\n",
-                        double(step), double(seta_speed), double(shape.stretch_m), rule_px, double(shape.length_px), run,
-                        per_ms[k]);
+            per_ms[k] = run / double(step);
+            const double rule_px = double(seta_speed) * step * 1e-3 * f_px / 1000.0;
+            rule_ok = rule_ok && std::fabs(run / rule_px - 1.0) < 0.03 && shape.energy == 1.f;
+            std::printf("PROJECTILE case=seta step_ms=%.0f speed_mps=%.1f streak_m=%.2f rule_px=%.2f length_px=%.2f run_px=%.2f "
+                        "px_per_game_ms=%.4f energy=%.4f\n",
+                        double(step), double(seta_speed), double(shape.streak_m), rule_px, double(shape.length_px), run,
+                        per_ms[k], double(shape.energy));
         }
         {
-            rr::WeaponProjectileVertex v[4];
-            ps::BoltShape shape;
-            ps::bolt_vertices(proj_view(pt, 1.6f), core_only, look, bolt_at(1000.f, 1162.f, 96.f), v, &shape);
-            rule_ok = rule_ok && std::fabs(shape.stretch_m / core_only.length_cap_m - 1.f) < 0.01f;
-            std::printf("PROJECTILE case=cap step_ms=96 speed_mps=1162 stretch_m=%.2f cap_m=%.1f\n", double(shape.stretch_m),
-                        double(core_only.length_cap_m));
+            float centre[2] = {0.f, 0.f};
+            double runs[2] = {0.0, 0.0};
+            ps::BoltShape shapes[2];
+            for (unsigned k = 0; k < 2; ++k) {
+                rr::WeaponProjectileVertex v[4];
+                const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), core_only, look, bolt_at(1000.f, 1162.f, k ? 96.f : 16.f),
+                                                     v, &shapes[k]);
+                proj_draw(proj, pt, v, built ? 1u : 0u);
+                const std::vector<float> l = proj_scene(pt);
+                centre[k] = l.empty() ? 0.f : l[std::size_t(cy) * pt.w + cx];
+                runs[k] = fwhm_through(l, pt.w, pt.h, cx, cy, 1, 0);
+            }
+            const double length_m = 1162.0 * 0.096, want_energy = double(core_only.length_cap_m) / length_m;
+            const double rule_px = length_m * f_px / 1000.0;
+            const double ratio = centre[0] > 0.f ? double(centre[1]) / double(centre[0]) : 0.0;
+            rule_ok = rule_ok && std::fabs(shapes[1].streak_m / length_m - 1.0) < 0.01 &&
+                      std::fabs(shapes[1].energy / want_energy - 1.0) < 0.01 && shapes[0].energy == 1.f &&
+                      std::fabs(runs[1] / rule_px - 1.0) < 0.03 && std::fabs(ratio / want_energy - 1.0) < 0.03;
+            std::printf("PROJECTILE case=cap step_ms=96 speed_mps=1162 streak_m=%.2f cap_m=%.1f energy=%.4f want_energy=%.4f "
+                        "rule_px=%.2f run_px=%.2f centre_ratio=%.4f\n",
+                        double(shapes[1].streak_m), double(core_only.length_cap_m), double(shapes[1].energy), want_energy,
+                        rule_px, runs[1], ratio);
         }
-        report("projectile_seta_invariant_stretch",
+        report("projectile_seta_invariant_streak",
                per_ms[0] > 0.0 && std::fabs(per_ms[1] / per_ms[0] - 1.0) < 0.03 && rule_ok, "");
         // (3) the far flag: the lane's green lane carries 32 max(rgb) on the bolt (> 1 at its core), the other lanes and
         // every pixel away from it keep the cleared 0 (COLORWRITEENABLE1 = GREEN).
@@ -2981,7 +3035,7 @@ int main(int argc, char** argv) {
             report("projectile_far_flag_written", g > 1.f && std::fabs(g / c - 32.f) < 0.5f && away_zero, "");
             report("projectile_far_flag_green_lane_only", others_zero, "");
         }
-        // (4) the dot LOD: past lod_dot_m no stretch (a dot of the core's width), inside it the stretch.
+        // (4) the dot LOD: past lod_dot_m no streak (a dot of the core's width at the head), inside it the streak.
         {
             pf::Tune t = core_only;
             double runs[2] = {0, 0};
@@ -2990,19 +3044,21 @@ int main(int argc, char** argv) {
                 const float d = k ? t.lod_dot_m * 1.1f : t.lod_dot_m * 0.9f;
                 rr::WeaponProjectileVertex v[4];
                 ps::BoltShape shape;
-                const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), t, look, bolt_at(d, 1162.f, 96.f), v, &shape);
+                ps::BoltIn in = bolt_at(d, 1162.f, 96.f);
+                if (k) in.p[0] = in.p[1] = 0.f; // the dot sits at the head: on the centre
+                const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), t, look, in, v, &shape);
                 proj_draw(proj, pt, v, built ? 1u : 0u);
                 runs[k] = fwhm_through(proj_scene(pt), pt.w, pt.h, cx, cy, 1, 0);
                 dots[k] = shape.dot && shape.length_px == 0.f;
                 std::printf("PROJECTILE case=lod distance_m=%.0f dot=%u length_px=%.2f run_px=%.2f dim=%.3f\n", double(d),
                             unsigned(shape.dot), double(shape.length_px), runs[k], double(shape.dim));
             }
-            // inside: the stretch rule's length (min(stretch_k v step, length_cap_m) f / d) less a pixel of tolerance
-            const double inside_px = double(std::min(t.stretch_k * 1162.f * 0.096f, t.length_cap_m)) *
+            // inside: the bridged rule's length (|v| step f / d, past the cap at full length) less a pixel of tolerance
+            const double inside_px = double(1162.f * 0.096f) *
                                      double(proj_view(pt, 1.6f).m11 * 0.5f * float(pt.h)) / (double(t.lod_dot_m) * 0.9);
             report("projectile_dot_past_lod", dots[1] && !dots[0] && runs[1] <= 2.0 && runs[0] >= inside_px - 1.0, "");
         }
-        // (5) nothing outside the bolt's quad: a diagonal stretched bolt with the glow; every lit pixel lies inside the
+        // (5) nothing outside the bolt's quad: a diagonal streak with the glow; every lit pixel lies inside the
         // quad's four raster corners (1 px tolerance).
         {
             rr::WeaponProjectileVertex v[4];
@@ -3041,8 +3097,8 @@ int main(int argc, char** argv) {
             const ps::View view = proj_view(pt, 1.6f);
             rr::WeaponProjectileVertex v[8];
             ps::BoltIn near_in = bolt_at(300.f, 1162.f, 16.f), far_in = bolt_at(500.f, 1162.f, 16.f);
-            near_in.p[0] = -0.3f * near_in.p[2] / view.m00; // ndc x -0.3
-            far_in.p[0] = 0.3f * far_in.p[2] / view.m00;    // ndc x +0.3
+            near_in.p[0] += -0.3f * near_in.p[2] / view.m00; // the streak's centre at ndc x -0.3
+            far_in.p[0] += 0.3f * far_in.p[2] / view.m00;    // ndc x +0.3
             const bool built = ps::bolt_vertices(view, pf::families[pf::fighter_tracer].tune, look, near_in, v) &&
                                ps::bolt_vertices(view, pf::families[pf::fighter_tracer].tune, look, far_in, v + 4);
             const float z400 = view.m22 + view.m32 / (400.f * ps::view_units_per_metre);
@@ -3107,27 +3163,153 @@ int main(int argc, char** argv) {
             looks.resolved = 0;
             static rr::WeaponProjectileVertex verts[rr::weapon_projectile_max_bolts * 4];
             const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
-            const ps::Counts a = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1000, 16,
+            const ps::Counts a = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1000, 16, 0.f, 1.f,
                                            proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
             put32(node, wc::layout::node_handle, 10); // the node recycled
-            const ps::Counts b = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1016, 16,
+            const ps::Counts b = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1016, 16, 0.f, 1.f,
                                            proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
             put32(node, wc::layout::node_handle, 9);
             clock(1016);
             wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
             const ps::Counts c = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1016 + wc::projectile::stale_ms, 16,
-                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+                                           0.f, 1.f, proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
             const ps::Counts d = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1017 + wc::projectile::stale_ms, 16,
-                                           proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
+                                           0.f, 1.f, proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
             clock(1990);
             wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
-            const ps::Counts e = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 2000, 16,
+            const ps::Counts e = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 2000, 16, 0.f, 1.f,
                                            proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts);
             std::printf("PROJECTILE case=pool drawn=%u/%u/%u/%u/%u invalid=%u unseen=%u expired=%u count=%u\n", a.drawn,
                         b.drawn, c.drawn, d.drawn, e.drawn, b.invalid, d.expired, e.expired, pool.count);
             report("projectile_pool_draws_and_retires", a.drawn == 1 && b.drawn == 0 && b.invalid == 1 && c.drawn == 1 &&
                                                             d.drawn == 0 && d.expired == 1 && e.drawn == 0 &&
                                                             e.expired == 1 && pool.count == 0, "");
+        }
+        // (7b) the seam (FL 59 A): one bullet at 200 m crossing the view along +x through the production builder, two
+        // consecutive stage frames at 60 fps and at 144 fps (the node advanced by v dt between them, the game step the
+        // integer ms), with the baked tune and with the user's flown file values (core_px 1, glow_ratio 2, glow_gain 2,
+        // hot_share 0.9, length_cap_m 5). Geometry: the second frame's tail is the first frame's head (|gap| <= 0.05 px).
+        // Light: both frames drawn into one target (the eye's integration of two frames) and read along the axis row:
+        // uniform within 10 % ((max - min) / max) everywhere but within one core width of the combined tail and head.
+        {
+            static wc::ProjectilePool pool;
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            static PoolBullet bullet;
+            static ps::Looks looks;
+            static rr::WeaponProjectileVertex verts[8];
+            const ps::View view = proj_view(pt, 1.6f);
+            pf::Tune flown = pf::families[pf::fighter_tracer].tune;
+            flown.core_px = 1.f;
+            flown.glow_ratio = 2.f;
+            flown.glow_gain = 2.f;
+            flown.hot_share = 0.9f;
+            flown.length_cap_m = 5.f;
+            bool seam_ok = true;
+            for (unsigned variant = 0; variant < 4; ++variant) {
+                const bool fast = variant & 1u, user = variant >= 2;
+                const double dt = fast ? 1.0 / 144.0 : 1.0 / 60.0;
+                const std::uint32_t step_ms = fast ? 7u : 17u;
+                const pf::Tune tunes[pf::family_count] = {user ? flown : pf::families[pf::fighter_tracer].tune};
+                const double travel = 581000.0 * dt; // engine units per frame
+                // the first head half a frame left of the centre: the two streaks straddle it
+                const std::int32_t p1[3] = {std::int32_t(-0.5 * travel), 0, 200 * 500};
+                const std::int32_t vel[3] = {581000, 0, 0};
+                pool_reset(pool, cfg, &cfg_slot, 5000);
+                pool_bullet(pool, bullet, 77, p1, vel);
+                looks.resolved = 0;
+                ps::BoltShape s1, s2;
+                const ps::Counts a = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 5000, step_ms, float(dt), 1.f,
+                                               view, tunes, verts, 1, &s1);
+                put32(bullet.node, wc::layout::node_pos, std::uint32_t(p1[0] + std::int32_t(travel + 0.5)));
+                put32(cfg, wc::layout::cfg_game_ms, 5000 + step_ms);
+                wc::projectile_tap(reinterpret_cast<std::uintptr_t>(bullet.obj), pool);
+                const ps::Counts b = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 5000 + step_ms, step_ms,
+                                               float(dt), 1.f, view, tunes, verts + 4, 1, &s2);
+                const double gap = double(s2.tail[0]) - double(s1.head[0]);
+                proj_draw(proj, pt, verts, 2); // both frames in one target
+                const std::vector<float> l = proj_scene(pt);
+                const double w = double(s1.core_px);
+                const int x0 = int(std::ceil(double(s1.tail[0]) + w)), x1 = int(std::floor(double(s2.head[0]) - w));
+                double lo = 1e30, hi = 0.0, seam_v = 0.0, plateau = 0.0;
+                for (int x = x0; x <= x1 && !l.empty() && x >= 0 && x < int(pt.w); ++x) {
+                    const double v = l[std::size_t(cy) * pt.w + x];
+                    lo = std::min(lo, v);
+                    hi = std::max(hi, v);
+                }
+                if (!l.empty()) {
+                    seam_v = l[std::size_t(cy) * pt.w + int(std::lround(s1.head[0]))];
+                    plateau = l[std::size_t(cy) * pt.w + int(std::lround(0.5 * (s1.tail[0] + s1.head[0])))];
+                }
+                const double spread = hi > 0.0 ? (hi - lo) / hi : 1.0;
+                const bool ok = a.drawn == 1 && b.drawn == 1 && b.jumped == 0 && b.statics == 0 && std::fabs(gap) <= 0.05 &&
+                                x1 - x0 > 50 && spread <= 0.10;
+                seam_ok = seam_ok && ok;
+                std::printf("PROJECTILE case=seam fps=%u tune=%s distance_m=200 travel_m=%.3f length_px=%.2f/%.2f core_px=%.2f "
+                            "gap_px=%.4f scan_px=%d lo=%.4f hi=%.4f spread=%.4f seam=%.4f plateau=%.4f energy=%.4f jumped=%u\n",
+                            fast ? 144u : 60u, user ? "flown" : "baked", travel / 500.0, double(s1.length_px),
+                            double(s2.length_px), w, gap, x1 - x0 + 1, lo, hi, spread, seam_v, plateau, double(s2.energy),
+                            b.jumped);
+            }
+            report("projectile_seam_uniform_60_144", seam_ok, "");
+        }
+        // (7c) the static frame: the node not advanced for a frame (a logic tick slower than the render frame) draws the
+        // head extrapolated by v x render dt x SETA rate from the read position, its tail at the previous head; the next
+        // read, advanced by v x two frames, is no jump and bridges from the extrapolated head; under SETA 6 a static frame
+        // holds the head at max_static_steps game steps; a teleport counts jumped and draws as a first frame (|v| step).
+        {
+            static wc::ProjectilePool pool;
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            static PoolBullet bullet;
+            static ps::Looks looks;
+            static rr::WeaponProjectileVertex verts[4];
+            const ps::View view = proj_view(pt, 1.6f);
+            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const float dt = 1.f / 60.f;
+            const std::int32_t x1 = -20000;
+            const std::int32_t p1[3] = {x1, 0, 200 * 500};
+            const std::int32_t vel[3] = {581000, 0, 0};
+            pool_reset(pool, cfg, &cfg_slot, 5000);
+            pool_bullet(pool, bullet, 78, p1, vel);
+            looks.resolved = 0;
+            const double z = 200.0 * 500.0; // engine units (view = world)
+            const auto raster_x = [&](double engine_x) { return (double(view.m00) * engine_x / z + 1.0) * 0.5 * double(pt.w); };
+            std::uint32_t now = 5000;
+            const auto frame = [&](std::int32_t x, float seta, ps::BoltShape* shape) {
+                put32(bullet.node, wc::layout::node_pos, std::uint32_t(x));
+                put32(cfg, wc::layout::cfg_game_ms, now);
+                wc::projectile_tap(reinterpret_cast<std::uintptr_t>(bullet.obj), pool);
+                return ps::build(pool, &x3m::engine_memory::read, nullptr, looks, now, 17, dt, seta, view, tunes, verts, 1,
+                                 shape);
+            };
+            ps::BoltShape s1, s2, s3, s4, s5;
+            const ps::Counts c1 = frame(x1, 1.f, &s1);
+            now += 17;
+            const ps::Counts c2 = frame(x1, 1.f, &s2); // static: the head at x1 + v dt
+            now += 17;
+            const std::int32_t x3 = x1 + std::int32_t(581000.0 * 2.0 * double(dt));
+            const ps::Counts c3 = frame(x3, 1.f, &s3); // caught up: no jump
+            now += 17;
+            const ps::Counts c4 = frame(x3, 6.f, &s4); // static under SETA 6: 6 v dt = 100 ms, held at 2 x 17 ms
+            now += 17;
+            const ps::Counts c5 = frame(x3 + 60000, 1.f, &s5); // a teleport of 120 m: a first frame
+            const double head2_err = double(s2.head[0]) - raster_x(x1 + 581000.0 * double(dt));
+            const double tail2_err = double(s2.tail[0]) - double(s1.head[0]);
+            const double seam3 = double(s3.tail[0]) - double(s2.head[0]);
+            const double head4_err = double(s4.head[0]) - raster_x(x3 + 581000.0 * 0.034);
+            const double want5 = 581000.0 * 0.017 * double(view.m00) * 0.5 * double(pt.w) / (z + 0.0); // px at depth z
+            const double len5 = double(s5.length_px);
+            std::printf("PROJECTILE case=static statics=%u/%u/%u/%u/%u jumped=%u/%u/%u/%u/%u head2_err_px=%.4f tail2_err_px=%.4f "
+                        "seam3_px=%.4f head4_err_px=%.4f len5_px=%.2f want5_px=%.2f\n",
+                        c1.statics, c2.statics, c3.statics, c4.statics, c5.statics, c1.jumped, c2.jumped, c3.jumped,
+                        c4.jumped, c5.jumped, head2_err, tail2_err, seam3, head4_err, len5, want5);
+            report("projectile_static_frame_extrapolates",
+                   c1.drawn == 1 && c2.drawn == 1 && c3.drawn == 1 && c4.drawn == 1 && c1.statics == 0 && c2.statics == 1 &&
+                       c3.statics == 0 && c3.jumped == 0 && c4.statics == 1 && c5.jumped == 1 && std::fabs(head2_err) < 0.05 &&
+                       std::fabs(tail2_err) < 0.05 && std::fabs(seam3) < 0.05 && std::fabs(head4_err) < 0.05 &&
+                       std::fabs(len5 / want5 - 1.0) < 0.01,
+                   "");
         }
         // (8) Reset: the programs go before it and come back after; the next frame draws again.
         {
@@ -3151,7 +3333,10 @@ int main(int argc, char** argv) {
         }
     }
     // (9) the budget at 5120x1440: 512 bolts (32 near, 480 far, spread over the frame) through the production builder
-    // (the pool walk, the engine reader's validation, the quads) and one draw, CPU best of 40 and GPU fenced best of 60.
+    // (the pool walk, the engine reader's validation, the bridge, the quads) and one draw, CPU best of 40 and GPU fenced
+    // best of 60. Each timed build is a bridged moving frame: untimed, every bullet is put back at its base position,
+    // tapped and built once, then moved by v x 16 ms (the clock 16 ms on) and tapped again; the timed build then bridges
+    // 512 moving bullets (no static, no jump).
     if (pc.projectile_enabled) {
         ProjTarget bt;
         const bool made = make_proj_target(bt, 5120, 1440);
@@ -3199,13 +3384,36 @@ int main(int argc, char** argv) {
             QueryPerformanceFrequency(&freq);
             double cpu_best = 1e30;
             ps::Counts n;
+            std::vector<std::int32_t> base(bullets.size() * 2);
+            for (unsigned i = 0; i < bullets.size(); ++i) {
+                std::memcpy(&base[2 * i], bullets[i].node + wc::layout::node_pos + 0, 4);
+                std::memcpy(&base[2 * i + 1], bullets[i].node + wc::layout::node_pos + 8, 4);
+            }
+            const auto place = [&](std::uint32_t now, bool moved) {
+                put32(cfg, wc::layout::cfg_game_ms, now);
+                for (unsigned i = 0; i < bullets.size(); ++i) {
+                    Bullet& u = bullets[i];
+                    put32(u.node, wc::layout::node_pos + 0, std::uint32_t(base[2 * i] + (moved ? std::int32_t(581000.0 * 0.8 * 0.016) : 0)));
+                    put32(u.node, wc::layout::node_pos + 8, std::uint32_t(base[2 * i + 1] + (moved ? std::int32_t(581000.0 * 0.6 * 0.016) : 0)));
+                    wc::projectile_tap(reinterpret_cast<std::uintptr_t>(u.obj), pool);
+                }
+            };
+            unsigned bridged_statics = 0, bridged_jumped = 0;
             for (int rep = 0; rep < 40; ++rep) {
+                const std::uint32_t now = 5000u + 32u * unsigned(rep);
+                place(now, false);
+                x3m::engine_memory::next_frame();
+                ps::build(pool, &x3m::engine_memory::read, nullptr, looks, now, 16, 0.016f, 1.f, view, tunes, verts,
+                          rr::weapon_projectile_max_bolts);
+                place(now + 16, true);
                 x3m::engine_memory::next_frame();
                 QueryPerformanceCounter(&a);
-                n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 5000, 16, view, tunes, verts,
+                n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, now + 16, 16, 0.016f, 1.f, view, tunes, verts,
                               rr::weapon_projectile_max_bolts);
                 QueryPerformanceCounter(&b);
                 cpu_best = std::min(cpu_best, ticks_us(a, b, freq));
+                bridged_statics += n.statics;
+                bridged_jumped += n.jumped;
             }
             Com<IDirect3DQuery9> ev;
             dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
@@ -3249,11 +3457,12 @@ int main(int argc, char** argv) {
             for (float x : l) lit += x > 0.f;
             device_guard("projectile_timing");
             std::printf("PROJECTILE case=budget width=5120 height=1440 bolts=%u drawn=%u cpu_us=%.1f gpu_us=%.1f fence_us=%.1f "
-                        "lit_share=%.4f vertex_bytes=%u\n",
+                        "lit_share=%.4f vertex_bytes=%u statics=%u jumped=%u\n",
                         pool.count, n.drawn, cpu_best, gpu_best, fence_best, l.empty() ? 0.0 : double(lit) / double(l.size()),
-                        unsigned(sizeof(rr::WeaponProjectileVertex)));
+                        unsigned(sizeof(rr::WeaponProjectileVertex)), bridged_statics, bridged_jumped);
             report("projectile_budget_512_bolts", drew && n.drawn == rr::weapon_projectile_max_bolts && cpu_best < 100.0 &&
-                                                      gpu_best < 50.0 && lit > 0, "");
+                                                      gpu_best < 50.0 && lit > 0 && bridged_statics == 0 &&
+                                                      bridged_jumped == 0, "");
         }
         bt.release();
     }

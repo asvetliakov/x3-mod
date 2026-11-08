@@ -2100,7 +2100,8 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         ctx.motion_output.projectile_take_frame(&stage.projectile_owned, &stage.projectile_bolts, &stage.projectile_dropped,
                                                 &stage.projectile_unhandled, &stage.projectile_retired,
                                                 &stage.projectile_us, &stage.projectile_unpooled,
-                                                &stage.projectile_sampled);
+                                                &stage.projectile_sampled, &stage.projectile_static,
+                                                &stage.projectile_jumped);
 #endif
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {

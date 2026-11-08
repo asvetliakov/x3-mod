@@ -4,7 +4,7 @@
 // D3DCOLOR) go to weapon_projectile_ps.hlsl unchanged. Compiled with tools/shaders/generate_weapon_effects_programs.py (vs_3_0).
 struct Vertex {
     float4 position : POSITION;
-    float4 local : TEXCOORD0; // along, across (px about the segment's centre), half length (px)
+    float4 local : TEXCOORD0; // along, across (px about the segment's centre), the along profile's half length (px)
     float4 shape : TEXCOORD1; // core radiance scale, glow radiance scale, 1 / (2 sigma_core^2), 1 / (2 sigma_glow^2)
     float4 core : TEXCOORD2;  // core colour (rgb, D3DCOLOR)
     float4 glow : TEXCOORD3;  // glow colour (rgb, D3DCOLOR)
