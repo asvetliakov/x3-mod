@@ -8,6 +8,9 @@
 #include "weapon_effects_bolt_sites.h"
 #include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/weapon_effects_sites_fl.h"
+#endif
 
 static_assert(sizeof(void*) == 4, "x86 code patching only");
 namespace {
@@ -22,6 +25,7 @@ core::BoltHookState& bolt_hook_state() {
     return bolt_state_;
 }
 }
+#if !X3M_EDITION_FL
 extern "C" {
 std::uintptr_t x3m_weapon_effects_continue_impact = x3m::weapon_effects::sites::impact_target_va;
 std::uintptr_t x3m_weapon_effects_continue_tap = x3m::weapon_effects::sites::tap_target_va;
@@ -221,3 +225,216 @@ _x3m_weapon_effects_stub_death_other:
     ret
     .att_syntax
 )");
+#else
+// FL edition (X3FL.exe, src/engine/fl/weapon_effects_sites_fl.h; docs/reverse-engineering/fl/weapon-effect-spawn.md
+// sections 2 and 4). Each FL entry shim saves EFLAGS, EAX, ECX and EDX like the AP stubs and passes the stack at stub
+// entry and the FL register inputs to its handler, which rebuilds the AP stub contract in a local array (only the slots
+// the AP handler reads) and runs the same core handler. The forward path pops every register and tail-jumps to the
+// callee with ECX, EDX, the flags and the stack exactly as the call left them (the FL callees read ECX/EDX); the skip
+// path returns `xor eax,eax; ret` (plain: every FL callee has a plain ret and the caller pops its own arguments; EAX,
+// ECX, EDX and EFLAGS are dead after the impact, muzzle, flight and death calls). The continues are base + the callee
+// RVAs, published by install_base before any redirect goes live. Nothing is called: LastError stays the engine's.
+namespace S = x3m::fl::weapon_effects_fl;
+namespace core = x3m::weapon_effects::core;
+extern "C" {
+std::uintptr_t x3m_weapon_effects_continue_impact = 0;
+std::uintptr_t x3m_weapon_effects_continue_tap = 0;
+std::uintptr_t x3m_weapon_effects_continue_bolt_tap = 0;
+std::uintptr_t x3m_weapon_effects_continue_spawner = 0; // the muzzle's and the flight's callee (base + 0x0150e0)
+std::uintptr_t x3m_weapon_effects_continue_death = 0;
+// Impact 0x053390 -> 0x014440: ECX victim, EDX source, [esp+0x18] T, [esp+0x1c] the remaining shield-stage damage, EBP
+// the running total, ESI the absorbed path's 1. AP slots: [1] victim, [2] source, [7] total, [9] absorbed.
+int __cdecl x3m_weapon_event_fl(const std::uint32_t* entry, std::uint32_t ecx, std::uint32_t edx, std::uint32_t ebp,
+                                std::uint32_t esi) {
+    std::uint32_t ap[10];
+    ap[1] = ecx;
+    ap[2] = edx;
+    ap[7] = ebp;
+    ap[9] = ecx ? core::fl_absorbed(esi, ebp, entry[S::impact_total_slot], entry[S::impact_remaining_slot],
+                                    core::rd32(ecx + core::layout::obj_flags))
+                : 0u;
+    return core::impact(ap, state_);
+}
+// Taps 0x014583 / 0x014650 -> 0x015270: [esp+8] hit, [esp+0xc] &pos. AP slots: [3] hit, [4] &pos.
+void __cdecl x3m_weapon_tap_fl(const std::uint32_t* entry) {
+    std::uint32_t ap[5];
+    ap[3] = entry[S::tap_hit_slot];
+    ap[4] = entry[S::tap_pos_slot];
+    core::tap(ap, state_);
+}
+// Object tap 0x0645bd -> 0x014d90: ECX the object. AP slot: [1] obj.
+void __cdecl x3m_weapon_bolt_tap_fl(std::uint32_t ecx) {
+    std::uint32_t ap[2];
+    ap[1] = ecx;
+    core::bolt_tap(ap, bolt_state_);
+}
+// Muzzle 0x04f639 -> 0x0150e0: EDX the gun slot, [esp+8] ship, [esp+0x18] &pos, [esp+0x20] &orientation, ESI the
+// TBullets record offset. AP: [1] ship, [2] slot, [3] &pos, EAX the TBullets index, EDX &orientation.
+int __cdecl x3m_weapon_muzzle_fl(const std::uint32_t* entry, std::uint32_t edx, std::uint32_t esi) {
+    std::uint32_t ap[4];
+    ap[1] = entry[S::spawner_object_slot];
+    ap[2] = edx;
+    ap[3] = entry[S::spawner_pos_slot];
+    return core::bolt_muzzle(ap, esi / core::layout::type_stride, entry[S::spawner_orient_slot], bolt_state_);
+}
+// Flight 0x014eaa -> 0x0150e0: [esp+8] the bullet. AP slot: [4] obj.
+int __cdecl x3m_weapon_flight_fl(const std::uint32_t* entry) {
+    std::uint32_t ap[5];
+    ap[4] = entry[S::spawner_object_slot];
+    return core::bolt_flight(ap, bolt_state_);
+}
+// Death 0x0543b3 -> 0x013ed0: ECX obj, EDX killer, [esp+4] arg4, EBP the kill routine's frame. AP: [1] obj, [2] killer,
+// [3] arg4; the site tag from AP's own branch (core::fl_death_site).
+int __cdecl x3m_weapon_death_fl(const std::uint32_t* entry, std::uint32_t ecx, std::uint32_t edx, std::uint32_t ebp) {
+    std::uint32_t ap[4];
+    ap[1] = ecx;
+    ap[2] = edx;
+    ap[3] = entry[S::death_arg4_slot];
+    return core::death(ap, ebp, core::fl_death_site(ecx, state_.globals), state_);
+}
+}
+// After pushfd and the three saves the stack at stub entry is [esp+0x10]; each extra push before the lea adds 4.
+asm(R"(
+    .intel_syntax noprefix
+    .text
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_impact_fl
+_x3m_weapon_effects_stub_impact_fl:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    push esi
+    push ebp
+    push edx
+    push ecx
+    lea eax, [esp+0x20]
+    push eax
+    call _x3m_weapon_event_fl
+    add esp, 0x14
+    test eax, eax
+    pop edx
+    pop ecx
+    pop eax
+    jnz .Lx3m_weapon_effects_impact_fl_skip
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_impact]
+.Lx3m_weapon_effects_impact_fl_skip:
+    popfd
+    xor eax, eax
+    ret
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_tap_fl
+_x3m_weapon_effects_stub_tap_fl:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    lea eax, [esp+0x10]
+    push eax
+    call _x3m_weapon_tap_fl
+    add esp, 4
+    pop edx
+    pop ecx
+    pop eax
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_tap]
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_bolt_tap_fl
+_x3m_weapon_effects_stub_bolt_tap_fl:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    push ecx
+    call _x3m_weapon_bolt_tap_fl
+    add esp, 4
+    pop edx
+    pop ecx
+    pop eax
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_bolt_tap]
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_muzzle_fl
+_x3m_weapon_effects_stub_muzzle_fl:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    push esi
+    push edx
+    lea eax, [esp+0x18]
+    push eax
+    call _x3m_weapon_muzzle_fl
+    add esp, 0xc
+    test eax, eax
+    pop edx
+    pop ecx
+    pop eax
+    jnz .Lx3m_weapon_effects_muzzle_fl_skip
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_spawner]
+.Lx3m_weapon_effects_muzzle_fl_skip:
+    popfd
+    xor eax, eax
+    ret
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_flight_fl
+_x3m_weapon_effects_stub_flight_fl:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    lea eax, [esp+0x10]
+    push eax
+    call _x3m_weapon_flight_fl
+    add esp, 4
+    test eax, eax
+    pop edx
+    pop ecx
+    pop eax
+    jnz .Lx3m_weapon_effects_flight_fl_skip
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_spawner]
+.Lx3m_weapon_effects_flight_fl_skip:
+    popfd
+    xor eax, eax
+    ret
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_death_fl
+_x3m_weapon_effects_stub_death_fl:
+    pushfd
+    push eax
+    push ecx
+    push edx
+    cld
+    push ebp
+    push edx
+    push ecx
+    lea eax, [esp+0x1c]
+    push eax
+    call _x3m_weapon_death_fl
+    add esp, 0x10
+    cmp eax, 1
+    pop edx
+    pop ecx
+    pop eax
+    je .Lx3m_weapon_effects_death_fl_skip
+    popfd
+    jmp dword ptr [_x3m_weapon_effects_continue_death]
+.Lx3m_weapon_effects_death_fl_skip:
+    popfd
+    xor eax, eax
+    ret
+    .att_syntax
+)");
+static_assert(S::impact_total_slot == 6 && S::impact_remaining_slot == 7 && S::tap_hit_slot == 2 && S::tap_pos_slot == 3 &&
+                  S::spawner_object_slot == 2 && S::spawner_pos_slot == 6 && S::spawner_orient_slot == 8 &&
+                  S::death_arg4_slot == 1,
+              "the FL shims' slots follow the FL site contract");
+#endif

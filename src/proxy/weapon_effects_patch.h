@@ -29,8 +29,13 @@
 // executable check, a compare of every window and witness (fail closed before any write) and the DLL pin; atomic sites
 // first (the taps, lock cmpxchg8b), then the impact (plain copy, its call straddles a qword); each write read back.
 // All or none: a failure restores every site claimed before it (rolled_back / rollback_failed). shutdown() (dynamic
-// unload only) restores in reverse order, each only while its five bytes still hold this module's call. FL builds
-// compile the hook out (edition_unsupported).
+// unload only) restores in reverse order, each only while its five bytes still hold this module's call.
+// FL (X3M_EDITION_FL; src/engine/fl/weapon_effects_sites_fl.h, docs/reverse-engineering/fl/weapon-effect-spawn.md): the
+// same families at X3FL.exe's seven calls, module base + RVA (install_base): impact 0x053390, taps 0x014583 / 0x014650,
+// object tap 0x0645bd (plain write: it straddles a qword), muzzle 0x04f639, flight 0x014eaa and the one death call
+// 0x0543b3 (serving both AP death sites), each window compared with its relocated dword masked and the frame witnesses
+// before any write, all or none; FL entry shims rebuild the AP stub contract from ECX/EDX/EBP/ESI and the FL frames
+// (weapon_effects_hook.cpp) and the globals are bound at base + RVA (core::fl_globals).
 //
 // Step 4 (shields,hull,bolts; weapon_effects_bolt.h): also the per-bullet tap 0x0045ac7d (plain write: it straddles a
 // qword), the muzzle 0x00446268 and the flight effect 0x004146c0 (atomic), their windows compared with the impact's
@@ -47,7 +52,8 @@
 // write=none|atomic|plain` per site at initialize; `weapon_effects_table event= reason= rows= entries= textures=
 // overrides= dropped= bytes= path=` once; the frame rows of present() below and `weapon_effects_scope frame= cleared=
 // loading= sector_key= load_epoch= clears=` when a scope change clears stage-owned records. The FL edition writes one
-// `weapon_effects_patch site=impact ... state=edition_unsupported edition=fl` row at initialize (capture.cpp).
+// `weapon_effects_patch site=<site> va=<base+rva> rva=<rva> edition=fl state= reason= mode= setting= write=` row per site
+// (impact, tap1, tap2, bolt_tap, muzzle, flight, death).
 namespace x3m::weapon_effects {
 struct Addresses {
     std::uintptr_t impact_window, impact_target, prologue;
@@ -61,11 +67,20 @@ struct Addresses {
 };
 bool initialize();
 bool shutdown();
+#if X3M_EDITION_FL
+// X3FL.exe at its running module base (64 KB aligned): every used window and witness at base + RVA, then the claims.
+bool install_base(std::uintptr_t base, core::Mode mode);
+#ifdef X3M_WEAPON_EFFECTS_SHIM
+void fixture_base(std::uintptr_t base); // initialize()'s base instead of fl::module_base() when nonzero (the fixture)
+#endif
+#else
 bool install_at(const Addresses& a, core::Mode mode);
+#endif
 bool installed();
 core::Mode mode();
 const char* state();
-// 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3)
+// 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
+// (the one FL call), no 7
 const char* site_state(unsigned site);
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
@@ -102,8 +117,30 @@ void clear_owned();
 // Counts the ring's scope changes (a load, a sector change, a new load epoch; shields mode): the stage clears its depth
 // cache when the count moved since its last frame.
 std::uint32_t scope_changes();
-std::uint32_t game_ms(); // cfg+0x718 through engine_memory (0 when unreadable; hook_state().globals' slot)
+std::uint32_t game_ms(); // cfg+0x718 (FL +0x708) through engine_memory (0 when unreadable; hook_state().globals' slot)
 }
+#if X3M_EDITION_FL
+extern "C" {
+void x3m_weapon_effects_stub_impact_fl();
+void x3m_weapon_effects_stub_tap_fl();
+void x3m_weapon_effects_stub_bolt_tap_fl();
+void x3m_weapon_effects_stub_muzzle_fl();
+void x3m_weapon_effects_stub_flight_fl();
+void x3m_weapon_effects_stub_death_fl();
+int __cdecl x3m_weapon_event_fl(const std::uint32_t* entry, std::uint32_t ecx, std::uint32_t edx, std::uint32_t ebp,
+                                std::uint32_t esi);
+void __cdecl x3m_weapon_tap_fl(const std::uint32_t* entry);
+void __cdecl x3m_weapon_bolt_tap_fl(std::uint32_t ecx);
+int __cdecl x3m_weapon_muzzle_fl(const std::uint32_t* entry, std::uint32_t edx, std::uint32_t esi);
+int __cdecl x3m_weapon_flight_fl(const std::uint32_t* entry);
+int __cdecl x3m_weapon_death_fl(const std::uint32_t* entry, std::uint32_t ecx, std::uint32_t edx, std::uint32_t ebp);
+extern std::uintptr_t x3m_weapon_effects_continue_impact;
+extern std::uintptr_t x3m_weapon_effects_continue_tap;
+extern std::uintptr_t x3m_weapon_effects_continue_bolt_tap;
+extern std::uintptr_t x3m_weapon_effects_continue_spawner;
+extern std::uintptr_t x3m_weapon_effects_continue_death;
+}
+#else
 extern "C" {
 void x3m_weapon_effects_stub_impact();
 void x3m_weapon_effects_stub_tap();
@@ -128,3 +165,4 @@ int __cdecl x3m_weapon_death_area(const std::uint32_t* entry, std::uint32_t ebp)
 int __cdecl x3m_weapon_death_other(const std::uint32_t* entry, std::uint32_t ebp);
 extern std::uintptr_t x3m_weapon_effects_continue_death;
 }
+#endif

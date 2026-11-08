@@ -41,6 +41,7 @@ from pathlib import Path
 
 import bottle
 import build_weapon_effects_hook as hook_build
+import build_weapon_effects_hook_fl as hook_build_fl
 import native_host
 from game_guard import game_running
 
@@ -89,6 +90,14 @@ HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verificat
                 'src/proxy/weapon_effects_sites.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_sites.h',
                 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
                 'src/proxy/weapon_effects_death_sites.h')
+# The FL hook fixture's inputs (docs/architecture/weapon-effects.md 2.10): the FL fixture, the shared module/handler
+# compiled with X3M_EDITION_FL, the FL site table, the bubble walk and the build script.
+HOOK_FL_SOURCES = ('verification/probe/weapon_effects_hook_fixture_fl.cpp', 'verification/probe/weapon_effects_hook_fixture_shim.h',
+                   'verification/probe/build_weapon_effects_hook_fl.py', 'src/proxy/weapon_effects_patch.cpp',
+                   'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
+                   'src/engine/fl/weapon_effects_sites_fl.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bubble.h',
+                   'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
+                   'src/engine/fl/executable_identity_fl.h')
 
 
 def sha(path):
@@ -241,6 +250,33 @@ def run_hook(args, results):
     return record['passed']
 
 
+def run_hook_fl(args, results):
+    """The FL hook fixture (docs/architecture/weapon-effects.md 2.10): build and audit it, run it natively, write
+    hook-fl-summary.json; True when it passed. The FL EXE windows are compared inside the build audit."""
+    record = {'fixture': 'weapon_effects_hook_fl', 'edition': 'fl', 'bottle': None, 'game_launched': False,
+              'sources': list(HOOK_FL_SOURCES), 'source': source_binding(HOOK_FL_SOURCES)}
+    record['build'] = hook_build_fl.build()
+    record['build']['executable_sha256'] = sha(hook_build_fl.EXE)
+    done, text = native_host.run_native(hook_build_fl.EXE, [], hook_build_fl.BUILD, args.timeout,
+                                        log=hook_build_fl.BUILD / 'fixture')
+    report = parse_hook(text)
+    record['host'] = native_host.identity(text)
+    record['run'] = {'exit_code': done.returncode, 'result': report['result'],
+                     'log': str((hook_build_fl.BUILD / 'fixture.log').relative_to(ROOT))}
+    record['checks'] = report['checks']
+    record['check_count'] = len(report['checks'])
+    record['failed_checks'] = report['failed_checks']
+    record['stack_depth'] = report['stack_depth']
+    result = report['result'] or {}
+    record['passed'] = (done.returncode == 0 and result.get('verdict') == 'PASS' and not report['failed_checks'] and
+                        result.get('checks') == len(report['checks']) and result.get('failures') == 0)
+    out_path = results / 'hook-fl-summary.json'
+    out_path.write_text(json.dumps(record, indent=2) + '\n')
+    print(json.dumps({'hook_fl_exit': done.returncode, 'hook_fl_result': report['result'],
+                      'hook_fl_failed': report['failed_checks'], 'record': str(out_path.relative_to(ROOT))}, indent=1))
+    return record['passed']
+
+
 def run_fixture(args):
     if args.host == 'native':
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
@@ -279,6 +315,7 @@ def main():
         results = bottle.results_dir(ROOT) / 'weapon-effects'
         results.mkdir(parents=True, exist_ok=True)
     hook_passed = run_hook(args, results) if native else None  # (a): the native host only
+    hook_fl_passed = run_hook_fl(args, results) if native else None  # (a): the FL hook fixture, native host only
     record = {'bottle': None if native else bottle.describe(), 'production_sources': list(PRODUCTION_SOURCES),
               'source': source_binding(), 'programs': programs_current(), 'shell_pins': SHELL_PINS, 'game_launched': False}
     if not args.no_build:
@@ -306,7 +343,7 @@ def main():
     print(json.dumps({'exit': returncode, 'result': report['result'], 'failed': report['failed_checks'],
                       'timing': report['timing'],
                       'record': str(out_path.relative_to(ROOT))}, indent=1))
-    return 0 if passed and hook_passed is not False else 1
+    return 0 if passed and hook_passed is not False and hook_fl_passed is not False else 1
 
 
 if __name__ == '__main__':

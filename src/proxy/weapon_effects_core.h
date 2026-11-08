@@ -154,6 +154,14 @@ inline unsigned hull_class_of(const Event& e) noexcept {
 // class-9 objects of the list [obj+0x50]+0x6c chained through node+0 (the node whose +0 is 0 is the end sentinel, not a
 // shield), with the TShields index node+0x4a (int16) and the energy [node+0x50]+4 (16.16 thousandths of the capacity:
 // full = 0x3e80000).
+// The edition (docs/reverse-engineering/fl/weapon-effect-spawn.md sections 3 and 5): X3FL.exe keeps every offset below
+// but the game clock (cfg +0x708) and the node body id (+0x144, so a node read reaches +0x148); its globals are
+// base-relative and bound at install (fl_globals).
+#if X3M_EDITION_FL
+constexpr bool edition_fl = true;
+#else
+constexpr bool edition_fl = false;
+#endif
 namespace layout {
 constexpr unsigned obj_flags = 0x40, obj_class = 0x48, obj_subtype = 0x4a, obj_ext = 0x50, obj_node = 0x70,
                    obj_radius = 0xa4;
@@ -165,12 +173,14 @@ constexpr unsigned shield_list_max = 64;
 constexpr unsigned type_stride = 0xdb8;
 constexpr unsigned bullet_shield_damage = 0x44, bullet_flags = 0x58, bullet_light = 0x5c, bullet_hull_damage = 0x80;
 constexpr unsigned ship_class_id = 0xc8;
-constexpr unsigned cfg_game_ms = 0x718;
+constexpr unsigned cfg_game_ms = edition_fl ? 0x708 : 0x718;
 // The ship's hull walk (render-node-bounds.md 6.1; ship_avoidance_walk_core.h hull_children): node links, placement,
 // scales, flags and body id; the body cache's hash, its model's LOD records and their extents.
-constexpr std::uintptr_t body_cache_root = 0x00608518;
+// AP VA of the body cache slot; FL: 0 here, the bound slot is Globals::body_cache_slot (base + 0x1aa100).
+constexpr std::uintptr_t body_cache_root = edition_fl ? 0 : 0x00608518;
 constexpr unsigned body_cache_hash = 0x14, node_children = 0x0c, node_sentinel = 0x10, node_offset = 0x30, node_basis = 0x40,
-                   node_scale = 0x70, node_axis_scale = 0x80, node_flags = 0x12c, node_body = 0x140, node_walk_bytes = 0x144;
+                   node_scale = 0x70, node_axis_scale = 0x80, node_flags = 0x12c;
+constexpr unsigned node_body = edition_fl ? 0x144 : 0x140, node_walk_bytes = node_body + 4;
 constexpr std::uint32_t node_scaled = 0x40, node_unscaled_offset = 0x10000, node_no_collision = 0x8000000;
 constexpr unsigned model_lods = 0x0c, lod_extent = 0x20; // the LOD count, an int16, follows the array pointer
 constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by the kill routine 0x0044abd0
@@ -199,6 +209,7 @@ struct Globals {                     // the engine's slots (X3AP.exe VAs in prod
     std::uintptr_t dock_table_slot = 0x00606fcc, dock_count_slot = 0x0060704c;
     std::uintptr_t factory_table_slot = 0x00606fd0, factory_count_slot = 0x00607050;
     std::uintptr_t asteroid_table_slot = 0x00606ffc, asteroid_count_slot = 0x0060707c;
+    std::uintptr_t body_cache_slot = layout::body_cache_root; // the ship bubble's hull walk (the stage's Tuning on FL)
 };
 static_assert(Globals{}.dock_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_dock &&
                   Globals{}.factory_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_factory &&
@@ -208,6 +219,45 @@ static_assert(Globals{}.dock_table_slot == Globals{}.bullet_table_slot + 4 * lay
                   Globals{}.asteroid_count_slot == Globals{}.bullet_count_slot + 4 * layout::class_asteroid &&
                   Globals{}.dock_count_slot == Globals{}.bullet_count_slot + 4 * layout::class_dock,
               "the type tables are indexed by class (0x00606fb8 + 4 class, counts 0x00607038 + 4 class)");
+// FL (fl/weapon-effect-spawn.md sections 3 and 5): the same slots at module base + RVA. The count array sits below the
+// table array (count = table - 0x98; AP's count = table + 0x80 is the edition's parameter, not a rule).
+namespace fl_slots {
+constexpr std::uint32_t cfg = 0x1a83b0, tables = 0x1a83c8, counts = 0x1a8330, body_cache = 0x1aa100;
+static_assert(tables - counts == 0x98 && tables + 4 * 9 == 0x1a83ec && counts + 4 * 9 == 0x1a8354 &&
+                  tables + 4 * 7 == 0x1a83e4 && counts + 4 * 7 == 0x1a834c,
+              "the note's TShields 0x1a83ec / 0x1a8354 and TShips 0x1a83e4 / 0x1a834c: table + 4 class, count + 4 class");
+}
+inline Globals fl_globals(std::uintptr_t base) noexcept {
+    const auto t = [base](unsigned c) { return base + fl_slots::tables + 4u * c; };
+    const auto n = [base](unsigned c) { return base + fl_slots::counts + 4u * c; };
+    Globals g;
+    g.cfg_slot = base + fl_slots::cfg;
+    g.bullet_table_slot = t(0);
+    g.bullet_count_slot = n(0);
+    g.missile_table_slot = t(10);
+    g.missile_count_slot = n(10);
+    g.ship_table_slot = t(7);
+    g.ship_count_slot = n(7);
+    g.shield_table_slot = t(9);
+    g.shield_count_slot = n(9);
+    g.dock_table_slot = t(5);
+    g.dock_count_slot = n(5);
+    g.factory_table_slot = t(6);
+    g.factory_count_slot = n(6);
+    g.asteroid_table_slot = t(17);
+    g.asteroid_count_slot = n(17);
+    g.body_cache_slot = base + fl_slots::body_cache;
+    return g;
+}
+// Every slot 0 (FL before install: no engine read can land on an AP address).
+inline Globals unbound_globals() noexcept {
+    Globals g;
+    g.cfg_slot = g.bullet_table_slot = g.bullet_count_slot = g.missile_table_slot = g.missile_count_slot = 0;
+    g.ship_table_slot = g.ship_count_slot = g.shield_table_slot = g.shield_count_slot = 0;
+    g.dock_table_slot = g.dock_count_slot = g.factory_table_slot = g.factory_count_slot = 0;
+    g.asteroid_table_slot = g.asteroid_count_slot = g.body_cache_slot = 0;
+    return g;
+}
 
 // ---------------------------------------------------------------------------------------------- the classifier (4)
 // TBullets flag bits (col 12, +0x58).
@@ -1188,6 +1238,38 @@ static inline __attribute__((always_inline)) int death(const std::uint32_t* esp,
     if (nested) ++s.counters.death_nested;
     if (ours) ++s.counters.death_ours;
     return ours ? death_skip : death_forward;
+}
+// ---------------------------------------------------------------------------------------------- the FL entry ABI
+// X3FL.exe's sites pass their first arguments in ECX/EDX and keep the impact total in EBP with no absorbed flag in
+// memory (docs/reverse-engineering/fl/weapon-effect-spawn.md sections 2 and 4): the FL entry shims
+// (weapon_effects_hook.cpp) rebuild the AP stub contract from the FL registers and frame with these two rules and hand
+// it to the same handlers. Integer only, plain loads, no call.
+//
+// The absorbed flag (section 2.1). ESI is 1 on the absorbed, hull-skipped path (`lea esi,[ebp+1]` after `xor ebp,ebp`,
+// 0x053194), the remaining shield-stage damage is 0 there (0x053196) and the total reload leaves EBP = T, clamped to
+// 50,000 for a victim with obj+0x40 & 2 (`cmovg`, 0x0532e3). The hull path leaves EBP = T + h and ESI = h (h > 0): only
+// h = 1 matches ESI = 1, and then EBP differs from T unless the clamp hides the difference, i.e. a piloted victim with
+// T >= 50,000 (the clamped value is 50,000 either way). That ambiguous case is read as not absorbed: the hit forwards
+// to the native effect and is a census hull hit, never a stage shield hit over a hull hit. A flag-0x20 hit through
+// charged shields reads 0 here (AP: 1); role_from makes it a hull hit on either edition.
+constexpr std::int32_t fl_piloted_clamp = 50000;
+constexpr std::uint32_t fl_obj_piloted = 2;
+inline std::uint32_t fl_absorbed(std::uint32_t esi, std::uint32_t ebp, std::uint32_t walk_total, std::uint32_t remaining,
+                                 std::uint32_t victim_flags) noexcept {
+    if (esi != 1 || remaining != 0) return 0;
+    if ((victim_flags & fl_obj_piloted) && std::int32_t(walk_total) >= fl_piloted_clamp) return 0; // ambiguous: native
+    return ebp == walk_total ? 1u : 0u;
+}
+// The FL death call serves both AP death sites (section 2.6: the area-bullet path joins the common tail). Its census tag
+// (Event::tint_source, AP's site) is rebuilt from AP's own branch: 0 (the area site) for an object with
+// obj+0x40 & 0x40000000 whose TBullets row (subtype bounded by the count) has flag 0x100, else 1 (the other site).
+constexpr std::uint32_t obj_area_candidate = 0x40000000u, bullet_area_flag = 0x100u;
+static inline __attribute__((always_inline)) unsigned fl_death_site(std::uintptr_t obj, const Globals& g) noexcept {
+    if (!obj || !(rd32(obj + layout::obj_flags) & obj_area_candidate)) return 1;
+    const std::uintptr_t base = rd32(g.bullet_table_slot);
+    const std::uint32_t count = rd32(g.bullet_count_slot), sub = rd16(obj + layout::obj_subtype);
+    if (!base || sub >= count) return 1;
+    return (rd32(base + std::uintptr_t(sub) * layout::type_stride + layout::bullet_flags) & bullet_area_flag) ? 0u : 1u;
 }
 // ---------------------------------------------------------------------------------------------- Present's rules
 // The ownership latch (note 2.6, review F8): the next frame's hooks skip only when this frame's stage was armed, the

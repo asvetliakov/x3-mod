@@ -1268,7 +1268,11 @@ sampled point/clamp. **Native cost (measured 2026-11-05, RTX 5070 Ti, driver 32.
 [ledger](../verification/weapon-effects.md)):** two shells 61.3 µs at 1080p and 201.8 µs at 5120x1440, a full-screen
 shell 43.7 / 151.9 µs, an empty fence 10.8 / 10.2 µs; the 0.2 ms flight target at 5120x1440 is not met by the fenced
 two-shell figure. These replace the Wine/wined3d figures of the dropped stage as the stage's only native costs; the
-hooks' own per-frame cost is unmeasured until the observe flight. FL: compiled out (one `edition_unsupported` row).
+hooks' own per-frame cost is unmeasured until the observe flight. FL (2026-11-08): the same families install at
+X3FL.exe's seven call sites, module base + RVA, through FL entry shims that rebuild the AP stub contract from the
+moved ECX/EDX/EBP/ESI geometry (weapon-effects.md 2.10, `weapon_effects_sites_fl.h`); the FL hook fixture is 43 of 43
+with the FL EXE's window bytes, and `edition_unsupported` is gone. The ship-bubble hull walk's LOD-extent bound on FL
+is an inference kept as the runtime guard (`weapon_bubble_extent edition=fl`); the stage has not flown on FL.
 Not flown on either platform. **2026-11-06, the hex patch of weapon-effects.md 5.1.1** replaces the shell (same
 documented D3D9 surface; the icosphere becomes an 8 x 32 polar cap mesh, still `DrawIndexedPrimitiveUP`, the pixel
 program uses `fwidth` and one uniform `[branch]` per hit slot, 291 ps_3_0 slots): two patches on a fighter 18.1–18.8 µs

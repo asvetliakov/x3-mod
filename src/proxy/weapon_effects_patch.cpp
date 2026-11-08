@@ -9,6 +9,10 @@
 #include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
 #include "weapon_effects_table.h"
+#if X3M_EDITION_FL
+#include "../engine/fl/executable_identity_fl.h"
+#include "../engine/fl/weapon_effects_sites_fl.h"
+#endif
 #include <windows.h>
 #include <cstring>
 #include <new>
@@ -22,12 +26,16 @@ namespace sites = x3m::weapon_effects::sites;
 namespace core = x3m::weapon_effects::core;
 namespace bolt_sites = x3m::weapon_effects::bolt_sites;
 namespace death_sites = x3m::weapon_effects::death_sites;
+#if X3M_EDITION_FL
+constexpr unsigned site_count = 7; // impact, tap1, tap2, bolt_tap, muzzle, flight, death (the one FL call)
+#else
 constexpr unsigned site_count = 8; // impact, tap1, tap2; step 4: bolt_tap, muzzle, flight; step 3: death_area, death_other
+#endif
 bool patched_ = false, installed_ = false;
 core::Mode mode_ = core::mode_native;
 const char* state_ = "not_initialized";
-const char* site_state_[site_count] = {"not_initialized", "not_initialized", "not_initialized", "not_initialized",
-                                      "not_initialized", "not_initialized", "not_initialized", "not_initialized"};
+const char* site_state_[8] = {"not_initialized", "not_initialized", "not_initialized", "not_initialized",
+                              "not_initialized", "not_initialized", "not_initialized", "not_initialized"};
 bool written_[site_count] = {};
 engine_patch::CallSite site_[site_count]{};
 core::Table* table_ = nullptr;
@@ -58,6 +66,7 @@ std::uint32_t seen_overflow_ = 0, seen_evicted_visible_ = 0, seen_retired_ = 0, 
 // every weapon_effects_frame row).
 bool table_hull_key_missing_ = true;
 
+#if !X3M_EDITION_FL
 bool window_matches(std::uintptr_t window, const unsigned char* expected, unsigned length) {
     unsigned char current[64]{};
     return length <= sizeof current && engine_patch::read_code(window, current, length) &&
@@ -72,6 +81,7 @@ bool witnesses_match(std::uintptr_t prologue) {
             return false;
     return true;
 }
+#endif
 bool pin_self() {
     HMODULE module = nullptr;
     return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
@@ -184,6 +194,7 @@ void load_table() {
              st.entries, st.textures, st.overrides, st.dropped, st.hull_keys, st.bolt_pins, st.bolt_rejected, unsigned(table_hull_key_missing_),
              static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
+#if !X3M_EDITION_FL
 const char* site_name(unsigned i) {
     static const char* const names[site_count] = {"impact", "tap1", "tap2", "bolt_tap", "muzzle", "flight", "death_area",
                                                   "death_other"};
@@ -224,12 +235,42 @@ BoltSite bolt_site(const x3m::weapon_effects::Addresses& a, unsigned i) {
     return {a.flight_window, a.flight_target, bolt_sites::flight_site_offset, bolt_sites::flight_window_length,
             bolt_sites::expected_flight_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_flight)};
 }
+#else
+namespace S = x3m::fl::weapon_effects_fl;
+#ifdef X3M_WEAPON_EFFECTS_SHIM
+std::uintptr_t fixture_base_ = 0; // initialize()'s base instead of fl::module_base() when nonzero
+#endif
+// One window or witness at base + RVA through the read seam: the relocation-aware compare.
+bool fl_window_matches(std::uintptr_t base, const S::Window& w) {
+    unsigned char current[S::max_window]{};
+    return w.length <= S::max_window && engine_patch::read_code(base + w.rva, current, w.length) &&
+           S::matches(w, current, base);
+}
+template <unsigned N> bool fl_witnesses_match(std::uintptr_t base, const S::Window (&w)[N]) {
+    for (const S::Window& x : w)
+        if (!fl_window_matches(base, x)) return false;
+    return true;
+}
+void* fl_stub(unsigned i) {
+    switch (i) {
+    case 0: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_impact_fl);
+    case 1:
+    case 2: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_tap_fl);
+    case 3: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_bolt_tap_fl);
+    case 4: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_muzzle_fl);
+    case 5: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_flight_fl);
+    default: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_fl);
+    }
+}
+std::uintptr_t bound_base_ = 0; // the base the sites were claimed at (the rows' va)
+#endif
 // The bolt hooks' period (present_bolts): frames since the last weapon_bolts_frame row and the counters it last saw.
 std::uint32_t bolt_frames_ = 0;
 x3m::weapon_effects::core::BoltCounters bolt_seen_{};
 } // namespace
 
 namespace x3m::weapon_effects {
+#if !X3M_EDITION_FL
 bool install_at(const Addresses& a, core::Mode mode) {
     const DWORD error = GetLastError();
     const auto done = [&](const char* reason, bool ok) {
@@ -433,6 +474,196 @@ bool initialize() {
     SetLastError(error);
     return applied;
 }
+#else
+// FL: X3FL.exe's seven calls at base + RVA (src/engine/fl/weapon_effects_sites_fl.h). The order of install_at: every
+// used window and witness compared before any write (the relocated dword must be base + its target), the DLL pinned,
+// the globals and continues bound, then the atomic claims (the taps, the muzzle, the flight, the death, the impact) and
+// last the plain copy (the object tap, whose call straddles a qword), each read back; all or none.
+bool install_base(std::uintptr_t base, core::Mode mode) {
+    const DWORD error = GetLastError();
+    const auto done = [&](const char* reason, bool ok) {
+        state_ = reason;
+        SetLastError(error);
+        return ok;
+    };
+    if (patched_) {
+        state_ = "already_installed";
+        SetLastError(error);
+        return false;
+    }
+    for (unsigned i = 0; i < site_count; ++i) {
+        written_[i] = false;
+        site_state_[i] = "not_attempted";
+    }
+    const bool taps = mode == core::mode_observe;
+    const bool bolts = core::bolts_mode(mode);
+    const bool booms = core::explosions_mode(mode);
+    if (!taps) site_state_[1] = site_state_[2] = "not_used";
+    if (!bolts) site_state_[3] = site_state_[4] = site_state_[5] = "not_used";
+    if (!booms) site_state_[6] = "not_used";
+    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : i < 6 ? bolts : booms); };
+    if (mode == core::mode_native) return done("native", false);
+    if (!base || (base & 0xffffu)) {
+        site_state_[0] = "invalid_site";
+        return done("invalid_site", false);
+    }
+    if (!engine_patch::install_window_open()) {
+        for (unsigned i = 0; i < site_count; ++i)
+            if (used(i)) site_state_[i] = "late_claim";
+        return done("late_claim", false);
+    }
+    static const char* const mismatch[site_count] = {"bytes_mismatch_impact", "bytes_mismatch_tap", "bytes_mismatch_tap",
+                                                     "bytes_mismatch_bolt_tap", "bytes_mismatch_muzzle",
+                                                     "bytes_mismatch_flight", "bytes_mismatch_death"};
+    for (unsigned i = 0; i < site_count; ++i) {
+        if (!used(i)) continue;
+        if (!fl_window_matches(base, S::sites[i].window)) {
+            site_state_[i] = "bytes_mismatch";
+            return done(mismatch[i], false);
+        }
+    }
+    if (!fl_witnesses_match(base, S::impact_witnesses)) {
+        site_state_[0] = "frame_mismatch";
+        return done("frame_mismatch", false);
+    }
+    if (bolts && !fl_witnesses_match(base, S::muzzle_witnesses)) {
+        site_state_[4] = "frame_mismatch";
+        return done("frame_mismatch_muzzle", false);
+    }
+    if (booms && !fl_witnesses_match(base, S::death_witnesses)) {
+        site_state_[6] = "frame_mismatch";
+        return done("frame_mismatch_death", false);
+    }
+    if (!pin_self()) {
+        site_state_[0] = "pin_failed";
+        return done("pin_failed", false);
+    }
+    core::HookState& s = hook_state();
+    core::ring_clear(s.ring);
+    s.globals = core::fl_globals(base);
+    s.table = table_;
+    s.mode = std::uint8_t(mode);
+    s.armed = mode == core::mode_shields ? core::family_shields
+              : core::hull_mode(mode)
+                  ? std::uint8_t(core::family_shields | core::family_hull | (bolts ? core::family_bolts : 0) |
+                                 (booms ? core::family_boom : 0))
+                  : std::uint8_t(0);
+    s.boom_ready = 0;
+    s.boom_floor_ms = 0;
+    s.death_ms = 0;
+    core::BoltHookState& bs = bolt_hook_state();
+    bs.armed = 0; // set once every site is live
+    bs.owned = 0;
+    bs.muzzle_owned = 0;
+    bs.globals = s.globals;
+    s.owned_next = 0;
+    s.lifetime_ms = std::uint16_t(core::patch_lifetime_ms);
+    s.hull_lifetime_ms = std::uint16_t(core::hull_lifetime_ms);
+    s.life_floor_ms = 0;
+    s.suppress_native = core::suppress_native_shield_hit;
+    s.suppress_native_hull = core::suppress_native_hull_hit;
+    // Published before the redirects go live.
+    x3m_weapon_effects_continue_impact = base + S::sites[0].target_rva;
+    x3m_weapon_effects_continue_tap = base + S::sites[1].target_rva;
+    x3m_weapon_effects_continue_bolt_tap = base + S::sites[3].target_rva;
+    x3m_weapon_effects_continue_spawner = base + S::sites[4].target_rva;
+    x3m_weapon_effects_continue_death = base + S::sites[6].target_rva;
+    bound_base_ = base;
+    for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
+    const unsigned order[site_count] = {1, 2, 4, 5, 6, 0, 3};
+    unsigned claimed[site_count]{};
+    unsigned n = 0;
+    for (unsigned k = 0; k < site_count; ++k) {
+        const unsigned i = order[k];
+        if (!used(i)) continue;
+        const S::Site& site = S::sites[i];
+        const bool ok = engine_patch::claim_call(site_[i], base + site.window.rva + site.call_offset,
+                                                 base + site.target_rva, fl_stub(i));
+        written_[i] = reached_write(site_[i], ok);
+        const char* failed = ok ? confirm(site_[i]) : site_[i].status;
+        if (failed) {
+            site_state_[i] = failed;
+            bool back = true;
+            while (n) {
+                const unsigned j = claimed[--n];
+                back = engine_patch::restore_call(site_[j]) && back;
+                site_state_[j] = site_[j].patched_in ? "rollback_failed" : "rolled_back";
+            }
+            patched_ = false;
+            for (unsigned j = 0; j < site_count; ++j) patched_ = patched_ || site_[j].patched_in;
+            s.mode = core::mode_native;
+            s.armed = 0;
+            bs.armed = 0;
+            return done(patched_ || !back ? "rollback_failed" : failed, false);
+        }
+        site_state_[i] = "active";
+        claimed[n++] = i;
+    }
+    patched_ = installed_ = true;
+    mode_ = mode;
+    bs.armed = std::uint8_t(bolts);
+    return done("ok", true);
+}
+#ifdef X3M_WEAPON_EFFECTS_SHIM
+void fixture_base(std::uintptr_t base) {
+    fixture_base_ = base;
+}
+#endif
+bool initialize() {
+    const DWORD error = GetLastError();
+    if (patched_) {
+        SetLastError(error);
+        return installed_;
+    }
+    // Nothing reads an AP address on FL: the slots stay 0 until install_base binds them.
+    hook_state().globals = core::unbound_globals();
+    bolt_hook_state().globals = hook_state().globals;
+    wchar_t text[core::setting_capacity]{};
+    const DWORD length = x3m::config::get(L"X3M_WEAPON_EFFECTS", text, core::setting_capacity);
+    char setting[core::setting_capacity]{};
+    printable(text, length, setting);
+    core::Mode mode = core::default_mode;
+    unsigned ignored = 0;
+    bool applied = false, parsed = true;
+    const char* reason = nullptr;
+#ifdef X3M_WEAPON_EFFECTS_SHIM
+    const std::uintptr_t base = fixture_base_ ? fixture_base_ : x3m::fl::module_base();
+#else
+    const std::uintptr_t base = x3m::fl::module_base();
+#endif
+    if (length >= core::setting_capacity) {
+        reason = "too_long";
+        parsed = false;
+    } else if (length && !core::parse_mode(text, length, &mode, &ignored)) {
+        reason = "invalid_setting";
+        parsed = false;
+    } else if (mode == core::mode_native)
+        reason = "native";
+    else if (!base)
+        reason = "executable_mismatch";
+    else {
+        load_table();
+        applied = install_base(base, mode);
+    }
+    if (reason) {
+        state_ = reason;
+        for (unsigned i = 0; i < site_count; ++i) {
+            site_state_[i] = reason;
+            written_[i] = false;
+        }
+    }
+    for (unsigned i = 0; i < core::ignored_name_count; ++i)
+        if (ignored & (1u << i)) log("weapon_effects_ignored name=%s setting=%s", core::ignored_name(i), setting);
+    for (unsigned i = 0; i < site_count; ++i) {
+        const std::uint32_t rva = S::sites[i].window.rva + S::sites[i].call_offset;
+        log("weapon_effects_patch site=%s va=%08lx rva=%06lx edition=fl state=%s reason=%s mode=%s setting=%s write=%s",
+            S::sites[i].window.name, static_cast<unsigned long>(base ? base + rva : 0), static_cast<unsigned long>(rva),
+            site_state_[i], state_, parsed ? core::mode_name(mode) : "-", setting, write_path(i));
+    }
+    SetLastError(error);
+    return applied;
+}
+#endif
 bool shutdown() {
     if (!patched_) return true;
     const DWORD error = GetLastError();
@@ -441,7 +672,11 @@ bool shutdown() {
     bolt_hook_state().armed = 0;
     bolt_hook_state().owned = 0;
     bolt_hook_state().muzzle_owned = 0;
+#if X3M_EDITION_FL
+    static constexpr unsigned reverse[site_count] = {3, 0, 6, 5, 4, 2, 1}; // the reverse of install_base's order
+#else
     static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
+#endif
     for (unsigned k = 0; k < site_count; ++k) {
         const unsigned i = reverse[k];
         if (!site_[i].patched_in) continue;

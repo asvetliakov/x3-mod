@@ -69,7 +69,7 @@
 #include "shadow_replay_sun_point.h"
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
-#include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (AP; docs/architecture/weapon-effects.md)
+#include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (docs/architecture/weapon-effects.md)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
 #include "sky_nebula_core.h"
@@ -1199,7 +1199,7 @@ public:
     void configure_own_sun(bool requested, float radius_u, float radiance, float rays) noexcept;
     void own_sun_frame(bool active) noexcept;
     bool own_sun_ready() const noexcept { return own_sun_requested_ && own_sun_ready_; }
-    // Weapon effects, step 1 (X3M_WEAPON_EFFECTS=shields, motion_output_weapon_effects_inc.h; AP only): requested once
+    // Weapon effects, step 1 (X3M_WEAPON_EFFECTS=shields, motion_output_weapon_effects_inc.h; both editions): requested once
     // the impact hook is installed in shields mode. weapon_effects_owned(): this device's stage armed in its last resolve,
     // the resolve completed and the stage's callback (when set) ran and drew or had nothing to draw
     // (core::stage_owned; Present latches it for the next frame's hooks); weapon_effects_take_frame(): the stage's figures since the last
@@ -2236,7 +2236,7 @@ private:
     static HRESULT own_sun_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_own_sun() noexcept;
     void own_sun_no_probe() noexcept;
-    // Weapon effects, step 1 (motion_output_weapon_effects_inc.h; AP only): requested when the impact hook is installed
+    // Weapon effects, step 1 (motion_output_weapon_effects_inc.h; both editions): requested when the impact hook is installed
     // in shields mode; the pass (attached at the first armed resolve, refused until Reset with one weapon_effects_device
     // row; a failed stage frame disarms 64 frames, the third consecutive one refuses until Reset); this frame's arming
     // (the ownership Present latches for the hooks), the lane the callback borrows, the callback the stage chains after

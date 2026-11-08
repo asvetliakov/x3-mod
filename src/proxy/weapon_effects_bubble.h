@@ -35,6 +35,7 @@ struct HullWalk {
     std::uint32_t buckets = 0, size = 0;
     unsigned budget = hull_budget;
     HullBox box;
+    bool extent_refused = false; // a LOD extent outside [0, hull_extent_max] failed the walk (FL: the [i] bound's guard)
 };
 inline std::uint32_t block_u32(const unsigned char* b, unsigned off) noexcept {
     std::uint32_t v;
@@ -85,7 +86,10 @@ inline bool hull_part_extent(HullWalk& w, const unsigned char* b, float e[3]) no
         std::int32_t v[3];
         if (!lods[k] || !w.rd(lods[k] + core::layout::lod_extent, v, sizeof v)) return false;
         for (unsigned i = 0; i < 3; ++i) {
-            if (v[i] < 0 || v[i] > hull_extent_max) return false;
+            if (v[i] < 0 || v[i] > hull_extent_max) {
+                w.extent_refused = true;
+                return false;
+            }
             if (v[i] > ext[i]) ext[i] = v[i];
         }
     }
@@ -158,8 +162,10 @@ inline bool hull_walk_children(HullWalk& w, const unsigned char* parent, unsigne
     return true;
 }
 // The hull bounds of the root node `node` (the box of every part, root frame, engine units); false on a failed guard or
-// no part. body_cache_root: the body cache's global slot (core::layout::body_cache_root in production).
-inline bool hull_bounds(Reader rd, std::uintptr_t body_cache_root, std::uint32_t node, HullBox* out) noexcept {
+// no part. body_cache_root: the body cache's global slot (core::layout::body_cache_root on AP; FL: the bound
+// Globals::body_cache_slot). *extent_refused (when given): the walk failed on the LOD extent bound.
+inline bool hull_bounds(Reader rd, std::uintptr_t body_cache_root, std::uint32_t node, HullBox* out,
+                        bool* extent_refused = nullptr) noexcept {
     HullWalk w;
     w.rd = rd;
     std::uint32_t root = 0, hash = 0, head[2] = {0, 0};
@@ -172,7 +178,9 @@ inline bool hull_bounds(Reader rd, std::uintptr_t body_cache_root, std::uint32_t
     unsigned char b[core::layout::node_walk_bytes];
     if (!rd(node, b, sizeof b)) return false;
     const float origin[3] = {0.f, 0.f, 0.f};
-    if (!hull_walk_children(w, b, 1, origin, 0.f, true) || !w.box.parts) return false;
+    const bool walked = hull_walk_children(w, b, 1, origin, 0.f, true);
+    if (extent_refused) *extent_refused = w.extent_refused;
+    if (!walked || !w.box.parts) return false;
     *out = w.box;
     return true;
 }
@@ -233,6 +241,7 @@ inline void root_first_child(Reader rd, std::uint32_t node, std::uint32_t* child
 // owner takes the fallback sphere until its turn), owners whose bubble was cut to the object radius.
 struct BubbleStats {
     unsigned walks = 0, failures = 0, held = 0, deferred = 0, clamped = 0;
+    unsigned extent_refused = 0; // of the failures, those on the LOD extent bound (one FL row: weapon_bubble_extent)
 };
 // The per-owner cache of the walk: bubble_cache_entries entries keyed by (owner, root node, handle, the root's first
 // child and its body id) with the object radius they were walked at; a radius or child change walks again, a failed
@@ -278,8 +287,10 @@ inline Bubble owner_bubble(BubbleCache* cache, Reader rd, std::uintptr_t body_ca
         HullBox h;
         ++st->walks;
         --*budget;
-        if (hull_bounds(rd, body_cache_root, node, &h) && bubble_from_box(h, radius, b, &clamped)) return true;
+        bool extent = false;
+        if (hull_bounds(rd, body_cache_root, node, &h, &extent) && bubble_from_box(h, radius, b, &clamped)) return true;
         ++st->failures;
+        st->extent_refused += extent;
         return false;
     };
     Bubble b;

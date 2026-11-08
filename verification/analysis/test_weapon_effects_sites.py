@@ -99,5 +99,68 @@ class WeaponEffectsSites(unittest.TestCase):
                            check=True)
 
 
+# The FL site table (src/engine/fl/weapon_effects_sites_fl.h; docs/reverse-engineering/fl/weapon-effect-spawn.md):
+# X3FL.exe is relocatable, so every window is an RVA and two carry a relocated absolute operand masked in the compare.
+FL_EXE = Path('/mnt/c/X3FL/X3FL.exe')
+FL_EXE_SHA256 = 'e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8'
+FL_HEADER = ROOT / 'src/engine/fl/weapon_effects_sites_fl.h'
+
+
+def fl_exe_at(data, rva, size):
+    pe = struct.unpack_from('<I', data, 0x3c)[0]
+    n, opt = struct.unpack_from('<H', data, pe + 6)[0], struct.unpack_from('<H', data, pe + 20)[0]
+    for i in range(n):
+        vs, va, rs, ra = struct.unpack_from('<IIII', data, pe + 24 + opt + 40 * i + 8)
+        if va <= rva < va + max(vs, rs):
+            off = ra + rva - va
+            return data[off:off + size]
+    raise AssertionError(f'RVA {rva:#x} not in any section')
+
+
+def fl_windows():
+    """The seven FL site windows and the frame witnesses: list of (name, rva, bytes, fixup_offset)."""
+    text = FL_HEADER.read_text()
+    arrays = {m.group(1): bytes(int(x, 16) for x in re.findall(r'0x([0-9a-f]{2})', m.group(2)))
+              for m in re.finditer(r'constexpr unsigned char (\w+)\[\d+\] = \{([^}]*)\}', text)}
+    out = []
+    for name, rva, length, var, fixoff in re.findall(
+            r'\{\{"(\w+)", (0x[0-9a-f]+), (\d+), (\w+), (no_fixup|\d+), [^,]+, 0x[0-9a-f]+\}, \d+, 0x[0-9a-f]+\}', text):
+        out.append((name, int(rva, 16), arrays[var], None if fixoff == 'no_fixup' else int(fixoff)))
+    for name, rva, length, var, fixoff in re.findall(
+            r'\{"(\w+)", (0x[0-9a-f]+), (\d+), (\w+), (no_fixup|\d+|\w+), [^,]+, 0x[0-9a-f]+\}', text):
+        if var in arrays and name not in {n for n, *_ in out}:
+            # a witness: its fixup offset is numeric (source_test) or none
+            out.append((name, int(rva, 16), arrays[var], int(fixoff) if fixoff.isdigit() else None))
+    return out
+
+
+class FlWeaponEffectsSites(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not FL_EXE.is_file():
+            raise unittest.SkipTest(f'{FL_EXE} not present')
+        cls.data = FL_EXE.read_bytes()
+
+    def test_installed_fl_executable_is_the_pinned_one(self):
+        self.assertEqual(hashlib.sha256(self.data).hexdigest(), FL_EXE_SHA256)
+
+    def test_every_fl_window_matches_the_executable_with_the_fixup_masked(self):
+        for name, rva, expected, fixoff in fl_windows():
+            live = bytearray(fl_exe_at(self.data, rva, len(expected)))
+            if fixoff is not None:
+                live[fixoff:fixoff + 4] = b'\0\0\0\0'
+            self.assertEqual(bytes(live), expected, f'FL window {name} at rva {rva:#x}')
+
+    def test_fl_header_static_asserts_compile(self):
+        compiler = shutil.which('clang++') or shutil.which('c++') or shutil.which('g++')
+        if not compiler:
+            self.skipTest('a host C++ compiler is required')
+        with tempfile.TemporaryDirectory(prefix='x3-fl-weapon-sites-') as tmp:
+            src = Path(tmp) / 's.cpp'
+            src.write_text('#include "weapon_effects_sites_fl.h"\nint main(){ return 0; }\n')
+            subprocess.run([compiler, '-std=c++17', '-I', str(ROOT / 'src/engine/fl'), str(src), '-o', str(Path(tmp) / 's')],
+                           check=True)
+
+
 if __name__ == '__main__':
     unittest.main()

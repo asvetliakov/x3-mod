@@ -168,6 +168,10 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     camera.m21 = f.m21;
     weapon_effects::stage::Tuning tuning{};
     tuning.near_z = f.near_z;
+#if X3M_EDITION_FL
+    // X3FL.exe's body cache slot (base + 0x1aa100), bound with the other globals at install (core::fl_globals).
+    tuning.body_cache_root = weapon_effects::hook_state().globals.body_cache_slot;
+#endif
     // The frame's draws (64 x sizeof(WeaponPatch), about 124 KB: static, off the game thread's stack; the game thread is
     // the only caller and run() consumes them before returning).
     static renderer::WeaponPatch patches[wcore::max_patches];
@@ -236,6 +240,17 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[10] += n.bubble.held;
     weapon_drops_[11] += n.bubble.deferred;
     weapon_drops_[12] += n.bubble.clamped;
+#if X3M_EDITION_FL
+    // FL bodies are assumed to keep AP's normalised LOD extents [0, 0x20000] (fl/weapon-effect-spawn.md section 5 [i]);
+    // the AP bound stays the runtime guard (the walk fails to the fallback sphere) and its first refusal is one row.
+    static bool extent_logged = false;
+    if (n.bubble.extent_refused && !extent_logged) {
+        extent_logged = true;
+        log("weapon_bubble_extent edition=fl state=refused frame=%llu refused=%u walks=%u bound=%ld",
+            static_cast<unsigned long long>(frame_), n.bubble.extent_refused, n.bubble.walks,
+            static_cast<long>(weapon_effects::stage::hull_extent_max));
+    }
+#endif
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run(f, &report);
