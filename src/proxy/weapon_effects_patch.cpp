@@ -571,10 +571,10 @@ void load_table() {
     table_hull_key_missing_ = !parsed || !st.hull_keys;
     // The live count is checked per hit (core::impact: a differing *0x00607038 disables the lookups, stale_table).
     x3m::log("weapon_effects_table event=%s reason=%s rows=%lu missile_rows=%lu entries=%u textures=%u overrides=%u "
-             "dropped=%u hull_keys=%u table_hull_key_missing=%u bytes=%lu fault=%lu path=\"%s\"",
+             "dropped=%u hull_keys=%u bolt_pins=%u bolt_rejected=%u table_hull_key_missing=%u bytes=%lu fault=%lu path=\"%s\"",
              parsed ? "loaded" : had_text ? "rejected" : read, parsed ? "ok" : had_text ? "malformed" : read,
              static_cast<unsigned long>(parsed ? table_->rows : 0), static_cast<unsigned long>(parsed ? table_->missile_rows : 0),
-             st.entries, st.textures, st.overrides, st.dropped, st.hull_keys, unsigned(table_hull_key_missing_),
+             st.entries, st.textures, st.overrides, st.dropped, st.hull_keys, st.bolt_pins, st.bolt_rejected, unsigned(table_hull_key_missing_),
              static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
 const char* site_name(unsigned i) {

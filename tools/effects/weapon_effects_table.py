@@ -51,8 +51,8 @@ SHAPES = ('tracer', 'slug', 'orb', 'wave', 'beam')
 HULL_VARIANTS = ('repair', 'tug', 'energy', 'ballistic', 'plasma', 'heavy', 'ion')
 # The override file's schemas: 1 (the variants only) and 2 (the classes, 2026-11-06).
 OVERRIDE_SCHEMAS = (1, 2)
-# The bolt hand pins (docs/architecture/bolt-muzzle-look.md 11.5, 2026-11-08): the body radiance E_b (0..2.55), the orb
-# diameter in w (0..2.55], the halo (false: none) and the tint source ('texture': the texture mean even over a saturated
+# The bolt hand pins (docs/architecture/bolt-muzzle-look.md 11.5, 2026-11-08): the body radiance E_b (0.01..2.55), the orb
+# diameter in w (0.01..2.55), the halo (false: none) and the tint source ('texture': the texture mean even over a saturated
 # light colour), written under the same names.
 BOLT_PINS = ('bolt_e_body', 'bolt_w_orb', 'bolt_halo', 'bolt_tint')
 
@@ -179,7 +179,7 @@ def row_entry(w, body, colour, override, mounts=None):
     for key in ('bolt_e_body', 'bolt_w_orb'):
         if key in override:
             v = float(override[key])
-            if not 0.0 <= v <= 2.55 or (key == 'bolt_w_orb' and v <= 0.0):
+            if not 0.0 <= v <= 2.55 or round(v * 100) < 1:  # the DLL stores x 100 and drops a row whose pin is 0
                 raise GenerateError(f"override for {w['weapon_id']}: {key} {v} outside the table's range")
             entry[key] = round(v, 2)
     if 'bolt_halo' in override:

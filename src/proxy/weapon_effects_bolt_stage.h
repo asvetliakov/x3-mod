@@ -235,6 +235,7 @@ struct BoltCounts {
     unsigned listed = 0, drawn = 0, behind = 0, offscreen = 0, expired = 0, invalid = 0, beams = 0;
     unsigned lines = 0, orbs = 0, waves = 0, rim_lines = 0, rim_orbs = 0, streaks = 0, no_prev = 0, discs = 0;
     unsigned floored_len = 0, floored_body = 0, capped_own = 0, capped_halo = 0, parity_dropped = 0, capped_back = 0;
+    unsigned capped_hostile = 0; // ends (and wave chords) held at hostile_body_max_px of the view height
 };
 // The previous frame's records by (object, creation): 1024 open-addressed slots stamped per build. The stamp must be
 // unique per previous list (the caller passes the hooks' Present generation, monotonic): a stamp repeated on another list
@@ -339,6 +340,9 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     const float ppm_h = upm * fy / hv[2], ppm_b = upm * fy / bv[2];
     // Per-end widths, floors, ceilings.
     const float own_max = bolt::own_body_max_px * rows, halo_max = bolt::halo_px_max * rows;
+    // another ship's bolt near the eye (review 2026-11-08): body (and the wave's chord) never above hostile_body_max_px of
+    // the view height at either end, radiance unchanged (the own ceiling's rule), so no hostile bolt fills the view
+    const float hostile_max = bolt::hostile_body_max_px * v.height;
     // another ship's back end near the eye (note 15): never wider than the head or back_w_own_x x the own ceiling,
     // whichever is wider (a bolt the head of which is that wide, or one side-on, is untouched)
     float back_max = bolt::back_w_own_x * own_max;
@@ -355,18 +359,21 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
             w = back_max;
             ++n->capped_back;
         }
+        if (!in.own && w > hostile_max) {
+            w = hostile_max;
+            ++n->capped_hostile;
+        }
         return w;
     };
-    // The halo cap conserves energy (2026-11-08, #3): sigma at most the cap (an own bolt's at its body ceiling), E_h x
-    // cap / sigma_world of the end the cap binds most.
+    // The bounded halo cap (2026-11-08, #3): sigma at most the cap (an own bolt's at its body ceiling) and, at an end the
+    // cap binds, E_h x cap / sigma_world there (per end: a far head keeps its halo when its near back end is capped).
     const float halo_cap = in.own && own_max < halo_max ? own_max : halo_max;
-    float halo_scale = 1.f;
-    auto sigma_at = [&](float ppm) {
+    auto sigma_at = [&](float ppm, float* k) {
         float s = law.sigma_w * look.w_m * ppm;
         if (s < bolt::floor_halo_px) s = bolt::floor_halo_px;
+        *k = 1.f;
         if (s > halo_cap) {
-            const float k = halo_cap / s;
-            halo_scale = k < halo_scale ? k : halo_scale;
+            *k = halo_cap / s;
             s = halo_cap;
             ++n->capped_halo;
         }
@@ -374,7 +381,8 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     };
     const float wh = width_at(ppm_h, false);
     back_max = back_max > wh ? back_max : wh;
-    const float wb = width_at(ppm_b, true), sh = sigma_at(ppm_h), sb = sigma_at(ppm_b);
+    float kh = 1.f, kb = 1.f;
+    const float wb = width_at(ppm_b, true), sh = sigma_at(ppm_h, &kh), sb = sigma_at(ppm_b, &kb);
     // The projected axis, its foreshortening c and the length floor (x c x the flown share).
     float ax = bx - hx, ay = by - hy;
     float A = scalar::sqrt(ax * ax + ay * ay);
@@ -493,6 +501,10 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
         // an own wave's lens (and crescent) never wider than wave_lens_own_x body ceilings (2026-11-08, #2)
         const float s_own = bolt::wave_lens_own_x * own_max;
         if (in.own && S_px > s_own) S_px = s_own;
+        if (!in.own && S_px > hostile_max) {
+            S_px = hostile_max;
+            ++n->capped_hostile;
+        }
         R = 0.5f * S_px + 0.5f * big_w + 3.f * big_s;
     }
     const float px[3] = {hx, hx + ax * A, hx + sdx * D}, py[3] = {hy, hy + ay * A, hy + sdy * D};
@@ -568,7 +580,8 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     p[1][3] = D;
     p[2][0] = sdx;
     p[2][1] = sdy;
-    p[2][2] = stretch_at;
+    // lines: the back end's E_h (their streak's rest length is the core's, p1.y); orbs: where the stretch begins
+    p[2][2] = law.kind == 0 ? law.e_halo * kb : stretch_at;
     p[2][3] = g_s;
     p[3][0] = wh_e;
     p[3][1] = wb_e;
@@ -585,7 +598,7 @@ inline bool bolt_quad(const BoltView& v, const BoltLook& look, const BoltLaw& la
     p[6][0] = law.kind == 0 ? law.e_body : in.seed; // line kinds: the body radiance E_b; orbs and waves: the seed
     p[6][1] = c;
     p[6][2] = S_px;
-    p[6][3] = law.e_halo * halo_scale;
+    p[6][3] = law.e_halo * kh; // the head's E_h (an orb's or wave's only)
     // The rim: drawn where its band is at least rim_min_px wide (line and orb kinds, full mode; the pixel band of a
     // narrow bolt is 3 px, so every line and orb carries one).
     *rim_ok = rim;

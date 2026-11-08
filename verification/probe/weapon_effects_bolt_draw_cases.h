@@ -156,9 +156,13 @@ Frame build(const bs::BoltView& v, const std::vector<wc::BoltRecord>& cur, const
     bs::bolt_pixel_constants(v.now, v.simple, f.draw.look);
     return f;
 }
-// Term isolation on the built quads: halo off (p6.w), tail off (p1.z and the axis shortened to the core).
+// Term isolation on the built quads: halo off (p6.w; a line's back-end E_h p2.z too), tail off (p1.z and the axis
+// shortened to the core).
 void halo_off(Frame& f) {
-    for (unsigned i = 0; i < f.out.lines + f.out.orbs + f.out.waves; ++i) quads[i].p[6][3] = 0.f;
+    for (unsigned i = 0; i < f.out.lines + f.out.orbs + f.out.waves; ++i) {
+        quads[i].p[6][3] = 0.f;
+        if (i < f.out.lines) quads[i].p[2][2] = 0.f;
+    }
 }
 void tail_off(Frame& f) {
     for (unsigned i = 0; i < f.out.lines; ++i) {
@@ -592,8 +596,8 @@ void rim_cases(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     report("bolt_rim_survives_resolve", survives, "");
 }
 void halo_cap(rr::WeaponEffectsPass&, BoltTarget& bt) {
-    // An enemy IRE passing 5 m from the cockpit camera: sigma_px <= 40 x rows / 1440 and the cap conserves energy
-    // (2026-11-08 #3; before: E_h unchanged): E_h = e_halo x cap / sigma_world within 1 %.
+    // An enemy IRE passing 5 m from the cockpit camera: sigma_px <= 40 x rows / 1440 and the bounded cap (2026-11-08 #3;
+    // before: E_h unchanged): the head's E_h = e_halo x cap / sigma_world within 1 %.
     const bs::BoltView v = view_of(bt.t.w, bt.t.h);
     Frame f = build(v, side_on(v, 0, 5.f, 0.f, false), {});
     const float cap = wb::halo_px_max * v.height / 1440.f;
@@ -651,6 +655,49 @@ void own_halo_bounded(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
         }
     }
     report("bolt_own_halo_bounded", ok, "");
+}
+void hostile_ceiling(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
+    // Another ship's bolt at 20 m (review 2026-11-08; before: no ceiling, the capital PSP's orb 1536 px at 1440 rows): the
+    // stock PSP side-on and the Mayhem PPC side-on and end-on. Both quad widths <= hostile_body_max_px x the height, and
+    // the lit footprint (>= 10 % of the frame's peak) across the travel, or an end-on disc's equivalent diameter, within
+    // that ceiling plus the capped halo's two 10 % reaches (2 x 2.146 sigma_cap).
+    const bs::BoltView v = view_of(bt.t.w, bt.t.h);
+    const float ceiling = wb::hostile_body_max_px * v.height, sigma_cap = wb::halo_px_max * v.height / wb::ref_rows;
+    const float bound = ceiling + 2.f * 2.146f * sigma_cap + 2.f;
+    const float toward[3] = {0.f, 0.f, -1.f};
+    bool ok = true;
+    struct Case { const char* name; unsigned row; bool endon; };
+    for (const Case cs : {Case{"psp_side_20m", 7u, false}, Case{"ppc_side_20m", 6u, false}, Case{"ppc_endon_20m", 6u, true}}) {
+        wc::BoltRecord r = cs.endon ? record(0.f, 0.f, 20.f, toward, v.now, 1e5f, 1e5f, std::uint16_t(cs.row))
+                                    : side_on(v, cs.row, 20.f)[0];
+        alive(r, v.now);
+        Frame f = build(v, {r}, {});
+        if (!f.n.drawn) {
+            ok = false;
+            continue;
+        }
+        const rr::WeaponBoltQuad q = quads[0];
+        const std::vector<float> img = render(pass, bt, v, f);
+        const Img im{&img, bt.t.w, bt.t.h};
+        const float peak = im.peak();
+        float foot = 0.f;
+        if (cs.endon) {
+            foot = float(2.0 * std::sqrt(moments(im, 0.1f * peak).n / 3.14159265));
+        } else {
+            const float hx = q.p[0][0], hy = q.p[0][1], ax = q.p[0][2], ay = q.p[0][3], Lc = q.p[1][1];
+            // along the core, on screen (a 20 m PPC core runs far past the frame's edge)
+            const float sm = std::min(0.5f * Lc, 0.4f * float(std::min(bt.t.w, bt.t.h)));
+            const float cx = hx + ax * sm, cy = hy + ay * sm;
+            foot = width_along(im, cx, cy, -ay, ax, 0.1f * peak, float(bt.t.h));
+        }
+        const bool row_ok = q.p[3][0] <= ceiling + 1e-3f && q.p[3][1] <= ceiling + 1e-3f && foot > 0.f && foot <= bound && f.n.capped_hostile >= 1;
+        ok = ok && row_ok;
+        std::printf("BOLT gate=hostile_ceiling case=%s rows=%u w_head_px=%.1f w_back_px=%.1f ceiling=%.1f foot_px=%.1f bound=%.1f "
+                    "capped=%u ok=%u\n",
+                    cs.name, bt.t.h, double(q.p[3][0]), double(q.p[3][1]), double(ceiling), double(foot), double(bound),
+                    f.n.capped_hostile, unsigned(row_ok));
+    }
+    report("bolt_hostile_ceiling", ok, "");
 }
 void orb_breathes(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
     // PSP and PBE: the centre's whiteness h over one boil period (0..333 ms, 2 km) and the boil and lobes on a disc large
@@ -1161,7 +1208,7 @@ void seta_cap_energy(rr::WeaponEffectsPass& pass, BoltTarget& bt) {
             const float rest_L = row == 8 ? q.p[3][0] : Lc;
             bool row_ok = true;
             if (seta) {
-                const bool stretch = row == 0 && q.p[1][3] > q.p[2][2] + 1.f;
+                const bool stretch = row == 0 && q.p[1][3] > q.p[1][1] + 1.f; // a line's stretch begins at its core length
                 const float far_end = stretch ? im.at(hx - (q.p[1][3] - 0.5f), hy) : 0.f, head = im.at(hx, hy);
                 const bool energy = std::fabs(sum / rest_sum - 1.0) <= 0.10;
                 const bool length = row == 0   ? len <= (1.f + cs) * rest_L + T + 1.f
@@ -2948,6 +2995,7 @@ void bolt_draw_cases(D3DPRESENT_PARAMETERS& pp) {
     halo_cap(pass, t1080);
     halo_cap(pass, t1440);
     own_halo_bounded(pass, t1080);
+    hostile_ceiling(pass, t1080);
     orb_breathes(pass, t1080);
     wave_crescent(pass, t1080);
     wave_endon_no_hoop(pass, t1080);

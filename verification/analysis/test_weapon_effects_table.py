@@ -39,8 +39,9 @@ int main(int argc, char** argv) {
                     (unsigned long)(table.override_rgb[row] & 0xffffff), table.calibre_q[row],
                     (table.bits[row] & core::row_hull_class) ? core::hull_class_name(table.hull_class[row]) : "-");
         std::printf("mount_tier=%u range_m=%u mount_keys=%u\n", table.mount_tier[row], table.range_m[row], st.mount_keys);
-        std::printf("bolt_pin=%u e_body_q=%u w_orb_q=%u bolt_pins=%u\n", table.bolt_pin[row], table.bolt_e_body_q[row],
-                    table.bolt_w_orb_q[row], st.bolt_pins);
+        std::printf("bolt_pin=%u e_body_q=%u w_orb_q=%u bolt_pins=%u bolt_rejected=%u present=%u\n", table.bolt_pin[row],
+                    table.bolt_e_body_q[row], table.bolt_w_orb_q[row], st.bolt_pins, st.bolt_rejected,
+                    unsigned(table.bits[row] & core::row_present));
     }
     return ok ? 0 : 1;
 }
@@ -152,8 +153,10 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         # FBL an orb at 2.0 w; every other row carries none
         pins = {k: {f: v[f] for f in ('style',) + wt.BOLT_PINS if f in v} for k, v in data['by_id'].items()}
         pins = {k: v for k, v in pins.items() if v}
-        dim = {'style': 'slug', 'bolt_e_body': 0.6, 'bolt_halo': False, 'bolt_tint': 'texture'}
-        self.assertEqual(pins, {'SS_BULLET_MD': dim, 'SS_BULLET_MASS': dim, 'SS_BULLET_HEPT': {'style': 'slug'},
+        dim = {'style': 'slug', 'bolt_e_body': 0.6, 'bolt_halo': False}
+        # the stock MASS body has no decodable texture: its texture-tint pin would be a no-op (review 2026-11-08)
+        self.assertEqual(pins, {'SS_BULLET_MD': dict(dim, bolt_tint='texture'), 'SS_BULLET_MASS': dim,
+                                'SS_BULLET_HEPT': {'style': 'slug'},
                                 'SS_BULLET_FBL': {'style': 'orb', 'bolt_w_orb': 2.0}})
         w = {'index': 0, 'weapon_id': 'SS_BULLET_MD', 'body_key': None, 'speed': None, 'lifetime_ms': None}
         e = wt.row_entry(w, None, None, wt.override_for(data, 'none', 'SS_BULLET_MD'))
@@ -229,6 +232,33 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertEqual((f10['bolt_pin'], f10['e_body_q'], f10['w_orb_q']), ('7', '60', '0'))
         self.assertEqual((f11['bolt_pin'], f11['e_body_q'], f11['w_orb_q'], f11['shape']), ('8', '0', '200', 'orb'))
         self.assertEqual((f['bolt_pin'], f['bolt_pins']), ('0', '2'))
+
+    def test_reader_handles_malformed_bolt_pins(self):
+        # bolt-muzzle-look.md 11.5's pins on row 10 of the sample. A pin of the wrong JSON type makes the whole file
+        # malformed (exit 1, the table stays empty); a number out of range or rounding to a stored 0, or another
+        # bolt_tint name, drops that row alone (bolt_rejected counts it) and the rest of the table loads.
+        def with_pin(**pin):
+            t = sample_table()
+            row = t['tables']['bullets']['entries'][10]
+            for k in ('bolt_e_body', 'bolt_halo', 'bolt_tint'):
+                row.pop(k, None)
+            row.update(pin)
+            return t
+        for wrong_type in ({'bolt_e_body': '0.6'}, {'bolt_w_orb': [2.0]}, {'bolt_halo': 'no'}, {'bolt_tint': 1}):
+            code, f = self.read(with_pin(**wrong_type), row=10)
+            self.assertEqual((code, f['ok']), (1, '0'), wrong_type)
+        for dropped in ({'bolt_e_body': 3.0}, {'bolt_e_body': -0.5}, {'bolt_w_orb': 9.0}, {'bolt_e_body': 0},
+                        {'bolt_w_orb': 0.004}, {'bolt_w_orb': 0}, {'bolt_tint': 'light'}):
+            code, f = self.read(with_pin(**dropped), row=10)
+            self.assertEqual((code, f['ok'], f['entries'], f['bolt_rejected'], f['present'], f['bolt_pin']),
+                             (0, '1', '11', '1', '0', '0'), dropped)
+        code, f = self.read(with_pin(bolt_e_body=0.01, bolt_halo=True), row=10)   # the smallest stored E_b; true pins nothing
+        self.assertEqual((code, f['bolt_rejected'], f['bolt_pin'], f['e_body_q']), (0, '0', '4', '1'))
+        w = {'index': 0, 'weapon_id': 'SS_BULLET_X', 'body_key': None, 'speed': None, 'lifetime_ms': None}
+        for bad in ({'bolt_e_body': 0.0}, {'bolt_w_orb': 0.004}, {'bolt_e_body': 2.6}, {'bolt_halo': True},
+                    {'bolt_tint': 'light'}):
+            with self.assertRaises(wt.GenerateError, msg=str(bad)):   # the generator never writes such a row
+                wt.row_entry(w, None, None, bad)
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 3, 'tables': {}})

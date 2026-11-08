@@ -12,9 +12,11 @@
 //                   "mount_tier": "fighter"|"corvette"|"capital"|null, "range_m": m|null, ...}, ...]},
 //      "missiles": {"rows": M, ...}}}
 // Schema 2 (step 4) adds mount_tier and range_m; a schema 1 table reads as every row a fighter mount of unknown range.
-// The optional bolt hand pins (bolt-muzzle-look.md 11.5, schema 2, absent on most rows): "bolt_e_body": E_b (0..2.55),
-// "bolt_w_orb": the orb diameter in w (0..2.55], "bolt_halo": false (no halo), "bolt_tint": "texture" (the texture mean
-// even when the light colour is saturated).
+// The optional bolt hand pins (bolt-muzzle-look.md 11.5, schema 2, absent on most rows): "bolt_e_body": E_b in
+// [0.01, 2.55], "bolt_w_orb": the orb diameter in w in [0.01, 2.55] (both stored x 100), "bolt_halo": false (no halo; true
+// or null pins nothing), "bolt_tint": "texture" (the texture mean even when the light colour is saturated). A pin of the
+// wrong JSON type makes the file malformed; a number outside its range (a stored 0 included) or another bolt_tint name
+// drops the row (Stats::bolt_rejected), as the generator never writes one.
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -27,6 +29,7 @@ struct Stats {
     unsigned hull_keys = 0; // entries carrying the "hull" key (0: a table generated before step 2, or no variant row)
     unsigned mount_keys = 0; // entries carrying "mount_tier" (step 4; 0: a table generated before it)
     unsigned bolt_pins = 0;  // entries carrying a bolt hand pin (bolt_e_body, bolt_w_orb, bolt_halo false, bolt_tint)
+    unsigned bolt_rejected = 0; // rows dropped for a bolt pin outside its range (a zero E_b, a w_orb stored as 0, ...)
 };
 inline bool parse_rgb(json::Cursor& c, std::uint32_t* out, bool* present) noexcept {
     *present = false;
@@ -64,6 +67,7 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     float range = 0.f;
     bool range_present = false;
     std::uint8_t pin = 0, e_body_q = 0, w_orb_q = 0; // the bolt hand pins (bolt_e_body, bolt_w_orb, bolt_halo, bolt_tint)
+    bool bad_pin = false;
     if (!c.accept('}'))
         for (;;) {
             char key[24];
@@ -120,21 +124,19 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                 }
             } else if (!std::strcmp(key, "range_m")) {
                 if (!c.number_or_null(&range, &range_present)) return false;
-            } else if (!std::strcmp(key, "bolt_e_body")) {
+            } else if (!std::strcmp(key, "bolt_e_body") || !std::strcmp(key, "bolt_w_orb")) {
+                const bool e_key = key[5] == 'e';
                 float v = 0.f;
                 bool present = false;
                 if (!c.number_or_null(&v, &present)) return false;
-                if (present && v >= 0.f && v <= 2.55f) {
-                    pin |= core::pin_e_body;
-                    e_body_q = std::uint8_t(v * 100.f + 0.5f);
-                }
-            } else if (!std::strcmp(key, "bolt_w_orb")) {
-                float v = 0.f;
-                bool present = false;
-                if (!c.number_or_null(&v, &present)) return false;
-                if (present && v > 0.f && v <= 2.55f) {
-                    pin |= core::pin_w_orb;
-                    w_orb_q = std::uint8_t(v * 100.f + 0.5f);
+                if (present) {
+                    const float q = v * 100.f + 0.5f; // stored x 100: a value that rounds to 0 is rejected with the rest
+                    if (!(q >= 1.f && q < 256.f)) {
+                        bad_pin = true;
+                    } else {
+                        pin |= e_key ? std::uint8_t(core::pin_e_body) : std::uint8_t(core::pin_w_orb);
+                        (e_key ? e_body_q : w_orb_q) = std::uint8_t(q);
+                    }
                 }
             } else if (!std::strcmp(key, "bolt_halo")) {
                 if (c.literal("false")) pin |= core::pin_halo_off;
@@ -144,7 +146,10 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
                     char name[16];
                     bool name_fits;
                     if (!c.string(name, sizeof name, &name_fits)) return false;
-                    if (name_fits && !std::strcmp(name, "texture")) pin |= core::pin_tint_texture;
+                    if (name_fits && !std::strcmp(name, "texture"))
+                        pin |= core::pin_tint_texture;
+                    else
+                        bad_pin = true;
                 }
             } else if (!c.skip_value())
                 return false;
@@ -153,6 +158,10 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
         }
     if (!(row >= 0.f) || row >= float(core::table_capacity) || float(unsigned(row)) != row) {
         ++st->dropped;
+        return true;
+    }
+    if (bad_pin) { // a bolt pin outside its range: the row is not the generator's, so none of it is used
+        ++st->bolt_rejected;
         return true;
     }
     const unsigned i = unsigned(row);

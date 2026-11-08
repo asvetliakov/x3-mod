@@ -1459,6 +1459,13 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
                 alt = saturated ? light : texture;
                 tint_source = tint_override;
                 eflags |= flag_override_applied;
+            } else if (texture && (t->bolt_pin[subtype] & pin_tint_texture)) { // texture set: the table is ok
+                // the bolt hand pin's tint (bolt-muzzle-look.md 11.5): the texture mean even over a saturated light, so
+                // the impact and the bolt agree
+                tint = texture;
+                alt = light;
+                tint_source = tint_texture;
+                eflags |= flag_override_applied;
             } else if (saturated) {
                 tint = light;
                 alt = texture;
@@ -2610,9 +2617,10 @@ constexpr float rim_band_w[2] = {1.2f, 1.8f};
 constexpr float rim_min_px = 3.0f;
 constexpr float rim_px_band[2] = {1.0f, 4.0f};
 constexpr float rim_px_w = 5.0f, rim_px_blend_w = 7.0f;
-// Section 2.6, the floors and ceilings (render px at ref_rows; body and halo floors not row-scaled). The halo cap
-// conserves energy (2026-11-08, #3): where sigma_world exceeds the cap, E_h x cap / sigma_world (the larger end's); an own
-// bolt's sigma never above own_body_max_px (its body ceiling), so own fire builds no fog dome.
+// Section 2.6, the floors and ceilings (render px at ref_rows; body and halo floors not row-scaled). The halo cap is a
+// bounded cap (2026-11-08, #3): at an end where sigma_world exceeds the cap, sigma = cap and E_h x cap / sigma_world
+// there (per end; it bounds the halo, it does not conserve its energy); an own bolt's sigma never above own_body_max_px
+// (its body ceiling), so own fire builds no fog dome.
 constexpr float halo_px_max = 40.0f;
 constexpr float floor_core_px = 2.0f, floor_body_px = 3.0f, floor_halo_px = 1.5f, floor_len_px = 24.0f;
 // Section 2.4's end-on footprint (lit diameter at 10 % of the peak >= 7 px at 1440 rows): with a 3 px body and a halo of
@@ -2621,6 +2629,9 @@ constexpr float floor_core_px = 2.0f, floor_body_px = 3.0f, floor_halo_px = 1.5f
 // side-on floor linearly with the axis (fixture bolt_endon_disc, 2026-11-07). A size floor: radiance unchanged.
 constexpr float floor_endon_px = 9.0f;
 constexpr float own_body_max_px = 16.0f;
+// Another ship's bolt (line, orb, the wave's chord) never wider than this share of the view height at either end, radiance
+// unchanged (review 2026-11-08: a capital PSP at w 20 m was 512 px at 60 m and 1536 px at 20 m).
+constexpr float hostile_body_max_px = 0.25f;
 // Another ship's bolt passing the eye: its back end, clipped to the eye plane, never wider than its head or back_w_own_x
 // x the own ceiling, whichever is wider (one frame near the eye would otherwise draw a frame-filling quad; review
 // 2026-11-07 note 15).

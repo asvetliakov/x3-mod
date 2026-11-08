@@ -110,7 +110,7 @@ NAMESPACES = {
              'orb_lobe_turns', 'orb_stretch', 'orb_h_lo', 'orb_h_hi', 'wave_span_w', 'wave_sagitta', 'wave_sheet_e',
              'wave_ring_c', 'wave_lens_rim_e', 'wave_lens_fill_e', 'wave_lens_blend_c', 'wave_lens_own_x', 'trim_rs', 'rim',
              'rim_dark', 'rim_band_w', 'rim_min_px', 'rim_px_band', 'rim_px_w', 'rim_px_blend_w', 'halo_px_max', 'floor_core_px',
-             'floor_body_px', 'floor_halo_px', 'floor_len_px', 'floor_endon_px', 'own_body_max_px', 'cockpit_native',
+             'floor_body_px', 'floor_halo_px', 'floor_len_px', 'floor_endon_px', 'own_body_max_px', 'hostile_body_max_px', 'cockpit_native',
              'far_flag_k', 'list_capacity', 'beam_w_m'),
     # step 3, the death explosion (docs/architecture/explosion-look.md): HEADER.boom, the Boom tab's laws and defaults
     'boom': ('mode', 'tier_native', 'tier_f', 'tier_min_m', 'tier_max_m', 'tier_life_ms', 'tier_preroll_ms', 'tier_rise',

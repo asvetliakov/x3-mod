@@ -87,12 +87,15 @@ segment ∪ streak segment, 2.3) in px; ρ = r / (w_px / 2), so ρ = 1 is the bo
     rim    multiply by 1 − rim_dark x saturate((ρ − lo) / 0.4) x saturate((hi − ρ) / 0.4), rim_dark 0.4,
            in a first draw before the additive one (5.1); [lo, hi] = [2.4, 3.6] (1.2–1.8 w off the axis) from 7 px of
            body, the pixel band [w_px/2 + 1, w_px/2 + 4] px under 5 px, linear between: every line and orb carries a
-           band ≥ 3 px wide, about the core's capsule (round caps; the tail and streak carry none)
+           band ≥ 3 px wide, along the core's own silhouette (the tracer's pointed tip; no back cap across the tail
+           root where a tail follows; the tail and streak carry none)
     L      = a(s) x fade x [E_c c C_core + E_b max(m − c, 0) C_body + E_h' g C_edge]
              E_c 4 (core_e), E_b 1.2 (inside body_max; a hand pin may lower it, 11.5), E_h 0.6 (0.15 of the core,
-             under halo_max 0.2; heavy 0.8); E_h' = E_h x σ_cap / σ_world where the cap binds (the larger end's)
+             under halo_max 0.2; heavy 0.8); E_h' = E_h x σ_cap / σ_world at an end where the cap binds (per end,
+             interpolated along the axis)
 
-2026-11-08 (11, #3, #5): the halo cap conserves energy and an own bolt's σ is capped at its body ceiling (before: σ at
+2026-11-08 (11, #3, #5): the halo cap is a bounded cap (E_h x cap / σ_world at σ = cap, per end: it bounds the halo, it
+does not conserve its energy) and an own bolt's σ is capped at its body ceiling (before: σ at
 40 px at full E_h, a fog dome over half the chase view); the rim band is in pixels under 5 px of body (before: off under a
 3 px band, so a floor-width fighter bolt over a lit hull was a pale dash); the core's whiteness is h x saturate((w_px −
 3) / 3), so a floor-width bolt's core is its tint (before: h at every width).
@@ -131,7 +134,7 @@ production resolve). The rim is a full-mode element behind that gate: if the gat
 | heavy (modifies tracer or slug) | as the style | the core's round cap at c_r 0.55, the 1.5x front boost (before 2026-11-08: a head ball 0.6 w at E_c) | τ 40 ms, T_max 20 w, root 0.8 w, tint, gain 0.6 | σ 1.0 w, E_h 0.8 | 1 | c_r 0.55: a fat white core; heavy orbs (PSP) keep the orb law at their w |
 
 **Hand pins** (11.5, `tools/effects/weapon_overrides.json` `by_id`, written into the table as `bolt_*` keys): MASS and MD
-style slug, E_b 0.6, no halo, the tint from the texture mean (a kinetic slug, not the brightest laser); HEPT style slug
+style slug, E_b 0.6, no halo, MD also the tint from the texture mean, shared by its impacts (stock MASS has no texture) (a kinetic slug, not the brightest laser); HEPT style slug
 (its 30 ms tail; not a laser); FBL style orb at w_orb 2.0 w.
 
 ### 2.3 Streak and SETA [C]
@@ -174,6 +177,7 @@ over in the same frame (their flash covers the cut).
 | halo σ | 1.5 | 1.5 | always |
 | length (core + tail) | 24 x c | 18 x c | scaled by the foreshortening c |
 | own-bolt body ceiling | 16 | 12 | own ship's bolts, both views; also the own bolt's halo σ ceiling (2026-11-08) |
+| hostile body ceiling `hostile_body_max_px` | 360 | 270 | another ship's line or orb at either end and a wave's chord: 0.25 of the view height, radiance unchanged (review 2026-11-08; before: none, a capital PSP 1536 px at 20 m) |
 | halo σ ceiling `halo_px_max` | 40 | 30 | every bolt, every view; E_h x σ_cap / σ_world where it binds (2026-11-08; before: radiance unchanged) |
 
 Floors raise size, never radiance. The floor is the net past d_eng; the ceiling keeps own fire from building walls in
@@ -590,7 +594,7 @@ flash there (lit ≤ 0.18) and the lamp of #1 is a per-shot ball, not a steady o
   mean; HEPT: style slug with the 30 ms tail; FBL: style orb at w_orb 2.0 w), each a documented `by_id` row, no new law.
   Built 2026-11-08 (the table's `bolt_*` keys, 2.2).
 - **Own halo cap.** (a) `halo_px_max` 40 → 24 (section 8's kill step): still full radiance in a smaller blob. (b)
-  Chosen: energy-conserving cap (E_h x σ_cap / σ_world) plus the own-bolt σ ≤ body ceiling: the fog goes, the halo at
+  Chosen: bounded cap (E_h x σ_cap / σ_world at σ = cap, per end) plus the own-bolt σ ≤ body ceiling: the fog goes, the halo at
   range is unchanged.
 
 ### 11.6 Unknowns this review adds

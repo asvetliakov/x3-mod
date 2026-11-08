@@ -18,7 +18,8 @@
 // c 0.4 .. 0.5. The rim pass (c1.z = 1, ZERO / INVSRCCOLOR) returns the multiply band s = rim_dark x [rho in lo .. hi]
 // (soft 0.4; rim_rho: 2.4 .. 3.6, under 5 px of body 1 .. 4 px past its edge, #5); its
 // undo (c1.z = 2, DESTCOLOR / ONE: dest (1 + s / (1 - s)) = dest / (1 - s)) the band's inverse, drawn only when the
-// capsule pass failed after the rim (WeaponEffectsPass::draw_bolts). A line's shading reach covers the halo's 3 sigma and,
+// capsule pass failed after the rim (WeaponEffectsPass::draw_bolts). A line's E_h is per end (the bounded halo cap: p6.w
+// at the head, p2.z at the back, interpolated along the axis); its streak's stretch begins at the core length p1.y. A line's shading reach covers the halo's 3 sigma and,
 // in the rim passes, the band's outer edge (1.8 w). Radiance x the fade. With BOLT_FAR_FLAG (weapon_bolt_flag_ps.hlsl) oC1 = oC0 and oC2 = far_flag_k x max(rgb). Compiled with
 // generate_weapon_effects_programs.py (ps_3_0).
 float4 look0 : register(c0); // e_core, e_body (orbs and waves; a line's is its p6.x), unused, far_flag_k
@@ -98,13 +99,17 @@ float4 main(float2 vpos : VPOS, float4 p0 : TEXCOORD0, float4 p1 : TEXCOORD1, fl
         // ---- line kinds: the axis (core then tail) and the streak ----
         float sraw = dot(d, ax);
         [branch] if (rim_pass > 0.5) {
-            // the rim pass: the band about the core's capsule (round caps, the tip unshaped), nothing else evaluated
+            // the rim pass: the band along the core's own silhouette (the tracer's pointed tip, no back cap across the
+            // tail root where a tail follows), nothing else evaluated
             float wpx0 = lerp(p3.x, p3.y, A > 1e-3 ? Lc / A : 0.0);
-            float s_r = clamp(sraw, 0.0, max(Lc - 0.5 * wpx0, 0.0));
+            float s_end = max(Lc - 0.5 * wpx0, 0.0);
+            float s_r = clamp(sraw, 0.0, s_end);
             float wpx_r = lerp(p3.x, p3.y, A > 1e-3 ? s_r / A : 0.0);
-            float rho_r = length(d - ax * s_r) / max(0.5 * wpx_r, 0.35);
+            float rs_r = (tracer > 0.5 && A > 2.0 * wpx_r) ? sqrt(saturate(sraw / wpx_r)) : 1.0;
+            float rho_r = length(d - ax * s_r) / max(0.5 * wpx_r * rs_r, 0.35);
             float2 band = rim_rho(wpx_r);
             rim = saturate((rho_r - band.x) / look2.w) * saturate((band.y - rho_r) / look2.w);
+            rim *= (T > 0.5 && sraw > s_end) ? 0.0 : 1.0;
         } else {
         float s = clamp(sraw, 0.0, A);
         float da = length(d - ax * s);
@@ -125,6 +130,7 @@ float4 main(float2 vpos : VPOS, float4 p0 : TEXCOORD0, float4 p1 : TEXCOORD1, fl
             float d_c = length(d - ax * s_c);
             float tt = A > 1e-3 ? s_c / A : 0.0;
             float wpx = lerp(p3.x, p3.y, tt), sigma = lerp(p3.z, p3.w, tt);
+            float e_halo_c = lerp(p6.w, p2.z, tt); // the bounded cap's per-end E_h (stage: the head's p6.w, the back's p2.z)
             float cr = max(heavy > 0.5 ? 0.55 : 0.4, 2.0 / max(wpx, 1e-3));
             float rs = 1.0;
             if (tracer > 0.5 && A > 2.0 * wpx) rs = sqrt(saturate(sraw / wpx));
@@ -136,7 +142,7 @@ float4 main(float2 vpos : VPOS, float4 p0 : TEXCOORD0, float4 p1 : TEXCOORD1, fl
                 float hl = h * saturate((wpx - 3.0) / 3.0);
                 float3 w = profile(rho, d_c, cr, sigma);
                 w.x *= 1.0 + look1.x * saturate(1.0 - s_c / max(wpx, 1e-3));
-                rgb = shade(w, rho, t, tc, hl, e_core, e_halo, e_b);
+                rgb = shade(w, rho, t, tc, hl, e_core, e_halo_c, e_b);
                 [branch] if (T > 0.5 && sraw > Lc) {
                     float st = clamp(sraw - Lc, 0.0, T);
                     float d_t = length(d - ax * (Lc + st));
@@ -148,11 +154,11 @@ float4 main(float2 vpos : VPOS, float4 p0 : TEXCOORD0, float4 p1 : TEXCOORD1, fl
                     float x = st / T;
                     float3 c_tail = t;
                     if (slug > 0.5) c_tail = x < 0.6 ? lerp(float3(1.0, 1.0, 1.0), t, x / 0.6) : lerp(t, 0.4 * t, (x - 0.6) / 0.4);
-                    rgb = max(rgb, c_tail * (e_b * p5.w * fall * wt.y) + tc * (e_halo * fall * wt.z));
+                    rgb = max(rgb, c_tail * (e_b * p5.w * fall * wt.y) + tc * (lerp(p6.w, p2.z, tt_t) * fall * wt.z));
                 }
                 [branch] if (D > 0.5 && ds <= reach) {
-                    float u = D > p2.z + 1e-3 ? saturate((ss - p2.z) / (D - p2.z)) : 0.0;
-                    float sfall = ss <= p2.z ? 1.0 : (1.0 - u) * (1.0 - u);
+                    float u = D > Lc + 1e-3 ? saturate((ss - Lc) / (D - Lc)) : 0.0;
+                    float sfall = ss <= Lc ? 1.0 : (1.0 - u) * (1.0 - u);
                     float rho_s = ds / max(0.5 * p3.x, 0.35);
                     float3 ws = profile(rho_s, ds, cr, p3.z);
                     rgb = max(rgb, shade(ws, rho_s, t, tc, hl, e_core, e_halo, e_b) * sfall);

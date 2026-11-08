@@ -947,10 +947,10 @@ bool MotionOutput::weapon_bolts_in_place(const MotionDrawCall& call, MotionRoute
     if (capture_)
         log("weapon_bolts_draw device=%llu frame=%llu listed=%u drawn=%u lines=%u orbs=%u waves=%u rims=%u behind=%u "
             "offscreen=%u expired=%u invalid=%u beams=%u streaks=%u no_prev=%u discs=%u floored_len=%u floored_body=%u "
-            "capped_own=%u capped_halo=%u capped_back=%u parity_dropped=%u far_flag=%u draws=%u calls=%u",
+            "capped_own=%u capped_halo=%u capped_back=%u capped_hostile=%u parity_dropped=%u far_flag=%u draws=%u calls=%u",
             id_, frame_, bc.listed, bc.drawn, bc.lines, bc.orbs, bc.waves, rep.rim_quads, bc.behind, bc.offscreen,
             bc.expired, bc.invalid, bc.beams, bc.streaks, bc.no_prev, bc.discs, bc.floored_len, bc.floored_body,
-            bc.capped_own, bc.capped_halo, bc.capped_back, bc.parity_dropped, unsigned(draw.far_flag), rep.draws, rep.calls);
+            bc.capped_own, bc.capped_halo, bc.capped_back, bc.capped_hostile, bc.parity_dropped, unsigned(draw.far_flag), rep.draws, rep.calls);
     route.submit = false;
     route.submission_error = D3D_OK;
     return true;
