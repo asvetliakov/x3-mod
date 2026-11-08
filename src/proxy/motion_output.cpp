@@ -43,9 +43,7 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
 #if !X3M_EDITION_FL
 #include "weapon_effects_patch.h" // X3M_WEAPON_EFFECTS=shields: the impact ring (motion_output_weapon_effects_inc.h)
-#include "weapon_effects_hull.h"  // step 2: the hull hit (includes weapon_effects_stage.h)
-#include "weapon_effects_bolt_stage.h" // step 4: the bolts and the muzzle (the in-place draw)
-#include "weapon_effects_boom.h" // step 3: the death explosion
+#include "weapon_effects_stage.h" // the shield hit's stage
 #endif
 #include "engine_far_jets.h" // far engine jets: the small-parts cull's culled JET nodes (motion_output_engine_plumes_inc.h)
 #include "log_tiers.h"      // the engine census rows are the --debug tier
@@ -6211,16 +6209,6 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
             }
             invalidate_taa(TaaInvalidateSite::RestoreFailed);
         } else if (route.submit) {
-#if !X3M_EDITION_FL
-            // Step 4 (shields,hull,bolts; docs/architecture/bolt-muzzle-look.md 5.1): every bullet-producer draw (an
-            // additive pair with the bullet vertex shader) before any preparation, so the frame's ownership is decided
-            // before anything is suppressed and no route refusal draws a copy over ours: replaced by the in-place
-            // capsule draw (the frame's first late copy) or suppressed (every other) in a frame ours took (route.submit
-            // false: nothing below runs for it), else native. One bool for every other draw.
-            if (weapon_bolts_requested_ && shadow_.screen_additive_pair &&
-                screen_emission::admitted_vertex_shader(shadow_.vs_hash))
-                weapon_bolts_in_place(call, route);
-#endif
             if (shadow_.fog_card_source && route.submit) prepare_fog_card(call, route);
             // Sky stars: a matched star body's colour writes are masked through the card's mask (sky_stars_mask=1), so
             // a masked star body takes no other preparation, exactly like a masked fog card.

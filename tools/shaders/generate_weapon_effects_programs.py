@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Compile the weapon effects' programs (docs/architecture/weapon-effects.md 5.1, step 1: the shield-hit hull decal, the
-ship bubble and the flat decal; docs/architecture/weapon-look.md 3.1, step 2: the hull hit's sprite batch, glow and
-fireball impostor): src/effects/weapon_{shell,decal,sprite,glow,fireball}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the
-bubble draws with the shell's vertex program) -> src/renderer/weapon_{shell,decal,bubble,sprite,glow,fireball}_
-{vertex,pixel}_program_inc.h, provenance
-verification/results/weapon-{shell,decal,bubble,sprite,glow,fireball}-{vertex,pixel}-program.json; the pixel programs include
-src/effects/weapon_soft_depth.hlsl.
+ship bubble and the flat decal): src/effects/weapon_{shell,decal}_{vs,ps}.hlsl and weapon_bubble_ps.hlsl (the bubble draws
+with the shell's vertex program) -> src/renderer/weapon_{shell,decal,bubble}_{vertex,pixel}_program_inc.h, provenance
+verification/results/weapon-{shell,decal,bubble}-{vertex,pixel}-program.json; the pixel programs include
+src/effects/weapon_soft_depth.hlsl. The look layer's programs (hull hit, explosions, bolts) were removed on 2026-11-08
+(docs/archive/effects-look-2026-11-08/index.md).
 
 The compilation, validation and record are tools/shaders/generate_rigid_motion_pixel.py's (its helpers are imported:
 the native d3dx9_37.dll D3DXCompileShader of the game directory through compile_rigid_motion_pixel.cpp,
@@ -32,10 +31,7 @@ PROGRAMS = {
                                   header=ROOT / f'src/renderer/weapon_{part}_{"vertex" if kind == "vs" else "pixel"}_program_inc.h',
                                   provenance=ROOT / f'verification/results/weapon-{part}-{"vertex" if kind == "vs" else "pixel"}-program.json',
                                   target=f'{kind}_3_0')
-    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('sprite', ('vs', 'ps')),
-                        ('glow', ('vs', 'ps')), ('fireball', ('vs', 'ps')), ('shape', ('vs',)), ('ring', ('ps',)),
-                        ('filament', ('ps',)), ('lightning', ('vs',)), ('bolt', ('vs', 'ps')),
-                        ('bolt_flag', ('ps',)), ('shock', ('ps',)), ('halo', ('ps',)), ('wave', ('ps',)), ('compose', ('ps',))) for kind in kinds
+    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',))) for kind in kinds
 }
 
 
