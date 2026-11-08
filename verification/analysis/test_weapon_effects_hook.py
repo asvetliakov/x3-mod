@@ -259,8 +259,9 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertEqual(static['held'], 1)
         cut = next(x for x in rows if x.get('case') == 'cut')
         self.assertLess(abs(cut['cut_length_px'] - cut['rule_px']), 0.01)
-        slow = next(x for x in rows if x.get('case') == 'slow')
-        self.assertEqual((slow['paused_energy'], slow['paused_drawn_px']), (1.0, slow['core_px']))
+        endon = next(x for x in rows if x.get('case') == 'endon')
+        self.assertLess(abs(endon['centre_ratio'] - 1.0), 0.02)  # straight-ahead fire at full core radiance
+        self.assertEqual((endon['endon_energy'], endon['slow_energy'], endon['paused_energy']), (1.0, 1.0, 1.0))
         cap = next(x for x in rows if x.get('case') == 'cap')
         self.assertLess(abs(cap['centre_ratio'] / cap['want_energy'] - 1.0), 0.03)
         budget = next(x for x in rows if x.get('case') == 'budget')

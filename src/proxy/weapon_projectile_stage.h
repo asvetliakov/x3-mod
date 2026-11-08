@@ -14,8 +14,8 @@
 // camera did (the FL 59 A dashed trail was the gap between short dashes); a first frame (a jump, a cut, a frame the
 // stage did not run) from the projection of P - v_rel dt_game (v_rel relative to the camera; the engine's game-time
 // step, so SETA lengthens it), never behind the muzzle. A static frame (node +0x30 unchanged) extrapolates the head by
-// v x render dt x SETA rate. No multiplier; past length_cap_m the radiance scales by cap / length (energy conserved); a
-// motion under the core's width draws the core's width at the energy of its length; past lod_dot_m a spot. Along the
+// v x render dt x SETA rate. No multiplier; the radiance factor is min(1, length_cap_m / the world travel |v| dt_game);
+// a motion under the core's width (end-on) is a spot of the core's width at full core radiance; past lod_dot_m a spot. Along the
 // axis the profile is flat with logistic end ramps whose half maximum sits at each end, so two consecutive streaks add
 // to one flat streak. The core's full width is core_px at the 500 m reference through the live
 // projection: its world width is core_px x 500 m / f (f = m11 H / 2, the frame's projection, never a fixed focal
@@ -130,7 +130,7 @@ struct BoltIn {
 };
 struct BoltShape { // diagnostics, the bridge's next tail and the fixture's rule checks
     float depth_m = 0;
-    float streak_m = 0;  // the on-screen motion's length in metres at the head's depth (the cap's length)
+    float streak_m = 0;  // the world travel this frame, |v| dt_game (metres: the cap's length)
     float length_px = 0; // the on-screen motion (tail to head)
     float drawn_px = 0;  // the drawn segment (at least the core's width)
     float core_px = 0, dim = 1, energy = 1, glow_sigma_px = 0, ext_px = 0, ext_along_px = 0;
@@ -201,9 +201,13 @@ inline float reach(float sigma, float log2_ratio) noexcept {
 // The along-axis profile's logistic CDF slope: Phi(u) = 1 / (1 + 2^(-logistic_slope u / sigma)) (1.702 / ln 2; the
 // logistic's largest gap to the normal CDF is under 0.01). The pixel program evaluates Phi(x + h) - Phi(x - h): two
 // segments sharing an end sum to Phi(x + h1) - Phi(x - h2) whatever Phi is (they telescope), so consecutive frames'
-// streaks add to one flat streak with no bead and no gap at the seam, and a segment's integral along the axis is its
-// length exactly.
+// streaks add to one flat streak with no bead and no gap at the seam.
 constexpr float logistic_slope = 2.45546f;
+// 1 / (Phi(h) - Phi(-h)) for half length h and slope m / sigma (the centre's along profile at 1).
+inline float along_norm(float h, float m_over_sigma) noexcept {
+    const float e = exp2f_poly(-m_over_sigma * h);
+    return (1.f + e) / (1.f - e);
+}
 // The four vertices of one bolt (false: culled, the head behind the near plane, off the target or degenerate), in
 // screen space through the caller's projection (the stage passes the unjittered one: the bolt never enters the TAA
 // history, and jitter would only misalign the seam). The streak runs from the tail to the head on screen: the previous
@@ -211,10 +215,11 @@ constexpr float logistic_slope = 2.45546f;
 // on-screen path between the two frames whatever the camera did (translation and rotation); else (a first frame, a jump,
 // a cut) the projection of P - v_rel min(dt_game, age), v_rel the velocity relative to the camera (never behind the
 // muzzle). A head extrapolated last frame past this frame's position (against the on-screen motion) holds there. No
-// multiplier. Energy: past length_cap_m (the on-screen length in metres at the head's depth) the radiance scales by
-// cap / length; an on-screen motion under the core's width draws a segment of the core's width at the energy of its
-// length (radiance x length / width; a paused game, step 0, at full radiance: nothing moves); past lod_dot_m a spot of
-// the core's width with the streak's energy factor. Width, glow and depth (occlusion) are the head's.
+// multiplier. Energy: the radiance factor is min(1, length_cap_m / the world travel |v| dt_game) (a fast or SETA bolt is
+// a longer, fainter streak; a travel under the cap keeps full radiance whatever its on-screen length); an on-screen
+// motion under the core's width (an end-on bolt flying along the line of sight) is a spot of the core's width at full
+// core radiance at its centre; past lod_dot_m the same spot on the head with the streak's factor. Width, glow and depth
+// (occlusion) are the head's.
 inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tune, const BodyFrame& body,
                           const BoltIn& in, renderer::WeaponProjectileVertex out[4], BoltShape* shape = nullptr) noexcept {
     if (!vf.ok || !(in.p[2] > vf.zn)) return false;
@@ -229,6 +234,8 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     float rb[2];
     raster(in.p, rb);
     const float step = in.step_s > 0.f ? in.step_s : 0.f;
+    const float speed_m = scalar::sqrt(in.v[0] * in.v[0] + in.v[1] * in.v[1] + in.v[2] * in.v[2]) *
+                          (1.f / view_units_per_metre);
     // the velocity relative to the camera (a cut's travel, longer than the bolt's, is not subtracted)
     float rel[3] = {in.v[0], in.v[1], in.v[2]};
     if (step > 0.f) {
@@ -280,19 +287,28 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     const float glow_area = sigma_raw > glow_floor_px ? 1.f : sigma_raw * (1.f / glow_floor_px);
     const float glow_scale = glow_area * glow_area;
     const float kc = 0.5f * inv_sc * inv_sc, kg = 0.5f * inv_sg * inv_sg;
-    // energy: the cap over the on-screen length in metres at the head's depth, and a motion under the core's width at
-    // its own length (paused: full); the dot keeps both factors
-    const float f_px = c.m11 * vf.half_h;
-    const float streak_m = len * depth_m / f_px;
+    // energy: the radiance factor min(1, length_cap_m / the world travel this frame, |v| dt_game); a travel under the
+    // cap (or a paused game) keeps 1, whatever its on-screen length; the dot keeps the same factor
+    const float travel_m = speed_m * step;
     const float cap = tune.length_cap_m;
-    const float e_cap = streak_m > cap ? cap / streak_m : 1.f;
-    const float e_len = len < w && step > 0.f ? len / w : 1.f;
-    const float energy = e_cap * e_len;
+    const float energy = travel_m > cap ? cap / travel_m : 1.f;
     const bool dot = depth_m > tune.lod_dot_m;
-    const float drawn = dot || len < w ? w : len;
-    const float ta[2] = {rb[0] - ux * drawn, rb[1] - uy * drawn}; // the drawn tail: the segment ends at the head
+    // a motion under the core's width (an end-on or a slow bolt) and the dot: a spot of the core's width centred on the
+    // motion (the dot on the head), its along profile normalised to 1 at its centre (full core radiance)
+    const bool spot = dot || len < w;
+    const float drawn = spot ? w : len;
+    float ta[2] = {ra[0], ra[1]}, tb[2] = {rb[0], rb[1]}; // the drawn ends
+    if (spot) {
+        const float mx = dot ? rb[0] : 0.5f * (ra[0] + rb[0]), my = dot ? rb[1] : 0.5f * (ra[1] + rb[1]);
+        ta[0] = mx - 0.5f * w * ux, ta[1] = my - 0.5f * w * uy;
+        tb[0] = mx + 0.5f * w * ux, tb[1] = my + 0.5f * w * uy;
+    }
     const float half = 0.5f * drawn;
-    const float fc = dim * energy, fg = glow_scale * energy;
+    // 1 / (Phi(h) - Phi(-h)) per Gaussian (past 16 / m the ramps no longer meet: 1 within 2^-15, no exp2): a streak of a
+    // few core widths and longer is unchanged, a spot reaches the full radiance at its centre
+    const float mc = logistic_slope * inv_sc, mg = logistic_slope * inv_sg;
+    const float nc = mc * half < 16.f ? along_norm(half, mc) : 1.f, ng = mg * half < 16.f ? along_norm(half, mg) : 1.f;
+    const float fc = dim * energy * nc, fg = glow_scale * energy * ng;
     const float core_k = body.core_scale * fc, glow_k = body.glow_scale * fg;
     const float lc = body.log2_core + (fc != 1.f ? log2f_poly(fc) : 0.f);
     const float lg = body.log2_glow + (fg != 1.f ? log2f_poly(fg) : 0.f);
@@ -311,7 +327,7 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     float minx = 1e30f, maxx = -1e30f, miny = 1e30f, maxy = -1e30f;
     for (unsigned i = 0; i < 4; ++i) {
         const float* e = corner[i];
-        const float* base = e[2] > 0.5f ? rb : ta;
+        const float* base = e[2] > 0.5f ? tb : ta;
         const float px = base[0] + ux * ext_a * e[0] + nx * ext * e[1];
         const float py = base[1] + uy * ext_a * e[0] + ny * ext * e[1];
         renderer::WeaponProjectileVertex& v = out[i];
@@ -335,7 +351,7 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     }
     if (shape) {
         shape->depth_m = depth_m;
-        shape->streak_m = streak_m;
+        shape->streak_m = travel_m;
         shape->length_px = len;
         shape->drawn_px = drawn;
         shape->core_px = w;

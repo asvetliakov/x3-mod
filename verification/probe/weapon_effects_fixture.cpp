@@ -3340,7 +3340,7 @@ int main(int argc, char** argv) {
             report("projectile_static_frame_extrapolates",
                    c1.drawn == 1 && c2.drawn == 1 && c3.drawn == 1 && c4.drawn == 1 && c1.statics == 0 && c2.statics == 1 &&
                        c3.statics == 0 && c3.jumped == 0 && c4.statics == 1 && c4b.statics == 0 && c4b.jumped == 0 &&
-                       s4b.held && std::fabs(held_err) < 0.05 && s4b.energy == 0.f && c5.jumped == 1 &&
+                       s4b.held && std::fabs(held_err) < 0.05 && s4b.energy == 1.f && c5.jumped == 1 &&
                        std::fabs(head2_err) < 0.05 &&
                        std::fabs(tail2_err) < 0.05 && std::fabs(seam3) < 0.05 && std::fabs(head4_err) < 0.05 &&
                        std::fabs(len5 / want5 - 1.0) < 0.01,
@@ -3400,36 +3400,46 @@ int main(int argc, char** argv) {
                        lengths[0] > 2.0 * lengths[1],
                    "");
         }
-        // (7e) the slow and the paused bolt: an on-screen motion of 0.5 px a frame at 500 m (core 2 px) draws a segment
-        // of the core's width at 0.5 / 2 of the radiance (the energy of its length); the paused game (step 0) draws that
-        // segment at full radiance; the frame's light of the slow bolt over a 2.1 px streak's is the ratio of their
-        // lengths (energy follows the on-screen length, within 3 %).
+        // (7e) the end-on, slow and paused bolt: a bolt flying along the view axis at 500 m (straight-ahead fire, its
+        // on-screen motion 0 px) draws a spot of the core's width at full core radiance: its centre pixel equals a
+        // side-on IRE streak's at 500 m under the cap (within 2 %); an on-screen motion of 0.5 px and a paused game
+        // (step 0) draw the same spot at factor 1 (the energy rule dims only a travel past length_cap_m).
         {
             const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
             const ps::View view = proj_view(pt, 1.6f);
             const float f_px = view.m11 * 0.5f * float(pt.h);
             const float speed = 0.5f * 500.f / f_px / 0.016f; // m/s: 0.5 px in 16 ms at 500 m
-            ps::BoltShape slow, paused, two;
-            rr::WeaponProjectileVertex v[12];
-            const bool b1 = ps::bolt_vertices(view, tune, ire_look(), bolt_at(500.f, speed, 16.f), v, &slow);
-            const bool b2 = ps::bolt_vertices(view, tune, ire_look(), bolt_at(500.f, speed, 0.f), v + 4, &paused);
-            const bool b3 = ps::bolt_vertices(view, tune, ire_look(), bolt_at(500.f, 4.2f * speed, 16.f), v + 8, &two);
-            double sums[2] = {0.0, 0.0};
+            ps::BoltShape end_on, side, slow, paused;
+            rr::WeaponProjectileVertex v[16];
+            ps::BoltIn axis;
+            axis.p[2] = 500.f * ps::view_units_per_metre;
+            axis.v[2] = 1162.f * ps::view_units_per_metre; // receding along the view axis
+            axis.step_s = 0.016f;
+            axis.age_s = 10.f;
+            const bool b0 = ps::bolt_vertices(view, tune, ire_look(), axis, v, &end_on);
+            const bool b1 = ps::bolt_vertices(view, tune, ire_look(), bolt_at(500.f, 1162.f, 16.f), v + 4, &side);
+            const bool b2 = ps::bolt_vertices(view, tune, ire_look(), bolt_at(500.f, speed, 16.f), v + 8, &slow);
+            const bool b3 = ps::bolt_vertices(view, tune, ire_look(), bolt_at(500.f, speed, 0.f), v + 12, &paused);
+            float centre[2] = {0.f, 0.f};
             for (unsigned k = 0; k < 2; ++k) {
-                proj_draw(proj, pt, v + (k ? 8 : 0), 1);
+                proj_draw(proj, pt, v + 4 * k, 1);
                 const std::vector<float> l = proj_scene(pt);
-                for (std::size_t i = 0; i < l.size(); ++i) sums[k] += l[i];
+                centre[k] = l.empty() ? 0.f : l[std::size_t(cy) * pt.w + cx];
             }
-            const double ratio = sums[1] > 0.0 ? sums[0] / sums[1] : 0.0;
-            std::printf("PROJECTILE case=slow length_px=%.3f drawn_px=%.3f core_px=%.2f energy=%.4f paused_drawn_px=%.3f "
-                        "paused_energy=%.4f two_px_length=%.3f two_px_energy=%.4f light_ratio=%.4f\n",
-                        double(slow.length_px), double(slow.drawn_px), double(slow.core_px), double(slow.energy),
-                        double(paused.drawn_px), double(paused.energy), double(two.length_px), double(two.energy), ratio);
-            report("projectile_slow_and_paused_segments",
-                   b1 && b2 && b3 && std::fabs(slow.length_px - 0.5f) < 0.01f && slow.drawn_px == slow.core_px &&
-                       std::fabs(slow.energy / (slow.length_px / slow.core_px) - 1.f) < 0.01f && paused.length_px == 0.f &&
-                       paused.drawn_px == paused.core_px && paused.energy == 1.f && two.energy == 1.f &&
-                       std::fabs(ratio / (double(slow.length_px) / double(two.length_px)) - 1.0) < 0.03,
+            const double ratio = centre[1] > 0.f ? double(centre[0]) / double(centre[1]) : 0.0;
+            std::printf("PROJECTILE case=endon distance_m=500 endon_length_px=%.3f endon_drawn_px=%.3f endon_energy=%.4f "
+                        "endon_centre=%.4f side_length_px=%.2f side_energy=%.4f side_centre=%.4f centre_ratio=%.4f "
+                        "slow_length_px=%.3f slow_drawn_px=%.3f slow_energy=%.4f paused_drawn_px=%.3f paused_energy=%.4f "
+                        "core_px=%.2f\n",
+                        double(end_on.length_px), double(end_on.drawn_px), double(end_on.energy), double(centre[0]),
+                        double(side.length_px), double(side.energy), double(centre[1]), ratio, double(slow.length_px),
+                        double(slow.drawn_px), double(slow.energy), double(paused.drawn_px), double(paused.energy),
+                        double(end_on.core_px));
+            report("projectile_end_on_full_radiance",
+                   b0 && b1 && b2 && b3 && end_on.length_px < 0.01f && end_on.drawn_px == end_on.core_px &&
+                       end_on.energy == 1.f && side.energy == 1.f && std::fabs(ratio - 1.0) < 0.02 &&
+                       slow.drawn_px == slow.core_px && slow.energy == 1.f && paused.length_px == 0.f &&
+                       paused.drawn_px == paused.core_px && paused.energy == 1.f,
                    "");
         }
         // (8) Reset: the programs go before it and come back after; the next frame draws again.
