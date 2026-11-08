@@ -146,6 +146,39 @@ class ArchiveUserRunsTest(unittest.TestCase):
             self.assertEqual(archive.count('| %s |' % key), 1, key)
         self.assertEqual(self.run_tool('--keep', '8', '--check'), 0)
 
+    def test_edition_prefixed_blocks_and_status_paragraphs(self):
+        doc = '\n'.join([
+            '# Outstanding user gameplay runs', '',
+            '| Run | Purpose | Sessions | Status |', '| --- | --- | ---: | --- |',
+            '| AP 246 A | Open | 1 | Open |', '',
+            'Run 166 A is open (see [note](foo.md)). Earlier: Run 165 A completed.', '',
+            'FL 57 A is open (release smoke).', '',
+            '**AP 245 A (queued 2026-11-07): superseded.** Fly [it](bar.md).', '',
+            '**FL 57 A (queued 2026-11-02): release smoke.** One load.', '',
+            '**Run 101 A (queued 2026-09-28): release 0.6.0.**', '',
+            'AP 246 A is the only queued run; FL 57 A too. AP 245 A was superseded unflown.', '',
+        ])
+        self.runs.write_text(doc)
+        self.assertEqual(aur.queued_runs('AP 246 A is the only queued run; FL 57 A too. X'),
+                         [('AP', 246), ('FL', 57)])
+        self.assertEqual(self.run_tool(), 0)
+        runs, archive = self.runs.read_text(), self.archive.read_text()
+        for gone in ('Run 166 A is open', '**AP 245 A', '**Run 101 A'):
+            self.assertNotIn(gone, runs)
+        for kept in ('FL 57 A is open', '**FL 57 A (queued', 'AP 246 A is the only queued run',
+                     'AP 245 A was superseded unflown'):
+            self.assertIn(kept, runs)
+        self.assertIn('## AP 245 A (completed 2026-09-22: see table)', archive)
+        self.assertIn('Fly [it](../verification/bar.md).', archive)
+        self.assertIn('## Run 101 (completed 2026-09-22: see table)', archive)
+        self.assertIn('Run 166 A is open (see [note](../verification/foo.md)). '
+                      'Earlier: Run 165 A completed.', archive)
+        self.assertEqual(self.run_tool('--check'), 0)
+        # a second move into the existing history section keeps a blank separator
+        self.runs.write_text(self.runs.read_text().replace('; FL 57 A too', ''))
+        self.assertEqual(self.run_tool(), 0)
+        self.assertIn('Earlier: Run 165 A completed.\n\nMoved from', self.archive.read_text())
+
     def test_moved_row_links_are_rewritten_to_resolve_from_the_archive(self):
         row = ('| 1 | See [cue](foo.md#run50-anchor), [arch](../architecture/x.md), '
                '[st](../status.md), [ext](https://e.org/a.md), [top](#local) | 0 | Done |')

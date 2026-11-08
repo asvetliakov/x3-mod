@@ -67,8 +67,6 @@ aimed it acts on your ship.
 | FL 57 A | Release 2.0.1 FL (stripped DLL 00f483f0…), `C:\X3FL`; rollback `rollback-d3d9\d3d9.dll.run56`; ini header only. Smoke: load one sector, log header 2.0.1. | 1 | open |
 
 
-Run 166 A is open (Run166 installed: controller B.5 crash fix). Earlier: Run 165 A completed (crash). Earlier: Run 164 A completed. Earlier: Run 163 A completed. Earlier: Run 162 A completed. Earlier: Run 161 A completed. Earlier: Run 160 A completed in two flights. Earlier: Run 159 A completed. Earlier: Run 158 A completed. Earlier: Run 157 A completed. Earlier: Run 156 A completed. Earlier: Run 155 A completed. Earlier: Run 154 A completed. Earlier: Run 152 A/B completed. Earlier: Run 151 A/B completed. Earlier: no run was open (release 1.2.1 installed as Run150; Run 149 A completed). Earlier: Run 148 A completed (restore works; HUD finding). Earlier: Run 147 A completed (crashed). Earlier: Run 146 A completed (never bound). Earlier: no run was open (release 1.2.0 installed as Run145; Run 144 A completed: cockpit fog steady). Earlier: Run 143 A completed (crash fixed, flicker diagnosed). Earlier: no run was open (Run 140 B completed in run25/run26: node and draw sources equal, Run140 accepted; Run 140 A completed in run22/run23). Earlier: Run 139 A completed in run20/run21: the engine-side skip is a net loss except at the densest close views; the hold missed the per-nozzle case). Earlier: Run 138 A completed in run17/run19: the batched cull is at parity with no cull on DXVK; default off from the next build). Earlier: Run 137 A completed in run16 (net loss). Earlier: Run 136 A completed in run15; dxvk.conf removed after it; the per-draw plate cull and the pipeline_key row were built and dropped. Earlier: Run 135 A completed in run14. Earlier: Run 134 A completed in run12 (crash after F8 captures, engine light gap). Earlier: Run 133 A completed in run11: the HDR readback double-buffer on DXVK, median frame 12.7 ms). Earlier: Run 132 A completed in run5/run6: DXVK backend working with every pass; Run 131 A completed in run4; release 1.0.0 installed as Run130's DLL). Completed instructions for Runs 73-88 are in the [archive](../archive/user-runs-completed.md).
-
 ## Stand command
 
 Since 2026-09-25 the functional options of the Run 84 A stand command, `--music-keep` and `--shadow-alpha-casters on`
@@ -104,18 +102,4 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --d
 # --music-keep --shadow-alpha-casters on
 ```
 
-**Run 101 A (queued 2026-09-28; Run101 = release 0.6.0, DLL `8b164ee1…` stripped, from 018d7e49, installed 05:57 together
-with the 0.6.0 `x3m.ini` template and `x3m-regenerate.exe`; the luminance lock is now on by default).** One plain
-flight, launcher or CrossOver shortcut, at your resolution:
-
-```
-./x3run --direct --debug --perf
-```
-
-Nothing to A/B: confirm that distant stations look as in run356 (sharp plates under pan, no noticeable shimmer) with no
-option given, that speech plays and alt-tab resumes at once (the shortcut path), and mention anything that looks
-different from Run 100 A. Rows expected: `motion_output_taa_luma_lock ... configured=1 gate=camera` without the option
-on the command line, `version=0.6` in the header, `session_end`. To turn the lock off for a comparison: `--taa-luma-lock
-0`, or `taa_luma_lock = 0` in `x3m.ini` for a shortcut launch.
-
-Run 101 A is the only queued run. Completed instructions for Runs 73-100 are in the [archive](../archive/user-runs-completed.md).
+AP 246 A is the only queued run; its instructions are in its table row. AP 245 A was superseded unflown. Completed instructions for Runs 73-101 are in the [archive](../archive/user-runs-completed.md).
