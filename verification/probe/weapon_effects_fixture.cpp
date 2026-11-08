@@ -4040,15 +4040,17 @@ int main(int argc, char** argv) {
                             "statics=%u jumped=%u\n",
                             pool.count, nw.drawn, nw.comets, nw.merged, nw.quads, nw.wanted, nw.trimmed, before.wanted, cpu_w,
                             gpu_w, fence_best, lw.empty() ? 0.0 : double(lit_w) / double(lw.size()), w_statics, w_jumped);
-                // the rule's mechanics gate; the timing is reported against the bounds (100 us CPU, 50 us GPU fenced),
-                // not gated: at 7 ms steps under a 43 degrees/s turn the comets' lit area alone exceeds the GPU bound
-                // (docs/verification/weapon-effects.md, "FL 60 A review")
+                // a regression tripwire (coordinator, 2026-11-09): the rule's mechanics and CPU 150 us / GPU 100 us
+                // fenced with the trim active; the flight budget stays the main row's 100 / 50 and the flight evidence is
+                // the frame row's projectile_us_max (this case, 512 bolts on screen during a 43 degrees/s turn at 144
+                // fps, is far beyond any flight); the row reports it against 100 / 50 too
                 std::printf("PROJECTILE case=budget_worst_bounds cpu_within=%u gpu_within=%u\n", unsigned(cpu_w < 100.0),
                             unsigned(gpu_w < 50.0));
                 report("projectile_budget_worst_trims_unmerged_144fps_turning",
                        drew_w && nw.drawn >= 480 && nw.merged * 50 <= nw.comets && nw.comets + nw.dots == nw.drawn &&
                            before.wanted > ps::ring_trim_above && nw.trimmed > 0 &&
-                           nw.quads <= nw.drawn * (1u + ps::ring_trimmed_segments) && w_statics == 0 && w_jumped == 0,
+                           nw.quads <= nw.drawn * (1u + ps::ring_trimmed_segments) && w_statics == 0 && w_jumped == 0 &&
+                           cpu_w < 150.0 && gpu_w < 100.0,
                        "");
             }
         }
