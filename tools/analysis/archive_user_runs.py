@@ -5,8 +5,12 @@
 completed-run table (AGENTS.md, Documentation). Three things grow without
 bound and are moved here into `docs/archive/user-runs-completed.md`:
 
-1. table rows older than the `--keep` highest run numbers, appended unchanged
-   to `## Completed-run table (archived rows)`;
+1. table rows older than the `--keep` newest run ids of their edition,
+   appended unchanged to `## Completed-run table (archived rows)`. A row id is
+   an optional edition prefix (`AP`, `FL`; `Run` or none means AP), a number
+   and an optional letter suffix: `AP 240 A`, `FL 57 A`, `204 A`, `13`. AP and
+   FL number independently, so each edition keeps its own newest `--keep` ids,
+   ranked by (number, suffix); `203 A` and `203 B` are distinct ids;
 2. `**Run N (queued ...)**` instruction blocks for runs that are no longer
    named as queued in the trailing paragraph, appended under
    `## Run N (completed <date>: ...)`;
@@ -30,7 +34,8 @@ from pathlib import Path
 
 TABLE_HEADER_RE = re.compile(r"^\|\s*Run\s*\|")
 TABLE_SEP_RE = re.compile(r"^\|\s*-+\s*\|")
-ROW_RE = re.compile(r"^\|\s*(\d+)")
+ROW_RE = re.compile(r"^\|\s*(?:(AP|FL)\s+|Run\s+)?(\d+)(?:\s+([A-Z])(?![A-Za-z]))?")
+DEFAULT_EDITION = "AP"
 BLOCK_START_RE = re.compile(r"^\*\*Run\s+(\d+)\b")
 QUEUED_PARAGRAPH_RE = re.compile(
     r"^Runs?\s+\d[^.]*\bqueued\s+runs?\b", re.IGNORECASE
@@ -96,11 +101,29 @@ def find_table(lines):
     raise DocError("no completed-run table found")
 
 
-def row_run_number(row):
+def row_run_id(row):
+    """(edition, number, suffix) of a table row: '| FL 57 A |' -> ('FL', 57, 'A')."""
     match = ROW_RE.match(row)
     if not match:
         raise DocError("table row without a run number: %r" % row[:60])
-    return int(match.group(1))
+    return (match.group(1) or DEFAULT_EDITION, int(match.group(2)), match.group(3) or "")
+
+
+def row_run_number(row):
+    return row_run_id(row)[1]
+
+
+def kept_run_ids(rows, keep):
+    """The `keep` newest (number, suffix) ids of each edition among `rows`."""
+    by_edition = {}
+    for row in rows:
+        edition, number, suffix = row_run_id(row)
+        by_edition.setdefault(edition, set()).add((number, suffix))
+    kept = set()
+    for edition, ids in by_edition.items():
+        for number, suffix in sorted(ids, reverse=True)[:keep]:
+            kept.add((edition, number, suffix))
+    return kept
 
 
 def row_key(row):
@@ -312,11 +335,10 @@ def build_plan(runs_text, archive_text, keep, today):
 
     # (1) table rows
     rows = [line for line in runs_lines[sep + 1 : table_end] if line.startswith("|")]
-    numbers = sorted({row_run_number(r) for r in rows}, reverse=True)
-    keep_numbers = set(numbers[:keep])
+    keep_ids = kept_run_ids(rows, keep)
     kept_rows, old_rows = [], []
     for row in rows:
-        (kept_rows if row_run_number(row) in keep_numbers else old_rows).append(row)
+        (kept_rows if row_run_id(row) in keep_ids else old_rows).append(row)
 
     existing_keys = archived_row_keys(archive_lines)
     new_archive_rows = [r for r in old_rows if row_key(r) not in existing_keys]
@@ -326,7 +348,7 @@ def build_plan(runs_text, archive_text, keep, today):
             "table: move %d row(s) (runs %s), keep %d; %d already archived"
             % (
                 len(old_rows),
-                ", ".join(str(row_run_number(r)) for r in old_rows),
+                ", ".join(row_key(r) for r in old_rows),
                 len(kept_rows),
                 duplicate_rows,
             )
@@ -381,11 +403,10 @@ def build_plan(runs_text, archive_text, keep, today):
         new_runs_lines[trailing_index] = new_paragraph
     table_ranges = []
     if old_rows:
-        keep_set = set(keep_numbers)
         table_ranges = [
             (i, i + 1, False)
             for i in range(sep + 1, table_end)
-            if (new_runs_lines[i].startswith("|") and row_run_number(new_runs_lines[i]) not in keep_set)
+            if (new_runs_lines[i].startswith("|") and row_run_id(new_runs_lines[i]) not in keep_ids)
             or new_runs_lines[i].strip() == ""
         ]
     new_runs_lines = _drop_lines(new_runs_lines, table_ranges + move_ranges)
@@ -456,7 +477,7 @@ def repo_root():
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--keep", type=int, default=8,
-                        help="completed-run table rows to keep (default 8)")
+                        help="completed-run table ids to keep per edition (default 8)")
     parser.add_argument("--runs-file", type=Path,
                         default=repo_root() / "docs/verification/user-runs.md")
     parser.add_argument("--archive-file", type=Path,

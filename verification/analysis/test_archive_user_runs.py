@@ -124,6 +124,28 @@ class ArchiveUserRunsTest(unittest.TestCase):
         self.assertEqual(archive.count('| 1 | Purpose 1'), 1)
         self.assertNotIn('| 1 | Purpose 1', self.runs.read_text())
 
+    def test_edition_prefixed_ids_keep_the_newest_per_edition(self):
+        table = ["| Run | Purpose | Sessions | Status |", "| --- | --- | ---: | --- |"]
+        ids = (['AP %d A' % n for n in range(240, 247)] + ['FL %d A' % n for n in range(49, 58)]
+               + ['AP 235 B', 'AP 235 A', 'AP 234 A', '211 A', '203 A', '203 B', 'Run 204 A'])
+        table += ['| %s | Purpose | 1 | Completed |' % i for i in ids]
+        text = runs_doc().split('\n')
+        header, sep, end = aur.find_table(text)
+        self.runs.write_text('\n'.join(text[:header] + table + text[end:]))
+        self.assertEqual(self.run_tool('--keep', '8'), 0)
+        rows = [l for l in self.runs.read_text().split('\n') if l.startswith('| ') and aur.ROW_RE.match(l)]
+        self.assertEqual(
+            sorted(aur.row_key(r) for r in rows),
+            sorted(['AP %d A' % n for n in range(240, 247)] + ['AP 235 B']
+                   + ['FL %d A' % n for n in range(50, 58)]))
+        self.assertEqual(aur.row_run_id('| FL 57 A | x |'), ('FL', 57, 'A'))
+        self.assertEqual(aur.row_run_id('| Run 204 A | x |'), ('AP', 204, 'A'))
+        self.assertEqual(aur.row_run_id('| 13 | x |'), ('AP', 13, ''))
+        archive = self.archive.read_text()
+        for key in ('FL 49 A', 'AP 235 A', 'AP 234 A', '211 A', '203 A', '203 B', 'Run 204 A'):
+            self.assertEqual(archive.count('| %s |' % key), 1, key)
+        self.assertEqual(self.run_tool('--keep', '8', '--check'), 0)
+
     def test_moved_row_links_are_rewritten_to_resolve_from_the_archive(self):
         row = ('| 1 | See [cue](foo.md#run50-anchor), [arch](../architecture/x.md), '
                '[st](../status.md), [ext](https://e.org/a.md), [top](#local) | 0 | Done |')
