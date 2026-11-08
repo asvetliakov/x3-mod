@@ -209,14 +209,17 @@ DLL, no allocation, no per-frame key lookup, no previous-frame matching (the str
 **bound 100 µs at 512** on `stage_us`. The dropped batch saves the game's draw and the footprint rewrite for that body.
 The far-flag composite is already paid by the game's bolts. Nothing in the hook changes: the tap costs what it costs today.
 
-## 7. Open questions for the user
+## 7. User decisions (2026-11-08)
 
-1. Colour: the texture's orange (the mocks, sRGB (255, 177, 92)), the vanilla streak's redder reading in the screenshot
-   (mean (175, 52, 41)), or the FL IRE's light colour, blue `#3010c0` [M, catalogue], which the classifier would pick?
-2. Length at 1x: the per-frame motion only (B: a 50 px dash at 500 m, growing under SETA) or the game's own dart
-   length as the body (about 116 m [I], 300 px at 500 m) with the stretch added?
-3. The game's muzzle blob stays until the bolts are accepted; agreed, or should the muzzle be suppressed with the batch?
-4. Which `fov` is flown (the pixel figures assume the launcher default 90; `game` scales them by 0.75)?
+The user chose mock **B** (thin core with the motion stretch) and answered the four questions:
+
+1. Colour: the texture's orange (sRGB (255, 177, 92)), not the vanilla streak's red and not the FL light colour.
+2. Length at 1x: the per-frame motion stretch only (B); the game's dart length is not used as the body.
+3. The game's muzzle blob stays until the bolts are accepted.
+4. The flown `fov` is 90-100 with the mod's remapped field of view, so the stage reads the live projection (the
+   per-frame view and projection the proxy already captures) and sets the core width in pixels from it; it never
+   assumes 90 or any fixed focal length. The 500 m reference is a reference for the tuning numbers, not a constant
+   in the shader.
 
 ## 8. Options considered and why they lose
 
