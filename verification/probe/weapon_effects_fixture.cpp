@@ -3188,7 +3188,9 @@ int main(int argc, char** argv) {
         // (7b) the seam (FL 59 A): one bullet at 200 m crossing the view along +x through the production builder, two
         // consecutive stage frames at 60 fps and at 144 fps (the node advanced by v dt between them, the game step the
         // integer ms), with the baked tune and with the user's flown file values (core_px 1, glow_ratio 2, glow_gain 2,
-        // hot_share 0.9, length_cap_m 5). Geometry: the second frame's tail is the first frame's head (|gap| <= 0.05 px).
+        // hot_share 0.9, length_cap_m 5), and at 60 fps with the camera moving along the bolt at 200 m/s (the bolt's
+        // velocity includes it, as a shot from the moving ship: the camera-relative bridge draws the relative travel).
+        // Geometry: the second frame's tail is the first frame's head on screen (|gap| <= 0.05 px).
         // Light: both frames drawn into one target (the eye's integration of two frames) and read along the axis row:
         // uniform within 10 % ((max - min) / max) everywhere but within one core width of the combined tail and head.
         {
@@ -3206,14 +3208,17 @@ int main(int argc, char** argv) {
             flown.hot_share = 0.9f;
             flown.length_cap_m = 5.f;
             bool seam_ok = true;
-            for (unsigned variant = 0; variant < 4; ++variant) {
-                const bool fast = variant & 1u, user = variant >= 2;
+            for (unsigned variant = 0; variant < 5; ++variant) {
+                const bool fast = variant == 1 || variant == 3, user = variant == 2 || variant == 3, moving = variant == 4;
+                const double cam_units = moving ? 200.0 * 500.0 * (1.0 / 60.0) : 0.0; // the camera's travel per frame
+                ps::View view2 = view;
+                view2.t[0] = float(-cam_units * double(wc::world_scale)); // eye = -t / world_scale (identity basis)
                 const double dt = fast ? 1.0 / 144.0 : 1.0 / 60.0;
                 const std::uint32_t step_ms = fast ? 7u : 17u;
                 const pf::Tune tunes[pf::family_count] = {user ? flown : pf::families[pf::fighter_tracer].tune};
                 const double travel = 581000.0 * dt; // engine units per frame
-                // the first head half a frame left of the centre: the two streaks straddle it
-                const std::int32_t p1[3] = {std::int32_t(-0.5 * travel), 0, 200 * 500};
+                // the first head half a (relative) frame left of the centre: the two streaks straddle it
+                const std::int32_t p1[3] = {std::int32_t(-0.5 * (travel - cam_units)), 0, 200 * 500};
                 const std::int32_t vel[3] = {581000, 0, 0};
                 pool_reset(pool, cfg, &cfg_slot, 5000);
                 pool_bullet(pool, bullet, 77, p1, vel);
@@ -3225,7 +3230,7 @@ int main(int argc, char** argv) {
                 put32(cfg, wc::layout::cfg_game_ms, 5000 + step_ms);
                 wc::projectile_tap(reinterpret_cast<std::uintptr_t>(bullet.obj), pool);
                 const ps::Counts b = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 5000 + step_ms, step_ms,
-                                               float(dt), 1.f, view, tunes, verts + 4, 1, &s2);
+                                               float(dt), 1.f, view2, tunes, verts + 4, 1, &s2);
                 const double gap = double(s2.tail[0]) - double(s1.head[0]);
                 proj_draw(proj, pt, verts, 2); // both frames in one target
                 const std::vector<float> l = proj_scene(pt);
@@ -3245,13 +3250,14 @@ int main(int argc, char** argv) {
                 const bool ok = a.drawn == 1 && b.drawn == 1 && b.jumped == 0 && b.statics == 0 && std::fabs(gap) <= 0.05 &&
                                 x1 - x0 > 50 && spread <= 0.10;
                 seam_ok = seam_ok && ok;
-                std::printf("PROJECTILE case=seam fps=%u tune=%s distance_m=200 travel_m=%.3f length_px=%.2f/%.2f core_px=%.2f "
-                            "gap_px=%.4f scan_px=%d lo=%.4f hi=%.4f spread=%.4f seam=%.4f plateau=%.4f energy=%.4f jumped=%u\n",
-                            fast ? 144u : 60u, user ? "flown" : "baked", travel / 500.0, double(s1.length_px),
+                std::printf("PROJECTILE case=seam fps=%u tune=%s camera_mps=%u distance_m=200 travel_m=%.3f length_px=%.2f/%.2f "
+                            "core_px=%.2f gap_px=%.4f scan_px=%d lo=%.4f hi=%.4f spread=%.4f seam=%.4f plateau=%.4f energy=%.4f "
+                            "jumped=%u\n",
+                            fast ? 144u : 60u, user ? "flown" : "baked", moving ? 200u : 0u, travel / 500.0, double(s1.length_px),
                             double(s2.length_px), w, gap, x1 - x0 + 1, lo, hi, spread, seam_v, plateau, double(s2.energy),
                             b.jumped);
             }
-            report("projectile_seam_uniform_60_144", seam_ok, "");
+            report("projectile_seam_uniform_60_144_moving_camera", seam_ok, "");
         }
         // (7c) the static frame: the node not advanced for a frame (a logic tick slower than the render frame) draws the
         // head extrapolated by v x render dt x SETA rate from the read position, its tail at the previous head; the next

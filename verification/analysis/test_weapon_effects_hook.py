@@ -246,8 +246,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertAlmostEqual(flag['ratio'], 32.0, delta=0.5)
         self.assertEqual(next(x for x in rows if x.get('case') == 'quad')['outside'], 0)
         seam = [x for x in rows if x.get('case') == 'seam']
-        self.assertEqual(sorted((x['fps'], x['tune']) for x in seam),
-                         [(60, 'baked'), (60, 'flown'), (144, 'baked'), (144, 'flown')])
+        self.assertEqual(sorted((x['fps'], x['tune'], x['camera_mps']) for x in seam),
+                         [(60, 'baked', 0), (60, 'baked', 200), (60, 'flown', 0), (144, 'baked', 0), (144, 'flown', 0)])
         for x in seam:
             self.assertLessEqual(abs(x['gap_px']), 0.05)
             self.assertLessEqual(x['spread'], 0.10)

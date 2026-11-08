@@ -8,10 +8,11 @@
 // The projectile stage's CPU half (docs/architecture/projectile-look.md section 2 and "Implementation (2026-11-08)"):
 // every live pool entry (weapon_effects_projectile.h) validated through the bounded reader, its node read once (live,
 // handle, position +0x30, velocity +0x100, body +0x144; one read, no object read: a recycled node changes handle) and turned into one screen-space quad of four vertices: a streak
-// of light from the previous frame's drawn head to this frame's head P (P the body origin, where the vanilla mesh is
-// centred), so consecutive frames' streaks meet end to end at any frame rate (the FL 59 A dashed trail was the gap
-// between short dashes); a first frame (or a jump) from P - v dt_game (the engine's game-time step, so SETA lengthens
-// it), never behind the muzzle. A static frame (node +0x30 unchanged) extrapolates the head by v x render dt x SETA
+// of light from the previous frame's drawn head (kept as its offset from the eye: camera-relative in translation) to
+// this frame's head P (P the body origin, where the vanilla mesh is centred), so consecutive frames' streaks meet end to
+// end on screen at any frame rate (the FL 59 A dashed trail was the gap between short dashes); a first frame (or a
+// jump) from P - (v dt_game - the camera's travel) (the engine's game-time step, so SETA lengthens it), never behind
+// the muzzle. A static frame (node +0x30 unchanged) extrapolates the head by v x render dt x SETA
 // rate. No multiplier; past length_cap_m the radiance scales by cap / length (energy conserved), none past lod_dot_m
 // (a dot). Along the axis the profile is flat with logistic end ramps whose half maximum sits at each end, so two
 // consecutive streaks add to one flat streak. The core's full width is core_px at the 500 m reference through the live
@@ -117,9 +118,11 @@ struct View {
 };
 // One bolt in view units: its drawn head (view space; the body origin, or extrapolated on a static frame), its velocity
 // (view units per second, view space), the previous frame's drawn head when the entry was evaluated in the previous
-// stage frame (has_tail), the game-time step and its age (seconds).
+// stage frame (has_tail; at the same offset from this frame's eye as from that frame's), the camera's translation over
+// the frame (view space; a first frame's streak is the bolt's travel relative to the camera), the game-time step and
+// its age (seconds).
 struct BoltIn {
-    float p[3]{}, v[3]{}, tail[3]{};
+    float p[3]{}, v[3]{}, tail[3]{}, cam[3]{};
     float step_s = 0.f, age_s = 1e6f;
     bool has_tail = false;
 };
@@ -203,8 +206,9 @@ inline float along_norm(float h, float m_over_sigma) noexcept {
     return (1.f + e) / (1.f - e);
 }
 // The four vertices of one bolt (false: culled, the head behind the near plane, off the target or degenerate).
-// The streak runs from the tail to the head: the previous frame's drawn head (in.tail) when the entry was drawn in the
-// previous stage frame, else (a first frame, a jump) P - v dt_game, never behind the muzzle (|v| x age). No multiplier:
+// The streak runs from the tail to the head: the previous frame's drawn head (in.tail, carried with the camera's
+// translation) when the entry was drawn in the previous stage frame, else (a first frame, a jump) P - (v dt_game - the
+// camera's travel), never behind the muzzle (|v| x age). No multiplier:
 // the streak is the bolt's travel over the frame, so consecutive frames meet end to end at any frame rate and SETA
 // (projectile-look.md section 2). Past length_cap_m the radiance scales by cap / length (motion blur conserves the light:
 // a fast or SETA bolt is a longer, fainter streak); past lod_dot_m a dot.
@@ -218,6 +222,11 @@ inline bool bolt_vertices(const View& c, const ViewFrame& vf, const pf::Tune& tu
     float seg[3]; // head - tail
     const float step = in.step_s > 0.f ? in.step_s : 0.f;
     for (unsigned k = 0; k < 3; ++k) seg[k] = in.has_tail ? in.p[k] - in.tail[k] : in.v[k] * step;
+    if (!in.has_tail) { // relative to the camera, unless the camera moved farther than the bolt (a cut)
+        const float c2 = in.cam[0] * in.cam[0] + in.cam[1] * in.cam[1] + in.cam[2] * in.cam[2];
+        if (c2 <= seg[0] * seg[0] + seg[1] * seg[1] + seg[2] * seg[2])
+            for (unsigned k = 0; k < 3; ++k) seg[k] -= in.cam[k];
+    }
     float s = scalar::sqrt(seg[0] * seg[0] + seg[1] * seg[1] + seg[2] * seg[2]);
     float dir[3] = {1.f, 0.f, 0.f}; // along the segment, else along v (a held or end-on bolt)
     if (s > 1e-3f || speed > 1e-3f) {
@@ -404,6 +413,16 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     const std::int32_t eye_i[3] = {std::int32_t(eye[0]), std::int32_t(eye[1]), std::int32_t(eye[2])};
     const float eye_f[3] = {float(eye[0] - double(eye_i[0])), float(eye[1] - double(eye_i[1])),
                             float(eye[2] - double(eye_i[2]))};
+    // The camera's translation since the previous stage frame (0 without one): the bridge is camera-relative in
+    // translation (the tail keeps the previous head's offset from the eye), so a bolt fired from the moving ship (its
+    // velocity includes the ship's) neither overlaps nor gaps on screen from frame to frame; a turn is not compensated.
+    float cam_world[3] = {0.f, 0.f, 0.f}, cam[3];
+    if (pool.stage_eye_frame && pool.stage_eye_frame + 1u == frame)
+        for (unsigned k = 0; k < 3; ++k)
+            cam_world[k] = float(std::int32_t(std::uint32_t(eye_i[k]) - std::uint32_t(pool.stage_eye[k]))) * core::world_scale;
+    for (unsigned k = 0; k < 3; ++k) pool.stage_eye[k] = eye_i[k];
+    pool.stage_eye_frame = frame;
+    rotate_view(view, cam_world, cam);
     // per family the view constants, per body the frame's radiance
     ViewFrame vfs[pf::family_count];
     for (unsigned f = 0; f < pf::family_count; ++f) vfs[f] = view_frame(view, tunes[f].core_px);
@@ -433,10 +452,11 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
             vel[k] = float(std::int32_t(u32(nb, core::projectile::node_velocity - node_at + 4 * k)));
             speed2 += vel[k] * vel[k];
         }
-        // The bridge: an entry evaluated in the previous stage frame starts its streak at that frame's drawn head. Its
-        // position unchanged since then (a static frame): the head moves on by v x the extrapolated game time. Changed
-        // but far from the velocity's prediction (a jump): a first frame.
+        // The bridge: an entry evaluated in the previous stage frame starts its streak at that frame's drawn head (its
+        // offset from the eye). Its position unchanged since then (a static frame): the head moves on by v x the
+        // extrapolated game time. Changed but far from the velocity's prediction (a jump): a first frame.
         bool bridged = e.stage_frame && e.stage_frame + 1u == frame;
+        const bool was_extrapolated = e.static_us != 0;
         float ext_s = 0.f;
         if (bridged && pos[0] == e.read_pos[0] && pos[1] == e.read_pos[1] && pos[2] == e.read_pos[2]) {
             ++n.statics;
@@ -465,14 +485,15 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
         float head[3], tail[3], v[3];
         std::int32_t drawn[3];
         for (unsigned k = 0; k < 3; ++k) {
-            const float x = vel[k] * ext_s;
-            drawn[k] = pos[k] + std::int32_t(x + (x < 0.f ? -0.5f : 0.5f));
-            head[k] = (float(std::int32_t(std::uint32_t(pos[k]) - std::uint32_t(eye_i[k]))) - eye_f[k] + x) * core::world_scale;
-            tail[k] = (float(std::int32_t(std::uint32_t(e.drawn[k]) - std::uint32_t(eye_i[k]))) - eye_f[k]) * core::world_scale;
+            const float rel = float(std::int32_t(std::uint32_t(pos[k]) - std::uint32_t(eye_i[k]))) - eye_f[k] + vel[k] * ext_s;
+            drawn[k] = std::int32_t(rel + (rel < 0.f ? -0.5f : 0.5f));
+            head[k] = rel * core::world_scale;
+            tail[k] = float(e.drawn[k]) * core::world_scale;
             v[k] = vel[k] * core::world_scale;
         }
-        // never backwards (an extrapolation past the next read position): the head holds at the previous one
-        if (bridged && (head[0] - tail[0]) * v[0] + (head[1] - tail[1]) * v[1] + (head[2] - tail[2]) * v[2] < 0.f)
+        // never backwards (the previous frame's extrapolation past this read position): the head holds at the previous
+        if (bridged && was_extrapolated &&
+            (head[0] - tail[0]) * v[0] + (head[1] - tail[1]) * v[1] + (head[2] - tail[2]) * v[2] < 0.f)
             for (unsigned k = 0; k < 3; ++k) {
                 head[k] = tail[k];
                 drawn[k] = e.drawn[k];
@@ -480,6 +501,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
         rotate_view(view, head, in.p);
         rotate_view(view, tail, in.tail);
         rotate_view(view, v, in.v);
+        for (unsigned k = 0; k < 3; ++k) in.cam[k] = cam[k];
         in.has_tail = bridged;
         in.step_s = step_s;
         in.age_s = e.created ? float(std::int32_t(now_ms - e.created)) * 1e-3f : 1e6f;
