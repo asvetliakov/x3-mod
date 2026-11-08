@@ -342,9 +342,25 @@ def fire_markdown():
         # fire round 3's completion (2026-11-08)
         f"| `death_no_dark_ring` ({ok('death_no_dark_ring')}) | " + '; '.join(f"{r['tier']} {r['age_ms']} ms {r['ratio']}" for r in rows if r.get('case') == 'dark_ring') + " | >= 0.3 of the halo's peak |",
         f"| `wave_band_width` ({ok('wave_band_width')}; 5 km face-on, 0.5 tau) | the rays' median 10 % width over r(t) {row('wave_band_width')['band_over_r']} | 0.2-0.5 |",
+        # the wave's close-range LOD and gain (fire-material.md 13.5)
+        wave_lod_row(),
         f"| `hull_burst_contrast`, `hull_burst_half_hidden_by_lane` ({ok('hull_burst_contrast')}, {ok('hull_burst_half_hidden_by_lane')}) | high-pass std " + ', '.join(f"{r['class']} {r['hp_std']}" for r in d3d['metrics']['class'] if r.get('case') == 'burst_body_median') + f"; at the hit / sky {next(r for r in d3d['metrics']['hull'] if r.get('case') == 'burst_lane')['hit_share']} | >= 0.086 (was 0.10); <= 0.979 (was 0.97) |",
     ]
     print('\n'.join(out))
+
+
+def wave_lod_row():
+    """The close capital's wave (drawn frames, the LOD level and charge per 100 ms row) and the wave's weights per level."""
+    ok = lambda name: 'PASS' if checks.get(name) else 'FAIL'
+    cw = row('close_capital_wave')
+    ww = next(r for r in d3d['metrics']['explosion_timing'] if r.get('case') == 'wave_weight' and r['width'] == 5120)
+    close = sorted((r for (wd, case), r in timing.items() if wd == 5120 and case.startswith('capital_close_') and
+                    case.endswith('ms')), key=lambda r: int(r['case'][14:-2]))
+    lods = ', '.join(f"{r['case'][14:]} L{r.get('wave_lod')}" for r in close if r.get('waves'))
+    return (f"| `wave_drawn_close_capital` ({ok('wave_drawn_close_capital')}; 720 m) | drawn {cw['wave_frames']} of {cw['span']} "
+            f"on-screen frames; levels {lods}; weights at 5120x1440: full {ww['alone_weight']}, finest two off "
+            f"{ww['one_octave_weight']}, LOD 1 {ww['lod1_weight']}, LOD 2 {ww['lod2_weight']} (pinned {ww['pinned']} / "
+            f"{ww['pinned_one']} / {ww['pinned_lod1']} / {ww['pinned_lod2']}) | every on-screen frame; <= pinned + 0.03 |")
 
 
 if '--fire' in sys.argv:

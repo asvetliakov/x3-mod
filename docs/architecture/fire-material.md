@@ -510,7 +510,8 @@ Completion (13.5): `fireball_ps` 3583 words (the red band's c26), `halo_ps` 475 
 changed-code bounds of 13.3 (107 / 1680 us). The wave alone at 5120x1440 (the dev records): 373.6 us filling the frame,
 weight 2.04 against `budget_weight_wave` 2.0 (one octave shed 1.68, `_one` 1.68) [M]. Open: at the close capital (720 m)
 the band's charge (0.35 r(t) of annulus) no longer fits the 2.86-screen fence beside the body, so the budget sheds the
-wave from P + 200 ms (`wave_drawn_close_capital` 4 of 32 frames; the frame 220-230 us without it) [M].
+wave from P + 200 ms (`wave_drawn_close_capital` 4 of 32 frames; the frame 220-230 us without it) [M]. Closed by the
+close-range LOD (13.5, "The close-range LOD").
 
 ### 13.5 Completion (2026-11-08): the halo's floor, the red band, the lab's display, the wave band
 
@@ -555,6 +556,36 @@ keep their rim / floor law at their own w_e; the refraction band keeps wave_w_x 
 projected screens at `budget_weight_wave`, the rest of the drawn strips at `_miss` (the strips were charged whole at the
 full weight). Removed: `fire_wave_thr_end`, `fire_wave_heat_soft`, `fire_wave_aspect`, `wave_rim_gain`,
 `wave_rim_lift`, `fire_wave_lick`. Program `wave_ps` 3728 words.
+
+**The close-range LOD (orchestrator decision 2026-11-08).** Per wave (per record), keyed on the band's charged screen
+area at the full law: the 0.35 r(t) annulus's projected screens (the wall's bar with the eye in the plane), before the
+clip to the drawn quads, so a close band that runs past the screen still reads large. Past `wave_lod_screens` 0.6 the
+band drops its finest two octaves (the step-0a mechanism, `heat[1]` 0) and narrows to `wave_band_r_lod` 0.25 r(t)
+(level 1); past 1.2 it also drops the warp (`heat[2]`, c14.z, 0: level 2). Entered at once, held
+`fireball_octave_hold` 3 frames and left only under `fireball_octave_return` 0.8 of the level's threshold. The LOD'd
+band is charged at `budget_weight_wave_lod` {1.69, 1.69}: the wave alone at 5120x1440 measured 1.685 (level 1) and 1.687
+(level 2) against 1.691 for the finest two off at 0.35 r(t) on the development run, 1.711 / 1.689 / 1.687 on the record
+[M]; the warp's drop saves nothing measurable and the width
+changes nothing per drawn screen, so the LOD's saving at the close capital is its geometry: the 0.25 r(t) band's inner
+reach (0.59 r(t) against 0.42) leaves the frame at P + 700 ms, where the full band stayed on screen to P + 1550 ms.
+`wave_drawn_close_capital` 14 of 14 on-screen frames on the development run and the record (32 frames before, 4
+drawn); the record's frames with the wave 242.8-290.3 us against the 450 us fence [M]. The keys
+(`verification/results/explosion-look/wave_lod_charges.cpp`, the stage on the CPU, the fixture's stream row for row):
+the 5 km face-on gate views 0.03-0.48 screens (the full law: `wave_band_width` 0.217, `wave_not_a_tyre` arc 44 degrees
+unchanged), the 1.5 km broadside level 1 from P + 50 ms and level 2 from P + 150 ms, the close capital level 2 from P
+[M, CPU]. The weight leaves little room: at P + 150 ms the close capital's other charges, everything else shed, are 1.156
+screens, so a band weight over 1.70 sheds the wave on that frame [M, CPU].
+
+Not the wave's: from P + 700 ms the close capital's embers alone charge 1.8-4.5 screens (their quads' unclipped
+area; the whole frame 221-232 us on the GPU), past the 2.86-screen fence with the body's 1.18 [M, CPU]; no wave charge
+could fit those frames. Open (not changed here).
+
+**The wave's gain.** `wave_e` 1.6 -> 2.4 (the user: the band reads dimmer than the four references). The lab broadside
+at 1540-1700 ms and the 1.5 km view from above at 1.6 / 2.4 / 3.2: 2.4 lifts the cells to orange-yellow in an orange
+body; 3.2 gave the references' yellow-white cores but moved `wave_fire_hue`'s 10-40 degree share in the display encoding
+0.466 -> 0.427 (bound 0.43) on the development run; at 2.4 the record reads 0.442 [M]. The other wave gates are peak- or ratio-relative (the hue at 0.2 /
+0.9 L_w, `wave_not_a_tyre`, the ramp) or far inside their bounds (`wave_eye_in_plane_no_whiteout` mean 0.062 at 3.2).
+Program `wave_ps` 3722 words, 872 slots at device creation (842 on the round-3 record) [M].
 
 ## Reproduce
 

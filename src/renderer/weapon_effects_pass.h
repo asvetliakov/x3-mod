@@ -155,7 +155,8 @@ struct WeaponComposeConstants {
 constexpr unsigned weapon_wave_boxes = 2, weapon_wave_quads = 8;
 struct WeaponWaveConstants {
     float normal[4] = {0.f, 0.f, 1.f, 0.f}; // the plane's normal (view, unit), the age fraction t / L_w (the erosion's x)
-    float heat[4] = {1.f, 1.f, 0.f, 0.f};   // the age's cooling factor on T, the sheet's third octave's weight (0: shed)
+    float heat[4] = {1.f, 1.f, 1.f, 0.f};   // the age's cooling factor on T, the finest two octaves' weight (0: shed),
+                                            // the warp's scale (0: the close LOD's level 2), the game-time age (ms)
     float spare[4] = {0.f, 0.f, 0.f, 0.f};  // c15, unused
     unsigned quads = 1;                     // the quads drawn (1 .. weapon_wave_quads; not uploaded)
 };

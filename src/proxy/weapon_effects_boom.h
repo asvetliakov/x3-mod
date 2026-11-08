@@ -72,6 +72,9 @@ struct BoomSlot {
     // The budget took the body's tongues (bit 0) or secondary k's (bit k + 1): shed for the rest of its life (review
     // 2026-11-08: no pop back when the depth order or the count changes).
     std::uint16_t fire_shed = 0;
+    // The wave's close-range LOD (0 the full law, 1 the finest two octaves off and the band at wave_band_r_lod, 2 the
+    // warp off too) and the frames it has been held (fire-material.md 13.5).
+    std::uint8_t wave_lod = 0, wave_lod_frames = 0;
 };
 // One sub-burst's hashed constants (per record: the stage caches them by sequence, BoomState::compose).
 struct ComposeEntry {
@@ -129,6 +132,7 @@ struct BoomTuning {
     // sphere, the lab's "single body" toggle); force_shared / force_n: the fixture's compose rows (0: the law's).
     bool wave = true, wave_shimmer = true, compose = true, force_shared = false;
     bool wave_octave2 = true; // the sheet's second tongue octave (v8; the fixture's one-octave weight row: false)
+    int wave_lod = -1;        // the wave's LOD forced (0 .. 2; the fixture's weight rows), -1 the law's
     unsigned force_n = 0, force_jets = 0xffu;
     float box_scale = 1.f; // the fixture's compose_box_holds_spheres: the composed body's box grown
     float budget_screens = core::boom::budget_screens; // the family's own cap (the fixture's hysteresis gate lifts it)
@@ -162,6 +166,10 @@ struct BoomCounts {
     // the drawn waves' quads (8 strips or 1 box each) and their screens (the strips' clipped sum or the box)
     unsigned wave_quads = 0, wave_octaves_shed = 0;
     float wave_screens = 0.f;
+    // the largest close-range LOD level built, the largest LOD key (the band's screens at the full law) and the waves' charge
+    // before the shed (fire-material.md 13.5)
+    unsigned wave_lod = 0;
+    float wave_key = 0.f, wave_charge = 0.f;
     unsigned composed = 0, compose_shared = 0, compose_dropped = 0, compose_eye = 0;
     float body_R0 = 0.f; // the law's radius R(t) (with its floor) of the first body box (view units)
 };
@@ -2009,52 +2017,124 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         eye_fade = 1.f - w * (1.f - sm);
                     }
                 }
-                // the box: the slab's eight corners; any at or behind the near plane: the whole screen
-                // the drawn reach: the window about the front shifted by the tongues either way (v7: every lit pixel inside)
-                const float ro = r + bm::wave_reach_out * we, ri = r - bm::wave_reach_in * we;
-                float rect[4] = {1.f, 1.f, -1.f, -1.f}, zq = 1e30f;
-                bool full = false;
-                for (unsigned k = 0; k < 8 && !full; ++k) {
-                    const float sa = (k & 1u ? 1.f : -1.f) * bm::wave_stretch * ro, sb = (k & 2u ? 1.f : -1.f) * ro,
-                                sn = (k & 4u ? 1.f : -1.f) * hh;
-                    float p[3];
-                    for (unsigned q = 0; q < 3; ++q) p[q] = lv.c[q] + sa * av[q] + sb * bv[q] + sn * nv[q];
-                    if (!(p[2] > f.near_z)) {
-                        full = true;
-                        break;
-                    }
-                    const float x = f.cam.m00 * p[0] / p[2] + f.cam.m20, y = f.cam.m11 * p[1] / p[2] + f.cam.m21;
-                    rect[0] = x < rect[0] ? x : rect[0];
-                    rect[2] = x > rect[2] ? x : rect[2];
-                    rect[1] = y < rect[1] ? y : rect[1];
-                    rect[3] = y > rect[3] ? y : rect[3];
-                    zq = p[2] < zq ? p[2] : zq;
-                }
-                if (full) {
-                    rect[0] = rect[1] = -1.f;
-                    rect[2] = rect[3] = 1.f;
-                    zq = 1.5f * f.near_z;
-                } else {
-                    rect[0] = rect[0] > -1.f ? rect[0] : -1.f;
-                    rect[1] = rect[1] > -1.f ? rect[1] : -1.f;
-                    rect[2] = rect[2] < 1.f ? rect[2] : 1.f;
-                    rect[3] = rect[3] < 1.f ? rect[3] : 1.f;
-                }
-                // the drawn quads: the annulus's strips while their screens sum under the box's, else the box; none when no
-                // strip reaches the target (the wave wholly off screen or behind the near plane: nothing of it is seen)
+                // The drawn cover at the band's w_e (wx): the box (the slab's eight corners; any at or behind the near
+                // plane: the whole screen), the drawn reach the window about the front shifted by the tongues either way
+                // (v7: every lit pixel inside), the strips (none when no strip reaches the target: the wave wholly off
+                // screen or behind the near plane, nothing of it is seen) and the band's analytic screens (ann).
+                struct Cover {
+                    float rect[4], zq, strip_sum, box, ann, ann_raw;
+                    unsigned ns;
+                    bool on_screen;
+                };
                 WaveQuad strips[bm::wave_quads];
                 float sscr[bm::wave_quads];
-                const bool on_screen = rect[2] > rect[0] && rect[3] > rect[1];
-                const unsigned ns_made = on_screen && nw < wave_cap
-                                             ? boom_wave_strips(f, lv.c, nv, av, bv, bm::wave_stretch, ri, ro, hh, strips, sscr)
-                                             : 0u;
+                const auto cover = [&](float wx, Cover& cv) {
+                    const float ro = r + bm::wave_reach_out * wx, ri = r - bm::wave_reach_in * wx;
+                    float* rect = cv.rect;
+                    rect[0] = rect[1] = 1.f;
+                    rect[2] = rect[3] = -1.f;
+                    float zq = 1e30f;
+                    bool full = false;
+                    for (unsigned k = 0; k < 8 && !full; ++k) {
+                        const float sa = (k & 1u ? 1.f : -1.f) * bm::wave_stretch * ro, sb = (k & 2u ? 1.f : -1.f) * ro,
+                                    sn = (k & 4u ? 1.f : -1.f) * hh;
+                        float p[3];
+                        for (unsigned q = 0; q < 3; ++q) p[q] = lv.c[q] + sa * av[q] + sb * bv[q] + sn * nv[q];
+                        if (!(p[2] > f.near_z)) {
+                            full = true;
+                            break;
+                        }
+                        const float x = f.cam.m00 * p[0] / p[2] + f.cam.m20, y = f.cam.m11 * p[1] / p[2] + f.cam.m21;
+                        rect[0] = x < rect[0] ? x : rect[0];
+                        rect[2] = x > rect[2] ? x : rect[2];
+                        rect[1] = y < rect[1] ? y : rect[1];
+                        rect[3] = y > rect[3] ? y : rect[3];
+                        zq = p[2] < zq ? p[2] : zq;
+                    }
+                    if (full) {
+                        rect[0] = rect[1] = -1.f;
+                        rect[2] = rect[3] = 1.f;
+                        zq = 1.5f * f.near_z;
+                    } else {
+                        rect[0] = rect[0] > -1.f ? rect[0] : -1.f;
+                        rect[1] = rect[1] > -1.f ? rect[1] : -1.f;
+                        rect[2] = rect[2] < 1.f ? rect[2] : 1.f;
+                        rect[3] = rect[3] < 1.f ? rect[3] : 1.f;
+                    }
+                    cv.zq = zq;
+                    cv.on_screen = rect[2] > rect[0] && rect[3] > rect[1];
+                    cv.ns = cv.on_screen && nw < wave_cap
+                                ? boom_wave_strips(f, lv.c, nv, av, bv, bm::wave_stretch, ri, ro, hh, strips, sscr)
+                                : 0u;
+                    cv.strip_sum = 0.f;
+                    for (unsigned k = 0; k < cv.ns; ++k) cv.strip_sum += sscr[k];
+                    cv.box = rect_screens(rect);
+                    // the band's projected screens: the eye in the ring's plane, the wall (its height the slab's and the
+                    // edge-on band's, calibrated on the 2026-11-07 band, kept: edge-on the band's width runs in depth);
+                    // else the annulus's projected area; never past the drawn quads
+                    float ann = 0.f;
+                    const float eye_n = -dot3(lv.c, nv), eye_a = -dot3(lv.c, av) / bm::wave_stretch, eye_b = -dot3(lv.c, bv);
+                    const float d_eye = scalar::sqrt(eye_a * eye_a + eye_b * eye_b);
+                    if (d_eye < r && (eye_n < 0.f ? -eye_n : eye_n) < 3.f * hh) {
+                        const float bar = 0.5f * f.cam.m11 * (2.f * hh + bm::wave_band_x * lv.R_f) / (r - d_eye > wx ? r - d_eye : wx);
+                        ann = bar < 1.f ? bar : 1.f;
+                    } else {
+                        const float cz = dist > f.near_z ? dist : f.near_z, cosv = (eye_n < 0.f ? -eye_n : eye_n) / (dist > 1e-6f ? dist : 1.f);
+                        const float rin = ri > 0.f ? ri : 0.f;
+                        const float area_w = 3.14159265f * bm::wave_stretch * (ro * ro - rin * rin) * cosv +
+                                             4.f * bm::wave_stretch * ro * hh * scalar::sqrt(1.f - (cosv < 1.f ? cosv * cosv : 1.f));
+                        ann = 0.25f * area_w * f.cam.m00 * f.cam.m11 / (cz * cz);
+                    }
+                    const float drawn = cv.ns && cv.strip_sum < cv.box ? cv.strip_sum : cv.box;
+                    cv.ann_raw = ann;
+                    cv.ann = ann < drawn ? ann : drawn;
+                };
+                // The close-range LOD (fire round 3, 2026-11-08; fire-material.md 13.5): the key is the band's charged
+                // screen area at the full law (its 0.35 r(t) annulus's projected screens, the area charged at the band's
+                // weight, before the clip to the drawn quads: a close wave's band runs past the screen); past
+                // wave_lod_screens the band drops its finest two octaves and narrows to wave_band_r_lod
+                // r(t) (level 1), past twice that it also drops the warp (level 2); entered at once, held
+                // fireball_octave_hold frames and left only under fireball_octave_return of the level's threshold (the
+                // bodies' octave hysteresis), per record.
+                Cover cv;
+                cover(we, cv);
+                std::uint8_t lod = 0;
+                float we_d = we;
+                if (cv.ns) {
+                    const float key = cv.ann_raw;
+                    n.wave_key = key > n.wave_key ? key : n.wave_key;
+                    const std::uint8_t want = key > 2.f * bm::wave_lod_screens ? 2u : key > bm::wave_lod_screens ? 1u : 0u;
+                    BoomSlot& ws_ = state.slots[lv.slot];
+                    if (want > ws_.wave_lod) {
+                        ws_.wave_lod = want;
+                        ws_.wave_lod_frames = 1;
+                    } else if (want < ws_.wave_lod) {
+                        const float back = core::look::fireball_octave_return * bm::wave_lod_screens * float(ws_.wave_lod);
+                        if (ws_.wave_lod_frames >= core::look::fireball_octave_hold && key < back) {
+                            ws_.wave_lod = key < core::look::fireball_octave_return * bm::wave_lod_screens ? 0u : 1u;
+                            ws_.wave_lod = ws_.wave_lod > want ? ws_.wave_lod : want;
+                            ws_.wave_lod_frames = 1;
+                        } else if (ws_.wave_lod_frames < 255)
+                            ++ws_.wave_lod_frames;
+                    } else if (ws_.wave_lod_frames < 255)
+                        ++ws_.wave_lod_frames;
+                    lod = ws_.wave_lod;
+                    if (t.wave_lod >= 0) lod = std::uint8_t(t.wave_lod);
+                    if (lod) {
+                        const float wl = bm::wave_band_r_lod * r * (1.f / bm::wave_band_we);
+                        we_d = wl > we_min ? wl : we_min;
+                        cover(we_d, cv);
+                    }
+                }
+                const float* rect = cv.rect;
+                const float zq = cv.zq;
+                const bool on_screen = cv.on_screen;
+                const unsigned ns_made = cv.ns;
                 if (on_screen && nw >= wave_cap)
                     ++n.capped;
                 else if (ns_made) {
                     {
-                        float strip_sum = 0.f;
-                        for (unsigned k = 0; k < ns_made; ++k) strip_sum += sscr[k];
-                        const float box = rect_screens(rect);
+                        const float strip_sum = cv.strip_sum, box = cv.box;
                         const bool use_strips = ns_made && strip_sum < box;
                         unsigned quads = 1;
                         if (use_strips) {
@@ -2084,7 +2164,7 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                                     v.tint[q] = av[q];
                                 }
                                 v.sphere[3] = r;
-                                v.look[0] = we;
+                                v.look[0] = we_d;
                                 v.look[1] = hh;
                                 v.look[2] = Tw;
                                 v.look[3] = bm::wave_e * fade * eye_fade;
@@ -2100,39 +2180,23 @@ static inline BoomCounts build_boom(core::Ring& ring, BoomState& state, const Hu
                         for (unsigned q = 0; q < 3; ++q) wc.normal[q] = nv[q];
                         wc.normal[3] = lv.tb / life; // the age fraction: the material's erosion and advection (v7)
                         wc.heat[0] = Tw;
-                        wc.heat[1] = t.wave_octave2 ? 1.f : 0.f; // the sheet's second octave (0: shed, the budget's step 0a)
-                        // the wave's game-time age (the flow); heat[2] unused since fire round 3's band (its radial cells
-                        // are the band's)
-                        wc.heat[2] = 0.f;
+                        // the finest two octaves (0: shed, the budget's step 0a or the LOD), the warp's scale (0: the LOD's
+                        // level 2)
+                        wc.heat[1] = t.wave_octave2 && !lod ? 1.f : 0.f;
+                        wc.heat[2] = lod >= 2 ? 0.f : 1.f;
                         wc.heat[3] = lv.tb;
                         for (unsigned q = 0; q < 4; ++q) wc.spare[q] = 0.f;
                         wc.quads = quads;
-                        // the charge: the annulus's projected screens x budget_weight_wave (x _one under step 0a), the rest
-                        // of the drawn quads (the strips' or the box's screens) x _miss, the shader's early-out (fire round
-                        // 3's band, 2026-11-08: the strips were charged whole at the full weight, which the band's 0.35 r(t)
-                        // made several screens at the close capital; the box always had this split)
-                        float charge = 0.f;
-                        {
-                            float ann = 0.f;
-                            const float eye_n = -dot3(lv.c, nv), eye_a = -dot3(lv.c, av) / bm::wave_stretch, eye_b = -dot3(lv.c, bv);
-                            const float d_eye = scalar::sqrt(eye_a * eye_a + eye_b * eye_b);
-                            // the eye in the ring's plane: the wall, its height the slab's and the edge-on band's (calibrated
-                            // on the 2026-11-07 band, kept: edge-on the band's width runs in depth)
-                            if (d_eye < r && (eye_n < 0.f ? -eye_n : eye_n) < 3.f * hh) {
-                                const float bar = 0.5f * f.cam.m11 * (2.f * hh + bm::wave_band_x * lv.R_f) / (r - d_eye > we ? r - d_eye : we);
-                                ann = bar < 1.f ? bar : 1.f;
-                            } else {
-                                const float cz = dist > f.near_z ? dist : f.near_z, cosv = (eye_n < 0.f ? -eye_n : eye_n) / (dist > 1e-6f ? dist : 1.f);
-                                const float rin = ri > 0.f ? ri : 0.f;
-                                const float area_w = 3.14159265f * bm::wave_stretch * (ro * ro - rin * rin) * cosv +
-                                                     4.f * bm::wave_stretch * ro * hh * scalar::sqrt(1.f - (cosv < 1.f ? cosv * cosv : 1.f));
-                                ann = 0.25f * area_w * f.cam.m00 * f.cam.m11 / (cz * cz);
-                            }
-                            const float drawn = use_strips ? strip_sum : box;
-                            ann = ann < drawn ? ann : drawn;
-                            charge = ann * (t.wave_octave2 ? bm::budget_weight_wave : bm::budget_weight_wave_one) +
-                                     (drawn - ann) * bm::budget_weight_wave_miss;
-                        }
+                        // the charge: the annulus's projected screens x budget_weight_wave (x _one under step 0a, x the LOD's
+                        // weight), the rest of the drawn quads (the strips' or the box's screens) x _miss, the shader's
+                        // early-out (fire round 3's band, 2026-11-08: the strips were charged whole at the full weight, which
+                        // the band's 0.35 r(t) made several screens at the close capital; the box always had this split)
+                        const float drawn = use_strips ? strip_sum : box;
+                        const float w_band = lod ? bm::budget_weight_wave_lod[lod - 1]
+                                                 : t.wave_octave2 ? bm::budget_weight_wave : bm::budget_weight_wave_one;
+                        const float charge = cv.ann * w_band + (drawn - cv.ann) * bm::budget_weight_wave_miss;
+                        n.wave_lod = lod > n.wave_lod ? lod : n.wave_lod;
+                        n.wave_charge += charge;
                         wave_scr[nw] = use_strips ? strip_sum : box;
                         wave_meta[nw] = BoxMeta{age_ms, e.owner, charge, lv.own, 0};
                         ++nw;

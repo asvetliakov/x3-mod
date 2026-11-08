@@ -982,7 +982,10 @@ constexpr float wave_lead = 0.1f, wave_ahead = 1.0f, wave_break_floor = 0.15f;
 // Round 2: wave_t_band0 / _band_end 0.55 / 0.4 -> 0.75 / 0.55 (on the round-2 ramp, whose orange stop is dimmer and
 // redder-classed, the young wave's band read red: wave_fire_not_grey's hue at 0.2 L_w 0.25 against >= 0.5).
 constexpr float wave_t_edge = 0.9f, wave_t_band0 = 0.55f, wave_t_band_end = 0.45f, wave_t_sheet_end = 0.25f;
-constexpr float wave_t_cool = 0.5f, wave_e = 1.6f;
+// wave_e 1.6 -> 2.4 (fire round 3, 2026-11-08, the user's references: the band read dimmer; the lab broadside at
+// 1540-1700 ms: 2.4 lifts the cells to orange-yellow in an orange body, 3.2 reads yellow-white cores but moved
+// wave_fire_hue's 10-40 degree share (the display encoding) 0.466 -> 0.427 against >= 0.43 on the development run).
+constexpr float wave_t_cool = 0.5f, wave_e = 2.4f;
 // The kill criterion's switches (2026-11-07 v3, the coordinator): wave_sheet_enabled false draws the wave as the thick
 // textured ring (s_end 1: the material within the band); compose_enabled false draws every death body as the single lobed
 // ball (with the fourth octave). Header constants, never settings.
@@ -1029,6 +1032,15 @@ constexpr float wave_refract_px = 6.f, wave_refract_band = 2.f;
 constexpr float budget_weight_wave = 2.0f, budget_weight_wave_miss = 0.56f;
 // The sheet with two octaves (the budget's step 0a).
 constexpr float budget_weight_wave_one = 1.68f;
+// The close-range LOD (fire round 3, 2026-11-08; fire-material.md 13.5; the close capital at 720 m shed the 0.35 r(t)
+// band on 28 of 32 frames at the 2.86-screen fence): keyed on the band's charged screen area at the full law (its
+// annulus's projected screens before the clip to the drawn quads); past wave_lod_screens the band drops its finest two octaves and narrows to wave_band_r_lod
+// r(t), past twice that it also drops the warp; charged per band screen at budget_weight_wave_lod[level - 1] [M] (the
+// wave alone at each level). The 5 km face-on gate views (0.07-0.47 screens) keep the full law.
+constexpr float wave_lod_screens = 0.6f, wave_band_r_lod = 0.25f;
+// [M] 5120x1440 2026-11-08 (the development run): level 1 1.685, level 2 1.687 (the finest two off at 0.35 r(t) 1.691):
+// the warp's drop costs nothing measurable, the width none per drawn screen.
+constexpr float budget_weight_wave_lod[2] = {1.69f, 1.69f};
 // wave_quads: a wave is drawn as the eight octagon strips of its annulus [r - window_in w_e, r + window_out w_e] (each
 // an oriented screen quad about its sector, cut at the near plane and the screen), or as the slab's box when that is
 // smaller (the birth: the annulus near a disc); the charge is the drawn quads' screens.

@@ -38,6 +38,7 @@ constexpr double sparks_1024_bound_us = 48.1; // 38.5 us measured on the first r
 // fixture's compose rows (force_n, force_shared, force_jets 0xff: the law's) and the box gate's growth.
 bool compose_on = true, force_shared = false;
 bool wave_octave2 = true; // the wave sheet's second octave (the one-octave weight row: false)
+int wave_lod = -1;         // the wave's close-range LOD forced (the weight rows: 0 .. 2), -1 the law's
 bool wave_off = false;     // the CPU rows' reference without the waves
 unsigned octave_cap = 4;   // the frame's octaves at most (the fourth octave's timing row: 3)
 unsigned force_n = 0, force_jets = 0xffu;
@@ -72,6 +73,7 @@ ws::BoomTuning tuning(unsigned parts) {
     t.wave = (parts & p_wave) && !wave_off;
     t.compose = compose_on;
     t.wave_octave2 = wave_octave2;
+    t.wave_lod = wave_lod;
     t.force_n = force_n;
     t.force_jets = force_jets;
     t.force_shared = force_shared;
@@ -1782,7 +1784,9 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     e->table = 7;
                     boom::broadside(e);
                 };
-                // the weights per drawn screen (the strips' clipped quads, or the box), the fence removed
+                // the weights per drawn screen (the strips' clipped quads, or the box), the fence removed; the full law
+                // (the close-range LOD held at 0), then each LOD level (fire-material.md 13.5)
+                boom::wave_lod = 0;
                 const double wa = run_case("wave_alone_fills_frame", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
                 const double sa = double(last_case.n.wave_screens);
                 const unsigned qa = last_case.n.wave_quads;
@@ -1800,13 +1804,22 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                 });
                 const double sm = double(last_case.n.wave_screens);
                 const unsigned qm = last_case.n.wave_quads;
+                boom::wave_lod = 1;
+                const double wl1 = run_case("wave_lod1_alone", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
+                const double sl1 = double(last_case.n.wave_screens);
+                boom::wave_lod = 2;
+                const double wl2 = run_case("wave_lod2_alone", boom::p_wave, (Pc + tw) / Lf, wave_at_front);
+                const double sl2 = double(last_case.n.wave_screens);
+                boom::wave_lod = -1;
                 const auto per = [&](double us, double scr) { return scr > 0 ? (us - fence_us) / 177.5 / scr : 0.0; };
                 std::printf("EXPLOSION_TIMING width=%u height=%u case=wave_weight alone_weight=%.3f alone_screens=%.3f "
                             "alone_quads=%u one_octave_weight=%.3f box_weight=%.3f box_screens=%.3f box_quads=%u "
-                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f\n",
-                            size.first, size.second, per(wa, sa), sa, qa, per(w1, s1), per(wm, sm), sm, qm,
-                            double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
-                            double(bm::budget_weight_wave_miss));
+                            "lod1_weight=%.3f lod1_screens=%.3f lod2_weight=%.3f lod2_screens=%.3f "
+                            "pinned=%.2f pinned_one=%.2f pinned_miss=%.2f pinned_lod1=%.2f pinned_lod2=%.2f\n",
+                            size.first, size.second, per(wa, sa), sa, qa, per(w1, s1), per(wm, sm), sm, qm, per(wl1, sl1),
+                            sl1, per(wl2, sl2), sl2, double(bm::budget_weight_wave), double(bm::budget_weight_wave_one),
+                            double(bm::budget_weight_wave_miss), double(bm::budget_weight_wave_lod[0]),
+                            double(bm::budget_weight_wave_lod[1]));
                 if (bm::compose_enabled) { // the composed body's rows (v4: skipped with the switch off)
                 const auto box_of = [&](const ws::HullView& v) {
                     const rr::WeaponFireballVertex& a = boom::bodies[0];
@@ -2429,12 +2442,14 @@ void boom_cases(rr::WeaponEffectsPass& pass, D3DPRESENT_PARAMETERS& pp) {
                     std::printf("EXPLOSION_TIMING width=5120 height=1440 case=capital_close_%dms bodies=%u quads=%u glows=%u "
                                 "smokes=%u shocks=%u octaves=%u screens=%.3f gpu_us=%.1f weight=%.3f secondaries=%u shed=%u "
                                 "secondaries_shed=%u smokes_shed=%u shocks_shed=%u glows_shed=%u waves=%u waves_shed=%u "
-                                "wave_quads=%u wave_screens=%.3f wave_octaves_shed=%u composed=%u compose_shared=%u "
+                                "wave_quads=%u wave_screens=%.3f wave_octaves_shed=%u wave_lod=%u wave_key=%.3f "
+                                "wave_charge=%.3f composed=%u compose_shared=%u "
                                 "compose_dropped=%u\n",
                                 int(a) - int(P), o.bodies, o.quads, o.glows, o.smokes, o.shocks, o.n.octaves,
                                 double(o.n.screens), us, us / 177.5, o.n.secondaries, o.n.shed, o.n.secondaries_shed,
                                 o.n.smokes_shed, o.n.shocks_shed, o.n.glows_shed, o.waves, o.n.waves_shed, o.n.wave_quads,
-                                double(o.n.wave_screens), o.n.wave_octaves_shed, o.n.composed, o.n.compose_shared,
+                                double(o.n.wave_screens), o.n.wave_octaves_shed, o.n.wave_lod, double(o.n.wave_key),
+                                double(o.n.wave_charge), o.n.composed, o.n.compose_shared,
                                 o.n.compose_dropped);
                     if (us > worst) {
                         worst = us;

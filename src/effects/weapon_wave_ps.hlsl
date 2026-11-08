@@ -50,8 +50,8 @@ float4 wts : register(c10);    // fire_turb_a, fire_wave_gain, fire_gain, the ma
 float4 erode : register(c11);  // 1 / fire_soft, 1 / fire_heat_soft, the envelope's tongue (band units), fire_turb_c
 float4 erode2 : register(c12); // 1 / fire_jit_ms, the band (w_e), the swept hulls' floor density, the floor's T
 float4 plane : register(c13);  // the plane's normal (view, unit), the age fraction x = t / L_w
-float4 heat_c : register(c14); // the age's cooling factor (x every T), the finest two octaves' weight (0: shed, step 0a),
-                               // unused, the game-time age t_g (ms)
+float4 heat_c : register(c14); // the age's cooling factor (x every T), the finest two octaves' weight (0: shed, step 0a
+                               // or the close LOD), the warp's scale (0: the close LOD's level 2), the game-time age t_g (ms)
 float4 ramp[5] : register(c16); // the fire ramp's stops at T 0, 0.25, 0.5, 0.75, 1 (rgb); c16.w 1 / fire_cell_px
 float4 temp : register(c21);   // T at the edge, at the band's start, at its end, at the sheet's end
 float4 edge_c : register(c22); // the swept hulls' rim fall-off ahead (w_e), their w_e over h / 2 (wave_w_x R_f), unused x2
@@ -173,12 +173,12 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 // circumference (the coarsest 0.5 band) and 2^i x 2 v radially (the medium three stretched 1.5 : 1
                 // outward: the tongues), anchored to the front (the band rides it) and drifting inward at 1.4^i cells /
                 // flow, each warped along the angle by the next finer, the finest two re-seeded at 15 Hz of game time and
-                // off under the budget's step 0a (heat_c.y); each dropped under fire_cell_px. The envelope v_e = v -
-                // tongue (2 n_1 - 1); thr = thr_0 + thr_r (v_e - 1/2)^2 / (1/2)^2 (thr_r the outer's ahead of the
+                // off under the budget's step 0a or the close LOD (heat_c.y; the LOD's level 2 also drops the warp,
+                // heat_c.z); each dropped under fire_cell_px. The envelope v_e = v - tongue (2 n_1 - 1); thr = thr_0 + thr_r (v_e - 1/2)^2 / (1/2)^2 (thr_r the outer's ahead of the
                 // middle, the inner's behind it); F = 1/2 + fire_turb_k (fire_turb_c - T) - thr. Density: the body's
                 // alpha and luminance x fire_wave_gain x the circumference's break; colour the body's red band x the
                 // age's cooling (heat_c.x). No rim term: the edge's light is the density's.
-                float v = -zz / erode2.y, N = cells.x, tw = heat_c.w * cells.w, a1 = wts.x, a2 = a1 * a1;
+                float v = -zz / erode2.y, N = cells.x, tw = heat_c.w * cells.w, a1 = wts.x, a2 = a1 * a1, wp = cells.y * heat_c.z;
                 float lw = 6.2831853 * dr / N * proj.x / (max(zr, 1e-3) * screen.x) * ramp[0].w;
                 float sh = heat_c.y;
                 float w1 = saturate(0.5 * lw - 1.0), w2 = saturate(0.25 * lw - 1.0), w3 = saturate(0.125 * lw - 1.0) * sh;
@@ -187,12 +187,12 @@ float4 main(float2 vpos : VPOS, float4 sphere : TEXCOORD0, float4 look : TEXCOOR
                 float q = 2.0 * v, qs = q * 0.6666667;
                 float nz1 = 0.5, nz2 = 0.5, nz3 = 0.5, nz4 = 0.5;
                 [branch] if (w4 > 0.0) nz4 = vn2p(float2(16.0 * N * u + 4.1 * disc.z + jo.y, 16.0 * q + 3.84 * tw + jo.x), 16.0 * N);
-                [branch] if (w3 > 0.0) nz3 = vn2p(float2(8.0 * N * u + cells.y * (2.0 * nz4 - 1.0) + 3.3 * disc.z + jo.x, 8.0 * qs + 2.744 * tw + jo.y), 8.0 * N);
+                [branch] if (w3 > 0.0) nz3 = vn2p(float2(8.0 * N * u + wp * (2.0 * nz4 - 1.0) + 3.3 * disc.z + jo.x, 8.0 * qs + 2.744 * tw + jo.y), 8.0 * N);
                 [branch] if (w2 > 0.0)
-                    nz2 = vn2p(float2(4.0 * N * u + cells.y * (2.0 * nz3 - 1.0) + 2.1 * disc.z, 4.0 * qs + 1.96 * tw + 1.1 * advect), 4.0 * N);
+                    nz2 = vn2p(float2(4.0 * N * u + wp * (2.0 * nz3 - 1.0) + 2.1 * disc.z, 4.0 * qs + 1.96 * tw + 1.1 * advect), 4.0 * N);
                 [branch] if (w1 > 0.0)
-                    nz1 = vn2p(float2(2.0 * N * u + cells.y * (2.0 * nz2 - 1.0) + 1.3 * disc.z, 2.0 * qs + 1.4 * tw + 0.7 * advect), 2.0 * N);
-                float nz0 = vn2p(float2(N * u + cells.y * (2.0 * nz1 - 1.0) + 1.7 * disc.z, q + tw + 0.5 * advect), N);
+                    nz1 = vn2p(float2(2.0 * N * u + wp * (2.0 * nz2 - 1.0) + 1.3 * disc.z, 2.0 * qs + 1.4 * tw + 0.7 * advect), 2.0 * N);
+                float nz0 = vn2p(float2(N * u + wp * (2.0 * nz1 - 1.0) + 1.7 * disc.z, q + tw + 0.5 * advect), N);
                 float wf = a2 * w2 + a1 * a2 * w3 + a2 * a2 * w4, ws = 1.0 + a1 * w1 + wf;
                 float tf = a2 * w2 * abs(2.0 * nz2 - 1.0) + a1 * a2 * w3 * abs(2.0 * nz3 - 1.0) + a2 * a2 * w4 * abs(2.0 * nz4 - 1.0);
                 float T0 = (abs(2.0 * nz0 - 1.0) + a1 * w1 * abs(2.0 * nz1 - 1.0) + tf) / ws;

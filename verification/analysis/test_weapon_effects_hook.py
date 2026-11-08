@@ -559,8 +559,10 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         rows = self.record['metrics']['explosion']
         sizes = [r for r in rows if r.get('case') == 'size' and r['age_frac'] in (0.1, 0.3)]
         self.assertEqual(len(sizes), 10)                                        # fighter, missile and the three big tiers
-        # fire-material.md section 12: the tongues' front (the bins' 90th percentile) within 0.80-1.25 of the law
-        self.assertTrue(all(0.80 <= r['front_over_law'] <= 1.25 for r in sizes))
+        # fire-material.md section 12: the tongues' front (the bins' 90th percentile) within 0.80-1.25 of the law; the big
+        # tiers 0.80-1.35 since round 3 (13.3: their sphere factor carries the tongues past R(t); the fixture's bound)
+        big = ('corvette', 'capital', 'station')
+        self.assertTrue(all(0.80 <= r['front_over_law'] <= (1.35 if r['tier'].startswith(big) else 1.25) for r in sizes))
         pre = [r for r in rows if r.get('case') == 'preroll']
         self.assertEqual([(r['box'], r['births'], r['inside'], r['bodies_before_P']) for r in pre], [(0, 8, 8, 0), (1, 8, 8, 0)])
         shock = [r for r in rows if r.get('case') == 'shock']                    # the limb only: interior 0
@@ -612,9 +614,13 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertTrue(checks[name], name)
         radius = [r for r in rows if r.get('case') == 'wave_radius']
         self.assertEqual(len(radius), 3)
-        self.assertTrue(all(abs(r['ratio'] - 1.0) <= 0.05 and r['peak'] <= r['body_peak'] for r in radius))
+        # fire round 3's band (fire-material.md 13.3, the fixture's wave_radius_law): the brightest within 0.70-0.95 of
+        # r(t), the outer 10 % radius within 0.85-1.10 of it (was the edge within 5 %)
+        self.assertTrue(all(0.70 <= r['ratio'] <= 0.95 and 0.85 <= r['outer_px'] / r['law_px'] <= 1.10 and
+                            r['peak'] <= r['body_peak'] for r in radius))
         timing = {(r['width'], r['case']): r for r in self.record['metrics']['explosion_timing']}
-        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'eye_inside_fighter_n4']
+        cases = ['wave_alone_fills_frame', 'wave_one_octave_alone', 'wave_box_alone', 'wave_lod1_alone', 'wave_lod2_alone',
+                 'eye_inside_fighter_n4']
         if compose:
             sil = {r['tier']: r for r in rows if r.get('case') == 'compose_silhouette'}
             self.assertEqual(set(sil), {'fighter_600m', 'capital_1500m', 'station_3km'})
@@ -635,6 +641,9 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLessEqual(weight['alone_weight'], weight['pinned'] + 0.03)
         self.assertLessEqual(weight['one_octave_weight'], weight['pinned_one'] + 0.03)
         self.assertLessEqual(weight['box_weight'], weight['pinned'] + 0.03)
+        # the close-range LOD's levels (fire-material.md 13.5) pinned to their rows
+        self.assertLessEqual(weight['lod1_weight'], weight['pinned_lod1'] + 0.03)
+        self.assertLessEqual(weight['lod2_weight'], weight['pinned_lod2'] + 0.03)
         # the fourth octave's weight pinned to its row (a body seen from outside, review 2026-11-07)
         f4 = next(r for r in self.record['metrics']['explosion_timing']
                   if r.get('case') == 'fine4_weight' and r['width'] == 5120)
