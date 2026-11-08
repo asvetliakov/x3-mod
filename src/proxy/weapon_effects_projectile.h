@@ -42,11 +42,11 @@ struct ProjectileEntry {
     // The stage's bridge state (weapon_projectile_stage.h build; integers only, the tap only zeroes stage_frame on a
     // registration and a recycled node): the next frame's streak starts where this frame's ended.
     std::int32_t read_pos[3];  // node +0x30 at the stage frame stage_frame (engine units)
-    std::int32_t drawn[3];     // the head drawn at that frame as its offset from that frame's eye (engine units,
-                               // rounded): the next frame's tail, at the same offset from the next eye
+    std::uint32_t head_px[2];  // the head drawn at that frame on screen (unjittered raster px, float bits): the next
+    std::uint32_t head_z;      // frame's tail, and its view depth (float bits; 0: none, the next frame is a first frame)
     std::uint32_t changed_ms;  // the game ms of the last stage frame whose read position changed
     std::uint32_t static_us;   // game us the head was extrapolated since then (render dt x SETA rate, bounded)
-    std::uint32_t stage_frame; // ProjectilePool::stage_frame of that frame (0: none, the next frame is a first frame)
+    std::uint32_t stage_frame; // the device frame of that stage frame (0: none, the next frame is a first frame)
 };
 struct ProjectileBody {
     std::uint32_t id;         // the engine body id (node +0x144)
@@ -76,7 +76,6 @@ struct ProjectilePool {
     std::uint16_t slots[projectile::slot_count]{}; // entry index + 1, 0 empty
     Globals globals{};
     ProjectileCounters counters{};
-    std::uint32_t stage_frame = 0; // the stage's frame stamp (weapon_projectile_stage.h build; never 0 once counted)
     std::int32_t stage_eye[3]{};   // the eye (engine units) of the stage frame stage_eye_frame (a first frame's camera travel)
     std::uint32_t stage_eye_frame = 0;
 };

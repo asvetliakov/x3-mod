@@ -94,19 +94,21 @@ Projection at 1440 rows: f = 1,280 px x m per metre of distance at the launcher 
 | --- | --- | --- |
 | core width | **w_px = core_px x 500 / d** (d the view depth in metres), independent of the projection: only the length (and the position) depends on the live projection. (At fov 90, f = 1280, that is a world width of 0.78 m.) Under 1 px it is drawn 1 px wide at radiance x w_px (a far bolt dims, it does not fatten) | 5.0 / 2.0 / 1.0 / 0.33 → 1 px at a third |
 | glow | a Gaussian of σ = `glow_ratio` x core_px / 2 in screen px at d_ref, scaled with distance like the core, floor σ 1.5 px; colour the gun's tint; radiance `glow_gain` x scene white. The wide halo is the bloom's: the core's own energy feeds the extract, so the drawn glow is only the near field | σ 7.5 / 3 / 1.5 / 1.5 px |
-| motion streak (bridged, FL 59 A) | a segment from the previous frame's drawn head to this frame's head P (the body origin, section 3): **bridged by construction**, so one frame's streak ends exactly where the next one starts at any frame rate and SETA, and the eye's integration of successive frames is one unbroken line. The bridge is camera-relative in translation: the tail keeps the previous head's offset from the eye, because the node velocity includes the shooter's and the camera moves with the ship, so a world-space bridge would overlap a forward shot by the ship's travel per frame (a bead at every seam) and gap an approaching one; a camera turn is not compensated. A first frame (a new bullet, a jump, a frame the stage skipped) runs from P − (v Δt_game − the camera's travel) (cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]), never behind the muzzle (|v| x age, ext+8). No multiplier (the former `stretch_k`): the length is the travel. Along the axis the profile is flat with logistic end ramps whose half maximum sits at the ends, Φ(x + h) − Φ(x − h); the previous frame's ramp and this one's telescope, so the seam is neither a gap nor a bead. **Energy-conserving cap:** past `length_cap_m` the streak keeps its full length and its radiance scales by cap / length (motion blur conserves light: a fast or SETA bolt is a longer, fainter streak, never a chopped dash) | at 60 fps (19.4 m): 124 / 50 / 25 / 8 px; at 144 fps (8.1 m): 52 / 21 / 10 / 3 px; under SETA 6 (100 ms, 116 m) the full 116 m at 30 / 116 = 0.26 of the radiance (arithmetic, f = 1280) |
+| motion streak (bridged on screen, FL 59 A) | a segment **on screen** from the previous frame's projected head to this frame's projected head P (the body origin, section 3), both through the unjittered projection (the bolt never enters the TAA history; jitter would only misalign the seam): **bridged by construction**, so one frame's streak ends exactly where the next one starts at any frame rate, SETA and camera motion, translation or turn, and the eye's integration of successive frames is one unbroken line. The pool entry keeps the head's raster position and view depth. A first frame (a new bullet, a jump, a camera cut, a frame the stage did not run) is the projection of P − v_rel min(Δt_game, age) (v_rel = v less the camera's translation per step: the node velocity includes the shooter's; cfg step: AP `+0x714`, FL `+0x704` [M, fl/seta.md]; never behind the muzzle). No multiplier (the former `stretch_k`): the length is the on-screen motion. Along the axis the profile is flat with logistic end ramps whose half maximum sits at the ends, Φ(x + h) − Φ(x − h); the previous frame's ramp and this one's telescope, so the seam is neither a gap nor a bead. Width, glow and depth (occlusion) are the head's. **Energy:** past `length_cap_m` (the on-screen length in metres at the head's depth) the streak keeps its full length and its radiance scales by cap / length (motion blur conserves light: a fast, SETA or swept bolt is a longer, fainter streak, never a chopped dash); an on-screen motion under the core's width draws a segment of the core's width at the energy of its length (radiance x length / width), the paused game (step 0) at full radiance since nothing moves | at 60 fps (19.4 m): 124 / 50 / 25 / 8 px; at 144 fps (8.1 m): 52 / 21 / 10 / 3 px; under SETA 6 (100 ms, 116 m) the full 116 m at 30 / 116 = 0.26 of the radiance (arithmetic, f = 1280) |
 | nothing behind | no smoke, no fading streak, no history beyond the previous frame's head (the streak is one frame's travel): an IRE fires 6.7 shots/s per gun at 1,162 m/s, so a trail would turn a stream into a beam and persist where the TAA would smear it; a short fading streak is acceptable only for a slug or a kinetic round (MASS, EBC: a burning tracer has one) and is that family's decision | — |
 | hot centre | the core colour is lerp(tint, white, `hot_share` x (1 + k)); the IRE at 0.3 keeps its orange, the HEPT at 0.42 goes pale | — |
 | distance LOD | past `lod_dot_m` the stretch is dropped and the bolt is a 1–2 px dot with the glow at its floor; never a rim, an outline or a flat disc (a decal) | at 3 km a 1 px dot of 8 px length, or a dot past the limit |
 | HDR | radiance 2^`stops` x scene white (the lit hull's white, 1.0 linear) into the FP16 scene (ONE/ONE), under the same auto exposure (capped +1.3 EV) and AgX as every light; the bolt is energy in the scene, not a sprite with a glow painted on | +2 stops: 4.0 linear, clips white at the core through AgX |
 | TAA | the pixel program writes the far flag (RT2's lane, `oC2 = 32 max(rgb)`, the production B' route of bolts-through-taa.md) so the write-back composites the bolt from the current frame and it never enters the history: no clamp attenuation of a 2 px line, no scar over a hull, no ghost; the Gaussian edges are the anti-aliasing; the half-pixel jitter is nothing against 50 px of motion per frame | — |
 
-End-on (the chase view looks along the flight axis) the segment projects to a point and the bolt is a disc of the core's
-width with its glow, by construction (the along profile's half length is at least half a core sigma, normalised to the
-core's radiance at its centre). Birth: never longer than flown (head − v̂ min(|v| Δt, |v| x age)), so it grows out of
-the muzzle over its first frame. End: absent from the tap list (hit or expiry) means not drawn; the impact family
-covers the cut. A camera turn is not smeared (the streak is the bullet's motion relative to the camera's position, not
-the screen's).
+End-on (a bolt flying along the line of sight) the on-screen motion is under the core's width and the bolt is a
+segment of the core's width at the energy of that motion: a receding shot straight ahead dims with its on-screen speed
+(at 500 m and 5 m off the axis, 0.5 px a frame against a 2 px core: a quarter) [inferred]; the dot past `lod_dot_m` is
+a spot of the core's width with the streak's energy factor (cap and length), so the SETA transition does not pop.
+Birth: never longer than flown (P − v_rel min(Δt, age)), so it grows out of the muzzle over its first frame. End:
+absent from the tap list (hit or expiry) means not drawn; the impact family covers the cut. A camera turn moves the
+streak's tail with the screen (the streak is the bolt's on-screen path between the two frames, the motion the eye
+integrates); a cut (the resolve's cut detector, rotation bound or chase snap) starts every bridge over.
 
 **Why bridged (FL 59 A, 2026-11-08).** With the streak at 0.4 of the per-frame travel (capped at 30 m) the user saw each
 IRE near the ship as a dashed line, "--- --- ---", in motion only (a single frame shows one dash; `stretch_k` 0 did not
@@ -114,7 +116,11 @@ change it): a phantom array, the eye integrating successive frames' short dashes
 between them; the game's fat long mesh overlaps frame to frame and hides it. At `stretch_k` 1.0 and 1.5 the gaps went
 (the diagnosis held) but the seams showed hot beads: the round Gaussian end caps of two consecutive dashes overlap and
 add. The streak is therefore the bridged travel with complementary end ramps (no multiplier: a k above 1 overlaps, below
-1 leaves gaps), and the cap conserves energy instead of cutting the length.
+1 leaves gaps), and the cap conserves energy instead of cutting the length. The bridge is on screen because the
+artefact is a perception of screen motion: a bridge in world space overlaps a forward shot from the moving ship by the
+ship's travel per frame (the node velocity includes the shooter's) and gaps an approaching one, and one relative to the
+eye's position still misses the seam when the camera turns (a chase camera turning at 60°/s moves the screen by
+1280 x tan 1° ≈ 22 px per frame at 60 fps and fov 90 [inferred]; the fixture measures 26.85 px at its projection).
 
 **Static frames (the logic-tick question).** The stage keeps, per pool entry, the read position and the drawn head of
 its last stage frame. An entry whose node +0x30 did not change since the previous stage frame counts
@@ -123,8 +129,10 @@ the render dt (the proxy's QPC between stage frames, 0 past 0.25 s) x the engine
 plumes' `seta_read`; 1 when refused), bounded at two game steps (a paused game or a stopped bullet holds instead of
 flying on); its tail stays the previous head, so it never freezes and never gaps. An entry whose read position is
 farther than 1 m + a quarter of the frame's travel from read position + v x (game ms since its change) counts
-`projectile_jumped` and draws as a first frame. A head extrapolated past the next read position holds (never
-backwards). Both counters are summed in the `weapon_effects_frame` row: FL 59 A's flight settles whether the engine
+`projectile_jumped` and draws as a first frame. A head extrapolated last frame past this frame's position (against the
+on-screen motion of the velocity relative to the camera) holds on screen (never backwards). An entry bridges only from
+the device frame just before (a frame the stage did not run, the weapon stage unarmed or refused, makes the next one a
+first frame) and never across a cut. Both counters are summed in the `weapon_effects_frame` row: FL 59 A's flight settles whether the engine
 advances node +0x30 less often than the render frame.
 
 **The three mocks** (`verification/results/projectile-look/render_mocks.py` → `mock-{thin,stretched,glow}.png`,
@@ -297,17 +305,17 @@ every capture frame a scoped draw whose node is not pooled is read too, and one 
 an entry not tapped for max(250 ms, three game steps) retires (absent from the update pass means not drawn), as do an
 expired, recycled or unreadable one, and Present empties the pool on a load or a sector change. A table whose TBullets
 row count is not the engine's resolves no body (`projectile_rows state=stale`, the stage stays off). At the resolve the
-stage walks the pool (one bounded node read per entry), bridges each entry from its previous drawn head (section 2:
-the entry keeps its read position, drawn head, the game ms of its last change, its extrapolated game µs and the stage
-frame that wrote them, all integers; the object tap zeroes the stage frame on a registration and a recycled node),
-builds one quad per bolt from the jittered live projection and the eye in engine units (the adjugate inverse of the view basis, so the
+stage walks the pool (one bounded node read per entry), bridges each entry from its previous head on screen (section
+2: the entry keeps its read position, the head's raster position and view depth as float bits, the game ms of its last
+change, its extrapolated game µs and the device frame that wrote them, all integer fields; the object tap zeroes the
+frame on a registration and a recycled node), builds one quad per bolt from the unjittered live projection and the eye
+in engine units (the adjugate inverse of the view basis, so the
 per-bolt math is float without the far-from-origin error), and draws all of them in one `DrawIndexedPrimitiveUP`
 (48-byte vertices: float32 position and local frame, float4 radiance scales and 1/(2σ²), two D3DCOLOR tints; a
 FLOAT16 attribute measured five times the submit cost natively) into RT0 and the lane at RT1 (COLORWRITEENABLE1 GREEN)
 with the scene's depth surface captured at the resolve, LESSEQUAL, Z writes off, ONE/ONE. The pixel program is 39 ps_3_0
-slots since FL 59 A (16 before: the two logistic end ramps per Gaussian; the centre normalisation for a streak shorter
-than the ramps, 1 / (Φ(h) − Φ(−h)), is the CPU's, folded into the radiance scales and skipped when the ramps cannot
-meet). Capabilities checked at attach with their own verdict (`projectile_device` row; a refusal keeps the shield
+slots since FL 59 A (16 before: the two logistic end ramps per Gaussian; a segment's integral along the axis is its
+drawn length exactly, so the energy rules are radiance scales on the CPU). Capabilities checked at attach with their own verdict (`projectile_device` row; a refusal keeps the shield
 effect and the game's bolts): two simultaneous targets, independent write masks, MRT post-pixel-shader blending,
 LESSEQUAL, the primitive limits, blending of a four-lane lane format, and per frame the lane's format and the MRT bit-depth
 rule, the depth surface's size and multisampling (`projectile_state` row on a change of verdict).
@@ -338,9 +346,10 @@ set, it is baked into `families[fighter_tracer].tune` and the file deleted; a re
 **Verified (native fixture, ledger "Projectile IRE on FL (2026-11-08)" and "FL 59 A: dashed-trail fix (2026-11-08)").**
 The width rule within 0.5 px at 200 m / 500 m / 1 km / 3 km at two fields of view, the bridged rule and SETA invariance
 from the constants, the energy-conserving cap (the full length, the centre's radiance at cap / length), the seam of two
-consecutive frames through the production builder at 60 and 144 fps and with the camera moving along the bolt (no gap,
-the summed light uniform within 10 %), the static-frame extrapolation and the jump, the far flag's write (not the
-write-back, above), the dot, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
+consecutive frames through the production builder at 60 and 144 fps, with the camera moving along the bolt and with the
+camera turning 1° between them (no gap, the summed light uniform within 10 %), the static-frame extrapolation, the
+never-backwards hold and the jump, the cut (a first-frame streak), the slow and the paused segment, the far flag's write
+(not the write-back, above), the dot with the streak's energy, nothing outside the quad, depth occlusion by a partial occluder (300 m drawn, 500 m hidden behind the 400 m depth), the pool's retire paths
 (recycled, unseen, expired), Reset, the 512-bolt budget at 5120x1440 with every bolt bridged (CPU 76.7 µs, GPU fenced
 42.2 µs [M]). Not flown.
 Look frames (`run_weapon_effects.py --host native --dump DIR`, the fixture's projection, linear light clamped and

@@ -328,10 +328,12 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     ps::View view;
     for (unsigned i = 0; i < 9; ++i) view.r[i] = camera_scene_.r[i];
     for (unsigned i = 0; i < 3; ++i) view.t[i] = camera_scene_.t[i];
+    // the unjittered projection: the bolts never enter the TAA history, and the jitter would only misalign the seam
+    // between two frames' streaks on screen
     view.m00 = f.m00;
     view.m11 = f.m11;
-    view.m20 = f.m20;
-    view.m21 = f.m21;
+    view.m20 = camera_scene_.m20;
+    view.m21 = camera_scene_.m21;
     view.m22 = f.m22;
     view.m32 = f.m32;
     view.width = float(f.width);
@@ -360,9 +362,10 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
             !engine_plumes::seta_decode(warp, mult, &engaged, &requested, &seta_rate))
             seta_rate = 1.f;
     }
+    // the device frame (a frame the stage did not run breaks every bridge) and the resolve's camera cut
     const ps::Counts n = ps::build(x3m_projectile_pool, &weapon_effects_read, weapon_effects::hook_state().table, looks,
-                                   now, step, render_dt, seta_rate, view, projectile_tune_, vertices,
-                                   renderer::weapon_projectile_max_bolts);
+                                   std::uint32_t(frame_), projectile_cut_, now, step, render_dt, seta_rate, view,
+                                   projectile_tune_, vertices, renderer::weapon_projectile_max_bolts);
     projectile_retired_ += n.expired + n.invalid;
     projectile_statics_ += n.statics;
     projectile_jumped_ += n.jumped;

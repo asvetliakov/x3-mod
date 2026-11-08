@@ -2292,6 +2292,7 @@ private:
     // the stage's static and jumped entries (projectile_stage::Counts) and the previous stage frame's QPC stamp (the
     // render dt of a static entry's extrapolation)
     unsigned projectile_statics_ = 0, projectile_jumped_ = 0;
+    bool projectile_cut_ = false; // the resolve's camera cut of this frame (the bridge starts over)
     std::uint64_t projectile_qpc_ = 0;
     const char* projectile_logged_refusal_ = nullptr;
     weapon_effects::projectile_family::Tune projectile_tune_[weapon_effects::projectile_family::family_count]{};
