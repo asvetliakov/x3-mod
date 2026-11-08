@@ -770,6 +770,15 @@ Built and removed with the look layer (2026-11-08), the clone row R' with it (it
 Built and removed with the look layer (2026-11-08); the bolt tap, muzzle and flight hooks stay:
 [archive](../archive/effects-look-2026-11-08/index.md).
 
+**The projectile stage (FL, 2026-11-08; [projectile-look.md](projectile-look.md) "Implementation").** The redo's
+bolts are a family-generic stage beside the shield stage, drawn in the same stage callback: the fighter-tracer family
+with the IRE as its only enabled row (and rows 37–39 through its body). In every stage mode the FL install also claims
+the object tap `0x0645bd` (it registers bullets of enabled bodies into a 512-entry pool) and the batch submit `0x097af8`
+(site row `batch`: it skips an enabled body's instanced draw while the stage owned the previous frame); the draw hook
+drops the same bodies' material-submit draws by the object-trace scope's node. The stage reads each pooled node once per
+frame and draws every bolt as one screen-space quad in one draw, radiance into the FP16 scene and the far flag into the
+lane. The muzzle and flight sites are unchanged (the game's muzzle flash stays); AP installs nothing new.
+
 ### 5.5 Step 5: beams
 
 No new site: a beam is a class-0 bullet with flags `0x2`/`0x4` whose muzzle record (step 4) carries the shooter, slot

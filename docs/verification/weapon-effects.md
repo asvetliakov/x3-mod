@@ -3169,3 +3169,39 @@ T ≥ 50,000 guard of the first version is gone, so the four ≥ 50,000-shield-d
 review's count) keep their staged shield hits on the player's ship. The producing one-liner is
 [`fl_hook_summary.py`](../../verification/results/native-windows/weapon-effects/fl_hook_summary.py). No runtime
 behaviour change on AP; not flown on FL (the stage has not run in the game).
+
+## Projectile IRE on FL (2026-11-08)
+
+The projectile stage ([projectile-look.md](../architecture/projectile-look.md) "Implementation (2026-11-08)"): the
+batch-submit claim `0x097af8`, the enabled-body pool on the object tap, the per-frame builder and one draw, the dev
+tuning file. Commits `740fba710` (hook), `165335c52` (stage and program), `65e142146` (tuning), `44855cd05`
+(fixtures), `01d863272` (records). `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native` at `44855cd05` [M]:
+
+| Fixture | Result |
+| --- | --- |
+| AP hook | **131 of 131**, PASS (unchanged) |
+| FL hook | **67 of 67**, PASS (56 before): the batch window equal to X3FL.exe's (audit), the batch stub's skeleton, every window bit refused (2,112 flips, the batch's 184 included), latch off / other body / id above a word forwarded with EAX, ECX, EDX, EBX, ESI, EDI, EBP, the stack and EFLAGS as entered, an enabled body under the latch skipped with EAX 1 and no callee, the batch read-back fault rolling every site back, shields mode claiming the batch and the object tap, one `projectile_site state=claimed rva=097af8` row, the object tap registering an enabled body's bullet once; STACK_DEPTH 244 bytes |
+| D3D | **70 of 70**, PASS: the 53 earlier checks and 17 projectile checks |
+
+Projectile rows of the D3D record (1920x1080 unless noted, the fixture's projection m00 1.6 and a second at 1.0) [M]:
+
+| Case | Figures |
+| --- | --- |
+| attach | ps_3_0 16 slots, vs 5; lane blending A32F and A16F yes, MRT independent bit depths yes, 4 targets |
+| core width, rule max(1, 2 x 500 / d) | 200 m 5.037 px, 500 m 2.000, 1 km 1.067, 3 km 1.066 (dim 0.333), identical at both fields of view; pixel length 142.79 / 89.24 px at 200 m = the m00 ratio 1.6 |
+| SETA (1 km, 1000 m/s) | 1.5201 px per game ms at a 16 ms step, 1.5394 at 96 ms (+1.3 %) |
+| far flag | lane green 134.4 over a scene maximum 4.199 (ratio 32.006); red, blue, alpha and every unlit pixel 0 |
+| dot LOD | 2700 m: 63.46 px stretch; 3300 m: a dot, 1.07 px run |
+| quad | 9,459 lit pixels, 0 outside the quad (a diagonal 297 px bolt, reach 14.5 px) |
+| depth / refusal / pool / Reset | occluded by a depth of 0; refused without a depth surface; drawn, then retired on a changed handle and on expiry; drawn after Reset |
+| budget, 5120x1440, 512 bolts | CPU build 67.9 µs (best of 40, the production engine reader), GPU fenced 43.1 µs (best of 60; the fence alone 10.7 µs), 5.6 % of the frame lit, 48-byte vertices |
+
+Budget history in this change: 64-byte vertices measured 71.8 / 77.5 µs fenced; FLOAT16 attributes 147–169 µs (the
+zero-area draw alone 150 µs: the native driver's FLOAT16 submit path); float32 with two D3DCOLOR tints 43.1 µs [M].
+Builds `build-ire-fl` and `build-ire-ap` (RelWithDebInfo, `X3M_DEV_TUNING` ON in the FL one) 0 warnings;
+`check_no_x87.py --edition fl` 0 violations over 1059 functions, `--edition ap` 0 over 1161. `generate_weapon_effects_programs.py
+--check` PASS. Host `test_weapon_effects*.py` 94 tests OK (the new `test_weapon_effects_projectile_tune`: parser,
+clamp, refusal, reload rule, row resolution with the shared body and the family refusal). The producing one-liner is
+[`projectile_rows.py`](../../verification/results/native-windows/weapon-effects/projectile_rows.py). Not flown: the
+batch skip, the traversal drop and the look in the game are FL run 59's.
