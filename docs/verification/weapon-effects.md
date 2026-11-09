@@ -3440,3 +3440,28 @@ frame's CPU is a regression tripwire at 150 µs (64 shots in one frame is a synt
 flight evidence for CPU being `projectile_us_max` in the `weapon_effects_frame` row;
 the comet tune 127.2 µs / 60.5 µs. Shader `--check` PASS, FL and AP builds 0 warnings, `check_no_x87` FL and AP no
 violations, host `test_weapon_effects*.py` 98 OK, the look crop regenerated (the pulse clamped) and viewed.
+
+**FL 62 A: flash invisible; life moved to wall-clock ms (run 63).** The user judged the first flash invisible. The
+flight log (`C:\X3FL\x3m.log`, session `20261109-124219-6696`; `verification/results/fl-run62/flash_rows.py` [M]): 99
+`weapon_effects_frame` rows, 72 with muzzle or flash activity; `muzzle_skipped` 1299 = `flash_matched` 1299 in sum
+(equal per row in 66 of the 72: a shot near a period boundary is matched in the next), `flash_unmatched` 3,
+`flash_drawn` and `pulse_drawn` 1603 each and non-zero in 71 rows, `flash_lost`, `flash_dropped` and `flash_stale` 0,
+`muzzle_unskipped` 0. So the mechanism worked; 1603 / 1299 = 1.23 drawn frames per flash shows how brief it was (the
+two-step, two-frame cap, about 33 ms at 60 fps). The change: `flash_life_frac` became `flash_life_ms` (default 80,
+16–400), wall clock from the Present thread's QPC stamp (`FlashOut::wall_us`), the birth set back by the game age over
+the SETA rate (at most 1 s, a static_assert above the key's maximum); drawn every stage frame while age < life, F = 1
+then 1 − age / life; `flash_life_steps` and `flash_max_frames` removed; the entry's `flash_gap_ms` became
+`flash_born_us`; the FL muzzle site no longer writes `prev_t0`. Size room: `flash_core_mult` up to 8, `flash_cap_px`
+160 at 1440 rows; the anti-lamp gate now asserts white ≤ min(`flash_core_mult` x the core's, the cap) on both
+branches. Records on `bcf6a3f28` with the run-63 diff [M]: AP hook **131 of 131**, FL hook **72 of 72**, D3D
+**106 of 106** (`flash_life_wall_clock_seta`: 5 / 12 / 5 / 24 / 1 frames at 17 ms, 7 ms, SETA 6, life 400, life 16;
+late registrations 4 (1x), 4 (SETA 6, set back 16666 µs for 100 / 6 ms), 1 (1.5 s late at the fallback rate: the 1 s
+cap, 1000000 µs); fade error ≤ 8e-6 across the 2^32 µs wrap; new `flash_birth_set_back_by_age_over_rate_capped_1s`).
+Combined frame (512 bolts, 64 just fired with flashes and pulses, 5120 x 1440, baked): CPU **122.3 µs** (tripwire
+150), GPU **42.1 µs** (≤ 60), flash work **7.7 µs** (≤ 20); 448 bolts alone 88.0 µs. FL build 0 warnings,
+`check_no_x87` FL PASS, host weapon-effects tests 70 OK. One earlier native run of the same bolt code failed
+`projectile_trail_zero_reproduces_run60` (seam radiance 2x the record) and read the combined CPU at 310.8 µs, and one
+failed the AP `event_cost_50_within_30us`; neither recurred and neither is attributed. Review's open points: `prev_t0`
+stays in `MuzzleRecord` for the AP bolt path but is dead on FL; a flash lives on its bullet's pool entry, so a hit
+inside the life cuts it short; more than 64 live flashes in one frame (overlap under SETA or long lives) is
+unmeasured (`flash_dropped` counts the excess).

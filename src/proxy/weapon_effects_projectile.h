@@ -25,11 +25,12 @@
 // The muzzle (docs/architecture/muzzle-flash-look.md section 4 and "Implementation (2026-11-09)"; FL 0x04f639 -> the
 // spawner 0x0150e0, reached only for TBullets rows whose col 21 is not 0): projectile_muzzle reads the shot's body (word
 // +0 of the TBullets record at ESI) and tests it against the same enabled set (bits) the batch stub tests. An enabled
-// body's shot relights its (ship, gun slot) MuzzleRecord (t0 and the previous t0: the refire gap) and is skipped (the
+// body's shot relights its (ship, gun slot) MuzzleRecord (t0, the shooter's node and handle) and is skipped (the
 // spawner not called, the game's flash not made) while Present latched skip_on, the record then ours; with the latch
 // off it is forwarded (muzzle_unskipped). Any other body forwards untouched. The object tap matches a newly registered
 // entry to the ours record of its shooter (ext+4) fired at its birth (t0 == ext+8: one clock, cfg +0x708) and hands
-// the stage the gap; an entry registered more than flash_stale_steps game steps after its birth gets no flash.
+// the stage the shooter's node and handle; an entry registered more than flash_stale_steps game steps after its birth
+// gets no flash. The flash's life is wall clock, stamped by the stage on its first frame (flash_born_us).
 namespace x3m::weapon_effects::core {
 namespace projectile {
 constexpr unsigned pool_capacity = 512, slot_count = 1024, max_probes = 32;
@@ -74,9 +75,9 @@ struct ProjectileEntry {
     std::uint32_t spot_state; // the last frame's: 1 a spot, 2 a streak or comet (the spot's hysteresis)
     // The muzzle flash (muzzle-flash-look.md): the tap's match at registration, then the stage's state.
     std::uint32_t shooter;      // ext+4 at registration (the firing object; the stage reads it through the bounded reader)
-    std::uint32_t flash_gap_ms; // the matched shot's refire gap t0 - prev_t0 (game ms; 0 a first shot: one frame)
+    std::uint32_t flash_born_us; // the birth's wall clock (QPC us, wrapping), set by the stage on the flash's first frame
     std::uint8_t flash;         // projectile::FlashState
-    std::uint8_t flash_frames;  // stage frames the flash was drawn on
+    std::uint8_t flash_frames;  // stage frames the flash was drawn on (saturating at 255; diagnostic and first-frame test)
     std::uint8_t flash_pad[2];
     std::uint32_t flash_node, flash_handle; // the shooter's node and node+0x28 at the shot (its MuzzleRecord)
     std::uint32_t flash_off[3];  // the muzzle in the shooter's frame (engine units along its rows, float bits)
@@ -208,13 +209,13 @@ inline bool projectile_resolve(ProjectilePool& p) noexcept {
     return true;
 }
 // A registration's muzzle-flash match (a new entry, or a recycled node: another bullet): the ours record of the entry's
-// shooter fired at its birth gives the gap; none, or registered more than flash_stale_steps game steps after the birth
-// (cfg +0x704, SETA-scaled), no flash.
+// shooter fired at its birth makes it pending; none, or registered more than flash_stale_steps game steps after the
+// birth (cfg +0x704, SETA-scaled), no flash.
 static inline __attribute__((always_inline)) void projectile_flash_match(ProjectileEntry& e, ProjectilePool& p,
                                                                          std::uintptr_t ext, std::uintptr_t cfg,
                                                                          std::uint32_t now, std::uint32_t created) noexcept {
     e.shooter = ext ? rd32(ext + projectile::ext_owner) : 0u;
-    e.flash_gap_ms = 0;
+    e.flash_born_us = 0;
     e.flash_frames = 0;
     e.flash = projectile::flash_none;
     if (!e.shooter || !created) {
@@ -229,7 +230,6 @@ static inline __attribute__((always_inline)) void projectile_flash_match(Project
     for (unsigned i = 0; i < muzzle::record_capacity; ++i) {
         const MuzzleRecord& m = p.muzzles[i];
         if (!m.sequence || !m.ours || m.t0 != created || m.ship != e.shooter) continue;
-        e.flash_gap_ms = m.prev_t0 ? m.t0 - m.prev_t0 : 0u;
         e.flash_node = m.node; // the shooter's node and handle at the shot: the stage's first frame compares them
         e.flash_handle = m.handle;
         e.flash = projectile::flash_pending;
@@ -333,16 +333,14 @@ static inline __attribute__((always_inline)) int projectile_muzzle(std::uintptr_
         if (!oldest || (oldest->sequence && now - m.t0 > now - oldest->t0)) oldest = &m;
     }
     if (r && r->handle == handle && r->node == std::uint32_t(node)) {
-        r->prev_t0 = r->t0;
         ++r->shots;
-    } else { // a new (ship, slot), or another ship at the same object: no gap from the old record
+    } else { // a new (ship, slot), or another ship at the same object: the record starts over
         if (!r) {
             r = oldest;
             if (r->sequence) ++p.counters.muzzle_evicted;
             r->ship = std::uint32_t(ship);
             r->slot = std::uint16_t(slot);
         }
-        r->prev_t0 = 0;
         r->shots = 1;
     }
     r->node = std::uint32_t(node);

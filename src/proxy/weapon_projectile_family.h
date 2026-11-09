@@ -31,21 +31,24 @@ struct Tune {
     // written with the nine bolt numbers carries them):
     float flash_core_mult = 1.25f; // the flash point's extent at scene white over the bolt core's at the same depth
     float flash_len_m = 2.5f;      // the streak's world length from the muzzle along the shot's axis (0: no streak)
-    float flash_life_frac = 0.2f;  // the life as a share of the gun's measured refire gap (capped at two game steps)
+    float flash_life_ms = 80.f;    // the life in wall-clock ms from the birth (QPC; drawn every stage frame while younger)
     float flash_stops = 2.f;       // the flash's radiance over the bolt core's, in stops
     float hull_pulse_r = 3.f;      // the hull pulse's radius in metres at calibre 0 (x (1 + calibre); 0: no pulse)
 };
 constexpr unsigned tune_keys = 14;
 constexpr const char* tune_key_names[tune_keys] = {"core_px",      "glow_ratio",  "glow_gain",       "hot_share",
                                                    "lod_dot_m",    "length_cap_m", "stops",          "trail_ms",
-                                                   "head_gain",    "flash_core_mult", "flash_len_m", "flash_life_frac",
+                                                   "head_gain",    "flash_core_mult", "flash_len_m", "flash_life_ms",
                                                    "flash_stops",  "hull_pulse_r"};
-constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f, 0.5f, 0.f, 0.05f, -2.f, 0.f};
-constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f, 3.f, 20.f, 0.6f, 6.f, 20.f};
+constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f, 0.5f, 0.f, 16.f, -2.f, 0.f};
+constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f, 8.f, 20.f, 400.f, 6.f, 20.f};
+constexpr bool key_is(const char* a, const char* b) noexcept { return *a == *b && (!*a || key_is(a + 1, b + 1)); }
+constexpr unsigned key_flash_life_ms = 11; // the stage's backdate cap is checked against this key's maximum
+static_assert(key_is(tune_key_names[key_flash_life_ms], "flash_life_ms"), "the flash life key's index");
 inline float& tune_at(Tune& t, unsigned k) noexcept {
     float* const fields[tune_keys] = {&t.core_px,         &t.glow_ratio,  &t.glow_gain,       &t.hot_share,
                                       &t.lod_dot_m,       &t.length_cap_m, &t.stops,          &t.trail_ms,
-                                      &t.head_gain,       &t.flash_core_mult, &t.flash_len_m, &t.flash_life_frac,
+                                      &t.head_gain,       &t.flash_core_mult, &t.flash_len_m, &t.flash_life_ms,
                                       &t.flash_stops,     &t.hull_pulse_r};
     return *fields[k < tune_keys ? k : 0];
 }
@@ -64,15 +67,16 @@ constexpr Family families[family_count] = {
     // Baked from FL 61 A (2026-11-09): the user's accepted dev file values, except core_px 1.0 (the file's 0.5 looked
     // better but too faint over bright nebulas: the user's choice). The comet is off (trail_ms 0: at the user's frame
     // rate, with the core saturating, it made no visible difference); the mechanism stays, head_gain 1.5 for a trail.
-    // The muzzle flash at its design start values (2026-11-09, not yet flown: FL run 62 judges it).
+    // The muzzle flash at its design start values (2026-11-09); FL 62 A judged the two-step life invisible: the life is
+    // now flash_life_ms of wall clock (80), calibrated in flight from the dev file.
     {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, sizeof(fighter_tracer_rows) / sizeof(fighter_tracer_rows[0]),
-     {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f, 1.25f, 2.5f, 0.2f, 2.f, 3.f}},
+     {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f, 1.25f, 2.5f, 80.f, 2.f, 3.f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
     const float v[tune_keys] = {t.core_px,         t.glow_ratio,  t.glow_gain,       t.hot_share,   t.lod_dot_m,
                                 t.length_cap_m,    t.stops,       t.trail_ms,        t.head_gain,   t.flash_core_mult,
-                                t.flash_len_m,     t.flash_life_frac, t.flash_stops, t.hull_pulse_r};
+                                t.flash_len_m,     t.flash_life_ms, t.flash_stops, t.hull_pulse_r};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;

@@ -301,7 +301,6 @@ int projectile_dump(const char* dir) {
             m.node = std::uint32_t(reinterpret_cast<std::uintptr_t>(ship_node));
             m.handle = 0x77;
             m.t0 = born;
-            m.prev_t0 = born - 150;
             m.slot = std::uint16_t(i);
             m.ours = 1;
             m.sequence = 1 + i;

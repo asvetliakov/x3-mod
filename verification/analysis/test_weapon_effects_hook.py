@@ -280,19 +280,19 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
 
     def test_muzzle_flash_gates(self):
         # docs/architecture/muzzle-flash-look.md section 6: the white extent 1.25 x the core's at the gun's depth and
-        # 200 / 500 m (capped at 48 px at 4 m only) at +2 and +4 stops (the anti-lamp gate), the streak's length, the dot
-        # past it, the life against the refire gap at 1x, 144 fps and SETA 6, the pulse by its law, the budget
+        # 200 / 500 m (capped at 160 px at 4 m only) at +2 and +4 stops (the anti-lamp gate), the streak's length, the
+        # dot past it, the wall-clock life at 60 and 144 fps, SETA 6 and the key's bounds, the pulse by its law, the budget
         rows = self.record['metrics']['flash']
         size = [x for x in rows if x.get('case') == 'size']
         self.assertEqual(len(size), 12)
         for x in size:
             self.assertLessEqual(abs(x['white_px'] - x['rule_white_px']), 0.25, x)
+            # the anti-lamp invariant on both branches: white <= min(flash_core_mult x the core's, the 160 px cap)
+            self.assertLessEqual(x['white_px'], min(1.25 * x['core_white_measured_px'], 160.0) + 0.25, x)
             if x['capped']:
                 self.assertEqual(x['distance_m'], 4)
-            else:
-                self.assertLessEqual(x['white_px'], 1.25 * x['core_white_measured_px'] + 0.25, x)
-                if x['flash_stops'] == 2:  # the core's 1 px floor applies to the flash too: the ratio at 500 m as well
-                    self.assertLessEqual(abs(x['ratio'] / 1.25 - 1.0), 0.10, x)
+            elif x['flash_stops'] == 2:  # the core's 1 px floor applies to the flash too: the ratio at 500 m as well
+                self.assertLessEqual(abs(x['ratio'] / 1.25 - 1.0), 0.10, x)
         gun = next(x for x in size if x['distance_m'] == 27 and x['flash_stops'] == 2)
         self.assertAlmostEqual(gun['ratio'], 1.25, delta=0.02)
         lamp = next(x for x in size if x['distance_m'] == 27 and x['flash_stops'] == 4)
@@ -303,11 +303,17 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertEqual((streak[2000]['folded'], streak[2000]['dot']), (1, 1))
         life = {x['name']: x for x in rows if x.get('case') == 'life'}
         self.assertEqual({k: v['drawn'] for k, v in life.items()},
-                         {'gap150_step17': 2, 'gap150_step7': 2, 'gap150_step100_seta6': 1, 'first_shot': 1, 'not_ours': 0,
-                          'tapped_late': 0, 'record_other_shooter': 0})
+                         {'life80_frame17': 5, 'life80_frame7': 12, 'life80_seta6_step100': 5, 'life400_frame17': 24,
+                          'life16_frame17': 1, 'tapped_one_step_late': 4, 'tapped_one_step_late_seta6': 4,
+                          'tapped_late_backdate_cap_rate0': 1, 'not_ours': 0, 'tapped_late': 0,
+                          'record_other_shooter': 0})
+        # the birth set back by min(game age / SETA rate, 1 s): 100 / 6 ms under SETA 6, the 1 s cap at 1.5 s late
+        self.assertAlmostEqual(life['tapped_one_step_late_seta6']['back_us'], 100e3 / 6.0, delta=1.0)
+        self.assertAlmostEqual(life['tapped_late_backdate_cap_rate0']['back_us'], 1e6, delta=1.0)
         self.assertEqual(life['record_other_shooter']['lost'], 1)  # the record's shooter compared on the first frame
-        self.assertAlmostEqual(life['gap150_step17']['fade1'], 1.0 - 17.0 / 30.0, delta=1e-3)
-        self.assertLess(life['gap150_step17']['ride_err_px'], 0.1)
+        for x in life.values():  # F = 1 on the first frame, then 1 - age / life (wall clock); the flash rides the shooter
+            self.assertLess(x['fade_err'], 1e-3, x)
+            self.assertLess(x['ride_err_px'], 0.1, x)
         for x in life.values():  # v_bullet - (slip + node velocity): the shot's own direction
             self.assertLess(x['axis_err_deg'], 0.05)
         pulse = self.record['metrics']['pulse']

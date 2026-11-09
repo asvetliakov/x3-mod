@@ -805,7 +805,7 @@ int main() {
 
     // Muzzle (docs/architecture/muzzle-flash-look.md section 4): ECX 4, EDX the gun slot, [esp+4] eff, [esp+8] ship,
     // [esp+0x18] &pos, [esp+0x20] &orient, ESI the TBullets record offset. A shot of an enabled body (word +0 of the
-    // record) while the batch latch is on: skipped (no callee, EAX 0), its (ship, slot) record ours with the refire gap;
+    // record) while the batch latch is on: skipped (no callee, EAX 0), its (ship, slot) record ours, relit (shots 2);
     // the latch off, or another body: forwarded with EAX, ECX, EDX, EBX, ESI, EDI, EBP, the stack and EFLAGS as the call
     // left them.
     {
@@ -863,15 +863,14 @@ int main() {
               "muzzle_other_body_forwards_registers_stack_flags");
         check(run_muzzle(4, 1, 1150, &skipped) && skipped, "muzzle_skip_no_callee");
         const core::MuzzleRecord* m = record();
-        check(m && m->ours && m->row == 4 && m->t0 == 1150 && m->prev_t0 == 1000 && m->shots == 2,
-              "muzzle_handler_slot_row_pos_orient", "the (ship, slot) record: row, t0, the refire gap");
-        // the object tap matches a bullet born at the shot (ext+4 the ship, ext+8 = t0) to the ours record: the gap; born
+        check(m && m->ours && m->row == 4 && m->t0 == 1150 && m->shots == 2,
+              "muzzle_handler_slot_row_pos_orient", "the (ship, slot) record: row, t0, shots");
+        // the object tap matches a bullet born at the shot (ext+4 the ship, ext+8 = t0) to the ours record: pending; born
         // at another ms, unmatched; registered three steps (17 ms) after its birth, stale
         w32(config_block, core::projectile::cfg_step_ms, 17);
         alignas(16) static unsigned char shot[3][0x100], shot_node[3][0x200], shot_ext[3][0x80];
         const std::uint32_t births[3] = {1150, 1149, 1150}, taps[3] = {1150, 1150, 1201};
         std::uint8_t states[3]{};
-        std::uint32_t gaps[3]{};
         core::projectile_clear(pool);
         pool.armed = 1;
         for (unsigned i = 0; i < 3; ++i) {
@@ -892,17 +891,16 @@ int main() {
             const unsigned s = core::projectile_slot(pool, u32(shot_node[i]));
             if (s < core::projectile::slot_count) {
                 states[i] = pool.entries[pool.slots[s] - 1u].flash;
-                gaps[i] = pool.entries[pool.slots[s] - 1u].flash_gap_ms;
             }
         }
-        std::printf("MUZZLE skipped=%lu unskipped=%lu matched=%lu unmatched=%lu stale=%lu gap_ms=%lu states=%u/%u/%u\n",
+        std::printf("MUZZLE skipped=%lu unskipped=%lu matched=%lu unmatched=%lu stale=%lu states=%u/%u/%u\n",
                     static_cast<unsigned long>(pool.counters.muzzle_skipped),
                     static_cast<unsigned long>(pool.counters.muzzle_unskipped),
                     static_cast<unsigned long>(pool.counters.flash_matched),
                     static_cast<unsigned long>(pool.counters.flash_unmatched),
-                    static_cast<unsigned long>(pool.counters.flash_stale), static_cast<unsigned long>(gaps[0]),
+                    static_cast<unsigned long>(pool.counters.flash_stale),
                     unsigned(states[0]), unsigned(states[1]), unsigned(states[2]));
-        check(states[0] == core::projectile::flash_pending && gaps[0] == 150 && states[1] == core::projectile::flash_none &&
+        check(states[0] == core::projectile::flash_pending && states[1] == core::projectile::flash_none &&
                   states[2] == core::projectile::flash_none && pool.counters.flash_matched >= 1 &&
                   pool.counters.flash_unmatched >= 1 && pool.counters.flash_stale >= 1,
               "object_tap_matches_flash_to_ours_record");
