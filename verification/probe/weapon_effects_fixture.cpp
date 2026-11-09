@@ -3067,13 +3067,16 @@ int main(int argc, char** argv) {
     report("projectile_target_1080", make_proj_target(pt, 1920, 1080));
     if (pc.projectile_enabled && pt.depth_s.p) {
         const ps::BodyLook look = ire_look();
-        pf::Tune core_only = pf::families[pf::fighter_tracer].tune;
+        // The mechanism cases below run on the FL 60 A starting values with the comet on (trail_ms 40), the values their
+        // thresholds were written against; the family's baked tune (FL 61 A: core 1 px, the comet off) is case (1b).
+        const pf::Tune comet = {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f};
+        pf::Tune core_only = comet;
         core_only.glow_gain = 0.f; // the core's own width
         // the length and energy rules of the streak are the flat streak's (trail_ms 0, FL run 60's law); the comet's
         // falloff, head and ring are the cases (7f) to (7h)
         pf::Tune flat_core = core_only;
         flat_core.trail_ms = 0.f;
-        pf::Tune flat = pf::families[pf::fighter_tracer].tune;
+        pf::Tune flat = comet;
         flat.trail_ms = 0.f;
         // (1) the core width rule at 200 m / 500 m / 1 km / 3 km, at m00 1.6 and a second FOV (m00 1.0): the measured
         // full width at half maximum across the axis equals max(1, core_px 500 / d) within 0.5 px at both, and the
@@ -3105,6 +3108,42 @@ int main(int argc, char** argv) {
             }
         report("projectile_core_width_rule_both_fovs", widths_ok, "");
         report("projectile_length_follows_live_projection", fov_ok, "");
+        // (1b) the baked tune (FL 61 A, 2026-11-09): the family's constants are the user's accepted file values, and at
+        // 200 m / 500 m / 1 km it draws the flat streak (one quad, no trail, head gain 1) whose core (glow off) is
+        // max(1, 1.0 x 500 / d) px wide within 0.5 px, and whose full look (glow on) is drawn at the centre.
+        {
+            const pf::Tune& baked = pf::families[pf::fighter_tracer].tune;
+            const pf::Tune fl61a = {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f};
+            bool same = true;
+            for (unsigned k = 0; k < pf::tune_keys; ++k) {
+                pf::Tune a = baked, b = fl61a;
+                same = same && pf::tune_at(a, k) == pf::tune_at(b, k);
+            }
+            pf::Tune baked_core = baked;
+            baked_core.glow_gain = 0.f;
+            bool ok_all = same;
+            for (float d : {200.f, 500.f, 1000.f}) {
+                const ps::View view = proj_view(pt, 1.6f);
+                rr::WeaponProjectileVertex v[4];
+                ps::BoltShape shape, full;
+                const bool built = ps::bolt_vertices(view, baked_core, look, bolt_at(d, 1162.f, 16.f), v, &shape);
+                proj_draw(proj, pt, v, built ? 1u : 0u);
+                const double measured = fwhm_through(proj_scene(pt), pt.w, pt.h, cx, cy, 0, 1);
+                const double rule = std::max(1.0, double(baked.core_px) * 500.0 / double(d));
+                const bool built_full = ps::bolt_vertices(view, baked, look, bolt_at(d, 1162.f, 16.f), v, &full);
+                proj_draw(proj, pt, v, built_full ? 1u : 0u);
+                const std::vector<float> l = proj_scene(pt);
+                const float centre = l.empty() ? 0.f : l[std::size_t(cy) * pt.w + cx];
+                const bool ok = built && built_full && std::fabs(measured - rule) <= 0.5 && full.quads == 1u &&
+                                full.trail_quads == 0u && full.head_gain == 1.f && centre > 1.f;
+                ok_all = ok_all && ok;
+                std::printf("PROJECTILE case=baked_fl61a distance_m=%.0f rule_px=%.3f measured_px=%.3f quads=%u ring=%u "
+                            "head_gain=%.3f centre=%.4f energy=%.4f same=%u\n",
+                            double(d), rule, measured, full.quads, full.trail_quads, double(full.head_gain), double(centre),
+                            double(full.energy), unsigned(same));
+            }
+            report("projectile_baked_fl61a_flat_streak", ok_all, "");
+        }
         // (2) SETA invariance and the bridged rule from the constants: at 1 km, first-frame steps 16 ms (1x) and 96 ms
         // (6x), the speed chosen so the 6x streak is 80 % of length_cap_m: the drawn length per game ms (the half-maximum
         // run along the axis; the end ramps' half maximum sits at the ends) is the same within 3 % and equals |v| step f /
@@ -3161,7 +3200,7 @@ int main(int argc, char** argv) {
         // every pixel away from it keep the cleared 0 (COLORWRITEENABLE1 = GREEN).
         {
             rr::WeaponProjectileVertex v[4];
-            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look,
+            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), comet, look,
                                                  bolt_at(500.f, 1162.f, 16.f), v);
             proj_draw(proj, pt, v, built ? 1u : 0u);
             const std::vector<float> lane = proj_lane(pt);
@@ -3216,7 +3255,7 @@ int main(int argc, char** argv) {
         {
             rr::WeaponProjectileVertex v[4];
             ps::BoltShape shape;
-            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look,
+            const bool built = ps::bolt_vertices(proj_view(pt, 1.6f), comet, look,
                                                  bolt_at(300.f, 1162.f, 50.f, 0.6f), v, &shape);
             proj_draw(proj, pt, v, built ? 1u : 0u);
             const std::vector<float> l = proj_scene(pt);
@@ -3252,8 +3291,8 @@ int main(int argc, char** argv) {
             ps::BoltIn near_in = bolt_at(300.f, 1162.f, 16.f), far_in = bolt_at(500.f, 1162.f, 16.f);
             near_in.p[0] += -0.3f * near_in.p[2] / view.m00; // the streak's centre at ndc x -0.3
             far_in.p[0] += 0.3f * far_in.p[2] / view.m00;    // ndc x +0.3
-            const bool built = ps::bolt_vertices(view, pf::families[pf::fighter_tracer].tune, look, near_in, v) &&
-                               ps::bolt_vertices(view, pf::families[pf::fighter_tracer].tune, look, far_in, v + 4);
+            const bool built = ps::bolt_vertices(view, comet, look, near_in, v) &&
+                               ps::bolt_vertices(view, comet, look, far_in, v + 4);
             const float z400 = view.m22 + view.m32 / (400.f * ps::view_units_per_metre);
             rr::WeaponEffectsReport r{};
             const HRESULT hr = proj_draw(proj, pt, v, 2, z400, &r);
@@ -3315,7 +3354,7 @@ int main(int argc, char** argv) {
             static ps::Looks looks;
             looks.resolved = 0;
             static rr::WeaponProjectileVertex verts[rr::weapon_projectile_max_quads * 4];
-            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const pf::Tune tunes[pf::family_count] = {comet};
             const ps::Counts a = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 1, false, 1000, 16, 0.f, 1.f,
                                            proj_view(pt, 1.6f), tunes, verts, rr::weapon_projectile_max_bolts,
                                            rr::weapon_projectile_max_quads);
@@ -3367,7 +3406,7 @@ int main(int argc, char** argv) {
             static ps::Looks looks;
             static rr::WeaponProjectileVertex verts[8];
             const ps::View view = proj_view(pt, 1.6f);
-            pf::Tune flown = pf::families[pf::fighter_tracer].tune;
+            pf::Tune flown = comet;
             flown.core_px = 1.f;
             flown.glow_ratio = 2.f;
             flown.glow_gain = 2.f;
@@ -3517,7 +3556,7 @@ int main(int argc, char** argv) {
             static PoolBullet bullet;
             static ps::Looks looks;
             static rr::WeaponProjectileVertex verts[4];
-            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const pf::Tune tunes[pf::family_count] = {comet};
             const ps::View view = proj_view(pt, 1.6f);
             ps::View turned = view;
             const double turn = 20.0 * 3.14159265358979 / 180.0;
@@ -3566,7 +3605,7 @@ int main(int argc, char** argv) {
         // head): its centre pixel equals a flat (trail_ms 0) side-on IRE streak's at 500 m under the cap (within 2 %); an on-screen motion of 0.5 px and a paused game
         // (step 0) draw the same spot at factor 1 (the energy rule dims only a travel past length_cap_m).
         {
-            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const pf::Tune tune = comet;
             const ps::View view = proj_view(pt, 1.6f);
             const float f_px = view.m11 * 0.5f * float(pt.h);
             const float speed = 0.5f * 500.f / f_px / 0.016f; // m/s: 0.5 px in 16 ms at 500 m
@@ -3613,7 +3652,7 @@ int main(int argc, char** argv) {
         // path is straight at a steady screen speed (merged), and with the camera's turn accelerating (1, 2, 3, 4 degrees
         // per frame) in segments (1 + 1 quads), so the seam between segments is read too.
         {
-            pf::Tune flown = pf::families[pf::fighter_tracer].tune;
+            pf::Tune flown = comet;
             flown.core_px = 1.f;
             flown.glow_ratio = 2.f;
             flown.glow_gain = 2.f;
@@ -3624,7 +3663,7 @@ int main(int argc, char** argv) {
             for (unsigned variant = 0; variant < 7; ++variant) {
                 const bool fast = variant == 1 || variant == 3, user = variant == 2 || variant == 3, moving = variant == 4;
                 const bool turning = variant == 5 || variant == 6, accelerating = variant == 6;
-                const pf::Tune tune = user ? flown : pf::families[pf::fighter_tracer].tune;
+                const pf::Tune tune = user ? flown : comet;
                 const CometRun r = comet_run(proj, pt, tune, 200.f, fast ? 7u : 5u, fast ? 7u : 17u, fast ? 1.0 / 144.0 : 1.0 / 60.0,
                                              moving ? 200.0 : 0.0, turning ? 1.0 : 0.0, accelerating ? 0.3 : 0.5,
                                              400 + 20 * variant, accelerating);
@@ -3653,7 +3692,7 @@ int main(int argc, char** argv) {
         // start; the drawn comet ends where the law falls to trail_floor (0.745 trail_ms, within 1 ms). The core alone (glow_gain 0): the head's peak over the
         // trail's start is head_gain within 5 % (the glow, wider than the head, adds less there).
         {
-            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const pf::Tune tune = comet;
             const CometRun r = comet_run(proj, pt, tune, 500.f, 4, 17, 1.0 / 60.0, 0.0, 0.0, 0.3, 500);
             const CometProfile pr = comet_profile(r, tune);
             const ps::BoltShape& s = r.shape[r.frames - 1];
@@ -3682,7 +3721,7 @@ int main(int argc, char** argv) {
         // ages on that law within 5 %, and the energy factor is length_cap_m over the drawn world length |v| 125 ms
         // within 1 %.
         {
-            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const pf::Tune tune = comet;
             const CometRun one = comet_run(proj, pt, tune, 500.f, 5, 17, 1.0 / 60.0, 0.0, 0.0, 0.3, 600);
             const CometProfile p1 = comet_profile(one, tune);
             const CometRun mid = comet_run(proj, pt, tune, 500.f, 5, 23, 1.0 / 60.0, 0.0, 0.0, 0.3, 610);
@@ -3720,7 +3759,7 @@ int main(int argc, char** argv) {
         // from a comet and once from a spot. The bolt keeps its mode in each run and the frame's brightest pixel (the
         // head, or the spot) changes by under 5 % from frame to frame.
         {
-            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const pf::Tune tune = comet;
             const ps::View view = proj_view(pt, 1.6f);
             const ps::ViewFrame vf = ps::view_frame(view, tune.core_px);
             const ps::BodyFrame body = ps::body_frame(tune, ire_look());
@@ -3770,7 +3809,7 @@ int main(int argc, char** argv) {
         // widths, off the line from the drawn trail's end to the head: one quad, then two; the tolerance is 0.1 core
         // widths), the same ages: the column's light summed across the comet 200 px behind the head changes by under 3 %.
         {
-            const pf::Tune tune = pf::families[pf::fighter_tracer].tune;
+            const pf::Tune tune = comet;
             const ps::View view = proj_view(pt, 1.6f);
             const ps::ViewFrame vf = ps::view_frame(view, tune.core_px);
             const ps::BodyFrame body = ps::body_frame(tune, ire_look());
@@ -3820,7 +3859,7 @@ int main(int argc, char** argv) {
             pass.after_reset(reset);
             const bool remade = SUCCEEDED(reset) && make_proj_target(pt, 1920, 1080) && make_target(g, 1920, 1080);
             rr::WeaponProjectileVertex v[4];
-            ps::bolt_vertices(proj_view(pt, 1.6f), pf::families[pf::fighter_tracer].tune, look, bolt_at(500.f, 1162.f, 16.f), v);
+            ps::bolt_vertices(proj_view(pt, 1.6f), comet, look, bolt_at(500.f, 1162.f, 16.f), v);
             rr::WeaponEffectsReport r{};
             const HRESULT hr = remade ? proj_draw(proj, pt, v, 1, 1.f, &r) : E_FAIL;
             const std::vector<float> l = remade ? proj_scene(pt) : std::vector<float>{};
@@ -3875,7 +3914,8 @@ int main(int argc, char** argv) {
             static ps::Looks looks;
             looks.resolved = 0;
             static rr::WeaponProjectileVertex verts[rr::weapon_projectile_max_quads * 4];
-            const pf::Tune tunes[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+            const pf::Tune comet = {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f}; // the comet on: the costlier path
+            const pf::Tune tunes[pf::family_count] = {comet};
             const ps::View view = proj_view(bt, 1.6f);
             LARGE_INTEGER freq{}, a{}, b{};
             QueryPerformanceFrequency(&freq);

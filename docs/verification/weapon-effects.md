@@ -3380,3 +3380,16 @@ fenced with the trim active; the flight budget stays the main row's 100 / 50 µs
 111.55; seams rise 0.0000, deviation ≤ 1.12 %; main budget CPU 88.0 µs, GPU fenced 46.4 µs (532 quads, 6.01 % lit);
 worst case CPU 115.2 µs, GPU fenced 67.5 µs (1516 quads, 7.80 % lit), inside the tripwire. Host `test_weapon_effects*.py`
 96 OK; look crops regenerated (1x comets at full radiance, the SETA frame at 0.41).
+
+**FL 61 A accepted: IRE baked (2026-11-09).** The user accepted the IRE look with the dev file's values; the
+`fighter_tracer` family's `Tune` now bakes them, except `core_px` 1.0 where the file had 0.5 (0.5 looked better but
+too faint over bright nebulas, the user's choice): core_px 1.0, glow_ratio 2.0, glow_gain 0.3, hot_share 0.4,
+lod_dot_m 3000, length_cap_m 60, stops 2.0, trail_ms 0 (the comet off: no visible difference at the user's frame rate
+with the core saturating; the mechanism stays), head_gain 1.5. The enabled rows stay IRE only. The D3D fixture's
+mechanism cases keep the FL 60 A starting values with the comet on (trail_ms 40) as an explicit tune; the new case
+(1b) `projectile_baked_fl61a_flat_streak` draws the baked tune. Records on the clean `2765599b2` [M]: AP hook
+**131 of 131**, FL hook **67 of 67**, D3D **82 of 82**; case (1b) at 200 m / 500 m / 1 km: core FWHM 2.600 / 1.067 /
+1.067 px against the rule 2.5 / 1.0 / 1.0, one quad, no trail, head gain 1.0, energy 1.0, centre 4.30 / 4.13 / 2.03
+x scene white; main budget CPU 88.2 µs, GPU fenced 46.6 µs (532 quads). Shader `--check` PASS, FL build 0 warnings,
+`check_no_x87.py --edition fl` no violations, host `test_weapon_effects*.py` 96 OK. Figures from
+`verification/results/native-windows/weapon-effects/projectile_rows.py`.

@@ -21,7 +21,7 @@ options considered for the rest are in section 8.
 
 ## Outcome
 
-A fighter tracer is **a line of light, not a sprite**: a core of `core_px` (start 2 px) full width at the reference
+A fighter tracer is **a line of light, not a sprite**: a core of `core_px` (baked 1 px since FL 61 A) full width at the reference
 distance 500 m, whose world width therefore follows from the pixel figure and the projection and shrinks with distance
 to a 1 px dot whose radiance falls with its lost area; a Gaussian glow of the weapon's colour at `glow_ratio` x the core
 radius (start 3) and `glow_gain` (start 0.2 of scene white), the wide halo left to the bloom chain; a streak from the
@@ -220,19 +220,19 @@ tapped (the list is sector-wide) and culled by the stage.
 
 ## 4. Calibration in flight [D]
 
-`C:\X3FL\x3m\projectile_tune.json`, dev only, at most nine numbers for the family; the starting values and bounds
+`C:\X3FL\x3m\projectile_tune.json`, dev only, at most nine numbers for the family; the baked values (the "Start" column, the user's accepted file values since FL 61 A, core_px raised to 1.0 for bright nebulas) and bounds
 (`weapon_projectile_family.h`):
 
 | Key | Start | Bounds | Meaning |
 | --- | --- | --- | --- |
-| `core_px` | 2.0 | 0.5–8 | core full width (FWHM, px) at d_ref = 500 m, at the live projection |
-| `glow_ratio` | 3.0 | 1–12 | glow σ over the core radius |
-| `glow_gain` | 0.2 | 0–2 | glow radiance in scene white |
-| `hot_share` | 0.3 | 0–1 | white share of the core colour (x (1 + k) per gun) |
+| `core_px` | 1.0 | 0.5–8 | core full width (FWHM, px) at d_ref = 500 m, at the live projection |
+| `glow_ratio` | 2.0 | 1–12 | glow σ over the core radius |
+| `glow_gain` | 0.3 | 0–2 | glow radiance in scene white |
+| `hot_share` | 0.4 | 0–1 | white share of the core colour (x (1 + k) per gun) |
 | `lod_dot_m` | 3000 | 500–20000 | past this view depth (m), no stretch: a dot |
 | `length_cap_m` | 60 | 5–500 | **energy-conserving** since FL 59 A: a streak longer than this (metres) keeps its full length and its radiance scales by cap / length; since FL 60 A the length is the drawn one (the comet's \|v\| D) (before: a hard cap that cut the length; 116 at first, 30 baked after the look frames, 60 since the FL 60 A review so the 1x comet, about 35 m drawn, is not dimmed; the engine's own 116 m figure is the collision hull, section 3). The former `stretch_k` key is gone (the streak is the bridged travel); a file still carrying it is read without it and without a row |
 | `stops` | 2.0 | −2–6 | core radiance 2^(stops + k) x scene white |
-| `trail_ms` | 40 | 0–200 | the comet's trail (FL 60 A): it covers the bolt's travel over this many game ms, F falling to 0 there (drawn to F = 10 %, 0.745 of it; under SETA at least 1.25 x the step); 0 is the flat streak of FL run 60 (no trail, no head) |
+| `trail_ms` | 0 | 0–200 | the comet's trail (FL 60 A; 40 until FL 61 A baked it off, the mechanism kept): it covers the bolt's travel over this many game ms, F falling to 0 there (drawn to F = 10 %, 0.745 of it; under SETA at least 1.25 x the step); 0 is the flat streak of FL run 60 (no trail, no head) |
 | `head_gain` | 1.5 | 1–4 | the head's core over the trail's start (with a trail) |
 
 The proxy checks the file's last-write time at most once a second on the Present thread (`GetFileAttributesExW`,
@@ -327,9 +327,14 @@ normalised to a largest channel of 1 (the IRE's (121, 82, 39) → (1.0, 0.44, 0.
 row's override, else clamp(log10(d / 300) / 2, 0, 1) over TBullets `+0x44` (IRE 220 → 0). Speed, position, birth and end
 are the live bullet's.
 
-**Constants (the baked values, `Tune` of `fighter_tracer`):** core_px 2, glow_ratio 3, glow_gain 0.2,
-hot_share 0.3, lod_dot_m 3000, length_cap_m 60 (energy-conserving since FL 59 A; 30 until the FL 60 A review), stops 2, trail_ms 40 and head_gain
-1.5 (the comet, FL 60 A, starting values); the `stretch_k` multiplier
+**Constants (the baked values, `Tune` of `fighter_tracer`):** since FL 61 A (2026-11-09, the user accepted the IRE
+look with these file values, except core_px 1.0 where the file had 0.5: better, but too faint over bright nebulas)
+core_px 1.0, glow_ratio 2, glow_gain 0.3,
+hot_share 0.4, lod_dot_m 3000, length_cap_m 60 (energy-conserving since FL 59 A; 30 until the FL 60 A review), stops 2,
+trail_ms 0 and head_gain 1.5 (the comet off: at the user's frame rate, with the core saturating, it made no visible
+difference; the mechanism stays and a file's trail_ms turns it on). Until FL 61 A they were the starting values
+core_px 2, glow_ratio 3, glow_gain 0.2, hot_share 0.3 and trail_ms 40; the fixture's mechanism cases keep those as
+an explicit comet tune, case (1b) draws the baked one. The `stretch_k` multiplier
 was removed at FL 59 A (it had been 1.0, then 0.4). stretch_k and length_cap_m were 1.0 and 116 (the section 4
 starting values) until the fixture's look frames: a 48 px dash at 500 m at 1x and full-cap beams of 287–857 px under
 SETA 6, the bulk the user rejected (coordinator, 2026-11-08). Fixed: reference distance 500 m (`reference_m`, the
