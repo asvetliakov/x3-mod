@@ -3435,6 +3435,8 @@ slip; a record of another shooter: lost, not drawn. Pulse: the 27 m own gun at 1
 leaves **0.0000** of its peak 0.498 one and two frames later. Budget: 64 flashes alone CPU 8.4 µs, GPU 8.2 µs over
 the bolts' call (fence pair 10.8). Combined frame, 512 bolts (64 just fired with their flashes and pulses), 5120 x 1440,
 baked tune: GPU fenced **38.7 µs** (≤ 60), CPU **123.0 µs**, over the design's 100 µs: the bolt stage alone is 114.5 µs
-there (448 bridged 87.2 µs, the 64 just-fired bolts' first frames 27.3 µs), the flash work 8.5 µs (gated ≤ 20);
+there (448 bridged 87.2 µs, the 64 just-fired bolts' first frames 27.3 µs), the flash work 8.5 µs (gated ≤ 20); the
+frame's CPU is a regression tripwire at 150 µs (64 shots in one frame is a synthetic extreme, coordinator decision), the
+flight evidence for CPU being `projectile_us_max` in the `weapon_effects_frame` row;
 the comet tune 127.2 µs / 60.5 µs. Shader `--check` PASS, FL and AP builds 0 warnings, `check_no_x87` FL and AP no
 violations, host `test_weapon_effects*.py` 98 OK, the look crop regenerated (the pulse clamped) and viewed.

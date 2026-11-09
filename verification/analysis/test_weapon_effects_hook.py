@@ -332,6 +332,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         bounds = next(x for x in rows if x.get('case') == 'budget_combined_bounds')
         self.assertLessEqual(bounds['gpu_us'], 60.0)
         self.assertLessEqual(bounds['flash_work_cpu_us'], 20.0)
+        self.assertLessEqual(bounds['cpu_us'], 150.0)  # a regression tripwire; the flight's CPU is projectile_us_max
         self.assertEqual(self.record['failed_checks'], [])
 
     def test_passed_with_the_step_gates(self):

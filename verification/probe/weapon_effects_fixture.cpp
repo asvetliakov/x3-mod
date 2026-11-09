@@ -5077,8 +5077,11 @@ int main(int argc, char** argv) {
                         "newborn_bolts_cpu_us=%.1f bolts_448_cpu_us=%.1f gpu_us=%.1f gpu_within_60=%u\n",
                         cpu_of[0], unsigned(cpu_of[0] <= 100.0), flash_cpu, newborn_cpu, cpu_of[3], gpu_combined,
                         unsigned(gpu_combined <= 60.0));
+            // the frame's CPU is a regression tripwire at 150 us (coordinator, 2026-11-09: 64 shots born in one frame is a
+            // synthetic extreme like the turning worst case; the flight evidence for CPU is projectile_us_max in the frame
+            // row); cpu_within_100 above is informational
             report("flash_budget_combined_512_bolts_64_flashes_64_pulses",
-                   combined_ok && gpu_combined <= 60.0 && flash_cpu <= 20.0, "");
+                   combined_ok && gpu_combined <= 60.0 && flash_cpu <= 20.0 && cpu_of[0] <= 150.0, "");
             ct.release();
         }
         ft.release();
