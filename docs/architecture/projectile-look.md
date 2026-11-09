@@ -21,7 +21,7 @@ options considered for the rest are in section 8.
 
 ## Outcome
 
-A fighter tracer is **a line of light, not a sprite**: a core of `core_px` (baked 0.5 px since FL 61 A) full width at the reference
+A fighter tracer is **a line of light, not a sprite**: a core of `core_px` (baked 1 px since FL 61 A) full width at the reference
 distance 500 m, whose world width therefore follows from the pixel figure and the projection and shrinks with distance
 to a 1 px dot whose radiance falls with its lost area; a Gaussian glow of the weapon's colour at `glow_ratio` x the core
 radius (start 3) and `glow_gain` (start 0.2 of scene white), the wide halo left to the bloom chain; a streak from the
@@ -220,12 +220,12 @@ tapped (the list is sector-wide) and culled by the stage.
 
 ## 4. Calibration in flight [D]
 
-`C:\X3FL\x3m\projectile_tune.json`, dev only, at most nine numbers for the family; the baked values (the "Start" column, the user's accepted file values since FL 61 A) and bounds
+`C:\X3FL\x3m\projectile_tune.json`, dev only, at most nine numbers for the family; the baked values (the "Start" column, the user's accepted file values since FL 61 A, core_px raised to 1.0 for bright nebulas) and bounds
 (`weapon_projectile_family.h`):
 
 | Key | Start | Bounds | Meaning |
 | --- | --- | --- | --- |
-| `core_px` | 0.5 | 0.5–8 | core full width (FWHM, px) at d_ref = 500 m, at the live projection |
+| `core_px` | 1.0 | 0.5–8 | core full width (FWHM, px) at d_ref = 500 m, at the live projection |
 | `glow_ratio` | 2.0 | 1–12 | glow σ over the core radius |
 | `glow_gain` | 0.3 | 0–2 | glow radiance in scene white |
 | `hot_share` | 0.4 | 0–1 | white share of the core colour (x (1 + k) per gun) |
@@ -328,7 +328,8 @@ row's override, else clamp(log10(d / 300) / 2, 0, 1) over TBullets `+0x44` (IRE 
 are the live bullet's.
 
 **Constants (the baked values, `Tune` of `fighter_tracer`):** since FL 61 A (2026-11-09, the user accepted the IRE
-look with these file values, so a missing file reproduces it exactly) core_px 0.5, glow_ratio 2, glow_gain 0.3,
+look with these file values, except core_px 1.0 where the file had 0.5: better, but too faint over bright nebulas)
+core_px 1.0, glow_ratio 2, glow_gain 0.3,
 hot_share 0.4, lod_dot_m 3000, length_cap_m 60 (energy-conserving since FL 59 A; 30 until the FL 60 A review), stops 2,
 trail_ms 0 and head_gain 1.5 (the comet off: at the user's frame rate, with the core saturating, it made no visible
 difference; the mechanism stays and a file's trail_ms turns it on). Until FL 61 A they were the starting values

@@ -3068,7 +3068,7 @@ int main(int argc, char** argv) {
     if (pc.projectile_enabled && pt.depth_s.p) {
         const ps::BodyLook look = ire_look();
         // The mechanism cases below run on the FL 60 A starting values with the comet on (trail_ms 40), the values their
-        // thresholds were written against; the family's baked tune (FL 61 A: core 0.5 px, the comet off) is case (1b).
+        // thresholds were written against; the family's baked tune (FL 61 A: core 1 px, the comet off) is case (1b).
         const pf::Tune comet = {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f};
         pf::Tune core_only = comet;
         core_only.glow_gain = 0.f; // the core's own width
@@ -3110,10 +3110,10 @@ int main(int argc, char** argv) {
         report("projectile_length_follows_live_projection", fov_ok, "");
         // (1b) the baked tune (FL 61 A, 2026-11-09): the family's constants are the user's accepted file values, and at
         // 200 m / 500 m / 1 km it draws the flat streak (one quad, no trail, head gain 1) whose core (glow off) is
-        // max(1, 0.5 x 500 / d) px wide within 0.5 px, and whose full look (glow on) is drawn at the centre.
+        // max(1, 1.0 x 500 / d) px wide within 0.5 px, and whose full look (glow on) is drawn at the centre.
         {
             const pf::Tune& baked = pf::families[pf::fighter_tracer].tune;
-            const pf::Tune fl61a = {0.5f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f};
+            const pf::Tune fl61a = {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f};
             bool same = true;
             for (unsigned k = 0; k < pf::tune_keys; ++k) {
                 pf::Tune a = baked, b = fl61a;

@@ -50,11 +50,11 @@ struct Family {
 constexpr const char* fighter_tracer_rows[] = {"SS_BULLET_IRE"};
 constexpr unsigned family_count = 1;
 constexpr Family families[family_count] = {
-    // Baked from FL 61 A (2026-11-09): the user accepted the IRE look with the dev file's values, so a missing file
-    // reproduces it exactly. The comet is off (trail_ms 0: at the user's frame rate, with the core saturating, it made
-    // no visible difference); the mechanism stays and head_gain keeps its 1.5 for a trail turned on from the file.
+    // Baked from FL 61 A (2026-11-09): the user's accepted dev file values, except core_px 1.0 (the file's 0.5 looked
+    // better but too faint over bright nebulas: the user's choice). The comet is off (trail_ms 0: at the user's frame
+    // rate, with the core saturating, it made no visible difference); the mechanism stays, head_gain 1.5 for a trail.
     {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, sizeof(fighter_tracer_rows) / sizeof(fighter_tracer_rows[0]),
-     {0.5f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f}},
+     {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
