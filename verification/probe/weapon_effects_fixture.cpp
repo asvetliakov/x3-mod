@@ -3914,6 +3914,7 @@ int main(int argc, char** argv) {
             static ps::Looks looks;
             looks.resolved = 0;
             static rr::WeaponProjectileVertex verts[rr::weapon_projectile_max_quads * 4];
+            const pf::Tune comet = {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f}; // the comet on: the costlier path
             const pf::Tune tunes[pf::family_count] = {comet};
             const ps::View view = proj_view(bt, 1.6f);
             LARGE_INTEGER freq{}, a{}, b{};
