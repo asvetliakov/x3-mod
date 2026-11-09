@@ -38,6 +38,19 @@ float half_to_float(std::uint16_t h) {
     std::memcpy(&f, &out, 4);
     return f;
 }
+// float -> IEEE half (round to nearest; the dump's small positive radiances only, no NaN).
+std::uint16_t float_to_half(float f) {
+    std::uint32_t b;
+    std::memcpy(&b, &f, 4);
+    const std::uint32_t sign = (b >> 16) & 0x8000u;
+    const int e = int((b >> 23) & 0xffu) - 127 + 15;
+    std::uint32_t m = b & 0x7fffffu;
+    if (e <= 0) return std::uint16_t(sign); // under the half's normal range: 0
+    if (e >= 31) return std::uint16_t(sign | 0x7c00u);
+    m += 0x1000u; // round
+    if (m & 0x800000u) return std::uint16_t(sign | std::uint32_t(e + 1) << 10);
+    return std::uint16_t(sign | std::uint32_t(e) << 10 | (m >> 13));
+}
 IDirect3DDevice9* dev = nullptr;
 D3DCAPS9 caps{};
 D3DFORMAT adapter_format = D3DFMT_X8R8G8B8;
@@ -234,6 +247,170 @@ int projectile_dump(const char* dir) {
             std::printf("DUMP name=%s bolts=%u quads=%u step_ms=%u result=%08lx written=%u\n", name, n.drawn, n.quads,
                         unsigned(fr.step_ms), static_cast<unsigned long>(hr), unsigned(ok));
         }
+    }
+    // ---- ire-muzzle (docs/architecture/muzzle-flash-look.md): the chase view of a fighter at rest from behind (the eye
+    // 24 m behind and 5 m above its centre; the hull an ellipsoid of half-extents 6 x 1.5 x 9 m, in shadow, 0.03 to 0.08
+    // linear, written into the scene and the lane on the CPU), its two IRE mounts 3.2 m out and 1.5 m behind the
+    // centre on the hull's top firing forward together; the bullets first tapped one 17 ms step after the shot (the
+    // design's unknown: the tap's age), so this stage frame is each flash's first (F = 1, at the birth point by the
+    // back-extrapolation) beside its bolt's first segment, with the hull pulses (run_projectiles, before the bolts). The
+    // depth surface stays clear (the hull does not occlude the bolts here).
+    {
+        wc::projectile_clear(pool);
+        pool.armed = 1;
+        pool.resolved = 1;
+        pool.body_count = 1;
+        pool.bodies[0].id = 0x55;
+        pool.bits[0x55 >> 5] |= 1u << (0x55 & 31u);
+        for (wc::MuzzleRecord& m : pool.muzzles) m = wc::MuzzleRecord{};
+        cfg_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(cfg));
+        pool.globals.cfg_slot = reinterpret_cast<std::uintptr_t>(&cfg_slot);
+        looks.look[0] = ire_look();
+        looks.resolved = 1;
+        const std::uint32_t born = 8000, now = born + 17;
+        put32(cfg, wc::layout::cfg_game_ms, now);
+        put32(cfg, wc::projectile::cfg_step_ms, 17);
+        alignas(16) static unsigned char ship[0x100], ship_node[0x200];
+        std::memset(ship, 0, sizeof ship);
+        std::memset(ship_node, 0, sizeof ship_node);
+        put32(ship, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(ship_node)));
+        put32(ship_node, wc::layout::node_live, 1);
+        put32(ship_node, wc::layout::node_handle, 0x77);
+        for (unsigned k = 0; k < 3; ++k) put32(ship_node, wc::layout::node_rot + 16 * k + 4 * k, 0x10000);
+        const double centre[3] = {0.0, -5.0, 24.0}, half[3] = {6.0, 1.5, 9.0}; // metres (view = world here)
+        for (unsigned k = 0; k < 3; ++k) put32(ship_node, wc::layout::node_pos + 4 * k, std::uint32_t(std::int32_t(centre[k] * 500.0)));
+        const double speed = 581000.0, age_s = double(now - born) * 1e-3;
+        for (unsigned i = 0; i < 2; ++i) {
+            DumpBullet& u = bullets[i];
+            std::memset(&u, 0, sizeof u);
+            const double mount[3] = {i ? 3.2 : -3.2, 1.25, -1.5}; // on the top surface, in view of the chase eye
+            put32(u.obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(u.node)));
+            put32(u.obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(u.ext)));
+            put32(u.node, wc::layout::node_live, 1);
+            put32(u.node, wc::layout::node_handle, 90 + i);
+            put32(u.node, wc::layout::node_body, 0x55);
+            put32(u.node, wc::projectile::node_velocity + 8, std::uint32_t(std::int32_t(speed)));
+            for (unsigned k = 0; k < 3; ++k)
+                put32(u.node, wc::layout::node_pos + 4 * k,
+                      std::uint32_t(std::int32_t((centre[k] + mount[k]) * 500.0 + (k == 2 ? speed * age_s : 0.0))));
+            put32(u.ext, wc::projectile::ext_expiry, born + 1200);
+            put32(u.ext, wc::projectile::ext_owner, std::uint32_t(reinterpret_cast<std::uintptr_t>(ship)));
+            put32(u.ext, wc::projectile::ext_created, born);
+            wc::MuzzleRecord& m = pool.muzzles[i];
+            m.ship = std::uint32_t(reinterpret_cast<std::uintptr_t>(ship));
+            m.node = std::uint32_t(reinterpret_cast<std::uintptr_t>(ship_node));
+            m.handle = 0x77;
+            m.t0 = born;
+            m.prev_t0 = born - 150;
+            m.slot = std::uint16_t(i);
+            m.ours = 1;
+            m.sequence = 1 + i;
+            wc::projectile_tap(reinterpret_cast<std::uintptr_t>(u.obj), pool);
+        }
+        // the hull: the lane's view depth and the scene's shading per pixel (the ray's near root; sky elsewhere)
+        bool hull_ok = true;
+        D3DLOCKED_RECT ll{}, sl{};
+        if (SUCCEEDED(t.lane_sys.p->LockRect(&ll, nullptr, 0)) && SUCCEEDED(t.scene_sys.p->LockRect(&sl, nullptr, 0))) {
+            const double l_raw[3] = {0.3, 1.0, -0.5}, ln = std::sqrt(0.09 + 1.0 + 0.25);
+            for (UINT y = 0; y < t.h; ++y) {
+                float* lane = reinterpret_cast<float*>(static_cast<unsigned char*>(ll.pBits) + y * ll.Pitch);
+                std::uint16_t* scene = reinterpret_cast<std::uint16_t*>(static_cast<unsigned char*>(sl.pBits) + y * sl.Pitch);
+                for (UINT x = 0; x < t.w; ++x) {
+                    const double d[3] = {(2.0 * x / t.w - 1.0) / double(view.m00), (1.0 - 2.0 * y / t.h) / double(view.m11), 1.0};
+                    double A = 0, B = 0, C = -1;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        const double c = centre[k] * 5.0, e = half[k] * 5.0;
+                        A += d[k] * d[k] / (e * e);
+                        B += -d[k] * c / (e * e);
+                        C += c * c / (e * e);
+                    }
+                    const double disc = B * B - A * C;
+                    float shade = 0.f, depth = -1.f;
+                    if (disc >= 0.0) {
+                        const double tt = (-B - std::sqrt(disc)) / A;
+                        if (tt > 0.0) {
+                            double n[3], nn = 0.0, dot = 0.0;
+                            for (unsigned k = 0; k < 3; ++k) {
+                                const double e = half[k] * 5.0;
+                                n[k] = (tt * d[k] - centre[k] * 5.0) / (e * e);
+                                nn += n[k] * n[k];
+                            }
+                            for (unsigned k = 0; k < 3; ++k) dot += n[k] / std::sqrt(nn) * l_raw[k] / ln;
+                            shade = float(0.03 + 0.05 * (dot > 0.0 ? dot : 0.0));
+                            depth = float(tt);
+                        }
+                    }
+                    lane[x * 4 + 0] = depth > 0.f ? 0.5f : -1.f;
+                    lane[x * 4 + 1] = 0.f;
+                    lane[x * 4 + 2] = depth > 0.f ? depth : 0.f;
+                    lane[x * 4 + 3] = 0.f;
+                    const std::uint16_t hs = float_to_half(shade), hb = float_to_half(shade * 1.08f);
+                    scene[x * 4 + 0] = hs;
+                    scene[x * 4 + 1] = hs;
+                    scene[x * 4 + 2] = hb;
+                    scene[x * 4 + 3] = 0;
+                }
+            }
+            t.lane_sys.p->UnlockRect();
+            t.scene_sys.p->UnlockRect();
+            hull_ok = SUCCEEDED(dev->UpdateSurface(t.lane_sys.p, nullptr, t.lane_s.p, nullptr)) &&
+                      SUCCEEDED(dev->UpdateSurface(t.scene_sys.p, nullptr, t.scene_s.p, nullptr));
+        } else {
+            hull_ok = false;
+        }
+        const pf::Tune tunes1[pf::family_count] = {pf::families[pf::fighter_tracer].tune};
+        static rr::WeaponPulse pulses[rr::weapon_max_pulses];
+        static ps::FlashShape fshapes[rr::weapon_projectile_max_flashes];
+        static rr::WeaponProjectileVertex mv[(2 * rr::weapon_projectile_quads_per_bolt + rr::weapon_projectile_max_flashes) * 4];
+        ps::FlashOut out;
+        out.pulses = pulses;
+        out.max_pulses = rr::weapon_max_pulses;
+        out.max_quads = rr::weapon_projectile_max_flashes;
+        out.shapes = fshapes;
+        const ps::Counts n = ps::build(pool, &plain_read, nullptr, looks, device_frame += 5, false, now, 17, 1.f / 60.f, 1.f,
+                                       view, tunes1, mv, 2, 2 * rr::weapon_projectile_quads_per_bolt, nullptr, &out);
+        for (unsigned i = 0; i < n.flashes; ++i)
+            std::printf("DUMP_FLASH frame=ire-muzzle index=%u depth_m=%.1f core_px=%.2f core_white_px=%.2f white_px=%.2f "
+                        "sigma_px=%.2f peak=%.2f folded=%u length_px=%.2f pulse_px=%.1f raster=%.1f,%.1f\n",
+                        i, double(fshapes[i].depth_m), double(fshapes[i].core_px), double(fshapes[i].core_white_px),
+                        double(fshapes[i].white_px), double(fshapes[i].sigma_px), double(fshapes[i].peak),
+                        unsigned(fshapes[i].folded), double(fshapes[i].length_px), double(fshapes[i].pulse_px),
+                        double(fshapes[i].raster[0]), double(fshapes[i].raster[1]));
+        dev->BeginScene();
+        dev->SetDepthStencilSurface(t.depth_s.p);
+        dev->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+        dev->SetRenderTarget(0, t.scene_s.p);
+        dev->SetDepthStencilSurface(nullptr);
+        // one run_projectiles: the pulses first (the lane a texture), then the bolts and flashes (the lane as RT1)
+        rr::WeaponProjectileFrame pf_frame;
+        pf_frame.width = t.w;
+        pf_frame.height = t.h;
+        pf_frame.vertices = mv;
+        pf_frame.quads = n.quads + n.flashes;
+        pf_frame.lane = t.lane_s.p;
+        pf_frame.depth = t.depth_s.p;
+        pf_frame.pulses = pulses;
+        pf_frame.pulse_count = n.pulses;
+        pf_frame.lane_texture = t.lane_tex.p;
+        pf_frame.four_channel = true;
+        pf_frame.m00 = view.m00;
+        pf_frame.m11 = view.m11;
+        pf_frame.m22 = view.m22;
+        pf_frame.m32 = view.m32;
+        pf_frame.near_z = view.near_z;
+        rr::WeaponEffectsReport r{};
+        const HRESULT hr = proj.run_projectiles(pf_frame, &r);
+        dev->EndScene();
+        char path[MAX_PATH];
+        std::snprintf(path, sizeof path, "%s\\ire-muzzle.pfm", dir);
+        const bool ok = hull_ok && hr == S_OK && n.drawn == 2 && n.flashes == 2 && n.pulses == 2 && r.pulses == 2 &&
+                        write_pfm(path, t);
+        failures += !ok;
+        ++written;
+        std::printf("DUMP name=ire-muzzle bolts=%u quads=%u flashes=%u pulses=%u drawn_pulses=%u result=%08lx hull=%u "
+                    "written=%u\n",
+                    n.drawn, n.quads, n.flashes, n.pulses, r.pulses, static_cast<unsigned long>(hr), unsigned(hull_ok),
+                    unsigned(ok));
     }
     t.release();
     proj.detach();

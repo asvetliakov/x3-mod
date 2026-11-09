@@ -363,29 +363,54 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
             !engine_plumes::seta_decode(warp, mult, &engaged, &requested, &seta_rate))
             seta_rate = 1.f;
     }
+    // The muzzle flashes (docs/architecture/muzzle-flash-look.md): their quads after the bolts' in the same draw, their
+    // hull pulses (64 x 36 B, static) drawn by run_projectiles before the bolts.
+    static renderer::WeaponPulse pulses[renderer::weapon_max_pulses];
+    ps::FlashOut flashes;
+    flashes.pulses = pulses;
+    flashes.max_pulses = renderer::weapon_max_pulses;
+    flashes.max_quads = renderer::weapon_projectile_max_flashes;
     // the device frame (a frame the stage did not run breaks every bridge) and the resolve's camera cut
     const ps::Counts n = ps::build(x3m_projectile_pool, &weapon_effects_read, weapon_effects::hook_state().table, looks,
                                    std::uint32_t(frame_), projectile_cut_, now, step, render_dt, seta_rate, view,
                                    projectile_tune_, vertices, renderer::weapon_projectile_max_bolts,
-                                   renderer::weapon_projectile_max_quads);
+                                   renderer::weapon_projectile_bolt_quads, nullptr, &flashes);
     projectile_retired_ += n.expired + n.invalid;
     projectile_statics_ += n.statics;
     projectile_jumped_ += n.jumped;
     projectile_ring_trimmed_ += n.trimmed;
+    projectile_flash_lost_ += n.flash_lost + n.flash_stale;
+    projectile_flash_dropped_ += n.flash_dropped;
+    projectile_pulse_clamped_ += n.pulse_clamped;
     renderer::WeaponProjectileFrame pf;
     pf.width = f.width;
     pf.height = f.height;
     pf.vertices = vertices;
-    pf.quads = n.quads;
+    pf.quads = n.quads + n.flashes;
     pf.lane = depth_surface_;
     pf.depth = projectile_depth_;
     D3DSURFACE_DESC scene{};
     if (hdr_ && hdr_->target() && SUCCEEDED(hdr_->target()->GetDesc(&scene))) pf.scene_format = scene.Format;
+    // the hull pulses, drawn first by the same call: the lane as a texture (before it is bound as RT1), its depth law and
+    // the jittered projection the lane was drawn with (the shield pass's frame)
+    pf.pulses = pulses;
+    pf.pulse_count = n.pulses;
+    pf.lane_texture = f.lane;
+    pf.four_channel = f.four_channel;
+    pf.m00 = f.m00;
+    pf.m11 = f.m11;
+    pf.m20 = f.m20;
+    pf.m21 = f.m21;
+    pf.m22 = f.m22;
+    pf.m32 = f.m32;
+    pf.near_z = f.near_z;
     renderer::WeaponEffectsReport report{};
     const HRESULT hr = weapon_->run_projectiles(pf, &report);
     QueryPerformanceCounter(&end);
     projectile_ran_ = hr == S_OK || hr == S_FALSE;
     projectile_bolts_ += report.drew ? n.drawn : 0u;
+    projectile_flashes_ += report.quads ? n.flashes : 0u;
+    projectile_pulses_ += report.pulses;
     const std::uint64_t ticks = std::uint64_t(end.QuadPart - begin.QuadPart);
     const float us = frequency && frequency < 0x80000000ull && ticks < 0x80000000ull
                          ? float(double(std::int32_t(ticks)) * 1e6 / double(std::int32_t(frequency)))
@@ -442,7 +467,13 @@ bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
 void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled,
                                          unsigned* retired, float* stage_us, unsigned* unpooled,
                                          unsigned* sampled, unsigned* statics, unsigned* jumped,
-                                         unsigned* ring_trimmed) noexcept {
+                                         unsigned* ring_trimmed, unsigned flashes[5]) noexcept {
+    flashes[0] = projectile_flashes_;
+    flashes[1] = projectile_pulses_;
+    flashes[2] = projectile_flash_lost_;
+    flashes[3] = projectile_flash_dropped_;
+    flashes[4] = projectile_pulse_clamped_;
+    projectile_flashes_ = projectile_pulses_ = projectile_flash_lost_ = projectile_flash_dropped_ = projectile_pulse_clamped_ = 0;
     *unpooled = projectile_unpooled_;
     *sampled = projectile_sampled_;
     *statics = projectile_statics_;

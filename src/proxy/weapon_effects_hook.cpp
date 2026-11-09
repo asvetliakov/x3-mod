@@ -274,14 +274,12 @@ void __cdecl x3m_weapon_bolt_tap_fl(std::uint32_t ecx) {
     core::bolt_tap(ap, bolt_state_);
     core::projectile_tap(ecx, x3m_projectile_pool); // the projectile stage's registration (stage modes)
 }
-// Muzzle 0x04f639 -> 0x0150e0: EDX the gun slot, [esp+8] ship, [esp+0x18] &pos, [esp+0x20] &orientation, ESI the
-// TBullets record offset. AP: [1] ship, [2] slot, [3] &pos, EAX the TBullets index, EDX &orientation.
+// Muzzle 0x04f639 -> 0x0150e0: EDX the gun slot, [esp+8] ship, ESI the TBullets record offset. The projectile stage's
+// muzzle (weapon_effects_projectile.h projectile_muzzle, docs/architecture/muzzle-flash-look.md section 4): skipped for
+// a shot of an enabled body while the batch latch is on (the stage draws its flash), forwarded otherwise. The AP bolt
+// muzzle (bolt_muzzle, its muzzle_owned / suppress_muzzle latch) is not used on FL.
 int __cdecl x3m_weapon_muzzle_fl(const std::uint32_t* entry, std::uint32_t edx, std::uint32_t esi) {
-    std::uint32_t ap[4];
-    ap[1] = entry[S::spawner_object_slot];
-    ap[2] = edx;
-    ap[3] = entry[S::spawner_pos_slot];
-    return core::bolt_muzzle(ap, esi / core::layout::type_stride, entry[S::spawner_orient_slot], bolt_state_);
+    return core::projectile_muzzle(entry[S::spawner_object_slot], edx, esi, x3m_projectile_pool);
 }
 // Flight 0x014eaa -> 0x0150e0: [esp+8] the bullet. AP slot: [4] obj.
 int __cdecl x3m_weapon_flight_fl(const std::uint32_t* entry) {

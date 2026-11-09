@@ -77,6 +77,8 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/proxy/weapon_effects_projectile.h', 'src/effects/weapon_projectile_vs.hlsl',
                       'src/effects/weapon_projectile_ps.hlsl', 'src/renderer/weapon_projectile_vertex_program_inc.h',
                       'src/renderer/weapon_projectile_pixel_program_inc.h',
+                      # the muzzle flash's hull pulse (docs/architecture/muzzle-flash-look.md)
+                      'src/effects/weapon_pulse_ps.hlsl', 'src/renderer/weapon_pulse_pixel_program_inc.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
                       'verification/probe/weapon_effects_fixture.cpp')
 PROGRAMS = {
@@ -89,6 +91,7 @@ PROGRAMS = {
                              'src/renderer/weapon_projectile_vertex_program_inc.h'),
     'weapon_projectile_ps': ('verification/results/weapon-projectile-pixel-program.json',
                              'src/renderer/weapon_projectile_pixel_program_inc.h'),
+    'weapon_pulse_ps': ('verification/results/weapon-pulse-pixel-program.json', 'src/renderer/weapon_pulse_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -175,7 +178,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'PROJECTILE')
+            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -219,11 +222,13 @@ def parse_hook(text):
                           if line.startswith('DEATH_FORWARD_STATE ')), None)
     death_nested = [fields(line) for line in text.splitlines() if line.startswith('DEATH_NESTED ')]
     death_state = [fields(line) for line in text.splitlines() if line.startswith('DEATH_STATE ')]
+    muzzle = [fields(line) for line in text.splitlines() if line.startswith('MUZZLE ')]
     return {'checks': checks, 'result': result, 'forward_state': forward, 'stack_depth': stack, 'shield': shields,
             'dir': travel, 'suppress': suppress, 'drained': drained, 'hull_mode': hull_mode, 'hull_class': hull_class,
             'event_cost': cost[-1] if cost else None, 'overflow': overflow[-1] if overflow else None,
             'event_cost_full': cost_full[-1] if cost_full else None, 'death_forward_state': death_forward,
             'death_nested': death_nested[-1] if death_nested else None, 'death_state': death_state[-1] if death_state else None,
+            'muzzle': muzzle[-1] if muzzle else None,
             'failed_checks': [c['name'] for c in checks if not c['passed']]}
 
 
@@ -282,6 +287,7 @@ def run_hook_fl(args, results):
     record['check_count'] = len(report['checks'])
     record['failed_checks'] = report['failed_checks']
     record['stack_depth'] = report['stack_depth']
+    record['muzzle'] = report['muzzle']
     result = report['result'] or {}
     # The deepest run is the impact: the handler's audited frame plus the FL impact stub's 0x2c.
     frame = record['build']['audit']['handler_frame_bytes']
@@ -387,7 +393,8 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing', 'projectile')}
+                                                 'refused', 'timing', 'projectile', 'flash', 'pulse', 'pulse_cap',
+                                                 'pulse_ghost')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

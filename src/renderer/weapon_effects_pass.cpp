@@ -65,6 +65,9 @@ constexpr std::uint32_t projectile_vs_words[] = {
 constexpr std::uint32_t projectile_ps_words[] = {
 #include "weapon_projectile_pixel_program_inc.h"
 };
+constexpr std::uint32_t pulse_ps_words[] = {
+#include "weapon_pulse_pixel_program_inc.h"
+};
 constexpr D3DVERTEXELEMENT9 projectile_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -150,6 +153,7 @@ void WeaponEffectsPass::release_objects() noexcept {
     drop(projectile_vs_);
     drop(projectile_ps_);
     drop(projectile_declaration_);
+    drop(pulse_ps_);
 }
 void WeaponEffectsPass::detach() noexcept {
     PreserveCpuState guard;
@@ -177,7 +181,7 @@ unsigned WeaponEffectsPass::references() const noexcept {
                           static_cast<const void*>(bubble_ps_), static_cast<const void*>(decal_vs_), static_cast<const void*>(decal_ps_),
                           static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_),
                           static_cast<const void*>(projectile_vs_), static_cast<const void*>(projectile_ps_),
-                          static_cast<const void*>(projectile_declaration_)})
+                          static_cast<const void*>(projectile_declaration_), static_cast<const void*>(pulse_ps_)})
         n += p != nullptr;
     return n;
 }
@@ -244,6 +248,7 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         const auto no = [&](const char* why) { caps_.projectile_reason = why; };
         caps_.projectile_vs_slots = vs3_slots(projectile_vs_words);
         caps_.projectile_ps_slots = ps3_program_slots(projectile_ps_words, std::size(projectile_ps_words));
+        caps_.pulse_ps_slots = ps3_program_slots(pulse_ps_words, std::size(pulse_ps_words));
         IDirect3D9* api2 = nullptr;
         HRESULT q32 = E_FAIL, q16 = E_FAIL;
         if (SUCCEEDED(call<GetD3DFn>(GetDirect3D)(d, &api2)) && api2) {
@@ -258,7 +263,7 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
         caps_.lane32_blending = q32 == D3D_OK;
         caps_.lane16_blending = q16 == D3D_OK;
         caps_.mrt_bit_depths = (caps.PrimitiveMiscCaps & D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS) != 0;
-        if (!caps_.projectile_vs_slots || !caps_.projectile_ps_slots)
+        if (!caps_.projectile_vs_slots || !caps_.projectile_ps_slots || !caps_.pulse_ps_slots)
             no("compiled_program");
         else if (faults_ & 16u)
             no("fixture_fault");
@@ -277,6 +282,13 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
                 static constexpr std::uint16_t quad[6] = {0, 1, 2, 2, 1, 3};
                 for (unsigned k = 0; k < 6; ++k) projectile_indices_[6 * i + k] = std::uint16_t(4 * i + quad[k]);
             }
+            for (unsigned i = 0; i < weapon_max_pulses; ++i) // the octagon's fan from its vertex 0
+                for (unsigned t = 0; t < weapon_pulse_indices / 3; ++t) {
+                    std::uint16_t* x = pulse_indices_ + i * weapon_pulse_indices + 3 * t;
+                    x[0] = std::uint16_t(i * weapon_pulse_vertices);
+                    x[1] = std::uint16_t(i * weapon_pulse_vertices + t + 1);
+                    x[2] = std::uint16_t(i * weapon_pulse_vertices + t + 2);
+                }
             const HRESULT created = create_projectile_objects();
             if (FAILED(created))
                 no("program_create");
@@ -297,17 +309,20 @@ HRESULT WeaponEffectsPass::create_projectile_objects() noexcept {
         hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(projectile_ps_words), &projectile_ps_);
     if (SUCCEEDED(hr) && !projectile_declaration_)
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, projectile_elements, &projectile_declaration_);
-    if (SUCCEEDED(hr) && !(projectile_vs_ && projectile_ps_ && projectile_declaration_)) hr = E_FAIL;
+    if (SUCCEEDED(hr) && !pulse_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(pulse_ps_words), &pulse_ps_);
+    if (SUCCEEDED(hr) && !(projectile_vs_ && projectile_ps_ && projectile_declaration_ && pulse_ps_)) hr = E_FAIL;
     if (FAILED(hr)) {
         drop(projectile_vs_);
         drop(projectile_ps_);
         drop(projectile_declaration_);
+        drop(pulse_ps_);
     }
     return hr;
 }
 bool WeaponEffectsPass::projectiles_ready() const noexcept {
     return device_ && caps_.enabled && caps_.projectile_enabled && !reset_pending_ && projectile_vs_ && projectile_ps_ &&
-           projectile_declaration_;
+           projectile_declaration_ && pulse_ps_;
 }
 HRESULT WeaponEffectsPass::create_objects() noexcept {
     D d = device_;
@@ -356,23 +371,40 @@ HRESULT WeaponEffectsPass::run_projectiles(const WeaponProjectileFrame& f, Weapo
     };
     if (!device_ || !caps_.enabled || !caps_.projectile_enabled) return refuse("not_attached", E_INVALIDARG);
     if (reset_pending_) return refuse("reset_pending", E_FAIL);
-    if (!f.width || !f.height || f.quads > weapon_projectile_max_quads || (f.quads && !f.vertices))
+    if (!f.width || !f.height || f.quads > weapon_projectile_max_quads || (f.quads && !f.vertices) ||
+        f.pulse_count > weapon_max_pulses || (f.pulse_count && !f.pulses))
         return refuse("frame", E_INVALIDARG);
-    if (!f.quads) return finish(S_FALSE);
-    if (!f.lane || !f.depth) return refuse(!f.lane ? "lane" : "depth", D3DERR_NOTAVAILABLE);
-    D3DSURFACE_DESC lane{}, depth{};
-    if (FAILED(f.lane->GetDesc(&lane)) || lane.Width != f.width || lane.Height != f.height ||
-        !(lane.Format == D3DFMT_A32B32G32R32F ? caps_.lane32_blending
-          : lane.Format == D3DFMT_A16B16G16R16F ? caps_.lane16_blending
-                                                : false))
-        return refuse("lane", D3DERR_NOTAVAILABLE);
-    if (format_bits(lane.Format) != format_bits(f.scene_format) && !caps_.mrt_bit_depths)
-        return refuse("mrt_bit_depths", D3DERR_NOTAVAILABLE);
-    if (FAILED(f.depth->GetDesc(&depth)) || depth.Width < f.width || depth.Height < f.height ||
-        depth.MultiSampleType != D3DMULTISAMPLE_NONE || !(depth.Usage & D3DUSAGE_DEPTHSTENCIL))
-        return refuse("depth", D3DERR_NOTAVAILABLE);
+    if (!f.quads && !f.pulse_count) return finish(S_FALSE);
+    if (f.quads) {
+        if (!f.lane || !f.depth) return refuse(!f.lane ? "lane" : "depth", D3DERR_NOTAVAILABLE);
+        D3DSURFACE_DESC lane{}, depth{};
+        if (FAILED(f.lane->GetDesc(&lane)) || lane.Width != f.width || lane.Height != f.height ||
+            !(lane.Format == D3DFMT_A32B32G32R32F ? caps_.lane32_blending
+              : lane.Format == D3DFMT_A16B16G16R16F ? caps_.lane16_blending
+                                                    : false))
+            return refuse("lane", D3DERR_NOTAVAILABLE);
+        if (format_bits(lane.Format) != format_bits(f.scene_format) && !caps_.mrt_bit_depths)
+            return refuse("mrt_bit_depths", D3DERR_NOTAVAILABLE);
+        if (FAILED(f.depth->GetDesc(&depth)) || depth.Width < f.width || depth.Height < f.height ||
+            depth.MultiSampleType != D3DMULTISAMPLE_NONE || !(depth.Usage & D3DUSAGE_DEPTHSTENCIL))
+            return refuse("depth", D3DERR_NOTAVAILABLE);
+    }
+    if (f.pulse_count) {
+        D3DSURFACE_DESC lane{};
+        if (!f.lane_texture || FAILED(f.lane_texture->GetLevelDesc(0, &lane)) || lane.Width != f.width ||
+            lane.Height != f.height)
+            return refuse("lane_texture", D3DERR_NOTAVAILABLE);
+        if (!(f.m00 > 0.f) || !(f.m11 > 0.f) || !finite(f.m20) || !finite(f.m21) || !finite(f.m22) || !finite(f.m32) ||
+            !(f.near_z > 0.f))
+            return refuse("frame", E_INVALIDARG);
+    }
     if (!projectiles_ready()) {
         HRESULT hr = create_projectile_objects();
+        if (FAILED(hr)) return refuse("resources", hr);
+    }
+    // the pulses draw with the decal's vertex program and declaration: after a Reset only run() or this recreates them
+    if (f.pulse_count && !resources_ready()) {
+        HRESULT hr = create_objects();
         if (FAILED(hr)) return refuse("resources", hr);
     }
     D d = device_;
@@ -384,25 +416,97 @@ HRESULT WeaponEffectsPass::run_projectiles(const WeaponProjectileFrame& f, Weapo
         }
         return SUCCEEDED(hr);
     };
-    // The lane is sampled by the patches at s0: unbound before it becomes a target.
-    step(call<SetTextureFn>(SetTexture)(d, 0, nullptr));
-    step(call<SetRtFn>(SetRenderTarget)(d, 1, f.lane));
-    step(call<SetDepthFn>(SetDepthStencilSurface)(d, f.depth));
+    auto draw_fault = [&](HRESULT draw) {
+        if (faults_ & 6u) {
+            faults_ &= ~2u;
+            return HRESULT(E_FAIL);
+        }
+        return draw;
+    };
     for (auto s : {std::pair{D3DRS_CLIPPING, DWORD(TRUE)}, std::pair{D3DRS_ALPHABLENDENABLE, DWORD(TRUE)},
                    std::pair{D3DRS_SRCBLEND, DWORD(D3DBLEND_ONE)}, std::pair{D3DRS_DESTBLEND, DWORD(D3DBLEND_ONE)},
-                   std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)}, std::pair{D3DRS_ZENABLE, DWORD(D3DZB_TRUE)},
-                   std::pair{D3DRS_ZFUNC, DWORD(D3DCMP_LESSEQUAL)}, std::pair{D3DRS_ZWRITEENABLE, DWORD(FALSE)},
+                   std::pair{D3DRS_BLENDOP, DWORD(D3DBLENDOP_ADD)}, std::pair{D3DRS_ZWRITEENABLE, DWORD(FALSE)},
                    std::pair{D3DRS_ALPHATESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_SEPARATEALPHABLENDENABLE, DWORD(FALSE)},
-                   std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)},
-                   std::pair{D3DRS_COLORWRITEENABLE1, DWORD(D3DCOLORWRITEENABLE_GREEN)},
-                   std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)}, std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)},
-                   std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}, std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)},
-                   std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_SOLID)}})
+                   std::pair{D3DRS_COLORWRITEENABLE, DWORD(15)}, std::pair{D3DRS_SRGBWRITEENABLE, DWORD(FALSE)},
+                   std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)},
+                   std::pair{D3DRS_CULLMODE, DWORD(D3DCULL_NONE)}, std::pair{D3DRS_FILLMODE, DWORD(D3DFILL_SOLID)}})
         step(call<SetRsFn>(SetRenderState)(d, s.first, s.second));
-    step(call<SetDeclarationFn>(SetVertexDeclaration)(d, projectile_declaration_));
-    step(call<SetVsFn>(SetVertexShader)(d, projectile_vs_));
-    step(call<SetPsFn>(SetPixelShader)(d, projectile_ps_));
-    if (SUCCEEDED(hr)) {
+    if (f.pulse_count && SUCCEEDED(hr)) {
+        // The hull pulses first (weapon_pulse_ps.hlsl), the lane a texture at s0 (point, clamp) and Z off: c0 / c1 the
+        // lane's sizes and depth law (weapon_soft_depth.hlsl), c2 the jittered projection, c3 (2 / W, 2 / H), c4 the run's
+        // colour; the decal vertex program with vs c0 the projection, c1 the viewport, c2 the near plane. A vertex is
+        // (centre, half) and (corner, radius, gain): the program takes the half size from the corner's screen
+        // derivative. Pulses of one colour in a row are one triangle list (an octagon as six triangles each).
+        const float W = float(f.width), H = float(f.height);
+        const float ps[16] = {W, H, 1.f / W, 1.f / H, f.four_channel ? 1.f : 0.f, f.m22, f.m32, 0.f,
+                              f.m00, f.m11, f.m20, f.m21, 2.f / W, 2.f / H, 0.f, 0.f};
+        const float vs[12] = {f.m00, f.m11, f.m20, f.m21, W * .5f, H * .5f, 2.f / W, 2.f / H, f.near_z, 0.f, 0.f, 0.f};
+        step(call<SetRsFn>(SetRenderState)(d, D3DRS_ZENABLE, DWORD(D3DZB_FALSE)));
+        step(call<SetTextureFn>(SetTexture)(d, 0, f.lane_texture));
+        for (auto s : {std::pair{D3DSAMP_MINFILTER, DWORD(D3DTEXF_POINT)}, std::pair{D3DSAMP_MAGFILTER, DWORD(D3DTEXF_POINT)},
+                       std::pair{D3DSAMP_MIPFILTER, DWORD(D3DTEXF_NONE)}, std::pair{D3DSAMP_ADDRESSU, DWORD(D3DTADDRESS_CLAMP)},
+                       std::pair{D3DSAMP_ADDRESSV, DWORD(D3DTADDRESS_CLAMP)}, std::pair{D3DSAMP_SRGBTEXTURE, DWORD(FALSE)}})
+            step(call<SetSamplerFn>(SetSamplerState)(d, 0, s.first, s.second));
+        step(call<SetConstantsFn>(SetPixelShaderConstantF)(d, 0, ps, 4));
+        step(call<SetConstantsFn>(SetVertexShaderConstantF)(d, 0, vs, 3));
+        step(call<SetDeclarationFn>(SetVertexDeclaration)(d, decal_declaration_));
+        step(call<SetVsFn>(SetVertexShader)(d, decal_vs_));
+        step(call<SetPsFn>(SetPixelShader)(d, pulse_ps_));
+        // the octagon: its vertices at (k + 1/2) x 45 degrees, 1 / cos 22.5 degrees out (its flat sides at 1), a fan of
+        // six triangles from vertex 0 (pulse_indices_)
+        static constexpr float c8 = 1.0823922f, s1 = 0.38268343f * c8, s2 = 0.92387953f * c8;
+        static constexpr float octagon[8][2] = {{s2, s1}, {s1, s2}, {-s1, s2}, {-s2, s1}, {-s2, -s1}, {-s1, -s2}, {s1, -s2}, {s2, -s1}};
+        unsigned i = 0;
+        while (i < f.pulse_count && SUCCEEDED(hr)) {
+            const float* colour = f.pulses[i].colour;
+            unsigned n = 0;
+            for (; i < f.pulse_count && f.pulses[i].colour[0] == colour[0] && f.pulses[i].colour[1] == colour[1] &&
+                   f.pulses[i].colour[2] == colour[2];
+                 ++i) {
+                const WeaponPulse& p = f.pulses[i];
+                if (!finite_all(p.centre, 3) || !(p.radius > 0.f) || !finite(p.radius) || !(p.half >= p.radius) ||
+                    !finite(p.half) || !(p.gain > 0.f) || !finite(p.gain) || !finite_all(p.colour, 3))
+                    continue; // a degenerate pulse is skipped, never drawn wrong
+                for (unsigned k = 0; k < weapon_pulse_vertices; ++k) {
+                    float* v = pulse_vertices_ + (n * weapon_pulse_vertices + k) * 8;
+                    v[0] = p.centre[0], v[1] = p.centre[1], v[2] = p.centre[2], v[3] = p.half;
+                    v[4] = octagon[k][0], v[5] = octagon[k][1], v[6] = p.radius, v[7] = p.gain;
+                }
+                ++n;
+            }
+            if (!n) continue;
+            // c4.w: the colour's largest channel (the program drops a pixel under the projectile's radiance cut, 1/256)
+            const float top = colour[0] > colour[1] ? (colour[0] > colour[2] ? colour[0] : colour[2])
+                                                    : (colour[1] > colour[2] ? colour[1] : colour[2]);
+            const float c4[4] = {colour[0], colour[1], colour[2], top};
+            step(call<SetConstantsFn>(SetPixelShaderConstantF)(d, 4, c4, 1));
+            if (SUCCEEDED(hr) &&
+                step(draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                    d, D3DPT_TRIANGLELIST, 0, n * weapon_pulse_vertices, n * (weapon_pulse_indices / 3), pulse_indices_,
+                    D3DFMT_INDEX16, pulse_vertices_, UINT(sizeof(DecalVertex)))))) {
+                r.pulses += n;
+                r.drew = true;
+            }
+        }
+        // the lane is sampled by the patches and the pulses at s0: unbound before it becomes a target
+        step(call<SetTextureFn>(SetTexture)(d, 0, nullptr));
+    }
+    if (f.quads && !f.pulse_count) step(call<SetTextureFn>(SetTexture)(d, 0, nullptr)); // the patches' lane, as before
+    if (!f.quads) { // pulses alone: no RT1, depth surface or mask was set, and Z is off already
+        if (lost(hr)) reset_pending_ = true;
+        return finish(hr);
+    }
+    {
+        step(call<SetRtFn>(SetRenderTarget)(d, 1, f.lane));
+        step(call<SetDepthFn>(SetDepthStencilSurface)(d, f.depth));
+        for (auto s : {std::pair{D3DRS_ZENABLE, DWORD(D3DZB_TRUE)}, std::pair{D3DRS_ZFUNC, DWORD(D3DCMP_LESSEQUAL)},
+                       std::pair{D3DRS_COLORWRITEENABLE1, DWORD(D3DCOLORWRITEENABLE_GREEN)}})
+            step(call<SetRsFn>(SetRenderState)(d, s.first, s.second));
+        step(call<SetDeclarationFn>(SetVertexDeclaration)(d, projectile_declaration_));
+        step(call<SetVsFn>(SetVertexShader)(d, projectile_vs_));
+        step(call<SetPsFn>(SetPixelShader)(d, projectile_ps_));
+    }
+    if (SUCCEEDED(hr) && f.quads) {
         HRESULT draw = call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(d, D3DPT_TRIANGLELIST, 0, 4 * f.quads, 2 * f.quads,
                                                                      projectile_indices_, D3DFMT_INDEX16, f.vertices,
                                                                      sizeof(WeaponProjectileVertex));

@@ -1209,10 +1209,12 @@ public:
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
 #if X3M_EDITION_FL
     // The projectile stage (FL, motion_output_weapon_effects_inc.h; docs/architecture/projectile-look.md): the frame's
-    // ownership (the next frame's batch skip) and figures since the last call, into the weapon_effects_frame row.
+    // ownership (the next frame's batch skip) and figures since the last call, into the weapon_effects_frame row
+    // (flashes: the muzzle flashes drawn, their pulses, those lost or stale and those past the room;
+    // docs/architecture/muzzle-flash-look.md).
     void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
                                float* stage_us, unsigned* unpooled, unsigned* sampled, unsigned* statics,
-                               unsigned* jumped, unsigned* ring_trimmed) noexcept;
+                               unsigned* jumped, unsigned* ring_trimmed, unsigned flashes[5]) noexcept;
 #endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
@@ -2293,6 +2295,9 @@ private:
     // render dt of a static entry's extrapolation)
     unsigned projectile_statics_ = 0, projectile_jumped_ = 0;
     unsigned projectile_ring_trimmed_ = 0; // bolt-frames whose comet ring the adaptive rule trimmed (projectile_stage)
+    // the muzzle flashes drawn, their hull pulses, flashes lost (shooter unreadable) or stale, flashes past the room
+    unsigned projectile_flashes_ = 0, projectile_pulses_ = 0, projectile_flash_lost_ = 0, projectile_flash_dropped_ = 0;
+    unsigned projectile_pulse_clamped_ = 0; // pulses shrunk to the screen cap
     bool projectile_cut_ = false; // the resolve's camera cut of this frame (the bridge starts over)
     std::uint64_t projectile_qpc_ = 0;
     const char* projectile_logged_refusal_ = nullptr;

@@ -121,6 +121,10 @@ struct StageFrame {
     // position left the velocity prediction (drawn as a first frame): the logic-tick question of FL 59 A
     unsigned projectile_static = 0, projectile_jumped = 0;
     unsigned projectile_ring_trimmed = 0; // bolt-frames whose comet ring was trimmed (projectile_stage::ring_trim_above)
+    // the muzzle flashes (docs/architecture/muzzle-flash-look.md): flash quads and hull pulses drawn, flashes whose
+    // shooter could not be read (dropped), flashes past the frame's room
+    unsigned projectile_flashes = 0, projectile_pulses = 0, projectile_flash_lost = 0, projectile_flash_dropped = 0;
+    unsigned projectile_pulse_clamped = 0; // pulses shrunk to the screen cap
     float projectile_us = 0.f;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a

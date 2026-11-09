@@ -192,7 +192,14 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
                 'batch_latch_off_forwards_registers_stack_flags', 'batch_other_body_forwards_registers_stack_flags',
                 'batch_enabled_body_skipped_eax1_no_callee', 'batch_rollback_restores_all',
                 'shields_mode_claims_batch_and_object_tap', 'init_logs_projectile_site_claimed_once',
-                'object_tap_registers_enabled_body_once'}
+                'object_tap_registers_enabled_body_once',
+                # the muzzle flash (muzzle-flash-look.md section 4): the shields mode claims the muzzle, its witness and
+                # rollback; an enabled body's shot skipped under the latch, forwarded otherwise with every register,
+                # the stack and EFLAGS; the tap's match to the ours record
+                'shields_mode_claims_muzzle', 'shields_mode_muzzle_witness_refused',
+                'shields_mode_muzzle_rollback_restores_all',
+                'muzzle_enabled_body_latch_off_forwards_registers_stack_flags',
+                'muzzle_other_body_forwards_registers_stack_flags', 'object_tap_matches_flash_to_ours_record'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -270,6 +277,63 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLess(budget['cpu_us'], 100.0)
         self.assertLess(budget['gpu_us'], 50.0)
         self.assertLess(next(x for x in rows if 'attach' in x)['ps_slots'], 200)
+
+    def test_muzzle_flash_gates(self):
+        # docs/architecture/muzzle-flash-look.md section 6: the white extent 1.25 x the core's at the gun's depth and
+        # 200 / 500 m (capped at 48 px at 4 m only) at +2 and +4 stops (the anti-lamp gate), the streak's length, the dot
+        # past it, the life against the refire gap at 1x, 144 fps and SETA 6, the pulse by its law, the budget
+        rows = self.record['metrics']['flash']
+        size = [x for x in rows if x.get('case') == 'size']
+        self.assertEqual(len(size), 12)
+        for x in size:
+            self.assertLessEqual(abs(x['white_px'] - x['rule_white_px']), 0.25, x)
+            if x['capped']:
+                self.assertEqual(x['distance_m'], 4)
+            else:
+                self.assertLessEqual(x['white_px'], 1.25 * x['core_white_measured_px'] + 0.25, x)
+                if x['flash_stops'] == 2:  # the core's 1 px floor applies to the flash too: the ratio at 500 m as well
+                    self.assertLessEqual(abs(x['ratio'] / 1.25 - 1.0), 0.10, x)
+        gun = next(x for x in size if x['distance_m'] == 27 and x['flash_stops'] == 2)
+        self.assertAlmostEqual(gun['ratio'], 1.25, delta=0.02)
+        lamp = next(x for x in size if x['distance_m'] == 27 and x['flash_stops'] == 4)
+        self.assertAlmostEqual(lamp['white_px'], gun['white_px'], delta=0.5)  # brightness does not grow it
+        streak = {x['distance_m']: x for x in rows if x.get('case') == 'streak'}
+        for d in (27, 500):
+            self.assertLessEqual(abs(streak[d]['length_px'] - streak[d]['rule_px']), 1.0)
+        self.assertEqual((streak[2000]['folded'], streak[2000]['dot']), (1, 1))
+        life = {x['name']: x for x in rows if x.get('case') == 'life'}
+        self.assertEqual({k: v['drawn'] for k, v in life.items()},
+                         {'gap150_step17': 2, 'gap150_step7': 2, 'gap150_step100_seta6': 1, 'first_shot': 1, 'not_ours': 0,
+                          'tapped_late': 0, 'record_other_shooter': 0})
+        self.assertEqual(life['record_other_shooter']['lost'], 1)  # the record's shooter compared on the first frame
+        self.assertAlmostEqual(life['gap150_step17']['fade1'], 1.0 - 17.0 / 30.0, delta=1e-3)
+        self.assertLess(life['gap150_step17']['ride_err_px'], 0.1)
+        for x in life.values():  # v_bullet - (slip + node velocity): the shot's own direction
+            self.assertLess(x['axis_err_deg'], 0.05)
+        pulse = self.record['metrics']['pulse']
+        self.assertEqual(len(pulse), 4)
+        for x in pulse:
+            self.assertEqual(x['sky_lit'], 0)
+            self.assertLess(x['worst'], 0.02)
+            self.assertLessEqual(abs(x['peak'] / x['peak_want'] - 1.0), 0.05)
+        cap = self.record['metrics']['pulse_cap'][0]  # the screen cap, the eye within 1.5 radii, a culled flash
+        self.assertEqual((cap['own27_clamped'], cap['own27_drawn'], cap['cockpit3_flash'], cap['cockpit3_pulse'],
+                          cap['offscreen_flash'], cap['offscreen_pulse']), (1, 1, 1, 0, 0, 0))
+        self.assertLessEqual(cap['own27_px'], cap['cap_px'] + 0.01)
+        ghost = self.record['metrics']['pulse_ghost'][0]  # in the TAA history at most one extra frame
+        self.assertEqual(ghost['ran'], 1)
+        self.assertLessEqual(ghost['ghost2'], 0.01)
+        budget = next(x for x in rows if x.get('case') == 'budget')
+        self.assertEqual((budget['flashes'], budget['pulses'], budget['lost'], budget['stale']), (64, 64, 0, 0))
+        self.assertLess(budget['cpu_us'], 20.0)
+        self.assertLess(budget['gpu_increment_us'], 30.0)
+        combined = next(x for x in rows if x.get('case') == 'budget_combined' and x.get('tune') == 'baked')
+        self.assertEqual((combined['bolts'], combined['drawn'], combined['flashes'], combined['pulses']), (512, 512, 64, 64))
+        bounds = next(x for x in rows if x.get('case') == 'budget_combined_bounds')
+        self.assertLessEqual(bounds['gpu_us'], 60.0)
+        self.assertLessEqual(bounds['flash_work_cpu_us'], 20.0)
+        self.assertLessEqual(bounds['cpu_us'], 150.0)  # a regression tripwire; the flight's CPU is projectile_us_max
+        self.assertEqual(self.record['failed_checks'], [])
 
     def test_passed_with_the_step_gates(self):
         r = self.record

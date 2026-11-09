@@ -869,6 +869,119 @@ double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion,
     *peak_out = peak;
     return den > 0 ? num / den : 0;
 }
+// The hull pulse's ghost through the same production resolve (muzzle-flash-look.md section 3; the pulse samples the lane,
+// so it cannot write the lane's far flag as the bolts do, and enters the history): 12 frames of Halton jitter over a
+// hull plane at the pulse's depth, the pulse drawn by run_projectiles (pulses alone) on frame 8 only, once with it and
+// once without. ghost[j] = the largest resolved difference (with - without) on frame 8 + j over its largest on frame 8.
+bool resolve_pulse_ghost(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion, Com<IDirect3DSurface9>& motion_s,
+                         const rr::WeaponPulse& pulse, double ghost[3], double* peak_out) {
+    constexpr unsigned frames = 12, lit_frame = 8;
+    struct PulseStage {
+        rr::WeaponEffectsPass* pass;
+        rr::WeaponProjectileFrame frame;
+        HRESULT result;
+        static HRESULT callback(void* context, IDirect3DDevice9*) noexcept {
+            auto* c = static_cast<PulseStage*>(context);
+            rr::WeaponEffectsReport r{};
+            c->result = c->pass->run_projectiles(c->frame, &r);
+            return c->result;
+        }
+    };
+    std::vector<float> res[2][3];
+    for (unsigned on = 0; on < 2; ++on) {
+        rr::TemporalPass taa;
+        HRESULT hr = taa.initialize(dev, nullptr, reinterpret_cast<const DWORD*>(rr::temporal_resolve_program()), nullptr,
+                                    nullptr, reinterpret_cast<const DWORD*>(rr::hdr_writeback_program()));
+        if (SUCCEEDED(hr)) hr = taa.configure_far();
+        if (FAILED(hr)) return false;
+        rr::Output o{};
+        float pjx = 0, pjy = 0;
+        for (unsigned n = 0; n < frames; ++n) {
+            const float jx = float(halton(n % 8 + 1, 2) - .5), jy = float(halton(n % 8 + 1, 3) - .5);
+            draw_lane(g, pulse.centre[2], 1.f);
+            const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+            dev->BeginScene();
+            dev->SetRenderTarget(0, motion_s.p);
+            dev->SetVertexDeclaration(quad_decl);
+            dev->SetVertexShader(quad_vs);
+            dev->SetPixelShader(motion_ps);
+            dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+            dev->SetRenderTarget(0, g.scene_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 13, 13, 13), 1.f, 0); // a dim hull, 0.051
+            dev->EndScene();
+            const rr::WeaponEffectsFrame bf = base_frame(g);
+            PulseStage ctx{&pass, {}, S_FALSE};
+            ctx.frame.width = g.w;
+            ctx.frame.height = g.h;
+            ctx.frame.pulses = &pulse;
+            ctx.frame.pulse_count = 1;
+            ctx.frame.lane_texture = g.lane_tex.p;
+            ctx.frame.four_channel = true;
+            ctx.frame.m00 = bf.m00;
+            ctx.frame.m11 = bf.m11;
+            ctx.frame.m20 = 2.f * jx / float(g.w);
+            ctx.frame.m21 = -2.f * jy / float(g.h);
+            ctx.frame.m22 = 1.f;
+            ctx.frame.m32 = -1.f;
+            ctx.frame.near_z = bf.near_z;
+            rr::FrameInputs in;
+            in.color = g.scene_tex.p;
+            in.current_depth = g.lane_tex.p;
+            in.width = g.w;
+            in.height = g.h;
+            in.epoch = 1;
+            const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+            std::copy(identity, identity + 16, in.clip_to_previous);
+            in.current_jitter[0] = jx;
+            in.current_jitter[1] = jy;
+            in.previous_jitter[0] = pjx;
+            in.previous_jitter[1] = pjy;
+            in.history_allowed = true;
+            in.caller_scene_open = true;
+            in.caller_queries_idle = true;
+            in.motion = motion.p;
+            in.motion_policy = rr::MotionPolicy::PerPixel;
+            in.reactive_policy = rr::ReactivePolicy::DerivedFromDepthSentinel;
+            in.sentinel_camera = true;
+            in.sentinel_strict_sky = true;
+            in.sky_history_exit_px = .25f;
+            in.far_weight = .985f;
+            in.far_d0 = .9995f;
+            in.far_inv = 1.f / (.9999f - .9995f);
+            in.far_speed_lo = x3::temporal::kFarSpeedLo;
+            in.far_speed_hi = x3::temporal::kFarSpeedHi;
+            in.thin_region_weight = .97f;
+            in.thin_region_relax = 1;
+            in.thin_region_camera_gate = true;
+            if (on && n == lit_frame) {
+                in.stage_callback = &PulseStage::callback;
+                in.stage_context = &ctx;
+            }
+            dev->BeginScene();
+            hr = taa.run(in, &o);
+            dev->EndScene();
+            if (FAILED(hr) || (on && n == lit_frame && (!taa.diagnostics().stage_ran || ctx.result != S_OK))) return false;
+            pjx = jx;
+            pjy = jy;
+            if (n >= lit_frame && n < lit_frame + 3) {
+                Com<IDirect3DSurface9> resolved;
+                if (!o.color || FAILED(o.color->GetSurfaceLevel(0, &resolved.p))) return false;
+                res[on][n - lit_frame] = read_luma(g, resolved.p);
+            }
+        }
+        taa.shutdown();
+    }
+    double first = 0.0;
+    for (unsigned j = 0; j < 3; ++j) {
+        if (res[0][j].empty() || res[1][j].size() != res[0][j].size()) return false;
+        double worst = 0.0;
+        for (std::size_t i = 0; i < res[0][j].size(); ++i) worst = std::max(worst, double(res[1][j][i]) - double(res[0][j][i]));
+        if (!j) first = worst;
+        ghost[j] = first > 0.0 ? worst / first : 0.0;
+    }
+    *peak_out = first;
+    return first > 0.0;
+}
 // Edge bands crossed by the full scanline through the centre: rising crossings of 1.25 x a one-cell moving average.
 unsigned edge_crossings(const std::vector<float>& l, unsigned cell_px) {
     const std::size_t row = std::size_t(g.h / 2) * g.w;
@@ -1070,6 +1183,129 @@ double fwhm_through(const std::vector<float>& l, UINT w, UINT h, int x, int y, i
     }
     return sum;
 }
+// ------------------------------------------------------------------ muzzle flashes (docs/architecture/muzzle-flash-look.md)
+// The extent at `level` through pixel (x, y) along (dx, dy): the distance between its two crossings of level. Each
+// crossing between the samples k - 1 (above) and k (under) is the root of the parabola in log space through the samples
+// k - 2, k - 1 and k (k - 2 = -1: the sample on the other side of the centre), exact for a Gaussian however few pixels it
+// spans; log-linear between k - 1 and k when a sample is 0 or the parabola is not concave there. 0 when the pixel itself
+// is under level, -1 off the target.
+double extent_through(const std::vector<float>& l, UINT w, UINT h, int x, int y, int dx, int dy, double level) {
+    if (l.empty()) return -1.0;
+    const double centre = l[std::size_t(y) * w + x];
+    if (!(centre > level)) return 0.0;
+    const auto at = [&](int s, int k, double* v) {
+        const int xx = x + s * k * dx, yy = y + s * k * dy;
+        if (xx < 0 || yy < 0 || xx >= int(w) || yy >= int(h)) return false;
+        *v = l[std::size_t(yy) * w + xx];
+        return true;
+    };
+    const double ll = std::log(level);
+    double sum = 0.0;
+    for (int s : {1, -1}) {
+        for (int k = 1;; ++k) {
+            double v = 0, prev = 0, before = 0;
+            if (!at(s, k, &v) || !at(s, k - 1, &prev)) return -1.0;
+            if (v > level) continue;
+            const double lp = std::log(prev), lv = std::log(std::max(v, 1e-30));
+            double t = (lp - ll) / (lp - lv); // log-linear
+            if (v > 0.0 && at(s, k - 2, &before) && before > 0.0) {
+                // y(u) = a + b u + c u^2 through u = -1, 0, 1 (the samples k - 2, k - 1, k); the root in [0, 1]
+                const double y0 = std::log(before), y1 = lp, y2 = lv;
+                const double a = y1 - ll, b = 0.5 * (y2 - y0), c = 0.5 * (y2 + y0) - y1;
+                const double disc = b * b - 4.0 * c * a;
+                if (c < 0.0 && disc >= 0.0) {
+                    const double root = (-b - std::sqrt(disc)) / (2.0 * c);
+                    if (root >= 0.0 && root <= 1.0) t = root;
+                }
+            }
+            sum += double(k - 1) + t;
+            break;
+        }
+    }
+    return sum;
+}
+std::size_t brightest(const std::vector<float>& l) {
+    std::size_t best = 0;
+    for (std::size_t i = 1; i < l.size(); ++i)
+        if (l[i] > l[best]) best = i;
+    return best;
+}
+// The projectile target's lane as a plane at view depth `depth` everywhere (lane_ps: .r 0.5 an occluder, .b the depth).
+void fill_proj_lane(ProjTarget& t, float depth) {
+    const float c0[4] = {float(t.w), depth, 1.f, 0.f};
+    const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.lane_s.p);
+    dev->SetDepthStencilSurface(nullptr);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    dev->SetVertexDeclaration(quad_decl);
+    dev->SetVertexShader(quad_vs);
+    dev->SetPixelShader(lane_ps);
+    dev->SetPixelShaderConstantF(0, c0, 1);
+    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+    dev->EndScene();
+}
+// A flash's shooter and its bullet for the builder cases: the shooter (identity rows, its node at ship_pos moving at
+// ship_vel, engine units) and the bullet born at `born` at the muzzle (ship-relative, engine units) moving at ship_vel
+// + bullet_vel; one muzzle record of the shooter fired at `born` (ours or not, the previous shot gap_ms before, 0 a
+// first shot). place(t) puts both at their positions at game ms t, the clock at t and taps the bullet.
+struct FlashWorld {
+    alignas(16) unsigned char ship[0x100], ship_node[0x200], obj[0x100], node[0x200], ext[0x80];
+    double ship_pos[3]{}, ship_vel[3]{}, muzzle[3]{}, bullet_vel[3]{};
+    std::uint32_t born = 0;
+    unsigned char* cfg = nullptr;
+    void make(wc::ProjectilePool& pool, std::uint32_t handle, std::uint32_t gap_ms, bool ours, unsigned slot) {
+        std::memset(ship, 0, sizeof ship);
+        std::memset(ship_node, 0, sizeof ship_node);
+        std::memset(obj, 0, sizeof obj);
+        std::memset(node, 0, sizeof node);
+        std::memset(ext, 0, sizeof ext);
+        put32(ship, wc::layout::obj_class, wc::layout::class_ship);
+        put32(ship, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(ship_node)));
+        put32(ship_node, wc::layout::node_live, 1);
+        put32(ship_node, wc::layout::node_handle, 0x5000 + handle);
+        for (unsigned k = 0; k < 3; ++k) put32(ship_node, wc::layout::node_rot + 16 * k + 4 * k, 0x10000);
+        put32(obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(node)));
+        put32(obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(ext)));
+        put32(node, wc::layout::node_live, 1);
+        put32(node, wc::layout::node_handle, handle);
+        put32(node, wc::layout::node_body, 0x55);
+        put32(ext, wc::projectile::ext_expiry, born + 100000);
+        put32(ext, wc::projectile::ext_owner, std::uint32_t(reinterpret_cast<std::uintptr_t>(ship)));
+        put32(ext, wc::projectile::ext_created, born);
+        // the shooter's world velocity as the engine keeps it: node +0x100 plus the slip obj +0x60 (a third of it here),
+        // the bullet's the fire path's sum of both and its own (FL 0x04f88b..0x04f915)
+        for (unsigned k = 0; k < 3; ++k) {
+            const std::int32_t slip = std::int32_t(ship_vel[k] / 3.0);
+            put32(ship_node, wc::projectile::node_velocity + 4 * k, std::uint32_t(std::int32_t(ship_vel[k]) - slip));
+            put32(ship, 0x60 + 4 * k, std::uint32_t(slip));
+            put32(node, wc::projectile::node_velocity + 4 * k, std::uint32_t(std::int32_t(ship_vel[k] + bullet_vel[k])));
+        }
+        wc::MuzzleRecord& m = pool.muzzles[slot];
+        m = wc::MuzzleRecord{};
+        m.ship = std::uint32_t(reinterpret_cast<std::uintptr_t>(ship));
+        m.node = std::uint32_t(reinterpret_cast<std::uintptr_t>(ship_node));
+        m.handle = 0x5000 + handle;
+        m.t0 = born;
+        m.prev_t0 = gap_ms ? born - gap_ms : 0;
+        m.slot = std::uint16_t(slot);
+        m.ours = ours;
+        m.sequence = 1 + slot;
+    }
+    void place(wc::ProjectilePool& pool, std::uint32_t t, bool tap = true) {
+        const double s = double(std::int32_t(t - born)) * 1e-3;
+        put32(cfg, wc::layout::cfg_game_ms, t);
+        for (unsigned k = 0; k < 3; ++k) {
+            const double sp = ship_pos[k] + ship_vel[k] * s;
+            put32(ship_node, wc::layout::node_pos + 4 * k, std::uint32_t(std::int32_t(std::lround(sp))));
+            put32(node, wc::layout::node_pos + 4 * k,
+                  std::uint32_t(std::int32_t(std::lround(ship_pos[k] + muzzle[k] + (ship_vel[k] + bullet_vel[k]) * s))));
+        }
+        if (tap) wc::projectile_tap(reinterpret_cast<std::uintptr_t>(obj), pool);
+    }
+};
 // The comet through the production builder (FL 60 A, projectile-look.md section 2): one bullet at distance_m crossing
 // the view along +x (581,000 engine units/s, world), `frames` consecutive stage frames (the node and the clock advanced
 // by v x step_ms and step_ms, the render dt between them), the camera moving along +x at cam_mps (the eye at i x its
@@ -4095,6 +4331,760 @@ int main(int argc, char** argv) {
             }
         }
         bt.release();
+    }
+    // ---- the muzzle flash (docs/architecture/muzzle-flash-look.md section 6): the production flash_quad / build and
+    // run_projectiles (the flash quads) and run (the pulses), at 2560x1440 (the design's 1440 rows) with the
+    // fighter-tracer family's baked Tune and the IRE look; measured on the linear FP16 readback (max of r, g, b).
+    guard_next_section("muzzle_flash");
+    if (pc.projectile_enabled) {
+        ProjTarget ft;
+        const bool made = make_proj_target(ft, 2560, 1440);
+        report("flash_target_1440", made);
+        const ps::BodyLook look = ire_look();
+        const pf::Tune baked = pf::families[pf::fighter_tracer].tune;
+        pf::Tune core_only = baked;
+        core_only.glow_gain = 0.f;
+        const ps::View view = proj_view(ft, 1.6f);
+        const float f_px = view.m11 * 0.5f * float(ft.h); // px per view unit at depth 1
+        static rr::WeaponProjectileVertex fv[rr::weapon_projectile_max_quads * 4];
+        // One flash at depth d (metres) on the screen centre, its axis `axis` (view), drawn alone: the readback, its
+        // shape; the bolt core's measured white extent across a bolt at the same depth (glow off).
+        struct Drawn {
+            ps::FlashShape shape;
+            std::vector<float> l;
+            unsigned quads = 0;
+            rr::WeaponPulse pulse;
+            bool pulsed = false;
+        };
+        const auto draw_flash = [&](const pf::Tune& tune, float d, const float axis[3], float fade, D3DCOLOR clear = 0,
+                                    const ps::View* other = nullptr) {
+            Drawn r;
+            const ps::View& fview = other ? *other : view;
+            ps::FlashIn in;
+            in.p[2] = d * ps::view_units_per_metre;
+            for (unsigned k = 0; k < 3; ++k) in.axis[k] = axis[k];
+            in.fade = fade;
+            const ps::ViewFrame vf = ps::view_frame(fview, tune.core_px);
+            const ps::BodyFrame bf = ps::body_frame(tune, look);
+            r.quads = ps::flash_quad(fview, vf, tune, bf, look, in, fv, &r.pulse, &r.pulsed, &r.shape);
+            dev->BeginScene();
+            dev->SetDepthStencilSurface(ft.depth_s.p);
+            dev->SetRenderTarget(0, ft.lane_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            dev->SetRenderTarget(0, ft.scene_s.p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear, 1.f, 0);
+            dev->SetDepthStencilSurface(nullptr);
+            rr::WeaponProjectileFrame f;
+            f.width = ft.w;
+            f.height = ft.h;
+            f.vertices = fv;
+            f.quads = r.quads;
+            f.lane = ft.lane_s.p;
+            f.depth = ft.depth_s.p;
+            rr::WeaponEffectsReport rep{};
+            proj.run_projectiles(f, &rep);
+            dev->EndScene();
+            r.l = proj_scene(ft);
+            return r;
+        };
+        const auto core_white = [&](float d) {
+            rr::WeaponProjectileVertex v[4];
+            ps::BoltShape shape;
+            const bool built = ps::bolt_vertices(view, core_only, look, bolt_at(d, 1162.f, 16.f), v, &shape);
+            proj_draw(proj, ft, v, built ? 1u : 0u);
+            const std::vector<float> l = proj_scene(ft);
+            const int cx = int(ft.w / 2), cy = int(ft.h / 2);
+            return std::pair<double, double>(extent_through(l, ft.w, ft.h, cx, cy, 0, 1, 1.0),
+                                             fwhm_through(l, ft.w, ft.h, cx, cy, 0, 1));
+        };
+        const auto white_of = [&](const Drawn& r, double* across, double* along, double* fwhm_across) {
+            const std::size_t at = brightest(r.l);
+            const int x = int(at % ft.w), y = int(at / ft.w);
+            *along = extent_through(r.l, ft.w, ft.h, x, y, 1, 0, 1.0);
+            *across = extent_through(r.l, ft.w, ft.h, x, y, 0, 1, 1.0);
+            if (fwhm_across) *fwhm_across = fwhm_through(r.l, ft.w, ft.h, x, y, 0, 1);
+            return std::max(*across, *along);
+        };
+        // the lit area at >= 80 % of the peak over the area at >= 10 % (a Gaussian's: 0.097), and the sum of the light
+        const auto area_share = [&](const Drawn& r, double* total) {
+            const float peak = r.l.empty() ? 0.f : r.l[brightest(r.l)];
+            unsigned a80 = 0, a10 = 0;
+            double sum = 0.0;
+            for (float v : r.l) {
+                a80 += v >= 0.8f * peak;
+                a10 += v >= 0.1f * peak;
+                sum += v;
+            }
+            if (total) *total = sum;
+            return std::pair<double, unsigned>(a10 ? double(a80) / double(a10) : 1.0, a10);
+        };
+        static const float endon[3] = {0.f, 0.f, 1.f}, across_x[3] = {1.f, 0.f, 0.f};
+        if (made) {
+            // (F1) the size at scene white beside the bolt's core at the gun's depth (4 m cockpit, 27 m chase), 200 m and
+            // 500 m: E = min(1.25 x the core's white extent, 48 px x 1440 / 1440), the cap binding at 4 m only; the
+            // measured extent within 0.25 px of the rule, at most 1.25 x the measured core + 0.25 px and within 10 % of 1.25 x it. (F2) the anti-lamp
+            // gate: at flash_stops +4 the white extent is still E (brightness cannot grow it); at flash_stops 0 the
+            // Gaussian's FWHM is 1.25 x the core's (the sigma law's other end). The area share where it is resolvable.
+            bool size_ok = true, cap_ok = true, lamp_ok = true, fwhm_ok = true, share_ok = true;
+            for (float d : {4.f, 27.f, 200.f, 500.f}) {
+                const std::pair<double, double> core = core_white(d);
+                for (float stops : {2.f, 4.f, 0.f}) {
+                    pf::Tune t = baked;
+                    t.flash_stops = stops;
+                    const Drawn r = draw_flash(t, d, endon, 1.f);
+                    double across = 0, along = 0, fwhm = 0, total = 0;
+                    const double white = white_of(r, &across, &along, &fwhm);
+                    const std::pair<double, unsigned> share = area_share(r, &total);
+                    const double rule = r.shape.white_px;
+                    const bool capped = r.shape.capped;
+                    const double gate = double(t.flash_core_mult) * core.first + 0.25;
+                    const bool in_rule = std::fabs(white - rule) <= 0.25;
+                    const double ratio = core.first > 0.0 ? white / core.first : 0.0;
+                    const bool ratio_ok = std::fabs(ratio / double(t.flash_core_mult) - 1.0) <= 0.10;
+                    if (stops == 2.f) {
+                        size_ok = size_ok && r.quads == 1 && in_rule && (capped || (white <= gate && ratio_ok));
+                        cap_ok = cap_ok && capped == (d == 4.f) && (!capped || std::fabs(white - 48.0) <= 0.5);
+                    }
+                    if (stops == 4.f) lamp_ok = lamp_ok && r.quads == 1 && in_rule && (capped ? white <= 48.25 : white <= gate);
+                    if (stops == 0.f && !capped && d <= 27.f)
+                        fwhm_ok = fwhm_ok && std::fabs(fwhm - double(t.flash_core_mult) * core.second) <= 0.5;
+                    if (share.second >= 50) share_ok = share_ok && share.first <= 0.15;
+                    std::printf("FLASH case=size distance_m=%.0f flash_stops=%.0f core_px=%.3f core_white_px=%.3f "
+                                "core_white_measured_px=%.3f core_fwhm_measured_px=%.3f rule_white_px=%.3f white_px=%.3f "
+                                "across_px=%.3f along_px=%.3f ratio=%.4f fwhm_px=%.3f sigma_px=%.3f peak=%.3f capped=%u "
+                                "dot=%u share80_10=%.4f area10_px=%u\n",
+                                double(d), double(stops), double(r.shape.core_px), double(r.shape.core_white_px), core.first,
+                                core.second, rule, white, across, along, core.first > 0.0 ? white / core.first : 0.0, fwhm,
+                                double(r.shape.sigma_px), double(r.shape.peak), unsigned(capped), unsigned(r.shape.dot),
+                                share.first, share.second);
+                }
+            }
+            report("flash_white_extent_rule_and_core_ratio", size_ok, "");
+            report("flash_cap_binds_at_4m_only", cap_ok, "");
+            report("flash_anti_lamp_plus4_stops", lamp_ok, "");
+            report("flash_fwhm_law_at_zero_stops", fwhm_ok, "");
+            report("flash_gaussian_area_share", share_ok, "");
+            // over a lit hull (the scene cleared to 13/255 = 0.051): the flash adds, its own light the same
+            {
+                const Drawn black = draw_flash(baked, 27.f, endon, 1.f);
+                const Drawn hull = draw_flash(baked, 27.f, endon, 1.f, D3DCOLOR_ARGB(0, 13, 13, 13));
+                // FP16 rounds each sum (2^-11 relative): the difference within 2e-3 + 2e-3 x the flash's own light
+                double worst = 0.0;
+                const float base = hull.l.empty() ? 0.f : hull.l[0];
+                for (std::size_t i = 0; i < black.l.size() && i < hull.l.size(); ++i)
+                    worst = std::max(worst, std::fabs(double(hull.l[i] - base - black.l[i])) - 2e-3 * double(black.l[i]));
+                std::printf("FLASH case=over_hull distance_m=27 hull=%.4f worst_excess=%.5f\n", double(base), worst);
+                report("flash_additive_over_hull", base > 0.04f && base < 0.06f && worst < 2e-3, "");
+            }
+            // (F3) the streak across the view at 27 m and 500 m: its on-screen length flash_len_m x f / z within 1 px,
+            // the white run along it within [length, length + E + 1]; folded into the point at 2 km
+            bool streak_ok = true;
+            for (float d : {27.f, 500.f, 2000.f}) {
+                const Drawn r = draw_flash(baked, d, across_x, 1.f);
+                const double rule = double(baked.flash_len_m) * ps::view_units_per_metre * f_px /
+                                    (double(d) * ps::view_units_per_metre);
+                const int y = int(ft.h / 2);
+                int x0 = -1, x1 = -1;
+                for (int x = 0; x < int(ft.w); ++x)
+                    if (r.l[std::size_t(y) * ft.w + x] > 1.f) {
+                        if (x0 < 0) x0 = x;
+                        x1 = x;
+                    }
+                const double run = x0 < 0 ? 0.0 : double(x1 - x0 + 1);
+                const bool ok = d == 2000.f ? r.shape.folded && r.shape.dot
+                                            : !r.shape.folded && std::fabs(double(r.shape.length_px) - rule) <= 1.0 &&
+                                                  run >= rule - 1.0 && run <= rule + double(r.shape.white_px) + 1.0;
+                streak_ok = streak_ok && ok && r.quads == 1;
+                std::printf("FLASH case=streak distance_m=%.0f rule_px=%.2f length_px=%.2f white_run_px=%.0f white_px=%.2f "
+                            "folded=%u dot=%u\n",
+                            double(d), rule, double(r.shape.length_px), run, double(r.shape.white_px),
+                            unsigned(r.shape.folded), unsigned(r.shape.dot));
+            }
+            report("flash_streak_length_and_fold", streak_ok, "");
+            // (F4) the LOD at 2 km and 3 km at the launcher's fov 90 (m00 1.0: the design's f of 1,280 px at 1440 rows): a
+            // 1 px dot (no streak, no pulse: its radius under 3 px), its light no more than the 500 m flash's
+            {
+                const ps::View fov90 = proj_view(ft, 1.0f);
+                double near_total = 0.0;
+                area_share(draw_flash(baked, 500.f, endon, 1.f, 0, &fov90), &near_total);
+                bool lod_ok = true;
+                for (float d : {2000.f, 3000.f}) {
+                    const Drawn r = draw_flash(baked, d, across_x, 1.f, 0, &fov90);
+                    double total = 0.0;
+                    area_share(r, &total);
+                    lod_ok = lod_ok && r.quads == 1 && r.shape.dot && r.shape.folded && !r.pulsed && total <= near_total;
+                    std::printf("FLASH case=lod distance_m=%.0f dot=%u folded=%u pulse=%u total=%.4f near_total=%.4f "
+                                "peak=%.4f fwhm_px=%.3f\n",
+                                double(d), unsigned(r.shape.dot), unsigned(r.shape.folded), unsigned(r.pulsed), total,
+                                near_total, double(r.shape.peak), double(r.shape.fwhm_px));
+                }
+                report("flash_lod_dot_no_streak_no_pulse", lod_ok, "");
+            }
+        }
+        // (F5) the life against the refire gap through the production tap and builder: a shooter at 27 m firing an IRE
+        // whose muzzle record (ours) was relit gap_ms after the previous shot; stage frames at the game step until the
+        // flash ends. Gap 150 ms: drawn at ages 0 and 17 at 17 ms steps (life 30 ms), 0 and 7 at 7 ms steps (life 14 ms:
+        // two steps), once at 100 ms steps (SETA 6); a first shot once; a record not ours (the engine's flash shown)
+        // never; a registration three steps late never (flash_stale). F = 1 on the first frame, 1 - age / life after.
+        // The shooter moves 1.7 m along x between the two frames: the second flash rides it (its raster is the ship's
+        // new position plus the muzzle offset).
+        {
+            static wc::ProjectilePool pool;
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            static ps::Looks looks;
+            static FlashWorld w;
+            static rr::WeaponPulse pulses[rr::weapon_max_pulses];
+            const pf::Tune tunes[pf::family_count] = {baked};
+            // (a record whose shooter's handle is not the shooter's now: another ship at that object, flash_lost)
+            struct LifeCase { const char* name; std::uint32_t step, gap; bool ours; std::uint32_t tap_age; unsigned frames; bool other; };
+            const LifeCase cases[7] = {{"gap150_step17", 17, 150, true, 0, 4, false}, {"gap150_step7", 7, 150, true, 0, 4, false},
+                                       {"gap150_step100_seta6", 100, 150, true, 0, 3, false},
+                                       {"first_shot", 17, 0, true, 0, 3, false}, {"not_ours", 17, 150, false, 0, 3, false},
+                                       {"tapped_late", 17, 150, true, 51, 3, false},
+                                       {"record_other_shooter", 17, 150, true, 0, 3, true}};
+            const unsigned want_drawn[7] = {2, 2, 1, 1, 0, 0, 0};
+            bool life_ok = true, fade_ok = true, ride_ok = true, axis_ok = true;
+            for (unsigned c = 0; c < 7; ++c) {
+                const LifeCase& lc = cases[c];
+                pool_reset(pool, cfg, &cfg_slot, 10000);
+                for (wc::MuzzleRecord& m : pool.muzzles) m = wc::MuzzleRecord{};
+                put32(cfg, wc::projectile::cfg_step_ms, lc.step);
+                looks.look[0] = look;
+                looks.resolved = 1;
+                w.cfg = cfg;
+                w.born = 10000;
+                const double ship[3] = {-2000.0, -1500.0, 13500.0}, vship[3] = {50000.0, 0.0, 0.0};
+                const double muzzle[3] = {1600.0, 250.0, 1250.0}, vbullet[3] = {0.0, 0.0, 581000.0};
+                for (unsigned k = 0; k < 3; ++k) {
+                    w.ship_pos[k] = ship[k];
+                    w.ship_vel[k] = vship[k];
+                    w.muzzle[k] = muzzle[k];
+                    w.bullet_vel[k] = vbullet[k];
+                }
+                w.make(pool, 700 + c, lc.gap, lc.ours, 3);
+                if (lc.other) pool.muzzles[3].handle ^= 0x100;
+                unsigned drawn = 0, lost = 0;
+                double axis_err = 0.0; // degrees between the flash's axis and the shot's own direction (view +z here)
+                float fades[4]{};
+                float rasters[4][2]{};
+                double expect[4][2]{};
+                for (unsigned f = 0; f < lc.frames; ++f) {
+                    const std::uint32_t now = 10000 + lc.tap_age + f * lc.step;
+                    w.place(pool, now);
+                    ps::FlashShape shapes[4];
+                    ps::FlashOut out;
+                    out.pulses = pulses;
+                    out.max_pulses = rr::weapon_max_pulses;
+                    out.max_quads = rr::weapon_projectile_max_flashes;
+                    out.shapes = shapes;
+                    x3m::engine_memory::next_frame();
+                    const ps::Counts n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 500 + 10 * c + f, false, now,
+                                                   lc.step, float(lc.step) * 1e-3f, 1.f, proj_view(pt, 1.6f), tunes, fv,
+                                                   rr::weapon_projectile_max_bolts, rr::weapon_projectile_bolt_quads,
+                                                   nullptr, &out);
+                    lost += n.flash_lost;
+                    if (n.flashes) {
+                        const double cz = std::max(-1.0, std::min(1.0, double(shapes[0].axis[2])));
+                        axis_err = std::max(axis_err, std::acos(cz) * 180.0 / 3.14159265358979);
+                        if (drawn < 4) {
+                            fades[drawn] = shapes[0].fade;
+                            rasters[drawn][0] = shapes[0].raster[0];
+                            rasters[drawn][1] = shapes[0].raster[1];
+                            // the muzzle's birth point riding the shooter: ship(now) + the muzzle offset (view = world)
+                            const double s = double(std::int32_t(now - w.born)) * 1e-3;
+                            const ps::View pv = proj_view(pt, 1.6f);
+                            const double vx = (ship[0] + vship[0] * s + muzzle[0]) * 0.01, vy = (ship[1] + muzzle[1]) * 0.01,
+                                         vz = (ship[2] + muzzle[2]) * 0.01;
+                            expect[drawn][0] = (double(pv.m00) * vx / vz + 1.0) * 0.5 * double(pt.w);
+                            expect[drawn][1] = (1.0 - double(pv.m11) * vy / vz) * 0.5 * double(pt.h);
+                        }
+                        ++drawn;
+                    }
+                }
+                const float life = ps::flash_life_ms(baked, lc.gap, lc.step);
+                const bool fade_case = drawn == 2 && std::fabs(fades[0] - 1.f) < 1e-6f &&
+                                       std::fabs(fades[1] - (1.f - float(lc.step) / life)) < 1e-4f;
+                life_ok = life_ok && drawn == want_drawn[c] && (!lc.other || lost == 1);
+                if (want_drawn[c] == 2) fade_ok = fade_ok && fade_case;
+                double ride = 0.0;
+                for (unsigned k = 0; k < drawn && k < 4; ++k)
+                    ride = std::max(ride, std::max(std::fabs(rasters[k][0] - expect[k][0]), std::fabs(rasters[k][1] - expect[k][1])));
+                ride_ok = ride_ok && ride < 0.1;
+                axis_ok = axis_ok && axis_err < 0.05;
+                std::printf("FLASH case=life name=%s step_ms=%u gap_ms=%u ours=%u tap_age_ms=%u life_ms=%.2f drawn=%u want=%u "
+                            "fade0=%.4f fade1=%.4f ride_err_px=%.4f axis_err_deg=%.4f lost=%u matched=%lu unmatched=%lu "
+                            "stale=%lu\n",
+                            lc.name, lc.step, lc.gap, unsigned(lc.ours), lc.tap_age, double(life), drawn, want_drawn[c],
+                            double(fades[0]), double(fades[1]), ride, axis_err, lost,
+                            static_cast<unsigned long>(pool.counters.flash_matched),
+                            static_cast<unsigned long>(pool.counters.flash_unmatched),
+                            static_cast<unsigned long>(pool.counters.flash_stale));
+            }
+            report("flash_life_vs_refire_seta", life_ok, "");
+            report("flash_fade_law", fade_ok, "");
+            report("flash_rides_the_shooter", ride_ok, "");
+            // the axis is v_bullet - (the slip + node velocity): the shot's own direction, the shooter's 100 m/s across
+            // (a third of it in the slip) removed exactly
+            report("flash_axis_is_the_shots_own_direction", axis_ok, "");
+        }
+        // (F6) the hull pulse through run_projectiles (pulses alone): a plane hull under the left half of the 1080p target, sky
+        // on the right; the pulse of a 27 m own gun (radius 3 m) on the boundary, of a capital's hull at 500 m, faded to
+        // 0.43; every pixel against the CPU twin (the plane's point under the pixel, light = 0.5 x tint x gain x (1 -
+        // r / R)^2), the sky untouched, the peak I (1 + k) = 0.5 at full gain within 5 %; under 3 px (2 km) not built.
+        {
+            bool pulse_ok = true, sky_ok = true, peak_ok = true, drop_ok = true;
+            for (float d : {27.f, 500.f, 2000.f}) {
+                for (float gain : {1.f, 0.43f}) {
+                    ps::FlashIn in;
+                    const float z = d * ps::view_units_per_metre;
+                    const ps::View pv = proj_view(pt, 1.6f);
+                    // the muzzle about 0.9 m left of the boundary, on a pixel centre (D3D9: pixel x at ndc 2x / W - 1)
+                    const double fx = double(pv.m00) * 0.5 * double(g.w);
+                    const double px = std::floor(0.5 * double(g.w) - 0.9 * 5.0 * fx / double(z) + 0.5);
+                    in.p[0] = float((2.0 * px / double(g.w) - 1.0) * double(z) / double(pv.m00));
+                    in.p[2] = z;
+                    in.axis[2] = 1.f;
+                    in.fade = gain;
+                    ps::FlashShape shape;
+                    rr::WeaponPulse pulse;
+                    bool pulsed = false;
+                    ps::flash_quad(pv, ps::view_frame(pv, baked.core_px), baked, ps::body_frame(baked, look), look, in, fv,
+                                   &pulse, &pulsed, &shape);
+                    if (d == 2000.f) {
+                        drop_ok = drop_ok && !pulsed;
+                        continue;
+                    }
+                    draw_lane(g, z, 0.5f);
+                    const rr::WeaponEffectsFrame f = base_frame(g);
+                    rr::WeaponProjectileFrame pfr;
+                    pfr.width = g.w;
+                    pfr.height = g.h;
+                    pfr.pulses = &pulse;
+                    pfr.pulse_count = pulsed ? 1u : 0u;
+                    pfr.lane_texture = g.lane_tex.p;
+                    pfr.four_channel = true;
+                    pfr.m00 = f.m00;
+                    pfr.m11 = f.m11;
+                    pfr.m22 = pv.m22;
+                    pfr.m32 = pv.m32;
+                    pfr.near_z = f.near_z;
+                    rr::WeaponEffectsReport rep{};
+                    dev->BeginScene();
+                    dev->SetRenderTarget(0, g.scene_s.p);
+                    dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+                    const HRESULT hr = proj.run_projectiles(pfr, &rep);
+                    dev->EndScene();
+                    const std::vector<float> l = read_luma(g, g.scene_s.p);
+                    const float R = pulse.radius, m00 = f.m00, m11 = f.m11;
+                    double worst = 0.0, peak = 0.0, peak_want = 0.0;
+                    unsigned lit = 0, sky_lit = 0;
+                    for (UINT y = 0; y < g.h && !l.empty(); ++y)
+                        for (UINT x = 0; x < g.w; ++x) {
+                            const float v = l[std::size_t(y) * g.w + x];
+                            const bool hull = float(x) < 0.5f * float(g.w);
+                            if (!hull) {
+                                sky_lit += v != 0.f;
+                                continue;
+                            }
+                            const double rx = (2.0 * x / g.w - 1.0) / m00, ry = (1.0 - 2.0 * y / g.h) / m11;
+                            const double dx = rx * z - in.p[0], dy = ry * z - in.p[1];
+                            const double r = std::sqrt(dx * dx + dy * dy) / R;
+                            const double want = r < 1.0 ? 0.5 * double(gain) * (1.0 - r) * (1.0 - r) : 0.0;
+                            worst = std::max(worst, std::fabs(double(v) - want));
+                            lit += v > 0.f;
+                            if (v > peak) peak = v, peak_want = 0.5 * double(gain);
+                        }
+                    const double radius_px = double(R) * double(m11) * 0.5 * double(g.h) / double(z);
+                    pulse_ok = pulse_ok && SUCCEEDED(hr) && rep.pulses == 1 && pulsed && worst < 0.02 && lit > 0;
+                    sky_ok = sky_ok && sky_lit == 0;
+                    peak_ok = peak_ok && std::fabs(peak / peak_want - 1.0) <= 0.05;
+                    std::printf("PULSE distance_m=%.0f gain=%.2f radius_m=%.2f radius_px=%.2f shape_px=%.2f half_over_r=%.4f "
+                                "lit=%u sky_lit=%u peak=%.4f peak_want=%.4f worst=%.5f pulses=%u result=%08lx\n",
+                                double(d), double(gain), double(R / ps::view_units_per_metre), radius_px,
+                                double(shape.pulse_px), double(pulse.half / pulse.radius), lit, sky_lit, peak, peak_want,
+                                worst, rep.pulses, static_cast<unsigned long>(hr));
+                }
+            }
+            // S2 / N2: the screen cap (at most 0.15 of the rows in radius: the 27 m own gun at 1080 rows, 170.7 px wanted,
+            // drawn within it), the eye within 1.5 radii (the own gun in first person, 3 m from the eye) and a culled flash
+            // (off the target) draw no pulse
+            {
+                const ps::View pv = proj_view(pt, 1.6f);
+                const auto pulse_of = [&](float x_m, float z_m, ps::FlashShape* shape, unsigned* quads) {
+                    ps::FlashIn in;
+                    in.p[0] = x_m * ps::view_units_per_metre;
+                    in.p[1] = -0.5f * ps::view_units_per_metre;
+                    in.p[2] = z_m * ps::view_units_per_metre;
+                    in.axis[2] = 1.f;
+                    rr::WeaponPulse p;
+                    bool pulsed = false;
+                    *quads = ps::flash_quad(pv, ps::view_frame(pv, baked.core_px), baked, ps::body_frame(baked, look), look,
+                                            in, fv, &p, &pulsed, shape);
+                    return pulsed;
+                };
+                ps::FlashShape s27, s3, soff;
+                unsigned q27 = 0, q3 = 0, qoff = 0;
+                const bool p27 = pulse_of(0.9f, 27.f, &s27, &q27), p3 = pulse_of(1.f, 3.f, &s3, &q3),
+                           poff = pulse_of(400.f, 27.f, &soff, &qoff);
+                const float cap_px = ps::pulse_max_rows * pv.height;
+                std::printf("PULSE_CAP cap_px=%.2f own27_px=%.2f own27_clamped=%u own27_drawn=%u cockpit3_flash=%u "
+                            "cockpit3_pulse=%u offscreen_flash=%u offscreen_pulse=%u\n",
+                            double(cap_px), double(s27.pulse_px), unsigned(s27.pulse_clamped), unsigned(p27), q3, unsigned(p3),
+                            qoff, unsigned(poff));
+                report("pulse_clamped_to_the_screen_cap", p27 && q27 == 1 && s27.pulse_clamped && s27.pulse_px <= cap_px + 0.01f &&
+                                                              s27.pulse_px > 0.9f * cap_px,
+                       "");
+                report("pulse_none_with_the_eye_within_1p5_radii", q3 == 1 && !p3, "");
+                report("pulse_none_beside_a_culled_flash", qoff == 0 && !poff, "");
+                // N6: the pulse enters the TAA history (it samples the lane, so it cannot flag the lane as the bolts do):
+                // its ghost through the production resolve, the 27 m own-gun pulse on a hull plane for one frame; gone by
+                // the second frame after it (at most one extra frame)
+                ps::FlashIn in;
+                in.p[0] = 0.9f * ps::view_units_per_metre;
+                in.p[2] = 27.f * ps::view_units_per_metre;
+                in.axis[2] = 1.f;
+                rr::WeaponPulse p;
+                bool pulsed = false;
+                ps::flash_quad(pv, ps::view_frame(pv, baked.core_px), baked, ps::body_frame(baked, look), look, in, fv, &p,
+                               &pulsed, nullptr);
+                Com<IDirect3DTexture9> motion;
+                Com<IDirect3DSurface9> motion_s;
+                const bool made_m = SUCCEEDED(dev->CreateTexture(g.w, g.h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F,
+                                                                 D3DPOOL_DEFAULT, &motion.p, nullptr)) &&
+                                    SUCCEEDED(motion.p->GetSurfaceLevel(0, &motion_s.p));
+                double ghost[3] = {0, 0, 0}, ghost_peak = 0;
+                const bool ran = made_m && pulsed && resolve_pulse_ghost(proj, motion, motion_s, p, ghost, &ghost_peak);
+                std::printf("PULSE_GHOST ran=%u peak=%.4f ghost1=%.4f ghost2=%.4f\n", unsigned(ran), ghost_peak, ghost[1],
+                            ghost[2]);
+                report("pulse_taa_ghost_at_most_one_frame", ran && ghost_peak > 0.1 && ghost[2] <= 0.01, "");
+                draw_lane(g, 0.f, -1.f);
+            }
+            report("pulse_lights_the_lane_surface_by_the_law", pulse_ok, "");
+            report("pulse_sky_untouched", sky_ok, "");
+            report("pulse_peak_at_the_mount", peak_ok, "");
+            report("pulse_dropped_under_3px", drop_ok, "");
+        }
+        // (F7) the budget: 64 simultaneous flashes and 64 pulses at 5120x1440 (two own guns at 27 m, 62 spread from
+        // 300 m to 1.5 km across the frame) through the production builder: CPU the build with the flashes less the same
+        // build without (best of 40, every flash's first frame: anchored, re-posed and built), GPU fenced the one run_projectiles
+        // of the flash quads and the pulses over a hull lane at the guns' depth (best of 60; each part alone reported).
+        {
+            ProjTarget bt;
+            const bool made_b = make_proj_target(bt, 5120, 1440);
+            static wc::ProjectilePool pool;
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            static ps::Looks looks;
+            static FlashWorld worlds[rr::weapon_projectile_max_flashes];
+            static rr::WeaponPulse pulses[rr::weapon_max_pulses];
+            static ps::FlashShape shapes[rr::weapon_projectile_max_flashes];
+            const pf::Tune tunes[pf::family_count] = {baked};
+            const ps::View bv = proj_view(bt, 1.6f);
+            pool_reset(pool, cfg, &cfg_slot, 20000);
+            for (wc::MuzzleRecord& m : pool.muzzles) m = wc::MuzzleRecord{};
+            put32(cfg, wc::projectile::cfg_step_ms, 17);
+            looks.look[0] = look;
+            looks.resolved = 1;
+            for (unsigned i = 0; i < rr::weapon_projectile_max_flashes; ++i) {
+                FlashWorld& w = worlds[i];
+                w.cfg = cfg;
+                w.born = 20000;
+                const double d = i < 2 ? 27.0 : 300.0 + 20.0 * double(i - 2); // metres
+                const double ax = i < 2 ? (i ? 0.08 : -0.08) : (halton(i + 1, 2) - 0.5) * 1.8;
+                const double ay = i < 2 ? -0.2 : (halton(i + 1, 3) - 0.5) * 1.8;
+                w.ship_pos[0] = ax / 1.6 * d * 500.0;
+                w.ship_pos[1] = ay / (1.6 * 5120.0 / 1440.0) * d * 500.0;
+                w.ship_pos[2] = d * 500.0;
+                w.ship_vel[2] = 50000.0;
+                w.muzzle[0] = 0.0;
+                w.bullet_vel[0] = 581000.0 * 0.8;
+                w.bullet_vel[2] = 581000.0 * 0.6;
+                w.make(pool, 900 + i, 150, true, i);
+                w.place(pool, 20000);
+            }
+            ps::FlashOut out;
+            out.pulses = pulses;
+            out.max_pulses = rr::weapon_max_pulses;
+            out.max_quads = rr::weapon_projectile_max_flashes;
+            out.shapes = shapes;
+            LARGE_INTEGER freq{}, a{}, b{};
+            QueryPerformanceFrequency(&freq);
+            const auto rearm = [&] {
+                for (unsigned i = 0; i < pool.count; ++i) {
+                    pool.entries[i].flash = wc::projectile::flash_pending;
+                    pool.entries[i].flash_frames = 0;
+                }
+            };
+            double with_best = 1e30, without_best = 1e30;
+            ps::Counts n;
+            for (int rep = 0; rep < 40; ++rep) {
+                rearm();
+                x3m::engine_memory::next_frame();
+                QueryPerformanceCounter(&a);
+                // both builds first frames (no bridge: the frames 2 apart), the same bolts; only the flashes differ
+                n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 3000 + 4 * rep, false, 20000, 17, 0.016f, 1.f,
+                              bv, tunes, fv, rr::weapon_projectile_max_bolts, rr::weapon_projectile_bolt_quads, nullptr, &out);
+                QueryPerformanceCounter(&b);
+                with_best = std::min(with_best, ticks_us(a, b, freq));
+                x3m::engine_memory::next_frame();
+                QueryPerformanceCounter(&a);
+                ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 3002 + 4 * rep, false, 20000, 17, 0.016f, 1.f, bv,
+                          tunes, fv, rr::weapon_projectile_max_bolts, rr::weapon_projectile_bolt_quads);
+                QueryPerformanceCounter(&b);
+                without_best = std::min(without_best, ticks_us(a, b, freq));
+            }
+            // the last timed build's flashes: their quads after its bolts' (rebuilt once more untimed)
+            rearm();
+            x3m::engine_memory::next_frame();
+            n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 4000, false, 20000, 17, 0.016f, 1.f, bv, tunes, fv,
+                          rr::weapon_projectile_max_bolts, rr::weapon_projectile_bolt_quads, nullptr, &out);
+            Com<IDirect3DQuery9> ev;
+            dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
+            double gpu_best = 1e30, fence_best = 1e30, part_best[6] = {1e30, 1e30, 1e30, 1e30, 1e30, 1e30};
+            bool drew = made_b;
+            if (made_b) fill_proj_lane(bt, 27.f * ps::view_units_per_metre);
+            for (int rep = 0; made_b && rep < 420; ++rep) {
+                // both; the flash quads alone; the pulses alone; the 62 far pulses alone; the two own pulses alone (the
+                // builder writes the entries' flashes last registered first: the own guns' are the last two); the 64
+                // bullets' bolt quads alone; the bolts with the flash quads and the pulses (the production call)
+                const int part = rep < 60 ? -1 : rep / 60 - 1;
+                dev->BeginScene();
+                dev->SetDepthStencilSurface(bt.depth_s.p);
+                dev->SetRenderTarget(0, bt.scene_s.p);
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+                dev->SetDepthStencilSurface(nullptr);
+                rr::WeaponProjectileFrame pf_frame;
+                pf_frame.width = bt.w;
+                pf_frame.height = bt.h;
+                pf_frame.vertices = part >= 4 ? fv : fv + 4 * n.quads;
+                pf_frame.quads = part == 4 ? n.quads : part == 5 ? n.quads + n.flashes : part >= 1 ? 0u : n.flashes;
+                pf_frame.lane = bt.lane_s.p;
+                pf_frame.depth = bt.depth_s.p;
+                pf_frame.pulses = part == 3 ? pulses + (n.pulses - 2) : pulses;
+                pf_frame.pulse_count = part == 0 || part == 4 ? 0u : part == 2 ? n.pulses - 2 : part == 3 ? 2u : n.pulses;
+                pf_frame.lane_texture = bt.lane_tex.p;
+                pf_frame.four_channel = true;
+                pf_frame.m00 = bv.m00;
+                pf_frame.m11 = bv.m11;
+                pf_frame.m22 = bv.m22;
+                pf_frame.m32 = bv.m32;
+                pf_frame.near_z = bv.near_z;
+                fence(ev.p);
+                QueryPerformanceCounter(&a);
+                rr::WeaponEffectsReport r1{};
+                const HRESULT h1 = proj.run_projectiles(pf_frame, &r1);
+                fence(ev.p);
+                QueryPerformanceCounter(&b);
+                dev->EndScene();
+                if (part < 0) {
+                    drew = drew && h1 == S_OK && r1.quads == n.flashes && r1.pulses == n.pulses;
+                    gpu_best = std::min(gpu_best, ticks_us(a, b, freq));
+                } else {
+                    part_best[part] = std::min(part_best[part], ticks_us(a, b, freq));
+                }
+            }
+            for (int rep = 0; made_b && rep < 60; ++rep) {
+                dev->BeginScene();
+                fence(ev.p);
+                QueryPerformanceCounter(&a);
+                fence(ev.p);
+                QueryPerformanceCounter(&b);
+                dev->EndScene();
+                fence_best = std::min(fence_best, ticks_us(a, b, freq));
+            }
+            const double cpu = with_best - without_best, increment = part_best[5] - part_best[4];
+            device_guard("flash_budget");
+            std::printf("FLASH case=budget width=5120 height=1440 flashes=%u pulses=%u bolts=%u cpu_with_us=%.1f "
+                        "cpu_without_us=%.1f cpu_us=%.1f gpu_us=%.1f gpu_net_us=%.1f gpu_flashes_us=%.1f gpu_pulses_us=%.1f "
+                        "gpu_far_pulses_us=%.1f gpu_own_pulses_us=%.1f gpu_bolts_us=%.1f gpu_bolts_flashes_us=%.1f "
+                        "gpu_increment_us=%.1f fence_us=%.1f lost=%u stale=%u dropped=%u\n",
+                        n.flashes, n.pulses, n.drawn, with_best, without_best, cpu, gpu_best, gpu_best - fence_best,
+                        part_best[0], part_best[1], part_best[2], part_best[3], part_best[4], part_best[5], increment,
+                        fence_best, n.flash_lost, n.flash_stale, n.flash_dropped);
+            // the gate (the production shape: the flashes and pulses ride the bolts' run_projectiles, its state and the
+            // fence pair paid once): CPU under 20 us and the GPU fenced increment under 30 us; the flashes and pulses
+            // alone (gpu_us, the fence pair included) are reported
+            report("flash_budget_64_flashes_64_pulses",
+                   made_b && drew && n.flashes == rr::weapon_projectile_max_flashes && n.pulses == rr::weapon_max_pulses &&
+                       cpu < 20.0 && increment < 30.0,
+                   "");
+            bt.release();
+        }
+        // (F8) the combined frame (the design's budget row): 512 bolts, 64 of them just fired (each its flash's first
+        // frame and its pulse; two own guns at 27 m, 62 from 300 m to 1.5 km), 448 others (32 from 200 m, 416 from 600 m,
+        // across the frame), at 5120x1440, measured as one frame: the timed build is the fourth consecutive stage frame
+        // (448 bolts bridged, the 64 shots born on it; the flashes off before), CPU best of 40, then its one run_projectiles (pulses,
+        // bolts and flash quads) fenced, best of 60, over a hull lane at 27 m. Gated on the production tune (the baked
+        // fighter tracer, comet off): GPU 60 us fenced and the flash work's CPU share 20 us, the frame's CPU reported against
+        // the design's 100 us with its decomposition (variants 2 and 3); the comet tune (trail_ms 40) reported beside it.
+        {
+            ProjTarget ct;
+            const bool made_c = make_proj_target(ct, 5120, 1440);
+            static wc::ProjectilePool pool;
+            alignas(16) static unsigned char cfg[0x800];
+            static std::uint32_t cfg_slot;
+            static ps::Looks looks;
+            static FlashWorld worlds[rr::weapon_projectile_max_flashes];
+            struct alignas(16) Plain { unsigned char obj[0x80], node[0x150], ext[0x10]; };
+            constexpr unsigned plain_count = rr::weapon_projectile_max_bolts - rr::weapon_projectile_max_flashes;
+            static Plain plain[plain_count];
+            static rr::WeaponPulse pulses[rr::weapon_max_pulses];
+            static rr::WeaponProjectileVertex cv[rr::weapon_projectile_max_quads * 4];
+            const ps::View cview = proj_view(ct, 1.6f);
+            const pf::Tune comet_tune = {2.f, 3.f, 0.2f, 0.3f, 3000.f, 60.f, 2.f, 40.f, 1.5f};
+            if (made_c) fill_proj_lane(ct, 27.f * ps::view_units_per_metre);
+            Com<IDirect3DQuery9> ev;
+            dev->CreateQuery(D3DQUERYTYPE_EVENT, &ev.p);
+            LARGE_INTEGER freq{}, a{}, b{};
+            QueryPerformanceFrequency(&freq);
+            bool combined_ok = made_c;
+            double cpu_of[4] = {1e30, 1e30, 1e30, 1e30}, gpu_combined = 1e30;
+            for (unsigned variant = 0; variant < 4 && made_c; ++variant) {
+                const pf::Tune tunes[pf::family_count] = {variant == 1 ? comet_tune : baked};
+                // variant 2: the same frame, no flash work (FlashOut null); variant 3: without the 64 shots (448 bolts)
+                double cpu_best = 1e30, gpu_best = 1e30;
+                ps::Counts n;
+                for (int rep = 0; rep < 40; ++rep) {
+                    const std::uint32_t now0 = 40000u + 20000u * variant + 100u * unsigned(rep), born = now0 + 48u;
+                    const unsigned frame0 = 6000u + 2000u * variant + 8u * unsigned(rep);
+                    pool_reset(pool, cfg, &cfg_slot, now0);
+                    for (wc::MuzzleRecord& m : pool.muzzles) m = wc::MuzzleRecord{};
+                    put32(cfg, wc::projectile::cfg_step_ms, 16);
+                    looks.look[0] = look;
+                    looks.resolved = 1;
+                    for (unsigned i = 0; i < rr::weapon_projectile_max_flashes; ++i) {
+                        FlashWorld& w = worlds[i];
+                        w.cfg = cfg;
+                        w.born = born;
+                        const double d = i < 2 ? 27.0 : 300.0 + 20.0 * double(i - 2);
+                        const double ax = i < 2 ? (i ? 0.08 : -0.08) : (halton(i + 1, 2) - 0.5) * 1.8;
+                        const double ay = i < 2 ? -0.2 : (halton(i + 1, 3) - 0.5) * 1.8;
+                        w.ship_pos[0] = ax / 1.6 * d * 500.0;
+                        w.ship_pos[1] = ay / (1.6 * 5120.0 / 1440.0) * d * 500.0;
+                        w.ship_pos[2] = d * 500.0;
+                        w.ship_vel[0] = w.ship_vel[1] = 0.0;
+                        w.ship_vel[2] = 50000.0;
+                        w.muzzle[0] = w.muzzle[1] = w.muzzle[2] = 0.0;
+                        w.bullet_vel[0] = 581000.0 * 0.8;
+                        w.bullet_vel[1] = 0.0;
+                        w.bullet_vel[2] = 581000.0 * 0.6;
+                        w.make(pool, 1200 + i, 150, true, i);
+                    }
+                    for (unsigned i = 0; i < plain_count; ++i) {
+                        Plain& u = plain[i];
+                        std::memset(&u, 0, sizeof u);
+                        put32(u.obj, wc::layout::obj_node, std::uint32_t(reinterpret_cast<std::uintptr_t>(u.node)));
+                        put32(u.obj, wc::layout::obj_ext, std::uint32_t(reinterpret_cast<std::uintptr_t>(u.ext)));
+                        put32(u.node, wc::layout::node_live, 1);
+                        put32(u.node, wc::layout::node_handle, 3000 + i);
+                        put32(u.node, wc::layout::node_body, 0x55);
+                        put32(u.node, wc::projectile::node_velocity + 0, std::uint32_t(std::int32_t(581000.0 * 0.8)));
+                        put32(u.node, wc::projectile::node_velocity + 8, std::uint32_t(std::int32_t(581000.0 * 0.6)));
+                        put32(u.ext, wc::projectile::ext_expiry, now0 + 100000u);
+                        put32(u.ext, wc::projectile::ext_created, 1);
+                    }
+                    for (unsigned k = 0; k < 4; ++k) {
+                        const std::uint32_t now = now0 + 16u * k;
+                        // the 64 shots exist from the timed frame on (their birth): their bolts' first frame there
+                        for (unsigned i = 0; k == 3 && variant != 3 && i < rr::weapon_projectile_max_flashes; ++i)
+                            worlds[i].place(pool, now);
+                        for (unsigned i = 0; i < plain_count; ++i) {
+                            Plain& u = plain[i];
+                            const double d = i < 32 ? 200.0 + 10.0 * i : 600.0 + 3.0 * (i - 32);
+                            const double ax = (halton(i + 101, 2) - 0.5) * 1.8, ay = (halton(i + 101, 3) - 0.5) * 1.8;
+                            const double s = 0.016 * double(k);
+                            put32(u.node, wc::layout::node_pos + 0,
+                                  std::uint32_t(std::int32_t(ax / 1.6 * d * 500.0 + 581000.0 * 0.8 * s)));
+                            put32(u.node, wc::layout::node_pos + 4,
+                                  std::uint32_t(std::int32_t(ay / (1.6 * 5120.0 / 1440.0) * d * 500.0)));
+                            put32(u.node, wc::layout::node_pos + 8, std::uint32_t(std::int32_t(d * 500.0 + 581000.0 * 0.6 * s)));
+                            wc::projectile_tap(reinterpret_cast<std::uintptr_t>(u.obj), pool);
+                        }
+                        ps::FlashOut out;
+                        out.pulses = pulses;
+                        out.max_pulses = rr::weapon_max_pulses;
+                        out.max_quads = rr::weapon_projectile_max_flashes;
+                        x3m::engine_memory::next_frame();
+                        if (k < 3) {
+                            ps::build(pool, &x3m::engine_memory::read, nullptr, looks, frame0 + k, false, now, 16, 0.016f, 1.f,
+                                      cview, tunes, cv, rr::weapon_projectile_max_bolts, rr::weapon_projectile_bolt_quads);
+                        } else {
+                            QueryPerformanceCounter(&a);
+                            n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, frame0 + k, false, now, 16, 0.016f,
+                                          1.f, cview, tunes, cv, rr::weapon_projectile_max_bolts,
+                                          rr::weapon_projectile_bolt_quads, nullptr, variant >= 2 ? nullptr : &out);
+                            QueryPerformanceCounter(&b);
+                            cpu_best = std::min(cpu_best, ticks_us(a, b, freq));
+                        }
+                    }
+                }
+                rr::WeaponProjectileFrame f;
+                f.width = ct.w;
+                f.height = ct.h;
+                f.vertices = cv;
+                f.quads = n.quads + n.flashes;
+                f.lane = ct.lane_s.p;
+                f.depth = ct.depth_s.p;
+                f.pulses = pulses;
+                f.pulse_count = n.pulses;
+                f.lane_texture = ct.lane_tex.p;
+                f.four_channel = true;
+                f.m00 = cview.m00;
+                f.m11 = cview.m11;
+                f.m22 = cview.m22;
+                f.m32 = cview.m32;
+                f.near_z = cview.near_z;
+                bool drew = true;
+                for (int rep = 0; rep < 60; ++rep) {
+                    dev->BeginScene();
+                    dev->SetDepthStencilSurface(ct.depth_s.p);
+                    dev->SetRenderTarget(0, ct.scene_s.p);
+                    dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+                    dev->SetDepthStencilSurface(nullptr);
+                    fence(ev.p);
+                    QueryPerformanceCounter(&a);
+                    rr::WeaponEffectsReport r{};
+                    const HRESULT hr = proj.run_projectiles(f, &r);
+                    fence(ev.p);
+                    QueryPerformanceCounter(&b);
+                    dev->EndScene();
+                    drew = drew && hr == S_OK && r.quads == f.quads && r.pulses == n.pulses;
+                    gpu_best = std::min(gpu_best, ticks_us(a, b, freq));
+                }
+                device_guard("flash_budget_combined");
+                std::printf("FLASH case=budget_combined tune=%s width=5120 height=1440 bolts=%u drawn=%u comets=%u quads=%u "
+                            "flashes=%u pulses=%u pulse_clamped=%u statics=%u jumped=%u cpu_us=%.1f gpu_us=%.1f\n",
+                            variant == 1   ? "comet"
+                            : variant == 2 ? "baked_no_flash_work"
+                            : variant == 3 ? "baked_448_bolts"
+                                           : "baked",
+                            pool.count, n.drawn, n.comets, n.quads, n.flashes, n.pulses, n.pulse_clamped, n.statics, n.jumped,
+                            cpu_best, gpu_best);
+                cpu_of[variant] = cpu_best;
+                if (!variant) {
+                    gpu_combined = gpu_best;
+                    combined_ok = combined_ok && drew && n.drawn == rr::weapon_projectile_max_bolts &&
+                                  n.flashes == rr::weapon_projectile_max_flashes && n.pulses == rr::weapon_max_pulses &&
+                                  n.statics == 0 && n.jumped == 0;
+                }
+            }
+            // The gate: GPU fenced <= 60 us for the whole frame and the flash work's CPU share (the frame less the same
+            // frame without it) <= 20 us. The frame's CPU against the design's 100 us is reported: the bolt stage alone
+            // takes the frame past it (the 64 just-fired bolts' first frames), the flash work does not.
+            const double flash_cpu = cpu_of[0] - cpu_of[2], newborn_cpu = cpu_of[2] - cpu_of[3];
+            std::printf("FLASH case=budget_combined_bounds cpu_us=%.1f cpu_within_100=%u flash_work_cpu_us=%.1f "
+                        "newborn_bolts_cpu_us=%.1f bolts_448_cpu_us=%.1f gpu_us=%.1f gpu_within_60=%u\n",
+                        cpu_of[0], unsigned(cpu_of[0] <= 100.0), flash_cpu, newborn_cpu, cpu_of[3], gpu_combined,
+                        unsigned(gpu_combined <= 60.0));
+            // the frame's CPU is a regression tripwire at 150 us (coordinator, 2026-11-09: 64 shots born in one frame is a
+            // synthetic extreme like the turning worst case; the flight evidence for CPU is projectile_us_max in the frame
+            // row); cpu_within_100 above is informational
+            report("flash_budget_combined_512_bolts_64_flashes_64_pulses",
+                   combined_ok && gpu_combined <= 60.0 && flash_cpu <= 20.0 && cpu_of[0] <= 150.0, "");
+            ct.release();
+        }
+        ft.release();
     }
     pt.release();
     proj.detach();
