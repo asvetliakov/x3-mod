@@ -1,0 +1,11 @@
+spawn and re-arm: 10 anchors
+CUT element start: 18 anchors
+node placement per update: 7 anchors
+GROWANDSHRINK size: 11 anchors
+scale setter 0x0a3920: 3 anchors
+body setter 0x0a35e0: 1 anchors
+batch eligibility 0x085700 (not taken): 5 anchors
+traversal and material submit: 7 anchors
+classic state block in 0x0e0f30: 15 anchors
+strings: 6
+total 83 checks, failures 0

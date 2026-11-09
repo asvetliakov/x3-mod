@@ -1,0 +1,304 @@
+== FL: TBullets addon2/04.cat (45 rows), Effects addon2/04.cat (127 rows)
+muzzle row 22 (EDF_REINIT) <- 0:SS_BULLET_IRE, 9:SS_BULLET_PD, 18:SS_BULLET_PSG, 25:SS_BULLET_PBC, 37:SS_BULLET_FLAK_CLUSTER_FRAG, 38:SS_BULLET_FLAK_CLUSTER_FRAG_FRAG, 39:SS_BULLET_FLAK_ALPHA_FRAG, 40:SS_BULLET_TERRANANTIFIGHTER_FRAG
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 0 ms, timeout 150 ms, offset 0/0/150
+    LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 33 (EDF_REINIT) <- 1:SS_BULLET_PAC, 2:SS_BULLET_MASS
+    CUT 4260 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/150
+    LIGHT 7 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 183 (EDF_REINIT) <- 3:SS_BULLET_PRG
+    CUT 8001 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 0 ms, timeout 50 ms, offset 0/0/150
+    CUT 8001 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 25 ms, timeout 50 ms, offset 0/0/150
+    CUT 8001 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 50 ms, timeout 100 ms, offset 0/0/150
+    LIGHT 5 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 191 (EDF_REINIT) <- 4:SS_BULLET_EBC
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.026 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.0075 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 185 (EDF_REINIT) <- 5:SS_BULLET_FBL, 36:SS_BULLET_FBL_FRAG
+    CUT 4258 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.027 start 0 ms, timeout 150 ms, offset 0/0/150
+    BODY 447 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.005..0.03 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 24 (EDF_REINIT) <- 6:SS_BULLET_HEPT, 17:SS_BULLET_PAL, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.0075 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 34 (EDF_REINIT) <- 7:SS_BULLET_IOND
+    CUT 4261 [TIMEOUT|CUT|0] size 0.031..0.031 start 0 ms, timeout 150 ms, offset 0/0/350
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.0075 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 10 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 49 (EDF_REINIT) <- 8:SS_BULLET_PBE
+    CUT 4437 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.011 start 0 ms, timeout 200 ms, offset 0/0/150
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.005 start 0 ms, timeout 200 ms, offset 0/0/250
+    LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.011 start 0 ms, timeout 200 ms, offset 0/0/0
+muzzle row 25 (EDF_REINIT) <- 10:SS_BULLET_EMP, 28:SS_BULLET_MINING, 41:SS_BULLET_EMP_1
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.026 start 0 ms, timeout 150 ms, offset 0/0/0
+    LIGHT 4 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 202 (EDF_REINIT) <- 11:SS_BULLET_CIG
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0133..0.075 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.0002..0.0011 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.002..0.022 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0133..0.0510 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 179 (EDF_REINIT) <- 12:SS_BULLET_IPG, 44:SS_BULLET_IPG_FRAG
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.01..0.10 start 0 ms, timeout 675 ms, offset 0/0/250
+    BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.03 start 0 ms, timeout 210 ms, offset 0/0/0
+    LIGHT 118 [GROW|TIMEOUT|LIGHT|0] size 0.002..0.0405 start 0 ms, timeout 650 ms, offset 0/0/0
+    BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0001..0.025 start 20 ms, timeout 330 ms, offset 0/0/0
+muzzle row 152 (EDF_REINIT) <- 13:SS_BULLET_ESR
+    CUT 4437 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.0151 start 0 ms, timeout 250 ms, offset 0/0/150
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.018..0.1521 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.008..0.029 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 117 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.004..0.122 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 195 (EDF_REINIT) <- 14:SS_BULLET_MAM, 42:SS_BULLET_MAM_1
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.02533..0.1875 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.0005..0.00251 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.051 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.02533..0.1275 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 157 (EDF_REINIT) <- 15:SS_BULLET_FLAK_ALPHA, 16:SS_BULLET_FLAK_CLUSTER, 30:SS_BULLET_DUMMY1
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0053..0.550 start 0 ms, timeout 575 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.011 start 0 ms, timeout 450 ms, offset 0/0/250
+    BODY 10664 [TIMEOUT|GROWANDSHRINK|FADEOUT|I3DF_2D] size 0.0153..0.45 start 0 ms, timeout 450 ms, offset 0/0/0
+    LIGHT 2 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.3 start 0 ms, timeout 300 ms, offset 0/0/0
+    CUT 4265 [TIMEOUT|CUT|GROW|RANDOMROT|FADEOUT|0] size 0.0012..0.0128 start 0 ms, timeout 200 ms, offset 0/0/0
+muzzle row 200 (EDF_REINIT) <- 19:SS_BULLET_TERANTIFIGHTER, 43:SS_BULLET_TERRANANTIFIGHTER_1
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.10..0.1825 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.011 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.22 start 200 ms, timeout 400 ms, offset 0/0/0
+muzzle row 52 (EDF_REINIT) <- 20:SS_BULLET_PPC
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.133..0.75 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.011 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.22 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.133..0.510 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 181 (EDF_REINIT) <- 21:SS_BULLET_IONC
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.02..0.40 start 0 ms, timeout 675 ms, offset 0/0/250
+    BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.12 start 0 ms, timeout 210 ms, offset 0/0/0
+    LIGHT 118 [GROW|TIMEOUT|LIGHT|0] size 0.003..0.16 start 0 ms, timeout 650 ms, offset 0/0/0
+    BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0002..0.1 start 20 ms, timeout 330 ms, offset 0/0/0
+muzzle row 193 (EDF_REINIT) <- 22:SS_BULLET_GAUSS
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.018..0.321 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.008..0.029 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.004..0.122 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 197 (EDF_REINIT) <- 23:SS_BULLET_IBL
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.062 start 0 ms, timeout 150 ms, offset 0/0/150
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.001..0.015 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.061 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 190 (EDF_REINIT) <- 24:SS_BULLET_PSP
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0533..0.375 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.001..0.00511 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.11 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0533..0.2510 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 180 (0) <- 31:SS_BULLET_DUMMY2
+    CUT 4274 [TIMEOUT|CUT|FADEOUT|FADEOUTBODY|0] size .0170...0324 start 0 ms, timeout 560 ms, offset 0/0/0
+    BODY 12001 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.7..0.85 start 0 ms, timeout 1440 ms, offset 0/0/0
+    LIGHT 4 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.20..2.00 start 200 ms, timeout 700 ms, offset 0/0/0
+    BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.1..0.4 start 0 ms, timeout 560 ms, offset 0/0/0
+scenes used by muzzle rows:
+  scene 04251 (01.cat): part bodies [445], 3 keys; muzzle rows [22, 52, 157, 190, 195, 202]
+  scene 04252 (01.cat): part bodies [444], 3 keys; muzzle rows [24, 152, 191, 193]
+  scene 04253 (01.cat): part bodies [446], 3 keys; muzzle rows [25, 52, 179, 181, 190, 195, 197, 200, 202]
+  scene 04258 (01.cat): part bodies [447], 3 keys; muzzle rows [185]
+  scene 04260 (01.cat): part bodies [450], 3 keys; muzzle rows [33]
+  scene 04261 (01.cat): part bodies [314], 3 keys; muzzle rows [34]
+  scene 04265 (None): part bodies None, None keys; muzzle rows [157]
+  scene 04274 (01.cat): part bodies [582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582], 404 keys; muzzle rows [180]
+  scene 04437 (01.cat): part bodies [10463], 0 keys; muzzle rows [49, 152]
+  scene 08001 (01.cat): part bodies [12009], 3 keys; muzzle rows [183]
+  body 00314 (01.cat) part ['B_Flash']: 39 vertices, 18 textured faces, UV rect (0.001, 0.611, 0.669, 1.016); MATERIAL3 tex 384 -> Materials row 384 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00444 (01.cat) part ['B_fire']: 19 vertices, 8 textured faces, UV rect (0.001, 0.513, 0.991, 0.985); MATERIAL3 tex 376 -> Materials row 376 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00445 (01.cat) part ['B_Muendung']: 203 vertices, 100 textured faces, UV rect (0.003, -0.002, 0.412, 0.511); MATERIAL3 tex 384 -> Materials row 384 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00446 (01.cat) part ['B_Muendung']: 107 vertices, 53 textured faces, UV rect (0.0, 0.548, 0.991, 0.998); MATERIAL3 tex 383 -> Materials row 383 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00447 (01.cat) part ['B_Muendung']: 107 vertices, 53 textured faces, UV rect (0.0, 0.548, 0.788, 0.998); MATERIAL3 tex 383 -> Materials row 383 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00450 (01.cat) part ['B_Muendung']: 203 vertices, 100 textured faces, UV rect (0.408, -0.002, 0.796, 0.511); MATERIAL3 tex 384 -> Materials row 384 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00582 (01.cat) part ['B_part']: 4 vertices, 2 textured faces, UV rect (-0.499, 0.75, -0.249, 1.0); MATERIAL3 tex 380 -> Materials row 380 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 10463 (01.cat) part []: 0 vertices, 112 textured faces, UV rect (0.001, 0.001, 0.483, 0.124); MATERIAL5 tex 380 -> Materials row 380 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 12009 (01.cat) part []: 0 vertices, 100 textured faces, UV rect (0.406, 0.241, 0.57, 0.447); 
+every Effects element reaching a muzzle scene or its bodies:
+  row 22: el0 CUT 04251; TBullets users ['muzzle:0', 'muzzle:9', 'muzzle:18', 'muzzle:25', 'muzzle:37', 'muzzle:38', 'muzzle:39', 'muzzle:40']
+  row 24: el0 CUT 04252; TBullets users ['muzzle:6', 'muzzle:17', 'muzzle:26', 'muzzle:27']
+  row 25: el0 CUT 04253; TBullets users ['muzzle:10', 'muzzle:28', 'muzzle:41']
+  row 26: el0 CUT 04251; TBullets users none
+  row 31: el0 CUT 04258; TBullets users none
+  row 33: el0 CUT 04260; TBullets users ['muzzle:1', 'muzzle:2']
+  row 34: el0 CUT 04261; TBullets users ['muzzle:7']
+  row 47: el3 CUT 04265; TBullets users none
+  row 49: el0 CUT 04437; TBullets users ['muzzle:8']
+  row 52: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:20']
+  row 53: el0 CUT 04274; TBullets users ['impact:20']
+  row 54: el0 CUT 04251; TBullets users none
+  row 69: el0 CUT 04274; TBullets users ['impact:28']
+  row 70: el0 CUT 04274; TBullets users ['impact:11']
+  row 152: el0 CUT 04437, el1 CUT 04252; TBullets users ['muzzle:13']
+  row 157: el0 CUT 04251, el4 CUT 04265; TBullets users ['muzzle:15', 'muzzle:16', 'muzzle:30']
+  row 169: el2 CUT 04253; TBullets users none
+  row 179: el0 CUT 04253; TBullets users ['muzzle:12', 'muzzle:44']
+  row 180: el0 CUT 04274; TBullets users ['impact:21', 'muzzle:31']
+  row 181: el0 CUT 04253; TBullets users ['muzzle:21']
+  row 183: el0 CUT 08001, el1 CUT 08001, el2 CUT 08001; TBullets users ['muzzle:3']
+  row 185: el0 CUT 04258, el1 BODY 447; TBullets users ['muzzle:5', 'muzzle:36']
+  row 190: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:24']
+  row 191: el0 CUT 04252; TBullets users ['muzzle:4']
+  row 193: el0 CUT 04252; TBullets users ['muzzle:22']
+  row 195: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:14', 'muzzle:42']
+  row 197: el0 CUT 04253; TBullets users ['muzzle:23']
+  row 200: el0 CUT 04253; TBullets users ['muzzle:19', 'muzzle:43']
+  row 202: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:11']
+  TShips death col 47 hitting those rows: none
+  scenes using body 00314: [749, 4261]
+  scenes using body 00444: [4252]
+  scenes using body 00445: [4251]
+  scenes using body 00446: [4253]
+  scenes using body 00447: [4258]
+  scenes using body 00450: [4260]
+  scenes using body 00582: [4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274]
+  scenes using body 10463: [4437]
+  scenes using body 12009: [749, 8001]
+== AP: TBullets addon/02.cat (45 rows), Effects addon/01.cat (127 rows)
+muzzle row 22 (EDF_REINIT) <- 0:SS_BULLET_IRE, 9:SS_BULLET_PD, 18:SS_BULLET_PSG, 25:SS_BULLET_PBC, 37:SS_BULLET_FLAK_CLUSTER_FRAG, 38:SS_BULLET_FLAK_CLUSTER_FRAG_FRAG, 39:SS_BULLET_FLAK_ALPHA_FRAG, 40:SS_BULLET_TERRANANTIFIGHTER_FRAG
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 0 ms, timeout 150 ms, offset 0/0/150
+    LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 33 (EDF_REINIT) <- 1:SS_BULLET_PAC, 2:SS_BULLET_MASS
+    CUT 4260 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/150
+    LIGHT 7 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 183 (EDF_REINIT) <- 3:SS_BULLET_PRG
+    CUT 8001 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 0 ms, timeout 50 ms, offset 0/0/150
+    CUT 8001 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 25 ms, timeout 50 ms, offset 0/0/150
+    CUT 8001 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.031 start 50 ms, timeout 100 ms, offset 0/0/150
+    LIGHT 5 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 191 (EDF_REINIT) <- 4:SS_BULLET_EBC
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.026 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.0075 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 185 (EDF_REINIT) <- 5:SS_BULLET_FBL, 36:SS_BULLET_FBL_FRAG
+    CUT 4258 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.027 start 0 ms, timeout 150 ms, offset 0/0/150
+    BODY 447 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.005..0.03 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 24 (EDF_REINIT) <- 6:SS_BULLET_HEPT, 17:SS_BULLET_PAL, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.0075 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 34 (EDF_REINIT) <- 7:SS_BULLET_IOND
+    CUT 4261 [TIMEOUT|CUT|0] size 0.031..0.031 start 0 ms, timeout 150 ms, offset 0/0/350
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.0075 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 10 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 49 (EDF_REINIT) <- 8:SS_BULLET_PBE
+    CUT 4437 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.001..0.011 start 0 ms, timeout 200 ms, offset 0/0/150
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.005 start 0 ms, timeout 200 ms, offset 0/0/250
+    LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.011 start 0 ms, timeout 200 ms, offset 0/0/0
+muzzle row 25 (EDF_REINIT) <- 10:SS_BULLET_EMP, 28:SS_BULLET_MINING, 41:SS_BULLET_EMP_1
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.026 start 0 ms, timeout 150 ms, offset 0/0/0
+    LIGHT 4 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 202 (EDF_REINIT) <- 11:SS_BULLET_CIG
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0133..0.075 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.0002..0.0011 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.002..0.022 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0133..0.0510 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 179 (EDF_REINIT) <- 12:SS_BULLET_IPG, 44:SS_BULLET_IPG_FRAG
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.01..0.10 start 0 ms, timeout 675 ms, offset 0/0/250
+    BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.03 start 0 ms, timeout 210 ms, offset 0/0/0
+    LIGHT 118 [GROW|TIMEOUT|LIGHT|0] size 0.002..0.0405 start 0 ms, timeout 650 ms, offset 0/0/0
+    BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0001..0.025 start 20 ms, timeout 330 ms, offset 0/0/0
+muzzle row 152 (EDF_REINIT) <- 13:SS_BULLET_ESR
+    CUT 4437 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.0151 start 0 ms, timeout 250 ms, offset 0/0/150
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.018..0.1521 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.008..0.029 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 117 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.004..0.122 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 195 (EDF_REINIT) <- 14:SS_BULLET_MAM, 42:SS_BULLET_MAM_1
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.02533..0.1875 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.0005..0.00251 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.051 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.02533..0.1275 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 157 (EDF_REINIT) <- 15:SS_BULLET_FLAK_ALPHA, 16:SS_BULLET_FLAK_CLUSTER, 30:SS_BULLET_DUMMY1
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0053..0.550 start 0 ms, timeout 575 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.011 start 0 ms, timeout 450 ms, offset 0/0/250
+    BODY 10664 [TIMEOUT|GROWANDSHRINK|FADEOUT|I3DF_2D] size 0.0153..0.45 start 0 ms, timeout 450 ms, offset 0/0/0
+    LIGHT 2 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.3 start 0 ms, timeout 300 ms, offset 0/0/0
+    CUT 4265 [TIMEOUT|CUT|GROW|RANDOMROT|FADEOUT|0] size 0.0012..0.0128 start 0 ms, timeout 200 ms, offset 0/0/0
+muzzle row 200 (EDF_REINIT) <- 19:SS_BULLET_TERANTIFIGHTER, 43:SS_BULLET_TERRANANTIFIGHTER_1
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.10..0.1825 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.011 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.22 start 200 ms, timeout 400 ms, offset 0/0/0
+muzzle row 52 (EDF_REINIT) <- 20:SS_BULLET_PPC
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.133..0.75 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.002..0.011 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.22 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.133..0.510 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 181 (EDF_REINIT) <- 21:SS_BULLET_IONC
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.02..0.40 start 0 ms, timeout 675 ms, offset 0/0/250
+    BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.12 start 0 ms, timeout 210 ms, offset 0/0/0
+    LIGHT 118 [GROW|TIMEOUT|LIGHT|0] size 0.003..0.16 start 0 ms, timeout 650 ms, offset 0/0/0
+    BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0002..0.1 start 20 ms, timeout 330 ms, offset 0/0/0
+muzzle row 193 (EDF_REINIT) <- 22:SS_BULLET_GAUSS
+    CUT 4252 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.018..0.321 start 0 ms, timeout 150 ms, offset 0/0/0
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.008..0.029 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.004..0.122 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 197 (EDF_REINIT) <- 23:SS_BULLET_IBL
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.002..0.062 start 0 ms, timeout 150 ms, offset 0/0/150
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.001..0.015 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.061 start 0 ms, timeout 150 ms, offset 0/0/0
+muzzle row 190 (EDF_REINIT) <- 24:SS_BULLET_PSP
+    CUT 4253 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0533..0.375 start 0 ms, timeout 925 ms, offset 0/0/250
+    EMPTY -1 [LENSFLARE|GROWANDSHRINK|TIMEOUT|I3DF_HASLENSFLARE] size 0.001..0.00511 start 0 ms, timeout 150 ms, offset 0/0/250
+    LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.11 start 200 ms, timeout 400 ms, offset 0/0/0
+    CUT 4251 [GROWANDSHRINK|TIMEOUT|CUT|0] size 0.0533..0.2510 start 0 ms, timeout 775 ms, offset 0/0/250
+muzzle row 180 (0) <- 31:SS_BULLET_DUMMY2
+    CUT 4274 [TIMEOUT|CUT|FADEOUT|FADEOUTBODY|0] size .0170...0324 start 0 ms, timeout 560 ms, offset 0/0/0
+    BODY 12001 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.7..0.85 start 0 ms, timeout 1440 ms, offset 0/0/0
+    LIGHT 4 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.20..2.00 start 200 ms, timeout 700 ms, offset 0/0/0
+    BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.1..0.4 start 0 ms, timeout 560 ms, offset 0/0/0
+scenes used by muzzle rows:
+  scene 04251 (01.cat): part bodies [445], 3 keys; muzzle rows [22, 52, 157, 190, 195, 202]
+  scene 04252 (01.cat): part bodies [444], 3 keys; muzzle rows [24, 152, 191, 193]
+  scene 04253 (01.cat): part bodies [446], 3 keys; muzzle rows [25, 52, 179, 181, 190, 195, 197, 200, 202]
+  scene 04258 (01.cat): part bodies [447], 3 keys; muzzle rows [185]
+  scene 04260 (01.cat): part bodies [450], 3 keys; muzzle rows [33]
+  scene 04261 (01.cat): part bodies [314], 3 keys; muzzle rows [34]
+  scene 04265 (None): part bodies None, None keys; muzzle rows [157]
+  scene 04274 (01.cat): part bodies [582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582, 582], 404 keys; muzzle rows [180]
+  scene 04437 (01.cat): part bodies [10463], 0 keys; muzzle rows [49, 152]
+  scene 08001 (01.cat): part bodies [12009], 3 keys; muzzle rows [183]
+  body 00314 (01.cat) part ['B_Flash']: 39 vertices, 18 textured faces, UV rect (0.001, 0.611, 0.669, 1.016); MATERIAL3 tex 384 -> Materials row 384 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00444 (01.cat) part ['B_fire']: 19 vertices, 8 textured faces, UV rect (0.001, 0.513, 0.991, 0.985); MATERIAL3 tex 376 -> Materials row 376 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00445 (01.cat) part ['B_Muendung']: 203 vertices, 100 textured faces, UV rect (0.003, -0.002, 0.412, 0.511); MATERIAL3 tex 384 -> Materials row 384 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00446 (01.cat) part ['B_Muendung']: 107 vertices, 53 textured faces, UV rect (0.0, 0.548, 0.991, 0.998); MATERIAL3 tex 383 -> Materials row 383 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00447 (01.cat) part ['B_Muendung']: 107 vertices, 53 textured faces, UV rect (0.0, 0.548, 0.788, 0.998); MATERIAL3 tex 383 -> Materials row 383 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00450 (01.cat) part ['B_Muendung']: 203 vertices, 100 textured faces, UV rect (0.408, -0.002, 0.796, 0.511); MATERIAL3 tex 384 -> Materials row 384 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 00582 (01.cat) part ['B_part']: 4 vertices, 2 textured faces, UV rect (-0.499, 0.75, -0.249, 1.0); MATERIAL3 tex 380 -> Materials row 380 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 10463 (01.cat) part []: 0 vertices, 112 textured faces, UV rect (0.001, 0.001, 0.483, 0.124); MATERIAL5 tex 380 -> Materials row 380 flags MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY = 0x8012
+  body 12009 (01.cat) part []: 0 vertices, 100 textured faces, UV rect (0.406, 0.241, 0.57, 0.447); 
+every Effects element reaching a muzzle scene or its bodies:
+  row 22: el0 CUT 04251; TBullets users ['muzzle:0', 'muzzle:9', 'muzzle:18', 'muzzle:25', 'muzzle:37', 'muzzle:38', 'muzzle:39', 'muzzle:40']
+  row 24: el0 CUT 04252; TBullets users ['muzzle:6', 'muzzle:17', 'muzzle:26', 'muzzle:27']
+  row 25: el0 CUT 04253; TBullets users ['muzzle:10', 'muzzle:28', 'muzzle:41']
+  row 26: el0 CUT 04251; TBullets users none
+  row 31: el0 CUT 04258; TBullets users none
+  row 33: el0 CUT 04260; TBullets users ['muzzle:1', 'muzzle:2']
+  row 34: el0 CUT 04261; TBullets users ['muzzle:7']
+  row 47: el3 CUT 04265; TBullets users none
+  row 49: el0 CUT 04437; TBullets users ['muzzle:8']
+  row 52: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:20']
+  row 53: el0 CUT 04274; TBullets users ['impact:20']
+  row 54: el0 CUT 04251; TBullets users none
+  row 69: el0 CUT 04274; TBullets users ['impact:28']
+  row 70: el0 CUT 04274; TBullets users ['impact:11']
+  row 152: el0 CUT 04437, el1 CUT 04252; TBullets users ['muzzle:13']
+  row 157: el0 CUT 04251, el4 CUT 04265; TBullets users ['muzzle:15', 'muzzle:16', 'muzzle:30']
+  row 169: el2 CUT 04253; TBullets users none
+  row 179: el0 CUT 04253; TBullets users ['muzzle:12', 'muzzle:44']
+  row 180: el0 CUT 04274; TBullets users ['impact:21', 'muzzle:31']
+  row 181: el0 CUT 04253; TBullets users ['muzzle:21']
+  row 183: el0 CUT 08001, el1 CUT 08001, el2 CUT 08001; TBullets users ['muzzle:3']
+  row 185: el0 CUT 04258, el1 BODY 447; TBullets users ['muzzle:5', 'muzzle:36']
+  row 190: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:24']
+  row 191: el0 CUT 04252; TBullets users ['muzzle:4']
+  row 193: el0 CUT 04252; TBullets users ['muzzle:22']
+  row 195: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:14', 'muzzle:42']
+  row 197: el0 CUT 04253; TBullets users ['muzzle:23']
+  row 200: el0 CUT 04253; TBullets users ['muzzle:19', 'muzzle:43']
+  row 202: el0 CUT 04253, el3 CUT 04251; TBullets users ['muzzle:11']
+  TShips death col 47 hitting those rows: none
+  scenes using body 00314: [749, 4261]
+  scenes using body 00444: [4252]
+  scenes using body 00445: [4251]
+  scenes using body 00446: [4253]
+  scenes using body 00447: [4258]
+  scenes using body 00450: [4260]
+  scenes using body 00582: [4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274, 4274]
+  scenes using body 10463: [4437]
+  scenes using body 12009: [749, 8001]

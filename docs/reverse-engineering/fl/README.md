@@ -38,3 +38,5 @@ Notes added for the current port (static, checked against the hash above; not ye
 - [bullet-draw-batch.md](bullet-draw-batch.md): the instanced bullet batch (loop, submit, records, draw shape), one
   body per draw, the traversal fallback, the per-body identity at `0x097af8`, the bullet record units and the
   corrected bolt length rule (2026-11-08).
+- [muzzle-flash-draw.md](muzzle-flash-draw.md): the game's muzzle flash body (Effects CUT scene, body 445), its
+  draw through the material submit, the bound state (ONE/ONE, z-write off), its animation and sharing (2026-11-09).

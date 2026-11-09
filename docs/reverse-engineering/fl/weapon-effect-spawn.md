@@ -189,6 +189,13 @@ muzzle row. In the FL installation 5 of 45 TBullets rows have col 21 = 0 (`SS_BU
 `KH_GAMMA`, `REPAIR`), and their shots never reach the FL muzzle site [s data]. A per-shot muzzle tap on FL for
 those rows would need a different site [u].
 
+**What the muzzle row draws** (2026-11-09, [muzzle-flash-draw.md](muzzle-flash-draw.md)). Col 21 is an Effects
+row, for the IRE row 22. Its element 0 is a `CUT` scene (04251) whose one part is body 445, a 3D mesh. The mesh is
+drawn through the traversal and the material submit `0x0e7142` → `0x0e0f30` as a classic `MATERIAL3` body:
+`standard_lighting` `DEFAULT`, texture 384, additive ONE/ONE, z-write off. It is identified at the draw by node
+`+0x144` = 445. The engine animates only the root's scale (grow-and-shrink, 150 ms) and its placement from the ship
+node.
+
 ### 2.6 Death `0x0543b3` (kill routine `0x0542f0`) and the hull-copy fade
 
 The kill routine is ECX = obj (ESI), `[ebp+8]` reason word (`0x05430b`), `[ebp+0xc]` killer (EBX, `0x054330`),
