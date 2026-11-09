@@ -27,7 +27,7 @@ bool resolve_path() {
     return true;
 }
 void log_values(const char* source, const pf::Tune& t, unsigned seen) {
-    char keys[160] = "", values[160] = "";
+    char keys[256] = "", values[256] = "";
     unsigned kn = 0, vn = 0;
     pf::Tune copy = t;
     for (unsigned k = 0; k < pf::tune_keys; ++k) {

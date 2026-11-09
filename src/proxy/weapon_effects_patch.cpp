@@ -60,6 +60,8 @@ struct Period {
     std::uint32_t projectile_unhandled = 0, projectile_unpooled = 0, projectile_sampled = 0;
     std::uint32_t projectile_static = 0, projectile_jumped = 0; // entry-frames: position unchanged / off the prediction
     std::uint32_t projectile_ring_trimmed = 0;                  // bolt-frames whose comet ring was trimmed
+    std::uint32_t projectile_flashes = 0, projectile_pulses = 0; // muzzle flashes and hull pulses drawn
+    std::uint32_t projectile_flash_lost = 0, projectile_flash_dropped = 0; // shooter unreadable; past the frame's room
     float projectile_us_max = 0.f;
 } period_{};
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
@@ -511,16 +513,18 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     const bool taps = mode == core::mode_observe;
     const bool bolts = core::bolts_mode(mode);
     const bool booms = core::explosions_mode(mode);
-    // The projectile stage (every stage mode on FL): the object tap registers the enabled bodies' bullets and the batch
-    // submit skips their instanced draw while the stage owns the frame.
+    // The projectile stage (every stage mode on FL): the object tap registers the enabled bodies' bullets, the batch
+    // submit skips their instanced draw while the stage owns the frame, and the muzzle site skips their shots' game
+    // flash (the stage draws its own; docs/architecture/muzzle-flash-look.md section 4).
     const bool projectiles = core::stage_mode(mode);
     if (!taps) site_state_[1] = site_state_[2] = "not_used";
-    if (!bolts) site_state_[4] = site_state_[5] = "not_used";
+    if (!bolts && !projectiles) site_state_[4] = "not_used";
+    if (!bolts) site_state_[5] = "not_used";
     if (!bolts && !projectiles) site_state_[3] = "not_used";
     if (!booms) site_state_[6] = "not_used";
     if (!projectiles) site_state_[7] = "not_used";
     const auto used = [&](unsigned i) {
-        return i == 0 || (i < 3 ? taps : i == 3 ? bolts || projectiles : i < 6 ? bolts : i == 6 ? booms : projectiles);
+        return i == 0 || (i < 3 ? taps : i == 3 || i == 4 ? bolts || projectiles : i == 5 ? bolts : i == 6 ? booms : projectiles);
     };
     core::ProjectilePool& pool = x3m_projectile_pool;
     pool.skip_on = 0;
@@ -550,7 +554,7 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
         site_state_[0] = "frame_mismatch";
         return done("frame_mismatch", false);
     }
-    if (bolts && !fl_witnesses_match(base, S::muzzle_witnesses)) {
+    if (used(4) && !fl_witnesses_match(base, S::muzzle_witnesses)) {
         site_state_[4] = "frame_mismatch";
         return done("frame_mismatch_muzzle", false);
     }
@@ -596,6 +600,8 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     pool.table_rows = table_ ? table_->rows : 0;
     pool.body_count = 0;
     for (std::uint32_t& w : pool.bits) w = 0;
+    for (core::MuzzleRecord& m : pool.muzzles) m = core::MuzzleRecord{}; // the muzzle site's records start empty
+    pool.muzzle_sequence = 0;
     projectile_rows_ = table_ ? x3m::weapon_effects::projectile_family::resolve_rows(*table_)
                               : x3m::weapon_effects::projectile_family::Resolution{};
     pool.row_count = projectile_rows_.count;
@@ -816,12 +822,16 @@ void clear_owned() {
 // submits skipped, traversal draws dropped and unseen, bolts drawn, entries tracked now, retired, the pool's overflow and
 // recycled nodes since the last row, the stage's worst CPU time, and the entry-frames whose position did not change
 // since the previous stage frame (static) or left the velocity prediction (jumped), and the bolt-frames whose comet ring
-// the adaptive rule trimmed (ring_trimmed; projectile-look.md section 2).
+// the adaptive rule trimmed (ring_trimmed; projectile-look.md section 2). The muzzle (muzzle-flash-look.md section 4):
+// enabled-body shots whose game flash the muzzle site skipped and those it forwarded (latch off: the engine's flash
+// shows), records evicted; the tap's flash matches (matched, unmatched, registered too late); flash quads and hull
+// pulses drawn, flashes whose shooter could not be read, flashes past the frame's room.
 #define X3M_PROJECTILE_FIELDS                                                                                          \
     " projectile_owned=%lu projectile_skipped=%lu projectile_dropped=%lu projectile_unhandled=%lu projectile_bolts=%lu " \
     "projectile_tracked=%lu projectile_retired=%lu projectile_overflow=%lu projectile_recycled=%lu projectile_bodies=%lu " \
     "projectile_us_max=%.1f projectile_unpooled=%lu projectile_sampled=%lu projectile_static=%lu projectile_jumped=%lu " \
-    "projectile_ring_trimmed=%lu"
+    "projectile_ring_trimmed=%lu muzzle_skipped=%lu muzzle_unskipped=%lu muzzle_evicted=%lu flash_matched=%lu "        \
+    "flash_unmatched=%lu flash_stale=%lu flash_drawn=%lu pulse_drawn=%lu flash_lost=%lu flash_dropped=%lu"
 #define X3M_PROJECTILE_ARGS                                                                                            \
     , static_cast<unsigned long>(period_.projectile_owned),                                                           \
         static_cast<unsigned long>(x3m_projectile_pool.skipped - projectile_seen_skipped_),                             \
@@ -833,7 +843,16 @@ void clear_owned() {
         static_cast<unsigned long>(x3m_projectile_pool.body_count), double(period_.projectile_us_max),                \
         static_cast<unsigned long>(period_.projectile_unpooled), static_cast<unsigned long>(period_.projectile_sampled), \
         static_cast<unsigned long>(period_.projectile_static), static_cast<unsigned long>(period_.projectile_jumped), \
-        static_cast<unsigned long>(period_.projectile_ring_trimmed)
+        static_cast<unsigned long>(period_.projectile_ring_trimmed),                                                  \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.muzzle_skipped - projectile_seen_.muzzle_skipped),     \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.muzzle_unskipped - projectile_seen_.muzzle_unskipped), \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.muzzle_evicted - projectile_seen_.muzzle_evicted),     \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.flash_matched - projectile_seen_.flash_matched),       \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.flash_unmatched - projectile_seen_.flash_unmatched),   \
+        static_cast<unsigned long>(x3m_projectile_pool.counters.flash_stale - projectile_seen_.flash_stale),           \
+        static_cast<unsigned long>(period_.projectile_flashes), static_cast<unsigned long>(period_.projectile_pulses), \
+        static_cast<unsigned long>(period_.projectile_flash_lost),                                                     \
+        static_cast<unsigned long>(period_.projectile_flash_dropped)
 #else
 #define X3M_PROJECTILE_FIELDS ""
 #define X3M_PROJECTILE_ARGS
@@ -881,6 +900,10 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.projectile_static += stage.projectile_static;
     period_.projectile_jumped += stage.projectile_jumped;
     period_.projectile_ring_trimmed += stage.projectile_ring_trimmed;
+    period_.projectile_flashes += stage.projectile_flashes;
+    period_.projectile_pulses += stage.projectile_pulses;
+    period_.projectile_flash_lost += stage.projectile_flash_lost;
+    period_.projectile_flash_dropped += stage.projectile_flash_dropped;
     if (stage.projectile_us > period_.projectile_us_max) period_.projectile_us_max = stage.projectile_us;
 #endif
     ++period_.frames;

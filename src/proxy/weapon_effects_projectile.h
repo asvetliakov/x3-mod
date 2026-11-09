@@ -1,4 +1,5 @@
 #pragma once
+#include "weapon_effects_bolt.h"
 #include "weapon_effects_core.h"
 #include <cstddef>
 
@@ -20,6 +21,15 @@
 // an expired, recycled or unreadable one, and one the tap has not seen for stale_ms game ms (at least three game
 // steps: SETA-aware); Present empties the pool on a load or a sector change. A table generated from another TBullets
 // (its row count differs from the engine's) resolves no body: the stage stays off (stale).
+//
+// The muzzle (docs/architecture/muzzle-flash-look.md section 4 and "Implementation (2026-11-09)"; FL 0x04f639 -> the
+// spawner 0x0150e0, reached only for TBullets rows whose col 21 is not 0): projectile_muzzle reads the shot's body (word
+// +0 of the TBullets record at ESI) and tests it against the same enabled set (bits) the batch stub tests. An enabled
+// body's shot relights its (ship, gun slot) MuzzleRecord (t0 and the previous t0: the refire gap) and is skipped (the
+// spawner not called, the game's flash not made) while Present latched skip_on, the record then ours; with the latch
+// off it is forwarded (muzzle_unskipped). Any other body forwards untouched. The object tap matches a newly registered
+// entry to the ours record of its shooter (ext+4) fired at its birth (t0 == ext+8: one clock, cfg +0x708) and hands
+// the stage the gap; an entry registered more than flash_stale_steps game steps after its birth gets no flash.
 namespace x3m::weapon_effects::core {
 namespace projectile {
 constexpr unsigned pool_capacity = 512, slot_count = 1024, max_probes = 32;
@@ -35,6 +45,10 @@ constexpr std::uint32_t stale_ms = 250;
 // The comet's ring (projectile-look.md section 2, FL 60 A): the heads drawn before the previous frame's, at most this
 // many, so a bolt is at most 1 + trail_ring quads.
 constexpr unsigned trail_ring = 4;
+// The muzzle flash: the bullet extension's shooter, the registration's staleness in game steps, the entry's flash state.
+constexpr unsigned ext_owner = 4;
+constexpr std::uint32_t flash_stale_steps = 2;
+enum FlashState : std::uint8_t { flash_none = 0, flash_pending = 1, flash_live = 2, flash_done = 3 };
 static_assert((slot_count & (slot_count - 1u)) == 0 && slot_count >= 2 * pool_capacity, "half full at most");
 }
 struct ProjectileEntry {
@@ -58,6 +72,15 @@ struct ProjectileEntry {
     std::uint32_t ring_us[projectile::trail_ring];
     std::uint32_t ring_count;
     std::uint32_t spot_state; // the last frame's: 1 a spot, 2 a streak or comet (the spot's hysteresis)
+    // The muzzle flash (muzzle-flash-look.md): the tap's match at registration, then the stage's state.
+    std::uint32_t shooter;      // ext+4 at registration (the firing object; the stage reads it through the bounded reader)
+    std::uint32_t flash_gap_ms; // the matched shot's refire gap t0 - prev_t0 (game ms; 0 a first shot: one frame)
+    std::uint8_t flash;         // projectile::FlashState
+    std::uint8_t flash_frames;  // stage frames the flash was drawn on
+    std::uint8_t flash_pad[2];
+    std::uint32_t flash_node, flash_handle; // the shooter's node and node+0x28 at the flash's first stage frame
+    std::uint32_t flash_off[3];  // the muzzle in the shooter's frame (engine units along its rows, float bits)
+    std::uint32_t flash_axis[3]; // the shot's axis in the shooter's frame (unit, float bits)
 };
 struct ProjectileBody {
     std::uint32_t id;         // the engine body id (node +0x144)
@@ -66,6 +89,10 @@ struct ProjectileBody {
 };
 struct ProjectileCounters {
     std::uint32_t taps = 0, registered = 0, recycled = 0, overflow = 0, probe_full = 0;
+    // the muzzle site: calls, enabled-body shots skipped and forwarded (latch off or no shooter node), records evicted;
+    // the tap's flash match at registration: matched to an ours record, unmatched, registered too late
+    std::uint32_t muzzle_calls = 0, muzzle_skipped = 0, muzzle_unskipped = 0, muzzle_evicted = 0;
+    std::uint32_t flash_matched = 0, flash_unmatched = 0, flash_stale = 0;
 };
 // The batch stub reads skip_on, bumps skipped and tests bits at fixed offsets (the static_assert below).
 struct ProjectilePool {
@@ -90,6 +117,9 @@ struct ProjectilePool {
     std::int32_t stage_eye[3]{};   // the eye (engine units) of the stage frame stage_eye_frame (a first frame's camera travel)
     std::uint32_t stage_eye_frame = 0;
     std::uint32_t stage_wanted = 0; // the quads the last stage frame's bolts wanted untrimmed (the adaptive ring)
+    // The muzzle records of the enabled bodies' shots (projectile_muzzle; one per (ship, gun slot), the oldest replaced).
+    std::uint32_t muzzle_sequence = 0;
+    MuzzleRecord muzzles[muzzle::record_capacity]{};
 };
 static_assert(offsetof(ProjectilePool, skip_on) == 0 && offsetof(ProjectilePool, skipped) == 4 &&
                   offsetof(ProjectilePool, bits) == 8,
@@ -177,6 +207,35 @@ inline bool projectile_resolve(ProjectilePool& p) noexcept {
     p.resolved = 1;
     return true;
 }
+// A registration's muzzle-flash match (a new entry, or a recycled node: another bullet): the ours record of the entry's
+// shooter fired at its birth gives the gap; none, or registered more than flash_stale_steps game steps after the birth
+// (cfg +0x704, SETA-scaled), no flash.
+static inline __attribute__((always_inline)) void projectile_flash_match(ProjectileEntry& e, ProjectilePool& p,
+                                                                         std::uintptr_t ext, std::uintptr_t cfg,
+                                                                         std::uint32_t now, std::uint32_t created) noexcept {
+    e.shooter = ext ? rd32(ext + projectile::ext_owner) : 0u;
+    e.flash_gap_ms = 0;
+    e.flash_frames = 0;
+    e.flash = projectile::flash_none;
+    if (!e.shooter || !created) {
+        ++p.counters.flash_unmatched;
+        return;
+    }
+    const std::uint32_t step = cfg ? rd32(cfg + projectile::cfg_step_ms) : 0u;
+    if (std::int32_t(now - created) > std::int32_t(projectile::flash_stale_steps * (step < 1000u ? step : 1000u))) {
+        ++p.counters.flash_stale;
+        return;
+    }
+    for (unsigned i = 0; i < muzzle::record_capacity; ++i) {
+        const MuzzleRecord& m = p.muzzles[i];
+        if (!m.sequence || !m.ours || m.t0 != created || m.ship != e.shooter) continue;
+        e.flash_gap_ms = m.prev_t0 ? m.t0 - m.prev_t0 : 0u;
+        e.flash = projectile::flash_pending;
+        ++p.counters.flash_matched;
+        return;
+    }
+    ++p.counters.flash_unmatched;
+}
 // The object tap's projectile half: obj is the engine's live object of this update pass (plain loads are safe here).
 static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t obj, ProjectilePool& p) noexcept {
     if (!p.armed || !obj || rd16(obj + layout::obj_class) != layout::class_bullet) return;
@@ -206,6 +265,7 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
         if (e.obj != std::uint32_t(obj) || e.handle != handle) {
             ++p.counters.recycled;
             e.stage_frame = 0; // another bullet: no bridge from the old one's streak
+            projectile_flash_match(e, p, ext, cfg, now, created);
         }
         e.obj = std::uint32_t(obj);
         e.handle = handle;
@@ -232,8 +292,68 @@ static inline __attribute__((always_inline)) void projectile_tap(std::uintptr_t 
     e.body = body;
     e.seen_ms = now;
     e.stage_frame = 0;
+    projectile_flash_match(e, p, ext, cfg, now, created);
     p.slots[free_slot] = std::uint16_t(p.count + 1u);
     ++p.count;
     ++p.counters.registered;
+}
+// The FL muzzle site's body (0x04f639 -> 0x0150e0): the ship [esp+8], EDX the gun slot, ESI the TBullets record offset
+// (index x 0xdb8; the window's own col-21 read used it). Returns 1 to skip the spawner (the game's muzzle flash) for a
+// shot of an enabled body while skip_on is latched, else 0 (forward). Plain loads of what the engine itself just read
+// (the TBullets record, the ship and its node); no call, no allocation.
+static inline __attribute__((always_inline)) int projectile_muzzle(std::uintptr_t ship, std::uint32_t slot,
+                                                                   std::uint32_t esi, ProjectilePool& p) noexcept {
+    ++p.counters.muzzle_calls;
+    if (!p.armed || !p.resolved || p.stale || !p.body_count || !p.globals.bullet_table_slot) return 0;
+    if (esi % layout::type_stride || (p.engine_rows && esi / layout::type_stride >= p.engine_rows)) return 0;
+    const std::uintptr_t table = rd32(p.globals.bullet_table_slot);
+    if (!table || !projectile_body_enabled(p, rd16(table + esi + projectile::type_body))) return 0;
+    const std::uintptr_t node = live_node(ship);
+    if (!node) { // no record without the shooter's node: the game keeps its flash
+        ++p.counters.muzzle_unskipped;
+        return 0;
+    }
+    const std::uint32_t handle = rd32(node + layout::node_handle);
+    const std::uintptr_t cfg = p.globals.cfg_slot ? rd32(p.globals.cfg_slot) : 0u;
+    const std::uint32_t now = cfg ? rd32(cfg + layout::cfg_game_ms) : 0u;
+    MuzzleRecord* r = nullptr;
+    MuzzleRecord* oldest = nullptr; // the first free record, else the one shot longest ago
+    for (unsigned i = 0; i < muzzle::record_capacity; ++i) {
+        MuzzleRecord& m = p.muzzles[i];
+        if (!m.sequence) {
+            if (!oldest || oldest->sequence) oldest = &m;
+            continue;
+        }
+        if (m.ship == std::uint32_t(ship) && m.slot == std::uint16_t(slot)) {
+            r = &m;
+            break;
+        }
+        if (!oldest || (oldest->sequence && now - m.t0 > now - oldest->t0)) oldest = &m;
+    }
+    if (r && r->handle == handle && r->node == std::uint32_t(node)) {
+        r->prev_t0 = r->t0;
+        ++r->shots;
+    } else { // a new (ship, slot), or another ship at the same object: no gap from the old record
+        if (!r) {
+            r = oldest;
+            if (r->sequence) ++p.counters.muzzle_evicted;
+            r->ship = std::uint32_t(ship);
+            r->slot = std::uint16_t(slot);
+        }
+        r->prev_t0 = 0;
+        r->shots = 1;
+    }
+    r->node = std::uint32_t(node);
+    r->handle = handle;
+    r->t0 = now;
+    r->row = std::uint16_t(esi / layout::type_stride);
+    r->sequence = ++p.muzzle_sequence ? p.muzzle_sequence : ++p.muzzle_sequence;
+    const int skip = p.skip_on ? 1 : 0;
+    r->ours = std::uint8_t(skip);
+    if (skip)
+        ++p.counters.muzzle_skipped;
+    else
+        ++p.counters.muzzle_unskipped;
+    return skip;
 }
 } // namespace x3m::weapon_effects::core

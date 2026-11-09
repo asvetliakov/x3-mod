@@ -6,14 +6,14 @@
 //
 // A family is (shape, mount tier) as the table generator classifies every TBullets row (weapon_effects.json: shape from
 // the body's elongation, mount tier from the ship catalogue; weapon_overrides.json for exceptions), with one Tune (the
-// nine look numbers) and one compile-time list of enabled TBullets ids. A row is drawn by the stage when its id is in
+// nine bolt and five muzzle-flash numbers) and one compile-time list of enabled TBullets ids. A row is drawn by the stage when its id is in
 // its family's list and the table puts it in that family; every other row sharing its body (the batch is per body) is
 // drawn with it. Adding a family is a second Family entry with its own list and Tune, not a code path.
 //
 // THE PLACE A ROW IS ENABLED: the *_rows lists below. Today only SS_BULLET_IRE (and, through its body bullet_ls_alpha,
 // rows 37-39, the cluster and alpha flak fragments).
 namespace x3m::weapon_effects::projectile_family {
-// The nine numbers of a family's look (projectile-look.md section 4; the dev tuning file's keys). The streak has no
+// The numbers of a family's look (projectile-look.md section 4, muzzle-flash-look.md section 5; the dev tuning file's keys). The streak has no
 // multiplier: its length is the bolt's travel since the previous frame (the bridged law, projectile-look.md section 2),
 // so the file's former `stretch_k` key is an unknown key, ignored without a row. The comet (FL 60 A): trail_ms and
 // head_gain; trail_ms 0 is the flat streak of FL run 60 (no trail, no head).
@@ -27,15 +27,26 @@ struct Tune {
     float stops;        // core radiance 2^(stops + calibre) x scene white
     float trail_ms;     // the trail behind the head covers the bolt's travel over this many game ms (0: no trail)
     float head_gain;    // the head's radiance over the trail's start (with a trail)
+    // The muzzle flash (docs/architecture/muzzle-flash-look.md section 5; the start values as member defaults, so a Tune
+    // written with the nine bolt numbers carries them):
+    float flash_core_mult = 1.25f; // the flash point's extent at scene white over the bolt core's at the same depth
+    float flash_len_m = 2.5f;      // the streak's world length from the muzzle along the shot's axis (0: no streak)
+    float flash_life_frac = 0.2f;  // the life as a share of the gun's measured refire gap (capped at two game steps)
+    float flash_stops = 2.f;       // the flash's radiance over the bolt core's, in stops
+    float hull_pulse_r = 3.f;      // the hull pulse's radius in metres at calibre 0 (x (1 + calibre); 0: no pulse)
 };
-constexpr unsigned tune_keys = 9;
-constexpr const char* tune_key_names[tune_keys] = {"core_px", "glow_ratio", "glow_gain", "hot_share", "lod_dot_m",
-                                                   "length_cap_m", "stops", "trail_ms", "head_gain"};
-constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f};
-constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f};
+constexpr unsigned tune_keys = 14;
+constexpr const char* tune_key_names[tune_keys] = {"core_px",      "glow_ratio",  "glow_gain",       "hot_share",
+                                                   "lod_dot_m",    "length_cap_m", "stops",          "trail_ms",
+                                                   "head_gain",    "flash_core_mult", "flash_len_m", "flash_life_frac",
+                                                   "flash_stops",  "hull_pulse_r"};
+constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f, 0.5f, 0.f, 0.05f, -2.f, 0.f};
+constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f, 3.f, 20.f, 0.6f, 6.f, 20.f};
 inline float& tune_at(Tune& t, unsigned k) noexcept {
-    float* const fields[tune_keys] = {&t.core_px,      &t.glow_ratio, &t.glow_gain, &t.hot_share, &t.lod_dot_m,
-                                      &t.length_cap_m, &t.stops,      &t.trail_ms,  &t.head_gain};
+    float* const fields[tune_keys] = {&t.core_px,         &t.glow_ratio,  &t.glow_gain,       &t.hot_share,
+                                      &t.lod_dot_m,       &t.length_cap_m, &t.stops,          &t.trail_ms,
+                                      &t.head_gain,       &t.flash_core_mult, &t.flash_len_m, &t.flash_life_frac,
+                                      &t.flash_stops,     &t.hull_pulse_r};
     return *fields[k < tune_keys ? k : 0];
 }
 constexpr float reference_m = 500.f; // the tuning numbers' reference distance, never a constant in the program
@@ -53,13 +64,15 @@ constexpr Family families[family_count] = {
     // Baked from FL 61 A (2026-11-09): the user's accepted dev file values, except core_px 1.0 (the file's 0.5 looked
     // better but too faint over bright nebulas: the user's choice). The comet is off (trail_ms 0: at the user's frame
     // rate, with the core saturating, it made no visible difference); the mechanism stays, head_gain 1.5 for a trail.
+    // The muzzle flash at its design start values (2026-11-09, not yet flown: FL run 62 judges it).
     {"fighter_tracer", core::shape_tracer, 0, fighter_tracer_rows, sizeof(fighter_tracer_rows) / sizeof(fighter_tracer_rows[0]),
-     {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f}},
+     {1.f, 2.f, 0.3f, 0.4f, 3000.f, 60.f, 2.f, 0.f, 1.5f, 1.25f, 2.5f, 0.2f, 2.f, 3.f}},
 };
 constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
-    const float v[tune_keys] = {t.core_px,      t.glow_ratio, t.glow_gain, t.hot_share, t.lod_dot_m,
-                                t.length_cap_m, t.stops,      t.trail_ms,  t.head_gain};
+    const float v[tune_keys] = {t.core_px,         t.glow_ratio,  t.glow_gain,       t.hot_share,   t.lod_dot_m,
+                                t.length_cap_m,    t.stops,       t.trail_ms,        t.head_gain,   t.flash_core_mult,
+                                t.flash_len_m,     t.flash_life_frac, t.flash_stops, t.hull_pulse_r};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;
