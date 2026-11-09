@@ -34,14 +34,23 @@ struct Tune {
     float flash_life_ms = 80.f;    // the life in wall-clock ms from the birth (QPC; drawn every stage frame while younger)
     float flash_stops = 2.f;       // the flash's radiance over the bolt core's, in stops
     float hull_pulse_r = 3.f;      // the hull pulse's radius in metres at calibre 0 (x (1 + calibre); 0: no pulse)
+    // The bullet re-shade (X3M_WEAPON_EFFECTS=reshade; src/effects/weapon_bullet_reshade_ps.hlsl c31.xyz): the body's
+    // gain over the game's radiance, the luminance smoothstep's upper edge (the fringe fades below it), the hot core's
+    // gain (its l^4 term).
+    float rs_gain = 0.45f;
+    float rs_edge = 0.1f; // 0.5 lost the far bolt (1500 m peak 0.10x vanilla); 0.1 keeps 0.47x (2026-11-09 dumps)
+    float rs_core = 0.25f;
 };
-constexpr unsigned tune_keys = 14;
+constexpr unsigned tune_keys = 17;
 constexpr const char* tune_key_names[tune_keys] = {"core_px",      "glow_ratio",  "glow_gain",       "hot_share",
                                                    "lod_dot_m",    "length_cap_m", "stops",          "trail_ms",
                                                    "head_gain",    "flash_core_mult", "flash_len_m", "flash_life_ms",
-                                                   "flash_stops",  "hull_pulse_r"};
-constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f, 0.5f, 0.f, 16.f, -2.f, 0.f};
-constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f, 8.f, 20.f, 400.f, 6.f, 20.f};
+                                                   "flash_stops",  "hull_pulse_r", "rs_gain",        "rs_edge",
+                                                   "rs_core"};
+constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f, 0.5f, 0.f, 16.f, -2.f, 0.f,
+                                       0.f, 0.05f, 0.f};
+constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f, 8.f, 20.f, 400.f, 6.f, 20.f,
+                                       2.f, 1.f, 4.f};
 constexpr bool key_is(const char* a, const char* b) noexcept { return *a == *b && (!*a || key_is(a + 1, b + 1)); }
 constexpr unsigned key_flash_life_ms = 11; // the stage's backdate cap is checked against this key's maximum
 static_assert(key_is(tune_key_names[key_flash_life_ms], "flash_life_ms"), "the flash life key's index");
@@ -49,7 +58,8 @@ inline float& tune_at(Tune& t, unsigned k) noexcept {
     float* const fields[tune_keys] = {&t.core_px,         &t.glow_ratio,  &t.glow_gain,       &t.hot_share,
                                       &t.lod_dot_m,       &t.length_cap_m, &t.stops,          &t.trail_ms,
                                       &t.head_gain,       &t.flash_core_mult, &t.flash_len_m, &t.flash_life_ms,
-                                      &t.flash_stops,     &t.hull_pulse_r};
+                                      &t.flash_stops,     &t.hull_pulse_r, &t.rs_gain,        &t.rs_edge,
+                                      &t.rs_core};
     return *fields[k < tune_keys ? k : 0];
 }
 constexpr float reference_m = 500.f; // the tuning numbers' reference distance, never a constant in the program
@@ -76,7 +86,8 @@ constexpr unsigned fighter_tracer = 0;
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
     const float v[tune_keys] = {t.core_px,         t.glow_ratio,  t.glow_gain,       t.hot_share,   t.lod_dot_m,
                                 t.length_cap_m,    t.stops,       t.trail_ms,        t.head_gain,   t.flash_core_mult,
-                                t.flash_len_m,     t.flash_life_ms, t.flash_stops, t.hull_pulse_r};
+                                t.flash_len_m,     t.flash_life_ms, t.flash_stops, t.hull_pulse_r, t.rs_gain,
+                                t.rs_edge,         t.rs_core};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;

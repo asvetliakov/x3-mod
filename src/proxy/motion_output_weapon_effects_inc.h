@@ -26,6 +26,10 @@ void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     projectile_requested_ = requested && x3m_projectile_pool.armed;
     for (unsigned f = 0; f < weapon_effects::projectile_family::family_count; ++f)
         projectile_tune_[f] = weapon_effects::projectile_family::families[f].tune;
+    // The bullet re-shade rides the same request when the batch scope stub is live (reshade mode).
+    bullet_reshade_requested_ = requested && x3m_bullet_reshade_armed;
+    weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
+                                       bullet_reshade_constants_);
 #endif
     weapon_armed_ = false;
     weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;

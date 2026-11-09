@@ -462,6 +462,47 @@ _x3m_weapon_effects_stub_batch_fl:
     ret
     .att_syntax
 )");
+// The bullet re-shade's scope (mode_reshade; bullet-draw-batch.md section 6): the same call 0x097af8 -> 0x0e0b40, always
+// forwarded, as a call so the submit's extent is known. x3m_bullet_scope is raised before and lowered after the
+// submit; the draw hook binds the re-shade program for a draw inside it whose bound pixel shader is the game's
+// INSTANCE_BULLETS one. The stub re-pushes the two stack words (material, view) under a 4-byte pad, so the callee sees
+// its arguments where the original call put them and the stack at the original call's alignment modulo 16 (the
+// return addresses differ: the callee returns here, then here to the caller). ECX, EDX (the callee's inputs) and
+// EAX (its result) pass untouched; EBX, ESI, EDI and EBP are the callee's to preserve; EFLAGS reaches the callee as the
+// caller left it and the caller gets the callee's (the counters are updated under pushfd/popfd and the pad moves by
+// lea; the flags are dead after the call anyway: the caller's add esp,8 writes them). No handler and no call besides
+// the forwarded callee, no XMM, no string instruction: LastError and DF are the engine's. An exception unwinding
+// through the submit would leave the counter raised: weapon_effects::present zeroes it every frame while
+// x3m_bullet_reshade_armed, and a raised counter only admits draws that already bind the game's bullet program.
+// x3m_bullet_scope_calls counts the submits for the frame row. The draw hook keys on x3m_bullet_scope and on
+// MotionOutput's bullet_reshade_requested_ (taken from x3m_bullet_reshade_armed at configure_weapon_effects).
+extern "C" {
+volatile std::uint32_t x3m_bullet_scope = 0;
+volatile std::uint32_t x3m_bullet_scope_calls = 0;
+volatile std::uint32_t x3m_bullet_reshade_armed = 0; // install_base: the scope stub is live (configure_weapon_effects,
+                                                      // Present's counter reset and frame row)
+}
+asm(R"(
+    .intel_syntax noprefix
+    .text
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_batch_scope_fl
+_x3m_weapon_effects_stub_batch_scope_fl:
+    pushfd
+    add dword ptr [_x3m_bullet_scope], 1
+    add dword ptr [_x3m_bullet_scope_calls], 1
+    popfd
+    lea esp, [esp-4]
+    push dword ptr [esp+12]
+    push dword ptr [esp+12]
+    call dword ptr [_x3m_weapon_effects_continue_batch]
+    lea esp, [esp+12]
+    pushfd
+    sub dword ptr [_x3m_bullet_scope], 1
+    popfd
+    ret
+    .att_syntax
+)");
 // The batch submit 0x097af8 -> 0x0e0b40 (bullet-draw-batch.md section 5, Q2): ECX scene, EDX batch, [esp+4] material,
 // [esp+8] view. While Present latched skip_on (the stage drew the previous frame) and the batch's body id [EDX+0x0c] is
 // in the enabled set, the call is skipped with the callee's own plain ret and EAX = 1 (the caller pops its two words

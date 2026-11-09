@@ -77,6 +77,11 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/proxy/weapon_effects_projectile.h', 'src/effects/weapon_projectile_vs.hlsl',
                       'src/effects/weapon_projectile_ps.hlsl', 'src/renderer/weapon_projectile_vertex_program_inc.h',
                       'src/renderer/weapon_projectile_pixel_program_inc.h',
+                      # the bullet re-shade (docs/reverse-engineering/fl/bullet-draw-batch.md section 6)
+                      'src/effects/weapon_bullet_reshade_ps.hlsl', 'src/renderer/weapon_bullet_reshade_pixel_program_inc.h',
+                      'src/effects/weapon_bullet_reshade.hlsl', 'src/effects/weapon_bullet_reshade_flag_ps.hlsl',
+                      'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h', 'src/proxy/bullet_reshade_route.h',
+                      'src/proxy/bullet_reshade_core.h', 'verification/probe/weapon_bullet_reshade_fixture.h',
                       # the muzzle flash's hull pulse (docs/architecture/muzzle-flash-look.md)
                       'src/effects/weapon_pulse_ps.hlsl', 'src/renderer/weapon_pulse_pixel_program_inc.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
@@ -92,6 +97,10 @@ PROGRAMS = {
     'weapon_projectile_ps': ('verification/results/weapon-projectile-pixel-program.json',
                              'src/renderer/weapon_projectile_pixel_program_inc.h'),
     'weapon_pulse_ps': ('verification/results/weapon-pulse-pixel-program.json', 'src/renderer/weapon_pulse_pixel_program_inc.h'),
+    'weapon_bullet_reshade_ps': ('verification/results/weapon-bullet-reshade-pixel-program.json',
+                                 'src/renderer/weapon_bullet_reshade_pixel_program_inc.h'),
+    'weapon_bullet_reshade_flag_ps': ('verification/results/weapon-bullet-reshade-flag-pixel-program.json',
+                                      'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -136,7 +145,8 @@ def programs_current():
     for name, (record_path, header) in PROGRAMS.items():
         record = json.loads((ROOT / record_path).read_text())
         if record['source_sha256'] != sha(ROOT / record['source']) or record['header_sha256'] != sha(ROOT / header):
-            raise SystemExit(f'{name}: stale embedded program; run tools/shaders/generate_weapon_effects_programs.py')
+            raise SystemExit(f'{name}: stale embedded program; run tools/shaders/generate_weapon_effects_programs.py '
+                             '(the re-shade: generate_bullet_reshade_program.py)')
         out[name] = {k: record[k] for k in ('source', 'word_count', 'bytecode_sha256', 'target')}
     return out
 
@@ -178,7 +188,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST')
+            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -317,16 +327,45 @@ def run_fixture(args):
     return done.returncode, text
 
 
+def reshade_assets(lab, target):
+    """The game's IRE bolt mesh (66 vertices, x y z u v in body units) and fx_bullets_diff (512x512 RGBA) for the
+    re-shade dump, from the local, untracked lab assets (tools/effects/weapon_effects_lab_assets.py, view fl) into the
+    untracked build directory; False (the dump then draws its procedural stand-ins) when they are absent."""
+    import numpy as np
+    from PIL import Image
+    script = Path(lab) / 'assets.js'
+    texture = Path(lab) / 'tex' / 'fx_bullets_diff-ef82daa8.png'
+    if not script.is_file() or not texture.is_file():
+        return False
+    text = script.read_text()
+    marker = 'window.LAB_ASSETS["fl"] = '
+    body = json.JSONDecoder().raw_decode(text[text.index(marker) + len(marker):])[0]['bodies'].get(
+        'objects/effects/weapons/bullet_ls_alpha')
+    triangles = body['materials'][0]['triangles'] if body and body.get('materials') else []
+    rgba = np.asarray(Image.open(texture).convert('RGBA'))
+    if len(triangles) != 22 or rgba.shape != (512, 512, 4):
+        return False
+    target.mkdir(parents=True, exist_ok=True)
+    (target / 'ire_mesh.txt').write_text(''.join(' '.join(f'{v:.6f}' for v in vertex) + '\n'
+                                                  for triangle in triangles for vertex in triangle))
+    (target / 'ire_tex.rgba').write_bytes(rgba.tobytes())
+    return True
+
+
 def dump(args):
     """--dump DIR: the projectile look frames only (weapon_effects_projectile_dump.cpp, a separate program so the D3D
     record's source binding stays): it writes linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0,
-    clamp, sRGB; no bloom, AgX or TAA, as the design mocks); no hook fixture, no record."""
+    clamp, sRGB; no bloom, AgX or TAA, as the design mocks); no hook fixture, no record. --dump-case reshade: the bullet
+    re-shade's frames instead (fixture-ire-{vanilla,reshade}-{near,far}; bullet-draw-batch.md section 6) under
+    BUILD/dump-reshade, the far crops enlarged 6x (nearest) in the PNG."""
     import numpy as np
     from PIL import Image
     out = Path(args.dump)
     out.mkdir(parents=True, exist_ok=True)
-    raw = BUILD / 'dump'
+    raw = BUILD / ('dump-reshade' if args.dump_case == 'reshade' else 'dump')
     raw.mkdir(parents=True, exist_ok=True)
+    for stale in raw.glob('*.pfm'):
+        stale.unlink()
     BUILD.mkdir(parents=True, exist_ok=True)
     exe = BUILD / 'weapon_effects_projectile_dump.exe'
     command = ['i686-w64-mingw32-g++', *FLAGS, str(ROOT / 'verification/probe/weapon_effects_projectile_dump.cpp'),
@@ -334,8 +373,20 @@ def dump(args):
     built = subprocess.run(command, cwd=ROOT, capture_output=True, text=True)
     if built.returncode or re.search(r'\bwarning:', built.stdout + built.stderr):
         raise SystemExit('dump build failed:\n' + built.stdout + built.stderr)
-    done, text = native_host.run_native(exe, ['dump'], BUILD, args.timeout, log=BUILD / 'dump-fixture')
-    print('\n'.join(line for line in text.splitlines() if line.startswith(('DUMP', 'RESULT'))))
+    if args.dump_case == 'reshade':
+        real = reshade_assets(args.lab_assets, BUILD / 'dump-reshade-assets')
+        d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
+        argv = ['dump-reshade', 'reshade', d3dx, 'dump-reshade-assets' if real else '']
+        if args.reshade_edge is not None:
+            argv.append(f'{args.reshade_edge:g}')
+    else:
+        argv = ['dump']
+    done, text = native_host.run_native(exe, argv, BUILD, args.timeout, log=BUILD / 'dump-fixture')
+    rows = '\n'.join(line for line in text.splitlines() if line.startswith(('DUMP', 'RESULT')))
+    print(rows)
+    if args.dump_case == 'reshade':  # the frames' figures beside the PNGs (tracked; the assets row says game or standin)
+        name = 'dump_out.txt' if args.reshade_edge is None else f'dump_e{round(args.reshade_edge * 100):03d}_out.txt'
+        (out / name).write_text(rows + '\n')
     for pfm in sorted(raw.glob('*.pfm')):
         data = pfm.read_bytes()
         head = data.split(b'\n', 3)
@@ -343,7 +394,10 @@ def dump(args):
         img = np.frombuffer(head[3], dtype='<f4', count=w * h * 3).reshape(h, w, 3)[::-1]
         c = np.clip(img, 0.0, 1.0)
         srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
-        Image.fromarray((srgb * 255 + 0.5).astype(np.uint8)).save(out / (pfm.stem + '.png'))
+        image = Image.fromarray((srgb * 255 + 0.5).astype(np.uint8))
+        if args.dump_case == 'reshade' and '-far' in pfm.stem:
+            image = image.resize((w * 6, h * 6), Image.NEAREST)
+        image.save(out / (pfm.stem + '.png'))
         print('PNG', out / (pfm.stem + '.png'))
     return done.returncode
 
@@ -357,6 +411,13 @@ def main():
                              'WSL2 host through interop (native_host.py), never a fallback')
     parser.add_argument('--dump', help='write the projectile look frames as PNG into this directory (native host only); '
                                        'no other fixture runs and no record is written')
+    parser.add_argument('--dump-case', choices=('projectile', 'reshade'), default='projectile',
+                        help='with --dump: the projectile stage frames (default) or the bullet re-shade frames')
+    parser.add_argument('--reshade-edge', type=float, default=None,
+                        help='with --dump-case reshade: an rs_edge override; only the re-shaded frames, suffixed -eNNN')
+    parser.add_argument('--lab-assets', default=str(ROOT / 'verification/results/weapon-effects-lab/fl'),
+                        help='with --dump-case reshade: the untracked lab assets of the fl view (the game IRE mesh and '
+                             'texture); absent, the procedural stand-ins are drawn')
     args = parser.parse_args()
     native = args.host == 'native'
     if native:
@@ -394,7 +455,7 @@ def main():
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'projectile', 'flash', 'pulse', 'pulse_cap',
-                                                 'pulse_ghost')}
+                                                 'pulse_ghost', 'reshade')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

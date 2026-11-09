@@ -45,6 +45,8 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "weapon_effects_stage.h" // the shield hit's stage
 #if X3M_EDITION_FL
 #include "weapon_projectile_stage.h" // the projectile stage (docs/architecture/projectile-look.md)
+#include "bullet_reshade_core.h"  // the bullet re-shade's programs and constants (reshade mode)
+#include "bullet_reshade_route.h" // its device sequence
 #if X3M_DEV_TUNING
 #include "weapon_projectile_tune.h" // the dev-only in-flight tuning file (never in a release build)
 #endif
@@ -471,6 +473,10 @@ unsigned MotionOutput::device_references() const noexcept {
     if (packed_sample_.pre_copy) ++count;
     if (sentinel_ps_) ++count;
     if (sentinel_mrt_ps_) ++count;
+#if X3M_EDITION_FL
+    if (bullet_reshade_ps_) ++count;
+    if (bullet_reshade_flag_ps_) ++count;
+#endif
     if (sun_sentinel_ps_) ++count;
     for (const auto* stamp : sun_stamp_ps_)
         if (stamp) ++count;
@@ -620,6 +626,12 @@ void MotionOutput::release_resources() noexcept {
     release(sentinel_ps_);
     release(sentinel_mrt_ps_);
     release(sun_sentinel_ps_);
+#if X3M_EDITION_FL
+    release(bullet_reshade_ps_); // the bullet re-shade's programs (created again at the next device's registration)
+    release(bullet_reshade_flag_ps_);
+    bullet_reshade_create_failed_ = bullet_reshade_restore_failed_ = false;
+    shadow_.ps_bullet = false;
+#endif
     for (auto& stamp : sun_stamp_ps_) release(stamp);
     sun_stamp_ps_failed_[0] = sun_stamp_ps_failed_[1] = false;
     release(quad_vs_);
@@ -4611,6 +4623,7 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         strength_clear_twins();
         shadow_.original_share_pair = false;
         shadow_.original_share_refused = false;
+        shadow_.ps_bullet = false;
     }
     if (!requested_ || !shader) return;
     try {
@@ -4645,6 +4658,9 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
         release(entry.screen_additive_variant);
         release(entry.screen_additive_flag_variant);
         entry.hash = hash;
+#if X3M_EDITION_FL
+        entry.bullet_program = weapon_effects::reshade::bullet_program(hash);
+#endif
         entry.row = nullptr;
         entry.sun_register = -1;
         entry.major = code && bytes >= 4 && (code[0] >> 16) == 0xffffu ? std::uint8_t((code[0] >> 8) & 0xffu)
@@ -4662,6 +4678,9 @@ void MotionOutput::register_pixel_shader(IDirect3DPixelShader9* shader, const DW
                                                                                           : std::int8_t(-1);
         }
         if (!enabled_ || !code || !bytes || bytes % 4) return;
+#if X3M_EDITION_FL
+        if (entry.bullet_program && bullet_reshade_requested_) bullet_reshade_create();
+#endif
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
             bool fill_applied = false;
@@ -5250,6 +5269,7 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     shadow_.fog_card_source = false;
     shadow_.ps = shader;
     shadow_.ps_hash = 0;
+    shadow_.ps_bullet = false;
     shadow_.ps_variant = nullptr;
     shadow_.ps_material_variant = nullptr;
     shadow_.ps_sun_register = -1;
@@ -5259,6 +5279,9 @@ void MotionOutput::set_pixel_shader(IDirect3DPixelShader9* shader) noexcept {
     const auto it = pixel_.find(shader);
     if (it == pixel_.end()) return;
     shadow_.ps_hash = it->second.hash;
+#if X3M_EDITION_FL
+    shadow_.ps_bullet = bullet_reshade_requested_ && it->second.bullet_program;
+#endif
     shadow_.fog_card_source = fog_cards_replace_ && fog_card_pixel(shadow_.ps_hash);
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
     if (fog_requested_ && fog_card_pixel(shadow_.ps_hash))
@@ -5342,6 +5365,11 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
         std::memcpy(shadow_.ps_reserved + (lo - 216) * 4, data + (lo - start) * 4, (hi - lo) * 16);
         shadow_.ps_reserved_written = true;
     }
+#if X3M_EDITION_FL
+    // The bullet re-shade's register: the application's c31, put back after each substituted draw.
+    if (start <= weapon_effects::reshade::constant_register && end > weapon_effects::reshade::constant_register)
+        std::memcpy(shadow_.ps_c31, data + (weapon_effects::reshade::constant_register - start) * 4, 16);
+#endif
     // Caster counter: c0..c31 as written, for the bound program's own
     // LightDir_Dir0 register at the draw (shadow_replay_sun.h).
     if (candidates_requested_ && start < shadow_replay::sun_register_limit) {
@@ -5474,6 +5502,12 @@ void MotionOutput::resync_shadow() noexcept {
         native<GetConstantsIFn>(GetVertexShaderConstantI)(device_, 0, shadow_.integer0, 1));
     shadow_.ps_reserved_written = SUCCEEDED(
         native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));
+#if X3M_EDITION_FL
+    // The bullet re-shade's c31 (the application's value it puts back; zero when the read fails)
+    if (bullet_reshade_requested_)
+        native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, weapon_effects::reshade::constant_register,
+                                                         shadow_.ps_c31, 1u);
+#endif
     IDirect3DVertexBuffer9* stream = nullptr;
     UINT offset = 0, stride = 0;
     if (SUCCEEDED(native<GetStreamFn>(GetStreamSource)(device_, 0, &stream, &offset, &stride)))
@@ -6269,6 +6303,14 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // A routed or composed draw takes the same blend verdict inside.
     if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit)
         prepare_hull_gain(call, route);
+#if X3M_EDITION_FL
+    // Bullet re-shade: one bool test unless a game bullet program is bound (reshade mode only); never on a draw a
+    // route, the composition, the additive option or the fog-card mask took.
+    if (shadow_.ps_bullet && route.submit && !route.bullet_reshade && !route.routed && !route.composition &&
+        !route.screen_additive &&
+        !route.fog_card_mask.masked && !route.sky_nebula_swapped && !route.source_gain && !route.hull_gain)
+        prepare_bullet_reshade(route);
+#endif
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
         mark_cutout_candidate(route);
     if (telemetry::draw_enabled()) {
@@ -6735,7 +6777,14 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         return;
     }
     const bool gained = screen_additive_gain_ != 1.f;
-    if (gained && !shadow_.ps_screen_additive_variant) {
+#if X3M_EDITION_FL
+    // The bullet re-shade takes precedence over the route's program for a game bullet draw inside the batch submit
+    // (motion_output_bullet_reshade_inc.h): the route's conversion stays, our program replaces its variant.
+    const bool reshade = bullet_reshade_ready();
+#else
+    constexpr bool reshade = false;
+#endif
+    if (gained && !reshade && !shadow_.ps_screen_additive_variant) {
         refuse(4);
         return;
     }
@@ -6799,7 +6848,11 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (bolt_far_requested_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash) &&
         selector_.scene_depth_written()) {
         unsigned reason = 0;
+#if X3M_EDITION_FL
+        if (reshade ? !bullet_reshade_flag_ps_ : !shadow_.ps_screen_additive_flag_variant)
+#else
         if (!shadow_.ps_screen_additive_flag_variant)
+#endif
             reason = 1;
         else if (!target_surface_ || !depth_surface_ || !depth_enabled_)
             reason = 2;
@@ -6810,12 +6863,38 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         flag = reason == 0;
         if (!flag) refuse_bolt_flag(reason);
     }
+#if X3M_EDITION_FL
+    if (reshade) {
+        // The re-shade: the route's flag targets first (their own rollback: unflagged, as a refusal), then the
+        // re-shade's sequence (DESTBLEND ONE, c31 with the route's gain, our program or its flag variant), all or
+        // nothing; finish_bullet_reshade puts the program, c31 and DESTBLEND back, finish_screen_additive the rest.
+        if (flag && FAILED(bind_bolt_flag_targets(route))) {
+            flag = false;
+            refuse_bolt_flag(5);
+        }
+        if (!begin_bullet_reshade(route, true, route.bolt_flag)) {
+            ++screen_additive_failures_;
+            const HRESULT back = route.bolt_flag ? unbind_bolt_flag_targets(route) : S_OK;
+            if (FAILED(back)) {
+                if (!motion_state_lost_) {
+                    motion_state_lost_ = true;
+                    motion_state_error_ = back;
+                }
+                ++counters_.restore_failures;
+                invalidate_render_states();
+                invalidate_taa(TaaInvalidateSite::RestoreFailed);
+            }
+            return; // nothing of the route applied: the draw stays native
+        }
+        route.screen_additive = true;
+    }
+#endif
     // A gained or flagged draw binds a program: own the restoration bindings first.
-    if ((gained || flag) && FAILED(acquire_restore(route))) {
+    if (!reshade && (gained || flag) && FAILED(acquire_restore(route))) {
         ++screen_additive_failures_;
         return;
     } // nothing applied: the draw stays native
-    HRESULT hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);
+    HRESULT hr = reshade ? S_OK : direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, D3DBLEND_ONE);
     if (FAILED(hr)) {
         ++screen_additive_failures_;
         return;
@@ -6823,11 +6902,11 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     route.screen_additive = true;
     // The flag's targets and masks (their own rollback on a partial failure: the draw then runs unflagged, exactly
     // as a refusal); a failed rollback is reported and counted inside.
-    if (flag && FAILED(bind_bolt_flag_targets(route))) {
+    if (!reshade && flag && FAILED(bind_bolt_flag_targets(route))) {
         flag = false;
         refuse_bolt_flag(5);
     }
-    if (gained || flag) {
+    if (!reshade && (gained || flag)) {
         hr = native<SetPsFn>(SetPixelShader)(device_, flag ? shadow_.ps_screen_additive_flag_variant
                                                            : shadow_.ps_screen_additive_variant);
         if (SUCCEEDED(hr))
@@ -6861,6 +6940,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
             ++screen_additive_failures_;
             const HRESULT alpha_back = restore_screen_additive_alpha();
             HRESULT back = route.screen_additive_ps ? native<SetPsFn>(SetPixelShader)(device_, route.restore_ps) : S_OK;
+#if X3M_EDITION_FL
+            if (route.bullet_reshade) back = end_bullet_reshade(route); // the program, c31 and DESTBLEND back
+#endif
             const HRESULT flag_back = route.bolt_flag ? unbind_bolt_flag_targets(route) : S_OK;
             if (SUCCEEDED(back)) back = flag_back;
             const HRESULT destination = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND,
@@ -9628,6 +9710,9 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
         MotionRoute& route;
         ~RestoreScope() { self.release_restore(route); }
     } restore_scope{*this, route};
+#if X3M_EDITION_FL
+    if (route.bullet_reshade) finish_bullet_reshade(route); // the game's program and c31 back first
+#endif
     if (route.sky_nebula_swapped) finish_sky_nebula(route, result); // the engine's pair and constants back first
     if (route.sky_stars) finish_sky_stars(route, result); // its mask back (before the card's finish), then the batch
     if (route.fog_card_mask.masked) finish_fog_card(route, result);
@@ -13040,6 +13125,9 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_engine_shimmer_inc.h"
 #include "motion_output_own_sun_inc.h"
 #include "motion_output_weapon_effects_inc.h"
+#if X3M_EDITION_FL
+#include "motion_output_bullet_reshade_inc.h"
+#endif
 namespace {
 // Sky stars, the sky_stars_match row only (invariant 1): the level-0 size, format and level count of the star texture.
 void sky_stars_texture_desc(IDirect3DBaseTexture9* texture, unsigned* width, unsigned* height, unsigned* levels,

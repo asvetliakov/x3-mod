@@ -2251,6 +2251,15 @@ int main() {
                               !std::strcmp(core::mode_name(core::mode_shields_hull), "shields,hull") &&
                               !std::strcmp(core::ignored_name(0), "hull") && !std::strcmp(core::ignored_name(2), "explosions");
         check(parse_ok, "mode_parse_ignores_scratched_families");
+        // reshade (FL's bullet re-shade; AP runs it as shields): one word, never with a family or another mode
+        const bool reshade_ok = parses("reshade", core::mode_reshade, 0) && parses(" reshade ", core::mode_reshade, 0) &&
+                                refused("reshade,hull") && refused("hull,reshade") && refused("shields,reshade") &&
+                                refused("reshade,reshade") && refused("Reshade") && refused("reshade,") &&
+                                core::stage_mode(core::mode_reshade) && core::reshade_mode(core::mode_reshade) &&
+                                !core::hull_mode(core::mode_reshade) && !core::bolts_mode(core::mode_reshade) &&
+                                !core::explosions_mode(core::mode_reshade) &&
+                                !std::strcmp(core::mode_name(core::mode_reshade), "reshade");
+        check(reshade_ok, "mode_parse_reshade_alone");
         build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
         const bool hull_ok = we::install_at(addresses(), core::mode_shields_hull);
         core::HookState& h3 = we::hook_state();

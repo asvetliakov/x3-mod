@@ -276,6 +276,10 @@ struct MotionRoute {
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
     bool screen_additive = false, screen_additive_ps = false, screen_additive_alpha = false;
+    // Bullet re-shade (FL reshade mode, motion_output_bullet_reshade_inc.h): our program and c31 bound for this draw
+    // (put back after it); timed: the sequence is QPC-timed (sampled frames); convert: the additive route's draw
+    // (DESTBLEND ONE applied by the sequence, put back to INVSRCCOLOR); flag: the flag variant (the route's far flag).
+    bool bullet_reshade = false, bullet_reshade_timed = false, bullet_reshade_convert = false, bullet_reshade_flag = false;
     // Bolts through the TAA (bolts-through-taa.md): the late bullet draw's flag
     // write into RT2.g. RT1 bound masked off (no MRT gap), RT2 bound with the
     // GREEN mask, the application's masks saved for the undo; each step's flag
@@ -1215,6 +1219,11 @@ public:
     void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
                                float* stage_us, unsigned* unpooled, unsigned* sampled, unsigned* statics,
                                unsigned* jumped, unsigned* ring_trimmed, unsigned flashes[5]) noexcept;
+    // The bullet re-shade (reshade mode): the dev tuning poll and the c31 block for the next frame, then the frame's
+    // counts (draws re-shaded, failed, bullet-program draws outside the submit, sampled draws timed and the sequence's
+    // CPU us over them, re-shaded draws of the additive route, of them with the far flag).
+    void bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed, float* us,
+                                   unsigned* additive, unsigned* flagged) noexcept;
 #endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
@@ -1637,6 +1646,7 @@ private:
         IDirect3DPixelShader9* screen_additive_variant = nullptr;      // additive option, gain != 1 only (AdditiveGain)
         IDirect3DPixelShader9* screen_additive_flag_variant = nullptr; // AdditiveGain + the RT2.g flag (bolt_far.h)
         IUnknown* distance_fade_variant = nullptr;
+        bool bullet_program = false; // one of the game's INSTANCE_BULLETS pixel programs (bullet_reshade_core.h; PS only)
         bool registered = false; // Valid original, independent of motion support.
         const renderer::MotionOutputProfile* row = nullptr;
         // Depth-only prepass program (depth_prepass_profiles.h):
@@ -1767,6 +1777,8 @@ private:
         std::uint8_t world46_known = 0;
         float ps_reserved[12]{}; // application c216-217 (c218 too with the thin vote)
         bool ps_reserved_written = false;
+        bool ps_bullet = false; // the bound PS is a game INSTANCE_BULLETS program (bullet re-shade requested)
+        float ps_c31[4]{};      // application c31 as last written (the bullet re-shade restores it)
         int integer0[4]{};
         bool integer0_known = false;
         std::uint64_t stream0 = 0, indices = 0, declaration = 0;
@@ -2304,6 +2316,23 @@ private:
     weapon_effects::projectile_family::Tune projectile_tune_[weapon_effects::projectile_family::family_count]{};
     HRESULT run_projectiles(const renderer::WeaponEffectsFrame& f) noexcept;
     bool projectile_drop(MotionRoute& route) noexcept;
+    // The bullet re-shade (reshade mode; motion_output_bullet_reshade_inc.h, bullet-draw-batch.md section 6): requested
+    // when the batch scope stub is live; our ps_2_0 program (created at the first game bullet program's registration,
+    // kept until teardown: shaders survive Reset), the c31 block from the tuning, the frame's counts and sampled time.
+    bool bullet_reshade_requested_ = false, bullet_reshade_create_failed_ = false, bullet_reshade_restore_failed_ = false;
+    IDirect3DPixelShader9* bullet_reshade_ps_ = nullptr;
+    IDirect3DPixelShader9* bullet_reshade_flag_ps_ = nullptr; // the far-flag variant (oC0..oC2)
+    float bullet_reshade_constants_[4]{};
+    unsigned bullet_reshade_draws_ = 0, bullet_reshade_failures_ = 0, bullet_reshade_outside_ = 0;
+    unsigned bullet_reshade_timed_draws_ = 0, bullet_reshade_additive_ = 0, bullet_reshade_flagged_ = 0;
+    std::uint32_t bullet_reshade_frames_ = 0; // Present count: every 60th frame is timed
+    std::uint64_t bullet_reshade_ticks_ = 0;
+    void bullet_reshade_create() noexcept;
+    bool bullet_reshade_ready() const noexcept;
+    bool begin_bullet_reshade(MotionRoute& route, bool convert, bool flag) noexcept;
+    HRESULT end_bullet_reshade(MotionRoute& route) noexcept;
+    void prepare_bullet_reshade(MotionRoute& route) noexcept;
+    void finish_bullet_reshade(MotionRoute& route) noexcept;
 #endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until

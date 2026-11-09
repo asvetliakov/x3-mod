@@ -3465,3 +3465,61 @@ failed the AP `event_cost_50_within_30us`; neither recurred and neither is attri
 stays in `MuzzleRecord` for the AP bolt path but is dead on FL; a flash lives on its bullet's pool entry, so a hit
 inside the life cuts it short; more than 64 live flashes in one frame (overlap under SETA or long lives) is
 unmeasured (`flash_dropped` counts the excess).
+
+## Bullet re-shade on FL (2026-11-09)
+
+`X3M_WEAPON_EFFECTS=reshade` (user decision 2026-11-09): shields mode plus the game's own bullet batch draws with our
+ps_2_0 program in place of the INSTANCE_BULLETS pixel shader; the projectile stage, its batch skip and traversal drop,
+the object tap and the muzzle stub are off ([bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md)
+section 6). The bullet pairs are also the additive route's pairs 0-2 (`screen_emission_additive` 2.0, HDR on: the
+user's defaults): inside the batch submit the re-shade takes precedence over the route's program, keeps its DESTBLEND
+ONE with the route's gain folded into c31, and with the route's far-flag targets bound draws the flag variant (review
+finding A, 2026-11-09). One device sequence, `src/proxy/bullet_reshade_route.h`, serves both paths. Worktree on
+`reshade` `b9ee53088`, uncommitted at the records. Final run, `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native` [M]:
+
+| Fixture | Result |
+| --- | --- |
+| AP hook | **132 of 132**, PASS: the 131 earlier and `mode_parse_reshade_alone` (`reshade` and ` reshade ` accepted; `reshade,hull`, `hull,reshade`, `shields,reshade`, `reshade,reshade`, `Reshade`, `reshade,` refused) |
+| FL hook | **75 of 75**, PASS: reshade installs the impact and the batch call only (sites 3..6 `not_used`, pool disarmed, the batch on the scope stub); the scope stub forwards ECX/EDX/EAX/EBX/ESI/EDI/EBP, EFLAGS and both stack words, the callee's stack 16 bytes lower (alignment mod 16 kept), the scope 1 inside and 0 after, the callee's EAX returned, LastError and DF kept, DF 0 and 1; shutdown disarms; the audit's eighth stub skeleton |
+| D3D | **114 of 114**, PASS: 8 re-shade checks beside the 106 earlier |
+
+Re-shade rows of the final run (stand-in vs_1_1 / ps_1_1 doing the game programs' work; defaults rs_gain 0.45,
+rs_edge 0.1, rs_core 0.25) [M]:
+
+| Case | Figures |
+| --- | --- |
+| model | six flat texels x vertex alpha through the production program, blend off: worst error 0.041 of the tolerance (0.004 + 0.4 %); the stand-in vanilla t.rgb x a 0.039 |
+| additive (`reshade_route_additive_binds_converts_restores`) | the production sequence's additive path, gain 2: DESTBLEND ONE, our program and c31 = (0.9, 0.1, 0.5, 2.75) while drawing; output = background + 2 x model, worst 0.020 of the tolerance; with three targets (RT1 masked off, RT2 GREEN) the flag variant writes RT2.g 18.922 against 32 x max(rgb) 18.926; after it the game's program, the application's c31 and DESTBLEND INVSRCCOLOR |
+| plain (`reshade_route_plain_restores_program_and_c31`) | the production sequence's plain path on the stand-in bolt: GetPixelShader the game's program and c31 the application's value after it |
+| bolt 50 m (procedural stand-in) | luminance sum 600.3 vanilla, 298.4 re-shaded (0.497); peak 0.759 / 0.549 |
+| cost | the four calls alone 0.065 µs per draw; a DrawPrimitive loop 0.056 µs vanilla, 0.246 µs with the substitution: **0.190 µs per substituted draw** (earlier runs 0.120 to 0.175); a 469-bolt batch fenced 43.0 µs both ways at 1920 x 1080 |
+
+Production also times the sequence alone (begin and end, the native draw excluded) on every 60th frame and capture
+frames into the `bullet_reshade_frame` row, beside the draws, additive and flagged counts.
+
+Look frames (plain path, the game's ONE / INVSRCCOLOR), `run_weapon_effects.py --host native --dump
+verification/results/projectile-reshade --dump-case reshade --lab-assets <lab fl>`, the game's IRE mesh and
+`fx_bullets_diff` from the untracked lab assets (`assets=game` in
+[`dump_out.txt`](../../verification/results/projectile-reshade/dump_out.txt)), 10 m bolt (assumed), dark and a flat
+nebula stand-in (linear 0.30 / 0.22 / 0.38) [M]. The first default rs_edge 0.5 lost the far bolt (judged
+unacceptable); the sweep with `--reshade-edge` (ratios to vanilla, dark background; nebula in brackets):
+
+| rs_edge | near sum | near peak | far sum | far peak |
+| --- | --- | --- | --- | --- |
+| 0.5 | 0.303 (0.277) | 0.793 (0.791) | 0.085 (−) | 0.103 (0.102) |
+| 0.2 | 0.426 (0.405) | 0.793 (0.791) | 0.333 (0.267) | 0.388 (0.386) |
+| **0.1** (default) | 0.490 (0.470) | 0.793 (0.791) | 0.449 (0.394) | **0.472** (0.471) |
+
+0.1 is the first value past the 0.4x far-peak goal; the law is unchanged. At the default: near sum 253.7 → 124.2 dark,
+peak 0.739 → 0.586; far sum 1.43 → 0.64, peak 0.194 → 0.091. PNGs
+`verification/results/projectile-reshade/fixture-ire-{vanilla,reshade}-{near,far}.png` at the default and
+`fixture-ire-reshade-{near,far}-e{020,010}.png` (far crops 6x nearest). FL build 0 warnings, `check_no_x87` FL PASS,
+AP build compiles, focused host tests (launch, core, hook, sites, table, tune, config schema) 79 OK. Not flown.
+
+Known limits: `body_match` (the stand-in PS's instruction body against the game's, `b006e837`) is a reported metric,
+not a check (review H). The dumps sample a box-filtered mip chain rebuilt from the lab's level-0 decode, not the
+game's DDS mips, so the far frames' texel values are approximate (review I). MotionOutput itself is not instantiated
+by any fixture on this host (run_motion_output.py needs the CrossOver bottle): the additive case drives the production
+sequence header, and the wiring in `prepare_screen_additive` is covered by review only. The look dumps show the plain
+path; the additive path (DESTBLEND ONE, gain 2) has no look frame yet.
