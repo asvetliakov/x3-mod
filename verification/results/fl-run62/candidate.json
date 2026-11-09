@@ -1,0 +1,55 @@
+{
+ "run": "fl-run62",
+ "edition": "FL",
+ "installed": "2026-11-09",
+ "what": "dev candidate: the IRE muzzle flash (muzzle-flash-look.md): the game's IRE flare skipped at the FL muzzle site (claimed in shields mode for enabled bodies), a flash at the bullet's birth point carried with the shooter (axis = bullet velocity minus the shooter's obj+0x60 + node+0x100 sum), extent at scene white 1.25 x the bolt core (anti-lamp gate), a 2.5 m streak in the row's colour, life 0.2 x the refire gap capped at two game steps, a hull pulse of 3 m through the decal lane-depth path (clamped to 0.15 view height, none within 1.5 R of the eye), five tuning keys; the baked IRE look (core 1 px) from FL 61 A",
+ "commit": "1990f0311",
+ "branch": "weapons",
+ "dirty": false,
+ "build": "build-run62-fl RelWithDebInfo mingw-i686 -DX3M_EDITION=fl -DX3M_GNU_PE_NO_SAFESEH=ON (X3M_DEV_TUNING ON), clean, 0 warnings, check_no_x87 --edition fl PASS, X3M_SOURCE_COMMIT=1990f03115e98aed46381a0d0daecaa1381cfb3d (unstripped)",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "8d7222ddcf9c065d2698e3c7e03d46b01187f9c524d72900b310d79aa207e4da",
+  "bytes": 60986195,
+  "source": "build-run62-fl/d3d9.dll"
+ },
+ "rollback": {
+  "dll": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run61 (ec42989b\u2026)",
+  "ini": "C:\\X3FL\\rollback-d3d9\\x3m.ini.run61",
+  "tuning_file": "C:\\X3FL\\rollback-d3d9\\projectile_tune.json.run61"
+ },
+ "ini": "unchanged (weapon_effects = shields)",
+ "tables": {
+  "weapon_effects.json": "a699e0d2\u2026 (unchanged)"
+ },
+ "tuning_file": {
+  "path": "C:\\X3FL\\x3m\\projectile_tune.json",
+  "content": {
+   "core_px": 1.0,
+   "glow_ratio": 2.0,
+   "glow_gain": 0.3,
+   "hot_share": 0.4,
+   "lod_dot_m": 3000,
+   "length_cap_m": 60,
+   "stops": 2.0,
+   "trail_ms": 0,
+   "head_gain": 1.5,
+   "flash_core_mult": 1.25,
+   "flash_len_m": 2.5,
+   "flash_life_frac": 0.2,
+   "flash_stops": 2.0,
+   "hull_pulse_r": 3.0
+  },
+  "note": "the baked IRE values plus the five flash keys at their defaults"
+ },
+ "exe_sha256_prefix": "e7f3aad8d728e021",
+ "dry_run": "manage.py launch --game-dir /mnt/c/X3FL --dry-run exit 0",
+ "evidence": [
+  "verification/results/native-windows/weapon-effects/summary.json (D3D 105/105 on 16588849b, same production sources as 1990f0311)",
+  "hook-fl-summary.json (FL hook 72/72: the muzzle stub in shields mode)",
+  "hook-summary.json (AP 131/131, unchanged)",
+  "verification/results/muzzle-flash-look/fixture-ire-muzzle.png (judged by the main session)",
+  "review at high: no blocker; S1-S4, N1-N3, N6, P1 fixed or decided (ledger: IRE muzzle flash (2026-11-09))"
+ ],
+ "open": "FL 62 A"
+}
