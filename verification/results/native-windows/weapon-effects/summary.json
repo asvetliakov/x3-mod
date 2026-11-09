@@ -34,7 +34,7 @@
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "813e50ba38f21fc4c6020abe63e7f9113477d6a5",
+    "commit": "16588849b1704012bf6f31c9a06e0ca2c4e38318",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -68,7 +68,7 @@
       "src/renderer/weapon_projectile_pixel_program_inc.h": "b29322765941c69d830103afbb759b7b37757145b5723ff4d8cc349608c6e1ab",
       "src/effects/weapon_pulse_ps.hlsl": "ca25bed5e1ac0b95dd8e67dfae2f19403310dfc3302de7d046f9a505c839a2cb",
       "src/renderer/weapon_pulse_pixel_program_inc.h": "7ab6e6c082a618dbd6b9886f2fd68c82a778a08ef71b52852f2b5165d664be4e",
-      "verification/probe/weapon_effects_fixture.cpp": "0a81706426acc0754937ec2b31f4f050bd207c41bb5a44b2fa9b9b9db9acb7e6"
+      "verification/probe/weapon_effects_fixture.cpp": "1fc6e5911c39d3ee9ca80b2e7048930c8a564568297eb4ee3c096f3e38feb7e2"
     }
   },
   "programs": {
@@ -185,7 +185,7 @@
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "eb16b98c4339982c4282d569e617ad380595d725d502c74d2df41fe829cc366c"
+    "executable_sha256": "53b4c3059c0adc733aedf321cc8fe9853e1cdf86e29e02746bc3400ace1c36cd"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -1148,16 +1148,16 @@
         "ok": 1,
         "reads": 894,
         "walk_best_us": 8.6,
-        "walk_mean_us": 8.7,
+        "walk_mean_us": 8.9,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.6,
-        "engine_memory_cold_mean_us": 13.0,
-        "engine_memory_warm_best_us": 12.1,
-        "engine_memory_warm_mean_us": 13.7,
+        "engine_memory_cold_best_us": 12.1,
+        "engine_memory_cold_mean_us": 12.6,
+        "engine_memory_warm_best_us": 11.6,
+        "engine_memory_warm_mean_us": 12.3,
         "warm_best_us": 39.0,
-        "warm_mean_us": 42.9,
-        "cold_best_us": 47.7,
-        "cold_mean_us": 49.5,
+        "warm_mean_us": 43.9,
+        "cold_best_us": 48.1,
+        "cold_mean_us": 48.9,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1243,8 +1243,8 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 2.2,
-        "insertion_us": 1.3
+        "heap_us": 2.1,
+        "insertion_us": 1.4
       },
       {
         "case": "ascending",
@@ -1492,7 +1492,7 @@
         "cells_dropped": 0,
         "dropped": 0,
         "best_us": 28.8,
-        "mean_us": 29.4,
+        "mean_us": 29.5,
         "target_us": 200
       },
       {
@@ -1504,8 +1504,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 87.1,
-        "mean_us": 88.2,
+        "best_us": 87.7,
+        "mean_us": 88.6,
         "target_us": 200
       },
       {
@@ -1517,8 +1517,8 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 14.0,
-        "mean_us": 14.6,
+        "best_us": 14.2,
+        "mean_us": 14.3,
         "target_us": 200
       }
     ],
@@ -1555,10 +1555,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.5,
-        "last_drawn_ms": 473.48,
-        "frames": 18476,
-        "max_frame_ms": 0.335
+        "seta6_wall_ms": 473.52,
+        "last_drawn_ms": 473.5,
+        "frames": 18656,
+        "max_frame_ms": 0.289
       }
     ],
     "retired": [
@@ -1620,7 +1620,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.2
+        "gpu_us": 11.1
       },
       {
         "width": 1920,
@@ -1640,7 +1640,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.3
+        "gpu_us": 17.1
       },
       {
         "width": 1920,
@@ -1650,7 +1650,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 62.4
+        "gpu_us": 62.0
       },
       {
         "width": 1920,
@@ -1670,7 +1670,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 103.7
+        "gpu_us": 103.8
       },
       {
         "width": 1920,
@@ -1680,7 +1680,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 18.9
+        "gpu_us": 19.5
       },
       {
         "width": 1920,
@@ -1700,7 +1700,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 63.1
+        "gpu_us": 63.4
       },
       {
         "width": 1920,
@@ -1710,7 +1710,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 91.8
+        "gpu_us": 92.2
       },
       {
         "width": 1920,
@@ -1720,7 +1720,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.8
+        "gpu_us": 17.1
       },
       {
         "width": 1920,
@@ -1740,7 +1740,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 95.4
+        "gpu_us": 95.9
       },
       {
         "width": 1920,
@@ -1760,7 +1760,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 71.5
+        "gpu_us": 71.9
       },
       {
         "width": 5120,
@@ -1770,7 +1770,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.2
+        "gpu_us": 11.0
       },
       {
         "width": 5120,
@@ -1780,7 +1780,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 21.2
+        "gpu_us": 21.3
       },
       {
         "width": 5120,
@@ -1790,7 +1790,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 22.8
+        "gpu_us": 22.7
       },
       {
         "width": 5120,
@@ -1800,7 +1800,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 180.8
+        "gpu_us": 180.3
       },
       {
         "width": 5120,
@@ -1810,7 +1810,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 237.7
+        "gpu_us": 237.4
       },
       {
         "width": 5120,
@@ -1820,7 +1820,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 387.5
+        "gpu_us": 387.1
       },
       {
         "width": 5120,
@@ -1830,7 +1830,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 34.0
+        "gpu_us": 33.9
       },
       {
         "width": 5120,
@@ -1860,7 +1860,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 287.4
+        "gpu_us": 287.8
       },
       {
         "width": 5120,
@@ -1870,7 +1870,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 20.9
+        "gpu_us": 21.0
       },
       {
         "width": 5120,
@@ -1880,7 +1880,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 174.9
+        "gpu_us": 174.7
       },
       {
         "width": 5120,
@@ -1890,7 +1890,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 336.8
+        "gpu_us": 336.5
       },
       {
         "width": 5120,
@@ -1910,7 +1910,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 254.4
+        "gpu_us": 256.2
       }
     ],
     "projectile": [
@@ -2589,9 +2589,9 @@
         "merged": 486,
         "quads": 532,
         "trail_quads": 20,
-        "cpu_us": 87.2,
-        "gpu_us": 45.4,
-        "fence_us": 11.0,
+        "cpu_us": 87.3,
+        "gpu_us": 46.2,
+        "fence_us": 10.7,
         "lit_share": 0.0601,
         "vertex_bytes": 48,
         "statics": 0,
@@ -2610,9 +2610,9 @@
         "wanted": 2520,
         "trimmed": 502,
         "previous_wanted": 2528,
-        "cpu_us": 113.3,
-        "gpu_us": 68.2,
-        "fence_us": 11.0,
+        "cpu_us": 114.6,
+        "gpu_us": 68.0,
+        "fence_us": 10.7,
         "lit_share": 0.078,
         "statics": 0,
         "jumped": 0
@@ -3074,19 +3074,19 @@
         "flashes": 64,
         "pulses": 64,
         "bolts": 64,
-        "cpu_with_us": 29.8,
-        "cpu_without_us": 21.4,
-        "cpu_us": 8.4,
-        "gpu_us": 23.6,
+        "cpu_with_us": 30.1,
+        "cpu_without_us": 21.8,
+        "cpu_us": 8.3,
+        "gpu_us": 23.7,
         "gpu_net_us": 12.8,
         "gpu_flashes_us": 17.1,
-        "gpu_pulses_us": 18.9,
-        "gpu_far_pulses_us": 17.0,
-        "gpu_own_pulses_us": 17.2,
-        "gpu_bolts_us": 16.2,
-        "gpu_bolts_flashes_us": 24.4,
+        "gpu_pulses_us": 19.1,
+        "gpu_far_pulses_us": 16.5,
+        "gpu_own_pulses_us": 17.4,
+        "gpu_bolts_us": 16.3,
+        "gpu_bolts_flashes_us": 24.5,
         "gpu_increment_us": 8.2,
-        "fence_us": 10.8,
+        "fence_us": 10.9,
         "lost": 0,
         "stale": 0,
         "dropped": 0
@@ -3105,8 +3105,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 123.0,
-        "gpu_us": 38.7
+        "cpu_us": 123.9,
+        "gpu_us": 38.8
       },
       {
         "case": "budget_combined",
@@ -3122,8 +3122,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 127.2,
-        "gpu_us": 60.5
+        "cpu_us": 129.2,
+        "gpu_us": 61.5
       },
       {
         "case": "budget_combined",
@@ -3140,7 +3140,7 @@
         "statics": 0,
         "jumped": 0,
         "cpu_us": 114.5,
-        "gpu_us": 33.2
+        "gpu_us": 33.0
       },
       {
         "case": "budget_combined",
@@ -3156,17 +3156,17 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 87.2,
-        "gpu_us": 31.2
+        "cpu_us": 88.6,
+        "gpu_us": 31.4
       },
       {
         "case": "budget_combined_bounds",
-        "cpu_us": 123.0,
+        "cpu_us": 123.9,
         "cpu_within_100": 0,
-        "flash_work_cpu_us": 8.5,
-        "newborn_bolts_cpu_us": 27.3,
-        "bolts_448_cpu_us": 87.2,
-        "gpu_us": 38.7,
+        "flash_work_cpu_us": 9.4,
+        "newborn_bolts_cpu_us": 25.9,
+        "bolts_448_cpu_us": 88.6,
+        "gpu_us": 38.8,
         "gpu_within_60": 1
       }
     ],
