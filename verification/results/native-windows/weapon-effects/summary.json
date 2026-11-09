@@ -34,7 +34,7 @@
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "e92b39e785d888c07b98f63ca1acc9aa84eed8dc",
+    "commit": "813e50ba38f21fc4c6020abe63e7f9113477d6a5",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
@@ -59,16 +59,16 @@
       "src/renderer/weapon_shell_pixel_program_inc.h": "cc0fde81ae5939ec811ecec2c37f43d0a6a7a20cd15a836d0cb8b5b62d986297",
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
-      "src/proxy/weapon_projectile_stage.h": "fb36ae5aced397e46d2c29ebc71905d14c56312ab4f9ee7b535acd3202420c9f",
+      "src/proxy/weapon_projectile_stage.h": "238e69b080ee8b1703deee60ef822486b694cdf46296d54af5319d6579073e0a",
       "src/proxy/weapon_projectile_family.h": "0be33654a11dbc202b1deca7c0927d733fe8893dba52689eb3c7b8a16b064127",
-      "src/proxy/weapon_effects_projectile.h": "6d61a5fb6ea46e1def9970bc7449f42edc386d816acfb58c8dddbf69771e02d0",
+      "src/proxy/weapon_effects_projectile.h": "158c5d2ccd058ef06a1bdef020aad131549d3b893a43fc6594e40ab416febf9c",
       "src/effects/weapon_projectile_vs.hlsl": "15e0a5623b8e30a74cd4a84663658349dbac558209fda20f04cee638a692c2ff",
       "src/effects/weapon_projectile_ps.hlsl": "9618d55a38f03e1d9cf12d6af71c74659eabbbe23f6e6e61a843f94547463e9b",
       "src/renderer/weapon_projectile_vertex_program_inc.h": "b337280a10d10d9b87b6f1d37e41e45a2e7cad43e1bd0492500e348256ed6bdd",
       "src/renderer/weapon_projectile_pixel_program_inc.h": "b29322765941c69d830103afbb759b7b37757145b5723ff4d8cc349608c6e1ab",
       "src/effects/weapon_pulse_ps.hlsl": "ca25bed5e1ac0b95dd8e67dfae2f19403310dfc3302de7d046f9a505c839a2cb",
       "src/renderer/weapon_pulse_pixel_program_inc.h": "7ab6e6c082a618dbd6b9886f2fd68c82a778a08ef71b52852f2b5165d664be4e",
-      "verification/probe/weapon_effects_fixture.cpp": "5171156997a7bccd7b291567b53c54b256a5d5ec26934751ab2cb3b33f9f5de3"
+      "verification/probe/weapon_effects_fixture.cpp": "0a81706426acc0754937ec2b31f4f050bd207c41bb5a44b2fa9b9b9db9acb7e6"
     }
   },
   "programs": {
@@ -185,7 +185,7 @@
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "95867b753b02b2bc36c1a282a8b5bb2242d1721b338410489321b6d21971506c"
+    "executable_sha256": "eb16b98c4339982c4282d569e617ad380595d725d502c74d2df41fe829cc366c"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -218,7 +218,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 99,
+      "checks": 105,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -602,6 +602,26 @@
       true
     ],
     [
+      "flash_axis_is_the_shots_own_direction",
+      true
+    ],
+    [
+      "pulse_clamped_to_the_screen_cap",
+      true
+    ],
+    [
+      "pulse_none_with_the_eye_within_1p5_radii",
+      true
+    ],
+    [
+      "pulse_none_beside_a_culled_flash",
+      true
+    ],
+    [
+      "pulse_taa_ghost_at_most_one_frame",
+      true
+    ],
+    [
       "pulse_lights_the_lane_surface_by_the_law",
       true
     ],
@@ -619,6 +639,10 @@
     ],
     [
       "flash_budget_64_flashes_64_pulses",
+      true
+    ],
+    [
+      "flash_budget_combined_512_bolts_64_flashes_64_pulses",
       true
     ]
   ],
@@ -1124,16 +1148,16 @@
         "ok": 1,
         "reads": 894,
         "walk_best_us": 8.6,
-        "walk_mean_us": 8.8,
+        "walk_mean_us": 8.7,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.1,
-        "engine_memory_cold_mean_us": 14.4,
-        "engine_memory_warm_best_us": 11.7,
-        "engine_memory_warm_mean_us": 12.0,
-        "warm_best_us": 39.2,
-        "warm_mean_us": 44.8,
-        "cold_best_us": 48.0,
-        "cold_mean_us": 48.7,
+        "engine_memory_cold_best_us": 12.6,
+        "engine_memory_cold_mean_us": 13.0,
+        "engine_memory_warm_best_us": 12.1,
+        "engine_memory_warm_mean_us": 13.7,
+        "warm_best_us": 39.0,
+        "warm_mean_us": 42.9,
+        "cold_best_us": 47.7,
+        "cold_mean_us": 49.5,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1219,8 +1243,8 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 2.4,
-        "insertion_us": 1.4
+        "heap_us": 2.2,
+        "insertion_us": 1.3
       },
       {
         "case": "ascending",
@@ -1468,7 +1492,7 @@
         "cells_dropped": 0,
         "dropped": 0,
         "best_us": 28.8,
-        "mean_us": 30.0,
+        "mean_us": 29.4,
         "target_us": 200
       },
       {
@@ -1480,8 +1504,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 86.9,
-        "mean_us": 88.0,
+        "best_us": 87.1,
+        "mean_us": 88.2,
         "target_us": 200
       },
       {
@@ -1493,7 +1517,7 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 14.4,
+        "best_us": 14.0,
         "mean_us": 14.6,
         "target_us": 200
       }
@@ -1531,10 +1555,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.51,
-        "last_drawn_ms": 473.49,
-        "frames": 19164,
-        "max_frame_ms": 0.43
+        "seta6_wall_ms": 473.5,
+        "last_drawn_ms": 473.48,
+        "frames": 18476,
+        "max_frame_ms": 0.335
       }
     ],
     "retired": [
@@ -1596,7 +1620,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.0
+        "gpu_us": 11.2
       },
       {
         "width": 1920,
@@ -1606,7 +1630,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.3
+        "gpu_us": 16.7
       },
       {
         "width": 1920,
@@ -1616,7 +1640,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.5
+        "gpu_us": 17.3
       },
       {
         "width": 1920,
@@ -1636,7 +1660,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 77.3
+        "gpu_us": 77.1
       },
       {
         "width": 1920,
@@ -1646,7 +1670,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 103.0
+        "gpu_us": 103.7
       },
       {
         "width": 1920,
@@ -1656,7 +1680,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 19.3
+        "gpu_us": 18.9
       },
       {
         "width": 1920,
@@ -1666,7 +1690,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 58.9
+        "gpu_us": 58.7
       },
       {
         "width": 1920,
@@ -1676,7 +1700,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 63.9
+        "gpu_us": 63.1
       },
       {
         "width": 1920,
@@ -1686,7 +1710,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 92.3
+        "gpu_us": 91.8
       },
       {
         "width": 1920,
@@ -1696,7 +1720,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.3
+        "gpu_us": 16.8
       },
       {
         "width": 1920,
@@ -1706,7 +1730,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 59.0
+        "gpu_us": 59.2
       },
       {
         "width": 1920,
@@ -1716,7 +1740,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 95.9
+        "gpu_us": 95.4
       },
       {
         "width": 1920,
@@ -1726,7 +1750,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 20.7
+        "gpu_us": 21.3
       },
       {
         "width": 1920,
@@ -1736,7 +1760,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 72.0
+        "gpu_us": 71.5
       },
       {
         "width": 5120,
@@ -1756,7 +1780,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 21.3
+        "gpu_us": 21.2
       },
       {
         "width": 5120,
@@ -1766,7 +1790,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 22.6
+        "gpu_us": 22.8
       },
       {
         "width": 5120,
@@ -1776,7 +1800,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 180.3
+        "gpu_us": 180.8
       },
       {
         "width": 5120,
@@ -1786,7 +1810,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 237.6
+        "gpu_us": 237.7
       },
       {
         "width": 5120,
@@ -1796,7 +1820,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 386.7
+        "gpu_us": 387.5
       },
       {
         "width": 5120,
@@ -1806,7 +1830,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 33.9
+        "gpu_us": 34.0
       },
       {
         "width": 5120,
@@ -1816,7 +1840,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 161.4
+        "gpu_us": 161.3
       },
       {
         "width": 5120,
@@ -1826,7 +1850,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 181.5
+        "gpu_us": 181.6
       },
       {
         "width": 5120,
@@ -1836,7 +1860,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 287.2
+        "gpu_us": 287.4
       },
       {
         "width": 5120,
@@ -1846,7 +1870,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 20.8
+        "gpu_us": 20.9
       },
       {
         "width": 5120,
@@ -1856,7 +1880,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 174.1
+        "gpu_us": 174.9
       },
       {
         "width": 5120,
@@ -1866,7 +1890,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 337.0
+        "gpu_us": 336.8
       },
       {
         "width": 5120,
@@ -1876,7 +1900,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.5
+        "gpu_us": 51.6
       },
       {
         "width": 5120,
@@ -1886,7 +1910,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 256.5
+        "gpu_us": 254.4
       }
     ],
     "projectile": [
@@ -2565,9 +2589,9 @@
         "merged": 486,
         "quads": 532,
         "trail_quads": 20,
-        "cpu_us": 87.8,
-        "gpu_us": 45.2,
-        "fence_us": 10.8,
+        "cpu_us": 87.2,
+        "gpu_us": 45.4,
+        "fence_us": 11.0,
         "lit_share": 0.0601,
         "vertex_bytes": 48,
         "statics": 0,
@@ -2586,9 +2610,9 @@
         "wanted": 2520,
         "trimmed": 502,
         "previous_wanted": 2528,
-        "cpu_us": 114.8,
-        "gpu_us": 68.4,
-        "fence_us": 10.8,
+        "cpu_us": 113.3,
+        "gpu_us": 68.2,
+        "fence_us": 11.0,
         "lit_share": 0.078,
         "statics": 0,
         "jumped": 0
@@ -2611,7 +2635,7 @@
         "rule_white_px": 48.0,
         "white_px": 47.983,
         "across_px": 47.983,
-        "along_px": 47.976,
+        "along_px": 47.977,
         "ratio": 0.2715,
         "fwhm_px": 24.0,
         "sigma_px": 10.192,
@@ -2651,8 +2675,8 @@
         "core_white_measured_px": 176.743,
         "core_fwhm_measured_px": 124.978,
         "rule_white_px": 48.0,
-        "white_px": 47.965,
-        "across_px": 47.965,
+        "white_px": 47.966,
+        "across_px": 47.966,
         "along_px": 47.959,
         "ratio": 0.2714,
         "fwhm_px": 33.94,
@@ -2669,13 +2693,13 @@
         "flash_stops": 2,
         "core_px": 18.519,
         "core_white_px": 26.189,
-        "core_white_measured_px": 26.177,
+        "core_white_measured_px": 26.183,
         "core_fwhm_measured_px": 18.517,
         "rule_white_px": 32.736,
-        "white_px": 32.718,
-        "across_px": 32.71,
-        "along_px": 32.718,
-        "ratio": 1.2499,
+        "white_px": 32.724,
+        "across_px": 32.724,
+        "along_px": 32.721,
+        "ratio": 1.2498,
         "fwhm_px": 16.376,
         "sigma_px": 6.951,
         "peak": 16.0,
@@ -2690,13 +2714,13 @@
         "flash_stops": 4,
         "core_px": 18.519,
         "core_white_px": 26.189,
-        "core_white_measured_px": 26.177,
+        "core_white_measured_px": 26.183,
         "core_fwhm_measured_px": 18.517,
         "rule_white_px": 32.736,
-        "white_px": 32.727,
-        "across_px": 32.716,
-        "along_px": 32.727,
-        "ratio": 1.2502,
+        "white_px": 32.73,
+        "across_px": 32.73,
+        "along_px": 32.728,
+        "ratio": 1.25,
         "fwhm_px": 13.374,
         "sigma_px": 5.675,
         "peak": 64.0,
@@ -2711,13 +2735,13 @@
         "flash_stops": 0,
         "core_px": 18.519,
         "core_white_px": 26.189,
-        "core_white_measured_px": 26.177,
+        "core_white_measured_px": 26.183,
         "core_fwhm_measured_px": 18.517,
         "rule_white_px": 32.736,
-        "white_px": 32.7,
-        "across_px": 32.7,
-        "along_px": 32.699,
-        "ratio": 1.2492,
+        "white_px": 32.714,
+        "across_px": 32.714,
+        "along_px": 32.702,
+        "ratio": 1.2494,
         "fwhm_px": 23.154,
         "sigma_px": 9.83,
         "peak": 4.0,
@@ -2732,13 +2756,13 @@
         "flash_stops": 2,
         "core_px": 2.5,
         "core_white_px": 3.536,
-        "core_white_measured_px": 3.416,
+        "core_white_measured_px": 3.535,
         "core_fwhm_measured_px": 2.6,
         "rule_white_px": 4.419,
-        "white_px": 4.41,
-        "across_px": 4.352,
-        "along_px": 4.41,
-        "ratio": 1.2909,
+        "white_px": 4.429,
+        "across_px": 4.418,
+        "along_px": 4.429,
+        "ratio": 1.2527,
         "fwhm_px": 2.287,
         "sigma_px": 0.938,
         "peak": 16.0,
@@ -2753,13 +2777,13 @@
         "flash_stops": 4,
         "core_px": 2.5,
         "core_white_px": 3.536,
-        "core_white_measured_px": 3.416,
+        "core_white_measured_px": 3.535,
         "core_fwhm_measured_px": 2.6,
         "rule_white_px": 4.419,
-        "white_px": 4.417,
-        "across_px": 4.352,
-        "along_px": 4.417,
-        "ratio": 1.2929,
+        "white_px": 4.426,
+        "across_px": 4.418,
+        "along_px": 4.426,
+        "ratio": 1.252,
         "fwhm_px": 1.744,
         "sigma_px": 0.766,
         "peak": 64.0,
@@ -2774,13 +2798,13 @@
         "flash_stops": 0,
         "core_px": 2.5,
         "core_white_px": 3.536,
-        "core_white_measured_px": 3.416,
+        "core_white_measured_px": 3.535,
         "core_fwhm_measured_px": 2.6,
         "rule_white_px": 4.419,
-        "white_px": 4.393,
-        "across_px": 4.35,
-        "along_px": 4.393,
-        "ratio": 1.2859,
+        "white_px": 4.43,
+        "across_px": 4.416,
+        "along_px": 4.43,
+        "ratio": 1.2531,
         "fwhm_px": 3.171,
         "sigma_px": 1.327,
         "peak": 4.0,
@@ -2795,16 +2819,16 @@
         "flash_stops": 2,
         "core_px": 1.0,
         "core_white_px": 1.414,
-        "core_white_measured_px": 1.001,
+        "core_white_measured_px": 1.415,
         "core_fwhm_measured_px": 1.067,
         "rule_white_px": 1.768,
-        "white_px": 1.679,
-        "across_px": 1.562,
-        "along_px": 1.679,
-        "ratio": 1.6775,
-        "fwhm_px": 1.03,
-        "sigma_px": 0.375,
-        "peak": 16.0,
+        "white_px": 1.824,
+        "across_px": 1.767,
+        "along_px": 1.824,
+        "ratio": 1.2895,
+        "fwhm_px": 1.067,
+        "sigma_px": 0.425,
+        "peak": 8.724,
         "capped": 0,
         "dot": 0,
         "share80_10": 1.0,
@@ -2816,16 +2840,16 @@
         "flash_stops": 4,
         "core_px": 1.0,
         "core_white_px": 1.414,
-        "core_white_measured_px": 1.001,
+        "core_white_measured_px": 1.415,
         "core_fwhm_measured_px": 1.067,
         "rule_white_px": 1.768,
-        "white_px": 1.704,
-        "across_px": 1.564,
-        "along_px": 1.704,
-        "ratio": 1.7032,
-        "fwhm_px": 1.005,
-        "sigma_px": 0.306,
-        "peak": 64.0,
+        "white_px": 1.824,
+        "across_px": 1.767,
+        "along_px": 1.824,
+        "ratio": 1.2895,
+        "fwhm_px": 1.067,
+        "sigma_px": 0.425,
+        "peak": 8.724,
         "capped": 0,
         "dot": 0,
         "share80_10": 1.0,
@@ -2837,13 +2861,13 @@
         "flash_stops": 0,
         "core_px": 1.0,
         "core_white_px": 1.414,
-        "core_white_measured_px": 1.001,
+        "core_white_measured_px": 1.415,
         "core_fwhm_measured_px": 1.067,
         "rule_white_px": 1.768,
-        "white_px": 1.637,
-        "across_px": 1.56,
-        "along_px": 1.637,
-        "ratio": 1.6361,
+        "white_px": 1.81,
+        "across_px": 1.766,
+        "along_px": 1.81,
+        "ratio": 1.2791,
         "fwhm_px": 1.204,
         "sigma_px": 0.531,
         "peak": 4.0,
@@ -2895,7 +2919,7 @@
         "folded": 1,
         "pulse": 0,
         "total": 1.4653,
-        "near_total": 18.144,
+        "near_total": 11.2715,
         "peak": 1.145,
         "fwhm_px": 1.0
       },
@@ -2906,7 +2930,7 @@
         "folded": 1,
         "pulse": 0,
         "total": 1.3594,
-        "near_total": 18.144,
+        "near_total": 11.2715,
         "peak": 1.062,
         "fwhm_px": 1.0
       },
@@ -2923,6 +2947,8 @@
         "fade0": 1.0,
         "fade1": 0.4333,
         "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 0,
         "matched": 1,
         "unmatched": 0,
         "stale": 0
@@ -2940,6 +2966,8 @@
         "fade0": 1.0,
         "fade1": 0.5,
         "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 0,
         "matched": 2,
         "unmatched": 0,
         "stale": 0
@@ -2957,6 +2985,8 @@
         "fade0": 1.0,
         "fade1": 0.0,
         "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 0,
         "matched": 3,
         "unmatched": 0,
         "stale": 0
@@ -2974,6 +3004,8 @@
         "fade0": 1.0,
         "fade1": 0.0,
         "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 0,
         "matched": 4,
         "unmatched": 0,
         "stale": 0
@@ -2991,6 +3023,8 @@
         "fade0": 0.0,
         "fade1": 0.0,
         "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 0,
         "matched": 4,
         "unmatched": 1,
         "stale": 0
@@ -3008,7 +3042,28 @@
         "fade0": 0.0,
         "fade1": 0.0,
         "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 0,
         "matched": 4,
+        "unmatched": 1,
+        "stale": 1
+      },
+      {
+        "case": "life",
+        "name": "record_other_shooter",
+        "step_ms": 17,
+        "gap_ms": 150,
+        "ours": 1,
+        "tap_age_ms": 0,
+        "life_ms": 30.0,
+        "drawn": 0,
+        "want": 0,
+        "fade0": 0.0,
+        "fade1": 0.0,
+        "ride_err_px": 0.0,
+        "axis_err_deg": 0.0,
+        "lost": 1,
+        "matched": 5,
         "unmatched": 1,
         "stale": 1
       },
@@ -3019,52 +3074,130 @@
         "flashes": 64,
         "pulses": 64,
         "bolts": 64,
-        "cpu_with_us": 29.5,
-        "cpu_without_us": 22.1,
-        "cpu_us": 7.4,
-        "gpu_us": 31.0,
-        "gpu_net_us": 20.3,
-        "gpu_flashes_us": 17.0,
-        "gpu_pulses_us": 26.1,
-        "gpu_far_pulses_us": 16.7,
-        "gpu_own_pulses_us": 24.5,
-        "gpu_bolts_us": 16.5,
-        "gpu_bolts_flashes_us": 31.3,
-        "gpu_increment_us": 14.8,
-        "fence_us": 10.7,
+        "cpu_with_us": 29.8,
+        "cpu_without_us": 21.4,
+        "cpu_us": 8.4,
+        "gpu_us": 23.6,
+        "gpu_net_us": 12.8,
+        "gpu_flashes_us": 17.1,
+        "gpu_pulses_us": 18.9,
+        "gpu_far_pulses_us": 17.0,
+        "gpu_own_pulses_us": 17.2,
+        "gpu_bolts_us": 16.2,
+        "gpu_bolts_flashes_us": 24.4,
+        "gpu_increment_us": 8.2,
+        "fence_us": 10.8,
         "lost": 0,
         "stale": 0,
         "dropped": 0
+      },
+      {
+        "case": "budget_combined",
+        "tune": "baked",
+        "width": 5120,
+        "height": 1440,
+        "bolts": 512,
+        "drawn": 512,
+        "comets": 0,
+        "quads": 512,
+        "flashes": 64,
+        "pulses": 64,
+        "pulse_clamped": 2,
+        "statics": 0,
+        "jumped": 0,
+        "cpu_us": 123.0,
+        "gpu_us": 38.7
+      },
+      {
+        "case": "budget_combined",
+        "tune": "comet",
+        "width": 5120,
+        "height": 1440,
+        "bolts": 512,
+        "drawn": 512,
+        "comets": 448,
+        "quads": 532,
+        "flashes": 64,
+        "pulses": 64,
+        "pulse_clamped": 2,
+        "statics": 0,
+        "jumped": 0,
+        "cpu_us": 127.2,
+        "gpu_us": 60.5
+      },
+      {
+        "case": "budget_combined",
+        "tune": "baked_no_flash_work",
+        "width": 5120,
+        "height": 1440,
+        "bolts": 512,
+        "drawn": 512,
+        "comets": 0,
+        "quads": 512,
+        "flashes": 0,
+        "pulses": 0,
+        "pulse_clamped": 0,
+        "statics": 0,
+        "jumped": 0,
+        "cpu_us": 114.5,
+        "gpu_us": 33.2
+      },
+      {
+        "case": "budget_combined",
+        "tune": "baked_448_bolts",
+        "width": 5120,
+        "height": 1440,
+        "bolts": 448,
+        "drawn": 448,
+        "comets": 0,
+        "quads": 448,
+        "flashes": 0,
+        "pulses": 0,
+        "pulse_clamped": 0,
+        "statics": 0,
+        "jumped": 0,
+        "cpu_us": 87.2,
+        "gpu_us": 31.2
+      },
+      {
+        "case": "budget_combined_bounds",
+        "cpu_us": 123.0,
+        "cpu_within_100": 0,
+        "flash_work_cpu_us": 8.5,
+        "newborn_bolts_cpu_us": 27.3,
+        "bolts_448_cpu_us": 87.2,
+        "gpu_us": 38.7,
+        "gpu_within_60": 1
       }
     ],
     "pulse": [
       {
         "distance_m": 27,
         "gain": 1.0,
-        "radius_m": 3.0,
-        "radius_px": 170.67,
-        "shape_px": 170.67,
+        "radius_m": 2.77,
+        "radius_px": 157.75,
+        "shape_px": 157.75,
         "half_over_r": 1.0269,
-        "lit": 53446,
+        "lit": 46700,
         "sky_lit": 0,
         "peak": 0.4998,
         "peak_want": 0.5,
-        "worst": 0.0039,
+        "worst": 0.00389,
         "pulses": 1,
         "result": 0
       },
       {
         "distance_m": 27,
         "gain": 0.43,
-        "radius_m": 3.0,
-        "radius_px": 170.67,
-        "shape_px": 170.67,
+        "radius_m": 2.77,
+        "radius_px": 157.75,
+        "shape_px": 157.75,
         "half_over_r": 1.0269,
-        "lit": 48863,
+        "lit": 42739,
         "sky_lit": 0,
         "peak": 0.215,
         "peak_want": 0.215,
-        "worst": 0.00391,
+        "worst": 0.0039,
         "pulses": 1,
         "result": 0
       },
@@ -3097,6 +3230,26 @@
         "worst": 0.00374,
         "pulses": 1,
         "result": 0
+      }
+    ],
+    "pulse_cap": [
+      {
+        "cap_px": 162.0,
+        "own27_px": 157.73,
+        "own27_clamped": 1,
+        "own27_drawn": 1,
+        "cockpit3_flash": 1,
+        "cockpit3_pulse": 0,
+        "offscreen_flash": 0,
+        "offscreen_pulse": 0
+      }
+    ],
+    "pulse_ghost": [
+      {
+        "ran": 1,
+        "peak": 0.4984,
+        "ghost1": 0.0,
+        "ghost2": 0.0
       }
     ],
     "fade": {

@@ -3421,3 +3421,20 @@ unchanged (512 bolts CPU 87.8 µs, GPU fenced 45.2 µs). Shader `--check` PASS (
 builds 0 warnings, `check_no_x87.py` no violations (FL and AP), host `test_weapon_effects*.py` 98 OK. The look frame
 [`fixture-ire-muzzle.png`](../../verification/results/muzzle-flash-look/fixture-ire-muzzle.png) (800 x 450 crop) viewed.
 Figures from `verification/results/native-windows/weapon-effects/muzzle_rows.py`.
+
+**IRE muzzle flash: review fixes (2026-11-09, `813e50ba3`).** The shooter's velocity is the slip `obj+0x60..0x68`
+plus node `+0x100..0x108`, the sum the FL fire path adds to the bullet (`0x04f88b..0x04f8a0`, stored `0x04f915` [S]);
+the pulse is capped at 0.15 of the view height in radius (`pulse_clamped`) and skipped with the eye within 1.5 radii;
+a flash under 1 px FWHM takes the core's 1 px floor; no pulse beside a culled flash; the shooter compared with the
+record's node and handle from the first frame; `build()` free of x87. Records on the clean `813e50ba3` [M]: AP hook
+**131 of 131**, FL hook **72 of 72**, D3D **105 of 105** (6 new). The extent gate tightened to 0.25 px with the ratio
+within 10 % (a log-parabola crossing estimator): 500 m 1.824 px against the core's 1.415, ratio **1.29** (was 1.68),
+200 m 1.25, 27 m 1.25. Flash axis against the shot's own direction 0.0000° with a third of the ship's 100 m/s in the
+slip; a record of another shooter: lost, not drawn. Pulse: the 27 m own gun at 1080 rows clamped 170.7 → 157.7 px
+(cap 162), none at 3 m from the eye, none beside an off-screen flash; through the production resolve a one-frame pulse
+leaves **0.0000** of its peak 0.498 one and two frames later. Budget: 64 flashes alone CPU 8.4 µs, GPU 8.2 µs over
+the bolts' call (fence pair 10.8). Combined frame, 512 bolts (64 just fired with their flashes and pulses), 5120 x 1440,
+baked tune: GPU fenced **38.7 µs** (≤ 60), CPU **123.0 µs**, over the design's 100 µs: the bolt stage alone is 114.5 µs
+there (448 bridged 87.2 µs, the 64 just-fired bolts' first frames 27.3 µs), the flash work 8.5 µs (gated ≤ 20);
+the comet tune 127.2 µs / 60.5 µs. Shader `--check` PASS, FL and AP builds 0 warnings, `check_no_x87` FL and AP no
+violations, host `test_weapon_effects*.py` 98 OK, the look crop regenerated (the pulse clamped) and viewed.

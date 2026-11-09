@@ -308,8 +308,8 @@ shot forwarded: the latch off or no shooter node; section 4's `muzzle_forwarded_
 `flash_dropped`, `pulse_clamped`.
 
 **Budget.** The combined frame (512 bolts of which 64 just fired with their flashes and pulses, 5120 x 1440, the baked
-tune) is 38.8 µs GPU fenced (under 60) and 122.5 µs CPU: the bolt stage alone is 114 µs there (448 bridged bolts
-88.4 µs, the 64 just-fired bolts' first frames 26.6 µs) and the flash work 7.5 µs, so the design's 100 µs CPU line is
+tune) is 38.7 µs GPU fenced (under 60) and 123.0 µs CPU: the bolt stage alone is 114.5 µs there (448 bridged bolts
+87.2 µs, the 64 just-fired bolts' first frames 27.3 µs) and the flash work 8.5 µs, so the design's 100 µs CPU line is
 exceeded by the existing bolt path, not by the flash. The `build()` float to uint32 conversions go through int32 (SSE
 `cvttss2si`), so the stage carries no x87 instruction.
 
