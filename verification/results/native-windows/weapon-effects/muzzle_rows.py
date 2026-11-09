@@ -21,13 +21,18 @@ keys = {'size': ('distance_m', 'flash_stops', 'core_white_px', 'core_white_measu
                  'ratio', 'fwhm_px', 'peak', 'capped', 'dot', 'share80_10'),
         'streak': ('distance_m', 'rule_px', 'length_px', 'white_run_px', 'white_px', 'folded', 'dot'),
         'lod': ('distance_m', 'dot', 'pulse', 'total', 'near_total', 'peak'),
-        'life': ('name', 'life_ms', 'drawn', 'fade0', 'fade1', 'ride_err_px'),
+        'life': ('name', 'life_ms', 'drawn', 'fade0', 'fade1', 'ride_err_px', 'axis_err_deg', 'lost'),
         'over_hull': ('worst_excess',),
+        'budget_combined': ('tune', 'bolts', 'drawn', 'quads', 'flashes', 'pulses', 'pulse_clamped', 'cpu_us', 'gpu_us'),
+        'budget_combined_bounds': ('cpu_us', 'cpu_within_100', 'flash_work_cpu_us', 'newborn_bolts_cpu_us',
+                                   'bolts_448_cpu_us', 'gpu_us', 'gpu_within_60'),
         'budget': ('flashes', 'pulses', 'cpu_us', 'gpu_us', 'gpu_net_us', 'gpu_flashes_us', 'gpu_pulses_us',
                    'gpu_far_pulses_us', 'gpu_own_pulses_us', 'gpu_bolts_us', 'gpu_bolts_flashes_us', 'gpu_increment_us',
                    'fence_us')}
 for row in d3d['metrics']['flash']:
     print('flash', row.get('case'), {k: row.get(k) for k in keys.get(row.get('case'), ())})
+print('pulse_cap', d3d['metrics'].get('pulse_cap'))
+print('pulse_ghost', d3d['metrics'].get('pulse_ghost'))
 for row in d3d['metrics']['pulse']:
     print('pulse', {k: row.get(k) for k in ('distance_m', 'gain', 'radius_px', 'half_over_r', 'lit', 'sky_lit', 'peak',
                                              'peak_want', 'worst')})

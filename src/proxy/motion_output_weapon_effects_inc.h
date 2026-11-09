@@ -381,6 +381,7 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     projectile_ring_trimmed_ += n.trimmed;
     projectile_flash_lost_ += n.flash_lost + n.flash_stale;
     projectile_flash_dropped_ += n.flash_dropped;
+    projectile_pulse_clamped_ += n.pulse_clamped;
     renderer::WeaponProjectileFrame pf;
     pf.width = f.width;
     pf.height = f.height;
@@ -466,12 +467,13 @@ bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
 void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled,
                                          unsigned* retired, float* stage_us, unsigned* unpooled,
                                          unsigned* sampled, unsigned* statics, unsigned* jumped,
-                                         unsigned* ring_trimmed, unsigned flashes[4]) noexcept {
+                                         unsigned* ring_trimmed, unsigned flashes[5]) noexcept {
     flashes[0] = projectile_flashes_;
     flashes[1] = projectile_pulses_;
     flashes[2] = projectile_flash_lost_;
     flashes[3] = projectile_flash_dropped_;
-    projectile_flashes_ = projectile_pulses_ = projectile_flash_lost_ = projectile_flash_dropped_ = 0;
+    flashes[4] = projectile_pulse_clamped_;
+    projectile_flashes_ = projectile_pulses_ = projectile_flash_lost_ = projectile_flash_dropped_ = projectile_pulse_clamped_ = 0;
     *unpooled = projectile_unpooled_;
     *sampled = projectile_sampled_;
     *statics = projectile_statics_;

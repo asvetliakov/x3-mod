@@ -599,15 +599,18 @@ inline bool bolt_vertices(const View& c, const pf::Tune& tune, const BodyLook& l
 // point is a segment of half length flash_point_h / m whose ramps' slope m puts the along white extent at E too (the
 // logistic density's: 4 y / (1 + y)^2 = 1 / R at y = 1 / ((2R - 1) + sqrt((2R - 1)^2 - 1))); the streak from the muzzle
 // along the shot's axis over flash_len_m, when its on-screen length reaches E, is one segment of the same width and
-// radiance with the bolt's ramps (m = logistic_slope / sigma), the point at its muzzle end. With E under a pixel (the
-// design's LOD) it is the bolt's 1 px dot (FWHM 1 px) at R_f x the flash's FWHM (the lost width), at most the peak whose
-// white extent is E (exp(E^2 / (8 sigma_dot^2))), so the dot obeys the invariant too; no streak. The radiance fades by F (1 on its first
+// radiance with the bolt's ramps (m = logistic_slope / sigma), the point at its muzzle end. A Gaussian under 1 px FWHM
+// takes the bolt core's 1 px floor: FWHM 1 px at R_f x the flash's FWHM (the lost width), at most the peak whose white
+// extent is E (exp(E^2 / (8 sigma_floor^2))), so the floored flash obeys the invariant too; with E itself under a pixel
+// (the design's LOD) that is the dot, no streak. The radiance fades by F (1 on its first
 // frame, then 1 - age / life). No glow, no head, no falloff: the bloom chain makes the halo. The quad's depth is the
 // muzzle's pulled towards the eye by the white radius (so the hull at the mount does not cut the point in half).
-// The hull pulse beside it (section 3): radius hull_pulse_r (1 + calibre) metres, colour the row's tint x
-// pulse_gain (1 + calibre), its gain F; dropped under pulse_min_px on screen or with hull_pulse_r 0.
+// The hull pulse beside a drawn flash (section 3): radius hull_pulse_r (1 + calibre) metres, colour the row's tint x
+// pulse_gain (1 + calibre), its gain F; none under pulse_min_px on screen, with hull_pulse_r 0 or with the eye within
+// pulse_near_r radii; its octagon at most pulse_max_rows of the view height in radius (the radius shrunk to fit).
 constexpr float flash_cap_px = 48.f, flash_cap_rows = 1440.f, flash_point_h = 0.05f;
 constexpr float pulse_gain = 0.5f, pulse_min_px = 3.f, pulse_cover_max = 3.f;
+constexpr float pulse_near_r = 1.5f, pulse_max_rows = 0.15f; // no pulse within 1.5 radii of the eye; at most 0.15 rows
 // A flash's life cap in game steps, its stage frames at most, and how late (game steps after its birth) its first stage
 // frame may still draw it (the tap refuses a registration flash_stale_steps late; one more step for the stage frame).
 constexpr std::uint32_t flash_life_steps = 2, flash_max_frames = 2, flash_first_steps = core::projectile::flash_stale_steps + 1;
@@ -621,11 +624,12 @@ struct FlashShape { // diagnostics and the fixture's rule checks
     float depth_m = 0;
     float core_px = 0;       // the core's true FWHM there
     float core_white_px = 0; // the core's extent at scene white (the invariant's reference, at least its FWHM)
-    float white_px = 0;      // the flash's extent at scene white by the law (E; the dot's: its 1 px)
+    float white_px = 0;      // the flash's extent at scene white at F = 1 by the law (E, less where the 1 px floor binds)
     float sigma_px = 0, fwhm_px = 0, peak = 0, fade = 0, slope = 0, length_px = 0;
     float raster[2]{}, end[2]{}; // the muzzle and the streak's far end on screen (unjittered raster px)
+    float axis[3]{};             // the shot's axis (view space, unit)
     float pulse_px = 0;          // the pulse's radius on screen (0: none)
-    bool folded = false, dot = false, capped = false, pulse = false;
+    bool folded = false, dot = false, capped = false, pulse = false, pulse_clamped = false;
 };
 // The flash's quad (1, or 0: culled) and its pulse (*pulse, when pulse is not null and it is drawn).
 inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& tune, const BodyFrame& body,
@@ -654,14 +658,17 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
     const float l_f = scalar::sqrt(2.f * ln2 * log2f_poly(r_m)); // sqrt(2 ln R)
     float sigma = 0.5f * e_white / l_f;
     const float fwhm = 2.35482f * sigma;
-    const bool dot = e_white < 1.f;
-    float peak = r_f * in.fade;
-    if (dot) { // the bolt's 1 px dot at the radiance x the lost width, at most the peak whose white extent is E
-        constexpr float sigma_dot = 1.f / 2.35482f;
-        const float lost = r_f * fwhm, clip = exp2f_poly(e_white * e_white / (8.f * sigma_dot * sigma_dot * ln2));
-        peak = (lost < clip ? lost : clip) * in.fade;
-        sigma = sigma_dot;
+    const bool dot = e_white < 1.f; // the design's LOD: no streak
+    float r_peak = r_f;             // the peak at F = 1
+    if (fwhm < 1.f) { // the bolt core's 1 px floor: FWHM 1 px at R_f x the lost width, at most the peak whose white extent is E
+        constexpr float sigma_floor = 1.f / 2.35482f;
+        const float lost = r_f * fwhm, clip = exp2f_poly(e_white * e_white / (8.f * sigma_floor * sigma_floor * ln2));
+        r_peak = lost < clip ? lost : clip;
+        sigma = sigma_floor;
     }
+    const float peak = r_peak * in.fade;
+    // the extent at scene white at F = 1 (E, or less when the floor's lost width binds)
+    const float white = r_peak > 1.f ? 2.f * sigma * scalar::sqrt(2.f * ln2 * log2f_poly(r_peak)) : 0.f;
     // the streak's far end (clipped to the near plane) and its on-screen length
     float rb[2] = {ra[0], ra[1]}, length = 0.f;
     if (!dot && tune.flash_len_m > 0.f) {
@@ -677,11 +684,11 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
     const bool folded = dot || !(length >= e_white);
     float m, h, cx, cy, ux = 1.f, uy = 0.f;
     if (folded) {
-        if (dot) {
+        if (dot || !(r_peak > 1.001f) || !(white > 0.f)) {
             m = logistic_slope / sigma;
-        } else { // the along slope whose logistic density clips at E / 2 from the centre, as the Gaussian across
-            const float t = 2.f * r_m - 1.f;
-            m = log2f_poly(t + scalar::sqrt(t * t - 1.f)) / (0.5f * e_white);
+        } else { // the along slope whose logistic density clips at white / 2 from the centre, as the Gaussian across
+            const float t = 2.f * r_peak - 1.f;
+            m = log2f_poly(t + scalar::sqrt(t * t - 1.f)) / (0.5f * white);
         }
         h = flash_point_h / m;
         cx = ra[0], cy = ra[1];
@@ -726,10 +733,19 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
         miny = py < miny ? py : miny;
         maxy = py > maxy ? py : maxy;
     }
-    // the pulse: radius hull_pulse_r (1 + calibre) m, dropped under pulse_min_px
-    const float radius = tune.hull_pulse_r * (1.f + look.calibre) * view_units_per_metre;
+    // off the target (a pixel centre lies in [-0.5, size - 0.5]); a non-finite corner is culled, never drawn
+    const bool keep = minx == minx && maxx == maxx && miny == miny && maxy == maxy && maxx < 1e30f && minx > -1e30f &&
+                      maxy < 1e30f && miny > -1e30f &&
+                      !(maxx < -0.5f || maxy < -0.5f || minx > c.width - 0.5f || miny > c.height - 0.5f);
+    // the pulse (only beside a drawn flash): radius hull_pulse_r (1 + calibre) m; none with the eye within pulse_near_r
+    // radii of the muzzle (the own gun in first person: no own hull to light) or under pulse_min_px on screen; its
+    // octagon at most pulse_max_rows of the view height in radius (the radius shrunk to fit: pulse_clamped)
+    float radius = tune.hull_pulse_r * (1.f + look.calibre) * view_units_per_metre;
+    const float d2 = in.p[0] * in.p[0] + in.p[1] * in.p[1] + in.p[2] * in.p[2];
     const float pulse_px = radius * f_px * inv_z;
-    const bool lit = pulse && pulsed && radius > 0.f && pulse_px >= pulse_min_px;
+    bool clamped = false;
+    const bool lit = keep && pulse && pulsed && radius > 0.f && d2 >= pulse_near_r * pulse_near_r * radius * radius &&
+                     pulse_px >= pulse_min_px;
     if (lit) {
         const float g = pulse_gain * (1.f + look.calibre);
         for (unsigned k = 0; k < 3; ++k) {
@@ -737,12 +753,18 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
             pulse->colour[k] = look.tint[k] * g;
         }
         // the octagon's inner radius at the muzzle's depth: the sphere's outline seen from the eye, R / sqrt(1 - (R / d)^2)
-        // across and that / cos(theta) along the radial screen direction (theta off the view axis), with 2 % to spare;
-        // pulse_cover_max when the eye is within about the radius
-        const float d2 = in.p[0] * in.p[0] + in.p[1] * in.p[1] + in.p[2] * in.p[2], r2 = radius * radius;
-        const float outline = d2 > 1.1f * r2 ? 1.02f * scalar::sqrt(d2 / ((d2 - r2) * in.p[2] * in.p[2] / d2)) : pulse_cover_max;
+        // across and that / cos(theta) along the radial screen direction (theta off the view axis), with 2 % to spare
+        // (d >= 1.5 R: at most 1.02 x 1.342 / cos theta), at most pulse_cover_max
+        const float r2 = radius * radius;
+        const float outline_raw = 1.02f * scalar::sqrt(d2 / ((d2 - r2) * in.p[2] * in.p[2] / d2));
+        const float outline = outline_raw < pulse_cover_max ? outline_raw : pulse_cover_max;
+        const float max_half = pulse_max_rows * c.height * z / f_px; // view units at the muzzle's depth
+        if (radius * outline > max_half) {
+            radius = max_half / outline;
+            clamped = true;
+        }
         pulse->radius = radius;
-        pulse->half = radius * (outline < pulse_cover_max ? outline : pulse_cover_max);
+        pulse->half = radius * outline;
         pulse->gain = in.fade;
         *pulsed = true;
     }
@@ -750,7 +772,7 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
         shape->depth_m = z * (1.f / view_units_per_metre);
         shape->core_px = w_core;
         shape->core_white_px = core_white;
-        shape->white_px = e_white;
+        shape->white_px = white;
         shape->sigma_px = sigma;
         shape->fwhm_px = 2.35482f * sigma;
         shape->peak = peak;
@@ -759,15 +781,14 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
         shape->length_px = folded ? 0.f : length;
         shape->raster[0] = ra[0], shape->raster[1] = ra[1];
         shape->end[0] = rb[0], shape->end[1] = rb[1];
-        shape->pulse_px = lit ? pulse_px : 0.f;
+        for (unsigned k = 0; k < 3; ++k) shape->axis[k] = in.axis[k];
+        shape->pulse_px = lit ? radius * f_px * inv_z : 0.f;
         shape->folded = folded;
         shape->dot = dot;
         shape->capped = wanted > cap;
         shape->pulse = lit;
+        shape->pulse_clamped = clamped;
     }
-    const bool keep = minx == minx && maxx == maxx && miny == miny && maxy == maxy && maxx < 1e30f && minx > -1e30f &&
-                      maxy < 1e30f && miny > -1e30f &&
-                      !(maxx < -0.5f || maxy < -0.5f || minx > c.width - 0.5f || miny > c.height - 0.5f);
     return keep ? 1u : 0u;
 }
 // A flash's life (game ms): flash_life_frac x the gun's measured refire gap, at most flash_life_steps game steps; 0 for a
@@ -792,8 +813,11 @@ inline bool flash_draws(unsigned frames, std::int32_t age_ms, float life_ms, flo
     return *fade > 0.f;
 }
 // The shooter's pose for a flash: the object's flags and root node (one bounded read), its node (one more): live, not
-// dying, its handle, position +0x30 (engine units), rows +0x40 (16.16: row k = local axis k in world) and velocity
-// +0x100 (engine units per second).
+// dying, its handle, position +0x30 (engine units), rows +0x40 (16.16: row k = local axis k in world) and its world
+// velocity (engine units per second): the slip obj +0x60..+0x68 plus node +0x100..+0x108, the two terms the FL fire path
+// adds to the bullet's velocity (0x04f88b..0x04f8a0; the sum stored at node +0x100 by 0x04f915; the AP collision and AI
+// notes read the same sum), so v_bullet - v_shooter is the shot's own direction x speed.
+constexpr unsigned shooter_slip = 0x60; // obj +0x60..+0x68
 struct ShooterPose {
     std::uint32_t node = 0, handle = 0;
     std::int32_t pos[3]{};
@@ -814,7 +838,8 @@ inline bool shooter_pose(Reader rd, std::uint32_t obj, ShooterPose& s) noexcept 
     s.handle = u32(nb, core::layout::node_handle - at);
     for (unsigned k = 0; k < 3; ++k) {
         s.pos[k] = std::int32_t(u32(nb, core::layout::node_pos - at + 4 * k));
-        s.vel[k] = float(std::int32_t(u32(nb, core::projectile::node_velocity - at + 4 * k)));
+        s.vel[k] = float(std::int32_t(u32(nb, core::projectile::node_velocity - at + 4 * k) +
+                                      u32(ob, shooter_slip - obj_at + 4 * k)));
         for (unsigned j = 0; j < 3; ++j)
             s.rows[3 * k + j] = float(std::int32_t(u32(nb, core::layout::node_rot - at + 16 * k + 4 * j))) * (1.f / 65536.f);
     }
@@ -841,6 +866,7 @@ struct Counts {
     // the muzzle flashes: quads written after the bolts', pulses written, flashes whose shooter could not be read (or
     // changed), first stage frames too late, flashes past the room
     unsigned flashes = 0, pulses = 0, flash_lost = 0, flash_stale = 0, flash_dropped = 0;
+    unsigned pulse_clamped = 0; // pulses whose radius was shrunk to the screen cap (pulse_max_rows)
 };
 // The adaptive ring (the budget's worst case: every comet curved, five quads each): when the previous stage frame's bolts
 // wanted more than this many quads, this frame redraws at most the two youngest ring segments of a comet that is not one
@@ -893,7 +919,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     // a static frame's extrapolation: render dt x the SETA rate (game us), bounded per entry by max_static_steps steps
     const float dt_game = (render_dt_s > 0.f && render_dt_s < 1.f ? render_dt_s : 0.f) *
                           (seta_rate > 0.f && seta_rate < 64.f ? seta_rate : 1.f);
-    const std::uint32_t static_add_us = std::uint32_t(dt_game * 1e6f);
+    const std::uint32_t static_add_us = std::uint32_t(std::int32_t(dt_game * 1e6f)); // < 64 s: int32 (SSE cvttss2si, no x87)
     const std::uint32_t static_max_us = max_static_steps * (step_ms < 1000u ? step_ms : 1000u) * 1000u;
     constexpr unsigned node_at = core::layout::node_live, node_span = core::layout::node_body + 4 - node_at;
     unsigned char nb[node_span];
@@ -968,7 +994,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
                 ++n.flash_stale;
                 e.flash = core::projectile::flash_done;
             } else if (!shooter_pose(rd, e.shooter, sp) ||
-                       (e.flash == core::projectile::flash_live && (sp.node != e.flash_node || sp.handle != e.flash_handle))) {
+                       sp.node != e.flash_node || sp.handle != e.flash_handle) { // the record's shooter, every frame
                 ++n.flash_lost;
                 e.flash = core::projectile::flash_done;
             } else {
@@ -992,8 +1018,6 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
                     }
                     std::memcpy(e.flash_off, off, sizeof off);
                     std::memcpy(e.flash_axis, axis, sizeof axis);
-                    e.flash_node = sp.node;
-                    e.flash_handle = sp.handle;
                     e.flash_frames = 0;
                     e.flash = core::projectile::flash_live;
                 }
@@ -1128,7 +1152,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
             if (ring) {
                 std::memcpy(&e.ring_px[0][0], &shape.motion_tail[0], 4);
                 std::memcpy(&e.ring_px[0][1], &shape.motion_tail[1], 4);
-                e.ring_us[0] = head_us - std::uint32_t(shape.tail_age_s * 1e6f + 0.5f);
+                e.ring_us[0] = head_us - std::uint32_t(std::int32_t(shape.tail_age_s * 1e6f + 0.5f)); // int32: no x87
             }
             e.ring_count = ring ? 1u : 0u;
             e.head_us = head_us;
@@ -1163,6 +1187,7 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
         const unsigned q = flash_quad(view, vfs[f.family], tunes[f.family], bodies[f.body], looks.look[f.body], f,
                                       out + 4 * (n.quads + n.flashes), pulse, &pulsed, &shape);
         if (pulsed) ++n.pulses;
+        n.pulse_clamped += pulsed && shape.pulse_clamped;
         if (q && flashes->shapes) flashes->shapes[n.flashes] = shape;
         n.flashes += q;
     }

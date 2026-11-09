@@ -252,31 +252,45 @@ registration more than `flash_stale_steps` = 2 game steps (cfg `+0x704`) after t
 `flash_first_steps` = 3 steps after the birth) the shooter is read through the bounded reader (object `+0x40..+0x74`,
 node `+0x1c..+0x10c`: live, not dying, handle, position, rows, velocity); the muzzle is the bullet's position less
 (v − v_ship) x its age and the axis v − v_ship, both stored in the shooter's frame and re-posed each frame through its
-current pose (a lost or changed shooter: `flash_lost`). Life `flash_life_ms` = min(`flash_life_frac` x gap,
+current pose. The shooter must be the record's on every frame (its node and handle at the shot, which the tap copies from
+the `MuzzleRecord`); a lost or changed shooter is `flash_lost`. **v_ship** is the ship's world velocity as the fire path
+adds it to the bullet's [S, X3FL.exe]: `mov esi,[edi+0x60]` … `add esi,[eax+0x100]` (eax = `[edi+0x70]`, the ship's
+node), the same for `+0x64 / +0x104` and `+0x68 / +0x108` (`0x04f88b..0x04f8a0`), added to the direction x col 11
+(`0x04f8ce` → `0x012c00`, `0x04f8e7..0x04f902`) and stored at node `+0x100` (`0x04f915`); the AP collision response
+(`0x0045e6de`) and the AI (`0x0044d6b8`) read the same sum. So v_ship = slip `obj+0x60..+0x68` + node
+`+0x100..+0x108`, and v − v_ship is the shot's own direction x speed (the fixture: 0.0000° with a third of the ship's
+velocity in the slip). Life `flash_life_ms` = min(`flash_life_frac` x gap,
 2 x step); drawn on that first frame at F = 1, then while age < life and under `flash_max_frames` = 2 stage frames
 at F = 1 − age / life (`flash_draws`); a first shot draws once (the table carries no refire rate, so section 1's
 one-frame rule is kept). `flash_quad`: R_c = 2^(`stops` + k), R_f = R_c 2^`flash_stops` (over the core, section 2),
 E = min(`flash_core_mult` x 2 σ_c √(2 ln max(R_c, 2)), 48 px x rows / 1440), σ = (E / 2) / √(2 ln max(R_f, 2)); the
 point is a segment of half length 0.05 / m whose logistic slope m makes the along extent at white E as well (a round
 white disc); when the streak's on-screen length reaches E the point and streak are one segment from the muzzle along
-the axis (the bolt's ramps, m = 2.455 / σ), so they never add; under E = 1 px the bolt's 1 px dot at
-min(R_f x FWHM, the peak whose white extent is E) x F (the invariant holds for the dot too, so the 2 km dot is about
-1.15 x white rather than section 2's "16 x white x the width"). No glow, no head; the quad's depth is the muzzle's
+the axis (the bolt's ramps, m = 2.455 / σ), so they never add. A Gaussian under 1 px FWHM takes the bolt core's 1 px
+floor: FWHM 1 px at min(R_f x the FWHM, the peak whose white extent is E) x F, so the floored flash keeps the ratio to
+the floored core (500 m: 1.29 measured) and the invariant; with E under 1 px that is the dot, without a streak (the
+2 km dot is about 1.15 x white rather than section 2's "16 x white x the width"). No glow, no head; the quad's depth is the muzzle's
 pulled toward the eye by the white radius. Flash quads follow the bolts' in the same `run_projectiles` draw
 (`weapon_projectile_max_flashes` = 64 more quads).
 
-**The pulse** (`WeaponPulse`, `weapon_pulse_ps.hlsl`). Built by `flash_quad` when its radius `hull_pulse_r` (1 + k) m is
-at least `pulse_min_px` = 3 px on screen: colour the row's tint x 0.5 (1 + k), gain F, at most 64. Drawn by
+**The pulse** (`WeaponPulse`, `weapon_pulse_ps.hlsl`). Built by `flash_quad` beside a flash it draws (a culled flash
+has none) when its radius `hull_pulse_r` (1 + k) m is at least `pulse_min_px` = 3 px on screen and the eye is at least
+`pulse_near_r` = 1.5 radii from the muzzle (the own gun in first person: no own hull there): colour the row's tint x
+0.5 (1 + k), gain F, at most 64. Its octagon is at most `pulse_max_rows` = 0.15 of the view height in radius, the
+radius shrunk to fit (`pulse_clamped`: the 27 m own gun at 1080 rows, 170.7 → 157.7 px). Drawn by
 `run_projectiles` before the bolts with the decal vertex program (unchanged) on an octagon about the muzzle sized to
 the sphere's outline from the eye (R / √(1 − R²/d²) / cos θ, 2 % spare, at most 3 R); the pixel program reads the lane
 depth, takes the half size from the corner's screen derivative and the radius from the vertex, and adds
 colour x gain x (1 − r/R)² on lane surface within R, nothing on sky, nothing under 1/256. Same-colour pulses are one
 indexed draw. `run_projectiles` recreates the decal objects after a Reset when it has pulses (the fixture's pulse cases
-run after its Reset case and crashed before that).
+run after its Reset case and crashed before that). **TAA:** the pulse samples the lane, so it cannot write the lane's
+far flag as the bolts do (D3D9 forbids a texture bound as source and target); it enters the history like the shield
+patches. Through the production resolve, a one-frame pulse leaves 0.0000 of its peak one and two frames later
+(the fixture's `pulse_taa_ghost_at_most_one_frame`): the neighbourhood clamp removes it at once.
 
 **Constants.** `flash_cap_px` 48 at `flash_cap_rows` 1440, `flash_point_h` 0.05, `pulse_gain` 0.5, `pulse_min_px` 3,
-`pulse_cover_max` 3, `flash_life_steps` 2, `flash_max_frames` 2, `flash_first_steps` 3, `flash_stale_steps` 2,
-`weapon_max_pulses` 64, `weapon_projectile_max_flashes` 64.
+`pulse_cover_max` 3, `pulse_near_r` 1.5, `pulse_max_rows` 0.15, `flash_life_steps` 2, `flash_max_frames` 2,
+`flash_first_steps` 3, `flash_stale_steps` 2, `weapon_max_pulses` 64, `weapon_projectile_max_flashes` 64.
 
 **File keys** (`projectile_tune.json`, the same reader and `Tune`; bounds as briefed, wider than section 5's table):
 
@@ -291,7 +305,13 @@ run after its Reset case and crashed before that).
 **Frame row** (`weapon_effects_frame`, FL fields per period): `muzzle_skipped`, `muzzle_unskipped` (an enabled body's
 shot forwarded: the latch off or no shooter node; section 4's `muzzle_forwarded_enabled`), `muzzle_evicted`,
 `flash_matched`, `flash_unmatched`, `flash_stale`, `flash_drawn`, `pulse_drawn`, `flash_lost` (with the stage's stale),
-`flash_dropped`.
+`flash_dropped`, `pulse_clamped`.
+
+**Budget.** The combined frame (512 bolts of which 64 just fired with their flashes and pulses, 5120 x 1440, the baked
+tune) is 38.8 µs GPU fenced (under 60) and 122.5 µs CPU: the bolt stage alone is 114 µs there (448 bridged bolts
+88.4 µs, the 64 just-fired bolts' first frames 26.6 µs) and the flash work 7.5 µs, so the design's 100 µs CPU line is
+exceeded by the existing bolt path, not by the flash. The `build()` float to uint32 conversions go through int32 (SSE
+`cvttss2si`), so the stage carries no x87 instruction.
 
 **Fixtures** (records and figures: [weapon-effects ledger](../verification/weapon-effects.md), "IRE muzzle flash
 (2026-11-09)"). The look frame [`fixture-ire-muzzle.png`](../../verification/results/muzzle-flash-look/fixture-ire-muzzle.png)

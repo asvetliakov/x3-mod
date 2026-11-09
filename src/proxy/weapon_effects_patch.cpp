@@ -61,7 +61,7 @@ struct Period {
     std::uint32_t projectile_static = 0, projectile_jumped = 0; // entry-frames: position unchanged / off the prediction
     std::uint32_t projectile_ring_trimmed = 0;                  // bolt-frames whose comet ring was trimmed
     std::uint32_t projectile_flashes = 0, projectile_pulses = 0; // muzzle flashes and hull pulses drawn
-    std::uint32_t projectile_flash_lost = 0, projectile_flash_dropped = 0; // shooter unreadable; past the frame's room
+    std::uint32_t projectile_flash_lost = 0, projectile_flash_dropped = 0, projectile_pulse_clamped = 0; // shooter unreadable; past the frame's room
     float projectile_us_max = 0.f;
 } period_{};
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
@@ -825,13 +825,13 @@ void clear_owned() {
 // the adaptive rule trimmed (ring_trimmed; projectile-look.md section 2). The muzzle (muzzle-flash-look.md section 4):
 // enabled-body shots whose game flash the muzzle site skipped and those it forwarded (latch off: the engine's flash
 // shows), records evicted; the tap's flash matches (matched, unmatched, registered too late); flash quads and hull
-// pulses drawn, flashes whose shooter could not be read, flashes past the frame's room.
+// pulses drawn, flashes whose shooter could not be read, flashes past the frame's room, pulses shrunk to the screen cap.
 #define X3M_PROJECTILE_FIELDS                                                                                          \
     " projectile_owned=%lu projectile_skipped=%lu projectile_dropped=%lu projectile_unhandled=%lu projectile_bolts=%lu " \
     "projectile_tracked=%lu projectile_retired=%lu projectile_overflow=%lu projectile_recycled=%lu projectile_bodies=%lu " \
     "projectile_us_max=%.1f projectile_unpooled=%lu projectile_sampled=%lu projectile_static=%lu projectile_jumped=%lu " \
     "projectile_ring_trimmed=%lu muzzle_skipped=%lu muzzle_unskipped=%lu muzzle_evicted=%lu flash_matched=%lu "        \
-    "flash_unmatched=%lu flash_stale=%lu flash_drawn=%lu pulse_drawn=%lu flash_lost=%lu flash_dropped=%lu"
+    "flash_unmatched=%lu flash_stale=%lu flash_drawn=%lu pulse_drawn=%lu flash_lost=%lu flash_dropped=%lu pulse_clamped=%lu"
 #define X3M_PROJECTILE_ARGS                                                                                            \
     , static_cast<unsigned long>(period_.projectile_owned),                                                           \
         static_cast<unsigned long>(x3m_projectile_pool.skipped - projectile_seen_skipped_),                             \
@@ -852,7 +852,8 @@ void clear_owned() {
         static_cast<unsigned long>(x3m_projectile_pool.counters.flash_stale - projectile_seen_.flash_stale),           \
         static_cast<unsigned long>(period_.projectile_flashes), static_cast<unsigned long>(period_.projectile_pulses), \
         static_cast<unsigned long>(period_.projectile_flash_lost),                                                     \
-        static_cast<unsigned long>(period_.projectile_flash_dropped)
+        static_cast<unsigned long>(period_.projectile_flash_dropped),                                                     \
+        static_cast<unsigned long>(period_.projectile_pulse_clamped)
 #else
 #define X3M_PROJECTILE_FIELDS ""
 #define X3M_PROJECTILE_ARGS
@@ -904,6 +905,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.projectile_pulses += stage.projectile_pulses;
     period_.projectile_flash_lost += stage.projectile_flash_lost;
     period_.projectile_flash_dropped += stage.projectile_flash_dropped;
+    period_.projectile_pulse_clamped += stage.projectile_pulse_clamped;
     if (stage.projectile_us > period_.projectile_us_max) period_.projectile_us_max = stage.projectile_us;
 #endif
     ++period_.frames;

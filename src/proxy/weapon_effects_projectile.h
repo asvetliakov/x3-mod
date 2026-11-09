@@ -78,7 +78,7 @@ struct ProjectileEntry {
     std::uint8_t flash;         // projectile::FlashState
     std::uint8_t flash_frames;  // stage frames the flash was drawn on
     std::uint8_t flash_pad[2];
-    std::uint32_t flash_node, flash_handle; // the shooter's node and node+0x28 at the flash's first stage frame
+    std::uint32_t flash_node, flash_handle; // the shooter's node and node+0x28 at the shot (its MuzzleRecord)
     std::uint32_t flash_off[3];  // the muzzle in the shooter's frame (engine units along its rows, float bits)
     std::uint32_t flash_axis[3]; // the shot's axis in the shooter's frame (unit, float bits)
 };
@@ -230,6 +230,8 @@ static inline __attribute__((always_inline)) void projectile_flash_match(Project
         const MuzzleRecord& m = p.muzzles[i];
         if (!m.sequence || !m.ours || m.t0 != created || m.ship != e.shooter) continue;
         e.flash_gap_ms = m.prev_t0 ? m.t0 - m.prev_t0 : 0u;
+        e.flash_node = m.node; // the shooter's node and handle at the shot: the stage's first frame compares them
+        e.flash_handle = m.handle;
         e.flash = projectile::flash_pending;
         ++p.counters.flash_matched;
         return;
