@@ -18,7 +18,9 @@ OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
 
 READER = r'''
 #include "weapon_effects_table.h"
+#include "bullet_reshade_core.h"
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 namespace t = x3m::weapon_effects::table;
 namespace core = x3m::weapon_effects::core;
@@ -30,8 +32,19 @@ int main(int argc, char** argv) {
     t::Stats st;
     std::size_t fault = 0;
     const bool ok = t::parse(text.data(), text.size(), &table, &st, &fault);
+    if (argc > 1 && std::string(argv[1]) == "fnv") { // the bytes on stdin: the production texture hashes
+        const auto* p = reinterpret_cast<const unsigned char*>(text.data());
+        std::printf("head64=%016llx fnv1a64=%016llx\n",
+                    (unsigned long long)x3m::weapon_effects::reshade::fnv1a64(p, text.size() < 4096 ? text.size() : 4096),
+                    (unsigned long long)x3m::weapon_effects::reshade::fnv1a64(p, text.size()));
+        return 0;
+    }
     std::printf("ok=%d rows=%u missile_rows=%u entries=%u textures=%u overrides=%u schema=%u\n", int(ok), table.rows,
                 table.missile_rows, st.entries, st.textures, st.overrides, st.schema);
+    std::printf("bullet_textures=%u bullet_textures_dropped=%u tex0_bytes=%u tex0_head=%016llx tex0_hash=%016llx "
+                "tex0_p99_q=%u\n", table.bullet_textures, st.bullet_textures_dropped, table.bullet_texture_bytes[0],
+                (unsigned long long)table.bullet_texture_head[0], (unsigned long long)table.bullet_texture_hash[0],
+                unsigned(table.bullet_texture_p99_q[0]));
     if (ok && argc > 1) {
         const unsigned row = unsigned(std::atoi(argv[1]));
         std::printf("row=%u bits=%u shape=%s texture=%06lx override=%06lx calibre_q=%u hull_class=%s\n", row,
@@ -79,6 +92,23 @@ def sample_table():
 
 
 class WeaponEffectsTableGenerator(unittest.TestCase):
+    def test_texture_hash_and_luminance(self):
+        # the bullet re-shade's texture keys and normaliser input (bullet_reshade_core.h): FNV-1a 64 (the published
+        # vectors) and the luminance p99 / peak over every texel, Rec. 709 on value / 255
+        import numpy as np
+        self.assertEqual(wt.fnv1a64(b''), 0xcbf29ce484222325)
+        self.assertEqual(wt.fnv1a64(b'a'), 0xaf63dc4c8601ec8c)
+        self.assertEqual(wt.fnv1a64(b'foobar'), 0x85944171f73967e8)
+        rgba = np.zeros((100, 100, 4), np.uint8)
+        rgba[0, 0, :3] = 255                   # one white texel: the peak, not the p99
+        rgba[1:, :, 0] = 100                   # 9900 texels of red 100: luminance 0.2126 x 100 / 255
+        peak, p99 = wt.luminance_stats(rgba)
+        self.assertEqual(peak, 1.0)
+        self.assertAlmostEqual(p99, round(0.2126 * 100 / 255, 4), places=4)
+        w = {'index': 3, 'weapon_id': 'SS_BULLET_PPC', 'body_key': 'objects/v/00518', 'speed': None, 'lifetime_ms': None}
+        self.assertEqual(wt.row_entry(w, None, None, {}, texture='fx_bullets2_diff')['texture'], 'fx_bullets2_diff')
+        self.assertIsNone(wt.row_entry(w, None, None, {})['texture'])
+
     def test_shape_from_elongation_matches_the_header_thresholds(self):
         self.assertEqual(wt.shape_from_elongation(18.5), 'tracer')
         self.assertEqual(wt.shape_from_elongation(4.0), 'tracer')
@@ -259,6 +289,29 @@ class WeaponEffectsTableReader(unittest.TestCase):
                     {'bolt_tint': 'light'}):
             with self.assertRaises(wt.GenerateError, msg=str(bad)):   # the generator never writes such a row
                 wt.row_entry(w, None, None, bad)
+
+    def test_reader_reads_bullet_textures(self):
+        # tables.bullet_textures (the bullet re-shade's per-texture normaliser): kept entries in order, the p99 x 65535;
+        # a bad byte count, hash or p99 drops the entry (counted); a wrong JSON type is malformed; the C++ hashes are
+        # the generator's
+        good = {'name': 'fx_bullets_diff', 'bytes': 349680, 'head64': 'd66d9c9af0d8ac47', 'fnv1a64': '34acf50c2603cdd5',
+                'peak': 0.973, 'p99': 0.6169, 'rows': [0, 1]}
+        t = sample_table()
+        t['tables']['bullet_textures'] = [good, dict(good, bytes=0), dict(good, head64='xyz'), dict(good, p99=1.5),
+                                          dict(good, fnv1a64='34ACF50C2603CDD5', bytes=1398256)]
+        code, f = self.read(t)
+        self.assertEqual((code, f['bullet_textures'], f['bullet_textures_dropped']), (0, '2', '3'))
+        self.assertEqual((f['tex0_bytes'], f['tex0_head'], f['tex0_hash'], f['tex0_p99_q']),
+                         ('349680', 'd66d9c9af0d8ac47', '34acf50c2603cdd5', str(round(0.6169 * 65535))))
+        self.assertEqual(f['entries'], '12')      # the rows are untouched
+        t['tables']['bullet_textures'] = [dict(good, bytes='349680')]
+        self.assertEqual(self.read(t)[0], 1)
+        t['tables']['bullet_textures'] = {'not': 'a list'}
+        self.assertEqual(self.read(t)[0], 1)
+        data = bytes(range(256)) * 20            # longer than the 4096-byte head
+        out = subprocess.run([str(self.exe), 'fnv'], input=data, capture_output=True)
+        got = dict(kv.split('=') for kv in out.stdout.decode().split())
+        self.assertEqual(got, {'head64': f'{wt.fnv1a64(data[:wt.HEAD_BYTES]):016x}', 'fnv1a64': f'{wt.fnv1a64(data):016x}'})
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 3, 'tables': {}})

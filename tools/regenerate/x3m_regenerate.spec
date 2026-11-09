@@ -17,10 +17,14 @@ TOOLS = ['fog_families', 'fog_family_inputs', 'bake_fog_fields', 'fog_field_reci
          'catalogue_mounts', 'sky_textures',
          'game_guard', 'engine_bodies', 'weapon_effects_table', 'weapon_effects_census', 'PIL.Image', 'PIL.JpegImagePlugin', 'PIL.TgaImagePlugin', 'PIL.PngImagePlugin']
 
+# tools/effects/weapon_catalog.py (the weapon effects table's mount tiers) loads the census classifier by path at
+# import; bundled beside the modules, where its frozen fallback looks.
+LOADED = [ROOT / 'verification' / 'results' / 'weapon-effects-census' / 'classify_preview.py']
+
 a = Analysis(
     [str(ROOT / 'tools' / 'regenerate' / 'x3m_regenerate.py')],
     pathex=[str(p) for p in PATHS],
-    datas=[(str(p), '.') for p in HASHED],
+    datas=[(str(p), '.') for p in HASHED + LOADED],
     hiddenimports=TOOLS,
     excludes=['tkinter', 'matplotlib', 'scipy', 'pandas', 'IPython', 'pytest', 'unittest.mock'],
     noarchive=False,

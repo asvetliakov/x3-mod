@@ -1,6 +1,12 @@
-DUMP_RESHADE assets=game mesh_vertices=66 texture=512 metres_per_body_unit=20.218 bolt_length_m=10.0 gain=0.45 edge=0.1 core=0.25 normaliser=2.75
-DUMP_RESHADE name=fixture-ire-vanilla-near distance_m=50 edge=0.1 crop=640x256 dark_sum=253.713 dark_peak=0.7392 nebula_sum=179.911 nebula_peak=0.5576 written=1
-DUMP_RESHADE name=fixture-ire-reshade-near distance_m=50 edge=0.1 crop=640x256 dark_sum=124.193 dark_peak=0.5859 nebula_sum=84.532 nebula_peak=0.4412 written=1
-DUMP_RESHADE name=fixture-ire-vanilla-far distance_m=1500 edge=0.1 crop=64x32 dark_sum=1.431 dark_peak=0.1935 nebula_sum=0.982 nebula_peak=0.1460 written=1
-DUMP_RESHADE name=fixture-ire-reshade-far distance_m=1500 edge=0.1 crop=64x32 dark_sum=0.642 dark_peak=0.0914 nebula_sum=0.387 nebula_peak=0.0688 written=1
+DUMP_RESHADE assets=game mesh_vertices=66 texture=512 metres_per_body_unit=20.218 bolt_length_m=10.0 gain=0.4 edge=0.4 core=0.2 normaliser=2.75 texture_p99=0.6169
+DUMP_RESHADE name=fixture-ire-vanilla-near distance_m=50 edge=0.4 crop=640x256 dark_sum=253.713 dark_peak=0.7392 nebula_sum=179.911 nebula_peak=0.5576 written=1
+DUMP_RESHADE name=fixture-ire-reshade-near distance_m=50 edge=0.4 crop=640x256 dark_sum=76.026 dark_peak=0.5265 nebula_sum=49.213 nebula_peak=0.3969 written=1
+DUMP_RESHADE name=fixture-ire-vanilla-far distance_m=1500 edge=0.4 crop=64x32 dark_sum=1.431 dark_peak=0.1935 nebula_sum=0.982 nebula_peak=0.1460 written=1
+DUMP_RESHADE name=fixture-ire-reshade-far distance_m=1500 edge=0.4 crop=64x32 dark_sum=0.156 dark_peak=0.0257 nebula_sum=0.021 nebula_peak=0.0193 written=1
+DUMP_RESHADE name=fixture-pac-vanilla-near family=pac vertices=54 texture=512 texture_p99=0.6169 normaliser=2.75 distance_m=50 crop=640x256 dark_sum=100.824 dark_peak=0.4139 written=1
+DUMP_RESHADE name=fixture-pac-reshade-near family=pac vertices=54 texture=512 texture_p99=0.6169 normaliser=2.75 distance_m=50 crop=640x256 dark_sum=25.512 dark_peak=0.1854 written=1
+DUMP_RESHADE name=fixture-hept-vanilla-near family=hept vertices=66 texture=512 texture_p99=0.6169 normaliser=2.75 distance_m=50 crop=640x256 dark_sum=522.565 dark_peak=0.9300 written=1
+DUMP_RESHADE name=fixture-hept-reshade-near family=hept vertices=66 texture=512 texture_p99=0.6169 normaliser=2.75 distance_m=50 crop=640x256 dark_sum=198.906 dark_peak=0.8521 written=1
+DUMP_RESHADE name=fixture-ppc-vanilla-near family=ppc vertices=210 texture=512 texture_p99=0.9888 normaliser=1.716 distance_m=50 crop=640x256 dark_sum=4611.169 dark_peak=1.0000 written=1
+DUMP_RESHADE name=fixture-ppc-reshade-near family=ppc vertices=210 texture=512 texture_p99=0.9888 normaliser=1.716 distance_m=50 crop=640x256 dark_sum=2593.162 dark_peak=0.9815 written=1
 RESULT PASS checks=0 failures=0

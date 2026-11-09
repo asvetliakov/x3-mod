@@ -18,6 +18,7 @@
 #include "engine_effects_patch.h"
 #include "sector_key.h" // the weapon ring's scope: the cockpit's sector key (weapon_effects::present)
 #include "weapon_effects_patch.h"
+#include "bullet_reshade_core.h"  // the bullet re-shade's per-texture normaliser (texture_created's row)
 #include "run_in_background.h"
 #include "sun_flare_fix.h"
 #include "dust_leak_fix.h"
@@ -2108,11 +2109,17 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.projectile_flash_lost = flashes[2];
         stage.projectile_flash_dropped = flashes[3];
         stage.projectile_pulse_clamped = flashes[4];
-        // The bullet re-shade (reshade mode; bullet-draw-batch.md section 6): the tuning poll and the frame's counts.
-        if (x3m_bullet_reshade_armed)
+        // The re-shades (reshade mode): one dev tuning poll for both while either runs, then each one's frame counts
+        // (the bullet's: bullet-draw-batch.md section 6; the muzzle flash's: muzzle-flash-look.md).
+        const bool bullet_reshade = x3m_bullet_reshade_armed != 0;
+        if (bullet_reshade || ctx.motion_output.muzzle_reshade_requested()) ctx.motion_output.reshade_poll_tune();
+        if (bullet_reshade)
             ctx.motion_output.bullet_reshade_take_frame(&stage.reshade_draws, &stage.reshade_failures,
                                                         &stage.reshade_outside, &stage.reshade_timed, &stage.reshade_us,
                                                         &stage.reshade_additive, &stage.reshade_flagged);
+        if (ctx.motion_output.muzzle_reshade_requested())
+            ctx.motion_output.muzzle_reshade_take_frame(&stage.muzzle_draws, &stage.muzzle_matched, &stage.muzzle_hull,
+                                                        &stage.muzzle_failures, &stage.muzzle_timed, &stage.muzzle_us);
 #endif
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
@@ -4417,6 +4424,28 @@ bool fixture_exception_requested() {
 // it takes the capture lock, so a session without stored marked atlases pays one relaxed load per final texture release
 // and nothing else, also after the atlases unloaded.
 void texture_created(IDirect3DDevice9* d, const void* data, UINT size, IDirect3DTexture9* texture) {
+#if X3M_EDITION_FL
+    // The bullet re-shade's per-texture normaliser (bullet_reshade_core.h): a byte-count compare per tables.bullet_textures
+    // entry (none without the table or reshade mode), the hashes only on a count match. A matched texture is stored on
+    // its device's MotionOutput with the proxy's resource identity; one bullet_reshade_texture row each (at most 64).
+    const int bullet_key = weapon_effects::bullet_texture_key(data, size);
+    if (bullet_key >= 0) {
+        CaptureLock lock;
+        const auto it = devices.find(d);
+        if (it != devices.end()) {
+            const std::uint64_t identity = resource_id(texture);
+            const bool stored = it->second->motion_output.bullet_texture_insert(texture, identity, unsigned(bullet_key));
+            static unsigned bullet_logged = 0; // under the capture lock
+            if (bullet_logged < 64) {
+                ++bullet_logged;
+                const std::uint16_t p99_q = weapon_effects::bullet_texture_p99_q(unsigned(bullet_key));
+                log("bullet_reshade_texture texture=%p identity=%llu size=%u entry=%d p99=%.4f scale=%.4g stored=%u",
+                    static_cast<void*>(texture), static_cast<unsigned long long>(identity), unsigned(size), bullet_key,
+                    double(p99_q) / 65535.0, double(weapon_effects::reshade::texture_scale(p99_q)), unsigned(stored));
+            }
+        }
+    }
+#endif
     lod_texture_mark::Mark mark;
     if (!lod_texture_mark::parse(data, size, mark)) return; // 12 header bytes compared; the common path ends here
     CaptureLock lock; // the device cache, the table and resource_id's counter are capture-lock state
@@ -4452,6 +4481,9 @@ void texture_released(IDirect3DDevice9* d, void* texture) noexcept {
     if (it == devices.end()) return;
     it->second->motion_output.strength_mark_forget(texture);
     it->second->motion_output.sky_stars_mark_forget(texture);
+#if X3M_EDITION_FL
+    it->second->motion_output.bullet_texture_forget(texture);
+#endif
 }
 void initialize_log(HMODULE module) {
     // x3m.ini and the defaults (docs/architecture/config-file.md): first, so every read below, the tier flags and the
@@ -6316,8 +6348,14 @@ void initialize_log(HMODULE module) {
             retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
             engine_status);
     }
-    // Merged-LOD material strength and sky stars: the D3DX texture row is patched for the marks alone (texture_created).
-    if (lod_material_strength_requested || sky_stars_requested) {
+    // Merged-LOD material strength, sky stars and (FL reshade mode with a table carrying bullet textures) the bullet
+    // re-shade's texture map: the D3DX texture row is patched for them alone (texture_created).
+#if X3M_EDITION_FL
+    const bool bullet_textures_requested = weapon_effects::bullet_texture_count() != 0;
+#else
+    constexpr bool bullet_textures_requested = false;
+#endif
+    if (lod_material_strength_requested || sky_stars_requested || bullet_textures_requested) {
 #if !X3M_EDITION_FL
         loading_trace::set_texture_observer(texture_created);
 #else
@@ -6325,11 +6363,13 @@ void initialize_log(HMODULE module) {
         // name), patched here inside the install window; one row, installed or the refusal.
         const char* hook_reason = d3dx_texture_hook::install(GetModuleHandleW(nullptr), texture_created);
         if (!std::strcmp(hook_reason, "ok"))
-            log("lod_material_strength_texture_hook state=installed dll=%s slot_rva=0x%08x edition=fl",
-                d3dx_texture_hook::dll_name(), d3dx_texture_hook::slot_rva());
+            log("lod_material_strength_texture_hook state=installed dll=%s slot_rva=0x%08x edition=fl bullet_textures=%u",
+                d3dx_texture_hook::dll_name(), d3dx_texture_hook::slot_rva(), weapon_effects::bullet_texture_count());
         else
-            log("lod_material_strength_texture_hook state=refused reason=%s dll=%s slot_rva=0x%08x edition=fl",
-                hook_reason, d3dx_texture_hook::dll_name(), d3dx_texture_hook::slot_rva());
+            log("lod_material_strength_texture_hook state=refused reason=%s dll=%s slot_rva=0x%08x edition=fl "
+                "bullet_textures=%u",
+                hook_reason, d3dx_texture_hook::dll_name(), d3dx_texture_hook::slot_rva(),
+                weapon_effects::bullet_texture_count());
 #endif
         if (!ownership::claim_texture_release_observer(texture_released))
             log("lod_material_strength_release_observer claimed=0"); // another claimant: marked entries then live until

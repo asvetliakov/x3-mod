@@ -37,30 +37,35 @@
     "src/proxy/bullet_reshade_route.h",
     "src/proxy/bullet_reshade_core.h",
     "verification/probe/weapon_bullet_reshade_fixture.h",
+    "src/effects/weapon_muzzle_reshade_ps.hlsl",
+    "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h",
+    "src/proxy/muzzle_reshade_route.h",
+    "src/proxy/muzzle_reshade_core.h",
+    "verification/probe/weapon_muzzle_reshade_fixture.h",
     "src/effects/weapon_pulse_ps.hlsl",
     "src/renderer/weapon_pulse_pixel_program_inc.h",
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "b9ee53088757c3f767e6ae314e864b24696316e9-dirty",
+    "commit": "e50d7f658a9631b08af171f41ee8a2e0b1e247bd-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_projectile_family.h",
-      "verification/probe/weapon_effects_fixture.cpp",
-      "src/effects/weapon_bullet_reshade.hlsl",
-      "src/effects/weapon_bullet_reshade_flag_ps.hlsl",
-      "src/effects/weapon_bullet_reshade_ps.hlsl",
       "src/proxy/bullet_reshade_core.h",
       "src/proxy/bullet_reshade_route.h",
-      "src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h",
-      "src/renderer/weapon_bullet_reshade_pixel_program_inc.h",
-      "verification/probe/weapon_bullet_reshade_fixture.h"
+      "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_projectile.h",
+      "src/proxy/weapon_projectile_family.h",
+      "verification/probe/weapon_effects_fixture.cpp",
+      "src/effects/weapon_muzzle_reshade_ps.hlsl",
+      "src/proxy/muzzle_reshade_core.h",
+      "src/proxy/muzzle_reshade_route.h",
+      "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h",
+      "verification/probe/weapon_muzzle_reshade_fixture.h"
     ],
     "sha256": {
       "src/renderer/weapon_effects_pass.h": "66cdfafbdbc93a43dcd2f73b08da0f895d0454499e3800693746a0607cede250",
       "src/renderer/weapon_effects_pass.cpp": "201f120642b92c098b2cb4c3d74e4ce8da80814f642492ffb49a74a23ba2ff8a",
-      "src/proxy/weapon_effects_core.h": "2674c2e4dd0ff51208bdc36db9b97914d0de73da24b7718324088af7a6786f6f",
+      "src/proxy/weapon_effects_core.h": "f9e5f37bbea6e6a4bcaf7dcf66a4e4697a41ab067e7d79299330799adc38b253",
       "src/proxy/weapon_effects_stage.h": "510ba12dadc86f97974d816001b98e1a477e23e0886cd0c37918baae3b9f4b96",
       "src/proxy/weapon_effects_bubble.h": "c918f799b41611d964c0b64bb9a0cf5f924bccda63eb367f5edcde379dfe5087",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
@@ -80,8 +85,8 @@
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
       "src/proxy/weapon_projectile_stage.h": "a4f0101e699444f691571f80c6f9792db5002465dd36359cf1175b7fb79dc41c",
-      "src/proxy/weapon_projectile_family.h": "8e2739299d09471f6d1c74c55f29602b40f8a70bdc6be7e66f0a6d148e72ae04",
-      "src/proxy/weapon_effects_projectile.h": "dae694ae158ebf4dad183b4122847cc4ef492ada647a316ca88370f5619243c2",
+      "src/proxy/weapon_projectile_family.h": "b86ed4c4cf1e92e2b3fcc4fec345bfeb84cb621e78d1361d6b880024e4b3cac4",
+      "src/proxy/weapon_effects_projectile.h": "6b4c3dd1eb9426fe9e7e0ce9d884e8c615655bbf9952165ca30c915c5635753a",
       "src/effects/weapon_projectile_vs.hlsl": "15e0a5623b8e30a74cd4a84663658349dbac558209fda20f04cee638a692c2ff",
       "src/effects/weapon_projectile_ps.hlsl": "9618d55a38f03e1d9cf12d6af71c74659eabbbe23f6e6e61a843f94547463e9b",
       "src/renderer/weapon_projectile_vertex_program_inc.h": "b337280a10d10d9b87b6f1d37e41e45a2e7cad43e1bd0492500e348256ed6bdd",
@@ -91,12 +96,17 @@
       "src/effects/weapon_bullet_reshade.hlsl": "c933f75872f4af30b506856967b8391b7cc0e76cfa8e86b4baf5be4710da7874",
       "src/effects/weapon_bullet_reshade_flag_ps.hlsl": "51c4067ceadfd7b40a38e11ec53a704d9429b8d89dd20656fbb9cb4916967544",
       "src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h": "5c9d71301c0d16ee1cfa986119689a77b59368638bd23f91c6f8ddcf444e2812",
-      "src/proxy/bullet_reshade_route.h": "ada5a99e65ec39657763b6d7b355f32ab5c099a7db117dc835fd957ee907d4fc",
-      "src/proxy/bullet_reshade_core.h": "46c3baf0890ce4f79e97fb26f15b986bb855453733224678ad68eb8c78b143a0",
+      "src/proxy/bullet_reshade_route.h": "5e30cef76dbb28227abfc9ec61065341bea3c0038035f24064c8f1221347bc08",
+      "src/proxy/bullet_reshade_core.h": "b2ae5b8675797b2da33cfb0c7c0367aac14cb498775b7ddc4dea4311c006043c",
       "verification/probe/weapon_bullet_reshade_fixture.h": "74e2cac35258c94419cb13e6928680f37a3c69b34303adfa11605d0c1d392da7",
+      "src/effects/weapon_muzzle_reshade_ps.hlsl": "473b5a7ab38eb61ffa659267ed047f1e6f5756a7c692524cc56904fc62a17bae",
+      "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h": "3c51dede22fb5dc55eb8c9796cde85085b119f798a5708097047b7518353f460",
+      "src/proxy/muzzle_reshade_route.h": "6487970e6a7ded65cb72a488e152b9eef7a808ec1b7defb25c5c9a96d2dd3b1c",
+      "src/proxy/muzzle_reshade_core.h": "a00ee0e8fe9fa8bb7e6af13f5fdde54ff4950039a5bc351ba3961026ab490014",
+      "verification/probe/weapon_muzzle_reshade_fixture.h": "e6685d668842cb049bd9961beb53a721cfeb836bfb0d1b8871d707b519528476",
       "src/effects/weapon_pulse_ps.hlsl": "ca25bed5e1ac0b95dd8e67dfae2f19403310dfc3302de7d046f9a505c839a2cb",
       "src/renderer/weapon_pulse_pixel_program_inc.h": "7ab6e6c082a618dbd6b9886f2fd68c82a778a08ef71b52852f2b5165d664be4e",
-      "verification/probe/weapon_effects_fixture.cpp": "f472b161cfe70c06b0150f5a75ed51af5305ccc435c06c6f5419e08a70b9c8aa"
+      "verification/probe/weapon_effects_fixture.cpp": "5b7b90b3890e068ca7f70772277bc8d538d22267e59f0fb908a5be6de9ab8eeb"
     }
   },
   "programs": {
@@ -159,6 +169,12 @@
       "word_count": 184,
       "bytecode_sha256": "747699d938f9b0bbda70a273736f10bfeb807f1d637fb34d58b8caa5a84aed45",
       "target": "ps_2_0"
+    },
+    "weapon_muzzle_reshade_ps": {
+      "source": "src/effects/weapon_muzzle_reshade_ps.hlsl",
+      "word_count": 208,
+      "bytecode_sha256": "d1f7d54557043eca5dd6b9ea9e4065465cc005df11fa95f2fae61cf212516472",
+      "target": "ps_3_0"
     }
   },
   "shell_pins": {
@@ -187,12 +203,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -219,13 +235,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-afa53ad7da85bbe9f/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a62d238898a582edf/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "dabae68317ed882365b0fe799d0662425a69115ce54eeb96ada66ba7a1bdcd4d"
+    "executable_sha256": "9bcb4a9b1eb23cc88d368356940fc575332675571c73fe49408cf6028aea5e0a"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -258,7 +274,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 114,
+      "checks": 124,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -719,6 +735,46 @@
     ],
     [
       "reshade_cost_measured",
+      true
+    ],
+    [
+      "reshade_texture_key_matches_exact_bytes",
+      true
+    ],
+    [
+      "reshade_texture_scale_per_texture",
+      true
+    ],
+    [
+      "muzzle_reshade_programs_create",
+      true
+    ],
+    [
+      "muzzle_reshade_program_matches_model",
+      true
+    ],
+    [
+      "muzzle_reshade_standin_vanilla_is_emissive_law",
+      true
+    ],
+    [
+      "muzzle_reshade_targets",
+      true
+    ],
+    [
+      "muzzle_reshade_route_plain_binds_and_restores",
+      true
+    ],
+    [
+      "muzzle_reshade_energy_within_gain",
+      true
+    ],
+    [
+      "muzzle_reshade_extent_within_size",
+      true
+    ],
+    [
+      "muzzle_reshade_cost_measured",
       true
     ]
   ],
@@ -1223,17 +1279,17 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 8.7,
-        "walk_mean_us": 11.5,
+        "walk_best_us": 8.6,
+        "walk_mean_us": 9.8,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.3,
-        "engine_memory_cold_mean_us": 14.5,
-        "engine_memory_warm_best_us": 11.8,
-        "engine_memory_warm_mean_us": 12.2,
-        "warm_best_us": 39.6,
-        "warm_mean_us": 51.8,
-        "cold_best_us": 48.3,
-        "cold_mean_us": 56.2,
+        "engine_memory_cold_best_us": 12.1,
+        "engine_memory_cold_mean_us": 14.9,
+        "engine_memory_warm_best_us": 11.7,
+        "engine_memory_warm_mean_us": 12.5,
+        "warm_best_us": 39.5,
+        "warm_mean_us": 49.3,
+        "cold_best_us": 48.5,
+        "cold_mean_us": 51.3,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1567,8 +1623,8 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 29.2,
-        "mean_us": 34.0,
+        "best_us": 28.8,
+        "mean_us": 31.3,
         "target_us": 200
       },
       {
@@ -1580,8 +1636,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 87.7,
-        "mean_us": 104.2,
+        "best_us": 87.4,
+        "mean_us": 92.5,
         "target_us": 200
       },
       {
@@ -1594,7 +1650,7 @@
         "cells_dropped": 0,
         "dropped": 0,
         "best_us": 14.2,
-        "mean_us": 18.4,
+        "mean_us": 15.3,
         "target_us": 200
       }
     ],
@@ -1631,10 +1687,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.55,
-        "last_drawn_ms": 473.5,
-        "frames": 13247,
-        "max_frame_ms": 0.498
+        "seta6_wall_ms": 473.54,
+        "last_drawn_ms": 473.45,
+        "frames": 17696,
+        "max_frame_ms": 0.611
       }
     ],
     "retired": [
@@ -1696,7 +1752,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 19.7
+        "gpu_us": 11.1
       },
       {
         "width": 1920,
@@ -1706,7 +1762,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 18.8
+        "gpu_us": 17.2
       },
       {
         "width": 1920,
@@ -1716,7 +1772,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 18.7
+        "gpu_us": 18.5
       },
       {
         "width": 1920,
@@ -1736,7 +1792,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 78.5
+        "gpu_us": 78.2
       },
       {
         "width": 1920,
@@ -1746,7 +1802,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 107.7
+        "gpu_us": 104.7
       },
       {
         "width": 1920,
@@ -1766,7 +1822,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 59.0
+        "gpu_us": 59.9
       },
       {
         "width": 1920,
@@ -1776,7 +1832,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 64.9
+        "gpu_us": 64.5
       },
       {
         "width": 1920,
@@ -1786,7 +1842,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 92.6
+        "gpu_us": 96.7
       },
       {
         "width": 1920,
@@ -1796,7 +1852,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 17.1
+        "gpu_us": 17.5
       },
       {
         "width": 1920,
@@ -1806,7 +1862,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 59.5
+        "gpu_us": 60.0
       },
       {
         "width": 1920,
@@ -1816,7 +1872,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 96.4
+        "gpu_us": 97.2
       },
       {
         "width": 1920,
@@ -1826,7 +1882,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 21.4
+        "gpu_us": 21.8
       },
       {
         "width": 1920,
@@ -1836,7 +1892,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 72.3
+        "gpu_us": 74.5
       },
       {
         "width": 5120,
@@ -1846,7 +1902,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.2
+        "gpu_us": 11.3
       },
       {
         "width": 5120,
@@ -1856,7 +1912,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 24.1
+        "gpu_us": 22.0
       },
       {
         "width": 5120,
@@ -1866,7 +1922,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 23.8
+        "gpu_us": 24.0
       },
       {
         "width": 5120,
@@ -1876,7 +1932,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 182.5
+        "gpu_us": 181.5
       },
       {
         "width": 5120,
@@ -1886,7 +1942,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 240.9
+        "gpu_us": 242.9
       },
       {
         "width": 5120,
@@ -1896,7 +1952,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 389.8
+        "gpu_us": 392.3
       },
       {
         "width": 5120,
@@ -1906,7 +1962,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 35.2
+        "gpu_us": 35.4
       },
       {
         "width": 5120,
@@ -1916,7 +1972,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 163.9
+        "gpu_us": 164.6
       },
       {
         "width": 5120,
@@ -1926,7 +1982,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 183.9
+        "gpu_us": 184.4
       },
       {
         "width": 5120,
@@ -1936,7 +1992,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 291.9
+        "gpu_us": 292.6
       },
       {
         "width": 5120,
@@ -1946,7 +2002,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.3
+        "gpu_us": 21.4
       },
       {
         "width": 5120,
@@ -1956,7 +2012,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 177.2
+        "gpu_us": 176.6
       },
       {
         "width": 5120,
@@ -1966,7 +2022,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 340.5
+        "gpu_us": 341.7
       },
       {
         "width": 5120,
@@ -1976,7 +2032,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.8
+        "gpu_us": 51.9
       },
       {
         "width": 5120,
@@ -1986,7 +2042,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 257.9
+        "gpu_us": 259.3
       }
     ],
     "projectile": [
@@ -2665,9 +2721,9 @@
         "merged": 486,
         "quads": 532,
         "trail_quads": 20,
-        "cpu_us": 88.2,
-        "gpu_us": 49.5,
-        "fence_us": 10.7,
+        "cpu_us": 90.0,
+        "gpu_us": 46.6,
+        "fence_us": 10.9,
         "lit_share": 0.0601,
         "vertex_bytes": 48,
         "statics": 0,
@@ -2686,9 +2742,9 @@
         "wanted": 2520,
         "trimmed": 502,
         "previous_wanted": 2528,
-        "cpu_us": 114.8,
-        "gpu_us": 69.5,
-        "fence_us": 10.7,
+        "cpu_us": 117.2,
+        "gpu_us": 70.4,
+        "fence_us": 10.9,
         "lit_share": 0.078,
         "statics": 0,
         "jumped": 0
@@ -3248,19 +3304,19 @@
         "flashes": 64,
         "pulses": 64,
         "bolts": 64,
-        "cpu_with_us": 29.8,
-        "cpu_without_us": 21.4,
-        "cpu_us": 8.4,
-        "gpu_us": 23.7,
-        "gpu_net_us": 12.7,
-        "gpu_flashes_us": 16.8,
-        "gpu_pulses_us": 19.1,
-        "gpu_far_pulses_us": 16.5,
-        "gpu_own_pulses_us": 17.2,
-        "gpu_bolts_us": 16.4,
-        "gpu_bolts_flashes_us": 24.1,
-        "gpu_increment_us": 7.7,
-        "fence_us": 11.0,
+        "cpu_with_us": 30.2,
+        "cpu_without_us": 21.6,
+        "cpu_us": 8.6,
+        "gpu_us": 25.4,
+        "gpu_net_us": 14.5,
+        "gpu_flashes_us": 17.3,
+        "gpu_pulses_us": 19.6,
+        "gpu_far_pulses_us": 17.5,
+        "gpu_own_pulses_us": 17.3,
+        "gpu_bolts_us": 16.1,
+        "gpu_bolts_flashes_us": 25.4,
+        "gpu_increment_us": 9.3,
+        "fence_us": 10.9,
         "lost": 0,
         "stale": 0,
         "dropped": 0
@@ -3279,8 +3335,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 124.8,
-        "gpu_us": 40.0
+        "cpu_us": 126.4,
+        "gpu_us": 40.7
       },
       {
         "case": "budget_combined",
@@ -3296,7 +3352,7 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 130.3,
+        "cpu_us": 130.4,
         "gpu_us": 64.4
       },
       {
@@ -3313,8 +3369,8 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 115.7,
-        "gpu_us": 34.5
+        "cpu_us": 115.5,
+        "gpu_us": 34.4
       },
       {
         "case": "budget_combined",
@@ -3330,17 +3386,17 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 87.5,
-        "gpu_us": 32.3
+        "cpu_us": 88.3,
+        "gpu_us": 31.6
       },
       {
         "case": "budget_combined_bounds",
-        "cpu_us": 124.8,
+        "cpu_us": 126.4,
         "cpu_within_100": 0,
-        "flash_work_cpu_us": 9.1,
-        "newborn_bolts_cpu_us": 28.2,
-        "bolts_448_cpu_us": 87.5,
-        "gpu_us": 40.0,
+        "flash_work_cpu_us": 10.9,
+        "newborn_bolts_cpu_us": 27.2,
+        "bolts_448_cpu_us": 88.3,
+        "gpu_us": 40.7,
         "gpu_within_60": 1
       }
     ],
@@ -3441,24 +3497,24 @@
         "index": 0,
         "t": "0.388,0.302,0.067",
         "a": 1.0,
-        "got": "0.2957,0.2474,0.1159",
-        "model": "0.2957,0.2475,0.1159"
+        "got": "0.2520,0.2100,0.0954",
+        "model": "0.2521,0.2101,0.0954"
       },
       {
         "case": "texel",
         "index": 1,
         "t": "0.102,0.051,0.012",
         "a": 1.0,
-        "got": "0.0461,0.0231,0.0054",
-        "model": "0.0461,0.0231,0.0054"
+        "got": "0.0148,0.0075,0.0018",
+        "model": "0.0148,0.0075,0.0018"
       },
       {
         "case": "texel",
         "index": 2,
         "t": "1.000,0.969,0.937",
         "a": 0.502,
-        "got": "0.3513,0.3428,0.3342",
-        "model": "0.3514,0.3429,0.3344"
+        "got": "0.3010,0.2937,0.2861",
+        "model": "0.3012,0.2938,0.2864"
       },
       {
         "case": "texel",
@@ -3473,20 +3529,20 @@
         "index": 4,
         "t": "0.200,0.200,0.251",
         "a": 0.8,
-        "got": "0.0903,0.0903,0.1100",
-        "model": "0.0903,0.0903,0.1100"
+        "got": "0.0786,0.0786,0.0960",
+        "model": "0.0786,0.0786,0.0961"
       },
       {
         "case": "texel",
         "index": 5,
         "t": "0.549,0.420,0.184",
         "a": 1.0,
-        "got": "0.4968,0.4180,0.2747",
-        "model": "0.4971,0.4182,0.2748"
+        "got": "0.4194,0.3513,0.2272",
+        "model": "0.4196,0.3513,0.2272"
       },
       {
         "case": "model",
-        "worst_rel": 0.041,
+        "worst_rel": 0.047,
         "vanilla_worst_rel": 0.039
       },
       {
@@ -3494,34 +3550,187 @@
         "gain": 2.0,
         "during": 1,
         "restored": 1,
-        "worst_rel": 0.02,
+        "worst_rel": 0.044,
         "mrt": 1,
-        "flag_g": 18.922,
-        "flag_want": 18.926
+        "flag_g": 16.125,
+        "flag_want": 16.135
       },
       {
         "case": "bolt",
         "distance_m": 50,
         "vanilla_sum": 600.32,
-        "reshade_sum": 298.41,
-        "energy_ratio": 0.497,
+        "reshade_sum": 192.4,
+        "energy_ratio": 0.32,
         "vanilla_peak": 0.7587,
-        "reshade_peak": 0.5494,
-        "gain": 0.45,
-        "edge": 0.1,
-        "core": 0.25
+        "reshade_peak": 0.4933,
+        "gain": 0.4,
+        "edge": 0.4,
+        "core": 0.2
       },
       {
         "case": "cost",
         "draws": 2000,
         "runs": 7,
-        "calls_us_per_draw": 0.065,
+        "calls_us_per_draw": 0.054,
         "draw_us_vanilla": 0.056,
-        "draw_us_reshaded": 0.246,
-        "substitution_us_per_draw": 0.19,
+        "draw_us_reshaded": 0.189,
+        "substitution_us_per_draw": 0.133,
         "batch_bolts": 469,
-        "batch_us_vanilla": 43.0,
-        "batch_us_reshaded": 43.0,
+        "batch_us_vanilla": 42.9,
+        "batch_us_reshaded": 42.5,
+        "fenced": 1
+      },
+      {
+        "case": "texture_key",
+        "hit": 0,
+        "tail_miss": -1,
+        "head_miss": -1,
+        "size_miss": -1,
+        "no_table": -1,
+        "scale_ire": 2.75,
+        "scale_ppc": 1.7157,
+        "scale_none": 2.75,
+        "plan": 1,
+        "fallback": 1,
+        "bytes": 349680,
+        "us_size_miss": 0.0016,
+        "us_head_miss": 4.566,
+        "us_match": 391.4
+      }
+    ],
+    "muzzle_reshade": [
+      {
+        "case": "programs",
+        "compiled": 1,
+        "created": 1,
+        "words": 208,
+        "ps_major": 3
+      },
+      {
+        "case": "texel",
+        "index": 0,
+        "off": 0.0,
+        "got": "0.1194,0.0705,0.0403,1.0000",
+        "model": "0.1195,0.0705,0.0403,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 1,
+        "off": 0.15,
+        "got": "0.0934,0.0558,0.0325,1.0000",
+        "model": "0.0935,0.0558,0.0325,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 2,
+        "off": 0.5,
+        "got": "0.0203,0.0111,0.0054,0.5000",
+        "model": "0.0203,0.0111,0.0054,0.5000"
+      },
+      {
+        "case": "texel",
+        "index": 3,
+        "off": 0.8,
+        "got": "0.0130,0.0063,0.0022,1.0000",
+        "model": "0.0130,0.0063,0.0022,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 4,
+        "off": 1.2,
+        "got": "0.0000,0.0000,0.0000,1.0000",
+        "model": "0.0000,0.0000,0.0000,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 5,
+        "off": 0.3,
+        "got": "0.0748,0.0422,0.0220,0.2007",
+        "model": "0.0748,0.0422,0.0220,0.2008"
+      },
+      {
+        "case": "texel",
+        "index": 6,
+        "off": 0.05,
+        "got": "0.0866,0.0544,0.0344,1.0000",
+        "model": "0.0866,0.0544,0.0344,1.0000"
+      },
+      {
+        "case": "model",
+        "radius_m": 22.809,
+        "worst_rel": 0.021,
+        "vanilla_worst_rel": 0.071
+      },
+      {
+        "case": "flash_tilt",
+        "distance_m": 30,
+        "yaw_deg": 25.0,
+        "scale": 0.031,
+        "overlap": 9.063,
+        "vanilla_sum": 10521.04,
+        "reshade_sum": 1839.51,
+        "energy_ratio": 0.175,
+        "vanilla_peak": 2.9525,
+        "reshade_peak": 1.7205,
+        "vanilla_white_r": 26.9,
+        "reshade_white_r": 11.6,
+        "vanilla_tenth_r": 82.1,
+        "reshade_tenth_r": 34.0,
+        "size": 0.5,
+        "gain": 0.2,
+        "core": 0.5,
+        "smooth": 0.6
+      },
+      {
+        "case": "flash_axis",
+        "distance_m": 30,
+        "yaw_deg": 90.0,
+        "scale": 0.031,
+        "overlap": 10.203,
+        "vanilla_sum": 8399.43,
+        "reshade_sum": 1366.83,
+        "energy_ratio": 0.163,
+        "vanilla_peak": 2.4079,
+        "reshade_peak": 1.7299,
+        "vanilla_white_r": 18.2,
+        "reshade_white_r": 6.3,
+        "vanilla_tenth_r": 80.3,
+        "reshade_tenth_r": 33.3,
+        "size": 0.5,
+        "gain": 0.2,
+        "core": 0.5,
+        "smooth": 0.6
+      },
+      {
+        "case": "flash_side",
+        "distance_m": 30,
+        "yaw_deg": 0.0,
+        "scale": 0.031,
+        "overlap": 8.898,
+        "vanilla_sum": 11235.26,
+        "reshade_sum": 1930.14,
+        "energy_ratio": 0.172,
+        "vanilla_peak": 3.1923,
+        "reshade_peak": 1.671,
+        "vanilla_white_r": 27.6,
+        "reshade_white_r": 12.3,
+        "vanilla_tenth_r": 85.1,
+        "reshade_tenth_r": 34.2,
+        "size": 0.5,
+        "gain": 0.2,
+        "core": 0.5,
+        "smooth": 0.6
+      },
+      {
+        "case": "cost",
+        "draws": 2000,
+        "runs": 7,
+        "primitives": 100,
+        "calls_us_per_draw": 0.084,
+        "draw_us_vanilla": 3.048,
+        "draw_us_reshaded": 3.244,
+        "substitution_us_per_draw": 0.195,
+        "match_us_per_draw": 0.07,
         "fenced": 1
       }
     ],

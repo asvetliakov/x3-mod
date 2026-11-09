@@ -71,6 +71,7 @@
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (docs/architecture/weapon-effects.md)
 #include "weapon_projectile_family.h"       // the projectile stage's families (FL; docs/architecture/projectile-look.md)
+#include "muzzle_reshade_core.h"            // the muzzle flash re-shade's bodies and constants (FL reshade mode)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
 #include "sky_nebula_core.h"
@@ -280,6 +281,11 @@ struct MotionRoute {
     // (put back after it); timed: the sequence is QPC-timed (sampled frames); convert: the additive route's draw
     // (DESTBLEND ONE applied by the sequence, put back to INVSRCCOLOR); flag: the flag variant (the route's far flag).
     bool bullet_reshade = false, bullet_reshade_timed = false, bullet_reshade_convert = false, bullet_reshade_flag = false;
+    // Muzzle flash re-shade (FL reshade mode, motion_output_muzzle_reshade_inc.h): muzzle_body the matched body's row;
+    // reshade: our program and c192..c195 bound for this draw (put back after it); timed: the sequence is QPC-timed;
+    // hull: the hull-emission route would have taken the draw (the re-shade bypasses it).
+    bool muzzle_reshade = false, muzzle_timed = false, muzzle_hull = false;
+    std::uint8_t muzzle_body = 0;
     // Bolts through the TAA (bolts-through-taa.md): the late bullet draw's flag
     // write into RT2.g. RT1 bound masked off (no MRT gap), RT2 bound with the
     // GREEN mask, the application's masks saved for the undo; each step's flag
@@ -1219,11 +1225,24 @@ public:
     void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
                                float* stage_us, unsigned* unpooled, unsigned* sampled, unsigned* statics,
                                unsigned* jumped, unsigned* ring_trimmed, unsigned flashes[5]) noexcept;
-    // The bullet re-shade (reshade mode): the dev tuning poll and the c31 block for the next frame, then the frame's
-    // counts (draws re-shaded, failed, bullet-program draws outside the submit, sampled draws timed and the sequence's
-    // CPU us over them, re-shaded draws of the additive route, of them with the far flag).
+    // The bullet re-shade's texture map (capture.cpp texture_created / texture_released): a created texture whose bytes
+    // are tables.bullet_textures entry `key` (reshade mode; false when not stored), and the final release of any texture.
+    bool bullet_texture_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, unsigned key) noexcept;
+    void bullet_texture_forget(const void* texture) noexcept;
+    // The dev tuning poll for both re-shades (X3M_DEV_TUNING builds; nothing otherwise): the c31 block and every muzzle
+    // body's c193..c195 for the next frame. Called once per frame while either re-shade runs.
+    void reshade_poll_tune() noexcept;
+    // The bullet re-shade (reshade mode): the frame's counts (draws re-shaded, failed, bullet-program draws outside the
+    // submit, sampled draws timed and the sequence's CPU us over them, re-shaded draws of the additive route, of them
+    // with the far flag).
     void bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed, float* us,
                                    unsigned* additive, unsigned* flagged) noexcept;
+    // The muzzle flash re-shade (reshade mode): the frame's counts (draws re-shaded, matched muzzle draws, of the
+    // re-shaded those kept off the hull-emission route, failures, sampled draws timed and the sequence's CPU us over
+    // them).
+    void muzzle_reshade_take_frame(unsigned* draws, unsigned* matched, unsigned* hull, unsigned* failures,
+                                   unsigned* timed, float* us) noexcept;
+    bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
 #endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[13]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
@@ -1779,6 +1798,10 @@ private:
         bool ps_reserved_written = false;
         bool ps_bullet = false; // the bound PS is a game INSTANCE_BULLETS program (bullet re-shade requested)
         float ps_c31[4]{};      // application c31 as last written (the bullet re-shade restores it)
+        bool vs_muzzle = false; // the bound VS is standard_lighting DEFAULT's (muzzle re-shade requested)
+        float ps_c192[16]{};    // application c192..c195 as last written (the muzzle re-shade restores them)
+        float vs_c28[36]{};     // application VS c28..c36 (g_mWorld, g_mViewInverse rows; the muzzle re-shade's origin)
+        std::uint16_t vs_c28_known = 0; // bit r: c(28 + r) written
         int integer0[4]{};
         bool integer0_known = false;
         std::uint64_t stream0 = 0, indices = 0, declaration = 0;
@@ -2327,12 +2350,40 @@ private:
     unsigned bullet_reshade_timed_draws_ = 0, bullet_reshade_additive_ = 0, bullet_reshade_flagged_ = 0;
     std::uint32_t bullet_reshade_frames_ = 0; // Present count: every 60th frame is timed
     std::uint64_t bullet_reshade_ticks_ = 0;
+    // The per-texture luminance normaliser (bullet_reshade_core.h texture_scale): the created textures the D3DX observer
+    // matched to a tables.bullet_textures entry (pointer, identity, the entry in .slot), the last bound texture's c31.w
+    // (re-resolved once a frame and on any insert or release of that pointer), the textures without an entry (logged
+    // once each, at most 16 rows a device).
+    lod_texture_mark::Table<128> bullet_textures_;
+    IDirect3DBaseTexture9* bullet_texture_bound_ = nullptr;
+    float bullet_texture_scale_ = 0.f;
+    const void* bullet_texture_unknown_[16]{};
+    unsigned bullet_texture_unknown_count_ = 0, bullet_texture_unknown_draws_ = 0;
+    void bullet_reshade_scale(IDirect3DBaseTexture9* texture, float* scale) noexcept;
     void bullet_reshade_create() noexcept;
     bool bullet_reshade_ready() const noexcept;
     bool begin_bullet_reshade(MotionRoute& route, bool convert, bool flag) noexcept;
     HRESULT end_bullet_reshade(MotionRoute& route) noexcept;
     void prepare_bullet_reshade(MotionRoute& route) noexcept;
     void finish_bullet_reshade(MotionRoute& route) noexcept;
+    // The muzzle flash re-shade (reshade mode; motion_output_muzzle_reshade_inc.h, muzzle-flash-look.md): requested in
+    // reshade mode (the object-trace scope gives the node at the draw); our ps_3_0 program (created at the
+    // standard_lighting DEFAULT VS's registration, kept until teardown), per body its c193..c195 block, the frame's
+    // counts and sampled time.
+    bool muzzle_reshade_requested_ = false, muzzle_reshade_create_failed_ = false, muzzle_reshade_restore_failed_ = false;
+    IDirect3DPixelShader9* muzzle_reshade_ps_ = nullptr;
+    float muzzle_reshade_constants_[weapon_effects::muzzle_reshade::body_count][16]{};
+    float muzzle_reshade_draw_[16]{}; // the substituted draw's block (the body's with its c192)
+    unsigned muzzle_reshade_draws_ = 0, muzzle_reshade_matched_ = 0, muzzle_reshade_hull_ = 0;
+    unsigned muzzle_reshade_failures_ = 0, muzzle_reshade_timed_draws_ = 0;
+    std::uint32_t muzzle_reshade_frames_ = 0; // Present count: every 60th frame is timed
+    std::uint64_t muzzle_reshade_ticks_ = 0;
+    void muzzle_reshade_refresh_constants() noexcept;
+    void muzzle_reshade_create() noexcept;
+    bool muzzle_reshade_match(MotionRoute& route) noexcept;
+    bool muzzle_reshade_ready() const noexcept;
+    bool begin_muzzle_reshade(MotionRoute& route) noexcept;
+    void finish_muzzle_reshade(MotionRoute& route) noexcept;
 #endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until

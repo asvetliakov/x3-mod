@@ -17,6 +17,10 @@
 // or null pins nothing), "bolt_tint": "texture" (the texture mean even when the light colour is saturated). A pin of the
 // wrong JSON type makes the file malformed; a number outside its range (a stored 0 included) or another bolt_tint name
 // drops the row (Stats::bolt_rejected), as the generator never writes one.
+// The bullet re-shade's textures (any schema; an older generator writes none): "tables": {..., "bullet_textures":
+// [{"bytes": n, "head64": "<16 hex>", "fnv1a64": "<16 hex>", "p99": p, ...}, ...]}; an entry with a byte count outside
+// 1..2^24, a hash that is not 16 hex digits, a p99 outside (0, 1] or past bullet_texture_capacity is dropped (counted);
+// a value of the wrong JSON type makes the file malformed.
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -30,7 +34,74 @@ struct Stats {
     unsigned mount_keys = 0; // entries carrying "mount_tier" (step 4; 0: a table generated before it)
     unsigned bolt_pins = 0;  // entries carrying a bolt hand pin (bolt_e_body, bolt_w_orb, bolt_halo false, bolt_tint)
     unsigned bolt_rejected = 0; // rows dropped for a bolt pin outside its range (a zero E_b, a w_orb stored as 0, ...)
+    unsigned bullet_textures = 0, bullet_textures_dropped = 0; // tables.bullet_textures entries kept / dropped
 };
+// A 16-hex-digit string into *out; false when the string is anything else.
+inline bool parse_hex64(json::Cursor& c, std::uint64_t* out, bool* valid) noexcept {
+    char text[24];
+    bool fits;
+    if (!c.string(text, sizeof text, &fits)) return false;
+    *valid = fits && std::strlen(text) == 16;
+    std::uint64_t v = 0;
+    for (unsigned i = 0; *valid && i < 16; ++i) {
+        const char h = text[i];
+        const unsigned d = h >= '0' && h <= '9' ? unsigned(h - '0')
+                           : h >= 'a' && h <= 'f' ? unsigned(h - 'a' + 10)
+                           : h >= 'A' && h <= 'F' ? unsigned(h - 'A' + 10)
+                                                  : 16u;
+        if (d > 15) *valid = false;
+        v = v << 4 | d;
+    }
+    *out = *valid ? v : 0;
+    return true;
+}
+inline bool parse_bullet_texture(json::Cursor& c, core::Table* t, Stats* st) noexcept {
+    if (!c.expect('{')) return false;
+    float bytes = 0.f, p99 = 0.f;
+    std::uint64_t head = 0, hash = 0;
+    bool head_ok = false, hash_ok = false;
+    if (!c.accept('}'))
+        for (;;) {
+            char key[24];
+            bool fits;
+            if (!c.string(key, sizeof key, &fits) || !c.expect(':')) return false;
+            if (fits && !std::strcmp(key, "bytes")) {
+                if (!c.number(&bytes)) return false;
+            } else if (fits && !std::strcmp(key, "p99")) {
+                if (!c.number(&p99)) return false;
+            } else if (fits && !std::strcmp(key, "head64")) {
+                if (!parse_hex64(c, &head, &head_ok)) return false;
+            } else if (fits && !std::strcmp(key, "fnv1a64")) {
+                if (!parse_hex64(c, &hash, &hash_ok)) return false;
+            } else if (!c.skip_value())
+                return false;
+            if (c.accept('}')) break;
+            if (!c.expect(',')) return false;
+        }
+    const bool valid = bytes >= 1.f && bytes <= 16777216.f && float(std::uint32_t(bytes)) == bytes && p99 > 0.f &&
+                       p99 <= 1.f && head_ok && hash_ok;
+    if (!valid || t->bullet_textures >= core::bullet_texture_capacity) {
+        ++st->bullet_textures_dropped;
+        return true;
+    }
+    const unsigned i = t->bullet_textures++;
+    t->bullet_texture_bytes[i] = std::uint32_t(bytes);
+    t->bullet_texture_head[i] = head;
+    t->bullet_texture_hash[i] = hash;
+    const float q = p99 * 65535.f + 0.5f;
+    t->bullet_texture_p99_q[i] = std::uint16_t(q < 1.f ? 1.f : q > 65535.f ? 65535.f : q);
+    ++st->bullet_textures;
+    return true;
+}
+inline bool parse_bullet_textures(json::Cursor& c, core::Table* t, Stats* st) noexcept {
+    if (!c.expect('[')) return false;
+    if (c.accept(']')) return true;
+    for (;;) {
+        if (!parse_bullet_texture(c, t, st)) return false;
+        if (c.accept(']')) return true;
+        if (!c.expect(',')) return false;
+    }
+}
 inline bool parse_rgb(json::Cursor& c, std::uint32_t* out, bool* present) noexcept {
     *present = false;
     if (c.literal("null")) return true;
@@ -273,7 +344,9 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                         }
                         const bool bullets = kind_fits && !std::strcmp(kind, "bullets");
                         const bool missiles = kind_fits && !std::strcmp(kind, "missiles");
-                        if ((bullets || missiles) ? !parse_kind(c, t, bullets, st) : !c.skip_value()) {
+                        const bool textures = kind_fits && !std::strcmp(kind, "bullet_textures");
+                        if (textures ? !parse_bullet_textures(c, t, st)
+                                     : (bullets || missiles) ? !parse_kind(c, t, bullets, st) : !c.skip_value()) {
                             ok = false;
                             break;
                         }

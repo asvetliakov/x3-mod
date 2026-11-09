@@ -13,10 +13,10 @@
 // THE PLACE A ROW IS ENABLED: the *_rows lists below. Today only SS_BULLET_IRE (and, through its body bullet_ls_alpha,
 // rows 37-39, the cluster and alpha flak fragments).
 namespace x3m::weapon_effects::projectile_family {
-// The numbers of a family's look (projectile-look.md section 4, muzzle-flash-look.md section 5; the dev tuning file's keys). The streak has no
-// multiplier: its length is the bolt's travel since the previous frame (the bridged law, projectile-look.md section 2),
-// so the file's former `stretch_k` key is an unknown key, ignored without a row. The comet (FL 60 A): trail_ms and
-// head_gain; trail_ms 0 is the flat streak of FL run 60 (no trail, no head).
+// The numbers of a family's look (projectile-look.md section 4, muzzle-flash-look.md (superseded) section 5; the dev
+// tuning file's keys). The streak has no multiplier: its length is the bolt's travel since the previous frame (the
+// bridged law, projectile-look.md section 2), so the file's former `stretch_k` key is an unknown key, ignored without a
+// row. The comet (FL 60 A): trail_ms and head_gain; trail_ms 0 is the flat streak of FL run 60 (no trail, no head).
 struct Tune {
     float core_px;      // core full width (FWHM, px) at the 500 m reference, at the live projection
     float glow_ratio;   // glow sigma over the core radius
@@ -27,8 +27,8 @@ struct Tune {
     float stops;        // core radiance 2^(stops + calibre) x scene white
     float trail_ms;     // the trail behind the head covers the bolt's travel over this many game ms (0: no trail)
     float head_gain;    // the head's radiance over the trail's start (with a trail)
-    // The muzzle flash (docs/architecture/muzzle-flash-look.md section 5; the start values as member defaults, so a Tune
-    // written with the nine bolt numbers carries them):
+    // The muzzle flash (docs/architecture/muzzle-flash-look.md (superseded) section 5; the start values as member
+    // defaults, so a Tune written with the nine bolt numbers carries them):
     float flash_core_mult = 1.25f; // the flash point's extent at scene white over the bolt core's at the same depth
     float flash_len_m = 2.5f;      // the streak's world length from the muzzle along the shot's axis (0: no streak)
     float flash_life_ms = 80.f;    // the life in wall-clock ms from the birth (QPC; drawn every stage frame while younger)
@@ -37,20 +37,31 @@ struct Tune {
     // The bullet re-shade (X3M_WEAPON_EFFECTS=reshade; src/effects/weapon_bullet_reshade_ps.hlsl c31.xyz): the body's
     // gain over the game's radiance, the luminance smoothstep's upper edge (the fringe fades below it), the hot core's
     // gain (its l^4 term).
-    float rs_gain = 0.45f;
-    float rs_edge = 0.1f; // 0.5 lost the far bolt (1500 m peak 0.10x vanilla); 0.1 keeps 0.47x (2026-11-09 dumps)
-    float rs_core = 0.25f;
+    // Baked from FL 64 A (accepted 2026-11-09): the user's flown values; the far bolts were judged acceptable in flight
+    // (the fixture's 1500 m frame keeps a lower peak than at the earlier rs_edge 0.1, ledger "Bullet re-shade on FL").
+    float rs_gain = 0.4f;
+    float rs_edge = 0.4f;
+    float rs_core = 0.2f;
+    // The muzzle flash re-shade (reshade mode; src/effects/weapon_muzzle_reshade_ps.hlsl, muzzle_reshade_core.h;
+    // docs/architecture/muzzle-flash-look.md): the glow's radius around the gun over vanilla's lit radius, the hot core's
+    // and the glow's luminance at the gun (summed over the fan), the share by which the texel's grain is flattened.
+    // Calibrated 2026-11-09 on the real mesh: the core reaches scene white within 0.27 of vanilla's white radius.
+    float mz_size = 0.5f;
+    float mz_core = 0.5f;
+    float mz_gain = 0.2f;
+    float mz_smooth = 0.6f;
 };
-constexpr unsigned tune_keys = 17;
+constexpr unsigned tune_keys = 21;
 constexpr const char* tune_key_names[tune_keys] = {"core_px",      "glow_ratio",  "glow_gain",       "hot_share",
                                                    "lod_dot_m",    "length_cap_m", "stops",          "trail_ms",
                                                    "head_gain",    "flash_core_mult", "flash_len_m", "flash_life_ms",
                                                    "flash_stops",  "hull_pulse_r", "rs_gain",        "rs_edge",
-                                                   "rs_core"};
+                                                   "rs_core",      "mz_size",      "mz_core",        "mz_gain",
+                                                   "mz_smooth"};
 constexpr float tune_min[tune_keys] = {0.5f, 1.f, 0.f, 0.f, 500.f, 5.f, -2.f, 0.f, 1.f, 0.5f, 0.f, 16.f, -2.f, 0.f,
-                                       0.f, 0.05f, 0.f};
+                                       0.f, 0.05f, 0.f, 0.2f, 0.f, 0.f, 0.f};
 constexpr float tune_max[tune_keys] = {8.f, 12.f, 2.f, 1.f, 20000.f, 500.f, 6.f, 200.f, 4.f, 8.f, 20.f, 400.f, 6.f, 20.f,
-                                       2.f, 1.f, 4.f};
+                                       2.f, 1.f, 4.f, 1.f, 4.f, 2.f, 1.f};
 constexpr bool key_is(const char* a, const char* b) noexcept { return *a == *b && (!*a || key_is(a + 1, b + 1)); }
 constexpr unsigned key_flash_life_ms = 11; // the stage's backdate cap is checked against this key's maximum
 static_assert(key_is(tune_key_names[key_flash_life_ms], "flash_life_ms"), "the flash life key's index");
@@ -59,7 +70,8 @@ inline float& tune_at(Tune& t, unsigned k) noexcept {
                                       &t.lod_dot_m,       &t.length_cap_m, &t.stops,          &t.trail_ms,
                                       &t.head_gain,       &t.flash_core_mult, &t.flash_len_m, &t.flash_life_ms,
                                       &t.flash_stops,     &t.hull_pulse_r, &t.rs_gain,        &t.rs_edge,
-                                      &t.rs_core};
+                                      &t.rs_core,         &t.mz_size,     &t.mz_core,         &t.mz_gain,
+                                      &t.mz_smooth};
     return *fields[k < tune_keys ? k : 0];
 }
 constexpr float reference_m = 500.f; // the tuning numbers' reference distance, never a constant in the program
@@ -87,7 +99,8 @@ constexpr bool tune_in_bounds(const Tune& t) noexcept {
     const float v[tune_keys] = {t.core_px,         t.glow_ratio,  t.glow_gain,       t.hot_share,   t.lod_dot_m,
                                 t.length_cap_m,    t.stops,       t.trail_ms,        t.head_gain,   t.flash_core_mult,
                                 t.flash_len_m,     t.flash_life_ms, t.flash_stops, t.hull_pulse_r, t.rs_gain,
-                                t.rs_edge,         t.rs_core};
+                                t.rs_edge,         t.rs_core,     t.mz_size,         t.mz_core,     t.mz_gain,
+                                t.mz_smooth};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;

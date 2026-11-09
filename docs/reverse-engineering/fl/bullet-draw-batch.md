@@ -335,9 +335,15 @@ distant bolt's axis brightens and ends hard [i]. The vanilla bolt is therefore f
 axis and the head, plus a round head glow, at most about 0.36 × alpha per layer before the screen blend.
 
 **Re-shade** (`src/effects/weapon_bullet_reshade_ps.hlsl`, ps_2_0, 160 words: a ps_3_0 program cannot pair with the
-game's vs_1_1). Same inputs (s0, COLOR0.a, TEXCOORD0); l = luminance × 2.75 (1 / the strip's 0.36 peak, saturated);
+game's vs_1_1). Same inputs (s0, COLOR0.a, TEXCOORD0); l = luminance × the bound texture's normaliser, saturated: 2.75
+(1 / the IRE strip's 0.36 peak) × 0.6169 / the texture's level-0 luminance p99 (`weapon_effects.json`
+`tables.bullet_textures`; fx_bullets_diff p99 0.6169 keeps 2.75, fx_bullets2_diff p99 0.9888 gives 1.716; a texture
+without an entry keeps 2.75 with one `bullet_reshade_texture` row). The texture is mapped at its creation: the D3DX
+observer (`D3DXCreateTextureFromFileInMemoryEx` import slot) compares the byte count with the table's entries and
+hashes (FNV-1a 64 of the first 4096 and of all bytes) only on a count match; the draw reads the bound stage-0
+texture's entry (one pointer compare while it stays bound);
 radiance = (rs_gain · smoothstep(0, rs_edge, l) · rgb + rs_core · l⁴ · mix(white, rgb / max(rgb), 0.35)) × alpha; alpha
-the texel's. Defaults rs_gain 0.45, rs_edge 0.1 (0.5 lost the far bolt, see the weapon-effects ledger), rs_core 0.25 (c31.xyz; dev tuning keys of the same names, bounds 0..2,
+the texel's. Defaults rs_gain 0.4, rs_edge 0.4, rs_core 0.2 (baked from FL 64 A, 2026-11-09; the far bolt judged acceptable in flight, see the weapon-effects ledger) (c31.xyz; dev tuning keys of the same names, bounds 0..2,
 0.05..1, 0..4). Recognition: the proxy's hash of the bytes the game passes to CreatePixelShader is one of the three PS
 above (`src/proxy/bullet_reshade_core.h`); scope: the batch call `0x097af8` claimed with a forwarding stub that raises
 `x3m_bullet_scope` around the submit. These bullet pairs are also the additive route's pairs 0-2

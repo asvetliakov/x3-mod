@@ -4,7 +4,7 @@
 #include <cstdint>
 
 // The dev-only in-flight tuning file's parser and reload rule (docs/architecture/projectile-look.md section 4 and
-// "Implementation (2026-11-08)"): <game>\x3m\projectile_tune.json, at most the seventeen numbers of the fighter-tracer
+// "Implementation (2026-11-08)"): <game>\x3m\projectile_tune.json, at most the twenty-one numbers of the fighter-tracer
 // family (weapon_projectile_family.h tune_key_names). Portable and allocation-free (the host test
 // verification/analysis/test_weapon_effects_projectile_tune.py compiles it); the file reader around it
 // (weapon_projectile_tune.cpp) exists only in an X3M_DEV_TUNING build.

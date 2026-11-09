@@ -17,19 +17,20 @@ struct Plan {
     IDirect3DPixelShader9* program = nullptr; // ours (the flag variant when the route's far flag targets are bound)
     const float* constants = nullptr;         // the tuned c31 (constants())
     float gain = 1.f;                         // the additive route's emission gain (1 unconverted)
+    float scale = 0.f;                        // the bound texture's luminance normaliser (0: constants[3], the IRE's)
     bool convert = false;                     // the additive route takes the draw: DESTBLEND ONE
 };
 struct Applied {
     bool destblend = false, c31 = false, program = false;
     bool rollback_failed = false; // begin failed and could not undo a step it had applied
 };
-// c31 for a plan: (gain x G, edge, core x G, normaliser).
+// c31 for a plan: (gain x G, edge, core x G, the texture's normaliser).
 inline void plan_constants(const Plan& p, float out[4]) noexcept {
     const float g = p.convert ? p.gain : 1.f;
     out[0] = p.constants[0] * g;
     out[1] = p.constants[1];
     out[2] = p.constants[2] * g;
-    out[3] = p.constants[3];
+    out[3] = p.scale > 0.f ? p.scale : p.constants[3];
 }
 template <class Ops> HRESULT begin(Ops& ops, const Plan& p, const float app_c31[4], Applied& a) noexcept {
     a = Applied{};

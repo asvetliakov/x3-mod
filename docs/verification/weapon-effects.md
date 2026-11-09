@@ -3484,7 +3484,7 @@ verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py
 | FL hook | **75 of 75**, PASS: reshade installs the impact and the batch call only (sites 3..6 `not_used`, pool disarmed, the batch on the scope stub); the scope stub forwards ECX/EDX/EAX/EBX/ESI/EDI/EBP, EFLAGS and both stack words, the callee's stack 16 bytes lower (alignment mod 16 kept), the scope 1 inside and 0 after, the callee's EAX returned, LastError and DF kept, DF 0 and 1; shutdown disarms; the audit's eighth stub skeleton |
 | D3D | **114 of 114**, PASS: 8 re-shade checks beside the 106 earlier |
 
-Re-shade rows of the final run (stand-in vs_1_1 / ps_1_1 doing the game programs' work; defaults rs_gain 0.45,
+Re-shade rows of the final run (stand-in vs_1_1 / ps_1_1 doing the game programs' work; defaults then rs_gain 0.45,
 rs_edge 0.1, rs_core 0.25) [M]:
 
 | Case | Figures |
@@ -3523,3 +3523,182 @@ game's DDS mips, so the far frames' texel values are approximate (review I). Mot
 by any fixture on this host (run_motion_output.py needs the CrossOver bottle): the additive case drives the production
 sequence header, and the wiring in `prepare_screen_additive` is covered by review only. The look dumps show the plain
 path; the additive path (DESTBLEND ONE, gain 2) has no look frame yet.
+
+### Baked values from FL 64 A (2026-11-09)
+
+The user accepted the flown values in FL 64 A: **rs_gain 0.4, rs_edge 0.4, rs_core 0.2** are now the defaults
+(`weapon_projectile_family.h`; the tune test's defaults follow). The far bolts were judged acceptable in flight,
+although the fixture's far frame keeps less of vanilla than at the earlier 0.1 edge. Default dumps regenerated,
+`run_weapon_effects.py --host native --dump verification/results/projectile-reshade --dump-case reshade --lab-assets
+<lab fl>` ([`dump_out.txt`](../../verification/results/projectile-reshade/dump_out.txt), `assets=game`, dark background,
+nebula in brackets) [M]:
+
+| Frame | Vanilla sum / peak | Re-shaded sum / peak | Ratio sum / peak |
+| --- | --- | --- | --- |
+| IRE near 50 m | 253.7 / 0.739 | 76.0 / 0.527 (49.2 / 0.397) | 0.300 / 0.712 |
+| IRE far 1500 m | 1.431 / 0.194 | 0.156 / **0.0257** (0.021 / 0.019) | 0.109 / **0.133** |
+
+The far peak is 0.13x vanilla's at rs_edge 0.4 against 0.47x at 0.1 (the table above). The other bodies the batch
+draws, at the same values, near 50 m, the IRE's pose and metres per body unit (lab positions share one scale), dark
+only, `fixture-{pac,hept,ppc}-{vanilla,reshade}-near.png` [M]. These are for judging whether one set of values serves
+every family; there is no look change:
+
+| Body (row) | Texture | Vanilla sum / peak | Re-shaded sum / peak | Ratio sum / peak |
+| --- | --- | --- | --- | --- |
+| `bullet_pr_alpha` (PAC) | fx_bullets_diff | 100.8 / 0.414 | 25.5 / 0.185 | 0.253 / 0.448 |
+| `bullet_pl_alpha` (HEPT) | fx_bullets_diff | 522.6 / 0.930 | 198.9 / 0.852 | 0.381 / 0.916 |
+| `objects/v/00518` (PPC) | fx_bullets2_diff | 4611 / 1.000 | 3288 / 0.999 | 0.713 / 0.999 |
+
+The PPC's texture is far brighter than the IRE strip the luminance normaliser (2.75) was set on, so its body saturates
+the smoothstep and keeps 0.71 of vanilla's energy; PAC, the dimmest, keeps 0.25.
+
+### Per-texture luminance normaliser (2026-11-09)
+
+Main-session decision after the family frames: the luminance normaliser (c31.w) is per texture and table-driven. The
+generator writes `tables.bullet_textures` into `x3m\weapon_effects.json` (schema 2 unchanged; an older DLL skips it):
+per texture frame a row draws, the member, the byte count, FNV-1a 64 of the first 4096 and of all decoded bytes, the
+level-0 luminance peak and p99 (Rec. 709 on value / 255, every texel); each row names its `texture`. The DLL maps a
+created texture to its entry in the D3DX observer (the FL `D3DXCreateTextureFromFileInMemoryEx` import slot, now also
+patched in reshade mode when the table has bullet textures): a byte-count compare per entry, the head hash on a count
+match, the full hash on a head match; the matched texture is stored on its device with the proxy's resource identity
+and dropped at its final release. The draw uploads `2.75 x 0.6169 / p99` of the bound stage-0 texture (one pointer
+compare while it stays bound; the table probe and the identity read on a pointer change and once a frame); a texture
+without an entry keeps 2.75 with one `bullet_reshade_texture` row. The anchor 0.6169 is fx_bullets_diff's p99, so the
+IRE, PAC, HEPT and the flak fragments keep the accepted 2.75: a plain `1 / p99` would move the IRE's normaliser to
+1.62 (the atlas's p99 is not the IRE strip's 0.36). FL table [M, [`bullet_textures_out.txt`](../../verification/results/projectile-reshade/bullet_textures_out.txt)
+from `bullet_textures.py`]: 9 texture frames; fx_bullets_diff p99 0.6169 → 2.750 (rows 0, 1, 6, 25, 37-39),
+fx_bullets2_diff 0.9888 → 1.716 (13 rows, the PPC among them), fx_bullet_push_diff 0.5647 → 3.004, fx_beams_diff 0.98
+→ 1.731, `380.jpg` 0.9961 → 1.703, fx_flamethrower_1..4 0.26 / 0.77 / 0.74 / 0.27 → 6.50 / 2.21 / 2.31 / 6.19.
+
+Family frames regenerated at the baked values (`--dump-case reshade`, the lab assets' decode, p99 computed by the
+generator's `luminance_stats`; dark, near 50 m; sum ratio re-shaded / vanilla) [M]:
+
+| Body (texture) | c31.w before → after | Ratio before | Ratio after | `1 / p99` (scratch, not shipped) |
+| --- | --- | --- | --- | --- |
+| IRE (fx_bullets_diff) | 2.75 → 2.75 | 0.300 | 0.300 | 0.191 (far peak 0.010, 0.05x vanilla) |
+| PAC (fx_bullets_diff) | 2.75 → 2.75 | 0.253 | 0.253 | 0.129 |
+| HEPT (fx_bullets_diff) | 2.75 → 2.75 | 0.381 | 0.381 | 0.230 |
+| PPC (fx_bullets2_diff) | 2.75 → 1.716 | 0.713 | **0.562** (peak 0.999 → 0.982) | 0.443 |
+
+The PPC comes down from 0.71 to 0.56 but not into the others' 0.25-0.38: its vanilla frame saturates (peak 1.0, 70
+triangles screen-blended), so even the plain `1 / p99` leaves it the brightest (0.44 against IRE 0.19) [I: the
+remaining gap is layer overlap, not the texture's level]. Cost [M, D3D fixture `texture_key`]: a size miss 0.002 µs,
+a same-size head miss 4.6 µs, a full match 391 µs (349,680 bytes), per texture creation only; per re-shaded draw the
+substitution stays 0.133 µs (the pointer compare is not separately measured). `x3m-regenerate.exe` rebuilt
+(`ab32862b1ca60797…`, smoke PASS) after bundling `classify_preview.py`: since `dd5fb09aa` the frozen tool failed its
+weapon-effects step (`weapon_catalog` loads the census classifier by path). Not flown.
+
+## Muzzle flash re-shade on FL (2026-11-09)
+
+`X3M_WEAPON_EFFECTS=reshade` also re-shades the game's own muzzle flash in place (user decision 2026-11-09; design
+[muzzle-flash-look.md](../architecture/muzzle-flash-look.md), draw path
+[fl/muzzle-flash-draw.md](../reverse-engineering/fl/muzzle-flash-draw.md)). A draw with the standard_lighting DEFAULT
+VS `494fe349b8bc12ec` bound, ADD ONE / ONE, that VS's rows c28..c36 known and the object-trace scope node's body id
+(`+0x144`) in the muzzle list is drawn with our ps_3_0 program (`src/effects/weapon_muzzle_reshade_ps.hlsl`, 208
+words, 22 slots) and c192..c195 through one device sequence (`src/proxy/muzzle_reshade_route.h`). **TODO**: the body
+list is the constant {445}; deriving it from `weapon_effects.json`'s muzzle rows through Effects → CUT scene → part
+bodies needs the table generator to resolve cut scenes (`tools/effects/weapon_effects_census.py` stops at the scene
+id). Worktree on `reshade` `e50d7f658`, uncommitted at the records.
+
+The first law (a radial falloff from the cell centre in each quad's UV, gain 0.35 of vanilla) was rejected on its dumps
+by the coordinator: one beige lobe per quad and no hot centre (energy 0.107, peak 0.38 against 9.1, never white). The
+law now is one glow around the gun in world space: the origin and the world scale from the VS's own g_mWorld and
+g_mViewInverse rows, the distance through the VS's TEXCOORD1 (camera − P), g = (1 − d²)² to `mz_size` × vanilla's
+lit extent (45618 model units, 90 % of the emitted energy), the texel only a modulator, and a 50 % white-shifted core
+(g⁴). Each quad's share is divided by the fan's summed glow at the gun (9.14), so the keys are luminances at the gun. The
+re-shaded draw skips the hull-emission route: its default clamp (0.7) would cap every quad's output and the sum below
+scene white. Defaults measured on the real mesh: **mz_size 0.5, mz_core 0.5, mz_gain 0.2, mz_smooth 0.6** (the sweep
+is in the design, section 3).
+
+Quiet-host run, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native` [M]:
+
+| Fixture | Result |
+| --- | --- |
+| AP hook | **132 of 132**, PASS (unchanged sources) |
+| FL hook | **75 of 75**, PASS (no new engine site: the muzzle uses the existing object-trace seam) |
+| D3D | **122 of 122**, PASS: 8 muzzle checks. `flash_budget_combined_512_bolts_64_flashes_64_pulses` passes at 123.5 µs; the 313 µs of the run before (and earlier the same day) was host noise: that run's every CPU figure in the section was 2.5x, this one matches the earlier record (124.8 µs) |
+
+Muzzle rows (stand-in vs_3_0 / ps_3_0 with the game pair's ABI, TEXCOORD1 passed per vertex as −P in the camera-space
+world, and the emissive law; c192 from the production `draw_constants` over rows built as the game's) [M]:
+
+| Case | Figures |
+| --- | --- |
+| model | seven flat texels at view vectors 0 to 1.2 glow radii from the gun (body + core, the core's range, the modulator's floor, the rim, past the radius, glow alpha, a black texel) through the production program, blend off: worst 0.021 of the tolerance (0.004 + 0.4 %); the stand-in vanilla 0.071 |
+| sequence (`muzzle_reshade_route_plain_binds_and_restores`) | on the stand-in flash: our program and the draw's block while drawing, the game's program and the application's c192..c195 after (Get*) |
+| flash 30 m (stand-in) | energy 9022 → 1799 (0.199 ≤ 0.2); peak 2.53 → 1.68; white extent 23.4 → 11.3 px (> 0, ≤ 0.5 ×); 0.1 extent 78.4 → 33.9 px |
+| cost | the four calls alone 0.077 µs per draw; a 100-triangle DrawPrimitive loop 2.939 µs vanilla, 3.019 µs substituted: **0.080 µs per substituted draw**; the match plus the draw's c192 (TLS, the 4-byte `engine_memory::read`, the list, `draw_constants`) **0.070 µs** per additive VS-494 draw |
+
+The stand-in flash's energy ratio, 0.199, is close to the 0.2 gate. The real mesh has margin (0.139); the stand-in's
+fan is denser. The bullet re-shade's rows in the same run, at the baked values: bolt 50 m energy 0.320, peak 0.759 →
+0.493; cost 0.130 µs per substituted draw.
+
+Production times the sequence alone on every 60th frame and capture frames into a `muzzle_reshade_frame` row (matched,
+draws, `hull` = those kept off the hull-emission route, failures, timed, µs), and logs `muzzle_reshade_program` once per
+device.
+
+Look frames, `run_weapon_effects.py --host native --dump verification/results/muzzle-reshade --dump-case muzzle
+--lab-assets <lab fl>`: body 445 from the FL catalogues and `tex/true/384` from the untracked lab assets
+(`assets=game` in [`dump_out.txt`](../../verification/results/muzzle-reshade/dump_out.txt)), scale 0.031 (peak) and
+0.0062 (20 %, grow), body units × scale / 500 per metre (assumed), dark and the flat nebula stand-in [M]:
+
+| Frame | Energy ratio (≤ 0.2) | Peak (re-shade / vanilla) | White r px (re-shade / vanilla) | 0.1 r ratio |
+| --- | --- | --- | --- | --- |
+| near 30 m | 0.139 | 1.53 / 9.10 | 8.5 / 31.6 | 0.493 |
+| far 300 m | 0.131 | 1.31 / 4.83 | 0.8 / 3.2 | 0.439 |
+| grow 30 m | 0.134 | 1.39 / 7.08 | 1.7 / 6.1 | 0.468 |
+
+All gates pass. The white core is reached at every frame, and in the near frame it sits at 0.27 of vanilla's white
+radius. Inputs: [`muzzle_inputs.py`](../../verification/results/muzzle-reshade/muzzle_inputs.py) →
+[`muzzle_inputs_out.txt`](../../verification/results/muzzle-reshade/muzzle_inputs_out.txt) (the pairs, the cell, the
+energy radii, the overlap, the hue). FL build 0 warnings, `check_no_x87` FL PASS, AP build 0 warnings;
+`generate_muzzle_reshade_program.py --check` PASS; focused host tests (core, hook, launch, tune, sites, table, config
+schema) 81 OK. Not flown.
+
+Known limits: MotionOutput itself is not instantiated by a fixture on this host. The recognition, the per-draw c192 from
+the VS shadow and the hull-route bypass are covered by review only. The stand-in vanilla PS reproduces the emissive term
+only, without the hull route's clamp, so the `vanilla` frames are brighter than the game's flash at the defaults (which
+saturates at 0.7 under the clamp). A device created with D3DCREATE_PUREDEVICE fails the resync read of c28..c36; the
+flash then stays vanilla until the application writes those rows, which it does at every effect commit [I]. The dump's
+mip chain is box-filtered from the lab's level-0 decode of a JPEG.
+
+### Review fixes (2026-11-09)
+
+Review at high, no blocker; fixes by finding [M unless marked]:
+
+- **F1, the per-draw overlap.** The normaliser is per draw: N = 8.89 + 1.31 cos², cos the angle between the view ray
+  to the gun and the flash axis (g_mWorld's z column), from the shadowed VS rows on the CPU with c192, uploaded in
+  c194.xy. It is fitted to the rendered real mesh, not to the review's ray sum ([design](../architecture/muzzle-flash-look.md)
+  section 2, [`overlap_by_angle_out.txt`](../../verification/results/muzzle-reshade/overlap_by_angle_out.txt)): the
+  ray sum (5.9 side-on, 27.3 axis-on) is not what the image shows. With the constant 9.14 a 21-yaw sweep kept the peak
+  at 1.37-1.58, the white radius at 7.3-8.6 px and the energy ratio at 0.133-0.158; the ray-sum fit left no white core
+  from 70° to the axis (peak 0.46 axis-on) and put side-on over the gate (0.204). At the fitted N the sweep holds
+  energy 0.137-0.142, peak 1.22-1.55 and white radius 6.3-8.8 px. Real-mesh frames (dump, all gates pass): near
+  0.141 / 8.6 of 31.6 px, far 0.132 / 0.8 of 3.2, grow 0.135 / 1.7 of 6.1, **axis 0.142 / 6.3 of 24.8, side 0.137 /
+  8.7 of 31.5** (`fixture-muzzle-{vanilla,reshade}-{axis,side}.png`). Fixture (stand-in, three poses): 25° energy
+  0.175, white 11.6 of 26.9 px; axis 0.163, 6.3 of 18.2; side 0.172, 12.3 of 27.6.
+- **F3.** The begin runs before the hull-emission route; the route is skipped only when the begin succeeded, so a
+  refused begin leaves the draw to the hull route's clamp, never to unclamped vanilla.
+- **F5.** Neither re-shade substitutes while a state block records (`shadow_.recording`), as the hull route.
+- **F6.** The match requires the rows `draw_constants` reads, c28..c30 and c34..c36 (mask 0x1c7).
+- **F8.** After a creation or restore failure the muzzle pass is off: no match and no per-draw count, the one row only.
+- **F9.** One dev tuning poll for both re-shades per frame, while either runs (capture.cpp; no longer split across
+  the two take_frame calls on different flags).
+- **F10, F12.** The custom flash's section references now say "(superseded)"; the c192.w comment corrected; the
+  design's 25° line corrected (the pose is below the ray-sum mean: 7.0 against 9.14).
+- **F11.** The stand-in cell's mean luminance now matches the real cell's (streak amplitude 0.36 → 0.42: mean 0.0462 →
+  0.0539, the real 0.0539); its 25° energy ratio 0.175 against the 0.2 gate (0.201 with the old amplitude and the
+  per-draw N).
+- **F4.** In game at the defaults the vanilla flash is drawn through the hull-emission route's clamp, so it never
+  exceeds 0.7, while the re-shade reaches scene white at the gun (peak 1.2-1.6 in the dumps). The re-shade can
+  therefore look brighter at its core than the in-game vanilla flash although the fixture's unclamped vanilla is 6-7x
+  brighter; to be judged in flight.
+
+Quiet-host run, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native`: AP hook **132 of 132**, FL hook **75 of 75**, D3D **124 of
+124** (the muzzle checks at three poses; two new bullet checks, `reshade_texture_key_matches_exact_bytes` and
+`reshade_texture_scale_per_texture`), all PASS. Muzzle cost: the four calls 0.084 µs, substitution 0.195 µs per draw
+(3.048 → 3.244 µs, 100 triangles), the match plus the draw's c192 and N 0.070 µs. FL build 0 warnings, `check_no_x87`
+FL PASS (1076 functions), AP build 0 warnings; host tests `test_weapon_effects_*` 104 OK, `test_config_schema` 20,
+`test_regenerate` 11, `test_weapon_catalog` 9. Dev DLLs (not candidates): FL `2f277ccb20027422…`, AP
+`d8be34c0cf81614d…`. Not flown.

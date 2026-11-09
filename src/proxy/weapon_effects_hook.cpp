@@ -275,9 +275,9 @@ void __cdecl x3m_weapon_bolt_tap_fl(std::uint32_t ecx) {
     core::projectile_tap(ecx, x3m_projectile_pool); // the projectile stage's registration (stage modes)
 }
 // Muzzle 0x04f639 -> 0x0150e0: EDX the gun slot, [esp+8] ship, ESI the TBullets record offset. The projectile stage's
-// muzzle (weapon_effects_projectile.h projectile_muzzle, docs/architecture/muzzle-flash-look.md section 4): skipped for
-// a shot of an enabled body while the batch latch is on (the stage draws its flash), forwarded otherwise. The AP bolt
-// muzzle (bolt_muzzle, its muzzle_owned / suppress_muzzle latch) is not used on FL.
+// muzzle (weapon_effects_projectile.h projectile_muzzle, docs/architecture/muzzle-flash-look.md (superseded) section
+// 4): skipped for a shot of an enabled body while the batch latch is on (the stage draws its flash), forwarded
+// otherwise. The AP bolt muzzle (bolt_muzzle, its muzzle_owned / suppress_muzzle latch) is not used on FL.
 int __cdecl x3m_weapon_muzzle_fl(const std::uint32_t* entry, std::uint32_t edx, std::uint32_t esi) {
     return core::projectile_muzzle(entry[S::spawner_object_slot], edx, esi, x3m_projectile_pool);
 }
