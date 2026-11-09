@@ -21,11 +21,14 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "16588849b1704012bf6f31c9a06e0ca2c4e38318",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "bcf6a3f283c71e9e34b3f0403584f4a7196f1c54-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_projectile.h",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp"
+    ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "06a57b43d143a6fb1ee1241c50694e3305ecb5e6a9166ade0f9539ea5242bb03",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "a0564457badd3a69195233f18b89f3b21734c9155de5bf55ecf41081e3449b95",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "08a272c80cf5568cd371a0f96eb01689cf8bca8146b1a16863c6e907453354f0",
       "src/proxy/weapon_effects_patch.cpp": "9230e4d3167f1da1ec2831e855d5f512f41eb5ff452125c77aa0faa57bc13d0b",
@@ -39,7 +42,7 @@
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
-      "src/proxy/weapon_effects_projectile.h": "158c5d2ccd058ef06a1bdef020aad131549d3b893a43fc6594e40ab416febf9c"
+      "src/proxy/weapon_effects_projectile.h": "dae694ae158ebf4dad183b4122847cc4ef492ada647a316ca88370f5619243c2"
     }
   },
   "build": {
@@ -59,8 +62,8 @@
       "handler_instructions": {
         "_x3m_weapon_event_fl": 1244,
         "_x3m_weapon_tap_fl": 45,
-        "_x3m_weapon_bolt_tap_fl": 881,
-        "_x3m_weapon_muzzle_fl": 211,
+        "_x3m_weapon_bolt_tap_fl": 874,
+        "_x3m_weapon_muzzle_fl": 208,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 569
       },
@@ -234,7 +237,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "6984bd69bd8978bc3ce2e1ea66f3f7249fbb32bc1ea880ebb890ed4c17f7287d"
+    "executable_sha256": "d5e1865fbbed503e43287c95991968a582c8bb34d6e3a1fe55d129367d60f1f2"
   },
   "host": {
     "name": "native-windows",
@@ -635,7 +638,6 @@
     "matched": 1,
     "unmatched": 1,
     "stale": 1,
-    "gap_ms": 150,
     "states": "1/0/0"
   },
   "stack_ok": true,

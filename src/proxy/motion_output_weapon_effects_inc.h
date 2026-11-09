@@ -370,6 +370,10 @@ HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noe
     flashes.pulses = pulses;
     flashes.max_pulses = renderer::weapon_max_pulses;
     flashes.max_quads = renderer::weapon_projectile_max_flashes;
+    // the flashes' life clock: this frame's QPC stamp in us (integer, wrapping at 2^32; no x87 conversion), the game
+    // clock's us without a QPC frequency
+    flashes.wall_us = frequency ? std::uint32_t((stamp / frequency) * 1000000u + (stamp % frequency) * 1000000u / frequency)
+                                : now * 1000u;
     // the device frame (a frame the stage did not run breaks every bridge) and the resolve's camera cut
     const ps::Counts n = ps::build(x3m_projectile_pool, &weapon_effects_read, weapon_effects::hook_state().table, looks,
                                    std::uint32_t(frame_), projectile_cut_, now, step, render_dt, seta_rate, view,

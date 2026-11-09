@@ -603,17 +603,21 @@ inline bool bolt_vertices(const View& c, const pf::Tune& tune, const BodyLook& l
 // takes the bolt core's 1 px floor: FWHM 1 px at R_f x the flash's FWHM (the lost width), at most the peak whose white
 // extent is E (exp(E^2 / (8 sigma_floor^2))), so the floored flash obeys the invariant too; with E itself under a pixel
 // (the design's LOD) that is the dot, no streak. The radiance fades by F (1 on its first
-// frame, then 1 - age / life). No glow, no head, no falloff: the bloom chain makes the halo. The quad's depth is the
+// frame, then 1 - age / life, age and life wall-clock ms). No glow, no head, no falloff: the bloom chain makes the halo. The quad's depth is the
 // muzzle's pulled towards the eye by the white radius (so the hull at the mount does not cut the point in half).
 // The hull pulse beside a drawn flash (section 3): radius hull_pulse_r (1 + calibre) metres, colour the row's tint x
 // pulse_gain (1 + calibre), its gain F; none under pulse_min_px on screen, with hull_pulse_r 0 or with the eye within
 // pulse_near_r radii; its octagon at most pulse_max_rows of the view height in radius (the radius shrunk to fit).
-constexpr float flash_cap_px = 48.f, flash_cap_rows = 1440.f, flash_point_h = 0.05f;
+constexpr float flash_cap_px = 160.f, flash_cap_rows = 1440.f, flash_point_h = 0.05f;
 constexpr float pulse_gain = 0.5f, pulse_min_px = 3.f, pulse_cover_max = 3.f;
 constexpr float pulse_near_r = 1.5f, pulse_max_rows = 0.15f; // no pulse within 1.5 radii of the eye; at most 0.15 rows
-// A flash's life cap in game steps, its stage frames at most, and how late (game steps after its birth) its first stage
-// frame may still draw it (the tap refuses a registration flash_stale_steps late; one more step for the stage frame).
-constexpr std::uint32_t flash_life_steps = 2, flash_max_frames = 2, flash_first_steps = core::projectile::flash_stale_steps + 1;
+// How late (game steps after its birth) a flash's first stage frame may still draw it (the tap refuses a registration
+// flash_stale_steps late; one more step for the stage frame). Its life after that is wall clock (flash_life_ms).
+constexpr std::uint32_t flash_first_steps = core::projectile::flash_stale_steps + 1;
+// A late first frame sets the flash's birth back by its game age over the SETA rate, at most this (seconds): past every
+// life the file allows, so the cap only bounds the int32 microseconds, never the life.
+constexpr float flash_backdate_max_s = 1.f;
+static_assert(flash_backdate_max_s * 1000.f > pf::tune_max[pf::key_flash_life_ms], "the set-back cap exceeds every life");
 // One flash this frame: the muzzle P and the shot's axis (view space, view units / unit), F, the body and its family.
 struct FlashIn {
     float p[3]{}, axis[3]{};
@@ -791,24 +795,18 @@ inline unsigned flash_quad(const View& c, const ViewFrame& vf, const pf::Tune& t
     }
     return keep ? 1u : 0u;
 }
-// A flash's life (game ms): flash_life_frac x the gun's measured refire gap, at most flash_life_steps game steps; 0 for a
-// first shot (no gap): its first frame only.
-inline float flash_life_ms(const pf::Tune& tune, std::uint32_t gap_ms, std::uint32_t step_ms) noexcept {
-    if (!gap_ms) return 0.f;
-    const float life = tune.flash_life_frac * float(gap_ms < 60000u ? gap_ms : 60000u);
-    const float cap = float(flash_life_steps * (step_ms < 1000u ? step_ms : 1000u));
-    return life < cap ? life : cap;
-}
-// Whether the flash draws on a stage frame (frames: the stage frames it drew on before; age: game ms since the birth),
-// and its fade F: the first frame always, at full radiance; then while age < life and under flash_max_frames, at
-// 1 - age / life.
-inline bool flash_draws(unsigned frames, std::int32_t age_ms, float life_ms, float* fade) noexcept {
+// Whether the flash draws on a stage frame (frames: the stage frames it drew on before; age_us: wall-clock us since
+// the birth; life_ms: the family's flash_life_ms, wall clock), and its fade F: the first frame always, at full radiance;
+// then on every stage frame while age < life, at 1 - age / life. Wall clock, not game time: under SETA the flash
+// outlives the game-time shot (perception is real time; it stays pinned to the muzzle, riding the shooter).
+inline bool flash_draws(unsigned frames, std::int32_t age_us, float life_ms, float* fade) noexcept {
     if (!frames) {
         *fade = 1.f;
         return true;
     }
-    if (frames >= flash_max_frames || !(float(age_ms) < life_ms)) return false;
-    const float f = 1.f - float(age_ms > 0 ? age_ms : 0) / life_ms;
+    const float age_ms = float(age_us > 0 ? age_us : 0) * 1e-3f;
+    if (!(life_ms > 0.f) || !(age_ms < life_ms)) return false;
+    const float f = 1.f - age_ms / life_ms;
     *fade = f > 0.f ? f : 0.f;
     return *fade > 0.f;
 }
@@ -852,6 +850,7 @@ struct FlashOut {
     renderer::WeaponPulse* pulses = nullptr;
     unsigned max_pulses = 0, max_quads = 0;
     FlashShape* shapes = nullptr;
+    std::uint32_t wall_us = 0; // the stage frame's wall clock (QPC us, wrapping): the flashes' life
 };
 struct Counts {
     unsigned tracked = 0, drawn = 0, culled = 0, expired = 0, invalid = 0, dots = 0;
@@ -903,7 +902,8 @@ constexpr std::uint32_t max_static_steps = 2;
 // else flash_stale): the muzzle P0 = its position less (v - v_ship) x its age (the birth point, riding the shooter) and
 // the axis v - v_ship, both stored in the shooter's frame (its rows; one bounded read of the shooter and one of its
 // node: ext+4, live, not dying), so each frame re-poses them through the shooter's current pose (a lost or changed
-// shooter drops the flash: flash_lost); it draws on that frame and then while flash_draws (flash_life_ms) holds, its
+// shooter drops the flash: flash_lost) and its birth's wall clock flashes->wall_us less its game age over the SETA rate;
+// it draws on that frame and then on every stage frame while flash_draws (wall-clock age < flash_life_ms) holds, its
 // quad and pulse written after the loop.
 inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* table, Looks& looks, std::uint32_t frame,
                     bool cut, std::uint32_t now_ms, std::uint32_t step_ms, float render_dt_s, float seta_rate,
@@ -917,8 +917,8 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
     // not seen by the object tap for stale_ms game ms, at least three game steps (SETA-aware): retired
     const std::uint32_t unseen_ms = 3u * step_ms > core::projectile::stale_ms ? 3u * step_ms : core::projectile::stale_ms;
     // a static frame's extrapolation: render dt x the SETA rate (game us), bounded per entry by max_static_steps steps
-    const float dt_game = (render_dt_s > 0.f && render_dt_s < 1.f ? render_dt_s : 0.f) *
-                          (seta_rate > 0.f && seta_rate < 64.f ? seta_rate : 1.f);
+    const float seta = seta_rate > 0.f && seta_rate < 64.f ? seta_rate : 1.f;
+    const float dt_game = (render_dt_s > 0.f && render_dt_s < 1.f ? render_dt_s : 0.f) * seta;
     const std::uint32_t static_add_us = std::uint32_t(std::int32_t(dt_game * 1e6f)); // < 64 s: int32 (SSE cvttss2si, no x87)
     const std::uint32_t static_max_us = max_static_steps * (step_ms < 1000u ? step_ms : 1000u) * 1000u;
     constexpr unsigned node_at = core::layout::node_live, node_span = core::layout::node_body + 4 - node_at;
@@ -1019,13 +1019,17 @@ inline Counts build(core::ProjectilePool& pool, Reader rd, const core::Table* ta
                     std::memcpy(e.flash_off, off, sizeof off);
                     std::memcpy(e.flash_axis, axis, sizeof axis);
                     e.flash_frames = 0;
+                    // the birth's wall clock: this frame's less the game age in real time (game s / the SETA rate, at
+                    // most flash_backdate_max_s: past every life; int32, SSE cvttss2si)
+                    const float real_s = age_s / seta;
+                    const float back_s = real_s < flash_backdate_max_s ? real_s : flash_backdate_max_s;
+                    e.flash_born_us = flashes->wall_us - std::uint32_t(std::int32_t(back_s * 1e6f));
                     e.flash = core::projectile::flash_live;
                 }
-                if (!flash_draws(e.flash_frames, age_ms, flash_life_ms(tf, e.flash_gap_ms, step_ms), &fade)) {
+                if (!flash_draws(e.flash_frames, std::int32_t(flashes->wall_us - e.flash_born_us), tf.flash_life_ms, &fade)) {
                     e.flash = core::projectile::flash_done;
                 } else {
-                    ++e.flash_frames;
-                    if (e.flash_frames >= flash_max_frames) e.flash = core::projectile::flash_done;
+                    if (e.flash_frames < 255u) ++e.flash_frames;
                     if (flash_count >= flash_room) {
                         ++n.flash_dropped;
                     } else {

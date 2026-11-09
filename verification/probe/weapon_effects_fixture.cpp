@@ -1249,14 +1249,13 @@ void fill_proj_lane(ProjTarget& t, float depth) {
 }
 // A flash's shooter and its bullet for the builder cases: the shooter (identity rows, its node at ship_pos moving at
 // ship_vel, engine units) and the bullet born at `born` at the muzzle (ship-relative, engine units) moving at ship_vel
-// + bullet_vel; one muzzle record of the shooter fired at `born` (ours or not, the previous shot gap_ms before, 0 a
-// first shot). place(t) puts both at their positions at game ms t, the clock at t and taps the bullet.
+// + bullet_vel; one muzzle record of the shooter fired at `born` (ours or not). place(t) puts both at their positions at game ms t, the clock at t and taps the bullet.
 struct FlashWorld {
     alignas(16) unsigned char ship[0x100], ship_node[0x200], obj[0x100], node[0x200], ext[0x80];
     double ship_pos[3]{}, ship_vel[3]{}, muzzle[3]{}, bullet_vel[3]{};
     std::uint32_t born = 0;
     unsigned char* cfg = nullptr;
-    void make(wc::ProjectilePool& pool, std::uint32_t handle, std::uint32_t gap_ms, bool ours, unsigned slot) {
+    void make(wc::ProjectilePool& pool, std::uint32_t handle, bool ours, unsigned slot) {
         std::memset(ship, 0, sizeof ship);
         std::memset(ship_node, 0, sizeof ship_node);
         std::memset(obj, 0, sizeof obj);
@@ -1289,7 +1288,6 @@ struct FlashWorld {
         m.node = std::uint32_t(reinterpret_cast<std::uintptr_t>(ship_node));
         m.handle = 0x5000 + handle;
         m.t0 = born;
-        m.prev_t0 = gap_ms ? born - gap_ms : 0;
         m.slot = std::uint16_t(slot);
         m.ours = ours;
         m.sequence = 1 + slot;
@@ -4421,8 +4419,8 @@ int main(int argc, char** argv) {
         static const float endon[3] = {0.f, 0.f, 1.f}, across_x[3] = {1.f, 0.f, 0.f};
         if (made) {
             // (F1) the size at scene white beside the bolt's core at the gun's depth (4 m cockpit, 27 m chase), 200 m and
-            // 500 m: E = min(1.25 x the core's white extent, 48 px x 1440 / 1440), the cap binding at 4 m only; the
-            // measured extent within 0.25 px of the rule, at most 1.25 x the measured core + 0.25 px and within 10 % of 1.25 x it. (F2) the anti-lamp
+            // 500 m: E = min(1.25 x the core's white extent, flash_cap_px (160) x 1440 / 1440), the cap binding at 4 m only;
+            // the measured extent within 0.25 px of the rule, at most 1.25 x the measured core + 0.25 px and within 10 % of 1.25 x it. (F2) the anti-lamp
             // gate: at flash_stops +4 the white extent is still E (brightness cannot grow it); at flash_stops 0 the
             // Gaussian's FWHM is 1.25 x the core's (the sigma law's other end). The area share where it is resolvable.
             bool size_ok = true, cap_ok = true, lamp_ok = true, fwhm_ok = true, share_ok = true;
@@ -4438,14 +4436,16 @@ int main(int argc, char** argv) {
                     const double rule = r.shape.white_px;
                     const bool capped = r.shape.capped;
                     const double gate = double(t.flash_core_mult) * core.first + 0.25;
+                    // the invariant on both branches: white <= min(flash_core_mult x the core's, the cap) (+0.25 px)
+                    const double bound = std::min(gate, double(ps::flash_cap_px) + 0.25);
                     const bool in_rule = std::fabs(white - rule) <= 0.25;
                     const double ratio = core.first > 0.0 ? white / core.first : 0.0;
                     const bool ratio_ok = std::fabs(ratio / double(t.flash_core_mult) - 1.0) <= 0.10;
                     if (stops == 2.f) {
-                        size_ok = size_ok && r.quads == 1 && in_rule && (capped || (white <= gate && ratio_ok));
-                        cap_ok = cap_ok && capped == (d == 4.f) && (!capped || std::fabs(white - 48.0) <= 0.5);
+                        size_ok = size_ok && r.quads == 1 && in_rule && white <= bound && (capped || ratio_ok);
+                        cap_ok = cap_ok && capped == (d == 4.f) && (!capped || std::fabs(white - double(ps::flash_cap_px)) <= 0.5);
                     }
-                    if (stops == 4.f) lamp_ok = lamp_ok && r.quads == 1 && in_rule && (capped ? white <= 48.25 : white <= gate);
+                    if (stops == 4.f) lamp_ok = lamp_ok && r.quads == 1 && in_rule && white <= bound;
                     if (stops == 0.f && !capped && d <= 27.f)
                         fwhm_ok = fwhm_ok && std::fabs(fwhm - double(t.flash_core_mult) * core.second) <= 0.5;
                     if (share.second >= 50) share_ok = share_ok && share.first <= 0.15;
@@ -4521,13 +4521,17 @@ int main(int argc, char** argv) {
                 report("flash_lod_dot_no_streak_no_pulse", lod_ok, "");
             }
         }
-        // (F5) the life against the refire gap through the production tap and builder: a shooter at 27 m firing an IRE
-        // whose muzzle record (ours) was relit gap_ms after the previous shot; stage frames at the game step until the
-        // flash ends. Gap 150 ms: drawn at ages 0 and 17 at 17 ms steps (life 30 ms), 0 and 7 at 7 ms steps (life 14 ms:
-        // two steps), once at 100 ms steps (SETA 6); a first shot once; a record not ours (the engine's flash shown)
-        // never; a registration three steps late never (flash_stale). F = 1 on the first frame, 1 - age / life after.
-        // The shooter moves 1.7 m along x between the two frames: the second flash rides it (its raster is the ship's
-        // new position plus the muzzle offset).
+        // (F5) the wall-clock life through the production tap and builder: a shooter at 27 m firing an IRE whose muzzle
+        // record is ours; stage frames frame_us apart on the wall clock (FlashOut::wall_us, starting 128 ms before its
+        // 2^32 wrap), the game clock step game ms a frame, until the flash ends. The flash draws on every stage frame while
+        // its wall-clock age < flash_life_ms: 5 frames at 17 ms (life 80), 12 at 7 ms, 5 under SETA 6 (game step 100 ms:
+        // the flash outlives the game-time shot), 24 at the life's top (400), 1 at its bottom (16); a registration one
+        // step late is backdated by its game age (4 frames), one step late under SETA 6 by its game age over the rate
+        // (100 / 6 ms: 4 frames), and one 1.5 s late at the fallback rate (the build's rate 0 taken as 1, 1000 ms steps)
+        // by the 1 s cap only (its first frame alone); the birth's set-back (frame wall clock less flash_born_us) within
+        // 1 us of min(age / rate, 1 s); a record not ours never; a registration three steps late never (flash_stale); a
+        // record whose shooter changed never (flash_lost). F = 1 on the first frame, then 1 - age / life. The shooter moves along x between frames: the flash rides it (its raster is the ship's position
+        // at that frame's game time plus the muzzle offset).
         {
             static wc::ProjectilePool pool;
             alignas(16) static unsigned char cfg[0x800];
@@ -4535,18 +4539,36 @@ int main(int argc, char** argv) {
             static ps::Looks looks;
             static FlashWorld w;
             static rr::WeaponPulse pulses[rr::weapon_max_pulses];
-            const pf::Tune tunes[pf::family_count] = {baked};
-            // (a record whose shooter's handle is not the shooter's now: another ship at that object, flash_lost)
-            struct LifeCase { const char* name; std::uint32_t step, gap; bool ours; std::uint32_t tap_age; unsigned frames; bool other; };
-            const LifeCase cases[7] = {{"gap150_step17", 17, 150, true, 0, 4, false}, {"gap150_step7", 7, 150, true, 0, 4, false},
-                                       {"gap150_step100_seta6", 100, 150, true, 0, 3, false},
-                                       {"first_shot", 17, 0, true, 0, 3, false}, {"not_ours", 17, 150, false, 0, 3, false},
-                                       {"tapped_late", 17, 150, true, 51, 3, false},
-                                       {"record_other_shooter", 17, 150, true, 0, 3, true}};
-            const unsigned want_drawn[7] = {2, 2, 1, 1, 0, 0, 0};
-            bool life_ok = true, fade_ok = true, ride_ok = true, axis_ok = true;
-            for (unsigned c = 0; c < 7; ++c) {
+            struct LifeCase {
+                const char* name;
+                std::uint32_t step, frame_us;
+                float seta, life_ms;
+                bool ours;
+                std::uint32_t tap_age;
+                unsigned frames;
+                bool other;
+                unsigned want;
+                bool still; // the shooter at rest (the 1.5 s late case: a moving one would leave the view)
+            };
+            const LifeCase cases[] = {{"life80_frame17", 17, 17000, 1.f, 80.f, true, 0, 8, false, 5, false},
+                                      {"life80_frame7", 7, 7000, 1.f, 80.f, true, 0, 14, false, 12, false},
+                                      {"life80_seta6_step100", 100, 16667, 6.f, 80.f, true, 0, 8, false, 5, false},
+                                      {"life400_frame17", 17, 17000, 1.f, 400.f, true, 0, 27, false, 24, false},
+                                      {"life16_frame17", 17, 17000, 1.f, 16.f, true, 0, 4, false, 1, false},
+                                      {"tapped_one_step_late", 17, 17000, 1.f, 80.f, true, 17, 8, false, 4, false},
+                                      {"tapped_one_step_late_seta6", 100, 16667, 6.f, 80.f, true, 100, 8, false, 4, false},
+                                      {"tapped_late_backdate_cap_rate0", 1000, 17000, 0.f, 80.f, true, 1500, 4, false, 1,
+                                       true},
+                                      {"not_ours", 17, 17000, 1.f, 80.f, false, 0, 4, false, 0, false},
+                                      {"tapped_late", 17, 17000, 1.f, 80.f, true, 51, 4, false, 0, false},
+                                      {"record_other_shooter", 17, 17000, 1.f, 80.f, true, 0, 4, true, 0, false}};
+            constexpr unsigned case_count = sizeof(cases) / sizeof(cases[0]), max_frames = 32;
+            bool life_ok = true, fade_ok = true, ride_ok = true, axis_ok = true, back_ok = true;
+            for (unsigned c = 0; c < case_count; ++c) {
                 const LifeCase& lc = cases[c];
+                pf::Tune lt = baked;
+                lt.flash_life_ms = lc.life_ms;
+                const pf::Tune tunes[pf::family_count] = {lt};
                 pool_reset(pool, cfg, &cfg_slot, 10000);
                 for (wc::MuzzleRecord& m : pool.muzzles) m = wc::MuzzleRecord{};
                 put32(cfg, wc::projectile::cfg_step_ms, lc.step);
@@ -4554,7 +4576,9 @@ int main(int argc, char** argv) {
                 looks.resolved = 1;
                 w.cfg = cfg;
                 w.born = 10000;
-                const double ship[3] = {-2000.0, -1500.0, 13500.0}, vship[3] = {50000.0, 0.0, 0.0};
+                // the shooter at 20 m/s across: the muzzle stays on screen over the longest life (400 ms, 0.7 s of
+                // game time under SETA 6), and its removal from the axis is still 1 degree at the bullet's speed
+                const double ship[3] = {-2000.0, -1500.0, 13500.0}, vship[3] = {lc.still ? 0.0 : 10000.0, 0.0, 0.0};
                 const double muzzle[3] = {1600.0, 250.0, 1250.0}, vbullet[3] = {0.0, 0.0, 581000.0};
                 for (unsigned k = 0; k < 3; ++k) {
                     w.ship_pos[k] = ship[k];
@@ -4562,14 +4586,18 @@ int main(int argc, char** argv) {
                     w.muzzle[k] = muzzle[k];
                     w.bullet_vel[k] = vbullet[k];
                 }
-                w.make(pool, 700 + c, lc.gap, lc.ours, 3);
+                w.make(pool, 700 + c, lc.ours, 3);
                 if (lc.other) pool.muzzles[3].handle ^= 0x100;
                 unsigned drawn = 0, lost = 0;
                 double axis_err = 0.0; // degrees between the flash's axis and the shot's own direction (view +z here)
-                float fades[4]{};
-                float rasters[4][2]{};
-                double expect[4][2]{};
-                for (unsigned f = 0; f < lc.frames; ++f) {
+                double fade_err = 0.0, ride = 0.0;
+                const std::uint32_t wall0 = 0xfffe0000u; // 0x20000 us (131 ms) before the 2^32 us wrap
+                // the birth's wall clock: the first frame's less the game age at the tap over the SETA rate (the build's
+                // fallback 1 outside (0, 64)), at most 1 s
+                const double rate = lc.seta > 0.f && lc.seta < 64.f ? double(lc.seta) : 1.0;
+                const double backdate_ms = std::min(double(lc.tap_age) / rate, double(ps::flash_backdate_max_s) * 1e3);
+                double back_us = -1.0;
+                for (unsigned f = 0; f < lc.frames && f < max_frames; ++f) {
                     const std::uint32_t now = 10000 + lc.tap_age + f * lc.step;
                     w.place(pool, now);
                     ps::FlashShape shapes[4];
@@ -4578,53 +4606,52 @@ int main(int argc, char** argv) {
                     out.max_pulses = rr::weapon_max_pulses;
                     out.max_quads = rr::weapon_projectile_max_flashes;
                     out.shapes = shapes;
+                    out.wall_us = wall0 + f * lc.frame_us;
                     x3m::engine_memory::next_frame();
-                    const ps::Counts n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 500 + 10 * c + f, false, now,
-                                                   lc.step, float(lc.step) * 1e-3f, 1.f, proj_view(pt, 1.6f), tunes, fv,
+                    const ps::Counts n = ps::build(pool, &x3m::engine_memory::read, nullptr, looks, 500 + 40 * c + f, false, now,
+                                                   lc.step, float(lc.frame_us) * 1e-6f, lc.seta, proj_view(pt, 1.6f), tunes, fv,
                                                    rr::weapon_projectile_max_bolts, rr::weapon_projectile_bolt_quads,
                                                    nullptr, &out);
                     lost += n.flash_lost;
+                    if (f == 0 && pool.count == 1 && pool.entries[0].flash != wc::projectile::flash_none)
+                        back_us = double(wall0 - pool.entries[0].flash_born_us);
                     if (n.flashes) {
                         const double cz = std::max(-1.0, std::min(1.0, double(shapes[0].axis[2])));
                         axis_err = std::max(axis_err, std::acos(cz) * 180.0 / 3.14159265358979);
-                        if (drawn < 4) {
-                            fades[drawn] = shapes[0].fade;
-                            rasters[drawn][0] = shapes[0].raster[0];
-                            rasters[drawn][1] = shapes[0].raster[1];
-                            // the muzzle's birth point riding the shooter: ship(now) + the muzzle offset (view = world)
-                            const double s = double(std::int32_t(now - w.born)) * 1e-3;
-                            const ps::View pv = proj_view(pt, 1.6f);
-                            const double vx = (ship[0] + vship[0] * s + muzzle[0]) * 0.01, vy = (ship[1] + muzzle[1]) * 0.01,
-                                         vz = (ship[2] + muzzle[2]) * 0.01;
-                            expect[drawn][0] = (double(pv.m00) * vx / vz + 1.0) * 0.5 * double(pt.w);
-                            expect[drawn][1] = (1.0 - double(pv.m11) * vy / vz) * 0.5 * double(pt.h);
-                        }
+                        // F: 1 on the first frame, then 1 - (backdate + f x frame) / life
+                        const double want_fade =
+                            f == 0 ? 1.0 : 1.0 - (backdate_ms + double(f) * double(lc.frame_us) * 1e-3) / double(lc.life_ms);
+                        fade_err = std::max(fade_err, std::fabs(double(shapes[0].fade) - want_fade));
+                        // the muzzle's birth point riding the shooter: ship(now) + the muzzle offset (view = world)
+                        const double s = double(std::int32_t(now - w.born)) * 1e-3;
+                        const ps::View pv = proj_view(pt, 1.6f);
+                        const double vx = (ship[0] + vship[0] * s + muzzle[0]) * 0.01, vy = (ship[1] + muzzle[1]) * 0.01,
+                                     vz = (ship[2] + muzzle[2]) * 0.01;
+                        const double ex = (double(pv.m00) * vx / vz + 1.0) * 0.5 * double(pt.w);
+                        const double ey = (1.0 - double(pv.m11) * vy / vz) * 0.5 * double(pt.h);
+                        ride = std::max(ride, std::max(std::fabs(shapes[0].raster[0] - ex), std::fabs(shapes[0].raster[1] - ey)));
                         ++drawn;
                     }
                 }
-                const float life = ps::flash_life_ms(baked, lc.gap, lc.step);
-                const bool fade_case = drawn == 2 && std::fabs(fades[0] - 1.f) < 1e-6f &&
-                                       std::fabs(fades[1] - (1.f - float(lc.step) / life)) < 1e-4f;
-                life_ok = life_ok && drawn == want_drawn[c] && (!lc.other || lost == 1);
-                if (want_drawn[c] == 2) fade_ok = fade_ok && fade_case;
-                double ride = 0.0;
-                for (unsigned k = 0; k < drawn && k < 4; ++k)
-                    ride = std::max(ride, std::max(std::fabs(rasters[k][0] - expect[k][0]), std::fabs(rasters[k][1] - expect[k][1])));
+                life_ok = life_ok && drawn == lc.want && (!lc.other || lost == 1);
+                if (lc.want) back_ok = back_ok && std::fabs(back_us - backdate_ms * 1e3) <= 1.0;
+                if (lc.want) fade_ok = fade_ok && fade_err < 1e-3;
                 ride_ok = ride_ok && ride < 0.1;
                 axis_ok = axis_ok && axis_err < 0.05;
-                std::printf("FLASH case=life name=%s step_ms=%u gap_ms=%u ours=%u tap_age_ms=%u life_ms=%.2f drawn=%u want=%u "
-                            "fade0=%.4f fade1=%.4f ride_err_px=%.4f axis_err_deg=%.4f lost=%u matched=%lu unmatched=%lu "
-                            "stale=%lu\n",
-                            lc.name, lc.step, lc.gap, unsigned(lc.ours), lc.tap_age, double(life), drawn, want_drawn[c],
-                            double(fades[0]), double(fades[1]), ride, axis_err, lost,
+                std::printf("FLASH case=life name=%s step_ms=%u frame_us=%u seta=%.0f life_ms=%.0f ours=%u tap_age_ms=%u "
+                            "drawn=%u want=%u back_us=%.1f want_back_us=%.1f fade_err=%.6f ride_err_px=%.4f "
+                            "axis_err_deg=%.4f lost=%u matched=%lu unmatched=%lu stale=%lu\n",
+                            lc.name, lc.step, lc.frame_us, double(lc.seta), double(lc.life_ms), unsigned(lc.ours), lc.tap_age,
+                            drawn, lc.want, back_us, backdate_ms * 1e3, fade_err, ride, axis_err, lost,
                             static_cast<unsigned long>(pool.counters.flash_matched),
                             static_cast<unsigned long>(pool.counters.flash_unmatched),
                             static_cast<unsigned long>(pool.counters.flash_stale));
             }
-            report("flash_life_vs_refire_seta", life_ok, "");
+            report("flash_life_wall_clock_seta", life_ok, "");
             report("flash_fade_law", fade_ok, "");
+            report("flash_birth_set_back_by_age_over_rate_capped_1s", back_ok, "");
             report("flash_rides_the_shooter", ride_ok, "");
-            // the axis is v_bullet - (the slip + node velocity): the shot's own direction, the shooter's 100 m/s across
+            // the axis is v_bullet - (the slip + node velocity): the shot's own direction, the shooter's 20 m/s across
             // (a third of it in the slip) removed exactly
             report("flash_axis_is_the_shots_own_direction", axis_ok, "");
         }
@@ -4800,7 +4827,7 @@ int main(int argc, char** argv) {
                 w.muzzle[0] = 0.0;
                 w.bullet_vel[0] = 581000.0 * 0.8;
                 w.bullet_vel[2] = 581000.0 * 0.6;
-                w.make(pool, 900 + i, 150, true, i);
+                w.make(pool, 900 + i, true, i);
                 w.place(pool, 20000);
             }
             ps::FlashOut out;
@@ -4969,7 +4996,7 @@ int main(int argc, char** argv) {
                         w.bullet_vel[0] = 581000.0 * 0.8;
                         w.bullet_vel[1] = 0.0;
                         w.bullet_vel[2] = 581000.0 * 0.6;
-                        w.make(pool, 1200 + i, 150, true, i);
+                        w.make(pool, 1200 + i, true, i);
                     }
                     for (unsigned i = 0; i < plain_count; ++i) {
                         Plain& u = plain[i];
