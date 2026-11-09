@@ -71,7 +71,8 @@ WINDOWS_SETUP = (f'Install Windows Python {PY_VERSION} once: download the python
                  f'https://www.python.org/ftp/python/{PY_VERSION}/python-{PY_VERSION}-amd64.exe, run '
                  f'`python-{PY_VERSION}-amd64.exe /quiet InstallAllUsers=0 TargetDir=C:\\Python312 PrependPath=0`, '
                  f'then `{PIP_LINE}`; check with `python3 tools/regenerate/build.py --windows --dry`.')
-STAGE_DIRS = ('tools', 'tools/regenerate', 'tools/analysis', 'tools/build', 'tools/effects', 'verification/probe')
+STAGE_DIRS = ('tools', 'tools/regenerate', 'tools/analysis', 'tools/build', 'tools/effects', 'verification/probe',
+              'verification/results/weapon-effects-census')
 DRIVE_PATH = re.compile(r'^[A-Za-z]:\\')
 EXPECTED = ('processing fog zzpkg', 'fog layers:', 'processing model ships/x/good', 'refused model ships/x/badtext',
             'slot plan: addon/01', 'engine bodies summary:', 'fog families: check passed', 'all done')

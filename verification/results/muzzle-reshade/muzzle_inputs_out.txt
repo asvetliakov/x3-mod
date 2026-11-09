@@ -1,0 +1,24 @@
+standard_lighting DEFAULT pairs (FL root + addon2, shader/3_0 and its variants):
+  vs 494fe349b8bc12ec (3_0) ps 0d5848c8489b6630 (3_0) 4 effects, e.g. hue_lights_off/standard_lighting2s.fb
+  vs 494fe349b8bc12ec (3_0) ps ced7edef48059e84 (3_0) 4 effects, e.g. hue_lights_off/standard_lighting.fb
+  vs 719856ce0c213220 (3_0) ps 55826dc176afe464 (3_0) 1 effects, e.g. hueshift_off/standard_lighting_0001.fb
+  vs 719856ce0c213220 (3_0) ps db644b73b68c0547 (3_0) 1 effects, e.g. standard_lighting_0000.fb
+  vs 719856ce0c213220 (3_0) ps f6a501717c3e5ca8 (3_0) 1 effects, e.g. hueshift_off/standard_lighting_0000.fb
+  vs 719856ce0c213220 (3_0) ps ff32b602a271c327 (3_0) 1 effects, e.g. standard_lighting_0001.fb
+  vs badefd5143b3024f (3_0) ps 55826dc176afe464 (3_0) 1 effects, e.g. hue_lights_off/standard_lighting_0001.fb
+  vs badefd5143b3024f (3_0) ps db644b73b68c0547 (3_0) 1 effects, e.g. v_lights_off/standard_lighting_0000.fb
+  vs badefd5143b3024f (3_0) ps f6a501717c3e5ca8 (3_0) 1 effects, e.g. hue_lights_off/standard_lighting_0000.fb
+  vs badefd5143b3024f (3_0) ps ff32b602a271c327 (3_0) 1 effects, e.g. v_lights_off/standard_lighting_0001.fb
+body 445 (01.cat): 203 vertices, 100 textured faces
+  UV rectangle u 0.002853..0.411944, v -0.001845..0.511156; centre (0.2073985, 0.2546555), half extents (0.2045455, 0.2565005)
+  model z of the v ~0.51 edge: mean 6868 (range -12161..29826); of the v ~0 edge: mean 41342 (range -3631..99768): the v ~0.51 edge is at the gun
+texture 256x256; cell texels 13624: luminance max 0.674 mean 0.0539 p99 0.475; alpha 1.000..1.000
+luminance centroid u 0.2067 v 0.3186 (normalised -0.003, +0.249: towards the gun edge)
+radial mean luminance (r over the half extents):
+  0.025:0.1648 0.075:0.1616 0.125:0.1559 0.175:0.1746 0.225:0.1848 0.275:0.1584 0.325:0.1430 0.375:0.1337 0.425:0.1175 0.475:0.1069 0.525:0.0885 0.575:0.0792 0.625:0.0677 0.675:0.0615 0.725:0.0575 0.775:0.0511 0.825:0.0393 0.875:0.0257 0.925:0.0116 0.975:0.0042 1.025:0.0028 1.075:0.0023 1.125:0.0018 1.175:0.0009 1.225:0.0005 1.275:0.0003 1.325:0.0001 1.375:0.0000
+centre value (r < 0.3) 0.1667; vanilla lit radius r_v (first band under 5 %, its inner edge) 0.950
+fit a (1 - smoothstep(r0, 1, r)): a 0.166 r0 0.16, rms 0.0107, worst |fit - mean| 0.0217
+luminance-weighted hue of the lit texels (luminance > 0.02, 5761): rgb/max (1.0, 0.485, 0.166); at luminance 1 K = (1.7507, 0.8485, 0.2903)
+texel noise: luminance sd in r bands 0-0.1 0.049, 0.3-0.4 0.107, 0.6-0.7 0.117
+vanilla energy radius from the gun (model units): 50 % 19268, 90 % 45618, 95 % 60306; the textured vertices reach 101004
+fan overlap at the gun: 24 of 50 quads pass within 0.1 x the lit radius; a ray through the gun crosses 13.3 quads within 0.5 x the radius on average over 500 directions (min 6, max 45); summed glow at the default size: mean 9.14 (p10 5.17, p90 14.11)

@@ -22,15 +22,15 @@
 // steps: SETA-aware); Present empties the pool on a load or a sector change. A table generated from another TBullets
 // (its row count differs from the engine's) resolves no body: the stage stays off (stale).
 //
-// The muzzle (docs/architecture/muzzle-flash-look.md section 4 and "Implementation (2026-11-09)"; FL 0x04f639 -> the
-// spawner 0x0150e0, reached only for TBullets rows whose col 21 is not 0): projectile_muzzle reads the shot's body (word
-// +0 of the TBullets record at ESI) and tests it against the same enabled set (bits) the batch stub tests. An enabled
-// body's shot relights its (ship, gun slot) MuzzleRecord (t0, the shooter's node and handle) and is skipped (the
-// spawner not called, the game's flash not made) while Present latched skip_on, the record then ours; with the latch
-// off it is forwarded (muzzle_unskipped). Any other body forwards untouched. The object tap matches a newly registered
-// entry to the ours record of its shooter (ext+4) fired at its birth (t0 == ext+8: one clock, cfg +0x708) and hands
-// the stage the shooter's node and handle; an entry registered more than flash_stale_steps game steps after its birth
-// gets no flash. The flash's life is wall clock, stamped by the stage on its first frame (flash_born_us).
+// The muzzle (docs/architecture/muzzle-flash-look.md (superseded) section 4 and "Implementation (2026-11-09)"; FL
+// 0x04f639 -> the spawner 0x0150e0, reached only for TBullets rows whose col 21 is not 0): projectile_muzzle reads the
+// shot's body (word +0 of the TBullets record at ESI) and tests it against the same enabled set (bits) the batch stub
+// tests. An enabled body's shot relights its (ship, gun slot) MuzzleRecord (t0, the shooter's node and handle) and is
+// skipped (the spawner not called, the game's flash not made) while Present latched skip_on, the record then ours; with
+// the latch off it is forwarded (muzzle_unskipped). Any other body forwards untouched. The object tap matches a newly
+// registered entry to the ours record of its shooter (ext+4) fired at its birth (t0 == ext+8: one clock, cfg +0x708)
+// and hands the stage the shooter's node and handle; an entry registered more than flash_stale_steps game steps after
+// its birth gets no flash. The flash's life is wall clock, stamped by the stage on its first frame (flash_born_us).
 namespace x3m::weapon_effects::core {
 namespace projectile {
 constexpr unsigned pool_capacity = 512, slot_count = 1024, max_probes = 32;

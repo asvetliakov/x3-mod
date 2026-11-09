@@ -19,6 +19,13 @@ one odd M3 row fitting the PSP set its width; a bullet no laser fires, the fragm
 the note's unknown 7 fallback) and the range (range_m: lifetime ms x speed / 1000 / 500, metres; null when either column
 is missing). The bolt hand pins of an override (bolt-muzzle-look.md 11.5) are written as the entry's bolt_e_body,
 bolt_w_orb, bolt_halo and bolt_tint keys only where pinned (the DLL reads them; an older DLL skips them).
+The bullet re-shade's per-texture luminance normaliser (docs/reverse-engineering/fl/bullet-draw-batch.md section 6):
+per row the name of the texture its colour came from (texture), and tables.bullet_textures, one entry per distinct
+texture frame those rows draw: the member, the byte count and FNV-1a 64 of the bytes the engine hands
+D3DXCreateTextureFromFileInMemoryEx (the decoded member: head64 over the first 4096 bytes, fnv1a64 over all of them;
+the DLL maps the created texture by them), the level-0 texel luminance's peak and 99th percentile (Rec. 709 weights on
+the stored values / 255, every texel, as the re-shade program weighs the sample) and the rows that draw it. An older
+DLL skips both keys (schema 2 unchanged).
 Per TMissiles row only the count. Also the TBullets table's decoded hash and row count (the DLL compares the count
 with the live *0x00607038 and disables the lookups on a mismatch), the generator's schema and its `tool` field (the
 ownership mark manage.py and x3m-regenerate test before replacing or removing the file). Only names, numbers and
@@ -59,6 +66,47 @@ BOLT_PINS = ('bolt_e_body', 'bolt_w_orb', 'bolt_halo', 'bolt_tint')
 
 class GenerateError(Exception):
     pass
+
+
+# The bullet re-shade's texture keys (src/proxy/bullet_reshade_core.h texture_key): FNV-1a 64 of the first HEAD_BYTES
+# bytes and of all of them. The DLL hashes a created texture's bytes only when their count is one of the table's.
+HEAD_BYTES = 4096
+LUMA = (0.2126, 0.7152, 0.0722)
+
+
+def fnv1a64(data):
+    h = 0xcbf29ce484222325
+    for b in data:
+        h = ((h ^ b) * 0x100000001b3) & 0xffffffffffffffff
+    return h
+
+
+def luminance_stats(rgba):
+    """(peak, p99) of the texel luminance of an RGBA uint8 array: Rec. 709 weights on the stored values / 255, every
+    texel (the re-shade program's dot(t.rgb, w) on the raw sample, sRGB decoding off)."""
+    import numpy as np
+    lum = (rgba[..., :3].reshape(-1, 3).astype(np.float64) / 255.0) @ np.array(LUMA)
+    return round(float(lum.max()), 4), round(float(np.percentile(lum, 99)), 4)
+
+
+def bullet_texture_frames(assets, name, cache):
+    """The texture frames a diffuse name draws (engine_bodies.texture_frames: an animation row's frames, else the name),
+    each as dict(name, member, bytes, head64, fnv1a64, peak, p99); [] when none decodes."""
+    if name in cache:
+        return cache[name]
+    out = []
+    for fname in engine_bodies.texture_frames(assets, name):
+        src = engine_bodies.lod_atlas.texture_source(assets, fname.encode('latin1'))
+        if src is None:
+            continue
+        data, kind, info = src
+        img = engine_bodies.lod_atlas.decode_dds(data, 0) if kind == 'dds' else \
+            engine_bodies.lod_atlas.decode_image(data, fname)
+        peak, p99 = luminance_stats(img)
+        out.append(dict(name=fname, member=info['member'], bytes=len(data), head64=f'{fnv1a64(data[:HEAD_BYTES]):016x}',
+                        fnv1a64=f'{fnv1a64(data):016x}', peak=peak, p99=p99))
+    cache[name] = out
+    return out
 
 
 # Step 4 (bolt-muzzle-look.md section 1): the mount tiers by OBJ_SHIP_* class (prefix removed).
@@ -154,11 +202,11 @@ def diffuse_names(body):
     return out
 
 
-def row_entry(w, body, colour, override, mounts=None):
+def row_entry(w, body, colour, override, mounts=None, texture=None):
     ext = (body or {}).get('extents') or {}
     e = ext.get('z_over_xy')
     half = ext.get('half_extents')
-    entry = dict(row=w['index'], id=w['weapon_id'], body=w['body_key'],
+    entry = dict(row=w['index'], id=w['weapon_id'], body=w['body_key'], texture=texture,
                  z_over_xy=e, half_extent=round(max(half[0], half[1]), 4) if half else None,
                  texture_rgb=[int(round(min(255.0, max(0.0, float(c))))) for c in colour['mean']] if colour else None,
                  shape=shape_from_elongation(e), style=None, tint=None, calibre=None,
@@ -213,21 +261,31 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
         mounts = mount_classes(assets)
     except FileNotFoundError as exc:
         raise GenerateError(f'mount tables not found in the selected layers: {exc}') from None
-    cache = {}
-    entries, applied = [], 0
+    cache, frames_cache = {}, {}
+    entries, applied, textures = [], 0, {}
     for w in result['weapons']:
         body = result['bodies'].get(w['body_key'])
-        colour = None
+        colour, texture = None, None
         for name in diffuse_names(body):
             try:
                 colour = engine_bodies.texture_colour(assets, name, cache)
             except Exception:  # an undecodable texture leaves the row without a texture colour (the DLL: light / white)
                 colour = None
             if colour is not None:
+                texture = name
                 break
+        if texture is not None:
+            try:
+                frames = bullet_texture_frames(assets, texture, frames_cache)
+            except Exception:  # undecodable: the DLL keeps the IRE normaliser for it
+                frames = []
+            for f in frames:
+                rows = textures.setdefault(f['fnv1a64'], dict(f, rows=[]))['rows']
+                if w['index'] not in rows:
+                    rows.append(w['index'])
         override = override_for(overrides, table['sha256'], w['weapon_id'])
         applied += bool(override)
-        entries.append(row_entry(w, body, colour, override, mounts.get(w['index'])))
+        entries.append(row_entry(w, body, colour, override, mounts.get(w['index']), texture))
     missile_rows = len(census_reader.data_rows(missiles_text.decode('latin1'))[1:])
     return dict(
         schema=SCHEMA, tool=TOOL,
@@ -241,12 +299,16 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
                    tint='override tint, linear -> 8-bit sRGB',
                    mount_tier='the catalogue size of the mounting ship rows (weapon_catalog.size_of, the 10 % rule): '
                               'small fighter, medium corvette, big capital; other or unmounted fighter',
-                   range_m='lifetime_ms x speed / 1000 / 500 m'),
+                   range_m='lifetime_ms x speed / 1000 / 500 m',
+                   bullet_textures='per texture frame a row draws: bytes, FNV-1a 64 of the first 4096 and of all bytes '
+                                   'the engine decodes, level-0 luminance peak and p99 (Rec. 709 on value / 255)'),
         counts=dict(bullets=len(entries), missiles=missile_rows, textures=sum(1 for e in entries if e['texture_rgb']),
+                    bullet_textures=len(textures),
                     overrides=applied, mount_fallback=sum(1 for e in entries if e['mount_fallback']),
                     **{t: sum(1 for e in entries if e['mount_tier'] == t) for t in MOUNT_TIERS}),
         tables=dict(bullets=dict(rows=len(entries), sha256=table['sha256'], entries=entries),
-                    missiles=dict(rows=missile_rows)))
+                    missiles=dict(rows=missile_rows),
+                    bullet_textures=sorted(textures.values(), key=lambda t: (t['name'].lower(), t['fnv1a64']))))
 
 
 def mount_fallback_rows(table):

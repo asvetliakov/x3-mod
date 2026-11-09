@@ -34,8 +34,11 @@ import weapon_effects_census as wec  # noqa: E402
 
 
 def _load_classifier():
-    spec = importlib.util.spec_from_file_location(
-        'classify_preview', REPO / 'verification/results/weapon-effects-census/classify_preview.py')
+    # a checkout's file; the frozen x3m-regenerate bundles it beside its modules (tools/regenerate/x3m_regenerate.spec)
+    path = REPO / 'verification/results/weapon-effects-census/classify_preview.py'
+    if not path.is_file() and getattr(sys, 'frozen', False):
+        path = pathlib.Path(getattr(sys, '_MEIPASS', '.')) / 'classify_preview.py'
+    spec = importlib.util.spec_from_file_location('classify_preview', path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod

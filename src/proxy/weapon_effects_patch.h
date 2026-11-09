@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include "weapon_effects_core.h"
 #include "weapon_effects_bolt.h"
@@ -79,6 +80,15 @@ bool install_at(const Addresses& a, core::Mode mode);
 #endif
 bool installed();
 core::Mode mode();
+#if X3M_EDITION_FL
+// The bullet re-shade's per-texture normaliser (bullet_reshade_core.h; weapon_effects.json tables.bullet_textures,
+// loaded at install): the entry the bytes the engine handed D3DXCreateTextureFromFileInMemoryEx are (-1: none, no
+// table, or the scope stub is not live), the entries kept, and an entry's p99 x 65535 (0 past the count; c31.w is
+// reshade::texture_scale of it, inline at the caller: no float crosses a call, the i686 ABI would return it on x87).
+int bullet_texture_key(const void* data, std::size_t size) noexcept;
+unsigned bullet_texture_count() noexcept;
+std::uint16_t bullet_texture_p99_q(unsigned key) noexcept;
+#endif
 const char* state();
 // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
 // (the one FL call), 7 batch (the projectile stage's batch submit 0x097af8; with the object tap in every stage mode)
@@ -133,6 +143,11 @@ struct StageFrame {
     unsigned reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
     unsigned reshade_additive = 0, reshade_flagged = 0;
     float reshade_us = 0.f;
+    // The muzzle flash re-shade (FL reshade mode; MotionOutput::muzzle_reshade_take_frame): draws re-shaded, muzzle
+    // draws matched (body id in the list, ONE / ONE), of the re-shaded those kept off the hull-emission route, failed
+    // substitutions, timed draws and the sequence's CPU us over them.
+    unsigned muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
+    float muzzle_us = 0.f;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
 // sector change or a new load epoch (note 3.1), before the frame's upkeep.

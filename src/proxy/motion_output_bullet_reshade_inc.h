@@ -4,7 +4,7 @@
 // whose bound pixel shader is one of the game's INSTANCE_BULLETS programs (shadow_.ps_bullet: recognised by the proxy's
 // hash of the bytes the game passed to CreatePixelShader, bullet_reshade_core.h) is drawn with our ps_2_0 program
 // (src/effects/weapon_bullet_reshade_ps.hlsl) and c31 = (gain, edge, core, normaliser), through the one device
-// sequence of bullet_reshade_route.h:
+// sequence of bullet_reshade_route.h (c31.w the bound texture's normaliser, bullet_reshade_scale):
 // - the additive route (screen_emission_additive under HDR, prepare_screen_additive) takes the bullet draws: the
 //   re-shade takes precedence over the route's own program, keeps the route's conversion (DESTBLEND ONE, applied by
 //   the sequence) with the route's emission gain folded into c31, its alpha states, footprint and single-copy drop,
@@ -49,12 +49,58 @@ void MotionOutput::bullet_reshade_create() noexcept {
     weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
                                        bullet_reshade_constants_);
     log("bullet_reshade_program device=%llu frame=%llu created=%u result=%08lx flag_created=%u flag_result=%08lx words=%u "
-        "flag_words=%u gain=%.3g edge=%.3g core=%.3g additive_gain=%.3g",
+        "flag_words=%u gain=%.3g edge=%.3g core=%.3g additive_gain=%.3g texture_keys=%u textures_mapped=%u",
         id_, frame_, unsigned(bullet_reshade_ps_ != nullptr), hr, unsigned(bullet_reshade_flag_ps_ != nullptr), flag_hr,
         unsigned(sizeof bullet_reshade_program / sizeof bullet_reshade_program[0]),
         unsigned(sizeof bullet_reshade_flag_program / sizeof bullet_reshade_flag_program[0]),
         double(bullet_reshade_constants_[0]), double(bullet_reshade_constants_[1]), double(bullet_reshade_constants_[2]),
-        double(screen_additive_gain_));
+        double(screen_additive_gain_), weapon_effects::bullet_texture_count(), bullet_textures_.count);
+}
+// The per-texture normaliser. The D3DX observer stores a created texture whose bytes are a tables.bullet_textures entry
+// (capture.cpp texture_created: a byte-count compare, the hashes only on a count match); its final release drops it.
+bool MotionOutput::bullet_texture_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, unsigned key) noexcept {
+    if (!bullet_reshade_requested_ || !texture || !identity || key > 255u) return false;
+    if (texture == bullet_texture_bound_) bullet_texture_bound_ = nullptr; // resolved again at its next draw
+    return bullet_textures_.insert(texture, identity, 0, std::uint8_t(key));
+}
+void MotionOutput::bullet_texture_forget(const void* texture) noexcept {
+    if (texture == bullet_texture_bound_) bullet_texture_bound_ = nullptr;
+    if (bullet_textures_.count) bullet_textures_.erase(texture);
+}
+// c31.w for a re-shaded draw: the bound stage-0 texture's entry when the pointer is known and its identity still matches
+// (a reused address of a freed texture is dropped), else the IRE's 2.75 with one bullet_reshade_texture row per texture
+// (at most 16). One pointer compare per draw while the texture stays bound; the table probe and the identity read
+// (GetPrivateData) run when the pointer changes and once a frame.
+void MotionOutput::bullet_reshade_scale(IDirect3DBaseTexture9* texture, float* out) noexcept {
+    if (texture && texture == bullet_texture_bound_) {
+        *out = bullet_texture_scale_;
+        return;
+    }
+    float scale = weapon_effects::reshade::luminance_scale;
+    int key = -1;
+    if (texture && bullet_textures_.count)
+        if (auto* entry = bullet_textures_.find(texture)) {
+            const std::uint64_t identity = resource_id(texture);
+            if (identity && identity == entry->identity) {
+                key = entry->slot;
+                scale = weapon_effects::reshade::texture_scale(weapon_effects::bullet_texture_p99_q(entry->slot));
+            } else
+                bullet_textures_.erase(texture);
+        }
+    if (key < 0) {
+        ++bullet_texture_unknown_draws_;
+        bool seen = false;
+        for (unsigned i = 0; i < bullet_texture_unknown_count_ && !seen; ++i) seen = bullet_texture_unknown_[i] == texture;
+        if (!seen && bullet_texture_unknown_count_ < 16u) {
+            bullet_texture_unknown_[bullet_texture_unknown_count_++] = texture;
+            log("bullet_reshade_texture device=%llu frame=%llu texture=%p entry=none scale=%.4g (no tables.bullet_textures "
+                "entry matched at creation: the IRE normaliser) textures_known=%u",
+                id_, frame_, static_cast<void*>(texture), double(scale), bullet_textures_.count);
+        }
+    }
+    bullet_texture_bound_ = texture;
+    bullet_texture_scale_ = scale;
+    *out = scale;
 }
 // The draw is a re-shade candidate: a game bullet program bound inside the batch submit, our program ready.
 bool MotionOutput::bullet_reshade_ready() const noexcept {
@@ -76,6 +122,7 @@ bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool f
     plan.program = flag ? bullet_reshade_flag_ps_ : bullet_reshade_ps_;
     plan.constants = bullet_reshade_constants_;
     plan.gain = screen_additive_gain_;
+    bullet_reshade_scale(samplers_[0].texture, &plan.scale);
     plan.convert = convert;
     rs::Applied applied;
     const HRESULT hr = rs::begin(ops, plan, shadow_.ps_c31, applied);
@@ -155,12 +202,8 @@ void MotionOutput::finish_bullet_reshade(MotionRoute& route) noexcept {
 }
 void MotionOutput::bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed,
                                              float* us, unsigned* additive, unsigned* flagged) noexcept {
-#if X3M_DEV_TUNING
-    if (weapon_effects::projectile_tune::poll(&projectile_tune_[weapon_effects::projectile_family::fighter_tracer]))
-        weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
-                                           bullet_reshade_constants_);
-#endif
     ++bullet_reshade_frames_;
+    bullet_texture_bound_ = nullptr; // the bound texture's entry and identity are read again once a frame
     *draws = bullet_reshade_draws_;
     *failures = bullet_reshade_failures_;
     *outside = bullet_reshade_outside_;

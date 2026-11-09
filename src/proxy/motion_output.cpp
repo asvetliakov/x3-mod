@@ -47,6 +47,7 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "weapon_projectile_stage.h" // the projectile stage (docs/architecture/projectile-look.md)
 #include "bullet_reshade_core.h"  // the bullet re-shade's programs and constants (reshade mode)
 #include "bullet_reshade_route.h" // its device sequence
+#include "muzzle_reshade_route.h" // the muzzle flash re-shade's device sequence (reshade mode)
 #if X3M_DEV_TUNING
 #include "weapon_projectile_tune.h" // the dev-only in-flight tuning file (never in a release build)
 #endif
@@ -476,6 +477,7 @@ unsigned MotionOutput::device_references() const noexcept {
 #if X3M_EDITION_FL
     if (bullet_reshade_ps_) ++count;
     if (bullet_reshade_flag_ps_) ++count;
+    if (muzzle_reshade_ps_) ++count;
 #endif
     if (sun_sentinel_ps_) ++count;
     for (const auto* stamp : sun_stamp_ps_)
@@ -631,6 +633,9 @@ void MotionOutput::release_resources() noexcept {
     release(bullet_reshade_flag_ps_);
     bullet_reshade_create_failed_ = bullet_reshade_restore_failed_ = false;
     shadow_.ps_bullet = false;
+    release(muzzle_reshade_ps_); // the muzzle re-shade's program (created again at the next device's registration)
+    muzzle_reshade_create_failed_ = muzzle_reshade_restore_failed_ = false;
+    shadow_.vs_muzzle = false;
 #endif
     for (auto& stamp : sun_stamp_ps_) release(stamp);
     sun_stamp_ps_failed_[0] = sun_stamp_ps_failed_[1] = false;
@@ -4457,6 +4462,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         shadow_.vs_material_variant = nullptr;
         shadow_.vs_row = nullptr;
         shadow_.vs_prepass = nullptr;
+        shadow_.vs_muzzle = false;
     }
     if (!requested_ || !shader) return;
     try {
@@ -4485,6 +4491,9 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         entry.row = nullptr;
         entry.prepass = nullptr;
         if (!enabled_ || !code || !bytes || bytes % 4) return;
+#if X3M_EDITION_FL
+        if (hash == weapon_effects::muzzle_reshade::vertex_shader && muzzle_reshade_requested_) muzzle_reshade_create();
+#endif
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
             const auto transformed = renderer::linear_distance_fade_vertex_variant(
@@ -5204,10 +5213,16 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_material_variant = nullptr;
     shadow_.vs_row = nullptr;
     shadow_.vs_prepass = nullptr;
+    shadow_.vs_muzzle = false;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
     shadow_.vs_hash = it->second.hash;
+#if X3M_EDITION_FL
+    shadow_.vs_muzzle = muzzle_reshade_requested_ && shadow_.vs_hash == weapon_effects::muzzle_reshade::vertex_shader;
+    // A VS registered before the program could be created (creation is once per device; two bool tests after it).
+    if (shadow_.vs_muzzle && !muzzle_reshade_ps_ && !muzzle_reshade_create_failed_) muzzle_reshade_create();
+#endif
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.vs_registered = it->second.registered;
     shadow_.vs_major = it->second.major;
@@ -5343,6 +5358,18 @@ void MotionOutput::set_vertex_constants_f(UINT start, const float* data, UINT co
     }
     // Engine light: the world and view-inverse rows of both VS layouts.
     if (engine_light_requested_) engine_light_shadow_rows(start, data, count);
+#if X3M_EDITION_FL
+    // The muzzle re-shade: the standard_lighting VS's g_mWorld and g_mViewInverse rows (c28..c36) as written.
+    if (muzzle_reshade_requested_) {
+        constexpr UINT lo_r = weapon_effects::muzzle_reshade::vs_rows_first,
+                       hi_r = lo_r + weapon_effects::muzzle_reshade::vs_rows_count;
+        if (start < hi_r && end > lo_r) {
+            const UINT lo = start > lo_r ? start : lo_r, hi = end < hi_r ? end : hi_r;
+            std::memcpy(shadow_.vs_c28 + (lo - lo_r) * 4, data + (lo - start) * 4, (hi - lo) * 16);
+            for (UINT r = lo; r < hi; ++r) shadow_.vs_c28_known |= std::uint16_t(1u << (r - lo_r));
+        }
+    }
+#endif
     // Reserved c252-255: remember the application values so a routed draw can put them back.
     if (start < 256 && end > 252) {
         const UINT lo = start > 252 ? start : 252, hi = end < 256 ? end : 256;
@@ -5369,6 +5396,15 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
     // The bullet re-shade's register: the application's c31, put back after each substituted draw.
     if (start <= weapon_effects::reshade::constant_register && end > weapon_effects::reshade::constant_register)
         std::memcpy(shadow_.ps_c31, data + (weapon_effects::reshade::constant_register - start) * 4, 16);
+    // The muzzle re-shade's registers: the application's c192..c195, put back after each substituted draw.
+    {
+        constexpr UINT mz_lo = weapon_effects::muzzle_reshade::constant_register,
+                       mz_hi = mz_lo + weapon_effects::muzzle_reshade::constant_count;
+        if (start < mz_hi && end > mz_lo) {
+            const UINT lo = start > mz_lo ? start : mz_lo, hi = end < mz_hi ? end : mz_hi;
+            std::memcpy(shadow_.ps_c192 + (lo - mz_lo) * 4, data + (lo - start) * 4, (hi - lo) * 16);
+        }
+    }
 #endif
     // Caster counter: c0..c31 as written, for the bound program's own
     // LightDir_Dir0 register at the draw (shadow_replay_sun.h).
@@ -5507,6 +5543,18 @@ void MotionOutput::resync_shadow() noexcept {
     if (bullet_reshade_requested_)
         native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, weapon_effects::reshade::constant_register,
                                                          shadow_.ps_c31, 1u);
+    // The muzzle re-shade's c192..c195 (the application's values it puts back; zero when the read fails) and the VS's
+    // c28..c36 (unknown when the read fails: no muzzle draw matches until the application writes them)
+    if (muzzle_reshade_requested_) {
+        native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, weapon_effects::muzzle_reshade::constant_register,
+                                                         shadow_.ps_c192, weapon_effects::muzzle_reshade::constant_count);
+        shadow_.vs_c28_known =
+            SUCCEEDED(native<GetConstantsFFn>(GetVertexShaderConstantF)(device_, weapon_effects::muzzle_reshade::vs_rows_first,
+                                                                        shadow_.vs_c28,
+                                                                        weapon_effects::muzzle_reshade::vs_rows_count))
+                ? std::uint16_t(0x1ffu)
+                : std::uint16_t(0u);
+    }
 #endif
     IDirect3DVertexBuffer9* stream = nullptr;
     UINT offset = 0, stride = 0;
@@ -6298,17 +6346,34 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     if (shadow_.source_gain_eligible_variant && !route.routed && !route.composition && !route.fog_card_mask.masked &&
         route.submit)
         prepare_source_gain(call, route);
+#if X3M_EDITION_FL
+    // Muzzle flash re-shade: one bool test unless the standard_lighting DEFAULT VS is bound in reshade mode with the
+    // program ready (after a creation or restore failure the pass is off: no match, no count); a blend-off draw ends at
+    // the ALPHABLENDENABLE shadow; never while a state block records, nor on a draw a route, the composition, the
+    // additive option, the fog-card mask, the nebula swap or the source gain took. The sequence's begin runs before the
+    // hull-emission route: a draw it substituted skips that route (its saturating clamp, C 0.7 at the defaults, would
+    // cap the core below scene white) and is drawn under the game's ONE / ONE (muzzle-flash-look.md section 2); a
+    // refused begin (an unusable matrix, a failed step, all undone) leaves the draw to the hull route as without the
+    // re-shade.
+    if (shadow_.vs_muzzle && route.submit && !shadow_.recording && muzzle_reshade_ready() && !route.routed &&
+        !route.composition && !route.screen_additive && !route.fog_card_mask.masked && !route.sky_nebula_swapped &&
+        !route.source_gain && muzzle_reshade_match(route) && begin_muzzle_reshade(route))
+        route.muzzle_hull = shadow_.ps_hull_program && hull_gain_enabled_; // the hull route would have taken it
+    const bool muzzle_owned = route.muzzle_reshade;
+#else
+    constexpr bool muzzle_owned = false;
+#endif
     // Hull-emitter gain: one bool test when the option is off or the bound PS
     // is not one of the 24 (12 AP, 12 FL); its own flag (a fixture seam toggles it).
     // A routed or composed draw takes the same blend verdict inside.
-    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit)
+    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit && !muzzle_owned)
         prepare_hull_gain(call, route);
 #if X3M_EDITION_FL
-    // Bullet re-shade: one bool test unless a game bullet program is bound (reshade mode only); never on a draw a
-    // route, the composition, the additive option or the fog-card mask took.
-    if (shadow_.ps_bullet && route.submit && !route.bullet_reshade && !route.routed && !route.composition &&
-        !route.screen_additive &&
-        !route.fog_card_mask.masked && !route.sky_nebula_swapped && !route.source_gain && !route.hull_gain)
+    // Bullet re-shade: one bool test unless a game bullet program is bound (reshade mode only); never while a state
+    // block records, nor on a draw a route, the composition, the additive option or the fog-card mask took.
+    if (shadow_.ps_bullet && route.submit && !shadow_.recording && !route.bullet_reshade && !route.routed &&
+        !route.composition && !route.screen_additive && !route.fog_card_mask.masked && !route.sky_nebula_swapped &&
+        !route.source_gain && !route.hull_gain)
         prepare_bullet_reshade(route);
 #endif
     if (!route.routed && !route.composition && route.submit && route.scene && call.primitives)
@@ -9712,6 +9777,7 @@ void MotionOutput::after_draw(MotionRoute& route, HRESULT result) noexcept {
     } restore_scope{*this, route};
 #if X3M_EDITION_FL
     if (route.bullet_reshade) finish_bullet_reshade(route); // the game's program and c31 back first
+    if (route.muzzle_reshade) finish_muzzle_reshade(route); // the game's program and c192..c195 back first
 #endif
     if (route.sky_nebula_swapped) finish_sky_nebula(route, result); // the engine's pair and constants back first
     if (route.sky_stars) finish_sky_stars(route, result); // its mask back (before the card's finish), then the batch
@@ -13127,6 +13193,7 @@ void MotionOutput::run_sun_shadow_apply() noexcept {
 #include "motion_output_weapon_effects_inc.h"
 #if X3M_EDITION_FL
 #include "motion_output_bullet_reshade_inc.h"
+#include "motion_output_muzzle_reshade_inc.h"
 #endif
 namespace {
 // Sky stars, the sky_stars_match row only (invariant 1): the level-0 size, format and level count of the star texture.

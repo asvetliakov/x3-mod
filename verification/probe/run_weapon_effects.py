@@ -82,6 +82,10 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_bullet_reshade.hlsl', 'src/effects/weapon_bullet_reshade_flag_ps.hlsl',
                       'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h', 'src/proxy/bullet_reshade_route.h',
                       'src/proxy/bullet_reshade_core.h', 'verification/probe/weapon_bullet_reshade_fixture.h',
+                      # the muzzle flash re-shade (docs/architecture/muzzle-flash-look.md)
+                      'src/effects/weapon_muzzle_reshade_ps.hlsl', 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h',
+                      'src/proxy/muzzle_reshade_route.h', 'src/proxy/muzzle_reshade_core.h',
+                      'verification/probe/weapon_muzzle_reshade_fixture.h',
                       # the muzzle flash's hull pulse (docs/architecture/muzzle-flash-look.md)
                       'src/effects/weapon_pulse_ps.hlsl', 'src/renderer/weapon_pulse_pixel_program_inc.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
@@ -101,6 +105,8 @@ PROGRAMS = {
                                  'src/renderer/weapon_bullet_reshade_pixel_program_inc.h'),
     'weapon_bullet_reshade_flag_ps': ('verification/results/weapon-bullet-reshade-flag-pixel-program.json',
                                       'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h'),
+    'weapon_muzzle_reshade_ps': ('verification/results/weapon-muzzle-reshade-pixel-program.json',
+                                 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h'),
 }
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
@@ -146,7 +152,7 @@ def programs_current():
         record = json.loads((ROOT / record_path).read_text())
         if record['source_sha256'] != sha(ROOT / record['source']) or record['header_sha256'] != sha(ROOT / header):
             raise SystemExit(f'{name}: stale embedded program; run tools/shaders/generate_weapon_effects_programs.py '
-                             '(the re-shade: generate_bullet_reshade_program.py)')
+                             '(the re-shades: generate_bullet_reshade_program.py, generate_muzzle_reshade_program.py)')
         out[name] = {k: record[k] for k in ('source', 'word_count', 'bytecode_sha256', 'target')}
     return out
 
@@ -188,7 +194,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE')
+            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE', 'MUZZLE_RESHADE')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -345,10 +351,66 @@ def reshade_assets(lab, target):
     rgba = np.asarray(Image.open(texture).convert('RGBA'))
     if len(triangles) != 22 or rgba.shape != (512, 512, 4):
         return False
+    sys.path.insert(0, str(ROOT / 'tools/effects'))
+    import weapon_effects_table as table_tool  # luminance_stats: the table's per-texture p99, the same statistic
     target.mkdir(parents=True, exist_ok=True)
     (target / 'ire_mesh.txt').write_text(''.join(' '.join(f'{v:.6f}' for v in vertex) + '\n'
                                                   for triangle in triangles for vertex in triangle))
     (target / 'ire_tex.rgba').write_bytes(rgba.tobytes())
+    (target / 'ire_tex_p99.txt').write_text(f'{table_tool.luminance_stats(rgba)[1]:.4f}\n')
+    # The other bodies the batch draws (the PAC, HEPT and PPC rows of tools/effects/weapon_catalog/fl.json), for the
+    # family frames at the same values: family_<name>.txt ("vertices side p99", then x y z u v) and family_<name>.rgba;
+    # p99 the texture's level-0 luminance p99 (the per-texture normaliser's input, bullet_reshade_core.h texture_scale).
+    bodies = json.JSONDecoder().raw_decode(text[text.index(marker) + len(marker):])[0]['bodies']
+    for name, key, png in (('pac', 'objects/effects/weapons/bullet_pr_alpha', 'fx_bullets_diff-ef82daa8.png'),
+                           ('hept', 'objects/effects/weapons/bullet_pl_alpha', 'fx_bullets_diff-ef82daa8.png'),
+                           ('ppc', 'objects/v/00518', 'fx_bullets2_diff-1becbb60.png')):
+        b, tex = bodies.get(key), Path(lab) / 'tex' / png
+        tris = b['materials'][0]['triangles'] if b and b.get('materials') else []
+        if not tris or not tex.is_file():
+            continue
+        frgba = np.asarray(Image.open(tex).convert('RGBA'))
+        if frgba.shape[0] != frgba.shape[1]:
+            continue
+        lines = [f'{3 * len(tris)} {frgba.shape[0]} {table_tool.luminance_stats(frgba)[1]:.4f}\n'] + \
+            [' '.join(f'{v:.6f}' for v in vertex[:5]) + '\n' for triangle in tris for vertex in triangle]
+        (target / f'family_{name}.txt').write_text(''.join(lines))
+        (target / f'family_{name}.rgba').write_bytes(frgba.tobytes())
+    return True
+
+
+def muzzle_assets(game, lab, target):
+    """Body 445's 100 textured triangles (x y z u v per vertex, body units; objects/v/00445 of the FL catalogues through
+    verification/results/fl-muzzle-flash-draw's census reader) and tex/true/384 (256x256 RGBA, the local lab assets'
+    decode) for the muzzle re-shade dump, into the untracked build directory; False (the dump then draws its procedural
+    stand-ins) when either is absent."""
+    import re as _re
+    import numpy as np
+    from PIL import Image
+    texture = Path(lab) / 'tex' / '384-bd79416d.png'
+    if not texture.is_file() or not Path(game).is_dir():
+        return False
+    sys.path.insert(0, str(ROOT / 'tools/analysis'))
+    sys.path.insert(0, str(ROOT / 'verification/results/fl-muzzle-flash-draw'))
+    import fl_muzzle_flash_census as census
+    text, _ = census.text(census.mount(game, 'fl'), 'objects/v/00445.bod')
+    if not text or '-1;  -1;   -1;' not in text:
+        return False
+    coords, rest = text.split('-1;  -1;   -1;', 1)
+    verts = [tuple(int(x) for x in m) for m in
+             _re.findall(r'^\s*(-?\d+);\s*(-?\d+);\s*(-?\d+);\s*/\d+', coords, _re.M)]
+    faces = _re.findall(r'^\s*(\d+);\s*(\d+);\s*(\d+);\s*(\d+);\s*-?\d+;\s*1;\s*([-\d.;\s]+?)/\((\d+)\)', rest, _re.M)
+    rgba = np.asarray(Image.open(texture).convert('RGBA'))
+    if len(faces) != 100 or rgba.shape != (256, 256, 4):
+        return False
+    lines = []
+    for f in faces:
+        uv = [float(x) for x in f[4].replace(';', ' ').split()]
+        for k, i in enumerate((int(f[1]), int(f[2]), int(f[3]))):
+            lines.append(' '.join(f'{v:.6f}' for v in (*verts[i], uv[2 * k], uv[2 * k + 1])) + '\n')
+    target.mkdir(parents=True, exist_ok=True)
+    (target / 'mz_mesh.txt').write_text(''.join(lines))
+    (target / 'mz_tex.rgba').write_bytes(rgba.tobytes())
     return True
 
 
@@ -357,12 +419,14 @@ def dump(args):
     record's source binding stays): it writes linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0,
     clamp, sRGB; no bloom, AgX or TAA, as the design mocks); no hook fixture, no record. --dump-case reshade: the bullet
     re-shade's frames instead (fixture-ire-{vanilla,reshade}-{near,far}; bullet-draw-batch.md section 6) under
-    BUILD/dump-reshade, the far crops enlarged 6x (nearest) in the PNG."""
+    BUILD/dump-reshade, the far crops enlarged 6x (nearest) in the PNG. --dump-case muzzle: the muzzle flash re-shade's
+    frames (fixture-muzzle-{vanilla,reshade}-{near,far,grow,axis,side}; muzzle-flash-look.md) under BUILD/dump-muzzle, the
+    figures in DIR/dump_out.txt."""
     import numpy as np
     from PIL import Image
     out = Path(args.dump)
     out.mkdir(parents=True, exist_ok=True)
-    raw = BUILD / ('dump-reshade' if args.dump_case == 'reshade' else 'dump')
+    raw = BUILD / {'reshade': 'dump-reshade', 'muzzle': 'dump-muzzle'}.get(args.dump_case, 'dump')
     raw.mkdir(parents=True, exist_ok=True)
     for stale in raw.glob('*.pfm'):
         stale.unlink()
@@ -379,6 +443,12 @@ def dump(args):
         argv = ['dump-reshade', 'reshade', d3dx, 'dump-reshade-assets' if real else '']
         if args.reshade_edge is not None:
             argv.append(f'{args.reshade_edge:g}')
+    elif args.dump_case == 'muzzle':
+        real = muzzle_assets(args.game, args.lab_assets, BUILD / 'dump-muzzle-assets')
+        d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
+        argv = ['dump-muzzle', 'muzzle', d3dx, 'dump-muzzle-assets' if real else '']
+        if args.muzzle_keys:
+            argv.append(args.muzzle_keys)
     else:
         argv = ['dump']
     done, text = native_host.run_native(exe, argv, BUILD, args.timeout, log=BUILD / 'dump-fixture')
@@ -387,6 +457,8 @@ def dump(args):
     if args.dump_case == 'reshade':  # the frames' figures beside the PNGs (tracked; the assets row says game or standin)
         name = 'dump_out.txt' if args.reshade_edge is None else f'dump_e{round(args.reshade_edge * 100):03d}_out.txt'
         (out / name).write_text(rows + '\n')
+    if args.dump_case == 'muzzle':
+        (out / 'dump_out.txt').write_text(rows + '\n')
     for pfm in sorted(raw.glob('*.pfm')):
         data = pfm.read_bytes()
         head = data.split(b'\n', 3)
@@ -395,7 +467,7 @@ def dump(args):
         c = np.clip(img, 0.0, 1.0)
         srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
         image = Image.fromarray((srgb * 255 + 0.5).astype(np.uint8))
-        if args.dump_case == 'reshade' and '-far' in pfm.stem:
+        if args.dump_case in ('reshade', 'muzzle') and '-far' in pfm.stem:
             image = image.resize((w * 6, h * 6), Image.NEAREST)
         image.save(out / (pfm.stem + '.png'))
         print('PNG', out / (pfm.stem + '.png'))
@@ -411,8 +483,14 @@ def main():
                              'WSL2 host through interop (native_host.py), never a fallback')
     parser.add_argument('--dump', help='write the projectile look frames as PNG into this directory (native host only); '
                                        'no other fixture runs and no record is written')
-    parser.add_argument('--dump-case', choices=('projectile', 'reshade'), default='projectile',
-                        help='with --dump: the projectile stage frames (default) or the bullet re-shade frames')
+    parser.add_argument('--dump-case', choices=('projectile', 'reshade', 'muzzle'), default='projectile',
+                        help='with --dump: the projectile stage frames (default), the bullet re-shade frames or the '
+                             'muzzle flash re-shade frames')
+    parser.add_argument('--muzzle-keys', default=None,
+                        help='with --dump-case muzzle: "size,core,gain,smooth" instead of the baked keys (a calibration '
+                             'sweep; write it to a scratch --dump directory)')
+    parser.add_argument('--game', default='/mnt/c/X3FL',
+                        help='with --dump-case muzzle: the FL installation whose catalogues give body 445')
     parser.add_argument('--reshade-edge', type=float, default=None,
                         help='with --dump-case reshade: an rs_edge override; only the re-shaded frames, suffixed -eNNN')
     parser.add_argument('--lab-assets', default=str(ROOT / 'verification/results/weapon-effects-lab/fl'),
@@ -455,7 +533,7 @@ def main():
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'projectile', 'flash', 'pulse', 'pulse_cap',
-                                                 'pulse_ghost', 'reshade')}
+                                                 'pulse_ghost', 'reshade', 'muzzle_reshade')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

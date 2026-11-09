@@ -193,9 +193,9 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
                 'batch_enabled_body_skipped_eax1_no_callee', 'batch_rollback_restores_all',
                 'shields_mode_claims_batch_and_object_tap', 'init_logs_projectile_site_claimed_once',
                 'object_tap_registers_enabled_body_once',
-                # the muzzle flash (muzzle-flash-look.md section 4): the shields mode claims the muzzle, its witness and
-                # rollback; an enabled body's shot skipped under the latch, forwarded otherwise with every register,
-                # the stack and EFLAGS; the tap's match to the ours record
+                # the muzzle flash (muzzle-flash-look.md (superseded) section 4): the shields mode claims the muzzle,
+                # its witness and rollback; an enabled body's shot skipped under the latch, forwarded otherwise with
+                # every register, the stack and EFLAGS; the tap's match to the ours record
                 'shields_mode_claims_muzzle', 'shields_mode_muzzle_witness_refused',
                 'shields_mode_muzzle_rollback_restores_all',
                 'muzzle_enabled_body_latch_off_forwards_registers_stack_flags',
@@ -278,10 +278,48 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLess(budget['gpu_us'], 50.0)
         self.assertLess(next(x for x in rows if 'attach' in x)['ps_slots'], 200)
 
+    def test_reshade_texture_key(self):
+        # bullet_reshade_core.h (bullet-draw-batch.md section 6): the exact bytes find their entry, a changed tail or
+        # head, another size or no table none; fx_bullets_diff's p99 keeps 2.75, fx_bullets2_diff's scales by
+        # 0.6169 / 0.9888; the observer's match is cheap on a size miss
+        checks = dict(self.record['checks'])
+        for name in ('reshade_texture_key_matches_exact_bytes', 'reshade_texture_scale_per_texture'):
+            self.assertTrue(checks.get(name), name)
+        row = next(x for x in self.record['metrics']['reshade'] if x.get('case') == 'texture_key')
+        self.assertEqual((row['hit'], row['tail_miss'], row['head_miss'], row['size_miss'], row['no_table']),
+                         (0, -1, -1, -1, -1))
+        self.assertAlmostEqual(row['scale_ire'], 2.75, places=2)
+        self.assertAlmostEqual(row['scale_ppc'], 2.75 * 0.6169 / 0.9888, places=2)
+        self.assertLess(row['us_size_miss'], 1.0)
+
+    def test_muzzle_reshade_gates(self):
+        # docs/architecture/muzzle-flash-look.md (the re-shade): the ps_3_0 program created, the readback on the model,
+        # the sequence bound and restored, energy <= mz_gain x vanilla's, the extent at scene white reached and <= mz_size
+        # x vanilla's, the cost measured
+        checks = dict(self.record['checks'])
+        for name in ('muzzle_reshade_programs_create', 'muzzle_reshade_program_matches_model',
+                     'muzzle_reshade_standin_vanilla_is_emissive_law', 'muzzle_reshade_route_plain_binds_and_restores', 'muzzle_reshade_energy_within_gain',
+                     'muzzle_reshade_extent_within_size', 'muzzle_reshade_cost_measured'):
+            self.assertTrue(checks.get(name), name)
+        rows = {x['case']: x for x in self.record['metrics']['muzzle_reshade'] if x['case'] != 'texel'}
+        self.assertEqual((rows['programs']['created'], rows['programs']['ps_major']), (1, 3))
+        self.assertLessEqual(rows['model']['worst_rel'], 1.0)
+        # three poses (review F1): the flash axis 25 degrees out of the screen plane, along the view ray, in the plane;
+        # the per-draw overlap grows from side-on to axis-on
+        for pose in ('flash_tilt', 'flash_axis', 'flash_side'):
+            row = rows[pose]
+            self.assertLessEqual(row['energy_ratio'], row['gain'], pose)
+            self.assertLessEqual(row['reshade_white_r'], row['size'] * row['vanilla_white_r'] + 0.5, pose)
+            self.assertGreater(row['reshade_white_r'], 0.0, pose)
+        self.assertLess(rows['flash_side']['overlap'], rows['flash_tilt']['overlap'])
+        self.assertLess(rows['flash_tilt']['overlap'], rows['flash_axis']['overlap'])
+        self.assertEqual(rows['cost']['fenced'], 1)
+
     def test_muzzle_flash_gates(self):
-        # docs/architecture/muzzle-flash-look.md section 6: the white extent 1.25 x the core's at the gun's depth and
-        # 200 / 500 m (capped at 160 px at 4 m only) at +2 and +4 stops (the anti-lamp gate), the streak's length, the
-        # dot past it, the wall-clock life at 60 and 144 fps, SETA 6 and the key's bounds, the pulse by its law, the budget
+        # docs/architecture/muzzle-flash-look.md (superseded) section 6: the white extent 1.25 x the core's at the gun's
+        # depth and 200 / 500 m (capped at 160 px at 4 m only) at +2 and +4 stops (the anti-lamp gate), the streak's
+        # length, the dot past it, the wall-clock life at 60 and 144 fps, SETA 6 and the key's bounds, the pulse by its
+        # law, the budget
         rows = self.record['metrics']['flash']
         size = [x for x in rows if x.get('case') == 'size']
         self.assertEqual(len(size), 12)

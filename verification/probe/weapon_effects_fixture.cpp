@@ -41,6 +41,7 @@
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
 #include "weapon_bullet_reshade_fixture.h"
+#include "weapon_muzzle_reshade_fixture.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -870,10 +871,11 @@ double resolve_core(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion,
     *peak_out = peak;
     return den > 0 ? num / den : 0;
 }
-// The hull pulse's ghost through the same production resolve (muzzle-flash-look.md section 3; the pulse samples the lane,
-// so it cannot write the lane's far flag as the bolts do, and enters the history): 12 frames of Halton jitter over a
-// hull plane at the pulse's depth, the pulse drawn by run_projectiles (pulses alone) on frame 8 only, once with it and
-// once without. ghost[j] = the largest resolved difference (with - without) on frame 8 + j over its largest on frame 8.
+// The hull pulse's ghost through the same production resolve (muzzle-flash-look.md (superseded) section 3; the pulse
+// samples the lane, so it cannot write the lane's far flag as the bolts do, and enters the history): 12 frames of
+// Halton jitter over a hull plane at the pulse's depth, the pulse drawn by run_projectiles (pulses alone) on frame 8
+// only, once with it and once without. ghost[j] = the largest resolved difference (with - without) on frame 8 + j over
+// its largest on frame 8.
 bool resolve_pulse_ghost(rr::WeaponEffectsPass& pass, Com<IDirect3DTexture9>& motion, Com<IDirect3DSurface9>& motion_s,
                          const rr::WeaponPulse& pulse, double ghost[3], double* peak_out) {
     constexpr unsigned frames = 12, lit_frame = 8;
@@ -1829,6 +1831,417 @@ void reshade_cases() {
                 draws, runs, best_calls, best_vanilla, best_reshaded, best_reshaded - best_vanilla, batch, batch_us[0],
                 batch_us[1], unsigned(fence.p != nullptr));
     report("reshade_cost_measured", ok && fence.p && best_calls < 50.0, "");
+}
+
+// The bullet re-shade's per-texture normaliser (bullet_reshade_core.h; bullet-draw-batch.md section 6): the production
+// texture_key over a table built as weapon_effects_table.h stores tables.bullet_textures (two entries: a 349680-byte
+// buffer, fx_bullets_diff's byte count, and another size): the buffer is entry 0; one byte changed past the head, a
+// changed head, another size and no table are none; texture_scale gives the anchor's 2.75 at fx_bullets_diff's p99
+// (0.6169) and 2.75 x 0.6169 / 0.9888 at fx_bullets2_diff's; the device sequence's plan uploads the draw's normaliser
+// in c31.w. The cost of the observer's match at creation: a size miss, a same-size head miss, a full match (best of 7
+// runs). RESHADE case=texture_key rows.
+void reshade_texture_cases() {
+    namespace rs = x3m::weapon_effects::reshade;
+    namespace core = x3m::weapon_effects::core;
+    std::vector<unsigned char> bytes(349680);
+    std::uint32_t seed = 0x5eedu;
+    for (auto& b : bytes) {
+        seed = seed * 1664525u + 1013904223u;
+        b = (unsigned char)(seed >> 24);
+    }
+    core::Table t;
+    const auto q = [](float p99) { return std::uint16_t(p99 * 65535.f + 0.5f); };
+    t.bullet_textures = 2;
+    t.bullet_texture_bytes[0] = std::uint32_t(bytes.size());
+    t.bullet_texture_head[0] = rs::fnv1a64(bytes.data(), rs::head_bytes);
+    t.bullet_texture_hash[0] = rs::fnv1a64(bytes.data(), bytes.size());
+    t.bullet_texture_p99_q[0] = q(0.6169f);
+    t.bullet_texture_bytes[1] = 1398256;
+    t.bullet_texture_head[1] = 1;
+    t.bullet_texture_hash[1] = 2;
+    t.bullet_texture_p99_q[1] = q(0.9888f);
+    const int hit = rs::texture_key(t, bytes.data(), bytes.size());
+    std::vector<unsigned char> tail = bytes, head = bytes;
+    tail.back() ^= 1u;
+    head[17] ^= 1u;
+    const int tail_miss = rs::texture_key(t, tail.data(), tail.size());
+    const int head_miss = rs::texture_key(t, head.data(), head.size());
+    const int size_miss = rs::texture_key(t, bytes.data(), bytes.size() - 1);
+    const int no_table = rs::texture_key(core::Table{}, bytes.data(), bytes.size());
+    const float ire = rs::texture_scale(t.bullet_texture_p99_q[0]), ppc = rs::texture_scale(t.bullet_texture_p99_q[1]);
+    const float none = rs::texture_scale(0);
+    rs::Plan plan;
+    float c31[4] = {0.4f, 0.4f, 0.2f, rs::luminance_scale}, got[4];
+    plan.constants = c31;
+    plan.scale = ppc;
+    rs::plan_constants(plan, got);
+    const bool plan_ok = got[3] == ppc && got[0] == c31[0];
+    plan.scale = 0.f;
+    rs::plan_constants(plan, got);
+    const bool fallback_ok = got[3] == rs::luminance_scale;
+    LARGE_INTEGER freq{}, a{}, b{};
+    QueryPerformanceFrequency(&freq);
+    constexpr unsigned runs = 7, calls = 64;
+    double best[3] = {1e30, 1e30, 1e30};
+    volatile int sink = 0;
+    for (unsigned run = 0; run < runs; ++run) {
+        const std::vector<unsigned char>* bufs[3] = {&bytes, &head, &bytes};
+        const std::size_t sizes[3] = {bytes.size() - 1, head.size(), bytes.size()};
+        for (unsigned k = 0; k < 3; ++k) {
+            QueryPerformanceCounter(&a);
+            for (unsigned i = 0; i < calls; ++i) sink = sink + rs::texture_key(t, bufs[k]->data(), sizes[k]);
+            QueryPerformanceCounter(&b);
+            best[k] = std::min(best[k], ticks_us(a, b, freq) / calls);
+        }
+    }
+    const bool keys_ok = hit == 0 && tail_miss < 0 && head_miss < 0 && size_miss < 0 && no_table < 0;
+    const bool scale_ok = std::fabs(ire / rs::luminance_scale - 1.f) < 1e-3f &&
+                          std::fabs(ppc / (rs::luminance_scale * 0.6169f / 0.9888f) - 1.f) < 1e-3f &&
+                          none == rs::luminance_scale;
+    std::printf("RESHADE case=texture_key hit=%d tail_miss=%d head_miss=%d size_miss=%d no_table=%d scale_ire=%.4f "
+                "scale_ppc=%.4f scale_none=%.4f plan=%u fallback=%u bytes=%u us_size_miss=%.4f us_head_miss=%.3f "
+                "us_match=%.1f\n",
+                hit, tail_miss, head_miss, size_miss, no_table, double(ire), double(ppc), double(none), unsigned(plan_ok),
+                unsigned(fallback_ok), unsigned(bytes.size()), best[0], best[1], best[2]);
+    report("reshade_texture_key_matches_exact_bytes", keys_ok, "");
+    report("reshade_texture_scale_per_texture", scale_ok && plan_ok && fallback_ok, "");
+}
+
+// The muzzle flash re-shade (X3M_WEAPON_EFFECTS=reshade; muzzle-flash-look.md; weapon_muzzle_reshade_fixture.h):
+// (a) the stand-in pair (the game VS's output ABI, the game PS's emissive law) compiles and the production ps_3_0
+// program creates beside the vs_3_0 stand-in; (b) per flat texel, view vector, glow and alpha, the substituted draw's
+// output (blend off) equals muzzle_reshade_core.h's model with c192 from the production draw_constants, and the
+// stand-in's equals vanilla's emissive law; (c) the production sequence (muzzle_reshade_route.h begin / end, which
+// MotionOutput runs; MotionOutput itself is not instantiated here): our program and the draw's c192..c195 while drawing,
+// the game's program and the application's c192..c195 after; (d) the stand-in flash (50 fanned quads, procedural streak)
+// at the scale peak, 30 m, 1920x1080 under ONE / ONE, at three poses (the flash axis 25 degrees out of the screen plane,
+// along the view ray, in the screen plane: the per-draw overlap's range): re-shaded energy <= mz_gain x vanilla's, the
+// extent at scene white > 0 and <= mz_size x vanilla's (0.1 reported) at each; (e) the cost per draw: the four calls
+// alone, the 100-triangle
+// draw loop with and without them (best of 7 runs of 2000), the match (TLS lookup, the 4-byte validated node read
+// through the production engine_memory::read, the body list) and the per-draw c192 (draw_constants).
+// MUZZLE_RESHADE rows; never the game's bytes.
+void muzzle_reshade_cases() {
+    namespace mf = muzzle_fx;
+    namespace rf = reshade_fx;
+    namespace mz = x3m::weapon_effects::muzzle_reshade;
+    LPD3DXBUFFER vs_hold = nullptr, ps_hold = nullptr;
+    const DWORD *vs_code = nullptr, *ps_code = nullptr;
+    const bool compiled = compile_shader && compile(mf::vs_source, "vs_3_0", &vs_code, &vs_hold) &&
+                          compile(mf::vanilla_ps_source, "ps_3_0", &ps_code, &ps_hold);
+    Com<IDirect3DVertexShader9> vs;
+    Com<IDirect3DPixelShader9> vanilla, ours;
+    Com<IDirect3DVertexDeclaration9> decl;
+    const bool created = compiled && SUCCEEDED(dev->CreateVertexShader(vs_code, &vs.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(ps_code, &vanilla.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(mf::program, &ours.p)) &&
+                         SUCCEEDED(dev->CreateVertexDeclaration(mf::declaration(), &decl.p));
+    std::printf("MUZZLE_RESHADE case=programs compiled=%u created=%u words=%u ps_major=%u\n", unsigned(compiled),
+                unsigned(created), unsigned(sizeof mf::program / sizeof mf::program[0]),
+                unsigned((mf::program[0] >> 8) & 0xffu));
+    report("muzzle_reshade_programs_create", created, "");
+    if (vs_hold) vs_hold->Release();
+    if (ps_hold) ps_hold->Release();
+    if (!created) return;
+    const auto tune = x3m::weapon_effects::projectile_family::families[x3m::weapon_effects::projectile_family::fighter_tracer].tune;
+    const mz::Body& body = mz::bodies[0];
+    float base[16];
+    mz::constants(body, tune, base);
+    float app[16];
+    for (unsigned i = 0; i < 16; ++i) app[i] = 0.125f * float(i) - 0.75f; // application values to put back
+    Com<IDirect3DTexture9> black_light;
+    {
+        const unsigned char zero[4] = {0, 0, 0, 0};
+        black_light.p = mf::flat_texture(dev, zero);
+    }
+    // (b) flat texels at fixed view vectors through a full-target quad, blend off: our program against the CPU model.
+    // The rows put the gun at (1, 2, 30) in camera space with world scale 0.001 per model unit: radius 45.6 x size.
+    {
+        float rows[36]{};
+        rows[0] = rows[5] = rows[10] = 0.001f;
+        rows[3] = 1.f, rows[7] = 2.f, rows[11] = 30.f;
+        rows[24] = rows[29] = rows[34] = 1.f;
+        float block[16];
+        std::memcpy(block, base, sizeof block);
+        const bool drawn = mz::draw_constants(body, rows, block);
+        const float radius = 1.f / block[3];
+        Com<IDirect3DTexture9> rt;
+        Com<IDirect3DSurface9> rt_s, sys;
+        bool ok = drawn && black_light.p &&
+                  SUCCEEDED(dev->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt.p, nullptr)) &&
+                  SUCCEEDED(rt.p->GetSurfaceLevel(0, &rt_s.p)) &&
+                  SUCCEEDED(dev->CreateOffscreenPlainSurface(16, 16, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr));
+        struct Case {
+            float off;            // distance from the gun over the radius, along (0.6, 0, 0.8)
+            unsigned char t[4], light_a;
+            float alpha, glow;
+        };
+        const Case cases[7] = {
+            {0.f, {170, 82, 28, 255}, 0, 1.f, 0.f},    // at the gun: body + core
+            {0.15f, {99, 48, 17, 255}, 0, 1.f, 0.f},   // the core's range
+            {0.5f, {20, 9, 3, 255}, 0, 0.5f, 0.f},     // the glow, a dark texel (the modulator's floor)
+            {0.8f, {255, 247, 200, 255}, 0, 1.f, 0.f}, // the glow's rim, a bright texel
+            {1.2f, {200, 97, 33, 255}, 0, 1.f, 0.f},   // past the radius: black, vanilla alpha
+            {0.3f, {170, 82, 28, 200}, 64, 0.8f, 1.f}, // glow: alpha from the light map
+            {0.05f, {0, 0, 0, 255}, 0, 1.f, 0.f},      // a black texel at the gun: the core alone
+        };
+        float worst = 0.f, worst_vanilla = 0.f;
+        IDirect3DSurface9* old_rt = nullptr;
+        dev->GetRenderTarget(0, &old_rt);
+        if (ok) dev->SetRenderTarget(0, rt_s.p);
+        float clip[16];
+        rf::clip_rows(1.f, 1.f, clip);
+        for (unsigned c = 0; ok && c < 7; ++c) {
+            const Case& k = cases[c];
+            Com<IDirect3DTexture9> flat, light;
+            const unsigned char la[4] = {0, 0, 0, k.light_a};
+            flat.p = mf::flat_texture(dev, k.t);
+            light.p = mf::flat_texture(dev, la);
+            ok = flat.p && light.p;
+            if (!ok) break;
+            // P = gun + off x radius x dir; TEXCOORD1 = camera - P = -P
+            const float dir[3] = {0.6f, 0.f, 0.8f};
+            const float view[3] = {-(1.f + k.off * radius * dir[0]), -(2.f + k.off * radius * dir[1]),
+                                   -(30.f + k.off * radius * dir[2])};
+            const float u = 0.2f, v = 0.3f;
+            const mf::Vertex quad[6] = {{-1, -1, 1, u, v, view[0], view[1], view[2]}, {-1, 1, 1, u, v, view[0], view[1], view[2]},
+                                        {1, 1, 1, u, v, view[0], view[1], view[2]},   {-1, -1, 1, u, v, view[0], view[1], view[2]},
+                                        {1, 1, 1, u, v, view[0], view[1], view[2]},   {1, -1, 1, u, v, view[0], view[1], view[2]}};
+            const float colour[4] = {mf::emissive[0], mf::emissive[1], mf::emissive[2], k.alpha};
+            for (unsigned which = 0; which < 2 && ok; ++which) {
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+                dev->BeginScene();
+                mf::bind_pass(dev, vs.p, decl.p, flat.p, light.p, clip, false, colour, k.glow);
+                dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE); // the program's output itself
+                dev->SetPixelShaderConstantF(mz::constant_register, block, mz::constant_count);
+                dev->SetPixelShader(which ? ours.p : vanilla.p);
+                ok = SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(mf::Vertex)));
+                dev->EndScene();
+                ok = ok && SUCCEEDED(dev->GetRenderTargetData(rt_s.p, sys.p));
+                D3DLOCKED_RECT out{};
+                ok = ok && SUCCEEDED(sys.p->LockRect(&out, nullptr, D3DLOCK_READONLY));
+                if (!ok) break;
+                const auto* px = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(out.pBits) + 8 * out.Pitch) + 8 * 4;
+                const float got[4] = {half_to_float(px[0]), half_to_float(px[1]), half_to_float(px[2]), half_to_float(px[3])};
+                sys.p->UnlockRect();
+                const float t[4] = {k.t[0] / 255.f, k.t[1] / 255.f, k.t[2] / 255.f, k.t[3] / 255.f};
+                float want[4];
+                if (which)
+                    mz::model(block, t, view, k.alpha, k.light_a / 255.f, k.glow, want);
+                else {
+                    for (unsigned i = 0; i < 3; ++i) want[i] = std::min(1.f, mf::emissive[i]) * t[i];
+                    want[3] = (t[3] + (k.light_a / 255.f - t[3]) * k.glow) * k.alpha;
+                }
+                for (unsigned i = 0; i < 4; ++i) {
+                    const float err = std::fabs(got[i] - want[i]) / (0.004f + 0.004f * std::fabs(want[i]));
+                    float& w = which ? worst : worst_vanilla;
+                    w = std::max(w, err);
+                }
+                if (which)
+                    std::printf("MUZZLE_RESHADE case=texel index=%u off=%.2f got=%.4f,%.4f,%.4f,%.4f "
+                                "model=%.4f,%.4f,%.4f,%.4f\n",
+                                c, double(k.off), double(got[0]), double(got[1]), double(got[2]), double(got[3]),
+                                double(want[0]), double(want[1]), double(want[2]), double(want[3]));
+            }
+        }
+        dev->SetRenderTarget(0, old_rt);
+        if (old_rt) old_rt->Release();
+        std::printf("MUZZLE_RESHADE case=model radius_m=%.4f worst_rel=%.3f vanilla_worst_rel=%.3f\n", double(radius),
+                    double(worst), double(worst_vanilla));
+        report("muzzle_reshade_program_matches_model", ok && worst <= 1.f, "");
+        report("muzzle_reshade_standin_vanilla_is_emissive_law", ok && worst_vanilla <= 1.f, "");
+    }
+    // (c), (d), (e) on a 1920x1080 FP16 target with the stand-in flash
+    Com<IDirect3DTexture9> rt, tex;
+    Com<IDirect3DSurface9> rt_s, sys;
+    Com<IDirect3DVertexBuffer9> vb;
+    unsigned side = 0;
+    const std::vector<unsigned char> texels = mf::standin_texture(&side);
+    tex.p = rf::make_texture(dev, texels.data(), side);
+    const mf::Mesh mesh = mf::standin_mesh();
+    bool ok = tex.p && black_light.p &&
+              SUCCEEDED(dev->CreateTexture(1920, 1080, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt.p, nullptr)) &&
+              SUCCEEDED(rt.p->GetSurfaceLevel(0, &rt_s.p)) &&
+              SUCCEEDED(dev->CreateOffscreenPlainSurface(1920, 1080, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) &&
+              SUCCEEDED(dev->CreateVertexBuffer(mf::max_vertices * sizeof(mf::Vertex), D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT,
+                                                &vb.p, nullptr));
+    report("muzzle_reshade_targets", ok, "");
+    if (!ok) return;
+    float rows[36]{}, plain[16];
+    std::memcpy(plain, base, sizeof plain);
+    const UINT prims = mesh.n / 3;
+    float clip[16];
+    rf::clip_rows(1.6f, 1.6f * 1920.f / 1080.f, clip);
+    IDirect3DSurface9* old_rt = nullptr;
+    dev->GetRenderTarget(0, &old_rt);
+    dev->SetRenderTarget(0, rt_s.p);
+    std::vector<float> image(std::size_t(1920) * 1080 * 3);
+    const auto read_image = [&] {
+        if (FAILED(dev->GetRenderTargetData(rt_s.p, sys.p))) return false;
+        D3DLOCKED_RECT lr{};
+        if (FAILED(sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return false;
+        for (UINT y = 0; y < 1080; ++y) {
+            const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
+            for (UINT x = 0; x < 1920; ++x)
+                for (unsigned k = 0; k < 3; ++k) image[(std::size_t(y) * 1920 + x) * 3 + k] = half_to_float(row[x * 4 + k]);
+        }
+        sys.p->UnlockRect();
+        return true;
+    };
+    const float size = mz::clamp_key(tune.mz_size, 17), gain = mz::clamp_key(tune.mz_gain, 19);
+    // the poses: yaw of the flash axis out of the screen plane (the first is the dumps' and the cost's pose)
+    const struct {
+        const char* name;
+        float yaw;
+    } poses[3] = {{"tilt", 0.4363f}, {"axis", 1.5707963f}, {"side", 0.f}};
+    bool restored_all = true, getters_ok = true, during_ok = true, energy_ok = true, extent_ok = true;
+    float tilt_rows[36]{};
+    for (unsigned pose = 0; pose < 3 && ok; ++pose) {
+        void* p = nullptr;
+        ok = SUCCEEDED(vb.p->Lock(0, 0, &p, 0));
+        if (ok) {
+            const float centre[3] = {0.f, 0.f, 30.f};
+            mf::place(mesh, centre, mf::peak_scale, poses[pose].yaw, 0.3491f, static_cast<mf::Vertex*>(p), rows);
+            vb.p->Unlock();
+        }
+        std::memcpy(plain, base, sizeof plain);
+        ok = ok && mz::draw_constants(body, rows, plain);
+        if (!pose) std::memcpy(tilt_rows, rows, sizeof rows);
+        mf::Figures figs[2];
+        for (unsigned which = 0; which < 2 && ok; ++which) {
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            dev->BeginScene();
+            mf::bind_pass(dev, vs.p, decl.p, tex.p, black_light.p, clip, false);
+            dev->SetStreamSource(0, vb.p, 0, sizeof(mf::Vertex));
+            dev->SetPixelShader(vanilla.p);
+            dev->SetPixelShaderConstantF(mz::constant_register, app, mz::constant_count);
+            HRESULT hr = S_OK;
+            if (which) { // (c) the sequence, with the bindings read while it holds them
+                auto ops = mf::device_ops(dev);
+                mz::Applied applied;
+                hr = mz::begin(ops, ours.p, plain, app, applied);
+                IDirect3DPixelShader9* bound = nullptr;
+                float got_c[16]{};
+                during_ok = during_ok && SUCCEEDED(hr) && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == ours.p &&
+                            SUCCEEDED(dev->GetPixelShaderConstantF(mz::constant_register, got_c, mz::constant_count)) &&
+                            !std::memcmp(got_c, plain, sizeof got_c);
+                if (bound) bound->Release();
+                if (SUCCEEDED(hr)) hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, prims);
+                restored_all = restored_all && SUCCEEDED(mz::end(ops, applied, vanilla.p, app)) && SUCCEEDED(hr);
+                bound = nullptr;
+                getters_ok = getters_ok && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
+                             SUCCEEDED(dev->GetPixelShaderConstantF(mz::constant_register, got_c, mz::constant_count)) &&
+                             !std::memcmp(got_c, app, sizeof got_c);
+                if (bound) bound->Release();
+            } else
+                hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, prims);
+            dev->EndScene();
+            ok = SUCCEEDED(hr) && read_image();
+            if (ok) figs[which] = mf::figures(image.data(), 1920, 1080, 0.f);
+        }
+        const double energy = figs[0].sum > 0 ? figs[1].sum / figs[0].sum : 0.0;
+        energy_ok = energy_ok && ok && figs[0].sum > 0.0 && energy <= double(gain);
+        extent_ok = extent_ok && ok && figs[1].white_r > 0.f && figs[1].white_r <= size * figs[0].white_r + 0.5f;
+        // the overlap the draw used: c194.x = gain / N
+        const double overlap = plain[8] > 0.f ? double(plain[10]) / double(plain[8]) : 0.0;
+        std::printf("MUZZLE_RESHADE case=flash_%s distance_m=30 yaw_deg=%.1f scale=%.3f overlap=%.3f vanilla_sum=%.2f "
+                    "reshade_sum=%.2f energy_ratio=%.3f vanilla_peak=%.4f reshade_peak=%.4f vanilla_white_r=%.1f "
+                    "reshade_white_r=%.1f vanilla_tenth_r=%.1f reshade_tenth_r=%.1f size=%.3g gain=%.3g core=%.3g "
+                    "smooth=%.3g\n",
+                    poses[pose].name, double(poses[pose].yaw) * 57.29578, double(mf::peak_scale), overlap, figs[0].sum,
+                    figs[1].sum, energy, double(figs[0].peak), double(figs[1].peak), double(figs[0].white_r),
+                    double(figs[1].white_r), double(figs[0].tenth_r), double(figs[1].tenth_r), double(size),
+                    double(gain), double(tune.mz_core), double(tune.mz_smooth));
+    }
+    std::memcpy(rows, tilt_rows, sizeof rows);
+    std::memcpy(plain, base, sizeof plain);
+    ok = ok && mz::draw_constants(body, rows, plain);
+    report("muzzle_reshade_route_plain_binds_and_restores", ok && during_ok && restored_all && getters_ok, "");
+    report("muzzle_reshade_energy_within_gain", ok && energy_ok, "");
+    // the design's gate is the extent at scene white: reached, and within mz_size x vanilla's (0.1 reported)
+    report("muzzle_reshade_extent_within_size", ok && extent_ok, "");
+    // (e) the cost: CPU per draw of the four calls alone, the draw loop with and without them, the match, the c192
+    LARGE_INTEGER freq{}, a{}, b{};
+    QueryPerformanceFrequency(&freq);
+    Com<IDirect3DQuery9> fence;
+    dev->CreateQuery(D3DQUERYTYPE_EVENT, &fence.p);
+    const auto finish = [&] {
+        if (!fence.p) return;
+        fence.p->Issue(D3DISSUE_END);
+        while (fence.p->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {
+        }
+    };
+    constexpr unsigned draws = 2000, runs = 7;
+    double best_calls = 1e30, best_vanilla = 1e30, best_reshaded = 1e30, best_match = 1e30;
+    for (unsigned run = 0; run < runs && ok; ++run) {
+        dev->BeginScene();
+        mf::bind_pass(dev, vs.p, decl.p, tex.p, black_light.p, clip, false);
+        dev->SetStreamSource(0, vb.p, 0, sizeof(mf::Vertex));
+        dev->SetPixelShader(vanilla.p);
+        finish();
+        QueryPerformanceCounter(&a);
+        for (unsigned i = 0; i < draws; ++i) {
+            dev->SetPixelShaderConstantF(mz::constant_register, plain, mz::constant_count);
+            dev->SetPixelShader(ours.p);
+            dev->SetPixelShader(vanilla.p);
+            dev->SetPixelShaderConstantF(mz::constant_register, app, mz::constant_count);
+        }
+        QueryPerformanceCounter(&b);
+        best_calls = std::min(best_calls, ticks_us(a, b, freq) / draws);
+        finish();
+        QueryPerformanceCounter(&a);
+        for (unsigned i = 0; i < draws; ++i) dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, prims);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_vanilla = std::min(best_vanilla, ticks_us(a, b, freq) / draws);
+        QueryPerformanceCounter(&a);
+        bool restored = true;
+        for (unsigned i = 0; i < draws; ++i) mf::reshaded_draw(dev, ours.p, vanilla.p, plain, app, prims, &restored);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_reshaded = std::min(best_reshaded, ticks_us(a, b, freq) / draws);
+        dev->EndScene();
+    }
+    device_guard("muzzle_reshade_cost");
+    // the match and the draw's c192: a TLS slot read (the scope's top), the node's 4-byte body id through
+    // engine_memory::read, the list, then draw_constants from the shadowed rows into the draw's block
+    {
+        std::vector<std::uint32_t> node(0x160 / 4, 0u);
+        node[mz::node_body_offset / 4] = 445u;
+        const DWORD slot = TlsAlloc();
+        TlsSetValue(slot, node.data());
+        x3m::engine_memory::next_frame();
+        unsigned hits = 0;
+        float block[16];
+        for (unsigned run = 0; run < runs; ++run) {
+            QueryPerformanceCounter(&a);
+            for (unsigned i = 0; i < draws; ++i) {
+                const auto at = reinterpret_cast<std::uintptr_t>(TlsGetValue(slot));
+                std::uint32_t id = 0;
+                if (at && x3m::engine_memory::read(at + mz::node_body_offset, &id, sizeof id) &&
+                    mz::body_index(id) < mz::body_count) {
+                    std::memcpy(block, base, sizeof block);
+                    if (mz::draw_constants(mz::bodies[mz::body_index(id)], rows, block)) ++hits;
+                }
+            }
+            QueryPerformanceCounter(&b);
+            best_match = std::min(best_match, ticks_us(a, b, freq) / draws);
+        }
+        TlsFree(slot);
+        ok = ok && hits == draws * runs;
+    }
+    dev->SetRenderTarget(0, old_rt);
+    if (old_rt) old_rt->Release();
+    dev->SetPixelShader(nullptr);
+    dev->SetVertexShader(nullptr);
+    dev->SetTexture(0, nullptr);
+    dev->SetTexture(2, nullptr);
+    dev->SetStreamSource(0, nullptr, 0, 0);
+    std::printf("MUZZLE_RESHADE case=cost draws=%u runs=%u primitives=%u calls_us_per_draw=%.3f draw_us_vanilla=%.3f "
+                "draw_us_reshaded=%.3f substitution_us_per_draw=%.3f match_us_per_draw=%.3f fenced=%u\n",
+                draws, runs, prims, best_calls, best_vanilla, best_reshaded, best_reshaded - best_vanilla, best_match,
+                unsigned(fence.p != nullptr));
+    report("muzzle_reshade_cost_measured", ok && fence.p && best_calls < 50.0 && best_match < 10.0, "");
 }
 
 int main(int argc, char** argv) {
@@ -4718,9 +5131,9 @@ int main(int argc, char** argv) {
         }
         bt.release();
     }
-    // ---- the muzzle flash (docs/architecture/muzzle-flash-look.md section 6): the production flash_quad / build and
-    // run_projectiles (the flash quads) and run (the pulses), at 2560x1440 (the design's 1440 rows) with the
-    // fighter-tracer family's baked Tune and the IRE look; measured on the linear FP16 readback (max of r, g, b).
+    // ---- the muzzle flash (docs/architecture/muzzle-flash-look.md (superseded) section 6): the production flash_quad
+    // / build and run_projectiles (the flash quads) and run (the pulses), at 2560x1440 (the design's 1440 rows) with
+    // the fighter-tracer family's baked Tune and the IRE look; measured on the linear FP16 readback (max of r, g, b).
     guard_next_section("muzzle_flash");
     if (pc.projectile_enabled) {
         ProjTarget ft;
@@ -5506,6 +5919,9 @@ int main(int argc, char** argv) {
     pass.detach();
     guard_next_section("reshade");
     reshade_cases();
+    reshade_texture_cases();
+    guard_next_section("muzzle_reshade");
+    muzzle_reshade_cases();
     guard_next_section("end");
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;

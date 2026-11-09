@@ -9,6 +9,7 @@
 #include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
 #include "weapon_effects_table.h"
+#include "bullet_reshade_core.h"
 #if X3M_EDITION_FL
 #include "weapon_projectile_family.h"
 #include "../engine/fl/executable_identity_fl.h"
@@ -68,6 +69,10 @@ struct Period {
     std::uint32_t reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
     std::uint32_t reshade_additive = 0, reshade_flagged = 0; // draws the additive route converted, with its far flag
     float reshade_us_sum = 0.f, reshade_us_max = 0.f;
+    // the muzzle flash re-shade (reshade mode): draws re-shaded, matched, kept off the hull-emission route, failed,
+    // timed, and the sequence's CPU time (sum and the frame's worst)
+    std::uint32_t muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
+    float muzzle_us_sum = 0.f, muzzle_us_max = 0.f;
 } period_{};
 #if X3M_EDITION_FL
 std::uint32_t reshade_scopes_seen_ = 0; // x3m_bullet_scope_calls at the last bullet_reshade_frame row
@@ -206,10 +211,12 @@ void load_table() {
     table_hull_key_missing_ = !parsed || !st.hull_keys;
     // The live count is checked per hit (core::impact: a differing *0x00607038 disables the lookups, stale_table).
     x3m::log("weapon_effects_table event=%s reason=%s rows=%lu missile_rows=%lu entries=%u textures=%u overrides=%u "
-             "dropped=%u hull_keys=%u bolt_pins=%u bolt_rejected=%u table_hull_key_missing=%u bytes=%lu fault=%lu path=\"%s\"",
+             "dropped=%u hull_keys=%u bolt_pins=%u bolt_rejected=%u table_hull_key_missing=%u bullet_textures=%u "
+             "bullet_textures_dropped=%u bytes=%lu fault=%lu path=\"%s\"",
              parsed ? "loaded" : had_text ? "rejected" : read, parsed ? "ok" : had_text ? "malformed" : read,
              static_cast<unsigned long>(parsed ? table_->rows : 0), static_cast<unsigned long>(parsed ? table_->missile_rows : 0),
              st.entries, st.textures, st.overrides, st.dropped, st.hull_keys, st.bolt_pins, st.bolt_rejected, unsigned(table_hull_key_missing_),
+             st.bullet_textures, st.bullet_textures_dropped,
              static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
 #if !X3M_EDITION_FL
@@ -494,7 +501,9 @@ bool initialize() {
         if (ignored & (1u << i)) log("weapon_effects_ignored name=%s setting=%s", core::ignored_name(i), setting);
     // reshade is FL's (the bullet batch site): on AP it runs as shields, one row.
     if (parsed && core::reshade_mode(mode))
-        log("weapon_effects_reshade edition=ap runs=shields reason=no_bullet_batch_site setting=%s", setting);
+        log("weapon_effects_reshade edition=ap runs=shields reason=no_bullet_batch_site muzzle=vanilla "
+            "muzzle_reason=fl_only setting=%s",
+            setting);
     for (unsigned i = 0; i < site_count; ++i)
         log("weapon_effects_patch site=%s va=%08lx state=%s reason=%s mode=%s setting=%s write=%s", site_name(i),
             static_cast<unsigned long>(site_va(i)), site_state_[i], state_, parsed ? core::mode_name(mode) : "-", setting,
@@ -528,7 +537,7 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     const bool booms = core::explosions_mode(mode);
     // The projectile stage (every stage mode on FL): the object tap registers the enabled bodies' bullets, the batch
     // submit skips their instanced draw while the stage owns the frame, and the muzzle site skips their shots' game
-    // flash (the stage draws its own; docs/architecture/muzzle-flash-look.md section 4).
+    // flash (the stage draws its own; docs/architecture/muzzle-flash-look.md (superseded) section 4).
     // Reshade mode (bullet-draw-batch.md section 6): the shield stage and the batch call claimed with the scope stub,
     // which forwards every submit; no projectile stage, batch skip, object tap or muzzle stub.
     const bool reshade = core::reshade_mode(mode);
@@ -811,6 +820,18 @@ bool installed() {
 core::Mode mode() {
     return installed_ ? mode_ : core::mode_native;
 }
+#if X3M_EDITION_FL
+// The table is loaded once inside the install window, before the device and its textures exist; read-only after.
+int bullet_texture_key(const void* data, std::size_t size) noexcept {
+    return table_ && x3m_bullet_reshade_armed ? x3m::weapon_effects::reshade::texture_key(*table_, data, size) : -1;
+}
+unsigned bullet_texture_count() noexcept {
+    return table_ && x3m_bullet_reshade_armed ? table_->bullet_textures : 0u;
+}
+std::uint16_t bullet_texture_p99_q(unsigned key) noexcept {
+    return table_ && key < table_->bullet_textures ? table_->bullet_texture_p99_q[key] : std::uint16_t(0);
+}
+#endif
 const char* state() {
     return state_;
 }
@@ -854,10 +875,11 @@ void clear_owned() {
 // submits skipped, traversal draws dropped and unseen, bolts drawn, entries tracked now, retired, the pool's overflow and
 // recycled nodes since the last row, the stage's worst CPU time, and the entry-frames whose position did not change
 // since the previous stage frame (static) or left the velocity prediction (jumped), and the bolt-frames whose comet ring
-// the adaptive rule trimmed (ring_trimmed; projectile-look.md section 2). The muzzle (muzzle-flash-look.md section 4):
-// enabled-body shots whose game flash the muzzle site skipped and those it forwarded (latch off: the engine's flash
-// shows), records evicted; the tap's flash matches (matched, unmatched, registered too late); flash quads and hull
-// pulses drawn, flashes whose shooter could not be read, flashes past the frame's room, pulses shrunk to the screen cap.
+// the adaptive rule trimmed (ring_trimmed; projectile-look.md section 2). The muzzle (muzzle-flash-look.md (superseded)
+// section 4): enabled-body shots whose game flash the muzzle site skipped and those it forwarded (latch off: the
+// engine's flash shows), records evicted; the tap's flash matches (matched, unmatched, registered too late); flash
+// quads and hull pulses drawn, flashes whose shooter could not be read, flashes past the frame's room, pulses shrunk to
+// the screen cap.
 #define X3M_PROJECTILE_FIELDS                                                                                          \
     " projectile_owned=%lu projectile_skipped=%lu projectile_dropped=%lu projectile_unhandled=%lu projectile_bolts=%lu " \
     "projectile_tracked=%lu projectile_retired=%lu projectile_overflow=%lu projectile_recycled=%lu projectile_bodies=%lu " \
@@ -950,6 +972,15 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.reshade_flagged += stage.reshade_flagged;
         period_.reshade_us_sum += stage.reshade_us;
         if (stage.reshade_us > period_.reshade_us_max) period_.reshade_us_max = stage.reshade_us;
+    }
+    if (core::reshade_mode(mode_)) {
+        period_.muzzle_draws += stage.muzzle_draws;
+        period_.muzzle_matched += stage.muzzle_matched;
+        period_.muzzle_hull += stage.muzzle_hull;
+        period_.muzzle_failures += stage.muzzle_failures;
+        period_.muzzle_timed += stage.muzzle_timed;
+        period_.muzzle_us_sum += stage.muzzle_us;
+        if (stage.muzzle_us > period_.muzzle_us_max) period_.muzzle_us_max = stage.muzzle_us;
     }
 #endif
     ++period_.frames;
@@ -1080,6 +1111,18 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             double(period_.reshade_us_max));
         reshade_scopes_seen_ = scopes;
     }
+    // The muzzle flash re-shade's period row (muzzle-flash-look.md): muzzle draws matched (a listed body id under ONE /
+    // ONE), re-shaded, of them kept off the hull-emission route, failed substitutions (left vanilla), and the
+    // sequence's CPU time over the timed draws (every 60th frame and capture frames).
+    if (core::reshade_mode(mode_))
+        log("muzzle_reshade_frame frame=%llu frames=%lu matched=%lu draws=%lu hull=%lu failures=%lu timed=%lu "
+            "us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f",
+            frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.muzzle_matched),
+            static_cast<unsigned long>(period_.muzzle_draws), static_cast<unsigned long>(period_.muzzle_hull),
+            static_cast<unsigned long>(period_.muzzle_failures), static_cast<unsigned long>(period_.muzzle_timed),
+            double(period_.muzzle_us_sum),
+            period_.muzzle_timed ? double(period_.muzzle_us_sum) / double(period_.muzzle_timed) : 0.0,
+            double(period_.muzzle_us_max));
 #endif
     if (core::explosions_mode(mode_))
         log("weapon_boom_frame frame=%llu deaths=%lu ours=%lu calls=%lu no_node=%lu bullet=%lu rule_b=%lu nested=%lu "

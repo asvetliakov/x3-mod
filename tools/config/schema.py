@@ -446,8 +446,9 @@ SETTINGS = [
           'game\'s. The older values that add hull, bolts or explosions to shields (any order) still run as shields: '
           'those effects were withdrawn on 2026-11-08 and the names are ignored, one weapon_effects_ignored log row '
           'each. reshade (Farnham\'s Legacy) = shields plus the game\'s own bolts drawn with the mod\'s shading '
-          '(dimmer, a soft edge, a hot core) for every weapon that shares the bullet draw. Default native. Read when '
-          'the game starts.',
+          '(dimmer, a soft edge, a hot core) for every weapon that shares the bullet draw, and the game\'s own muzzle '
+          'flash drawn smaller and softer for the weapons that share its flash. Default native. Read when the game '
+          'starts.',
           builtin='native',
           choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields', 'shields,hull,bolts',
                    'shields,hull,explosions', 'shields,hull,bolts,explosions', 'reshade'),
