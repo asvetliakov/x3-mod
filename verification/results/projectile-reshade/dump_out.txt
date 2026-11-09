@@ -1,0 +1,6 @@
+DUMP_RESHADE assets=game mesh_vertices=66 texture=512 metres_per_body_unit=20.218 bolt_length_m=10.0 gain=0.45 edge=0.1 core=0.25 normaliser=2.75
+DUMP_RESHADE name=fixture-ire-vanilla-near distance_m=50 edge=0.1 crop=640x256 dark_sum=253.713 dark_peak=0.7392 nebula_sum=179.911 nebula_peak=0.5576 written=1
+DUMP_RESHADE name=fixture-ire-reshade-near distance_m=50 edge=0.1 crop=640x256 dark_sum=124.193 dark_peak=0.5859 nebula_sum=84.532 nebula_peak=0.4412 written=1
+DUMP_RESHADE name=fixture-ire-vanilla-far distance_m=1500 edge=0.1 crop=64x32 dark_sum=1.431 dark_peak=0.1935 nebula_sum=0.982 nebula_peak=0.1460 written=1
+DUMP_RESHADE name=fixture-ire-reshade-far distance_m=1500 edge=0.1 crop=64x32 dark_sum=0.642 dark_peak=0.0914 nebula_sum=0.387 nebula_peak=0.0688 written=1
+RESULT PASS checks=0 failures=0

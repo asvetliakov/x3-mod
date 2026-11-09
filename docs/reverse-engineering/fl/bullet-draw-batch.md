@@ -289,13 +289,72 @@ Hook-site suitability of `0x097af8`:
 Unchanged on both: the records, capacity, the count ≥ 2 rule, the `0x78f0` budget, the DISCARD lock, stride 24, the
 declaration and the technique switch.
 
+## 6. The INSTANCE_BULLETS programs and the IRE's UV layout (bullet re-shade, 2026-11-09)
+
+For `X3M_WEAPON_EFFECTS=reshade` (the game's bolt draws again; its pixel shader is replaced by ours for the batch
+draws). Producer: [`reshade_inputs.py`](../../../verification/results/projectile-reshade/reshade_inputs.py) →
+[`_out.txt`](../../../verification/results/projectile-reshade/reshade_inputs_out.txt): the FL archive scan (root +
+addon2, `effect_passes._archive_effects`) and the untracked lab decode of the IRE mesh and `fx_bullets_diff`
+(`tools/effects/weapon_effects_lab_assets.py`, view fl). Derived numbers only; no bytes in the repo. **[s]** unless
+tagged.
+
+**Programs.** FL ships the AP bytes: three INSTANCE_BULLETS pairs, the batch's `effects` binding row 19 of
+[effects-engine-remaining-emission.md](../effects-engine-remaining-emission.md).
+
+| VS / PS (proxy FNV-1a 64 of the program bytes) | Effects |
+| --- | --- |
+| `5e484a06672e28fb` / `ec1f5c4a2f4e1445` | `effects`, `effects2s`, `engine`, `engine2s` |
+| `21a2c13be7f989c3` / `d4a26efb7c603931` | `effects_0000`, `effects_0001` |
+| `1b6863a088a177af` / `84d3de8887c963c5` | `engine_0000`, `engine_0001` |
+
+The three PS differ only in the compiler comment: one body (instruction-token FNV-1a 32 `b006e837`, 9 tokens),
+`ps_1_1; tex t0; mul r0.rgb, t0, v0.a; +mov r0.a, t0.a`, sampler `DiffuseTexSampler` s0, no constant. The three VS share
+body `e5989c94` (43 tokens): `def c4 = (1,0,0,0)`; position v0, texcoord v1, colour v2; `mad r0, v0.xyzx, c4.xxxy,
+c4.yyyx` (the world position with w 1), `dp4 oPos.x..w` against c0..c3 (`g_mViewProjection`), `mul oT0.xyz, v1.xyxw,
+c4.xxyw` (u, v, 0), `mov oD0, v2`. So the radiance is the texel's RGB times the vertex alpha (node `+0x13c` / 255 or 1;
+the vertex RGB is 0 and unused); the output alpha is the texel's (the pass's inherited alpha test sees it). With ONE /
+INVSRCCOLOR the frame becomes src + dst·(1 − src): a screen blend, below white, whose added light shrinks over a
+bright background.
+
+**IRE mesh** (`bullet_LS_alpha`, 22 triangles, body units): a **body** of 16 triangles, eight half-fins (four planes
+through the axis), each a quad from the axis (v 0.3519) to the rim (radius 0.01337, v 0.2792), tail z −0.2473 (u
+0.0131) to head z +0.2473 (u 0.9767); and a **head** of 6 triangles, three crossed quads at z 0.148..0.202
+(half-width 0.0044..0.0056) carrying the round glow sprite (u 0.7833..0.9831, v 0.7673..0.967).
+
+**Texture** (`fx_bullets_diff`, addon2 `dds/fx_bullets_diff`, 512² DXT5, level 0):
+
+| Part | Texels | Luminance | Hue of texels > 0.3 | Profile |
+| --- | --- | --- | --- | --- |
+| body | rows 142..181, cols 6..501 | max 0.305, p99 0.28, p50 0.003 | (1, 0.78, 0.18) | across: 0 at the rim, rising smoothly to 0.14 at the axis edge; along: 0 at the tail to 0.06 near the head, then 0 at the tip |
+| head | rows 392..496, cols 401..504 | max 0.381, p99 0.37 | (1, 0.75, 0.42) | radial, smooth, peak 0.29 (row means) |
+
+Alpha follows the luminance (correlation 0.94 body, 0.999 head). The texture's **hard step** is beside the body's axis
+edge: rows 180..186 rise 0.14 → 0.36 and row 187 is 0.004 (v 0.365), seven texels past the UV edge (v 0.3519). Level 0
+bilinear never reaches it; from about mip 3 (one texel = 8 rows) the band and its step blend into the axis, so a
+distant bolt's axis brightens and ends hard [i]. The vanilla bolt is therefore four crossed fins glowing toward the
+axis and the head, plus a round head glow, at most about 0.36 × alpha per layer before the screen blend.
+
+**Re-shade** (`src/effects/weapon_bullet_reshade_ps.hlsl`, ps_2_0, 160 words: a ps_3_0 program cannot pair with the
+game's vs_1_1). Same inputs (s0, COLOR0.a, TEXCOORD0); l = luminance × 2.75 (1 / the strip's 0.36 peak, saturated);
+radiance = (rs_gain · smoothstep(0, rs_edge, l) · rgb + rs_core · l⁴ · mix(white, rgb / max(rgb), 0.35)) × alpha; alpha
+the texel's. Defaults rs_gain 0.45, rs_edge 0.1 (0.5 lost the far bolt, see the weapon-effects ledger), rs_core 0.25 (c31.xyz; dev tuning keys of the same names, bounds 0..2,
+0.05..1, 0..4). Recognition: the proxy's hash of the bytes the game passes to CreatePixelShader is one of the three PS
+above (`src/proxy/bullet_reshade_core.h`); scope: the batch call `0x097af8` claimed with a forwarding stub that raises
+`x3m_bullet_scope` around the submit. These bullet pairs are also the additive route's pairs 0-2
+(`screen_emission_additive`, default 2.0 under HDR): for a bullet draw inside the submit the re-shade takes precedence,
+keeping the route's DESTBLEND ONE with its gain folded into c31 (gain and core x G) and, with the route's far flag
+bound, drawing a flag variant (`weapon_bullet_reshade_flag_ps.hlsl`, oC2 = 32 x max(rgb)); without the route our program
+draws under the game's ONE / INVSRCCOLOR. One device sequence for both (`src/proxy/bullet_reshade_route.h`). The
+traversal-fallback draw (section 3) is not an INSTANCE_BULLETS draw and stays vanilla [i]. The fixture's stand-in bolt is 10 m long (an assumption; the runtime node scales are still open).
+
 ## Unknown
 
 - Whether the runtime model's UV ints equal the file words, which the D3D-only signature relies on. Settle it by
   logging the first 66 TEXCOORD0 pairs of one period-66 INSTANCE_BULLETS draw in a flight, or by tracing loader
   `0x09ae00`.
-- Whether FL's `effects.fb` INSTANCE_BULLETS compiles to the AP hashes the proxy's bullet pair list holds
-  (`screen_emission_admission.h`). This matters only for the D3D-only route.
+- ~~Whether FL's `effects.fb` INSTANCE_BULLETS compiles to the AP hashes~~: settled in section 6, it does (offline
+  archive scan, 2026-11-09); whether the live device sees those bytes at CreatePixelShader is confirmed only by a
+  flight's `bullet_reshade_program` row.
 - The meaning of texture record flag `0x2000000`, under which the previous texture stays bound.
 - How often IRE bolts take the traversal fallback in a fight. Settle it by counting call-site skips against
   scope-test drops in the first flight.

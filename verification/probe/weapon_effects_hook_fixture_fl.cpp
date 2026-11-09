@@ -117,6 +117,7 @@ std::uint32_t fl_stack_top;
 std::uint32_t out_eax, out_ebx, out_ecx, out_edx, out_esi, out_edi, out_ebp, out_esp, out_flags;
 // The fake callee's record: entry registers, EFLAGS, ESP and nine stack dwords from [esp]; one counter.
 std::uint32_t t_eax, t_ebx, t_ecx, t_edx, t_esi, t_edi, t_ebp, t_esp, t_flags, t_stack[9], t_calls;
+std::uint32_t t_scope; // x3m_bullet_scope as the callee saw it (the bullet re-shade's scope stub)
 void fl_enter();
 void fl_return();
 void fl_fake_callee();
@@ -197,6 +198,8 @@ _fl_fake_callee:
     mov dword ptr [_t_stack+28], eax
     mov eax, dword ptr [esp+32]
     mov dword ptr [_t_stack+32], eax
+    mov eax, dword ptr [_x3m_bullet_scope]
+    mov dword ptr [_t_scope], eax
     inc dword ptr [_t_calls]
     mov eax, 0xca11ee00
     mov ecx, 0xc1c1c1c1
@@ -1083,6 +1086,61 @@ int main() {
         check(caller_kept(e) && t_calls == 1 && registered && pool.count == 1, "object_tap_registers_enabled_body_once");
         core::projectile_remove(pool, 0);
         check(pool.count == 0 && !core::projectile_known(pool, u32(node)), "projectile_remove_empties_slot");
+    }
+
+    // Reshade mode (bullet-draw-batch.md section 6): the impact and the batch call claimed, the batch with the scope stub;
+    // no object tap, muzzle, flight or death site, the projectile pool disarmed. The scope stub forwards every submit as
+    // a call: the callee sees ECX, EDX, EAX, the callee-saved registers, EFLAGS and the two stack words as the caller
+    // left them, its stack at the original call's alignment modulo 16, and the scope raised to 1; after it the scope is
+    // 0 again, the callee's EAX is returned, the callee-saved registers, DF and LastError are the caller's, and the stack
+    // is the caller's (it pops its own two words).
+    we::shutdown();
+    restore_windows();
+    SetLastError(sentinel_error);
+    {
+        const bool ok = we::install_base(base, core::mode_reshade);
+        check(ok && we::installed() && we::mode() == core::mode_reshade && GetLastError() == sentinel_error &&
+                  !std::strcmp(we::site_state(0), "active") && !std::strcmp(we::site_state(7), "active") &&
+                  !std::strcmp(we::site_state(3), "not_used") && !std::strcmp(we::site_state(4), "not_used") &&
+                  !std::strcmp(we::site_state(5), "not_used") && !std::strcmp(we::site_state(6), "not_used") &&
+                  x3m_bullet_reshade_armed == 1 && x3m_projectile_pool.armed == 0 &&
+                  site_redirected(7, x3m_weapon_effects_stub_batch_scope_fl) &&
+                  we::hook_state().armed == core::family_shields,
+              "reshade_installs_impact_and_batch_scope_only");
+        plant_returns();
+        alignas(16) static unsigned char batch[0x40];
+        std::memset(batch, 0, sizeof batch);
+        x3m_projectile_pool.skip_on = 1; // a stale latch never skips in reshade mode: the scope stub reads no pool
+        const std::uint32_t calls_before = x3m_bullet_scope_calls;
+        bool all = true;
+        for (unsigned df = 0; df < 2; ++df) {
+            Entry e;
+            e.df = df;
+            e.ecx = 0x5ce4e000;
+            e.edx = u32(batch);
+            e.nstack = 2;
+            e.stack[0] = 0x3a7e0001; // material
+            e.stack[1] = 0x71e70002; // view
+            t_scope = 0;
+            run_site(7, e);
+            const bool forwarded = t_calls == 1 && t_eax == e.eax && t_ecx == e.ecx && t_edx == e.edx && t_ebx == e.ebx &&
+                                   t_esi == e.esi && t_edi == e.edi && t_ebp == e.ebp && t_stack[1] == e.stack[0] &&
+                                   t_stack[2] == e.stack[1] && (t_flags & flag_mask) == (entry_flags & flag_mask) &&
+                                   ((t_esp - (esp_before_call - 4)) & 15u) == 0 && t_esp < esp_before_call - 4 &&
+                                   t_scope == 1;
+            const bool returned = out_eax == 0xca11ee00 && out_esp == esp_before_call && x3m_bullet_scope == 0 &&
+                                  GetLastError() == sentinel_error && out_ebx == e.ebx && out_esi == e.esi &&
+                                  out_edi == e.edi && out_ebp == e.ebp && (out_flags & df_bit) == (df ? df_bit : 0u);
+            all = all && forwarded && returned;
+        }
+        check(all && x3m_bullet_scope_calls == calls_before + 2, "reshade_scope_stub_forwards_and_scopes_the_submit");
+        std::printf("RESHADE scope_calls=%lu callee_esp_offset=%lu\n",
+                    static_cast<unsigned long>(x3m_bullet_scope_calls - calls_before),
+                    static_cast<unsigned long>(esp_before_call - t_esp));
+        x3m_projectile_pool.skip_on = 0;
+        we::shutdown();
+        check(!we::installed() && x3m_bullet_reshade_armed == 0, "reshade_shutdown_disarms");
+        restore_windows();
     }
 
     // The late window, last (closing it is permanent; the planted returns leave the windows non-pristine, so only the

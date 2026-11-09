@@ -40,6 +40,7 @@
 #include "../../src/renderer/temporal_pass.h"
 #include "../../src/renderer/temporal_resolve_program.h"
 #include "../../src/renderer/hdr_writeback_program.h"
+#include "weapon_bullet_reshade_fixture.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -1442,6 +1443,393 @@ CometProfile comet_profile(const CometRun& r, const pf::Tune& tune) {
     return p;
 }
 } // namespace
+
+// The bullet re-shade (X3M_WEAPON_EFFECTS=reshade; bullet-draw-batch.md section 6; weapon_bullet_reshade_fixture.h):
+// (a) the stand-in pair compiles and the production ps_2_0 programs (plain and far-flag) create beside the vs_1_1
+// stand-in; (b) per flat texel colour and vertex alpha, the substituted draw's output (blend off) equals
+// bullet_reshade_core.h's model and the stand-in's equals vanilla's t.rgb * a; (b2) the additive route's path of the
+// production sequence (bullet_reshade_route.h begin / end, which MotionOutput runs; MotionOutput itself is not
+// instantiated here): DESTBLEND ONE, our program and the gain-folded c31 while drawing, the output, the far flag, and
+// everything put back; (c) the plain path's production sequence on the stand-in bolt puts the game's program and the
+// application's c31 back (Get*); (d) the stand-in bolt (procedural IRE topology and strip) re-shaded is dimmer than vanilla
+// overall; (e) the substitution's CPU cost per draw (the four calls alone, and the draw loop with and without them,
+// best of 7 runs of 2000 draws) and a 469-bolt batch's fenced time vanilla against re-shaded at 1920x1080 (the GPU
+// side of the longer program). RESHADE rows; never the game's bytes.
+void reshade_cases() {
+    namespace rf = reshade_fx;
+    namespace rs = x3m::weapon_effects::reshade;
+    LPD3DXBUFFER vs_hold = nullptr, ps_hold = nullptr;
+    const DWORD *vs_code = nullptr, *ps_code = nullptr;
+    const bool compiled = compile_shader && compile(rf::vs_source, "vs_1_1", &vs_code, &vs_hold) &&
+                          rf::assemble(d3dx, rf::vanilla_ps_asm, &ps_hold);
+    if (compiled) ps_code = static_cast<const DWORD*>(ps_hold->GetBufferPointer());
+    Com<IDirect3DVertexShader9> vs;
+    Com<IDirect3DPixelShader9> vanilla, ours, ours_flag;
+    Com<IDirect3DVertexDeclaration9> decl;
+    const bool created = compiled && SUCCEEDED(dev->CreateVertexShader(vs_code, &vs.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(ps_code, &vanilla.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(rf::reshade_program, &ours.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(rf::reshade_flag_program, &ours_flag.p)) &&
+                         SUCCEEDED(dev->CreateVertexDeclaration(rf::declaration(), &decl.p));
+    // the game's B1 body (FNV-1a 32 of its instruction tokens, from the FL archive's effects ps ec1f5c4a2f4e1445)
+    constexpr std::uint32_t game_ps_body = 0xb006e837u;
+    const std::uint32_t standin_body = ps_code ? rf::body_hash(ps_code) : 0u;
+    std::printf("RESHADE case=programs compiled=%u created=%u standin_ps_body=%08lx game_ps_body=%08lx body_match=%u "
+                "reshade_words=%u\n",
+                unsigned(compiled), unsigned(created), static_cast<unsigned long>(standin_body),
+                static_cast<unsigned long>(game_ps_body), unsigned(standin_body == game_ps_body),
+                unsigned(sizeof rf::reshade_program / sizeof rf::reshade_program[0]));
+    report("reshade_programs_create", created, "");
+    if (vs_hold) vs_hold->Release();
+    if (ps_hold) ps_hold->Release();
+    if (!created) return;
+    const auto tune = x3m::weapon_effects::projectile_family::families[x3m::weapon_effects::projectile_family::fighter_tracer].tune;
+    float constants[4];
+    rs::constants(tune, constants);
+    const float app_c31[4] = {0.125f, -2.5f, 7.f, 0.0625f}; // an application value the substitution must put back
+    // (b) flat texels through a full-target quad, blend off: our program against the CPU model
+    {
+        Com<IDirect3DTexture9> rt, flat;
+        Com<IDirect3DSurface9> rt_s, sys;
+        bool ok = SUCCEEDED(dev->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt.p, nullptr)) &&
+                  SUCCEEDED(rt.p->GetSurfaceLevel(0, &rt_s.p)) &&
+                  SUCCEEDED(dev->CreateOffscreenPlainSurface(16, 16, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) &&
+                  SUCCEEDED(dev->CreateTexture(1, 1, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &flat.p, nullptr));
+        const unsigned char texels[6][4] = {{99, 77, 17, 70}, {26, 13, 3, 20}, {255, 247, 239, 238}, {0, 0, 0, 0},
+                                            {51, 51, 64, 40}, {140, 107, 47, 120}};
+        const BYTE alphas[6] = {255, 255, 128, 255, 204, 255};
+        float worst = 0.f, worst_vanilla = 0.f;
+        IDirect3DSurface9* old_rt = nullptr;
+        dev->GetRenderTarget(0, &old_rt);
+        if (ok) dev->SetRenderTarget(0, rt_s.p);
+        float rows[16];
+        rf::clip_rows(1.f, 1.f, rows);
+        for (unsigned c = 0; ok && c < 6; ++c) {
+            D3DLOCKED_RECT lr{};
+            ok = SUCCEEDED(flat.p->LockRect(0, &lr, nullptr, 0));
+            if (!ok) break;
+            unsigned char* b = static_cast<unsigned char*>(lr.pBits);
+            b[0] = texels[c][2], b[1] = texels[c][1], b[2] = texels[c][0], b[3] = texels[c][3];
+            flat.p->UnlockRect(0);
+            const DWORD col = DWORD(alphas[c]) << 24;
+            const rf::Vertex quad[6] = {{-1, -1, 1, 0, 0, col}, {-1, 1, 1, 0, 0, col}, {1, 1, 1, 0, 0, col},
+                                        {-1, -1, 1, 0, 0, col}, {1, 1, 1, 0, 0, col}, {1, -1, 1, 0, 0, col}};
+            for (unsigned which = 0; which < 2 && ok; ++which) {
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+                dev->BeginScene();
+                rf::bind_pass(dev, vs.p, decl.p, flat.p, rows, false);
+                dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE); // the program's output itself
+                dev->SetPixelShaderConstantF(rs::constant_register, constants, 1);
+                dev->SetPixelShader(which ? ours.p : vanilla.p);
+                ok = SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(rf::Vertex)));
+                dev->EndScene();
+                ok = ok && SUCCEEDED(dev->GetRenderTargetData(rt_s.p, sys.p));
+                D3DLOCKED_RECT out{};
+                ok = ok && SUCCEEDED(sys.p->LockRect(&out, nullptr, D3DLOCK_READONLY));
+                if (!ok) break;
+                const auto* px = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(out.pBits) + 8 * out.Pitch) + 8 * 4;
+                const float got[3] = {half_to_float(px[0]), half_to_float(px[1]), half_to_float(px[2])};
+                sys.p->UnlockRect();
+                const float t[3] = {texels[c][0] / 255.f, texels[c][1] / 255.f, texels[c][2] / 255.f};
+                const float a = alphas[c] / 255.f;
+                float want[3];
+                if (which)
+                    rs::model(constants, t, a, want);
+                else
+                    for (unsigned k = 0; k < 3; ++k) want[k] = t[k] * a;
+                for (unsigned k = 0; k < 3; ++k) {
+                    const float err = std::fabs(got[k] - want[k]) / (0.004f + 0.004f * std::fabs(want[k]));
+                    float& w = which ? worst : worst_vanilla;
+                    w = std::max(w, err);
+                }
+                if (which)
+                    std::printf("RESHADE case=texel index=%u t=%.3f,%.3f,%.3f a=%.3f got=%.4f,%.4f,%.4f model=%.4f,%.4f,%.4f\n", c,
+                                double(t[0]), double(t[1]), double(t[2]), double(a), double(got[0]), double(got[1]),
+                                double(got[2]), double(want[0]), double(want[1]), double(want[2]));
+            }
+        }
+        dev->SetRenderTarget(0, old_rt);
+        if (old_rt) old_rt->Release();
+        std::printf("RESHADE case=model worst_rel=%.3f vanilla_worst_rel=%.3f\n", double(worst), double(worst_vanilla));
+        report("reshade_program_matches_model", ok && worst <= 1.f, "");
+        report("reshade_standin_vanilla_is_t_times_a", ok && worst_vanilla <= 1.f, "");
+    }
+    // (b2) the additive route's path through the production sequence (bullet_reshade_route.h, as
+    // prepare_screen_additive runs it under HDR): the game's ONE / INVSRCCOLOR pass, its program and an application
+    // c31 bound; begin with the conversion and the route's gain 2 -> DESTBLEND ONE, our program and c31 = (gain x 2,
+    // edge, core x 2, normaliser) while drawing, the output the background plus 2 x the model; end -> the game's
+    // program, the application's c31, DESTBLEND INVSRCCOLOR. With three targets and independent write masks the same
+    // with the flag variant and the route's far-flag targets (RT1 masked off, RT2 GREEN): RT2.g = 32 x max(rgb).
+    {
+        namespace rr2 = x3m::weapon_effects::reshade;
+        Com<IDirect3DTexture9> rt[3], flat;
+        Com<IDirect3DSurface9> rt_s[3], sys;
+        bool ok = SUCCEEDED(dev->CreateOffscreenPlainSurface(16, 16, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) &&
+                  SUCCEEDED(dev->CreateTexture(1, 1, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &flat.p, nullptr));
+        for (unsigned i = 0; i < 3 && ok; ++i)
+            ok = SUCCEEDED(dev->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt[i].p, nullptr)) &&
+                 SUCCEEDED(rt[i].p->GetSurfaceLevel(0, &rt_s[i].p));
+        D3DLOCKED_RECT lr{};
+        ok = ok && SUCCEEDED(flat.p->LockRect(0, &lr, nullptr, 0));
+        if (ok) {
+            unsigned char* b = static_cast<unsigned char*>(lr.pBits);
+            b[0] = 17, b[1] = 77, b[2] = 99, b[3] = 70; // t = (99, 77, 17) / 255
+            flat.p->UnlockRect(0);
+        }
+        const float t[3] = {99 / 255.f, 77 / 255.f, 17 / 255.f}, gain = 2.f, bg = 64 / 255.f;
+        float model[3];
+        rs::model(constants, t, 1.f, model);
+        const bool mrt = caps.NumSimultaneousRTs >= 3 && (caps.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS);
+        const auto read_px = [&](IDirect3DSurface9* s, float out[4]) {
+            if (FAILED(dev->GetRenderTargetData(s, sys.p))) return false;
+            D3DLOCKED_RECT o{};
+            if (FAILED(sys.p->LockRect(&o, nullptr, D3DLOCK_READONLY))) return false;
+            const auto* px = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(o.pBits) + 8 * o.Pitch) + 8 * 4;
+            for (unsigned k = 0; k < 4; ++k) out[k] = half_to_float(px[k]);
+            sys.p->UnlockRect();
+            return true;
+        };
+        IDirect3DSurface9* old_rt = nullptr;
+        dev->GetRenderTarget(0, &old_rt);
+        float rows[16];
+        rf::clip_rows(1.f, 1.f, rows);
+        const rf::Vertex quad[6] = {{-1, -1, 1, 0, 0, 0xff000000u}, {-1, 1, 1, 0, 0, 0xff000000u}, {1, 1, 1, 0, 0, 0xff000000u},
+                                    {-1, -1, 1, 0, 0, 0xff000000u}, {1, 1, 1, 0, 0, 0xff000000u}, {1, -1, 1, 0, 0, 0xff000000u}};
+        bool during_all = true, after_all = true;
+        float worst = 0.f, flag_got = -1.f, flag_want = 0.f;
+        for (unsigned variant = 0; variant < (mrt ? 2u : 1u) && ok; ++variant) {
+            const bool flag = variant == 1;
+            if (flag) { // RT2 cleared alone, then bound beside RT0 with the route's masks
+                dev->SetRenderTarget(0, rt_s[2].p);
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            }
+            dev->SetRenderTarget(0, rt_s[0].p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 64, 64, 64), 1.f, 0);
+            if (flag) {
+                dev->SetRenderTarget(1, rt_s[1].p);
+                dev->SetRenderTarget(2, rt_s[2].p);
+                dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 0);
+                dev->SetRenderState(D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN);
+            }
+            dev->BeginScene();
+            rf::bind_pass(dev, vs.p, decl.p, flat.p, rows, false);
+            dev->SetPixelShader(vanilla.p);
+            dev->SetPixelShaderConstantF(rs::constant_register, app_c31, 1);
+            auto ops = rf::device_ops(dev);
+            rr2::Plan plan;
+            plan.program = flag ? ours_flag.p : ours.p;
+            plan.constants = constants;
+            plan.gain = gain;
+            plan.convert = true;
+            rr2::Applied applied;
+            ok = SUCCEEDED(rr2::begin(ops, plan, app_c31, applied)) && applied.destblend && applied.c31 && applied.program;
+            DWORD blend = 0;
+            IDirect3DPixelShader9* bound = nullptr;
+            float c31[4]{};
+            const bool during = ok && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) && blend == D3DBLEND_ONE &&
+                                SUCCEEDED(dev->GetPixelShader(&bound)) && bound == plan.program &&
+                                SUCCEEDED(dev->GetPixelShaderConstantF(rs::constant_register, c31, 1)) &&
+                                c31[0] == constants[0] * gain && c31[1] == constants[1] && c31[2] == constants[2] * gain &&
+                                c31[3] == constants[3];
+            if (bound) bound->Release();
+            bound = nullptr;
+            ok = ok && SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(rf::Vertex)));
+            const HRESULT back = rr2::end(ops, applied, vanilla.p, app_c31);
+            const bool after = SUCCEEDED(back) && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) &&
+                               blend == D3DBLEND_INVSRCCOLOR && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
+                               SUCCEEDED(dev->GetPixelShaderConstantF(rs::constant_register, c31, 1)) &&
+                               !std::memcmp(c31, app_c31, sizeof c31);
+            if (bound) bound->Release();
+            dev->EndScene();
+            during_all = during_all && during;
+            after_all = after_all && after;
+            if (flag) {
+                dev->SetRenderTarget(1, nullptr);
+                dev->SetRenderTarget(2, nullptr);
+                dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 15);
+                dev->SetRenderState(D3DRS_COLORWRITEENABLE2, 15);
+            }
+            float px[4]{};
+            ok = ok && read_px(rt_s[0].p, px);
+            for (unsigned k = 0; k < 3 && ok; ++k) {
+                const float want = bg + gain * model[k];
+                worst = std::max(worst, std::fabs(px[k] - want) / (0.004f + 0.004f * want));
+            }
+            if (flag && ok && read_px(rt_s[2].p, px)) {
+                flag_got = px[1];
+                flag_want = 32.f * gain * std::max(model[0], std::max(model[1], model[2]));
+            }
+        }
+        dev->SetRenderTarget(0, old_rt);
+        if (old_rt) old_rt->Release();
+        const bool flag_ok = !mrt || std::fabs(flag_got - flag_want) <= 0.01f * flag_want + 0.01f;
+        std::printf("RESHADE case=additive gain=%.1f during=%u restored=%u worst_rel=%.3f mrt=%u flag_g=%.3f flag_want=%.3f\n",
+                    double(gain), unsigned(during_all), unsigned(after_all), double(worst), unsigned(mrt),
+                    double(flag_got), double(flag_want));
+        report("reshade_route_additive_binds_converts_restores", ok && during_all && after_all && worst <= 1.f && flag_ok, "");
+    }
+    // (c), (d), (e) on a 1920x1080 FP16 target with the stand-in bolt
+    Com<IDirect3DTexture9> rt, tex;
+    Com<IDirect3DSurface9> rt_s, sys;
+    Com<IDirect3DVertexBuffer9> vb;
+    unsigned side = 0;
+    const std::vector<unsigned char> texels = rf::standin_texture(&side);
+    tex.p = rf::make_texture(dev, texels.data(), side);
+    constexpr unsigned batch = 469; // the per-draw cap of an IRE-only selection (0x78f0 vertices / 66)
+    bool ok = tex.p && SUCCEEDED(dev->CreateTexture(1920, 1080, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt.p, nullptr)) &&
+              SUCCEEDED(rt.p->GetSurfaceLevel(0, &rt_s.p)) &&
+              SUCCEEDED(dev->CreateOffscreenPlainSurface(1920, 1080, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) &&
+              SUCCEEDED(dev->CreateVertexBuffer(batch * 66 * sizeof(rf::Vertex), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0,
+                                                D3DPOOL_DEFAULT, &vb.p, nullptr));
+    report("reshade_targets", ok, "");
+    if (!ok) return;
+    const rf::Mesh mesh = rf::standin_mesh();
+    float rows[16];
+    rf::clip_rows(1.6f, 1.6f * 1920.f / 1080.f, rows);
+    const auto fill = [&](unsigned bolts, float distance) {
+        void* p = nullptr;
+        if (FAILED(vb.p->Lock(0, 0, &p, D3DLOCK_DISCARD))) return false;
+        auto* v = static_cast<rf::Vertex*>(p);
+        for (unsigned b = 0; b < bolts; ++b) {
+            const float spread = bolts > 1 ? float(b % 24) / 23.f - 0.5f : 0.f, rise = bolts > 1 ? float(b / 24) / 20.f - 0.5f : 0.f;
+            const float centre[3] = {spread * distance, rise * distance * 0.5f, distance};
+            v += rf::place(mesh, centre, 0.44f, 0.35f, 255, v);
+        }
+        vb.p->Unlock();
+        return true;
+    };
+    IDirect3DSurface9* old_rt = nullptr;
+    dev->GetRenderTarget(0, &old_rt);
+    dev->SetRenderTarget(0, rt_s.p);
+    const auto image_sum = [&](double* sum, float* peak) {
+        if (FAILED(dev->GetRenderTargetData(rt_s.p, sys.p))) return false;
+        D3DLOCKED_RECT lr{};
+        if (FAILED(sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return false;
+        *sum = 0.0;
+        *peak = 0.f;
+        for (UINT y = 0; y < 1080; ++y) {
+            const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
+            for (UINT x = 0; x < 1920; ++x) {
+                const float l = 0.2126f * half_to_float(row[x * 4]) + 0.7152f * half_to_float(row[x * 4 + 1]) +
+                                0.0722f * half_to_float(row[x * 4 + 2]);
+                *sum += l;
+                *peak = std::max(*peak, l);
+            }
+        }
+        sys.p->UnlockRect();
+        return true;
+    };
+    double sums[2]{};
+    float peaks[2]{};
+    bool restored_all = true, getters_ok = true;
+    ok = fill(1, 50.f);
+    for (unsigned which = 0; which < 2 && ok; ++which) {
+        dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+        dev->BeginScene();
+        rf::bind_pass(dev, vs.p, decl.p, tex.p, rows, false);
+        dev->SetStreamSource(0, vb.p, 0, sizeof(rf::Vertex));
+        dev->SetPixelShader(vanilla.p);
+        dev->SetPixelShaderConstantF(rs::constant_register, app_c31, 1);
+        bool restored = true;
+        const HRESULT hr = which ? rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, 22, &restored)
+                                 : dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 22);
+        dev->EndScene();
+        ok = SUCCEEDED(hr) && image_sum(&sums[which], &peaks[which]);
+        restored_all = restored_all && restored;
+        if (which) { // (c) the game's binding back
+            IDirect3DPixelShader9* bound = nullptr;
+            float c31[4]{};
+            getters_ok = SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
+                         SUCCEEDED(dev->GetPixelShaderConstantF(rs::constant_register, c31, 1)) &&
+                         !std::memcmp(c31, app_c31, sizeof c31);
+            if (bound) bound->Release();
+        }
+    }
+    std::printf("RESHADE case=bolt distance_m=50 vanilla_sum=%.2f reshade_sum=%.2f energy_ratio=%.3f vanilla_peak=%.4f "
+                "reshade_peak=%.4f gain=%.3g edge=%.3g core=%.3g\n",
+                sums[0], sums[1], sums[0] > 0 ? sums[1] / sums[0] : 0.0, double(peaks[0]), double(peaks[1]),
+                double(constants[0]), double(constants[1]), double(constants[2]));
+    // the plain path's production sequence (rf::reshaded_draw runs bullet_reshade_route.h) on the stand-in bolt
+    report("reshade_route_plain_restores_program_and_c31", ok && restored_all && getters_ok, "");
+    report("reshade_bolt_dimmer_than_vanilla", ok && sums[0] > 0.0 && sums[1] < 0.8 * sums[0], "");
+    // (e) the cost: CPU per draw of the four calls alone, the draw loop with and without them; the 469-bolt batch fenced
+    LARGE_INTEGER freq{}, a{}, b{};
+    QueryPerformanceFrequency(&freq);
+    Com<IDirect3DQuery9> fence;
+    dev->CreateQuery(D3DQUERYTYPE_EVENT, &fence.p);
+    const auto finish = [&] {
+        if (!fence.p) return;
+        fence.p->Issue(D3DISSUE_END);
+        while (fence.p->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {
+        }
+    };
+    constexpr unsigned draws = 2000, runs = 7;
+    double best_calls = 1e30, best_vanilla = 1e30, best_reshaded = 1e30;
+    ok = ok && fill(1, 1500.f);
+    for (unsigned run = 0; run < runs && ok; ++run) {
+        dev->BeginScene();
+        rf::bind_pass(dev, vs.p, decl.p, tex.p, rows, false);
+        dev->SetStreamSource(0, vb.p, 0, sizeof(rf::Vertex));
+        dev->SetPixelShader(vanilla.p);
+        finish();
+        QueryPerformanceCounter(&a);
+        for (unsigned i = 0; i < draws; ++i) {
+            dev->SetPixelShaderConstantF(rs::constant_register, constants, 1);
+            dev->SetPixelShader(ours.p);
+            dev->SetPixelShader(vanilla.p);
+            dev->SetPixelShaderConstantF(rs::constant_register, app_c31, 1);
+        }
+        QueryPerformanceCounter(&b);
+        best_calls = std::min(best_calls, ticks_us(a, b, freq) / draws);
+        finish();
+        QueryPerformanceCounter(&a);
+        for (unsigned i = 0; i < draws; ++i) dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 22);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_vanilla = std::min(best_vanilla, ticks_us(a, b, freq) / draws);
+        QueryPerformanceCounter(&a);
+        bool restored = true;
+        for (unsigned i = 0; i < draws; ++i) rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, 22, &restored);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_reshaded = std::min(best_reshaded, ticks_us(a, b, freq) / draws);
+        dev->EndScene();
+    }
+    device_guard("reshade_cost");
+    double batch_us[2] = {1e30, 1e30};
+    ok = ok && fill(batch, 300.f);
+    for (unsigned run = 0; run < runs && ok; ++run)
+        for (unsigned which = 0; which < 2; ++which) {
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 40, 30, 50), 1.f, 0);
+            dev->BeginScene();
+            rf::bind_pass(dev, vs.p, decl.p, tex.p, rows, false);
+            dev->SetStreamSource(0, vb.p, 0, sizeof(rf::Vertex));
+            dev->SetPixelShader(vanilla.p);
+            finish();
+            QueryPerformanceCounter(&a);
+            bool restored = true;
+            if (which)
+                rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, batch * 22, &restored);
+            else
+                dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, batch * 22);
+            finish();
+            QueryPerformanceCounter(&b);
+            dev->EndScene();
+            batch_us[which] = std::min(batch_us[which], ticks_us(a, b, freq));
+        }
+    device_guard("reshade_batch");
+    dev->SetRenderTarget(0, old_rt);
+    if (old_rt) old_rt->Release();
+    dev->SetPixelShader(nullptr);
+    dev->SetVertexShader(nullptr);
+    dev->SetTexture(0, nullptr);
+    dev->SetStreamSource(0, nullptr, 0, 0);
+    std::printf("RESHADE case=cost draws=%u runs=%u calls_us_per_draw=%.3f draw_us_vanilla=%.3f draw_us_reshaded=%.3f "
+                "substitution_us_per_draw=%.3f batch_bolts=%u batch_us_vanilla=%.1f batch_us_reshaded=%.1f fenced=%u\n",
+                draws, runs, best_calls, best_vanilla, best_reshaded, best_reshaded - best_vanilla, batch, batch_us[0],
+                batch_us[1], unsigned(fence.p != nullptr));
+    report("reshade_cost_measured", ok && fence.p && best_calls < 50.0, "");
+}
 
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -5116,6 +5504,8 @@ int main(int argc, char** argv) {
     pt.release();
     proj.detach();
     pass.detach();
+    guard_next_section("reshade");
+    reshade_cases();
     guard_next_section("end");
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;

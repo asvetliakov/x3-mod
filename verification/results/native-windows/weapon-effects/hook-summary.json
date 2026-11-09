@@ -19,17 +19,23 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "bcf6a3f283c71e9e34b3f0403584f4a7196f1c54-dirty",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "b9ee53088757c3f767e6ae314e864b24696316e9-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_hook.cpp",
+      "src/proxy/weapon_effects_patch.cpp",
+      "src/proxy/weapon_effects_patch.h",
+      "verification/probe/weapon_effects_hook_fixture.cpp"
+    ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture.cpp": "dfc060f3ad44ce0e1346d72827d178762ce2a8357a14222e1ecaa5c1f98d72a7",
+      "verification/probe/weapon_effects_hook_fixture.cpp": "313109c458fee2f62a517fb13b40a22bfd297b1dacc3c6973e5c39e639be2447",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "3ad4a58ff2a835743c5f91691eae32e8ae817f8b19d4d08611662ffe520fe16e",
-      "src/proxy/weapon_effects_patch.cpp": "9230e4d3167f1da1ec2831e855d5f512f41eb5ff452125c77aa0faa57bc13d0b",
-      "src/proxy/weapon_effects_patch.h": "555bcb8f9eb80d2b96f22087dde5f0f312040d35cb9cd46844536c48ceb9a3f2",
-      "src/proxy/weapon_effects_hook.cpp": "2cc38e575592e5b356398a1c9badbf57f036e55b9182f4c6e2655dc53cd5df50",
-      "src/proxy/weapon_effects_core.h": "c48cbf89c85f6e8eb37ba47cd6915a9eec2f7da208a1d7453fa542cea083272e",
+      "src/proxy/weapon_effects_patch.cpp": "63c98e052bbd17785c0b36c6e37e61a48bf32ccebc4c1232491e36c1855b15b3",
+      "src/proxy/weapon_effects_patch.h": "50b64804fa64ea476bcb9e6ff3db5fbb890efbe923c4eab50292f4ddb388a6e1",
+      "src/proxy/weapon_effects_hook.cpp": "639a92e1a2b2e068110fba9f09956d81e7f5242ecd8484b150c296d8851e5917",
+      "src/proxy/weapon_effects_core.h": "2674c2e4dd0ff51208bdc36db9b97914d0de73da24b7718324088af7a6786f6f",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_bolt_sites.h": "8d789cfd70563535977abe9ef7962c5a1c64d47f50151f7977724c205cd7f1a9",
@@ -160,7 +166,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "f3b4220e192f97afc9a0153be35a28756b5a9ad73ba76e7b05301ba0a09f57da"
+    "executable_sha256": "bd83ff8c22dd119de4815c29375c91b5a24ab42d7ab867f2c36783fb8ffa21f6"
   },
   "host": {
     "name": "native-windows",
@@ -179,7 +185,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 131,
+      "checks": 132,
       "failures": 0,
       "faults": 6,
       "verdict": "PASS"
@@ -523,6 +529,11 @@
       "detail": ""
     },
     {
+      "name": "mode_parse_reshade_alone",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "hull_mode_installed",
       "passed": true,
       "detail": ""
@@ -843,15 +854,15 @@
       "detail": ""
     }
   ],
-  "check_count": 131,
+  "check_count": 132,
   "failed_checks": [],
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
     "esp_frame": "00888780",
     "esp_callee": "00888774",
-    "return": "00fe6d8a",
-    "site": "00fe6d85"
+    "return": "00e76d8a",
+    "site": "00e76d85"
   },
   "stack_depth": {
     "bytes": 236,
@@ -1178,9 +1189,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.1,
-    "median_us": 17.2,
-    "worst_us": 17.3,
+    "best_us": 17.0,
+    "median_us": 17.1,
+    "worst_us": 17.2,
     "target_us": 30
   },
   "overflow": {
@@ -1196,18 +1207,18 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.1,
-    "median_us": 55.2,
-    "worst_us": 55.4,
+    "best_us": 54.6,
+    "median_us": 54.7,
+    "worst_us": 69.6,
     "target_us": 150
   },
   "death_forward_state": {
     "eflags_entry": "000008c5",
     "eflags_callee": "00000ac7",
-    "esp_frame": "005ead58",
-    "esp_callee": "005ead48",
-    "return": "00fe7cb7",
-    "site": "00fe7cb2",
+    "esp_frame": "005ead48",
+    "esp_callee": "005ead38",
+    "return": "00e77cb7",
+    "site": "00e77cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },

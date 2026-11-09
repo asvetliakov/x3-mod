@@ -90,7 +90,7 @@ class WeaponEffectsLaunchOption(unittest.TestCase):
 
     def test_observe_and_shields_send_the_variable_and_table_path(self):
         for value in ('observe', 'shields', 'shields,hull', 'shields,hull,bolts', 'shields,hull,explosions',
-                      'shields,hull,bolts,explosions'):
+                      'shields,hull,bolts,explosions', 'reshade'):
             code, data, error = self.launch('--weapon-effects', value, inherited={'X3M_WEAPON_EFFECTS': 'native'})
             self.assertEqual(code, 0, error)
             self.assertEqual(data['env']['X3M_WEAPON_EFFECTS'], value)

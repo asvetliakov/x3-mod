@@ -72,9 +72,10 @@ int main(int argc, char** argv) {
 '''
 
 DEFAULTS = [1.0, 2.0, 0.3, 0.4, 3000.0, 60.0, 2.0, 0.0, 1.5,  # weapon_projectile_family.h, fighter_tracer (FL 61 A)
-            1.25, 2.5, 80.0, 2.0, 3.0]  # the muzzle flash's start values (muzzle-flash-look.md section 5)
+            1.25, 2.5, 80.0, 2.0, 3.0,  # the muzzle flash's start values (muzzle-flash-look.md section 5)
+            0.45, 0.1, 0.25]  # the bullet re-shade (bullet-draw-batch.md section 6)
 KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops', 'trail_ms', 'head_gain',
-        'flash_core_mult', 'flash_len_m', 'flash_life_ms', 'flash_stops', 'hull_pulse_r']
+        'flash_core_mult', 'flash_len_m', 'flash_life_ms', 'flash_stops', 'hull_pulse_r', 'rs_gain', 'rs_edge', 'rs_core']
 
 
 class ProjectileTune(unittest.TestCase):
@@ -109,7 +110,7 @@ class ProjectileTune(unittest.TestCase):
             self.assertAlmostEqual(got, want, places=5)
 
     def test_every_key_read(self):
-        values = [2.5, 4.0, 0.3, 0.5, 4000.0, 80.0, 2.5, 60.0, 2.0, 6.5, 4.0, 250.0, 3.0, 5.0]
+        values = [2.5, 4.0, 0.3, 0.5, 4000.0, 80.0, 2.5, 60.0, 2.0, 6.5, 4.0, 250.0, 3.0, 5.0, 0.6, 0.4, 0.5]
         text = json.dumps(dict(zip(KEYS, values)), indent=2)
         r = self.parse(text)
         self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, (1 << len(KEYS)) - 1, 0))
@@ -122,14 +123,27 @@ class ProjectileTune(unittest.TestCase):
         low = self.parse('{"flash_core_mult": 0.1, "flash_len_m": -1, "flash_life_ms": 5, "flash_stops": -5, '
                          '"hull_pulse_r": -2}')
         self.assertEqual((low['ok'], low['clamped']), (1, 0x1f << 9))
-        self.assertEqual(low['values'][9:], [0.5, 0.0, 16.0, -2.0, 0.0])
+        self.assertEqual(low['values'][9:14], [0.5, 0.0, 16.0, -2.0, 0.0])
         high = self.parse('{"flash_core_mult": 9, "flash_len_m": 50, "flash_life_ms": 1000, "flash_stops": 9, '
                           '"hull_pulse_r": 99}')
         self.assertEqual(high['clamped'], 0x1f << 9)
-        self.assertEqual(high['values'][9:], [8.0, 20.0, 400.0, 6.0, 20.0])
+        self.assertEqual(high['values'][9:14], [8.0, 20.0, 400.0, 6.0, 20.0])
         edge = self.parse('{"flash_len_m": 0, "hull_pulse_r": 0, "flash_core_mult": 8, "flash_life_ms": 400}')
         self.assertEqual((edge['ok'], edge['clamped']), (1, 0))
         self.assertEqual(edge['values'][:9], DEFAULTS[:9])
+
+    def test_reshade_keys_bounds(self):
+        # the bullet re-shade (bullet-draw-batch.md section 6): rs_gain 0..2, rs_edge 0.05..1 (the smoothstep's upper
+        # edge stays above zero), rs_core 0..4
+        low = self.parse('{"rs_gain": -1, "rs_edge": 0, "rs_core": -0.5}')
+        self.assertEqual((low['ok'], low['clamped']), (1, 0x7 << 14))
+        self.assertEqual(low['values'][14:], [0.0, 0.05, 0.0])
+        high = self.parse('{"rs_gain": 3, "rs_edge": 2, "rs_core": 9}')
+        self.assertEqual(high['clamped'], 0x7 << 14)
+        self.assertEqual(high['values'][14:], [2.0, 1.0, 4.0])
+        inside = self.parse('{"rs_gain": 0.3, "rs_edge": 0.7, "rs_core": 1}')
+        self.assertEqual((inside['ok'], inside['clamped'], inside['seen']), (1, 0, 0x7 << 14))
+        self.assertEqual(inside['values'][:14], DEFAULTS[:14])
 
     def test_missing_key_takes_the_default_and_unknown_keys_are_ignored(self):
         r = self.parse('{"core_px": 3, "note": "IRE flight 59", "flag": true, "x": null, "y": -1.5e2}')

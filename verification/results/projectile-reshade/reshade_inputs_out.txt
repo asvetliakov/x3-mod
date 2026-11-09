@@ -1,0 +1,24 @@
+INSTANCE_BULLETS pairs (FL root + addon2):
+  vs 1b6863a088a177af ps 84d3de8887c963c5 effects engine_0000,engine_0001
+  vs 21a2c13be7f989c3 ps d4a26efb7c603931 effects effects_0000,effects_0001
+  vs 5e484a06672e28fb ps ec1f5c4a2f4e1445 effects effects,effects2s,engine,engine2s
+programs (stage, dwords, instruction-token FNV-1a 32, tokens):
+  vs 1b6863a088a177af dwords 101 body e5989c94 tokens 43
+  vs 21a2c13be7f989c3 dwords 101 body e5989c94 tokens 43
+  vs 5e484a06672e28fb dwords 101 body e5989c94 tokens 43
+  ps 84d3de8887c963c5 dwords 49 body b006e837 tokens 9
+  ps d4a26efb7c603931 dwords 49 body b006e837 tokens 9
+  ps ec1f5c4a2f4e1445 dwords 49 body b006e837 tokens 9
+IRE body: 22 triangles, blend ONE/INVSRCCOLOR, diffuse effects\weapons\fx_bullets_diff.tga, alpha effects\weapons\fx_bullets_alpha8.tga, extents {'centre': [0.0, 0.0, 0.0], 'half_extents': [3542.0, 3542.0, 65536.0], 'points': 44, 'scale': 16207, 'z_over_xy': 18.5025}
+texture 512x512
+body: 16 triangles, u 0.0131..0.9767, v 0.2792..0.3519, z -0.2473..0.2473, radius 0.00000..0.01337 (body units)
+  texels rows 142..181 cols 6..501: luminance max 0.305 mean 0.023 p50 0.003 p90 0.068 p99 0.282; alpha max 0.267; corr(alpha, luminance) 0.939
+  texels with luminance > 0.3: 116, hue (rgb / max) (1.0, 0.778, 0.176)
+  across (per texel row, v rising; middle half of u): 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.00 0.01 0.01 0.01 0.02 0.02 0.02 0.02 0.03 0.03 0.03 0.04 0.04 0.04 0.05 0.05 0.06 0.06 0.07 0.08 0.10 0.14
+  along (column means, every 20 texels, u rising): 0.00 0.00 0.00 0.00 0.01 0.01 0.01 0.01 0.01 0.01 0.02 0.02 0.02 0.02 0.03 0.03 0.04 0.04 0.04 0.05 0.05 0.06 0.06 0.03 0.00
+head: 6 triangles, u 0.7833..0.9831, v 0.7673..0.9670, z 0.1482..0.2019, radius 0.00618..0.00785 (body units)
+  texels rows 392..496 cols 401..504: luminance max 0.381 mean 0.081 p50 0.037 p90 0.246 p99 0.366; alpha max 0.443; corr(alpha, luminance) 0.999
+  texels with luminance > 0.3: 605, hue (rgb / max) (1.0, 0.745, 0.424)
+  across (per texel row, v rising; middle half of u): 0.00 0.00 0.00 0.00 0.01 0.01 0.01 0.01 0.01 0.01 0.01 0.02 0.02 0.02 0.03 0.03 0.04 0.04 0.04 0.05 0.05 0.06 0.07 0.07 0.08 0.09 0.10 0.10 0.12 0.12 0.13 0.14 0.15 0.16 0.17 0.18 0.19 0.20 0.20 0.21 0.22 0.23 0.24 0.25 0.25 0.26 0.27 0.27 0.28 0.28 0.29 0.29 0.29 0.29 0.29 0.29 0.29 0.29 0.29 0.29 0.28 0.28 0.28 0.27 0.26 0.26 0.25 0.24 0.23 0.23 0.22 0.21 0.20 0.19 0.18 0.17 0.16 0.15 0.14 0.14 0.12 0.12 0.11 0.10 0.09 0.08 0.08 0.07 0.06 0.06 0.05 0.05 0.04 0.04 0.03 0.03 0.02 0.02 0.02 0.02 0.01 0.01 0.01 0.01
+  along (column means, every 4 texels, u rising): 0.01 0.01 0.02 0.03 0.05 0.07 0.09 0.11 0.13 0.15 0.17 0.18 0.18 0.17 0.16 0.14 0.12 0.10 0.07 0.05 0.04 0.02 0.01 0.01 0.00 0.00
+body strip rows 178..189 (v 0.348..0.371), luminance mean over cols 128..384: 0.078 0.103 0.139 0.175 0.220 0.275 0.326 0.361 0.362 0.004 0.000 0.000

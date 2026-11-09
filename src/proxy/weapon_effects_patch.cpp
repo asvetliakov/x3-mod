@@ -63,7 +63,15 @@ struct Period {
     std::uint32_t projectile_flashes = 0, projectile_pulses = 0; // muzzle flashes and hull pulses drawn
     std::uint32_t projectile_flash_lost = 0, projectile_flash_dropped = 0, projectile_pulse_clamped = 0; // shooter unreadable; past the frame's room
     float projectile_us_max = 0.f;
+    // the bullet re-shade (reshade mode): draws re-shaded, substitutions failed, bullet-program draws outside a submit,
+    // the substitution's CPU time (sum and the frame's worst)
+    std::uint32_t reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
+    std::uint32_t reshade_additive = 0, reshade_flagged = 0; // draws the additive route converted, with its far flag
+    float reshade_us_sum = 0.f, reshade_us_max = 0.f;
 } period_{};
+#if X3M_EDITION_FL
+std::uint32_t reshade_scopes_seen_ = 0; // x3m_bullet_scope_calls at the last bullet_reshade_frame row
+#endif
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
 unsigned logged_deaths_ = 0, period_deaths_ = 0;
@@ -261,7 +269,7 @@ template <unsigned N> bool fl_witnesses_match(std::uintptr_t base, const S::Wind
         if (!fl_window_matches(base, x)) return false;
     return true;
 }
-void* fl_stub(unsigned i) {
+void* fl_stub(unsigned i, bool reshade = false) {
     switch (i) {
     case 0: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_impact_fl);
     case 1:
@@ -270,7 +278,9 @@ void* fl_stub(unsigned i) {
     case 4: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_muzzle_fl);
     case 5: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_flight_fl);
     case 6: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_fl);
-    default: return reinterpret_cast<void*>(&x3m_weapon_effects_stub_batch_fl);
+    default:
+        return reshade ? reinterpret_cast<void*>(&x3m_weapon_effects_stub_batch_scope_fl)
+                       : reinterpret_cast<void*>(&x3m_weapon_effects_stub_batch_fl);
     }
 }
 std::uintptr_t bound_base_ = 0; // the base the sites were claimed at (the rows' va)
@@ -362,7 +372,7 @@ bool install_at(const Addresses& a, core::Mode mode) {
     core::ring_clear(s.ring);
     s.table = table_;
     s.mode = std::uint8_t(mode);
-    s.armed = mode == core::mode_shields ? core::family_shields
+    s.armed = mode == core::mode_shields || mode == core::mode_reshade ? core::family_shields
               : core::hull_mode(mode)
                   ? std::uint8_t(core::family_shields | core::family_hull | (bolts ? core::family_bolts : 0) |
                                  (booms ? core::family_boom : 0))
@@ -482,6 +492,9 @@ bool initialize() {
     // The scratched families' names (2026-11-08): accepted beside shields and ignored, one row each.
     for (unsigned i = 0; i < core::ignored_name_count; ++i)
         if (ignored & (1u << i)) log("weapon_effects_ignored name=%s setting=%s", core::ignored_name(i), setting);
+    // reshade is FL's (the bullet batch site): on AP it runs as shields, one row.
+    if (parsed && core::reshade_mode(mode))
+        log("weapon_effects_reshade edition=ap runs=shields reason=no_bullet_batch_site setting=%s", setting);
     for (unsigned i = 0; i < site_count; ++i)
         log("weapon_effects_patch site=%s va=%08lx state=%s reason=%s mode=%s setting=%s write=%s", site_name(i),
             static_cast<unsigned long>(site_va(i)), site_state_[i], state_, parsed ? core::mode_name(mode) : "-", setting,
@@ -516,19 +529,28 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     // The projectile stage (every stage mode on FL): the object tap registers the enabled bodies' bullets, the batch
     // submit skips their instanced draw while the stage owns the frame, and the muzzle site skips their shots' game
     // flash (the stage draws its own; docs/architecture/muzzle-flash-look.md section 4).
-    const bool projectiles = core::stage_mode(mode);
+    // Reshade mode (bullet-draw-batch.md section 6): the shield stage and the batch call claimed with the scope stub,
+    // which forwards every submit; no projectile stage, batch skip, object tap or muzzle stub.
+    const bool reshade = core::reshade_mode(mode);
+    const bool projectiles = core::stage_mode(mode) && !reshade;
     if (!taps) site_state_[1] = site_state_[2] = "not_used";
     if (!bolts && !projectiles) site_state_[4] = "not_used";
     if (!bolts) site_state_[5] = "not_used";
     if (!bolts && !projectiles) site_state_[3] = "not_used";
     if (!booms) site_state_[6] = "not_used";
-    if (!projectiles) site_state_[7] = "not_used";
+    if (!projectiles && !reshade) site_state_[7] = "not_used";
     const auto used = [&](unsigned i) {
-        return i == 0 || (i < 3 ? taps : i == 3 || i == 4 ? bolts || projectiles : i == 5 ? bolts : i == 6 ? booms : projectiles);
+        return i == 0 || (i < 3     ? taps
+                          : i == 3 || i == 4 ? bolts || projectiles
+                          : i == 5           ? bolts
+                          : i == 6           ? booms
+                                             : projectiles || reshade);
     };
     core::ProjectilePool& pool = x3m_projectile_pool;
     pool.skip_on = 0;
     pool.armed = 0;
+    x3m_bullet_reshade_armed = 0;
+    x3m_bullet_scope = 0;
     if (mode == core::mode_native) return done("native", false);
     if (!base || (base & 0xffffu)) {
         site_state_[0] = "invalid_site";
@@ -571,7 +593,7 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     s.globals = core::fl_globals(base);
     s.table = table_;
     s.mode = std::uint8_t(mode);
-    s.armed = mode == core::mode_shields ? core::family_shields
+    s.armed = mode == core::mode_shields || mode == core::mode_reshade ? core::family_shields
               : core::hull_mode(mode)
                   ? std::uint8_t(core::family_shields | core::family_hull | (bolts ? core::family_bolts : 0) |
                                  (booms ? core::family_boom : 0))
@@ -628,7 +650,7 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
         if (!used(i)) continue;
         const S::Site& site = S::sites[i];
         const bool ok = engine_patch::claim_call(site_[i], base + site.window.rva + site.call_offset,
-                                                 base + site.target_rva, fl_stub(i));
+                                                 base + site.target_rva, fl_stub(i, reshade));
         written_[i] = reached_write(site_[i], ok);
         const char* failed = ok ? confirm(site_[i]) : site_[i].status;
         if (failed) {
@@ -655,6 +677,7 @@ bool install_base(std::uintptr_t base, core::Mode mode) {
     mode_ = mode;
     bs.armed = std::uint8_t(bolts);
     pool.armed = std::uint8_t(projectiles);
+    x3m_bullet_reshade_armed = std::uint32_t(reshade);
     return done("ok", true);
 }
 #ifdef X3M_WEAPON_EFFECTS_SHIM
@@ -713,8 +736,15 @@ bool initialize() {
             S::sites[i].window.name, static_cast<unsigned long>(base ? base + rva : 0), static_cast<unsigned long>(rva),
             site_state_[i], state_, parsed ? core::mode_name(mode) : "-", setting, write_path(i));
     }
-    // The projectile stage's claim (one row a session) and its enabled rows (weapon_projectile_family.h).
-    {
+    // Reshade mode: the batch call's scope claim (one row a session) instead of the projectile stage's.
+    if (parsed && core::reshade_mode(mode)) {
+        const char* b = site_state_[7];
+        const std::uint32_t rva = S::sites[7].window.rva + S::sites[7].call_offset;
+        log("bullet_reshade_site state=%s rva=%06lx va=%08lx reason=%s site=%s armed=%lu", !std::strcmp(b, "active") ? "claimed" : "refused",
+            static_cast<unsigned long>(rva), static_cast<unsigned long>(base ? base + rva : 0), state_, b,
+            static_cast<unsigned long>(x3m_bullet_reshade_armed));
+    } else {
+        // The projectile stage's claim (one row a session) and its enabled rows (weapon_projectile_family.h).
         const char* b = site_state_[7];
         const char* verdict = !std::strcmp(b, "active")                                         ? "claimed"
                               : !std::strcmp(b, "rolled_back") || !std::strcmp(b, "rollback_failed") ||
@@ -758,6 +788,8 @@ bool shutdown() {
     static constexpr unsigned reverse[site_count] = {3, 0, 7, 6, 5, 4, 2, 1}; // the reverse of install_base's order
     x3m_projectile_pool.skip_on = 0; // the batch stub forwards from here on
     x3m_projectile_pool.armed = 0;
+    x3m_bullet_reshade_armed = 0; // Present stops its row and counter reset; the draw hook keys on x3m_bullet_scope,
+                                  // which no submit raises once the site is restored below
 #else
     static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
 #endif
@@ -907,6 +939,18 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.projectile_flash_dropped += stage.projectile_flash_dropped;
     period_.projectile_pulse_clamped += stage.projectile_pulse_clamped;
     if (stage.projectile_us > period_.projectile_us_max) period_.projectile_us_max = stage.projectile_us;
+    // The bullet re-shade (reshade mode): a scope count leaked by an exception through the submit lasts one frame.
+    if (x3m_bullet_reshade_armed) {
+        x3m_bullet_scope = 0;
+        period_.reshade_draws += stage.reshade_draws;
+        period_.reshade_failures += stage.reshade_failures;
+        period_.reshade_outside += stage.reshade_outside;
+        period_.reshade_timed += stage.reshade_timed;
+        period_.reshade_additive += stage.reshade_additive;
+        period_.reshade_flagged += stage.reshade_flagged;
+        period_.reshade_us_sum += stage.reshade_us;
+        if (stage.reshade_us > period_.reshade_us_max) period_.reshade_us_max = stage.reshade_us;
+    }
 #endif
     ++period_.frames;
     if (owned) ++period_.owned;
@@ -1018,6 +1062,25 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     }
     if (frame % frame_row_period) return;
     const core::Counters& c = s.counters;
+#if X3M_EDITION_FL
+    // The bullet re-shade's period row: the game's bullet submits seen by the scope stub, the draws re-shaded and those
+    // whose substitution failed (forwarded with the game's program), bullet-program draws outside a submit (left
+    // vanilla), and the substitution's CPU time over the timed draws (every 60th frame and capture frames: per draw,
+    // and the worst frame's sum).
+    if (x3m_bullet_reshade_armed) {
+        const std::uint32_t scopes = x3m_bullet_scope_calls;
+        log("bullet_reshade_frame frame=%llu frames=%lu submits=%lu draws=%lu additive=%lu flagged=%lu failures=%lu "
+            "outside=%lu timed=%lu us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f",
+            frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(scopes - reshade_scopes_seen_),
+            static_cast<unsigned long>(period_.reshade_draws), static_cast<unsigned long>(period_.reshade_additive),
+            static_cast<unsigned long>(period_.reshade_flagged), static_cast<unsigned long>(period_.reshade_failures),
+            static_cast<unsigned long>(period_.reshade_outside), static_cast<unsigned long>(period_.reshade_timed),
+            double(period_.reshade_us_sum),
+            period_.reshade_timed ? double(period_.reshade_us_sum) / double(period_.reshade_timed) : 0.0,
+            double(period_.reshade_us_max));
+        reshade_scopes_seen_ = scopes;
+    }
+#endif
     if (core::explosions_mode(mode_))
         log("weapon_boom_frame frame=%llu deaths=%lu ours=%lu calls=%lu no_node=%lu bullet=%lu rule_b=%lu nested=%lu "
             "fighter=%lu corvette=%lu capital=%lu station=%lu missile=%lu asteroid=%lu other=%lu boom_ready=%u "

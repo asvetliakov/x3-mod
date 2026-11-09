@@ -217,7 +217,7 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
     def test_build_audit_and_stack(self):
         a = self.record['build']['audit']
         self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
-        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 7)  # six shims and the batch stub
+        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 8)  # six shims, the batch stub and its re-shade scope
         self.assertEqual(len(a['handler_calls']), 6)
         self.assertTrue(all(not v for v in a['handler_calls'].values()))
         self.assertEqual(a['windows_match_exe'], {k: True for k in ('impact', 'tap1', 'tap2', 'bolt_tap', 'muzzle', 'flight',

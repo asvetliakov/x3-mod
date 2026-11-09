@@ -623,9 +623,15 @@ constexpr std::uint16_t record_life_ms[drawn_tiers] = {3201, 4801, 7901, 12601, 
 // skip 0x004146c0, weapon_effects_bolt.h); hull_mode() is true for both hull modes. mode_shields_hull_explosions /
 // mode_shields_hull_bolts_explosions: the hull modes plus the death sites (family_boom: 0x0044ac64 / 0x0044acb2,
 // boom::decide); explosions_mode() is true for both, hull_mode() and stage_mode() too.
+// mode_reshade (FL, user decision 2026-11-09; docs/reverse-engineering/fl/bullet-draw-batch.md section 6): shields mode
+// plus the bullet re-shade. The batch site 0x097af8 is claimed with a scope stub that forwards every call and only
+// marks the submit's extent (x3m_bullet_scope); the draw hook binds our pixel program in place of the game's
+// INSTANCE_BULLETS one inside it. The projectile stage, its batch skip and traversal drop, the object tap and the muzzle
+// site are off: the engine draws its own bolts and flashes. stage_mode() is true (the shield stage's latch and ring).
+// On AP the mode runs as shields (no batch site there).
 enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2, mode_shields_hull = 3,
                            mode_shields_hull_bolts = 4, mode_shields_hull_explosions = 5,
-                           mode_shields_hull_bolts_explosions = 6 };
+                           mode_shields_hull_bolts_explosions = 6, mode_reshade = 7 };
 inline const char* mode_name(unsigned m) noexcept {
     return m == mode_observe                         ? "observe"
            : m == mode_shields                       ? "shields"
@@ -633,10 +639,14 @@ inline const char* mode_name(unsigned m) noexcept {
            : m == mode_shields_hull_bolts            ? "shields,hull,bolts"
            : m == mode_shields_hull_explosions       ? "shields,hull,explosions"
            : m == mode_shields_hull_bolts_explosions ? "shields,hull,bolts,explosions"
+           : m == mode_reshade                       ? "reshade"
                                                      : "native";
 }
 inline bool stage_mode(unsigned m) noexcept {
-    return m >= mode_shields && m <= mode_shields_hull_bolts_explosions;
+    return m >= mode_shields && m <= mode_reshade;
+}
+inline bool reshade_mode(unsigned m) noexcept {
+    return m == mode_reshade;
 }
 inline bool hull_mode(unsigned m) noexcept {
     return m >= mode_shields_hull && m <= mode_shields_hull_bolts_explosions;
@@ -647,18 +657,19 @@ inline bool bolts_mode(unsigned m) noexcept {
 inline bool explosions_mode(unsigned m) noexcept {
     return m == mode_shields_hull_explosions || m == mode_shields_hull_bolts_explosions;
 }
-// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe" or "shields". The names of the scratched families,
+// X3M_WEAPON_EFFECTS (lower case): one word, "native", "observe", "shields" or "reshade". The names of the scratched families,
 // "hull", "bolts" and "explosions", are accepted beside "shields" and ignored (an old setting such as
 // "shields,hull,bolts,explosions" runs as shields), each reported once in *ignored (bit 0 hull, 1 bolts, 2 explosions;
 // the caller logs weapon_effects_ignored); tokens in any order, spaces around each ignored. Unset or empty = native
-// (note 2.6). Any other token ("beams"), a family name without "shields", an empty or repeated token is refused.
+// (note 2.6). Any other token ("beams"), a family name without "shields" (also beside "reshade"), an empty or repeated
+// token is refused.
 constexpr unsigned ignored_name_count = 3;
 inline const char* ignored_name(unsigned i) noexcept {
     static const char* const names[ignored_name_count] = {"hull", "bolts", "explosions"};
     return i < ignored_name_count ? names[i] : "?";
 }
 template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mode* out, unsigned* ignored = nullptr) noexcept {
-    static const char* const words[6] = {"native", "observe", "shields", "hull", "bolts", "explosions"};
+    static const char* const words[7] = {"native", "observe", "shields", "hull", "bolts", "explosions", "reshade"};
     if (!text || !n) return false;
     unsigned seen = 0, words_seen = 0, single = 4;
     std::size_t at = 0;
@@ -669,7 +680,7 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
         while (a < b && text[a] == Char(' ')) ++a;
         while (b > a && text[b - 1] == Char(' ')) --b;
         unsigned w = 0;
-        for (; w < 6; ++w) {
+        for (; w < 7; ++w) {
             std::size_t len = 0;
             while (words[w][len]) ++len;
             if (b - a != len) continue;
@@ -677,16 +688,16 @@ template <class Char> inline bool parse_mode(const Char* text, std::size_t n, Mo
             for (std::size_t i = 0; i < len && same; ++i) same = text[a + i] == Char(words[w][i]);
             if (same) break;
         }
-        if (w >= 6 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
+        if (w >= 7 || (seen & (1u << w))) return false; // an unknown, empty or repeated token
         seen |= 1u << w;
-        if (w < 3) {
-            single = w;
+        if (w < 3 || w == 6) {
+            single = w == 6 ? unsigned(mode_reshade) : w;
             ++words_seen;
         }
         if (end >= n) break;
         at = end + 1;
     }
-    const unsigned families = seen >> 3; // hull, bolts, explosions
+    const unsigned families = (seen >> 3) & 7u; // hull, bolts, explosions
     if (words_seen != 1 || (families && single != mode_shields)) return false;
     *out = Mode(single);
     if (ignored) *ignored = families;

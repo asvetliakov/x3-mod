@@ -445,10 +445,12 @@ SETTINGS = [
           'shield sprite (needs the HDR and TAA defaults, otherwise the game\'s sprite stays); everything else stays the '
           'game\'s. The older values that add hull, bolts or explosions to shields (any order) still run as shields: '
           'those effects were withdrawn on 2026-11-08 and the names are ignored, one weapon_effects_ignored log row '
-          'each. Default native. Read when the game starts.',
+          'each. reshade (Farnham\'s Legacy) = shields plus the game\'s own bolts drawn with the mod\'s shading '
+          '(dimmer, a soft edge, a hot core) for every weapon that shares the bullet draw. Default native. Read when '
+          'the game starts.',
           builtin='native',
           choices=('native', 'observe', 'shields', 'shields,hull', 'hull,shields', 'shields,hull,bolts',
-                   'shields,hull,explosions', 'shields,hull,bolts,explosions'),
+                   'shields,hull,explosions', 'shields,hull,bolts,explosions', 'reshade'),
           launcher='--weapon-effects', since='2026-11-05'),
     entry('engine_effects_preset', 'enum', 'engine', 'Strength of the mod\'s engine plumes (engine_effects = plumes): '
           'restrained, default or strong scale their brightness and glow width by 0.6, 1 and 1.5. Read when the game '

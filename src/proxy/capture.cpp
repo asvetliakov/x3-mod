@@ -2108,6 +2108,11 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.projectile_flash_lost = flashes[2];
         stage.projectile_flash_dropped = flashes[3];
         stage.projectile_pulse_clamped = flashes[4];
+        // The bullet re-shade (reshade mode; bullet-draw-batch.md section 6): the tuning poll and the frame's counts.
+        if (x3m_bullet_reshade_armed)
+            ctx.motion_output.bullet_reshade_take_frame(&stage.reshade_draws, &stage.reshade_failures,
+                                                        &stage.reshade_outside, &stage.reshade_timed, &stage.reshade_us,
+                                                        &stage.reshade_additive, &stage.reshade_flagged);
 #endif
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {

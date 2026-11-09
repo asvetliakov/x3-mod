@@ -126,6 +126,13 @@ struct StageFrame {
     unsigned projectile_flashes = 0, projectile_pulses = 0, projectile_flash_lost = 0, projectile_flash_dropped = 0;
     unsigned projectile_pulse_clamped = 0; // pulses shrunk to the screen cap
     float projectile_us = 0.f;
+    // The bullet re-shade (FL reshade mode; MotionOutput::bullet_reshade_take_frame): draws re-shaded, substitutions
+    // that failed (the draw kept the game's program), bullet-program draws outside the batch submit, the substitution's
+    // CPU time of the substitution sequence alone over the frame's timed draws (us; every 60th frame and capture
+    // frames), the re-shaded draws the additive route converted, of them with the route's far flag.
+    unsigned reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
+    unsigned reshade_additive = 0, reshade_flagged = 0;
+    float reshade_us = 0.f;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
 // sector change or a new load epoch (note 3.1), before the frame's upkeep.
@@ -143,6 +150,12 @@ std::uint32_t game_step_ms();
 extern "C" {
 void x3m_weapon_effects_stub_impact_fl();
 void x3m_weapon_effects_stub_batch_fl();
+// The bullet re-shade (mode_reshade): the batch call's scope stub, its depth counter (non-zero inside the game's bullet
+// submit) and its call count; x3m_bullet_reshade_armed is set once that stub is live.
+void x3m_weapon_effects_stub_batch_scope_fl();
+extern volatile std::uint32_t x3m_bullet_scope;
+extern volatile std::uint32_t x3m_bullet_scope_calls;
+extern volatile std::uint32_t x3m_bullet_reshade_armed;
 extern std::uintptr_t x3m_weapon_effects_continue_batch;
 extern x3m::weapon_effects::core::ProjectilePool x3m_projectile_pool;
 void x3m_weapon_effects_stub_tap_fl();

@@ -6,11 +6,14 @@
 // Never launches the game.
 #include <windows.h>
 #include <d3d9.h>
+#include <d3dx9shader.h>
 #include "../../src/renderer/weapon_effects_pass.h"
 #include "../../src/proxy/weapon_projectile_stage.h"
+#include "weapon_bullet_reshade_fixture.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <vector>
 
@@ -416,6 +419,181 @@ int projectile_dump(const char* dir) {
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", written, failures);
     return failures ? 1 : 0;
 }
+// ------------------------------------------------------------------ bullet re-shade dump (--dump DIR --dump-case reshade)
+// The bullet re-shade's look evidence (bullet-draw-batch.md section 6; weapon_bullet_reshade_fixture.h): the IRE bolt
+// drawn the way the game's INSTANCE_BULLETS pass draws it (stand-in vs_1_1 / ps_1_1 doing the game programs' work,
+// ONE / INVSRCCOLOR, Z test, no Z write) into the 1920x1080 FP16 scene at the fixture's projection (m00 1.6), once
+// vanilla and once with the production re-shade program swapped in, at 50 m (near) and 1500 m (far), its axis 25
+// degrees out of the screen plane and its fins rolled 20 degrees, on the dark background (black) and a bright nebula
+// stand-in (a flat linear 0.30 / 0.22 / 0.38). The mesh and texture are the game's IRE bolt and fx_bullets_diff when
+// run_weapon_effects.py prepared them from the local lab assets (untracked), else the procedural stand-ins. Each
+// output PFM <dir>\fixture-ire-{vanilla,reshade}-{near,far}.pfm is the two backgrounds' crops side by side (near
+// 640x256, far 64x32 around the bolt). DUMP_RESHADE rows; no check, no record.
+namespace rf = reshade_fx;
+bool load_assets(const char* dir, rf::Mesh* mesh, std::vector<unsigned char>* rgba, unsigned* side) {
+    if (!dir || !*dir) return false;
+    char path[MAX_PATH];
+    std::snprintf(path, sizeof path, "%s\\ire_mesh.txt", dir);
+    std::FILE* f = std::fopen(path, "rb");
+    if (!f) return false;
+    rf::Mesh m;
+    float q[5];
+    while (m.n < 66 && std::fscanf(f, "%f %f %f %f %f", &q[0], &q[1], &q[2], &q[3], &q[4]) == 5) {
+        for (unsigned k = 0; k < 5; ++k) m.p[m.n][k] = q[k];
+        ++m.n;
+    }
+    std::fclose(f);
+    std::snprintf(path, sizeof path, "%s\\ire_tex.rgba", dir);
+    f = std::fopen(path, "rb");
+    if (!f || m.n != 66) {
+        if (f) std::fclose(f);
+        return false;
+    }
+    std::vector<unsigned char> data(512u * 512u * 4u);
+    const bool read = std::fread(data.data(), 1, data.size(), f) == data.size();
+    std::fclose(f);
+    if (!read) return false;
+    *mesh = m;
+    rgba->swap(data);
+    *side = 512;
+    return true;
+}
+// edge: an rs_edge override (null or empty: the baked tune); with it the re-shaded frames only, named
+// fixture-ire-reshade-<range>-e<edge x 100, three digits> (the vanilla frames are the same as without it).
+int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, const char* edge = nullptr) {
+    HMODULE d3dx = LoadLibraryA(d3dx_path && *d3dx_path ? d3dx_path : "d3dx9_37.dll");
+    using CompileFn = HRESULT(WINAPI*)(LPCSTR, UINT, const void*, void*, LPCSTR, LPCSTR, DWORD, ID3DXBuffer**,
+                                       ID3DXBuffer**, void*);
+    const auto compile_fn = d3dx ? reinterpret_cast<CompileFn>(GetProcAddress(d3dx, "D3DXCompileShader")) : nullptr;
+    const auto compile = [&](const char* src, const char* profile, ID3DXBuffer** out) {
+        ID3DXBuffer* err = nullptr;
+        const HRESULT hr = compile_fn(src, UINT(std::strlen(src)), nullptr, nullptr, "main", profile, 0, out, &err, nullptr);
+        if (err) err->Release();
+        return SUCCEEDED(hr) && *out;
+    };
+    ID3DXBuffer *vs_code = nullptr, *ps_code = nullptr;
+    Com<IDirect3DVertexShader9> vs;
+    Com<IDirect3DPixelShader9> vanilla, ours;
+    Com<IDirect3DVertexDeclaration9> decl;
+    const bool created = compile_fn && compile(rf::vs_source, "vs_1_1", &vs_code) &&
+                         rf::assemble(d3dx, rf::vanilla_ps_asm, &ps_code) &&
+                         SUCCEEDED(dev->CreateVertexShader(static_cast<const DWORD*>(vs_code->GetBufferPointer()), &vs.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(static_cast<const DWORD*>(ps_code->GetBufferPointer()), &vanilla.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(rf::reshade_program, &ours.p)) &&
+                         SUCCEEDED(dev->CreateVertexDeclaration(rf::declaration(), &decl.p));
+    if (vs_code) vs_code->Release();
+    if (ps_code) ps_code->Release();
+    ProjTarget t;
+    if (!created || !make_proj_target(t, 1920, 1080)) {
+        std::printf("DUMP_FAIL reason=reshade_programs\nRESULT FAIL checks=1 failures=1\n");
+        return 1;
+    }
+    CreateDirectoryA(dir, nullptr);
+    rf::Mesh mesh;
+    std::vector<unsigned char> rgba;
+    unsigned side = 0;
+    const bool real = load_assets(assets, &mesh, &rgba, &side);
+    if (!real) {
+        mesh = rf::standin_mesh();
+        rgba = rf::standin_texture(&side);
+    }
+    Com<IDirect3DTexture9> tex;
+    tex.p = rf::make_texture(dev, rgba.data(), side);
+    Com<IDirect3DVertexBuffer9> vb;
+    if (!tex.p || FAILED(dev->CreateVertexBuffer(66 * sizeof(rf::Vertex), D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT,
+                                                 &vb.p, nullptr))) {
+        std::printf("DUMP_FAIL reason=reshade_resources\nRESULT FAIL checks=1 failures=1\n");
+        return 1;
+    }
+    const auto tune = pf::families[pf::fighter_tracer].tune;
+    float constants[4];
+    x3m::weapon_effects::reshade::constants(tune, constants);
+    const bool edge_override = edge && *edge;
+    char suffix[16] = "";
+    if (edge_override) {
+        auto t2 = tune;
+        t2.rs_edge = std::strtof(edge, nullptr);
+        x3m::weapon_effects::reshade::constants(t2, constants); // clamped like the tuning file
+        std::snprintf(suffix, sizeof suffix, "-e%03d", int(constants[1] * 100.f + 0.5f));
+    }
+    const float app_c31[4] = {0.f, 0.f, 0.f, 0.f};
+    float rows[16];
+    rf::clip_rows(1.6f, 1.6f * 1920.f / 1080.f, rows);
+    std::printf("DUMP_RESHADE assets=%s mesh_vertices=%u texture=%u metres_per_body_unit=%.3f bolt_length_m=%.1f gain=%.3g "
+                "edge=%.3g core=%.3g normaliser=%.3g\n",
+                real ? "game" : "standin", mesh.n, side, double(rf::metres_per_body_unit),
+                double(rf::metres_per_body_unit * 2.f * 0.2473f), double(constants[0]), double(constants[1]),
+                double(constants[2]), double(constants[3]));
+    dev->SetRenderTarget(0, t.scene_s.p);
+    dev->SetDepthStencilSurface(t.depth_s.p);
+    const struct { const char* name; float distance; UINT cw, ch; } ranges[2] = {{"near", 50.f, 640, 256}, {"far", 1500.f, 64, 32}};
+    int code = 0;
+    for (const auto& r : ranges) {
+        void* p = nullptr;
+        if (FAILED(vb.p->Lock(0, 0, &p, D3DLOCK_DISCARD))) return 1;
+        const float centre[3] = {0.f, 0.f, r.distance};
+        rf::place(mesh, centre, 0.4363f, 0.3491f, 255, static_cast<rf::Vertex*>(p));
+        vb.p->Unlock();
+        for (unsigned shade = edge_override ? 1u : 0u; shade < 2; ++shade) {
+            const UINT ow = r.cw * 2, oh = r.ch;
+            std::vector<float> out(std::size_t(ow) * oh * 3, 0.f);
+            double sums[2]{};
+            float peaks[2]{};
+            for (unsigned bg = 0; bg < 2; ++bg) {
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+                           bg ? D3DCOLOR_ARGB(0, 77, 56, 97) : D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+                dev->BeginScene();
+                rf::bind_pass(dev, vs.p, decl.p, tex.p, rows, true);
+                dev->SetStreamSource(0, vb.p, 0, sizeof(rf::Vertex));
+                dev->SetPixelShader(vanilla.p);
+                bool restored = true;
+                const HRESULT hr = shade ? rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, 22, &restored)
+                                         : dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 22);
+                dev->EndScene();
+                if (FAILED(hr) || !restored || FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) code = 1;
+                D3DLOCKED_RECT lr{};
+                if (FAILED(t.scene_sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return 1;
+                const UINT x0 = 960 - r.cw / 2, y0 = 540 - r.ch / 2;
+                const float base = bg ? 0.2126f * 77.f / 255.f + 0.7152f * 56.f / 255.f + 0.0722f * 97.f / 255.f : 0.f;
+                for (UINT y = 0; y < r.ch; ++y) {
+                    const auto* src = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) +
+                                                                            (y0 + y) * lr.Pitch) + std::size_t(x0) * 4;
+                    for (UINT x = 0; x < r.cw; ++x) {
+                        float* d = &out[(std::size_t(y) * ow + bg * r.cw + x) * 3];
+                        for (unsigned k = 0; k < 3; ++k) d[k] = half_to_float(src[x * 4 + k]);
+                        const float l = 0.2126f * d[0] + 0.7152f * d[1] + 0.0722f * d[2] - base;
+                        sums[bg] += l;
+                        peaks[bg] = l > peaks[bg] ? l : peaks[bg];
+                    }
+                }
+                t.scene_sys.p->UnlockRect();
+            }
+            char path[MAX_PATH];
+            std::snprintf(path, sizeof path, "%s\\fixture-ire-%s-%s%s.pfm", dir, shade ? "reshade" : "vanilla", r.name,
+                          suffix);
+            std::FILE* f = std::fopen(path, "wb");
+            bool written = f != nullptr;
+            if (f) {
+                std::fprintf(f, "PF\n%u %u\n-1.0\n", ow, oh);
+                for (UINT y = oh; y-- > 0;)
+                    written = written && std::fwrite(&out[std::size_t(y) * ow * 3], sizeof(float), std::size_t(ow) * 3, f) ==
+                                             std::size_t(ow) * 3;
+                std::fclose(f);
+            }
+            if (!written) code = 1;
+            std::printf("DUMP_RESHADE name=fixture-ire-%s-%s%s distance_m=%.0f edge=%.3g crop=%ux%u dark_sum=%.3f "
+                        "dark_peak=%.4f nebula_sum=%.3f nebula_peak=%.4f written=%u\n",
+                        shade ? "reshade" : "vanilla", r.name, suffix, double(r.distance), double(constants[1]), r.cw, r.ch, sums[0], double(peaks[0]),
+                        sums[1], double(peaks[1]), unsigned(written));
+        }
+    }
+    dev->SetPixelShader(nullptr);
+    dev->SetVertexShader(nullptr);
+    dev->SetTexture(0, nullptr);
+    dev->SetStreamSource(0, nullptr, 0, 0);
+    std::printf("RESULT %s checks=0 failures=%u\n", code ? "FAIL" : "PASS", unsigned(code != 0));
+    return code;
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -453,7 +631,11 @@ int main(int argc, char** argv) {
     D3DDISPLAYMODE mode{};
     dev->GetDisplayMode(0, &mode);
     adapter_format = mode.Format;
-    const int code = projectile_dump(dir);
+    // argv: <dir> [reshade <d3dx9_37.dll> <assets dir>] (run_weapon_effects.py --dump DIR [--dump-case reshade])
+    const bool reshade = argc > 2 && !std::strcmp(argv[2], "reshade");
+    const int code = reshade ? reshade_dump(dir, argc > 3 ? argv[3] : nullptr, argc > 4 ? argv[4] : nullptr,
+                                            argc > 5 ? argv[5] : nullptr)
+                             : projectile_dump(dir);
     dev = nullptr;
     return code;
 }
