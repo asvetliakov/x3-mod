@@ -3393,3 +3393,31 @@ mechanism cases keep the FL 60 A starting values with the comet on (trail_ms 40)
 x scene white; main budget CPU 88.2 µs, GPU fenced 46.6 µs (532 quads). Shader `--check` PASS, FL build 0 warnings,
 `check_no_x87.py --edition fl` no violations, host `test_weapon_effects*.py` 96 OK. Figures from
 `verification/results/native-windows/weapon-effects/projectile_rows.py`.
+
+**IRE muzzle flash (2026-11-09).** The design of [muzzle-flash-look.md](../architecture/muzzle-flash-look.md) built
+(`1d30eb433` production, `e92b39e78` fixtures; its "Implementation (2026-11-09)"): the FL muzzle site claimed in every
+stage mode and skipping the spawner for a shot of an enabled body under the batch latch, the flash point, streak and
+hull pulse through `run_projectiles`, five tuning keys. Not flown (FL run 62 judges the look). Records on the clean
+`e92b39e78` [M]: AP hook **131 of 131**, FL hook **72 of 72** (the muzzle claimed in shields mode, its witness refusal
+and rollback, an enabled body skipped with no callee, latch off and another body forwarded with every register, the
+stack and EFLAGS at the callee; the tap's match: gap 150 ms, a 1 ms-off birth unmatched, a registration 51 ms late at
+17 ms steps stale; stack 244 bytes, the impact still deepest), D3D **99 of 99** (17 new). White extent at scene white
+against the measured bolt core at 2560 x 1440 [M]: 27 m (the gun's depth in chase) 32.72 px against the core's 26.18,
+ratio **1.250**, and at +4 stops 32.73 px (1.250: brightness does not grow it), at 0 stops FWHM 23.15 px = 1.25 x the
+core's 18.52; 200 m 4.41 / 4.42 / 4.39 px at +2 / +4 / 0 stops against the rule 4.42 (the core measured 3.42, rule
+3.54); 500 m 1.68 / 1.70 px against the rule 1.77 (the 1 px core measures 1.00, rule 1.41: pixel sampling); 4 m capped
+at 48.0 px at every stops (the cap binds there only); area share at 80 % / 10 % of the peak 0.079–0.085 where resolved.
+Streak across the view 189.63 px at 27 m and 10.24 px at 500 m against the rule within 0.01 px, white run 212 / 11 px;
+folded into a dot at 2 km (white extent 0.44 px, peak 1.15, no pulse at fov 90), 3 km peak 1.06; dot light 1.47 / 1.36
+against the 500 m flash's 18.1. Life through the production tap and builder [M]: gap 150 ms at 17 ms steps drawn
+twice (life 30 ms, F 1.000 then 0.433), at 7 ms steps twice (life 14 ms, F 0.500), at 100 ms steps (SETA 6) once, a
+first shot once, a record not ours and a late registration never; the second flash rides the shooter (error 0.000 px).
+Pulse against its CPU twin [M]: 27 m own gun (radius 170.7 px) peak 0.4998 against 0.5, worst pixel 0.0039 (the 1/256
+cut), sky 0 px; 500 m peak 0.4998, worst 0.0031; faded 0.43: 0.2150; dropped at 2 km (under 3 px). Budget at 5120 x 1440,
+64 flashes and 64 pulses (two own at 27 m) [M]: CPU **7.4 µs** (build with less without); GPU fenced **14.8 µs** added
+to the bolts' `run_projectiles` (16.5 → 31.3 µs, the gate under 30); alone 31.0 µs fenced, of which the fence pair 10.7
+(flash quads alone 17.0, pulses alone 26.1: the two own 24.5, the 62 far 16.7). The existing projectile budget is
+unchanged (512 bolts CPU 87.8 µs, GPU fenced 45.2 µs). Shader `--check` PASS (8 programs; the pulse 285 words), FL and AP
+builds 0 warnings, `check_no_x87.py` no violations (FL and AP), host `test_weapon_effects*.py` 98 OK. The look frame
+[`fixture-ire-muzzle.png`](../../verification/results/muzzle-flash-look/fixture-ire-muzzle.png) (800 x 450 crop) viewed.
+Figures from `verification/results/native-windows/weapon-effects/muzzle_rows.py`.
