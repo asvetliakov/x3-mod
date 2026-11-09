@@ -180,13 +180,13 @@ What only the user judges: whether the flash reads as a shot and not a lamp in c
 bolt is "small" or already invisible; the pulse's strength on the own hull; the SETA flicker; the cockpit spot at the
 screen edge; whether the two-frame life feels like a flash or a blink.
 
-## 7. Questions for the user
+## 7. User decisions (2026-11-09)
 
-1. Do you fly first person with guns firing? If so the flash is a spot at the screen edge (section 1); the alternative is
-   no flash for the own guns in the cockpit view, as the old design did at 0.35.
-2. Under SETA the flash is one frame per shot, a flicker at the gun while firing (the engine's own does this too). Keep,
-   or drop the flash entirely under SETA (bolts only)?
-3. The pulse on NPC ships: on by default (it is the cue that a distant ship fired). Own ship only instead?
+1. First person: the user does not fire in first person, but others may; the own-gun flash stays drawn there as
+   designed (a spot at the screen edge plus the hull pulse); no cockpit exception.
+2. SETA: keep the one-frame flash per shot for now; judge in flight.
+3. Hull pulse on every ship, own and NPC.
+4. The look is undecided until flown: "let's build and look"; the first flight (FL run 62) judges it.
 
 ## 8. Options considered and why they lose
 
