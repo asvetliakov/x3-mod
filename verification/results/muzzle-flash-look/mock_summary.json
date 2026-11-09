@@ -1,0 +1,98 @@
+{
+ "size": [
+  512,
+  256
+ ],
+ "scale_of_1440_rows": 0.17777777777777778,
+ "f_px_m": 227.55555555555557,
+ "eye_m": [
+  0.0,
+  5.0,
+  0.0
+ ],
+ "hull_centre_m": [
+  0.0,
+  0.0,
+  24.0
+ ],
+ "mounts_m": [
+  [
+   -3.2,
+   -0.2,
+   26.5
+  ],
+  [
+   3.2,
+   -0.2,
+   26.5
+  ]
+ ],
+ "texture_rgb": [
+  121,
+  82,
+  39
+ ],
+ "tint_linear": [
+  1.0,
+  0.441,
+  0.106
+ ],
+ "tune": {
+  "flash_core_mult": 1.25,
+  "flash_len_m": 2.5,
+  "flash_life_frac": 0.2,
+  "flash_stops": 2.0,
+  "hull_pulse_r": 3.0
+ },
+ "mounts": [
+  {
+   "bolt_first_frame": {
+    "head_depth_m": 45.96313070668056,
+    "core_fwhm_px": 3.8678343934465387,
+    "streak_px": 21.555323021189015,
+    "travel_m": 19.366666666666667
+   },
+   "flash": {
+    "depth_m": 27.00354324442894,
+    "point_fwhm_px": 5.819045257925383,
+    "core_fwhm_px_at_gun": 6.583498179056737,
+    "streak_px": 4.342594791959313,
+    "radiance": 16.0,
+    "white_clipped_px": 11.638090515850767,
+    "core_white_clipped_px_at_gun": 9.310472412680612,
+    "clipped_ratio": 1.2500000000000002,
+    "life_ms_1x": 30.0
+   },
+   "pulse": {
+    "radius_px": 25.280633007577872
+   }
+  },
+  {
+   "bolt_first_frame": {
+    "head_depth_m": 45.96313070668056,
+    "core_fwhm_px": 3.8678343934465387,
+    "streak_px": 21.555323021189015,
+    "travel_m": 19.366666666666667
+   },
+   "flash": {
+    "depth_m": 27.00354324442894,
+    "point_fwhm_px": 5.819045257925383,
+    "core_fwhm_px_at_gun": 6.583498179056737,
+    "streak_px": 4.342594791959313,
+    "radiance": 16.0,
+    "white_clipped_px": 11.638090515850767,
+    "core_white_clipped_px_at_gun": 9.310472412680612,
+    "clipped_ratio": 1.2500000000000002,
+    "life_ms_1x": 30.0
+   },
+   "pulse": {
+    "radius_px": 25.280633007577872
+   }
+  }
+ ],
+ "vanilla_outline": {
+  "vanilla_extent_px": 17.775445083453192,
+  "vanilla_fwhm_px": 13.166996358113474
+ },
+ "file": "mock-ire-muzzle.png"
+}
