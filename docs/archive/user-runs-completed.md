@@ -2197,6 +2197,7 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 X3M_MOTION_FRAME_LOG=1 /Users/asvetl/x3
 | FL 54 A | FL run 54 (main bdc4b1317, DLL 7f5ed9f4…), `C:\X3FL`; rollback `rollback-d3d9\d3d9.dll.run53`; ini = run 53 + `collision_damage = 0`. **No collision damage.** Check the `collision_damage … status=applied` row, ram a station and a ship (hull/shield unchanged, bounce and sound stay), get bumped by an AI ship, fire a weapon (normal damage), report `collision_damage_suppressed` rows. | 1 | complete (flown 2026-11-05: applied, 3 suppressed events, accepted) |
 | FL 55 A | FL run 55 (main 8830a808b, DLL e58042c4…), `C:\X3FL`; rollback `rollback-d3d9\d3d9.dll.run54`; ini = run 54 + `sky_stars_nebula_dim = 0.5`, `sky_nebula_deband = 1`. **Nebula deband + stars dimmed under nebula.** Argon Prime and one more sector: nebula edge bands softer? stars fainter inside bright nebula? no stars over planets, no pulsing under SETA rotation, no grain. Report `sky_nebula … parts=` and `sky_stars_defer` rows. | 1 | complete (flown 2026-11-05: parts=4, 24,576/24,576 confirmed, accepted) |
 | FL 56 A | Release 2.0.0 FL (stripped DLL a3ac5ad2…), `C:\X3FL`; rollback `rollback-d3d9\d3d9.dll.run55`; ini header only. Smoke: load, one sector, confirm the log header says 2.0.0 and the sky/collision rows look as in run 55. | 1 | superseded by FL 57 (2.0.1) |
+| FL 57 A | Release 2.0.1 FL (stripped DLL 00f483f0…), `C:\X3FL`; rollback `rollback-d3d9\d3d9.dll.run56`; ini header only. Smoke: load one sector, log header 2.0.1. | 1 | open |
 
 ## Run history paragraphs
 
