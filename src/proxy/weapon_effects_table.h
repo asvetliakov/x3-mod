@@ -21,6 +21,12 @@
 // [{"bytes": n, "head64": "<16 hex>", "fnv1a64": "<16 hex>", "p99": p, ...}, ...]}; an entry with a byte count outside
 // 1..2^24, a hash that is not 16 hex digits, a p99 outside (0, 1] or past bullet_texture_capacity is dropped (counted);
 // a value of the wrong JSON type makes the file malformed.
+// The bullet re-shade's body layouts (any schema; an older generator writes none, and those bodies keep the accepted
+// look): "tables": {..., "bullet_bodies": [{"body": "<the rows' body string>", "head": {"u": u, "v": v, "r": R}|null,
+// "fin": {"axis_v": a, "rim_v": r, "u0": u0, "u1": u1}|null, ...}, ...]}; UVs within [-16, 16] (u0 / u1, informational,
+// within [-1024, 1024]: a tiled strip), R in (0, 4], rim_v
+// different from axis_v; an entry with no body, a value out of range or past bullet_body_capacity is dropped
+// (counted), a group given as null is absent; a value of the wrong JSON type makes the file malformed.
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -35,6 +41,8 @@ struct Stats {
     unsigned bolt_pins = 0;  // entries carrying a bolt hand pin (bolt_e_body, bolt_w_orb, bolt_halo false, bolt_tint)
     unsigned bolt_rejected = 0; // rows dropped for a bolt pin outside its range (a zero E_b, a w_orb stored as 0, ...)
     unsigned bullet_textures = 0, bullet_textures_dropped = 0; // tables.bullet_textures entries kept / dropped
+    bool bullet_bodies_present = false;                        // the file carries tables.bullet_bodies
+    unsigned bullet_bodies = 0, bullet_bodies_dropped = 0;     // tables.bullet_bodies entries kept / dropped
 };
 // A 16-hex-digit string into *out; false when the string is anything else.
 inline bool parse_hex64(json::Cursor& c, std::uint64_t* out, bool* valid) noexcept {
@@ -98,6 +106,91 @@ inline bool parse_bullet_textures(json::Cursor& c, core::Table* t, Stats* st) no
     if (c.accept(']')) return true;
     for (;;) {
         if (!parse_bullet_texture(c, t, st)) return false;
+        if (c.accept(']')) return true;
+        if (!c.expect(',')) return false;
+    }
+}
+// One group object of a bullet_bodies entry ({"key": number, ...} or null): the named numbers into v (16.16 words) in
+// the order of names; *present false for null; *valid false when a named number is missing or outside [lo, hi].
+inline bool parse_layout_group(json::Cursor& c, const char* const* names, unsigned n, const float* lo, const float* hi,
+                               std::int32_t* v, bool* present, bool* valid) noexcept {
+    *present = false;
+    if (c.literal("null")) return true;
+    if (!c.expect('{')) return false;
+    *present = true;
+    unsigned seen = 0;
+    if (!c.accept('}'))
+        for (;;) {
+            char key[16];
+            bool fits;
+            if (!c.string(key, sizeof key, &fits) || !c.expect(':')) return false;
+            unsigned which = n;
+            for (unsigned i = 0; fits && i < n && which == n; ++i)
+                if (!std::strcmp(key, names[i])) which = i;
+            if (which < n) {
+                float x = 0.f;
+                if (!c.number(&x)) return false;
+                if (x >= lo[which] && x <= hi[which]) {
+                    const float q = x * 65536.f;
+                    v[which] = std::int32_t(q < 0.f ? q - 0.5f : q + 0.5f);
+                    seen |= 1u << which;
+                }
+            } else if (!c.skip_value())
+                return false;
+            if (c.accept('}')) break;
+            if (!c.expect(',')) return false;
+        }
+    if (seen != (1u << n) - 1u) *valid = false;
+    return true;
+}
+inline bool parse_bullet_body(json::Cursor& c, core::Table* t, Stats* st) noexcept {
+    if (!c.expect('{')) return false;
+    std::uint32_t hash = 0;
+    std::int32_t w[8]{};
+    bool valid = true, head = false, fin = false;
+    static const char* const head_names[3] = {"u", "v", "r"};
+    static const float head_lo[3] = {-16.f, -16.f, 1.f / 65536.f}, head_hi[3] = {16.f, 16.f, 4.f};
+    static const char* const fin_names[4] = {"axis_v", "rim_v", "u0", "u1"};
+    static const float fin_lo[4] = {-16.f, -16.f, -1024.f, -1024.f}, fin_hi[4] = {16.f, 16.f, 1024.f, 1024.f};
+    if (!c.accept('}'))
+        for (;;) {
+            char key[24];
+            bool fits;
+            if (!c.string(key, sizeof key, &fits) || !c.expect(':')) return false;
+            if (fits && !std::strcmp(key, "body")) {
+                if (!c.literal("null")) {
+                    char name[64];
+                    bool name_fits;
+                    if (!c.string(name, sizeof name, &name_fits)) return false;
+                    hash = name_fits ? core::name_hash(name) : 0u;
+                }
+            } else if (fits && !std::strcmp(key, "head")) {
+                if (!parse_layout_group(c, head_names, 3, head_lo, head_hi, w + 1, &head, &valid)) return false;
+            } else if (fits && !std::strcmp(key, "fin")) {
+                if (!parse_layout_group(c, fin_names, 4, fin_lo, fin_hi, w + 4, &fin, &valid)) return false;
+            } else if (!c.skip_value())
+                return false;
+            if (c.accept('}')) break;
+            if (!c.expect(',')) return false;
+        }
+    if (fin && w[4] == w[5]) valid = false; // the fin band needs a rim apart from the axis
+    if (!hash || !valid || t->bullet_bodies >= core::bullet_body_capacity) {
+        ++st->bullet_bodies_dropped;
+        return true;
+    }
+    w[0] = (head ? 1 : 0) | (fin ? 2 : 0);
+    const unsigned i = t->bullet_bodies++;
+    t->bullet_body_hash[i] = hash;
+    for (unsigned k = 0; k < 8; ++k) t->bullet_body_layout[i][k] = w[k];
+    ++st->bullet_bodies;
+    return true;
+}
+inline bool parse_bullet_bodies(json::Cursor& c, core::Table* t, Stats* st) noexcept {
+    st->bullet_bodies_present = true;
+    if (!c.expect('[')) return false;
+    if (c.accept(']')) return true;
+    for (;;) {
+        if (!parse_bullet_body(c, t, st)) return false;
         if (c.accept(']')) return true;
         if (!c.expect(',')) return false;
     }
@@ -345,8 +438,11 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                         const bool bullets = kind_fits && !std::strcmp(kind, "bullets");
                         const bool missiles = kind_fits && !std::strcmp(kind, "missiles");
                         const bool textures = kind_fits && !std::strcmp(kind, "bullet_textures");
-                        if (textures ? !parse_bullet_textures(c, t, st)
-                                     : (bullets || missiles) ? !parse_kind(c, t, bullets, st) : !c.skip_value()) {
+                        const bool body_layouts = kind_fits && !std::strcmp(kind, "bullet_bodies");
+                        if (textures       ? !parse_bullet_textures(c, t, st)
+                            : body_layouts ? !parse_bullet_bodies(c, t, st)
+                            : (bullets || missiles) ? !parse_kind(c, t, bullets, st)
+                                                    : !c.skip_value()) {
                             ok = false;
                             break;
                         }

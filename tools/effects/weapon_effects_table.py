@@ -26,6 +26,15 @@ D3DXCreateTextureFromFileInMemoryEx (the decoded member: head64 over the first 4
 the DLL maps the created texture by them), the level-0 texel luminance's peak and 99th percentile (Rec. 709 weights on
 the stored values / 255, every texel, as the re-shade program weighs the sample) and the rows that draw it. An older
 DLL skips both keys (schema 2 unchanged).
+The bullet re-shade's geometric size (docs/architecture/projectile-look.md "Geometric size (2026-11-10)"):
+tables.bullet_bodies, one entry per distinct body the rows draw (keyed by the rows' body string; the DLL maps an engine
+body id to it through the live TBullets row): the UV layout of every triangle of every LOD (uv_layout): the head group
+(the triangle cluster whose UV box is roughly square and whose every triangle maps at least half of it:
+the quads carrying the round glow sprite) as its box centre and half-side r, the fin
+group (the cluster elongated along u) as the mean v of its axis vertices (radius about the z axis under a tenth of the
+group's largest), of its rim vertices (over nine tenths) and its u range; null for a group not found or whose footprint
+another triangle of the body samples (the shader would shrink that triangle too). An older DLL skips the key (the
+schema stays 2: the DLL reads only 1 and 2, and an unknown table is skipped).
 Per TMissiles row only the count. Also the TBullets table's decoded hash and row count (the DLL compares the count
 with the live *0x00607038 and disables the lookups on a mismatch), the generator's schema and its `tool` field (the
 ownership mark manage.py and x3m-regenerate test before replacing or removing the file). Only names, numbers and
@@ -87,6 +96,143 @@ def luminance_stats(rgba):
     import numpy as np
     lum = (rgba[..., :3].reshape(-1, 3).astype(np.float64) / 255.0) @ np.array(LUMA)
     return round(float(lum.max()), 4), round(float(np.percentile(lum, 99)), 4)
+
+
+# The geometric size's footprints (src/proxy/bullet_reshade_core.h head_footprint, fin_low, fin_high: the program's
+# literals): the head's square of half-side 1.02 r around its centre; the fin band d = (v - axis) / (rim - axis) in
+# [-0.25, 1.02] at any u.
+HEAD_FOOTPRINT, FIN_LOW, FIN_HIGH = 1.02, -0.25, 1.02
+UV_TOLERANCE = 1e-4      # two triangles' UV boxes closer than this are one group
+HEAD_ASPECT = (0.67, 1.5)  # the head group's box width over height: roughly square
+FIN_ASPECT = 2.0           # the fin group's box is at least this much wider in u than tall in v
+
+
+def body_triangles(tree):
+    """Every triangle of every LOD of a parsed body as three (x, y, z, u, v): positions in body units (point / 65536 x
+    LOD value / 65536), u, v in texture units (the 16.16 words / 65536); a face's first three indices."""
+    import bob1
+    out = []
+    for lod in bob1.lods(tree):
+        scale = lod['value'] / 65536.0 / 65536.0
+        pts = lod['points']
+        for part in lod['parts']:
+            for g in part['groups']:
+                for face in g['faces']:
+                    tri = []
+                    for i in face[:3]:
+                        p = pts[i]
+                        f = p[0]
+                        xyz = p[1:4] if f & 1 else (0, 0, 0)
+                        uv = p[4:6] if f & 1 and f & 2 else (p[1:3] if f & 2 else (0, 0))
+                        tri.append((xyz[0] * scale, xyz[1] * scale, xyz[2] * scale, uv[0] / 65536.0, uv[1] / 65536.0))
+                    out.append(tri)
+    return out
+
+
+def _uv_box(tris):
+    us = [p[3] for t in tris for p in t]
+    vs = [p[4] for t in tris for p in t]
+    return min(us), max(us), min(vs), max(vs)
+
+
+def uv_layout(tris):
+    """The geometric size's record of one body (the DLL's tables.bullet_bodies entry without its name):
+    dict(head=dict(u, v, r) | None, fin=dict(axis_v, rim_v, u0, u1) | None, groups, head_reason, fin_reason)."""
+    n = len(tris)
+    boxes = [_uv_box([t]) for t in tris]
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for i in range(n):
+        a = boxes[i]
+        for j in range(i + 1, n):
+            b = boxes[j]
+            if a[0] <= b[1] + UV_TOLERANCE and b[0] <= a[1] + UV_TOLERANCE and a[2] <= b[3] + UV_TOLERANCE and \
+                    b[2] <= a[3] + UV_TOLERANCE:
+                ri, rj = find(i), find(j)
+                if ri != rj:
+                    parent[rj] = ri
+    clusters = {}
+    for i in range(n):
+        clusters.setdefault(find(i), []).append(i)
+    groups = []
+    for members in clusters.values():
+        u0, u1, v0, v1 = _uv_box([tris[i] for i in members])
+        w, h = u1 - u0, v1 - v0
+        groups.append(dict(members=set(members), box=(u0, u1, v0, v1), aspect=w / h if h > 0 else float('inf')))
+    out = dict(head=None, fin=None, groups=len(groups), head_reason='none_square', fin_reason='none_elongated')
+
+    def others_hit(group, inside):
+        return any(inside(boxes[i]) for i in range(n) if i not in group['members'])
+    def sprite(g):  # every triangle maps at least half the box both ways: quads carrying the glow sprite, not a mesh
+        u0, u1, v0, v1 = g['box']
+        return all(boxes[i][1] - boxes[i][0] >= 0.5 * (u1 - u0) and boxes[i][3] - boxes[i][2] >= 0.5 * (v1 - v0)
+                   for i in g['members'])
+    heads = [g for g in groups if len(g['members']) >= 2 and HEAD_ASPECT[0] <= g['aspect'] <= HEAD_ASPECT[1] and
+             sprite(g)]
+    if heads:
+        g = max(heads, key=lambda g: (g['box'][1] - g['box'][0]) * (g['box'][3] - g['box'][2]))
+        u0, u1, v0, v1 = g['box']
+        cu, cv, r = (u0 + u1) / 2, (v0 + v1) / 2, max(u1 - u0, v1 - v0) / 2
+        half = HEAD_FOOTPRINT * r
+        if others_hit(g, lambda b: b[0] <= cu + half and b[1] >= cu - half and b[2] <= cv + half and b[3] >= cv - half):
+            out['head_reason'] = 'footprint_shared'
+        else:
+            out['head'] = dict(u=round(cu, 5), v=round(cv, 5), r=round(r, 5))
+            out['head_reason'] = 'ok'
+    fins = [g for g in groups if g['aspect'] >= FIN_ASPECT and g['box'][3] > g['box'][2]]
+    if fins:
+        g = max(fins, key=lambda g: len(g['members']))
+        verts = [p for i in g['members'] for p in tris[i]]
+        radius = [(p[0] * p[0] + p[1] * p[1]) ** 0.5 for p in verts]
+        rmax = max(radius)
+        axis = [p[4] for p, r in zip(verts, radius) if r <= 0.1 * rmax]
+        rim = [p[4] for p, r in zip(verts, radius) if r >= 0.9 * rmax]
+        if rmax <= 0 or not axis or not rim:
+            out['fin_reason'] = 'no_axis_or_rim'
+        else:
+            axis_v, rim_v = sum(axis) / len(axis), sum(rim) / len(rim)
+            span = rim_v - axis_v
+            d = [(p[4] - axis_v) / span for p in verts] if abs(span) > 1e-6 else []
+            if not d or min(d) < FIN_LOW or max(d) > FIN_HIGH:
+                out['fin_reason'] = 'not_axis_to_rim'
+            else:
+                lo, hi = sorted((axis_v + FIN_LOW * span, axis_v + FIN_HIGH * span))
+                if others_hit(g, lambda b: b[2] <= hi and b[3] >= lo):
+                    out['fin_reason'] = 'footprint_shared'
+                else:
+                    out['fin'] = dict(axis_v=round(axis_v, 5), rim_v=round(rim_v, 5), u0=round(g['box'][0], 5),
+                                      u1=round(g['box'][1], 5))
+                    out['fin_reason'] = 'ok'
+    return out
+
+
+def bullet_body_layouts(assets, keys, bodies):
+    """tables.bullet_bodies: per body key a row draws (bodies: the census's summaries, their 'name'), its uv_layout;
+    an unreadable body gets both groups null (reason 'unreadable')."""
+    import bob1
+    read = census_reader.assets_reader(assets)
+    out = []
+    for key in sorted(keys):
+        name = (bodies.get(key) or {}).get('name')
+        entry = dict(body=key, head=None, fin=None)
+        try:
+            data, _ = read(name)
+            try:
+                tree = bob1.parse(data)
+            except bob1.FormatError:
+                tree = bob1.parse(census_reader.MATERIAL3.sub(b'', data))
+            layout = uv_layout(body_triangles(tree))
+            entry.update(head=layout['head'], fin=layout['fin'], groups=layout['groups'],
+                         head_reason=layout['head_reason'], fin_reason=layout['fin_reason'])
+        except Exception as exc:  # an unreadable body: no geometric size for it (the DLL keeps the accepted look)
+            entry.update(head_reason='unreadable', fin_reason='unreadable', error=type(exc).__name__)
+        out.append(entry)
+    return out
 
 
 def bullet_texture_frames(assets, name, cache):
@@ -287,6 +433,7 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
         applied += bool(override)
         entries.append(row_entry(w, body, colour, override, mounts.get(w['index']), texture))
     missile_rows = len(census_reader.data_rows(missiles_text.decode('latin1'))[1:])
+    layouts = bullet_body_layouts(assets, {e['body'] for e in entries if e['body']}, result['bodies'])
     return dict(
         schema=SCHEMA, tool=TOOL,
         generated_from=dict(root='<game-root>', view='stock' if stock_only else 'installed',
@@ -301,14 +448,20 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
                               'small fighter, medium corvette, big capital; other or unmounted fighter',
                    range_m='lifetime_ms x speed / 1000 / 500 m',
                    bullet_textures='per texture frame a row draws: bytes, FNV-1a 64 of the first 4096 and of all bytes '
-                                   'the engine decodes, level-0 luminance peak and p99 (Rec. 709 on value / 255)'),
+                                   'the engine decodes, level-0 luminance peak and p99 (Rec. 709 on value / 255)',
+                   bullet_bodies='per body a row draws, all LODs: head = the square UV cluster (box centre, half-side '
+                                 'r), fin = the u-elongated cluster (mean v of the axis and rim vertices, u range); '
+                                 'null when absent or its footprint is shared with another triangle'),
         counts=dict(bullets=len(entries), missiles=missile_rows, textures=sum(1 for e in entries if e['texture_rgb']),
-                    bullet_textures=len(textures),
+                    bullet_textures=len(textures), bullet_bodies=len(layouts),
+                    bullet_body_heads=sum(1 for b in layouts if b['head']),
+                    bullet_body_fins=sum(1 for b in layouts if b['fin']),
                     overrides=applied, mount_fallback=sum(1 for e in entries if e['mount_fallback']),
                     **{t: sum(1 for e in entries if e['mount_tier'] == t) for t in MOUNT_TIERS}),
         tables=dict(bullets=dict(rows=len(entries), sha256=table['sha256'], entries=entries),
                     missiles=dict(rows=missile_rows),
-                    bullet_textures=sorted(textures.values(), key=lambda t: (t['name'].lower(), t['fnv1a64']))))
+                    bullet_textures=sorted(textures.values(), key=lambda t: (t['name'].lower(), t['fnv1a64'])),
+                    bullet_bodies=layouts))
 
 
 def mount_fallback_rows(table):

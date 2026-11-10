@@ -358,6 +358,16 @@ def reshade_assets(lab, target):
                                                   for triangle in triangles for vertex in triangle))
     (target / 'ire_tex.rgba').write_bytes(rgba.tobytes())
     (target / 'ire_tex_p99.txt').write_text(f'{table_tool.luminance_stats(rgba)[1]:.4f}\n')
+    # the geometric size: the generator's uv_layout of the lab mesh as the table's eight 16.16 words (<name>_layout.txt;
+    # bullet_reshade_core.h LayoutWord order)
+    def layout_words(tris):
+        lay = table_tool.uv_layout([[tuple(v[:5]) for v in t] for t in tris])
+        h, f = lay['head'], lay['fin']
+        q = lambda x: round(x * 65536)  # noqa: E731
+        head = [q(h[k]) for k in 'uvr'] if h else [0, 0, 0]
+        fin = [q(f[k]) for k in ('axis_v', 'rim_v', 'u0', 'u1')] if f else [0, 0, 0, 0]
+        return [(1 if h else 0) | (2 if f else 0)] + head + fin
+    (target / 'ire_layout.txt').write_text(' '.join(str(w) for w in layout_words(triangles)) + '\n')
     # The other bodies the batch draws (the PAC, HEPT and PPC rows of tools/effects/weapon_catalog/fl.json), for the
     # family frames at the same values: family_<name>.txt ("vertices side p99", then x y z u v) and family_<name>.rgba;
     # p99 the texture's level-0 luminance p99 (the per-texture normaliser's input, bullet_reshade_core.h texture_scale).
@@ -375,6 +385,7 @@ def reshade_assets(lab, target):
         lines = [f'{3 * len(tris)} {frgba.shape[0]} {table_tool.luminance_stats(frgba)[1]:.4f}\n'] + \
             [' '.join(f'{v:.6f}' for v in vertex[:5]) + '\n' for triangle in tris for vertex in triangle]
         (target / f'family_{name}.txt').write_text(''.join(lines))
+        (target / f'{name}_layout.txt').write_text(' '.join(str(w) for w in layout_words(tris)) + '\n')
         (target / f'family_{name}.rgba').write_bytes(frgba.tobytes())
     return True
 

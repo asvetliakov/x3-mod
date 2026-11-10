@@ -1797,7 +1797,7 @@ private:
         float ps_reserved[12]{}; // application c216-217 (c218 too with the thin vote)
         bool ps_reserved_written = false;
         bool ps_bullet = false; // the bound PS is a game INSTANCE_BULLETS program (bullet re-shade requested)
-        float ps_c31[4]{};      // application c31 as last written (the bullet re-shade restores it)
+        float ps_c29[12]{};     // application c29..c31 as last written (the bullet re-shade restores them)
         bool vs_muzzle = false; // the bound VS is standard_lighting DEFAULT's (muzzle re-shade requested)
         float ps_c192[16]{};    // application c192..c195 as last written (the muzzle re-shade restores them)
         float vs_c28[36]{};     // application VS c28..c36 (g_mWorld, g_mViewInverse rows; the muzzle re-shade's origin)
@@ -2346,6 +2346,15 @@ private:
     IDirect3DPixelShader9* bullet_reshade_ps_ = nullptr;
     IDirect3DPixelShader9* bullet_reshade_flag_ps_ = nullptr; // the far-flag variant (oC0..oC2)
     float bullet_reshade_constants_[4]{};
+    // The geometric size (bullet_reshade_core.h layout_constants): the drawn body's c29..c30 for the last body id the
+    // scope stub published (x3m_bullet_body), recomputed when the id changes or the tuning reloads; unmapped bodies
+    // logged once each (at most 16 rows a device).
+    float bullet_layout_[8]{}; // bullet_reshade_core.h layout_floats (static_assert in motion_output_bullet_reshade_inc.h)
+    std::uint32_t bullet_layout_body_ = 0;
+    bool bullet_layout_valid_ = false;
+    std::uint32_t bullet_layout_unknown_[16]{};
+    unsigned bullet_layout_unknown_count_ = 0;
+    void bullet_reshade_layout(std::uint32_t body) noexcept;
     unsigned bullet_reshade_draws_ = 0, bullet_reshade_failures_ = 0, bullet_reshade_outside_ = 0;
     unsigned bullet_reshade_timed_draws_ = 0, bullet_reshade_additive_ = 0, bullet_reshade_flagged_ = 0;
     std::uint32_t bullet_reshade_frames_ = 0; // Present count: every 60th frame is timed

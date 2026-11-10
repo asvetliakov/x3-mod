@@ -1,0 +1,32 @@
+tbullets f0cb79fd63c46318 rows 45; 30 bodies, 20 with a head, 7 with fins
+body | groups | head u, v, r | fin axis v, rim v, u0..u1 | head reason | fin reason | rows
+objects/effects/weapons/bullet_electrospike | 2 | 0.31667, 0.42393, 0.04504 | - | ok | footprint_shared | SS_BULLET_ESR
+objects/effects/weapons/bullet_energybolt | 2 | 0.31672, 0.42243, 0.04307 | - | ok | not_axis_to_rim | SS_BULLET_EBC
+objects/effects/weapons/bullet_firebomb | 2 | 0.08601, 0.8811, 0.06793 | - | ok | not_axis_to_rim | SS_BULLET_IBL
+objects/effects/weapons/bullet_flamethrower | 1 | 0.12475, 0.12502, 0.12257 | - | ok | none_elongated | SS_BULLET_PD
+objects/effects/weapons/bullet_fragbomb | 2 | 0.32021, 0.72073, 0.062 | - | ok | footprint_shared | SS_BULLET_FBL
+objects/effects/weapons/bullet_fragbomb_fragment | 2 | 0.32021, 0.72073, 0.062 | - | ok | footprint_shared | SS_BULLET_FBL_FRAG
+objects/effects/weapons/bullet_gausscannon | 2 | 0.668, 0.35855, 0.08449 | - | ok | none_elongated | SS_BULLET_GAUSS
+objects/effects/weapons/bullet_ioncannon | 2 | 0.70975, 0.88775, 0.09022 | 0.57017, 0.46221, 0.53957..0.96616 | ok | ok | SS_BULLET_IONC
+objects/effects/weapons/bullet_ionpulse | 2 | 0.31594, 0.53099, 0.04363 | - | ok | footprint_shared | SS_BULLET_IPG
+objects/effects/weapons/bullet_ls_alpha | 2 | 0.88319, 0.86715, 0.09988 | 0.35191, 0.27924, 0.01309..0.97672 | ok | ok | SS_BULLET_IRE,SS_BULLET_FLAK_CLUSTER_FRAG,SS_BULLET_FLAK_CLUSTER_FRAG_FRAG,SS_BULLET_FLAK_ALPHA_FRAG
+objects/effects/weapons/bullet_mam | 1 | 0.26057, 0.89423, 0.09397 | - | ok | none_elongated | SS_BULLET_MAM,SS_BULLET_MAM_1
+objects/effects/weapons/bullet_pl_alpha | 2 | 0.09961, 0.87142, 0.06887 | 0.04572, -3e-05, 0.01845..0.96162 | ok | ok | SS_BULLET_HEPT
+objects/effects/weapons/bullet_pointsing | 1 | 0.48016, 0.89423, 0.11422 | - | ok | none_elongated | SS_BULLET_PSP
+objects/effects/weapons/bullet_pr_alpha | 2 | 0.37981, 0.88136, 0.06204 | 0.52842, 0.47032, 0.00128..1.00128 | ok | ok | SS_BULLET_PAC
+objects/effects/weapons/bullet_push | 1 | - | - | none_square | none_elongated | SS_BULLET_CIG
+objects/effects/weapons/bullet_repair | 1 | - | - | none_square | none_elongated | SS_BULLET_REPAIR
+objects/effects/weapons/bullet_repeat | 2 | 0.31757, 0.61721, 0.03812 | - | ok | no_axis_or_rim | SS_BULLET_PRG
+objects/effects/x3ap/weapons/tol_bullet | 1 | - | 0.74387, 0.55083, 0.0..50.0 | none_square | ok | SS_BULLET_PBC
+objects/v/00225 | 1 | - | - | none_square | none_elongated | SS_BULLET_PSG,SS_BULLET_TERRANANTIFIGHTER_FRAG
+objects/v/00300 | 1 | - | - | none_square | no_axis_or_rim | SS_BULLET_IOND,SS_BULLET_TERANTIFIGHTER,SS_BULLET_TERRANANTIFIGHTER_1
+objects/v/00517 | 1 | 0.87837, 0.11887, 0.12163 | - | ok | none_elongated | SS_BULLET_EMP,SS_BULLET_EMP_1
+objects/v/00518 | 2 | 0.89041, 0.88662, 0.0952 | 0.74655, 0.62292, 0.42322..0.91664 | ok | ok | SS_BULLET_PPC
+objects/v/00525 | 1 | - | - | none_square | none_elongated | SS_BULLET_TUG,SS_BULLET_DUMMY2,SS_BULLET_KH_ALPHA
+objects/v/00526 | 2 | - | - | none_square | no_axis_or_rim | SS_BULLET_KH_BETA
+objects/v/00527 | 2 | - | - | none_square | none_elongated | SS_BULLET_KH_GAMMA
+objects/v/10385 | 1 | - | 0.63164, 0.51742, 0.26482..0.6857 | none_square | ok | SS_BULLET_PAL,SS_BULLET_TRIBEAM,SS_BULLET_FUSIONBEAM
+objects/v/10436 | 4 | 0.88667, 0.37726, 0.10779 | - | ok | no_axis_or_rim | SS_BULLET_MASS
+objects/v/10458 | 2 | 0.63705, 0.37959, 0.11082 | - | ok | no_axis_or_rim | SS_BULLET_PBE,SS_BULLET_FLAK_ALPHA,SS_BULLET_FLAK_CLUSTER
+objects/v/10459 | 1 | - | - | none_square | not_axis_to_rim | SS_BULLET_DUMMY1,SS_BULLET_IPG_FRAG
+objects/v/10678 | 1 | 0.87837, 0.11887, 0.12163 | - | ok | none_elongated | SS_BULLET_MINING

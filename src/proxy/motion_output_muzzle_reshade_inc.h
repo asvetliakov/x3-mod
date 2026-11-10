@@ -157,6 +157,7 @@ void MotionOutput::reshade_poll_tune() noexcept {
     if (weapon_effects::projectile_tune::poll(&projectile_tune_[weapon_effects::projectile_family::fighter_tracer])) {
         weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
                                            bullet_reshade_constants_);
+        bullet_layout_valid_ = false; // rs_head / rs_width: the body's c29..c30 again at its next draw
         muzzle_reshade_refresh_constants();
     }
 #endif

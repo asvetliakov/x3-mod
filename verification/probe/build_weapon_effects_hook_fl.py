@@ -44,10 +44,11 @@ DEATH_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'push', 'push', 'l
 # jumps, then the skip path `add [skipped],1; popf; mov eax,1; ret`).
 BATCH_STUB = ['pushf', 'cmp', 'je', 'push', 'mov', 'cmp', 'ja', 'bt', 'pop', 'jb', 'popf', 'jmp', 'pop', 'popf', 'jmp',
               'add', 'popf', 'mov', 'ret']
-# The bullet re-shade's batch scope (reshade mode): the counters raised under a saved EFLAGS, the 4-byte pad (lea) and
-# the two stack words re-pushed, the call through the continue, the pad and words dropped (lea), the scope lowered, a
-# plain ret.
-BATCH_SCOPE_STUB = ['pushf', 'add', 'add', 'popf', 'lea', 'push', 'push', 'call', 'lea', 'pushf', 'sub', 'popf', 'ret']
+# The bullet re-shade's batch scope (reshade mode): the batch's body id [EDX+0x0c] published through a saved EAX and the
+# counters raised under a saved EFLAGS, the 4-byte pad (lea) and the two stack words re-pushed, the call through the
+# continue, the pad and words dropped (lea), the scope lowered, a plain ret.
+BATCH_SCOPE_STUB = ['pushf', 'push', 'mov', 'mov', 'pop', 'add', 'add', 'popf', 'lea', 'push', 'push', 'call', 'lea',
+                    'pushf', 'sub', 'popf', 'ret']
 STUBS = {'_x3m_weapon_effects_stub_batch_fl': BATCH_STUB, '_x3m_weapon_effects_stub_batch_scope_fl': BATCH_SCOPE_STUB,
          '_x3m_weapon_effects_stub_impact_fl': IMPACT_STUB, '_x3m_weapon_effects_stub_tap_fl': TAP_STUB,
          '_x3m_weapon_effects_stub_bolt_tap_fl': BOLT_TAP_STUB, '_x3m_weapon_effects_stub_muzzle_fl': MUZZLE_STUB,

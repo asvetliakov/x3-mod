@@ -1488,7 +1488,12 @@ void reshade_cases() {
     const auto tune = x3m::weapon_effects::projectile_family::families[x3m::weapon_effects::projectile_family::fighter_tracer].tune;
     float constants[4];
     rs::constants(tune, constants);
-    const float app_c31[4] = {0.125f, -2.5f, 7.f, 0.0625f}; // an application value the substitution must put back
+    // the application's c29..c31 the substitution must put back (c31 = app_c31)
+    const float app_block[12] = {3.f, -1.f, 0.25f, 9.f, -4.f, 0.5f, 2.f, -0.75f, 0.125f, -2.5f, 7.f, 0.0625f};
+    // the drawn body's block without a layout: c29..c30 identity_layout, c31 the look
+    float plain_block[12];
+    for (unsigned i = 0; i < 8; ++i) plain_block[i] = rs::identity_layout[i];
+    for (unsigned i = 0; i < 4; ++i) plain_block[8 + i] = constants[i];
     // (b) flat texels through a full-target quad, blend off: our program against the CPU model
     {
         Com<IDirect3DTexture9> rt, flat;
@@ -1521,7 +1526,7 @@ void reshade_cases() {
                 dev->BeginScene();
                 rf::bind_pass(dev, vs.p, decl.p, flat.p, rows, false);
                 dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE); // the program's output itself
-                dev->SetPixelShaderConstantF(rs::constant_register, constants, 1);
+                dev->SetPixelShaderConstantF(rs::block_register, plain_block, rs::block_count);
                 dev->SetPixelShader(which ? ours.p : vanilla.p);
                 ok = SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(rf::Vertex)));
                 dev->EndScene();
@@ -1551,10 +1556,90 @@ void reshade_cases() {
             }
         }
         dev->SetRenderTarget(0, old_rt);
-        if (old_rt) old_rt->Release();
         std::printf("RESHADE case=model worst_rel=%.3f vanilla_worst_rel=%.3f\n", double(worst), double(worst_vanilla));
         report("reshade_program_matches_model", ok && worst <= 1.f, "");
         report("reshade_standin_vanilla_is_t_times_a", ok && worst_vanilla <= 1.f, "");
+        // (b3) the geometric size (projectile-look.md "Geometric size (2026-11-10)"): the IRE's table layout (the
+        // generator's FL record) at rs_head 0.5 / rs_width 0.6, a flat texel drawn with one UV per quad at points in the
+        // head's footprint (r / R 0.1..0.6 and a box corner past the circle), in the fin band (d -0.1..0.7) and outside
+        // both: the output equals model x geometric(); at the keys' default 1 every point's output equals the
+        // layout-free program's, bit for bit (the accepted look unchanged).
+        const std::int32_t ire_words[8] = {3, 57881, 56830, 6546, 23063, 18300, 858, 64010};
+        auto shrink = tune;
+        shrink.rs_head = 0.5f;
+        shrink.rs_width = 0.6f;
+        float shrunk[8], kept[8];
+        rs::layout_constants(ire_words, shrink, shrunk);
+        rs::layout_constants(ire_words, tune, kept);
+        const float head_u = ire_words[1] / 65536.f, head_v = ire_words[2] / 65536.f, head_r = ire_words[3] / 65536.f;
+        const float axis_v = ire_words[4] / 65536.f, rim_v = ire_words[5] / 65536.f;
+        const float points[11][2] = {
+            {head_u + 0.1f * head_r, head_v}, {head_u + 0.35f * head_r, head_v}, {head_u, head_v + 0.45f * head_r},
+            {head_u - 0.6f * head_r, head_v}, {head_u + 0.9f * head_r, head_v + 0.9f * head_r},
+            {0.5f, axis_v + 0.1f * (rim_v - axis_v)}, {0.3f, axis_v + 0.35f * (rim_v - axis_v)},
+            {0.7f, axis_v + 0.5f * (rim_v - axis_v)}, {0.2f, axis_v + 0.7f * (rim_v - axis_v)},
+            {0.4f, axis_v - 0.1f * (rim_v - axis_v)}, {0.5f, 0.6f}};
+        float worst_geo = 0.f;
+        bool same_at_one = true;
+        if (ok) {
+            D3DLOCKED_RECT lr{};
+            ok = SUCCEEDED(flat.p->LockRect(0, &lr, nullptr, 0));
+            if (ok) {
+                unsigned char* b = static_cast<unsigned char*>(lr.pBits);
+                b[0] = texels[0][2], b[1] = texels[0][1], b[2] = texels[0][0], b[3] = texels[0][3];
+                flat.p->UnlockRect(0);
+            }
+        }
+        if (ok) dev->SetRenderTarget(0, rt_s.p);
+        for (unsigned c = 0; ok && c < 11; ++c) {
+            const float u = points[c][0], v = points[c][1];
+            const DWORD col = 0xff000000u;
+            const rf::Vertex quad[6] = {{-1, -1, 1, u, v, col}, {-1, 1, 1, u, v, col}, {1, 1, 1, u, v, col},
+                                        {-1, -1, 1, u, v, col}, {1, 1, 1, u, v, col},  {1, -1, 1, u, v, col}};
+            std::uint16_t raw[3][3]{};
+            float got[3][3]{};
+            for (unsigned which = 0; which < 3 && ok; ++which) { // shrunk, keys at 1, no layout
+                float block[12];
+                const float* layout = which == 0 ? shrunk : which == 1 ? kept : rs::identity_layout;
+                for (unsigned i = 0; i < 8; ++i) block[i] = layout[i];
+                for (unsigned i = 0; i < 4; ++i) block[8 + i] = constants[i];
+                dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+                dev->BeginScene();
+                rf::bind_pass(dev, vs.p, decl.p, flat.p, rows, false);
+                dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+                dev->SetPixelShaderConstantF(rs::block_register, block, rs::block_count);
+                dev->SetPixelShader(ours.p);
+                ok = SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(rf::Vertex)));
+                dev->EndScene();
+                ok = ok && SUCCEEDED(dev->GetRenderTargetData(rt_s.p, sys.p));
+                D3DLOCKED_RECT out{};
+                ok = ok && SUCCEEDED(sys.p->LockRect(&out, nullptr, D3DLOCK_READONLY));
+                if (!ok) break;
+                const auto* px = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(out.pBits) + 8 * out.Pitch) + 8 * 4;
+                for (unsigned k = 0; k < 3; ++k) raw[which][k] = px[k], got[which][k] = half_to_float(px[k]);
+                sys.p->UnlockRect();
+            }
+            if (!ok) break;
+            const float t[3] = {texels[0][0] / 255.f, texels[0][1] / 255.f, texels[0][2] / 255.f};
+            float want[3];
+            rs::model(constants, t, 1.f, want);
+            const float g = rs::geometric(shrunk, u, v);
+            for (unsigned k = 0; k < 3; ++k) {
+                const float w = want[k] * g;
+                worst_geo = std::max(worst_geo, std::fabs(got[0][k] - w) / (0.004f + 0.004f * std::fabs(w)));
+            }
+            same_at_one = same_at_one && !std::memcmp(raw[1], raw[2], sizeof raw[1]);
+            std::printf("RESHADE case=geometric index=%u u=%.4f v=%.4f factor=%.4f got=%.4f model=%.4f kept=%.4f "
+                        "plain=%.4f\n",
+                        c, double(u), double(v), double(g), double(got[0][1]), double(want[1] * g), double(got[1][1]),
+                        double(got[2][1]));
+        }
+        dev->SetRenderTarget(0, old_rt);
+        if (old_rt) old_rt->Release();
+        std::printf("RESHADE case=geometric_model worst_rel=%.3f same_at_one=%u rs_head=0.5 rs_width=0.6\n",
+                    double(worst_geo), unsigned(same_at_one));
+        report("reshade_geometric_matches_model", ok && worst_geo <= 1.f, "");
+        report("reshade_geometric_keys_at_one_unchanged", ok && same_at_one, "");
     }
     // (b2) the additive route's path through the production sequence (bullet_reshade_route.h, as
     // prepare_screen_additive runs it under HDR): the game's ONE / INVSRCCOLOR pass, its program and an application
@@ -1616,7 +1701,7 @@ void reshade_cases() {
             dev->BeginScene();
             rf::bind_pass(dev, vs.p, decl.p, flat.p, rows, false);
             dev->SetPixelShader(vanilla.p);
-            dev->SetPixelShaderConstantF(rs::constant_register, app_c31, 1);
+            dev->SetPixelShaderConstantF(rs::block_register, app_block, rs::block_count);
             auto ops = rf::device_ops(dev);
             rr2::Plan plan;
             plan.program = flag ? ours_flag.p : ours.p;
@@ -1624,23 +1709,25 @@ void reshade_cases() {
             plan.gain = gain;
             plan.convert = true;
             rr2::Applied applied;
-            ok = SUCCEEDED(rr2::begin(ops, plan, app_c31, applied)) && applied.destblend && applied.c31 && applied.program;
+            ok = SUCCEEDED(rr2::begin(ops, plan, app_block, applied)) && applied.destblend && applied.block && applied.program;
             DWORD blend = 0;
             IDirect3DPixelShader9* bound = nullptr;
-            float c31[4]{};
+            float block[12]{};
+            const float* const c31 = block + 8;
             const bool during = ok && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) && blend == D3DBLEND_ONE &&
                                 SUCCEEDED(dev->GetPixelShader(&bound)) && bound == plan.program &&
-                                SUCCEEDED(dev->GetPixelShaderConstantF(rs::constant_register, c31, 1)) &&
+                                SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
+                                !std::memcmp(block, rs::identity_layout, sizeof rs::identity_layout) &&
                                 c31[0] == constants[0] * gain && c31[1] == constants[1] && c31[2] == constants[2] * gain &&
                                 c31[3] == constants[3];
             if (bound) bound->Release();
             bound = nullptr;
             ok = ok && SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(rf::Vertex)));
-            const HRESULT back = rr2::end(ops, applied, vanilla.p, app_c31);
+            const HRESULT back = rr2::end(ops, applied, vanilla.p, app_block);
             const bool after = SUCCEEDED(back) && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) &&
                                blend == D3DBLEND_INVSRCCOLOR && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
-                               SUCCEEDED(dev->GetPixelShaderConstantF(rs::constant_register, c31, 1)) &&
-                               !std::memcmp(c31, app_c31, sizeof c31);
+                               SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
+                               !std::memcmp(block, app_block, sizeof block);
             if (bound) bound->Release();
             dev->EndScene();
             during_all = during_all && during;
@@ -1731,19 +1818,19 @@ void reshade_cases() {
         rf::bind_pass(dev, vs.p, decl.p, tex.p, rows, false);
         dev->SetStreamSource(0, vb.p, 0, sizeof(rf::Vertex));
         dev->SetPixelShader(vanilla.p);
-        dev->SetPixelShaderConstantF(rs::constant_register, app_c31, 1);
+        dev->SetPixelShaderConstantF(rs::block_register, app_block, rs::block_count);
         bool restored = true;
-        const HRESULT hr = which ? rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, 22, &restored)
+        const HRESULT hr = which ? rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_block, 22, &restored)
                                  : dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 22);
         dev->EndScene();
         ok = SUCCEEDED(hr) && image_sum(&sums[which], &peaks[which]);
         restored_all = restored_all && restored;
         if (which) { // (c) the game's binding back
             IDirect3DPixelShader9* bound = nullptr;
-            float c31[4]{};
+            float block[12]{};
             getters_ok = SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
-                         SUCCEEDED(dev->GetPixelShaderConstantF(rs::constant_register, c31, 1)) &&
-                         !std::memcmp(c31, app_c31, sizeof c31);
+                         SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
+                         !std::memcmp(block, app_block, sizeof block);
             if (bound) bound->Release();
         }
     }
@@ -1776,10 +1863,10 @@ void reshade_cases() {
         finish();
         QueryPerformanceCounter(&a);
         for (unsigned i = 0; i < draws; ++i) {
-            dev->SetPixelShaderConstantF(rs::constant_register, constants, 1);
+            dev->SetPixelShaderConstantF(rs::block_register, plain_block, rs::block_count);
             dev->SetPixelShader(ours.p);
             dev->SetPixelShader(vanilla.p);
-            dev->SetPixelShaderConstantF(rs::constant_register, app_c31, 1);
+            dev->SetPixelShaderConstantF(rs::block_register, app_block, rs::block_count);
         }
         QueryPerformanceCounter(&b);
         best_calls = std::min(best_calls, ticks_us(a, b, freq) / draws);
@@ -1791,7 +1878,7 @@ void reshade_cases() {
         best_vanilla = std::min(best_vanilla, ticks_us(a, b, freq) / draws);
         QueryPerformanceCounter(&a);
         bool restored = true;
-        for (unsigned i = 0; i < draws; ++i) rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, 22, &restored);
+        for (unsigned i = 0; i < draws; ++i) rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_block, 22, &restored);
         finish();
         QueryPerformanceCounter(&b);
         best_reshaded = std::min(best_reshaded, ticks_us(a, b, freq) / draws);
@@ -1811,7 +1898,7 @@ void reshade_cases() {
             QueryPerformanceCounter(&a);
             bool restored = true;
             if (which)
-                rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, batch * 22, &restored);
+                rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_block, batch * 22, &restored);
             else
                 dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, batch * 22);
             finish();
@@ -1830,7 +1917,39 @@ void reshade_cases() {
                 "substitution_us_per_draw=%.3f batch_bolts=%u batch_us_vanilla=%.1f batch_us_reshaded=%.1f fenced=%u\n",
                 draws, runs, best_calls, best_vanilla, best_reshaded, best_reshaded - best_vanilla, batch, batch_us[0],
                 batch_us[1], unsigned(fence.p != nullptr));
-    report("reshade_cost_measured", ok && fence.p && best_calls < 50.0, "");
+    // the geometric size's CPU at a body change (MotionOutput::bullet_reshade_layout: weapon_effects_patch.cpp's linear
+    // scan of the mapped body ids, then layout_constants): 30 mapped bodies, every draw another body (the worst case:
+    // the batch submits one body per call), best of 7 runs of 2000
+    double best_layout = 1e30;
+    {
+        std::uint32_t ids[30];
+        std::int32_t words[30][8];
+        for (unsigned i = 0; i < 30; ++i) {
+            ids[i] = 0x100u + 7u * i;
+            const std::int32_t w[8] = {3, 57881 + std::int32_t(i), 56830, 6546, 23063, 18300, 858, 64010};
+            std::memcpy(words[i], w, sizeof w);
+        }
+        auto shrink = tune;
+        shrink.rs_head = 0.5f;
+        shrink.rs_width = 0.6f;
+        volatile float sink = 0.f;
+        for (unsigned run = 0; run < runs; ++run) {
+            QueryPerformanceCounter(&a);
+            for (unsigned i = 0; i < draws; ++i) {
+                const std::uint32_t body = ids[(i * 7u) % 30u];
+                unsigned k = 0;
+                while (k < 30 && ids[k] != body) ++k;
+                float out[8];
+                rs::layout_constants(k < 30 ? words[k] : nullptr, shrink, out);
+                sink = sink + out[2];
+            }
+            QueryPerformanceCounter(&b);
+            best_layout = std::min(best_layout, ticks_us(a, b, freq) / draws);
+        }
+    }
+    std::printf("RESHADE case=layout_cost draws=%u runs=%u mapped_bodies=30 layout_us_per_body_change=%.4f\n", draws, runs,
+                best_layout);
+    report("reshade_cost_measured", ok && fence.p && best_calls < 50.0 && best_layout < 1.0, "");
 }
 
 // The bullet re-shade's per-texture normaliser (bullet_reshade_core.h; bullet-draw-batch.md section 6): the production
@@ -1871,14 +1990,14 @@ void reshade_texture_cases() {
     const float ire = rs::texture_scale(t.bullet_texture_p99_q[0]), ppc = rs::texture_scale(t.bullet_texture_p99_q[1]);
     const float none = rs::texture_scale(0);
     rs::Plan plan;
-    float c31[4] = {0.4f, 0.4f, 0.2f, rs::luminance_scale}, got[4];
+    float c31[4] = {0.4f, 0.4f, 0.2f, rs::luminance_scale}, got[12];
     plan.constants = c31;
     plan.scale = ppc;
     rs::plan_constants(plan, got);
-    const bool plan_ok = got[3] == ppc && got[0] == c31[0];
+    const bool plan_ok = got[11] == ppc && got[8] == c31[0] && !std::memcmp(got, rs::identity_layout, 32);
     plan.scale = 0.f;
     rs::plan_constants(plan, got);
-    const bool fallback_ok = got[3] == rs::luminance_scale;
+    const bool fallback_ok = got[11] == rs::luminance_scale;
     LARGE_INTEGER freq{}, a{}, b{};
     QueryPerformanceFrequency(&freq);
     constexpr unsigned runs = 7, calls = 64;
@@ -1916,7 +2035,10 @@ void reshade_texture_cases() {
 // the game's program and the application's c192..c195 after; (d) the stand-in flash (50 fanned quads, procedural streak)
 // at the scale peak, 30 m, 1920x1080 under ONE / ONE, at three poses (the flash axis 25 degrees out of the screen plane,
 // along the view ray, in the screen plane: the per-draw overlap's range): re-shaded energy <= mz_gain x vanilla's, the
-// extent at scene white > 0 and <= mz_size x vanilla's (0.1 reported) at each; (e) the cost per draw: the four calls
+// extent at 0.1 linear (a tenth of scene white) <= mz_size x vanilla's + 1 px and the flash lit (peak >= mz_gain / 4)
+// at each
+// (FL 65 A baked no white core, mz_core 0, so the earlier extent at scene white is reported only, as is the extent at a
+// tenth of each image's own peak); (e) the cost per draw: the four calls
 // alone, the 100-triangle
 // draw loop with and without them (best of 7 runs of 2000), the match (TLS lookup, the 4-byte validated node read
 // through the production engine_memory::read, the body list) and the per-draw c192 (draw_constants).
@@ -2141,24 +2263,25 @@ void muzzle_reshade_cases() {
         }
         const double energy = figs[0].sum > 0 ? figs[1].sum / figs[0].sum : 0.0;
         energy_ok = energy_ok && ok && figs[0].sum > 0.0 && energy <= double(gain);
-        extent_ok = extent_ok && ok && figs[1].white_r > 0.f && figs[1].white_r <= size * figs[0].white_r + 0.5f;
+        extent_ok = extent_ok && ok && figs[1].peak >= 0.25f * gain && figs[1].tenth_r <= size * figs[0].tenth_r + 1.f;
         // the overlap the draw used: c194.x = gain / N
         const double overlap = plain[8] > 0.f ? double(plain[10]) / double(plain[8]) : 0.0;
         std::printf("MUZZLE_RESHADE case=flash_%s distance_m=30 yaw_deg=%.1f scale=%.3f overlap=%.3f vanilla_sum=%.2f "
                     "reshade_sum=%.2f energy_ratio=%.3f vanilla_peak=%.4f reshade_peak=%.4f vanilla_white_r=%.1f "
-                    "reshade_white_r=%.1f vanilla_tenth_r=%.1f reshade_tenth_r=%.1f size=%.3g gain=%.3g core=%.3g "
-                    "smooth=%.3g\n",
+                    "reshade_white_r=%.1f vanilla_tenth_r=%.1f reshade_tenth_r=%.1f vanilla_peak_tenth_r=%.1f "
+                    "reshade_peak_tenth_r=%.1f size=%.3g gain=%.3g core=%.3g smooth=%.3g\n",
                     poses[pose].name, double(poses[pose].yaw) * 57.29578, double(mf::peak_scale), overlap, figs[0].sum,
                     figs[1].sum, energy, double(figs[0].peak), double(figs[1].peak), double(figs[0].white_r),
-                    double(figs[1].white_r), double(figs[0].tenth_r), double(figs[1].tenth_r), double(size),
-                    double(gain), double(tune.mz_core), double(tune.mz_smooth));
+                    double(figs[1].white_r), double(figs[0].tenth_r), double(figs[1].tenth_r),
+                    double(figs[0].peak_tenth_r), double(figs[1].peak_tenth_r), double(size), double(gain),
+                    double(tune.mz_core), double(tune.mz_smooth));
     }
     std::memcpy(rows, tilt_rows, sizeof rows);
     std::memcpy(plain, base, sizeof plain);
     ok = ok && mz::draw_constants(body, rows, plain);
     report("muzzle_reshade_route_plain_binds_and_restores", ok && during_ok && restored_all && getters_ok, "");
     report("muzzle_reshade_energy_within_gain", ok && energy_ok, "");
-    // the design's gate is the extent at scene white: reached, and within mz_size x vanilla's (0.1 reported)
+    // the design's gate is the extent at 0.1 linear: lit, and within mz_size x vanilla's + 1 px
     report("muzzle_reshade_extent_within_size", ok && extent_ok, "");
     // (e) the cost: CPU per draw of the four calls alone, the draw loop with and without them, the match, the c192
     LARGE_INTEGER freq{}, a{}, b{};

@@ -1,5 +1,6 @@
 #pragma once
 #include "weapon_projectile_family.h"
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 
@@ -18,8 +19,12 @@ constexpr bool bullet_program(std::uint64_t hash) noexcept {
     return hash && (hash == bullet_programs[0] || hash == bullet_programs[1] || hash == bullet_programs[2]);
 }
 // The program's constant register (weapon_bullet_reshade_ps.hlsl `reshade : register(c31)`): ps_2_0 has c0..c31; the
-// game's bullet program reads none, and the register is put back after each substituted draw.
+// game's bullet program reads none (section 6: `tex t0; mul r0.rgb, t0, v0.a; mov r0.a, t0.a`, no c#), and the block is
+// put back after each substituted draw. The block is c29..c31: c29..c30 the drawn body's UV layout (layout_constants,
+// the geometric size), c31 the look; one SetPixelShaderConstantF of three registers each way.
 constexpr unsigned constant_register = 31;
+constexpr unsigned block_register = 29, block_count = 3, layout_floats = 8;
+static_assert(block_register + block_count - 1 == constant_register, "c31 closes the block");
 // c31.w: the luminance normaliser, per texture (texture_scale). For the IRE's texture it is 1 / the IRE strip's peak
 // texel luminance (0.36 of fx_bullets_diff.tga's body and head rows, section 6), so the smoothstep and the core work on
 // 0..1 for the IRE (FL 64 A accepted the look at it); a draw whose bound texture has no table entry keeps it.
@@ -82,8 +87,129 @@ static_assert(projectile_family::tune_keys >= 17 &&
                   projectile_family::key_is(projectile_family::tune_key_names[15], "rs_edge") &&
                   projectile_family::key_is(projectile_family::tune_key_names[16], "rs_core"),
               "the re-shade keys' indices");
+// The geometric size (docs/architecture/projectile-look.md "Geometric size (2026-11-10)"): the drawn body's UV layout
+// (weapon_effects.json tables.bullet_bodies, tools/effects/weapon_effects_table.py uv_layout; reduced at load to
+// 16.16 words, weapon_effects_table.h) and the keys rs_head / rs_width give c29..c30:
+//   c29 = (head centre u, v, 1 / R, 1 / rs_head)       inside the head's square footprint (max |du|, |dv| <= 1.02 R):
+//                                                        f = smoothstep(1, 1 - s, |uv - centre| / (R rs_head))
+//   c30 = (fin axis v, 1 / (rim v - axis v), 1 / rs_width, s)   inside the fin band (d = (v - axis) / (rim - axis) in
+//                                                        [-0.25, 1.02], any u): f = smoothstep(1, 1 - s, |d| / rs_width)
+// and f = 1 elsewhere; the radiance is multiplied by f. A key at 1 uploads 0 for its 1 / rs: the falloff's argument is
+// 0, f exactly 1 (the accepted look bit for bit). A body without a group gets a footprint no UV reaches (centre -100).
+// The generator records a group only when no other triangle of the body samples inside its footprint, so the shader
+// needs no other test.
+constexpr float geometric_softness = 0.5f; // s: the outer half of the shrunk radius fades
+constexpr float head_footprint = 1.02f, fin_low = -0.25f, fin_high = 1.02f; // the program's literals
+// The table's layout words (16.16; core::Table::bullet_body_layout): flags (bit 0 head, bit 1 fin), head u, v, R, fin
+// axis v, rim v, u0, u1 (u0 / u1 informational).
+enum LayoutWord : unsigned { lw_flags = 0, lw_head_u, lw_head_v, lw_head_r, lw_axis_v, lw_rim_v, lw_u0, lw_u1 };
+constexpr std::int32_t layout_head = 1, layout_fin = 2;
+constexpr float identity_layout[layout_floats] = {-100.f, -100.f, 1.f, 0.f, -100.f, 1.f, 0.f, geometric_softness};
+inline void layout_constants(const std::int32_t* w, const projectile_family::Tune& t, float out[layout_floats]) noexcept {
+    namespace pf = projectile_family;
+    const auto clamp = [](float v, unsigned k) {
+        return !(v >= pf::tune_min[k]) ? pf::tune_min[k] : v > pf::tune_max[k] ? pf::tune_max[k] : v;
+    };
+    const float head = clamp(t.rs_head, 21), width = clamp(t.rs_width, 22);
+    for (unsigned i = 0; i < layout_floats; ++i) out[i] = identity_layout[i];
+    if (!w) return;
+    constexpr float q = 1.f / 65536.f;
+    if ((w[lw_flags] & layout_head) && w[lw_head_r] > 0) {
+        out[0] = float(w[lw_head_u]) * q;
+        out[1] = float(w[lw_head_v]) * q;
+        out[2] = 65536.f / float(w[lw_head_r]);
+        out[3] = head < 1.f ? 1.f / head : 0.f;
+    }
+    if ((w[lw_flags] & layout_fin) && w[lw_rim_v] != w[lw_axis_v]) {
+        out[4] = float(w[lw_axis_v]) * q;
+        out[5] = 65536.f / float(w[lw_rim_v] - w[lw_axis_v]);
+        out[6] = width < 1.f ? 1.f / width : 0.f;
+    }
+}
+static_assert(projectile_family::key_is(projectile_family::tune_key_names[21], "rs_head") &&
+                  projectile_family::key_is(projectile_family::tune_key_names[22], "rs_width"),
+              "the geometric size keys' indices");
+// The engine body id -> tables.bullet_bodies entry map (weapon_effects_patch.cpp bullet_body_layout; the host test
+// verification/analysis/test_weapon_effects_table.py drives it with a fake reader). Built once: each table row whose
+// body string hash names an entry gives the live TBullets row's word +0 (its body id, = the batch's [EDX+0x0c]).
+// build_body_map returns false while the map is not final: the engine's TBullets not readable yet (no count), or a
+// row read failed (counted; after body_map_retries failed builds it is final without layouts, reason row_read_failed).
+// A final map is state 1 (built) or 2 (off: no table, no entries, the engine's row count not the table's, or the
+// failed reads). read(address, out, bytes) -> bool is the validated engine reader.
+constexpr unsigned tbullets_body = 0x0;  // TBullets +0x0 (weapon_effects_projectile.h projectile::type_body)
+constexpr std::uint32_t body_map_retries = 64;
+struct BodyMap {
+    std::uint8_t state = 0;    // 0 not final, 1 built, 2 off
+    unsigned count = 0;
+    std::uint32_t failures = 0; // builds a row read failed in
+    std::uint32_t rows = 0;     // the engine's row count at the last build
+    const char* reason = "unbuilt";
+    std::uint32_t id[core::bullet_body_capacity]{};
+    std::uint8_t entry[core::bullet_body_capacity]{};
+};
+template <class Read>
+bool build_body_map(BodyMap& m, const core::Table* t, std::uintptr_t table_slot, std::uintptr_t count_slot,
+                    Read read) noexcept {
+    if (m.state) return true;
+    const unsigned entries = t ? t->bullet_bodies : 0u;
+    const auto off = [&](const char* why) {
+        m.state = 2;
+        m.count = 0;
+        m.reason = why;
+        return true;
+    };
+    if (!t) return off("no_table");
+    if (!entries) return off("no_bullet_bodies");
+    std::uint32_t table = 0, rows = 0;
+    if (!table_slot || !count_slot || !read(table_slot, &table, 4) || !table || !read(count_slot, &rows, 4) || !rows)
+        return false; // TBullets not loaded yet
+    m.rows = rows;
+    if (rows != t->rows) return off("stale_rows");
+    m.count = 0;
+    for (unsigned r = 0; r < rows && r < core::table_capacity && m.count < core::bullet_body_capacity; ++r) {
+        if (!(t->bits[r] & core::row_present) || !t->body_hash[r]) continue;
+        unsigned e = 0;
+        while (e < entries && t->bullet_body_hash[e] != t->body_hash[r]) ++e;
+        if (e == entries) continue;
+        std::uint16_t id = 0;
+        if (!read(std::uintptr_t(table) + std::uintptr_t(r) * core::layout::type_stride + tbullets_body, &id, 2)) {
+            m.count = 0;
+            if (++m.failures >= body_map_retries) return off("row_read_failed");
+            return false; // asked again at the next draw
+        }
+        bool seen = false;
+        for (unsigned i = 0; i < m.count && !seen; ++i) seen = m.id[i] == id;
+        if (seen) continue;
+        m.id[m.count] = id;
+        m.entry[m.count++] = std::uint8_t(e);
+    }
+    m.state = 1;
+    m.reason = "ok";
+    return true;
+}
+// The layout words of a body id in a built map (nullptr: not built, no table, or no entry for the id).
+inline const std::int32_t* body_layout(const BodyMap& m, const core::Table* t, std::uint32_t body) noexcept {
+    if (m.state != 1 || !t) return nullptr;
+    for (unsigned i = 0; i < m.count; ++i)
+        if (m.id[i] == body) return m.entry[i] < t->bullet_bodies ? t->bullet_body_layout[m.entry[i]] : nullptr;
+    return nullptr;
+}
+// The program's factor at uv for layout constants c (c29..c30), the CPU twin of weapon_bullet_reshade.hlsl geometric.
+inline float geometric(const float c[layout_floats], float u, float v) noexcept {
+    const auto fade = [](float x, float s) {
+        float k = (1.f - x) / s;
+        k = k < 0.f ? 0.f : k > 1.f ? 1.f : k;
+        return k * k * (3.f - 2.f * k);
+    };
+    const float du = u - c[0], dv = v - c[1];
+    const float box = (std::fabs(du) > std::fabs(dv) ? std::fabs(du) : std::fabs(dv)) * c[2];
+    if (box <= head_footprint) return fade(std::sqrt(du * du + dv * dv) * c[2] * c[3], c[7]);
+    const float d = (v - c[4]) * c[5];
+    if (d >= fin_low && d <= fin_high) return fade(std::fabs(d) * c[6], c[7]);
+    return 1.f;
+}
 // The CPU model of the program (the host test's reference; the fixture's readback checks it): radiance of one sample
-// t (RGB 0..1) at vertex alpha a.
+// t (RGB 0..1) at vertex alpha a (the geometric factor, geometric(), multiplies it).
 inline void model(const float c[4], const float t[3], float a, float out[3]) noexcept {
     float l = (0.2126f * t[0] + 0.7152f * t[1] + 0.0722f * t[2]) * c[3];
     l = l < 0.f ? 0.f : l > 1.f ? 1.f : l;

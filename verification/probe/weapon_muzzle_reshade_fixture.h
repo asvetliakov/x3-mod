@@ -247,10 +247,11 @@ inline IDirect3DTexture9* flat_texture(IDirect3DDevice9* dev, const unsigned cha
     return t;
 }
 // Image figures over a linear RGB crop (w x h, RGB floats), the background luminance `base` subtracted: the energy (sum),
-// the peak, and the equivalent radii (sqrt(area / pi), px) of the pixels at or above 1.0 (scene white) and 0.1 over it.
+// the peak, and the equivalent radii (sqrt(area / pi), px) of the pixels at or above 1.0 (scene white), 0.1 over it, and
+// a tenth of the image's own peak (peak_tenth_r: the extent gate's figure, independent of the brightness).
 struct Figures {
     double sum = 0.0;
-    float peak = 0.f, white_r = 0.f, tenth_r = 0.f;
+    float peak = 0.f, white_r = 0.f, tenth_r = 0.f, peak_tenth_r = 0.f;
 };
 inline Figures figures(const float* rgb, unsigned w, unsigned h, float base) {
     Figures f;
@@ -264,6 +265,10 @@ inline Figures figures(const float* rgb, unsigned w, unsigned h, float base) {
     }
     f.white_r = std::sqrt(float(white) / 3.14159265f);
     f.tenth_r = std::sqrt(float(tenth) / 3.14159265f);
+    unsigned lit = 0;
+    for (unsigned i = 0; f.peak > 0.f && i < w * h; ++i)
+        lit += 0.2126f * rgb[i * 3] + 0.7152f * rgb[i * 3 + 1] + 0.0722f * rgb[i * 3 + 2] - base >= 0.1f * f.peak;
+    f.peak_tenth_r = std::sqrt(float(lit) / 3.14159265f);
     return f;
 }
 } // namespace muzzle_fx

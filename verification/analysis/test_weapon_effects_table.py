@@ -32,6 +32,42 @@ int main(int argc, char** argv) {
     t::Stats st;
     std::size_t fault = 0;
     const bool ok = t::parse(text.data(), text.size(), &table, &st, &fault);
+    if (argc > 1 && std::string(argv[1]) == "bodymap") { // the geometric size's body map against a fake engine
+        // TBullets at 0x1000 (count slot 0x10, table slot 0x14): row r's body id word at 0x1000 + r x 0xdb8; the reader
+        // fails the slots until `ready` and the row reads while `failing`; argv[2] the engine's row count
+        namespace rs = x3m::weapon_effects::reshade;
+        const std::uint32_t engine_rows = argc > 2 ? std::uint32_t(std::atoi(argv[2])) : table.rows;
+        bool ready = false;
+        unsigned failing = 0;
+        const auto read = [&](std::uintptr_t a, void* out, std::size_t n) {
+            if (!ready) return false;
+            if (a == 0x14 && n == 4) return *static_cast<std::uint32_t*>(out) = 0x1000u, true;
+            if (a == 0x10 && n == 4) return *static_cast<std::uint32_t*>(out) = engine_rows, true;
+            if (failing) return --failing, false;
+            const std::uintptr_t r = (a - 0x1000) / core::layout::type_stride;
+            if (n != 2 || a < 0x1000 || (a - 0x1000) % core::layout::type_stride) return false;
+            *static_cast<std::uint16_t*>(out) = std::uint16_t(0x200 + r); // body id 0x200 + row
+            return true;
+        };
+        rs::BodyMap m;
+        const bool early = rs::build_body_map(m, ok ? &table : nullptr, 0x14, 0x10, read);
+        ready = true;
+        failing = 1;
+        const bool after_fail = rs::build_body_map(m, ok ? &table : nullptr, 0x14, 0x10, read);
+        const std::uint32_t failures_once = m.failures;
+        const bool built = rs::build_body_map(m, ok ? &table : nullptr, 0x14, 0x10, read);
+        const std::int32_t* row0 = rs::body_layout(m, &table, 0x200);
+        const std::int32_t* unknown = rs::body_layout(m, &table, 0x7777);
+        rs::BodyMap g; // every row read fails: final without layouts after body_map_retries builds
+        unsigned builds = 0;
+        failing = 1000000;
+        while (!rs::build_body_map(g, ok ? &table : nullptr, 0x14, 0x10, read) && builds < 1000) ++builds;
+        std::printf("early=%d after_fail=%d failures_once=%u built=%d state=%u reason=%s mapped=%u row0_head_u=%d "
+                    "unknown=%d giveup_builds=%u giveup_state=%u giveup_reason=%s\n",
+                    int(early), int(after_fail), failures_once, int(built), unsigned(m.state), m.reason, m.count,
+                    row0 ? row0[1] : -1, unknown ? 1 : 0, builds + 1, unsigned(g.state), g.reason);
+        return 0;
+    }
     if (argc > 1 && std::string(argv[1]) == "fnv") { // the bytes on stdin: the production texture hashes
         const auto* p = reinterpret_cast<const unsigned char*>(text.data());
         std::printf("head64=%016llx fnv1a64=%016llx\n",
@@ -45,6 +81,24 @@ int main(int argc, char** argv) {
                 "tex0_p99_q=%u\n", table.bullet_textures, st.bullet_textures_dropped, table.bullet_texture_bytes[0],
                 (unsigned long long)table.bullet_texture_head[0], (unsigned long long)table.bullet_texture_hash[0],
                 unsigned(table.bullet_texture_p99_q[0]));
+    {   // the geometric size: entry 0's words and layout_constants at rs_head 0.5, rs_width 0.6 and at the defaults
+        namespace rs = x3m::weapon_effects::reshade;
+        auto tune = x3m::weapon_effects::projectile_family::families[0].tune;
+        float shrunk[8], kept[8];
+        rs::layout_constants(table.bullet_bodies ? table.bullet_body_layout[0] : nullptr, tune, kept);
+        tune.rs_head = 0.5f;
+        tune.rs_width = 0.6f;
+        rs::layout_constants(table.bullet_bodies ? table.bullet_body_layout[0] : nullptr, tune, shrunk);
+        std::printf("bullet_bodies=%u bullet_bodies_dropped=%u bullet_bodies_key=%u body0_hash=%08lx body0_words=",
+                    table.bullet_bodies, st.bullet_bodies_dropped, unsigned(st.bullet_bodies_present),
+                    (unsigned long)table.bullet_body_hash[0]);
+        for (unsigned k = 0; k < 8; ++k) std::printf("%s%d", k ? "," : "", int(table.bullet_body_layout[0][k]));
+        std::printf(" body0_shrunk=");
+        for (unsigned k = 0; k < 8; ++k) std::printf("%s%.5g", k ? "," : "", double(shrunk[k]));
+        std::printf(" body0_kept=");
+        for (unsigned k = 0; k < 8; ++k) std::printf("%s%.5g", k ? "," : "", double(kept[k]));
+        std::printf(" ire_hash=%08lx\n", (unsigned long)core::name_hash("objects/effects/weapons/bullet_ls_alpha"));
+    }
     if (ok && argc > 1) {
         const unsigned row = unsigned(std::atoi(argv[1]));
         std::printf("row=%u bits=%u shape=%s texture=%06lx override=%06lx calibre_q=%u hull_class=%s\n", row,
@@ -196,6 +250,48 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         self.assertIsInstance(wt.load_overrides(OVERRIDES), dict)
 
 
+    def test_uv_layout_finds_head_and_fins(self):
+        # the geometric size (projectile-look.md "Geometric size (2026-11-10)"): the IRE's layout (bullet-draw-batch.md
+        # section 6) rebuilt from synthetic triangles: eight half-fins from the axis (v 0.3519) to the rim (v 0.2792),
+        # u tail -> head, and three crossed head quads each mapping the glow box u 0.7833..0.9831, v 0.7673..0.967
+        def quad(p, uv):
+            return [[p[0], p[1], p[2]], [p[0], p[2], p[3]]], [[uv[0], uv[1], uv[2]], [uv[0], uv[2], uv[3]]]
+        tris = []
+
+        def add(points, uvs):
+            ps, us = quad(points, uvs)
+            for pt, ut in zip(ps, us):
+                tris.append([tuple(a) + tuple(b) for a, b in zip(pt, ut)])
+        import math
+        for k in range(8):
+            x, y = 0.01337 * math.cos(k * math.pi / 4), 0.01337 * math.sin(k * math.pi / 4)
+            add([(0, 0, -0.2473), (x, y, -0.2473), (x, y, 0.2473), (0, 0, 0.2473)],
+                [(0.0131, 0.3519), (0.0131, 0.2792), (0.9767, 0.2792), (0.9767, 0.3519)])
+        for k in range(3):
+            a = k * math.pi / 3
+            c, s = 0.005 * math.cos(a), 0.005 * math.sin(a)
+            add([(-c, -s, 0.148), (c, s, 0.148), (c, s, 0.202), (-c, -s, 0.202)],
+                [(0.7833, 0.7673), (0.9831, 0.7673), (0.9831, 0.967), (0.7833, 0.967)])
+        got = wt.uv_layout(tris)
+        self.assertEqual((got['groups'], got['head_reason'], got['fin_reason']), (2, 'ok', 'ok'))
+        self.assertEqual(got['head'], dict(u=0.8832, v=0.86715, r=0.0999))  # the half of the wider side
+        self.assertEqual(got['fin'], dict(axis_v=0.3519, rim_v=0.2792, u0=0.0131, u1=0.9767))
+        # a third group past the fins' UV box but inside their band (the axis side): the fins are dropped (the shader
+        # would shrink it too)
+        add([(0, 0, 0), (0.01, 0, 0), (0.01, 0, 0.01), (0, 0, 0.01)], [(0.1, 0.355), (0.2, 0.355), (0.2, 0.365), (0.1, 0.365)])
+        got = wt.uv_layout(tris)
+        self.assertEqual((got['fin'], got['fin_reason'], got['head_reason']), (None, 'footprint_shared', 'ok'))
+        # a mesh whose square UV cluster is not sprite quads (small triangles tiling the box): no head
+        mesh = []
+        for i in range(4):
+            for j in range(4):
+                u, v = i / 4, j / 4
+                mesh.append([(0, 0, 0, u, v), (1, 0, 0, u + 0.25, v), (1, 1, 0, u + 0.25, v + 0.25)])
+                mesh.append([(0, 0, 0, u, v), (1, 1, 0, u + 0.25, v + 0.25), (0, 1, 0, u, v + 0.25)])
+        got = wt.uv_layout(mesh)
+        self.assertEqual((got['head'], got['head_reason'], got['fin']), (None, 'none_square', None))
+
+
 class WeaponEffectsTableReader(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -312,6 +408,66 @@ class WeaponEffectsTableReader(unittest.TestCase):
         out = subprocess.run([str(self.exe), 'fnv'], input=data, capture_output=True)
         got = dict(kv.split('=') for kv in out.stdout.decode().split())
         self.assertEqual(got, {'head64': f'{wt.fnv1a64(data[:wt.HEAD_BYTES]):016x}', 'fnv1a64': f'{wt.fnv1a64(data):016x}'})
+
+    def test_reader_reads_bullet_bodies(self):
+        # tables.bullet_bodies (the geometric size): 16.16 words in LayoutWord order (flags head 1 | fin 2), a null group
+        # absent, a bad entry dropped (counted), a wrong JSON type malformed; no table: the identity constants
+        ire = {'body': 'objects/effects/weapons/bullet_ls_alpha', 'head': {'u': 0.88319, 'v': 0.86715, 'r': 0.09988},
+               'fin': {'axis_v': 0.35191, 'rim_v': 0.27924, 'u0': 0.01309, 'u1': 0.97672}, 'groups': 2}
+        t = sample_table()
+        t['tables']['bullet_bodies'] = [ire, dict(ire, body=None), dict(ire, head={'u': 0.5, 'v': 0.5, 'r': 0}),
+                                        dict(ire, fin=dict(ire['fin'], rim_v=0.35191)),
+                                        dict(ire, body='objects/v/00518', fin=None)]
+        code, f = self.read(t)
+        self.assertEqual((code, f['bullet_bodies'], f['bullet_bodies_dropped'], f['bullet_bodies_key']), (0, '2', '3', '1'))
+        self.assertEqual(f['body0_hash'], f['ire_hash'])
+        q = lambda x: round(x * 65536)  # noqa: E731
+        self.assertEqual(f['body0_words'], ','.join(str(w) for w in (3, q(0.88319), q(0.86715), q(0.09988), q(0.35191),
+                                                                     q(0.27924), q(0.01309), q(0.97672))))
+        shrunk = [float(x) for x in f['body0_shrunk'].split(',')]
+        kept = [float(x) for x in f['body0_kept'].split(',')]
+        self.assertAlmostEqual(shrunk[0], 0.88319, places=4)
+        self.assertAlmostEqual(shrunk[2], 1 / 0.09988, places=2)
+        self.assertEqual((shrunk[3], shrunk[7]), (2.0, 0.5))                 # 1 / rs_head, the softness
+        self.assertAlmostEqual(shrunk[5], 1 / (0.27924 - 0.35191), places=2)
+        self.assertAlmostEqual(shrunk[6], 1 / 0.6, places=4)
+        self.assertEqual((kept[3], kept[6]), (0.0, 0.0))                     # keys at 1: the falloffs' argument 0
+        self.assertEqual(f['entries'], '12')
+        code, f = self.read(sample_table())                                  # no table: tolerated, identity
+        self.assertEqual((code, f['bullet_bodies'], f['bullet_bodies_key']), (0, '0', '0'))
+        self.assertEqual(f['body0_kept'], '-100,-100,1,0,-100,1,0,0.5')
+        t['tables']['bullet_bodies'] = [dict(ire, head={'u': '0.5', 'v': 0.5, 'r': 0.1})]
+        self.assertEqual(self.read(t)[0], 1)
+        t['tables']['bullet_bodies'] = {'not': 'a list'}
+        self.assertEqual(self.read(t)[0], 1)
+
+    def test_body_map(self):
+        # bullet_reshade_core.h build_body_map / body_layout (weapon_effects_patch.cpp bullet_body_layout) against a fake
+        # engine: TBullets not readable yet -> not final; a failed row read -> not final, retried next time, counted;
+        # then built (row 0's body id maps to its entry, an unknown id gets none: the identity, MotionOutput logs it once);
+        # every row read failing -> final without layouts after 64 builds; the engine's row count not the table's, no
+        # table, or no bullet_bodies -> final, off
+        t = sample_table()
+        t['tables']['bullets']['entries'][0]['body'] = 'objects/effects/weapons/bullet_ls_alpha'
+        t['tables']['bullet_bodies'] = [{'body': 'objects/effects/weapons/bullet_ls_alpha',
+                                         'head': {'u': 0.88319, 'v': 0.86715, 'r': 0.09988}, 'fin': None}]
+
+        def run(table, *args):
+            out = subprocess.run([str(self.exe), 'bodymap', *args], input=json.dumps(table), capture_output=True, text=True)
+            return dict(kv.split('=') for line in out.stdout.splitlines() for kv in line.split())
+        f = run(t)
+        self.assertEqual((f['early'], f['after_fail'], f['failures_once'], f['built']), ('0', '0', '1', '1'))
+        self.assertEqual((f['state'], f['reason'], f['mapped'], f['row0_head_u'], f['unknown']),
+                         ('1', 'ok', '1', str(round(0.88319 * 65536)), '0'))
+        self.assertEqual((f['giveup_builds'], f['giveup_state'], f['giveup_reason']), ('64', '2', 'row_read_failed'))
+        f = run(t, '46')                                       # the engine has 46 rows, the table 45
+        self.assertEqual((f['early'], f['built'], f['state'], f['reason'], f['row0_head_u']),
+                         ('0', '1', '2', 'stale_rows', '-1'))
+        del t['tables']['bullet_bodies']
+        f = run(t)                                             # no layouts in the table: final at once, off
+        self.assertEqual((f['early'], f['state'], f['reason']), ('1', '2', 'no_bullet_bodies'))
+        f = run({'schema': 9})                                 # no table (a rejected file): final at once, off
+        self.assertEqual((f['early'], f['state'], f['reason']), ('1', '2', 'no_table'))
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 3, 'tables': {}})

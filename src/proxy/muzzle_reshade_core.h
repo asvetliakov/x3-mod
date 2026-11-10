@@ -53,7 +53,7 @@ constexpr unsigned body_index(std::uint32_t id) noexcept {
 // the proxy's own variants keep their literals in local DEFs). Written per substituted draw, put back after it.
 constexpr unsigned constant_register = 192, constant_count = 4;
 // The four keys' indices in the dev tuning file (weapon_projectile_family.h).
-static_assert(projectile_family::tune_keys == 21 &&
+static_assert(projectile_family::tune_keys == 23 &&
                   projectile_family::key_is(projectile_family::tune_key_names[17], "mz_size") &&
                   projectile_family::key_is(projectile_family::tune_key_names[18], "mz_core") &&
                   projectile_family::key_is(projectile_family::tune_key_names[19], "mz_gain") &&

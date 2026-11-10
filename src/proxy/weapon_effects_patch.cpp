@@ -76,6 +76,10 @@ struct Period {
 } period_{};
 #if X3M_EDITION_FL
 std::uint32_t reshade_scopes_seen_ = 0; // x3m_bullet_scope_calls at the last bullet_reshade_frame row
+// The geometric size's body map (bullet_reshade_core.h build_body_map / body_layout): engine body id ->
+// tables.bullet_bodies entry, built at the first lookup that can read the engine's TBullets; cleared with the table
+// (load_table, shutdown) so a lookup never reaches a freed table.
+x3m::weapon_effects::reshade::BodyMap body_map_{};
 #endif
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
@@ -191,6 +195,9 @@ const char* read_table_file(char** text, DWORD* size, char* path_utf8, unsigned 
     return reason ? reason : "read";
 }
 void load_table() {
+#if X3M_EDITION_FL
+    body_map_ = x3m::weapon_effects::reshade::BodyMap{}; // built again from this table at the next lookup
+#endif
     char* text = nullptr;
     DWORD size = 0;
     char path[260];
@@ -212,12 +219,13 @@ void load_table() {
     // The live count is checked per hit (core::impact: a differing *0x00607038 disables the lookups, stale_table).
     x3m::log("weapon_effects_table event=%s reason=%s rows=%lu missile_rows=%lu entries=%u textures=%u overrides=%u "
              "dropped=%u hull_keys=%u bolt_pins=%u bolt_rejected=%u table_hull_key_missing=%u bullet_textures=%u "
-             "bullet_textures_dropped=%u bytes=%lu fault=%lu path=\"%s\"",
+             "bullet_textures_dropped=%u bullet_bodies=%u bullet_bodies_dropped=%u bullet_bodies_key=%u bytes=%lu "
+             "fault=%lu path=\"%s\"",
              parsed ? "loaded" : had_text ? "rejected" : read, parsed ? "ok" : had_text ? "malformed" : read,
              static_cast<unsigned long>(parsed ? table_->rows : 0), static_cast<unsigned long>(parsed ? table_->missile_rows : 0),
              st.entries, st.textures, st.overrides, st.dropped, st.hull_keys, st.bolt_pins, st.bolt_rejected, unsigned(table_hull_key_missing_),
-             st.bullet_textures, st.bullet_textures_dropped,
-             static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
+             st.bullet_textures, st.bullet_textures_dropped, st.bullet_bodies, st.bullet_bodies_dropped,
+             unsigned(st.bullet_bodies_present), static_cast<unsigned long>(size), static_cast<unsigned long>(fault), path);
 }
 #if !X3M_EDITION_FL
 const char* site_name(unsigned i) {
@@ -799,6 +807,7 @@ bool shutdown() {
     x3m_projectile_pool.armed = 0;
     x3m_bullet_reshade_armed = 0; // Present stops its row and counter reset; the draw hook keys on x3m_bullet_scope,
                                   // which no submit raises once the site is restored below
+    body_map_ = x3m::weapon_effects::reshade::BodyMap{}; // a reinstall builds it again from its table
 #else
     static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
 #endif
@@ -830,6 +839,26 @@ unsigned bullet_texture_count() noexcept {
 }
 std::uint16_t bullet_texture_p99_q(unsigned key) noexcept {
     return table_ && key < table_->bullet_textures ? table_->bullet_texture_p99_q[key] : std::uint16_t(0);
+}
+static_assert(x3m::weapon_effects::reshade::tbullets_body == core::projectile::type_body, "TBullets +0: the body id");
+const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept {
+    namespace rs = x3m::weapon_effects::reshade;
+    *final = true;
+    if (!x3m_bullet_reshade_armed) return nullptr;
+    if (!body_map_.state) {
+        const core::Globals& g = x3m_projectile_pool.globals;
+        const auto read = [](std::uintptr_t a, void* out, std::size_t n) { return engine_memory::read(a, out, n); };
+        if (!rs::build_body_map(body_map_, table_, g.bullet_table_slot, g.bullet_count_slot, read)) {
+            *final = false; // TBullets not readable yet, or a row read failed: asked again at the next draw
+            return nullptr;
+        }
+        x3m::log("bullet_reshade_layout event=%s reason=%s bodies_mapped=%u table_entries=%u engine_rows=%lu "
+                 "table_rows=%lu failed_builds=%lu (an unmapped body keeps the accepted look: no geometric size)",
+                 body_map_.state == 1 ? "mapped" : "off", body_map_.reason, body_map_.count,
+                 table_ ? table_->bullet_bodies : 0u, static_cast<unsigned long>(body_map_.rows),
+                 static_cast<unsigned long>(table_ ? table_->rows : 0), static_cast<unsigned long>(body_map_.failures));
+    }
+    return rs::body_layout(body_map_, table_, body);
 }
 #endif
 const char* state() {

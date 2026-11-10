@@ -1,31 +1,31 @@
-DUMP_MUZZLE assets=game mesh_vertices=300 texture=256 metres_per_body_unit_at_peak=6.2e-05 emissive=0.588 size=0.5 core=0.5 gain=0.2 smooth=0.6 centre_body_units=0,0,43804 lit_radius_units=45618
-DUMP_MUZZLE name=fixture-muzzle-vanilla-near distance_m=30 scale=0.0310 crop=640x360 dark_sum=12600.282 dark_peak=9.0965 dark_white_r=31.6 dark_tenth_r=72.9 nebula_sum=12589.413 nebula_peak=9.0997 written=1
-DUMP_MUZZLE name=fixture-muzzle-reshade-near distance_m=30 scale=0.0310 crop=640x360 dark_sum=1774.214 dark_peak=1.5457 dark_white_r=8.6 dark_tenth_r=36.0 nebula_sum=1763.248 nebula_peak=1.5456 written=1
-DUMP_MUZZLE_GATE range=near yaw_deg=25.0 overlap=9.047 energy_ratio=0.141 gain=0.2 white_r=8.6/31.6 size=0.5 reshade_peak=1.5457 vanilla_peak=9.0965 energy=pass extent_white=pass visible=pass tenth_r_ratio=0.494
-DUMP_MUZZLE name=fixture-muzzle-vanilla-far distance_m=300 scale=0.0310 crop=96x54 dark_sum=122.362 dark_peak=4.8295 dark_white_r=3.2 dark_tenth_r=7.9 nebula_sum=122.121 nebula_peak=4.8338 written=1
-DUMP_MUZZLE name=fixture-muzzle-reshade-far distance_m=300 scale=0.0310 crop=96x54 dark_sum=16.118 dark_peak=1.3121 dark_white_r=0.8 dark_tenth_r=3.5 nebula_sum=15.878 nebula_peak=1.3128 written=1
-DUMP_MUZZLE_GATE range=far yaw_deg=25.0 overlap=9.117 energy_ratio=0.132 gain=0.2 white_r=0.8/3.2 size=0.5 reshade_peak=1.3121 vanilla_peak=4.8295 energy=pass extent_white=pass visible=pass tenth_r_ratio=0.439
-DUMP_MUZZLE name=fixture-muzzle-vanilla-grow distance_m=30 scale=0.0062 crop=640x360 dark_sum=486.177 dark_peak=7.0840 dark_white_r=6.1 dark_tenth_r=14.7 nebula_sum=475.297 nebula_peak=7.0784 written=1
-DUMP_MUZZLE name=fixture-muzzle-reshade-grow distance_m=30 scale=0.0062 crop=640x360 dark_sum=65.603 dark_peak=1.3957 dark_white_r=1.7 dark_tenth_r=6.9 nebula_sum=54.739 nebula_peak=1.3944 written=1
-DUMP_MUZZLE_GATE range=grow yaw_deg=25.0 overlap=9.109 energy_ratio=0.135 gain=0.2 white_r=1.7/6.1 size=0.5 reshade_peak=1.3957 vanilla_peak=7.0840 energy=pass extent_white=pass visible=pass tenth_r_ratio=0.468
-DUMP_MUZZLE name=fixture-muzzle-vanilla-axis distance_m=30 scale=0.0310 crop=640x360 dark_sum=8110.081 dark_peak=8.8389 dark_white_r=24.8 dark_tenth_r=61.2 nebula_sum=8098.885 nebula_peak=8.8387 written=1
-DUMP_MUZZLE name=fixture-muzzle-reshade-axis distance_m=30 scale=0.0310 crop=640x360 dark_sum=1148.413 dark_peak=1.2246 dark_white_r=6.3 dark_tenth_r=30.9 nebula_sum=1137.375 nebula_peak=1.2247 written=1
-DUMP_MUZZLE_GATE range=axis yaw_deg=90.0 overlap=10.203 energy_ratio=0.142 gain=0.2 white_r=6.3/24.8 size=0.5 reshade_peak=1.2246 vanilla_peak=8.8389 energy=pass extent_white=pass visible=pass tenth_r_ratio=0.505
-DUMP_MUZZLE name=fixture-muzzle-vanilla-side distance_m=30 scale=0.0310 crop=640x360 dark_sum=12769.292 dark_peak=9.1536 dark_white_r=31.5 dark_tenth_r=74.5 nebula_sum=12758.228 nebula_peak=9.1491 written=1
-DUMP_MUZZLE name=fixture-muzzle-reshade-side distance_m=30 scale=0.0310 crop=640x360 dark_sum=1744.336 dark_peak=1.5266 dark_white_r=8.7 dark_tenth_r=35.4 nebula_sum=1733.339 nebula_peak=1.5273 written=1
-DUMP_MUZZLE_GATE range=side yaw_deg=0.0 overlap=8.902 energy_ratio=0.137 gain=0.2 white_r=8.7/31.5 size=0.5 reshade_peak=1.5266 vanilla_peak=9.1536 energy=pass extent_white=pass visible=pass tenth_r_ratio=0.475
-DUMP_MUZZLE_SWEEP yaw_deg=0 c2=0.00813 overlap=8.9022 energy_ratio=0.1366 reshade_peak=1.5266 vanilla_peak=9.1536 white_r=8.7 vanilla_white_r=31.5
-DUMP_MUZZLE_SWEEP yaw_deg=10 c2=0.00707 overlap=8.9008 energy_ratio=0.1391 reshade_peak=1.5130 vanilla_peak=9.1576 white_r=8.8 vanilla_white_r=31.7
-DUMP_MUZZLE_SWEEP yaw_deg=20 c2=0.06684 overlap=8.9791 energy_ratio=0.1404 reshade_peak=1.5268 vanilla_peak=8.9808 white_r=8.7 vanilla_white_r=31.7
-DUMP_MUZZLE_SWEEP yaw_deg=25 c2=0.11837 overlap=9.0467 energy_ratio=0.1408 reshade_peak=1.5468 vanilla_peak=9.0965 white_r=8.6 vanilla_white_r=31.6
-DUMP_MUZZLE_SWEEP yaw_deg=30 c2=0.18271 overlap=9.1311 energy_ratio=0.1408 reshade_peak=1.5439 vanilla_peak=9.2415 white_r=8.6 vanilla_white_r=31.3
-DUMP_MUZZLE_SWEEP yaw_deg=40 c2=0.34199 overlap=9.3399 energy_ratio=0.1400 reshade_peak=1.5150 vanilla_peak=9.4927 white_r=8.1 vanilla_white_r=30.7
-DUMP_MUZZLE_SWEEP yaw_deg=50 c2=0.52481 overlap=9.5796 energy_ratio=0.1389 reshade_peak=1.4328 vanilla_peak=9.4199 white_r=7.8 vanilla_white_r=29.6
-DUMP_MUZZLE_SWEEP yaw_deg=60 c2=0.70637 overlap=9.8176 energy_ratio=0.1377 reshade_peak=1.4211 vanilla_peak=9.2837 white_r=7.0 vanilla_white_r=27.9
-DUMP_MUZZLE_SWEEP yaw_deg=70 c2=0.86042 overlap=10.0196 energy_ratio=0.1365 reshade_peak=1.2989 vanilla_peak=8.5221 white_r=6.3 vanilla_white_r=26.4
-DUMP_MUZZLE_SWEEP yaw_deg=75 c2=0.91961 overlap=10.0972 energy_ratio=0.1374 reshade_peak=1.3960 vanilla_peak=9.3970 white_r=6.6 vanilla_white_r=25.9
-DUMP_MUZZLE_SWEEP yaw_deg=80 c2=0.96367 overlap=10.1550 energy_ratio=0.1387 reshade_peak=1.3671 vanilla_peak=9.5424 white_r=6.7 vanilla_white_r=25.7
-DUMP_MUZZLE_SWEEP yaw_deg=85 c2=0.99082 overlap=10.1906 energy_ratio=0.1399 reshade_peak=1.4176 vanilla_peak=9.4242 white_r=6.5 vanilla_white_r=25.1
-DUMP_MUZZLE_SWEEP yaw_deg=88 c2=0.99853 overlap=10.2007 energy_ratio=0.1409 reshade_peak=1.3183 vanilla_peak=9.1752 white_r=6.3 vanilla_white_r=25.1
-DUMP_MUZZLE_SWEEP yaw_deg=90 c2=1.00000 overlap=10.2026 energy_ratio=0.1416 reshade_peak=1.2246 vanilla_peak=8.8389 white_r=6.3 vanilla_white_r=24.8
+DUMP_MUZZLE assets=game mesh_vertices=300 texture=256 metres_per_body_unit_at_peak=6.2e-05 emissive=0.588 size=0.2 core=0 gain=0.15 smooth=0.1 centre_body_units=0,0,43804 lit_radius_units=45618
+DUMP_MUZZLE name=fixture-muzzle-vanilla-near distance_m=30 scale=0.0310 crop=640x360 dark_sum=12600.282 dark_peak=9.0965 dark_white_r=31.6 dark_tenth_r=72.9 dark_peak_tenth_r=33.6 nebula_sum=12589.413 nebula_peak=9.0997 written=1
+DUMP_MUZZLE name=fixture-muzzle-reshade-near distance_m=30 scale=0.0310 crop=640x360 dark_sum=22.570 dark_peak=0.0737 dark_white_r=0.0 dark_tenth_r=0.0 dark_peak_tenth_r=14.9 nebula_sum=11.646 nebula_peak=0.0735 written=1
+DUMP_MUZZLE_GATE range=near yaw_deg=25.0 overlap=9.047 energy_ratio=0.002 gain=0.15 tenth_r=0.0/72.9 size=0.2 reshade_peak=0.0737 vanilla_peak=9.0965 energy=pass extent_tenth=pass visible=pass white_r=0.0/31.6 peak_tenth_r=14.9/33.6 tenth_r_ratio=0.000
+DUMP_MUZZLE name=fixture-muzzle-vanilla-far distance_m=300 scale=0.0310 crop=96x54 dark_sum=122.362 dark_peak=4.8295 dark_white_r=3.2 dark_tenth_r=7.9 dark_peak_tenth_r=4.6 nebula_sum=122.121 nebula_peak=4.8338 written=1
+DUMP_MUZZLE name=fixture-muzzle-reshade-far distance_m=300 scale=0.0310 crop=96x54 dark_sum=0.322 dark_peak=0.0698 dark_white_r=0.0 dark_tenth_r=0.0 dark_peak_tenth_r=1.6 nebula_sum=0.077 nebula_peak=0.0694 written=1
+DUMP_MUZZLE_GATE range=far yaw_deg=25.0 overlap=9.117 energy_ratio=0.003 gain=0.15 tenth_r=0.0/7.9 size=0.2 reshade_peak=0.0698 vanilla_peak=4.8295 energy=pass extent_tenth=pass visible=pass white_r=0.0/3.2 peak_tenth_r=1.6/4.6 tenth_r_ratio=0.000
+DUMP_MUZZLE name=fixture-muzzle-vanilla-grow distance_m=30 scale=0.0062 crop=640x360 dark_sum=486.177 dark_peak=7.0840 dark_white_r=6.1 dark_tenth_r=14.7 dark_peak_tenth_r=7.6 nebula_sum=475.297 nebula_peak=7.0784 written=1
+DUMP_MUZZLE name=fixture-muzzle-reshade-grow distance_m=30 scale=0.0062 crop=640x360 dark_sum=1.098 dark_peak=0.0694 dark_white_r=0.0 dark_tenth_r=0.0 dark_peak_tenth_r=3.3 nebula_sum=-9.754 nebula_peak=0.0694 written=1
+DUMP_MUZZLE_GATE range=grow yaw_deg=25.0 overlap=9.109 energy_ratio=0.002 gain=0.15 tenth_r=0.0/14.7 size=0.2 reshade_peak=0.0694 vanilla_peak=7.0840 energy=pass extent_tenth=pass visible=pass white_r=0.0/6.1 peak_tenth_r=3.3/7.6 tenth_r_ratio=0.000
+DUMP_MUZZLE name=fixture-muzzle-vanilla-axis distance_m=30 scale=0.0310 crop=640x360 dark_sum=8110.081 dark_peak=8.8389 dark_white_r=24.8 dark_tenth_r=61.2 dark_peak_tenth_r=26.9 nebula_sum=8098.885 nebula_peak=8.8387 written=1
+DUMP_MUZZLE name=fixture-muzzle-reshade-axis distance_m=30 scale=0.0310 crop=640x360 dark_sum=10.673 dark_peak=0.0251 dark_white_r=0.0 dark_tenth_r=0.0 dark_peak_tenth_r=18.1 nebula_sum=-0.217 nebula_peak=0.0250 written=1
+DUMP_MUZZLE_GATE range=axis yaw_deg=90.0 overlap=10.203 energy_ratio=0.001 gain=0.15 tenth_r=0.0/61.2 size=0.2 reshade_peak=0.0251 vanilla_peak=8.8389 energy=pass extent_tenth=pass visible=pass white_r=0.0/24.8 peak_tenth_r=18.1/26.9 tenth_r_ratio=0.000
+DUMP_MUZZLE name=fixture-muzzle-vanilla-side distance_m=30 scale=0.0310 crop=640x360 dark_sum=12769.292 dark_peak=9.1536 dark_white_r=31.5 dark_tenth_r=74.5 dark_peak_tenth_r=33.6 nebula_sum=12758.228 nebula_peak=9.1491 written=1
+DUMP_MUZZLE name=fixture-muzzle-reshade-side distance_m=30 scale=0.0310 crop=640x360 dark_sum=22.834 dark_peak=0.0811 dark_white_r=0.0 dark_tenth_r=0.0 dark_peak_tenth_r=14.1 nebula_sum=11.911 nebula_peak=0.0812 written=1
+DUMP_MUZZLE_GATE range=side yaw_deg=0.0 overlap=8.902 energy_ratio=0.002 gain=0.15 tenth_r=0.0/74.5 size=0.2 reshade_peak=0.0811 vanilla_peak=9.1536 energy=pass extent_tenth=pass visible=pass white_r=0.0/31.5 peak_tenth_r=14.1/33.6 tenth_r_ratio=0.000
+DUMP_MUZZLE_SWEEP yaw_deg=0 c2=0.00813 overlap=8.9022 energy_ratio=0.0018 reshade_peak=0.0811 vanilla_peak=9.1536 white_r=0.0 vanilla_white_r=31.5
+DUMP_MUZZLE_SWEEP yaw_deg=10 c2=0.00707 overlap=8.9008 energy_ratio=0.0018 reshade_peak=0.0812 vanilla_peak=9.1576 white_r=0.0 vanilla_white_r=31.7
+DUMP_MUZZLE_SWEEP yaw_deg=20 c2=0.06684 overlap=8.9791 energy_ratio=0.0018 reshade_peak=0.0775 vanilla_peak=8.9808 white_r=0.0 vanilla_white_r=31.7
+DUMP_MUZZLE_SWEEP yaw_deg=25 c2=0.11837 overlap=9.0467 energy_ratio=0.0018 reshade_peak=0.0737 vanilla_peak=9.0965 white_r=0.0 vanilla_white_r=31.6
+DUMP_MUZZLE_SWEEP yaw_deg=30 c2=0.18271 overlap=9.1311 energy_ratio=0.0018 reshade_peak=0.0704 vanilla_peak=9.2415 white_r=0.0 vanilla_white_r=31.3
+DUMP_MUZZLE_SWEEP yaw_deg=40 c2=0.34199 overlap=9.3399 energy_ratio=0.0017 reshade_peak=0.0621 vanilla_peak=9.4927 white_r=0.0 vanilla_white_r=30.7
+DUMP_MUZZLE_SWEEP yaw_deg=50 c2=0.52481 overlap=9.5796 energy_ratio=0.0016 reshade_peak=0.0528 vanilla_peak=9.4199 white_r=0.0 vanilla_white_r=29.6
+DUMP_MUZZLE_SWEEP yaw_deg=60 c2=0.70637 overlap=9.8176 energy_ratio=0.0015 reshade_peak=0.0456 vanilla_peak=9.2837 white_r=0.0 vanilla_white_r=27.9
+DUMP_MUZZLE_SWEEP yaw_deg=70 c2=0.86042 overlap=10.0196 energy_ratio=0.0014 reshade_peak=0.0419 vanilla_peak=8.5221 white_r=0.0 vanilla_white_r=26.4
+DUMP_MUZZLE_SWEEP yaw_deg=75 c2=0.91961 overlap=10.0972 energy_ratio=0.0014 reshade_peak=0.0398 vanilla_peak=9.3970 white_r=0.0 vanilla_white_r=25.9
+DUMP_MUZZLE_SWEEP yaw_deg=80 c2=0.96367 overlap=10.1550 energy_ratio=0.0014 reshade_peak=0.0374 vanilla_peak=9.5424 white_r=0.0 vanilla_white_r=25.7
+DUMP_MUZZLE_SWEEP yaw_deg=85 c2=0.99082 overlap=10.1906 energy_ratio=0.0013 reshade_peak=0.0363 vanilla_peak=9.4242 white_r=0.0 vanilla_white_r=25.1
+DUMP_MUZZLE_SWEEP yaw_deg=88 c2=0.99853 overlap=10.2007 energy_ratio=0.0013 reshade_peak=0.0318 vanilla_peak=9.1752 white_r=0.0 vanilla_white_r=25.1
+DUMP_MUZZLE_SWEEP yaw_deg=90 c2=1.00000 overlap=10.2026 energy_ratio=0.0013 reshade_peak=0.0251 vanilla_peak=8.8389 white_r=0.0 vanilla_white_r=24.8
 RESULT PASS checks=5 failures=0
