@@ -343,6 +343,7 @@ constexpr unsigned table_capacity = 512;
 enum RowBit : std::uint8_t { row_present = 1, row_style_override = 2, row_tint_override = 4, row_calibre_override = 8,
                              row_texture = 16, row_hull_repair = 32, row_hull_tug = 64, row_hull_class = 128 };
 constexpr unsigned bullet_texture_capacity = 16; // tables.bullet_textures entries kept (the rest counted, dropped)
+constexpr unsigned bullet_body_capacity = 64;    // tables.bullet_bodies entries kept (the rest counted, dropped)
 struct Table {
     std::uint32_t rows = 0;           // TBullets rows of the generating game tree, 0 = no table
     std::uint32_t missile_rows = 0;
@@ -375,6 +376,12 @@ struct Table {
     std::uint64_t bullet_texture_head[bullet_texture_capacity]{};
     std::uint64_t bullet_texture_hash[bullet_texture_capacity]{};
     std::uint16_t bullet_texture_p99_q[bullet_texture_capacity]{};
+    // The bullet re-shade's geometric size (tables.bullet_bodies; bullet_reshade_core.h layout_constants): per bullet body
+    // the FNV-1a 32 of its "body" string (the rows' body_hash) and its UV layout as 16.16 words (LayoutWord order:
+    // flags, head u, v, R, fin axis v, rim v, u0, u1).
+    std::uint32_t bullet_bodies = 0;
+    std::uint32_t bullet_body_hash[bullet_body_capacity]{};
+    std::int32_t bullet_body_layout[bullet_body_capacity][8]{};
 };
 // FNV-1a 32 of a NUL-terminated string (the table's id and body hashes; constexpr for the enabled lists).
 constexpr std::uint32_t name_hash(const char* s) noexcept {

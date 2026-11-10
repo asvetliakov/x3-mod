@@ -476,9 +476,16 @@ _x3m_weapon_effects_stub_batch_fl:
 // x3m_bullet_reshade_armed, and a raised counter only admits draws that already bind the game's bullet program.
 // x3m_bullet_scope_calls counts the submits for the frame row. The draw hook keys on x3m_bullet_scope and on
 // MotionOutput's bullet_reshade_requested_ (taken from x3m_bullet_reshade_armed at configure_weapon_effects).
+// x3m_bullet_body is the submitted batch's body id [EDX+0x0c] (bullet-draw-batch.md section 1: the batch record the
+// callee reads too), stored before the scope rises through EAX, saved and restored around it (mov writes no flag); the
+// draw hook maps it to the body's UV layout (the geometric size). It keeps the last submit's id after the scope falls.
+// One plain global, no lock: the submit and its draws run on the one render thread, which in X3 is the game thread
+// (bullet-draw-batch.md section 5, reentrancy: the submit never reaches the view submit again), so the draw hook reads
+// the id the same thread stored before its DrawPrimitive.
 extern "C" {
 volatile std::uint32_t x3m_bullet_scope = 0;
 volatile std::uint32_t x3m_bullet_scope_calls = 0;
+volatile std::uint32_t x3m_bullet_body = 0;
 volatile std::uint32_t x3m_bullet_reshade_armed = 0; // install_base: the scope stub is live (configure_weapon_effects,
                                                       // Present's counter reset and frame row)
 }
@@ -489,6 +496,10 @@ asm(R"(
     .globl _x3m_weapon_effects_stub_batch_scope_fl
 _x3m_weapon_effects_stub_batch_scope_fl:
     pushfd
+    push eax
+    mov eax, dword ptr [edx+0x0c]
+    mov dword ptr [_x3m_bullet_body], eax
+    pop eax
     add dword ptr [_x3m_bullet_scope], 1
     add dword ptr [_x3m_bullet_scope_calls], 1
     popfd

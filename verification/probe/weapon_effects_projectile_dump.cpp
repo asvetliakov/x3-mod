@@ -429,8 +429,33 @@ int projectile_dump(const char* dir) {
 // stand-in (a flat linear 0.30 / 0.22 / 0.38). The mesh and texture are the game's IRE bolt and fx_bullets_diff when
 // run_weapon_effects.py prepared them from the local lab assets (untracked), else the procedural stand-ins. Each
 // output PFM <dir>\fixture-ire-{vanilla,reshade}-{near,far}.pfm is the two backgrounds' crops side by side (near
-// 640x256, far 64x32 around the bolt). DUMP_RESHADE rows; no check, no record.
+// 640x256, far 64x32 around the bolt). The geometric size (projectile-look.md "Geometric size (2026-11-10)"): each body's
+// UV layout from <assets>\<name>_layout.txt (the generator's uv_layout of the lab mesh as the eight 16.16 table words,
+// run_weapon_effects.py; absent: no layout) goes through bullet_reshade_core.h layout_constants with the baked keys (the
+// `reshade` frames) and with the proposal rs_head 0.5 / rs_width 0.6 (the `reshade-...-h050-w060` frames).
+// DUMP_RESHADE rows; no check, no record.
 namespace rf = reshade_fx;
+// The eight layout words of <dir>\<name>_layout.txt into w; false (w the zero words: no layout) when absent.
+bool load_layout(const char* dir, const char* name, std::int32_t w[8]) {
+    for (unsigned k = 0; k < 8; ++k) w[k] = 0;
+    if (!dir || !*dir) return false;
+    char path[MAX_PATH];
+    std::snprintf(path, sizeof path, "%s\\%s_layout.txt", dir, name);
+    std::FILE* f = std::fopen(path, "rb");
+    if (!f) return false;
+    bool ok = true;
+    for (unsigned k = 0; k < 8 && ok; ++k) {
+        long v = 0;
+        ok = std::fscanf(f, "%ld", &v) == 1;
+        w[k] = std::int32_t(v);
+    }
+    std::fclose(f);
+    if (!ok)
+        for (unsigned k = 0; k < 8; ++k) w[k] = 0;
+    return ok;
+}
+// The proposal frames' keys (not baked: the user tunes in flight).
+constexpr float proposal_head = 0.5f, proposal_width = 0.6f;
 bool load_assets(const char* dir, rf::Mesh* mesh, std::vector<unsigned char>* rgba, unsigned* side,
                  float* p99 = nullptr) {
     if (!dir || !*dir) return false;
@@ -527,7 +552,7 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
         x3m::weapon_effects::reshade::constants(t2, constants); // clamped like the tuning file
         std::snprintf(suffix, sizeof suffix, "-e%03d", int(constants[1] * 100.f + 0.5f));
     }
-    const float app_c31[4] = {0.f, 0.f, 0.f, 0.f};
+    const float app_block[12] = {}; // the application's c29..c31 put back after each re-shaded draw
     // c31.w as production uploads it (bullet_reshade_core.h texture_scale of the bound texture's table p99; the
     // stand-in texture has no entry: the IRE constant)
     const auto p99_q = [](float p99) {
@@ -536,11 +561,25 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
     constants[3] = x3m::weapon_effects::reshade::texture_scale(p99_q(ire_p99));
     float rows[16];
     rf::clip_rows(1.6f, 1.6f * 1920.f / 1080.f, rows);
+    // the layout constants of a body's words at the baked keys (kept) and at the proposal
+    auto proposal = tune;
+    proposal.rs_head = proposal_head;
+    proposal.rs_width = proposal_width;
+    const auto layouts = [&](const std::int32_t* w, bool have, float kept[8], float shrunk[8]) {
+        x3m::weapon_effects::reshade::layout_constants(have ? w : nullptr, tune, kept);
+        x3m::weapon_effects::reshade::layout_constants(have ? w : nullptr, proposal, shrunk);
+    };
+    std::int32_t ire_words[8];
+    const bool ire_layout = real && load_layout(assets, "ire", ire_words);
+    float ire_kept[8], ire_shrunk[8];
+    layouts(ire_words, ire_layout, ire_kept, ire_shrunk);
     std::printf("DUMP_RESHADE assets=%s mesh_vertices=%u texture=%u metres_per_body_unit=%.3f bolt_length_m=%.1f gain=%.3g "
-                "edge=%.3g core=%.3g normaliser=%.4g texture_p99=%.4f\n",
+                "edge=%.3g core=%.3g normaliser=%.4g texture_p99=%.4f layout=%u rs_head=%.3g rs_width=%.3g "
+                "proposal_rs_head=%.3g proposal_rs_width=%.3g\n",
                 real ? "game" : "standin", mesh.n, side, double(rf::metres_per_body_unit),
                 double(rf::metres_per_body_unit * 2.f * 0.2473f), double(constants[0]), double(constants[1]),
-                double(constants[2]), double(constants[3]), double(ire_p99));
+                double(constants[2]), double(constants[3]), double(ire_p99), unsigned(ire_layout), double(tune.rs_head),
+                double(tune.rs_width), double(proposal_head), double(proposal_width));
     dev->SetRenderTarget(0, t.scene_s.p);
     dev->SetDepthStencilSurface(t.depth_s.p);
     const struct { const char* name; float distance; UINT cw, ch; } ranges[2] = {{"near", 50.f, 640, 256}, {"far", 1500.f, 64, 32}};
@@ -551,7 +590,10 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
         const float centre[3] = {0.f, 0.f, r.distance};
         rf::place(mesh, centre, 0.4363f, 0.3491f, 255, static_cast<rf::Vertex*>(p));
         vb.p->Unlock();
-        for (unsigned shade = edge_override ? 1u : 0u; shade < 2; ++shade) {
+        // shade 0 vanilla, 1 the baked keys, 2 the proposal (-h050-w060; not with an rs_edge override)
+        for (unsigned shade = edge_override ? 1u : 0u; shade < (edge_override ? 2u : 3u); ++shade) {
+            const char* const tag = shade == 2 ? "-h050-w060" : "";
+            const float* const layout = shade == 2 ? ire_shrunk : ire_kept;
             const UINT ow = r.cw * 2, oh = r.ch;
             std::vector<float> out(std::size_t(ow) * oh * 3, 0.f);
             double sums[2]{};
@@ -564,7 +606,8 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                 dev->SetStreamSource(0, vb.p, 0, sizeof(rf::Vertex));
                 dev->SetPixelShader(vanilla.p);
                 bool restored = true;
-                const HRESULT hr = shade ? rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_c31, 22, &restored)
+                const HRESULT hr = shade ? rf::reshaded_draw(dev, ours.p, vanilla.p, constants, app_block, 22, &restored,
+                                                             layout)
                                          : dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 22);
                 dev->EndScene();
                 if (FAILED(hr) || !restored || FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) code = 1;
@@ -586,8 +629,8 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                 t.scene_sys.p->UnlockRect();
             }
             char path[MAX_PATH];
-            std::snprintf(path, sizeof path, "%s\\fixture-ire-%s-%s%s.pfm", dir, shade ? "reshade" : "vanilla", r.name,
-                          suffix);
+            std::snprintf(path, sizeof path, "%s\\fixture-ire-%s-%s%s%s.pfm", dir, shade ? "reshade" : "vanilla", r.name,
+                          suffix, tag);
             std::FILE* f = std::fopen(path, "wb");
             bool written = f != nullptr;
             if (f) {
@@ -598,10 +641,10 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                 std::fclose(f);
             }
             if (!written) code = 1;
-            std::printf("DUMP_RESHADE name=fixture-ire-%s-%s%s distance_m=%.0f edge=%.3g crop=%ux%u dark_sum=%.3f "
+            std::printf("DUMP_RESHADE name=fixture-ire-%s-%s%s%s distance_m=%.0f edge=%.3g crop=%ux%u dark_sum=%.3f "
                         "dark_peak=%.4f nebula_sum=%.3f nebula_peak=%.4f written=%u\n",
-                        shade ? "reshade" : "vanilla", r.name, suffix, double(r.distance), double(constants[1]), r.cw, r.ch, sums[0], double(peaks[0]),
-                        sums[1], double(peaks[1]), unsigned(written));
+                        shade ? "reshade" : "vanilla", r.name, suffix, tag, double(r.distance), double(constants[1]), r.cw,
+                        r.ch, sums[0], double(peaks[0]), sums[1], double(peaks[1]), unsigned(written));
         }
     }
     // The other bodies the batch draws, at the same (baked) values, for judging whether one set serves every family:
@@ -662,7 +705,12 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
             fvb.p->Unlock();
             float fconstants[4] = {constants[0], constants[1], constants[2],
                                    x3m::weapon_effects::reshade::texture_scale(p99_q(fp99))};
-            for (unsigned shade = 0; shade < 2; ++shade) {
+            std::int32_t fwords[8];
+            const bool flayout = load_layout(assets, name, fwords);
+            float fkept[8], fshrunk[8];
+            layouts(fwords, flayout, fkept, fshrunk);
+            for (unsigned shade = 0; shade < 3; ++shade) { // vanilla, the baked keys, the proposal (-h050-w060)
+                const char* const tag = shade == 2 ? "-h050-w060" : "";
                 const UINT cw = 640, ch = 256;
                 std::vector<float> out(std::size_t(cw) * ch * 3, 0.f);
                 double sum = 0.0;
@@ -673,7 +721,8 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                 dev->SetStreamSource(0, fvb.p, 0, sizeof(rf::Vertex));
                 dev->SetPixelShader(vanilla.p);
                 bool restored = true;
-                const HRESULT hr = shade ? rf::reshaded_draw(dev, ours.p, vanilla.p, fconstants, app_c31, count / 3, &restored)
+                const HRESULT hr = shade ? rf::reshaded_draw(dev, ours.p, vanilla.p, fconstants, app_block, count / 3,
+                                                             &restored, shade == 2 ? fshrunk : fkept)
                                          : dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, count / 3);
                 dev->EndScene();
                 if (FAILED(hr) || !restored || FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) code = 1;
@@ -692,7 +741,8 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                     }
                 }
                 t.scene_sys.p->UnlockRect();
-                std::snprintf(path, sizeof path, "%s\\fixture-%s-%s-near.pfm", dir, name, shade ? "reshade" : "vanilla");
+                std::snprintf(path, sizeof path, "%s\\fixture-%s-%s-near%s.pfm", dir, name, shade ? "reshade" : "vanilla",
+                              tag);
                 f = std::fopen(path, "wb");
                 bool written = f != nullptr;
                 if (f) {
@@ -703,10 +753,10 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                     std::fclose(f);
                 }
                 if (!written) code = 1;
-                std::printf("DUMP_RESHADE name=fixture-%s-%s-near family=%s vertices=%u texture=%u texture_p99=%.4f "
-                            "normaliser=%.4g distance_m=50 crop=%ux%u dark_sum=%.3f dark_peak=%.4f written=%u\n",
-                            name, shade ? "reshade" : "vanilla", name, count, fside, double(fp99), double(fconstants[3]),
-                            cw, ch, sum, double(peak), unsigned(written));
+                std::printf("DUMP_RESHADE name=fixture-%s-%s-near%s family=%s vertices=%u texture=%u texture_p99=%.4f "
+                            "normaliser=%.4g layout=%u distance_m=50 crop=%ux%u dark_sum=%.3f dark_peak=%.4f written=%u\n",
+                            name, shade ? "reshade" : "vanilla", tag, name, count, fside, double(fp99),
+                            double(fconstants[3]), unsigned(flayout), cw, ch, sum, double(peak), unsigned(written));
             }
         }
     }
@@ -896,23 +946,30 @@ int muzzle_dump(const char* dir, const char* d3dx_path, const char* assets, cons
             }
             if (!written) code = 1;
             std::printf("DUMP_MUZZLE name=fixture-muzzle-%s-%s distance_m=%.0f scale=%.4f crop=%ux%u dark_sum=%.3f "
-                        "dark_peak=%.4f dark_white_r=%.1f dark_tenth_r=%.1f nebula_sum=%.3f nebula_peak=%.4f written=%u\n",
+                        "dark_peak=%.4f dark_white_r=%.1f dark_tenth_r=%.1f dark_peak_tenth_r=%.1f nebula_sum=%.3f "
+                        "nebula_peak=%.4f written=%u\n",
                         shade ? "reshade" : "vanilla", r.name, double(r.distance), double(r.scale), r.cw, r.ch,
-                        figs[0].sum, double(figs[0].peak), double(figs[0].white_r), double(figs[0].tenth_r), figs[1].sum,
-                        double(figs[1].peak), unsigned(written));
+                        figs[0].sum, double(figs[0].peak), double(figs[0].white_r), double(figs[0].tenth_r),
+                        double(figs[0].peak_tenth_r), figs[1].sum, double(figs[1].peak), unsigned(written));
         }
         const double energy = dark[0].sum > 0 ? dark[1].sum / dark[0].sum : 0.0;
         const bool energy_ok = dark[0].sum > 0 && energy <= double(gain);
-        const bool white_ok = dark[1].white_r > 0.f && dark[1].white_r <= size * dark[0].white_r + 0.5f;
+        // the extent gate at 0.1 linear (FL 65 A baked no white core: the white radius and the extent at a tenth of each
+        // image's own peak are reported)
+        // lit: `visible`; and the flash's own-peak tenth no wider than vanilla's
+        const bool extent_ok = dark[1].tenth_r <= size * dark[0].tenth_r + 1.f &&
+                               dark[1].peak_tenth_r <= dark[0].peak_tenth_r;
         const bool visible = dark[1].peak > 0.f;
-        if (!energy_ok || !white_ok || !visible) ++gate_failures;
-        std::printf("DUMP_MUZZLE_GATE range=%s yaw_deg=%.1f overlap=%.3f energy_ratio=%.3f gain=%.3g white_r=%.1f/%.1f "
-                    "size=%.3g reshade_peak=%.4f vanilla_peak=%.4f energy=%s extent_white=%s visible=%s "
-                    "tenth_r_ratio=%.3f\n",
+        if (!energy_ok || !extent_ok || !visible) ++gate_failures;
+        std::printf("DUMP_MUZZLE_GATE range=%s yaw_deg=%.1f overlap=%.3f energy_ratio=%.3f gain=%.3g "
+                    "tenth_r=%.1f/%.1f size=%.3g reshade_peak=%.4f vanilla_peak=%.4f energy=%s extent_tenth=%s "
+                    "visible=%s white_r=%.1f/%.1f peak_tenth_r=%.1f/%.1f tenth_r_ratio=%.3f\n",
                     r.name, double(r.yaw) * 57.29578, constants[8] > 0.f ? double(constants[10] / constants[8]) : 0.0,
-                    energy, double(gain), double(dark[1].white_r), double(dark[0].white_r), double(size),
-                    double(dark[1].peak), double(dark[0].peak), energy_ok ? "pass" : "FAIL", white_ok ? "pass" : "FAIL",
-                    visible ? "pass" : "FAIL", dark[0].tenth_r > 0.f ? double(dark[1].tenth_r / dark[0].tenth_r) : 0.0);
+                    energy, double(gain), double(dark[1].tenth_r), double(dark[0].tenth_r), double(size),
+                    double(dark[1].peak), double(dark[0].peak), energy_ok ? "pass" : "FAIL", extent_ok ? "pass" : "FAIL",
+                    visible ? "pass" : "FAIL", double(dark[1].white_r), double(dark[0].white_r),
+                    double(dark[1].peak_tenth_r), double(dark[0].peak_tenth_r),
+                    dark[0].tenth_r > 0.f ? double(dark[1].tenth_r / dark[0].tenth_r) : 0.0);
     }
     // The view-angle sweep (no frame, dark background, 30 m, the scale peak): the flash axis yawed 0..90 degrees out of
     // the screen plane. One DUMP_MUZZLE_SWEEP row each with the draw's cos^2 and N, the energy ratio, the peaks and the

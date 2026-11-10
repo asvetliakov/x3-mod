@@ -118,6 +118,7 @@ std::uint32_t out_eax, out_ebx, out_ecx, out_edx, out_esi, out_edi, out_ebp, out
 // The fake callee's record: entry registers, EFLAGS, ESP and nine stack dwords from [esp]; one counter.
 std::uint32_t t_eax, t_ebx, t_ecx, t_edx, t_esi, t_edi, t_ebp, t_esp, t_flags, t_stack[9], t_calls;
 std::uint32_t t_scope; // x3m_bullet_scope as the callee saw it (the bullet re-shade's scope stub)
+std::uint32_t t_body;  // x3m_bullet_body as the callee saw it (the batch's body id the scope stub published)
 void fl_enter();
 void fl_return();
 void fl_fake_callee();
@@ -200,6 +201,8 @@ _fl_fake_callee:
     mov dword ptr [_t_stack+32], eax
     mov eax, dword ptr [_x3m_bullet_scope]
     mov dword ptr [_t_scope], eax
+    mov eax, dword ptr [_x3m_bullet_body]
+    mov dword ptr [_t_body], eax
     inc dword ptr [_t_calls]
     mov eax, 0xca11ee00
     mov ecx, 0xc1c1c1c1
@@ -1091,7 +1094,8 @@ int main() {
     // Reshade mode (bullet-draw-batch.md section 6): the impact and the batch call claimed, the batch with the scope stub;
     // no object tap, muzzle, flight or death site, the projectile pool disarmed. The scope stub forwards every submit as
     // a call: the callee sees ECX, EDX, EAX, the callee-saved registers, EFLAGS and the two stack words as the caller
-    // left them, its stack at the original call's alignment modulo 16, and the scope raised to 1; after it the scope is
+    // left them, its stack at the original call's alignment modulo 16, the scope raised to 1 and x3m_bullet_body the
+    // batch's body id [EDX+0x0c] (two batches, two ids); after it the scope is
     // 0 again, the callee's EAX is returned, the callee-saved registers, DF and LastError are the caller's, and the stack
     // is the caller's (it pops its own two words).
     we::shutdown();
@@ -1114,6 +1118,8 @@ int main() {
         const std::uint32_t calls_before = x3m_bullet_scope_calls;
         bool all = true;
         for (unsigned df = 0; df < 2; ++df) {
+            const std::uint32_t body_id = df ? 0x0206u : 0x01e1u;
+            std::memcpy(batch + 0x0c, &body_id, 4);
             Entry e;
             e.df = df;
             e.ecx = 0x5ce4e000;
@@ -1122,12 +1128,14 @@ int main() {
             e.stack[0] = 0x3a7e0001; // material
             e.stack[1] = 0x71e70002; // view
             t_scope = 0;
+            t_body = 0;
+            x3m_bullet_body = 0xdeadbeefu;
             run_site(7, e);
             const bool forwarded = t_calls == 1 && t_eax == e.eax && t_ecx == e.ecx && t_edx == e.edx && t_ebx == e.ebx &&
                                    t_esi == e.esi && t_edi == e.edi && t_ebp == e.ebp && t_stack[1] == e.stack[0] &&
                                    t_stack[2] == e.stack[1] && (t_flags & flag_mask) == (entry_flags & flag_mask) &&
                                    ((t_esp - (esp_before_call - 4)) & 15u) == 0 && t_esp < esp_before_call - 4 &&
-                                   t_scope == 1;
+                                   t_scope == 1 && t_body == body_id;
             const bool returned = out_eax == 0xca11ee00 && out_esp == esp_before_call && x3m_bullet_scope == 0 &&
                                   GetLastError() == sentinel_error && out_ebx == e.ebx && out_esi == e.esi &&
                                   out_edi == e.edi && out_ebp == e.ebp && (out_flags & df_bit) == (df ? df_bit : 0u);

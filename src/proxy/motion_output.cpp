@@ -5393,9 +5393,15 @@ void MotionOutput::set_pixel_constants_f(UINT start, const float* data, UINT cou
         shadow_.ps_reserved_written = true;
     }
 #if X3M_EDITION_FL
-    // The bullet re-shade's register: the application's c31, put back after each substituted draw.
-    if (start <= weapon_effects::reshade::constant_register && end > weapon_effects::reshade::constant_register)
-        std::memcpy(shadow_.ps_c31, data + (weapon_effects::reshade::constant_register - start) * 4, 16);
+    // The bullet re-shade's registers: the application's c29..c31, put back after each substituted draw.
+    {
+        constexpr UINT rs_lo = weapon_effects::reshade::block_register,
+                       rs_hi = rs_lo + weapon_effects::reshade::block_count;
+        if (start < rs_hi && end > rs_lo) {
+            const UINT lo = start > rs_lo ? start : rs_lo, hi = end < rs_hi ? end : rs_hi;
+            std::memcpy(shadow_.ps_c29 + (lo - rs_lo) * 4, data + (lo - start) * 4, (hi - lo) * 16);
+        }
+    }
     // The muzzle re-shade's registers: the application's c192..c195, put back after each substituted draw.
     {
         constexpr UINT mz_lo = weapon_effects::muzzle_reshade::constant_register,
@@ -5539,10 +5545,10 @@ void MotionOutput::resync_shadow() noexcept {
     shadow_.ps_reserved_written = SUCCEEDED(
         native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, 216, shadow_.ps_reserved, upload_c218() ? 3u : 2u));
 #if X3M_EDITION_FL
-    // The bullet re-shade's c31 (the application's value it puts back; zero when the read fails)
+    // The bullet re-shade's c29..c31 (the application's values it puts back; zero when the read fails)
     if (bullet_reshade_requested_)
-        native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, weapon_effects::reshade::constant_register,
-                                                         shadow_.ps_c31, 1u);
+        native<GetConstantsFFn>(GetPixelShaderConstantF)(device_, weapon_effects::reshade::block_register,
+                                                         shadow_.ps_c29, weapon_effects::reshade::block_count);
     // The muzzle re-shade's c192..c195 (the application's values it puts back; zero when the read fails) and the VS's
     // c28..c36 (unknown when the read fails: no muzzle draw matches until the application writes them)
     if (muzzle_reshade_requested_) {

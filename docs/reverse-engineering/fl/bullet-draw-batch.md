@@ -334,7 +334,7 @@ bilinear never reaches it; from about mip 3 (one texel = 8 rows) the band and it
 distant bolt's axis brightens and ends hard [i]. The vanilla bolt is therefore four crossed fins glowing toward the
 axis and the head, plus a round head glow, at most about 0.36 × alpha per layer before the screen blend.
 
-**Re-shade** (`src/effects/weapon_bullet_reshade_ps.hlsl`, ps_2_0, 160 words: a ps_3_0 program cannot pair with the
+**Re-shade** (`src/effects/weapon_bullet_reshade_ps.hlsl`, ps_2_0, 315 words with the geometric size, 160 before: a ps_3_0 program cannot pair with the
 game's vs_1_1). Same inputs (s0, COLOR0.a, TEXCOORD0); l = luminance × the bound texture's normaliser, saturated: 2.75
 (1 / the IRE strip's 0.36 peak) × 0.6169 / the texture's level-0 luminance p99 (`weapon_effects.json`
 `tables.bullet_textures`; fx_bullets_diff p99 0.6169 keeps 2.75, fx_bullets2_diff p99 0.9888 gives 1.716; a texture
@@ -352,6 +352,14 @@ keeping the route's DESTBLEND ONE with its gain folded into c31 (gain and core x
 bound, drawing a flag variant (`weapon_bullet_reshade_flag_ps.hlsl`, oC2 = 32 x max(rgb)); without the route our program
 draws under the game's ONE / INVSRCCOLOR. One device sequence for both (`src/proxy/bullet_reshade_route.h`). The
 traversal-fallback draw (section 3) is not an INSTANCE_BULLETS draw and stays vanilla [i]. The fixture's stand-in bolt is 10 m long (an assumption; the runtime node scales are still open).
+
+**Geometric size (2026-11-10).** The scope stub also stores the batch's body id `[EDX+0x0c]` in `x3m_bullet_body`
+before the scope rises (EAX saved around it; `mov` writes no flag). The draw uploads the body's UV layout in c29..c30
+with c31 (the game's ps_1_1 reads no constant). The UV layouts are derived offline by the generator. Design and
+evidence: [projectile-look.md](../../architecture/projectile-look.md) "Geometric size (2026-11-10)". The PPC
+(`objects/v/00518`, 70 triangles, `fx_bullets2_diff`) has 16 fin triangles (axis v 0.7466, rim v 0.6229, u
+0.4232..0.9166) and 54 head triangles: 27 crossed quads at z 0.086..0.188, half-width 0.06, each mapping the glow box
+u 0.795..0.986, v 0.792..0.981 [s, lab decode].
 
 ## Unknown
 

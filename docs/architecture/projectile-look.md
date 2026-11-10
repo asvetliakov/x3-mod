@@ -435,6 +435,56 @@ bolts move at 0.8 of their speed across the view and recede at 0.6 [M]. In the c
 for most of the trail (4.0 linear at F = 1, still 1.0 at F = 0.25), so the fade shows over the trail's last third;
 under the game's exposure and AgX the gradient starts nearer the head [inferred].
 
+### Geometric size (2026-11-10)
+
+The bullet re-shade (`X3M_WEAPON_EFFECTS=reshade`, [bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md)
+section 6) keeps the game's mesh, so a re-shade cannot change the silhouette. The PPC was "too big" in flight (user,
+2026-11-10; PAC and HEPT "more or less fine", IRE accepted), and the texture normaliser cannot shrink a region whose
+texels are all saturated. The blob is the head quads' round glow plus bloom. The size control therefore shrinks the
+**lit region inside the fixed silhouette**, per body, from the body's UV layout:
+
+- **Generator** (`tools/effects/weapon_effects_table.py` `uv_layout`, `tables.bullet_bodies`; schema stays 2, since an
+  older DLL skips an unknown table but rejects schema 3). For each body a row draws, every triangle of every LOD is
+  clustered by overlapping UV boxes. The **head** is the cluster whose box is roughly square (width/height 0.67–1.5)
+  and whose every triangle maps at least half of the box: the quads carrying the glow sprite. It is recorded as the
+  box centre and half-side r. The **fins** are the cluster elongated along u (at least 2:1), recorded as the mean v of
+  their axis vertices (radius about z under 0.1 of the largest) and of their rim vertices (over 0.9), plus the u
+  range. A group is recorded only when no other triangle of the body samples inside its footprint, so the shader
+  needs no other test; otherwise it is `null` with a reason. FL: 30 bodies, 20 heads, 7 fin groups
+  ([`bullet_bodies_out.txt`](../../verification/results/projectile-reshade/bullet_bodies_out.txt)). IRE, PAC, HEPT and
+  PPC have both groups.
+- **Draw.** The batch scope stub publishes the batch's body id `[EDX+0x0c]` (`x3m_bullet_body`). The draw maps it to
+  the table entry through the live TBullets rows (built once, at the first lookup that can read TBullets: validated
+  reads, one `bullet_reshade_layout` row), so a mod-added body with a row works. c29..c30 travel with c31 in one
+  three-register upload each way, so the call count is unchanged. A body without an entry, and every body with no
+  table, gets the identity (one row per body or for the missing table) and keeps the accepted look.
+- **Shader** (`src/effects/weapon_bullet_reshade.hlsl`, ps_2_0, 315 words). Inside the head's square footprint
+  (1.02 r), radiance × smoothstep(1, 1 − s, |uv − centre| / (r · `rs_head`)). Inside the fin band (d = (v − axis) /
+  (rim − axis) in −0.25..1.02, any u), × smoothstep(1, 1 − s, |d| / `rs_width`). Elsewhere × 1. s = 0.5. A key at 1
+  uploads 0 for its reciprocal, so the factor is exactly 1.
+- **Keys** `rs_head`, `rs_width` (dev tuning file, 0.2–1, default 1). They are global across bodies (one value set,
+  the user's decision), so a value tuned for the PPC also shrinks the PAC (−13 % energy at the proposal) and, slightly,
+  IRE and HEPT (−1 to −2 %).
+
+Evidence [M]. D3D fixture: the falloff's readback against the CPU model at rs_head 0.5 / rs_width 0.6 at 11 UV points,
+worst 0.031 of the tolerance. At keys 1 the output is identical to the accepted record's sums (IRE 76.026, PPC 2593.162) and to the identity
+layout's at every point. The body change costs 0.003 µs (scan of 30 ids plus `layout_constants`) and the substitution
+0.125 µs per draw. Dumps at 50 m
+([`dump_out.txt`](../../verification/results/projectile-reshade/dump_out.txt), dark sum):
+
+| Body | vanilla | re-shade, keys 1 | re-shade, rs_head 0.5 / rs_width 0.6 (proposal, not baked) |
+| --- | --- | --- | --- |
+| IRE | 253.713 | 76.026 (the accepted record, unchanged) | 75.086 |
+| PAC | 100.824 | 25.512 (unchanged) | 22.093 |
+| HEPT | 522.565 | 198.906 (unchanged) | 195.870 |
+| PPC | 4611.169 (peak 1.0) | 2593.162 (unchanged) | **1699.028** (peak 0.965) |
+
+At the proposal the PPC's fins narrow cleanly, but its head reads as a row of small beads
+([defaults](../../verification/results/projectile-reshade/fixture-ppc-reshade-near.png),
+[proposal](../../verification/results/projectile-reshade/fixture-ppc-reshade-near-h050-w060.png)). The head is 27
+crossed quads at several depths along the axis (z 0.086–0.188 body units), and each quad's glow shrinks on its own.
+Larger `rs_head` values keep them merged [I]. The user tunes in flight. Not flown.
+
 ## 8. Options considered and why they lose
 
 - **Draw over the game's bolt** (keep the batch, add the core). The vanilla streak stays as the body: two bodies, the

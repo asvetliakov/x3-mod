@@ -88,6 +88,11 @@ core::Mode mode();
 int bullet_texture_key(const void* data, std::size_t size) noexcept;
 unsigned bullet_texture_count() noexcept;
 std::uint16_t bullet_texture_p99_q(unsigned key) noexcept;
+// The geometric size (bullet_reshade_core.h layout_constants): the 16.16 layout words of the tables.bullet_bodies entry
+// of an engine body id (the batch's [EDX+0x0c], x3m_bullet_body), nullptr when it has none. *final false: the engine's
+// TBullets was not readable yet, so a caller must not cache the miss. One bullet_reshade_layout row when the map is
+// built (the first lookup that can read TBullets); then a compare per mapped body.
+const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept;
 #endif
 const char* state();
 // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
@@ -170,6 +175,7 @@ void x3m_weapon_effects_stub_batch_fl();
 void x3m_weapon_effects_stub_batch_scope_fl();
 extern volatile std::uint32_t x3m_bullet_scope;
 extern volatile std::uint32_t x3m_bullet_scope_calls;
+extern volatile std::uint32_t x3m_bullet_body; // the submitted batch's body id [EDX+0x0c] (the geometric size)
 extern volatile std::uint32_t x3m_bullet_reshade_armed;
 extern std::uintptr_t x3m_weapon_effects_continue_batch;
 extern x3m::weapon_effects::core::ProjectilePool x3m_projectile_pool;

@@ -3702,3 +3702,93 @@ verification/probe/run_weapon_effects.py --host native`: AP hook **132 of 132**,
 FL PASS (1076 functions), AP build 0 warnings; host tests `test_weapon_effects_*` 104 OK, `test_config_schema` 20,
 `test_regenerate` 11, `test_weapon_catalog` 9. Dev DLLs (not candidates): FL `2f277ccb20027422…`, AP
 `d8be34c0cf81614d…`. Not flown.
+
+## Muzzle flash baked and bullet geometric size on FL (2026-11-10)
+
+Worktree on `reshade` `957b86217`, uncommitted at the records. FL edition.
+
+**Muzzle bake (FL 65 A accepted).** The defaults are now `mz_size` 0.2, `mz_core` 0, `mz_gain` 0.15, `mz_smooth` 0.1
+(`weapon_projectile_family.h`). In FL 65 A the reader clamped the file's 0.1 to the then floor 0.2
+(`projectile_tune clamped key=mz_size value=0.1 applied=0.2`, three rows in that run's log), so the accepted flight
+drew 0.2 [M] and 0.2 is baked (coordinator, 2026-11-10). The floor drops to 0.05 so a file's 0.1 is reachable. The gates are now energy ≤ `mz_gain` × vanilla's, extent at 0.1 linear ≤ `mz_size` ×
+vanilla's + 1 px, and peak > 0. The white-core gate is gone ([design](../architecture/muzzle-flash-look.md) section 4).
+Fixture and dumps at the baked 0.2: see the final run below. At 0.1 the real mesh peaks at only 0.0015–0.015 (a tenth
+of the 0.2 flash; scratch evidence of the first draft) [M]. `overlap_by_angle_out.txt` (the N fit on the first
+defaults' sweep) is superseded as a record of the current dump; N is unchanged.
+
+**Bullet geometric size.** Design: [projectile-look.md](../architecture/projectile-look.md) "Geometric size
+(2026-11-10)". New keys `rs_head` and `rs_width` (0.2–1, default 1). The layouts are in `tables.bullet_bodies`
+([`bullet_bodies.py`](../../verification/results/projectile-reshade/bullet_bodies.py) →
+[`_out.txt`](../../verification/results/projectile-reshade/bullet_bodies_out.txt): FL 30 bodies, 20 heads, 7 fin
+groups). The batch's body id comes from the scope stub. c29..c31 go out in one call each way.
+
+Quiet-host run, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native` [M]:
+
+| Fixture | Result |
+| --- | --- |
+| AP hook | **132 of 132**, PASS |
+| FL hook | **75 of 75**, PASS; `reshade_scope_stub_forwards_and_scopes_the_submit` now also checks the callee seeing `x3m_bullet_body` == `[EDX+0x0c]` (two ids); the stub audit's sequence gains `push, mov, mov, pop` |
+| D3D | **126 of 126**, PASS; new: `reshade_geometric_matches_model` (11 UV points at rs_head 0.5 / rs_width 0.6, worst 0.031 of the tolerance) and `reshade_geometric_keys_at_one_unchanged` (identical to the accepted record's sums, IRE 76.026 and PPC 2593.162, and to the identity layout) |
+
+Cost [M]: the substitution 0.128 µs per draw (0.056 → 0.184 µs, 22 triangles; 0.126–0.133 in the runs before); the body change
+0.0032 µs (a scan of 30 ids plus `layout_constants`); the 469-bolt batch 41.5 → 41.7 µs fenced. An earlier run of the
+same day failed `flash_budget_combined_512_bolts_64_flashes_64_pulses` at 307.8 µs CPU. Every bolt figure in that
+section was 2.4× its record, and the code is untouched. The two later runs measured 124.1 and 123.0 µs (pass): host
+noise, as recorded on 2026-11-09.
+
+Dumps at 50 m, dark sum ([`projectile-reshade/dump_out.txt`](../../verification/results/projectile-reshade/dump_out.txt))
+[M]: IRE 253.713 → 76.026 at the defaults (identical to the accepted record; far 0.156, identical), 75.086 at the
+proposal. PPC 4611.169 → 2593.162 (identical to the record) → **1699.028** at rs_head 0.5 / rs_width 0.6 (peak 0.982 →
+0.965). PAC 25.512 → 22.093 and HEPT 198.906 → 195.870 at the proposal. Looking at the PPC frames: the fins narrow;
+the head breaks into small beads because its 27 quads sit at several depths. The proposal is not baked.
+
+Builds: FL `build-run66-fl` 0 warnings, `check_no_x87` FL PASS (1078 functions, 0 violations), AP 0 warnings;
+`generate_bullet_reshade_program.py --check` PASS (315 / 339 words); host tests `test_weapon_effects_hook`,
+`_table`, `_projectile_tune`, `_launch`, `test_regenerate` 64 OK. The generator changed
+(`tools/effects/weapon_effects_table.py`, bundled by `x3m_regenerate.spec`'s module list; no spec change); the
+regenerate tool is not rebuilt here. Not flown.
+
+**Final run at `mz_size` 0.2 (2026-11-10)** [M]. Muzzle dumps, real mesh
+([`dump_out.txt`](../../verification/results/muzzle-reshade/dump_out.txt)), every gate passes:
+
+| Frame | Energy ratio (≤ 0.15) | Peak re-shade / vanilla | Extent at 0.1 px (≤ 0.2 × vanilla + 1) | Extent at a tenth of own peak px |
+| --- | --- | --- | --- | --- |
+| near 30 m | 0.002 | 0.0737 / 9.10 | 0.0 / 72.9 | 14.9 / 33.6 |
+| far 300 m | 0.003 | 0.0698 / 4.83 | 0.0 / 7.9 | 1.6 / 4.6 |
+| grow 30 m | 0.002 | 0.0694 / 7.08 | 0.0 / 14.7 | 3.3 / 7.6 |
+| axis 30 m | 0.001 | 0.0251 / 8.84 | 0.0 / 61.2 | 18.1 / 26.9 |
+| side 30 m | 0.002 | 0.0811 / 9.15 | 0.0 / 74.5 | 14.1 / 33.6 |
+
+Quiet-host run at 0.2, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native`: AP hook **132 of 132**, FL hook **75 of 75**, D3D **126 of
+126**, all PASS. Muzzle fixture (stand-in, three poses 25° / axis / side): energy 0.007 each (≤ 0.15), extent at 0.1
+9.3 / 6.4 / 9.9 px against 0.2 × vanilla's 82.1 / 80.3 / 85.1 + 1, peak 0.26 / 0.20 / 0.26; muzzle substitution 0.090
+µs per draw, match 0.071 µs. Bullet: geometric readback worst 0.031, keys at 1 identical to the accepted record's sums (IRE 76.026, PPC 2593.162) and to the identity layout, substitution
+0.125 µs,
+body change 0.0032 µs; `flash_budget_combined` 122.8 µs (pass). Host tests `test_weapon_effects_hook`, `_table`,
+`_projectile_tune`, `_launch`, `test_regenerate` 64 OK. FL `build-run66-fl` and AP rebuilt at 0.2: 0 warnings each,
+`check_no_x87` FL PASS (1078 functions).
+
+**Review fixes (2026-11-10, review at high, no blocker).** The body map is now a portable core (`bullet_reshade_core.h`
+`build_body_map` / `body_layout`), cleared with the table (`load_table`) and at `shutdown`, so a lookup never reaches
+a freed table. A failed row read leaves the map unbuilt and is retried at the next draw; after 64 failed builds the map
+is final without layouts (`bullet_reshade_layout event=off reason=row_read_failed`). Host test `test_body_map` drives
+it with a fake engine: not readable yet → not final; one failed read → not final, then built; an unknown id gets no
+layout (the identity; MotionOutput logs it once per body); every read failing → final after 64 builds; engine rows ≠
+table rows → `stale_rows`; no `bullet_bodies` → `no_bullet_bodies`; no table → `no_table`. Gates tightened: the
+fixture's flash peak ≥ `mz_gain` / 4, and the dump's own-peak tenth no wider than vanilla's. The stub comment states
+the single render-thread assumption.
+
+**Install requirement for run 66.** The keys `rs_head` and `rs_width` act only with a table that carries
+`tables.bullet_bodies`: regenerate `<game>\x3m\weapon_effects.json` with this generator and ship the rebuilt
+`x3m-regenerate.exe` (the frozen one writes no `bullet_bodies`). Without them the DLL logs `bullet_reshade_layout
+event=off reason=no_bullet_bodies` and the keys do nothing (the accepted look stays).
+
+Quiet-host run after the fixes, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native` [M]: AP hook **132 of 132**, FL hook **75 of 75**, D3D **126 of
+126**, all PASS. Muzzle fixture peaks 0.255 / 0.197 / 0.260 (gate ≥ 0.0375); dump own-peak tenth 14.9 / 1.6 / 3.3 /
+18.1 / 14.1 px against vanilla's 33.6 / 4.6 / 7.6 / 26.9 / 33.6 (all pass). Bullet: geometric readback worst 0.031,
+substitution 0.128 µs, body change 0.0055 µs; muzzle substitution 0.096 µs; `flash_budget_combined` 127.8 µs (pass).
+FL `build-run66-fl` 0 warnings (dev DLL `3c97d5b808b183ae…`), `check_no_x87` FL PASS (1078 functions), AP 0 warnings;
+host tests `test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch`, `test_regenerate` 65 OK.

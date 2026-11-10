@@ -30,6 +30,7 @@ void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     bullet_reshade_requested_ = requested && x3m_bullet_reshade_armed;
     weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
                                        bullet_reshade_constants_);
+    bullet_layout_valid_ = false;
     // The muzzle flash re-shade: reshade mode installed (it needs no engine site of its own: the object-trace scope
     // gives the node at the draw; without that scope no draw matches).
     muzzle_reshade_requested_ = requested && weapon_effects::core::reshade_mode(weapon_effects::mode());

@@ -108,12 +108,18 @@ the peak 1.22..1.55 and the white radius 6.3..8.8 px.
 Dev tuning file (`<game>\x3m\projectile_tune.json`, the same reader as `rs_*`, X3M_DEV_TUNING builds; a clamped key
 logs one `projectile_tune clamped` row); release builds use the baked values (calibrated on the real mesh, section 4).
 
-| Key | Default | Bounds | Meaning |
+| Key | Default (baked FL 65 A, 2026-11-10) | Bounds | Meaning |
 | --- | --- | --- | --- |
-| `mz_size` | 0.5 | 0.2–1.0 | glow radius over vanilla's lit extent from the gun |
-| `mz_core` | 0.5 | 0–4 | the white-shifted core's luminance at the gun (summed over the fan) |
-| `mz_gain` | 0.2 | 0–2 | the glow's luminance at the gun (summed over the fan) |
-| `mz_smooth` | 0.6 | 0–1 | share by which the texel's grain is flattened (1: a plain glow) |
+| `mz_size` | 0.2 | 0.05–1.0 | glow radius over vanilla's lit extent from the gun |
+| `mz_core` | 0 | 0–4 | the white-shifted core's luminance at the gun (summed over the fan) |
+| `mz_gain` | 0.15 | 0–2 | the glow's luminance at the gun (summed over the fan) |
+| `mz_smooth` | 0.1 | 0–1 | share by which the texel's grain is flattened (1: a plain glow) |
+
+The defaults are what the user accepted on FL 65 A. The run's floor for `mz_size` was 0.2, so the reader clamped the
+file's 0.1 (and an earlier 0.15) to 0.2: the flight drew 0.2 (`projectile_tune clamped key=mz_size value=0.1
+applied=0.2` in that run's log) [M], and 0.2 is baked [D, coordinator 2026-11-10]. The floor is now 0.05, so a file's
+0.1 is drawn as written (about a tenth of the baked flash's peak on the real mesh, scratch dump). The calibration
+below is of the first defaults (0.5 / 0.5 / 0.2 / 0.6).
 
 The coordinator expected about gain 1 and core 2; on the real mesh those give a peak of 7.1, a white region of 27.3 px
 (0.86 of vanilla's) and 0.63 of vanilla's energy at 30 m [M, sweep]. The 25° pose is below the ray-sum mean, not above
@@ -135,9 +141,21 @@ modulator. The sweep (size 0.5, smooth 0.6; near frame; the constant 9.14 of the
 
 ## 4. Gates and evidence
 
-Gates (fixture and dump): the flash's **extent at scene white** (equivalent radius of the pixels ≥ 1.0 linear) > 0
-and ≤ `mz_size` × vanilla's, and its **additive energy** (sum of luminance over the crop) ≤ `mz_gain` × vanilla's. The
-extent at 0.1 is reported, not gated.
+Gates (fixture and dump, since the FL 65 A bake on 2026-11-10): the **additive energy** (sum of luminance over the
+crop) ≤ `mz_gain` × vanilla's; the **extent at 0.1 linear** (equivalent radius of the pixels ≥ 0.1) ≤ `mz_size` ×
+vanilla's + 1 px; the flash lit (fixture: peak ≥ `mz_gain` / 4 on the stand-in; dump: peak > 0 on the real mesh).
+The dump also gates the extent at a tenth of each image's own peak at no more than vanilla's (reported only in the
+fixture). With `mz_core` 0 there is no white core, so the extent at scene white is reported, not gated.
+
+**At the baked values (2026-11-10) [M, `dump_out.txt`]** the real mesh's re-shaded flash peaks at 0.025–0.081 linear
+(near 0.074 against vanilla 9.10; side 0.081, axis 0.025; energy ratio 0.001–0.003), so it never reaches 0.1: the
+extent at 0.1 is 0 and every gate passes. Its extent at a tenth of its own peak is 14.9 px against vanilla's 33.6
+(near), 18.1 / 26.9 (axis), 1.6 / 4.6 (far). At `mz_size` 0.1 the peak would be 0.0015–0.015 (scratch dump). The
+view-angle overlap N (section 2) was fitted on the first defaults' sweep; `overlap_by_angle_out.txt` is that fit and
+is **superseded as a record of the current `dump_out.txt`**, whose sweep rows are now at the baked keys (N itself is
+unchanged: it describes the fan, not the keys).
+
+The first defaults' frames (0.5 / 0.5 / 0.2 / 0.6, superseded):
 
 Real mesh and atlas cell (`assets=game`), the scale peak unless stated, 1920x1080 FP16, m00 1.6, the axis 25° out of
 the screen plane unless stated, dark background (nebula beside it in each PNG), the defaults, the per-draw N [M,
@@ -184,6 +202,10 @@ the own guns' flash in first person takes that path is not established.
 7. (2026-11-09, coordinator on the first re-shade's dumps) Rejected: a per-quad falloff in the cell's UV drew one beige
    lobe per quad with no hot centre ("lava, not fire"). The falloff is in world space around the gun, the texel only
    modulates, and a white-shifted core reaches scene white within about a quarter of vanilla's white radius.
+8. (2026-11-09, FL 65 A accepted; 2026-11-10 coordinator) The flown values are baked: `mz_size` 0.2 (the value drawn:
+   the file's 0.1 was clamped to the then floor 0.2; the floor is now 0.05), `mz_core` 0 (no white core), `mz_gain`
+   0.15, `mz_smooth` 0.1. With no core the gate at scene white no longer applies; the extent is gated at 0.1
+   linear (section 4); the extent at a tenth of each image's own peak is reported only.
 
 ## Reproduce
 

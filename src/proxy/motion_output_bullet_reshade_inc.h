@@ -3,8 +3,10 @@
 // that forwards every submit and raises x3m_bullet_scope around it (weapon_effects_hook.cpp). A draw inside that scope
 // whose bound pixel shader is one of the game's INSTANCE_BULLETS programs (shadow_.ps_bullet: recognised by the proxy's
 // hash of the bytes the game passed to CreatePixelShader, bullet_reshade_core.h) is drawn with our ps_2_0 program
-// (src/effects/weapon_bullet_reshade_ps.hlsl) and c31 = (gain, edge, core, normaliser), through the one device
-// sequence of bullet_reshade_route.h (c31.w the bound texture's normaliser, bullet_reshade_scale):
+// (src/effects/weapon_bullet_reshade_ps.hlsl) and c31 = (gain, edge, core, normaliser) with c29..c30 the drawn body's
+// UV layout (the geometric size: x3m_bullet_body, the batch's body id the stub published, through the table's
+// bullet_bodies, bullet_reshade_layout), through the one device sequence of bullet_reshade_route.h (c31.w the bound
+// texture's normaliser, bullet_reshade_scale):
 // - the additive route (screen_emission_additive under HDR, prepare_screen_additive) takes the bullet draws: the
 //   re-shade takes precedence over the route's own program, keeps the route's conversion (DESTBLEND ONE, applied by
 //   the sequence) with the route's emission gain folded into c31, its alpha states, footprint and single-copy drop,
@@ -13,8 +15,8 @@
 //   INVSRCCOLOR, finish_screen_additive the rest of the route;
 // - otherwise (the route off, refused, or no HDR) under the game's ONE / INVSRCCOLOR (prepare_bullet_reshade, last in
 //   before_draw).
-// The game's program comes back from the shadowed binding, c31 from the SetPixelShaderConstantF hook's shadow (read at
-// resync; zero when never written). Documented IDirect3DDevice9 calls only, through the native slots (the shadows keep
+// The game's program comes back from the shadowed binding, c29..c31 from the SetPixelShaderConstantF hook's shadow
+// (read at resync; zero when never written). Documented IDirect3DDevice9 calls only, through the native slots (the shadows keep
 // the application's values); no allocation per draw. On every 60th frame (a 32-bit count) and capture frames the
 // sequence alone, before and after the draw, is QPC-timed for the bullet_reshade_frame row.
 namespace {
@@ -27,6 +29,7 @@ constexpr DWORD bullet_reshade_flag_program[] = {
 static_assert(sizeof bullet_reshade_program / sizeof bullet_reshade_program[0] > 2 &&
                   bullet_reshade_program[0] == 0xffff0200u && bullet_reshade_flag_program[0] == 0xffff0200u,
               "the embedded re-shade programs are ps_2_0");
+static_assert(weapon_effects::reshade::layout_floats == 8, "MotionOutput::bullet_layout_ holds c29..c30");
 } // namespace
 // Created once per device at the first game bullet program's registration (register_pixel_shader); a refusal of the
 // plain program logs one row and leaves the bullet draws vanilla for the device's life (the flag variant missing only
@@ -48,6 +51,7 @@ void MotionOutput::bullet_reshade_create() noexcept {
         release(flag);
     weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
                                        bullet_reshade_constants_);
+    bullet_layout_valid_ = false;
     log("bullet_reshade_program device=%llu frame=%llu created=%u result=%08lx flag_created=%u flag_result=%08lx words=%u "
         "flag_words=%u gain=%.3g edge=%.3g core=%.3g additive_gain=%.3g texture_keys=%u textures_mapped=%u",
         id_, frame_, unsigned(bullet_reshade_ps_ != nullptr), hr, unsigned(bullet_reshade_flag_ps_ != nullptr), flag_hr,
@@ -102,6 +106,26 @@ void MotionOutput::bullet_reshade_scale(IDirect3DBaseTexture9* texture, float* o
     bullet_texture_scale_ = scale;
     *out = scale;
 }
+// c29..c30 for a body id: its tables.bullet_bodies layout and the keys rs_head / rs_width (bullet_reshade_core.h
+// layout_constants), or the identity (f = 1) for a body without one, logged once per body. Cached until the id changes
+// or the tuning reloads; a miss while the engine's TBullets is not readable yet is not cached.
+void MotionOutput::bullet_reshade_layout(std::uint32_t body) noexcept {
+    bool final = true;
+    const std::int32_t* words = weapon_effects::bullet_body_layout(body, &final);
+    weapon_effects::reshade::layout_constants(words, projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
+                                              bullet_layout_);
+    bullet_layout_body_ = body;
+    bullet_layout_valid_ = final;
+    if (words || !final) return;
+    bool seen = false;
+    for (unsigned i = 0; i < bullet_layout_unknown_count_ && !seen; ++i) seen = bullet_layout_unknown_[i] == body;
+    if (!seen && bullet_layout_unknown_count_ < 16u) {
+        bullet_layout_unknown_[bullet_layout_unknown_count_++] = body;
+        log("bullet_reshade_layout device=%llu frame=%llu body=%lu entry=none (no tables.bullet_bodies layout mapped to "
+            "this body: the accepted look, no geometric size)",
+            id_, frame_, static_cast<unsigned long>(body));
+    }
+}
 // The draw is a re-shade candidate: a game bullet program bound inside the batch submit, our program ready.
 bool MotionOutput::bullet_reshade_ready() const noexcept {
     return shadow_.ps_bullet && x3m_bullet_scope && bullet_reshade_ps_ && !bullet_reshade_restore_failed_;
@@ -116,16 +140,21 @@ bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool f
     if (timed) QueryPerformanceCounter(&a);
     auto ops = rs::calls(
         [this](DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, v); },
-        [this](const float* v) { return direct_call<SetConstantsFFn>(SetPixelShaderConstantF, rs::constant_register, v, 1u); },
+        [this](const float* v) {
+            return direct_call<SetConstantsFFn>(SetPixelShaderConstantF, rs::block_register, v, rs::block_count);
+        },
         [this](IDirect3DPixelShader9* p) { return native<SetPsFn>(SetPixelShader)(device_, p); });
+    const std::uint32_t body = x3m_bullet_body;
+    if (!bullet_layout_valid_ || body != bullet_layout_body_) bullet_reshade_layout(body);
     rs::Plan plan;
+    plan.layout = bullet_layout_;
     plan.program = flag ? bullet_reshade_flag_ps_ : bullet_reshade_ps_;
     plan.constants = bullet_reshade_constants_;
     plan.gain = screen_additive_gain_;
     bullet_reshade_scale(samplers_[0].texture, &plan.scale);
     plan.convert = convert;
     rs::Applied applied;
-    const HRESULT hr = rs::begin(ops, plan, shadow_.ps_c31, applied);
+    const HRESULT hr = rs::begin(ops, plan, shadow_.ps_c29, applied);
     if (timed) {
         QueryPerformanceCounter(&b);
         bullet_reshade_ticks_ += std::uint64_t(b.QuadPart - a.QuadPart);
@@ -169,12 +198,14 @@ HRESULT MotionOutput::end_bullet_reshade(MotionRoute& route) noexcept {
     if (route.bullet_reshade_timed) QueryPerformanceCounter(&a);
     auto ops = rs::calls(
         [this](DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, v); },
-        [this](const float* v) { return direct_call<SetConstantsFFn>(SetPixelShaderConstantF, rs::constant_register, v, 1u); },
+        [this](const float* v) {
+            return direct_call<SetConstantsFFn>(SetPixelShaderConstantF, rs::block_register, v, rs::block_count);
+        },
         [this](IDirect3DPixelShader9* p) { return native<SetPsFn>(SetPixelShader)(device_, p); });
     rs::Applied applied;
-    applied.program = applied.c31 = true;
+    applied.program = applied.block = true;
     applied.destblend = route.bullet_reshade_convert;
-    const HRESULT hr = rs::end(ops, applied, shadow_.ps, shadow_.ps_c31);
+    const HRESULT hr = rs::end(ops, applied, shadow_.ps, shadow_.ps_c29);
     if (route.bullet_reshade_timed) {
         QueryPerformanceCounter(&b);
         bullet_reshade_ticks_ += std::uint64_t(b.QuadPart - a.QuadPart);

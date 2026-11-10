@@ -74,10 +74,11 @@ int main(int argc, char** argv) {
 DEFAULTS = [1.0, 2.0, 0.3, 0.4, 3000.0, 60.0, 2.0, 0.0, 1.5,  # weapon_projectile_family.h, fighter_tracer (FL 61 A)
             1.25, 2.5, 80.0, 2.0, 3.0,  # the muzzle flash's start values (muzzle-flash-look.md (superseded) section 5)
             0.4, 0.4, 0.2,  # the bullet re-shade (bullet-draw-batch.md section 6; baked from FL 64 A)
-            0.5, 0.5, 0.2, 0.6]  # the muzzle flash re-shade (muzzle-flash-look.md)
+            0.2, 0.0, 0.15, 0.1,  # the muzzle flash re-shade (muzzle-flash-look.md; baked from FL 65 A, size as drawn)
+            1.0, 1.0]  # the bullet re-shade's geometric size (rs_head, rs_width; 1 = unchanged)
 KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops', 'trail_ms', 'head_gain',
         'flash_core_mult', 'flash_len_m', 'flash_life_ms', 'flash_stops', 'hull_pulse_r', 'rs_gain', 'rs_edge', 'rs_core',
-        'mz_size', 'mz_core', 'mz_gain', 'mz_smooth']
+        'mz_size', 'mz_core', 'mz_gain', 'mz_smooth', 'rs_head', 'rs_width']
 
 
 class ProjectileTune(unittest.TestCase):
@@ -113,7 +114,7 @@ class ProjectileTune(unittest.TestCase):
 
     def test_every_key_read(self):
         values = [2.5, 4.0, 0.3, 0.5, 4000.0, 80.0, 2.5, 60.0, 2.0, 6.5, 4.0, 250.0, 3.0, 5.0, 0.6, 0.4, 0.5,
-                  0.75, 1.5, 0.25, 0.3]
+                  0.75, 1.5, 0.25, 0.3, 0.5, 0.6]
         text = json.dumps(dict(zip(KEYS, values)), indent=2)
         r = self.parse(text)
         self.assertEqual((r['ok'], r['seen'], r['clamped']), (1, (1 << len(KEYS)) - 1, 0))
@@ -150,16 +151,31 @@ class ProjectileTune(unittest.TestCase):
         self.assertEqual(inside['values'][:14], DEFAULTS[:14])
 
     def test_muzzle_reshade_keys_bounds(self):
-        # the muzzle flash re-shade (muzzle-flash-look.md): mz_size 0.2..1, mz_core 0..4, mz_gain 0..2, mz_smooth 0..1
-        low = self.parse('{"mz_size": 0.1, "mz_core": -1, "mz_gain": -0.5, "mz_smooth": -2}')
+        # the muzzle flash re-shade (muzzle-flash-look.md): mz_size 0.05..1 (the baked 0.1 inside), mz_core 0..4,
+        # mz_gain 0..2, mz_smooth 0..1
+        low = self.parse('{"mz_size": 0.01, "mz_core": -1, "mz_gain": -0.5, "mz_smooth": -2}')
         self.assertEqual((low['ok'], low['clamped']), (1, 0xf << 17))
-        self.assertEqual(low['values'][17:], [0.2, 0.0, 0.0, 0.0])
+        self.assertEqual([round(v, 6) for v in low['values'][17:21]], [0.05, 0.0, 0.0, 0.0])
         high = self.parse('{"mz_size": 3, "mz_core": 9, "mz_gain": 5, "mz_smooth": 1.5}')
         self.assertEqual(high['clamped'], 0xf << 17)
-        self.assertEqual(high['values'][17:], [1.0, 4.0, 2.0, 1.0])
-        inside = self.parse('{"mz_size": 0.2, "mz_core": 4, "mz_gain": 2, "mz_smooth": 1}')
+        self.assertEqual(high['values'][17:21], [1.0, 4.0, 2.0, 1.0])
+        inside = self.parse('{"mz_size": 0.1, "mz_core": 4, "mz_gain": 2, "mz_smooth": 1}')
         self.assertEqual((inside['ok'], inside['clamped'], inside['seen']), (1, 0, 0xf << 17))
         self.assertEqual(inside['values'][:17], DEFAULTS[:17])
+
+    def test_reshade_size_keys_bounds(self):
+        # the bullet re-shade's geometric size (projectile-look.md "Geometric size (2026-11-10)"): rs_head and rs_width
+        # 0.2..1, default 1 (unchanged)
+        low = self.parse('{"rs_head": 0.1, "rs_width": -1}')
+        self.assertEqual((low['ok'], low['clamped']), (1, 0x3 << 21))
+        self.assertEqual([round(v, 6) for v in low['values'][21:]], [0.2, 0.2])
+        high = self.parse('{"rs_head": 1.5, "rs_width": 9}')
+        self.assertEqual(high['clamped'], 0x3 << 21)
+        self.assertEqual(high['values'][21:], [1.0, 1.0])
+        inside = self.parse('{"rs_head": 0.5, "rs_width": 0.6}')
+        self.assertEqual((inside['ok'], inside['clamped'], inside['seen']), (1, 0, 0x3 << 21))
+        self.assertEqual([round(v, 6) for v in inside['values'][21:]], [0.5, 0.6])
+        self.assertEqual(inside['values'][:21], DEFAULTS[:21])
 
     def test_missing_key_takes_the_default_and_unknown_keys_are_ignored(self):
         r = self.parse('{"core_px": 3, "note": "IRE flight 59", "flag": true, "x": null, "y": -1.5e2}')

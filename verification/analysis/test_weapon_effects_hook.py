@@ -283,8 +283,16 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         # head, another size or no table none; fx_bullets_diff's p99 keeps 2.75, fx_bullets2_diff's scales by
         # 0.6169 / 0.9888; the observer's match is cheap on a size miss
         checks = dict(self.record['checks'])
-        for name in ('reshade_texture_key_matches_exact_bytes', 'reshade_texture_scale_per_texture'):
+        for name in ('reshade_texture_key_matches_exact_bytes', 'reshade_texture_scale_per_texture',
+                     'reshade_geometric_matches_model', 'reshade_geometric_keys_at_one_unchanged'):
             self.assertTrue(checks.get(name), name)
+        # the geometric size (projectile-look.md "Geometric size (2026-11-10)"): the falloff's readback on the model at
+        # rs_head 0.5 / rs_width 0.6, the keys at 1 bit for bit the layout-free program, the body change's CPU cheap
+        geo = next(x for x in self.record['metrics']['reshade'] if x.get('case') == 'geometric_model')
+        self.assertLessEqual(geo['worst_rel'], 1.0)
+        self.assertEqual(geo['same_at_one'], 1)
+        cost = next(x for x in self.record['metrics']['reshade'] if x.get('case') == 'layout_cost')
+        self.assertLess(cost['layout_us_per_body_change'], 0.2)
         row = next(x for x in self.record['metrics']['reshade'] if x.get('case') == 'texture_key')
         self.assertEqual((row['hit'], row['tail_miss'], row['head_miss'], row['size_miss'], row['no_table']),
                          (0, -1, -1, -1, -1))
@@ -294,8 +302,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
 
     def test_muzzle_reshade_gates(self):
         # docs/architecture/muzzle-flash-look.md (the re-shade): the ps_3_0 program created, the readback on the model,
-        # the sequence bound and restored, energy <= mz_gain x vanilla's, the extent at scene white reached and <= mz_size
-        # x vanilla's, the cost measured
+        # the sequence bound and restored, energy <= mz_gain x vanilla's, the flash lit (peak >= mz_gain / 4), the extent
+        # at 0.1 linear <= mz_size x vanilla's + 1 px (FL 65 A baked no white core), the cost measured
         checks = dict(self.record['checks'])
         for name in ('muzzle_reshade_programs_create', 'muzzle_reshade_program_matches_model',
                      'muzzle_reshade_standin_vanilla_is_emissive_law', 'muzzle_reshade_route_plain_binds_and_restores', 'muzzle_reshade_energy_within_gain',
@@ -309,8 +317,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         for pose in ('flash_tilt', 'flash_axis', 'flash_side'):
             row = rows[pose]
             self.assertLessEqual(row['energy_ratio'], row['gain'], pose)
-            self.assertLessEqual(row['reshade_white_r'], row['size'] * row['vanilla_white_r'] + 0.5, pose)
-            self.assertGreater(row['reshade_white_r'], 0.0, pose)
+            self.assertLessEqual(row['reshade_tenth_r'], row['size'] * row['vanilla_tenth_r'] + 1.0, pose)
+            self.assertGreaterEqual(row['reshade_peak'], 0.25 * row['gain'], pose)
         self.assertLess(rows['flash_side']['overlap'], rows['flash_tilt']['overlap'])
         self.assertLess(rows['flash_tilt']['overlap'], rows['flash_axis']['overlap'])
         self.assertEqual(rows['cost']['fenced'], 1)

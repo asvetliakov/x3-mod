@@ -7,7 +7,7 @@
 // (`tex t0; mul r0.rgb, t0, v0.a; +mov r0.a, t0.a`), stream 0 stride 24 (POSITION FLOAT3, TEXCOORD0 FLOAT2, COLOR0
 // D3DCOLOR = alpha << 24), ONE / INVSRCCOLOR, Z test on and Z write off. The re-shade program is the production
 // embedded ps_2_0 bytecode, swapped in exactly as MotionOutput::prepare_bullet_reshade / finish_bullet_reshade do
-// (c31, SetPixelShader; SetPixelShader, c31 back). Never launches the game; no game bytes: the stand-in mesh and
+// (c29..c31, SetPixelShader; SetPixelShader, c29..c31 back). Never launches the game; no game bytes: the stand-in mesh and
 // texture are procedural (the IRE's topology and UV extents, its strip's luminance profile), and the dump loads the
 // real mesh and texture only from untracked files run_weapon_effects.py --dump prepares from the local lab assets.
 #include <windows.h>
@@ -212,23 +212,28 @@ inline void bind_pass(IDirect3DDevice9* dev, IDirect3DVertexShader9* vs, IDirect
 inline auto device_ops(IDirect3DDevice9* dev) {
     namespace rs = x3m::weapon_effects::reshade;
     return rs::calls([dev](DWORD v) { return dev->SetRenderState(D3DRS_DESTBLEND, v); },
-                     [dev](const float* v) { return dev->SetPixelShaderConstantF(rs::constant_register, v, 1); },
+                     [dev](const float* v) {
+                         return dev->SetPixelShaderConstantF(rs::block_register, v, rs::block_count);
+                     },
                      [dev](IDirect3DPixelShader9* p) { return dev->SetPixelShader(p); });
 }
 // One substituted draw on the plain path (the game's ONE / INVSRCCOLOR; motion_output_bullet_reshade_inc.h
 // prepare_bullet_reshade / finish_bullet_reshade): begin, the draw, end. Returns the draw's result; *restored the
-// sequence's begin and end success.
+// sequence's begin and end success. app_block: the application's c29..c31 (12 floats); layout: the body's c29..c30
+// (layout_constants; nullptr the identity).
 inline HRESULT reshaded_draw(IDirect3DDevice9* dev, IDirect3DPixelShader9* ours, IDirect3DPixelShader9* game,
-                             const float constants[4], const float app_c31[4], UINT primitives, bool* restored) {
+                             const float constants[4], const float app_block[12], UINT primitives, bool* restored,
+                             const float* layout = nullptr) {
     namespace rs = x3m::weapon_effects::reshade;
     auto ops = device_ops(dev);
     rs::Plan plan;
     plan.program = ours;
     plan.constants = constants;
+    plan.layout = layout;
     rs::Applied applied;
-    const HRESULT hr = rs::begin(ops, plan, app_c31, applied);
+    const HRESULT hr = rs::begin(ops, plan, app_block, applied);
     const HRESULT drawn = SUCCEEDED(hr) ? dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, primitives) : hr;
-    const HRESULT back = rs::end(ops, applied, game, app_c31);
+    const HRESULT back = rs::end(ops, applied, game, app_block);
     *restored = SUCCEEDED(hr) && SUCCEEDED(back);
     return drawn;
 }
