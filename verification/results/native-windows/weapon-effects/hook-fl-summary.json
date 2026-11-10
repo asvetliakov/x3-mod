@@ -21,29 +21,26 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "957b86217e0ff9c4eb269a1b4b92b45854165ae4-dirty",
+    "commit": "edb5215833b182b6c387801cc98b61afa615d317-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
+      "src/proxy/weapon_effects_bubble.h",
       "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_hook.cpp",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "src/proxy/weapon_effects_table.h",
-      "verification/probe/build_weapon_effects_hook_fl.py",
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp"
+      "src/proxy/weapon_effects_patch.h"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "44e4243498e920c81d1a639b37f89924487130a2e5ba5dbfdb6020f43e534d92",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "30fb2a2e232e9a9d56dc178feec892ca8be9681f915433e17ef236839f4f076d",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
-      "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "7b3a31405d989fb3a837fd1b2c4e4b3e41670006937bd1a967de768ffa60b786",
-      "src/proxy/weapon_effects_patch.h": "dcc554e2291e87582ff0349417b2fdd737892af8dededf747e3500a53a5c24b7",
-      "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "b16d130e1ba0c9d5a196ab5111a8ec3622201b44ecde3a48f9834b42a2fdccdb",
+      "verification/probe/build_weapon_effects_hook_fl.py": "8f6107e654f64e4d0b9adaf65ed2ed295693621247125c22ae02262fbadf6071",
+      "src/proxy/weapon_effects_patch.cpp": "9e1fab59020b2786f9cf355cb55907f13c50e590172b4663f4af52cca2469a42",
+      "src/proxy/weapon_effects_patch.h": "8e06582da350d71a978c3b3e563f7eb7b241e6f2f0ece69d278c2ba8ada6ef81",
+      "src/proxy/weapon_effects_hook.cpp": "b504df610e648027fc3ccddf0c47a890b04f27a573baa0bd6f5d97f9d2ca7d29",
+      "src/proxy/weapon_effects_core.h": "2a898347438a7974322870877d83ba765948c7fcf486aa24a5b41f407f7371c2",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
-      "src/proxy/weapon_effects_bubble.h": "c918f799b41611d964c0b64bb9a0cf5f924bccda63eb367f5edcde379dfe5087",
-      "src/proxy/weapon_effects_table.h": "65b005f92719ba1c18787c4b94d061613ce9b1f859d5d341c58189cd41b3134a",
+      "src/proxy/weapon_effects_bubble.h": "1215274203f85cc6ca2730544ad75ddfc376c49ccab54a820ec261b1b831b273",
+      "src/proxy/weapon_effects_table.h": "64182c7d7578413ce94e547dc02d28d4405fd38e97435dae74d9210178b2daee",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
       "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
@@ -65,7 +62,7 @@
         "_x3m_weapon_death_fl": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event_fl": 1244,
+        "_x3m_weapon_event_fl": 1247,
         "_x3m_weapon_tap_fl": 45,
         "_x3m_weapon_bolt_tap_fl": 874,
         "_x3m_weapon_muzzle_fl": 208,
@@ -97,10 +94,6 @@
         ],
         "_x3m_weapon_effects_stub_batch_scope_fl": [
           "pushf",
-          "push",
-          "mov",
-          "mov",
-          "pop",
           "add",
           "add",
           "popf",
@@ -262,7 +255,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "d57e2908a4aea5af055321bc39573569b663431fe64ed046c2333a52ba3a1f2c"
+    "executable_sha256": "6db8248a6ac1f750c3398bb975d495a1f8a0f7a130381eed0ab079fb6c99b698"
   },
   "host": {
     "name": "native-windows",

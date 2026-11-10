@@ -1,0 +1,197 @@
+{
+ "log": "/mnt/c/X3FL/x3m.log",
+ "owners_listed": 14,
+ "sessions": 1,
+ "totals": {
+  "rows": 2086,
+  "bubbles": 231462,
+  "bubble_fallback": 40154,
+  "bubble_walks": 150,
+  "bubble_walk_failures": 123,
+  "bubble_held": 40031,
+  "bubble_deferred": 0,
+  "bubble_clamped": 0
+ },
+ "periods": {
+  "total": 2086,
+  "with_hits": 406,
+  "failing": 122,
+  "failing_with_hits": 99
+ },
+ "owners": 26,
+ "owners_in_failing_periods": 10,
+ "owners_never_without_failure": [
+  "45b66ab8",
+  "abdd3588"
+ ],
+ "by_owner": {
+  "abde1970": {
+   "radius": 545751,
+   "tier": "capital",
+   "hits": 683,
+   "x": 0.409,
+   "y": 0.295,
+   "z": 0.998,
+   "pos_r": 1.044,
+   "periods": 111,
+   "failing": 95,
+   "sole_failing": 76
+  },
+  "431bf6e8": {
+   "radius": 61827,
+   "tier": "corvette",
+   "hits": 347,
+   "x": 2.555,
+   "y": 2.517,
+   "z": 1.876,
+   "pos_r": 3.623,
+   "periods": 101,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "abdf3800": {
+   "radius": 38385,
+   "tier": "corvette",
+   "hits": 346,
+   "x": 0.2,
+   "y": 0.254,
+   "z": 0.871,
+   "pos_r": 0.902,
+   "periods": 103,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "abdf31e8": {
+   "radius": 61827,
+   "tier": "corvette",
+   "hits": 286,
+   "x": 2.239,
+   "y": 0.702,
+   "z": 2.665,
+   "pos_r": 3.154,
+   "periods": 102,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "431c00a8": {
+   "radius": 38385,
+   "tier": "corvette",
+   "hits": 192,
+   "x": 0.166,
+   "y": 0.275,
+   "z": 0.868,
+   "pos_r": 0.912,
+   "periods": 48,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "2a7125f0": {
+   "radius": 1567294,
+   "tier": "capital",
+   "hits": 117,
+   "x": 0.062,
+   "y": 0.089,
+   "z": 0.026,
+   "pos_r": 0.103,
+   "periods": 18,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "431a3530": {
+   "radius": 8623,
+   "tier": "fighter",
+   "hits": 64,
+   "x": 0.508,
+   "y": 0.238,
+   "z": 0.598,
+   "pos_r": 0.656,
+   "periods": 28,
+   "failing": 12,
+   "sole_failing": 2
+  },
+  "431a22e8": {
+   "radius": 8511,
+   "tier": "fighter",
+   "hits": 52,
+   "x": 0.504,
+   "y": 0.276,
+   "z": 0.595,
+   "pos_r": 0.78,
+   "periods": 15,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "abdf7eb0": {
+   "radius": 8511,
+   "tier": "fighter",
+   "hits": 40,
+   "x": 0.397,
+   "y": 0.178,
+   "z": 0.576,
+   "pos_r": 0.576,
+   "periods": 9,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "431a2558": {
+   "radius": 7267,
+   "tier": "fighter",
+   "hits": 38,
+   "x": 8.847,
+   "y": 8.406,
+   "z": 21.504,
+   "pos_r": 22.005,
+   "periods": 5,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "abe01360": {
+   "radius": 27206,
+   "tier": "corvette",
+   "hits": 31,
+   "x": 0.257,
+   "y": 0.286,
+   "z": 0.893,
+   "pos_r": 0.901,
+   "periods": 5,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "431a59c0": {
+   "radius": 8511,
+   "tier": "fighter",
+   "hits": 26,
+   "x": 0.467,
+   "y": 0.199,
+   "z": 0.525,
+   "pos_r": 0.668,
+   "periods": 20,
+   "failing": 0,
+   "sole_failing": 0
+  },
+  "abddaf68": {
+   "radius": 8790,
+   "tier": "fighter",
+   "hits": 16,
+   "x": 1.099,
+   "y": 0.881,
+   "z": 0.589,
+   "pos_r": 1.467,
+   "periods": 4,
+   "failing": 2,
+   "sole_failing": 0
+  },
+  "abdeb7e0": {
+   "radius": 7002,
+   "tier": "fighter",
+   "hits": 15,
+   "x": 0.587,
+   "y": 0.286,
+   "z": 0.55,
+   "pos_r": 0.616,
+   "periods": 3,
+   "failing": 0,
+   "sole_failing": 0
+  }
+ }
+}

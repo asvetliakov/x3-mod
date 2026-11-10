@@ -1427,7 +1427,8 @@ constexpr float bubble_scale = 1.15f;
 constexpr float bubble_far_gain = 0.6f;
 constexpr float bubble_floor = 1.f / 16.f;
 constexpr unsigned bubble_retry_ms = 2000;
-// At most this many hull walks per stage call (review F4: a crowded sector's first frame); the owners past it draw on
+// At most this many hull walk slices per stage call (review F4: a crowded sector's first frame; a slice is at most
+// stage::hull_slice_nodes nodes and about stage::hull_slice_reads reads of one owner's walk); the owners past it draw on
 // the fallback sphere until a later frame walks them (bubble_deferred= in weapon_effects_frame).
 constexpr unsigned bubble_walks_per_frame = 2;
 // The records' game-time life: the ring reaches the rim, then the slowest cell fades out.

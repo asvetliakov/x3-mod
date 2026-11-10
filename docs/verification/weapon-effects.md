@@ -3466,6 +3466,61 @@ stays in `MuzzleRecord` for the AP bolt path but is dead on FL; a flash lives on
 inside the life cuts it short; more than 64 live flashes in one frame (overlap under SETA or long lives) is
 unmeasured (`flash_dropped` counts the excess).
 
+## Capital shield bubble: walk budget (2026-11-10)
+
+FL run 65 (user flight 2026-11-10 on an Argon Titan, M2): the bubble stood far off the hull's sides while nose and tail
+fit. Triage by [`bubble_rows.py`](../../verification/results/fl-run65/bubble_rows.py) over `/mnt/c/X3FL/x3m.log`
+(output [`bubble_rows.json`](../../verification/results/fl-run65/bubble_rows.json)): 2,086 `weapon_effects_frame` rows,
+`bubble_walks` 150, `bubble_walk_failures` 123, held 40,031, deferred 0, clamped 0 [m]. Frame transition (each row
+closes a 300-frame period; the shield-hit owners of a period attributed to it): 122 failing periods, 99 with stage hits;
+the Titan (owner `abde1970`, R 545751, capital) has hits in 95 of the 99 and is the only owner in 76; none of the five
+corvettes listed (347, 346, 286, 192, 31 hits) is ever in a failing period; one fighter (`431a3530`) is the only owner
+in 2 failing periods [m], which a Titan record still live across the period boundary would also give [i]. Per-owner
+pos_r split: the Titan's hits reach
+|x| 0.409 R, |y| 0.295 R, |z| 0.998 R (pos_r 1.044) [m], so its bubble was the fallback sphere of R, about its
+half-length, and B = c + e Q pushed side hits out (about 3.4x). `weapon_bubble_extent` never fired. The failing guard was
+not logged; the 128-node budget is the likely one: the Titan's stock scene is 98 collision bodies in up to 152 nodes
+([ship-enclosure.md](../reverse-engineering/fl/ship-enclosure.md) section 3) [i]. The new `weapon_bubble_walk` row will
+name it on the next flight.
+
+Change (`src/proxy/weapon_effects_bubble.h`, [architecture 5.1.1](../architecture/weapon-effects.md) "Bubble"):
+`hull_budget` 128 → **1024**, `hull_list_limit` 256 → **1024** (6.7x the Titan's 152; the list limit never tighter than
+the budget); the walk is resumable (`HullWalk`, an explicit 3-level stack), a slice at most `hull_slice_nodes` **256**
+nodes and `hull_slice_reads` **2,400** reads (no node begun past it; a node reads at most 84), one slice per owner per
+frame, the fallback sphere until it finishes. A resumed slice re-checks each level's link; a relinked list fails the
+walk (`changed`) and it restarts from the root on the owner's next stage call (`restarted=1`, no retry hold). A walk
+parked longer than two game steps or 500 game ms (whichever is larger; the step from `BubbleCache::frame`, once per
+`stage::build`) restarts from the root. A fitted centre farther than the radius from the root node fails (`box`). Every
+failed walk logs one `weapon_bubble_walk` row naming its guard (`cache read list budget chain model lod extent scale
+bounds empty changed box`) with nodes, parts, depth, deepest, slices, the offending value and `restarted=`, limited on
+wall ms from the stage's QPC (an owner once per 2000 ms, 8 rows per 2000 ms in all; SETA does not multiply rows);
+`weapon_effects_frame` gains `bubble_partial=` (slices that left their walk unfinished). Fallback: no per-axis object
+bound is documented (the object carries the radius `obj+0xa4` only; the OBBs are the models' collision BVHs), so the
+sphere stays the last resort.
+
+Native fixture after the review fixes (`run_weapon_effects.py --host native`, quiet host, lock wait 0 s, child 43.2 s):
+D3D **129/129 PASS** (`passed: true`), hook 132/132, FL hook 75/75 [m]. The five bubble checks:
+
+| Check | Figures [m] |
+| --- | --- |
+| `bubble_capital_648_nodes_walks_in_slices_and_fits` | 8 x 8 x 9 = 648 nodes over 3 levels, R 545751: 3 frames, the first 2 on the sphere (e 5457.5), 3 slices, 1 walk; bubble c 0, e 2300 / 1725 / 5750 = 1.15 x the sections' box (rel. error 0.0) |
+| `bubble_capital_side_hit_on_the_hull_bubble` | flank hit 30 % aft: 2,046 lit, 0 hidden, 0 outside, coverage 385/385, centroid 0.545 cells (cell 80); B 364 view units from the contact point against 3,031 on the fallback sphere (0.12) |
+| `hull_walk_capital_1024_measured_sliced` | 16 x 7 x 8 = 1024 nodes, 3 LOD records each, 8,325 reads: one call 69.6 µs best (fake reader), **105.3 / 107.1 µs** best / mean through `engine_memory::read` cold, 105.1 / 106.5 warm (the first run: 110.0 / 114.6 cold); one 256-node slice **25.9 / 26.4 µs**; 4 slices |
+| `hull_walk_worst_slice_read_bounded` | the same tree with 16 LOD records per part at the end of a 64-entry chain (84 reads a node): a slice 29 nodes, 2,440 reads (bound 2,400 + one node), **24.5 / 24.9 µs** cold; 36 slices to finish |
+| `bubble_walk_forced_failure_names_the_budget` | 38 x 26 = 1026 nodes over 2 levels: failed on frame 5, `guard=budget nodes=1024 parts=1024 depth=2 deepest=2 slices=5 value=0x00000400 restarted=0`; 500 game ms later held, no second record |
+
+The 127-node walk 8.0 µs (8.6 before); `flash_budget_combined_512_bolts_64_flashes_64_pulses` passes at 122.4 µs (the
+first run's 371.2 µs, with every bolt-stage CPU figure 2.8–2.9x, was host noise as on 2026-11-09; the projectile stage
+includes the bubble header but calls none of it [s]) [m]. The AP hook record's `site`/`return` move with the base
+`VirtualAlloc(nullptr, …)` picks for the fixture's relocatable engine region (`build_pages`): `00fe6d85` → `00f36d85` →
+`00e76d85` over three runs, the offset `…6d85` fixed; its executable hash changed because the previous record was built
+from a dirty `e50d7f658` tree. Host tests [m]: `test_weapon_effects_core` 7 OK (named guards, 648-node slices,
+`changed` with restart, park age at 16 ms and SETA 600 ms steps, the centre bound, the read bound: 300 16-LOD parts in
+3 slices, first 110 nodes, at most 2,422 reads; the row and its wall-ms limit), core + hook + sites 31 OK. Builds: FL
+and AP 0 warnings, `check_no_x87` FL PASS (1076 functions) and AP PASS (1161 functions, 0 violations: the row's
+`snprintf` path is not x87); dev DLLs (not candidates) FL `1c21cf90f9948989…`, AP `5d251e097378c568…`. Triage output
+recorded with `owners_listed` 14 (the script's default). Not flown.
+
 ## Bullet re-shade on FL (2026-11-09)
 
 `X3M_WEAPON_EFFECTS=reshade` (user decision 2026-11-09): shields mode plus the game's own bullet batch draws with our

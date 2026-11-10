@@ -52,9 +52,9 @@ HARNESS = r'''
 namespace core = x3m::weapon_effects::core;
 namespace st = x3m::weapon_effects::stage;
 static long I(const char* s) { return std::strtol(s, nullptr, 0); }
-// A fake engine memory at 0x100000..0x110000 (32-bit addresses, as the records carry): object k at base + k * 0x400,
+// A fake engine memory at 0x100000..0x200000 (32-bit addresses, as the records carry): object k at base + k * 0x400,
 // its node at + 0x200. The reader refuses anything outside, as engine_memory::read refuses unreadable memory.
-static unsigned char mem[0x40000];
+static unsigned char mem[0x100000];
 constexpr std::uint32_t base = 0x100000;
 static bool rd(std::uintptr_t a, void* out, std::size_t n) {
     if (a < base || a + n > base + sizeof mem) return false;
@@ -478,25 +478,52 @@ static int bubble_cases() {
     ok = st::hull_bounds(&rd, slot, node(0), &hb);
     std::printf("nested ok=%u parts=%u nodes=%u lo=%.0f,%.0f,%.0f hi=%.0f,%.0f,%.0f\n", unsigned(ok), hb.parts, hb.nodes,
                 hb.lo[0], hb.lo[1], hb.lo[2], hb.hi[0], hb.hi[1], hb.hi[2]);
-    // 3 the guards: 129 sibling parts (past the 128-node budget), an extent past 0x20000, no body cache, a missing
-    // model (an unknown body id), a part four levels down (past the depth cap: not visited, the walk still succeeds on
-    // the parts above it); each failure gives the fallback sphere through owner_bubble.
+    // 3 the guards, each named (st::HullWalk::guard, the weapon_bubble_walk row's guard=): 1025 sibling parts (past the
+    // 1024-entry list limit), 1024 (at it and at the 1024-node budget), 40 parts of 26 children each (1080 nodes over
+    // two levels: past the budget at the 1025th), an extent past 0x20000, no body cache, a missing model (an unknown
+    // body id), a part four levels down (past the depth cap: not visited, the walk still succeeds on the parts above
+    // it); each failure gives the fallback sphere through owner_bubble.
     {
         const std::int32_t e1[1][3] = {{65536, 65536, 65536}};
         body_cache(1, e1);
-        for (unsigned j = 0; j < 129; ++j) hull_part(j, node(0), 7, zero, 1000, false, j + 1 < 129 ? part(j + 1) : 0, 0);
-        hull_root(0, part(0));
-        const bool over = st::hull_bounds(&rd, slot, node(0), &hb);
-        for (unsigned j = 0; j < 128; ++j) hull_part(j, node(0), 7, zero, 1000, false, j + 1 < 128 ? part(j + 1) : 0, 0);
+        st::HullWalk gw;
+        auto siblings = [&](unsigned count) {
+            for (unsigned j = 0; j < count; ++j) hull_part(j, node(0), 7, zero, 1000, false, j + 1 < count ? part(j + 1) : 0, 0);
+            hull_root(0, part(0));
+        };
+        siblings(1025);
+        const bool over = st::hull_bounds(&rd, slot, node(0), &hb, nullptr, &gw);
+        const st::HullWalk over_w = gw;
+        siblings(1024);
         const bool at = st::hull_bounds(&rd, slot, node(0), &hb);
         const unsigned at_nodes = hb.nodes;
+        for (unsigned i = 0; i < 40; ++i) { // part(i) the i-th of 40, its 26 children part(40 + 26 i + k)
+            hull_part(i, node(0), 7, zero, 1000, false, i + 1 < 40 ? part(i + 1) : 0, part(40 + 26 * i));
+            for (unsigned k = 0; k < 26; ++k)
+                hull_part(40 + 26 * i + k, part(i), 7, zero, 1000, false, k + 1 < 26 ? part(40 + 26 * i + k + 1) : 0, 0);
+        }
+        hull_root(0, part(0));
+        const bool budget = st::hull_bounds(&rd, slot, node(0), &hb, nullptr, &gw);
+        const st::HullWalk budget_w = gw;
         hull_part(0, node(0), 7, zero, 1000, false, 0, 0);
         put(lod(0, 0) + 0x20, 0x20001);
-        const bool extent = st::hull_bounds(&rd, slot, node(0), &hb);
+        bool refused = false;
+        const bool extent = st::hull_bounds(&rd, slot, node(0), &hb, &refused, &gw);
+        const st::HullWalk extent_w = gw;
         body_cache(1, e1);
-        const bool no_cache = st::hull_bounds(&rd, base + 0x7ff0 - 0x10000, node(0), &hb);
+        const bool no_cache = st::hull_bounds(&rd, base + 0x7ff0 - 0x10000, node(0), &hb, nullptr, &gw);
+        const st::HullWalk no_cache_w = gw;
         hull_part(0, node(0), 99, zero, 1000, false, 0, 0);
-        const bool unknown = st::hull_bounds(&rd, slot, node(0), &hb);
+        const bool unknown = st::hull_bounds(&rd, slot, node(0), &hb, nullptr, &gw);
+        const st::HullWalk unknown_w = gw;
+        std::printf("named over=%s over_value=%u over_nodes=%u over_depth=%u budget=%s budget_value=%u budget_nodes=%u "
+                    "budget_depth=%u budget_deepest=%u extent=%s extent_value=%u extent_refused=%u no_cache=%s "
+                    "unknown=%s unknown_value=%u\n",
+                    st::hull_guard_name(over_w.guard), over_w.value, over_w.box.nodes, over_w.fail_depth,
+                    st::hull_guard_name(budget_w.guard), budget_w.value, budget_w.box.nodes, budget_w.fail_depth,
+                    budget_w.deepest, st::hull_guard_name(extent_w.guard), extent_w.value, unsigned(refused),
+                    st::hull_guard_name(no_cache_w.guard), st::hull_guard_name(unknown_w.guard), unknown_w.value);
+        (void)budget;
         // depth: part 0 (body) -> 1 -> 2 -> 3 (body, four levels down: not visited)
         hull_part(0, node(0), 7, zero, 1000, false, 0, part(1));
         hull_part(1, part(0), 0, zero, 1000, false, 0, part(2));
@@ -511,6 +538,147 @@ static int bubble_cases() {
         bool fb = false;
         const st::Bubble f = own_bubble(nullptr, base + 0x7ff0 - 0x10000, obj(0), 20000, 0, &fb);
         show("fallback_sphere", f, fb);
+    }
+    // 3b the sliced walk (FL run 65): a long, narrow 648-node hull over three levels (8 sections along z x 8 mounts x 9
+    // turrets, every node a part) through the cache, one slice (hull_slice_nodes) a frame: the fallback sphere on the
+    // first two frames, the walked bubble on the third, equal to the one-call walk's, then the cache; a level's link
+    // relinked between slices fails the walk (changed) with its failure record and row (restarted=1), the next call
+    // walking again from the root (no retry hold); a walk parked past its age restarts from the root; a centre farther
+    // than the radius fails (box); the read bound cuts a slice of 16-LOD parts; the row limit (wall ms, per owner).
+    {
+        const std::int32_t e3[1][3] = {{65536, 65536 / 4, 65536 / 8}};
+        body_cache(1, e3);
+        owner(0, 400000, 75000);
+        // part(i) section i, part(8 + 8 i + j) mount j of section i, part(72 + 72 i + 9 j + k) turret k of that mount
+        for (unsigned i = 0; i < 8; ++i) {
+            const std::int32_t oz[3] = {0, 0, std::int32_t(i) * 20000 - 70000};
+            hull_part(i, node(0), 7, oz, 10000, false, i + 1 < 8 ? part(i + 1) : 0, part(8 + 8 * i));
+            for (unsigned j = 0; j < 8; ++j) {
+                const unsigned m = 8 + 8 * i + j;
+                const std::int32_t om[3] = {std::int32_t(j) * 500 - 1750, 0, 0};
+                hull_part(m, part(i), 7, om, 1000, false, j + 1 < 8 ? part(m + 1) : 0, part(72 + 72 * i + 9 * j));
+                for (unsigned k = 0; k < 9; ++k) {
+                    const unsigned t = 72 + 72 * i + 9 * j + k;
+                    const std::int32_t ot[3] = {0, std::int32_t(k) * 100 - 400, 0};
+                    hull_part(t, part(m), 7, ot, 200, false, k + 1 < 9 ? part(t + 1) : 0, 0);
+                }
+            }
+        }
+        hull_root(0, part(0));
+        static st::BubbleCache cache;
+        cache.rescope(40);
+        st::BubbleStats fs[4];
+        st::Bubble sb[4];
+        bool sfb[4] = {false, false, false, false};
+        for (unsigned f = 0; f < 4; ++f) {
+            unsigned budget = 1;
+            sb[f] = st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 1000 + 16 * f, &budget, &fs[f], &sfb[f]);
+        }
+        st::HullBox whole;
+        st::Bubble one;
+        bool cut = false;
+        const bool one_ok = st::hull_bounds(&rd, slot, node(0), &whole) && st::bubble_from_box(whole, 75000, &one, &cut);
+        const bool same = !std::memcmp(sb[2].c, one.c, sizeof one.c) && !std::memcmp(sb[2].e, one.e, sizeof one.e);
+        std::printf("sliced nodes=%u parts=%u one_ok=%u fb0=%u fb1=%u fb2=%u fb3=%u partial0=%u partial1=%u partial2=%u "
+                    "walks=%u slices=%u hits=%u cx=%.3f cz=%.3f ex=%.3f ey=%.3f ez=%.3f same=%u fallback_ex=%.1f\n",
+                    whole.nodes, whole.parts, unsigned(one_ok), unsigned(sfb[0]), unsigned(sfb[1]), unsigned(sfb[2]),
+                    unsigned(sfb[3]), fs[0].partial, fs[1].partial, fs[2].partial, cache.walks, cache.slices, cache.hits,
+                    sb[2].c[0], sb[2].c[2], sb[2].e[0], sb[2].e[1], sb[2].e[2], unsigned(same), sb[0].e[0]);
+        cache.rescope(41);
+        st::BubbleStats c1, c2, c3;
+        bool cfb = false;
+        unsigned budget = 1;
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 5000, &budget, &c1, &cfb);
+        st::BubbleCache::Entry* ce = nullptr;
+        for (st::BubbleCache::Entry& x : cache.entries)
+            if (x.state == st::BubbleCache::walking && x.owner == obj(0)) ce = &x;
+        const std::uint32_t link = ce ? ce->walk.stack[0].link : 0, was = ce ? ce->walk.stack[0].c : 0;
+        if (ce) put(link, part(7)); // the sections' list relinked past the pending section
+        budget = 1;
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 5016, &budget, &c2, &cfb);
+        if (ce) put(link, was);
+        budget = 1;
+        const unsigned walks_before = cache.walks;
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 5116, &budget, &c3, &cfb);
+        const unsigned restart_walks = cache.walks - walks_before;
+        const st::HullFailure& r = c2.failed[0];
+        char row[384] = {};
+        st::format_walk_row(row, sizeof row, r, "ap", 3);
+        std::printf("changed walking=%u partial=%u failures=%u rows=%u guard_changed=%u restarted=%u depth=%u slices=%u "
+                    "nodes=%u value_is_link=%u link_is_section3=%u fallback=%u cache_failures=%u held=%u restart_walks=%u "
+                    "restart_partial=%u\n",
+                    unsigned(ce != nullptr), c1.partial, c2.failures, c2.failed_rows,
+                    unsigned(r.guard == st::HullGuard::changed), unsigned(r.restarted), r.depth, r.slices, r.nodes,
+                    unsigned(r.value == link), unsigned(link == part(3)), unsigned(cfb), cache.failures, c3.held,
+                    restart_walks, c3.partial);
+        std::printf("walkrow %s\n", row);
+        // parked: slices at 5984 and 6000 (frames 16 ms apart), frames on without this owner until 6600 (> 500 ms):
+        // its next slice starts from the root
+        cache.rescope(42);
+        st::BubbleStats p1, p2, p3;
+        budget = 1;
+        cache.frame(5984);
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 5984, &budget, &p1, &cfb);
+        budget = 1;
+        cache.frame(6000);
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 6000, &budget, &p2, &cfb);
+        for (std::uint32_t t = 6016; t <= 6600; t += 16) cache.frame(t);
+        const unsigned parked_walks = cache.walks, step = cache.step_ms, limit_ms = cache.park_limit_ms();
+        budget = 1;
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 6600, &budget, &p3, &cfb);
+        std::printf("parked step=%u limit=%u walks_before=%u walks_after=%u parked=%u partial=%u\n", step, limit_ms,
+                    parked_walks, cache.walks, cache.parked, p3.partial);
+        // SETA: steps of 600 game ms give a limit of 1200
+        cache.rescope(43);
+        budget = 1;
+        cache.frame(10000);
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 10000, &budget, &p1, &cfb);
+        budget = 1;
+        cache.frame(10600);
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 10600, &budget, &p2, &cfb);
+        const unsigned seta_limit = cache.park_limit_ms(), seta_parked = cache.parked;
+        std::printf("seta limit=%u parked_after_one_step=%u\n", seta_limit, seta_parked);
+        // the centre bound: one part 900 view units off the root node (radius 750): box
+        hull_part(0, node(0), 7, zero, 1000, false, 0, 0);
+        const std::int32_t far_off[3] = {0, 0, 90000};
+        hull_part(0, node(0), 7, far_off, 1000, false, 0, 0);
+        hull_root(0, part(0));
+        cache.rescope(44);
+        st::BubbleStats cb;
+        budget = 1;
+        st::owner_bubble(&cache, &rd, slot, obj(0), node(0), 0xd000, 75000, 11000, &budget, &cb, &cfb);
+        std::printf("centrebound failures=%u rows=%u guard_box=%u fallback=%u\n", cb.failures, cb.failed_rows,
+                    unsigned(cb.failed_rows && cb.failed[0].guard == st::HullGuard::box), unsigned(cfb));
+        // the read bound: 300 sibling parts with 16 LOD records each (21 reads a node)
+        body_cache(1, e3, 16);
+        for (unsigned j = 0; j < 300; ++j) hull_part(j, node(0), 7, zero, 1000, false, j + 1 < 300 ? part(j + 1) : 0, 0);
+        hull_root(0, part(0));
+        st::HullWalk rw;
+        st::hull_walk_start(rw, &rd, slot, node(0));
+        unsigned rslices = 0, rmax = 0, rfirst_nodes = 0;
+        st::HullStep rs = st::HullStep::more;
+        while (rs == st::HullStep::more && rslices < 16) {
+            const unsigned r0 = rw.reads;
+            rs = st::hull_walk_step(rw, st::hull_slice_nodes, st::hull_slice_reads);
+            rmax = rw.reads - r0 > rmax ? rw.reads - r0 : rmax;
+            if (!rslices) rfirst_nodes = rw.box.nodes;
+            ++rslices;
+        }
+        std::printf("readbound done=%u slices=%u first_nodes=%u max_reads=%u bound=%u node_max=%u nodes=%u\n",
+                    unsigned(rs == st::HullStep::done), rslices, rfirst_nodes, rmax, st::hull_slice_reads,
+                    st::hull_node_reads_max, rw.box.nodes);
+        // the row limit on wall ms: 12 owners in 12 ms (8 admitted), the first owner again at 1500 (its own 2000 ms),
+        // then at 3000 (admitted: its 2000 ms and the window passed)
+        st::WalkRowLimit lim;
+        unsigned admitted = 0;
+        for (unsigned i = 0; i < 12; ++i) admitted += lim.admit(0x1000 + i, 1000 + i);
+        const bool again = lim.admit(0x1000, 1500);
+        const unsigned dropped = lim.suppressed;
+        const bool later = lim.admit(0x1000, 3000);
+        const unsigned taken = lim.take_suppressed();
+        std::printf("limit admitted=%u again=%u suppressed=%u later=%u taken=%u after_take=%u per_window=%u window_ms=%u\n",
+                    admitted, unsigned(again), dropped, unsigned(later), taken, lim.suppressed, st::bubble_walk_rows,
+                    st::bubble_walk_row_ms);
     }
     // 4 the cache: one walk, then cached answers; a radius change walks again; a scope change clears; a failed walk is
     // held for bubble_retry_ms of game time (the fallback meanwhile), then retried; 64 entries, the least recently used
@@ -1018,6 +1186,12 @@ class WeaponEffectsClassifier(unittest.TestCase):
             rows[name] = {k: float(v) for k, v in re.findall(r'(\w+)=(-?[0-9.]+)', rest)}
         return rows
 
+    def raw_line(self, case, name):
+        out = subprocess.run([str(self.exe), case], capture_output=True, text=True, check=True).stdout
+        lines = [line.partition(' ')[2] for line in out.splitlines() if line.partition(' ')[0] == name]
+        self.assertEqual(len(lines), 1, name)
+        return lines[0]
+
     def ytop_frames(self):
         out = subprocess.run([str(self.exe), 'stage'], capture_output=True, text=True, check=True).stdout
         frames = {}
@@ -1121,13 +1295,60 @@ class WeaponEffectsClassifier(unittest.TestCase):
         for k, want in (('ex', 60.0), ('ey', 10.0), ('ez', 20.0)):
             self.assertAlmostEqual(one[k], 1.15 * want, delta=0.02, msg=k)
         g = r['guards']
-        self.assertEqual((g['over_budget'], g['at_budget'], g['at_nodes']), (0, 1, 128))    # the 128-node cap
+        self.assertEqual((g['over_budget'], g['at_budget'], g['at_nodes']), (0, 1, 1024))   # the 1024-entry list
+        named = dict(re.findall(r'(\w+)=(\S+)', self.raw_line('bubble', 'named')))
+        self.assertEqual((named['over'], named['over_value'], named['over_nodes'], named['over_depth']),
+                         ('list', '1025', '1024', '1'))                                     # the list limit first
+        self.assertEqual((named['budget'], named['budget_value'], named['budget_nodes'], named['budget_depth'],
+                          named['budget_deepest']), ('budget', '1024', '1024', '2', '2'))   # the 1025th node
+        self.assertEqual((named['extent'], named['extent_value'], named['extent_refused']), ('extent', '131073', '1'))
+        self.assertEqual((named['no_cache'], named['unknown'], named['unknown_value']), ('read', 'model', '99'))
         self.assertEqual((g['extent'], g['no_cache'], g['unknown_body']), (0, 0, 0))
         self.assertEqual((g['deep'], g['deep_nodes']), (1, 3))                              # three levels, no deeper
         self.assertLess(g['deep_hi_z'], 2000.0)
         fb = r['fallback_sphere']                                                           # the object's radius
         self.assertEqual(fb['ok'], 1)
         self.assertEqual((fb['cx'], fb['cy'], fb['cz'], fb['ex'], fb['ey'], fb['ez']), (0, 0, 0, 200, 200, 200))
+        sl = r['sliced']                        # FL run 65: 648 nodes in three slices of hull_slice_nodes (256)
+        self.assertEqual((sl['nodes'], sl['parts'], sl['one_ok']), (648, 648, 1))
+        self.assertEqual((sl['fb0'], sl['fb1'], sl['fb2'], sl['fb3']), (1, 1, 0, 0))
+        self.assertEqual((sl['partial0'], sl['partial1'], sl['partial2']), (1, 1, 0))
+        self.assertEqual((sl['walks'], sl['slices'], sl['hits'], sl['same']), (1, 3, 1, 1))
+        self.assertAlmostEqual(sl['fallback_ex'], 750.0, delta=0.01)          # the radius sphere meanwhile
+        for k, want in (('ex', 100.0), ('ey', 712.5 / 16), ('ez', 712.5)):     # the sections' box x 1.15 (view units),
+            self.assertAlmostEqual(sl[k], 1.15 * want, delta=0.01, msg=k)      # y at the floor (1/16 of the largest)
+        self.assertAlmostEqual(sl['cx'], 0.0, delta=1e-3)
+        self.assertAlmostEqual(sl['cz'], 0.0, delta=1e-3)
+        ch = r['changed']                       # a relinked list between slices: guard changed at level 1
+        self.assertEqual((ch['walking'], ch['partial'], ch['failures'], ch['rows'], ch['guard_changed'],
+                          ch['restarted']), (1, 1, 1, 1, 1, 1))
+        self.assertEqual((ch['depth'], ch['slices'], ch['nodes'], ch['value_is_link'], ch['link_is_section3']),
+                         (1, 2, 256, 1, 1))
+        # the next call walks again from the root, no retry hold
+        self.assertEqual((ch['fallback'], ch['cache_failures'], ch['held'], ch['restart_walks'], ch['restart_partial']),
+                         (1, 1, 0, 1, 1))
+        pk = r['parked']                        # 16 ms steps: the limit 500 ms; parked 600 ms: from the root
+        self.assertEqual((pk['step'], pk['limit'], pk['walks_after'] - pk['walks_before'], pk['parked'], pk['partial']),
+                         (16, 500, 1, 1, 1))
+        self.assertEqual((r['seta']['limit'], r['seta']['parked_after_one_step']), (1200, 1))  # SETA: two steps,
+        # not parked (the 1 is the earlier case's count)
+        cb = r['centrebound']                   # a centre past the radius: a misfit, guard box
+        self.assertEqual((cb['failures'], cb['rows'], cb['guard_box'], cb['fallback']), (1, 1, 1, 1))
+        rb = r['readbound']                     # 21 reads a node: the slice cut by its reads, not its 256 nodes
+        self.assertEqual((rb['done'], rb['nodes']), (1, 300))
+        self.assertLess(rb['first_nodes'], 256)
+        self.assertGreater(rb['slices'], 2)
+        self.assertLessEqual(rb['max_reads'], rb['bound'] + rb['node_max'])
+        row = self.raw_line('bubble', 'walkrow')
+        self.assertTrue(row.startswith('weapon_bubble_walk edition=ap state=failed guard=changed owner=00100000 '), row)
+        self.assertIn(' restarted=1 ', row)
+        rf = dict(re.findall(r'(\w+)=(\S+)', row))
+        self.assertEqual((rf['node'], rf['radius'], rf['nodes'], rf['depth'], rf['slices'], rf['budget'],
+                          rf['list_limit'], rf['suppressed'], rf['now']),
+                         ('00100200', '75000', '256', '1', '2', '1024', '1024', '3', '5016'))
+        lim = r['limit']                        # wall ms: an owner once per 2000, 8 rows per 2000 in all
+        self.assertEqual((lim['admitted'], lim['again'], lim['suppressed'], lim['later'], lim['taken'],
+                          lim['after_take'], lim['per_window'], lim['window_ms']), (8, 0, 5, 1, 5, 0, 8, 2000))
         c = r['cache']
         self.assertEqual((c['first'], c['cached'], c['hits']), (1, 1, 2))      # one walk, then the cache
         self.assertEqual((c['radius'], c['same_scope'], c['scope']), (2, 2, 3))  # a radius change, a scope change
