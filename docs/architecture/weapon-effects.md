@@ -581,21 +581,44 @@ every hit, so a diagnosis flight still sees vanilla.
   eviction, spills, seam shares; below).
   - *Bubble.* An ellipsoid in the owner frame from the hull bounds (render-node-bounds.md 6.1, the reads and guards of
     `ship_avoidance_walk_core.h` `hull_children` with a signed box: `stage::hull_bounds` in
-    `src/proxy/weapon_effects_bubble.h`, every descendant of the root node at most 3 levels down and 128 nodes, 256 per
-    list, 64 chain steps, 1..16 LOD records, each node read as one 0x144-byte block, the engine's lookup `0x004863c0`
+    `src/proxy/weapon_effects_bubble.h`, every descendant of the root node at most 3 levels down and 1024 nodes, 1024 per
+    list, 64 chain steps, 1..16 LOD records, each node read as one `node_walk_bytes` block (0x144 AP, 0x148 FL), the engine's lookup `0x004863c0`
     never called; below a rotated node a part's offset widens the box by its length on every axis and its extents are
     their length): centre the box's centre, half-extents its half-extents x `core::bubble_scale` 1.15, each floored at
     `core::bubble_floor` (1/16) of the largest and cut to `bubble_scale` x the object radius (obj+0xa4: a guard against a
     bogus part, as ship_avoidance's width takes w <= r, at the bubble's own scale so a hull that reaches the radius keeps
-    its cap past the nose and tail; review F5). A failed walk (any guard, no part) takes a sphere of the object radius about the root node. At
-    most `core::bubble_walks_per_frame` (2) walks run per stage call (review F4); an owner past them draws on the sphere
-    until a later frame walks it. `weapon_effects_frame` counts `bubbles=` (owner frames on a bubble),
-    `bubble_fallback=` (of them on the sphere), `bubble_walks=`, `bubble_walk_failures=`, `bubble_held=` (a failed
-    walk's retry held back), `bubble_deferred=` (past the frame's walks) and `bubble_clamped=` (a half-extent cut to the
-    radius); `weapon_patch` logs `bubble=`, `bubble_c_m=` and `bubble_e_m=`.
+    its cap past the nose and tail; review F5). A failed walk (any guard, no part) takes a sphere of the object radius
+    about the root node; the sphere is also the answer while a walk is unfinished. No tighter engine bound exists to
+    fall back on: the object carries only the sphere radius `obj+0xa4` (sector-collide.md: "a single sphere radius"; the
+    collision OBBs belong to the models' BVHs, not to the object, and FL's class-7 per-axis box is `3r + 250000` derived
+    from the radius), so no per-axis object extent is read.
+    The budgets (FL run 65, 2026-11-10): 128 nodes / 256 per list were sized against fighters; the Argon Titan's walk failed every
+    attempt (its stock scene is 98 collision bodies in up to 152 nodes, fl/ship-enclosure.md section 3) and drew the
+    radius sphere, about its half-length, so side hits were pushed about 3.4x outward. Now 1024 nodes and 1024 per list
+    (the list limit never tighter than the budget). One 1024-node walk costs about 110 us through `engine_memory::read`
+    (measured: best 110.0 / mean 114.6 µs, 8,325 reads), so the walk is resumable (`stage::HullWalk`: an explicit
+    3-level stack, `hull_walk_start` / `hull_walk_step`) and runs at most `stage::hull_slice_nodes` (256) nodes and
+    `hull_slice_reads` (2,400) engine reads per slice (no node begun past the read bound; a node reads at most 84: its
+    block, the bucket, 64 chain steps, the model head, the LOD array, 16 records), one slice per owner per stage call:
+    a fighter or the Titan finishes in its first slice, a 1024-node hull in four frames. A resumed slice re-reads every
+    level's link (the parent's `+0x0c` or the previous sibling's `+0`) and fails the walk (`changed`) when it no longer
+    names the pending child, so a list relinked between frames is never followed from a stale position; a changed walk
+    restarts from the root on the owner's next stage call (no retry hold; its row says `restarted=1`). A walk parked
+    (not sliced) for more than two game steps or 500 game ms, whichever is larger, restarts from the root. A fitted
+    centre farther than the object radius from the root node is a misfit and fails the walk (`box`). At
+    most `core::bubble_walks_per_frame` (2) slices run per stage call (review F4); an owner past them draws on the sphere
+    until a later frame walks it. A failed walk logs one `weapon_bubble_walk edition=<ap|fl> state=failed guard=<cache|read|list|budget|chain|model|lod|extent|scale|bounds|empty|changed|box>`
+    row with the owner, root node, radius, `nodes=`, `parts=`, `depth=` (the level it failed at), `deepest=`, `slices=`,
+    `value=` (the guard's offending value: an address, a count, an extent or a scale), `restarted=` and `suppressed=`;
+    `stage::WalkRowLimit` limits on wall-clock ms from the stage's QPC (SETA does not multiply rows): an owner once per
+    2000 ms, 8 rows per 2000 ms in all. `weapon_effects_frame` counts `bubbles=` (owner frames on a bubble),
+    `bubble_fallback=` (of them on the sphere, unfinished walks included), `bubble_walks=` (slices), `bubble_walk_failures=`, `bubble_held=` (a failed
+    walk's retry held back), `bubble_deferred=` (past the frame's walks), `bubble_clamped=` (a half-extent cut to the
+    radius) and `bubble_partial=` (slices that left their walk unfinished); `weapon_patch` logs `bubble=`, `bubble_c_m=` and `bubble_e_m=`.
   - *The walk's cache* (`stage::BubbleCache`, one per process on the game thread): 64 entries keyed by owner, root node,
     handle and the root's first child with its body id (render-node-bounds.md 6.1's key; two reads per owner a frame;
-    review F7) with the object radius walked at; a radius or child change walks again, a failed walk is held for
+    review F7) with the object radius walked at and an unfinished walk's state (about 20 KB in all); a radius or child
+    change walks again, an unfinished walk continues on the owner's next frame, a failed walk is held for
     `core::bubble_retry_ms` (2000 game ms, the fallback meanwhile) and then retried, a miss takes an empty entry or the
     least recently used, a ring scope change (`weapon_effects::scope_changes()`: a load, a sector change, a load epoch)
     clears all. CPU data naming engine objects only: a device Reset leaves it valid.

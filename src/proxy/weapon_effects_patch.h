@@ -114,9 +114,10 @@ struct StageFrame {
     unsigned faces_culled = 0; // face draws the stage culled (their box faces away from the eye)
     unsigned area_dropped = 0; // face draws past the frame's screen-area budget
     unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their ship bubble, of them on the fallback sphere
-    // the hull walks (stage::BubbleStats): run, failed, retries held back, deferred past the frame's budget, bubbles cut
-    // to the object radius
+    // the hull walks (stage::BubbleStats): slices run, walks failed, retries held back, deferred past the frame's budget,
+    // bubbles cut to the object radius, slices that left their walk unfinished
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
+    unsigned bubble_partial = 0;
     float stage_us = 0.f;
     bool drew = false;
     // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the

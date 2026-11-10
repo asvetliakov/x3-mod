@@ -394,7 +394,7 @@ float centre_luma(const std::vector<float>& l) {
 }
 // The production stage builder's input: one owner in the fixture's own memory (object block and node block), read
 // through a reader bounded to those two blocks (engine_memory::read's contract: false outside readable memory).
-alignas(16) unsigned char fake_obj[0x100], fake_node[0x200], fake_hull[0x14000];
+alignas(16) unsigned char fake_obj[0x100], fake_node[0x200], fake_hull[0xa0000]; // fake_hull: up to 1046 parts
 bool fake_read(std::uintptr_t a, void* out, std::size_t n) {
     for (const unsigned char* base : {static_cast<const unsigned char*>(fake_obj), static_cast<const unsigned char*>(fake_node),
                                       static_cast<const unsigned char*>(fake_hull)}) {
@@ -564,6 +564,72 @@ void stage_hull(const double ext[3], const double off[3] = nullptr, unsigned par
     put32(fake_node, wc::layout::node_sentinel, 0);
     put32(fake_node, wc::layout::node_flags, 0);
     for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
+}
+// A capital's hull tree (FL run 65): n[0] level-1 parts under the staged root, n[1] under each, n[2] under each of
+// those (n[2] = 0: two levels), every node a part of body 7 whose one model has `lods` LOD records (1..16) of the
+// normalised extents ext_n (65536 = 1.0; record r at ext_n >> min(r, 3)), found at the end of a hash chain of `chain`
+// entries (1..64; the others other keys); a level-L node's scale scale[L] and its offset in its parent's frame off(L,
+// index in its list) (engine units). The model, its records and the chain sit in fake_hull's last 0x1000 bytes; each
+// list in consecutive part slots; the node count (at most tree_parts_max).
+constexpr unsigned tree_tail = sizeof fake_hull - 0x1000, tree_parts_max = (tree_tail - hull_part_at) / hull_part_bytes;
+template <class Offset>
+unsigned stage_tree(const unsigned n[3], const std::int32_t ext_n[3], const std::int32_t scale[3], Offset off,
+                    unsigned lods = 3, unsigned chain = 1) {
+    std::memset(fake_hull, 0, sizeof fake_hull);
+    const std::uint32_t h = addr(fake_hull), t = h + tree_tail;
+    lods = std::min(std::max(lods, 1u), 16u);
+    chain = std::min(std::max(chain, 1u), 64u);
+    put32(fake_hull, 0x00, h + 0x10);
+    put32(fake_hull, 0x10 + 0x14, h + 0x40);
+    put32(fake_hull, 0x40, h + 0x80);
+    put32(fake_hull, 0x44, 1);
+    put32(fake_hull, 0x80, t + 0x400); // the chain: entry i at tail + 0x400 + 0x10 i, the model's key (7 + 1) last
+    for (unsigned i = 0; i < chain; ++i) {
+        unsigned char* e = fake_hull + tree_tail + 0x400 + 0x10 * i;
+        put32(e, 0, i + 1 < chain ? t + 0x400 + 0x10 * (i + 1) : 0);
+        put32(e, 4, i + 1 < chain ? 1000 + i : 8);
+        put32(e, 8, t);
+    }
+    put32(fake_hull, tree_tail + 0x0c, t + 0x40); // the model: its LOD array at tail + 0x40, records at tail + 0x100
+    const std::uint16_t count = std::uint16_t(lods);
+    std::memcpy(fake_hull + tree_tail + 0x10, &count, 2);
+    for (unsigned r = 0; r < lods; ++r) {
+        put32(fake_hull, tree_tail + 0x40 + 4 * r, t + 0x100 + 0x30 * r);
+        for (unsigned k = 0; k < 3; ++k)
+            put32(fake_hull, tree_tail + 0x100 + 0x30 * r + 0x20 + 4 * k, std::uint32_t(ext_n[k] >> std::min(r, 3u)));
+    }
+    unsigned used = 0;
+    auto slot = [&](unsigned j) { return h + hull_part_at + hull_part_bytes * j; };
+    // one list of `count` nodes at `level` under the node at `parent` (its block's children and sentinel)
+    auto list = [&](auto&& self, std::uint32_t parent, unsigned level) -> void {
+        const unsigned count = level < 3 ? n[level] : 0;
+        unsigned char* pb = parent == addr(fake_node) ? fake_node : fake_hull + (parent - h);
+        if (!count || used + count > tree_parts_max) {
+            put32(pb, wc::layout::node_children, parent + wc::layout::node_sentinel);
+            return;
+        }
+        const unsigned first = used;
+        used += count;
+        put32(pb, wc::layout::node_children, slot(first));
+        put32(pb, wc::layout::node_sentinel, 0);
+        for (unsigned j = 0; j < count; ++j) {
+            unsigned char* c = fake_hull + hull_part_at + hull_part_bytes * (first + j);
+            put32(c, 0, j + 1 < count ? slot(first + j + 1) : parent + wc::layout::node_sentinel);
+            std::int32_t o[3];
+            off(level, j, o);
+            for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_offset + 4 * k, std::uint32_t(o[k]));
+            for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_basis + 0x10 * k + 4 * k, 0x10000);
+            put32(c, wc::layout::node_scale, std::uint32_t(scale[level]));
+            for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_axis_scale + 4 * k, 0x10000);
+            put32(c, wc::layout::node_flags, 0x1000000);
+            put32(c, wc::layout::node_body, 7);
+        }
+        for (unsigned j = 0; j < count; ++j) self(self, slot(first + j), level + 1);
+    };
+    list(list, addr(fake_node), 0);
+    put32(fake_node, wc::layout::node_flags, 0);
+    for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
+    return used;
 }
 // The bubble's CPU twin in double from a bubble draw: the owner's centre and axes in view, the bubble's centre and
 // half-extents (owner frame).
@@ -3715,6 +3781,243 @@ int main(int argc, char** argv) {
                     n.patches, n.bubbles, n.bubble_fallback, cache.walks, cache.hits);
         report("hull_walk_measured", ok && em_ok && box.parts == 127 && box.nodes == 127 && n.bubbles == 1 &&
                                          n.bubble_fallback == 0 && cache.hits >= 199, "");
+    }
+    // The capital hull (FL run 65: the Argon Titan's walk failed on every attempt and its bubble was the radius sphere,
+    // side hits about 3.4x outward). (a) A long, narrow hull of 648 nodes over three levels (8 sections along z, 8
+    // mounts each, 9 turrets per mount, every node a part), the Titan's radius 545751: through the production builder
+    // and cache the walk takes hull_slice_nodes per frame (the fallback sphere on the first two frames, the hull bubble
+    // from the third), the bubble against the sections' half-extents x bubble_scale, and a flank hit 30 % aft drawn on it
+    // (the near side; side_metric against the bubble point B, the on_bubble criteria) with B's distance from the contact
+    // point against the fallback sphere's. (b) The cost: a 1024-node hull (16 x 7 x 8, three LOD records per part) in
+    // one call through the production reader (engine_memory::read: cold, the regions re-queried before each walk, and
+    // warm) and per slice (the first hull_slice_nodes), best and mean of 200 (us); the worst slice: the same tree with
+    // 16 LOD records per part found at the end of a 64-entry hash chain (84 reads a node), cut by hull_slice_reads
+    // (its nodes, reads and cost, cold). (c) The forced failure: a two-level
+    // hull of 1026 nodes (38 x 26) fails the budget on its fifth frame; the frame's failure record, its weapon_bubble_walk
+    // row (printed as the fixture's row), and within bubble_retry_ms the owner held without another record.
+    {
+        const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
+        const std::int32_t titan_r = 545751;
+        const double view_r = double(titan_r) * double(wc::world_scale), z = 2.4 * view_r;
+        const double ext[3] = {2000.0, 1500.0, 5000.0}; // the sections' box (view units): 200000 x 150000 x 500000 engine
+        const std::int32_t ext_n[3] = {104858, 78643, 32768};       // 1.6, 1.2, 0.5 of the node scale
+        const std::int32_t scales[3] = {125000, 20000, 5000};        // section (200000, 150000, 62500), mount, turret
+        const unsigned capital_n[3] = {8, 8, 9};
+        auto capital_off = [](unsigned level, unsigned j, std::int32_t o[3]) {
+            o[0] = o[1] = o[2] = 0;
+            if (level == 0) o[2] = std::int32_t((double(j) - 3.5) * 125000.0);
+            if (level == 1) {
+                o[0] = std::int32_t((double(j % 4) - 1.5) * 40000.0);
+                o[1] = j < 4 ? -100000 : 100000;
+            }
+            if (level == 2) {
+                o[0] = std::int32_t((double(j % 3) - 1.0) * 10000.0);
+                o[1] = std::int32_t((double(j / 3) - 1.0) * 10000.0);
+            }
+        };
+        const std::int32_t side_rows[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}}; // local x -> view -z
+        stage_tier_source = wc::tier_by_ship_class;
+        stage_owner(float(z), float(view_r), 1000);
+        for (unsigned r = 0; r < 3; ++r)
+            for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(side_rows[r][j]));
+        put32(fake_obj, wc::layout::obj_radius, std::uint32_t(titan_r));
+        stage_ring.slots[0].patch_tier = wc::patch_capital;
+        stage_ring.slots[0].radius = titan_r;
+        const double hp[3] = {ext[0] * std::sqrt(1.0 - 0.09), 0.0, 0.3 * ext[2]}; // the flank, 30 % aft (view units)
+        for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = eng(hp[k]);
+        const unsigned nodes = stage_tree(capital_n, ext_n, scales, capital_off);
+        static ws::BubbleCache cache;
+        cache.rescope(7000);
+        static rr::WeaponPatch patches[wc::max_patches];
+        static rr::WeaponDecal decals[wc::max_decals];
+        unsigned frames = 0, fallback_frames = 0;
+        ws::Counts n{};
+        double fallback_e = 0;
+        for (; frames < 8; ++frames) {
+            n = ws::build(stage_ring, 1500 + 16 * frames, &fake_read, identity_camera(), hull_tuning(), patches,
+                          wc::max_patches, decals, wc::max_decals, &cache);
+            if (!n.bubble_fallback) break;
+            ++fallback_frames;
+            if (n.patches) fallback_e = double(patches[0].bubble_e[0]);
+        }
+        ++frames;
+        const HullLane hull = staged_hull(ext);
+        rr::WeaponLook near_only = rr::default_weapon_look();
+        near_only.bubble_far_gain = 0.f;
+        const std::vector<float> l = render(pass, patches, n.patches, &near_only, nullptr, &hull);
+        double be[3] = {0, 0, 0}, bc[3] = {0, 0, 0}, B[3] = {0, 0, 0}, q[3], Bf[3] = {0, 0, 0}, cell = 1, extent = 0;
+        SideMetric m;
+        if (n.patches) {
+            const BubbleTwin bt = bubble_twin(patches[0]);
+            for (unsigned k = 0; k < 3; ++k) {
+                be[k] = bt.e[k];
+                bc[k] = bt.c[k];
+            }
+            bubble_image(bt, hp, B, q);
+            BubbleTwin sphere = bt;
+            for (unsigned k = 0; k < 3; ++k) {
+                sphere.c[k] = 0;
+                sphere.e[k] = view_r;
+            }
+            bubble_image(sphere, hp, Bf, q);
+            cell = double(patches[0].cell);
+            extent = double(patches[0].extent);
+            m = side_metric(l, bt, &hull, B, extent, 0.5 * double(patches[0].reach), 0, base_frame(g).near_z);
+        }
+        auto dist = [&](const double* p) {
+            double d = 0;
+            for (unsigned k = 0; k < 3; ++k) d += (p[k] - hp[k]) * (p[k] - hp[k]);
+            return std::sqrt(d);
+        };
+        double e_err = 0;
+        for (unsigned k = 0; k < 3; ++k) e_err = std::max(e_err, std::fabs(be[k] / (double(wc::bubble_scale) * ext[k]) - 1.0));
+        std::printf("HULL_WALK case=capital_side_hit nodes=%u frames=%u fallback_frames=%u fallback_ex=%.1f slices=%u walks=%u "
+                    "bubble_c=%.1f,%.1f,%.1f bubble_e=%.1f,%.1f,%.1f e_rel_err=%.4f b_shift=%.1f fallback_b_shift=%.1f "
+                    "shift_ratio=%.3f patches=%u lit_pixels=%u hidden_lit=%u outside_lit=%u eligible=%u covered=%u "
+                    "centroid_error_cells=%.3f cell=%.1f\n",
+                    nodes, frames, fallback_frames, fallback_e, unsigned(cache.slices), unsigned(cache.walks), bc[0], bc[1],
+                    bc[2], be[0], be[1], be[2], e_err, dist(B), dist(Bf), dist(Bf) > 0 ? dist(B) / dist(Bf) : 0.0, n.patches,
+                    m.lit, m.hidden_lit, m.outside, m.eligible, m.covered, m.centroid / cell, cell);
+        report("bubble_capital_648_nodes_walks_in_slices_and_fits",
+               nodes == 648 && frames == 3 && fallback_frames == 2 && std::fabs(fallback_e - view_r) < 1.0 &&
+                   cache.slices == 3 && cache.walks == 1 && n.bubbles == 1 && e_err < 1e-3 &&
+                   std::fabs(bc[0]) + std::fabs(bc[1]) + std::fabs(bc[2]) < 1.0, "");
+        report("bubble_capital_side_hit_on_the_hull_bubble",
+               m.lit > 100 && m.hidden_lit * 200 <= m.lit && m.outside * 100 <= m.lit && m.eligible &&
+                   double(m.covered) >= 0.9 * double(m.eligible) && m.centroid <= cell && dist(B) * 4.0 < dist(Bf), "");
+        draw_lane(g, 0.f, -1.f);
+
+        // (b) the walk's cost at the 1024-node budget
+        const unsigned big_n[3] = {16, 7, 8};
+        auto big_off = [](unsigned level, unsigned j, std::int32_t o[3]) {
+            o[0] = o[1] = 0;
+            o[2] = level == 0 ? std::int32_t((double(j) - 7.5) * 60000.0) : level == 1 ? 1000 : 100;
+        };
+        const unsigned big = stage_tree(big_n, ext_n, scales, big_off);
+        auto production = [](std::uintptr_t at, void* out, std::size_t sz) { return x3m::engine_memory::read(at, out, sz); };
+        static unsigned walk_reads = 0;
+        auto counted = [](std::uintptr_t at, void* out, std::size_t sz) {
+            ++walk_reads;
+            return fake_read(at, out, sz);
+        };
+        LARGE_INTEGER freq, a, b;
+        QueryPerformanceFrequency(&freq);
+        ws::HullBox box;
+        walk_reads = 0;
+        const bool counted_ok = ws::hull_bounds(counted, addr(fake_hull), addr(fake_node), &box);
+        const unsigned reads = walk_reads, big_nodes = box.nodes;
+        double best[4] = {1e30, 1e30, 1e30, 1e30}, sum[4] = {0, 0, 0, 0};
+        bool ok = counted_ok;
+        unsigned slice_nodes = 0, slices_needed = 0;
+        for (unsigned mode = 0; mode < 4; ++mode) // fake reader, production cold, production warm, one slice (cold)
+            for (unsigned rep = 0; rep < 200; ++rep) {
+                if (mode == 1 || mode == 3) x3m::engine_memory::next_frame();
+                if (mode < 3) {
+                    QueryPerformanceCounter(&a);
+                    ok = ws::hull_bounds(mode ? ws::Reader(production) : ws::Reader(&fake_read), addr(fake_hull),
+                                         addr(fake_node), &box) && ok;
+                    QueryPerformanceCounter(&b);
+                } else {
+                    ws::HullWalk w;
+                    ok = ws::hull_walk_start(w, production, addr(fake_hull), addr(fake_node)) == ws::HullStep::more && ok;
+                    QueryPerformanceCounter(&a);
+                    const ws::HullStep s = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
+                    QueryPerformanceCounter(&b);
+                    slice_nodes = w.box.nodes;
+                    ok = s == ws::HullStep::more && ok;
+                    if (!rep) {
+                        slices_needed = 1;
+                        ws::HullStep t = s;
+                        while (t == ws::HullStep::more) {
+                            t = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
+                            ++slices_needed;
+                        }
+                        ok = t == ws::HullStep::done && w.box.nodes == 1024 && ok;
+                    }
+                }
+                best[mode] = std::min(best[mode], ticks_us(a, b, freq));
+                sum[mode] += ticks_us(a, b, freq);
+            }
+        std::printf("HULL_WALK case=capital_cost nodes=%u walked_nodes=%u ok=%u reads=%u walk_best_us=%.1f walk_mean_us=%.1f "
+                    "engine_memory_cold_best_us=%.1f engine_memory_cold_mean_us=%.1f engine_memory_warm_best_us=%.1f "
+                    "engine_memory_warm_mean_us=%.1f slice_nodes=%u slice_best_us=%.1f slice_mean_us=%.1f slices=%u\n",
+                    big, big_nodes, unsigned(ok), reads, best[0], sum[0] / 200.0, best[1], sum[1] / 200.0, best[2],
+                    sum[2] / 200.0, slice_nodes, best[3], sum[3] / 200.0, slices_needed);
+        report("hull_walk_capital_1024_measured_sliced",
+               ok && big == 1024 && big_nodes == 1024 && slice_nodes == ws::hull_slice_nodes && slices_needed == 4 &&
+                   best[3] <= 60.0, "");
+        // the worst slice: 84 reads a node, the read bound cuts the slice
+        stage_tree(big_n, ext_n, scales, big_off, 16, 64);
+        double worst_best = 1e30, worst_sum = 0;
+        unsigned worst_nodes = 0, worst_reads = 0, worst_slices = 0;
+        bool worst_ok = true;
+        for (unsigned rep = 0; rep < 200; ++rep) {
+            x3m::engine_memory::next_frame();
+            ws::HullWalk w;
+            worst_ok = ws::hull_walk_start(w, production, addr(fake_hull), addr(fake_node)) == ws::HullStep::more && worst_ok;
+            const unsigned r0 = w.reads;
+            QueryPerformanceCounter(&a);
+            const ws::HullStep s = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
+            QueryPerformanceCounter(&b);
+            worst_best = std::min(worst_best, ticks_us(a, b, freq));
+            worst_sum += ticks_us(a, b, freq);
+            worst_nodes = w.box.nodes;
+            worst_reads = w.reads - r0;
+            worst_ok = s == ws::HullStep::more && worst_ok;
+            if (!rep) {
+                worst_slices = 1;
+                ws::HullStep t = s;
+                unsigned max_reads = worst_reads;
+                while (t == ws::HullStep::more && worst_slices < 64) {
+                    const unsigned ri = w.reads;
+                    t = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
+                    max_reads = std::max(max_reads, w.reads - ri);
+                    ++worst_slices;
+                }
+                worst_ok = t == ws::HullStep::done && w.box.nodes == 1024 &&
+                           max_reads <= ws::hull_slice_reads + ws::hull_node_reads_max && worst_ok;
+            }
+        }
+        std::printf("HULL_WALK case=capital_worst_slice nodes=1024 lods=16 chain=64 ok=%u slice_nodes=%u slice_reads=%u "
+                    "read_bound=%u slice_best_us=%.1f slice_mean_us=%.1f slices=%u\n",
+                    unsigned(worst_ok), worst_nodes, worst_reads, ws::hull_slice_reads, worst_best, worst_sum / 200.0,
+                    worst_slices);
+        report("hull_walk_worst_slice_read_bounded",
+               worst_ok && worst_nodes < ws::hull_slice_nodes &&
+                   worst_reads <= ws::hull_slice_reads + ws::hull_node_reads_max && worst_best <= 60.0, "");
+
+        // (c) the forced failure: past the budget
+        const unsigned over_n[3] = {38, 26, 0};
+        auto over_off = [](unsigned, unsigned, std::int32_t o[3]) { o[0] = o[1] = o[2] = 0; };
+        const unsigned over = stage_tree(over_n, ext_n, scales, over_off);
+        cache.rescope(7001);
+        ws::Counts fail{};
+        unsigned fail_frame = 0;
+        for (unsigned f = 0; f < 8 && !fail_frame; ++f) {
+            fail = ws::build(stage_ring, 3000 + 16 * f, &fake_read, identity_camera(), hull_tuning(), patches,
+                             wc::max_patches, decals, wc::max_decals, &cache);
+            if (fail.bubble.failed_rows) fail_frame = f + 1;
+        }
+        const ws::HullFailure r = fail.bubble.failed[0];
+        char row[384] = {};
+        ws::format_walk_row(row, sizeof row, r, "fixture", 0);
+        std::printf("%s\n", row);
+        const ws::Counts held = ws::build(stage_ring, 3000 + 16 * fail_frame + 500, &fake_read, identity_camera(),
+                                          hull_tuning(), patches, wc::max_patches, decals, wc::max_decals, &cache);
+        std::printf("HULL_WALK case=forced_failure nodes_staged=%u frame=%u failures=%u failed_rows=%u guard=%s "
+                    "walked_nodes=%u parts=%u depth=%u deepest=%u slices=%u value=%lu fallback=%u held=%u held_rows=%u "
+                    "held_fallback=%u\n",
+                    over, fail_frame, fail.bubble.failures, fail.bubble.failed_rows, ws::hull_guard_name(r.guard), r.nodes,
+                    r.parts, r.depth, r.deepest, r.slices, static_cast<unsigned long>(r.value), fail.bubble_fallback,
+                    held.bubble.held, held.bubble.failed_rows, held.bubble_fallback);
+        report("bubble_walk_forced_failure_names_the_budget",
+               over == 1026 && fail_frame == 5 && fail.bubble.failures == 1 && fail.bubble.failed_rows == 1 &&
+                   r.guard == ws::HullGuard::budget && r.nodes == ws::hull_budget && r.depth == 2 && r.slices == 5 &&
+                   r.owner == addr(fake_obj) && r.node == addr(fake_node) && fail.bubble_fallback == 1 &&
+                   std::strstr(row, "weapon_bubble_walk edition=fixture state=failed guard=budget ") == row &&
+                   std::strstr(row, " nodes=1024 ") && held.bubble.held == 1 && held.bubble.failed_rows == 0 &&
+                   held.bubble_fallback == 1, "");
+        stage_tier_source = wc::tier_by_radius;
     }
     // The decal fallback through the production builder: an owner without an ellipsoid (radius 0) gives one flat
     // patch at the hit point and no patch; it draws on a hull at its depth and 0 over sky.

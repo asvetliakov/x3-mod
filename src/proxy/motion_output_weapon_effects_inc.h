@@ -161,7 +161,7 @@ bool weapon_effects_read(std::uintptr_t address, void* out, std::size_t size) {
 // The cockpit view's freshness (review F2): the chase camera's visit count and the frame it last moved (one game).
 weapon_effects::stage::CockpitClock weapon_cockpit_clock;
 // The ship bubbles' hull walks (5.1.1 "Placement"; one game, the game thread only): 64 owners' bounds, at most
-// core::bubble_walks_per_frame walks per stage call (the rest on the fallback sphere until their turn), cleared when the
+// core::bubble_walks_per_frame walk slices per stage call (the rest on the fallback sphere until their turn), cleared when the
 // ring's scope changes (weapon_effects::scope_changes: a load, a sector change, a load epoch). CPU data only: a device
 // Reset leaves it valid (it names engine objects, never a device resource).
 weapon_effects::stage::BubbleCache weapon_bubble_cache;
@@ -264,6 +264,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[10] += n.bubble.held;
     weapon_drops_[11] += n.bubble.deferred;
     weapon_drops_[12] += n.bubble.clamped;
+    weapon_drops_[13] += n.bubble.partial;
 #if X3M_EDITION_FL
     // FL bodies are assumed to keep AP's normalised LOD extents [0, 0x20000] (fl/weapon-effect-spawn.md section 5 [i]);
     // the AP bound stays the runtime guard (the walk fails to the fallback sphere) and its first refusal is one row.
@@ -275,6 +276,25 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
             static_cast<long>(weapon_effects::stage::hull_extent_max));
     }
 #endif
+    // One weapon_bubble_walk row per failed hull walk (FL run 65: which guard failed the Titan's walk), limited on wall
+    // ms from this call's QPC (stage::WalkRowLimit: an owner once per 2000 ms, 8 rows per 2000 ms in all; SETA does not
+    // multiply rows). Integer division only (no int64 -> float conversion: x87 on i686).
+    static weapon_effects::stage::WalkRowLimit walk_rows;
+    const std::uint64_t walk_frequency = engine_qpc_frequency();
+    const std::uint32_t wall_ms =
+        walk_frequency >= 1000 ? std::uint32_t(std::uint64_t(begin.QuadPart) / (walk_frequency / 1000)) : 0;
+#if X3M_EDITION_FL
+    static constexpr const char* walk_edition = "fl";
+#else
+    static constexpr const char* walk_edition = "ap";
+#endif
+    for (unsigned i = 0; i < n.bubble.failed_rows; ++i) {
+        if (!walk_rows.admit(n.bubble.failed[i].owner, wall_ms)) continue;
+        char row[384];
+        weapon_effects::stage::format_walk_row(row, sizeof row, n.bubble.failed[i], walk_edition,
+                                               walk_rows.take_suppressed());
+        log("%s", row);
+    }
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     HRESULT hr = weapon_->run(f, &report);
@@ -537,13 +557,13 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[13]) noexcept {
+                                             bool* drew, unsigned drops[14]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 13; ++i) {
+    for (unsigned i = 0; i < 14; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

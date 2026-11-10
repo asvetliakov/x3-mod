@@ -652,6 +652,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                     renderer::WeaponPatch* patches, unsigned patch_cap, renderer::WeaponDecal* decals,
                     unsigned decal_cap, BubbleCache* bubbles = nullptr, core::VisibleOwners* visible = nullptr) noexcept {
     Counts n{};
+    if (bubbles) bubbles->frame(now); // the game step: a parked hull walk's age bound
     struct Seen {
         std::uint32_t owner;
         OwnerStatus status;
