@@ -47,18 +47,13 @@
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "edb5215833b182b6c387801cc98b61afa615d317-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_bubble.h",
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_stage.h",
-      "verification/probe/weapon_effects_fixture.cpp"
-    ],
+    "commit": "607f9c38700476a81b40b26009e98a9570a470f5",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/renderer/weapon_effects_pass.h": "66cdfafbdbc93a43dcd2f73b08da0f895d0454499e3800693746a0607cede250",
       "src/renderer/weapon_effects_pass.cpp": "201f120642b92c098b2cb4c3d74e4ce8da80814f642492ffb49a74a23ba2ff8a",
-      "src/proxy/weapon_effects_core.h": "2a898347438a7974322870877d83ba765948c7fcf486aa24a5b41f407f7371c2",
+      "src/proxy/weapon_effects_core.h": "bf193935a01f17e112ba7be9fca8af778c91cc94d4ddd9be28da0221734070c1",
       "src/proxy/weapon_effects_stage.h": "3cb42c446cf2e0cca1c6f5412da2c95c37941854ac1bfedb6947dc2234a0ee41",
       "src/proxy/weapon_effects_bubble.h": "1215274203f85cc6ca2730544ad75ddfc376c49ccab54a820ec261b1b831b273",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
@@ -78,28 +73,28 @@
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
       "src/proxy/weapon_projectile_stage.h": "a4f0101e699444f691571f80c6f9792db5002465dd36359cf1175b7fb79dc41c",
-      "src/proxy/weapon_projectile_family.h": "b86ed4c4cf1e92e2b3fcc4fec345bfeb84cb621e78d1361d6b880024e4b3cac4",
+      "src/proxy/weapon_projectile_family.h": "ed61a43ec02850d6f1d9f2f1966e3e896409c6f6bfac47b114ca9309b6f28abd",
       "src/proxy/weapon_effects_projectile.h": "6b4c3dd1eb9426fe9e7e0ce9d884e8c615655bbf9952165ca30c915c5635753a",
       "src/effects/weapon_projectile_vs.hlsl": "15e0a5623b8e30a74cd4a84663658349dbac558209fda20f04cee638a692c2ff",
       "src/effects/weapon_projectile_ps.hlsl": "9618d55a38f03e1d9cf12d6af71c74659eabbbe23f6e6e61a843f94547463e9b",
       "src/renderer/weapon_projectile_vertex_program_inc.h": "b337280a10d10d9b87b6f1d37e41e45a2e7cad43e1bd0492500e348256ed6bdd",
       "src/renderer/weapon_projectile_pixel_program_inc.h": "b29322765941c69d830103afbb759b7b37757145b5723ff4d8cc349608c6e1ab",
       "src/effects/weapon_bullet_reshade_ps.hlsl": "251f5d5911679c8913921464ec615f91896b93a2d3a83ee0f9068561ca6f1be6",
-      "src/renderer/weapon_bullet_reshade_pixel_program_inc.h": "8c0c20460b5eb6bddb3d2295f566974c77ad563247f56260336679335d8b86bf",
-      "src/effects/weapon_bullet_reshade.hlsl": "c933f75872f4af30b506856967b8391b7cc0e76cfa8e86b4baf5be4710da7874",
+      "src/renderer/weapon_bullet_reshade_pixel_program_inc.h": "15ec3572c183efd8161296d2a073fb55b1c480b6637e90b50a464b6de42ce172",
+      "src/effects/weapon_bullet_reshade.hlsl": "5b2446591f3e07bbca595217b1a0ee00578f0ffa0c30ca158e0f68fc52226d99",
       "src/effects/weapon_bullet_reshade_flag_ps.hlsl": "51c4067ceadfd7b40a38e11ec53a704d9429b8d89dd20656fbb9cb4916967544",
-      "src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h": "5c9d71301c0d16ee1cfa986119689a77b59368638bd23f91c6f8ddcf444e2812",
-      "src/proxy/bullet_reshade_route.h": "5e30cef76dbb28227abfc9ec61065341bea3c0038035f24064c8f1221347bc08",
-      "src/proxy/bullet_reshade_core.h": "b2ae5b8675797b2da33cfb0c7c0367aac14cb498775b7ddc4dea4311c006043c",
-      "verification/probe/weapon_bullet_reshade_fixture.h": "74e2cac35258c94419cb13e6928680f37a3c69b34303adfa11605d0c1d392da7",
+      "src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h": "a3fb357d3de7f60021fdbb30da99dc27a10f10a26a6ef8b532992ca8c451b220",
+      "src/proxy/bullet_reshade_route.h": "ffba733e292cea8240337017bead5590f702ff0411170a794de730fdabfe64b9",
+      "src/proxy/bullet_reshade_core.h": "f33576f8b1a6287df58a0bc714fa51190b072f59a81b2b7e7914c16aeda26156",
+      "verification/probe/weapon_bullet_reshade_fixture.h": "607f629838597d7c9cd6754aad7f6dcd188328625cc4f6f59ae7110fe8b55ad1",
       "src/effects/weapon_muzzle_reshade_ps.hlsl": "473b5a7ab38eb61ffa659267ed047f1e6f5756a7c692524cc56904fc62a17bae",
       "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h": "3c51dede22fb5dc55eb8c9796cde85085b119f798a5708097047b7518353f460",
       "src/proxy/muzzle_reshade_route.h": "6487970e6a7ded65cb72a488e152b9eef7a808ec1b7defb25c5c9a96d2dd3b1c",
-      "src/proxy/muzzle_reshade_core.h": "a00ee0e8fe9fa8bb7e6af13f5fdde54ff4950039a5bc351ba3961026ab490014",
-      "verification/probe/weapon_muzzle_reshade_fixture.h": "e6685d668842cb049bd9961beb53a721cfeb836bfb0d1b8871d707b519528476",
+      "src/proxy/muzzle_reshade_core.h": "a8f1bf88eb4daf4374b87e18af1a8051aedfcd5d5fa7647bb9f77ce1f5d94c11",
+      "verification/probe/weapon_muzzle_reshade_fixture.h": "af3822f3cd89c597e6b8a82df8b152c0598818d1df70928e42f44e497a3d63d5",
       "src/effects/weapon_pulse_ps.hlsl": "ca25bed5e1ac0b95dd8e67dfae2f19403310dfc3302de7d046f9a505c839a2cb",
       "src/renderer/weapon_pulse_pixel_program_inc.h": "7ab6e6c082a618dbd6b9886f2fd68c82a778a08ef71b52852f2b5165d664be4e",
-      "verification/probe/weapon_effects_fixture.cpp": "c16896134d19c51add7f212093d1208a987828dac77d9ffdfb56b176704b7183"
+      "verification/probe/weapon_effects_fixture.cpp": "2a551f61fa775143780855bd61143dbfac057d3ea1756d33ae2c288903ff4bad"
     }
   },
   "programs": {
@@ -153,14 +148,14 @@
     },
     "weapon_bullet_reshade_ps": {
       "source": "src/effects/weapon_bullet_reshade_ps.hlsl",
-      "word_count": 160,
-      "bytecode_sha256": "34ed7aa4c6893be4699413fb4164592ea80509f03839bfeb2c1f30172f21cad5",
+      "word_count": 315,
+      "bytecode_sha256": "a7b22d6f5142a17ec4f16a5c98d80531673a0f8f4b0002e354bf91dd3c65ec82",
       "target": "ps_2_0"
     },
     "weapon_bullet_reshade_flag_ps": {
       "source": "src/effects/weapon_bullet_reshade_flag_ps.hlsl",
-      "word_count": 184,
-      "bytecode_sha256": "747699d938f9b0bbda70a273736f10bfeb807f1d637fb34d58b8caa5a84aed45",
+      "word_count": 339,
+      "bytecode_sha256": "5083aae73c081a9525e396f1108c63288e93c8dfbf9866e045285e50a291876c",
       "target": "ps_2_0"
     },
     "weapon_muzzle_reshade_ps": {
@@ -196,12 +191,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -228,13 +223,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-a4ef8305f43f29151/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "8bc830a907f478ac7e57b2eeffecaa73c48e05f488dea44f4e11deeba71bb902"
+    "executable_sha256": "3fd311b8a57bde08bf48ba723f1746e973fef56f169c1a083b34e9c91d2b4064"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -267,7 +262,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 129,
+      "checks": 131,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -728,6 +723,14 @@
     ],
     [
       "reshade_standin_vanilla_is_t_times_a",
+      true
+    ],
+    [
+      "reshade_geometric_matches_model",
+      true
+    ],
+    [
+      "reshade_geometric_keys_at_one_unchanged",
       true
     ],
     [
@@ -1292,17 +1295,17 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 8.0,
-        "walk_mean_us": 8.4,
+        "walk_best_us": 8.5,
+        "walk_mean_us": 8.7,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 12.9,
-        "engine_memory_cold_mean_us": 13.2,
-        "engine_memory_warm_best_us": 11.9,
+        "engine_memory_cold_best_us": 13.1,
+        "engine_memory_cold_mean_us": 13.8,
+        "engine_memory_warm_best_us": 12.0,
         "engine_memory_warm_mean_us": 12.3,
-        "warm_best_us": 38.9,
-        "warm_mean_us": 42.5,
-        "cold_best_us": 47.1,
-        "cold_mean_us": 52.5,
+        "warm_best_us": 39.0,
+        "warm_mean_us": 42.2,
+        "cold_best_us": 47.6,
+        "cold_mean_us": 50.1,
         "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1338,15 +1341,15 @@
         "walked_nodes": 1024,
         "ok": 1,
         "reads": 8325,
-        "walk_best_us": 69.6,
-        "walk_mean_us": 72.6,
-        "engine_memory_cold_best_us": 105.3,
-        "engine_memory_cold_mean_us": 107.1,
-        "engine_memory_warm_best_us": 105.1,
-        "engine_memory_warm_mean_us": 106.5,
+        "walk_best_us": 72.9,
+        "walk_mean_us": 75.3,
+        "engine_memory_cold_best_us": 107.0,
+        "engine_memory_cold_mean_us": 108.6,
+        "engine_memory_warm_best_us": 106.1,
+        "engine_memory_warm_mean_us": 107.4,
         "slice_nodes": 256,
-        "slice_best_us": 25.9,
-        "slice_mean_us": 26.4,
+        "slice_best_us": 26.3,
+        "slice_mean_us": 26.7,
         "slices": 4
       },
       {
@@ -1358,8 +1361,8 @@
         "slice_nodes": 29,
         "slice_reads": 2440,
         "read_bound": 2400,
-        "slice_best_us": 24.5,
-        "slice_mean_us": 24.9,
+        "slice_best_us": 24.3,
+        "slice_mean_us": 24.7,
         "slices": 36
       },
       {
@@ -1459,8 +1462,8 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 2.2,
-        "insertion_us": 1.7
+        "heap_us": 2.3,
+        "insertion_us": 1.5
       },
       {
         "case": "ascending",
@@ -1470,7 +1473,7 @@
       {
         "case": "descending",
         "heap_us": 2.2,
-        "insertion_us": 2.5
+        "insertion_us": 2.6
       }
     ],
     "attach_slots": [
@@ -1707,7 +1710,7 @@
         "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 28.8,
+        "best_us": 29.0,
         "mean_us": 29.6,
         "target_us": 200
       },
@@ -1720,8 +1723,8 @@
         "spills": 0,
         "cells_dropped": 2295,
         "dropped": 14,
-        "best_us": 86.9,
-        "mean_us": 90.0,
+        "best_us": 87.0,
+        "mean_us": 88.3,
         "target_us": 200
       },
       {
@@ -1733,7 +1736,7 @@
         "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "best_us": 14.2,
+        "best_us": 14.3,
         "mean_us": 14.5,
         "target_us": 200
       }
@@ -1771,10 +1774,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.51,
-        "last_drawn_ms": 473.49,
-        "frames": 18774,
-        "max_frame_ms": 0.495
+        "seta6_wall_ms": 473.5,
+        "last_drawn_ms": 473.48,
+        "frames": 18762,
+        "max_frame_ms": 0.279
       }
     ],
     "retired": [
@@ -1836,7 +1839,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.0
+        "gpu_us": 10.9
       },
       {
         "width": 1920,
@@ -1866,7 +1869,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 62.1
+        "gpu_us": 61.9
       },
       {
         "width": 1920,
@@ -1876,7 +1879,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 76.8
+        "gpu_us": 76.7
       },
       {
         "width": 1920,
@@ -1886,7 +1889,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 103.2
+        "gpu_us": 103.4
       },
       {
         "width": 1920,
@@ -1896,7 +1899,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 18.4
+        "gpu_us": 18.8
       },
       {
         "width": 1920,
@@ -1916,7 +1919,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 62.8
+        "gpu_us": 62.7
       },
       {
         "width": 1920,
@@ -1926,7 +1929,7 @@
         "drawn": 9,
         "lit_share": 0.4169,
         "raster_share": 1.6556,
-        "gpu_us": 92.0
+        "gpu_us": 91.7
       },
       {
         "width": 1920,
@@ -1946,7 +1949,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 58.8
+        "gpu_us": 58.7
       },
       {
         "width": 1920,
@@ -1956,7 +1959,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 95.3
+        "gpu_us": 95.6
       },
       {
         "width": 1920,
@@ -1976,7 +1979,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 71.2
+        "gpu_us": 71.0
       },
       {
         "width": 5120,
@@ -1986,7 +1989,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.9
+        "gpu_us": 10.4
       },
       {
         "width": 5120,
@@ -1996,7 +1999,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 21.3
+        "gpu_us": 21.2
       },
       {
         "width": 5120,
@@ -2006,7 +2009,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 22.7
+        "gpu_us": 22.9
       },
       {
         "width": 5120,
@@ -2016,7 +2019,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 180.0
+        "gpu_us": 180.5
       },
       {
         "width": 5120,
@@ -2026,7 +2029,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 237.5
+        "gpu_us": 237.7
       },
       {
         "width": 5120,
@@ -2036,7 +2039,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 389.1
+        "gpu_us": 387.2
       },
       {
         "width": 5120,
@@ -2046,7 +2049,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 33.7
+        "gpu_us": 34.0
       },
       {
         "width": 5120,
@@ -2056,7 +2059,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 161.6
+        "gpu_us": 161.4
       },
       {
         "width": 5120,
@@ -2066,7 +2069,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 181.6
+        "gpu_us": 181.1
       },
       {
         "width": 5120,
@@ -2076,7 +2079,7 @@
         "drawn": 9,
         "lit_share": 0.4513,
         "raster_share": 1.8914,
-        "gpu_us": 287.7
+        "gpu_us": 286.6
       },
       {
         "width": 5120,
@@ -2086,7 +2089,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.1
+        "gpu_us": 21.0
       },
       {
         "width": 5120,
@@ -2106,7 +2109,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 336.7
+        "gpu_us": 336.8
       },
       {
         "width": 5120,
@@ -2116,7 +2119,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 51.4
+        "gpu_us": 51.3
       },
       {
         "width": 5120,
@@ -2126,7 +2129,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 255.6
+        "gpu_us": 256.4
       }
     ],
     "projectile": [
@@ -2805,9 +2808,9 @@
         "merged": 486,
         "quads": 532,
         "trail_quads": 20,
-        "cpu_us": 87.8,
+        "cpu_us": 88.6,
         "gpu_us": 45.1,
-        "fence_us": 10.6,
+        "fence_us": 10.7,
         "lit_share": 0.0601,
         "vertex_bytes": 48,
         "statics": 0,
@@ -2826,9 +2829,9 @@
         "wanted": 2520,
         "trimmed": 502,
         "previous_wanted": 2528,
-        "cpu_us": 113.2,
-        "gpu_us": 67.4,
-        "fence_us": 10.6,
+        "cpu_us": 112.9,
+        "gpu_us": 68.3,
+        "fence_us": 10.7,
         "lit_share": 0.078,
         "statics": 0,
         "jumped": 0
@@ -3389,18 +3392,18 @@
         "pulses": 64,
         "bolts": 64,
         "cpu_with_us": 29.6,
-        "cpu_without_us": 21.4,
-        "cpu_us": 8.2,
-        "gpu_us": 23.8,
-        "gpu_net_us": 13.3,
-        "gpu_flashes_us": 17.0,
-        "gpu_pulses_us": 18.8,
+        "cpu_without_us": 21.6,
+        "cpu_us": 8.0,
+        "gpu_us": 23.6,
+        "gpu_net_us": 12.9,
+        "gpu_flashes_us": 16.6,
+        "gpu_pulses_us": 18.7,
         "gpu_far_pulses_us": 16.6,
         "gpu_own_pulses_us": 16.6,
-        "gpu_bolts_us": 15.9,
-        "gpu_bolts_flashes_us": 23.4,
-        "gpu_increment_us": 7.5,
-        "fence_us": 10.5,
+        "gpu_bolts_us": 15.8,
+        "gpu_bolts_flashes_us": 24.6,
+        "gpu_increment_us": 8.8,
+        "fence_us": 10.7,
         "lost": 0,
         "stale": 0,
         "dropped": 0
@@ -3419,8 +3422,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 122.4,
-        "gpu_us": 37.9
+        "cpu_us": 122.1,
+        "gpu_us": 38.9
       },
       {
         "case": "budget_combined",
@@ -3436,8 +3439,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 128.3,
-        "gpu_us": 61.7
+        "cpu_us": 127.2,
+        "gpu_us": 61.5
       },
       {
         "case": "budget_combined",
@@ -3453,7 +3456,7 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 112.8,
+        "cpu_us": 114.5,
         "gpu_us": 33.2
       },
       {
@@ -3470,17 +3473,17 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 87.2,
-        "gpu_us": 31.1
+        "cpu_us": 88.4,
+        "gpu_us": 31.4
       },
       {
         "case": "budget_combined_bounds",
-        "cpu_us": 122.4,
+        "cpu_us": 122.1,
         "cpu_within_100": 0,
-        "flash_work_cpu_us": 9.6,
-        "newborn_bolts_cpu_us": 25.6,
-        "bolts_448_cpu_us": 87.2,
-        "gpu_us": 37.9,
+        "flash_work_cpu_us": 7.6,
+        "newborn_bolts_cpu_us": 26.1,
+        "bolts_448_cpu_us": 88.4,
+        "gpu_us": 38.9,
         "gpu_within_60": 1
       }
     ],
@@ -3574,7 +3577,7 @@
         "standin_ps_body": "b006e837",
         "game_ps_body": "b006e837",
         "body_match": 1,
-        "reshade_words": 160
+        "reshade_words": 315
       },
       {
         "case": "texel",
@@ -3630,6 +3633,134 @@
         "vanilla_worst_rel": 0.039
       },
       {
+        "case": "geometric",
+        "index": 0,
+        "u": 0.8932,
+        "v": 0.8672,
+        "factor": 1.0,
+        "got": 0.21,
+        "model": 0.2101,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 1,
+        "u": 0.9182,
+        "v": 0.8672,
+        "factor": 0.648,
+        "got": 0.1361,
+        "model": 0.1361,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 2,
+        "u": 0.8832,
+        "v": 0.9121,
+        "factor": 0.104,
+        "got": 0.0218,
+        "model": 0.0218,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 3,
+        "u": 0.8233,
+        "v": 0.8672,
+        "factor": 0.0,
+        "got": 0.0,
+        "model": 0.0,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 4,
+        "u": 0.9731,
+        "v": 0.9571,
+        "factor": 0.0,
+        "got": 0.0,
+        "model": 0.0,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 5,
+        "u": 0.5,
+        "v": 0.3446,
+        "factor": 1.0,
+        "got": 0.21,
+        "model": 0.2101,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 6,
+        "u": 0.3,
+        "v": 0.3265,
+        "factor": 0.9259,
+        "got": 0.1945,
+        "model": 0.1945,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 7,
+        "u": 0.7,
+        "v": 0.3156,
+        "factor": 0.2593,
+        "got": 0.0544,
+        "model": 0.0545,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 8,
+        "u": 0.2,
+        "v": 0.301,
+        "factor": 0.0,
+        "got": 0.0,
+        "model": 0.0,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 9,
+        "u": 0.4,
+        "v": 0.3592,
+        "factor": 1.0,
+        "got": 0.21,
+        "model": 0.2101,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric",
+        "index": 10,
+        "u": 0.5,
+        "v": 0.6,
+        "factor": 1.0,
+        "got": 0.21,
+        "model": 0.2101,
+        "kept": 0.21,
+        "plain": 0.21
+      },
+      {
+        "case": "geometric_model",
+        "worst_rel": 0.031,
+        "same_at_one": 1,
+        "rs_head": 0.5,
+        "rs_width": 0.6
+      },
+      {
         "case": "additive",
         "gain": 2.0,
         "during": 1,
@@ -3655,14 +3786,21 @@
         "case": "cost",
         "draws": 2000,
         "runs": 7,
-        "calls_us_per_draw": 0.055,
+        "calls_us_per_draw": 0.067,
         "draw_us_vanilla": 0.056,
-        "draw_us_reshaded": 0.175,
-        "substitution_us_per_draw": 0.12,
+        "draw_us_reshaded": 0.179,
+        "substitution_us_per_draw": 0.123,
         "batch_bolts": 469,
         "batch_us_vanilla": 41.3,
-        "batch_us_reshaded": 40.8,
+        "batch_us_reshaded": 41.6,
         "fenced": 1
+      },
+      {
+        "case": "layout_cost",
+        "draws": 2000,
+        "runs": 7,
+        "mapped_bodies": 30,
+        "layout_us_per_body_change": 0.0031
       },
       {
         "case": "texture_key",
@@ -3678,8 +3816,8 @@
         "fallback": 1,
         "bytes": 349680,
         "us_size_miss": 0.0016,
-        "us_head_miss": 4.548,
-        "us_match": 387.4
+        "us_head_miss": 4.545,
+        "us_match": 389.6
       }
     ],
     "muzzle_reshade": [
@@ -3694,29 +3832,29 @@
         "case": "texel",
         "index": 0,
         "off": 0.0,
-        "got": "0.1194,0.0705,0.0403,1.0000",
-        "model": "0.1195,0.0705,0.0403,1.0000"
+        "got": "0.0556,0.0269,0.0092,1.0000",
+        "model": "0.0556,0.0269,0.0092,1.0000"
       },
       {
         "case": "texel",
         "index": 1,
         "off": 0.15,
-        "got": "0.0934,0.0558,0.0325,1.0000",
-        "model": "0.0935,0.0558,0.0325,1.0000"
+        "got": "0.0321,0.0155,0.0053,1.0000",
+        "model": "0.0321,0.0155,0.0053,1.0000"
       },
       {
         "case": "texel",
         "index": 2,
         "off": 0.5,
-        "got": "0.0203,0.0111,0.0054,0.5000",
-        "model": "0.0203,0.0111,0.0054,0.5000"
+        "got": "0.0048,0.0023,0.0008,0.5000",
+        "model": "0.0048,0.0023,0.0008,0.5000"
       },
       {
         "case": "texel",
         "index": 3,
         "off": 0.8,
-        "got": "0.0130,0.0063,0.0022,1.0000",
-        "model": "0.0130,0.0063,0.0022,1.0000"
+        "got": "0.0177,0.0086,0.0029,1.0000",
+        "model": "0.0177,0.0086,0.0029,1.0000"
       },
       {
         "case": "texel",
@@ -3729,19 +3867,19 @@
         "case": "texel",
         "index": 5,
         "off": 0.3,
-        "got": "0.0748,0.0422,0.0220,0.2007",
-        "model": "0.0748,0.0422,0.0220,0.2008"
+        "got": "0.0460,0.0223,0.0076,0.2007",
+        "model": "0.0460,0.0223,0.0076,0.2008"
       },
       {
         "case": "texel",
         "index": 6,
         "off": 0.05,
-        "got": "0.0866,0.0544,0.0344,1.0000",
-        "model": "0.0866,0.0544,0.0344,1.0000"
+        "got": "0.0026,0.0012,0.0004,1.0000",
+        "model": "0.0026,0.0012,0.0004,1.0000"
       },
       {
         "case": "model",
-        "radius_m": 22.809,
+        "radius_m": 9.1236,
         "worst_rel": 0.021,
         "vanilla_worst_rel": 0.071
       },
@@ -3752,18 +3890,20 @@
         "scale": 0.031,
         "overlap": 9.063,
         "vanilla_sum": 10521.04,
-        "reshade_sum": 1839.51,
-        "energy_ratio": 0.175,
+        "reshade_sum": 75.34,
+        "energy_ratio": 0.007,
         "vanilla_peak": 2.9525,
-        "reshade_peak": 1.7205,
+        "reshade_peak": 0.2551,
         "vanilla_white_r": 26.9,
-        "reshade_white_r": 11.6,
+        "reshade_white_r": 0.0,
         "vanilla_tenth_r": 82.1,
-        "reshade_tenth_r": 34.0,
-        "size": 0.5,
-        "gain": 0.2,
-        "core": 0.5,
-        "smooth": 0.6
+        "reshade_tenth_r": 9.3,
+        "vanilla_peak_tenth_r": 56.4,
+        "reshade_peak_tenth_r": 15.1,
+        "size": 0.2,
+        "gain": 0.15,
+        "core": 0,
+        "smooth": 0.1
       },
       {
         "case": "flash_axis",
@@ -3772,18 +3912,20 @@
         "scale": 0.031,
         "overlap": 10.203,
         "vanilla_sum": 8399.43,
-        "reshade_sum": 1366.83,
-        "energy_ratio": 0.163,
+        "reshade_sum": 55.41,
+        "energy_ratio": 0.007,
         "vanilla_peak": 2.4079,
-        "reshade_peak": 1.7299,
+        "reshade_peak": 0.1974,
         "vanilla_white_r": 18.2,
-        "reshade_white_r": 6.3,
+        "reshade_white_r": 0.0,
         "vanilla_tenth_r": 80.3,
-        "reshade_tenth_r": 33.3,
-        "size": 0.5,
-        "gain": 0.2,
-        "core": 0.5,
-        "smooth": 0.6
+        "reshade_tenth_r": 6.4,
+        "vanilla_peak_tenth_r": 53.5,
+        "reshade_peak_tenth_r": 15.8,
+        "size": 0.2,
+        "gain": 0.15,
+        "core": 0,
+        "smooth": 0.1
       },
       {
         "case": "flash_side",
@@ -3792,18 +3934,20 @@
         "scale": 0.031,
         "overlap": 8.898,
         "vanilla_sum": 11235.26,
-        "reshade_sum": 1930.14,
-        "energy_ratio": 0.172,
+        "reshade_sum": 78.32,
+        "energy_ratio": 0.007,
         "vanilla_peak": 3.1923,
-        "reshade_peak": 1.671,
+        "reshade_peak": 0.2602,
         "vanilla_white_r": 27.6,
-        "reshade_white_r": 12.3,
+        "reshade_white_r": 0.0,
         "vanilla_tenth_r": 85.1,
-        "reshade_tenth_r": 34.2,
-        "size": 0.5,
-        "gain": 0.2,
-        "core": 0.5,
-        "smooth": 0.6
+        "reshade_tenth_r": 9.9,
+        "vanilla_peak_tenth_r": 56.4,
+        "reshade_peak_tenth_r": 15.1,
+        "size": 0.2,
+        "gain": 0.15,
+        "core": 0,
+        "smooth": 0.1
       },
       {
         "case": "cost",
@@ -3811,10 +3955,10 @@
         "runs": 7,
         "primitives": 100,
         "calls_us_per_draw": 0.071,
-        "draw_us_vanilla": 3.036,
-        "draw_us_reshaded": 3.118,
-        "substitution_us_per_draw": 0.082,
-        "match_us_per_draw": 0.07,
+        "draw_us_vanilla": 2.96,
+        "draw_us_reshaded": 3.132,
+        "substitution_us_per_draw": 0.172,
+        "match_us_per_draw": 0.069,
         "fenced": 1
       }
     ],
