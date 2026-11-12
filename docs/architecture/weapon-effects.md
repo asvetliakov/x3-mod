@@ -573,12 +573,24 @@ every hit, so a diagnosis flight still sees vanilla.
   footprint radius doubles with them), rings 1 / 2 / 2 (7 / 19 / 19 cells per hit; the patch radius control is gone);
   the tier is the TShips class id for ships (8.1 of the spawn note), capital for docks and factories, else radius
   bands below 30 / 150 m [I].
-- **Placement: the ship bubble, the station's hull decal (user decision after Run238 Flight E; supersedes the
-  stand-off of Run237 Flight D, 21ad87836, reverted).** A ship's patch lies on a smooth bubble around it; a station's
-  stays the hull decal below. The owner's newest record decides: `TierSource` `tier_by_station` (docks, factories) takes
-  the decal, every other owner (ships by TShips class, anything else by radius; asteroids carry no shield hits) the
-  bubble. The cells keep their model (the six face lattices, footprints, per-cell clocks, marker, ring, colour, fade,
-  eviction, spills, seam shares; below).
+- **Placement: the ship bubble, the hull decal of stations and capitals (user decision after Run238 Flight E;
+  supersedes the stand-off of Run237 Flight D, 21ad87836, reverted; capitals since FL 67 A, 2026-11-12).** A fighter's or corvette's patch lies on a smooth bubble around
+  it; a station's and a capital's stay the hull decal below. The owner's newest record decides (`core::shield_bubble`):
+  `PatchTier` fighter or corvette and `TierSource` not `tier_by_station` take the bubble; `patch_capital` (M0/M1/M2/M7/TL
+  by TShips class, docks and factories, an unknown class in the capital radius band) and an unknown tier take the decal
+  and run no hull walk, except the own ship in the cockpit view, which keeps its eye sphere (below) whatever its tier. The cells keep their model (the six face lattices, footprints, per-cell clocks, marker, ring,
+  colour, fade, eviction, spills, seam shares; below).
+  - *Capitals take the decal (FL 67 A, main session decision 2026-11-12).* A box-fitted ellipsoid cannot fit a long hull
+    with fins at any scale. The Argon Titan (M2, radius 545,751) is one hull part whose stored extent is the per-axis
+    coordinate maximum (x 151k at one z-station, the others 46 to 83k; y 166k from the fins), so its walked bubble stood
+    about 174k x 194k x 608k engine units (x 1.15) far off the sides; the radial map pushes a hit outward by 1/|q|, and
+    the Titan's 134 logged hits had |q| 0.22 to 0.52: median displacement 621 m, 600 m of it along z, side hits sliding
+    toward nose or tail (the logged hit positions against the bubble inferred from the scene,
+    `verification/results/fl-run67/titan_hit_mapping.py` on the FL run 67 log). Nose and
+    tail hits fitted only because |q| is near 1 there. The hull decal lies on the hull at the contact point, as on
+    stations (the accepted look: ship bubble + station decal, 2026-11-06); fighters and corvettes keep the bubble. The
+    decal reads no hull extents, so a capital owner walks nothing (no slices spent). Its cells are the capital tier's
+    (16 m, 2 rings), the station's values.
   - *Bubble.* An ellipsoid in the owner frame from the hull bounds (render-node-bounds.md 6.1, the reads and guards of
     `ship_avoidance_walk_core.h` `hull_children` with a signed box: `stage::hull_bounds` in
     `src/proxy/weapon_effects_bubble.h`, every descendant of the root node at most 3 levels down and 1024 nodes, 1024 per
@@ -611,10 +623,15 @@ every hit, so a diagnosis flight still sees vanilla.
     row with the owner, root node, radius, `nodes=`, `parts=`, `depth=` (the level it failed at), `deepest=`, `slices=`,
     `value=` (the guard's offending value: an address, a count, an extent or a scale), `restarted=` and `suppressed=`;
     `stage::WalkRowLimit` limits on wall-clock ms from the stage's QPC (SETA does not multiply rows): an owner once per
-    2000 ms, 8 rows per 2000 ms in all. `weapon_effects_frame` counts `bubbles=` (owner frames on a bubble),
+    2000 ms, 8 rows per 2000 ms in all. A finished walk logs one `weapon_bubble_fit edition=<ap|fl> owner= node= tier=
+    radius= parts= nodes= slices= lo= hi= c= e= clamped= now= suppressed=` row (FL 67 A: the hull box, the bubble's centre
+    and half-extents, all in engine units, so a misfit shows without a scene reconstruction), under its own
+    `WalkRowLimit` (an owner once per 2000 wall ms). `weapon_effects_frame` counts `bubbles=` (owner frames on a bubble),
     `bubble_fallback=` (of them on the sphere, unfinished walks included), `bubble_walks=` (slices), `bubble_walk_failures=`, `bubble_held=` (a failed
     walk's retry held back), `bubble_deferred=` (past the frame's walks), `bubble_clamped=` (a half-extent cut to the
-    radius) and `bubble_partial=` (slices that left their walk unfinished); `weapon_patch` logs `bubble=`, `bubble_c_m=` and `bubble_e_m=`.
+    radius) and `bubble_partial=` (slices that left their walk unfinished), and `cells_key_dropped=` footprint cells
+    past the packed cell key's bound (+-2048 cells from the face's origin; never lit, review F6); `weapon_patch` logs
+    `bubble=`, `bubble_c_m=` and `bubble_e_m=`.
   - *The walk's cache* (`stage::BubbleCache`, one per process on the game thread): 64 entries keyed by owner, root node,
     handle and the root's first child with its body id (render-node-bounds.md 6.1's key; two reads per owner a frame;
     review F7) with the object radius walked at and an unfinished walk's state (about 20 KB in all); a radius or child
@@ -662,7 +679,7 @@ every hit, so a diagnosis flight still sees vanilla.
     `engine_memory::read` (894 reads), cached in the steady state.
 - **The station's hull decal: the screen-space patch (user decision 2026-11-06 after Run236 Flight C; supersedes the
   per-face lattice at the hit point with its travel region, per-cell depth, depth cache, soft fade and seam planes;
-  since the bubble above it draws the stations only, as built in 6720724d3).** The patch is a decal laid on the hull
+  since the bubble above it draws the stations only, as built in 6720724d3, and since FL 67 A the capitals too).** The patch is a decal laid on the hull
   through the depth lane; nothing chooses a face from the bolt (`Event::dir` stays
   recorded for the `weapon_event` row and is unused). The cells keep their model: per owner six faces (+-z, +-x, +-y,
   each a planar hex lattice perpendicular to its owner axis, fixed in the owner frame, `stage::anchor_frame`), a hit
@@ -778,6 +795,13 @@ every hit, so a diagnosis flight still sees vanilla.
   centre gain and fade duration, stagger, edge-versus-fill, the three colour bands, the SETA rate (default 1), the
   hit-sequence player in hits per game second (so SETA 6 is as dense as the game).
 - **Later options, not now:** patterns per race or class; weapon tint.
+- **Decisions on the surface (dated).**
+  - 2026-11-06 (user, Run239): ships carry the ellipsoid bubble fitted to the hull bounds; stations keep the on-hull
+    screen-space decal.
+  - 2026-11-12 (main session, FL 67 A): capital-tier ships (M0/M1/M2/M7/TL, and any capital-tier owner) take the hull
+    decal at the contact point; fighters and corvettes keep the bubble.
+  - 2026-11-12 (main session, FL 67 A review F2): the own ship in the cockpit view keeps the Run240 eye sphere whatever
+    its tier; only an external capital-tier owner takes the decal.
 
 ### 5.2 Step 2: hull hit
 

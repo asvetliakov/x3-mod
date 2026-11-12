@@ -207,7 +207,8 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     // node (cached per frame); the view is the chase camera's last active-control cockpit visit this frame or the
     // previous one (cockpit+0x150, 1 = the cockpit; stage::CockpitClock stamps the frame its visit count last moved: a
     // camera no longer visiting is stale, no dim), read only when a stage-owned record belongs to the own ship. Without the
-    // chase camera installed the view is unknown: nothing is dimmed and the own ship keeps its hull bubble.
+    // chase camera installed the view is unknown: nothing is dimmed and the own ship keeps its tier's surface (the
+    // bubble, or the hull decal for a capital).
     weapon_cockpit_ = false;
     std::uint32_t own = 0;
     {
@@ -266,6 +267,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[11] += n.bubble.deferred;
     weapon_drops_[12] += n.bubble.clamped;
     weapon_drops_[13] += n.bubble.partial;
+    weapon_drops_[14] += n.cells_key_dropped;
 #if X3M_EDITION_FL
     // FL bodies are assumed to keep AP's normalised LOD extents [0, 0x20000] (fl/weapon-effect-spawn.md section 5 [i]);
     // the AP bound stays the runtime guard (the walk fails to the fallback sphere) and its first refusal is one row.
@@ -294,6 +296,15 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         char row[384];
         weapon_effects::stage::format_walk_row(row, sizeof row, n.bubble.failed[i], walk_edition,
                                                walk_rows.take_suppressed());
+        log("%s", row);
+    }
+    // One weapon_bubble_fit row per finished hull walk (FL 67 A: the bubble's box, centre and half-extents, so a misfit
+    // is visible without a scene reconstruction), its own limit of the same kind (an owner once per 2000 wall ms).
+    static weapon_effects::stage::WalkRowLimit fit_rows;
+    for (unsigned i = 0; i < n.bubble.fit_rows; ++i) {
+        if (!fit_rows.admit(n.bubble.fit[i].owner, wall_ms)) continue;
+        char row[384];
+        weapon_effects::stage::format_fit_row(row, sizeof row, n.bubble.fit[i], walk_edition, fit_rows.take_suppressed());
         log("%s", row);
     }
     if (capture_) log_weapon_patches(patches, n.patches);
@@ -529,8 +540,8 @@ void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned*
 // flies), whether the view is the cockpit and the gain the own ship's patch took for it (Flight C), the lattice (0 z,
 // 2 x, 4 y; odd: the - faces), its cells (lit and a ring's not yet lit) and ring hits, the anchors' range along the axis and the
 // eye's distance from the owner's centre, both over the owner's radius (eye_r < 1: the eye inside the bounding sphere),
-// the extent (the footprint test's radius), and for a ship its bubble (bubble=1: centre and half-extents in the owner
-// frame; 0: the station's hull decal), metres = view units / 5.
+// the extent (the footprint test's radius), and for a fighter or corvette its bubble (bubble=1: centre and half-extents
+// in the owner frame; 0: the hull decal of a station or capital), metres = view units / 5.
 void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsigned count) noexcept {
     namespace wcore = weapon_effects::core;
     resolve_own_ship();
@@ -558,13 +569,13 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[14]) noexcept {
+                                             bool* drew, unsigned drops[15]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 14; ++i) {
+    for (unsigned i = 0; i < 15; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

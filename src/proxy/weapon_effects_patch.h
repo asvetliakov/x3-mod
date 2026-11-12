@@ -123,6 +123,7 @@ struct StageFrame {
     // bubbles cut to the object radius, slices that left their walk unfinished
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     unsigned bubble_partial = 0;
+    unsigned cells_key_dropped = 0; // footprint cells past the packed cell key's bound (never lit; review F6)
     float stage_us = 0.f;
     bool drew = false;
     // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the

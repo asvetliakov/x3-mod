@@ -2831,7 +2831,10 @@ int main(int argc, char** argv) {
     // half-extent off centre, and its top hit by a bolt 42 degrees below its plane (the bolt's direction plays no part:
     // the face-on count); the top with the hull centred 2 cells below the owner's origin. The station keeps the hull
     // decal (tier_by_station): the Flight B station (R 1304 m) at its recorded contact point (0.676 R), on the hull lane
-    // (nothing on sky, nothing past the footprint). The chase camera and the eye inside the bubble follow.
+    // (nothing on sky, nothing past the footprint). So does a capital-tier ship (FL 67 A, 2026-11-12: its box-fitted
+    // bubble pushed the Titan's side hits a median 621 m along z): the Titan's hull (radius 545751, half-extents 151433 x
+    // 166374 x 528422 engine units, an ellipsoid lane) hit on its flank 30 % aft (|q| 0.87 on its bubble), drawn on the hull
+    // at the contact point, no bubble, no hull walk. The chase camera and the eye inside the bubble follow.
     {
         struct Placement {
             const char* name;
@@ -2851,7 +2854,8 @@ int main(int argc, char** argv) {
         const std::int32_t bottom[3][3] = {{65536, 0, 0}, {0, 0, 65536}, {0, -65536, 0}}; // local -y -> view -z
         const float a6 = 250.f / 6.f;
         const double s84 = std::sqrt(1.0 - 0.16), s82 = std::sqrt(1.0 - 0.18);
-        constexpr unsigned count = 10, station = 8;
+        constexpr unsigned count = 11, station = 8, capital = 10;
+        const auto hull_case = [&](unsigned i) { return i == station || i == capital; }; // the hull decal's cases
         Placement cases[count] = {
             {"narrow_mid_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * std::sqrt(1.0 - 0.09 * 0.09)), 0, eng(0.09 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
             {"aft_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * s84), 0, eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
@@ -2865,11 +2869,16 @@ int main(int argc, char** argv) {
             // review F1: the flat fighter's hull centred 2 cells (6 m) below the owner's origin, hit on its top
             {"y_top_flat_offcentre", wc::patch_fighter, 60.f, 400.f,
              {eng(0.3 * 60.0), eng(-30.0 + 10.0 * s82), eng(0.3 * 40.0)}, {}, {60.f, 10.f, 40.f}, {0, -127, 0}, 5,
-             {0.f, -30.f, 0.f}}};
-        const std::int32_t (*rows_of[count])[3] = {side, side, top, bottom, side, top, bottom, top, facing, top};
+             {0.f, -30.f, 0.f}},
+            // FL 67 A: the Titan by its class (M2, patch_capital), the camera 8000 view units from the contact
+            {"capital_titan_flank", wc::patch_capital, 5457.51f, 9444.6f,
+             {eng(1514.33 * std::sqrt(1.0 - 0.09)), 0, eng(0.3 * 5284.22)}, {}, {1514.33f, 1663.74f, 5284.22f}, {-127, 0, 0},
+             10}};
+        const std::int32_t (*rows_of[count])[3] = {side, side, top, bottom, side, top, bottom, top, facing, top, side};
         for (unsigned k = 0; k < count; ++k) std::memcpy(cases[k].rows, rows_of[k], sizeof side);
         struct Result {
             unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0, bubbles = 0, off_bubble = 0;
+            unsigned walks = 0; // hull walks the builder ran (no cache: a bubble owner walks every call)
             double centroid_cells = 1e30, lit_ratio = 0, b_shift_cells = 0;
             double cap_lo = 0, cap_hi = 0; // the bubble past the hull's tail and nose along z (view units; > 0: past)
             bool drew = false;
@@ -2904,13 +2913,14 @@ int main(int argc, char** argv) {
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), hull_tuning(), patches,
                                            wc::max_patches, decals, wc::max_decals);
             const HullLane hull = staged_hull(ext, off);
-            const std::vector<float> l = render(pass, patches, n.patches, i == station ? nullptr : &near_only, nullptr, &hull);
+            const std::vector<float> l = render(pass, patches, n.patches, hull_case(i) ? nullptr : &near_only, nullptr, &hull);
             const double extent = n.patches ? double(patches[0].extent) : 0.0, cell = n.patches ? double(patches[0].cell) : 1.0;
             const double core = n.patches ? 0.5 * double(patches[0].reach) : 0.0; // surely inside the footprint's cells
             Result& o = res[i];
             o.patches = n.patches;
             o.bubbles = n.bubbles;
-            if (i != station && n.patches) {
+            o.walks = n.bubble.walks;
+            if (!hull_case(i) && n.patches) {
                 const BubbleTwin bt = bubble_twin(patches[0]);
                 double B[3], q[3];
                 bubble_image(bt, hp, B, q);
@@ -2967,10 +2977,10 @@ int main(int argc, char** argv) {
             const Result& o = res[i];
             const double ratio = res[cases[i].ref].lit ? double(o.lit) / double(res[cases[i].ref].lit) : 0.0;
             res[i].lit_ratio = ratio;
-            std::printf("PLACEMENT case=%s surface=%s patches=%u bubbles=%u lit_pixels=%u sky_lit=%u outside_lit=%u "
+            std::printf("PLACEMENT case=%s surface=%s patches=%u bubbles=%u walks=%u lit_pixels=%u sky_lit=%u outside_lit=%u "
                         "off_bubble_lit=%u eligible=%u covered=%u coverage=%.3f centroid_error_cells=%.3f "
                         "bubble_shift_cells=%.3f cap_nose_m=%.2f cap_tail_m=%.2f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
-                        cases[i].name, i == station ? "hull" : "bubble", o.patches, o.bubbles, o.lit, o.sky_lit, o.outside,
+                        cases[i].name, hull_case(i) ? "hull" : "bubble", o.patches, o.bubbles, o.walks, o.lit, o.sky_lit, o.outside,
                         o.off_bubble, o.eligible, o.covered, o.eligible ? double(o.covered) / double(o.eligible) : 0.0,
                         o.centroid_cells, o.b_shift_cells, o.cap_hi / 5.0, o.cap_lo / 5.0, cases[cases[i].ref].name, ratio,
                         int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
@@ -3079,6 +3089,8 @@ int main(int argc, char** argv) {
         report("placement_flat_fighter_flank_top_bottom_42deg_on_the_bubble",
                on_bubble(4) && on_bubble(5) && on_bubble(6) && on_bubble(7) && res[7].lit == res[5].lit, "");
         report("placement_station_hull_decal_at_the_hit", on_hull(station) && res[station].bubbles == 0, "");
+        report("placement_capital_ship_hull_decal_at_the_hit",
+               on_hull(capital) && res[capital].bubbles == 0 && res[capital].walks == 0, "");
         report("placement_offcentre_origin_top_lights", on_bubble(9) && res[9].lit_ratio >= 0.7, "");
         draw_lane(g, 0.f, -1.f);
     }
@@ -3387,7 +3399,8 @@ int main(int argc, char** argv) {
         // One build and draw of the staged owner at a pitch: hits `mask` of the set, the view, the own node; the lit
         // pixels outside every draw's box counted into *outside.
         auto run = [&](unsigned set, double pitch_deg, unsigned mask, bool cockpit_view, std::uint32_t own,
-                       std::vector<float>* luma, double L[3][3], unsigned* eye_patches, unsigned* outside) {
+                       std::vector<float>* luma, double L[3][3], unsigned* eye_patches, unsigned* outside,
+                       std::uint8_t tier = wc::patch_corvette, ws::Counts* counts = nullptr) {
             const double pr = pitch_deg * 3.14159265358979 / 180.0, cp = std::cos(pr), sp = std::sin(pr);
             const double axes[3][3] = {{1, 0, 0}, {0, cp, -sp}, {0, sp, cp}}; // owner axis k in view (= world)
             stage_owner(400.f, 550.f, 0);
@@ -3403,7 +3416,7 @@ int main(int argc, char** argv) {
             stage_hull(ext);
             stage_tier_source = wc::tier_by_ship_class;
             for (unsigned h = 0; h < 8; ++h)
-                if (mask & (1u << h)) add_stage_hit(1000 - 10 * h, sets[set][h], wc::patch_corvette);
+                if (mask & (1u << h)) add_stage_hit(1000 - 10 * h, sets[set][h], tier);
             stage_tier_source = wc::tier_by_radius;
             ws::Tuning t = hull_tuning();
             t.own_node = own;
@@ -3416,6 +3429,7 @@ int main(int argc, char** argv) {
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, cam, t, patches, wc::max_patches, decals,
                                            wc::max_decals);
             ws::dim_own_cockpit(patches, n.patches, own, cockpit_view);
+            if (counts) *counts = n;
             *eye_patches = 0;
             for (unsigned i = 0; i < n.patches; ++i) {
                 *eye_patches += patches[i].eye_sphere;
@@ -3547,6 +3561,32 @@ int main(int argc, char** argv) {
         report("cockpit_eye_sphere_centroid_within_one_cell", made && lit_singles == singles && worst_cells <= 1.0 + 0.5774 &&
                                                               uncovered == 0 && std::fabs(radius_seen - 150.0) < 0.5, "");
         report("cockpit_eye_sphere_chase_unchanged", made && chase_changed == 0 && eye_draws > 0, "");
+        // FL 67 A review F2: the own ship of capital tier in the cockpit keeps the eye sphere (the walk runs for its
+        // smallest half-extent, 150); in the chase view the same capital takes the hull decal (no bubble, no walk).
+        {
+            std::vector<float> l;
+            double L[3][3];
+            unsigned eyes = 0, out = 0, chase_eyes = 0, chase_out = 0;
+            ws::Counts cn{}, chase{};
+            radius_seen = 0;
+            if (made) {
+                run(0, 0.0, 0xffu, true, addr(fake_node), &l, L, &eyes, &out, wc::patch_capital, &cn);
+                const unsigned lit = lit_count(l);
+                const double cockpit_radius = radius_seen;
+                run(0, 0.0, 0xffu, false, addr(fake_node), &l, L, &chase_eyes, &chase_out, wc::patch_capital, &chase);
+                std::printf("EYE_SPHERE case=capital_own cockpit_patches=%u eye_draws=%u eye_spheres=%u bubbles=%u walks=%u "
+                            "radius=%.1f lit_pixels=%u outside_boxes=%u chase_patches=%u chase_eye_draws=%u chase_bubbles=%u "
+                            "chase_walks=%u\n",
+                            cn.patches, eyes, cn.eye_spheres, cn.bubbles, cn.bubble.walks, cockpit_radius, lit, out,
+                            chase.patches, chase_eyes, chase.bubbles, chase.bubble.walks);
+                report("cockpit_eye_sphere_capital_own_ship",
+                       cn.patches > 0 && eyes == cn.patches && cn.eye_spheres == 1 && cn.bubbles == 1 &&
+                           std::fabs(cockpit_radius - 150.0) < 0.5 && lit > 0 && out == 0 && chase_eyes == 0 &&
+                           chase.bubbles == 0 && chase.bubble.walks == 0 && chase.patches > 0, "");
+            } else {
+                report("cockpit_eye_sphere_capital_own_ship", false, "");
+            }
+        }
         tt.release();
         stage_owner(400.f, 100.f, 0); // the staged owner back at view (0, 0, 400 m), radius 100, an empty ring
         wc::ring_clear(stage_ring);
@@ -3557,7 +3597,8 @@ int main(int argc, char** argv) {
     // frames no pixel drops by more than one frame's fade step per lit cell over it (the fastest cell: cell_gain (1 +
     // stagger / 2) dt / (fade (1 - stagger / 2)); the cells over a pixel counted by the same draws at a constant level)
     // plus the FP16 step. The hits land on a flat face of the owner (its front at 0.6 R, square to
-    // the -z axis: one region, one depth) and on the front of a sphere of radius R (every hit at its own depth), with
+    // the -z axis: one region, one depth) and on the front of a sphere of radius R (every hit at its own depth; a capital
+    // is the hull decal since FL 67 A, the fighter's sphere the bubble), with
     // the production depth cache (a lit cell keeps the depth it was first lit at until it has faded out, so a re-light
     // never moves it). Fighter: hits within 0.15 rad of the face's centre as seen from the owner's (one draw). Capital
     // spread: a 400 m owner, hits within 35 degrees: its cells overflow one draw, so the region spills into further
@@ -3567,6 +3608,7 @@ int main(int argc, char** argv) {
         struct NoPop {
             unsigned hits = 0, frames = 0, max_live = 0, max_patches = 0, max_cells = 0, max_region_cells = 0, popped = 0;
             unsigned spills = 0, cells_dropped = 0, hits_dropped = 0, dropped = 0, worst_frame = 0, worst_x = 0, worst_y = 0;
+            unsigned max_bubbles = 0; // owners on a bubble in a frame (the bubble path or the decal)
             double worst = 0, worst_rel = 0, allowed = 0;
             float worst_prev = 0.f, worst_cur = 0.f;
         };
@@ -3577,11 +3619,14 @@ int main(int argc, char** argv) {
             wc::ring_clear(stage_ring);
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
-            // The surface: the flat face (a plane square to the view at 0.6 R in front of the centre) or the sphere.
+            // The surface: the flat face (a plane square to the view at 0.6 R in front of the centre) or the sphere. A
+            // capital takes the hull decal (FL 67 A): its sphere is the hull through the hits (R); a fighter's or
+            // corvette's hull lies inside its fallback bubble (0.8 R), the bubble drawing on its own sphere.
             if (flat)
                 draw_lane(g, owner_z - 0.6f * owner_r, 1.f);
-            else { // the hull inside the fallback bubble (the radius): the bubble draws on its own sphere
-                const double r3[3] = {0.8 * owner_r, 0.8 * owner_r, 0.8 * owner_r};
+            else {
+                const double k = tier >= wc::patch_capital ? 1.0 : 0.8;
+                const double r3[3] = {k * owner_r, k * owner_r, k * owner_r};
                 draw_hull_lane(g, staged_hull(r3));
             }
             const double dt = 1.0 / 60.0, fade = double(wc::fade_ms) * 1e-3;
@@ -3610,6 +3655,7 @@ int main(int argc, char** argv) {
                 for (unsigned c : face_cells) o.max_region_cells = std::max(o.max_region_cells, c);
                 (void)cells;
                 o.max_patches = std::max(o.max_patches, n.patches);
+                o.max_bubbles = std::max(o.max_bubbles, n.bubbles);
                 o.max_live = std::max(o.max_live, n.hits);
                 o.spills += n.spills;
                 o.cells_dropped += n.cells_dropped;
@@ -3642,8 +3688,8 @@ int main(int argc, char** argv) {
                 }
                 prev.swap(l);
             }
-            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
-                        name, o.hits, o.frames, o.max_live, o.max_patches, o.max_cells, o.max_region_cells, o.spills,
+            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_bubbles=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
+                        name, o.hits, o.frames, o.max_live, o.max_patches, o.max_bubbles, o.max_cells, o.max_region_cells, o.spills,
                         o.cells_dropped, o.hits_dropped, o.dropped, o.worst, o.allowed, o.worst_rel, o.popped,
                         o.worst_frame, o.worst_x, o.worst_y, double(o.worst_prev), double(o.worst_cur));
             return o;
@@ -3658,6 +3704,16 @@ int main(int argc, char** argv) {
                                                           capital_fire.max_region_cells > rr::weapon_patch_cells &&
                                                           capital_fire.spills > 0 && capital_fire.cells_dropped == 0 &&
                                                           capital_fire.dropped == 0, "");
+        // The bubble's spill path (stage::fill_bubble's spills) under spread fire, now that a capital takes the decal
+        // (FL 67 A review F3): a 120 m corvette (radius 600 view units, the camera 1.2 R from it), hits within 35 degrees
+        // on its flat front (the bubble the fallback sphere), the old capital spread case's gate.
+        const NoPop corvette_fire = run_nopop("corvette_spread_12hps", wc::patch_corvette, 600.f, 1200.f, 0.61,
+                                              ws::Tuning{}, true);
+        report("no_pop_spread_corvette_bubble_spills", corvette_fire.frames == 240 && corvette_fire.worst_rel <= 0.0 &&
+                                                           corvette_fire.max_live >= 30 && corvette_fire.max_bubbles == 1 &&
+                                                           corvette_fire.max_region_cells > rr::weapon_patch_cells &&
+                                                           corvette_fire.spills > 0 && corvette_fire.cells_dropped == 0 &&
+                                                           corvette_fire.dropped == 0, "");
         ws::Tuning one_draw{};
         one_draw.region_draws = 1;
         const NoPop witness = run_nopop("capital_spread_one_draw_witness", wc::patch_capital, 2000.f, 4000.f, 0.61, one_draw, true);
@@ -3734,7 +3790,9 @@ int main(int argc, char** argv) {
     // The stage's CPU cost in this i686 build (SSE2, the production flags): ws::build alone with the depth cache (the
     // production path), best and mean of 200 calls,
     // on the worst cases: 64 live hits on one capital owner spread over its front (the region spills), and 16 capital
-    // owners with 16 spread hits each (the ring's 256), against the 0.2 ms stage_us target (which also holds the draws).
+    // owners with 16 spread hits each (the ring's 256), against the 0.2 ms stage_us target (which also holds the draws);
+    // and one capital ship (by class) under 12 hits/s, 2.5 s in (31 live hits). Every capital takes the hull decal since
+    // FL 67 A (no hull walk).
     {
         struct Fake {
             unsigned char obj[0x100], node[0x200];
@@ -3768,6 +3826,7 @@ int main(int argc, char** argv) {
             e->flags = std::uint8_t(wc::flag_stage | wc::flag_forwarded | wc::flag_shield_read);
             e->shield_q = 0xffff;
             e->patch_tier = wc::patch_capital;
+            e->tier_source = wc::tier_by_ship_class;
             e->dir[0] = e->dir[1] = e->dir[2] = 0;
             e->t0_game_ms = t0;
             e->lifetime_ms = std::uint16_t(wc::patch_lifetime_ms);
@@ -3799,9 +3858,9 @@ int main(int argc, char** argv) {
             }
             unsigned cells = 0;
             for (unsigned i = 0; i < n.patches; ++i) cells += patches[i].cells;
-            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u best_us=%.1f mean_us=%.1f target_us=200\n",
-                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, best,
-                        sum / 200.0);
+            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u bubbles=%u walks=%u best_us=%.1f mean_us=%.1f target_us=200\n",
+                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, n.bubbles,
+                        n.bubble.walks, best, sum / 200.0);
             return best;
         };
         wc::ring_clear(ring);
@@ -3814,6 +3873,10 @@ int main(int argc, char** argv) {
             for (unsigned i = 0; i < 16; ++i) add_hit(k, 16 * k + i, 1000 + 150 * i, 2000.f);
         }
         const double many = time_build("sixteen_capitals_16_hits", 1000 + 150 * 16);
+        wc::ring_clear(ring);
+        make_owner(0, 0.f, 4000.f, 2000.f);
+        for (unsigned i = 0; i * 1000u / 12u <= 2500u; ++i) add_hit(0, i, 1000 + i * 1000u / 12u, 2000.f); // 12 hits/s
+        const double at12 = time_build("one_capital_12hps", 3500);
         // The Flight B station (R 1304 m): 64 hits over its recorded contact cluster (x -131k..-110k, y 75k..126k, z
         // 353k..421k engine units: one +z region, |pos| / R 0.55 to 0.68), 25 hits/s.
         wc::ring_clear(ring);
@@ -3825,12 +3888,13 @@ int main(int argc, char** argv) {
             add_hit(0, i, 1000 + 40 * i, 6517.64f, at);
         }
         const double station = time_build("station_flight_b_cluster_64_hits", 1000 + 40 * wc::owner_hits);
-        report("stage_cpu_measured", one > 0.0 && many > 0.0 && station > 0.0, "");
+        report("stage_cpu_measured", one > 0.0 && many > 0.0 && station > 0.0 && at12 > 0.0, "");
     }
     // The hull walk's cost (5.1.1 "Placement"; the per-owner cache): the production stage::hull_bounds over the fake body
-    // cache with 127 parts (the walk's budget is 128 nodes), and the builder's frame for one capital with 64 spread hits
-    // with the cache warm (the owner's bounds reused: the production steady state) and cold (rescoped before every call:
-    // a walk in every frame, what the cache saves), best and mean of 200 calls (us).
+    // cache with 127 parts (the walk's budget is 128 nodes), and the builder's frame for one 400 m owner with 64 spread
+    // hits with the cache warm (the owner's bounds reused: the production steady state) and cold (rescoped before every
+    // call: a walk in every frame, what the cache saves), best and mean of 200 calls (us). The hits' tier is corvette:
+    // a capital takes the hull decal and walks nothing since FL 67 A.
     {
         stage_owner(4000.f, 2000.f, 0);
         wc::ring_clear(stage_ring);
@@ -3838,7 +3902,7 @@ int main(int argc, char** argv) {
             const double th = 0.61 * std::sqrt(halton(i + 1, 2)), a = 6.2831853 * halton(i + 1, 3), re = 200000.0;
             const std::int32_t pos[3] = {std::int32_t(re * std::sin(th) * std::cos(a)),
                                          std::int32_t(re * std::sin(th) * std::sin(a)), -std::int32_t(re * std::cos(th))};
-            add_stage_hit(1000 + 40 * i, pos, wc::patch_capital);
+            add_stage_hit(1000 + 40 * i, pos, wc::patch_corvette);
         }
         const double ext[3] = {600.0, 400.0, 2000.0};
         stage_hull(ext, nullptr, 127);
@@ -3918,10 +3982,13 @@ int main(int argc, char** argv) {
     // (its nodes, reads and cost, cold). (c) The forced failure: a two-level
     // hull of 1026 nodes (38 x 26) fails the budget on its fifth frame; the frame's failure record, its weapon_bubble_walk
     // row (printed as the fixture's row), and within bubble_retry_ms the owner held without another record.
+    // Since FL 67 A (2026-11-12) a capital-tier hit takes the hull decal and walks nothing; these cases keep the walk
+    // covered on the capital-shaped trees with the hit's tier set to corvette (a corvette walks: the bubble), the camera
+    // at 1.2 R (was 2.4 R) so the corvette's 6 m cell keeps about the capital cell's pixel size (10 px at 1080p).
     {
         const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
         const std::int32_t titan_r = 545751;
-        const double view_r = double(titan_r) * double(wc::world_scale), z = 2.4 * view_r;
+        const double view_r = double(titan_r) * double(wc::world_scale), z = 1.2 * view_r;
         const double ext[3] = {2000.0, 1500.0, 5000.0}; // the sections' box (view units): 200000 x 150000 x 500000 engine
         const std::int32_t ext_n[3] = {104858, 78643, 32768};       // 1.6, 1.2, 0.5 of the node scale
         const std::int32_t scales[3] = {125000, 20000, 5000};        // section (200000, 150000, 62500), mount, turret
@@ -3944,7 +4011,7 @@ int main(int argc, char** argv) {
         for (unsigned r = 0; r < 3; ++r)
             for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(side_rows[r][j]));
         put32(fake_obj, wc::layout::obj_radius, std::uint32_t(titan_r));
-        stage_ring.slots[0].patch_tier = wc::patch_capital;
+        stage_ring.slots[0].patch_tier = wc::patch_corvette; // the walk's case (a capital would take the hull decal)
         stage_ring.slots[0].radius = titan_r;
         const double hp[3] = {ext[0] * std::sqrt(1.0 - 0.09), 0.0, 0.3 * ext[2]}; // the flank, 30 % aft (view units)
         for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = eng(hp[k]);
@@ -4010,8 +4077,10 @@ int main(int argc, char** argv) {
                    double(m.covered) >= 0.9 * double(m.eligible) && m.centroid <= cell && dist(B) * 4.0 < dist(Bf), "");
         draw_lane(g, 0.f, -1.f);
 
-        // (a') FL 66 A: the Titan's section nodes carry scales above the old 16x guard (its row: guard=scale
-        // value=0x001b6beb, 27.4x, on the first node). The same tree with the level-1 (section) scale 0x1b6beb and the
+        // (a') FL 66 A: a large scene's section nodes carry scales above the old 16x guard (its row: guard=scale
+        // value=0x001b6beb, 27.4x, on the first node; the owner of radius 3,590,659 was the Terran catapult gate scene,
+        // first taken for the Titan: corrected FL 67 A). The case keeps its name; the hit's tier is corvette (above), so
+        // the walk runs. The same tree with the level-1 (section) scale 0x1b6beb and the
         // normalised extents cut by 125000 / 0x1b6beb so the sections' half-extents stay (200000, 150000, 62500):
         // 200000 x 65536 / 1797099 = 7293.6 -> 7294 (200013, +6.5e-5), 150000 -> 5470 (149996, -2.7e-5), 62500 -> 2279
         // (62494, -9.6e-5); the mounts and turrets (same ext_n, scales 20000 and 5000) stay inside the sections' box.
@@ -4427,11 +4496,12 @@ int main(int argc, char** argv) {
             spread_count = ws::build(stage_ring, 2500, &fake_read, identity_camera(), ws::Tuning{}, spread, wc::max_patches,
                                      decals, wc::max_decals).patches;
         }
-        const double spread_r[3] = {0.87 * 2000.0, 0.87 * 2000.0, 0.87 * 2000.0};
-        const HullLane spread_hull = staged_hull(spread_r); // the capital's hull inside its bubble (the fallback sphere)
+        const double spread_r[3] = {2000.0, 2000.0, 2000.0};
+        const HullLane spread_hull = staged_hull(spread_r); // the capital's hull through its hits (the hull decal)
         // The ship bubble's cases (5.1.1 "Placement"): the same hits on a facing owner's bubble (a sphere of the scene's
         // surface radius, the hull inside it at 0.87 of it as the lane), through the production fill_bubble; the
-        // capital spread above is a bubble through the builder.
+        // capital spread above is the hull decal through the builder (FL 67 A: a capital takes the decal). The
+        // bubble_capital cases keep the capital scene's size as the bubble program's large-owner cost bound.
         rr::WeaponPatch bubble_fighter[8], bubble_capital[8], bubble_worst[32];
         const unsigned n_bf = bubble_patches(fighter_far, {{-cf, 0.f, 0.2f}, {cf, 0.f, 0.5f}}, bubble_fighter, 8);
         const unsigned n_bc = bubble_patches(capital_close, {{-1.5f * cc, 0.f, 0.2f}, {1.5f * cc, 0.f, 0.5f}}, bubble_capital, 8);

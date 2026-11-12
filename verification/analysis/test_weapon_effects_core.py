@@ -825,6 +825,15 @@ static int bubble_cases() {
         std::printf("build patches=%u bubble=%u minus_z=%u inside=%u seeds=%u bubbles=%u fallback=%u walks=%u ez=%.3f\n",
                     n.patches, bubble, minus_z, inside, seeds, n.bubbles, n.bubble_fallback, cache.walks,
                     n.patches ? patches[0].bubble_e[2] : 0.f);
+        // the finished walk's weapon_bubble_fit record (FL 67 A): one, its tier from the stage
+        {
+            const st::HullFit& f = n.bubble.fit[0];
+            char row[384] = {};
+            if (n.bubble.fit_rows) st::format_fit_row(row, sizeof row, f, "ap", 2);
+            std::printf("fit rows=%u tier_fighter=%u parts=%u nodes=%u owner_ok=%u\n", n.bubble.fit_rows,
+                        unsigned(f.tier == core::patch_fighter), f.parts, f.nodes, unsigned(f.owner == obj(0)));
+            std::printf("fitrow %s\n", row);
+        }
         n = st::build(ring, 1516, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &cache);
         std::printf("rebuild walks=%u hits=%u fallback=%u\n", cache.walks, cache.hits, n.bubble_fallback);
         e->tier_source = core::tier_by_station;
@@ -832,6 +841,45 @@ static int bubble_cases() {
         unsigned decal = 0;
         for (unsigned i = 0; i < n.patches; ++i) decal += !patches[i].bubble;
         std::printf("station patches=%u decal=%u bubbles=%u\n", n.patches, decal, n.bubbles);
+        // FL 67 A: a capital-tier ship (by class, and by the radius band) takes the hull decal and walks nothing; a
+        // corvette keeps the bubble (a fresh cache: its walk runs)
+        auto surface = [&](std::uint8_t tier, std::uint8_t source, const char* name) {
+            e->patch_tier = tier;
+            e->tier_source = source;
+            static st::BubbleCache fresh;
+            fresh.rescope(fresh.scope + 1);
+            const st::Counts c = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals, &fresh);
+            unsigned d = 0;
+            for (unsigned i = 0; i < c.patches; ++i) d += !patches[i].bubble;
+            std::printf("%s patches=%u decal=%u bubbles=%u walks=%u fits=%u\n", name, c.patches, d, c.bubbles,
+                        c.bubble.walks, c.bubble.fit_rows);
+        };
+        surface(core::patch_capital, core::tier_by_ship_class, "capital");
+        surface(core::patch_capital, core::tier_by_radius, "capital_radius");
+        surface(0xff, core::tier_by_ship_class, "unknown_tier");
+        surface(core::patch_corvette, core::tier_by_ship_class, "corvette");
+        {   // review F2: the own ship of capital tier in the cockpit keeps the eye sphere (its walk runs)
+            e->patch_tier = core::patch_capital;
+            e->tier_source = core::tier_by_ship_class;
+            st::Tuning tc = t;
+            tc.cockpit = true;
+            tc.own_node = node(0);
+            const st::Counts c = st::build(ring, 1500, &rd, cam, tc, patches, core::max_patches, decals, core::max_decals);
+            unsigned eyes = 0;
+            for (unsigned i = 0; i < c.patches; ++i) eyes += patches[i].eye_sphere;
+            std::printf("owncap patches=%u eye=%u eye_spheres=%u bubbles=%u walks=%u\n", c.patches, eyes, c.eye_spheres,
+                        c.bubbles, c.bubble.walks);
+        }
+        {   // review F6: a station hit 20000 view units off the face origin along x: its +-z cells past the key bound
+            e->patch_tier = core::patch_fighter;
+            e->tier_source = core::tier_by_station;
+            const std::int32_t px = e->pos[0];
+            e->pos[0] = 2000000;
+            const st::Counts c = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
+            std::printf("keybound patches=%u key_dropped=%u\n", c.patches, c.cells_key_dropped);
+            e->pos[0] = px;
+        }
+        e->patch_tier = core::patch_fighter;
         e->tier_source = core::tier_by_radius;
         t.body_cache_root = 0x10;
         n = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals);
@@ -1412,6 +1460,34 @@ class WeaponEffectsClassifier(unittest.TestCase):
         st = r['station']
         self.assertEqual((st['decal'], st['bubbles']), (st['patches'], 0))
         self.assertGreater(st['patches'], 0)
+        for case in ('capital', 'capital_radius', 'unknown_tier'):  # FL 67 A: capitals take the hull decal, no walk
+            c = r[case]
+            self.assertEqual((c['decal'], c['bubbles'], c['walks'], c['fits']), (c['patches'], 0, 0, 0), case)
+            self.assertGreater(c['patches'], 0, case)
+        cv = r['corvette']                      # a corvette keeps the bubble
+        self.assertEqual((cv['decal'], cv['bubbles'], cv['walks'], cv['fits']), (0, 1, 1, 1))
+        self.assertGreater(cv['patches'], 0)
+        oc = r['owncap']                        # review F2: the own capital in the cockpit keeps the eye sphere
+        self.assertEqual((oc['eye'], oc['eye_spheres'], oc['bubbles'], oc['walks']), (oc['patches'], 1, 1, 1))
+        self.assertGreater(oc['patches'], 0)
+        kb = r['keybound']                      # review F6: cells past the key bound counted
+        self.assertGreater(kb['key_dropped'], 0)
+        fit = r['fit']                          # one weapon_bubble_fit record per finished walk
+        self.assertEqual((fit['rows'], fit['tier_fighter'], fit['parts'], fit['nodes'], fit['owner_ok']), (1, 1, 1, 1, 1))
+        row = self.raw_line('bubble', 'fitrow')
+        self.assertTrue(row.startswith('weapon_bubble_fit edition=ap owner=00100000 '), row)
+        ff = dict(re.findall(r'(\w+)=(\S+)', row))
+        self.assertEqual((ff['tier'], ff['parts'], ff['nodes'], ff['clamped'], ff['suppressed'], ff['now']),
+                         ('fighter', '1', '1', '0', '2', '1500'))
+        # the box (engine units) and the bubble in engine units: e = half the box x bubble_scale, c its centre
+        lo = [float(v) for v in ff['lo'].split(',')]
+        hi = [float(v) for v in ff['hi'].split(',')]
+        c = [float(v) for v in ff['c'].split(',')]
+        ev = [float(v) for v in ff['e'].split(',')]
+        for k in range(3):
+            self.assertAlmostEqual(c[k], 0.5 * (lo[k] + hi[k]), delta=1.0)
+            self.assertAlmostEqual(ev[k], 0.5 * (hi[k] - lo[k]) * 1.15, delta=1.0 + 1e-5 * ev[k])
+        self.assertAlmostEqual(ev[2], 2300.0, delta=2.0)                   # 23 view units: the nose case's ez
         f = r['fallback']
         self.assertEqual((f['bubbles'], f['bubble_fallback'], f['ex']), (1, 1, 200.0))
         ap = r['axis_plane']                    # review F2: Q_x = +eps, -eps, 0 light the same cells, none twice

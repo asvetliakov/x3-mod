@@ -1245,7 +1245,7 @@ public:
     bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
 #endif
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[14]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
+                                   unsigned drops[15]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
                                                                  // faces_culled, area_dropped, bubbles,
                                                                  // bubble_fallback, the walk slices (run, failed,
                                                                  // held, deferred), bubble_clamped, bubble_partial
@@ -2301,9 +2301,9 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    unsigned weapon_drops_[14]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
+    unsigned weapon_drops_[15]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
                                   // area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures, held, deferred,
-                                  // clamped, partial, since the last take
+                                  // clamped, partial, cells_key_dropped, since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
     bool weapon_cockpit_ = false; // this frame: the view is the cockpit (chase_camera's last active-control visit, mode 1)
