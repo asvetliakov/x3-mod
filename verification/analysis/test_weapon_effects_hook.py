@@ -104,8 +104,11 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         self.assertEqual(a['stub_death_ok'], {'area': True, 'other': True})
         self.assertEqual(a['death_windows_exe'], {'area': True, 'other': True})
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
-        # the stub (0x20 + the return address) and the handler's frame stayed inside the fixture's margin
-        self.assertEqual(self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x24)
+        # the stub (0x20 + the return address) and the handler's frame stayed inside the fixture's margin; the deepest
+        # written byte lies in the frame's lowest dword (a sub-dword store there reads up to 3 bytes shallower; measured
+        # 2026-11-13 with the native rows' bitmap: depth 237 against 240 for the 204-byte frame)
+        depth, frame = self.record['stack_depth']['bytes'], a['handler_frame_bytes'] + 0x24
+        self.assertTrue(frame - 4 < depth <= frame, (depth, frame))
 
     def test_shield_read_and_event_cost(self):
         weighted = next(s for s in self.record['shield'] if s['case'] == 'weighted')

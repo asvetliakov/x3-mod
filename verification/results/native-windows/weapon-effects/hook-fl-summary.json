@@ -20,17 +20,17 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "53cdfc591558cb33f5c6c9c98750a40e23a9c39b",
+    "commit": "7c0c4265efa6cdc3eb1895eb9f5087a9e3c96874",
     "production_sources_dirty": false,
     "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "3931492180af41b388fe4642db79fa6c5a6a073f10b84f2b972f553ed69960d6",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "91ca6fd0c6f9e6fbce55d6c693937c7beb48c0f5a481aa2d110f61d58c90ceb7",
-      "src/proxy/weapon_effects_patch.h": "0c6883aec52c5f5a78eced052da4089e8b59570e0b0be796d29ee55a773dc822",
+      "src/proxy/weapon_effects_patch.cpp": "7dd6dba8a700f7a074ff711596a7015fe08b8bb2185e5bdf42997499e4dc1d80",
+      "src/proxy/weapon_effects_patch.h": "459c3ef931be4198fa84639a7cec8e32e7719074a5c8d718e01e8f5631e45bbc",
       "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "9a803c736d3a7a12d9b3effb3d024eb7fc27ebe9112fa367dcf997b7b8ce688e",
+      "src/proxy/weapon_effects_core.h": "53326bd4b7eae7b6f8929a0ddd8d5b9028ade8508ad187f96c8eeab0b6aafd25",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_table.h": "7047d2bdfdf8cb9cb88adb415f2b9ef9a39c7b9cb851bd77ac501b2d9fad6f1d",
@@ -55,9 +55,9 @@
         "_x3m_weapon_death_fl": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event_fl": 1394,
+        "_x3m_weapon_event_fl": 1418,
         "_x3m_weapon_tap_fl": 45,
-        "_x3m_weapon_bolt_tap_fl": 874,
+        "_x3m_weapon_bolt_tap_fl": 872,
         "_x3m_weapon_muzzle_fl": 208,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 569
@@ -252,7 +252,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "722cd27d6c9989353cf97071a41bfa43c51be0b3ea3ba5294b14e7a342f713ba"
+    "executable_sha256": "8ffe6c142e17857d8cc04eb120357267ee0705d30938c91d9b0a3d4e84c47edc"
   },
   "host": {
     "name": "native-windows",

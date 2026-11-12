@@ -4271,7 +4271,7 @@ Open: the screenshot's lattice (above); the combat exposure's highlight limit (a
 User decision on FL 69 A (docs/architecture/weapon-effects.md 5.1.1, "Placement decision 2026-11-12"): every ship
 draws its shield hit on the lathe of its offline profile; a ship without a usable one keeps the game's native effect;
 stations keep the hull decal; the own ship in the cockpit keeps the eye sphere sized from its profile. Built on
-`reshade` 89c534a1e, not committed, not installed, not flown.
+`reshade` 89c534a1e; not installed, not flown.
 
 **Change.** The runtime hull walk (`weapon_effects_bubble.h`: guards, slicing, the parked-walk age, `BubbleCache`,
 `hull_failure`/`hull_fit` rows, the fallback sphere, `bubble_from_box`; 846 to 122 lines, what stays is the eye
@@ -4309,11 +4309,30 @@ station cluster 39.0 / 43.7 → 38.8 / 48.1 (run-to-run noise; the walk never ra
 worst 117.2 → 117.7.
 The walk's own cost leaves the frame (the base record: 127 parts 8.3 us, a 1024-node walk 72.8 us, 106 us through
 `engine_memory::read`, a slice 26.2 us). The hook's event cost 17.8 → 17.1 us per 50 events (full ring 56.0 → 55.3); the
-AP handler 1236 → 1383 instructions, frame 200 bytes unchanged (FL 204). Rows:
+AP handler 1236 → 1383 instructions, frame 200 → 200 bytes; FL handler 1244 → 1394 instructions, frame 200 → 204
+bytes (the review fixes below move both). Rows:
 [`cost_rows.py`](../../verification/results/weapon-effects-nowalk/cost_rows.py).
 
 Builds (merged tree, clean): FL `build-nowalk-fl` 0 warnings (d3d9.dll sha256 prefix `ee51bd98bfd3c5b0`), `check_no_x87` FL PASS (1085
 functions), AP `build-nowalk-ap` 0 warnings; host `test_weapon_effects_core`, `_hook`, `_table`, `_launch` 59 OK.
 
+**Review fixes (high review, 2026-11-13)** [M]. (F1) `weapon_ship_profile_missing` logs the rows as they are first
+seen across the session (a per-row bitmap in `core::NativeRows`): the first eight distinct rows each once, then the
+distinct rows past them as `more=` (fixture: 3 listed, eleven more rows → 8 listed, more 6, a repeat unchanged). (F2) The
+AP hook fixture installs through `install_at` itself and asserts `hook_state().profiles == ship_profiles() == nullptr`
+(no table loaded, as for a schema-2 table) with a ship's hit forwarded native and counted (`no_profile`). (F4)
+`LatheRefusal::not_ship` counts with `lathe_no_profile`. (F5) At most `stage::lathe_builds_per_frame` (2) mesh builds
+per stage call; a third new type waits a frame (`lathe_deferred=`, its records kept; host: 2 drawn, 1 deferred, 3 the
+next call). One Titan mesh's cold build: best 5.0 / mean 5.8 us (`LATHE case=build_cost`; 11.5 us a frame at the cap).
+(F6) A hit the hook staged that the frame refuses draws nothing and is counted (5.1.1). Handlers after the fixes: AP
+1401 instructions, frame 204 bytes; FL 1418 instructions, frame 204 bytes (the bitmap update); the AP stack depth reads
+237 bytes against frame + 0x24 = 240 (the deepest store a sub-dword one; the record test bounds it within the lowest
+dword). Native run on 7c0c4265e plus these fixes: D3D 154 PASS, AP hook 145 PASS, FL hook 74 PASS, first run. Stage cost
+best us 61.8 (one capital decal), 18.6 (lathe), 175.4 / 85.8 (sixteen), 35.4 / 10.1 (12 hits/s), 39.2 (station), equal to
+the earlier rows; the means of this run sit 15 to 30 % higher on every row, the decal rows the fixes do not touch
+included (host load). Builds: FL `build-nowalk-fl` clean 0 warnings (sha256 prefix `cf9edaa6dd8b222a`),
+`check_no_x87` PASS (1085), AP clean 0 warnings; host 59 OK.
+
 **Open.** The installed AP table (`C:\X3\x3m\weapon_effects.json`) is schema 2 with no profiles [M]: with this build every
-AP ship's shield hit stays native until AP is regenerated with schema 3 (FL: schema 3, 403 profiles). Not flown.
+AP ship's shield hit stays native until AP is regenerated with schema 3 (FL: schema 3, 403 profiles). Review F3 is
+accepted as a test gap (coordinator, 2026-11-13). Not flown.
