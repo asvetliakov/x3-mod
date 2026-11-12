@@ -343,7 +343,7 @@ observer (`D3DXCreateTextureFromFileInMemoryEx` import slot) compares the byte c
 hashes (FNV-1a 64 of the first 4096 and of all bytes) only on a count match; the draw reads the bound stage-0
 texture's entry (one pointer compare while it stays bound);
 radiance = (rs_gain · smoothstep(0, rs_edge, l) · rgb + rs_core · l⁴ · mix(white, rgb / max(rgb), 0.35)) × alpha; alpha
-the texel's. Defaults rs_gain 0.4, rs_edge 0.4, rs_core 0.2 (baked from FL 64 A, 2026-11-09; the far bolt judged acceptable in flight, see the weapon-effects ledger) (c31.xyz; dev tuning keys of the same names, bounds 0..2,
+the texel's. Defaults rs_gain 0.75, rs_edge 0.4, rs_core 0.5 (baked from FL 64 A at 0.4/0.4/0.2 on 2026-11-09, re-baked from FL 68 A on 2026-11-12 on fighters and capitals; the far bolt judged acceptable in flight, see the weapon-effects ledger) (c31.xyz; dev tuning keys of the same names, bounds 0..2,
 0.05..1, 0..4). Recognition: the proxy's hash of the bytes the game passes to CreatePixelShader is one of the three PS
 above (`src/proxy/bullet_reshade_core.h`); scope: the batch call `0x097af8` claimed with a forwarding stub that raises
 `x3m_bullet_scope` around the submit. These bullet pairs are also the additive route's pairs 0-2

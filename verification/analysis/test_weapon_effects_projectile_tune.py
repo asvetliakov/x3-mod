@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 
 DEFAULTS = [1.0, 2.0, 0.3, 0.4, 3000.0, 60.0, 2.0, 0.0, 1.5,  # weapon_projectile_family.h, fighter_tracer (FL 61 A)
             1.25, 2.5, 80.0, 2.0, 3.0,  # the muzzle flash's start values (muzzle-flash-look.md (superseded) section 5)
-            0.4, 0.4, 0.2,  # the bullet re-shade (bullet-draw-batch.md section 6; baked from FL 64 A)
+            0.75, 0.4, 0.5,  # the bullet re-shade (bullet-draw-batch.md section 6; baked from FL 64 A, re-baked from FL 68 A)
             0.2, 0.0, 0.15, 0.1,  # the muzzle flash re-shade (muzzle-flash-look.md; baked from FL 65 A, size as drawn)
             1.0, 1.0]  # the bullet re-shade's geometric size (rs_head, rs_width; 1 = unchanged)
 KEYS = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops', 'trail_ms', 'head_gain',

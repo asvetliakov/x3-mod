@@ -4001,3 +4001,12 @@ hook 75/75, D3D 137 of 138 (`projectile_budget_512_bolts` CPU 103.7 µs against 
 committed record read 89.4); rerun all PASS (132/132, 75/75, 138/138; projectile budget 88.8 µs, combined 127.8 µs,
 lone sequence 0.354 µs per draw, recognition 0.0126 / 0.0124 µs hit / miss); the records are the rerun's. Host
 `test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch` 55 OK.
+
+### FL 68 A: bullet values re-baked (2026-11-12)
+
+The user tuned the re-shade in flight on fighters and on the Titan's PPCs with the run 68 DLL (six `projectile_tune
+reloaded` rows, no clamp) and chose **rs_gain 0.75, rs_edge 0.4, rs_core 0.5** (the user proposed rs_core 1.5 and saw no
+difference against 0.2: the l^4 term lives in the clipped centre, so 0.5 was recommended and taken). rs_edge is the
+control that removes the halo bulb; the gain roughly doubles the far bolt's peak against the 0.4 setting [I]. Baked in
+`weapon_projectile_family.h`; the tune test's default list and bullet-draw-batch.md section 6 follow. Not re-flown at
+the baked values (the file values were identical in flight).
