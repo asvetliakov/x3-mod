@@ -4324,6 +4324,27 @@ int main(int argc, char** argv) {
         // symmetric max |y| of the body (166374) while the profile keeps the slices' true asymmetric span (2 % of it).
         report("lathe_profile_units_match_the_walk",
                built && walked && worst_xz < 0.5 && worst_y < 0.02 * 1663.74 / metre, "");
+        {   // review F5: one Titan mesh's cold build (build_lathe from the profile into a cleared mesh, the cache's miss),
+            // best and mean of 200 (us); the stage builds at most lathe_builds_per_frame a frame
+            static ws::LatheMesh cold;
+            LARGE_INTEGER freq, a, b;
+            QueryPerformanceFrequency(&freq);
+            double best = 1e30, sum = 0;
+            bool ok = true;
+            for (unsigned rep = 0; rep < 200; ++rep) {
+                std::memset(static_cast<void*>(&cold), 0, sizeof cold);
+                QueryPerformanceCounter(&a);
+                ok = ws::build_lathe(titan, unit, &cold) && ok;
+                QueryPerformanceCounter(&b);
+                const double us = ticks_us(a, b, freq);
+                best = std::min(best, us);
+                sum += us;
+            }
+            std::printf("LATHE case=build_cost built=%u best_us=%.1f mean_us=%.1f builds_per_frame=%u frame_bound_us=%.1f\n",
+                        unsigned(ok), best, sum / 200.0, ws::lathe_builds_per_frame,
+                        sum / 200.0 * double(ws::lathe_builds_per_frame));
+            report("lathe_build_cost_measured", ok && best > 0.0, "");
+        }
 
         // (b) placement on the CPU
         // the walk's ellipsoid of that box (its centre, its half-extents x bubble_scale: under bubble_scale x the radius)
@@ -4463,7 +4484,7 @@ int main(int argc, char** argv) {
                 bubble_draws += out[i].bubble;
                 eye += out[i].eye_sphere;
             }
-            const unsigned refusals = n.lathe_no_profile + n.lathe_mismatch + n.lathe_unreadable + n.lathe_scale +
+            const unsigned refusals = n.lathe_deferred + n.lathe_no_profile + n.lathe_mismatch + n.lathe_unreadable + n.lathe_scale +
                                       n.lathe_degenerate + n.lathe_cache + n.lathe_stale;
             const bool counted = c.counter ? n.*c.counter == 1 && refusals == 1 : refusals == 0;
             bool surface = false;

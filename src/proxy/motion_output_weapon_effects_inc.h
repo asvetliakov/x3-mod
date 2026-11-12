@@ -264,7 +264,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
             const weapon_effects::stage::LatheMesh& m = e.mesh;
             log("weapon_lathe device=%llu frame=%llu event=built slot=%u serial=%lu row=%ld axis=%08lx,%08lx,%08lx "
                 "hull_lo_m=%.1f,%.1f,%.1f hull_hi_m=%.1f,%.1f,%.1f perimeter_m=%.1f dome_m=%.1f,%.1f builds=%lu "
-                "no_profile=%u mismatch=%u unreadable=%u scale=%u degenerate=%u cache=%u",
+                "no_profile=%u mismatch=%u unreadable=%u scale=%u degenerate=%u cache=%u deferred=%u",
                 id_, frame_, i, static_cast<unsigned long>(e.serial),
                 static_cast<long>(e.row), static_cast<unsigned long>(e.axis[0]),
                 static_cast<unsigned long>(e.axis[1]), static_cast<unsigned long>(e.axis[2]),
@@ -272,7 +272,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
                 double(m.hull_hi[0] / metre), double(m.hull_hi[1] / metre), double(m.hull_hi[2] / metre),
                 double(m.perimeter / metre), double(m.dome_depth[0] / metre), double(m.dome_depth[1] / metre),
                 static_cast<unsigned long>(weapon_lathe_cache.builds), n.lathe_no_profile, n.lathe_mismatch,
-                n.lathe_unreadable, n.lathe_scale, n.lathe_degenerate, n.lathe_cache);
+                n.lathe_unreadable, n.lathe_scale, n.lathe_degenerate, n.lathe_cache, n.lathe_deferred);
         }
     }
     // A stale profiles table (its TShips row count differs from the live one, or none recorded): no profile is used;
@@ -314,6 +314,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[11] += n.lathe_degenerate;
     weapon_drops_[12] += n.lathe_cache;
     weapon_drops_[13] += n.lathe_stale;
+    weapon_drops_[14] += n.lathe_deferred;
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     HRESULT hr = weapon_->run(f, &report);

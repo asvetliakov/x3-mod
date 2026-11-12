@@ -1266,10 +1266,10 @@ public:
                                    unsigned* timed, float* us) noexcept;
     bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
 #endif
-    static constexpr unsigned weapon_drop_count = 14;
+    static constexpr unsigned weapon_drop_count = 15;
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[weapon_drop_count]) noexcept; // dropped, cells_dropped, hits_dropped,
-                                                                 // spills, faces_culled, area_dropped, the eight
+                                                                 // spills, faces_culled, area_dropped, the nine
                                                                  // lathe counters (lathes first)
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
@@ -2326,7 +2326,8 @@ private:
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
     unsigned weapon_drops_[weapon_drop_count]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills,
                                   // faces_culled, area_dropped; lathes, lathe_no_profile, lathe_mismatch,
-                                  // lathe_unreadable, lathe_scale, lathe_degenerate, lathe_cache, lathe_stale; since the
+                                  // lathe_unreadable, lathe_scale, lathe_degenerate, lathe_cache, lathe_stale,
+                                  // lathe_deferred; since the
                                   // last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;

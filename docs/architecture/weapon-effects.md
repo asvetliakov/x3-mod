@@ -580,7 +580,12 @@ every hit, so a diagnosis flight still sees vanilla.
   a modded ship, a stale table, another class at its row, a refused type read, a root axis scale outside (0, 256x]) gets
   no proxy shield effect: the impact hook forwards the game's native effect, as for a drained shield
   (`core::ship_profile_verdict`, the stage's resolve checks repeated at the hit with plain loads, at most seven, no
-  call). Any other object that is not a station has no profile and stays native too. A station (dock or factory) keeps
+  call). Any other object that is not a station has no profile and stays native too. A hit the hook staged whose
+  owner's profile the frame then refuses (the table, the type or the axis scales changed between the hit and the frame,
+  a degenerate profile, a full cache) draws nothing, its native effect already skipped, and is counted in the stage's
+  `lathe_*` refusals (`not_ship` with `lathe_no_profile`); a ship whose mesh is not built yet waits while the frame's
+  `stage::lathe_builds_per_frame` (2) builds are spent (`lathe_deferred=`, its records kept in the ring, drawn on a
+  later frame). A station (dock or factory) keeps
   the hull decal. The own ship in the cockpit view keeps the eye sphere, sized from its profile's bounds (no profile:
   native). The runtime hull walk, its cache, the box-fitted ellipsoid of fighters and corvettes, its fallback sphere and
   the capital hull decal for ships are gone, with `core::lathe_all_tiers`, `core::shield_bubble` and the tier routing
@@ -589,8 +594,9 @@ every hit, so a diagnosis flight still sees vanilla.
   and the station source (the decal). `weapon_effects_frame` carries `ships_native=` (the period's ship hits forwarded
   for want of a profile) and its verdicts `ships_native_no_profile=`, `ships_native_stale_table=`,
   `ships_native_mismatch=`, `ships_native_unreadable=`, `ships_native_scale=`, and `others_native=`; one
-  `weapon_ship_profile_missing rows= profiles= tships_rows= list=row:class:verdict,...` row per session names the first
-  eight TShips rows forwarded native. The rows `weapon_bubble_walk`, `weapon_bubble_fit`, `weapon_bubble_extent` and
+  `weapon_ship_profile_missing rows= listed= more= profiles= tships_rows= list=row:class:verdict,...` row at a frame row
+  names the TShips rows forwarded native first seen since the last one, across the session: the first eight distinct
+  rows each once, then the distinct rows past them as the `more=` count (a row whenever it moved). The rows `weapon_bubble_walk`, `weapon_bubble_fit`, `weapon_bubble_extent` and
   the counters `bubbles=`, `bubble_fallback=`, `bubble_walks=`, `bubble_walk_failures=`, `bubble_held=`,
   `bubble_deferred=`, `bubble_clamped=`, `bubble_partial=`, `cells_key_dropped=` are removed. The walk's text below is
   kept as the record, marked superseded; the evidence stays in the ledger ([weapon-effects.md](../verification/weapon-effects.md), "Ship bubble, station decal" and the FL run 65 to 69 entries) and `verification/results/fl-run65/`, `fl-run67/`.

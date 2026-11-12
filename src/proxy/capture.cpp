@@ -2097,6 +2097,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.lathe_degenerate = drops[11];
         stage.lathe_cache = drops[12];
         stage.lathe_stale = drops[13];
+        stage.lathe_deferred = drops[14];
 #if X3M_EDITION_FL
         // The projectile stage (docs/architecture/projectile-look.md): its ownership latches the next frame's batch skip.
         unsigned flashes[5] = {};

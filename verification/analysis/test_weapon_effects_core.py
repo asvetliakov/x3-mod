@@ -502,6 +502,37 @@ static int bubble_cases() {
         profiles.tships_rows = 8;
         t.profiles = nullptr; // no profiles loaded
         route("no_table", 3, 2023, core::patch_fighter, core::tier_by_ship_class, false);
+        t.profiles = &profiles;
+        // review F5: three new types in one stage call: lathe_builds_per_frame (2) build, the third waits (deferred, its
+        // record kept) and draws on the next call; a non-ship owner on the lathe path counts as no profile (review F4)
+        add_profile(7, 2024, 6000.f, 1000.f);
+        lathes.clear();
+        core::ring_clear(ring);
+        const std::int16_t rows[3] = {3, 6, 7};
+        const std::int32_t classes[3] = {2023, 2022, 2024};
+        for (unsigned k = 0; k < 3; ++k) {
+            owner(k, 40000 + 10000 * std::int32_t(k), 20000);
+            ship(k, rows[k], classes[k]);
+            core::Event* e = hit(ring, k, 1000, 0, 0xffff, -3000);
+            e->tier_source = core::tier_by_ship_class;
+        }
+        const std::uint32_t builds_before = lathes.builds;
+        const st::Counts first = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals,
+                                           nullptr, &lathes);
+        const unsigned live_after_first = live(ring);
+        const st::Counts second = st::build(ring, 1516, &rd, cam, t, patches, core::max_patches, decals, core::max_decals,
+                                            nullptr, &lathes);
+        std::printf("deferred first_lathes=%u first_deferred=%u live=%u second_lathes=%u second_deferred=%u builds=%u "
+                    "per_frame=%u\n", first.lathes, first.lathe_deferred, live_after_first, second.lathes,
+                    second.lathe_deferred, lathes.builds - builds_before, st::lathe_builds_per_frame);
+        core::ring_clear(ring);
+        owner(0, 40000, 20000);
+        put16(obj(0) + core::layout::obj_class, 0x12); // a shielded object that is no ship, staged on the lathe path
+        core::Event* e = hit(ring, 0, 1000, 0, 0xffff, -3000);
+        e->tier_source = core::tier_by_radius;
+        const st::Counts other = st::build(ring, 1500, &rd, cam, t, patches, core::max_patches, decals, core::max_decals,
+                                           nullptr, &lathes);
+        std::printf("not_ship patches=%u no_profile=%u\n", other.patches, other.lathe_no_profile);
     }
     // 3 the eye sphere's box over its sheet (fill_bubble): a sphere of radius 100 with one hit on its front lights -z and
     // both faces of x and y; the x and y draws' cells lie on the rim of their sheet (steeper than the cut): dropped; the
@@ -969,6 +1000,11 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertGreater(ap['cells'], 0)
         kb = r['keybound']                      # review F6: cells past the key bound counted
         self.assertGreater(kb['key_dropped'], 0)
+        d = r['deferred']                       # review F5: two builds a frame, the third the next frame
+        self.assertEqual((d['per_frame'], d['first_lathes'], d['first_deferred'], d['live']), (2, 2, 1, 3))
+        self.assertEqual((d['second_lathes'], d['second_deferred'], d['builds']), (3, 0, 3))
+        ns = r['not_ship']                      # review F4: LatheRefusal::not_ship counted with no_profile
+        self.assertEqual((ns['patches'], ns['no_profile']), (0, 1))
         sh = r['sheet']
         self.assertEqual((sh['patches'], sh['seed']), (1, 1))                  # -z only: the rim faces dropped
         self.assertLess(sh['a1'], 100.1)                                       # the front cap of the sphere

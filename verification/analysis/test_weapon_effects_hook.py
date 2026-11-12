@@ -69,7 +69,10 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'route_fighter_profile_staged', 'route_fighter_no_profile_native', 'route_capital_no_profile_native',
                 'route_class_mismatch_native', 'route_stale_table_native', 'route_no_profiles_loaded_native',
                 'route_axis_scale_native', 'route_station_staged', 'route_other_object_native',
-                'route_native_rows_listed_once'}
+                'route_native_rows_listed_once',
+                # review F1 / F2: the native rows across the session, the install path's own profiles pointer
+                'route_native_rows_session_first_seen_then_more', 'route_install_wires_null_profiles_native',
+                'route_reinstall_shields'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -488,6 +491,9 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         # CPU maps it
         lathe = {x['case']: x for x in m['lathe']}
         self.assertLess(lathe['placement']['lathe_median_m'] * 4, lathe['placement']['walk_median_m'])
+        bc = lathe['build_cost']                                                 # review F5: one Titan mesh, cold
+        self.assertEqual((bc['built'], bc['builds_per_frame']), (1, 2))
+        self.assertGreater(bc['best_us'], 0.0)
         self.assertLessEqual(lathe['gpu_top_lathe']['sky_gap_max_m'], lathe['gpu_summary']['hug_allowed_m'])
         self.assertGreater(lathe['gpu_top_ellipsoid']['sky_gap_max_m'], lathe['gpu_summary']['hug_allowed_m'])
         # Placement (user decision 2026-11-12 on FL 69 A: the walk removed): the station keeps the hull decal (nothing on

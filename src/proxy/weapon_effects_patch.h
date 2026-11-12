@@ -135,6 +135,7 @@ struct StageFrame {
     // stale (the hook forwards a ship without a usable profile native: core::Counters::ships_native).
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
     unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0;
+    unsigned lathe_deferred = 0; // ships whose mesh build waits for a later frame (stage::lathe_builds_per_frame)
     float stage_us = 0.f;
     bool drew = false;
     // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the

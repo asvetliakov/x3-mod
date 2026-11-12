@@ -371,9 +371,15 @@ inline void lathe_band(const LatheMesh& m, float u0, float u1, float v0, float v
         }
 }
 // Why an owner with profiles loaded draws no lathe (the weapon_effects_frame row's lathe_* counters): not a ship (or no
-// profiles), an engine read refused, no profile for its row, the profile's class differs from the type record's, the
-// root's axis scales outside (0, 256x], the profile degenerate, every cache entry drawn this frame.
-enum class LatheRefusal : std::uint8_t { none, not_ship, unreadable, no_profile, class_mismatch, scale, degenerate, cache };
+// profiles; counted with no_profile), an engine read refused, no profile for its row, the profile's class differs from
+// the type record's, the root's axis scales outside (0, 256x], the profile degenerate, every cache entry drawn this
+// frame, the frame's mesh builds spent (deferred: the owner's records stay in the ring and draw on a later frame).
+enum class LatheRefusal : std::uint8_t {
+    none, not_ship, unreadable, no_profile, class_mismatch, scale, degenerate, cache, deferred
+};
+// Mesh builds per stage call (review F5: a sector entry with many new types builds two a frame; one Titan mesh's cold
+// build is measured by the native fixture's LATHE case=build_cost row).
+constexpr unsigned lathe_builds_per_frame = 2;
 struct LatheType {
     const core::ShipProfile* profile = nullptr;
     std::int32_t row = -1, class_id = -1, axis[3] = {0, 0, 0};
@@ -418,12 +424,13 @@ struct LatheCache {
     };
     Entry entries[lathe_cache_entries];
     std::uint32_t clock = 0, frame_id = 0;
-    std::uint32_t builds = 0, hits = 0, refused = 0; // running counters (the tests, diagnostics)
+    std::uint32_t builds = 0, hits = 0, refused = 0, deferred = 0; // running counters (the tests, diagnostics)
     void frame() noexcept { ++frame_id; }
     void clear() noexcept {
         for (Entry& e : entries) e.valid = false;
     }
-    const LatheMesh* get(const LatheType& t, LatheRefusal* why) noexcept {
+    // budget (nullable): the builds the caller may still run; at 0 a miss is refused as deferred (nothing evicted).
+    const LatheMesh* get(const LatheType& t, LatheRefusal* why, unsigned* budget = nullptr) noexcept {
         Entry* free = nullptr;
         for (Entry& e : entries) {
             if (e.valid && e.row == t.row && e.axis[0] == t.axis[0] && e.axis[1] == t.axis[1] && e.axis[2] == t.axis[2]) {
@@ -442,6 +449,14 @@ struct LatheCache {
             ++refused;
             *why = LatheRefusal::cache;
             return nullptr;
+        }
+        if (budget) {
+            if (!*budget) {
+                ++deferred;
+                *why = LatheRefusal::deferred;
+                return nullptr;
+            }
+            --*budget;
         }
         free->valid = false;
         if (!build_lathe(*t.profile, t.axis, &free->mesh)) {

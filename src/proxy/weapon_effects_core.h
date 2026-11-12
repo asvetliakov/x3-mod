@@ -821,14 +821,18 @@ struct Counters {
     // profile_scale); on any other object that is not a station (others_native).
     std::uint32_t ships_native[profile_verdict_count] = {}, others_native = 0;
 };
-// The first TShips rows whose ship forwarded native (the session's weapon_ship_profile_missing row): each row once, its
-// verdict, at most native_row_capacity rows; written by the hook on the game thread, read by Present on the same thread.
+// The TShips rows whose ship forwarded native, each distinct row once across the session (seen: one bit per row of
+// 0..profile_rows-1; a row outside it is matched against the list): the first native_row_capacity with their class and
+// verdict, the distinct rows past them counted (more). Written by the hook on the game thread, read by Present on the
+// same thread (the weapon_ship_profile_missing rows: each listed row once as it is first seen, then the more count).
 constexpr unsigned native_row_capacity = 8;
 struct NativeRows {
     std::int16_t row[native_row_capacity] = {};
     std::int32_t class_id[native_row_capacity] = {};
     std::uint8_t verdict[native_row_capacity] = {};
     std::uint8_t count = 0;
+    std::uint32_t more = 0;
+    std::uint32_t seen[profile_rows / 32] = {};
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
@@ -1013,9 +1017,18 @@ static inline __attribute__((always_inline)) std::uint8_t ship_profile_verdict(s
 // The first rows' list (NativeRows): a row not yet listed is added while there is room.
 static inline __attribute__((always_inline)) void note_native_row(NativeRows& r, std::int32_t row, std::int32_t class_id,
                                                                    std::uint8_t verdict) noexcept {
-    if (r.count >= native_row_capacity) return;
-    for (unsigned i = 0; i < r.count; ++i)
-        if (r.row[i] == row) return;
+    if (row >= 0 && row < std::int32_t(profile_rows)) {
+        const std::uint32_t bit = 1u << (unsigned(row) & 31u);
+        if (r.seen[unsigned(row) >> 5] & bit) return;
+        r.seen[unsigned(row) >> 5] |= bit;
+    } else {
+        for (unsigned i = 0; i < r.count; ++i)
+            if (r.row[i] == row) return;
+    }
+    if (r.count >= native_row_capacity) {
+        ++r.more;
+        return;
+    }
     r.row[r.count] = std::int16_t(row);
     r.class_id[r.count] = class_id;
     r.verdict[r.count] = verdict;

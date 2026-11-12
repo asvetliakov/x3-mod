@@ -56,7 +56,7 @@ struct Period {
     unsigned patches = 0, decals = 0, retired = 0, dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0, area_dropped = 0;
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
-    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_deferred = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
     // step 3: death records seen (ours, census)
@@ -98,7 +98,8 @@ unsigned long long body_map_attempt_ = ~0ull, present_frame_ = 0;
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
 unsigned logged_deaths_ = 0, period_deaths_ = 0;
 core::Counters seen_{};
-bool native_rows_logged_ = false; // the session's weapon_ship_profile_missing row was written
+unsigned native_rows_logged_ = 0;        // weapon_ship_profile_missing: the native rows already logged
+std::uint32_t native_more_logged_ = 0;   // and the distinct rows past them already reported
 core::ScopeLatch scope_{};
 std::uint32_t scope_clears_ = 0, scope_changes_ = 0;
 std::uint32_t seen_overflow_ = 0, seen_evicted_visible_ = 0, seen_retired_ = 0, seen_compared_ = 0;
@@ -1081,6 +1082,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.lathe_degenerate += stage.lathe_degenerate;
     period_.lathe_cache += stage.lathe_cache;
     period_.lathe_stale += stage.lathe_stale;
+    period_.lathe_deferred += stage.lathe_deferred;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -1256,7 +1258,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u"
         " lathes=%u lathe_no_profile=%u lathe_mismatch=%u lathe_unreadable=%u lathe_scale=%u lathe_degenerate=%u"
-        " lathe_cache=%u lathe_stale=%u ships_native=%lu ships_native_no_profile=%lu ships_native_stale_table=%lu"
+        " lathe_cache=%u lathe_stale=%u lathe_deferred=%u ships_native=%lu ships_native_no_profile=%lu ships_native_stale_table=%lu"
         " ships_native_mismatch=%lu ships_native_unreadable=%lu ships_native_scale=%lu others_native=%lu"
         X3M_PROJECTILE_FIELDS,
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
@@ -1280,30 +1282,33 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         static_cast<unsigned long>(period_.hull_staged), static_cast<unsigned long>(s.life_floor_ms),
         unsigned(table_hull_key_missing_), period_.lathes, period_.lathe_no_profile, period_.lathe_mismatch,
         period_.lathe_unreadable, period_.lathe_scale, period_.lathe_degenerate, period_.lathe_cache,
-        period_.lathe_stale, static_cast<unsigned long>(ships_native),
+        period_.lathe_stale, period_.lathe_deferred, static_cast<unsigned long>(ships_native),
         static_cast<unsigned long>(c.ships_native[core::profile_none] - seen_.ships_native[core::profile_none]),
         static_cast<unsigned long>(c.ships_native[core::profile_stale] - seen_.ships_native[core::profile_stale]),
         static_cast<unsigned long>(c.ships_native[core::profile_mismatch] - seen_.ships_native[core::profile_mismatch]),
         static_cast<unsigned long>(c.ships_native[core::profile_unreadable] - seen_.ships_native[core::profile_unreadable]),
         static_cast<unsigned long>(c.ships_native[core::profile_scale] - seen_.ships_native[core::profile_scale]),
         static_cast<unsigned long>(c.others_native - seen_.others_native) X3M_PROJECTILE_ARGS);
-    // The session's first TShips rows forwarded native for want of a usable profile (core::NativeRows): one row, at the
-    // first frame row that has any (row:class:verdict each; class -1 when not read).
-    if (s.native_rows.count && !native_rows_logged_) {
-        native_rows_logged_ = true;
+    // The TShips rows forwarded native for want of a usable profile (core::NativeRows), across the session: at a frame
+    // row, the rows first seen since the last one (row:class:verdict each; class -1 when not read), the first
+    // native_row_capacity distinct rows in all, then the distinct rows past them as one more= count (logged when it moved).
+    if (s.native_rows.count > native_rows_logged_ || s.native_rows.more != native_more_logged_) {
         char list[core::native_row_capacity * 40] = {};
         std::size_t used = 0;
-        for (unsigned i = 0; i < s.native_rows.count && used < sizeof list; ++i) {
-            const int w = std::snprintf(list + used, sizeof list - used, "%s%d:%ld:%s", i ? "," : "",
+        for (unsigned i = native_rows_logged_; i < s.native_rows.count && used < sizeof list; ++i) {
+            const int w = std::snprintf(list + used, sizeof list - used, "%s%d:%ld:%s", i > native_rows_logged_ ? "," : "",
                                         int(s.native_rows.row[i]), static_cast<long>(s.native_rows.class_id[i]),
                                         core::profile_verdict_name(s.native_rows.verdict[i]));
             if (w < 0) break;
             used += std::size_t(w);
         }
-        log("weapon_ship_profile_missing frame=%llu rows=%u profiles=%u tships_rows=%lu list=%s (these ships keep the "
-            "game's shield effect: regenerate weapon_effects.json for this game tree)",
-            frame, unsigned(s.native_rows.count), s.profiles ? s.profiles->count : 0u,
-            static_cast<unsigned long>(s.profiles ? s.profiles->tships_rows : 0u), list);
+        log("weapon_ship_profile_missing frame=%llu rows=%u listed=%u more=%lu profiles=%u tships_rows=%lu list=%s "
+            "(these ships keep the game's shield effect: regenerate weapon_effects.json for this game tree)",
+            frame, unsigned(s.native_rows.count) - native_rows_logged_, unsigned(s.native_rows.count),
+            static_cast<unsigned long>(s.native_rows.more), s.profiles ? s.profiles->count : 0u,
+            static_cast<unsigned long>(s.profiles ? s.profiles->tships_rows : 0u), used ? list : "-");
+        native_rows_logged_ = s.native_rows.count;
+        native_more_logged_ = s.native_rows.more;
     }
 #if X3M_EDITION_FL
     projectile_seen_skipped_ = x3m_projectile_pool.skipped;

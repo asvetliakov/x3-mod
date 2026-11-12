@@ -240,6 +240,7 @@ struct Counts {
     // (or a fixture's direct record); hits duplicated across the seam.
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
     unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_seam = 0;
+    unsigned lathe_deferred = 0; // ships whose mesh waits for a later frame's build (lathe_builds_per_frame spent)
     std::uint32_t stale_rows[2] = {0, 0};
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
@@ -845,7 +846,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         const unsigned v = ring.slots[s.index[0]].patch_tier;
         return v < core::patch_tier_count ? v : unsigned(core::patch_capital);
     };
-    unsigned regions_left = 0;
+    unsigned regions_left = 0, builds_left = lathe_builds_per_frame;
     // The stale-table guard (the bullet table's stale_table rule): the profiles' recorded TShips row count against the
     // live one at ship_count_slot, one read per call; differing, unrecorded or unreadable, no profile is used.
     bool profiles_live = false;
@@ -874,8 +875,9 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                 LatheType type;
                 LatheRefusal why = resolve_lathe(rd, t.profiles, t.ship_table_slot, t.ship_count_slot, s.owner,
                                                  newest.node, &type);
-                if (why == LatheRefusal::none) s.lathe = lathes->get(type, &why);
-                n.lathe_no_profile += why == LatheRefusal::no_profile;
+                if (why == LatheRefusal::none) s.lathe = lathes->get(type, &why, &builds_left);
+                n.lathe_no_profile += why == LatheRefusal::no_profile || why == LatheRefusal::not_ship;
+                n.lathe_deferred += why == LatheRefusal::deferred;
                 n.lathe_mismatch += why == LatheRefusal::class_mismatch;
                 n.lathe_unreadable += why == LatheRefusal::unreadable;
                 n.lathe_scale += why == LatheRefusal::scale;

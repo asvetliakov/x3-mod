@@ -1883,6 +1883,54 @@ int main() {
         unsigned fives = 0;
         for (unsigned i = 0; i < hs2.native_rows.count; ++i) fives += hs2.native_rows.row[i] == 5;
         check(all && fives == 1 && hs2.native_rows.count <= core::native_row_capacity, "route_native_rows_listed_once");
+        // Across the session (review F1): eleven more distinct rows (10..20, past the live count: unreadable) fill the
+        // list to native_row_capacity and count the rest once each (more); a row seen again changes nothing.
+        {
+            const unsigned listed_before = hs2.native_rows.count, distinct_before = listed_before + hs2.native_rows.more;
+            auto native_row_hit = [&](std::int16_t row) {
+                build_world(7, 0, 4, 0x0, 123456);
+                w16(&victim_obj, core::layout::obj_subtype, std::uint16_t(row));
+                hs2.profiles = &fixture_profiles;
+                hs2.owned_next = 1;
+                std::memset(we_ca, 0, sizeof we_ca);
+                return run_window(1, 1200, 1).ca[11] == 1;
+            };
+            bool forwarded = true;
+            for (std::int16_t row = 10; row <= 20; ++row) forwarded = native_row_hit(row) && forwarded;
+            const unsigned distinct_after = hs2.native_rows.count + hs2.native_rows.more;
+            const std::uint32_t more = hs2.native_rows.more;
+            forwarded = native_row_hit(20) && forwarded;
+            std::printf("NATIVE_ROWS listed_before=%u distinct_before=%u listed=%u more=%lu distinct=%u repeat_more=%lu\n",
+                        listed_before, distinct_before, unsigned(hs2.native_rows.count),
+                        static_cast<unsigned long>(more), distinct_after,
+                        static_cast<unsigned long>(hs2.native_rows.more));
+            check(forwarded && distinct_after == distinct_before + 11 &&
+                      hs2.native_rows.count == core::native_row_capacity && hs2.native_rows.more == more && more > 0,
+                  "route_native_rows_session_first_seen_then_more");
+        }
+        // The production wiring (review F2): install_at itself points the hook state at ship_profiles(), null in this
+        // process (no table loaded; a schema-2 table allocates no profiles block either: load_table's section test), so
+        // a ship's shield hit forwards native, counted no_profile, without the fixture's block.
+        {
+            we::shutdown();
+            const bool wired = we::install_at(addresses(), core::mode_shields);
+            core::HookState& hw = we::hook_state();
+            const bool null_wired = wired && hw.profiles == we::ship_profiles() && we::ship_profiles() == nullptr;
+            build_world(7, 0, 4, 0x0, 123456);
+            hw.owned_next = 1;
+            const std::uint32_t none_before = hw.counters.ships_native[core::profile_none];
+            std::memset(we_ca, 0, sizeof we_ca);
+            const RunResult run = run_window(1, 1200, 1);
+            core::Event rec{};
+            const bool native = run.ca[11] == 1 && newest_record(u32(&victim_obj), &rec) &&
+                                !(rec.flags & core::flag_stage) && (rec.flags & core::flag_forwarded) &&
+                                hw.counters.ships_native[core::profile_none] == none_before + 1 && frame_kept(run);
+            std::printf("ROUTE case=install_wiring installed=%u profiles_null=%u native=%u\n", unsigned(wired),
+                        unsigned(null_wired), unsigned(native));
+            check(null_wired && native, "route_install_wires_null_profiles_native");
+            we::shutdown();
+            check(install_profiled(addresses(), core::mode_shields), "route_reinstall_shields");
+        }
         hs2.profiles = &fixture_profiles;
         build_world(7, 0, 4, 0x0, 123456);
     }
