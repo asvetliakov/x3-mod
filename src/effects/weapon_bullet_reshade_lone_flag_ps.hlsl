@@ -1,6 +1,8 @@
-// The lone-path bullet re-shade (weapon_bullet_reshade_lone_ps.hlsl: COLOR0.x is the fade) under the additive route
-// with the far flag bound: oC0 the re-shaded radiance, oC1 = oC0 (bound masked off; ps_2_0 forbids oC gaps), oC2 =
-// 32 * max(rgb) for the lane's .g under the GREEN write mask, as weapon_bullet_reshade_flag_ps.hlsl.
+// The lone-path bullet re-shade (weapon_bullet_reshade_lone_ps.hlsl: COLOR0.x is the fade) with the far flag bound,
+// under the additive route (DESTBLEND ONE) or outside it under the game's own ONE / ONE (bullet_reshade_route.h
+// lone_native_flag): oC0 the re-shaded radiance with the texel's alpha (the game's alpha test cuts as in vanilla),
+// oC1 = oC0 (bound masked off; ps_2_0 forbids oC gaps), oC2 = 32 * max(rgb) for the lane's .g under the GREEN write
+// mask, as weapon_bullet_reshade_flag_ps.hlsl.
 #include "weapon_bullet_reshade.hlsl"
 
 struct Out {

@@ -72,6 +72,7 @@ struct Period {
     std::uint32_t reshade_lone = 0, reshade_lone_flagged = 0; // the lone path's re-shaded draws, with the far flag
     std::uint32_t reshade_lone_failures = 0, reshade_lone_timed = 0; // its failed substitutions, its timed draws
     float reshade_lone_us_sum = 0.f;                                // its sequence's CPU time over them
+    std::uint32_t reshade_lone_counts[x3m::weapon_effects::lone_count_slots] = {}; // the lone path's state, flag and refusal counts
     float reshade_us_sum = 0.f, reshade_us_max = 0.f;
     // the muzzle flash re-shade (reshade mode): draws re-shaded, matched, kept off the hull-emission route, failed,
     // timed, and the sequence's CPU time (sum and the frame's worst)
@@ -1022,6 +1023,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.reshade_lone_failures += stage.reshade_lone_failures;
         period_.reshade_lone_timed += stage.reshade_lone_timed;
         period_.reshade_lone_us_sum += stage.reshade_lone_us;
+        for (unsigned i = 0; i < lone_count_slots; ++i) period_.reshade_lone_counts[i] += stage.reshade_lone_counts[i];
         period_.reshade_us_sum += stage.reshade_us;
         if (stage.reshade_us > period_.reshade_us_max) period_.reshade_us_max = stage.reshade_us;
     }
@@ -1153,12 +1155,24 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // vanilla), and the substitution's CPU time over the timed draws (every 60th frame and capture frames: per draw,
     // and the worst frame's sum, the batch's draws only); lone / lone_flagged / lone_failures / lone_us_per_draw: the
     // lone path's re-shaded draws (bullet-draw-batch.md section 7), of them with the far flag, its failed
-    // substitutions and its sequence's CPU time per timed draw, in none of the batch's fields.
+    // substitutions and its sequence's CPU time per timed draw, in none of the batch's fields (lone_flagged counts both
+    // flag paths); the lone counts (weapon_effects_patch.h lone_count_*): lone_flagged_native the flagged lone draws the
+    // additive route did not take (ONE / ONE, the game's blend); lone_refused the lone draws that ended without the far
+    // flag, lone_refused_why the same per reason (bullet_reshade_route.h LoneUnflagged, in its order); lone_route_state
+    // the lone draws the route refused for a known differing state (a defect: the sequence normalises the four it
+    // requires), lone_route_unknown those it refused on an unknown state; lone_zwrite .. lone_sepalpha the lone draws
+    // drawn re-shaded whose application state the sequence normalised, per state (on the route the four, off it Z write
+    // only); lone_additive the re-shaded lone draws under ONE / ONE.
     if (x3m_bullet_reshade_armed) {
         const std::uint32_t scopes = x3m_bullet_scope_calls;
+        const std::uint32_t* n = period_.reshade_lone_counts;
+        const std::uint32_t* why = n + lone_count_refused_why;
         log("bullet_reshade_frame frame=%llu frames=%lu submits=%lu draws=%lu additive=%lu flagged=%lu lone=%lu "
             "lone_flagged=%lu failures=%lu outside=%lu timed=%lu us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f "
-            "lone_failures=%lu lone_timed=%lu lone_us_per_draw=%.3f",
+            "lone_failures=%lu lone_timed=%lu lone_us_per_draw=%.3f lone_flagged_native=%lu lone_refused=%lu "
+            "lone_refused_why=off:%lu,scene:%lu,no_depth:%lu,no_variant:%lu,no_target:%lu,r32f_lane:%lu,write_masks:%lu,"
+            "bind:%lu,screen_unrouted:%lu,failed:%lu lone_route_state=%lu lone_route_unknown=%lu lone_zwrite=%lu "
+            "lone_mask=%lu lone_srgb=%lu lone_sepalpha=%lu lone_additive=%lu",
             frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(scopes - reshade_scopes_seen_),
             static_cast<unsigned long>(period_.reshade_draws), static_cast<unsigned long>(period_.reshade_additive),
             static_cast<unsigned long>(period_.reshade_flagged), static_cast<unsigned long>(period_.reshade_lone),
@@ -1168,7 +1182,16 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             period_.reshade_timed ? double(period_.reshade_us_sum) / double(period_.reshade_timed) : 0.0,
             double(period_.reshade_us_max), static_cast<unsigned long>(period_.reshade_lone_failures),
             static_cast<unsigned long>(period_.reshade_lone_timed),
-            period_.reshade_lone_timed ? double(period_.reshade_lone_us_sum) / double(period_.reshade_lone_timed) : 0.0);
+            period_.reshade_lone_timed ? double(period_.reshade_lone_us_sum) / double(period_.reshade_lone_timed) : 0.0,
+            static_cast<unsigned long>(n[lone_count_flagged_native]), static_cast<unsigned long>(n[lone_count_refused]),
+            static_cast<unsigned long>(why[0]), static_cast<unsigned long>(why[1]), static_cast<unsigned long>(why[2]),
+            static_cast<unsigned long>(why[3]), static_cast<unsigned long>(why[4]), static_cast<unsigned long>(why[5]),
+            static_cast<unsigned long>(why[6]), static_cast<unsigned long>(why[7]), static_cast<unsigned long>(why[8]),
+            static_cast<unsigned long>(why[9]), static_cast<unsigned long>(n[lone_count_route_state]),
+            static_cast<unsigned long>(n[lone_count_route_unknown]),
+            static_cast<unsigned long>(n[lone_count_states + 0]), static_cast<unsigned long>(n[lone_count_states + 1]),
+            static_cast<unsigned long>(n[lone_count_states + 2]), static_cast<unsigned long>(n[lone_count_states + 3]),
+            static_cast<unsigned long>(n[lone_count_additive]));
         reshade_scopes_seen_ = scopes;
     }
     // The muzzle flash re-shade's period row (muzzle-flash-look.md): muzzle draws matched (a listed body id under ONE /

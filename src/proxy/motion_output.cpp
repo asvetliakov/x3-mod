@@ -43,10 +43,10 @@ static_assert(x3m::fl::own_ship_trace::node_parent == 0x18 && x3m::fl::own_ship_
 #include "engine_effects.h" // X3M_ENGINE_EFFECTS: the glow-jet recogniser (motion_output_engine_effects_inc.h)
 #include "weapon_effects_patch.h" // X3M_WEAPON_EFFECTS=shields: the impact ring (motion_output_weapon_effects_inc.h)
 #include "weapon_effects_stage.h" // the shield hit's stage
+#include "bullet_reshade_route.h" // the bullet re-shade's device sequence; the additive route's state verdict (both editions)
 #if X3M_EDITION_FL
 #include "weapon_projectile_stage.h" // the projectile stage (docs/architecture/projectile-look.md)
 #include "bullet_reshade_core.h"  // the bullet re-shade's programs and constants (reshade mode)
-#include "bullet_reshade_route.h" // its device sequence
 #include "muzzle_reshade_route.h" // the muzzle flash re-shade's device sequence (reshade mode)
 #if X3M_DEV_TUNING
 #include "weapon_projectile_tune.h" // the dev-only in-flight tuning file (never in a release build)
@@ -6836,18 +6836,48 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
                 counters_.draws, reasons[reason]);
         }
     };
+    // A `state` refusal is broken down in the window (the bits its shadowed state differs in, or unknown; the lone
+    // bullet draws among them, bullet_reshade_frame's lone_route_state= or, unknown, lone_route_unknown=). The
+    // breakdown's alpha-test read is the only one
+    // the admission does not need: state_field, a shadow hit with the hooks on, one Get per refused draw without them.
+    namespace rs = weapon_effects::reshade;
+    const auto refuse_state = [&](unsigned bits, bool unknown) {
+        auto& w = screen_additive_window_;
+        if (unknown) ++w.state_unknown;
+        if (!unknown && state_field(2) > 0) bits |= rs::state_alphatest;
+        for (unsigned i = 0; i < 6; ++i)
+            if (bits & (1u << i)) ++w.state_bits[i];
+        if (route.bullet_lone) {
+            ++w.state_lone;
+#if X3M_EDITION_FL
+            ++bullet_reshade_lone_counts_[unknown ? weapon_effects::lone_count_route_unknown
+                                                  : weapon_effects::lone_count_route_state];
+#endif
+        }
+        refuse(0);
+    };
     bool known = true;
     for (unsigned i : {1u, 3u, 4u, 5u}) known = state_known(i) && known;
     for (unsigned i = 0; i < 4; ++i) known = blend_known(i) && known;
     DWORD dither = 0; // shadowed lazily like the packed route (one Get, then the shadow)
     if (!known || FAILED(render_state(D3DRS_DITHERENABLE, &dither))) {
-        refuse(0);
+        refuse_state(0, true);
         return;
     }
-    if (!(shadow_.states[3] && !shadow_.states[1] && shadow_.states[4] == 15 && !shadow_.states[5] &&
-          shadow_.composition_blend[0] == D3DBLEND_ONE && shadow_.composition_blend[1] == D3DBLEND_INVSRCCOLOR &&
-          shadow_.composition_blend[2] == D3DBLENDOP_ADD && !shadow_.composition_blend[3])) {
-        refuse(0);
+    // The exact native screen state (bullet_reshade_route.h route_state_refuses, the fixture's verdict too): a lone
+    // bullet draw is admitted on the states its re-shade sequence normalises (Z write, colour mask, sRGB write, separate
+    // alpha: written by begin_bullet_reshade below, all or nothing); every other draw on the application's own.
+    rs::ScreenState screen;
+    screen.lone[0] = shadow_.states[1];             // ZWRITEENABLE
+    screen.lone[1] = shadow_.states[4];             // COLORWRITEENABLE
+    screen.lone[2] = shadow_.states[5];             // SRGBWRITEENABLE
+    screen.lone[3] = shadow_.composition_blend[3]; // SEPARATEALPHABLENDENABLE
+    screen.blend = shadow_.states[3];
+    screen.src = shadow_.composition_blend[0];
+    screen.dst = shadow_.composition_blend[1];
+    screen.op = shadow_.composition_blend[2];
+    if (rs::route_state_refuses(screen, route.bullet_lone)) {
+        refuse_state(rs::state_differs(screen), false);
         return;
     }
     if (dither) {
@@ -6941,24 +6971,18 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     // option. One bool for every admitted draw of a device without the option.
     // A lone bullet draw (route.bullet_lone) is a candidate on the same terms: it is the body the batch would have drawn.
     bool flag = false;
+    unsigned flag_reason = 0;
     if (bolt_far_requested_ && (route.bullet_lone || screen_emission::admitted_vertex_shader(shadow_.vs_hash)) &&
         selector_.scene_depth_written()) {
-        unsigned reason = 0;
 #if X3M_EDITION_FL
-        if (reshade ? !(route.bullet_lone ? bullet_reshade_lone_flag_ps_ : bullet_reshade_flag_ps_)
-                    : !shadow_.ps_screen_additive_flag_variant)
+        flag_reason = bolt_flag_target_reason(reshade ? (route.bullet_lone ? bullet_reshade_lone_flag_ps_ != nullptr
+                                                                           : bullet_reshade_flag_ps_ != nullptr)
+                                                      : shadow_.ps_screen_additive_flag_variant != nullptr);
 #else
-        if (!shadow_.ps_screen_additive_flag_variant)
+        flag_reason = bolt_flag_target_reason(shadow_.ps_screen_additive_flag_variant != nullptr);
 #endif
-            reason = 1;
-        else if (!target_surface_ || !depth_surface_ || !depth_enabled_)
-            reason = 2;
-        else if (!sun_lane_active_)
-            reason = 3;
-        else if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS))
-            reason = 4;
-        flag = reason == 0;
-        if (!flag) refuse_bolt_flag(reason);
+        flag = flag_reason == 0;
+        if (!flag) refuse_bolt_flag(flag_reason);
     }
 #if X3M_EDITION_FL
     if (reshade) {
@@ -6967,8 +6991,15 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
         // nothing; finish_bullet_reshade puts the program, c31 and DESTBLEND back, finish_screen_additive the rest.
         if (flag && FAILED(bind_bolt_flag_targets(route))) {
             flag = false;
+            flag_reason = 5;
             refuse_bolt_flag(5);
         }
+        // A lone draw the route takes unflagged keeps its reason (bullet_reshade_frame lone_refused_why=).
+        if (route.bullet_lone && !flag)
+            route.bullet_lone_unflagged = std::uint8_t(
+                !bolt_far_requested_                ? weapon_effects::reshade::unflagged_off
+                : !selector_.scene_depth_written() ? weapon_effects::reshade::unflagged_no_depth
+                                                    : weapon_effects::reshade::unflagged_no_variant + flag_reason - 1u);
         if (!begin_bullet_reshade(route, true, route.bolt_flag)) {
             ++screen_additive_failures_;
             const HRESULT back = route.bolt_flag ? unbind_bolt_flag_targets(route) : S_OK;
@@ -7128,36 +7159,27 @@ void MotionOutput::log_bolt_copies() noexcept {
             unsigned(bolt_late_));
     bolt_early_dropped_ = bolt_late_ = 0;
 }
+// The flag's three device operations for bullet_reshade_route.h flag_bind / flag_unbind: the masks read through the
+// shadow (render_state), written and the targets bound through the native slots (the shadows keep the application's).
+auto MotionOutput::bolt_flag_ops() noexcept {
+    return weapon_effects::reshade::flag_calls(
+        [this](D3DRENDERSTATETYPE s, DWORD* v) { return render_state(s, v); },
+        [this](D3DRENDERSTATETYPE s, DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, s, v); },
+        [this](DWORD index, bool bind) {
+            return bind_target(index, !bind ? nullptr : index == 1 ? target_surface_ : depth_surface_);
+        });
+}
 // The flag's bindings (bolts-through-taa.md, "1. The late bolt draw marks its coverage in RT2.g"): RT1 bound with
 // COLORWRITEENABLE1 = 0 so the MRT set has no gap the route never exercises, RT2 bound with the GREEN mask, the
 // application's two masks saved first (a valid saved value precedes each write; render_state reads the shadow or the
 // device exactly as bind_targets does). Documented D3D9 throughout: SetRenderTarget on indices 1-2, per-target write
 // masks (D3DPMISCCAPS_INDEPENDENTWRITEMASKS, checked by the caller). About eight native calls per late bullet draw,
-// never on any other draw. A partial failure is unwound here in reverse order and reported like every other rollback.
+// never on any other draw. A partial failure is unwound in reverse order (bullet_reshade_route.h flag_bind, shared with
+// the fixture) and reported here like every other rollback.
 HRESULT MotionOutput::bind_bolt_flag_targets(MotionRoute& route) noexcept {
-    HRESULT hr = render_state(D3DRS_COLORWRITEENABLE1, &route.bolt_flag_saved_write1);
-    if (SUCCEEDED(hr)) hr = render_state(D3DRS_COLORWRITEENABLE2, &route.bolt_flag_saved_write2);
-    if (SUCCEEDED(hr)) {
-        route.bolt_flag_rt1 = true;
-        hr = bind_target(1, target_surface_);
-    }
-    if (SUCCEEDED(hr)) {
-        route.bolt_flag_write1 = true;
-        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, 0);
-    }
-    if (SUCCEEDED(hr)) {
-        route.bolt_flag_rt2 = true;
-        hr = bind_target(2, depth_surface_);
-    }
-    if (SUCCEEDED(hr)) {
-        route.bolt_flag_write2 = true;
-        hr = direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN);
-    }
-    if (SUCCEEDED(hr)) {
-        route.bolt_flag = true;
-        return S_OK;
-    }
-    const HRESULT back = unbind_bolt_flag_targets(route);
+    auto ops = bolt_flag_ops();
+    HRESULT back = S_OK;
+    const HRESULT hr = weapon_effects::reshade::flag_bind(ops, route, &back);
     if (FAILED(back)) {
         if (!motion_state_lost_) {
             motion_state_lost_ = true;
@@ -7169,25 +7191,21 @@ HRESULT MotionOutput::bind_bolt_flag_targets(MotionRoute& route) noexcept {
     }
     return hr;
 }
-// Reverse order of the bind; only the steps whose flag is set are undone. The first failure is returned; the caller
-// latches it (finish_screen_additive and the rollbacks above treat it like every other failed restoration).
+// Reverse order of the bind (bullet_reshade_route.h flag_unbind, the code the fixture runs); only the steps whose flag
+// is set are undone. The first failure is returned; the caller latches it (finish_screen_additive,
+// finish_lone_native_flag and the rollbacks above treat it like every other failed restoration).
 HRESULT MotionOutput::unbind_bolt_flag_targets(MotionRoute& route) noexcept {
-    HRESULT first = S_OK;
-    auto step = [&](HRESULT hr) {
-        if (SUCCEEDED(first) && FAILED(hr)) first = hr;
-    };
-    if (route.bolt_flag_write2)
-        step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE2, route.bolt_flag_saved_write2));
-    if (route.bolt_flag_rt2) step(bind_target(2, nullptr));
-    if (route.bolt_flag_write1)
-        step(direct_call<SetRenderStateFn>(SetRenderState, D3DRS_COLORWRITEENABLE1, route.bolt_flag_saved_write1));
-    if (route.bolt_flag_rt1) step(bind_target(1, nullptr));
-    route.bolt_flag = route.bolt_flag_rt1 = route.bolt_flag_write1 = route
-                                                                         .bolt_flag_rt2 = route
-                                                                                              .bolt_flag_write2 = false;
-    return first;
+    auto ops = bolt_flag_ops();
+    return weapon_effects::reshade::flag_unbind(ops, route);
 }
 // One row per reason per device; the counters feed the frame line (bolt_flag_refused=) and the fixture.
+unsigned MotionOutput::bolt_flag_target_reason(bool variant) const noexcept {
+    if (!variant) return 1;
+    if (!target_surface_ || !depth_surface_ || !depth_enabled_) return 2;
+    if (!sun_lane_active_) return 3;
+    if (!(caps_.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS)) return 4;
+    return 0;
+}
 void MotionOutput::refuse_bolt_flag(unsigned reason) noexcept {
     static constexpr const char* reasons[] = {"none", "no_variant", "no_target", "r32f_lane", "write_masks", "bind"};
     constexpr unsigned count = sizeof reasons / sizeof reasons[0];
@@ -7732,7 +7750,10 @@ void MotionOutput::log_bolt_footprint_window() noexcept {
 // and apply failures; not_reached = the pair draws the route never evaluated
 // (routed, composed, fog-masked, not submitted after a failed restore); bolt_dropped = the early bullet copies the
 // single-copy rule dropped (evaluated, not admitted). A window without any bullet draw logs
-// pair_draws=0, which tells "nothing to admit" from a refusal.
+// pair_draws=0, which tells "nothing to admit" from a refusal. zwrite= .. alphatest= break the `state` refusals down
+// per refused draw (bullet_reshade_route.h StateBit order; a draw counts in every bit its shadowed state differs in;
+// alphatest= is informative, the route admits any), unknown= those refused on an unknown state, lone_state= the lone
+// bullet draws among them.
 void MotionOutput::log_screen_additive_window() noexcept {
     auto& w = screen_additive_window_;
     std::uint32_t refused = 0;
@@ -7740,11 +7761,13 @@ void MotionOutput::log_screen_additive_window() noexcept {
     const std::uint32_t evaluated = w.admitted + refused + w.apply_failures + w.bolt_dropped;
     if (telemetry_)
         log("screen_emission_additive_refused_window device=%llu frame=%llu frames=%u pair_draws=%u admitted=%u refused=%u apply_failures=%u not_reached=%u "
-            "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u bolt_dropped=%u",
+            "state=%u draw_shape=%u scene=%u no_fp16_target=%u no_variant=%u srgb_sampler=%u projected=%u dither=%u alpha_state=%u alpha_caps=%u bolt_dropped=%u "
+            "zwrite=%u mask=%u srgb=%u sepalpha=%u blend=%u alphatest=%u unknown=%u lone_state=%u",
             id_, frame_, screen_additive_window_frames_, w.pair_draws, w.admitted, refused, w.apply_failures,
             w.pair_draws > evaluated ? w.pair_draws - evaluated : 0u, w.refused[0], w.refused[1], w.refused[2],
             w.refused[3], w.refused[4], w.refused[5], w.refused[6], w.refused[7], w.refused[8], w.refused[9],
-            w.bolt_dropped);
+            w.bolt_dropped, w.state_bits[0], w.state_bits[1], w.state_bits[2], w.state_bits[3], w.state_bits[4],
+            w.state_bits[5], w.state_unknown, w.state_lone);
     w = ScreenAdditiveWindow{};
     screen_additive_window_frames_ = 0;
 }

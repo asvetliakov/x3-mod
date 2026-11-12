@@ -2031,9 +2031,17 @@ void reshade_cases() {
 // mapped body's layout and c31 (gain x 2, edge, core x 2, normaliser) while drawing, the output the background plus 2 x
 // the model x the fade, RT2.g = 32 x max(rgb) with RT1 masked off and RT2 GREEN; end -> the game's program, the
 // application's c29..c31, DESTBLEND INVSRCCOLOR, and the stand-in's VS, its c10..c12 and the PS colour matrix c0..c2
-// untouched.
+// untouched. The route case starts from the lone draw's own state (FL 68 A: the route refused every lone draw for
+// `state`): Z write on, alpha test on (GREATEREQUAL / 1), colour mask 7, sRGB write on, separate alpha on (ZERO / ZERO);
+// the route's verdict (bullet_reshade_route.h route_state_refuses, read back as the shadow holds it) admits it as a
+// lone draw and refuses it as a non-bullet draw; the sequence writes the four states the route requires (alpha test and
+// Z test kept), the flag targets are bound and unbound by bullet_reshade_route.h flag_bind / flag_unbind (MotionOutput's
+// code), the output and the flag are the batch's, and after end and flag_unbind the four are back, RT1 / RT2 unbound,
+// the application's masks back (alpha test, its function, reference and the alpha factors untouched); the verdict
+// table: each bit alone, the exact state, a SRCALPHA and a blend-off draw; (b3) the flag outside the route below.
 // (c) Cost: the recognition per candidate draw (the node read and a 30-body map: the worst hit and a miss, an engine
-// glow's), and the indexed draw loop with and without the sequence (best of 7 runs of 2000).
+// glow's), and the indexed draw loop with and without the sequence, and with it from the lone draw's own state (the
+// route's four states written and put back each draw; best of 7 runs of 2000).
 void lone_reshade_cases() {
     namespace rf = reshade_fx;
     namespace rs = x3m::weapon_effects::reshade;
@@ -2235,8 +2243,50 @@ void lone_reshade_cases() {
                 double(t[1] * fade), double(t[2] * fade), double(plain[0]), double(plain[1]), double(plain[2]),
                 double(model[0]), double(model[1]), double(model[2]), double(worst_stand), double(worst_plain));
     report("reshade_lone_program_matches_model", ok && worst_stand <= 1.f && worst_plain <= 1.f, "");
-    // the route's path (converted, flagged with MRT)
-    bool during_all = true, after_all = true;
+    // the route's path (converted, flagged with MRT), from the lone draw's own state: lone_app (lone_states order: Z
+    // write on, colour mask 7, sRGB write on, separate alpha on, measured on the effects DEFAULT draws with ZERO / ZERO
+    // alpha factors) and alpha test on (the effects pass's GREATEREQUAL / 1), which no path writes; Z test as bound.
+    const DWORD lone_app[rs::lone_state_count] = {TRUE, 7u, TRUE, TRUE};
+    const auto lone_own_state = [&] {
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) dev->SetRenderState(rs::lone_states[i], lone_app[i]);
+        dev->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+        dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATEREQUAL);
+        dev->SetRenderState(D3DRS_ALPHAREF, 1);
+        dev->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ZERO);
+        dev->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
+    };
+    // the states no path writes, unchanged: alpha test (on, GREATEREQUAL / 1), the separate alpha factors, Z test
+    const auto untouched = [&](DWORD zenable_want) {
+        DWORD t = 0, func = 0, ref = ~0u, src_a = 0, dst_a = 0, z = ~0u;
+        return SUCCEEDED(dev->GetRenderState(D3DRS_ALPHATESTENABLE, &t)) && t == TRUE &&
+               SUCCEEDED(dev->GetRenderState(D3DRS_ALPHAFUNC, &func)) && func == D3DCMP_GREATEREQUAL &&
+               SUCCEEDED(dev->GetRenderState(D3DRS_ALPHAREF, &ref)) && ref == 1 &&
+               SUCCEEDED(dev->GetRenderState(D3DRS_SRCBLENDALPHA, &src_a)) && src_a == D3DBLEND_ZERO &&
+               SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLENDALPHA, &dst_a)) && dst_a == D3DBLEND_ZERO &&
+               SUCCEEDED(dev->GetRenderState(D3DRS_ZENABLE, &z)) && z == zenable_want;
+    };
+    // the lone states equal want[] for the bits in `which`, lone_app for the others
+    const auto lone_states_are = [&](unsigned which, const DWORD* want) {
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) {
+            DWORD v = ~0u;
+            if (FAILED(dev->GetRenderState(rs::lone_states[i], &v)) || v != ((which & (1u << i)) ? want[i] : lone_app[i]))
+                return false;
+        }
+        return true;
+    };
+    // the application's flag masks (MotionOutput saves and restores them through the shadow)
+    constexpr DWORD app_write1 = 5u, app_write2 = 9u;
+    // after flag_unbind: RT1 and RT2 unbound, the application's masks back
+    const auto flag_targets_restored = [&] {
+        DWORD w1 = 0, w2 = 0;
+        IDirect3DSurface9 *s1 = nullptr, *s2 = nullptr;
+        const bool ok1 = dev->GetRenderTarget(1, &s1) == D3DERR_NOTFOUND && dev->GetRenderTarget(2, &s2) == D3DERR_NOTFOUND;
+        if (s1) s1->Release();
+        if (s2) s2->Release();
+        return ok1 && SUCCEEDED(dev->GetRenderState(D3DRS_COLORWRITEENABLE1, &w1)) && w1 == app_write1 &&
+               SUCCEEDED(dev->GetRenderState(D3DRS_COLORWRITEENABLE2, &w2)) && w2 == app_write2;
+    };
+    bool during_all = true, after_all = true, verdict_ok = true, states_all = true;
     float worst = 0.f, flag_got = -1.f, flag_want = 0.f;
     for (unsigned variant = 0; variant < (mrt ? 2u : 1u) && ok; ++variant) {
         const bool flag = variant == 1;
@@ -2246,14 +2296,29 @@ void lone_reshade_cases() {
         }
         dev->SetRenderTarget(0, rt_s[0].p);
         dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 64, 64, 64), 1.f, 0);
-        if (flag) { // the route's flag targets (MotionOutput::bind_bolt_flag_targets: RT1 masked off, RT2 GREEN)
-            dev->SetRenderTarget(1, rt_s[1].p);
-            dev->SetRenderTarget(2, rt_s[2].p);
-            dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 0);
-            dev->SetRenderState(D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN);
-        }
+        dev->SetRenderState(D3DRS_COLORWRITEENABLE1, app_write1);
+        dev->SetRenderState(D3DRS_COLORWRITEENABLE2, app_write2);
         dev->BeginScene();
         bind();
+        lone_own_state();
+        // the route's verdict on that state read back as MotionOutput's shadow holds it: the lone draw admitted, the
+        // same state on a non-bullet draw refused `state` with its four route bits
+        rs::ScreenState screen;
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) dev->GetRenderState(rs::lone_states[i], &screen.lone[i]);
+        dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &screen.blend);
+        dev->GetRenderState(D3DRS_SRCBLEND, &screen.src);
+        dev->GetRenderState(D3DRS_DESTBLEND, &screen.dst);
+        dev->GetRenderState(D3DRS_BLENDOP, &screen.op);
+        const unsigned differs = rs::state_differs(screen);
+        verdict_ok = verdict_ok && differs == rs::lone_state_bits && rs::route_state_refuses(screen, true) == 0u &&
+                     rs::route_state_refuses(screen, false) == rs::lone_route_bits;
+        DWORD zenable_before = 0;
+        dev->GetRenderState(D3DRS_ZENABLE, &zenable_before);
+        // the route's flag targets (bullet_reshade_route.h flag_bind, as MotionOutput::bind_bolt_flag_targets)
+        auto fops = rf::flag_ops(dev, rt_s[1].p, rt_s[2].p);
+        rf::FlagTargets targets;
+        HRESULT bind_back = S_OK;
+        if (flag) ok = ok && SUCCEEDED(rs::flag_bind(fops, targets, &bind_back)) && targets.bolt_flag;
         auto ops = rf::device_ops(dev);
         rs::Plan plan;
         plan.program = flag ? ours_flag.p : ours.p;
@@ -2261,8 +2326,12 @@ void lone_reshade_cases() {
         plan.gain = gain;
         plan.layout = ire_layout;
         plan.convert = true;
+        plan.states = differs & rs::lone_route_bits; // begin_bullet_reshade's plan for a lone draw on the route
+        plan.state_app = screen.lone;
         rs::Applied applied;
-        ok = SUCCEEDED(rs::begin(ops, plan, app_block, applied)) && applied.destblend && applied.block && applied.program;
+        ok = ok && SUCCEEDED(rs::begin(ops, plan, app_block, applied)) && applied.destblend && applied.block && applied.program &&
+             applied.states == rs::lone_route_bits;
+        const bool states_during = ok && lone_states_are(rs::lone_route_bits, rs::lone_values) && untouched(zenable_before);
         DWORD blend = 0;
         IDirect3DPixelShader9* bound = nullptr;
         float block[12]{};
@@ -2276,31 +2345,24 @@ void lone_reshade_cases() {
         bound = nullptr;
         ok = ok && SUCCEEDED(dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2));
         const HRESULT back = rs::end(ops, applied, vanilla.p, app_block);
+        const HRESULT flag_back = rs::flag_unbind(fops, targets); // the production restore
         IDirect3DVertexShader9* bound_vs = nullptr;
         float vs_c[12]{}, ps_c[12]{};
         const float tex_matrix[8] = {1, 0, 0, 0, 0, 1, 0, 0}, colour_matrix[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
-        bool after = SUCCEEDED(back) && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) &&
-                     blend == D3DBLEND_INVSRCCOLOR && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
-                     SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
-                     !std::memcmp(block, app_block, sizeof block) && SUCCEEDED(dev->GetVertexShader(&bound_vs)) &&
-                     bound_vs == vs.p && SUCCEEDED(dev->GetVertexShaderConstantF(10, vs_c, 3)) &&
-                     !std::memcmp(vs_c, tex_matrix, sizeof tex_matrix) && vs_c[8] == fade &&
-                     SUCCEEDED(dev->GetPixelShaderConstantF(0, ps_c, 3)) && !std::memcmp(ps_c, colour_matrix, sizeof ps_c);
+        const bool after = SUCCEEDED(back) && SUCCEEDED(flag_back) && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) &&
+                           blend == D3DBLEND_INVSRCCOLOR && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
+                           SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
+                           !std::memcmp(block, app_block, sizeof block) && SUCCEEDED(dev->GetVertexShader(&bound_vs)) &&
+                           bound_vs == vs.p && SUCCEEDED(dev->GetVertexShaderConstantF(10, vs_c, 3)) &&
+                           !std::memcmp(vs_c, tex_matrix, sizeof tex_matrix) && vs_c[8] == fade &&
+                           SUCCEEDED(dev->GetPixelShaderConstantF(0, ps_c, 3)) &&
+                           !std::memcmp(ps_c, colour_matrix, sizeof ps_c) && flag_targets_restored();
+        // the lone draw's own states back, alpha test, its function / reference, the alpha factors and Z test untouched
+        const bool states_after = SUCCEEDED(back) && lone_states_are(0u, rs::lone_values) && untouched(zenable_before);
+        states_all = states_all && states_during && states_after;
         if (bound) bound->Release();
         if (bound_vs) bound_vs->Release();
         dev->EndScene();
-        if (flag) { // the route's unbind (MotionOutput::unbind_bolt_flag_targets), then the masks checked back
-            dev->SetRenderTarget(1, nullptr);
-            dev->SetRenderTarget(2, nullptr);
-            dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 15);
-            dev->SetRenderState(D3DRS_COLORWRITEENABLE2, 15);
-            DWORD w1 = 0, w2 = 0;
-            IDirect3DSurface9* s1 = nullptr;
-            after = after && SUCCEEDED(dev->GetRenderState(D3DRS_COLORWRITEENABLE1, &w1)) && w1 == 15 &&
-                    SUCCEEDED(dev->GetRenderState(D3DRS_COLORWRITEENABLE2, &w2)) && w2 == 15 &&
-                    dev->GetRenderTarget(1, &s1) == D3DERR_NOTFOUND;
-            if (s1) s1->Release();
-        }
         during_all = during_all && during;
         after_all = after_all && after;
         float px[4]{};
@@ -2316,12 +2378,151 @@ void lone_reshade_cases() {
     }
     dev->SetRenderTarget(0, old_rt);
     if (old_rt) old_rt->Release();
+    const auto device_defaults = [&] { // bind_pass resets the four lone states; the rest here
+        dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+        dev->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+        dev->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
+        dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
+        dev->SetRenderState(D3DRS_ALPHAREF, 0);
+        dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 15);
+        dev->SetRenderState(D3DRS_COLORWRITEENABLE2, 15);
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) dev->SetRenderState(rs::lone_states[i], rs::lone_values[i]);
+    };
+    device_defaults();
     const bool flag_ok = !mrt || std::fabs(flag_got - flag_want) <= 0.01f * flag_want + 0.01f;
     std::printf("RESHADE case=lone_additive gain=%.1f fade=%.2f during=%u restored=%u worst_rel=%.3f mrt=%u flag_g=%.3f "
-                "flag_want=%.3f\n",
+                "flag_want=%.3f lone_state=zwrite:%lu,mask:%lu,srgb:%lu,sepalpha:%lu,alphatest:1 verdict=%u "
+                "states_normalised_and_restored=%u\n",
                 double(gain), double(fade), unsigned(during_all), unsigned(after_all), double(worst), unsigned(mrt),
-                double(flag_got), double(flag_want));
+                double(flag_got), double(flag_want), static_cast<unsigned long>(lone_app[0]),
+                static_cast<unsigned long>(lone_app[1]), static_cast<unsigned long>(lone_app[2]),
+                static_cast<unsigned long>(lone_app[3]), unsigned(verdict_ok), unsigned(states_all));
     report("reshade_lone_route_binds_converts_flags_restores", ok && during_all && after_all && worst <= 1.f && flag_ok, "");
+    report("reshade_lone_state_admitted_normalised_restored", ok && verdict_ok && states_all, "");
+    {
+        // the verdict alone (bullet_reshade_route.h route_state_refuses, the code prepare_screen_additive runs): the exact
+        // native screen state admits any draw; each lone_states bit off refuses a non-bullet draw and never a lone one; a
+        // blend other than ONE / INVSRCCOLOR / ADD refuses both
+        rs::ScreenState exact;
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) exact.lone[i] = rs::lone_values[i];
+        exact.blend = TRUE, exact.src = D3DBLEND_ONE, exact.dst = D3DBLEND_INVSRCCOLOR, exact.op = D3DBLENDOP_ADD;
+        bool table_ok = rs::route_state_refuses(exact, false) == 0u && rs::route_state_refuses(exact, true) == 0u;
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) {
+            rs::ScreenState s = exact;
+            s.lone[i] = lone_app[i];
+            table_ok = table_ok && rs::state_differs(s) == (1u << i) && rs::route_state_refuses(s, false) == (1u << i) &&
+                       rs::route_state_refuses(s, true) == 0u;
+        }
+        rs::ScreenState srcalpha = exact;
+        srcalpha.src = D3DBLEND_SRCALPHA;
+        rs::ScreenState off = exact;
+        off.blend = FALSE;
+        table_ok = table_ok && rs::route_state_refuses(srcalpha, true) == rs::state_blend &&
+                   rs::route_state_refuses(off, false) == rs::state_blend;
+        std::printf("RESHADE case=lone_state_verdict rows=%u ok=%u\n", 4u + rs::lone_state_count, unsigned(table_ok));
+        report("reshade_lone_state_verdict", table_ok, "");
+    }
+    // (b3) the far flag outside the route (motion_output_bullet_reshade_inc.h lone_native_flag): a lone draw the route
+    // never takes, under the game's own blend, from the lone draw's own state (every lone_states bit off, alpha test on),
+    // with RT2 holding the far-depth lane base 1.0 (the station's z/w limit; the composite flags g > 1). ONE / ONE: the
+    // flag variant through the plain sequence (no conversion, gain 1, Z write the only state written) with the flag
+    // targets bound and unbound by bullet_reshade_route.h flag_bind / flag_unbind (MotionOutput's code): RT2.g = base +
+    // 32 x max(model) > 1 with the colour mask 7, sRGB write, separate alpha and alpha test the game's; after the
+    // sequence's end and flag_unbind, Z write the game's, RT1 and RT2 unbound and the application's masks back. RT0 is
+    // checked against bg + model when this device does not sRGB-encode the FP16 target (D3DUSAGE_QUERY_SRGBWRITE). ONE /
+    // INVSRCCOLOR (the witness for bullet_reshade_route.h lone_native_flag): the same draw leaves RT2.g = s + base
+    // (1 - s) = 1, no flag, so the proxy refuses it (screen_unrouted) instead of binding the targets.
+    if (mrt && ok) {
+        bool srgb_fp16 = false;
+        {
+            IDirect3D9* d3d = nullptr;
+            D3DDEVICE_CREATION_PARAMETERS cp{};
+            D3DDISPLAYMODE mode{};
+            if (SUCCEEDED(dev->GetDirect3D(&d3d)) && SUCCEEDED(dev->GetCreationParameters(&cp)) &&
+                SUCCEEDED(d3d->GetAdapterDisplayMode(cp.AdapterOrdinal, &mode)))
+                srgb_fp16 = SUCCEEDED(d3d->CheckDeviceFormat(cp.AdapterOrdinal, cp.DeviceType, mode.Format,
+                                                            D3DUSAGE_RENDERTARGET | D3DUSAGE_QUERY_SRGBWRITE,
+                                                            D3DRTYPE_TEXTURE, D3DFMT_A16B16G16R16F));
+            if (d3d) d3d->Release();
+        }
+        float native_rt0[4]{}, native_g = -1.f, witness_g = -1.f, worst_native = 0.f;
+        bool native_during = true, native_after = true;
+        const float s_flag = 32.f * std::max(model[0], std::max(model[1], model[2]));
+        const DWORD zwrite_off[rs::lone_state_count] = {FALSE, 0, 0, 0};
+        for (unsigned pass = 0; pass < 2 && ok; ++pass) {
+            const bool additive = pass == 0;
+            dev->SetRenderTarget(0, rt_s[2].p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 255, 255, 255), 1.f, 0); // the lane: base 1.0
+            dev->SetRenderTarget(0, rt_s[0].p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 64, 64, 64), 1.f, 0);
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE1, app_write1);
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE2, app_write2);
+            dev->BeginScene();
+            bind();
+            dev->SetRenderState(D3DRS_DESTBLEND, additive ? D3DBLEND_ONE : D3DBLEND_INVSRCCOLOR);
+            lone_own_state();
+            DWORD zenable_before = 0;
+            dev->GetRenderState(D3DRS_ZENABLE, &zenable_before);
+            const unsigned blend_class =
+                rs::lone_blend(true, D3DBLEND_ONE, additive ? D3DBLEND_ONE : D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD);
+            ok = ok && blend_class == (additive ? rs::lone_additive : rs::lone_screen) &&
+                 rs::lone_native_flag(blend_class) == additive;
+            auto fops = rf::flag_ops(dev, rt_s[1].p, rt_s[2].p);
+            rf::FlagTargets targets;
+            HRESULT bind_back = S_OK;
+            ok = ok && SUCCEEDED(rs::flag_bind(fops, targets, &bind_back)) && targets.bolt_flag;
+            rs::ScreenState own;
+            for (unsigned i = 0; i < rs::lone_state_count; ++i) own.lone[i] = lone_app[i];
+            auto ops = rf::device_ops(dev);
+            rs::Plan plan;
+            plan.program = ours_flag.p;
+            plan.constants = constants;
+            plan.layout = ire_layout;
+            plan.states = rs::state_differs(own) & rs::lone_plain_bits; // begin_bullet_reshade's plan off the route
+            plan.state_app = lone_app;
+            rs::Applied applied;
+            ok = ok && SUCCEEDED(rs::begin(ops, plan, app_block, applied)) && !applied.destblend &&
+                 applied.states == rs::state_zwrite;
+            DWORD v = 0;
+            if (additive)
+                native_during = lone_states_are(rs::state_zwrite, zwrite_off) && untouched(zenable_before) &&
+                                SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &v)) && v == D3DBLEND_ONE;
+            ok = ok && SUCCEEDED(dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2));
+            const HRESULT back = rs::end(ops, applied, vanilla.p, app_block);
+            const HRESULT flag_back = rs::flag_unbind(fops, targets); // MotionOutput::finish_lone_native_flag's restore
+            if (additive)
+                native_after = SUCCEEDED(back) && SUCCEEDED(flag_back) && lone_states_are(0u, rs::lone_values) &&
+                               untouched(zenable_before) && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &v)) &&
+                               v == D3DBLEND_ONE && flag_targets_restored();
+            dev->EndScene();
+            float px[4]{};
+            if (additive) {
+                ok = ok && read_px(rt_s[0].p, native_rt0);
+                for (unsigned k = 0; k < 3 && ok; ++k) {
+                    const float want = bg + model[k];
+                    worst_native = std::max(worst_native, std::fabs(native_rt0[k] - want) / (0.004f + 0.004f * want));
+                }
+            }
+            ok = ok && read_px(rt_s[2].p, px);
+            (additive ? native_g : witness_g) = px[1];
+        }
+        device_defaults();
+        dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+        dev->SetRenderTarget(0, rt_s[0].p);
+        const bool flag_native = native_g > 1.f && std::fabs(native_g - (1.f + s_flag)) <= 0.01f * s_flag + 0.01f;
+        const bool rt0_ok = srgb_fp16 || worst_native <= 1.f;
+        const bool witness = witness_g <= 1.001f; // s + base (1 - s) = 1 at base 1: below the composite's g > 1
+        std::printf("RESHADE case=lone_native_flag blend=one_one base=1.0 rt2_g=%.3f want=%.3f rt0_worst_rel=%.3f "
+                    "srgb_write_fp16=%u during=%u restored=%u\n",
+                    double(native_g), double(1.f + s_flag), double(worst_native), unsigned(srgb_fp16),
+                    unsigned(native_during), unsigned(native_after));
+        std::printf("RESHADE case=lone_flag_invsrccolor_witness blend=one_invsrccolor base=1.0 rt2_g=%.4f s=%.3f "
+                    "flag_test=%u refused=%u\n",
+                    double(witness_g), double(s_flag), unsigned(witness_g > 1.f),
+                    unsigned(!rs::lone_native_flag(rs::lone_screen)));
+        report("reshade_lone_native_flag_one_one", ok && flag_native && rt0_ok && native_during && native_after, "");
+        report("reshade_lone_flag_invsrccolor_witness", ok && witness && !rs::lone_native_flag(rs::lone_screen), "");
+    }
     // (c) cost
     LARGE_INTEGER freq{}, a{}, b{};
     QueryPerformanceFrequency(&freq);
@@ -2334,7 +2535,7 @@ void lone_reshade_cases() {
         }
     };
     constexpr unsigned draws = 2000, runs = 7;
-    double best_vanilla = 1e30, best_reshaded = 1e30, best_hit = 1e30, best_miss = 1e30;
+    double best_vanilla = 1e30, best_reshaded = 1e30, best_normalised = 1e30, best_hit = 1e30, best_miss = 1e30;
     dev->SetRenderTarget(0, rt_s[0].p);
     for (unsigned run = 0; run < runs && ok; ++run) {
         dev->BeginScene();
@@ -2352,6 +2553,17 @@ void lone_reshade_cases() {
         finish();
         QueryPerformanceCounter(&b);
         best_reshaded = std::min(best_reshaded, ticks_us(a, b, freq) / draws);
+        // the same with the lone draw's own state (lone_app): on the route the four states written and put back per draw
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) dev->SetRenderState(rs::lone_states[i], lone_app[i]);
+        finish();
+        QueryPerformanceCounter(&a);
+        for (unsigned i = 0; i < draws; ++i)
+            rf::lone_reshaded_draw(dev, ours.p, vanilla.p, constants, app_block, 4, 2, &restored, ire_layout,
+                                   rs::lone_route_bits, lone_app);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_normalised = std::min(best_normalised, ticks_us(a, b, freq) / draws);
+        ok = ok && restored;
         dev->EndScene();
     }
     device_guard("reshade_lone_cost");
@@ -2387,10 +2599,12 @@ void lone_reshade_cases() {
     dev->SetTexture(0, nullptr);
     dev->SetStreamSource(0, nullptr, 0, 0);
     dev->SetIndices(nullptr);
+    for (unsigned i = 0; i < rs::lone_state_count; ++i) dev->SetRenderState(rs::lone_states[i], rs::lone_values[i]);
     std::printf("RESHADE case=lone_cost draws=%u runs=%u draw_us_vanilla=%.3f draw_us_reshaded=%.3f "
-                "substitution_us_per_draw=%.3f match_us_hit_30=%.4f match_us_miss_30=%.4f fenced=%u\n",
-                draws, runs, best_vanilla, best_reshaded, best_reshaded - best_vanilla, best_hit, best_miss,
-                unsigned(fence.p != nullptr));
+                "substitution_us_per_draw=%.3f draw_us_normalised=%.3f normalise_us_per_draw=%.3f match_us_hit_30=%.4f "
+                "match_us_miss_30=%.4f fenced=%u\n",
+                draws, runs, best_vanilla, best_reshaded, best_reshaded - best_vanilla, best_normalised,
+                best_normalised - best_reshaded, best_hit, best_miss, unsigned(fence.p != nullptr));
     report("reshade_lone_cost_measured", ok && fence.p && best_hit < 10.0 && best_miss < 10.0, "");
 }
 // The bullet re-shade's per-texture normaliser (bullet_reshade_core.h; bullet-draw-batch.md section 6): the production

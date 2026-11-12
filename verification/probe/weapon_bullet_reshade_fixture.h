@@ -211,11 +211,26 @@ inline void bind_pass(IDirect3DDevice9* dev, IDirect3DVertexShader9* vs, IDirect
 // The production device sequence (src/proxy/bullet_reshade_route.h, the code MotionOutput runs) on this device.
 inline auto device_ops(IDirect3DDevice9* dev) {
     namespace rs = x3m::weapon_effects::reshade;
-    return rs::calls([dev](DWORD v) { return dev->SetRenderState(D3DRS_DESTBLEND, v); },
+    return rs::calls([dev](D3DRENDERSTATETYPE s, DWORD v) { return dev->SetRenderState(s, v); },
+                     [dev](DWORD v) { return dev->SetRenderState(D3DRS_DESTBLEND, v); },
                      [dev](const float* v) {
                          return dev->SetPixelShaderConstantF(rs::block_register, v, rs::block_count);
                      },
                      [dev](IDirect3DPixelShader9* p) { return dev->SetPixelShader(p); });
+}
+// The far flag's targets (src/proxy/bullet_reshade_route.h flag_bind / flag_unbind, the code MotionOutput's
+// bind_bolt_flag_targets / unbind_bolt_flag_targets run) on this device: rt1 / rt2 the surfaces bound at indices 1 / 2.
+struct FlagTargets {
+    bool bolt_flag = false, bolt_flag_rt1 = false, bolt_flag_write1 = false, bolt_flag_rt2 = false, bolt_flag_write2 = false;
+    DWORD bolt_flag_saved_write1 = 15, bolt_flag_saved_write2 = 15;
+};
+inline auto flag_ops(IDirect3DDevice9* dev, IDirect3DSurface9* rt1, IDirect3DSurface9* rt2) {
+    namespace rs = x3m::weapon_effects::reshade;
+    return rs::flag_calls([dev](D3DRENDERSTATETYPE s, DWORD* v) { return dev->GetRenderState(s, v); },
+                          [dev](D3DRENDERSTATETYPE s, DWORD v) { return dev->SetRenderState(s, v); },
+                          [dev, rt1, rt2](DWORD index, bool bind) {
+                              return dev->SetRenderTarget(index, !bind ? nullptr : index == 1 ? rt1 : rt2);
+                          });
 }
 // One substituted draw on the plain path (the game's ONE / INVSRCCOLOR; motion_output_bullet_reshade_inc.h
 // prepare_bullet_reshade / finish_bullet_reshade): begin, the draw, end. Returns the draw's result; *restored the
@@ -307,16 +322,20 @@ inline void bind_lone_pass(IDirect3DDevice9* dev, IDirect3DVertexShader9* vs, ID
     bind_lone_constants(dev, fade);
 }
 // One lone draw re-shaded on the plain path (motion_output_bullet_reshade_inc.h prepare_lone_bullet: the game's blend
-// kept): begin, the indexed draw, end, through the production sequence.
+// kept): begin, the indexed draw, end, through the production sequence. states / state_app: the lone_states bits the
+// sequence normalises and the application's values (begin_bullet_reshade's plan for a lone draw; 0: none differ).
 inline HRESULT lone_reshaded_draw(IDirect3DDevice9* dev, IDirect3DPixelShader9* ours, IDirect3DPixelShader9* game,
                                   const float constants[4], const float app_block[12], UINT vertices, UINT primitives,
-                                  bool* restored, const float* layout = nullptr) {
+                                  bool* restored, const float* layout = nullptr, unsigned states = 0,
+                                  const DWORD* state_app = nullptr) {
     namespace rs = x3m::weapon_effects::reshade;
     auto ops = device_ops(dev);
     rs::Plan plan;
     plan.program = ours;
     plan.constants = constants;
     plan.layout = layout;
+    plan.states = states;
+    plan.state_app = state_app;
     rs::Applied applied;
     const HRESULT hr = rs::begin(ops, plan, app_block, applied);
     const HRESULT drawn = SUCCEEDED(hr) ? dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, vertices, 0, primitives) : hr;
