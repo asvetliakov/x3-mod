@@ -4010,6 +4010,52 @@ int main(int argc, char** argv) {
                    double(m.covered) >= 0.9 * double(m.eligible) && m.centroid <= cell && dist(B) * 4.0 < dist(Bf), "");
         draw_lane(g, 0.f, -1.f);
 
+        // (a') FL 66 A: the Titan's section nodes carry scales above the old 16x guard (its row: guard=scale
+        // value=0x001b6beb, 27.4x, on the first node). The same tree with the level-1 (section) scale 0x1b6beb and the
+        // normalised extents cut by 125000 / 0x1b6beb so the sections' half-extents stay (200000, 150000, 62500):
+        // 200000 x 65536 / 1797099 = 7293.6 -> 7294 (200013, +6.5e-5), 150000 -> 5470 (149996, -2.7e-5), 62500 -> 2279
+        // (62494, -9.6e-5); the mounts and turrets (same ext_n, scales 20000 and 5000) stay inside the sections' box.
+        // The one-call walk names no guard; through the production builder and cache the hull bubble fits the staged
+        // box with the capital case's tolerance (e_rel_err < 1e-3, centre within 1 view unit).
+        {
+            const std::int32_t titan_ext_n[3] = {7294, 5470, 2279};
+            const std::int32_t titan_scales[3] = {0x1b6beb, 20000, 5000};
+            const unsigned titan_nodes = stage_tree(capital_n, titan_ext_n, titan_scales, capital_off);
+            ws::HullWalk tw;
+            ws::HullBox tbox;
+            const bool walk_ok = ws::hull_bounds(&fake_read, addr(fake_hull), addr(fake_node), &tbox, nullptr, &tw);
+            cache.rescope(7002);
+            ws::Counts tn{};
+            unsigned tframes = 0, tfailures = 0;
+            for (; tframes < 8; ++tframes) {
+                tn = ws::build(stage_ring, 2200 + 16 * tframes, &fake_read, identity_camera(), hull_tuning(), patches,
+                               wc::max_patches, decals, wc::max_decals, &cache);
+                tfailures += tn.bubble.failures;
+                if (!tn.bubble_fallback) break;
+            }
+            ++tframes;
+            double tbe[3] = {0, 0, 0}, tbc[3] = {0, 0, 0}, terr = 1;
+            if (tn.patches) {
+                const BubbleTwin bt = bubble_twin(patches[0]);
+                terr = 0;
+                for (unsigned k = 0; k < 3; ++k) {
+                    tbe[k] = bt.e[k];
+                    tbc[k] = bt.c[k];
+                    terr = std::max(terr, std::fabs(bt.e[k] / (double(wc::bubble_scale) * ext[k]) - 1.0));
+                }
+            }
+            std::printf("HULL_WALK case=capital_titan_scale scale=0x%08x nodes=%u walk_ok=%u guard=%s walked_nodes=%u "
+                        "parts=%u frames=%u failures=%u bubbles=%u bubble_c=%.1f,%.1f,%.1f bubble_e=%.1f,%.1f,%.1f "
+                        "e_rel_err=%.5f\n",
+                        unsigned(titan_scales[0]), titan_nodes, unsigned(walk_ok), ws::hull_guard_name(tw.guard),
+                        tbox.nodes, tbox.parts, tframes, tfailures, tn.bubbles, tbc[0], tbc[1], tbc[2], tbe[0], tbe[1],
+                        tbe[2], terr);
+            report("bubble_capital_titan_scale_walks_and_fits",
+                   titan_nodes == 648 && walk_ok && tw.guard == ws::HullGuard::none && tbox.nodes == 648 &&
+                       tbox.parts == 648 && tfailures == 0 && tn.bubbles == 1 && tn.bubble_fallback == 0 &&
+                       terr < 1e-3 && std::fabs(tbc[0]) + std::fabs(tbc[1]) + std::fabs(tbc[2]) < 1.0, "");
+        }
+
         // (b) the walk's cost at the 1024-node budget
         const unsigned big_n[3] = {16, 7, 8};
         auto big_off = [](unsigned level, unsigned j, std::int32_t o[3]) {

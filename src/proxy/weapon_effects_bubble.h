@@ -47,7 +47,15 @@ namespace core = x3m::weapon_effects::core;
 using Reader = bool (*)(std::uintptr_t address, void* out, std::size_t size);
 constexpr unsigned hull_depth = 3, hull_budget = 1024, hull_list_limit = 1024, hull_chain_steps = 64, hull_lod_max = 16;
 constexpr unsigned hull_slice_nodes = 256, hull_slice_reads = 2400, hull_park_ms = 500;
-constexpr std::int32_t hull_extent_max = 0x20000, hull_basis_tol = 0x40, hull_scale_max = 16 * 0x10000;
+constexpr std::int32_t hull_extent_max = 0x20000, hull_basis_tol = 0x40, hull_scale_max = 256 * 0x10000;
+// hull_scale_max: 16.16 fixed point, 256x. A fighter's nodes stay below 16x; a capital's section nodes do not (FL 66 A:
+// the Titan's first section node at 0x1b6beb, 27.4x). The int64 products cannot overflow before their clamps:
+// hull_part_extent: ext <= hull_extent_max (2^17) x s <= 2^24 is <= 2^41, >> 16 gives base <= 2^25, x si <= 2^24 is
+// <= 2^49, / 2^16 <= 2^33 (clamped to INT32_MAX); hull_scale16: |v| < 2^31 x s <= 2^24 is < 2^55.
+static_assert(std::int64_t(hull_extent_max) * hull_scale_max <= (std::int64_t(1) << 41) &&
+                  ((std::int64_t(hull_extent_max) * hull_scale_max + 0x8000) >> 16) * hull_scale_max <
+                      (std::int64_t(1) << 62),
+              "hull_part_extent's int64 products stay in range");
 static_assert(hull_list_limit >= hull_budget, "a list cannot fail before the walk's budget");
 static_assert(hull_slice_nodes > 0 && hull_slice_nodes <= hull_budget, "a slice is part of one walk");
 // A node's reads at most: its block, the bucket, hull_chain_steps entries, the model head, the LOD array, its records.
@@ -57,7 +65,7 @@ static_assert(hull_slice_reads >= hull_node_reads_max, "a slice can always take 
 // read (an engine read refused; value: its address), list (a sibling list past hull_list_limit), budget (past
 // hull_budget nodes), chain (a hash chain past hull_chain_steps), model (a body id with no model), lod (a LOD count
 // outside 1..16, a null array or record), extent (a LOD extent outside [0, hull_extent_max]), scale (a node or axis scale
-// outside (0, hull_scale_max]), bounds (a non-finite box), empty (no part), changed (a level's link moved between
+// outside (0, hull_scale_max], 256x), bounds (a non-finite box), empty (no part), changed (a level's link moved between
 // slices), box (bubble_from_box: a degenerate box or radius).
 enum class HullGuard : std::uint8_t { none, cache, read, list, budget, chain, model, lod, extent, scale, bounds, empty,
                                       changed, box };
