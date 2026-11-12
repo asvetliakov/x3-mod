@@ -800,6 +800,95 @@ void draw_lathe_hull(Target& t, const LatheHullLane& h) {
     dev->SetDepthStencilSurface(old.p);
     dev->EndScene();
 }
+// FL 69 A (2026-11-12): the hull as the scene colour, lit and light (the stand-in a darkening would show on): its
+// triangles depth-tested into t.scene_s over a dark blue sky (alpha 1 everywhere), Lambert from the screen-space normal
+// with a 5 m two-tone panel pattern, linear 0.24 to 0.8.
+void draw_lathe_hull_colour(Target& t, const LatheHullLane& h) {
+    static IDirect3DVertexShader9* vs = nullptr;
+    static IDirect3DPixelShader9* ps = nullptr;
+    static IDirect3DVertexDeclaration9* decl = nullptr;
+    if (!vs) {
+        const char* vsrc = "float4 c0:register(c0); struct O{ float4 p:POSITION; float3 v:TEXCOORD0; };"
+                           " O main(float3 v:POSITION){ O o; o.p = float4(c0.x * v.x, c0.y * v.y, (v.z - c0.z) * c0.w, v.z);"
+                           " o.v = v; return o; }";
+        const char* psrc = "float4 main(float3 v:TEXCOORD0):COLOR0{ float3 n = normalize(cross(ddx(v), ddy(v)));"
+                           " n = n.z > 0 ? -n : n; float lam = saturate(dot(n, normalize(float3(-0.45, 0.6, -0.66))));"
+                           " float2 q = floor(v.xy * 0.04); float panel = fmod(abs(q.x + q.y), 2.0) > 0.5 ? 1.0 : 0.8;"
+                           " float g = (0.3 + 0.5 * lam) * panel; return float4(0.92 * g, 0.96 * g, g, 1.0); }";
+        const DWORD *vw = nullptr, *pw = nullptr;
+        static Com<ID3DXBuffer> vh, ph;
+        const D3DVERTEXELEMENT9 e[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                       D3DDECL_END()};
+        if (!compile(vsrc, "vs_3_0", &vw, &vh.p) || !compile(psrc, "ps_3_0", &pw, &ph.p) ||
+            FAILED(dev->CreateVertexShader(vw, &vs)) || FAILED(dev->CreatePixelShader(pw, &ps)) ||
+            FAILED(dev->CreateVertexDeclaration(e, &decl)))
+            return;
+    }
+    Com<IDirect3DSurface9> ds, old;
+    if (FAILED(dev->CreateDepthStencilSurface(t.w, t.h, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &ds.p, nullptr))) return;
+    dev->GetDepthStencilSurface(&old.p);
+    const float n = 6.f, f = 1e6f;
+    const float c0[4] = {1.6f, 1.6f * float(t.w) / float(t.h), n, f / (f - n)};
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.scene_s.p);
+    dev->SetDepthStencilSurface(ds.p);
+    dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(255, 10, 14, 24), 1.f, 0);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZENABLE, TRUE);
+    dev->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+    dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    dev->SetVertexDeclaration(decl);
+    dev->SetVertexShader(vs);
+    dev->SetPixelShader(ps);
+    dev->SetVertexShaderConstantF(0, c0, 1);
+    dev->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST, 0, UINT(h.v.size() / 3), UINT(h.idx.size() / 3), h.idx.data(),
+                                D3DFMT_INDEX16, h.v.data(), 12);
+    dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+    dev->SetDepthStencilSurface(old.p);
+    dev->EndScene();
+}
+// The pass over the scene as it stands (no clear: the bright hull stays under the draws).
+std::pair<HRESULT, rr::WeaponEffectsReport> draw_over(rr::WeaponEffectsPass& pass, const rr::WeaponEffectsFrame& f) {
+    dev->BeginScene();
+    dev->SetRenderTarget(0, g.scene_s.p);
+    rr::WeaponEffectsReport r{};
+    const HRESULT hr = pass.run(f, &r);
+    dev->EndScene();
+    return {hr, r};
+}
+// The whole FP16 target read back as RGBA floats (row-major, 4 per pixel); empty on failure.
+std::vector<float> read_rgba(Target& t, IDirect3DSurface9* source) {
+    std::vector<float> out;
+    if (FAILED(dev->GetRenderTargetData(source, t.sysmem.p))) return out;
+    D3DLOCKED_RECT lr{};
+    if (FAILED(t.sysmem.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
+    out.resize(std::size_t(t.w) * t.h * 4);
+    for (UINT y = 0; y < t.h; ++y) {
+        const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
+        for (UINT x = 0; x < t.w * 4; ++x) out[std::size_t(y) * t.w * 4 + x] = half_to_float(row[x]);
+    }
+    t.sysmem.p->UnlockRect();
+    return out;
+}
+// A judging frame as it stands (RGBA linear, no added hull grey) into dump-shield/<name>.pfm.
+void dump_plain(const char* name, const std::vector<float>& rgba, unsigned w, unsigned h) {
+    if (rgba.size() != std::size_t(w) * h * 4) return;
+    CreateDirectoryA("dump-shield", nullptr);
+    char path[128];
+    std::snprintf(path, sizeof path, "dump-shield/%s.pfm", name);
+    FILE* f = std::fopen(path, "wb");
+    if (!f) return;
+    std::fprintf(f, "PF\n%u %u\n-1.0\n", w, h);
+    std::vector<float> row(std::size_t(w) * 3);
+    for (unsigned yy = h; yy-- > 0;) {
+        for (unsigned x = 0; x < w; ++x)
+            for (unsigned k = 0; k < 3; ++k) row[3 * x + k] = rgba[(std::size_t(yy) * w + x) * 4 + k];
+        std::fwrite(row.data(), sizeof(float), row.size(), f);
+    }
+    std::fclose(f);
+}
 // The lane's view depth per pixel (0 on sky), read back.
 std::vector<float> read_lane_depth(Target& t) {
     std::vector<float> out;
@@ -855,6 +944,10 @@ ws::LatheCache fixture_lathes;
 rr::WeaponPatch titan_timing[2][wc::max_patches];
 unsigned titan_timing_count[2] = {0, 0};
 LatheHullLane titan_timing_lane;
+// FL 69 A: the Titan's flank 446 m from the eye under 16 spread live hits (the lathe draws and the hull lane), timed too.
+rr::WeaponPatch titan_flight[wc::max_patches], titan_flight64[wc::max_patches];
+unsigned titan_flight_count = 0, titan_flight64_count = 0; // 16 and 64 (core::owner_hits) live hits
+LatheHullLane titan_flight_lane;
 // The bubble's CPU twin in double from a bubble draw: the owner's centre and axes in view, the bubble's centre and
 // half-extents (owner frame).
 struct BubbleTwin {
@@ -5058,6 +5151,399 @@ int main(int argc, char** argv) {
             }
         }
 
+        // (f) FL 69 A (2026-11-12, "the lathe darkened the whole hull"): the flight's geometry, the Titan's +x flank 446 m
+        // from the eye (the hull past the screen's edges), 16 live hits spread over the flank at ages 0.1 to 2.5 s (the
+        // flight's live=13..16 under sustained fire), the bright lit hull as the scene colour (draw_lathe_hull_colour).
+        // A = the hull alone, B = the hull + the lathe draws, C = the lathe draws on black (the cells: any channel > 0).
+        // Outside the cells B - A is 0 in every channel, alpha included; inside B - A >= 0 and B - A = C to fp16 rounding
+        // (the pass adds its radiance and nothing else). The same through the production TemporalPass (the stage callback
+        // in its bracket, the flown far / camera-gate configuration, 8 frames without jitter): stage on - off is 0 outside
+        // the cells dilated by 3 px and nowhere negative. Last, the records past their life draw nothing.
+        {
+            const double flank_m = 446.0, half_width_m = double(mesh.hull_hi[0]) / metre;
+            const unsigned now = 4000;
+            stage_titan(side_rows, side_contact, wc::patch_capital, true);
+            put32(fake_node, wc::layout::node_pos + 8,
+                  std::uint32_t(std::int32_t(std::lround((flank_m + half_width_m) * metre / s))));
+            stage_ring.slots[0].t0_game_ms = now - 2500;
+            unsigned max_t0 = now - 2500, hits = 1;
+            const int spread_slices[15] = {3, 5, 7, 8, 10, 11, 13, 14, 16, 18, 19, 21, 23, 25, 27};
+            for (unsigned k = 0; k < 15; ++k) {
+                double p[3];
+                profile_point(titan, spread_slices[k], (50.0 + 80.0 * double((k * 7) % 15) / 14.0) * pi / 180.0, p);
+                const std::int32_t at[3] = {std::int32_t(std::lround(p[0])), std::int32_t(std::lround(p[1])),
+                                            std::int32_t(std::lround(p[2]))};
+                const unsigned t0 = now - 100 - 160 * ((k * 4) % 15);
+                add_stage_hit(t0, at, wc::patch_capital);
+                max_t0 = std::max(max_t0, t0);
+                ++hits;
+            }
+            titan_flight_lane = lathe_hull_lane(titan);
+            draw_lathe_hull(g, titan_flight_lane);
+            const std::vector<float> depth = read_lane_depth(g);
+            static rr::WeaponDecal flight_decals[wc::max_decals];
+            const ws::Counts n = ws::build(stage_ring, now, &lathe_read, identity_camera(), lathe_tuning(), titan_flight,
+                                           wc::max_patches, flight_decals, wc::max_decals, nullptr, nullptr, &fixture_lathes);
+            titan_flight_count = n.patches;
+            unsigned cells = 0, lathe_draws = 0, quads = 0;
+            for (unsigned i = 0; i < n.patches; ++i) {
+                const rr::WeaponPatch& p = titan_flight[i];
+                cells += p.cells;
+                lathe_draws += p.lathe != nullptr;
+                quads += unsigned(p.lathe_r1 - p.lathe_r0) * unsigned(p.lathe_c1 - p.lathe_c0);
+            }
+            rr::WeaponEffectsFrame f = base_frame(g);
+            f.patches = titan_flight;
+            f.patch_count = n.patches;
+            const auto on_black = draw(pass, f);
+            const std::vector<float> C = read_rgba(g, g.scene_s.p);
+            draw_lathe_hull_colour(g, titan_flight_lane);
+            const std::vector<float> A = read_rgba(g, g.scene_s.p);
+            draw_lathe_hull_colour(g, titan_flight_lane);
+            const auto over = draw_over(pass, f);
+            const std::vector<float> B = read_rgba(g, g.scene_s.p);
+            const std::size_t px = std::size_t(g.w) * g.h;
+            const bool read_ok = C.size() == px * 4 && A.size() == px * 4 && B.size() == px * 4 && depth.size() == px;
+            std::vector<unsigned char> lit(px, 0), around(px, 0);
+            unsigned lit_px = 0, hull_px = 0, lit_hull_px = 0, out_changed = 0, darkened = 0;
+            double out_max = 0, alpha_max = 0, min_delta = 0, add_err = 0;
+            for (std::size_t i = 0; read_ok && i < px; ++i) {
+                lit[i] = C[4 * i] > 0.f || C[4 * i + 1] > 0.f || C[4 * i + 2] > 0.f;
+                lit_px += lit[i];
+                hull_px += depth[i] > 0.f;
+                lit_hull_px += lit[i] && depth[i] > 0.f;
+                bool changed = false;
+                for (unsigned k = 0; k < 4; ++k) {
+                    const double d = double(B[4 * i + k]) - double(A[4 * i + k]);
+                    if (k == 3) alpha_max = std::max(alpha_max, std::fabs(d));
+                    if (!lit[i]) {
+                        out_max = std::max(out_max, std::fabs(d));
+                        changed = changed || d != 0.0;
+                    } else if (k < 3) {
+                        min_delta = std::min(min_delta, d);
+                        darkened += d < 0.0;
+                        add_err = std::max(add_err, std::fabs(d - double(C[4 * i + k])) /
+                                                        std::max(double(B[4 * i + k]), 1e-3));
+                    }
+                }
+                out_changed += changed;
+            }
+            // the cells dilated by 3 px (the resolve's neighbourhood and history taps)
+            for (UINT y = 0; read_ok && y < g.h; ++y)
+                for (UINT x = 0; x < g.w; ++x) {
+                    if (!lit[std::size_t(y) * g.w + x]) continue;
+                    for (int dy = -3; dy <= 3; ++dy)
+                        for (int dx = -3; dx <= 3; ++dx) {
+                            const int xx = int(x) + dx, yy = int(y) + dy;
+                            if (xx >= 0 && yy >= 0 && xx < int(g.w) && yy < int(g.h)) around[std::size_t(yy) * g.w + xx] = 1;
+                        }
+                }
+            std::printf("LATHE case=flight_spread flank_m=%.0f hits=%u draws=%u lathe_draws=%u lathes=%u cells=%u "
+                        "cells_per_hit=%.1f cells_dropped=%u band_quads=%u lit_px=%u hull_px=%u lit_hull_share=%.4f "
+                        "on_black=%08lx over=%08lx\n",
+                        flank_m, hits, n.patches, lathe_draws, n.lathes, cells, double(cells) / double(hits), n.cells_dropped,
+                        quads, lit_px, hull_px, hull_px ? double(lit_hull_px) / double(hull_px) : 0.0,
+                        static_cast<unsigned long>(on_black.first), static_cast<unsigned long>(over.first));
+            std::printf("LATHE case=bright_hull read=%u out_changed_px=%u out_max=%.6g alpha_max=%.6g min_delta=%.6g "
+                        "darkened=%u additive_rel_err=%.6g\n",
+                        unsigned(read_ok), out_changed, out_max, alpha_max, min_delta, darkened, add_err);
+            report("lathe_flight_spread_drawn", read_ok && on_black.first == S_OK && over.first == S_OK && n.lathes == 1 &&
+                                                    lathe_draws == n.patches && n.patches >= 1 && lit_px > 1000, "");
+            report("lathe_bright_hull_unchanged_outside_the_cells", read_ok && out_changed == 0 && alpha_max == 0.0, "");
+            report("lathe_bright_hull_adds_only", read_ok && darkened == 0 && add_err <= 2e-3, "");
+            // The production resolve over the same scene, stage off and on.
+            std::vector<float> resolved[2];
+            bool taa_ok = read_ok;
+            Com<IDirect3DTexture9> motion;
+            Com<IDirect3DSurface9> motion_s;
+            taa_ok = taa_ok && SUCCEEDED(dev->CreateTexture(g.w, g.h, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A32B32G32R32F,
+                                                            D3DPOOL_DEFAULT, &motion.p, nullptr)) &&
+                     SUCCEEDED(motion.p->GetSurfaceLevel(0, &motion_s.p));
+            for (unsigned on = 0; on < 2 && taa_ok; ++on) {
+                rr::TemporalPass taa;
+                HRESULT hr = taa.initialize(dev, nullptr, reinterpret_cast<const DWORD*>(rr::temporal_resolve_program()),
+                                            nullptr, nullptr, reinterpret_cast<const DWORD*>(rr::hdr_writeback_program()));
+                if (SUCCEEDED(hr)) hr = taa.configure_far();
+                rr::Output o{};
+                for (unsigned fr = 0; fr < 8 && SUCCEEDED(hr); ++fr) {
+                    draw_lathe_hull_colour(g, titan_flight_lane);
+                    const float quad[4][4] = {{-1, 1, 0.5f, 1}, {1, 1, 0.5f, 1}, {-1, -1, 0.5f, 1}, {1, -1, 0.5f, 1}};
+                    dev->BeginScene();
+                    dev->SetRenderTarget(0, motion_s.p);
+                    dev->SetVertexDeclaration(quad_decl);
+                    dev->SetVertexShader(quad_vs);
+                    dev->SetPixelShader(motion_ps);
+                    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(float) * 4);
+                    dev->SetRenderTarget(0, g.scene_s.p);
+                    dev->EndScene();
+                    StageContext ctx{&pass, f, S_FALSE};
+                    rr::FrameInputs in;
+                    in.color = g.scene_tex.p;
+                    in.current_depth = g.lane_tex.p;
+                    in.width = g.w;
+                    in.height = g.h;
+                    in.epoch = 1;
+                    const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+                    std::copy(identity, identity + 16, in.clip_to_previous);
+                    in.history_allowed = true;
+                    in.caller_scene_open = true;
+                    in.caller_queries_idle = true;
+                    in.motion = motion.p;
+                    in.motion_policy = rr::MotionPolicy::PerPixel;
+                    in.reactive_policy = rr::ReactivePolicy::DerivedFromDepthSentinel;
+                    in.sentinel_camera = true;
+                    in.sentinel_strict_sky = true;
+                    in.sky_history_exit_px = .25f;
+                    in.far_weight = .985f;
+                    in.far_d0 = .9995f;
+                    in.far_inv = 1.f / (.9999f - .9995f);
+                    in.far_speed_lo = x3::temporal::kFarSpeedLo;
+                    in.far_speed_hi = x3::temporal::kFarSpeedHi;
+                    in.thin_region_weight = .97f;
+                    in.thin_region_relax = 1;
+                    in.thin_region_camera_gate = true;
+                    if (on) {
+                        in.stage_callback = &stage_callback;
+                        in.stage_context = &ctx;
+                    }
+                    dev->BeginScene();
+                    hr = taa.run(in, &o);
+                    dev->EndScene();
+                    if (SUCCEEDED(hr) && on && (!taa.diagnostics().stage_ran || ctx.result != S_OK)) hr = E_FAIL;
+                    if (SUCCEEDED(hr) && fr == 7) {
+                        Com<IDirect3DSurface9> out_s;
+                        if (!o.color || FAILED(o.color->GetSurfaceLevel(0, &out_s.p))) hr = E_FAIL;
+                        else resolved[on] = read_rgba(g, out_s.p);
+                    }
+                }
+                taa.shutdown();
+                taa_ok = SUCCEEDED(hr) && resolved[on].size() == px * 4;
+                if (!taa_ok) std::printf("LATHE case=bright_hull_taa_fail on=%u result=%08lx\n", on, static_cast<unsigned long>(hr));
+            }
+            unsigned taa_out_changed = 0, taa_darkened = 0;
+            double taa_out_max = 0, taa_min = 0, taa_gain_num = 0, taa_gain_den = 0;
+            for (std::size_t i = 0; taa_ok && i < px; ++i) {
+                bool changed = false;
+                for (unsigned k = 0; k < 3; ++k) {
+                    const double d = double(resolved[1][4 * i + k]) - double(resolved[0][4 * i + k]);
+                    taa_min = std::min(taa_min, d);
+                    taa_darkened += d < 0.0;
+                    if (!around[i]) {
+                        taa_out_max = std::max(taa_out_max, std::fabs(d));
+                        changed = changed || d != 0.0;
+                    } else if (lit[i]) {
+                        taa_gain_num += d;
+                        taa_gain_den += double(C[4 * i + k]);
+                    }
+                }
+                taa_out_changed += changed;
+            }
+            std::printf("LATHE case=bright_hull_taa ok=%u frames=8 out_changed_px=%u out_max=%.6g min_delta=%.6g "
+                        "darkened=%u cells_gain=%.4f\n",
+                        unsigned(taa_ok), taa_out_changed, taa_out_max, taa_min, taa_darkened,
+                        taa_gain_den > 0 ? taa_gain_num / taa_gain_den : 0.0);
+            report("lathe_bright_hull_taa_unchanged_outside_and_never_darker",
+                   taa_ok && taa_out_changed == 0 && taa_darkened == 0, "");
+            if (read_ok) {
+                std::vector<float> rgb(px * 3), delta(px * 4, 0.f);
+                for (std::size_t i = 0; i < px; ++i) {
+                    for (unsigned k = 0; k < 3; ++k) rgb[3 * i + k] = C[4 * i + k];
+                    bool negative = false;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        const float d = B[4 * i + k] - A[4 * i + k];
+                        negative = negative || d < 0.f;
+                        delta[4 * i + k] = 4.f * std::max(d, 0.f);
+                    }
+                    if (negative) delta[4 * i] = 1.f, delta[4 * i + 1] = delta[4 * i + 2] = 0.f; // any darker pixel red
+                }
+                dump_shield("titan_flight_lathe", rgb, depth, g.w, g.h);
+                dump_plain("titan_flight_hull", A, g.w, g.h);
+                dump_plain("titan_flight_hull_lathe", B, g.w, g.h);
+                dump_plain("titan_flight_delta_x4", delta, g.w, g.h);
+                if (taa_ok) dump_plain("titan_flight_hull_lathe_taa", resolved[1], g.w, g.h);
+            }
+            // The owner's worst case for the timing rows: 48 more live hits over the flank (64, core::owner_hits).
+            for (unsigned k = 0; k < 48; ++k) {
+                double p[3];
+                profile_point(titan, int(2 + (k * 11) % 28), (45.0 + 90.0 * double((k * 13) % 48) / 47.0) * pi / 180.0, p);
+                const std::int32_t at[3] = {std::int32_t(std::lround(p[0])), std::int32_t(std::lround(p[1])),
+                                            std::int32_t(std::lround(p[2]))};
+                const unsigned t0 = now - 50 - 50 * ((k * 5) % 48);
+                add_stage_hit(t0, at, wc::patch_capital);
+                max_t0 = std::max(max_t0, t0);
+            }
+            const ws::Counts n64 = ws::build(stage_ring, now, &lathe_read, identity_camera(), lathe_tuning(), titan_flight64,
+                                             wc::max_patches, flight_decals, wc::max_decals, nullptr, nullptr, &fixture_lathes);
+            titan_flight64_count = n64.patches;
+            unsigned cells64 = 0;
+            for (unsigned i = 0; i < n64.patches; ++i) cells64 += titan_flight64[i].cells;
+            std::printf("LATHE case=flight_64_hits draws=%u lathes=%u cells=%u cells_dropped=%u area_dropped=%u\n", n64.patches,
+                        n64.lathes, cells64, n64.cells_dropped, n64.area_dropped);
+            if (read_ok) { // its judging frames: on the fixture's dark-grey hull and on the bright hull
+                draw_lathe_hull(g, titan_flight_lane);
+                std::vector<float> rgb64;
+                render(pass, titan_flight64, n64.patches, nullptr, &rgb64, nullptr, true);
+                dump_shield("titan_flight_64_lathe", rgb64, depth, g.w, g.h);
+                rr::WeaponEffectsFrame f64 = f;
+                f64.patches = titan_flight64;
+                f64.patch_count = n64.patches;
+                draw_lathe_hull_colour(g, titan_flight_lane);
+                draw_over(pass, f64);
+                dump_plain("titan_flight_64_hull_lathe", read_rgba(g, g.scene_s.p), g.w, g.h);
+            }
+            // FL 69 A follow-up (coordinator, 2026-11-13): the flight's own hits at 5120x1440, exact zero tests. The 13
+            // shield hits the FL 69 log has on the Titan (owner b1907de0) before frame 94270 (owner-frame engine
+            // positions, ages from the newest), the Titan seen from its +y side 446 m off the hull. (1) every cell of
+            // the drawn band unlit (the draws' cells not lit yet, the ring hits 10 s old) and the hits at the end of
+            // their fade (2.93 s, alive): the count and maximum of non-zero pixels, exact; (2) the live hits: the
+            // non-zero pixels outside the map's cells (all of a draw's cells lit at once) dilated by 3 px; (3) the
+            // band per draw (rings r0..r1 of 40, columns c0..c1 of 24, the chart box) for one flank hit and the 13.
+            {
+                static const struct { unsigned age_ms; std::int32_t pos[3]; } flight_hits[13] = {
+                    {2637, {24894, 30591, -363698}}, {2391, {26749, 25916, -356338}}, {2169, {26528, 26464, -355931}},
+                    {1933, {26885, 25486, -356140}}, {1782, {17197, 30179, -359655}}, {1656, {24838, 29594, -357541}},
+                    {1411, {20459, 29553, -360432}}, {1134, {26452, 27626, -354914}}, {1016, {26808, 31044, -357402}},
+                    {765, {36130, 34936, -356687}},  {504, {23100, 28045, -359726}},  {243, {20985, 29277, -359390}},
+                    {0, {14339, 28126, -356151}}};
+                const unsigned fnow = 20000; // game ms: every flight t0 stays positive
+                Target big;
+                const bool big_ok = make_target(big, 5120, 1440);
+                auto stage_flight = [&](unsigned shift_ms, unsigned count) {
+                    const double ctr[3] = {double(flight_hits[12].pos[0]), double(flight_hits[12].pos[1]),
+                                           double(flight_hits[12].pos[2])};
+                    stage_titan(top_rows, ctr, wc::patch_capital, true);
+                    // top_rows: local x -> view -y, y -> view -z, z -> view +x; the newest hit straight ahead, its
+                    // lateral offset flank_m from the eye
+                    put32(fake_node, wc::layout::node_pos + 0, std::uint32_t(-flight_hits[12].pos[2]));
+                    put32(fake_node, wc::layout::node_pos + 4, std::uint32_t(flight_hits[12].pos[0]));
+                    put32(fake_node, wc::layout::node_pos + 8, std::uint32_t(std::int32_t(std::lround(
+                                                                    flank_m * metre / s + double(flight_hits[12].pos[1])))));
+                    stage_ring.slots[0].t0_game_ms = fnow - shift_ms;
+                    for (unsigned k = 13 - count; k < 12; ++k)
+                        add_stage_hit(fnow - shift_ms - flight_hits[k].age_ms, flight_hits[k].pos, wc::patch_capital);
+                };
+                auto bands = [&](const char* name, const rr::WeaponPatch* p, unsigned count) {
+                    for (unsigned i = 0; i < count; ++i)
+                        std::printf("LATHE case=band set=%s draw=%u cells=%u rings=%u..%u columns=%u..%u of=%u,%u "
+                                    "box_u=%.1f..%.1f box_v=%.1f..%.1f period=%.1f wrap_rows=%.0f (metres)\n",
+                                    name, i, p[i].cells, unsigned(p[i].lathe_r0), unsigned(p[i].lathe_r1),
+                                    unsigned(p[i].lathe_c0), unsigned(p[i].lathe_c1), unsigned(rr::weapon_lathe_rings),
+                                    unsigned(rr::weapon_lathe_segments), p[i].lathe_box[0] / metre, p[i].lathe_box[2] / metre,
+                                    p[i].lathe_box[1] / metre, p[i].lathe_box[3] / metre, p[i].lathe_period / metre,
+                                    double(p[i].lathe_wrap_rows));
+                };
+                static rr::WeaponPatch one[wc::max_patches], live[wc::max_patches], faded[wc::max_patches],
+                    unlit[wc::max_patches], all_lit[wc::max_patches];
+                stage_flight(0, 1);
+                const unsigned n_one = ws::build(stage_ring, fnow, &lathe_read, identity_camera(), lathe_tuning(), one,
+                                                 wc::max_patches, flight_decals, wc::max_decals, nullptr, nullptr,
+                                                 &fixture_lathes).patches;
+                bands("one_hit", one, n_one);
+                stage_flight(0, 13);
+                const LatheHullLane top_lane = lathe_hull_lane(titan);
+                const unsigned n_live = ws::build(stage_ring, fnow, &lathe_read, identity_camera(), lathe_tuning(), live,
+                                                  wc::max_patches, flight_decals, wc::max_decals, nullptr, nullptr,
+                                                  &fixture_lathes).patches;
+                bands("flight_13", live, n_live);
+                stage_flight(2930, 13); // every hit 2.93 s or older: alive (patch_lifetime_ms), every cell faded out
+                const unsigned n_faded = ws::build(stage_ring, fnow, &lathe_read, identity_camera(), lathe_tuning(), faded,
+                                                   wc::max_patches, flight_decals, wc::max_decals, nullptr, nullptr,
+                                                   &fixture_lathes).patches;
+                for (unsigned i = 0; i < n_live; ++i) {
+                    unlit[i] = live[i];
+                    all_lit[i] = live[i];
+                    for (unsigned c = 0; c < live[i].cells; ++c) {
+                        unlit[i].cell_since[c] = -1.f;  // not lit yet
+                        all_lit[i].cell_since[c] = 0.f; // lit this instant
+                    }
+                    for (unsigned h = 0; h < rr::weapon_patch_hits; ++h) unlit[i].age_s[h] = 10.f, all_lit[i].age_s[h] = 10.f;
+                }
+                Com<IDirect3DQuery9> occ;
+                dev->CreateQuery(D3DQUERYTYPE_OCCLUSION, &occ.p);
+                // One frame on black over the top lane: its RGBA and the pixels the draws rasterized.
+                auto frame = [&](const rr::WeaponPatch* p, unsigned count, DWORD* raster) {
+                    rr::WeaponEffectsFrame bf = base_frame(big);
+                    bf.patches = p;
+                    bf.patch_count = count;
+                    dev->BeginScene();
+                    dev->SetRenderTarget(0, big.scene_s.p);
+                    dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+                    if (occ.p) occ.p->Issue(D3DISSUE_BEGIN);
+                    rr::WeaponEffectsReport r{};
+                    pass.run(bf, &r);
+                    if (occ.p) occ.p->Issue(D3DISSUE_END);
+                    dev->EndScene();
+                    *raster = 0;
+                    const DWORD start = GetTickCount();
+                    while (occ.p && occ.p->GetData(raster, sizeof *raster, D3DGETDATA_FLUSH) == S_FALSE &&
+                           GetTickCount() - start < 5000) {
+                    }
+                    return read_rgba(big, big.scene_s.p);
+                };
+                auto nonzero = [](const std::vector<float>& v, std::size_t i) {
+                    return v[4 * i] != 0.f || v[4 * i + 1] != 0.f || v[4 * i + 2] != 0.f || v[4 * i + 3] != 0.f;
+                };
+                bool exact_ok = big_ok && n_live >= 1;
+                if (big_ok) {
+                    draw_lathe_hull(big, top_lane);
+                    const std::size_t bpx = std::size_t(big.w) * big.h;
+                    DWORD r_unlit = 0, r_faded = 0, r_live = 0, r_all = 0;
+                    const std::vector<float> v_unlit = frame(unlit, n_live, &r_unlit);
+                    const std::vector<float> v_faded = frame(faded, n_faded, &r_faded);
+                    const std::vector<float> v_all = frame(all_lit, n_live, &r_all);
+                    const std::vector<float> v_live = frame(live, n_live, &r_live);
+                    exact_ok = exact_ok && v_unlit.size() == bpx * 4 && v_faded.size() == bpx * 4 &&
+                               v_all.size() == bpx * 4 && v_live.size() == bpx * 4;
+                    unsigned nz_unlit = 0, nz_faded = 0, nz_out = 0, nz_live = 0, cells_px = 0;
+                    double max_unlit = 0, max_faded = 0, max_out = 0;
+                    std::vector<unsigned char> mask(bpx, 0);
+                    for (std::size_t i = 0; exact_ok && i < bpx; ++i) {
+                        for (unsigned k = 0; k < 4; ++k) {
+                            max_unlit = std::max(max_unlit, double(std::fabs(v_unlit[4 * i + k])));
+                            max_faded = std::max(max_faded, double(std::fabs(v_faded[4 * i + k])));
+                        }
+                        nz_unlit += nonzero(v_unlit, i);
+                        nz_faded += nonzero(v_faded, i);
+                        nz_live += nonzero(v_live, i);
+                        if (!nonzero(v_all, i)) continue;
+                        ++cells_px;
+                        const int x = int(i % big.w), y = int(i / big.w);
+                        for (int dy = -3; dy <= 3; ++dy)
+                            for (int dx = -3; dx <= 3; ++dx)
+                                if (x + dx >= 0 && y + dy >= 0 && x + dx < int(big.w) && y + dy < int(big.h))
+                                    mask[std::size_t(y + dy) * big.w + std::size_t(x + dx)] = 1;
+                    }
+                    for (std::size_t i = 0; exact_ok && i < bpx; ++i) {
+                        if (mask[i] || !nonzero(v_live, i)) continue;
+                        ++nz_out;
+                        for (unsigned k = 0; k < 4; ++k) max_out = std::max(max_out, double(std::fabs(v_live[4 * i + k])));
+                    }
+                    std::printf("LATHE case=exact_zero width=5120 height=1440 draws=%u faded_draws=%u band_px=%lu "
+                                "unlit_nonzero_px=%u unlit_max=%.9g faded_band_px=%lu faded_nonzero_px=%u faded_max=%.9g "
+                                "map_cells_px=%u live_nonzero_px=%u live_outside_cells3_px=%u live_outside_max=%.9g\n",
+                                n_live, n_faded, static_cast<unsigned long>(r_unlit), nz_unlit, max_unlit,
+                                static_cast<unsigned long>(r_faded), nz_faded, max_faded, cells_px, nz_live, nz_out, max_out);
+                    exact_ok = exact_ok && r_unlit > 0 && nz_unlit == 0 && nz_faded == 0 && nz_out == 0 && nz_live > 0;
+                    std::vector<float> live_rgb(bpx * 3);
+                    std::vector<float> top_depth(bpx, 0.f);
+                    const std::vector<float> d = read_lane_depth(big);
+                    for (std::size_t i = 0; i < bpx && exact_ok; ++i)
+                        for (unsigned k = 0; k < 3; ++k) live_rgb[3 * i + k] = v_live[4 * i + k];
+                    if (exact_ok && d.size() == bpx) dump_shield("titan_flight13_top_5k", live_rgb, d, big.w, big.h);
+                }
+                report("lathe_unlit_band_exactly_zero_5k", exact_ok, "");
+                big.release();
+            }
+            // The records past their life (the latest hit's t0 + patch_lifetime_ms + 1): no draw stays. The ring holds
+            // the follow-up's flight hits now, staged at 20000 game ms and earlier.
+            max_t0 = std::max(max_t0, 20000u);
+            const ws::Counts gone = ws::build(stage_ring, max_t0 + wc::patch_lifetime_ms + 1, &lathe_read, identity_camera(),
+                                              lathe_tuning(), titan_flight + n.patches, wc::max_patches - n.patches,
+                                              flight_decals, wc::max_decals, nullptr, nullptr, &fixture_lathes);
+            std::printf("LATHE case=past_life patches=%u lathes=%u decals=%u\n", gone.patches, gone.lathes, gone.decals);
+            report("lathe_records_past_life_draw_nothing", gone.patches == 0 && gone.lathes == 0 && gone.decals == 0, "");
+        }
+
         // (e) the timing rows' Titan: two hits on the flank (slice 9 at 90 degrees, slice 12 at 70), the decal and the lathe
         double second[3];
         profile_point(titan, 12, 70.0 * pi / 180.0, second);
@@ -5867,6 +6353,9 @@ int main(int argc, char** argv) {
                      // its lathe, on the Titan's hull lane, 12 km from the eye (the whole ship on screen)
                      {"titan_two_hits_decal", titan_timing[0], titan_timing_count[0], nullptr, false, &titan_timing_lane},
                      {"titan_two_hits_lathe", titan_timing[1], titan_timing_count[1], nullptr, false, &titan_timing_lane},
+                     // FL 69 A: the flank 446 m from the eye under 16 spread live hits (the hull past the screen)
+                     {"titan_flight_spread_lathe", titan_flight, titan_flight_count, nullptr, false, &titan_flight_lane},
+                     {"titan_flight_64_hits_lathe", titan_flight64, titan_flight64_count, nullptr, false, &titan_flight_lane},
                      {"fighter_two_hits_one_region", fighter_one, 1, nullptr},
                      {"fighter_two_regions", fighter_regions, 2, nullptr},
                      {"capital_close_two_hits_one_region", capital_one, 1, nullptr},
