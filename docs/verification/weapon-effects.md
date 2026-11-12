@@ -4336,3 +4336,77 @@ included (host load). Builds: FL `build-nowalk-fl` clean 0 warnings (sha256 pref
 **Open.** The installed AP table (`C:\X3\x3m\weapon_effects.json`) is schema 2 with no profiles [M]: with this build every
 AP ship's shield hit stays native until AP is regenerated with schema 3 (FL: schema 3, 403 profiles). Review F3 is
 accepted as a test gap (coordinator, 2026-11-13). Not flown.
+
+## FL 70 A (2026-11-13)
+
+Flown on FL run 70 (`84a2ccaaa`, every ship on its profile lathe). The log (`C:\X3FL\x3m.log`, 133 MB, session
+`20261113-005645`; queried with
+[`log_fields.py`](../../verification/results/fl70a-shield/log_fields.py)) advances the game clock 4.25 to 5.13 ms a
+frame in the fight windows (the events' `t0` against their frames; 2962 game ms over frames 5937 to 6632), so a
+300-frame period is 1.3 to 1.5 s, not 5 s [M].
+
+**A: nose fire lit the hull elsewhere.** All 550 logged Titan shield hits (owner radius 545751, TShips row 11) lie
+inside the installed trimmed lathe, none past z1 (+1001 m) [M]; the nose-on bursts (frames 30000 to 38999) register
+at z 746 to 843 m, 158 to 255 m behind z1, within 130 m of the axis, their travel (`dir=`) along -z. Run70's
+`map_lathe` keeps the contact's z and projects it laterally onto that slice's rim, at an angle set by the contact's
+small offset from the axis: a band of clusters around the hull 200 m back, a median 67 m and up to 240 m off the bolts'
+line of flight [M] (the screenshot's mid-hull and top clusters). The z orientation (bow +z), the slice arithmetic with
+z0 != -z1 (the fixture maps every ring onto itself within 0.0001 m) and the domes are correct [M]; the cause is the
+lateral projection of interior contacts. Fix (`stage::lathe_entry`): a hit inside the lathe moves back along its
+projectile's travel to where it entered the lathe (a walk of a quarter of the thinnest half-axis, 9.6 m on the Titan,
+then eight bisections), memoised per ring slot, sequence and mesh build in `stage::build`; an outside contact (a mast
+past a dome) and a hit without travel keep `map_lathe`. On the 550 hits all enter on their line (0.00 m off), the nose
+bursts at z 853 to 952 m on the bow's underside, the stern bursts at -875 to -911 m [M]; the walk costs 0.175 us a hit
+best, once per record [M]. Producer: [`titan_hits.py`](../../verification/results/fl70a-shield/titan_hits.py) with
+[`titan_hits.cpp`](../../verification/results/fl70a-shield/titan_hits.cpp) (the production header, the profile
+`verification/results/ship-profiles/titan_profile_smoothed.json`). In the log `dir_fallback=0` over the whole flight, so
+every hit carries a travel [M]. Review guard: the entry must lie within `lathe_entry_reach` (1.25) x the hull's
+half-width (the largest inflated ring half-axis, 348 m on the Titan) of the contact, else the hit keeps `map_lathe` and
+counts `lathe_entry_far=` (a travel out of the hull, from a shooter inside the inflated lathe or a node z that is not
+the flight, crossing to the far side); the 550 logged hits walk at most 1.08 of it, none falls back [M]. A crossing
+shorter than the reach (across a narrow section) is not caught.
+
+**B: the lattice without fire.** The cells fade on their game-time clocks with Run239's law and clocks (`cfg+0x708`,
+ripple 3.333 /s, fade 2.2 s x (1 +- 0.2), record life 2941 ms; unchanged since `06179f0c2`) [M]. The "10 s" reading
+was the frame count at an assumed 60 Hz: the three hits of frames 5937 to 5947 expire about frame 6638, inside the
+6600 to 6900 period that logs `expired=3` [M]. `patches` counts draws and `drew` frames with a draw (at most 300 a
+period), so `patches > drew` is several draws a frame (owners, spills), not a cap; `lathes` counted owners with a live
+record whether or not a cell was lit. The persistent lattice is A's scatter under steady fire: each nose bolt lit a
+fresh cluster at a new rim angle for 2.2 s, at about 370 hits/s on the ships in view (`hits=541` in 300 frames of
+about 4.9 ms), so the ring filled [I]. Fix: `fill_region` drops a cell past its own fade (`cell_fade_s`, the pixel program's hash; a hash within 1/64 of 0
+counts as the slowest fade), so a record whose cells have all faded draws nothing, and `lathes` counts only owners
+that drew. The lathe's key row wraps by integer floor division on the CPU; review fix: `weapon_lathe_ps.hlsl` wraps by
+`floor((k.y + 0.5) / rows)`, so a seam row (an exact multiple, where `floor(k.y / rows)` could round one period low)
+hashes as the CPU's row 0 (program regenerated, 1781 words, bytecode sha256 prefix `b4e9414b57a6daf0`). The fixture's
+`lathe_cells_fade_on_the_game_clock` advances a fake cfg block's `cfg_game_ms` word by the engine step (4 ms; SETA 40
+ms), stamps three Titan hits 30 ms apart from it and releases through Present's predicate (`core::release_due`, now
+shared with `weapon_effects_patch.cpp`): draws stop 2.844 s (2.840 s at SETA) after the newest hit, then 25 (3) frames
+with live records and no draw or lathe, every record released at 2944 ms (2960 ms), no drawn cell past its own fade
+[M]. `age_law_seta6_measured` now takes the stage's own last lit game ms (2819 against the slowest bound 2840). Cost,
+same-session A/B ([`fade_filter_bench.py`](../../verification/results/fl70a-shield/fade_filter_bench.py), sixteen
+capitals x six faces, sixteen hits aged 0 to 2.9 s, three alternating rounds): base `84a2ccaaa` best 300.8 to 303.0
+us, the filter 316.5 to 319.7 us (+5 %), with 11 % fewer drawn cells (21312 → 18880) [M]. The review's cheap options:
+the integer wrap is in and faded cells are marked in place instead of compacted (no measurable change: the first
+version measured 321 to 324 us against 305.7 in its own session); a test at insertion is the per-candidate form,
+which measured worst (fixture row best 221 us), since a faded cell is tested once per covering hit. The fixture row
+`sixteen_capitals_16_hits` (decal) reads best 199.6 us in the final run (means 287 us, a loaded host), 0.4 us under
+its 200 us target; the earlier record's best was 172.5 to 175.4 us in other sessions [M].
+
+**C: the Heavy Centaur's late shield.** No hit registered: from frame 9000 to 12900 every period logs `events=0`, and the
+first event of any kind is the Centaur's first shield hit at frame 13156 (shield 0.9988, full; row 257's lathe built
+that frame; 45 draws by frame 13200), inside the run's first 64 rows, which are all logged [M]. The delay is range or
+aim, not a refusal [I]. The 28 `forwarded=1` rows are all `hull_hit` (16 on the Centaur `ac17f648`, 9 on `ac185a38`, 3
+others; `absorbed=0`, shield 0), and over the flight `forwarded` = `events - hits` = 653: every forwarded event is a
+hull hit, none a ship's shield hit [M].
+
+**D: counters.** Over the 224 period rows: `ships_native` 0 in every verdict, `others_native` 0, every `lathe_*`
+refusal 0, eight lathes built (rows 17, 257, 9, 27, 256, 13, 11, 255), `retired` 112, `shield_unread` 4, `drained`
+10, `dropped`, `cells_dropped` and `area_dropped` 0 [M]. `hits_dropped` sums 1,209,380: under the heavy fire of frames
+27900 to 31800 an owner holds up to 785 live records against `owner_hits` 64, so the oldest feed no cell [M].
+
+Builds (dirty tree on `84a2ccaaa`, review fixes in): FL `build-fl70fix-fl` 0 warnings (d3d9.dll sha256 prefix
+`adbb72e1148eece3`),
+`check_no_x87` FL PASS (1085 functions), AP `build-fl70fix-ap` 0 warnings; host `test_weapon_effects_core`, `_hook`,
+`_table`, `_launch` 59 OK. Native fixture (`run_weapon_effects.py --host native`): D3D 158 PASS, AP hook 145 PASS, FL
+hook 74 PASS. Not flown. Open (review finding 5, accepted): the fixture's clock path writes the fake cfg word with a
+memcpy (not the engine), and the CPU/GPU hash parity of `cell_fade_s` is not verified pixel by pixel.

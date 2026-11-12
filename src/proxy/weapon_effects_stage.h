@@ -9,9 +9,10 @@
 // The weapon effects' scene-end step (docs/architecture/weapon-effects.md 3.1, 5.1 item 3 and 5.1.1): the ring's
 // stage-owned shield hits (flag_stage) become hex patches. The surface (core::shield_surface; user decision 2026-11-12 on
 // FL 69 A, which removed the runtime hull walk): a ship draws on the lathe of its TShips row's offline profile
-// (weapon_effects_lathe.h) whatever its tier, its hits mapped along their slice and lit in the lathe's one chart
-// (fill_lathe); the hook staged it only with a usable profile (core::ship_profile_verdict), and a ship whose profile the
-// stage cannot resolve again draws nothing (counted by LatheRefusal). The own ship in the cockpit view draws on its eye
+// (weapon_effects_lathe.h) whatever its tier, its hits moved to their projectile's entry into the lathe (lathe_entry,
+// FL 70 A), mapped along their slice and lit in the lathe's one chart (fill_lathe); the hook staged it only with a
+// usable profile (core::ship_profile_verdict), and a ship whose profile the stage cannot resolve again draws nothing
+// (counted by LatheRefusal). The own ship in the cockpit view draws on its eye
 // sphere (Run240 Flight G; weapon_effects_bubble.h), radius its profile bounds' smallest half-extent x bubble_scale:
 // each hit mapped onto it radially (bubble_point), lighting both faces of every axis with the same cells, clocks and
 // draws as below, a face draw's box over the sphere's sheet (bubble_box) and the pixel program drawing its near and far
@@ -37,8 +38,8 @@
 // production) and validated: obj+0x70 == node, node+0x28 == handle and the dying bit obj+0x40 & 0x8000000 clear, else
 // every record of that owner leaves the ring (a dead or replaced owner draws nothing). Ages are game time (cfg+0x718):
 // SETA shortens the patch exactly as the engine's own effects. World = engine integers x world_scale (0.01); world ->
-// view in double (camera_scene_'s rows), so a far camera keeps the patch on its owner. Event::dir is not used (kept for
-// the diagnostics rows). No allocation, no libm; at most max_patches + max_decals outputs, O(ring_capacity x owners)
+// view in double (camera_scene_'s rows), so a far camera keeps the patch on its owner. Event::dir (the projectile's
+// travel) moves a lathe hit to its entry into the lathe (lathe_entry); the other surfaces do not use it. No allocation, no libm; at most max_patches + max_decals outputs, O(ring_capacity x owners)
 // with owners <= max_owners.
 namespace x3m::weapon_effects::stage {
 namespace core = x3m::weapon_effects::core;
@@ -211,15 +212,20 @@ inline void anchor_frame(unsigned k, float a[3], float u[3], float v[3]) noexcep
     cross3(a, u, v);
 }
 // A cell's own fade (game seconds): weapon_hex_patch.hlsl's fade x (1 + stagger (hash.y - 1/2)), the hash of its key
-// and the region seed in float (hex_hash).
+// and the region seed in float (hex_hash). A hash within 1/64 of 0 counts as 1 (the slowest fade): the pixel
+// program's frac may round across the wrap there, and the stage must never drop a cell the program still lights.
 inline float cell_fade_s(int kx, int ky, float seed, float fade_s, float stagger) noexcept {
-    auto fr = [](float v) { return v - float(scalar::floor(double(v))); };
+    auto fr = [](float v) { // v - floor(v) by the truncating conversion (|v| < 2^31 here: keys within +-2048)
+        const float t = float(int(v));
+        return v - (t > v ? t - 1.f : t);
+    };
     float x = fr(float(kx) * 0.1031f), y = fr(float(ky) * 0.1030f), z = fr((float(kx) + float(ky) + seed * 17.f) * 0.0973f);
     const float d = x * (y + 33.33f) + y * (z + 33.33f) + z * (x + 33.33f);
     x += d;
     y += d;
     z += d;
-    return fade_s * (1.f + stagger * (fr((x + z) * y) - 0.5f));
+    const float h = fr((x + z) * y);
+    return fade_s * (1.f + stagger * ((h < 0.015625f ? 1.f : h) - 0.5f));
 }
 // dropped: a region or decal the frame's budget (patch_cap, decal_cap, max_owners) or a degenerate frame refused (a
 // region whose cells have all faded draws nothing and is not a drop); cells_dropped: lit cells no draw carries (a
@@ -241,6 +247,7 @@ struct Counts {
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
     unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_seam = 0;
     unsigned lathe_deferred = 0; // ships whose mesh waits for a later frame's build (lathe_builds_per_frame spent)
+    unsigned lathe_entry_far = 0; // records whose entry lay past the walk's reach (LatheEntry::beyond), counted once
     std::uint32_t stale_rows[2] = {0, 0};
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
@@ -350,7 +357,9 @@ struct RegionStats {
 // smallest non-negative time since lit) and that hit's level, so a later hit resets a cell to full and never adds; its
 // anchor (cell_anchor: the depth of the hit that bounds its surface along the axis) is the covering hit
 // nearest to its centre in the plane, so a newer hit elsewhere in its footprint does not move the box much; a cell
-// past the slowest fade is dropped. A ring hit (the lattice's newest four younger than the ring's travel,
+// past its own fade (cell_fade_s, the pixel program's: it lights nothing there; FL 70 A, 2026-11-13) is dropped, so a
+// region whose cells have all faded draws nothing; hash_rows (> 0: the lathe's chart period in key rows) wraps the
+// key row of the hash as weapon_lathe_ps.hlsl does. A ring hit (the lattice's newest four younger than the ring's travel,
 // 1 / ripple_speed) also carries the footprint cells its front has not reached yet (not lit), so its ring shows over
 // them. Every draw carries the extent (the footprint's outermost cell centres plus two cell
 // circumradii: the pixel program lights the surface only within it of the cell's hit). The cells go into draws of
@@ -362,7 +371,8 @@ struct RegionStats {
 // table; a spill adds a sort of the cells.
 inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const float centre[3], const float frame[9],
                             unsigned tier, unsigned anchor, const float (*points)[3], const float* ages, unsigned n,
-                            const float colour[3], const Tuning& t, RegionStats* stats = nullptr) noexcept {
+                            const float colour[3], const Tuning& t, RegionStats* stats = nullptr,
+                            float hash_rows = 0.f) noexcept {
     RegionStats local{};
     RegionStats& st = stats ? *stats : local;
     st = RegionStats{};
@@ -397,7 +407,8 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
     head.lathe = nullptr; // likewise unless fill_lathe makes it a lathe draw
 
     const float v = t.ripple_speed * head.radius, ring_life = 1.f / t.ripple_speed;
-    const float max_since = t.fade_s * (1.f + 0.5f * t.stagger);
+    const float max_since = t.fade_s * (1.f + 0.5f * t.stagger), min_fade = t.fade_s * (1.f - 0.5f * t.stagger);
+    const int wrap = hash_rows > 0.5f && hash_rows < 1e6f ? int(hash_rows + 0.5f) : 0;
     RegionScratch sc;
     std::memset(sc.table, 0, sizeof sc.table);
     unsigned count = 0;
@@ -458,16 +469,38 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
                 }
             }
     }
-    if (!count) return 0; // every cell faded: nothing lit, not a drop
+    // The cells past their own fade (the newest clock of each; the hash only past the fastest fade) leave the map:
+    // marked with the clock `faded` (above every live one), so the selection below skips them without moving the
+    // candidates. The key row wraps by integer floor division (weapon_lathe_ps.hlsl's floor((k.y + 0.5) / rows)).
+    constexpr float faded = 3.0e38f;
+    unsigned live = count;
+    float oldest = 0.f;
+    for (unsigned i = 0; i < n; ++i) oldest = ages[i] > oldest ? ages[i] : oldest;
+    if (oldest > min_fade) // the oldest hit's age bounds every clock
+        for (unsigned k = 0; k < count; ++k) {
+            if (!(sc.since[k] > min_fade)) continue;
+            const int kx = int(std::uint32_t(sc.key[k]) >> 12) - renderer::weapon_cell_key_bias;
+            int ky = int(std::uint32_t(sc.key[k]) & 0xfffu) - renderer::weapon_cell_key_bias;
+            if (wrap) {
+                ky %= wrap;
+                ky += ky < 0 ? wrap : 0;
+            }
+            if (sc.since[k] > cell_fade_s(kx, ky, head.seed, t.fade_s, t.stagger)) {
+                sc.since[k] = faded;
+                --live;
+            }
+        }
+    if (!live) return 0; // every cell faded: nothing lit, not a drop
     // The kept cells: all of them when they fit the draws, else the newest clocks (the oldest, the dimmest, go first;
     // a ring's cells not reached yet come first; ties keep the earlier candidate, a newer hit's).
     const unsigned per_region = t.region_draws ? t.region_draws : 1u;
     const unsigned draws_max = out_cap < per_region ? out_cap : per_region;
     const unsigned room = draws_max * renderer::weapon_patch_cells;
     unsigned kept = 0;
-    if (count <= room) {
-        for (unsigned k = 0; k < count; ++k) sc.order[kept++] = std::uint16_t(k);
-    } else {
+    if (live <= room) {
+        for (unsigned k = 0; k < count; ++k)
+            if (sc.since[k] < faded) sc.order[kept++] = std::uint16_t(k);
+    } else { // the faded marks sort last and stay out (room < live: the limit is a live clock)
         std::memcpy(sc.select, sc.since, count * sizeof(float));
         std::nth_element(sc.select, sc.select + (room - 1), sc.select + count);
         const float limit = sc.select[room - 1];
@@ -482,7 +515,7 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
                 sc.order[kept++] = std::uint16_t(k);
             }
         }
-        st.dropped += count - kept;
+        st.dropped += live - kept;
     }
     st.cells = kept;
     const unsigned draws = (kept + renderer::weapon_patch_cells - 1) / renderer::weapon_patch_cells;
@@ -652,7 +685,7 @@ inline void fill_lathe(renderer::WeaponPatch* patches, unsigned cap, unsigned* r
     const unsigned room = free > *regions_left ? free - *regions_left : 1u;
     RegionStats rs{};
     const unsigned drawn =
-        fill_region(patches + n->patches, room, centre, frame, tier, 0, points, sub_ages, used, colour, t, &rs);
+        fill_region(patches + n->patches, room, centre, frame, tier, 0, points, sub_ages, used, colour, t, &rs, rows);
     for (unsigned d = 0; d < drawn; ++d) {
         renderer::WeaponPatch& p = patches[n->patches + d];
         const float box[4] = {p.box[0], p.box[1], p.box[3], p.box[4]};
@@ -759,6 +792,17 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
     };
     static Pick pick[core::ring_capacity];
     static OwnerMap map;
+    // The lathe hits' entry points by ring slot (lathe_entry): valid while the slot's sequence, contact, travel and the
+    // mesh (its address and build serial) match; a pure cache (a stale entry is recomputed, never drawn), so it keeps no
+    // state that can draw. 40 bytes a slot, 40 KB of .bss.
+    struct LatheMemo {
+        const LatheMesh* mesh;
+        std::uint32_t sequence, serial;
+        std::int32_t pos[3];
+        std::int8_t dir[3];
+        float entry[3];
+    };
+    static LatheMemo lathe_memo[core::ring_capacity];
     map.clear();
     unsigned picks = 0;
     for (unsigned i = 0; i < core::ring_capacity; ++i) {
@@ -918,9 +962,30 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                 if (!lathe) continue;
                 const unsigned first = n.patches;
                 if (!eye) {
+                    // Each hit at its projectile's entry into the lathe (lathe_entry), memoised per record and mesh: a
+                    // record's contact, travel and mesh do not change, so each is walked once (FL 70 A, 2026-11-13).
+                    for (unsigned h = 0; h < s.count; ++h) {
+                        const unsigned i = s.index[h];
+                        const core::Event& e = ring.slots[i];
+                        LatheMemo& memo = lathe_memo[i];
+                        if (memo.sequence != e.sequence || memo.mesh != lathe || memo.serial != lathe->serial ||
+                            !lathe->serial ||
+                            std::memcmp(memo.pos, e.pos, sizeof memo.pos) != 0 ||
+                            std::memcmp(memo.dir, e.dir, sizeof memo.dir) != 0) {
+                            const float travel[3] = {float(e.dir[0]), float(e.dir[1]), float(e.dir[2])};
+                            const LatheEntry walked = lathe_entry(*lathe, plan.points[h], travel, memo.entry);
+                            n.lathe_entry_far += walked == LatheEntry::beyond;
+                            memo.mesh = lathe;
+                            memo.sequence = e.sequence;
+                            memo.serial = lathe->serial;
+                            std::memcpy(memo.pos, e.pos, sizeof memo.pos);
+                            std::memcpy(memo.dir, e.dir, sizeof memo.dir);
+                        }
+                        std::memcpy(plan.points[h], memo.entry, sizeof memo.entry);
+                    }
                     fill_lathe(patches, patch_cap, &regions_left, centre, frame, tier, *lathe, plan.points, plan.ages,
                                s.count, colour, t, &n);
-                    ++n.lathes;
+                    n.lathes += n.patches > first; // an owner whose cells have all faded draws nothing and counts not
                 } else {
                     float r = 1e30f;
                     for (unsigned k = 0; k < 3; ++k) {

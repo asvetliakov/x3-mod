@@ -315,6 +315,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[12] += n.lathe_cache;
     weapon_drops_[13] += n.lathe_stale;
     weapon_drops_[14] += n.lathe_deferred;
+    weapon_drops_[15] += n.lathe_entry_far;
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     HRESULT hr = weapon_->run(f, &report);

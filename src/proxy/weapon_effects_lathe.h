@@ -35,7 +35,9 @@
 // scale (1, or its perimeter over lathe_min_width of the median: a narrow ring spans that share of the period, so the
 // cells' shrink across the hull stops at lathe_min_width near the nose, the tail and the dome tips); the stage scales v
 // by the chart's period (lathe_period: the median body ring's perimeter rounded to whole lattice periods, so the hex
-// lattice closes around a ring of scale 1). One hit maps to the lathe (map_lathe) along its slice:
+// lattice closes around a ring of scale 1). A hit inside the lathe first moves back along its projectile's travel to
+// where it entered the lathe (lathe_entry, FL 70 A; the engine's contact can lie deep in its slice). It then maps to
+// the lathe (map_lathe) along its slice:
 // the hit's z picks the body ring pair, their (cx, cy, hx, hy) interpolated, and the hit is projected laterally onto that
 // ellipse in its normalised space ((x - cx) / hx, (y - cy) / hy), not radially from the centre; past the end rings onto
 // the dome's ellipsoid radially in its normalised space.
@@ -82,7 +84,12 @@ struct LatheMesh {
     float dome_depth[2] = {0.f, 0.f};                       // the stern's and the bow's d
     float perimeter = 0.f;                                  // the median body ring's perimeter
     float hull_lo[3]{}, hull_hi[3]{};                       // the profile's own bounds (before the inflation)
+    float march = 0.f;          // lathe_entry's step: a quarter of the thinnest ring half-axis or dome depth
+    unsigned march_steps = 0;   // its steps across the lathe's bounds (the diagonal), at most lathe_march_max
+    float half_width = 0.f;     // the largest body ring half-axis (inflated): lathe_entry's bound
+    std::uint32_t serial = 0;   // the LatheCache build that made it (0: built outside a cache)
 };
+constexpr unsigned lathe_march_max = 512;
 // The scene-to-view factors of the root's axis scales (16.16); false outside (0, core::profile_axis_scale_max].
 inline bool lathe_factors(const std::int32_t axis[3], float f[3]) noexcept {
     for (unsigned i = 0; i < 3; ++i) {
@@ -247,6 +254,30 @@ inline bool build_lathe(const core::ShipProfile& p, const std::int32_t axis[3], 
         }
         m->ring_u[r] = 0.5f * (m->ring_umin[r] + m->ring_umax[r]);
     }
+    // lathe_entry's walk: a step of a quarter of the thinnest ring half-axis or dome depth, its count across the
+    // lathe's bounding diagonal (a walk from any inside point leaves the lathe within it).
+    float thin = m->dome_depth[0] < m->dome_depth[1] ? m->dome_depth[0] : m->dome_depth[1], wide = 0.f;
+    float lo[3] = {1e30f, 1e30f, 1e30f}, hi[3] = {-1e30f, -1e30f, -1e30f};
+    for (unsigned r = 0; r < lathe_rings; ++r) {
+        if (r >= lathe_dome_rings && r < lathe_dome_rings + S) {
+            thin = m->ring[r][2] < thin ? m->ring[r][2] : thin;
+            thin = m->ring[r][3] < thin ? m->ring[r][3] : thin;
+            wide = m->ring[r][2] > wide ? m->ring[r][2] : wide;
+            wide = m->ring[r][3] > wide ? m->ring[r][3] : wide;
+        }
+        for (unsigned i = 0; i < 3; ++i) {
+            lo[i] = m->ring_lo[r][i] < lo[i] ? m->ring_lo[r][i] : lo[i];
+            hi[i] = m->ring_hi[r][i] > hi[i] ? m->ring_hi[r][i] : hi[i];
+        }
+    }
+    const float dx = hi[0] - lo[0], dy = hi[1] - lo[1], dzz = hi[2] - lo[2];
+    const float diag = scalar::sqrt(dx * dx + dy * dy + dzz * dzz);
+    m->march = 0.25f * thin;
+    m->half_width = wide;
+    if (!(m->march > 0.f) || !(diag < 1e30f)) return false;
+    const float steps = diag / m->march + 1.f;
+    m->march_steps = steps < float(lathe_march_max) ? unsigned(steps) + 1u : lathe_march_max;
+    m->serial = 0;
     return true;
 }
 // The chart period for a lattice of cell (view units): the median perimeter rounded to whole lattice periods (sqrt 3
@@ -334,6 +365,72 @@ inline void map_lathe(const LatheMesh& m, const float p[3], float out[3], float 
     a = a >= lathe_dome_rings ? lathe_dome_rings - 1 : a;
     const unsigned ra = bow ? er + a : er - a, rb = bow ? ra + 1 : ra - 1;
     lathe_chart(m, ra, rb, k - float(a), lateral > 1e-6f ? atan2_sse(q[0], q[1]) : 0.f, chart, scale);
+}
+// The lathe's shape at owner-frame point x (view units): its normalised squared radius less one, < 0 inside, > 0
+// outside; the body (between the end rings' z) the slice pair's interpolated ellipse ((x - cx) / hx, (y - cy) / hy),
+// past an end ring its dome's half ellipsoid (the third axis (z - z_end) / d). A NaN point reads as outside.
+inline float lathe_shape(const LatheMesh& m, const float x[3]) noexcept {
+    constexpr unsigned first = lathe_dome_rings, last = lathe_dome_rings + lathe_body_rings - 1;
+    const float zf = m.ring_z[first], zl = m.ring_z[last];
+    if (x[2] >= zf && x[2] <= zl) {
+        const float t = (x[2] - zf) / (zl - zf) * float(last - first);
+        unsigned i = unsigned(t);
+        i = i >= last - first ? last - first - 1 : i;
+        const float w = t - float(i);
+        const float *a = m.ring[first + i], *b = m.ring[first + i + 1];
+        const float dx = (x[0] - (a[0] + (b[0] - a[0]) * w)) / (a[2] + (b[2] - a[2]) * w);
+        const float dy = (x[1] - (a[1] + (b[1] - a[1]) * w)) / (a[3] + (b[3] - a[3]) * w);
+        return dx * dx + dy * dy - 1.f;
+    }
+    const bool bow = x[2] > zl;
+    const unsigned er = bow ? last : first;
+    const float* e = m.ring[er];
+    const float dx = (x[0] - e[0]) / e[2], dy = (x[1] - e[1]) / e[3];
+    const float dz = (x[2] - m.ring_z[er]) / m.dome_depth[bow ? 1 : 0];
+    const float g = dx * dx + dy * dy + dz * dz - 1.f;
+    return g == g ? g : 1.f;
+}
+// Where a hit's projectile entered the lathe (FL 70 A, 2026-11-13): the engine's contact p (owner frame, view units)
+// lies on the hull, inside the shield, and away from a ring's rim it can lie deep in its slice (the Titan's nose hits
+// registered 158 to 255 m behind z1 within 130 m of the axis), where map_lathe's lateral projection throws it onto
+// the slice's rim at a near-random angle, a band of clusters around the hull where the bolts did not strike. The entry
+// is the first point of the shape's sign change walking from p against the travel (the event's dir: the projectile's
+// local z in the owner frame, any length), in steps of m.march, then bisected eight times (march / 256). The entry
+// must lie within lathe_entry_reach x the hull's half-width (m.half_width, the largest inflated ring half-axis; the
+// 550 logged Titan hits walk at most 1.08 of it, 376 m) of p: a travel that does not point into the hull (a shooter
+// inside the inflated lathe, a projectile node whose z is not its flight) would cross the hull and exit on its far side
+// (FL 70 A review; a crossing shorter than the reach, across a narrow section, is not caught). LatheEntry::none, *out
+// = p, when the travel is zero, p is not inside the lathe (a mast past a dome keeps map_lathe's radial dome; a graze
+// outside its slice the lateral projection) or the walk finds no exit within m.march_steps; LatheEntry::beyond, *out =
+// p, past the reach. O(steps) shape reads; the stage memoises it per record (build's lathe memo).
+constexpr float lathe_entry_reach = 1.25f;
+enum class LatheEntry : std::uint8_t { none, entered, beyond }; // not "far": a Windows macro
+inline LatheEntry lathe_entry(const LatheMesh& m, const float p[3], const float travel[3], float out[3]) noexcept {
+    for (unsigned i = 0; i < 3; ++i) out[i] = p[i];
+    const float n2 = travel[0] * travel[0] + travel[1] * travel[1] + travel[2] * travel[2];
+    if (!(n2 > 1e-12f) || !(n2 < 1e30f) || !(m.march > 0.f) || !(lathe_shape(m, p) < 0.f)) return LatheEntry::none;
+    const float k = m.march / scalar::sqrt(n2);
+    const float step[3] = {-travel[0] * k, -travel[1] * k, -travel[2] * k};
+    float in = 0.f, x[3];
+    for (unsigned s = 1; s <= m.march_steps; ++s) {
+        for (unsigned i = 0; i < 3; ++i) x[i] = p[i] + step[i] * float(s);
+        if (lathe_shape(m, x) < 0.f) {
+            in = float(s);
+            continue;
+        }
+        float lo = in, hi = float(s);
+        for (unsigned b = 0; b < 8; ++b) {
+            const float mid = 0.5f * (lo + hi);
+            for (unsigned i = 0; i < 3; ++i) x[i] = p[i] + step[i] * mid;
+            if (lathe_shape(m, x) < 0.f) lo = mid;
+            else hi = mid;
+        }
+        const float at = 0.5f * (lo + hi);
+        if (at * m.march > lathe_entry_reach * m.half_width) return LatheEntry::beyond; // *out stays p
+        for (unsigned i = 0; i < 3; ++i) out[i] = p[i] + step[i] * at;
+        return LatheEntry::entered;
+    }
+    return LatheEntry::none;
 }
 // The rings and columns whose quads hold chart box [u0, u1] x [v0, v1] (v in perimeter fractions; a box past the seam
 // or wider than the chart takes every column), with one column of margin; and the band's bounds (owner frame).
@@ -470,6 +567,7 @@ struct LatheCache {
         free->used = ++clock;
         free->frame = frame_id;
         free->serial = ++builds;
+        free->mesh.serial = free->serial;
         return &free->mesh;
     }
 };

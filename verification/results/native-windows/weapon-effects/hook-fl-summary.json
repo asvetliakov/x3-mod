@@ -20,17 +20,21 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "7c0c4265efa6cdc3eb1895eb9f5087a9e3c96874",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "84a2ccaaa25ca49556dde2572b0e03007ec971a5-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_patch.cpp",
+      "src/proxy/weapon_effects_patch.h"
+    ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "3931492180af41b388fe4642db79fa6c5a6a073f10b84f2b972f553ed69960d6",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "7dd6dba8a700f7a074ff711596a7015fe08b8bb2185e5bdf42997499e4dc1d80",
-      "src/proxy/weapon_effects_patch.h": "459c3ef931be4198fa84639a7cec8e32e7719074a5c8d718e01e8f5631e45bbc",
+      "src/proxy/weapon_effects_patch.cpp": "ac2200c9b072ded56fe709ea54d43a06353fd63ea48e13169040da55152f1080",
+      "src/proxy/weapon_effects_patch.h": "440ed0e2b42d55614ddab1e2f5e54edd719de94e61bc5bec133e4c47b4b954ed",
       "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "53326bd4b7eae7b6f8929a0ddd8d5b9028ade8508ad187f96c8eeab0b6aafd25",
+      "src/proxy/weapon_effects_core.h": "5fb2f1eb3677fe02cf17b5fb85c88465717655f7d9df6ac8cdf744052b79bd56",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_table.h": "7047d2bdfdf8cb9cb88adb415f2b9ef9a39c7b9cb851bd77ac501b2d9fad6f1d",
@@ -252,7 +256,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "8ffe6c142e17857d8cc04eb120357267ee0705d30938c91d9b0a3d4e84c47edc"
+    "executable_sha256": "06848d372ad38181fe1d938276f9c4b5afdf0dbe5f8419dca2f9737fe173a957"
   },
   "host": {
     "name": "native-windows",

@@ -1515,6 +1515,13 @@ inline bool expired(std::uint32_t now, const Event& e, std::uint32_t extra_ms = 
     const std::uint32_t a = age_ms(now, e.t0_game_ms);
     return a > std::uint32_t(e.lifetime_ms) + extra_ms; // a wrapped (future) t0 is a huge age
 }
+// Present's release of a ring record (weapon_effects_patch.cpp, every frame after the stage): a census-only record once
+// logged, a stage-owned one past its game-time life at now (cfg+0x718, FL +0x708; a hull hit's floored elements and a
+// death's floor add hull_floor_ms and boom_floor_ms); an unreadable clock (now 0) releases no stage record.
+inline bool release_due(const Event& e, std::uint32_t now, std::uint32_t hull_floor_ms, std::uint32_t boom_floor_ms) noexcept {
+    const std::uint32_t extra = e.role == role_hull_hit ? hull_floor_ms : e.role == role_explosion ? boom_floor_ms : 0u;
+    return !(e.flags & flag_stage) || (now && expired(now, e, extra));
+}
 // The patch look (docs/architecture/weapon-effects.md 5.1.1), the lab's controls (tools/effects/
 // generate_weapon_effects_lab.py injects every value below by name). Hexagon cells of cell_m (centre to centre) fixed in
 // world units per PatchTier on a stable grid in the owner's frame (six axis regions, each a planar lattice

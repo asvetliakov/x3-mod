@@ -54,7 +54,9 @@ float3 cell_shade(float2 f, float3 fw3, float w) {
     float3 shade = 0.0;
     [branch] if (dot(found, 1.0) > 0.5) {
         float since = abs(clock) > 0.5 ? max(abs(clock) - 1.0, 0.0) : -1.0;
-        float2 kh = side.w > 0.5 ? float2(k.x, k.y - side.w * floor(k.y / side.w)) : k;
+        // (k.y + 0.5): the quotient of an integer row is never within rounding of an integer, so a seam row (an exact
+        // multiple of the period's rows) wraps to 0 like the stage's integer division (FL 70 A review)
+        float2 kh = side.w > 0.5 ? float2(k.x, k.y - side.w * floor((k.y + 0.5) / side.w)) : k;
         shade = hex_shade(c.xy, c.z, fw, kh, float2(0.5, 0.8660254) * k * lattice.y, since, clock < -0.5, 4, false) * w;
     }
     return shade;
