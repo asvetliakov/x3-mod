@@ -4410,3 +4410,20 @@ Builds (dirty tree on `84a2ccaaa`, review fixes in): FL `build-fl70fix-fl` 0 war
 `_table`, `_launch` 59 OK. Native fixture (`run_weapon_effects.py --host native`): D3D 158 PASS, AP hook 145 PASS, FL
 hook 74 PASS. Not flown. Open (review finding 5, accepted): the fixture's clock path writes the fake cfg word with a
 memcpy (not the engine), and the CPU/GPU hash parity of `cell_fade_s` is not verified pixel by pixel.
+
+### FL 71 A: the hull lattice is holes in a remote station's sun shadow (2026-11-13)
+
+The user's six F8 capture groups (frames 9607–40340, `debug = 1`, the Titan watched from a fighter, no shot fired)
+settled the FL 69–71 A "blanket": it lies only on the part of the hull shadowed by a remote station, flips between a
+normal and a hex-patterned shadow as the ship or camera moves, and vanished in the last group. Triage
+([`fl71a-shadow-lattice/`](../../verification/results/fl71a-shadow-lattice/), all figures measured): the lattice is
+stored in the shadow maps (nearest-texel occlusion without PCF reproduces it); the caster is station model `00005597`
+(25 records, 152,900 primitives, half-extents 13–17 km) 137 km toward the sun, whose geometry has holes on an 83 m
+hexagonal pitch (hole share 12–22 % in cascade 1 at 0.73 m per texel, 2.7–5.9 % as three-armed stars in cascade 2 at
+3.66 m); the lattice/speckle boundary is the camera-centred c1/c2 boundary sweeping the hull (first-containing-cascade
+rule); the vanish is the station's level-of-detail swap at frame 39121 reclassifying it as moving (`moving_dropped=1`
+at 39122, out of every map by 40333). Gate 4 refused 0 draws at every capture frame; the Titan's lathe was built at
+frame 12623, after the first capture already showed the lattice: the shield stage is not involved (the FL 69/70 A
+attributions to the stage's cells were wrong). Physically the sun's 0.53° disc gives a 1.2 km penumbra at 133 km, so
+an 83 m hole cannot be visible: the shadow pass is hard at any caster distance. Design note in progress
+(`docs/architecture/shadow-far-caster-penumbra.md`); the FL 70 A entry-mapping and fade fixes stand on their own.
