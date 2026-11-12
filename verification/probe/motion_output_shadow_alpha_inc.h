@@ -262,6 +262,303 @@ void run_shadow_alpha(Fixture& f) {
     api(f.d->SetTexture(0, nullptr), "SetTexture 0 null"); api(f.d->SetPixelShader(nullptr), "SetPixelShader null");
     std::printf("RESULT PASS checks=%u\n", checks);
 }
+// Far-caster penumbra script ("shadowpenumbra" mode; docs/architecture/shadow-far-caster-penumbra.md), the
+// production ShadowReplayPass driven directly as above. Three 1,024^2 maps at the world texels of the flown cascades
+// 1-3 (1,500 / 7,500 / 37,500 at 4,096^2: 0.732 / 3.662 / 18.311 units), the flown depth range (300,000 toward the
+// light, max(512, 2 extent) behind), the camera plane through the centre. Per map an opaque flat receiver 100 units
+// behind the camera plane and, `distance` toward the light (500 / 3,000 / 4,000 / 4,500 / 5,000 / 6,000 / 8,000 /
+// 10,000 / 50,000 / 137,000: the grille's transitions at ref 1 and ref 128 and the far field), an
+// alpha-tested plate covering the map: a honeycomb grille (256^2 texture, nine levels box-filtered here, pitch 83
+// units, hexagonal cut-outs of 16 % open area, the tile 3 x 2 sqrt(3) pitches), GREATEREQUAL ref 1 and ref 128.
+// Per map the share of plate texels killed (the receiver's depth shows), the map's hash and the hole bitmap
+// (penumbra_r<ref>_d<distance>_c<k>.bits, numpy packbits order) for the runner's mip-chain prediction. Constants
+// from shadow_replay_penumbra with the camera at the origin and the identity sun basis. Built with
+// X3M_FIXTURE_PENUMBRA_BASE against the pass before the change: no constants, the unbiased program, the same scene.
+// Then the replay's GPU time (D3DQUERYTYPE_TIMESTAMP) at the flown map sizes (4,096^2 x 4 and 2,048^2, extents 250
+// to 150,000), every map covered by the receiver and the alpha plate, at 500 and 137,000 units.
+namespace {
+constexpr unsigned penumbra_map_size = 1024, penumbra_tex_size = 256, penumbra_tex_levels = 9;
+constexpr double penumbra_pitch = 83., penumbra_hex_radius = .231 * 83.; // 12 holes of 2.598 s^2 per 3 x 2 sqrt(3) pitch^2: 16 %
+constexpr double penumbra_light = 300000.;
+constexpr double penumbra_distances[10] = {500., 3000., 4000., 4500., 5000., 6000., 8000., 10000., 50000., 137000.};
+constexpr unsigned penumbra_refs[2] = {1, 128};
+double penumbra_tile_w() { return 3. * penumbra_pitch; }
+double penumbra_tile_h() { return 2. * std::sqrt(3.) * penumbra_pitch; }
+// Level 0: alpha 0 inside a flat-topped hexagon of circumradius s around each lattice point (the triangular lattice
+// of pitch P), 255 elsewhere, tested at the texel centre (binary, as the station's grille); level n+1 the rounded
+// 2x2 mean of level n. The runner rebuilds the same chain and compares the hash.
+std::vector<std::vector<unsigned char>> penumbra_chain() {
+    std::vector<std::vector<unsigned char>> levels(penumbra_tex_levels);
+    const unsigned n = penumbra_tex_size;
+    const double w = penumbra_tile_w(), h = penumbra_tile_h(), s = penumbra_hex_radius, r3 = std::sqrt(3.);
+    levels[0].resize(std::size_t(n) * n);
+    for (unsigned y = 0; y < n; ++y)
+        for (unsigned x = 0; x < n; ++x) {
+            const double px = (x + .5) / n * w, py = (y + .5) / n * h;
+            bool open = false;
+            for (int j = -1; j <= 2 && !open; ++j)
+                for (int i = -1; i <= 3 && !open; ++i)
+                    for (int odd = 0; odd < 2 && !open; ++odd) {
+                        const double cx = (i + .5 * odd) * penumbra_pitch, cy = (j + .5 * odd) * r3 * penumbra_pitch;
+                        const double q = std::fabs(px - cx), r = std::fabs(py - cy);
+                        open = r <= r3 * .5 * s && r3 * q + r <= r3 * s;
+                    }
+            levels[0][std::size_t(y) * n + x] = open ? 0 : 255;
+        }
+    for (unsigned l = 1; l < penumbra_tex_levels; ++l) {
+        const unsigned m = n >> l, p = n >> (l - 1);
+        levels[l].resize(std::size_t(m) * m);
+        const auto& up = levels[l - 1];
+        for (unsigned y = 0; y < m; ++y)
+            for (unsigned x = 0; x < m; ++x) {
+                const unsigned sum = up[(2 * y) * p + 2 * x] + up[(2 * y) * p + 2 * x + 1] +
+                                     up[(2 * y + 1) * p + 2 * x] + up[(2 * y + 1) * p + 2 * x + 1];
+                levels[l][std::size_t(y) * m + x] = static_cast<unsigned char>((sum + 2) / 4);
+            }
+    }
+    return levels;
+}
+struct PenumbraCascade {
+    double extent = 0, texel = 0, behind = 0, range = 0;
+    x3m::renderer::ShadowReplayCascade cascade{};
+};
+// A flown cascade's texel (its extent over `flown_size`) and depth range on a map of `size`.
+PenumbraCascade penumbra_cascade(double flown_extent, unsigned flown_size, unsigned size) {
+    PenumbraCascade c{};
+    c.texel = 2. * flown_extent / flown_size;
+    c.extent = c.texel * size / 2.;
+    c.behind = std::max(512., 2. * flown_extent);
+    c.range = penumbra_light + c.behind;
+    c.cascade.half_extent = float(c.extent);
+    c.cascade.size = size;
+    c.cascade.depth_toward_light = float(penumbra_light);
+    c.cascade.depth_behind = float(c.behind);
+    c.cascade.forward_offset = 0.f;
+    return c;
+}
+// The law the program evaluates (host, double): max(0, log2(0.0093 max(0, distance - 2,000) / texel) - 1.5), at
+// most 15.
+double penumbra_bias(double distance, double texel) {
+    const double p = .0093 * std::max(0., distance - 2000.) / texel;
+    return std::min(std::max(0., std::log2(std::max(1., p)) - 1.5), 15.);
+}
+// An issue's rows: NDC x, y = the unit quad's x, y (its world size is the map's extent, its UV the world position);
+// the depth row constant: (world z + L) / R, world z negative toward the light.
+void penumbra_issue(x3m::renderer::ShadowReplayIssue& issue, unsigned draw, double world_z, const PenumbraCascade& c) {
+    issue = {};
+    issue.draw = std::uint16_t(draw);
+    issue.rows[0] = 1.f;
+    issue.rows[5] = 1.f;
+    issue.rows[11] = float((world_z + penumbra_light) / c.range);
+}
+// The penumbra constants of a cascade for the camera at the origin under the identity sun basis (production helper).
+void penumbra_constants(const PenumbraCascade& c, x3m::renderer::ShadowReplayMapList& list) {
+#if defined(X3M_FIXTURE_PENUMBRA_BASE)
+    (void)c; (void)list; // the pass before the change has no constants
+#else
+    x3m::renderer::CameraState camera{};
+    camera.valid = true;
+    camera.r[0] = camera.r[4] = camera.r[8] = 1.f;
+    x3m::renderer::ShadowReplayBasis basis{};
+    basis.valid = true;
+    for (unsigned i = 0; i < 3; ++i) basis.axes[i][i] = 1.;
+    require_quiet(x3m::renderer::shadow_replay_penumbra(camera, basis, c.cascade, list.penumbra), "penumbra constants");
+#endif
+}
+std::vector<float> penumbra_read_map(Fixture& f, IDirect3DSurface9* map, unsigned size) {
+    Com<IDirect3DSurface9> copy;
+    api(f.d->CreateOffscreenPlainSurface(size, size, D3DFMT_R32F, D3DPOOL_SYSTEMMEM, &copy.p, nullptr), "CreateOffscreenPlainSurface penumbra");
+    api(f.d->GetRenderTargetData(map, copy.p), "GetRenderTargetData penumbra map");
+    D3DLOCKED_RECT lock{}; api(copy->LockRect(&lock, nullptr, D3DLOCK_READONLY), "LockRect penumbra map");
+    std::vector<float> out(std::size_t(size) * size);
+    for (unsigned y = 0; y < size; ++y) std::memcpy(out.data() + std::size_t(y) * size, static_cast<const char*>(lock.pBits) + y * lock.Pitch, size * 4);
+    api(copy->UnlockRect(), "UnlockRect penumbra map");
+    return out;
+}
+// A vertex buffer of the receiver (UV 0) then one plate per cascade (UV = world position over the tile), unit quads.
+void penumbra_quads(Fixture& f, const PenumbraCascade* cascades, unsigned count, Com<IDirect3DVertexBuffer9>& vb) {
+    api(f.d->CreateVertexBuffer((count + 1) * 6 * 20, 0, 0, D3DPOOL_MANAGED, &vb.p, nullptr), "CreateVertexBuffer penumbra");
+    float* v = nullptr; api(vb->Lock(0, 0, reinterpret_cast<void**>(&v), 0), "Lock penumbra quads");
+    const float e = 1.02f; // past the map's edge
+    const float corner[6][2] = {{-e, e}, {e, e}, {-e, -e}, {e, e}, {e, -e}, {-e, -e}};
+    for (unsigned q = 0; q <= count; ++q)
+        for (const auto& c : corner) {
+            const double su = q ? cascades[q - 1].extent / penumbra_tile_w() : 0., sv = q ? cascades[q - 1].extent / penumbra_tile_h() : 0.;
+            v[0] = c[0]; v[1] = c[1]; v[2] = 0.f; v[3] = float(c[0] * su); v[4] = float(c[1] * sv); v += 5;
+        }
+    api(vb->Unlock(), "Unlock penumbra quads");
+}
+void run_shadow_penumbra(Fixture& f) {
+    using namespace x3m::renderer;
+#if defined(X3M_FIXTURE_PENUMBRA_BASE)
+    const bool base = true;
+#else
+    const bool base = false;
+#endif
+    D3DCAPS9 caps{}; api(f.d->GetDeviceCaps(&caps), "GetDeviceCaps");
+    D3DADAPTER_IDENTIFIER9 id{};
+    if (SUCCEEDED(f.factory->GetAdapterIdentifier(D3DADAPTER_DEFAULT, 0, &id))) {
+        std::printf("ADAPTER vendor=0x%04lx device=0x%04lx subsys=0x%08lx revision=%lu whql=%lu driver_version=%u.%u.%u.%u\n",
+                    id.VendorId, id.DeviceId, id.SubSysId, id.Revision, id.WHQLLevel,
+                    unsigned(HIWORD(id.DriverVersion.HighPart)), unsigned(LOWORD(id.DriverVersion.HighPart)),
+                    unsigned(HIWORD(id.DriverVersion.LowPart)), unsigned(LOWORD(id.DriverVersion.LowPart)));
+        id.Description[sizeof id.Description - 1] = 0; id.Driver[sizeof id.Driver - 1] = 0;
+        std::printf("ADAPTER_DESC %s\nADAPTER_DRIVER %s\n", id.Description, id.Driver);
+    }
+    { char path[MAX_PATH]{}; if (GetModuleFileNameA(f.runtime, path, MAX_PATH)) std::printf("D3D9_MODULE %s\n", path); }
+    std::printf("PENUMBRA_MODE base=%u ps=%08lx ps30_slots=%lu max_texture=%lu\n", unsigned(base), static_cast<unsigned long>(caps.PixelShaderVersion),
+                static_cast<unsigned long>(caps.MaxPixelShader30InstructionSlots), static_cast<unsigned long>(caps.MaxTextureWidth));
+    // The grille texture, every level written from the host chain.
+    const auto chain = penumbra_chain();
+    std::uint64_t chain_hash = 14695981039346656037ull;
+    for (const auto& level : chain) for (unsigned char b : level) { chain_hash ^= b; chain_hash *= 1099511628211ull; }
+    unsigned open = 0; for (unsigned char a : chain[0]) open += a == 0;
+    Com<IDirect3DTexture9> grille;
+    api(f.d->CreateTexture(penumbra_tex_size, penumbra_tex_size, penumbra_tex_levels, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &grille.p, nullptr), "CreateTexture grille");
+    require(grille->GetLevelCount() == penumbra_tex_levels, "the grille has its nine levels");
+    for (unsigned l = 0; l < penumbra_tex_levels; ++l) {
+        const unsigned n = penumbra_tex_size >> l;
+        D3DLOCKED_RECT lock{}; api(grille->LockRect(l, &lock, nullptr, 0), "LockRect grille");
+        for (unsigned y = 0; y < n; ++y) for (unsigned x = 0; x < n; ++x)
+            reinterpret_cast<DWORD*>(static_cast<char*>(lock.pBits) + y * lock.Pitch)[x] = (DWORD(chain[l][std::size_t(y) * n + x]) << 24) | 0x00808080u;
+        api(grille->UnlockRect(l), "UnlockRect grille");
+    }
+    std::printf("PENUMBRA_TEXTURE size=%u levels=%u pitch=%.9g hex_radius=%.9g open_share=%.6f chain_hash=%016llx\n", penumbra_tex_size, penumbra_tex_levels,
+                penumbra_pitch, penumbra_hex_radius, double(open) / chain[0].size(), static_cast<unsigned long long>(chain_hash));
+    const D3DVERTEXELEMENT9 elements[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                          {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0}, D3DDECL_END()};
+    Com<IDirect3DVertexDeclaration9> declaration;
+    api(f.d->CreateVertexDeclaration(elements, &declaration.p), "CreateVertexDeclaration penumbra");
+    const auto make_draws = [&](IDirect3DVertexBuffer9* vb, unsigned count, ShadowReplayDraw* draws, float threshold) {
+        for (unsigned i = 0; i <= count; ++i) {
+            auto& d = draws[i];
+            d = {};
+            d.vertex_buffer = vb; d.declaration = declaration.p; d.stride = 20; d.topology = D3DPT_TRIANGLELIST; d.first = 6 * i; d.primitives = 2; d.cull_mode = D3DCULL_NONE;
+            if (i) { d.alpha_texture = grille.p; d.alpha_threshold = threshold; }
+        }
+    };
+    // ---- the hole shares ----
+    PenumbraCascade cascades[3];
+    const double flown[3] = {1500., 7500., 37500.};
+    for (unsigned k = 0; k < 3; ++k) cascades[k] = penumbra_cascade(flown[k], 4096, penumbra_map_size);
+    Com<IDirect3DVertexBuffer9> vb;
+    penumbra_quads(f, cascades, 3, vb);
+    ShadowReplayPass pass;
+    pass.request_alpha_programs(true);
+    const unsigned sizes[3] = {penumbra_map_size, penumbra_map_size, penumbra_map_size};
+    api(pass.attach_cascades(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, sizes, 3), "attach penumbra pass");
+    require(pass.caps().enabled && pass.caps().alpha && pass.caps().readable, "the penumbra pass attaches with its alpha programs and readable maps");
+    const double receiver_z = 100.;
+    for (unsigned ref : penumbra_refs) {
+        ShadowReplayDraw draws[4]{};
+        make_draws(vb.p, 3, draws, float(ref) / 255.f);
+        for (double distance : penumbra_distances) {
+            ShadowReplayIssue issues[6]{};
+            ShadowReplayMapList lists[3]{};
+            for (unsigned k = 0; k < 3; ++k) {
+                penumbra_issue(issues[2 * k], 0, receiver_z, cascades[k]);
+                penumbra_issue(issues[2 * k + 1], 1 + k, -distance, cascades[k]);
+                lists[k].map = k; lists[k].issues = issues + 2 * k; lists[k].count = 2;
+                penumbra_constants(cascades[k], lists[k]);
+            }
+            ShadowReplayResult out{};
+            api(f.d->BeginScene(), "BeginScene penumbra");
+            const HRESULT hr = pass.execute_cascades(draws, 4, lists, 3, true, false, &out);
+            api(f.d->EndScene(), "EndScene penumbra");
+            api(hr, "penumbra transaction");
+            require_quiet(out.drawn == 6, "six issues drawn");
+            // Map 0: bind 3, two issues x 5, the alpha pair 2, sampler 0 8, the texture, c0 + c1 in one call; maps 1-2:
+            // bind 3, two issues x 5, the depth-only pair back 2, the alpha pair 2, c1 (this map's constants).
+            std::printf("PENUMBRA_CALLS ref=%u distance=%.0f map0=%u map1=%u map2=%u\n", ref, distance, out.state_calls_map[0], out.state_calls_map[1], out.state_calls_map[2]);
+            if (!base) require_quiet(out.state_calls_map[0] == 3u + 10u + 2u + 8u + 1u + 1u && out.state_calls_map[1] == 3u + 10u + 2u + 2u + 1u && out.state_calls_map[2] == out.state_calls_map[1],
+                                     "the penumbra constants cost one call per map");
+            for (unsigned k = 0; k < 3; ++k) {
+                const auto map = penumbra_read_map(f, pass.map_surface(k), penumbra_map_size);
+                const float zr = float((receiver_z + penumbra_light) / cascades[k].range), zp = float((-distance + penumbra_light) / cascades[k].range);
+                std::vector<unsigned char> bits(map.size() / 8, 0);
+                unsigned holes = 0, other = 0;
+                for (std::size_t i = 0; i < map.size(); ++i) {
+                    const float v = map[i];
+                    const bool hole = std::fabs(v - zr) < std::fabs(v - zp);
+                    if (std::fabs(v - (hole ? zr : zp)) > 1e-5f) ++other;
+                    if (hole) { ++holes; bits[i / 8] |= static_cast<unsigned char>(0x80u >> (i % 8)); }
+                }
+                require_quiet(other == 0, "every texel holds the receiver's or the plate's depth");
+                char name[64];
+                std::snprintf(name, sizeof name, "penumbra_r%u_d%.0f_c%u.bits", ref, distance, k + 1);
+                { std::FILE* file = std::fopen(name, "wb"); require_quiet(file != nullptr, "bits file");
+                  require_quiet(std::fwrite(bits.data(), 1, bits.size(), file) == bits.size(), "bits written"); std::fclose(file); }
+                std::printf("PENUMBRA_MAP ref=%u distance=%.0f cascade=%u texel=%.9g extent=%.9g range=%.9g bias=%.6f holes=%u total=%zu share=%.6f hash=%016llx bits=%s\n",
+                            ref, distance, k + 1, cascades[k].texel, cascades[k].extent, cascades[k].range, base ? 0. : penumbra_bias(distance, cascades[k].texel), holes,
+                            map.size(), double(holes) / map.size(), static_cast<unsigned long long>(fnv(map.data(), map.size() * 4)), name);
+            }
+        }
+    }
+    pass.detach();
+    require(pass.references() == 0, "the penumbra pass releases everything");
+    // ---- GPU time of the replay at the flown map sizes ----
+    {
+        const double extents[5] = {250., 1500., 7500., 37500., 150000.};
+        const unsigned flown_sizes[5] = {4096, 4096, 4096, 4096, 2048};
+        PenumbraCascade big[5];
+        for (unsigned k = 0; k < 5; ++k) big[k] = penumbra_cascade(extents[k], flown_sizes[k], flown_sizes[k]);
+        Com<IDirect3DVertexBuffer9> big_vb;
+        penumbra_quads(f, big, 5, big_vb);
+        ShadowReplayDraw draws[6]{};
+        make_draws(big_vb.p, 5, draws, 128.f / 255.f);
+        ShadowReplayPass timed;
+        timed.request_alpha_programs(true);
+        api(timed.attach_cascades(f.d.p, nullptr, caps, D3DFMT_X8R8G8B8, flown_sizes, 5), "attach timed pass");
+        require(timed.caps().enabled && timed.caps().alpha, "the timed pass attaches");
+        Com<IDirect3DQuery9> t0, t1, disjoint, frequency;
+        const bool stamps = SUCCEEDED(f.d->CreateQuery(D3DQUERYTYPE_TIMESTAMP, &t0.p)) && SUCCEEDED(f.d->CreateQuery(D3DQUERYTYPE_TIMESTAMP, &t1.p)) &&
+                            SUCCEEDED(f.d->CreateQuery(D3DQUERYTYPE_TIMESTAMPDISJOINT, &disjoint.p)) && SUCCEEDED(f.d->CreateQuery(D3DQUERYTYPE_TIMESTAMPFREQ, &frequency.p));
+        std::printf("PENUMBRA_GPU_QUERIES timestamp=%u halved=%u\n", unsigned(stamps), timed.caps().halved);
+        require(stamps, "timestamp queries (documented D3D9) for the GPU time");
+        for (double distance : {500., 137000.}) {
+            ShadowReplayIssue issues[10]{};
+            ShadowReplayMapList lists[5]{};
+            for (unsigned k = 0; k < 5; ++k) {
+                penumbra_issue(issues[2 * k], 0, receiver_z, big[k]);
+                penumbra_issue(issues[2 * k + 1], 1 + k, -distance, big[k]);
+                lists[k].map = k; lists[k].issues = issues + 2 * k; lists[k].count = 2;
+                penumbra_constants(big[k], lists[k]);
+            }
+            std::vector<double> us;
+            unsigned disjoint_count = 0;
+            for (unsigned iteration = 0; iteration < 70; ++iteration) {
+                ShadowReplayResult out{};
+                api(disjoint->Issue(D3DISSUE_BEGIN), "disjoint begin");
+                api(t0->Issue(D3DISSUE_END), "timestamp 0");
+                api(timed.execute_cascades(draws, 6, lists, 5, false, false, &out), "timed transaction");
+                api(t1->Issue(D3DISSUE_END), "timestamp 1");
+                api(disjoint->Issue(D3DISSUE_END), "disjoint end");
+                api(frequency->Issue(D3DISSUE_END), "frequency");
+                UINT64 a = 0, b = 0, hz = 0; BOOL broken = FALSE;
+                HRESULT q;
+                while ((q = t1->GetData(&b, sizeof b, D3DGETDATA_FLUSH)) == S_FALSE) {}
+                api(q, "timestamp 1 data");
+                while ((q = t0->GetData(&a, sizeof a, D3DGETDATA_FLUSH)) == S_FALSE) {}
+                api(q, "timestamp 0 data");
+                while ((q = disjoint->GetData(&broken, sizeof broken, D3DGETDATA_FLUSH)) == S_FALSE) {}
+                api(q, "disjoint data");
+                while ((q = frequency->GetData(&hz, sizeof hz, D3DGETDATA_FLUSH)) == S_FALSE) {}
+                api(q, "frequency data");
+                if (iteration < 10) continue; // warm-up
+                if (broken || !hz || b < a) { ++disjoint_count; continue; }
+                us.push_back(double(b - a) * 1e6 / double(hz));
+            }
+            std::sort(us.begin(), us.end());
+            const auto at = [&](double p) { return us.empty() ? 0. : us[std::min(us.size() - 1, std::size_t(p * (us.size() - 1) + .5))]; };
+            std::printf("PENUMBRA_GPU distance=%.0f samples=%zu disjoint=%u us_median=%.3f us_p10=%.3f us_p90=%.3f maps=4096x4,2048 coverage=full\n",
+                        distance, us.size(), disjoint_count, at(.5), at(.1), at(.9));
+        }
+        timed.detach();
+    }
+    api(f.d->SetTexture(0, nullptr), "SetTexture 0 null"); api(f.d->SetPixelShader(nullptr), "SetPixelShader null");
+    std::printf("RESULT PASS checks=%u\n", checks);
+}
+} // namespace
 // Route-level alpha-tested caster script ("shadowalpharoute" mode): the real
 // capture path of the seam DLL with --shadow-alpha-casters on (X3M_SHADOW_ALPHA_CASTERS=1),
 // the ownership wrapper, TAA, the FP16 scene and the sun-share lane (gate 4

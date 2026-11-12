@@ -54,7 +54,7 @@ def main():
         m = np.memmap(CAP + f'shadow_map{c}_1_{f}.r32f', dtype='<f4', mode='r', shape=(N, N))
         md = np.array(m)[row[inside], col[inside]]
         occl = md < sz[inside] - 1e-6
-        print(f'c{c} texel_m={2*E/N:.4g} inside={int(inside.sum())} first={int(first.sum())} '
+        print(f'c{c} texel_u={2*E/N:.4g} inside={int(inside.sum())} first={int(first.sum())} '
               f'occluded_nearest={int(occl.sum())} ({occl.mean():.3f}) cols={col[inside].min()}..{col[inside].max()} '
               f'rows={row[inside].min()}..{row[inside].max()} recv_z_med={np.median(sz[inside]):.6f} map_z_med_occl={np.median(md[occl]) if occl.any() else -1:.6f}')
 

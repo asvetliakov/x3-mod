@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Per frame: Titan-range receiver pixels (view z in [ZMIN, ZMAX]) whose nearest map texel lies inside the
-remote station's closed footprint (station texels = depth < 0.7, closed with a box of +-CLOSE_M metres),
+remote station's closed footprint (station texels = depth < 0.7, closed with a box of +-CLOSE_U render units, 5 per metre),
 split into station-covered and 'hole' (footprint but not station: the lattice that reaches the hull).
-usage: hole_share.py ZMIN ZMAX CLOSE_M FRAME..."""
+usage: hole_share.py ZMIN ZMAX CLOSE_U FRAME..."""
 import sys, numpy as np
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from project import rows, vec, CAP, W, H

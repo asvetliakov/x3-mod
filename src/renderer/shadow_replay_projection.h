@@ -55,6 +55,39 @@ struct ShadowReplayBasis {
     double axes[3][3]{}; // right, up, forward
     double center_d[3]{};
 };
+// Far-caster penumbra (docs/architecture/shadow-far-caster-penumbra.md): the alpha caster program tests its alpha at
+// bias = min(max(0, log2(0.0093 max(0, delta - 2,000) / texel_k) - 1.5), 15) mips, delta = (z_cam - depth) range_k
+// the caster's distance toward the light from the camera plane, so detail under the 0.53 deg sun's penumbra at that
+// distance never reaches a receiver near the camera. The 1.5-mip support offset: the trilinear fetch of a box-filtered
+// chain averages over about 2^1.5 times the level's texel, so the filtered footprint, not the level's texel, equals the
+// penumbra. 15 ends texldb's documented bias range. Inside the 2,000-unit dead zone (and wherever the penumbra is under
+// 2^1.5 texels) the bias is exactly 0. The offset is folded into the constants: out = (z_cam, a, b, z_cam a - b) with
+// a = range_k 0.0093 / texel_k / 2^1.5, b = 2,000 0.0093 / texel_k / 2^1.5; the program evaluates
+// log2(max(1, w - depth a)). False (out all zero: bias 0) on an invalid camera, basis or cascade.
+constexpr double shadow_penumbra_sun_angle = 0.0093; // radians: the sun's angular diameter (0.53 deg)
+constexpr double shadow_penumbra_dead_zone = 2000.;  // world units toward the light without a bias
+constexpr double shadow_penumbra_support = 1.5;      // mips: log2 of the filtered footprint over the level's texel
+constexpr double shadow_penumbra_support_scale = 0.35355339059327373; // 2^-shadow_penumbra_support
+inline bool shadow_replay_penumbra(const CameraState& camera, const ShadowReplayBasis& basis,
+                                   const ShadowReplayCascade& cascade, float out[4]) noexcept {
+    for (unsigned i = 0; i < 4; ++i) out[i] = 0.f;
+    const double texel = shadow_replay_world_texel(cascade), L = double(cascade.depth_toward_light),
+                 R = cascade.depth_range();
+    if (!camera.valid || !basis.valid || !(texel > 0.) || !(L > 0.) || !(R > L)) return false;
+    double position[3];
+    camera_world_position(camera, position);
+    double depth = L;
+    for (unsigned j = 0; j < 3; ++j) depth += basis.axes[2][j] * (position[j] - basis.center_d[j]);
+    const double z = depth / R, a = R * shadow_penumbra_sun_angle / texel * shadow_penumbra_support_scale,
+                 b = shadow_penumbra_dead_zone * shadow_penumbra_sun_angle / texel * shadow_penumbra_support_scale,
+                 w = z * a - b;
+    if (!std::isfinite(z) || !std::isfinite(a) || !std::isfinite(w) || a > 1e15 || w > 1e15 || w < -1e15) return false;
+    out[0] = float(z);
+    out[1] = float(a);
+    out[2] = float(b);
+    out[3] = float(w);
+    return true;
+}
 // No libm on the i686 build (check_no_x87.py): GCC's std::sqrt(double) keeps
 // an errno call whose result returns on the x87 stack, and floor/fabs are x87
 // routines there; sqrtsd and a cvttsd2si truncation stay in SSE (host builds

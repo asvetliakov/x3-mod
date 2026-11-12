@@ -4418,12 +4418,16 @@ settled the FL 69–71 A "blanket": it lies only on the part of the hull shadowe
 normal and a hex-patterned shadow as the ship or camera moves, and vanished in the last group. Triage
 ([`fl71a-shadow-lattice/`](../../verification/results/fl71a-shadow-lattice/), all figures measured): the lattice is
 stored in the shadow maps (nearest-texel occlusion without PCF reproduces it); the caster is station model `00005597`
-(25 records, 152,900 primitives, half-extents 13–17 km) 137 km toward the sun, whose geometry has holes on an 83 m
-hexagonal pitch (hole share 12–22 % in cascade 1 at 0.73 m per texel, 2.7–5.9 % as three-armed stars in cascade 2 at
-3.66 m); the lattice/speckle boundary is the camera-centred c1/c2 boundary sweeping the hull (first-containing-cascade
+(25 records, 152,900 primitives, half-extents 13,000–17,000 u) 137,000 u (27 km) toward the sun, whose geometry has
+holes on an 83 u (17 m) hexagonal pitch (hole share 12–22 % in cascade 1 at 0.73 u per texel, 2.7–5.9 % as three-armed
+stars in cascade 2 at 3.66 u); the lattice/speckle boundary is the camera-centred c1/c2 boundary sweeping the hull (first-containing-cascade
 rule); the vanish is the station's level-of-detail swap at frame 39121 reclassifying it as moving (`moving_dropped=1`
 at 39122, out of every map by 40333). Gate 4 refused 0 draws at every capture frame; the Titan's lathe was built at
 frame 12623, after the first capture already showed the lattice: the shield stage is not involved (the FL 69/70 A
-attributions to the stage's cells were wrong). Physically the sun's 0.53° disc gives a 1.2 km penumbra at 133 km, so
-an 83 m hole cannot be visible: the shadow pass is hard at any caster distance. Design note in progress
-(`docs/architecture/shadow-far-caster-penumbra.md`); the FL 70 A entry-mapping and fade fixes stand on their own.
+attributions to the stage's cells were wrong). Physically the sun's 0.53° disc gives a 1,240 u (250 m) penumbra at
+133,000 u (27 km), so an 83 u hole cannot be visible: the shadow pass is hard at any caster distance. Units (corrected
+2026-11-13; the triage read them as metres): every figure here is in the render/world units the shadow pass and the
+camera rows use, 5 per metre (5.07 measured from a 16.0 km HUD readout, `docs/reverse-engineering/station-material-distance.md`),
+not the engine's int32 object units (500 per metre, `docs/reverse-engineering/game-scale-and-ship-classes.md`). Design
+and fix: `docs/architecture/shadow-far-caster-penumbra.md`, ledger `docs/verification/directional-shadows.md` "FL 71 A:
+far-caster penumbra mip bias (2026-11-13)"; the FL 70 A entry-mapping and fade fixes stand on their own.

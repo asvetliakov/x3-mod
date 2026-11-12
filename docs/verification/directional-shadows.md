@@ -3883,3 +3883,77 @@ Producers: `verification/results/retention-alpha-casters/host-check.sh` -> `host
 the driver's RESULT line). Not run: the Wine seam fixture (`run_motion_output.py`; no Wine host since 2026-10-11) and
 native D3D9; not flown (FL run 45 is the flight check: `retained_alpha=` on `shadow_retention_frame` must be non-zero
 while the station is unseen).
+
+## FL 71 A: far-caster penumbra mip bias (2026-11-13, worktree `agent-a29f21a0b88089006`)
+
+Design: [shadow-far-caster-penumbra.md](../architecture/shadow-far-caster-penumbra.md) (ratified 2026-11-13). The alpha
+caster pixel program tests its alpha with `texldb` at bias `min(max(0, log2(0.0093 max(0, delta - 2,000) / texel_k) -
+1.5), 15)`, delta the caster's distance toward the light from the camera plane, 1.5 mips the support offset of a
+trilinear fetch on a box-filtered chain (review fix: without it the filtered footprint was 2-3x the penumbra and ref 1
+erased 33 u holes from 3,000 u, where the penumbra is 9 u). Per map PS c1 = (z_cam, a, b, z_cam a - b), a = range
+0.0093 / texel / 2^1.5, b = 2,000 0.0093 / texel / 2^1.5, from `shadow_replay_penumbra` (`shadow_replay_projection.h`),
+carried by `ShadowReplayMapList::penumbra`, filled by the owner (`motion_output_shadow_replay_inc.h`) for a cascade with
+alpha issues; a refusal leaves bias 0 and logs one `shadow_replay_penumbra_refused` row per session. The threshold and
+c1 go up in one `SetPixelShaderConstantF` when either changes. Apply program, cascade set, retention and the depth-only
+pair unchanged. Not flown.
+
+**Units** (the FL 71 A paragraph of [weapon-effects.md](weapon-effects.md) and the triage scripts corrected): the
+shadow pass, the camera rows and every triage figure are render/world units, 5 per metre (5.07 measured against a
+16.0 km HUD readout, [station-material-distance.md](../reverse-engineering/station-material-distance.md)); the engine's
+int32 object positions are 500 per metre ([game-scale-and-ship-classes.md](../reverse-engineering/game-scale-and-ship-classes.md),
+from the EXE). The station is 137,000 u = 27 km toward the sun (not 137 km), the hole pitch 83 u = 17 m (not 83 m),
+the c1 texel 0.73 u = 15 cm; the penumbra / pitch ratio (15) is unit-free.
+
+| Check | Result |
+| --- | --- |
+| Program | alpha PS 5 -> 10 instructions (34 -> 53 words), vertex program unchanged [M]; native SM3 validator (`Direct3DShaderValidatorCreate9`, d3d9.dll of the host) 4 of 4 programs (new and old pair) End 0, 0 messages [M]; a variant with `log` lacking a replicate swizzle is refused (message 793) [M]. The support offset lives in the constants: the program words did not change with it |
+| Near maps, before/after | `shadowalpha` script on native, the pass of 4542676a3 vs the tree: 6 of 6 map hashes identical (alpha, opaque_alpha_pass, opaque_depth_only, cascade0, cascade1, after_reset), both scripts PASS [M]; penumbra plate maps identical to the old program at 500 u in all three cascades and both refs, and wherever the bias is 0 (c2 to 3,000 u, c3 to 6,000 u) [M] |
+| Hole share vs the mip-chain prediction | 60 maps (2 refs x 10 distances x 3 cascades): max abs(share - predicted) 0.0006, per-texel agreement >= 0.9993 [M] |
+| Monotone, 0 far, cascades agree | every ref/cascade non-increasing with distance, 0 at 10,000, 50,000 and 137,000 u; at every distance past 7,569 u (c3's bias edge, 2,000 + 2^1.5 texel / 0.0093) the three cascades within 0.004 [M] |
+| State calls | map 0 25 (as before: the pair, sampler, texture, one constant call), maps 1-2 18 (one c1 call each) [M] |
+| GPU, replay transaction | flown map sizes (4,096^2 x 4 + 2,048^2), every map fully covered by receiver and alpha plate (71.3 M alpha pixels): median 606.1 -> 606.4 us at 500 u, 610.5 -> 592.7 us at 137,000 u (timestamp queries, 60 samples each, 0 disjoint) [M]; the replay renders its own maps, so the 5120x1440 back buffer does not enter; the apply is unchanged |
+| Builds | `build-penumbra-fl` and `build-penumbra-ap` (clean builds of 129 / 141 units, then the review rebuild) 0 warning lines; `check_no_x87.py` PASS on both: fl 1,086 and ap 1,162 reachable functions, 0 violations [M]; DLL sha256 FL 74c66498..., AP 86f09005... (dev builds, not candidates) |
+| Host tests | `test_shadow_*` 89 OK (`test_shadow_alpha_casters` program structure and the `shadow_replay_penumbra` driver), `test_wine_lock` 27 OK [M] |
+
+Hole share of the grille plate (pitch 83 u, hexagonal cut-outs 33 u, 16.1 % open, 256^2 texture, nine box-filtered
+levels; 1,024^2 maps at the texels of the flown c1/c2/c3 = 0.732 / 3.662 / 18.311 u), measured (the host prediction
+within 0.0006 everywhere) [M]; the unbiased program holds 0.1568 / 0.0835 / 0 (ref 1) and 0.1699 / 0.1612 / 0.1048
+(ref 128) at every distance:
+
+| distance (u) | ref 1: c1 / c2 / c3 | ref 128: c1 / c2 / c3 |
+| --- | --- | --- |
+| 500 | 0.1568 / 0.0835 / 0 | 0.1699 / 0.1612 / 0.1048 |
+| 3,000 | 0.0865 / 0.0835 / 0 | 0.1688 / 0.1612 / 0.1048 |
+| 4,000 | 0.0247 / 0.0220 / 0 | 0.1652 / 0.1573 / 0.1048 |
+| 4,500 | 0 / 0 / 0 | 0.1618 / 0.1560 / 0.1048 |
+| 5,000 | 0 / 0 / 0 | 0.1582 / 0.1531 / 0.1048 |
+| 6,000 | 0 / 0 / 0 | 0.1479 / 0.1436 / 0.1048 |
+| 8,000 | 0 / 0 / 0 | 0.0937 / 0.0969 / 0.0930 |
+| 10,000, 50,000, 137,000 | 0 / 0 / 0 | 0 / 0 / 0 |
+
+Transitions: at ref 1 the holes shrink from 3,000 u and are gone at 4,500 u, about 1,000 u before a 33 u hole's
+physical end (penumbra 33 u at delta ~5,550 u); at ref 128 they last to 8,000 u and are gone at 10,000 u [M]. Partial
+holes (equivalent diameter, c1 / c2): ref 1 24.9 / 25.1 u at 3,000 u, 14.0 / 12.4 u at 4,000 u; ref 128 34.8 / 34.6 u
+at 3,000 u, 32.3 / 32.8 u at 6,000 u, 25.5 / 26.8 u at 8,000 u; none at 10,000 u [M]. In c3 (18.3 u texel) a 33 u hole
+is 1-4 texels at every distance. The ref-128 c3 share (0.1048) under c1/c2 below 7,569 u is c3's own texel, unbiased
+there, as before the change.
+
+Producers: `verification/probe/run_shadow_penumbra.py --host native` (under `wine_lock.py`, 40.7 s; builds the
+fixture against the tree and against `--base`'s pass, runs `shadowalpha` and `shadowpenumbra` on the Windows side,
+host NVIDIA GeForce RTX 5070 Ti driver 32.0.16.2114, Windows 10.0.26300.9818; screensaver absent, display-required
+held by a bounded `SetThreadExecutionState` loop) -> `verification/results/native-windows/shadow-penumbra/summary.json`
+(binds the four production sources by sha256), read by `table.py` beside it;
+`verification/results/shadow-penumbra/validate_alpha_program.py` -> `validator.txt`. The fixture's restore check
+tolerates one native quirk: a caller's (null, 0, 0) stream 0 coming back as (null, 0, stride), native D3D9 keeping the
+last bound stride after `SetStreamSource(0, nullptr, 0, 0)` (measured (null, 0, 20), the old pass alike), which had
+failed `shadowalpha` natively before any map. Not run: the route-level shadow cases (`run_motion_output.py`, seam DLL,
+Wine only; no Wine host since 2026-10-11); their alpha frames share this program, their opaque frames do not touch it.
+
+Open: a single-level alpha texture or a DXT chain thresholded per level (each mip binary, not a box average) keeps its
+cut-outs at every bias; nothing detects either.
+
+**Kill criterion** (from the note; two flights decide): drop the mip law for the backstop A' if a lattice or blanket
+still sweeps the hull from a far caster whose c1/c2 maps already agree (`same_window.py` shares within 2 %: geometry,
+not alpha), if a far alpha caster's shadow pops on and off between frames near its threshold (the binary test has no
+partial shadow), if at ref 1 holes wider than the penumbra are erased (the support offset too small for that
+texture), or if any near frame's map hash differs from the previous build's.

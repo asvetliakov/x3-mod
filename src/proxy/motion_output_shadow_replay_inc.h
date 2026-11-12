@@ -340,7 +340,22 @@ void MotionOutput::run_shadow_replay_cascades(const bool* quiet) noexcept {
             offsets[k] = offset;
             // Back-face cascades (shadow_cascade_backface_texel_default): the map holds the casters' far sides, so a
             // lit receiver never compares against its own depth (directional-shadows.md, "Run 40 A", cause 2).
-            if (replays[k]) { lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; lists[list_count].invert_cull = (depth_cascade_backface_mask_ >> k & 1u) != 0; ++list_count; offset += per_cascade[k]; }
+            if (replays[k]) {
+                lists[list_count].map = k; lists[list_count].issues = depth_issues_.get() + offset; lists[list_count].count = 0; lists[list_count].invert_cull = (depth_cascade_backface_mask_ >> k & 1u) != 0;
+                // The alpha casters' far-caster penumbra bias (shadow-far-caster-penumbra.md): this cascade's camera
+                // plane, depth range and texel; only the alpha pair reads it, so an all-opaque map ignores it.
+                // A refusal leaves the constants zero (bias 0, the map as before) and logs one row per session.
+                if (alpha_cascade[k] && !renderer::shadow_replay_penumbra(camera_scene_, bases[k], depth_cascades_.cascades[k], lists[list_count].penumbra)) {
+                    static bool penumbra_refusal_logged = false; // the render thread only
+                    if (!penumbra_refusal_logged) {
+                        penumbra_refusal_logged = true;
+                        log("shadow_replay_penumbra_refused device=%llu frame=%llu cascade=%u extent=%.9g size=%u depth_light=%.9g depth_behind=%.9g",
+                            id_, frame_, k, double(depth_cascades_.cascades[k].half_extent), depth_cascades_.cascades[k].size,
+                            double(depth_cascades_.cascades[k].depth_toward_light), double(depth_cascades_.cascades[k].depth_behind));
+                    }
+                }
+                ++list_count; offset += per_cascade[k];
+            }
         }
     }
     // Back-face cascades: the issued records by cull mode (a D3DCULL_NONE caster has no back side to

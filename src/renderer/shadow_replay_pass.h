@@ -59,11 +59,15 @@ struct ShadowReplayIssue {
 };
 // invert_cull: this map holds the casters' BACK faces (CW <-> CCW per draw; NONE unchanged:
 // shadow_replay_projection.h, shadow_cascade_backface_texel_default). Off by default.
+// penumbra: the alpha-tested casters' per-cascade mip-bias constants (shadow_replay_penumbra in
+// shadow_replay_projection.h; PS c1 of the alpha pair). All zero (the default): bias 0, the alpha test at the
+// cascade's own mip as before.
 struct ShadowReplayMapList {
     unsigned map = 0;
     const ShadowReplayIssue* issues = nullptr;
     unsigned count = 0;
     bool invert_cull = false;
+    float penumbra[4]{};
 };
 inline DWORD shadow_replay_cull_mode(DWORD cull, bool invert) noexcept {
     return !invert ? cull : cull == D3DCULL_CW ? DWORD(D3DCULL_CCW) : cull == D3DCULL_CCW ? DWORD(D3DCULL_CW) : cull;
@@ -193,13 +197,17 @@ private:
     IDirect3DVertexShader9* vs_ = nullptr;
     IDirect3DPixelShader9* ps_ = nullptr;
     IDirect3DVertexShader9* vs_alpha_ = nullptr; // alpha-tested casters: v0 + TEXCOORD0 in, the depth and the UV out
-    IDirect3DPixelShader9* ps_alpha_ = nullptr;  // texld s0, texkill (a - c0.x), the depth
+    IDirect3DPixelShader9* ps_alpha_ = nullptr;  // texldb s0 (the penumbra bias, c1), texkill (a - c0.x), the depth
     bool alpha_requested_ = false;
     // Per transaction (reset by bind()): the program pair bound, the sampler-0 state
-    // written once, the texture and threshold last bound (no redundant calls).
+    // written once, the texture last bound, the pixel constants c0 (threshold) and c1
+    // (the map's penumbra) last written (no redundant calls).
     bool alpha_bound_ = false, alpha_sampler_ = false;
     IDirect3DBaseTexture9* alpha_texture_ = nullptr;
     float alpha_threshold_ = -1.f;
+    float alpha_penumbra_[4]{};
+    bool alpha_penumbra_set_ = false;
+    const float* penumbra_ = nullptr; // the list being issued (execute_cascades)
     IDirect3DTexture9* maps_[shadow_replay_maps_max]{};
     IDirect3DSurface9* map_surfaces_[shadow_replay_maps_max]{};
     IDirect3DSurface9* depth_ = nullptr;

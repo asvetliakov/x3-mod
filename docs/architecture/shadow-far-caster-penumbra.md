@@ -33,10 +33,30 @@ lattice/speckle seam that swept the hull with camera motion is gone with the lat
 Backstop, designed and parameterised but not shipped now: a per-tap far-blocker cut in the apply
 (§ Alternatives, A') for *geometric* holes (girders, open frames) if a flight shows one.
 
+**Implemented 2026-11-13** (not flown; evidence in
+[../verification/directional-shadows.md](../verification/directional-shadows.md), "FL 71 A: far-caster
+penumbra mip bias"). Layout as built: PS c0 the threshold (unchanged), c1 = (z_cam, a, b, z_cam a - b)
+per map with a = range_k 0.0093 / texel_k / 2^1.5, b = 2,000 0.0093 / texel_k / 2^1.5 (`shadow_replay_penumbra`,
+`shadow_replay_projection.h`; `ShadowReplayMapList::penumbra`, filled by the owner for a cascade with
+alpha issues), def c2 = (0, 1, 15, 0); program `mad r1.x, -v0.x, c1.y, c1.w` / `max 1` / `log` /
+`min 15` / `mov r1.xy, v1` / `texldb`, then today's test: ten slots. Review fix (same day): a 1.5-mip support
+offset, folded into a and b, so bias = max(0, log2(p / texel_k) - 1.5): the trilinear fetch of a box-filtered
+chain averages over about 2^1.5 of the level's texel, and without the offset the filtered footprint was 2-3x the
+penumbra (at ref 1 the 33 u holes went at 3,000 u, where p is 9 u). The bias is bounded to 15, the end
+of texldb's documented range; the sampled level stays inside the texture's chain by the sampler's
+documented LOD clamp, so a texture magnified in a fine cascade still reaches its last level. The
+threshold and the map's c1 go up in one `SetPixelShaderConstantF` when either changes: a map's first
+alpha issue costs the call it cost before, each further map with alpha issues one call more.
+
 ## Units
 
 The pass notes use 5,000 u = 1 km ([shadow-cascade-cost-policy.md](shadow-cascade-cost-policy.md),
-[space-shadow-survey.md](space-shadow-survey.md)). The triage and the brief read units as metres;
+[space-shadow-survey.md](space-shadow-survey.md)): the render/world space of the camera rows, 5.07 u per
+metre measured against a 16.0 km HUD readout
+([station-material-distance.md](../reverse-engineering/station-material-distance.md)); the engine's
+int32 object positions are a different space, 500 per metre
+([game-scale-and-ship-classes.md](../reverse-engineering/game-scale-and-ship-classes.md), measured from
+the EXE). The triage and the brief read units as metres;
 their "137 km, 83 m, c0 texel 0.244 m" are 137,000 u (27 km), 83 u (17 m) and 0.244 u. Every
 figure below is in units. The decision does not depend on the conversion: the penumbra is an
 angle times a distance in the same units, and the ratio penumbra / pitch is 0.0093 x 137,000 / 83
@@ -58,8 +78,9 @@ Scripts beside the triage results; captures and the session log read by field, n
 
 The last two rows are decisive. Real holes would show the hull *behind the plate* in every cascade
 at every texel size; here the coarser map fills them with the plate itself. The alpha caster pair
-samples the material's diffuse alpha with the engine's sampler state ("trilinear, no bias or LOD
-clamp", `bind_alpha`), so each cascade tests the alpha at the mip its own texel footprint selects:
+samples the material's diffuse alpha under its own sampler state, not the engine's (`bind_alpha`
+sets WRAP, LINEAR min/mag, LINEAR mip, MIPMAPLODBIAS 0, MAXMIPLEVEL 0, no sRGB), so each cascade
+tests the alpha at the mip its own texel footprint selects:
 c1 (0.73 u) resolves the grille's cut-outs (16 % share), c2 (3.66 u) sees the intermediate mip
 where the averaged alpha crosses the threshold in three-armed stars (3 %, the triage's 260-307 u
 stars), c3 (18 u) and c4 (146 u) average the cut-outs above the threshold and draw a solid plate.
@@ -79,20 +100,28 @@ survives the coarse levels for this texture), so the plate casts a solid hard-ed
 - `v0.x` is the caster pixel's normalized sun depth (`o1.x` of the alpha vertex program); the
   camera plane is at `L / (L + B)` of each cascade (0.9983 / 0.9901 / 0.952 / 0.80 / 0.50 for the
   flown set: receiver medians 0.9984 / 0.9988 / 0.958 / 0.806 / 0.504 in `project.py`). `delta`
-  is the caster's distance toward the light from that plane: exact for receivers near the camera
-  (own ship, the hull around it), an over-estimate for a receiver itself far toward the light;
-  there the error is at most p / 2 on a shadow outline that the far cascades' texel already
-  quantises coarser (at 25,000 u the c4 texel is 146 u, the over-blur at most 116 u).
+  is the caster's distance toward the light from that plane, not from the receiver: exact for
+  receivers near the camera (own ship, the hull around it). Two limits. (i) A receiver itself far
+  toward the light: delta over-estimates the caster-receiver distance, the bias is too large and
+  holes the receiver should still show are erased (the error is at most p / 2 on a shadow outline
+  that the far cascades' texel already quantises coarser: at 25,000 u the c4 texel is 146 u, the
+  over-blur at most 116 u). (ii) A caster near the camera with its receiver far behind it: delta
+  under-estimates, the bias stays 0 and the lattice stays sharp on that far receiver, exactly as
+  before this change.
 - Dead zone 2,000 u: the own-ship column, docking range and a complex's mutual shadows within
-  400 m display are bit-identical to today (bias 0 whenever `p <= texel_k`, i.e. up to
-  delta = 2,000 + texel_k / 0.0093: 2,026 / 2,079 / 2,394 / 3,970 / 17,750 u per cascade). The
-  law is continuous at the dead zone's edge.
+  400 m display are bit-identical to today (bias 0 whenever `p <= 2^1.5 texel_k`, i.e. up to
+  delta = 2,000 + 2^1.5 texel_k / 0.0093: 2,074 / 2,223 / 3,114 / 7,569 / 46,551 u per cascade, with
+  the support offset). The law is continuous at the dead zone's edge.
 - Beyond it the footprint equals the penumbra in every cascade, so the cascades agree on the
   alpha test wherever `p` exceeds their texel; the remaining per-cascade differences are the maps'
-  own point sampling (as today for opaque geometry). Transition zone: for `p` between about half
-  and two pitches (this station: delta 4,500-18,000 u) the biased level's alpha crosses the
-  threshold in places and the binary test yields consistent star-shaped partial holes in every
-  cascade: the physical soft lattice rendered as a hard one, without the sweep. A texture whose
+  own point sampling (as today for opaque geometry). Transition zone (measured on the fixture's
+  grille, 83 u pitch, 33 u holes, 16 % open; `docs/verification/directional-shadows.md`, "FL 71 A:
+  far-caster penumbra mip bias"): at the engine's usual GREATEREQUAL ref 1 the holes shrink from
+  3,000 u and are gone at 4,500 u (physically a 33 u hole lasts until p reaches ~33 u, delta
+  ~5,550 u); at ref 128 they last to 8,000 u and are gone at 10,000 u. Inside it the binary test
+  yields consistent partial holes of one size in every cascade: the physical soft lattice rendered
+  as a hard one, without the sweep. The flown station's transition depends on its texture's hole
+  size, threshold and mip alignment. A texture whose
   open share exceeds `1 - threshold` (a filigree more than ~50 % open with ref 128) vanishes
   entirely once averaged, as it already does in c3/c4 today; a binary test cannot cast a partial
   shadow. Both are limits, recorded, part of the kill criterion.
@@ -158,7 +187,9 @@ Drop the mip law (and go to the backstop A') if any of these holds after the fix
 lattice or blanket still sweeps the hull from a far caster whose c1/c2 maps agree
 (`same_window.py` shares within 2 %: the holes are then geometry, not alpha); a far alpha
 caster's shadow pops on and off between frames (coverage near its threshold; the law has no
-partial shadow); or a near frame's map hash differs from the previous build's. Two flights decide.
+partial shadow); at ref 1, holes wider than the penumbra erased (a near caster's cut-outs gone
+while p is still under their size: the support offset too small for that texture); or a near
+frame's map hash differs from the previous build's. Two flights decide.
 
 ## Alternatives considered, and why they lose
 
@@ -202,6 +233,10 @@ partial shadow); or a near frame's map hash differs from the previous build's. T
 
 ## Unknown, and what settles it
 
+- Alpha chains the bias cannot use: a single-level texture (no mips: the bias has nothing to reach)
+  or a DXT chain whose levels were thresholded per level (each mip binary, not a box average) keep
+  the cut-outs at every bias. Nothing detects either today; a per-record `alpha_levels=` row and a
+  level-1 alpha mean against level 0 would.
 - Whether the station's threshold and alpha texture are as assumed (binary alpha, ref <= 0.84):
   inferred from the solid c3/c4 maps. A per-record `shadow_replay_caster` field `alpha_ref=` and
   `alpha_levels=` (one row per frame, F8 only) would settle it from the next capture.
