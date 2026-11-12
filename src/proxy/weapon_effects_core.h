@@ -391,6 +391,72 @@ constexpr std::uint32_t name_hash(const char* s) noexcept {
 }
 enum BoltPin : std::uint8_t { pin_halo_off = 1, pin_tint_texture = 2, pin_e_body = 4, pin_w_orb = 8 };
 
+// The ship profiles (weapon_effects.json schema 3, `ship_profiles`, tools/effects/weapon_effects_table.py; docs/
+// architecture/weapon-effects.md 5.1.1 "Placement", 2026-11-12): per TShips row (0-based: the object's subtype
+// obj+0x4a) a hull profile along the model's z in scene units: z0, z1 and profile_slices slices, slice i spanning z0 +
+// i (z1 - z0) / profile_slices, each its lateral centre and half-widths (cx, cy, hx, hy; the scene's part positions with
+// the body points scaled by the LOD-0 value / 65536). The class the generator read (TShips col 52) is kept as its
+// engine id (ship_class_id_of) and checked against the type record's +0xc8 word at the stage. One heap block at load
+// (patch.cpp), read-only afterwards; nothing per hit.
+constexpr unsigned profile_slices = 32, profile_capacity = 1024, profile_rows = 4096;
+struct ShipProfile {
+    std::int32_t row = -1;      // the TShips index
+    std::int32_t class_id = -1; // the class's engine id (-1: a token outside the table, never matched)
+    float z0 = 0.f, z1 = 0.f;   // scene units, z1 > z0
+    float slice[profile_slices][4]{}; // cx, cy, hx, hy (scene units; hx, hy >= 0, 0 for an empty slice)
+};
+struct ShipProfiles {
+    unsigned count = 0;
+    // The TShips row count the generator read (generated_from.ship_profiles.rows; 0: not recorded): the stage uses no
+    // profile while the live count at ship_count_slot differs (a table of another tree, the bullet table's stale rule).
+    std::uint32_t tships_rows = 0;
+    std::uint16_t slot_of[profile_rows]; // row -> slot + 1 (0: none)
+    ShipProfile entries[profile_capacity];
+    void clear() noexcept {
+        count = 0;
+        tships_rows = 0;
+        std::memset(slot_of, 0, sizeof slot_of);
+    }
+    const ShipProfile* find(std::int32_t row) const noexcept {
+        if (row < 0 || row >= std::int32_t(profile_rows) || !slot_of[row]) return nullptr;
+        return &entries[slot_of[row] - 1u];
+    }
+};
+// The engine id of a TShips col 52 class token (the text-id reader 0x004ea440's table 0x00552a28: AP's 35 names and
+// FL's four more, weapon-effect-spawn.md 8.1): a name, a decimal number (taken literally, as the reader does) or the
+// census's `class_id:N`; -1 for anything else.
+inline std::int32_t ship_class_id_of(const char* s) noexcept {
+    if (!s) return -1;
+    const char* digits = std::strncmp(s, "class_id:", 9) == 0 ? s + 9 : s;
+    if (*digits >= '0' && *digits <= '9') {
+        std::int32_t v = 0;
+        for (; *digits; ++digits) {
+            if (*digits < '0' || *digits > '9' || v > 100000000) return -1;
+            v = v * 10 + (*digits - '0');
+        }
+        return v;
+    }
+    struct Name {
+        const char* name;
+        std::int32_t id;
+    };
+    static const Name names[] = {
+        {"OBJ_SHIP_M0", 2020}, {"OBJ_SHIP_M1", 2021}, {"OBJ_SHIP_M2", 2022}, {"OBJ_SHIP_M3", 2023},
+        {"OBJ_SHIP_M4", 2024}, {"OBJ_SHIP_M5", 2025}, {"OBJ_SHIP_M6", 2026}, {"OBJ_SHIP_M7", 2027},
+        {"OBJ_SHIP_M8", 2142}, {"OBJ_SHIP_TP", 2030}, {"OBJ_SHIP_TS", 2031}, {"OBJ_SHIP_TL", 2032},
+        {"OBJ_SHIP_TM", 2141}, {"OBJ_SHIP_TS_PIRATE", 2035}, {"OBJ_SHIP_TL_PIRATE", 2036}, {"OBJ_SHIP_GONER", 2039},
+        {"OBJ_SHIP_UFO", 2068}, {"OBJ_SHIP_ASTRONAUT", 2064}, {"OBJ_SHIP_KHAAKCLUSTER", 2131},
+        {"OBJ_SATELLITE", 2065}, {"OBJ_SATELLITE2", 2080}, {"OBJ_BEACON", 2060}, {"OBJ_JUMPBEACON", 2062},
+        {"OBJ_MINE", 2066}, {"OBJ_MINE2", 2143}, {"OBJ_MINE3", 2144}, {"OBJ_MINETR", 2145},
+        {"OBJ_ORBITALLASER", 2011}, {"OBJ_ORBITALLASER2", 2149}, {"OBJ_FIGHTDRONE", 2067}, {"OBJ_FIGHTDRONE2", 2146},
+        {"OBJ_FIGHTDRONEUSC", 2147}, {"OBJ_FREIGHTDRONE", 2092}, {"OBJ_RECONDRONE", 2150}, {"OBJ_SPACEFLY", 2070},
+        {"OBJ_RELAYBEACON", 2063}, {"OBJ_SHIP_SPECIALDRONE", 2151}, {"OBJ_SHIP_DRONECARRIER", 2152},
+        {"OBJ_SHIP_MISSILE_FRIGATE", 2153}};
+    for (const Name& n : names)
+        if (!std::strcmp(s, n.name)) return n.id;
+    return -1;
+}
+
 // ---------------------------------------------------------------------------------------------- 16.16 arithmetic
 // The engine's product: (int64(a) * b + 0x8000) >> 16, low 32 bits (0x004f0da0 / 0x004f0c00: imul, add 0x8000, adc,
 // shrd 16). Integer only.
@@ -1430,8 +1496,26 @@ constexpr float bubble_scale = 1.15f;
 // stations. The box-fitted ellipsoid cannot fit a long capital hull with fins: the Argon Titan's stored extents are
 // per-axis maxima (x 151k at one z-station, y 166k from the fins), its bubble stood about 174k x 194k x 608k and its side
 // hits (|q| 0.22-0.52) moved a median 621 m outward along the radial map; the decal lies on the hull at the contact.
+// Since 2026-11-12 (user decision on FL run 68: capitals get the bubble, the decal was "acceptable but not right") a ship
+// whose TShips row has an offline profile (ShipProfiles, class confirmed) takes the lathe bubble of that profile
+// (weapon_effects_lathe.h) whatever its tier, and no hull walk runs for it; shield_bubble decides only for a ship
+// without one (shield_surface).
 inline bool shield_bubble(std::uint8_t patch_tier, std::uint8_t tier_source) noexcept {
     return patch_tier < patch_capital && tier_source != tier_by_station;
+}
+// The lathe's tiers (orchestrator decision 2026-11-12, for this flight): capital-tier owners only (patch_capital: the
+// tiers that took the decal), fighters and corvettes keep the Run239 walked ellipsoid (the accepted look). true: every
+// tier with a profile takes the lathe (the all-tier path, for a later flight).
+constexpr bool lathe_all_tiers = false;
+inline bool lathe_tier(std::uint8_t patch_tier) noexcept {
+    return lathe_all_tiers || patch_tier >= patch_capital;
+}
+enum ShieldSurface : std::uint8_t { surface_decal = 0, surface_ellipsoid = 1, surface_lathe = 2 };
+// profile: the owner's row has a usable profile of its class (the stage resolves it only for lathe_tier owners).
+inline ShieldSurface shield_surface(std::uint8_t patch_tier, std::uint8_t tier_source, bool profile) noexcept {
+    return profile && lathe_tier(patch_tier)      ? surface_lathe
+           : shield_bubble(patch_tier, tier_source) ? surface_ellipsoid
+                                                    : surface_decal;
 }
 constexpr float bubble_far_gain = 0.6f;
 constexpr float bubble_floor = 1.f / 16.f;

@@ -41,6 +41,10 @@ const char* site_state_[8] = {"not_initialized", "not_initialized", "not_initial
 bool written_[site_count] = {};
 engine_patch::CallSite site_[site_count]{};
 core::Table* table_ = nullptr;
+// The ship profiles (one heap block for the process, allocated with the first table text; ready only after a parse
+// that kept an entry).
+core::ShipProfiles* profiles_ = nullptr;
+bool profiles_ready_ = false;
 unsigned logged_events_ = 0, period_events_ = 0;
 // weapon_event rows outside capture frames: the run's first 64, then a rolling sample of up to 8 per weapon_effects_frame
 // period (Run235 Flight B: the fixed 64 ended within the first minute, so the own ship's later hits were never seen).
@@ -52,6 +56,8 @@ struct Period {
     unsigned faces_culled = 0, area_dropped = 0, bubbles = 0, bubble_fallback = 0;
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     unsigned bubble_partial = 0, cells_key_dropped = 0;
+    unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
     // step 3: death records seen (ours, census)
@@ -215,15 +221,28 @@ void load_table() {
     std::size_t fault = 0;
     bool parsed = false;
     const bool had_text = text != nullptr;
+    profiles_ready_ = false;
+    bool section = false;
     if (text) {
+        // the profiles block (about 0.55 MB) only for a table that carries the section (an older table: none)
+        section = x3m::weapon_effects::table::carries_ship_profiles(text, size);
+        if (!profiles_ && section) profiles_ = new (std::nothrow) core::ShipProfiles;
         table_ = new (std::nothrow) core::Table;
-        if (table_) parsed = x3m::weapon_effects::table::parse(text, size, table_, &st, &fault);
+        if (table_) parsed = x3m::weapon_effects::table::parse(text, size, table_, &st, &fault, profiles_);
         delete[] text;
         if (!parsed) {
             delete table_;
             table_ = nullptr;
         }
+        profiles_ready_ = parsed && profiles_ && profiles_->count > 0;
     }
+    x3m::log("weapon_ship_profiles event=%s present=%u profiles=%u dropped=%u class_unknown=%u tships_rows=%lu "
+             "capacity=%u block_bytes=%lu slices=%u",
+             profiles_ready_ ? "loaded" : !section ? "absent" : !profiles_ ? "allocation" : "none",
+             unsigned(st.profiles_present), profiles_ready_ ? profiles_->count : 0u, st.profiles_dropped,
+             st.profiles_class_unknown, static_cast<unsigned long>(profiles_ready_ ? profiles_->tships_rows : 0u),
+             core::profile_capacity, static_cast<unsigned long>(profiles_ ? sizeof(core::ShipProfiles) : 0),
+             core::profile_slices);
     table_hull_key_missing_ = !parsed || !st.hull_keys;
     // The live count is checked per hit (core::impact: a differing *0x00607038 disables the lookups, stale_table).
     x3m::log("weapon_effects_table event=%s reason=%s rows=%lu missile_rows=%lu entries=%u textures=%u overrides=%u "
@@ -839,6 +858,9 @@ bool installed() {
 core::Mode mode() {
     return installed_ ? mode_ : core::mode_native;
 }
+const core::ShipProfiles* ship_profiles() noexcept {
+    return profiles_ready_ ? profiles_ : nullptr;
+}
 #if X3M_EDITION_FL
 // The table is loaded once inside the install window, before the device and its textures exist; read-only after.
 int bullet_texture_key(const void* data, std::size_t size) noexcept {
@@ -1058,6 +1080,14 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.bubble_clamped += stage.bubble_clamped;
     period_.bubble_partial += stage.bubble_partial;
     period_.cells_key_dropped += stage.cells_key_dropped;
+    period_.lathes += stage.lathes;
+    period_.lathe_no_profile += stage.lathe_no_profile;
+    period_.lathe_mismatch += stage.lathe_mismatch;
+    period_.lathe_unreadable += stage.lathe_unreadable;
+    period_.lathe_scale += stage.lathe_scale;
+    period_.lathe_degenerate += stage.lathe_degenerate;
+    period_.lathe_cache += stage.lathe_cache;
+    period_.lathe_stale += stage.lathe_stale;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -1230,6 +1260,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
         "bubble_held=%u bubble_deferred=%u bubble_clamped=%u bubble_partial=%u cells_key_dropped=%u hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u"
+        " lathes=%u lathe_no_profile=%u lathe_mismatch=%u lathe_unreadable=%u lathe_scale=%u lathe_degenerate=%u"
+        " lathe_cache=%u lathe_stale=%u"
         X3M_PROJECTILE_FIELDS,
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
@@ -1252,7 +1284,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.bubble_fallback, period_.bubble_walks, period_.bubble_failures, period_.bubble_held, period_.bubble_deferred,
         period_.bubble_clamped, period_.bubble_partial, period_.cells_key_dropped,
         static_cast<unsigned long>(period_.hull_staged), static_cast<unsigned long>(s.life_floor_ms),
-        unsigned(table_hull_key_missing_) X3M_PROJECTILE_ARGS);
+        unsigned(table_hull_key_missing_), period_.lathes, period_.lathe_no_profile, period_.lathe_mismatch,
+        period_.lathe_unreadable, period_.lathe_scale, period_.lathe_degenerate, period_.lathe_cache,
+        period_.lathe_stale X3M_PROJECTILE_ARGS);
 #if X3M_EDITION_FL
     projectile_seen_skipped_ = x3m_projectile_pool.skipped;
     projectile_seen_ = x3m_projectile_pool.counters;

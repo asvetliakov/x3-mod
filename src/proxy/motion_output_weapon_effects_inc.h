@@ -78,10 +78,10 @@ bool MotionOutput::attach_weapon_effects() noexcept {
     }
     const bool attached = queried && SUCCEEDED(hr) && weapon_->caps().enabled;
     const auto& c = weapon_->caps();
-    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u bubble_ps_slots=%u max_ps_slots=%lu retry=reset",
+    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u bubble_ps_slots=%u lathe_vs_slots=%u lathe_ps_slots=%u max_ps_slots=%lu retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
-        c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.bubble_ps_slots,
-        static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
+        c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.bubble_ps_slots, c.lathe_vs_slots,
+        c.lathe_ps_slots, static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
 #if X3M_EDITION_FL
     if (attached && projectile_requested_)
         log("projectile_device device=%llu frame=%llu enabled=%u reason=%s vs_slots=%u ps_slots=%u lane32_blending=%u "
@@ -166,6 +166,14 @@ weapon_effects::stage::CockpitClock weapon_cockpit_clock;
 // ring's scope changes (weapon_effects::scope_changes: a load, a sector change, a load epoch). CPU data only: a device
 // Reset leaves it valid (it names engine objects, never a device resource).
 weapon_effects::stage::BubbleCache weapon_bubble_cache;
+// The lathe bubbles' meshes (5.1.1 "Placement", 2026-11-12; weapon_effects_lathe.h): one per ship type with an offline
+// profile, built on its first hit, 32 types (about 0.7 MB, static). The frame's lathe draws point into it until the
+// next build. CPU data only: a device Reset leaves it valid. Cleared when the profiles block changes.
+weapon_effects::stage::LatheCache weapon_lathe_cache;
+const void* weapon_lathe_profiles = nullptr;
+// Per cache slot the build serial its weapon_lathe event=built row was written for (a slot rebuilt for another type
+// after an eviction carries a new serial: its row is written too).
+std::uint32_t weapon_lathe_logged[weapon_effects::stage::lathe_cache_entries] = {};
 }
 HRESULT MotionOutput::run_weapon_effects() noexcept {
     namespace wcore = weapon_effects::core;
@@ -197,6 +205,16 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     // X3FL.exe's body cache slot (base + 0x1aa100), bound with the other globals at install (core::fl_globals).
     tuning.body_cache_root = weapon_effects::hook_state().globals.body_cache_slot;
 #endif
+    // The lathe bubble's profiles and the TShips table's slots (the hook's globals: AP's fixed, FL's bound at install).
+    tuning.profiles = weapon_effects::ship_profiles();
+    tuning.ship_table_slot = weapon_effects::hook_state().globals.ship_table_slot;
+    tuning.ship_count_slot = weapon_effects::hook_state().globals.ship_count_slot;
+    if (weapon_lathe_profiles != static_cast<const void*>(tuning.profiles)) {
+        weapon_lathe_cache.clear();
+        for (std::uint32_t& b : weapon_lathe_logged) b = 0;
+        weapon_lathe_profiles = tuning.profiles;
+    }
+    const std::uint32_t lathe_builds = weapon_lathe_cache.builds;
     // The frame's draws (64 x sizeof(WeaponPatch), about 124 KB: static, off the game thread's stack; the game thread is
     // the only caller and run() consumes them before returning).
     static renderer::WeaponPatch patches[wcore::max_patches];
@@ -245,7 +263,47 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     const weapon_effects::stage::Counts n =
         weapon_effects::stage::build(weapon_effects::hook_state().ring, weapon_effects::game_ms(), &weapon_effects_read,
                                      camera, tuning, patches, wcore::max_patches, decals, wcore::max_decals,
-                                     &weapon_bubble_cache, &visible);
+                                     &weapon_bubble_cache, &visible, &weapon_lathe_cache);
+    // One weapon_lathe row per mesh built (at most one per type and scale while it stays cached): the type, its scale,
+    // the profile's bounds and the lathe's period basis (metres), with the frame's refusals.
+    if (weapon_lathe_cache.builds != lathe_builds) {
+        const float metre = wcore::engine_units_per_metre * wcore::world_scale;
+        for (unsigned i = 0; i < weapon_effects::stage::lathe_cache_entries; ++i) {
+            const weapon_effects::stage::LatheCache::Entry& e = weapon_lathe_cache.entries[i];
+            if (!e.valid || e.frame != weapon_lathe_cache.frame_id || weapon_lathe_logged[i] == e.serial) continue;
+            weapon_lathe_logged[i] = e.serial;
+            const weapon_effects::stage::LatheMesh& m = e.mesh;
+            log("weapon_lathe device=%llu frame=%llu event=built slot=%u serial=%lu row=%ld axis=%08lx,%08lx,%08lx "
+                "hull_lo_m=%.1f,%.1f,%.1f hull_hi_m=%.1f,%.1f,%.1f perimeter_m=%.1f dome_m=%.1f,%.1f builds=%lu "
+                "no_profile=%u mismatch=%u unreadable=%u scale=%u degenerate=%u cache=%u",
+                id_, frame_, i, static_cast<unsigned long>(e.serial),
+                static_cast<long>(e.row), static_cast<unsigned long>(e.axis[0]),
+                static_cast<unsigned long>(e.axis[1]), static_cast<unsigned long>(e.axis[2]),
+                double(m.hull_lo[0] / metre), double(m.hull_lo[1] / metre), double(m.hull_lo[2] / metre),
+                double(m.hull_hi[0] / metre), double(m.hull_hi[1] / metre), double(m.hull_hi[2] / metre),
+                double(m.perimeter / metre), double(m.dome_depth[0] / metre), double(m.dome_depth[1] / metre),
+                static_cast<unsigned long>(weapon_lathe_cache.builds), n.lathe_no_profile, n.lathe_mismatch,
+                n.lathe_unreadable, n.lathe_scale, n.lathe_degenerate, n.lathe_cache);
+        }
+    }
+    // A stale profiles table (its TShips row count differs from the live one, or none recorded): no profile is used;
+    // one row per process at the first such frame.
+    static bool stale_logged = false;
+    if (n.lathe_stale && !stale_logged) {
+        stale_logged = true;
+        log("weapon_lathe device=%llu frame=%llu event=stale_table table_rows=%lu engine_rows=%lu owners=%u (no profile "
+            "is used: regenerate weapon_effects.json for this game tree)",
+            id_, frame_, static_cast<unsigned long>(n.stale_rows[0]), static_cast<unsigned long>(n.stale_rows[1]),
+            n.lathe_stale);
+    }
+    // The first class mismatch of the process (a table generated for another game tree): one row.
+    static bool mismatch_logged = false;
+    if (n.lathe_mismatch && !mismatch_logged) {
+        mismatch_logged = true;
+        log("weapon_lathe device=%llu frame=%llu event=class_mismatch owners=%u (the profile's class differs from the "
+            "type record's: those ships keep the walk or the decal; regenerate weapon_effects.json)",
+            id_, frame_, n.lathe_mismatch);
+    }
     weapon_effects::stage::dim_own_cockpit(patches, n.patches, own, weapon_cockpit_);
     f.patches = patches;
     f.patch_count = n.patches;
@@ -268,6 +326,14 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[12] += n.bubble.clamped;
     weapon_drops_[13] += n.bubble.partial;
     weapon_drops_[14] += n.cells_key_dropped;
+    weapon_drops_[15] += n.lathes;
+    weapon_drops_[16] += n.lathe_no_profile;
+    weapon_drops_[17] += n.lathe_mismatch;
+    weapon_drops_[18] += n.lathe_unreadable;
+    weapon_drops_[19] += n.lathe_scale;
+    weapon_drops_[20] += n.lathe_degenerate;
+    weapon_drops_[21] += n.lathe_cache;
+    weapon_drops_[22] += n.lathe_stale;
 #if X3M_EDITION_FL
     // FL bodies are assumed to keep AP's normalised LOD extents [0, 0x20000] (fl/weapon-effect-spawn.md section 5 [i]);
     // the AP bound stays the runtime guard (the walk fails to the fallback sphere) and its first refusal is one row.
@@ -541,7 +607,8 @@ void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned*
 // 2 x, 4 y; odd: the - faces), its cells (lit and a ring's not yet lit) and ring hits, the anchors' range along the axis and the
 // eye's distance from the owner's centre, both over the owner's radius (eye_r < 1: the eye inside the bounding sphere),
 // the extent (the footprint test's radius), and for a fighter or corvette its bubble (bubble=1: centre and half-extents
-// in the owner frame; 0: the hull decal of a station or capital), metres = view units / 5.
+// in the owner frame; 0: the hull decal of a station or capital), a lathe draw's band (lathe=1: its rings and columns,
+// the chart period; region 0, the depth fields then not meaningful), metres = view units / 5.
 void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsigned count) noexcept {
     namespace wcore = weapon_effects::core;
     resolve_own_ship();
@@ -557,7 +624,7 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
         log("weapon_patch device=%llu frame=%llu index=%u owner=%08lx node=%08lx own=%u cockpit=%u gain=%.2f region=%u "
             "cells=%u lit=%u hits=%u radius_m=%.1f depth_min_r=%.3f depth_max_r=%.3f eye_r=%.3f eye_m=%.1f "
             "view_z_m=%.1f cell_m=%.2f extent_m=%.2f bubble=%u bubble_c_m=%.1f,%.1f,%.1f bubble_e_m=%.1f,%.1f,%.1f "
-            "eye_sphere=%u eye_r_m=%.1f",
+            "eye_sphere=%u eye_r_m=%.1f lathe=%u lathe_rings=%u-%u lathe_cols=%u-%u lathe_period_m=%.1f",
             id_, frame_, i, static_cast<unsigned long>(p.owner), static_cast<unsigned long>(p.owner_node), unsigned(own),
             unsigned(weapon_cockpit_), double(own && weapon_cockpit_ ? wcore::own_cockpit_gain : 1.f),
             unsigned(int(p.seed)), p.cells, lit, p.hits,
@@ -565,17 +632,19 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
             double(p.centre[2] / metre), double(p.cell / metre), double(p.extent / metre), unsigned(p.bubble),
             double(p.bubble_c[0] / metre), double(p.bubble_c[1] / metre), double(p.bubble_c[2] / metre),
             double(p.bubble_e[0] / metre), double(p.bubble_e[1] / metre), double(p.bubble_e[2] / metre),
-            unsigned(p.eye_sphere), double(p.eye_sphere ? p.bubble_e[0] / metre : 0.f));
+            unsigned(p.eye_sphere), double(p.eye_sphere ? p.bubble_e[0] / metre : 0.f), unsigned(p.lathe != nullptr),
+            unsigned(p.lathe_r0), unsigned(p.lathe_r1), unsigned(p.lathe_c0), unsigned(p.lathe_c1),
+            double(p.lathe ? p.lathe_period / metre : 0.f));
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[15]) noexcept {
+                                             bool* drew, unsigned drops[weapon_drop_count]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 15; ++i) {
+    for (unsigned i = 0; i < weapon_drop_count; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }

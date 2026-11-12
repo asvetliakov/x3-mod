@@ -68,6 +68,18 @@ constexpr std::uint32_t projectile_ps_words[] = {
 constexpr std::uint32_t pulse_ps_words[] = {
 #include "weapon_pulse_pixel_program_inc.h"
 };
+constexpr std::uint32_t lathe_vs_words[] = {
+#include "weapon_lathe_vertex_program_inc.h"
+};
+constexpr std::uint32_t lathe_ps_words[] = {
+#include "weapon_lathe_pixel_program_inc.h"
+};
+constexpr D3DVERTEXELEMENT9 lathe_elements[] = {
+    {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+    {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+    D3DDECL_END()};
+static_assert(sizeof(WeaponLatheVertex) == 20, "the lathe declaration follows the vertex");
+static_assert(weapon_lathe_vertices <= 65536, "a lathe band indexes with 16 bits");
 constexpr D3DVERTEXELEMENT9 projectile_elements[] = {
     {0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
     {0, 12, D3DDECLTYPE_FLOAT4, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
@@ -150,6 +162,9 @@ void WeaponEffectsPass::release_objects() noexcept {
     drop(decal_ps_);
     drop(shell_declaration_);
     drop(decal_declaration_);
+    drop(lathe_vs_);
+    drop(lathe_ps_);
+    drop(lathe_declaration_);
     drop(projectile_vs_);
     drop(projectile_ps_);
     drop(projectile_declaration_);
@@ -173,14 +188,15 @@ void WeaponEffectsPass::after_reset(HRESULT hr) noexcept {
 }
 bool WeaponEffectsPass::resources_ready() const noexcept {
     return device_ && caps_.enabled && !reset_pending_ && shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ &&
-           shell_declaration_ && decal_declaration_;
+           shell_declaration_ && decal_declaration_ && lathe_vs_ && lathe_ps_ && lathe_declaration_;
 }
 unsigned WeaponEffectsPass::references() const noexcept {
     unsigned n = 0;
     for (const void* p : {static_cast<const void*>(shell_vs_), static_cast<const void*>(shell_ps_),
                           static_cast<const void*>(bubble_ps_), static_cast<const void*>(decal_vs_), static_cast<const void*>(decal_ps_),
                           static_cast<const void*>(shell_declaration_), static_cast<const void*>(decal_declaration_),
-                          static_cast<const void*>(projectile_vs_), static_cast<const void*>(projectile_ps_),
+                          static_cast<const void*>(lathe_vs_), static_cast<const void*>(lathe_ps_),
+                          static_cast<const void*>(lathe_declaration_), static_cast<const void*>(projectile_vs_), static_cast<const void*>(projectile_ps_),
                           static_cast<const void*>(projectile_declaration_), static_cast<const void*>(pulse_ps_)})
         n += p != nullptr;
     return n;
@@ -206,8 +222,10 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     caps_.shell_ps_slots = ps3_program_slots(shell_ps_words, std::size(shell_ps_words));
     caps_.decal_ps_slots = ps3_program_slots(decal_ps_words, std::size(decal_ps_words));
     caps_.bubble_ps_slots = ps3_program_slots(bubble_ps_words, std::size(bubble_ps_words));
+    caps_.lathe_vs_slots = vs3_slots(lathe_vs_words);
+    caps_.lathe_ps_slots = ps3_program_slots(lathe_ps_words, std::size(lathe_ps_words));
     if (!caps_.shell_vs_slots || !caps_.decal_vs_slots || !caps_.shell_ps_slots || !caps_.decal_ps_slots ||
-        !caps_.bubble_ps_slots)
+        !caps_.bubble_ps_slots || !caps_.lathe_vs_slots || !caps_.lathe_ps_slots)
         return refuse("compiled_program");
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_BLENDOP) || !(caps.SrcBlendCaps & D3DPBLENDCAPS_ONE) ||
         !(caps.DestBlendCaps & D3DPBLENDCAPS_ONE))
@@ -215,8 +233,11 @@ HRESULT WeaponEffectsPass::attach(D d, void* const* native, const D3DCAPS9& caps
     if (!(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLNONE) || !(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLCW) ||
         !(caps.PrimitiveMiscCaps & D3DPMISCCAPS_CULLCCW))
         return refuse("cull_caps");
-    if (caps.MaxPrimitiveCount < patch_triangles || caps.MaxVertexIndex < patch_vertices || caps.MaxStreams < 1u)
+    if (caps.MaxPrimitiveCount < weapon_lathe_triangles || caps.MaxVertexIndex < weapon_lathe_vertices ||
+        caps.MaxStreams < 1u)
         return refuse("limits");
+    static_assert(weapon_lathe_triangles >= patch_triangles && weapon_lathe_vertices >= patch_vertices,
+                  "the lathe's limits cover the box's");
     IDirect3D9* api = nullptr;
     D3DDEVICE_CREATION_PARAMETERS creation{};
     HRESULT hr = call<GetD3DFn>(GetDirect3D)(d, &api);
@@ -340,8 +361,14 @@ HRESULT WeaponEffectsPass::create_objects() noexcept {
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, shell_elements, &shell_declaration_);
     if (SUCCEEDED(hr) && !decal_declaration_)
         hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, decal_elements, &decal_declaration_);
-    if (SUCCEEDED(hr) &&
-        !(shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ && shell_declaration_ && decal_declaration_))
+    if (SUCCEEDED(hr) && !lathe_vs_)
+        hr = call<CreateVsFn>(CreateVertexShader)(d, reinterpret_cast<const DWORD*>(lathe_vs_words), &lathe_vs_);
+    if (SUCCEEDED(hr) && !lathe_ps_)
+        hr = call<CreatePsFn>(CreatePixelShader)(d, reinterpret_cast<const DWORD*>(lathe_ps_words), &lathe_ps_);
+    if (SUCCEEDED(hr) && !lathe_declaration_)
+        hr = call<CreateDeclarationFn>(CreateVertexDeclaration)(d, lathe_elements, &lathe_declaration_);
+    if (SUCCEEDED(hr) && !(shell_vs_ && shell_ps_ && bubble_ps_ && decal_vs_ && decal_ps_ && shell_declaration_ &&
+                           decal_declaration_ && lathe_vs_ && lathe_ps_ && lathe_declaration_))
         hr = E_FAIL;
     if (FAILED(hr)) release_objects();
     return hr;
@@ -672,6 +699,43 @@ bool bubble_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[s
     std::memcpy(out, block, sizeof block);
     return finite_all(out, shell_tail * 4);
 }
+// A lathe draw (weapon_lathe_ps.hlsl): its band's index list into idx (the quads of rings [r0, r1] and columns
+// [c0, c1], vertex indices from ring r0's first: the caller passes the mesh from there), the near and far gains with the
+// front sign (VFACE > 0 is clockwise on screen: the outward side of the mesh's quads when the owner's axes keep their
+// sense in view, det > 0) and the chart's period rows in c19; false for a band the mesh cannot hold or a degenerate
+// chart. *triangles, *vertices: the draw's counts.
+bool lathe_band(const WeaponPatch& p, std::uint16_t* idx, unsigned* triangles, unsigned* vertices) noexcept {
+    if (!p.lathe || p.lathe_r1 <= p.lathe_r0 || p.lathe_r1 >= weapon_lathe_rings || p.lathe_c1 <= p.lathe_c0 ||
+        p.lathe_c1 > weapon_lathe_segments || !(p.lathe_period > 0.f) || !finite(p.lathe_period) ||
+        !(p.lathe_wrap_rows >= 0.f) || !finite(p.lathe_wrap_rows) || !finite_all(p.lathe_box, 4))
+        return false;
+    unsigned n = 0;
+    for (unsigned r = 0; r < unsigned(p.lathe_r1 - p.lathe_r0); ++r)
+        for (unsigned c = p.lathe_c0; c < p.lathe_c1; ++c) {
+            // outward by the right-hand rule: (r, c), (r + 1, c), (r, c + 1) and (r, c + 1), (r + 1, c), (r + 1, c + 1)
+            const unsigned a = r * weapon_lathe_columns + c, b = a + weapon_lathe_columns;
+            idx[n++] = std::uint16_t(a);
+            idx[n++] = std::uint16_t(b);
+            idx[n++] = std::uint16_t(a + 1);
+            idx[n++] = std::uint16_t(a + 1);
+            idx[n++] = std::uint16_t(b);
+            idx[n++] = std::uint16_t(b + 1);
+        }
+    *triangles = n / 3;
+    *vertices = (unsigned(p.lathe_r1 - p.lathe_r0) + 1) * weapon_lathe_columns;
+    return n > 0;
+}
+bool lathe_block(const WeaponEffectsFrame& f, const WeaponPatch& p, float out[4]) noexcept {
+    const float det = p.axes[2][0] * (p.axes[0][1] * p.axes[1][2] - p.axes[0][2] * p.axes[1][1]) +
+                      p.axes[2][1] * (p.axes[0][2] * p.axes[1][0] - p.axes[0][0] * p.axes[1][2]) +
+                      p.axes[2][2] * (p.axes[0][0] * p.axes[1][1] - p.axes[0][1] * p.axes[1][0]);
+    if (!(det > 1e-12f || det < -1e-12f)) return false;
+    out[0] = f.look.bubble_near_gain;
+    out[1] = f.look.bubble_far_gain;
+    out[2] = det > 0.f ? 1.f : -1.f;
+    out[3] = p.lathe_wrap_rows;
+    return true;
+}
 // The draw's box (face frame u, v, a) as bounds of the bubble's normalised owner coordinates q = (x - c) / e (the
 // pixel program's test; the face's axes are signed owner axes, so each maps to one owner axis): out[0..2] min, out[4..6]
 // max (.w 0).
@@ -759,9 +823,9 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
                    std::pair{D3DRS_SCISSORTESTENABLE, DWORD(FALSE)}, std::pair{D3DRS_STENCILENABLE, DWORD(FALSE)}})
         step(WeaponEffectsStep::State, call<SetRsFn>(SetRenderState)(d, s.first, s.second));
     if (SUCCEEDED(hr) && f.patch_count) {
-        step(WeaponEffectsStep::Patches, call<SetDeclarationFn>(SetVertexDeclaration)(d, shell_declaration_));
-        step(WeaponEffectsStep::Patches, call<SetVsFn>(SetVertexShader)(d, shell_vs_));
-        IDirect3DPixelShader9* bound = nullptr; // the hull decal's or the bubble's program, set when it changes
+        // The programs and declaration of the box draws or the lathe's, each set when it changes.
+        IDirect3DPixelShader9* bound = nullptr;
+        IDirect3DVertexShader9* bound_vs = nullptr;
         for (unsigned i = 0; i < f.patch_count && SUCCEEDED(hr); ++i) {
             const WeaponPatch& p = f.patches[i];
             bool ok = finite_all(p.centre, 3) && finite_all(p.view_u, 3) && finite_all(p.view_v, 3) &&
@@ -771,10 +835,52 @@ HRESULT WeaponEffectsPass::run(const WeaponEffectsFrame& f, WeaponEffectsReport*
             unsigned map_sent = 0;
             ok = ok && hex_block(l, p.cell, p.radius, p.reach, p.seed, 0.f, p.colour, p.anchor, p.anchor_u, p.anchor_v,
                                  p.hits, p.hit_cell, p.hit, p.age_s, ps) &&
-                 write_box(p, vertices_) &&
                  map_block(p, ps + (hex_head + shell_tail) * 4, clocks, ranges, &map_sent);
             if (!ok) continue; // a degenerate patch is skipped, never drawn wrong
+            if (p.lathe) {
+                unsigned triangles = 0, count = 0;
+                std::memset(ps + hex_head * 4, 0, sizeof(float) * shell_tail * 4);
+                if (!lathe_band(p, lathe_indices_, &triangles, &count) || !lathe_block(f, p, ps + hex_head * 4)) continue;
+                if (bound_vs != lathe_vs_) {
+                    step(WeaponEffectsStep::Patches, call<SetDeclarationFn>(SetVertexDeclaration)(d, lathe_declaration_));
+                    step(WeaponEffectsStep::Patches, call<SetVsFn>(SetVertexShader)(d, lathe_vs_));
+                    step(WeaponEffectsStep::Patches, call<SetRsFn>(SetRenderState)(d, D3DRS_CULLMODE, DWORD(D3DCULL_NONE)));
+                    bound_vs = lathe_vs_;
+                }
+                if (bound != lathe_ps_ && step(WeaponEffectsStep::Patches, call<SetPsFn>(SetPixelShader)(d, lathe_ps_)))
+                    bound = lathe_ps_;
+                const float vs[5 * 4] = {p.centre[0], p.centre[1], p.centre[2], f.near_z,
+                                         p.axes[0][0], p.axes[0][1], p.axes[0][2], 0.f,
+                                         p.axes[1][0], p.axes[1][1], p.axes[1][2], 0.f,
+                                         p.axes[2][0], p.axes[2][1], p.axes[2][2], 0.f,
+                                         p.lathe_period, 0.f, 0.f, 0.f};
+                step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetVertexShaderConstantF)(d, 2, vs, 5));
+                step(WeaponEffectsStep::Patches,
+                     call<SetConstantsFn>(SetPixelShaderConstantF)(d, 2, ps, hex_head + shell_tail + map_blocks));
+                step(WeaponEffectsStep::Patches, call<SetConstantsFn>(SetPixelShaderConstantF)(d, clocks_at, clocks, map_sent));
+                const float box4[8] = {p.lathe_box[0], p.lathe_box[1], 0.f, 0.f, p.lathe_box[2], p.lathe_box[3], 0.f, 0.f};
+                std::memcpy(ranges + map_groups * 2, box4, sizeof box4); // c94..c95: the cells' chart bounds
+                step(WeaponEffectsStep::Patches,
+                     call<SetConstantsFn>(SetPixelShaderConstantF)(d, ranges_at, ranges, map_groups / 2 + 2));
+                if (SUCCEEDED(hr)) {
+                    const HRESULT draw = draw_fault(call<DrawIndexedUpFn>(DrawIndexedPrimitiveUP)(
+                        d, D3DPT_TRIANGLELIST, 0, count, triangles, lathe_indices_, D3DFMT_INDEX16,
+                        p.lathe + std::size_t(p.lathe_r0) * weapon_lathe_columns, UINT(sizeof(WeaponLatheVertex))));
+                    if (step(WeaponEffectsStep::Patches, draw)) {
+                        ++r.patches;
+                        ++r.lathes;
+                        r.drew = true;
+                    }
+                }
+                continue;
+            }
+            if (!write_box(p, vertices_)) continue;
             if (!(p.bubble ? bubble_block(f, p, ps + hex_head * 4) : shell_block(f, p, ps + hex_head * 4))) continue; // c19..c25
+            if (bound_vs != shell_vs_) {
+                step(WeaponEffectsStep::Patches, call<SetDeclarationFn>(SetVertexDeclaration)(d, shell_declaration_));
+                step(WeaponEffectsStep::Patches, call<SetVsFn>(SetVertexShader)(d, shell_vs_));
+                bound_vs = shell_vs_;
+            }
             IDirect3DPixelShader9* program = p.bubble ? bubble_ps_ : shell_ps_;
             if (program != bound) {
                 if (!step(WeaponEffectsStep::Patches, call<SetPsFn>(SetPixelShader)(d, program))) break;

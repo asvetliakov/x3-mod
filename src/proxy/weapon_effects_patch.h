@@ -94,6 +94,9 @@ std::uint16_t bullet_texture_p99_q(unsigned key) noexcept;
 // built (the first lookup that can read TBullets); then a compare per mapped body.
 const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept;
 #endif
+// The ship profiles of weapon_effects.json (schema 3 ship_profiles; the lathe bubble, weapon_effects_lathe.h), loaded
+// with the table into one heap block, read-only afterwards; nullptr when the file carries none (or none was kept).
+const core::ShipProfiles* ship_profiles() noexcept;
 const char* state();
 // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
 // (the one FL call), 7 batch (the projectile stage's batch submit 0x097af8; with the object tap in every stage mode)
@@ -133,6 +136,10 @@ struct StageFrame {
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     unsigned bubble_partial = 0;
     unsigned cells_key_dropped = 0; // footprint cells past the packed cell key's bound (never lit; review F6)
+    // The lathe bubble (stage::Counts): owners drawn on it; lathe-tier owners refused by cause (no profile, class
+    // mismatch, unreadable or row past the count, axis scale, degenerate profile, cache full) or skipped while stale.
+    unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0;
     float stage_us = 0.f;
     bool drew = false;
     // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the

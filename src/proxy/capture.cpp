@@ -2080,7 +2080,7 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
     if (weapon_effects::installed()) {
         weapon_effects::StageFrame stage{};
         const bool owned = ctx.motion_output.weapon_effects_owned();
-        unsigned drops[15]{};
+        unsigned drops[MotionOutput::weapon_drop_count]{};
         ctx.motion_output.weapon_effects_take_frame(&stage.patches, &stage.decals, &stage.retired, &stage.stage_us, &stage.drew,
                                                     drops);
         stage.dropped = drops[0];
@@ -2098,6 +2098,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.bubble_clamped = drops[12];
         stage.bubble_partial = drops[13];
         stage.cells_key_dropped = drops[14];
+        stage.lathes = drops[15];
+        stage.lathe_no_profile = drops[16];
+        stage.lathe_mismatch = drops[17];
+        stage.lathe_unreadable = drops[18];
+        stage.lathe_scale = drops[19];
+        stage.lathe_degenerate = drops[20];
+        stage.lathe_cache = drops[21];
+        stage.lathe_stale = drops[22];
 #if X3M_EDITION_FL
         // The projectile stage (docs/architecture/projectile-look.md): its ownership latches the next frame's batch skip.
         unsigned flashes[5] = {};

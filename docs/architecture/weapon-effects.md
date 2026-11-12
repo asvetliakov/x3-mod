@@ -580,7 +580,81 @@ every hit, so a diagnosis flight still sees vanilla.
   by TShips class, docks and factories, an unknown class in the capital radius band) and an unknown tier take the decal
   and run no hull walk, except the own ship in the cockpit view, which keeps its eye sphere (below) whatever its tier. The cells keep their model (the six face lattices, footprints, per-cell clocks, marker, ring,
   colour, fade, eviction, spills, seam shares; below).
-  - *Capitals take the decal (FL 67 A, main session decision 2026-11-12).* A box-fitted ellipsoid cannot fit a long hull
+  - *The lathe bubble (user decision 2026-11-12 on FL run 68: capitals get the bubble, the decal was "acceptable but not
+    right"; supersedes the capital decal below).* A capital-tier ship (`patch_capital`: M0/M1/M2/M7/TL by class, an
+    unknown class in the capital radius band, an unknown tier) whose TShips row has an offline profile draws its shield
+    hits on a lathe of that profile and walks nothing (`core::shield_surface`; else the previous rule: fighter or
+    corvette → walked ellipsoid, capital or station → decal). Fighters and corvettes keep the Run239 walked ellipsoid
+    (orchestrator decision 2026-11-12: the accepted look, not changed without a flight); `core::lathe_all_tiers` (false)
+    is the one switch that gives every tier with a profile the lathe. The own capital ship in the cockpit keeps the
+    Run240 eye sphere (its radius from the profile's bounds x 1.15, no walk).
+    - *Stale table*: the profiles carry the TShips row count the generator read (`generated_from.ship_profiles.rows`);
+      the stage compares it with the live count at the type table's count slot once per call (the bullet table's
+      `stale_table` rule) and, when they differ or none was recorded, uses no profile (`lathe_stale`, one
+      `weapon_lathe event=stale_table table_rows= engine_rows=` row per process). `weapon_effects_frame` carries the
+      period's `lathes=`, `lathe_no_profile=`, `lathe_mismatch=`, `lathe_unreadable=` (a refused read or the row past the
+      count), `lathe_scale=`, `lathe_degenerate=`, `lathe_cache=` and `lathe_stale=`; `weapon_effects_device` the lathe
+      programs' `lathe_vs_slots=` / `lathe_ps_slots=`; every mesh build one `weapon_lathe event=built slot= serial=` row
+      (a slot rebuilt after an eviction logs again).
+    - *Profiles* (`weapon_effects.json` schema 3, `tables.ship_profiles`, tools/effects/ship_profiles.py, "Ship
+      profiles (2026-11-12)" below): per TShips row the hull along the model's z in scene units, 32 slices of (cx, cy,
+      hx, hy). One scene unit is one engine unit of the owner frame; the lathe applies the root node's axis scales
+      `[node+0x80 + 4 i]` (16.16) as the walk does to its children's offsets, then `world_scale`. Verified against the
+      production walk over the FL 67 Titan hull part (half-extents 151,433 x 166,374 x 528,422 at z +17,329): the real
+      Titan profile's bounds equal the walk's box within 0.001 m on every axis (x the widest slice 16, y the fin slices
+      11 and 17, z the ends), factor 1.0000 [M, native fixture `LATHE case=units`]. The reader
+      (`table::parse`, last argument) keeps them in one heap block (`core::ShipProfiles`, 1024 entries, about 0.55 MB)
+      keyed by row, allocated only when the table carries a `ship_profiles` array (an older table allocates nothing),
+      and logs one `weapon_ship_profiles` row at load (event loaded / absent / allocation / none, kept, dropped, unknown
+      class tokens, the recorded TShips rows).
+    - *Type* (`stage::resolve_lathe`, six engine reads per owner and stage call): class word `obj+0x48` = 7 (ship);
+      subtype `obj+0x4a` (int16) is the TShips index, the row `read_tier` takes its class from; the type record's class
+      id `[ship table + 0xdb8 sub + 0xc8]` must equal the profile's (its col 52 token through the engine's text-id
+      table, weapon-effect-spawn.md 8.1), else the ship falls back (`lathe_mismatch`: a table of another tree or edition;
+      one `weapon_lathe event=class_mismatch` row per process); axis scales outside (0, 256x] also fall back.
+    - *Mesh* (`stage::build_lathe`, once per type and scale in `stage::LatheCache`, 32 entries, the least recently used
+      not drawn this frame evicted, about 0.7 MB static; one `weapon_lathe event=built` row per mesh): 32 rings at the
+      slice centres (an empty slice interpolated from its neighbours, half-widths floored at 1/16 of the widest) x
+      `bubble_scale` 1.15, 24 segments each (the ellipse cx + hx sin φ, cy + hy cos φ, the seam at -y), closed at each
+      end by a half ellipsoid on its end ring of depth half a slice + 0.15 x the end ring's mean half-width (at least
+      0.35 of it; 0.15 x half the ship's length first made a 192 m needle on the Titan's 4 m nose): four rings at 22.5°
+      steps, the last the tip, so the bow and stern are rounded. 40 rings,
+      1000 vertices (`renderer::WeaponLatheVertex`, 20 B).
+    - *Mapping* (`stage::map_lathe`): a hit inside the body takes its z's ring pair, their (cx, cy, hx, hy)
+      interpolated, and is projected laterally onto that ellipse in its normalised space, not radially from the centre;
+      past an end ring it maps radially onto the dome's ellipsoid. The FL 67 witness on the profile's own surface (side
+      band |z| < 300k, 114 points): the walk ellipsoid moved the contacts a median 279 m (max 629 m), the lathe 22 m
+      (max 45 m: the 15 % inflation of the slice's lateral offset); nose and tail 3.3 m (the walk ellipsoid's 153 m)
+      [M, fixture `LATHE case=placement`].
+    - *Pattern*: one chart per owner instead of the six face lattices. u is the arc length along the lathe's mean
+      outline: per ring one u, its step from the previous ring the mean of its 24 columns' distances, so a step between
+      slices keeps the cells' length on average. Each column's own arc length was tried first and rejected: neighbouring
+      columns accumulated up to 188 m of u apart past the Titan's fin slices, shearing the cells; u = z stretched them
+      1.5 to 1.7 x on the slice 9 to 10 ramp. In the slice-9 band the mean outline is within ±10 % of the columns' true
+      lengths and exact across them; into the fin band (slice 10 to 11) ±50 %. v is the perimeter fraction x the ring's scale x the period (the median
+      body ring's perimeter rounded to whole lattice periods, so the hex lattice closes around a full-width ring); a
+      ring narrower than 0.6 of the median perimeter (`stage::lathe_min_width`) spans that share of the period, so the
+      cells' shrink across the hull stops at 0.6 toward the nose, the tail and the dome tips (2026-11-12 look fixes,
+      `verification/results/lathe-bubble/titan_side_lathe.png`, `titan_bow_{side,ahead}_lathe.png`). A ring wider
+      than the median keeps the full period, so its cells stretch across the hull by its perimeter over the median (the
+      Titan's slice 16 1.76 x, the fin slices 11 and 22 1.53 x and 1.37 x [M, the production mesh offline]). The
+      cells, clocks,
+      marker, ring, fade, eviction and spills are `fill_region`'s on that plane (anchor 0), so the cells keep their 16 m
+      along a 2 km hull. A hit within a footprint and two cells of its ring's seam is placed once more one ring span
+      across it, so the cells on both sides of the seam carry it (the cell hash wraps the key row by the period, which
+      matches only on full-width rings). One region per owner: a lathe owner reserves one draw of the frame's 64 (a face
+      owner six), resolved before the reservations.
+    - *Draw* (`weapon_lathe_vs/ps.hlsl`, the cell lookup of `weapon_bubble_ps.hlsl`): each draw rasterizes the band of
+      rings and columns holding its cells (`stage::lathe_band`; the indices built per draw, the mesh passed from the
+      band's first ring through `DrawIndexedPrimitiveUP`), CULLMODE NONE; VFACE x the owner frame's determinant sign
+      picks the near gain (1) or the far gain (0.6); the lane occludes as for the ellipsoid. The look is the fighter
+      bubble's (shield-hit-accepted-look). Attach now needs 1872 primitives and 1000 vertex indices per draw.
+    - *Open: boxy hulls.* A slice's ellipse on its half-widths passes inside a rectangular cross-section's corners (a
+      corner lies at √2 of the half-widths in the ellipse's normalised space, against the 1.15 inflation), so on a boxy
+      hull (TS, TL freighters) a corner hit's lateral projection can land inside the hull, where the lane hides it. Not
+      fixed now; a profile carrying the slice's corner reach (or an inflation of √2 x 1.15 on the diagonals) would.
+  - *Capitals take the decal (FL 67 A, main session decision 2026-11-12; since the lathe above only a capital whose row
+    has no profile).* A box-fitted ellipsoid cannot fit a long hull
     with fins at any scale. The Argon Titan (M2, radius 545,751) is one hull part whose stored extent is the per-axis
     coordinate maximum (x 151k at one z-station, the others 46 to 83k; y 166k from the fins), so its walked bubble stood
     about 174k x 194k x 608k engine units (x 1.15) far off the sides; the radial map pushes a hit outward by 1/|q|, and

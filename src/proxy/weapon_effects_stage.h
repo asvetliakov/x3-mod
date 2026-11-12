@@ -2,11 +2,15 @@
 #include "../renderer/weapon_effects_pass.h"
 #include "weapon_effects_bubble.h"
 #include "weapon_effects_core.h"
+#include "weapon_effects_lathe.h"
 #include "sse_scalar.h"
 #include <algorithm>
 
 // The weapon effects' scene-end step (docs/architecture/weapon-effects.md 3.1, 5.1 item 3 and 5.1.1): the ring's
-// stage-owned shield hits (flag_stage) become hex patches. A fighter or corvette (core::shield_bubble of the newest
+// stage-owned shield hits (flag_stage) become hex patches. A ship whose TShips row has an offline profile of its class
+// (2026-11-12, core::shield_surface; weapon_effects_lathe.h) draws on the lathe of that profile whatever its tier, its
+// hits mapped along their slice and lit in the lathe's one chart (fill_lathe), and walks nothing; the own ship in the
+// cockpit keeps its eye sphere (sized from the profile's bounds). Without one: a fighter or corvette (core::shield_bubble of the newest
 // record's PatchTier and TierSource) gets its bubble (user decision after Run238 Flight E; weapon_effects_bubble.h): the
 // hull bounds' ellipsoid x bubble_scale (the walk through the caller's BubbleCache, else the fallback sphere of the
 // object radius, Counts::bubble_fallback), each hit mapped onto it radially in its normalised space (bubble_point) and
@@ -235,6 +239,14 @@ struct Counts {
     float screens = 0.f;                       // the drawn patches' screens
     unsigned eye_spheres = 0;                  // owners drawn on the eye sphere (the own ship in the cockpit)
     unsigned cells_key_dropped = 0; // footprint cells past the packed key's bound (RegionStats::key_dropped; review F6)
+    // The lathe bubble (weapon_effects_lathe.h): owners drawn on it; of the lathe-tier owners with profiles loaded, those
+    // refused by cause (LatheRefusal: no profile for the row, the class differs, an engine read refused or the row past
+    // the type table's count, an axis scale out of range, a degenerate profile, every cache entry drawn this frame) and
+    // those skipped because the table is stale (its TShips row count differs from the live one: stale_rows table,
+    // engine); hits duplicated across the seam.
+    unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_seam = 0;
+    std::uint32_t stale_rows[2] = {0, 0};
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
 constexpr unsigned region_draws = 8;
@@ -253,6 +265,10 @@ struct Tuning {
     // The own ship (its root node; 0 unknown) and the cockpit view: its bubble is the eye sphere (core::eye_sphere_min_m).
     std::uint32_t own_node = 0;
     bool cockpit = false;
+    // The lathe bubble's inputs (weapon_effects_lathe.h): the offline profiles (nullptr: none, the walk and the decal as
+    // before) and the TShips type table's slots (the hook's Globals::ship_table_slot / ship_count_slot).
+    const core::ShipProfiles* profiles = nullptr;
+    std::uintptr_t ship_table_slot = 0, ship_count_slot = 0;
 };
 inline float metres_to_view(float m) noexcept {
     return m * core::engine_units_per_metre * core::world_scale;
@@ -384,6 +400,7 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
     head.hits = 0;
     head.cells = 0;
     head.bubble = 0; // the hull decal unless bubble_box makes it the ship bubble's draw (outs are reused frame to frame)
+    head.lathe = nullptr; // likewise unless fill_lathe makes it a lathe draw
 
     const float v = t.ripple_speed * head.radius, ring_life = 1.f / t.ripple_speed;
     const float max_since = t.fade_s * (1.f + 0.5f * t.stagger);
@@ -598,6 +615,76 @@ inline void fill_bubble(renderer::WeaponPatch* patches, unsigned cap, unsigned* 
         if (rs.refused) ++n->dropped;
     }
 }
+// One owner's lathe draws (5.1.1 "Placement", 2026-11-12; weapon_effects_lathe.h): its hits (owner frame, view units,
+// newest first, ages in game seconds) mapped onto lathe m (map_lathe) and placed in its chart (u, v' x the period, the
+// anchor 0 lattice plane: fill_region's cells, clocks, ring hits and spills as for a face), a hit within a footprint and
+// two cells of the seam also one period across it (right after it, its age), so the cells on both sides of the seam
+// carry it; one region per owner (the one reservation it held is released first). Each draw takes the mesh,
+// its chart box (lathe_box), the band of rings and columns holding its cells and that band's owner-frame bounds as its
+// box (the screen budget). Adds the draws, spills, dropped cells and seam copies to *n.
+inline void fill_lathe(renderer::WeaponPatch* patches, unsigned cap, unsigned* regions_left, const float centre[3],
+                       const float frame[9], unsigned tier, const LatheMesh& m, const float (*hits)[3], const float* ages,
+                       unsigned count, const float colour[3], const Tuning& t, Counts* n) noexcept {
+    if (*regions_left) --*regions_left;
+    count = count < core::owner_hits ? count : core::owner_hits;
+    if (!count) return;
+    const unsigned tr = tier < core::patch_tier_count ? tier : unsigned(core::patch_capital);
+    const float cell = metres_to_view(t.cell_m[tr]);
+    float rows = 0.f;
+    const float period = lathe_period(m, cell, &rows), margin = float(tier_rings(t, tr)) * cell + 2.f * cell;
+    float points[core::owner_hits][3], sub_ages[core::owner_hits];
+    unsigned used = 0;
+    for (unsigned h = 0; h < count && used < core::owner_hits; ++h) {
+        float b[3], chart[2], scale = 1.f;
+        map_lathe(m, hits[h], b, chart, &scale);
+        const float v = chart[1] * period, span = scale * period; // the hit's ring spans [-span / 2, span / 2]
+        points[used][0] = chart[0];
+        points[used][1] = v;
+        points[used][2] = 0.f;
+        sub_ages[used++] = ages[h];
+        const float across = v > 0.5f * span - margin ? -span : v < margin - 0.5f * span ? span : 0.f;
+        if (across != 0.f && used < core::owner_hits) {
+            points[used][0] = chart[0];
+            points[used][1] = v + across;
+            points[used][2] = 0.f;
+            sub_ages[used++] = ages[h];
+            ++n->lathe_seam;
+        }
+    }
+    if (n->patches >= cap) {
+        ++n->dropped;
+        return;
+    }
+    const unsigned free = cap - n->patches;
+    const unsigned room = free > *regions_left ? free - *regions_left : 1u;
+    RegionStats rs{};
+    const unsigned drawn =
+        fill_region(patches + n->patches, room, centre, frame, tier, 0, points, sub_ages, used, colour, t, &rs);
+    for (unsigned d = 0; d < drawn; ++d) {
+        renderer::WeaponPatch& p = patches[n->patches + d];
+        const float box[4] = {p.box[0], p.box[1], p.box[3], p.box[4]};
+        unsigned r0, r1, c0, c1;
+        float lo[3], hi[3];
+        lathe_band(m, box[0], box[2], box[1] / period, box[3] / period, &r0, &r1, &c0, &c1, lo, hi);
+        p.lathe = m.vertex;
+        p.lathe_r0 = std::uint16_t(r0);
+        p.lathe_r1 = std::uint16_t(r1);
+        p.lathe_c0 = std::uint16_t(c0);
+        p.lathe_c1 = std::uint16_t(c1);
+        p.lathe_period = period;
+        p.lathe_wrap_rows = rows;
+        std::memcpy(p.lathe_box, box, sizeof box);
+        for (unsigned i = 0; i < 3; ++i) { // the band in the owner frame (view_u, view_v, view_a: the owner's axes)
+            p.box[i] = lo[i];
+            p.box[3 + i] = hi[i];
+        }
+    }
+    n->patches += drawn;
+    n->spills += drawn > 1 ? drawn - 1 : 0;
+    n->cells_dropped += rs.dropped;
+    n->cells_key_dropped += rs.key_dropped;
+    if (rs.refused) ++n->dropped;
+}
 // The own ship in the cockpit view (core::own_cockpit_gain, 5.1.1): every patch draw whose owner node is own_node (the
 // own-ship root node, nonzero) is scaled to `gain` of its radiance (its colour: the patch blends ONE/ONE, so the colour
 // is its intensity) when cockpit is true; nothing else changes. Returns the draws dimmed. O(n), no allocation.
@@ -652,13 +739,17 @@ inline float box_screens(const renderer::WeaponPatch& p, const Camera& c, float 
 // (production: one per process, rescoped by the caller; nullptr walks every owner every call). visible (nullable): adds
 // every owner it read and kept (max_owners) whose sphere reaches the view volume (owner_in_view) as drawn, and every
 // candidate owner in view (kept or not) as in view, for the stamp (core::ring_stamp_hidden); its located table holds
-// the owners read. Internal linkage (static), so its ring-sized static scratch is the TU's zero-initialised .bss, not a
-// comdat .data$ section of the file (the production DLL calls it from one TU).
+// the owners read. lathes (nullable, with t.profiles): the lathe meshes (production: one per process); a ship whose row
+// has a profile of its class draws on its lathe (fill_lathe), no walk. Internal linkage (static), so its ring-sized
+// static scratch is the TU's zero-initialised .bss, not a comdat .data$ section of the file (the production DLL calls it
+// from one TU).
 static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera& cam, const Tuning& t,
                     renderer::WeaponPatch* patches, unsigned patch_cap, renderer::WeaponDecal* decals,
-                    unsigned decal_cap, BubbleCache* bubbles = nullptr, core::VisibleOwners* visible = nullptr) noexcept {
+                    unsigned decal_cap, BubbleCache* bubbles = nullptr, core::VisibleOwners* visible = nullptr,
+                    LatheCache* lathes = nullptr) noexcept {
     Counts n{};
     if (bubbles) bubbles->frame(now); // the game step: a parked hull walk's age bound
+    if (lathes) lathes->frame();      // the meshes this call draws stay until the next
     struct Seen {
         std::uint32_t owner;
         OwnerStatus status;
@@ -666,6 +757,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         unsigned count, live;
         std::uint32_t age[core::owner_hits];
         unsigned index[core::owner_hits];
+        const LatheMesh* lathe; // its profile's lathe (resolved with the draw reservations), else nullptr
     };
     // The owners, visible first (2026-11-07): every owner of a live stage-owned shield hit, those with a record the
     // previous frame stamped off screen (core::hidden_off_screen) after the others (on screen, or new this frame), then
@@ -766,11 +858,44 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         return v < core::patch_tier_count ? v : unsigned(core::patch_capital);
     };
     unsigned regions_left = 0, walks_left = core::bubble_walks_per_frame;
+    // The stale-table guard (the bullet table's stale_table rule): the profiles' recorded TShips row count against the
+    // live one at ship_count_slot, one read per call; differing, unrecorded or unreadable, no profile is used.
+    bool profiles_live = false;
+    if (lathes && t.profiles && t.profiles->count) {
+        std::int32_t live = 0;
+        const bool read = t.ship_count_slot && rd(t.ship_count_slot, &live, 4);
+        profiles_live = read && t.profiles->tships_rows && std::uint32_t(live) == t.profiles->tships_rows;
+        n.stale_rows[0] = t.profiles->tships_rows;
+        n.stale_rows[1] = read ? std::uint32_t(live) : 0u;
+    }
     for (unsigned k = 0; k < seen_count; ++k) {
         Seen& s = seen[k];
+        s.lathe = nullptr;
         if (s.status != OwnerStatus::ok || !s.count) continue;
         n.hits_dropped += s.live - s.count;
-        if (s.data.radius > 0) regions_left += anchor_count;
+        // The lathe (2026-11-12): a lathe-tier ship (core::lathe_tier: capitals for now) whose row has a profile of its
+        // class, not the own ship in the cockpit (its eye sphere); it reserves one region (its chart), the others one per
+        // face.
+        const core::Event& newest = ring.slots[s.index[0]];
+        const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
+        const unsigned owner_tier = tier_of(s);
+        if (lathes && t.profiles && t.profiles->count && s.data.radius > 0 && core::lathe_tier(std::uint8_t(owner_tier))) {
+            if (!profiles_live) {
+                ++n.lathe_stale;
+            } else {
+                LatheType type;
+                LatheRefusal why = resolve_lathe(rd, t.profiles, t.ship_table_slot, t.ship_count_slot, s.owner,
+                                                 newest.node, &type);
+                if (why == LatheRefusal::none) s.lathe = lathes->get(type, &why);
+                n.lathe_no_profile += why == LatheRefusal::no_profile;
+                n.lathe_mismatch += why == LatheRefusal::class_mismatch;
+                n.lathe_unreadable += why == LatheRefusal::unreadable;
+                n.lathe_scale += why == LatheRefusal::scale;
+                n.lathe_degenerate += why == LatheRefusal::degenerate;
+                n.lathe_cache += why == LatheRefusal::cache;
+            }
+        }
+        if (s.data.radius > 0) regions_left += s.lathe && !eye ? 1u : anchor_count;
     }
     for (unsigned k = 0; k < seen_count; ++k) {
         Seen& s = seen[k];
@@ -796,11 +921,35 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
             // half-extent (>= eye_sphere_min_m); the eye in the owner frame through its axes in view. It keeps that path
             // whatever its tier (FL 67 A review F2, main session decision 2026-11-12); an external capital takes the decal.
             const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
-            if (eye || core::shield_bubble(std::uint8_t(tier), newest.tier_source)) { // the ship bubble (not a capital)
+            // The lathe (2026-11-12): resolved with the reservations above; no walk for it.
+            const LatheMesh* lathe = s.lathe;
+            const core::ShieldSurface surface = core::shield_surface(std::uint8_t(tier), newest.tier_source, lathe != nullptr);
+            if (surface == core::surface_lathe && !eye) {
+                const unsigned first = n.patches;
+                fill_lathe(patches, patch_cap, &regions_left, centre, frame, tier, *lathe, plan.points, plan.ages,
+                           s.count, colour, t, &n);
+                for (unsigned d = first; d < n.patches; ++d) {
+                    patches[d].newest_s = plan.ages[0];
+                    patches[d].owner = s.owner;
+                    patches[d].owner_node = newest.node;
+                    patches[d].owner_radius = owner_radius;
+                }
+                ++n.lathes;
+                continue;
+            }
+            if (eye || surface == core::surface_ellipsoid) { // the ship bubble (not a capital)
                 bool fallback = false;
                 const unsigned fits = n.bubble.fit_rows;
-                Bubble b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle,
-                                        s.data.radius, now, &walks_left, &n.bubble, &fallback);
+                Bubble b;
+                if (lathe) { // the own ship in the cockpit with a profile: its hull bounds x bubble_scale, no walk
+                    for (unsigned k = 0; k < 3; ++k) {
+                        b.c[k] = 0.5f * (lathe->hull_lo[k] + lathe->hull_hi[k]);
+                        b.e[k] = 0.5f * (lathe->hull_hi[k] - lathe->hull_lo[k]) * core::bubble_scale;
+                    }
+                } else {
+                    b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle, s.data.radius,
+                                     now, &walks_left, &n.bubble, &fallback);
+                }
                 for (unsigned r = fits; r < n.bubble.fit_rows; ++r) n.bubble.fit[r].tier = std::uint8_t(tier);
                 ++n.bubbles;
                 n.bubble_fallback += fallback;

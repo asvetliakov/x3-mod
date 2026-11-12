@@ -64,6 +64,10 @@ NO_SSE = ['-mno-sse', '-mno-mmx', '-mfpmath=387']
 PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon_effects_pass.cpp',
                       'src/proxy/weapon_effects_core.h', 'src/proxy/weapon_effects_stage.h',
                       'src/proxy/weapon_effects_bubble.h', 'src/effects/weapon_bubble_ps.hlsl',
+                      # the lathe bubble (docs/architecture/weapon-effects.md 5.1.1, 2026-11-12)
+                      'src/proxy/weapon_effects_lathe.h', 'src/effects/weapon_lathe_vs.hlsl',
+                      'src/effects/weapon_lathe_ps.hlsl', 'src/renderer/weapon_lathe_vertex_program_inc.h',
+                      'src/renderer/weapon_lathe_pixel_program_inc.h',
                       'src/proxy/engine_memory.h', 'src/proxy/engine_memory.cpp',
                       'src/renderer/weapon_bubble_pixel_program_inc.h',
                       'src/renderer/temporal_pass.h', 'src/renderer/temporal_pass.cpp',
@@ -100,6 +104,8 @@ PROGRAMS = {
     'weapon_decal_vs': ('verification/results/weapon-decal-vertex-program.json', 'src/renderer/weapon_decal_vertex_program_inc.h'),
     'weapon_decal_ps': ('verification/results/weapon-decal-pixel-program.json', 'src/renderer/weapon_decal_pixel_program_inc.h'),
     'weapon_bubble_ps': ('verification/results/weapon-bubble-pixel-program.json', 'src/renderer/weapon_bubble_pixel_program_inc.h'),
+    'weapon_lathe_vs': ('verification/results/weapon-lathe-vertex-program.json', 'src/renderer/weapon_lathe_vertex_program_inc.h'),
+    'weapon_lathe_ps': ('verification/results/weapon-lathe-pixel-program.json', 'src/renderer/weapon_lathe_pixel_program_inc.h'),
     'weapon_projectile_vs': ('verification/results/weapon-projectile-vertex-program.json',
                              'src/renderer/weapon_projectile_vertex_program_inc.h'),
     'weapon_projectile_ps': ('verification/results/weapon-projectile-pixel-program.json',
@@ -202,7 +208,8 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE', 'MUZZLE_RESHADE')
+            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE', 'MUZZLE_RESHADE',
+            'LATHE')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -326,10 +333,29 @@ def run_hook_fl(args, results):
     return record['passed']
 
 
+def shield_dumps():
+    """The lathe section's judging frames (BUILD/dump-shield/*.pfm: hull grey plus the effect, linear) as sRGB PNG beside
+    them (untracked; judge-looks-from-stage-dumps)."""
+    import numpy as np
+    from PIL import Image
+    for pfm in sorted((BUILD / 'dump-shield').glob('*.pfm')):
+        data = pfm.read_bytes()
+        head = data.split(b'\n', 3)
+        w, h = (int(v) for v in head[1].split())
+        img = np.frombuffer(head[3], dtype='<f4', count=w * h * 3).reshape(h, w, 3)[::-1]
+        c = np.clip(img, 0.0, 1.0)
+        srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
+        Image.fromarray((srgb * 255 + 0.5).astype(np.uint8)).save(pfm.with_suffix('.png'))
+
+
 def run_fixture(args):
     if args.host == 'native':
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
+        for pattern in ('*.pfm', '*.png'):
+            for stale in (BUILD / 'dump-shield').glob(pattern):
+                stale.unlink()
         done, text = native_host.run_native(EXE, [d3dx], BUILD, args.timeout, log=BUILD / 'fixture')
+        shield_dumps()
         return done.returncode, text
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE),
                r'C:\X3\d3dx9_37.dll']
@@ -552,7 +578,7 @@ def main():
                                                  'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'projectile', 'flash', 'pulse', 'pulse_cap',
-                                                 'pulse_ghost', 'reshade', 'muzzle_reshade')}
+                                                 'pulse_ghost', 'reshade', 'muzzle_reshade', 'lathe')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

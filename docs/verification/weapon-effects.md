@@ -4114,3 +4114,70 @@ difference against 0.2: the l^4 term lives in the clipped centre, so 0.5 was rec
 control that removes the halo bulb; the gain roughly doubles the far bolt's peak against the 0.4 setting [I]. Baked in
 `weapon_projectile_family.h`; the tune test's default list and bullet-draw-batch.md section 6 follow. Not re-flown at
 the baked values (the file values were identical in flight).
+
+## Lathe bubble from the offline profile (2026-11-12)
+
+User decision on FL run 68: capitals get the bubble (the decal installed in run 68 was "acceptable but not right"). A
+ship whose TShips row has a schema 3 `tables.ship_profiles` entry of its class now draws on a lathe of that profile,
+no hull walk (architecture 5.1.1 "Placement", *The lathe bubble*); for this flight capital-tier ships only
+(`core::lathe_all_tiers` false: fighters and corvettes keep the Run239 walked ellipsoid). Not flown.
+
+**Native fixture** (`run_weapon_effects.py --host native`, worktree build merged with `reshade` 150d0e6f6, after the look
+and review fixes below; AP hook 132/132, FL hook 75/75, D3D 161/161) [M], with the real Argon Titan profile (FL row 11, OBJ_SHIP_M2;
+`verification/results/ship-profiles/titan_profile.json`):
+
+- *Units*: the production walk over the FL 67 hull part against the profile's bounds: equal within 0.001 m on x, y and
+  z (x ±302.87 m, y ±332.75 m from the fin slices 11 and 17, z −1022.19..+1091.50 m), factor 1.0000.
+- *Placement* (114 profile surface points in the side band |z| < 300k, six angles per slice; FL 67 witness): walk
+  ellipsoid median move 279.1 m (max 628.9), lathe 22.2 m (max 45.4, the 15 % inflation of the lateral offset, every
+  point within it, shell error 1e-6); nose and tail 3.3 m (the walk 153.1 / 154.6).
+- *Routing* (12 cases): a capital with its profile → one lathe region, no walk; a corvette or fighter with a profile →
+  the walked ellipsoid; no profile → capital decal (5 draws), fighter walked ellipsoid; class 2023 against the profile's
+  2022 → decal, `mismatch=1`; own capital in the cockpit → eye sphere from the profile's bounds, no walk; recorded
+  TShips rows 13 against the live 12 → decal, `stale=1`; row 11 past a count of 11 → `unreadable=1`; an axis scale
+  of 0 or 257x → `scale=1`; a profile without widths → `degenerate=1`. Cache: 32 types fill it, a 33rd in the same
+  call is refused (`cache`), the next call keeps a re-drawn type's mesh and evicts the least recently used (33 builds). A belly hit's seam copy lights 19 cells on each side (period 1080.8 m).
+- *GPU* (1080p, Titan 12 km out, its hull lane the uninflated profile): flank hit (slice 9) near-side centroid 5.4 m
+  from the contact and 0.08 cells from its lathe point; the walk ellipsoid's 307.4 m. From above (the hit on the
+  silhouette): lathe pixels over sky at most 22.8 m (mean 19.6) from the hull outline (allowed 28.7), the ellipsoid's
+  118.8 (94.9).
+- *Cost*: stage CPU means, decal / lathe on the same hits: one capital 64 hits 71.4 / 19.8 µs (19 / 6 draws); sixteen
+  capitals 16 hits 195.0 / 101.3 µs (64 draws, 5409 cells dropped / 47 draws, 0 dropped: a lathe owner reserves one
+  draw, not six); one capital 12 hits/s 40.4 / 10.4 µs. GPU, Titan two flank hits: 1080p 21.2 / 16.4 µs, 5120x1440
+  37.8 / 19.8 µs (raster share 0.19 / 0.05). Lathe programs 11 / 410 slots (vs / ps). The projectile and flash budget
+  rows pass (combined 123.2 µs CPU; a 678.7 µs reading on the run before was host noise).
+- *Frames* (judge-looks-from-stage-dumps; viewed): `verification/results/lathe-bubble/titan_{side,top}_{lathe,ellipsoid}.png`,
+  `titan_side_lathe_smooth.png` and `titan_bow_{side,ahead}_lathe.png`. The slice-9 flank hit and the slice-6 hit are
+  the fighter bubble's crisp hex cluster with its marker on the hull; the slice-30 bow hit keeps full-size cells; a hit
+  on the nose tip shows as a small sliver around the 4 m nose. The walk ellipsoid's patch sits beside the hull, about
+  100 m off it from above.
+
+**Look fixes (coordinator, same day)** [M]. (1) The chart's u was z: the slice-9 hit's cells stretched 1.5 to 1.7 x on
+the ramp into the fin slices. Per-column arc length was tried first: each column exact, but neighbouring columns
+accumulated up to 188 m of u apart past the fins, shearing the cells (the frame showed a streak). Now u is the mean
+outline's arc length (one u per ring, the step the mean of its columns' distances): in the hit's band ring edges
+225 / 223 chart / 3D and columns 546 against 491 to 575 (offline check of the production mesh; into the fin band ±50 %).
+(2) A ring narrower than 0.6 of the median perimeter spans that share of the chart period (`lathe_min_width`), so the
+cells' shrink across the hull stops at 0.6 toward the nose, the tail and the dome tips; the dome depth is now half a
+slice + 0.15 x the end ring's mean half-width, not 0.15 x the half length (a 192 m needle on the Titan's nose).
+
+Figures: [`lathe_rows.py`](../../verification/results/lathe-bubble/lathe_rows.py) on the committed record. Builds: FL
+`build-lathe-fl` 0 warnings (d3d9.dll sha256 prefix `6b7e84c48b72e7a2`), `check_no_x87` FL PASS (1085 functions), AP
+`build-lathe-ap` 0 warnings; host `test_weapon_effects_core`, `_hook`, `_table`, `_launch`, `_projectile_tune`,
+`test_bolt_footprint` 94 OK.
+
+**Review fixes (high review, same day)** [M]. Capital tier only behind `core::lathe_all_tiers`; the period's lathe
+counters in `weapon_effects_frame` (`lathes=`, `lathe_no_profile=`, `lathe_mismatch=`, `lathe_unreadable=`,
+`lathe_scale=`, `lathe_degenerate=`, `lathe_cache=`, `lathe_stale=`); `event=built` per build serial (a slot rebuilt
+after an eviction logs again); the stale-table guard on `generated_from.ship_profiles.rows` against the live count
+(one `event=stale_table` row); the profiles block allocated only for a table with a `ship_profiles` array; lathe slot
+counts in `weapon_effects_device` and `ATTACH_SLOTS`; host tests for the row count, the allocation scan and 1030
+profiles against the 1024 capacity (1024 kept, 6 dropped).
+
+**Open (lathe).** Not flown. Rings wider than the median stretch the cells across the hull by their perimeter ratio
+(the Titan's slice 16 1.76 x, fins 1.53 / 1.37 x). A slice ellipse sits inside a boxy hull's corners (TS/TL: √2 against
+the 1.15 inflation), so a corner hit can map inside the hull; not fixed. Into the fin band the mean outline is ±50 % off the columns' true lengths (cells there
+stretch on the long columns, compress on the short ones); on rings narrower than 0.6 of the median the seam copies
+match the lattice only approximately (the period is not whole there), and the nose tip remains a small pole; a hit
+duplicated across the seam takes a ring-hit slot; the table must be regenerated (schema 3) and installed for any ship
+to take the lathe.

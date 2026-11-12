@@ -7,6 +7,11 @@
     "src/proxy/weapon_effects_stage.h",
     "src/proxy/weapon_effects_bubble.h",
     "src/effects/weapon_bubble_ps.hlsl",
+    "src/proxy/weapon_effects_lathe.h",
+    "src/effects/weapon_lathe_vs.hlsl",
+    "src/effects/weapon_lathe_ps.hlsl",
+    "src/renderer/weapon_lathe_vertex_program_inc.h",
+    "src/renderer/weapon_lathe_pixel_program_inc.h",
     "src/proxy/engine_memory.h",
     "src/proxy/engine_memory.cpp",
     "src/renderer/weapon_bubble_pixel_program_inc.h",
@@ -51,21 +56,30 @@
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "b81e7f52ee36989272e6aaa097d45f7227437f6c-dirty",
+    "commit": "deb8d54c7bdf1af94ac086a4491e75bb42b44867-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl",
       "src/proxy/bullet_reshade_route.h",
+      "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_lathe.h",
+      "src/proxy/weapon_effects_stage.h",
+      "src/proxy/weapon_projectile_family.h",
       "verification/probe/weapon_bullet_reshade_fixture.h",
       "verification/probe/weapon_effects_fixture.cpp"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "c7994b09ea39f9705f6cf53ad1bd866f2ec56eb05d17c67f3fb3623e79f2e753",
-      "src/renderer/weapon_effects_pass.cpp": "201f120642b92c098b2cb4c3d74e4ce8da80814f642492ffb49a74a23ba2ff8a",
-      "src/proxy/weapon_effects_core.h": "1310fe903dd601ca01a04dbc05011458bccd232b7d2e06ca1ce48bdeab39fc15",
-      "src/proxy/weapon_effects_stage.h": "a811ebb66c9e110c7f2ef1b8bd886ea6263af93507a88d3560b1c4e155d2867b",
+      "src/renderer/weapon_effects_pass.h": "e38ced997cd74a9d3fc15fb140a825521fae015bf358bef1ca826ed2787a795a",
+      "src/renderer/weapon_effects_pass.cpp": "50a244436e3884f239acb66156949c2bc3e61ad644ba30b0fc621e2a9d18de3b",
+      "src/proxy/weapon_effects_core.h": "dec2484c116246bc76e7ea60ea863bc0a4d60ba49400651a63d0711da058de1b",
+      "src/proxy/weapon_effects_stage.h": "b8a5de80ad2bf24358adcda0276ba2b8618a4f9dc6764c7bdaf9e4a9dfbbc745",
       "src/proxy/weapon_effects_bubble.h": "ea07846d5404453fd898bca51637f8856d57702ff7c34b0e5591d2d9956f49e1",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
+      "src/proxy/weapon_effects_lathe.h": "803293151c6e18ceb73c9a282134ddd1f4f16c80f8ac3eb390c73963174e5d24",
+      "src/effects/weapon_lathe_vs.hlsl": "a004b2d2fc83a62d8d02d550833bbd9b6f1c48aaa995de0b4695a736be4f7577",
+      "src/effects/weapon_lathe_ps.hlsl": "0da2f24f64a73ffa0d9ecc344f15ab89dd53335cf7f0c541e09c348a5c8a7349",
+      "src/renderer/weapon_lathe_vertex_program_inc.h": "8cb2d21d8ef1d005848b7c593918d91a4608111dcefda9e47d00070451a115a3",
+      "src/renderer/weapon_lathe_pixel_program_inc.h": "8ea97000909a342acb149c2a3ff5f08a3eb626f58bc413889581d3dc99384bef",
       "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21",
       "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
       "src/renderer/weapon_bubble_pixel_program_inc.h": "773c76f77cb2a014b19460d5948ce6716fa5d3d70e4534fe74b286fcec16943d",
@@ -82,7 +96,7 @@
       "src/renderer/weapon_decal_vertex_program_inc.h": "5f50c1b0ca97e257b5b26e2f83bfd6e4e4cfb7c1aa8c80b7127fd5e296bcd5ce",
       "src/renderer/weapon_decal_pixel_program_inc.h": "dde528990b338eafe42b77e8a33ffcd8f1dfa839083a4c0346ad2b2aa0eee910",
       "src/proxy/weapon_projectile_stage.h": "a4f0101e699444f691571f80c6f9792db5002465dd36359cf1175b7fb79dc41c",
-      "src/proxy/weapon_projectile_family.h": "ed61a43ec02850d6f1d9f2f1966e3e896409c6f6bfac47b114ca9309b6f28abd",
+      "src/proxy/weapon_projectile_family.h": "84b49e9db1e8bdbf99ff71a67c891b9692276a76d6c14fea912230455f359ddd",
       "src/proxy/weapon_effects_projectile.h": "6b4c3dd1eb9426fe9e7e0ce9d884e8c615655bbf9952165ca30c915c5635753a",
       "src/effects/weapon_projectile_vs.hlsl": "15e0a5623b8e30a74cd4a84663658349dbac558209fda20f04cee638a692c2ff",
       "src/effects/weapon_projectile_ps.hlsl": "9618d55a38f03e1d9cf12d6af71c74659eabbbe23f6e6e61a843f94547463e9b",
@@ -107,7 +121,7 @@
       "verification/probe/weapon_muzzle_reshade_fixture.h": "af3822f3cd89c597e6b8a82df8b152c0598818d1df70928e42f44e497a3d63d5",
       "src/effects/weapon_pulse_ps.hlsl": "ca25bed5e1ac0b95dd8e67dfae2f19403310dfc3302de7d046f9a505c839a2cb",
       "src/renderer/weapon_pulse_pixel_program_inc.h": "7ab6e6c082a618dbd6b9886f2fd68c82a778a08ef71b52852f2b5165d664be4e",
-      "verification/probe/weapon_effects_fixture.cpp": "ea660881a7ae816b62061dc10f9f54b1cb7447e1ec18af08ba17cdec3dea93e1"
+      "verification/probe/weapon_effects_fixture.cpp": "14955a0af5de66caadf2ff06f43beeb2a091475a5a56ca54e7a68725da12b3c3"
     }
   },
   "programs": {
@@ -139,6 +153,18 @@
       "source": "src/effects/weapon_bubble_ps.hlsl",
       "word_count": 3564,
       "bytecode_sha256": "099bebb5301a30de0a02197ab8a1aeaec14065b52600f06ddd66876cd54058d9",
+      "target": "ps_3_0"
+    },
+    "weapon_lathe_vs": {
+      "source": "src/effects/weapon_lathe_vs.hlsl",
+      "word_count": 124,
+      "bytecode_sha256": "3341b275bd6f850b8faa8af003cf1b7241e6e65259647c7e6c28caca5f8d6740",
+      "target": "vs_3_0"
+    },
+    "weapon_lathe_ps": {
+      "source": "src/effects/weapon_lathe_ps.hlsl",
+      "word_count": 1777,
+      "bytecode_sha256": "8791f097c569b958867f5d181d7e54344cd659542d115cd7dded0317fbf6f868",
       "target": "ps_3_0"
     },
     "weapon_projectile_vs": {
@@ -216,12 +242,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -248,13 +274,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-a2675caada00b2e24/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a04dec0aaa3804a9d/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "49b844997c9a7e136ab64770e24aa6257e3dde4326cdd5c4f6dc5c7a8b64cf9e"
+    "executable_sha256": "1fefa4b82b77a18ff3ee3375c351f06d25169aa2b2593571cf8d5028973e07f2"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -287,7 +313,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 145,
+      "checks": 161,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -464,6 +490,70 @@
     ],
     [
       "seam_pair_never_above_one_hit",
+      true
+    ],
+    [
+      "lathe_profile_units_match_the_walk",
+      true
+    ],
+    [
+      "lathe_side_hits_on_the_shell",
+      true
+    ],
+    [
+      "lathe_bow_stern_on_the_domes",
+      true
+    ],
+    [
+      "lathe_route_capital_takes_the_lathe",
+      true
+    ],
+    [
+      "lathe_route_fighter_corvette_keep_the_walk",
+      true
+    ],
+    [
+      "lathe_route_fallback_without_profile",
+      true
+    ],
+    [
+      "lathe_route_class_mismatch_falls_back",
+      true
+    ],
+    [
+      "lathe_route_cockpit_keeps_eye_sphere",
+      true
+    ],
+    [
+      "lathe_route_stale_table_uses_no_profile",
+      true
+    ],
+    [
+      "lathe_route_refusals_fall_back",
+      true
+    ],
+    [
+      "lathe_cache_full_refuses_then_evicts_the_lru",
+      true
+    ],
+    [
+      "lathe_seam_hit_lights_both_sides",
+      true
+    ],
+    [
+      "lathe_gpu_side_hit_drawn_at_its_lathe_point",
+      true
+    ],
+    [
+      "lathe_gpu_top_view_hugs_the_hull",
+      true
+    ],
+    [
+      "lathe_timing_draws_built",
+      true
+    ],
+    [
+      "stage_cpu_lathe_not_above_decal",
       true
     ],
     [
@@ -1407,17 +1497,17 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 8.2,
-        "walk_mean_us": 12.8,
+        "walk_best_us": 8.3,
+        "walk_mean_us": 9.2,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 13.6,
-        "engine_memory_cold_mean_us": 20.2,
-        "engine_memory_warm_best_us": 12.2,
-        "engine_memory_warm_mean_us": 19.3,
-        "warm_best_us": 50.8,
-        "warm_mean_us": 64.8,
-        "cold_best_us": 59.5,
-        "cold_mean_us": 82.1,
+        "engine_memory_cold_best_us": 14.5,
+        "engine_memory_cold_mean_us": 16.8,
+        "engine_memory_warm_best_us": 13.3,
+        "engine_memory_warm_mean_us": 14.0,
+        "warm_best_us": 50.6,
+        "warm_mean_us": 66.7,
+        "cold_best_us": 59.6,
+        "cold_mean_us": 66.5,
         "patches": 19,
         "bubbles": 1,
         "bubble_fallback": 0,
@@ -1468,15 +1558,15 @@
         "walked_nodes": 1024,
         "ok": 1,
         "reads": 8325,
-        "walk_best_us": 72.4,
-        "walk_mean_us": 108.8,
-        "engine_memory_cold_best_us": 106.5,
-        "engine_memory_cold_mean_us": 136.5,
-        "engine_memory_warm_best_us": 106.1,
-        "engine_memory_warm_mean_us": 119.1,
+        "walk_best_us": 72.8,
+        "walk_mean_us": 75.6,
+        "engine_memory_cold_best_us": 106.1,
+        "engine_memory_cold_mean_us": 113.8,
+        "engine_memory_warm_best_us": 106.3,
+        "engine_memory_warm_mean_us": 110.4,
         "slice_nodes": 256,
-        "slice_best_us": 26.3,
-        "slice_mean_us": 30.6,
+        "slice_best_us": 26.2,
+        "slice_mean_us": 31.0,
         "slices": 4
       },
       {
@@ -1488,8 +1578,8 @@
         "slice_nodes": 29,
         "slice_reads": 2440,
         "read_bound": 2400,
-        "slice_best_us": 25.4,
-        "slice_mean_us": 29.9,
+        "slice_best_us": 24.2,
+        "slice_mean_us": 27.0,
         "slices": 36
       },
       {
@@ -1589,17 +1679,17 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 2.1,
+        "heap_us": 2.2,
         "insertion_us": 1.4
       },
       {
         "case": "ascending",
-        "heap_us": 2.3,
+        "heap_us": 2.4,
         "insertion_us": 0.1
       },
       {
         "case": "descending",
-        "heap_us": 2.1,
+        "heap_us": 2.2,
         "insertion_us": 2.5
       }
     ],
@@ -1610,8 +1700,10 @@
         "bubble_ps": 873,
         "decal_vs": 21,
         "decal_ps": 129,
-        "patch_bytes": 1972,
-        "frame_patches_bytes": 126208
+        "lathe_vs": 11,
+        "lathe_ps": 410,
+        "patch_bytes": 2008,
+        "frame_patches_bytes": 128512
       }
     ],
     "cockpit": [
@@ -1868,8 +1960,25 @@
         "dropped": 0,
         "bubbles": 0,
         "walks": 0,
-        "best_us": 61.5,
-        "mean_us": 88.6,
+        "lathes": 0,
+        "best_us": 60.3,
+        "mean_us": 71.4,
+        "target_us": 200
+      },
+      {
+        "case": "one_capital_64_hits_lathe",
+        "owners": 1,
+        "hits": 64,
+        "patches": 6,
+        "cells": 653,
+        "spills": 5,
+        "cells_dropped": 0,
+        "dropped": 0,
+        "bubbles": 0,
+        "walks": 0,
+        "lathes": 1,
+        "best_us": 18.5,
+        "mean_us": 19.8,
         "target_us": 200
       },
       {
@@ -1883,8 +1992,25 @@
         "dropped": 24,
         "bubbles": 0,
         "walks": 0,
-        "best_us": 176.8,
-        "mean_us": 250.8,
+        "lathes": 0,
+        "best_us": 174.7,
+        "mean_us": 195.0,
+        "target_us": 200
+      },
+      {
+        "case": "sixteen_capitals_16_hits_lathe",
+        "owners": 16,
+        "hits": 256,
+        "patches": 47,
+        "cells": 4658,
+        "spills": 31,
+        "cells_dropped": 0,
+        "dropped": 0,
+        "bubbles": 0,
+        "walks": 0,
+        "lathes": 16,
+        "best_us": 85.4,
+        "mean_us": 101.3,
         "target_us": 200
       },
       {
@@ -1898,8 +2024,25 @@
         "dropped": 0,
         "bubbles": 0,
         "walks": 0,
-        "best_us": 35.3,
-        "mean_us": 41.3,
+        "lathes": 0,
+        "best_us": 35.2,
+        "mean_us": 40.4,
+        "target_us": 200
+      },
+      {
+        "case": "one_capital_12hps_lathe",
+        "owners": 1,
+        "hits": 31,
+        "patches": 4,
+        "cells": 466,
+        "spills": 3,
+        "cells_dropped": 0,
+        "dropped": 0,
+        "bubbles": 0,
+        "walks": 0,
+        "lathes": 1,
+        "best_us": 10.1,
+        "mean_us": 10.4,
         "target_us": 200
       },
       {
@@ -1913,8 +2056,9 @@
         "dropped": 0,
         "bubbles": 0,
         "walks": 0,
-        "best_us": 39.7,
-        "mean_us": 49.6,
+        "lathes": 0,
+        "best_us": 39.0,
+        "mean_us": 43.7,
         "target_us": 200
       }
     ],
@@ -1951,10 +2095,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.51,
-        "last_drawn_ms": 473.49,
-        "frames": 17595,
-        "max_frame_ms": 1.766
+        "seta6_wall_ms": 473.5,
+        "last_drawn_ms": 473.48,
+        "frames": 20049,
+        "max_frame_ms": 1.571
       }
     ],
     "retired": [
@@ -2016,7 +2160,27 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 11.1
+        "gpu_us": 10.9
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "titan_two_hits_decal",
+        "patches": 5,
+        "drawn": 5,
+        "lit_share": 0.0022,
+        "raster_share": 0.0955,
+        "gpu_us": 21.2
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "case": "titan_two_hits_lathe",
+        "patches": 1,
+        "drawn": 1,
+        "lit_share": 0.0017,
+        "raster_share": 0.0254,
+        "gpu_us": 16.4
       },
       {
         "width": 1920,
@@ -2026,7 +2190,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 17.1
+        "gpu_us": 16.2
       },
       {
         "width": 1920,
@@ -2036,7 +2200,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.4
+        "gpu_us": 17.7
       },
       {
         "width": 1920,
@@ -2046,7 +2210,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 63.1
+        "gpu_us": 62.8
       },
       {
         "width": 1920,
@@ -2056,7 +2220,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 78.5
+        "gpu_us": 78.2
       },
       {
         "width": 1920,
@@ -2066,7 +2230,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 105.9
+        "gpu_us": 104.6
       },
       {
         "width": 1920,
@@ -2076,7 +2240,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 20.1
+        "gpu_us": 19.7
       },
       {
         "width": 1920,
@@ -2086,7 +2250,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 59.2
+        "gpu_us": 59.4
       },
       {
         "width": 1920,
@@ -2096,7 +2260,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 64.4
+        "gpu_us": 63.6
       },
       {
         "width": 1920,
@@ -2106,7 +2270,7 @@
         "drawn": 14,
         "lit_share": 0.4169,
         "raster_share": 7.3704,
-        "gpu_us": 226.0
+        "gpu_us": 226.3
       },
       {
         "width": 1920,
@@ -2126,7 +2290,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 60.1
+        "gpu_us": 59.9
       },
       {
         "width": 1920,
@@ -2136,7 +2300,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 97.5
+        "gpu_us": 96.8
       },
       {
         "width": 1920,
@@ -2146,7 +2310,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 22.0
+        "gpu_us": 21.4
       },
       {
         "width": 1920,
@@ -2156,7 +2320,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 72.5
+        "gpu_us": 74.1
       },
       {
         "width": 5120,
@@ -2171,12 +2335,32 @@
       {
         "width": 5120,
         "height": 1440,
+        "case": "titan_two_hits_decal",
+        "patches": 5,
+        "drawn": 5,
+        "lit_share": 0.0043,
+        "raster_share": 0.1901,
+        "gpu_us": 37.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
+        "case": "titan_two_hits_lathe",
+        "patches": 1,
+        "drawn": 1,
+        "lit_share": 0.0034,
+        "raster_share": 0.0508,
+        "gpu_us": 19.8
+      },
+      {
+        "width": 5120,
+        "height": 1440,
         "case": "fighter_two_hits_one_region",
         "patches": 1,
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 22.2
+        "gpu_us": 21.3
       },
       {
         "width": 5120,
@@ -2186,7 +2370,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 23.6
+        "gpu_us": 23.1
       },
       {
         "width": 5120,
@@ -2196,7 +2380,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 184.5
+        "gpu_us": 181.4
       },
       {
         "width": 5120,
@@ -2206,7 +2390,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 238.6
+        "gpu_us": 239.7
       },
       {
         "width": 5120,
@@ -2216,7 +2400,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 391.3
+        "gpu_us": 390.2
       },
       {
         "width": 5120,
@@ -2226,7 +2410,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 35.9
+        "gpu_us": 34.5
       },
       {
         "width": 5120,
@@ -2236,7 +2420,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 167.7
+        "gpu_us": 162.6
       },
       {
         "width": 5120,
@@ -2246,7 +2430,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 183.6
+        "gpu_us": 182.6
       },
       {
         "width": 5120,
@@ -2256,7 +2440,7 @@
         "drawn": 14,
         "lit_share": 0.4514,
         "raster_share": 7.92,
-        "gpu_us": 748.9
+        "gpu_us": 750.0
       },
       {
         "width": 5120,
@@ -2266,7 +2450,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.4
+        "gpu_us": 21.5
       },
       {
         "width": 5120,
@@ -2276,7 +2460,7 @@
         "drawn": 1,
         "lit_share": 0.7895,
         "raster_share": 0.9158,
-        "gpu_us": 176.2
+        "gpu_us": 175.6
       },
       {
         "width": 5120,
@@ -2286,7 +2470,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 339.2
+        "gpu_us": 340.2
       },
       {
         "width": 5120,
@@ -2296,7 +2480,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 52.7
+        "gpu_us": 52.5
       },
       {
         "width": 5120,
@@ -2306,7 +2490,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 257.7
+        "gpu_us": 258.3
       }
     ],
     "projectile": [
@@ -2985,9 +3169,9 @@
         "merged": 486,
         "quads": 532,
         "trail_quads": 20,
-        "cpu_us": 91.4,
-        "gpu_us": 46.6,
-        "fence_us": 10.7,
+        "cpu_us": 92.1,
+        "gpu_us": 46.5,
+        "fence_us": 11.6,
         "lit_share": 0.0601,
         "vertex_bytes": 48,
         "statics": 0,
@@ -3006,9 +3190,9 @@
         "wanted": 2520,
         "trimmed": 502,
         "previous_wanted": 2528,
-        "cpu_us": 118.3,
-        "gpu_us": 69.8,
-        "fence_us": 10.7,
+        "cpu_us": 117.2,
+        "gpu_us": 69.4,
+        "fence_us": 11.6,
         "lit_share": 0.078,
         "statics": 0,
         "jumped": 0
@@ -3568,19 +3752,19 @@
         "flashes": 64,
         "pulses": 64,
         "bolts": 64,
-        "cpu_with_us": 29.7,
-        "cpu_without_us": 21.6,
-        "cpu_us": 8.1,
-        "gpu_us": 25.3,
-        "gpu_net_us": 14.4,
+        "cpu_with_us": 29.9,
+        "cpu_without_us": 21.5,
+        "cpu_us": 8.4,
+        "gpu_us": 24.4,
+        "gpu_net_us": 13.7,
         "gpu_flashes_us": 17.4,
         "gpu_pulses_us": 19.0,
-        "gpu_far_pulses_us": 16.7,
-        "gpu_own_pulses_us": 17.3,
+        "gpu_far_pulses_us": 16.9,
+        "gpu_own_pulses_us": 17.8,
         "gpu_bolts_us": 16.5,
-        "gpu_bolts_flashes_us": 24.4,
-        "gpu_increment_us": 7.9,
-        "fence_us": 10.9,
+        "gpu_bolts_flashes_us": 24.3,
+        "gpu_increment_us": 7.8,
+        "fence_us": 10.7,
         "lost": 0,
         "stale": 0,
         "dropped": 0
@@ -3599,8 +3783,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 124.1,
-        "gpu_us": 40.6
+        "cpu_us": 123.2,
+        "gpu_us": 40.5
       },
       {
         "case": "budget_combined",
@@ -3616,8 +3800,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 130.9,
-        "gpu_us": 64.5
+        "cpu_us": 132.0,
+        "gpu_us": 64.8
       },
       {
         "case": "budget_combined",
@@ -3633,7 +3817,7 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 115.5,
+        "cpu_us": 116.4,
         "gpu_us": 34.1
       },
       {
@@ -3650,17 +3834,17 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 88.0,
+        "cpu_us": 89.2,
         "gpu_us": 31.7
       },
       {
         "case": "budget_combined_bounds",
-        "cpu_us": 124.1,
+        "cpu_us": 123.2,
         "cpu_within_100": 0,
-        "flash_work_cpu_us": 8.6,
-        "newborn_bolts_cpu_us": 27.5,
-        "bolts_448_cpu_us": 88.0,
-        "gpu_us": 40.6,
+        "flash_work_cpu_us": 6.8,
+        "newborn_bolts_cpu_us": 27.2,
+        "bolts_448_cpu_us": 89.2,
+        "gpu_us": 40.5,
         "gpu_within_60": 1
       }
     ],
@@ -3761,24 +3945,24 @@
         "index": 0,
         "t": "0.388,0.302,0.067",
         "a": 1.0,
-        "got": "0.2520,0.2100,0.0954",
-        "model": "0.2521,0.2101,0.0954"
+        "got": "0.5332,0.4495,0.2218",
+        "model": "0.5332,0.4497,0.2219"
       },
       {
         "case": "texel",
         "index": 1,
         "t": "0.102,0.051,0.012",
         "a": 1.0,
-        "got": "0.0148,0.0075,0.0018",
-        "model": "0.0148,0.0075,0.0018"
+        "got": "0.0279,0.0140,0.0034",
+        "model": "0.0279,0.0141,0.0034"
       },
       {
         "case": "texel",
         "index": 2,
         "t": "1.000,0.969,0.937",
         "a": 0.502,
-        "got": "0.3010,0.2937,0.2861",
-        "model": "0.3012,0.2938,0.2864"
+        "got": "0.6274,0.6128,0.5981",
+        "model": "0.6275,0.6129,0.5983"
       },
       {
         "case": "texel",
@@ -3793,20 +3977,20 @@
         "index": 4,
         "t": "0.200,0.200,0.251",
         "a": 0.8,
-        "got": "0.0786,0.0786,0.0960",
-        "model": "0.0786,0.0786,0.0961"
+        "got": "0.1565,0.1565,0.1899",
+        "model": "0.1566,0.1566,0.1900"
       },
       {
         "case": "texel",
         "index": 5,
         "t": "0.549,0.420,0.184",
         "a": 1.0,
-        "got": "0.4194,0.3513,0.2272",
-        "model": "0.4196,0.3513,0.2272"
+        "got": "0.9116,0.7734,0.5220",
+        "model": "0.9118,0.7735,0.5220"
       },
       {
         "case": "model",
-        "worst_rel": 0.047,
+        "worst_rel": 0.037,
         "vanilla_worst_rel": 0.039
       },
       {
@@ -3815,10 +3999,10 @@
         "u": 0.8932,
         "v": 0.8672,
         "factor": 1.0,
-        "got": 0.21,
-        "model": 0.2101,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.4495,
+        "model": 0.4497,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3826,10 +4010,10 @@
         "u": 0.9182,
         "v": 0.8672,
         "factor": 0.648,
-        "got": 0.1361,
-        "model": 0.1361,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.2913,
+        "model": 0.2914,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3837,10 +4021,10 @@
         "u": 0.8832,
         "v": 0.9121,
         "factor": 0.104,
-        "got": 0.0218,
-        "model": 0.0218,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.0468,
+        "model": 0.0468,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3850,8 +4034,8 @@
         "factor": 0.0,
         "got": 0.0,
         "model": 0.0,
-        "kept": 0.21,
-        "plain": 0.21
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3861,8 +4045,8 @@
         "factor": 0.0,
         "got": 0.0,
         "model": 0.0,
-        "kept": 0.21,
-        "plain": 0.21
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3870,10 +4054,10 @@
         "u": 0.5,
         "v": 0.3446,
         "factor": 1.0,
-        "got": 0.21,
-        "model": 0.2101,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.4495,
+        "model": 0.4497,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3881,10 +4065,10 @@
         "u": 0.3,
         "v": 0.3265,
         "factor": 0.9259,
-        "got": 0.1945,
-        "model": 0.1945,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.4163,
+        "model": 0.4164,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3892,10 +4076,10 @@
         "u": 0.7,
         "v": 0.3156,
         "factor": 0.2593,
-        "got": 0.0544,
-        "model": 0.0545,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.1166,
+        "model": 0.1166,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3905,8 +4089,8 @@
         "factor": 0.0,
         "got": 0.0,
         "model": 0.0,
-        "kept": 0.21,
-        "plain": 0.21
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3914,10 +4098,10 @@
         "u": 0.4,
         "v": 0.3592,
         "factor": 1.0,
-        "got": 0.21,
-        "model": 0.2101,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.4495,
+        "model": 0.4497,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric",
@@ -3925,14 +4109,14 @@
         "u": 0.5,
         "v": 0.6,
         "factor": 1.0,
-        "got": 0.21,
-        "model": 0.2101,
-        "kept": 0.21,
-        "plain": 0.21
+        "got": 0.4495,
+        "model": 0.4497,
+        "kept": 0.4495,
+        "plain": 0.4495
       },
       {
         "case": "geometric_model",
-        "worst_rel": 0.031,
+        "worst_rel": 0.037,
         "same_at_one": 1,
         "rs_head": 0.5,
         "rs_width": 0.6
@@ -3942,34 +4126,34 @@
         "gain": 2.0,
         "during": 1,
         "restored": 1,
-        "worst_rel": 0.044,
+        "worst_rel": 0.056,
         "mrt": 1,
-        "flag_g": 16.125,
-        "flag_want": 16.135
+        "flag_g": 34.125,
+        "flag_want": 34.125
       },
       {
         "case": "bolt",
         "distance_m": 50,
         "vanilla_sum": 600.32,
-        "reshade_sum": 192.4,
-        "energy_ratio": 0.32,
+        "reshade_sum": 343.98,
+        "energy_ratio": 0.573,
         "vanilla_peak": 0.7587,
-        "reshade_peak": 0.4933,
-        "gain": 0.4,
+        "reshade_peak": 0.7578,
+        "gain": 0.75,
         "edge": 0.4,
-        "core": 0.2
+        "core": 0.5
       },
       {
         "case": "cost",
         "draws": 2000,
         "runs": 7,
-        "calls_us_per_draw": 0.117,
-        "draw_us_vanilla": 0.07,
-        "draw_us_reshaded": 0.23,
-        "substitution_us_per_draw": 0.16,
+        "calls_us_per_draw": 0.093,
+        "draw_us_vanilla": 0.058,
+        "draw_us_reshaded": 0.276,
+        "substitution_us_per_draw": 0.218,
         "batch_bolts": 469,
-        "batch_us_vanilla": 41.7,
-        "batch_us_reshaded": 42.5,
+        "batch_us_vanilla": 42.3,
+        "batch_us_reshaded": 42.1,
         "fenced": 1
       },
       {
@@ -3977,7 +4161,7 @@
         "draws": 2000,
         "runs": 7,
         "mapped_bodies": 30,
-        "layout_us_per_body_change": 0.0035
+        "layout_us_per_body_change": 0.0036
       },
       {
         "case": "texture_key",
@@ -3993,8 +4177,8 @@
         "fallback": 1,
         "bytes": 349680,
         "us_size_miss": 0.0016,
-        "us_head_miss": 4.556,
-        "us_match": 393.2
+        "us_head_miss": 4.559,
+        "us_match": 393.9
       },
       {
         "case": "lone_recognition",
@@ -4096,10 +4280,10 @@
         "fade": 0.8,
         "standin": "0.3105,0.2415,0.0533",
         "standin_want": "0.3106,0.2416,0.0533",
-        "lone": "0.2017,0.1680,0.0763",
-        "model": "0.2017,0.1681,0.0763",
+        "lone": "0.4265,0.3596,0.1775",
+        "model": "0.4266,0.3597,0.1775",
         "worst_standin": 0.023,
-        "worst_lone": 0.018
+        "worst_lone": 0.023
       },
       {
         "case": "lone_additive",
@@ -4107,10 +4291,10 @@
         "fade": 0.8,
         "during": 1,
         "restored": 1,
-        "worst_rel": 0.027,
+        "worst_rel": 0.071,
         "mrt": 1,
-        "flag_g": 12.906,
-        "flag_want": 12.908,
+        "flag_g": 27.297,
+        "flag_want": 27.3,
         "lone_state": "zwrite:1,mask:7,srgb:1,sepalpha:1,alphatest:1",
         "verdict": 1,
         "states_normalised_and_restored": 1
@@ -4124,9 +4308,9 @@
         "case": "lone_native_flag",
         "blend": "one_one",
         "base": 1.0,
-        "rt2_g": 7.453,
-        "want": 7.454,
-        "rt0_worst_rel": 0.031,
+        "rt2_g": 14.648,
+        "want": 14.65,
+        "rt0_worst_rel": 0.058,
         "srgb_write_fp16": 0,
         "during": 1,
         "restored": 1
@@ -4136,7 +4320,7 @@
         "blend": "one_invsrccolor",
         "base": 1.0,
         "rt2_g": 1.0,
-        "s": 6.454,
+        "s": 13.65,
         "flag_test": 0,
         "refused": 1
       },
@@ -4144,12 +4328,12 @@
         "case": "lone_cost",
         "draws": 2000,
         "runs": 7,
-        "draw_us_vanilla": 0.075,
-        "draw_us_reshaded": 0.439,
-        "substitution_us_per_draw": 0.365,
-        "draw_us_normalised": 0.661,
-        "normalise_us_per_draw": 0.222,
-        "match_us_hit_30": 0.0128,
+        "draw_us_vanilla": 0.083,
+        "draw_us_reshaded": 0.396,
+        "substitution_us_per_draw": 0.313,
+        "draw_us_normalised": 0.555,
+        "normalise_us_per_draw": 0.159,
+        "match_us_hit_30": 0.0129,
         "match_us_miss_30": 0.0129,
         "fenced": 1
       }
@@ -4289,11 +4473,355 @@
         "runs": 7,
         "primitives": 100,
         "calls_us_per_draw": 0.098,
-        "draw_us_vanilla": 2.976,
-        "draw_us_reshaded": 3.188,
-        "substitution_us_per_draw": 0.212,
-        "match_us_per_draw": 0.069,
+        "draw_us_vanilla": 2.963,
+        "draw_us_reshaded": 3.194,
+        "substitution_us_per_draw": 0.23,
+        "match_us_per_draw": 0.071,
         "fenced": 1
+      }
+    ],
+    "lathe": [
+      {
+        "case": "units",
+        "built": 1,
+        "walked": 1,
+        "walk_lo_m": "-302.87,-332.75,-1022.19",
+        "walk_hi_m": "302.87,332.75,1091.50",
+        "profile_lo_m": "-302.87,-332.75,-1022.19",
+        "profile_hi_m": "302.87,332.75,1091.50",
+        "err_x_m": "0.001,-0.001",
+        "err_y_m": "0.001,-0.001",
+        "err_z_m": "0.000,-0.000",
+        "factor": 1.0,
+        "perimeter_m": 1070.4,
+        "dome_m": "36.4,36.3"
+      },
+      {
+        "case": "placement",
+        "side_points": 114,
+        "lathe_median_m": 22.2,
+        "lathe_max_m": 45.4,
+        "walk_median_m": 279.1,
+        "walk_max_m": 628.9,
+        "shell_err": 1e-06,
+        "side_excess_m": -0.132,
+        "stern_m": 3.3,
+        "bow_m": 3.3,
+        "walk_stern_m": 153.1,
+        "walk_bow_m": 154.6,
+        "end_allowed_m": 160.6,
+        "walk_fit": 1,
+        "walk_e_m": "348.3,382.7,1215.4"
+      },
+      {
+        "case": "route_capital_profile",
+        "patches": 1,
+        "lathes": 1,
+        "lathe_draws": 1,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 0,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_corvette_profile",
+        "patches": 2,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 1,
+        "bubble_draws": 2,
+        "eye": 0,
+        "walks": 1,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_fighter_profile",
+        "patches": 2,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 1,
+        "bubble_draws": 2,
+        "eye": 0,
+        "walks": 1,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_no_profile",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 0,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_class_mismatch",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 0,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 1,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_fighter_no_profile",
+        "patches": 2,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 1,
+        "bubble_draws": 2,
+        "eye": 0,
+        "walks": 1,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_cockpit_profile",
+        "patches": 1,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 1,
+        "bubble_draws": 1,
+        "eye": 1,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_stale_table",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 1,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 1,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_row_past_count",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 1,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 1,
+        "scale": 0,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_axis_scale_zero",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 1,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 1,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_axis_scale_257x",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 1,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 1,
+        "degenerate": 0,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "route_capital_degenerate_profile",
+        "patches": 5,
+        "lathes": 0,
+        "lathe_draws": 0,
+        "bubbles": 0,
+        "bubble_draws": 0,
+        "eye": 1,
+        "walks": 0,
+        "decals": 0,
+        "mismatch": 0,
+        "no_profile": 0,
+        "unreadable": 0,
+        "scale": 0,
+        "degenerate": 1,
+        "cache": 0,
+        "stale": 0,
+        "ok": 1
+      },
+      {
+        "case": "cache_eviction",
+        "filled": 32,
+        "builds": 33,
+        "full_refused": 1,
+        "full_why": 7,
+        "again_same": 1,
+        "kept5": 1,
+        "fresh_took_row0_slot": 1,
+        "refused": 1
+      },
+      {
+        "case": "seam",
+        "patches": 1,
+        "seam_copies": 1,
+        "cells_plus": 19,
+        "cells_minus": 19,
+        "period_m": 1080.8
+      },
+      {
+        "case": "gpu_side_lathe",
+        "draws": 1,
+        "lit_pixels": 1528,
+        "sky_lit": 0,
+        "centroid_from_contact_m": 5.4,
+        "centroid_from_lathe_point_cells": 0.081,
+        "sky_gap_max_m": 0.0,
+        "sky_gap_mean_m": 0.0
+      },
+      {
+        "case": "gpu_side_ellipsoid",
+        "draws": 2,
+        "lit_pixels": 1886,
+        "sky_lit": 100,
+        "centroid_from_contact_m": 307.4,
+        "centroid_from_lathe_point_cells": -1.0,
+        "sky_gap_max_m": 7.3,
+        "sky_gap_mean_m": 3.3
+      },
+      {
+        "case": "gpu_top_lathe",
+        "draws": 1,
+        "lit_pixels": 28,
+        "sky_lit": 127,
+        "centroid_from_contact_m": 19.8,
+        "centroid_from_lathe_point_cells": 0.186,
+        "sky_gap_max_m": 22.8,
+        "sky_gap_mean_m": 19.6
+      },
+      {
+        "case": "gpu_top_ellipsoid",
+        "draws": 2,
+        "lit_pixels": 0,
+        "sky_lit": 1065,
+        "centroid_from_contact_m": 0.0,
+        "centroid_from_lathe_point_cells": -1.0,
+        "sky_gap_max_m": 118.8,
+        "sky_gap_mean_m": 94.9
+      },
+      {
+        "case": "gpu_summary",
+        "hug_allowed_m": 28.7
+      },
+      {
+        "case": "dump_smooth",
+        "draws": 1
+      },
+      {
+        "case": "dump_bow",
+        "view": "side",
+        "draws": 1
+      },
+      {
+        "case": "dump_bow",
+        "view": "ahead",
+        "draws": 1
+      },
+      {
+        "case": "timing_draws",
+        "decal_draws": 5,
+        "lathe_draws": 1
       }
     ],
     "fade": {
