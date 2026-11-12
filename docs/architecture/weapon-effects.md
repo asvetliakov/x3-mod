@@ -591,6 +591,23 @@ every hit, so a diagnosis flight still sees vanilla.
     stations (the accepted look: ship bubble + station decal, 2026-11-06); fighters and corvettes keep the bubble. The
     decal reads no hull extents, so a capital owner walks nothing (no slices spent). Its cells are the capital tier's
     (16 m, 2 rings), the station's values.
+  - *Ship profiles (2026-11-12).* The offline input for a lathe bubble that hugs a long hull: `weapon_effects.json`
+    schema 3 carries `tables.ship_profiles` (`tools/effects/ship_profiles.py`, written by
+    `tools/effects/weapon_effects_table.py` and x3m-regenerate), one entry per TShips row of the edition (AP
+    `addon/types/TShips`, FL `addon2/types/TShips`) keyed by `tships_index` (0-based data row), with `scene` (column 16)
+    and `class` (column 52) as written, `units` `scene`, `axis` `z`, `z0`/`z1` the whole hull's z extent, 32 `slices`
+    `[cx, cy, hx, hy]` (slice i spans z0 + i (z1 - z0) / 32; lateral box centre and half-widths of its points; an empty
+    slice interpolates its neighbours), `radius` (largest point distance from the scene origin) and `points`. Geometry:
+    LOD 0 of every non-effect part body the scene places, at its first scene key (position, angle-axis rotation in turns,
+    `F` parents composed), points x LOD-0 value / 65536, faces under 0.1 % of the body's largest dropped (as
+    `engine_bodies.py`). **One scene unit is one engine (world) unit**: the unit of a scene key position, and for a part
+    of unit node scale the runtime's half-extent ((ext x value + 0x8000) >> 16) x axis / 0x10000 (`hull_scale16` with
+    0x10000 = 1.0, `src/proxy/weapon_effects_bubble.h`) is the same number; 500 units per metre; the bubble's view units
+    are these x `core::world_scale`. A row whose scene does not load is listed under
+    `generated_from.ship_profiles_skipped` with its reason and has no entry (the runtime falls back). The Argon Titan (FL
+    row 11) [M]: z -511,093 to 545,751 (the walk's hull part 17,329 +- 528,422), radius 545,994 (scene_radius 545,751),
+    widest slice 16 (z 17,329..50,355, amidships) hx 151,433 (the stored x extent) hy 108,901, the slice half-widths 3.8k
+    to 151k in x against the walk's single 174k (`verification/results/ship-profiles/titan_profile.py`).
   - *Bubble.* An ellipsoid in the owner frame from the hull bounds (render-node-bounds.md 6.1, the reads and guards of
     `ship_avoidance_walk_core.h` `hull_children` with a signed box: `stage::hull_bounds` in
     `src/proxy/weapon_effects_bubble.h`, every descendant of the root node at most 3 levels down and 1024 nodes, 1024 per

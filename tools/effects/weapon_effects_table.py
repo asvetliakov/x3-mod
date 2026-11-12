@@ -35,6 +35,19 @@ group (the cluster elongated along u) as the mean v of its axis vertices (radius
 group's largest), of its rim vertices (over nine tenths) and its u range; null for a group not found or whose footprint
 another triangle of the body samples (the shader would shrink that triangle too). An older DLL skips the key (the
 schema stays 2: the DLL reads only 1 and 2, and an unknown table is skipped).
+Schema 3 (2026-11-12, docs/architecture/weapon-effects.md 5.1.1 "Ship profiles"): tables.ship_profiles, one entry per
+TShips row of the edition (AP addon/types/TShips, FL addon2/types/TShips) whose scene loads, giving the hull's lateral
+profile along z for the shield bubble's lathe: tships_index (0-based data row), scene (column 16 as written), class
+(column 52 as written), units 'scene', axis 'z', z0 and z1 (the whole hull's z extent), slices (32 x [cx, cy, hx, hy]:
+slice i spans z0 + i (z1 - z0) / 32, the lateral box centre and half-widths of its points; an empty slice interpolates
+its neighbours), radius (the largest point distance from the scene origin) and points (the count used); floats to 3
+decimals. Geometry: LOD 0 of every non-effect part body the scene places (first key position and rotation, F parents
+composed), each body's points x its LOD-0 value / 65536 (engine_bodies.py's body units), faces under 0.1 % of the
+body's largest dropped. One scene unit is one engine (world) unit: a scene part's key position, and the runtime's part
+half-extent ((ext x value + 0x8000) >> 16) x axis scale / 0x10000 at unit node scale (src/proxy/weapon_effects_bubble.h
+hull_scale16); 500 per metre (weapon_catalog.UNITS_PER_M). Rows without a profile are listed under
+generated_from.ship_profiles_skipped (index, scene, class, reason); generated_from.ship_profiles records the TShips
+source, counts and part tallies. Rules and skip reasons: tools/effects/ship_profiles.py.
 Per TMissiles row only the count. Also the TBullets table's decoded hash and row count (the DLL compares the count
 with the live *0x00607038 and disables the lookups on a mismatch), the generator's schema and its `tool` field (the
 ownership mark manage.py and x3m-regenerate test before replacing or removing the file). Only names, numbers and
@@ -51,10 +64,11 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/effects'))
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 import engine_bodies  # noqa: E402
+import ship_profiles  # noqa: E402
 import weapon_effects_census as census_reader  # noqa: E402
 import weapon_catalog  # noqa: E402
 
-SCHEMA = 2  # 2: mount_tier and range_m per bullet row (step 4); the DLL reads 1 and 2
+SCHEMA = 3  # 2: mount_tier and range_m per bullet row (step 4); 3: tables.ship_profiles (2026-11-12)
 TOOL = 'tools/effects/weapon_effects_table.py'
 OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
 # weapon_effects_core.h 4.1 (the host test pins both against the header).
@@ -434,13 +448,18 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
         entries.append(row_entry(w, body, colour, override, mounts.get(w['index']), texture))
     missile_rows = len(census_reader.data_rows(missiles_text.decode('latin1'))[1:])
     layouts = bullet_body_layouts(assets, {e['body'] for e in entries if e['body']}, result['bodies'])
+    try:
+        profiles, profiles_skipped, profiles_from = ship_profiles.ship_profiles(assets)
+    except FileNotFoundError as exc:
+        raise GenerateError(f'types/TShips not found in the selected layers: {exc}') from None
     return dict(
         schema=SCHEMA, tool=TOOL,
         generated_from=dict(root='<game-root>', view='stock' if stock_only else 'installed',
                             **({'edition': 'fl'} if edition == 'fl' else {}), layers=list(assets.layers),
                             skipped_overlay_layers=list(skipped), loose_files=len(assets.loose),
                             tbullets=table, overrides=str(Path(overrides_path).resolve().relative_to(ROOT))
-                            if Path(overrides_path).resolve().is_relative_to(ROOT) else str(overrides_path)),
+                            if Path(overrides_path).resolve().is_relative_to(ROOT) else str(overrides_path),
+                            ship_profiles=profiles_from, ship_profiles_skipped=profiles_skipped),
         rules=dict(tracer_min_elongation=TRACER_MIN_ELONGATION, slug_min_elongation=SLUG_MIN_ELONGATION,
                    texture_rgb='alpha-weighted mean of the first decodable body texture, 8-bit sRGB',
                    tint='override tint, linear -> 8-bit sRGB',
@@ -451,17 +470,21 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
                                    'the engine decodes, level-0 luminance peak and p99 (Rec. 709 on value / 255)',
                    bullet_bodies='per body a row draws, all LODs: head = the square UV cluster (box centre, half-side '
                                  'r), fin = the u-elongated cluster (mean v of the axis and rim vertices, u range); '
-                                 'null when absent or its footprint is shared with another triangle'),
+                                 'null when absent or its footprint is shared with another triangle',
+                   ship_profiles='per TShips row: LOD 0 of every non-effect part body at its first scene key, points x '
+                                 'value / 65536 (scene units = engine units), faces under 0.1 % of the largest '
+                                 'dropped; 32 z slices [cx, cy, hx, hy], empty slices interpolated'),
         counts=dict(bullets=len(entries), missiles=missile_rows, textures=sum(1 for e in entries if e['texture_rgb']),
                     bullet_textures=len(textures), bullet_bodies=len(layouts),
                     bullet_body_heads=sum(1 for b in layouts if b['head']),
                     bullet_body_fins=sum(1 for b in layouts if b['fin']),
-                    overrides=applied, mount_fallback=sum(1 for e in entries if e['mount_fallback']),
+                    overrides=applied, ship_profiles=len(profiles), ship_profiles_skipped=len(profiles_skipped),
+                    mount_fallback=sum(1 for e in entries if e['mount_fallback']),
                     **{t: sum(1 for e in entries if e['mount_tier'] == t) for t in MOUNT_TIERS}),
         tables=dict(bullets=dict(rows=len(entries), sha256=table['sha256'], entries=entries),
                     missiles=dict(rows=missile_rows),
                     bullet_textures=sorted(textures.values(), key=lambda t: (t['name'].lower(), t['fnv1a64'])),
-                    bullet_bodies=layouts))
+                    bullet_bodies=layouts, ship_profiles=profiles))
 
 
 def mount_fallback_rows(table):
