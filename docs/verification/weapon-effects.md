@@ -4182,6 +4182,90 @@ match the lattice only approximately (the period is not whole there), and the no
 duplicated across the seam takes a ring-hit slot; the table must be regenerated (schema 3) and installed for any ship
 to take the lathe.
 
+**FL 69 A: the lathe darkened the whole hull (2026-11-12).** Flight (run 69): the user's Titan seen from a fighter at
+446 m showed a dark hexagonal honeycomb with lighter borders over most of its visible hull ("shadow shield"). Finding:
+the lathe draw neither darkens nor lights anything outside its lit cells, and its band in that flight was 2 rings x 5
+columns of the 40 x 24 lathe; the whole-hull lattice of the screenshot is **not explained by the lathe** (follow-up
+below). A first reading as the union of many footprints was withdrawn: the log has 13 live hits in one spot. No
+production change.
+
+- *The draw adds light only* [M]. The shipped lathe pixel program (D3DX disassembly of
+  `weapon_lathe_pixel_program_inc.h`) ends `max oC0.xyz, r0, c16.w` with `oC0.w = 0`; an unlit cell's `r0` is the
+  literal 0 of both else-branches; the pass draws it ONE/ONE, Z and stencil off, separate alpha off. Native fixture, new
+  case `LATHE case=bright_hull` at the flight geometry (the Titan's +x flank 446 m from the eye, 16 live hits spread over
+  slices 3 to 27 at ages 0.1 to 2.5 s, 3 lathe draws, 304 cells = 19 per hit), a lit hull of linear 0.24 to 0.8 with a
+  panel pattern as the scene colour: outside the lit cells hull + lathe minus hull is 0 in every channel on every pixel
+  (alpha included); inside no channel is lower, and the difference equals the lathe on black within 8.1e-4 relative
+  (fp16). Through the production TemporalPass (the stage in its bracket, the flown far / camera-gate configuration,
+  8 frames): 0 pixels changed outside the cells dilated by 3 px, no pixel darker, the cells' gain 1.000. The records
+  past their life (latest t0 + `patch_lifetime_ms` + 1) draw nothing. Checks `lathe_flight_spread_drawn`,
+  `lathe_bright_hull_unchanged_outside_the_cells`, `lathe_bright_hull_adds_only`,
+  `lathe_bright_hull_taa_unchanged_outside_and_never_darker`, `lathe_records_past_life_draw_nothing`.
+- *The screenshot* [M] (8-bit luma): the Titan's hull where no cell lies has median 0.3 (p90 2.7), the honeycomb region
+  median 1.0 (p90 9.7), the sunlit station beside it 49.7; the sky just past the bow, inside the lathe's 15 % inflation
+  where the near side draws, median 20.3 against 24.0 for open sky further out (the nebula's gradient, not a dark band).
+  The hull is black with or without cells; the cells add light to it.
+- *The frame's exposure* [M] (`hdr_frame`): at the brief's three `weapon_effects_frame` rows EV −0.06, −0.67, −0.02
+  against the +1.3 rest value, each set by the highlight limit (`ev_limit` −0.14, −1.49, −0.93; p99 tile maximum 16 to
+  41). Over the FL 69 log 583 of 1710 rows have the p99 tile maximum at the meter's 64 clip and 650 sit at EV ≤ −1.5
+  (minimum −2.126, the limit at the clip). The FL 68 log (no lathe counters: the decal build) shows the same in its
+  combat: 502 of 1465 at the clip, 688 at EV ≤ −1.5. Bright pixels elsewhere in the combat frame hold the exposure 1.4 to
+  3.4 stops under rest; the lathe's own peak (marker plus ring, about 6 to 9 linear [I]) is far under those maxima.
+- *Many hits* [M] (for scale only, not the flight): each capital hit lights 19 cells of 16 m; 16 spread hits light
+  7.7 % of the flank's pixels, 64 live hits (`core::owner_hits`) 1024 cells in 8 draws (59 dropped at 8 x 128), 20 %
+  of a 1080p frame and 22 % at 5120x1440, as discrete clusters with gaps (`titan_flight_64_lathe.png`).
+- *Follow-up (coordinator, 2026-11-13)* [M]. The flight's own 13 Titan hits (owner `b1907de0`, owner-frame positions
+  and ages from the log before frame 94270, all near (20k, 28k, −358k)): one draw, 29 cells, band rings 7..9 and
+  columns 11..16 of 40 x 24, chart box u −1065..−975 m, v 4.6..106 m of the 1080.8 m period (78 wrap rows): no wrap,
+  not the whole lathe; one flank hit alone rings 7..9, columns 11..15. At 5120x1440 on black (`LATHE case=exact_zero`):
+  every cell of that band unlit (cells not lit yet, ring hits 10 s old) rasterizes 1,735,873 px and writes 0 non-zero
+  pixels, maximum exactly 0 (interiors and borders alike); hits at the end of their fade (2.93 s) leave no draw (the
+  stage drops faded cells); the live hits light 482,483 px, all inside the map's cells, 0 outside them + 3 px. The lathe
+  and bubble programs differ in: the chart point (vertex texcoord vs the per-pixel ellipsoid root), one side per
+  fragment by VFACE vs both roots summed, no triplanar face weight, the box in chart u, v vs normalised owner xyz, the
+  near plane by rasterizer clip vs `t > eye_q.w`, the cell hash's row wrapped by the period, and the constants (c19,
+  c94/c95; the lathe's compiler immediates at c8..c10 and c15..c18 where the bubble has `anchor` and `points`); `cell_shade`
+  and `hex_shade` are the same, with no rim, view-angle, colour-floor or constant term: an unlit cell is the literal 0 of
+  both else-branches before `max(shade, 0)`, alpha 0.
+- *The screenshot against the lathe* [M, viewed boosted]: the lattice covers the whole visible Titan uniformly, its cell
+  interiors are rounded dark discs darker than the lit hull around them (`shadow` in the user's word), its borders are
+  thick bands of the hull's own lit texture with staircase edges a few pixels per step, and it stops at the hull's outline
+  (no cell over the sky, where a lattice on the lathe's near side would reach 20 to 45 m past the outline). The lathe draws sharp
+  hexagons with an fwidth-anti-aliased edge, adds light only, and would spill over the sky. **Strongest remaining
+  hypothesis**: a sun-shadow artifact, a hex-structured caster in the shadow map darkening the hull (staircase texels,
+  rounded PCF corners, a darkening confined to receiving surfaces); the routed caster candidates rose from 118 to 143
+  (size class c2 from 5 to 131) in the 300 frames where the Titan's shield hits began (frame 93300 to 93900). Against
+  it: the replay leases only the application's buffer draws (the lathe is an UP draw through the native table, never
+  leased); the alpha-tested casters stay at 8 through the hits, so no cut-out caster is evident; no hex-tiled vanilla
+  mesh is known; the extra casters may be other ships closing in. **Refuted by triage (2026-11-13,
+  [`lattice_caster_rows.py`](../../verification/results/lathe-bubble/lattice_caster_rows.py))** [M]: `c2` counts the
+  candidates in cascade 2, not new draws (routed 118 to 143 only); it rose from 2 at frame 92940 to 86 at 93180 before
+  the window's first Titan hit at 93311, stays at about 130 through 96180 to 100200 with no hits, and stays at 2 to 7
+  through the hit clusters at 70539 to 72057 and 82146 to 87529: it follows the camera's distance to the Titan's hull,
+  not the hits (238 of 306 rows near a hit and 622 of 1388 rows without one have c2 >= 50; the FL 68 log,
+  `x3m.prev.log`, shows the same and that flight reported no lattice). Gate 4 refuses every blended draw as a caster;
+  the alpha casters, the fade arm and the shader-pair top list did not move at the hits; the FL census has no shield
+  overlay program or texture. The lattice's source stays unconfirmed by the log. The main session's reading of the
+  boosted screenshot: the cells are at the lathe's own 16 m pitch with light borders and darker fill, which is the
+  stage's cell style under heavy fire on a hull crushed to black by the combat exposure (EV held 1.4 to 3.4 stops below
+  rest by the frame's brightest pixels); the hits=71 window would leave several hundred cells live. Deciding run: the
+  same scene with `debug = 1` and an F8 capture while the lattice shows (the capture records the cascade maps and the
+  per-candidate bounds), and the user's word on whether it shows only under heavy fire.
+- *Cost* [M] (GPU, the flight geometry): 16 hits 43.7 µs at 1080p / 119.2 µs at 5120x1440 (3 draws, raster 0.94 /
+  1.11 screens); 64 hits 73.1 / 206.6 µs (8 draws, 1.57 / 1.87 screens): each spill draw's band spans its cells'
+  u-range at every v, so a draw rasterizes about a quarter of the screen. Two flank hits 12 km out: 16.7 / 19.6 µs.
+- *Frames* (viewed; half size): `verification/results/lathe-bubble/titan_flight_hull_lathe.png` (the bright hull with the
+  16 hits), `titan_flight_delta_x4.png` (hull + lathe minus hull, x4; a darker pixel would be red: none),
+  `titan_flight_64_lathe.png` (64 live hits on the fixture's dark-grey hull); `dump-shield/titan_flight13_top_5k` (the
+  flight's 13 hits at 5120x1440, local) is one 29-cell cluster.
+
+Figures: [`lathe_shadow_rows.py`](../../verification/results/lathe-bubble/lathe_shadow_rows.py) (the record, the two
+flight logs and the screenshot as arguments). Native run (`run_weapon_effects.py --host native` under the X3 lock, screen
+saver killed, display-required held for the run): D3D 167/167, AP hook 132/132, FL hook 75/75. Builds: FL
+`build-latheshadow-fl` 0 warnings (d3d9.dll sha256 prefix `ef84b38d56b634e8`), `check_no_x87` FL PASS (1085
+functions), AP `build-latheshadow-ap` 0 warnings; host `test_weapon_effects_core`, `_hook`, `_table`, `_launch` 56 OK.
+Open: the screenshot's lattice (above); the combat exposure's highlight limit (a decision, not a lathe defect).
+
 ## The walk removed: the profile lathe for every ship, no profile native (2026-11-12, FL 69 A decision)
 
 User decision on FL 69 A (docs/architecture/weapon-effects.md 5.1.1, "Placement decision 2026-11-12"): every ship

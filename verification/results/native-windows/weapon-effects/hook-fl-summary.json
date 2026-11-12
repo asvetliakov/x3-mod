@@ -13,6 +13,7 @@
     "src/proxy/weapon_effects_core.h",
     "src/engine/fl/weapon_effects_sites_fl.h",
     "src/proxy/weapon_effects_bolt.h",
+    "src/proxy/weapon_effects_bubble.h",
     "src/proxy/weapon_effects_table.h",
     "src/proxy/engine_patch.cpp",
     "src/proxy/engine_patch.h",
@@ -20,24 +21,20 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "89c534a1e1c512f9b741aec32e133005764dda78-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp"
-    ],
+    "commit": "0defbd821eee9c379663ac75c3ccdec177c0adc7-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "3931492180af41b388fe4642db79fa6c5a6a073f10b84f2b972f553ed69960d6",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "44e4243498e920c81d1a639b37f89924487130a2e5ba5dbfdb6020f43e534d92",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "91ca6fd0c6f9e6fbce55d6c693937c7beb48c0f5a481aa2d110f61d58c90ceb7",
-      "src/proxy/weapon_effects_patch.h": "0c6883aec52c5f5a78eced052da4089e8b59570e0b0be796d29ee55a773dc822",
+      "src/proxy/weapon_effects_patch.cpp": "0d66a6d5173cc5c975a668c26518f8827341e097ebf5559f345f74afee1726a2",
+      "src/proxy/weapon_effects_patch.h": "a1bbf7c3f68d52911fb793ad1a8b34ddc2beef5fb9e408f5b4f07969a307d678",
       "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "9a803c736d3a7a12d9b3effb3d024eb7fc27ebe9112fa367dcf997b7b8ce688e",
+      "src/proxy/weapon_effects_core.h": "dec2484c116246bc76e7ea60ea863bc0a4d60ba49400651a63d0711da058de1b",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
+      "src/proxy/weapon_effects_bubble.h": "ea07846d5404453fd898bca51637f8856d57702ff7c34b0e5591d2d9956f49e1",
       "src/proxy/weapon_effects_table.h": "7047d2bdfdf8cb9cb88adb415f2b9ef9a39c7b9cb851bd77ac501b2d9fad6f1d",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
@@ -60,14 +57,14 @@
         "_x3m_weapon_death_fl": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event_fl": 1394,
+        "_x3m_weapon_event_fl": 1244,
         "_x3m_weapon_tap_fl": 45,
         "_x3m_weapon_bolt_tap_fl": 874,
         "_x3m_weapon_muzzle_fl": 208,
         "_x3m_weapon_flight_fl": 20,
         "_x3m_weapon_death_fl": 569
       },
-      "handler_frame_bytes": 204,
+      "handler_frame_bytes": 200,
       "stubs": {
         "_x3m_weapon_effects_stub_batch_fl": [
           "pushf",
@@ -257,7 +254,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "fba7f62b2bda6ff7b77ba49b2dcaf6acc8d566933fbaf3790cdba8b8c60daaf5"
+    "executable_sha256": "f46c5b8d38306f7b00aa7d639dfce5d4e91798a384f00fe0519553c6de9c7726"
   },
   "host": {
     "name": "native-windows",
@@ -276,7 +273,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 74,
+      "checks": 75,
       "failures": 0,
       "faults": 3,
       "verdict": "PASS"
@@ -590,6 +587,11 @@
       "detail": ""
     },
     {
+      "name": "fl_bubble_walk_reads_node_body_0x144",
+      "passed": true,
+      "detail": ""
+    },
+    {
       "name": "fl_node_body_offset",
       "passed": true,
       "detail": ""
@@ -655,10 +657,10 @@
       "detail": ""
     }
   ],
-  "check_count": 74,
+  "check_count": 75,
   "failed_checks": [],
   "stack_depth": {
-    "bytes": 248,
+    "bytes": 244,
     "margin": 3072,
     "site": 0
   },
