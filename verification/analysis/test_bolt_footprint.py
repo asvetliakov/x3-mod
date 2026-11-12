@@ -1290,7 +1290,9 @@ class Wiring(unittest.TestCase):
         motion = source_text(ROOT / 'src/proxy/motion_output.cpp')
         additive = motion[motion.index('void MotionOutput::prepare_screen_additive('):motion.index('void MotionOutput::apply_screen_additive_alpha') if 'void MotionOutput::apply_screen_additive_alpha' in motion else None]
         self.assertIn('++screen_additive_admitted_; ++screen_additive_frame_admitted_;', additive)
-        self.assertIn('if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);', additive)
+        # Never for a lone bullet draw (the FL lone path, bullet-draw-batch.md section 7): its indexed static buffers
+        # carry no published scan.
+        self.assertIn('if (bolt_footprint_requested_ && !route.bullet_lone) prepare_bolt_footprint(call, route);', additive)
         self.assertLess(additive.index('++screen_additive_admitted_'), additive.index('prepare_bolt_footprint(call, route)'), 'after the admission, never before a refusal')
         finish = motion[motion.index('void MotionOutput::finish_screen_additive('):]
         self.assertTrue(finish.startswith('void MotionOutput::finish_screen_additive(MotionRoute& route) noexcept {\n    if (route.bolt_footprint) finish_bolt_footprint(route);'))

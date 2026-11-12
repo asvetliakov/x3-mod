@@ -4002,6 +4002,110 @@ committed record read 89.4); rerun all PASS (132/132, 75/75, 138/138; projectile
 lone sequence 0.354 µs per draw, recognition 0.0126 / 0.0124 µs hit / miss); the records are the rerun's. Host
 `test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch` 55 OK.
 
+## FL 68 A: lone bolts unflagged, route refused state (2026-11-12)
+
+**Flight** [M] (FL run 68 DLL `4ad0b495`, grep only:
+[`lone_state_log_rows.sh`](../../verification/results/projectile-reshade/lone_state_log_rows.sh) →
+[`_out.txt`](../../verification/results/projectile-reshade/lone_state_log_rows_out.txt); the next session on the same
+DLL → [`_s2_out.txt`](../../verification/results/projectile-reshade/lone_state_log_rows_s2_out.txt)). The lone path is
+recognised and re-shaded (151 windows with lone draws, `lone=` 1,545,769 in total, `lone_failures=0`; the user saw the
+PPC bolts dimmed like the other weapons) but never far-flagged (`lone_flagged=0` in every window). The additive route
+refused every lone draw it was offered with reason `state` (1,112,768 `state` refusals in the paired windows; e.g.
+`frame=78000`: `pair_draws=1371 admitted=562 refused=809 state=809`, the batch's 560 draws all flagged). So the lone
+bolts kept the TAA far hold over a distant station. The second session repeats it (109 windows, `lone=` 916,239,
+`lone_flagged=0`, 804,723 `state`). The lone draws also outnumber the route's offers (`frame=77400`: `lone=4127`
+against 1279 pair draws, 600 of them the batch): the difference is lone draws under ONE / ONE, re-shaded plain and
+never offered [I].
+
+**Which state** ([bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md) section 7). Offline, the
+effects DEFAULT pass and all 19 effects bullet materials give Z write 0, alpha test 0, colour mask 15 (literal) and
+separate alpha 0 (literal); sRGB write is not set by the pass [S]
+([`lone_states.py`](../../verification/results/projectile-reshade/lone_states.py) →
+[`_out.txt`](../../verification/results/projectile-reshade/lone_states_out.txt)). The only measured state of an effects
+DEFAULT draw in the log, the source-gain refusal rows of `d5e1c753…/8360f422…`, carries `sepalpha=1` (16 rows in FL 68,
+112 in the next session, ONE / ONE) [M]. Separate alpha is therefore the expected refusing bit, the colour mask
+possibly too [I]; the flight log does not say.
+
+**Fix** (after the review at high, 2026-11-12). `bullet_reshade_route.h` gains the route's state verdict as a function
+(`state_differs`, `route_state_refuses`), which `prepare_screen_additive` and the fixture both run, a fourth op
+(`SetRenderState`) in the sequence, and the far flag's target binding (`flag_bind` / `flag_unbind`), which
+`MotionOutput::bind_bolt_flag_targets` / `unbind_bolt_flag_targets` now run for the route's draws and the lone path
+alike (the fixture runs the same templates). A lone draw's `begin` first writes, where they differ, only what its path
+needs: on the route the four states the route requires (Z write off, colour mask 15, sRGB write off, separate alpha off:
+the exact screen state it admits for every other draw); off the route Z write only (a bolt writes no depth and must not
+enter the TAA depth lane). Alpha test is never written: the route admits any alpha test, our programs output the texel's
+alpha so the game's test cuts as in vanilla, and the INSTANCE_BULLETS pass does not set it. Z test stays the game's.
+`end` puts the application's values back last; they are read from the render-state shadow and kept in the route, so the
+restore never reads a device value the sequence wrote. A failed begin rollback or end restore invalidates the TAA (Z
+write is among the states), as a failed flag unbind does. Every other draw still needs the exact native screen state.
+
+**Far flag outside the route.** The lone draws the route never takes (ONE / ONE, never offered) are flagged under the
+game's own blend (`lone_native_flag`): the route's preconditions (`bolt_flag_target_reason`, shared with
+`prepare_screen_additive`), its scene guards, the first depth writer, `bind_bolt_flag_targets`, the lone flag program
+through the plain sequence (no conversion, gain 1, Z write the only state written), and after the sequence's end
+`unbind_bolt_flag_targets` (`finish_lone_native_flag`). The MRT flag write needs no other state: RT2.g is written under
+COLORWRITEENABLE2 = GREEN, which the binding sets; RT0's mask and the separate alpha factors do not reach RT2.g; the
+game's alpha test discards the flag exactly where it discards the bolt; sRGB write does not encode the float RT2 (this
+device reports no D3DUSAGE_QUERY_SRGBWRITE for A16B16G16R16F, and the flag measured exact with sRGB write on). A ONE /
+INVSRCCOLOR lone draw the route refuses or is not requested for is not flagged, for a documented D3D9 reason: one
+SRCBLEND / DESTBLEND applies to every simultaneous render target (D3D9 has no per-target blend state), and RT2.g holds
+the depth lane under the flag, so the lane would become s + base (1 - s) = 1 at far depth and fail the composite's
+g > 1 test (reason `screen_unrouted`).
+
+**Diagnostics for the next flight.** The route's window row breaks `state` refusals down (`zwrite= mask= srgb=
+sepalpha= blend= alphatest= unknown= lone_state=`). `bullet_reshade_frame` adds `lone_flagged_native=` (of
+`lone_flagged=`, those flagged outside the route), `lone_refused=` with `lone_refused_why=` (every lone draw that ends
+unflagged, by reason: off, scene, no_depth, no_variant, no_target, r32f_lane, write_masks, bind, screen_unrouted,
+failed), `lone_route_state=` (lone draws the route refused for a known differing state: a defect), `lone_route_unknown=`
+(refused on an unknown state), `lone_zwrite=` .. `lone_sepalpha=` (lone draws drawn re-shaded whose state was
+normalised, counted at the draw's finish, so a draw the route's alpha rollback left vanilla is not counted) and
+`lone_additive=` (ONE / ONE lone draws). One `bullet_reshade_lone_body` row per (body, blend), at most 16 a device,
+names the body, the normalised bits and whether it was converted and flagged.
+
+**Fixture** [M] (native, `run_weapon_effects.py --host native`; the tracked record, 60.3 s wall, with the screensaver
+killed and display-required held by a bounded `SetThreadExecutionState` loop: AP hook 132 of 132, FL hook 75 of 75, D3D
+145 of 145 PASS; `projectile_budget_512_bolts` 91.4 µs, `budget_combined` 124.1 µs). Two earlier runs of this round
+did not count: one failed `projectile_budget_512_bolts` at 134.9 µs (projectile stage unchanged), the next lost the D3D
+device to the screensaver after 59 checks. Each lone case starts from the lone draw's own state: Z write on, colour
+mask 7, sRGB write on, separate alpha on with ZERO / ZERO factors, alpha test on with GREATEREQUAL / 1, and the
+application's flag masks COLORWRITEENABLE1 = 5, COLORWRITEENABLE2 = 9.
+
+- Route (`reshade_lone_route_binds_converts_flags_restores`, `reshade_lone_state_admitted_normalised_restored`): the
+  verdict admits the state as a lone draw and refuses it as a non-bullet draw with Z write, mask, sRGB and separate
+  alpha; while drawing the four states are the route's and alpha test, its function, reference, the alpha factors and
+  Z test are the game's; output bg + 2 x model x fade (worst 0.027), RT2.g 12.906 (want 12.908); after `end` and the
+  production `flag_unbind` the four are the lone draw's again, RT1 and RT2 unbound, masks 5 and 9 back.
+- Verdict table (`reshade_lone_state_verdict`, 8 rows: the exact state, each of the four bits alone, SRCALPHA, blend
+  off).
+- Outside the route, ONE / ONE (`reshade_lone_native_flag_one_one`): over RT2 base 1.0, RT2.g 7.453 (want 7.454),
+  RT0 bg + model (worst 0.031); while drawing Z write off and every other state the game's; after `end` and the
+  production `flag_unbind`, Z write on again, RT1 and RT2 unbound, masks 5 and 9 back.
+- Witness, ONE / INVSRCCOLOR (`reshade_lone_flag_invsrccolor_witness`): RT2.g 1.0000 with s 6.454, the flag test fails,
+  and `lone_native_flag` refuses the blend.
+- Cost: sequence 0.365 µs per indexed lone draw (vanilla 0.075, re-shaded 0.439), with the route's four states written
+  0.661 (+0.222); recognition 0.0128 / 0.0129 µs hit / miss.
+
+The PPC lone dump's stand-in drew with alpha test off and Z write off, the material's state, so it was not re-dumped.
+The lone flag program's comment changed; regenerated with `tools/shaders/generate_bullet_reshade_program.py` (native),
+bytecode unchanged (`10690e4b…`), only the record's source hash. FL `build-lonestate-fl` 0 warnings (d3d9.dll sha256
+prefix `c16d191f68ecfd75`), `check_no_x87` FL PASS (1085 functions), AP `build-lonestate-ap` 0 warnings. Host
+`test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch`, `test_bolt_footprint` 80 OK.
+`test_bolt_footprint.Wiring.test_proxy_route` had failed since the lone-path commit 498ebbebb: the wiring
+`if (bolt_footprint_requested_ && !route.bullet_lone) prepare_bolt_footprint(call, route);` is intended (a lone draw's
+static buffers carry no published scan), so the test's expectation was updated. Not flown: the next FL flight should
+show `lone_flagged=` close to `lone=` less the `screen_unrouted` draws, `lone_route_state=0`, and the PPC bolts over a
+station no longer faded.
+
+**Open (FL 68 A).**
+
+- ONE / ONE lone matches are flagged before their bodies are identified (accepted at review): the next flight's
+  `bullet_reshade_lone_body` rows decide whether they are bullets (`bullet_push`, `TOL_bullet`) or non-bullet nodes
+  drawing a mapped body id.
+- ONE / INVSRCCOLOR lone draws the route refuses for a non-state reason, or with the route off, stay unflagged
+  (`screen_unrouted`).
+- The bit that refused in FL 68 is inferred (separate alpha); the next flight's `lone_sepalpha=` and the window
+  breakdown settle it.
+
 ### FL 68 A: bullet values re-baked (2026-11-12)
 
 The user tuned the re-shade in flight on fighters and on the Titan's PPCs with the run 68 DLL (six `projectile_tune

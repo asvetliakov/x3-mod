@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl",
-  "source_sha256": "2c8bc1c2901be68a06dcdab1d0fdf87546cd0bdb917a8cca4887801256acc4de",
+  "source_sha256": "5a694c83b87f026fc8010a3f202bf68ac1d871ea9e81b6e67aa01b11ec00b4b2",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",

@@ -22,8 +22,14 @@
 // re-shaded with the lone pair (weapon_bullet_reshade_lone{,_flag}_ps.hlsl: the same law, the fade in COLOR0.x) and
 // that body's layout, through the same sequence: ONE / INVSRCCOLOR goes through the additive route exactly as a batch
 // draw (prepare_screen_additive with route.bullet_lone: conversion, gain, alpha law and far flag; no footprint, no
-// single-copy drop), and plain under the game's blend when the route is off or refuses it; ONE / ONE plain. Counted
-// apart from the batch's draws (lone=, lone_flagged=).
+// single-copy drop), and plain under the game's blend when the route is off or refuses it; ONE / ONE plain, with the
+// far flag written outside the route (lone_native_flag: the route's targets and the lone flag program under the game's
+// ONE / ONE; never under ONE / INVSRCCOLOR, bullet_reshade_route.h lone_native_flag gives the D3D9 reason). On every
+// path the sequence first writes the lone draw's states where they differ (bullet_reshade_route.h lone_states): on the
+// route the four it requires (Z write off, colour mask 15, sRGB write off, separate alpha off), off it Z write only;
+// alpha test and Z test stay the game's; the application's values go back after the draw. The route admits a lone draw
+// on those four (FL 68 A: the route refused every lone draw for `state`). Counted apart from the batch's draws (lone=, lone_flagged=,
+// lone_flagged_native=, lone_refused= with lone_refused_why=, lone_route_state=, lone_zwrite= .. lone_sepalpha=).
 // The game's program comes back from the shadowed binding, c29..c31 from the SetPixelShaderConstantF hook's shadow
 // (read at resync; zero when never written). Documented IDirect3DDevice9 calls only, through the native slots (the shadows keep
 // the application's values); no allocation per draw. On every 60th frame (a 32-bit count) and capture frames the
@@ -160,15 +166,30 @@ void MotionOutput::bullet_reshade_layout(std::uint32_t body) noexcept {
 bool MotionOutput::bullet_reshade_ready() const noexcept {
     return shadow_.ps_bullet && x3m_bullet_scope && bullet_reshade_ps_ && !bullet_reshade_restore_failed_;
 }
+// The application's values of bullet_reshade_route.h lone_states for this draw: the render-state shadow (one Get each
+// for an indexed state the shadow does not hold yet, cached as render_state does); separate alpha from the blend shadow
+// only (unknown: false, the lone draw stays vanilla).
+bool MotionOutput::lone_state_values(DWORD out[4]) noexcept {
+    static_assert(weapon_effects::reshade::lone_state_count == 4, "MotionRoute::bullet_lone_app holds lone_states");
+    for (unsigned i = 0; i < 3; ++i)
+        if (FAILED(render_state(weapon_effects::reshade::lone_states[i], &out[i]))) return false;
+    if (!blend_known(3)) return false;
+    out[3] = shadow_.composition_blend[3];
+    return true;
+}
 // The sequence's begin for this draw (convert: the additive route's DESTBLEND ONE and gain; flag: its far-flag targets
-// are bound, so the flag variant). false: nothing applied (a failed step undone; an undo that failed stops the
-// re-shade for the device with one row).
+// are bound, so the flag variant). A lone draw (route.bullet_lone) first has its states written where they differ
+// (bullet_reshade_route.h lone_states): on the route (convert) the four the route requires (Z write off, colour mask
+// 15, sRGB write off, separate alpha off), off it Z write only; alpha test and Z test stay as the game set them; the
+// application's values are kept in the route for the end. false: nothing applied (a failed step undone; an undo that
+// failed stops the re-shade for the device with one row and invalidates the TAA, Z write being among the states).
 bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool flag) noexcept {
     namespace rs = weapon_effects::reshade;
     const bool timed = capture_ || bullet_reshade_frames_ % 60u == 0u;
     LARGE_INTEGER a{}, b{};
     if (timed) QueryPerformanceCounter(&a);
     auto ops = rs::calls(
+        [this](D3DRENDERSTATETYPE s, DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, s, v); },
         [this](DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, v); },
         [this](const float* v) {
             return direct_call<SetConstantsFFn>(SetPixelShaderConstantF, rs::block_register, v, rs::block_count);
@@ -185,6 +206,16 @@ bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool f
     plan.gain = screen_additive_gain_;
     bullet_reshade_scale(samplers_[0].texture, &plan.scale);
     plan.convert = convert;
+    if (route.bullet_lone) {
+        if (!lone_state_values(route.bullet_lone_app)) {
+            ++bullet_reshade_lone_failures_; // nothing applied: the draw stays vanilla
+            return false;
+        }
+        rs::ScreenState current;
+        for (unsigned i = 0; i < rs::lone_state_count; ++i) current.lone[i] = route.bullet_lone_app[i];
+        plan.states = rs::state_differs(current) & (convert ? rs::lone_route_bits : rs::lone_plain_bits);
+        plan.state_app = route.bullet_lone_app;
+    }
     rs::Applied applied;
     const HRESULT hr = rs::begin(ops, plan, shadow_.ps_c29, applied);
     if (timed) {
@@ -201,6 +232,7 @@ bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool f
                     id_, frame_, hr);
             bullet_reshade_restore_failed_ = true;
             invalidate_render_states();
+            invalidate_taa(TaaInvalidateSite::RestoreFailed);
         }
         return false;
     }
@@ -208,6 +240,7 @@ bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool f
     route.bullet_reshade_timed = timed;
     route.bullet_reshade_convert = convert;
     route.bullet_reshade_flag = flag;
+    route.bullet_lone_states = std::uint8_t(applied.states); // counted at finish_bullet_reshade (the draw drawn)
     return true;
 }
 // before_draw, last of the preparations, for a submitted draw no route took while a bullet program is bound.
@@ -246,10 +279,62 @@ bool MotionOutput::lone_bullet_match(MotionRoute& route) noexcept {
     route.bullet_body = id;
     return true;
 }
+static_assert(MotionOutput::lone_count_slots_ == weapon_effects::lone_count_slots,
+              "MotionOutput's lone count array is weapon_effects_patch.h's layout");
+static_assert(weapon_effects::lone_count_slots ==
+                  weapon_effects::lone_count_refused_why + weapon_effects::reshade::unflagged_count - 1u,
+              "bullet_reshade_frame's lone_refused_why= holds every LoneUnflagged reason");
+// One lone draw ended without the far flag: counted in total and by its reason (bullet_reshade_route.h LoneUnflagged).
+void MotionOutput::lone_unflagged(unsigned reason) noexcept {
+    ++bullet_reshade_lone_counts_[weapon_effects::lone_count_refused];
+    if (reason > weapon_effects::reshade::unflagged_none && reason < weapon_effects::reshade::unflagged_count)
+        ++bullet_reshade_lone_counts_[weapon_effects::lone_count_refused_why + reason - 1u];
+}
+// The far flag for a lone draw the additive route does not take (bullet_reshade_route.h lone_native_flag): only under
+// the game's ONE / ONE, inside the bound HDR scene after its first depth writer, on the route's own preconditions
+// (bolt_flag_target_reason) and through its own binding (bind_bolt_flag_targets: RT1 masked off, RT2 GREEN, the masks
+// saved; rolled back on a partial failure). Sets route.bolt_flag and route.bullet_lone_native_flag when bound, else
+// route.bullet_lone_unflagged.
+void MotionOutput::lone_native_flag(MotionRoute& route) noexcept {
+    namespace rs = weapon_effects::reshade;
+    unsigned why = rs::unflagged_none;
+    if (!bolt_far_requested_)
+        why = rs::unflagged_off;
+    else if (!rs::lone_native_flag(route.bullet_lone_blend))
+        why = rs::unflagged_screen_unrouted;
+    else if (!scene_open_ || active_queries_ || shadow_.recording || !scene_bound() || main_msaa_ ||
+             hdr_state_ != HdrState::Active || !hdr_)
+        why = rs::unflagged_scene;
+    else if (!selector_.scene_depth_written())
+        why = rs::unflagged_no_depth;
+    else if (const unsigned target = bolt_flag_target_reason(bullet_reshade_lone_flag_ps_ != nullptr))
+        why = rs::unflagged_no_variant + target - 1u;
+    else if (FAILED(bind_bolt_flag_targets(route)))
+        why = rs::unflagged_bind;
+    route.bullet_lone_unflagged = std::uint8_t(why);
+    route.bullet_lone_native_flag = route.bolt_flag;
+}
+// The flag targets of a natively flagged lone draw back (after the sequence's end: reverse order of the bind); a failed
+// restore is latched exactly as finish_screen_additive latches it.
+void MotionOutput::finish_lone_native_flag(MotionRoute& route) noexcept {
+    route.bullet_lone_native_flag = false;
+    if (!route.bolt_flag) return;
+    const HRESULT back = unbind_bolt_flag_targets(route);
+    if (FAILED(back)) {
+        if (!motion_state_lost_) {
+            motion_state_lost_ = true;
+            motion_state_error_ = back;
+        }
+        ++counters_.restore_failures;
+        invalidate_render_states();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed);
+    }
+}
 // The lone draw's re-shade: ONE / INVSRCCOLOR through the additive route (the batch's conversion, gain, alpha law and
-// far flag, prepare_screen_additive with route.bullet_lone) when the route is requested; when it is off or refuses the
-// draw (no HDR, a state or scene guard), or for ONE / ONE, plain under the game's blend (gain 1, no flag), as a refused
-// batch draw. A failed begin leaves the draw to the routes after this one, vanilla.
+// far flag, prepare_screen_additive with route.bullet_lone) when the route is requested. When the route is off or
+// refuses the draw (no HDR, a scene guard), or for ONE / ONE (never offered), plain under the game's blend (gain 1),
+// with the far flag written outside the route where the game's blend allows it (ONE / ONE: lone_native_flag); a draw
+// that ends unflagged is counted with its reason. A failed begin leaves the draw to the routes after this one, vanilla.
 void MotionOutput::prepare_lone_bullet(const MotionDrawCall& call, MotionRoute& route) noexcept {
     if (route.bullet_lone_blend == weapon_effects::reshade::lone_screen && screen_additive_requested_) {
         ++screen_additive_window_.pair_draws; // offered to the route: its window's admitted + refused stay within it
@@ -258,12 +343,25 @@ void MotionOutput::prepare_lone_bullet(const MotionDrawCall& call, MotionRoute& 
         const unsigned failed = screen_additive_failures_ - failures;
         screen_additive_window_.apply_failures += failed;
         if (route.screen_additive || route.bullet_reshade || failed) {
-            if (!route.bullet_reshade) route.bullet_lone = false;
+            if (!route.bullet_reshade) {
+                lone_unflagged(weapon_effects::reshade::unflagged_failed);
+                route.bullet_lone = false;
+            }
             return;
         }
     }
-    begin_bullet_reshade(route, false, false);
-    if (!route.bullet_reshade) route.bullet_lone = false;
+    lone_native_flag(route);
+    begin_bullet_reshade(route, false, route.bullet_lone_native_flag);
+    if (route.bullet_reshade) {
+        if (route.bullet_lone_native_flag) {
+            ++bolt_flag_frame_;
+            ++bolt_flag_session_;
+        }
+        return;
+    }
+    finish_lone_native_flag(route); // nothing of the sequence applied: the targets back, the draw vanilla
+    lone_unflagged(weapon_effects::reshade::unflagged_failed);
+    route.bullet_lone = false;
 }
 // The sequence's end alone (the program, c31 and, converted, DESTBLEND back; timed with the begin); the route's flags
 // cleared. Used by finish_bullet_reshade and by the additive route's alpha rollback.
@@ -272,6 +370,7 @@ HRESULT MotionOutput::end_bullet_reshade(MotionRoute& route) noexcept {
     LARGE_INTEGER a{}, b{};
     if (route.bullet_reshade_timed) QueryPerformanceCounter(&a);
     auto ops = rs::calls(
+        [this](D3DRENDERSTATETYPE s, DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, s, v); },
         [this](DWORD v) { return direct_call<SetRenderStateFn>(SetRenderState, D3DRS_DESTBLEND, v); },
         [this](const float* v) {
             return direct_call<SetConstantsFFn>(SetPixelShaderConstantF, rs::block_register, v, rs::block_count);
@@ -280,6 +379,9 @@ HRESULT MotionOutput::end_bullet_reshade(MotionRoute& route) noexcept {
     rs::Applied applied;
     applied.program = applied.block = true;
     applied.destblend = route.bullet_reshade_convert;
+    applied.states = route.bullet_lone ? route.bullet_lone_states : 0u; // the lone draw's states, from the route
+    for (unsigned i = 0; i < rs::lone_state_count; ++i) applied.state_app[i] = route.bullet_lone_app[i];
+    route.bullet_lone_states = 0;
     const HRESULT hr = rs::end(ops, applied, shadow_.ps, shadow_.ps_c29);
     const bool lone = route.bullet_lone; // the lone path's own counts and time (lone_failures=, lone_us_per_draw=)
     if (route.bullet_reshade_timed) {
@@ -298,6 +400,7 @@ HRESULT MotionOutput::end_bullet_reshade(MotionRoute& route) noexcept {
                 id_, frame_, hr);
         bullet_reshade_restore_failed_ = true;
         invalidate_render_states();
+        invalidate_taa(TaaInvalidateSite::RestoreFailed); // Z write is among a lone draw's restored states
     }
     return hr;
 }
@@ -306,17 +409,40 @@ void MotionOutput::finish_bullet_reshade(MotionRoute& route) noexcept {
     if (route.bullet_lone) {
         ++bullet_reshade_lone_;
         if (route.bullet_reshade_flag) ++bullet_reshade_lone_flagged_;
+        if (route.bullet_lone_blend == weapon_effects::reshade::lone_additive)
+            ++bullet_reshade_lone_counts_[weapon_effects::lone_count_additive];
+        for (unsigned i = 0; i < weapon_effects::reshade::lone_state_count; ++i) // the draw was drawn re-shaded
+            if (route.bullet_lone_states & (1u << i))
+                ++bullet_reshade_lone_counts_[weapon_effects::lone_count_states + i];
+        // One row per (body, blend) the lone path re-shades (at most 16 a device): which bodies the lone draws are and
+        // which of their states the sequence normalised (bullet_reshade_route.h StateBit), flagged or not.
+        const std::uint32_t key = (route.bullet_body << 2) | route.bullet_lone_blend;
+        bool seen = false;
+        for (unsigned i = 0; i < bullet_lone_seen_count_ && !seen; ++i) seen = bullet_lone_seen_[i] == key;
+        if (!seen && bullet_lone_seen_count_ < 16u) {
+            bullet_lone_seen_[bullet_lone_seen_count_++] = key;
+            log("bullet_reshade_lone_body device=%llu frame=%llu body=%lu blend=%s states=%02x convert=%u flag=%u",
+                id_, frame_, static_cast<unsigned long>(route.bullet_body),
+                route.bullet_lone_blend == weapon_effects::reshade::lone_additive ? "one_one" : "one_invsrccolor",
+                unsigned(route.bullet_lone_states), unsigned(route.bullet_reshade_convert),
+                unsigned(route.bullet_reshade_flag));
+        }
+        if (route.bullet_reshade_flag && route.bullet_lone_native_flag)
+            ++bullet_reshade_lone_counts_[weapon_effects::lone_count_flagged_native];
+        if (!route.bullet_reshade_flag) lone_unflagged(route.bullet_lone_unflagged);
     } else {
         ++bullet_reshade_draws_;
         if (route.bullet_reshade_convert) ++bullet_reshade_additive_;
         if (route.bullet_reshade_flag) ++bullet_reshade_flagged_;
     }
+    const bool native_flag = route.bullet_lone_native_flag;
     end_bullet_reshade(route);
+    if (native_flag) finish_lone_native_flag(route); // the flag targets after the program, c29..c31 and the states
 }
 void MotionOutput::bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed,
                                              float* us, unsigned* additive, unsigned* flagged, unsigned* lone,
                                              unsigned* lone_flagged, unsigned* lone_failures, unsigned* lone_timed,
-                                             float* lone_us) noexcept {
+                                             float* lone_us, unsigned lone_counts[lone_count_slots_]) noexcept {
     ++bullet_reshade_frames_;
     bullet_texture_bound_ = nullptr; // the bound texture's entry and identity are read again once a frame
     *draws = bullet_reshade_draws_;
@@ -329,6 +455,10 @@ void MotionOutput::bullet_reshade_take_frame(unsigned* draws, unsigned* failures
     *lone_flagged = bullet_reshade_lone_flagged_;
     *lone_failures = bullet_reshade_lone_failures_;
     *lone_timed = bullet_reshade_lone_timed_;
+    for (unsigned i = 0; i < weapon_effects::lone_count_slots; ++i) {
+        lone_counts[i] = bullet_reshade_lone_counts_[i];
+        bullet_reshade_lone_counts_[i] = 0;
+    }
     const std::uint64_t frequency = engine_qpc_frequency();
     *us = frequency ? float(double(bullet_reshade_ticks_) * 1e6 / double(frequency)) : 0.f;
     *lone_us = frequency ? float(double(bullet_reshade_lone_ticks_) * 1e6 / double(frequency)) : 0.f;

@@ -412,8 +412,54 @@ pixel for pixel, vanilla and re-shaded (`dump_out.txt`). Log rows behind the FL 
 [`lone_log_rows.sh`](../../../verification/results/projectile-reshade/lone_log_rows.sh) →
 [`_out.txt`](../../../verification/results/projectile-reshade/lone_log_rows_out.txt).
 
+**Render state of the lone draw (FL 68 A, 2026-11-12).** The additive route refused every lone draw offered to it
+for `state` (151 windows with lone draws, `lone_flagged=0` in all; the next session on the same DLL 109 windows, also
+0; [m], [`lone_state_log_rows.sh`](../../../verification/results/projectile-reshade/lone_state_log_rows.sh) →
+[`_out.txt`](../../../verification/results/projectile-reshade/lone_state_log_rows_out.txt),
+[`_s2_out.txt`](../../../verification/results/projectile-reshade/lone_state_log_rows_s2_out.txt)). What the pass and the
+material say, offline ([`lone_states.py`](../../../verification/results/projectile-reshade/lone_states.py) →
+[`lone_states_out.txt`](../../../verification/results/projectile-reshade/lone_states_out.txt), FL archive, root +
+addon2):
+
+| State | `effects.fb` 2_0 DEFAULT pass 0 | Bullet material (all 19 effects bodies, the PPC's `v/00518` included) | INSTANCE_BULLETS (the batch) |
+| --- | --- | --- | --- |
+| ZWriteEnable | `g_ZWriteEnable` (FXLC `mov` of the parameter; effect default 1) | 0 | literal 0 |
+| AlphaTestEnable | `g_ALPHATESTENABLE` (default 0); AlphaFunc GREATEREQUAL, AlphaRef 1 literal | 0 | not set |
+| ColorWriteEnable | literal 15 | — | literal 15 |
+| SeparateAlphaBlendEnable | literal 0 (SrcBlendAlpha ONE, DestBlendAlpha INVSRCCOLOR) | — | not set |
+| SRGBWriteEnable | not set (the device's value) | — | not set |
+| ZEnable / blend | `g_ZEnable` / `g_AlphaBlendEnable`, `g_SrcBlend`, `g_DestBlend`; BlendOp ADD literal | 1 / on, ONE / INVSRCCOLOR (ONE / ONE `bullet_push`, `TOL_bullet`) | literal 1 / on, ONE / INVSRCCOLOR |
+
+By the pass and the material every bit the route requires would match [s]. The one measured state of an effects DEFAULT
+draw contradicts it: the FL 68 source-gain refusal rows of `d5e1c753…/8360f422…` (16 rows, ONE / ONE, outside the
+HDR scene) carry `sepalpha=1` [m], so the material submit sets separate alpha after the pass (the AP material's glow
+branch `0x004c3e06..0x004c3fc5` writes separate alpha and the colour mask, [bloom-late-view-state.md](../bloom-late-view-state.md)),
+or applies the pass once for several draws. The expected refusing bit is therefore **separate alpha** [i], possibly
+with the colour mask (the same branch sets 7 or 15) [i]; Z write and alpha test are 0 by the material [s] unless a
+per-draw path overrides them, and sRGB write is inherited. The fix does not depend on which: on the route the lone
+sequence writes the four states the route requires (Z write, colour mask, sRGB write, separate alpha;
+`bullet_reshade_route.h` `lone_states`), off it Z write only; alpha test is never written (the route admits any, and
+INSTANCE_BULLETS does not set it). The route's window row now counts each bit per refused draw (`zwrite= mask= srgb=
+sepalpha= blend= alphatest= unknown= lone_state=`), `bullet_reshade_frame` each normalised bit per lone draw drawn
+(`lone_zwrite=` .. `lone_sepalpha=`), so the next flight names the bit [m].
+
+FL 68 also shows more lone draws than the route was offered (window `frame=77400`: `lone=4127`, the route's
+`pair_draws=1279` with the batch's 600 admitted; the next session on the same DLL, `frame=157200`: `lone=1983`,
+`pair_draws=603`, 596 admitted) [m]: the difference is lone draws under ONE / ONE, which the plain path re-shades and
+never flags [i: only ONE / INVSRCCOLOR lone draws are offered]. Only `bullet_push` (CIG) and `TOL_bullet` (PBC) carry
+that material, so either those weapons were firing or a non-bullet node drawing a mapped body id matched (the node
+`+0x144` caveat above) [i]. From the next flight `lone_additive=` counts them and one `bullet_reshade_lone_body` row per
+(body, blend) (at most 16 a device) names the body, its blend, the states the sequence normalised and whether it was
+converted and flagged. The ONE / ONE lone draws are now far-flagged outside the route under their own blend
+(`lone_flagged_native=`); a ONE / INVSRCCOLOR lone draw the route does not take cannot be, because D3D9 blends every
+simultaneous render target with the one factor pair and RT2.g = base + s (1 - base) stays at 1 at far depth (native
+fixture witness: 1.0000 at base 1) [m].
+
 ## Unknown
 
+- Which lone state bits differ at the draw (separate alpha expected, above): settled by the next flight's
+  `lone_zwrite=` .. `lone_sepalpha=`.
+- Which bodies the ONE / ONE lone draws are: settled by the next flight's `bullet_reshade_lone_body` rows.
 - Whether the runtime model's UV ints equal the file words, which the D3D-only signature relies on. Settle it by
   logging the first 66 TEXCOORD0 pairs of one period-66 INSTANCE_BULLETS draw in a flight, or by tracing loader
   `0x09ae00`.
