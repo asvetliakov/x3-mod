@@ -3848,12 +3848,15 @@ substitution 0.128 µs, body change 0.0055 µs; muzzle substitution 0.096 µs; `
 FL `build-run66-fl` 0 warnings (dev DLL `3c97d5b808b183ae…`), `check_no_x87` FL PASS (1078 functions), AP 0 warnings;
 host tests `test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch`, `test_regenerate` 65 OK.
 
-## FL 66 A: the Titan's walk failed the scale guard (2026-11-12)
+## FL 66 A: a gate scene's walk failed the scale guard (2026-11-12; first attributed to the Titan)
 
-FL 66 A (`/mnt/c/X3FL/x3m.log`) [M]: the Titan's bubble walk failed on its first node, three rows all `guard=scale`
+FL 66 A (`/mnt/c/X3FL/x3m.log`) [M]: a bubble walk failed on its first node, three rows all `guard=scale`
 (`owner=aa3c06c8 node=4e115828 radius=3590659 nodes=1 parts=0 depth=1 deepest=1 slices=1 value=0x001b6beb`): a
 section node's scale 1,797,099 = 27.4x in 16.16, past `hull_scale_max` 16x (sized for fighters), so the bubble fell
-back to the radius sphere. The bound is now 256x (`256 * 0x10000`, `src/proxy/weapon_effects_bubble.h`); a
+back to the radius sphere. Correction (FL 67 A, 2026-11-12): that owner was the Terran catapult gate scene, not the
+Titan as first written here (the FL archive's `terran_catapult_gate_scene` gives exactly radius 3,590,659). Since FL
+67 A the gate, a capital-tier owner, takes the hull decal and walks nothing; the 256x bound stays for any walked owner
+whose nodes exceed 16x, which that scene showed exist. The bound is now 256x (`256 * 0x10000`, `src/proxy/weapon_effects_bubble.h`); a
 `static_assert` and comment bound the int64 products (ext ≤ 2^17 x s ≤ 2^24 ≤ 2^41, then x si ≤ 2^24 ≤ 2^49 before
 the INT32_MAX clamp; `hull_scale16` < 2^55). Host `test_weapon_effects_core` (`scaleguard` row) [M]: one part at
 0x1b6beb walks (hi 1797099, guard none), 256x walks (16777216), 256x + 1 fails `guard=scale value=16777217`, an axis
@@ -3865,3 +3868,51 @@ Run `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verif
 --host native` [M]: AP hook 132 of 132, FL hook 75 of 75, D3D 132 of 132 PASS on the second run (the first failed only
 `flash_budget_combined` at 368.3 µs CPU, the known host-noise flake; rerun 126.5 µs). FL `build-scale-fl` 0 warnings,
 `check_no_x87` FL PASS (1078 functions), AP 0 warnings; `test_weapon_effects_core` + `_hook` 24 OK. Not flown.
+
+## FL 67 A: the Titan's bubble misfit by design; capitals take the decal (2026-11-12)
+
+FL 67 A (`/mnt/c/X3FL/x3m.log`, triage `verification/results/fl-run67/titan_scene.py` and `titan_hit_mapping.py`) [M]:
+the Titan's walk now succeeds, yet the bubble misfits by design. The hull is one part whose stored extent is the per-axis
+coordinate maximum (x 151k at one z-station, y 166k from the fins), so the walked bubble is about c (0, -2610, 17329),
+e (174148, 194332, 607685) engine units [I: from the scene's LOD coordinates, the stored extent at least this]; the
+radial map moves each hit by 1/|q|, and the Titan's 134 logged hits (positions [M]) map at |q| 0.22 to 0.52 (median 0.34)
+onto it: median displacement 621 m (p90 662), 600 m of it along z [I], so side hits slide toward nose or tail. No box-fitted ellipsoid fits a long hull with fins at any scale. Main session decision: capital-tier owners
+(`patch_capital`: M0/M1/M2/M7/TL by class, docks and factories, the capital radius band; an unknown tier too) take the
+hull decal at the contact point as stations do (`core::shield_bubble`, `stage::build`), fighters and corvettes keep the
+bubble; the decal reads no extents, so a capital runs no hull walk. Review F2 (main session decision): the own ship in the
+cockpit view keeps the Run240 eye sphere whatever its tier (its walk runs for the smallest half-extent); only an
+external capital-tier owner takes the decal. A finished walk now logs one `weapon_bubble_fit` row
+(owner, node, tier, radius, parts, nodes, slices, box lo/hi, c, e in engine units, clamped; its own `WalkRowLimit`: an
+owner once per 2000 wall ms). `weapon_effects_frame` gains `cells_key_dropped=` (footprint cells past the packed key's
++-2048-cell bound, never lit; review F6, no behaviour change). The FL 66 A owner of radius 3,590,659 was the Terran
+catapult gate scene (corrected in that paragraph and the `hull_scale_max` comment).
+
+Fixture (figures: `python3 -I verification/results/fl-run67/capital_decal_rows.py <summary.json> <old summary.json>`;
+the review-fix run) [M]: new case `capital_titan_flank` (the Titan's radius and half-extents as an ellipsoid lane, a flank
+hit 30 % aft, class tier capital): hull decal, 5 draws, 0 bubbles, 0 walks, 3808 lit pixels, 0 on sky, 0 past the
+footprint, coverage 728 / 728, centroid 0.499 cells. `capital_spread_12hps`, `capital_spread_one_draw_witness` and
+`capital_sphere_front_12hps` are decal cases now (the sphere's lane at R, through the hits): no pop, 0 cells dropped, max
+region cells 409 / 551, spills 599 / 1979. New `corvette_spread_12hps` (F3: the bubble's spill path under spread fire, a
+120 m corvette, the old capital spread case's gate): on its bubble, 36 live hits, max region cells 468, 508 spills, 0 cells
+dropped, 0 popped pixels. New `cockpit_eye_sphere_capital_own_ship` (F2): the own capital in the cockpit draws 6 eye-sphere
+draws (radius 150, every lit pixel inside a box; the fixture's 30 m sphere under 16 m cells lights the whole 2048x576
+frame), the same records in the chase view 6 decal draws, 0 bubbles, 0 walks. The walk cases stay on the capital-shaped
+trees with the hit's tier set to corvette (a capital no longer walks): `capital_side_hit` (camera 1.2 R so the 6 m cell
+keeps about the capital cell's pixel size) 3 frames, e_rel_err 0, 1757 lit pixels, centroid 0.33 cells, B shift 0.12 of
+the sphere's; `capital_titan_scale` walks 648 nodes, guard none, e_rel_err 6e-5. Stage CPU, every capital case now on the
+decal (best / mean µs): one capital at 12 hits/s (31 live hits, 14 draws, 1546 cells) 35.1 / 39.2; 64 hits 60.8 / 73.0;
+16 capitals x 16 hits 174.2 / 198.1 (the first run 185.2 / 209.0: its mean past the 200 µs target, F4); the Flight B
+station cluster 39.5 / 42.0 (these rows had measured the bubble path before: `add_hit` left `tier_source` at radius).
+GPU, `capital_spread_spill` (the 12 hits/s spread at 400 m, now the decal over its hull): 225.5 µs at 1080p and 750.4 µs
+at 5120x1440 (first run 218.2 / 761.2), raster 7.37 / 7.92 screens of the 8-screen budget (F5), against the bubble's
+95.7 / 293.2 µs (1.7 / 1.9 screens). F4 and F5 are accepted for the flight (main session decision 2026-11-12: judge in
+flight before optimising); a second owner under the same fire will reach `area_dropped` (its oldest boxes dropped).
+Host `test_weapon_effects_core`: a capital by class, by the radius band and an unknown tier draw 6 decal draws with no
+walk and no fit record; a corvette draws the bubble with one walk and one fit record; the own capital in the cockpit 6
+eye-sphere draws with one walk; a station hit 20000 view units off the face origin counts 14 cells past the key bound;
+the fit row's box, c and e (e = half the box x 1.15). Runs `X3M_FIXTURE_BOTTLE=X3 python3
+verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native` [M]: first 46.6 s, AP hook
+132 of 132, FL hook 75 of 75, D3D 133 of 133; after the review fixes 97.3 s (30 s of it waiting on another runner's lock),
+AP hook 132 of 132, FL hook 75 of 75, D3D 135 of 135 PASS (`flash_budget_combined` 124.1 µs CPU). FL `build-capdecal-fl`
+0 warnings (DLL `f73b3c1b…`), `check_no_x87` FL PASS (1078 functions), AP `build-capdecal-ap` 0 warnings (`a353b1f7…`);
+`test_weapon_effects_core`, `_hook`, `_sites` OK. Dirty on `5ee52c350`. Not flown.

@@ -148,7 +148,8 @@ struct WeaponPatch {
     float owner_radius = 0.f;
     // The ship bubble (5.1.1 "Placement"): 1 draws the cells on the ellipsoid of centre bubble_c and half-extents
     // bubble_e (owner frame, view units; weapon_bubble_ps.hlsl, its near and far side, the lane only occluding); 0 the
-    // hull decal (weapon_shell_ps.hlsl, the stations). The box then bounds the bubble's sheet over the cells.
+    // hull decal (weapon_shell_ps.hlsl: stations and, since FL 67 A, capital-tier owners). The box then bounds the
+    // bubble's sheet over the cells.
     std::uint8_t bubble = 0;
     std::uint8_t eye_sphere = 0; // the bubble is the own ship's eye sphere in the cockpit (diagnostics)
     float bubble_c[3]{}, bubble_e[3]{1.f, 1.f, 1.f};

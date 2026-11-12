@@ -51,7 +51,7 @@ struct Period {
     unsigned patches = 0, decals = 0, retired = 0, dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0, area_dropped = 0, bubbles = 0, bubble_fallback = 0;
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
-    unsigned bubble_partial = 0;
+    unsigned bubble_partial = 0, cells_key_dropped = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
     // step 3: death records seen (ours, census)
@@ -1033,6 +1033,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.bubble_deferred += stage.bubble_deferred;
     period_.bubble_clamped += stage.bubble_clamped;
     period_.bubble_partial += stage.bubble_partial;
+    period_.cells_key_dropped += stage.cells_key_dropped;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -1177,7 +1178,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "calls=%lu no_projectile=%lu no_node=%lu stale_table=%lu nested=%lu shield_read=%lu shield_unread=%lu "
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu bubbles=%u bubble_fallback=%u bubble_walks=%u bubble_walk_failures=%u "
-        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u bubble_partial=%u hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u"
+        "bubble_held=%u bubble_deferred=%u bubble_clamped=%u bubble_partial=%u cells_key_dropped=%u hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u"
         X3M_PROJECTILE_FIELDS,
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
         static_cast<unsigned long>(period_.hits), static_cast<unsigned long>(period_.skipped),
@@ -1198,7 +1199,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.spills, static_cast<unsigned long>(c.dir_fallback - seen_.dir_fallback), period_.faces_culled,
         period_.area_dropped, static_cast<unsigned long>(c.drained - seen_.drained), period_.bubbles,
         period_.bubble_fallback, period_.bubble_walks, period_.bubble_failures, period_.bubble_held, period_.bubble_deferred,
-        period_.bubble_clamped, period_.bubble_partial, static_cast<unsigned long>(period_.hull_staged), static_cast<unsigned long>(s.life_floor_ms),
+        period_.bubble_clamped, period_.bubble_partial, period_.cells_key_dropped,
+        static_cast<unsigned long>(period_.hull_staged), static_cast<unsigned long>(s.life_floor_ms),
         unsigned(table_hull_key_missing_) X3M_PROJECTILE_ARGS);
 #if X3M_EDITION_FL
     projectile_seen_skipped_ = x3m_projectile_pool.skipped;

@@ -428,6 +428,12 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         cap = nopop['capital_spread_12hps']
         self.assertGreater(cap['max_region_cells'], 128)                          # the map overflowed: spill draws
         self.assertGreater(cap['spills'], 0)
+        cv = nopop['corvette_spread_12hps']                                        # FL 67 A F3: the bubble's spills
+        self.assertEqual((cv['max_bubbles'], cv['popped_pixels'], cv['cells_dropped'], cv['dropped']), (1, 0, 0, 0))
+        self.assertLessEqual(cv['excess'], 0.0)
+        self.assertGreaterEqual(cv['max_live_hits'], 30)
+        self.assertGreater(cv['max_region_cells'], 128)
+        self.assertGreater(cv['spills'], 0)
         witness = nopop['capital_spread_one_draw_witness']                         # one draw per region: evictions
         self.assertGreater(witness['cells_dropped'], 0)
         self.assertIn('popped_pixels', witness)
@@ -438,20 +444,27 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertGreaterEqual(seam['pair_draws'], seam['single_draws'])
         self.assertLessEqual(seam['peak_pair'], max(seam['peak_a'], seam['peak_b']) * 1.002 + 1e-3)
         self.assertEqual(sorted(x['case'] for x in m['stage_cpu']),
-                         ['one_capital_64_hits', 'sixteen_capitals_16_hits', 'station_flight_b_cluster_64_hits'])
+                         ['one_capital_12hps', 'one_capital_64_hits', 'sixteen_capitals_16_hits',
+                          'station_flight_b_cluster_64_hits'])
+        for x in m['stage_cpu']:                                                # FL 67 A: capitals take the decal
+            self.assertEqual((x['bubbles'], x['walks']), (0, 0), x['case'])
         # The ship bubble (user decision after Run238 Flight E): every ship case on its bubble from the hull walk, the lit
         # near side's centroid within a cell of the hit's bubble point, nothing the twin hides, nothing past the
         # footprint (not on the tail), the bubble near the hit covered, the lit count of the same order for every
-        # approach direction; the station keeps the hull decal (nothing on sky); dir unused (the 42-degree bolt)
+        # approach direction; the station and (FL 67 A) a capital ship keep the hull decal (nothing on sky, no walk); dir
+        # unused (the 42-degree bolt)
         place = {x['case']: x for x in m['placement']}
         for case in ('narrow_mid_flank', 'aft_flank', 'y_top_narrow', 'y_bottom_narrow', 'flat_flank', 'y_top_flat',
                      'y_bottom_flat', 'y_top_flat_42deg', 'station_flight_b_0p68R',
-                     'y_top_flat_offcentre'):  # review F1: the hull off the owner's origin lights
+                     'y_top_flat_offcentre',  # review F1: the hull off the owner's origin lights
+                     'capital_titan_flank'):
             x = place[case]
-            station = case.startswith('station')
-            self.assertEqual((x['surface'], x['bubbles']), ('hull', 0) if station else ('bubble', 1), case)
-            if station:
-                self.assertEqual((x['sky_lit'], x['outside_lit']), (0, 0), case)
+            hull = case.startswith(('station', 'capital'))
+            self.assertEqual((x['surface'], x['bubbles']), ('hull', 0) if hull else ('bubble', 1), case)
+            if hull:
+                self.assertEqual((x['sky_lit'], x['walks']), (0, 0), case)
+            if case.startswith('station'):
+                self.assertEqual(x['outside_lit'], 0, case)
             self.assertLessEqual(x['off_bubble_lit'] * 200, x['lit_pixels'], case)
             self.assertLessEqual(x['outside_lit'] * 100, x['lit_pixels'], case)
             self.assertGreaterEqual(x['coverage'], 0.9, case)

@@ -6,8 +6,8 @@
 #include <algorithm>
 
 // The weapon effects' scene-end step (docs/architecture/weapon-effects.md 3.1, 5.1 item 3 and 5.1.1): the ring's
-// stage-owned shield hits (flag_stage) become hex patches. A ship (any owner whose tier is not the station's: the
-// newest record's TierSource) gets its bubble (user decision after Run238 Flight E; weapon_effects_bubble.h): the
+// stage-owned shield hits (flag_stage) become hex patches. A fighter or corvette (core::shield_bubble of the newest
+// record's PatchTier and TierSource) gets its bubble (user decision after Run238 Flight E; weapon_effects_bubble.h): the
 // hull bounds' ellipsoid x bubble_scale (the walk through the caller's BubbleCache, else the fallback sphere of the
 // object radius, Counts::bubble_fallback), each hit mapped onto it radially in its normalised space (bubble_point) and
 // lighting both faces of every axis with the same cells, clocks and draws as below; a face draw's box bounds the
@@ -15,7 +15,8 @@
 // program draws the bubble's near and
 // far points (weapon_bubble_ps.hlsl), so the bubble draws no face cull (its far side faces away from the eye). A
 // station keeps the hull decal laid on the hull through the lane depth (the screen-space patch, user decision
-// 2026-11-06). Per owner its owner_hits newest hits light cells on the owner's six faces (the
+// 2026-11-06), and so does every capital-tier owner (FL 67 A, 2026-11-12: a box-fitted ellipsoid cannot fit a long hull
+// with fins; no hull walk runs for it) except the own ship in the cockpit view, which keeps its eye sphere. Per owner its owner_hits newest hits light cells on the owner's six faces (the
 // anchor_frame lattices +-z, +-x, +-y: a planar hex lattice perpendicular to the face's axis, fixed in the owner's
 // frame, so every hit on a face lands on the same cells whatever the owner's motion), each hit on both faces of every
 // axis (the pixel's normal and the face's box decide what shows; review F1: no side of the owner's origin decides); a
@@ -233,6 +234,7 @@ struct Counts {
     BubbleStats bubble;                        // the frame's walks, failures, held retries, deferred walks, clamps
     float screens = 0.f;                       // the drawn patches' screens
     unsigned eye_spheres = 0;                  // owners drawn on the eye sphere (the own ship in the cockpit)
+    unsigned cells_key_dropped = 0; // footprint cells past the packed key's bound (RegionStats::key_dropped; review F6)
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
 constexpr unsigned region_draws = 8;
@@ -327,6 +329,7 @@ inline std::uint32_t spread_bits(std::uint32_t v) noexcept { // 12 bits to the e
 struct RegionStats {
     unsigned cells = 0;   // lit cells drawn
     unsigned dropped = 0; // lit cells left out (the region's draws full, or the scratch full)
+    unsigned key_dropped = 0; // footprint cells past the packed key's bound (+-weapon_cell_key_bias cells), never lit
     bool refused = false; // a degenerate frame, lattice or law (no draw; nothing lit is not refused)
 };
 // The draws of one face of an owner (its view-space centre and frame, owner_frame) from the hits on its side (their
@@ -409,8 +412,10 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
                 if (((dx + dy) & 1) || (ady > (adx + ady) / 2 ? ady : (adx + ady) / 2) > rings) continue; // hex distance
                 const int kx = key[0] + dx, ky = key[1] + dy;
                 if (kx <= -renderer::weapon_cell_key_bias || kx >= renderer::weapon_cell_key_bias ||
-                    ky <= -renderer::weapon_cell_key_bias || ky >= renderer::weapon_cell_key_bias)
+                    ky <= -renderer::weapon_cell_key_bias || ky >= renderer::weapon_cell_key_bias) {
+                    ++st.key_dropped;
                     continue;
+                }
                 const float ox = 0.5f * float(dx), oy = 0.8660254f * float(dy);
                 const float since = ages[i] - cell * scalar::sqrt(ox * ox + oy * oy) / v;
                 if (since > max_since || (since < 0.f && !ring_hit)) continue; // faded out, or not reached and no ring
@@ -589,6 +594,7 @@ inline void fill_bubble(renderer::WeaponPatch* patches, unsigned cap, unsigned* 
         n->patches += drawn;
         n->spills += drawn > 1 ? drawn - 1 : 0;
         n->cells_dropped += rs.dropped;
+        n->cells_key_dropped += rs.key_dropped;
         if (rs.refused) ++n->dropped;
     }
 }
@@ -786,15 +792,18 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         float centre[3], frame[9];
         if (owner_frame(s.data, cam, centre, frame)) {
             const float owner_radius = float(double(s.data.radius) * double(core::world_scale));
-            if (newest.tier_source != core::tier_by_station) { // the ship bubble
+            // The own ship in the cockpit (Run240 Flight G): the sphere about the eye, of the bubble's smallest
+            // half-extent (>= eye_sphere_min_m); the eye in the owner frame through its axes in view. It keeps that path
+            // whatever its tier (FL 67 A review F2, main session decision 2026-11-12); an external capital takes the decal.
+            const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
+            if (eye || core::shield_bubble(std::uint8_t(tier), newest.tier_source)) { // the ship bubble (not a capital)
                 bool fallback = false;
+                const unsigned fits = n.bubble.fit_rows;
                 Bubble b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle,
                                         s.data.radius, now, &walks_left, &n.bubble, &fallback);
+                for (unsigned r = fits; r < n.bubble.fit_rows; ++r) n.bubble.fit[r].tier = std::uint8_t(tier);
                 ++n.bubbles;
                 n.bubble_fallback += fallback;
-                // The own ship in the cockpit (Run240 Flight G): the sphere about the eye, of the bubble's smallest
-                // half-extent (>= eye_sphere_min_m); the eye in the owner frame through its axes in view.
-                const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
                 if (eye) {
                     float r = b.e[0] < b.e[1] ? b.e[0] : b.e[1];
                     r = r < b.e[2] ? r : b.e[2];
@@ -876,6 +885,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                 n.patches += drawn;
                 n.spills += drawn > 1 ? drawn - 1 : 0;
                 n.cells_dropped += rs.dropped;
+                n.cells_key_dropped += rs.key_dropped;
                 if (rs.refused) ++n.dropped; // a degenerate law; a face whose cells have all faded is no drop
             }
             continue;

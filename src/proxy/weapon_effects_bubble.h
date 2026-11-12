@@ -48,8 +48,11 @@ using Reader = bool (*)(std::uintptr_t address, void* out, std::size_t size);
 constexpr unsigned hull_depth = 3, hull_budget = 1024, hull_list_limit = 1024, hull_chain_steps = 64, hull_lod_max = 16;
 constexpr unsigned hull_slice_nodes = 256, hull_slice_reads = 2400, hull_park_ms = 500;
 constexpr std::int32_t hull_extent_max = 0x20000, hull_basis_tol = 0x40, hull_scale_max = 256 * 0x10000;
-// hull_scale_max: 16.16 fixed point, 256x. A fighter's nodes stay below 16x; a capital's section nodes do not (FL 66 A:
-// the Titan's first section node at 0x1b6beb, 27.4x). The int64 products cannot overflow before their clamps:
+// hull_scale_max: 16.16 fixed point, 256x. A fighter's nodes stay below 16x; engine scenes carry nodes past it (FL 66 A:
+// the owner of radius 3,590,659 whose first node carried 0x1b6beb, 27.4x, was the Terran catapult gate scene, not the
+// Titan as first written; corrected FL 67 A). The gate is a capital-tier owner and no longer walks (it takes the hull
+// decal); the bound stands for any walked owner whose nodes exceed 16x, which that scene showed exist. The int64
+// products cannot overflow before their clamps:
 // hull_part_extent: ext <= hull_extent_max (2^17) x s <= 2^24 is <= 2^41, >> 16 gives base <= 2^25, x si <= 2^24 is
 // <= 2^49, / 2^16 <= 2^33 (clamped to INT32_MAX); hull_scale16: |v| < 2^31 x s <= 2^24 is < 2^55.
 static_assert(std::int64_t(hull_extent_max) * hull_scale_max <= (std::int64_t(1) << 41) &&
@@ -492,18 +495,68 @@ struct WalkRowLimit {
         return n;
     }
 };
+// A finished walk for the weapon_bubble_fit row (FL 67 A: a misfit visible without a scene reconstruction): the owner,
+// its root node, radius and patch tier (the stage fills tier; core::PatchTier), the game ms, the parts and nodes walked,
+// the walk's slices, the hull box (root frame, engine units), the bubble's centre and half-extents (owner frame, view
+// units) and whether an axis was cut to the object radius.
+struct HullFit {
+    std::uint32_t owner = 0, node = 0, now = 0;
+    std::int32_t radius = 0;
+    unsigned parts = 0, nodes = 0, slices = 0;
+    float lo[3] = {0.f, 0.f, 0.f}, hi[3] = {0.f, 0.f, 0.f};
+    Bubble bubble{};
+    std::uint8_t tier = 0xff;
+    bool clamped = false;
+};
+inline HullFit hull_fit(const HullWalk& w, const Bubble& b, bool clamped, std::uint32_t owner, std::uint32_t node,
+                        std::int32_t radius, std::uint32_t now) noexcept {
+    HullFit f;
+    f.owner = owner;
+    f.node = node;
+    f.now = now;
+    f.radius = radius;
+    f.parts = w.box.parts;
+    f.nodes = w.box.nodes;
+    f.slices = w.slices;
+    for (unsigned i = 0; i < 3; ++i) {
+        f.lo[i] = w.box.lo[i];
+        f.hi[i] = w.box.hi[i];
+    }
+    f.bubble = b;
+    f.clamped = clamped;
+    return f;
+}
+// The row (one per finished walk the limit admits, the failed walks' WalkRowLimit kind with its own instance); box, c and
+// e in engine units (c, e: the bubble's view units / world_scale), so the row compares with the scene's extents directly.
+inline int format_fit_row(char* out, std::size_t size, const HullFit& f, const char* edition,
+                          unsigned suppressed) noexcept {
+    const float u = 1.f / core::world_scale;
+    const Bubble& b = f.bubble;
+    return std::snprintf(out, size,
+                         "weapon_bubble_fit edition=%s owner=%08lx node=%08lx tier=%s radius=%ld parts=%u nodes=%u "
+                         "slices=%u lo=%.0f,%.0f,%.0f hi=%.0f,%.0f,%.0f c=%.0f,%.0f,%.0f e=%.0f,%.0f,%.0f clamped=%u "
+                         "now=%lu suppressed=%u",
+                         edition, static_cast<unsigned long>(f.owner), static_cast<unsigned long>(f.node),
+                         core::patch_tier_name(f.tier), static_cast<long>(f.radius), f.parts, f.nodes, f.slices,
+                         double(f.lo[0]), double(f.lo[1]), double(f.lo[2]), double(f.hi[0]), double(f.hi[1]),
+                         double(f.hi[2]), double(b.c[0] * u), double(b.c[1] * u), double(b.c[2] * u),
+                         double(b.e[0] * u), double(b.e[1] * u), double(b.e[2] * u), unsigned(f.clamped),
+                         static_cast<unsigned long>(f.now), suppressed);
+}
 // One frame's bubble answers for the frame row (weapon_effects_frame): walk slices run (a walk takes one slice per
 // frame, at most hull_slice_nodes nodes), of them failed walks, retries held back (a failed walk within
 // bubble_retry_ms), walks deferred past the frame's budget (core::bubble_walks_per_frame: the owner takes the fallback
 // sphere until its turn), owners whose bubble was cut to the object radius; the slices that left their walk unfinished
-// (the fallback sphere meanwhile) and the failures' records (the first bubble_failure_rows of the frame).
-constexpr unsigned bubble_failure_rows = core::bubble_walks_per_frame;
+// (the fallback sphere meanwhile), the failures' records (the first bubble_failure_rows of the frame) and the finished
+// walks' (a walk finishes in at most one slice a frame: every one fits).
+constexpr unsigned bubble_failure_rows = core::bubble_walks_per_frame, bubble_fit_rows = core::bubble_walks_per_frame;
 struct BubbleStats {
     unsigned walks = 0, failures = 0, held = 0, deferred = 0, clamped = 0;
     unsigned extent_refused = 0; // of the failures, those on the LOD extent bound (one FL row: weapon_bubble_extent)
     unsigned partial = 0;
-    unsigned failed_rows = 0;
+    unsigned failed_rows = 0, fit_rows = 0;
     HullFailure failed[bubble_failure_rows];
+    HullFit fit[bubble_fit_rows];
 };
 // The per-owner cache of the walk: bubble_cache_entries entries keyed by (owner, root node, handle, the root's first
 // child and its body id) with the object radius they were walked at; a radius or child change walks again, a walk
@@ -566,10 +619,12 @@ struct BubbleCache {
 inline Bubble owner_bubble(BubbleCache* cache, Reader rd, std::uintptr_t body_cache_root, std::uint32_t owner,
                            std::uint32_t node, std::uint32_t handle, std::int32_t radius, std::uint32_t now,
                            unsigned* budget, BubbleStats* st, bool* fallback) noexcept {
-    // A slice's answer: a finished walk's bubble (a degenerate box fails it on HullGuard::box); a failure counted and
-    // recorded for the weapon_bubble_walk row.
+    // A slice's answer: a finished walk's bubble (a degenerate box fails it on HullGuard::box), recorded for the
+    // weapon_bubble_fit row; a failure counted and recorded for the weapon_bubble_walk row.
     auto finish = [&](HullWalk& w, HullStep s, Bubble* b, bool* clamped) {
         if (s == HullStep::done && !bubble_from_box(w.box, radius, b, clamped)) s = hull_stop(w, HullGuard::box, 0, 0);
+        if (s == HullStep::done && st->fit_rows < bubble_fit_rows)
+            st->fit[st->fit_rows++] = hull_fit(w, *b, *clamped, owner, node, radius, now);
         st->partial += s == HullStep::more;
         if (s == HullStep::failed) {
             ++st->failures;

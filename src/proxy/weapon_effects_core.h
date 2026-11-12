@@ -1416,14 +1416,23 @@ constexpr float face_cull_sin = 0.841f;
 // the owners whose newest hit is the oldest are dropped (area_dropped), so a frame's patch cost is bounded by about
 // this many full-screen boxes.
 constexpr float screen_budget = 8.0f;
-// The ship bubble (user decision after Run238 Flight E, 5.1.1 "Placement"): an owner whose tier is not the station's
-// (TierSource tier_by_station keeps the hull decal) gets a smooth ellipsoid in its frame: centre the hull bounds' centre,
+// The ship bubble (user decision after Run238 Flight E, 5.1.1 "Placement"): a fighter or corvette owner (shield_bubble)
+// gets a smooth ellipsoid in its frame: centre the hull bounds' centre,
 // half-extents the hull bounds' half-extents x bubble_scale (the hull_children walk of render-node-bounds.md 6.1,
 // weapon_effects_bubble.h), each floored at bubble_floor of the largest and cut to bubble_scale x the object radius; a failed walk
 // takes a sphere of the object radius about the root node (bubble_fallback=). Per pixel the ray meets it twice: the near side draws at full
 // radiance, the far side (seen around the hull's outline, the hull lane hiding what lies behind it) at
 // bubble_far_gain; both add where both draw. A failed walk is retried after bubble_retry_ms of game time.
 constexpr float bubble_scale = 1.15f;
+// The surface of a shield hit (FL 67 A, main session decision 2026-11-12): the ship bubble for a fighter or corvette; the
+// hull decal for a capital-tier owner (patch_capital: M0/M1/M2/M7/TL by its TShips class, every dock and factory, an
+// unknown class in the capital radius band) and for an unknown tier (the stage's tier_of takes it as a capital), as for
+// stations. The box-fitted ellipsoid cannot fit a long capital hull with fins: the Argon Titan's stored extents are
+// per-axis maxima (x 151k at one z-station, y 166k from the fins), its bubble stood about 174k x 194k x 608k and its side
+// hits (|q| 0.22-0.52) moved a median 621 m outward along the radial map; the decal lies on the hull at the contact.
+inline bool shield_bubble(std::uint8_t patch_tier, std::uint8_t tier_source) noexcept {
+    return patch_tier < patch_capital && tier_source != tier_by_station;
+}
 constexpr float bubble_far_gain = 0.6f;
 constexpr float bubble_floor = 1.f / 16.f;
 constexpr unsigned bubble_retry_ms = 2000;
