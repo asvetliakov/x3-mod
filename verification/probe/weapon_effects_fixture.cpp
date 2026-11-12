@@ -2018,6 +2018,381 @@ void reshade_cases() {
     report("reshade_cost_measured", ok && fence.p && best_calls < 50.0 && best_layout < 1.0, "");
 }
 
+// The bullet re-shade's lone path (bullet-draw-batch.md section 7; motion_output_bullet_reshade_inc.h lone_bullet_match
+// / prepare_lone_bullet): a bullet body drawn through the material submit with its effects.fx material.
+// (a) Recognition by the production pieces: the effects DEFAULT / INSTANCE VS hash (lone_vertex_shader), the blend
+// (lone_blend), the scope node's body id at +0x144 through engine_memory::read and the body map built by
+// build_body_map from a table and a TBullets block (body_layout): the IRE and the PPC rows map, a hull body, another
+// VS, a SRCALPHA blend, blend off and a reversed op do not; ONE / ONE is the additive class.
+// (b) The production sequence on the lone stand-in pair (reshade_fx lone_*; the game pair's interface): an indexed
+// draw under the material's ONE / INVSRCCOLOR with an application c29..c31 bound; the stand-in's own output is the
+// texel x the fade (g_AlphaValue 0.8 in COLOR0.x, COLOR0.a 0); our lone program's output is the model at alpha = the
+// fade; then as prepare_screen_additive runs a lone draw under HDR: DESTBLEND ONE, the lone flag variant, c29..c30 the
+// mapped body's layout and c31 (gain x 2, edge, core x 2, normaliser) while drawing, the output the background plus 2 x
+// the model x the fade, RT2.g = 32 x max(rgb) with RT1 masked off and RT2 GREEN; end -> the game's program, the
+// application's c29..c31, DESTBLEND INVSRCCOLOR, and the stand-in's VS, its c10..c12 and the PS colour matrix c0..c2
+// untouched.
+// (c) Cost: the recognition per candidate draw (the node read and a 30-body map: the worst hit and a miss, an engine
+// glow's), and the indexed draw loop with and without the sequence (best of 7 runs of 2000).
+void lone_reshade_cases() {
+    namespace rf = reshade_fx;
+    namespace rs = x3m::weapon_effects::reshade;
+    // (a) recognition
+    constexpr std::uint32_t ire_body = 1207u, ppc_body = 1518u, hull_body = 333u;
+    static wc::Table table{}; // zero: the fields below are the whole table
+    table.rows = 3;
+    for (unsigned r = 0; r < 3; ++r) table.bits[r] = wc::row_present;
+    table.body_hash[0] = table.body_hash[2] = 0x1e1e1e1eu; // rows 0 and 2 share the IRE body (as the flak fragments)
+    table.body_hash[1] = 0x50c50c50u;
+    table.bullet_bodies = 2;
+    table.bullet_body_hash[0] = 0x1e1e1e1eu;
+    table.bullet_body_hash[1] = 0x50c50c50u;
+    const std::int32_t ire_words[8] = {3, 57881, 56830, 6546, 23063, 18300, 858, 64010};
+    const std::int32_t ppc_words[8] = {3, 58354, 58106, 6239, 48926, 40824, 27736, 60073};
+    std::memcpy(table.bullet_body_layout[0], ire_words, sizeof ire_words);
+    std::memcpy(table.bullet_body_layout[1], ppc_words, sizeof ppc_words);
+    std::vector<unsigned char> tbullets(3 * wc::layout::type_stride, 0);
+    const std::uint16_t row_ids[3] = {std::uint16_t(ire_body), std::uint16_t(ppc_body), std::uint16_t(ire_body)};
+    for (unsigned r = 0; r < 3; ++r) std::memcpy(&tbullets[r * wc::layout::type_stride + rs::tbullets_body], &row_ids[r], 2);
+    const std::uint32_t table_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(tbullets.data())), count_slot = 3;
+    const auto reader = [](std::uintptr_t a, void* out, std::size_t n) { return x3m::engine_memory::read(a, out, n); };
+    x3m::engine_memory::next_frame();
+    rs::BodyMap map;
+    const bool built = rs::build_body_map(map, &table, reinterpret_cast<std::uintptr_t>(&table_slot),
+                                          reinterpret_cast<std::uintptr_t>(&count_slot), reader) &&
+                       map.state == 1 && map.count == 2;
+    std::vector<std::uint32_t> node(0x160 / 4, 0u);
+    const auto recognise = [&](std::uint64_t vs, bool blend, DWORD src, DWORD dst, DWORD op, std::uint32_t id,
+                               const std::int32_t** words) -> unsigned {
+        *words = nullptr;
+        if (!rs::lone_vertex_shader(vs)) return rs::lone_none;
+        const unsigned b = rs::lone_blend(blend, src, dst, op);
+        if (b == rs::lone_none) return b;
+        node[rs::node_body_offset / 4] = id;
+        std::uint32_t got = 0;
+        if (!x3m::engine_memory::read(reinterpret_cast<std::uintptr_t>(node.data()) + rs::node_body_offset, &got, sizeof got))
+            return rs::lone_none;
+        *words = rs::body_layout(map, &table, got);
+        return *words ? b : rs::lone_none;
+    };
+    constexpr std::uint64_t effects_default = 0xd5e1c75351ed3f04ull, effects_instance = 0x89193868c61c3846ull;
+    const struct {
+        const char* name;
+        std::uint64_t vs;
+        bool blend;
+        DWORD src, dst, op;
+        std::uint32_t id;
+        unsigned want;
+        const std::int32_t* words;
+    } rows_a[] = {
+        {"ire_default_screen", effects_default, true, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD, ire_body,
+         rs::lone_screen, table.bullet_body_layout[0]},
+        {"ppc_instance_screen", effects_instance, true, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD, ppc_body,
+         rs::lone_screen, table.bullet_body_layout[1]},
+        {"ire_additive", effects_default, true, D3DBLEND_ONE, D3DBLEND_ONE, D3DBLENDOP_ADD, ire_body, rs::lone_additive,
+         table.bullet_body_layout[0]},
+        {"hull_body", effects_default, true, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD, hull_body, rs::lone_none,
+         nullptr},
+        {"instance_bullets_vs", 0x5e484a06672e28fbull, true, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD, ire_body,
+         rs::lone_none, nullptr},
+        {"standard_lighting_vs", 0x494fe349b8bc12ecull, true, D3DBLEND_ONE, D3DBLEND_ONE, D3DBLENDOP_ADD, ire_body,
+         rs::lone_none, nullptr},
+        {"srcalpha", effects_default, true, D3DBLEND_SRCALPHA, D3DBLEND_INVSRCALPHA, D3DBLENDOP_ADD, ire_body, rs::lone_none,
+         nullptr},
+        {"blend_off", effects_default, false, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD, ire_body, rs::lone_none,
+         nullptr},
+        {"revsubtract", effects_default, true, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_REVSUBTRACT, ire_body,
+         rs::lone_none, nullptr},
+    };
+    bool recognition = built;
+    for (const auto& r : rows_a) {
+        const std::int32_t* words = nullptr;
+        const unsigned got = recognise(r.vs, r.blend, r.src, r.dst, r.op, r.id, &words);
+        const bool ok = got == r.want && words == r.words;
+        recognition = recognition && ok;
+        std::printf("RESHADE case=lone_recognition row=%s body=%lu class=%u want=%u layout=%u ok=%u\n", r.name,
+                    static_cast<unsigned long>(r.id), got, r.want, unsigned(words != nullptr), unsigned(ok));
+    }
+    std::printf("RESHADE case=lone_map built=%u state=%u bodies_mapped=%u reason=%s\n", unsigned(built), unsigned(map.state),
+                map.count, map.reason);
+    report("reshade_lone_recognised_by_body_id", recognition, "");
+    // (b) the device sequence on the lone stand-in pair
+    LPD3DXBUFFER vs_hold = nullptr, ps_hold = nullptr;
+    const DWORD *vs_code = nullptr, *ps_code = nullptr;
+    const bool compiled = compile_shader && compile(rf::lone_vs_source, "vs_2_0", &vs_code, &vs_hold) &&
+                          compile(rf::lone_ps_source, "ps_2_0", &ps_code, &ps_hold);
+    Com<IDirect3DVertexShader9> vs;
+    Com<IDirect3DPixelShader9> vanilla, ours, ours_flag;
+    Com<IDirect3DVertexDeclaration9> decl;
+    const bool created = compiled && SUCCEEDED(dev->CreateVertexShader(vs_code, &vs.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(ps_code, &vanilla.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(rf::lone_program, &ours.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(rf::lone_flag_program, &ours_flag.p)) &&
+                         SUCCEEDED(dev->CreateVertexDeclaration(rf::lone_declaration(), &decl.p));
+    if (vs_hold) vs_hold->Release();
+    if (ps_hold) ps_hold->Release();
+    std::printf("RESHADE case=lone_programs compiled=%u created=%u lone_words=%u lone_flag_words=%u\n", unsigned(compiled),
+                unsigned(created), unsigned(sizeof rf::lone_program / sizeof rf::lone_program[0]),
+                unsigned(sizeof rf::lone_flag_program / sizeof rf::lone_flag_program[0]));
+    report("reshade_lone_programs_create", created, "");
+    if (!created) return;
+    const auto tune = x3m::weapon_effects::projectile_family::families[x3m::weapon_effects::projectile_family::fighter_tracer].tune;
+    float constants[4];
+    rs::constants(tune, constants);
+    float ire_layout[8];
+    rs::layout_constants(ire_words, tune, ire_layout);
+    const float app_block[12] = {3.f, -1.f, 0.25f, 9.f, -4.f, 0.5f, 2.f, -0.75f, 0.125f, -2.5f, 7.f, 0.0625f};
+    Com<IDirect3DTexture9> rt[3], flat;
+    Com<IDirect3DSurface9> rt_s[3], sys;
+    Com<IDirect3DVertexBuffer9> vb;
+    Com<IDirect3DIndexBuffer9> ib;
+    bool ok = SUCCEEDED(dev->CreateOffscreenPlainSurface(16, 16, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) &&
+              SUCCEEDED(dev->CreateTexture(1, 1, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &flat.p, nullptr)) &&
+              SUCCEEDED(dev->CreateVertexBuffer(4 * sizeof(rf::LoneVertex), D3DUSAGE_WRITEONLY, 0, D3DPOOL_MANAGED, &vb.p,
+                                                nullptr)) &&
+              SUCCEEDED(dev->CreateIndexBuffer(6 * sizeof(std::uint16_t), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16, D3DPOOL_MANAGED,
+                                               &ib.p, nullptr));
+    for (unsigned i = 0; i < 3 && ok; ++i)
+        ok = SUCCEEDED(dev->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt[i].p,
+                                          nullptr)) &&
+             SUCCEEDED(rt[i].p->GetSurfaceLevel(0, &rt_s[i].p));
+    if (ok) {
+        D3DLOCKED_RECT lr{};
+        void* p = nullptr;
+        ok = SUCCEEDED(flat.p->LockRect(0, &lr, nullptr, 0));
+        if (ok) {
+            unsigned char* b = static_cast<unsigned char*>(lr.pBits);
+            b[0] = 17, b[1] = 77, b[2] = 99, b[3] = 70; // t = (99, 77, 17) / 255
+            flat.p->UnlockRect(0);
+        }
+        const rf::LoneVertex quad[4] = {{-1, -1, 1, 0, 0}, {-1, 1, 1, 0, 0}, {1, 1, 1, 0, 0}, {1, -1, 1, 0, 0}};
+        ok = ok && SUCCEEDED(vb.p->Lock(0, 0, &p, 0));
+        if (ok) {
+            std::memcpy(p, quad, sizeof quad);
+            vb.p->Unlock();
+        }
+        const std::uint16_t idx[6] = {0, 1, 2, 0, 2, 3};
+        ok = ok && SUCCEEDED(ib.p->Lock(0, 0, &p, 0));
+        if (ok) {
+            std::memcpy(p, idx, sizeof idx);
+            ib.p->Unlock();
+        }
+    }
+    report("reshade_lone_targets", ok, "");
+    if (!ok) return;
+    const float t[3] = {99 / 255.f, 77 / 255.f, 17 / 255.f}, fade = 0.8f, gain = 2.f, bg = 64 / 255.f;
+    float model[3];
+    rs::model(constants, t, fade, model);
+    const bool mrt = caps.NumSimultaneousRTs >= 3 && (caps.PrimitiveMiscCaps & D3DPMISCCAPS_INDEPENDENTWRITEMASKS);
+    const auto read_px = [&](IDirect3DSurface9* s, float out[4]) {
+        if (FAILED(dev->GetRenderTargetData(s, sys.p))) return false;
+        D3DLOCKED_RECT o{};
+        if (FAILED(sys.p->LockRect(&o, nullptr, D3DLOCK_READONLY))) return false;
+        const auto* px = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(o.pBits) + 8 * o.Pitch) + 8 * 4;
+        for (unsigned k = 0; k < 4; ++k) out[k] = half_to_float(px[k]);
+        sys.p->UnlockRect();
+        return true;
+    };
+    IDirect3DSurface9* old_rt = nullptr;
+    dev->GetRenderTarget(0, &old_rt);
+    float rows[16];
+    rf::clip_rows(1.f, 1.f, rows);
+    const auto bind = [&] {
+        rf::bind_lone_pass(dev, vs.p, decl.p, flat.p, rows, false, fade);
+        dev->SetStreamSource(0, vb.p, 0, sizeof(rf::LoneVertex));
+        dev->SetIndices(ib.p);
+        dev->SetPixelShader(vanilla.p);
+        dev->SetPixelShaderConstantF(rs::block_register, app_block, rs::block_count);
+    };
+    // the stand-in's own output and our lone program's, blend off (the programs' outputs themselves)
+    float stand[4]{}, plain[4]{};
+    for (unsigned which = 0; which < 2 && ok; ++which) {
+        dev->SetRenderTarget(0, rt_s[0].p);
+        dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+        dev->BeginScene();
+        bind();
+        dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+        float block[12];
+        for (unsigned i = 0; i < 8; ++i) block[i] = rs::identity_layout[i];
+        for (unsigned i = 0; i < 4; ++i) block[8 + i] = constants[i];
+        if (which) {
+            dev->SetPixelShaderConstantF(rs::block_register, block, rs::block_count);
+            dev->SetPixelShader(ours.p);
+        }
+        ok = SUCCEEDED(dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2));
+        dev->EndScene();
+        ok = ok && read_px(rt_s[0].p, which ? plain : stand);
+    }
+    float worst_stand = 0.f, worst_plain = 0.f;
+    for (unsigned k = 0; k < 3; ++k) {
+        const float ws = t[k] * fade;
+        worst_stand = std::max(worst_stand, std::fabs(stand[k] - ws) / (0.004f + 0.004f * ws));
+        worst_plain = std::max(worst_plain, std::fabs(plain[k] - model[k]) / (0.004f + 0.004f * model[k]));
+    }
+    std::printf("RESHADE case=lone_program fade=%.2f standin=%.4f,%.4f,%.4f standin_want=%.4f,%.4f,%.4f lone=%.4f,%.4f,%.4f "
+                "model=%.4f,%.4f,%.4f worst_standin=%.3f worst_lone=%.3f\n",
+                double(fade), double(stand[0]), double(stand[1]), double(stand[2]), double(t[0] * fade),
+                double(t[1] * fade), double(t[2] * fade), double(plain[0]), double(plain[1]), double(plain[2]),
+                double(model[0]), double(model[1]), double(model[2]), double(worst_stand), double(worst_plain));
+    report("reshade_lone_program_matches_model", ok && worst_stand <= 1.f && worst_plain <= 1.f, "");
+    // the route's path (converted, flagged with MRT)
+    bool during_all = true, after_all = true;
+    float worst = 0.f, flag_got = -1.f, flag_want = 0.f;
+    for (unsigned variant = 0; variant < (mrt ? 2u : 1u) && ok; ++variant) {
+        const bool flag = variant == 1;
+        if (flag) {
+            dev->SetRenderTarget(0, rt_s[2].p);
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+        }
+        dev->SetRenderTarget(0, rt_s[0].p);
+        dev->Clear(0, nullptr, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 64, 64, 64), 1.f, 0);
+        if (flag) { // the route's flag targets (MotionOutput::bind_bolt_flag_targets: RT1 masked off, RT2 GREEN)
+            dev->SetRenderTarget(1, rt_s[1].p);
+            dev->SetRenderTarget(2, rt_s[2].p);
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 0);
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE2, D3DCOLORWRITEENABLE_GREEN);
+        }
+        dev->BeginScene();
+        bind();
+        auto ops = rf::device_ops(dev);
+        rs::Plan plan;
+        plan.program = flag ? ours_flag.p : ours.p;
+        plan.constants = constants;
+        plan.gain = gain;
+        plan.layout = ire_layout;
+        plan.convert = true;
+        rs::Applied applied;
+        ok = SUCCEEDED(rs::begin(ops, plan, app_block, applied)) && applied.destblend && applied.block && applied.program;
+        DWORD blend = 0;
+        IDirect3DPixelShader9* bound = nullptr;
+        float block[12]{};
+        const float* const c31 = block + 8;
+        const bool during = ok && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) && blend == D3DBLEND_ONE &&
+                            SUCCEEDED(dev->GetPixelShader(&bound)) && bound == plan.program &&
+                            SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
+                            !std::memcmp(block, ire_layout, sizeof ire_layout) && c31[0] == constants[0] * gain &&
+                            c31[1] == constants[1] && c31[2] == constants[2] * gain && c31[3] == constants[3];
+        if (bound) bound->Release();
+        bound = nullptr;
+        ok = ok && SUCCEEDED(dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2));
+        const HRESULT back = rs::end(ops, applied, vanilla.p, app_block);
+        IDirect3DVertexShader9* bound_vs = nullptr;
+        float vs_c[12]{}, ps_c[12]{};
+        const float tex_matrix[8] = {1, 0, 0, 0, 0, 1, 0, 0}, colour_matrix[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+        bool after = SUCCEEDED(back) && SUCCEEDED(dev->GetRenderState(D3DRS_DESTBLEND, &blend)) &&
+                     blend == D3DBLEND_INVSRCCOLOR && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
+                     SUCCEEDED(dev->GetPixelShaderConstantF(rs::block_register, block, rs::block_count)) &&
+                     !std::memcmp(block, app_block, sizeof block) && SUCCEEDED(dev->GetVertexShader(&bound_vs)) &&
+                     bound_vs == vs.p && SUCCEEDED(dev->GetVertexShaderConstantF(10, vs_c, 3)) &&
+                     !std::memcmp(vs_c, tex_matrix, sizeof tex_matrix) && vs_c[8] == fade &&
+                     SUCCEEDED(dev->GetPixelShaderConstantF(0, ps_c, 3)) && !std::memcmp(ps_c, colour_matrix, sizeof ps_c);
+        if (bound) bound->Release();
+        if (bound_vs) bound_vs->Release();
+        dev->EndScene();
+        if (flag) { // the route's unbind (MotionOutput::unbind_bolt_flag_targets), then the masks checked back
+            dev->SetRenderTarget(1, nullptr);
+            dev->SetRenderTarget(2, nullptr);
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE1, 15);
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE2, 15);
+            DWORD w1 = 0, w2 = 0;
+            IDirect3DSurface9* s1 = nullptr;
+            after = after && SUCCEEDED(dev->GetRenderState(D3DRS_COLORWRITEENABLE1, &w1)) && w1 == 15 &&
+                    SUCCEEDED(dev->GetRenderState(D3DRS_COLORWRITEENABLE2, &w2)) && w2 == 15 &&
+                    dev->GetRenderTarget(1, &s1) == D3DERR_NOTFOUND;
+            if (s1) s1->Release();
+        }
+        during_all = during_all && during;
+        after_all = after_all && after;
+        float px[4]{};
+        ok = ok && read_px(rt_s[0].p, px);
+        for (unsigned k = 0; k < 3 && ok; ++k) {
+            const float want = bg + gain * model[k];
+            worst = std::max(worst, std::fabs(px[k] - want) / (0.004f + 0.004f * want));
+        }
+        if (flag && ok && read_px(rt_s[2].p, px)) {
+            flag_got = px[1];
+            flag_want = 32.f * gain * std::max(model[0], std::max(model[1], model[2]));
+        }
+    }
+    dev->SetRenderTarget(0, old_rt);
+    if (old_rt) old_rt->Release();
+    const bool flag_ok = !mrt || std::fabs(flag_got - flag_want) <= 0.01f * flag_want + 0.01f;
+    std::printf("RESHADE case=lone_additive gain=%.1f fade=%.2f during=%u restored=%u worst_rel=%.3f mrt=%u flag_g=%.3f "
+                "flag_want=%.3f\n",
+                double(gain), double(fade), unsigned(during_all), unsigned(after_all), double(worst), unsigned(mrt),
+                double(flag_got), double(flag_want));
+    report("reshade_lone_route_binds_converts_flags_restores", ok && during_all && after_all && worst <= 1.f && flag_ok, "");
+    // (c) cost
+    LARGE_INTEGER freq{}, a{}, b{};
+    QueryPerformanceFrequency(&freq);
+    Com<IDirect3DQuery9> fence;
+    dev->CreateQuery(D3DQUERYTYPE_EVENT, &fence.p);
+    const auto finish = [&] {
+        if (!fence.p) return;
+        fence.p->Issue(D3DISSUE_END);
+        while (fence.p->GetData(nullptr, 0, D3DGETDATA_FLUSH) == S_FALSE) {
+        }
+    };
+    constexpr unsigned draws = 2000, runs = 7;
+    double best_vanilla = 1e30, best_reshaded = 1e30, best_hit = 1e30, best_miss = 1e30;
+    dev->SetRenderTarget(0, rt_s[0].p);
+    for (unsigned run = 0; run < runs && ok; ++run) {
+        dev->BeginScene();
+        bind();
+        finish();
+        QueryPerformanceCounter(&a);
+        for (unsigned i = 0; i < draws; ++i) dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, 4, 0, 2);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_vanilla = std::min(best_vanilla, ticks_us(a, b, freq) / draws);
+        QueryPerformanceCounter(&a);
+        bool restored = true;
+        for (unsigned i = 0; i < draws; ++i)
+            rf::lone_reshaded_draw(dev, ours.p, vanilla.p, constants, app_block, 4, 2, &restored, ire_layout);
+        finish();
+        QueryPerformanceCounter(&b);
+        best_reshaded = std::min(best_reshaded, ticks_us(a, b, freq) / draws);
+        dev->EndScene();
+    }
+    device_guard("reshade_lone_cost");
+    {
+        // a 30-body map (the FL table's 30 bullet bodies): the last id (the longest hit) and an unmapped id (a miss: every
+        // engine glow or other effects draw with the same VS and blend pays it)
+        rs::BodyMap big;
+        big.state = 1;
+        big.count = 30;
+        for (unsigned i = 0; i < 30; ++i) big.id[i] = 0x100u + 7u * i, big.entry[i] = 0;
+        unsigned hits = 0;
+        for (unsigned pass = 0; pass < 2; ++pass) {
+            node[rs::node_body_offset / 4] = pass ? 0x9999u : big.id[29];
+            for (unsigned run = 0; run < runs; ++run) {
+                QueryPerformanceCounter(&a);
+                for (unsigned i = 0; i < draws; ++i) {
+                    std::uint32_t id = 0;
+                    if (rs::lone_vertex_shader(effects_default) &&
+                        rs::lone_blend(true, D3DBLEND_ONE, D3DBLEND_INVSRCCOLOR, D3DBLENDOP_ADD) != rs::lone_none &&
+                        x3m::engine_memory::read(reinterpret_cast<std::uintptr_t>(node.data()) + rs::node_body_offset, &id,
+                                                 sizeof id) &&
+                        rs::body_layout(big, &table, id))
+                        ++hits;
+                }
+                QueryPerformanceCounter(&b);
+                (pass ? best_miss : best_hit) = std::min(pass ? best_miss : best_hit, ticks_us(a, b, freq) / draws);
+            }
+        }
+        ok = ok && hits == draws * runs;
+    }
+    dev->SetPixelShader(nullptr);
+    dev->SetVertexShader(nullptr);
+    dev->SetTexture(0, nullptr);
+    dev->SetStreamSource(0, nullptr, 0, 0);
+    dev->SetIndices(nullptr);
+    std::printf("RESHADE case=lone_cost draws=%u runs=%u draw_us_vanilla=%.3f draw_us_reshaded=%.3f "
+                "substitution_us_per_draw=%.3f match_us_hit_30=%.4f match_us_miss_30=%.4f fenced=%u\n",
+                draws, runs, best_vanilla, best_reshaded, best_reshaded - best_vanilla, best_hit, best_miss,
+                unsigned(fence.p != nullptr));
+    report("reshade_lone_cost_measured", ok && fence.p && best_hit < 10.0 && best_miss < 10.0, "");
+}
 // The bullet re-shade's per-texture normaliser (bullet_reshade_core.h; bullet-draw-batch.md section 6): the production
 // texture_key over a table built as weapon_effects_table.h stores tables.bullet_textures (two entries: a 349680-byte
 // buffer, fx_bullets_diff's byte count, and another size): the buffer is entry 0; one byte changed past the head, a
@@ -6392,6 +6767,8 @@ int main(int argc, char** argv) {
     guard_next_section("reshade");
     reshade_cases();
     reshade_texture_cases();
+    guard_next_section("reshade_lone");
+    lone_reshade_cases();
     guard_next_section("muzzle_reshade");
     muzzle_reshade_cases();
     guard_next_section("end");

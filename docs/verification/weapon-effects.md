@@ -3865,3 +3865,88 @@ Run `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verif
 --host native` [M]: AP hook 132 of 132, FL hook 75 of 75, D3D 132 of 132 PASS on the second run (the first failed only
 `flash_budget_combined` at 368.3 µs CPU, the known host-noise flake; rerun 126.5 µs). FL `build-scale-fl` 0 warnings,
 `check_no_x87` FL PASS (1078 functions), AP 0 warnings; `test_weapon_effects_core` + `_hook` 24 OK. Not flown.
+
+## FL 67 A: lone bolts unflagged; the lone path re-shaded (2026-11-12)
+
+**Capture evidence** (FL 67 A, `/mnt/c/X3FL/x3m.log`, triage scripts and outputs under
+`verification/results/fl-run67-bolt-dim/` in the main checkout) [M unless marked]. Groups 1
+and 2 (frames 38187..39606, bolts over a distant station): the classifier finds 0 flagged objects and 40–51 white
+meshes per frame (frame 38187: 46, of them 27 over space, 7 over near geometry, 12 over far lattice), peak median 0.70,
+scene alpha median 0.95–0.97; the lattice behind them is far (the triage's 11.5 km against the 6.6–7.4 km far ramp
+[I, the triage's figures]). In those windows `bullet_reshade_frame` shows `submits=600 draws=0 additive=0 flagged=0
+outside=0` per 300 frames (37800..39900) and `screen_emission_additive_frame` `admitted=0 bolt_flag=0` at the four
+capture frames: the batch submit ran but drew nothing, so the white meshes are not batch bolts. `draw_pairs` carries
+the effects DEFAULT pair `d5e1c753…/8360f422…` at 18,257–19,803 draws per 300 frames there, and the source-only gain's
+variant on that PS clamps at 0.701961 (`emission_source_gain_variant … clamp=0.701961 normalized=1`): the white
+meshes are lone bolts drawn through the material submit and the clamp variant [I: the clamp equals the peak median].
+Group 4 (74759..74975) shows both: batch bolts re-shaded and flagged (`flagged=600`–`808` per 300 frames, 46–100
+flagged objects per frame) beside 49–56 white unflagged meshes at peak median 0.70. Unflagged, the TAA resolve treats a lone bolt as static geometry:
+over far lattice the far hold 0.985 and the 7x7 far clip dim it, over space the base blend dims a fast mover [I, the
+triage's reading].
+
+**Change.** The lone path is re-shaded and far-flagged ([bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md)
+section 7, [projectile-look.md](../architecture/projectile-look.md) "The lone path"). Recognition: the effects DEFAULT
+or INSTANCE VS (`d5e1c75351ed3f04`, `89193868c61c3846`) as the ABI gate, ADD ONE / INVSRCCOLOR or ONE / ONE, the
+object-trace scope node's `+0x144` in the TBullets body map. Substitution: the lone programs
+`weapon_bullet_reshade_lone{,_flag}_ps.hlsl` (315 / 339 words, the batch law with the fade in COLOR0.x), the body's
+c29..c31, the batch sequence; ONE / INVSRCCOLOR through the additive route (DESTBLEND ONE, gain, alpha law, RT2.g flag
+after the first depth writer; no footprint, no single-copy drop), plain otherwise. Ahead of the source gain and hull
+routes. `bullet_reshade_frame` gains `lone=`, `lone_flagged=`, `lone_failures=`, `lone_timed=` and
+`lone_us_per_draw=`, in none of the batch's fields (`draws`, `failures`, `timed`, `us_per_draw` stay the batch's). The
+`screen_emission_additive_frame` and window counts (`pair_draws`, `admitted`, `refused`, `bolt_flag`) now include the
+lone draws offered to the route. The body map (shared with the geometric size) is built only while the live TBullets row
+count equals the table's: one attempt per frame, off after 64 refused attempts with one `bullet_reshade_layout` row
+naming both counts (it used to latch off as `stale_rows` at the first mismatch, which the lone path's early lookups
+could hit); the lone path stays off until it is built. Host `test_weapon_effects_table` bodymap: a 46-row engine
+against the 45-row table stays unbuilt, then off as `stale_rows` after 64 builds.
+
+**Evidence** [M].
+Native fixture, `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native`, three runs: (1) AP hook 132/132, FL hook 75/75, D3D 137 of 138
+(`flash_budget_combined` at 380.1 µs CPU, the known flake); (2) AP hook 131 of 132 (`event_cost_50_within_30us`, median
+30.4 µs against 30, the unattributed flake of the projectile record), FL hook 75/75, D3D 138/138; (3) all PASS: AP
+hook 132/132, FL hook 75/75, D3D 138/138 (combined 124.1 µs, event cost median 17.4 µs); the records are run 3's. Lone
+cases (`lone_reshade_cases`): recognition 9 of 9 rows (IRE DEFAULT and PPC INSTANCE screen, IRE ONE / ONE additive; a
+hull body, the INSTANCE_BULLETS and standard_lighting VS, SRCALPHA, blend off and REVSUBTRACT refused; map built by
+`build_body_map`, 2 bodies); the stand-in pair gives texel x fade (worst 0.023), our lone program at fade 0.8 with
+COLOR0.a 0 the model (worst 0.018); the route's path: DESTBLEND ONE, the lone flag variant, c29..c30 the IRE layout,
+c31 (gain x 2, edge, core x 2, normaliser) during, output bg + 2 x model x fade (worst 0.027), RT2.g 12.906 (want
+12.908), then the game's program, c29..c31, DESTBLEND INVSRCCOLOR, the VS's c10..c12 and the PS's c0..c2 unchanged.
+Cost: recognition 0.0126 µs per candidate (hit, 30 ids) and 0.0150 µs (miss); sequence 0.348 µs per indexed lone draw
+(vanilla 0.083, re-shaded 0.431; the batch's non-indexed 0.195). Dump at 50 m
+(`run_weapon_effects.py --host native --dump verification/results/projectile-reshade --dump-case reshade`,
+[`dump_out.txt`](../../verification/results/projectile-reshade/dump_out.txt)): PPC through the lone state, vanilla dark
+sum 4611.169 / peak 1.0, re-shaded 2593.162 / 0.9815, both equal to the batch frames, max per-pixel difference 0.00000
+([lone](../../verification/results/projectile-reshade/fixture-ppc-lone-reshade-near.png),
+[batch](../../verification/results/projectile-reshade/fixture-ppc-reshade-near.png)); every earlier frame regenerated
+bit-identical. Offline pair: [`lone_inputs.py`](../../verification/results/projectile-reshade/lone_inputs.py); log
+rows: [`lone_log_rows.sh`](../../verification/results/projectile-reshade/lone_log_rows.sh). FL `build-lone-fl` 0
+warnings, `check_no_x87` FL PASS (1083 functions), AP `build-lone-ap` 0 warnings; host `test_weapon_effects_hook`,
+`_table`, `_projectile_tune`, `_launch` 55 OK. Not flown: the next FL flight should show `lone=` > 0 with
+`lone_flagged=` in the station frames and no white unflagged bolts.
+
+**Open (FL 67 A lone path).**
+
+- ONE / ONE effects bodies (`bullet_push`, `tol_bullet`) are re-shaded plain under the game's blend: gain 1, no far flag.
+- Classic MATERIAL3 bullet bodies (`v/00225`, `v/00300`, `v/10458`, …) take standard_lighting on this path and stay
+  vanilla.
+- No bolt footprint on lone draws (their indexed static buffers carry no published scan).
+- The lone program ignores the game PS's colour matrix c0..c2 (the batch pass has none), so a hue-shift profile
+  directory's tint would be dropped on lone bolts.
+- The route's `reason=state` refusal (Z write, alpha test, sRGB write, separate alpha, colour mask) is unverified for
+  the effects pass; if it refuses, lone bolts are re-shaded plain but stay unflagged. The flight's `lone_flagged=` row
+  settles it.
+- Node `+0x144` is the model id of every FL node, so a non-bullet node drawing a body a TBullets row names, with the
+  effects VS and blend, would be re-shaded too; no census of bodies shared outside TBullets was made.
+- No proxy-level fixture runs the MotionOutput route (recognition order, `prepare_screen_additive` with
+  `route.bullet_lone`, the flag targets); the fixture runs the shared sequence and the recognition pieces only, as for
+  the batch.
+
+**Review fixes (2026-11-12)** [M]. Body map retried instead of latched off on a row-count mismatch (one attempt per
+frame, 64 attempts); lone failures and time counted apart (`lone_failures=`, `lone_timed=`, `lone_us_per_draw=`);
+`lone_log_rows.sh` reads fields by name (output unchanged). FL `build-lone-fl` 0 warnings (d3d9.dll sha256 prefix
+`0783a95eb8cdc548`), `check_no_x87` FL PASS (1083 functions), AP 0 warnings. Native fixture: run 1 AP hook 132/132, FL
+hook 75/75, D3D 137 of 138 (`projectile_budget_512_bolts` CPU 103.7 µs against 100; the stage is unchanged, the
+committed record read 89.4); rerun all PASS (132/132, 75/75, 138/138; projectile budget 88.8 µs, combined 127.8 µs,
+lone sequence 0.354 µs per draw, recognition 0.0126 / 0.0124 µs hit / miss); the records are the rerun's. Host
+`test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch` 55 OK.

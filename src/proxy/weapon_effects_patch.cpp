@@ -69,6 +69,9 @@ struct Period {
     // the substitution's CPU time (sum and the frame's worst)
     std::uint32_t reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
     std::uint32_t reshade_additive = 0, reshade_flagged = 0; // draws the additive route converted, with its far flag
+    std::uint32_t reshade_lone = 0, reshade_lone_flagged = 0; // the lone path's re-shaded draws, with the far flag
+    std::uint32_t reshade_lone_failures = 0, reshade_lone_timed = 0; // its failed substitutions, its timed draws
+    float reshade_lone_us_sum = 0.f;                                // its sequence's CPU time over them
     float reshade_us_sum = 0.f, reshade_us_max = 0.f;
     // the muzzle flash re-shade (reshade mode): draws re-shaded, matched, kept off the hull-emission route, failed,
     // timed, and the sequence's CPU time (sum and the frame's worst)
@@ -81,6 +84,9 @@ std::uint32_t reshade_scopes_seen_ = 0; // x3m_bullet_scope_calls at the last bu
 // tables.bullet_bodies entry, built at the first lookup that can read the engine's TBullets; cleared with the table
 // (load_table, shutdown) so a lookup never reaches a freed table.
 x3m::weapon_effects::reshade::BodyMap body_map_{};
+// One build attempt per frame (the Present count of the last attempt against the current one): an unbuilt map's
+// retries (bullet_reshade_core.h body_map_retries) then span frames, not the draws of one frame.
+unsigned long long body_map_attempt_ = ~0ull, present_frame_ = 0;
 #endif
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
@@ -198,6 +204,7 @@ const char* read_table_file(char** text, DWORD* size, char* path_utf8, unsigned 
 void load_table() {
 #if X3M_EDITION_FL
     body_map_ = x3m::weapon_effects::reshade::BodyMap{}; // built again from this table at the next lookup
+    body_map_attempt_ = ~0ull;
 #endif
     char* text = nullptr;
     DWORD size = 0;
@@ -809,6 +816,7 @@ bool shutdown() {
     x3m_bullet_reshade_armed = 0; // Present stops its row and counter reset; the draw hook keys on x3m_bullet_scope,
                                   // which no submit raises once the site is restored below
     body_map_ = x3m::weapon_effects::reshade::BodyMap{}; // a reinstall builds it again from its table
+    body_map_attempt_ = ~0ull;
 #else
     static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
 #endif
@@ -847,10 +855,16 @@ const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept
     *final = true;
     if (!x3m_bullet_reshade_armed) return nullptr;
     if (!body_map_.state) {
+        if (body_map_attempt_ == present_frame_) {
+            *final = false; // this frame's attempt is spent: asked again next frame
+            return nullptr;
+        }
+        body_map_attempt_ = present_frame_;
         const core::Globals& g = x3m_projectile_pool.globals;
         const auto read = [](std::uintptr_t a, void* out, std::size_t n) { return engine_memory::read(a, out, n); };
         if (!rs::build_body_map(body_map_, table_, g.bullet_table_slot, g.bullet_count_slot, read)) {
-            *final = false; // TBullets not readable yet, or a row read failed: asked again at the next draw
+            *final = false; // TBullets not readable yet, its row count not the table's, or a row read failed: asked
+                            // again next frame
             return nullptr;
         }
         x3m::log("bullet_reshade_layout event=%s reason=%s bodies_mapped=%u table_entries=%u engine_rows=%lu "
@@ -943,6 +957,9 @@ void clear_owned() {
 #define X3M_PROJECTILE_ARGS
 #endif
 void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage, const core::Scope& scope) {
+#if X3M_EDITION_FL
+    present_frame_ = frame; // the body map's one build attempt per frame
+#endif
     if (!installed_) return;
     core::HookState& s = hook_state();
     // A load, a sector change or a new load epoch: the stage-owned records of the scene that went leave the ring.
@@ -1000,6 +1017,11 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.reshade_timed += stage.reshade_timed;
         period_.reshade_additive += stage.reshade_additive;
         period_.reshade_flagged += stage.reshade_flagged;
+        period_.reshade_lone += stage.reshade_lone;
+        period_.reshade_lone_flagged += stage.reshade_lone_flagged;
+        period_.reshade_lone_failures += stage.reshade_lone_failures;
+        period_.reshade_lone_timed += stage.reshade_lone_timed;
+        period_.reshade_lone_us_sum += stage.reshade_lone_us;
         period_.reshade_us_sum += stage.reshade_us;
         if (stage.reshade_us > period_.reshade_us_max) period_.reshade_us_max = stage.reshade_us;
     }
@@ -1128,18 +1150,24 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // The bullet re-shade's period row: the game's bullet submits seen by the scope stub, the draws re-shaded and those
     // whose substitution failed (forwarded with the game's program), bullet-program draws outside a submit (left
     // vanilla), and the substitution's CPU time over the timed draws (every 60th frame and capture frames: per draw,
-    // and the worst frame's sum).
+    // and the worst frame's sum, the batch's draws only); lone / lone_flagged / lone_failures / lone_us_per_draw: the
+    // lone path's re-shaded draws (bullet-draw-batch.md section 7), of them with the far flag, its failed
+    // substitutions and its sequence's CPU time per timed draw, in none of the batch's fields.
     if (x3m_bullet_reshade_armed) {
         const std::uint32_t scopes = x3m_bullet_scope_calls;
-        log("bullet_reshade_frame frame=%llu frames=%lu submits=%lu draws=%lu additive=%lu flagged=%lu failures=%lu "
-            "outside=%lu timed=%lu us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f",
+        log("bullet_reshade_frame frame=%llu frames=%lu submits=%lu draws=%lu additive=%lu flagged=%lu lone=%lu "
+            "lone_flagged=%lu failures=%lu outside=%lu timed=%lu us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f "
+            "lone_failures=%lu lone_timed=%lu lone_us_per_draw=%.3f",
             frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(scopes - reshade_scopes_seen_),
             static_cast<unsigned long>(period_.reshade_draws), static_cast<unsigned long>(period_.reshade_additive),
-            static_cast<unsigned long>(period_.reshade_flagged), static_cast<unsigned long>(period_.reshade_failures),
+            static_cast<unsigned long>(period_.reshade_flagged), static_cast<unsigned long>(period_.reshade_lone),
+            static_cast<unsigned long>(period_.reshade_lone_flagged), static_cast<unsigned long>(period_.reshade_failures),
             static_cast<unsigned long>(period_.reshade_outside), static_cast<unsigned long>(period_.reshade_timed),
             double(period_.reshade_us_sum),
             period_.reshade_timed ? double(period_.reshade_us_sum) / double(period_.reshade_timed) : 0.0,
-            double(period_.reshade_us_max));
+            double(period_.reshade_us_max), static_cast<unsigned long>(period_.reshade_lone_failures),
+            static_cast<unsigned long>(period_.reshade_lone_timed),
+            period_.reshade_lone_timed ? double(period_.reshade_lone_us_sum) / double(period_.reshade_lone_timed) : 0.0);
         reshade_scopes_seen_ = scopes;
     }
     // The muzzle flash re-shade's period row (muzzle-flash-look.md): muzzle draws matched (a listed body id under ONE /

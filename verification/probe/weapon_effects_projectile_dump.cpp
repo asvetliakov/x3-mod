@@ -11,6 +11,7 @@
 #include "../../src/proxy/weapon_projectile_stage.h"
 #include "weapon_bullet_reshade_fixture.h"
 #include "weapon_muzzle_reshade_fixture.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -709,6 +710,7 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
             const bool flayout = load_layout(assets, name, fwords);
             float fkept[8], fshrunk[8];
             layouts(fwords, flayout, fkept, fshrunk);
+            std::vector<float> batch_out[2]; // the batch frames (vanilla, re-shaded) for the lone path's comparison
             for (unsigned shade = 0; shade < 3; ++shade) { // vanilla, the baked keys, the proposal (-h050-w060)
                 const char* const tag = shade == 2 ? "-h050-w060" : "";
                 const UINT cw = 640, ch = 256;
@@ -757,6 +759,118 @@ int reshade_dump(const char* dir, const char* d3dx_path, const char* assets, con
                             "normaliser=%.4g layout=%u distance_m=50 crop=%ux%u dark_sum=%.3f dark_peak=%.4f written=%u\n",
                             name, shade ? "reshade" : "vanilla", tag, name, count, fside, double(fp99),
                             double(fconstants[3]), unsigned(flayout), cw, ch, sum, double(peak), unsigned(written));
+                if (shade < 2) batch_out[shade].swap(out);
+            }
+            // The lone path (bullet-draw-batch.md section 7) for the PPC: the same body, pose and texture drawn the way
+            // the material submit draws a bolt the batch does not take (the effects DEFAULT pair's stand-ins, indexed from
+            // a static buffer, the material's ONE / INVSRCCOLOR, g_AlphaValue 1, the identity texture and colour
+            // matrices), vanilla and re-shaded with the production lone program through the plain sequence (the baked
+            // keys, the body's layout): fixture-ppc-lone-{vanilla,reshade}-near.pfm, each with its batch twin's figures
+            // and the largest per-pixel difference to it.
+            if (!std::strcmp(name, "ppc")) {
+                ID3DXBuffer *lvs_code = nullptr, *lps_code = nullptr;
+                Com<IDirect3DVertexShader9> lvs;
+                Com<IDirect3DPixelShader9> lvanilla, lours;
+                Com<IDirect3DVertexDeclaration9> ldecl;
+                Com<IDirect3DVertexBuffer9> lvb;
+                Com<IDirect3DIndexBuffer9> lib;
+                bool lok = compile(rf::lone_vs_source, "vs_2_0", &lvs_code) && compile(rf::lone_ps_source, "ps_2_0", &lps_code) &&
+                           SUCCEEDED(dev->CreateVertexShader(static_cast<const DWORD*>(lvs_code->GetBufferPointer()), &lvs.p)) &&
+                           SUCCEEDED(dev->CreatePixelShader(static_cast<const DWORD*>(lps_code->GetBufferPointer()), &lvanilla.p)) &&
+                           SUCCEEDED(dev->CreatePixelShader(rf::lone_program, &lours.p)) &&
+                           SUCCEEDED(dev->CreateVertexDeclaration(rf::lone_declaration(), &ldecl.p)) && count <= 65535u &&
+                           SUCCEEDED(dev->CreateVertexBuffer(count * sizeof(rf::LoneVertex), D3DUSAGE_WRITEONLY, 0,
+                                                             D3DPOOL_MANAGED, &lvb.p, nullptr)) &&
+                           SUCCEEDED(dev->CreateIndexBuffer(count * sizeof(std::uint16_t), D3DUSAGE_WRITEONLY, D3DFMT_INDEX16,
+                                                            D3DPOOL_MANAGED, &lib.p, nullptr));
+                if (lvs_code) lvs_code->Release();
+                if (lps_code) lps_code->Release();
+                void* lp = nullptr;
+                if (lok && SUCCEEDED(lvb.p->Lock(0, 0, &lp, 0))) { // the batch's placement above, without the colour
+                    auto* d = static_cast<rf::LoneVertex*>(lp);
+                    const float yaw = 0.4363f, roll = 0.3491f, s = rf::metres_per_body_unit;
+                    const float cy = std::cos(yaw), sy = std::sin(yaw), cr = std::cos(roll), sr = std::sin(roll);
+                    for (unsigned i = 0; i < count; ++i) {
+                        const float* q = &pts[std::size_t(i) * 5];
+                        const float x0 = q[0] * s, y0 = q[1] * s, z0 = q[2] * s;
+                        const float x1 = cr * x0 - sr * y0, y1 = sr * x0 + cr * y0;
+                        d[i] = rf::LoneVertex{z0 * cy - x1 * sy, y1, 50.f + z0 * sy + x1 * cy, q[3], q[4]};
+                    }
+                    lvb.p->Unlock();
+                } else
+                    lok = false;
+                if (lok && SUCCEEDED(lib.p->Lock(0, 0, &lp, 0))) {
+                    auto* d = static_cast<std::uint16_t*>(lp);
+                    for (unsigned i = 0; i < count; ++i) d[i] = std::uint16_t(i);
+                    lib.p->Unlock();
+                } else
+                    lok = false;
+                if (!lok) {
+                    std::printf("DUMP_RESHADE name=fixture-ppc-lone failed=1\n");
+                    code = 1;
+                    continue;
+                }
+                for (unsigned shade = 0; shade < 2; ++shade) {
+                    const UINT cw = 640, ch = 256;
+                    std::vector<float> out(std::size_t(cw) * ch * 3, 0.f);
+                    double sum = 0.0;
+                    float peak = 0.f, diff = 0.f;
+                    dev->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_ARGB(0, 0, 0, 0), 1.f, 0);
+                    dev->BeginScene();
+                    rf::bind_lone_pass(dev, lvs.p, ldecl.p, ftex.p, rows, true, 1.f);
+                    dev->SetStreamSource(0, lvb.p, 0, sizeof(rf::LoneVertex));
+                    dev->SetIndices(lib.p);
+                    dev->SetPixelShader(lvanilla.p);
+                    bool restored = true;
+                    const HRESULT hr = shade ? rf::lone_reshaded_draw(dev, lours.p, lvanilla.p, fconstants, app_block, count,
+                                                                      count / 3, &restored, fkept)
+                                             : dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, count, 0, count / 3);
+                    dev->EndScene();
+                    dev->SetIndices(nullptr);
+                    if (FAILED(hr) || !restored || FAILED(dev->GetRenderTargetData(t.scene_s.p, t.scene_sys.p))) code = 1;
+                    D3DLOCKED_RECT lr{};
+                    if (FAILED(t.scene_sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return 1;
+                    const UINT x0 = 960 - cw / 2, y0 = 540 - ch / 2;
+                    const std::vector<float>& twin = batch_out[shade];
+                    for (UINT y = 0; y < ch; ++y) {
+                        const auto* row = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(lr.pBits) +
+                                                                                (y0 + y) * lr.Pitch) + std::size_t(x0) * 4;
+                        for (UINT x = 0; x < cw; ++x) {
+                            float* d = &out[(std::size_t(y) * cw + x) * 3];
+                            for (unsigned k = 0; k < 3; ++k) {
+                                d[k] = half_to_float(row[x * 4 + k]);
+                                if (twin.size() == out.size()) diff = std::max(diff, std::fabs(d[k] - twin[(std::size_t(y) * cw + x) * 3 + k]));
+                            }
+                            const float l = 0.2126f * d[0] + 0.7152f * d[1] + 0.0722f * d[2];
+                            sum += l;
+                            peak = l > peak ? l : peak;
+                        }
+                    }
+                    t.scene_sys.p->UnlockRect();
+                    double twin_sum = 0.0;
+                    float twin_peak = 0.f;
+                    for (std::size_t i = 0; i + 2 < twin.size(); i += 3) {
+                        const float l = 0.2126f * twin[i] + 0.7152f * twin[i + 1] + 0.0722f * twin[i + 2];
+                        twin_sum += l;
+                        twin_peak = l > twin_peak ? l : twin_peak;
+                    }
+                    std::snprintf(path, sizeof path, "%s\\fixture-ppc-lone-%s-near.pfm", dir, shade ? "reshade" : "vanilla");
+                    f = std::fopen(path, "wb");
+                    bool written = f != nullptr;
+                    if (f) {
+                        std::fprintf(f, "PF\n%u %u\n-1.0\n", cw, ch);
+                        for (UINT y = ch; y-- > 0;)
+                            written = written && std::fwrite(&out[std::size_t(y) * cw * 3], sizeof(float), std::size_t(cw) * 3,
+                                                             f) == std::size_t(cw) * 3;
+                        std::fclose(f);
+                    }
+                    if (!written) code = 1;
+                    std::printf("DUMP_RESHADE name=fixture-ppc-lone-%s-near family=ppc path=lone vertices=%u indexed=1 "
+                                "normaliser=%.4g layout=%u distance_m=50 crop=%ux%u dark_sum=%.3f dark_peak=%.4f "
+                                "batch_sum=%.3f batch_peak=%.4f max_abs_diff_vs_batch=%.5f written=%u\n",
+                                shade ? "reshade" : "vanilla", count, double(fconstants[3]), unsigned(flayout), cw, ch, sum,
+                                double(peak), twin_sum, double(twin_peak), double(diff), unsigned(written));
+                }
             }
         }
     }

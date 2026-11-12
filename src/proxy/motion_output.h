@@ -281,6 +281,12 @@ struct MotionRoute {
     // (put back after it); timed: the sequence is QPC-timed (sampled frames); convert: the additive route's draw
     // (DESTBLEND ONE applied by the sequence, put back to INVSRCCOLOR); flag: the flag variant (the route's far flag).
     bool bullet_reshade = false, bullet_reshade_timed = false, bullet_reshade_convert = false, bullet_reshade_flag = false;
+    // The lone path (bullet-draw-batch.md section 7): the draw is a bullet body's through the material submit (the
+    // effects VS bound, the scope node's body id mapped): bullet_body that id, bullet_lone_blend its LoneBlend; the
+    // re-shade binds the lone programs (COLOR0.x the fade) and takes the layout from bullet_body.
+    bool bullet_lone = false;
+    std::uint8_t bullet_lone_blend = 0;
+    std::uint32_t bullet_body = 0;
     // Muzzle flash re-shade (FL reshade mode, motion_output_muzzle_reshade_inc.h): muzzle_body the matched body's row;
     // reshade: our program and c192..c195 bound for this draw (put back after it); timed: the sequence is QPC-timed;
     // hull: the hull-emission route would have taken the draw (the re-shade bypasses it).
@@ -1235,8 +1241,11 @@ public:
     // The bullet re-shade (reshade mode): the frame's counts (draws re-shaded, failed, bullet-program draws outside the
     // submit, sampled draws timed and the sequence's CPU us over them, re-shaded draws of the additive route, of them
     // with the far flag).
+    // lone: the lone path's re-shaded draws (bullet-draw-batch.md section 7; in none of the batch's counts or time),
+    // lone_flagged: of them with the far flag, its failed substitutions, timed draws and the sequence's CPU us over them.
     void bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed, float* us,
-                                   unsigned* additive, unsigned* flagged) noexcept;
+                                   unsigned* additive, unsigned* flagged, unsigned* lone, unsigned* lone_flagged,
+                                   unsigned* lone_failures, unsigned* lone_timed, float* lone_us) noexcept;
     // The muzzle flash re-shade (reshade mode): the frame's counts (draws re-shaded, matched muzzle draws, of the
     // re-shaded those kept off the hull-emission route, failures, sampled draws timed and the sequence's CPU us over
     // them).
@@ -1799,6 +1808,7 @@ private:
         bool ps_bullet = false; // the bound PS is a game INSTANCE_BULLETS program (bullet re-shade requested)
         float ps_c29[12]{};     // application c29..c31 as last written (the bullet re-shade restores them)
         bool vs_muzzle = false; // the bound VS is standard_lighting DEFAULT's (muzzle re-shade requested)
+        bool vs_lone = false;   // the bound VS is the effects DEFAULT / INSTANCE one (bullet re-shade requested)
         float ps_c192[16]{};    // application c192..c195 as last written (the muzzle re-shade restores them)
         float vs_c28[36]{};     // application VS c28..c36 (g_mWorld, g_mViewInverse rows; the muzzle re-shade's origin)
         std::uint16_t vs_c28_known = 0; // bit r: c(28 + r) written
@@ -2345,6 +2355,10 @@ private:
     bool bullet_reshade_requested_ = false, bullet_reshade_create_failed_ = false, bullet_reshade_restore_failed_ = false;
     IDirect3DPixelShader9* bullet_reshade_ps_ = nullptr;
     IDirect3DPixelShader9* bullet_reshade_flag_ps_ = nullptr; // the far-flag variant (oC0..oC2)
+    // The lone path's pair (COLOR0.x the fade; bullet-draw-batch.md section 7), created with the batch's; a refused
+    // plain lone program leaves the lone bolts vanilla, a refused flag variant only refuses their far flag.
+    IDirect3DPixelShader9* bullet_reshade_lone_ps_ = nullptr;
+    IDirect3DPixelShader9* bullet_reshade_lone_flag_ps_ = nullptr;
     float bullet_reshade_constants_[4]{};
     // The geometric size (bullet_reshade_core.h layout_constants): the drawn body's c29..c30 for the last body id the
     // scope stub published (x3m_bullet_body), recomputed when the id changes or the tuning reloads; unmapped bodies
@@ -2357,6 +2371,9 @@ private:
     void bullet_reshade_layout(std::uint32_t body) noexcept;
     unsigned bullet_reshade_draws_ = 0, bullet_reshade_failures_ = 0, bullet_reshade_outside_ = 0;
     unsigned bullet_reshade_timed_draws_ = 0, bullet_reshade_additive_ = 0, bullet_reshade_flagged_ = 0;
+    unsigned bullet_reshade_lone_ = 0, bullet_reshade_lone_flagged_ = 0; // the lone path's draws, of them flagged
+    unsigned bullet_reshade_lone_failures_ = 0, bullet_reshade_lone_timed_ = 0; // its failures and timed draws
+    std::uint64_t bullet_reshade_lone_ticks_ = 0;                                // its sequence's sampled time
     std::uint32_t bullet_reshade_frames_ = 0; // Present count: every 60th frame is timed
     std::uint64_t bullet_reshade_ticks_ = 0;
     // The per-texture luminance normaliser (bullet_reshade_core.h texture_scale): the created textures the D3DX observer
@@ -2374,6 +2391,8 @@ private:
     bool begin_bullet_reshade(MotionRoute& route, bool convert, bool flag) noexcept;
     HRESULT end_bullet_reshade(MotionRoute& route) noexcept;
     void prepare_bullet_reshade(MotionRoute& route) noexcept;
+    bool lone_bullet_match(MotionRoute& route) noexcept;
+    void prepare_lone_bullet(const MotionDrawCall& call, MotionRoute& route) noexcept;
     void finish_bullet_reshade(MotionRoute& route) noexcept;
     // The muzzle flash re-shade (reshade mode; motion_output_muzzle_reshade_inc.h, muzzle-flash-look.md): requested in
     // reshade mode (the object-trace scope gives the node at the draw); our ps_3_0 program (created at the

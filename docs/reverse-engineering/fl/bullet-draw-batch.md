@@ -351,7 +351,10 @@ above (`src/proxy/bullet_reshade_core.h`); scope: the batch call `0x097af8` clai
 keeping the route's DESTBLEND ONE with its gain folded into c31 (gain and core x G) and, with the route's far flag
 bound, drawing a flag variant (`weapon_bullet_reshade_flag_ps.hlsl`, oC2 = 32 x max(rgb)); without the route our program
 draws under the game's ONE / INVSRCCOLOR. One device sequence for both (`src/proxy/bullet_reshade_route.h`). The
-traversal-fallback draw (section 3) is not an INSTANCE_BULLETS draw and stays vanilla [i]. The fixture's stand-in bolt is 10 m long (an assumption; the runtime node scales are still open).
+traversal-fallback draw (section 3) is not an INSTANCE_BULLETS draw. Since 2026-11-12 an effects-material body's
+fallback draw is re-shaded on its own recognition (section 7): ONE / INVSRCCOLOR bodies converted and far-flagged as the
+batch, ONE / ONE bodies (`bullet_push`, `tol_bullet`) re-shaded but unflagged; classic MATERIAL3 bullet bodies stay
+vanilla on this path. The fixture's stand-in bolt is 10 m long (an assumption; the runtime node scales are still open).
 
 **Geometric size (2026-11-10).** The scope stub also stores the batch's body id `[EDX+0x0c]` in `x3m_bullet_body`
 before the scope rises (EAX saved around it; `mov` writes no flag). The draw uploads the body's UV layout in c29..c30
@@ -360,6 +363,54 @@ evidence: [projectile-look.md](../../architecture/projectile-look.md) "Geometric
 (`objects/v/00518`, 70 triangles, `fx_bullets2_diff`) has 16 fin triangles (axis v 0.7466, rim v 0.6229, u
 0.4232..0.9166) and 54 head triangles: 27 crossed quads at z 0.086..0.188, half-width 0.06, each mapping the glow box
 u 0.795..0.986, v 0.792..0.981 [s, lab decode].
+
+## 7. The lone path (bullet re-shade, 2026-11-12)
+
+A bullet body the batch does not take (section 3: fewer than two bolts of the body in the layer, over the `0x78f0`
+budget or capacity) is traversed and drawn through the material submit `0x0e6ef0` → `0x0e7142` → `0x0e0f30` with
+the body's own material. Producer: [`lone_inputs.py`](../../../verification/results/projectile-reshade/lone_inputs.py)
+→ [`lone_inputs_out.txt`](../../../verification/results/projectile-reshade/lone_inputs_out.txt) (FL archive, root +
+addon2; interface only, no listing tracked).
+
+| Item | Value | Source |
+| --- | --- | --- |
+| material | every effects-material bullet body is `effects.fx`; ONE / INVSRCCOLOR for all but `bullet_push` and `tol_bullet` (ONE / ONE); the PPC (`objects/v/00518`, `fx_bullets2_diff`) and the IRE are ONE / INVSRCCOLOR. Classic (MATERIAL3) bullet bodies (`v/00225`, `v/00300`, `v/10458`, …) are not on this path | lab census [s] |
+| technique | `effects.fb` orders `0:DEFAULT 1:INSTANCE 2:INSTANCE_BULLETS` in all 48 effects/effects2s files; the submit binds DEFAULT [i: the FL 67 `draw_pairs` rows carry `d5e1c753…/8360f422…` at 18,257–19,803 draws per 300 frames in the group 1 window and no `89193868…` in the top eight; FL `engine_draw` rows bind the same pair for an effects body] | [s] archive, [m] log |
+| VS | `d5e1c75351ed3f04` (DEFAULT, every SM2+ directory, base and 2s); the INSTANCE VS `89193868c61c3846` has the same interface. vs_2_0, inputs `dcl_position v0`, `dcl_texcoord v1` (no vertex colour); writes `oPos` (c0..c3 `g_mWorldViewProjection`), `oT0.xy` (DEFAULT: `(u, v, 1)` · `g_TexMatrix` c10/c11; INSTANCE: direct), `oD0.xyz` = (fade, 0, 0) with fade = `g_AlphaValue` (c12.x; INSTANCE c10.x) × the fog clip when `g_EnableFog` b0 (from `g_mWorld`, `g_mViewInverse`, `g_FogClip`); `oD0.w` unwritten | [s] |
+| PS | `8360f422de08b5bd` (ps_2_0; `2_b` uses `f0c91793a75e1203`, the same contract): `dcl t0.xy`, `dcl v0.x`, `s0` `DiffuseTexSampler`; texel → affine colour matrix c0..c2 (preshader) on (rgb, 1) → × v0.x; alpha the texel's | [s] |
+| draw | `DrawIndexedPrimitive` from the body's static buffers, inside the FL object-trace scope (node `+0x144` = the body id, section 4) | material-submit.md, [i] for bullets |
+
+**What the lone draw looked like in FL 67.** The source-only gain admits this pair (`emission_source_gain_variant
+original=8360f422… gain=1 clamp=0.701961 normalized=1`), so a lone ONE / INVSRCCOLOR bolt was drawn by the clamp
+variant: the triage's "white" objects peak at 0.70 [i: the clamp equals the peak median]. Nothing far-flagged them.
+
+**Recognition** (`src/proxy/bullet_reshade_core.h`, `motion_output_bullet_reshade_inc.h` `lone_bullet_match`): the
+bound VS is one of the two (`lone_vertex_shader`, decided at SetVertexShader: one bool per draw), the blend shadow is
+ADD ONE / INVSRCCOLOR or ONE / ONE (`lone_blend`), then the scope node's `+0x144` (one 4-byte validated read) is in the
+body map built from the live TBullets rows (`body_layout`). Every other effects draw (engine glows, gate, flares)
+ends at the blend or at the map scan.
+
+**Substitution**: the lone pair `src/effects/weapon_bullet_reshade_lone{,_flag}_ps.hlsl` (the batch's law with the
+fade from COLOR0.x; the game's colour matrix is not applied, so the lone bolt matches the batch bolt), the body's
+c29..c30 layout and c31 through the batch's sequence (`bullet_reshade_route.h`). ONE / INVSRCCOLOR goes through the
+additive route as a batch draw (DESTBLEND ONE, gain, alpha law, far flag in RT2.g; no footprint, no single-copy drop);
+when the route is off or refuses it, and for ONE / ONE, plain under the game's blend. The re-shaded draw skips the
+source gain and hull routes. Counted as `lone=`, `lone_flagged=`, `lone_failures=` and `lone_us_per_draw=` in
+`bullet_reshade_frame`, in none of the batch's fields; the `screen_emission_additive` admitted / refused / window counts
+include the lone draws offered to the route. The body map is built only while the live TBullets row count equals the
+table's (one attempt per frame, off after 64 refused attempts with one `bullet_reshade_layout` row naming both counts);
+until then the lone path stays off. Node `+0x144` is the model id of every FL node, so a non-bullet node drawing a body
+a TBullets row names, with the effects VS and blend, would match too (no census).
+
+Evidence [m], native fixture (`weapon_effects_fixture.cpp` `lone_reshade_cases`, stand-ins of the pair's interface):
+recognition 9 of 9 rows (IRE DEFAULT and PPC INSTANCE screen, IRE ONE / ONE additive; a hull body, the INSTANCE_BULLETS
+and standard_lighting VS, SRCALPHA, blend off and REVSUBTRACT refused) over a map built by `build_body_map`; the lone
+program at fade 0.8 with COLOR0.a 0 equals the model, worst 0.018 of the tolerance; through the route's sequence
+DESTBLEND ONE, the lone flag variant, c29..c31 the body's, RT2.g 12.906 (want 12.908), then the game's program,
+c29..c31, DESTBLEND, its VS constants and c0..c2 back. The PPC through the lone state at 50 m equals the batch frame
+pixel for pixel, vanilla and re-shaded (`dump_out.txt`). Log rows behind the FL 67 figures:
+[`lone_log_rows.sh`](../../../verification/results/projectile-reshade/lone_log_rows.sh) →
+[`_out.txt`](../../../verification/results/projectile-reshade/lone_log_rows_out.txt).
 
 ## Unknown
 
@@ -372,7 +423,9 @@ u 0.795..0.986, v 0.792..0.981 [s, lab decode].
 - The meaning of texture record flag `0x2000000`, under which the previous texture stays bound.
 - How often IRE bolts take the traversal fallback in a fight. Settle it by counting call-site skips against
   scope-test drops in the first flight.
-- Which technique the traversal draw of the IRE material uses (`effects.fx` technique index 1).
+- ~~Which technique the traversal draw of the IRE material uses~~: DEFAULT (`d5e1c753…`) by the FL 67 pair counts,
+  INSTANCE (`89193868…`) has the same interface and is recognised too (section 7). Whether every lone bullet draw
+  runs inside the object-trace scope (the immediate and the deferred submit) is confirmed only by a flight's `lone=`.
 - The drawn bolt's world length in metres: node `+0x70`, `+0x80..+0x88` and scene `+0x2c` at run time. Settle it by
   reading them for one tapped IRE bullet; the tap already holds the node.
 - Whether any draw path reads body `+0x5c`. The after-call scan is not exhaustive.

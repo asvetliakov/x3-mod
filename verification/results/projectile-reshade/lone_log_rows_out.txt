@@ -1,0 +1,53 @@
+frame=37800 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=38100 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=38400 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=38700 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=39000 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=39300 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=39600 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=39900 submits=600 draws=0 additive=0 flagged=0 outside=0
+frame=60300 submits=2100 draws=600 additive=600 flagged=600 outside=0
+frame=60600 submits=2100 draws=600 additive=600 flagged=600 outside=0
+frame=60900 submits=1942 draws=521 additive=521 flagged=521 outside=0
+frame=61200 submits=1604 draws=355 additive=355 flagged=352 outside=0
+frame=61500 submits=2700 draws=900 additive=900 flagged=900 outside=0
+frame=61800 submits=1506 draws=306 additive=306 flagged=303 outside=0
+frame=74400 submits=2100 draws=600 additive=600 flagged=600 outside=0
+frame=74700 submits=2100 draws=600 additive=600 flagged=600 outside=0
+frame=75000 submits=2100 draws=808 additive=808 flagged=808 outside=0
+frame=37800 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:18257 effects_instance: -
+frame=38100 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:18604 effects_instance: -
+frame=38400 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:18450 effects_instance: -
+frame=38700 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:19137 effects_instance: -
+frame=39000 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:19803 effects_instance: -
+frame=39300 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:19697 effects_instance: -
+frame=39600 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:19505 effects_instance: -
+frame=39900 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:19448 effects_instance: -
+frame=60300 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:13781 effects_instance: -
+frame=60600 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:19512 effects_instance: -
+frame=60900 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:13347 effects_instance: -
+frame=61200 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:6180 effects_instance: -
+frame=61500 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:16769 effects_instance: -
+frame=61800 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:5085 effects_instance: -
+frame=74400 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:16306 effects_instance: -
+frame=74700 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:16186 effects_instance: -
+frame=75000 effects_default: d5e1c75351ed3f04/8360f422de08b5bd:17488 effects_instance: -
+frame=37800 matched=149 draws=149
+frame=38100 matched=130 draws=130
+frame=38400 matched=255 draws=255
+frame=38700 matched=223 draws=223
+frame=39000 matched=183 draws=183
+frame=39300 matched=175 draws=175
+frame=39600 matched=228 draws=228
+frame=39900 matched=227 draws=227
+frame=60300 matched=270 draws=270
+frame=60600 matched=319 draws=319
+frame=60900 matched=151 draws=151
+frame=61200 matched=143 draws=143
+frame=61500 matched=81 draws=81
+frame=61800 matched=0 draws=0
+frame=74400 matched=0 draws=0
+frame=74700 matched=0 draws=0
+frame=75000 matched=0 draws=0
+original=8360f422de08b5bd gain=1 clamp=0.701961 normalized=1
+vs=d5e1c75351ed3f04 ps=8360f422de08b5bd pair=effect name=effects\engines\fx_engine_usc_m3 body=105

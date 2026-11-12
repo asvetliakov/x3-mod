@@ -460,9 +460,10 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertEqual((f['state'], f['reason'], f['mapped'], f['row0_head_u'], f['unknown']),
                          ('1', 'ok', '1', str(round(0.88319 * 65536)), '0'))
         self.assertEqual((f['giveup_builds'], f['giveup_state'], f['giveup_reason']), ('64', '2', 'row_read_failed'))
-        f = run(t, '46')                                       # the engine has 46 rows, the table 45
-        self.assertEqual((f['early'], f['built'], f['state'], f['reason'], f['row0_head_u']),
-                         ('0', '1', '2', 'stale_rows', '-1'))
+        f = run(t, '46')                                       # the engine has 46 rows, the table 45: unbuilt and
+        self.assertEqual((f['early'], f['built'], f['state'], f['reason'], f['row0_head_u']),   # retried, off only
+                         ('0', '0', '0', 'unbuilt', '-1'))                                      # after 64 builds
+        self.assertEqual((f['giveup_builds'], f['giveup_state'], f['giveup_reason']), ('64', '2', 'stale_rows'))
         del t['tables']['bullet_bodies']
         f = run(t)                                             # no layouts in the table: final at once, off
         self.assertEqual((f['early'], f['state'], f['reason']), ('1', '2', 'no_bullet_bodies'))

@@ -21,17 +21,18 @@
     "src/proxy/weapon_effects_projectile.h"
   ],
   "source": {
-    "commit": "3a044e535fc770a9141e85bfd54017bca10f7ca3-dirty",
+    "commit": "5ee52c350e9a4bbe46c65b2f3fb20127a9603d87-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_bubble.h"
+      "src/proxy/weapon_effects_patch.cpp",
+      "src/proxy/weapon_effects_patch.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "44e4243498e920c81d1a639b37f89924487130a2e5ba5dbfdb6020f43e534d92",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "3bd6d029d15af9863e99fe6f1714896e037eef1669ada4b2029aa139b4edf6df",
-      "src/proxy/weapon_effects_patch.h": "1cd1c5fc272c7fee6eababd9be440e3af18540a5b72fa2ae20596bccba5451e2",
+      "src/proxy/weapon_effects_patch.cpp": "bb5c54c162a10719fa8d989ca0d0de993f5aac0b209566123dc08aa1e8565137",
+      "src/proxy/weapon_effects_patch.h": "4a64e7a968cb40007411ad793d1cca9278563f791a8bf8fb1544fb063e38aa1f",
       "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
       "src/proxy/weapon_effects_core.h": "bf193935a01f17e112ba7be9fca8af778c91cc94d4ddd9be28da0221734070c1",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
@@ -256,7 +257,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "beb22716722691b4b17865c926f78f4fe1c5e59f9605e73cae008b1215f7faf4"
+    "executable_sha256": "6a3ce6b9abd0da7ad8a4ccb49b2c69d29ad62156848ad05ef4ed603ff8e56636"
   },
   "host": {
     "name": "native-windows",

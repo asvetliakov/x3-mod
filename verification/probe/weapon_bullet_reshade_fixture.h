@@ -250,4 +250,78 @@ inline std::uint32_t body_hash(const DWORD* code) {
     }
     return h;
 }
+// The lone path (bullet-draw-batch.md section 7): a bullet body the batch does not take is drawn through the material
+// submit with its effects.fx material, the effects DEFAULT pair (VS d5e1c75351ed3f04, PS 8360f422de08b5bd in the SM2+
+// directories), indexed from the body's own buffers, under the material's ONE / INVSRCCOLOR. Stand-ins of that pair's
+// interface (verification/results/projectile-reshade/lone_inputs_out.txt): a vs_2_0 with g_mWorldViewProjection c0..c3,
+// g_TexMatrix c10..c11 (u' = (u, v, 1) . c10.xyz, v' = (u, v, 1) . c11.xyz) and g_AlphaValue c12.x into oD0.x (oD0.yz
+// 0; the game leaves oD0.w unwritten, the stand-in writes 0 so a program reading .a would draw black), and a ps_2_0
+// sampling s0, applying the affine colour matrix c0..c2 to (rgb, 1), times v0.x, alpha the texel's. Stream 0: POSITION
+// FLOAT3, TEXCOORD0 FLOAT2 (stride 20; the body vertex carries no colour the pair reads).
+constexpr DWORD lone_program[] = {
+#include "../../src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h"
+};
+constexpr DWORD lone_flag_program[] = {
+#include "../../src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h"
+};
+constexpr char lone_vs_source[] =
+    "float4 m[4] : register(c0);\n"
+    "float4 tex_matrix[2] : register(c10);\n"
+    "float4 alpha_value : register(c12);\n"
+    "struct O { float4 p : POSITION; float4 c : COLOR0; float2 uv : TEXCOORD0; };\n"
+    "O main(float4 p : POSITION, float2 uv : TEXCOORD0) {\n"
+    "  O o; float4 q = float4(p.xyz, 1); float3 t = float3(uv, 1);\n"
+    "  o.p = float4(dot(q, m[0]), dot(q, m[1]), dot(q, m[2]), dot(q, m[3]));\n"
+    "  o.uv = float2(dot(t, tex_matrix[0].xyz), dot(t, tex_matrix[1].xyz));\n"
+    "  o.c = float4(alpha_value.x, 0, 0, 0); return o; }\n";
+constexpr char lone_ps_source[] =
+    "sampler2D s : register(s0);\n"
+    "float4 colour_matrix[3] : register(c0);\n"
+    "float4 main(float4 c : COLOR0, float2 uv : TEXCOORD0) : COLOR0 {\n"
+    "  float4 t = tex2D(s, uv); float4 h = float4(t.rgb, 1);\n"
+    "  return float4(float3(dot(h, colour_matrix[0]), dot(h, colour_matrix[1]), dot(h, colour_matrix[2])) * c.x, t.a); }\n";
+struct LoneVertex {
+    float x, y, z, u, v;
+};
+static_assert(sizeof(LoneVertex) == 20, "the stand-in body vertex");
+inline const D3DVERTEXELEMENT9* lone_declaration() {
+    static const D3DVERTEXELEMENT9 d[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                          {0, 12, D3DDECLTYPE_FLOAT2, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_TEXCOORD, 0},
+                                          D3DDECL_END()};
+    return d;
+}
+// The material's constants the stand-in pair reads: the identity g_TexMatrix (no texture animation on a bullet body),
+// g_AlphaValue = fade, the identity colour matrix.
+inline void bind_lone_constants(IDirect3DDevice9* dev, float fade) {
+    const float tex_matrix[8] = {1, 0, 0, 0, 0, 1, 0, 0}, alpha[4] = {fade, 0, 0, 0};
+    const float colour_matrix[12] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0};
+    dev->SetVertexShaderConstantF(10, tex_matrix, 2);
+    dev->SetVertexShaderConstantF(12, alpha, 1);
+    dev->SetPixelShaderConstantF(0, colour_matrix, 3);
+}
+// The lone draw's pass: bind_pass's states (the material's ONE / INVSRCCOLOR, Z write off, no cull) with the lone
+// stand-in VS, its declaration and constants.
+inline void bind_lone_pass(IDirect3DDevice9* dev, IDirect3DVertexShader9* vs, IDirect3DVertexDeclaration9* decl,
+                           IDirect3DBaseTexture9* tex, const float rows[16], bool depth, float fade) {
+    bind_pass(dev, vs, decl, tex, rows, depth);
+    bind_lone_constants(dev, fade);
+}
+// One lone draw re-shaded on the plain path (motion_output_bullet_reshade_inc.h prepare_lone_bullet: the game's blend
+// kept): begin, the indexed draw, end, through the production sequence.
+inline HRESULT lone_reshaded_draw(IDirect3DDevice9* dev, IDirect3DPixelShader9* ours, IDirect3DPixelShader9* game,
+                                  const float constants[4], const float app_block[12], UINT vertices, UINT primitives,
+                                  bool* restored, const float* layout = nullptr) {
+    namespace rs = x3m::weapon_effects::reshade;
+    auto ops = device_ops(dev);
+    rs::Plan plan;
+    plan.program = ours;
+    plan.constants = constants;
+    plan.layout = layout;
+    rs::Applied applied;
+    const HRESULT hr = rs::begin(ops, plan, app_block, applied);
+    const HRESULT drawn = SUCCEEDED(hr) ? dev->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, vertices, 0, primitives) : hr;
+    const HRESULT back = rs::end(ops, applied, game, app_block);
+    *restored = SUCCEEDED(hr) && SUCCEEDED(back);
+    return drawn;
+}
 } // namespace reshade_fx

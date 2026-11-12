@@ -145,9 +145,13 @@ struct StageFrame {
     // The bullet re-shade (FL reshade mode; MotionOutput::bullet_reshade_take_frame): draws re-shaded, substitutions
     // that failed (the draw kept the game's program), bullet-program draws outside the batch submit, the substitution's
     // CPU time of the substitution sequence alone over the frame's timed draws (us; every 60th frame and capture
-    // frames), the re-shaded draws the additive route converted, of them with the route's far flag.
+    // frames), the re-shaded draws the additive route converted, of them with the route's far flag; the lone path's
+    // re-shaded draws (bullet-draw-batch.md section 7: a body drawn through the material submit; in none of the
+    // batch's counts or time), of them with the far flag, its failed substitutions, timed draws and their CPU us.
     unsigned reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
-    unsigned reshade_additive = 0, reshade_flagged = 0;
+    unsigned reshade_additive = 0, reshade_flagged = 0, reshade_lone = 0, reshade_lone_flagged = 0;
+    unsigned reshade_lone_failures = 0, reshade_lone_timed = 0;
+    float reshade_lone_us = 0.f;
     float reshade_us = 0.f;
     // The muzzle flash re-shade (FL reshade mode; MotionOutput::muzzle_reshade_take_frame): draws re-shaded, muzzle
     // draws matched (body id in the list, ONE / ONE), of the re-shaded those kept off the hull-emission route, failed
