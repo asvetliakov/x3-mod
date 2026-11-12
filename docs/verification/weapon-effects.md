@@ -4287,8 +4287,9 @@ non-ship object `others_native`); `weapon_effects_frame` carries `ships_native=`
 (`core::shield_surface`); a ship the stage cannot resolve again draws nothing (the `lathe_*` refusals).
 
 **Native fixture** [M] (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
-verification/probe/run_weapon_effects.py --host native`, quiet host, display held, second run): D3D 147 checks PASS,
-AP hook 142 PASS, FL hook 74 PASS. The first run failed `flash_budget_combined_512_bolts_64_flashes_64_pulses` (the known
+verification/probe/run_weapon_effects.py --host native`, quiet host, display held): on the tree merged with `reshade`
+2a0153fab (53cdfc591, the lathe additivity cases adapted to the new routing) D3D 153 checks PASS, AP hook 142 PASS, FL
+hook 74 PASS, first run. Before the merge the first run failed `flash_budget_combined_512_bolts_64_flashes_64_pulses` (the known
 first-run flake: CPU 596 us against 123) and two AP hook checks whose helper required a staged hit for an asteroid and
 a mismatched class (now `hit_any`: the record keeps its shield fraction and tier when forwarded). Removed: the walked
 ellipsoid's placement, axis-plane, two-sides, capital walk, Titan scale, forced failure and walk cost cases and the
@@ -4300,17 +4301,18 @@ the decal, the cockpit eye sphere) and the capital without a profile drawing not
 on a box profile (radius 150 = the profile's smallest half-extent x 1.15); the decal cases use the station source.
 Names: [`check_names.py`](../../verification/results/weapon-effects-nowalk/check_names.py).
 
-**Cost** [M], best / mean us of 200 builds, before (the record at 89c534a1e) and after: one capital 64 hits decal 60.3 /
-71.4 → 62.1 / 72.5, lathe 18.5 / 19.8 → 18.8 / 19.7; sixteen capitals decal 174.7 / 195.0 → 172.0 / 197.5, lathe 85.4 /
-101.3 → 84.0 / 95.1; 12 hits/s decal 35.2 / 40.4 → 34.7 / 37.5, lathe 10.1 / 10.4 → 9.9 / 11.1; station cluster 39.0 /
-43.7 → 38.9 / 48.4 (run-to-run noise; the walk never ran on these rows). Flash budget CPU 8.4 → 8.9 us, combined 512
-bolts + 64 flashes 123.2 → 123.6 us (GPU 40.5 → 39.8); projectile 512 bolts CPU 92.1 → 88.1 us, worst 117.2 → 116.7.
+**Cost** [M], best / mean us of 200 builds, before (the record at 89c534a1e) and after (the merged run): one capital 64
+hits decal 60.3 / 71.4 → 60.4 / 70.8, lathe 18.5 / 19.8 → 18.2 / 19.8; sixteen capitals decal 174.7 / 195.0 → 172.5 /
+189.0, lathe 85.4 / 101.3 → 82.8 / 99.6; 12 hits/s decal 35.2 / 40.4 → 34.5 / 39.2, lathe 10.1 / 10.4 → 10.1 / 11.0;
+station cluster 39.0 / 43.7 → 38.8 / 48.1 (run-to-run noise; the walk never ran on these rows). Flash budget CPU 8.4 →
+9.0 us, combined 512 bolts + 64 flashes 123.2 → 126.0 us (GPU 40.5 → 40.0); projectile 512 bolts CPU 92.1 → 91.7 us,
+worst 117.2 → 117.7.
 The walk's own cost leaves the frame (the base record: 127 parts 8.3 us, a 1024-node walk 72.8 us, 106 us through
-`engine_memory::read`, a slice 26.2 us). The hook's event cost 17.8 → 17.2 us per 50 events (full ring 56.0 → 55.2); the
+`engine_memory::read`, a slice 26.2 us). The hook's event cost 17.8 → 17.1 us per 50 events (full ring 56.0 → 55.3); the
 AP handler 1236 → 1383 instructions, frame 200 bytes unchanged (FL 204). Rows:
 [`cost_rows.py`](../../verification/results/weapon-effects-nowalk/cost_rows.py).
 
-Builds: FL `build-nowalk-fl` 0 warnings (d3d9.dll sha256 prefix `5c16ec9afaa4ecf0`), `check_no_x87` FL PASS (1085
+Builds (merged tree, clean): FL `build-nowalk-fl` 0 warnings (d3d9.dll sha256 prefix `ee51bd98bfd3c5b0`), `check_no_x87` FL PASS (1085
 functions), AP `build-nowalk-ap` 0 warnings; host `test_weapon_effects_core`, `_hook`, `_table`, `_launch` 59 OK.
 
 **Open.** The installed AP table (`C:\X3\x3m\weapon_effects.json`) is schema 2 with no profiles [M]: with this build every
