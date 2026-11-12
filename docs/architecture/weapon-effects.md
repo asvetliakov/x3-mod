@@ -681,7 +681,29 @@ every hit, so a diagnosis flight still sees vanilla.
     `generated_from.ship_profiles_skipped` with its reason and has no entry (the runtime falls back). The Argon Titan (FL
     row 11) [M]: z -511,093 to 545,751 (the walk's hull part 17,329 +- 528,422), radius 545,994 (scene_radius 545,751),
     widest slice 16 (z 17,329..50,355, amidships) hx 151,433 (the stored x extent) hy 108,901, the slice half-widths 3.8k
-    to 151k in x against the walk's single 174k (`verification/results/ship-profiles/titan_profile.py`).
+    to 151k in x against the walk's single 174k (`verification/results/ship-profiles/titan_profile.py`; before the
+    hull rules below).
+    *Hull rules (FL 69 A, 2026-11-12).* The bubble hugs the hull proper; masts, antennae and spars may stay outside.
+    (a) A part whose own lateral extent (max of its placed points' x/y bbox half-widths) is under 6 % of the scene's
+    is dropped (none when that would drop all); (b) after one slicing, z0..z1 is trimmed to the first and last
+    non-empty slice whose hx x hy is at least 1 % of the widest slice's, and the kept points are sliced again (32);
+    an internal thin slice (a neck) stays. Then the half-widths are eased: an interior slice takes the running max
+    over +-1 slice, then the 3-tap mean, never below its raw width (fins ease in over about two rings); an end slice
+    takes max((2 raw + neighbour's raw) / 3, raw), so the domes keep about their own width (`--raw-profiles` /
+    `smooth=False` turns the easing off).
+    Entries add `trim_lo`/`trim_hi` (scene units cut at each end), `parts_excluded` and `smoothed` (schema 3, keys
+    the reader skips); `generated_from.ship_profiles` adds `thin_parts_excluded`, `part_fraction`, `trim_fraction`,
+    `smoothed`. The trim fraction is 1 %, not the 3 % first proposed: the Titan's result is the same anywhere from
+    0.5 % to 3 % (its needle end slices are 0.06 % and 0.43 % of the widest, the next ones 3.0-3.8 %), while 3 %
+    also cut genuine narrow noses (1-3 %) of fighters with wide wings; 5 % cuts the Titan's nose structure to z
+    446k. The part fraction is insensitive between 4 % and 10 % for the Titan. Titan [M]: z -477,889 to 500,606
+    (trim 33,204 stern, 45,145 bow), 14 parts dropped (8 small turret and 6 camera dummies), end slices raw 13.9k x
+    44.7k / 19.5k x 25.9k, eased 33.1k x 47.8k / 19.5k x 26.3k (were 9.9k x 7.1k / 3.8k x 2.9k). FL over 403
+    profiles [M]: 3,540 thin parts dropped, z changed on 243 rows (122 by more than 5 % of the length: 59 M3-M5
+    fighters, 18 M1/M2/TL; the largest are Split M5 variants whose front half is a flat blade, hy 1-10); per-slice raw vs eased and the sweep in
+    `verification/results/ship-profiles/hull_rules_fl.txt` (`hull_rules.py`; Titan entries `titan_profile_raw.json`,
+    `titan_profile_smoothed.json`; `titan_profile.json` stays frozen as the pre-rule profile the native fixture's
+    `titan_profile()` embeds).
   - *Bubble.* An ellipsoid in the owner frame from the hull bounds (render-node-bounds.md 6.1, the reads and guards of
     `ship_avoidance_walk_core.h` `hull_children` with a signed box: `stage::hull_bounds` in
     `src/proxy/weapon_effects_bubble.h`, every descendant of the root node at most 3 levels down and 1024 nodes, 1024 per
