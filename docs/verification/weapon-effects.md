@@ -4237,8 +4237,20 @@ production change.
   (size class c2 from 5 to 131) in the 300 frames where the Titan's shield hits began (frame 93300 to 93900). Against
   it: the replay leases only the application's buffer draws (the lathe is an UP draw through the native table, never
   leased); the alpha-tested casters stay at 8 through the hits, so no cut-out caster is evident; no hex-tiled vanilla
-  mesh is known; the extra casters may be other ships closing in. Deciding run: the same scene with the sun-shadow
-  application off, or with the shield stage off.
+  mesh is known; the extra casters may be other ships closing in. **Refuted by triage (2026-11-13,
+  [`lattice_caster_rows.py`](../../verification/results/lathe-bubble/lattice_caster_rows.py))** [M]: `c2` counts the
+  candidates in cascade 2, not new draws (routed 118 to 143 only); it rose from 2 at frame 92940 to 86 at 93180 before
+  the window's first Titan hit at 93311, stays at about 130 through 96180 to 100200 with no hits, and stays at 2 to 7
+  through the hit clusters at 70539 to 72057 and 82146 to 87529: it follows the camera's distance to the Titan's hull,
+  not the hits (238 of 306 rows near a hit and 622 of 1388 rows without one have c2 >= 50; the FL 68 log,
+  `x3m.prev.log`, shows the same and that flight reported no lattice). Gate 4 refuses every blended draw as a caster;
+  the alpha casters, the fade arm and the shader-pair top list did not move at the hits; the FL census has no shield
+  overlay program or texture. The lattice's source stays unconfirmed by the log. The main session's reading of the
+  boosted screenshot: the cells are at the lathe's own 16 m pitch with light borders and darker fill, which is the
+  stage's cell style under heavy fire on a hull crushed to black by the combat exposure (EV held 1.4 to 3.4 stops below
+  rest by the frame's brightest pixels); the hits=71 window would leave several hundred cells live. Deciding run: the
+  same scene with `debug = 1` and an F8 capture while the lattice shows (the capture records the cascade maps and the
+  per-candidate bounds), and the user's word on whether it shows only under heavy fire.
 - *Cost* [M] (GPU, the flight geometry): 16 hits 43.7 µs at 1080p / 119.2 µs at 5120x1440 (3 draws, raster 0.94 /
   1.11 screens); 64 hits 73.1 / 206.6 µs (8 draws, 1.57 / 1.87 screens): each spill draw's band spans its cells'
   u-range at every v, so a draw rasterizes about a quarter of the screen. Two flank hits 12 km out: 16.7 / 19.6 µs.
