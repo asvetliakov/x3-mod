@@ -24,8 +24,6 @@
     "commit": "5ee52c350e9a4bbe46c65b2f3fb20127a9603d87-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_bubble.h",
-      "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_patch.cpp",
       "src/proxy/weapon_effects_patch.h"
     ],
@@ -33,13 +31,13 @@
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "44e4243498e920c81d1a639b37f89924487130a2e5ba5dbfdb6020f43e534d92",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "8406e22731168adc1f510ab20979948796fd8d362d84bad4e0a33ac8195338ea",
-      "src/proxy/weapon_effects_patch.h": "ec732cfa1aaee0293ffc09a6a97931751385da839488f05686df76b604075a0f",
+      "src/proxy/weapon_effects_patch.cpp": "bb5c54c162a10719fa8d989ca0d0de993f5aac0b209566123dc08aa1e8565137",
+      "src/proxy/weapon_effects_patch.h": "4a64e7a968cb40007411ad793d1cca9278563f791a8bf8fb1544fb063e38aa1f",
       "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "1310fe903dd601ca01a04dbc05011458bccd232b7d2e06ca1ce48bdeab39fc15",
+      "src/proxy/weapon_effects_core.h": "bf193935a01f17e112ba7be9fca8af778c91cc94d4ddd9be28da0221734070c1",
       "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
-      "src/proxy/weapon_effects_bubble.h": "ea07846d5404453fd898bca51637f8856d57702ff7c34b0e5591d2d9956f49e1",
+      "src/proxy/weapon_effects_bubble.h": "04603727f3026e09d29262e06df4fa4898092c05abaa676463c77101f26d8576",
       "src/proxy/weapon_effects_table.h": "65b005f92719ba1c18787c4b94d061613ce9b1f859d5d341c58189cd41b3134a",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
@@ -259,7 +257,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "fe194d076290a0c3c02a784754627b587dd2261e7aec0726cf1d5facc9eb64ad"
+    "executable_sha256": "6a3ce6b9abd0da7ad8a4ccb49b2c69d29ad62156848ad05ef4ed603ff8e56636"
   },
   "host": {
     "name": "native-windows",

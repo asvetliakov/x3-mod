@@ -82,6 +82,10 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_bullet_reshade.hlsl', 'src/effects/weapon_bullet_reshade_flag_ps.hlsl',
                       'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h', 'src/proxy/bullet_reshade_route.h',
                       'src/proxy/bullet_reshade_core.h', 'verification/probe/weapon_bullet_reshade_fixture.h',
+                      # its lone path (section 7)
+                      'src/effects/weapon_bullet_reshade_lone_ps.hlsl', 'src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl',
+                      'src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h',
+                      'src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h',
                       # the muzzle flash re-shade (docs/architecture/muzzle-flash-look.md)
                       'src/effects/weapon_muzzle_reshade_ps.hlsl', 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h',
                       'src/proxy/muzzle_reshade_route.h', 'src/proxy/muzzle_reshade_core.h',
@@ -105,6 +109,10 @@ PROGRAMS = {
                                  'src/renderer/weapon_bullet_reshade_pixel_program_inc.h'),
     'weapon_bullet_reshade_flag_ps': ('verification/results/weapon-bullet-reshade-flag-pixel-program.json',
                                       'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h'),
+    'weapon_bullet_reshade_lone_ps': ('verification/results/weapon-bullet-reshade-lone-pixel-program.json',
+                                      'src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h'),
+    'weapon_bullet_reshade_lone_flag_ps': ('verification/results/weapon-bullet-reshade-lone-flag-pixel-program.json',
+                                           'src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h'),
     'weapon_muzzle_reshade_ps': ('verification/results/weapon-muzzle-reshade-pixel-program.json',
                                  'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h'),
 }

@@ -477,6 +477,8 @@ unsigned MotionOutput::device_references() const noexcept {
 #if X3M_EDITION_FL
     if (bullet_reshade_ps_) ++count;
     if (bullet_reshade_flag_ps_) ++count;
+    if (bullet_reshade_lone_ps_) ++count;
+    if (bullet_reshade_lone_flag_ps_) ++count;
     if (muzzle_reshade_ps_) ++count;
 #endif
     if (sun_sentinel_ps_) ++count;
@@ -631,8 +633,11 @@ void MotionOutput::release_resources() noexcept {
 #if X3M_EDITION_FL
     release(bullet_reshade_ps_); // the bullet re-shade's programs (created again at the next device's registration)
     release(bullet_reshade_flag_ps_);
+    release(bullet_reshade_lone_ps_);
+    release(bullet_reshade_lone_flag_ps_);
     bullet_reshade_create_failed_ = bullet_reshade_restore_failed_ = false;
     shadow_.ps_bullet = false;
+    shadow_.vs_lone = false;
     release(muzzle_reshade_ps_); // the muzzle re-shade's program (created again at the next device's registration)
     muzzle_reshade_create_failed_ = muzzle_reshade_restore_failed_ = false;
     shadow_.vs_muzzle = false;
@@ -4463,6 +4468,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         shadow_.vs_row = nullptr;
         shadow_.vs_prepass = nullptr;
         shadow_.vs_muzzle = false;
+        shadow_.vs_lone = false;
     }
     if (!requested_ || !shader) return;
     try {
@@ -4493,6 +4499,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         if (!enabled_ || !code || !bytes || bytes % 4) return;
 #if X3M_EDITION_FL
         if (hash == weapon_effects::muzzle_reshade::vertex_shader && muzzle_reshade_requested_) muzzle_reshade_create();
+        if (weapon_effects::reshade::lone_vertex_shader(hash) && bullet_reshade_requested_) bullet_reshade_create();
 #endif
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
@@ -5214,6 +5221,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_row = nullptr;
     shadow_.vs_prepass = nullptr;
     shadow_.vs_muzzle = false;
+    shadow_.vs_lone = false;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
@@ -5222,6 +5230,9 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_muzzle = muzzle_reshade_requested_ && shadow_.vs_hash == weapon_effects::muzzle_reshade::vertex_shader;
     // A VS registered before the program could be created (creation is once per device; two bool tests after it).
     if (shadow_.vs_muzzle && !muzzle_reshade_ps_ && !muzzle_reshade_create_failed_) muzzle_reshade_create();
+    // The bullet re-shade's lone path (bullet-draw-batch.md section 7): the effects DEFAULT / INSTANCE VS, the ABI gate.
+    shadow_.vs_lone = bullet_reshade_requested_ && weapon_effects::reshade::lone_vertex_shader(shadow_.vs_hash);
+    if (shadow_.vs_lone && !bullet_reshade_ps_ && !bullet_reshade_create_failed_) bullet_reshade_create();
 #endif
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.vs_registered = it->second.registered;
@@ -6341,6 +6352,15 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
                 prepare_screen_additive(call, route);
                 screen_additive_window_.apply_failures += screen_additive_failures_ - failures;
             }
+#if X3M_EDITION_FL
+            // The bullet re-shade's lone path (motion_output_bullet_reshade_inc.h): one bool test unless the effects
+            // DEFAULT / INSTANCE VS is bound in reshade mode; the blend shadow, then the scope node's body id in the
+            // body map for the ONE / INVSRCCOLOR and ONE / ONE draws only. Before the source gain, the muzzle and the
+            // hull routes, which a re-shaded draw skips.
+            if (shadow_.vs_lone && route.submit && !shadow_.recording && !route.composition && !route.screen_additive &&
+                !route.fog_card_mask.masked && lone_bullet_match(route))
+                prepare_lone_bullet(call, route);
+#endif
             // Sky nebula deband: the part's pair swap, last, never on a draw another preparation took.
             if (route.sky_nebula && route.submit && !route.composition && !route.screen_additive &&
                 !route.fog_card_mask.masked)
@@ -6350,7 +6370,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Source-only gain: a null pointer test when the option is off or the
     // bound pair is not one of the twenty; the bracket routes take precedence.
     if (shadow_.source_gain_eligible_variant && !route.routed && !route.composition && !route.fog_card_mask.masked &&
-        route.submit)
+        route.submit && !route.bullet_reshade)
         prepare_source_gain(call, route);
 #if X3M_EDITION_FL
     // Muzzle flash re-shade: one bool test unless the standard_lighting DEFAULT VS is bound in reshade mode with the
@@ -6372,7 +6392,8 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // Hull-emitter gain: one bool test when the option is off or the bound PS
     // is not one of the 24 (12 AP, 12 FL); its own flag (a fixture seam toggles it).
     // A routed or composed draw takes the same blend verdict inside.
-    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit && !muzzle_owned)
+    if (shadow_.ps_hull_program && hull_gain_enabled_ && !route.fog_card_mask.masked && route.submit && !muzzle_owned &&
+        !route.bullet_reshade)
         prepare_hull_gain(call, route);
 #if X3M_EDITION_FL
     // Bullet re-shade: one bool test unless a game bullet program is bound (reshade mode only); never while a state
@@ -6835,7 +6856,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     }
     // The packed route's draw-shape and scene guards (non-indexed from device
     // memory, an open bound scene, no active query, no recording block, no MSAA).
-    if (!call.primitives || call.indexed || call.user_memory) {
+    // The bullet re-shade's lone path (prepare_lone_bullet) offers its indexed draw from the body's own buffers: no
+    // footprint plan reads them (below), nothing else of the route depends on the shape.
+    if (!call.primitives || (call.indexed && !route.bullet_lone) || call.user_memory) {
         refuse(1);
         return;
     }
@@ -6850,8 +6873,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     const bool gained = screen_additive_gain_ != 1.f;
 #if X3M_EDITION_FL
     // The bullet re-shade takes precedence over the route's program for a game bullet draw inside the batch submit
-    // (motion_output_bullet_reshade_inc.h): the route's conversion stays, our program replaces its variant.
-    const bool reshade = bullet_reshade_ready();
+    // (motion_output_bullet_reshade_inc.h): the route's conversion stays, our program replaces its variant. A lone
+    // bullet draw (route.bullet_lone, matched by prepare_lone_bullet with its program ready) is always re-shaded.
+    const bool reshade = route.bullet_lone || bullet_reshade_ready();
 #else
     constexpr bool reshade = false;
 #endif
@@ -6915,12 +6939,14 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     // far / thin programs need the four-lane RT2 anyway), the targets allocated, independent write masks and the
     // flag variant; a refusal logs one row per reason and leaves the draw on the route exactly as without the
     // option. One bool for every admitted draw of a device without the option.
+    // A lone bullet draw (route.bullet_lone) is a candidate on the same terms: it is the body the batch would have drawn.
     bool flag = false;
-    if (bolt_far_requested_ && screen_emission::admitted_vertex_shader(shadow_.vs_hash) &&
+    if (bolt_far_requested_ && (route.bullet_lone || screen_emission::admitted_vertex_shader(shadow_.vs_hash)) &&
         selector_.scene_depth_written()) {
         unsigned reason = 0;
 #if X3M_EDITION_FL
-        if (reshade ? !bullet_reshade_flag_ps_ : !shadow_.ps_screen_additive_flag_variant)
+        if (reshade ? !(route.bullet_lone ? bullet_reshade_lone_flag_ps_ : bullet_reshade_flag_ps_)
+                    : !shadow_.ps_screen_additive_flag_variant)
 #else
         if (!shadow_.ps_screen_additive_flag_variant)
 #endif
@@ -7044,8 +7070,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (shadow_.screen_additive_index < screen_emission::pair_count)
         screen_additive_frame_pairs_ |= 1u << shadow_.screen_additive_index;
     // Bolt footprint: one bool test unless requested; it never changes the
-    // admission above and unwinds nothing but its own binding.
-    if (bolt_footprint_requested_) prepare_bolt_footprint(call, route);
+    // admission above and unwinds nothing but its own binding. Not for a lone
+    // bullet draw: its indexed static buffers carry no published scan.
+    if (bolt_footprint_requested_ && !route.bullet_lone) prepare_bolt_footprint(call, route);
 }
 // The single-copy drop: the draw is not forwarded (the hook returns D3D_OK, the game's result for a draw that
 // succeeded) and nothing is set, bound or planned; the frame's counters and the capture-frame row (sharing the

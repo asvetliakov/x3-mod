@@ -300,6 +300,22 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertAlmostEqual(row['scale_ppc'], 2.75 * 0.6169 / 0.9888, places=2)
         self.assertLess(row['us_size_miss'], 1.0)
 
+    def test_reshade_lone_path(self):
+        # bullet-draw-batch.md section 7: the lone draw is recognised by the scope node's body id (the effects VS and
+        # blend as the ABI gate), our lone program reads the fade from COLOR0.x, and the route's sequence converts,
+        # flags and restores it; the recognition is cheap for a hit and for a miss (every other effects draw)
+        checks = dict(self.record['checks'])
+        for name in ('reshade_lone_recognised_by_body_id', 'reshade_lone_programs_create',
+                     'reshade_lone_program_matches_model', 'reshade_lone_route_binds_converts_flags_restores',
+                     'reshade_lone_cost_measured'):
+            self.assertTrue(checks.get(name), name)
+        rows = self.record['metrics']['reshade']
+        self.assertTrue(all(x['ok'] == 1 for x in rows if x.get('case') == 'lone_recognition'))
+        route = next(x for x in rows if x.get('case') == 'lone_additive')
+        self.assertEqual((route['during'], route['restored']), (1, 1))
+        cost = next(x for x in rows if x.get('case') == 'lone_cost')
+        self.assertLess(max(cost['match_us_hit_30'], cost['match_us_miss_30']), 1.0)
+
     def test_muzzle_reshade_gates(self):
         # docs/architecture/muzzle-flash-look.md (the re-shade): the ps_3_0 program created, the readback on the model,
         # the sequence bound and restored, energy <= mz_gain x vanilla's, the flash lit (peak >= mz_gain / 4), the extent

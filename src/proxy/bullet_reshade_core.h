@@ -18,6 +18,32 @@ constexpr std::uint64_t bullet_programs[3] = {0xec1f5c4a2f4e1445ull, 0xd4a26efb7
 constexpr bool bullet_program(std::uint64_t hash) noexcept {
     return hash && (hash == bullet_programs[0] || hash == bullet_programs[1] || hash == bullet_programs[2]);
 }
+// The lone path (bullet-draw-batch.md section 7): a bullet body the batch does not take (fewer than two bolts of the
+// body in the layer, over the batch budget or capacity) is drawn through the material submit (0x0e7142 -> 0x0e0f30)
+// with its own effects.fx material, inside the FL object-trace scope. Its vertex shader (the proxy's FNV-1a 64 of the
+// bytes the game passes to CreateVertexShader) is the effects/effects2s DEFAULT one of every SM2+ profile directory,
+// or the INSTANCE one (the two share the interface our lone program reads: oT0.xy the UV, oD0.x the fade =
+// g_AlphaValue x the optional fog clip, oD0.yz 0; verification/results/projectile-reshade/lone_inputs_out.txt). The
+// VS is shared with every other effects-material draw (engine glows, gate, flares), so it is the ABI gate, not the
+// identity: the identity is the scope node's body id (node +0x144) in the body map below.
+constexpr std::uint64_t lone_vertex_shaders[2] = {0xd5e1c75351ed3f04ull, 0x89193868c61c3846ull};
+constexpr bool lone_vertex_shader(std::uint64_t hash) noexcept {
+    return hash && (hash == lone_vertex_shaders[0] || hash == lone_vertex_shaders[1]);
+}
+// FL node +0x144: the body (model) id every FL scene node carries (bullet-draw-batch.md section 4), not a bullet
+// mark: a non-bullet node drawing a body a TBullets row also names, with the effects VS and blend, would match too (no
+// census of bodies shared outside TBullets was made).
+constexpr std::uint32_t node_body_offset = 0x144;
+// The lone draw's blend (the material's g_SrcBlend / g_DestBlend; every effects-material bullet body of the FL table is
+// ONE / INVSRCCOLOR but bullet_push and tol_bullet, ONE / ONE): lone_screen is the batch pass's own law (the additive
+// route converts it), lone_additive draws plain under the game's ONE / ONE, anything else is not a bullet draw.
+enum LoneBlend : unsigned { lone_none = 0, lone_screen = 1, lone_additive = 2 };
+constexpr unsigned lone_blend(bool blend, std::uint32_t src, std::uint32_t dst, std::uint32_t op) noexcept {
+    return !blend || src != 2u /* D3DBLEND_ONE */ || op != 1u /* D3DBLENDOP_ADD */ ? lone_none
+           : dst == 4u /* D3DBLEND_INVSRCCOLOR */                                  ? lone_screen
+           : dst == 2u /* D3DBLEND_ONE */                                          ? lone_additive
+                                                                                    : lone_none;
+}
 // The program's constant register (weapon_bullet_reshade_ps.hlsl `reshade : register(c31)`): ps_2_0 has c0..c31; the
 // game's bullet program reads none (section 6: `tex t0; mul r0.rgb, t0, v0.a; mov r0.a, t0.a`, no c#), and the block is
 // put back after each substituted draw. The block is c29..c31: c29..c30 the drawn body's UV layout (layout_constants,
@@ -132,16 +158,18 @@ static_assert(projectile_family::key_is(projectile_family::tune_key_names[21], "
 // The engine body id -> tables.bullet_bodies entry map (weapon_effects_patch.cpp bullet_body_layout; the host test
 // verification/analysis/test_weapon_effects_table.py drives it with a fake reader). Built once: each table row whose
 // body string hash names an entry gives the live TBullets row's word +0 (its body id, = the batch's [EDX+0x0c]).
-// build_body_map returns false while the map is not final: the engine's TBullets not readable yet (no count), or a
-// row read failed (counted; after body_map_retries failed builds it is final without layouts, reason row_read_failed).
-// A final map is state 1 (built) or 2 (off: no table, no entries, the engine's row count not the table's, or the
-// failed reads). read(address, out, bytes) -> bool is the validated engine reader.
+// build_body_map returns false while the map is not final: the engine's TBullets not readable yet (no count), its live
+// row count not the table's yet (a table still loading), or a row read failed; the last two are counted together, and
+// after body_map_retries such builds the map is final without layouts (reason stale_rows or row_read_failed, the
+// caller's row naming both counts). A final map is state 1 (built) or 2 (off: no table, no entries, or the retries
+// spent). The caller attempts at most one build per frame (weapon_effects_patch.cpp bullet_body_layout), so the
+// retries span 64 frames however many draws ask. read(address, out, bytes) -> bool is the validated engine reader.
 constexpr unsigned tbullets_body = 0x0;  // TBullets +0x0 (weapon_effects_projectile.h projectile::type_body)
 constexpr std::uint32_t body_map_retries = 64;
 struct BodyMap {
     std::uint8_t state = 0;    // 0 not final, 1 built, 2 off
     unsigned count = 0;
-    std::uint32_t failures = 0; // builds a row read failed in
+    std::uint32_t failures = 0; // builds refused for a row count mismatch or a failed row read
     std::uint32_t rows = 0;     // the engine's row count at the last build
     const char* reason = "unbuilt";
     std::uint32_t id[core::bullet_body_capacity]{};
@@ -164,7 +192,10 @@ bool build_body_map(BodyMap& m, const core::Table* t, std::uintptr_t table_slot,
     if (!table_slot || !count_slot || !read(table_slot, &table, 4) || !table || !read(count_slot, &rows, 4) || !rows)
         return false; // TBullets not loaded yet
     m.rows = rows;
-    if (rows != t->rows) return off("stale_rows");
+    if (rows != t->rows) { // not the table's TBullets (yet): unbuilt, retried at the next attempt
+        if (++m.failures >= body_map_retries) return off("stale_rows");
+        return false;
+    }
     m.count = 0;
     for (unsigned r = 0; r < rows && r < core::table_capacity && m.count < core::bullet_body_capacity; ++r) {
         if (!(t->bits[r] & core::row_present) || !t->body_hash[r]) continue;

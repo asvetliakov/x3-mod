@@ -2118,7 +2118,10 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         if (bullet_reshade)
             ctx.motion_output.bullet_reshade_take_frame(&stage.reshade_draws, &stage.reshade_failures,
                                                         &stage.reshade_outside, &stage.reshade_timed, &stage.reshade_us,
-                                                        &stage.reshade_additive, &stage.reshade_flagged);
+                                                        &stage.reshade_additive, &stage.reshade_flagged,
+                                                        &stage.reshade_lone, &stage.reshade_lone_flagged,
+                                                        &stage.reshade_lone_failures, &stage.reshade_lone_timed,
+                                                        &stage.reshade_lone_us);
         if (ctx.motion_output.muzzle_reshade_requested())
             ctx.motion_output.muzzle_reshade_take_frame(&stage.muzzle_draws, &stage.muzzle_matched, &stage.muzzle_hull,
                                                         &stage.muzzle_failures, &stage.muzzle_timed, &stage.muzzle_us);

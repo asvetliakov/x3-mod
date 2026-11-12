@@ -485,6 +485,42 @@ At the proposal the PPC's fins narrow cleanly, but its head reads as a row of sm
 crossed quads at several depths along the axis (z 0.086–0.188 body units), and each quad's glow shrinks on its own.
 Larger `rs_head` values keep them merged [I]. The user tunes in flight. Not flown.
 
+### The lone path (2026-11-12)
+
+FL 67 A showed bolts dimmed or half-transparent over a distant station that the re-shade never drew: the batch
+submits ran (600 per 300 frames) with `draws=0`, the additive route admitted nothing, and the white meshes in those
+frames carried no far flag ([ledger](../verification/weapon-effects.md), "FL 67 A"). They are bullet bodies the batch
+does not take (fewer than two bolts of a body in the layer, over budget or capacity; the Titan's PPC bursts mostly),
+drawn one at a time through the material submit with the body's `effects.fx` material and the effects DEFAULT pair,
+where the source-only gain's clamp variant drew them white ([bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md)
+section 7). Without the far flag the TAA treats them as static geometry and its far hold and clip dim them.
+
+The rule is the batch's, by identity instead of by program:
+
+- **Recognition.** The effects DEFAULT or INSTANCE VS bound (the ABI gate: the two share oT0.xy = UV and oD0.x = the
+  fade), ADD ONE / INVSRCCOLOR or ONE / ONE, and the object-trace scope node's body id (`+0x144`) in the body map the
+  geometric size already builds from the live TBullets rows. Every other effects draw (engine glows, gate, flares)
+  ends at the blend or at the 30-id scan.
+- **Substitution.** A lone variant of the same program (fade from COLOR0.x; the game's colour matrix is not applied,
+  as the batch pass has none), the body's c29..c31, the one sequence of `bullet_reshade_route.h`. ONE / INVSRCCOLOR
+  goes through the additive route exactly as a batch draw: DESTBLEND ONE with the emission gain, the alpha law, and
+  after the scene's first depth writer the flag variant writing RT2.g, so the far composite sees the bolt. Off or
+  refused route, and ONE / ONE: plain under the game's blend. The re-shaded draw skips the source gain and the hull
+  route. No footprint (the indexed static buffers carry no scan) and no single-copy drop (the batch's copy rule).
+- **Counts.** `bullet_reshade_frame` gains `lone=`, `lone_flagged=`, `lone_failures=` and `lone_us_per_draw=`, in
+  none of the batch's fields; the additive route's admitted / refused / window counts include the lone draws offered.
+- **Body map.** Built only while the live TBullets row count equals the table's, one attempt per frame, off after 64;
+  the lone path stays off until it is built.
+
+Evidence [M] (native fixture; ledger "FL 67 A"): recognition by body id 9 of 9 rows; the lone program equals the model
+with the fade in COLOR0.x (worst 0.018 of the tolerance); the route's path converts, flags (RT2.g 12.906 against
+12.908) and restores. Cost: recognition 0.013 µs per candidate draw for a hit and 0.015 µs for a miss (node read and a
+30-id scan), the sequence 0.348 µs per lone draw (0.195 for the batch's non-indexed draw). The PPC drawn through the
+lone state at 50 m equals the batch frame pixel for pixel, vanilla and re-shaded (dark sum 2593.162 both, max
+difference 0; [lone](../../verification/results/projectile-reshade/fixture-ppc-lone-reshade-near.png),
+[batch](../../verification/results/projectile-reshade/fixture-ppc-reshade-near.png)). The vanilla lone frame uses the
+identity colour matrix and no source gain, so it shows the pair's own law, not FL 67's white clamp. Not flown.
+
 ## 8. Options considered and why they lose
 
 - **Draw over the game's bolt** (keep the batch, add the core). The vanilla streak stays as the body: two bodies, the

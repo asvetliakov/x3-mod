@@ -37,6 +37,10 @@
     "src/proxy/bullet_reshade_route.h",
     "src/proxy/bullet_reshade_core.h",
     "verification/probe/weapon_bullet_reshade_fixture.h",
+    "src/effects/weapon_bullet_reshade_lone_ps.hlsl",
+    "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl",
+    "src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h",
+    "src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h",
     "src/effects/weapon_muzzle_reshade_ps.hlsl",
     "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h",
     "src/proxy/muzzle_reshade_route.h",
@@ -50,18 +54,20 @@
     "commit": "5ee52c350e9a4bbe46c65b2f3fb20127a9603d87-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_bubble.h",
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_stage.h",
-      "src/renderer/weapon_effects_pass.h",
-      "verification/probe/weapon_effects_fixture.cpp"
+      "src/proxy/bullet_reshade_core.h",
+      "verification/probe/weapon_bullet_reshade_fixture.h",
+      "verification/probe/weapon_effects_fixture.cpp",
+      "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl",
+      "src/effects/weapon_bullet_reshade_lone_ps.hlsl",
+      "src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h",
+      "src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h"
     ],
     "sha256": {
-      "src/renderer/weapon_effects_pass.h": "c7994b09ea39f9705f6cf53ad1bd866f2ec56eb05d17c67f3fb3623e79f2e753",
+      "src/renderer/weapon_effects_pass.h": "66cdfafbdbc93a43dcd2f73b08da0f895d0454499e3800693746a0607cede250",
       "src/renderer/weapon_effects_pass.cpp": "201f120642b92c098b2cb4c3d74e4ce8da80814f642492ffb49a74a23ba2ff8a",
-      "src/proxy/weapon_effects_core.h": "1310fe903dd601ca01a04dbc05011458bccd232b7d2e06ca1ce48bdeab39fc15",
-      "src/proxy/weapon_effects_stage.h": "a811ebb66c9e110c7f2ef1b8bd886ea6263af93507a88d3560b1c4e155d2867b",
-      "src/proxy/weapon_effects_bubble.h": "ea07846d5404453fd898bca51637f8856d57702ff7c34b0e5591d2d9956f49e1",
+      "src/proxy/weapon_effects_core.h": "bf193935a01f17e112ba7be9fca8af778c91cc94d4ddd9be28da0221734070c1",
+      "src/proxy/weapon_effects_stage.h": "3cb42c446cf2e0cca1c6f5412da2c95c37941854ac1bfedb6947dc2234a0ee41",
+      "src/proxy/weapon_effects_bubble.h": "04603727f3026e09d29262e06df4fa4898092c05abaa676463c77101f26d8576",
       "src/effects/weapon_bubble_ps.hlsl": "fa22dab73383736fa57f946cdbaa274fe6aac7b60eac2707ca175840208e8acb",
       "src/proxy/engine_memory.h": "e4c9e3b83cda6a3e91f419edcee8ae1640bd3f7ab80b0acb9b5bb8c6fe33bc21",
       "src/proxy/engine_memory.cpp": "d0174efa4fd1cbb4ffc31831fa44445bcf3801ec8d42c3c48b230e4a5c3b631b",
@@ -91,8 +97,12 @@
       "src/effects/weapon_bullet_reshade_flag_ps.hlsl": "51c4067ceadfd7b40a38e11ec53a704d9429b8d89dd20656fbb9cb4916967544",
       "src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h": "a3fb357d3de7f60021fdbb30da99dc27a10f10a26a6ef8b532992ca8c451b220",
       "src/proxy/bullet_reshade_route.h": "ffba733e292cea8240337017bead5590f702ff0411170a794de730fdabfe64b9",
-      "src/proxy/bullet_reshade_core.h": "f33576f8b1a6287df58a0bc714fa51190b072f59a81b2b7e7914c16aeda26156",
-      "verification/probe/weapon_bullet_reshade_fixture.h": "607f629838597d7c9cd6754aad7f6dcd188328625cc4f6f59ae7110fe8b55ad1",
+      "src/proxy/bullet_reshade_core.h": "c5a8969e87f46f95c955d6d8810fbed2ea87dc3400d8b2e07fd4bfb3de714988",
+      "verification/probe/weapon_bullet_reshade_fixture.h": "63b03b700316b9919562aaee37d4af48f94013fefe3ef7ea9de6ec7dc073229f",
+      "src/effects/weapon_bullet_reshade_lone_ps.hlsl": "8677442ea88a4857433afd632109388c0a21d6e17ba52288e151436687f441e9",
+      "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl": "2c8bc1c2901be68a06dcdab1d0fdf87546cd0bdb917a8cca4887801256acc4de",
+      "src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h": "98a1121cb750976d38db8b992bd0ff9d6fe5d75fe7fb9f8f9da1f8d9a2595116",
+      "src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h": "b60d8d6f7daec353dd24a74a075f2972fda465204a4e18b85aae53ed2993e5a6",
       "src/effects/weapon_muzzle_reshade_ps.hlsl": "473b5a7ab38eb61ffa659267ed047f1e6f5756a7c692524cc56904fc62a17bae",
       "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h": "3c51dede22fb5dc55eb8c9796cde85085b119f798a5708097047b7518353f460",
       "src/proxy/muzzle_reshade_route.h": "6487970e6a7ded65cb72a488e152b9eef7a808ec1b7defb25c5c9a96d2dd3b1c",
@@ -100,7 +110,7 @@
       "verification/probe/weapon_muzzle_reshade_fixture.h": "af3822f3cd89c597e6b8a82df8b152c0598818d1df70928e42f44e497a3d63d5",
       "src/effects/weapon_pulse_ps.hlsl": "ca25bed5e1ac0b95dd8e67dfae2f19403310dfc3302de7d046f9a505c839a2cb",
       "src/renderer/weapon_pulse_pixel_program_inc.h": "7ab6e6c082a618dbd6b9886f2fd68c82a778a08ef71b52852f2b5165d664be4e",
-      "verification/probe/weapon_effects_fixture.cpp": "aa9f9f1f2136eded15a008b6f2f0c080f69a777b1852bc1d203bf834d32da5bf"
+      "verification/probe/weapon_effects_fixture.cpp": "ca182dbfd0fc84f30ce45d14325daf53db3299f85104182c49e8ea7cc3af9d9d"
     }
   },
   "programs": {
@@ -164,6 +174,18 @@
       "bytecode_sha256": "5083aae73c081a9525e396f1108c63288e93c8dfbf9866e045285e50a291876c",
       "target": "ps_2_0"
     },
+    "weapon_bullet_reshade_lone_ps": {
+      "source": "src/effects/weapon_bullet_reshade_lone_ps.hlsl",
+      "word_count": 315,
+      "bytecode_sha256": "7f05a0495874bc712c77147253bffcabcbece7724d4d8191bc09a7a79b84f38c",
+      "target": "ps_2_0"
+    },
+    "weapon_bullet_reshade_lone_flag_ps": {
+      "source": "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl",
+      "word_count": 339,
+      "bytecode_sha256": "10690e4bcf2485f3dcdba9080a73be6d0731d29b3168d78975496de56671aebe",
+      "target": "ps_2_0"
+    },
     "weapon_muzzle_reshade_ps": {
       "source": "src/effects/weapon_muzzle_reshade_ps.hlsl",
       "word_count": 208,
@@ -197,12 +219,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -229,13 +251,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-af3444cd7c0e42cf8/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-acdcbe91dd68b76b2/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "37fc6e9f2ffde836e5e2a3f5f882d03d1fc45a58124391cb0f9f001d3da33a97"
+    "executable_sha256": "1ae580865c3ea349d83580d376337d39feaf03274e56f05b6065d7728718e7df"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "host": {
@@ -268,7 +290,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 135,
+      "checks": 138,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -376,10 +398,6 @@
       true
     ],
     [
-      "placement_capital_ship_hull_decal_at_the_hit",
-      true
-    ],
-    [
       "placement_offcentre_origin_top_lights",
       true
     ],
@@ -416,19 +434,11 @@
       true
     ],
     [
-      "cockpit_eye_sphere_capital_own_ship",
-      true
-    ],
-    [
       "no_pop_at_12_hits_per_second",
       true
     ],
     [
       "no_pop_spread_capital_map_overflows",
-      true
-    ],
-    [
-      "no_pop_spread_corvette_bubble_spills",
       true
     ],
     [
@@ -784,6 +794,30 @@
       true
     ],
     [
+      "reshade_lone_recognised_by_body_id",
+      true
+    ],
+    [
+      "reshade_lone_programs_create",
+      true
+    ],
+    [
+      "reshade_lone_targets",
+      true
+    ],
+    [
+      "reshade_lone_program_matches_model",
+      true
+    ],
+    [
+      "reshade_lone_route_binds_converts_flags_restores",
+      true
+    ],
+    [
+      "reshade_lone_cost_measured",
+      true
+    ],
+    [
       "muzzle_reshade_programs_create",
       true
     ],
@@ -1015,7 +1049,6 @@
         "surface": "bubble",
         "patches": 4,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 83463,
         "sky_lit": 10060,
         "outside_lit": 0,
@@ -1036,7 +1069,6 @@
         "surface": "bubble",
         "patches": 4,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 76739,
         "sky_lit": 11344,
         "outside_lit": 0,
@@ -1057,7 +1089,6 @@
         "surface": "bubble",
         "patches": 4,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 77195,
         "sky_lit": 13414,
         "outside_lit": 0,
@@ -1078,7 +1109,6 @@
         "surface": "bubble",
         "patches": 4,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 77195,
         "sky_lit": 13414,
         "outside_lit": 0,
@@ -1099,7 +1129,6 @@
         "surface": "bubble",
         "patches": 5,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 11784,
         "sky_lit": 172,
         "outside_lit": 0,
@@ -1120,7 +1149,6 @@
         "surface": "bubble",
         "patches": 5,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 21373,
         "sky_lit": 1066,
         "outside_lit": 0,
@@ -1141,7 +1169,6 @@
         "surface": "bubble",
         "patches": 5,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 21305,
         "sky_lit": 1066,
         "outside_lit": 0,
@@ -1162,7 +1189,6 @@
         "surface": "bubble",
         "patches": 5,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 21373,
         "sky_lit": 1066,
         "outside_lit": 0,
@@ -1183,7 +1209,6 @@
         "surface": "hull",
         "patches": 5,
         "bubbles": 0,
-        "walks": 0,
         "lit_pixels": 2452,
         "sky_lit": 0,
         "outside_lit": 0,
@@ -1204,7 +1229,6 @@
         "surface": "bubble",
         "patches": 5,
         "bubbles": 1,
-        "walks": 1,
         "lit_pixels": 18480,
         "sky_lit": 926,
         "outside_lit": 0,
@@ -1219,27 +1243,6 @@
         "ref": "y_top_flat",
         "lit_ratio": 0.865,
         "dir": "0,-127,0"
-      },
-      {
-        "case": "capital_titan_flank",
-        "surface": "hull",
-        "patches": 5,
-        "bubbles": 0,
-        "walks": 0,
-        "lit_pixels": 3808,
-        "sky_lit": 0,
-        "outside_lit": 0,
-        "off_bubble_lit": 0,
-        "eligible": 728,
-        "covered": 728,
-        "coverage": 1.0,
-        "centroid_error_cells": 0.499,
-        "bubble_shift_cells": 0.0,
-        "cap_nose_m": 0.0,
-        "cap_tail_m": 0.0,
-        "ref": "capital_titan_flank",
-        "lit_ratio": 1.0,
-        "dir": "-127,0,0"
       }
     ],
     "axis_plane": [
@@ -1348,18 +1351,18 @@
         "nodes": 127,
         "ok": 1,
         "reads": 894,
-        "walk_best_us": 8.2,
-        "walk_mean_us": 10.2,
+        "walk_best_us": 8.4,
+        "walk_mean_us": 12.1,
         "engine_memory_ok": 1,
-        "engine_memory_cold_best_us": 13.3,
-        "engine_memory_cold_mean_us": 16.1,
+        "engine_memory_cold_best_us": 17.7,
+        "engine_memory_cold_mean_us": 20.6,
         "engine_memory_warm_best_us": 12.2,
-        "engine_memory_warm_mean_us": 12.8,
-        "warm_best_us": 50.7,
-        "warm_mean_us": 59.0,
-        "cold_best_us": 58.7,
-        "cold_mean_us": 66.4,
-        "patches": 19,
+        "engine_memory_warm_mean_us": 14.6,
+        "warm_best_us": 40.8,
+        "warm_mean_us": 61.1,
+        "cold_best_us": 48.4,
+        "cold_mean_us": 67.9,
+        "patches": 13,
         "bubbles": 1,
         "bubble_fallback": 0,
         "cache_walks": 201,
@@ -1380,13 +1383,13 @@
         "fallback_b_shift": 3030.6,
         "shift_ratio": 0.12,
         "patches": 1,
-        "lit_pixels": 1757,
+        "lit_pixels": 2046,
         "hidden_lit": 0,
         "outside_lit": 0,
-        "eligible": 330,
-        "covered": 330,
-        "centroid_error_cells": 0.33,
-        "cell": 30.0
+        "eligible": 385,
+        "covered": 385,
+        "centroid_error_cells": 0.545,
+        "cell": 80.0
       },
       {
         "case": "capital_titan_scale",
@@ -1409,15 +1412,15 @@
         "walked_nodes": 1024,
         "ok": 1,
         "reads": 8325,
-        "walk_best_us": 70.2,
-        "walk_mean_us": 77.2,
-        "engine_memory_cold_best_us": 109.4,
-        "engine_memory_cold_mean_us": 121.1,
-        "engine_memory_warm_best_us": 109.4,
-        "engine_memory_warm_mean_us": 113.9,
+        "walk_best_us": 73.7,
+        "walk_mean_us": 110.9,
+        "engine_memory_cold_best_us": 110.6,
+        "engine_memory_cold_mean_us": 146.4,
+        "engine_memory_warm_best_us": 109.6,
+        "engine_memory_warm_mean_us": 139.8,
         "slice_nodes": 256,
-        "slice_best_us": 27.2,
-        "slice_mean_us": 28.7,
+        "slice_best_us": 26.3,
+        "slice_mean_us": 30.9,
         "slices": 4
       },
       {
@@ -1429,8 +1432,8 @@
         "slice_nodes": 29,
         "slice_reads": 2440,
         "read_bound": 2400,
-        "slice_best_us": 24.4,
-        "slice_mean_us": 30.6,
+        "slice_best_us": 24.9,
+        "slice_mean_us": 29.2,
         "slices": 36
       },
       {
@@ -1530,8 +1533,8 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 2.3,
-        "insertion_us": 1.4
+        "heap_us": 2.2,
+        "insertion_us": 1.3
       },
       {
         "case": "ascending",
@@ -1631,7 +1634,6 @@
         "frames": 240,
         "max_live_hits": 36,
         "max_patches": 1,
-        "max_bubbles": 1,
         "max_cells": 19,
         "max_region_cells": 19,
         "spills": 0,
@@ -1653,11 +1655,10 @@
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 10,
-        "max_bubbles": 0,
+        "max_patches": 9,
         "max_cells": 128,
-        "max_region_cells": 409,
-        "spills": 599,
+        "max_region_cells": 551,
+        "spills": 609,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
@@ -1665,34 +1666,11 @@
         "allowed": 0.02273,
         "excess": 0.0,
         "popped_pixels": 0,
-        "worst_frame": 6,
-        "worst_x": 850,
-        "worst_y": 705,
-        "worst_prev": 2.3281,
-        "worst_cur": 2.3047
-      },
-      {
-        "case": "corvette_spread_12hps",
-        "hits": 49,
-        "frames": 240,
-        "max_live_hits": 36,
-        "max_patches": 8,
-        "max_bubbles": 1,
-        "max_cells": 128,
-        "max_region_cells": 468,
-        "spills": 508,
-        "cells_dropped": 0,
-        "hits_dropped": 0,
-        "dropped": 0,
-        "max_drop": 0.02344,
-        "allowed": 0.02273,
-        "excess": 0.0,
-        "popped_pixels": 0,
-        "worst_frame": 15,
-        "worst_x": 771,
-        "worst_y": 822,
-        "worst_prev": 2.2891,
-        "worst_cur": 2.2656
+        "worst_frame": 72,
+        "worst_x": 1271,
+        "worst_y": 314,
+        "worst_prev": 2.2656,
+        "worst_cur": 2.2422
       },
       {
         "case": "capital_spread_one_draw_witness",
@@ -1700,21 +1678,20 @@
         "frames": 240,
         "max_live_hits": 36,
         "max_patches": 5,
-        "max_bubbles": 0,
         "max_cells": 128,
         "max_region_cells": 128,
         "spills": 0,
-        "cells_dropped": 42588,
+        "cells_dropped": 61116,
         "hits_dropped": 0,
         "dropped": 0,
-        "max_drop": 1.99707,
+        "max_drop": 2.06445,
         "allowed": 0.02273,
-        "excess": 1.96935,
-        "popped_pixels": 1226155,
-        "worst_frame": 45,
-        "worst_x": 850,
-        "worst_y": 477,
-        "worst_prev": 1.9971,
+        "excess": 2.0366,
+        "popped_pixels": 1501104,
+        "worst_frame": 70,
+        "worst_x": 1201,
+        "worst_y": 714,
+        "worst_prev": 2.0645,
         "worst_cur": 0.0
       },
       {
@@ -1723,7 +1700,6 @@
         "frames": 240,
         "max_live_hits": 36,
         "max_patches": 1,
-        "max_bubbles": 1,
         "max_cells": 19,
         "max_region_cells": 19,
         "spills": 0,
@@ -1745,11 +1721,10 @@
         "hits": 49,
         "frames": 240,
         "max_live_hits": 36,
-        "max_patches": 16,
-        "max_bubbles": 0,
+        "max_patches": 9,
         "max_cells": 128,
         "max_region_cells": 551,
-        "spills": 1979,
+        "spills": 609,
         "cells_dropped": 0,
         "hits_dropped": 0,
         "dropped": 0,
@@ -1769,7 +1744,6 @@
         "frames": 240,
         "max_live_hits": 36,
         "max_patches": 10,
-        "max_bubbles": 0,
         "max_cells": 128,
         "max_region_cells": 409,
         "spills": 599,
@@ -1802,15 +1776,13 @@
         "case": "one_capital_64_hits",
         "owners": 1,
         "hits": 64,
-        "patches": 19,
-        "cells": 2178,
-        "spills": 16,
+        "patches": 11,
+        "cells": 1135,
+        "spills": 6,
         "cells_dropped": 0,
         "dropped": 0,
-        "bubbles": 0,
-        "walks": 0,
-        "best_us": 60.8,
-        "mean_us": 73.0,
+        "best_us": 30.0,
+        "mean_us": 40.3,
         "target_us": 200
       },
       {
@@ -1818,44 +1790,25 @@
         "owners": 16,
         "hits": 256,
         "patches": 64,
-        "cells": 8192,
+        "cells": 3158,
         "spills": 0,
-        "cells_dropped": 5409,
-        "dropped": 24,
-        "bubbles": 0,
-        "walks": 0,
-        "best_us": 174.2,
-        "mean_us": 198.1,
-        "target_us": 200
-      },
-      {
-        "case": "one_capital_12hps",
-        "owners": 1,
-        "hits": 31,
-        "patches": 14,
-        "cells": 1546,
-        "spills": 11,
-        "cells_dropped": 0,
-        "dropped": 0,
-        "bubbles": 0,
-        "walks": 0,
-        "best_us": 35.1,
-        "mean_us": 39.2,
+        "cells_dropped": 2295,
+        "dropped": 14,
+        "best_us": 89.0,
+        "mean_us": 122.8,
         "target_us": 200
       },
       {
         "case": "station_flight_b_cluster_64_hits",
         "owners": 1,
         "hits": 64,
-        "patches": 7,
-        "cells": 532,
-        "spills": 2,
+        "patches": 2,
+        "cells": 148,
+        "spills": 1,
         "cells_dropped": 0,
         "dropped": 0,
-        "bubbles": 0,
-        "walks": 0,
-        "best_us": 39.5,
-        "mean_us": 42.0,
+        "best_us": 14.3,
+        "mean_us": 18.0,
         "target_us": 200
       }
     ],
@@ -1864,15 +1817,15 @@
         "fighter_12hps_cells": 36,
         "capital_full_map_cells": 128,
         "capital_fill_map_cells": 128,
-        "capital_spread_draws": 14,
-        "capital_spread_cells": 1546
+        "capital_spread_draws": 9,
+        "capital_spread_cells": 718
       },
       {
         "fighter_12hps_cells": 36,
         "capital_full_map_cells": 128,
         "capital_fill_map_cells": 128,
-        "capital_spread_draws": 14,
-        "capital_spread_cells": 1546
+        "capital_spread_draws": 9,
+        "capital_spread_cells": 718
       }
     ],
     "decal": [
@@ -1892,10 +1845,10 @@
         "lifetime_ms": 2941,
         "lit_ms": 2840.0,
         "seta6_expected_wall_ms": 473.34,
-        "seta6_wall_ms": 473.52,
-        "last_drawn_ms": 473.47,
-        "frames": 19134,
-        "max_frame_ms": 0.638
+        "seta6_wall_ms": 473.72,
+        "last_drawn_ms": 473.45,
+        "frames": 16448,
+        "max_frame_ms": 1.6
       }
     ],
     "retired": [
@@ -1957,7 +1910,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.7
+        "gpu_us": 11.0
       },
       {
         "width": 1920,
@@ -1967,7 +1920,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.0
+        "gpu_us": 16.7
       },
       {
         "width": 1920,
@@ -1977,7 +1930,7 @@
         "drawn": 2,
         "lit_share": 0.0116,
         "raster_share": 0.0214,
-        "gpu_us": 17.6
+        "gpu_us": 18.0
       },
       {
         "width": 1920,
@@ -1987,7 +1940,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 62.9
+        "gpu_us": 62.8
       },
       {
         "width": 1920,
@@ -2007,7 +1960,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 104.9
+        "gpu_us": 103.8
       },
       {
         "width": 1920,
@@ -2017,7 +1970,7 @@
         "drawn": 1,
         "lit_share": 0.032,
         "raster_share": 0.0533,
-        "gpu_us": 19.2
+        "gpu_us": 19.7
       },
       {
         "width": 1920,
@@ -2027,7 +1980,7 @@
         "drawn": 1,
         "lit_share": 0.2719,
         "raster_share": 1.0,
-        "gpu_us": 58.7
+        "gpu_us": 59.8
       },
       {
         "width": 1920,
@@ -2037,17 +1990,17 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 64.2
+        "gpu_us": 64.0
       },
       {
         "width": 1920,
         "height": 1080,
         "case": "capital_spread_spill",
-        "patches": 14,
-        "drawn": 14,
+        "patches": 9,
+        "drawn": 9,
         "lit_share": 0.4169,
-        "raster_share": 7.3704,
-        "gpu_us": 225.5
+        "raster_share": 1.6556,
+        "gpu_us": 93.5
       },
       {
         "width": 1920,
@@ -2057,7 +2010,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.9
+        "gpu_us": 17.4
       },
       {
         "width": 1920,
@@ -2077,7 +2030,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 97.1
+        "gpu_us": 96.4
       },
       {
         "width": 1920,
@@ -2097,7 +2050,7 @@
         "drawn": 6,
         "lit_share": 0.1445,
         "raster_share": 1.888,
-        "gpu_us": 74.7
+        "gpu_us": 73.1
       },
       {
         "width": 5120,
@@ -2107,7 +2060,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.6
+        "gpu_us": 11.1
       },
       {
         "width": 5120,
@@ -2117,7 +2070,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 20.9
+        "gpu_us": 21.6
       },
       {
         "width": 5120,
@@ -2127,7 +2080,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 23.4
+        "gpu_us": 23.6
       },
       {
         "width": 5120,
@@ -2147,7 +2100,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 238.5
+        "gpu_us": 238.8
       },
       {
         "width": 5120,
@@ -2157,7 +2110,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 389.7
+        "gpu_us": 390.3
       },
       {
         "width": 5120,
@@ -2167,7 +2120,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 34.9
+        "gpu_us": 35.0
       },
       {
         "width": 5120,
@@ -2177,7 +2130,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 162.7
+        "gpu_us": 162.9
       },
       {
         "width": 5120,
@@ -2187,17 +2140,17 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 182.6
+        "gpu_us": 183.0
       },
       {
         "width": 5120,
         "height": 1440,
         "case": "capital_spread_spill",
-        "patches": 14,
-        "drawn": 14,
-        "lit_share": 0.4514,
-        "raster_share": 7.92,
-        "gpu_us": 750.4
+        "patches": 9,
+        "drawn": 9,
+        "lit_share": 0.4513,
+        "raster_share": 1.8914,
+        "gpu_us": 291.8
       },
       {
         "width": 5120,
@@ -2207,7 +2160,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.4
+        "gpu_us": 21.0
       },
       {
         "width": 5120,
@@ -2227,7 +2180,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 341.0
+        "gpu_us": 340.2
       },
       {
         "width": 5120,
@@ -2237,7 +2190,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 52.6
+        "gpu_us": 52.3
       },
       {
         "width": 5120,
@@ -2247,7 +2200,7 @@
         "drawn": 6,
         "lit_share": 0.2816,
         "raster_share": 2.2437,
-        "gpu_us": 259.1
+        "gpu_us": 260.3
       }
     ],
     "projectile": [
@@ -2926,9 +2879,9 @@
         "merged": 486,
         "quads": 532,
         "trail_quads": 20,
-        "cpu_us": 90.8,
-        "gpu_us": 46.9,
-        "fence_us": 10.8,
+        "cpu_us": 88.8,
+        "gpu_us": 47.3,
+        "fence_us": 10.9,
         "lit_share": 0.0601,
         "vertex_bytes": 48,
         "statics": 0,
@@ -2947,9 +2900,9 @@
         "wanted": 2520,
         "trimmed": 502,
         "previous_wanted": 2528,
-        "cpu_us": 114.7,
-        "gpu_us": 69.5,
-        "fence_us": 10.8,
+        "cpu_us": 117.3,
+        "gpu_us": 69.6,
+        "fence_us": 10.9,
         "lit_share": 0.078,
         "statics": 0,
         "jumped": 0
@@ -3509,19 +3462,19 @@
         "flashes": 64,
         "pulses": 64,
         "bolts": 64,
-        "cpu_with_us": 30.3,
-        "cpu_without_us": 21.8,
-        "cpu_us": 8.5,
-        "gpu_us": 25.4,
-        "gpu_net_us": 14.4,
-        "gpu_flashes_us": 17.7,
-        "gpu_pulses_us": 19.0,
-        "gpu_far_pulses_us": 16.8,
-        "gpu_own_pulses_us": 17.5,
+        "cpu_with_us": 31.5,
+        "cpu_without_us": 22.7,
+        "cpu_us": 8.8,
+        "gpu_us": 24.4,
+        "gpu_net_us": 13.1,
+        "gpu_flashes_us": 17.1,
+        "gpu_pulses_us": 20.0,
+        "gpu_far_pulses_us": 17.5,
+        "gpu_own_pulses_us": 17.4,
         "gpu_bolts_us": 16.6,
-        "gpu_bolts_flashes_us": 24.7,
-        "gpu_increment_us": 8.1,
-        "fence_us": 11.0,
+        "gpu_bolts_flashes_us": 25.8,
+        "gpu_increment_us": 9.2,
+        "fence_us": 11.3,
         "lost": 0,
         "stale": 0,
         "dropped": 0
@@ -3540,8 +3493,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 124.1,
-        "gpu_us": 40.5
+        "cpu_us": 127.8,
+        "gpu_us": 39.6
       },
       {
         "case": "budget_combined",
@@ -3557,8 +3510,8 @@
         "pulse_clamped": 2,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 128.5,
-        "gpu_us": 64.4
+        "cpu_us": 132.4,
+        "gpu_us": 63.6
       },
       {
         "case": "budget_combined",
@@ -3574,7 +3527,7 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 115.5,
+        "cpu_us": 118.5,
         "gpu_us": 34.1
       },
       {
@@ -3591,17 +3544,17 @@
         "pulse_clamped": 0,
         "statics": 0,
         "jumped": 0,
-        "cpu_us": 89.4,
-        "gpu_us": 31.6
+        "cpu_us": 90.6,
+        "gpu_us": 32.8
       },
       {
         "case": "budget_combined_bounds",
-        "cpu_us": 124.1,
+        "cpu_us": 127.8,
         "cpu_within_100": 0,
-        "flash_work_cpu_us": 8.6,
-        "newborn_bolts_cpu_us": 26.1,
-        "bolts_448_cpu_us": 89.4,
-        "gpu_us": 40.5,
+        "flash_work_cpu_us": 9.3,
+        "newborn_bolts_cpu_us": 27.9,
+        "bolts_448_cpu_us": 90.6,
+        "gpu_us": 39.6,
         "gpu_within_60": 1
       }
     ],
@@ -3904,13 +3857,13 @@
         "case": "cost",
         "draws": 2000,
         "runs": 7,
-        "calls_us_per_draw": 0.117,
-        "draw_us_vanilla": 0.069,
-        "draw_us_reshaded": 0.261,
-        "substitution_us_per_draw": 0.192,
+        "calls_us_per_draw": 0.068,
+        "draw_us_vanilla": 0.073,
+        "draw_us_reshaded": 0.285,
+        "substitution_us_per_draw": 0.212,
         "batch_bolts": 469,
-        "batch_us_vanilla": 42.9,
-        "batch_us_reshaded": 43.0,
+        "batch_us_vanilla": 42.7,
+        "batch_us_reshaded": 42.6,
         "fenced": 1
       },
       {
@@ -3918,7 +3871,7 @@
         "draws": 2000,
         "runs": 7,
         "mapped_bodies": 30,
-        "layout_us_per_body_change": 0.0025
+        "layout_us_per_body_change": 0.0036
       },
       {
         "case": "texture_key",
@@ -3934,8 +3887,135 @@
         "fallback": 1,
         "bytes": 349680,
         "us_size_miss": 0.0016,
-        "us_head_miss": 4.578,
-        "us_match": 395.1
+        "us_head_miss": 4.661,
+        "us_match": 404.9
+      },
+      {
+        "case": "lone_recognition",
+        "row": "ire_default_screen",
+        "body": 1207,
+        "class": 1,
+        "want": 1,
+        "layout": 1,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "ppc_instance_screen",
+        "body": 1518,
+        "class": 1,
+        "want": 1,
+        "layout": 1,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "ire_additive",
+        "body": 1207,
+        "class": 2,
+        "want": 2,
+        "layout": 1,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "hull_body",
+        "body": 333,
+        "class": 0,
+        "want": 0,
+        "layout": 0,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "instance_bullets_vs",
+        "body": 1207,
+        "class": 0,
+        "want": 0,
+        "layout": 0,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "standard_lighting_vs",
+        "body": 1207,
+        "class": 0,
+        "want": 0,
+        "layout": 0,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "srcalpha",
+        "body": 1207,
+        "class": 0,
+        "want": 0,
+        "layout": 0,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "blend_off",
+        "body": 1207,
+        "class": 0,
+        "want": 0,
+        "layout": 0,
+        "ok": 1
+      },
+      {
+        "case": "lone_recognition",
+        "row": "revsubtract",
+        "body": 1207,
+        "class": 0,
+        "want": 0,
+        "layout": 0,
+        "ok": 1
+      },
+      {
+        "case": "lone_map",
+        "built": 1,
+        "state": 1,
+        "bodies_mapped": 2,
+        "reason": "ok"
+      },
+      {
+        "case": "lone_programs",
+        "compiled": 1,
+        "created": 1,
+        "lone_words": 315,
+        "lone_flag_words": 339
+      },
+      {
+        "case": "lone_program",
+        "fade": 0.8,
+        "standin": "0.3105,0.2415,0.0533",
+        "standin_want": "0.3106,0.2416,0.0533",
+        "lone": "0.2017,0.1680,0.0763",
+        "model": "0.2017,0.1681,0.0763",
+        "worst_standin": 0.023,
+        "worst_lone": 0.018
+      },
+      {
+        "case": "lone_additive",
+        "gain": 2.0,
+        "fade": 0.8,
+        "during": 1,
+        "restored": 1,
+        "worst_rel": 0.027,
+        "mrt": 1,
+        "flag_g": 12.906,
+        "flag_want": 12.908
+      },
+      {
+        "case": "lone_cost",
+        "draws": 2000,
+        "runs": 7,
+        "draw_us_vanilla": 0.083,
+        "draw_us_reshaded": 0.437,
+        "substitution_us_per_draw": 0.354,
+        "match_us_hit_30": 0.0126,
+        "match_us_miss_30": 0.0124,
+        "fenced": 1
       }
     ],
     "muzzle_reshade": [
@@ -4072,11 +4152,11 @@
         "draws": 2000,
         "runs": 7,
         "primitives": 100,
-        "calls_us_per_draw": 0.072,
-        "draw_us_vanilla": 2.978,
-        "draw_us_reshaded": 3.155,
-        "substitution_us_per_draw": 0.176,
-        "match_us_per_draw": 0.07,
+        "calls_us_per_draw": 0.097,
+        "draw_us_vanilla": 2.971,
+        "draw_us_reshaded": 3.447,
+        "substitution_us_per_draw": 0.476,
+        "match_us_per_draw": 0.071,
         "fenced": 1
       }
     ],

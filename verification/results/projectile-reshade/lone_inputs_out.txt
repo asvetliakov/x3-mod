@@ -1,0 +1,127 @@
+shader/1_1/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/hue_lights_off/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/hue_lights_off/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/hue_lights_off/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/hue_lights_off/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/hueshift_off/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/hueshift_off/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/hueshift_off/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/hueshift_off/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/v_lights_off/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/v_lights_off/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_1/v_lights_off/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_1/v_lights_off/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/hue_lights_off/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/hue_lights_off/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/hue_lights_off/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/hue_lights_off/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/hueshift_off/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/hueshift_off/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/hueshift_off/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/hueshift_off/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/v_lights_off/effects.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/v_lights_off/effects.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/1_4/v_lights_off/effects2s.fb: DEFAULT pass 0 vs 0d44b36d48d24f7a ps 078494828322bcca
+shader/1_4/v_lights_off/effects2s.fb: INSTANCE pass 0 vs 637dadcb5efa3288 ps 078494828322bcca
+shader/2_0/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/hue_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/hue_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/hue_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/hue_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/hueshift_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/hueshift_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/hueshift_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/hueshift_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/v_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/v_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_0/v_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_0/v_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/hue_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/hue_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/hue_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/hue_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/hueshift_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/hueshift_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/hueshift_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/hueshift_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/v_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/v_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_a/v_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/2_a/v_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/2_b/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/hue_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/hue_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/hue_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/hue_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/hueshift_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/hueshift_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/hueshift_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/hueshift_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/v_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/v_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/2_b/v_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps f0c91793a75e1203
+shader/2_b/v_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps f0c91793a75e1203
+shader/3_0/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/hue_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/hue_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/hue_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/hue_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/hueshift_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/hueshift_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/hueshift_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/hueshift_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/v_lights_off/effects.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/v_lights_off/effects.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+shader/3_0/v_lights_off/effects2s.fb: DEFAULT pass 0 vs d5e1c75351ed3f04 ps 8360f422de08b5bd
+shader/3_0/v_lights_off/effects2s.fb: INSTANCE pass 0 vs 89193868c61c3846 ps 8360f422de08b5bd
+technique order 0:DEFAULT 1:INSTANCE 2:INSTANCE_BULLETS in 48 effects
+vs d5e1c75351ed3f04 vs_2_0 dwords 253
+  ctab b0..b0 g_EnableFog
+  ctab c0..c3 g_mWorldViewProjection
+  ctab c4..c6 g_mWorld
+  ctab c7..c9 g_mViewInverse
+  ctab c10..c11 g_TexMatrix
+  ctab c12..c12 g_AlphaValue
+  ctab c13..c13 g_FogClip
+  dcl_position v0.xyzw
+  dcl_texcoord v1.xyzw
+  writes oD0.xyz oPos.xyzw oT0.xy
+  reads c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 v0 v1
+vs 89193868c61c3846 vs_2_0 dwords 221
+  ctab b0..b0 g_EnableFog
+  ctab c0..c3 g_mViewProjection
+  ctab c4..c6 g_mWorld
+  ctab c7..c9 g_mViewInverse
+  ctab c10..c10 g_AlphaValue
+  ctab c11..c11 g_FogClip
+  dcl_position v0.xyzw
+  dcl_texcoord v1.xyzw
+  writes oD0.xyz oPos.xyzw oT0.xy
+  reads c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 v0 v1
+ps 8360f422de08b5bd ps_2_0 dwords 1108
+  ctab s0..s0 DiffuseTexSampler
+  dcl t0.xy
+  dcl v0.x
+  dcl_2d s0
+  writes oC0.xyzw
+  reads c0 c1 c2 c3 s0 t0 v0

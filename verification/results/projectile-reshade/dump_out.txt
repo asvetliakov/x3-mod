@@ -14,4 +14,6 @@ DUMP_RESHADE name=fixture-hept-reshade-near-h050-w060 family=hept vertices=66 te
 DUMP_RESHADE name=fixture-ppc-vanilla-near family=ppc vertices=210 texture=512 texture_p99=0.9888 normaliser=1.716 layout=1 distance_m=50 crop=640x256 dark_sum=4611.169 dark_peak=1.0000 written=1
 DUMP_RESHADE name=fixture-ppc-reshade-near family=ppc vertices=210 texture=512 texture_p99=0.9888 normaliser=1.716 layout=1 distance_m=50 crop=640x256 dark_sum=2593.162 dark_peak=0.9815 written=1
 DUMP_RESHADE name=fixture-ppc-reshade-near-h050-w060 family=ppc vertices=210 texture=512 texture_p99=0.9888 normaliser=1.716 layout=1 distance_m=50 crop=640x256 dark_sum=1699.028 dark_peak=0.9646 written=1
+DUMP_RESHADE name=fixture-ppc-lone-vanilla-near family=ppc path=lone vertices=210 indexed=1 normaliser=1.716 layout=1 distance_m=50 crop=640x256 dark_sum=4611.169 dark_peak=1.0000 batch_sum=4611.169 batch_peak=1.0000 max_abs_diff_vs_batch=0.00000 written=1
+DUMP_RESHADE name=fixture-ppc-lone-reshade-near family=ppc path=lone vertices=210 indexed=1 normaliser=1.716 layout=1 distance_m=50 crop=640x256 dark_sum=2593.162 dark_peak=0.9815 batch_sum=2593.162 batch_peak=0.9815 max_abs_diff_vs_batch=0.00000 written=1
 RESULT PASS checks=0 failures=0

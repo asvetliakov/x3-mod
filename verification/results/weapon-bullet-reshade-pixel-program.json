@@ -19,7 +19,7 @@
     "tools/shaders/compile_ps2_program.cpp": "6328969d31cd70fa33cc2c8007379d419990bec7e89e1cbea86123ca783a34b7",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
     "tools/shaders/generate_weapon_effects_programs.py": "4e809c839ff858c027ea53d8ad6f60b197671ecdd2efc11706e42773c2972a28",
-    "tools/shaders/generate_bullet_reshade_program.py": "925348441805ad7d1c95b38f2749a68fbf20381ba2c8f3d2ba4129b8ba226085"
+    "tools/shaders/generate_bullet_reshade_program.py": "e5da9d3436dabc89ceda02c7df2b3628ac27a2140968572bef0d2565f64802fb"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

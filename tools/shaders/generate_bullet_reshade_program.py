@@ -3,10 +3,14 @@
 src/effects/weapon_bullet_reshade_ps.hlsl -> src/renderer/weapon_bullet_reshade_pixel_program_inc.h (provenance
 verification/results/weapon-bullet-reshade-pixel-program.json) and its far-flag variant
 src/effects/weapon_bullet_reshade_flag_ps.hlsl -> src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h
-(verification/results/weapon-bullet-reshade-flag-pixel-program.json); both include weapon_bullet_reshade.hlsl (expanded
-here, generate_rigid_motion_pixel.expand_includes).
+(verification/results/weapon-bullet-reshade-flag-pixel-program.json), and the lone path's pair (section 7; the fade in
+COLOR0.x): src/effects/weapon_bullet_reshade_lone_ps.hlsl and weapon_bullet_reshade_lone_flag_ps.hlsl ->
+src/renderer/weapon_bullet_reshade_lone{,_flag}_pixel_program_inc.h (verification/results/
+weapon-bullet-reshade-lone{,-flag}-pixel-program.json); all include weapon_bullet_reshade.hlsl (expanded here,
+generate_rigid_motion_pixel.expand_includes).
 
-ps_2_0 because the program replaces the game's INSTANCE_BULLETS pixel shader beside the game's vs_1_1 vertex shader.
+ps_2_0 because the program replaces the game's INSTANCE_BULLETS pixel shader beside the game's vs_1_1 vertex shader
+(and, on the lone path, the effects ps_2_0 beside its vs_2_0).
 The helpers are tools/shaders/generate_rigid_motion_pixel.py's and generate_weapon_effects_programs.py's (imported, so
 their digests and every record they check stay unchanged); the compiler is tools/shaders/compile_ps2_program.cpp, the
 native d3dx9_37.dll D3DXCompileShader with D3DXSHADER_OPTIMIZATION_LEVEL3, entry main. --check recompiles and compares
@@ -32,6 +36,12 @@ PROGRAMS = {
     'weapon_bullet_reshade_flag_ps': (ROOT / 'src/effects/weapon_bullet_reshade_flag_ps.hlsl',
                                       ROOT / 'src/renderer/weapon_bullet_reshade_flag_pixel_program_inc.h',
                                       ROOT / 'verification/results/weapon-bullet-reshade-flag-pixel-program.json'),
+    'weapon_bullet_reshade_lone_ps': (ROOT / 'src/effects/weapon_bullet_reshade_lone_ps.hlsl',
+                                      ROOT / 'src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h',
+                                      ROOT / 'verification/results/weapon-bullet-reshade-lone-pixel-program.json'),
+    'weapon_bullet_reshade_lone_flag_ps': (ROOT / 'src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl',
+                                           ROOT / 'src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h',
+                                           ROOT / 'verification/results/weapon-bullet-reshade-lone-flag-pixel-program.json'),
 }
 COMPILER_SOURCE = ROOT / 'tools/shaders/compile_ps2_program.cpp'
 TARGET = 'ps_2_0'
