@@ -524,6 +524,35 @@ static int bubble_cases() {
                     budget_w.deepest, st::hull_guard_name(extent_w.guard), extent_w.value, unsigned(refused),
                     st::hull_guard_name(no_cache_w.guard), st::hull_guard_name(unknown_w.guard), unknown_w.value);
         (void)budget;
+        // the scale guard (FL 66 A: the Titan's section node at 0x1b6beb, 27.4x, failed the old 16x bound): one part of
+        // extents 65536 at node scale 0x1b6beb walks (hi = the scale), at 256x walks, at 256x + 1 and with an axis scale
+        // of 257x fails guard=scale naming it; extent 0x20000 at node and axis 256x clamps to INT32_MAX (2^33 before).
+        hull_part(0, node(0), 7, zero, 0x1b6beb, false, 0, 0);
+        const bool titan = st::hull_bounds(&rd, slot, node(0), &hb, nullptr, &gw);
+        const float titan_hi = hb.hi[0];
+        const st::HullWalk titan_w = gw;
+        hull_part(0, node(0), 7, zero, 256 * 0x10000, false, 0, 0);
+        const bool at_max = st::hull_bounds(&rd, slot, node(0), &hb);
+        const float at_max_hi = hb.hi[0];
+        hull_part(0, node(0), 7, zero, 256 * 0x10000 + 1, false, 0, 0);
+        const bool over_s = st::hull_bounds(&rd, slot, node(0), &hb, nullptr, &gw);
+        const st::HullWalk over_s_w = gw;
+        hull_part(0, node(0), 7, zero, 0x10000, false, 0, 0);
+        put(part(0) + 0x84, 257u * 0x10000);
+        const bool over_axis = st::hull_bounds(&rd, slot, node(0), &hb, nullptr, &gw);
+        const st::HullWalk over_axis_w = gw;
+        hull_part(0, node(0), 7, zero, 256 * 0x10000, false, 0, 0);
+        for (unsigned c = 0; c < 3; ++c) put(part(0) + 0x80 + 4 * c, 256u * 0x10000);
+        put(lod(0, 0) + 0x20, 0x20000);
+        const bool clamp = st::hull_bounds(&rd, slot, node(0), &hb);
+        const float clamp_hi = hb.hi[0];
+        body_cache(1, e1);
+        std::printf("scaleguard titan=%u titan_guard=%s titan_hi=%.0f at_max=%u at_max_hi=%.0f over=%u over_guard=%s "
+                    "over_value=%u over_axis=%u over_axis_guard=%s over_axis_value=%u clamp=%u clamp_hi=%.0f\n",
+                    unsigned(titan), st::hull_guard_name(titan_w.guard), double(titan_hi), unsigned(at_max),
+                    double(at_max_hi), unsigned(over_s), st::hull_guard_name(over_s_w.guard), over_s_w.value,
+                    unsigned(over_axis), st::hull_guard_name(over_axis_w.guard), over_axis_w.value, unsigned(clamp),
+                    double(clamp_hi));
         // depth: part 0 (body) -> 1 -> 2 -> 3 (body, four levels down: not visited)
         hull_part(0, node(0), 7, zero, 1000, false, 0, part(1));
         hull_part(1, part(0), 0, zero, 1000, false, 0, part(2));
@@ -1306,6 +1335,12 @@ class WeaponEffectsClassifier(unittest.TestCase):
         self.assertEqual((g['extent'], g['no_cache'], g['unknown_body']), (0, 0, 0))
         self.assertEqual((g['deep'], g['deep_nodes']), (1, 3))                              # three levels, no deeper
         self.assertLess(g['deep_hi_z'], 2000.0)
+        sg = dict(re.findall(r'(\w+)=(\S+)', self.raw_line('bubble', 'scaleguard')))  # FL 66 A: capital scales
+        self.assertEqual((sg['titan'], sg['titan_guard'], sg['titan_hi']), ('1', 'none', '1797099'))
+        self.assertEqual((sg['at_max'], sg['at_max_hi']), ('1', '16777216'))               # 256x walks
+        self.assertEqual((sg['over'], sg['over_guard'], sg['over_value']), ('0', 'scale', '16777217'))
+        self.assertEqual((sg['over_axis'], sg['over_axis_guard'], sg['over_axis_value']), ('0', 'scale', '16842752'))
+        self.assertEqual((sg['clamp'], sg['clamp_hi']), ('1', '2147483648'))              # INT32_MAX as float
         fb = r['fallback_sphere']                                                           # the object's radius
         self.assertEqual(fb['ok'], 1)
         self.assertEqual((fb['cx'], fb['cy'], fb['cz'], fb['ex'], fb['ey'], fb['ez']), (0, 0, 0, 200, 200, 200))

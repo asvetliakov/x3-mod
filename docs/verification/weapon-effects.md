@@ -3847,3 +3847,21 @@ verification/probe/run_weapon_effects.py --host native` [M]: AP hook **132 of 13
 substitution 0.128 µs, body change 0.0055 µs; muzzle substitution 0.096 µs; `flash_budget_combined` 127.8 µs (pass).
 FL `build-run66-fl` 0 warnings (dev DLL `3c97d5b808b183ae…`), `check_no_x87` FL PASS (1078 functions), AP 0 warnings;
 host tests `test_weapon_effects_hook`, `_table`, `_projectile_tune`, `_launch`, `test_regenerate` 65 OK.
+
+## FL 66 A: the Titan's walk failed the scale guard (2026-11-12)
+
+FL 66 A (`/mnt/c/X3FL/x3m.log`) [M]: the Titan's bubble walk failed on its first node, three rows all `guard=scale`
+(`owner=aa3c06c8 node=4e115828 radius=3590659 nodes=1 parts=0 depth=1 deepest=1 slices=1 value=0x001b6beb`): a
+section node's scale 1,797,099 = 27.4x in 16.16, past `hull_scale_max` 16x (sized for fighters), so the bubble fell
+back to the radius sphere. The bound is now 256x (`256 * 0x10000`, `src/proxy/weapon_effects_bubble.h`); a
+`static_assert` and comment bound the int64 products (ext ≤ 2^17 x s ≤ 2^24 ≤ 2^41, then x si ≤ 2^24 ≤ 2^49 before
+the INT32_MAX clamp; `hull_scale16` < 2^55). Host `test_weapon_effects_core` (`scaleguard` row) [M]: one part at
+0x1b6beb walks (hi 1797099, guard none), 256x walks (16777216), 256x + 1 fails `guard=scale value=16777217`, an axis
+scale of 257x fails `guard=scale value=16842752`, extent 0x20000 at node and axis 256x clamps to 2147483648. Native
+fixture case `capital_titan_scale` [M]: the 648-node capital tree with the section scale 0x1b6beb and ext_n
+(7294, 5470, 2279) (half-extents 200013 / 149996 / 62494 engine) walks with guard none, 648 nodes and parts, no
+failure, the hull bubble on frame 3, e (2300.1, 1725.0, 5749.9) view, e_rel_err 6e-5 (bound 1e-3), centre 0.
+Run `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py
+--host native` [M]: AP hook 132 of 132, FL hook 75 of 75, D3D 132 of 132 PASS on the second run (the first failed only
+`flash_budget_combined` at 368.3 µs CPU, the known host-noise flake; rerun 126.5 µs). FL `build-scale-fl` 0 warnings,
+`check_no_x87` FL PASS (1078 functions), AP 0 warnings; `test_weapon_effects_core` + `_hook` 24 OK. Not flown.
