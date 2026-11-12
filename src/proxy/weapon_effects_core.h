@@ -407,10 +407,14 @@ struct ShipProfile {
 };
 struct ShipProfiles {
     unsigned count = 0;
+    // The TShips row count the generator read (generated_from.ship_profiles.rows; 0: not recorded): the stage uses no
+    // profile while the live count at ship_count_slot differs (a table of another tree, the bullet table's stale rule).
+    std::uint32_t tships_rows = 0;
     std::uint16_t slot_of[profile_rows]; // row -> slot + 1 (0: none)
     ShipProfile entries[profile_capacity];
     void clear() noexcept {
         count = 0;
+        tships_rows = 0;
         std::memset(slot_of, 0, sizeof slot_of);
     }
     const ShipProfile* find(std::int32_t row) const noexcept {
@@ -1499,9 +1503,19 @@ constexpr float bubble_scale = 1.15f;
 inline bool shield_bubble(std::uint8_t patch_tier, std::uint8_t tier_source) noexcept {
     return patch_tier < patch_capital && tier_source != tier_by_station;
 }
+// The lathe's tiers (orchestrator decision 2026-11-12, for this flight): capital-tier owners only (patch_capital: the
+// tiers that took the decal), fighters and corvettes keep the Run239 walked ellipsoid (the accepted look). true: every
+// tier with a profile takes the lathe (the all-tier path, for a later flight).
+constexpr bool lathe_all_tiers = false;
+inline bool lathe_tier(std::uint8_t patch_tier) noexcept {
+    return lathe_all_tiers || patch_tier >= patch_capital;
+}
 enum ShieldSurface : std::uint8_t { surface_decal = 0, surface_ellipsoid = 1, surface_lathe = 2 };
+// profile: the owner's row has a usable profile of its class (the stage resolves it only for lathe_tier owners).
 inline ShieldSurface shield_surface(std::uint8_t patch_tier, std::uint8_t tier_source, bool profile) noexcept {
-    return profile ? surface_lathe : shield_bubble(patch_tier, tier_source) ? surface_ellipsoid : surface_decal;
+    return profile && lathe_tier(patch_tier)      ? surface_lathe
+           : shield_bubble(patch_tier, tier_source) ? surface_ellipsoid
+                                                    : surface_decal;
 }
 constexpr float bubble_far_gain = 0.6f;
 constexpr float bubble_floor = 1.f / 16.f;

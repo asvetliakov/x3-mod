@@ -114,6 +114,15 @@ void present_bolts(unsigned long long frame, bool capture);
 // leaving the ring once logged, expired records (game time) leaving it, weapon_pos_check (observe) and
 // weapon_effects_frame every 300 frames with the stage's period figures (patches, decals, retired, stage_us, and the
 // drops: dropped, cells_dropped, hits_dropped, with spills; and dir_fallback, the records without a travel).
+// The bullet re-shade's lone-path counts (MotionOutput::bullet_reshade_take_frame; bullet-draw-batch.md section 7), one
+// array: [0..3] lone draws drawn re-shaded whose state the sequence normalised, per bullet_reshade_route.h lone_states
+// bit (Z write, colour mask, sRGB write, separate alpha); additive: those under ONE / ONE; route_state: lone draws the
+// additive route refused for a known differing state (a defect); route_unknown: those it refused on an unknown state;
+// flagged_native: lone draws flagged outside the route; refused: lone draws that ended without the far flag;
+// [refused_why + r - 1]: of them per LoneUnflagged reason r (1..10).
+constexpr unsigned lone_count_states = 0, lone_count_additive = 4, lone_count_route_state = 5,
+                   lone_count_route_unknown = 6, lone_count_flagged_native = 7, lone_count_refused = 8,
+                   lone_count_refused_why = 9, lone_count_slots = 19;
 struct StageFrame {
     unsigned patches = 0, decals = 0, retired = 0;
     // stage::Counts' drops: regions or decals the budget refused, lit cells no draw carried (the oldest clocks), live
@@ -127,6 +136,10 @@ struct StageFrame {
     unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
     unsigned bubble_partial = 0;
     unsigned cells_key_dropped = 0; // footprint cells past the packed cell key's bound (never lit; review F6)
+    // The lathe bubble (stage::Counts): owners drawn on it; lathe-tier owners refused by cause (no profile, class
+    // mismatch, unreadable or row past the count, axis scale, degenerate profile, cache full) or skipped while stale.
+    unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0;
     float stage_us = 0.f;
     bool drew = false;
     // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the
@@ -155,6 +168,7 @@ struct StageFrame {
     unsigned reshade_draws = 0, reshade_failures = 0, reshade_outside = 0, reshade_timed = 0;
     unsigned reshade_additive = 0, reshade_flagged = 0, reshade_lone = 0, reshade_lone_flagged = 0;
     unsigned reshade_lone_failures = 0, reshade_lone_timed = 0;
+    unsigned reshade_lone_counts[lone_count_slots] = {}; // the lone path's state, flag and refusal counts (lone_count_*)
     float reshade_lone_us = 0.f;
     float reshade_us = 0.f;
     // The muzzle flash re-shade (FL reshade mode; MotionOutput::muzzle_reshade_take_frame): draws re-shaded, muzzle

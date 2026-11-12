@@ -411,6 +411,7 @@ struct LatheCache {
     struct Entry {
         std::int32_t row = -1, axis[3] = {0, 0, 0};
         std::uint32_t used = 0, frame = 0;
+        std::uint32_t serial = 0; // the build that made this mesh (builds after it): a rebuilt slot is a new mesh
         bool valid = false;
         LatheMesh mesh;
     };
@@ -452,7 +453,7 @@ struct LatheCache {
         for (unsigned i = 0; i < 3; ++i) free->axis[i] = t.axis[i];
         free->used = ++clock;
         free->frame = frame_id;
-        ++builds;
+        free->serial = ++builds;
         return &free->mesh;
     }
 };

@@ -1,0 +1,41 @@
+shader/2_0/effects.fb DEFAULT P0 ColorWriteEnable = 15 (literal)
+shader/2_0/effects.fb DEFAULT P0 ZEnable = expression of g_ZEnable default 1
+shader/2_0/effects.fb DEFAULT P0 ZWriteEnable = expression of g_ZWriteEnable default 1
+shader/2_0/effects.fb DEFAULT P0 CullMode = expression of g_CullMode default 3
+shader/2_0/effects.fb DEFAULT P0 Wrap0 = expression of g_Wrap default 0
+shader/2_0/effects.fb DEFAULT P0 Wrap1 = expression of g_Wrap default 0
+shader/2_0/effects.fb DEFAULT P0 AlphaBlendEnable = expression of g_AlphaBlendEnable default 0
+shader/2_0/effects.fb DEFAULT P0 SrcBlend = expression of g_SrcBlend default 2
+shader/2_0/effects.fb DEFAULT P0 DestBlend = expression of g_DestBlend default 1
+shader/2_0/effects.fb DEFAULT P0 SeparateAlphaBlendEnable = 0 (literal)
+shader/2_0/effects.fb DEFAULT P0 SrcBlendAlpha = 2 (literal)
+shader/2_0/effects.fb DEFAULT P0 DestBlendAlpha = 4 (literal)
+shader/2_0/effects.fb DEFAULT P0 AlphaTestEnable = expression of g_ALPHATESTENABLE default 0
+shader/2_0/effects.fb DEFAULT P0 BlendOp = 1 (literal)
+shader/2_0/effects.fb DEFAULT P0 BlendOpAlpha = 1 (literal)
+shader/2_0/effects.fb DEFAULT P0 AlphaFunc = 7 (literal)
+shader/2_0/effects.fb DEFAULT P0 AlphaRef = 1 (literal)
+shader/2_0/effects.fb DEFAULT P0 Lighting = 0 (literal)
+shader/2_0/effects.fb DEFAULT P0 ColorVertex = 0 (literal)
+shader/2_0/effects.fb DEFAULT P0 sets SRGBWriteEnable: False
+TBullets bodies 30, with an effects.fx material 19
+effects\weapons\bullet_LS_alpha | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_IRE,SS_BULLET_FLAK_CLUSTER_FRAG,SS_BULLET_FLAK_CLUSTER_FRAG_FRAG,SS_BULLET_FLAK_ALPHA_FRAG
+effects\weapons\bullet_PR_alpha | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_PAC
+effects\weapons\bullet_Repeat | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=2 g_alphavalue=65536 | SS_BULLET_PRG
+effects\weapons\bullet_EnergyBolt | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_EBC
+effects\weapons\bullet_FragBomb | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_FBL
+effects\weapons\bullet_PL_alpha | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_HEPT
+effects\weapons\bullet_flamethrower | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_PD
+effects\weapons\bullet_push | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=2 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_CIG
+effects\weapons\bullet_push | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=5 g_destblend=6 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_CIG
+effects\weapons\bullet_IonPulse | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_IPG
+effects\weapons\bullet_ElectroSpike | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=2 g_alphavalue=65536 | SS_BULLET_ESR
+effects\weapons\bullet_MAM | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_MAM,SS_BULLET_MAM_1
+v\00518 | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_PPC
+effects\weapons\bullet_IonCannon | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_IONC
+effects\weapons\bullet_GaussCannon | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_GAUSS
+effects\weapons\bullet_FireBomb | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_IBL
+effects\weapons\bullet_PointSing | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_PSP
+effects\X3AP\weapons\TOL_bullet | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=2 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_PBC
+effects\weapons\bullet_Repair | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_REPAIR
+effects\weapons\bullet_FragBomb_Fragment | g_zenable=1 g_zwriteenable=0 g_alphatestenable=0 g_alphablendenable=1 g_srcblend=2 g_destblend=4 g_blendop=1 g_cullmode=1 g_alphavalue=65536 | SS_BULLET_FBL_FRAG

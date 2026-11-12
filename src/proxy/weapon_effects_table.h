@@ -34,6 +34,8 @@
 // [0, profile_rows), whose units or axis differ, whose z range is empty, whose slice count is not profile_slices, whose
 // values are not finite or past 1e9 in magnitude, whose half-widths are negative or all zero, a second entry of one
 // index, or one past profile_capacity is dropped (counted); a value of the wrong JSON type makes the file malformed.
+// "generated_from": {"ship_profiles": {"rows": N}} is the TShips row count they were generated from
+// (ShipProfiles::tships_rows: the stage's stale-table guard; absent, no profile is used).
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -292,6 +294,59 @@ inline bool parse_ship_profiles(json::Cursor& c, core::ShipProfiles* pr, Stats* 
         if (!c.expect(',')) return false;
     }
 }
+// "generated_from": {..., "ship_profiles": {"rows": N, ...}, ...}: the TShips row count the profiles were generated
+// from into pr->tships_rows (a value outside 1..65535 or of the wrong type leaves it 0: no profile is used).
+inline bool parse_generated_from(json::Cursor& c, core::ShipProfiles* pr) noexcept {
+    c.skip_ws();
+    if (c.p >= c.end || *c.p != '{') return c.skip_value(); // an older generator's other shape: skipped as before
+    if (!c.expect('{')) return false;
+    if (c.accept('}')) return true;
+    for (;;) {
+        char key[24];
+        bool fits;
+        if (!c.string(key, sizeof key, &fits) || !c.expect(':')) return false;
+        c.skip_ws();
+        if (fits && !std::strcmp(key, "ship_profiles") && c.p < c.end && *c.p == '{') {
+            ++c.p;
+            if (!c.accept('}'))
+                for (;;) {
+                    char inner[16];
+                    bool inner_fits;
+                    if (!c.string(inner, sizeof inner, &inner_fits) || !c.expect(':')) return false;
+                    c.skip_ws();
+                    const bool number = c.p < c.end && (*c.p == '-' || (*c.p >= '0' && *c.p <= '9'));
+                    if (inner_fits && !std::strcmp(inner, "rows") && number) {
+                        float rows = 0.f;
+                        if (!c.number(&rows)) return false;
+                        if (pr && rows >= 1.f && rows <= 65535.f && float(std::uint32_t(rows)) == rows)
+                            pr->tships_rows = std::uint32_t(rows);
+                    } else if (!c.skip_value())
+                        return false;
+                    if (c.accept('}')) break;
+                    if (!c.expect(',')) return false;
+                }
+        } else if (!c.skip_value())
+            return false;
+        if (c.accept('}')) return true;
+        if (!c.expect(',')) return false;
+    }
+}
+// Whether the text carries a ship_profiles array ("ship_profiles" then ':' then '['): the loader allocates the profiles
+// block only then (a table generated before schema 3 allocates nothing). O(length), once at load.
+inline bool carries_ship_profiles(const char* text, std::size_t length) noexcept {
+    static const char key[] = "\"ship_profiles\"";
+    constexpr std::size_t n = sizeof key - 1;
+    for (std::size_t i = 0; i + n <= length; ++i) {
+        if (text[i] != '"' || std::memcmp(text + i, key, n)) continue;
+        std::size_t k = i + n;
+        while (k < length && (text[k] == ' ' || text[k] == '\n' || text[k] == '\r' || text[k] == '\t')) ++k;
+        if (k >= length || text[k] != ':') continue;
+        ++k;
+        while (k < length && (text[k] == ' ' || text[k] == '\n' || text[k] == '\r' || text[k] == '\t')) ++k;
+        if (k < length && text[k] == '[') return true;
+    }
+    return false;
+}
 inline bool parse_rgb(json::Cursor& c, std::uint32_t* out, bool* present) noexcept {
     *present = false;
     if (c.literal("null")) return true;
@@ -524,6 +579,11 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                 schema = v == 1.f || v == 2.f || v == 3.f; // 2: step 4's mount_tier and range_m; 3: ship_profiles
             } else if (fits && !std::strcmp(key, "ship_profiles")) {
                 if (!parse_ship_profiles(c, profiles, st)) {
+                    ok = false;
+                    break;
+                }
+            } else if (fits && !std::strcmp(key, "generated_from")) {
+                if (!parse_generated_from(c, profiles)) {
                     ok = false;
                     break;
                 }

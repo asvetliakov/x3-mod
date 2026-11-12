@@ -239,9 +239,14 @@ struct Counts {
     float screens = 0.f;                       // the drawn patches' screens
     unsigned eye_spheres = 0;                  // owners drawn on the eye sphere (the own ship in the cockpit)
     unsigned cells_key_dropped = 0; // footprint cells past the packed key's bound (RegionStats::key_dropped; review F6)
-    // The lathe bubble (weapon_effects_lathe.h): owners drawn on it; with profiles loaded, the owners refused by cause
-    // (LatheRefusal: no profile for the row, the class differs, any other refusal); hits duplicated across the seam.
-    unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_refused = 0, lathe_seam = 0;
+    // The lathe bubble (weapon_effects_lathe.h): owners drawn on it; of the lathe-tier owners with profiles loaded, those
+    // refused by cause (LatheRefusal: no profile for the row, the class differs, an engine read refused or the row past
+    // the type table's count, an axis scale out of range, a degenerate profile, every cache entry drawn this frame) and
+    // those skipped because the table is stale (its TShips row count differs from the live one: stale_rows table,
+    // engine); hits duplicated across the seam.
+    unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_seam = 0;
+    std::uint32_t stale_rows[2] = {0, 0};
 };
 // The draws one region may take (its cells in draws of weapon_patch_cells; past them the oldest clocks are dropped).
 constexpr unsigned region_draws = 8;
@@ -853,24 +858,42 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         return v < core::patch_tier_count ? v : unsigned(core::patch_capital);
     };
     unsigned regions_left = 0, walks_left = core::bubble_walks_per_frame;
+    // The stale-table guard (the bullet table's stale_table rule): the profiles' recorded TShips row count against the
+    // live one at ship_count_slot, one read per call; differing, unrecorded or unreadable, no profile is used.
+    bool profiles_live = false;
+    if (lathes && t.profiles && t.profiles->count) {
+        std::int32_t live = 0;
+        const bool read = t.ship_count_slot && rd(t.ship_count_slot, &live, 4);
+        profiles_live = read && t.profiles->tships_rows && std::uint32_t(live) == t.profiles->tships_rows;
+        n.stale_rows[0] = t.profiles->tships_rows;
+        n.stale_rows[1] = read ? std::uint32_t(live) : 0u;
+    }
     for (unsigned k = 0; k < seen_count; ++k) {
         Seen& s = seen[k];
         s.lathe = nullptr;
         if (s.status != OwnerStatus::ok || !s.count) continue;
         n.hits_dropped += s.live - s.count;
-        // The lathe (2026-11-12): a ship whose row has a profile of its class, every tier, not the own ship in the
-        // cockpit (its eye sphere); it reserves one region (its chart), the others one per face.
+        // The lathe (2026-11-12): a lathe-tier ship (core::lathe_tier: capitals for now) whose row has a profile of its
+        // class, not the own ship in the cockpit (its eye sphere); it reserves one region (its chart), the others one per
+        // face.
         const core::Event& newest = ring.slots[s.index[0]];
         const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
-        if (lathes && t.profiles && s.data.radius > 0) {
-            LatheType type;
-            LatheRefusal why = resolve_lathe(rd, t.profiles, t.ship_table_slot, t.ship_count_slot, s.owner, newest.node,
-                                             &type);
-            if (why == LatheRefusal::none) s.lathe = lathes->get(type, &why);
-            n.lathe_no_profile += why == LatheRefusal::no_profile;
-            n.lathe_mismatch += why == LatheRefusal::class_mismatch;
-            n.lathe_refused += why != LatheRefusal::none && why != LatheRefusal::no_profile &&
-                               why != LatheRefusal::class_mismatch && why != LatheRefusal::not_ship;
+        const unsigned owner_tier = tier_of(s);
+        if (lathes && t.profiles && t.profiles->count && s.data.radius > 0 && core::lathe_tier(std::uint8_t(owner_tier))) {
+            if (!profiles_live) {
+                ++n.lathe_stale;
+            } else {
+                LatheType type;
+                LatheRefusal why = resolve_lathe(rd, t.profiles, t.ship_table_slot, t.ship_count_slot, s.owner,
+                                                 newest.node, &type);
+                if (why == LatheRefusal::none) s.lathe = lathes->get(type, &why);
+                n.lathe_no_profile += why == LatheRefusal::no_profile;
+                n.lathe_mismatch += why == LatheRefusal::class_mismatch;
+                n.lathe_unreadable += why == LatheRefusal::unreadable;
+                n.lathe_scale += why == LatheRefusal::scale;
+                n.lathe_degenerate += why == LatheRefusal::degenerate;
+                n.lathe_cache += why == LatheRefusal::cache;
+            }
         }
         if (s.data.radius > 0) regions_left += s.lathe && !eye ? 1u : anchor_count;
     }

@@ -307,14 +307,28 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         checks = dict(self.record['checks'])
         for name in ('reshade_lone_recognised_by_body_id', 'reshade_lone_programs_create',
                      'reshade_lone_program_matches_model', 'reshade_lone_route_binds_converts_flags_restores',
+                     'reshade_lone_state_admitted_normalised_restored', 'reshade_lone_state_verdict',
+                     'reshade_lone_native_flag_one_one', 'reshade_lone_flag_invsrccolor_witness',
                      'reshade_lone_cost_measured'):
             self.assertTrue(checks.get(name), name)
         rows = self.record['metrics']['reshade']
         self.assertTrue(all(x['ok'] == 1 for x in rows if x.get('case') == 'lone_recognition'))
         route = next(x for x in rows if x.get('case') == 'lone_additive')
         self.assertEqual((route['during'], route['restored']), (1, 1))
+        # FL 68 A: the lone draw's own state (every normalised bit off) admitted as a lone draw, refused as any other,
+        # the five states the batch bolt's while drawing and the lone draw's own after
+        self.assertEqual((route['verdict'], route['states_normalised_and_restored']), (1, 1))
+        self.assertEqual(next(x for x in rows if x.get('case') == 'lone_state_verdict')['ok'], 1)
+        # the far flag outside the route: ONE / ONE flags over the far-depth lane (g > 1) and restores; ONE /
+        # INVSRCCOLOR would leave g at the lane's 1 (D3D9's one blend state for every target), so it is refused
+        native = next(x for x in rows if x.get('case') == 'lone_native_flag')
+        self.assertGreater(native['rt2_g'], 1.0)
+        self.assertEqual((native['during'], native['restored']), (1, 1))
+        witness = next(x for x in rows if x.get('case') == 'lone_flag_invsrccolor_witness')
+        self.assertEqual((witness['flag_test'], witness['refused']), (0, 1))
         cost = next(x for x in rows if x.get('case') == 'lone_cost')
         self.assertLess(max(cost['match_us_hit_30'], cost['match_us_miss_30']), 1.0)
+        self.assertLess(cost['normalise_us_per_draw'], 1.0)
 
     def test_muzzle_reshade_gates(self):
         # docs/architecture/muzzle-flash-look.md (the re-shade): the ps_3_0 program created, the readback on the model,
@@ -542,6 +556,8 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertGreater(surf['nearer'], 0.0)
         self.assertLess(m['attach_slots'][0]['shell_ps'], 2000)                   # the low thousands
         self.assertLess(m['attach_slots'][0]['bubble_ps'], 2000)
+        self.assertGreater(m['attach_slots'][0]['lathe_vs'], 0)                   # the lathe bubble (2026-11-12)
+        self.assertLess(m['attach_slots'][0]['lathe_ps'], 2000)
         # Flight C: the own ship in the cockpit view at own_cockpit_gain; the chase view and another ship unchanged
         ck = {x['case']: x for x in m['cockpit']}
         self.assertEqual((ck['own_chase']['dimmed'], ck['own_cockpit']['dimmed'], ck['other_cockpit']['dimmed'],

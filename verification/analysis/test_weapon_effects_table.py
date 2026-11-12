@@ -12,6 +12,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'tools/effects'))
+for _p in ('tools/analysis', 'tools/regenerate', 'verification/analysis'):
+    if str(ROOT / _p) not in sys.path:
+        sys.path.insert(0, str(ROOT / _p))
 import weapon_effects_table as wt  # noqa: E402
 
 OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
@@ -79,9 +82,10 @@ int main(int argc, char** argv) {
         static core::ShipProfiles pr;
         const bool pok = t::parse(text.data(), text.size(), &table, &st, &fault, &pr);
         const core::ShipProfile* p = pr.find(std::atoi(argv[2]));
-        std::printf("ok=%d present=%u profiles=%u dropped=%u class_unknown=%u count=%u found=%d class=%d z0=%.1f z1=%.1f "
-                    "s16=%.3f,%.3f,%.3f,%.3f\n", int(pok), unsigned(st.profiles_present), st.profiles,
-                    st.profiles_dropped, st.profiles_class_unknown, pr.count, p ? 1 : 0, p ? int(p->class_id) : -9,
+        std::printf("ok=%d present=%u profiles=%u dropped=%u class_unknown=%u count=%u tships_rows=%u carries=%d found=%d "
+                    "class=%d z0=%.1f z1=%.1f s16=%.3f,%.3f,%.3f,%.3f\n", int(pok), unsigned(st.profiles_present),
+                    st.profiles, st.profiles_dropped, st.profiles_class_unknown, pr.count, unsigned(pr.tships_rows),
+                    int(t::carries_ship_profiles(text.data(), text.size())), p ? 1 : 0, p ? int(p->class_id) : -9,
                     p ? double(p->z0) : 0.0, p ? double(p->z1) : 0.0, p ? double(p->slice[16][0]) : 0.0,
                     p ? double(p->slice[16][1]) : 0.0, p ? double(p->slice[16][2]) : 0.0, p ? double(p->slice[16][3]) : 0.0);
         return pok ? 0 : 1;
@@ -208,7 +212,7 @@ class WeaponEffectsTableGenerator(unittest.TestCase):
         self.assertEqual(wt.mount_tier_of({}), 'fighter')
         self.assertEqual(wt.range_of({'speed': 500 * 1000, 'lifetime_ms': 2000}), 2000.0)   # 1000 m/s x 2 s
         self.assertIsNone(wt.range_of({'speed': None, 'lifetime_ms': 2000}))
-        self.assertEqual(wt.SCHEMA, 2)
+        self.assertEqual(wt.SCHEMA, 3)   # 3: tables.ship_profiles
         # an unmounted row is marked and listed (the generator logs it: unknown 7's fallback)
         w = {'index': 3, 'weapon_id': 'SS_BULLET_X', 'body_key': None, 'speed': None, 'lifetime_ms': None}
         unmounted, mounted = wt.row_entry(w, None, None, {}), wt.row_entry(dict(w, index=4), None, None, {}, {'M2': 1})
@@ -525,8 +529,17 @@ class WeaponEffectsTableReader(unittest.TestCase):
         broken = dict(table, tables=dict(table['tables'], ship_profiles=[entry(11, slices='none')]))
         code, f = run(broken, 11)                           # a wrong JSON type: the whole file is malformed
         self.assertEqual((code, f['ok'], f['count'], f['found']), (1, '0', '0', '0'))
-        code, f = run(dict(sample_table(), schema=2), 11)  # an older table: no profiles, still read
-        self.assertEqual((code, f['present'], f['count']), (0, '0', '0'))
+        code, f = run(dict(sample_table(), schema=2), 11)  # an older table: no profiles, still read, nothing allocated
+        self.assertEqual((code, f['present'], f['count'], f['carries']), (0, '0', '0', '0'))
+        self.assertEqual((f['tships_rows'], run(table, 11)[1]['carries']), ('0', '1'))  # no generated_from: unverified
+        # the generator's row count (generated_from.ship_profiles.rows): the stage's stale-table guard
+        recorded = dict(table, generated_from={'tool': 'x', 'ship_profiles': {'rows': 426, 'profiles': 4}})
+        self.assertEqual(run(recorded, 11)[1]['tships_rows'], '426')
+        # past profile_capacity (1024): the first 1024 kept, the rest dropped and counted
+        many = dict(table, tables=dict(table['tables'], ship_profiles=[entry(i) for i in range(1030)]))
+        code, f = run(many, 1023)
+        self.assertEqual((code, f['profiles'], f['dropped'], f['count'], f['found']), (0, '1024', '6', '1024', '1'))
+        self.assertEqual(run(many, 1025)[1]['found'], '0')
 
     def test_reader_rejects_trailing_bytes_and_duplicate_rows(self):
         text = json.dumps(sample_table())
@@ -538,6 +551,168 @@ class WeaponEffectsTableReader(unittest.TestCase):
         duplicate['tables']['bullets']['entries'].append(dict(duplicate['tables']['bullets']['entries'][0]))
         code, f = self.read_text(json.dumps(duplicate))
         self.assertEqual((code, f['ok'], f['rows'], f['missile_rows']), (1, '0', '0', '0'))  # nothing kept
+
+
+FL_GAME = Path('/mnt/c/X3FL')
+LONG_SCENE = rb"""/ synthetic ship scene
+VER: 3;
+P 0; B ships\x\hull; C 1; N Bships\x\hull_1b; b
+  { 0x2002;  0; 0; 1000;  0.000000; 0.000000; 0.000000; 0.000000;  -1;  -1; } // 0
+P 1; B ships\x\pod; F 0; N pod;  // idx 1
+  { 0x2002;  100; 0; 0;  0.250000; 0.000000; 0.000000; 1.000000;  -1;  -1; } // 0
+P 2; B effects\engines\fx_t;
+  { 0x2002;  0; 0; -99999;  0.000000; 0.000000; 0.000000; 0.000000;  -1;  -1; } // 0
+P 3; B 19027;
+  { 0x2012;  0.500000; 0.000000; 1.000000; 0.000000;  -1;  -1; } // 0
+"""
+FX_SCENE = rb"""P 0; B effects\engines\fx_t;
+  { 0x2002;  0; 0; 0;  0.000000; 0.000000; 0.000000; 0.000000;  -1;  -1; } // 0
+"""
+
+
+def tships_row(scene, cls='OBJ_SHIP_M3', ident='SS_SH_X'):
+    f = ['0'] * 55
+    f[16], f[52], f[54] = scene, cls, ident
+    return ';'.join(f) + ';'
+
+
+def ship_game(folder):
+    """An AP root whose 01.cat holds the weapon step's empty type tables, a TShips of six rows (short, scene 0, a
+    missing scene, the long scene twice, an effects-only scene) and the scenes and bodies."""
+    import test_engine_bodies as teb
+    import test_regenerate
+    from sector_fog_census import write_catalogue
+    game = Path(folder) / 'X3'
+    game.mkdir(parents=True)
+    (game / 'X3AP.exe').write_bytes(b'MZ stub')
+    rows = ['a;b;c;', tships_row('0'), tships_row('ships\\x\\gone_scene'), tships_row('ships\\x\\long_scene'),
+            tships_row('ships\\x\\long_scene', 'OBJ_SHIP_M2', 'SS_SH_Y'), tships_row('ships\\x\\fx_scene')]
+    tships = ('0;%d;\r\n' % len(rows) + '\r\n'.join(rows) + '\r\n').encode()
+    mat = teb.legacy_material(b'tex_grey.dds')
+    hull = teb.body(mat, 2000, [((-32768, 32768), (-16384, 16384), (-65536, 65536))])   # +-1000, +-500, +-2000
+    pod = teb.body(mat, 100, [((0, 65536), (0, 0), (0, 65536))])                       # x 0..100, z 0..100
+    members = [m for m in test_regenerate.weapon_members() if m[0] != 'types/TShips.txt'] + [
+        ('types/TShips.txt', tships), ('objects/ships/x/long_scene.pbd', LONG_SCENE),
+        ('objects/ships/x/fx_scene.pbd', FX_SCENE), ('objects/ships/x/hull.pbb', hull), ('objects/ships/x/pod.pbb', pod)]
+    write_catalogue(game / '01.cat', members)
+    return game
+
+
+class ShipProfiles(unittest.TestCase):
+    """tables.ship_profiles (schema 3, tools/effects/ship_profiles.py) on a synthetic tree."""
+
+    def test_profile_parts_parents_rotation_and_skips(self):
+        import engine_bodies
+        import ship_profiles as sp
+        with tempfile.TemporaryDirectory() as folder:
+            game = ship_game(folder)
+            assets, _ = engine_bodies.load_assets(game, False, 'ap')
+            entries, skipped, prov = sp.ship_profiles(assets)
+        self.assertEqual([(s['tships_index'], s['reason']) for s in skipped],
+                         [(0, 'short_row'), (1, 'no_scene'), (2, 'not_found'), (5, 'no_points')])
+        self.assertEqual(skipped[2]['scene'], 'ships\\x\\gone_scene')
+        self.assertEqual([e['tships_index'] for e in entries], [3, 4])
+        a, b = entries
+        self.assertEqual((a['class'], b['class'], a['units'], a['axis']), ('OBJ_SHIP_M3', 'OBJ_SHIP_M2', 'scene', 'z'))
+        self.assertEqual({k: v for k, v in a.items() if k not in ('tships_index', 'class')},
+                         {k: v for k, v in b.items() if k not in ('tships_index', 'class')})
+        # hull: points x value / 65536 at z + 1000; the pod a child of part 0, a quarter turn about z then (100, 0, 0)
+        self.assertEqual((a['z0'], a['z1'], a['points']), (-1000.0, 3000.0, 8))
+        self.assertEqual(a['radius'], round((1000 ** 2 + 500 ** 2 + 3000 ** 2) ** 0.5, 3))
+        self.assertEqual(len(a['slices']), sp.SLICES)
+        self.assertEqual(a['slices'][0], [0.0, 0.0, 1000.0, 500.0])
+        self.assertEqual(a['slices'][31], [0.0, 0.0, 1000.0, 500.0])
+        self.assertEqual(a['slices'][16], [100.0, 50.0, 0.0, 50.0])          # the pod: x 100, y 0..100, z 1000..1100
+        self.assertEqual(a['slices'][8], [50.0, 25.0, 500.0, 275.0])          # empty: halfway between 0 and 16
+        self.assertEqual((prov['profiles'], prov['skipped'], prov['rows']), (2, 4, 6))
+        # tallied over the distinct profiled scenes: long_scene's effects part and its absent v\19027
+        self.assertEqual((prov['scene_parts'], prov['effect_parts_excluded'], prov['parts_unresolved']), (4, 1, 1))
+
+    def test_key_layouts(self):
+        import numpy as np
+        import ship_profiles as sp
+        pos, rot = sp.parse_key(' 0x2012;  0.500000; 0.000000; 1.000000; 0.000000;  24966;  2; ')
+        self.assertEqual(pos.tolist(), [0, 0, 0])                         # 0x10: a rotation-only key
+        self.assertTrue(np.allclose(rot, np.diag([-1.0, 1.0, -1.0])))     # half a turn about y
+        pos, rot = sp.parse_key(' 0xa002;  -5; -6469; -20489;  0.0; 1.0; 0.0; 0.0;  0.0; 0.0; 0.0; 0.0; 0.0;  3331; 1; ')
+        self.assertEqual(pos.tolist(), [-5, -6469, -20489])
+        self.assertTrue(np.allclose(rot, np.eye(3)))
+        self.assertIsNone(sp.parse_key('junk; 1; 2'))
+        self.assertEqual((sp.scene_name('4212'), sp.scene_name('0'), sp.scene_name(' ships\\a ')),
+                         ('cut\\04212', None, 'ships\\a'))
+        self.assertEqual((sp.part_body_name('940'), sp.part_body_name('-1')), ('v\\00940', None))
+
+    def test_fast_lod0_reader_matches_bob1(self):
+        import bob1
+        import ship_profiles as sp
+        import test_engine_bodies as teb
+        mat = teb.legacy_material(b'tex_grey.dds')
+        data = teb.body(mat, 2000, [((-32768, 32768), (-16384, 16384), (-65536, 65536)), ((0, 9), (0, 9), (0, 9))],
+                        pin=65536)
+        slow = sp.body_points(bob1.lods(bob1.parse(data, None))[0])
+        fast = sp.visible_points(*sp.lod0_binary(data))
+        self.assertEqual(fast.tolist(), slow.tolist())
+        self.assertEqual(len(fast), 4)                       # the small quad and the pin sliver dropped
+        tree = bob1.parse(data, None)
+        lod = bob1.lods(tree)[0]
+        lod['points'][0] = (3, *lod['points'][0][1:4], 0, 0)  # one point with a UV: mixed flags
+        with self.assertRaises(sp.SlowPath):
+            sp.lod0_binary(bob1.serialise(tree))
+
+    def test_regenerate_writes_the_generator_table(self):
+        # x3m-regenerate's weapon step (the bundle's code path) writes exactly weapon_effects_table.generate's table
+        import x3m_regenerate as regen
+
+        class Log:
+            def __init__(self):
+                self.lines = []
+
+            def say(self, text=''):
+                self.lines.append(text)
+        with tempfile.TemporaryDirectory() as folder:
+            game = ship_game(folder)
+            regen.weapon_step(Log(), game)
+            written = (game / 'x3m' / regen.WEAPON_EFFECTS_FILE).read_text()
+            expected = wt.dumps(wt.generate(game))
+        self.assertEqual(written, expected)
+        table = json.loads(written)
+        self.assertEqual(table['schema'], 3)
+        self.assertEqual([e['tships_index'] for e in table['tables']['ship_profiles']], [3, 4])
+        self.assertEqual([s['reason'] for s in table['generated_from']['ship_profiles_skipped']],
+                         ['short_row', 'no_scene', 'not_found', 'no_points'])
+        self.assertEqual((table['counts']['ship_profiles'], table['counts']['ship_profiles_skipped']), (2, 4))
+        self.assertEqual(table['generated_from']['ship_profiles']['tships']['member'], 'types/TShips.txt')
+
+
+@unittest.skipUnless((FL_GAME / 'X3FL.exe').exists() and (FL_GAME / 'addon2/04.cat').exists(), 'X3FL tree unavailable')
+class ShipProfilesFlInstalled(unittest.TestCase):
+    """The Argon Titan's profile on the live C:\\X3FL tree (verification/results/ship-profiles/titan_profile.py)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import engine_bodies
+        import ship_profiles as sp
+        assets, _ = engine_bodies.load_assets(FL_GAME, False, 'fl')
+        cls.entries, cls.skipped, cls.prov = sp.ship_profiles(assets)
+
+    def test_titan_profile_shape(self):
+        titan = next(e for e in self.entries if e['tships_index'] == 11)
+        self.assertEqual((titan['scene'], titan['class']), ('ships\\argon\\argon_M2_scene', 'OBJ_SHIP_M2'))
+        self.assertEqual(len(titan['slices']), 32)
+        self.assertLess(titan['z0'], titan['z1'])
+        # the hull part at z 17329 with LOD-0 value 528422 (titan_scene.py): its normalised z +-65536 spans the ship
+        self.assertEqual((titan['z0'], titan['z1']), (17329.0 - 528422, 17329.0 + 528422))
+        self.assertTrue(all(s[2] > 0 and s[3] > 0 for s in titan['slices']))
+        widest = max(range(32), key=lambda i: titan['slices'][i][2] * titan['slices'][i][3])
+        self.assertTrue(8 <= widest < 24, widest)                                    # amidships
+        self.assertAlmostEqual(max(s[2] for s in titan['slices']), 151433, delta=1)  # the stored x extent
+        self.assertGreaterEqual(titan['radius'], titan['z1'])
+        self.assertEqual(self.prov['tships']['member'], 'addon2/types/TShips.pck')
+
+    def test_skipped_rows_have_reasons(self):
+        self.assertEqual(self.prov['profiles'] + self.prov['skipped'], self.prov['rows'])
+        self.assertTrue(all(s['reason'] for s in self.skipped))
+        self.assertIn('cut1_scene', {s['reason'] for s in self.skipped})
 
 
 if __name__ == '__main__':

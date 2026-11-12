@@ -37,11 +37,14 @@ struct Tune {
     // The bullet re-shade (X3M_WEAPON_EFFECTS=reshade; src/effects/weapon_bullet_reshade_ps.hlsl c31.xyz): the body's
     // gain over the game's radiance, the luminance smoothstep's upper edge (the fringe fades below it), the hot core's
     // gain (its l^4 term).
-    // Baked from FL 64 A (accepted 2026-11-09): the user's flown values; the far bolts were judged acceptable in flight
-    // (the fixture's 1500 m frame keeps a lower peak than at the earlier rs_edge 0.1, ledger "Bullet re-shade on FL").
-    float rs_gain = 0.4f;
+    // Baked from FL 64 A (accepted 2026-11-09, 0.4/0.4/0.2) and re-baked from FL 68 A (2026-11-12): the user's flown
+    // values on fighters and capitals, judged in flight; rs_edge 0.4 is what removes the halo bulb, rs_core 0.5 keeps a
+    // slightly whiter centre below the level where a near bolt turns into a hard white dot (the user saw no difference
+    // between 0.2 and 1.5: the l^4 term lives in the clipped centre). The far bolts were judged acceptable in flight (the
+    // fixture's 1500 m frame keeps a lower peak than at the earlier rs_edge 0.1, ledger "Bullet re-shade on FL").
+    float rs_gain = 0.75f;
     float rs_edge = 0.4f;
-    float rs_core = 0.2f;
+    float rs_core = 0.5f;
     // The muzzle flash re-shade (reshade mode; src/effects/weapon_muzzle_reshade_ps.hlsl, muzzle_reshade_core.h;
     // docs/architecture/muzzle-flash-look.md): the glow's radius around the gun over vanilla's lit radius, the hot core's
     // and the glow's luminance at the gun (summed over the fan), the share by which the texel's grain is flattened.

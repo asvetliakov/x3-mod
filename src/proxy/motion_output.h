@@ -283,10 +283,16 @@ struct MotionRoute {
     bool bullet_reshade = false, bullet_reshade_timed = false, bullet_reshade_convert = false, bullet_reshade_flag = false;
     // The lone path (bullet-draw-batch.md section 7): the draw is a bullet body's through the material submit (the
     // effects VS bound, the scope node's body id mapped): bullet_body that id, bullet_lone_blend its LoneBlend; the
-    // re-shade binds the lone programs (COLOR0.x the fade) and takes the layout from bullet_body.
+    // re-shade binds the lone programs (COLOR0.x the fade) and takes the layout from bullet_body. bullet_lone_states:
+    // the bullet_reshade_route.h lone_states its sequence wrote (Z write, colour mask, sRGB write, separate alpha on
+    // the route; Z write only off it), bullet_lone_app their application values (put back after the draw).
     bool bullet_lone = false;
-    std::uint8_t bullet_lone_blend = 0;
+    // bullet_lone_unflagged: why the draw ends without the far flag (bullet_reshade_route.h LoneUnflagged);
+    // bullet_lone_native_flag: the flag targets were bound outside the additive route (ONE / ONE, the game's blend).
+    std::uint8_t bullet_lone_blend = 0, bullet_lone_states = 0, bullet_lone_unflagged = 0;
+    bool bullet_lone_native_flag = false;
     std::uint32_t bullet_body = 0;
+    DWORD bullet_lone_app[4] = {};
     // Muzzle flash re-shade (FL reshade mode, motion_output_muzzle_reshade_inc.h): muzzle_body the matched body's row;
     // reshade: our program and c192..c195 bound for this draw (put back after it); timed: the sequence is QPC-timed;
     // hull: the hull-emission route would have taken the draw (the re-shade bypasses it).
@@ -1242,10 +1248,17 @@ public:
     // submit, sampled draws timed and the sequence's CPU us over them, re-shaded draws of the additive route, of them
     // with the far flag).
     // lone: the lone path's re-shaded draws (bullet-draw-batch.md section 7; in none of the batch's counts or time),
-    // lone_flagged: of them with the far flag, its failed substitutions, timed draws and the sequence's CPU us over them.
+    // lone_flagged: of them with the far flag, its failed substitutions, timed draws and the sequence's CPU us over them;
+    // lone_counts (weapon_effects_patch.h lone_count_slots, its layout): of the re-shaded lone draws those whose state
+    // the sequence normalised per bullet_reshade_route.h lone_states bit, those under ONE / ONE, the lone draws the
+    // route refused for `state` (a defect), those flagged outside the route, and the lone draws that ended unflagged,
+    // in total and per LoneUnflagged reason.
+    // weapon_effects_patch.h lone_count_slots (static_assert in motion_output_bullet_reshade_inc.h).
+    static constexpr unsigned lone_count_slots_ = 19;
     void bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed, float* us,
                                    unsigned* additive, unsigned* flagged, unsigned* lone, unsigned* lone_flagged,
-                                   unsigned* lone_failures, unsigned* lone_timed, float* lone_us) noexcept;
+                                   unsigned* lone_failures, unsigned* lone_timed, float* lone_us,
+                                   unsigned lone_counts[lone_count_slots_]) noexcept;
     // The muzzle flash re-shade (reshade mode): the frame's counts (draws re-shaded, matched muzzle draws, of the
     // re-shaded those kept off the hull-emission route, failures, sampled draws timed and the sequence's CPU us over
     // them).
@@ -1253,11 +1266,13 @@ public:
                                    unsigned* timed, float* us) noexcept;
     bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
 #endif
+    static constexpr unsigned weapon_drop_count = 23;
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
-                                   unsigned drops[15]) noexcept; // dropped, cells_dropped, hits_dropped, spills,
-                                                                 // faces_culled, area_dropped, bubbles,
+                                   unsigned drops[weapon_drop_count]) noexcept; // dropped, cells_dropped, hits_dropped,
+                                                                 // spills, faces_culled, area_dropped, bubbles,
                                                                  // bubble_fallback, the walk slices (run, failed,
-                                                                 // held, deferred), bubble_clamped, bubble_partial
+                                                                 // held, deferred), bubble_clamped, bubble_partial,
+                                                                 // cells_key_dropped, the eight lathe counters
     // Engine effects, phase 1a (engine_effects.h, motion_output_engine_effects_inc.h): hook = the per-draw glow-jet
     // recogniser runs (one bool test per draw otherwise), suppress = a recognised draw is recorded and not forwarded
     // (off|plumes), census = the engine_draw / engine_frame rows (--debug). Process-start values; the 64 KB record ring
@@ -2311,9 +2326,11 @@ private:
     std::uint64_t weapon_disarmed_until_ = 0;
     unsigned weapon_failures_ = 0;
     unsigned weapon_patches_ = 0, weapon_decals_ = 0, weapon_retired_ = 0;
-    unsigned weapon_drops_[15]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills, faces_culled,
-                                  // area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures, held, deferred,
-                                  // clamped, partial, cells_key_dropped, since the last take
+    unsigned weapon_drops_[weapon_drop_count]{}; // stage::Counts dropped, cells_dropped, hits_dropped, spills,
+                                  // faces_culled, area_dropped, bubbles, bubble_fallback, BubbleStats walks, failures,
+                                  // held, deferred, clamped, partial, cells_key_dropped; lathes, lathe_no_profile,
+                                  // lathe_mismatch, lathe_unreadable, lathe_scale, lathe_degenerate, lathe_cache,
+                                  // lathe_stale; since the last take
     float weapon_stage_us_ = 0.f;
     bool weapon_drew_ = false;
     bool weapon_cockpit_ = false; // this frame: the view is the cockpit (chase_camera's last active-control visit, mode 1)
@@ -2374,6 +2391,13 @@ private:
     unsigned bullet_reshade_lone_ = 0, bullet_reshade_lone_flagged_ = 0; // the lone path's draws, of them flagged
     unsigned bullet_reshade_lone_failures_ = 0, bullet_reshade_lone_timed_ = 0; // its failures and timed draws
     std::uint64_t bullet_reshade_lone_ticks_ = 0;                                // its sequence's sampled time
+    unsigned bullet_reshade_lone_counts_[lone_count_slots_]{}; // weapon_effects_patch.h lone_count_* layout
+    void lone_unflagged(unsigned reason) noexcept; // one lone draw ended without the far flag (LoneUnflagged)
+    void lone_native_flag(MotionRoute& route) noexcept;   // a lone draw the route does not take: the flag, ONE / ONE
+    void finish_lone_native_flag(MotionRoute& route) noexcept;
+    bool lone_state_values(DWORD out[4]) noexcept; // the application's lone_states values (shadow or one Get each)
+    std::uint32_t bullet_lone_seen_[16]{};         // (body << 2 | blend) logged by bullet_reshade_lone_body
+    unsigned bullet_lone_seen_count_ = 0;
     std::uint32_t bullet_reshade_frames_ = 0; // Present count: every 60th frame is timed
     std::uint64_t bullet_reshade_ticks_ = 0;
     // The per-texture luminance normaliser (bullet_reshade_core.h texture_scale): the created textures the D3DX observer
@@ -2962,9 +2986,13 @@ private:
     void prepare_screen_additive(const MotionDrawCall&, MotionRoute&) noexcept;
     // The flag's RT1/RT2 bindings and masks around the late bullet draw, and
     // their undo in reverse order (finish_screen_additive, the rollbacks).
+    auto bolt_flag_ops() noexcept; // bullet_reshade_route.h FlagCalls over this device (defined before its uses)
     HRESULT bind_bolt_flag_targets(MotionRoute&) noexcept;
     HRESULT unbind_bolt_flag_targets(MotionRoute&) noexcept;
     void refuse_bolt_flag(unsigned reason) noexcept;
+    // The flag's target preconditions (refuse_bolt_flag's reasons 1..4; 0: the flag can be bound): the flag program,
+    // the targets, the four-lane RT2, independent write masks.
+    unsigned bolt_flag_target_reason(bool variant) const noexcept;
     HRESULT apply_screen_additive_alpha() noexcept;
     HRESULT restore_screen_additive_alpha() noexcept;
     void finish_screen_additive(MotionRoute&) noexcept;
@@ -3360,6 +3388,10 @@ private:
                                                                                           // single-copy rule's early
                                                                                           // bullet draws
         std::uint32_t refused[screen_additive_reason_count]{};
+        // The `state` refusals broken down per refused draw (bullet_reshade_route.h StateBit order: zwrite, mask, srgb,
+        // sepalpha, blend, alphatest; a draw counts in every bit its shadowed state differs in), those refused on an
+        // unknown state, and the lone bullet draws among them.
+        std::uint32_t state_bits[6]{}, state_unknown = 0, state_lone = 0;
     } screen_additive_window_{};
     unsigned screen_additive_window_frames_ = 0;
     void log_screen_additive_window() noexcept;

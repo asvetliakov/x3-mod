@@ -507,8 +507,32 @@ The rule is the batch's, by identity instead of by program:
   after the scene's first depth writer the flag variant writing RT2.g, so the far composite sees the bolt. Off or
   refused route, and ONE / ONE: plain under the game's blend. The re-shaded draw skips the source gain and the hull
   route. No footprint (the indexed static buffers carry no scan) and no single-copy drop (the batch's copy rule).
+- **State (FL 68 A, 2026-11-12).** The route refused every lone draw it was offered for `state` (`lone_flagged=0` in
+  all 151 lone windows of the flight), so the bolts were re-shaded plain and stayed unflagged. The sequence now writes,
+  where they differ, only what the draw's path needs: on the route the four states the route requires (Z write off,
+  colour mask 15, sRGB write off, separate alpha off), off it Z write only (a bolt writes no depth and must not enter
+  the TAA depth lane); alpha test and Z test stay the game's (the programs output the texel's alpha, so the game's test
+  cuts as in vanilla), and `end` puts the written states back. The route admits a lone draw on those four
+  (`route_state_refuses` in `bullet_reshade_route.h`, the same verdict for the fixture); every other draw still needs the
+  exact native screen state.
+- **Far flag outside the route (2026-11-12).** A lone draw the route never takes (ONE / ONE: never offered) is
+  flagged under the game's own blend: the route's flag targets through the shared `flag_bind` / `flag_unbind` of
+  `bullet_reshade_route.h` (RT1 masked off, RT2 GREEN, the masks saved and put back after the sequence's end), the lone
+  flag program, no conversion, gain 1, Z write the only state written (the MRT flag write needs no other: RT2.g is
+  written under the GREEN mask the binding sets). Over the far-depth lane (RT2.g = z/w, the composite flags g > 1) ONE /
+  ONE gives base + s, as the route's DESTBLEND ONE does. A ONE / INVSRCCOLOR lone draw the route refuses or is not
+  requested for stays unflagged: D3D9 blends every simultaneous render target with the one SRCBLEND / DESTBLEND, so the
+  lane would become s + base (1 - s), which is 1 at far depth (measured 1.0000 at base 1, s 6.45) and never passes
+  g > 1.
 - **Counts.** `bullet_reshade_frame` gains `lone=`, `lone_flagged=`, `lone_failures=` and `lone_us_per_draw=`, in
   none of the batch's fields; the additive route's admitted / refused / window counts include the lone draws offered.
+  Since FL 68 A also `lone_flagged_native=` (of `lone_flagged=`, those flagged outside the route), `lone_refused=`
+  and `lone_refused_why=` (unflagged lone draws by reason: off, scene, no_depth, no_variant, no_target, r32f_lane,
+  write_masks, bind, screen_unrouted, failed), `lone_route_state=` (refused by the route for a known differing state, a
+  defect) and `lone_route_unknown=`, `lone_zwrite=` .. `lone_sepalpha=` (lone draws drawn re-shaded whose state was
+  normalised, per state) and `lone_additive=` (lone draws under ONE / ONE); the route's window row breaks its `state`
+  refusals down (`zwrite= mask= srgb= sepalpha= blend= alphatest= unknown= lone_state=`); one
+  `bullet_reshade_lone_body` row per (body, blend), at most 16 a device, names the lone bodies.
 - **Body map.** Built only while the live TBullets row count equals the table's, one attempt per frame, off after 64;
   the lone path stays off until it is built.
 
@@ -519,7 +543,9 @@ with the fade in COLOR0.x (worst 0.018 of the tolerance); the route's path conve
 lone state at 50 m equals the batch frame pixel for pixel, vanilla and re-shaded (dark sum 2593.162 both, max
 difference 0; [lone](../../verification/results/projectile-reshade/fixture-ppc-lone-reshade-near.png),
 [batch](../../verification/results/projectile-reshade/fixture-ppc-reshade-near.png)). The vanilla lone frame uses the
-identity colour matrix and no source gain, so it shows the pair's own law, not FL 67's white clamp. Not flown.
+identity colour matrix and no source gain, so it shows the pair's own law, not FL 67's white clamp. FL 68 A flew the
+recognition (the PPC bolts dimmed like the other weapons) but not the flag; the state fix is in the ledger's "FL 68 A"
+paragraph, not flown.
 
 ## 8. Options considered and why they lose
 

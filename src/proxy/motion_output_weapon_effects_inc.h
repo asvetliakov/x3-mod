@@ -78,10 +78,10 @@ bool MotionOutput::attach_weapon_effects() noexcept {
     }
     const bool attached = queried && SUCCEEDED(hr) && weapon_->caps().enabled;
     const auto& c = weapon_->caps();
-    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u bubble_ps_slots=%u max_ps_slots=%lu retry=reset",
+    log("weapon_effects_device device=%llu frame=%llu attached=%u reason=%s result=%08lx fp16_blending=%08lx shell_vs_slots=%u shell_ps_slots=%u decal_vs_slots=%u decal_ps_slots=%u bubble_ps_slots=%u lathe_vs_slots=%u lathe_ps_slots=%u max_ps_slots=%lu retry=reset",
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
-        c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.bubble_ps_slots,
-        static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
+        c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.bubble_ps_slots, c.lathe_vs_slots,
+        c.lathe_ps_slots, static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
 #if X3M_EDITION_FL
     if (attached && projectile_requested_)
         log("projectile_device device=%llu frame=%llu enabled=%u reason=%s vs_slots=%u ps_slots=%u lane32_blending=%u "
@@ -171,7 +171,9 @@ weapon_effects::stage::BubbleCache weapon_bubble_cache;
 // next build. CPU data only: a device Reset leaves it valid. Cleared when the profiles block changes.
 weapon_effects::stage::LatheCache weapon_lathe_cache;
 const void* weapon_lathe_profiles = nullptr;
-bool weapon_lathe_logged[weapon_effects::stage::lathe_cache_entries] = {};
+// Per cache slot the build serial its weapon_lathe event=built row was written for (a slot rebuilt for another type
+// after an eviction carries a new serial: its row is written too).
+std::uint32_t weapon_lathe_logged[weapon_effects::stage::lathe_cache_entries] = {};
 }
 HRESULT MotionOutput::run_weapon_effects() noexcept {
     namespace wcore = weapon_effects::core;
@@ -209,7 +211,7 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     tuning.ship_count_slot = weapon_effects::hook_state().globals.ship_count_slot;
     if (weapon_lathe_profiles != static_cast<const void*>(tuning.profiles)) {
         weapon_lathe_cache.clear();
-        for (bool& b : weapon_lathe_logged) b = false;
+        for (std::uint32_t& b : weapon_lathe_logged) b = 0;
         weapon_lathe_profiles = tuning.profiles;
     }
     const std::uint32_t lathe_builds = weapon_lathe_cache.builds;
@@ -268,20 +270,31 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
         const float metre = wcore::engine_units_per_metre * wcore::world_scale;
         for (unsigned i = 0; i < weapon_effects::stage::lathe_cache_entries; ++i) {
             const weapon_effects::stage::LatheCache::Entry& e = weapon_lathe_cache.entries[i];
-            if (!e.valid || e.frame != weapon_lathe_cache.frame_id || weapon_lathe_logged[i]) continue;
-            weapon_lathe_logged[i] = true;
+            if (!e.valid || e.frame != weapon_lathe_cache.frame_id || weapon_lathe_logged[i] == e.serial) continue;
+            weapon_lathe_logged[i] = e.serial;
             const weapon_effects::stage::LatheMesh& m = e.mesh;
-            log("weapon_lathe device=%llu frame=%llu event=built row=%ld axis=%08lx,%08lx,%08lx hull_lo_m=%.1f,%.1f,%.1f "
-                "hull_hi_m=%.1f,%.1f,%.1f perimeter_m=%.1f dome_m=%.1f,%.1f builds=%lu no_profile=%u mismatch=%u "
-                "refused=%u",
-                id_, frame_, static_cast<long>(e.row), static_cast<unsigned long>(e.axis[0]),
+            log("weapon_lathe device=%llu frame=%llu event=built slot=%u serial=%lu row=%ld axis=%08lx,%08lx,%08lx "
+                "hull_lo_m=%.1f,%.1f,%.1f hull_hi_m=%.1f,%.1f,%.1f perimeter_m=%.1f dome_m=%.1f,%.1f builds=%lu "
+                "no_profile=%u mismatch=%u unreadable=%u scale=%u degenerate=%u cache=%u",
+                id_, frame_, i, static_cast<unsigned long>(e.serial),
+                static_cast<long>(e.row), static_cast<unsigned long>(e.axis[0]),
                 static_cast<unsigned long>(e.axis[1]), static_cast<unsigned long>(e.axis[2]),
                 double(m.hull_lo[0] / metre), double(m.hull_lo[1] / metre), double(m.hull_lo[2] / metre),
                 double(m.hull_hi[0] / metre), double(m.hull_hi[1] / metre), double(m.hull_hi[2] / metre),
                 double(m.perimeter / metre), double(m.dome_depth[0] / metre), double(m.dome_depth[1] / metre),
                 static_cast<unsigned long>(weapon_lathe_cache.builds), n.lathe_no_profile, n.lathe_mismatch,
-                n.lathe_refused);
+                n.lathe_unreadable, n.lathe_scale, n.lathe_degenerate, n.lathe_cache);
         }
+    }
+    // A stale profiles table (its TShips row count differs from the live one, or none recorded): no profile is used;
+    // one row per process at the first such frame.
+    static bool stale_logged = false;
+    if (n.lathe_stale && !stale_logged) {
+        stale_logged = true;
+        log("weapon_lathe device=%llu frame=%llu event=stale_table table_rows=%lu engine_rows=%lu owners=%u (no profile "
+            "is used: regenerate weapon_effects.json for this game tree)",
+            id_, frame_, static_cast<unsigned long>(n.stale_rows[0]), static_cast<unsigned long>(n.stale_rows[1]),
+            n.lathe_stale);
     }
     // The first class mismatch of the process (a table generated for another game tree): one row.
     static bool mismatch_logged = false;
@@ -313,6 +326,14 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     weapon_drops_[12] += n.bubble.clamped;
     weapon_drops_[13] += n.bubble.partial;
     weapon_drops_[14] += n.cells_key_dropped;
+    weapon_drops_[15] += n.lathes;
+    weapon_drops_[16] += n.lathe_no_profile;
+    weapon_drops_[17] += n.lathe_mismatch;
+    weapon_drops_[18] += n.lathe_unreadable;
+    weapon_drops_[19] += n.lathe_scale;
+    weapon_drops_[20] += n.lathe_degenerate;
+    weapon_drops_[21] += n.lathe_cache;
+    weapon_drops_[22] += n.lathe_stale;
 #if X3M_EDITION_FL
     // FL bodies are assumed to keep AP's normalised LOD extents [0, 0x20000] (fl/weapon-effect-spawn.md section 5 [i]);
     // the AP bound stays the runtime guard (the walk fails to the fallback sphere) and its first refusal is one row.
@@ -617,13 +638,13 @@ void MotionOutput::log_weapon_patches(const renderer::WeaponPatch* patches, unsi
     }
 }
 void MotionOutput::weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us,
-                                             bool* drew, unsigned drops[15]) noexcept {
+                                             bool* drew, unsigned drops[weapon_drop_count]) noexcept {
     *patches = weapon_patches_;
     *decals = weapon_decals_;
     *retired = weapon_retired_;
     *stage_us = weapon_drew_ ? weapon_stage_us_ : 0.f;
     *drew = weapon_drew_;
-    for (unsigned i = 0; i < 15; ++i) {
+    for (unsigned i = 0; i < weapon_drop_count; ++i) {
         drops[i] = weapon_drops_[i];
         weapon_drops_[i] = 0;
     }
