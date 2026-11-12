@@ -130,16 +130,12 @@ struct StageFrame {
     unsigned dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0; // face draws the stage culled (their box faces away from the eye)
     unsigned area_dropped = 0; // face draws past the frame's screen-area budget
-    unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their ship bubble, of them on the fallback sphere
-    // the hull walks (stage::BubbleStats): slices run, walks failed, retries held back, deferred past the frame's budget,
-    // bubbles cut to the object radius, slices that left their walk unfinished
-    unsigned bubble_walks = 0, bubble_failures = 0, bubble_held = 0, bubble_deferred = 0, bubble_clamped = 0;
-    unsigned bubble_partial = 0;
-    unsigned cells_key_dropped = 0; // footprint cells past the packed cell key's bound (never lit; review F6)
-    // The lathe bubble (stage::Counts): owners drawn on it; lathe-tier owners refused by cause (no profile, class
-    // mismatch, unreadable or row past the count, axis scale, degenerate profile, cache full) or skipped while stale.
+    // The lathe bubble (stage::Counts): owners drawn on it; ship owners the stage could not draw by cause (no profile,
+    // class mismatch, unreadable or row past the count, axis scale, degenerate profile, cache full) or skipped while
+    // stale (the hook forwards a ship without a usable profile native: core::Counters::ships_native).
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
     unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0;
+    unsigned lathe_deferred = 0; // ships whose mesh build waits for a later frame (stage::lathe_builds_per_frame)
     float stage_us = 0.f;
     bool drew = false;
     // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the

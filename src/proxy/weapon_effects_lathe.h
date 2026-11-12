@@ -7,18 +7,19 @@
 #include <cstring>
 
 // The lathe bubble (docs/architecture/weapon-effects.md 5.1.1 "Placement", user decision 2026-11-12 on FL run 68:
-// capitals get the bubble; the box-fitted ellipsoid misfits long hulls). A ship whose TShips row has an offline profile
-// (core::ShipProfiles, weapon_effects.json schema 3) draws its shield hits on a lathe built from that profile, whatever
-// its tier; no hull walk runs for it. Windows-free; reads go through the caller's reader; no allocation, no libm, SSE2
-// scalars only.
+// capitals get the bubble; the box-fitted ellipsoid misfits long hulls; FL 69 A, the same day: every ship). A ship
+// whose TShips row has an offline profile (core::ShipProfiles, weapon_effects.json schema 3) draws its shield hits on a
+// lathe built from that profile, whatever its tier; a ship without a usable one keeps the game's native effect (the
+// impact hook's core::ship_profile_verdict forwards it). Windows-free; reads go through the caller's reader; no
+// allocation, no libm, SSE2 scalars only.
 //
 // The type (resolve_lathe, per owner and stage call, six engine reads): the object's class word obj+0x48 must be a ship
 // (7); its subtype obj+0x4a (int16) is the TShips index (the row read_tier reads its class from); the type table
 // [ship_table_slot] with its count [ship_count_slot] give the row's class id (+0xc8, TShips col 52); the profile of that
 // index must carry the same class (the generator's col 52 token through core::ship_class_id_of), else the ship falls
 // back (LatheRefusal::class_mismatch: a table generated for another game tree or edition). The scene-to-object scale: the
-// root node's axis scales [node+0x80 + 4 i] (16.16), the factor the walk applies to its children's offsets
-// (hull_scale16; FL 67 A's Titan fit: 0x10000, scene units = owner-frame engine units), each in (0, 256x].
+// root node's axis scales [node+0x80 + 4 i] (16.16), the factor the engine applies to its children's offsets (FL 67 A's
+// Titan fit: 0x10000, scene units = owner-frame engine units), each in (0, core::profile_axis_scale_max], 256x.
 //
 // The mesh (build_lathe, once per type and scale in a LatheCache of lathe_cache_entries, the least recently used not
 // drawn this frame evicted): weapon_lathe_rings rings of weapon_lathe_columns vertices in rising z (owner frame, view
@@ -82,10 +83,10 @@ struct LatheMesh {
     float perimeter = 0.f;                                  // the median body ring's perimeter
     float hull_lo[3]{}, hull_hi[3]{};                       // the profile's own bounds (before the inflation)
 };
-// The scene-to-view factors of the root's axis scales (16.16); false outside (0, hull_scale_max].
+// The scene-to-view factors of the root's axis scales (16.16); false outside (0, core::profile_axis_scale_max].
 inline bool lathe_factors(const std::int32_t axis[3], float f[3]) noexcept {
     for (unsigned i = 0; i < 3; ++i) {
-        if (axis[i] <= 0 || axis[i] > hull_scale_max) return false;
+        if (axis[i] <= 0 || axis[i] > core::profile_axis_scale_max) return false;
         f[i] = float(double(axis[i]) / 65536.0 * double(core::world_scale));
     }
     return true;
@@ -370,9 +371,15 @@ inline void lathe_band(const LatheMesh& m, float u0, float u1, float v0, float v
         }
 }
 // Why an owner with profiles loaded draws no lathe (the weapon_effects_frame row's lathe_* counters): not a ship (or no
-// profiles), an engine read refused, no profile for its row, the profile's class differs from the type record's, the
-// root's axis scales outside (0, 256x], the profile degenerate, every cache entry drawn this frame.
-enum class LatheRefusal : std::uint8_t { none, not_ship, unreadable, no_profile, class_mismatch, scale, degenerate, cache };
+// profiles; counted with no_profile), an engine read refused, no profile for its row, the profile's class differs from
+// the type record's, the root's axis scales outside (0, 256x], the profile degenerate, every cache entry drawn this
+// frame, the frame's mesh builds spent (deferred: the owner's records stay in the ring and draw on a later frame).
+enum class LatheRefusal : std::uint8_t {
+    none, not_ship, unreadable, no_profile, class_mismatch, scale, degenerate, cache, deferred
+};
+// Mesh builds per stage call (review F5: a sector entry with many new types builds two a frame; one Titan mesh's cold
+// build is measured by the native fixture's LATHE case=build_cost row).
+constexpr unsigned lathe_builds_per_frame = 2;
 struct LatheType {
     const core::ShipProfile* profile = nullptr;
     std::int32_t row = -1, class_id = -1, axis[3] = {0, 0, 0};
@@ -399,7 +406,7 @@ inline LatheRefusal resolve_lathe(Reader rd, const core::ShipProfiles* profiles,
     if (class_id != p->class_id) return LatheRefusal::class_mismatch;
     if (!rd(node + core::layout::node_axis_scale, out->axis, 12)) return LatheRefusal::unreadable;
     for (unsigned i = 0; i < 3; ++i)
-        if (out->axis[i] <= 0 || out->axis[i] > hull_scale_max) return LatheRefusal::scale;
+        if (out->axis[i] <= 0 || out->axis[i] > core::profile_axis_scale_max) return LatheRefusal::scale;
     out->profile = p;
     out->row = sub;
     out->class_id = class_id;
@@ -417,12 +424,13 @@ struct LatheCache {
     };
     Entry entries[lathe_cache_entries];
     std::uint32_t clock = 0, frame_id = 0;
-    std::uint32_t builds = 0, hits = 0, refused = 0; // running counters (the tests, diagnostics)
+    std::uint32_t builds = 0, hits = 0, refused = 0, deferred = 0; // running counters (the tests, diagnostics)
     void frame() noexcept { ++frame_id; }
     void clear() noexcept {
         for (Entry& e : entries) e.valid = false;
     }
-    const LatheMesh* get(const LatheType& t, LatheRefusal* why) noexcept {
+    // budget (nullable): the builds the caller may still run; at 0 a miss is refused as deferred (nothing evicted).
+    const LatheMesh* get(const LatheType& t, LatheRefusal* why, unsigned* budget = nullptr) noexcept {
         Entry* free = nullptr;
         for (Entry& e : entries) {
             if (e.valid && e.row == t.row && e.axis[0] == t.axis[0] && e.axis[1] == t.axis[1] && e.axis[2] == t.axis[2]) {
@@ -441,6 +449,14 @@ struct LatheCache {
             ++refused;
             *why = LatheRefusal::cache;
             return nullptr;
+        }
+        if (budget) {
+            if (!*budget) {
+                ++deferred;
+                *why = LatheRefusal::deferred;
+                return nullptr;
+            }
+            --*budget;
         }
         free->valid = false;
         if (!build_lathe(*t.profile, t.axis, &free->mesh)) {

@@ -389,6 +389,7 @@ void build_world(std::uint16_t victim_class, std::uint16_t source_class, std::ui
         w32(n, core::layout::node_live, 1);
         w32(n, core::layout::node_handle, 0xd00d);
         for (unsigned k = 0; k < 3; ++k) w32(n, core::layout::node_rot + 16 * k + 4 * k, 0x10000);
+        for (unsigned k = 0; k < 3; ++k) w32(n, core::layout::node_axis_scale + 4 * k, 0x10000);
     }
     w32(&source_node, core::layout::node_pos + 0, 7000);
     w32(&source_node, core::layout::node_pos + 4, 0xfffff448u); // -3000
@@ -528,6 +529,32 @@ void set_setting(const wchar_t* value) {
 we::Addresses addresses() {
     return we::Addresses{at(sites::impact_window_va), at(sites::impact_target_va), at(sites::prologue_va),
                          {at(sites::tap_window_va[0]), at(sites::tap_window_va[1])}, at(sites::tap_target_va)};
+}
+// The ship profiles the shield stage needs since the walk's removal (5.1.1 "Placement", user decision 2026-11-12 on FL
+// 69 A: a ship without a usable profile keeps the native effect): TShips row 4 (the default victim, an M3) with its
+// class, the generator's row count the fixture's eight. install_at points the hook state at the loaded table's profiles
+// (none here), so every install goes through install_profiled, which points it at this block.
+core::ShipProfiles fixture_profiles;
+void reset_profiles() {
+    fixture_profiles.clear();
+    fixture_profiles.tships_rows = 8;
+    core::ShipProfile& p = fixture_profiles.entries[0];
+    p.row = 4;
+    p.class_id = 2023;
+    p.z0 = -1000.f;
+    p.z1 = 1000.f;
+    for (auto& slice : p.slice) {
+        slice[0] = slice[1] = 0.f;
+        slice[2] = slice[3] = 500.f;
+    }
+    fixture_profiles.slot_of[4] = 1;
+    fixture_profiles.count = 1;
+}
+bool install_profiled(const we::Addresses& a, core::Mode mode) {
+    const bool ok = we::install_at(a, mode);
+    reset_profiles();
+    we::hook_state().profiles = &fixture_profiles;
+    return ok;
 }
 unsigned ring_live(const core::Ring& r) {
     unsigned n = 0;
@@ -900,7 +927,7 @@ void bolt_checks() {
     // Install shields,hull,bolts: the impact, the bolt tap (plain write), the muzzle and the flight effect (atomic).
     set_setting(L"shields,hull,bolts");
     executable_ok = true;
-    const bool installed = we::install_at(bolt_addresses(), core::mode_shields_hull_bolts);
+    const bool installed = install_profiled(bolt_addresses(), core::mode_shields_hull_bolts);
     check(installed && we::installed() && we::mode() == core::mode_shields_hull_bolts && b.armed == 1,
           "bolts_installed", we::state());
     check(call_target(at(bolt_sites::tap_site_va)) == u32f(reinterpret_cast<void (*)()>(&x3m_weapon_effects_stub_bolt_tap)) &&
@@ -1096,14 +1123,14 @@ void bolt_checks() {
     executable_ok = true;
     *reinterpret_cast<unsigned char*>(at(bolt_sites::tap_site_va + 1)) ^= 0xff;
     SetLastError(sentinel_error);
-    bool refused = !we::install_at(bolt_addresses(), core::mode_shields_hull_bolts) &&
+    bool refused = !install_profiled(bolt_addresses(), core::mode_shields_hull_bolts) &&
                    !std::strcmp(we::state(), "bytes_mismatch_bolt_tap");
     *reinterpret_cast<unsigned char*>(at(bolt_sites::tap_site_va + 1)) ^= 0xff;
     check(refused && GetLastError() == sentinel_error && !we::installed() && all_windows_original() &&
               !std::strcmp(we::site_state(3), "bytes_mismatch"),
           "bolt_tap_byte_mismatch_refused", we::state());
     *reinterpret_cast<unsigned char*>(at(bolt_sites::muzzle_site_va + 1)) ^= 0xff;
-    refused = !we::install_at(bolt_addresses(), core::mode_shields_hull_bolts) &&
+    refused = !install_profiled(bolt_addresses(), core::mode_shields_hull_bolts) &&
               !std::strcmp(we::state(), "bytes_mismatch_muzzle");
     *reinterpret_cast<unsigned char*>(at(bolt_sites::muzzle_site_va + 1)) ^= 0xff;
     check(refused && !we::installed() && all_windows_original(), "muzzle_byte_mismatch_refused", we::state());
@@ -1111,7 +1138,7 @@ void bolt_checks() {
     // Rollback: a faulted read-back at the bolt tap (the last plain write) restores every site claimed before it.
     fault_read_at = at(bolt_sites::tap_site_va);
     SetLastError(sentinel_error);
-    const bool rolled = !we::install_at(bolt_addresses(), core::mode_shields_hull_bolts);
+    const bool rolled = !install_profiled(bolt_addresses(), core::mode_shields_hull_bolts);
     check(rolled && fault_read_at == 0 && !we::installed() && all_windows_original() &&
               window_is(bolt_sites::tap_window_va, bolt_sites::expected_tap_window, bolt_sites::tap_window_length) &&
               window_is(bolt_sites::muzzle_window_va, bolt_sites::expected_muzzle_window, bolt_sites::muzzle_window_length) &&
@@ -1404,7 +1431,7 @@ void death_checks() {
     // Install shields,hull,explosions: the impact and both death sites (the area one plain, the other atomic).
     set_setting(L"shields,hull,explosions");
     executable_ok = true;
-    const bool installed = we::install_at(death_addresses(), core::mode_shields_hull_explosions);
+    const bool installed = install_profiled(death_addresses(), core::mode_shields_hull_explosions);
     const void* stub_area = reinterpret_cast<const void*>(&x3m_weapon_effects_stub_death_area);
     const void* stub_other = reinterpret_cast<const void*>(&x3m_weapon_effects_stub_death_other);
     check(installed && we::installed() && we::mode() == core::mode_shields_hull_explosions &&
@@ -1626,7 +1653,7 @@ void death_checks() {
     we::shutdown();
     check(!we::installed() && all_windows_original() && death_windows_original(), "death_shutdown_restores_both");
     // death_mode_without_token_leaves_sites: shields,hull does not touch the death sites.
-    const bool hull_only = we::install_at(death_addresses(), core::mode_shields_hull);
+    const bool hull_only = install_profiled(death_addresses(), core::mode_shields_hull);
     check(hull_only && death_windows_original() && !std::strcmp(we::site_state(6), "not_used") &&
               !std::strcmp(we::site_state(7), "not_used"),
           "death_mode_without_token_leaves_sites");
@@ -1638,7 +1665,7 @@ void death_checks() {
         const std::uintptr_t va = (site ? death_sites::other_window_va : death_sites::area_window_va) + 3;
         flip(va);
         SetLastError(sentinel_error);
-        const bool r = !we::install_at(death_addresses(), core::mode_shields_hull_explosions) &&
+        const bool r = !install_profiled(death_addresses(), core::mode_shields_hull_explosions) &&
                        !std::strcmp(we::state(), site ? "bytes_mismatch_death_other" : "bytes_mismatch_death_area") &&
                        GetLastError() == sentinel_error;
         flip(va);
@@ -1650,14 +1677,14 @@ void death_checks() {
     // the other death site claimed before it; one at the impact restores both death sites.
     fault_read_at = death_site_at(0);
     SetLastError(sentinel_error);
-    bool rolled = !we::install_at(death_addresses(), core::mode_shields_hull_explosions);
+    bool rolled = !install_profiled(death_addresses(), core::mode_shields_hull_explosions);
     const bool area_rolled = rolled && fault_read_at == 0 && !we::installed() && all_windows_original() &&
                              death_windows_original() && GetLastError() == sentinel_error &&
                              !std::strcmp(we::site_state(6), "readback_rolled_back") &&
                              !std::strcmp(we::site_state(7), "rolled_back") &&
                              !std::strcmp(we::site_state(0), "not_attempted");
     fault_read_at = impact_site();
-    rolled = !we::install_at(death_addresses(), core::mode_shields_hull_explosions);
+    rolled = !install_profiled(death_addresses(), core::mode_shields_hull_explosions);
     const bool impact_rolled = rolled && fault_read_at == 0 && !we::installed() && all_windows_original() &&
                                death_windows_original() && !std::strcmp(we::site_state(0), "readback_rolled_back") &&
                                !std::strcmp(we::site_state(6), "rolled_back") &&
@@ -1686,7 +1713,7 @@ int main() {
 
     set_setting(L"observe");
     executable_ok = true;
-    const bool observe_ok = we::install_at(addresses(), core::mode_observe);
+    const bool observe_ok = install_profiled(addresses(), core::mode_observe);
     check(observe_ok && we::installed() && we::mode() == core::mode_observe && impact_redirected(), "observe_installed");
 
     core::HookState& hs = we::hook_state();
@@ -1729,7 +1756,7 @@ int main() {
 
     we::shutdown();
     set_setting(L"shields");
-    const bool shields_ok = we::install_at(addresses(), core::mode_shields);
+    const bool shields_ok = install_profiled(addresses(), core::mode_shields);
     check(shields_ok && we::mode() == core::mode_shields, "shields_installed");
     core::HookState& hs2 = we::hook_state();
     // Coordinator decision 2026-11-06: a stage-owned shield hit skips the engine's spawn by default (the patch alone):
@@ -1783,6 +1810,130 @@ int main() {
               !(staged_rec.flags & core::flag_forwarded),
           "skip_no_callee");
     check(frame_kept(skip) && protection(at(dmg_page)) == PAGE_EXECUTE_READWRITE, "skip_frame_kept");
+    // The surface at the hook (5.1.1 "Placement", user decision 2026-11-12 on FL 69 A): a ship whose TShips row has a
+    // profile of its class is the stage's (the native spawn skipped); a ship without a usable one forwards native,
+    // counted per verdict (core::Counters::ships_native) and its row listed once (core::NativeRows); a station is the
+    // stage's (the hull decal); any other object forwards native (others_native). Each case: the default world, then
+    // one change; the frame as the caller expects either way.
+    {
+        struct Route {
+            const char* name;
+            std::uint16_t victim_class;
+            std::int16_t row;          // the victim's TShips row (its subtype)
+            std::int32_t row_class;    // that row's class id in TShips
+            std::uint32_t live_rows;   // the live TShips count
+            std::int32_t axis;         // the victim root's axis scales
+            bool profiles;             // the hook state's profiles block set
+            bool staged;               // expected: the stage's (no callee) or forwarded native
+            int verdict;               // the ships_native counter that moves (-1: none; 6: others_native)
+            int listed;                // the row the native list must hold after the case (-1: none expected)
+        };
+        const Route routes[] = {
+            {"route_fighter_profile_staged", 7, 4, 2023, 8, 0x10000, true, true, -1, -1},
+            {"route_fighter_no_profile_native", 7, 5, 2023, 8, 0x10000, true, false, core::profile_none, 5},
+            {"route_capital_no_profile_native", 7, 6, 2022, 8, 0x10000, true, false, core::profile_none, 6},
+            {"route_class_mismatch_native", 7, 4, 2024, 8, 0x10000, true, false, core::profile_mismatch, -1},
+            {"route_stale_table_native", 7, 4, 2023, 7, 0x10000, true, false, core::profile_stale, -1},
+            {"route_no_profiles_loaded_native", 7, 4, 2023, 8, 0x10000, false, false, core::profile_none, -1},
+            {"route_axis_scale_native", 7, 4, 2023, 8, 0, true, false, core::profile_scale, -1},
+            {"route_station_staged", core::layout::class_dock, 4, 2023, 8, 0x10000, true, true, -1, -1},
+            {"route_other_object_native", core::layout::class_shielded_b, 4, 2023, 8, 0x10000, true, false, 6, -1}};
+        bool all = true;
+        for (const Route& c : routes) {
+            build_world(c.victim_class, 0, 4, 0x0, 123456);
+            w16(&victim_obj, core::layout::obj_subtype, std::uint16_t(c.row));
+            if (c.row >= 0 && c.row < 8)
+                w32(ship_table.data() + std::size_t(c.row) * core::layout::type_stride, core::layout::ship_class_id,
+                    std::uint32_t(c.row_class));
+            ship_count_slot = c.live_rows;
+            for (unsigned k = 0; k < 3; ++k) w32(&victim_node, core::layout::node_axis_scale + 4 * k, std::uint32_t(c.axis));
+            hs2.profiles = c.profiles ? &fixture_profiles : nullptr;
+            hs2.suppress_native = 1;
+            hs2.owned_next = 1;
+            const core::Counters before = hs2.counters;
+            std::memset(we_ca, 0, sizeof we_ca);
+            const RunResult run = run_window(1, 1200, 1);
+            core::Event rec{};
+            const bool found = newest_record(u32(&victim_obj), &rec);
+            unsigned moved = 0;
+            for (unsigned v = 0; v < core::profile_verdict_count; ++v)
+                moved += hs2.counters.ships_native[v] - before.ships_native[v];
+            const unsigned others = hs2.counters.others_native - before.others_native;
+            bool listed = c.listed < 0;
+            for (unsigned i = 0; i < hs2.native_rows.count; ++i)
+                listed = listed || (hs2.native_rows.row[i] == c.listed && hs2.native_rows.verdict[i] == core::profile_none);
+            const bool counted = c.verdict < 0 ? moved == 0 && others == 0
+                                 : c.verdict == 6
+                                     ? moved == 0 && others == 1
+                                     : moved == 1 && hs2.counters.ships_native[c.verdict] == before.ships_native[c.verdict] + 1;
+            const bool path = c.staged ? run.ca[11] == 0 && found && (rec.flags & core::flag_stage) &&
+                                             !(rec.flags & core::flag_forwarded)
+                                       : run.ca[11] == 1 && found && !(rec.flags & core::flag_stage) &&
+                                             (rec.flags & core::flag_forwarded);
+            const bool ok = path && counted && listed && frame_kept(run);
+            std::printf("ROUTE case=%s callee=%u staged=%u forwarded=%u ships_native=%u others_native=%u listed=%u "
+                        "native_rows=%u ok=%u\n",
+                        c.name, unsigned(run.ca[11]), unsigned(found && (rec.flags & core::flag_stage)),
+                        unsigned(found && (rec.flags & core::flag_forwarded)), moved, others, unsigned(listed),
+                        unsigned(hs2.native_rows.count), unsigned(ok));
+            check(ok, c.name);
+            all = all && ok;
+        }
+        // each native row listed once, the first native_row_capacity rows only
+        unsigned fives = 0;
+        for (unsigned i = 0; i < hs2.native_rows.count; ++i) fives += hs2.native_rows.row[i] == 5;
+        check(all && fives == 1 && hs2.native_rows.count <= core::native_row_capacity, "route_native_rows_listed_once");
+        // Across the session (review F1): eleven more distinct rows (10..20, past the live count: unreadable) fill the
+        // list to native_row_capacity and count the rest once each (more); a row seen again changes nothing.
+        {
+            const unsigned listed_before = hs2.native_rows.count, distinct_before = listed_before + hs2.native_rows.more;
+            auto native_row_hit = [&](std::int16_t row) {
+                build_world(7, 0, 4, 0x0, 123456);
+                w16(&victim_obj, core::layout::obj_subtype, std::uint16_t(row));
+                hs2.profiles = &fixture_profiles;
+                hs2.owned_next = 1;
+                std::memset(we_ca, 0, sizeof we_ca);
+                return run_window(1, 1200, 1).ca[11] == 1;
+            };
+            bool forwarded = true;
+            for (std::int16_t row = 10; row <= 20; ++row) forwarded = native_row_hit(row) && forwarded;
+            const unsigned distinct_after = hs2.native_rows.count + hs2.native_rows.more;
+            const std::uint32_t more = hs2.native_rows.more;
+            forwarded = native_row_hit(20) && forwarded;
+            std::printf("NATIVE_ROWS listed_before=%u distinct_before=%u listed=%u more=%lu distinct=%u repeat_more=%lu\n",
+                        listed_before, distinct_before, unsigned(hs2.native_rows.count),
+                        static_cast<unsigned long>(more), distinct_after,
+                        static_cast<unsigned long>(hs2.native_rows.more));
+            check(forwarded && distinct_after == distinct_before + 11 &&
+                      hs2.native_rows.count == core::native_row_capacity && hs2.native_rows.more == more && more > 0,
+                  "route_native_rows_session_first_seen_then_more");
+        }
+        // The production wiring (review F2): install_at itself points the hook state at ship_profiles(), null in this
+        // process (no table loaded; a schema-2 table allocates no profiles block either: load_table's section test), so
+        // a ship's shield hit forwards native, counted no_profile, without the fixture's block.
+        {
+            we::shutdown();
+            const bool wired = we::install_at(addresses(), core::mode_shields);
+            core::HookState& hw = we::hook_state();
+            const bool null_wired = wired && hw.profiles == we::ship_profiles() && we::ship_profiles() == nullptr;
+            build_world(7, 0, 4, 0x0, 123456);
+            hw.owned_next = 1;
+            const std::uint32_t none_before = hw.counters.ships_native[core::profile_none];
+            std::memset(we_ca, 0, sizeof we_ca);
+            const RunResult run = run_window(1, 1200, 1);
+            core::Event rec{};
+            const bool native = run.ca[11] == 1 && newest_record(u32(&victim_obj), &rec) &&
+                                !(rec.flags & core::flag_stage) && (rec.flags & core::flag_forwarded) &&
+                                hw.counters.ships_native[core::profile_none] == none_before + 1 && frame_kept(run);
+            std::printf("ROUTE case=install_wiring installed=%u profiles_null=%u native=%u\n", unsigned(wired),
+                        unsigned(null_wired), unsigned(native));
+            check(null_wired && native, "route_install_wires_null_profiles_native");
+            we::shutdown();
+            check(install_profiled(addresses(), core::mode_shields), "route_reinstall_shields");
+        }
+        hs2.profiles = &fixture_profiles;
+        build_world(7, 0, 4, 0x0, 123456);
+    }
     hs2.owned_next = 1;
     build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
     std::memset(we_ca, 0, sizeof we_ca);
@@ -1834,6 +1985,14 @@ int main() {
             std::memset(we_ca, 0, sizeof we_ca);
             const RunResult r = run_window(1, 1200, 0);
             return newest_record(u32(&victim_obj), out) && r.ca[11] == 0 && frame_kept(r);
+        };
+        // A recorded hit staged or forwarded (since 2026-11-12 an object without a usable ship profile forwards native:
+        // its record still carries the shield fraction and the tier).
+        auto hit_any = [&](core::Event* out) {
+            hs2.owned_next = 1;
+            std::memset(we_ca, 0, sizeof we_ca);
+            const RunResult r = run_window(1, 1200, 0);
+            return newest_record(u32(&victim_obj), out) && frame_kept(r);
         };
         core::Event e{};
         char detail[160];
@@ -1968,32 +2127,32 @@ int main() {
         // An unshielded class (17, an asteroid, no bit 20) is not walked even with a list present; bit 20 on a dock is.
         build_world(17, 0, 4, 0x0, 123456);
         set_shields(3, caps, energy);
-        ok = hit(&e);
+        ok = hit_any(&e);
         const bool unshielded = ok && !(e.flags & core::flag_shield_read) && e.patch_tier == core::patch_corvette &&
                                 e.tier_source == core::tier_by_radius; // radius 20000: the corvette band
         build_world(5, 0, 4, 0x0, 123456);
         set_shields(3, caps, energy);
         w32(&victim_obj, core::layout::obj_flags, core::layout::obj_shielded);
-        ok = hit(&e);
+        ok = hit_any(&e);
         check(unshielded && ok && (e.flags & core::flag_shield_read) && e.patch_tier == core::patch_capital &&
                   e.tier_source == core::tier_by_station,
               "shield_unshielded_class_skipped_bit20_read");
         // Tier: an M6 by its class id; an unknown id and a subtype past the count fall back to the radius bands.
         build_world(7, 0, 4, 0x0, 123456);
         w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2026);
-        ok = hit(&e);
+        ok = hit_any(&e);
         bool tier_ok = ok && e.patch_tier == core::patch_corvette && e.tier_source == core::tier_by_ship_class;
         w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2022);
-        ok = hit(&e);
+        ok = hit_any(&e);
         tier_ok = tier_ok && ok && e.patch_tier == core::patch_capital && e.tier_source == core::tier_by_ship_class;
         w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 9999);
         w32(&victim_obj, core::layout::obj_radius, 5000);
-        ok = hit(&e);
+        ok = hit_any(&e);
         tier_ok = tier_ok && ok && e.patch_tier == core::patch_fighter && e.tier_source == core::tier_by_radius;
         ship_count_slot = 4; // subtype 4 is now past the count
         w32(ship_table.data() + 4 * core::layout::type_stride, core::layout::ship_class_id, 2026);
         w32(&victim_obj, core::layout::obj_radius, 90000);
-        ok = hit(&e);
+        ok = hit_any(&e);
         tier_ok = tier_ok && ok && e.patch_tier == core::patch_capital && e.tier_source == core::tier_by_radius;
         check(tier_ok, "patch_tier_class_id_and_radius_fallback");
         // The drained shield (core::drained_shield_q, user report after Run237 Flight D): an absorbed hit whose read
@@ -2261,7 +2420,7 @@ int main() {
                                 !std::strcmp(core::mode_name(core::mode_reshade), "reshade");
         check(reshade_ok, "mode_parse_reshade_alone");
         build_world(7, 0, 4, core::bullet_hull_through_shields, 123456);
-        const bool hull_ok = we::install_at(addresses(), core::mode_shields_hull);
+        const bool hull_ok = install_profiled(addresses(), core::mode_shields_hull);
         core::HookState& h3 = we::hook_state();
         check(hull_ok && we::mode() == core::mode_shields_hull && impact_redirected() &&
                   h3.armed == (core::family_shields | core::family_hull) && h3.suppress_native_hull == 1 &&
@@ -2501,7 +2660,7 @@ int main() {
     we::shutdown();
     build_world(7, 0, 4, 0x0, 123456);
     set_setting(L"observe");
-    we::install_at(addresses(), core::mode_observe);
+    install_profiled(addresses(), core::mode_observe);
     core::HookState& hs3 = we::hook_state();
     hs3.owned_next = 0;
     std::memset(we_ca, 0, sizeof we_ca);
@@ -2530,7 +2689,7 @@ int main() {
         we::Addresses on_copy = addresses();
         on_copy.impact_window = base + (sites::impact_window_va & 0xfff);
         SetLastError(sentinel_error);
-        const bool refused = we::install_at(on_copy, core::mode_shields);
+        const bool refused = install_profiled(on_copy, core::mode_shields);
         check(!refused && !std::strcmp(we::state(), "bytes_mismatch_impact") && GetLastError() == sentinel_error &&
                   !we::installed(),
               "changed_byte_refused", we::state());
@@ -2540,18 +2699,18 @@ int main() {
     // A changed frame witness or prologue byte refuses before any write (fail closed), LastError kept.
     flip(sites::witnesses[1].va);
     SetLastError(sentinel_error);
-    bool refused_frame = !we::install_at(addresses(), core::mode_shields) && !std::strcmp(we::state(), "frame_mismatch");
+    bool refused_frame = !install_profiled(addresses(), core::mode_shields) && !std::strcmp(we::state(), "frame_mismatch");
     flip(sites::witnesses[1].va);
     check(refused_frame && GetLastError() == sentinel_error && !we::installed() && all_windows_original(),
           "witness_mismatch_refused", we::state());
     flip(sites::prologue_va + 5);
-    refused_frame = !we::install_at(addresses(), core::mode_shields) && !std::strcmp(we::state(), "frame_mismatch");
+    refused_frame = !install_profiled(addresses(), core::mode_shields) && !std::strcmp(we::state(), "frame_mismatch");
     flip(sites::prologue_va + 5);
     check(refused_frame && !we::installed() && all_windows_original(), "prologue_mismatch_refused", we::state());
     // A changed tap byte refuses observe before any write.
     flip(sites::tap_window_va[1] + 2);
     SetLastError(sentinel_error);
-    const bool refused_tap = !we::install_at(addresses(), core::mode_observe) && !std::strcmp(we::state(), "bytes_mismatch_tap");
+    const bool refused_tap = !install_profiled(addresses(), core::mode_observe) && !std::strcmp(we::state(), "bytes_mismatch_tap");
     flip(sites::tap_window_va[1] + 2);
     check(refused_tap && GetLastError() == sentinel_error && !we::installed() && all_windows_original() &&
               !std::strcmp(we::site_state(2), "bytes_mismatch"),
@@ -2560,13 +2719,13 @@ int main() {
     // it; one at the second restores the first and never reaches the impact.
     fault_read_at = impact_site();
     SetLastError(sentinel_error);
-    bool multi = !we::install_at(addresses(), core::mode_observe);
+    bool multi = !install_profiled(addresses(), core::mode_observe);
     check(multi && fault_read_at == 0 && !we::installed() && all_windows_original() && GetLastError() == sentinel_error &&
               !std::strcmp(we::site_state(0), "readback_rolled_back") && !std::strcmp(we::site_state(1), "rolled_back") &&
               !std::strcmp(we::site_state(2), "rolled_back") && !std::strcmp(we::state(), "readback_rolled_back"),
           "observe_rollback_three_sites", we::site_state(0));
     fault_read_at = at(sites::tap_site_va[1]);
-    multi = !we::install_at(addresses(), core::mode_observe);
+    multi = !install_profiled(addresses(), core::mode_observe);
     check(multi && fault_read_at == 0 && !we::installed() && all_windows_original() &&
               !std::strcmp(we::site_state(2), "readback_rolled_back") && !std::strcmp(we::site_state(1), "rolled_back") &&
               !std::strcmp(we::site_state(0), "not_attempted"),
@@ -2576,7 +2735,7 @@ int main() {
     // Rollback on a failed read-back (the seam flips a byte of the post-write read): the site restored.
     fault_read_at = impact_site();
     SetLastError(sentinel_error);
-    const bool rolled = we::install_at(addresses(), core::mode_shields);
+    const bool rolled = install_profiled(addresses(), core::mode_shields);
     check(engine_patch::read_code(at(sites::impact_window_va), now, sites::impact_window_length) &&
               !std::memcmp(now, sites::expected_impact_window, sites::impact_window_length) && !rolled &&
               !we::installed() && faults_taken > 0 && GetLastError() == sentinel_error &&
@@ -2589,7 +2748,7 @@ int main() {
 
     engine_patch::close_install_window("fixture");
     SetLastError(sentinel_error);
-    const bool late = we::install_at(addresses(), core::mode_shields);
+    const bool late = install_profiled(addresses(), core::mode_shields);
     check(!late && !std::strcmp(we::state(), "late_claim") && GetLastError() == sentinel_error && !we::installed(),
           "late_claim_refused");
 

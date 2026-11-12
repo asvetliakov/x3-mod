@@ -23,7 +23,7 @@ Floats are rounded to 3 decimals.
 Units. One scene unit is one engine (world) unit: the unit of a scene part's key position and of a body's points
 scaled by its LOD-0 value, point x value / 65536 (engine_bodies.py's body units; the engine stores LOD points
 normalised to max |coordinate| 65536). The runtime's part half-extent ((ext x value + 0x8000) >> 16) x axis scale /
-0x10000 (src/proxy/weapon_effects_bubble.h, hull_scale16 with a 0x10000 scale = 1.0) is the same number for a node of
+0x10000 (the runtime hull walk's hull_scale16 with a 0x10000 scale = 1.0; the walk was removed on 2026-11-12) is the same number for a node of
 unit scale; weapon_catalog.UNITS_PER_M = 500 per metre; the bubble's view units are engine units x core::world_scale.
 
 Geometry. Every part of the scene with a body (B token; a number N -> v\\%05d; -1 or absent: none), LOD 0 of the body

@@ -46,7 +46,7 @@ neighbours), radius (the largest point distance from the scene origin) and point
 decimals. Geometry: LOD 0 of every non-effect part body the scene places (first key position and rotation, F parents
 composed), each body's points x its LOD-0 value / 65536 (engine_bodies.py's body units), faces under 0.1 % of the
 body's largest dropped. One scene unit is one engine (world) unit: a scene part's key position, and the runtime's part
-half-extent ((ext x value + 0x8000) >> 16) x axis scale / 0x10000 at unit node scale (src/proxy/weapon_effects_bubble.h
+half-extent ((ext x value + 0x8000) >> 16) x axis scale / 0x10000 at unit node scale (the removed runtime walk's
 hull_scale16); 500 per metre (weapon_catalog.UNITS_PER_M). Rows without a profile are listed under
 generated_from.ship_profiles_skipped (index, scene, class, reason); generated_from.ship_profiles records the TShips
 source, counts and part tallies. Rules and skip reasons: tools/effects/ship_profiles.py.
