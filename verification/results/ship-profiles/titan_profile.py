@@ -1,7 +1,10 @@
 """The FL Argon Titan's ship profile (tables.ship_profiles, tools/effects/ship_profiles.py) against the FL 67 walk
 figures (verification/results/fl-run67/titan_scene.py; docs/verification/weapon-effects.md "FL 67 A").
 Usage: python3 -I verification/results/ship-profiles/titan_profile.py [game-root] > titan_profile.json
-Prints one JSON object: the Titan entry, the widest slice, the generation time of the section and the walk figures."""
+Prints one JSON object: the Titan entry, the widest slice, the generation time of the section and the walk figures.
+Frozen: titan_profile.json is the profile before the hull rules and the easing (commit 0defbd821), the figures the
+native fixture's titan_profile() embeds; rerunning this gives the current rules' entry. Superseded by hull_rules.py
+(titan_profile_raw.json, titan_profile_smoothed.json, hull_rules_fl.txt)."""
 import json, sys, time
 from pathlib import Path
 R = Path(__file__).resolve().parents[3]

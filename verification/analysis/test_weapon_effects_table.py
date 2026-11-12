@@ -604,10 +604,13 @@ class ShipProfiles(unittest.TestCase):
     def test_profile_parts_parents_rotation_and_skips(self):
         import engine_bodies
         import ship_profiles as sp
+        from unittest import mock
         with tempfile.TemporaryDirectory() as folder:
             game = ship_game(folder)
             assets, _ = engine_bodies.load_assets(game, False, 'ap')
-            entries, skipped, prov = sp.ship_profiles(assets)
+            with mock.patch.multiple(sp, PART_FRACTION=0.0, SMOOTH=False):  # the pod (50 of 1000 wide) kept, raw
+                entries, skipped, prov = sp.ship_profiles(assets)
+            default = sp.ship_profiles(assets)
         self.assertEqual([(s['tships_index'], s['reason']) for s in skipped],
                          [(0, 'short_row'), (1, 'no_scene'), (2, 'not_found'), (5, 'no_points')])
         self.assertEqual(skipped[2]['scene'], 'ships\\x\\gone_scene')
@@ -627,6 +630,83 @@ class ShipProfiles(unittest.TestCase):
         self.assertEqual((prov['profiles'], prov['skipped'], prov['rows']), (2, 4, 6))
         # tallied over the distinct profiled scenes: long_scene's effects part and its absent v\19027
         self.assertEqual((prov['scene_parts'], prov['effect_parts_excluded'], prov['parts_unresolved']), (4, 1, 1))
+        self.assertEqual((a['trim_lo'], a['trim_hi'], a['parts_excluded'], a['smoothed']), (0.0, 0.0, 0, False))
+        # the defaults: the pod is under 6 % of the hull's 1000 (rule a), the hull's two end rings remain
+        d = default[0][0]
+        self.assertEqual((d['z0'], d['z1'], d['points'], d['parts_excluded'], d['smoothed']), (-1000.0, 3000.0, 4, 1, True))
+        self.assertEqual(d['slices'], [[0.0, 0.0, 1000.0, 500.0]] * sp.SLICES)
+        self.assertEqual((default[2]['thin_parts_excluded'], default[2]['part_fraction'], default[2]['trim_fraction'],
+                          default[2]['smoothed']), (1, sp.PART_FRACTION, sp.TRIM_FRACTION, True))
+
+    @staticmethod
+    def box(x, y, z0, z1, step=100.0, cx=0.0):
+        """The corners of a lateral box +-x, +-y at every z from z0 to z1 (inclusive) in steps."""
+        import numpy as np
+        zs = np.arange(z0, z1 + step / 2, step)
+        return np.array([(cx + sx * x, sy * y, z) for z in zs for sx in (-1, 1) for sy in (-1, 1)], np.float64)
+
+    def test_thin_parts_rule(self):
+        import numpy as np
+        import ship_profiles as sp
+        hull = self.box(1000, 500, -2000, 2000, 4000)
+        mast = self.box(10, 10, 2000, 4000)                  # 1 % of the hull's 1000: dropped
+        turret = self.box(80, 40, 0, 100, cx=600)            # 8 %: kept
+        boom = self.box(55, 59, -500, 500, cx=-900)          # 5.9 %: dropped (the limit is 60)
+        pts, excluded = sp.hull_points([hull, mast, turret, boom])
+        self.assertEqual(excluded, 2)
+        self.assertEqual(len(pts), len(hull) + len(turret))
+        self.assertEqual(pts[:, 2].max(), 2000.0)
+        # a scene that is only thin geometry keeps it: one part, or parts each thin but wide together
+        pts, excluded = sp.hull_points([mast])
+        self.assertEqual((pts.tolist(), excluded), (mast.tolist(), 0))
+        apart = [self.box(10, 10, 0, 100, cx=-1000), self.box(10, 10, 0, 100, cx=1000)]
+        pts, excluded = sp.hull_points(apart)
+        self.assertEqual((len(pts), excluded), (sum(len(c) for c in apart), 0))
+        self.assertEqual(sp.hull_points([hull, mast], 0.0)[1], 0)
+        self.assertTrue(np.array_equal(sp.hull_points([hull, mast], 0.0)[0], np.concatenate([hull, mast])))
+
+    def test_thin_ends_rule(self):
+        import numpy as np
+        import ship_profiles as sp
+        hull = self.box(1000, 500, 0, 3100)
+        # a needle (5 x 5, 0.005 % of the hull's area) from 3200 to 6400: slices 16..31 trimmed, 32 slices re-sampled
+        p = sp.profile(np.concatenate([hull, self.box(5, 5, 3200, 6400)]), smooth=False)
+        self.assertEqual((p['z0'], p['z1'], p['trim_lo'], p['trim_hi'], p['points']), (0.0, 3100.0, 0.0, 3300.0, len(hull)))
+        self.assertEqual((p['slices'][0], p['slices'][31]), ([0.0, 0.0, 1000.0, 500.0], [0.0, 0.0, 1000.0, 500.0]))
+        # both ends; a lone tip point past empty slices is an end too (empty slices never count as wide)
+        tail = self.box(5, 5, -1000, -800)
+        p = sp.profile(np.concatenate([tail, hull, [[0.0, 0.0, 9000.0]]]), smooth=False)
+        self.assertEqual((p['z0'], p['z1'], p['trim_lo'], p['trim_hi']), (0.0, 3100.0, 1000.0, 5900.0))
+        # an internal neck between two hull sections is kept, and so is an end at the fraction
+        neck = np.concatenate([self.box(1000, 500, 0, 1000), self.box(5, 5, 1100, 2000), self.box(1000, 500, 2100, 3100)])
+        p = sp.profile(neck, smooth=False)
+        self.assertEqual((p['z0'], p['z1'], p['trim_lo'], p['trim_hi']), (0.0, 3100.0, 0.0, 0.0))
+        self.assertEqual(p['slices'][16][2:], [5.0, 5.0])
+        edge = np.concatenate([hull, self.box(100, 50, 3200, 3300)])   # 1 % of the area: kept
+        self.assertEqual(sp.profile(edge, smooth=False)['trim_hi'], 0.0)
+        self.assertEqual(sp.profile(edge, fraction=0.011, smooth=False)['trim_hi'], 200.0)
+
+    def test_width_easing(self):
+        import numpy as np
+        import ship_profiles as sp
+        rows = [[float(i), 0.0, 1.0, 2.0] for i in range(10)]
+        rows[5] = [5.0, 0.0, 10.0, 2.0]                       # a fin: hx steps 1 -> 10 -> 1
+        eased = sp.smooth_widths(rows)
+        self.assertEqual([r[2] for r in eased], [1, 1, 1, 4, 7, 10, 7, 4, 1, 1])
+        self.assertEqual([r[3] for r in eased], [2.0] * 10)
+        self.assertEqual([r[:2] for r in eased], [r[:2] for r in rows])           # centres unchanged
+        self.assertTrue(all(e[k] >= r[k] for e, r in zip(eased, rows) for k in (2, 3)))
+        ends = sp.smooth_widths([[0, 0, w, 1.0] for w in (1.0, 1.0, 1.0, 7.0)])
+        self.assertEqual([r[2] for r in ends], [1.0, 3.0, 5.0, 7.0])
+        blunt = sp.smooth_widths([[0, 0, w, 1.0] for w in (1.0, 7.0, 7.0, 7.0)])  # no running max at an end slice:
+        self.assertEqual([r[2] for r in blunt], [3.0, 7.0, 7.0, 7.0])              # (2 x 1 + 7) / 3, not 7
+        pts = np.concatenate([self.box(100, 50, 0, 3100), self.box(1000, 50, 1600, 1600)])
+        raw, smooth = sp.profile(pts, smooth=False), sp.profile(pts)
+        self.assertEqual((raw['smoothed'], smooth['smoothed']), (False, True))
+        self.assertEqual({k: v for k, v in raw.items() if k not in ('slices', 'smoothed')},
+                         {k: v for k, v in smooth.items() if k not in ('slices', 'smoothed')})
+        self.assertEqual([round(s[2]) for s in smooth['slices'][14:19]], [400, 700, 1000, 700, 400])
+        self.assertTrue(all(s[k] >= r[k] for s, r in zip(smooth['slices'], raw['slices']) for k in (2, 3)))
 
     def test_key_layouts(self):
         import numpy as np
@@ -686,7 +766,7 @@ class ShipProfiles(unittest.TestCase):
 
 @unittest.skipUnless((FL_GAME / 'X3FL.exe').exists() and (FL_GAME / 'addon2/04.cat').exists(), 'X3FL tree unavailable')
 class ShipProfilesFlInstalled(unittest.TestCase):
-    """The Argon Titan's profile on the live C:\\X3FL tree (verification/results/ship-profiles/titan_profile.py)."""
+    """The Argon Titan's profile on the live C:\\X3FL tree (verification/results/ship-profiles/hull_rules.py)."""
 
     @classmethod
     def setUpClass(cls):
@@ -700,12 +780,19 @@ class ShipProfilesFlInstalled(unittest.TestCase):
         self.assertEqual((titan['scene'], titan['class']), ('ships\\argon\\argon_M2_scene', 'OBJ_SHIP_M2'))
         self.assertEqual(len(titan['slices']), 32)
         self.assertLess(titan['z0'], titan['z1'])
-        # the hull part at z 17329 with LOD-0 value 528422 (titan_scene.py): its normalised z +-65536 spans the ship
-        self.assertEqual((titan['z0'], titan['z1']), (17329.0 - 528422, 17329.0 + 528422))
+        # the hull part at z 17329 with LOD-0 value 528422 (titan_scene.py): its normalised z +-65536 spans the ship;
+        # the thin-end rule cuts the stern's first and the nose mast's last slice (0.43 % and 0.06 % of the widest)
+        whole = (17329.0 - 528422, 17329.0 + 528422)
+        self.assertEqual((titan['z0'] - titan['trim_lo'], titan['z1'] + titan['trim_hi']), whole)
+        self.assertEqual((titan['z0'], titan['z1']), (-477889.237, 500605.816))
+        self.assertEqual((titan['parts_excluded'], titan['smoothed']), (14, True))  # 8 small turret, 6 camera dummies
         self.assertTrue(all(s[2] > 0 and s[3] > 0 for s in titan['slices']))
         widest = max(range(32), key=lambda i: titan['slices'][i][2] * titan['slices'][i][3])
         self.assertTrue(8 <= widest < 24, widest)                                    # amidships
         self.assertAlmostEqual(max(s[2] for s in titan['slices']), 151433, delta=1)  # the stored x extent
+        for end in (titan['slices'][0], titan['slices'][-1]):  # no needle dome (was 3757 x 2850), no blunt one either
+            self.assertGreater(min(end[2], end[3]), 15000, end)
+            self.assertLess(max(end[2], end[3]), 50000, end)
         self.assertGreaterEqual(titan['radius'], titan['z1'])
         self.assertEqual(self.prov['tships']['member'], 'addon2/types/TShips.pck')
 

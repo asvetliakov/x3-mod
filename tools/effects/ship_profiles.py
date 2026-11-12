@@ -8,13 +8,16 @@ One entry per TShips data row (the edition's winning types/TShips: AP addon/, FL
   scene         column 16 as written (`ships\\argon\\argon_M2_scene`; a number N > 0 names the cut scene cut\\%05d)
   class         column 52 as written (`OBJ_SHIP_M2`)
   units 'scene', axis 'z'
-  z0, z1        long-axis extent of the whole hull
+  z0, z1        long-axis extent of the profiled points (after both hull rules below)
+  trim_lo, trim_hi  how far rule (b) moved z0 up and z1 down (scene units, >= 0)
   slices        SLICES entries [cx, cy, hx, hy]: slice i spans [z0 + i (z1 - z0) / SLICES, z0 + (i + 1) (z1 - z0) /
                 SLICES) (the last one closed), lateral box centre and half-widths of the points inside it; a slice
                 with no point interpolates its nearest non-empty neighbours linearly in i (an end slice copies its one
                 neighbour)
-  radius        max distance of any point from the scene origin
-  points        point count used
+  radius        max distance of any profiled point from the scene origin
+  points        profiled point count
+  parts_excluded  part bodies dropped by rule (a)
+  smoothed      whether the slice half-widths were eased (smooth_widths; the default, SMOOTH)
 Floats are rounded to 3 decimals.
 
 Units. One scene unit is one engine (world) unit: the unit of a scene part's key position and of a body's points
@@ -33,12 +36,27 @@ turn unit inferred from the shipped scenes, the loader is not traced; the rotati
 matters only for off-centre rotated parts). A part with `F p` is placed in the frame of the part numbered p (authored P
 numbers; a missing parent or a cycle places it at the root). No scale channel is read.
 
+Hull rules (2026-11-12, FL 69 A: the lathe bubble hugs the hull proper; masts, antennae and spars may stay outside).
+(a) Thin parts: a part whose own lateral extent (max of its placed points' x and y bbox half-widths) is below
+PART_FRACTION of the scene's lateral extent (max of the x and y bbox half-widths of all its points) is dropped; when
+that would drop every part, none is. (b) Thin ends: the points are sliced once over their whole z extent; z0..z1 is
+trimmed to the first and the last non-empty slice whose hx * hy is at least TRIM_FRACTION of the largest slice's, the
+points outside those slices are dropped and the profile is sliced again over the kept points' z extent. Only the ends
+are trimmed: a thin slice between two wide ones (a neck between hull sections) is kept, and an empty slice does not
+count as an end (its interpolated widths would bridge a sparse needle).
+Easing (SMOOTH, default on; 2026-11-12): after both rules the slices' hx and hy (centres unchanged) ease: an interior
+slice (1..30) takes the running maximum over +-1 slice, then the 3-tap mean of those maxima (an end's tap is its raw
+width), then the larger of that and its raw width, so a sharp widening (a fin) eases in over about two rings on each
+side; an end slice takes the larger of (2 x its raw + its neighbour's raw) / 3 and its raw width, so the end rings
+(the domes) stay near their own width. No slice is ever narrower than its own points.
+
 A row is skipped (generated_from.ship_profiles_skipped: index, scene, class, reason) when: short_row (fewer than 53
 fields), no_scene (scene token 0 or empty), not_found, refused:<code> (bob1.BodyRefused), cut1_scene (a binary
 CUT1 scene, not decoded), format:<message>, no_points (no part yields a point).
 Provenance (generated_from.ship_profiles): the TShips source, member and decoded sha256; rows, profiles, skipped;
-scenes (distinct scene names tried), bodies (distinct part bodies loaded); scene_parts, effect_parts_excluded and
-parts_unresolved (a body that does not resolve or parse: dummies such as v\\19xxx) tallied over the profiled scenes.
+scenes (distinct scene names tried), bodies (distinct part bodies loaded); scene_parts, effect_parts_excluded,
+parts_unresolved (a body that does not resolve or parse: dummies such as v\\19xxx) and thin_parts_excluded (rule a)
+tallied over the profiled scenes; part_fraction, trim_fraction, smoothed.
 
 Reading. LOD 0 of a BOB1 body is read with numpy (lod0_binary: nothing past LOD 0's /PAR is parsed, so damage in a
 later LOD goes unnoticed; mixed point flags fall back to bob1.parse), and catalogue members are decoded by read_member
@@ -61,6 +79,9 @@ import engine_bodies  # noqa: E402
 import weapon_effects_census as census_reader  # noqa: E402
 
 SLICES = 32
+PART_FRACTION = 0.06   # rule (a): a part narrower than this share of the scene's lateral half-width is dropped
+TRIM_FRACTION = 0.01   # rule (b): end slices with hx * hy under this share of the largest slice's are trimmed
+SMOOTH = True          # ease the slice half-widths (smooth_widths)
 TSHIPS_SCENE, TSHIPS_CLASS = 16, 52
 EFFECT_PREFIX = 'effects'
 PART = re.compile(r'^[ \t]*P[ \t]+(-?\d+)[ \t]*;([^\r\n]*)', re.M)
@@ -306,7 +327,7 @@ def load_body(assets, name, cache):
 
 
 def scene_points(assets, name, cache):
-    """All placed points of a scene, (n, 3); raises SceneError with the skip reason."""
+    """([(n, 3) placed points per part body], stats); raises SceneError with the skip reason."""
     try:
         entry = bob1.resolve_body(assets, name)
     except FileNotFoundError:
@@ -323,7 +344,7 @@ def scene_points(assets, name, cache):
             raise SceneError('format:neither a text scene nor a body')
         if not len(pts):
             raise SceneError('no_points')
-        return pts, dict(parts=1, effects=0, unresolved=0)
+        return [pts], dict(parts=1, effects=0, unresolved=0)
     chunks, stats = [], dict(parts=len(parts), effects=0, unresolved=0)
     for p, (pos, rot) in zip(parts, world_transforms(parts)):
         body = part_body_name(p['body'])
@@ -340,15 +361,31 @@ def scene_points(assets, name, cache):
             chunks.append(pts @ rot.T + pos)
     if not chunks:
         raise SceneError('no_points')
-    return np.concatenate(chunks), stats
+    return chunks, stats
+
+
+def lateral_half(points):
+    """max of the x and y bbox half-widths of an (n, 3) point set."""
+    return float(((points[:, :2].max(0) - points[:, :2].min(0)) / 2).max())
+
+
+def hull_points(chunks, fraction=None):
+    """(points (n, 3), parts excluded) of a scene's per-part points under rule (a) (module doc)."""
+    fraction = PART_FRACTION if fraction is None else fraction
+    whole = np.concatenate(chunks)
+    limit = fraction * lateral_half(whole)
+    kept = [c for c in chunks if lateral_half(c) >= limit]
+    if not kept:
+        return whole, 0
+    return (whole if len(kept) == len(chunks) else np.concatenate(kept)), len(chunks) - len(kept)
 
 
 def r3(x):
     return round(float(x), 3)
 
 
-def profile(points, slices=SLICES):
-    """dict(z0, z1, slices, radius, points) of an (n, 3) point set (see the module doc)."""
+def slice_rows(points, slices):
+    """(z0, z1, slice index per point, measured [cx, cy, hx, hy] or None per slice) of an (n, 3) point set."""
     z = points[:, 2]
     z0, z1 = float(z.min()), float(z.max())
     span = z1 - z0
@@ -360,6 +397,49 @@ def profile(points, slices=SLICES):
         if len(q):
             lo, hi = q[:, :2].min(0), q[:, :2].max(0)
             rows[i] = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (hi[0] - lo[0]) / 2, (hi[1] - lo[1]) / 2]
+    return z0, z1, idx, rows
+
+
+def trim_ends(points, slices=SLICES, fraction=None):
+    """The points of rule (b) (module doc): those in the first through the last non-empty slice whose hx * hy is at
+    least fraction of the largest slice's; all of them when no slice has an area."""
+    fraction = TRIM_FRACTION if fraction is None else fraction
+    _, _, idx, rows = slice_rows(points, slices)
+    area = [None if r is None else r[2] * r[3] for r in rows]
+    top = max(a for a in area if a is not None)
+    if top <= 0:
+        return points
+    wide = [i for i in range(slices) if area[i] is not None and area[i] >= fraction * top]
+    first, last = wide[0], wide[-1]
+    if first == 0 and last == slices - 1:
+        return points
+    return points[(idx >= first) & (idx <= last)]
+
+
+def smooth_widths(rows):
+    """rows [cx, cy, hx, hy] with hx and hy eased (module doc): interior slices max(mean3(runmax3(w)), w); an end slice
+    max((2 w_end + w_neighbour) / 3, w_end), so the end rings stay near their own width."""
+    out = [list(r) for r in rows]
+    n = len(rows)
+    if n < 3:
+        return out
+    for k in (2, 3):
+        w = [r[k] for r in rows]
+        m = [w[0]] + [max(w[i - 1:i + 2]) for i in range(1, n - 1)] + [w[-1]]
+        for i in range(1, n - 1):
+            out[i][k] = max((m[i - 1] + m[i] + m[i + 1]) / 3, w[i])
+        out[0][k] = max((2 * w[0] + w[1]) / 3, w[0])
+        out[-1][k] = max((2 * w[-1] + w[-2]) / 3, w[-1])
+    return out
+
+
+def profile(points, slices=SLICES, fraction=None, smooth=None):
+    """dict(z0, z1, trim_lo, trim_hi, slices, radius, points, smoothed) of an (n, 3) point set after rule (b) and the
+    easing (module doc)."""
+    smooth = SMOOTH if smooth is None else bool(smooth)
+    whole_z0, whole_z1 = float(points[:, 2].min()), float(points[:, 2].max())
+    points = trim_ends(points, slices, fraction)
+    z0, z1, _, rows = slice_rows(points, slices)
     filled = [i for i in range(slices) if rows[i] is not None]
     for i in range(slices):
         if rows[i] is None:
@@ -370,16 +450,21 @@ def profile(points, slices=SLICES):
             else:
                 t = (i - a) / (b - a)
                 rows[i] = [rows[a][k] + t * (rows[b][k] - rows[a][k]) for k in range(4)]
-    return dict(z0=r3(z0), z1=r3(z1), slices=[[r3(v) for v in row] for row in rows],
-                radius=r3(np.sqrt((points ** 2).sum(1)).max()), points=int(len(points)))
+    if smooth:
+        rows = smooth_widths(rows)
+    return dict(z0=r3(z0), z1=r3(z1), trim_lo=r3(z0 - whole_z0), trim_hi=r3(whole_z1 - z1),
+                slices=[[r3(v) for v in row] for row in rows],
+                radius=r3(np.sqrt((points ** 2).sum(1)).max()), points=int(len(points)), smoothed=smooth)
 
 
-def ship_profiles(assets):
-    """(entries, skipped, provenance) over the winning types/TShips of the assets' view."""
+def ship_profiles(assets, smooth=None):
+    """(entries, skipped, provenance) over the winning types/TShips of the assets' view; smooth: the easing (None:
+    SMOOTH)."""
+    smooth = SMOOTH if smooth is None else bool(smooth)
     data, prov = assets.get('types/TShips.txt')
     rows = census_reader.data_rows(data.decode('latin1'))[1:]
     entries, skipped, cache, scenes = [], [], {}, {}
-    totals = dict(parts=0, effects=0, unresolved=0)
+    totals = dict(parts=0, effects=0, unresolved=0, thin=0)
     for i, f in enumerate(rows):
         scene = f[TSHIPS_SCENE] if len(f) > TSHIPS_SCENE else ''
         cls = f[TSHIPS_CLASS] if len(f) > TSHIPS_CLASS else ''
@@ -394,10 +479,12 @@ def ship_profiles(assets):
         key = name.lower()
         if key not in scenes:
             try:
-                pts, stats = scene_points(assets, name, cache)
-                scenes[key] = profile(pts)
-                for k in totals:
+                chunks, stats = scene_points(assets, name, cache)
+                pts, thin = hull_points(chunks)
+                scenes[key] = dict(profile(pts, smooth=smooth), parts_excluded=thin)
+                for k in ('parts', 'effects', 'unresolved'):
                     totals[k] += stats[k]
+                totals['thin'] += thin
             except SceneError as exc:
                 scenes[key] = exc.reason
             except (bob1.FormatError, ValueError, UnicodeDecodeError) as exc:
@@ -410,5 +497,8 @@ def ship_profiles(assets):
     provenance = dict(tships=dict(source=prov['source'], member=prov['member'], sha256=prov['decoded_sha256']),
                       rows=len(rows), profiles=len(entries), skipped=len(skipped), scenes=len(scenes),
                       bodies=sum(1 for v in cache.values() if v is not None), scene_parts=totals['parts'],
-                      effect_parts_excluded=totals['effects'], parts_unresolved=totals['unresolved'], slices=SLICES)
+                      effect_parts_excluded=totals['effects'], parts_unresolved=totals['unresolved'],
+                      thin_parts_excluded=totals['thin'], part_fraction=PART_FRACTION, trim_fraction=TRIM_FRACTION,
+                      smoothed=smooth,
+                      slices=SLICES)
     return entries, skipped, provenance

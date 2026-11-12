@@ -38,9 +38,11 @@ schema stays 2: the DLL reads only 1 and 2, and an unknown table is skipped).
 Schema 3 (2026-11-12, docs/architecture/weapon-effects.md 5.1.1 "Ship profiles"): tables.ship_profiles, one entry per
 TShips row of the edition (AP addon/types/TShips, FL addon2/types/TShips) whose scene loads, giving the hull's lateral
 profile along z for the shield bubble's lathe: tships_index (0-based data row), scene (column 16 as written), class
-(column 52 as written), units 'scene', axis 'z', z0 and z1 (the whole hull's z extent), slices (32 x [cx, cy, hx, hy]:
-slice i spans z0 + i (z1 - z0) / 32, the lateral box centre and half-widths of its points; an empty slice interpolates
-its neighbours), radius (the largest point distance from the scene origin) and points (the count used); floats to 3
+(column 52 as written), units 'scene', axis 'z', z0 and z1 (the hull's z extent after the thin-part and thin-end rules;
+trim_lo and trim_hi how much z the ends lost, parts_excluded the thin parts dropped, smoothed whether the half-widths
+were eased (--raw-profiles: not); additive keys an older reader skips), slices (32 x [cx, cy, hx, hy]: slice i
+spans z0 + i (z1 - z0) / 32, the lateral box centre and half-widths of its points; an empty slice interpolates its
+neighbours), radius (the largest point distance from the scene origin) and points (the count used); floats to 3
 decimals. Geometry: LOD 0 of every non-effect part body the scene places (first key position and rotation, F parents
 composed), each body's points x its LOD-0 value / 65536 (engine_bodies.py's body units), faces under 0.1 % of the
 body's largest dropped. One scene unit is one engine (world) unit: a scene part's key position, and the runtime's part
@@ -401,7 +403,7 @@ def row_entry(w, body, colour, override, mounts=None, texture=None):
     return entry
 
 
-def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRIDES):
+def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRIDES, smooth_profiles=True):
     game_root = Path(game_root)
     try:
         edition = engine_bodies.resolve_edition(game_root, edition)
@@ -449,7 +451,7 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
     missile_rows = len(census_reader.data_rows(missiles_text.decode('latin1'))[1:])
     layouts = bullet_body_layouts(assets, {e['body'] for e in entries if e['body']}, result['bodies'])
     try:
-        profiles, profiles_skipped, profiles_from = ship_profiles.ship_profiles(assets)
+        profiles, profiles_skipped, profiles_from = ship_profiles.ship_profiles(assets, smooth_profiles)
     except FileNotFoundError as exc:
         raise GenerateError(f'types/TShips not found in the selected layers: {exc}') from None
     return dict(
@@ -473,7 +475,10 @@ def generate(game_root, stock_only=False, edition='auto', overrides_path=OVERRID
                                  'null when absent or its footprint is shared with another triangle',
                    ship_profiles='per TShips row: LOD 0 of every non-effect part body at its first scene key, points x '
                                  'value / 65536 (scene units = engine units), faces under 0.1 % of the largest '
-                                 'dropped; 32 z slices [cx, cy, hx, hy], empty slices interpolated'),
+                                 'dropped; parts narrower than 6 % of the hull dropped (parts_excluded), thin '
+                                 'ends under 3 % of the widest slice area trimmed (trim_lo/trim_hi); 32 z slices '
+                                 '[cx, cy, hx, hy], empty slices interpolated, half-widths eased over +-2 '
+                                 'slices unless smoothed is false'),
         counts=dict(bullets=len(entries), missiles=missile_rows, textures=sum(1 for e in entries if e['texture_rgb']),
                     bullet_textures=len(textures), bullet_bodies=len(layouts),
                     bullet_body_heads=sum(1 for b in layouts if b['head']),
@@ -502,6 +507,8 @@ def main(argv=None):
     parser.add_argument('--out', type=Path, required=True, help='output JSON path (outside the game root)')
     parser.add_argument('--stock-only', action='store_true', help='stock AP catalogues only, no mod layers or loose files')
     parser.add_argument('--overrides', type=Path, default=OVERRIDES)
+    parser.add_argument('--raw-profiles', action='store_true',
+                        help='ship profiles without the slice half-width easing (ship_profiles.smooth_widths)')
     engine_bodies.catalogue_mounts.add_edition_argument(parser)
     args = parser.parse_args(argv)
     root = args.game_root.resolve()
@@ -510,7 +517,7 @@ def main(argv=None):
         parser.error('--out must be outside the game root (the game tree is read-only)')
     started = time.monotonic()
     try:
-        table = generate(root, args.stock_only, args.edition, args.overrides)
+        table = generate(root, args.stock_only, args.edition, args.overrides, not args.raw_profiles)
     except (GenerateError, ValueError) as exc:
         print(f'weapon_effects_table: {exc}', file=sys.stderr)
         return 1
