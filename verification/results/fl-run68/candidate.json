@@ -1,0 +1,64 @@
+{
+ "run": "fl-run68",
+ "edition": "FL",
+ "installed": "2026-11-12",
+ "what": "dev candidate: (1) capital-tier ships take the station hull decal (FL 67 A: the Titan's box-fitted ellipsoid misfits a long hull by design, hits pushed ~600 m along z by the radial map); own ship in the cockpit keeps the eye sphere; weapon_bubble_fit row per finished walk; cells_key_dropped counter; the FL 66 A scale-guard owner corrected to the catapult gate scene; (2) the lone bullet draw path (effects.fx DEFAULT vs d5e1c753/ps 8360f422 at the material submit) recognised by body id, re-shaded with lone program variants and far-flagged through the additive route (FL 67 A captures: the dimmed bolts were unflagged lone-path meshes under the TAA far hold); body map built only when the live TBullets count equals the table's",
+ "commit": "21a913f19",
+ "branch": "reshade",
+ "dirty": false,
+ "build": "build-run68-fl RelWithDebInfo mingw-i686 -DX3M_EDITION=fl -DX3M_GNU_PE_NO_SAFESEH=ON (X3M_DEV_TUNING ON), clean, 0 warnings, check_no_x87 --edition fl PASS, X3M_SOURCE_COMMIT=21a913f19feb91d5b46cad50cb57284a608c47e1 (unstripped)",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "4ad0b4959b8c9cf4a3b83657234ebdef19c49333b548caef898fd64dc6979b5f",
+  "bytes": 61188257,
+  "source": "build-run68-fl/d3d9.dll"
+ },
+ "rollback": {
+  "dll": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run67 (1226f362…)",
+  "ini": "C:\\X3FL\\rollback-d3d9\\x3m.ini.run67 (debug = 1 as the user left it)",
+  "tuning_file": "C:\\X3FL\\rollback-d3d9\\projectile_tune.json.run67"
+ },
+ "ini": "debug = 1 -> 0 (set back by the main session after the FL 67 A captures); weapon_effects = reshade unchanged",
+ "tables": {
+  "weapon_effects.json": "683c6d29… (unchanged)",
+  "x3m-regenerate.exe": "5f864d11… (unchanged)"
+ },
+ "tuning_file": {
+  "path": "C:\\X3FL\\x3m\\projectile_tune.json",
+  "content": {
+   "core_px": 1.0,
+   "glow_ratio": 2.0,
+   "glow_gain": 0.3,
+   "hot_share": 0.4,
+   "lod_dot_m": 3000,
+   "length_cap_m": 60,
+   "stops": 2.0,
+   "trail_ms": 0,
+   "head_gain": 1.5,
+   "flash_core_mult": 3.0,
+   "flash_len_m": 5.0,
+   "flash_life_ms": 80,
+   "flash_stops": 2.0,
+   "hull_pulse_r": 3.0,
+   "rs_gain": 0.45,
+   "rs_edge": 0.1,
+   "rs_core": 0.25,
+   "mz_size": 0.2,
+   "mz_core": 0,
+   "mz_gain": 0.15,
+   "mz_smooth": 0.1,
+   "rs_head": 1.0,
+   "rs_width": 1.0
+  },
+  "note": "unchanged from run 66 (rs_head / rs_width 1 accepted by the user)"
+ },
+ "exe_sha256_prefix": "e7f3aad8d728e021",
+ "dry_run": "manage.py launch --game-dir /mnt/c/X3FL --dry-run exit 0",
+ "evidence": [
+  "verification/results/native-windows/weapon-effects/summary.json (D3D 141/141), hook-fl-summary.json (FL hook 75/75), hook-summary.json (AP 132/132), run in the main checkout on 21a913f19 (first run failed only flash_budget_combined at the known host-noise figure; the rerun passed); focused host tests OK",
+  "capital decal: capital_titan_flank decal-only, corvette_spread_12hps spill no-pop, cockpit_eye_sphere_capital_own_ship; GPU capital_spread_spill 750 us at 5120x1440 (7.92 of 8 screens; accepted for the flight)",
+  "lone path: PPC through the lone state pixel-identical to the batch (dump), route case RT2.g 12.906 vs 12.908, 0.35 us per lone draw",
+  "reviews at high x2 (capital decal: no blocker, F1-F8 fixed; lone path: no blocker, 5 fixed); ledger sections FL 67 A in docs/verification/weapon-effects.md"
+ ],
+ "open": "FL 68 A"
+}
