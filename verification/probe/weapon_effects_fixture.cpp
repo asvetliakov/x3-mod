@@ -631,6 +631,229 @@ unsigned stage_tree(const unsigned n[3], const std::int32_t ext_n[3], const std:
     for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
     return used;
 }
+// ---- the lathe bubble (5.1.1 "Placement", 2026-11-12; src/proxy/weapon_effects_lathe.h)
+// The Argon Titan's offline profile (FL TShips row 11, ships\argon\argon_M2_scene, OBJ_SHIP_M2 = 2022): the derived
+// figures of tools/effects/ship_profiles.py (verification/results/ship-profiles/titan_profile.json), scene units =
+// owner-frame engine units (cx, cy, hx, hy per slice of (z1 - z0) / 32).
+constexpr float titan_z0 = -511093.f, titan_z1 = 545751.f;
+constexpr float titan_slices[32][4] = {
+    {-1068.358f, 15785.811f, 9857.115f, 7142.189f}, {2930.93f, -20302.835f, 13856.403f, 44709.778f},
+    {0.f, -23826.401f, 71471.14f, 54006.509f}, {0.f, -30591.325f, 81856.386f, 56385.117f},
+    {0.f, -38473.72f, 73954.568f, 68902.314f}, {0.f, -41831.258f, 70882.535f, 66463.967f},
+    {0.f, -46493.985f, 70471.318f, 78198.015f}, {0.f, -50208.798f, 75817.14f, 78534.398f},
+    {0.f, -51001.603f, 72164.565f, 77690.397f}, {0.f, -49760.386f, 74123.893f, 74239.896f},
+    {0.f, -7244.677f, 65996.308f, 61944.611f}, {0.f, 23878.811f, 80832.375f, 142494.778f},
+    {0.f, 7071.321f, 82686.884f, 125663.099f}, {0.f, -26221.136f, 80679.177f, 92394.832f},
+    {0.f, -53603.355f, 60287.648f, 93443.032f}, {0.f, -71358.257f, 78985.93f, 77816.783f},
+    {0.f, -56400.1f, 151432.702f, 108901.1f}, {0.f, -58760.154f, 85355.763f, 107613.436f},
+    {0.f, -57106.763f, 67399.284f, 106839.839f}, {0.f, -53405.809f, 43742.208f, 103219.516f},
+    {0.f, -40904.004f, 43508.379f, 93418.843f}, {0.f, -33743.989f, 46209.511f, 87516.669f},
+    {0.f, 19548.937f, 46225.637f, 144292.845f}, {0.f, -3584.039f, 57272.056f, 133786.652f},
+    {0.f, -39875.961f, 53740.427f, 95341.887f}, {0.f, -40089.633f, 68007.648f, 83412.561f},
+    {0.f, -42818.985f, 68161.594f, 75635.72f}, {0.f, -38505.816f, 57312.371f, 70224.816f},
+    {0.f, -30655.83f, 58618.59f, 42065.087f}, {931.286f, -37295.776f, 18347.538f, 27257.241f},
+    {2011.738f, -32853.019f, 19492.495f, 25870.392f}, {975.633f, -13445.186f, 3757.395f, 2850.299f}};
+constexpr std::int32_t titan_row = 11, titan_class = 2022, titan_radius = 545751;
+wc::ShipProfile titan_profile() {
+    wc::ShipProfile p;
+    p.row = titan_row;
+    p.class_id = titan_class;
+    p.z0 = titan_z0;
+    p.z1 = titan_z1;
+    std::memcpy(p.slice, titan_slices, sizeof p.slice);
+    return p;
+}
+// The profiles block (one entry, the Titan) and a TShips type table of twelve rows with its slots after it (table
+// pointer, count), read through lathe_read beside the fake owner and hull.
+wc::ShipProfiles lathe_profiles;
+constexpr unsigned type_rows = 12, type_slots_at = type_rows * wc::layout::type_stride;
+alignas(16) unsigned char fake_types[type_slots_at + 16];
+bool lathe_read(std::uintptr_t a, void* out, std::size_t n) {
+    if (fake_read(a, out, n)) return true;
+    const std::uintptr_t b = reinterpret_cast<std::uintptr_t>(fake_types);
+    if (a < b || n > sizeof fake_types || a - b > sizeof fake_types - n) return false;
+    std::memcpy(out, reinterpret_cast<const void*>(a), n);
+    return true;
+}
+// The staged owner as a TShips row-11 ship of class `class_id` (the type record's +0xc8; 2022 the profile's), unit
+// root axis scales, and the profiles block holding the Titan's (none when `profile` is false). After stage_owner.
+void stage_lathe_type(std::int32_t class_id = titan_class, bool profile = true) {
+    std::memset(fake_types, 0, sizeof fake_types);
+    put32(fake_types, type_slots_at, addr(fake_types));
+    put32(fake_types, type_slots_at + 4, type_rows);
+    put32(fake_types, unsigned(titan_row) * wc::layout::type_stride + wc::layout::ship_class_id, std::uint32_t(class_id));
+    const std::uint16_t cls = wc::layout::class_ship, sub = std::uint16_t(titan_row);
+    std::memcpy(fake_obj + wc::layout::obj_class, &cls, 2);
+    std::memcpy(fake_obj + wc::layout::obj_subtype, &sub, 2);
+    for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
+    lathe_profiles.clear();
+    if (profile) {
+        lathe_profiles.entries[0] = titan_profile();
+        lathe_profiles.slot_of[titan_row] = 1;
+        lathe_profiles.count = 1;
+    }
+}
+ws::Tuning lathe_tuning() {
+    ws::Tuning t = hull_tuning();
+    t.profiles = &lathe_profiles;
+    t.ship_table_slot = addr(fake_types) + type_slots_at;
+    t.ship_count_slot = addr(fake_types) + type_slots_at + 4;
+    return t;
+}
+// The visible hull of a profile (the lane's surface): rings at the 32 slice centres with the slices' ellipses
+// (uninflated), closed at z0 and z1 by the end slices' ellipses and a point each, 24 segments, in view space through the
+// staged owner's node and rows (identity camera).
+struct LatheHullLane {
+    std::vector<float> v;              // view xyz per vertex
+    std::vector<std::uint16_t> idx;    // triangle list
+};
+// A point of the profile's surface (scene units): slice i's centre z (or z0 / z1 for i = -1 / 32) at angle phi (the
+// lathe's: x = cx + hx sin phi, y = cy + hy cos phi).
+void profile_point(const wc::ShipProfile& p, int i, double phi, double out[3]) {
+    const int s = i < 0 ? 0 : i > 31 ? 31 : i;
+    const double dz = (double(p.z1) - double(p.z0)) / 32.0;
+    const double z = i < 0 ? double(p.z0) : i > 31 ? double(p.z1) : double(p.z0) + (s + 0.5) * dz;
+    out[0] = double(p.slice[s][0]) + double(p.slice[s][2]) * std::sin(phi);
+    out[1] = double(p.slice[s][1]) + double(p.slice[s][3]) * std::cos(phi);
+    out[2] = z;
+}
+// Owner frame (view units) to view through the staged node (identity camera).
+void owner_to_view(const double p[3], double out[3]) {
+    std::int32_t pos[3], rows[12];
+    std::memcpy(pos, fake_node + wc::layout::node_pos, 12);
+    std::memcpy(rows, fake_node + wc::layout::node_rot, 48);
+    for (unsigned j = 0; j < 3; ++j) {
+        out[j] = double(pos[j]) * double(wc::world_scale);
+        for (unsigned k = 0; k < 3; ++k) out[j] += double(rows[4 * k + j]) / 65536.0 * p[k];
+    }
+}
+LatheHullLane lathe_hull_lane(const wc::ShipProfile& p) {
+    LatheHullLane h;
+    const unsigned rings = 36, cols = 25;
+    const double pi = 3.14159265358979;
+    for (unsigned r = 0; r < rings; ++r)
+        for (unsigned j = 0; j < cols; ++j) {
+            double q[3], v[3];
+            const int i = r == 0 || r == 1 ? -1 : r >= rings - 2 ? 32 : int(r) - 2;
+            profile_point(p, i, -pi + 2.0 * pi * double(j) / 24.0, q);
+            if (r == 0 || r == rings - 1) { // the end's centre point
+                const int s = r ? 31 : 0;
+                q[0] = p.slice[s][0];
+                q[1] = p.slice[s][1];
+            }
+            for (double& x : q) x *= double(wc::world_scale);
+            owner_to_view(q, v);
+            for (double x : v) h.v.push_back(float(x));
+        }
+    for (unsigned r = 0; r + 1 < rings; ++r)
+        for (unsigned j = 0; j < 24; ++j) {
+            const std::uint16_t a = std::uint16_t(r * cols + j), b = std::uint16_t(a + cols);
+            for (std::uint16_t x : {a, b, std::uint16_t(a + 1), std::uint16_t(a + 1), b, std::uint16_t(b + 1)})
+                h.idx.push_back(x);
+        }
+    return h;
+}
+// Draws the hull into the lane (sky elsewhere): its triangles depth-tested on a scratch depth surface, .r = 0.5 and .b
+// the view depth where the hull is nearest (the fixture's projection: m00 1.6, m11 1.6 W / H, near 6).
+void draw_lathe_hull(Target& t, const LatheHullLane& h) {
+    static IDirect3DVertexShader9* vs = nullptr;
+    static IDirect3DPixelShader9* ps = nullptr;
+    static IDirect3DVertexDeclaration9* decl = nullptr;
+    if (!vs) {
+        const char* vsrc = "float4 c0:register(c0); struct O{ float4 p:POSITION; float z:TEXCOORD0; };"
+                           " O main(float3 v:POSITION){ O o; o.p = float4(c0.x * v.x, c0.y * v.y, (v.z - c0.z) * c0.w, v.z);"
+                           " o.z = v.z; return o; }";
+        const char* psrc = "float4 main(float z:TEXCOORD0):COLOR0{ return float4(0.5, 0, z, 0); }";
+        const DWORD *vw = nullptr, *pw = nullptr;
+        static Com<ID3DXBuffer> vh, ph;
+        const D3DVERTEXELEMENT9 e[] = {{0, 0, D3DDECLTYPE_FLOAT3, D3DDECLMETHOD_DEFAULT, D3DDECLUSAGE_POSITION, 0},
+                                       D3DDECL_END()};
+        if (!compile(vsrc, "vs_3_0", &vw, &vh.p) || !compile(psrc, "ps_3_0", &pw, &ph.p) ||
+            FAILED(dev->CreateVertexShader(vw, &vs)) || FAILED(dev->CreatePixelShader(pw, &ps)) ||
+            FAILED(dev->CreateVertexDeclaration(e, &decl)))
+            return;
+    }
+    draw_lane(t, 0.f, -1.f);
+    Com<IDirect3DSurface9> ds, old;
+    if (FAILED(dev->CreateDepthStencilSurface(t.w, t.h, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, TRUE, &ds.p, nullptr))) return;
+    dev->GetDepthStencilSurface(&old.p);
+    const float n = 6.f, f = 1e6f;
+    const float c0[4] = {1.6f, 1.6f * float(t.w) / float(t.h), n, f / (f - n)};
+    dev->BeginScene();
+    dev->SetRenderTarget(0, t.lane_s.p);
+    dev->SetDepthStencilSurface(ds.p);
+    dev->Clear(0, nullptr, D3DCLEAR_ZBUFFER, 0, 1.f, 0);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZENABLE, TRUE);
+    dev->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+    dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    dev->SetVertexDeclaration(decl);
+    dev->SetVertexShader(vs);
+    dev->SetPixelShader(ps);
+    dev->SetVertexShaderConstantF(0, c0, 1);
+    dev->DrawIndexedPrimitiveUP(D3DPT_TRIANGLELIST, 0, UINT(h.v.size() / 3), UINT(h.idx.size() / 3), h.idx.data(),
+                                D3DFMT_INDEX16, h.v.data(), 12);
+    dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+    dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+    dev->SetDepthStencilSurface(old.p);
+    dev->EndScene();
+}
+// The lane's view depth per pixel (0 on sky), read back.
+std::vector<float> read_lane_depth(Target& t) {
+    std::vector<float> out;
+    Com<IDirect3DSurface9> sys;
+    if (FAILED(dev->CreateOffscreenPlainSurface(t.w, t.h, D3DFMT_A32B32G32R32F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) ||
+        FAILED(dev->GetRenderTargetData(t.lane_s.p, sys.p)))
+        return out;
+    D3DLOCKED_RECT lr{};
+    if (FAILED(sys.p->LockRect(&lr, nullptr, D3DLOCK_READONLY))) return out;
+    out.resize(std::size_t(t.w) * t.h);
+    for (UINT y = 0; y < t.h; ++y) {
+        const float* row = reinterpret_cast<const float*>(static_cast<const unsigned char*>(lr.pBits) + y * lr.Pitch);
+        for (UINT x = 0; x < t.w; ++x)
+            out[std::size_t(y) * t.w + x] = row[4 * x] >= 0.f && row[4 * x] <= 1.f ? row[4 * x + 2] : 0.f;
+    }
+    sys.p->UnlockRect();
+    return out;
+}
+// A judging frame (judge-looks-from-stage-dumps): the hull lit flat grey by its depth normal plus the effect's linear
+// RGB, written as PFM into dump-shield/<name>.pfm under the run directory (run_weapon_effects.py encodes it as PNG).
+void dump_shield(const char* name, const std::vector<float>& rgb, const std::vector<float>& depth, unsigned w, unsigned h) {
+    if (rgb.size() != std::size_t(w) * h * 3 || depth.size() != std::size_t(w) * h) return;
+    CreateDirectoryA("dump-shield", nullptr);
+    char path[128];
+    std::snprintf(path, sizeof path, "dump-shield/%s.pfm", name);
+    FILE* f = std::fopen(path, "wb");
+    if (!f) return;
+    std::fprintf(f, "PF\n%u %u\n-1.0\n", w, h);
+    const double px = 2.0 / (1.6 * double(w)); // view units per pixel per unit depth
+    std::vector<float> row(std::size_t(w) * 3);
+    for (unsigned yy = h; yy-- > 0;) {
+        for (unsigned x = 0; x < w; ++x) {
+            const std::size_t i = std::size_t(yy) * w + x;
+            float g = 0.f;
+            const float z = depth[i];
+            if (z > 0.f && x > 0 && x + 1 < w && yy > 0 && yy + 1 < h) {
+                auto at = [&](std::size_t k) { return depth[k] > 0.f ? double(depth[k]) : double(z); };
+                const double s = px * double(z), dx = (at(i + 1) - at(i - 1)) / (2 * s), dy = (at(i - w) - at(i + w)) / (2 * s);
+                const double n[3] = {-dx, -dy, -1.0}, l[3] = {-0.45, 0.6, -0.66};
+                const double nn = std::sqrt(n[0] * n[0] + n[1] * n[1] + n[2] * n[2]);
+                const double lambert = std::max(0.0, (n[0] * l[0] + n[1] * l[1] + n[2] * l[2]) / nn);
+                g = float(0.015 + 0.09 * lambert);
+            }
+            for (unsigned k = 0; k < 3; ++k) row[3 * x + k] = g + rgb[i * 3 + k];
+        }
+        std::fwrite(row.data(), sizeof(float), row.size(), f);
+    }
+    std::fclose(f);
+}
+// The lathe meshes the fixture's builds point into (static: the timing section draws the lathe section's patches), and
+// the Titan's two-hit draws for the timing rows (0 the hull decal without a profile, 1 the lathe) with its hull lane.
+ws::LatheCache fixture_lathes;
+rr::WeaponPatch titan_timing[2][wc::max_patches];
+unsigned titan_timing_count[2] = {0, 0};
+LatheHullLane titan_timing_lane;
 // The bubble's CPU twin in double from a bubble draw: the owner's centre and axes in view, the bubble's centre and
 // half-extents (owner frame).
 struct BubbleTwin {
@@ -4162,6 +4385,388 @@ int main(int argc, char** argv) {
                                                     peak_pair <= single * (1.0 + 2e-3) + 1e-3, "");
         draw_lane(g, 0.f, -1.f);
     }
+    // The lathe bubble (5.1.1 "Placement", user decision 2026-11-12: capitals get the bubble; FL 67 A: the box-fitted
+    // ellipsoid misfit the Titan's sides). With the Argon Titan's offline profile (titan_profile) on a TShips row 11 of
+    // class M2: (a) the units: the production walk over the FL 67 hull part (one part of half-extents 151433 x 166374 x
+    // 528422 engine units at z +17329: the walk's measured Titan extents) against the lathe's profile bounds, 1:1 with no
+    // factor; (b) placement on the CPU (map_lathe against the walk ellipsoid's bubble_point: the FL 67 witness): the
+    // profile's surface points in the side band |z| < 300k (titan_hit_mapping.py's) at six angles per slice, and the
+    // nose and tail; each lathe point on the shell (lateral radius 1 in its slice) and within (bubble_scale - 1) of the
+    // contact's offset from its slice centre (the sides) or of the half length (the domes); (c) routing through ws::build:
+    // with the profile one lathe region, no walk, no decal (a capital and a fighter alike); without one the hull decal for
+    // the capital and the walked ellipsoid for a fighter; a class mismatch the decal; the own ship in the cockpit the eye
+    // sphere from the profile's bounds, no walk; a belly hit's copy across the seam; (d) the GPU: the Titan on its flank and
+    // from above (its hull lane: the profile's own lathe, uninflated), a side hit drawn on the lathe and, as the witness, on
+    // the FL 67 walk ellipsoid (fill_bubble): the lit centroid against the hit's lathe point and the contact (metres), and
+    // from above the lit pixels over sky and their distance from the hull's outline (the hug); the judging frames under
+    // dump-shield/. (e) The Titan's two-hit draws for the timing rows (the decal without a profile, the lathe with it).
+    guard_next_section("lathe");
+    {
+        const wc::ShipProfile titan = titan_profile();
+        const std::int32_t unit[3] = {0x10000, 0x10000, 0x10000};
+        static ws::LatheMesh mesh;
+        const bool built = ws::build_lathe(titan, unit, &mesh);
+        const double s = double(wc::world_scale), metre = double(wc::engine_units_per_metre) * s, pi = 3.14159265358979;
+        const double view_r = double(titan_radius) * s, owner_z = 12000.0;
+        const std::int32_t side_rows[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}}; // local x -> view -z
+        const std::int32_t top_rows[3][3] = {{0, -65536, 0}, {0, 0, -65536}, {65536, 0, 0}};  // local y -> view -z
+        auto stage_titan = [&](const std::int32_t (*rows)[3], const double contact[3], std::uint8_t tier, bool profile,
+                               std::int32_t class_id = titan_class) {
+            stage_tier_source = wc::tier_by_ship_class;
+            stage_owner(float(owner_z), float(view_r), 1000);
+            for (unsigned r = 0; r < 3; ++r)
+                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
+            put32(fake_obj, wc::layout::obj_radius, std::uint32_t(titan_radius));
+            stage_ring.slots[0].patch_tier = tier;
+            stage_ring.slots[0].radius = titan_radius;
+            for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = std::int32_t(std::lround(contact[k]));
+            const double ext[3] = {1514.33, 1663.74, 5284.22}, off[3] = {0.0, 0.0, 173.29};
+            stage_hull(ext, off); // the FL 67 walk's hull part (a walk without a profile finds it)
+            stage_lathe_type(class_id, profile);
+        };
+        auto build_titan = [&](rr::WeaponPatch* out, const ws::Tuning& t) {
+            static rr::WeaponDecal decals[wc::max_decals];
+            return ws::build(stage_ring, 1500, &lathe_read, identity_camera(), t, out, wc::max_patches, decals,
+                             wc::max_decals, nullptr, nullptr, &fixture_lathes);
+        };
+        // (a) the units
+        double side_contact[3];
+        profile_point(titan, 9, 0.5 * pi, side_contact); // slice 9 (z -197k), its +x flank
+        stage_titan(side_rows, side_contact, wc::patch_capital, true);
+        ws::HullBox wb;
+        const bool walked = ws::hull_bounds(&fake_read, addr(fake_hull), addr(fake_node), &wb);
+        double err[3][2], worst_xz = 0, worst_y = 0;
+        for (unsigned k = 0; k < 3; ++k) {
+            err[k][0] = (double(mesh.hull_lo[k]) - double(wb.lo[k]) * s) / metre;
+            err[k][1] = (double(mesh.hull_hi[k]) - double(wb.hi[k]) * s) / metre;
+            for (double e : err[k]) (k == 1 ? worst_y : worst_xz) = std::max(k == 1 ? worst_y : worst_xz, std::fabs(e));
+        }
+        std::printf("LATHE case=units built=%u walked=%u walk_lo_m=%.2f,%.2f,%.2f walk_hi_m=%.2f,%.2f,%.2f "
+                    "profile_lo_m=%.2f,%.2f,%.2f profile_hi_m=%.2f,%.2f,%.2f err_x_m=%.3f,%.3f err_y_m=%.3f,%.3f "
+                    "err_z_m=%.3f,%.3f factor=%.4f perimeter_m=%.1f dome_m=%.1f,%.1f\n",
+                    unsigned(built), unsigned(walked), wb.lo[0] * s / metre, wb.lo[1] * s / metre, wb.lo[2] * s / metre,
+                    wb.hi[0] * s / metre, wb.hi[1] * s / metre, wb.hi[2] * s / metre, mesh.hull_lo[0] / metre,
+                    mesh.hull_lo[1] / metre, mesh.hull_lo[2] / metre, mesh.hull_hi[0] / metre, mesh.hull_hi[1] / metre,
+                    mesh.hull_hi[2] / metre, err[0][0], err[0][1], err[1][0], err[1][1], err[2][0], err[2][1],
+                    double(unit[0]) / 65536.0, mesh.perimeter / metre, mesh.dome_depth[0] / metre,
+                    mesh.dome_depth[1] / metre);
+        // x and z: the profile's widest slice and its ends are the walk's part box (1:1); y: the walk's LOD extent is the
+        // symmetric max |y| of the body (166374) while the profile keeps the slices' true asymmetric span (2 % of it).
+        report("lathe_profile_units_match_the_walk",
+               built && walked && worst_xz < 0.5 && worst_y < 0.02 * 1663.74 / metre, "");
+
+        // (b) placement on the CPU
+        ws::Bubble wbub;
+        bool clamped = false;
+        const bool wfit = ws::bubble_from_box(wb, titan_radius, &wbub, &clamped);
+        std::vector<double> lathe_move, walk_move;
+        double shell_err = 0, side_excess = -1e30;
+        unsigned side_points = 0;
+        for (int i = 0; i < 32; ++i) {
+            const double zc = double(titan_z0) + (i + 0.5) * (double(titan_z1) - double(titan_z0)) / 32.0;
+            if (std::fabs(zc) >= 300000.0) continue;
+            for (double deg : {60.0, 90.0, 120.0, -60.0, -90.0, -120.0}) {
+                double p[3];
+                profile_point(titan, i, deg * pi / 180.0, p);
+                const float pv[3] = {float(p[0] * s), float(p[1] * s), float(p[2] * s)};
+                float B[3], chart[2], Bw[3], q[3];
+                ws::map_lathe(mesh, pv, B, chart);
+                ws::bubble_point(wbub, pv, Bw, q);
+                const float* e = mesh.ring[ws::lathe_dome_rings + unsigned(i)];
+                const double rx = (double(B[0]) - e[0]) / e[2], ry = (double(B[1]) - e[1]) / e[3];
+                shell_err = std::max(shell_err, std::fabs(std::sqrt(rx * rx + ry * ry) - 1.0));
+                double m = 0, w = 0, lat = 0;
+                for (unsigned k = 0; k < 3; ++k) {
+                    m += (double(B[k]) - pv[k]) * (double(B[k]) - pv[k]);
+                    w += (double(Bw[k]) - pv[k]) * (double(Bw[k]) - pv[k]);
+                }
+                lat = std::hypot(pv[0] - double(titan.slice[i][0]) * s, pv[1] - double(titan.slice[i][1]) * s);
+                lathe_move.push_back(std::sqrt(m) / metre);
+                walk_move.push_back(std::sqrt(w) / metre);
+                side_excess = std::max(side_excess, std::sqrt(m) - (double(wc::bubble_scale) - 1.0) * lat * 1.01 - 1e-3 * metre);
+                ++side_points;
+            }
+        }
+        auto median = [](std::vector<double> v) {
+            std::sort(v.begin(), v.end());
+            return v.empty() ? 0.0 : v[v.size() / 2];
+        };
+        auto vmax = [](const std::vector<double>& v) { return v.empty() ? 0.0 : *std::max_element(v.begin(), v.end()); };
+        const double half_length_m = 0.5 * (double(titan_z1) - double(titan_z0)) * s / metre;
+        double end_move[2] = {0, 0}, end_walk[2] = {0, 0};
+        for (unsigned end = 0; end < 2; ++end) { // the tail and the nose on the axis of their end slices
+            double p[3];
+            profile_point(titan, end ? 32 : -1, 0.0, p);
+            p[0] = titan.slice[end ? 31 : 0][0];
+            p[1] = titan.slice[end ? 31 : 0][1];
+            const float pv[3] = {float(p[0] * s), float(p[1] * s), float(p[2] * s)};
+            float B[3], chart[2], Bw[3], q[3];
+            ws::map_lathe(mesh, pv, B, chart);
+            ws::bubble_point(wbub, pv, Bw, q);
+            double m = 0, w = 0;
+            for (unsigned k = 0; k < 3; ++k) {
+                m += (double(B[k]) - pv[k]) * (double(B[k]) - pv[k]);
+                w += (double(Bw[k]) - pv[k]) * (double(Bw[k]) - pv[k]);
+            }
+            end_move[end] = std::sqrt(m) / metre;
+            end_walk[end] = std::sqrt(w) / metre;
+        }
+        const double end_allowed = (double(wc::bubble_scale) - 1.0) * half_length_m * 1.01 + 0.5;
+        std::printf("LATHE case=placement side_points=%u lathe_median_m=%.1f lathe_max_m=%.1f walk_median_m=%.1f "
+                    "walk_max_m=%.1f shell_err=%.6f side_excess_m=%.3f stern_m=%.1f bow_m=%.1f walk_stern_m=%.1f "
+                    "walk_bow_m=%.1f end_allowed_m=%.1f walk_fit=%u walk_e_m=%.1f,%.1f,%.1f\n",
+                    side_points, median(lathe_move), vmax(lathe_move), median(walk_move), vmax(walk_move), shell_err,
+                    side_excess / metre, end_move[0], end_move[1], end_walk[0], end_walk[1], end_allowed, unsigned(wfit),
+                    wbub.e[0] / metre, wbub.e[1] / metre, wbub.e[2] / metre);
+        report("lathe_side_hits_on_the_shell", side_points >= 30 && shell_err < 1e-3 && side_excess <= 0.0 && wfit &&
+                                                   median(lathe_move) * 4.0 < median(walk_move), "");
+        report("lathe_bow_stern_on_the_domes", end_move[0] > 0.0 && end_move[0] <= end_allowed && end_move[1] > 0.0 &&
+                                                   end_move[1] <= end_allowed, "");
+
+        // (c) routing
+        static rr::WeaponPatch out[wc::max_patches];
+        struct Route {
+            const char* name;
+            std::uint8_t tier;
+            bool profile, cockpit;
+            std::int32_t class_id;
+        };
+        const Route routes[] = {{"capital_profile", wc::patch_capital, true, false, titan_class},
+                                {"fighter_profile", wc::patch_fighter, true, false, titan_class},
+                                {"capital_no_profile", wc::patch_capital, false, false, titan_class},
+                                {"capital_class_mismatch", wc::patch_capital, true, false, 2023},
+                                {"fighter_no_profile", wc::patch_fighter, false, false, titan_class},
+                                {"cockpit_profile", wc::patch_capital, true, true, titan_class}};
+        bool route_ok[6] = {};
+        for (unsigned r = 0; r < 6; ++r) {
+            const Route& c = routes[r];
+            stage_titan(side_rows, side_contact, c.tier, c.profile, c.class_id);
+            ws::Tuning t = lathe_tuning();
+            if (c.cockpit) {
+                t.own_node = addr(fake_node);
+                t.cockpit = true;
+            }
+            const ws::Counts n = build_titan(out, t);
+            unsigned lathe_draws = 0, bubble_draws = 0, eye = 0;
+            for (unsigned i = 0; i < n.patches; ++i) {
+                lathe_draws += out[i].lathe != nullptr;
+                bubble_draws += out[i].bubble;
+                eye += out[i].eye_sphere;
+            }
+            const bool decal = n.patches && !lathe_draws && !bubble_draws;
+            route_ok[r] = r < 2   ? n.lathes == 1 && lathe_draws == n.patches && n.patches >= 1 && !n.bubble.walks &&
+                                      !n.bubbles && !n.decals
+                          : r < 4 ? decal && !n.lathes && !n.bubble.walks && n.lathe_mismatch == (r == 3 ? 1u : 0u) &&
+                                      n.lathe_no_profile == 0
+                          : r == 4 ? n.bubbles == 1 && n.bubble.walks >= 1 && bubble_draws == n.patches && !n.lathes
+                                   : n.eye_spheres == 1 && eye == n.patches && n.patches >= 1 && !n.bubble.walks && !n.lathes;
+            std::printf("LATHE case=route_%s patches=%u lathes=%u lathe_draws=%u bubbles=%u bubble_draws=%u eye=%u walks=%u "
+                        "decals=%u mismatch=%u no_profile=%u refused=%u ok=%u\n",
+                        c.name, n.patches, n.lathes, lathe_draws, n.bubbles, bubble_draws, eye, n.bubble.walks, n.decals,
+                        n.lathe_mismatch, n.lathe_no_profile, n.lathe_refused, unsigned(route_ok[r]));
+        }
+        report("lathe_route_profile_every_tier", route_ok[0] && route_ok[1], "");
+        report("lathe_route_fallback_without_profile", route_ok[2] && route_ok[4], "");
+        report("lathe_route_class_mismatch_falls_back", route_ok[3], "");
+        report("lathe_route_cockpit_keeps_eye_sphere", route_ok[5], "");
+        {
+            double belly[3];
+            profile_point(titan, 12, pi, belly); // the seam's side (-y)
+            stage_titan(side_rows, belly, wc::patch_capital, true);
+            const ws::Counts n = build_titan(out, lathe_tuning());
+            unsigned plus = 0, minus = 0;
+            for (unsigned i = 0; i < n.patches; ++i) {
+                const rr::WeaponPatch& p = out[i];
+                for (unsigned k = 0; k < p.cells; ++k) {
+                    const std::uint32_t packed = std::uint32_t(std::int32_t(p.cell_key[k]));
+                    const double v = 0.8660254 * double(int(packed & 0xfffu) - rr::weapon_cell_key_bias) * p.cell;
+                    plus += v > 0.45 * p.lathe_period;
+                    minus += v < -0.45 * p.lathe_period;
+                }
+            }
+            std::printf("LATHE case=seam patches=%u seam_copies=%u cells_plus=%u cells_minus=%u period_m=%.1f\n", n.patches,
+                        n.lathe_seam, plus, minus, n.patches ? out[0].lathe_period / metre : 0.0);
+            report("lathe_seam_hit_lights_both_sides", n.lathe_seam == 1 && plus > 0 && minus > 0, "");
+        }
+
+        // (d) the GPU
+        const LatheHullLane lane_side = [&] {
+            stage_titan(side_rows, side_contact, wc::patch_capital, true);
+            return lathe_hull_lane(titan);
+        }();
+        rr::WeaponLook near_only = rr::default_weapon_look();
+        near_only.bubble_far_gain = 0.f;
+        struct View {
+            const char* name;
+            const std::int32_t (*rows)[3];
+        } views[2] = {{"side", side_rows}, {"top", top_rows}};
+        double offset_m[2][2] = {}, centroid_cells[2] = {1e30, 1e30}, gap_max_m[2][2] = {}, gap_mean_m[2][2] = {};
+        unsigned lit[2][2] = {}, sky_lit[2][2] = {};
+        for (unsigned vi = 0; vi < 2; ++vi) {
+            stage_titan(views[vi].rows, side_contact, wc::patch_capital, true);
+            const LatheHullLane lane = lathe_hull_lane(titan);
+            draw_lathe_hull(g, lane);
+            const std::vector<float> depth = read_lane_depth(g);
+            // the contact, the lathe point and the walk point in view
+            const float pv[3] = {float(side_contact[0] * s), float(side_contact[1] * s), float(side_contact[2] * s)};
+            float B[3], chart[2], Bw[3], q[3];
+            ws::map_lathe(mesh, pv, B, chart);
+            ws::bubble_point(wbub, pv, Bw, q);
+            double P[3], BL[3], BW[3];
+            const double pd[3] = {pv[0], pv[1], pv[2]}, bd[3] = {B[0], B[1], B[2]}, wd[3] = {Bw[0], Bw[1], Bw[2]};
+            owner_to_view(pd, P);
+            owner_to_view(bd, BL);
+            owner_to_view(wd, BW);
+            const double m00 = 1.6, half_w = 0.5 * g.w, half_h = 0.5 * g.h, m11 = 1.6 * double(g.w) / double(g.h);
+            auto screen = [&](const double v[3], double out2[2]) {
+                out2[0] = half_w * (1.0 + m00 * v[0] / v[2]);
+                out2[1] = half_h * (1.0 - m11 * v[1] / v[2]);
+            };
+            double sp[2], sb[2];
+            screen(P, sp);
+            screen(BL, sb);
+            const double view_per_px = P[2] / (m00 * half_w);
+            for (unsigned kind = 0; kind < 2; ++kind) { // 0 the lathe, 1 the FL 67 walk ellipsoid
+                rr::WeaponPatch draws[wc::max_patches];
+                unsigned count = 0;
+                if (!kind) {
+                    count = build_titan(draws, lathe_tuning()).patches;
+                } else {
+                    ws::Owner o;
+                    std::memcpy(o.pos, fake_node + wc::layout::node_pos, 12);
+                    std::memcpy(o.rows, fake_node + wc::layout::node_rot, 48);
+                    o.radius = titan_radius;
+                    float centre[3], frame[9], colour[3];
+                    ws::owner_frame(o, identity_camera(), centre, frame);
+                    wc::shield_colour(1.f, ws::Tuning{}.bands, colour);
+                    const float hit[1][3] = {{pv[0], pv[1], pv[2]}}, age[1] = {0.5f};
+                    unsigned left = ws::anchor_count;
+                    ws::Counts nn{};
+                    ws::fill_bubble(draws, wc::max_patches, &left, centre, frame, wc::patch_capital, wbub, hit, age, 1,
+                                    colour, ws::Tuning{}, &nn);
+                    count = nn.patches;
+                    for (unsigned d = 0; d < count; ++d) draws[d].owner_radius = float(view_r);
+                }
+                std::vector<float> rgb;
+                const std::vector<float> l = render(pass, draws, count, &near_only, nullptr, nullptr, true);
+                render(pass, draws, count, nullptr, &rgb, nullptr, true);
+                char name[64];
+                std::snprintf(name, sizeof name, "titan_%s_%s", views[vi].name, kind ? "ellipsoid" : "lathe");
+                dump_shield(name, rgb, depth, g.w, g.h);
+                double wsum = 0, cx = 0, cy = 0, gsum = 0;
+                unsigned gaps = 0;
+                for (UINT y = 0; y < g.h; ++y)
+                    for (UINT x = 0; x < g.w; ++x) {
+                        const std::size_t i = std::size_t(y) * g.w + x;
+                        const double v = l[i]; // the near side: the centroid
+                        if (v > 1e-3) {
+                            ++lit[vi][kind];
+                            wsum += v;
+                            cx += v * x;
+                            cy += v * y;
+                        }
+                        // the whole look (both sides): the pixels over sky and their gap from the outline
+                        if (rgb.size() != l.size() * 3 ||
+                            !(std::max(rgb[3 * i], std::max(rgb[3 * i + 1], rgb[3 * i + 2])) > 1e-3f) || depth[i] > 0.f)
+                            continue;
+                        ++sky_lit[vi][kind];
+                        // its distance from the hull's outline: the nearest hull pixel along the column (the top view
+                        // puts the flank below the hull: up the column)
+                        unsigned d = 1;
+                        while (d <= 600 && y >= d && !(depth[i - std::size_t(d) * g.w] > 0.f)) ++d;
+                        if (d <= 600 && y >= d) {
+                            const double gm = d * view_per_px / metre;
+                            gap_max_m[vi][kind] = std::max(gap_max_m[vi][kind], gm);
+                            gsum += gm;
+                            ++gaps;
+                        }
+                    }
+                gap_mean_m[vi][kind] = gaps ? gsum / gaps : 0.0;
+                if (wsum > 0) {
+                    cx /= wsum;
+                    cy /= wsum;
+                    offset_m[vi][kind] = std::hypot(cx - sp[0], cy - sp[1]) * view_per_px / metre;
+                    if (!kind) {
+                        const double cell_px = double(ws::metres_to_view(wc::cell_m[wc::patch_capital])) / view_per_px;
+                        centroid_cells[vi] = std::hypot(cx - sb[0], cy - sb[1]) / cell_px;
+                    }
+                }
+                std::printf("LATHE case=gpu_%s_%s draws=%u lit_pixels=%u sky_lit=%u centroid_from_contact_m=%.1f "
+                            "centroid_from_lathe_point_cells=%.3f sky_gap_max_m=%.1f sky_gap_mean_m=%.1f\n",
+                            views[vi].name, kind ? "ellipsoid" : "lathe", count, lit[vi][kind], sky_lit[vi][kind],
+                            offset_m[vi][kind], kind ? -1.0 : centroid_cells[vi], gap_max_m[vi][kind],
+                            gap_mean_m[vi][kind]);
+            }
+        }
+        double hx_max = 0;
+        for (int i = 7; i <= 11; ++i) hx_max = std::max(hx_max, double(titan.slice[i][2]));
+        const double hug_allowed_m = (double(wc::bubble_scale) - 1.0) * hx_max * s / metre * 1.1 + 2.0;
+        std::printf("LATHE case=gpu_summary hug_allowed_m=%.1f\n", hug_allowed_m);
+        // The side: the near side's luma centroid within 1.5 cells of the lathe point on screen (the footprint is centred
+        // on the hit's cell, within half a cell of the hit, and foreshortened on the curved flank), far closer to the
+        // contact than the walk ellipsoid's. From above the hit lies on the silhouette (its cells edge-on: few pixels):
+        // every lathe pixel over sky within the lathe's inflation of the hull's outline, the walk ellipsoid's past it.
+        report("lathe_gpu_side_hit_drawn_at_its_lathe_point",
+               lit[0][0] > 100 && centroid_cells[0] <= 1.5 && offset_m[0][0] * 4.0 < offset_m[0][1], "");
+        report("lathe_gpu_top_view_hugs_the_hull",
+               sky_lit[1][0] > 50 && gap_max_m[1][0] <= hug_allowed_m && gap_max_m[1][1] > hug_allowed_m, "");
+        {   // a judging frame of a hit on a smooth stretch (slice 6, z -301k: its neighbours' widths within 8 %)
+            double smooth[3];
+            profile_point(titan, 6, 0.5 * pi, smooth);
+            stage_titan(side_rows, smooth, wc::patch_capital, true);
+            draw_lathe_hull(g, lane_side);
+            const std::vector<float> depth = read_lane_depth(g);
+            rr::WeaponPatch draws[wc::max_patches];
+            const unsigned count = build_titan(draws, lathe_tuning()).patches;
+            std::vector<float> rgb;
+            render(pass, draws, count, nullptr, &rgb, nullptr, true);
+            dump_shield("titan_side_lathe_smooth", rgb, depth, g.w, g.h);
+            std::printf("LATHE case=dump_smooth draws=%u\n", count);
+            // The bow (2026-11-12 look fix: the cells' shrink across the hull clamped at lathe_min_width): a hit on the
+            // narrow forward slice 30 at 60 degrees and one on the nose (the end slice's centre at z1), seen from the side
+            // and from 35 degrees ahead of the beam (local z toward the eye: the bow's dome faces it).
+            double bow_side[3], nose[3];
+            profile_point(titan, 30, pi / 3.0, bow_side);
+            profile_point(titan, 32, 0.0, nose);
+            nose[0] = titan.slice[31][0];
+            nose[1] = titan.slice[31][1];
+            const double c35 = std::cos(35.0 * pi / 180.0), s35 = std::sin(35.0 * pi / 180.0);
+            const std::int32_t ahead_rows[3][3] = {{std::int32_t(std::lround(-65536 * s35)), 0, std::int32_t(std::lround(-65536 * c35))},
+                                                   {0, 65536, 0},
+                                                   {std::int32_t(std::lround(65536 * c35)), 0, std::int32_t(std::lround(-65536 * s35))}};
+            for (unsigned v = 0; v < 2; ++v) {
+                stage_titan(v ? ahead_rows : side_rows, bow_side, wc::patch_capital, true);
+                const std::int32_t at[3] = {std::int32_t(std::lround(nose[0])), std::int32_t(std::lround(nose[1])),
+                                            std::int32_t(std::lround(nose[2]))};
+                add_stage_hit(1200, at, wc::patch_capital);
+                const LatheHullLane lane = lathe_hull_lane(titan);
+                draw_lathe_hull(g, lane);
+                const std::vector<float> bow_depth = read_lane_depth(g);
+                const unsigned bow_count = build_titan(draws, lathe_tuning()).patches;
+                std::vector<float> bow_rgb;
+                render(pass, draws, bow_count, nullptr, &bow_rgb, nullptr, true);
+                dump_shield(v ? "titan_bow_ahead_lathe" : "titan_bow_side_lathe", bow_rgb, bow_depth, g.w, g.h);
+                std::printf("LATHE case=dump_bow view=%s draws=%u\n", v ? "ahead" : "side", bow_count);
+            }
+        }
+
+        // (e) the timing rows' Titan: two hits on the flank (slice 9 at 90 degrees, slice 12 at 70), the decal and the lathe
+        double second[3];
+        profile_point(titan, 12, 70.0 * pi / 180.0, second);
+        for (unsigned k = 0; k < 2; ++k) {
+            stage_titan(side_rows, side_contact, wc::patch_capital, k == 1);
+            const std::int32_t at[3] = {std::int32_t(std::lround(second[0])), std::int32_t(std::lround(second[1])),
+                                        std::int32_t(std::lround(second[2]))};
+            add_stage_hit(1200, at, wc::patch_capital);
+            titan_timing_count[k] = build_titan(titan_timing[k], lathe_tuning()).patches;
+        }
+        titan_timing_lane = lane_side;
+        std::printf("LATHE case=timing_draws decal_draws=%u lathe_draws=%u\n", titan_timing_count[0], titan_timing_count[1]);
+        report("lathe_timing_draws_built", titan_timing_count[0] >= 1 && titan_timing_count[1] >= 1 &&
+                                               titan_timing[1][0].lathe && !titan_timing[0][0].lathe, "");
+        stage_tier_source = wc::tier_by_radius;
+        draw_lane(g, 0.f, -1.f);
+    }
     // The stage's CPU cost in this i686 build (SSE2, the production flags): ws::build alone with the depth cache (the
     // production path), best and mean of 200 calls,
     // on the worst cases: 64 live hits on one capital owner spread over its front (the region spills), and 16 capital
@@ -4190,6 +4795,11 @@ int main(int argc, char** argv) {
             put32(o.node, wc::layout::node_pos + 0, engine(x));
             put32(o.node, wc::layout::node_pos + 8, engine(z));
             for (unsigned i = 0; i < 3; ++i) put32(o.node, wc::layout::node_rot + 16 * i + 4 * i, 0x10000u);
+            // a TShips row-11 ship with unit axis scales (read only by the lathe cases)
+            const std::uint16_t cls = wc::layout::class_ship, sub = std::uint16_t(titan_row);
+            std::memcpy(o.obj + wc::layout::obj_class, &cls, 2);
+            std::memcpy(o.obj + wc::layout::obj_subtype, &sub, 2);
+            for (unsigned i = 0; i < 3; ++i) put32(o.node, wc::layout::node_axis_scale + 4 * i, 0x10000u);
         };
         auto add_hit = [&](unsigned k, unsigned i, std::uint32_t t0, float radius, const std::int32_t* at = nullptr) {
             wc::Event* e = wc::ring_acquire(ring);
@@ -4219,13 +4829,33 @@ int main(int argc, char** argv) {
         rr::WeaponDecal decals[wc::max_decals];
         LARGE_INTEGER freq, a, b;
         QueryPerformanceFrequency(&freq);
-        auto time_build = [&](const char* name, std::uint32_t now) {
+        // The lathe cases (2026-11-12): every owner a TShips row-11 ship with the Titan's profile, its mesh cached (the
+        // production steady state; the first call builds it); the reader also covers the fake type table.
+        auto lathe_reader = [](std::uintptr_t a, void* out, std::size_t n) {
+            const std::uintptr_t b = reinterpret_cast<std::uintptr_t>(&owners[0]), size = sizeof owners;
+            if (a >= b && n <= size && a - b <= size - n) {
+                std::memcpy(out, reinterpret_cast<const void*>(a), n);
+                return true;
+            }
+            return lathe_read(a, out, n);
+        };
+        static ws::LatheCache cpu_lathes;
+        auto time_build = [&](const char* name, std::uint32_t now, bool lathe = false) {
             double best = 1e30, sum = 0;
             ws::Counts n{};
+            ws::Tuning tune{};
+            if (lathe) {
+                stage_lathe_type();
+                tune.profiles = &lathe_profiles;
+                tune.ship_table_slot = addr(fake_types) + type_slots_at;
+                tune.ship_count_slot = addr(fake_types) + type_slots_at + 4;
+            }
             for (unsigned rep = 0; rep < 200; ++rep) {
                 QueryPerformanceCounter(&a);
-                n = ws::build(ring, now, reader, identity_camera(), ws::Tuning{}, patches, wc::max_patches, decals,
-                              wc::max_decals);
+                n = lathe ? ws::build(ring, now, lathe_reader, identity_camera(), tune, patches, wc::max_patches, decals,
+                                      wc::max_decals, nullptr, nullptr, &cpu_lathes)
+                          : ws::build(ring, now, reader, identity_camera(), tune, patches, wc::max_patches, decals,
+                                      wc::max_decals);
                 QueryPerformanceCounter(&b);
                 const double us = ticks_us(a, b, freq);
                 best = std::min(best, us);
@@ -4233,25 +4863,32 @@ int main(int argc, char** argv) {
             }
             unsigned cells = 0;
             for (unsigned i = 0; i < n.patches; ++i) cells += patches[i].cells;
-            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u bubbles=%u walks=%u best_us=%.1f mean_us=%.1f target_us=200\n",
+            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u bubbles=%u walks=%u lathes=%u best_us=%.1f mean_us=%.1f target_us=200\n",
                         name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, n.bubbles,
-                        n.bubble.walks, best, sum / 200.0);
-            return best;
+                        n.bubble.walks, n.lathes, best, sum / 200.0);
+            return lathe ? (n.lathes == n.owners ? sum / 200.0 : -1.0) : sum / 200.0;
         };
         wc::ring_clear(ring);
         make_owner(0, 0.f, 4000.f, 2000.f);
         for (unsigned i = 0; i < wc::owner_hits; ++i) add_hit(0, i, 1000 + 40 * i, 2000.f); // 25 hits/s over 2.5 s
         const double one = time_build("one_capital_64_hits", 1000 + 40 * wc::owner_hits);
+        const double one_lathe = time_build("one_capital_64_hits_lathe", 1000 + 40 * wc::owner_hits, true);
         wc::ring_clear(ring);
         for (unsigned k = 0; k < wc::max_owners; ++k) {
             make_owner(k, (float(k) - 7.5f) * 5000.f, 20000.f, 2000.f);
             for (unsigned i = 0; i < 16; ++i) add_hit(k, 16 * k + i, 1000 + 150 * i, 2000.f);
         }
         const double many = time_build("sixteen_capitals_16_hits", 1000 + 150 * 16);
+        const double many_lathe = time_build("sixteen_capitals_16_hits_lathe", 1000 + 150 * 16, true);
         wc::ring_clear(ring);
         make_owner(0, 0.f, 4000.f, 2000.f);
         for (unsigned i = 0; i * 1000u / 12u <= 2500u; ++i) add_hit(0, i, 1000 + i * 1000u / 12u, 2000.f); // 12 hits/s
         const double at12 = time_build("one_capital_12hps", 3500);
+        const double at12_lathe = time_build("one_capital_12hps_lathe", 3500, true);
+        // The lathe (one chart region per owner) against the hull decal (six face regions) on the same hits: means (us).
+        report("stage_cpu_lathe_not_above_decal", one_lathe > 0.0 && many_lathe > 0.0 && at12_lathe > 0.0 &&
+                                                      many_lathe <= many && one_lathe <= one * 1.1 && at12_lathe <= at12 * 1.1,
+               "");
         // The Flight B station (R 1304 m): 64 hits over its recorded contact cluster (x -131k..-110k, y 75k..126k, z
         // 353k..421k engine units: one +z region, |pos| / R 0.55 to 0.68), 25 hits/s.
         wc::ring_clear(ring);
@@ -4916,7 +5553,12 @@ int main(int argc, char** argv) {
             unsigned count;
             const HullLane* hull; // the surface (null: the first patch's plane)
             bool sky = false;     // the sky lane instead
+            const LatheHullLane* lathe_lane = nullptr; // the Titan's hull lane instead
         } cases[] = {{"fence", nullptr, 0, nullptr},
+                     // the lathe bubble (2026-11-12): the Titan's two flank hits as the hull decal (no profile) and on
+                     // its lathe, on the Titan's hull lane, 12 km from the eye (the whole ship on screen)
+                     {"titan_two_hits_decal", titan_timing[0], titan_timing_count[0], nullptr, false, &titan_timing_lane},
+                     {"titan_two_hits_lathe", titan_timing[1], titan_timing_count[1], nullptr, false, &titan_timing_lane},
                      {"fighter_two_hits_one_region", fighter_one, 1, nullptr},
                      {"fighter_two_regions", fighter_regions, 2, nullptr},
                      {"capital_close_two_hits_one_region", capital_one, 1, nullptr},
@@ -4938,7 +5580,9 @@ int main(int argc, char** argv) {
             rr::WeaponEffectsFrame f = base_frame(tt);
             f.patches = c.patches;
             f.patch_count = c.count;
-            if (c.sky)
+            if (c.lathe_lane)
+                draw_lathe_hull(tt, *c.lathe_lane);
+            else if (c.sky)
                 draw_lane(tt, 0.f, -1.f);
             else if (c.hull)
                 draw_hull_lane(tt, *c.hull);

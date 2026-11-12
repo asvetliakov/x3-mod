@@ -75,6 +75,17 @@ int main(int argc, char** argv) {
                     (unsigned long long)x3m::weapon_effects::reshade::fnv1a64(p, text.size()));
         return 0;
     }
+    if (argc > 2 && std::string(argv[1]) == "profiles") { // the ship profiles block: the counts and row argv[2]'s entry
+        static core::ShipProfiles pr;
+        const bool pok = t::parse(text.data(), text.size(), &table, &st, &fault, &pr);
+        const core::ShipProfile* p = pr.find(std::atoi(argv[2]));
+        std::printf("ok=%d present=%u profiles=%u dropped=%u class_unknown=%u count=%u found=%d class=%d z0=%.1f z1=%.1f "
+                    "s16=%.3f,%.3f,%.3f,%.3f\n", int(pok), unsigned(st.profiles_present), st.profiles,
+                    st.profiles_dropped, st.profiles_class_unknown, pr.count, p ? 1 : 0, p ? int(p->class_id) : -9,
+                    p ? double(p->z0) : 0.0, p ? double(p->z1) : 0.0, p ? double(p->slice[16][0]) : 0.0,
+                    p ? double(p->slice[16][1]) : 0.0, p ? double(p->slice[16][2]) : 0.0, p ? double(p->slice[16][3]) : 0.0);
+        return pok ? 0 : 1;
+    }
     std::printf("ok=%d rows=%u missile_rows=%u entries=%u textures=%u overrides=%u schema=%u\n", int(ok), table.rows,
                 table.missile_rows, st.entries, st.textures, st.overrides, st.schema);
     std::printf("bullet_textures=%u bullet_textures_dropped=%u tex0_bytes=%u tex0_head=%016llx tex0_hash=%016llx "
@@ -471,14 +482,51 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertEqual((f['early'], f['state'], f['reason']), ('1', '2', 'no_table'))
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
-        code, f = self.read({'schema': 3, 'tables': {}})
-        self.assertEqual(code, 1)   # schema must be 1 or 2
+        code, f = self.read({'schema': 4, 'tables': {}})
+        self.assertEqual(code, 1)   # schema must be 1, 2 or 3 (3: ship_profiles)
         code, f = self.read({'schema': 1, 'tables': {'bullets': {'rows': 45, 'entries': 'not a list'}}})
         self.assertEqual(code, 1)
 
     def read_text(self, text):
         out = subprocess.run([str(self.exe)], input=text, capture_output=True, text=True)
         return out.returncode, dict(kv.split('=') for kv in out.stdout.split())
+
+    def test_reader_reads_ship_profiles(self):
+        """Schema 3 tables.ship_profiles (the lathe bubble, weapon_effects_lathe.h): kept entries keyed by their TShips
+        index with the class token's engine id; a bad entry is dropped and counted, a wrong JSON type is malformed."""
+        def entry(index, **kw):
+            e = {'tships_index': index, 'scene': 'ships\\argon\\argon_M2_scene', 'class': 'OBJ_SHIP_M2', 'units': 'scene',
+                 'axis': 'z', 'z0': -511093.0, 'z1': 545751.0, 'radius': 545994.2, 'points': 105399,
+                 'slices': [[0.0, -1000.0 * i, 70000.0 + i, 60000.0] for i in range(32)]}
+            e.update(kw)
+            return e
+        good = [entry(11), entry(3, **{'class': 2023}), entry(5, **{'class': 'class_id:2061'})]
+        bad = [entry(11), entry(4096), entry(7, units='metres'), entry(8, axis='y'), entry(9, z1=-600000.0),
+               entry(10, slices=[[0, 0, 1, 1]] * 31), entry(12, slices=[[0, 0, -1, 1]] * 32),
+               entry(13, slices=[[0, 0, 0, 0]] * 32), entry(14, **{'class': 'OBJ_NOT_A_CLASS'})]
+        table = dict(sample_table(), schema=3)
+        table['tables'] = dict(table['tables'], ship_profiles=good + bad)
+
+        def run(t, row):
+            out = subprocess.run([str(self.exe), 'profiles', str(row)], input=json.dumps(t), capture_output=True,
+                                 text=True)
+            return out.returncode, dict(kv.split('=') for kv in out.stdout.split())
+        code, f = run(table, 11)
+        self.assertEqual(code, 0)
+        # kept: 11, 3, 5 and 14 (an unknown class is kept, never matched); dropped: the second 11 and seven bad entries
+        self.assertEqual((f['present'], f['profiles'], f['dropped'], f['class_unknown'], f['count']),
+                         ('1', '4', '8', '1', '4'))
+        self.assertEqual((f['found'], f['class'], f['z0'], f['z1']), ('1', '2022', '-511093.0', '545751.0'))
+        self.assertEqual(f['s16'], '0.000,-16000.000,70016.000,60000.000')
+        self.assertEqual(run(table, 3)[1]['class'], '2023')
+        self.assertEqual(run(table, 5)[1]['class'], '2061')
+        self.assertEqual(run(table, 14)[1]['class'], '-1')
+        self.assertEqual(run(table, 7)[1]['found'], '0')
+        broken = dict(table, tables=dict(table['tables'], ship_profiles=[entry(11, slices='none')]))
+        code, f = run(broken, 11)                           # a wrong JSON type: the whole file is malformed
+        self.assertEqual((code, f['ok'], f['count'], f['found']), (1, '0', '0', '0'))
+        code, f = run(dict(sample_table(), schema=2), 11)  # an older table: no profiles, still read
+        self.assertEqual((code, f['present'], f['count']), (0, '0', '0'))
 
     def test_reader_rejects_trailing_bytes_and_duplicate_rows(self):
         text = json.dumps(sample_table())

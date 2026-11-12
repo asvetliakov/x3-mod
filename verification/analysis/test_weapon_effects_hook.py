@@ -460,10 +460,20 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertGreaterEqual(seam['pair_draws'], seam['single_draws'])
         self.assertLessEqual(seam['peak_pair'], max(seam['peak_a'], seam['peak_b']) * 1.002 + 1e-3)
         self.assertEqual(sorted(x['case'] for x in m['stage_cpu']),
-                         ['one_capital_12hps', 'one_capital_64_hits', 'sixteen_capitals_16_hits',
+                         ['one_capital_12hps', 'one_capital_12hps_lathe', 'one_capital_64_hits',
+                          'one_capital_64_hits_lathe', 'sixteen_capitals_16_hits', 'sixteen_capitals_16_hits_lathe',
                           'station_flight_b_cluster_64_hits'])
-        for x in m['stage_cpu']:                                                # FL 67 A: capitals take the decal
+        cpu = {x['case']: x for x in m['stage_cpu']}
+        for x in m['stage_cpu']:  # FL 67 A: capitals without a profile take the decal; with one the lathe (no walk)
             self.assertEqual((x['bubbles'], x['walks']), (0, 0), x['case'])
+            self.assertEqual(x['lathes'], x['owners'] if x['case'].endswith('_lathe') else 0, x['case'])
+        self.assertLessEqual(cpu['sixteen_capitals_16_hits_lathe']['mean_us'], cpu['sixteen_capitals_16_hits']['mean_us'])
+        # The lathe bubble (2026-11-12): the Titan profile's units 1:1 with the walk, its side hits on the shell far
+        # nearer the contact than the walk ellipsoid's (the FL 67 witness), and the GPU draw where the CPU maps it
+        lathe = {x['case']: x for x in m['lathe']}
+        self.assertLess(lathe['placement']['lathe_median_m'] * 4, lathe['placement']['walk_median_m'])
+        self.assertLessEqual(lathe['gpu_top_lathe']['sky_gap_max_m'], lathe['gpu_summary']['hug_allowed_m'])
+        self.assertGreater(lathe['gpu_top_ellipsoid']['sky_gap_max_m'], lathe['gpu_summary']['hug_allowed_m'])
         # The ship bubble (user decision after Run238 Flight E): every ship case on its bubble from the hull walk, the lit
         # near side's centroid within a cell of the hit's bubble point, nothing the twin hides, nothing past the
         # footprint (not on the tail), the bubble near the hit covered, the lit count of the same order for every

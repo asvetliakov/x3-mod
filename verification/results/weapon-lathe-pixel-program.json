@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "source": "src/effects/weapon_lathe_ps.hlsl",
+  "source_sha256": "0da2f24f64a73ffa0d9ecc344f15ab89dd53335cf7f0c541e09c348a5c8a7349",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_3_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": {
+    "src/effects/weapon_soft_depth.hlsl": "add064af37289550b2d5f33b1ab226a062d4e12fa68018f003d933b36ff27709",
+    "src/effects/weapon_hex_patch.hlsl": "6ebe779521f75653f27798d6daaa2600c971edc7b3ebbfc6e7bff686c933733f"
+  },
+  "word_count": 1777,
+  "bytecode_sha256": "8791f097c569b958867f5d181d7e54344cd659542d115cd7dded0317fbf6f868",
+  "header_sha256": "8ea97000909a342acb149c2a3ff5f08a3eb626f58bc413889581d3dc99384bef",
+  "tool_sources": {
+    "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
+    "tools/shaders/generate_weapon_effects_programs.py": "563c02cacda86262a75e72a41ba532bd12c02b9ea84cb7f5c0657d170f911d63"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

@@ -13,8 +13,10 @@
 // is the surface and the sky draws nothing. A ship's patch (WeaponPatch::bubble) is drawn on its bubble instead
 // (weapon_bubble_ps.hlsl): per pixel the ray meets the owner-frame ellipsoid analytically, its near and far points take
 // the face's cell from the same map and the lane only occludes (a point draws where it is nearer the eye than the
-// lane). Each decal's four vertices go through DrawPrimitiveUP. The pass holds no DEFAULT-pool resource and allocates
-// nothing per frame.
+// lane). A ship with an offline profile (WeaponPatch::lathe, 2026-11-12) draws a band of its lathe mesh instead
+// (weapon_lathe_{vs,ps}.hlsl: the stage's vertices through DrawIndexedPrimitiveUP, the band's indices built per draw,
+// CULLMODE NONE, VFACE choosing the near or far gain; the cells in the lathe's chart). Each decal's four vertices go
+// through DrawPrimitiveUP. The pass holds no DEFAULT-pool resource and allocates nothing per frame.
 //
 // run() draws the frame's patches and decals inside the temporal resolve's stage bracket (TemporalPass FrameInputs::
 // stage_callback, after the plumes and the own sun when they draw: RT0 the FP16 scene the resolve reads, RT1+ and the
@@ -32,6 +34,7 @@ struct WeaponEffectsCaps {
     bool enabled = false;
     const char* reason = "not_attached";
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
+    unsigned lathe_vs_slots = 0, lathe_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
     // The projectile programs (configure_projectiles(true) before attach; FL): their own verdict, so a refusal keeps
     // the shield effect. lane32_blending / lane16_blending: post-pixel-shader blending of the four-lane formats.
@@ -121,6 +124,16 @@ inline void sort_by_key(std::uint8_t* idx, unsigned n, const float* key) noexcep
         sift(0, end);
     }
 }
+// The lathe's vertex (weapon_lathe_vs.hlsl, stride 20): the owner-frame point (view units) and its chart coordinates (u
+// view units, v the perimeter fraction in [-0.5, 0.5], the seam at the ring's -y side).
+struct WeaponLatheVertex {
+    float pos[3];
+    float u, v;
+};
+constexpr unsigned weapon_lathe_segments = 24, weapon_lathe_columns = weapon_lathe_segments + 1;
+constexpr unsigned weapon_lathe_rings = 40; // 32 slice rings and four dome rings at each end
+constexpr unsigned weapon_lathe_vertices = weapon_lathe_rings * weapon_lathe_columns;
+constexpr unsigned weapon_lathe_triangles = 2 * (weapon_lathe_rings - 1) * weapon_lathe_segments;
 struct WeaponPatch {
     float centre[3]{};    // the owner's centre (view space)
     float view_u[3]{1.f, 0.f, 0.f}, view_v[3]{0.f, 1.f, 0.f}, view_a[3]{0.f, 0.f, 1.f}; // the lattice's u, v, axis (view)
@@ -153,6 +166,18 @@ struct WeaponPatch {
     std::uint8_t bubble = 0;
     std::uint8_t eye_sphere = 0; // the bubble is the own ship's eye sphere in the cockpit (diagnostics)
     float bubble_c[3]{}, bubble_e[3]{1.f, 1.f, 1.f};
+    // The lathe bubble (5.1.1 "Placement", 2026-11-12; stage weapon_effects_lathe.h): non-null draws the cells on the
+    // owner's profile lathe, its mesh (owner frame, view units; weapon_lathe_columns vertices per ring, rings in rising
+    // z, owned by the stage's LatheCache and unchanged until the next build), the quads of rings [lathe_r0, lathe_r1]
+    // and columns [lathe_c0, lathe_c1] (those holding the draw's cells). The cells lie in the lathe's chart (u the
+    // meridian length, v = the vertex's perimeter fraction x lathe_period; the lattice's anchor 0 plane: cell keys,
+    // hits and ring as for a face), lathe_box their chart bounds (u lo, v lo, u hi, v hi), lathe_wrap_rows the key rows
+    // of one period (the cell hash wraps across the seam). box then bounds the band in the owner frame (owner axes as
+    // view_u / v / a: the screen budget).
+    const WeaponLatheVertex* lathe = nullptr;
+    std::uint16_t lathe_r0 = 0, lathe_r1 = 0, lathe_c0 = 0, lathe_c1 = 0;
+    float lathe_period = 0.f, lathe_wrap_rows = 0.f;
+    float lathe_box[4]{};
 };
 // A flat patch at a hit point (an owner without a usable ellipsoid): a camera-facing quad covering the hit's footprint
 // with the same hex law, the hit at its centre (the one hit's cells are evaluated in the program).
@@ -192,6 +217,7 @@ struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
     unsigned calls = 0, patches = 0, decals = 0, quads = 0, pulses = 0;
+    unsigned lathes = 0; // of the patches, lathe draws
     bool drew = false;
     const char* refused = nullptr; // run_projectiles: the frame's refusal (lane, depth, mrt, ...), nothing drawn
 };
@@ -251,8 +277,12 @@ private:
     IDirect3DPixelShader9* decal_ps_ = nullptr;
     IDirect3DVertexDeclaration9* shell_declaration_ = nullptr;
     IDirect3DVertexDeclaration9* decal_declaration_ = nullptr;
+    IDirect3DVertexShader9* lathe_vs_ = nullptr;
+    IDirect3DPixelShader9* lathe_ps_ = nullptr;
+    IDirect3DVertexDeclaration9* lathe_declaration_ = nullptr;
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
+    std::uint16_t lathe_indices_[weapon_lathe_triangles * 3]{}; // one lathe draw's band, rewritten per draw
     bool projectiles_requested_ = false;
     IDirect3DVertexShader9* projectile_vs_ = nullptr;
     IDirect3DPixelShader9* projectile_ps_ = nullptr;

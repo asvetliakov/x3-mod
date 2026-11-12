@@ -34,7 +34,7 @@ PROGRAMS = {
                                   provenance=ROOT / f'verification/results/weapon-{part}-{"vertex" if kind == "vs" else "pixel"}-program.json',
                                   target=f'{kind}_3_0')
     for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('projectile', ('vs', 'ps')),
-                        ('pulse', ('ps',)))
+                        ('pulse', ('ps',)), ('lathe', ('vs', 'ps')))
     for kind in kinds
 }
 

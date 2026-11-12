@@ -41,6 +41,10 @@ const char* site_state_[8] = {"not_initialized", "not_initialized", "not_initial
 bool written_[site_count] = {};
 engine_patch::CallSite site_[site_count]{};
 core::Table* table_ = nullptr;
+// The ship profiles (one heap block for the process, allocated with the first table text; ready only after a parse
+// that kept an entry).
+core::ShipProfiles* profiles_ = nullptr;
+bool profiles_ready_ = false;
 unsigned logged_events_ = 0, period_events_ = 0;
 // weapon_event rows outside capture frames: the run's first 64, then a rolling sample of up to 8 per weapon_effects_frame
 // period (Run235 Flight B: the fixed 64 ended within the first minute, so the own ship's later hits were never seen).
@@ -214,15 +218,24 @@ void load_table() {
     std::size_t fault = 0;
     bool parsed = false;
     const bool had_text = text != nullptr;
+    profiles_ready_ = false;
     if (text) {
+        if (!profiles_) profiles_ = new (std::nothrow) core::ShipProfiles;
         table_ = new (std::nothrow) core::Table;
-        if (table_) parsed = x3m::weapon_effects::table::parse(text, size, table_, &st, &fault);
+        if (table_) parsed = x3m::weapon_effects::table::parse(text, size, table_, &st, &fault, profiles_);
         delete[] text;
         if (!parsed) {
             delete table_;
             table_ = nullptr;
         }
+        profiles_ready_ = parsed && profiles_ && profiles_->count > 0;
     }
+    x3m::log("weapon_ship_profiles event=%s present=%u profiles=%u dropped=%u class_unknown=%u capacity=%u "
+             "block_bytes=%lu slices=%u",
+             profiles_ready_ ? "loaded" : !profiles_ && had_text ? "allocation" : "none", unsigned(st.profiles_present),
+             profiles_ready_ ? profiles_->count : 0u, st.profiles_dropped, st.profiles_class_unknown,
+             core::profile_capacity, static_cast<unsigned long>(profiles_ ? sizeof(core::ShipProfiles) : 0),
+             core::profile_slices);
     table_hull_key_missing_ = !parsed || !st.hull_keys;
     // The live count is checked per hit (core::impact: a differing *0x00607038 disables the lookups, stale_table).
     x3m::log("weapon_effects_table event=%s reason=%s rows=%lu missile_rows=%lu entries=%u textures=%u overrides=%u "
@@ -837,6 +850,9 @@ bool installed() {
 }
 core::Mode mode() {
     return installed_ ? mode_ : core::mode_native;
+}
+const core::ShipProfiles* ship_profiles() noexcept {
+    return profiles_ready_ ? profiles_ : nullptr;
 }
 #if X3M_EDITION_FL
 // The table is loaded once inside the install window, before the device and its textures exist; read-only after.

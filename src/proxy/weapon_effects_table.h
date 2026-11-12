@@ -5,7 +5,7 @@
 // The reader of <game>\x3m\weapon_effects.json (tools/effects/weapon_effects_table.py, docs/architecture/
 // weapon-effects.md 3.2), reduced to weapon_effects::core::Table. Portable (host tests compile it); runs once at
 // initialize, never in the handler. Shape:
-//   {"schema": 1|2, "tool": "...", ..., "tables": {
+//   {"schema": 1|2|3, "tool": "...", ..., "tables": {
 //      "bullets":  {"rows": N, "sha256": "<16 hex>", "entries": [{"row": i, "id": "SS_BULLET_...", "z_over_xy": e|null,
 //                   "texture_rgb": [r, g, b]|null, "style": "<shape>"|null, "tint": [r, g, b]|null,
 //                   "calibre": k|null, "hull": "repair"|"tug"|"energy"|"ballistic"|"plasma"|"heavy"|"ion"|null,
@@ -27,6 +27,13 @@
 // within [-1024, 1024]: a tiled strip), R in (0, 4], rim_v
 // different from axis_v; an entry with no body, a value out of range or past bullet_body_capacity is dropped
 // (counted), a group given as null is absent; a value of the wrong JSON type makes the file malformed.
+// The ship profiles (schema 3; docs/architecture/weapon-effects.md 5.1.1 "Placement", 2026-11-12): "ship_profiles":
+// [{"tships_index": i, "scene": "<TShips model column>", "class": "OBJ_SHIP_M2"|n, "units": "scene", "axis": "z",
+// "z0": z0, "z1": z1, "slices": [[cx, cy, hx, hy] x 32], "radius": r, "points": n}, ...], read under "tables" or at the
+// top level, only when the caller passes a ShipProfiles block (parse's last argument). An entry whose index lies outside
+// [0, profile_rows), whose units or axis differ, whose z range is empty, whose slice count is not profile_slices, whose
+// values are not finite or past 1e9 in magnitude, whose half-widths are negative or all zero, a second entry of one
+// index, or one past profile_capacity is dropped (counted); a value of the wrong JSON type makes the file malformed.
 // Colours are 8-bit sRGB words (0..255); style is a shape name (tracer, slug, orb, wave, beam). Unknown keys are
 // skipped. A row index outside [0, table_capacity) is dropped (counted). false = malformed (the table stays empty):
 // besides a syntax error, a row index given twice and any byte other than whitespace after the closing brace.
@@ -34,6 +41,9 @@ namespace x3m::weapon_effects::table {
 namespace json = x3m::engine_effects::core::json;
 namespace core = x3m::weapon_effects::core;
 struct Stats {
+    bool profiles_present = false;                       // the file carries ship_profiles
+    unsigned profiles = 0, profiles_dropped = 0;         // its entries kept / dropped
+    unsigned profiles_class_unknown = 0;                 // kept entries whose class token is outside the table
     unsigned entries = 0, dropped = 0, textures = 0, overrides = 0;
     unsigned schema = 0;
     unsigned hull_keys = 0; // entries carrying the "hull" key (0: a table generated before step 2, or no variant row)
@@ -191,6 +201,93 @@ inline bool parse_bullet_bodies(json::Cursor& c, core::Table* t, Stats* st) noex
     if (c.accept(']')) return true;
     for (;;) {
         if (!parse_bullet_body(c, t, st)) return false;
+        if (c.accept(']')) return true;
+        if (!c.expect(',')) return false;
+    }
+}
+// One ship_profiles entry into *pr (see the header); false = malformed.
+inline bool parse_ship_profile(json::Cursor& c, core::ShipProfiles* pr, Stats* st) noexcept {
+    if (!c.expect('{')) return false;
+    core::ShipProfile e{};
+    float index = -1.f;
+    bool valid = true, units = false, axis = false, z0 = false, z1 = false;
+    unsigned slices = 0;
+    auto sane = [](float v) { return v >= -1e9f && v <= 1e9f; };
+    if (!c.accept('}'))
+        for (;;) {
+            char key[24];
+            bool fits;
+            if (!c.string(key, sizeof key, &fits) || !c.expect(':')) return false;
+            if (fits && !std::strcmp(key, "tships_index")) {
+                if (!c.number(&index)) return false;
+            } else if (fits && (!std::strcmp(key, "units") || !std::strcmp(key, "axis"))) {
+                char v[16];
+                bool v_fits;
+                if (!c.string(v, sizeof v, &v_fits)) return false;
+                (key[0] == 'u' ? units : axis) = v_fits && !std::strcmp(v, key[0] == 'u' ? "scene" : "z");
+            } else if (fits && !std::strcmp(key, "class")) {
+                c.skip_ws();
+                if (c.p < c.end && *c.p == '"') {
+                    char v[40];
+                    bool v_fits;
+                    if (!c.string(v, sizeof v, &v_fits)) return false;
+                    e.class_id = v_fits ? core::ship_class_id_of(v) : -1;
+                } else {
+                    float v = 0.f;
+                    if (!c.number(&v)) return false;
+                    e.class_id = v >= 0.f && v <= 1e8f && float(std::int32_t(v)) == v ? std::int32_t(v) : -1;
+                }
+            } else if (fits && (!std::strcmp(key, "z0") || !std::strcmp(key, "z1"))) {
+                float v = 0.f;
+                if (!c.number(&v)) return false;
+                (key[1] == '0' ? e.z0 : e.z1) = v;
+                (key[1] == '0' ? z0 : z1) = sane(v);
+            } else if (fits && !std::strcmp(key, "slices")) {
+                if (!c.expect('[')) return false;
+                if (!c.accept(']'))
+                    for (;;) {
+                        float s[4];
+                        if (!c.expect('[')) return false;
+                        for (unsigned k = 0; k < 4; ++k)
+                            if ((k && !c.expect(',')) || !c.number(&s[k])) return false;
+                        if (!c.expect(']')) return false;
+                        if (slices < core::profile_slices)
+                            for (unsigned k = 0; k < 4; ++k) {
+                                e.slice[slices][k] = s[k];
+                                if (!sane(s[k]) || (k >= 2 && !(s[k] >= 0.f))) valid = false;
+                            }
+                        ++slices;
+                        if (c.accept(']')) break;
+                        if (!c.expect(',')) return false;
+                    }
+            } else if (!c.skip_value())
+                return false;
+            if (c.accept('}')) break;
+            if (!c.expect(',')) return false;
+        }
+    if (!pr) return true;
+    bool widths = false;
+    for (unsigned i = 0; i < core::profile_slices && i < slices; ++i)
+        widths = widths || (e.slice[i][2] > 0.f && e.slice[i][3] > 0.f);
+    const bool index_ok = index >= 0.f && index < float(core::profile_rows) && float(std::int32_t(index)) == index;
+    if (!valid || !units || !axis || !z0 || !z1 || !(e.z1 > e.z0) || slices != core::profile_slices || !widths ||
+        !index_ok || pr->slot_of[std::int32_t(index)] || pr->count >= core::profile_capacity) {
+        ++st->profiles_dropped;
+        return true;
+    }
+    e.row = std::int32_t(index);
+    st->profiles_class_unknown += e.class_id < 0;
+    pr->entries[pr->count] = e;
+    pr->slot_of[e.row] = std::uint16_t(++pr->count);
+    ++st->profiles;
+    return true;
+}
+inline bool parse_ship_profiles(json::Cursor& c, core::ShipProfiles* pr, Stats* st) noexcept {
+    st->profiles_present = true;
+    if (!c.expect('[')) return false;
+    if (c.accept(']')) return true;
+    for (;;) {
+        if (!parse_ship_profile(c, pr, st)) return false;
         if (c.accept(']')) return true;
         if (!c.expect(',')) return false;
     }
@@ -399,10 +496,13 @@ inline bool parse_kind(json::Cursor& c, core::Table* t, bool bullets, Stats* st)
         if (!c.expect(',')) return false;
     }
 }
-// The whole file into *t (cleared first). On false *t is cleared again (no lookups).
-inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* st, std::size_t* fault = nullptr) noexcept {
+// The whole file into *t (cleared first) and, when given, its ship profiles into *profiles (cleared first). On false
+// both are cleared again (no lookups).
+inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* st, std::size_t* fault = nullptr,
+                  core::ShipProfiles* profiles = nullptr) noexcept {
     *t = core::Table{};
     *st = Stats{};
+    if (profiles) profiles->clear();
     json::Cursor c{text, text + length};
     bool ok = c.expect('{');
     bool schema = false;
@@ -421,7 +521,12 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                     break;
                 }
                 st->schema = unsigned(v);
-                schema = v == 1.f || v == 2.f; // 2: step 4's mount_tier and range_m
+                schema = v == 1.f || v == 2.f || v == 3.f; // 2: step 4's mount_tier and range_m; 3: ship_profiles
+            } else if (fits && !std::strcmp(key, "ship_profiles")) {
+                if (!parse_ship_profiles(c, profiles, st)) {
+                    ok = false;
+                    break;
+                }
             } else if (fits && !std::strcmp(key, "tables")) {
                 if (!c.expect('{')) {
                     ok = false;
@@ -439,8 +544,10 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
                         const bool missiles = kind_fits && !std::strcmp(kind, "missiles");
                         const bool textures = kind_fits && !std::strcmp(kind, "bullet_textures");
                         const bool body_layouts = kind_fits && !std::strcmp(kind, "bullet_bodies");
+                        const bool ship_profiles = kind_fits && !std::strcmp(kind, "ship_profiles");
                         if (textures       ? !parse_bullet_textures(c, t, st)
                             : body_layouts ? !parse_bullet_bodies(c, t, st)
+                            : ship_profiles ? !parse_ship_profiles(c, profiles, st)
                             : (bullets || missiles) ? !parse_kind(c, t, bullets, st)
                                                     : !c.skip_value()) {
                             ok = false;
@@ -471,6 +578,7 @@ inline bool parse(const char* text, std::size_t length, core::Table* t, Stats* s
     if (!ok) {
         if (fault) *fault = std::size_t(c.p - text);
         *t = core::Table{};
+        if (profiles) profiles->clear();
     }
     return ok;
 }

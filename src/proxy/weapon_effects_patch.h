@@ -94,6 +94,9 @@ std::uint16_t bullet_texture_p99_q(unsigned key) noexcept;
 // built (the first lookup that can read TBullets); then a compare per mapped body.
 const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept;
 #endif
+// The ship profiles of weapon_effects.json (schema 3 ship_profiles; the lathe bubble, weapon_effects_lathe.h), loaded
+// with the table into one heap block, read-only afterwards; nullptr when the file carries none (or none was kept).
+const core::ShipProfiles* ship_profiles() noexcept;
 const char* state();
 // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
 // (the one FL call), 7 batch (the projectile stage's batch submit 0x097af8; with the object tap in every stage mode)
