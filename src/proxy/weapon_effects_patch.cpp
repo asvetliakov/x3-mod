@@ -56,7 +56,7 @@ struct Period {
     unsigned patches = 0, decals = 0, retired = 0, dropped = 0, cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0, area_dropped = 0;
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
-    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_deferred = 0;
+    unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_deferred = 0, lathe_entry_far = 0;
     std::uint32_t hull_staged = 0;
     float stage_us_max = 0.f, stage_us_sum = 0.f;
     // step 3: death records seen (ours, census)
@@ -1083,6 +1083,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     period_.lathe_cache += stage.lathe_cache;
     period_.lathe_stale += stage.lathe_stale;
     period_.lathe_deferred += stage.lathe_deferred;
+    period_.lathe_entry_far += stage.lathe_entry_far;
     period_.stage_us_sum += stage.stage_us;
     if (stage.stage_us > period_.stage_us_max) period_.stage_us_max = stage.stage_us;
     const std::uint32_t now = game_ms();
@@ -1158,10 +1159,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         }
         // Census-only records leave once logged; the stage's at the end of their game-time life (a hull hit's, its
         // floored elements included: the stage's life_floor_ms).
-        const std::uint32_t extra = e.role == core::role_hull_hit    ? s.life_floor_ms
-                                    : e.role == core::role_explosion ? s.boom_floor_ms
-                                                                     : 0u;
-        if (!(e.flags & core::flag_stage) || (now && core::expired(now, e, extra))) {
+        if (core::release_due(e, now, s.life_floor_ms, s.boom_floor_ms)) {
             if (e.flags & core::flag_stage) ++period_.expired;
             core::ring_release(r, i);
         }
@@ -1258,7 +1256,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         "scope_clears=%lu live=%u dropped=%u cells_dropped=%u hits_dropped=%u spills=%u dir_fallback=%lu faces_culled=%u "
         "area_dropped=%u drained=%lu hull_staged=%lu life_floor_ms=%lu table_hull_key_missing=%u"
         " lathes=%u lathe_no_profile=%u lathe_mismatch=%u lathe_unreadable=%u lathe_scale=%u lathe_degenerate=%u"
-        " lathe_cache=%u lathe_stale=%u lathe_deferred=%u ships_native=%lu ships_native_no_profile=%lu ships_native_stale_table=%lu"
+        " lathe_cache=%u lathe_stale=%u lathe_deferred=%u lathe_entry_far=%u ships_native=%lu ships_native_no_profile=%lu ships_native_stale_table=%lu"
         " ships_native_mismatch=%lu ships_native_unreadable=%lu ships_native_scale=%lu others_native=%lu"
         X3M_PROJECTILE_FIELDS,
         frame, core::mode_name(mode_), static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.events),
@@ -1282,7 +1280,7 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         static_cast<unsigned long>(period_.hull_staged), static_cast<unsigned long>(s.life_floor_ms),
         unsigned(table_hull_key_missing_), period_.lathes, period_.lathe_no_profile, period_.lathe_mismatch,
         period_.lathe_unreadable, period_.lathe_scale, period_.lathe_degenerate, period_.lathe_cache,
-        period_.lathe_stale, period_.lathe_deferred, static_cast<unsigned long>(ships_native),
+        period_.lathe_stale, period_.lathe_deferred, period_.lathe_entry_far, static_cast<unsigned long>(ships_native),
         static_cast<unsigned long>(c.ships_native[core::profile_none] - seen_.ships_native[core::profile_none]),
         static_cast<unsigned long>(c.ships_native[core::profile_stale] - seen_.ships_native[core::profile_stale]),
         static_cast<unsigned long>(c.ships_native[core::profile_mismatch] - seen_.ships_native[core::profile_mismatch]),

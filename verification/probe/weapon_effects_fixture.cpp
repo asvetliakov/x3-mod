@@ -539,6 +539,34 @@ wc::ShipProfile titan_profile() {
     std::memcpy(p.slice, titan_slices, sizeof p.slice);
     return p;
 }
+// The installed Titan profile since FL run 70 (the hull rules: masts dropped, extents trimmed, widths eased; z0 != -z1):
+// verification/results/ship-profiles/titan_profile_smoothed.json, the weapon_lathe row's hull_lo_m -302.9,-354.4,-955.8
+// hull_hi_m 302.9,332.7,1001.2 of the FL 70 A log.
+constexpr float titan_trim_z0 = -477889.237f, titan_trim_z1 = 500605.816f;
+constexpr float titan_trim_slices[32][4] = {
+    {2930.93f, -20302.835f, 33061.315f, 47808.688f}, {0.0f, -23826.401f, 71471.14f, 54808.785f},
+    {0.0f, -30337.338f, 81509.674f, 62060.182f}, {0.0f, -43790.587f, 81856.386f, 67918.009f},
+    {0.0f, -41831.258f, 79765.361f, 72225.793f}, {0.0f, -42000.583f, 77752.279f, 75700.981f},
+    {0.0f, -48183.2f, 75739.197f, 77029.575f}, {0.0f, -51853.666f, 75817.14f, 77423.441f},
+    {0.0f, -51001.603f, 75252.724f, 77690.397f}, {0.0f, -37457.037f, 77542.639f, 99291.858f},
+    {0.0f, -7337.403f, 79832.553f, 120893.318f}, {0.0f, 23878.811f, 82686.884f, 142494.778f},
+    {0.0f, -23012.03f, 82017.648f, 126856.435f}, {0.0f, -26221.136f, 81348.412f, 110505.853f},
+    {0.0f, -53603.355f, 104263.685f, 99307.96f}, {0.0f, -73430.468f, 127848.194f, 103748.411f},
+    {0.0f, -56400.1f, 151432.702f, 108901.1f}, {0.0f, -61118.145f, 130154.235f, 107685.881f},
+    {0.0f, -65766.511f, 102341.985f, 105778.582f}, {0.0f, -53446.125f, 66445.153f, 103871.282f},
+    {0.0f, -42540.809f, 52654.599f, 110117.481f}, {0.0f, -38360.102f, 45397.827f, 125012.677f},
+    {0.0f, 4757.217f, 49907.776f, 139907.874f}, {0.0f, 15976.993f, 53589.916f, 147864.79f},
+    {0.0f, -15763.321f, 57642.958f, 139112.316f}, {0.0f, -39875.961f, 58013.859f, 121604.682f},
+    {0.0f, -40089.633f, 58384.761f, 100120.606f}, {0.0f, -44673.494f, 58462.704f, 84178.553f},
+    {0.0f, -37956.948f, 58540.647f, 75989.152f}, {0.0f, -30655.83f, 58618.59f, 62206.661f},
+    {931.286f, -37267.555f, 45576.559f, 46236.387f}, {2011.738f, -32853.019f, 19492.495f, 26342.082f}};
+wc::ShipProfile titan_trimmed_profile() {
+    wc::ShipProfile p = titan_profile();
+    p.z0 = titan_trim_z0;
+    p.z1 = titan_trim_z1;
+    std::memcpy(p.slice, titan_trim_slices, sizeof p.slice);
+    return p;
+}
 // The profiles block (one entry, the Titan) and a TShips type table of twelve rows with its slots after it (table
 // pointer, count), read through lathe_read beside the fake owner.
 wc::ShipProfiles lathe_profiles;
@@ -5133,6 +5161,247 @@ int main(int argc, char** argv) {
             report("lathe_records_past_life_draw_nothing", gone.patches == 0 && gone.lathes == 0 && gone.decals == 0, "");
         }
 
+        // (f) FL 70 A (2026-11-13) on the installed trimmed profile (titan_trimmed_profile; its own cache, so the row-11
+        // meshes the timing rows point into stay). (1) The slice arithmetic with z0 != -z1: every body ring's points at
+        // 70 and -110 degrees map onto themselves. (2) The logged contacts (owner frame, engine units; dir the projectile's
+        // travel x 127): a nose-on bolt 189 m behind z1 near the axis (frame 36024), a stern one (45993), a flank one
+        // (28204) enter the lathe on their line of flight (lathe_entry: on the shape, off the line < 0.05 m), the nose
+        // one ahead of the contact toward the bow and the stern one toward the stern, where Run70's map_lathe threw them
+        // onto their slice's rim (the witness, nose and stern: > 50 m off the line); a mast contact past z1 (outside) and a contact
+        // without travel keep map_lathe (the mast on the bow dome's tip); a reversed travel (out of the hull) walks
+        // past the hull's half-width and falls back to map_lathe (LatheEntry::beyond, counted lathe_entry_far). (3) The stage (build, its lathe memo): the
+        // nose hit's draw holds the entry's chart u and not the contact's. (4) The fade on the production clock path:
+        // the game clock word (layout::cfg_game_ms) of a fake cfg block advanced by the engine's step each frame (4 ms;
+        // SETA 40 ms), three hits 30 ms apart stamped from it like the hook's t0, build at that clock and Present's
+        // release (core::release_due): the draws stop after the cells' own fades, before the records retire (a live
+        // record whose cells have all faded draws nothing and counts no lathe), each record retires within one step
+        // past patch_lifetime_ms, no drawn cell is past its own fade, and the law is Run239's (fade 2.2 s, ripple
+        // 3.333 /s, stagger 0.4, life 2941 ms).
+        {
+            static ws::LatheCache trimmed_lathes;
+            static ws::LatheMesh tm;
+            const wc::ShipProfile trimmed = titan_trimmed_profile();
+            const bool tbuilt = ws::build_lathe(trimmed, unit, &tm);
+            constexpr unsigned first = ws::lathe_dome_rings, last = ws::lathe_dome_rings + ws::lathe_body_rings - 1;
+            double arith_worst = 0.0;
+            for (unsigned r = first; tbuilt && r <= last; ++r)
+                for (double deg : {70.0, -110.0}) {
+                    const float* e = tm.ring[r];
+                    const float q[3] = {e[0] + e[2] * float(std::sin(deg * pi / 180.0)),
+                                        e[1] + e[3] * float(std::cos(deg * pi / 180.0)), tm.ring_z[r]};
+                    float b[3], chart[2];
+                    ws::map_lathe(tm, q, b, chart);
+                    const double d = std::sqrt(double(b[0] - q[0]) * (b[0] - q[0]) + double(b[1] - q[1]) * (b[1] - q[1]) +
+                                               double(b[2] - q[2]) * (b[2] - q[2])) / metre;
+                    arith_worst = std::max(arith_worst, d);
+                }
+            std::printf("LATHE case=trimmed_profile built=%u z_first_m=%.1f z_last_m=%.1f dome_m=%.1f,%.1f march_m=%.2f "
+                        "steps=%u ring_self_map_worst_m=%.4f\n",
+                        unsigned(tbuilt), tm.ring_z[first] / metre, tm.ring_z[last] / metre, tm.dome_depth[0] / metre,
+                        tm.dome_depth[1] / metre, tm.march / metre, tm.march_steps, arith_worst);
+            report("lathe_trimmed_slice_arithmetic", tbuilt && arith_worst < 0.01 && tm.march_steps > 0 &&
+                                                         tm.march_steps <= ws::lathe_march_max, "");
+            struct Logged {
+                const char* name;
+                std::int32_t pos[3];
+                std::int8_t dir[3];
+            };
+            const Logged logged[] = {{"nose", {-22289, -53823, 406290}, {20, 50, -115}},
+                                     {"stern", {-20434, -34971, -409062}, {108, -4, 67}},
+                                     {"flank", {45676, -50114, 180953}, {-126, 14, 13}},
+                                     {"mast", {0, -33000, 530000}, {0, 0, -127}},
+                                     {"reversed", {-22289, -53823, 406290}, {-20, -50, 115}},
+                                     {"no_travel", {-22289, -53823, 406290}, {0, 0, 0}}};
+            auto off_line = [](const float p[3], const float d[3], const float q[3]) {
+                const double v[3] = {double(q[0]) - p[0], double(q[1]) - p[1], double(q[2]) - p[2]};
+                const double n = std::sqrt(double(d[0]) * d[0] + double(d[1]) * d[1] + double(d[2]) * d[2]);
+                const double t = (v[0] * d[0] + v[1] * d[1] + v[2] * d[2]) / n;
+                const double l2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] - t * t;
+                return std::sqrt(l2 > 0.0 ? l2 : 0.0);
+            };
+            bool entry_ok = tbuilt;
+            float nose_entry[3] = {}, nose_contact[3] = {};
+            for (const Logged& h : logged) {
+                const float c[3] = {float(double(h.pos[0]) * s), float(double(h.pos[1]) * s), float(double(h.pos[2]) * s)};
+                const float d[3] = {float(h.dir[0]), float(h.dir[1]), float(h.dir[2])};
+                float entry[3], run70[3], fixed[3], chart[2];
+                ws::map_lathe(tm, c, run70, chart);
+                const ws::LatheEntry walked = ws::lathe_entry(tm, c, d, entry);
+                const bool entered = walked == ws::LatheEntry::entered;
+                ws::map_lathe(tm, entry, fixed, chart);
+                const double moved = std::sqrt(double(fixed[0] - entry[0]) * (fixed[0] - entry[0]) +
+                                               double(fixed[1] - entry[1]) * (fixed[1] - entry[1]) +
+                                               double(fixed[2] - entry[2]) * (fixed[2] - entry[2])) / metre;
+                const bool travel = (h.dir[0] | h.dir[1] | h.dir[2]) != 0;
+                const double run70_off = travel ? off_line(c, d, run70) / metre : -1.0;
+                const double fix_off = travel ? off_line(c, d, fixed) / metre : -1.0;
+                const float shape = ws::lathe_shape(tm, entry);
+                std::printf("LATHE case=entry hit=%s inside=%u entered=%u contact_m=%.1f,%.1f,%.1f run70_m=%.1f,%.1f,%.1f "
+                            "fix_m=%.1f,%.1f,%.1f run70_off_line_m=%.1f fix_off_line_m=%.3f entry_shape=%.5f map_moves_m=%.3f\n",
+                            h.name, unsigned(ws::lathe_shape(tm, c) < 0.f), unsigned(entered), c[0] / metre, c[1] / metre,
+                            c[2] / metre, run70[0] / metre, run70[1] / metre, run70[2] / metre, fixed[0] / metre,
+                            fixed[1] / metre, fixed[2] / metre, run70_off, fix_off, double(shape), moved);
+                auto is = [&](const char* k) { return std::strcmp(h.name, k) == 0; };
+                if (is("nose") || is("stern") || is("flank")) {
+                    entry_ok = entry_ok && entered && std::fabs(shape) < 2e-3f && fix_off < 0.05 && moved < 0.5 &&
+                               (is("flank") || run70_off > 50.0); // the flank contact lies near its rim already
+                    if (is("nose")) {
+                        entry_ok = entry_ok && fixed[2] > c[2] + 50.f * float(metre);
+                        std::memcpy(nose_entry, entry, sizeof entry);
+                        std::memcpy(nose_contact, c, sizeof c);
+                    }
+                    if (is("stern")) entry_ok = entry_ok && fixed[2] < c[2] - 50.f * float(metre);
+                    if (is("flank")) entry_ok = entry_ok && fixed[0] > c[0] && std::fabs(fixed[2] - c[2]) < 30.f * float(metre);
+                } else if (is("reversed")) { // a travel out of the hull: the walk crosses it, past the half-width
+                    entry_ok = entry_ok && walked == ws::LatheEntry::beyond && entry[0] == c[0] && entry[1] == c[1] &&
+                               entry[2] == c[2] && fixed[2] == run70[2];
+                } else if (is("mast")) { // outside: the radial dome, near its tip
+                    entry_ok = entry_ok && !entered && fixed[2] > tm.ring_z[last] + 0.9f * tm.dome_depth[1];
+                } else { // no travel: map_lathe of the contact itself
+                    entry_ok = entry_ok && !entered && entry[0] == c[0] && entry[1] == c[1] && entry[2] == c[2] &&
+                               fixed[0] == run70[0] && fixed[1] == run70[1] && fixed[2] == run70[2];
+                }
+            }
+            report("lathe_hits_enter_on_their_line_of_flight", entry_ok, "");
+            // (3) the stage: the nose hit through build (its lathe memo), the draw's chart box about the entry's u
+            const double nose_contact_engine[3] = {-22289.0, -53823.0, 406290.0};
+            stage_titan(side_rows, nose_contact_engine, wc::patch_capital, true);
+            lathe_profiles.entries[0] = trimmed;
+            trimmed_lathes.clear();
+            stage_ring.slots[0].dir[0] = 20;
+            stage_ring.slots[0].dir[1] = 50;
+            stage_ring.slots[0].dir[2] = -115;
+            static rr::WeaponPatch nose_draws[wc::max_patches];
+            static rr::WeaponDecal nose_decals[wc::max_decals];
+            const ws::Counts nn = ws::build(stage_ring, 1500, &lathe_read, identity_camera(), lathe_tuning(), nose_draws,
+                                            wc::max_patches, nose_decals, wc::max_decals, nullptr, &trimmed_lathes);
+            const float box_u0 = nose_draws[0].lathe_box[0], box_u1 = nose_draws[0].lathe_box[2];
+            const ws::Counts again = ws::build(stage_ring, 1500, &lathe_read, identity_camera(), lathe_tuning(), nose_draws,
+                                               wc::max_patches, nose_decals, wc::max_decals, nullptr, &trimmed_lathes);
+            float b[3], entry_chart[2], contact_chart[2];
+            ws::map_lathe(tm, nose_entry, b, entry_chart);
+            ws::map_lathe(tm, nose_contact, b, contact_chart);
+            const bool holds = nn.patches >= 1 && nose_draws[0].lathe && box_u0 <= entry_chart[0] && entry_chart[0] <= box_u1;
+            const bool misses = nn.patches >= 1 && (contact_chart[0] < box_u0 || contact_chart[0] > box_u1);
+            const bool memo_same = again.patches == nn.patches && nose_draws[0].lathe_box[0] == box_u0 &&
+                                   nose_draws[0].lathe_box[2] == box_u1;
+            std::printf("LATHE case=entry_stage patches=%u lathes=%u again_patches=%u box_u_m=%.1f..%.1f entry_u_m=%.1f "
+                        "contact_u_m=%.1f memo_same=%u\n",
+                        nn.patches, nn.lathes, again.patches, box_u0 / metre, box_u1 / metre, entry_chart[0] / metre,
+                        contact_chart[0] / metre, unsigned(memo_same));
+            // the same record with its travel reversed (out of the hull): the entry guard's fallback, counted once
+            stage_ring.slots[0].dir[0] = -20;
+            stage_ring.slots[0].dir[1] = -50;
+            stage_ring.slots[0].dir[2] = 115;
+            const ws::Counts rev = ws::build(stage_ring, 1500, &lathe_read, identity_camera(), lathe_tuning(), nose_draws,
+                                             wc::max_patches, nose_decals, wc::max_decals, nullptr, &trimmed_lathes);
+            const bool rev_holds = rev.patches >= 1 && nose_draws[0].lathe_box[0] <= contact_chart[0] &&
+                                   contact_chart[0] <= nose_draws[0].lathe_box[2];
+            const ws::Counts rev2 = ws::build(stage_ring, 1500, &lathe_read, identity_camera(), lathe_tuning(), nose_draws,
+                                              wc::max_patches, nose_decals, wc::max_decals, nullptr, &trimmed_lathes);
+            std::printf("LATHE case=entry_far patches=%u lathe_entry_far=%u again_far=%u holds_contact_u=%u\n", rev.patches,
+                        rev.lathe_entry_far, rev2.lathe_entry_far, unsigned(rev_holds));
+            report("lathe_stage_draws_the_entry", holds && misses && nn.lathes == 1 && memo_same && nn.lathe_entry_far == 0 &&
+                                                      rev.lathe_entry_far == 1 && rev2.lathe_entry_far == 0 && rev_holds, "");
+            // (4) the fade on the production clock path
+            alignas(16) static unsigned char fake_cfg[0x800];
+            auto clock_word = [&]() {
+                std::uint32_t v = 0;
+                std::memcpy(&v, fake_cfg + wc::layout::cfg_game_ms, 4);
+                return v;
+            };
+            const ws::Tuning law = lathe_tuning();
+            const bool run239_law = law.fade_s == 2.2f && law.ripple_speed == 3.333f && law.stagger == 0.4f &&
+                                    wc::patch_lifetime_ms == 2941u;
+            struct Run {
+                double last_draw_s = -1.0, first_dark_s = -1.0;
+                unsigned frames = 0, drawn_frames = 0, dark_live_frames = 0, released = 0, stray_lathes = 0;
+                unsigned past_own_fade = 0, cells_max = 0;
+                std::uint32_t release_age_min = 0xffffffffu, release_age_max = 0;
+            };
+            auto fly = [&](std::uint32_t step_ms) {
+                Run run;
+                std::uint32_t clock = 1267531u; // the FL 70 A log's first hit t0
+                std::memcpy(fake_cfg + wc::layout::cfg_game_ms, &clock, 4);
+                const double flank[3] = {45676.0, -50114.0, 180953.0};
+                stage_titan(side_rows, flank, wc::patch_capital, true);
+                lathe_profiles.entries[0] = trimmed;
+                stage_ring.slots[0].dir[0] = -126;
+                stage_ring.slots[0].dir[1] = 14;
+                stage_ring.slots[0].dir[2] = 13;
+                stage_ring.slots[0].t0_game_ms = clock_word(); // the hook's t0: cfg+0x718 (FL +0x708) at the hit
+                const std::uint32_t first_t0 = clock_word();
+                std::uint32_t newest = first_t0;
+                unsigned added = 0;
+                static rr::WeaponPatch draws[wc::max_patches];
+                static rr::WeaponDecal decals[wc::max_decals];
+                for (unsigned f = 1; f < 4000 && ring_live(stage_ring); ++f) {
+                    clock += step_ms; // the engine's game-time step (SETA scales it)
+                    std::memcpy(fake_cfg + wc::layout::cfg_game_ms, &clock, 4);
+                    const std::uint32_t now = clock_word();
+                    if (added < 2 && now - first_t0 >= 30u * (added + 1)) { // two more hits, 30 ms apart
+                        ++added;
+                        const std::int32_t at[3] = {45676 + 600 * std::int32_t(added), -50114,
+                                                    180953 + 900 * std::int32_t(added)};
+                        add_stage_hit(now, at, wc::patch_capital);
+                        newest = now;
+                    }
+                    const ws::Counts n = ws::build(stage_ring, now, &lathe_read, identity_camera(), law, draws,
+                                                   wc::max_patches, decals, wc::max_decals, nullptr, &trimmed_lathes);
+                    ++run.frames;
+                    const double since_newest = double(now - newest) * 1e-3;
+                    if (n.patches) {
+                        ++run.drawn_frames;
+                        run.last_draw_s = since_newest;
+                        for (unsigned d = 0; d < n.patches; ++d) {
+                            const rr::WeaponPatch& p = draws[d];
+                            const int rows = int(p.lathe_wrap_rows + 0.5f);
+                            run.cells_max = std::max(run.cells_max, unsigned(p.cells));
+                            for (unsigned c = 0; c < p.cells; ++c) {
+                                const std::uint32_t packed = std::uint32_t(std::int32_t(p.cell_key[c]));
+                                const int kx = int(packed >> 12) - rr::weapon_cell_key_bias;
+                                int ky = int(packed & 0xfffu) - rr::weapon_cell_key_bias;
+                                if (rows > 0) ky -= rows * int(std::floor(double(ky) / double(rows)));
+                                if (p.cell_since[c] > ws::cell_fade_s(kx, ky, p.seed, law.fade_s, law.stagger) + 1e-4f)
+                                    ++run.past_own_fade;
+                            }
+                        }
+                    } else if (ring_live(stage_ring)) {
+                        if (run.first_dark_s < 0.0) run.first_dark_s = since_newest;
+                        ++run.dark_live_frames;
+                        run.stray_lathes += n.lathes;
+                    }
+                    for (unsigned i = 0; i < wc::ring_capacity; ++i) { // Present: the release (weapon_effects_patch.cpp)
+                        const wc::Event& e = stage_ring.slots[i];
+                        if (!e.sequence || !wc::release_due(e, now, 0, 0)) continue;
+                        const std::uint32_t age = now - e.t0_game_ms;
+                        run.release_age_min = std::min(run.release_age_min, age);
+                        run.release_age_max = std::max(run.release_age_max, age);
+                        ++run.released;
+                        wc::ring_release(stage_ring, i);
+                    }
+                }
+                return run;
+            };
+            const Run normal = fly(4), seta = fly(40);
+            for (const Run* r : {&normal, &seta})
+                std::printf("LATHE case=fade_clock step_ms=%u frames=%u drawn_frames=%u last_draw_s=%.3f first_dark_s=%.3f "
+                            "dark_live_frames=%u stray_lathes=%u released=%u release_age_ms=%lu..%lu life_ms=%u "
+                            "past_own_fade_cells=%u cells_max=%u run239_law=%u\n",
+                            r == &normal ? 4u : 40u, r->frames, r->drawn_frames, r->last_draw_s, r->first_dark_s,
+                            r->dark_live_frames, r->stray_lathes, r->released,
+                            static_cast<unsigned long>(r->release_age_min), static_cast<unsigned long>(r->release_age_max),
+                            wc::patch_lifetime_ms, r->past_own_fade, r->cells_max, unsigned(run239_law));
+            auto fade_ok = [&](const Run& r, std::uint32_t step) {
+                const double life = double(wc::patch_lifetime_ms) * 1e-3;
+                return r.drawn_frames > 0 && r.released == 3 && r.release_age_min > wc::patch_lifetime_ms &&
+                       r.release_age_max <= wc::patch_lifetime_ms + step && r.last_draw_s >= 0.0 &&
+                       r.last_draw_s < life && r.first_dark_s > r.last_draw_s && r.dark_live_frames > 0 &&
+                       r.stray_lathes == 0 && r.past_own_fade == 0;
+            };
+            report("lathe_cells_fade_on_the_game_clock", run239_law && fade_ok(normal, 4) && fade_ok(seta, 40) &&
+                                                             std::fabs(normal.last_draw_s - seta.last_draw_s) <= 0.08, "");
+        }
         // (e) the timing rows' Titan: two hits on the flank (slice 9 at 90 degrees, slice 12 at 70), the decal and the lathe
         double second[3];
         profile_point(titan, 12, 70.0 * pi / 180.0, second);
@@ -5319,9 +5588,20 @@ int main(int argc, char** argv) {
     }
     // The age law at SETA 6, measured: the game clock advances six game ms per wall ms (QueryPerformanceCounter); every
     // frame the production builder ages the ring's one hit in game time and the pass draws it, fenced like a frame,
-    // until the builder has nothing to draw: the last lit cell's game ms end after a sixth of them in wall time.
+    // until the builder has nothing to draw: the last lit cell's game ms end after a sixth of them in wall time. The
+    // last lit game ms is the builder's own (its cells' own fades since FL 70 A: game_end, found at 1 ms steps), within
+    // the fastest and slowest cell's bounds.
     {
         stage_owner(400.f, 100.f, 0);
+        std::uint32_t game_end = 0;
+        {
+            rr::WeaponPatch probe[wc::max_patches];
+            rr::WeaponDecal probe_decals[wc::max_decals];
+            for (std::uint32_t gm = 0; gm <= wc::patch_lifetime_ms + 1; ++gm)
+                if (ws::build(stage_ring, gm, &fake_read, identity_camera(), ws::Tuning{}, probe, wc::max_patches,
+                              probe_decals, wc::max_decals).patches)
+                    game_end = gm;
+        }
         Com<IDirect3DQuery9> q;
         dev->CreateQuery(D3DQUERYTYPE_EVENT, &q.p);
         LARGE_INTEGER freq{}, start{}, now{};
@@ -5353,11 +5633,15 @@ int main(int argc, char** argv) {
         const double rings = double(wc::rings[wc::patch_fighter]);
         const double lit_ms = double(wc::fade_ms) * (1.0 + 0.5 * double(wc::stagger)) +
                               1000.0 * rings / ((rings + 0.5) * double(wc::ripple_speed));
-        const double expected = lit_ms / 6.0;
-        std::printf("AGE lifetime_ms=%u lit_ms=%.1f seta6_expected_wall_ms=%.2f seta6_wall_ms=%.2f last_drawn_ms=%.2f frames=%u max_frame_ms=%.3f\n",
-                    wc::patch_lifetime_ms, lit_ms, expected, wall_ms, last_drawn_ms, frames, max_frame_ms);
+        const double lit_fast_ms = double(wc::fade_ms) * (1.0 - 0.5 * double(wc::stagger));
+        const double expected = double(game_end + 1) / 6.0;
+        std::printf("AGE lifetime_ms=%u lit_ms=%.1f lit_fast_ms=%.1f game_end_ms=%lu seta6_expected_wall_ms=%.2f "
+                    "seta6_wall_ms=%.2f last_drawn_ms=%.2f frames=%u max_frame_ms=%.3f\n",
+                    wc::patch_lifetime_ms, lit_ms, lit_fast_ms, static_cast<unsigned long>(game_end), expected, wall_ms,
+                    last_drawn_ms, frames, max_frame_ms);
         report("age_law_seta6_measured", frames > 0 && last_drawn_ms <= expected + 0.2 && wall_ms >= expected &&
                                              wall_ms <= expected + 0.2 + max_frame_ms + 0.5 &&
+                                             double(game_end) >= lit_fast_ms && double(game_end) <= lit_ms &&
                                              lit_ms <= double(wc::patch_lifetime_ms), "");
     }
     // Retired owner, through the production builder: the live owner's hit gives one patch that draws; once the owner
