@@ -1,0 +1,16 @@
+frame 38187 box 2200,0-4000,1100 d0=0.9998468 d1=0.9998651 (w 38400..43520 units) objects 4315
+  flagged  0
+  white    n=  46 px=   594 peak_med=0.70 alpha_med=0.95 | over space(no depth) 27 near(farw=0) 7 ramp 0 far(farw=1) 12 | bg w med near=184.33 far=57388.71
+  other    n=4269 px= 19036 peak_med=0.66 alpha_med=0.00 | over space(no depth) 202 near(farw=0) 206 ramp 81 far(farw=1) 3780 | bg w med near=182.22 far=50740.43
+frame 38194 box 2200,0-4000,1100 d0=0.9998468 d1=0.9998651 (w 38400..43520 units) objects 5052
+  flagged  0
+  white    n=  40 px=   501 peak_med=0.70 alpha_med=0.96 | over space(no depth) 27 near(farw=0) 6 ramp 0 far(farw=1) 7 | bg w med near=183.92 far=55529.17
+  other    n=5012 px= 20100 peak_med=0.67 alpha_med=0.00 | over space(no depth) 205 near(farw=0) 239 ramp 44 far(farw=1) 4524 | bg w med near=185.03 far=48989.10
+frame 39599 box 1900,0-4000,1100 d0=0.9998468 d1=0.9998651 (w 38400..43520 units) objects 12218
+  flagged  0
+  white    n=  49 px=  1014 peak_med=0.70 alpha_med=0.97 | over space(no depth) 28 near(farw=0) 12 ramp 9 far(farw=1) 0 | bg w med near=185.45 far=-
+  other    n=12169 px= 41118 peak_med=0.70 alpha_med=0.00 | over space(no depth) 223 near(farw=0) 7751 ramp 4194 far(farw=1) 1 | bg w med near=36551.20 far=218958.44
+frame 39606 box 1900,0-4000,1100 d0=0.9998468 d1=0.9998651 (w 38400..43520 units) objects 12407
+  flagged  0
+  white    n=  51 px=  1105 peak_med=0.70 alpha_med=0.97 | over space(no depth) 25 near(farw=0) 23 ramp 3 far(farw=1) 0 | bg w med near=34980.21 far=-
+  other    n=12356 px= 42888 peak_med=0.71 alpha_med=0.00 | over space(no depth) 217 near(farw=0) 11027 ramp 1112 far(farw=1) 0 | bg w med near=35618.16 far=-

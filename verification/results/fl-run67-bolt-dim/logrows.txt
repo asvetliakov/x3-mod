@@ -1,0 +1,55 @@
+bolt_far_composite requested=1 show=1 motion_output_taa_luma_lock requested=16,0.25,3 release=0.65 configured=1 far_weight=0.9850 motion_output_taa far_weight=0.9850 far_f0=30.0 far_f1=34.0
+taa_debug=0
+ frame=38187  admitted=0  bolt_flag=0
+ frame=38194  admitted=0  bolt_flag=0
+ frame=39599  admitted=0  bolt_flag=0
+ frame=39606  admitted=0  bolt_flag=0
+ frame=60502  admitted=2  bolt_flag=2
+ frame=60509  admitted=2  bolt_flag=2
+ frame=61527  admitted=2  bolt_flag=2
+ frame=61534  admitted=0  bolt_flag=0
+ frame=74759  admitted=2  bolt_flag=2
+ frame=74766  admitted=2  bolt_flag=2
+ frame=74968  admitted=4  bolt_flag=4
+ frame=74975  admitted=4  bolt_flag=4
+ frame=38187  taa_k=1.69194  camera_policy=2
+ frame=38194  taa_k=1.90377  camera_policy=2
+ frame=39599  taa_k=1.00064  camera_policy=2
+ frame=39606  taa_k=0.87505  camera_policy=2
+ frame=60502  taa_k=0.25658  camera_policy=2
+ frame=60509  taa_k=0.25334  camera_policy=2
+ frame=61527  taa_k=0.58036  camera_policy=2
+ frame=61534  taa_k=1.90035  camera_policy=2
+ frame=74759  taa_k=1.86634  camera_policy=2
+ frame=74766  taa_k=1.01004  camera_policy=2
+ frame=74968  taa_k=1.10206  camera_policy=2
+ frame=74975  taa_k=1.30612  camera_policy=2
+ frame=38187  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=38194  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=39599  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=39606  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=60502  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=60509  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=61527  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=61534  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=74759  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=74766  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=74968  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+ frame=74975  p00=0.4999979  p22=1.00000298  p32=-6.00001812
+frame=37800 draws=0
+frame=38100 draws=0
+frame=38400 draws=0
+frame=38700 draws=0
+frame=39000 draws=0
+frame=39300 draws=0
+frame=39600 draws=0
+frame=39900 draws=0
+frame=60300 draws=600
+frame=60600 draws=600
+frame=60900 draws=521
+frame=61200 draws=355
+frame=61500 draws=900
+frame=61800 draws=306
+frame=74400 draws=600
+frame=74700 draws=600
+frame=75000 draws=808
