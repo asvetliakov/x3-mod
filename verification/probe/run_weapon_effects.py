@@ -12,10 +12,9 @@ Builds verification/probe/weapon_effects_fixture.cpp with the production WeaponE
 match its source and header), runs it once and writes the record: the build, the checkout's commit and the production
 sources' hashes, every CHECK, the structural metrics of the hex patch (docs/architecture/weapon-effects.md 5.1.1: lit
 radius and edge count per tier with the symmetry counts, the centre cell over a ring cell, ring front at two ages, the
-fade, the colour bands, re-light and four-hit accumulation, the screen-space placement on hull lanes (narrow and flat
-hulls from every side on the ship bubble from the production hull walk, the Flight B station on the hull decal), the
-bubble's sides (the chase camera's nose hit on the far side around the outline, the eye inside the bubble), the hull
-walk's cost warm and cold, with the normal errors,
+fade, the colour bands, re-light and four-hit accumulation, the screen-space placement on hull lanes (the Flight B
+station on the hull decal; a ship without a profile draws nothing), the normal errors, the lathe bubble of the ships'
+offline profiles and its routing (the runtime hull walk was removed on 2026-11-12), the own ship's eye sphere,
 the surface case, the no-pop runs (fighter and spread capital on a flat face, the one-draw eviction witness, the
 sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
@@ -57,8 +56,8 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function
          '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-DX3M_WEAPON_EFFECTS_FIXTURE']
 SOURCES = ('verification/probe/weapon_effects_fixture.cpp', 'src/renderer/weapon_effects_pass.cpp',
            'src/renderer/temporal_pass.cpp')
-# The production reader the hull walk is timed through (review F4), compiled as the DLL compiles it (CMakeLists.txt:
-# no SSE / MMX) into its own object.
+# The production reader (engine_memory::read: the projectile and re-shade cases), compiled as the DLL compiles it
+# (CMakeLists.txt: no SSE / MMX) into its own object.
 NO_SSE_SOURCES = ('src/proxy/engine_memory.cpp',)
 NO_SSE = ['-mno-sse', '-mno-mmx', '-mfpmath=387']
 PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon_effects_pass.cpp',
@@ -135,11 +134,11 @@ HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verificat
                 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
                 'src/proxy/weapon_effects_death_sites.h')
 # The FL hook fixture's inputs (docs/architecture/weapon-effects.md 2.10): the FL fixture, the shared module/handler
-# compiled with X3M_EDITION_FL, the FL site table, the bubble walk and the build script.
+# compiled with X3M_EDITION_FL, the FL site table and the build script.
 HOOK_FL_SOURCES = ('verification/probe/weapon_effects_hook_fixture_fl.cpp', 'verification/probe/weapon_effects_hook_fixture_shim.h',
                    'verification/probe/build_weapon_effects_hook_fl.py', 'src/proxy/weapon_effects_patch.cpp',
                    'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
-                   'src/engine/fl/weapon_effects_sites_fl.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bubble.h',
+                   'src/engine/fl/weapon_effects_sites_fl.h', 'src/proxy/weapon_effects_bolt.h',
                    'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
                    'src/engine/fl/executable_identity_fl.h', 'src/proxy/weapon_effects_projectile.h')
 
@@ -207,7 +206,7 @@ def fields(line):
 
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
-            'PLACEMENT', 'AXIS_PLANE', 'BUBBLE_SIDE', 'HULL_WALK', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
+            'PLACEMENT', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
             'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE', 'MUZZLE_RESHADE',
             'LATHE')
     report = {t.lower(): [] for t in tags}
@@ -575,7 +574,7 @@ def main():
     record['checks'] = report['checks']
     record['failed_checks'] = report['failed_checks']
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
-                                                 'colour', 'relight', 'adjacent', 'placement', 'axis_plane', 'bubble_side', 'hull_walk', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
+                                                 'colour', 'relight', 'adjacent', 'placement', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'projectile', 'flash', 'pulse', 'pulse_cap',
                                                  'pulse_ghost', 'reshade', 'muzzle_reshade', 'lathe')}

@@ -2089,23 +2089,14 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.spills = drops[3];
         stage.faces_culled = drops[4];
         stage.area_dropped = drops[5];
-        stage.bubbles = drops[6];
-        stage.bubble_fallback = drops[7];
-        stage.bubble_walks = drops[8];
-        stage.bubble_failures = drops[9];
-        stage.bubble_held = drops[10];
-        stage.bubble_deferred = drops[11];
-        stage.bubble_clamped = drops[12];
-        stage.bubble_partial = drops[13];
-        stage.cells_key_dropped = drops[14];
-        stage.lathes = drops[15];
-        stage.lathe_no_profile = drops[16];
-        stage.lathe_mismatch = drops[17];
-        stage.lathe_unreadable = drops[18];
-        stage.lathe_scale = drops[19];
-        stage.lathe_degenerate = drops[20];
-        stage.lathe_cache = drops[21];
-        stage.lathe_stale = drops[22];
+        stage.lathes = drops[6];
+        stage.lathe_no_profile = drops[7];
+        stage.lathe_mismatch = drops[8];
+        stage.lathe_unreadable = drops[9];
+        stage.lathe_scale = drops[10];
+        stage.lathe_degenerate = drops[11];
+        stage.lathe_cache = drops[12];
+        stage.lathe_stale = drops[13];
 #if X3M_EDITION_FL
         // The projectile stage (docs/architecture/projectile-look.md): its ownership latches the next frame's batch skip.
         unsigned flashes[5] = {};

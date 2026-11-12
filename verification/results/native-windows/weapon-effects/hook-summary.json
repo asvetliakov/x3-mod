@@ -19,22 +19,22 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "deb8d54c7bdf1af94ac086a4491e75bb42b44867-dirty",
+    "commit": "89c534a1e1c512f9b741aec32e133005764dda78-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
       "src/proxy/weapon_effects_core.h",
       "src/proxy/weapon_effects_patch.cpp",
       "src/proxy/weapon_effects_patch.h",
-      "src/proxy/weapon_effects_table.h"
+      "verification/probe/weapon_effects_hook_fixture.cpp"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture.cpp": "313109c458fee2f62a517fb13b40a22bfd297b1dacc3c6973e5c39e639be2447",
+      "verification/probe/weapon_effects_hook_fixture.cpp": "6423e49262f3590f4c5c81c1f9403b2b0a540cf4ce08aff1684de0624912ca98",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "3ad4a58ff2a835743c5f91691eae32e8ae817f8b19d4d08611662ffe520fe16e",
-      "src/proxy/weapon_effects_patch.cpp": "0d66a6d5173cc5c975a668c26518f8827341e097ebf5559f345f74afee1726a2",
-      "src/proxy/weapon_effects_patch.h": "a1bbf7c3f68d52911fb793ad1a8b34ddc2beef5fb9e408f5b4f07969a307d678",
+      "src/proxy/weapon_effects_patch.cpp": "91ca6fd0c6f9e6fbce55d6c693937c7beb48c0f5a481aa2d110f61d58c90ceb7",
+      "src/proxy/weapon_effects_patch.h": "0c6883aec52c5f5a78eced052da4089e8b59570e0b0be796d29ee55a773dc822",
       "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "dec2484c116246bc76e7ea60ea863bc0a4d60ba49400651a63d0711da058de1b",
+      "src/proxy/weapon_effects_core.h": "9a803c736d3a7a12d9b3effb3d024eb7fc27ebe9112fa367dcf997b7b8ce688e",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
       "src/proxy/weapon_effects_bolt_sites.h": "8d789cfd70563535977abe9ef7962c5a1c64d47f50151f7977724c205cd7f1a9",
@@ -60,7 +60,7 @@
         "_x3m_weapon_death_other": []
       },
       "handler_instructions": {
-        "_x3m_weapon_event": 1236,
+        "_x3m_weapon_event": 1383,
         "_x3m_weapon_tap": 47,
         "_x3m_weapon_bolt_tap": 507,
         "_x3m_weapon_muzzle": 224,
@@ -165,7 +165,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "65f24efb1f705cdf65bea7860eafe88162bc321d39e6db59f4345cfb83a4382f"
+    "executable_sha256": "057b7b50261e83ea48d792be6a5e06c70056e8ff12099551b6960b76f9eed63b"
   },
   "host": {
     "name": "native-windows",
@@ -184,7 +184,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 132,
+      "checks": 142,
       "failures": 0,
       "faults": 6,
       "verdict": "PASS"
@@ -374,6 +374,56 @@
     },
     {
       "name": "skip_frame_kept",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_fighter_profile_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_fighter_no_profile_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_capital_no_profile_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_class_mismatch_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_stale_table_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_no_profiles_loaded_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_axis_scale_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_station_staged",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_other_object_native",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "name": "route_native_rows_listed_once",
       "passed": true,
       "detail": ""
     },
@@ -853,15 +903,15 @@
       "detail": ""
     }
   ],
-  "check_count": 132,
+  "check_count": 142,
   "failed_checks": [],
   "forward_state": {
     "eflags_entry": "00000cc5",
     "eflags_callee": "00000ec7",
-    "esp_frame": "0088c780",
-    "esp_callee": "0088c774",
-    "return": "00ec6d8a",
-    "site": "00ec6d85"
+    "esp_frame": "0088e780",
+    "esp_callee": "0088e774",
+    "return": "00f46d8a",
+    "site": "00f46d85"
   },
   "stack_depth": {
     "bytes": 236,
@@ -1188,9 +1238,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.7,
-    "median_us": 17.8,
-    "worst_us": 23.1,
+    "best_us": 17.1,
+    "median_us": 17.2,
+    "worst_us": 18.3,
     "target_us": 30
   },
   "overflow": {
@@ -1206,18 +1256,18 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 55.9,
-    "median_us": 56.0,
-    "worst_us": 69.2,
+    "best_us": 55.1,
+    "median_us": 55.2,
+    "worst_us": 70.3,
     "target_us": 150
   },
   "death_forward_state": {
     "eflags_entry": "000008c5",
     "eflags_callee": "00000ac7",
-    "esp_frame": "005eaca8",
-    "esp_callee": "005eac98",
-    "return": "00ec7cb7",
-    "site": "00ec7cb2",
+    "esp_frame": "005eacc8",
+    "esp_callee": "005eacb8",
+    "return": "00f47cb7",
+    "site": "00f47cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },
@@ -1225,8 +1275,8 @@
     "records": 3,
     "nested": 2,
     "outer_entries": 1,
-    "outer_seq": 3232,
-    "inner_seq": "3233,3234"
+    "outer_seq": 3241,
+    "inner_seq": "3242,3243"
   },
   "death_state": {
     "deaths": 17,

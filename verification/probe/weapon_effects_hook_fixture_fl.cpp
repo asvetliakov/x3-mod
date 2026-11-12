@@ -17,7 +17,6 @@
 #include "../../src/proxy/weapon_effects_patch.h"
 #include "../../src/proxy/weapon_effects_core.h"
 #include "../../src/proxy/weapon_effects_bolt.h"
-#include "../../src/proxy/weapon_effects_bubble.h"
 #include "../../src/engine/fl/weapon_effects_sites_fl.h"
 #include "../../src/proxy/engine_patch.h"
 #include <windows.h>
@@ -32,7 +31,6 @@ namespace we = x3m::weapon_effects;
 namespace core = x3m::weapon_effects::core;
 namespace S = x3m::fl::weapon_effects_fl;
 namespace engine_patch = x3m::engine_patch;
-namespace stage = x3m::weapon_effects::stage;
 
 namespace {
 unsigned checks = 0, failures = 0;
@@ -296,7 +294,27 @@ struct alignas(16) Obj {
 };
 Node victim_node, source_node;
 Obj victim_obj, source_obj;
-std::uint32_t cfg_slot, bullet_t, bullet_c, ship_t, ship_c, shield_t, shield_c, missile_t, missile_c, body_root;
+std::uint32_t cfg_slot, bullet_t, bullet_c, ship_t, ship_c, shield_t, shield_c, missile_t, missile_c;
+// The ship profiles the shield stage needs since the walk's removal (5.1.1 "Placement", user decision 2026-11-12 on FL
+// 69 A: a ship without a usable profile keeps the native effect): TShips row 4 (the default victim, an M3) with its
+// class, the generator's row count the fixture's eight; bound with the globals.
+core::ShipProfiles fixture_profiles;
+void bind_profiles() {
+    fixture_profiles.clear();
+    fixture_profiles.tships_rows = 8;
+    core::ShipProfile& p = fixture_profiles.entries[0];
+    p.row = 4;
+    p.class_id = 2023;
+    p.z0 = -1000.f;
+    p.z1 = 1000.f;
+    for (auto& slice : p.slice) {
+        slice[0] = slice[1] = 0.f;
+        slice[2] = slice[3] = 500.f;
+    }
+    fixture_profiles.slot_of[4] = 1;
+    fixture_profiles.count = 1;
+    we::hook_state().profiles = &fixture_profiles;
+}
 unsigned char config_block[0x800];
 std::vector<unsigned char> bullet_table(16 * core::layout::type_stride);
 std::vector<unsigned char> ship_table(8 * core::layout::type_stride);
@@ -323,8 +341,8 @@ void bind_globals() {
     g.shield_count_slot = u32(&shield_c);
     g.missile_table_slot = u32(&missile_t);
     g.missile_count_slot = u32(&missile_c);
-    g.body_cache_slot = u32(&body_root);
     we::bolt_hook_state().globals = g;
+    bind_profiles();
 }
 void build_world(std::uint16_t victim_class, std::uint16_t source_class, std::uint16_t subtype, std::uint32_t flags,
                  std::uint32_t game_ms) {
@@ -345,6 +363,7 @@ void build_world(std::uint16_t victim_class, std::uint16_t source_class, std::ui
         w32(n, core::layout::node_live, 1);
         w32(n, core::layout::node_handle, 0xd00d);
         for (unsigned k = 0; k < 3; ++k) w32(n, core::layout::node_rot + 16 * k + 4 * k, 0x10000);
+        for (unsigned k = 0; k < 3; ++k) w32(n, core::layout::node_axis_scale + 4 * k, 0x10000);
     }
     w32(&source_node, core::layout::node_pos + 0, 7000);
     w32(&source_node, core::layout::node_pos + 8, 1500);
@@ -559,7 +578,7 @@ int main() {
     const core::Globals& g = we::hook_state().globals;
     check(g.cfg_slot == base + S::cfg_slot_rva && g.bullet_table_slot == base + S::type_table_rva &&
               g.bullet_count_slot == base + S::type_count_rva && g.ship_table_slot == base + S::type_table_rva + 4 * 7 &&
-              g.shield_count_slot == base + S::type_count_rva + 4 * 9 && g.body_cache_slot == base + S::body_cache_rva,
+              g.shield_count_slot == base + S::type_count_rva + 4 * 9,
           "globals_bound_base_plus_rva");
     bool writes_ok = true;
     for (unsigned i = 0; i < S::site_count; ++i)
@@ -970,46 +989,9 @@ int main() {
     hs.owned_next = 0;
     hs.boom_ready = 0;
 
-    // The ship bubble's hull walk on FL: a root with one part whose body id sits at node +0x144, reachable through the
-    // body-cache hash; hull_bounds must read the FL node body offset and succeed.
-    {
-        alignas(16) static unsigned char root[0x280], child[0x280], sentinel[0x280], hash_obj[0x20];
-        static std::uint32_t entry3[3], buckets[4], hashhead[2], lod_ptrs[1], root_slot, body_cache_slot;
-        alignas(16) static unsigned char model[0x40], lod[0x40];
-        std::memset(root, 0, sizeof root);
-        std::memset(child, 0, sizeof child);
-        std::memset(sentinel, 0, sizeof sentinel);
-        std::memset(hash_obj, 0, sizeof hash_obj);
-        std::memset(buckets, 0, sizeof buckets);
-        std::memset(model, 0, sizeof model);
-        std::memset(lod, 0, sizeof lod);
-        w32(root, core::layout::node_children, u32(child));
-        w32(child, 0, u32(sentinel)); // child.next -> sentinel (non-zero: a real node)
-        w32(sentinel, 0, 0);          // sentinel.next = 0 : the list ends
-        w32(child, core::layout::node_body, 5); // the body id at FL's +0x144
-        for (unsigned k = 0; k < 3; ++k) w32(child, core::layout::node_basis + 0x10 * k + 4 * k, 0x10000);
-        w32(child, core::layout::node_scale, 0x10000);
-        for (unsigned k = 0; k < 3; ++k) w32(child, core::layout::node_axis_scale + 4 * k, 0x10000);
-        for (unsigned k = 0; k < 3; ++k) w32(lod, core::layout::lod_extent + 4 * k, 0x1000);
-        lod_ptrs[0] = u32(lod);
-        w32(model, core::layout::model_lods, u32(lod_ptrs));
-        w16(model, 0x10, 1);
-        entry3[0] = 0;
-        entry3[1] = 5 + 1;
-        entry3[2] = u32(model);
-        buckets[6u & 3u] = u32(entry3);
-        hashhead[0] = u32(buckets);
-        hashhead[1] = 4;
-        w32(hash_obj, core::layout::body_cache_hash, u32(hashhead));
-        root_slot = u32(hash_obj);
-        body_cache_slot = u32(&root_slot);
-        stage::HullBox box;
-        bool extent = false;
-        auto rd = [](std::uintptr_t a, void* out, std::size_t n) { return x3m::engine_memory::read(a, out, n); };
-        const bool walked = stage::hull_bounds(rd, body_cache_slot, u32(root), &box, &extent);
-        check(walked && box.parts == 1 && !extent, "fl_bubble_walk_reads_node_body_0x144");
-        check(core::layout::node_body == 0x144 && core::layout::node_walk_bytes == 0x148, "fl_node_body_offset");
-    }
+    // FL's node body id offset (+0x144; the projectile pool's read). The ship bubble's hull walk that also read it was
+    // removed on 2026-11-12.
+    check(core::layout::node_body == 0x144, "fl_node_body_offset");
 
     // The projectile stage's batch submit (shields mode): a fake batch record whose body id sits at +0x0c, ECX the scene,
     // [esp+4] the material, [esp+8] the view. Forward: the callee sees every register, the stack and the flags; skip

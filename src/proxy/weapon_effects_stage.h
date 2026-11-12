@@ -7,20 +7,16 @@
 #include <algorithm>
 
 // The weapon effects' scene-end step (docs/architecture/weapon-effects.md 3.1, 5.1 item 3 and 5.1.1): the ring's
-// stage-owned shield hits (flag_stage) become hex patches. A ship whose TShips row has an offline profile of its class
-// (2026-11-12, core::shield_surface; weapon_effects_lathe.h) draws on the lathe of that profile whatever its tier, its
-// hits mapped along their slice and lit in the lathe's one chart (fill_lathe), and walks nothing; the own ship in the
-// cockpit keeps its eye sphere (sized from the profile's bounds). Without one: a fighter or corvette (core::shield_bubble of the newest
-// record's PatchTier and TierSource) gets its bubble (user decision after Run238 Flight E; weapon_effects_bubble.h): the
-// hull bounds' ellipsoid x bubble_scale (the walk through the caller's BubbleCache, else the fallback sphere of the
-// object radius, Counts::bubble_fallback), each hit mapped onto it radially in its normalised space (bubble_point) and
-// lighting both faces of every axis with the same cells, clocks and draws as below; a face draw's box bounds the
-// bubble's sheet over its cells within their anchors' windows (bubble_box: the opposite sheet drops out) and the pixel
-// program draws the bubble's near and
-// far points (weapon_bubble_ps.hlsl), so the bubble draws no face cull (its far side faces away from the eye). A
-// station keeps the hull decal laid on the hull through the lane depth (the screen-space patch, user decision
-// 2026-11-06), and so does every capital-tier owner (FL 67 A, 2026-11-12: a box-fitted ellipsoid cannot fit a long hull
-// with fins; no hull walk runs for it) except the own ship in the cockpit view, which keeps its eye sphere. Per owner its owner_hits newest hits light cells on the owner's six faces (the
+// stage-owned shield hits (flag_stage) become hex patches. The surface (core::shield_surface; user decision 2026-11-12 on
+// FL 69 A, which removed the runtime hull walk): a ship draws on the lathe of its TShips row's offline profile
+// (weapon_effects_lathe.h) whatever its tier, its hits mapped along their slice and lit in the lathe's one chart
+// (fill_lathe); the hook staged it only with a usable profile (core::ship_profile_verdict), and a ship whose profile the
+// stage cannot resolve again draws nothing (counted by LatheRefusal). The own ship in the cockpit view draws on its eye
+// sphere (Run240 Flight G; weapon_effects_bubble.h), radius its profile bounds' smallest half-extent x bubble_scale:
+// each hit mapped onto it radially (bubble_point), lighting both faces of every axis with the same cells, clocks and
+// draws as below, a face draw's box over the sphere's sheet (bubble_box) and the pixel program drawing its near and far
+// points (weapon_bubble_ps.hlsl), no face cull. A station keeps the hull decal laid on the hull through the lane depth
+// (the screen-space patch, user decision 2026-11-06). Per owner its owner_hits newest hits light cells on the owner's six faces (the
 // anchor_frame lattices +-z, +-x, +-y: a planar hex lattice perpendicular to the face's axis, fixed in the owner's
 // frame, so every hit on a face lands on the same cells whatever the owner's motion), each hit on both faces of every
 // axis (the pixel's normal and the face's box decide what shows; review F1: no side of the owner's origin decides); a
@@ -234,16 +230,14 @@ struct Counts {
     unsigned cells_dropped = 0, hits_dropped = 0, spills = 0;
     unsigned faces_culled = 0; // face draws whose box faces away from the eye past the triplanar cut (not drawn)
     unsigned area_dropped = 0; // face draws past the frame's screen-area budget (the oldest newest hit first)
-    unsigned bubbles = 0, bubble_fallback = 0; // owners drawn on their bubble; of them on the fallback sphere
-    BubbleStats bubble;                        // the frame's walks, failures, held retries, deferred walks, clamps
     float screens = 0.f;                       // the drawn patches' screens
     unsigned eye_spheres = 0;                  // owners drawn on the eye sphere (the own ship in the cockpit)
-    unsigned cells_key_dropped = 0; // footprint cells past the packed key's bound (RegionStats::key_dropped; review F6)
-    // The lathe bubble (weapon_effects_lathe.h): owners drawn on it; of the lathe-tier owners with profiles loaded, those
-    // refused by cause (LatheRefusal: no profile for the row, the class differs, an engine read refused or the row past
-    // the type table's count, an axis scale out of range, a degenerate profile, every cache entry drawn this frame) and
-    // those skipped because the table is stale (its TShips row count differs from the live one: stale_rows table,
-    // engine); hits duplicated across the seam.
+    // The lathe bubble (weapon_effects_lathe.h): owners drawn on it; of the ship owners (not a station) the stage could
+    // not draw, by cause (LatheRefusal: no profiles or none for the row, the class differs, an engine read refused or the
+    // row past the type table's count, an axis scale out of range, a degenerate profile, every cache entry drawn this
+    // frame) and those skipped because the table is stale (its TShips row count differs from the live one: stale_rows
+    // table, engine); the hook forwards such ships native, so these count only a change between the hit and the frame
+    // (or a fixture's direct record); hits duplicated across the seam.
     unsigned lathes = 0, lathe_no_profile = 0, lathe_mismatch = 0, lathe_unreadable = 0, lathe_scale = 0;
     unsigned lathe_degenerate = 0, lathe_cache = 0, lathe_stale = 0, lathe_seam = 0;
     std::uint32_t stale_rows[2] = {0, 0};
@@ -261,12 +255,11 @@ struct Tuning {
     unsigned region_draws = stage::region_draws; // >= 1 (the fixture's eviction witness sets 1)
     float screen_budget = core::screen_budget;    // screens of boxes per frame
     float near_z = 1.f;                           // the projection's near view z (the box area's clip)
-    std::uintptr_t body_cache_root = core::layout::body_cache_root; // the hull walk's body cache slot (the fixture's own)
     // The own ship (its root node; 0 unknown) and the cockpit view: its bubble is the eye sphere (core::eye_sphere_min_m).
     std::uint32_t own_node = 0;
     bool cockpit = false;
-    // The lathe bubble's inputs (weapon_effects_lathe.h): the offline profiles (nullptr: none, the walk and the decal as
-    // before) and the TShips type table's slots (the hook's Globals::ship_table_slot / ship_count_slot).
+    // The lathe bubble's inputs (weapon_effects_lathe.h): the offline profiles (nullptr: none, no ship draws) and the
+    // TShips type table's slots (the hook's Globals::ship_table_slot / ship_count_slot).
     const core::ShipProfiles* profiles = nullptr;
     std::uintptr_t ship_table_slot = 0, ship_count_slot = 0;
 };
@@ -399,7 +392,7 @@ inline unsigned fill_region(renderer::WeaponPatch* outs, unsigned out_cap, const
     head.extent = head.reach + 1.1547005f * cell; // the hit within its cell, the far cell's corner: two circumradii
     head.hits = 0;
     head.cells = 0;
-    head.bubble = 0; // the hull decal unless bubble_box makes it the ship bubble's draw (outs are reused frame to frame)
+    head.bubble = 0; // the hull decal unless bubble_box makes it the eye sphere's draw (outs are reused frame to frame)
     head.lathe = nullptr; // likewise unless fill_lathe makes it a lathe draw
 
     const float v = t.ripple_speed * head.radius, ring_life = 1.f / t.ripple_speed;
@@ -558,7 +551,7 @@ inline bool fill_patch(renderer::WeaponPatch& out, const float centre[3], const 
                        const Tuning& t, RegionStats* stats = nullptr) noexcept {
     return fill_region(&out, 1, centre, frame, tier, anchor, points, ages, n, colour, t, stats) == 1;
 }
-// One owner's bubble draws (5.1.1 "Placement"): its hits (owner frame, view units, newest first, ages in game seconds)
+// The eye sphere's draws (5.1.1 "Placement"; the own ship in the cockpit): its hits (owner frame, view units, newest first, ages in game seconds)
 // mapped onto bubble b (bubble_point), each face's draws from every hit (both faces of every axis) through fill_region
 // into patches[n->patches..] (at most cap draws in all; *regions_left reserves one draw for every face still to come,
 // as the builder's), every draw's box over the bubble's sheet (bubble_box; a draw whose cells cannot show is not
@@ -611,7 +604,6 @@ inline void fill_bubble(renderer::WeaponPatch* patches, unsigned cap, unsigned* 
         n->patches += drawn;
         n->spills += drawn > 1 ? drawn - 1 : 0;
         n->cells_dropped += rs.dropped;
-        n->cells_key_dropped += rs.key_dropped;
         if (rs.refused) ++n->dropped;
     }
 }
@@ -682,7 +674,6 @@ inline void fill_lathe(renderer::WeaponPatch* patches, unsigned cap, unsigned* r
     n->patches += drawn;
     n->spills += drawn > 1 ? drawn - 1 : 0;
     n->cells_dropped += rs.dropped;
-    n->cells_key_dropped += rs.key_dropped;
     if (rs.refused) ++n->dropped;
 }
 // The own ship in the cockpit view (core::own_cockpit_gain, 5.1.1): every patch draw whose owner node is own_node (the
@@ -735,21 +726,18 @@ inline float box_screens(const renderer::WeaponPatch& p, const Camera& c, float 
     const float h = (hi[1] < 1.f ? hi[1] : 1.f) - (lo[1] > -1.f ? lo[1] : -1.f);
     return w > 0.f && h > 0.f ? 0.25f * w * h : 0.f;
 }
-// Builds the frame's patches and decals from the ring (see the header). now = cfg+0x718. bubbles: the hull walk's cache
-// (production: one per process, rescoped by the caller; nullptr walks every owner every call). visible (nullable): adds
+// Builds the frame's patches and decals from the ring (see the header). now = cfg+0x718. visible (nullable): adds
 // every owner it read and kept (max_owners) whose sphere reaches the view volume (owner_in_view) as drawn, and every
 // candidate owner in view (kept or not) as in view, for the stamp (core::ring_stamp_hidden); its located table holds
 // the owners read. lathes (nullable, with t.profiles): the lathe meshes (production: one per process); a ship whose row
-// has a profile of its class draws on its lathe (fill_lathe), no walk. Internal linkage (static), so its ring-sized
+// has a profile of its class draws on its lathe (fill_lathe), none without. Internal linkage (static), so its ring-sized
 // static scratch is the TU's zero-initialised .bss, not a comdat .data$ section of the file (the production DLL calls it
 // from one TU).
 static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const Camera& cam, const Tuning& t,
                     renderer::WeaponPatch* patches, unsigned patch_cap, renderer::WeaponDecal* decals,
-                    unsigned decal_cap, BubbleCache* bubbles = nullptr, core::VisibleOwners* visible = nullptr,
-                    LatheCache* lathes = nullptr) noexcept {
+                    unsigned decal_cap, core::VisibleOwners* visible = nullptr, LatheCache* lathes = nullptr) noexcept {
     Counts n{};
-    if (bubbles) bubbles->frame(now); // the game step: a parked hull walk's age bound
-    if (lathes) lathes->frame();      // the meshes this call draws stay until the next
+    if (lathes) lathes->frame(); // the meshes this call draws stay until the next
     struct Seen {
         std::uint32_t owner;
         OwnerStatus status;
@@ -857,7 +845,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         const unsigned v = ring.slots[s.index[0]].patch_tier;
         return v < core::patch_tier_count ? v : unsigned(core::patch_capital);
     };
-    unsigned regions_left = 0, walks_left = core::bubble_walks_per_frame;
+    unsigned regions_left = 0;
     // The stale-table guard (the bullet table's stale_table rule): the profiles' recorded TShips row count against the
     // live one at ship_count_slot, one read per call; differing, unrecorded or unreadable, no profile is used.
     bool profiles_live = false;
@@ -873,14 +861,14 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         s.lathe = nullptr;
         if (s.status != OwnerStatus::ok || !s.count) continue;
         n.hits_dropped += s.live - s.count;
-        // The lathe (2026-11-12): a lathe-tier ship (core::lathe_tier: capitals for now) whose row has a profile of its
-        // class, not the own ship in the cockpit (its eye sphere); it reserves one region (its chart), the others one per
-        // face.
+        // The lathe (2026-11-12): a ship (not a station) whose row has a profile of its class; it reserves one region
+        // (its chart), the own ship in the cockpit (its eye sphere from the profile) and a station one per face.
         const core::Event& newest = ring.slots[s.index[0]];
         const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
-        const unsigned owner_tier = tier_of(s);
-        if (lathes && t.profiles && t.profiles->count && s.data.radius > 0 && core::lathe_tier(std::uint8_t(owner_tier))) {
-            if (!profiles_live) {
+        if (s.data.radius > 0 && core::shield_surface(newest.tier_source) == core::surface_lathe) {
+            if (!lathes || !t.profiles || !t.profiles->count) {
+                ++n.lathe_no_profile;
+            } else if (!profiles_live) {
                 ++n.lathe_stale;
             } else {
                 LatheType type;
@@ -895,7 +883,8 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                 n.lathe_cache += why == LatheRefusal::cache;
             }
         }
-        if (s.data.radius > 0) regions_left += s.lathe && !eye ? 1u : anchor_count;
+        if (s.data.radius > 0 && (core::shield_surface(newest.tier_source) == core::surface_decal || s.lathe))
+            regions_left += s.lathe && !eye ? 1u : anchor_count;
     }
     for (unsigned k = 0; k < seen_count; ++k) {
         Seen& s = seen[k];
@@ -917,47 +906,28 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
         float centre[3], frame[9];
         if (owner_frame(s.data, cam, centre, frame)) {
             const float owner_radius = float(double(s.data.radius) * double(core::world_scale));
-            // The own ship in the cockpit (Run240 Flight G): the sphere about the eye, of the bubble's smallest
-            // half-extent (>= eye_sphere_min_m); the eye in the owner frame through its axes in view. It keeps that path
-            // whatever its tier (FL 67 A review F2, main session decision 2026-11-12); an external capital takes the decal.
+            // The own ship in the cockpit (Run240 Flight G): the sphere about the eye, radius its profile bounds' smallest
+            // half-extent x bubble_scale (>= eye_sphere_min_m); the eye in the owner frame through its axes in view. It
+            // keeps that path whatever its tier (FL 67 A review F2, main session decision 2026-11-12).
             const bool eye = t.cockpit && t.own_node && newest.node == t.own_node;
-            // The lathe (2026-11-12): resolved with the reservations above; no walk for it.
+            // A ship: its lathe, resolved with the reservations above (none: nothing drawn, counted there).
             const LatheMesh* lathe = s.lathe;
-            const core::ShieldSurface surface = core::shield_surface(std::uint8_t(tier), newest.tier_source, lathe != nullptr);
-            if (surface == core::surface_lathe && !eye) {
+            if (core::shield_surface(newest.tier_source) == core::surface_lathe) {
+                if (!lathe) continue;
                 const unsigned first = n.patches;
-                fill_lathe(patches, patch_cap, &regions_left, centre, frame, tier, *lathe, plan.points, plan.ages,
-                           s.count, colour, t, &n);
-                for (unsigned d = first; d < n.patches; ++d) {
-                    patches[d].newest_s = plan.ages[0];
-                    patches[d].owner = s.owner;
-                    patches[d].owner_node = newest.node;
-                    patches[d].owner_radius = owner_radius;
-                }
-                ++n.lathes;
-                continue;
-            }
-            if (eye || surface == core::surface_ellipsoid) { // the ship bubble (not a capital)
-                bool fallback = false;
-                const unsigned fits = n.bubble.fit_rows;
-                Bubble b;
-                if (lathe) { // the own ship in the cockpit with a profile: its hull bounds x bubble_scale, no walk
-                    for (unsigned k = 0; k < 3; ++k) {
-                        b.c[k] = 0.5f * (lathe->hull_lo[k] + lathe->hull_hi[k]);
-                        b.e[k] = 0.5f * (lathe->hull_hi[k] - lathe->hull_lo[k]) * core::bubble_scale;
-                    }
+                if (!eye) {
+                    fill_lathe(patches, patch_cap, &regions_left, centre, frame, tier, *lathe, plan.points, plan.ages,
+                               s.count, colour, t, &n);
+                    ++n.lathes;
                 } else {
-                    b = owner_bubble(bubbles, rd, t.body_cache_root, s.owner, newest.node, newest.handle, s.data.radius,
-                                     now, &walks_left, &n.bubble, &fallback);
-                }
-                for (unsigned r = fits; r < n.bubble.fit_rows; ++r) n.bubble.fit[r].tier = std::uint8_t(tier);
-                ++n.bubbles;
-                n.bubble_fallback += fallback;
-                if (eye) {
-                    float r = b.e[0] < b.e[1] ? b.e[0] : b.e[1];
-                    r = r < b.e[2] ? r : b.e[2];
+                    float r = 1e30f;
+                    for (unsigned k = 0; k < 3; ++k) {
+                        const float e = 0.5f * (lathe->hull_hi[k] - lathe->hull_lo[k]) * core::bubble_scale;
+                        r = e < r ? e : r;
+                    }
                     const float r_min = metres_to_view(core::eye_sphere_min_m);
                     r = r > r_min ? r : r_min;
+                    Bubble b;
                     for (unsigned k = 0; k < 3; ++k) {
                         const float* L = frame + 3 * k;
                         const float l2 = dot3(L, L);
@@ -965,10 +935,9 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                         b.e[k] = r;
                     }
                     ++n.eye_spheres;
+                    fill_bubble(patches, patch_cap, &regions_left, centre, frame, tier, b, plan.points, plan.ages,
+                                s.count, colour, t, &n);
                 }
-                const unsigned first = n.patches;
-                fill_bubble(patches, patch_cap, &regions_left, centre, frame, tier, b, plan.points, plan.ages, s.count,
-                            colour, t, &n);
                 for (unsigned d = first; d < n.patches; ++d) {
                     patches[d].eye_sphere = eye;
                     patches[d].newest_s = plan.ages[0];
@@ -978,6 +947,7 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                 }
                 continue;
             }
+            // A station: the hull decal.
             const float cell = metres_to_view(t.cell_m[tier]), reach = float(tier_rings(t, tier)) * cell;
             const float extent = reach + 1.1547005f * cell;
             for (unsigned face = 0; face < anchor_count; ++face) { // every hit on both faces of every axis
@@ -1034,7 +1004,6 @@ static inline Counts build(core::Ring& ring, std::uint32_t now, Reader rd, const
                 n.patches += drawn;
                 n.spills += drawn > 1 ? drawn - 1 : 0;
                 n.cells_dropped += rs.dropped;
-                n.cells_key_dropped += rs.key_dropped;
                 if (rs.refused) ++n.dropped; // a degenerate law; a face whose cells have all faded is no drop
             }
             continue;

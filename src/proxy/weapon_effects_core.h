@@ -174,15 +174,10 @@ constexpr unsigned type_stride = 0xdb8;
 constexpr unsigned bullet_shield_damage = 0x44, bullet_flags = 0x58, bullet_light = 0x5c, bullet_hull_damage = 0x80;
 constexpr unsigned ship_class_id = 0xc8;
 constexpr unsigned cfg_game_ms = edition_fl ? 0x708 : 0x718;
-// The ship's hull walk (render-node-bounds.md 6.1; ship_avoidance_walk_core.h hull_children): node links, placement,
-// scales, flags and body id; the body cache's hash, its model's LOD records and their extents.
-// AP VA of the body cache slot; FL: 0 here, the bound slot is Globals::body_cache_slot (base + 0x1aa100).
-constexpr std::uintptr_t body_cache_root = edition_fl ? 0 : 0x00608518;
-constexpr unsigned body_cache_hash = 0x14, node_children = 0x0c, node_sentinel = 0x10, node_offset = 0x30, node_basis = 0x40,
-                   node_scale = 0x70, node_axis_scale = 0x80, node_flags = 0x12c;
-constexpr unsigned node_body = edition_fl ? 0x144 : 0x140, node_walk_bytes = node_body + 4;
-constexpr std::uint32_t node_scaled = 0x40, node_unscaled_offset = 0x10000, node_no_collision = 0x8000000;
-constexpr unsigned model_lods = 0x0c, lod_extent = 0x20; // the LOD count, an int16, follows the array pointer
+// A node's axis scales (16.16, the lathe's scene-to-object factor; render-node-bounds.md 6.1) and its body id (the
+// projectile pool's). The runtime hull walk's links, placement and body cache were removed on 2026-11-12.
+constexpr unsigned node_axis_scale = 0x80;
+constexpr unsigned node_body = edition_fl ? 0x144 : 0x140;
 constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by the kill routine 0x0044abd0
 constexpr std::uint32_t obj_shielded = 0x100000u;  // obj+0x40 bit 20: docks, factories, ships at creation
 constexpr std::uint16_t class_bullet = 0, class_shielded_a = 1, class_dock = 5, class_factory = 6, class_ship = 7,
@@ -209,7 +204,6 @@ struct Globals {                     // the engine's slots (X3AP.exe VAs in prod
     std::uintptr_t dock_table_slot = 0x00606fcc, dock_count_slot = 0x0060704c;
     std::uintptr_t factory_table_slot = 0x00606fd0, factory_count_slot = 0x00607050;
     std::uintptr_t asteroid_table_slot = 0x00606ffc, asteroid_count_slot = 0x0060707c;
-    std::uintptr_t body_cache_slot = layout::body_cache_root; // the ship bubble's hull walk (the stage's Tuning on FL)
 };
 static_assert(Globals{}.dock_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_dock &&
                   Globals{}.factory_table_slot == Globals{}.bullet_table_slot + 4 * layout::class_factory &&
@@ -222,7 +216,7 @@ static_assert(Globals{}.dock_table_slot == Globals{}.bullet_table_slot + 4 * lay
 // FL (fl/weapon-effect-spawn.md sections 3 and 5): the same slots at module base + RVA. The count array sits below the
 // table array (count = table - 0x98; AP's count = table + 0x80 is the edition's parameter, not a rule).
 namespace fl_slots {
-constexpr std::uint32_t cfg = 0x1a83b0, tables = 0x1a83c8, counts = 0x1a8330, body_cache = 0x1aa100;
+constexpr std::uint32_t cfg = 0x1a83b0, tables = 0x1a83c8, counts = 0x1a8330;
 static_assert(tables - counts == 0x98 && tables + 4 * 9 == 0x1a83ec && counts + 4 * 9 == 0x1a8354 &&
                   tables + 4 * 7 == 0x1a83e4 && counts + 4 * 7 == 0x1a834c,
               "the note's TShields 0x1a83ec / 0x1a8354 and TShips 0x1a83e4 / 0x1a834c: table + 4 class, count + 4 class");
@@ -246,7 +240,6 @@ inline Globals fl_globals(std::uintptr_t base) noexcept {
     g.factory_count_slot = n(6);
     g.asteroid_table_slot = t(17);
     g.asteroid_count_slot = n(17);
-    g.body_cache_slot = base + fl_slots::body_cache;
     return g;
 }
 // Every slot 0 (FL before install: no engine read can land on an AP address).
@@ -255,7 +248,7 @@ inline Globals unbound_globals() noexcept {
     g.cfg_slot = g.bullet_table_slot = g.bullet_count_slot = g.missile_table_slot = g.missile_count_slot = 0;
     g.ship_table_slot = g.ship_count_slot = g.shield_table_slot = g.shield_count_slot = 0;
     g.dock_table_slot = g.dock_count_slot = g.factory_table_slot = g.factory_count_slot = 0;
-    g.asteroid_table_slot = g.asteroid_count_slot = g.body_cache_slot = 0;
+    g.asteroid_table_slot = g.asteroid_count_slot = 0;
     return g;
 }
 
@@ -422,6 +415,22 @@ struct ShipProfiles {
         return &entries[slot_of[row] - 1u];
     }
 };
+// A ship's root-node axis scales (16.16) the lathe accepts: (0, 256x] (the bound the removed hull walk applied to a
+// node's scale; a fighter's stay below 16x, engine scenes carry nodes past it, FL 66 A).
+constexpr std::int32_t profile_axis_scale_max = 256 * 0x10000;
+// Whether a ship's shield hit can be drawn on its profile's lathe (ship_profile_verdict at the impact hook; the stage's
+// stage::resolve_lathe repeats the same checks through its reader): ok; no profiles loaded or none for its TShips row;
+// the profiles' recorded TShips row count differs from the live one or is unrecorded (stale); the profile's class
+// differs from the type record's; a type read refused (a null table, the row past the count); the root's axis scales
+// outside (0, profile_axis_scale_max]. Every verdict but ok forwards the hit native.
+enum ProfileVerdict : std::uint8_t {
+    profile_ok = 0, profile_none = 1, profile_stale = 2, profile_mismatch = 3, profile_unreadable = 4, profile_scale = 5,
+    profile_verdict_count = 6
+};
+inline const char* profile_verdict_name(unsigned v) noexcept {
+    return v == profile_ok ? "ok" : v == profile_none ? "no_profile" : v == profile_stale ? "stale_table"
+         : v == profile_mismatch ? "mismatch" : v == profile_unreadable ? "unreadable" : v == profile_scale ? "scale" : "?";
+}
 // The engine id of a TShips col 52 class token (the text-id reader 0x004ea440's table 0x00552a28: AP's 35 names and
 // FL's four more, weapon-effect-spawn.md 8.1): a name, a decimal number (taken literally, as the reader does) or the
 // census's `class_id:N`; -1 for anything else.
@@ -807,6 +816,19 @@ struct Counters {
     // and the deaths recorded inside another death's game millisecond (nested kills of one outer call).
     std::uint32_t deaths = 0, death_records = 0, death_ours = 0, death_no_node = 0, death_bullet = 0, death_rule_b = 0;
     std::uint32_t death_nested = 0, death_tier[7] = {};
+    // The shield hits a stage-owned frame forwarded native for want of a usable ship profile (5.1.1 "Placement",
+    // 2026-11-12; ship_profile_verdict): on a ship, per ProfileVerdict (ships_native[v], v = profile_none ..
+    // profile_scale); on any other object that is not a station (others_native).
+    std::uint32_t ships_native[profile_verdict_count] = {}, others_native = 0;
+};
+// The first TShips rows whose ship forwarded native (the session's weapon_ship_profile_missing row): each row once, its
+// verdict, at most native_row_capacity rows; written by the hook on the game thread, read by Present on the same thread.
+constexpr unsigned native_row_capacity = 8;
+struct NativeRows {
+    std::int16_t row[native_row_capacity] = {};
+    std::int32_t class_id[native_row_capacity] = {};
+    std::uint8_t verdict[native_row_capacity] = {};
+    std::uint8_t count = 0;
 };
 struct HookState {
     std::uint8_t mode = mode_native;   // what initialize() installed (native: the stubs are not live)
@@ -816,6 +838,8 @@ struct HookState {
     std::uint8_t suppress_native_hull = suppress_native_hull_hit; // a stage-owned hull hit also skips it (step 2)
     Globals globals{};
     const Table* table = nullptr;      // the loaded table (null: classifier without table lookups)
+    // The loaded ship profiles (null: none; every ship's shield hit then forwards native, profile_none).
+    const ShipProfiles* profiles = nullptr;
     std::uint16_t lifetime_ms = 0;     // the records' game-time life (install: patch_lifetime_ms)
     std::uint16_t hull_lifetime_ms = 0; // a hull hit's game-time life (install: hull_lifetime_ms)
     // The stage's three-frame floor in game ms (written by the stage each call; Present only reads it): Present keeps a
@@ -832,6 +856,7 @@ struct HookState {
     Ring ring{};
     PosCheck check{};
     Counters counters{};
+    NativeRows native_rows{};
 };
 constexpr std::uint8_t family_shields = 1, family_hull = 2, family_bolts = 4, family_boom = 8;
 
@@ -955,6 +980,47 @@ static inline __attribute__((always_inline)) void read_tier(std::uintptr_t obj, 
     *source = tier_by_radius;
 }
 
+// The ship's profile verdict at the impact hook (5.1.1 "Placement", user decision 2026-11-12 on FL 69 A: every ship
+// draws its shield hit on the lathe of its offline profile; a ship without a usable one keeps the game's native effect).
+// obj a class-7 object, node its live root node; *row and *class_id get its TShips index and the type record's class
+// (-1 when not read). The same checks as stage::resolve_lathe in the same order of consequence (no profiles, a stale
+// table, the row's type read, its profile, the class, the root's axis scales), as plain loads: the type table's slots
+// and the object's subtype are the ones read_tier reads, the row bounded by the live count before its record is read.
+// At most seven loads and no call; integer only.
+static inline __attribute__((always_inline)) std::uint8_t ship_profile_verdict(std::uintptr_t obj, std::uintptr_t node,
+                                                                                const Globals& g,
+                                                                                const ShipProfiles* profiles,
+                                                                                std::int32_t* row,
+                                                                                std::int32_t* class_id) noexcept {
+    *row = std::int16_t(rd16(obj + layout::obj_subtype));
+    *class_id = -1;
+    if (!profiles || !profiles->count) return profile_none;
+    const std::uintptr_t table = rd32(g.ship_table_slot);
+    const std::int32_t count = std::int32_t(rd32(g.ship_count_slot));
+    if (!profiles->tships_rows || std::uint32_t(count) != profiles->tships_rows) return profile_stale;
+    if (!table || *row < 0 || *row >= count) return profile_unreadable;
+    *class_id = std::int32_t(rd32(table + std::uintptr_t(*row) * layout::type_stride + layout::ship_class_id));
+    // ShipProfiles::find spelled out (the handler's entry points make no call)
+    const unsigned slot = *row < std::int32_t(profile_rows) ? profiles->slot_of[*row] : 0u;
+    if (!slot) return profile_none;
+    if (profiles->entries[slot - 1u].class_id != *class_id) return profile_mismatch;
+    for (unsigned i = 0; i < 3; ++i) {
+        const std::int32_t a = std::int32_t(rd32(node + layout::node_axis_scale + 4 * i));
+        if (a <= 0 || a > profile_axis_scale_max) return profile_scale;
+    }
+    return profile_ok;
+}
+// The first rows' list (NativeRows): a row not yet listed is added while there is room.
+static inline __attribute__((always_inline)) void note_native_row(NativeRows& r, std::int32_t row, std::int32_t class_id,
+                                                                   std::uint8_t verdict) noexcept {
+    if (r.count >= native_row_capacity) return;
+    for (unsigned i = 0; i < r.count; ++i)
+        if (r.row[i] == row) return;
+    r.row[r.count] = std::int16_t(row);
+    r.class_id[r.count] = class_id;
+    r.verdict[r.count] = verdict;
+    ++r.count;
+}
 // A unit 16.16 row (a node rotation row) as three int8 x 127, rounded half up (each component clamped to +-1 first).
 static inline __attribute__((always_inline)) void quantize_dir(const std::int32_t row[3], std::int8_t out[3]) noexcept {
     for (unsigned i = 0; i < 3; ++i) {
@@ -1117,8 +1183,25 @@ static inline __attribute__((always_inline)) int impact(const std::uint32_t* esp
     // engine's spawn is skipped for it; in shields,hull mode a hull hit likewise (suppress_native_hull; a drained shield
     // is a hull hit, weapon-look.md 3.1). A dying hit object is never the stage's: the stage retires a dying owner's
     // records unseen, so it stays native only.
-    const bool shield_stage =
+    bool shield_stage =
         stage_mode(s.mode) && s.owned_next && (s.armed & family_shields) && role == role_shield_hit && !hit_dying;
+    // The surface (5.1.1 "Placement", user decision 2026-11-12 on FL 69 A): a dock or factory keeps the hull decal; a ship
+    // takes the lathe of its offline profile (ship_profile_verdict) and, without a usable one, keeps the game's native
+    // effect (forwarded, counted per verdict, its row listed); any other object has no profile and stays native too.
+    if (shield_stage && hit_class != layout::class_dock && hit_class != layout::class_factory) {
+        if (hit_class == layout::class_ship) {
+            std::int32_t profile_row = -1, profile_class = -1;
+            const std::uint8_t v = ship_profile_verdict(hit, hit_node, s.globals, s.profiles, &profile_row, &profile_class);
+            if (v != profile_ok) {
+                shield_stage = false;
+                ++s.counters.ships_native[v];
+                note_native_row(s.native_rows, profile_row, profile_class, v);
+            }
+        } else {
+            shield_stage = false;
+            ++s.counters.others_native;
+        }
+    }
     const bool hull_stage = hull_mode(s.mode) && s.owned_next && s.hull_ready && (s.armed & family_hull) &&
                             role == role_hull_hit && !hit_dying;
     const bool stage = shield_stage || hull_stage;
@@ -1482,48 +1565,22 @@ constexpr float face_cull_sin = 0.841f;
 // the owners whose newest hit is the oldest are dropped (area_dropped), so a frame's patch cost is bounded by about
 // this many full-screen boxes.
 constexpr float screen_budget = 8.0f;
-// The ship bubble (user decision after Run238 Flight E, 5.1.1 "Placement"): a fighter or corvette owner (shield_bubble)
-// gets a smooth ellipsoid in its frame: centre the hull bounds' centre,
-// half-extents the hull bounds' half-extents x bubble_scale (the hull_children walk of render-node-bounds.md 6.1,
-// weapon_effects_bubble.h), each floored at bubble_floor of the largest and cut to bubble_scale x the object radius; a failed walk
-// takes a sphere of the object radius about the root node (bubble_fallback=). Per pixel the ray meets it twice: the near side draws at full
-// radiance, the far side (seen around the hull's outline, the hull lane hiding what lies behind it) at
-// bubble_far_gain; both add where both draw. A failed walk is retried after bubble_retry_ms of game time.
+// The shield hit's surface (5.1.1 "Placement"; user decision 2026-11-12 on FL 69 A, which removed the runtime hull walk
+// and its box-fitted ellipsoid with the capital hull decal for ships): a ship whose TShips row has a usable offline
+// profile (ShipProfiles, ship_profile_verdict at the hook) draws on that profile's lathe (weapon_effects_lathe.h); the
+// own ship in the cockpit view draws on the eye sphere sized from the same profile; a station (a dock or factory,
+// tier_by_station) keeps the hull decal; anything else forwards native at the hook (no record is the stage's). The lathe's
+// rings are the profile's half-widths x bubble_scale, each floored at bubble_floor of the widest; the eye sphere's pixel
+// program draws its far side at bubble_far_gain.
 constexpr float bubble_scale = 1.15f;
-// The surface of a shield hit (FL 67 A, main session decision 2026-11-12): the ship bubble for a fighter or corvette; the
-// hull decal for a capital-tier owner (patch_capital: M0/M1/M2/M7/TL by its TShips class, every dock and factory, an
-// unknown class in the capital radius band) and for an unknown tier (the stage's tier_of takes it as a capital), as for
-// stations. The box-fitted ellipsoid cannot fit a long capital hull with fins: the Argon Titan's stored extents are
-// per-axis maxima (x 151k at one z-station, y 166k from the fins), its bubble stood about 174k x 194k x 608k and its side
-// hits (|q| 0.22-0.52) moved a median 621 m outward along the radial map; the decal lies on the hull at the contact.
-// Since 2026-11-12 (user decision on FL run 68: capitals get the bubble, the decal was "acceptable but not right") a ship
-// whose TShips row has an offline profile (ShipProfiles, class confirmed) takes the lathe bubble of that profile
-// (weapon_effects_lathe.h) whatever its tier, and no hull walk runs for it; shield_bubble decides only for a ship
-// without one (shield_surface).
-inline bool shield_bubble(std::uint8_t patch_tier, std::uint8_t tier_source) noexcept {
-    return patch_tier < patch_capital && tier_source != tier_by_station;
-}
-// The lathe's tiers (orchestrator decision 2026-11-12, for this flight): capital-tier owners only (patch_capital: the
-// tiers that took the decal), fighters and corvettes keep the Run239 walked ellipsoid (the accepted look). true: every
-// tier with a profile takes the lathe (the all-tier path, for a later flight).
-constexpr bool lathe_all_tiers = false;
-inline bool lathe_tier(std::uint8_t patch_tier) noexcept {
-    return lathe_all_tiers || patch_tier >= patch_capital;
-}
-enum ShieldSurface : std::uint8_t { surface_decal = 0, surface_ellipsoid = 1, surface_lathe = 2 };
-// profile: the owner's row has a usable profile of its class (the stage resolves it only for lathe_tier owners).
-inline ShieldSurface shield_surface(std::uint8_t patch_tier, std::uint8_t tier_source, bool profile) noexcept {
-    return profile && lathe_tier(patch_tier)      ? surface_lathe
-           : shield_bubble(patch_tier, tier_source) ? surface_ellipsoid
-                                                    : surface_decal;
+enum ShieldSurface : std::uint8_t { surface_decal = 0, surface_lathe = 1 };
+// The stage's surface of a stage-owned shield hit's owner: the hull decal for a station, else the lathe (the hook
+// staged a ship only with a usable profile; the stage resolves the profile again and draws nothing without one).
+inline ShieldSurface shield_surface(std::uint8_t tier_source) noexcept {
+    return tier_source == tier_by_station ? surface_decal : surface_lathe;
 }
 constexpr float bubble_far_gain = 0.6f;
 constexpr float bubble_floor = 1.f / 16.f;
-constexpr unsigned bubble_retry_ms = 2000;
-// At most this many hull walk slices per stage call (review F4: a crowded sector's first frame; a slice is at most
-// stage::hull_slice_nodes nodes and about stage::hull_slice_reads reads of one owner's walk); the owners past it draw on
-// the fallback sphere until a later frame walks them (bubble_deferred= in weapon_effects_frame).
-constexpr unsigned bubble_walks_per_frame = 2;
 // The records' game-time life: the ring reaches the rim, then the slowest cell fades out.
 constexpr unsigned patch_lifetime_ms = unsigned(1000.f / ripple_speed + float(fade_ms) * (1.f + 0.5f * stagger)) + 1;
 static_assert(patch_lifetime_ms > 0 && patch_lifetime_ms < 65535, "the record's lifetime is a u16 of game ms");

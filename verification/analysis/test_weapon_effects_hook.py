@@ -63,7 +63,13 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 'death_retires_owner_hits', 'death_nested_stack', 'death_present_keeps_ours_releases_census',
                 'death_forwards_without_boom_programs', 'death_shutdown_restores_both',
                 'death_mode_without_token_leaves_sites', 'death_byte_mismatch_refused', 'death_rollback_restores_both',
-                'death_nested_after_return'}
+                'death_nested_after_return',
+                # the surface at the hook (user decision 2026-11-12 on FL 69 A: the walk removed): a ship with a profile
+                # staged, without a usable one forwarded native and counted per verdict, a station staged
+                'route_fighter_profile_staged', 'route_fighter_no_profile_native', 'route_capital_no_profile_native',
+                'route_class_mismatch_native', 'route_stale_table_native', 'route_no_profiles_loaded_native',
+                'route_axis_scale_native', 'route_station_staged', 'route_other_object_native',
+                'route_native_rows_listed_once'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -187,7 +193,7 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
                 'object_tap_handler_records_ecx_object', 'muzzle_handler_slot_row_pos_orient', 'muzzle_skip_no_callee',
                 'flight_forward_reaches_callee_bullet', 'flight_skip_no_callee',
                 'death_forward_records_other_tag_reason_killer', 'death_skip_no_callee_eax_zero',
-                'fl_bubble_walk_reads_node_body_0x144', 'fixture_stack_margin',
+                'fl_node_body_offset', 'fixture_stack_margin',
                 # the projectile stage's batch submit (bullet-draw-batch.md section 5)
                 'batch_latch_off_forwards_registers_stack_flags', 'batch_other_body_forwards_registers_stack_flags',
                 'batch_enabled_body_skipped_eax1_no_callee', 'batch_rollback_restores_all',
@@ -458,12 +464,6 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         cap = nopop['capital_spread_12hps']
         self.assertGreater(cap['max_region_cells'], 128)                          # the map overflowed: spill draws
         self.assertGreater(cap['spills'], 0)
-        cv = nopop['corvette_spread_12hps']                                        # FL 67 A F3: the bubble's spills
-        self.assertEqual((cv['max_bubbles'], cv['popped_pixels'], cv['cells_dropped'], cv['dropped']), (1, 0, 0, 0))
-        self.assertLessEqual(cv['excess'], 0.0)
-        self.assertGreaterEqual(cv['max_live_hits'], 30)
-        self.assertGreater(cv['max_region_cells'], 128)
-        self.assertGreater(cv['spills'], 0)
         witness = nopop['capital_spread_one_draw_witness']                         # one draw per region: evictions
         self.assertGreater(witness['cells_dropped'], 0)
         self.assertIn('popped_pixels', witness)
@@ -478,68 +478,30 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
                           'one_capital_64_hits_lathe', 'sixteen_capitals_16_hits', 'sixteen_capitals_16_hits_lathe',
                           'station_flight_b_cluster_64_hits'])
         cpu = {x['case']: x for x in m['stage_cpu']}
-        for x in m['stage_cpu']:  # FL 67 A: capitals without a profile take the decal; with one the lathe (no walk)
-            self.assertEqual((x['bubbles'], x['walks']), (0, 0), x['case'])
+        for x in m['stage_cpu']:  # the decal rows: stations' hits; the _lathe rows: ships with the Titan's profile
             self.assertEqual(x['lathes'], x['owners'] if x['case'].endswith('_lathe') else 0, x['case'])
+            self.assertEqual(x['no_profile'], 0, x['case'])
+            self.assertGreater(x['patches'], 0, x['case'])
         self.assertLessEqual(cpu['sixteen_capitals_16_hits_lathe']['mean_us'], cpu['sixteen_capitals_16_hits']['mean_us'])
-        # The lathe bubble (2026-11-12): the Titan profile's units 1:1 with the walk, its side hits on the shell far
-        # nearer the contact than the walk ellipsoid's (the FL 67 witness), and the GPU draw where the CPU maps it
+        # The lathe bubble (2026-11-12): the Titan profile's units 1:1 with the FL 67 walk's measured box, its side hits
+        # on the shell far nearer the contact than that box's ellipsoid's (the FL 67 witness), and the GPU draw where the
+        # CPU maps it
         lathe = {x['case']: x for x in m['lathe']}
         self.assertLess(lathe['placement']['lathe_median_m'] * 4, lathe['placement']['walk_median_m'])
         self.assertLessEqual(lathe['gpu_top_lathe']['sky_gap_max_m'], lathe['gpu_summary']['hug_allowed_m'])
         self.assertGreater(lathe['gpu_top_ellipsoid']['sky_gap_max_m'], lathe['gpu_summary']['hug_allowed_m'])
-        # The ship bubble (user decision after Run238 Flight E): every ship case on its bubble from the hull walk, the lit
-        # near side's centroid within a cell of the hit's bubble point, nothing the twin hides, nothing past the
-        # footprint (not on the tail), the bubble near the hit covered, the lit count of the same order for every
-        # approach direction; the station and (FL 67 A) a capital ship keep the hull decal (nothing on sky, no walk); dir
-        # unused (the 42-degree bolt)
+        # Placement (user decision 2026-11-12 on FL 69 A: the walk removed): the station keeps the hull decal (nothing on
+        # sky, nothing past the footprint, covered, the centroid within a cell); a capital ship without a profile draws
+        # nothing (the hook forwards it native)
         place = {x['case']: x for x in m['placement']}
-        for case in ('narrow_mid_flank', 'aft_flank', 'y_top_narrow', 'y_bottom_narrow', 'flat_flank', 'y_top_flat',
-                     'y_bottom_flat', 'y_top_flat_42deg', 'station_flight_b_0p68R',
-                     'y_top_flat_offcentre',  # review F1: the hull off the owner's origin lights
-                     'capital_titan_flank'):
-            x = place[case]
-            hull = case.startswith(('station', 'capital'))
-            self.assertEqual((x['surface'], x['bubbles']), ('hull', 0) if hull else ('bubble', 1), case)
-            if hull:
-                self.assertEqual((x['sky_lit'], x['walks']), (0, 0), case)
-            if case.startswith('station'):
-                self.assertEqual(x['outside_lit'], 0, case)
-            self.assertLessEqual(x['off_bubble_lit'] * 200, x['lit_pixels'], case)
-            self.assertLessEqual(x['outside_lit'] * 100, x['lit_pixels'], case)
-            self.assertGreaterEqual(x['coverage'], 0.9, case)
-            self.assertLessEqual(x['centroid_error_cells'], 1.0, case)
-            self.assertGreaterEqual(x['lit_ratio'], 1.0 / 3.0, case)
-            self.assertLessEqual(x['lit_ratio'], 3.0, case)
-        self.assertEqual(place['y_top_flat_42deg']['lit_pixels'], place['y_top_flat']['lit_pixels'])  # dir unused
-        # The bubble's sides: the chase camera's nose hit draws on the far side around the outline, the hull hiding most
-        # of it (the hidden share measured), nothing the twin hides; the eye inside the bubble draws the far side only, the
-        # default image at bubble_far_gain of it
-        sides = {(x['case'], x['side']): x for x in m['bubble_side']}
-        chase = sides[('chase_nose_from_behind', 'far')]                       # review F3: hundreds of far pixels,
-        self.assertEqual(sides[('chase_nose_from_behind', 'near')]['lit_pixels'], 0)  # the near side unlit
-        self.assertGreaterEqual(chase['lit_pixels'], 500)
-        self.assertGreaterEqual(sides[('chase_nose_from_behind', 'both')]['cap_nose_m'], 1.2)  # the cap past the nose
-        aft = place['aft_flank']                                                  # 1.15 x radius: the cap stays
-        self.assertGreaterEqual((aft['cap_nose_m'], aft['cap_tail_m']), (5.0, 5.0))
-        self.assertGreater(chase['hidden_share'], 0.0)
-        self.assertLessEqual(chase['hidden_lit'] * 200, chase['lit_pixels'])
-        self.assertLessEqual(chase['outside_lit'] * 100, chase['lit_pixels'])
-        ap = m['axis_plane'][0]                                                   # review F2: no flip, no double light
-        self.assertEqual((ap['draws_plus'], ap['draws_minus']), (ap['draws_zero'], ap['draws_zero']))
-        for k in ('lit', 'peak', 'sum'):
-            for side in ('plus', 'minus'):
-                self.assertAlmostEqual(ap['%s_%s' % (k, side)], ap['%s_zero' % k], delta=2e-3 * max(1.0, ap['%s_zero' % k]))
-        self.assertEqual(sides[('eye_inside_bubble', 'near')]['lit_pixels'], 0)
-        inside = sides[('eye_inside_bubble', 'far')]
-        self.assertGreater(inside['lit_pixels'], 100)
-        self.assertGreaterEqual(inside['coverage'], 0.9)
-        self.assertAlmostEqual(sides[('eye_inside_bubble', 'both')]['ratio'], 0.6, delta=0.01)
-        walk = m['hull_walk'][0]                                                 # 127 parts within the budget, cached
-        self.assertEqual((walk['ok'], walk['parts'], walk['nodes'], walk['bubble_fallback']), (1, 127, 127, 0))
-        self.assertEqual(walk['engine_memory_ok'], 1)                             # review F4: the production reader
-        self.assertGreater(walk['reads'], 127)
-        self.assertGreaterEqual(walk['cache_hits'], 199)
+        st = place['station_flight_b_0p68R']
+        self.assertEqual((st['surface'], st['lathes'], st['sky_lit'], st['outside_lit']), ('hull', 0, 0, 0))
+        self.assertGreaterEqual(st['coverage'], 0.9)
+        self.assertLessEqual(st['centroid_error_cells'], 1.0)
+        cap = place['capital_titan_flank']
+        self.assertEqual((cap['surface'], cap['patches'], cap['lit_pixels'], cap['lathes'], cap['no_profile']),
+                         ('native', 0, 0, 0, 1))
+        self.assertEqual(sorted(place), ['capital_titan_flank', 'station_flight_b_0p68R'])
         normals = {x['case']: x for x in m['normals']}                             # ddx / ddy against a neighbourhood
         for x in normals.values():
             self.assertLess(x['ddx_mean_deg'], 1.0)

@@ -4181,3 +4181,53 @@ stretch on the long columns, compress on the short ones); on rings narrower than
 match the lattice only approximately (the period is not whole there), and the nose tip remains a small pole; a hit
 duplicated across the seam takes a ring-hit slot; the table must be regenerated (schema 3) and installed for any ship
 to take the lathe.
+
+## The walk removed: the profile lathe for every ship, no profile native (2026-11-12, FL 69 A decision)
+
+User decision on FL 69 A (docs/architecture/weapon-effects.md 5.1.1, "Placement decision 2026-11-12"): every ship
+draws its shield hit on the lathe of its offline profile; a ship without a usable one keeps the game's native effect;
+stations keep the hull decal; the own ship in the cockpit keeps the eye sphere sized from its profile. Built on
+`reshade` 89c534a1e, not committed, not installed, not flown.
+
+**Change.** The runtime hull walk (`weapon_effects_bubble.h`: guards, slicing, the parked-walk age, `BubbleCache`,
+`hull_failure`/`hull_fit` rows, the fallback sphere, `bubble_from_box`; 846 to 122 lines, what stays is the eye
+sphere's `Bubble`, `bubble_point`, `face_sheet`, `bubble_box`), its body cache slot (`Globals::body_cache_slot`,
+`layout::body_cache_root` and the walk-only node offsets), `core::shield_bubble`, `core::lathe_all_tiers`,
+`core::lathe_tier`, `bubble_retry_ms`, `bubble_walks_per_frame`, the `weapon_bubble_walk` / `weapon_bubble_fit` /
+`weapon_bubble_extent` rows and the counters `bubbles`, `bubble_fallback`, `bubble_walks`, `bubble_walk_failures`,
+`bubble_held`, `bubble_deferred`, `bubble_clamped`, `bubble_partial`, `cells_key_dropped` are gone (production sources
+245 lines added, 1000 removed). The impact hook decides native per staged shield hit (`core::ship_profile_verdict`: at
+most seven plain loads, no call; verdicts `no_profile`, `stale_table`, `mismatch`, `unreadable`, `scale`; a non-station
+non-ship object `others_native`); `weapon_effects_frame` carries `ships_native=` and one field per verdict; one
+`weapon_ship_profile_missing` row per session lists the first eight rows. The stage routes by the station source only
+(`core::shield_surface`); a ship the stage cannot resolve again draws nothing (the `lathe_*` refusals).
+
+**Native fixture** [M] (`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
+verification/probe/run_weapon_effects.py --host native`, quiet host, display held, second run): D3D 147 checks PASS,
+AP hook 142 PASS, FL hook 74 PASS. The first run failed `flash_budget_combined_512_bolts_64_flashes_64_pulses` (the known
+first-run flake: CPU 596 us against 123) and two AP hook checks whose helper required a staged hit for an asteroid and
+a mismatched class (now `hit_any`: the record keeps its shield fraction and tier when forwarded). Removed: the walked
+ellipsoid's placement, axis-plane, two-sides, capital walk, Titan scale, forced failure and walk cost cases and the
+corvette spill run (21 D3D checks, `fl_bubble_walk_reads_node_body_0x144`); added: the routing at the hook (10 AP
+checks: a fighter with a profile staged; without, a capital without, a class mismatch, a stale table, no profiles, an
+axis scale 0 and a non-station object forwarded native and counted once; a station staged; native rows listed once),
+the stage routing (13 routes: every tier with a profile the lathe, every refusal nothing drawn and counted, the station
+the decal, the cockpit eye sphere) and the capital without a profile drawing nothing. The cockpit eye-sphere cases run
+on a box profile (radius 150 = the profile's smallest half-extent x 1.15); the decal cases use the station source.
+Names: [`check_names.py`](../../verification/results/weapon-effects-nowalk/check_names.py).
+
+**Cost** [M], best / mean us of 200 builds, before (the record at 89c534a1e) and after: one capital 64 hits decal 60.3 /
+71.4 → 62.1 / 72.5, lathe 18.5 / 19.8 → 18.8 / 19.7; sixteen capitals decal 174.7 / 195.0 → 172.0 / 197.5, lathe 85.4 /
+101.3 → 84.0 / 95.1; 12 hits/s decal 35.2 / 40.4 → 34.7 / 37.5, lathe 10.1 / 10.4 → 9.9 / 11.1; station cluster 39.0 /
+43.7 → 38.9 / 48.4 (run-to-run noise; the walk never ran on these rows). Flash budget CPU 8.4 → 8.9 us, combined 512
+bolts + 64 flashes 123.2 → 123.6 us (GPU 40.5 → 39.8); projectile 512 bolts CPU 92.1 → 88.1 us, worst 117.2 → 116.7.
+The walk's own cost leaves the frame (the base record: 127 parts 8.3 us, a 1024-node walk 72.8 us, 106 us through
+`engine_memory::read`, a slice 26.2 us). The hook's event cost 17.8 → 17.2 us per 50 events (full ring 56.0 → 55.2); the
+AP handler 1236 → 1383 instructions, frame 200 bytes unchanged (FL 204). Rows:
+[`cost_rows.py`](../../verification/results/weapon-effects-nowalk/cost_rows.py).
+
+Builds: FL `build-nowalk-fl` 0 warnings (d3d9.dll sha256 prefix `5c16ec9afaa4ecf0`), `check_no_x87` FL PASS (1085
+functions), AP `build-nowalk-ap` 0 warnings; host `test_weapon_effects_core`, `_hook`, `_table`, `_launch` 59 OK.
+
+**Open.** The installed AP table (`C:\X3\x3m\weapon_effects.json`) is schema 2 with no profiles [M]: with this build every
+AP ship's shield hit stays native until AP is regenerated with schema 3 (FL: schema 3, 403 profiles). Not flown.

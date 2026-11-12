@@ -14,14 +14,11 @@
 // its centre; the patch fading monotonically to zero at the record's lifetime and one cell's own fade duration against
 // its hash; the colour bands at shield 0.9 / 0.5 / 0.2; a repeated hit re-lights (the newest clock, not a sum); a second
 // hit on the next cell resets only the shared cells and no cell is drawn twice; through the production builder the grid
-// fixed on a moved and rotated owner, the placement on hull lanes (a narrow 1:1:6 hull's flank, aft flank, top and
-// bottom, a flat 6:1:4 fighter's flank, top, bottom and top from 42 degrees down, the Flight B station at 0.68 R, the
-// far side hidden by its own hull, the eye inside the bounding sphere) with the normal's error (ddx / ddy against a
-// 4-neighbourhood); since the ship bubble (5.1.1 "Placement", user decision after Run238 Flight E) the ships' cases
-// draw on their bubble from the production hull walk over a fake body cache (stage_hull) and are measured against the
-// bubble's CPU twin (the hit's bubble point B, the near side; the chase camera's nose hit on the far side around the
-// outline with the hull hiding the rest; the eye inside the bubble drawing its far side only), the station keeps the
-// hull decal; 12 hits per second without a pop on a fighter's and a capital's flat face (the capital's cells
+// fixed on a moved and rotated owner, the placement on hull lanes (the Flight B station at 0.68 R on the hull decal; a
+// capital ship without a profile draws nothing) with the normal's error (ddx / ddy against a 4-neighbourhood); the
+// ships draw on the lathe of their offline profile (the lathe section; the runtime hull walk and its ellipsoid cases
+// were removed on 2026-11-12, user decision FL 69 A), the own ship in the cockpit on its eye sphere sized from the
+// profile; 12 hits per second without a pop on a fighter's and a capital's flat face (the capital's cells
 // overflow into spill draws) and on a sphere's front; with one draw per face the evicted cells' pops are the recorded
 // witness), two hits across a 45-degree face edge never brighter than one hit (the triplanar shares), the stage's CPU cost (with the Flight B station cluster); the decal
 // fallback (an owner without an ellipsoid) on a hull and 0 over sky; the game-time law at SETA 6 measured; the marker
@@ -394,12 +391,11 @@ float centre_luma(const std::vector<float>& l) {
 }
 // The production stage builder's input: one owner in the fixture's own memory (object block and node block), read
 // through a reader bounded to those two blocks (engine_memory::read's contract: false outside readable memory).
-alignas(16) unsigned char fake_obj[0x100], fake_node[0x200], fake_hull[0xa0000]; // fake_hull: up to 1046 parts
+alignas(16) unsigned char fake_obj[0x100], fake_node[0x200];
 bool fake_read(std::uintptr_t a, void* out, std::size_t n) {
-    for (const unsigned char* base : {static_cast<const unsigned char*>(fake_obj), static_cast<const unsigned char*>(fake_node),
-                                      static_cast<const unsigned char*>(fake_hull)}) {
+    for (const unsigned char* base : {static_cast<const unsigned char*>(fake_obj), static_cast<const unsigned char*>(fake_node)}) {
         const std::uintptr_t b = reinterpret_cast<std::uintptr_t>(base);
-        const std::size_t size = base == fake_obj ? sizeof fake_obj : base == fake_node ? sizeof fake_node : sizeof fake_hull;
+        const std::size_t size = base == fake_obj ? sizeof fake_obj : sizeof fake_node;
         if (a >= b && n <= size && a - b <= size - n) {
             std::memcpy(out, reinterpret_cast<const void*>(a), n);
             return true;
@@ -433,8 +429,9 @@ HullLane staged_hull(const double ext[3], const double offset[3] = nullptr) {
 // A live owner at view (0, 0, z) with radius r (view units; identity camera, identity rows), and the ring holding one
 // stage-owned shield hit on its front (t0 game ms, the header's patch lifetime, a fighter, full shields).
 wc::Ring stage_ring;
-// The staged records' TierSource: radius (a ship's bubble) unless a case sets the station's (the hull decal).
-std::uint8_t stage_tier_source = wc::tier_by_radius;
+// The staged records' TierSource: the station's (the hull decal) unless a case stages a ship (the lathe of its profile:
+// stage_lathe_type; a ship without one draws nothing since the walk's removal, 2026-11-12).
+std::uint8_t stage_tier_source = wc::tier_by_station;
 void stage_owner(float z, float r, std::uint32_t t0) {
     std::memset(fake_obj, 0, sizeof fake_obj);
     std::memset(fake_node, 0, sizeof fake_node);
@@ -510,127 +507,6 @@ void add_stage_hit(std::uint32_t t0, const std::int32_t pos[3], std::uint8_t tie
     std::memcpy(&r, fake_obj + wc::layout::obj_radius, 4);
     e->radius = r;
 }
-// The ship bubble's inputs (5.1.1 "Placement"): the staged owner's hull as parts in a body cache the production walk
-// reads (fake_hull: the slot, the cache root, its hash, one bucket, the chain entry, the model, its LOD array and record,
-// then the part nodes, 0x270 each), so stage::build's bubble is the hull bounds x bubble_scale (hull_tuning points the
-// walk at it); without stage_hull the staged root has no children and the walk falls back to the radius sphere.
-constexpr unsigned hull_part_at = 0x400, hull_part_bytes = 0x270, hull_parts_max = (sizeof fake_hull - 0x400) / 0x270;
-ws::Tuning hull_tuning() {
-    ws::Tuning t{};
-    t.body_cache_root = addr(fake_hull);
-    return t;
-}
-// The hull: `parts` part nodes (body 7, one model whose single LOD record has the normalised extents of ext), the first
-// at offset off (view units, owner frame), the others stepped along z by 2 ext_z / parts (the walk's budget case);
-// half-extents ext (view units).
-void stage_hull(const double ext[3], const double off[3] = nullptr, unsigned parts = 1) {
-    std::memset(fake_hull, 0, sizeof fake_hull);
-    const std::uint32_t h = addr(fake_hull);
-    put32(fake_hull, 0x00, h + 0x10);        // the slot: the cache root
-    put32(fake_hull, 0x10 + 0x14, h + 0x40); // its hash
-    put32(fake_hull, 0x40, h + 0x80);        // buckets
-    put32(fake_hull, 0x44, 1);               // one bucket
-    put32(fake_hull, 0x80, h + 0xc0);        // the chain: one entry, key 7 + 1
-    put32(fake_hull, 0xc0 + 4, 8);
-    put32(fake_hull, 0xc0 + 8, h + 0x100);   // the model
-    put32(fake_hull, 0x100 + 0x0c, h + 0x140);
-    const std::uint16_t lods = 1;
-    std::memcpy(fake_hull + 0x100 + 0x10, &lods, 2);
-    put32(fake_hull, 0x140, h + 0x180);
-    double e[3], m = 0;
-    for (unsigned k = 0; k < 3; ++k) {
-        e[k] = ext[k] / double(wc::world_scale);
-        m = std::max(m, e[k]);
-    }
-    const std::int32_t s = std::int32_t(m + 0.5);
-    for (unsigned k = 0; k < 3; ++k) put32(fake_hull, 0x180 + 0x20 + 4 * k, std::uint32_t(std::lround(65536.0 * e[k] / m)));
-    parts = std::min(std::max(parts, 1u), hull_parts_max);
-    for (unsigned j = 0; j < parts; ++j) {
-        unsigned char* c = fake_hull + hull_part_at + hull_part_bytes * j;
-        const std::uint32_t self = h + hull_part_at + hull_part_bytes * j;
-        put32(c, 0, j + 1 < parts ? self + hull_part_bytes : addr(fake_node) + wc::layout::node_sentinel);
-        put32(c, wc::layout::node_children, self + wc::layout::node_sentinel);
-        double o[3] = {off ? off[0] : 0.0, off ? off[1] : 0.0, off ? off[2] : 0.0};
-        if (parts > 1) o[2] += ext[2] * (2.0 * (double(j) + 0.5) / double(parts) - 1.0);
-        for (unsigned k = 0; k < 3; ++k)
-            put32(c, wc::layout::node_offset + 4 * k, std::uint32_t(std::int32_t(std::lround(o[k] / double(wc::world_scale)))));
-        for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_basis + 0x10 * k + 4 * k, 0x10000);
-        put32(c, wc::layout::node_scale, std::uint32_t(s));
-        for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_axis_scale + 4 * k, 0x10000);
-        put32(c, wc::layout::node_flags, 0x1000000);
-        put32(c, wc::layout::node_body, 7);
-    }
-    put32(fake_node, wc::layout::node_children, h + hull_part_at);
-    put32(fake_node, wc::layout::node_sentinel, 0);
-    put32(fake_node, wc::layout::node_flags, 0);
-    for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
-}
-// A capital's hull tree (FL run 65): n[0] level-1 parts under the staged root, n[1] under each, n[2] under each of
-// those (n[2] = 0: two levels), every node a part of body 7 whose one model has `lods` LOD records (1..16) of the
-// normalised extents ext_n (65536 = 1.0; record r at ext_n >> min(r, 3)), found at the end of a hash chain of `chain`
-// entries (1..64; the others other keys); a level-L node's scale scale[L] and its offset in its parent's frame off(L,
-// index in its list) (engine units). The model, its records and the chain sit in fake_hull's last 0x1000 bytes; each
-// list in consecutive part slots; the node count (at most tree_parts_max).
-constexpr unsigned tree_tail = sizeof fake_hull - 0x1000, tree_parts_max = (tree_tail - hull_part_at) / hull_part_bytes;
-template <class Offset>
-unsigned stage_tree(const unsigned n[3], const std::int32_t ext_n[3], const std::int32_t scale[3], Offset off,
-                    unsigned lods = 3, unsigned chain = 1) {
-    std::memset(fake_hull, 0, sizeof fake_hull);
-    const std::uint32_t h = addr(fake_hull), t = h + tree_tail;
-    lods = std::min(std::max(lods, 1u), 16u);
-    chain = std::min(std::max(chain, 1u), 64u);
-    put32(fake_hull, 0x00, h + 0x10);
-    put32(fake_hull, 0x10 + 0x14, h + 0x40);
-    put32(fake_hull, 0x40, h + 0x80);
-    put32(fake_hull, 0x44, 1);
-    put32(fake_hull, 0x80, t + 0x400); // the chain: entry i at tail + 0x400 + 0x10 i, the model's key (7 + 1) last
-    for (unsigned i = 0; i < chain; ++i) {
-        unsigned char* e = fake_hull + tree_tail + 0x400 + 0x10 * i;
-        put32(e, 0, i + 1 < chain ? t + 0x400 + 0x10 * (i + 1) : 0);
-        put32(e, 4, i + 1 < chain ? 1000 + i : 8);
-        put32(e, 8, t);
-    }
-    put32(fake_hull, tree_tail + 0x0c, t + 0x40); // the model: its LOD array at tail + 0x40, records at tail + 0x100
-    const std::uint16_t count = std::uint16_t(lods);
-    std::memcpy(fake_hull + tree_tail + 0x10, &count, 2);
-    for (unsigned r = 0; r < lods; ++r) {
-        put32(fake_hull, tree_tail + 0x40 + 4 * r, t + 0x100 + 0x30 * r);
-        for (unsigned k = 0; k < 3; ++k)
-            put32(fake_hull, tree_tail + 0x100 + 0x30 * r + 0x20 + 4 * k, std::uint32_t(ext_n[k] >> std::min(r, 3u)));
-    }
-    unsigned used = 0;
-    auto slot = [&](unsigned j) { return h + hull_part_at + hull_part_bytes * j; };
-    // one list of `count` nodes at `level` under the node at `parent` (its block's children and sentinel)
-    auto list = [&](auto&& self, std::uint32_t parent, unsigned level) -> void {
-        const unsigned count = level < 3 ? n[level] : 0;
-        unsigned char* pb = parent == addr(fake_node) ? fake_node : fake_hull + (parent - h);
-        if (!count || used + count > tree_parts_max) {
-            put32(pb, wc::layout::node_children, parent + wc::layout::node_sentinel);
-            return;
-        }
-        const unsigned first = used;
-        used += count;
-        put32(pb, wc::layout::node_children, slot(first));
-        put32(pb, wc::layout::node_sentinel, 0);
-        for (unsigned j = 0; j < count; ++j) {
-            unsigned char* c = fake_hull + hull_part_at + hull_part_bytes * (first + j);
-            put32(c, 0, j + 1 < count ? slot(first + j + 1) : parent + wc::layout::node_sentinel);
-            std::int32_t o[3];
-            off(level, j, o);
-            for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_offset + 4 * k, std::uint32_t(o[k]));
-            for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_basis + 0x10 * k + 4 * k, 0x10000);
-            put32(c, wc::layout::node_scale, std::uint32_t(scale[level]));
-            for (unsigned k = 0; k < 3; ++k) put32(c, wc::layout::node_axis_scale + 4 * k, 0x10000);
-            put32(c, wc::layout::node_flags, 0x1000000);
-            put32(c, wc::layout::node_body, 7);
-        }
-        for (unsigned j = 0; j < count; ++j) self(self, slot(first + j), level + 1);
-    };
-    list(list, addr(fake_node), 0);
-    put32(fake_node, wc::layout::node_flags, 0);
-    for (unsigned k = 0; k < 3; ++k) put32(fake_node, wc::layout::node_axis_scale + 4 * k, 0x10000);
-    return used;
-}
 // ---- the lathe bubble (5.1.1 "Placement", 2026-11-12; src/proxy/weapon_effects_lathe.h)
 // The Argon Titan's offline profile (FL TShips row 11, ships\argon\argon_M2_scene, OBJ_SHIP_M2 = 2022): the derived
 // figures of tools/effects/ship_profiles.py (verification/results/ship-profiles/titan_profile.json), scene units =
@@ -664,7 +540,7 @@ wc::ShipProfile titan_profile() {
     return p;
 }
 // The profiles block (one entry, the Titan) and a TShips type table of twelve rows with its slots after it (table
-// pointer, count), read through lathe_read beside the fake owner and hull.
+// pointer, count), read through lathe_read beside the fake owner.
 wc::ShipProfiles lathe_profiles;
 constexpr unsigned type_rows = 12, type_slots_at = type_rows * wc::layout::type_stride;
 alignas(16) unsigned char fake_types[type_slots_at + 16];
@@ -695,7 +571,7 @@ void stage_lathe_type(std::int32_t class_id = titan_class, bool profile = true) 
     }
 }
 ws::Tuning lathe_tuning() {
-    ws::Tuning t = hull_tuning();
+    ws::Tuning t{};
     t.profiles = &lathe_profiles;
     t.ship_table_slot = addr(fake_types) + type_slots_at;
     t.ship_count_slot = addr(fake_types) + type_slots_at + 4;
@@ -852,136 +728,25 @@ void dump_shield(const char* name, const std::vector<float>& rgb, const std::vec
 // The lathe meshes the fixture's builds point into (static: the timing section draws the lathe section's patches), and
 // the Titan's two-hit draws for the timing rows (0 the hull decal without a profile, 1 the lathe) with its hull lane.
 ws::LatheCache fixture_lathes;
+// The staged owner as a ship whose profile is a box of half-extents ext (view units) about its origin (TShips row 11, the
+// Titan's class, unit axis scales): the eye sphere's cases (its radius the smallest half-extent x bubble_scale). The
+// lathe cache is cleared (its row-11 mesh would answer for the previous profile).
+void stage_box_profile(const double ext[3]) {
+    stage_lathe_type();
+    wc::ShipProfile& p = lathe_profiles.entries[0];
+    const double to_engine = 1.0 / double(wc::world_scale);
+    p.z0 = float(-ext[2] * to_engine);
+    p.z1 = float(ext[2] * to_engine);
+    for (auto& slice : p.slice) {
+        slice[0] = slice[1] = 0.f;
+        slice[2] = float(ext[0] * to_engine);
+        slice[3] = float(ext[1] * to_engine);
+    }
+    fixture_lathes.clear();
+}
 rr::WeaponPatch titan_timing[2][wc::max_patches];
 unsigned titan_timing_count[2] = {0, 0};
 LatheHullLane titan_timing_lane;
-// The bubble's CPU twin in double from a bubble draw: the owner's centre and axes in view, the bubble's centre and
-// half-extents (owner frame).
-struct BubbleTwin {
-    double centre[3], axes[3][3], c[3], e[3];
-};
-BubbleTwin bubble_twin(const rr::WeaponPatch& p) {
-    BubbleTwin b{};
-    for (unsigned k = 0; k < 3; ++k) {
-        b.centre[k] = p.centre[k];
-        b.c[k] = p.bubble_c[k];
-        b.e[k] = p.bubble_e[k];
-        for (unsigned j = 0; j < 3; ++j) b.axes[k][j] = p.axes[k][j];
-    }
-    return b;
-}
-// The production mapping in double: the hull point p (owner frame) onto the bubble, B = c + e q / |q|.
-void bubble_image(const BubbleTwin& b, const double p[3], double out[3], double q[3]) {
-    double n = 0;
-    for (unsigned k = 0; k < 3; ++k) {
-        q[k] = (p[k] - b.c[k]) / b.e[k];
-        n += q[k] * q[k];
-    }
-    n = std::sqrt(n);
-    for (unsigned k = 0; k < 3; ++k) {
-        q[k] /= n;
-        out[k] = b.c[k] + b.e[k] * q[k];
-    }
-}
-// The bubble's near and far points under pixel (x, y) (owner frame) and their view z; false where the ray misses it.
-bool bubble_roots(const Target& t, const BubbleTwin& b, unsigned x, unsigned y, double pn[3], double pf[3], double* tn,
-                  double* tf) {
-    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
-    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
-    double od[3], dd[3], A = 0, Bq = 0;
-    for (unsigned k = 0; k < 3; ++k) {
-        const double* L = b.axes[k];
-        od[k] = (-(b.centre[0] * L[0] + b.centre[1] * L[1] + b.centre[2] * L[2]) - b.c[k]) / b.e[k];
-        dd[k] = (d[0] * L[0] + d[1] * L[1] + d[2] * L[2]) / b.e[k];
-        A += dd[k] * dd[k];
-        Bq += od[k] * dd[k];
-    }
-    const double tm = -Bq / A;
-    double h2 = 0;
-    for (unsigned k = 0; k < 3; ++k) h2 += (od[k] + tm * dd[k]) * (od[k] + tm * dd[k]);
-    if (!(h2 < 1.0)) return false;
-    const double half = std::sqrt((1.0 - h2) / A);
-    *tn = tm - half;
-    *tf = tm + half;
-    for (unsigned k = 0; k < 3; ++k) {
-        pn[k] = b.c[k] + b.e[k] * (od[k] + *tn * dd[k]);
-        pf[k] = b.c[k] + b.e[k] * (od[k] + *tf * dd[k]);
-    }
-    return true;
-}
-// The hull lane's view depth under pixel (x, y) (hull_point's ray), 1e30 for sky.
-double hull_depth(const Target& t, const HullLane& h, unsigned x, unsigned y) {
-    const double m00 = 1.6, m11 = 1.6 * double(t.w) / double(t.h);
-    const double d[3] = {(2.0 * x / t.w - 1.0) / m00, (1.0 - 2.0 * y / t.h) / m11, 1.0};
-    double A = 0, B = 0, C = -1;
-    for (unsigned k = 0; k < 3; ++k) {
-        const double od = -(h.centre[0] * h.axes[k][0] + h.centre[1] * h.axes[k][1] + h.centre[2] * h.axes[k][2]);
-        const double dd = d[0] * h.axes[k][0] + d[1] * h.axes[k][1] + d[2] * h.axes[k][2];
-        const double w = 1.0 / (h.ext[k] * h.ext[k]);
-        A += dd * dd * w;
-        B += od * dd * w;
-        C += od * od * w;
-    }
-    const double disc = B * B - A * C;
-    if (disc < 0.0) return 1e30;
-    double tt = (-B - std::sqrt(disc)) / A;
-    if (tt <= 0.0) tt = (-B + std::sqrt(disc)) / A;
-    return tt > 0.0 ? tt : 1e30;
-}
-// One side of the bubble against an image (side 0 near, 1 far), the twin deciding each pixel's point on that side and
-// whether it shows (in front of the near plane, nearer than the hull lane): lit pixels, of them over sky (the hull
-// lane), with no visible point on that side (hidden_lit: the GPU drew what the twin hides), farther than sqrt 2 x the
-// extent from B; the points within `core` of B, visible (eligible, covered when lit) or hidden; the luma-weighted
-// centroid's distance from B (view units).
-struct SideMetric {
-    unsigned lit = 0, sky_lit = 0, hidden_lit = 0, outside = 0, eligible = 0, covered = 0, hidden = 0;
-    double centroid = 1e30, luma = 0;
-};
-SideMetric side_metric(const std::vector<float>& l, const BubbleTwin& b, const HullLane* hull, const double B[3],
-                       double extent, double core, int side, double near_z) {
-    SideMetric o;
-    double wsum = 0, cs[3] = {0, 0, 0};
-    for (UINT y = 0; y < g.h; ++y)
-        for (UINT x = 0; x < g.w; ++x) {
-            const double v = l[std::size_t(y) * g.w + x];
-            const bool lit = v > 1e-3;
-            double pn[3], pf[3], tn = 0, tf = 0;
-            const bool hit = bubble_roots(g, b, x, y, pn, pf, &tn, &tf);
-            const double hz = hull ? hull_depth(g, *hull, x, y) : 1e30;
-            const double* p = side ? pf : pn;
-            const double t = side ? tf : tn;
-            const bool visible = hit && t > near_z && t < hz;
-            const double d = hit ? std::sqrt((p[0] - B[0]) * (p[0] - B[0]) + (p[1] - B[1]) * (p[1] - B[1]) +
-                                             (p[2] - B[2]) * (p[2] - B[2]))
-                                 : 1e30;
-            if (lit) {
-                ++o.lit;
-                o.luma += v;
-                o.sky_lit += hz >= 1e29;
-                if (!visible) {
-                    ++o.hidden_lit;
-                } else {
-                    o.outside += d > extent * 1.4142 * 1.01;
-                    wsum += v;
-                    for (unsigned k = 0; k < 3; ++k) cs[k] += v * p[k];
-                }
-            }
-            if (hit && d <= core) {
-                if (visible) {
-                    ++o.eligible;
-                    o.covered += lit;
-                } else {
-                    ++o.hidden;
-                }
-            }
-        }
-    if (wsum > 0) {
-        double e2 = 0;
-        for (unsigned k = 0; k < 3; ++k) e2 += (cs[k] / wsum - B[k]) * (cs[k] / wsum - B[k]);
-        o.centroid = std::sqrt(e2);
-    }
-    return o;
-}
 // Bubble draws of hits on an owner whose +z face looks at the camera (make_patch's frame and centre), its bubble a sphere
 // of the scene's surface radius about its centre: each hit at the plane point (qx, qy) of depth S maps radially onto
 // it, through the production stage::fill_bubble (the builder's bubble draws). Returns the draws written.
@@ -3630,25 +3395,15 @@ int main(int argc, char** argv) {
                     unsigned(same), unsigned(moved));
         report("grid_fixed_on_owner", same && moved, "");
     }
-    // Placement (5.1.1 "Placement", user decision after Run238 Flight E): through the production builder with the
-    // identity camera, one hit 0.5 s old (every footprint cell lit), the lane holding the case's hull (an ellipsoid of
-    // the owner's frame: the modelled half-extents, else a sphere through the hit point). Ships draw on their bubble:
-    // the staged owner's hull is one part in the body cache the production walk reads (stage_hull), so the bubble is the
-    // hull's half-extents x bubble_scale about its centre and the hit maps radially onto it (B). Per ship case the image
-    // with the near side only (bubble_far_gain 0): the lit pixels whose near point (the bubble twin) lies hidden or off the
-    // bubble (must be under 0.5 %), farther than sqrt 2 x the extent from B (the plane and the axis each within it; at
-    // most 1 %: not on the tail), the coverage of the visible bubble within half the reach of B (at least 0.9), the
-    // luma-weighted centroid of the lit near points against B (within one cell), the lit count against its hull's
-    // reference (a third to three times), and the lit pixels over sky (the bubble reaches past the hull's outline:
-    // recorded). Narrow: a 100 m corvette (1:1:6, R its 50 m half-length) on its flank 9 % aft, its flank, top and
-    // bottom 40 % aft; flat: a fighter of half-extents 6:1:4 (12 x 2 x 8 m) on its flank, top and bottom 0.3 of each
-    // half-extent off centre, and its top hit by a bolt 42 degrees below its plane (the bolt's direction plays no part:
-    // the face-on count); the top with the hull centred 2 cells below the owner's origin. The station keeps the hull
-    // decal (tier_by_station): the Flight B station (R 1304 m) at its recorded contact point (0.676 R), on the hull lane
-    // (nothing on sky, nothing past the footprint). So does a capital-tier ship (FL 67 A, 2026-11-12: its box-fitted
-    // bubble pushed the Titan's side hits a median 621 m along z): the Titan's hull (radius 545751, half-extents 151433 x
-    // 166374 x 528422 engine units, an ellipsoid lane) hit on its flank 30 % aft (|q| 0.87 on its bubble), drawn on the hull
-    // at the contact point, no bubble, no hull walk. The chase camera and the eye inside the bubble follow.
+    // Placement (5.1.1 "Placement"): through the production builder with the identity camera, one hit 0.5 s old (every
+    // footprint cell lit), the lane holding the case's hull (an ellipsoid of the owner's frame: the modelled
+    // half-extents, else a sphere through the hit point). The station keeps the hull decal (tier_by_station): the Flight
+    // B station (R 1304 m) at its recorded contact point (0.676 R), on the hull lane (nothing on sky, nothing past the
+    // footprint), the lit near points' centroid within a cell of the contact, the covered share near it. A ship without an
+    // offline profile draws nothing (user decision 2026-11-12 on FL 69 A: the hook forwards its hit native): the Titan's
+    // hull (radius 545751, half-extents 151433 x 166374 x 528422 engine units) hit on its flank 30 % aft, no profile. The
+    // walked ellipsoid's ship cases (narrow and flat hulls, the off-centre origin, the 42-degree bolt) left with the walk;
+    // their hulls stay in the table for the NORMALS rows.
     {
         struct Placement {
             const char* name;
@@ -3669,7 +3424,6 @@ int main(int argc, char** argv) {
         const float a6 = 250.f / 6.f;
         const double s84 = std::sqrt(1.0 - 0.16), s82 = std::sqrt(1.0 - 0.18);
         constexpr unsigned count = 11, station = 8, capital = 10;
-        const auto hull_case = [&](unsigned i) { return i == station || i == capital; }; // the hull decal's cases
         Placement cases[count] = {
             {"narrow_mid_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * std::sqrt(1.0 - 0.09 * 0.09)), 0, eng(0.09 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
             {"aft_flank", wc::patch_corvette, 250.f, 600.f, {eng(a6 * s84), 0, eng(0.4 * 250.0)}, {}, {a6, a6, 250.f}, {-127, 0, 0}, 0},
@@ -3691,15 +3445,11 @@ int main(int argc, char** argv) {
         const std::int32_t (*rows_of[count])[3] = {side, side, top, bottom, side, top, bottom, top, facing, top, side};
         for (unsigned k = 0; k < count; ++k) std::memcpy(cases[k].rows, rows_of[k], sizeof side);
         struct Result {
-            unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0, bubbles = 0, off_bubble = 0;
-            unsigned walks = 0; // hull walks the builder ran (no cache: a bubble owner walks every call)
-            double centroid_cells = 1e30, lit_ratio = 0, b_shift_cells = 0;
-            double cap_lo = 0, cap_hi = 0; // the bubble past the hull's tail and nose along z (view units; > 0: past)
+            unsigned lit = 0, sky_lit = 0, outside = 0, eligible = 0, covered = 0, patches = 0, lathes = 0, no_profile = 0;
+            double centroid_cells = 1e30, lit_ratio = 0;
             bool drew = false;
         } res[count];
-        rr::WeaponLook near_only = rr::default_weapon_look();
-        near_only.bubble_far_gain = 0.f;
-        for (unsigned i = 0; i < count; ++i) {
+        for (unsigned i : {station, capital}) {
             const Placement& c = cases[i];
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
@@ -3723,37 +3473,16 @@ int main(int argc, char** argv) {
             const double ext[3] = {c.ext[0] > 0.f ? double(c.ext[0]) : pr, c.ext[0] > 0.f ? double(c.ext[1]) : pr,
                                    c.ext[0] > 0.f ? double(c.ext[2]) : pr};
             const double off[3] = {c.off[0], c.off[1], c.off[2]};
-            if (i != station) stage_hull(ext, off);
-            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), hull_tuning(), patches,
+            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
                                            wc::max_patches, decals, wc::max_decals);
             const HullLane hull = staged_hull(ext, off);
-            const std::vector<float> l = render(pass, patches, n.patches, hull_case(i) ? nullptr : &near_only, nullptr, &hull);
+            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
             const double extent = n.patches ? double(patches[0].extent) : 0.0, cell = n.patches ? double(patches[0].cell) : 1.0;
             const double core = n.patches ? 0.5 * double(patches[0].reach) : 0.0; // surely inside the footprint's cells
             Result& o = res[i];
             o.patches = n.patches;
-            o.bubbles = n.bubbles;
-            o.walks = n.bubble.walks;
-            if (!hull_case(i) && n.patches) {
-                const BubbleTwin bt = bubble_twin(patches[0]);
-                double B[3], q[3];
-                bubble_image(bt, hp, B, q);
-                double shift = 0;
-                for (unsigned k = 0; k < 3; ++k) shift += (B[k] - hp[k]) * (B[k] - hp[k]);
-                o.b_shift_cells = std::sqrt(shift) / cell; // the bubble point's distance from the hull's contact point
-                o.cap_hi = double(patches[0].bubble_c[2] + patches[0].bubble_e[2]) - (off[2] + ext[2]);
-                o.cap_lo = (off[2] - ext[2]) - double(patches[0].bubble_c[2] - patches[0].bubble_e[2]);
-                const SideMetric m = side_metric(l, bt, &hull, B, extent, core, 0, base_frame(g).near_z);
-                o.lit = m.lit;
-                o.sky_lit = m.sky_lit;
-                o.outside = m.outside;
-                o.eligible = m.eligible;
-                o.covered = m.covered;
-                o.off_bubble = m.hidden_lit;
-                o.centroid_cells = m.centroid / cell;
-                o.drew = o.lit > 100;
-                continue;
-            }
+            o.lathes = n.lathes;
+            o.no_profile = n.lathe_no_profile;
             double wsum = 0, cs[3] = {0, 0, 0};
             for (UINT y = 0; y < g.h; ++y)
                 for (UINT x = 0; x < g.w; ++x) {
@@ -3786,25 +3515,19 @@ int main(int argc, char** argv) {
             }
             o.drew = o.lit > 100;
         }
-        stage_tier_source = wc::tier_by_radius;
-        for (unsigned i = 0; i < count; ++i) {
+        stage_tier_source = wc::tier_by_station;
+        for (unsigned i : {station, capital}) {
             const Result& o = res[i];
             const double ratio = res[cases[i].ref].lit ? double(o.lit) / double(res[cases[i].ref].lit) : 0.0;
             res[i].lit_ratio = ratio;
-            std::printf("PLACEMENT case=%s surface=%s patches=%u bubbles=%u walks=%u lit_pixels=%u sky_lit=%u outside_lit=%u "
-                        "off_bubble_lit=%u eligible=%u covered=%u coverage=%.3f centroid_error_cells=%.3f "
-                        "bubble_shift_cells=%.3f cap_nose_m=%.2f cap_tail_m=%.2f ref=%s lit_ratio=%.3f dir=%d,%d,%d\n",
-                        cases[i].name, hull_case(i) ? "hull" : "bubble", o.patches, o.bubbles, o.walks, o.lit, o.sky_lit, o.outside,
-                        o.off_bubble, o.eligible, o.covered, o.eligible ? double(o.covered) / double(o.eligible) : 0.0,
-                        o.centroid_cells, o.b_shift_cells, o.cap_hi / 5.0, o.cap_lo / 5.0, cases[cases[i].ref].name, ratio,
-                        int(cases[i].dir[0]), int(cases[i].dir[1]), int(cases[i].dir[2]));
+            std::printf("PLACEMENT case=%s surface=%s patches=%u lathes=%u no_profile=%u lit_pixels=%u sky_lit=%u "
+                        "outside_lit=%u eligible=%u covered=%u coverage=%.3f centroid_error_cells=%.3f ref=%s "
+                        "lit_ratio=%.3f dir=%d,%d,%d\n",
+                        cases[i].name, i == station ? "hull" : "native", o.patches, o.lathes, o.no_profile, o.lit, o.sky_lit,
+                        o.outside, o.eligible, o.covered, o.eligible ? double(o.covered) / double(o.eligible) : 0.0,
+                        o.centroid_cells, cases[cases[i].ref].name, ratio, int(cases[i].dir[0]), int(cases[i].dir[1]),
+                        int(cases[i].dir[2]));
         }
-        auto on_bubble = [&](unsigned i) {
-            const Result& o = res[i];
-            return o.drew && o.bubbles == 1 && o.off_bubble * 200 <= o.lit && o.outside * 100 <= o.lit && o.eligible &&
-                   double(o.covered) >= 0.9 * double(o.eligible) && o.centroid_cells <= 1.0 && o.lit_ratio >= 1.0 / 3.0 &&
-                   o.lit_ratio <= 3.0;
-        };
         auto on_hull = [&](unsigned i) {
             const Result& o = res[i];
             return o.drew && o.sky_lit == 0 && o.outside * 100 <= o.lit && o.eligible &&
@@ -3894,168 +3617,10 @@ int main(int argc, char** argv) {
                         "neighbour_wrong_axis_silhouette=%u\n",
                         c.name, pixels, edge, mq, pq, wrong_q, wrong_q_edge, mn, pn, wrong_n, wrong_n_edge);
         }
-        report("placement_narrow_hull_flank_aft_top_bottom_on_the_bubble",
-               on_bubble(0) && on_bubble(1) && on_bubble(2) && on_bubble(3), "");
-        // the radius cut at bubble_scale x the radius: the narrow hull reaching its radius keeps the cap past its nose
-        // and tail (at least 0.1 of the half-length; 1.15 x gives 0.15)
-        report("bubble_cap_past_the_narrow_hull_nose_and_tail",
-               res[1].cap_hi >= 0.1 * 250.0 && res[1].cap_lo >= 0.1 * 250.0, "");
-        report("placement_flat_fighter_flank_top_bottom_42deg_on_the_bubble",
-               on_bubble(4) && on_bubble(5) && on_bubble(6) && on_bubble(7) && res[7].lit == res[5].lit, "");
-        report("placement_station_hull_decal_at_the_hit", on_hull(station) && res[station].bubbles == 0, "");
-        report("placement_capital_ship_hull_decal_at_the_hit",
-               on_hull(capital) && res[capital].bubbles == 0 && res[capital].walks == 0, "");
-        report("placement_offcentre_origin_top_lights", on_bubble(9) && res[9].lit_ratio >= 0.7, "");
-        draw_lane(g, 0.f, -1.f);
-    }
-    // A hit a hair either side of an axis plane (review F2): the flat fighter's top hit at its centre with x = +1, -1 and
-    // 0 engine units (Q_x = +-eps): every face lit by each (no sign rule), so the three images agree (lit pixels within
-    // 0.1 %, the peak within 0.2 %, the luma sum within 0.1 %) and no point is lit twice (the peak not above the zero
-    // case's).
-    {
-        rr::WeaponPatch patches[wc::max_patches];
-        rr::WeaponDecal decals[wc::max_decals];
-        const std::int32_t top_rows[3][3] = {{65536, 0, 0}, {0, 0, -65536}, {0, 65536, 0}};
-        const double ext[3] = {60.0, 10.0, 40.0};
-        stage_tier_source = wc::tier_by_ship_class;
-        double sum[3] = {}, peak[3] = {};
-        unsigned lit[3] = {}, draws[3] = {};
-        const std::int32_t xs[3] = {1, -1, 0};
-        for (unsigned v = 0; v < 3; ++v) {
-            stage_owner(400.f, 66.f, 1000);
-            for (unsigned r = 0; r < 3; ++r)
-                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(top_rows[r][j]));
-            stage_ring.slots[0].pos[0] = xs[v];
-            stage_ring.slots[0].pos[1] = 1000;
-            stage_ring.slots[0].pos[2] = 0;
-            stage_hull(ext);
-            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), hull_tuning(), patches,
-                                           wc::max_patches, decals, wc::max_decals);
-            draws[v] = n.patches;
-            const HullLane hull = staged_hull(ext);
-            const std::vector<float> l = render(pass, patches, n.patches, nullptr, nullptr, &hull);
-            for (float x : l) {
-                sum[v] += x;
-                peak[v] = std::max(peak[v], double(x));
-                lit[v] += x > 1e-3f;
-            }
-        }
-        stage_tier_source = wc::tier_by_radius;
-        std::printf("AXIS_PLANE draws_plus=%u draws_minus=%u draws_zero=%u lit_plus=%u lit_minus=%u lit_zero=%u "
-                    "peak_plus=%.4f peak_minus=%.4f peak_zero=%.4f sum_plus=%.2f sum_minus=%.2f sum_zero=%.2f\n",
-                    draws[0], draws[1], draws[2], lit[0], lit[1], lit[2], peak[0], peak[1], peak[2], sum[0], sum[1], sum[2]);
-        bool agree = draws[0] == draws[1] && draws[0] == draws[2] && lit[2] > 100;
-        for (unsigned v = 0; v < 2; ++v)
-            agree = agree && std::fabs(double(lit[v]) - double(lit[2])) <= 1e-3 * double(lit[2]) &&
-                    std::fabs(sum[v] - sum[2]) <= 1e-3 * sum[2] && peak[v] <= peak[2] * 1.002 + 1e-3 &&
-                    peak[v] >= peak[2] * 0.998 - 1e-3;
-        report("bubble_axis_plane_no_flip_no_double_light", agree, "");
-        draw_lane(g, 0.f, -1.f);
-    }
-    // The bubble's two sides (5.1.1 "Placement"). Chase: the camera behind and above a fighter (a 4 x 1.6 x 12 m hull,
-    // 24 m ahead, pitched 0.175 rad nose down: placement from the CPU sweep of the review, the near side unlit, the far
-    // side's cap past the outline in view), a hit on its nose: the patch lies on the bubble's far side from the eye (its
-    // outward normal points away); the far side draws around the hull's outline and the hull lane hides what lies behind
-    // the hull. Images with one side each (the other's gain 0) and with both (the default gains):
-    // per side the lit pixels, those the twin hides (hidden_lit: must be under 0.5 %), the bubble within half the reach
-    // of B visible (eligible, its coverage) and hidden by the hull (hidden: their share is the occlusion), the centroid
-    // against B. Eye inside: a sphere bubble (the fallback, R 20 m, no hull walk) with the eye 10 m behind its centre,
-    // inside it, the sky lane, a hit on its front pole: the near point lies behind the eye, so nothing draws with the far
-    // side's gain 0 and the far side alone draws the patch; the default image is the far side's at bubble_far_gain.
-    {
-        rr::WeaponPatch patches[wc::max_patches];
-        rr::WeaponDecal decals[wc::max_decals];
-        rr::WeaponLook near_only = rr::default_weapon_look(), far_only = near_only;
-        near_only.bubble_far_gain = 0.f;
-        far_only.bubble_near_gain = 0.f;
-        far_only.bubble_far_gain = 1.f;
-        const float near_z = base_frame(g).near_z;
-        struct Side {
-            const char* name = "";
-            unsigned patches = 0;
-            SideMetric near_side, far_side;
-            double both_luma = 0, far_luma = 0, cell = 1, cap_nose = 0; // the bubble past the hull's nose (view units)
-        };
-        auto measure = [&](Side& out, const HullLane* hull, const double hp[3], const ws::Tuning& t) {
-            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), t, patches, wc::max_patches,
-                                           decals, wc::max_decals);
-            out.patches = n.patches;
-            if (!n.patches) return;
-            out.cap_nose = double(patches[0].bubble_c[2] + patches[0].bubble_e[2]);
-            const BubbleTwin bt = bubble_twin(patches[0]);
-            double B[3], q[3];
-            bubble_image(bt, hp, B, q);
-            const double extent = patches[0].extent, core = 0.5 * double(patches[0].reach);
-            out.cell = patches[0].cell;
-            const std::vector<float> ln = render(pass, patches, n.patches, &near_only, nullptr, hull, hull == nullptr);
-            const std::vector<float> lf = render(pass, patches, n.patches, &far_only, nullptr, hull, hull == nullptr);
-            const std::vector<float> lb = render(pass, patches, n.patches, nullptr, nullptr, hull, hull == nullptr);
-            out.near_side = side_metric(ln, bt, hull, B, extent, core, 0, near_z);
-            out.far_side = side_metric(lf, bt, hull, B, extent, core, 1, near_z);
-            out.both_luma = total(lb);
-            out.far_luma = total(lf);
-        };
-        // chase: the nose hit (0, 0, 60) on the hull of half-extents (20, 8, 60)
-        Side chase, inside;
-        chase.name = "chase_nose_from_behind";
-        inside.name = "eye_inside_bubble";
-        stage_tier_source = wc::tier_by_ship_class;
-        {
-            // the owner 24 m ahead, pitched 0.175 rad nose down (the camera above and behind it: the bubble's nose cap
-            // beyond the hull's outline, the rays over the nose top entering the bubble outside the footprint), its
-            // object radius 1.1 x the half-length (the bubble's z cut to it)
-            stage_owner(120.f, 66.f, 1000);
-            const double pc = std::cos(0.175), ps = std::sin(0.175);
-            const std::int32_t rows[3][3] = {{65536, 0, 0},
-                                             {0, std::int32_t(pc * 65536.0), std::int32_t(ps * 65536.0)},
-                                             {0, -std::int32_t(ps * 65536.0), std::int32_t(pc * 65536.0)}};
-            for (unsigned r = 0; r < 3; ++r)
-                for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(rows[r][j]));
-            const std::int32_t nose[3] = {0, 0, 6000};
-            for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = nose[k];
-            const double ext[3] = {20.0, 8.0, 60.0}, hp[3] = {0.0, 0.0, 60.0};
-            stage_hull(ext);
-            HullLane hull = staged_hull(ext);
-            measure(chase, &hull, hp, hull_tuning());
-            chase.cap_nose -= ext[2];
-        }
-        // eye inside: the fallback sphere R 100 view units about view z 50 (the eye 50 behind its centre), the hit on its
-        // front pole (0, 0, 100), the sky lane
-        {
-            stage_owner(50.f, 100.f, 1000);
-            stage_ring.slots[0].pos[2] = 10000;
-            const double hp[3] = {0.0, 0.0, 100.0};
-            draw_lane(g, 0.f, -1.f);
-            measure(inside, nullptr, hp, ws::Tuning{});
-        }
-        stage_tier_source = wc::tier_by_radius;
-        for (const Side* s : {&chase, &inside}) {
-            for (int k = 0; k < 2; ++k) {
-                const SideMetric& m = k ? s->far_side : s->near_side;
-                std::printf("BUBBLE_SIDE case=%s side=%s patches=%u lit_pixels=%u hidden_lit=%u sky_lit=%u outside_lit=%u "
-                            "eligible=%u covered=%u coverage=%.3f hidden=%u hidden_share=%.3f centroid_error_cells=%.3f "
-                            "luma=%.3f\n",
-                            s->name, k ? "far" : "near", s->patches, m.lit, m.hidden_lit, m.sky_lit, m.outside, m.eligible,
-                            m.covered, m.eligible ? double(m.covered) / double(m.eligible) : 0.0, m.hidden,
-                            m.eligible + m.hidden ? double(m.hidden) / double(m.eligible + m.hidden) : 0.0,
-                            m.centroid / s->cell, m.luma);
-            }
-            std::printf("BUBBLE_SIDE case=%s side=both luma=%.3f far_luma=%.3f ratio=%.4f far_gain=%.2f cap_nose_m=%.2f\n",
-                        s->name, s->both_luma, s->far_luma, s->far_luma > 0 ? s->both_luma / s->far_luma : 0.0,
-                        double(wc::bubble_far_gain), s->cap_nose / 5.0);
-        }
-        const SideMetric& cf = chase.far_side;
-        report("bubble_chase_far_side_around_the_outline",
-               chase.near_side.lit == 0 && cf.lit >= 500 && cf.hidden_lit * 200 <= cf.lit && cf.hidden > 0 &&
-                   chase.cap_nose >= 0.1 * 60.0 &&
-                   cf.outside * 100 <= cf.lit &&
-                   std::fabs(chase.both_luma - double(wc::bubble_far_gain) * chase.far_luma) <= 0.01 * chase.both_luma, "");
-        const SideMetric& in = inside.far_side;
-        report("bubble_eye_inside_far_side_only",
-               inside.near_side.lit == 0 && in.lit > 100 && in.hidden_lit * 200 <= in.lit && in.eligible > 0 &&
-                   double(in.covered) >= 0.9 * double(in.eligible) && in.centroid <= inside.cell &&
-                   std::fabs(inside.both_luma - double(wc::bubble_far_gain) * inside.far_luma) <= 0.01 * inside.both_luma,
-               "");
+        report("placement_station_hull_decal_at_the_hit", on_hull(station) && res[station].lathes == 0, "");
+        report("placement_capital_ship_without_profile_draws_nothing",
+               res[capital].patches == 0 && res[capital].lit == 0 && res[capital].lathes == 0 &&
+                   res[capital].no_profile == 1, "");
         draw_lane(g, 0.f, -1.f);
     }
     // The face cull (stage::face_culled, core::face_cull_sin): a fighter (R 100 at view z 400) hit on its back (local
@@ -4128,7 +3693,7 @@ int main(int argc, char** argv) {
         report("face_cull_away_culled_across_drawn", away.culled >= 1 && away.has_z == 0 &&
                                                          away.dmax < -double(wc::face_cull_sin) && across_deg > 0 &&
                                                          across.has_z == 1, "");
-        stage_tier_source = wc::tier_by_radius;
+        stage_tier_source = wc::tier_by_station;
         stage_owner(400.f, 100.f, 1000);
     }
     // The own ship in the cockpit view (core::own_cockpit_gain, Run236 Flight C): one patch on the staged owner, drawn
@@ -4162,7 +3727,7 @@ int main(int argc, char** argv) {
             rr::WeaponEffectsFrame f = base_frame(g);
             f.patches = patches;
             f.patch_count = n.patches;
-            const double sphere[3] = {80.0, 80.0, 80.0}; // the hull inside the fallback bubble (the radius, 100)
+            const double sphere[3] = {100.0, 100.0, 100.0}; // the hull through the hit (the radius): the hull decal
             draw_hull_lane(g, staged_hull(sphere));
             const auto res = draw(pass, f);
             const std::vector<float> l = read_luma(g, g.scene_s.p);
@@ -4227,12 +3792,12 @@ int main(int argc, char** argv) {
                     put32(fake_node, wc::layout::node_rot + 16 * k + 4 * j, std::uint32_t(std::int32_t(std::lround(axes[k][j] * 65536.0))));
                 for (unsigned j = 0; j < 3; ++j) L[k][j] = axes[k][j];
             }
-            stage_hull(ext);
+            stage_box_profile(ext); // the profile's bounds: the bubble's half-extents / bubble_scale
             stage_tier_source = wc::tier_by_ship_class;
             for (unsigned h = 0; h < 8; ++h)
                 if (mask & (1u << h)) add_stage_hit(1000 - 10 * h, sets[set][h], tier);
-            stage_tier_source = wc::tier_by_radius;
-            ws::Tuning t = hull_tuning();
+            stage_tier_source = wc::tier_by_station;
+            ws::Tuning t = lathe_tuning();
             t.own_node = own;
             t.cockpit = cockpit_view;
             ws::Camera cam = identity_camera();
@@ -4240,8 +3805,8 @@ int main(int argc, char** argv) {
             cam.m11 = m11;
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
-            const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, cam, t, patches, wc::max_patches, decals,
-                                           wc::max_decals);
+            const ws::Counts n = ws::build(stage_ring, 1500, &lathe_read, cam, t, patches, wc::max_patches, decals,
+                                           wc::max_decals, nullptr, &fixture_lathes);
             ws::dim_own_cockpit(patches, n.patches, own, cockpit_view);
             if (counts) *counts = n;
             *eye_patches = 0;
@@ -4375,8 +3940,8 @@ int main(int argc, char** argv) {
         report("cockpit_eye_sphere_centroid_within_one_cell", made && lit_singles == singles && worst_cells <= 1.0 + 0.5774 &&
                                                               uncovered == 0 && std::fabs(radius_seen - 150.0) < 0.5, "");
         report("cockpit_eye_sphere_chase_unchanged", made && chase_changed == 0 && eye_draws > 0, "");
-        // FL 67 A review F2: the own ship of capital tier in the cockpit keeps the eye sphere (the walk runs for its
-        // smallest half-extent, 150); in the chase view the same capital takes the hull decal (no bubble, no walk).
+        // FL 67 A review F2: the own ship of capital tier in the cockpit keeps the eye sphere (radius its profile bounds'
+        // smallest half-extent x bubble_scale, 150); in the chase view the same capital takes its lathe.
         {
             std::vector<float> l;
             double L[3][3];
@@ -4388,20 +3953,21 @@ int main(int argc, char** argv) {
                 const unsigned lit = lit_count(l);
                 const double cockpit_radius = radius_seen;
                 run(0, 0.0, 0xffu, false, addr(fake_node), &l, L, &chase_eyes, &chase_out, wc::patch_capital, &chase);
-                std::printf("EYE_SPHERE case=capital_own cockpit_patches=%u eye_draws=%u eye_spheres=%u bubbles=%u walks=%u "
-                            "radius=%.1f lit_pixels=%u outside_boxes=%u chase_patches=%u chase_eye_draws=%u chase_bubbles=%u "
-                            "chase_walks=%u\n",
-                            cn.patches, eyes, cn.eye_spheres, cn.bubbles, cn.bubble.walks, cockpit_radius, lit, out,
-                            chase.patches, chase_eyes, chase.bubbles, chase.bubble.walks);
+                std::printf("EYE_SPHERE case=capital_own cockpit_patches=%u eye_draws=%u eye_spheres=%u lathes=%u "
+                            "radius=%.1f lit_pixels=%u outside_boxes=%u chase_patches=%u chase_eye_draws=%u "
+                            "chase_lathes=%u\n",
+                            cn.patches, eyes, cn.eye_spheres, cn.lathes, cockpit_radius, lit, out, chase.patches,
+                            chase_eyes, chase.lathes);
                 report("cockpit_eye_sphere_capital_own_ship",
-                       cn.patches > 0 && eyes == cn.patches && cn.eye_spheres == 1 && cn.bubbles == 1 &&
+                       cn.patches > 0 && eyes == cn.patches && cn.eye_spheres == 1 && cn.lathes == 0 &&
                            std::fabs(cockpit_radius - 150.0) < 0.5 && lit > 0 && out == 0 && chase_eyes == 0 &&
-                           chase.bubbles == 0 && chase.bubble.walks == 0 && chase.patches > 0, "");
+                           chase.lathes == 1 && chase.eye_spheres == 0 && chase.patches > 0, "");
             } else {
                 report("cockpit_eye_sphere_capital_own_ship", false, "");
             }
         }
         tt.release();
+        fixture_lathes.clear(); // the box profile's row-11 mesh must not answer for the Titan's later
         stage_owner(400.f, 100.f, 0); // the staged owner back at view (0, 0, 400 m), radius 100, an empty ring
         wc::ring_clear(stage_ring);
         draw_lane(g, 0.f, -1.f);
@@ -4412,7 +3978,7 @@ int main(int argc, char** argv) {
     // stagger / 2) dt / (fade (1 - stagger / 2)); the cells over a pixel counted by the same draws at a constant level)
     // plus the FP16 step. The hits land on a flat face of the owner (its front at 0.6 R, square to
     // the -z axis: one region, one depth) and on the front of a sphere of radius R (every hit at its own depth; a capital
-    // is the hull decal since FL 67 A, the fighter's sphere the bubble), with
+    // the hull decal: the staged hits are a station's), with
     // the production depth cache (a lit cell keeps the depth it was first lit at until it has faded out, so a re-light
     // never moves it). Fighter: hits within 0.15 rad of the face's centre as seen from the owner's (one draw). Capital
     // spread: a 400 m owner, hits within 35 degrees: its cells overflow one draw, so the region spills into further
@@ -4422,7 +3988,6 @@ int main(int argc, char** argv) {
         struct NoPop {
             unsigned hits = 0, frames = 0, max_live = 0, max_patches = 0, max_cells = 0, max_region_cells = 0, popped = 0;
             unsigned spills = 0, cells_dropped = 0, hits_dropped = 0, dropped = 0, worst_frame = 0, worst_x = 0, worst_y = 0;
-            unsigned max_bubbles = 0; // owners on a bubble in a frame (the bubble path or the decal)
             double worst = 0, worst_rel = 0, allowed = 0;
             float worst_prev = 0.f, worst_cur = 0.f;
         };
@@ -4433,13 +3998,12 @@ int main(int argc, char** argv) {
             wc::ring_clear(stage_ring);
             rr::WeaponPatch patches[wc::max_patches];
             rr::WeaponDecal decals[wc::max_decals];
-            // The surface: the flat face (a plane square to the view at 0.6 R in front of the centre) or the sphere. A
-            // capital takes the hull decal (FL 67 A): its sphere is the hull through the hits (R); a fighter's or
-            // corvette's hull lies inside its fallback bubble (0.8 R), the bubble drawing on its own sphere.
+            // The surface: the flat face (a plane square to the view at 0.6 R in front of the centre) or the sphere. The
+            // hits are the hull decal's (the staged tier source, a station's): the sphere is the hull through the hits (R).
             if (flat)
                 draw_lane(g, owner_z - 0.6f * owner_r, 1.f);
             else {
-                const double k = tier >= wc::patch_capital ? 1.0 : 0.8;
+                const double k = 1.0; (void)tier;
                 const double r3[3] = {k * owner_r, k * owner_r, k * owner_r};
                 draw_hull_lane(g, staged_hull(r3));
             }
@@ -4469,7 +4033,6 @@ int main(int argc, char** argv) {
                 for (unsigned c : face_cells) o.max_region_cells = std::max(o.max_region_cells, c);
                 (void)cells;
                 o.max_patches = std::max(o.max_patches, n.patches);
-                o.max_bubbles = std::max(o.max_bubbles, n.bubbles);
                 o.max_live = std::max(o.max_live, n.hits);
                 o.spills += n.spills;
                 o.cells_dropped += n.cells_dropped;
@@ -4502,8 +4065,8 @@ int main(int argc, char** argv) {
                 }
                 prev.swap(l);
             }
-            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_bubbles=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
-                        name, o.hits, o.frames, o.max_live, o.max_patches, o.max_bubbles, o.max_cells, o.max_region_cells, o.spills,
+            std::printf("NOPOP case=%s hits=%u frames=%u max_live_hits=%u max_patches=%u max_cells=%u max_region_cells=%u spills=%u cells_dropped=%u hits_dropped=%u dropped=%u max_drop=%.5f allowed=%.5f excess=%.5f popped_pixels=%u worst_frame=%u worst_x=%u worst_y=%u worst_prev=%.4f worst_cur=%.4f\n",
+                        name, o.hits, o.frames, o.max_live, o.max_patches, o.max_cells, o.max_region_cells, o.spills,
                         o.cells_dropped, o.hits_dropped, o.dropped, o.worst, o.allowed, o.worst_rel, o.popped,
                         o.worst_frame, o.worst_x, o.worst_y, double(o.worst_prev), double(o.worst_cur));
             return o;
@@ -4518,16 +4081,6 @@ int main(int argc, char** argv) {
                                                           capital_fire.max_region_cells > rr::weapon_patch_cells &&
                                                           capital_fire.spills > 0 && capital_fire.cells_dropped == 0 &&
                                                           capital_fire.dropped == 0, "");
-        // The bubble's spill path (stage::fill_bubble's spills) under spread fire, now that a capital takes the decal
-        // (FL 67 A review F3): a 120 m corvette (radius 600 view units, the camera 1.2 R from it), hits within 35 degrees
-        // on its flat front (the bubble the fallback sphere), the old capital spread case's gate.
-        const NoPop corvette_fire = run_nopop("corvette_spread_12hps", wc::patch_corvette, 600.f, 1200.f, 0.61,
-                                              ws::Tuning{}, true);
-        report("no_pop_spread_corvette_bubble_spills", corvette_fire.frames == 240 && corvette_fire.worst_rel <= 0.0 &&
-                                                           corvette_fire.max_live >= 30 && corvette_fire.max_bubbles == 1 &&
-                                                           corvette_fire.max_region_cells > rr::weapon_patch_cells &&
-                                                           corvette_fire.spills > 0 && corvette_fire.cells_dropped == 0 &&
-                                                           corvette_fire.dropped == 0, "");
         ws::Tuning one_draw{};
         one_draw.region_draws = 1;
         const NoPop witness = run_nopop("capital_spread_one_draw_witness", wc::patch_capital, 2000.f, 4000.f, 0.61, one_draw, true);
@@ -4544,7 +4097,7 @@ int main(int argc, char** argv) {
         // The station's hull decal on its flat face (the decal path, unchanged by the bubble).
         stage_tier_source = wc::tier_by_station;
         const NoPop station_fire = run_nopop("station_flat_12hps", wc::patch_capital, 2000.f, 4000.f, 0.61, ws::Tuning{}, true);
-        stage_tier_source = wc::tier_by_radius;
+        stage_tier_source = wc::tier_by_station;
         draw_lane(g, 0.f, -1.f);
         report("no_pop_station_hull_decal", station_fire.frames == 240 && station_fire.worst_rel <= 0.0 &&
                                                 station_fire.cells_dropped == 0, "");
@@ -4581,7 +4134,7 @@ int main(int argc, char** argv) {
             const ws::Counts n = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, patches,
                                            wc::max_patches, decals, wc::max_decals);
             if (drawn) *drawn = n.patches;
-            const double sphere[3] = {0.8 * r, 0.8 * r, 0.8 * r}; // the hull inside the fallback bubble
+            const double sphere[3] = {r, r, r}; // the hull through the hits: the hull decal
             const HullLane hull = staged_hull(sphere);
             const std::vector<float> l = render(pass, patches, n.patches, &cells_only, nullptr, &hull);
             if (keep) *keep = l;
@@ -4603,19 +4156,21 @@ int main(int argc, char** argv) {
     }
     // The lathe bubble (5.1.1 "Placement", user decision 2026-11-12: capitals get the bubble; FL 67 A: the box-fitted
     // ellipsoid misfit the Titan's sides). With the Argon Titan's offline profile (titan_profile) on a TShips row 11 of
-    // class M2: (a) the units: the production walk over the FL 67 hull part (one part of half-extents 151433 x 166374 x
-    // 528422 engine units at z +17329: the walk's measured Titan extents) against the lathe's profile bounds, 1:1 with no
-    // factor; (b) placement on the CPU (map_lathe against the walk ellipsoid's bubble_point: the FL 67 witness): the
+    // class M2: (a) the units: the FL 67 walk's measured Titan box (half-extents 151433 x 166374 x 528422 engine units at
+    // z +17329; the walk itself was removed on 2026-11-12, its box stays as constants) against the lathe's profile bounds,
+    // 1:1 with no factor; (b) placement on the CPU (map_lathe against that box's ellipsoid's bubble_point: the FL 67
+    // witness): the
     // profile's surface points in the side band |z| < 300k (titan_hit_mapping.py's) at six angles per slice, and the
     // nose and tail; each lathe point on the shell (lateral radius 1 in its slice) and within (bubble_scale - 1) of the
-    // contact's offset from its slice centre (the sides) or of the half length (the domes); (c) routing through ws::build:
-    // with the profile one lathe region, no walk, no decal (a capital and a fighter alike); without one the hull decal for
-    // the capital and the walked ellipsoid for a fighter; a class mismatch the decal; the own ship in the cockpit the eye
-    // sphere from the profile's bounds, no walk; a belly hit's copy across the seam; (d) the GPU: the Titan on its flank and
+    // contact's offset from its slice centre (the sides) or of the half length (the domes); (c) routing through ws::build
+    // (user decision 2026-11-12 on FL 69 A): with the profile one lathe region, no decal, every tier alike; without one,
+    // with another class, a stale table or a refused type read, scale or profile nothing (the hook forwards such a hit
+    // native), the refusal counted; a station the hull decal; the own ship in the cockpit the eye sphere from the
+    // profile's bounds; a belly hit's copy across the seam; (d) the GPU: the Titan on its flank and
     // from above (its hull lane: the profile's own lathe, uninflated), a side hit drawn on the lathe and, as the witness, on
     // the FL 67 walk ellipsoid (fill_bubble): the lit centroid against the hit's lathe point and the contact (metres), and
     // from above the lit pixels over sky and their distance from the hull's outline (the hug); the judging frames under
-    // dump-shield/. (e) The Titan's two-hit draws for the timing rows (the decal without a profile, the lathe with it).
+    // dump-shield/. (e) The Titan's two-hit draws for the timing rows (the hull decal as a station's, the lathe).
     guard_next_section("lathe");
     {
         const wc::ShipProfile titan = titan_profile();
@@ -4636,21 +4191,27 @@ int main(int argc, char** argv) {
             stage_ring.slots[0].patch_tier = tier;
             stage_ring.slots[0].radius = titan_radius;
             for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = std::int32_t(std::lround(contact[k]));
-            const double ext[3] = {1514.33, 1663.74, 5284.22}, off[3] = {0.0, 0.0, 173.29};
-            stage_hull(ext, off); // the FL 67 walk's hull part (a walk without a profile finds it)
             stage_lathe_type(class_id, profile);
         };
         auto build_titan = [&](rr::WeaponPatch* out, const ws::Tuning& t) {
             static rr::WeaponDecal decals[wc::max_decals];
             return ws::build(stage_ring, 1500, &lathe_read, identity_camera(), t, out, wc::max_patches, decals,
-                             wc::max_decals, nullptr, nullptr, &fixture_lathes);
+                             wc::max_decals, nullptr, &fixture_lathes);
         };
         // (a) the units
         double side_contact[3];
         profile_point(titan, 9, 0.5 * pi, side_contact); // slice 9 (z -197k), its +x flank
         stage_titan(side_rows, side_contact, wc::patch_capital, true);
-        ws::HullBox wb;
-        const bool walked = ws::hull_bounds(&fake_read, addr(fake_hull), addr(fake_node), &wb);
+        // the FL 67 walk's box of the Titan's hull part (engine units): half-extents ext about off (view units)
+        struct {
+            double lo[3], hi[3];
+        } wb;
+        const double walk_ext[3] = {1514.33, 1663.74, 5284.22}, walk_off[3] = {0.0, 0.0, 173.29};
+        for (unsigned k = 0; k < 3; ++k) {
+            wb.lo[k] = (walk_off[k] - walk_ext[k]) / s;
+            wb.hi[k] = (walk_off[k] + walk_ext[k]) / s;
+        }
+        const bool walked = true;
         double err[3][2], worst_xz = 0, worst_y = 0;
         for (unsigned k = 0; k < 3; ++k) {
             err[k][0] = (double(mesh.hull_lo[k]) - double(wb.lo[k]) * s) / metre;
@@ -4672,9 +4233,13 @@ int main(int argc, char** argv) {
                built && walked && worst_xz < 0.5 && worst_y < 0.02 * 1663.74 / metre, "");
 
         // (b) placement on the CPU
+        // the walk's ellipsoid of that box (its centre, its half-extents x bubble_scale: under bubble_scale x the radius)
         ws::Bubble wbub;
-        bool clamped = false;
-        const bool wfit = ws::bubble_from_box(wb, titan_radius, &wbub, &clamped);
+        for (unsigned k = 0; k < 3; ++k) {
+            wbub.c[k] = float(walk_off[k]);
+            wbub.e[k] = float(walk_ext[k]) * wc::bubble_scale;
+        }
+        const bool wfit = true;
         std::vector<double> lathe_move, walk_move;
         double shell_err = 0, side_excess = -1e30;
         unsigned side_points = 0;
@@ -4739,13 +4304,12 @@ int main(int argc, char** argv) {
         report("lathe_bow_stern_on_the_domes", end_move[0] > 0.0 && end_move[0] <= end_allowed && end_move[1] > 0.0 &&
                                                    end_move[1] <= end_allowed, "");
 
-        // (c) routing
-        // Per tier (core::lathe_tier: capitals only while lathe_all_tiers is false; fighters and corvettes keep the
-        // walked ellipsoid) and per refusal: the expected surface, and the refusal counter that must read 1.
+        // (c) routing (user decision 2026-11-12 on FL 69 A): per tier and per refusal the expected surface (the lathe, the
+        // hull decal, the eye sphere, or nothing: the hook forwards such a hit native) and the refusal counter that must
+        // read 1.
         static rr::WeaponPatch out[wc::max_patches];
-        enum Expect : std::uint8_t { lathe_surface, walk_surface, decal_surface, eye_surface };
-        enum Mod : std::uint8_t { no_mod, stale_rows, row_past_count, scale_zero, scale_over, degenerate };
-        const Expect small_tier = wc::lathe_all_tiers ? lathe_surface : walk_surface;
+        enum Expect : std::uint8_t { lathe_surface, native_surface, decal_surface, eye_surface };
+        enum Mod : std::uint8_t { no_mod, stale_rows, row_past_count, scale_zero, scale_over, degenerate, station };
         struct Route {
             const char* name;
             std::uint8_t tier;
@@ -4757,23 +4321,26 @@ int main(int argc, char** argv) {
         };
         const Route routes[] = {
             {"capital_profile", wc::patch_capital, true, false, titan_class, no_mod, lathe_surface, nullptr},
-            {"corvette_profile", wc::patch_corvette, true, false, titan_class, no_mod, small_tier, nullptr},
-            {"fighter_profile", wc::patch_fighter, true, false, titan_class, no_mod, small_tier, nullptr},
-            {"capital_no_profile", wc::patch_capital, false, false, titan_class, no_mod, decal_surface, nullptr},
-            {"capital_class_mismatch", wc::patch_capital, true, false, 2023, no_mod, decal_surface,
+            {"corvette_profile", wc::patch_corvette, true, false, titan_class, no_mod, lathe_surface, nullptr},
+            {"fighter_profile", wc::patch_fighter, true, false, titan_class, no_mod, lathe_surface, nullptr},
+            {"capital_no_profile", wc::patch_capital, false, false, titan_class, no_mod, native_surface,
+             &ws::Counts::lathe_no_profile},
+            {"capital_class_mismatch", wc::patch_capital, true, false, 2023, no_mod, native_surface,
              &ws::Counts::lathe_mismatch},
-            {"fighter_no_profile", wc::patch_fighter, false, false, titan_class, no_mod, walk_surface, nullptr},
+            {"fighter_no_profile", wc::patch_fighter, false, false, titan_class, no_mod, native_surface,
+             &ws::Counts::lathe_no_profile},
             {"cockpit_profile", wc::patch_capital, true, true, titan_class, no_mod, eye_surface, nullptr},
-            {"capital_stale_table", wc::patch_capital, true, false, titan_class, stale_rows, decal_surface,
+            {"capital_stale_table", wc::patch_capital, true, false, titan_class, stale_rows, native_surface,
              &ws::Counts::lathe_stale},
-            {"capital_row_past_count", wc::patch_capital, true, false, titan_class, row_past_count, decal_surface,
+            {"capital_row_past_count", wc::patch_capital, true, false, titan_class, row_past_count, native_surface,
              &ws::Counts::lathe_unreadable},
-            {"capital_axis_scale_zero", wc::patch_capital, true, false, titan_class, scale_zero, decal_surface,
+            {"capital_axis_scale_zero", wc::patch_capital, true, false, titan_class, scale_zero, native_surface,
              &ws::Counts::lathe_scale},
-            {"capital_axis_scale_257x", wc::patch_capital, true, false, titan_class, scale_over, decal_surface,
+            {"capital_axis_scale_257x", wc::patch_capital, true, false, titan_class, scale_over, native_surface,
              &ws::Counts::lathe_scale},
-            {"capital_degenerate_profile", wc::patch_capital, true, false, titan_class, degenerate, decal_surface,
-             &ws::Counts::lathe_degenerate}};
+            {"capital_degenerate_profile", wc::patch_capital, true, false, titan_class, degenerate, native_surface,
+             &ws::Counts::lathe_degenerate},
+            {"station", wc::patch_capital, true, false, titan_class, station, decal_surface, nullptr}};
         constexpr unsigned route_count = sizeof routes / sizeof routes[0];
         bool route_ok[route_count] = {};
         for (unsigned r = 0; r < route_count; ++r) {
@@ -4790,6 +4357,7 @@ int main(int argc, char** argv) {
                 for (auto& s : lathe_profiles.entries[0].slice) s[2] = s[3] = 0.f; // no width: build_lathe refuses
                 fixture_lathes.clear(); // the Titan's cached mesh would answer the row otherwise
             }
+            if (c.mod == station) stage_ring.slots[0].tier_source = wc::tier_by_station; // a dock or factory's hit
             ws::Tuning t = lathe_tuning();
             if (c.cockpit) {
                 t.own_node = addr(fake_node);
@@ -4808,34 +4376,34 @@ int main(int argc, char** argv) {
             bool surface = false;
             switch (c.expect) {
             case lathe_surface:
-                surface = n.lathes == 1 && lathe_draws == n.patches && n.patches >= 1 && !n.bubble.walks && !n.bubbles &&
-                          !n.decals;
+                surface = n.lathes == 1 && lathe_draws == n.patches && n.patches >= 1 && !bubble_draws && !n.decals;
                 break;
-            case walk_surface:
-                surface = n.bubbles == 1 && n.bubble.walks >= 1 && n.patches >= 1 && bubble_draws == n.patches && !n.lathes;
+            case native_surface:
+                surface = n.patches == 0 && n.decals == 0 && !n.lathes && !n.eye_spheres;
                 break;
             case decal_surface:
-                surface = n.patches && !lathe_draws && !bubble_draws && !n.lathes && !n.bubble.walks;
+                surface = n.patches && !lathe_draws && !bubble_draws && !n.lathes;
                 break;
             case eye_surface:
-                surface = n.eye_spheres == 1 && eye == n.patches && n.patches >= 1 && !n.bubble.walks && !n.lathes;
+                surface = n.eye_spheres == 1 && eye == n.patches && n.patches >= 1 && !n.lathes;
                 break;
             }
             route_ok[r] = surface && counted;
-            std::printf("LATHE case=route_%s patches=%u lathes=%u lathe_draws=%u bubbles=%u bubble_draws=%u eye=%u walks=%u "
+            std::printf("LATHE case=route_%s patches=%u lathes=%u lathe_draws=%u bubble_draws=%u eye=%u "
                         "decals=%u mismatch=%u no_profile=%u unreadable=%u scale=%u degenerate=%u cache=%u stale=%u "
                         "ok=%u\n",
-                        c.name, n.patches, n.lathes, lathe_draws, n.bubbles, bubble_draws, eye, n.bubble.walks, n.decals,
+                        c.name, n.patches, n.lathes, lathe_draws, bubble_draws, eye, n.decals,
                         n.lathe_mismatch, n.lathe_no_profile, n.lathe_unreadable, n.lathe_scale, n.lathe_degenerate,
                         n.lathe_cache, n.lathe_stale, unsigned(route_ok[r]));
         }
         report("lathe_route_capital_takes_the_lathe", route_ok[0], "");
-        report("lathe_route_fighter_corvette_keep_the_walk", route_ok[1] && route_ok[2], ""); // lathe_all_tiers off
-        report("lathe_route_fallback_without_profile", route_ok[3] && route_ok[5], "");
-        report("lathe_route_class_mismatch_falls_back", route_ok[4], "");
+        report("lathe_route_fighter_corvette_take_the_lathe", route_ok[1] && route_ok[2], "");
+        report("lathe_route_no_profile_draws_nothing", route_ok[3] && route_ok[5], "");
+        report("lathe_route_class_mismatch_draws_nothing", route_ok[4], "");
         report("lathe_route_cockpit_keeps_eye_sphere", route_ok[6], "");
-        report("lathe_route_stale_table_uses_no_profile", route_ok[7], "");
-        report("lathe_route_refusals_fall_back", route_ok[8] && route_ok[9] && route_ok[10] && route_ok[11], "");
+        report("lathe_route_stale_table_draws_nothing", route_ok[7], "");
+        report("lathe_route_refusals_draw_nothing", route_ok[8] && route_ok[9] && route_ok[10] && route_ok[11], "");
+        report("lathe_route_station_keeps_the_decal", route_ok[12], "");
         {   // LatheCache eviction: 32 types (rows 0..31, one mesh each) fill the cache in one stage call; a 33rd in the
             // same call is refused (every entry drawn this call); in the next call a type drawn again keeps its mesh
             // (same pointer, same row) and a new type evicts the least recently used of the others.
@@ -5066,21 +4634,24 @@ int main(int argc, char** argv) {
             const std::int32_t at[3] = {std::int32_t(std::lround(second[0])), std::int32_t(std::lround(second[1])),
                                         std::int32_t(std::lround(second[2]))};
             add_stage_hit(1200, at, wc::patch_capital);
+            if (k == 0) // the hull decal (a station's hits; a ship without a profile draws nothing)
+                for (auto& e : stage_ring.slots) e.tier_source = wc::tier_by_station;
             titan_timing_count[k] = build_titan(titan_timing[k], lathe_tuning()).patches;
         }
         titan_timing_lane = lane_side;
         std::printf("LATHE case=timing_draws decal_draws=%u lathe_draws=%u\n", titan_timing_count[0], titan_timing_count[1]);
         report("lathe_timing_draws_built", titan_timing_count[0] >= 1 && titan_timing_count[1] >= 1 &&
                                                titan_timing[1][0].lathe && !titan_timing[0][0].lathe, "");
-        stage_tier_source = wc::tier_by_radius;
+        stage_tier_source = wc::tier_by_station;
         draw_lane(g, 0.f, -1.f);
     }
     // The stage's CPU cost in this i686 build (SSE2, the production flags): ws::build alone with the depth cache (the
     // production path), best and mean of 200 calls,
     // on the worst cases: 64 live hits on one capital owner spread over its front (the region spills), and 16 capital
     // owners with 16 spread hits each (the ring's 256), against the 0.2 ms stage_us target (which also holds the draws);
-    // and one capital ship (by class) under 12 hits/s, 2.5 s in (31 live hits). Every capital takes the hull decal since
-    // FL 67 A (no hull walk).
+    // and one capital owner under 12 hits/s, 2.5 s in (31 live hits). The rows without a suffix draw the hull decal (the
+    // hits a station's: since the walk's removal, 2026-11-12, a ship without a profile draws nothing), the _lathe rows
+    // the same owners as ships with the Titan's profile.
     {
         struct Fake {
             unsigned char obj[0x100], node[0x200];
@@ -5158,10 +4729,11 @@ int main(int argc, char** argv) {
                 tune.ship_table_slot = addr(fake_types) + type_slots_at;
                 tune.ship_count_slot = addr(fake_types) + type_slots_at + 4;
             }
+            for (auto& e : ring.slots) e.tier_source = lathe ? wc::tier_by_ship_class : wc::tier_by_station;
             for (unsigned rep = 0; rep < 200; ++rep) {
                 QueryPerformanceCounter(&a);
                 n = lathe ? ws::build(ring, now, lathe_reader, identity_camera(), tune, patches, wc::max_patches, decals,
-                                      wc::max_decals, nullptr, nullptr, &cpu_lathes)
+                                      wc::max_decals, nullptr, &cpu_lathes)
                           : ws::build(ring, now, reader, identity_camera(), tune, patches, wc::max_patches, decals,
                                       wc::max_decals);
                 QueryPerformanceCounter(&b);
@@ -5171,10 +4743,10 @@ int main(int argc, char** argv) {
             }
             unsigned cells = 0;
             for (unsigned i = 0; i < n.patches; ++i) cells += patches[i].cells;
-            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u bubbles=%u walks=%u lathes=%u best_us=%.1f mean_us=%.1f target_us=200\n",
-                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, n.bubbles,
-                        n.bubble.walks, n.lathes, best, sum / 200.0);
-            return lathe ? (n.lathes == n.owners ? sum / 200.0 : -1.0) : sum / 200.0;
+            std::printf("STAGE_CPU case=%s owners=%u hits=%u patches=%u cells=%u spills=%u cells_dropped=%u dropped=%u lathes=%u no_profile=%u best_us=%.1f mean_us=%.1f target_us=200\n",
+                        name, n.owners, n.hits, n.patches, cells, n.spills, n.cells_dropped, n.dropped, n.lathes,
+                        n.lathe_no_profile, best, sum / 200.0);
+            return lathe ? (n.lathes == n.owners ? sum / 200.0 : -1.0) : (n.patches ? sum / 200.0 : -1.0);
         };
         wc::ring_clear(ring);
         make_owner(0, 0.f, 4000.f, 2000.f);
@@ -5209,373 +4781,6 @@ int main(int argc, char** argv) {
         }
         const double station = time_build("station_flight_b_cluster_64_hits", 1000 + 40 * wc::owner_hits);
         report("stage_cpu_measured", one > 0.0 && many > 0.0 && station > 0.0 && at12 > 0.0, "");
-    }
-    // The hull walk's cost (5.1.1 "Placement"; the per-owner cache): the production stage::hull_bounds over the fake body
-    // cache with 127 parts (the walk's budget is 128 nodes), and the builder's frame for one 400 m owner with 64 spread
-    // hits with the cache warm (the owner's bounds reused: the production steady state) and cold (rescoped before every
-    // call: a walk in every frame, what the cache saves), best and mean of 200 calls (us). The hits' tier is corvette:
-    // a capital takes the hull decal and walks nothing since FL 67 A.
-    {
-        stage_owner(4000.f, 2000.f, 0);
-        wc::ring_clear(stage_ring);
-        for (unsigned i = 0; i < wc::owner_hits; ++i) {
-            const double th = 0.61 * std::sqrt(halton(i + 1, 2)), a = 6.2831853 * halton(i + 1, 3), re = 200000.0;
-            const std::int32_t pos[3] = {std::int32_t(re * std::sin(th) * std::cos(a)),
-                                         std::int32_t(re * std::sin(th) * std::sin(a)), -std::int32_t(re * std::cos(th))};
-            add_stage_hit(1000 + 40 * i, pos, wc::patch_corvette);
-        }
-        const double ext[3] = {600.0, 400.0, 2000.0};
-        stage_hull(ext, nullptr, 127);
-        LARGE_INTEGER freq, a, b;
-        QueryPerformanceFrequency(&freq);
-        ws::HullBox box;
-        bool ok = true;
-        double walk_best = 1e30, walk_sum = 0;
-        for (unsigned rep = 0; rep < 200; ++rep) {
-            QueryPerformanceCounter(&a);
-            ok = ws::hull_bounds(&fake_read, addr(fake_hull), addr(fake_node), &box) && ok;
-            QueryPerformanceCounter(&b);
-            walk_best = std::min(walk_best, ticks_us(a, b, freq));
-            walk_sum += ticks_us(a, b, freq);
-        }
-        // The production reader (engine_memory::read, src/proxy/engine_memory.cpp built as production builds it, without
-        // SSE) over the same fixture blocks: cold, the region cache invalidated before each walk (next_frame: the walk's
-        // first frame), and warm (the regions validated by the previous walk of the frame); the reads one walk makes.
-        static unsigned walk_reads = 0;
-        auto counted = [](std::uintptr_t at, void* out, std::size_t n) {
-            ++walk_reads;
-            return fake_read(at, out, n);
-        };
-        walk_reads = 0;
-        ws::hull_bounds(counted, addr(fake_hull), addr(fake_node), &box);
-        const unsigned reads = walk_reads;
-        auto production = [](std::uintptr_t at, void* out, std::size_t n) { return x3m::engine_memory::read(at, out, n); };
-        double em_best[2] = {1e30, 1e30}, em_sum[2] = {0, 0};
-        bool em_ok = true;
-        for (unsigned warm = 0; warm < 2; ++warm)
-            for (unsigned rep = 0; rep < 200; ++rep) {
-                if (!warm) x3m::engine_memory::next_frame();
-                QueryPerformanceCounter(&a);
-                em_ok = ws::hull_bounds(production, addr(fake_hull), addr(fake_node), &box) && em_ok;
-                QueryPerformanceCounter(&b);
-                em_best[warm] = std::min(em_best[warm], ticks_us(a, b, freq));
-                em_sum[warm] += ticks_us(a, b, freq);
-            }
-        static rr::WeaponPatch patches[wc::max_patches];
-        static rr::WeaponDecal decals[wc::max_decals];
-        static ws::BubbleCache cache;
-        double best[2] = {1e30, 1e30}, sum[2] = {0, 0};
-        ws::Counts n{};
-        for (unsigned cold = 0; cold < 2; ++cold) {
-            cache.rescope(100 + cold);
-            for (unsigned rep = 0; rep < 200; ++rep) {
-                if (cold) cache.rescope(1000 + rep);
-                QueryPerformanceCounter(&a);
-                n = ws::build(stage_ring, 1000 + 40 * wc::owner_hits, &fake_read, identity_camera(), hull_tuning(), patches,
-                              wc::max_patches, decals, wc::max_decals, &cache);
-                QueryPerformanceCounter(&b);
-                best[cold] = std::min(best[cold], ticks_us(a, b, freq));
-                sum[cold] += ticks_us(a, b, freq);
-            }
-        }
-        std::printf("HULL_WALK parts=%u nodes=%u ok=%u reads=%u walk_best_us=%.1f walk_mean_us=%.1f "
-                    "engine_memory_ok=%u engine_memory_cold_best_us=%.1f engine_memory_cold_mean_us=%.1f "
-                    "engine_memory_warm_best_us=%.1f engine_memory_warm_mean_us=%.1f warm_best_us=%.1f "
-                    "warm_mean_us=%.1f cold_best_us=%.1f cold_mean_us=%.1f patches=%u bubbles=%u bubble_fallback=%u "
-                    "cache_walks=%u cache_hits=%u\n",
-                    box.parts, box.nodes, unsigned(ok), reads, walk_best, walk_sum / 200.0, unsigned(em_ok), em_best[0],
-                    em_sum[0] / 200.0, em_best[1], em_sum[1] / 200.0, best[0], sum[0] / 200.0, best[1], sum[1] / 200.0,
-                    n.patches, n.bubbles, n.bubble_fallback, cache.walks, cache.hits);
-        report("hull_walk_measured", ok && em_ok && box.parts == 127 && box.nodes == 127 && n.bubbles == 1 &&
-                                         n.bubble_fallback == 0 && cache.hits >= 199, "");
-    }
-    // The capital hull (FL run 65: the Argon Titan's walk failed on every attempt and its bubble was the radius sphere,
-    // side hits about 3.4x outward). (a) A long, narrow hull of 648 nodes over three levels (8 sections along z, 8
-    // mounts each, 9 turrets per mount, every node a part), the Titan's radius 545751: through the production builder
-    // and cache the walk takes hull_slice_nodes per frame (the fallback sphere on the first two frames, the hull bubble
-    // from the third), the bubble against the sections' half-extents x bubble_scale, and a flank hit 30 % aft drawn on it
-    // (the near side; side_metric against the bubble point B, the on_bubble criteria) with B's distance from the contact
-    // point against the fallback sphere's. (b) The cost: a 1024-node hull (16 x 7 x 8, three LOD records per part) in
-    // one call through the production reader (engine_memory::read: cold, the regions re-queried before each walk, and
-    // warm) and per slice (the first hull_slice_nodes), best and mean of 200 (us); the worst slice: the same tree with
-    // 16 LOD records per part found at the end of a 64-entry hash chain (84 reads a node), cut by hull_slice_reads
-    // (its nodes, reads and cost, cold). (c) The forced failure: a two-level
-    // hull of 1026 nodes (38 x 26) fails the budget on its fifth frame; the frame's failure record, its weapon_bubble_walk
-    // row (printed as the fixture's row), and within bubble_retry_ms the owner held without another record.
-    // Since FL 67 A (2026-11-12) a capital-tier hit takes the hull decal and walks nothing; these cases keep the walk
-    // covered on the capital-shaped trees with the hit's tier set to corvette (a corvette walks: the bubble), the camera
-    // at 1.2 R (was 2.4 R) so the corvette's 6 m cell keeps about the capital cell's pixel size (10 px at 1080p).
-    {
-        const auto eng = [](double v) { return std::int32_t(v / double(wc::world_scale)); };
-        const std::int32_t titan_r = 545751;
-        const double view_r = double(titan_r) * double(wc::world_scale), z = 1.2 * view_r;
-        const double ext[3] = {2000.0, 1500.0, 5000.0}; // the sections' box (view units): 200000 x 150000 x 500000 engine
-        const std::int32_t ext_n[3] = {104858, 78643, 32768};       // 1.6, 1.2, 0.5 of the node scale
-        const std::int32_t scales[3] = {125000, 20000, 5000};        // section (200000, 150000, 62500), mount, turret
-        const unsigned capital_n[3] = {8, 8, 9};
-        auto capital_off = [](unsigned level, unsigned j, std::int32_t o[3]) {
-            o[0] = o[1] = o[2] = 0;
-            if (level == 0) o[2] = std::int32_t((double(j) - 3.5) * 125000.0);
-            if (level == 1) {
-                o[0] = std::int32_t((double(j % 4) - 1.5) * 40000.0);
-                o[1] = j < 4 ? -100000 : 100000;
-            }
-            if (level == 2) {
-                o[0] = std::int32_t((double(j % 3) - 1.0) * 10000.0);
-                o[1] = std::int32_t((double(j / 3) - 1.0) * 10000.0);
-            }
-        };
-        const std::int32_t side_rows[3][3] = {{0, 0, -65536}, {0, 65536, 0}, {65536, 0, 0}}; // local x -> view -z
-        stage_tier_source = wc::tier_by_ship_class;
-        stage_owner(float(z), float(view_r), 1000);
-        for (unsigned r = 0; r < 3; ++r)
-            for (unsigned j = 0; j < 3; ++j) put32(fake_node, wc::layout::node_rot + 16 * r + 4 * j, std::uint32_t(side_rows[r][j]));
-        put32(fake_obj, wc::layout::obj_radius, std::uint32_t(titan_r));
-        stage_ring.slots[0].patch_tier = wc::patch_corvette; // the walk's case (a capital would take the hull decal)
-        stage_ring.slots[0].radius = titan_r;
-        const double hp[3] = {ext[0] * std::sqrt(1.0 - 0.09), 0.0, 0.3 * ext[2]}; // the flank, 30 % aft (view units)
-        for (unsigned k = 0; k < 3; ++k) stage_ring.slots[0].pos[k] = eng(hp[k]);
-        const unsigned nodes = stage_tree(capital_n, ext_n, scales, capital_off);
-        static ws::BubbleCache cache;
-        cache.rescope(7000);
-        static rr::WeaponPatch patches[wc::max_patches];
-        static rr::WeaponDecal decals[wc::max_decals];
-        unsigned frames = 0, fallback_frames = 0;
-        ws::Counts n{};
-        double fallback_e = 0;
-        for (; frames < 8; ++frames) {
-            n = ws::build(stage_ring, 1500 + 16 * frames, &fake_read, identity_camera(), hull_tuning(), patches,
-                          wc::max_patches, decals, wc::max_decals, &cache);
-            if (!n.bubble_fallback) break;
-            ++fallback_frames;
-            if (n.patches) fallback_e = double(patches[0].bubble_e[0]);
-        }
-        ++frames;
-        const HullLane hull = staged_hull(ext);
-        rr::WeaponLook near_only = rr::default_weapon_look();
-        near_only.bubble_far_gain = 0.f;
-        const std::vector<float> l = render(pass, patches, n.patches, &near_only, nullptr, &hull);
-        double be[3] = {0, 0, 0}, bc[3] = {0, 0, 0}, B[3] = {0, 0, 0}, q[3], Bf[3] = {0, 0, 0}, cell = 1, extent = 0;
-        SideMetric m;
-        if (n.patches) {
-            const BubbleTwin bt = bubble_twin(patches[0]);
-            for (unsigned k = 0; k < 3; ++k) {
-                be[k] = bt.e[k];
-                bc[k] = bt.c[k];
-            }
-            bubble_image(bt, hp, B, q);
-            BubbleTwin sphere = bt;
-            for (unsigned k = 0; k < 3; ++k) {
-                sphere.c[k] = 0;
-                sphere.e[k] = view_r;
-            }
-            bubble_image(sphere, hp, Bf, q);
-            cell = double(patches[0].cell);
-            extent = double(patches[0].extent);
-            m = side_metric(l, bt, &hull, B, extent, 0.5 * double(patches[0].reach), 0, base_frame(g).near_z);
-        }
-        auto dist = [&](const double* p) {
-            double d = 0;
-            for (unsigned k = 0; k < 3; ++k) d += (p[k] - hp[k]) * (p[k] - hp[k]);
-            return std::sqrt(d);
-        };
-        double e_err = 0;
-        for (unsigned k = 0; k < 3; ++k) e_err = std::max(e_err, std::fabs(be[k] / (double(wc::bubble_scale) * ext[k]) - 1.0));
-        std::printf("HULL_WALK case=capital_side_hit nodes=%u frames=%u fallback_frames=%u fallback_ex=%.1f slices=%u walks=%u "
-                    "bubble_c=%.1f,%.1f,%.1f bubble_e=%.1f,%.1f,%.1f e_rel_err=%.4f b_shift=%.1f fallback_b_shift=%.1f "
-                    "shift_ratio=%.3f patches=%u lit_pixels=%u hidden_lit=%u outside_lit=%u eligible=%u covered=%u "
-                    "centroid_error_cells=%.3f cell=%.1f\n",
-                    nodes, frames, fallback_frames, fallback_e, unsigned(cache.slices), unsigned(cache.walks), bc[0], bc[1],
-                    bc[2], be[0], be[1], be[2], e_err, dist(B), dist(Bf), dist(Bf) > 0 ? dist(B) / dist(Bf) : 0.0, n.patches,
-                    m.lit, m.hidden_lit, m.outside, m.eligible, m.covered, m.centroid / cell, cell);
-        report("bubble_capital_648_nodes_walks_in_slices_and_fits",
-               nodes == 648 && frames == 3 && fallback_frames == 2 && std::fabs(fallback_e - view_r) < 1.0 &&
-                   cache.slices == 3 && cache.walks == 1 && n.bubbles == 1 && e_err < 1e-3 &&
-                   std::fabs(bc[0]) + std::fabs(bc[1]) + std::fabs(bc[2]) < 1.0, "");
-        report("bubble_capital_side_hit_on_the_hull_bubble",
-               m.lit > 100 && m.hidden_lit * 200 <= m.lit && m.outside * 100 <= m.lit && m.eligible &&
-                   double(m.covered) >= 0.9 * double(m.eligible) && m.centroid <= cell && dist(B) * 4.0 < dist(Bf), "");
-        draw_lane(g, 0.f, -1.f);
-
-        // (a') FL 66 A: a large scene's section nodes carry scales above the old 16x guard (its row: guard=scale
-        // value=0x001b6beb, 27.4x, on the first node; the owner of radius 3,590,659 was the Terran catapult gate scene,
-        // first taken for the Titan: corrected FL 67 A). The case keeps its name; the hit's tier is corvette (above), so
-        // the walk runs. The same tree with the level-1 (section) scale 0x1b6beb and the
-        // normalised extents cut by 125000 / 0x1b6beb so the sections' half-extents stay (200000, 150000, 62500):
-        // 200000 x 65536 / 1797099 = 7293.6 -> 7294 (200013, +6.5e-5), 150000 -> 5470 (149996, -2.7e-5), 62500 -> 2279
-        // (62494, -9.6e-5); the mounts and turrets (same ext_n, scales 20000 and 5000) stay inside the sections' box.
-        // The one-call walk names no guard; through the production builder and cache the hull bubble fits the staged
-        // box with the capital case's tolerance (e_rel_err < 1e-3, centre within 1 view unit).
-        {
-            const std::int32_t titan_ext_n[3] = {7294, 5470, 2279};
-            const std::int32_t titan_scales[3] = {0x1b6beb, 20000, 5000};
-            const unsigned titan_nodes = stage_tree(capital_n, titan_ext_n, titan_scales, capital_off);
-            ws::HullWalk tw;
-            ws::HullBox tbox;
-            const bool walk_ok = ws::hull_bounds(&fake_read, addr(fake_hull), addr(fake_node), &tbox, nullptr, &tw);
-            cache.rescope(7002);
-            ws::Counts tn{};
-            unsigned tframes = 0, tfailures = 0;
-            for (; tframes < 8; ++tframes) {
-                tn = ws::build(stage_ring, 2200 + 16 * tframes, &fake_read, identity_camera(), hull_tuning(), patches,
-                               wc::max_patches, decals, wc::max_decals, &cache);
-                tfailures += tn.bubble.failures;
-                if (!tn.bubble_fallback) break;
-            }
-            ++tframes;
-            double tbe[3] = {0, 0, 0}, tbc[3] = {0, 0, 0}, terr = 1;
-            if (tn.patches) {
-                const BubbleTwin bt = bubble_twin(patches[0]);
-                terr = 0;
-                for (unsigned k = 0; k < 3; ++k) {
-                    tbe[k] = bt.e[k];
-                    tbc[k] = bt.c[k];
-                    terr = std::max(terr, std::fabs(bt.e[k] / (double(wc::bubble_scale) * ext[k]) - 1.0));
-                }
-            }
-            std::printf("HULL_WALK case=capital_titan_scale scale=0x%08x nodes=%u walk_ok=%u guard=%s walked_nodes=%u "
-                        "parts=%u frames=%u failures=%u bubbles=%u bubble_c=%.1f,%.1f,%.1f bubble_e=%.1f,%.1f,%.1f "
-                        "e_rel_err=%.5f\n",
-                        unsigned(titan_scales[0]), titan_nodes, unsigned(walk_ok), ws::hull_guard_name(tw.guard),
-                        tbox.nodes, tbox.parts, tframes, tfailures, tn.bubbles, tbc[0], tbc[1], tbc[2], tbe[0], tbe[1],
-                        tbe[2], terr);
-            report("bubble_capital_titan_scale_walks_and_fits",
-                   titan_nodes == 648 && walk_ok && tw.guard == ws::HullGuard::none && tbox.nodes == 648 &&
-                       tbox.parts == 648 && tfailures == 0 && tn.bubbles == 1 && tn.bubble_fallback == 0 &&
-                       terr < 1e-3 && std::fabs(tbc[0]) + std::fabs(tbc[1]) + std::fabs(tbc[2]) < 1.0, "");
-        }
-
-        // (b) the walk's cost at the 1024-node budget
-        const unsigned big_n[3] = {16, 7, 8};
-        auto big_off = [](unsigned level, unsigned j, std::int32_t o[3]) {
-            o[0] = o[1] = 0;
-            o[2] = level == 0 ? std::int32_t((double(j) - 7.5) * 60000.0) : level == 1 ? 1000 : 100;
-        };
-        const unsigned big = stage_tree(big_n, ext_n, scales, big_off);
-        auto production = [](std::uintptr_t at, void* out, std::size_t sz) { return x3m::engine_memory::read(at, out, sz); };
-        static unsigned walk_reads = 0;
-        auto counted = [](std::uintptr_t at, void* out, std::size_t sz) {
-            ++walk_reads;
-            return fake_read(at, out, sz);
-        };
-        LARGE_INTEGER freq, a, b;
-        QueryPerformanceFrequency(&freq);
-        ws::HullBox box;
-        walk_reads = 0;
-        const bool counted_ok = ws::hull_bounds(counted, addr(fake_hull), addr(fake_node), &box);
-        const unsigned reads = walk_reads, big_nodes = box.nodes;
-        double best[4] = {1e30, 1e30, 1e30, 1e30}, sum[4] = {0, 0, 0, 0};
-        bool ok = counted_ok;
-        unsigned slice_nodes = 0, slices_needed = 0;
-        for (unsigned mode = 0; mode < 4; ++mode) // fake reader, production cold, production warm, one slice (cold)
-            for (unsigned rep = 0; rep < 200; ++rep) {
-                if (mode == 1 || mode == 3) x3m::engine_memory::next_frame();
-                if (mode < 3) {
-                    QueryPerformanceCounter(&a);
-                    ok = ws::hull_bounds(mode ? ws::Reader(production) : ws::Reader(&fake_read), addr(fake_hull),
-                                         addr(fake_node), &box) && ok;
-                    QueryPerformanceCounter(&b);
-                } else {
-                    ws::HullWalk w;
-                    ok = ws::hull_walk_start(w, production, addr(fake_hull), addr(fake_node)) == ws::HullStep::more && ok;
-                    QueryPerformanceCounter(&a);
-                    const ws::HullStep s = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
-                    QueryPerformanceCounter(&b);
-                    slice_nodes = w.box.nodes;
-                    ok = s == ws::HullStep::more && ok;
-                    if (!rep) {
-                        slices_needed = 1;
-                        ws::HullStep t = s;
-                        while (t == ws::HullStep::more) {
-                            t = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
-                            ++slices_needed;
-                        }
-                        ok = t == ws::HullStep::done && w.box.nodes == 1024 && ok;
-                    }
-                }
-                best[mode] = std::min(best[mode], ticks_us(a, b, freq));
-                sum[mode] += ticks_us(a, b, freq);
-            }
-        std::printf("HULL_WALK case=capital_cost nodes=%u walked_nodes=%u ok=%u reads=%u walk_best_us=%.1f walk_mean_us=%.1f "
-                    "engine_memory_cold_best_us=%.1f engine_memory_cold_mean_us=%.1f engine_memory_warm_best_us=%.1f "
-                    "engine_memory_warm_mean_us=%.1f slice_nodes=%u slice_best_us=%.1f slice_mean_us=%.1f slices=%u\n",
-                    big, big_nodes, unsigned(ok), reads, best[0], sum[0] / 200.0, best[1], sum[1] / 200.0, best[2],
-                    sum[2] / 200.0, slice_nodes, best[3], sum[3] / 200.0, slices_needed);
-        report("hull_walk_capital_1024_measured_sliced",
-               ok && big == 1024 && big_nodes == 1024 && slice_nodes == ws::hull_slice_nodes && slices_needed == 4 &&
-                   best[3] <= 60.0, "");
-        // the worst slice: 84 reads a node, the read bound cuts the slice
-        stage_tree(big_n, ext_n, scales, big_off, 16, 64);
-        double worst_best = 1e30, worst_sum = 0;
-        unsigned worst_nodes = 0, worst_reads = 0, worst_slices = 0;
-        bool worst_ok = true;
-        for (unsigned rep = 0; rep < 200; ++rep) {
-            x3m::engine_memory::next_frame();
-            ws::HullWalk w;
-            worst_ok = ws::hull_walk_start(w, production, addr(fake_hull), addr(fake_node)) == ws::HullStep::more && worst_ok;
-            const unsigned r0 = w.reads;
-            QueryPerformanceCounter(&a);
-            const ws::HullStep s = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
-            QueryPerformanceCounter(&b);
-            worst_best = std::min(worst_best, ticks_us(a, b, freq));
-            worst_sum += ticks_us(a, b, freq);
-            worst_nodes = w.box.nodes;
-            worst_reads = w.reads - r0;
-            worst_ok = s == ws::HullStep::more && worst_ok;
-            if (!rep) {
-                worst_slices = 1;
-                ws::HullStep t = s;
-                unsigned max_reads = worst_reads;
-                while (t == ws::HullStep::more && worst_slices < 64) {
-                    const unsigned ri = w.reads;
-                    t = ws::hull_walk_step(w, ws::hull_slice_nodes, ws::hull_slice_reads);
-                    max_reads = std::max(max_reads, w.reads - ri);
-                    ++worst_slices;
-                }
-                worst_ok = t == ws::HullStep::done && w.box.nodes == 1024 &&
-                           max_reads <= ws::hull_slice_reads + ws::hull_node_reads_max && worst_ok;
-            }
-        }
-        std::printf("HULL_WALK case=capital_worst_slice nodes=1024 lods=16 chain=64 ok=%u slice_nodes=%u slice_reads=%u "
-                    "read_bound=%u slice_best_us=%.1f slice_mean_us=%.1f slices=%u\n",
-                    unsigned(worst_ok), worst_nodes, worst_reads, ws::hull_slice_reads, worst_best, worst_sum / 200.0,
-                    worst_slices);
-        report("hull_walk_worst_slice_read_bounded",
-               worst_ok && worst_nodes < ws::hull_slice_nodes &&
-                   worst_reads <= ws::hull_slice_reads + ws::hull_node_reads_max && worst_best <= 60.0, "");
-
-        // (c) the forced failure: past the budget
-        const unsigned over_n[3] = {38, 26, 0};
-        auto over_off = [](unsigned, unsigned, std::int32_t o[3]) { o[0] = o[1] = o[2] = 0; };
-        const unsigned over = stage_tree(over_n, ext_n, scales, over_off);
-        cache.rescope(7001);
-        ws::Counts fail{};
-        unsigned fail_frame = 0;
-        for (unsigned f = 0; f < 8 && !fail_frame; ++f) {
-            fail = ws::build(stage_ring, 3000 + 16 * f, &fake_read, identity_camera(), hull_tuning(), patches,
-                             wc::max_patches, decals, wc::max_decals, &cache);
-            if (fail.bubble.failed_rows) fail_frame = f + 1;
-        }
-        const ws::HullFailure r = fail.bubble.failed[0];
-        char row[384] = {};
-        ws::format_walk_row(row, sizeof row, r, "fixture", 0);
-        std::printf("%s\n", row);
-        const ws::Counts held = ws::build(stage_ring, 3000 + 16 * fail_frame + 500, &fake_read, identity_camera(),
-                                          hull_tuning(), patches, wc::max_patches, decals, wc::max_decals, &cache);
-        std::printf("HULL_WALK case=forced_failure nodes_staged=%u frame=%u failures=%u failed_rows=%u guard=%s "
-                    "walked_nodes=%u parts=%u depth=%u deepest=%u slices=%u value=%lu fallback=%u held=%u held_rows=%u "
-                    "held_fallback=%u\n",
-                    over, fail_frame, fail.bubble.failures, fail.bubble.failed_rows, ws::hull_guard_name(r.guard), r.nodes,
-                    r.parts, r.depth, r.deepest, r.slices, static_cast<unsigned long>(r.value), fail.bubble_fallback,
-                    held.bubble.held, held.bubble.failed_rows, held.bubble_fallback);
-        report("bubble_walk_forced_failure_names_the_budget",
-               over == 1026 && fail_frame == 5 && fail.bubble.failures == 1 && fail.bubble.failed_rows == 1 &&
-                   r.guard == ws::HullGuard::budget && r.nodes == ws::hull_budget && r.depth == 2 && r.slices == 5 &&
-                   r.owner == addr(fake_obj) && r.node == addr(fake_node) && fail.bubble_fallback == 1 &&
-                   std::strstr(row, "weapon_bubble_walk edition=fixture state=failed guard=budget ") == row &&
-                   std::strstr(row, " nodes=1024 ") && held.bubble.held == 1 && held.bubble.failed_rows == 0 &&
-                   held.bubble_fallback == 1, "");
-        stage_tier_source = wc::tier_by_radius;
     }
     // The decal fallback through the production builder: an owner without an ellipsoid (radius 0) gives one flat
     // patch at the hit point and no patch; it draws on a hull at its depth and 0 over sky.
@@ -5659,7 +4864,7 @@ int main(int argc, char** argv) {
         rr::WeaponEffectsFrame f = base_frame(g);
         f.patches = patches;
         f.patch_count = live.patches;
-        const double sphere[3] = {80.0, 80.0, 80.0}; // the hull inside the fallback bubble
+        const double sphere[3] = {100.0, 100.0, 100.0}; // the hull through the hit: the hull decal
         draw_hull_lane(g, staged_hull(sphere));
         auto drawn = draw(pass, f);
         const double live_sum = total(read_luma(g, g.scene_s.p));
@@ -5673,7 +4878,7 @@ int main(int argc, char** argv) {
         std::printf("RETIRED live_patches=%u live_drew=%u live_sum=%.4f patches=%u decals=%u retired=%u ring_live=%u result=%08lx drew=%u sum=%.4f\n",
                     live.patches, unsigned(drawn.second.drew), live_sum, dead.patches, dead.decals, dead.retired,
                     ring_live(stage_ring), res.first, unsigned(res.second.drew), dead_sum);
-        report("stage_build_live_owner_draws", live.patches >= 1 && live.bubbles == 1 && drawn.second.drew && live_sum > 1.0, "");
+        report("stage_build_live_owner_draws", live.patches >= 1 && live.lathes == 0 && drawn.second.drew && live_sum > 1.0, "");
         draw_lane(g, 0.f, -1.f);
         report("retired_owner_draws_nothing", dead.patches == 0 && dead.decals == 0 && dead.retired == 1 &&
                                                   ring_live(stage_ring) == 0 && res.first == S_FALSE && !res.second.drew &&
@@ -5830,26 +5035,43 @@ int main(int argc, char** argv) {
             n_bw += bubble_patches(capital_close, {{(k & 1 ? 1.5f : -1.5f) * cc, (k & 2 ? 1.5f : -1.5f) * cc, 0.1f + 0.1f * k}},
                                    bubble_worst + n_bw, 32 - n_bw);
         const HullLane fighter_hull = facing_hull(fighter_far, 0.87), capital_hull = facing_hull(capital_close, 0.87);
-        // The eye inside the bubble (review F6), through the builder on the sky lane: the placement case (the fallback
-        // sphere R 20 m, the eye 10 m behind its centre, the hit on its front pole), and the own ship in the cockpit view
-        // (the eye 1 m inside the bubble's back, eight hits around it, two behind the eye; the draws dimmed as the glue
-        // dims them).
+        // The eye inside the bubble (review F6), through the production fill_bubble on the sky lane (the eye sphere's draw):
+        // a sphere R 20 m with the eye 10 m behind its centre, the hit on its front pole, and the own ship in the cockpit
+        // view (the eye 1 m inside the sphere's back, eight hits around it, two behind the eye; the draws dimmed as the
+        // glue dims them).
         rr::WeaponPatch inside_front[wc::max_patches], cockpit[wc::max_patches];
         unsigned n_inside = 0, n_cockpit = 0;
         {
-            rr::WeaponDecal decals[wc::max_decals];
-            stage_owner(50.f, 100.f, 1000);
-            stage_ring.slots[0].pos[2] = 10000;
-            n_inside = ws::build(stage_ring, 1500, &fake_read, identity_camera(), ws::Tuning{}, inside_front,
-                                 wc::max_patches, decals, wc::max_decals).patches;
-            stage_owner(95.f, 100.f, 1000);
-            wc::ring_clear(stage_ring);
-            const std::int32_t around[8][3] = {{0, 0, 10000}, {7071, 0, 7071}, {-7071, 0, 7071}, {0, 7071, 7071},
+            auto sphere_draws = [&](float z, const std::int32_t (*at)[3], const float* ages, unsigned count,
+                                    rr::WeaponPatch* out) {
+                const float centre[3] = {0.f, 0.f, z}, frame[9] = {1.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 0.f, 1.f};
+                ws::Bubble sphere;
+                for (unsigned k = 0; k < 3; ++k) sphere.e[k] = 100.f;
+                float hits[8][3], colour[3];
+                for (unsigned h = 0; h < count; ++h) ws::hit_local(at[h], hits[h]);
+                stage_owner(z, 100.f, 1000);
+                ws::patch_colour(stage_ring.slots[0], ws::Tuning{}, colour);
+                ws::Counts n{};
+                unsigned left = ws::anchor_count;
+                ws::fill_bubble(out, wc::max_patches, &left, centre, frame, wc::patch_fighter, sphere, hits, ages, count,
+                                colour, ws::Tuning{}, &n);
+                for (unsigned d = 0; d < n.patches; ++d) {
+                    out[d].owner = addr(fake_obj);
+                    out[d].owner_node = addr(fake_node);
+                    out[d].owner_radius = 100.f;
+                    out[d].newest_s = ages[0];
+                }
+                return n.patches;
+            };
+            const std::int32_t front[1][3] = {{0, 0, 10000}};
+            const float front_age[1] = {0.5f};
+            n_inside = sphere_draws(50.f, front, front_age, 1, inside_front);
+            const std::int32_t around[8][3] = {{7071, 0, 7071}, {-7071, 0, 7071}, {0, 7071, 7071}, {0, 0, 10000},
                                                {10000, 0, 0}, {0, -10000, 0}, {0, 2000, -9798}, {3000, 0, -9539}};
-            for (unsigned k = 0; k < 8; ++k) add_stage_hit(1000 + 40 * k, around[k]);
-            n_cockpit = ws::build(stage_ring, 1400, &fake_read, identity_camera(), ws::Tuning{}, cockpit, wc::max_patches,
-                                  decals, wc::max_decals).patches;
+            const float around_age[8] = {0.04f, 0.08f, 0.12f, 0.16f, 0.2f, 0.24f, 0.28f, 0.32f}; // newest first
+            n_cockpit = sphere_draws(95.f, around, around_age, 8, cockpit);
             ws::dim_own_cockpit(cockpit, n_cockpit, addr(fake_node), true);
+            wc::ring_clear(stage_ring);
         }
         unsigned spread_cells = 0;
         for (unsigned i = 0; i < spread_count; ++i) spread_cells += spread[i].cells;
@@ -5863,7 +5085,7 @@ int main(int argc, char** argv) {
             bool sky = false;     // the sky lane instead
             const LatheHullLane* lathe_lane = nullptr; // the Titan's hull lane instead
         } cases[] = {{"fence", nullptr, 0, nullptr},
-                     // the lathe bubble (2026-11-12): the Titan's two flank hits as the hull decal (no profile) and on
+                     // the lathe bubble (2026-11-12): the Titan's two flank hits as the hull decal (a station's) and on
                      // its lathe, on the Titan's hull lane, 12 km from the eye (the whole ship on screen)
                      {"titan_two_hits_decal", titan_timing[0], titan_timing_count[0], nullptr, false, &titan_timing_lane},
                      {"titan_two_hits_lathe", titan_timing[1], titan_timing_count[1], nullptr, false, &titan_timing_lane},

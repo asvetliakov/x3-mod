@@ -253,10 +253,11 @@ PPC, IBL) on the player's ship stay staged shield hits (proof RVAs in the FL not
 with the skip return `xor eax,eax; ret`, CPU flags, DF and LastError preserved as on AP. The data differs only by the
 game clock (cfg `+0x708`), the node body id (`+0x144`, a `0x148`-byte node read) and the relocated globals (cfg
 `0x1a83b0`, type tables `0x1a83c8 + 4·class`, counts `0x1a8330 + 4·class` — the `Globals` count relation is an edition
-parameter, bound with `core::fl_globals`, body cache `0x1aa100`); every other `layout::` constant is shared. The shield
-colour and ship-bubble hull walk are portable with those offset and slot changes only (section 5 of the FL note); the
-bubble walk's LOD-extent bound `[0, 0x20000]` is an inference and stays the runtime guard (a failed walk takes the
-fallback sphere and logs one `weapon_bubble_extent edition=fl state=refused` row on its first refusal). The FL weapon
+parameter, bound with `core::fl_globals`; the body cache `0x1aa100` was bound for the walk until 2026-11-12); every
+other `layout::` constant is shared. The shield
+colour is portable with those offset and slot changes only (section 5 of the FL note). The ship-bubble hull walk,
+its body cache slot and its FL LOD-extent guard (`weapon_bubble_extent`) were removed on 2026-11-12 (5.1.1
+"Placement"). The FL weapon
 census has the same 45 rows and ids as stock AP; the record fields differ only in PD's lifetime (1,800 vs 2,100 ms),
 speed (355 vs 375 m/s) and damage (351/80 vs 468/120), and the PAC body's scale (8,099 vs 16,171; elongation 24.5 vs
 24.7), so the classifier gives the same style for all 45 [M, `fl.json`, `classify_preview_out.txt`]; the classifier and
@@ -573,8 +574,29 @@ every hit, so a diagnosis flight still sees vanilla.
   footprint radius doubles with them), rings 1 / 2 / 2 (7 / 19 / 19 cells per hit; the patch radius control is gone);
   the tier is the TShips class id for ships (8.1 of the spawn note), capital for docks and factories, else radius
   bands below 30 / 150 m [I].
+- **Placement decision 2026-11-12 (user, FL 69 A): the walk removed; profile lathe for every ship; no profile:
+  native.** Every ship draws its shield hit on the lathe built from its offline profile (`tables.ship_profiles`, schema
+  3; "The lathe bubble" and "Ship profiles" below) whatever its tier. A ship without a usable profile (no regeneration,
+  a modded ship, a stale table, another class at its row, a refused type read, a root axis scale outside (0, 256x]) gets
+  no proxy shield effect: the impact hook forwards the game's native effect, as for a drained shield
+  (`core::ship_profile_verdict`, the stage's resolve checks repeated at the hit with plain loads, at most seven, no
+  call). Any other object that is not a station has no profile and stays native too. A station (dock or factory) keeps
+  the hull decal. The own ship in the cockpit view keeps the eye sphere, sized from its profile's bounds (no profile:
+  native). The runtime hull walk, its cache, the box-fitted ellipsoid of fighters and corvettes, its fallback sphere and
+  the capital hull decal for ships are gone, with `core::lathe_all_tiers`, `core::shield_bubble` and the tier routing
+  of ships (`core::shield_surface` now reads only the station source). The tier stays where something else reads it:
+  the cell size and ring count per tier (`core::cell_m`, `core::rings`, `stage::Tuning`), the death site's boom tier
+  and the station source (the decal). `weapon_effects_frame` carries `ships_native=` (the period's ship hits forwarded
+  for want of a profile) and its verdicts `ships_native_no_profile=`, `ships_native_stale_table=`,
+  `ships_native_mismatch=`, `ships_native_unreadable=`, `ships_native_scale=`, and `others_native=`; one
+  `weapon_ship_profile_missing rows= profiles= tships_rows= list=row:class:verdict,...` row per session names the first
+  eight TShips rows forwarded native. The rows `weapon_bubble_walk`, `weapon_bubble_fit`, `weapon_bubble_extent` and
+  the counters `bubbles=`, `bubble_fallback=`, `bubble_walks=`, `bubble_walk_failures=`, `bubble_held=`,
+  `bubble_deferred=`, `bubble_clamped=`, `bubble_partial=`, `cells_key_dropped=` are removed. The walk's text below is
+  kept as the record, marked superseded; the evidence stays in the ledger ([weapon-effects.md](../verification/weapon-effects.md), "Ship bubble, station decal" and the FL run 65 to 69 entries) and `verification/results/fl-run65/`, `fl-run67/`.
 - **Placement: the ship bubble, the hull decal of stations and capitals (user decision after Run238 Flight E;
-  supersedes the stand-off of Run237 Flight D, 21ad87836, reverted; capitals since FL 67 A, 2026-11-12).** A fighter's or corvette's patch lies on a smooth bubble around
+  supersedes the stand-off of Run237 Flight D, 21ad87836, reverted; capitals since FL 67 A, 2026-11-12; superseded for
+  ships by the decision above).** A fighter's or corvette's patch lies on a smooth bubble around
   it; a station's and a capital's stay the hull decal below. The owner's newest record decides (`core::shield_bubble`):
   `PatchTier` fighter or corvette and `TierSource` not `tier_by_station` take the bubble; `patch_capital` (M0/M1/M2/M7/TL
   by TShips class, docks and factories, an unknown class in the capital radius band) and an unknown tier take the decal
@@ -587,9 +609,12 @@ every hit, so a diagnosis flight still sees vanilla.
     corvette → walked ellipsoid, capital or station → decal). Fighters and corvettes keep the Run239 walked ellipsoid
     (orchestrator decision 2026-11-12: the accepted look, not changed without a flight); `core::lathe_all_tiers` (false)
     is the one switch that gives every tier with a profile the lathe. The own capital ship in the cockpit keeps the
-    Run240 eye sphere (its radius from the profile's bounds x 1.15, no walk).
+    Run240 eye sphere (its radius from the profile's bounds x 1.15, no walk). *Superseded the same day (FL 69 A, the
+    decision above): every tier with a profile takes the lathe, `lathe_all_tiers` is gone, and a ship without a usable
+    profile stays native.*
     - *Stale table*: the profiles carry the TShips row count the generator read (`generated_from.ship_profiles.rows`);
-      the stage compares it with the live count at the type table's count slot once per call (the bullet table's
+      the impact hook compares it with the live count at every staged hit (`ships_native_stale_table`: the hit stays
+      native) and the stage once per call (the bullet table's
       `stale_table` rule) and, when they differ or none was recorded, uses no profile (`lathe_stale`, one
       `weapon_lathe event=stale_table table_rows= engine_rows=` row per process). `weapon_effects_frame` carries the
       period's `lathes=`, `lathe_no_profile=`, `lathe_mismatch=`, `lathe_unreadable=` (a refused read or the row past the
@@ -654,7 +679,8 @@ every hit, so a diagnosis flight still sees vanilla.
       hull (TS, TL freighters) a corner hit's lateral projection can land inside the hull, where the lane hides it. Not
       fixed now; a profile carrying the slice's corner reach (or an inflation of √2 x 1.15 on the diagonals) would.
   - *Capitals take the decal (FL 67 A, main session decision 2026-11-12; since the lathe above only a capital whose row
-    has no profile).* A box-fitted ellipsoid cannot fit a long hull
+    has no profile). Superseded 2026-11-12 (FL 69 A): a capital without a profile stays native; the decal is the
+    stations' only.* A box-fitted ellipsoid cannot fit a long hull
     with fins at any scale. The Argon Titan (M2, radius 545,751) is one hull part whose stored extent is the per-axis
     coordinate maximum (x 151k at one z-station, the others 46 to 83k; y 166k from the fins), so its walked bubble stood
     about 174k x 194k x 608k engine units (x 1.15) far off the sides; the radial map pushes a hit outward by 1/|q|, and
@@ -676,9 +702,9 @@ every hit, so a diagnosis flight still sees vanilla.
     `F` parents composed), points x LOD-0 value / 65536, faces under 0.1 % of the body's largest dropped (as
     `engine_bodies.py`). **One scene unit is one engine (world) unit**: the unit of a scene key position, and for a part
     of unit node scale the runtime's half-extent ((ext x value + 0x8000) >> 16) x axis / 0x10000 (`hull_scale16` with
-    0x10000 = 1.0, `src/proxy/weapon_effects_bubble.h`) is the same number; 500 units per metre; the bubble's view units
+    0x10000 = 1.0, the removed walk's) is the same number; 500 units per metre; the bubble's view units
     are these x `core::world_scale`. A row whose scene does not load is listed under
-    `generated_from.ship_profiles_skipped` with its reason and has no entry (the runtime falls back). The Argon Titan (FL
+    `generated_from.ship_profiles_skipped` with its reason and has no entry (that ship's hits stay native). The Argon Titan (FL
     row 11) [M]: z -511,093 to 545,751 (the walk's hull part 17,329 +- 528,422), radius 545,994 (scene_radius 545,751),
     widest slice 16 (z 17,329..50,355, amidships) hx 151,433 (the stored x extent) hy 108,901, the slice half-widths 3.8k
     to 151k in x against the walk's single 174k (`verification/results/ship-profiles/titan_profile.py`; before the
@@ -704,6 +730,9 @@ every hit, so a diagnosis flight still sees vanilla.
     `verification/results/ship-profiles/hull_rules_fl.txt` (`hull_rules.py`; Titan entries `titan_profile_raw.json`,
     `titan_profile_smoothed.json`; `titan_profile.json` stays frozen as the pre-rule profile the native fixture's
     `titan_profile()` embeds).
+  - *Superseded 2026-11-12 (FL 69 A: the walk removed; the evidence stays in the ledger ([weapon-effects.md](../verification/weapon-effects.md), "Ship bubble, station decal" and the FL run 65 to 69 entries) and `verification/results/fl-run65/`, `fl-run67/`). The walk, its cache, its rows and counters below
+    are no longer built; the hit mapping (`bubble_point`) and the draw (`fill_bubble`, `bubble_box`,
+    `weapon_bubble_ps.hlsl`) stay as the eye sphere's.*
   - *Bubble.* An ellipsoid in the owner frame from the hull bounds (render-node-bounds.md 6.1, the reads and guards of
     `ship_avoidance_walk_core.h` `hull_children` with a signed box: `stage::hull_bounds` in
     `src/proxy/weapon_effects_bubble.h`, every descendant of the root node at most 3 levels down and 1024 nodes, 1024 per
@@ -792,7 +821,8 @@ every hit, so a diagnosis flight still sees vanilla.
     `engine_memory::read` (894 reads), cached in the steady state.
 - **The station's hull decal: the screen-space patch (user decision 2026-11-06 after Run236 Flight C; supersedes the
   per-face lattice at the hit point with its travel region, per-cell depth, depth cache, soft fade and seam planes;
-  since the bubble above it draws the stations only, as built in 6720724d3, and since FL 67 A the capitals too).** The patch is a decal laid on the hull
+  since the bubble above it draws the stations only, as built in 6720724d3, and since FL 67 A the capitals too; since
+  2026-11-12 the stations only again).** The patch is a decal laid on the hull
   through the depth lane; nothing chooses a face from the bolt (`Event::dir` stays
   recorded for the `weapon_event` row and is unused). The cells keep their model: per owner six faces (+-z, +-x, +-y,
   each a planar hex lattice perpendicular to its owner axis, fixed in the owner frame, `stage::anchor_frame`), a hit
@@ -901,8 +931,8 @@ every hit, so a diagnosis flight still sees vanilla.
   winding cull, the ledger). The hull decal's program is 457 ps_3_0 slots, the bubble's 873 (two points' cell work,
   unrolled); at 5120x1440 the bubble's fighter, close-capital, worst-owner and capital-spread rows measure 0.93 to
   1.02 x (the spread 0.43 x: fewer, smaller boxes) the decal's 6720724d3 figures, the own ship's cockpit with eight hits
-  258 us; the walk is cached and bounded to two a frame (12.3 us for 127 parts through engine_memory::read when it
-  runs); the per-frame figures and the stage's CPU cost are in the ledger [M].
+  258 us; the walk (removed 2026-11-12) was cached and bounded to two a frame (12.3 us for 127 parts through
+  engine_memory::read when it ran); the per-frame figures and the stage's CPU cost are in the ledger [M].
 - **Lab controls** (replacing 5.1 item 4's shell list): cell size per tier, rings per tier, the surface (ship bubble or
   station hull decal), the bubble scale and the far side's gain, the hull presets with the chase camera's nose hit, ripple speed,
   centre gain and fade duration, stagger, edge-versus-fill, the three colour bands, the SETA rate (default 1), the
