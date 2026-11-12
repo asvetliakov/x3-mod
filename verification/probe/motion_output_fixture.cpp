@@ -1164,7 +1164,11 @@ struct Fixture {
         differs(x.declaration != y.declaration, "declaration");
         differs(x.vs != y.vs, "vs");
         differs(x.ps != y.ps, "ps");
-        differs(x.stream != y.stream || x.offset != y.offset || x.stride != y.stride, "stream0");
+        // One native quirk is tolerated: a caller's (null, 0, 0) stream 0 coming back as (null, 0, stride) -
+        // native D3D9 keeps the last bound stride after SetStreamSource(0, nullptr, 0, 0) (measured 2026-11-13:
+        // (null, 0, 20) after a replay, the pass before and after the penumbra change alike).
+        const bool null_stride_quirk = !x.stream && !y.stream && x.stride == 0;
+        differs(x.stream != y.stream || x.offset != y.offset || (x.stride != y.stride && !null_stride_quirk), "stream0");
         for (unsigned i = 0; i < watched_count; ++i) {
             char what[32];
             std::snprintf(what, sizeof what, "state_%u", unsigned(watched_states[i]));
@@ -4895,7 +4899,7 @@ int main(int argc, char** argv) {
                     f.hdrfault || f.hdrramp || f.hdrexposure || f.hdrtonemapfault || f.msaa || f.linearmaterials ||
                     f.materialxt || f.materialglass || f.sunlane || f.hullemission || f.emissions ||
                     mode == "shadowreplay" || mode == "shadowretention" || mode == "shadowpool" || mode == "sunapply" ||
-                    mode == "shadowalpha" || mode == "shadowalpharoute" || mode == "thinvote" ||
+                    mode == "shadowalpha" || mode == "shadowpenumbra" || mode == "shadowalpharoute" || mode == "thinvote" ||
                     f.seam == (mode == "seam" || mode == "unmatchedstatic"),
                 "DLL seam presence matches the requested mode");
         char setting[8]{};
@@ -5056,6 +5060,8 @@ int main(int argc, char** argv) {
             run_shadow_pool_integration(f);
         else if (mode == "shadowalpha")
             run_shadow_alpha(f);
+        else if (mode == "shadowpenumbra")
+            run_shadow_penumbra(f);
         else if (mode == "shadowalpharoute")
             run_shadow_alpha_route(f);
         else if (mode == "sunapply") {

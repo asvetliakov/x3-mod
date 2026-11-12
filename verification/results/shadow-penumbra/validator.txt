@@ -1,0 +1,13 @@
+# tree alpha_pixel_words: words=53 instructions=10
+# tree alpha_vertex_words: words=57 instructions=9
+# base alpha_pixel_words: words=34 instructions=5
+# base alpha_vertex_words: words=57 instructions=9
+tree_alpha_pixel_words.bin words=53 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+tree_alpha_vertex_words.bin words=57 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+base_alpha_pixel_words.bin words=34 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+base_alpha_vertex_words.bin words=57 begin=00000000
+  end=00000000 messages=0 instruction_worst=00000000
+VALIDATOR PASS programs=4

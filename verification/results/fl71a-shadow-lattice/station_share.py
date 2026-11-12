@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Per captured frame: Titan-range pixels (view z in [ZMIN, ZMAX]) by selected cascade, split into
-remote-station occluded (nearest map depth < 0.7, i.e. >= ~90 km sunward), other occluded, lit.
+remote-station occluded (nearest map depth < 0.7, i.e. >= ~90,000 u (18 km) sunward), other occluded, lit.
 usage: station_share.py ZMIN ZMAX FRAME..."""
 import sys, numpy as np
 sys.path.insert(0, __file__.rsplit('/', 1)[0])

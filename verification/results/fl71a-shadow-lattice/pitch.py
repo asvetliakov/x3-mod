@@ -26,4 +26,4 @@ peaks.sort()
 texel = 2 * EXT[c] / N
 for rr, dx, dy, v in peaks[:8]:
     ang = np.degrees(np.arctan2(dy, dx))
-    print(f'  peak d={rr:.2f} texels ({rr*texel:.2f} m) dx={dx} dy={dy} angle={ang:.1f} ac={v:.3f}')
+    print(f'  peak d={rr:.2f} texels ({rr*texel:.2f} u) dx={dx} dy={dy} angle={ang:.1f} ac={v:.3f}')

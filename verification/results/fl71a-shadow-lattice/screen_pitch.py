@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Screen-space lattice pitch in an hdr crop vs the reconstructed nearest-texel occlusion of the
-same crop, and the sun-plane metres per screen peak vector. usage: screen_pitch.py FRAME CASCADE x0 y0 x1 y1"""
+same crop, and the sun-plane render units (5 per metre) per screen peak vector. usage: screen_pitch.py FRAME CASCADE x0 y0 x1 y1"""
 import sys, numpy as np
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from project import rows, vec, CAP, W, H
@@ -29,11 +29,11 @@ def peaks(A, rmin=6, rmax=120, n=6):
             v = A[hy + dy, hx + dx]
             if v == A[hy + dy - 3:hy + dy + 4, hx + dx - 3:hx + dx + 4].max() and v > 0.05: out.append((v, dx, dy))
     out.sort(reverse=True); return out[:n]
-# sun-plane metres per screen pixel (mean Jacobian over the crop)
+# sun-plane render units per screen pixel (mean Jacobian over the crop)
 jx = np.nanmedian(np.stack([np.diff(sxm, axis=1)[:-1, :], np.diff(sym, axis=1)[:-1, :]], -1).reshape(-1, 2), 0)
 jy = np.nanmedian(np.stack([np.diff(sxm, axis=0)[:, :-1], np.diff(sym, axis=0)[:, :-1]], -1).reshape(-1, 2), 0)
-print(f'frame {f} cascade {c} crop {x0},{y0}-{x1},{y1} occluded={occl.mean():.3f} sunplane m/px: dx->{np.round(jx,3)} dy->{np.round(jy,3)}')
+print(f'frame {f} cascade {c} crop {x0},{y0}-{x1},{y1} occluded={occl.mean():.3f} sunplane u/px (render units, 5 per metre): dx->{np.round(jx,3)} dy->{np.round(jy,3)}')
 for name, A in (('hdr', ac(lum)), ('occl', ac(occl))):
     for v, dx, dy in peaks(A):
         mvec = dx * jx + dy * jy
-        print(f'  {name} peak dx={dx} dy={dy} px |{np.hypot(dx,dy):.1f}| ac={v:.3f} -> sun-plane {np.hypot(*mvec):.1f} m')
+        print(f'  {name} peak dx={dx} dy={dy} px |{np.hypot(dx,dy):.1f}| ac={v:.3f} -> sun-plane {np.hypot(*mvec):.1f} u')

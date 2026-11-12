@@ -118,19 +118,28 @@ constexpr DWORD alpha_vertex_words[] = {
     0x02000001u, 0xe0030002u, 0x90e40001u,               // mov o2.xy, v1
     0x0000ffffu};
 // clang-format on
-// ps_3_0: r0 = s0 at v1.xy; texkill (r0.a - c0.x) replicated (the alpha test
-// GREATEREQUAL c0.x: clip(tex.a - threshold)); oC0 = max(v0.x, 0) as above.
+// ps_3_0: the far-caster penumbra bias (docs/architecture/shadow-far-caster-penumbra.md; c1 per map:
+// shadow_replay_penumbra) r1.w = min(log2(max(1, c1.w - v0.x c1.y)), 15), i.e. max(0, log2(0.0093 (delta - 2,000)
+// / texel) - 1.5) with delta = (z_cam - depth) range (the 1.5-mip support offset is in the constants); r0 = s0 at v1.xy
+// biased by r1.w (texldb); texkill (r0.a - c0.x) replicated (the alpha test GREATEREQUAL c0.x: clip(tex.a -
+// threshold)); oC0 = max(v0.x, 0) as above. Inside the dead zone (and with c1 = 0) the max gives 1, log2(1) = 0: the
+// unbiased fetch.
 // clang-format off
 constexpr DWORD alpha_pixel_words[] = {
     0xffff0300u,
-    0x05000051u, 0xa00f0001u, 0u, 0u, 0u, 0u,            // def c1, 0, 0, 0, 0
+    0x05000051u, 0xa00f0002u, 0u, 0x3f800000u, 0x41700000u, 0u, // def c2, 0, 1, 15, 0
     0x0200001fu, 0x80000005u, 0x90010000u,               // dcl_texcoord v0.x
     0x0200001fu, 0x80010005u, 0x90030001u,               // dcl_texcoord1 v1.xy
     0x0200001fu, 0x90000000u, 0xa00f0800u,               // dcl_2d s0
-    0x03000042u, 0x800f0000u, 0x90e40001u, 0xa0e40800u,  // texld r0, v1, s0
+    0x04000004u, 0x80010001u, 0x91000000u, 0xa0550001u, 0xa0ff0001u, // mad r1.x, -v0.x, c1.y, c1.w
+    0x0300000bu, 0x80010001u, 0x80000001u, 0xa0550002u,  // max r1.x, r1.x, c2.y
+    0x0200000fu, 0x80080001u, 0x80000001u,               // log r1.w, r1.x
+    0x0300000au, 0x80080001u, 0x80ff0001u, 0xa0aa0002u,  // min r1.w, r1.w, c2.z
+    0x02000001u, 0x80030001u, 0x90e40001u,               // mov r1.xy, v1
+    0x03020042u, 0x800f0000u, 0x80e40001u, 0xa0e40800u,  // texldb r0, r1, s0
     0x03000002u, 0x800f0000u, 0x80ff0000u, 0xa1000000u,  // add r0, r0.w, -c0.x
     0x01000041u, 0x800f0000u,                            // texkill r0
-    0x0300000bu, 0x800f0000u, 0x90000000u, 0xa0000001u,  // max r0, v0.x, c1.x
+    0x0300000bu, 0x800f0000u, 0x90000000u, 0xa0000002u,  // max r0, v0.x, c2.x
     0x02000001u, 0x800f0800u, 0x80e40000u,               // mov oC0, r0
     0x0000ffffu};
 // clang-format on
@@ -250,9 +259,10 @@ void ShadowReplayPass::detach() noexcept {
     drop(ps_);
     drop(vs_alpha_);
     drop(ps_alpha_);
-    alpha_bound_ = alpha_sampler_ = false;
+    alpha_bound_ = alpha_sampler_ = alpha_penumbra_set_ = false;
     alpha_texture_ = nullptr;
     alpha_threshold_ = -1.f;
+    penumbra_ = nullptr;
     device_ = nullptr;
     vtable_ = nullptr;
     count_ = depth_size_ = render_targets_ = streams_ = 0;
@@ -436,16 +446,20 @@ HRESULT ShadowReplayPass::bind() noexcept {
     STEP(call<SetPsFn>(SetPixelShader)(d, ps_));
     STEP(call<SetFreqFn>(SetStreamSourceFreq)(d, 0, 1));
 #undef STEP
-    alpha_bound_ = alpha_sampler_ = false;
+    alpha_bound_ = alpha_sampler_ = alpha_penumbra_set_ = false;
     alpha_texture_ = nullptr;
     alpha_threshold_ = -1.f; // this transaction's alpha state starts unbound
+    penumbra_ = nullptr;
     return S_OK;
 }
 // An alpha-tested issue's program pair, sampler 0 (written once per
-// transaction: WRAP as the engine's material samplers, trilinear, no bias or
-// LOD clamp, no sRGB decode; the alpha is never decoded anyway), its texture
-// and threshold, each only when it changes; an opaque issue after one binds
-// the depth-only pair back. The block restores every one of these.
+// transaction: WRAP as the engine's material samplers, trilinear, no sampler
+// bias or LOD clamp, no sRGB decode; the alpha is never decoded anyway; the
+// program's texldb adds the map's penumbra bias, and the sampled level stays
+// inside the texture's chain by the documented LOD clamp), its texture, its
+// threshold and the map's penumbra constants, each only when it changes; an
+// opaque issue after one binds the depth-only pair back. The block restores
+// every one of these.
 HRESULT ShadowReplayPass::bind_alpha(const ShadowReplayDraw& r, unsigned& made) noexcept {
     D d = device_;
     HRESULT hr = S_OK;
@@ -492,12 +506,23 @@ HRESULT ShadowReplayPass::bind_alpha(const ShadowReplayDraw& r, unsigned& made) 
         if (FAILED(hr)) return hr;
         alpha_texture_ = r.alpha_texture;
     }
-    if (r.alpha_threshold != alpha_threshold_) {
-        const float threshold[4] = {r.alpha_threshold, r.alpha_threshold, r.alpha_threshold, r.alpha_threshold};
-        hr = call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, 0, threshold, 1);
+    // c0 the threshold, c1 the map's penumbra constants: one call for whichever changed (both: one call of two
+    // vectors), so a map's first alpha issue costs no more calls than before and a later map one at most.
+    static constexpr float no_penumbra[4] = {0.f, 0.f, 0.f, 0.f};
+    const float* penumbra = penumbra_ ? penumbra_ : no_penumbra;
+    const bool threshold_changed = r.alpha_threshold != alpha_threshold_;
+    bool penumbra_changed = !alpha_penumbra_set_;
+    for (unsigned i = 0; i < 4 && !penumbra_changed; ++i) penumbra_changed = penumbra[i] != alpha_penumbra_[i];
+    if (threshold_changed || penumbra_changed) {
+        const float constants[8] = {r.alpha_threshold, r.alpha_threshold, r.alpha_threshold, r.alpha_threshold,
+                                    penumbra[0],       penumbra[1],       penumbra[2],       penumbra[3]};
+        const UINT first = threshold_changed ? 0u : 1u, vectors = threshold_changed && penumbra_changed ? 2u : 1u;
+        hr = call<SetPsConstantsFn>(SetPixelShaderConstantF)(d, first, constants + 4 * first, vectors);
         ++made;
         if (FAILED(hr)) return hr;
         alpha_threshold_ = r.alpha_threshold;
+        for (unsigned i = 0; i < 4; ++i) alpha_penumbra_[i] = penumbra[i];
+        alpha_penumbra_set_ = true;
     }
     return S_OK;
 }
@@ -599,6 +624,7 @@ HRESULT ShadowReplayPass::execute_cascades(const ShadowReplayDraw* draws, unsign
         const auto& list = lists[l];
         out->state_calls_map[list.map] += 2; // bind_map: SetRenderTarget and SetViewport
         if (!step(ShadowReplayStage::Bind, bind_map(list.map))) break;
+        penumbra_ = list.penumbra; // the alpha issues' c1 (bind_alpha writes it once per map that needs it)
         ++out->state_calls_map[list.map];
         if (!step(ShadowReplayStage::Clear,
                   call<ClearFn>(Clear)(d, 0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, 0xffffffffu, 1.f, 0)))
@@ -618,6 +644,7 @@ HRESULT ShadowReplayPass::execute_cascades(const ShadowReplayDraw* draws, unsign
             hr = end;
         }
     }
+    penumbra_ = nullptr; // the caller's lists are borrowed for this call only
     out->operation = hr;
     out->restore = lost(hr) ? hr : saved.restore();
     if (FAILED(hr) || FAILED(out->restore)) {

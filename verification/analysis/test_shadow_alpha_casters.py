@@ -1,14 +1,16 @@
 """Host contracts of the alpha-tested sun-shadow casters (docs/architecture/
 shadow-replay-gates.md, "Alpha-tested casters"; X3M_SHADOW_ALPHA_CASTERS):
 the launcher option, the alpha-test classification of the pure header
-(shadow_replay_candidates.h, alpha_caster) and the token structure of the two
-authored caster programs in src/renderer/shadow_replay_pass.cpp. No Wine."""
+(shadow_replay_candidates.h, alpha_caster), the token structure of the two
+authored caster programs in src/renderer/shadow_replay_pass.cpp and the far-caster
+penumbra constants (shadow_replay_penumbra). No Wine."""
 import contextlib
 import importlib.util
 import io
 import json
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -136,16 +138,93 @@ class Programs(unittest.TestCase):
         words = program('alpha_pixel_words')
         self.assertEqual(words[0], 0xffff0300)
         ops = instructions(words)
-        self.assertEqual([op for op, _ in ops], [0x51, 0x1f, 0x1f, 0x1f, 0x42, 0x02, 0x41, 0x0b, 0x01])  # def, 3 dcl, texld, add, texkill, max, mov
+        # def, 3 dcl, then the penumbra bias (mad, max, log, min), mov r1.xy, texldb, add, texkill, max, mov: ten slots.
+        self.assertEqual([op for op, _ in ops], [0x51, 0x1f, 0x1f, 0x1f, 0x04, 0x0b, 0x0f, 0x0a, 0x01, 0x42, 0x02, 0x41, 0x0b, 0x01])
+        self.assertEqual(sum(op not in (0x51, 0x1f) for op, _ in ops), 10)
+        definition = ops[0][1]
+        self.assertEqual(register(definition[0]), (2, 2))                                 # def c2 (c0 threshold, c1 penumbra)
+        self.assertEqual([struct.unpack('<f', struct.pack('<I', w))[0] for w in definition[1:]], [0., 1., 15., 0.])
         dcl_sampler = ops[3][1]
-        self.assertEqual((dcl_sampler[0] >> 27) & 0xf, 2)            # D3DSTT_2D
-        self.assertEqual(register(dcl_sampler[1]), (10, 0))          # s0
-        self.assertEqual(register(ops[4][1][1]), (1, 1))             # texld from v1 (TEXCOORD1: the UV)
-        add = ops[5][1]
+        self.assertEqual((dcl_sampler[0] >> 27) & 0xf, 2)                                 # D3DSTT_2D
+        self.assertEqual(register(dcl_sampler[1]), (10, 0))                               # s0
+        mad = ops[4][1]                                                                   # r1.x = c1.w - v0.x c1.y
+        self.assertEqual((register(mad[0]), (mad[0] >> 16) & 0xf), ((0, 1), 0x1))
+        self.assertEqual((register(mad[1]), (mad[1] >> 24) & 0xf, (mad[1] >> 16) & 0xff), ((1, 0), 1, 0x00))
+        self.assertEqual((register(mad[2]), (mad[2] >> 16) & 0xff, register(mad[3]), (mad[3] >> 16) & 0xff), ((2, 1), 0x55, (2, 1), 0xff))
+        self.assertEqual((register(ops[5][1][2]), (ops[5][1][2] >> 16) & 0xff), ((2, 2), 0x55))  # max(., c2.y = 1)
+        self.assertEqual(((ops[6][1][0] >> 16) & 0xf, (ops[6][1][1] >> 16) & 0xff), (0x8, 0x00))  # log r1.w, r1.x (replicate)
+        self.assertEqual((register(ops[7][1][2]), (ops[7][1][2] >> 16) & 0xff), ((2, 2), 0xaa))  # min(., c2.z = 15)
+        self.assertEqual((register(ops[8][1][0]), (ops[8][1][0] >> 16) & 0xf, register(ops[8][1][1])), ((0, 1), 0x3, (1, 1)))  # mov r1.xy, v1 (the UV)
+        self.assertEqual(sum(1 for op, _ in ops if op == 0x42), 1)
+        texldb = [w for w in words if w & 0xffff == 0x42][0]
+        self.assertEqual((texldb >> 16) & 0xff, 2)                                        # D3DSI_TEXLD_BIAS
+        self.assertEqual((register(ops[9][1][1]), register(ops[9][1][2])), ((0, 1), (10, 0)))  # texldb r0, r1 (bias in .w), s0
+        add = ops[10][1]
         self.assertEqual(((add[1] >> 16) & 0xff, (add[2] >> 24) & 0xf, register(add[2]), (add[2] >> 16) & 0xff), (0xff, 1, (2, 0), 0))  # r0.w - c0.x
-        self.assertEqual(ops[6][1], [0x800f0000])                    # texkill r0 (every lane the same difference)
-        self.assertEqual(register(ops[7][1][2]), (2, 1))             # max against c1 (c0 is the threshold)
-        self.assertEqual(register(ops[8][1][0]), (8, 0))             # oC0
+        self.assertEqual(ops[11][1], [0x800f0000])                                        # texkill r0 (every lane the same difference)
+        self.assertEqual((register(ops[12][1][1]), register(ops[12][1][2])), ((1, 0), (2, 2)))  # max v0.x against c2.x
+        self.assertEqual(register(ops[13][1][0]), (8, 0))                                 # oC0
+
+
+PENUMBRA_DRIVER = r'''
+#include "renderer/shadow_replay_projection.h"
+#include <cmath>
+#include <cstdio>
+#include <initializer_list>
+using namespace x3m::renderer;
+int main() {
+    unsigned failures = 0;
+    auto near = [&](double got, double want, double tolerance, const char* what) {
+        if (!(std::fabs(got - want) <= tolerance)) { ++failures; std::printf("FAIL %s got=%.9g want=%.9g\n", what, got, want); }
+    };
+    CameraState camera{}; camera.valid = true; camera.r[0] = camera.r[4] = camera.r[8] = 1.f;
+    ShadowReplayBasis basis{}; basis.valid = true;
+    for (unsigned i = 0; i < 3; ++i) basis.axes[i][i] = 1.;
+    ShadowReplayCascade cascade{}; cascade.half_extent = 1500.f; cascade.size = 4096; cascade.depth_toward_light = 300000.f; cascade.depth_behind = 3000.f;
+    const double R = 303000., texel = 3000. / 4096., k = 1. / std::sqrt(8.); // the 1.5-mip support offset, 2^-1.5
+    float c[4];
+    if (!shadow_replay_penumbra(camera, basis, cascade, c)) { ++failures; std::printf("FAIL valid input refused\n"); }
+    near(c[0], 300000. / R, 1e-7, "z_cam");
+    near(c[1], R * .0093 / texel * k, 1e-2, "range 0.0093 / texel / 2^1.5");
+    near(c[2], 2000. * .0093 / texel * k, 1e-4, "2,000 0.0093 / texel / 2^1.5");
+    near(c[3], double(c[0]) * c[1] - c[2], 1e-2, "w");
+    // The program's argument w - depth a for a caster d toward the light is 0.0093 (d - 2,000) / texel / 2^1.5, so
+    // log2(max(1, arg)) = max(0, log2(0.0093 (d - 2,000) / texel) - 1.5).
+    for (double d : {500., 2000., 2026., 10000., 137000.}) {
+        const double depth = (300000. - d) / R, arg = double(c[3]) - depth * c[1];
+        near(arg, .0093 * (d - 2000.) / texel * k, 2e-2, "law");
+    }
+    // The camera 1,000 units toward the light (world position -t under the identity rotation): the plane follows it.
+    camera.t[2] = 1000.f;
+    shadow_replay_penumbra(camera, basis, cascade, c);
+    near(c[0], 299000. / R, 1e-7, "z_cam follows the camera");
+    // Refusals leave zeros (bias 0).
+    cascade.size = 0;
+    const bool refused = !shadow_replay_penumbra(camera, basis, cascade, c) && c[0] == 0.f && c[1] == 0.f && c[2] == 0.f && c[3] == 0.f;
+    cascade.size = 4096; basis.valid = false;
+    const bool refused_basis = !shadow_replay_penumbra(camera, basis, cascade, c) && c[1] == 0.f;
+    if (!refused || !refused_basis) { ++failures; std::printf("FAIL refusal\n"); }
+    std::printf("RESULT %s failures=%u\n", failures ? "FAIL" : "PASS", failures);
+    return failures ? 1 : 0;
+}
+'''
+
+
+class Penumbra(unittest.TestCase):
+    """shadow_replay_penumbra (docs/architecture/shadow-far-caster-penumbra.md): the per-cascade constants the alpha
+    pixel program evaluates, against the law in double."""
+    def test_constants(self):
+        compiler = shutil.which('c++') or shutil.which('clang++') or shutil.which('g++')
+        if compiler is None:
+            self.skipTest('no host C++ compiler')
+        with tempfile.TemporaryDirectory(prefix='x3-penumbra-') as directory:
+            work = Path(directory)
+            (work / 'driver.cpp').write_text(PENUMBRA_DRIVER)
+            subprocess.run([compiler, '-std=c++17', '-O1', '-Wall', '-Wextra', '-Werror', '-I', str(ROOT / 'src'),
+                            str(work / 'driver.cpp'), '-o', str(work / 'driver')], check=True)
+            result = subprocess.run([str(work / 'driver')], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout)
+            self.assertIn('RESULT PASS failures=0', result.stdout)
 
 
 if __name__ == '__main__':

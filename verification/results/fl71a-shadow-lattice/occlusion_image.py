@@ -32,7 +32,7 @@ for c in sorted(cas):
     m = np.memmap(CAP + f'shadow_map{c}_1_{f}.r32f', dtype='<f4', mode='r', shape=(N, N))
     md = np.array(m)[row[first], col[first]].astype(np.float64)
     occl[first] = md < sz[first] - 1e-6
-    gap[first] = (sz[first] - md) * (L + B)  # metres between receiver and stored caster along the sun axis
+    gap[first] = (sz[first] - md) * (L + B)  # render units (5 per metre) between receiver and stored caster along the sun axis
 img = np.zeros(z.shape + (3,), np.uint8); img[ok & ~occl] = 255; img[~ok] = (0, 0, 90)
 Image.fromarray(img).save(pre + '_occl.png')
 pal = {0: (255, 0, 0), 1: (0, 200, 0), 2: (0, 80, 255), 3: (230, 230, 0), 4: (230, 0, 230)}
