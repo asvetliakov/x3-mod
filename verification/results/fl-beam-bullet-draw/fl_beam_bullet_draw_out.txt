@@ -1,0 +1,144 @@
+X3FL.exe sha256 e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+  beamA    0x05150d  test byte ptr [edx + eax + 0x58], 2
+  beamA    0x05153a  add ecx, 0x10
+  beamA    0x05153e  call 0x50e0c0
+  beamA    0x051555  add ecx, 0x20
+  beamA    0x051559  call 0x50ebe0
+  beamA    0x05158c  movups xmmword ptr [edx + 0x30], xmm0
+  beamA    0x051593  mov eax, dword ptr [eax + 0x70]
+  beamA    0x05159e  call 0x44dcd0
+  beamA    0x0515ae  sar ebx, 1
+  beamA    0x0515b0  test al, 1
+  beamA    0x0515bd  movd xmm0, dword ptr [eax + 0x180]
+  beamA    0x0515f7  cmp dword ptr [eax + 0x188], 0
+  beamA    0x0515fe  mov eax, dword ptr [edi + 0xa4]
+  beamA    0x051615  sar ebx, 1
+  beamA    0x05161f  mov ebx, 1
+  beamA    0x051660  sar eax, 2
+  beamA    0x05166d  push 0x10
+  beamA    0x05167f  push 1
+  beamA    0x051685  call 0x419fc0
+  beamA    0x051690  mov dword ptr [ecx + 0x13c], eax
+  beamA    0x05169b  mov dword ptr [eax + 0x13c], 0xff
+  beamA    0x0516a5  mov dword ptr [edi + 0xa4], ebx
+  beamA    0x0516b4  mov eax, 0x3333
+  beamA    0x0516e7  mov dword ptr [esi + 0x13c], eax
+  beamA    0x0516f1  mov ecx, 0x40000000
+  beamA    0x051709  push 0x40000000
+  beamA    0x051729  idiv ecx
+  beamA    0x05172f  push 0x10000
+  beamA    0x051739  call 0x4a3ae0
+  beamA    0x051743  imul dword ptr [ecx + 0x60]
+  beamA    0x051797  movups xmmword ptr [ecx + 0x30], xmm0
+  beamA    0x0517a2  movups xmmword ptr [eax + 0xb0], xmm0
+  beamA    0x0517b0  movups xmmword ptr [eax + 0xc0], xmm0
+  range    0x04dcf0  mov eax, dword ptr [ecx + 0x50]
+  range    0x04dcf7  mov eax, dword ptr [ecx + 0x54]
+  range    0x04dd04  mov ecx, 0x3e8
+  setters  0x0a3af8  mov dword ptr [esi + 0x80], edi
+  setters  0x0a3b01  mov dword ptr [esi + 0x84], ebx
+  setters  0x0a3b09  mov dword ptr [esi + 0x88], ebp
+  setters  0x0a3965  mov dword ptr [edi + 0x70], eax
+  setters  0x0a3968  mov dword ptr [edi + 0x80], 0x10000
+  setters  0x0a397c  mov dword ptr [edi + 0x88], 0x10000
+  bind     0x0a3668  mov eax, dword ptr [eax + 0x14]
+  bind     0x0a366b  mov dword ptr [esi + 0x70], eax
+  bind     0x04a6de  mov dword ptr [eax + 0x70], 0x64
+  frame    0x043b42  call 0x466de0
+  frame    0x043b76  call 0x463000
+  frame    0x066e8f  test byte ptr [ecx + eax + 0x58], 2
+  frame    0x066ea1  call 0x466660
+  frame    0x0641a2  call 0x4514f0
+  frame    0x0643d9  call 0x4517f0
+  frame    0x06450e  mov ecx, 0x7d0
+  frame    0x064536  mov edx, dword ptr [ecx + 0x14]
+  frame    0x064549  call 0x4a3920
+  frame    0x064cce  mov eax, dword ptr [ecx + eax + 0x90]
+  frame    0x064cd5  mov dword ptr [edx + 0x124], eax
+  frame    0x064cf5  mov eax, dword ptr [eax + 0x13c]
+  hit      0x066ae9  or dword ptr [eax + 0x74], 1
+  hit      0x066af0  mov dword ptr [eax + 0x7c], ebx
+  hit      0x066af6  mov dword ptr [eax + 0x180], 0
+  hit      0x066b03  mov dword ptr [eax + 0x184], 0
+  hit      0x066b14  sub eax, dword ptr [edi + 0xa4]
+  fire     0x04f521  test al, 2
+  fire     0x04f52a  call 0x4514f0
+  fire     0x04f56d  call 0x466660
+  fire     0x04f57c  call 0x4514f0
+  fire     0x04f586  test al, 4
+  fire     0x04f593  call 0x4517f0
+  fire     0x04faf9  call 0x4514f0
+  fire     0x04fb32  call 0x466660
+  fire     0x04fb3d  call 0x4514f0
+  fire     0x04fb6e  call 0x4517f0
+  beamB    0x0519d1  call 0x4a3920
+  beamB    0x0519f5  call 0x4a3ae0
+  beamB    0x051ea2  call 0x4a3920
+  beamB    0x051ed7  call 0x4a3ae0
+  frame    0x0642a5  call 0x451430
+  frame    0x064354  call 0x4a3920
+  batch    0x085668  mov ecx, dword ptr [eax + 0x144]
+  batch    0x08566f  cmp ecx, 0xe1
+  batch    0x0856c0  cmp dword ptr [eax], 0x37
+  batch    0x0e0c1f  test byte ptr [esi + 0x1c], 0x10
+  batch    0x0e0c25  mov esi, dword ptr [eax + 0x5c]
+  batch    0x0e0c4b  mov ecx, 0x574344
+  batch    0x0e0c5f  mov ecx, 0x574344
+  batch    0x0e0886  mov eax, dword ptr [edi + 0x13c]
+  lone     0x0e3cb9  push 0x58fdf8
+  lone     0x0e3cc6  mov dword ptr [esi + 0x188], eax
+  lone     0x0e3c48  mov dword ptr [esi + 0x170], eax
+  lone     0x0e3c72  mov dword ptr [esi + 0x178], eax
+  lone     0x0e3c87  mov dword ptr [esi + 0x17c], eax
+  lone     0x0e4abd  mov eax, dword ptr [ecx + 0x13c]
+  lone     0x0e4ad9  mulsd xmm0, qword ptr [ebp - 0xf8]
+  lone     0x0e4b0e  cmp dword ptr [esi + 0x1a4], 0
+  lone     0x0e4b2c  push 5
+  lone     0x0e4b7d  mov ecx, dword ptr [esi + 0x188]
+  sound    0x095a45  movzx ecx, word ptr [edi + 0x124]
+  sound    0x095a4c  mov eax, dword ptr [edi + 0x138]
+  sound    0x095a52  add eax, 0x1194
+  sound    0x04b173  mov dword ptr [eax + 0x138], 0x2710
+  ap       0x44800d  test byte ptr [eax + ecx + 0x58], 2
+  ap       0x44809e  call 0x444bd0
+  ap       0x4480ab  test byte ptr [ecx + 0x74], 1
+  ap       0x448172  mov dword ptr [eax + 0x13c], 0xff
+  ap       0x4481f0  push 0x40000000
+  ap       0x4481f9  call 0x412450
+  ap       0x44820f  call 0x488270
+  ap       0x448222  call 0x40e780
+  ap       0x488286  mov dword ptr [ecx + 0x80], edi
+  ap       0x488292  mov dword ptr [ecx + 0x88], ebx
+  ap       0x48812d  mov dword ptr [edi + 0x80], eax
+  ap       0x45cefa  or dword ptr [eax + 0x74], 1
+  ap       0x46ce58  cmp dword ptr [esi + 0x140], 0xe1
+FL anchors 100, failures 0
+AP anchors 13, failures 0
+TBullets beam rows (addon2/04.cat): flags col 12; range = col 11 * col 10 / 1000 (0x04dcd0); beam A half-length L = range / 2 before a hit; col 18 = beam B segment length unit
+  row  7 SS_BULLET_IOND               body 300                                flags 0x0214 col10   463 ms col11  1013626 range   469308 L   234654 col18 8.0 col26 255
+  row  9 SS_BULLET_PD                 body effects\weapons\bullet_flamethrower flags 0x0808 col10  1800 ms col11   177500 range   319500 L   159750 col18 0.5 col26 150
+  row 15 SS_BULLET_FLAK_ALPHA         body 10458                              flags 0x2100 col10   300 ms col11  3525500 range  1057650 L   528825 col18 3.0 col26 210
+  row 16 SS_BULLET_FLAK_CLUSTER       body 10458                              flags 0x3000 col10   900 ms col11  1100000 range   990000 L   495000 col18 3.0 col26 210
+  row 17 SS_BULLET_PAL                body 10385                              flags 0x0002 col10  2490 ms col11  1280500 range  3188445 L  1594222 col18 5.0 col26 255
+  row 18 SS_BULLET_PSG                body 225                                flags 0x0008 col10  5682 ms col11   127000 range   721614 L   360807 col18 1.0 col26 150
+  row 20 SS_BULLET_PPC                body 518                                flags 0x2000 col10 19890 ms col11   166500 range  3311685 L  1655842 col18 5.0 col26 180
+  row 21 SS_BULLET_IONC               body effects\weapons\bullet_IonCannon   flags 0x2600 col10 13250 ms col11   193500 range  2563875 L  1281937 col18 5.0 col26 180
+  row 23 SS_BULLET_IBL                body effects\weapons\bullet_FireBomb    flags 0x2800 col10 16500 ms col11   156000 range  2574000 L  1287000 col18 5.0 col26 180
+  row 24 SS_BULLET_PSP                body effects\weapons\bullet_PointSing   flags 0x2100 col10 20000 ms col11   160500 range  3210000 L  1605000 col18 5.0 col26 180
+  row 25 SS_BULLET_PBC                body effects\X3AP\weapons\TOL_bullet    flags 0x0002 col10   550 ms col11  5322000 range  2927100 L  1463550 col18 5.0 col26 255
+  row 26 SS_BULLET_TRIBEAM            body 10385                              flags 0x0002 col10  1100 ms col11  2815000 range  3096500 L  1548250 col18 5.0 col26 255
+  row 27 SS_BULLET_FUSIONBEAM         body 10385                              flags 0x0802 col10  2493 ms col11  1330384 range  3316647 L  1658323 col18 5.0 col26 255
+  row 29 SS_BULLET_TUG                body 525                                flags 0x0002 col10   500 ms col11  2000000 range  1000000 L   500000 col18 1.0 col26 255
+  row 30 SS_BULLET_DUMMY1             body 10459                              flags 0x3000 col10  4000 ms col11 12500000 range 50000000 L 25000000 col18 3.0 col26 180
+  row 31 SS_BULLET_DUMMY2             body 525                                flags 0x0002 col10   300 ms col11  2996995 range   899098 L   449549 col18 8.0 col26 180
+  row 32 SS_BULLET_KH_ALPHA           body 525                                flags 0x0002 col10   300 ms col11  2996995 range   899098 L   449549 col18 8.0 col26 180
+  row 33 SS_BULLET_KH_BETA            body 526                                flags 0x0002 col10   350 ms col11  4882882 range  1709008 L   854504 col18 8.0 col26 255
+  row 34 SS_BULLET_KH_GAMMA           body 527                                flags 0x0002 col10   400 ms col11  6071500 range  2428600 L  1214300 col18 8.0 col26 255
+  row 35 SS_BULLET_REPAIR             body effects\weapons\bullet_Repair      flags 0x00a2 col10   500 ms col11  2200000 range  1100000 L   550000 col18 5.0 col26 180
+  row 40 SS_BULLET_TERRANANTIFIGHTER_FRAG body 225                                flags 0x0008 col10  1000 ms col11   127000 range   127000 L    63500 col18 4.0 col26 150
+text bodies (loader normalisation: max |coordinate| -> 1.0):
+  objects/v/00300 (01.cat): object size 10000; 8 points, max |coord| 22222; normalised z -1.0000..1.0000, max |x|,|y| 0.5000; faces per material {0: 4}; materials MATERIAL3 #0 tex 70
+  objects/v/00525 (01.cat): object size 1000; 32 points, max |coord| 99983; normalised z -1.0000..1.0000, max |x|,|y| 0.2922; faces per material {0: 48}; materials MATERIAL3 #0 tex 155
+  objects/v/00526 (01.cat): object size 1000; 32 points, max |coord| 99983; normalised z -1.0000..1.0000, max |x|,|y| 0.5248; faces per material {0: 48}; materials MATERIAL3 #0 tex 155
+  objects/v/00527 (01.cat): object size 1000; 61 points, max |coord| 99984; normalised z -1.0000..1.0000, max |x|,|y| 0.9614; faces per material {0: 94}; materials MATERIAL3 #0 tex 155
