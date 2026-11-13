@@ -41,8 +41,13 @@ FRAME_FIELDS = ('device', 'frame', 'mode', 'known', 'nodes_live', 'nodes_unseen'
                 # retained alpha-tested casters (2026-11-04): their issues this frame, admitted ones skipped without the
                 # alpha programs, records retextured in place, keep sightings (alpha source refused) that refreshed a
                 # record; absent from earlier logs (read as 0)
-                'retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept')
+                'retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept',
+                # sightings of a static node with records new to it (2026-11-13, FL 71 A): every one inherited and
+                # the node is static (kept), one repeated no placement or the node left the static class (moved), one
+                # still lacks its extent and the old set stands in (pending); absent from earlier logs (read as 0)
+                'lod_swap_kept', 'lod_swap_moved', 'lod_swap_pending')
 ALPHA_FIELDS = ('retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept')
+LOD_SWAP_FIELDS = ('lod_swap_kept', 'lod_swap_moved', 'lod_swap_pending')
 FLOAT_FIELDS = ('drift_p99', 'drift_max', 'us', 'journal_us', 'walk_us', 'draw_us', 'gate_us')
 TEXT_FIELDS = {'mode': ('census', 'live'), 'flush': ('none', 'epoch', 'reset', 'device', 'teardown', 'sun', 'observer', 'idle')}
 CASCADES = 5  # c0..c4; the per-cascade would/capped/live tail carries one entry per cascade
@@ -66,9 +71,10 @@ def parse_frame_line(line):
     body = line[len(FRAME_PREFIX):].strip()
     pairs = FIELD.findall(body)
     keys = [k for k, _ in pairs]
-    if keys not in (list(FRAME_FIELDS), list(FRAME_FIELDS[:-len(ALPHA_FIELDS)])) or ' '.join(f'{k}={v}' for k, v in pairs) != body:
+    shapes = (FRAME_FIELDS, FRAME_FIELDS[:-len(LOD_SWAP_FIELDS)], FRAME_FIELDS[:-len(LOD_SWAP_FIELDS) - len(ALPHA_FIELDS)])
+    if keys not in [list(shape) for shape in shapes] or ' '.join(f'{k}={v}' for k, v in pairs) != body:
         raise MalformedLine(line.strip())
-    row = dict.fromkeys(ALPHA_FIELDS, 0)
+    row = dict.fromkeys(ALPHA_FIELDS + LOD_SWAP_FIELDS, 0)
     for key, value in pairs:
         if key in TEXT_FIELDS:
             if value not in TEXT_FIELDS[key]:
@@ -170,7 +176,7 @@ def summary(frames, resights, eps=0.05):
                                             'evicted', 'sun_relatch', 'cam_jump', 'transit_survivors', 'refused', 'moving_dropped', 'abandoned', 'deferred',
                                             'far_alternate_due_to_retained', 'revalidate_context_lost', 'release_queue_full', 'reclassified_after_unseen', 'admitted_checked', 'buffer_views',
                                             'reclassified_c0', 'reclassified_c1', 'reclassified_c2', 'reclassified_c3', 'reclassified_c4', 'gate_sightings',
-                                            'retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept')},
+                                            'retained_alpha', 'retained_alpha_skipped', 'retextured', 'alpha_kept', 'lod_swap_kept', 'lod_swap_moved', 'lod_swap_pending')},
            'flushes': {name: sum(1 for r in frames if r['flush'] == name) for name in TEXT_FIELDS['flush'] if name != 'none'},
            'retired_burst_peak': peak('retired'),
            'drift': {'frames': len(verified), 'samples': sum(r['drift_n'] for r in verified), 'max': max((r['drift_max'] for r in verified), default=0.0),

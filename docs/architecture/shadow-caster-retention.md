@@ -44,7 +44,9 @@ monotonic and never reused, so a draw-time probe cannot hit a stale record.
    no camera enters that product.
 2. **A node submitted this frame supersedes its whole retained set** with this frame's draws.
    A LOD or model change observed on resubmission therefore replaces, never adds (counted
-   `lod_replaced` / `model_replaced`): no double caster from the node's own history.
+   `lod_replaced` / `model_replaced`): no double caster from the node's own history. The new
+   records keep the node's static class when they repeat its placement (§ "A LOD swap keeps the
+   static class").
 3. **Only static nodes outlive the frame they were last seen.** Static = the recovered world
    rows of every draw of the node agree with the previous sighting within `eps` (provisional
    0.05 units at the AABB corner; the census fixes it) for 8 consecutive sightings. A moving
@@ -432,10 +434,13 @@ Where the build differs from, or sharpens, the text above:
   sighting within `eps` of the *stored* rows (not of the previous sighting, so slow drift
   accumulates against one reference) raises the record's streak; a node is static when every
   record of it has a known extent and a streak of 8, i.e. from its ninth sighting. A record
-  that joins a static node (another draw admitted, a LOD swap) returns the node to the moving
-  class until that record has earned its streak. Verification runs on every sighting of a
-  moving node, on a resighting after any unseen frame, after a set change, and on 1 sighting in
-  16 otherwise.
+  that joins a node with a streak (another draw admitted, a LOD or model swap) inherits the
+  anchor and streaks of the node's record whose placement it repeats within the base eps (once
+  its extent is known; until then the superseded set stands in); one that repeats none returns
+  the node to the moving class until it has earned its streak
+  (2026-11-13; § "A LOD swap keeps the static class"; until then every joining record did). Every
+  sighting is verified (about 0.15 us per record; `finalize_seen`), so a node that starts moving
+  while seen is reclassified on that sighting.
 - **Per-cascade tiers (2026-09-18, run 40 A, causes 1 and 3).** Beside `is_static` (the base
   eps, what retention replays while a node is unseen) every node carries `static_mask` and
   `moved_mask`, bit `c` per cascade: static under cascade c's eps (`FrameInput::eps_cascade[c]`,
@@ -734,6 +739,61 @@ Since 2026-11-04 both editions retain alpha-tested casters:
   with `sizeof` under the MinGW i686 compiler), allocated once at attach. Open: the census reads
   the alpha source too (cost without a replay), and texture content stays untracked.
   Host evidence: directional-shadows.md, "Alpha-tested casters retained".
+
+## A LOD swap keeps the static class (2026-11-13, FL 71 A)
+
+Flight witness (`/mnt/c/X3FL/x3m.log`, grep; triage `verification/results/fl71a-shadow-lattice/`):
+a stationary station (handle 52942, model `00005597`, 137,000 units toward the sun) was retained
+with its 6 coarse records (`lod=1`, `class=static streak=8 static_mask=31` at frame 39120); at
+39121 the game drew it with the 25 detailed records (`lod=0`), which as fresh records started at
+streak 0, so the node left the static class and was dropped as moving on its first unseen frame
+(39122, `moving_dropped=1`). Its shadow vanished although it never moved. Records of both sets
+carry one node transform: the two records with 9,124 and 19,358 primitives present in both sets
+have world AABB centres equal within 0.004 units.
+
+Rule (`Store::inherit_placement`, in the scene end before the supersede loop, for a non-fresh
+node that gained a record this sighting or has a swap pending). Targets: the node's records seen
+now without a placement. Sources: its placed records with a streak, the superseded set included
+(still linked).
+
+- **Complete target** (extent and rows known): its object → world rows are compared, by the
+  corner drift of its own object box, against the sources; within the base eps it takes that
+  source's anchor `world`, `streak` and `streak_cascade` (the longest streak among the matches;
+  the last match is tried first, so records sharing the node transform cost one drift each). The
+  verification that follows measures it exactly as the old record would have been measured.
+- **Awaiting target** (no extent yet: `queue_candidate_extent` only queues the read at a range's
+  first draw and `read_candidate_extents` answers it at that frame's scene end, so the extent is
+  normally known from the second sighting; or no usable rows): left unplaced, while its origin
+  alone repeats a source's. The swap is **pending**: the node keeps its superseded complete
+  records as its replayed copy and, if it was static, its class and static mask (less any tier a
+  current record moved beyond). The copy is never issued while the node is seen (the live draws
+  cast); while the node is unseen the copy is replayed and the unplaced new records are not
+  (they are not complete). A pure rotation passes the origin test and is caught by the box test
+  once the extent arrives.
+- **Moved**: a target that repeats no placement (origin alone for an awaiting one), a current
+  record that moved while pending, or a pending swap not complete after `static_sightings` (8)
+  sightings: every target is placed afresh at streak 0, the copy is freed, the node leaves the
+  static class and drops on its first unseen frame, as before this change.
+
+When the new set completes (no target awaiting) the copy is freed in that same scene end, so the
+old set never casts beside a complete new one. Back to the old set while pending: the copy is
+current again and the unplaced new records are superseded. References held: both sets during a
+pending swap, the current set otherwise (host test, alternating sets whose first appearance has
+no extent: at most 3 records and 7 references).
+
+Rows: `shadow_retention_frame` ends with `lod_swap_kept=`, `lod_swap_moved=` and
+`lod_swap_pending=`: per sighting of a node static before it with a target, kept when every
+target inherited and the node is static after the sighting, pending while the copy stands in,
+moved otherwise. All three are absent from earlier logs and read as 0 by
+`tools/analysis/shadow_retention.py`. The live classifier (`classify_candidate_static`) reads the
+node's masks, so a pending swap's live draws stay static-class. Cost: nothing on a sighting with
+no target; per target one `world_rows` and one drift for a shared transform (25 + 25 for this
+station), at most targets × sources drifts otherwise; a pending swap holds the old set's
+references for one more sighting. Host evidence: directional-shadows.md, "FL 71 A: a LOD swap
+dropped a static caster". Fixture: case `d_lod_swap` expects the pending swap frame (old record
+kept, both meshes held), an unseen gap frame replaying the old mesh, the completing sighting
+(old mesh released), and an unseen frame replaying the new mesh, for the LOD and the model swap;
+the runner records `lod_swap` totals and requires `kept >= 2` and `pending >= 2`.
 
 ## Open RE (not blocking stages 1–2)
 

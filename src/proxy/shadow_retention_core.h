@@ -73,6 +73,7 @@ enum class Revalidation : std::uint8_t {
 enum class Seen : std::uint8_t { Excluded, Deferred, Refused, Known, New, Unmatched }; // Unmatched: a keep sighting
                                                                                        // with no record of its range
 enum class BufferState : std::uint8_t { Quiet = 0, Changed = 1, Gone = 2 };
+enum class Swap : std::uint8_t { None, Kept, Pending, Moved }; // a sighting's outcome for records new to a placed node
 
 inline double abs_d(double v) noexcept {
     return v < 0. ? -v : v;
@@ -184,6 +185,7 @@ struct Draw {
     // law of the static-only cascades, the base eps elsewhere, where it equals `streak`).
     std::uint8_t streak_cascade[renderer::shadow_cascade_max]{};
     bool used = false, world_valid = false, extent_known = false, bounds_dirty = false;
+    bool awaiting = false; // new to a placed node, its extent or rows not yet known: left unplaced until they are
     bool complete() const noexcept { return world_valid && extent_known; }
 };
 struct Node {
@@ -204,6 +206,10 @@ struct Node {
     bool used = false, is_static = false, dirty = false, fresh = false, changed = false, lod_changed = false,
          model_changed = false;
     bool partial = false, pre_transit = false, bounds_valid = false;
+    // A swap pending (Store::inherit_placement): the node keeps its superseded complete records as its replayed copy
+    // until every new record is complete; pending_sightings counts the sightings it has waited.
+    bool awaiting = false;
+    std::uint8_t pending_sightings = 0;
 };
 // owed: no record names it; one Release is owed to the owner (pop_owed). single_node: the one node whose
 // records name it while uses were only ever taken by that node (none once shared), so an orphan drop
@@ -281,6 +287,12 @@ struct FrameStats {
                                                                      // FrameCounts::footprint_refused)
     std::uint32_t retextured = 0; // records whose alpha texture or threshold a sighting changed in place (streak kept)
     std::uint32_t alpha_kept = 0; // keep sightings (alpha source refused) that refreshed a record of their range
+    // Sightings of a static node with records it had no placement for (a level-of-detail or model swap, a draw
+    // added), one of three per sighting: kept (every such record inherited a placement and the node is static
+    // after the sighting), pending (a record still lacks its extent or rows: the superseded set is kept as the
+    // node's replayed copy and its class carries) or moved (a record repeats no placement, the node is not static
+    // after the sighting, or a pending set did not complete within static_sightings sightings).
+    std::uint32_t lod_swap_kept = 0, lod_swap_moved = 0, lod_swap_pending = 0;
 };
 // Cumulative since attach: the shadow_retention_resight line and the fixture's checks.
 struct Totals {
@@ -966,10 +978,19 @@ private:
                 remove_node(index, Expiry::Abandoned, 0);
                 continue;
             }
-            // A node submitted this frame supersedes its whole retained set.
+            // New records of a node already placed take its placement before the old set goes (FL 71 A).
+            Swap swap = !n.fresh && (n.changed || n.awaiting) ? inherit_placement(n, in, eps2) : Swap::None;
+            if (swap == Swap::Pending && ++n.pending_sightings > static_sightings) { // never completed: as before
+                for (std::uint16_t i = n.head; i != none; i = draws[i].next) draws[i].awaiting = false;
+                swap = Swap::Moved;
+            }
+            if (swap != Swap::Pending) n.pending_sightings = 0;
+            n.awaiting = swap == Swap::Pending;
+            // A node submitted this frame supersedes its whole retained set; while a swap is pending its complete
+            // placed records stay as the replayed copy (never issued while the node is seen: the live draws cast).
             for (std::uint16_t i = n.head, previous = none; i != none;) {
                 const std::uint16_t next = draws[i].next;
-                if (draws[i].stamp == in.frame) {
+                if (draws[i].stamp == in.frame || (n.awaiting && draws[i].complete())) {
                     previous = i;
                     i = next;
                     continue;
@@ -982,6 +1003,7 @@ private:
                 free_draw(i);
                 --n.draws;
                 n.changed = true;
+                n.bounds_valid = false;
                 i = next;
             }
             if (!n.draws) {
@@ -1012,9 +1034,16 @@ private:
                                                                                : renderer::shadow_cascade_max;
             const std::uint8_t tier_bits = std::uint8_t((1u << tiers) - 1u);
             std::uint8_t moved_c = 0, static_c = n.partial ? std::uint8_t(0) : tier_bits;
+            const std::uint8_t static_before = n.static_mask;
             double worst = 0;
             for (std::uint16_t i = n.head; i != none; i = draws[i].next) {
                 Draw& d = draws[i];
+                if (d.stamp != in.frame) continue; // the kept copy of a pending swap: not seen, not verified
+                if (d.awaiting) {                  // unplaced until its extent and rows are known
+                    all_static = false;
+                    static_c = 0;
+                    continue;
+                }
                 if (verify) {
                     double w[12];
                     if (!world_rows(in.camera, d.rows, w)) {
@@ -1081,8 +1110,21 @@ private:
             for (unsigned c = 0; c < tiers; ++c)
                 if ((n.static_mask >> c & 1u) && (moved_c >> c & 1u)) ++frame.reclassified_cascade[c];
             n.static_mask = std::uint8_t(static_c & ~moved_c);
+            if (n.awaiting && was_static && !moved) { // the class carries while the copy stands in for the new set
+                n.is_static = true;
+                n.static_mask = std::uint8_t(static_before & ~moved_c);
+            } else if (n.awaiting) // a copy only stands in for a static node: freed now, the awaiting records placed
+                drop_copy(n, in.frame); // afresh on their next sighting
             n.moved_mask = std::uint8_t((n.moved_mask | moved_c) & ~n.static_mask); // verified moved at a tier until
                                                                                     // promoted there again
+            if (was_static && swap != Swap::None) {
+                if (n.awaiting)
+                    ++frame.lod_swap_pending;
+                else if (swap == Swap::Kept && n.is_static)
+                    ++frame.lod_swap_kept;
+                else
+                    ++frame.lod_swap_moved;
+            }
             if (!was_static && n.is_static) {
                 ++frame.promoted;
                 ++totals.promoted;
@@ -1108,6 +1150,98 @@ private:
             n.fresh = n.changed = n.lod_changed = n.model_changed = false;
         }
         dirty_count = 0;
+    }
+    // A level-of-detail swap keeps the static class (FL 71 A, 2026-11-13): the game drew a static station
+    // with another record set (25 detailed for 6 coarse records); fresh records start at streak 0, so the node
+    // left the static class and was dropped as moving on its next unseen frame although it never moved.
+    // Targets: the node's records seen now without a placement (new this sighting, or awaiting from an earlier
+    // one). Sources: its placed records with a streak (the superseded set is still linked: freed only after this).
+    // A target with its extent and rows takes the anchor, streak and per-cascade streaks of a source whose
+    // placement it repeats within the base eps (corner drift of the target's own object box; the longest streak
+    // among the matches, the last match tried first, so records sharing the node transform cost one drift each);
+    // the verification that follows measures it as the old record would have been measured. A target without its
+    // extent (the extent read is queued at the first draw of a range) or rows is awaiting: left unplaced, and the
+    // caller keeps the complete placed records as the node's replayed copy, while its origin alone repeats a
+    // source's (a pure rotation is caught once the extent arrives). A target that repeats no placement (origin
+    // alone when awaiting) is a move: every target is placed afresh, the node leaves the static class and still
+    // drops unseen.
+    Swap inherit_placement(Node& n, const FrameInput& in, double eps2) noexcept {
+        bool sourced = false;
+        for (std::uint16_t i = n.head; i != none && !sourced; i = draws[i].next)
+            sourced = draws[i].world_valid && draws[i].streak;
+        unsigned targets = 0;
+        bool moved = false, pending = false;
+        const float zero[3] = {0, 0, 0};
+        std::uint16_t last = none;
+        for (std::uint16_t i = n.head; i != none; i = draws[i].next) {
+            Draw& d = draws[i];
+            d.awaiting = false;
+            if (!sourced || d.stamp != in.frame || d.world_valid) continue;
+            ++targets;
+            double w[12];
+            if (!world_rows(in.camera, d.rows, w)) {
+                d.awaiting = pending = true;
+                continue;
+            }
+            const float* lo = d.extent_known ? d.lo : zero;
+            const float* hi = d.extent_known ? d.hi : zero;
+            std::uint16_t source = none;
+            if (last != none && drift2(w, draws[last].world, lo, hi) <= eps2)
+                source = last;
+            else // the longest streak among the placed records within eps (a saturated one ends the scan)
+                for (std::uint16_t j = n.head; j != none; j = draws[j].next) {
+                    const Draw& o = draws[j];
+                    if (j == i || !o.world_valid || !o.streak || (source != none && o.streak <= draws[source].streak))
+                        continue;
+                    if (drift2(w, o.world, lo, hi) > eps2) continue;
+                    source = j;
+                    if (o.streak >= static_sightings) break;
+                }
+            if (source == none) {
+                moved = true;
+                continue;
+            }
+            last = source;
+            if (!d.extent_known) {
+                d.awaiting = pending = true;
+                continue;
+            }
+            const Draw& o = draws[source];
+            std::memcpy(d.world, o.world, sizeof d.world);
+            d.world_valid = true;
+            d.bounds_dirty = true;
+            d.streak = o.streak;
+            std::memcpy(d.streak_cascade, o.streak_cascade, sizeof d.streak_cascade);
+        }
+        if (!targets) return Swap::None;
+        if (moved) {
+            for (std::uint16_t i = n.head; i != none; i = draws[i].next) draws[i].awaiting = false;
+            return Swap::Moved;
+        }
+        return pending ? Swap::Pending : Swap::Kept;
+    }
+    void drop_copy(Node& n, std::uint64_t now) noexcept {
+        for (std::uint16_t i = n.head, previous = none; i != none;) {
+            const std::uint16_t next = draws[i].next;
+            draws[i].awaiting = false;
+            if (draws[i].stamp == now) {
+                previous = i;
+                i = next;
+                continue;
+            }
+            if (previous == none)
+                n.head = next;
+            else
+                draws[previous].next = next;
+            if (n.tail == i) n.tail = previous;
+            free_draw(i);
+            --n.draws;
+            i = next;
+        }
+        n.awaiting = false;
+        n.pending_sightings = 0;
+        n.bounds_valid = false;
+        node_bounds(n);
     }
     void node_bounds(Node& n) noexcept {
         double lo[3] = {1e300, 1e300, 1e300}, hi[3] = {-1e300, -1e300, -1e300};

@@ -22,6 +22,11 @@
   record, dropped with its node when the store's reference is the last one,
   superseded when the range is retextured, rolled back when the table is full,
   and the transaction's issue order (opaque head, alpha tail, retained after live);
+  the LOD swap (FL 71 A, 2026-11-13): new records at the node's placement inherit
+  its static class and streaks through the unseen frames; new ranges without an
+  extent keep the superseded set as the replayed copy until they complete; a moved
+  swap (also a rotation caught once the extent arrives) resets and drops; two sets
+  alternating every frame never grow the store;
 * src/proxy/motion_output_shadow_replay_inc.h (source): the retained record's
   texture and threshold reach its draw entry and its slot comes from issue_slot;
 * tools/analysis/shadow_retention.py: the frame and resight line parsers, their
@@ -97,6 +102,7 @@ struct Rig {
     const float* outer_sun = nullptr; // the positional sun: cascade 1 holds another direction than cascade 0
     std::uintptr_t alpha = 0; float threshold = 0.f; // the sightings' stage-0 texture and discard threshold (0: depth-only)
     bool keep = false; // keep sightings: the alpha source refused (Sighting::keep_alpha)
+    bool no_extent = false; // the range's extent not known yet (production: the read is queued at a range's first draw)
     double eps_cascade1 = sr::eps_default; // cascade 1's classification tier (renderer::shadow_cascade_class_eps in production)
     Rig(bool hold = true) { const float extents[2] = {250.f, 1500.f}; renderer::shadow_cascade_set(extents, 2, nullptr, nullptr, 640, set); store->configure(hold); }
     sr::Seen draw(std::uint64_t serial, const float world[12], std::uint64_t vb = 100, std::uint32_t lod = 0, std::uint32_t flags12c = 0, std::uint32_t flags130 = 0, std::uint64_t epoch = 1, std::uint64_t revision = 1) {
@@ -104,7 +110,7 @@ struct Rig {
         const float lo[3] = {-10, -10, -10}, hi[3] = {10, 10, 10};
         sr::Sighting s; s.serial = serial; s.load_epoch = epoch; s.registry_epoch = 1; s.observer_epoch = 1; s.node = 0x1000 + serial; s.handle = std::uint32_t(serial); s.model = 7; s.lod = lod;
         s.flags12c = flags12c; s.flags130 = flags130; s.key.vb = vb; s.key.ib = vb + 1; s.key.declaration = 5; s.key.stride = 24; s.key.primitives = 12; s.key.vertex_count = 8; s.key.indexed = 1; s.key.topology = 4;
-        s.vb = {std::uintptr_t(0x100000 + vb), vb, 1, revision}; s.ib = {std::uintptr_t(0x200000 + vb), vb + 1, 1, 1}; s.declaration = 0x300000; s.rows = rows; s.lo = lo; s.hi = hi;
+        s.vb = {std::uintptr_t(0x100000 + vb), vb, 1, revision}; s.ib = {std::uintptr_t(0x200000 + vb), vb + 1, 1, 1}; s.declaration = 0x300000; s.rows = rows; s.lo = no_extent ? nullptr : lo; s.hi = no_extent ? nullptr : hi;
         s.alpha_texture = keep ? 0 : alpha; s.alpha_threshold = keep ? 0.f : threshold; s.keep_alpha = keep;
         sr::Acquired acquired; store->set_eye(camera(pose));
         const sr::Seen result = store->seen(s, frame, acquired);
@@ -189,6 +195,136 @@ int main() {
         CHECK(r.store->draws_used == 2 && r.held() == 5);
         r.draw(4, w, 200, 1); r.end(); auto f = r.next();
         CHECK(f.lod_replaced == 1 && f.superseded == 1 && r.store->draws_used == 1 && r.held() == 3 && r.store->nodes[r.store->find_node(4)].lod == 1);
+    }
+    { // FL 71 A (2026-11-13): a static node re-seen with another record set at the same placement keeps its static class
+      // and streaks through the unseen frames; the old set's retained copies are replaced, not kept beside the new one
+        Rig r; place(w, 20, 0, 60);
+        for (unsigned i = 0; i < 10; ++i) { r.draw(60, w, 100, 1); r.draw(60, w, 110, 1); r.end(); r.next(); }
+        const auto node = [&]() -> const sr::Node& { return r.store->nodes[r.store->find_node(60)]; };
+        CHECK(node().is_static && node().static_mask == 3);
+        r.pose.yaw = .2; r.pose.pos[2] = -15; // another camera: the placement is recovered, not compared as rows
+        r.draw(60, w, 200, 0); r.draw(60, w, 210, 0); r.draw(60, w, 220, 0); r.end(); auto f = r.next();
+        CHECK(f.lod_replaced == 1 && f.lod_swap_kept == 1 && f.lod_swap_moved == 0 && f.promoted == 0 && f.reclassified == 0);
+        CHECK(node().is_static && node().static_mask == 3 && node().moved_mask == 0 && r.store->draws_used == 3 && r.held() == 7);
+        for (std::uint16_t i = node().head; i != sr::none; i = r.store->draws[i].next) CHECK(r.store->draws[i].streak == sr::static_sightings && r.store->draws[i].key.vb >= 200);
+        for (unsigned i = 0; i < 40; ++i) { r.end(); f = r.next(); CHECK(f.moving_dropped == 0 && f.nodes_unseen == 1 && f.records_unseen == 3); }
+        CHECK(r.store->admitted_count == 3);
+        // Re-seen after the unseen frames with the coarse set again: kept, the detailed copies replaced.
+        r.draw(60, w, 100, 1); r.draw(60, w, 110, 1); r.end(); f = r.next();
+        CHECK(f.lod_swap_kept == 1 && node().is_static && r.store->draws_used == 2 && r.held() == 5);
+        r.end(); f = r.next(); CHECK(f.moving_dropped == 0 && f.nodes_unseen == 1);
+        // A record added to the same set at the node's placement inherits too.
+        r.draw(60, w, 100, 1); r.draw(60, w, 110, 1); r.draw(60, w, 120, 1); r.end(); f = r.next();
+        CHECK(f.lod_swap_kept == 1 && f.lod_replaced == 0 && node().is_static && r.store->draws_used == 3);
+    }
+    { // ... but a swap whose placement moved beyond eps resets: not static, dropped on its first unseen frame
+        Rig r; place(w, 20, 0, 60); place(w2, 20.5, 0, 60);
+        for (unsigned i = 0; i < 10; ++i) { r.draw(61, w, 100, 1); r.end(); r.next(); }
+        CHECK(r.store->nodes[r.store->find_node(61)].is_static);
+        r.draw(61, w2, 200, 0); r.draw(61, w2, 210, 0); r.end(); auto f = r.next();
+        CHECK(f.lod_replaced == 1 && f.lod_swap_kept == 0 && f.lod_swap_moved == 1 && !r.store->nodes[r.store->find_node(61)].is_static);
+        CHECK(r.store->nodes[r.store->find_node(61)].static_mask == 0);
+        r.end(); f = r.next(); CHECK(f.moving_dropped == 1 && r.store->nodes_used == 0 && r.held() == 0);
+        // one record of the new set at the old placement and one moved: the moved record starts over, the node is not static
+        Rig q; for (unsigned i = 0; i < 10; ++i) { q.draw(62, w, 100, 1); q.end(); q.next(); }
+        q.draw(62, w, 200, 0); q.draw(62, w2, 210, 0); q.end(); f = q.next();
+        CHECK(f.lod_swap_moved == 1 && f.lod_swap_kept == 0 && !q.store->nodes[q.store->find_node(62)].is_static);
+        q.end(); f = q.next(); CHECK(f.moving_dropped == 1);
+        // a node still accruing its streak inherits that streak (promoted on schedule, not reset); only a static node counts
+        Rig a; for (unsigned i = 0; i < 4; ++i) { a.draw(63, w, 100, 1); a.end(); f = a.next(); CHECK(f.lod_swap_kept == 0 && f.lod_swap_moved == 0); }
+        a.draw(63, w, 200, 0); a.end(); f = a.next();
+        CHECK(f.lod_swap_kept == 0 && f.lod_swap_moved == 0 && a.store->draws[a.store->nodes[a.store->find_node(63)].head].streak == 4);
+        for (unsigned i = 0; i < 3; ++i) { a.draw(63, w, 200, 0); a.end(); CHECK(!a.store->nodes[a.store->find_node(63)].is_static); a.next(); }
+        a.draw(63, w, 200, 0); a.end(); CHECK(a.store->nodes[a.store->find_node(63)].is_static); f = a.next(); CHECK(f.promoted == 1);
+    }
+    { // hysteresis: the game alternating two record sets every frame keeps the node static and never grows the store
+        Rig r; place(w, 20, 0, 60);
+        for (unsigned i = 0; i < 10; ++i) { r.draw(64, w, 100, 1); r.end(); r.next(); }
+        unsigned most = 0; int held_most = 0;
+        for (unsigned i = 0; i < 30; ++i) {
+            if (i % 2) r.draw(64, w, 100, 1); else { r.draw(64, w, 200, 0); r.draw(64, w, 210, 0); }
+            r.end(); const auto f = r.next();
+            CHECK(f.lod_swap_kept == 1 && f.lod_swap_moved == 0 && r.store->nodes[r.store->find_node(64)].is_static);
+            most = std::max(most, r.store->draws_used); held_most = std::max(held_most, r.held());
+        }
+        CHECK(most == 2 && held_most == 5 && r.store->nodes_used == 1);
+        for (unsigned i = 0; i < 20; ++i) { r.end(); const auto f = r.next(); CHECK(f.moving_dropped == 0 && f.nodes_unseen == 1); }
+        CHECK(r.store->retire(64, r.frame)); r.release(); CHECK(r.held() == 0 && r.store->references() == 0);
+    }
+    { // a swap whose new ranges have no extent yet (production: the extent read is queued at the first draw of a range):
+      // the superseded set stays as the node's replayed copy, its class carries; the copy goes once the new set is complete
+        Rig r; place(w, 20, 0, 60);
+        for (unsigned i = 0; i < 10; ++i) { r.draw(65, w, 100, 1); r.draw(65, w, 110, 1); r.end(); r.next(); }
+        const auto node = [&]() -> const sr::Node& { return r.store->nodes[r.store->find_node(65)]; };
+        r.no_extent = true; r.draw(65, w, 200, 0); r.draw(65, w, 210, 0); r.draw(65, w, 220, 0); r.no_extent = false; r.end(); auto f = r.next();
+        CHECK(f.lod_swap_pending == 1 && f.lod_swap_kept == 0 && f.lod_swap_moved == 0 && node().is_static && node().static_mask == 3 && node().awaiting);
+        CHECK(r.store->draws_used == 5 && r.held() == 11 && f.moving_dropped == 0); // old 2 + new 3 records, both sets held
+        // The gap: unseen before the extents arrive. The copy (the old set) is replayed, the unplaced new records are not.
+        for (unsigned i = 0; i < 20; ++i) {
+            r.end(); CHECK(r.store->admitted_count == 2); for (unsigned q = 0; q < r.store->admitted_count; ++q) CHECK(r.store->draws[r.store->admitted[q]].key.vb < 200);
+            f = r.next(); CHECK(f.moving_dropped == 0 && f.nodes_unseen == 1);
+        }
+        // Re-seen with the extents now known: the new set inherits, the copy is freed in the same scene end.
+        r.draw(65, w, 200, 0); r.draw(65, w, 210, 0); r.draw(65, w, 220, 0); r.end(); f = r.next();
+        CHECK(f.lod_swap_kept == 1 && f.lod_swap_pending == 0 && node().is_static && !node().awaiting && r.store->draws_used == 3 && r.held() == 7);
+        for (unsigned i = 0; i < 20; ++i) {
+            r.end(); CHECK(r.store->admitted_count == 3); for (unsigned q = 0; q < r.store->admitted_count; ++q) CHECK(r.store->draws[r.store->admitted[q]].key.vb >= 200);
+            f = r.next(); CHECK(f.moving_dropped == 0 && f.nodes_unseen == 1);
+        }
+        // Seen again: extents one frame late, then unseen at once: kept through the gap and the unseen frames after.
+        Rig g; for (unsigned i = 0; i < 10; ++i) { g.draw(66, w, 100, 1); g.end(); g.next(); }
+        g.no_extent = true; g.draw(66, w, 200, 0); g.no_extent = false; g.end(); f = g.next(); CHECK(f.lod_swap_pending == 1);
+        g.draw(66, w, 200, 0); g.end(); f = g.next(); CHECK(f.lod_swap_kept == 1 && g.store->draws_used == 1 && g.held() == 3);
+        for (unsigned i = 0; i < 10; ++i) { g.end(); CHECK(g.store->admitted_count == 1); f = g.next(); CHECK(f.moving_dropped == 0); }
+        // Back to the old set while the swap is pending: the copy is current again, the unplaced new records go.
+        Rig b; for (unsigned i = 0; i < 10; ++i) { b.draw(67, w, 100, 1); b.end(); b.next(); }
+        b.no_extent = true; b.draw(67, w, 200, 0); b.no_extent = false; b.end(); b.next();
+        b.draw(67, w, 100, 1); b.end(); f = b.next();
+        CHECK(f.lod_swap_pending == 0 && b.store->draws_used == 1 && b.held() == 3 && b.store->nodes[b.store->find_node(67)].is_static && !b.store->nodes[b.store->find_node(67)].awaiting);
+    }
+    { // ... and its safety: a pending swap never shields a move
+        // The review probe: a pure rotation with no extent yet passes on the origin alone (pending), then fails on the box.
+        Rig r; float wr[12]; place(w, 20, 0, 60, .3); place(wr, 20, 0, 60, 1.3);
+        for (unsigned i = 0; i < 10; ++i) { r.draw(68, w, 100, 1); r.end(); r.next(); }
+        r.no_extent = true; r.draw(68, wr, 200, 0); r.no_extent = false; r.end(); auto f = r.next();
+        CHECK(f.lod_swap_pending == 1 && r.store->nodes[r.store->find_node(68)].is_static);
+        r.draw(68, wr, 200, 0); r.end(); f = r.next();
+        CHECK(f.lod_swap_moved == 1 && f.lod_swap_kept == 0 && !r.store->nodes[r.store->find_node(68)].is_static && r.store->draws_used == 1 && r.held() == 3);
+        CHECK(r.store->draws[r.store->nodes[r.store->find_node(68)].head].streak == 0);
+        r.end(); f = r.next(); CHECK(f.moving_dropped == 1 && r.store->nodes_used == 0 && r.held() == 0);
+        // A translation is caught on the origin at once: moved, the old set freed, dropped unseen.
+        Rig t; place(w2, 21, 0, 60);
+        for (unsigned i = 0; i < 10; ++i) { t.draw(69, w, 100, 1); t.end(); t.next(); }
+        t.no_extent = true; t.draw(69, w2, 200, 0); t.no_extent = false; t.end(); f = t.next();
+        CHECK(f.lod_swap_moved == 1 && f.lod_swap_pending == 0 && !t.store->nodes[t.store->find_node(69)].is_static && t.store->draws_used == 1);
+        t.end(); f = t.next(); CHECK(f.moving_dropped == 1 && t.held() == 0);
+        // A new set that never completes: pending for static_sightings sightings, then as before (moved, the copy freed).
+        Rig n; for (unsigned i = 0; i < 10; ++i) { n.draw(70, w, 100, 1); n.end(); n.next(); }
+        n.no_extent = true;
+        for (unsigned i = 0; i < sr::static_sightings; ++i) { n.draw(70, w, 200, 0); n.end(); f = n.next(); CHECK(f.lod_swap_pending == 1 && n.store->draws_used == 2); }
+        n.draw(70, w, 200, 0); n.end(); f = n.next();
+        CHECK(f.lod_swap_moved == 1 && f.lod_swap_pending == 0 && n.store->draws_used == 1 && n.held() == 3 && !n.store->nodes[n.store->find_node(70)].is_static);
+        n.end(); f = n.next(); CHECK(f.moving_dropped == 1 && n.held() == 0);
+        // A current record moving while the swap is pending: the copy goes at once, the node is not static.
+        Rig m; for (unsigned i = 0; i < 10; ++i) { m.draw(71, w, 100, 1); m.draw(71, w, 110, 1); m.end(); m.next(); }
+        m.no_extent = true; m.draw(71, w, 200, 0); m.no_extent = false; m.draw(71, w2, 110, 1); m.end(); f = m.next();
+        CHECK(f.lod_swap_moved == 1 && !m.store->nodes[m.store->find_node(71)].is_static && !m.store->nodes[m.store->find_node(71)].awaiting && m.store->draws_used == 2);
+        m.end(); f = m.next(); CHECK(f.moving_dropped == 1 && m.held() == 0);
+    }
+    { // alternating sets whose ranges show no extent on their first appearance only (the extent cache): references stay bounded
+        Rig r; place(w, 20, 0, 60);
+        for (unsigned i = 0; i < 10; ++i) { r.draw(72, w, 100, 1); r.end(); r.next(); }
+        unsigned most = 0; int held_most = 0;
+        for (unsigned i = 0; i < 30; ++i) {
+            r.no_extent = i == 0;
+            if (i % 2) r.draw(72, w, 100, 1); else { r.draw(72, w, 200, 0); r.draw(72, w, 210, 0); }
+            r.no_extent = false; r.end(); const auto f = r.next();
+            CHECK(r.store->nodes[r.store->find_node(72)].is_static && f.lod_swap_moved == 0 && f.lod_swap_kept + f.lod_swap_pending == (i == 1 ? 0u : 1u)); // i == 1: back to the copy, no swap
+            most = std::max(most, r.store->draws_used); held_most = std::max(held_most, r.held());
+        }
+        CHECK(most == 3 && held_most == 7);
+        for (unsigned i = 0; i < 10; ++i) { r.end(); const auto f = r.next(); CHECK(f.moving_dropped == 0); }
+        CHECK(r.store->retire(72, r.frame)); r.release(); CHECK(r.held() == 0 && r.store->references() == 0);
     }
     { // shared mesh: one reference per resource; retiring one node leaves the other's record
         Rig r; place(w, 20, 0, 60); place(w2, -40, 10, 90);
@@ -559,15 +695,27 @@ class Lines(unittest.TestCase):
     def test_frame_alpha_fields(self):
         row = retention.parse_frame_line(frame_line(mode='live', refs_held=4, orphan_probe=1, retained_alpha=7, retained_alpha_skipped=0, retextured=2, alpha_kept=3))
         self.assertEqual((row['retained_alpha'], row['retained_alpha_skipped'], row['retextured'], row['alpha_kept']), (7, 0, 2, 3))
-        older = ' '.join(frame_line().split(' ')[:-len(retention.ALPHA_FIELDS)])  # a log before 2026-11-04: no alpha fields, read as 0
+        older = ' '.join(frame_line().split(' ')[:-len(retention.ALPHA_FIELDS) - len(retention.LOD_SWAP_FIELDS)])  # a log before 2026-11-04: no alpha fields, read as 0
         self.assertEqual(retention.parse_frame_line(older)['retained_alpha'], 0)
         self.assertEqual(retention.parse_frame_line(frame_line(alpha_kept=1))['alpha_kept'], 1)  # the census keeps records too
         for field in ('retained_alpha', 'retextured'):  # the census issues nothing and holds no texture
             with self.assertRaises(retention.MalformedLine):
                 retention.parse_frame_line(frame_line(**{field: 1}))
         with self.assertRaises(retention.MalformedLine):  # all four or none
-            retention.parse_frame_line(' '.join(frame_line().split(' ')[:-1]))
+            retention.parse_frame_line(' '.join(frame_line().split(' ')[:-len(retention.LOD_SWAP_FIELDS) - 1]))
         self.assertEqual(retention.summary([row], [])['totals']['retained_alpha'], 7)
+
+    def test_frame_lod_swap_fields(self):
+        row = retention.parse_frame_line(frame_line(lod_swap_kept=2, lod_swap_moved=1, lod_swap_pending=3))
+        self.assertEqual((row['lod_swap_kept'], row['lod_swap_moved'], row['lod_swap_pending']), (2, 1, 3))
+        older = ' '.join(frame_line().split(' ')[:-len(retention.LOD_SWAP_FIELDS)])  # a log before 2026-11-13: read as 0
+        self.assertEqual(retention.parse_frame_line(older)['lod_swap_kept'], 0)
+        with self.assertRaises(retention.MalformedLine):  # all three or none
+            retention.parse_frame_line(' '.join(frame_line().split(' ')[:-1]))
+        self.assertEqual(retention.summary([row], [])['totals']['lod_swap_moved'], 1)
+        source = (ROOT / 'src/proxy/motion_output_shadow_retention_inc.h').read_text()
+        self.assertIn('alpha_kept=%u lod_swap_kept=%u lod_swap_moved=%u lod_swap_pending=%u",', source)
+        self.assertIn('f.alpha_kept, f.lod_swap_kept, f.lod_swap_moved, f.lod_swap_pending);', source)
 
     def test_retained_alpha_reaches_the_issue(self):
         source = (ROOT / 'src/proxy/motion_output_shadow_replay_inc.h').read_text()
