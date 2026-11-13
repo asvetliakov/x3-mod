@@ -1,0 +1,60 @@
+{
+ "run": "fl-run74",
+ "edition": "FL",
+ "installed": "2026-11-13 (while the user slept; supersedes FL run 73, unflown)",
+ "what": "dev candidate: run 73's weapon coverage (custom stage removed, every classic muzzle flash body re-shaded, lone classic bolts and beams re-shaded) plus (1) hull hit re-shade step 1: 24 impact bodies (the three death-shared bodies and ElectroSpike left out) re-shaded behind the body id with the bullets' fire law, a visible fade and a cooling term, two programs (ps_2_0 effects pair, ps_3_0 standard_lighting pair) inside the shadowed constant blocks, defaults hh_gain 1.0 / hh_edge 0.4 / hh_core 1.0 / hh_cool 0.3 chosen from the viewed dump frames (docs/architecture/hull-hit-look.md); (2) the re-shade compiled on both editions (AP port, no FL behaviour change; muzzle body list 13 entries)",
+ "commit": "1c0506701",
+ "branch": "reshade",
+ "dirty": false,
+ "build": "build-run74-fl RelWithDebInfo mingw-i686 -DX3M_EDITION=fl -DX3M_GNU_PE_NO_SAFESEH=ON (X3M_DEV_TUNING ON), 0 warnings, check_no_x87 --edition fl PASS (0 violations), X3M_SOURCE_COMMIT=1c0506701 (unstripped)",
+ "dll": {
+  "path": "C:\\X3FL\\d3d9.dll",
+  "sha256": "4e9d32763acfe9a8ed1dc058c0c104989b3d297d4624912c34f3120caabe4bd9",
+  "bytes": 61000509,
+  "source": "build-run74-fl/d3d9.dll",
+  "verified": "cmp identical after tools/manage.py install --game-dir /mnt/c/X3FL"
+ },
+ "rollback": {
+  "dll": "C:\\X3FL\\rollback-d3d9\\d3d9.dll.run73 (eb4a9bc7…)",
+  "ini": "C:\\X3FL\\rollback-d3d9\\x3m.ini.run73",
+  "tuning_file": "C:\\X3FL\\rollback-d3d9\\projectile_tune.json.run73",
+  "table": "C:\\X3FL\\rollback-d3d9\\weapon_effects.json.run73"
+ },
+ "ini": "unchanged (weapon_effects = reshade, debug = 0)",
+ "tables": {
+  "weapon_effects.json": "dd36f297… unchanged",
+  "x3m-regenerate.exe": "bf76f4f7… unchanged"
+ },
+ "tuning_file": {
+  "path": "C:\\X3FL\\x3m\\projectile_tune.json",
+  "content": {
+   "rs_gain": 0.75,
+   "rs_edge": 0.4,
+   "rs_core": 0.5,
+   "mz_size": 0.2,
+   "mz_core": 0,
+   "mz_gain": 0.15,
+   "mz_smooth": 0.1,
+   "rs_head": 1.0,
+   "rs_width": 1.0,
+   "hh_gain": 1.0,
+   "hh_edge": 0.4,
+   "hh_core": 1.0,
+   "hh_cool": 0.3
+  },
+  "note": "the four hh_* keys added at their baked defaults for tuning in flight"
+ },
+ "exe": "X3FL.exe e7f3aad8… unchanged",
+ "dry_run": "manage.py launch --game-dir /mnt/c/X3FL --dry-run exit 0",
+ "evidence": [
+  "hull hit: commits c9fc03a8a + f11ca8df7 (review at high: no blockers, seven findings fixed); D3D 123 PASS (8 hull_reshade_* checks, programs vs model worst 0.073, 24/24 bodies taken, 216/216 refusals, 0 double claims), hook 153/62; dump gates hot core 1.771/1.973, cell edge 0.0071, fade 0.090; substitution 0.308 us, match 0.0137 us per draw; existing reshade/muzzle/lathe rows identical apart from timings; crops under verification/results/hull-reshade/ viewed by the agent, the reviewer and the main session",
+  "AP port: commit fc339e74e (review at high: no blockers), AP hook 153 (8 new stub cases), FL unchanged (verification/results/ap-reshade/fl_unchanged.py)",
+  "run 73 evidence: verification/results/fl-run73/candidate.json",
+  "engine effects native record retaken on the committed tree: 299 checks, 0 failures"
+ ],
+ "not_proven": [
+  "the hull hit look on real hulls under SETA and at range (the IRE haze stays dim orange, the HEPT ring cream: a law change, not a key, would alter them)",
+  "run 73's items: the six added muzzle bodies' looks, the lone classic draws' real state and far beams",
+  "the IPG/IONC muzzle collision on bodies 587/564 (the same bodies are muzzle flashes of those guns)"
+ ]
+}
