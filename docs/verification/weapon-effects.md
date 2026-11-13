@@ -4765,3 +4765,133 @@ the sweep [m]:
 - the depth state of the NOZTEST elements;
 - v/10653's blend;
 - the real element sizes, which the dump infers.
+
+## Muzzle re-shade: the effects-pair body 12009 (2026-11-13)
+
+PRG's flash, body 12009 (scene 08001), is the last unrecognised FL muzzle flash. It now joins the muzzle re-shade
+(`X3M_WEAPON_EFFECTS=reshade`) on its own path. The design is in
+[muzzle-flash-look.md](../architecture/muzzle-flash-look.md), "The effects-pair body"; the engine facts are in
+[muzzle-flash-draw.md](../reverse-engineering/fl/muzzle-flash-draw.md) section 6. Base: `reshade` 5613593e2.
+
+**Constants** [M, `verification/results/muzzle-reshade/muzzle_bodies.py`, `muzzle_bodies_out.txt`]:
+
+- lit radius 48104;
+- mean 0.0264, the glow-weighted luminance (radial fit 0.104);
+- hue (3.1806, 0.4087, 0.4367): a red flash;
+- ray sum 9.88;
+- overlap (37.7458, 5.5658), inferred: 445's fit × 9.88 / 9.14 × 3.926;
+- DESTBLEND 4 (ONE / INVSRCCOLOR), read from the `.pbb` FL loads.
+
+The seven classic rows of the output are byte-identical to before.
+
+**Programs.** The effects VS passes the pixel program no position, so the substitution binds a vs_2_0 of ours as well:
+218 words, the game VS's oPos / oT0 / oD0 plus oT1 = the model position (`effects_vs_read_out.txt`). Beside it a
+ps_2_0 (172 words) runs the classic law through the shared `weapon_muzzle_reshade.hlsl`. The ps_3_0 bytecode is
+unchanged (sha256 `d1f7d545…`; its record now lists the include). The constants go to c29..c31, the lone bullet
+block, put back from the same shadow as the hull hit effects program's c30..c31.
+
+**Fixture** (`taskkill.exe /F /IM Bubbles.scr`: not running; `tasklist.exe | grep -i x3`: none;
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native`).
+
+- Run 1, 14:37–14:38: 134 checks, 1 failure.
+- The stand-in texture's noise was then widened to the real cell's p99 and band spread.
+- Run 2, 14:40–14:42: 134 checks, 1 failure, `muzzle_effects_extent_within_size` (the axis-on peak 0.021 under
+  `mz_gain` / 4).
+- Coordinator decision: the lit bound is `mz_gain` / 8 axis-on and `mz_gain` / 4 at tilt and side. This states the
+  fan's own axis-on dimness; it does not loosen the tolerance: the axial quads are edge-on, and the real 445 mesh
+  peaks at 0.025 axis-on too. The fixture also writes four-panel frames.
+- Run 3, 14:47–14:49, the record: 134 / 134 pass (`RESULT PASS`). The AP and FL hook fixtures pass [M].
+
+The `MUZZLE_EFFECTS` rows of run 3 (the same as run 2 except cost):
+
+| Check | Result |
+| --- | --- |
+| VS parity, fog off / on | 4420 / 4420 px covered, 0 coverage mismatches, worst abs 0; fade 0.32..0.52 with fog |
+| program against `effects_model`, 7 points | worst 0.030 of the tolerance; game PS against texel × fade 0.019 |
+| rollback | begin_pair undoes latest first; end_pair tries every step |
+| one claimant | 12009 taken; 6 / 6 refusals; 41 ids under both blends: 0 multiple claimants, 0 mismatches |
+| binds and restores | VS, PS and c29..c31 read back during and after |
+| stand-in flash, tilt / axis / side, 30 m | energy ratio 0.002 each; peak 0.048 / 0.021 / 0.054 against the lit bounds 0.0375 / 0.01875 / 0.0375; tenth-of-peak r 16.8 / 21.3 / 15.6 px against vanilla 92.4 / 90.2 / 92.3 |
+| cost | six calls 0.108 µs a draw; substitution 0.128 µs on a 100-triangle draw; match 0.012 µs hit and miss |
+
+Frames (`verification/results/muzzle-reshade/fixture-muzzle-effects-{tilt,axis,side}.png`; vanilla black / grey,
+re-shaded black / grey), viewed:
+
+- tilt: vanilla is a big pink-red fan with a white centre; the re-shade is a small dim red dot at the gun, nearly
+  invisible on grey;
+- axis: vanilla is an eight-petal pink star; the re-shade is a faint small dark-red rosette, invisible on grey;
+- side: vanilla is a fan with a long streak; the re-shade is a small red half-disc at the gun, barely visible on grey.
+
+The inferred normalisation puts 12009 at the dim end of the family, as the real 445 mesh is at the baked keys.
+Whether it reads as a flash is for the flight to show.
+
+Record diff (`verification/results/muzzle-reshade/record_diff.py` against 5613593e2's `summary.json`):
+
+- bullet re-shade, lathe: all rows identical;
+- muzzle: 15 of 16 rows identical; the cost row's `bodies` is 13 → 14;
+- hull hit: 27 of 28 rows identical; the recognition row's `claim_ids` is 42 → 43 and `refused` 216/216 → 220/220,
+  because the muzzle list grew. The hull case now counts only classic muzzle rows as classic-VS claimants;
+- all 123 shared checks keep their verdicts; 11 checks are new.
+
+**Builds.** 0 warnings each [M]:
+
+- FL `build-prg-fl` (RelWithDebInfo, mingw-i686, `X3M_GNU_PE_NO_SAFESEH`, `X3M_DEV_TUNING`): 61,057,149 B, sha256
+  `28d36d89…`; `check_no_x87 --edition fl` PASS, 0 violations over 1099 functions.
+- AP `build-prg-ap`: 64,689,809 B (`d5884443…`).
+
+**Rows to read in the flight:**
+
+- `muzzle_reshade_program … pair=effects created=1`;
+- `muzzle_reshade_frame` `effects_candidates=`, `effects_matched=` and `effects_draws=` above 0 with `failures=0`
+  while a PRG fires.
+
+**Host suite** (`/usr/bin/python3 verification/probe/run_host_suite.py`): 371 modules, 3664 tests, 10 modules failing
+[M]:
+
+- 7 run zero tests: they read the shader corpus under `/tmp/x3-shader-sweep`, gone after the reboot.
+- `engine_effects`: its record binds `motion_output.h`; it is rerun on the committed tree, as in the hull step.
+- `weapon_effects_hook`: failed on the run-2 record's lit gate; it passes on the run-3 record (see the rerun below).
+  Its muzzle cost row now counts 14 bodies.
+
+`test_weapon_effects_muzzle_bodies` (12009's row against `muzzle_bodies_out.txt`, the pairs and the effects match)
+and `test_weapon_hull_reshade` pass. `generate_muzzle_reshade_program.py --check` passes.
+
+**Rerun on the run-3 record** [M]: `test_weapon_effects_hook`, `test_weapon_effects_muzzle_bodies`,
+`test_weapon_hull_reshade`, `test_logging_tiers`, `test_weapon_effects_projectile_tune`, `test_weapon_effects_table`:
+88 tests, OK.
+
+**Engine-effects record on the committed tree** (37a48b814) [M]. Run:
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py --host native`.
+
+- The first attempt found the local shader corpus missing; it was restored by host-suite.md's procedure (751 / 751).
+- The second attempt failed `CreateDevice` (D3DERR_INVALIDCALL) in every mode: Bubbles.scr had started.
+- After killing the screensaver and restoring the record file, the run passed every mode: main 174, native 11,
+  unverified 6, unpatched 11, timing 20, plumes 35, armed 35, armed_refused 7 checks.
+- The record is bound to 37a48b814, not dirty. `test_engine_effects`: 13 tests, OK (1 skipped).
+
+**Review fixes (2026-11-13).**
+
+- **B1, the device reference count.** `MotionOutput::device_references()` did not count `muzzle_effects_vs_` and
+  `muzzle_effects_ps_`. While the pair existed and `release_resources` had not run, capture.cpp's final-Release test
+  (after == held + 1) was off by two. Both are now counted. The new host test
+  `verification/analysis/test_motion_output_program_references.py` derives the list of program members from
+  `motion_output.h`: every `IDirect3D{Vertex,Pixel}Shader9*` member with the `_` suffix, 15 today. It checks that
+  `device_references()` counts each and `release_resources()` releases each. On the pre-fix source it names exactly
+  the two missing members [M].
+- **S1, the brightness.** The dimness is accepted for the flight at the inferred overlap. At the same keys and poses,
+  12009's stand-in peaks about 5× below 445's: tilt 0.048 against 0.255, side 0.054 against 0.260, and 9× axis-on
+  (0.021 against 0.197) [M, stand-in against stand-in]. A flight row decides whether it reads as a flash.
+- **S2, the pairing.** That 12009 draws with the effects DEFAULT VS `d5e1c753…` is inferred from the material
+  submit's technique rule, not seen at run time. If a PRG fires and the flight shows `muzzle_reshade_frame
+  effects_candidates=0`, the INSTANCE variant (VS `89193868…`) is bound instead, and the route never sees the draw.
+
+**Weapon-effects records after the fix** [M]:
+
+- Run on the clean `df4ee8899`, 15:05–15:07: `RESULT PASS`, 134 checks, 0 failures; the AP and FL hook fixtures pass.
+  All three records name `df4ee8899`, not dirty.
+- The frames came out byte-identical.
+- Builds: FL and AP 0 warnings; `check_no_x87 --edition fl` PASS over 1099 functions.
+- Host tests: `test_weapon_effects_hook`, `test_motion_output_program_references`, `test_weapon_effects_muzzle_bodies`,
+  `test_weapon_hull_reshade`, `test_engine_effects`, `test_capture_bloom_lifetime`, `test_logging_tiers`: all OK.
+- The engine-effects record binds `motion_output.h` and `capture.cpp`, not `motion_output.cpp`; neither changed, so
+  it stays at 93e5f2ea7's run.

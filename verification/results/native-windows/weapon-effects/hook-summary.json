@@ -20,18 +20,15 @@
     "src/proxy/weapon_effects_batch_site.h"
   ],
   "source": {
-    "commit": "f18b3d3b1ce5cc9b3573df1c5962eb179e18626f-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h"
-    ],
+    "commit": "df4ee8899d7ae6d6ee98ddac2feda7d72077dd98",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "67b9d4f2e1063eb6562cdefb39035ca1e1ad864caae4276260c4f565d2a70a63",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "962bf9cebf3ef97b260d915cd65785d68258d526fbf6fa5a0e22447a549bda0f",
-      "src/proxy/weapon_effects_patch.cpp": "2cf51cd22b2adadcbb84d80611125f284e7f2e2f4ecb2b4243cf4a1cea9fa05d",
-      "src/proxy/weapon_effects_patch.h": "e873dba0920f2cf1888ce6a1d63a25c1647f948a5bcc609a065135370224045d",
+      "src/proxy/weapon_effects_patch.cpp": "45dbaf40d8620c1de5aaad3dba904936d54607277b767be10cfe40863352a1da",
+      "src/proxy/weapon_effects_patch.h": "1b4790bf9f193e187b9d82c004e45a52c6edc4e0f94da0c9d70c9b883c85dc06",
       "src/proxy/weapon_effects_hook.cpp": "20645339cab8897575a6453a1bfacbcaff33abaa17ddcd6fa2714fa034be3d85",
       "src/proxy/weapon_effects_core.h": "81a9e12186c03fde92727defe8356cbd8e808da6eb8bc84720f6ddd7191f5b9c",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
@@ -189,13 +186,13 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "50bc0ce456d0393962721094cd76973afd153e6001bf3c60ac20d3711d0de9e2"
+    "executable_sha256": "440fdefff5e7cd46f79bf4c19ecfa865b620d8a1d48ca6bd9bb59c6038abb97e"
   },
   "host": {
     "name": "native-windows",
     "windows": {
-      "version": "10.0.26300.9818",
-      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+      "version": "10.0.26300.9974",
+      "ver": "Microsoft Windows [Version 10.0.26300.9974]"
     },
     "adapter": {
       "description": null,
@@ -989,8 +986,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "00891860",
     "esp_callee": "00891854",
-    "return": "00ee6d8a",
-    "site": "00ee6d85"
+    "return": "010c6d8a",
+    "site": "010c6d85"
   },
   "stack_depth": {
     "bytes": 237,
@@ -1317,9 +1314,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.3,
-    "median_us": 17.4,
-    "worst_us": 18.4,
+    "best_us": 17.4,
+    "median_us": 17.5,
+    "worst_us": 20.3,
     "target_us": 30
   },
   "overflow": {
@@ -1335,9 +1332,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 58.3,
-    "median_us": 58.4,
-    "worst_us": 71.9,
+    "best_us": 59.0,
+    "median_us": 59.2,
+    "worst_us": 59.6,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1345,8 +1342,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005eaca8",
     "esp_callee": "005eac98",
-    "return": "00ee7cb7",
-    "site": "00ee7cb2",
+    "return": "010c7cb7",
+    "site": "010c7cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },

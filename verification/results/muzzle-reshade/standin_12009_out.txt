@@ -1,0 +1,10 @@
+stand-in 12009 (amplitude 0.15, 50 quads):
+  mean         0.0299  real     0.0292  ratio 1.023
+  radius   50332.5192  real 48104.0000  ratio 1.046
+  lum_glow     0.0273  real     0.0264  ratio 1.033
+  ray         10.3652  real     9.8800  ratio 1.049
+  hue K (3.1792, 0.4089, 0.4380) real (3.1806, 0.4087, 0.4367)
+  texture 512x512; cell texels 8904: luminance max 0.328 mean 0.0299 p99 0.268; alpha 1.000..1.000
+  texel noise: luminance sd in r bands 0-0.1 0.068, 0.3-0.4 0.071, 0.6-0.7 0.062
+  real: cell texels 8904: luminance max 0.539 mean 0.0292 p99 0.268; texel noise: luminance sd in r bands 0-0.1 0.061, 0.3-0.4 0.066, 0.6-0.7 0.073 (muzzle_bodies_out.txt)
+  (lum_glow at the real radius, as standin_444.py; ray: the summed glow a ray through the gun crosses, mean over 500 directions, at the stand-in's own radius)

@@ -24,6 +24,11 @@ static_assert(classic_vertex_shader == reshade::classic_vertex_shader &&
                   classic_vertex_shader == muzzle_reshade::vertex_shader &&
                   effects_vertex_shader == reshade::lone_vertex_shaders[0],
               "the hull hit route gates on the VS the lone and muzzle routes gate on");
+static_assert(effects_vertex_shader == muzzle_reshade::effects_vertex_shader &&
+                  muzzle_reshade::effects_register == reshade::block_register &&
+                  muzzle_reshade::effects_count == reshade::block_count,
+              "the muzzle effects pair gates on the same VS and writes exactly the lone bullet block c29..c31, put back "
+              "from the same shadow as this route's c30..c31");
 // g_AlphaValue per pair (the node fade; the frame row's cool_active= reads the application's value).
 constexpr unsigned effects_alpha_register = 12, classic_alpha_register = 39;
 enum Pair : std::uint8_t { pair_effects = 0, pair_classic = 1, pair_none = 2 };

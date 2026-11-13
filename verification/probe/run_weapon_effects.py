@@ -90,6 +90,12 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_muzzle_reshade_ps.hlsl', 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h',
                       'src/proxy/muzzle_reshade_route.h', 'src/proxy/muzzle_reshade_core.h',
                       'verification/probe/weapon_muzzle_reshade_fixture.h',
+                      # its effects pair (body 12009; muzzle-flash-look.md "The effects-pair body")
+                      'src/effects/weapon_muzzle_reshade.hlsl', 'src/effects/weapon_muzzle_reshade_effects_ps.hlsl',
+                      'src/effects/weapon_muzzle_reshade_effects_vs.hlsl',
+                      'src/renderer/weapon_muzzle_reshade_effects_pixel_program_inc.h',
+                      'src/renderer/weapon_muzzle_reshade_effects_vertex_program_inc.h',
+                      'verification/probe/weapon_muzzle_effects_cases.h',
                       # its lone classic path (section 7 "Classic bodies": the standard_lighting DEFAULT pair)
                       'src/effects/weapon_bullet_reshade_classic_ps.hlsl',
                       'src/effects/weapon_bullet_reshade_classic_flag_ps.hlsl',
@@ -122,6 +128,10 @@ PROGRAMS = {
                                            'src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h'),
     'weapon_muzzle_reshade_ps': ('verification/results/weapon-muzzle-reshade-pixel-program.json',
                                  'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h'),
+    'weapon_muzzle_reshade_effects_ps': ('verification/results/weapon-muzzle-reshade-effects-pixel-program.json',
+                                         'src/renderer/weapon_muzzle_reshade_effects_pixel_program_inc.h'),
+    'weapon_muzzle_reshade_effects_vs': ('verification/results/weapon-muzzle-reshade-effects-vertex-program.json',
+                                         'src/renderer/weapon_muzzle_reshade_effects_vertex_program_inc.h'),
     'weapon_bullet_reshade_classic_ps': ('verification/results/weapon-bullet-reshade-classic-pixel-program.json',
                                          'src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h'),
     'weapon_bullet_reshade_classic_flag_ps': ('verification/results/weapon-bullet-reshade-classic-flag-pixel-program.json',
@@ -143,6 +153,10 @@ CLASSIC_PROGRAMS = {('standard_lighting', 'vs'): ('classic_vs.bin', '494fe349b8b
 CLASSIC_PROGRAMS_AP = {('standard_lighting', 'vs'): ('ap_classic_vs.bin', '494fe349b8bc12ec'),
                        ('standard_lighting', 'ps'): ('ap_classic_ps.bin', '7c83ed50c9894e44'),
                        ('standard_lighting2s', 'ps'): ('ap_classic_ps2s.bin', 'e70adc744a38ca59')}
+# The muzzle re-shade's effects-pair case (weapon_muzzle_effects_cases.h): the FL 3_0 effects DEFAULT pass's VS and PS,
+# the pair body 12009 draws with, extracted the same way (untracked, each FNV-1a 64 checked by the fixture).
+EFFECTS_PROGRAMS = {('effects', 'vs'): ('effects_vs.bin', 'd5e1c75351ed3f04'),
+                    ('effects', 'ps'): ('effects_ps.bin', '8360f422de08b5bd')}
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
 SHELL_PINS = {'two_shells_1080_us': 61.3, 'two_shells_5120_us': 201.8, 'fullscreen_1080_us': 43.7,
@@ -194,9 +208,9 @@ def programs_current():
 
 
 def classic_programs(game, edition='fl', programs=CLASSIC_PROGRAMS):
-    """Write the programs' bytes (CLASSIC_PROGRAMS from the FL archive, CLASSIC_PROGRAMS_AP from the AP one) at `game`
-    into BUILD (the fixture's working directory); the record: per file its hash, dwords and whether it was written
-    (absent: the fixture's lone classic cases of that edition fail)."""
+    """Write the programs' bytes (CLASSIC_PROGRAMS from the FL archive, CLASSIC_PROGRAMS_AP from the AP one,
+    EFFECTS_PROGRAMS from the FL one) at `game` into BUILD (the fixture's working directory); the record: per file its
+    hash, dwords and whether it was written (absent: the fixture's cases that load it fail)."""
     out = {}
     for _, (name, _) in programs.items():
         (BUILD / name).unlink(missing_ok=True)
@@ -208,7 +222,7 @@ def classic_programs(game, edition='fl', programs=CLASSIC_PROGRAMS):
     BUILD.mkdir(parents=True, exist_ok=True)
     for _, path, data in _archive_effects(str(game), edition=edition):
         p = Path(path)
-        if p.parent.as_posix() != 'shader/3_0' or p.stem not in ('standard_lighting', 'standard_lighting2s'):
+        if p.parent.as_posix() != 'shader/3_0' or p.stem not in {stem for stem, _ in programs}:
             continue
         c = parse_container(data)
         for ti, (tech, tps) in enumerate(c['techniques']):
@@ -265,7 +279,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'RESHADE', 'MUZZLE_RESHADE', 'LATHE', 'HULL_RESHADE')
+            'REFUSED', 'TIMING', 'RESHADE', 'MUZZLE_RESHADE', 'LATHE', 'HULL_RESHADE', 'MUZZLE_EFFECTS')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -404,14 +418,41 @@ def shield_dumps():
         Image.fromarray((srgb * 255 + 0.5).astype(np.uint8)).save(pfm.with_suffix('.png'))
 
 
+def muzzle_effects_frames():
+    """The muzzle effects-pair case's frames (BUILD/dump-muzzle-effects/fixture-muzzle-effects-<pose>.pfm: four 320 px
+    crops, vanilla on black / grey, re-shaded on black / grey, linear) as sRGB PNG into verification/results/
+    muzzle-reshade/, at most 1280 px wide and 80 KB each (tracked; muzzle-flash-look.md section 4)."""
+    import numpy as np
+    from PIL import Image
+    out = ROOT / 'verification/results/muzzle-reshade'
+    for pfm in sorted((BUILD / 'dump-muzzle-effects').glob('*.pfm')):
+        data = pfm.read_bytes()
+        head = data.split(b'\n', 3)
+        w, h = (int(v) for v in head[1].split())
+        img = np.frombuffer(head[3], dtype='<f4', count=w * h * 3).reshape(h, w, 3)[::-1]
+        c = np.clip(img, 0.0, 1.0)
+        srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
+        image = Image.fromarray((srgb * 255 + 0.5).astype(np.uint8))
+        if image.width > 1280:
+            image = image.resize((1280, max(1, round(image.height * 1280 / image.width))), Image.LANCZOS)
+        path = out / (pfm.stem + '.png')
+        image.save(path, optimize=True)
+        while path.stat().st_size > 80_000:
+            image = image.resize((image.width * 3 // 4, image.height * 3 // 4), Image.LANCZOS)
+            image.save(path, optimize=True)
+
+
 def run_fixture(args):
     if args.host == 'native':
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
         for pattern in ('*.pfm', '*.png'):
             for stale in (BUILD / 'dump-shield').glob(pattern):
                 stale.unlink()
+        for stale in (BUILD / 'dump-muzzle-effects').glob('*.pfm'):
+            stale.unlink()
         done, text = native_host.run_native(EXE, [d3dx], BUILD, args.timeout, log=BUILD / 'fixture')
         shield_dumps()
+        muzzle_effects_frames()
         return done.returncode, text
     command = [bottle.WINE, *bottle.wine_args(), '--dll', 'd3d9=b', '--workdir', str(BUILD), str(EXE),
                r'C:\X3\d3dx9_37.dll']
@@ -699,6 +740,7 @@ def main():
     record['d3dx9_37_sha256'] = sha(d3dx) if Path(d3dx).is_file() else None
     record['classic_programs'] = classic_programs(args.game)
     record['classic_programs_ap'] = classic_programs(args.ap_game, 'ap', CLASSIC_PROGRAMS_AP)
+    record['effects_programs'] = classic_programs(args.game, 'fl', EFFECTS_PROGRAMS)
     returncode, text = run_fixture(args)
     report = parse(text)
     if native:
@@ -711,7 +753,7 @@ def main():
                                                  'colour', 'relight', 'adjacent', 'placement', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
                                                  'refused', 'timing', 'reshade', 'muzzle_reshade', 'lathe',
-                                                 'hull_reshade')}
+                                                 'hull_reshade', 'muzzle_effects')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

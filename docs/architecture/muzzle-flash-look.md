@@ -42,8 +42,10 @@ the census (`verification/results/fl-muzzle-flash-draw/fl_muzzle_flash_census_ou
 DESTINATIONBLEND | 2SIDED, so the two-sided pair), most frequent first: **445** (scene 04251; IRE, PD, PSG, PBC, flak,
 fragments, the secondary of PPC/PSP/MAM/CIG), **446** (04253; EMP, Mining, IPG, IonC, IBL, SSC, the primary of
 PPC/PSP/MAM/CIG), **444** (04252; HEPT, PAL, Tri-Beam, Fusion Beam, EBC, Gauss), **450** (04260; PAC, Mass Driver),
-**447** (04258; FBL), **314** (04261; Ion Disruptor), **10463** (04437; PBE). Body 12009 (scene 08001, PRG) draws with
-effects.fx, not this pair, and stays unlisted; scene 04265 is absent from the catalogues. The route checks the VS hash
+**447** (04258; FBL), **314** (04261; Ion Disruptor), **10463** (04437; PBE), then **12009** (08001; PRG), the one
+effects.fx flash body, drawn with the effects DEFAULT pair and re-shaded on its own path ("The effects-pair body"
+below; its row carries `pair_effects` and DESTBLEND INVSRCCOLOR, and the classic route refuses it); scene 04265 is
+absent from the catalogues. The route checks the VS hash
 only, never the PS, so the one-sided and two-sided DEFAULT programs both pass. The table generator stops at the
 Effects element's scene id (`tools/effects/weapon_effects_census.py`), so the Effects → CUT scene → part body chain is
 a TODO in the ledger, not hidden. The shader alone never identifies the flash (the pair is every opaque classic body's).
@@ -118,6 +120,56 @@ brighter (445's modulator moves with the smooth, theirs does not).
 | 447 | 383 | 26 | 44959 | 0.3804 (0.046) | 1.115, 0.960, 1.060 | 23.41 | 89.41 / 102.60 | 2.43 |
 | 314 | 384, bottom | 9 | 51481 | 0.9699 (0.118) | 0.872, 1.031, 1.067 | 8.09 | 30.90 / 35.46 | 1.03 |
 | 10463 | 380 | 56 | 63918 | 0.0385 (0.022) | 1.304, 0.937, 0.727 | 5.11 | 19.51 / 22.39 | 2.68 |
+| 12009 | fx_bullets2_diff | 50 | 48104 | 0.0264 (0.104) | 3.181, 0.409, 0.437 | 9.88 | 37.75 / 43.31 | 18.50 |
+
+**The effects-pair body (12009, PRG; 2026-11-13).** FL loads `addon2/01.cat` `objects/v/12009.pbb`, the 01.cat text
+record normalised (same geometry to 0.8 model units after the scale back [M]). MATERIAL6 `effects.fx`:
+`fx_bullets2_diff`, cell u 0.406..0.570, v 0.241..0.447 (a red streak); `g_SrcBlend` 2 / `g_DestBlend` 4, so ADD
+ONE / INVSRCCOLOR; `g_CullMode` 1; Z write off [M, `muzzle_bodies.py` `effect_material`]. Its 50 quads form three
+cones: 8 along the axis, 18 at 41.6°, 24 at 77.9°. Its row was measured with 445's functions, as above [M]; the
+overlap is inferred as for the other bodies: 445's fit × 9.88 / 9.14 × 3.926 [I].
+- **Why a vertex shader too.** The game draws 12009 with the effects DEFAULT pair, VS `d5e1c753…` and PS
+  `8360f422…`. That VS outputs only oPos, oT0.xy (the UV after `g_TexMatrix`) and oD0.x (the fade: `g_AlphaValue` ×
+  the fog clip) ([muzzle-flash-draw.md](../reverse-engineering/fl/muzzle-flash-draw.md) section 6). A pixel program
+  beside it cannot know a pixel's distance from the gun. A fit from UV to that distance misses 12009's glow-weighted
+  sum by about 100 % at the baked size, because the quads' gun edges sit 2–10 thousand model units from the origin
+  [M, a scratch fit, not kept].
+- **Our vertex shader.** The substitution binds our vs_2_0 (`src/effects/weapon_muzzle_reshade_effects_vs.hlsl`, 28
+  instructions, 218 words). It computes the game VS's oPos, oT0 and oD0 with the same operations on the same
+  application constants, and adds oT1 = the model position (`effects_vs_read_out.txt`: the instruction multisets
+  differ only in register lanes). The fixture draws both on the same mesh: 4420 covered pixels each, 0 coverage
+  mismatches, and an absolute difference of 0 in COLOR0.x and TEXCOORD0.xy, fog off and on [M].
+- **Our pixel program.** ps_2_0, `weapon_muzzle_reshade_effects_ps.hlsl`, 172 words. It runs the classic program's law
+  through the shared `weapon_muzzle_reshade.hlsl`; the ps_3_0 bytecode is unchanged by the refactor (sha256
+  `d1f7d545…`). Here d = |model position| / (lit radius × `mz_size`): the node's scale is uniform, so this equals the
+  classic route's world distance over the lit radius × the scale. rgb is saturated, then multiplied by COLOR0.x, the
+  fade the lone effects route uses. The saturate keeps the screen blend's 1 − src factor in [0, 1] on a float target,
+  where a fixed-point target would clamp it. Alpha is the texel's, as in vanilla. The colour matrix c0..c2 is not
+  applied.
+- **Registers.** c29 = (1 − smooth, 1 / mean, 0, 1 / (lit radius × size)), c30 = (gain / N, core / N, gain, core),
+  c31 = hue. c30.xy is set per draw from the effects VS's `g_mWorld` and `g_mViewInverse` rows c4..c9 (shadowed),
+  which give the same overlap N as the classic route. These are the lone bullet block's registers (c29..c31); the hull
+  hit effects program uses c30..c31 of the same block. All three routes put the registers back from the one
+  SetPixelShaderConstantF shadow. They never share a draw, so sharing the registers is safe. The resync now also
+  reads c29..c31 when only the muzzle re-shade is requested.
+- **Order: one claimant.** The order in `before_draw` is: the lone classic and lone effects bullet routes (a body in
+  the bullet map), the classic muzzle route (classic rows only), this route, then the hull hit route (which leaves
+  every muzzle row alone).
+  - This route runs while the effects DEFAULT VS is bound (`shadow_.vs_muzzle_effects`), on a draw no earlier route
+    took and whose VS no route replaced (`!route.vs_set`).
+  - The draw needs blend on, ADD, SRCBLEND ONE and a DESTBLEND some effects-pair row admits. Only those draws read the
+    node.
+  - Then `effects_match` leaves a mapped body to the lone route and takes a listed `pair_effects` row on its own
+    DESTBLEND.
+  - The fixture checks 41 ids under both blends: 0 multiple claimants and 0 mismatches. 12009 is refused off its blend,
+    off its VS, when not ready, with blend off and when mapped [M].
+- **Sequence.** `muzzle_reshade_route.h` `begin_pair` writes c29..c31, binds our VS, then our PS, all or nothing;
+  rollback undoes the latest step first. `end_pair` binds the game's PS and VS (the shadowed bindings), then writes
+  back the application's c29..c31. A failed restore stops both pairs for the device.
+- **Counters.** The `muzzle_reshade_frame` row keeps its totals over both pairs and adds `effects_candidates=`,
+  `effects_matched=` and `effects_draws=`. Creation logs `muzzle_reshade_program … pair=effects`.
+- **AP.** The same code builds for AP. Mayhem replaces scene 08001's body with 12011 (MATERIAL6, not measured,
+  unlisted), so nothing matches there. Stock AP keeps 12009 and would match it with FL's row [I].
 
 **The per-draw overlap** [M, `verification/results/muzzle-reshade/overlap_by_angle_out.txt`, review F1]. The ray sum
 through the gun depends strongly on the view angle: 5.9 side-on, 7.0 at the 25° pose, 27.3 along the axis (20000
@@ -176,37 +228,41 @@ gates the extent at a tenth of each image's own peak at no more than vanilla's f
 The dump also gates the extent at a tenth of each image's own peak at no more than vanilla's (the fixture too, since
 2026-11-13). With `mz_core` 0 there is no white core, so the extent at scene white is reported, not gated.
 
-**At the baked values (2026-11-10) [M, `dump_out.txt`]** the real mesh's re-shaded flash peaks at 0.025–0.081 linear
-(near 0.074 against vanilla 9.10; side 0.081, axis 0.025; energy ratio 0.001–0.003), so it never reaches 0.1: the
-extent at 0.1 is 0 and every gate passes. Its extent at a tenth of its own peak is 14.9 px against vanilla's 33.6
-(near), 18.1 / 26.9 (axis), 1.6 / 4.6 (far). At `mz_size` 0.1 the peak would be 0.0015–0.015 (scratch dump). The
-view-angle overlap N (section 2) was fitted on the first defaults' sweep; `overlap_by_angle_out.txt` is that fit and
-is **superseded as a record of the current `dump_out.txt`**, whose sweep rows are now at the baked keys (N itself is
-unchanged: it describes the fan, not the keys).
+**12009 (effects pair, 2026-11-13) [M, native fixture, MUZZLE_EFFECTS rows].** The stand-in is
+`standin_12009.py`. It uses the real quads' cone layout, rounded, and a red streak with the real cell's profiles and
+spread. Against the real body: mean +2.3 %, lit radius +4.6 %, glow-weighted luminance +3.3 %, ray sum +4.9 %, p99
+equal; the brightest texel is 0.328 against 0.539. The same gates at the same three poses, 30 m, under the game's
+ONE / INVSRCCOLOR:
 
-The first defaults' frames (0.5 / 0.5 / 0.2 / 0.6, superseded):
+| Pose | N | Energy ratio (≤ 0.15) | Peak re-shade / vanilla (lit bound) | Tenth-of-peak r px re-shade / vanilla |
+| --- | --- | --- | --- | --- |
+| tilt 25° | 38.40 | 0.002 | 0.048 / 0.936 (≥ 0.0375) | 16.8 / 92.4 |
+| axis | 43.31 | 0.002 | 0.021 / 0.908 (≥ 0.01875) | 21.3 / 90.2 |
+| side | 37.79 | 0.002 | 0.054 / 0.936 (≥ 0.0375) | 15.6 / 92.3 |
 
-Real mesh and atlas cell (`assets=game`), the scale peak unless stated, 1920x1080 FP16, m00 1.6, the axis 25° out of
-the screen plane unless stated, dark background (nebula beside it in each PNG), the defaults, the per-draw N [M,
-`verification/results/muzzle-reshade/dump_out.txt`]:
+**Lit bound per pose (coordinator decision, 2026-11-13).** The bound is `mz_gain` / 4 at tilt and side and `mz_gain`
+/ 8 axis-on. This states the fan's own axis-on dimness; it does not loosen the tolerance. Viewed down the axis, the
+eight axial quads are edge-on, and the inferred N (43.3, 4.2× 445's) spreads the gun's summed luminance (by
+construction 445's mean) over the cones at 42° and 78°. The real 445 mesh's re-shade, at the baked keys, also peaks at
+0.025 axis-on (dump, above). The inferred normalisation is kept. A first run with narrower texel noise (p99 0.204)
+peaked at 0.044 / 0.018 / 0.050. All 11 `muzzle_effects_*` checks pass (134 / 134 in the record).
 
-| Frame | N | Energy ratio (gate ≤ 0.2) | Peak reshade / vanilla | White r px reshade / vanilla (gate ≤ 0.5 ×) | 0.1 r ratio |
-| --- | --- | --- | --- | --- | --- |
-| near, 30 m | 9.05 | 0.141 | 1.55 / 9.10 | 8.6 / 31.6 | 0.494 |
-| far, 300 m | 9.12 | 0.132 | 1.31 / 4.83 | 0.8 / 3.2 | 0.439 |
-| grow, 30 m, 20 % of the peak scale | 9.11 | 0.135 | 1.40 / 7.08 | 1.7 / 6.1 | 0.468 |
-| axis, 30 m, the axis along the view ray | 10.20 | 0.142 | 1.22 / 8.84 | 6.3 / 24.8 | 0.505 |
-| side, 30 m, the axis in the screen plane | 8.90 | 0.137 | 1.53 / 9.15 | 8.7 / 31.5 | 0.475 |
+**Frames** (`verification/results/muzzle-reshade/fixture-muzzle-effects-{tilt,axis,side}.png`, written by the native
+fixture run: four 320 px crops about the screen centre, vanilla on black, vanilla on linear 0.6 grey, re-shaded on
+black, re-shaded on grey; stand-in assets) [viewed]:
 
-All gates pass at every frame; the core reaches scene white at all five, the growing flash included. Frames:
-`fixture-muzzle-{vanilla,reshade}-{near,far,grow,axis,side}.png` in `verification/results/muzzle-reshade/`; the
-dump's 14 `DUMP_MUZZLE_SWEEP` rows are the view-angle sweep the overlap is fitted on. World scale is
-inferred: body units × node scale / 500 engine units per metre (the flash about 7 m long at its peak) [I].
+| Frame | What it shows |
+| --- | --- |
+| tilt | Vanilla: a big pink-red fan with a white-hot centre, washing pale over the grey. Re-shaded: a small dim red dot at the gun on black, nearly invisible on grey. |
+| axis | Vanilla: an eight-petal pink star with a white centre. Re-shaded: a faint small dark-red rosette on black, invisible on grey. |
+| side | Vanilla: a fan plus a long horizontal streak. Re-shaded: a small red half-disc at the gun on black, barely visible on grey. |
 
 ## 5. Windows and AP
 
 Shared production code: documented D3D9 calls only (Set/GetPixelShaderConstantF, SetPixelShader, the VS constants
-read at resync through GetVertexShaderConstantF), a ps_3_0 program beside the game's vs_3_0. Native Windows: the fixture runs on the native D3D9 runtime
+read at resync through GetVertexShaderConstantF), a ps_3_0 program beside the game's vs_3_0; for 12009 also
+CreateVertexShader / SetVertexShader and a vs_2_0 + ps_2_0 pair of our own, both created through the native slots and
+released at teardown. Native Windows: the fixture runs on the native D3D9 runtime
 (below); in-game behaviour is unverified on either platform until flown. AP (2026-11-13): compiled for both
 editions. The flash VS `494fe349…` is the same bytes on AP stock, AP Mayhem and FL, the scope node's body id is AP node
 `+0x140` (the object-trace scope `0x004c5228 → 0x004c0150`, default on), and `reshade` logs
@@ -216,7 +272,7 @@ are FL's seven. Mayhem's flashes use 445, 444, 446 and 314 and six Mayhem bodies
 12018. Those six were added to `bodies[]`, measured as the FL six [M]
 ([`muzzle_bodies_ap_out.txt`](../../verification/results/muzzle-reshade/muzzle_bodies_ap_out.txt)). 445 runs first in
 that output and reproduces the FL row, so the overlaps are normalised to it [I]. 12013 and 12014 have grey cells, so
-they draw a white flash. 12011 is MATERIAL6 `effects.fx` (like 12009) and stays vanilla. Not flown on AP. [U] The classic submit swaps `standard_lighting` for `effects` when node +0x1c
+they draw a white flash. 12011 is MATERIAL6 `effects.fx` (like 12009) and stays vanilla (not measured). Not flown on AP. [U] The classic submit swaps `standard_lighting` for `effects` when node +0x1c
 is the cockpit view (muzzle-flash-draw.md section 3); a flash drawn that way has another VS and stays vanilla. Whether
 the own guns' flash in first person takes that path is not established.
 
@@ -250,6 +306,8 @@ python3 -I verification/results/muzzle-reshade/muzzle_inputs.py \
   --texture verification/results/weapon-effects-lab/fl/tex/384-bd79416d.png > verification/results/muzzle-reshade/muzzle_inputs_out.txt
 python3 -I verification/results/muzzle-reshade/muzzle_bodies.py > verification/results/muzzle-reshade/muzzle_bodies_out.txt
 python3 -I verification/results/muzzle-reshade/standin_444.py > verification/results/muzzle-reshade/standin_444_out.txt
+python3 -I verification/results/muzzle-reshade/standin_12009.py > verification/results/muzzle-reshade/standin_12009_out.txt
+python3 -I verification/results/muzzle-reshade/effects_vs_read.py > verification/results/muzzle-reshade/effects_vs_read_out.txt
 python3 tools/shaders/generate_muzzle_reshade_program.py --check
 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native \
   --dump verification/results/muzzle-reshade --dump-case muzzle --lab-assets verification/results/weapon-effects-lab/fl

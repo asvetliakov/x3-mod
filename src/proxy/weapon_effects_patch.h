@@ -162,8 +162,10 @@ struct StageFrame {
     float reshade_us = 0.f;
     // The muzzle flash re-shade (FL reshade mode; MotionOutput::muzzle_reshade_take_frame): draws re-shaded, muzzle
     // draws matched (body id in the list, ONE / ONE), of the re-shaded those kept off the hull-emission route, failed
-    // substitutions, timed draws and the sequence's CPU us over them.
+    // substitutions, timed draws and the sequence's CPU us over them (both pairs); the effects pair's draws that reached
+    // its node read, matched and re-shaded.
     unsigned muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
+    unsigned muzzle_effects_candidates = 0, muzzle_effects_matched = 0, muzzle_effects_draws = 0;
     float muzzle_us = 0.f;
     // The hull hit re-shade (reshade mode with an edition table; MotionOutput::hull_reshade_take_frame, in the order of
     // hull_reshade_core.h Frame): candidates, matched, effects, classic, failures, zwrite_on, cool_active, shared, timed;

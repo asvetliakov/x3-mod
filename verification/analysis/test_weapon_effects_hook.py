@@ -383,8 +383,36 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertLess(rows[f'{prefix}_tilt']['overlap'], rows[f'{prefix}_axis']['overlap'])
         self.assertNotEqual(rows['flash_tilt']['overlap'], rows['flash444_tilt']['overlap'])
         self.assertEqual(rows['cost']['fenced'], 1)
-        self.assertEqual(rows['cost']['bodies'], 13)  # FL's seven and AP Mayhem's six (2026-11-13)
+        self.assertEqual(rows['cost']['bodies'], 14)  # FL's seven, 12009 (effects pair) and AP Mayhem's six (2026-11-13)
         self.assertLess(max(rows['cost']['match_last_us_per_draw'], rows['cost']['match_miss_us_per_draw']), 1.0)
+
+    def test_muzzle_effects_gates(self):
+        # docs/architecture/muzzle-flash-look.md "The effects-pair body" (12009): the game's effects DEFAULT pair loaded
+        # and hash-checked, our VS's outputs equal to the game VS's (fog off and on), our ps_2_0 on its model, rollback,
+        # one claimant, the sequence bound and restored, the muzzle gates on the stand-in at three poses, the cost
+        checks = dict(self.record['checks'])
+        for name in ('muzzle_effects_programs_create', 'muzzle_effects_targets', 'muzzle_effects_vs_matches_game',
+                     'muzzle_effects_program_matches_model', 'muzzle_effects_game_ps_is_texel_times_fade',
+                     'muzzle_effects_sequence_rollback', 'muzzle_effects_match_one_claimant',
+                     'muzzle_effects_route_binds_and_restores', 'muzzle_effects_energy_within_gain',
+                     'muzzle_effects_extent_within_size', 'muzzle_effects_cost_measured'):
+            self.assertTrue(checks.get(name), name)
+        rows = {x['case']: x for x in self.record['metrics']['muzzle_effects'] if x['case'] not in ('texel', 'vs_parity')}
+        self.assertEqual((rows['programs']['game_hashes'], rows['programs']['vs_major'], rows['programs']['ps_major'],
+                          rows['programs']['pair'], rows['programs']['dest_blend']), (1, 2, 2, 1, 4))
+        for row in (x for x in self.record['metrics']['muzzle_effects'] if x['case'] == 'vs_parity'):
+            self.assertEqual((row['coverage_mismatch'], row['worst_abs']), (0, 0), row)
+            self.assertEqual(row['covered_game'], row['covered_ours'])
+        self.assertEqual((rows['recognition']['multiple_claimants'], rows['recognition']['claim_mismatches']), (0, 0))
+        # lit: mz_gain / 4 at tilt and side, mz_gain / 8 axis-on (the fan's own axis-on dimness: the axial quads are
+        # edge-on; the real 445 mesh peaks at 0.025 axis-on too), the bound the row carries
+        for pose, lit in (('tilt', 0.25), ('axis', 0.125), ('side', 0.25)):
+            row = rows[f'flash12009_{pose}']
+            self.assertLessEqual(row['energy_ratio'], row['gain'], pose)
+            self.assertAlmostEqual(row['lit_bound'], lit * row['gain'], delta=1e-4)
+            self.assertGreaterEqual(row['reshade_peak'], row['lit_bound'], pose)
+            self.assertLessEqual(row['reshade_peak_tenth_r'], row['vanilla_peak_tenth_r'], pose)
+        self.assertLess(max(rows['cost']['match_us_per_draw'], rows['cost']['match_miss_us_per_draw']), 1.0)
 
     def test_passed_with_the_step_gates(self):
         r = self.record

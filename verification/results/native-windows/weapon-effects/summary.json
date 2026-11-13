@@ -45,6 +45,12 @@
     "src/proxy/muzzle_reshade_route.h",
     "src/proxy/muzzle_reshade_core.h",
     "verification/probe/weapon_muzzle_reshade_fixture.h",
+    "src/effects/weapon_muzzle_reshade.hlsl",
+    "src/effects/weapon_muzzle_reshade_effects_ps.hlsl",
+    "src/effects/weapon_muzzle_reshade_effects_vs.hlsl",
+    "src/renderer/weapon_muzzle_reshade_effects_pixel_program_inc.h",
+    "src/renderer/weapon_muzzle_reshade_effects_vertex_program_inc.h",
+    "verification/probe/weapon_muzzle_effects_cases.h",
     "src/effects/weapon_bullet_reshade_classic_ps.hlsl",
     "src/effects/weapon_bullet_reshade_classic_flag_ps.hlsl",
     "src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h",
@@ -61,20 +67,9 @@
     "verification/probe/weapon_effects_fixture.cpp"
   ],
   "source": {
-    "commit": "f18b3d3b1ce5cc9b3573df1c5962eb179e18626f-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_projectile_family.h",
-      "verification/probe/weapon_effects_fixture.cpp",
-      "src/effects/weapon_hull_reshade.hlsl",
-      "src/effects/weapon_hull_reshade_classic_ps.hlsl",
-      "src/effects/weapon_hull_reshade_effects_ps.hlsl",
-      "src/proxy/hull_reshade_core.h",
-      "src/renderer/weapon_hull_reshade_classic_pixel_program_inc.h",
-      "src/renderer/weapon_hull_reshade_effects_pixel_program_inc.h",
-      "verification/probe/weapon_hull_reshade_cases.h",
-      "verification/probe/weapon_hull_reshade_fixture.h"
-    ],
+    "commit": "df4ee8899d7ae6d6ee98ddac2feda7d72077dd98",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "src/renderer/weapon_effects_pass.h": "dcc1b44e9005cb07014573a8b522c2dd948dd8bdc98faaa655d9394102ad894d",
       "src/renderer/weapon_effects_pass.cpp": "b6ceedb96173dadcc8c2ec55404f93283361b05320cd0ff996003a984e0bacd9",
@@ -115,11 +110,17 @@
       "src/effects/weapon_bullet_reshade_lone_flag_ps.hlsl": "5a694c83b87f026fc8010a3f202bf68ac1d871ea9e81b6e67aa01b11ec00b4b2",
       "src/renderer/weapon_bullet_reshade_lone_pixel_program_inc.h": "98a1121cb750976d38db8b992bd0ff9d6fe5d75fe7fb9f8f9da1f8d9a2595116",
       "src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h": "b60d8d6f7daec353dd24a74a075f2972fda465204a4e18b85aae53ed2993e5a6",
-      "src/effects/weapon_muzzle_reshade_ps.hlsl": "766797ab6e3cd93484b593f7d7d0c2738f604d82a95e52ed7236d58ef4800158",
+      "src/effects/weapon_muzzle_reshade_ps.hlsl": "a4735bf2b6c921cab52a968cbbd088c370ab284d13dd8ecbcefe183ed00f1460",
       "src/renderer/weapon_muzzle_reshade_pixel_program_inc.h": "3c51dede22fb5dc55eb8c9796cde85085b119f798a5708097047b7518353f460",
-      "src/proxy/muzzle_reshade_route.h": "6487970e6a7ded65cb72a488e152b9eef7a808ec1b7defb25c5c9a96d2dd3b1c",
-      "src/proxy/muzzle_reshade_core.h": "a83b1d48c7a5c689b214996425570110ae6c32ff9a8577596bff28fde3a9834f",
+      "src/proxy/muzzle_reshade_route.h": "40ba79b5cd18f2ab9acb45d2d9aa48102187703c2b38e729991620360fcba136",
+      "src/proxy/muzzle_reshade_core.h": "112cd455782b19c4b468ca36ca9727f3c7057ab84e95c590ea545506f04eb41b",
       "verification/probe/weapon_muzzle_reshade_fixture.h": "698de430832ec331b8d086aa864fe12fecb8d81ea6f161ace988f1e356ce2d7d",
+      "src/effects/weapon_muzzle_reshade.hlsl": "9767a6d3c65fa3a61116cb098f2a5055571c9c2ab2fe683d3b90e13e46d06fb4",
+      "src/effects/weapon_muzzle_reshade_effects_ps.hlsl": "264014f9247a476583d9e80ecc351fcbcd9bcd8cb6154f613e435dd87017d37c",
+      "src/effects/weapon_muzzle_reshade_effects_vs.hlsl": "ec3a83bdfd0b4e13797cc6558c9014c9cd48139cc5335043787e88772c331ed8",
+      "src/renderer/weapon_muzzle_reshade_effects_pixel_program_inc.h": "a2f731ccb5b422e0cd5ab74ebd598f9a4e1e155edf8a09934c128c7e1c7e647e",
+      "src/renderer/weapon_muzzle_reshade_effects_vertex_program_inc.h": "7dda0564e9ea4d0176630b49c20415d4cee90efdb33d9c1eeeedb8dd7906484c",
+      "verification/probe/weapon_muzzle_effects_cases.h": "f0ac6cf6a09b048ba01ea0d36d89832ce1f3f99d3d49fa3aaafae938cf93a9a6",
       "src/effects/weapon_bullet_reshade_classic_ps.hlsl": "e82338e1d743f4f085d49616d21c6e16340f73e49f29402ee78516d1f7cec3d1",
       "src/effects/weapon_bullet_reshade_classic_flag_ps.hlsl": "bbc3f75b5e508332224d29123ec097c4cb7d17bef6512f7e74d1ef443d2478e9",
       "src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h": "cbbcb6194686956b51daf35d7e2c91c9ece0ff4f04d757d9a34d2fd84541bbf2",
@@ -130,10 +131,10 @@
       "src/effects/weapon_hull_reshade_classic_ps.hlsl": "379fe65b1fb58373ed0ec1b9194e8e81dfc13d52e4f4a0114ca078739d0adfe6",
       "src/renderer/weapon_hull_reshade_effects_pixel_program_inc.h": "3d664c14474e863dd53ed411d30cf4aac8a8b1c81d8e54af444284ec74f1f72c",
       "src/renderer/weapon_hull_reshade_classic_pixel_program_inc.h": "094f9a8d7e7db01fe5537ad2d9861a14313a37802cdeb5759f7df74a6b9b75bf",
-      "src/proxy/hull_reshade_core.h": "25a28f51e821ee83a5620c71ba681b445ae0671d57f31270945dd6e3b7bfd2f4",
+      "src/proxy/hull_reshade_core.h": "ce70924af4c9ec82e37cd32821d4eaa35cd7351a1e0a8f8d76aaaa45d40cd4f6",
       "verification/probe/weapon_hull_reshade_fixture.h": "0c3c0f9880f825c8020276d48659afa5683a9e1caedc7de9d171afc70a77c555",
-      "verification/probe/weapon_hull_reshade_cases.h": "20f569b22e5988863f9cf6b24f78a6ca064426acf7ac317efefe348aa2e0a3f0",
-      "verification/probe/weapon_effects_fixture.cpp": "3b57ba70ea2708b21172e28985b3d1b55094186242e0563a0b1e5d9d30a525ef"
+      "verification/probe/weapon_hull_reshade_cases.h": "618894344ca11f74e4eaafcdd3e7bd1cb3eb609ecbdbe177b5f4d6bc924be5b4",
+      "verification/probe/weapon_effects_fixture.cpp": "ef450a8e9eee1b4c5aeecc56066ef8dfd7dce758ada50f1e0f3f150c4c982178"
     }
   },
   "programs": {
@@ -209,6 +210,18 @@
       "bytecode_sha256": "d1f7d54557043eca5dd6b9ea9e4065465cc005df11fa95f2fae61cf212516472",
       "target": "ps_3_0"
     },
+    "weapon_muzzle_reshade_effects_ps": {
+      "source": "src/effects/weapon_muzzle_reshade_effects_ps.hlsl",
+      "word_count": 172,
+      "bytecode_sha256": "d6050562183e8331220bee1f8470d38b01ca6eb44cbe6571531a48a8f78700eb",
+      "target": "ps_2_0"
+    },
+    "weapon_muzzle_reshade_effects_vs": {
+      "source": "src/effects/weapon_muzzle_reshade_effects_vs.hlsl",
+      "word_count": 218,
+      "bytecode_sha256": "d0dabe7ab643547344289783161c8f2a22457267e616189da191a5361fabadb1",
+      "target": "vs_2_0"
+    },
     "weapon_bullet_reshade_classic_ps": {
       "source": "src/effects/weapon_bullet_reshade_classic_ps.hlsl",
       "word_count": 337,
@@ -260,12 +273,12 @@
       "-DWIN32_LEAN_AND_MEAN",
       "-DNOMINMAX",
       "-DX3M_WEAPON_EFFECTS_FIXTURE",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/verification/probe/weapon_effects_fixture.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/src/renderer/weapon_effects_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/src/renderer/temporal_pass.cpp",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/verification/probe/build/weapon-effects/engine_memory.o",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/verification/probe/weapon_effects_fixture.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/src/renderer/weapon_effects_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/src/renderer/temporal_pass.cpp",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/verification/probe/build/weapon-effects/engine_memory.o",
       "-o",
-      "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
+      "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/verification/probe/build/weapon-effects/weapon_effects_fixture.exe",
       "-luser32",
       "-ldxguid"
     ],
@@ -292,13 +305,13 @@
         "-mno-mmx",
         "-mfpmath=387",
         "-c",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/src/proxy/engine_memory.cpp",
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/src/proxy/engine_memory.cpp",
         "-o",
-        "/home/asvetl/x3-mod/.claude/worktrees/agent-aa904a0aabe8c793f/verification/probe/build/weapon-effects/engine_memory.o"
+        "/home/asvetl/x3-mod/.claude/worktrees/agent-a553ab720323d9c77/verification/probe/build/weapon-effects/engine_memory.o"
       ]
     ],
     "warnings": 0,
-    "executable_sha256": "13a878203f950ddd70e4606dde4a85a1a0b9ff538a372ecb19fea049092d3dfd"
+    "executable_sha256": "4bee0c4aaa0ff9f822fd096fd8decdad88303983c089f79ba6fbdb92e3922244"
   },
   "d3dx9_37_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "classic_programs": {
@@ -343,11 +356,27 @@
       }
     }
   },
+  "effects_programs": {
+    "game": "/mnt/c/X3FL",
+    "found": true,
+    "programs": {
+      "effects_vs.bin": {
+        "hash": "d5e1c75351ed3f04",
+        "dwords": 253,
+        "written": true
+      },
+      "effects_ps.bin": {
+        "hash": "8360f422de08b5bd",
+        "dwords": 1108,
+        "written": true
+      }
+    }
+  },
   "host": {
     "name": "native-windows",
     "windows": {
-      "version": "10.0.26300.9818",
-      "ver": "Microsoft Windows [Version 10.0.26300.9818]"
+      "version": "10.0.26300.9974",
+      "ver": "Microsoft Windows [Version 10.0.26300.9974]"
     },
     "adapter": {
       "vendor": "0x10de",
@@ -373,7 +402,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 123,
+      "checks": 134,
       "failures": 0,
       "verdict": "PASS"
     },
@@ -871,6 +900,50 @@
     [
       "hull_reshade_cost_measured",
       true
+    ],
+    [
+      "muzzle_effects_programs_create",
+      true
+    ],
+    [
+      "muzzle_effects_targets",
+      true
+    ],
+    [
+      "muzzle_effects_vs_matches_game",
+      true
+    ],
+    [
+      "muzzle_effects_program_matches_model",
+      true
+    ],
+    [
+      "muzzle_effects_game_ps_is_texel_times_fade",
+      true
+    ],
+    [
+      "muzzle_effects_sequence_rollback",
+      true
+    ],
+    [
+      "muzzle_effects_match_one_claimant",
+      true
+    ],
+    [
+      "muzzle_effects_route_binds_and_restores",
+      true
+    ],
+    [
+      "muzzle_effects_energy_within_gain",
+      true
+    ],
+    [
+      "muzzle_effects_extent_within_size",
+      true
+    ],
+    [
+      "muzzle_effects_cost_measured",
+      true
     ]
   ],
   "failed_checks": [],
@@ -1180,18 +1253,18 @@
     "sort": [
       {
         "case": "shuffled",
-        "heap_us": 0.9,
-        "insertion_us": 2.6
+        "heap_us": 0.7,
+        "insertion_us": 1.7
       },
       {
         "case": "ascending",
-        "heap_us": 0.9,
+        "heap_us": 0.7,
         "insertion_us": 0.1
       },
       {
         "case": "descending",
-        "heap_us": 0.8,
-        "insertion_us": 4.0
+        "heap_us": 0.9,
+        "insertion_us": 3.4
       }
     ],
     "attach_slots": [
@@ -1432,8 +1505,8 @@
         "dropped": 0,
         "lathes": 0,
         "no_profile": 0,
-        "best_us": 65.1,
-        "mean_us": 78.9,
+        "best_us": 64.0,
+        "mean_us": 80.1,
         "target_us": 200
       },
       {
@@ -1447,8 +1520,8 @@
         "dropped": 0,
         "lathes": 1,
         "no_profile": 0,
-        "best_us": 19.8,
-        "mean_us": 21.9,
+        "best_us": 19.2,
+        "mean_us": 20.7,
         "target_us": 200
       },
       {
@@ -1462,8 +1535,8 @@
         "dropped": 24,
         "lathes": 0,
         "no_profile": 0,
-        "best_us": 197.7,
-        "mean_us": 244.8,
+        "best_us": 196.8,
+        "mean_us": 249.5,
         "target_us": 200
       },
       {
@@ -1477,8 +1550,8 @@
         "dropped": 0,
         "lathes": 16,
         "no_profile": 0,
-        "best_us": 93.5,
-        "mean_us": 108.9,
+        "best_us": 91.3,
+        "mean_us": 104.2,
         "target_us": 200
       },
       {
@@ -1492,8 +1565,8 @@
         "dropped": 0,
         "lathes": 0,
         "no_profile": 0,
-        "best_us": 37.8,
-        "mean_us": 55.4,
+        "best_us": 36.9,
+        "mean_us": 39.8,
         "target_us": 200
       },
       {
@@ -1507,8 +1580,8 @@
         "dropped": 0,
         "lathes": 1,
         "no_profile": 0,
-        "best_us": 11.0,
-        "mean_us": 12.0,
+        "best_us": 10.8,
+        "mean_us": 11.3,
         "target_us": 200
       },
       {
@@ -1522,8 +1595,8 @@
         "dropped": 0,
         "lathes": 0,
         "no_profile": 0,
-        "best_us": 41.3,
-        "mean_us": 43.5,
+        "best_us": 39.6,
+        "mean_us": 46.4,
         "target_us": 200
       }
     ],
@@ -1562,10 +1635,10 @@
         "lit_fast_ms": 1760.0,
         "game_end_ms": 2819,
         "seta6_expected_wall_ms": 470.0,
-        "seta6_wall_ms": 470.0,
-        "last_drawn_ms": 469.98,
-        "frames": 15345,
-        "max_frame_ms": 0.779
+        "seta6_wall_ms": 470.02,
+        "last_drawn_ms": 470.0,
+        "frames": 14671,
+        "max_frame_ms": 1.78
       }
     ],
     "retired": [
@@ -1627,7 +1700,7 @@
         "drawn": 0,
         "lit_share": 0.0,
         "raster_share": 0.0,
-        "gpu_us": 10.8
+        "gpu_us": 10.6
       },
       {
         "width": 1920,
@@ -1637,7 +1710,7 @@
         "drawn": 5,
         "lit_share": 0.0022,
         "raster_share": 0.0955,
-        "gpu_us": 23.4
+        "gpu_us": 21.2
       },
       {
         "width": 1920,
@@ -1647,7 +1720,7 @@
         "drawn": 1,
         "lit_share": 0.0017,
         "raster_share": 0.0254,
-        "gpu_us": 17.0
+        "gpu_us": 16.5
       },
       {
         "width": 1920,
@@ -1657,7 +1730,7 @@
         "drawn": 3,
         "lit_share": 0.0575,
         "raster_share": 0.8899,
-        "gpu_us": 45.6
+        "gpu_us": 43.1
       },
       {
         "width": 1920,
@@ -1667,7 +1740,7 @@
         "drawn": 8,
         "lit_share": 0.2017,
         "raster_share": 1.5724,
-        "gpu_us": 78.6
+        "gpu_us": 73.8
       },
       {
         "width": 1920,
@@ -1677,7 +1750,7 @@
         "drawn": 1,
         "lit_share": 0.0116,
         "raster_share": 0.0174,
-        "gpu_us": 16.8
+        "gpu_us": 16.1
       },
       {
         "width": 1920,
@@ -1697,7 +1770,7 @@
         "drawn": 1,
         "lit_share": 0.8309,
         "raster_share": 1.0,
-        "gpu_us": 62.7
+        "gpu_us": 62.2
       },
       {
         "width": 1920,
@@ -1707,7 +1780,7 @@
         "drawn": 2,
         "lit_share": 0.8309,
         "raster_share": 1.5568,
-        "gpu_us": 78.1
+        "gpu_us": 77.3
       },
       {
         "width": 1920,
@@ -1717,7 +1790,7 @@
         "drawn": 4,
         "lit_share": 0.8348,
         "raster_share": 2.3827,
-        "gpu_us": 104.7
+        "gpu_us": 103.6
       },
       {
         "width": 1920,
@@ -1747,7 +1820,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 64.0
+        "gpu_us": 63.6
       },
       {
         "width": 1920,
@@ -1757,7 +1830,7 @@
         "drawn": 13,
         "lit_share": 0.4158,
         "raster_share": 7.7726,
-        "gpu_us": 235.5
+        "gpu_us": 227.7
       },
       {
         "width": 1920,
@@ -1767,7 +1840,7 @@
         "drawn": 1,
         "lit_share": 0.0113,
         "raster_share": 0.0152,
-        "gpu_us": 16.6
+        "gpu_us": 16.9
       },
       {
         "width": 1920,
@@ -1777,7 +1850,7 @@
         "drawn": 1,
         "lit_share": 0.6906,
         "raster_share": 0.9161,
-        "gpu_us": 59.8
+        "gpu_us": 59.2
       },
       {
         "width": 1920,
@@ -1787,7 +1860,7 @@
         "drawn": 4,
         "lit_share": 0.7145,
         "raster_share": 1.6656,
-        "gpu_us": 96.9
+        "gpu_us": 95.9
       },
       {
         "width": 1920,
@@ -1797,7 +1870,7 @@
         "drawn": 1,
         "lit_share": 0.0711,
         "raster_share": 0.1091,
-        "gpu_us": 21.8
+        "gpu_us": 21.0
       },
       {
         "width": 1920,
@@ -1807,7 +1880,7 @@
         "drawn": 6,
         "lit_share": 0.0536,
         "raster_share": 1.888,
-        "gpu_us": 75.7
+        "gpu_us": 72.7
       },
       {
         "width": 5120,
@@ -1827,7 +1900,7 @@
         "drawn": 5,
         "lit_share": 0.0043,
         "raster_share": 0.1901,
-        "gpu_us": 37.5
+        "gpu_us": 35.6
       },
       {
         "width": 5120,
@@ -1847,7 +1920,7 @@
         "drawn": 3,
         "lit_share": 0.0608,
         "raster_share": 1.0513,
-        "gpu_us": 118.5
+        "gpu_us": 116.7
       },
       {
         "width": 5120,
@@ -1857,7 +1930,7 @@
         "drawn": 8,
         "lit_share": 0.2325,
         "raster_share": 1.8654,
-        "gpu_us": 209.9
+        "gpu_us": 206.9
       },
       {
         "width": 5120,
@@ -1867,7 +1940,7 @@
         "drawn": 1,
         "lit_share": 0.0231,
         "raster_share": 0.0348,
-        "gpu_us": 21.5
+        "gpu_us": 21.3
       },
       {
         "width": 5120,
@@ -1877,7 +1950,7 @@
         "drawn": 2,
         "lit_share": 0.0231,
         "raster_share": 0.0426,
-        "gpu_us": 23.5
+        "gpu_us": 22.8
       },
       {
         "width": 5120,
@@ -1887,7 +1960,7 @@
         "drawn": 1,
         "lit_share": 0.9092,
         "raster_share": 1.0,
-        "gpu_us": 181.4
+        "gpu_us": 180.5
       },
       {
         "width": 5120,
@@ -1897,7 +1970,7 @@
         "drawn": 2,
         "lit_share": 0.9092,
         "raster_share": 1.557,
-        "gpu_us": 238.6
+        "gpu_us": 238.1
       },
       {
         "width": 5120,
@@ -1907,7 +1980,7 @@
         "drawn": 4,
         "lit_share": 0.8007,
         "raster_share": 3.1141,
-        "gpu_us": 388.0
+        "gpu_us": 388.5
       },
       {
         "width": 5120,
@@ -1917,7 +1990,7 @@
         "drawn": 1,
         "lit_share": 0.0639,
         "raster_share": 0.1063,
-        "gpu_us": 35.0
+        "gpu_us": 34.1
       },
       {
         "width": 5120,
@@ -1927,7 +2000,7 @@
         "drawn": 1,
         "lit_share": 0.2269,
         "raster_share": 1.0,
-        "gpu_us": 162.5
+        "gpu_us": 161.8
       },
       {
         "width": 5120,
@@ -1937,7 +2010,7 @@
         "drawn": 1,
         "lit_share": 1.0,
         "raster_share": 1.0,
-        "gpu_us": 182.5
+        "gpu_us": 181.7
       },
       {
         "width": 5120,
@@ -1947,7 +2020,7 @@
         "drawn": 13,
         "lit_share": 0.4514,
         "raster_share": 8.2235,
-        "gpu_us": 777.5
+        "gpu_us": 775.5
       },
       {
         "width": 5120,
@@ -1957,7 +2030,7 @@
         "drawn": 1,
         "lit_share": 0.0226,
         "raster_share": 0.0305,
-        "gpu_us": 21.8
+        "gpu_us": 20.9
       },
       {
         "width": 5120,
@@ -1977,7 +2050,7 @@
         "drawn": 4,
         "lit_share": 0.6628,
         "raster_share": 2.0132,
-        "gpu_us": 338.5
+        "gpu_us": 339.8
       },
       {
         "width": 5120,
@@ -1987,7 +2060,7 @@
         "drawn": 1,
         "lit_share": 0.1422,
         "raster_share": 0.218,
-        "gpu_us": 52.3
+        "gpu_us": 51.8
       },
       {
         "width": 5120,
@@ -1997,7 +2070,7 @@
         "drawn": 6,
         "lit_share": 0.1071,
         "raster_share": 2.2437,
-        "gpu_us": 262.3
+        "gpu_us": 261.1
       }
     ],
     "reshade": [
@@ -2217,13 +2290,13 @@
         "case": "cost",
         "draws": 2000,
         "runs": 7,
-        "calls_us_per_draw": 0.067,
-        "draw_us_vanilla": 0.062,
-        "draw_us_reshaded": 0.268,
-        "substitution_us_per_draw": 0.206,
+        "calls_us_per_draw": 0.066,
+        "draw_us_vanilla": 0.056,
+        "draw_us_reshaded": 0.181,
+        "substitution_us_per_draw": 0.125,
         "batch_bolts": 469,
-        "batch_us_vanilla": 42.2,
-        "batch_us_reshaded": 42.4,
+        "batch_us_vanilla": 41.8,
+        "batch_us_reshaded": 41.7,
         "fenced": 1
       },
       {
@@ -2231,7 +2304,7 @@
         "draws": 2000,
         "runs": 7,
         "mapped_bodies": 30,
-        "layout_us_per_body_change": 0.0052
+        "layout_us_per_body_change": 0.0031
       },
       {
         "case": "texture_key",
@@ -2247,8 +2320,8 @@
         "fallback": 1,
         "bytes": 349680,
         "us_size_miss": 0.0016,
-        "us_head_miss": 4.702,
-        "us_match": 404.3
+        "us_head_miss": 4.575,
+        "us_match": 394.0
       },
       {
         "case": "lone_recognition",
@@ -2398,13 +2471,13 @@
         "case": "lone_cost",
         "draws": 2000,
         "runs": 7,
-        "draw_us_vanilla": 0.073,
-        "draw_us_reshaded": 0.441,
-        "substitution_us_per_draw": 0.368,
-        "draw_us_normalised": 0.662,
-        "normalise_us_per_draw": 0.222,
-        "match_us_hit_30": 0.0113,
-        "match_us_miss_30": 0.0113,
+        "draw_us_vanilla": 0.067,
+        "draw_us_reshaded": 0.351,
+        "substitution_us_per_draw": 0.284,
+        "draw_us_normalised": 0.508,
+        "normalise_us_per_draw": 0.157,
+        "match_us_hit_30": 0.0112,
+        "match_us_miss_30": 0.0112,
         "fenced": 1
       },
       {
@@ -2629,10 +2702,10 @@
         "case": "lone_classic_cost",
         "draws": 2000,
         "runs": 7,
-        "draw_us_vanilla": 0.071,
-        "draw_us_reshaded": 0.578,
-        "substitution_us_per_draw": 0.508,
-        "match_us_hit_30": 0.0143,
+        "draw_us_vanilla": 0.06,
+        "draw_us_reshaded": 0.483,
+        "substitution_us_per_draw": 0.423,
+        "match_us_hit_30": 0.0142,
         "match_us_miss_30": 0.0116,
         "match_us_opaque": 0.0002,
         "restored": 1,
@@ -2926,12 +2999,12 @@
         "draws": 2000,
         "runs": 7,
         "primitives": 100,
-        "calls_us_per_draw": 0.124,
-        "draw_us_vanilla": 3.143,
-        "draw_us_reshaded": 3.29,
-        "substitution_us_per_draw": 0.147,
+        "calls_us_per_draw": 0.072,
+        "draw_us_vanilla": 3.246,
+        "draw_us_reshaded": 3.294,
+        "substitution_us_per_draw": 0.048,
         "match_us_per_draw": 0.07,
-        "bodies": 13,
+        "bodies": 14,
         "match_last_us_per_draw": 0.127,
         "match_miss_us_per_draw": 0.011,
         "fenced": 1
@@ -2956,10 +3029,10 @@
       {
         "case": "build_cost",
         "built": 1,
-        "best_us": 5.4,
-        "mean_us": 5.4,
+        "best_us": 5.2,
+        "mean_us": 5.3,
         "builds_per_frame": 2,
-        "frame_bound_us": 10.9
+        "frame_bound_us": 10.6
       },
       {
         "case": "placement",
@@ -3734,8 +3807,8 @@
         "case": "recognition",
         "listed": 24,
         "taken": 24,
-        "refused": "216/216",
-        "claim_ids": 42,
+        "refused": "220/220",
+        "claim_ids": 43,
         "multiple_claimants": 0,
         "claim_mismatches": 0
       },
@@ -3761,12 +3834,189 @@
         "case": "cost",
         "draws": 2000,
         "runs": 7,
-        "draw_us_vanilla": 0.115,
-        "draw_us_reshaded": 0.423,
-        "substitution_us_per_draw": 0.308,
-        "match_us_hit_last": 0.0137,
-        "match_us_miss": 0.0138,
+        "draw_us_vanilla": 0.127,
+        "draw_us_reshaded": 0.395,
+        "substitution_us_per_draw": 0.267,
+        "match_us_hit_last": 0.0153,
+        "match_us_miss": 0.0147,
         "restored": 1,
+        "fenced": 1
+      }
+    ],
+    "muzzle_effects": [
+      {
+        "case": "programs",
+        "loaded": 1,
+        "game_hashes": 1,
+        "created": 1,
+        "vs_words": 218,
+        "ps_words": 172,
+        "vs_major": 2,
+        "ps_major": 2,
+        "body_row": 7,
+        "pair": 1,
+        "dest_blend": 4
+      },
+      {
+        "case": "vs_parity",
+        "fog": 0,
+        "covered_game": 4420,
+        "covered_ours": 4420,
+        "coverage_mismatch": 0,
+        "worst_abs": 0,
+        "fade_min": 0.8,
+        "fade_max": 0.8
+      },
+      {
+        "case": "vs_parity",
+        "fog": 1,
+        "covered_game": 4420,
+        "covered_ours": 4420,
+        "coverage_mismatch": 0,
+        "worst_abs": 0,
+        "fade_min": 0.3186,
+        "fade_max": 0.5198
+      },
+      {
+        "case": "texel",
+        "index": 0,
+        "off": 0.0,
+        "got": "1.0000,0.3855,0.4016,1.0000",
+        "model": "1.0000,0.3856,0.4018,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 1,
+        "off": 0.15,
+        "got": "0.7905,0.2104,0.2163,1.0000",
+        "model": "0.7906,0.2106,0.2164,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 2,
+        "off": 0.5,
+        "got": "0.0482,0.0127,0.0131,1.0000",
+        "model": "0.0482,0.0127,0.0131,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 3,
+        "off": 0.8,
+        "got": "0.2235,0.0288,0.0307,0.7842",
+        "model": "0.2236,0.0288,0.0307,0.7843"
+      },
+      {
+        "case": "texel",
+        "index": 4,
+        "off": 1.2,
+        "got": "0.0000,0.0000,0.0000,1.0000",
+        "model": "0.0000,0.0000,0.0000,1.0000"
+      },
+      {
+        "case": "texel",
+        "index": 5,
+        "off": 0.3,
+        "got": "0.2416,0.0464,0.0484,0.5020",
+        "model": "0.2416,0.0464,0.0484,0.5020"
+      },
+      {
+        "case": "texel",
+        "index": 6,
+        "off": 0.05,
+        "got": "0.6304,0.2091,0.2134,1.0000",
+        "model": "0.6305,0.2091,0.2134,1.0000"
+      },
+      {
+        "case": "model",
+        "radius_model": 9620.8,
+        "worst_rel": 0.03,
+        "vanilla_worst_rel": 0.019
+      },
+      {
+        "case": "recognition",
+        "taken": 1,
+        "refused": "6/6",
+        "claim_ids": 41,
+        "multiple_claimants": 0,
+        "claim_mismatches": 0
+      },
+      {
+        "case": "flash12009_tilt",
+        "body": 12009,
+        "distance_m": 30,
+        "yaw_deg": 25.0,
+        "scale": 0.031,
+        "overlap": 38.404,
+        "vanilla_sum": 8957.11,
+        "reshade_sum": 18.37,
+        "energy_ratio": 0.002,
+        "vanilla_peak": 0.9357,
+        "reshade_peak": 0.0478,
+        "vanilla_tenth_r": 91.2,
+        "reshade_tenth_r": 0.0,
+        "vanilla_peak_tenth_r": 92.4,
+        "reshade_peak_tenth_r": 16.8,
+        "lit_bound": 0.0375,
+        "size": 0.2,
+        "gain": 0.15,
+        "core": 0,
+        "smooth": 0.1
+      },
+      {
+        "case": "flash12009_axis",
+        "body": 12009,
+        "distance_m": 30,
+        "yaw_deg": 90.0,
+        "scale": 0.031,
+        "overlap": 43.312,
+        "vanilla_sum": 8163.03,
+        "reshade_sum": 13.27,
+        "energy_ratio": 0.002,
+        "vanilla_peak": 0.9079,
+        "reshade_peak": 0.021,
+        "vanilla_tenth_r": 88.6,
+        "reshade_tenth_r": 0.0,
+        "vanilla_peak_tenth_r": 90.2,
+        "reshade_peak_tenth_r": 21.3,
+        "lit_bound": 0.0188,
+        "size": 0.2,
+        "gain": 0.15,
+        "core": 0,
+        "smooth": 0.1
+      },
+      {
+        "case": "flash12009_side",
+        "body": 12009,
+        "distance_m": 30,
+        "yaw_deg": 0.0,
+        "scale": 0.031,
+        "overlap": 37.791,
+        "vanilla_sum": 8857.7,
+        "reshade_sum": 18.53,
+        "energy_ratio": 0.002,
+        "vanilla_peak": 0.936,
+        "reshade_peak": 0.054,
+        "vanilla_tenth_r": 91.2,
+        "reshade_tenth_r": 0.0,
+        "vanilla_peak_tenth_r": 92.3,
+        "reshade_peak_tenth_r": 15.6,
+        "lit_bound": 0.0375,
+        "size": 0.2,
+        "gain": 0.15,
+        "core": 0,
+        "smooth": 0.1
+      },
+      {
+        "case": "cost",
+        "draws": 2000,
+        "runs": 7,
+        "primitives": 100,
+        "calls_us_per_draw": 0.108,
+        "draw_us_vanilla": 4.973,
+        "draw_us_reshaded": 5.062,
+        "substitution_us_per_draw": 0.089,
+        "match_us_per_draw": 0.012,
+        "match_miss_us_per_draw": 0.012,
         "fenced": 1
       }
     ],

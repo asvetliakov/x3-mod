@@ -186,7 +186,10 @@ void hull_reshade_cases() {
             node[rs::node_body_offset / 4] = id;
             const rs::ClassicMatch lone_classic = rs::classic_match(classic_vs, true, D3DBLEND_ONE, D3DBLEND_ONE,
                                                                     D3DBLENDOP_ADD, sl, true, body_id, mapped, rs::pair_fl);
-            const bool muzzle = mz::body_index(id) < mz::body_count;
+            // the classic muzzle route claims its classic-pair rows only (an effects-pair row, 12009, is the muzzle
+            // effects route's: weapon_muzzle_effects_cases.h checks that pair's claimants)
+            const unsigned mzi = mz::body_index(id);
+            const bool muzzle = mzi < mz::body_count && mz::bodies[mzi].pair == mz::pair_classic;
             const unsigned classic_claims = unsigned(lone_classic.blend != rs::lone_none) + unsigned(muzzle) +
                                             unsigned(hull(classic_vs, true, D3DBLEND_ONE, sl, id, true, hh::edition_fl).body <
                                                      hh::table_count);

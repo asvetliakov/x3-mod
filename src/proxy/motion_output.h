@@ -299,8 +299,9 @@ struct MotionRoute {
     DWORD bullet_lone_app[4] = {};
     // Muzzle flash re-shade (reshade mode, motion_output_muzzle_reshade_inc.h): muzzle_body the matched body's row;
     // reshade: our program and c192..c195 bound for this draw (put back after it); timed: the sequence is QPC-timed;
-    // hull: the hull-emission route would have taken the draw (the re-shade bypasses it).
-    bool muzzle_reshade = false, muzzle_timed = false, muzzle_hull = false;
+    // hull: the hull-emission route would have taken the draw (the re-shade bypasses it); effects: the body is an
+    // effects-pair one (our VS and ps_2_0 program and c29..c31 bound instead).
+    bool muzzle_reshade = false, muzzle_timed = false, muzzle_hull = false, muzzle_effects = false;
     std::uint8_t muzzle_body = 0;
     // Hull hit re-shade (reshade mode, motion_output_hull_reshade_inc.h): hull_body the matched body's row, hull_pair its
     // program pair (hull_reshade_core.h Pair); reshade: our program and its two registers bound for this draw (put back
@@ -1263,9 +1264,10 @@ public:
                                    unsigned lone_counts[lone_count_slots_]) noexcept;
     // The muzzle flash re-shade (reshade mode): the frame's counts (draws re-shaded, matched muzzle draws, of the
     // re-shaded those kept off the hull-emission route, failures, sampled draws timed and the sequence's CPU us over
-    // them).
+    // them; both pairs) and the effects pair's own: the draws that reached its node read, matched and re-shaded.
     void muzzle_reshade_take_frame(unsigned* draws, unsigned* matched, unsigned* hull, unsigned* failures,
-                                   unsigned* timed, float* us) noexcept;
+                                   unsigned* timed, float* us, unsigned* effects_candidates, unsigned* effects_matched,
+                                   unsigned* effects_draws) noexcept;
     bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
     // The hull hit re-shade's frame counts (capture.cpp present; reset after the read) and its body rows.
     void hull_reshade_take_frame(weapon_effects::hull_reshade::Frame* out) noexcept;
@@ -1830,6 +1832,9 @@ private:
         float ps_c192[16]{};    // application c192..c195 as last written (the muzzle re-shade restores them)
         float vs_c28[36]{};     // application VS c28..c36 (g_mWorld, g_mViewInverse rows; the muzzle re-shade's origin)
         std::uint16_t vs_c28_known = 0; // bit r: c(28 + r) written
+        bool vs_muzzle_effects = false; // the bound VS is the effects DEFAULT one (muzzle re-shade requested)
+        float vs_c4[24]{};              // application VS c4..c9 (the effects VS's g_mWorld, g_mViewInverse rows)
+        std::uint8_t vs_c4_known = 0;   // bit r: c(4 + r) written
         float vs_alpha[2]{};            // application g_AlphaValue: effects VS c12.x, standard_lighting VS c39.x
         std::uint8_t vs_alpha_known = 0; // bit p: vs_alpha[p] written (the hull re-shade's cool_active= count)
         int integer0[4]{};
@@ -2426,6 +2431,20 @@ private:
     bool muzzle_reshade_ready() const noexcept;
     bool begin_muzzle_reshade(MotionRoute& route) noexcept;
     void finish_muzzle_reshade(MotionRoute& route) noexcept;
+    // Its effects pair (muzzle_reshade_core.h effects block, body 12009): our vs_2_0 and ps_2_0 programs (created
+    // together at the effects DEFAULT VS's registration or first bind, refused together for the device), per body its
+    // c29..c31 block, the draw's block, the pair's counts. A failed restore stops both pairs (muzzle_reshade_restore_failed_).
+    IDirect3DVertexShader9* muzzle_effects_vs_ = nullptr;
+    IDirect3DPixelShader9* muzzle_effects_ps_ = nullptr;
+    bool muzzle_effects_create_failed_ = false;
+    float muzzle_effects_constants_[weapon_effects::muzzle_reshade::body_count]
+                                   [weapon_effects::muzzle_reshade::effects_floats]{};
+    float muzzle_effects_draw_[weapon_effects::muzzle_reshade::effects_floats]{};
+    unsigned muzzle_effects_candidates_ = 0, muzzle_effects_matched_ = 0, muzzle_effects_draws_ = 0;
+    void muzzle_effects_create() noexcept;
+    bool muzzle_effects_match(MotionRoute& route) noexcept;
+    bool begin_muzzle_effects(MotionRoute& route) noexcept;
+    void finish_muzzle_effects(MotionRoute& route) noexcept;
     // The hull hit re-shade (reshade mode with an edition table; motion_output_hull_reshade_inc.h, hull-hit-look.md):
     // requested with the muzzle re-shade (the effects pair also needs the bullet re-shade's request: its VS gate
     // shadow_.vs_lone and its c29..c31 shadow), one program per pair (0 effects ps_2_0, 1 classic ps_3_0) created at its
