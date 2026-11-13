@@ -1,0 +1,178 @@
+{
+ "mayhem": {
+  "schema": 3,
+  "counts": {
+   "bullet_bodies": 32,
+   "bullet_body_fins": 13,
+   "bullet_body_heads": 23,
+   "bullet_textures": 19,
+   "bullets": 38,
+   "capital": 8,
+   "corvette": 12,
+   "fighter": 18,
+   "missiles": 36,
+   "mount_fallback": 0,
+   "overrides": 22,
+   "ship_profiles": 520,
+   "ship_profiles_skipped": 1,
+   "textures": 37
+  },
+  "tships_sha256": "132706caad0fc63dc4ac9ebdcc0dcd44e83efb08fffa9890fe2224be751c4be9",
+  "tbullets": {
+   "member": "addon/types/TBullets.pck",
+   "sha256": "7b4ab0a6cea2cb07",
+   "source": "addon/12.cat"
+  },
+  "layers": 28,
+  "skipped": [
+   [
+    369,
+    "OBJ_SHIP_M0",
+    "no_scene"
+   ]
+  ]
+ },
+ "stock": {
+  "schema": 3,
+  "counts": {
+   "bullet_bodies": 30,
+   "bullet_body_fins": 7,
+   "bullet_body_heads": 20,
+   "bullet_textures": 9,
+   "bullets": 45,
+   "capital": 12,
+   "corvette": 6,
+   "fighter": 27,
+   "missiles": 36,
+   "mount_fallback": 11,
+   "overrides": 13,
+   "ship_profiles": 381,
+   "ship_profiles_skipped": 23,
+   "textures": 26
+  },
+  "tships_sha256": "84df8364a12265ebba13dfa78a6df9f594d7465d7516f6fdda80fc79c264d03a",
+  "tbullets": {
+   "member": "addon/types/TBullets.pck",
+   "sha256": "be762076cdc38b03",
+   "source": "addon/02.cat"
+  },
+  "layers": 17,
+  "skipped": [
+   [
+    32,
+    "OBJ_SHIP_TL",
+    "no_scene"
+   ],
+   [
+    33,
+    "OBJ_SHIP_TL",
+    "no_scene"
+   ],
+   [
+    34,
+    "OBJ_SHIP_TL",
+    "no_scene"
+   ],
+   [
+    35,
+    "OBJ_SHIP_TL",
+    "no_scene"
+   ],
+   [
+    36,
+    "OBJ_SHIP_TL",
+    "no_scene"
+   ],
+   [
+    37,
+    "OBJ_SHIP_TL",
+    "no_scene"
+   ],
+   [
+    190,
+    "OBJ_SHIP_M4",
+    "cut1_scene"
+   ],
+   [
+    268,
+    "0",
+    "no_scene"
+   ],
+   [
+    269,
+    "0",
+    "no_scene"
+   ],
+   [
+    270,
+    "OBJ_SATELLITE",
+    "no_scene"
+   ],
+   [
+    271,
+    "OBJ_MINE",
+    "no_scene"
+   ],
+   [
+    273,
+    "OBJ_ORBITALLASER",
+    "no_scene"
+   ],
+   [
+    275,
+    "OBJ_SPACEFLY",
+    "no_scene"
+   ],
+   [
+    278,
+    "OBJ_SATELLITE2",
+    "no_scene"
+   ],
+   [
+    279,
+    "OBJ_SHIP_M5",
+    "no_scene"
+   ],
+   [
+    281,
+    "0",
+    "no_points"
+   ],
+   [
+    282,
+    "0",
+    "no_points"
+   ],
+   [
+    283,
+    "0",
+    "no_points"
+   ],
+   [
+    284,
+    "0",
+    "no_scene"
+   ],
+   [
+    319,
+    "OBJ_MINETR",
+    "no_scene"
+   ],
+   [
+    320,
+    "OBJ_MINE2",
+    "no_scene"
+   ],
+   [
+    321,
+    "OBJ_MINE3",
+    "no_scene"
+   ],
+   [
+    369,
+    "OBJ_ORBITALLASER2",
+    "no_scene"
+   ]
+  ]
+ }
+}
