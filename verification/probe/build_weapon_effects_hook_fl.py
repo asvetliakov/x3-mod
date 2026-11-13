@@ -8,8 +8,8 @@ restore_call through the fixture's one-shot fault seam; src/proxy/engine_patch.c
 are compiled with X3M_EDITION_FL, the handler TU with the production CMake flags (-fno-exceptions -mno-sse -mno-mmx
 -mfpmath=387). The audit checks that the FL handler object carries no x87/MMX opcode and no undefined symbol, that the
 six FL handler entry points contain no call instruction, that each of the six FL stubs is the expected
-pushf/save/handler/forward-or-skip skeleton ending in its tail jump or `xor eax,eax; ret` (and the projectile batch stub
-its latch / range / bit test before the tail jump; the re-shade's batch scope stub its counted call and plain ret),
+pushf/save/handler/forward-or-skip skeleton ending in its tail jump or `xor eax,eax; ret` (and the re-shade's batch
+scope stub its counted call and plain ret; the projectile stage's batch skip stub was removed on 2026-11-13),
 that engine_patch.o carries
 `lock cmpxchg8b`, that the module routes through the seam (no VirtualProtect import of its own), and that every FL window
 in weapon_effects_sites_fl.h equals the installed X3FL.exe's bytes with its relocated dword masked (/mnt/c/X3FL/X3FL.exe,
@@ -40,16 +40,12 @@ FLIGHT_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'lea', 'push', 'call', 'a
                'popf', 'jmp', 'popf', 'xor', 'ret']
 DEATH_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'push', 'push', 'lea', 'push', 'call', 'add', 'cmp',
               'pop', 'pop', 'pop', 'je', 'popf', 'jmp', 'popf', 'xor', 'ret']
-# The projectile stage's batch submit (no handler: the latch, the body-id range and the enabled-set bit, the two tail
-# jumps, then the skip path `add [skipped],1; popf; mov eax,1; ret`).
-BATCH_STUB = ['pushf', 'cmp', 'je', 'push', 'mov', 'cmp', 'ja', 'bt', 'pop', 'jb', 'popf', 'jmp', 'pop', 'popf', 'jmp',
-              'add', 'popf', 'mov', 'ret']
 # The bullet re-shade's batch scope (reshade mode): the batch's body id [EDX+0x0c] published through a saved EAX and the
 # counters raised under a saved EFLAGS, the 4-byte pad (lea) and the two stack words re-pushed, the call through the
 # continue, the pad and words dropped (lea), the scope lowered, a plain ret.
 BATCH_SCOPE_STUB = ['pushf', 'push', 'mov', 'mov', 'pop', 'add', 'add', 'popf', 'lea', 'push', 'push', 'call', 'lea',
                     'pushf', 'sub', 'popf', 'ret']
-STUBS = {'_x3m_weapon_effects_stub_batch_fl': BATCH_STUB, '_x3m_weapon_effects_stub_batch_scope_fl': BATCH_SCOPE_STUB,
+STUBS = {'_x3m_weapon_effects_stub_batch_scope_fl': BATCH_SCOPE_STUB,
          '_x3m_weapon_effects_stub_impact_fl': IMPACT_STUB, '_x3m_weapon_effects_stub_tap_fl': TAP_STUB,
          '_x3m_weapon_effects_stub_bolt_tap_fl': BOLT_TAP_STUB, '_x3m_weapon_effects_stub_muzzle_fl': MUZZLE_STUB,
          '_x3m_weapon_effects_stub_flight_fl': FLIGHT_STUB, '_x3m_weapon_effects_stub_death_fl': DEATH_STUB}

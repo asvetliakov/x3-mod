@@ -91,7 +91,7 @@ constexpr std::uint32_t cfg_slot_rva = 0x1a83b0, type_table_rva = 0x1a83c8, type
 constexpr std::uint32_t body_cache_rva = 0x1aa100, gate_slot_rva = 0x1a82ec;
 
 // Site indices follow the module's rows: 0 impact, 1 tap1, 2 tap2, 3 bolt_tap (object), 4 muzzle, 5 flight, 6 death,
-// 7 batch (the projectile stage's per-body skip of the instanced bullet draw, bullet-draw-batch.md section 5).
+// 7 batch (the bullet batch submit, bullet-draw-batch.md section 5: the re-shade's scope stub, reshade mode only).
 constexpr unsigned site_count = 8;
 constexpr Site sites[site_count] = {
     {{"impact", 0x05338b, 43, impact_bytes, no_fixup, 0, 0xde6f8702}, 5, 0x014440},

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Compile the weapon effects' programs (docs/architecture/weapon-effects.md 5.1, step 1: the shield-hit hull decal, the
-ship bubble and the flat decal; the projectile stage's bolts, docs/architecture/projectile-look.md):
-src/effects/weapon_{shell,decal,projectile}_{vs,ps}.hlsl, weapon_bubble_ps.hlsl (the bubble draws with the shell's vertex
-program) and weapon_pulse_ps.hlsl (the muzzle flash's hull pulse, docs/architecture/muzzle-flash-look.md; with the decal's
-vertex program) -> src/renderer/weapon_{shell,decal,bubble,projectile,pulse}_{vertex,pixel}_program_inc.h, provenance
-verification/results/weapon-{shell,decal,bubble,projectile,pulse}-{vertex,pixel}-program.json; the patch pixel programs include
+ship bubble, the flat decal and the lathe bubble): src/effects/weapon_{shell,decal,lathe}_{vs,ps}.hlsl and
+weapon_bubble_ps.hlsl (the bubble draws with the shell's vertex program) ->
+src/renderer/weapon_{shell,decal,bubble,lathe}_{vertex,pixel}_program_inc.h, provenance
+verification/results/weapon-{shell,decal,bubble,lathe}-{vertex,pixel}-program.json; the patch pixel programs include
 src/effects/weapon_soft_depth.hlsl. The look layer's programs (hull hit, explosions, bolts) were removed on 2026-11-08
-(docs/archive/effects-look-2026-11-08/index.md).
+(docs/archive/effects-look-2026-11-08/index.md), the custom projectile stage's bolt and hull-pulse programs on
+2026-11-13 (docs/archive/effects-look-2026-11-13-custom-projectile/index.md).
 
 The compilation, validation and record are tools/shaders/generate_rigid_motion_pixel.py's (its helpers are imported:
 the native d3dx9_37.dll D3DXCompileShader of the game directory through compile_rigid_motion_pixel.cpp,
@@ -33,8 +33,7 @@ PROGRAMS = {
                                   header=ROOT / f'src/renderer/weapon_{part}_{"vertex" if kind == "vs" else "pixel"}_program_inc.h',
                                   provenance=ROOT / f'verification/results/weapon-{part}-{"vertex" if kind == "vs" else "pixel"}-program.json',
                                   target=f'{kind}_3_0')
-    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('projectile', ('vs', 'ps')),
-                        ('pulse', ('ps',)), ('lathe', ('vs', 'ps')))
+    for part, kinds in (('shell', ('vs', 'ps')), ('decal', ('vs', 'ps')), ('bubble', ('ps',)), ('lathe', ('vs', 'ps')))
     for kind in kinds
 }
 

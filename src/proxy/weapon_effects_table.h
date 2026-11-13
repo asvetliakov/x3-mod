@@ -384,7 +384,7 @@ inline bool parse_entry(json::Cursor& c, core::Table* t, Stats* st) noexcept {
     bool range_present = false;
     std::uint8_t pin = 0, e_body_q = 0, w_orb_q = 0; // the bolt hand pins (bolt_e_body, bolt_w_orb, bolt_halo, bolt_tint)
     bool bad_pin = false;
-    std::uint32_t id_hash = 0, body_hash = 0; // the projectile stage's row identity (0: absent or too long)
+    std::uint32_t id_hash = 0, body_hash = 0; // the row identity (0: absent or too long; core::Table)
     if (!c.accept('}'))
         for (;;) {
             char key[24];

@@ -96,23 +96,15 @@ inline int texture_key(const core::Table& t, const void* data, std::size_t size)
     }
     return -1;
 }
-// c31 from the family's tune (rs_gain, rs_edge, rs_core; clamped by the tune's bounds), w the IRE's normaliser (the
-// device sequence uploads the draw's texture's instead, Plan::scale).
+// c31 from the tune (rs_gain, rs_edge, rs_core; clamped by the tune's bounds), w the IRE's normaliser (the device
+// sequence uploads the draw's texture's instead, Plan::scale).
 inline void constants(const projectile_family::Tune& t, float out[4]) noexcept {
     namespace pf = projectile_family;
-    const auto clamp = [](float v, unsigned k) {
-        return !(v >= pf::tune_min[k]) ? pf::tune_min[k] : v > pf::tune_max[k] ? pf::tune_max[k] : v;
-    };
-    out[0] = clamp(t.rs_gain, 14);
-    out[1] = clamp(t.rs_edge, 15);
-    out[2] = clamp(t.rs_core, 16);
+    out[0] = pf::clamp_key(t.rs_gain, pf::key_rs_gain);
+    out[1] = pf::clamp_key(t.rs_edge, pf::key_rs_edge);
+    out[2] = pf::clamp_key(t.rs_core, pf::key_rs_core);
     out[3] = luminance_scale;
 }
-static_assert(projectile_family::tune_keys >= 17 &&
-                  projectile_family::key_is(projectile_family::tune_key_names[14], "rs_gain") &&
-                  projectile_family::key_is(projectile_family::tune_key_names[15], "rs_edge") &&
-                  projectile_family::key_is(projectile_family::tune_key_names[16], "rs_core"),
-              "the re-shade keys' indices");
 // The geometric size (docs/architecture/projectile-look.md "Geometric size (2026-11-10)"): the drawn body's UV layout
 // (weapon_effects.json tables.bullet_bodies, tools/effects/weapon_effects_table.py uv_layout; reduced at load to
 // 16.16 words, weapon_effects_table.h) and the keys rs_head / rs_width give c29..c30:
@@ -133,10 +125,7 @@ constexpr std::int32_t layout_head = 1, layout_fin = 2;
 constexpr float identity_layout[layout_floats] = {-100.f, -100.f, 1.f, 0.f, -100.f, 1.f, 0.f, geometric_softness};
 inline void layout_constants(const std::int32_t* w, const projectile_family::Tune& t, float out[layout_floats]) noexcept {
     namespace pf = projectile_family;
-    const auto clamp = [](float v, unsigned k) {
-        return !(v >= pf::tune_min[k]) ? pf::tune_min[k] : v > pf::tune_max[k] ? pf::tune_max[k] : v;
-    };
-    const float head = clamp(t.rs_head, 21), width = clamp(t.rs_width, 22);
+    const float head = pf::clamp_key(t.rs_head, pf::key_rs_head), width = pf::clamp_key(t.rs_width, pf::key_rs_width);
     for (unsigned i = 0; i < layout_floats; ++i) out[i] = identity_layout[i];
     if (!w) return;
     constexpr float q = 1.f / 65536.f;
@@ -152,9 +141,6 @@ inline void layout_constants(const std::int32_t* w, const projectile_family::Tun
         out[6] = width < 1.f ? 1.f / width : 0.f;
     }
 }
-static_assert(projectile_family::key_is(projectile_family::tune_key_names[21], "rs_head") &&
-                  projectile_family::key_is(projectile_family::tune_key_names[22], "rs_width"),
-              "the geometric size keys' indices");
 // The engine body id -> tables.bullet_bodies entry map (weapon_effects_patch.cpp bullet_body_layout; the host test
 // verification/analysis/test_weapon_effects_table.py drives it with a fake reader). Built once: each table row whose
 // body string hash names an entry gives the live TBullets row's word +0 (its body id, = the batch's [EDX+0x0c]).
@@ -164,7 +150,7 @@ static_assert(projectile_family::key_is(projectile_family::tune_key_names[21], "
 // caller's row naming both counts). A final map is state 1 (built) or 2 (off: no table, no entries, or the retries
 // spent). The caller attempts at most one build per frame (weapon_effects_patch.cpp bullet_body_layout), so the
 // retries span 64 frames however many draws ask. read(address, out, bytes) -> bool is the validated engine reader.
-constexpr unsigned tbullets_body = 0x0;  // TBullets +0x0 (weapon_effects_projectile.h projectile::type_body)
+constexpr unsigned tbullets_body = 0x0;  // TBullets +0x0: the row's body id (word; = node +0x144)
 constexpr std::uint32_t body_map_retries = 64;
 struct BodyMap {
     std::uint8_t state = 0;    // 0 not final, 1 built, 2 off

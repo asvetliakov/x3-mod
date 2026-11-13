@@ -52,17 +52,8 @@ constexpr unsigned body_index(std::uint32_t id) noexcept {
 // The program's constant block: c192..c195 (ps_3_0 has c0..c223; the game's standard_lighting programs read c0..c13,
 // the proxy's own variants keep their literals in local DEFs). Written per substituted draw, put back after it.
 constexpr unsigned constant_register = 192, constant_count = 4;
-// The four keys' indices in the dev tuning file (weapon_projectile_family.h).
-static_assert(projectile_family::tune_keys == 23 &&
-                  projectile_family::key_is(projectile_family::tune_key_names[17], "mz_size") &&
-                  projectile_family::key_is(projectile_family::tune_key_names[18], "mz_core") &&
-                  projectile_family::key_is(projectile_family::tune_key_names[19], "mz_gain") &&
-                  projectile_family::key_is(projectile_family::tune_key_names[20], "mz_smooth"),
-              "the muzzle re-shade keys' indices");
-inline float clamp_key(float v, unsigned k) noexcept {
-    namespace pf = projectile_family;
-    return !(v >= pf::tune_min[k]) ? pf::tune_min[k] : v > pf::tune_max[k] ? pf::tune_max[k] : v;
-}
+// The four keys (the dev tuning file's mz_*, weapon_projectile_family.h), clamped by the tune's bounds.
+using projectile_family::clamp_key;
 // c193..c195 for one body and the family's tune (mz_size, mz_core, mz_gain, mz_smooth; clamped by the tune's bounds);
 // c192 and c194.xy are the draw's (draw_constants). The size scales the per-draw radius, kept in c193.z; the keys gain
 // and core stay in c194.zw (the program does not read them) for draw_constants to divide by the draw's overlap:
@@ -75,13 +66,13 @@ inline void constants(const Body& b, const projectile_family::Tune& t, float out
     // No draw yet: c192.w 0 and c194.xy 0 draw black, should the block ever be uploaded before draw_constants (it is
     // not: begin_muzzle_reshade refuses the draw when draw_constants does).
     out[3] = 0.f;
-    out[4] = 1.f - clamp_key(t.mz_smooth, 20);
+    out[4] = 1.f - clamp_key(t.mz_smooth, projectile_family::key_mz_smooth);
     out[5] = 1.f / b.mean;
-    out[6] = clamp_key(t.mz_size, 17);
+    out[6] = clamp_key(t.mz_size, projectile_family::key_mz_size);
     out[7] = 0.f;
     out[8] = out[9] = 0.f;
-    out[10] = clamp_key(t.mz_gain, 19);
-    out[11] = clamp_key(t.mz_core, 18);
+    out[10] = clamp_key(t.mz_gain, projectile_family::key_mz_gain);
+    out[11] = clamp_key(t.mz_core, projectile_family::key_mz_core);
     out[12] = b.hue[0];
     out[13] = b.hue[1];
     out[14] = b.hue[2];

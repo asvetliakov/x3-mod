@@ -36,64 +36,6 @@ struct WeaponEffectsCaps {
     unsigned shell_vs_slots = 0, shell_ps_slots = 0, decal_vs_slots = 0, decal_ps_slots = 0, bubble_ps_slots = 0;
     unsigned lathe_vs_slots = 0, lathe_ps_slots = 0;
     HRESULT fp16_blending = S_FALSE;
-    // The projectile programs (configure_projectiles(true) before attach; FL): their own verdict, so a refusal keeps
-    // the shield effect. lane32_blending / lane16_blending: post-pixel-shader blending of the four-lane formats.
-    bool projectile_enabled = false;
-    const char* projectile_reason = "not_requested";
-    unsigned projectile_vs_slots = 0, projectile_ps_slots = 0, pulse_ps_slots = 0;
-    bool lane32_blending = false, lane16_blending = false, mrt_bit_depths = false;
-};
-// The projectile stage's vertex (weapon_projectile_vs/ps.hlsl, stride 48): the clip position (window-exact, w = 1, z
-// the end's depth); four values linear over the quad (the core's across offset in units of sqrt(2 ln 2) sigma, the
-// exponents of the core's two logistic end ramps, the trail falloff's exponent); the core and glow radiance scales and
-// the core's sigma over the glow's; the core and glow colours (D3DCOLOR, linear, largest channel 1 for the glow's tint;
-// the core's alpha the head's gain over 4, 0 off the head segment). Float32 and D3DCOLOR only (a FLOAT16 attribute
-// measured 5x the submit cost on the native host).
-struct WeaponProjectileVertex {
-    float pos[3];
-    float local[4];
-    float shape[3];
-    std::uint32_t core_tint, glow_tint;
-};
-// One projectile draw: every quad of the frame (a bolt is one to five: its segment and the comet's trail) as one indexed
-// list through DrawIndexedPrimitiveUP, into RT0 (the bound FP16 scene) and the lane at RT1 (COLORWRITEENABLE1 = GREEN:
-// the far flag g += 32 max(rgb), the production B' route of docs/architecture/bolts-through-taa.md), depth-tested
-// LESSEQUAL against the scene's depth surface with Z writes off, ONE/ONE.
-// The muzzle flashes (docs/architecture/muzzle-flash-look.md): one quad each through the same program, written after the
-// frame's bolt quads into the same draw.
-constexpr unsigned weapon_projectile_max_bolts = 512, weapon_projectile_quads_per_bolt = 5;
-constexpr unsigned weapon_projectile_max_flashes = 64;
-constexpr unsigned weapon_projectile_bolt_quads = weapon_projectile_max_bolts * weapon_projectile_quads_per_bolt;
-constexpr unsigned weapon_projectile_max_quads = weapon_projectile_bolt_quads + weapon_projectile_max_flashes;
-// A muzzle flash's hull pulse (docs/architecture/muzzle-flash-look.md section 3): a camera-facing octagon about the
-// muzzle (its flat sides `half` from the centre: the sphere of the radius's outline seen from the eye) through the decal
-// vertex program, its pixel program (weapon_pulse_ps.hlsl) rebuilding the lane's surface point under the pixel and
-// lighting it by colour x gain x (1 - r / radius)^2 within the radius (r its distance from the muzzle), nothing where the
-// lane holds no occluder. Drawn by run_projectiles before the bolts (the lane a texture then, Z off, ONE/ONE); pulses of
-// one colour in a row are one draw (the colour a constant, the radius and gain per vertex).
-constexpr unsigned weapon_max_pulses = 64;
-constexpr unsigned weapon_pulse_vertices = 8, weapon_pulse_indices = 18; // an octagon, a fan of six triangles
-struct WeaponPulse {
-    float centre[3]{};          // view space (view units)
-    float radius = 0.f;         // view units
-    float half = 0.f;           // the octagon's inner radius (view units, at the centre's depth; at least radius)
-    float colour[3]{};          // linear radiance at the centre at full gain
-    float gain = 0.f;           // the fade (0..1]
-};
-struct WeaponProjectileFrame {
-    UINT width = 0, height = 0;
-    const WeaponProjectileVertex* vertices = nullptr; // 4 per quad
-    unsigned quads = 0;
-    IDirect3DSurface9* lane = nullptr;  // level 0 of the four-lane RT2 (borrowed): the far flag's target
-    IDirect3DSurface9* depth = nullptr; // the scene's depth-stencil surface (borrowed)
-    D3DFORMAT scene_format = D3DFMT_A16B16G16R16F;
-    // The pulses (none: nothing below is read): the completed lane as a texture (the same RT2, sampled before it is bound
-    // as RT1), its depth law and the jittered projection the lane was drawn with.
-    const WeaponPulse* pulses = nullptr;
-    unsigned pulse_count = 0;
-    IDirect3DTexture9* lane_texture = nullptr;
-    bool four_channel = false;          // the lane's .b carries the view depth (else R32F device z/w)
-    float m00 = 0, m11 = 0, m20 = 0, m21 = 0, m22 = 0, m32 = 0, near_z = 1.f;
 };
 // One patch draw: the cells of one face of an owner (or a share of them past one draw; a fixed lattice in the owner's
 // frame perpendicular to the face's axis), their box and the face's newest hits still in their ring. Plane and axis
@@ -212,14 +154,13 @@ struct WeaponEffectsFrame {
     unsigned decal_count = 0;
     WeaponLook look = default_weapon_look();
 };
-enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals, Projectiles };
+enum class WeaponEffectsStep : unsigned { None, Validate, Resources, State, Patches, Decals };
 struct WeaponEffectsReport {
     HRESULT operation = S_FALSE;
     WeaponEffectsStep failed = WeaponEffectsStep::None;
-    unsigned calls = 0, patches = 0, decals = 0, quads = 0, pulses = 0;
+    unsigned calls = 0, patches = 0, decals = 0;
     unsigned lathes = 0; // of the patches, lathe draws
     bool drew = false;
-    const char* refused = nullptr; // run_projectiles: the frame's refusal (lane, depth, mrt, ...), nothing drawn
 };
 class WeaponEffectsPass {
 public:
@@ -241,19 +182,11 @@ public:
     bool resources_ready() const noexcept;
     // S_FALSE with no device call when nothing is to be drawn; D3DERR_DEVICELOST codes pass through.
     HRESULT run(const WeaponEffectsFrame&, WeaponEffectsReport*) noexcept;
-    // The projectile programs are created at attach only when requested (the FL stage; AP keeps its object set).
-    void configure_projectiles(bool on) noexcept { projectiles_requested_ = on; }
-    bool projectiles_ready() const noexcept;
-    // The frame's bolts (S_FALSE with no device call for none; D3DERR_NOTAVAILABLE with report->refused when the lane,
-    // the depth surface or the MRT capabilities refuse the frame). Leaves RT1 and the depth surface unbound,
-    // COLORWRITEENABLE1 15 and Z off; the caller's bracket normalizes the rest.
-    HRESULT run_projectiles(const WeaponProjectileFrame&, WeaponEffectsReport*) noexcept;
     unsigned references() const noexcept;
     const std::uint16_t* cell_indices() const noexcept { return indices_; }
 #if defined(X3M_WEAPON_EFFECTS_FIXTURE) || defined(X3M_MOTION_OUTPUT_FIXTURE)
     // Fixture faults: bit 0 refuses the FP16 blending capability at attach, bit 1 fails the next draw, bit 2 every draw,
-    // bit 3 refuses the program creation (attach: program_create, no object kept), bit 4 refuses the projectile
-    // programs' capabilities at attach.
+    // bit 3 refuses the program creation (attach: program_create, no object kept).
     void set_faults(unsigned faults) noexcept { faults_ = faults; }
 #endif
 private:
@@ -262,7 +195,6 @@ private:
         return reinterpret_cast<Fn>(vtable_[slot]);
     }
     HRESULT create_objects() noexcept;
-    HRESULT create_projectile_objects() noexcept;
     void release_objects() noexcept;
     IDirect3DDevice9* device_ = nullptr;
     void* const* vtable_ = nullptr;
@@ -283,13 +215,5 @@ private:
     CellVertex vertices_[patch_vertices]{}; // one draw's box, rewritten per draw
     std::uint16_t indices_[patch_triangles * 3]{};
     std::uint16_t lathe_indices_[weapon_lathe_triangles * 3]{}; // one lathe draw's band, rewritten per draw
-    bool projectiles_requested_ = false;
-    IDirect3DVertexShader9* projectile_vs_ = nullptr;
-    IDirect3DPixelShader9* projectile_ps_ = nullptr;
-    IDirect3DVertexDeclaration9* projectile_declaration_ = nullptr;
-    std::uint16_t projectile_indices_[weapon_projectile_max_quads * 6]{}; // two triangles per quad, built at attach
-    IDirect3DPixelShader9* pulse_ps_ = nullptr; // with the projectile programs (FL)
-    float pulse_vertices_[weapon_max_pulses * weapon_pulse_vertices * 8]{}; // one draw's pulses (decal vertices)
-    std::uint16_t pulse_indices_[weapon_max_pulses * weapon_pulse_indices]{}; // the octagons' fans, built at attach
 };
 } // namespace x3m::renderer

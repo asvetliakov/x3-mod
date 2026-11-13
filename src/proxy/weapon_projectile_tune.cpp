@@ -12,6 +12,21 @@ Poll poll_{};
 wchar_t path_[MAX_PATH + 64]{};
 bool path_known_ = false, path_failed_ = false;
 char buffer_[file_capacity];
+// The unknown key names already logged this session (one row each; past the capacity no further row).
+constexpr unsigned logged_capacity = 32;
+char logged_[logged_capacity][key_capacity]{};
+unsigned logged_count_ = 0;
+void log_unknown(const Result& r) {
+    const unsigned named = r.unknown < max_unknown ? r.unknown : max_unknown;
+    for (unsigned u = 0; u < named; ++u) {
+        const char* name = r.unknown_name[u];
+        bool seen = false;
+        for (unsigned i = 0; i < logged_count_ && !seen; ++i) seen = !std::strcmp(logged_[i], name);
+        if (seen || logged_count_ >= logged_capacity) continue;
+        std::memcpy(logged_[logged_count_++], name, key_capacity);
+        log("projectile_tune unknown key=%s (ignored)", name);
+    }
+}
 bool resolve_path() {
     if (path_known_ || path_failed_) return path_known_;
     const DWORD length = GetModuleFileNameW(nullptr, path_, MAX_PATH);
@@ -37,8 +52,7 @@ void log_values(const char* source, const pf::Tune& t, unsigned seen) {
         if (a > 0 && unsigned(a) < sizeof keys - kn) kn += unsigned(a);
         if (b > 0 && unsigned(b) < sizeof values - vn) vn += unsigned(b);
     }
-    log("projectile_tune reloaded family=%s source=%s keys=%s values=%s", pf::families[pf::fighter_tracer].name, source,
-        keys, values);
+    log("projectile_tune reloaded source=%s keys=%s values=%s", source, keys, values);
 }
 }
 bool poll(pf::Tune* tune) noexcept {
@@ -54,7 +68,7 @@ bool poll(pf::Tune* tune) noexcept {
             exists ? (std::uint64_t(a.ftLastWriteTime.dwHighDateTime) << 32 | a.ftLastWriteTime.dwLowDateTime) : 0;
         const Action act = decide(poll_, tick, exists, written);
         if (act == Action::absent) {
-            *tune = pf::families[pf::fighter_tracer].tune;
+            *tune = pf::baked;
             log_values("defaults", *tune, 0);
             changed = true;
         } else if (act == Action::reload) {
@@ -70,17 +84,18 @@ bool poll(pf::Tune* tune) noexcept {
                     CloseHandle(file);
                 }
             }
-            pf::Tune next = pf::families[pf::fighter_tracer].tune;
+            pf::Tune next = pf::baked;
             const Result r = why ? Result{} : parse(buffer_, read, &next);
             if (!r.ok) {
-                log("projectile_tune refused family=%s reason=%s bytes=%lu", pf::families[pf::fighter_tracer].name,
-                    why ? why : "malformed", static_cast<unsigned long>(why ? a.nFileSizeLow : read));
+                log("projectile_tune refused reason=%s bytes=%lu", why ? why : "malformed",
+                    static_cast<unsigned long>(why ? a.nFileSizeLow : read));
             } else {
                 for (unsigned k = 0; k < pf::tune_keys; ++k)
                     if ((r.clamped >> k) & 1u)
                         log("projectile_tune clamped key=%s value=%g applied=%g min=%g max=%g", pf::tune_key_names[k],
                             double(r.raw[k]), double(pf::tune_at(next, k)), double(pf::tune_min[k]),
                             double(pf::tune_max[k]));
+                log_unknown(r);
                 *tune = next;
                 log_values("file", *tune, r.seen);
                 changed = true;

@@ -26,7 +26,7 @@ static_assert(sizeof muzzle_reshade_program / sizeof muzzle_reshade_program[0] >
 // Each body's c193..c195 from the tuning (c192 is per draw). Called at configure, creation and a tuning reload.
 void MotionOutput::muzzle_reshade_refresh_constants() noexcept {
     namespace mz = weapon_effects::muzzle_reshade;
-    const auto& tune = projectile_tune_[weapon_effects::projectile_family::fighter_tracer];
+    const auto& tune = reshade_tune_;
     for (unsigned b = 0; b < mz::body_count; ++b) mz::constants(mz::bodies[b], tune, muzzle_reshade_constants_[b]);
 }
 // Created once per device at the registration of the standard_lighting DEFAULT vertex shader (or its first bind); a
@@ -42,16 +42,15 @@ void MotionOutput::muzzle_reshade_create() noexcept {
         muzzle_reshade_create_failed_ = true;
     }
     muzzle_reshade_refresh_constants();
-    const auto& tune = projectile_tune_[weapon_effects::projectile_family::fighter_tracer];
+    const auto& tune = reshade_tune_;
+    namespace pf = weapon_effects::projectile_family;
     log("muzzle_reshade_program device=%llu frame=%llu created=%u result=%08lx words=%u bodies=%u scope=%u size=%.3g "
         "core=%.3g gain=%.3g smooth=%.3g",
         id_, frame_, unsigned(muzzle_reshade_ps_ != nullptr), hr,
         unsigned(sizeof muzzle_reshade_program / sizeof muzzle_reshade_program[0]),
         weapon_effects::muzzle_reshade::body_count, unsigned(object_trace::scope_available()),
-        double(weapon_effects::muzzle_reshade::clamp_key(tune.mz_size, 17)),
-        double(weapon_effects::muzzle_reshade::clamp_key(tune.mz_core, 18)),
-        double(weapon_effects::muzzle_reshade::clamp_key(tune.mz_gain, 19)),
-        double(weapon_effects::muzzle_reshade::clamp_key(tune.mz_smooth, 20)));
+        double(pf::clamp_key(tune.mz_size, pf::key_mz_size)), double(pf::clamp_key(tune.mz_core, pf::key_mz_core)),
+        double(pf::clamp_key(tune.mz_gain, pf::key_mz_gain)), double(pf::clamp_key(tune.mz_smooth, pf::key_mz_smooth)));
 }
 // The draw is a muzzle body's: ADD ONE / ONE bound, the VS rows draw_constants reads (c28..c30, c34..c36) known, the
 // scope's node carries a listed body id. Called only while the standard_lighting DEFAULT vertex shader is bound
@@ -154,8 +153,8 @@ void MotionOutput::finish_muzzle_reshade(MotionRoute& route) noexcept {
 // builds) and the constants it feeds.
 void MotionOutput::reshade_poll_tune() noexcept {
 #if X3M_DEV_TUNING
-    if (weapon_effects::projectile_tune::poll(&projectile_tune_[weapon_effects::projectile_family::fighter_tracer])) {
-        weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
+    if (weapon_effects::projectile_tune::poll(&reshade_tune_)) {
+        weapon_effects::reshade::constants(reshade_tune_,
                                            bullet_reshade_constants_);
         bullet_layout_valid_ = false; // rs_head / rs_width: the body's c29..c30 again at its next draw
         muzzle_reshade_refresh_constants();

@@ -9,11 +9,11 @@
 // forwards to a planted fake callee (plain RET, records every register/EFLAGS/ESP and the stack) or skips
 // (`xor eax,eax; ret`); a planted jump at the site's return RVA lands both on fl_return, which records the caller-side
 // state and restores. So every FL shim is checked against the FL register/stack contract (sections 2 and 4 of
-// docs/reverse-engineering/fl/weapon-effect-spawn.md), with CPU flags, DF and LastError preserved. The projectile
-// stage's batch submit 0x097af8 (docs/reverse-engineering/fl/bullet-draw-batch.md section 5) is driven with a fake batch
-// record: skipped (EAX 1, no callee) when its body id is in the enabled set while the latch is on, forwarded with every
-// register, the stack and EFLAGS otherwise; its read-back fault rolls every site back; the object tap registers a
-// bullet of an enabled body into the projectile pool.
+// docs/reverse-engineering/fl/weapon-effect-spawn.md), with CPU flags, DF and LastError preserved. The bullet batch
+// submit 0x097af8 (docs/reverse-engineering/fl/bullet-draw-batch.md section 5) is claimed only in reshade mode, with the
+// re-shade's scope stub, driven with a fake batch record (forwarded as a call, the scope raised around it); its
+// read-back fault rolls every site back. The custom projectile stage's batch skip, object-tap pool and muzzle skip were
+// removed on 2026-11-13: shields mode claims the impact alone, the bolts modes' muzzle forwards every shot.
 #include "../../src/proxy/weapon_effects_patch.h"
 #include "../../src/proxy/weapon_effects_core.h"
 #include "../../src/proxy/weapon_effects_bolt.h"
@@ -465,7 +465,7 @@ void (*fl_stub(unsigned i))() {
     case 4: return x3m_weapon_effects_stub_muzzle_fl;
     case 5: return x3m_weapon_effects_stub_flight_fl;
     case 6: return x3m_weapon_effects_stub_death_fl;
-    default: return x3m_weapon_effects_stub_batch_fl;
+    default: return x3m_weapon_effects_stub_batch_scope_fl;
     }
 }
 // The stub preserved the caller's state: EBX/ESI/EDI/EBP (the stub saves only EAX/ECX/EDX), DF and LastError. ESP is
@@ -513,13 +513,15 @@ int main() {
     w32(bullet_table.data() + 4u * core::layout::type_stride, core::layout::bullet_flags, core::bullet_area_flag);
     check(core::fl_death_site(u32(&victim_obj), we::hook_state().globals) == 0, "death_site_tag_area");
 
-    // A mode that uses each window (taps only in observe, the bolts in a bolts mode, death in an explosions mode): a
-    // flipped window that the mode does not use would be skipped by the compare, so each is flipped under a using mode.
+    // A mode that uses each window (taps only in observe, the bolts in a bolts mode, death in an explosions mode, the
+    // batch in reshade mode): a flipped window that the mode does not use would be skipped by the compare, so each is
+    // flipped under a using mode.
     const auto mode_for = [](unsigned i) {
-        return i == 0 || i == 7 ? core::mode_shields
-               : i < 3          ? core::mode_observe
-               : i < 6          ? core::mode_shields_hull_bolts
-                                : core::mode_shields_hull_explosions;
+        return i == 0   ? core::mode_shields
+               : i == 7 ? core::mode_reshade
+               : i < 3  ? core::mode_observe
+               : i < 6  ? core::mode_shields_hull_bolts
+                        : core::mode_shields_hull_explosions;
     };
     unsigned flips = 0, refused = 0, fixup_flips = 0, fixup_refused = 0;
     for (unsigned i = 0; i < S::site_count; ++i) {
@@ -566,8 +568,9 @@ int main() {
     }
 
     // Install every family (shields,hull,bolts,explosions): the used sites (impact, object tap, muzzle, flight, death)
-    // active and redirected, the taps not used; globals bound at base + RVA; write paths atomic except the object tap.
-    const auto used_here = [](unsigned i) { return i == 0 || i >= 3; };
+    // active and redirected, the taps and the batch (reshade mode only) not used; globals bound at base + RVA; write
+    // paths atomic except the object tap.
+    const auto used_here = [](unsigned i) { return i == 0 || (i >= 3 && i <= 6); };
     SetLastError(sentinel_error);
     const bool ok = we::install_base(base, core::mode_shields_hull_bolts_explosions);
     bool all_active = ok && we::installed() && GetLastError() == sentinel_error && !std::strcmp(we::state(), "ok");
@@ -594,31 +597,26 @@ int main() {
     const bool rb = we::install_base(base, core::mode_shields_hull_bolts_explosions);
     check(!rb && GetLastError() == sentinel_error && !we::installed() && windows_original(), "rollback_restores_all");
     fault_read_at = 0;
-    // The batch site's read-back refused (claimed after the death, before the impact and the object tap): every site
-    // back, the pool disarmed, LastError kept.
+    // The batch site's read-back refused (reshade mode: claimed before the impact): nothing left claimed, the re-shade
+    // disarmed, LastError kept.
     fault_read_at = base + S::sites[7].window.rva + S::sites[7].call_offset;
     SetLastError(sentinel_error);
-    const bool rb7 = we::install_base(base, core::mode_shields_hull_bolts_explosions);
+    const bool rb7 = we::install_base(base, core::mode_reshade);
     check(!rb7 && GetLastError() == sentinel_error && !we::installed() && windows_original() &&
-              !x3m_projectile_pool.armed && !x3m_projectile_pool.skip_on && std::strcmp(we::site_state(7), "active"),
-          "batch_rollback_restores_all", we::site_state(7));
+              !x3m_bullet_reshade_armed && std::strcmp(we::site_state(7), "active"),
+          "reshade_batch_rollback_restores_all", we::site_state(7));
     fault_read_at = 0;
-    // Shields mode (the production setting) claims the object tap, the muzzle and the batch site for the projectile
-    // stage (the muzzle: muzzle-flash-look.md section 4), never the flight site.
+    // Shields mode (the production setting on AP) claims the impact alone: no object tap, muzzle, flight, death or batch.
     SetLastError(sentinel_error);
     {
         const bool ok_s = we::install_base(base, core::mode_shields);
-        check(ok_s && !std::strcmp(we::site_state(7), "active") && !std::strcmp(we::site_state(3), "active") &&
-                  site_redirected(7, fl_stub(7)) && !std::strcmp(we::write_path(7), "atomic") &&
-                  !std::strcmp(we::site_state(5), "not_used") && x3m_projectile_pool.armed,
-              "shields_mode_claims_batch_and_object_tap", we::state());
-        check(ok_s && !std::strcmp(we::site_state(4), "active") && site_redirected(4, fl_stub(4)) &&
-                  !std::strcmp(we::write_path(4), "atomic"),
-              "shields_mode_claims_muzzle", we::site_state(4));
+        bool impact_only = ok_s && !std::strcmp(we::site_state(0), "active") && site_redirected(0, fl_stub(0));
+        for (unsigned i = 1; i < S::site_count; ++i) impact_only = impact_only && !std::strcmp(we::site_state(i), "not_used");
+        check(impact_only && !x3m_bullet_reshade_armed, "shields_mode_claims_impact_only", we::state());
         we::shutdown();
-        check(windows_original() && !x3m_projectile_pool.armed, "shields_mode_shutdown_restores_batch");
+        check(windows_original(), "shields_mode_shutdown_restores");
     }
-    // The muzzle's frame witnesses guard the shields mode too: a changed gun-slot writer refuses the install, nothing
+    // The muzzle's frame witnesses guard the bolts modes: a changed gun-slot writer refuses the install, nothing
     // written, LastError kept.
     {
         const S::Window& w = S::muzzle_witnesses[0];
@@ -626,22 +624,22 @@ int main() {
         image[w.rva] ^= 0x01;
         writable(false);
         SetLastError(sentinel_error);
-        const bool refused_w = !we::install_base(base, core::mode_shields) && !we::installed() &&
+        const bool refused_w = !we::install_base(base, core::mode_shields_hull_bolts) && !we::installed() &&
                                GetLastError() == sentinel_error && !std::strcmp(we::state(), "frame_mismatch_muzzle") &&
                                windows_original();
         writable(true);
         image[w.rva] ^= 0x01;
         writable(false);
-        check(refused_w, "shields_mode_muzzle_witness_refused", we::state());
+        check(refused_w, "bolts_mode_muzzle_witness_refused", we::state());
     }
-    // A refused read-back at the muzzle (claimed first in shields mode) leaves nothing claimed.
+    // A refused read-back at the muzzle (claimed first in the bolts mode) leaves nothing claimed.
     fault_read_at = base + S::sites[4].window.rva + S::sites[4].call_offset;
     SetLastError(sentinel_error);
     {
-        const bool rb4 = we::install_base(base, core::mode_shields);
+        const bool rb4 = we::install_base(base, core::mode_shields_hull_bolts);
         check(!rb4 && GetLastError() == sentinel_error && !we::installed() && windows_original() &&
-                  !x3m_projectile_pool.armed && std::strcmp(we::site_state(4), "active"),
-              "shields_mode_muzzle_rollback_restores_all", we::site_state(4));
+              std::strcmp(we::site_state(4), "active"),
+              "bolts_mode_muzzle_rollback_restores_all", we::site_state(4));
     }
     fault_read_at = 0;
 
@@ -657,10 +655,10 @@ int main() {
     for (const std::string& l : log_lines)
         if (l.find("weapon_effects_patch site=") != std::string::npos && l.find(" edition=fl ") != std::string::npos) ++fl_rows;
     check(fl_rows == S::site_count, "init_logs_one_row_per_site");
-    unsigned projectile_rows = 0;
+    unsigned projectile_rows = 0; // the removed projectile stage's rows
     for (const std::string& l : log_lines)
-        if (l.find("projectile_site state=claimed rva=097af8") != std::string::npos) ++projectile_rows;
-    check(projectile_rows == 1, "init_logs_projectile_site_claimed_once");
+        if (l.find("projectile_") != std::string::npos) ++projectile_rows;
+    check(projectile_rows == 0, "init_logs_no_projectile_rows");
     we::shutdown();
 
     // Phase 2a (observe: the impact and the two taps): install, plant the return jumps (they overwrite the window bytes
@@ -828,30 +826,15 @@ int main() {
         check(listed, "object_tap_handler_records_ecx_object");
     }
 
-    // Muzzle (docs/architecture/muzzle-flash-look.md section 4): ECX 4, EDX the gun slot, [esp+4] eff, [esp+8] ship,
-    // [esp+0x18] &pos, [esp+0x20] &orient, ESI the TBullets record offset. A shot of an enabled body (word +0 of the
-    // record) while the batch latch is on: skipped (no callee, EAX 0), its (ship, slot) record ours, relit (shots 2);
-    // the latch off, or another body: forwarded with EAX, ECX, EDX, EBX, ESI, EDI, EBP, the stack and EFLAGS as the call
-    // left them.
+    // Muzzle (bolts mode): ECX 4, EDX the gun slot, [esp+4] eff, [esp+8] ship, [esp+0x18] &pos, [esp+0x20] &orient, ESI
+    // the TBullets record offset. Every shot (two rows) forwards with EAX, ECX, EDX, EBX, ESI, EDI, EBP, the stack and
+    // EFLAGS as the call left them.
     {
-        core::ProjectilePool& pool = x3m_projectile_pool;
         static std::int32_t pos_block[4] = {1, 2, 3, 0};
         static std::int32_t orient_block[12] = {0x10000, 0, 0, 0, 0x10000, 0, 0, 0, 0x10000, 0, 0, 0};
-        const std::uint16_t body = 0x0b17;
-        w16(bullet_table.data() + 4u * core::layout::type_stride, core::projectile::type_body, body);
-        w16(bullet_table.data() + 5u * core::layout::type_stride, core::projectile::type_body, std::uint16_t(body + 1));
-        pool.globals = we::hook_state().globals;
-        pool.resolved = 1;
-        pool.stale = 0;
-        pool.engine_rows = 16;
-        pool.body_count = 1;
-        pool.bodies[0].id = body;
-        for (std::uint32_t& w : pool.bits) w = 0;
-        pool.bits[body >> 5] |= 1u << (body & 31u);
-        const auto run_muzzle = [&](std::uint32_t row, std::uint32_t latch, std::uint32_t now, bool* skipped) {
-            w32(config_block, core::layout::cfg_game_ms, now);
-            pool.skip_on = latch;
-            const std::uint32_t before = pool.counters.muzzle_skipped;
+        bool all = true;
+        char why[64] = "";
+        for (unsigned row = 4; row < 6; ++row) {
             Entry e;
             e.eax = 0x0000007c; // the col-21 row the window loaded
             e.ecx = 4;
@@ -863,76 +846,20 @@ int main() {
             e.stack[5] = u32(pos_block);
             e.stack[7] = u32(orient_block);
             run_site(4, e);
-            *skipped = pool.counters.muzzle_skipped == before + 1;
             bool stack_same = true;
             for (unsigned k = 0; k < 8; ++k) stack_same = stack_same && t_stack[1 + k] == e.stack[k];
-            const bool forwarded = t_calls == 1 && t_eax == e.eax && t_ecx == e.ecx && t_edx == e.edx && t_ebx == e.ebx &&
-                                   t_esi == e.esi && t_edi == e.edi && t_ebp == e.ebp && stack_same &&
-                                   t_stack[0] == std::uint32_t(base + S::sites[4].window.rva + S::sites[4].call_offset + 5) &&
-                                   (t_flags & flag_mask) == (entry_flags & flag_mask) && t_esp == esp_before_call - 4;
-            const bool skip = t_calls == 0 && out_eax == 0;
-            return caller_kept(e) && (*skipped ? skip : forwarded);
-        };
-        const auto record = [&]() -> const core::MuzzleRecord* {
-            for (const core::MuzzleRecord& r : pool.muzzles)
-                if (r.sequence && r.ship == u32(&victim_obj) && r.slot == 2) return &r;
-            return nullptr;
-        };
-        bool skipped = false;
-        const std::uint32_t unskipped0 = pool.counters.muzzle_unskipped;
-        check(run_muzzle(4, 0, 1000, &skipped) && !skipped && pool.counters.muzzle_unskipped == unskipped0 + 1 &&
-                  record() && !record()->ours,
-              "muzzle_enabled_body_latch_off_forwards_registers_stack_flags");
-        check(run_muzzle(5, 1, 1075, &skipped) && !skipped && pool.counters.muzzle_unskipped == unskipped0 + 1 &&
-                  record() && record()->t0 == 1000,
-              "muzzle_other_body_forwards_registers_stack_flags");
-        check(run_muzzle(4, 1, 1150, &skipped) && skipped, "muzzle_skip_no_callee");
-        const core::MuzzleRecord* m = record();
-        check(m && m->ours && m->row == 4 && m->t0 == 1150 && m->shots == 2,
-              "muzzle_handler_slot_row_pos_orient", "the (ship, slot) record: row, t0, shots");
-        // the object tap matches a bullet born at the shot (ext+4 the ship, ext+8 = t0) to the ours record: pending; born
-        // at another ms, unmatched; registered three steps (17 ms) after its birth, stale
-        w32(config_block, core::projectile::cfg_step_ms, 17);
-        alignas(16) static unsigned char shot[3][0x100], shot_node[3][0x200], shot_ext[3][0x80];
-        const std::uint32_t births[3] = {1150, 1149, 1150}, taps[3] = {1150, 1150, 1201};
-        std::uint8_t states[3]{};
-        core::projectile_clear(pool);
-        pool.armed = 1;
-        for (unsigned i = 0; i < 3; ++i) {
-            std::memset(shot[i], 0, sizeof shot[i]);
-            std::memset(shot_node[i], 0, sizeof shot_node[i]);
-            std::memset(shot_ext[i], 0, sizeof shot_ext[i]);
-            w16(shot[i], core::layout::obj_class, core::layout::class_bullet);
-            w32(shot[i], core::layout::obj_node, u32(shot_node[i]));
-            w32(shot[i], core::layout::obj_ext, u32(shot_ext[i]));
-            w32(shot_node[i], core::layout::node_live, 1);
-            w32(shot_node[i], core::layout::node_handle, 0x300 + i);
-            w32(shot_node[i], core::layout::node_body, body);
-            w32(shot_ext[i], core::projectile::ext_expiry, 5000);
-            w32(shot_ext[i], core::projectile::ext_owner, u32(&victim_obj));
-            w32(shot_ext[i], core::projectile::ext_created, births[i]);
-            w32(config_block, core::layout::cfg_game_ms, taps[i]);
-            core::projectile_tap(u32(shot[i]), pool);
-            const unsigned s = core::projectile_slot(pool, u32(shot_node[i]));
-            if (s < core::projectile::slot_count) {
-                states[i] = pool.entries[pool.slots[s] - 1u].flash;
-            }
+            const bool kept = caller_kept(e), called = t_calls == 1,
+                       regs = t_eax == e.eax && t_ecx == e.ecx && t_edx == e.edx && t_ebx == e.ebx && t_esi == e.esi &&
+                              t_edi == e.edi && t_ebp == e.ebp,
+                       stack = stack_same && t_esp == esp_before_call - 4 &&
+                               t_stack[0] == std::uint32_t(base + S::sites[4].window.rva + S::sites[4].call_offset + 5),
+                       flags = (t_flags & flag_mask) == (entry_flags & flag_mask);
+            if (!(kept && called && regs && stack && flags) && !*why)
+                std::snprintf(why, sizeof why, "row=%u kept=%u called=%u regs=%u stack=%u flags=%u", row, unsigned(kept),
+                              unsigned(called), unsigned(regs), unsigned(stack), unsigned(flags));
+            all = all && kept && called && regs && stack && flags;
         }
-        std::printf("MUZZLE skipped=%lu unskipped=%lu matched=%lu unmatched=%lu stale=%lu states=%u/%u/%u\n",
-                    static_cast<unsigned long>(pool.counters.muzzle_skipped),
-                    static_cast<unsigned long>(pool.counters.muzzle_unskipped),
-                    static_cast<unsigned long>(pool.counters.flash_matched),
-                    static_cast<unsigned long>(pool.counters.flash_unmatched),
-                    static_cast<unsigned long>(pool.counters.flash_stale),
-                    unsigned(states[0]), unsigned(states[1]), unsigned(states[2]));
-        check(states[0] == core::projectile::flash_pending && states[1] == core::projectile::flash_none &&
-                  states[2] == core::projectile::flash_none && pool.counters.flash_matched >= 1 &&
-                  pool.counters.flash_unmatched >= 1 && pool.counters.flash_stale >= 1,
-              "object_tap_matches_flash_to_ours_record");
-        core::projectile_clear(pool);
-        pool.skip_on = 0;
-        pool.armed = 0;
-        w32(config_block, core::layout::cfg_game_ms, 100000);
+        check(all, "muzzle_forwards_registers_stack_flags", why);
     }
 
     // Flight: [esp+8] bullet; forward / skip.
@@ -989,92 +916,12 @@ int main() {
     hs.owned_next = 0;
     hs.boom_ready = 0;
 
-    // FL's node body id offset (+0x144; the projectile pool's read). The ship bubble's hull walk that also read it was
-    // removed on 2026-11-12.
+    // FL's node body id offset (+0x144; the re-shades read it through their own constants). The ship bubble's hull walk
+    // that also read it was removed on 2026-11-12.
     check(core::layout::node_body == 0x144, "fl_node_body_offset");
 
-    // The projectile stage's batch submit (shields mode): a fake batch record whose body id sits at +0x0c, ECX the scene,
-    // [esp+4] the material, [esp+8] the view. Forward: the callee sees every register, the stack and the flags; skip
-    // (latch on, body enabled): no callee, EAX 1, the rest as the caller left them; the stub's skip count advances.
-    we::shutdown();
-    restore_windows();
-    SetLastError(sentinel_error);
-    check(we::install_base(base, core::mode_shields) && we::installed(), "reinstall_shields_for_batch_runs");
-    plant_returns();
-    {
-        core::ProjectilePool& pool = x3m_projectile_pool;
-        alignas(16) static unsigned char batch[0x40];
-        std::memset(batch, 0, sizeof batch);
-        const std::uint32_t body = 0x1234;
-        pool.bits[body >> 5] |= 1u << (body & 31u);
-        const auto run_batch = [&](std::uint32_t id, std::uint32_t latch, bool* skipped) {
-            w32(batch, S::batch_body, id);
-            pool.skip_on = latch;
-            const std::uint32_t before = pool.skipped;
-            Entry e;
-            e.ecx = 0x5ce4e000;
-            e.edx = u32(batch);
-            e.nstack = 2;
-            e.stack[0] = 0x3a7e0001; // material
-            e.stack[1] = 0x71e70002; // view
-            run_site(7, e);
-            *skipped = pool.skipped == before + 1;
-            const bool forwarded = t_calls == 1 && t_eax == e.eax && t_ecx == e.ecx && t_edx == e.edx && t_ebx == e.ebx &&
-                                   t_esi == e.esi && t_edi == e.edi && t_ebp == e.ebp && t_stack[1] == e.stack[0] &&
-                                   t_stack[2] == e.stack[1] &&
-                                   t_stack[0] == std::uint32_t(base + S::sites[7].window.rva + S::sites[7].call_offset + 5) &&
-                                   (t_flags & flag_mask) == (entry_flags & flag_mask) && t_esp == esp_before_call - 4;
-            const bool skip = t_calls == 0 && out_eax == 1 && out_ecx == e.ecx && out_edx == e.edx &&
-                              (out_flags & flag_mask) == (entry_flags & flag_mask) && out_esp == esp_before_call;
-            return caller_kept(e) && (*skipped ? skip : forwarded && !*skipped);
-        };
-        bool skipped = false;
-        check(run_batch(body, 0, &skipped) && !skipped, "batch_latch_off_forwards_registers_stack_flags");
-        check(run_batch(body + 1, 1, &skipped) && !skipped, "batch_other_body_forwards_registers_stack_flags");
-        check(run_batch(0x10000 | body, 1, &skipped) && !skipped, "batch_body_above_word_forwards");
-        check(run_batch(body, 1, &skipped) && skipped, "batch_enabled_body_skipped_eax1_no_callee");
-        std::printf("BATCH skipped=%lu body=%04lx\n", static_cast<unsigned long>(pool.skipped),
-                    static_cast<unsigned long>(body));
-        // The object tap registers a bullet of an enabled body (its node +0x144) once, refreshes it on the next pass,
-        // and ignores a bullet of another body.
-        pool.skip_on = 0;
-        pool.resolved = 1;
-        pool.body_count = 1;
-        bind_globals(); // the tap's game-clock read: the fixture's heap cfg instead of the image's 0xcc slots
-        pool.globals = we::hook_state().globals;
-        pool.bodies[0].id = body;
-        core::projectile_clear(pool);
-        alignas(16) static unsigned char bullet[0x100], node[0x200], ext[0x80];
-        std::memset(bullet, 0, sizeof bullet);
-        std::memset(node, 0, sizeof node);
-        std::memset(ext, 0, sizeof ext);
-        w16(bullet, core::layout::obj_class, core::layout::class_bullet);
-        w32(bullet, core::layout::obj_node, u32(node));
-        w32(bullet, core::layout::obj_ext, u32(ext));
-        w32(node, core::layout::node_live, 1);
-        w32(node, core::layout::node_handle, 0x77);
-        w32(node, core::layout::node_body, body);
-        w32(ext, core::projectile::ext_expiry, 5000);
-        w32(ext, core::projectile::ext_created, 3800);
-        Entry e;
-        e.ecx = u32(bullet);
-        run_site(3, e);
-        run_site(3, e);
-        const bool registered = pool.count == 1 && pool.entries[0].node == u32(node) && pool.entries[0].obj == u32(bullet) &&
-                                pool.entries[0].handle == 0x77 && pool.entries[0].expiry == 5000 &&
-                                pool.entries[0].created == 3800 && core::projectile_known(pool, u32(node));
-        w32(node, core::layout::node_body, body + 1);
-        alignas(16) static unsigned char node2[0x200];
-        std::memcpy(node2, node, sizeof node2);
-        w32(bullet, core::layout::obj_node, u32(node2));
-        run_site(3, e);
-        check(caller_kept(e) && t_calls == 1 && registered && pool.count == 1, "object_tap_registers_enabled_body_once");
-        core::projectile_remove(pool, 0);
-        check(pool.count == 0 && !core::projectile_known(pool, u32(node)), "projectile_remove_empties_slot");
-    }
-
     // Reshade mode (bullet-draw-batch.md section 6): the impact and the batch call claimed, the batch with the scope stub;
-    // no object tap, muzzle, flight or death site, the projectile pool disarmed. The scope stub forwards every submit as
+    // no object tap, muzzle, flight or death site. The scope stub forwards every submit as
     // a call: the callee sees ECX, EDX, EAX, the callee-saved registers, EFLAGS and the two stack words as the caller
     // left them, its stack at the original call's alignment modulo 16, the scope raised to 1 and x3m_bullet_body the
     // batch's body id [EDX+0x0c] (two batches, two ids); after it the scope is
@@ -1089,14 +936,13 @@ int main() {
                   !std::strcmp(we::site_state(0), "active") && !std::strcmp(we::site_state(7), "active") &&
                   !std::strcmp(we::site_state(3), "not_used") && !std::strcmp(we::site_state(4), "not_used") &&
                   !std::strcmp(we::site_state(5), "not_used") && !std::strcmp(we::site_state(6), "not_used") &&
-                  x3m_bullet_reshade_armed == 1 && x3m_projectile_pool.armed == 0 &&
+                  x3m_bullet_reshade_armed == 1 &&
                   site_redirected(7, x3m_weapon_effects_stub_batch_scope_fl) &&
                   we::hook_state().armed == core::family_shields,
               "reshade_installs_impact_and_batch_scope_only");
         plant_returns();
         alignas(16) static unsigned char batch[0x40];
         std::memset(batch, 0, sizeof batch);
-        x3m_projectile_pool.skip_on = 1; // a stale latch never skips in reshade mode: the scope stub reads no pool
         const std::uint32_t calls_before = x3m_bullet_scope_calls;
         bool all = true;
         for (unsigned df = 0; df < 2; ++df) {
@@ -1127,7 +973,6 @@ int main() {
         std::printf("RESHADE scope_calls=%lu callee_esp_offset=%lu\n",
                     static_cast<unsigned long>(x3m_bullet_scope_calls - calls_before),
                     static_cast<unsigned long>(esp_before_call - t_esp));
-        x3m_projectile_pool.skip_on = 0;
         we::shutdown();
         check(!we::installed() && x3m_bullet_reshade_armed == 0, "reshade_shutdown_disarms");
         restore_windows();

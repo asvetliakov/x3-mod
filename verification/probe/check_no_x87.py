@@ -190,7 +190,7 @@ FL_EXTERN_ROOTS = [
     # engine's damage, impact, sector-update, fire and kill routines; integer only, no call out
     '_x3m_weapon_effects_stub_impact_fl', '_x3m_weapon_effects_stub_tap_fl', '_x3m_weapon_effects_stub_bolt_tap_fl',
     '_x3m_weapon_effects_stub_muzzle_fl', '_x3m_weapon_effects_stub_flight_fl', '_x3m_weapon_effects_stub_death_fl',
-    '_x3m_weapon_effects_stub_batch_fl',  # the projectile stage's batch submit 0x097af8 (no handler)
+    '_x3m_weapon_effects_stub_batch_scope_fl',  # the bullet batch submit 0x097af8: the re-shade's scope stub (no handler)
     '_x3m_weapon_event_fl', '_x3m_weapon_tap_fl', '_x3m_weapon_bolt_tap_fl', '_x3m_weapon_muzzle_fl',
     '_x3m_weapon_flight_fl', '_x3m_weapon_death_fl']
 EDITION_ROOTS = {'ap': AP_EXTERN_ROOTS, 'fl': FL_EXTERN_ROOTS}

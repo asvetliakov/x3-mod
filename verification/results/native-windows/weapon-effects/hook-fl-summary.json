@@ -16,32 +16,35 @@
     "src/proxy/weapon_effects_table.h",
     "src/proxy/engine_patch.cpp",
     "src/proxy/engine_patch.h",
-    "src/engine/fl/executable_identity_fl.h",
-    "src/proxy/weapon_effects_projectile.h"
+    "src/engine/fl/executable_identity_fl.h"
   ],
   "source": {
-    "commit": "84a2ccaaa25ca49556dde2572b0e03007ec971a5-dirty",
+    "commit": "04d518bf38e5fa70eec7721b26896d6201f6ec29-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
+      "src/engine/fl/weapon_effects_sites_fl.h",
       "src/proxy/weapon_effects_core.h",
+      "src/proxy/weapon_effects_hook.cpp",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h"
+      "src/proxy/weapon_effects_patch.h",
+      "src/proxy/weapon_effects_table.h",
+      "verification/probe/build_weapon_effects_hook_fl.py",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp"
     ],
     "sha256": {
-      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "3931492180af41b388fe4642db79fa6c5a6a073f10b84f2b972f553ed69960d6",
+      "verification/probe/weapon_effects_hook_fixture_fl.cpp": "9e82a15567d452693e4e169db045cb9d5d54737aa0d4aef3aacf528df1c4c5aa",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
-      "verification/probe/build_weapon_effects_hook_fl.py": "ed6061e7a1dd0c98a739952cdc36720aa4c0db875480b2d199a7ec6c731c017b",
-      "src/proxy/weapon_effects_patch.cpp": "ac2200c9b072ded56fe709ea54d43a06353fd63ea48e13169040da55152f1080",
-      "src/proxy/weapon_effects_patch.h": "440ed0e2b42d55614ddab1e2f5e54edd719de94e61bc5bec133e4c47b4b954ed",
-      "src/proxy/weapon_effects_hook.cpp": "8ea99f2caaaffa1a05ed304e56b9636c81cbe215fa5854f4c55bd36725105789",
-      "src/proxy/weapon_effects_core.h": "5fb2f1eb3677fe02cf17b5fb85c88465717655f7d9df6ac8cdf744052b79bd56",
-      "src/engine/fl/weapon_effects_sites_fl.h": "02ca8cdada98f9a2a28de3d6b5cd597712398e8f91119019410b7ccbf19c85dd",
+      "verification/probe/build_weapon_effects_hook_fl.py": "4082488c0ed62c46dfa4d08c9f2a23879ae1f0adaa13336b74f5413db3fcd01f",
+      "src/proxy/weapon_effects_patch.cpp": "216f3cba48f2af5ec4af2fa7625adaae713e5720801a9661b699bc1def569b3c",
+      "src/proxy/weapon_effects_patch.h": "83bbb88e2ef10060b04d7aa8abe4404666eacc79b343b05ba48492c982c5bcaa",
+      "src/proxy/weapon_effects_hook.cpp": "1c10c3fa9638d177d01c797600240bb9ee39d26814c813c0af586a1c521fb19a",
+      "src/proxy/weapon_effects_core.h": "81a9e12186c03fde92727defe8356cbd8e808da6eb8bc84720f6ddd7191f5b9c",
+      "src/engine/fl/weapon_effects_sites_fl.h": "316ce27169cd5d19d771e2a2ed465d9def7b53cf93bf47e061709543bd1940e6",
       "src/proxy/weapon_effects_bolt.h": "67629458627e5a33d815e7c3dbab07104b68baf7ad123d69bea6fdf0a55da0e5",
-      "src/proxy/weapon_effects_table.h": "7047d2bdfdf8cb9cb88adb415f2b9ef9a39c7b9cb851bd77ac501b2d9fad6f1d",
+      "src/proxy/weapon_effects_table.h": "3e58c6cc10a7082c100f99950c237938eb226961b582bce8924b356324657d21",
       "src/proxy/engine_patch.cpp": "a9207d06c7075fa56690566ee4f514347852d2f1d41252b5386674d61b24f2cf",
       "src/proxy/engine_patch.h": "0d251d55b27d4e87249cc5804e572b44a00460cabae23d2f273a2e3a23b1e071",
-      "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82",
-      "src/proxy/weapon_effects_projectile.h": "6b4c3dd1eb9426fe9e7e0ce9d884e8c615655bbf9952165ca30c915c5635753a"
+      "src/engine/fl/executable_identity_fl.h": "e940ff0b6a9414defa237b06045aed9daa451fb4acee3ed0691861c4a89caf82"
     }
   },
   "build": {
@@ -61,34 +64,13 @@
       "handler_instructions": {
         "_x3m_weapon_event_fl": 1418,
         "_x3m_weapon_tap_fl": 45,
-        "_x3m_weapon_bolt_tap_fl": 872,
-        "_x3m_weapon_muzzle_fl": 208,
+        "_x3m_weapon_bolt_tap_fl": 498,
+        "_x3m_weapon_muzzle_fl": 4,
         "_x3m_weapon_flight_fl": 20,
-        "_x3m_weapon_death_fl": 569
+        "_x3m_weapon_death_fl": 567
       },
       "handler_frame_bytes": 204,
       "stubs": {
-        "_x3m_weapon_effects_stub_batch_fl": [
-          "pushf",
-          "cmp",
-          "je",
-          "push",
-          "mov",
-          "cmp",
-          "ja",
-          "bt",
-          "pop",
-          "jb",
-          "popf",
-          "jmp",
-          "pop",
-          "popf",
-          "jmp",
-          "add",
-          "popf",
-          "mov",
-          "ret"
-        ],
         "_x3m_weapon_effects_stub_batch_scope_fl": [
           "pushf",
           "push",
@@ -234,7 +216,6 @@
         ]
       },
       "stub_ok": {
-        "_x3m_weapon_effects_stub_batch_fl": true,
         "_x3m_weapon_effects_stub_batch_scope_fl": true,
         "_x3m_weapon_effects_stub_impact_fl": true,
         "_x3m_weapon_effects_stub_tap_fl": true,
@@ -256,7 +237,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "06848d372ad38181fe1d938276f9c4b5afdf0dbe5f8419dca2f9737fe173a957"
+    "executable_sha256": "4ed5c05ec4ce7d728c9a6e522b9410e38a35005a844814c14e1ac803d1cd2155"
   },
   "host": {
     "name": "native-windows",
@@ -275,7 +256,7 @@
   "run": {
     "exit_code": 0,
     "result": {
-      "checks": 74,
+      "checks": 62,
       "failures": 0,
       "faults": 3,
       "verdict": "PASS"
@@ -394,32 +375,27 @@
       "detail": ""
     },
     {
-      "name": "batch_rollback_restores_all",
+      "name": "reshade_batch_rollback_restores_all",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "shields_mode_claims_batch_and_object_tap",
+      "name": "shields_mode_claims_impact_only",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "shields_mode_claims_muzzle",
+      "name": "shields_mode_shutdown_restores",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "shields_mode_shutdown_restores_batch",
+      "name": "bolts_mode_muzzle_witness_refused",
       "passed": true,
       "detail": ""
     },
     {
-      "name": "shields_mode_muzzle_witness_refused",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "shields_mode_muzzle_rollback_restores_all",
+      "name": "bolts_mode_muzzle_rollback_restores_all",
       "passed": true,
       "detail": ""
     },
@@ -439,7 +415,7 @@
       "detail": ""
     },
     {
-      "name": "init_logs_projectile_site_claimed_once",
+      "name": "init_logs_no_projectile_rows",
       "passed": true,
       "detail": ""
     },
@@ -539,27 +515,7 @@
       "detail": ""
     },
     {
-      "name": "muzzle_enabled_body_latch_off_forwards_registers_stack_flags",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "muzzle_other_body_forwards_registers_stack_flags",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "muzzle_skip_no_callee",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "muzzle_handler_slot_row_pos_orient",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "object_tap_matches_flash_to_ours_record",
+      "name": "muzzle_forwards_registers_stack_flags",
       "passed": true,
       "detail": ""
     },
@@ -594,41 +550,6 @@
       "detail": ""
     },
     {
-      "name": "reinstall_shields_for_batch_runs",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "batch_latch_off_forwards_registers_stack_flags",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "batch_other_body_forwards_registers_stack_flags",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "batch_body_above_word_forwards",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "batch_enabled_body_skipped_eax1_no_callee",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "object_tap_registers_enabled_body_once",
-      "passed": true,
-      "detail": ""
-    },
-    {
-      "name": "projectile_remove_empties_slot",
-      "passed": true,
-      "detail": ""
-    },
-    {
       "name": "reshade_installs_impact_and_batch_scope_only",
       "passed": true,
       "detail": ""
@@ -654,21 +575,14 @@
       "detail": ""
     }
   ],
-  "check_count": 74,
+  "check_count": 62,
   "failed_checks": [],
   "stack_depth": {
     "bytes": 248,
     "margin": 3072,
     "site": 0
   },
-  "muzzle": {
-    "skipped": 1,
-    "unskipped": 1,
-    "matched": 1,
-    "unmatched": 1,
-    "stale": 1,
-    "states": "1/0/0"
-  },
+  "muzzle": null,
   "stack_ok": true,
   "passed": true
 }

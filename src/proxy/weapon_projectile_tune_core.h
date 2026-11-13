@@ -3,25 +3,30 @@
 #include <cstddef>
 #include <cstdint>
 
-// The dev-only in-flight tuning file's parser and reload rule (docs/architecture/projectile-look.md section 4 and
-// "Implementation (2026-11-08)"): <game>\x3m\projectile_tune.json, at most the twenty-three numbers of the fighter-tracer
-// family (weapon_projectile_family.h tune_key_names). Portable and allocation-free (the host test
+// The dev-only in-flight tuning file's parser and reload rule (docs/architecture/projectile-look.md "Dev tuning
+// file"): <game>\x3m\projectile_tune.json, at most the nine re-shade numbers (weapon_projectile_family.h
+// tune_key_names). Portable and allocation-free (the host test
 // verification/analysis/test_weapon_effects_projectile_tune.py compiles it); the file reader around it
 // (weapon_projectile_tune.cpp) exists only in an X3M_DEV_TUNING build.
 //
 // The file is one flat JSON object of "key": number pairs; unknown keys (with a number, string, true, false or null)
-// are ignored, a missing key takes the family's baked value (each reload starts from the defaults, so the file states
-// every deviation), a value outside its bounds is clamped (one row naming the key). Anything else (not an object, a
-// known key whose value is not a number, a nested value, a missing or trailing comma, a leading '+', a bare word, more
-// than file_capacity - 1 bytes) refuses the whole file with one row and the last applied values stay.
+// are ignored and named in Result::unknown_name (the reader logs each name once a session; the removed custom stage's
+// keys core_px .. hull_pulse_r are unknown keys since 2026-11-13), a missing key takes its baked value (each reload
+// starts from the defaults, so the file states every deviation), a value outside its bounds is clamped (one row naming
+// the key). Anything else (not an object, a known key whose value is not a number, a nested value, a missing or
+// trailing comma, a leading '+', a bare word, more than file_capacity - 1 bytes) refuses the whole file with one row and
+// the last applied values stay.
 namespace x3m::weapon_effects::projectile_tune {
 namespace pf = x3m::weapon_effects::projectile_family;
 constexpr unsigned file_capacity = 1024;   // the reader's fixed buffer
 constexpr std::uint32_t poll_ms = 1000;     // the last-write time is checked at most once a second
+constexpr unsigned max_unknown = 16, key_capacity = 24; // unknown key names kept per parse (the first 23 bytes each)
 struct Result {
     bool ok = false;
     unsigned seen = 0, clamped = 0; // bit k: tune_key_names[k] present / clamped
     float raw[pf::tune_keys]{};     // the values as written (seen keys)
+    unsigned unknown = 0;           // unknown keys in the file (the first max_unknown named below)
+    char unknown_name[max_unknown][key_capacity]{};
 };
 inline bool space(char c) noexcept {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -70,7 +75,7 @@ inline bool word(const char* t, std::size_t n, std::size_t* at, const char* w) n
     *at += k;
     return true;
 }
-// Parses text into *tune (which the caller set to the family's defaults); *tune is written only when ok. The text must
+// Parses text into *tune (which the caller set to the baked values); *tune is written only when ok. The text must
 // be one flat JSON object: members separated by single commas (none missing, none trailing), every value a number, a
 // string, true, false or null; a known key's value a number; nothing but whitespace after the closing brace.
 inline Result parse(const char* t, std::size_t n, pf::Tune* tune) noexcept {
@@ -89,7 +94,7 @@ inline Result parse(const char* t, std::size_t n, pf::Tune* tune) noexcept {
     if (empty) ++i;
     while (!empty) {
         if (i >= n || t[i] != '"') return r; // a key (a missing member after a comma, a trailing comma)
-        char key[24];
+        char key[key_capacity];
         unsigned k = 0;
         bool fits = true;
         for (++i; i < n && t[i] != '"'; ++i) {
@@ -110,6 +115,12 @@ inline Result parse(const char* t, std::size_t n, pf::Tune* tune) noexcept {
             unsigned c = 0;
             while (name[c] && name[c] == key[c]) ++c;
             if (!name[c] && !key[c]) which = q;
+        }
+        if (which == pf::tune_keys) { // an unknown key: named for the reader's one row, its value skipped below
+            if (r.unknown < max_unknown) {
+                for (unsigned c = 0; c <= k; ++c) r.unknown_name[r.unknown][c] = key[c];
+            }
+            ++r.unknown;
         }
         double v = 0.0;
         if (number(t, n, &i, &v)) {

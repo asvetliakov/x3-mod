@@ -1,7 +1,7 @@
 # FL bullet draw batch: per-body identity at the draw, draw shape, suppression, bullet record
 
 Bounded offline contract, 2026-11-08, for the projectile stage's "replace per body" rule
-([projectile-look.md](../../architecture/projectile-look.md) section 3 and the section 9 rows "How a bullet draw's body
+([projectile-look-custom.md](../../archive/effects-look-2026-11-13-custom-projectile/projectile-look-custom.md) section 3 and the section 9 rows "How a bullet draw's body
 is identified at the hook", "Whether the game's batch for a body also carries other bodies' rows" and "The engine's
 drawn bolt length"). Inputs: `X3FL.exe` SHA-256 `e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8`
 (`/mnt/c/X3FL/X3FL.exe`), `X3AP.exe` SHA-256 `fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab`

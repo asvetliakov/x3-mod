@@ -82,7 +82,7 @@ void MotionOutput::bullet_reshade_create() noexcept {
         bullet_reshade_lone_flag_ps_ = lone_flag;
     else
         release(lone_flag);
-    weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
+    weapon_effects::reshade::constants(reshade_tune_,
                                        bullet_reshade_constants_);
     bullet_layout_valid_ = false;
     log("bullet_reshade_program device=%llu frame=%llu created=%u result=%08lx flag_created=%u flag_result=%08lx "
@@ -148,7 +148,7 @@ void MotionOutput::bullet_reshade_scale(IDirect3DBaseTexture9* texture, float* o
 void MotionOutput::bullet_reshade_layout(std::uint32_t body) noexcept {
     bool final = true;
     const std::int32_t* words = weapon_effects::bullet_body_layout(body, &final);
-    weapon_effects::reshade::layout_constants(words, projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
+    weapon_effects::reshade::layout_constants(words, reshade_tune_,
                                               bullet_layout_);
     bullet_layout_body_ = body;
     bullet_layout_valid_ = final;
