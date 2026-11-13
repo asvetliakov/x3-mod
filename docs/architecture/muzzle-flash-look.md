@@ -37,7 +37,14 @@ off: no match, no count), outside state-block recording, a draw with ALPHABLENDE
 ONE, BLENDOP ADD (the shadowed states; blend-off classic bodies end here) and the VS rows it reads (c28..c30,
 c34..c36) known asks the object-trace scope
 for its node (TLS, no read) and reads node `+0x144` (4 bytes through `engine_memory::read`). A body id in
-`muzzle_reshade_core.h bodies[]` marks the draw. The list is constant **{445}**: the table generator stops at the
+`muzzle_reshade_core.h bodies[]` marks the draw. The list is constant, every classic standard_lighting flash body of
+the census (`verification/results/fl-muzzle-flash-draw/fl_muzzle_flash_census_out.txt`; MATERIAL3/5, Materials flags
+DESTINATIONBLEND | 2SIDED, so the two-sided pair), most frequent first: **445** (scene 04251; IRE, PD, PSG, PBC, flak,
+fragments, the secondary of PPC/PSP/MAM/CIG), **446** (04253; EMP, Mining, IPG, IonC, IBL, SSC, the primary of
+PPC/PSP/MAM/CIG), **444** (04252; HEPT, PAL, Tri-Beam, Fusion Beam, EBC, Gauss), **450** (04260; PAC, Mass Driver),
+**447** (04258; FBL), **314** (04261; Ion Disruptor), **10463** (04437; PBE). Body 12009 (scene 08001, PRG) draws with
+effects.fx, not this pair, and stays unlisted; scene 04265 is absent from the catalogues. The route checks the VS hash
+only, never the PS, so the one-sided and two-sided DEFAULT programs both pass. The table generator stops at the
 Effects element's scene id (`tools/effects/weapon_effects_census.py`), so the Effects → CUT scene → part body chain is
 a TODO in the ledger, not hidden. The shader alone never identifies the flash (the pair is every opaque classic body's).
 
@@ -93,6 +100,25 @@ summed glow a ray through the origin crosses at the default size, mean over 500 
 14.11); the cell's centre luminance 0.166; the lit texels' hue (1, 0.485, 0.166), at luminance 1 (1.7507, 0.8485,
 0.2903). The cell (u 0.002853..0.411944, v −0.001845..0.511156) and the radial profile stay recorded there.
 
+**The other bodies** (`verification/results/muzzle-reshade/muzzle_bodies.py`, `muzzle_bodies_out.txt`: the same
+functions on each body's own mesh and atlas cell). The texel modulator carries the grain and the overlap the energy.
+Lit radius and hue are measured as 445's [M]. `mean` is the body's own glow-weighted texel luminance at the baked size
+[M], so its glow-weighted modulator is 1 and the grain stays at full strength (445's radial-fit method fails on the
+strip cells of 444, 446, 447, 314 and 10463, whose centre is dark or whose fit sits at its r0 bound). The overlap is
+inferred [I, no real-mesh render of these bodies]: 445's rendered fit × the body's ray sum through the gun over 445's
+9.14 × 1 / 0.2547, 445's glow-weighted modulator at `mz_smooth` 0.1 over the body's 1, so gain and core over N sum to
+445's luminance at the gun at the baked keys. At `mz_smooth` 1 these bodies draw 3.93× dimmer than 445, at 0 1.48×
+brighter (445's modulator moves with the smooth, theirs does not).
+
+| Body | Atlas | Quads | Lit radius | mean (radial fit) | Hue K | Ray sum (445: 9.14) | N side / axis [I] | Modulator at the brightest texel (445: 3.75) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 446 | 383 | 26 | 45865 | 0.3702 (0.052) | 1.076, 0.968, 1.091 | 23.44 | 89.51 / 102.71 | 2.49 |
+| 444 | 376 | 4 | 59102 | 0.2187 (0.174) | 0.787, 1.113, 0.507 | 4.00 | 15.27 / 17.52 | 3.19 |
+| 450 | 384, top-right | 50 | 35567 | 0.0473 (0.158) | 0.850, 1.036, 1.088 | 7.49 | 28.62 / 32.84 | 19.11 |
+| 447 | 383 | 26 | 44959 | 0.3804 (0.046) | 1.115, 0.960, 1.060 | 23.41 | 89.41 / 102.60 | 2.43 |
+| 314 | 384, bottom | 9 | 51481 | 0.9699 (0.118) | 0.872, 1.031, 1.067 | 8.09 | 30.90 / 35.46 | 1.03 |
+| 10463 | 380 | 56 | 63918 | 0.0385 (0.022) | 1.304, 0.937, 0.727 | 5.11 | 19.51 / 22.39 | 2.68 |
+
 **The per-draw overlap** [M, `verification/results/muzzle-reshade/overlap_by_angle_out.txt`, review F1]. The ray sum
 through the gun depends strongly on the view angle: 5.9 side-on, 7.0 at the 25° pose, 27.3 along the axis (20000
 directions). The rendered real mesh does not follow it: with the constant 9.14 the dump's sweep (yaw 0..90°, 30 m,
@@ -143,9 +169,12 @@ modulator. The sweep (size 0.5, smooth 0.6; near frame; the constant 9.14 of the
 
 Gates (fixture and dump, since the FL 65 A bake on 2026-11-10): the **additive energy** (sum of luminance over the
 crop) ≤ `mz_gain` × vanilla's; the **extent at 0.1 linear** (equivalent radius of the pixels ≥ 0.1) ≤ `mz_size` ×
-vanilla's + 1 px; the flash lit (fixture: peak ≥ `mz_gain` / 4 on the stand-in; dump: peak > 0 on the real mesh).
-The dump also gates the extent at a tenth of each image's own peak at no more than vanilla's (reported only in the
-fixture). With `mz_core` 0 there is no white core, so the extent at scene white is reported, not gated.
+vanilla's + 1 px; the flash lit (fixture: peak ≥ `mz_gain` / 4 on the stand-ins of 445 and 444, three poses each,
+444's gun 3 m beside the view line since its four planes contain the axis; dump: peak > 0 on the real mesh of 445).
+At the baked keys 444's stand-in peaks below 0.1 linear, so the extent at 0.1 binds nothing for it; the fixture also
+gates the extent at a tenth of each image's own peak at no more than vanilla's for both stand-ins, and that binds.
+The dump also gates the extent at a tenth of each image's own peak at no more than vanilla's (the fixture too, since
+2026-11-13). With `mz_core` 0 there is no white core, so the extent at scene white is reported, not gated.
 
 **At the baked values (2026-11-10) [M, `dump_out.txt`]** the real mesh's re-shaded flash peaks at 0.025–0.081 linear
 (near 0.074 against vanilla 9.10; side 0.081, axis 0.025; energy ratio 0.001–0.003), so it never reaches 0.1: the
@@ -212,6 +241,8 @@ the own guns' flash in first person takes that path is not established.
 ```sh
 python3 -I verification/results/muzzle-reshade/muzzle_inputs.py \
   --texture verification/results/weapon-effects-lab/fl/tex/384-bd79416d.png > verification/results/muzzle-reshade/muzzle_inputs_out.txt
+python3 -I verification/results/muzzle-reshade/muzzle_bodies.py > verification/results/muzzle-reshade/muzzle_bodies_out.txt
+python3 -I verification/results/muzzle-reshade/standin_444.py > verification/results/muzzle-reshade/standin_444_out.txt
 python3 tools/shaders/generate_muzzle_reshade_program.py --check
 X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_weapon_effects.py --host native \
   --dump verification/results/muzzle-reshade --dump-case muzzle --lab-assets verification/results/weapon-effects-lab/fl

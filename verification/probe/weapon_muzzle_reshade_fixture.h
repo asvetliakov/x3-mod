@@ -11,8 +11,9 @@
 // TEXCOORD1 FLOAT3),
 // ADD ONE / ONE, Z test on and Z write off, no cull. The re-shade program is the production embedded ps_3_0 bytecode,
 // swapped in exactly as MotionOutput::begin_muzzle_reshade / finish_muzzle_reshade do (muzzle_reshade_route.h). Never
-// launches the game; no game bytes: the stand-in mesh and texture are procedural (50 fanned quads mapping the body 445
-// cell, a streak with the cell's radial profile and hue), and the dump loads the real mesh and texture only from
+// launches the game; no game bytes: the stand-in meshes and textures are procedural (body 445: 50 fanned quads mapping
+// its cell, a streak with the cell's radial profile and hue; body 444: its four-plane cross and a flame tongue with
+// the tex/true/376 cell's profile and hue), and the dump loads the real mesh and texture only from
 // untracked files run_weapon_effects.py --dump-case muzzle prepares from the FL catalogues and the local lab assets.
 #include "weapon_bullet_reshade_fixture.h" // make_texture, clip_rows
 #include "../../src/proxy/muzzle_reshade_core.h"
@@ -117,6 +118,60 @@ inline std::vector<unsigned char> standin_texture(unsigned* side) {
             const float width = 0.25f + 0.55f * (1.f - along); // wider away from the gun
             float l = across < width ? 0.42f * (1.f - across / width) * (0.15f + 0.85f * along) : 0.f;
             if (along > 0.92f) l *= (1.f - along) / 0.08f;
+            l *= 0.4f + 1.2f * noise;
+            for (unsigned k = 0; k < 3; ++k) {
+                const float c = l / lum_hue * hue[k];
+                p[k] = (unsigned char)(c >= 1.f ? 255 : int(c * 255.f + 0.5f));
+            }
+        }
+    return t;
+}
+// Body 444 (HEPT, PAL, Tri-Beam, Fusion Beam, EBC, Gauss; muzzle_bodies_out.txt): four quads, planes through the flash
+// axis at 0, 90, 45 and 135 degrees, z -489 (the gun) to 98969, half width 10085 (the real body's extents); u runs
+// along the axis (0.002 at the gun, 0.99 far), v across: 0.513..0.964 on the 0 and 90 degree planes, 0.534..0.985 on
+// the diagonal ones, as the real quads map (the cell u 0.001..0.991, v 0.513..0.985 of tex/true/376).
+constexpr float cell444_u0 = 0.001f, cell444_u1 = 0.991f, cell444_v0 = 0.513f, cell444_v1 = 0.985f;
+inline Mesh standin_mesh_444() {
+    Mesh m;
+    const auto put = [&](float x, float y, float z, float u, float v) {
+        float* o = m.p[m.n++];
+        o[0] = x, o[1] = y, o[2] = z, o[3] = u, o[4] = v;
+    };
+    const float deg[4] = {0.f, 90.f, 45.f, 135.f}, half = 10085.f, gun = -489.f, tip = 98969.f;
+    const float ua = cell444_u0 + 0.001f, ub = cell444_u1;
+    for (const float d : deg) {
+        const bool diagonal = d == 45.f || d == 135.f;
+        const float va = diagonal ? 0.534f : cell444_v0, vb = diagonal ? cell444_v1 : 0.964f;
+        const float wx = half * std::cos(d * 0.0174533f), wy = half * std::sin(d * 0.0174533f);
+        put(-wx, -wy, tip, ub, va), put(wx, wy, tip, ub, vb), put(-wx, -wy, gun, ua, va);
+        put(wx, wy, gun, ua, vb), put(-wx, -wy, gun, ua, va), put(wx, wy, tip, ub, vb);
+    }
+    return m;
+}
+// Its atlas stand-in, 256 x 256 RGBA: inside the cell a flame tongue along u, full brightness over the first 15 % from
+// the gun and falling linearly to 0 at 90 %, its half width over the cell 0.35 at the gun widening to 0.8 at 25 %, a
+// deterministic texel noise, the cell's hue (0.707, 1, 0.456). Amplitude 0.7: the cell's mean luminance 0.127 (real
+// 0.128), the 90 % energy radius on the cross 64436 units (real 59102) and the glow-weighted luminance at the baked
+// size 0.240 (real 0.219; verification/results/muzzle-reshade/standin_444.py, this function's Python mirror).
+inline std::vector<unsigned char> standin_texture_444(unsigned* side) {
+    const unsigned n = 256;
+    *side = n;
+    std::vector<unsigned char> t(std::size_t(n) * n * 4, 0);
+    std::uint32_t seed = 376u;
+    const float hue[3] = {0.707f, 1.f, 0.456f}, lum_hue = 0.2126f * 0.707f + 0.7152f + 0.0722f * 0.456f;
+    for (unsigned y = 0; y < n; ++y)
+        for (unsigned x = 0; x < n; ++x) {
+            seed = seed * 1664525u + 1013904223u;
+            const float noise = float(seed >> 8) / 16777216.f;
+            const float u = (float(x) + 0.5f) / float(n), v = (float(y) + 0.5f) / float(n);
+            unsigned char* p = &t[(std::size_t(y) * n + x) * 4];
+            p[3] = 255;
+            if (u < cell444_u0 || u > cell444_u1 || v < cell444_v0 || v > cell444_v1) continue;
+            const float along = (u - cell444_u0) / (cell444_u1 - cell444_u0), across = std::fabs(v - 0.749f) / 0.236f;
+            const float width = 0.35f + 0.45f * (along < 0.25f ? along / 0.25f : 1.f);
+            const float fall = 1.f - (along - 0.15f) / 0.75f;
+            const float env = along < 0.15f ? 1.f : fall > 0.f ? fall : 0.f;
+            float l = across < width ? 0.7f * env * (1.f - across / width) : 0.f;
             l *= 0.4f + 1.2f * noise;
             for (unsigned k = 0; k < 3; ++k) {
                 const float c = l / lum_hue * hue[k];

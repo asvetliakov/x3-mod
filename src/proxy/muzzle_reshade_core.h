@@ -19,14 +19,21 @@ constexpr unsigned vs_rows_first = 28, vs_rows_count = 9;            // c28..c36
 constexpr std::uint16_t vs_rows_read = 0x1c7u; // the shadow's known bits draw_constants needs: c28..c30 and c34..c36
 // FL node +0x144: the body id the object-trace scope's node carries at the material submit (muzzle-flash-draw.md 1).
 constexpr std::uint32_t node_body_offset = 0x144;
-// The muzzle bodies. TODO (ledger, "Muzzle flash re-shade on FL"): derive this list from weapon_effects.json's muzzle
-// rows through Effects -> CUT scene -> part bodies once the table generator resolves cut scenes
-// (tools/effects/weapon_effects_census.py stops at the scene id); today body 445 alone (scene 04251: Effects rows 22,
-// 157, 52, 190, 195, 202, 26, 54).
+// The muzzle bodies: every classic standard_lighting muzzle flash body of the FL census (MATERIAL3/5, Materials flags
+// DESTINATIONBLEND|2SIDED; verification/results/fl-muzzle-flash-draw/fl_muzzle_flash_census_out.txt): 445 (scene 04251:
+// IRE, PD, PSG, PBC, flak, frags, the secondary of PPC/PSP/MAM/CIG), 446 (04253: EMP, Mining, IPG, IonC, IBL, SSC, the
+// primary of PPC/PSP/MAM/CIG), 444 (04252: HEPT, PAL, Tri-Beam, Fusion Beam, EBC, Gauss), 450 (04260: PAC, Mass
+// Driver), 447 (04258: FBL), 314 (04261: Ion Disruptor), 10463 (04437: PBE). Body 12009 (scene 08001, PRG) draws with
+// effects.fx, not this pair: not listed. Most frequent first (a hit costs one compare per row before it). TODO (ledger,
+// "Muzzle flash re-shade on FL"): derive this list from weapon_effects.json's muzzle rows through Effects -> CUT scene
+// -> part bodies once the table generator resolves cut scenes (tools/effects/weapon_effects_census.py stops at the
+// scene id).
 struct Body {
     std::uint32_t id;
     float lit_radius; // vanilla's lit extent from the gun, model units (90 % of the emitted energy, muzzle_inputs_out.txt)
-    float mean;       // the cell's centre luminance (the texel modulator's reference)
+    // The texel modulator's reference (the grain): 445's cell centre luminance; for the others the body's own
+    // glow-weighted texel luminance, so each keeps its texels' grain at full strength (muzzle_bodies.py)
+    float mean;
     // The fan's overlap at the gun (every quad adds its share there), linear in x = cos^2 of the angle between the view
     // ray and the flash axis: N(x) = overlap[0] + overlap[1] x. Gain and core are divided by N per draw, so the keys are
     // the luminance the whole fan sums from every view direction.
@@ -39,10 +46,28 @@ struct Body {
 // axis-on, worst 1.8 %. The ray sum through the gun (the same file's first part: 5.9 side-on, 27.3 axis-on) does not
 // describe the image: with a constant 9.14 the rendered peak stays 1.37..1.58 and the white radius 7.3..8.6 px from
 // side-on to axis-on, the energy ratio 0.133..0.158.
+// The other bodies (verification/results/muzzle-reshade/muzzle_bodies.py, muzzle_bodies_out.txt, 445's functions on
+// each body's own mesh and atlas cell). The split: mean carries the grain, overlap the energy.
+//   lit_radius, hue  measured as 445's.
+//   mean             measured: the body's glow-weighted texel luminance at the baked size (445's radial fit assumes a
+//                    round blob centred in its cell and fails on the strip cells of 444, 446, 447, 314 and 10463), so
+//                    the glow-weighted modulator is 1 and the modulator at the brightest texel 1.03 (314) .. 19.1 (450)
+//                    against 445's 3.75.
+//   overlap          inferred, not rendered: 445's rendered fit x the body's ray sum through the gun over 445's (4.00 ..
+//                    23.44 against 9.14) x 1 / 0.2547 (445's glow-weighted modulator at mz_smooth 0.1 over the body's
+//                    1), so gain and core over N sum to 445's luminance at the gun at the baked smooth; at mz_smooth 1
+//                    these bodies draw 3.93x dimmer than 445 relative to it, at 0 1.48x brighter.
 constexpr Body bodies[] = {
-    {445u, 45618.f, 0.166f, {8.8915f, 1.3111f}, {1.7507f, 0.8485f, 0.2903f}},
+    {445u, 45618.f, 0.166f, {8.8915f, 1.3111f}, {1.7507f, 0.8485f, 0.2903f}},     // tex/true/384, top-left cell
+    {446u, 45865.f, 0.3702f, {89.5103f, 13.1988f}, {1.0760f, 0.9683f, 1.0905f}},  // tex/true/383
+    {444u, 59102.f, 0.2187f, {15.2693f, 2.2515f}, {0.7865f, 1.1132f, 0.5072f}},   // tex/true/376
+    {450u, 35567.f, 0.0473f, {28.6190f, 4.2200f}, {0.8500f, 1.0357f, 1.0883f}},   // tex/true/384, top-right cell
+    {447u, 44959.f, 0.3804f, {89.4113f, 13.1842f}, {1.1154f, 0.9597f, 1.0595f}},  // tex/true/383
+    {314u, 51481.f, 0.9699f, {30.9032f, 4.5568f}, {0.8720f, 1.0313f, 1.0672f}},   // tex/true/384, bottom cell
+    {10463u, 63918.f, 0.0385f, {19.5086f, 2.8766f}, {1.3042f, 0.9372f, 0.7269f}}, // tex/true/380
 };
 constexpr unsigned body_count = sizeof bodies / sizeof bodies[0];
+static_assert(body_count < 256, "MotionRoute::muzzle_body is a byte");
 // The body's row, or body_count. One compare per listed body.
 constexpr unsigned body_index(std::uint32_t id) noexcept {
     unsigned i = 0;
