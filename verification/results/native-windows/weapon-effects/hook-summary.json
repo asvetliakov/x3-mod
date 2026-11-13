@@ -19,15 +19,18 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "93dc5e9b3f3d302ce23e1257cec98788fb798926-dirty",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "6bd6be62ddc71691b52d0dbd6d3dae70279debdc-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_patch.cpp",
+      "src/proxy/weapon_effects_patch.h"
+    ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "f9bbda2b5e94804232155f236788cd9fa86d651603c4dd8e5d7af1e08d13d92c",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook.py": "3ad4a58ff2a835743c5f91691eae32e8ae817f8b19d4d08611662ffe520fe16e",
-      "src/proxy/weapon_effects_patch.cpp": "216f3cba48f2af5ec4af2fa7625adaae713e5720801a9661b699bc1def569b3c",
-      "src/proxy/weapon_effects_patch.h": "83bbb88e2ef10060b04d7aa8abe4404666eacc79b343b05ba48492c982c5bcaa",
+      "src/proxy/weapon_effects_patch.cpp": "6d2455d5d2ecf2c992d5e23c2345204e28b5b969b9b55f6e675f70aa93c6b6ef",
+      "src/proxy/weapon_effects_patch.h": "f238182f4fdfa246518d7bc231abd0d528445908a7e092baec81314a38b8f4ea",
       "src/proxy/weapon_effects_hook.cpp": "1c10c3fa9638d177d01c797600240bb9ee39d26814c813c0af586a1c521fb19a",
       "src/proxy/weapon_effects_core.h": "81a9e12186c03fde92727defe8356cbd8e808da6eb8bc84720f6ddd7191f5b9c",
       "src/proxy/weapon_effects_sites.h": "71754e296df76affefa4474808e24c6cf0fcc413f6ba04ff28e3489b59234f2b",
@@ -160,7 +163,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "4bd1c0f13d9bb6d269d216aeb03454f03ed5fcd7eea50cbcd0e759ce0a9abb9e"
+    "executable_sha256": "f00828ea7a87d1b75811920e22dafae3e23c905c1aeb8adc44d0594d82eb3291"
   },
   "host": {
     "name": "native-windows",
@@ -920,8 +923,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "0088f780",
     "esp_callee": "0088f774",
-    "return": "010e6d8a",
-    "site": "010e6d85"
+    "return": "00f46d8a",
+    "site": "00f46d85"
   },
   "stack_depth": {
     "bytes": 237,
@@ -1248,9 +1251,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.7,
-    "median_us": 17.8,
-    "worst_us": 18.7,
+    "best_us": 18.9,
+    "median_us": 18.9,
+    "worst_us": 19.2,
     "target_us": 30
   },
   "overflow": {
@@ -1266,18 +1269,18 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 57.8,
-    "median_us": 58.5,
-    "worst_us": 60.2,
+    "best_us": 59.3,
+    "median_us": 59.5,
+    "worst_us": 60.8,
     "target_us": 150
   },
   "death_forward_state": {
     "eflags_entry": "000008c5",
     "eflags_callee": "00000ac7",
-    "esp_frame": "005eacf8",
-    "esp_callee": "005eace8",
-    "return": "010e7cb7",
-    "site": "010e7cb2",
+    "esp_frame": "005eacd8",
+    "esp_callee": "005eacc8",
+    "return": "00f47cb7",
+    "site": "00f47cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },

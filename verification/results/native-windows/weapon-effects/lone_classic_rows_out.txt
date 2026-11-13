@@ -1,0 +1,24 @@
+passed True commit 6bd6be62ddc71691b52d0dbd6d3dae70279debdc-dirty host native-windows checks {'checks': 114, 'failures': 0, 'verdict': 'PASS'}
+classic checks {'reshade_lone_classic_programs_create': True, 'reshade_lone_classic_recognised_by_body_id': True, 'reshade_lone_classic_program_matches_model': True, 'reshade_lone_classic_targets': True, 'reshade_lone_classic_matches_batch_at_three_depths': True, 'reshade_lone_classic_sequence_restores': True, 'reshade_lone_classic_native_flag_one_one': True, 'reshade_lone_classic_refusals_stay_vanilla': True, 'reshade_lone_classic_cost_measured': True}
+game programs {'classic_vs.bin': '494fe349b8bc12ec', 'classic_ps.bin': 'ced7edef48059e84', 'classic_ps2s.bin': '0d5848c8489b6630'}
+case=lone_cost draws=2000 runs=7 draw_us_vanilla=0.074 draw_us_reshaded=0.386 substitution_us_per_draw=0.312 draw_us_normalised=0.617 normalise_us_per_draw=0.231 match_us_hit_30=0.0112 match_us_miss_30=0.0112 fenced=1
+case=lone_classic_programs loaded=1 game_hashes=1 vs_dwords=526 ps_dwords=1418 ps2s_dwords=1450 created=1 words=337 flag_words=361 ps_major=3
+case=lone_classic_recognition row=pal_two_sided_one_one body=10385 class=2 want=2 why=none ok=1
+case=lone_classic_recognition row=kyon_one_sided_one_one body=527 class=2 want=2 why=none ok=1
+case=lone_classic_recognition row=pal_one_invsrccolor body=10385 class=0 want=0 why=blend ok=1
+case=lone_classic_recognition row=emp_alphablend body=517 class=0 want=0 why=blend ok=1
+case=lone_classic_recognition row=mass_null_part_srcalpha_one body=10385 class=0 want=0 why=blend ok=1
+case=lone_classic_recognition row=wrong_ps body=10385 class=0 want=0 why=program ok=1
+case=lone_classic_recognition row=unready body=527 class=0 want=0 why=unready ok=1
+case=lone_classic_recognition row=muzzle_body_445 body=445 class=0 want=0 why=none ok=1
+case=lone_classic_recognition row=muzzle_body_446_mapped body=446 class=0 want=0 why=none ok=1
+case=lone_classic_recognition row=blend_off body=10385 class=0 want=0 why=none ok=1
+case=lone_classic_recognition row=effects_vs body=10385 class=0 want=0 why=none ok=1
+case=lone_classic_model worst_rel=0.063 worst_alpha_rel=0.021 vanilla_finite=1
+case=lone_classic_depth distance_m=50 two_sided=1 vanilla_peak=1.3138 vanilla_lit_px=4118 reshade_peak=1.0401 reshade_lit_px=2905 batch_peak=1.0401 batch_lit_px=2905 worst_rel_vs_batch=0.0 px_off_batch=0
+case=lone_classic_depth distance_m=300 two_sided=0 vanilla_peak=0.0695 vanilla_lit_px=52 reshade_peak=0.0087 reshade_lit_px=38 batch_peak=0.0087 batch_lit_px=38 worst_rel_vs_batch=0.0 px_off_batch=0
+case=lone_classic_depth distance_m=1500 two_sided=1 vanilla_peak=0.0905 vanilla_lit_px=9 reshade_peak=0.0044 reshade_lit_px=6 batch_peak=0.0044 batch_lit_px=6 worst_rel_vs_batch=0.0 px_off_batch=0
+case=lone_classic_native_flag mrt=1 distance_m=1500 base=1.0 rt2_g=1.181 want=1.181 rt0_worst_rel=0.0 restored=1
+case=lone_classic_refusal row=wrong_ps class=0 why=program untouched=1 vanilla_bit_exact=1
+case=lone_classic_refusal row=wrong_body class=0 why=none untouched=1 vanilla_bit_exact=1
+case=lone_classic_cost draws=2000 runs=7 draw_us_vanilla=0.07 draw_us_reshaded=0.494 substitution_us_per_draw=0.423 match_us_hit_30=0.0129 match_us_miss_30=0.0115 match_us_opaque=0.0002 restored=1 fenced=1

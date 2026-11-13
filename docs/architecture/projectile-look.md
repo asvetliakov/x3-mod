@@ -112,6 +112,10 @@ The rule is the batch's, by identity instead of by program:
   `bullet_reshade_lone_body` row per (body, blend), at most 16 a device, names the lone bodies.
 - **Body map.** Built only while the live TBullets row count equals the table's, one attempt per frame, off after 64;
   the lone path stays off until it is built.
+- **Classic bodies (2026-11-13).** A classic-material bullet body drawn alone (PAL / Kyon / Tug beams, Mass Driver,
+  Ion Disruptor, flak, PSG, mining; the `standard_lighting` DEFAULT pair, ONE / ONE) is re-shaded by the same law with a
+  ps_3_0 twin of the lone program (fade from COLOR0.a) through the same sequence and far flag, so it matches its batched
+  draw ([bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md) section 7, "Classic bodies").
 
 Evidence [M] (native fixture; ledger "FL 67 A"): recognition by body id 9 of 9 rows; the lone program equals the model
 with the fade in COLOR0.x (worst 0.018 of the tolerance); the route's path converts, flags (RT2.g 12.906 against

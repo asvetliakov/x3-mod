@@ -2630,6 +2630,7 @@ void muzzle_reshade_cases() {
     report("muzzle_reshade_cost_measured",
            ok && fence.p && best_calls < 50.0 && best_match < 10.0 && best_match_last < 10.0 && best_match_miss < 10.0, "");
 }
+#include "weapon_lone_classic_cases.h" // the bullet re-shade's lone classic path (lone_classic_cases)
 
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -5463,6 +5464,8 @@ int main(int argc, char** argv) {
     reshade_texture_cases();
     guard_next_section("reshade_lone");
     lone_reshade_cases();
+    guard_next_section("reshade_lone_classic");
+    lone_classic_cases();
     guard_next_section("muzzle_reshade");
     muzzle_reshade_cases();
     guard_next_section("end");

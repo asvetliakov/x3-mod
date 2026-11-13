@@ -1032,7 +1032,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     // the lone draws the route refused for a known differing state (a defect: the sequence normalises the four it
     // requires), lone_route_unknown those it refused on an unknown state; lone_zwrite .. lone_sepalpha the lone draws
     // drawn re-shaded whose application state the sequence normalised, per state (on the route the four, off it Z write
-    // only); lone_additive the re-shaded lone draws under ONE / ONE.
+    // only); lone_additive the re-shaded lone draws under ONE / ONE; lone_classic the re-shaded lone draws of a classic
+    // body (standard_lighting DEFAULT; in lone= too), lone_classic_flagged of them with the far flag, lone_classic_refused
+    // the blended classic draws of a mapped bullet body left vanilla, per reason (bullet_reshade_core.h ClassicRefused).
     if (x3m_bullet_reshade_armed) {
         const std::uint32_t scopes = x3m_bullet_scope_calls;
         const std::uint32_t* n = period_.reshade_lone_counts;
@@ -1042,7 +1044,8 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             "lone_failures=%lu lone_timed=%lu lone_us_per_draw=%.3f lone_flagged_native=%lu lone_refused=%lu "
             "lone_refused_why=off:%lu,scene:%lu,no_depth:%lu,no_variant:%lu,no_target:%lu,r32f_lane:%lu,write_masks:%lu,"
             "bind:%lu,screen_unrouted:%lu,failed:%lu lone_route_state=%lu lone_route_unknown=%lu lone_zwrite=%lu "
-            "lone_mask=%lu lone_srgb=%lu lone_sepalpha=%lu lone_additive=%lu",
+            "lone_mask=%lu lone_srgb=%lu lone_sepalpha=%lu lone_additive=%lu lone_classic=%lu lone_classic_flagged=%lu "
+            "lone_classic_refused=%lu lone_classic_refused_why=blend:%lu,program:%lu,unready:%lu,failed:%lu",
             frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(scopes - reshade_scopes_seen_),
             static_cast<unsigned long>(period_.reshade_draws), static_cast<unsigned long>(period_.reshade_additive),
             static_cast<unsigned long>(period_.reshade_flagged), static_cast<unsigned long>(period_.reshade_lone),
@@ -1061,7 +1064,13 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             static_cast<unsigned long>(n[lone_count_route_unknown]),
             static_cast<unsigned long>(n[lone_count_states + 0]), static_cast<unsigned long>(n[lone_count_states + 1]),
             static_cast<unsigned long>(n[lone_count_states + 2]), static_cast<unsigned long>(n[lone_count_states + 3]),
-            static_cast<unsigned long>(n[lone_count_additive]));
+            static_cast<unsigned long>(n[lone_count_additive]), static_cast<unsigned long>(n[lone_count_classic]),
+            static_cast<unsigned long>(n[lone_count_classic_flagged]),
+            static_cast<unsigned long>(n[lone_count_classic_refused]),
+            static_cast<unsigned long>(n[lone_count_classic_refused_why + 0]),
+            static_cast<unsigned long>(n[lone_count_classic_refused_why + 1]),
+            static_cast<unsigned long>(n[lone_count_classic_refused_why + 2]),
+            static_cast<unsigned long>(n[lone_count_classic_refused_why + 3]));
         reshade_scopes_seen_ = scopes;
     }
     // The muzzle flash re-shade's period row (muzzle-flash-look.md): muzzle draws matched (a listed body id under ONE /

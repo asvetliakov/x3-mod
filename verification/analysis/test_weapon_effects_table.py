@@ -22,6 +22,7 @@ OVERRIDES = ROOT / 'tools/effects/weapon_overrides.json'
 READER = r'''
 #include "weapon_effects_table.h"
 #include "bullet_reshade_core.h"
+#include "muzzle_reshade_core.h"
 #include <cstdio>
 #include <cstdlib>
 #include <string>
@@ -60,15 +61,40 @@ int main(int argc, char** argv) {
         const std::uint32_t failures_once = m.failures;
         const bool built = rs::build_body_map(m, ok ? &table : nullptr, 0x14, 0x10, read);
         const std::int32_t* row0 = rs::body_layout(m, &table, 0x200);
+        const std::int32_t* row1 = rs::body_layout(m, &table, 0x201);
+        const std::int32_t* row2 = rs::body_layout(m, &table, 0x202);
         const std::int32_t* unknown = rs::body_layout(m, &table, 0x7777);
         rs::BodyMap g; // every row read fails: final without layouts after body_map_retries builds
         unsigned builds = 0;
         failing = 1000000;
         while (!rs::build_body_map(g, ok ? &table : nullptr, 0x14, 0x10, read) && builds < 1000) ++builds;
         std::printf("early=%d after_fail=%d failures_once=%u built=%d state=%u reason=%s mapped=%u row0_head_u=%d "
-                    "unknown=%d giveup_builds=%u giveup_state=%u giveup_reason=%s\n",
+                    "unknown=%d giveup_builds=%u giveup_state=%u giveup_reason=%s row1_flags=%d row2_flags=%d\n",
                     int(early), int(after_fail), failures_once, int(built), unsigned(m.state), m.reason, m.count,
-                    row0 ? row0[1] : -1, unknown ? 1 : 0, builds + 1, unsigned(g.state), g.reason);
+                    row0 ? row0[1] : -1, unknown ? 1 : 0, builds + 1, unsigned(g.state), g.reason, row1 ? row1[0] : -1,
+                    row2 ? row2[0] : -1);
+        return 0;
+    }
+    if (argc > 1 && std::string(argv[1]) == "classic") { // the lone classic verdict (bullet_reshade_core.h)
+        namespace rs = x3m::weapon_effects::reshade;
+        const std::uint64_t sl = rs::classic_pixel_shaders[0], sl2s = rs::classic_pixel_shaders[1];
+        // the census's classic bullet bodies (verification/results/weapon-coverage-census/) against the muzzle list
+        const unsigned census[] = {10436, 300, 10458, 10385, 225, 517, 525, 526, 527, 10459, 10678};
+        unsigned overlap = 0;
+        for (unsigned id : census)
+            overlap += x3m::weapon_effects::muzzle_reshade::body_index(id) < x3m::weapon_effects::muzzle_reshade::body_count;
+        std::printf("muzzle_overlap=%u muzzle_bodies=%u ", overlap, x3m::weapon_effects::muzzle_reshade::body_count);
+        std::printf("vs=%016llx ps=%016llx ps2s=%016llx muzzle_vs_same=%d one_one=%u one_invsrccolor=%u srcalpha=%u "
+                    "srcalpha_one=%u wrong_ps=%u unready=%u zero_ps=%u\n",
+                    (unsigned long long)rs::classic_vertex_shader, (unsigned long long)sl, (unsigned long long)sl2s,
+                    int(rs::classic_vertex_shader == x3m::weapon_effects::muzzle_reshade::vertex_shader),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl2s, true),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 4, 1), sl, true),
+                    rs::classic_verdict(rs::lone_blend(true, 5, 6, 1), sl, true),
+                    rs::classic_verdict(rs::lone_blend(true, 5, 2, 1), sl2s, true),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), 0x7c83ed50c9894e44ull, true),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl, false),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), 0, true));
         return 0;
     }
     if (argc > 1 && std::string(argv[1]) == "fnv") { // the bytes on stdin: the production texture hashes
@@ -484,6 +510,43 @@ class WeaponEffectsTableReader(unittest.TestCase):
         self.assertEqual((f['early'], f['state'], f['reason']), ('1', '2', 'no_bullet_bodies'))
         f = run({'schema': 9})                                 # no table (a rejected file): final at once, off
         self.assertEqual((f['early'], f['state'], f['reason']), ('1', '2', 'no_table'))
+
+    def test_body_map_holds_the_classic_bodies(self):
+        # the lone classic path (bullet-draw-batch.md section 7 "Classic bodies"): tables.bullet_bodies keys every body
+        # string a row draws, the classic objects/v/NNNNN bodies included (v/10385 with its fin layout, v/00525 with no
+        # group: an entry with flags 0, still mapped), so the engine body id of a classic TBullets row is in the body map
+        # the lone path compares node +0x144 against; an unknown id is not
+        t = sample_table()
+        rows = t['tables']['bullets']['entries']
+        rows[0]['body'] = 'objects/effects/weapons/bullet_ls_alpha'
+        rows[1]['body'] = 'objects/v/10385'
+        rows[2]['body'] = 'objects/v/00525'
+        t['tables']['bullet_bodies'] = [
+            {'body': 'objects/effects/weapons/bullet_ls_alpha', 'head': {'u': 0.88319, 'v': 0.86715, 'r': 0.09988},
+             'fin': None},
+            {'body': 'objects/v/10385', 'head': None,
+             'fin': {'axis_v': 0.575, 'rim_v': 0.517, 'u0': 0.265, 'u1': 0.686}},
+            {'body': 'objects/v/00525', 'head': None, 'fin': None}]
+        out = subprocess.run([str(self.exe), 'bodymap'], input=json.dumps(t), capture_output=True, text=True)
+        f = dict(kv.split('=') for line in out.stdout.splitlines() for kv in line.split())
+        self.assertEqual((f['state'], f['mapped'], f['unknown']), ('1', '3', '0'))
+        self.assertEqual((f['row1_flags'], f['row2_flags']), ('2', '0'))   # fin only; no group (the identity layout)
+
+    def test_classic_verdict(self):
+        # bullet_reshade_core.h classic_verdict (MotionOutput::lone_bullet_match's classic branch): the gates are the
+        # standard_lighting DEFAULT VS (the muzzle re-shade's), its two pixel programs (FL 3_0 archive hashes), the
+        # lone_blend law's additive class; reasons 0 blend, 1 program, 2 unready, 4 = admitted
+        out = subprocess.run([str(self.exe), 'classic'], input='{}', capture_output=True, text=True)
+        f = dict(kv.split('=') for kv in out.stdout.split())
+        self.assertEqual((f['vs'], f['ps'], f['ps2s'], f['muzzle_vs_same']),
+                         ('494fe349b8bc12ec', 'ced7edef48059e84', '0d5848c8489b6630', '1'))
+        # only ADD ONE / ONE is admitted: ONE / INVSRCCOLOR (no classic bullet material) is refused `blend`, so a classic
+        # draw never reaches the additive route's conversion
+        self.assertEqual((f['one_one'], f['one_invsrccolor'], f['srcalpha'], f['srcalpha_one']), ('4', '0', '0', '0'))
+        self.assertEqual((f['wrong_ps'], f['unready'], f['zero_ps']), ('1', '2', '1'))
+        # no classic bullet body of the census is a muzzle body: the two routes on the one VS never share an id
+        self.assertEqual(f['muzzle_overlap'], '0')
+        self.assertGreaterEqual(int(f['muzzle_bodies']), 7)
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 4, 'tables': {}})

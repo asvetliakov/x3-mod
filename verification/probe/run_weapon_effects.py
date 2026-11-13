@@ -90,6 +90,12 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_muzzle_reshade_ps.hlsl', 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h',
                       'src/proxy/muzzle_reshade_route.h', 'src/proxy/muzzle_reshade_core.h',
                       'verification/probe/weapon_muzzle_reshade_fixture.h',
+                      # its lone classic path (section 7 "Classic bodies": the standard_lighting DEFAULT pair)
+                      'src/effects/weapon_bullet_reshade_classic_ps.hlsl',
+                      'src/effects/weapon_bullet_reshade_classic_flag_ps.hlsl',
+                      'src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h',
+                      'src/renderer/weapon_bullet_reshade_classic_flag_pixel_program_inc.h',
+                      'verification/probe/weapon_lone_classic_cases.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
                       'verification/probe/weapon_effects_fixture.cpp')
 PROGRAMS = {
@@ -110,7 +116,17 @@ PROGRAMS = {
                                            'src/renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h'),
     'weapon_muzzle_reshade_ps': ('verification/results/weapon-muzzle-reshade-pixel-program.json',
                                  'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h'),
+    'weapon_bullet_reshade_classic_ps': ('verification/results/weapon-bullet-reshade-classic-pixel-program.json',
+                                         'src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h'),
+    'weapon_bullet_reshade_classic_flag_ps': ('verification/results/weapon-bullet-reshade-classic-flag-pixel-program.json',
+                                              'src/renderer/weapon_bullet_reshade_classic_flag_pixel_program_inc.h'),
 }
+# The lone classic cases' game programs (weapon_lone_classic_cases.h): the FL 3_0 standard_lighting / standard_lighting2s
+# DEFAULT pass's VS and PS bytes, extracted at run time from the FL catalogues (root + addon2) into the untracked build
+# directory (copyrighted game bytes: never tracked); the fixture checks each file's FNV-1a 64 (the proxy's program hash).
+CLASSIC_PROGRAMS = {('standard_lighting', 'vs'): ('classic_vs.bin', '494fe349b8bc12ec'),
+                    ('standard_lighting', 'ps'): ('classic_ps.bin', 'ced7edef48059e84'),
+                    ('standard_lighting2s', 'ps'): ('classic_ps2s.bin', '0d5848c8489b6630')}
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
 SHELL_PINS = {'two_shells_1080_us': 61.3, 'two_shells_5120_us': 201.8, 'fullscreen_1080_us': 43.7,
@@ -158,6 +174,40 @@ def programs_current():
                              '(the re-shades: generate_bullet_reshade_program.py, generate_muzzle_reshade_program.py)')
         out[name] = {k: record[k] for k in ('source', 'word_count', 'bytecode_sha256', 'target')}
     return out
+
+
+def classic_programs(game):
+    """Write CLASSIC_PROGRAMS' bytes from the FL archive at `game` into BUILD (the fixture's working directory); the
+    record: per file its hash, dwords and whether it was written (absent: the fixture's lone classic cases fail)."""
+    out = {}
+    for _, (name, _) in CLASSIC_PROGRAMS.items():
+        (BUILD / name).unlink(missing_ok=True)
+    if not Path(game).is_dir():
+        return {'game': str(game), 'found': False}
+    sys.path.insert(0, str(ROOT / 'tools/analysis'))
+    from effect_passes import _archive_effects, parse_container, VERTEX_SHADER_STATE, PIXEL_SHADER_STATE
+    from shader_coverage_offline import _program
+    BUILD.mkdir(parents=True, exist_ok=True)
+    for _, path, data in _archive_effects(str(game), edition='fl'):
+        p = Path(path)
+        if p.parent.as_posix() != 'shader/3_0' or p.stem not in ('standard_lighting', 'standard_lighting2s'):
+            continue
+        c = parse_container(data)
+        for ti, (tech, tps) in enumerate(c['techniques']):
+            if tech != 'DEFAULT':
+                continue
+            for si, st in enumerate(tps[0][1]):
+                stage = 'vs' if st[0] == VERTEX_SHADER_STATE else 'ps' if st[0] == PIXEL_SHADER_STATE else None
+                want = CLASSIC_PROGRAMS.get((p.stem, stage))
+                prog = _program(data, c, ti, 0, si) if want else None
+                if not prog:
+                    continue
+                h = prog[0] if isinstance(prog[0], str) else f'{prog[0]:016x}'
+                _, start, _ = c['state_resources'][(ti, 0, si)]
+                if h == want[1]:
+                    (BUILD / want[0]).write_bytes(data[start:start + 4 * prog[1]])
+                out[want[0]] = {'hash': h, 'dwords': prog[1], 'written': h == want[1]}
+    return {'game': str(game), 'found': True, 'programs': out}
 
 
 def build():
@@ -520,7 +570,9 @@ def main():
                         help='with --dump-case muzzle: "size,core,gain,smooth" instead of the baked keys (a calibration '
                              'sweep; write it to a scratch --dump directory)')
     parser.add_argument('--game', default='/mnt/c/X3FL',
-                        help='with --dump-case muzzle: the FL installation whose catalogues give body 445')
+                        help='the FL installation whose catalogues give the lone classic cases\' standard_lighting '
+                             'DEFAULT programs (untracked copies in the build directory) and, with --dump-case muzzle, '
+                             'body 445')
     parser.add_argument('--reshade-edge', type=float, default=None,
                         help='with --dump-case reshade: an rs_edge override; only the re-shaded frames, suffixed -eNNN')
     parser.add_argument('--lab-assets', default=str(ROOT / 'verification/results/weapon-effects-lab/fl'),
@@ -551,6 +603,7 @@ def main():
         record['build'] = build()
     d3dx = native_host.GAME_DIR / 'd3dx9_37.dll' if native else bottle.game_dir() / 'd3dx9_37.dll'
     record['d3dx9_37_sha256'] = sha(d3dx) if Path(d3dx).is_file() else None
+    record['classic_programs'] = classic_programs(args.game)
     returncode, text = run_fixture(args)
     report = parse(text)
     if native:
