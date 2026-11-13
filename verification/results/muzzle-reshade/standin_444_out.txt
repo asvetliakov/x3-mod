@@ -1,0 +1,1 @@
+stand-in 444 (amplitude 0.7): cell mean luminance 0.1273 (real 0.1282); 90 % energy radius 64436 (real 59102); glow-weighted luminance at the real radius 0.2401 (real 0.2187); hue K (0.7893, 1.1122, 0.5090) (real 0.7865, 1.1132, 0.5072)

@@ -311,15 +311,22 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertEqual((rows['programs']['created'], rows['programs']['ps_major']), (1, 3))
         self.assertLessEqual(rows['model']['worst_rel'], 1.0)
         # three poses (review F1): the flash axis 25 degrees out of the screen plane, along the view ray, in the plane;
-        # the per-draw overlap grows from side-on to axis-on
-        for pose in ('flash_tilt', 'flash_axis', 'flash_side'):
-            row = rows[pose]
-            self.assertLessEqual(row['energy_ratio'], row['gain'], pose)
-            self.assertLessEqual(row['reshade_tenth_r'], row['size'] * row['vanilla_tenth_r'] + 1.0, pose)
-            self.assertGreaterEqual(row['reshade_peak'], 0.25 * row['gain'], pose)
-        self.assertLess(rows['flash_side']['overlap'], rows['flash_tilt']['overlap'])
-        self.assertLess(rows['flash_tilt']['overlap'], rows['flash_axis']['overlap'])
+        # the per-draw overlap grows from side-on to axis-on; body 445's stand-in (flash_*) and body 444's (flash444_*,
+        # its own bodies[] row: the list of every classic flash body)
+        for prefix, body in (('flash', 445), ('flash444', 444)):
+            for pose in ('tilt', 'axis', 'side'):
+                row = rows[f'{prefix}_{pose}']
+                self.assertEqual(row['body'], body, pose)
+                self.assertLessEqual(row['energy_ratio'], row['gain'], (prefix, pose))
+                self.assertLessEqual(row['reshade_tenth_r'], row['size'] * row['vanilla_tenth_r'] + 1.0, (prefix, pose))
+                self.assertGreaterEqual(row['reshade_peak'], 0.25 * row['gain'], (prefix, pose))
+                self.assertLessEqual(row['reshade_peak_tenth_r'], row['vanilla_peak_tenth_r'], (prefix, pose))
+            self.assertLess(rows[f'{prefix}_side']['overlap'], rows[f'{prefix}_tilt']['overlap'])
+            self.assertLess(rows[f'{prefix}_tilt']['overlap'], rows[f'{prefix}_axis']['overlap'])
+        self.assertNotEqual(rows['flash_tilt']['overlap'], rows['flash444_tilt']['overlap'])
         self.assertEqual(rows['cost']['fenced'], 1)
+        self.assertEqual(rows['cost']['bodies'], 7)
+        self.assertLess(max(rows['cost']['match_last_us_per_draw'], rows['cost']['match_miss_us_per_draw']), 1.0)
 
     def test_passed_with_the_step_gates(self):
         r = self.record

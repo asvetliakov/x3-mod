@@ -2259,14 +2259,16 @@ void reshade_texture_cases() {
 // MotionOutput runs; MotionOutput itself is not instantiated here): our program and the draw's c192..c195 while drawing,
 // the game's program and the application's c192..c195 after; (d) the stand-in flash (50 fanned quads, procedural streak)
 // at the scale peak, 30 m, 1920x1080 under ONE / ONE, at three poses (the flash axis 25 degrees out of the screen plane,
-// along the view ray, in the screen plane: the per-draw overlap's range): re-shaded energy <= mz_gain x vanilla's, the
+// along the view ray, in the screen plane: the per-draw overlap's range), then the same for body 444's stand-in (its
+// four-plane cross and tex/true/376 cell, its own bodies[] row; rows flash444_*): re-shaded energy <= mz_gain x vanilla's, the
 // extent at 0.1 linear (a tenth of scene white) <= mz_size x vanilla's + 1 px and the flash lit (peak >= mz_gain / 4)
 // at each
 // (FL 65 A baked no white core, mz_core 0, so the earlier extent at scene white is reported only, as is the extent at a
 // tenth of each image's own peak); (e) the cost per draw: the four calls
 // alone, the 100-triangle
 // draw loop with and without them (best of 7 runs of 2000), the match (TLS lookup, the 4-byte validated node read
-// through the production engine_memory::read, the body list) and the per-draw c192 (draw_constants).
+// through the production engine_memory::read, the body list) and the per-draw c192 (draw_constants): for the first
+// listed body (445), the last (every compare) and an unlisted id (12009: every compare, no c192).
 // MUZZLE_RESHADE rows; never the game's bytes.
 void muzzle_reshade_cases() {
     namespace mf = muzzle_fx;
@@ -2399,14 +2401,18 @@ void muzzle_reshade_cases() {
         report("muzzle_reshade_standin_vanilla_is_emissive_law", ok && worst_vanilla <= 1.f, "");
     }
     // (c), (d), (e) on a 1920x1080 FP16 target with the stand-in flash
-    Com<IDirect3DTexture9> rt, tex;
+    Com<IDirect3DTexture9> rt, tex, tex444;
     Com<IDirect3DSurface9> rt_s, sys;
     Com<IDirect3DVertexBuffer9> vb;
-    unsigned side = 0;
+    unsigned side = 0, side444 = 0;
     const std::vector<unsigned char> texels = mf::standin_texture(&side);
     tex.p = rf::make_texture(dev, texels.data(), side);
     const mf::Mesh mesh = mf::standin_mesh();
-    bool ok = tex.p && black_light.p &&
+    const std::vector<unsigned char> texels444 = mf::standin_texture_444(&side444);
+    tex444.p = rf::make_texture(dev, texels444.data(), side444);
+    const mf::Mesh mesh444 = mf::standin_mesh_444();
+    const unsigned body444 = mz::body_index(444u);
+    bool ok = tex.p && tex444.p && body444 < mz::body_count && black_light.p &&
               SUCCEEDED(dev->CreateTexture(1920, 1080, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt.p, nullptr)) &&
               SUCCEEDED(rt.p->GetSurfaceLevel(0, &rt_s.p)) &&
               SUCCEEDED(dev->CreateOffscreenPlainSurface(1920, 1080, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys.p, nullptr)) &&
@@ -2417,6 +2423,8 @@ void muzzle_reshade_cases() {
     float rows[36]{}, plain[16];
     std::memcpy(plain, base, sizeof plain);
     const UINT prims = mesh.n / 3;
+    float base444[16];
+    mz::constants(mz::bodies[body444 < mz::body_count ? body444 : 0], tune, base444);
     float clip[16];
     rf::clip_rows(1.6f, 1.6f * 1920.f / 1080.f, clip);
     IDirect3DSurface9* old_rt = nullptr;
@@ -2444,22 +2452,38 @@ void muzzle_reshade_cases() {
     } poses[3] = {{"tilt", 0.4363f}, {"axis", 1.5707963f}, {"side", 0.f}};
     bool restored_all = true, getters_ok = true, during_ok = true, energy_ok = true, extent_ok = true;
     float tilt_rows[36]{};
-    for (unsigned pose = 0; pose < 3 && ok; ++pose) {
+    // the subjects: body 445's stand-in (bodies[0]; rows flash_*) and body 444's (rows flash444_*), the same poses
+    // and gates, each through its own bodies[] row. 444's four planes contain its axis: with the camera on that line
+    // (the axis pose at x 0) every plane is edge-on and vanilla draws nothing (sum 0.14 against ~4000 tilted), so its
+    // gun sits 3 m beside the view line, as a chase view's camera sits beside the gun's (cos^2 0.99 at the axis pose)
+    const struct {
+        const char* prefix;
+        const mf::Mesh* mesh;
+        IDirect3DTexture9* tex;
+        const mz::Body* body;
+        const float* base;
+        float x;
+    } subjects[2] = {{"flash", &mesh, tex.p, &body, base, 0.f},
+                     {"flash444", &mesh444, tex444.p, &mz::bodies[body444 < mz::body_count ? body444 : 0], base444, 3.f}};
+    for (unsigned item = 0; item < 2 * 3 && ok; ++item) {
+        const unsigned subject = item / 3, pose = item % 3;
+        const auto& sub = subjects[subject];
+        const UINT sub_prims = sub.mesh->n / 3;
         void* p = nullptr;
         ok = SUCCEEDED(vb.p->Lock(0, 0, &p, 0));
         if (ok) {
-            const float centre[3] = {0.f, 0.f, 30.f};
-            mf::place(mesh, centre, mf::peak_scale, poses[pose].yaw, 0.3491f, static_cast<mf::Vertex*>(p), rows);
+            const float centre[3] = {sub.x, 0.f, 30.f};
+            mf::place(*sub.mesh, centre, mf::peak_scale, poses[pose].yaw, 0.3491f, static_cast<mf::Vertex*>(p), rows);
             vb.p->Unlock();
         }
-        std::memcpy(plain, base, sizeof plain);
-        ok = ok && mz::draw_constants(body, rows, plain);
-        if (!pose) std::memcpy(tilt_rows, rows, sizeof rows);
+        std::memcpy(plain, sub.base, sizeof plain);
+        ok = ok && mz::draw_constants(*sub.body, rows, plain);
+        if (!subject && !pose) std::memcpy(tilt_rows, rows, sizeof rows);
         mf::Figures figs[2];
         for (unsigned which = 0; which < 2 && ok; ++which) {
             dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
             dev->BeginScene();
-            mf::bind_pass(dev, vs.p, decl.p, tex.p, black_light.p, clip, false);
+            mf::bind_pass(dev, vs.p, decl.p, sub.tex, black_light.p, clip, false);
             dev->SetStreamSource(0, vb.p, 0, sizeof(mf::Vertex));
             dev->SetPixelShader(vanilla.p);
             dev->SetPixelShaderConstantF(mz::constant_register, app, mz::constant_count);
@@ -2474,7 +2498,7 @@ void muzzle_reshade_cases() {
                             SUCCEEDED(dev->GetPixelShaderConstantF(mz::constant_register, got_c, mz::constant_count)) &&
                             !std::memcmp(got_c, plain, sizeof got_c);
                 if (bound) bound->Release();
-                if (SUCCEEDED(hr)) hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, prims);
+                if (SUCCEEDED(hr)) hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, sub_prims);
                 restored_all = restored_all && SUCCEEDED(mz::end(ops, applied, vanilla.p, app)) && SUCCEEDED(hr);
                 bound = nullptr;
                 getters_ok = getters_ok && SUCCEEDED(dev->GetPixelShader(&bound)) && bound == vanilla.p &&
@@ -2482,21 +2506,26 @@ void muzzle_reshade_cases() {
                              !std::memcmp(got_c, app, sizeof got_c);
                 if (bound) bound->Release();
             } else
-                hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, prims);
+                hr = dev->DrawPrimitive(D3DPT_TRIANGLELIST, 0, sub_prims);
             dev->EndScene();
             ok = SUCCEEDED(hr) && read_image();
             if (ok) figs[which] = mf::figures(image.data(), 1920, 1080, 0.f);
         }
         const double energy = figs[0].sum > 0 ? figs[1].sum / figs[0].sum : 0.0;
         energy_ok = energy_ok && ok && figs[0].sum > 0.0 && energy <= double(gain);
-        extent_ok = extent_ok && ok && figs[1].peak >= 0.25f * gain && figs[1].tenth_r <= size * figs[0].tenth_r + 1.f;
+        // the extent at 0.1 linear binds only where the re-shade reaches 0.1: at the baked keys 445's stand-in does
+        // (9.3 px), 444's does not (its peak 0.06..0.08), so the extent at a tenth of each image's own peak no wider
+        // than vanilla's (the dump's gate) binds for both
+        extent_ok = extent_ok && ok && figs[1].peak >= 0.25f * gain && figs[1].tenth_r <= size * figs[0].tenth_r + 1.f &&
+                    figs[1].peak_tenth_r <= figs[0].peak_tenth_r;
         // the overlap the draw used: c194.x = gain / N
         const double overlap = plain[8] > 0.f ? double(plain[10]) / double(plain[8]) : 0.0;
-        std::printf("MUZZLE_RESHADE case=flash_%s distance_m=30 yaw_deg=%.1f scale=%.3f overlap=%.3f vanilla_sum=%.2f "
+        std::printf("MUZZLE_RESHADE case=%s_%s body=%u distance_m=30 yaw_deg=%.1f scale=%.3f overlap=%.3f vanilla_sum=%.2f "
                     "reshade_sum=%.2f energy_ratio=%.3f vanilla_peak=%.4f reshade_peak=%.4f vanilla_white_r=%.1f "
                     "reshade_white_r=%.1f vanilla_tenth_r=%.1f reshade_tenth_r=%.1f vanilla_peak_tenth_r=%.1f "
                     "reshade_peak_tenth_r=%.1f size=%.3g gain=%.3g core=%.3g smooth=%.3g\n",
-                    poses[pose].name, double(poses[pose].yaw) * 57.29578, double(mf::peak_scale), overlap, figs[0].sum,
+                    sub.prefix, poses[pose].name, unsigned(sub.body->id), double(poses[pose].yaw) * 57.29578,
+                    double(mf::peak_scale), overlap, figs[0].sum,
                     figs[1].sum, energy, double(figs[0].peak), double(figs[1].peak), double(figs[0].white_r),
                     double(figs[1].white_r), double(figs[0].tenth_r), double(figs[1].tenth_r),
                     double(figs[0].peak_tenth_r), double(figs[1].peak_tenth_r), double(size), double(gain),
@@ -2507,7 +2536,8 @@ void muzzle_reshade_cases() {
     ok = ok && mz::draw_constants(body, rows, plain);
     report("muzzle_reshade_route_plain_binds_and_restores", ok && during_ok && restored_all && getters_ok, "");
     report("muzzle_reshade_energy_within_gain", ok && energy_ok, "");
-    // the design's gate is the extent at 0.1 linear: lit, and within mz_size x vanilla's + 1 px
+    // the design's gate is the extent at 0.1 linear: lit, and within mz_size x vanilla's + 1 px; and the extent at a
+    // tenth of its own peak within vanilla's (the one extent gate that binds for 444's stand-in at the baked keys)
     report("muzzle_reshade_extent_within_size", ok && extent_ok, "");
     // (e) the cost: CPU per draw of the four calls alone, the draw loop with and without them, the match, the c192
     LARGE_INTEGER freq{}, a{}, b{};
@@ -2554,30 +2584,36 @@ void muzzle_reshade_cases() {
     device_guard("muzzle_reshade_cost");
     // the match and the draw's c192: a TLS slot read (the scope's top), the node's 4-byte body id through
     // engine_memory::read, the list, then draw_constants from the shadowed rows into the draw's block
+    double best_match_last = 1e30, best_match_miss = 1e30;
     {
         std::vector<std::uint32_t> node(0x160 / 4, 0u);
-        node[mz::node_body_offset / 4] = 445u;
         const DWORD slot = TlsAlloc();
         TlsSetValue(slot, node.data());
         x3m::engine_memory::next_frame();
-        unsigned hits = 0;
         float block[16];
-        for (unsigned run = 0; run < runs; ++run) {
-            QueryPerformanceCounter(&a);
-            for (unsigned i = 0; i < draws; ++i) {
-                const auto at = reinterpret_cast<std::uintptr_t>(TlsGetValue(slot));
-                std::uint32_t id = 0;
-                if (at && x3m::engine_memory::read(at + mz::node_body_offset, &id, sizeof id) &&
-                    mz::body_index(id) < mz::body_count) {
-                    std::memcpy(block, base, sizeof block);
-                    if (mz::draw_constants(mz::bodies[mz::body_index(id)], rows, block)) ++hits;
+        // the first listed id (445), the last (every compare) and an unlisted one (12009, PRG: every compare, no c192)
+        const std::uint32_t ids[3] = {mz::bodies[0].id, mz::bodies[mz::body_count - 1].id, 12009u};
+        double* best[3] = {&best_match, &best_match_last, &best_match_miss};
+        for (unsigned which = 0; which < 3; ++which) {
+            node[mz::node_body_offset / 4] = ids[which];
+            unsigned hits = 0;
+            for (unsigned run = 0; run < runs; ++run) {
+                QueryPerformanceCounter(&a);
+                for (unsigned i = 0; i < draws; ++i) {
+                    const auto at = reinterpret_cast<std::uintptr_t>(TlsGetValue(slot));
+                    std::uint32_t id = 0;
+                    if (at && x3m::engine_memory::read(at + mz::node_body_offset, &id, sizeof id) &&
+                        mz::body_index(id) < mz::body_count) {
+                        std::memcpy(block, base, sizeof block);
+                        if (mz::draw_constants(mz::bodies[mz::body_index(id)], rows, block)) ++hits;
+                    }
                 }
+                QueryPerformanceCounter(&b);
+                *best[which] = std::min(*best[which], ticks_us(a, b, freq) / draws);
             }
-            QueryPerformanceCounter(&b);
-            best_match = std::min(best_match, ticks_us(a, b, freq) / draws);
+            ok = ok && hits == (which < 2 ? draws * runs : 0u);
         }
         TlsFree(slot);
-        ok = ok && hits == draws * runs;
     }
     dev->SetRenderTarget(0, old_rt);
     if (old_rt) old_rt->Release();
@@ -2587,10 +2623,12 @@ void muzzle_reshade_cases() {
     dev->SetTexture(2, nullptr);
     dev->SetStreamSource(0, nullptr, 0, 0);
     std::printf("MUZZLE_RESHADE case=cost draws=%u runs=%u primitives=%u calls_us_per_draw=%.3f draw_us_vanilla=%.3f "
-                "draw_us_reshaded=%.3f substitution_us_per_draw=%.3f match_us_per_draw=%.3f fenced=%u\n",
+                "draw_us_reshaded=%.3f substitution_us_per_draw=%.3f match_us_per_draw=%.3f bodies=%u "
+                "match_last_us_per_draw=%.3f match_miss_us_per_draw=%.3f fenced=%u\n",
                 draws, runs, prims, best_calls, best_vanilla, best_reshaded, best_reshaded - best_vanilla, best_match,
-                unsigned(fence.p != nullptr));
-    report("muzzle_reshade_cost_measured", ok && fence.p && best_calls < 50.0 && best_match < 10.0, "");
+                mz::body_count, best_match_last, best_match_miss, unsigned(fence.p != nullptr));
+    report("muzzle_reshade_cost_measured",
+           ok && fence.p && best_calls < 50.0 && best_match < 10.0 && best_match_last < 10.0 && best_match_miss < 10.0, "");
 }
 
 int main(int argc, char** argv) {

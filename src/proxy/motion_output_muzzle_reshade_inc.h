@@ -1,6 +1,7 @@
 // The muzzle flash re-shade (included by motion_output.cpp inside namespace x3m; FL only; X3M_WEAPON_EFFECTS=reshade;
 // docs/architecture/muzzle-flash-look.md, docs/reverse-engineering/fl/muzzle-flash-draw.md). The engine draws its own
-// flash (scene 04251, body 445: 50 textured quads, ONE / ONE, Z test, no Z write) through the material submit, inside
+// flash (a CUT scene's classic body, e.g. scene 04251, body 445: 50 textured quads, ONE / ONE, Z test, no Z write;
+// the seven bodies of muzzle_reshade_core.h) through the material submit, inside
 // the FL object-trace scope (object_trace_fl.cpp, seam 0x0e7142 -> 0x0e0f30). A draw whose bound vertex shader is the
 // standard_lighting DEFAULT one (shadow_.vs_muzzle, the ABI our program reads), whose blend is ADD ONE / ONE and whose
 // scope node's body id (node +0x144, one 4-byte validated read) is in muzzle_reshade_core.h's list is drawn with our
