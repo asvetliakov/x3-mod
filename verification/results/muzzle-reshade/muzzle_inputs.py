@@ -54,14 +54,24 @@ def pairs(game):
               f' {len(paths)} effects, e.g. {sorted(paths)[0]}')
 
 
-def body445(game):
+def body_mesh(game, body):
+    """A classic body's textured triangles (objects/v/<body>.bod of the FL catalogues): the vertex block up to the
+    `-1; -1; -1;` terminator (any spacing), the faces that carry a UV set (`<mat>; i; j; k; <flags>; 1; u v u v u v`;
+    the untextured `-9` faces and the parts' dummies drop out), and the MATERIAL3/5 texture id. Returns (source,
+    vertices, faces, texture id)."""
     import fl_muzzle_flash_census as census
     a = census.mount(game, 'fl')
-    text, src = census.text(a, 'objects/v/00445.bod')
-    coords, rest = text.split('-1;  -1;   -1;', 1)
+    text, src = census.text(a, 'objects/v/%05d.bod' % body)
+    coords, rest = re.split(r'^\s*-1;\s*-1;\s*-1;', text, maxsplit=1, flags=re.M)
     verts = [tuple(int(x) for x in m) for m in
              re.findall(r'^\s*(-?\d+);\s*(-?\d+);\s*(-?\d+);\s*/\d+', coords, re.M)]
     faces = re.findall(r'^\s*(\d+);\s*(\d+);\s*(\d+);\s*(\d+);\s*-?\d+;\s*1;\s*([-\d.;\s]+?)/\((\d+)\)', rest, re.M)
+    tex = re.search(r'^\s*MATERIAL[35]:\s*\d+;\s*(\d+);', text, re.M)
+    return src, verts, faces, int(tex.group(1)) if tex else None
+
+
+def body445(game, body=445):
+    src, verts, faces, _ = body_mesh(game, body)
     us, vs, gun, far = [], [], [], []
     for f in faces:
         idx = [int(f[1]), int(f[2]), int(f[3])]
@@ -71,12 +81,13 @@ def body445(game):
             us.append(u)
             vs.append(v)
             (gun if v > 0.25 else far).append(verts[idx[k]][2])
-    print(f'body 445 ({src}): {len(verts)} vertices, {len(faces)} textured faces')
+    print(f'body {body} ({src}): {len(verts)} vertices, {len(faces)} textured faces')
     print(f'  UV rectangle u {min(us):.6f}..{max(us):.6f}, v {min(vs):.6f}..{max(vs):.6f}; '
           f'centre ({(min(us) + max(us)) / 2:.7f}, {(min(vs) + max(vs)) / 2:.7f}), '
           f'half extents ({(max(us) - min(us)) / 2:.7f}, {(max(vs) - min(vs)) / 2:.7f})')
-    print(f'  model z of the v ~0.51 edge: mean {sum(gun) / len(gun):.0f} (range {min(gun)}..{max(gun)}); '
-          f'of the v ~0 edge: mean {sum(far) / len(far):.0f} (range {min(far)}..{max(far)}): the v ~0.51 edge is at the gun')
+    if body == 445:
+        print(f'  model z of the v ~0.51 edge: mean {sum(gun) / len(gun):.0f} (range {min(gun)}..{max(gun)}); '
+              f'of the v ~0 edge: mean {sum(far) / len(far):.0f} (range {min(far)}..{max(far)}): the v ~0.51 edge is at the gun')
     tris = []
     for f in faces:
         idx = [int(f[1]), int(f[2]), int(f[3])]
@@ -195,6 +206,7 @@ def overlap(tris, radius):
           f'crosses {counts.mean():.1f} quads within 0.5 x the radius on average over {n} directions (min {counts.min()}, '
           f'max {counts.max()}); summed glow at the default size: mean {glows.mean():.2f} (p10 {np.percentile(glows, 10):.2f}, '
           f'p90 {np.percentile(glows, 90):.2f})')
+    return float(glows.mean())
 
 
 def cell(png, rect):
@@ -236,7 +248,7 @@ def cell(png, rect):
         return x * x * (3 - 2 * x)
     best = None
     for r0 in np.arange(0.0, 0.9, 0.01):
-        for a in np.arange(0.10, 0.25, 0.002):
+        for a in np.arange(0.02, 1.0, 0.002):
             fit = a * (1 - smooth((centres - r0) / (1 - r0)))
             err = float(((fit - means) ** 2)[centres <= 1.1].sum())
             if best is None or err < best[0]:
@@ -253,6 +265,8 @@ def cell(png, rect):
           f'({k[0]:.4f}, {k[1]:.4f}, {k[2]:.4f})')
     sd = [float(L[inside & (R >= x) & (R < x + 0.1)].std()) for x in (0.0, 0.3, 0.6)]
     print(f'texel noise: luminance sd in r bands 0-0.1 {sd[0]:.3f}, 0.3-0.4 {sd[1]:.3f}, 0.6-0.7 {sd[2]:.3f}')
+    return {'mean': float(a), 'centre': float(centre_mean), 'hue': tuple(float(x) for x in k), 'r0': float(r0),
+            'max': float(Li.max())}
 
 
 def main():

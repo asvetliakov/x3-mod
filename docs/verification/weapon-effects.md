@@ -4454,3 +4454,74 @@ batch 469 bolts re-shaded 42.7 / 43.1, lone substitution 0.384 / 0.356, muzzle s
 record (sub-microsecond rows; none of the re-shade code changed); every non-timing metric row of the re-shade,
 muzzle re-shade and lathe cases is identical to the 04d518bf3 record [M]. Script:
 `python3 -I verification/results/native-windows/weapon-effects/custom_stage_removal.py`.
+
+## Muzzle re-shade: every classic flash body (2026-11-13)
+
+The muzzle list in `src/proxy/muzzle_reshade_core.h` grows from {445} to the seven classic standard_lighting flash
+bodies of the census (most frequent first: 445, 446, 444, 450, 447, 314, 10463; 12009, PRG, is effects.fx and stays
+out; the route checks only the VS hash, so the one- and two-sided DEFAULT programs both pass). Constants
+([`muzzle_bodies.py`](../../verification/results/muzzle-reshade/muzzle_bodies.py), `muzzle_bodies_out.txt`; 445's
+`muzzle_inputs.py` functions on each body's own mesh and atlas cell, the parser generalised to the MATERIAL5 /
+single-space body files with 445's output byte-identical). 445's row is unchanged. For the six added bodies the
+grain and the energy are split (review 2026-11-13): lit radius and hue measured as 445's [M]; `mean` is the body's own
+glow-weighted texel luminance at the baked size [M], so the modulator keeps the texels' grain at full strength (its
+glow-weighted value 1; at the brightest texel 3.19 / 2.49 / 2.43 / 19.11 / 1.03 / 2.68 for 444 / 446 / 447 / 450 / 314
+/ 10463 against 445's 3.75 at `mz_smooth` 0.1; 445's radial-fit method fails on the strip cells, whose centre is dark);
+the overlap carries the energy [I, not rendered]: 445's rendered fit × the body's ray sum through the gun over 445's
+9.14 (444 4.00, 446 23.44, 447 23.41, 450 7.49, 314 8.09, 10463 5.11) × 1 / 0.2547 (445's glow-weighted modulator at
+the baked smooth over the body's 1), so gain and core over N sum to 445's luminance at the gun at the baked keys; at
+`mz_smooth` 1 the added bodies draw 3.93× dimmer than 445, at 0 1.48× brighter. A first variant anchored `mean` to
+445's modulator instead and flattened the grain (modulator max 0.26 on 314); replaced before review closed.
+
+| Body | mean | overlap N0, N1 [I] | modulator at the brightest texel |
+| --- | --- | --- | --- |
+| 445 | 0.166 | 8.8915, 1.3111 [M] | 3.75 |
+| 446 | 0.3702 | 89.5103, 13.1988 | 2.49 |
+| 444 | 0.2187 | 15.2693, 2.2515 | 3.19 |
+| 450 | 0.0473 | 28.6190, 4.2200 | 19.11 |
+| 447 | 0.3804 | 89.4113, 13.1842 | 2.43 |
+| 314 | 0.9699 | 30.9032, 4.5568 | 1.03 |
+| 10463 | 0.0385 | 19.5086, 2.8766 | 2.68 |
+
+Native fixture: a second subject, body 444's four-plane cross (v 0.513..0.964 on the 0 / 90° planes, 0.534..0.985 on
+the diagonals, as the real quads) and a procedural tex/true/376 flame tongue (`standin_444.py`: cell mean 0.127
+against the real 0.128, 90 % radius 64436 against 59102, glow-weighted luminance 0.240 against 0.219), its own
+bodies[] row, three poses, the same gates; its gun sits 3 m beside the view line, because with the camera on the axis
+line all four planes are edge-on and the vanilla flash itself draws nothing (sum 0.14 against about 4000 tilted). At
+the baked keys 444's re-shade peaks below 0.1 linear, so the extent at 0.1 binds nothing for it; the extent at a tenth
+of each image's own peak no wider than vanilla's (the dump's gate) is now gated in the fixture for both subjects and
+binds (444: 13.3 / 6.3 / 13.5 px against vanilla's 44.3 / 17.5 / 46.7). Host test
+`test_weapon_effects_muzzle_bodies.py` (ids unique and the census set, unlisted ids miss, constants in range, hue at
+luminance 1, rows equal to the producing script's, atlases resolved); `test_weapon_effects_hook.py` gates the 444 rows,
+the own-peak extent and the cost's new fields. The HLSL's description of `mean` was corrected (comment only): the
+program record's source hash was regenerated, bytecode `d1f7d545…` and the header unchanged; the record's hash of
+`generate_weapon_effects_programs.py` was stale since the cleanup and is refreshed with it.
+
+| | before: the parent record (`reshade` `93dc5e9b3`, `summary.json`) | after (7 bodies) |
+| --- | --- | --- |
+| D3D fixture | 105 PASS | 105 PASS |
+| match + c192, first listed (445) | 0.124 µs | 0.069 µs |
+| match + c192, last listed (10463) | (1 compare) | 0.083 µs |
+| match, unlisted id (12009) | (1 compare, not measured) | 0.010 µs |
+| substitution per draw (100 triangles) | 0.232 µs | 0.206 µs |
+| 444 subject: energy ratio / peak (lit gate ≥ 0.0375), tilt / axis / side | | 0.006 / 0.097, 0.006 / 0.069, 0.006 / 0.099 |
+
+The six extra compares cost 0.014 µs per draw on a last-listed hit (0.083 against 0.069, same run); a classic additive
+draw of an unlisted body pays 0.010 µs; the parent's 0.124 against this run's 0.069 on the same one-compare path is
+run-to-run spread.
+
+Evidence [M]: `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py sh -c 'taskkill.exe /F /IM Bubbles.scr;
+python3 verification/probe/run_weapon_effects.py --host native'` (the screensaver killed inside the lock: it restarted
+during a 90 s lock wait and one earlier attempt failed `device`): D3D 105, AP hook 145, FL hook 62 PASS; host
+`test_weapon_effects_muzzle_bodies`, `_hook`, `_projectile_tune` 31 OK; `generate_muzzle_reshade_program.py` PASS (208
+words); FL `build-muzzle-fl` (RelWithDebInfo, mingw-i686,
+`X3M_GNU_PE_NO_SAFESEH`, `X3M_DEV_TUNING`; `--clean-first` on the merged tree, then incremental for the constants)
+0 warnings, d3d9.dll sha256 prefix `2ec24d5dacef7c0f`, `check_no_x87 --edition fl` PASS (1085 functions, 0
+violations); AP `build-muzzle-ap` 0 warnings (`d4e4bf68505d15d8`). Worktree merged with `reshade` `93dc5e9b3`, uncommitted at the records.
+
+Open: (1) Effects row 185 (FBL) also spawns body 447 directly as a BODY element with FADEOUT; the re-shade replaces the
+emissive colour, so if that fade runs through COLOR0.rgb the element no longer fades (not checked). (2) The census lists
+body 314 in scene 749 as well (an addon2 map-tool export, not a muzzle row); whether a 314 there draws through this
+path and gets re-shaded is not checked. (3) Body 582 (scene 04274, Effects rows 53, 69, 70, 180: the muzzle of TBullets 31 and the
+impacts of TBullets 11, 20, 21, 28; MATERIAL3 tex 380, DESTINATIONBLEND | 2SIDED) is a classic body outside the brief's list and is not added. Not flown:
+the six added bodies' looks rest on the fixture's 444 stand-in and the offline figures; their overlap is inferred.

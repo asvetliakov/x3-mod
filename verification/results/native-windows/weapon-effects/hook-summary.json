@@ -19,15 +19,9 @@
     "src/proxy/weapon_effects_death_sites.h"
   ],
   "source": {
-    "commit": "04d518bf38e5fa70eec7721b26896d6201f6ec29-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_core.h",
-      "src/proxy/weapon_effects_hook.cpp",
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "src/proxy/weapon_effects_table.h"
-    ],
+    "commit": "93dc5e9b3f3d302ce23e1257cec98788fb798926-dirty",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture.cpp": "f9bbda2b5e94804232155f236788cd9fa86d651603c4dd8e5d7af1e08d13d92c",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
@@ -166,7 +160,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "005a5e3cd5d122544476eecef2f10927aaec3635c5b8b04093921956d41b906c"
+    "executable_sha256": "4bd1c0f13d9bb6d269d216aeb03454f03ed5fcd7eea50cbcd0e759ce0a9abb9e"
   },
   "host": {
     "name": "native-windows",
@@ -926,8 +920,8 @@
     "eflags_callee": "00000ec7",
     "esp_frame": "0088f780",
     "esp_callee": "0088f774",
-    "return": "00fa6d8a",
-    "site": "00fa6d85"
+    "return": "010e6d8a",
+    "site": "010e6d85"
   },
   "stack_depth": {
     "bytes": 237,
@@ -1254,9 +1248,9 @@
   "event_cost": {
     "events": 50,
     "shields": 6,
-    "best_us": 17.4,
-    "median_us": 17.5,
-    "worst_us": 17.7,
+    "best_us": 17.7,
+    "median_us": 17.8,
+    "worst_us": 18.7,
     "target_us": 30
   },
   "overflow": {
@@ -1272,9 +1266,9 @@
   "event_cost_full": {
     "events": 50,
     "capacity": 1024,
-    "best_us": 57.7,
-    "median_us": 57.9,
-    "worst_us": 59.0,
+    "best_us": 57.8,
+    "median_us": 58.5,
+    "worst_us": 60.2,
     "target_us": 150
   },
   "death_forward_state": {
@@ -1282,8 +1276,8 @@
     "eflags_callee": "00000ac7",
     "esp_frame": "005eacf8",
     "esp_callee": "005eace8",
-    "return": "00fa7cb7",
-    "site": "00fa7cb2",
+    "return": "010e7cb7",
+    "site": "010e7cb2",
     "ecx": "00a4a4a4",
     "edx": "00c0ffee"
   },

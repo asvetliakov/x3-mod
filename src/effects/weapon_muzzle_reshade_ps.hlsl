@@ -10,7 +10,9 @@
 // falloff in the cell's UV drew one lobe per quad):
 //   d      = |P - origin| / (vanilla's lit radius x scale x mz_size), P - origin = (camera - origin) - TEXCOORD1  (c192)
 //   g      = (1 - d^2)^2 for d < 1, else 0
-//   t      = lerp(1, texel luminance / the cell's centre luminance, 1 - mz_smooth)                              (c193)
+//   t      = lerp(1, texel luminance / mean, 1 - mz_smooth)                                                      (c193)
+//            mean: the body's texel reference (muzzle_reshade_core.h bodies[]: 445 its cell's centre luminance, the
+//            others their glow-weighted texel luminance); each body's overlap N divides gain and core (c194.xy)
 //   rgb    = hue x mz_gain x g x t + lerp(hue, white, 0.5) x mz_core x g^4                                       (c194, c195)
 // The hue is at luminance 1, so mz_gain and mz_core are luminances; the core reaches scene white where the quads
 // overlap at the gun. Alpha is vanilla's: lerp(texel.a, light.a, g_EnableGlow) x COLOR0.a.
