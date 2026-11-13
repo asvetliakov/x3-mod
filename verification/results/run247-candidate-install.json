@@ -1,0 +1,41 @@
+{
+ "run": 247,
+ "edition": "AP (Mayhem tree, C:\\X3)",
+ "what": "weapon effects re-shade on AP: the bullet re-shade (batch INSTANCE_BULLETS swap, effects lone route, lone classic route) and the muzzle re-shade compiled on both editions behind a new AP hook site (the batch scope stub at 0x0046d0a7, cdecl four-word contract, all-or-none with the impact site), six Mayhem flash bodies 12012/12013/12014/12016/12017/12018 measured, the table regenerated at schema 3 (ship profiles: every ship takes the lathe shield bubble, the hull walk removed on 2026-11-13), the custom projectile stage and custom muzzle flash deleted. Same tree as FL run 73 plus the AP port (reshade f18b3d3b1)",
+ "commit": "f18b3d3b1",
+ "branch": "reshade",
+ "dirty": false,
+ "build": "build-run247-ap RelWithDebInfo mingw-i686 -DX3M_EDITION=ap -DX3M_GNU_PE_NO_SAFESEH=ON (X3M_DEV_TUNING ON), clean configure, 0 warnings, check_no_x87 --edition ap PASS (0 violations), X3M_SOURCE_COMMIT=f18b3d3b1 (unstripped)",
+ "dll_sha256": "99f958bc0789442032f85b56cfe4d81965676560d97e8259a39a16bd390d2bf7",
+ "dll_bytes": 64597852,
+ "installed": "C:\\X3\\d3d9.dll via tools/manage.py install --game-dir /mnt/c/X3 --dll-source build-run247-ap/d3d9.dll; cmp identical after install",
+ "previous": {
+  "run": 246,
+  "rollback": "C:\\X3\\rollback-d3d9\\d3d9.dll.run246",
+  "sha256": "7785b0b55dcc56ecbb0b50c77f53ecdc212d2a6f5242ecde5d8be61bab0352fa",
+  "ini_copy": "C:\\X3\\rollback-d3d9\\x3m.ini.run246 (weapon_effects = shields)",
+  "table_copy": "C:\\X3\\rollback-d3d9\\weapon_effects.json.run246 (schema 2)",
+  "regenerate_exe_copy": "C:\\X3\\rollback-d3d9\\x3m-regenerate.exe.run246 (f6d4e98e…)"
+ },
+ "executable_sha256": "fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab",
+ "x3m_ini": "weapon_effects = shields -> reshade (the one change; set so the re-shade is what the user flies; revert = copy rollback-d3d9\\x3m.ini.run246 back or set shields)",
+ "tables": {
+  "weapon_effects.json": "e40b6013e2d07b63aa3f52bf2a2730161c3874a7b70610d9dc23e715ab9a57c0 (regenerated at schema 3: 38 bullet rows, 19 bullet textures, 32 bodies, 520 of 521 ship profiles; stock view counts in verification/results/ap-tables-2026-11-13/summary.json)",
+  "x3m-regenerate.exe": "bf76f4f7fc86bc4aa55717a6feae3c1ae03c0edecf1988adaf3fa098671b6e26 (the FL run 72 build of tools/regenerate, edition auto; --help smoke PASS)"
+ },
+ "dry_run": "manage.py launch --game-dir /mnt/c/X3 --dry-run exit 0",
+ "installed_at": "2026-11-13 (while the user slept)",
+ "open": "AP 247 A",
+ "evidence": [
+  "AP port commit fc339e74e (review at high: no blockers; open: the stub does not restore x3m_bullet_body across a nested submit); AP hook fixture 153 (8 new stub cases on the engine's window bytes), FL hook 62, D3D 115; FL unchanged on every non-timing row (verification/results/ap-reshade/fl_unchanged.py)",
+  "docs/reverse-engineering/ap-bullet-batch-site.md + verification/results/ap-bullet-batch-site/ap_bullet_batch_site.py (105 AP anchors)",
+  "muzzle bodies: verification/results/muzzle-reshade/muzzle_bodies_ap_out.txt (12013 and 12014 have grey cells: they draw white)",
+  "engine effects native record retaken on f18b3d3b1: PASS"
+ ],
+ "not_proven": [
+  "whether the live AP device receives the scanned program bytes",
+  "how often Mayhem bullets take the batch path against the lone path",
+  "the Mayhem flashes' looks (overlap inferred)",
+  "the lathe shield on AP ships (first AP flight with profiles)"
+ ]
+}
