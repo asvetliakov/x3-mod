@@ -72,6 +72,7 @@
 #include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (docs/architecture/weapon-effects.md)
 #include "weapon_projectile_family.h"       // the re-shades' tuning keys (reshade mode)
 #include "muzzle_reshade_core.h"            // the muzzle flash re-shade's bodies and constants (reshade mode)
+#include "hull_reshade_core.h"              // the hull hit re-shade's bodies, match and constants (reshade mode)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
 #include "sky_nebula_core.h"
@@ -301,6 +302,11 @@ struct MotionRoute {
     // hull: the hull-emission route would have taken the draw (the re-shade bypasses it).
     bool muzzle_reshade = false, muzzle_timed = false, muzzle_hull = false;
     std::uint8_t muzzle_body = 0;
+    // Hull hit re-shade (reshade mode, motion_output_hull_reshade_inc.h): hull_body the matched body's row, hull_pair its
+    // program pair (hull_reshade_core.h Pair); reshade: our program and its two registers bound for this draw (put back
+    // after it); timed: the sequence is QPC-timed.
+    bool hull_reshade = false, hull_timed = false;
+    std::uint8_t hull_body = 0, hull_pair = 0;
     // Bolts through the TAA (bolts-through-taa.md): the late bullet draw's flag
     // write into RT2.g. RT1 bound masked off (no MRT gap), RT2 bound with the
     // GREEN mask, the application's masks saved for the undo; each step's flag
@@ -1261,6 +1267,9 @@ public:
     void muzzle_reshade_take_frame(unsigned* draws, unsigned* matched, unsigned* hull, unsigned* failures,
                                    unsigned* timed, float* us) noexcept;
     bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
+    // The hull hit re-shade's frame counts (capture.cpp present; reset after the read) and its body rows.
+    void hull_reshade_take_frame(weapon_effects::hull_reshade::Frame* out) noexcept;
+    bool hull_reshade_requested() const noexcept { return hull_reshade_requested_; }
     static constexpr unsigned weapon_drop_count = 16;
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[weapon_drop_count]) noexcept; // dropped, cells_dropped, hits_dropped,
@@ -1821,6 +1830,8 @@ private:
         float ps_c192[16]{};    // application c192..c195 as last written (the muzzle re-shade restores them)
         float vs_c28[36]{};     // application VS c28..c36 (g_mWorld, g_mViewInverse rows; the muzzle re-shade's origin)
         std::uint16_t vs_c28_known = 0; // bit r: c(28 + r) written
+        float vs_alpha[2]{};            // application g_AlphaValue: effects VS c12.x, standard_lighting VS c39.x
+        std::uint8_t vs_alpha_known = 0; // bit p: vs_alpha[p] written (the hull re-shade's cool_active= count)
         int integer0[4]{};
         bool integer0_known = false;
         std::uint64_t stream0 = 0, indices = 0, declaration = 0;
@@ -2415,6 +2426,28 @@ private:
     bool muzzle_reshade_ready() const noexcept;
     bool begin_muzzle_reshade(MotionRoute& route) noexcept;
     void finish_muzzle_reshade(MotionRoute& route) noexcept;
+    // The hull hit re-shade (reshade mode with an edition table; motion_output_hull_reshade_inc.h, hull-hit-look.md):
+    // requested with the muzzle re-shade (the effects pair also needs the bullet re-shade's request: its VS gate
+    // shadow_.vs_lone and its c29..c31 shadow), one program per pair (0 effects ps_2_0, 1 classic ps_3_0) created at its
+    // VS's registration, refused for the device after a creation failure, both stopped after a failed restore; the
+    // bodies' blocks (hull_reshade_core.h constants) and the frame's counts.
+    bool hull_reshade_requested_ = false, hull_reshade_restore_failed_ = false;
+    bool hull_reshade_create_failed_[2] = {false, false};
+    IDirect3DPixelShader9* hull_reshade_ps_[2] = {nullptr, nullptr};
+    float hull_reshade_constants_[weapon_effects::hull_reshade::table_count]
+                                 [weapon_effects::hull_reshade::constant_floats]{};
+    weapon_effects::hull_reshade::Frame hull_reshade_frame_{};
+    std::uint64_t hull_reshade_ticks_ = 0;
+    std::uint32_t hull_reshade_frames_ = 0; // Present count: every 60th frame is timed
+    std::uint16_t hull_reshade_body_draws_[weapon_effects::hull_reshade::table_count]{}; // this frame's, per body
+    std::uint8_t hull_reshade_body_blend_[weapon_effects::hull_reshade::table_count]{};
+    std::uint32_t hull_reshade_body_logged_ = 0; // bit b: body b's hull_reshade_body row written (at most 16)
+    unsigned hull_reshade_body_rows_ = 0;
+    void hull_reshade_refresh_constants() noexcept;
+    void hull_reshade_create(unsigned pair) noexcept;
+    bool hull_reshade_match(MotionRoute& route) noexcept;
+    bool begin_hull_reshade(MotionRoute& route) noexcept;
+    void finish_hull_reshade(MotionRoute& route) noexcept;
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.

@@ -165,6 +165,13 @@ struct StageFrame {
     // substitutions, timed draws and the sequence's CPU us over them.
     unsigned muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
     float muzzle_us = 0.f;
+    // The hull hit re-shade (reshade mode with an edition table; MotionOutput::hull_reshade_take_frame, in the order of
+    // hull_reshade_core.h Frame): candidates, matched, effects, classic, failures, zwrite_on, cool_active, shared, timed;
+    // the sequence's CPU us over the timed draws; requested: the hull_reshade_frame row is written only then.
+    static constexpr unsigned hull_count_slots = 9;
+    unsigned hull_counts[hull_count_slots] = {};
+    float hull_us = 0.f;
+    bool hull_requested = false;
 };
 // `scope` (core::Scope: the cockpit's sector key, the load epoch, loading) clears the stage-owned records on a load, a
 // sector change or a new load epoch (note 3.1), before the frame's upkeep.

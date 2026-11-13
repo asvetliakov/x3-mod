@@ -2113,6 +2113,17 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         if (ctx.motion_output.muzzle_reshade_requested())
             ctx.motion_output.muzzle_reshade_take_frame(&stage.muzzle_draws, &stage.muzzle_matched, &stage.muzzle_hull,
                                                         &stage.muzzle_failures, &stage.muzzle_timed, &stage.muzzle_us);
+        if (ctx.motion_output.hull_reshade_requested()) { // the hull hit re-shade (hull-hit-look.md section 5)
+            weapon_effects::hull_reshade::Frame hull;
+            ctx.motion_output.hull_reshade_take_frame(&hull);
+            const unsigned counts[] = {hull.candidates, hull.matched, hull.effects, hull.classic, hull.failures,
+                                       hull.zwrite_on, hull.cool_active, hull.shared, hull.timed};
+            static_assert(sizeof counts / sizeof counts[0] == weapon_effects::StageFrame::hull_count_slots,
+                          "StageFrame::hull_counts holds the Frame's counts");
+            for (unsigned i = 0; i < weapon_effects::StageFrame::hull_count_slots; ++i) stage.hull_counts[i] = counts[i];
+            stage.hull_us = hull.us;
+            stage.hull_requested = true;
+        }
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();

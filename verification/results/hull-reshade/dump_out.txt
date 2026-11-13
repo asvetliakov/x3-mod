@@ -1,0 +1,23 @@
+DUMP_HULL assets=game vanilla_classic=texel_law textures=8 mesh_vertices=60 gain=1 edge=0.4 core=1 cool=0.3 plate=0.6
+DUMP_HULL name=fixture-hull-sparks-f02 distance_m=50 elements=1 body=10663 half_m=8.25 fade=0.934 crop=790 vanilla_sum=3810.10 vanilla_peak=0.9299 reshade_sum=7840.23 reshade_peak=1.7708 energy_ratio=2.058 written=1
+DUMP_HULL_GATE gate=hot_core frame=sparks-f02 reshade_peak=1.7708 vanilla_peak=0.9299 result=pass
+DUMP_HULL name=fixture-hull-sparks-f08 distance_m=50 elements=1 body=10663 half_m=9.00 fade=0.748 crop=862 vanilla_sum=2994.42 vanilla_peak=0.5158 reshade_sum=1550.03 reshade_peak=0.9984 energy_ratio=0.518 written=1
+DUMP_HULL name=fixture-hull-sparks-f16 distance_m=50 elements=1 body=10663 half_m=10.00 fade=0.500 crop=958 vanilla_sum=2582.60 vanilla_peak=0.7901 reshade_sum=2310.90 reshade_peak=0.8299 energy_ratio=0.895 written=1
+DUMP_HULL name=fixture-hull-sparks-f28 distance_m=50 elements=1 body=10663 half_m=11.50 fade=0.128 crop=1080 vanilla_sum=1011.64 vanilla_peak=0.2659 reshade_sum=58.11 reshade_peak=0.0757 energy_ratio=0.057 written=1
+DUMP_HULL_GATE gate=no_cell_edge frame=sparks-f28 band_peak=0.00054 frame_peak=0.0757 ratio=0.0071 vanilla_ratio=0.2330 result=pass
+DUMP_HULL name=fixture-hull-sparks-far distance_m=300 elements=1 body=10663 half_m=9.00 fade=0.748 crop=142 vanilla_sum=83.51 vanilla_peak=0.3768 reshade_sum=39.09 reshade_peak=0.8804 energy_ratio=0.468 written=1
+DUMP_HULL name=fixture-hull-ire-100ms distance_m=50 elements=2 body=10663 half_m=8.50 fade=0.872 crop=1080 vanilla_sum=14941.43 vanilla_peak=0.9891 reshade_sum=10706.45 reshade_peak=1.6576 energy_ratio=0.717 written=1
+DUMP_HULL name=fixture-hull-ire-400ms distance_m=50 elements=1 body=10663 half_m=10.00 fade=0.500 crop=958 vanilla_sum=2582.60 vanilla_peak=0.7901 reshade_sum=2310.90 reshade_peak=0.8299 energy_ratio=0.895 written=1
+DUMP_HULL name=fixture-hull-glow-peak distance_m=200 elements=1 body=10658 half_m=20.00 fade=1.000 crop=478 vanilla_sum=9744.05 vanilla_peak=0.9744 reshade_sum=14000.24 reshade_peak=1.9725 energy_ratio=1.437 written=1
+DUMP_HULL_GATE gate=hot_core frame=glow-peak reshade_peak=1.9725 vanilla_peak=0.9744 result=pass
+DUMP_HULL name=fixture-hull-glow-late distance_m=200 elements=1 body=10658 half_m=8.48 fade=1.000 crop=202 vanilla_sum=1750.09 vanilla_peak=0.9727 reshade_sum=2516.16 reshade_peak=1.9722 energy_ratio=1.438 written=1
+DUMP_HULL name=fixture-hull-mesh-090 distance_m=300 elements=1 body=587 half_m=9.68 fade=0.900 crop=130 vanilla_sum=5142.39 vanilla_peak=3.2854 reshade_sum=4404.14 reshade_peak=3.8064 energy_ratio=0.856 written=1
+DUMP_HULL name=fixture-hull-mesh-050 distance_m=300 elements=1 body=587 half_m=50.00 fade=0.500 crop=674 vanilla_sum=138527.08 vanilla_peak=3.2961 reshade_sum=62430.31 reshade_peak=2.0160 energy_ratio=0.451 written=1
+DUMP_HULL name=fixture-hull-mesh-010 distance_m=300 elements=1 body=587 half_m=90.32 fade=0.100 crop=1080 vanilla_sum=464108.76 vanilla_peak=3.1668 reshade_sum=39062.73 reshade_peak=0.3733 energy_ratio=0.084 written=1
+DUMP_HULL name=fixture-hull-hept distance_m=50 elements=1 body=10659 half_m=3.80 fade=0.698 crop=364 vanilla_sum=3798.88 vanilla_peak=0.3839 reshade_sum=9807.84 reshade_peak=1.0420 energy_ratio=2.582 written=1
+DUMP_HULL name=fixture-hull-blue-f05 distance_m=100 elements=1 body=12000 half_m=9.60 fade=1.000 crop=460 vanilla_sum=1885.31 vanilla_peak=0.9995 reshade_sum=3604.08 reshade_peak=1.9990 energy_ratio=1.912 written=1
+DUMP_HULL name=fixture-hull-blue-f20 distance_m=100 elements=1 body=12000 half_m=15.20 fade=1.000 crop=728 vanilla_sum=37447.04 vanilla_peak=0.9995 reshade_sum=73185.31 reshade_peak=1.9990 energy_ratio=1.954 written=1
+DUMP_HULL name=fixture-hull-fade-f100 distance_m=200 elements=1 body=10661 half_m=20.00 fade=1.000 crop=478 vanilla_sum=869.68 vanilla_peak=0.1566 reshade_sum=434.46 reshade_peak=0.2292 energy_ratio=0.500 written=1
+DUMP_HULL name=fixture-hull-fade-f010 distance_m=200 elements=1 body=10661 half_m=20.00 fade=0.100 crop=478 vanilla_sum=869.68 vanilla_peak=0.1566 reshade_sum=39.09 reshade_peak=0.0209 energy_ratio=0.045 written=1
+DUMP_HULL_GATE gate=fade_visible body=10661 ratio=0.0900 vanilla_ratio=1.0000 result=pass
+RESULT PASS checks=4 failures=0

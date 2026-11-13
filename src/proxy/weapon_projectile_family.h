@@ -35,27 +35,41 @@ struct Tune {
     // Global across bodies (one value set, the user's decision 2026-11-10).
     float rs_head = 1.f;
     float rs_width = 1.f;
+    // The hull hit re-shade (reshade mode; src/effects/weapon_hull_reshade.hlsl, hull_reshade_core.h;
+    // docs/architecture/hull-hit-look.md): the body term's gain over the game's radiance, the luminance smoothstep's
+    // upper edge, the hot core's gain (l^4) and how far a fading element reddens by the end of its life (0: fade only).
+    // The first flown step: the bullets' edge and the design's cooling, gain and core raised to 1.0 / 1.0 from the
+    // bullets' 0.75 / 0.5 after the hull dump's sweep (2026-11-13: at 0.75 / 0.5 the PPC mesh had no hot centre at half
+    // life and the IRE haze read brown; 1.25 / 1.5 filled the mesh and the glow into flat white). Not yet flown.
+    float hh_gain = 1.f;
+    float hh_edge = 0.4f;
+    float hh_core = 1.f;
+    float hh_cool = 0.3f;
 };
 constexpr Tune baked{}; // the accepted values, the dev file's starting point on every reload
-constexpr unsigned tune_keys = 9;
+constexpr unsigned tune_keys = 13;
 enum Key : unsigned {
     key_rs_gain = 0, key_rs_edge, key_rs_core, key_mz_size, key_mz_core, key_mz_gain, key_mz_smooth, key_rs_head,
-    key_rs_width
+    key_rs_width, key_hh_gain, key_hh_edge, key_hh_core, key_hh_cool
 };
-constexpr const char* tune_key_names[tune_keys] = {"rs_gain", "rs_edge",   "rs_core", "mz_size", "mz_core",
-                                                   "mz_gain", "mz_smooth", "rs_head", "rs_width"};
-constexpr float tune_min[tune_keys] = {0.f, 0.05f, 0.f, 0.05f, 0.f, 0.f, 0.f, 0.2f, 0.2f};
-constexpr float tune_max[tune_keys] = {2.f, 1.f, 4.f, 1.f, 4.f, 2.f, 1.f, 1.f, 1.f};
+constexpr const char* tune_key_names[tune_keys] = {"rs_gain", "rs_edge",   "rs_core", "mz_size",  "mz_core",
+                                                   "mz_gain", "mz_smooth", "rs_head", "rs_width", "hh_gain",
+                                                   "hh_edge", "hh_core",   "hh_cool"};
+constexpr float tune_min[tune_keys] = {0.f, 0.05f, 0.f, 0.05f, 0.f, 0.f, 0.f, 0.2f, 0.2f, 0.f, 0.05f, 0.f, 0.f};
+constexpr float tune_max[tune_keys] = {2.f, 1.f, 4.f, 1.f, 4.f, 2.f, 1.f, 1.f, 1.f, 2.f, 1.f, 4.f, 1.f};
 constexpr bool key_is(const char* a, const char* b) noexcept { return *a == *b && (!*a || key_is(a + 1, b + 1)); }
 static_assert(key_is(tune_key_names[key_rs_gain], "rs_gain") && key_is(tune_key_names[key_rs_edge], "rs_edge") &&
                   key_is(tune_key_names[key_rs_core], "rs_core") && key_is(tune_key_names[key_mz_size], "mz_size") &&
                   key_is(tune_key_names[key_mz_core], "mz_core") && key_is(tune_key_names[key_mz_gain], "mz_gain") &&
                   key_is(tune_key_names[key_mz_smooth], "mz_smooth") && key_is(tune_key_names[key_rs_head], "rs_head") &&
-                  key_is(tune_key_names[key_rs_width], "rs_width"),
+                  key_is(tune_key_names[key_rs_width], "rs_width") && key_is(tune_key_names[key_hh_gain], "hh_gain") &&
+                  key_is(tune_key_names[key_hh_edge], "hh_edge") && key_is(tune_key_names[key_hh_core], "hh_core") &&
+                  key_is(tune_key_names[key_hh_cool], "hh_cool"),
               "the key indices follow the names");
 inline float& tune_at(Tune& t, unsigned k) noexcept {
-    float* const fields[tune_keys] = {&t.rs_gain, &t.rs_edge,   &t.rs_core, &t.mz_size, &t.mz_core,
-                                      &t.mz_gain, &t.mz_smooth, &t.rs_head, &t.rs_width};
+    float* const fields[tune_keys] = {&t.rs_gain, &t.rs_edge,   &t.rs_core, &t.mz_size,  &t.mz_core,
+                                      &t.mz_gain, &t.mz_smooth, &t.rs_head, &t.rs_width, &t.hh_gain,
+                                      &t.hh_edge, &t.hh_core,   &t.hh_cool};
     return *fields[k < tune_keys ? k : 0];
 }
 // A key's value clamped to its bounds (the re-shades' constants); an index past tune_keys returns v unchanged.
@@ -64,8 +78,8 @@ inline float clamp_key(float v, unsigned k) noexcept {
     return !(v >= tune_min[k]) ? tune_min[k] : v > tune_max[k] ? tune_max[k] : v;
 }
 constexpr bool tune_in_bounds(const Tune& t) noexcept {
-    const float v[tune_keys] = {t.rs_gain, t.rs_edge,   t.rs_core, t.mz_size, t.mz_core,
-                                t.mz_gain, t.mz_smooth, t.rs_head, t.rs_width};
+    const float v[tune_keys] = {t.rs_gain, t.rs_edge,   t.rs_core, t.mz_size,  t.mz_core, t.mz_gain, t.mz_smooth,
+                                t.rs_head, t.rs_width,  t.hh_gain, t.hh_edge,  t.hh_core, t.hh_cool};
     for (unsigned k = 0; k < tune_keys; ++k)
         if (!(v[k] >= tune_min[k] && v[k] <= tune_max[k])) return false;
     return true;

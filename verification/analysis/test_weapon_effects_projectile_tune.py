@@ -66,8 +66,10 @@ int main(int argc, char** argv) {
 
 DEFAULTS = [0.75, 0.4, 0.5,  # the bullet re-shade (bullet-draw-batch.md section 6; baked from FL 64 A, re-baked from FL 68 A)
             0.2, 0.0, 0.15, 0.1,  # the muzzle flash re-shade (muzzle-flash-look.md; baked from FL 65 A, size as drawn)
-            1.0, 1.0]  # the bullet re-shade's geometric size (rs_head, rs_width; 1 = unchanged)
-KEYS = ['rs_gain', 'rs_edge', 'rs_core', 'mz_size', 'mz_core', 'mz_gain', 'mz_smooth', 'rs_head', 'rs_width']
+            1.0, 1.0,  # the bullet re-shade's geometric size (rs_head, rs_width; 1 = unchanged)
+            1.0, 0.4, 1.0, 0.3]  # the hull hit re-shade (hull-hit-look.md "Implementation"; the first flown step's)
+KEYS = ['rs_gain', 'rs_edge', 'rs_core', 'mz_size', 'mz_core', 'mz_gain', 'mz_smooth', 'rs_head', 'rs_width',
+        'hh_gain', 'hh_edge', 'hh_core', 'hh_cool']
 # The removed custom stage's keys (the FL run 72 file still carries them).
 LEGACY = ['core_px', 'glow_ratio', 'glow_gain', 'hot_share', 'lod_dot_m', 'length_cap_m', 'stops', 'trail_ms',
           'head_gain', 'flash_core_mult', 'flash_len_m', 'flash_life_ms', 'flash_stops', 'hull_pulse_r']
@@ -105,7 +107,7 @@ class ProjectileTune(unittest.TestCase):
             self.assertAlmostEqual(got, want, places=5)
 
     def test_every_key_read(self):
-        values = [0.6, 0.45, 0.5, 0.75, 1.5, 0.25, 0.3, 0.5, 0.6]
+        values = [0.6, 0.45, 0.5, 0.75, 1.5, 0.25, 0.3, 0.5, 0.6, 1.25, 0.3, 2.0, 0.6]
         text = json.dumps(dict(zip(KEYS, values)), indent=2)
         r = self.parse(text)
         self.assertEqual((r['ok'], r['seen'], r['clamped'], r['unknown']), (1, (1 << len(KEYS)) - 1, 0, 0))
@@ -144,14 +146,27 @@ class ProjectileTune(unittest.TestCase):
         # 0.2..1, default 1 (unchanged)
         low = self.parse('{"rs_head": 0.1, "rs_width": -1}')
         self.assertEqual((low['ok'], low['clamped']), (1, 0x3 << 7))
-        self.assertEqual([round(v, 6) for v in low['values'][7:]], [0.2, 0.2])
+        self.assertEqual([round(v, 6) for v in low['values'][7:9]], [0.2, 0.2])
         high = self.parse('{"rs_head": 1.5, "rs_width": 9}')
         self.assertEqual(high['clamped'], 0x3 << 7)
-        self.assertEqual(high['values'][7:], [1.0, 1.0])
+        self.assertEqual(high['values'][7:9], [1.0, 1.0])
         inside = self.parse('{"rs_head": 0.5, "rs_width": 0.6}')
         self.assertEqual((inside['ok'], inside['clamped'], inside['seen']), (1, 0, 0x3 << 7))
-        self.assertEqual([round(v, 6) for v in inside['values'][7:]], [0.5, 0.6])
+        self.assertEqual([round(v, 6) for v in inside['values'][7:9]], [0.5, 0.6])
         self.assertEqual([round(v, 6) for v in inside['values'][:7]], DEFAULTS[:7])
+
+    def test_hull_reshade_keys_bounds(self):
+        # the hull hit re-shade (hull-hit-look.md section 5): hh_gain 0..2, hh_edge 0.05..1, hh_core 0..4, hh_cool 0..1
+        low = self.parse('{"hh_gain": -1, "hh_edge": 0, "hh_core": -0.5, "hh_cool": -2}')
+        self.assertEqual((low['ok'], low['clamped']), (1, 0xf << 9))
+        self.assertEqual([round(v, 6) for v in low['values'][9:]], [0.0, 0.05, 0.0, 0.0])
+        high = self.parse('{"hh_gain": 3, "hh_edge": 2, "hh_core": 9, "hh_cool": 1.5}')
+        self.assertEqual(high['clamped'], 0xf << 9)
+        self.assertEqual(high['values'][9:], [2.0, 1.0, 4.0, 1.0])
+        inside = self.parse('{"hh_gain": 1.5, "hh_edge": 0.25, "hh_core": 3, "hh_cool": 0}')
+        self.assertEqual((inside['ok'], inside['clamped'], inside['seen']), (1, 0, 0xf << 9))
+        self.assertEqual([round(v, 6) for v in inside['values'][9:]], [1.5, 0.25, 3.0, 0.0])
+        self.assertEqual([round(v, 6) for v in inside['values'][:9]], DEFAULTS[:9])
 
     def test_legacy_keys_are_unknown_named_and_ignored(self):
         # the FL run 72 file: the fourteen keys of the removed custom stage beside the kept ones; the legacy keys set

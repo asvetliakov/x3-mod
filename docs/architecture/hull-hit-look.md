@@ -6,13 +6,14 @@ spawns at a hit the shield stage did not take (hull, drained shield, unowned fra
 and muzzle re-shades ([projectile-look.md](projectile-look.md), [muzzle-flash-look.md](muzzle-flash-look.md),
 `src/proxy/bullet_reshade_*.h`, `muzzle_reshade_*.h`), the lab textures under
 `verification/results/weapon-effects-lab/fl/tex/` (untracked). Marks: [M] measured in this session, [S] static (code,
-data or note read), [I] inferred, [D] user decision, [U] unknown. Not implemented; nothing here has run in the game.
+data or note read), [I] inferred, [D] user decision, [U] unknown. Implemented as step 1 (section "Implementation"); nothing here has run in the game.
 
 **Decision.** One luminance law in the pixel shader, the bullets' accepted fire law extended by a visible fade and a
 cooling term, applied by body id to 25 of the 28 impact bodies through two thin programs (ps_2_0 behind the effects
 DEFAULT pair, ps_3_0 behind the standard_lighting DEFAULT pair) and the muzzle's two-call device sequence. The three
 bodies that are also death explosions (v/10656, 10664, 10670) stay vanilla until the explosions family. Four dev keys
-`hh_gain`, `hh_edge`, `hh_core`, `hh_cool`. The first flown step is the whole set at the bullets' values.
+`hh_gain`, `hh_edge`, `hh_core`, `hh_cool`. The first flown step is the whole set at gain 1.0, edge 0.4, core 1.0,
+cool 0.3 (the gain and core raised from the bullets' 0.75 / 0.5 after the fixture sweep, section "Implementation").
 
 ## 1. What vanilla draws and what reads wrong (question 1)
 
@@ -178,12 +179,13 @@ bullet route's). **Keys** in `projectile_tune.json` (dev builds; the same reader
 
 | Key | Default | Bounds | Meaning |
 | --- | --- | --- | --- |
-| `hh_gain` | 0.75 | 0–2 | the body term's gain over the game's radiance (the bullets' accepted value) |
+| `hh_gain` | 1.0 | 0–2 | the body term's gain over the game's radiance (designed at the bullets' 0.75; see "Implementation") |
 | `hh_edge` | 0.4 | 0.05–1 | the luminance smoothstep's upper edge |
-| `hh_core` | 0.5 | 0–4 | the hot core's gain (l⁴) |
+| `hh_core` | 1.0 | 0–4 | the hot core's gain (l⁴) (designed at 0.5) |
 | `hh_cool` | 0.3 | 0–1 | how far a FADEOUT element reddens by the end of its life (0: fade only) |
 
-Start at the bolts' values because the user accepted that law on the same textures' kind of fire; the flight tunes.
+Designed to start at the bolts' values because the user accepted that law on the same textures' kind of fire; the
+fixture sweep moved gain and core to 1.0 (section "Implementation"); the flight tunes.
 **What the user judges** (SETA on as usual): an IRE burst on a fighter's hull at 50–200 m (hot sparks that fade, no
 popping, an orange glow around them); a PPC on a capital's hull (the 587 starburst and the 564 flash with a white
 centre, no lamp, no beige); a HEPT splash; a Kyon or Repair beam's white disc plus sparks; one hit on a station at
@@ -225,6 +227,69 @@ the user's verdict plus the frame rows showing substitutions on both pairs with 
 - Whether a far station's hits are dimmed by the TAA far hold: one station under fire at 1–2 km in the flight.
 - The IPG/IONC muzzle collision's visual cost: only in flight.
 - Runtime confirmation of the whole draw contract (nothing here has run in the game).
+
+## Implementation (2026-11-13, step 1, not flown)
+
+What shipped, against sections 2 to 5 [M unless marked]:
+
+- **Table** (`src/proxy/hull_reshade_core.h` `bodies[]`, emitted by
+  [`hull_hit_bodies.py`](../../verification/results/fl-hull-hit-draw/hull_hit_bodies.py), output beside it, held to the
+  header by `verification/analysis/test_weapon_hull_reshade.py`): **24 rows**, the 28 census bodies minus v/10656, 10664,
+  10670 and `bullet_ElectroSpike` (the note's 25 counted the ESR bolt, which stays the bullet route's), most frequent first
+  (587, 10663, 469, 564, 12000, 10658, ...). The script reproduces every texture figure of section 3 (380 0.996 ... exp_small
+  0.973). **One deviation from section 3: the normaliser's statistic.** The design's p99 over every texel drew the sparks
+  f02 frame as a flat beige disc: on a sparse texture (8 % of exp_sparks texels lit) that p99 (0.202) lies in the orange
+  haze, which then saturates l and takes the whitish core term. The table uses the p99 of the **lit** texels (luminance
+  > 0.02; sparks 0.558, normaliser 3.04 instead of 8.4; the other textures move +0 to +4 % where the all-texel p99 was
+  already >= 0.93, +10 % on 376, +15 % on the shockwave and the green explosion, +28.5 % on 383, and 1.8-4x on the sparse
+  sparks, electric and implosion pages; per body in the generator's output), **floored at 0.5**: the IRE's
+  `exp_glow` (lit p99 0.133) lifted to 0..1 still drew a grey-beige banded disc around the sparks in the ire-100ms frame;
+  floored (normaliser 3.39, also v/10666, 10667, 10668, 10659) a haze keeps its hue under the body term and the fade.
+  Flipbook flag `cells` 4 on the twelve 4 x 4 bodies; `blend` per census (10659, 12007 ONE / INVSRCCOLOR; 10653 ONE / ONE
+  only); `shared` on 587, 564, 582, 589, 10388, 10661, 10667, 12001. AP: `body_count(edition_ap)` is 0, so the route is not
+  requested there (edition-independent code; the FL ids never match on AP).
+- **Defaults** (`hh_gain` 1.0, `hh_core` 1.0; `hh_edge` 0.4 and `hh_cool` 0.3 as designed): the dump was swept at
+  gain / core 0.75 / 0.5, 1.0 / 1.0 and 1.25 / 1.5 and the frames viewed. At 0.75 / 0.5 the PPC mesh at f 0.5 has no hot
+  centre and the IRE haze reads brown; at 1.0 / 1.0 the mesh keeps white-hot areas inside its rays, the IRE sparks are
+  white-hot in an orange halo and the glow's white core stays moderate; at 1.25 / 1.5 the mesh and the glow fill into
+  flat white over the plate. Keys alone do not make the IRE haze a saturated orange (it is the dim `exp_glow` under the
+  0.5 floor) nor bring the HEPT ring back to green (the core whitens it): both are the flight's call. The glow's plateau
+  clips (linear peak > 1) at every setting; in game it is bloom input, the dump has no tonemap.
+- **The effects pair's colour matrix** (PS `8360f422…` applies a preshader grade in c0..c2 to the texel; our ps_2_0 does
+  not): every effects-pair impact material (v/10659, 12000-12008) sets `Brightness` 1, `contrast` 1, `saturation` 1, `hue`
+  0, `colormatrix` 0 [S data,
+  [`effects_material_params.py`](../../verification/results/hull-reshade/effects_material_params.py)], a neutral grade,
+  so the matrix the preshader builds is the identity [I: the preshader's output itself was not read]; the program keeps
+  the texel ungraded, as the lone bullet program does.
+- **Match** (`hull_reshade_core.h match`, the production and fixture decision): the VS (`d5e1c753…` effects pair, `494fe349…`
+  standard_lighting pair) with that pair's program ready, ADD ONE / ONE or ONE / INVSRCCOLOR (a candidate from here), the
+  node body id (`core::layout::node_body`), then refused for a bullet-map body (`bullet_body_layout`, the lone routes'
+  claim) and a muzzle body, then the list, the body's pair and blend, and on the classic pair the edition's
+  standard_lighting DEFAULT PS. MotionOutput runs it after the lone bullet and muzzle routes and only on draws none of
+  them substituted (`route.bullet_reshade`, `route.muzzle_reshade`, and every earlier route flag).
+- **Programs**: `weapon_hull_reshade.hlsl` (the law, registers by macro), `weapon_hull_reshade_effects_ps.hlsl` ps_2_0 258
+  dwords (c30..c31, COLOR0.x), `weapon_hull_reshade_classic_ps.hlsl` ps_3_0 286 dwords (c192..c193, COLOR0.a, centroid UV,
+  vanilla alpha lane); `tools/shaders/generate_hull_reshade_program.py`, records
+  `verification/results/weapon-hull-reshade-{effects,classic}-pixel-program.json` (`--check` PASS). Created once per pair
+  at its VS's registration, released at device loss; a creation failure leaves that pair vanilla with one
+  `hull_reshade_program` row.
+- **Sequence**: `muzzle_reshade_route.h` begin / end with the hull register per pair, the application's values from the
+  existing `ps_c29` (+ one row) and `ps_c192` shadows; no state write, no far flag. A substituted draw skips the
+  hull-emission route. The request needs the muzzle re-shade's (classic pair) and, for the effects pair, the bullet
+  re-shade's (its `vs_lone` gate and `ps_c29` resync read).
+- **Rows**: `hull_reshade_program` per pair (`reason=ok`, `create_failed`, or `bullet_reshade_unarmed` for the effects pair
+  when the bullet re-shade is not armed); `hull_reshade_frame` every 300 frames in reshade mode (`candidates matched
+  effects classic failures zwrite_on cool_active shared timed us_per_draw`; `cool_active` reads the application's
+  g_AlphaValue, VS c12.x / c39.x, shadowed for this); `hull_reshade_body body= pair= blend= shared= draws=` once per body at
+  the end of its first drawn frame (16 a device); `projectile_tune reloaded` carries `hh_gain hh_edge hh_core hh_cool`.
+- **Fixture**: D3D `hull_reshade_*` (8 checks, `weapon_hull_reshade_cases.h`) and the dump `--dump-case hull`
+  (`weapon_hull_reshade_dump.h`, frames and `dump_out.txt` under `verification/results/hull-reshade/`). Departures from
+  section 4: the frames' sizes follow the muzzle dump's 500 units per metre over the bodies' +-100000 units [I], which
+  makes the 587 mesh 10-90 m and the 10658 glow 40 m across, so the mesh frames sit at 300 m and the glow frames at 200 m;
+  the vanilla classic panel draws the texel law (the game PS drew black under the fixture's material constants); added
+  `blue-f05/f20` (v/12000, effects pair) and `fade-f100/f010` (v/10661, the fade gate's pair). The ledger
+  ([weapon-effects.md](../verification/weapon-effects.md) "Hull hit re-shade, step 1") holds the numbers and what the
+  frames show.
 
 ## Reproduce
 

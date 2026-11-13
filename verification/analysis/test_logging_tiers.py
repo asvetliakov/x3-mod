@@ -314,6 +314,8 @@ class PerFrameRowTiers(unittest.TestCase):
         # weapon_effects_frame (after its `frame % frame_row_period` return), so they share its tier.
         'bullet_reshade_frame': 'every frame_row_period (300) frames in every tier, FL reshade mode only (the scope stub live)',
         'muzzle_reshade_frame': 'every frame_row_period (300) frames in every tier, FL reshade mode only',
+        'hull_reshade_frame': 'every frame_row_period (300) frames in every tier, reshade mode with an edition body '
+                              'table only (FL; hull-hit-look.md section 5)',
     }
     CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
 

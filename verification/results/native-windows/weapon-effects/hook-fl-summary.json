@@ -20,20 +20,18 @@
     "src/proxy/weapon_effects_batch_site.h"
   ],
   "source": {
-    "commit": "060013e6d269d6a4735158669fb461dbac2b8502-dirty",
+    "commit": "f18b3d3b1ce5cc9b3573df1c5962eb179e18626f-dirty",
     "production_sources_dirty": true,
     "dirty_paths": [
-      "src/proxy/weapon_effects_hook.cpp",
       "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h",
-      "src/proxy/weapon_effects_batch_site.h"
+      "src/proxy/weapon_effects_patch.h"
     ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "9e82a15567d452693e4e169db045cb9d5d54737aa0d4aef3aacf528df1c4c5aa",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "4082488c0ed62c46dfa4d08c9f2a23879ae1f0adaa13336b74f5413db3fcd01f",
-      "src/proxy/weapon_effects_patch.cpp": "c1e5f5f661ad6a43598f6142928f3a43f21558e2f4b0e52033d55b3c91f826d0",
-      "src/proxy/weapon_effects_patch.h": "ea8879874c60d98031101272d14535640d9cee3626c2ed536998968697111a24",
+      "src/proxy/weapon_effects_patch.cpp": "2cf51cd22b2adadcbb84d80611125f284e7f2e2f4ecb2b4243cf4a1cea9fa05d",
+      "src/proxy/weapon_effects_patch.h": "e873dba0920f2cf1888ce6a1d63a25c1647f948a5bcc609a065135370224045d",
       "src/proxy/weapon_effects_hook.cpp": "20645339cab8897575a6453a1bfacbcaff33abaa17ddcd6fa2714fa034be3d85",
       "src/proxy/weapon_effects_core.h": "81a9e12186c03fde92727defe8356cbd8e808da6eb8bc84720f6ddd7191f5b9c",
       "src/engine/fl/weapon_effects_sites_fl.h": "316ce27169cd5d19d771e2a2ed465d9def7b53cf93bf47e061709543bd1940e6",
@@ -235,7 +233,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "dbc44cbf72536abc10eaf1db928bbf8b0c30186d924830dab77313e9781325b9"
+    "executable_sha256": "4bae598faa718d6ba735ee2331f7b3c8a68a08e03dc8553854219d5ac2c8d045"
   },
   "host": {
     "name": "native-windows",
