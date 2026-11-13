@@ -4859,3 +4859,12 @@ and `test_weapon_hull_reshade` pass. `generate_muzzle_reshade_program.py --check
 **Rerun on the run-3 record** [M]: `test_weapon_effects_hook`, `test_weapon_effects_muzzle_bodies`,
 `test_weapon_hull_reshade`, `test_logging_tiers`, `test_weapon_effects_projectile_tune`, `test_weapon_effects_table`:
 88 tests, OK.
+
+**Engine-effects record on the committed tree** (37a48b814) [M]. Run:
+`X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3 verification/probe/run_engine_effects.py --host native`.
+
+- The first attempt found the local shader corpus missing; it was restored by host-suite.md's procedure (751 / 751).
+- The second attempt failed `CreateDevice` (D3DERR_INVALIDCALL) in every mode: Bubbles.scr had started.
+- After killing the screensaver and restoring the record file, the run passed every mode: main 174, native 11,
+  unverified 6, unpatched 11, timing 20, plumes 35, armed 35, armed_refused 7 checks.
+- The record is bound to 37a48b814, not dirty. `test_engine_effects`: 13 tests, OK (1 skipped).
