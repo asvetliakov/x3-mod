@@ -70,7 +70,7 @@
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (docs/architecture/weapon-effects.md)
-#include "weapon_projectile_family.h"       // the projectile stage's families (FL; docs/architecture/projectile-look.md)
+#include "weapon_projectile_family.h"       // the re-shades' tuning keys (FL reshade mode)
 #include "muzzle_reshade_core.h"            // the muzzle flash re-shade's bodies and constants (FL reshade mode)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
@@ -1230,13 +1230,6 @@ public:
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
 #if X3M_EDITION_FL
-    // The projectile stage (FL, motion_output_weapon_effects_inc.h; docs/architecture/projectile-look.md): the frame's
-    // ownership (the next frame's batch skip) and figures since the last call, into the weapon_effects_frame row
-    // (flashes: the muzzle flashes drawn, their pulses, those lost or stale and those past the room;
-    // docs/architecture/muzzle-flash-look.md).
-    void projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled, unsigned* retired,
-                               float* stage_us, unsigned* unpooled, unsigned* sampled, unsigned* statics,
-                               unsigned* jumped, unsigned* ring_trimmed, unsigned flashes[5]) noexcept;
     // The bullet re-shade's texture map (capture.cpp texture_created / texture_released): a created texture whose bytes
     // are tables.bullet_textures entry `key` (reshade mode; false when not stored), and the final release of any texture.
     bool bullet_texture_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, unsigned key) noexcept;
@@ -2341,29 +2334,8 @@ private:
     static HRESULT weapon_effects_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_weapon_effects() noexcept;
 #if X3M_EDITION_FL
-    // The projectile stage (FL): requested when the batch site is active; drawn in the weapon stage's callback into RT0
-    // and the lane (the far flag), depth-tested against the scene's depth surface captured at the resolve (borrowed for
-    // the run); the traversal draws of a pooled enabled body dropped in before_draw while the batch skip is latched.
-    bool projectile_requested_ = false, projectile_frame_ = false, projectile_ran_ = false, projectile_owned_ = false;
-    bool projectile_owned_frame_ = false;
-    IDirect3DSurface9* projectile_depth_ = nullptr;
-    unsigned projectile_bolts_ = 0, projectile_dropped_ = 0, projectile_unhandled_ = 0, projectile_retired_ = 0;
-    float projectile_us_ = 0.f;
-    std::uint64_t projectile_unhandled_frame_ = ~std::uint64_t(0), projectile_sampled_frame_ = ~std::uint64_t(0);
-    unsigned projectile_unpooled_ = 0, projectile_sampled_ = 0;
-    // the stage's static and jumped entries (projectile_stage::Counts) and the previous stage frame's QPC stamp (the
-    // render dt of a static entry's extrapolation)
-    unsigned projectile_statics_ = 0, projectile_jumped_ = 0;
-    unsigned projectile_ring_trimmed_ = 0; // bolt-frames whose comet ring the adaptive rule trimmed (projectile_stage)
-    // the muzzle flashes drawn, their hull pulses, flashes lost (shooter unreadable) or stale, flashes past the room
-    unsigned projectile_flashes_ = 0, projectile_pulses_ = 0, projectile_flash_lost_ = 0, projectile_flash_dropped_ = 0;
-    unsigned projectile_pulse_clamped_ = 0; // pulses shrunk to the screen cap
-    bool projectile_cut_ = false; // the resolve's camera cut of this frame (the bridge starts over)
-    std::uint64_t projectile_qpc_ = 0;
-    const char* projectile_logged_refusal_ = nullptr;
-    weapon_effects::projectile_family::Tune projectile_tune_[weapon_effects::projectile_family::family_count]{};
-    HRESULT run_projectiles(const renderer::WeaponEffectsFrame& f) noexcept;
-    bool projectile_drop(MotionRoute& route) noexcept;
+    // The re-shades' keys (weapon_projectile_family.h): the baked values, or the dev tuning file's (X3M_DEV_TUNING).
+    weapon_effects::projectile_family::Tune reshade_tune_{};
     // The bullet re-shade (reshade mode; motion_output_bullet_reshade_inc.h, bullet-draw-batch.md section 6): requested
     // when the batch scope stub is live; our ps_2_0 program (created at the first game bullet program's registration,
     // kept until teardown: shaders survive Reset), the c31 block from the tuning, the frame's counts and sampled time.

@@ -22,14 +22,11 @@
 void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     weapon_requested_ = requested;
 #if X3M_EDITION_FL
-    // The projectile stage rides the weapon stage when the FL batch site is claimed (the pool armed at install).
-    projectile_requested_ = requested && x3m_projectile_pool.armed;
-    for (unsigned f = 0; f < weapon_effects::projectile_family::family_count; ++f)
-        projectile_tune_[f] = weapon_effects::projectile_family::families[f].tune;
-    // The bullet re-shade rides the same request when the batch scope stub is live (reshade mode).
+    // The re-shades' keys start at their baked values (the dev tuning file, when compiled in, polls over them).
+    reshade_tune_ = weapon_effects::projectile_family::baked;
+    // The bullet re-shade rides the weapon stage's request when the batch scope stub is live (reshade mode).
     bullet_reshade_requested_ = requested && x3m_bullet_reshade_armed;
-    weapon_effects::reshade::constants(projectile_tune_[weapon_effects::projectile_family::fighter_tracer],
-                                       bullet_reshade_constants_);
+    weapon_effects::reshade::constants(reshade_tune_, bullet_reshade_constants_);
     bullet_layout_valid_ = false;
     // The muzzle flash re-shade: reshade mode installed (it needs no engine site of its own: the object-trace scope
     // gives the node at the draw; without that scope no draw matches).
@@ -64,9 +61,6 @@ bool MotionOutput::attach_weapon_effects() noexcept {
         }
     }
     if (weapon_->caps().enabled) return true;
-#if X3M_EDITION_FL
-    weapon_->configure_projectiles(projectile_requested_);
-#endif
     D3DDISPLAYMODE display{};
     HRESULT hr = native<GetDisplayModeFn>(GetDisplayMode)(device_, 0, &display);
     const bool queried = SUCCEEDED(hr);
@@ -82,13 +76,6 @@ bool MotionOutput::attach_weapon_effects() noexcept {
         id_, frame_, unsigned(attached), attached ? "ok" : queried ? c.reason : "adapter_query", hr, c.fp16_blending,
         c.shell_vs_slots, c.shell_ps_slots, c.decal_vs_slots, c.decal_ps_slots, c.bubble_ps_slots, c.lathe_vs_slots,
         c.lathe_ps_slots, static_cast<unsigned long>(caps_.MaxPixelShader30InstructionSlots));
-#if X3M_EDITION_FL
-    if (attached && projectile_requested_)
-        log("projectile_device device=%llu frame=%llu enabled=%u reason=%s vs_slots=%u ps_slots=%u lane32_blending=%u "
-            "lane16_blending=%u mrt_bit_depths=%u",
-            id_, frame_, unsigned(c.projectile_enabled), c.projectile_reason, c.projectile_vs_slots, c.projectile_ps_slots,
-            unsigned(c.lane32_blending), unsigned(c.lane16_blending), unsigned(c.mrt_bit_depths));
-#endif
     if (!attached) weapon_attach_failed_ = true;
     return attached;
 }
@@ -319,18 +306,6 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     if (capture_) log_weapon_patches(patches, n.patches);
     renderer::WeaponEffectsReport report{};
     HRESULT hr = weapon_->run(f, &report);
-#if X3M_EDITION_FL
-    // The projectile stage after the patches (its own failures leave the shield stage armed: the next frame's batch
-    // skip is simply not latched); a lost device ends the frame.
-    if (projectile_frame_ && hr != D3DERR_DEVICELOST && hr != D3DERR_DEVICENOTRESET) {
-        const HRESULT ph = run_projectiles(f);
-        // Any projectile result but S_FALSE may have left state bound (a failed draw or undo): the stage's result must
-        // then not be S_FALSE, so the resolve normalizes again. A projectile failure is its own (projectile_state row,
-        // no batch-skip latch); it does not disarm the shield stage.
-        if (ph == D3DERR_DEVICELOST || ph == D3DERR_DEVICENOTRESET) hr = ph;
-        else if (ph != S_FALSE && hr == S_FALSE) hr = S_OK;
-    }
-#endif
     QueryPerformanceCounter(&end);
     weapon_callback_ok_ = SUCCEEDED(hr); // S_OK drew, S_FALSE nothing to draw; DEVICELOST and errors leave it false
     // 32-bit operands only (an int64 -> double conversion is x87 fild on i686): a stage call never spans 2^31 ticks, and
@@ -361,189 +336,6 @@ HRESULT MotionOutput::run_weapon_effects() noexcept {
     }
     return hr;
 }
-#if X3M_EDITION_FL
-// The projectile stage's frame (docs/architecture/projectile-look.md, "Implementation (2026-11-08)"): the families'
-// tuning (the dev file when compiled in), the pool's bolts through the stage builder (validated engine reads, the live
-// jittered projection, the engine's game-time step; the render dt since the previous stage frame from QPC and the
-// engine's SETA rate for a static entry's extrapolation), one draw. projectile_ran_ is the ownership's input: the frame
-// drew or had nothing to draw; a refusal (lane, depth, MRT) logs one row per change of reason.
-HRESULT MotionOutput::run_projectiles(const renderer::WeaponEffectsFrame& f) noexcept {
-    namespace ps = weapon_effects::projectile_stage;
-    LARGE_INTEGER begin{}, end{};
-    QueryPerformanceCounter(&begin);
-#if X3M_DEV_TUNING
-    weapon_effects::projectile_tune::poll(&projectile_tune_[weapon_effects::projectile_family::fighter_tracer]);
-#endif
-    ps::View view;
-    for (unsigned i = 0; i < 9; ++i) view.r[i] = camera_scene_.r[i];
-    for (unsigned i = 0; i < 3; ++i) view.t[i] = camera_scene_.t[i];
-    // the unjittered projection: the bolts never enter the TAA history, and the jitter would only misalign the seam
-    // between two frames' streaks on screen
-    view.m00 = f.m00;
-    view.m11 = f.m11;
-    view.m20 = camera_scene_.m20;
-    view.m21 = camera_scene_.m21;
-    view.m22 = f.m22;
-    view.m32 = f.m32;
-    view.width = float(f.width);
-    view.height = float(f.height);
-    view.near_z = f.near_z;
-    // The frame's quads (512 bolts x 5 quads x 4 x 48 B = 480 KB: static, off the game thread's stack; consumed before
-    // returning).
-    static renderer::WeaponProjectileVertex vertices[renderer::weapon_projectile_max_quads * ps::vertices_per_quad];
-    static ps::Looks looks;
-    if (looks.resolved > x3m_projectile_pool.body_count) looks.resolved = 0;
-    const std::uint32_t now = weapon_effects::game_ms(), step = weapon_effects::game_step_ms();
-    // The render dt since the previous stage frame (0 on the first, and past 0.25 s: a stall extrapolates nothing) and
-    // the SETA rate (engine_effects::seta_read, one bounded read; 1 when refused or invalid).
-    const std::uint64_t frequency = engine_qpc_frequency();
-    const std::uint64_t stamp = std::uint64_t(begin.QuadPart);
-    const std::uint64_t since = projectile_qpc_ && stamp > projectile_qpc_ ? stamp - projectile_qpc_ : 0u;
-    projectile_qpc_ = stamp;
-    const float render_dt = frequency && frequency < 0x80000000ull && since < frequency / 4u
-                                ? float(double(std::int32_t(since)) / double(std::int32_t(frequency)))
-                                : 0.f;
-    float seta_rate = 1.f;
-    {
-        std::uint32_t warp = engine_plumes::seta_one, mult = engine_plumes::seta_one;
-        bool engaged = false;
-        float requested = 1.f;
-        if (engine_effects::seta_read(&warp, &mult) != engine_effects::SetaStatus::ok ||
-            !engine_plumes::seta_decode(warp, mult, &engaged, &requested, &seta_rate))
-            seta_rate = 1.f;
-    }
-    // The muzzle flashes (docs/architecture/muzzle-flash-look.md): their quads after the bolts' in the same draw, their
-    // hull pulses (64 x 36 B, static) drawn by run_projectiles before the bolts.
-    static renderer::WeaponPulse pulses[renderer::weapon_max_pulses];
-    ps::FlashOut flashes;
-    flashes.pulses = pulses;
-    flashes.max_pulses = renderer::weapon_max_pulses;
-    flashes.max_quads = renderer::weapon_projectile_max_flashes;
-    // the flashes' life clock: this frame's QPC stamp in us (integer, wrapping at 2^32; no x87 conversion), the game
-    // clock's us without a QPC frequency
-    flashes.wall_us = frequency ? std::uint32_t((stamp / frequency) * 1000000u + (stamp % frequency) * 1000000u / frequency)
-                                : now * 1000u;
-    // the device frame (a frame the stage did not run breaks every bridge) and the resolve's camera cut
-    const ps::Counts n = ps::build(x3m_projectile_pool, &weapon_effects_read, weapon_effects::hook_state().table, looks,
-                                   std::uint32_t(frame_), projectile_cut_, now, step, render_dt, seta_rate, view,
-                                   projectile_tune_, vertices, renderer::weapon_projectile_max_bolts,
-                                   renderer::weapon_projectile_bolt_quads, nullptr, &flashes);
-    projectile_retired_ += n.expired + n.invalid;
-    projectile_statics_ += n.statics;
-    projectile_jumped_ += n.jumped;
-    projectile_ring_trimmed_ += n.trimmed;
-    projectile_flash_lost_ += n.flash_lost + n.flash_stale;
-    projectile_flash_dropped_ += n.flash_dropped;
-    projectile_pulse_clamped_ += n.pulse_clamped;
-    renderer::WeaponProjectileFrame pf;
-    pf.width = f.width;
-    pf.height = f.height;
-    pf.vertices = vertices;
-    pf.quads = n.quads + n.flashes;
-    pf.lane = depth_surface_;
-    pf.depth = projectile_depth_;
-    D3DSURFACE_DESC scene{};
-    if (hdr_ && hdr_->target() && SUCCEEDED(hdr_->target()->GetDesc(&scene))) pf.scene_format = scene.Format;
-    // the hull pulses, drawn first by the same call: the lane as a texture (before it is bound as RT1), its depth law and
-    // the jittered projection the lane was drawn with (the shield pass's frame)
-    pf.pulses = pulses;
-    pf.pulse_count = n.pulses;
-    pf.lane_texture = f.lane;
-    pf.four_channel = f.four_channel;
-    pf.m00 = f.m00;
-    pf.m11 = f.m11;
-    pf.m20 = f.m20;
-    pf.m21 = f.m21;
-    pf.m22 = f.m22;
-    pf.m32 = f.m32;
-    pf.near_z = f.near_z;
-    renderer::WeaponEffectsReport report{};
-    const HRESULT hr = weapon_->run_projectiles(pf, &report);
-    QueryPerformanceCounter(&end);
-    projectile_ran_ = hr == S_OK || hr == S_FALSE;
-    projectile_bolts_ += report.drew ? n.drawn : 0u;
-    projectile_flashes_ += report.quads ? n.flashes : 0u;
-    projectile_pulses_ += report.pulses;
-    const std::uint64_t ticks = std::uint64_t(end.QuadPart - begin.QuadPart);
-    const float us = frequency && frequency < 0x80000000ull && ticks < 0x80000000ull
-                         ? float(double(std::int32_t(ticks)) * 1e6 / double(std::int32_t(frequency)))
-                         : 0.f;
-    if (us > projectile_us_) projectile_us_ = us;
-    const char* refusal = report.refused ? report.refused : FAILED(hr) ? "draw" : nullptr;
-    if (refusal != projectile_logged_refusal_) {
-        projectile_logged_refusal_ = refusal;
-        log("projectile_state device=%llu frame=%llu drawing=%u reason=%s result=%08lx bolts=%u tracked=%u",
-            id_, frame_, unsigned(!refusal), refusal ? refusal : "ok", hr, n.drawn, n.tracked);
-    }
-    return hr;
-}
-// The traversal drop (before_draw, latch on): the draw's object-trace scope names a node the pool holds and its body id
-// (one bounded read) is enabled: not forwarded, D3D_OK. Without the scope the frame's traversal draws cannot be seen:
-// counted once per frame as unhandled.
-bool MotionOutput::projectile_drop(MotionRoute& route) noexcept {
-    std::uintptr_t descriptor = 0, node = 0;
-    if (!object_trace::scope_available()) {
-        if (projectile_unhandled_frame_ != frame_) {
-            projectile_unhandled_frame_ = frame_;
-            ++projectile_unhandled_;
-        }
-        return false;
-    }
-    if (!object_trace::scope_node(&descriptor, &node) || !node) return false;
-    const bool pooled = weapon_effects::core::projectile_known(x3m_projectile_pool, std::uint32_t(node));
-    // On a sampled frame (every 60th, every capture frame) a scoped draw whose node is not pooled is read too: an
-    // enabled body there is a child node or a bullet the pool missed (projectile_unpooled), told apart from "no lone
-    // bolts" by numbers. Otherwise only pooled nodes cost a read.
-    const bool sampled = capture_ || frame_ % 60 == 0;
-    if (sampled && projectile_sampled_frame_ != frame_) {
-        projectile_sampled_frame_ = frame_;
-        ++projectile_sampled_;
-    }
-    if (!pooled && !sampled) return false;
-    const DWORD error = GetLastError();
-    std::uint32_t body = 0;
-    const bool read = engine_memory::read(node + weapon_effects::core::layout::node_body, &body, 4);
-    SetLastError(error);
-    if (!read || !weapon_effects::core::projectile_body_enabled(x3m_projectile_pool, body)) return false;
-    if (!pooled) {
-        ++projectile_unpooled_;
-        return false;
-    }
-    route.submit = false;
-    route.submission_error = D3D_OK;
-    route.sun_color_writer = false;
-    route.sun_stamp = false;
-    route.unmatched = UnmatchedReason::None;
-    ++projectile_dropped_;
-    return true;
-}
-void MotionOutput::projectile_take_frame(bool* owned, unsigned* bolts, unsigned* dropped, unsigned* unhandled,
-                                         unsigned* retired, float* stage_us, unsigned* unpooled,
-                                         unsigned* sampled, unsigned* statics, unsigned* jumped,
-                                         unsigned* ring_trimmed, unsigned flashes[5]) noexcept {
-    flashes[0] = projectile_flashes_;
-    flashes[1] = projectile_pulses_;
-    flashes[2] = projectile_flash_lost_;
-    flashes[3] = projectile_flash_dropped_;
-    flashes[4] = projectile_pulse_clamped_;
-    projectile_flashes_ = projectile_pulses_ = projectile_flash_lost_ = projectile_flash_dropped_ = projectile_pulse_clamped_ = 0;
-    *unpooled = projectile_unpooled_;
-    *sampled = projectile_sampled_;
-    *statics = projectile_statics_;
-    *jumped = projectile_jumped_;
-    *ring_trimmed = projectile_ring_trimmed_;
-    projectile_unpooled_ = projectile_sampled_ = projectile_statics_ = projectile_jumped_ = projectile_ring_trimmed_ = 0;
-    *owned = weapon_requested_ && projectile_owned_frame_;
-    *bolts = projectile_bolts_;
-    *dropped = projectile_dropped_;
-    *unhandled = projectile_unhandled_;
-    *retired = projectile_retired_;
-    *stage_us = projectile_us_;
-    projectile_bolts_ = projectile_dropped_ = projectile_unhandled_ = projectile_retired_ = 0;
-    projectile_us_ = 0.f;
-    projectile_owned_frame_ = false; // earned again by the next frame's resolve
-}
-#endif
 // One weapon_patch row per staged patch draw on a capture frame (docs/architecture/weapon-effects.md 5.1.1, Run235
 // Flight B diagnostics): its owner, whether that is the own ship (own: resolve_own_ship's root node, the ship the player
 // flies), whether the view is the cockpit and the gain the own ship's patch took for it (Flight C), the lattice (0 z,

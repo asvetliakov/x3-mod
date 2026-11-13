@@ -352,7 +352,7 @@ class Release:
             shutil.rmtree(build)
         configure = ['cmake', '-S', ROOT, '-B', build, f'-DCMAKE_TOOLCHAIN_FILE={TOOLCHAIN}',
                      '-DCMAKE_BUILD_TYPE=RelWithDebInfo', f'-DX3M_EDITION={self.args.edition}',
-                     '-DX3M_DEV_TUNING=OFF',  # the projectile tuning file reader never ships (projectile-look.md 4)
+                     '-DX3M_DEV_TUNING=OFF',  # the re-shade tuning file reader never ships (projectile-look.md "Dev tuning file")
                      f'-DPython3_EXECUTABLE={sys.executable}']
         code, configure_text = run(configure)
         if code:

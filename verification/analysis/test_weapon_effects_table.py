@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
                 unsigned(table.bullet_texture_p99_q[0]));
     {   // the geometric size: entry 0's words and layout_constants at rs_head 0.5, rs_width 0.6 and at the defaults
         namespace rs = x3m::weapon_effects::reshade;
-        auto tune = x3m::weapon_effects::projectile_family::families[0].tune;
+        auto tune = x3m::weapon_effects::projectile_family::baked;
         float shrunk[8], kept[8];
         rs::layout_constants(table.bullet_bodies ? table.bullet_body_layout[0] : nullptr, tune, kept);
         tune.rs_head = 0.5f;

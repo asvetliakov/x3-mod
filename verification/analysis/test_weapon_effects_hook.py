@@ -196,22 +196,17 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
                 'impact_piloted_clamped_absorbed_staged', 'impact_ecx_edx_swapped_differs',
                 'impact_piloted_drained_shields_hull_hit', 'tap1_hit_pos_slots_match', 'tap1_pos_slot_read',
                 'tap1_hit_slot_read', 'tap2_hit_pos_slots_match', 'tap2_pos_slot_read', 'tap2_hit_slot_read',
-                'object_tap_handler_records_ecx_object', 'muzzle_handler_slot_row_pos_orient', 'muzzle_skip_no_callee',
+                'object_tap_handler_records_ecx_object', 'muzzle_forwards_registers_stack_flags',
                 'flight_forward_reaches_callee_bullet', 'flight_skip_no_callee',
                 'death_forward_records_other_tag_reason_killer', 'death_skip_no_callee_eax_zero',
                 'fl_node_body_offset', 'fixture_stack_margin',
-                # the projectile stage's batch submit (bullet-draw-batch.md section 5)
-                'batch_latch_off_forwards_registers_stack_flags', 'batch_other_body_forwards_registers_stack_flags',
-                'batch_enabled_body_skipped_eax1_no_callee', 'batch_rollback_restores_all',
-                'shields_mode_claims_batch_and_object_tap', 'init_logs_projectile_site_claimed_once',
-                'object_tap_registers_enabled_body_once',
-                # the muzzle flash (muzzle-flash-look.md (superseded) section 4): the shields mode claims the muzzle,
-                # its witness and rollback; an enabled body's shot skipped under the latch, forwarded otherwise with
-                # every register, the stack and EFLAGS; the tap's match to the ours record
-                'shields_mode_claims_muzzle', 'shields_mode_muzzle_witness_refused',
-                'shields_mode_muzzle_rollback_restores_all',
-                'muzzle_enabled_body_latch_off_forwards_registers_stack_flags',
-                'muzzle_other_body_forwards_registers_stack_flags', 'object_tap_matches_flash_to_ours_record'}
+                # the bullet batch submit: claimed only in reshade mode, with the scope stub (bullet-draw-batch.md
+                # section 6); shields mode claims the impact alone; the bolts modes' muzzle witness and rollback; the
+                # removed projectile stage logs nothing
+                'reshade_batch_rollback_restores_all', 'reshade_installs_impact_and_batch_scope_only',
+                'reshade_scope_stub_forwards_and_scopes_the_submit', 'reshade_shutdown_disarms',
+                'shields_mode_claims_impact_only', 'shields_mode_shutdown_restores', 'bolts_mode_muzzle_witness_refused',
+                'bolts_mode_muzzle_rollback_restores_all', 'init_logs_no_projectile_rows'}
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
@@ -229,7 +224,7 @@ class WeaponEffectsHookFlRecord(unittest.TestCase):
     def test_build_audit_and_stack(self):
         a = self.record['build']['audit']
         self.assertEqual((a['handler_undefined'], a['handler_x87'], a['module_imports_own_protect']), ([], [], []))
-        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 8)  # six shims, the batch stub and its re-shade scope
+        self.assertTrue(all(a['stub_ok'].values()) and len(a['stub_ok']) == 7)  # six shims and the batch's re-shade scope
         self.assertEqual(len(a['handler_calls']), 6)
         self.assertTrue(all(not v for v in a['handler_calls'].values()))
         self.assertEqual(a['windows_match_exe'], {k: True for k in ('impact', 'tap1', 'tap2', 'bolt_tap', 'muzzle', 'flight',
@@ -250,45 +245,6 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
 
     def setUp(self):
         self.record = json.loads(self.PATH.read_text())
-
-    def test_projectile_gates(self):
-        # docs/architecture/projectile-look.md "Implementation (2026-11-08)": the width rule at both fields of view, SETA
-        # invariance, the far flag, the dot, nothing outside the quad, the 512-bolt budget at 5120x1440; FL 59 A: the
-        # seam of two consecutive frames (no gap, the light uniform within 10 %) at 60 and 144 fps, the static frame
-        rows = self.record['metrics']['projectile']
-        width = [x for x in rows if x.get('case') == 'width']
-        self.assertEqual(len(width), 8)
-        self.assertTrue(all(abs(x['measured_px'] - x['rule_px']) <= 0.5 for x in width))
-        seta = [x['px_per_game_ms'] for x in rows if x.get('case') == 'seta']
-        self.assertLess(abs(seta[1] / seta[0] - 1.0), 0.03)
-        flag = next(x for x in rows if x.get('case') == 'far_flag')
-        self.assertAlmostEqual(flag['ratio'], 32.0, delta=0.5)
-        self.assertEqual(next(x for x in rows if x.get('case') == 'quad')['outside'], 0)
-        seam = [x for x in rows if x.get('case') == 'seam']
-        self.assertEqual(sorted((x['fps'], x['tune'], x['camera_mps'], x['turn_deg']) for x in seam),
-                         [(60, 'baked', 0, 0), (60, 'baked', 0, 1), (60, 'baked', 200, 0), (60, 'flown', 0, 0),
-                          (144, 'baked', 0, 0), (144, 'flown', 0, 0)])
-        for x in seam:
-            self.assertLessEqual(abs(x['gap_px']), 0.05)
-            self.assertLessEqual(x['spread'], 0.10)
-            self.assertEqual(x['jumped'], 0)
-        static = next(x for x in rows if x.get('case') == 'static')
-        self.assertEqual(static['statics'], '0/1/0/1/0/0')
-        self.assertEqual(static['jumped'], '0/0/0/0/0/1')
-        self.assertEqual(static['held'], 1)
-        cut = next(x for x in rows if x.get('case') == 'cut')
-        self.assertLess(abs(cut['cut_length_px'] - cut['rule_px']), 0.01)
-        endon = next(x for x in rows if x.get('case') == 'endon')
-        self.assertLess(abs(endon['centre_ratio'] - 1.0), 0.02)  # straight-ahead fire at full core radiance
-        self.assertEqual((endon['endon_energy'], endon['slow_energy'], endon['paused_energy']), (1.0, 1.0, 1.0))
-        cap = next(x for x in rows if x.get('case') == 'cap')
-        self.assertLess(abs(cap['centre_ratio'] / cap['want_energy'] - 1.0), 0.03)
-        budget = next(x for x in rows if x.get('case') == 'budget')
-        self.assertEqual((budget['bolts'], budget['drawn']), (512, 512))
-        self.assertEqual((budget['statics'], budget['jumped']), (0, 0))
-        self.assertLess(budget['cpu_us'], 100.0)
-        self.assertLess(budget['gpu_us'], 50.0)
-        self.assertLess(next(x for x in rows if 'attach' in x)['ps_slots'], 200)
 
     def test_reshade_texture_key(self):
         # bullet_reshade_core.h (bullet-draw-batch.md section 6): the exact bytes find their entry, a changed tail or
@@ -364,70 +320,6 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLess(rows['flash_side']['overlap'], rows['flash_tilt']['overlap'])
         self.assertLess(rows['flash_tilt']['overlap'], rows['flash_axis']['overlap'])
         self.assertEqual(rows['cost']['fenced'], 1)
-
-    def test_muzzle_flash_gates(self):
-        # docs/architecture/muzzle-flash-look.md (superseded) section 6: the white extent 1.25 x the core's at the gun's
-        # depth and 200 / 500 m (capped at 160 px at 4 m only) at +2 and +4 stops (the anti-lamp gate), the streak's
-        # length, the dot past it, the wall-clock life at 60 and 144 fps, SETA 6 and the key's bounds, the pulse by its
-        # law, the budget
-        rows = self.record['metrics']['flash']
-        size = [x for x in rows if x.get('case') == 'size']
-        self.assertEqual(len(size), 12)
-        for x in size:
-            self.assertLessEqual(abs(x['white_px'] - x['rule_white_px']), 0.25, x)
-            # the anti-lamp invariant on both branches: white <= min(flash_core_mult x the core's, the 160 px cap)
-            self.assertLessEqual(x['white_px'], min(1.25 * x['core_white_measured_px'], 160.0) + 0.25, x)
-            if x['capped']:
-                self.assertEqual(x['distance_m'], 4)
-            elif x['flash_stops'] == 2:  # the core's 1 px floor applies to the flash too: the ratio at 500 m as well
-                self.assertLessEqual(abs(x['ratio'] / 1.25 - 1.0), 0.10, x)
-        gun = next(x for x in size if x['distance_m'] == 27 and x['flash_stops'] == 2)
-        self.assertAlmostEqual(gun['ratio'], 1.25, delta=0.02)
-        lamp = next(x for x in size if x['distance_m'] == 27 and x['flash_stops'] == 4)
-        self.assertAlmostEqual(lamp['white_px'], gun['white_px'], delta=0.5)  # brightness does not grow it
-        streak = {x['distance_m']: x for x in rows if x.get('case') == 'streak'}
-        for d in (27, 500):
-            self.assertLessEqual(abs(streak[d]['length_px'] - streak[d]['rule_px']), 1.0)
-        self.assertEqual((streak[2000]['folded'], streak[2000]['dot']), (1, 1))
-        life = {x['name']: x for x in rows if x.get('case') == 'life'}
-        self.assertEqual({k: v['drawn'] for k, v in life.items()},
-                         {'life80_frame17': 5, 'life80_frame7': 12, 'life80_seta6_step100': 5, 'life400_frame17': 24,
-                          'life16_frame17': 1, 'tapped_one_step_late': 4, 'tapped_one_step_late_seta6': 4,
-                          'tapped_late_backdate_cap_rate0': 1, 'not_ours': 0, 'tapped_late': 0,
-                          'record_other_shooter': 0})
-        # the birth set back by min(game age / SETA rate, 1 s): 100 / 6 ms under SETA 6, the 1 s cap at 1.5 s late
-        self.assertAlmostEqual(life['tapped_one_step_late_seta6']['back_us'], 100e3 / 6.0, delta=1.0)
-        self.assertAlmostEqual(life['tapped_late_backdate_cap_rate0']['back_us'], 1e6, delta=1.0)
-        self.assertEqual(life['record_other_shooter']['lost'], 1)  # the record's shooter compared on the first frame
-        for x in life.values():  # F = 1 on the first frame, then 1 - age / life (wall clock); the flash rides the shooter
-            self.assertLess(x['fade_err'], 1e-3, x)
-            self.assertLess(x['ride_err_px'], 0.1, x)
-        for x in life.values():  # v_bullet - (slip + node velocity): the shot's own direction
-            self.assertLess(x['axis_err_deg'], 0.05)
-        pulse = self.record['metrics']['pulse']
-        self.assertEqual(len(pulse), 4)
-        for x in pulse:
-            self.assertEqual(x['sky_lit'], 0)
-            self.assertLess(x['worst'], 0.02)
-            self.assertLessEqual(abs(x['peak'] / x['peak_want'] - 1.0), 0.05)
-        cap = self.record['metrics']['pulse_cap'][0]  # the screen cap, the eye within 1.5 radii, a culled flash
-        self.assertEqual((cap['own27_clamped'], cap['own27_drawn'], cap['cockpit3_flash'], cap['cockpit3_pulse'],
-                          cap['offscreen_flash'], cap['offscreen_pulse']), (1, 1, 1, 0, 0, 0))
-        self.assertLessEqual(cap['own27_px'], cap['cap_px'] + 0.01)
-        ghost = self.record['metrics']['pulse_ghost'][0]  # in the TAA history at most one extra frame
-        self.assertEqual(ghost['ran'], 1)
-        self.assertLessEqual(ghost['ghost2'], 0.01)
-        budget = next(x for x in rows if x.get('case') == 'budget')
-        self.assertEqual((budget['flashes'], budget['pulses'], budget['lost'], budget['stale']), (64, 64, 0, 0))
-        self.assertLess(budget['cpu_us'], 20.0)
-        self.assertLess(budget['gpu_increment_us'], 30.0)
-        combined = next(x for x in rows if x.get('case') == 'budget_combined' and x.get('tune') == 'baked')
-        self.assertEqual((combined['bolts'], combined['drawn'], combined['flashes'], combined['pulses']), (512, 512, 64, 64))
-        bounds = next(x for x in rows if x.get('case') == 'budget_combined_bounds')
-        self.assertLessEqual(bounds['gpu_us'], 60.0)
-        self.assertLessEqual(bounds['flash_work_cpu_us'], 20.0)
-        self.assertLessEqual(bounds['cpu_us'], 150.0)  # a regression tripwire; the flight's CPU is projectile_us_max
-        self.assertEqual(self.record['failed_checks'], [])
 
     def test_passed_with_the_step_gates(self):
         r = self.record

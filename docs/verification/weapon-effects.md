@@ -3172,7 +3172,7 @@ behaviour change on AP; not flown on FL (the stage has not run in the game).
 
 ## Projectile IRE on FL (2026-11-08)
 
-The projectile stage ([projectile-look.md](../architecture/projectile-look.md) "Implementation (2026-11-08)"): the
+The projectile stage ([projectile-look-custom.md](../archive/effects-look-2026-11-13-custom-projectile/projectile-look-custom.md) "Implementation (2026-11-08)"; removed 2026-11-13): the
 batch-submit claim `0x097af8`, the enabled-body pool on the object tap, the per-frame builder and one draw, the dev
 tuning file. Commits `740fba710` (hook), `165335c52` (stage and program), `65e142146` (tuning), `44855cd05`
 (fixtures), `01d863272` (the first records, taken at `44855cd05`); later records below. `X3M_FIXTURE_BOTTLE=X3 python3 verification/probe/wine_lock.py python3
@@ -3394,7 +3394,7 @@ x scene white; main budget CPU 88.2 µs, GPU fenced 46.6 µs (532 quads). Shader
 `check_no_x87.py --edition fl` no violations, host `test_weapon_effects*.py` 96 OK. Figures from
 `verification/results/native-windows/weapon-effects/projectile_rows.py`.
 
-**IRE muzzle flash (2026-11-09).** The design of [muzzle-flash-look.md](../architecture/muzzle-flash-look.md) built
+**IRE muzzle flash (2026-11-09).** The design of [muzzle-flash-look-custom.md](../archive/effects-look-2026-11-13-custom-projectile/muzzle-flash-look-custom.md) built
 (`1d30eb433` production, `e92b39e78` fixtures; its "Implementation (2026-11-09)"): the FL muzzle site claimed in every
 stage mode and skipping the spawner for a shot of an enabled body under the batch latch, the flash point, streak and
 hull pulse through `run_projectiles`, five tuning keys. Not flown (FL run 62 judges the look). Records on the clean
@@ -4431,3 +4431,24 @@ camera rows use, 5 per metre (5.07 measured from a 16.0 km HUD readout, `docs/re
 not the engine's int32 object units (500 per metre, `docs/reverse-engineering/game-scale-and-ship-classes.md`). Design
 and fix: `docs/architecture/shadow-far-caster-penumbra.md`, ledger `docs/verification/directional-shadows.md` "FL 71 A:
 far-caster penumbra mip bias (2026-11-13)"; the FL 70 A entry-mapping and fade fixes stand on their own.
+
+### Custom projectile stage and muzzle flash removed (2026-11-13)
+
+The custom projectile stage (pool, object-tap registration, batch skip stub, draw-hook drop, bolt and hull-pulse
+programs) and the custom muzzle flash (stage flash, hull pulse, the muzzle stub's skip of the game's flash) were
+deleted; the re-shade paths (bullet batch and lone, muzzle, the lathe shield stage, the dev tuning file's nine kept
+keys) are unchanged. Archive: [index](../archive/effects-look-2026-11-13-custom-projectile/index.md) (last commit with
+the code `04d518bf3`). Behaviour: `reshade` installs the same sites as before (impact, batch with the scope stub); FL
+`shields` now claims the impact alone (it also armed the custom stage before); the bolts modes' FL muzzle forwards
+every shot; the fourteen legacy keys in `projectile_tune.json` are unknown keys, one `projectile_tune unknown key=` row
+each per session. Builds from the working tree on `04d518bf3` (RelWithDebInfo, mingw-i686, clean): FL 0 warnings,
+`check_no_x87 --edition fl` PASS (the scope stub now a root in place of the batch skip stub), DLL 61,342,820 ->
+60,963,334 B; AP 0 warnings, 64,537,027 -> 64,465,038 B [M]. Native run (`run_weapon_effects.py --host native`,
+05:07:49-05:08:45): D3D 158 -> 105 checks PASS (the 53 removed are all `projectile*`, `flash*`, `pulse*`; re-shade 22,
+muzzle re-shade 8, lathe 27, other 48 unchanged), AP hook 145 PASS unchanged, FL hook 74 -> 62 PASS (19 cases of the
+batch skip, pool and muzzle skip removed, 7 added: shields claims the impact only, the bolts mode's muzzle witness,
+rollback and forward, reshade's batch rollback, no `projectile_` row). Cost rows against the record tracked at 04d518bf3
+(run on 84a2ccaaa; before / after, us): bullet substitution 0.142 / 0.123 per draw, batch 469 bolts re-shaded 42.7 / 41.8, lone substitution
+0.384 / 0.286, muzzle substitution 0.203 / 0.224, match 0.069 / 0.069, lathe build best 5.2 / 5.1, lathe 64-hit
+5120x1440 GPU 210.6 / 206.1 [M; no regression, sub-microsecond rows move by run noise]. Script:
+`python3 -I verification/results/native-windows/weapon-effects/custom_stage_removal.py`.

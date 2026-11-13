@@ -966,14 +966,15 @@ Built and removed with the look layer (2026-11-08), the clone row R' with it (it
 Built and removed with the look layer (2026-11-08); the bolt tap, muzzle and flight hooks stay:
 [archive](../archive/effects-look-2026-11-08/index.md).
 
-**The projectile stage (FL, 2026-11-08; [projectile-look.md](projectile-look.md) "Implementation").** The redo's
-bolts are a family-generic stage beside the shield stage, drawn in the same stage callback: the fighter-tracer family
-with the IRE as its only enabled row (and rows 37–39 through its body). In every stage mode the FL install also claims
-the object tap `0x0645bd` (it registers bullets of enabled bodies into a 512-entry pool) and the batch submit `0x097af8`
-(site row `batch`: it skips an enabled body's instanced draw while the stage owned the previous frame); the draw hook
-drops the same bodies' material-submit draws by the object-trace scope's node. The stage reads each pooled node once per
-frame and draws every bolt as one screen-space quad in one draw, radiance into the FP16 scene and the far flag into the
-lane. The muzzle and flight sites are unchanged (the game's muzzle flash stays); AP installs nothing new.
+**The projectile stage (FL, 2026-11-08 to 2026-11-13).** The redo first drew FL's bolts and muzzle flashes itself (a
+stage beside the shield stage fed by the object tap's pool, the batch submit `0x097af8` skipped per body, the lone draws
+dropped in the draw hook, the muzzle stub skipping the game's flash). It was superseded by the re-shade of the game's
+own draws (`weapon_effects = reshade`, user decision 2026-11-09: [projectile-look.md](projectile-look.md),
+[muzzle-flash-look.md](muzzle-flash-look.md), [bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md)
+sections 6 and 7) and removed on 2026-11-13
+([archive](../archive/effects-look-2026-11-13-custom-projectile/index.md), last commit `04d518bf3`). Since then the
+batch site is claimed only in reshade mode, with the scope stub that forwards every submit; the object tap and the
+muzzle site only in the bolts modes, where the FL muzzle forwards every shot; AP installs nothing new.
 
 ### 5.5 Step 5: beams
 

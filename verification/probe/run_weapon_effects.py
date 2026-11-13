@@ -19,12 +19,12 @@ the surface case, the no-pop runs (fighter and spread capital on a flat face, th
 sphere fronts, each with its worst pixel), the face-edge pair, the stage's CPU cost (with the Flight B station cluster), the decal fallback,
 the marker cell through the production TemporalPass at 0 / 4 / 8 px per frame, the age law with the measured SETA 6 wall time, the retired-owner case through the stage builder, Reset
 and the fault cases, the program-create refusal) and the stage cost at 1080p and 5120x1440 (fence, two patches on a
-fighter, two on a capital at close range, the worst case of one owner); the projectile stage
-(docs/architecture/projectile-look.md: the core width rule at 200 m / 500 m / 1 km / 3 km at two fields of view, SETA
-invariance, the far flag, the dot LOD, nothing outside the quad, depth occlusion, the pool's draw and retirement, Reset,
-the 512-bolt budget at 5120x1440; PROJECTILE rows). Never launches the game. The hull-hit, explosion
-and bolt cases left with the look layer on 2026-11-08 (docs/archive/effects-look-2026-11-08/index.md); the hook
-fixture keeps the bolt and death sites' hook cases.
+fighter, two on a capital at close range, the worst case of one owner); the bullet and muzzle flash re-shades (RESHADE,
+MUZZLE_RESHADE rows). Never launches the game. The hull-hit, explosion and bolt cases left with the look layer on
+2026-11-08 (docs/archive/effects-look-2026-11-08/index.md), the custom projectile stage's and muzzle flash's cases
+(PROJECTILE, FLASH, PULSE rows) with that stage on 2026-11-13
+(docs/archive/effects-look-2026-11-13-custom-projectile/index.md); the hook fixture keeps the bolt and death sites'
+hook cases.
 
 Two hosts, chosen explicitly: --host native (native_host.py; the WSL2 host, no bottle) runs the binary on the Windows
 side through WSL interop with the system d3d9.dll and the game's C:\\X3\\d3dx9_37.dll, into
@@ -56,7 +56,7 @@ FLAGS = ['-std=c++17', '-O2', '-Wall', '-Wextra', '-Werror', '-Wno-cast-function
          '-DWIN32_LEAN_AND_MEAN', '-DNOMINMAX', '-DX3M_WEAPON_EFFECTS_FIXTURE']
 SOURCES = ('verification/probe/weapon_effects_fixture.cpp', 'src/renderer/weapon_effects_pass.cpp',
            'src/renderer/temporal_pass.cpp')
-# The production reader (engine_memory::read: the projectile and re-shade cases), compiled as the DLL compiles it
+# The production reader (engine_memory::read: the re-shade cases), compiled as the DLL compiles it
 # (CMakeLists.txt: no SSE / MMX) into its own object.
 NO_SSE_SOURCES = ('src/proxy/engine_memory.cpp',)
 NO_SSE = ['-mno-sse', '-mno-mmx', '-mfpmath=387']
@@ -75,11 +75,8 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_hex_patch.hlsl',
                       'src/renderer/weapon_shell_vertex_program_inc.h', 'src/renderer/weapon_shell_pixel_program_inc.h',
                       'src/renderer/weapon_decal_vertex_program_inc.h', 'src/renderer/weapon_decal_pixel_program_inc.h',
-                      # the projectile stage (docs/architecture/projectile-look.md)
-                      'src/proxy/weapon_projectile_stage.h', 'src/proxy/weapon_projectile_family.h',
-                      'src/proxy/weapon_effects_projectile.h', 'src/effects/weapon_projectile_vs.hlsl',
-                      'src/effects/weapon_projectile_ps.hlsl', 'src/renderer/weapon_projectile_vertex_program_inc.h',
-                      'src/renderer/weapon_projectile_pixel_program_inc.h',
+                      # the re-shades' tuning keys (the dev tuning file's)
+                      'src/proxy/weapon_projectile_family.h',
                       # the bullet re-shade (docs/reverse-engineering/fl/bullet-draw-batch.md section 6)
                       'src/effects/weapon_bullet_reshade_ps.hlsl', 'src/renderer/weapon_bullet_reshade_pixel_program_inc.h',
                       'src/effects/weapon_bullet_reshade.hlsl', 'src/effects/weapon_bullet_reshade_flag_ps.hlsl',
@@ -93,8 +90,6 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/effects/weapon_muzzle_reshade_ps.hlsl', 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h',
                       'src/proxy/muzzle_reshade_route.h', 'src/proxy/muzzle_reshade_core.h',
                       'verification/probe/weapon_muzzle_reshade_fixture.h',
-                      # the muzzle flash's hull pulse (docs/architecture/muzzle-flash-look.md)
-                      'src/effects/weapon_pulse_ps.hlsl', 'src/renderer/weapon_pulse_pixel_program_inc.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
                       'verification/probe/weapon_effects_fixture.cpp')
 PROGRAMS = {
@@ -105,11 +100,6 @@ PROGRAMS = {
     'weapon_bubble_ps': ('verification/results/weapon-bubble-pixel-program.json', 'src/renderer/weapon_bubble_pixel_program_inc.h'),
     'weapon_lathe_vs': ('verification/results/weapon-lathe-vertex-program.json', 'src/renderer/weapon_lathe_vertex_program_inc.h'),
     'weapon_lathe_ps': ('verification/results/weapon-lathe-pixel-program.json', 'src/renderer/weapon_lathe_pixel_program_inc.h'),
-    'weapon_projectile_vs': ('verification/results/weapon-projectile-vertex-program.json',
-                             'src/renderer/weapon_projectile_vertex_program_inc.h'),
-    'weapon_projectile_ps': ('verification/results/weapon-projectile-pixel-program.json',
-                             'src/renderer/weapon_projectile_pixel_program_inc.h'),
-    'weapon_pulse_ps': ('verification/results/weapon-pulse-pixel-program.json', 'src/renderer/weapon_pulse_pixel_program_inc.h'),
     'weapon_bullet_reshade_ps': ('verification/results/weapon-bullet-reshade-pixel-program.json',
                                  'src/renderer/weapon_bullet_reshade_pixel_program_inc.h'),
     'weapon_bullet_reshade_flag_ps': ('verification/results/weapon-bullet-reshade-flag-pixel-program.json',
@@ -140,7 +130,7 @@ HOOK_FL_SOURCES = ('verification/probe/weapon_effects_hook_fixture_fl.cpp', 'ver
                    'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
                    'src/engine/fl/weapon_effects_sites_fl.h', 'src/proxy/weapon_effects_bolt.h',
                    'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
-                   'src/engine/fl/executable_identity_fl.h', 'src/proxy/weapon_effects_projectile.h')
+                   'src/engine/fl/executable_identity_fl.h')
 
 
 def sha(path):
@@ -207,8 +197,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'PROJECTILE', 'FLASH', 'PULSE', 'PULSE_CAP', 'PULSE_GHOST', 'RESHADE', 'MUZZLE_RESHADE',
-            'LATHE')
+            'REFUSED', 'TIMING', 'RESHADE', 'MUZZLE_RESHADE', 'LATHE')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -459,18 +448,18 @@ def muzzle_assets(game, lab, target):
 
 
 def dump(args):
-    """--dump DIR: the projectile look frames only (weapon_effects_projectile_dump.cpp, a separate program so the D3D
-    record's source binding stays): it writes linear RGB PFM under BUILD/dump, encoded here as PNG into DIR (exposure 0,
-    clamp, sRGB; no bloom, AgX or TAA, as the design mocks); no hook fixture, no record. --dump-case reshade: the bullet
-    re-shade's frames instead (fixture-ire-{vanilla,reshade}-{near,far}; bullet-draw-batch.md section 6) under
-    BUILD/dump-reshade, the far crops enlarged 6x (nearest) in the PNG. --dump-case muzzle: the muzzle flash re-shade's
-    frames (fixture-muzzle-{vanilla,reshade}-{near,far,grow,axis,side}; muzzle-flash-look.md) under BUILD/dump-muzzle, the
+    """--dump DIR: the re-shades' look frames only (weapon_effects_projectile_dump.cpp, a separate program so the D3D
+    record's source binding stays), linear RGB PFM encoded here as PNG into DIR (exposure 0, clamp, sRGB; no bloom, AgX
+    or TAA); no hook fixture, no record. --dump-case reshade (default): the bullet re-shade's frames
+    (fixture-ire-{vanilla,reshade}-{near,far}; bullet-draw-batch.md section 6) under BUILD/dump-reshade, the far crops
+    enlarged 6x (nearest) in the PNG. --dump-case muzzle: the muzzle flash re-shade's frames
+    (fixture-muzzle-{vanilla,reshade}-{near,far,grow,axis,side}; muzzle-flash-look.md) under BUILD/dump-muzzle, the
     figures in DIR/dump_out.txt."""
     import numpy as np
     from PIL import Image
     out = Path(args.dump)
     out.mkdir(parents=True, exist_ok=True)
-    raw = BUILD / {'reshade': 'dump-reshade', 'muzzle': 'dump-muzzle'}.get(args.dump_case, 'dump')
+    raw = BUILD / {'reshade': 'dump-reshade', 'muzzle': 'dump-muzzle'}[args.dump_case]
     raw.mkdir(parents=True, exist_ok=True)
     for stale in raw.glob('*.pfm'):
         stale.unlink()
@@ -487,14 +476,12 @@ def dump(args):
         argv = ['dump-reshade', 'reshade', d3dx, 'dump-reshade-assets' if real else '']
         if args.reshade_edge is not None:
             argv.append(f'{args.reshade_edge:g}')
-    elif args.dump_case == 'muzzle':
+    else:
         real = muzzle_assets(args.game, args.lab_assets, BUILD / 'dump-muzzle-assets')
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
         argv = ['dump-muzzle', 'muzzle', d3dx, 'dump-muzzle-assets' if real else '']
         if args.muzzle_keys:
             argv.append(args.muzzle_keys)
-    else:
-        argv = ['dump']
     done, text = native_host.run_native(exe, argv, BUILD, args.timeout, log=BUILD / 'dump-fixture')
     rows = '\n'.join(line for line in text.splitlines() if line.startswith(('DUMP', 'RESULT')))
     print(rows)
@@ -511,7 +498,7 @@ def dump(args):
         c = np.clip(img, 0.0, 1.0)
         srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
         image = Image.fromarray((srgb * 255 + 0.5).astype(np.uint8))
-        if args.dump_case in ('reshade', 'muzzle') and '-far' in pfm.stem:
+        if '-far' in pfm.stem:
             image = image.resize((w * 6, h * 6), Image.NEAREST)
         image.save(out / (pfm.stem + '.png'))
         print('PNG', out / (pfm.stem + '.png'))
@@ -525,11 +512,10 @@ def main():
     parser.add_argument('--host', choices=('bottle', 'native'), default='bottle',
                         help='bottle (default): the CrossOver bottle X3M_FIXTURE_BOTTLE; native: the Windows side of this '
                              'WSL2 host through interop (native_host.py), never a fallback')
-    parser.add_argument('--dump', help='write the projectile look frames as PNG into this directory (native host only); '
+    parser.add_argument('--dump', help='write the re-shades\' look frames as PNG into this directory (native host only); '
                                        'no other fixture runs and no record is written')
-    parser.add_argument('--dump-case', choices=('projectile', 'reshade', 'muzzle'), default='projectile',
-                        help='with --dump: the projectile stage frames (default), the bullet re-shade frames or the '
-                             'muzzle flash re-shade frames')
+    parser.add_argument('--dump-case', choices=('reshade', 'muzzle'), default='reshade',
+                        help='with --dump: the bullet re-shade frames (default) or the muzzle flash re-shade frames')
     parser.add_argument('--muzzle-keys', default=None,
                         help='with --dump-case muzzle: "size,core,gain,smooth" instead of the baked keys (a calibration '
                              'sweep; write it to a scratch --dump directory)')
@@ -576,8 +562,7 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing', 'projectile', 'flash', 'pulse', 'pulse_cap',
-                                                 'pulse_ghost', 'reshade', 'muzzle_reshade', 'lathe')}
+                                                 'refused', 'timing', 'reshade', 'muzzle_reshade', 'lathe')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

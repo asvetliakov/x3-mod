@@ -505,7 +505,10 @@ class LauncherAndProxyTests(unittest.TestCase):
         self.assertIn('DWORD width = 0, height = 0; // level-0 size of a 2D texture', header)
         self.assertEqual(motion.count('texture_level0_size('), 2)  # the definition and resync_samplers (the hook is in capture.cpp)
         self.assertEqual(capture.count('texture_level0_size('), 1)
-        self.assertEqual(motion.count('GetLevelDesc'), 1)
+        # texture_level0_size and the sky stars' one-row match description (sky_stars_texture_desc, 9666c534d: the
+        # sky_stars_match row only, never per draw).
+        self.assertEqual(motion.count('GetLevelDesc'), 2)
+        self.assertIn('GetLevelDesc(0, &desc)', extract_function(motion, 'void sky_stars_texture_desc('))
         # The one other GetLevelDesc of the route: the alpha-tested casters' pool check (--shadow-alpha-casters,
         # default off) in the replay include. Per draw by design, but never on the off path: only an alpha-tested
         # draw that would be a managed candidate reaches it, and only with the option on and the pass holding its

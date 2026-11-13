@@ -174,8 +174,11 @@ constexpr unsigned type_stride = 0xdb8;
 constexpr unsigned bullet_shield_damage = 0x44, bullet_flags = 0x58, bullet_light = 0x5c, bullet_hull_damage = 0x80;
 constexpr unsigned ship_class_id = 0xc8;
 constexpr unsigned cfg_game_ms = edition_fl ? 0x708 : 0x718;
+// The engine's game-time step of the frame (fl/seta.md: AP cfg +0x714, FL +0x704; ms, SETA included).
+constexpr unsigned cfg_step_ms = edition_fl ? 0x704 : 0x714;
 // A node's axis scales (16.16, the lathe's scene-to-object factor; render-node-bounds.md 6.1) and its body id (the
-// projectile pool's). The runtime hull walk's links, placement and body cache were removed on 2026-11-12.
+// removed projectile pool's read; the re-shades read FL's +0x144 through their own constants). The runtime hull
+// walk's links, placement and body cache were removed on 2026-11-12.
 constexpr unsigned node_axis_scale = 0x80;
 constexpr unsigned node_body = edition_fl ? 0x144 : 0x140;
 constexpr std::uint32_t obj_dying = 0x8000000u;    // obj+0x40 bit set once by the kill routine 0x0044abd0
@@ -356,9 +359,9 @@ struct Table {
     std::uint8_t bolt_pin[table_capacity]{};
     std::uint8_t bolt_e_body_q[table_capacity]{};
     std::uint8_t bolt_w_orb_q[table_capacity]{};
-    // The projectile stage's row identity (weapon_projectile_family.h): FNV-1a 32 of the entry's "id" and "body"
-    // strings (0: absent or longer than 63 characters), so an enabled TBullets id finds its row and the rows sharing
-    // its body without keeping the strings.
+    // The row identity: FNV-1a 32 of the entry's "id" and "body" strings (0: absent or longer than 63 characters).
+    // body_hash names the row's tables.bullet_bodies entry (bullet_reshade_core.h build_body_map); id_hash served the
+    // removed projectile stage's enabled-row list and is parsed but unread.
     std::uint32_t id_hash[table_capacity]{};
     std::uint32_t body_hash[table_capacity]{};
     // The bullet re-shade's per-texture luminance normaliser (tables.bullet_textures; bullet_reshade_core.h): per
@@ -717,8 +720,10 @@ constexpr std::uint16_t record_life_ms[drawn_tiers] = {3201, 4801, 7901, 12601, 
 // mode_reshade (FL, user decision 2026-11-09; docs/reverse-engineering/fl/bullet-draw-batch.md section 6): shields mode
 // plus the bullet re-shade. The batch site 0x097af8 is claimed with a scope stub that forwards every call and only
 // marks the submit's extent (x3m_bullet_scope); the draw hook binds our pixel program in place of the game's
-// INSTANCE_BULLETS one inside it. The projectile stage, its batch skip and traversal drop, the object tap and the muzzle
-// site are off: the engine draws its own bolts and flashes. stage_mode() is true (the shield stage's latch and ring).
+// INSTANCE_BULLETS one inside it; the muzzle flash re-shade re-shades the game's own flash draw. The object tap and the
+// muzzle site are off: the engine draws its own bolts and flashes. stage_mode() is true (the shield stage's latch and
+// ring). The custom projectile stage that the other FL stage modes armed was removed on 2026-11-13: on FL, shields and
+// the family modes claim no batch site.
 // On AP the mode runs as shields (no batch site there).
 enum Mode : std::uint8_t { mode_native = 0, mode_observe = 1, mode_shields = 2, mode_shields_hull = 3,
                            mode_shields_hull_bolts = 4, mode_shields_hull_explosions = 5,

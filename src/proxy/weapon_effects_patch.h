@@ -3,7 +3,6 @@
 #include <cstdint>
 #include "weapon_effects_core.h"
 #include "weapon_effects_bolt.h"
-#include "weapon_effects_projectile.h"
 
 // Weapon effects, step 1: the shield hit (X3M_WEAPON_EFFECTS=native|observe|shields; the scratched families' names
 // hull, bolts and explosions are accepted beside shields and ignored, a weapon_effects_ignored row each; unset = native;
@@ -99,7 +98,7 @@ const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept
 const core::ShipProfiles* ship_profiles() noexcept;
 const char* state();
 // 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
-// (the one FL call), 7 batch (the projectile stage's batch submit 0x097af8; with the object tap in every stage mode)
+// (the one FL call), 7 batch (the bullet batch submit 0x097af8: the re-shade's scope stub, reshade mode)
 const char* site_state(unsigned site);
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
@@ -139,23 +138,6 @@ struct StageFrame {
     unsigned lathe_entry_far = 0; // lathe records whose entry lay past the walk's reach (map_lathe of the contact)
     float stage_us = 0.f;
     bool drew = false;
-    // The projectile stage (FL; weapon_projectile_stage.h): the frame drew or had nothing to draw while armed (the
-    // next frame's batch-skip latch), bolts drawn, traversal draws dropped by the draw hook and those it could not see,
-    // pool entries retired, the stage's CPU time.
-    bool projectile_owned = false;
-    unsigned projectile_bolts = 0, projectile_dropped = 0, projectile_unhandled = 0, projectile_retired = 0;
-    // scoped draws of an enabled body whose node is not pooled (a child node, or a bullet the pool missed), counted on
-    // the sampled frames (every 60th and every capture frame), and those frames
-    unsigned projectile_unpooled = 0, projectile_sampled = 0;
-    // evaluated entries whose node +0x30 did not change since the previous stage frame (extrapolated), and those whose
-    // position left the velocity prediction (drawn as a first frame): the logic-tick question of FL 59 A
-    unsigned projectile_static = 0, projectile_jumped = 0;
-    unsigned projectile_ring_trimmed = 0; // bolt-frames whose comet ring was trimmed (projectile_stage::ring_trim_above)
-    // the muzzle flashes (docs/architecture/muzzle-flash-look.md): flash quads and hull pulses drawn, flashes whose
-    // shooter could not be read (dropped), flashes past the frame's room
-    unsigned projectile_flashes = 0, projectile_pulses = 0, projectile_flash_lost = 0, projectile_flash_dropped = 0;
-    unsigned projectile_pulse_clamped = 0; // pulses shrunk to the screen cap
-    float projectile_us = 0.f;
     // The bullet re-shade (FL reshade mode; MotionOutput::bullet_reshade_take_frame): draws re-shaded, substitutions
     // that failed (the draw kept the game's program), bullet-program draws outside the batch submit, the substitution's
     // CPU time of the substitution sequence alone over the frame's timed draws (us; every 60th frame and capture
@@ -189,7 +171,6 @@ std::uint32_t game_step_ms();
 #if X3M_EDITION_FL
 extern "C" {
 void x3m_weapon_effects_stub_impact_fl();
-void x3m_weapon_effects_stub_batch_fl();
 // The bullet re-shade (mode_reshade): the batch call's scope stub, its depth counter (non-zero inside the game's bullet
 // submit) and its call count; x3m_bullet_reshade_armed is set once that stub is live.
 void x3m_weapon_effects_stub_batch_scope_fl();
@@ -198,7 +179,6 @@ extern volatile std::uint32_t x3m_bullet_scope_calls;
 extern volatile std::uint32_t x3m_bullet_body; // the submitted batch's body id [EDX+0x0c] (the geometric size)
 extern volatile std::uint32_t x3m_bullet_reshade_armed;
 extern std::uintptr_t x3m_weapon_effects_continue_batch;
-extern x3m::weapon_effects::core::ProjectilePool x3m_projectile_pool;
 void x3m_weapon_effects_stub_tap_fl();
 void x3m_weapon_effects_stub_bolt_tap_fl();
 void x3m_weapon_effects_stub_muzzle_fl();

@@ -102,4 +102,4 @@ env -u CX_DEBUGMSG X3M_FIXTURE_BOTTLE=X3 /Users/asvetl/x3-mod/x3run --direct --d
 # --music-keep --shadow-alpha-casters on
 ```
 
-No run is open (FL 72 A accepted 2026-11-13); its instructions and the tuning protocol are in its table row and in [projectile-look](../architecture/projectile-look.md) section 4. AP 246 A was flown and rejected on 2026-11-08 and AP 245 A was superseded unflown. Completed instructions for Runs 73-101 are in the [archive](../archive/user-runs-completed.md).
+No run is open (FL 72 A accepted 2026-11-13); its instructions and the tuning protocol are in its table row and in [projectile-look](../architecture/projectile-look.md) "Dev tuning file". AP 246 A was flown and rejected on 2026-11-08 and AP 245 A was superseded unflown. Completed instructions for Runs 73-101 are in the [archive](../archive/user-runs-completed.md).

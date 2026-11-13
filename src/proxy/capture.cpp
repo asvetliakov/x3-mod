@@ -2100,18 +2100,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.lathe_deferred = drops[14];
         stage.lathe_entry_far = drops[15];
 #if X3M_EDITION_FL
-        // The projectile stage (docs/architecture/projectile-look.md): its ownership latches the next frame's batch skip.
-        unsigned flashes[5] = {};
-        ctx.motion_output.projectile_take_frame(&stage.projectile_owned, &stage.projectile_bolts, &stage.projectile_dropped,
-                                                &stage.projectile_unhandled, &stage.projectile_retired,
-                                                &stage.projectile_us, &stage.projectile_unpooled,
-                                                &stage.projectile_sampled, &stage.projectile_static,
-                                                &stage.projectile_jumped, &stage.projectile_ring_trimmed, flashes);
-        stage.projectile_flashes = flashes[0];
-        stage.projectile_pulses = flashes[1];
-        stage.projectile_flash_lost = flashes[2];
-        stage.projectile_flash_dropped = flashes[3];
-        stage.projectile_pulse_clamped = flashes[4];
         // The re-shades (reshade mode): one dev tuning poll for both while either runs, then each one's frame counts
         // (the bullet's: bullet-draw-batch.md section 6; the muzzle flash's: muzzle-flash-look.md).
         const bool bullet_reshade = x3m_bullet_reshade_armed != 0;

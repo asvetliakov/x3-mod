@@ -310,6 +310,10 @@ class PerFrameRowTiers(unittest.TestCase):
         'weapon_boom_frame': 'every frame_row_period (300) frames in every tier, explosions mode only (weapon_effects ini)',
         'weapon_effects_frame': 'every frame_row_period (300) frames in every tier, only with weapon_effects installed',
         'weapon_bolts_frame': 'every frame_row_period (300) frames and on a capture frame, bolts mode only',
+        # FL reshade mode (2026-11-09): the re-shades' period rows sit in the same present() period as
+        # weapon_effects_frame (after its `frame % frame_row_period` return), so they share its tier.
+        'bullet_reshade_frame': 'every frame_row_period (300) frames in every tier, FL reshade mode only (the scope stub live)',
+        'muzzle_reshade_frame': 'every frame_row_period (300) frames in every tier, FL reshade mode only',
     }
     CALL = re.compile(r'\b(?:x3m::)?log\(\s*"([a-z0-9_]+_frame)[ "=]')
 
