@@ -4447,8 +4447,10 @@ each per session. Builds from the working tree on `04d518bf3` (RelWithDebInfo, m
 05:07:49-05:08:45): D3D 158 -> 105 checks PASS (the 53 removed are all `projectile*`, `flash*`, `pulse*`; re-shade 22,
 muzzle re-shade 8, lathe 27, other 48 unchanged), AP hook 145 PASS unchanged, FL hook 74 -> 62 PASS (19 cases of the
 batch skip, pool and muzzle skip removed, 7 added: shields claims the impact only, the bolts mode's muzzle witness,
-rollback and forward, reshade's batch rollback, no `projectile_` row). Cost rows against the record tracked at 04d518bf3
-(run on 84a2ccaaa; before / after, us): bullet substitution 0.142 / 0.123 per draw, batch 469 bolts re-shaded 42.7 / 41.8, lone substitution
-0.384 / 0.286, muzzle substitution 0.203 / 0.224, match 0.069 / 0.069, lathe build best 5.2 / 5.1, lathe 64-hit
-5120x1440 GPU 210.6 / 206.1 [M; no regression, sub-microsecond rows move by run noise]. Script:
+rollback and forward, reshade's batch rollback, no `projectile_` row). Cost rows of the committed record against the
+record tracked at 04d518bf3 (run on 84a2ccaaa; before / after, us): bullet substitution 0.142 / 0.197 per draw,
+batch 469 bolts re-shaded 42.7 / 43.1, lone substitution 0.384 / 0.356, muzzle substitution 0.203 / 0.232, match
+0.069 / 0.124, lathe 64-hit 5120x1440 GPU 210.6 / 210.1 [M]. The timing deltas are run noise against the committed
+record (sub-microsecond rows; none of the re-shade code changed); every non-timing metric row of the re-shade,
+muzzle re-shade and lathe cases is identical to the 04d518bf3 record [M]. Script:
 `python3 -I verification/results/native-windows/weapon-effects/custom_stage_removal.py`.
