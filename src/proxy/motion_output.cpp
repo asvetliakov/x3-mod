@@ -478,6 +478,8 @@ unsigned MotionOutput::device_references() const noexcept {
     if (bullet_reshade_flag_ps_) ++count;
     if (bullet_reshade_lone_ps_) ++count;
     if (bullet_reshade_lone_flag_ps_) ++count;
+    if (bullet_reshade_classic_ps_) ++count;
+    if (bullet_reshade_classic_flag_ps_) ++count;
     if (muzzle_reshade_ps_) ++count;
 #endif
     if (sun_sentinel_ps_) ++count;
@@ -634,9 +636,12 @@ void MotionOutput::release_resources() noexcept {
     release(bullet_reshade_flag_ps_);
     release(bullet_reshade_lone_ps_);
     release(bullet_reshade_lone_flag_ps_);
+    release(bullet_reshade_classic_ps_);
+    release(bullet_reshade_classic_flag_ps_);
     bullet_reshade_create_failed_ = bullet_reshade_restore_failed_ = false;
     shadow_.ps_bullet = false;
     shadow_.vs_lone = false;
+    shadow_.vs_classic = false;
     release(muzzle_reshade_ps_); // the muzzle re-shade's program (created again at the next device's registration)
     muzzle_reshade_create_failed_ = muzzle_reshade_restore_failed_ = false;
     shadow_.vs_muzzle = false;
@@ -4437,6 +4442,7 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         shadow_.vs_prepass = nullptr;
         shadow_.vs_muzzle = false;
         shadow_.vs_lone = false;
+        shadow_.vs_classic = false;
     }
     if (!requested_ || !shader) return;
     try {
@@ -4467,7 +4473,9 @@ void MotionOutput::register_vertex_shader(IDirect3DVertexShader9* shader, const 
         if (!enabled_ || !code || !bytes || bytes % 4) return;
 #if X3M_EDITION_FL
         if (hash == weapon_effects::muzzle_reshade::vertex_shader && muzzle_reshade_requested_) muzzle_reshade_create();
-        if (weapon_effects::reshade::lone_vertex_shader(hash) && bullet_reshade_requested_) bullet_reshade_create();
+        if ((weapon_effects::reshade::lone_vertex_shader(hash) || hash == weapon_effects::reshade::classic_vertex_shader) &&
+            bullet_reshade_requested_)
+            bullet_reshade_create();
 #endif
         if (distance_fade_requested_) {
             std::vector<std::uint32_t> words;
@@ -5190,6 +5198,7 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     shadow_.vs_prepass = nullptr;
     shadow_.vs_muzzle = false;
     shadow_.vs_lone = false;
+    shadow_.vs_classic = false;
     if (!shader) return;
     const auto it = vertex_.find(shader);
     if (it == vertex_.end()) return;
@@ -5200,7 +5209,10 @@ void MotionOutput::set_vertex_shader(IDirect3DVertexShader9* shader) noexcept {
     if (shadow_.vs_muzzle && !muzzle_reshade_ps_ && !muzzle_reshade_create_failed_) muzzle_reshade_create();
     // The bullet re-shade's lone path (bullet-draw-batch.md section 7): the effects DEFAULT / INSTANCE VS, the ABI gate.
     shadow_.vs_lone = bullet_reshade_requested_ && weapon_effects::reshade::lone_vertex_shader(shadow_.vs_hash);
-    if (shadow_.vs_lone && !bullet_reshade_ps_ && !bullet_reshade_create_failed_) bullet_reshade_create();
+    // Its lone classic path (section 7 "Classic bodies"): the standard_lighting DEFAULT VS, the ABI gate.
+    shadow_.vs_classic = bullet_reshade_requested_ && shadow_.vs_hash == weapon_effects::reshade::classic_vertex_shader;
+    if ((shadow_.vs_lone || shadow_.vs_classic) && !bullet_reshade_ps_ && !bullet_reshade_create_failed_)
+        bullet_reshade_create();
 #endif
     shadow_.fog_card_pair = fog_cards_replace_ && fog_card_pair(shadow_.vs_hash, shadow_.ps_hash);
     shadow_.vs_registered = it->second.registered;
@@ -6316,11 +6328,12 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
                 screen_additive_window_.apply_failures += screen_additive_failures_ - failures;
             }
 #if X3M_EDITION_FL
-            // The bullet re-shade's lone path (motion_output_bullet_reshade_inc.h): one bool test unless the effects
-            // DEFAULT / INSTANCE VS is bound in reshade mode; the blend shadow, then the scope node's body id in the
-            // body map for the ONE / INVSRCCOLOR and ONE / ONE draws only. Before the source gain, the muzzle and the
-            // hull routes, which a re-shaded draw skips.
-            if (shadow_.vs_lone && route.submit && !shadow_.recording && !route.composition && !route.screen_additive &&
+            // The bullet re-shade's lone path (motion_output_bullet_reshade_inc.h): two bool tests unless the effects
+            // DEFAULT / INSTANCE VS or (lone classic) the standard_lighting DEFAULT VS is bound in reshade mode; the
+            // blend shadow, then the scope node's body id in the body map for the ONE / INVSRCCOLOR and ONE / ONE
+            // draws only (classic: every blended draw, so a mapped body's refusal is counted). Before the source gain,
+            // the muzzle and the hull routes, which a re-shaded draw skips.
+            if ((shadow_.vs_lone || shadow_.vs_classic) && route.submit && !shadow_.recording && !route.composition && !route.screen_additive &&
                 !route.fog_card_mask.masked && lone_bullet_match(route))
                 prepare_lone_bullet(call, route);
 #endif
@@ -6345,6 +6358,7 @@ MotionRoute MotionOutput::before_draw(const MotionDrawCall& call) noexcept {
     // refused begin (an unusable matrix, a failed step, all undone) leaves the draw to the hull route as without the
     // re-shade.
     if (shadow_.vs_muzzle && route.submit && !shadow_.recording && muzzle_reshade_ready() && !route.routed &&
+        !route.bullet_reshade && // a lone classic bullet draw (same VS) the bullet re-shade took
         !route.composition && !route.screen_additive && !route.fog_card_mask.masked && !route.sky_nebula_swapped &&
         !route.source_gain && muzzle_reshade_match(route) && begin_muzzle_reshade(route))
         route.muzzle_hull = shadow_.ps_hull_program && hull_gain_enabled_; // the hull route would have taken it
@@ -6938,8 +6952,9 @@ void MotionOutput::prepare_screen_additive(const MotionDrawCall& call, MotionRou
     if (bolt_far_requested_ && (route.bullet_lone || screen_emission::admitted_vertex_shader(shadow_.vs_hash)) &&
         selector_.scene_depth_written()) {
 #if X3M_EDITION_FL
-        flag_reason = bolt_flag_target_reason(reshade ? (route.bullet_lone ? bullet_reshade_lone_flag_ps_ != nullptr
-                                                                           : bullet_reshade_flag_ps_ != nullptr)
+        flag_reason = bolt_flag_target_reason(reshade ? (route.bullet_lone_classic ? bullet_reshade_classic_flag_ps_ != nullptr
+                                                         : route.bullet_lone       ? bullet_reshade_lone_flag_ps_ != nullptr
+                                                                                   : bullet_reshade_flag_ps_ != nullptr)
                                                       : shadow_.ps_screen_additive_flag_variant != nullptr);
 #else
         flag_reason = bolt_flag_target_reason(shadow_.ps_screen_additive_flag_variant != nullptr);

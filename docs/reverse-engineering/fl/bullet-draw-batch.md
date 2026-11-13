@@ -357,8 +357,8 @@ bound, drawing a flag variant (`weapon_bullet_reshade_flag_ps.hlsl`, oC2 = 32 x 
 draws under the game's ONE / INVSRCCOLOR. One device sequence for both (`src/proxy/bullet_reshade_route.h`). The
 traversal-fallback draw (section 3) is not an INSTANCE_BULLETS draw. Since 2026-11-12 an effects-material body's
 fallback draw is re-shaded on its own recognition (section 7): ONE / INVSRCCOLOR bodies converted and far-flagged as the
-batch, ONE / ONE bodies (`bullet_push`, `tol_bullet`) re-shaded but unflagged; classic MATERIAL3 bullet bodies stay
-vanilla on this path. The fixture's stand-in bolt is 10 m long (an assumption; the runtime node scales are still open).
+batch, ONE / ONE bodies (`bullet_push`, `tol_bullet`) re-shaded but unflagged; classic bullet bodies take their own lone route
+since 2026-11-13 (section 7, "Classic bodies"). The fixture's stand-in bolt is 10 m long (an assumption; the runtime node scales are still open).
 
 **Geometric size (2026-11-10).** The scope stub also stores the batch's body id `[EDX+0x0c]` in `x3m_bullet_body`
 before the scope rises (EAX saved around it; `mov` writes no flag). The draw uploads the body's UV layout in c29..c30
@@ -378,7 +378,8 @@ addon2; interface only, no listing tracked).
 
 | Item | Value | Source |
 | --- | --- | --- |
-| material | every effects-material bullet body is `effects.fx`; ONE / INVSRCCOLOR for all but `bullet_push` and `tol_bullet` (ONE / ONE); the PPC (`objects/v/00518`, `fx_bullets2_diff`) and the IRE are ONE / INVSRCCOLOR. Classic (MATERIAL3) bullet bodies (`v/00225`, `v/00300`, `v/10458`, …) are not on this path | lab census [s] |
+| material | every effects-material bullet body is `effects.fx`; ONE / INVSRCCOLOR for all but `bullet_push` and `tol_bullet` (ONE / ONE); the PPC (`objects/v/00518`, `fx_bullets2_diff`) and the IRE are ONE / INVSRCCOLOR. Classic (MATERIAL3/5/6) bullet bodies (`v/00225`, `v/00300`, `v/10458`, …) take the same submit with the
+`standard_lighting` DEFAULT pair: "Classic bodies" below | lab census [s] |
 | technique | `effects.fb` orders `0:DEFAULT 1:INSTANCE 2:INSTANCE_BULLETS` in all 48 effects/effects2s files; the submit binds DEFAULT [i: the FL 67 `draw_pairs` rows carry `d5e1c753…/8360f422…` at 18,257–19,803 draws per 300 frames in the group 1 window and no `89193868…` in the top eight; FL `engine_draw` rows bind the same pair for an effects body] | [s] archive, [m] log |
 | VS | `d5e1c75351ed3f04` (DEFAULT, every SM2+ directory, base and 2s); the INSTANCE VS `89193868c61c3846` has the same interface. vs_2_0, inputs `dcl_position v0`, `dcl_texcoord v1` (no vertex colour); writes `oPos` (c0..c3 `g_mWorldViewProjection`), `oT0.xy` (DEFAULT: `(u, v, 1)` · `g_TexMatrix` c10/c11; INSTANCE: direct), `oD0.xyz` = (fade, 0, 0) with fade = `g_AlphaValue` (c12.x; INSTANCE c10.x) × the fog clip when `g_EnableFog` b0 (from `g_mWorld`, `g_mViewInverse`, `g_FogClip`); `oD0.w` unwritten | [s] |
 | PS | `8360f422de08b5bd` (ps_2_0; `2_b` uses `f0c91793a75e1203`, the same contract): `dcl t0.xy`, `dcl v0.x`, `s0` `DiffuseTexSampler`; texel → affine colour matrix c0..c2 (preshader) on (rgb, 1) → × v0.x; alpha the texel's | [s] |
@@ -459,8 +460,40 @@ converted and flagged. The ONE / ONE lone draws are now far-flagged outside the 
 simultaneous render target with the one factor pair and RT2.g = base + s (1 - base) stays at 1 at far depth (native
 fixture witness: 1.0000 at base 1) [m].
 
+### Classic bodies (lone classic route, 2026-11-13)
+
+A classic (MATERIAL3/5/6) bullet body the batch does not take is drawn by the same material submit with the
+`standard_lighting` DEFAULT technique, `standard_lighting2s` for `MPF_2SIDED`
+([beam-bullet-draw.md](beam-bullet-draw.md) section 5): VS `494fe349b8bc12ec` (vs_3_0; no vertex colour; oT2.xy = (u, v,
+1) · `g_TexMatrix` c37..c38; COLOR0.a = `g_AlphaValue` c39.x × the optional fog factor, the node fade `+0x13c` / 255),
+PS `ced7edef48059e84` or `0d5848c8489b6630` (read c4..c13 from the application, local defs c0..c3 and c14..c16; UV
+input centroid) [s, `beam_program_inputs_out.txt` and the dcl tokens of the extracted bytes]. Batched, the same bodies
+are already INSTANCE_BULLETS draws (section 6), so the route gives the lone draw the batch's law.
+
+| Item | Value | Source |
+| --- | --- | --- |
+| recognition | `shadow_.vs_classic` (the VS hash, decided at SetVertexShader); blend on (an opaque draw ends there); the scope node's `+0x144` in the body map; a listed muzzle body (`muzzle_reshade_core.h`, seven) is left to the muzzle route, which in turn skips a draw this route took; then `classic_verdict`: ADD ONE / ONE (the `lone_blend` law's additive class only), one of the two PS hashes, our classic program ready. One function, `classic_match` in `bullet_reshade_core.h`, takes the whole decision for the production matcher and the fixture | code |
+| body set | the body map's: `tables.bullet_bodies` keys every body string a row draws, the eleven classic `objects/v/NNNNN` bodies included (30 entries in the installed FL table), each mapped to the live TBullets row's body word; no generator change. No census classic body is a muzzle body (host test `test_classic_verdict`) | [m] table, host test |
+| blends | `MPF_DESTINATIONBLEND` alone: ONE / ONE, admitted (`lone_additive`): v/10385, 00300, 10458, 00225, 00525..00527, 10678 and the 380 / 364 parts of v/10436 and v/10459. Refused for `blend`: v/00517 (EMP, `MPF_ALPHABLEND`: SRCALPHA / INVSRCALPHA) and the `MPF_NULL` parts 282 / 36 of v/10436 and v/10459 (opaque material, the node-fade block blends them SRCALPHA / ONE). No classic bullet material is ONE / INVSRCCOLOR; the route refuses that blend (`blend`), so the additive route's conversion is never offered a classic draw | [m] flags ([`classic_lone_blends.py`](../../../verification/results/weapon-coverage-census/classic_lone_blends.py) → [`_out.txt`](../../../verification/results/weapon-coverage-census/classic_lone_blends_out.txt)); flag → blend [s] AP, [i] FL beyond DESTINATIONBLEND |
+| program | `weapon_bullet_reshade_classic{,_flag}_ps.hlsl`, ps_3_0 (337 / 361 words): the batch law and c29..c31 (body layout, rs 0.75 / 0.4 / 0.5, the bound texture's normaliser or 2.75), the fade from COLOR0.a, centroid UV, vanilla's alpha lane (lerp(texel.a, light map.a, `g_EnableGlow` c4) × COLOR0.a). c29..c31 is free for this pair (the game PS reads c4..c13 and its own defs; ours keeps its literals in c0..c3 defs) and goes back after the draw | code, `weapon-bullet-reshade-classic*-pixel-program.json` |
+| sequence | the effects lone route's: off the additive route Z write normalised (the material already writes 0), the far flag outside the route under ONE / ONE through `flag_bind` / `flag_unbind` with the classic flag variant; cull mode, alpha test and Z test never written (the two-sided program's CULL NONE stays) | code, fixture |
+| counts | `bullet_reshade_frame`: classic draws are in `lone=` .. `lone_additive=` and also `lone_classic=`, `lone_classic_flagged=`; `lone_classic_refused=` with `lone_classic_refused_why=blend,program,unready,failed`; `bullet_reshade_lone_body` gains `material=classic|effects ps=`; one `bullet_reshade_lone_classic_refused` row per (body, reason), at most 16 a device | code |
+
+Evidence [m], native fixture (`weapon_lone_classic_cases.h`, the game's own VS / PS bytes extracted from the FL
+catalogues at run time into the untracked build directory, hashes checked): recognition 11 of 11 rows through
+`classic_match` (ONE / INVSRCCOLOR refused `blend`); the program
+behind the real VS equals the model at fade 0.8 / 0.35, through `g_TexMatrix` (u + 0.5 picks the second texel) and with
+the glow alpha, worst 0.063 of the tolerance; the stand-in bolt at 50 / 300 / 1500 m equals the batch-pair frame
+pixel for pixel (0 pixels off, lit 2905 / 38 / 6 px); program, c29..c31, DESTBLEND, Z write and cull mode bound and
+restored; far flag RT2.g 1.181 (want 1.181); wrong PS and unmapped body stay bit for bit vanilla. Rows:
+[`lone_classic_rows.py`](../../../verification/results/native-windows/weapon-effects/lone_classic_rows.py) →
+[`_out.txt`](../../../verification/results/native-windows/weapon-effects/lone_classic_rows_out.txt).
+
 ## Unknown
 
+- Whether a classic body's TBullets body word equals its `objects/v/NNNNN` number (the muzzle exclusion and the
+  census disjointness assume it; the body map itself reads the live word): a flight's `bullet_reshade_lone_body
+  material=classic` rows name the ids.
 - Which lone state bits differ at the draw (separate alpha expected, above): settled by the next flight's
   `lone_zwrite=` .. `lone_sepalpha=`.
 - Which bodies the ONE / ONE lone draws are: settled by the next flight's `bullet_reshade_lone_body` rows.

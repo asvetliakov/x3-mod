@@ -287,6 +287,9 @@ struct MotionRoute {
     // the bullet_reshade_route.h lone_states its sequence wrote (Z write, colour mask, sRGB write, separate alpha on
     // the route; Z write only off it), bullet_lone_app their application values (put back after the draw).
     bool bullet_lone = false;
+    // bullet_lone_classic: the lone draw is a classic body's (the standard_lighting DEFAULT pair; the classic ps_3_0
+    // programs, COLOR0.a the fade; bullet-draw-batch.md section 7 "Classic bodies").
+    bool bullet_lone_classic = false;
     // bullet_lone_unflagged: why the draw ends without the far flag (bullet_reshade_route.h LoneUnflagged);
     // bullet_lone_native_flag: the flag targets were bound outside the additive route (ONE / ONE, the game's blend).
     std::uint8_t bullet_lone_blend = 0, bullet_lone_states = 0, bullet_lone_unflagged = 0;
@@ -1245,9 +1248,10 @@ public:
     // lone_counts (weapon_effects_patch.h lone_count_slots, its layout): of the re-shaded lone draws those whose state
     // the sequence normalised per bullet_reshade_route.h lone_states bit, those under ONE / ONE, the lone draws the
     // route refused for `state` (a defect), those flagged outside the route, and the lone draws that ended unflagged,
-    // in total and per LoneUnflagged reason.
+    // in total and per LoneUnflagged reason; the lone classic path's re-shaded, flagged and refused draws (per
+    // ClassicRefused reason).
     // weapon_effects_patch.h lone_count_slots (static_assert in motion_output_bullet_reshade_inc.h).
-    static constexpr unsigned lone_count_slots_ = 19;
+    static constexpr unsigned lone_count_slots_ = 26;
     void bullet_reshade_take_frame(unsigned* draws, unsigned* failures, unsigned* outside, unsigned* timed, float* us,
                                    unsigned* additive, unsigned* flagged, unsigned* lone, unsigned* lone_flagged,
                                    unsigned* lone_failures, unsigned* lone_timed, float* lone_us,
@@ -1815,6 +1819,7 @@ private:
         float ps_c29[12]{};     // application c29..c31 as last written (the bullet re-shade restores them)
         bool vs_muzzle = false; // the bound VS is standard_lighting DEFAULT's (muzzle re-shade requested)
         bool vs_lone = false;   // the bound VS is the effects DEFAULT / INSTANCE one (bullet re-shade requested)
+        bool vs_classic = false; // the bound VS is standard_lighting DEFAULT's (bullet re-shade requested: lone classic)
         float ps_c192[16]{};    // application c192..c195 as last written (the muzzle re-shade restores them)
         float vs_c28[36]{};     // application VS c28..c36 (g_mWorld, g_mViewInverse rows; the muzzle re-shade's origin)
         std::uint16_t vs_c28_known = 0; // bit r: c(28 + r) written
@@ -2346,6 +2351,10 @@ private:
     // plain lone program leaves the lone bolts vanilla, a refused flag variant only refuses their far flag.
     IDirect3DPixelShader9* bullet_reshade_lone_ps_ = nullptr;
     IDirect3DPixelShader9* bullet_reshade_lone_flag_ps_ = nullptr;
+    // The lone classic pair (ps_3_0 beside the standard_lighting DEFAULT vs_3_0; COLOR0.a the fade), created with the
+    // batch's; refused, the classic bodies' lone draws stay vanilla (lone_classic_refused_why=unready).
+    IDirect3DPixelShader9* bullet_reshade_classic_ps_ = nullptr;
+    IDirect3DPixelShader9* bullet_reshade_classic_flag_ps_ = nullptr;
     float bullet_reshade_constants_[4]{};
     // The geometric size (bullet_reshade_core.h layout_constants): the drawn body's c29..c30 for the last body id the
     // scope stub published (x3m_bullet_body), recomputed when the id changes or the tuning reloads; unmapped bodies
@@ -2366,8 +2375,11 @@ private:
     void lone_native_flag(MotionRoute& route) noexcept;   // a lone draw the route does not take: the flag, ONE / ONE
     void finish_lone_native_flag(MotionRoute& route) noexcept;
     bool lone_state_values(DWORD out[4]) noexcept; // the application's lone_states values (shadow or one Get each)
-    std::uint32_t bullet_lone_seen_[16]{};         // (body << 2 | blend) logged by bullet_reshade_lone_body
+    std::uint32_t bullet_lone_seen_[16]{};         // (body << 3 | classic << 2 | blend) logged by bullet_reshade_lone_body
     unsigned bullet_lone_seen_count_ = 0;
+    std::uint32_t bullet_classic_refused_seen_[16]{}; // (body << 2 | reason) logged by bullet_reshade_lone_classic_refused
+    unsigned bullet_classic_refused_seen_count_ = 0;
+    void lone_classic_refused(std::uint32_t body, unsigned reason, unsigned blend) noexcept;
     std::uint32_t bullet_reshade_frames_ = 0; // Present count: every 60th frame is timed
     std::uint64_t bullet_reshade_ticks_ = 0;
     // The per-texture luminance normaliser (bullet_reshade_core.h texture_scale): the created textures the D3DX observer

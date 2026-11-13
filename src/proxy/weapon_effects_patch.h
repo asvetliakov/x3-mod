@@ -118,10 +118,14 @@ void present_bolts(unsigned long long frame, bool capture);
 // bit (Z write, colour mask, sRGB write, separate alpha); additive: those under ONE / ONE; route_state: lone draws the
 // additive route refused for a known differing state (a defect); route_unknown: those it refused on an unknown state;
 // flagged_native: lone draws flagged outside the route; refused: lone draws that ended without the far flag;
-// [refused_why + r - 1]: of them per LoneUnflagged reason r (1..10).
+// [refused_why + r - 1]: of them per LoneUnflagged reason r (1..10). The lone classic path (section 7 "Classic bodies",
+// standard_lighting DEFAULT): classic: of the re-shaded lone draws those of a classic body (also in lone=), of them
+// classic_flagged with the far flag; classic_refused: blended classic draws of a mapped bullet body left vanilla,
+// [classic_refused_why + r]: of them per bullet_reshade_core.h ClassicRefused reason r (0..3).
 constexpr unsigned lone_count_states = 0, lone_count_additive = 4, lone_count_route_state = 5,
                    lone_count_route_unknown = 6, lone_count_flagged_native = 7, lone_count_refused = 8,
-                   lone_count_refused_why = 9, lone_count_slots = 19;
+                   lone_count_refused_why = 9, lone_count_classic = 19, lone_count_classic_flagged = 20,
+                   lone_count_classic_refused = 21, lone_count_classic_refused_why = 22, lone_count_slots = 26;
 struct StageFrame {
     unsigned patches = 0, decals = 0, retired = 0;
     // stage::Counts' drops: regions or decals the budget refused, lit cells no draw carried (the oldest clocks), live

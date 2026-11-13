@@ -298,6 +298,39 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         self.assertLess(max(cost['match_us_hit_30'], cost['match_us_miss_30']), 1.0)
         self.assertLess(cost['normalise_us_per_draw'], 1.0)
 
+    def test_reshade_lone_classic_path(self):
+        # bullet-draw-batch.md section 7 "Classic bodies": a classic bullet body drawn alone (the standard_lighting
+        # DEFAULT pair, the game's own program bytes from the FL archive) is recognised by its body id under the lone
+        # blend law with one of the two pixel programs, re-shaded by the ps_3_0 classic program (COLOR0.a the fade, the UV
+        # after g_TexMatrix) equal to the batch frame at three depths, far-flagged under ONE / ONE, restored; the
+        # refusals stay vanilla bit for bit; the per-draw match is cheap for a hit and a miss
+        checks = dict(self.record['checks'])
+        for name in ('reshade_lone_classic_programs_create', 'reshade_lone_classic_recognised_by_body_id',
+                     'reshade_lone_classic_targets',
+                     'reshade_lone_classic_program_matches_model', 'reshade_lone_classic_matches_batch_at_three_depths',
+                     'reshade_lone_classic_sequence_restores', 'reshade_lone_classic_native_flag_one_one',
+                     'reshade_lone_classic_refusals_stay_vanilla', 'reshade_lone_classic_cost_measured'):
+            self.assertTrue(checks.get(name), name)
+        programs = self.record['classic_programs']['programs']
+        self.assertEqual({k: v['hash'] for k, v in programs.items()},
+                         {'classic_vs.bin': '494fe349b8bc12ec', 'classic_ps.bin': 'ced7edef48059e84',
+                          'classic_ps2s.bin': '0d5848c8489b6630'})
+        rows = self.record['metrics']['reshade']
+        game = next(x for x in rows if x.get('case') == 'lone_classic_programs')
+        self.assertEqual((game['loaded'], game['game_hashes'], game['ps_major']), (1, 1, 3))
+        self.assertTrue(all(x['ok'] == 1 for x in rows if x.get('case') == 'lone_classic_recognition'))
+        depths = [x for x in rows if x.get('case') == 'lone_classic_depth']
+        self.assertEqual(sorted(x['distance_m'] for x in depths), [50, 300, 1500])
+        for x in depths:
+            self.assertEqual(x['px_off_batch'], 0)
+            self.assertGreater(x['reshade_lit_px'], 0)
+        cost = next(x for x in rows if x.get('case') == 'lone_classic_cost')
+        self.assertLess(max(cost['match_us_hit_30'], cost['match_us_miss_30']), 1.0)
+        self.assertLess(cost['substitution_us_per_draw'], 5.0)
+        # the embedded programs: ps_3_0, bound to their sources and headers (run_weapon_effects.py programs_current)
+        for name in ('weapon_bullet_reshade_classic_ps', 'weapon_bullet_reshade_classic_flag_ps'):
+            self.assertEqual(self.record['programs'][name]['target'], 'ps_3_0', name)
+
     def test_muzzle_reshade_gates(self):
         # docs/architecture/muzzle-flash-look.md (the re-shade): the ps_3_0 program created, the readback on the model,
         # the sequence bound and restored, energy <= mz_gain x vanilla's, the flash lit (peak >= mz_gain / 4), the extent

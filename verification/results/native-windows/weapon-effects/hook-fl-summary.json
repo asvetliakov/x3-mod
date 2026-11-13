@@ -19,15 +19,18 @@
     "src/engine/fl/executable_identity_fl.h"
   ],
   "source": {
-    "commit": "93dc5e9b3f3d302ce23e1257cec98788fb798926-dirty",
-    "production_sources_dirty": false,
-    "dirty_paths": [],
+    "commit": "6bd6be62ddc71691b52d0dbd6d3dae70279debdc-dirty",
+    "production_sources_dirty": true,
+    "dirty_paths": [
+      "src/proxy/weapon_effects_patch.cpp",
+      "src/proxy/weapon_effects_patch.h"
+    ],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "9e82a15567d452693e4e169db045cb9d5d54737aa0d4aef3aacf528df1c4c5aa",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
       "verification/probe/build_weapon_effects_hook_fl.py": "4082488c0ed62c46dfa4d08c9f2a23879ae1f0adaa13336b74f5413db3fcd01f",
-      "src/proxy/weapon_effects_patch.cpp": "216f3cba48f2af5ec4af2fa7625adaae713e5720801a9661b699bc1def569b3c",
-      "src/proxy/weapon_effects_patch.h": "83bbb88e2ef10060b04d7aa8abe4404666eacc79b343b05ba48492c982c5bcaa",
+      "src/proxy/weapon_effects_patch.cpp": "6d2455d5d2ecf2c992d5e23c2345204e28b5b969b9b55f6e675f70aa93c6b6ef",
+      "src/proxy/weapon_effects_patch.h": "f238182f4fdfa246518d7bc231abd0d528445908a7e092baec81314a38b8f4ea",
       "src/proxy/weapon_effects_hook.cpp": "1c10c3fa9638d177d01c797600240bb9ee39d26814c813c0af586a1c521fb19a",
       "src/proxy/weapon_effects_core.h": "81a9e12186c03fde92727defe8356cbd8e808da6eb8bc84720f6ddd7191f5b9c",
       "src/engine/fl/weapon_effects_sites_fl.h": "316ce27169cd5d19d771e2a2ed465d9def7b53cf93bf47e061709543bd1940e6",
@@ -228,7 +231,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "87d149a8403d29b07f110ffb6a989d164a08af1334417fd4cefd39ce13bcb1ae"
+    "executable_sha256": "b6f34adedf295be5ae2d0c13dcc0965bb0418b0d2fdad11093ee1fc0ee1a3105"
   },
   "host": {
     "name": "native-windows",

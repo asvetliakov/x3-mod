@@ -28,7 +28,14 @@
 // path the sequence first writes the lone draw's states where they differ (bullet_reshade_route.h lone_states): on the
 // route the four it requires (Z write off, colour mask 15, sRGB write off, separate alpha off), off it Z write only;
 // alpha test and Z test stay the game's; the application's values go back after the draw. The route admits a lone draw
-// on those four (FL 68 A: the route refused every lone draw for `state`). Counted apart from the batch's draws (lone=, lone_flagged=,
+// on those four (FL 68 A: the route refused every lone draw for `state`).
+// The lone classic path (section 7 "Classic bodies"): a classic (MATERIAL3/5/6) bullet body drawn alone binds the
+// standard_lighting DEFAULT pair (shadow_.vs_classic: VS 494fe349b8bc12ec, the ABI gate; one of its two pixel programs,
+// the material-type gate); a blended draw whose scope node's body id is in the same body map, under ADD ONE / ONE (the
+// lone_blend law's additive class; ONE / INVSRCCOLOR is refused, no classic bullet material has it), is re-shaded with the classic ps_3_0 pair (weapon_bullet_reshade_classic{,_flag}_ps.hlsl: the same law and
+// c29..c31, the fade from COLOR0.a, vanilla's alpha lane) through the same sequence, states and far flag; the cull
+// state of the two-sided program's draw is the game's (never written). A blended draw of a mapped body the law, the
+// program or readiness refuses is counted (lone_classic_refused_why=) and named once per (body, reason). Counted apart from the batch's draws (lone=, lone_flagged=,
 // lone_flagged_native=, lone_refused= with lone_refused_why=, lone_route_state=, lone_zwrite= .. lone_sepalpha=).
 // The game's program comes back from the shadowed binding, c29..c31 from the SetPixelShaderConstantF hook's shadow
 // (read at resync; zero when never written). Documented IDirect3DDevice9 calls only, through the native slots (the shadows keep
@@ -47,6 +54,16 @@ constexpr DWORD bullet_reshade_lone_program[] = {
 constexpr DWORD bullet_reshade_lone_flag_program[] = {
 #include "../renderer/weapon_bullet_reshade_lone_flag_pixel_program_inc.h"
 };
+constexpr DWORD bullet_reshade_classic_program[] = {
+#include "../renderer/weapon_bullet_reshade_classic_pixel_program_inc.h"
+};
+constexpr DWORD bullet_reshade_classic_flag_program[] = {
+#include "../renderer/weapon_bullet_reshade_classic_flag_pixel_program_inc.h"
+};
+static_assert(bullet_reshade_classic_program[0] == 0xffff0300u && bullet_reshade_classic_flag_program[0] == 0xffff0300u,
+              "the embedded lone classic programs are ps_3_0 (the game's standard_lighting VS is vs_3_0)");
+static_assert(weapon_effects::reshade::classic_vertex_shader == weapon_effects::muzzle_reshade::vertex_shader,
+              "the lone classic path and the muzzle re-shade gate on the one standard_lighting DEFAULT VS");
 static_assert(sizeof bullet_reshade_program / sizeof bullet_reshade_program[0] > 2 &&
                   bullet_reshade_program[0] == 0xffff0200u && bullet_reshade_flag_program[0] == 0xffff0200u &&
                   bullet_reshade_lone_program[0] == 0xffff0200u && bullet_reshade_lone_flag_program[0] == 0xffff0200u,
@@ -59,11 +76,15 @@ static_assert(weapon_effects::reshade::layout_floats == 8, "MotionOutput::bullet
 // pair likewise for the lone path).
 void MotionOutput::bullet_reshade_create() noexcept {
     if (bullet_reshade_ps_ || bullet_reshade_create_failed_) return;
-    IDirect3DPixelShader9 *ps = nullptr, *flag = nullptr, *lone = nullptr, *lone_flag = nullptr;
+    IDirect3DPixelShader9 *ps = nullptr, *flag = nullptr, *lone = nullptr, *lone_flag = nullptr, *classic = nullptr,
+                          *classic_flag = nullptr;
     const HRESULT hr = native<CreatePsFn>(CreatePixelShader)(device_, bullet_reshade_program, &ps);
     const HRESULT flag_hr = native<CreatePsFn>(CreatePixelShader)(device_, bullet_reshade_flag_program, &flag);
     const HRESULT lone_hr = native<CreatePsFn>(CreatePixelShader)(device_, bullet_reshade_lone_program, &lone);
     const HRESULT lone_flag_hr = native<CreatePsFn>(CreatePixelShader)(device_, bullet_reshade_lone_flag_program, &lone_flag);
+    const HRESULT classic_hr = native<CreatePsFn>(CreatePixelShader)(device_, bullet_reshade_classic_program, &classic);
+    const HRESULT classic_flag_hr =
+        native<CreatePsFn>(CreatePixelShader)(device_, bullet_reshade_classic_flag_program, &classic_flag);
     if (SUCCEEDED(hr) && ps)
         bullet_reshade_ps_ = ps;
     else {
@@ -82,15 +103,26 @@ void MotionOutput::bullet_reshade_create() noexcept {
         bullet_reshade_lone_flag_ps_ = lone_flag;
     else
         release(lone_flag);
+    if (SUCCEEDED(classic_hr) && classic && bullet_reshade_ps_)
+        bullet_reshade_classic_ps_ = classic;
+    else
+        release(classic);
+    if (SUCCEEDED(classic_flag_hr) && classic_flag && bullet_reshade_classic_ps_)
+        bullet_reshade_classic_flag_ps_ = classic_flag;
+    else
+        release(classic_flag);
     weapon_effects::reshade::constants(reshade_tune_,
                                        bullet_reshade_constants_);
     bullet_layout_valid_ = false;
     log("bullet_reshade_program device=%llu frame=%llu created=%u result=%08lx flag_created=%u flag_result=%08lx "
-        "lone_created=%u lone_result=%08lx lone_flag_created=%u lone_flag_result=%08lx words=%u "
+        "lone_created=%u lone_result=%08lx lone_flag_created=%u lone_flag_result=%08lx classic_created=%u "
+        "classic_result=%08lx classic_flag_created=%u classic_flag_result=%08lx classic_words=%u words=%u "
         "flag_words=%u gain=%.3g edge=%.3g core=%.3g additive_gain=%.3g texture_keys=%u textures_mapped=%u",
         id_, frame_, unsigned(bullet_reshade_ps_ != nullptr), hr, unsigned(bullet_reshade_flag_ps_ != nullptr), flag_hr,
         unsigned(bullet_reshade_lone_ps_ != nullptr), lone_hr, unsigned(bullet_reshade_lone_flag_ps_ != nullptr),
-        lone_flag_hr,
+        lone_flag_hr, unsigned(bullet_reshade_classic_ps_ != nullptr), classic_hr,
+        unsigned(bullet_reshade_classic_flag_ps_ != nullptr), classic_flag_hr,
+        unsigned(sizeof bullet_reshade_classic_program / sizeof bullet_reshade_classic_program[0]),
         unsigned(sizeof bullet_reshade_program / sizeof bullet_reshade_program[0]),
         unsigned(sizeof bullet_reshade_flag_program / sizeof bullet_reshade_flag_program[0]),
         double(bullet_reshade_constants_[0]), double(bullet_reshade_constants_[1]), double(bullet_reshade_constants_[2]),
@@ -200,8 +232,9 @@ bool MotionOutput::begin_bullet_reshade(MotionRoute& route, bool convert, bool f
     if (!bullet_layout_valid_ || body != bullet_layout_body_) bullet_reshade_layout(body);
     rs::Plan plan;
     plan.layout = bullet_layout_;
-    plan.program = route.bullet_lone ? (flag ? bullet_reshade_lone_flag_ps_ : bullet_reshade_lone_ps_)
-                                     : (flag ? bullet_reshade_flag_ps_ : bullet_reshade_ps_);
+    plan.program = route.bullet_lone_classic ? (flag ? bullet_reshade_classic_flag_ps_ : bullet_reshade_classic_ps_)
+                   : route.bullet_lone       ? (flag ? bullet_reshade_lone_flag_ps_ : bullet_reshade_lone_ps_)
+                                             : (flag ? bullet_reshade_flag_ps_ : bullet_reshade_ps_);
     plan.constants = bullet_reshade_constants_;
     plan.gain = screen_additive_gain_;
     bullet_reshade_scale(samplers_[0].texture, &plan.scale);
@@ -256,15 +289,40 @@ void MotionOutput::prepare_bullet_reshade(MotionRoute& route) noexcept {
     begin_bullet_reshade(route, false, false);
 }
 // The lone path's recognition (bullet-draw-batch.md section 7), for a draw with the effects DEFAULT / INSTANCE VS bound
-// (shadow_.vs_lone) that no earlier preparation took: the lone program ready, the blend shadow ADD ONE / INVSRCCOLOR or
-// ONE / ONE, then the scope node (TLS, no memory read), its body id (one 4-byte validated read) and its entry in the
-// body map (one compare per mapped body; built once at the first lookup that can read TBullets). Every other draw of
-// that VS (engine glows, the gate, flares, other effects) ends at the blend shadow or at the body lookup and goes on to
-// the routes it would have taken.
+// (shadow_.vs_lone) or, the lone classic path, the standard_lighting DEFAULT VS (shadow_.vs_classic) that no earlier
+// preparation took: the blend shadow (effects: ADD ONE / INVSRCCOLOR or ONE / ONE, the lone program ready; classic: any
+// blended draw, an opaque one ends here), then the scope node (TLS, no memory read), its body id (one 4-byte validated
+// read) and its entry in the body map (one compare per mapped body; built once at the first lookup that can read
+// TBullets). Every other draw of those VS (engine glows, the gate, flares, other effects; classic: every opaque body,
+// glass and glows) ends at the blend shadow or at the body lookup and goes on to the routes it would have taken. A
+// classic draw of a mapped body that is no muzzle body then needs ADD ONE / ONE, one of the two standard_lighting
+// DEFAULT pixel programs and our classic program ready (bullet_reshade_core.h classic_match, the fixture's decision
+// too); a refusal is counted by reason (lone_classic_refused).
 bool MotionOutput::lone_bullet_match(MotionRoute& route) noexcept {
     namespace rs = weapon_effects::reshade;
-    if (!bullet_reshade_lone_ps_ || bullet_reshade_restore_failed_) return false;
+    const bool classic = shadow_.vs_classic;
     if (!state_known(3) || !blend_known(0) || !blend_known(1) || !blend_known(2)) return false;
+    if (classic) { // bullet_reshade_core.h classic_match: the one decision, the fixture's too
+        const rs::ClassicMatch m = rs::classic_match(
+            shadow_.vs_hash, shadow_.states[3] != 0, shadow_.composition_blend[0], shadow_.composition_blend[1],
+            shadow_.composition_blend[2], shadow_.ps_hash, bullet_reshade_classic_ps_ && !bullet_reshade_restore_failed_,
+            [](std::uint32_t* id) {
+                std::uintptr_t descriptor = 0, node = 0;
+                return object_trace::scope_node(&descriptor, &node) && node &&
+                       engine_memory::read(node + rs::node_body_offset, id, sizeof *id);
+            },
+            [](std::uint32_t id) {
+                bool final = true;
+                return weapon_effects::bullet_body_layout(id, &final) != nullptr;
+            });
+        if (m.why != rs::classic_refused_count) lone_classic_refused(m.id, m.why, m.raw);
+        if (m.blend == rs::lone_none) return false;
+        route.bullet_lone = route.bullet_lone_classic = true;
+        route.bullet_lone_blend = std::uint8_t(m.blend);
+        route.bullet_body = m.id;
+        return true;
+    }
+    if (!bullet_reshade_lone_ps_ || bullet_reshade_restore_failed_) return false;
     const unsigned blend = rs::lone_blend(shadow_.states[3] != 0, shadow_.composition_blend[0],
                                           shadow_.composition_blend[1], shadow_.composition_blend[2]);
     if (blend == rs::lone_none) return false;
@@ -275,15 +333,38 @@ bool MotionOutput::lone_bullet_match(MotionRoute& route) noexcept {
     bool final = true;
     if (!weapon_effects::bullet_body_layout(id, &final)) return false;
     route.bullet_lone = true;
+    route.bullet_lone_classic = false;
     route.bullet_lone_blend = std::uint8_t(blend);
     route.bullet_body = id;
     return true;
 }
+// One blended lone classic draw of a mapped bullet body left vanilla: counted in total and by its reason
+// (bullet_reshade_core.h ClassicRefused), and one row per (body, reason) (at most 16 a device) naming the blend and
+// the bound pixel program, so a flight names the bodies the law or the program refuses.
+void MotionOutput::lone_classic_refused(std::uint32_t body, unsigned reason, unsigned blend) noexcept {
+    namespace rs = weapon_effects::reshade;
+    if (reason >= rs::classic_refused_count) return;
+    ++bullet_reshade_lone_counts_[weapon_effects::lone_count_classic_refused];
+    ++bullet_reshade_lone_counts_[weapon_effects::lone_count_classic_refused_why + reason];
+    const std::uint32_t key = (body << 2) | reason;
+    bool seen = false;
+    for (unsigned i = 0; i < bullet_classic_refused_seen_count_ && !seen; ++i) seen = bullet_classic_refused_seen_[i] == key;
+    if (seen || bullet_classic_refused_seen_count_ >= 16u) return;
+    bullet_classic_refused_seen_[bullet_classic_refused_seen_count_++] = key;
+    log("bullet_reshade_lone_classic_refused device=%llu frame=%llu body=%lu why=%s blend=%u src=%lu dst=%lu op=%lu "
+        "ps=%016llx",
+        id_, frame_, static_cast<unsigned long>(body), rs::classic_refused_names[reason], blend,
+        static_cast<unsigned long>(shadow_.composition_blend[0]), static_cast<unsigned long>(shadow_.composition_blend[1]),
+        static_cast<unsigned long>(shadow_.composition_blend[2]), static_cast<unsigned long long>(shadow_.ps_hash));
+}
 static_assert(MotionOutput::lone_count_slots_ == weapon_effects::lone_count_slots,
               "MotionOutput's lone count array is weapon_effects_patch.h's layout");
-static_assert(weapon_effects::lone_count_slots ==
+static_assert(weapon_effects::lone_count_classic ==
                   weapon_effects::lone_count_refused_why + weapon_effects::reshade::unflagged_count - 1u,
               "bullet_reshade_frame's lone_refused_why= holds every LoneUnflagged reason");
+static_assert(weapon_effects::lone_count_slots ==
+                  weapon_effects::lone_count_classic_refused_why + weapon_effects::reshade::classic_refused_count,
+              "bullet_reshade_frame's lone_classic_refused_why= holds every ClassicRefused reason");
 // One lone draw ended without the far flag: counted in total and by its reason (bullet_reshade_route.h LoneUnflagged).
 void MotionOutput::lone_unflagged(unsigned reason) noexcept {
     ++bullet_reshade_lone_counts_[weapon_effects::lone_count_refused];
@@ -307,7 +388,8 @@ void MotionOutput::lone_native_flag(MotionRoute& route) noexcept {
         why = rs::unflagged_scene;
     else if (!selector_.scene_depth_written())
         why = rs::unflagged_no_depth;
-    else if (const unsigned target = bolt_flag_target_reason(bullet_reshade_lone_flag_ps_ != nullptr))
+    else if (const unsigned target = bolt_flag_target_reason(
+                 (route.bullet_lone_classic ? bullet_reshade_classic_flag_ps_ : bullet_reshade_lone_flag_ps_) != nullptr))
         why = rs::unflagged_no_variant + target - 1u;
     else if (FAILED(bind_bolt_flag_targets(route)))
         why = rs::unflagged_bind;
@@ -345,7 +427,9 @@ void MotionOutput::prepare_lone_bullet(const MotionDrawCall& call, MotionRoute& 
         if (route.screen_additive || route.bullet_reshade || failed) {
             if (!route.bullet_reshade) {
                 lone_unflagged(weapon_effects::reshade::unflagged_failed);
-                route.bullet_lone = false;
+                if (route.bullet_lone_classic)
+                    lone_classic_refused(route.bullet_body, weapon_effects::reshade::classic_failed, route.bullet_lone_blend);
+                route.bullet_lone = route.bullet_lone_classic = false;
             }
             return;
         }
@@ -361,7 +445,9 @@ void MotionOutput::prepare_lone_bullet(const MotionDrawCall& call, MotionRoute& 
     }
     finish_lone_native_flag(route); // nothing of the sequence applied: the targets back, the draw vanilla
     lone_unflagged(weapon_effects::reshade::unflagged_failed);
-    route.bullet_lone = false;
+    if (route.bullet_lone_classic)
+        lone_classic_refused(route.bullet_body, weapon_effects::reshade::classic_failed, route.bullet_lone_blend);
+    route.bullet_lone = route.bullet_lone_classic = false;
 }
 // The sequence's end alone (the program, c31 and, converted, DESTBLEND back; timed with the begin); the route's flags
 // cleared. Used by finish_bullet_reshade and by the additive route's alpha rollback.
@@ -390,7 +476,7 @@ HRESULT MotionOutput::end_bullet_reshade(MotionRoute& route) noexcept {
         ++(lone ? bullet_reshade_lone_timed_ : bullet_reshade_timed_draws_);
     }
     route.bullet_reshade = route.bullet_reshade_timed = route.bullet_reshade_convert = route.bullet_reshade_flag = false;
-    route.bullet_lone = false;
+    route.bullet_lone = route.bullet_lone_classic = false;
     if (FAILED(hr)) {
         ++(lone ? bullet_reshade_lone_failures_ : bullet_reshade_failures_);
         ++counters_.restore_failures;
@@ -414,15 +500,23 @@ void MotionOutput::finish_bullet_reshade(MotionRoute& route) noexcept {
         for (unsigned i = 0; i < weapon_effects::reshade::lone_state_count; ++i) // the draw was drawn re-shaded
             if (route.bullet_lone_states & (1u << i))
                 ++bullet_reshade_lone_counts_[weapon_effects::lone_count_states + i];
-        // One row per (body, blend) the lone path re-shades (at most 16 a device): which bodies the lone draws are and
-        // which of their states the sequence normalised (bullet_reshade_route.h StateBit), flagged or not.
-        const std::uint32_t key = (route.bullet_body << 2) | route.bullet_lone_blend;
+        if (route.bullet_lone_classic) {
+            ++bullet_reshade_lone_counts_[weapon_effects::lone_count_classic];
+            if (route.bullet_reshade_flag) ++bullet_reshade_lone_counts_[weapon_effects::lone_count_classic_flagged];
+        }
+        // One row per (body, material, blend) the lone path re-shades (at most 16 a device): which bodies the lone
+        // draws are, effects or classic (with the bound pixel program's hash), which of their states the sequence
+        // normalised (bullet_reshade_route.h StateBit), flagged or not.
+        const std::uint32_t key =
+            (route.bullet_body << 3) | (route.bullet_lone_classic ? 4u : 0u) | route.bullet_lone_blend;
         bool seen = false;
         for (unsigned i = 0; i < bullet_lone_seen_count_ && !seen; ++i) seen = bullet_lone_seen_[i] == key;
         if (!seen && bullet_lone_seen_count_ < 16u) {
             bullet_lone_seen_[bullet_lone_seen_count_++] = key;
-            log("bullet_reshade_lone_body device=%llu frame=%llu body=%lu blend=%s states=%02x convert=%u flag=%u",
+            log("bullet_reshade_lone_body device=%llu frame=%llu body=%lu material=%s ps=%016llx blend=%s states=%02x "
+                "convert=%u flag=%u",
                 id_, frame_, static_cast<unsigned long>(route.bullet_body),
+                route.bullet_lone_classic ? "classic" : "effects", static_cast<unsigned long long>(shadow_.ps_hash),
                 route.bullet_lone_blend == weapon_effects::reshade::lone_additive ? "one_one" : "one_invsrccolor",
                 unsigned(route.bullet_lone_states), unsigned(route.bullet_reshade_convert),
                 unsigned(route.bullet_reshade_flag));

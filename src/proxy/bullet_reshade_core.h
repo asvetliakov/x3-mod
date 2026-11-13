@@ -1,4 +1,5 @@
 #pragma once
+#include "muzzle_reshade_core.h" // the muzzle bodies the lone classic match leaves to the muzzle re-shade
 #include "weapon_projectile_family.h"
 #include <cmath>
 #include <cstddef>
@@ -30,6 +31,41 @@ constexpr std::uint64_t lone_vertex_shaders[2] = {0xd5e1c75351ed3f04ull, 0x89193
 constexpr bool lone_vertex_shader(std::uint64_t hash) noexcept {
     return hash && (hash == lone_vertex_shaders[0] || hash == lone_vertex_shaders[1]);
 }
+// The lone classic path (bullet-draw-batch.md section 7 "Classic bodies", beam-bullet-draw.md section 5): a classic
+// (MATERIAL3/5/6) bullet body the batch does not take is drawn through the same material submit with the
+// standard_lighting DEFAULT technique, the one-sided or the two-sided (MPF_2SIDED) instance. Both bind the vertex shader
+// 494fe349b8bc12ec (vs_3_0: TEXCOORD0.xy the UV after g_TexMatrix c37..c38, COLOR0.a = g_AlphaValue c39.x x the
+// optional fog factor, the node fade; no vertex colour in its input) and one of the two pixel programs (FNV-1a 64 of the bytes the
+// game passes to CreatePixelShader; FL 3_0 archive, verification/results/fl-beam-bullet-draw/beam_program_inputs_out.txt).
+// The pair is shared by every opaque classic body and by the muzzle flash body 445 (muzzle_reshade_core.h): the VS is the
+// ABI gate, the PS the material-type gate (the effects bodies never bind it), the identity is the scope node's body id in
+// the body map below, which every TBullets body is in (tables.bullet_bodies holds a row per body string the rows draw,
+// classic `objects/v/NNNNN` bodies included). No muzzle flash body (muzzle_reshade_core.h's seven) is in a TBullets row
+// (verification/results/weapon-coverage-census/); MotionOutput runs this route first, leaves a listed muzzle body to the
+// muzzle route even if a row named it, and the muzzle route skips a draw this one re-shaded: one draw, one claimant.
+constexpr std::uint64_t classic_vertex_shader = 0x494fe349b8bc12ecull;
+constexpr std::uint64_t classic_pixel_shaders[2] = {0xced7edef48059e84ull /* standard_lighting */,
+                                                    0x0d5848c8489b6630ull /* standard_lighting2s */};
+constexpr bool classic_pixel_shader(std::uint64_t hash) noexcept {
+    return hash && (hash == classic_pixel_shaders[0] || hash == classic_pixel_shaders[1]);
+}
+// Why a blended lone classic draw of a mapped bullet body stayed vanilla (bullet_reshade_frame
+// lone_classic_refused_why=): blend: not ADD ONE / ONE (an MPF_ALPHABLEND material, SRCALPHA / INVSRCALPHA, e.g. the
+// EMP's v/00517; an MPF_NULL part the node fade blends SRCALPHA / ONE, e.g. the Mass Driver's textures 282 and 36; ONE /
+// INVSRCCOLOR, which no classic bullet material has, so the additive route's conversion is never offered a classic draw);
+// program: the bound pixel shader is not a standard_lighting DEFAULT one; unready: our classic program was not created
+// or the re-shade stopped; failed: the substitution failed (all undone, the draw vanilla).
+enum ClassicRefused : unsigned { classic_blend = 0, classic_program, classic_unready, classic_failed, classic_refused_count };
+constexpr const char* classic_refused_names[classic_refused_count] = {"blend", "program", "unready", "failed"};
+// The verdict on a blended lone classic draw of a mapped body (classic_match below): blend the lone_blend class (only
+// lone_additive, ONE / ONE, is admitted), ps the bound pixel program's hash, ready our classic program created and the
+// re-shade not stopped. classic_refused_count admits; anything else is the refusal's reason.
+constexpr unsigned classic_verdict(unsigned blend, std::uint64_t ps, bool ready) noexcept {
+    return blend != 2u /* lone_additive */ ? classic_blend
+           : !classic_pixel_shader(ps) ? classic_program
+           : !ready                    ? classic_unready
+                                       : classic_refused_count;
+}
 // FL node +0x144: the body (model) id every FL scene node carries (bullet-draw-batch.md section 4), not a bullet
 // mark: a non-bullet node drawing a body a TBullets row also names, with the effects VS and blend, would match too (no
 // census of bodies shared outside TBullets was made).
@@ -43,6 +79,29 @@ constexpr unsigned lone_blend(bool blend, std::uint32_t src, std::uint32_t dst, 
            : dst == 4u /* D3DBLEND_INVSRCCOLOR */                                  ? lone_screen
            : dst == 2u /* D3DBLEND_ONE */                                          ? lone_additive
                                                                                     : lone_none;
+}
+// The lone classic match, the whole decision MotionOutput::lone_bullet_match takes for a draw while the
+// standard_lighting DEFAULT VS is bound (and the native fixture runs as is), in its order: the VS hash; blend enabled (an
+// opaque draw ends here, before any read); the scope node's body id (body_id(&id): the TLS scope lookup and one 4-byte
+// validated read; false ends the match); the body map (mapped(id): an unmapped body is no bullet, not counted); a listed
+// muzzle body is the muzzle re-shade's (muzzle_reshade_core.h), not counted; then classic_verdict. Result: blend the
+// admitted LoneBlend (lone_none unless admitted), id the body read, why classic_refused_count unless a mapped body was
+// refused (the reason; MotionOutput counts it), raw the draw's lone_blend class for the refusal row.
+struct ClassicMatch {
+    unsigned blend = lone_none, raw = lone_none, why = classic_refused_count;
+    std::uint32_t id = 0;
+};
+template <class BodyId, class Mapped>
+inline ClassicMatch classic_match(std::uint64_t vs, bool blend_on, std::uint32_t src, std::uint32_t dst, std::uint32_t op,
+                                  std::uint64_t ps, bool ready, BodyId body_id, Mapped mapped) noexcept {
+    ClassicMatch m;
+    if (vs != classic_vertex_shader || !blend_on) return m;
+    m.raw = lone_blend(blend_on, src, dst, op);
+    if (!body_id(&m.id) || !mapped(m.id)) return m;
+    if (muzzle_reshade::body_index(m.id) < muzzle_reshade::body_count) return m;
+    m.why = classic_verdict(m.raw, ps, ready);
+    if (m.why == classic_refused_count) m.blend = m.raw;
+    return m;
 }
 // The program's constant register (weapon_bullet_reshade_ps.hlsl `reshade : register(c31)`): ps_2_0 has c0..c31; the
 // game's bullet program reads none (section 6: `tex t0; mul r0.rgb, t0, v0.a; mov r0.a, t0.a`, no c#), and the block is

@@ -4525,3 +4525,33 @@ body 314 in scene 749 as well (an addon2 map-tool export, not a muzzle row); whe
 path and gets re-shaded is not checked. (3) Body 582 (scene 04274, Effects rows 53, 69, 70, 180: the muzzle of TBullets 31 and the
 impacts of TBullets 11, 20, 21, 28; MATERIAL3 tex 380, DESTINATIONBLEND | 2SIDED) is a classic body outside the brief's list and is not added. Not flown:
 the six added bodies' looks rest on the fixture's 444 stand-in and the offline figures; their overlap is inferred.
+
+## Bullet re-shade: lone classic bodies (2026-11-13)
+
+A classic-material bullet body (MATERIAL3/5/6) drawn alone binds the `standard_lighting` DEFAULT pair (VS
+`494fe349b8bc12ec`, PS `ced7edef48059e84` / `0d5848c8489b6630`) and was left vanilla; batched it already took the
+INSTANCE_BULLETS re-shade. The lone classic route re-shades it with the same law and baked values through a ps_3_0
+twin of the lone program (COLOR0.a the fade), the same sequence and far flag
+([bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md) section 7, "Classic bodies"). Admitted (ONE /
+ONE, measured `MPF_DESTINATIONBLEND`): v/10385, 00300, 10458, 00225, 00525..00527, 10678 and the 380 / 364 parts of
+v/10436 and v/10459; refused `blend`: v/00517 (EMP, `MPF_ALPHABLEND`) and the `MPF_NULL` parts of v/10436 / v/10459, and
+any ONE / INVSRCCOLOR classic draw (no census material; kept off the additive route's conversion) [m]
+flags, [i] FL flag → blend beyond DESTINATIONBLEND
+([`classic_lone_blends.py`](../../verification/results/weapon-coverage-census/classic_lone_blends.py)). A listed muzzle
+body is never claimed (the muzzle route keeps its seven; it also skips a draw this route took); the whole decision is
+`classic_match` in `bullet_reshade_core.h`, which the production matcher and the fixture both call. Native run
+(`run_weapon_effects.py --host native`, 06:32:24-06:33:33, merged with `reshade` `c1b4c18d3`, after the review fixes):
+D3D 114 PASS (9 `reshade_lone_classic_*`), AP hook 145, FL hook 62 PASS; the classic cases draw through the game's own
+program bytes (extracted from the FL catalogues at run time, untracked): recognition 11 of 11 (ONE / INVSRCCOLOR refused
+`blend`), model worst 0.063 of the tolerance, the 50 / 300 / 1500 m frames equal the batch-pair frames pixel for pixel
+(lit 2905 / 38 / 6 px), RT2.g 1.181 (want 1.181), refusals bit-exact vanilla [m]. Cost (fenced, best of 7):
+substitution 0.423 µs per draw (vanilla stand-in draw 0.070, re-shaded 0.494; the effects lone path's 0.312 in the same
+run), match 0.0129 µs hit / 0.0115 µs miss per blended classic draw over 30 bodies, 0.0002 µs for an opaque one
+(before: 0, the route did not exist) [m]. FL `build-lone-classic-fl` (RelWithDebInfo, mingw-i686,
+`X3M_GNU_PE_NO_SAFESEH`, `X3M_DEV_TUNING`; clean, then incremental for the fixes) 0 warnings, 60,989,910 B, sha256
+prefix `f9f0fe9dc83c7695`, `check_no_x87 --edition fl` 0 violations (1086 functions); AP 0 warnings, 64,473,798 B
+(`df68451f508bfa7a`) [m]. `run_engine_effects.py --host native` is rerun on the committed tree for its
+`motion_output.h` binding (second commit). Rows:
+[`lone_classic_rows.py`](../../verification/results/native-windows/weapon-effects/lone_classic_rows.py). Not flown:
+the classic bodies' real meshes and textures, their TBullets body words and the far look rest on the fixture's
+stand-in bolt.
