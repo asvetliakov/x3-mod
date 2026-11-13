@@ -478,6 +478,8 @@ unsigned MotionOutput::device_references() const noexcept {
     if (bullet_reshade_classic_ps_) ++count;
     if (bullet_reshade_classic_flag_ps_) ++count;
     if (muzzle_reshade_ps_) ++count;
+    if (muzzle_effects_vs_) ++count; // the muzzle re-shade's effects pair (body 12009)
+    if (muzzle_effects_ps_) ++count;
     for (const auto* hull : hull_reshade_ps_)
         if (hull) ++count;
     if (sun_sentinel_ps_) ++count;

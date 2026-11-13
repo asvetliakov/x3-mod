@@ -4868,3 +4868,19 @@ and `test_weapon_hull_reshade` pass. `generate_muzzle_reshade_program.py --check
 - After killing the screensaver and restoring the record file, the run passed every mode: main 174, native 11,
   unverified 6, unpatched 11, timing 20, plumes 35, armed 35, armed_refused 7 checks.
 - The record is bound to 37a48b814, not dirty. `test_engine_effects`: 13 tests, OK (1 skipped).
+
+**Review fixes (2026-11-13).**
+
+- **B1, the device reference count.** `MotionOutput::device_references()` did not count `muzzle_effects_vs_` and
+  `muzzle_effects_ps_`. While the pair existed and `release_resources` had not run, capture.cpp's final-Release test
+  (after == held + 1) was off by two. Both are now counted. The new host test
+  `verification/analysis/test_motion_output_program_references.py` derives the list of program members from
+  `motion_output.h`: every `IDirect3D{Vertex,Pixel}Shader9*` member with the `_` suffix, 15 today. It checks that
+  `device_references()` counts each and `release_resources()` releases each. On the pre-fix source it names exactly
+  the two missing members [M].
+- **S1, the brightness.** The dimness is accepted for the flight at the inferred overlap. At the same keys and poses,
+  12009's stand-in peaks about 5× below 445's: tilt 0.048 against 0.255, side 0.054 against 0.260, and 9× axis-on
+  (0.021 against 0.197) [M, stand-in against stand-in]. A flight row decides whether it reads as a flash.
+- **S2, the pairing.** That 12009 draws with the effects DEFAULT VS `d5e1c753…` is inferred from the material
+  submit's technique rule, not seen at run time. If a PRG fires and the flight shows `muzzle_reshade_frame
+  effects_candidates=0`, the INSTANCE variant (VS `89193868…`) is bound instead, and the route never sees the draw.
