@@ -1,0 +1,371 @@
+FL /mnt/c/X3FL: TBullets addon2/04.cat (45 rows), Effects addon2/04.cat (127 rows), Animations addon2/04.cat (106 rows), Materials addon2/04.cat (1239 rows)
+impact rows: 26 distinct; rows without an impact effect: none
+row 15 (EDF 0, header [0, 1.0], 2 elements) <- 0:SS_BULLET_IRE, 25:SS_BULLET_PBC, 39:SS_BULLET_FLAK_ALPHA_FRAG, 40:SS_BULLET_TERRANANTIFIGHTER_FRAG
+  el0 BODY 10663 [TIMEOUT|GROW|RANDOMROT|FADEOUT|I3DF_2D] size 0.04..0.06 rnd 0.0, 800 ms from 0 ms, offset 0/0/0
+      -> body v\10663
+  el1 BODY 10661 [TIMEOUT|GROW|FADEOUT|I3DF_2D] size 0.01..0.2 rnd 0.0, 250 ms from 0 ms, offset 0/0/0
+      -> body v\10661
+row 16 (EDF 0, header [0, 1.0], 4 elements) <- 1:SS_BULLET_PAC
+  el0 BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.08 rnd 0.1, 400 ms from 0 ms, offset 0/0/0
+      -> body v\00564
+  el1 BODY 10666 [TIMEOUT|FADEOUT|RANDOMROT|GROWANDSHRINK|NOZTEST|I3DF_2D] size 0.001..0.08 rnd 0.0, 600 ms from 0 ms, offset 0/0/0
+      -> body v\10666
+  el2 LIGHT 4 [TIMEOUT|LIGHT|GROWANDSHRINK|0] size 0.0..0.153 rnd 0.1, 2000 ms from 0 ms, offset 0/0/0
+  el3 PROPAGATE [TIMEOUT|PROPAGATE|EEDF_WAVE] -> row 146 x1..1, gap 50..50 ms, length 30, delay 1, steps 0.1
+    row 146 (EDF 0, header [0, 1.0], 1 elements)
+      el0 BODY 10666 [TIMEOUT|FADEOUT|RANDOMROT|GROWANDSHRINK|NOZTEST|I3DF_2D] size 0.001..0.04 rnd 0.0, 600 ms from 0 ms, offset 0/0/0
+          -> body v\10666
+row 19 (EDF 0, header [0, 1.0], 1 elements) <- 2:SS_BULLET_MASS
+  el0 BODY 589 [TIMEOUT|FADEOUT|GROW|BULLETROT|0] size 0.0..0.06 rnd 0.0, 600 ms from 0 ms, offset 0/0/0
+      -> body v\00589
+row 182 (EDF 0, header [0, 1.0], 5 elements) <- 3:SS_BULLET_PRG
+  el0 BODY 589 [TIMEOUT|RANDOMROT|GROWANDSHRINK|RANDOMSIZE|0] size 0.001..0.0254 rnd 0.0, 212 ms from 0 ms, offset 3/-2/-200
+      -> body v\00589
+  el1 BODY 589 [TIMEOUT|RANDOMROT|GROWANDSHRINK|RANDOMSIZE|0] size 0.001..0.0254 rnd 0.0, 212 ms from 50 ms, offset 5/10/-200
+      -> body v\00589
+  el2 BODY 589 [TIMEOUT|RANDOMROT|GROWANDSHRINK|RANDOMSIZE|0] size 0.001..0.0254 rnd 0.0, 212 ms from 100 ms, offset -10/-2/-200
+      -> body v\00589
+  el3 BODY 10663 [TIMEOUT|GROW|FADEOUT|FADEOUTBODY|BULLETROT|RANDOMSIZE|I3DF_2D] size 0.01..0.08 rnd 0.0, 360 ms from 0 ms, offset 0/0/0
+      -> body v\10663
+  el4 LIGHT 5 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.031 rnd 0.1, 150 ms from 0 ms, offset 0/0/0
+row 192 (EDF 0, header [0, 1.0], 2 elements) <- 4:SS_BULLET_EBC
+  el0 BODY 12005 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.01..0.11 rnd 0.0, 1680 ms from 0 ms, offset 0/0/0
+      -> body v\12005
+  el1 LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.002..0.031 rnd 0.1, 150 ms from 0 ms, offset 0/0/0
+row 184 (EDF 0, header [0, 1.0], 2 elements) <- 5:SS_BULLET_FBL
+  el0 BODY 12000 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.01..0.15 rnd 0.0, 1295 ms from 0 ms, offset 0/0/0
+      -> body v\12000
+  el1 LIGHT 397 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.06 rnd 0.1, 400 ms from 200 ms, offset 0/0/0
+row 17 (EDF 0, header [0, 1.0], 4 elements) <- 6:SS_BULLET_HEPT
+  el0 BODY 10659 [TIMEOUT|GROW|FADEOUT|BULLETROT|I3DF_2D] size 0.01..0.04 rnd 0.0, 500 ms from 0 ms, offset 0/0/0
+      -> body v\10659
+  el1 BODY 201 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.01..0.06 rnd 0.0, 300 ms from 0 ms, offset 0/0/-500
+      -> body v\00201
+  el2 BODY 201 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.01..0.07 rnd 0.0, 300 ms from 0 ms, offset 0/0/-500
+      -> body v\00201
+  el3 LIGHT 3 [TIMEOUT|LIGHT|GROWANDSHRINK|0] size 0.0..0.153 rnd 0.1, 500 ms from 0 ms, offset 0/0/0
+row 57 (EDF 0, header [0, 1.0], 1 elements) <- 7:SS_BULLET_IOND
+  el0 PROPAGATE [TIMEOUT|PROPAGATE|0] -> row 145 x2..4, gap 50..100 ms, length 10, delay 250, steps 10
+    row 145 (EDF 0, header [0, 1.0], 1 elements)
+      el0 BODY 10667 [TIMEOUT|FADEOUT|RANDOMROT|RANDOMSIZE|GROW|I3DF_2D] size 0.1..0.3 rnd 0.1, 200 ms from 0 ms, offset 0/0/0
+          -> body v\10667
+row 50 (EDF 0, header [0, 1.0], 2 elements) <- 8:SS_BULLET_PBE
+  el0 BODY 10653 [TIMEOUT|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.08..0.12 rnd 0.0, 800 ms from 0 ms, offset 0/0/0
+      -> body v\10653
+  el1 BODY 10661 [TIMEOUT|GROW|FADEOUT|I3DF_2D] size 0.01..0.25 rnd 0.0, 250 ms from 0 ms, offset 0/0/0
+      -> body v\10661
+row 58 (EDF 0, header [0, 1.0], 1 elements) <- 9:SS_BULLET_PD, 18:SS_BULLET_PSG
+  el0 PROPAGATE [TIMEOUT|PROPAGATE|WAVE|0] -> row 143 x1..2, gap 100..200 ms, length 50, delay 150, steps 1.0
+    row 143 (EDF 0, header [0, 1.0], 1 elements)
+      el0 BODY 10668 [TIMEOUT|FADEOUT|RANDOMROT|NOZTEST|GROW|I3DF_2D] size 0.01..0.02 rnd 0.0, 200 ms from 0 ms, offset 0/0/0
+          -> body v\10668
+row 23 (EDF 0, header [0, 1.0], 5 elements) <- 10:SS_BULLET_EMP, 17:SS_BULLET_PAL, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM, 41:SS_BULLET_EMP_1
+  el0 BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.02 rnd 0.1, 260 ms from 0 ms, offset 0/0/0
+      -> body v\00587
+  el1 BODY 469 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.007 rnd 0.1, 210 ms from 0 ms, offset 0/0/0
+      -> body v\00469
+  el2 LIGHT 118 [GROW|TIMEOUT|LIGHT|0] size 0.002..0.061 rnd 0.1, 650 ms from 0 ms, offset 0/0/0
+  el3 BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.001..0.14 rnd 0.1, 330 ms from 20 ms, offset 0/0/0
+      -> body v\00564
+  el4 BODY 12000 [TIMEOUT|GROW|RANDOMSIZE|I3DF_2D] size 0.04..0.12 rnd 0.0, 1440 ms from 0 ms, offset 0/0/-500
+      -> body v\12000
+row 70 (EDF 0, header [0, 1.0], 4 elements) <- 11:SS_BULLET_CIG
+  el0 CUT 4274 [TIMEOUT|CUT|FADEOUT|PUSH|0] size 0.0025..0.0025 rnd 0.2, 500 ms from 0 ms, offset 0/0/0
+      -> scene 01.cat:objects/cut/04274.pbd: 101 parts, distinct bodies ['582']
+  el1 BODY 587 [TIMEOUT|GROW|FADEOUT|RANDOMROT|0] size 0.0..0.25 rnd 0.1, 550 ms from 0 ms, offset 0/0/0
+      -> body v\00587
+  el2 BODY 469 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.05 rnd 0.1, 600 ms from 0 ms, offset 0/0/0
+      -> body v\00469
+  el3 LIGHT 118 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.03 rnd 0.1, 650 ms from 0 ms, offset 0/0/0
+row 178 (EDF EDF_NOROTATE|EDF_NODRIFT, header [0, 1.0], 4 elements) <- 12:SS_BULLET_IPG, 44:SS_BULLET_IPG_FRAG
+  el0 CUT 4791 [TIMEOUT|GROWANDSHRINK|FADEOUT|CUT|NOSKIP|RANDOMROT|I3DF_2D] size 0.01..0.033 rnd 0.1, 1000 ms from 0 ms, offset 0/0/0
+      -> scene 01.cat:objects/cut/04791.pbb: 1 parts, distinct bodies ['10388']
+  el1 BODY 12001 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.4..0.41 rnd 0.0, 1440 ms from 0 ms, offset 0/0/0
+      -> body v\12001
+  el2 LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.02..0.22 rnd 0.1, 400 ms from 200 ms, offset 0/0/0
+  el3 BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.01..0.18 rnd 0.1, 460 ms from 0 ms, offset 0/0/0
+      -> body v\00587
+row 151 (EDF 0, header [0, 1.0], 6 elements) <- 13:SS_BULLET_ESR
+  el0 BODY effects\weapons\bullet_ElectroSpike [TIMEOUT|GROW|BULLETROT|ACTUALSIZE|FADEOUT|FADEOUTBODY|0] size 0.12..0.12 rnd 0.0, 575 ms from 0 ms, offset 0/0/-1000
+      -> body effects\weapons\bullet_ElectroSpike
+  el1 BODY 12005 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.05..0.17 rnd 0.0, 1680 ms from 200 ms, offset 0/0/0
+      -> body v\12005
+  el2 BODY 10667 [TIMEOUT|FADEOUT|RANDOMROT|RANDOMSIZE|GROW|NOZTEST|I3DF_2D] size 0.05..0.11 rnd 0.1, 300 ms from 0 ms, offset -50/80/-30
+      -> body v\10667
+  el3 BODY 10667 [TIMEOUT|FADEOUT|RANDOMROT|RANDOMSIZE|GROW|NOZTEST|I3DF_2D] size 0.05..0.11 rnd 0.1, 300 ms from 0 ms, offset 35/-26/-20
+      -> body v\10667
+  el4 BODY 10667 [TIMEOUT|FADEOUT|RANDOMROT|RANDOMSIZE|GROW|NOZTEST|I3DF_2D] size 0.05..0.11 rnd 0.1, 300 ms from 0 ms, offset 15/-60/-70
+      -> body v\10667
+  el5 LIGHT 117 [TIMEOUT|LIGHT|GROWANDSHRINK|0] size 0.0..0.153 rnd 0.1, 800 ms from 0 ms, offset 0/0/0
+row 196 (EDF 0, header [0, 1.0], 2 elements) <- 14:SS_BULLET_MAM, 42:SS_BULLET_MAM_1
+  el0 BODY 12004 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.001..0.15 rnd 0.0, 1296 ms from 0 ms, offset 0/0/0
+      -> body v\12004
+  el1 LIGHT 4 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.11 rnd 0.1, 400 ms from 200 ms, offset 0/0/0
+row 155 (EDF 0, header [0, 1.0], 2 elements) <- 15:SS_BULLET_FLAK_ALPHA
+  el0 PROPAGATE [TIMEOUT|PROPAGATE|FADEOUTBODY|0] -> row 147 x1..3, gap 10..200 ms, length 1, delay 500, steps 1
+    row 147 (EDF 0, header [3000, 1.0], 1 elements)
+      el0 CUT 4262 [TIMEOUT|CUT|GROW|FADEOUT|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.003..0.09 rnd 0.0, 3840 ms from 0 ms, offset 0/0/0
+          -> scene 01.cat:objects/cut/04262.pbb: 1 parts, distinct bodies ['10656']
+  el1 BODY 10664 [TIMEOUT|GROWANDSHRINK|FADEOUT|I3DF_2D] size 0.18..1.1 rnd 0.0, 1500 ms from 0 ms, offset 0/0/0
+      -> body v\10664
+row 156 (EDF 0, header [0, 1.0], 2 elements) <- 16:SS_BULLET_FLAK_CLUSTER, 30:SS_BULLET_DUMMY1, 37:SS_BULLET_FLAK_CLUSTER_FRAG, 38:SS_BULLET_FLAK_CLUSTER_FRAG_FRAG
+  el0 BODY 10664 [TIMEOUT|GROWANDSHRINK|FADEOUT|I3DF_2D] size 0.18..1.5 rnd 0.0, 1500 ms from 0 ms, offset 0/0/0
+      -> body v\10664
+  el1 PROPAGATE [TIMEOUT|PROPAGATE|FADEOUTBODY|0] -> row 147 x1..3, gap 10..200 ms, length 1, delay 500, steps 1
+    row 147 (EDF 0, header [3000, 1.0], 1 elements)
+      el0 CUT 4262 [TIMEOUT|CUT|GROW|FADEOUT|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.003..0.09 rnd 0.0, 3840 ms from 0 ms, offset 0/0/0
+          -> scene 01.cat:objects/cut/04262.pbb: 1 parts, distinct bodies ['10656']
+row 199 (EDF 0, header [0, 1.0], 4 elements) <- 19:SS_BULLET_TERANTIFIGHTER, 43:SS_BULLET_TERRANANTIFIGHTER_1
+  el0 BODY 12008 [TIMEOUT|NOZTEST|BULLETROT|GROW|I3DF_2D] size 0.6..0.75 rnd 0.0, 960 ms from 0 ms, offset 0/0/0
+      -> body v\12008
+  el1 BODY 12008 [TIMEOUT|NOZTEST|BULLETROT|GROW|I3DF_2D] size 0.6..0.75 rnd 0.0, 960 ms from 0 ms, offset 0/0/0
+      -> body v\12008
+  el2 CUT 8000 [TIMEOUT|CUT|GROW|FADEOUT|FADEOUTBODY|PUSH|0] size 0.012..0.0294 rnd 0.0, 640 ms from 150 ms, offset 0/0/0
+      -> scene 01.cat:objects/cut/08000.pbd: 101 parts, distinct bodies ['12007']
+  el3 LIGHT 10 [GROW|TIMEOUT|LIGHT|0] size 0.005..0.03 rnd 0.1, 500 ms from 50 ms, offset 0/0/0
+row 53 (EDF EDF_NOROTATE|EDF_NODRIFT, header [3000, 1.0], 5 elements) <- 20:SS_BULLET_PPC
+  el0 CUT 4274 [TIMEOUT|CUT|FADEOUT|0] size 0.005..0.005 rnd 0.2, 500 ms from 0 ms, offset 0/0/0
+      -> scene 01.cat:objects/cut/04274.pbd: 101 parts, distinct bodies ['582']
+  el1 BODY 587 [TIMEOUT|GROW|FADEOUT|RANDOMROT|0] size 0.0..0.5 rnd 0.1, 550 ms from 0 ms, offset 0/0/0
+      -> body v\00587
+  el2 BODY 469 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.1 rnd 0.1, 600 ms from 0 ms, offset 0/0/0
+      -> body v\00469
+  el3 BODY 564 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.012..1.25 rnd 0.1, 430 ms from 0 ms, offset 0/0/0
+      -> body v\00564
+  el4 LIGHT 14 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.0303..3.052 rnd 0.8, 900 ms from 0 ms, offset 0/0/0
+row 180 (EDF 0, header [0, 1.0], 4 elements) <- 21:SS_BULLET_IONC
+  el0 CUT 4274 [TIMEOUT|CUT|FADEOUT|FADEOUTBODY|0] size 0.017..0.0324 rnd 0.0, 560 ms from 0 ms, offset 0/0/0
+      -> scene 01.cat:objects/cut/04274.pbd: 101 parts, distinct bodies ['582']
+  el1 BODY 12001 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.7..0.85 rnd 0.0, 1440 ms from 0 ms, offset 0/0/0
+      -> body v\12001
+  el2 LIGHT 4 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.2..2.0 rnd 0.1, 700 ms from 200 ms, offset 0/0/0
+  el3 BODY 587 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.1..0.4 rnd 0.1, 560 ms from 0 ms, offset 0/0/0
+      -> body v\00587
+row 194 (EDF 0, header [0, 1.0], 2 elements) <- 22:SS_BULLET_GAUSS
+  el0 BODY 12003 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.02..0.7 rnd 0.0, 1296 ms from 0 ms, offset 0/0/0
+      -> body v\12003
+  el1 LIGHT 3 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.004..0.062 rnd 0.1, 150 ms from 0 ms, offset 0/0/0
+row 198 (EDF 0, header [0, 1.0], 3 elements) <- 23:SS_BULLET_IBL
+  el0 BODY 12006 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.01..0.25 rnd 0.0, 2240 ms from 0 ms, offset 0/0/0
+      -> body v\12006
+  el1 LIGHT 2 [GROWANDSHRINK|TIMEOUT|LIGHT|0] size 0.001..0.031 rnd 0.1, 150 ms from 0 ms, offset 0/0/0
+  el2 BODY 10670 [TIMEOUT|RANDOMROT|GROW|I3DF_2D] size 0.05..0.75 rnd 0.0, 9000 ms from 0 ms, offset 0/1000/1000
+      -> body v\10670
+row 189 (EDF 0, header [0, 1.0], 2 elements) <- 24:SS_BULLET_PSP
+  el0 BODY 12002 [TIMEOUT|GROW|NOZTEST|RANDOMROT|RANDOMSIZE|FADEOUT|I3DF_2D] size 0.24..1.2 rnd 0.0, 1920 ms from 0 ms, offset 0/0/0
+      -> body v\12002
+  el1 LIGHT 10 [GROW|TIMEOUT|LIGHT|0] size 0.005..0.03 rnd 0.1, 500 ms from 50 ms, offset 0/0/0
+row 69 (EDF 0, header [0, 1.0], 3 elements) <- 28:SS_BULLET_MINING
+  el0 CUT 4274 [TIMEOUT|CUT|FADEOUT|0] size 0.0005..0.002 rnd 0.0, 500 ms from 0 ms, offset 0/0/0
+      -> scene 01.cat:objects/cut/04274.pbd: 101 parts, distinct bodies ['582']
+  el1 BODY 587 [TIMEOUT|GROW|FADEOUT|RANDOMROT|0] size 0.0..0.2 rnd 0.1, 550 ms from 0 ms, offset 0/0/0
+      -> body v\00587
+  el2 BODY 469 [TIMEOUT|GROWANDSHRINK|FADEOUT|RANDOMROT|0] size 0.0..0.05 rnd 0.1, 600 ms from 0 ms, offset 0/0/0
+      -> body v\00469
+row 18 (EDF 0, header [0, 1.0], 2 elements) <- 29:SS_BULLET_TUG, 31:SS_BULLET_DUMMY2, 32:SS_BULLET_KH_ALPHA, 33:SS_BULLET_KH_BETA, 34:SS_BULLET_KH_GAMMA, 35:SS_BULLET_REPAIR
+  el0 BODY 10658 [TIMEOUT|GROWANDSHRINK|I3DF_2D] size 0.01..0.1 rnd 0.3, 500 ms from 0 ms, offset 0/0/-100
+      -> body v\10658
+  el1 BODY 10663 [TIMEOUT|GROW|RANDOMROT|I3DF_2D] size 0.04..0.08 rnd 0.0, 800 ms from 0 ms, offset 0/0/0
+      -> body v\10663
+row 186 (EDF 0, header [0, 1.0], 1 elements) <- 36:SS_BULLET_FBL_FRAG
+  el0 PROPAGATE [TIMEOUT|PROPAGATE|FADEOUTBODY|0] -> row 184 x1..3, gap 30..150 ms, length 1, delay 0, steps 1
+    row 184 (EDF 0, header [0, 1.0], 2 elements)
+      el0 BODY 12000 [TIMEOUT|NOZTEST|GROW|RANDOMROT|RANDOMSIZE|I3DF_2D] size 0.01..0.15 rnd 0.0, 1295 ms from 0 ms, offset 0/0/0
+          -> body v\12000
+      el1 LIGHT 397 [GROW|TIMEOUT|LIGHT|0] size 0.01..0.06 rnd 0.1, 400 ms from 200 ms, offset 0/0/0
+impact rows (and children) with an EEDF_HULLDAMAGE element: none
+bodies by TBullets rows reached (direct element, scene part or PROPAGATE child):
+  v\00587: 11 TBullets rows via Effects rows [23, 53, 69, 70, 178, 180]: 10:SS_BULLET_EMP, 11:SS_BULLET_CIG, 12:SS_BULLET_IPG, 17:SS_BULLET_PAL, 20:SS_BULLET_PPC, 21:SS_BULLET_IONC, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM, 28:SS_BULLET_MINING, 41:SS_BULLET_EMP_1, 44:SS_BULLET_IPG_FRAG
+  v\10663: 11 TBullets rows via Effects rows [15, 18, 182]: 0:SS_BULLET_IRE, 3:SS_BULLET_PRG, 25:SS_BULLET_PBC, 29:SS_BULLET_TUG, 31:SS_BULLET_DUMMY2, 32:SS_BULLET_KH_ALPHA, 33:SS_BULLET_KH_BETA, 34:SS_BULLET_KH_GAMMA, 35:SS_BULLET_REPAIR, 39:SS_BULLET_FLAK_ALPHA_FRAG, 40:SS_BULLET_TERRANANTIFIGHTER_FRAG
+  v\00469: 8 TBullets rows via Effects rows [23, 53, 69, 70]: 10:SS_BULLET_EMP, 11:SS_BULLET_CIG, 17:SS_BULLET_PAL, 20:SS_BULLET_PPC, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM, 28:SS_BULLET_MINING, 41:SS_BULLET_EMP_1
+  v\00564: 7 TBullets rows via Effects rows [16, 23, 53]: 1:SS_BULLET_PAC, 10:SS_BULLET_EMP, 17:SS_BULLET_PAL, 20:SS_BULLET_PPC, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM, 41:SS_BULLET_EMP_1
+  v\12000: 7 TBullets rows via Effects rows [23, 184]: 5:SS_BULLET_FBL, 10:SS_BULLET_EMP, 17:SS_BULLET_PAL, 26:SS_BULLET_TRIBEAM, 27:SS_BULLET_FUSIONBEAM, 36:SS_BULLET_FBL_FRAG, 41:SS_BULLET_EMP_1
+  v\10658: 6 TBullets rows via Effects rows [18]: 29:SS_BULLET_TUG, 31:SS_BULLET_DUMMY2, 32:SS_BULLET_KH_ALPHA, 33:SS_BULLET_KH_BETA, 34:SS_BULLET_KH_GAMMA, 35:SS_BULLET_REPAIR
+  v\10656: 5 TBullets rows via Effects rows [147]: 15:SS_BULLET_FLAK_ALPHA, 16:SS_BULLET_FLAK_CLUSTER, 30:SS_BULLET_DUMMY1, 37:SS_BULLET_FLAK_CLUSTER_FRAG, 38:SS_BULLET_FLAK_CLUSTER_FRAG_FRAG
+  v\10661: 5 TBullets rows via Effects rows [15, 50]: 0:SS_BULLET_IRE, 8:SS_BULLET_PBE, 25:SS_BULLET_PBC, 39:SS_BULLET_FLAK_ALPHA_FRAG, 40:SS_BULLET_TERRANANTIFIGHTER_FRAG
+  v\10664: 5 TBullets rows via Effects rows [155, 156]: 15:SS_BULLET_FLAK_ALPHA, 16:SS_BULLET_FLAK_CLUSTER, 30:SS_BULLET_DUMMY1, 37:SS_BULLET_FLAK_CLUSTER_FRAG, 38:SS_BULLET_FLAK_CLUSTER_FRAG_FRAG
+  v\00582: 4 TBullets rows via Effects rows [53, 69, 70, 180]: 11:SS_BULLET_CIG, 20:SS_BULLET_PPC, 21:SS_BULLET_IONC, 28:SS_BULLET_MINING
+  v\12001: 3 TBullets rows via Effects rows [178, 180]: 12:SS_BULLET_IPG, 21:SS_BULLET_IONC, 44:SS_BULLET_IPG_FRAG
+  v\00589: 2 TBullets rows via Effects rows [19, 182]: 2:SS_BULLET_MASS, 3:SS_BULLET_PRG
+  v\10388: 2 TBullets rows via Effects rows [178]: 12:SS_BULLET_IPG, 44:SS_BULLET_IPG_FRAG
+  v\10667: 2 TBullets rows via Effects rows [145, 151]: 7:SS_BULLET_IOND, 13:SS_BULLET_ESR
+  v\10668: 2 TBullets rows via Effects rows [143]: 9:SS_BULLET_PD, 18:SS_BULLET_PSG
+  v\12004: 2 TBullets rows via Effects rows [196]: 14:SS_BULLET_MAM, 42:SS_BULLET_MAM_1
+  v\12005: 2 TBullets rows via Effects rows [151, 192]: 4:SS_BULLET_EBC, 13:SS_BULLET_ESR
+  v\12007: 2 TBullets rows via Effects rows [199]: 19:SS_BULLET_TERANTIFIGHTER, 43:SS_BULLET_TERRANANTIFIGHTER_1
+  v\12008: 2 TBullets rows via Effects rows [199]: 19:SS_BULLET_TERANTIFIGHTER, 43:SS_BULLET_TERRANANTIFIGHTER_1
+  effects\weapons\bullet_ElectroSpike: 1 TBullets rows via Effects rows [151]: 13:SS_BULLET_ESR
+  v\00201: 1 TBullets rows via Effects rows [17]: 6:SS_BULLET_HEPT
+  v\10653: 1 TBullets rows via Effects rows [50]: 8:SS_BULLET_PBE
+  v\10659: 1 TBullets rows via Effects rows [17]: 6:SS_BULLET_HEPT
+  v\10666: 1 TBullets rows via Effects rows [16, 146]: 1:SS_BULLET_PAC
+  v\10670: 1 TBullets rows via Effects rows [198]: 23:SS_BULLET_IBL
+  v\12002: 1 TBullets rows via Effects rows [189]: 24:SS_BULLET_PSP
+  v\12003: 1 TBullets rows via Effects rows [194]: 22:SS_BULLET_GAUSS
+  v\12006: 1 TBullets rows via Effects rows [198]: 23:SS_BULLET_IBL
+distinct bodies 28; scenes [4262, 4274, 4791, 8000]
+every Effects row drawing one of these bodies (directly or as a CUT part), and who names the row (TBullets c19 flight / c20 impact / c21 muzzle, TMissiles c20 impact / c21 death, TShips c47, TDocks and TFactories c14, TAsteroids c8 death; 0 read as the default death row 48; PROPAGATE parents in brackets):
+  [impact] row 15: v\10661, v\10663; named by TBullets c20 x4 (0,25,39,40)
+  [impact] row 16: v\00564, v\10666; named by TBullets c20 x1 (1)
+  [impact] row 17: v\00201, v\10659; named by TBullets c20 x1 (6)
+  [impact] row 18: v\10658, v\10663; named by TBullets c20 x6 (29,31,32,33,34,35)
+  [impact] row 19: v\00589; named by TBullets c20 x1 (2)
+  [OTHER] row 20: v\10656; named by none
+  [OTHER] row 21: v\10664; named by none
+  [impact] row 23: v\00469, v\00564, v\00587, v\12000; named by TBullets c20 x5 (10,17,26,27,41)
+  [OTHER] row 36: v\10661; named by none
+  [OTHER] row 37: v\10656, v\10664, v\10670; named by TShips c47 x95 (0,10,11,28,29,32,33,34,...); TDocks c14 x28 (0,1,2,3,4,5,12,13,...); TFactories c14 x421 (6,7,8,9,10,11,12,13,...)
+  [OTHER] row 38: v\10656; named by none
+  [OTHER] row 39: v\10656; named by TMissiles c21 x1 (3)
+  [OTHER] row 40: v\10670; named by TShips c47 x55 (26,27,30,68,69,72,99,100,...)
+  [OTHER] row 41: v\10661; named by none
+  [OTHER] row 46: v\10388; named by none
+  [OTHER] row 47: v\10656; named by none
+  [OTHER] row 48: v\10656; named by TShips c47 x1 (283); TFactories c14 x1 (239); TAsteroids c8 x1 (9)
+  [impact] row 50: v\10653, v\10661; named by TBullets c20 x1 (8)
+  [OTHER] row 51: v\10656; named by none
+  [impact] row 53: v\00469, v\00564, v\00582, v\00587; named by TBullets c20 x1 (20)
+  [OTHER] row 55: v\00589; named by none
+  [OTHER] row 56: v\10664; named by none
+  [impact] row 69: v\00469, v\00582, v\00587; named by TBullets c20 x1 (28)
+  [impact] row 70: v\00469, v\00582, v\00587; named by TBullets c20 x1 (11)
+  [OTHER] row 142: v\10656, v\10661; named by none; child of [36, 41]
+  [impact] row 143: v\10668; named by none; child of [58]
+  [OTHER] row 144: v\10656; named by none
+  [impact] row 145: v\10667; named by none; child of [57]
+  [impact] row 146: v\10666; named by none; child of [16]
+  [impact] row 147: v\10656; named by none; child of [155, 156]
+  [OTHER] row 148: v\10656; named by none
+  [OTHER] row 149: v\10656; named by none; child of [37, 38, 201]
+  [OTHER] row 150: v\10664; named by none
+  [impact] row 151: effects\weapons\bullet_ElectroSpike, v\10667, v\12005; named by TBullets c20 x1 (13)
+  [OTHER] row 153: v\10667; named by none
+  [impact] row 155: v\10664; named by TBullets c20 x1 (15)
+  [impact] row 156: v\10664; named by TBullets c20 x4 (16,30,37,38)
+  [OTHER] row 157: v\10664; named by TBullets c21 x3 (15,16,30)
+  [OTHER] row 158: v\10661, v\10670; named by TMissiles c20 x10 (4,10,11,14,18,19,25,27,...); TMissiles c21 x8 (4,10,11,14,18,19,25,27)
+  [OTHER] row 159: v\10670; named by TMissiles c20 x9 (3,5,7,8,12,13,15,23,...); TMissiles c21 x8 (5,7,8,12,13,15,23,24)
+  [OTHER] row 160: v\10670; named by TMissiles c20 x11 (0,1,2,6,9,17,21,22,...); TMissiles c21 x11 (0,1,2,6,9,17,21,22,...)
+  [OTHER] row 161: v\10670; named by TMissiles c20 x6 (16,20,26,28,29,32); TMissiles c21 x8 (16,20,26,28,29,30,32,33)
+  [impact] row 178: v\00587, v\10388, v\12001; named by TBullets c20 x2 (12,44)
+  [OTHER] row 179: v\00564, v\00587; named by TBullets c21 x2 (12,44)
+  [impact] row 180: v\00582, v\00587, v\12001; named by TBullets c20 x1 (21); TBullets c21 x1 (31)
+  [OTHER] row 181: v\00564, v\00587; named by TBullets c21 x1 (21)
+  [impact] row 182: v\00589, v\10663; named by TBullets c20 x1 (3)
+  [impact] row 184: v\12000; named by TBullets c20 x1 (5); child of [186]
+  [OTHER] row 187: v\00564, v\00587, v\10388; named by none
+  [impact] row 189: v\12002; named by TBullets c20 x1 (24)
+  [impact] row 192: v\12005; named by TBullets c20 x1 (4)
+  [impact] row 194: v\12003; named by TBullets c20 x1 (22)
+  [impact] row 196: v\12004; named by TBullets c20 x2 (14,42)
+  [impact] row 198: v\10670, v\12006; named by TBullets c20 x1 (23)
+  [impact] row 199: v\12007, v\12008; named by TBullets c20 x2 (19,43)
+  [OTHER] row 201: v\10656, v\10664, v\10670; named by TDocks c14 x36 (6,7,8,9,10,11,15,16,...); TFactories c14 x67 (0,1,2,3,4,5,189,192,...)
+bodies (resolved once):
+  effects\weapons\bullet_ElectroSpike: 01.cat:objects/effects/weapons/bullet_ElectroSpike.pbb
+      LOD0 scale 3950, 42 points, half extents [9747.0, 11715.0, 65536.0], UV u 0.004..0.362 v 0.381..0.467, 1 LODs, groups (material, faces) [(0, 30)]
+      mat 0 effect effects.fx (file technique word 1) -> effects DEFAULT; blend ONE/INVSRCCOLOR, zwrite 0, zenable 1, cull 2, g_AlphaValue 65536, diffuse 'effects\\weapons\\fx_bullets2_diff.tga', TexAnim params none
+  v\00201: 01.cat:objects/v/00201.pbd
+      LOD0 scale 1000, 36 points, half extents [65536.0, 65536.0, 65536.0], groups (material, faces) [(0, 18)]
+      MATERIAL3 0: texture id 376 -> Materials row 376 flags 0x8012 (MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY), texid 376, name '' -> classic standard_lighting2s DEFAULT
+  v\00469: 01.cat:objects/v/00469.pbd
+      LOD0 scale 1000, 40 points, half extents [65535.0, 65535.0, 65535.5], groups (material, faces) [(0, 20)]
+      MATERIAL3 0: texture id 380 -> Materials row 380 flags 0x8012 (MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY), texid 380, name '' -> classic standard_lighting2s DEFAULT
+  v\00564: 01.cat:objects/v/00564.pbd
+      LOD0 scale 1000, 80 points, half extents [65536.0, 62729.0, 59545.5], groups (material, faces) [(0, 40)]
+      MATERIAL3 0: texture id 383 -> Materials row 383 flags 0x8012 (MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY), texid 383, name '' -> classic standard_lighting2s DEFAULT
+  v\00582: 01.cat:objects/v/00582.pbd
+      LOD0 scale 7500, 4 points, half extents [65536.0, 65536.0, 0.0], groups (material, faces) [(0, 2)]
+      MATERIAL3 0: texture id 380 -> Materials row 380 flags 0x8012 (MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY), texid 380, name '' -> classic standard_lighting2s DEFAULT
+  v\00587: 01.cat:objects/v/00587.pbd
+      LOD0 scale 10000, 40 points, half extents [65535.0, 65535.0, 65535.5], groups (material, faces) [(0, 20)]
+      MATERIAL3 0: texture id 380 -> Materials row 380 flags 0x8012 (MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY), texid 380, name '' -> classic standard_lighting2s DEFAULT
+  v\00589: 01.cat:objects/v/00589.pbd
+      LOD0 scale 1000, 46 points, half extents [65535.5, 65535.0, 65535.5], groups (material, faces) [(0, 48)]
+      MATERIAL3 0: texture id 131 -> Materials row 131 flags 0x2 (MPF_DESTINATIONBLEND), texid 131, name '' -> classic standard_lighting DEFAULT
+  v\10388: 01.cat:objects/v/10388.pbd
+      LOD0 scale 6035, 36 points, half extents [65536.0, 54291.0, 65536.0], UV u 0.000..1.000 v 0.000..1.000, 1 LODs, groups (material, faces) [(0, 18)]
+      mat 0 classic (body record) texture 873, flags 0x12 (MPF_DESTINATIONBLEND|MPF_2SIDED) -> classic standard_lighting2s DEFAULT
+  v\10653: 01.cat:objects/v/10653.pbd
+      LOD0 scale 2500, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.250 v 0.000..0.250, 1 LODs, groups (material, faces) [(-71, 2)]
+      mat 0 classic (body record) texture 'effects\\explosions\\exp_small_diff.tga', flags 0x11 (MPF_ALPHATEST|MPF_2SIDED) -> classic standard_lighting2s DEFAULT
+        negative group index Animations row 71: TAT_TAGONESHOT flags 0, 16 frames (16 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [50], total 800 ms, textures ['effects\\explosions\\exp_small_diff']
+  v\10656: 01.cat:objects/v/10656.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-82, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 2, g_AlphaValue 65536, diffuse '-82.tga', TexAnim params none
+        Animations row 82: TAT_TAGONESHOT flags 0, 128 frames (128 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30], total 3840 ms, textures ['effects\\explosions\\fx_exp_A_p1_diff', 'effects\\explosions\\fx_exp_A_p2_diff', 'effects\\explosions\\fx_exp_A_p3_diff', 'effects\\explosions\\fx_exp_A_p4_diff', 'effects\\explosions\\fx_exp_A_p5_diff', 'effects\\explosions\\fx_exp_A_p6_diff', 'effects\\explosions\\fx_exp_A_p7_diff', 'effects\\explosions\\fx_exp_A_p8_diff']
+        negative group index Animations row 82: TAT_TAGONESHOT flags 0, 128 frames (128 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30], total 3840 ms, textures ['effects\\explosions\\fx_exp_A_p1_diff', 'effects\\explosions\\fx_exp_A_p2_diff', 'effects\\explosions\\fx_exp_A_p3_diff', 'effects\\explosions\\fx_exp_A_p4_diff', 'effects\\explosions\\fx_exp_A_p5_diff', 'effects\\explosions\\fx_exp_A_p6_diff', 'effects\\explosions\\fx_exp_A_p7_diff', 'effects\\explosions\\fx_exp_A_p8_diff']
+  v\10658: 01.cat:objects/v/10658.pbd
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.999 v 0.000..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable -, cull 2, g_AlphaValue 65536, diffuse 'effects\\explosions\\exp_impact_glow_diff.tga', TexAnim params none
+  v\10659: 01.cat:objects/v/10659.pbd
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.999 v 0.000..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects DEFAULT; blend ONE/INVSRCCOLOR, zwrite 0, zenable 1, cull 2, g_AlphaValue 65536, diffuse 'effects\\explosions\\exp_PL_imp_diff.tga', TexAnim params none
+  v\10661: 01.cat:objects/v/10661.pbb
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.999 v 0.000..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable -, cull 2, g_AlphaValue 65536, diffuse 'effects\\explosions\\exp_glow_diff.tga', TexAnim params none
+  v\10663: 01.cat:objects/v/10663.pbd
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.250 v 0.000..0.250, 1 LODs, groups (material, faces) [(-73, 2)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable -, cull 2, g_AlphaValue 65536, diffuse '-73.tga', TexAnim params none
+        Animations row 73: TAT_TAGONESHOT flags 0, 32 frames (32 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [25], total 800 ms, textures ['effects\\explosions\\exp_sparks1_diff', 'effects\\explosions\\exp_sparks2_diff']
+        negative group index Animations row 73: TAT_TAGONESHOT flags 0, 32 frames (32 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [25], total 800 ms, textures ['effects\\explosions\\exp_sparks1_diff', 'effects\\explosions\\exp_sparks2_diff']
+  v\10664: 01.cat:objects/v/10664.pbd
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.999 v 0.000..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable -, cull 2, g_AlphaValue 65536, diffuse 'effects\\explosions\\exp_glow2_diff.tga', TexAnim params none
+  v\10666: 01.cat:objects/v/10666.pbd
+      LOD0 scale 11637, 12 points, half extents [63975.0, 65536.0, 45237.0], UV u 0.000..1.000 v 0.000..1.000, 1 LODs, groups (material, faces) [(0, 6)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable -, cull 2, g_AlphaValue 65536, diffuse 'effects\\weapons\\fx_Lightning_diff.tga', TexAnim params none
+  v\10667: 01.cat:objects/v/10667.pbd
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.999 v 0.000..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 2, g_AlphaValue 65536, diffuse 'effects\\weapons\\fx_Lightning2_diff.tga', TexAnim params none
+  v\10668: 01.cat:objects/v/10668.pbd
+      LOD0 scale 25000, 4 points, half extents [65536.0, 65536.0, 0.0], UV u 0.000..0.999 v 0.000..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect standard_lighting.fx (file technique word 1) -> standard_lighting DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 2, g_AlphaValue 65536, diffuse 'effects\\weapons\\fx_wave_diff.tga', TexAnim params none
+  v\10670: 01.cat:objects/v/10670.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-83, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-83.tga', TexAnim params none
+        Animations row 83: TAT_TAGONESHOT flags 0, 128 frames (128 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30, 50], total 4900 ms, textures ['effects\\explosions\\fx_exp_B_p1_diff', 'effects\\explosions\\fx_exp_B_p2_diff', 'effects\\explosions\\fx_exp_B_p3_diff', 'effects\\explosions\\fx_exp_B_p4_diff', 'effects\\explosions\\fx_exp_B_p5_diff', 'effects\\explosions\\fx_exp_B_p6_diff', 'effects\\explosions\\fx_exp_B_p7_diff', 'effects\\explosions\\fx_exp_B_p8_diff']
+        negative group index Animations row 83: TAT_TAGONESHOT flags 0, 128 frames (128 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30, 50], total 4900 ms, textures ['effects\\explosions\\fx_exp_B_p1_diff', 'effects\\explosions\\fx_exp_B_p2_diff', 'effects\\explosions\\fx_exp_B_p3_diff', 'effects\\explosions\\fx_exp_B_p4_diff', 'effects\\explosions\\fx_exp_B_p5_diff', 'effects\\explosions\\fx_exp_B_p6_diff', 'effects\\explosions\\fx_exp_B_p7_diff', 'effects\\explosions\\fx_exp_B_p8_diff']
+  v\12000: addon2/01.cat:objects/v/12000.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-98, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-98.dds', TexAnim params none
+        Animations row 98: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [10, 15, 20, 30, 35], total 1070 ms, textures ['fx_blueexplosion_01', 'fx_blueexplosion_02', 'fx_blueexplosion_03']
+        negative group index Animations row 98: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [10, 15, 20, 30, 35], total 1070 ms, textures ['fx_blueexplosion_01', 'fx_blueexplosion_02', 'fx_blueexplosion_03']
+  v\12001: addon2/01.cat:objects/v/12001.pbb
+      LOD0 scale 31500, 4 points, half extents [64225.5, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-96, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-96.dds', TexAnim params none
+        Animations row 96: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30], total 1440 ms, textures ['fx_electric_01', 'fx_electric_02', 'fx_electric_03']
+        negative group index Animations row 96: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30], total 1440 ms, textures ['fx_electric_01', 'fx_electric_02', 'fx_electric_03']
+  v\12002: addon2/01.cat:objects/v/12002.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-100, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-100.dds', TexAnim params none
+        Animations row 100: TAT_TAGONESHOT flags 0, 64 frames (64 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [25, 30, 35], total 1920 ms, textures ['fx_blueimplosion_01', 'fx_blueimplosion_02', 'fx_blueimplosion_03', 'fx_blueimplosion_04']
+        negative group index Animations row 100: TAT_TAGONESHOT flags 0, 64 frames (64 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [25, 30, 35], total 1920 ms, textures ['fx_blueimplosion_01', 'fx_blueimplosion_02', 'fx_blueimplosion_03', 'fx_blueimplosion_04']
+  v\12003: addon2/01.cat:objects/v/12003.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-101, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-101.dds', TexAnim params none
+        Animations row 101: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [27], total 1296 ms, textures ['fx_greenexplosion_01', 'fx_greenexplosion_02', 'fx_greenexplosion_03']
+        negative group index Animations row 101: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [27], total 1296 ms, textures ['fx_greenexplosion_01', 'fx_greenexplosion_02', 'fx_greenexplosion_03']
+  v\12004: addon2/01.cat:objects/v/12004.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-102, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-102.dds', TexAnim params none
+        Animations row 102: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [27], total 1296 ms, textures ['fx_MAMexplosion_01', 'fx_MAMexplosion_02', 'fx_MAMexplosion_03']
+        negative group index Animations row 102: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [27], total 1296 ms, textures ['fx_MAMexplosion_01', 'fx_MAMexplosion_02', 'fx_MAMexplosion_03']
+  v\12005: addon2/01.cat:objects/v/12005.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-103, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-103.dds', TexAnim params none
+        Animations row 103: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [35], total 1680 ms, textures ['fx_smallGreenExplosion_01', 'fx_smallGreenExplosion_02', 'fx_smallGreenExplosion_03']
+        negative group index Animations row 103: TAT_TAGONESHOT flags 0, 48 frames (48 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [35], total 1680 ms, textures ['fx_smallGreenExplosion_01', 'fx_smallGreenExplosion_02', 'fx_smallGreenExplosion_03']
+  v\12006: addon2/01.cat:objects/v/12006.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-104, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-104.dds', TexAnim params none
+        Animations row 104: TAT_TAGONESHOT flags 0, 64 frames (64 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [35], total 2240 ms, textures ['fx_surfacefire_01', 'fx_surfacefire_02', 'fx_surfacefire_03', 'fx_surfacefire_04']
+        negative group index Animations row 104: TAT_TAGONESHOT flags 0, 64 frames (64 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [35], total 2240 ms, textures ['fx_surfacefire_01', 'fx_surfacefire_02', 'fx_surfacefire_03', 'fx_surfacefire_04']
+  v\12007: addon2/01.cat:objects/v/12007.pbb
+      LOD0 scale 8116, 4 points, half extents [65536.0, 61704.0, 0.0], UV u -0.002..0.991 v 0.003..0.999, 1 LODs, groups (material, faces) [(0, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/INVSRCCOLOR, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse 'fx_sphereshockwave_diff.dds', TexAnim params none
+  v\12008: addon2/01.cat:objects/v/12008.pbb
+      LOD0 scale 31500, 4 points, half extents [65536.0, 52428.0, 0.0], UV u 0.002..0.247 v 0.002..0.248, 1 LODs, groups (material, faces) [(-105, 2)]
+      mat 0 effect effects.fx (file technique word 1) -> effects2s DEFAULT; blend ONE/ONE, zwrite 0, zenable 1, cull 1, g_AlphaValue 65536, diffuse '-105.dds', TexAnim params none
+        Animations row 105: TAT_TAGONESHOT flags 0, 32 frames (32 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30], total 960 ms, textures ['fx_starburstExplosion_01', 'fx_starburstExplosion_02']
+        negative group index Animations row 105: TAT_TAGONESHOT flags 0, 32 frames (32 with TATF_COORDS, cell offsets u [0.0, 0.25, 0.5, 0.75] v [0.0, 0.25, 0.5, 0.75]), frame ms [30], total 960 ms, textures ['fx_starburstExplosion_01', 'fx_starburstExplosion_02']

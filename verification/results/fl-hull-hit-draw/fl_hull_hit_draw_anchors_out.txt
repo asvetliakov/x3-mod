@@ -1,0 +1,15 @@
+X3FL.exe sha256 e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8
+impact function 0x014440 (ECX victim, EDX source): 25 anchors
+inner 0x015270 and spawner 0x0150e0: 14 anchors
+element start 0x015490 (non-CUT): 32 anchors
+per update: placement, orientation: 9 anchors
+per update: size and flicker: 17 anchors
+per update: FADEOUT alpha ramp: 10 anchors
+life: manager, timeout, finished bit: 7 anchors
+texture animation (negative ids): 13 anchors
+billboard and batch / queue routing: 19 anchors
+material draw 0x0e0f30: effect and technique: 9 anchors
+material draw 0x0e0f30: animation frame, g_TexMatrix, fade: 34 anchors
+cited range boundaries and routine entries: 38 anchors
+strings: 8; constants: 1; EEDF table 30 names, 14 checked, EEDF_ACTUALSIZE absent
+total 251 checks, failures 0

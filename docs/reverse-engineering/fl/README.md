@@ -43,3 +43,7 @@ Notes added for the current port (static, checked against the hash above; not ye
 - [beam-bullet-draw.md](beam-bullet-draw.md): beam bullets (flags `0x2`/`0x4`/`0x8`/`0x2000`): the per-frame
   refresh at the gun, the z-axis stretch to the range or the hit, the node alpha fade, the batch versus lone draw of
   classic beam bodies and each program pair's inputs, AP twins (2026-11-13).
+- [hull-hit-draw.md](hull-hit-draw.md): the impact effect a hit draws (one TBullets column for every target, 28
+  bodies: billboard flipbooks and classic meshes), its spawn at the impact call, placement on the hit object, size,
+  fade and life, and the draw (seam `0x0e7142`, program pairs, `g_TexMatrix` / `g_AlphaValue`) for a body-id
+  re-shade (2026-11-13).
