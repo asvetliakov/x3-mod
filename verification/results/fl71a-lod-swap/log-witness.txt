@@ -1,0 +1,51 @@
+frame_row frame=39119 moving_dropped=0 lod_replaced=0 superseded=0 static=93 nodes_unseen=10
+frame_row frame=39120 moving_dropped=1 lod_replaced=3 superseded=3 static=90 nodes_unseen=10
+depth_row frame=39121 replayed_retained1=7
+frame_row frame=39121 moving_dropped=0 lod_replaced=3 superseded=3 static=87 nodes_unseen=10
+depth_row frame=39122 replayed_retained1=7
+frame_row frame=39122 moving_dropped=1 lod_replaced=0 superseded=0 static=87 nodes_unseen=10
+depth_row frame=39123 replayed_retained1=7
+frame_row frame=39123 moving_dropped=0 lod_replaced=1 superseded=1 static=86 nodes_unseen=10
+depth_row frame=39158 replayed_retained1=0
+caster frame=9607 records=25 lod=['0'] class=['static'] unseen=['1444'] streak=8..8 static_mask=['31']
+caster frame=9608 records=25 lod=['0'] class=['static'] unseen=['1445'] streak=8..8 static_mask=['31']
+caster frame=9609 records=25 lod=['0'] class=['static'] unseen=['1446'] streak=8..8 static_mask=['31']
+caster frame=9610 records=25 lod=['0'] class=['static'] unseen=['1447'] streak=8..8 static_mask=['31']
+caster frame=9611 records=25 lod=['0'] class=['static'] unseen=['1448'] streak=8..8 static_mask=['31']
+caster frame=9612 records=25 lod=['0'] class=['static'] unseen=['1449'] streak=8..8 static_mask=['31']
+caster frame=9613 records=25 lod=['0'] class=['static'] unseen=['1450'] streak=8..8 static_mask=['31']
+caster frame=9614 records=25 lod=['0'] class=['static'] unseen=['1451'] streak=8..8 static_mask=['31']
+caster frame=31972 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31973 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31974 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31975 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31976 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31977 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31978 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=31979 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=33525 records=25 lod=['0'] class=['static'] unseen=['391'] streak=8..8 static_mask=['31']
+caster frame=33526 records=25 lod=['0'] class=['static'] unseen=['392'] streak=8..8 static_mask=['31']
+caster frame=33527 records=25 lod=['0'] class=['static'] unseen=['393'] streak=8..8 static_mask=['31']
+caster frame=33528 records=25 lod=['0'] class=['static'] unseen=['394'] streak=8..8 static_mask=['31']
+caster frame=33529 records=25 lod=['0'] class=['static'] unseen=['395'] streak=8..8 static_mask=['31']
+caster frame=33530 records=25 lod=['0'] class=['static'] unseen=['396'] streak=8..8 static_mask=['31']
+caster frame=33531 records=25 lod=['0'] class=['static'] unseen=['397'] streak=8..8 static_mask=['31']
+caster frame=33532 records=25 lod=['0'] class=['static'] unseen=['398'] streak=8..8 static_mask=['31']
+caster frame=38057 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38058 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38059 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38060 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38061 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38062 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38063 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=38064 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39114 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39115 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39116 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39117 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39118 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39119 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39120 records=6 lod=['1'] class=['static'] unseen=['0'] streak=8..8 static_mask=['31']
+caster frame=39121 records=25 lod=['0'] class=['moving'] unseen=['0'] streak=0..0 static_mask=['0']
+shared primitives=9124 vb=897->614 centre_distance=0.0041
+shared primitives=19358 vb=899->639 centre_distance=0.0031

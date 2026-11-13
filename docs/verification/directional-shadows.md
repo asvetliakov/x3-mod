@@ -3883,3 +3883,38 @@ Producers: `verification/results/retention-alpha-casters/host-check.sh` -> `host
 the driver's RESULT line). Not run: the Wine seam fixture (`run_motion_output.py`; no Wine host since 2026-10-11) and
 native D3D9; not flown (FL run 45 is the flight check: `retained_alpha=` on `shadow_retention_frame` must be non-zero
 while the station is unseen).
+
+## FL 71 A: a LOD swap dropped a static caster (2026-11-13)
+
+Witness (FL 71 A, `/mnt/c/X3FL/x3m.log`; producer `verification/results/fl71a-lod-swap/log_witness.py` ->
+`log-witness.txt`; triage `verification/results/fl71a-shadow-lattice/`): the stationary station handle 52942 (model
+`00005597`, 137,000 units toward the sun) was retained static with 6 coarse records (`lod=1`, `streak=8
+static_mask=31` on every capture frame 39114..39120) and earlier with 25 detailed ones (`lod=0`, static while unseen
+1,444 frames at 9607). At 39121 the game drew it with the 25 detailed records: every one `class=moving streak=0
+static_mask=0` (fresh records start at streak 0); the frame row of 39122 has `moving_dropped=1`; `replayed_retained1`
+reads 7 at 39121..39123 and 0 at 39158 [M]. The node had not moved: the two records with one primitive count in both
+sets (9,124 and 19,358) have world AABB centres 0.0041 and 0.0031 units apart [M].
+
+Fix (`src/proxy/shadow_retention_core.h`, `Store::inherit_placement`; `docs/architecture/shadow-caster-retention.md`,
+"A LOD swap keeps the static class"): a record new to a placed node takes the anchor and streaks of the node's record
+whose placement it repeats within the base eps (box corner drift, once its extent is known). Until every new record
+has its extent (the read is queued at a range's first draw and answered at that scene end), the superseded complete
+set stays as the node's replayed copy and the node keeps its static class; it is freed once the new set completes.
+A new record that repeats no placement, a move while pending, or a set not complete after 8 sightings resets the node
+as before. `shadow_retention_frame` ends with `lod_swap_kept=`, `lod_swap_moved=`, `lod_swap_pending=`. Both
+editions. Review (high, same day): the first version inherited at the swap sighting only, where a production range
+has no extent yet, so the node still dropped (FL 71 A qualified only because LOD 0 had been drawn earlier).
+
+| Check | Result |
+|---|---|
+| Store driver (`test_shadow_retention.Core`, host C++ `-Wall -Wextra -Werror`) | `RESULT PASS failures=0 checks=8205` (7,819 at `4542676a3`) [M]. Cases: a swap at the same placement from another camera keeps the class through 40 unseen frames; new ranges without an extent keep the old set as the copy (5 records, 11 references), the copy replayed alone through 20 unseen frames, the new set inherited and the copy freed on the next sighting, then replayed through 20 unseen frames; extents one frame late then unseen at once; back to the old set while pending; a rotation without an extent pending then moved and dropped; a translation without an extent moved at once; a set never completing pending for 8 sightings, then moved and dropped; a current record moving while pending; a moved swap with extents; a node at streak 4 inherits 4 and promotes on schedule; alternating sets (first appearance without an extent) for 30 frames: at most 3 records and 7 references, references 0 at retirement. Negative controls: the inheritance call disabled 105 failed checks (first version); the copy not kept 137 failed checks [M] |
+| Review probe (`verification/results/fl71a-lod-swap/probe.py` -> `probe.txt`) | swap without an extent: `pending=1`, static; unseen gap: `moving_dropped=0`, 1 record replayed (old set, `vb=100`); extent arrives: `kept=1`, 1 record, 3 references; unseen 1 and 30: new set replayed (`vb=200`). Rotation: `pending=1`, then `moved=1` streak 0, then `moving_dropped=1` [M] |
+| Retention module | 10 tests OK [M]; `test_frame_lod_swap_fields`: the three fields parse, a pre-2026-11-13 line reads 0, a partial tail is malformed, the DLL's format and arguments carry all three |
+| Shadow host tests (`test_*shadow*.py`) | 121 tests OK [M] |
+| Builds (clean) | `build-lodswap-fl`, `build-lodswap-ap` (MinGW i686, RelWithDebInfo, `--clean-first`) 0 warning lines each; `check_no_x87.py --edition fl` and `--edition ap` PASS [M] |
+| Fixture (`d_lod_swap`) | expectations: pending swap frame (3 records, both meshes held), unseen gap replaying the old mesh, completing sighting (2 records, old mesh released), unseen frame replaying the new mesh, for the LOD and the model swap; the runner requires `lod_swap` `kept >= 2`, `pending >= 2`. Forced rebuild of the fixture exe and seam DLL (`-Werror`): exit 0, 0 diagnostic lines [M]; **not run**: `run_motion_output.py` requires the CrossOver Preview Wine binary and `/tmp/x3-shader-sweep` inputs, absent on this host |
+
+Producers: `verification/results/fl71a-lod-swap/host-check.sh` -> `host-check.txt` (unittests, driver, probe, clean
+builds, x87 both editions, the forced fixture rebuild and its hashes). Not flown: the flight check is a static
+station swapping LOD while seen and then culled: `lod_swap_pending=` then `lod_swap_kept=` non-zero, no
+`moving_dropped=` on the frames after, its shadow stays.

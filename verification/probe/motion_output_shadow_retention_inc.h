@@ -227,7 +227,9 @@ void run_shadow_retention_integration(Fixture& f) {
         require(retention_count(n6.buffer.p) == base6, "reference counts back to the baseline after the revalidation");
         s.end();
     }
-    { // d. LOD swap on a stable serial: the new mesh only
+    { // d. LOD swap on a stable serial: the new mesh only; the swap at the same placement keeps the static class, so the
+      //    node is retained on the unseen frames that follow: the old mesh while the new range has no extent yet
+      //    (pending), the new mesh once it has (FL 71 A, 2026-11-13)
         s.begin("d_lod_swap");
         auto& lod0 = s.make(7, 'A', .8f, 0.f); auto& partner = s.make(8, 'B', -.05f, .05f); // the base script's known-good rows (the depth oracle's tolerance)
         auto& lod1 = s.make(9, 'B', .8f, 0.f, nullptr, 1, 0, 0, 7); // node 7's identity with another buffer and lod 1
@@ -235,14 +237,32 @@ void run_shadow_retention_integration(Fixture& f) {
         const ULONG base0 = retention_count(lod0.buffer.p), base1 = retention_count(lod1.buffer.p);
         const std::uint64_t replaced = s.s[RsLodReplaced];
         s.settle({&lod0, &partner}); s.expect(RsRecords, 2, "one record per node");
+        // The swap frame: the new range's extent is read at this scene end (queued at its first draw), so the swap is
+        // pending: the superseded record stays as the node's replayed copy beside the new one, the class carries.
         s.frame({&lod1, &partner}, {}, true);
-        s.expect(RsLodReplaced, replaced + 1, "the resubmission with another lod replaces the draw set"); s.expect(RsRecords, 2, "replaced, not added"); s.expect(RsNodes, 2, "the same node");
+        s.expect(RsLodReplaced, replaced + 1, "the resubmission with another lod replaces the draw set"); s.expect(RsNodes, 2, "the same node");
+        s.expect(RsRecords, 3, "pending: the old record kept as the copy beside the new one"); s.expect(RsStatics, 2, "the class carries while pending");
+        require(retention_count(lod0.buffer.p) == held(base0) && retention_count(lod1.buffer.p) == held(base1), "pending: both meshes held");
+        const std::uint64_t dropped = s.s[RsMovingDropped];
+        s.frame({&partner}, {&lod0}, true); // the gap: unseen before the new set completes; the copy is replayed, the new mesh is not
+        s.expect(RsMovingDropped, dropped, "the pending swap keeps the static class"); s.expect(RsUnseen, 1, "the swapped node retained unseen");
+        s.frame({&lod1, &partner}, {}, true); // the extent is known now: the new set completes and the copy goes
+        s.expect(RsRecords, 2, "complete: the new set alone"); s.expect(RsStatics, 2, "both static");
         require(retention_count(lod0.buffer.p) == base0 && retention_count(lod1.buffer.p) == held(base1), "the old mesh's reference is released, the new one's held");
+        lod1.placed_frame = lod0.placed_frame; // the new record inherited lod0's anchor: the twin places it with that camera
+        s.frame({&partner}, {&lod1}, true);
+        s.expect(RsMovingDropped, dropped, "the swap at the same placement keeps the static class"); s.expect(RsUnseen, 1, "retained unseen with the new mesh");
         auto& other_model = s.make(29, 'B', .8f, 0.f, nullptr, 1, 0, 0, 7); other_model.object.scope.model = lod0.object.scope.model + 0x100; // the same serial with another model
         const std::uint64_t models = s.s[RsModelReplaced]; const ULONG base_other = retention_count(other_model.buffer.p);
         s.frame({&other_model, &partner}, {}, true);
-        s.expect(RsModelReplaced, models + 1, "the resubmission with another model replaces the draw set"); s.expect(RsRecords, 2, "replaced, not added");
+        s.expect(RsModelReplaced, models + 1, "the resubmission with another model replaces the draw set"); s.expect(RsRecords, 3, "pending: the lod-1 record kept as the copy");
+        require(retention_count(lod1.buffer.p) == held(base1) && retention_count(other_model.buffer.p) == held(base_other), "pending: both meshes held");
+        s.frame({&other_model, &partner}, {}, true);
+        s.expect(RsRecords, 2, "complete: replaced, not added");
         require(retention_count(lod1.buffer.p) == base1 && retention_count(other_model.buffer.p) == held(base_other), "the lod-1 mesh is released, the new model's mesh held");
+        other_model.placed_frame = lod0.placed_frame;
+        s.frame({&partner}, {&other_model}, true);
+        s.expect(RsMovingDropped, dropped, "the model swap at the same placement keeps the static class"); s.expect(RsUnseen, 1, "retained unseen with the new model's mesh");
         s.retire(lod0); s.retire(partner); s.frame({}, {}, false); s.expect(RsNodes, 0, "case d leaves nothing");
         s.end();
     }

@@ -1,0 +1,23 @@
+Ran 10 tests in 1.445s
+
+OK
+Ran 121 tests in 5.952s
+OK
+retention tests: 10
+RESULT PASS failures=0 checks=8205
+PROBE swap step=swap_no_extent kept=0 pending=1 moved=0 moving_dropped=0 is_static=1 records=2 refs=5 replayed=0 replayed_vb=0..0
+PROBE swap step=gap_unseen kept=0 pending=0 moved=0 moving_dropped=0 is_static=1 records=2 refs=5 replayed=1 replayed_vb=100..100
+PROBE swap step=extent_arrives kept=1 pending=0 moved=0 moving_dropped=0 is_static=1 records=1 refs=3 replayed=0 replayed_vb=0..0
+PROBE swap step=unseen_1 kept=0 pending=0 moved=0 moving_dropped=0 is_static=1 records=1 refs=3 replayed=1 replayed_vb=200..200
+PROBE swap step=unseen_30 kept=0 pending=0 moved=0 moving_dropped=0 is_static=1 records=1 refs=3 replayed=1 replayed_vb=200..200
+PROBE rot step=swap_no_extent kept=0 pending=1 moved=0 is_static=1
+PROBE rot step=extent_arrives kept=0 pending=0 moved=1 is_static=0 streak=0
+PROBE rot step=unseen_1 moving_dropped=1 nodes=0
+RESULT PASS failures=0 checks=8205
+build-lodswap-fl (clean): 0 warning lines
+x87 fl:   "result": "PASS",
+build-lodswap-ap (clean): 0 warning lines
+x87 ap:   "result": "PASS",
+retention fixture rebuild (exe + seam DLL, -Werror): exit=0 diagnostic_lines=0
+a13c4195f176c44e7c11286a05c38e34057b17d0e40ffd819461088b8ac9ccfb motion_output_fixture.exe
+a1729dd99306df464890c42afe8bc2930116d7fb88d386296f90ee70a45b7fdd motion-output-seam/d3d9.dll

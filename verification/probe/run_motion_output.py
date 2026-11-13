@@ -3238,6 +3238,9 @@ def validate_shadow_retention(name, text, trace, directory, env):
         destroyed = [i for i, l in enumerate(tl) if l.startswith('device_destroy ')]
         assert len(teardown) == 1 and len(destroyed) == 1 and teardown[0] < destroyed[0], (name, teardown, destroyed)
         assert fields(tl[teardown[0]])['nodes'] == '2' and fields(tl[teardown[0]])['refs'] == ('3' if mode == 2 else '0'), (name, tl[teardown[0]])
+        # Case d's two swaps at the same placement: pending on the swap frame (no extent yet), kept once complete (FL 71 A, 2026-11-13).
+        case['lod_swap'] = {k: sum(r[f'lod_swap_{k}'] for r in frame_rows) for k in ('kept', 'moved', 'pending')}
+        assert case['lod_swap']['kept'] >= 2 and case['lod_swap']['pending'] >= 2, (name, case['lod_swap'])
         # The final-Release probe's terms (shadow-caster-retention.md, "Final-Release probe drift (2026-09-25)"): rows only
         # while the store holds a reference (live), rate-limited to 16 per device, never fired before the teardown flush.
         probes = [fields(l) for l in tl if l.startswith('shadow_retention_probe ')]
