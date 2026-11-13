@@ -96,6 +96,12 @@ PRODUCTION_SOURCES = ('src/renderer/weapon_effects_pass.h', 'src/renderer/weapon
                       'src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h',
                       'src/renderer/weapon_bullet_reshade_classic_flag_pixel_program_inc.h',
                       'verification/probe/weapon_lone_classic_cases.h',
+                      # the hull hit re-shade (docs/architecture/hull-hit-look.md)
+                      'src/effects/weapon_hull_reshade.hlsl', 'src/effects/weapon_hull_reshade_effects_ps.hlsl',
+                      'src/effects/weapon_hull_reshade_classic_ps.hlsl',
+                      'src/renderer/weapon_hull_reshade_effects_pixel_program_inc.h',
+                      'src/renderer/weapon_hull_reshade_classic_pixel_program_inc.h', 'src/proxy/hull_reshade_core.h',
+                      'verification/probe/weapon_hull_reshade_fixture.h', 'verification/probe/weapon_hull_reshade_cases.h',
                       # the D3D fixture itself (review 2026-11-08: its lost-device guard and the shared helpers)
                       'verification/probe/weapon_effects_fixture.cpp')
 PROGRAMS = {
@@ -120,6 +126,10 @@ PROGRAMS = {
                                          'src/renderer/weapon_bullet_reshade_classic_pixel_program_inc.h'),
     'weapon_bullet_reshade_classic_flag_ps': ('verification/results/weapon-bullet-reshade-classic-flag-pixel-program.json',
                                               'src/renderer/weapon_bullet_reshade_classic_flag_pixel_program_inc.h'),
+    'weapon_hull_reshade_effects_ps': ('verification/results/weapon-hull-reshade-effects-pixel-program.json',
+                                       'src/renderer/weapon_hull_reshade_effects_pixel_program_inc.h'),
+    'weapon_hull_reshade_classic_ps': ('verification/results/weapon-hull-reshade-classic-pixel-program.json',
+                                       'src/renderer/weapon_hull_reshade_classic_pixel_program_inc.h'),
 }
 # The lone classic cases' game programs (weapon_lone_classic_cases.h): the FL 3_0 standard_lighting / standard_lighting2s
 # DEFAULT pass's VS and PS bytes, extracted at run time from the FL catalogues (root + addon2) into the untracked build
@@ -177,7 +187,8 @@ def programs_current():
         record = json.loads((ROOT / record_path).read_text())
         if record['source_sha256'] != sha(ROOT / record['source']) or record['header_sha256'] != sha(ROOT / header):
             raise SystemExit(f'{name}: stale embedded program; run tools/shaders/generate_weapon_effects_programs.py '
-                             '(the re-shades: generate_bullet_reshade_program.py, generate_muzzle_reshade_program.py)')
+                             '(the re-shades: generate_bullet_reshade_program.py, generate_muzzle_reshade_program.py, '
+                             'generate_hull_reshade_program.py)')
         out[name] = {k: record[k] for k in ('source', 'word_count', 'bytecode_sha256', 'target')}
     return out
 
@@ -254,7 +265,7 @@ def fields(line):
 def parse(text):
     tags = ('ATTACH', 'PATCH', 'SYMMETRY', 'CENTRE', 'RING', 'RINGCELLS', 'FADECELL', 'COLOUR', 'RELIGHT', 'ADJACENT',
             'PLACEMENT', 'NORMALS', 'SURFACE', 'CULL', 'SORT', 'ATTACH_SLOTS', 'COCKPIT', 'GRID', 'NOPOP', 'SEAM', 'STAGE_CPU', 'TIMING_MAPS', 'DECAL', 'AGE', 'RETIRED', 'RESOLVE',
-            'REFUSED', 'TIMING', 'RESHADE', 'MUZZLE_RESHADE', 'LATHE')
+            'REFUSED', 'TIMING', 'RESHADE', 'MUZZLE_RESHADE', 'LATHE', 'HULL_RESHADE')
     report = {t.lower(): [] for t in tags}
     report.update(checks=[], result=None)
     for line in text.splitlines():
@@ -504,6 +515,54 @@ def muzzle_assets(game, lab, target):
     return True
 
 
+# The hull hit re-shade dump's textures (hull-hit-look.md section 4): key -> the lab texture's stem.
+HULL_TEXTURES = {'sparks1': 'exp_sparks1_diff', 'sparks2': 'exp_sparks2_diff', 'impact_glow': 'exp_impact_glow_diff',
+                 'glow': 'exp_glow_diff', 't380': '380', 'blue1': 'fx_blueexplosion_01', 'blue2': 'fx_blueexplosion_02',
+                 'pl_imp': 'exp_PL_imp_diff'}
+
+
+def hull_assets(game, lab, target):
+    """The hull hit re-shade dump's real assets into the untracked build directory: the lab textures of HULL_TEXTURES
+    (raw RGBA, textures.txt naming each key and side) and v/00587's 20 textured triangles (x y z u v per vertex, body
+    units; objects/v/00587 of the FL catalogues through the muzzle census reader), and the game's standard_lighting
+    DEFAULT programs (classic_programs); False when any is absent (the dump then fails)."""
+    import re as _re
+    import numpy as np
+    from PIL import Image
+    if not Path(game).is_dir():
+        return False
+    target.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for key, stem in HULL_TEXTURES.items():
+        hits = sorted((Path(lab) / 'tex').glob(stem + '-*.png'))
+        if not hits:
+            return False
+        rgba = np.asarray(Image.open(hits[0]).convert('RGBA'))
+        (target / f'{key}.rgba').write_bytes(rgba.tobytes())
+        rows.append(f'{key} {rgba.shape[0]}\n')
+    (target / 'textures.txt').write_text(''.join(rows))
+    sys.path.insert(0, str(ROOT / 'tools/analysis'))
+    sys.path.insert(0, str(ROOT / 'verification/results/fl-muzzle-flash-draw'))
+    import fl_muzzle_flash_census as census
+    text, _ = census.text(census.mount(game, 'fl'), 'objects/v/00587.bod')
+    if not text or '-1;  -1;   -1;' not in text:
+        return False
+    coords, rest = text.split('-1;  -1;   -1;', 1)
+    verts = [tuple(int(x) for x in m) for m in
+             _re.findall(r'^\s*(-?\d+);\s*(-?\d+);\s*(-?\d+);\s*/\d+', coords, _re.M)]
+    faces = _re.findall(r'^\s*(\d+);\s*(\d+);\s*(\d+);\s*(\d+);\s*-?\d+;\s*1;\s*([-\d.;\s]+?)/\((\d+)\)', rest, _re.M)
+    if len(verts) != 40 or len(faces) != 20:
+        return False
+    lines = []
+    for f in faces:
+        uv = [float(x) for x in f[4].replace(';', ' ').split()]
+        for k, i in enumerate((int(f[1]), int(f[2]), int(f[3]))):
+            lines.append(' '.join(f'{v:.6f}' for v in (*verts[i], uv[2 * k], uv[2 * k + 1])) + '\n')
+    (target / 'm587.txt').write_text(''.join(lines))
+    programs = classic_programs(game)
+    return all(v.get('written') for v in programs.get('programs', {}).values()) and len(programs.get('programs', {})) == 3
+
+
 def dump(args):
     """--dump DIR: the re-shades' look frames only (weapon_effects_projectile_dump.cpp, a separate program so the D3D
     record's source binding stays), linear RGB PFM encoded here as PNG into DIR (exposure 0, clamp, sRGB; no bloom, AgX
@@ -516,7 +575,7 @@ def dump(args):
     from PIL import Image
     out = Path(args.dump)
     out.mkdir(parents=True, exist_ok=True)
-    raw = BUILD / {'reshade': 'dump-reshade', 'muzzle': 'dump-muzzle'}[args.dump_case]
+    raw = BUILD / {'reshade': 'dump-reshade', 'muzzle': 'dump-muzzle', 'hull': 'dump-hull'}[args.dump_case]
     raw.mkdir(parents=True, exist_ok=True)
     for stale in raw.glob('*.pfm'):
         stale.unlink()
@@ -533,6 +592,12 @@ def dump(args):
         argv = ['dump-reshade', 'reshade', d3dx, 'dump-reshade-assets' if real else '']
         if args.reshade_edge is not None:
             argv.append(f'{args.reshade_edge:g}')
+    elif args.dump_case == 'hull':
+        real = hull_assets(args.game, args.lab_assets, BUILD / 'dump-hull-assets')
+        d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
+        argv = ['dump-hull', 'hull', d3dx, 'dump-hull-assets' if real else '']
+        if args.hull_keys:
+            argv.append(args.hull_keys)
     else:
         real = muzzle_assets(args.game, args.lab_assets, BUILD / 'dump-muzzle-assets')
         d3dx = native_host.windows_path(native_host.GAME_DIR / 'd3dx9_37.dll')
@@ -545,7 +610,7 @@ def dump(args):
     if args.dump_case == 'reshade':  # the frames' figures beside the PNGs (tracked; the assets row says game or standin)
         name = 'dump_out.txt' if args.reshade_edge is None else f'dump_e{round(args.reshade_edge * 100):03d}_out.txt'
         (out / name).write_text(rows + '\n')
-    if args.dump_case == 'muzzle':
+    if args.dump_case in ('muzzle', 'hull'):
         (out / 'dump_out.txt').write_text(rows + '\n')
     for pfm in sorted(raw.glob('*.pfm')):
         data = pfm.read_bytes()
@@ -555,6 +620,20 @@ def dump(args):
         c = np.clip(img, 0.0, 1.0)
         srgb = np.where(c <= 0.0031308, 12.92 * c, 1.055 * np.power(c, 1 / 2.4) - 0.055)
         image = Image.fromarray((srgb * 255 + 0.5).astype(np.uint8))
+        if args.dump_case == 'hull':
+            # the full frame stays untracked beside the PFM; DIR gets a copy at most 1280 px wide and 80 KB
+            image.save(raw / (pfm.stem + '.png'))
+            if '-far' in pfm.stem:
+                image = image.resize((w * 2, h * 2), Image.NEAREST)
+            if image.width > 1280:
+                image = image.resize((1280, max(1, round(image.height * 1280 / image.width))), Image.LANCZOS)
+            path = out / (pfm.stem + '.png')
+            image.save(path, optimize=True)
+            while path.stat().st_size > 80_000:
+                image = image.resize((image.width * 3 // 4, image.height * 3 // 4), Image.LANCZOS)
+                image.save(path, optimize=True)
+            print('PNG', path)
+            continue
         if '-far' in pfm.stem:
             image = image.resize((w * 6, h * 6), Image.NEAREST)
         image.save(out / (pfm.stem + '.png'))
@@ -571,8 +650,13 @@ def main():
                              'WSL2 host through interop (native_host.py), never a fallback')
     parser.add_argument('--dump', help='write the re-shades\' look frames as PNG into this directory (native host only); '
                                        'no other fixture runs and no record is written')
-    parser.add_argument('--dump-case', choices=('reshade', 'muzzle'), default='reshade',
-                        help='with --dump: the bullet re-shade frames (default) or the muzzle flash re-shade frames')
+    parser.add_argument('--dump-case', choices=('reshade', 'muzzle', 'hull'), default='reshade',
+                        help='with --dump: the bullet re-shade frames (default), the muzzle flash re-shade frames or the '
+                             'hull hit re-shade frames (fixture-hull-<frame>: vanilla black, vanilla plate, re-shade '
+                             'black, re-shade plate; DUMP_HULL_GATE rows)')
+    parser.add_argument('--hull-keys', default=None,
+                        help='with --dump-case hull: "hh_gain,hh_core" instead of the baked keys (a look sweep; write it '
+                             'to an untracked --dump directory)')
     parser.add_argument('--muzzle-keys', default=None,
                         help='with --dump-case muzzle: "size,core,gain,smooth" instead of the baked keys (a calibration '
                              'sweep; write it to a scratch --dump directory)')
@@ -626,7 +710,8 @@ def main():
     record['metrics'] = {k: report[k] for k in ('attach', 'patch', 'symmetry', 'centre', 'ring', 'ringcells', 'fadecell',
                                                  'colour', 'relight', 'adjacent', 'placement', 'normals', 'surface', 'cull', 'sort', 'attach_slots', 'cockpit', 'grid', 'nopop', 'seam',
                                                  'stage_cpu', 'timing_maps', 'decal', 'age', 'retired', 'resolve',
-                                                 'refused', 'timing', 'reshade', 'muzzle_reshade', 'lathe')}
+                                                 'refused', 'timing', 'reshade', 'muzzle_reshade', 'lathe',
+                                                 'hull_reshade')}
     fade = [line for line in text.splitlines() if line.startswith('FADE ')]
     record['metrics']['fade'] = fields(fade[-1]) if fade else None
     passed = bool(returncode == 0 and report['result'] and report['result']['verdict'] == 'PASS' and not report['failed_checks'])

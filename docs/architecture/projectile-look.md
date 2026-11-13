@@ -134,7 +134,7 @@ paragraph, not flown.
 
 ## Dev tuning file [D]
 
-`<game>\x3m\projectile_tune.json` (FL, dev builds only), the flat JSON object of the re-shades' nine keys; the baked
+`<game>\x3m\projectile_tune.json` (FL, dev builds only), the flat JSON object of the re-shades' thirteen keys; the baked
 values and bounds are `src/proxy/weapon_projectile_family.h`:
 
 | Key | Baked | Bounds | Meaning |
@@ -148,6 +148,10 @@ values and bounds are `src/proxy/weapon_projectile_family.h`:
 | `mz_smooth` | 0.1 | 0–1 | the share by which the flash texel's grain is flattened |
 | `rs_head` | 1 | 0.2–1 | the head glow's lit radius over the body's (the geometric size; 1 unchanged) |
 | `rs_width` | 1 | 0.2–1 | the fins' lit half-width over the body's (1 unchanged) |
+| `hh_gain` | 1 | 0–2 | the hull hit re-shade's body gain over the game's radiance ([hull-hit-look.md](hull-hit-look.md) section 5; not flown) |
+| `hh_edge` | 0.4 | 0.05–1 | its luminance smoothstep's upper edge |
+| `hh_core` | 1 | 0–4 | its hot core's gain (l^4) |
+| `hh_cool` | 0.3 | 0–1 | how far a fading impact element reddens by the end of its life (0: fade only) |
 
 The proxy checks the file's last-write time at most once a second on the Present thread (`GetFileAttributesExW`),
 reads a changed file into a fixed 1 KB buffer and parses it once (no allocation; a missing key takes the baked value,

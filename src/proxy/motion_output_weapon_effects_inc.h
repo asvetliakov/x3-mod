@@ -32,6 +32,10 @@ void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     // gives the node at the draw; without that scope no draw matches).
     muzzle_reshade_requested_ = requested && weapon_effects::core::reshade_mode(weapon_effects::mode());
     muzzle_reshade_refresh_constants();
+    // The hull hit re-shade: with the muzzle re-shade, on an edition with a body table (FL; AP keeps its impacts
+    // vanilla, hull_reshade_core.h body_count).
+    hull_reshade_requested_ = muzzle_reshade_requested_ && weapon_effects::hull_reshade::body_count() != 0;
+    hull_reshade_refresh_constants();
     weapon_armed_ = false;
     weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_failures_ = 0;

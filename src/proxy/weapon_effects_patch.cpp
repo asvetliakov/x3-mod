@@ -77,6 +77,10 @@ struct Period {
     // timed, and the sequence's CPU time (sum and the frame's worst)
     std::uint32_t muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
     float muzzle_us_sum = 0.f, muzzle_us_max = 0.f;
+    // the hull hit re-shade (reshade mode with an edition table): StageFrame::hull_counts summed, its CPU time
+    std::uint32_t hull_counts[x3m::weapon_effects::StageFrame::hull_count_slots] = {};
+    float hull_us_sum = 0.f;
+    bool hull_requested = false;
 } period_{};
 std::uint32_t reshade_scopes_seen_ = 0; // x3m_bullet_scope_calls at the last bullet_reshade_frame row
 // The geometric size's body map (bullet_reshade_core.h build_body_map / body_layout): engine body id ->
@@ -929,6 +933,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.muzzle_timed += stage.muzzle_timed;
         period_.muzzle_us_sum += stage.muzzle_us;
         if (stage.muzzle_us > period_.muzzle_us_max) period_.muzzle_us_max = stage.muzzle_us;
+        for (unsigned i = 0; i < StageFrame::hull_count_slots; ++i) period_.hull_counts[i] += stage.hull_counts[i];
+        period_.hull_us_sum += stage.hull_us;
+        period_.hull_requested = period_.hull_requested || stage.hull_requested;
     }
     ++period_.frames;
     if (owned) ++period_.owned;
@@ -1105,6 +1112,20 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             double(period_.muzzle_us_sum),
             period_.muzzle_timed ? double(period_.muzzle_us_sum) / double(period_.muzzle_timed) : 0.0,
             double(period_.muzzle_us_max));
+    // The hull hit re-shade's period row (hull-hit-look.md section 5): the blended draws of the two impact pairs that
+    // reached the node read, those matched (a listed body of the pair and blend), substituted per pair, failed (left
+    // vanilla), drawn with Z write on, with g_AlphaValue below 1 (fade and cooling active), of a shared body, and the
+    // sequence's CPU time per timed draw (every 60th frame and capture frames).
+    if (core::reshade_mode(mode_) && period_.hull_requested) {
+        const std::uint32_t* h = period_.hull_counts;
+        log("hull_reshade_frame frame=%llu frames=%lu candidates=%lu matched=%lu effects=%lu classic=%lu failures=%lu "
+            "zwrite_on=%lu cool_active=%lu shared=%lu timed=%lu us_per_draw=%.3f",
+            frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(h[0]),
+            static_cast<unsigned long>(h[1]), static_cast<unsigned long>(h[2]), static_cast<unsigned long>(h[3]),
+            static_cast<unsigned long>(h[4]), static_cast<unsigned long>(h[5]), static_cast<unsigned long>(h[6]),
+            static_cast<unsigned long>(h[7]), static_cast<unsigned long>(h[8]),
+            h[8] ? double(period_.hull_us_sum) / double(h[8]) : 0.0);
+    }
     if (core::explosions_mode(mode_))
         log("weapon_boom_frame frame=%llu deaths=%lu ours=%lu calls=%lu no_node=%lu bullet=%lu rule_b=%lu nested=%lu "
             "fighter=%lu corvette=%lu capital=%lu station=%lu missile=%lu asteroid=%lu other=%lu boom_ready=%u "

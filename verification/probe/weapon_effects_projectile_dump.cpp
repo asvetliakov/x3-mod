@@ -793,6 +793,7 @@ int muzzle_dump(const char* dir, const char* d3dx_path, const char* assets, cons
 }
 } // namespace
 
+#include "weapon_hull_reshade_dump.h" // the hull hit re-shade's frames (--dump-case hull)
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
     const char* dir = argc > 1 ? argv[1] : "dump";
@@ -831,11 +832,14 @@ int main(int argc, char** argv) {
     // argv: <dir> reshade|muzzle <d3dx9_37.dll> <assets dir> (run_weapon_effects.py --dump DIR --dump-case ...)
     const bool reshade = argc > 2 && !std::strcmp(argv[2], "reshade");
     const bool muzzle = argc > 2 && !std::strcmp(argv[2], "muzzle");
+    const bool hull = argc > 2 && !std::strcmp(argv[2], "hull");
     const int code = reshade ? reshade_dump(dir, argc > 3 ? argv[3] : nullptr, argc > 4 ? argv[4] : nullptr,
                                             argc > 5 ? argv[5] : nullptr)
                      : muzzle ? muzzle_dump(dir, argc > 3 ? argv[3] : nullptr, argc > 4 ? argv[4] : nullptr,
                                             argc > 5 ? argv[5] : nullptr)
-                              : (std::printf("DUMP_FAIL reason=case (reshade or muzzle)\nRESULT FAIL checks=1 failures=1\n"), 1);
+                     : hull   ? hull_dump(dir, argc > 3 ? argv[3] : nullptr, argc > 4 ? argv[4] : nullptr,
+                                          argc > 5 ? argv[5] : nullptr)
+                              : (std::printf("DUMP_FAIL reason=case (reshade, muzzle or hull)\nRESULT FAIL checks=1 failures=1\n"), 1);
     dev = nullptr;
     return code;
 }

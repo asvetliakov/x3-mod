@@ -159,6 +159,7 @@ void MotionOutput::reshade_poll_tune() noexcept {
                                            bullet_reshade_constants_);
         bullet_layout_valid_ = false; // rs_head / rs_width: the body's c29..c30 again at its next draw
         muzzle_reshade_refresh_constants();
+        hull_reshade_refresh_constants();
     }
 #endif
 }

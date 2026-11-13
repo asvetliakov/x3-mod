@@ -4659,3 +4659,109 @@ incremental for comment-only edits) [m]:
 - whether the live AP device receives the scanned program bytes;
 - how often bullets take the batch path against the lone path;
 - the Mayhem flashes' look.
+
+## Hull hit re-shade, step 1 (2026-11-13)
+
+The game's own impact elements (the weapon's Effects row at a hit the shield stage did not take) are drawn with the
+bullets' fire law plus a visible fade, a cooling term and a flipbook cell guard, keyed on the body id, through two
+programs: ps_2_0 behind the effects DEFAULT VS and ps_3_0 behind the standard_lighting DEFAULT VS. The route runs after
+the lone bullet and muzzle routes, writes no state and sets no far flag. Design and what shipped:
+[hull-hit-look.md](../architecture/hull-hit-look.md), section "Implementation". The table has **24 bodies**: the 28
+census bodies minus v/10656, 10664, 10670 (death-shared) and `bullet_ElectroSpike` (the bullet route's own). It is FL
+only; AP's table is empty and the route is off there. **Defaults: `hh_gain` 1.0, `hh_edge` 0.4, `hh_core` 1.0, `hh_cool`
+0.3. Not flown.**
+
+**Deviations from the design.**
+
+- **Normaliser.** The design took each body's normaliser from the p99 over every texel. The first dump drew the sparks
+  f02 frame as a flat beige disc, and the IRE's `exp_glow` as a grey-beige banded disc around the sparks. The table now
+  uses the p99 of the lit texels, floored at 0.5. The generator,
+  [`hull_hit_bodies.py`](../../verification/results/fl-hull-hit-draw/hull_hit_bodies.py), states the reason; its
+  output is deterministic (md5 stable over two runs) [m].
+- **Gain and core.** These moved from 0.75 / 0.5 to 1.0 / 1.0 after a keys-only sweep (0.75 / 0.5, 1.0 / 1.0,
+  1.25 / 1.5) whose frames were viewed. At 0.75 / 0.5 the PPC mesh at f 0.5 had no hot centre. At 1.25 / 1.5 the mesh
+  and the glow filled into flat white over the plate.
+
+**The effects pair's colour matrix.** The game's effects PS applies a colour matrix in c0..c2; our ps_2_0 program does
+not. Every effects-pair material sets a neutral grade [m data,
+[`effects_material_params.py`](../../verification/results/hull-reshade/effects_material_params.py)]. The matrix is
+therefore the identity [i], and the program leaves the texel ungraded.
+
+**Fixture.** `run_weapon_effects.py --host native` ran 08:15:33-08:16:44 on `reshade` f18b3d3b1 plus this change, with
+the game not running. D3D: 123 PASS, of which 8 are `hull_reshade_*`; AP hook 153 PASS, FL hook 62 PASS; build 0
+warnings [m].
+
+- Both programs match the CPU model at 11 points each: worst 0.073 of the tolerance on either pair.
+- Recognition: 24 of 24 bodies taken on their pair and blend, and 216 of 216 refusals. Over 42 ids (the 24 listed,
+  the 13 muzzle bodies, a bullet-map body, the 3 death bodies and an unlisted id), the lone classic, lone effects,
+  muzzle and hull decisions give 0 multiple claimants and 0 mismatches.
+- The sequence restores the game's program and the application's registers, and a failed program step rolls back.
+- Fade: the dark sum at f 0.1 is 0.093 of the sum at f 1 (vanilla 1.000).
+- Cell edge: the outermost ring is 0.030 of the cell centre, equal to the law's value at D3D9's sampled pixel centre.
+- Hot core: 1.784 for the sparks and 1.972 for the glow.
+- Cost, fenced, best of 7:
+  - substitution: 0.308 µs per draw (vanilla 0.115, re-shaded 0.423);
+  - match: 0.0137 µs on a hit (the last listed body) and 0.0138 µs on a miss.
+
+The existing reshade (76), muzzle (16) and lathe (46) metric rows are identical apart from timings, and none of the 115
+shared checks changed verdict [m]
+([`record_diff.py`](../../verification/results/hull-reshade/record_diff.py) and its `_out.txt`, against the base's
+committed record).
+
+**Dump** (`--dump-case hull`, real lab textures, v/00587 from the catalogues, the game's standard_lighting VS): 4 PASS
+at the defaults [m]. The gates on the real assets:
+
+| Gate | Re-shade | Vanilla | Bound |
+| --- | --- | --- | --- |
+| hot core, sparks f02 | 1.771 | 0.930 | ≥ 1 |
+| hot core, glow peak | 1.973 | 0.974 | ≥ 1 |
+| no cell edge, sparks f28 | 0.0071 | 0.233 | ≤ 0.02 |
+| fade, v/10661 | 0.090 | 1.000 | ≤ 0.15 |
+
+The frames are under `verification/results/hull-reshade/` with `dump_out.txt`. Tracked copies are at most 1280 px wide
+and 80 KB each (692 KB for the directory); the full frames stay in the untracked build directory. Each frame has four
+panels: vanilla on black, vanilla on the plate, re-shade on black, re-shade on the plate. Viewed at the defaults or in
+the sweep [m]:
+
+| Frame | Vanilla | Re-shade |
+| --- | --- | --- |
+| sparks f02 | orange haze | a small cream-white hot ball with an orange rim |
+| sparks f08 | fuzzy orange blobs | tight orange sparks with white points |
+| sparks f28 | bright orange sparks until the pop | dim dark-red embers, no square edge |
+| ire-100ms | square orange haze | white-hot sparks in a dim orange halo |
+| glow-peak | grey disc with a hard rim | white core (clipped plateau), soft edge |
+| mesh-050 | blown-out blue-white blob | blue-violet rays with white-hot areas at the centre |
+| hept | murky green ring | bright pale cream ring: reads as light, loses its green |
+| blue f20 | white-violet burst | near vanilla, crisper fringe |
+
+**Builds.** Both clean, both 0 warnings [m]:
+
+- FL `build-hull-fl` (RelWithDebInfo, mingw-i686, `X3M_GNU_PE_NO_SAFESEH`, `X3M_DEV_TUNING`): 61,023,631 B, sha256
+  prefix `9074e0e524dd86a2`; `check_no_x87 --edition fl` 0 violations over 1093 functions.
+- AP `build-hull-ap`: 64,657,315 B (`0f40a136e76eeefb`).
+
+**Host suite.** 371 modules: 3 failed before the fixes and were fixed or are pending.
+
+- The D3D record binding: fixed by this run.
+- `logging_tiers`: `hull_reshade_frame` was added to the tier list.
+- `engine_effects`: its record binds `motion_output.h` and `capture.cpp`, and is rerun on the committed tree.
+
+**Rows to read in the flight.**
+
+- `hull_reshade_program pair=effects|classic created=1 reason=ok`; `reason=bullet_reshade_unarmed` when the effects
+  pair is off
+- `hull_reshade_frame`: `effects=` and `classic=` above 0 with `failures=0`; `zwrite_on=`; `cool_active=` against the
+  fading bodies
+- `hull_reshade_body`: which bodies appear
+- `projectile_tune reloaded` with the four `hh_*` keys
+
+**Only the flight can show:**
+
+- the look on real hulls, under SETA and at range;
+- whether the IRE haze reads orange enough, and whether the HEPT ring wants its green back (keys alone do neither);
+- whether a far station's hits dim under the TAA;
+- the IPG and IONC muzzles (v/00587 and 00564, shared bodies);
+- the fog factor in f;
+- the depth state of the NOZTEST elements;
+- v/10653's blend;
+- the real element sizes, which the dump infers.

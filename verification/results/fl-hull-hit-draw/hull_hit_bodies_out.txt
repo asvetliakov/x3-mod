@@ -1,0 +1,66 @@
+# the note's measured texture statistics (hull-hit-look.md section 3): p99 and peak luminance, level 0
+380                      p99 0.9961 lit_p99 1.0000 peak 1.0000 mean 0.1403 lit 0.535 hue 1.044,0.994,0.933
+383                      p99 0.7039 lit_p99 0.9047 peak 0.9922 mean 0.0618 lit 0.340 hue 1.094,0.957,1.150
+131                      p99 0.9698 lit_p99 0.9936 peak 1.0000 mean 0.0866 lit 0.300 hue 1.070,0.985,0.939
+376                      p99 0.7210 lit_p99 0.7933 peak 1.0000 mean 0.0830 lit 0.349 hue 0.816,1.097,0.580
+exp_sparks1_diff         p99 0.2024 lit_p99 0.5585 peak 0.9394 mean 0.0084 lit 0.079 hue 2.034,0.785,0.084
+exp_sparks2_diff         p99 0.2070 lit_p99 0.5681 peak 0.9420 mean 0.0086 lit 0.080 hue 2.028,0.787,0.085
+exp_glow_diff            p99 0.0922 lit_p99 0.1326 peak 0.1567 mean 0.0092 lit 0.165 hue 1.818,0.829,0.283
+exp_glow2_diff           p99 0.0758 lit_p99 0.0830 peak 0.0830 mean 0.0175 lit 0.327 hue 1.860,0.818,0.273
+exp_impact_glow_diff     p99 0.9373 lit_p99 0.9569 peak 0.9748 mean 0.1032 lit 0.492 hue 1.000,1.000,1.000
+exp_PL_imp_diff          p99 0.4677 lit_p99 0.4913 peak 0.5506 mean 0.0998 lit 0.533 hue 0.827,1.106,0.455
+exp_small_diff           p99 0.9730 lit_p99 0.9890 peak 0.9966 mean 0.1104 lit 0.336 hue 1.124,0.980,0.836
+# census bodies 28 (bullet_ElectroSpike included); luminance_reference 1.696475
+body   587 weapons 11 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture 380                        p99 0.9961 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.044,0.994,0.933
+body 10663 weapons 11 pair classic blend ONE/ONE         admitted additive cells 4 shared 0 texture exp_sparks1_diff           p99 0.2024 lit_p99 0.5585 peak 0.9394 normaliser 3.0376 hue 2.034,0.785,0.084
+body   469 weapons  8 pair classic blend ONE/ONE         admitted additive cells 0 shared 0 texture 380                        p99 0.9961 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.044,0.994,0.933
+body   564 weapons  7 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture 383                        p99 0.7039 lit_p99 0.9047 peak 0.9922 normaliser 1.8751 hue 1.094,0.957,1.150
+body 12000 weapons  7 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_blueexplosion_01        p99 1.0000 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.006,0.992,1.061
+body 10658 weapons  6 pair classic blend ONE/ONE         admitted additive cells 0 shared 0 texture exp_impact_glow_diff       p99 0.9373 lit_p99 0.9569 peak 0.9748 normaliser 1.7730 hue 1.000,1.000,1.000
+excluded v\10656                                  pair effects blend ONE/ONE texture fx_exp_A_p1_diff reason death
+body 10661 weapons  5 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture exp_glow_diff              p99 0.0922 lit_p99 0.1326 peak 0.1567 normaliser 3.3929 hue 1.818,0.829,0.283
+excluded v\10664                                  pair classic blend ONE/ONE texture exp_glow2_diff reason death
+body   582 weapons  4 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture 380                        p99 0.9961 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.044,0.994,0.933
+body 12001 weapons  3 pair effects blend ONE/ONE         admitted additive cells 4 shared 1 texture fx_electric_01             p99 0.3845 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 0.952,1.002,1.122
+body   589 weapons  2 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture 131                        p99 0.9698 lit_p99 0.9936 peak 1.0000 normaliser 1.7075 hue 1.070,0.985,0.939
+body 10388 weapons  2 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture 873                        p99 0.9618 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.044,0.989,0.981
+body 10667 weapons  2 pair classic blend ONE/ONE         admitted additive cells 0 shared 1 texture fx_Lightning2_diff         p99 0.2207 lit_p99 0.2420 peak 0.2672 normaliser 3.3929 hue 0.988,1.005,0.988
+body 10668 weapons  2 pair classic blend ONE/ONE         admitted additive cells 0 shared 0 texture fx_wave_diff               p99 0.1894 lit_p99 0.2006 peak 0.2207 normaliser 3.3929 hue 0.999,1.000,0.999
+body 12004 weapons  2 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_MAMexplosion_01         p99 1.0000 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.021,0.997,0.972
+body 12005 weapons  2 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_smallGreenExplosion_01  p99 0.9955 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 0.828,1.073,0.786
+body 12007 weapons  2 pair effects blend ONE/INVSRCCOLOR admitted screen   cells 0 shared 0 texture fx_sphereshockwave_diff    p99 0.7175 lit_p99 0.8259 peak 0.9686 normaliser 2.0542 hue 0.832,1.032,1.178
+body 12008 weapons  2 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_starburstExplosion_01   p99 0.9798 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 0.920,1.012,1.111
+body   201 weapons  1 pair classic blend ONE/ONE         admitted additive cells 0 shared 0 texture 376                        p99 0.7210 lit_p99 0.7933 peak 1.0000 normaliser 2.1384 hue 0.816,1.097,0.580
+body 10653 weapons  1 pair classic blend unknown         admitted additive cells 4 shared 0 texture exp_small_diff             p99 0.9730 lit_p99 0.9890 peak 0.9966 normaliser 1.7154 hue 1.124,0.980,0.836
+body 10659 weapons  1 pair effects blend ONE/INVSRCCOLOR admitted screen   cells 0 shared 0 texture exp_PL_imp_diff            p99 0.4677 lit_p99 0.4913 peak 0.5506 normaliser 3.3929 hue 0.827,1.106,0.455
+body 10666 weapons  1 pair classic blend ONE/ONE         admitted additive cells 0 shared 0 texture fx_Lightning_diff          p99 0.1315 lit_p99 0.1562 peak 0.1932 normaliser 3.3929 hue 0.618,1.043,1.694
+excluded v\10670                                  pair effects blend ONE/ONE texture fx_exp_B_p1_diff reason death
+body 12002 weapons  1 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_blueimplosion_01        p99 0.2381 lit_p99 0.9441 peak 0.9665 normaliser 1.7970 hue 0.854,0.998,1.448
+body 12003 weapons  1 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_greenexplosion_01       p99 0.8495 lit_p99 0.9821 peak 1.0000 normaliser 1.7274 hue 0.641,1.124,0.826
+body 12006 weapons  1 pair effects blend ONE/ONE         admitted additive cells 4 shared 0 texture fx_surfacefire_01          p99 1.0000 lit_p99 1.0000 peak 1.0000 normaliser 1.6965 hue 1.064,0.996,0.852
+excluded effects\weapons\bullet_ElectroSpike      pair effects blend ONE/INVSRCCOLOR texture fx_bullets2_diff reason bullet
+# bodies[] (24 rows; hull_reshade_core.h, held to these lines by verification/analysis/test_weapon_hull_reshade.py)
+    {587u, 1.6965f, 0u, pair_classic, blend_additive, true}, // 380, lit p99 1.0000
+    {10663u, 3.0376f, 4u, pair_classic, blend_additive, false}, // exp_sparks1_diff, lit p99 0.5585
+    {469u, 1.6965f, 0u, pair_classic, blend_additive, false}, // 380, lit p99 1.0000
+    {564u, 1.8751f, 0u, pair_classic, blend_additive, true}, // 383, lit p99 0.9047
+    {12000u, 1.6965f, 4u, pair_effects, blend_additive, false}, // fx_blueexplosion_01, lit p99 1.0000
+    {10658u, 1.7730f, 0u, pair_classic, blend_additive, false}, // exp_impact_glow_diff, lit p99 0.9569
+    {10661u, 3.3929f, 0u, pair_classic, blend_additive, true}, // exp_glow_diff, lit p99 0.1326
+    {582u, 1.6965f, 0u, pair_classic, blend_additive, true}, // 380, lit p99 1.0000
+    {12001u, 1.6965f, 4u, pair_effects, blend_additive, true}, // fx_electric_01, lit p99 1.0000
+    {589u, 1.7075f, 0u, pair_classic, blend_additive, true}, // 131, lit p99 0.9936
+    {10388u, 1.6965f, 0u, pair_classic, blend_additive, true}, // 873, lit p99 1.0000
+    {10667u, 3.3929f, 0u, pair_classic, blend_additive, true}, // fx_Lightning2_diff, lit p99 0.2420
+    {10668u, 3.3929f, 0u, pair_classic, blend_additive, false}, // fx_wave_diff, lit p99 0.2006
+    {12004u, 1.6965f, 4u, pair_effects, blend_additive, false}, // fx_MAMexplosion_01, lit p99 1.0000
+    {12005u, 1.6965f, 4u, pair_effects, blend_additive, false}, // fx_smallGreenExplosion_01, lit p99 1.0000
+    {12007u, 2.0542f, 0u, pair_effects, blend_screen, false}, // fx_sphereshockwave_diff, lit p99 0.8259
+    {12008u, 1.6965f, 4u, pair_effects, blend_additive, false}, // fx_starburstExplosion_01, lit p99 1.0000
+    {201u, 2.1384f, 0u, pair_classic, blend_additive, false}, // 376, lit p99 0.7933
+    {10653u, 1.7154f, 4u, pair_classic, blend_additive, false}, // exp_small_diff, lit p99 0.9890
+    {10659u, 3.3929f, 0u, pair_effects, blend_screen, false}, // exp_PL_imp_diff, lit p99 0.4913
+    {10666u, 3.3929f, 0u, pair_classic, blend_additive, false}, // fx_Lightning_diff, lit p99 0.1562
+    {12002u, 1.7970f, 4u, pair_effects, blend_additive, false}, // fx_blueimplosion_01, lit p99 0.9441
+    {12003u, 1.7274f, 4u, pair_effects, blend_additive, false}, // fx_greenexplosion_01, lit p99 0.9821
+    {12006u, 1.6965f, 4u, pair_effects, blend_additive, false}, // fx_surfacefire_01, lit p99 1.0000

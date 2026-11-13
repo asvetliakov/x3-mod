@@ -2631,6 +2631,7 @@ void muzzle_reshade_cases() {
            ok && fence.p && best_calls < 50.0 && best_match < 10.0 && best_match_last < 10.0 && best_match_miss < 10.0, "");
 }
 #include "weapon_lone_classic_cases.h" // the bullet re-shade's lone classic path (lone_classic_cases)
+#include "weapon_hull_reshade_cases.h" // the hull hit re-shade (hull_reshade_cases)
 
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -5470,6 +5471,8 @@ int main(int argc, char** argv) {
     lone_classic_ap_case();
     guard_next_section("muzzle_reshade");
     muzzle_reshade_cases();
+    guard_next_section("hull_reshade");
+    hull_reshade_cases();
     guard_next_section("end");
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;

@@ -1,0 +1,6 @@
+reshade: rows before 76 after 76 identical 76 differing_keys []
+muzzle_reshade: rows before 16 after 16 identical 16 differing_keys []
+lathe: rows before 46 after 46 identical 46 differing_keys []
+checks before 115 after 123 shared 115 verdict_changed []
+new checks ['hull_reshade_cost_measured', 'hull_reshade_fade_visible', 'hull_reshade_hot_core_scene_white', 'hull_reshade_no_cell_edge', 'hull_reshade_program_matches_model', 'hull_reshade_programs_create', 'hull_reshade_recognition_one_claimant', 'hull_reshade_sequence_restores']
+passed before True after True; hull rows 28

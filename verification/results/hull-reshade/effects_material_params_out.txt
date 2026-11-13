@@ -1,0 +1,11 @@
+v\10659 mat 0 effect effects.fx: 37 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12000 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12001 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12002 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12003 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12004 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12005 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12006 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12007 mat 0 effect effects.fx: 41 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+v\12008 mat 0 effect effects.fx: 40 parameters; grading ['Brightness=[65536]', 'contrast=[65536]', 'saturation=[65536]', 'hue=[0]', 'colormatrix=[0]']
+bodies 10, materials with a grading parameter: 10
