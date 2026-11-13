@@ -1,0 +1,170 @@
+X3AP.exe sha256 fdbf3418d8f0a897b58a0bbb449b23f598135ba6aa9ea4eca66df33add34f8ab
+X3FL.exe sha256 e7f3aad8d728e021f589c76591a35d8bf47eb170e4f7164f6b26f1ff401dfbb8
+AP anchors 105 ({'batch': 19, 'bind': 17, 'flush': 25, 'scope': 12, 'submit': 32}), FL anchors 5, failures 0
+site ap: call 0x0046d0a7 -> 0x004bfd40, window 0x0046d0a3..0x0046d0b6 (19 bytes), call offset 4, return 0x0046d0ac
+  0x0046d0a3 53             push ebx
+  0x0046d0a4 56             push esi
+  0x0046d0a5 57             push edi
+  0x0046d0a6 55             push ebp
+  0x0046d0a7 e8942c0500     call 0x4bfd40
+  0x0046d0ac 8b36           mov esi, dword ptr [esi]
+  0x0046d0ae 83c410         add esp, 0x10
+  0x0046d0b1 833e00         cmp dword ptr [esi], 0
+  0x0046d0b4 75ed           jne 0x46d0a3
+  bytes 53565755e8942c05008b3683c410833e0075ed fnv1a32 0x949efb9a
+  relocated dwords in window: none
+  call bytes in one aligned qword: False (call & 7 = 7)
+  direct branch targets inside the window: 0x0046d0a3 (from 0x0046d0b4)
+  direct branches into the call bytes 1..4: 0
+  image dwords naming call bytes 1..4: 0
+  E8 callers of the target 0x004bfd40: 1 0x0046d0a7
+  E8 callers of the view submit 0x0047e920: 5 0x00472295 0x004722a8 0x00472484 0x0047e8e0 0x0047e8e9
+    after 0x00472295: mov edx, dword ptr [esi + 0x1c]
+    after 0x004722a8: mov eax, esi
+    after 0x00472484: mov eax, esi
+    after 0x0047e8e0: push 0
+    after 0x0047e8e9: mov eax, edi
+  E8 callers of the flush 0x0046d080: 1 0x0047eb7a
+site fl: call 0x00097af8 -> 0x000e0b40, window 0x00097af0..0x00097b07 (23 bytes), call offset 8, return 0x00097afd
+  0x00097af0 8b4c2414       mov ecx, dword ptr [esp + 0x14]
+  0x00097af4 8bd3           mov edx, ebx
+  0x00097af6 57             push edi
+  0x00097af7 56             push esi
+  0x00097af8 e843900400     call 0x4e0b40
+  0x00097afd 8b36           mov esi, dword ptr [esi]
+  0x00097aff 83c408         add esp, 8
+  0x00097b02 833e00         cmp dword ptr [esi], 0
+  0x00097b05 75e9           jne 0x497af0
+  bytes 8b4c24148bd35756e8439004008b3683c408833e0075e9 fnv1a32 0xf86f890b
+  relocated dwords in window: none
+  call bytes in one aligned qword: True (call & 7 = 0)
+  direct branch targets inside the window: 0x00097af0 (from 0x00097b05)
+  direct branches into the call bytes 1..4: 0
+  image dwords naming call bytes 1..4: 0
+  E8 callers of the target 0x000e0b40: 1 0x00097af8
+  E8 callers of the view submit 0x000978e0: 5 0x0008ba73 0x0008ba7f 0x0008bca9 0x00097892 0x0009789d
+    after 0x0008ba73: mov ecx, dword ptr [esi + 0x1c]
+    after 0x0008ba7f: mov edx, esi
+    after 0x0008bca9: mov edx, esi
+    after 0x00097892: mov ecx, ebx
+    after 0x0009789d: mov edx, esi
+AP submit 0x004bfd40..0x004bfdb0: instructions naming EAX/ECX/EDX before the first write: 0
+AP submit 0x004bfd40..0x004c00c1: fs: access (SEH frame): False
+AP window as a C array: {0x53, 0x56, 0x57, 0x55, 0xe8, 0x94, 0x2c, 0x05, 0x00, 0x8b, 0x36, 0x83, 0xc4, 0x10, 0x83, 0x3e, 0x00, 0x75, 0xed}
+programs ap_stock: 17 catalogues, 2352 shader/*.fb entries (last mount wins)
+  ec1f5c4a2f4e1445 INSTANCE_BULLETS PS (bullet_programs[0]): 24 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 4 effects, from addon/01.cat
+  d4a26efb7c603931 INSTANCE_BULLETS PS (bullet_programs[1]): 12 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from 01.cat
+  84d3de8887c963c5 INSTANCE_BULLETS PS (bullet_programs[2]): 12 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from 01.cat
+  5e484a06672e28fb INSTANCE_BULLETS VS (effects): 30 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE,INSTANCE_BULLETS, 5 effects, from addon/01.cat
+  21a2c13be7f989c3 INSTANCE_BULLETS VS (effects_0000/1): 12 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from 01.cat
+  1b6863a088a177af INSTANCE_BULLETS VS (engine_0000/1): 24 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE,INSTANCE_BULLETS, 4 effects, from 01.cat
+  d5e1c75351ed3f04 lone VS (effects DEFAULT): 16 (dir, effect, technique) rows, dwords [253], dirs 2_0,2_a,2_b,3_0, techniques DEFAULT, 4 effects, from addon/01.cat
+  89193868c61c3846 lone VS (effects INSTANCE): 16 (dir, effect, technique) rows, dwords [221], dirs 2_0,2_a,2_b,3_0, techniques INSTANCE, 4 effects, from addon/01.cat
+  8360f422de08b5bd effects DEFAULT / INSTANCE PS: 28 (dir, effect, technique) rows, dwords [1108], dirs 2_0,2_a,2_b,3_0, techniques DEFAULT,INSTANCE, 4 effects, from addon/01.cat
+  494fe349b8bc12ec standard_lighting DEFAULT VS (muzzle_reshade vertex_shader): 8 (dir, effect, technique) rows, dwords [526], dirs 3_0, techniques DEFAULT, 8 effects, from addon/01.cat
+  ced7edef48059e84 standard_lighting DEFAULT PS (FL): 0 (dir, effect, technique) rows, dwords [], dirs -, techniques -, 0 effects, from -
+  0d5848c8489b6630 standard_lighting2s DEFAULT PS (FL): 0 (dir, effect, technique) rows, dwords [], dirs -, techniques -, 0 effects, from -
+  7c83ed50c9894e44 standard_lighting DEFAULT PS (AP): 1 (dir, effect, technique) rows, dwords [1298], dirs 3_0, techniques DEFAULT, 1 effects, from addon/01.cat
+  e70adc744a38ca59 standard_lighting2s DEFAULT PS (AP): 1 (dir, effect, technique) rows, dwords [1324], dirs 3_0, techniques DEFAULT, 1 effects, from addon/01.cat
+  3_0 standard_lighting DEFAULT: VS 494fe349b8bc12ec (526 dwords) PS 7c83ed50c9894e44 (1298 dwords)
+  3_0 standard_lighting2s DEFAULT: VS 494fe349b8bc12ec (526 dwords) PS e70adc744a38ca59 (1324 dwords)
+programs ap_mayhem: 28 catalogues, 2352 shader/*.fb entries (last mount wins)
+  ec1f5c4a2f4e1445 INSTANCE_BULLETS PS (bullet_programs[0]): 24 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 4 effects, from addon/01.cat
+  d4a26efb7c603931 INSTANCE_BULLETS PS (bullet_programs[1]): 12 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from 01.cat
+  84d3de8887c963c5 INSTANCE_BULLETS PS (bullet_programs[2]): 12 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from 01.cat
+  5e484a06672e28fb INSTANCE_BULLETS VS (effects): 30 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE,INSTANCE_BULLETS, 5 effects, from addon/01.cat
+  21a2c13be7f989c3 INSTANCE_BULLETS VS (effects_0000/1): 12 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from 01.cat
+  1b6863a088a177af INSTANCE_BULLETS VS (engine_0000/1): 24 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE,INSTANCE_BULLETS, 4 effects, from 01.cat
+  d5e1c75351ed3f04 lone VS (effects DEFAULT): 16 (dir, effect, technique) rows, dwords [253], dirs 2_0,2_a,2_b,3_0, techniques DEFAULT, 4 effects, from addon/01.cat
+  89193868c61c3846 lone VS (effects INSTANCE): 16 (dir, effect, technique) rows, dwords [221], dirs 2_0,2_a,2_b,3_0, techniques INSTANCE, 4 effects, from addon/01.cat
+  8360f422de08b5bd effects DEFAULT / INSTANCE PS: 28 (dir, effect, technique) rows, dwords [1108], dirs 2_0,2_a,2_b,3_0, techniques DEFAULT,INSTANCE, 4 effects, from addon/01.cat
+  494fe349b8bc12ec standard_lighting DEFAULT VS (muzzle_reshade vertex_shader): 8 (dir, effect, technique) rows, dwords [526], dirs 3_0, techniques DEFAULT, 8 effects, from addon/01.cat
+  ced7edef48059e84 standard_lighting DEFAULT PS (FL): 0 (dir, effect, technique) rows, dwords [], dirs -, techniques -, 0 effects, from -
+  0d5848c8489b6630 standard_lighting2s DEFAULT PS (FL): 0 (dir, effect, technique) rows, dwords [], dirs -, techniques -, 0 effects, from -
+  7c83ed50c9894e44 standard_lighting DEFAULT PS (AP): 1 (dir, effect, technique) rows, dwords [1298], dirs 3_0, techniques DEFAULT, 1 effects, from addon/01.cat
+  e70adc744a38ca59 standard_lighting2s DEFAULT PS (AP): 1 (dir, effect, technique) rows, dwords [1324], dirs 3_0, techniques DEFAULT, 1 effects, from addon/01.cat
+  3_0 standard_lighting DEFAULT: VS 494fe349b8bc12ec (526 dwords) PS 7c83ed50c9894e44 (1298 dwords)
+  3_0 standard_lighting2s DEFAULT: VS 494fe349b8bc12ec (526 dwords) PS e70adc744a38ca59 (1324 dwords)
+programs fl: 20 catalogues, 2352 shader/*.fb entries (last mount wins)
+  ec1f5c4a2f4e1445 INSTANCE_BULLETS PS (bullet_programs[0]): 24 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 4 effects, from addon2/01.cat
+  d4a26efb7c603931 INSTANCE_BULLETS PS (bullet_programs[1]): 12 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from addon2/01.cat
+  84d3de8887c963c5 INSTANCE_BULLETS PS (bullet_programs[2]): 12 (dir, effect, technique) rows, dwords [49], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from addon2/01.cat
+  5e484a06672e28fb INSTANCE_BULLETS VS (effects): 30 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE,INSTANCE_BULLETS, 5 effects, from addon2/01.cat
+  21a2c13be7f989c3 INSTANCE_BULLETS VS (effects_0000/1): 12 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE_BULLETS, 2 effects, from addon2/01.cat
+  1b6863a088a177af INSTANCE_BULLETS VS (engine_0000/1): 24 (dir, effect, technique) rows, dwords [101], dirs 1_1,1_4,2_0,2_a,2_b,3_0, techniques INSTANCE,INSTANCE_BULLETS, 4 effects, from addon2/01.cat
+  d5e1c75351ed3f04 lone VS (effects DEFAULT): 16 (dir, effect, technique) rows, dwords [253], dirs 2_0,2_a,2_b,3_0, techniques DEFAULT, 4 effects, from addon2/01.cat
+  89193868c61c3846 lone VS (effects INSTANCE): 16 (dir, effect, technique) rows, dwords [221], dirs 2_0,2_a,2_b,3_0, techniques INSTANCE, 4 effects, from addon2/01.cat
+  8360f422de08b5bd effects DEFAULT / INSTANCE PS: 28 (dir, effect, technique) rows, dwords [1108], dirs 2_0,2_a,2_b,3_0, techniques DEFAULT,INSTANCE, 4 effects, from addon2/01.cat
+  494fe349b8bc12ec standard_lighting DEFAULT VS (muzzle_reshade vertex_shader): 8 (dir, effect, technique) rows, dwords [526], dirs 3_0, techniques DEFAULT, 8 effects, from addon2/01.cat
+  ced7edef48059e84 standard_lighting DEFAULT PS (FL): 1 (dir, effect, technique) rows, dwords [1418], dirs 3_0, techniques DEFAULT, 1 effects, from addon2/01.cat
+  0d5848c8489b6630 standard_lighting2s DEFAULT PS (FL): 1 (dir, effect, technique) rows, dwords [1450], dirs 3_0, techniques DEFAULT, 1 effects, from addon2/01.cat
+  7c83ed50c9894e44 standard_lighting DEFAULT PS (AP): 0 (dir, effect, technique) rows, dwords [], dirs -, techniques -, 0 effects, from -
+  e70adc744a38ca59 standard_lighting2s DEFAULT PS (AP): 0 (dir, effect, technique) rows, dwords [], dirs -, techniques -, 0 effects, from -
+  3_0 standard_lighting DEFAULT: VS 494fe349b8bc12ec (526 dwords) PS ced7edef48059e84 (1418 dwords)
+  3_0 standard_lighting2s DEFAULT: VS 494fe349b8bc12ec (526 dwords) PS 0d5848c8489b6630 (1450 dwords)
+census ap_stock: TBullets addon/02.cat:addon/types/TBullets.pck be762076cdc38b03, 45 rows, 30 distinct bodies; body material kinds {'classic': 13, 'effect': 23, 'material3': 9}
+  non-effect rows (22): 2:MASS:10436:material3:bolt, 7:IOND:300:material3:beam, 8:PBE:10458:classic:bolt, 10:EMP:517:classic:bolt, 15:FLAK_ALPHA:10458:classic:beam, 16:FLAK_CLUSTER:10458:classic:beam, 17:PAL:10385:classic:beam, 18:PSG:225:classic:beam, 19:TERANTIFIGHTER:300:material3:bolt, 26:TRIBEAM:10385:classic:beam, 27:FUSIONBEAM:10385:classic:beam, 28:MINING:10678:classic:bolt, 29:TUG:525:material3:beam, 30:DUMMY1:10459:classic:beam, 31:DUMMY2:525:material3:beam, 32:KH_ALPHA:525:material3:beam, 33:KH_BETA:526:material3:beam, 34:KH_GAMMA:527:material3:beam, 40:TERRANANTIFIGHTER_FRAG:225:classic:beam, 41:EMP_1:517:classic:bolt, 43:TERRANANTIFIGHTER_1:300:material3:bolt, 44:IPG_FRAG:10459:classic:bolt
+  Effects addon/01.cat: 21 muzzle rows, missing none
+  scene 04251 (01.cat): part bodies [445], muzzle rows [22, 52, 157, 190, 195, 202]
+  scene 04252 (01.cat): part bodies [444], muzzle rows [24, 152, 191, 193]
+  scene 04253 (01.cat): part bodies [446], muzzle rows [25, 52, 179, 181, 190, 195, 197, 200, 202]
+  scene 04258 (01.cat): part bodies [447], muzzle rows [185]
+  scene 04260 (01.cat): part bodies [450], muzzle rows [33]
+  scene 04261 (01.cat): part bodies [314], muzzle rows [34]
+  scene 04265 (None): part bodies None, muzzle rows [157]
+  scene 04274 (01.cat): part bodies [582], muzzle rows [180]
+  scene 04437 (01.cat): part bodies [10463], muzzle rows [49, 152]
+  scene 08001 (01.cat): part bodies [12009], muzzle rows [183]
+    body 00314 (01.cat): MATERIAL3 tex 384 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00444 (01.cat): MATERIAL3 tex 376 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00445 (01.cat): MATERIAL3 tex 384 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00446 (01.cat): MATERIAL3 tex 383 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00447 (01.cat): MATERIAL3 tex 383 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00450 (01.cat): MATERIAL3 tex 384 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00582 (01.cat): MATERIAL3 tex 380 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 10463 (01.cat): MATERIAL5 tex 380 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 12009 (01.cat): MATERIAL6:effects.fx
+census ap_mayhem: TBullets addon/12.cat:addon/types/TBullets.pck 7b4ab0a6cea2cb07, 38 rows, 32 distinct bodies; body material kinds {'effect': 37, 'material3': 1}
+  non-effect rows (1): 25:PBC:525:material3:beam
+  Effects addon/10.cat: 22 muzzle rows, missing ['129 (rows [28])']
+  scene 04251 (01.cat): part bodies [445], muzzle rows [105, 114, 127]
+  scene 04252 (01.cat): part bodies [444], muzzle rows [106, 131]
+  scene 04253 (01.cat): part bodies [446], muzzle rows [110, 114, 126, 134, 135, 137]
+  scene 04261 (01.cat): part bodies [314], muzzle rows [107]
+  scene 04265 (None): part bodies None, muzzle rows [126, 127, 135]
+  scene 04437 (addon/06.cat): part bodies [12014], muzzle rows [113]
+  scene 08001 (addon/06.cat): part bodies [12011], muzzle rows [103]
+  scene 08002 (addon/06.cat): part bodies [12013], muzzle rows [108, 113]
+  scene 08004 (addon/06.cat): part bodies [12016], muzzle rows [104, 133, 134]
+  scene 08005 (addon/06.cat): part bodies [12017], muzzle rows [100]
+  scene 08006 (addon/06.cat): part bodies [12018], muzzle rows [101, 136]
+  scene 08311 (addon/06.cat): part bodies [12012], muzzle rows [109]
+    body 00314 (01.cat): MATERIAL3 tex 384 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00444 (01.cat): MATERIAL3 tex 376 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00445 (01.cat): MATERIAL3 tex 384 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 00446 (01.cat): MATERIAL3 tex 383 MPF_DESTINATIONBLEND|MPF_2SIDED|MPF_BESTQUALITY
+    body 12011 (addon/06.cat): MATERIAL6:effects.fx
+    body 12012 (addon/06.cat): MATERIAL3 tex 924 MPF_DESTINATIONBLEND|MPF_BESTQUALITY|MPF_AUTOFREE
+    body 12013 (addon/06.cat): MATERIAL3 tex 925 MPF_DESTINATIONBLEND|MPF_BESTQUALITY|MPF_AUTOFREE
+    body 12014 (addon/06.cat): MATERIAL5 tex 926 MPF_DESTINATIONBLEND|MPF_BESTQUALITY|MPF_AUTOFREE
+    body 12016 (addon/06.cat): MATERIAL3 tex 931 MPF_DESTINATIONBLEND|MPF_BESTQUALITY|MPF_AUTOFREE
+    body 12017 (addon/06.cat): MATERIAL3 tex 932 MPF_DESTINATIONBLEND|MPF_BESTQUALITY|MPF_AUTOFREE
+    body 12018 (addon/06.cat): MATERIAL3 tex 933 MPF_DESTINATIONBLEND|MPF_BESTQUALITY|MPF_AUTOFREE
+  rows naming a body absent from the stock TBullets: 28 (22 distinct bodies); body files by catalogue {'01.cat': 9, 'addon/06.cat': 24, 'addon/10.cat': 2, 'addon/12.cat': 3}
+census ap_stock vs fl TBullets (45 / 45 rows; columns weapon_id, body, flag_word, muzzle_effect, flight_effect, impact_effect, speed, lifetime_ms): 2 differences: 9:speed ap 187500 fl 177500; 9:lifetime_ms ap 2100 fl 1800
+check ok   FL window fnv 0xf86f890b (weapon_effects_sites_fl.h)
+check ok   FL window has no relocation
+check ok   FL call in one qword
+check ok   AP window has no relocation
+check ok   AP call straddles a qword
+check ok   AP submit takes no register argument and has no SEH frame
+check ok   ec1f5c4a2f4e1445 in every view
+check ok   d4a26efb7c603931 in every view
+check ok   84d3de8887c963c5 in every view
+check ok   d5e1c75351ed3f04 in every view
+check ok   89193868c61c3846 in every view
+check ok   494fe349b8bc12ec in every view
+check ok   ced7edef48059e84 absent from both AP views
+check ok   0d5848c8489b6630 absent from both AP views
+check ok   stock AP muzzle scene bodies are the FL set
+check ok   stock AP TBullets = FL TBullets but row 9 speed / lifetime

@@ -289,6 +289,10 @@ Hook-site suitability of `0x097af8`:
 Unchanged on both: the records, capacity, the count ≥ 2 rule, the `0x78f0` budget, the DISCARD lock, stride 24, the
 declaration and the technique switch.
 
+Correction (2026-11-13): the AP admission `0x0046ce20` excludes body `0xe1` too (`0x0046ce58`), so the
+"instancing exclusion" row is the same on both. The AP call-site contract for the scope stub (window, ABI,
+hook-site suitability, constant twins) is in [ap-bullet-batch-site.md](../ap-bullet-batch-site.md).
+
 ## 6. The INSTANCE_BULLETS programs and the IRE's UV layout (bullet re-shade, 2026-11-09)
 
 For `X3M_WEAPON_EFFECTS=reshade` (the game's bolt draws again; its pixel shader is replaced by ours for the batch
