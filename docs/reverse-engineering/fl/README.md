@@ -40,3 +40,6 @@ Notes added for the current port (static, checked against the hash above; not ye
   corrected bolt length rule (2026-11-08).
 - [muzzle-flash-draw.md](muzzle-flash-draw.md): the game's muzzle flash body (Effects CUT scene, body 445), its
   draw through the material submit, the bound state (ONE/ONE, z-write off), its animation and sharing (2026-11-09).
+- [beam-bullet-draw.md](beam-bullet-draw.md): beam bullets (flags `0x2`/`0x4`/`0x8`/`0x2000`): the per-frame
+  refresh at the gun, the z-axis stretch to the range or the hit, the node alpha fade, the batch versus lone draw of
+  classic beam bodies and each program pair's inputs, AP twins (2026-11-13).

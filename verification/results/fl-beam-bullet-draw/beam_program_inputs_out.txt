@@ -1,0 +1,114 @@
+shader/3_0/effects.fb: INSTANCE_BULLETS pass 0 vs 5e484a06672e28fb ps ec1f5c4a2f4e1445
+shader/3_0/standard_lighting.fb: DEFAULT pass 0 vs 494fe349b8bc12ec ps ced7edef48059e84
+shader/3_0/standard_lighting2s.fb: DEFAULT pass 0 vs 494fe349b8bc12ec ps 0d5848c8489b6630
+vs 5e484a06672e28fb vs_1_1 dwords 101
+  ctab c0..c3 g_mViewProjection
+  dcl_position v0.xyzw
+  dcl_texcoord v1.xyzw
+  dcl_color v2.xyzw
+  slice complete
+  oD0 <- v2
+  oPos <- c4(def) g_mViewProjection v0
+  oT0 <- c4(def) v1
+  write oT0.xyz = mul(v1.xyxw, c4.xxyw)
+  write oD0.xyzw = mov(v2.xyzw)
+vs 494fe349b8bc12ec vs_3_0 dwords 526
+  ctab b0..b0 g_EnableFog
+  ctab i0..i0 g_nNumLightPoint
+  ctab c0..c23 g_LightPoint
+  ctab c24..c27 g_mWorldViewProjection
+  ctab c28..c30 g_mWorld
+  ctab c31..c33 g_mWorldIT
+  ctab c34..c36 g_mViewInverse
+  ctab c37..c38 g_TexMatrix
+  ctab c39..c39 g_AlphaValue
+  ctab c40..c40 g_MatEmissiveColor
+  ctab c41..c41 g_FogClip
+  dcl_position v0.xyzw
+  dcl_texcoord v1.xyzw
+  dcl_normal v2.xyzw
+  dcl_position oT0.xyzw
+  dcl_color oT1.xyzw
+  dcl_texcoord oT2.xy
+  dcl_texcoord1 oT3.xyz
+  dcl_texcoord2 oT4.xyz
+  dcl_texcoord3 oT5.xyz
+  slice INCOMPLETE (control flow)
+  oT0 <- c42(def) g_mWorldViewProjection v0
+  oT1 <- a0 c42(def) g_AlphaValue g_FogClip g_LightPoint g_MatEmissiveColor g_mViewInverse g_mWorld g_mWorldIT v0 v2
+  oT2 <- c42(def) g_TexMatrix v1
+  oT3 <- a0 c42(def) g_FogClip g_LightPoint g_mViewInverse g_mWorld g_mWorldIT v0 v2
+  oT4 <- a0 c42(def) g_LightPoint g_mWorld g_mWorldIT v0 v2
+  oT5 <- a0 c42(def) g_FogClip g_LightPoint g_mViewInverse g_mWorld g_mWorldIT v0 v2
+  write oT2.y = dp3(r4.xyzw, g_TexMatrix.xyzw)
+  write oT1.xyz = add(r0.xyzw, g_MatEmissiveColor.xyzw)
+  write oT4.xyz = mov(r2.xyzw)
+  write oT0.x = dp4(r1.xyzw, g_mWorldViewProjection.xyzw)
+  write oT0.y = dp4(r1.xyzw, g_mWorldViewProjection.xyzw)
+  write oT0.z = dp4(r1.xyzw, g_mWorldViewProjection.xyzw)
+  write oT0.w = dp4(r1.xyzw, g_mWorldViewProjection.xyzw)
+  write oT2.x = dp3(r4.xyzw, g_TexMatrix.xyzw)
+  write oT1.w = mul(r0.wwww, g_AlphaValue.xxxx)
+  write oT1.w = mov(g_AlphaValue.xxxx)
+  write oT3.xyz = mov(r0.xyzw)
+  write oT5.xyz = mad(r2.xyzw, -r0.wwww, -r0.xyzw)
+ps ec1f5c4a2f4e1445 ps_1_1 dwords 49
+  ctab s0..s0 DiffuseTexSampler
+  slice complete
+ps ced7edef48059e84 ps_3_0 dwords 1418
+  ctab c4..c4 g_EnableGlow
+  ctab c5..c5 LightDir_Dir0
+  ctab c6..c6 LightDir_Color0
+  ctab c7..c7 LightDir_Dir1
+  ctab c8..c8 LightDir_Color1
+  ctab c9..c9 g_MatSpecularStrength
+  ctab c10..c10 g_MatSpecularPower
+  ctab c11..c11 g_MatReflectionStrength
+  ctab c12..c12 g_MatQualityColor
+  ctab c13..c13 g_MatDiffuseStrength
+  ctab s0..s0 DiffuseTexSampler
+  ctab s1..s1 SpecularTexSampler
+  ctab s2..s2 LightMapTexSampler
+  ctab s3..s3 CubeMapTexSampler
+  dcl v0.xyzw
+  dcl v1.xy
+  dcl v2.xyz
+  dcl v3.xyz
+  dcl v4.xyz
+  dcl_2d s0
+  dcl_2d s1
+  dcl_2d s2
+  dcl_2d s3
+  slice complete
+  oC0 <- LightDir_Color0 LightDir_Color1 LightDir_Dir0 LightDir_Dir1 c0(def) c1(def) c14(def) c15(def) c2(def) c3(def) g_EnableGlow g_MatDiffuseStrength g_MatQualityColor g_MatReflectionStrength g_MatSpecularPower g_MatSpecularStrength s0 s1 s2 s3 v0 v1 v2 v3 v4
+  write oC0.xyz = add(r1.xyzw, r0.xyzw)
+  write oC0.w = mul(r2.wwww, v0.wwww)
+ps 0d5848c8489b6630 ps_3_0 dwords 1450
+  ctab c4..c4 g_EnableGlow
+  ctab c5..c5 LightDir_Dir0
+  ctab c6..c6 LightDir_Color0
+  ctab c7..c7 LightDir_Dir1
+  ctab c8..c8 LightDir_Color1
+  ctab c9..c9 g_MatSpecularStrength
+  ctab c10..c10 g_MatSpecularPower
+  ctab c11..c11 g_MatReflectionStrength
+  ctab c12..c12 g_MatQualityColor
+  ctab c13..c13 g_MatDiffuseStrength
+  ctab s0..s0 DiffuseTexSampler
+  ctab s1..s1 SpecularTexSampler
+  ctab s2..s2 LightMapTexSampler
+  ctab s3..s3 CubeMapTexSampler
+  dcl v0.xyzw
+  dcl v1.xy
+  dcl v2.xyz
+  dcl v3.xyz
+  dcl v4.xyz
+  dcl vFace.xyzw
+  dcl_2d s0
+  dcl_2d s1
+  dcl_2d s2
+  dcl_2d s3
+  slice complete
+  oC0 <- LightDir_Color0 LightDir_Color1 LightDir_Dir0 LightDir_Dir1 c0(def) c1(def) c14(def) c15(def) c16(def) c2(def) c3(def) g_EnableGlow g_MatDiffuseStrength g_MatQualityColor g_MatReflectionStrength g_MatSpecularPower g_MatSpecularStrength s0 s1 s2 s3 v0 v1 v2 v3 v4 vFace
+  write oC0.xyz = add(r1.xyzw, r0.xyzw)
+  write oC0.w = mul(r2.wwww, v0.wwww)
