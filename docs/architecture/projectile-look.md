@@ -1,7 +1,11 @@
 # Projectile look: the game's own bolts, re-shaded
 
-Design and implementation note for FL's bullet re-shade (`weapon_effects = reshade`; the user decision of 2026-11-09:
-the game's own bullet draws keep their mesh, placement and timing, only the pixel program changes). The re-shade's
+Design and implementation note for the bullet re-shade (`weapon_effects = reshade`; the user decision of 2026-11-09:
+the game's own bullet draws keep their mesh, placement and timing, only the pixel program changes). Built and flown
+first on FL; since 2026-11-13 compiled for AP too: the AP batch scope site `0x0046d0a7 → 0x004bfd40`
+([ap-bullet-batch-site.md](../reverse-engineering/ap-bullet-batch-site.md)), node body id `+0x140`, AP's own
+standard_lighting DEFAULT pixel pair for the lone classic path; the INSTANCE_BULLETS and lone vertex programs are the
+same bytes ([weapon-effects.md](../verification/weapon-effects.md), "Re-shade on AP"; not flown on AP yet). The re-shade's
 recognition, program, constants, route and evidence are in
 [bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md) sections 6 and 7 and the ledger
 [weapon-effects.md](../verification/weapon-effects.md) ("Bullet re-shade on FL" onward); this note holds the two later
@@ -75,7 +79,7 @@ section 7). Without the far flag the TAA treats them as static geometry and its 
 The rule is the batch's, by identity instead of by program:
 
 - **Recognition.** The effects DEFAULT or INSTANCE VS bound (the ABI gate: the two share oT0.xy = UV and oD0.x = the
-  fade), ADD ONE / INVSRCCOLOR or ONE / ONE, and the object-trace scope node's body id (`+0x144`) in the body map the
+  fade), ADD ONE / INVSRCCOLOR or ONE / ONE, and the object-trace scope node's body id (`+0x144`, AP `+0x140`) in the body map the
   geometric size already builds from the live TBullets rows. Every other effects draw (engine glows, gate, flares)
   ends at the blend or at the 30-id scan.
 - **Substitution.** A lone variant of the same program (fade from COLOR0.x; the game's colour matrix is not applied,

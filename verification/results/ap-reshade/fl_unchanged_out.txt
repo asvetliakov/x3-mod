@@ -1,0 +1,6 @@
+FL hook: checks 62 -> 62, same names and verdicts: True, all pass: True, muzzle row equal: True, passed: True -> True
+AP hook: checks 145 -> 153, kept checks unchanged: True, all pass: True, new: ['reshade_batch_every_window_byte_refused', 'reshade_batch_rollback_restores_all', 'reshade_installs_impact_and_batch_scope_only', 'reshade_late_claim_refused', 'reshade_mode_rows', 'reshade_scope_stub_forwards_and_scopes_the_submit', 'reshade_shutdown_disarms', 'shields_leaves_batch_site']
+D3D: checks 114 -> 115, kept checks unchanged: True, all pass: True, new: ['reshade_lone_classic_ap_pair']
+reshade: 64 row keys before, 74 after; identical (timing excluded) 64, differing 0, gone 0, new ['lone_classic_ap', 'lone_classic_ap_recognition', 'lone_classic_ap_recognition', 'lone_classic_ap_recognition', 'lone_classic_ap_recognition', 'lone_classic_ap_recognition', 'lone_classic_ap_texel', 'lone_classic_ap_texel', 'lone_classic_ap_vanilla', 'lone_classic_ap_vanilla']
+muzzle_reshade: 16 row keys before, 16 after; identical (timing excluded) 15, differing 1, gone 0, new []
+  ('cost',): {'bodies': (7, 13)}

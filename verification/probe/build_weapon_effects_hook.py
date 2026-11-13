@@ -46,10 +46,17 @@ MUZZLE_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'push', 'lea', 'p
                'pop', 'jne', 'popf', 'jmp', 'popf', 'xor', 'ret']
 DEATH_STUB = ['pushf', 'push', 'push', 'push', 'cld', 'push', 'lea', 'push', 'call', 'add', 'cmp', 'pop', 'pop', 'pop',
               'je', 'popf', 'jmp', 'popf', 'xor', 'ret']
+# The reshade mode's batch scope stub (weapon_effects_batch_site.h, the AP twin of FL's): the batch's body id
+# [[esp+8]+0x0c] read through a saved EAX ([esp+0x10] after pushf and push), the counters raised under a saved EFLAGS,
+# the 12-byte pad and the four stack words re-pushed ([esp+0x1c] each), the call through the continue, the pad and words
+# dropped (lea esp,[esp+0x1c]), the scope lowered, a plain ret.
+BATCH_SCOPE_STUB = ['pushf', 'push', 'mov', 'mov', 'mov', 'pop', 'add', 'add', 'popf', 'lea', 'push', 'push', 'push',
+                    'push', 'call', 'lea', 'pushf', 'sub', 'popf', 'ret']
 HANDLERS = ('_x3m_weapon_event', '_x3m_weapon_tap', '_x3m_weapon_bolt_tap', '_x3m_weapon_muzzle', '_x3m_weapon_flight',
             '_x3m_weapon_death_area', '_x3m_weapon_death_other')
 GAME_EXE = Path('/mnt/c/X3/X3AP.exe')
 DEATH_SITES = ROOT / 'src/proxy/weapon_effects_death_sites.h'
+BATCH_SITE = ROOT / 'src/proxy/weapon_effects_batch_site.h'
 
 
 def exe_bytes(path, va, n):
@@ -78,6 +85,17 @@ def death_windows_exe(path=GAME_EXE, header=DEATH_SITES):
         expected = bytes(int(v, 16) for v in re.findall(r'0x[0-9a-f]+', body))
         out[name] = exe_bytes(path, va, len(expected)) == expected
     return out
+
+
+def batch_window_exe(path=GAME_EXE, header=BATCH_SITE):
+    """The header's batch window against the installed EXE: True / False, None without the EXE."""
+    if not path.is_file():
+        return None
+    text = header.read_text()
+    va = int(re.search(r'\bwindow_va = (0x[0-9a-f]+)', text).group(1), 16)
+    body = re.search(r'expected_window\[window_length\] = \{([^}]*)\}', text).group(1)
+    expected = bytes(int(v, 16) for v in re.findall(r'0x[0-9a-f]+', body))
+    return len(expected) == 19 and exe_bytes(path, va, len(expected)) == expected
 X87 = re.compile(r'^\s*[0-9a-f]+:\s+(f[a-z0-9]+|emms)\b|\b(st\(\d\)|mm[0-7])\b')
 
 
@@ -137,6 +155,12 @@ def audit(objects):
         death_ok[name] = (d_mn == DEATH_STUB and d_ops[5] == 'ebp' and d_ops[6] == 'eax,[esp+0x14]' and
                           d_ops[9] == 'esp,0x8' and d_ops[10] == 'eax,0x1' and d_ops[16].startswith('DWORD PTR ds:') and
                           not tail)
+    s_mn, s_ops = stub(hlist, '_x3m_weapon_effects_stub_batch_scope')
+    batch_ok = (s_mn == BATCH_SCOPE_STUB and s_ops[2] == 'eax,DWORD PTR [esp+0x10]' and
+                s_ops[3] == 'eax,DWORD PTR [eax+0xc]' and s_ops[9] == 'esp,[esp-0xc]' and
+                all(o == 'DWORD PTR [esp+0x1c]' for o in s_ops[10:14]) and s_ops[14].startswith('DWORD PTR ds:') and
+                s_ops[15] == 'esp,[esp+0x1c]')
+    batch_exe = batch_window_exe()
     exe = death_windows_exe()
     handler_calls = {name: [line.strip() for line in body(hlist, name) if re.search(r'\bcall\b', line)]
                      for name in HANDLERS}
@@ -154,10 +178,11 @@ def audit(objects):
               'stub_impact': i_mn, 'stub_ok': stub_ok, 'stub_bolt_tap': b_mn, 'stub_bolt_tap_ok': bolt_tap_ok,
               'stub_muzzle': m_mn, 'stub_muzzle_ok': muzzle_ok, 'stub_flight': f_mn, 'stub_flight_ok': flight_ok,
               'stub_death_ok': death_ok, 'death_windows_exe': exe,
+              'stub_batch_scope': s_mn, 'stub_batch_scope_ok': batch_ok, 'batch_window_exe': batch_exe,
               'module_imports_own_protect': module_own_protect,
               'engine_patch_lock_cmpxchg8b': len(re.findall(r'lock cmpxchg8b', patch))}
     if (undefined or handler_x87 or not stub_ok or not bolt_tap_ok or not muzzle_ok or not flight_ok or
-            not all(death_ok.values()) or exe is None or not all(exe.values()) or
+            not all(death_ok.values()) or exe is None or not all(exe.values()) or not batch_ok or not batch_exe or
             module_own_protect or record['engine_patch_lock_cmpxchg8b'] < 1 or
             any(handler_calls.values()) or not all(handler_rows.values())):
         raise RuntimeError('fixture build audit failed: ' + json.dumps(record))

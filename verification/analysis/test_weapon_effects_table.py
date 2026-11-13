@@ -77,7 +77,21 @@ int main(int argc, char** argv) {
     }
     if (argc > 1 && std::string(argv[1]) == "classic") { // the lone classic verdict (bullet_reshade_core.h)
         namespace rs = x3m::weapon_effects::reshade;
-        const std::uint64_t sl = rs::classic_pixel_shaders[0], sl2s = rs::classic_pixel_shaders[1];
+        const std::uint64_t sl = rs::classic_pixel_shader_pairs[rs::pair_fl][0],
+                            sl2s = rs::classic_pixel_shader_pairs[rs::pair_fl][1];
+        const std::uint64_t ap = rs::classic_pixel_shader_pairs[rs::pair_ap][0],
+                            ap2s = rs::classic_pixel_shader_pairs[rs::pair_ap][1];
+        // the AP pair (ap-bullet-batch-site.md section 2): admitted for AP, refused `program` for FL and the reverse;
+        // this reader builds without an edition define, so the default pair is AP's
+        std::printf("ap_ps=%016llx ap_ps2s=%016llx ap_one_one=%u ap_2s_one_one=%u ap_with_fl_ps=%u fl_with_ap_ps=%u "
+                    "default_is_ap=%d node_body=%x ",
+                    (unsigned long long)ap, (unsigned long long)ap2s,
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), ap, true, rs::pair_ap),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), ap2s, true, rs::pair_ap),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl, true, rs::pair_ap),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), ap, true, rs::pair_fl),
+                    int(rs::build_pair == rs::pair_ap && rs::classic_pixel_shaders[0] == ap),
+                    unsigned(rs::node_body_offset));
         // the census's classic bullet bodies (verification/results/weapon-coverage-census/) against the muzzle list
         const unsigned census[] = {10436, 300, 10458, 10385, 225, 517, 525, 526, 527, 10459, 10678};
         unsigned overlap = 0;
@@ -88,13 +102,13 @@ int main(int argc, char** argv) {
                     "srcalpha_one=%u wrong_ps=%u unready=%u zero_ps=%u\n",
                     (unsigned long long)rs::classic_vertex_shader, (unsigned long long)sl, (unsigned long long)sl2s,
                     int(rs::classic_vertex_shader == x3m::weapon_effects::muzzle_reshade::vertex_shader),
-                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl2s, true),
-                    rs::classic_verdict(rs::lone_blend(true, 2, 4, 1), sl, true),
-                    rs::classic_verdict(rs::lone_blend(true, 5, 6, 1), sl, true),
-                    rs::classic_verdict(rs::lone_blend(true, 5, 2, 1), sl2s, true),
-                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), 0x7c83ed50c9894e44ull, true),
-                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl, false),
-                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), 0, true));
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl2s, true, rs::pair_fl),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 4, 1), sl, true, rs::pair_fl),
+                    rs::classic_verdict(rs::lone_blend(true, 5, 6, 1), sl, true, rs::pair_fl),
+                    rs::classic_verdict(rs::lone_blend(true, 5, 2, 1), sl2s, true, rs::pair_fl),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), 0x7c83ed50c9894e44ull, true, rs::pair_fl),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), sl, false, rs::pair_fl),
+                    rs::classic_verdict(rs::lone_blend(true, 2, 2, 1), 0, true, rs::pair_fl));
         return 0;
     }
     if (argc > 1 && std::string(argv[1]) == "fnv") { // the bytes on stdin: the production texture hashes
@@ -547,6 +561,13 @@ class WeaponEffectsTableReader(unittest.TestCase):
         # no classic bullet body of the census is a muzzle body: the two routes on the one VS never share an id
         self.assertEqual(f['muzzle_overlap'], '0')
         self.assertGreaterEqual(int(f['muzzle_bodies']), 7)
+        # AP (ap-bullet-batch-site.md section 2): its own standard_lighting / 2s DEFAULT pair admits under the AP row,
+        # the FL pair is refused `program` there and the AP pair under the FL row; the editionless build is AP's, whose
+        # node body id is +0x140
+        self.assertEqual((f['ap_ps'], f['ap_ps2s']), ('7c83ed50c9894e44', 'e70adc744a38ca59'))
+        self.assertEqual((f['ap_one_one'], f['ap_2s_one_one'], f['ap_with_fl_ps'], f['fl_with_ap_ps']),
+                         ('4', '4', '1', '1'))
+        self.assertEqual((f['default_is_ap'], f['node_body']), ('1', '140'))
 
     def test_reader_rejects_a_foreign_or_malformed_table(self):
         code, f = self.read({'schema': 4, 'tables': {}})

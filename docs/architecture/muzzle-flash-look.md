@@ -1,7 +1,7 @@
 # Muzzle flash: the game's own flash, re-shaded in place
 
 Design note, 2026-11-09 (user decision of the day; implementation by the implement-deep agent). Edition: FL
-(`C:\X3FL`); AP runs the mode as shields with the flash vanilla (one `weapon_effects_reshade edition=ap` row). Inputs:
+(`C:\X3FL`) first; since 2026-11-13 AP too (section 5; one `weapon_effects_reshade edition=ap runs=reshade` row). Inputs:
 [fl/muzzle-flash-draw.md](../reverse-engineering/fl/muzzle-flash-draw.md) (the flash body, its draw and state),
 [fl/classic-materials.md](../reverse-engineering/fl/classic-materials.md) (the standard_lighting pair),
 [fl/bullet-draw-batch.md](../reverse-engineering/fl/bullet-draw-batch.md) section 6 (the bullet re-shade this mirrors).
@@ -207,9 +207,16 @@ inferred: body units × node scale / 500 engine units per metre (the flash about
 
 Shared production code: documented D3D9 calls only (Set/GetPixelShaderConstantF, SetPixelShader, the VS constants
 read at resync through GetVertexShaderConstantF), a ps_3_0 program beside the game's vs_3_0. Native Windows: the fixture runs on the native D3D9 runtime
-(below); in-game behaviour is unverified on either platform until flown. AP: the same body and path exist (twin
-addresses), but the re-shade is compiled for FL only; AP logs `weapon_effects_reshade edition=ap runs=shields ...
-muzzle=vanilla muzzle_reason=fl_only`. [U] The classic submit swaps `standard_lighting` for `effects` when node +0x1c
+(below); in-game behaviour is unverified on either platform until flown. AP (2026-11-13): compiled for both
+editions. The flash VS `494fe349…` is the same bytes on AP stock, AP Mayhem and FL, the scope node's body id is AP node
+`+0x140` (the object-trace scope `0x004c5228 → 0x004c0150`, default on), and `reshade` logs
+`weapon_effects_reshade edition=ap runs=reshade … muzzle=reshade` once its sites are live
+([ap-bullet-batch-site.md](../reverse-engineering/ap-bullet-batch-site.md) sections 2 and 3). Stock AP's flash bodies
+are FL's seven. Mayhem's flashes use 445, 444, 446 and 314 and six Mayhem bodies, 12012, 12013, 12014, 12016, 12017 and
+12018. Those six were added to `bodies[]`, measured as the FL six [M]
+([`muzzle_bodies_ap_out.txt`](../../verification/results/muzzle-reshade/muzzle_bodies_ap_out.txt)). 445 runs first in
+that output and reproduces the FL row, so the overlaps are normalised to it [I]. 12013 and 12014 have grey cells, so
+they draw a white flash. 12011 is MATERIAL6 `effects.fx` (like 12009) and stays vanilla. Not flown on AP. [U] The classic submit swaps `standard_lighting` for `effects` when node +0x1c
 is the cockpit view (muzzle-flash-draw.md section 3); a flash drawn that way has another VS and stays vanilla. Whether
 the own guns' flash in first person takes that path is not established.
 

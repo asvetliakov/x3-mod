@@ -5,6 +5,7 @@
 // EAX, ECX and EDX and clear DF around the handler; LastError is untouched because nothing runs that could set it.
 #include "weapon_effects_patch.h"
 #include "weapon_effects_bolt.h"
+#include "weapon_effects_batch_site.h"
 #include "weapon_effects_bolt_sites.h"
 #include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
@@ -25,6 +26,16 @@ core::BoltHookState& bolt_hook_state() {
     return bolt_state_;
 }
 }
+// The bullet re-shade's scope (mode_reshade), both editions: the depth counter the batch scope stub raises around the
+// game's bullet submit, its call count, the submitted batch's body id, and the armed flag install_at / install_base set
+// once the stub is live (configure_weapon_effects, Present's counter reset and frame row). The stubs are below, one per
+// edition.
+extern "C" {
+volatile std::uint32_t x3m_bullet_scope = 0;
+volatile std::uint32_t x3m_bullet_scope_calls = 0;
+volatile std::uint32_t x3m_bullet_body = 0;
+volatile std::uint32_t x3m_bullet_reshade_armed = 0;
+}
 #if !X3M_EDITION_FL
 extern "C" {
 std::uintptr_t x3m_weapon_effects_continue_impact = x3m::weapon_effects::sites::impact_target_va;
@@ -33,6 +44,7 @@ std::uintptr_t x3m_weapon_effects_continue_bolt_tap = x3m::weapon_effects::bolt_
 std::uintptr_t x3m_weapon_effects_continue_muzzle = x3m::weapon_effects::bolt_sites::muzzle_target_va;
 std::uintptr_t x3m_weapon_effects_continue_flight = x3m::weapon_effects::bolt_sites::flight_target_va;
 std::uintptr_t x3m_weapon_effects_continue_death = x3m::weapon_effects::death_sites::target_va;
+std::uintptr_t x3m_weapon_effects_continue_batch = x3m::weapon_effects::batch_site::target_va;
 int __cdecl x3m_weapon_event(const std::uint32_t* entry) {
     return x3m::weapon_effects::core::impact(entry, state_);
 }
@@ -225,6 +237,54 @@ _x3m_weapon_effects_stub_death_other:
     ret
     .att_syntax
 )");
+// The bullet re-shade's scope on AP (mode_reshade; docs/reverse-engineering/ap-bullet-batch-site.md section 1): the
+// batch submit call 0x0046d0a7 -> 0x004bfd40 (cdecl: [esp+4] scene, [esp+8] batch, [esp+0xc] material, [esp+0x10]
+// view; no register input; the caller pops 0x10), FL's scope stub in the AP contract. Always forwarded, as a call so the
+// submit's extent is known: x3m_bullet_scope is raised before and lowered after it. x3m_bullet_body is the batch's body
+// id [[esp+8]+0x0c] (the record the lookup 0x0046ca80 keys on node +0x140), read through EAX, which is saved and
+// restored around it (`[esp+0x10]` after pushfd and push eax is the entry's [esp+8]). The stub re-pushes the four stack
+// words under a 12-byte pad (each `push dword ptr [esp+0x1c]` reads the entry's next word down: the pad and the words
+// already pushed move it by four each), so the callee sees its arguments where the original call put them and its ESP
+// at the entry's minus 32, the original call's alignment modulo 16 (only the return addresses differ). EBX, ESI, EDI and
+// EBP are the callee's to preserve (all four are live in the flush after it); EAX is the callee's result, ECX and EDX
+// pass untouched in and out; EFLAGS reaches the callee as the caller left it and the caller gets the callee's (the
+// counters change under pushfd/popfd, the pad moves by lea; the flags are dead after the call: the caller's add
+// esp,0x10 writes them). No handler and no call besides the forwarded callee, no XMM, no x87, no string instruction:
+// LastError, DF and the x87 stack are the engine's. An exception unwinding through the submit (it has no SEH frame of
+// its own) would leave the counter raised: weapon_effects::present zeroes it every frame while
+// x3m_bullet_reshade_armed, and a raised counter only admits draws that already bind the game's bullet program. One
+// plain global, no lock: the flush, the submit and its draws run on the one render thread (the game thread).
+asm(R"(
+    .intel_syntax noprefix
+    .text
+    .p2align 4
+    .globl _x3m_weapon_effects_stub_batch_scope
+_x3m_weapon_effects_stub_batch_scope:
+    pushfd
+    push eax
+    mov eax, dword ptr [esp+0x10]
+    mov eax, dword ptr [eax+0x0c]
+    mov dword ptr [_x3m_bullet_body], eax
+    pop eax
+    add dword ptr [_x3m_bullet_scope], 1
+    add dword ptr [_x3m_bullet_scope_calls], 1
+    popfd
+    lea esp, [esp-12]
+    push dword ptr [esp+0x1c]
+    push dword ptr [esp+0x1c]
+    push dword ptr [esp+0x1c]
+    push dword ptr [esp+0x1c]
+    call dword ptr [_x3m_weapon_effects_continue_batch]
+    lea esp, [esp+0x1c]
+    pushfd
+    sub dword ptr [_x3m_bullet_scope], 1
+    popfd
+    ret
+    .att_syntax
+)");
+static_assert(x3m::weapon_effects::batch_site::batch_slot == 2 && x3m::weapon_effects::batch_site::batch_body == 0x0c &&
+                  x3m::weapon_effects::batch_site::words == 4,
+              "the AP scope stub's body id operand [[esp+8]+0x0c] and its four re-pushed words");
 #else
 // FL edition (X3FL.exe, src/engine/fl/weapon_effects_sites_fl.h; docs/reverse-engineering/fl/weapon-effect-spawn.md
 // sections 2 and 4). Each FL entry shim saves EFLAGS, EAX, ECX and EDX like the AP stubs and passes the stack at stub
@@ -453,13 +513,6 @@ _x3m_weapon_effects_stub_death_fl:
 // One plain global, no lock: the submit and its draws run on the one render thread, which in X3 is the game thread
 // (bullet-draw-batch.md section 5, reentrancy: the submit never reaches the view submit again), so the draw hook reads
 // the id the same thread stored before its DrawPrimitive.
-extern "C" {
-volatile std::uint32_t x3m_bullet_scope = 0;
-volatile std::uint32_t x3m_bullet_scope_calls = 0;
-volatile std::uint32_t x3m_bullet_body = 0;
-volatile std::uint32_t x3m_bullet_reshade_armed = 0; // install_base: the scope stub is live (configure_weapon_effects,
-                                                      // Present's counter reset and frame row)
-}
 asm(R"(
     .intel_syntax noprefix
     .text

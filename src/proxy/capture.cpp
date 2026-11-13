@@ -2099,7 +2099,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         stage.lathe_stale = drops[13];
         stage.lathe_deferred = drops[14];
         stage.lathe_entry_far = drops[15];
-#if X3M_EDITION_FL
         // The re-shades (reshade mode): one dev tuning poll for both while either runs, then each one's frame counts
         // (the bullet's: bullet-draw-batch.md section 6; the muzzle flash's: muzzle-flash-look.md).
         const bool bullet_reshade = x3m_bullet_reshade_armed != 0;
@@ -2114,7 +2113,6 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
         if (ctx.motion_output.muzzle_reshade_requested())
             ctx.motion_output.muzzle_reshade_take_frame(&stage.muzzle_draws, &stage.muzzle_matched, &stage.muzzle_hull,
                                                         &stage.muzzle_failures, &stage.muzzle_timed, &stage.muzzle_us);
-#endif
         weapon_effects::core::Scope scope{};
         if (weapon_effects::core::stage_mode(weapon_effects::mode())) {
             const DWORD saved_error = GetLastError();
@@ -4418,7 +4416,6 @@ bool fixture_exception_requested() {
 // it takes the capture lock, so a session without stored marked atlases pays one relaxed load per final texture release
 // and nothing else, also after the atlases unloaded.
 void texture_created(IDirect3DDevice9* d, const void* data, UINT size, IDirect3DTexture9* texture) {
-#if X3M_EDITION_FL
     // The bullet re-shade's per-texture normaliser (bullet_reshade_core.h): a byte-count compare per tables.bullet_textures
     // entry (none without the table or reshade mode), the hashes only on a count match. A matched texture is stored on
     // its device's MotionOutput with the proxy's resource identity; one bullet_reshade_texture row each (at most 64).
@@ -4439,7 +4436,6 @@ void texture_created(IDirect3DDevice9* d, const void* data, UINT size, IDirect3D
             }
         }
     }
-#endif
     lod_texture_mark::Mark mark;
     if (!lod_texture_mark::parse(data, size, mark)) return; // 12 header bytes compared; the common path ends here
     CaptureLock lock; // the device cache, the table and resource_id's counter are capture-lock state
@@ -4475,9 +4471,7 @@ void texture_released(IDirect3DDevice9* d, void* texture) noexcept {
     if (it == devices.end()) return;
     it->second->motion_output.strength_mark_forget(texture);
     it->second->motion_output.sky_stars_mark_forget(texture);
-#if X3M_EDITION_FL
     it->second->motion_output.bullet_texture_forget(texture);
-#endif
 }
 void initialize_log(HMODULE module) {
     // x3m.ini and the defaults (docs/architecture/config-file.md): first, so every read below, the tier flags and the
@@ -6342,13 +6336,10 @@ void initialize_log(HMODULE module) {
             retest_ok ? "ok" : retest_length >= 16 ? "too_long" : "invalid_setting", occlusion_cull_engine ? 1u : 0u,
             engine_status);
     }
-    // Merged-LOD material strength, sky stars and (FL reshade mode with a table carrying bullet textures) the bullet
-    // re-shade's texture map: the D3DX texture row is patched for them alone (texture_created).
-#if X3M_EDITION_FL
+    // Merged-LOD material strength, sky stars and (reshade mode with a table carrying bullet textures) the bullet
+    // re-shade's texture map: the D3DX texture row is patched for them alone (texture_created; AP: loading_trace's
+    // observer, FL: the import-slot hook).
     const bool bullet_textures_requested = weapon_effects::bullet_texture_count() != 0;
-#else
-    constexpr bool bullet_textures_requested = false;
-#endif
     if (lod_material_strength_requested || sky_stars_requested || bullet_textures_requested) {
 #if !X3M_EDITION_FL
         loading_trace::set_texture_observer(texture_created);

@@ -1,0 +1,111 @@
+=== body 445 (01.cat), atlas tex/true/384 (384-bd79416d.png)
+  body 445 (01.cat): 203 vertices, 100 textured faces
+    UV rectangle u 0.002853..0.411944, v -0.001845..0.511156; centre (0.2073985, 0.2546555), half extents (0.2045455, 0.2565005)
+    model z of the v ~0.51 edge: mean 6868 (range -12161..29826); of the v ~0 edge: mean 41342 (range -3631..99768): the v ~0.51 edge is at the gun
+  texture 256x256; cell texels 13624: luminance max 0.674 mean 0.0539 p99 0.475; alpha 1.000..1.000
+  luminance centroid u 0.2067 v 0.3186 (normalised -0.003, +0.249: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.1648 0.075:0.1616 0.125:0.1559 0.175:0.1746 0.225:0.1848 0.275:0.1584 0.325:0.1430 0.375:0.1337 0.425:0.1175 0.475:0.1069 0.525:0.0885 0.575:0.0792 0.625:0.0677 0.675:0.0615 0.725:0.0575 0.775:0.0511 0.825:0.0393 0.875:0.0257 0.925:0.0116 0.975:0.0042 1.025:0.0028 1.075:0.0023 1.125:0.0018 1.175:0.0009 1.225:0.0005 1.275:0.0003 1.325:0.0001 1.375:0.0000
+  centre value (r < 0.3) 0.1667; vanilla lit radius r_v (first band under 5 %, its inner edge) 0.950
+  fit a (1 - smoothstep(r0, 1, r)): a 0.166 r0 0.16, rms 0.0107, worst |fit - mean| 0.0217
+  luminance-weighted hue of the lit texels (luminance > 0.02, 5761): rgb/max (1.0, 0.485, 0.166); at luminance 1 K = (1.7507, 0.8485, 0.2903)
+  texel noise: luminance sd in r bands 0-0.1 0.049, 0.3-0.4 0.107, 0.6-0.7 0.117
+  vanilla energy radius from the gun (model units): 50 % 19268, 90 % 45618, 95 % 60306; the textured vertices reach 101004
+  fan overlap at the gun: 24 of 50 quads pass within 0.1 x the lit radius; a ray through the gun crosses 13.3 quads within 0.5 x the radius on average over 500 directions (min 6, max 45); summed glow at the default size: mean 9.14 (p10 5.17, p90 14.11)
+=== body 12012 (addon/06.cat), atlas tex/true/924 (924-3cfd9efc.png)
+  body 12012 (addon/06.cat): 203 vertices, 100 textured faces
+    UV rectangle u 0.407606..0.795538, v -0.001845..0.511156; centre (0.6015720, 0.2546555), half extents (0.1939660, 0.2565005)
+  texture 256x256; cell texels 13100: luminance max 1.000 mean 0.0731 p99 0.949; alpha 1.000..1.000
+  luminance centroid u 0.5788 v 0.3616 (normalised -0.117, +0.417: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.1276 0.075:0.1975 0.125:0.1521 0.175:0.1417 0.225:0.1351 0.275:0.1615 0.325:0.1743 0.375:0.1405 0.425:0.1379 0.475:0.1190 0.525:0.1305 0.575:0.1509 0.625:0.1367 0.675:0.1203 0.725:0.1132 0.775:0.1047 0.825:0.0443 0.875:0.0179 0.925:0.0121 0.975:0.0084 1.025:0.0077 1.075:0.0078 1.125:0.0084 1.175:0.0049 1.225:0.0015 1.275:0.0009 1.325:0.0000 1.375:0.0000
+  centre value (r < 0.3) 0.1526; vanilla lit radius r_v (first band under 5 %, its inner edge) 1.150
+  fit a (1 - smoothstep(r0, 1, r)): a 0.148 r0 0.58, rms 0.0171, worst |fit - mean| 0.0495
+  luminance-weighted hue of the lit texels (luminance > 0.02, 3853): rgb/max (1.0, 0.793, 0.793); at luminance 1 K = (1.1945, 0.9475, 0.9477)
+  texel noise: luminance sd in r bands 0-0.1 0.113, 0.3-0.4 0.175, 0.6-0.7 0.298
+  vanilla energy radius from the gun (model units): 50 % 16584, 90 % 35503, 95 % 45435; the textured vertices reach 101004
+  fan overlap at the gun: 16 of 50 quads pass within 0.1 x the lit radius; a ray through the gun crosses 12.5 quads within 0.5 x the radius on average over 500 directions (min 6, max 44); summed glow at the default size: mean 7.48 (p10 4.61, p90 11.14)
+=== body 12013 (addon/06.cat), atlas tex/true/925 (925-f25e4250.png)
+  body 12013 (addon/06.cat): 19 vertices, 8 textured faces
+    UV rectangle u 0.000650..0.991195, v 0.512681..0.984734; centre (0.4959225, 0.7487075), half extents (0.4952725, 0.2360265)
+  texture 256x256; cell texels 30734: luminance max 0.722 mean 0.1212 p99 0.690; alpha 1.000..1.000
+  luminance centroid u 0.3018 v 0.7544 (normalised -0.392, +0.024: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.0907 0.075:0.1316 0.125:0.1799 0.175:0.1950 0.225:0.1766 0.275:0.1491 0.325:0.1422 0.375:0.1679 0.425:0.1872 0.475:0.1820 0.525:0.1800 0.575:0.1792 0.625:0.1490 0.675:0.1404 0.725:0.1672 0.775:0.1774 0.825:0.1735 0.875:0.1663 0.925:0.1327 0.975:0.0625 1.025:0.0083 1.075:0.0002 1.125:0.0000 1.175:0.0000 1.225:0.0000 1.275:0.0000 1.325:0.0000 1.375:0.0000
+  centre value (r < 0.3) 0.1538; vanilla lit radius r_v (first band under 5 %, its inner edge) 1.050
+  fit a (1 - smoothstep(r0, 1, r)): a 0.164 r0 0.89, rms 0.0241, worst |fit - mean| 0.0733
+  luminance-weighted hue of the lit texels (luminance > 0.02, 12519): rgb/max (1.0, 1.0, 1.0); at luminance 1 K = (1.0000, 1.0000, 1.0000)
+  texel noise: luminance sd in r bands 0-0.1 0.070, 0.3-0.4 0.166, 0.6-0.7 0.170
+  vanilla energy radius from the gun (model units): 50 % 26054, 90 % 59040, 95 % 67366; the textured vertices reach 99482
+  fan overlap at the gun: 4 of 4 quads pass within 0.1 x the lit radius; a ray through the gun crosses 4.0 quads within 0.5 x the radius on average over 500 directions (min 3, max 4); summed glow at the default size: mean 4.00 (p10 4.00, p90 4.00)
+=== body 12014 (addon/06.cat), atlas tex/true/926 (926-c79900b8.png)
+  body 12014 (addon/06.cat): 227 vertices, 112 textured faces
+    UV rectangle u 0.000500..0.482705, v 0.000500..0.123705; centre (0.2416025, 0.0621025), half extents (0.2411025, 0.0616025)
+  texture 256x256; cell texels 3968: luminance max 0.110 mean 0.0233 p99 0.106; alpha 1.000..1.000
+  luminance centroid u 0.1938 v 0.0986 (normalised -0.198, +0.592: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.0157 0.075:0.0139 0.125:0.0151 0.175:0.0137 0.225:0.0148 0.275:0.0169 0.325:0.0189 0.375:0.0265 0.425:0.0275 0.475:0.0300 0.525:0.0287 0.575:0.0282 0.625:0.0293 0.675:0.0268 0.725:0.0268 0.775:0.0225 0.825:0.0244 0.875:0.0248 0.925:0.0232 0.975:0.0214 1.025:0.0233 1.075:0.0223 1.125:0.0191 1.175:0.0192 1.225:0.0170 1.275:0.0141 1.325:0.0110 1.375:0.0032
+  centre value (r < 0.3) 0.0150; vanilla lit radius r_v (first band under 5 %, its inner edge) 1.000
+  fit a (1 - smoothstep(r0, 1, r)): a 0.022 r0 0.89, rms 0.0096, worst |fit - mean| 0.0233
+  luminance-weighted hue of the lit texels (luminance > 0.02, 1307): rgb/max (1.0, 1.0, 1.0); at luminance 1 K = (1.0000, 1.0000, 1.0000)
+  texel noise: luminance sd in r bands 0-0.1 0.005, 0.3-0.4 0.025, 0.6-0.7 0.038
+  vanilla energy radius from the gun (model units): 50 % 24095, 90 % 63923, 95 % 73740; the textured vertices reach 101023
+  fan overlap at the gun: 56 of 56 quads pass within 0.1 x the lit radius; a ray through the gun crosses 5.1 quads within 0.5 x the radius on average over 500 directions (min 1, max 16); summed glow at the default size: mean 5.11 (p10 2.00, p90 9.00)
+=== body 12016 (addon/06.cat), atlas tex/true/931 (931-d163f11a.png)
+  body 12016 (addon/06.cat): 19 vertices, 8 textured faces
+    UV rectangle u 0.000650..0.991195, v 0.512681..0.984734; centre (0.4959225, 0.7487075), half extents (0.4952725, 0.2360265)
+  texture 256x256; cell texels 30734: luminance max 0.751 mean 0.1277 p99 0.723; alpha 1.000..1.000
+  luminance centroid u 0.3024 v 0.7544 (normalised -0.391, +0.024: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.0963 0.075:0.1396 0.125:0.1908 0.175:0.2064 0.225:0.1869 0.275:0.1578 0.325:0.1504 0.375:0.1769 0.425:0.1968 0.475:0.1917 0.525:0.1899 0.575:0.1891 0.625:0.1570 0.675:0.1479 0.725:0.1760 0.775:0.1865 0.825:0.1823 0.875:0.1747 0.925:0.1393 0.975:0.0657 1.025:0.0088 1.075:0.0002 1.125:0.0000 1.175:0.0000 1.225:0.0000 1.275:0.0000 1.325:0.0000 1.375:0.0000
+  centre value (r < 0.3) 0.1630; vanilla lit radius r_v (first band under 5 %, its inner edge) 1.050
+  fit a (1 - smoothstep(r0, 1, r)): a 0.172 r0 0.89, rms 0.0252, worst |fit - mean| 0.0757
+  luminance-weighted hue of the lit texels (luminance > 0.02, 12600): rgb/max (0.799, 1.0, 0.316); at luminance 1 K = (0.8801, 1.1015, 0.3481)
+  texel noise: luminance sd in r bands 0-0.1 0.074, 0.3-0.4 0.175, 0.6-0.7 0.179
+  vanilla energy radius from the gun (model units): 50 % 26144, 90 % 59102, 95 % 67431; the textured vertices reach 99482
+  fan overlap at the gun: 4 of 4 quads pass within 0.1 x the lit radius; a ray through the gun crosses 4.0 quads within 0.5 x the radius on average over 500 directions (min 3, max 4); summed glow at the default size: mean 4.00 (p10 4.00, p90 4.00)
+=== body 12017 (addon/06.cat), atlas tex/true/932 (932-511b2240.png)
+  body 12017 (addon/06.cat): 203 vertices, 100 textured faces
+    UV rectangle u 0.002853..0.411944, v -0.001845..0.511156; centre (0.2073985, 0.2546555), half extents (0.2045455, 0.2565005)
+  texture 256x256; cell texels 13624: luminance max 0.670 mean 0.0739 p99 0.533; alpha 1.000..1.000
+  luminance centroid u 0.2041 v 0.2924 (normalised -0.016, +0.147: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.4894 0.075:0.4755 0.125:0.4330 0.175:0.3848 0.225:0.3385 0.275:0.2691 0.325:0.2181 0.375:0.1763 0.425:0.1342 0.475:0.1074 0.525:0.0893 0.575:0.0821 0.625:0.0703 0.675:0.0654 0.725:0.0613 0.775:0.0539 0.825:0.0422 0.875:0.0299 0.925:0.0177 0.975:0.0096 1.025:0.0067 1.075:0.0058 1.125:0.0044 1.175:0.0034 1.225:0.0024 1.275:0.0017 1.325:0.0007 1.375:0.0001
+  centre value (r < 0.3) 0.3984; vanilla lit radius r_v (first band under 5 %, its inner edge) 0.900
+  fit a (1 - smoothstep(r0, 1, r)): a 0.376 r0 0.00, rms 0.0590, worst |fit - mean| 0.1141
+  luminance-weighted hue of the lit texels (luminance > 0.02, 8075): rgb/max (1.0, 0.227, 0.243); at luminance 1 K = (2.5455, 0.5790, 0.6198)
+  texel noise: luminance sd in r bands 0-0.1 0.056, 0.3-0.4 0.121, 0.6-0.7 0.103
+  vanilla energy radius from the gun (model units): 50 % 22002, 90 % 51167, 95 % 61519; the textured vertices reach 101004
+  fan overlap at the gun: 24 of 50 quads pass within 0.1 x the lit radius; a ray through the gun crosses 13.5 quads within 0.5 x the radius on average over 500 directions (min 6, max 45); summed glow at the default size: mean 9.82 (p10 5.59, p90 15.41)
+=== body 12018 (addon/06.cat), atlas tex/true/933 (933-86efea4b.png)
+  body 12018 (addon/06.cat): 203 vertices, 100 textured faces
+    UV rectangle u 0.002853..0.411944, v -0.001845..0.511156; centre (0.2073985, 0.2546555), half extents (0.2045455, 0.2565005)
+  texture 256x256; cell texels 13624: luminance max 0.694 mean 0.0772 p99 0.562; alpha 1.000..1.000
+  luminance centroid u 0.2043 v 0.2955 (normalised -0.015, +0.159: towards the gun edge)
+  radial mean luminance (r over the half extents):
+    0.025:0.5216 0.075:0.5077 0.125:0.4677 0.175:0.4188 0.225:0.3690 0.275:0.2909 0.325:0.2293 0.375:0.1813 0.425:0.1344 0.475:0.1087 0.525:0.0910 0.575:0.0840 0.625:0.0728 0.675:0.0676 0.725:0.0633 0.775:0.0562 0.825:0.0441 0.875:0.0299 0.925:0.0168 0.975:0.0096 1.025:0.0068 1.075:0.0059 1.125:0.0047 1.175:0.0037 1.225:0.0026 1.275:0.0018 1.325:0.0007 1.375:0.0001
+  centre value (r < 0.3) 0.4293; vanilla lit radius r_v (first band under 5 %, its inner edge) 0.900
+  fit a (1 - smoothstep(r0, 1, r)): a 0.402 r0 0.00, rms 0.0657, worst |fit - mean| 0.1203
+  luminance-weighted hue of the lit texels (luminance > 0.02, 8104): rgb/max (0.397, 0.302, 1.0); at luminance 1 K = (1.0673, 0.8098, 2.6859)
+  texel noise: luminance sd in r bands 0-0.1 0.052, 0.3-0.4 0.136, 0.6-0.7 0.113
+  vanilla energy radius from the gun (model units): 50 % 21832, 90 % 49429, 95 % 61450; the textured vertices reach 101004
+  fan overlap at the gun: 24 of 50 quads pass within 0.1 x the lit radius; a ray through the gun crosses 13.4 quads within 0.5 x the radius on average over 500 directions (min 6, max 45); summed glow at the default size: mean 9.62 (p10 5.48, p90 15.01)
+
+body  tex quads  UV rect u0 u1 v0 v1         lit_radius    r50 mean_fit centre lum_glow t_gun(fit)  mean  t_gun  hue K                     ray_mean N/N445  overlap (N0, N1)            t_max cell / glow
+  445  384    50   0.003  0.412 -0.002  0.511     45618   19268  0.166  0.1667  0.0285    0.255  0.1660  0.255  (1.7507, 0.8485, 0.2903)     9.14   1.000  (8.8915, 1.3111) measured    3.75 /  3.01
+12012  924    50   0.408  0.796 -0.002  0.511     35503   16584  0.148  0.1526  0.0449    0.373  0.0449  1.000  (1.1945, 0.9475, 0.9477)     7.48   3.213  (28.5714, 4.2130) inferred   20.12 / 17.99
+12013  925     4   0.001  0.991  0.513  0.985     59040   26054  0.164  0.1538  0.2072    1.237  0.2072  1.000  (1.0000, 1.0000, 1.0000)     4.00   1.717  (15.2693, 2.2515) inferred    3.23 /  3.18
+12014  926    56   0.001  0.483  0.001  0.124     63923   24095  0.022  0.0150  0.0396    1.720  0.0396  1.000  (1.0000, 1.0000, 1.0000)     5.11   2.194  (19.5086, 2.8766) inferred    2.60 /  2.51
+12016  931     4   0.001  0.991  0.513  0.985     59102   26144  0.172  0.1630  0.2178    1.240  0.2178  1.000  (0.8801, 1.1015, 0.3481)     4.00   1.717  (15.2693, 2.2515) inferred    3.20 /  3.15
+12017  932    50   0.003  0.412 -0.002  0.511     51167   22002  0.376  0.3984  0.0373    0.189  0.0373  1.000  (2.5455, 0.5790, 0.6198)     9.82   4.219  (37.5131, 5.5315) inferred   16.27 / 14.88
+12018  933    50   0.003  0.412 -0.002  0.511     49429   21832  0.402  0.4293  0.0349    0.178  0.0349  1.000  (1.0673, 0.8098, 2.6859)     9.62   4.133  (36.7517, 5.4192) inferred   18.01 / 16.32
+t_gun: the glow-weighted modulator at mz_size 0.2, mz_smooth 0.1 (fit: with mean_fit; the row: with mean); t445 0.2547, the overlap factor 1 / t445 3.9258; t_max: the modulator at the cell's brightest texel / the brightest glow-region sample
+
+muzzle_reshade_core.h rows:
+    {445u, 45618.f, 0.1660f, {8.8915f, 1.3111f}, {1.7507f, 0.8485f, 0.2903f}}, // tex/true/384
+    {12012u, 35503.f, 0.0449f, {28.5714f, 4.2130f}, {1.1945f, 0.9475f, 0.9477f}}, // tex/true/924
+    {12013u, 59040.f, 0.2072f, {15.2693f, 2.2515f}, {1.0000f, 1.0000f, 1.0000f}}, // tex/true/925
+    {12014u, 63923.f, 0.0396f, {19.5086f, 2.8766f}, {1.0000f, 1.0000f, 1.0000f}}, // tex/true/926
+    {12016u, 59102.f, 0.2178f, {15.2693f, 2.2515f}, {0.8801f, 1.1015f, 0.3481f}}, // tex/true/931
+    {12017u, 51167.f, 0.0373f, {37.5131f, 5.5315f}, {2.5455f, 0.5790f, 0.6198f}}, // tex/true/932
+    {12018u, 49429.f, 0.0349f, {36.7517f, 5.4192f}, {1.0673f, 0.8098f, 2.6859f}}, // tex/true/933

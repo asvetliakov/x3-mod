@@ -5,6 +5,7 @@
 #include "engine_patch.h"
 #include "object_trace.h"
 #include "sse_scalar.h"
+#include "weapon_effects_batch_site.h"
 #include "weapon_effects_bolt_sites.h"
 #include "weapon_effects_death_sites.h"
 #include "weapon_effects_sites.h"
@@ -28,16 +29,19 @@ namespace sites = x3m::weapon_effects::sites;
 namespace core = x3m::weapon_effects::core;
 namespace bolt_sites = x3m::weapon_effects::bolt_sites;
 namespace death_sites = x3m::weapon_effects::death_sites;
+namespace batch_site = x3m::weapon_effects::batch_site;
 #if X3M_EDITION_FL
 constexpr unsigned site_count = 8; // impact, tap1, tap2, bolt_tap, muzzle, flight, death (the one FL call), batch
 #else
-constexpr unsigned site_count = 8; // impact, tap1, tap2; step 4: bolt_tap, muzzle, flight; step 3: death_area, death_other
+// impact, tap1, tap2; step 4: bolt_tap, muzzle, flight; step 3: death_area, death_other; reshade: batch
+constexpr unsigned site_count = 9;
 #endif
 bool patched_ = false, installed_ = false;
 core::Mode mode_ = core::mode_native;
 const char* state_ = "not_initialized";
-const char* site_state_[8] = {"not_initialized", "not_initialized", "not_initialized", "not_initialized",
+const char* site_state_[9] = {"not_initialized", "not_initialized", "not_initialized", "not_initialized", "not_initialized",
                               "not_initialized", "not_initialized", "not_initialized", "not_initialized"};
+static_assert(site_count <= sizeof site_state_ / sizeof site_state_[0], "a state per site");
 bool written_[site_count] = {};
 engine_patch::CallSite site_[site_count]{};
 core::Table* table_ = nullptr;
@@ -74,7 +78,6 @@ struct Period {
     std::uint32_t muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
     float muzzle_us_sum = 0.f, muzzle_us_max = 0.f;
 } period_{};
-#if X3M_EDITION_FL
 std::uint32_t reshade_scopes_seen_ = 0; // x3m_bullet_scope_calls at the last bullet_reshade_frame row
 // The geometric size's body map (bullet_reshade_core.h build_body_map / body_layout): engine body id ->
 // tables.bullet_bodies entry, built at the first lookup that can read the engine's TBullets; cleared with the table
@@ -83,7 +86,6 @@ x3m::weapon_effects::reshade::BodyMap body_map_{};
 // One build attempt per frame (the Present count of the last attempt against the current one): an unbuilt map's
 // retries (bullet_reshade_core.h body_map_retries) then span frames, not the draws of one frame.
 unsigned long long body_map_attempt_ = ~0ull, present_frame_ = 0;
-#endif
 // weapon_death rows outside capture frames: the run's first 64, then up to 16 per weapon_effects_frame period.
 constexpr unsigned death_row_budget = 64, death_period_budget = 16;
 unsigned logged_deaths_ = 0, period_deaths_ = 0;
@@ -200,10 +202,8 @@ const char* read_table_file(char** text, DWORD* size, char* path_utf8, unsigned 
     return reason ? reason : "read";
 }
 void load_table() {
-#if X3M_EDITION_FL
     body_map_ = x3m::weapon_effects::reshade::BodyMap{}; // built again from this table at the next lookup
     body_map_attempt_ = ~0ull;
-#endif
     char* text = nullptr;
     DWORD size = 0;
     char path[260];
@@ -249,7 +249,7 @@ void load_table() {
 #if !X3M_EDITION_FL
 const char* site_name(unsigned i) {
     static const char* const names[site_count] = {"impact", "tap1", "tap2", "bolt_tap", "muzzle", "flight", "death_area",
-                                                  "death_other"};
+                                                  "death_other", "batch"};
     return i < site_count ? names[i] : "?";
 }
 std::uintptr_t site_va(unsigned i) {
@@ -259,7 +259,8 @@ std::uintptr_t site_va(unsigned i) {
            : i == 4 ? bolt_sites::muzzle_site_va
            : i == 5 ? bolt_sites::flight_site_va
            : i == 6 ? death_sites::area_site_va
-                    : death_sites::other_site_va;
+           : i == 7 ? death_sites::other_site_va
+                    : batch_site::site_va;
 }
 // Step 4: a bolt site's window, offset, callee and stub (3 bolt_tap, 4 muzzle, 5 flight).
 struct BoltSite {
@@ -276,7 +277,13 @@ BoltSite death_site(const x3m::weapon_effects::Addresses& a, unsigned i) {
     return {a.death_other_window, a.death_target, death_sites::site_offset, death_sites::window_length,
             death_sites::expected_other_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_death_other)};
 }
+// The reshade mode: the bullet batch submit's window, offset, callee and the scope stub (8 batch).
+BoltSite batch_site_of(const x3m::weapon_effects::Addresses& a) {
+    return {a.batch_window, a.batch_target, batch_site::site_offset, batch_site::window_length,
+            batch_site::expected_window, reinterpret_cast<void*>(&x3m_weapon_effects_stub_batch_scope)};
+}
 BoltSite bolt_site(const x3m::weapon_effects::Addresses& a, unsigned i) {
+    if (i == 8) return batch_site_of(a);
     if (i >= 6) return death_site(a, i);
     if (i == 3)
         return {a.bolt_tap_window, a.bolt_tap_target, bolt_sites::tap_site_offset, bolt_sites::tap_window_length,
@@ -343,15 +350,22 @@ bool install_at(const Addresses& a, core::Mode mode) {
     const bool taps = mode == core::mode_observe;
     const bool bolts = core::bolts_mode(mode);
     const bool booms = core::explosions_mode(mode);
+    // Reshade mode (ap-bullet-batch-site.md; FL's install_base): the shield stage and the batch call claimed with the
+    // scope stub, which forwards every submit.
+    const bool reshade = core::reshade_mode(mode);
     if (!taps) site_state_[1] = site_state_[2] = "not_used";
     if (!bolts) site_state_[3] = site_state_[4] = site_state_[5] = "not_used";
     if (!booms) site_state_[6] = site_state_[7] = "not_used";
-    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : i < 6 ? bolts : booms); };
+    if (!reshade) site_state_[8] = "not_used";
+    const auto used = [&](unsigned i) { return i == 0 || (i < 3 ? taps : i < 6 ? bolts : i < 8 ? booms : reshade); };
+    x3m_bullet_reshade_armed = 0;
+    x3m_bullet_scope = 0;
     if (mode == core::mode_native) return done("native", false);
     if (!a.impact_window || !a.impact_target || !a.prologue || (taps && (!a.tap_window[0] || !a.tap_window[1] || !a.tap_target)) ||
         (bolts && (!a.bolt_tap_window || !a.bolt_tap_target || !a.muzzle_window || !a.muzzle_target || !a.flight_window ||
                    !a.flight_target)) ||
-        (booms && (!a.death_area_window || !a.death_other_window || !a.death_target))) {
+        (booms && (!a.death_area_window || !a.death_other_window || !a.death_target)) ||
+        (reshade && (!a.batch_window || !a.batch_target))) {
         site_state_[0] = "invalid_site";
         return done("invalid_site", false);
     }
@@ -385,13 +399,17 @@ bool install_at(const Addresses& a, core::Mode mode) {
             }
         }
     if (booms)
-        for (unsigned i = 6; i < site_count; ++i) {
+        for (unsigned i = 6; i < 8; ++i) {
             const BoltSite b = death_site(a, i);
             if (!window_matches(b.window, b.expected, b.length)) {
                 site_state_[i] = "bytes_mismatch";
                 return done(i == 6 ? "bytes_mismatch_death_area" : "bytes_mismatch_death_other", false);
             }
         }
+    if (reshade && !window_matches(a.batch_window, batch_site::expected_window, batch_site::window_length)) {
+        site_state_[8] = "bytes_mismatch";
+        return done("bytes_mismatch_batch", false);
+    }
     if (!pin_self()) {
         site_state_[0] = "pin_failed";
         return done("pin_failed", false);
@@ -428,10 +446,11 @@ bool install_at(const Addresses& a, core::Mode mode) {
         x3m_weapon_effects_continue_flight = a.flight_target;
     }
     if (booms) x3m_weapon_effects_continue_death = a.death_target;
+    if (reshade) x3m_weapon_effects_continue_batch = a.batch_target;
     for (unsigned i = 0; i < site_count; ++i) site_[i] = engine_patch::CallSite{};
-    // Atomic sites first (the taps, the muzzle, the flight effect, the other death site), then the plain copies (the bolt
-    // tap, the area death site, the impact); all or none.
-    const unsigned order[site_count] = {1, 2, 4, 5, 7, 3, 6, 0};
+    // Atomic sites first (the taps, the muzzle, the flight effect, the other death site), then the plain copies (the
+    // batch, the bolt tap, the area death site, the impact); all or none.
+    const unsigned order[site_count] = {1, 2, 4, 5, 7, 8, 3, 6, 0};
     unsigned claimed[site_count]{};
     unsigned n = 0;
     for (unsigned k = 0; k < site_count; ++k) {
@@ -474,6 +493,7 @@ bool install_at(const Addresses& a, core::Mode mode) {
     patched_ = installed_ = true;
     mode_ = mode;
     bs.armed = std::uint8_t(bolts);
+    x3m_bullet_reshade_armed = std::uint32_t(reshade);
     return done("ok", true);
 }
 bool initialize() {
@@ -508,7 +528,8 @@ bool initialize() {
                           bolt_sites::tap_target_va,     bolt_sites::muzzle_window_va,
                           bolt_sites::muzzle_target_va,  bolt_sites::flight_window_va,
                           bolt_sites::flight_target_va,  death_sites::area_window_va,
-                          death_sites::other_window_va,  death_sites::target_va};
+                          death_sites::other_window_va,  death_sites::target_va,
+                          batch_site::window_va,         batch_site::target_va};
         applied = install_at(a, mode);
     }
     if (reason) {
@@ -521,15 +542,21 @@ bool initialize() {
     // The scratched families' names (2026-11-08): accepted beside shields and ignored, one row each.
     for (unsigned i = 0; i < core::ignored_name_count; ++i)
         if (ignored & (1u << i)) log("weapon_effects_ignored name=%s setting=%s", core::ignored_name(i), setting);
-    // reshade is FL's (the bullet batch site): on AP it runs as shields, one row.
-    if (parsed && core::reshade_mode(mode))
-        log("weapon_effects_reshade edition=ap runs=shields reason=no_bullet_batch_site muzzle=vanilla "
-            "muzzle_reason=fl_only setting=%s",
-            setting);
     for (unsigned i = 0; i < site_count; ++i)
         log("weapon_effects_patch site=%s va=%08lx state=%s reason=%s mode=%s setting=%s write=%s", site_name(i),
             static_cast<unsigned long>(site_va(i)), site_state_[i], state_, parsed ? core::mode_name(mode) : "-", setting,
             write_path(i));
+    // Reshade mode: the batch call's scope claim (one row a session, FL's row with the AP VA) and the mode's row: the
+    // bullet and muzzle re-shades run (runs=reshade) once every site is live, else nothing of the mode does
+    // (runs=native: the install is all or none).
+    if (parsed && core::reshade_mode(mode)) {
+        const char* b = site_state_[8];
+        log("bullet_reshade_site state=%s va=%08lx reason=%s site=%s armed=%lu edition=ap",
+            !std::strcmp(b, "active") ? "claimed" : "refused", static_cast<unsigned long>(batch_site::site_va), state_, b,
+            static_cast<unsigned long>(x3m_bullet_reshade_armed));
+        log("weapon_effects_reshade edition=ap runs=%s reason=%s muzzle=%s setting=%s", applied ? "reshade" : "native",
+            state_, applied ? "reshade" : "vanilla", setting);
+    }
     SetLastError(error);
     return applied;
 }
@@ -755,13 +782,13 @@ bool shutdown() {
     bolt_hook_state().muzzle_owned = 0;
 #if X3M_EDITION_FL
     static constexpr unsigned reverse[site_count] = {3, 0, 7, 6, 5, 4, 2, 1}; // the reverse of install_base's order
+#else
+    static constexpr unsigned reverse[site_count] = {0, 6, 3, 8, 7, 5, 4, 2, 1}; // the reverse of the install order
+#endif
     x3m_bullet_reshade_armed = 0; // Present stops its row and counter reset; the draw hook keys on x3m_bullet_scope,
                                   // which no submit raises once the site is restored below
     body_map_ = x3m::weapon_effects::reshade::BodyMap{}; // a reinstall builds it again from its table
     body_map_attempt_ = ~0ull;
-#else
-    static constexpr unsigned reverse[site_count] = {0, 6, 3, 7, 5, 4, 2, 1}; // the reverse of the install order
-#endif
     for (unsigned k = 0; k < site_count; ++k) {
         const unsigned i = reverse[k];
         if (!site_[i].patched_in) continue;
@@ -783,7 +810,6 @@ core::Mode mode() {
 const core::ShipProfiles* ship_profiles() noexcept {
     return profiles_ready_ ? profiles_ : nullptr;
 }
-#if X3M_EDITION_FL
 // The table is loaded once inside the install window, before the device and its textures exist; read-only after.
 int bullet_texture_key(const void* data, std::size_t size) noexcept {
     return table_ && x3m_bullet_reshade_armed ? x3m::weapon_effects::reshade::texture_key(*table_, data, size) : -1;
@@ -819,7 +845,6 @@ const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept
     }
     return rs::body_layout(body_map_, table_, body);
 }
-#endif
 const char* state() {
     return state_;
 }
@@ -859,9 +884,7 @@ void clear_owned() {
     if (installed_) clear_owned_count();
 }
 void present(unsigned long long frame, bool capture, bool owned, const StageFrame& stage, const core::Scope& scope) {
-#if X3M_EDITION_FL
     present_frame_ = frame; // the body map's one build attempt per frame
-#endif
     if (!installed_) return;
     core::HookState& s = hook_state();
     // A load, a sector change or a new load epoch: the stage-owned records of the scene that went leave the ring.
@@ -880,7 +903,6 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     s.owned_next = std::uint8_t(core::stage_mode(mode_) && owned);
     s.hull_ready = 0;
     s.boom_ready = 0;
-#if X3M_EDITION_FL
     // The bullet re-shade (reshade mode): a scope count leaked by an exception through the submit lasts one frame.
     if (x3m_bullet_reshade_armed) {
         x3m_bullet_scope = 0;
@@ -908,7 +930,6 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.muzzle_us_sum += stage.muzzle_us;
         if (stage.muzzle_us > period_.muzzle_us_max) period_.muzzle_us_max = stage.muzzle_us;
     }
-#endif
     ++period_.frames;
     if (owned) ++period_.owned;
     if (stage.drew) ++period_.drew;
@@ -1019,7 +1040,6 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     }
     if (frame % frame_row_period) return;
     const core::Counters& c = s.counters;
-#if X3M_EDITION_FL
     // The bullet re-shade's period row: the game's bullet submits seen by the scope stub, the draws re-shaded and those
     // whose substitution failed (forwarded with the game's program), bullet-program draws outside a submit (left
     // vanilla), and the substitution's CPU time over the timed draws (every 60th frame and capture frames: per draw,
@@ -1085,7 +1105,6 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
             double(period_.muzzle_us_sum),
             period_.muzzle_timed ? double(period_.muzzle_us_sum) / double(period_.muzzle_timed) : 0.0,
             double(period_.muzzle_us_max));
-#endif
     if (core::explosions_mode(mode_))
         log("weapon_boom_frame frame=%llu deaths=%lu ours=%lu calls=%lu no_node=%lu bullet=%lu rule_b=%lu nested=%lu "
             "fighter=%lu corvette=%lu capital=%lu station=%lu missile=%lu asteroid=%lu other=%lu boom_ready=%u "

@@ -91,8 +91,11 @@ void lone_classic_cases() {
     std::vector<DWORD> vs_code, ps_code, ps2s_code;
     const bool loaded = cf::load("classic_vs.bin", vs_code) && cf::load("classic_ps.bin", ps_code) &&
                         cf::load("classic_ps2s.bin", ps2s_code);
-    const bool hashes = loaded && cf::hash(vs_code) == rs::classic_vertex_shader &&
-                        cf::hash(ps_code) == rs::classic_pixel_shaders[0] && cf::hash(ps2s_code) == rs::classic_pixel_shaders[1];
+    // FL's pair by name: the fixture builds without an edition define, so the build's default row is AP's
+    // (lone_classic_ap_case below)
+    const std::uint64_t* fl_pair = rs::classic_pixel_shader_pairs[rs::pair_fl];
+    const bool hashes = loaded && cf::hash(vs_code) == rs::classic_vertex_shader && cf::hash(ps_code) == fl_pair[0] &&
+                        cf::hash(ps2s_code) == fl_pair[1];
     Com<IDirect3DVertexShader9> vs, batch_vs;
     Com<IDirect3DPixelShader9> ps1, ps2s, ours, ours_flag, batch_ours;
     Com<IDirect3DVertexDeclaration9> decl, batch_decl;
@@ -156,7 +159,7 @@ void lone_classic_cases() {
                 return x3m::engine_memory::read(reinterpret_cast<std::uintptr_t>(node.data()) + rs::node_body_offset, out,
                                                 sizeof *out);
             },
-            [&](std::uint32_t b) { return rs::body_layout(map, &table, b) != nullptr; });
+            [&](std::uint32_t b) { return rs::body_layout(map, &table, b) != nullptr; }, rs::pair_fl);
         *why = m.why;
         return m.blend;
     };
@@ -683,7 +686,7 @@ void lone_classic_cases() {
                                                                 rs::node_body_offset,
                                                             out, sizeof *out);
                         },
-                        [&](std::uint32_t id) { return rs::body_layout(big, &table, id) != nullptr; });
+                        [&](std::uint32_t id) { return rs::body_layout(big, &table, id) != nullptr; }, rs::pair_fl);
                     hits += m.blend != rs::lone_none;
                 }
                 QueryPerformanceCounter(&b);
@@ -708,4 +711,198 @@ void lone_classic_cases() {
                 draws, runs, best_vanilla, best_reshaded, best_reshaded - best_vanilla, best_hit, best_miss, best_opaque,
                 unsigned(restored), unsigned(fence.p != nullptr));
     report("reshade_lone_classic_cost_measured", ok && restored && fence.p && best_hit < 10.0 && best_miss < 10.0, "");
+}
+
+// The AP edition's lone classic path (docs/reverse-engineering/ap-bullet-batch-site.md section 2; RESHADE
+// case=lone_classic_ap rows): the same standard_lighting DEFAULT VS bytes, AP's own standard_lighting / 2s DEFAULT PS
+// (7c83ed50c9894e44 / e70adc744a38ca59), extracted at run time from the AP catalogues (run_weapon_effects.py
+// CLASSIC_PROGRAMS_AP: ap_classic_vs.bin, ap_classic_ps.bin, ap_classic_ps2s.bin; untracked, each hash checked). (a) The
+// production match under the AP row (bullet_reshade_core.h classic_match, pair_ap; this fixture builds without an
+// edition define, so its node body id is AP's +0x140): Mayhem's one classic bullet body (row 25 PBC, v/00525) under ONE /
+// ONE is admitted with either AP program, refused `program` with an FL one, the AP programs refused under the FL row,
+// SRCALPHA / INVSRCALPHA refused `blend`. (b) The AP pair drawn behind the shared VS (vanilla, finite; lit printed, not
+// gated: the fixture's PS constants are FL's layout) and our classic
+// program in its place against the model (blend off, 16 x 16 FP16, two texels, two fades): the program reads only the
+// VS's interpolators, so the same bytes serve both editions.
+void lone_classic_ap_case() {
+    namespace rs = x3m::weapon_effects::reshade;
+    namespace cf = classic_fx;
+    std::vector<DWORD> vs_code, ps_code, ps2s_code;
+    const bool loaded = cf::load("ap_classic_vs.bin", vs_code) && cf::load("ap_classic_ps.bin", ps_code) &&
+                        cf::load("ap_classic_ps2s.bin", ps2s_code);
+    const std::uint64_t* ap = rs::classic_pixel_shader_pairs[rs::pair_ap];
+    const std::uint64_t* fl = rs::classic_pixel_shader_pairs[rs::pair_fl];
+    const bool hashes = loaded && cf::hash(vs_code) == rs::classic_vertex_shader && cf::hash(ps_code) == ap[0] &&
+                        cf::hash(ps2s_code) == ap[1];
+    Com<IDirect3DVertexShader9> vs;
+    Com<IDirect3DPixelShader9> ps1, ps2s, ours;
+    Com<IDirect3DVertexDeclaration9> decl;
+    const bool created = hashes && SUCCEEDED(dev->CreateVertexShader(vs_code.data(), &vs.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(ps_code.data(), &ps1.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(ps2s_code.data(), &ps2s.p)) &&
+                         SUCCEEDED(dev->CreatePixelShader(cf::program, &ours.p)) &&
+                         SUCCEEDED(dev->CreateVertexDeclaration(cf::declaration(), &decl.p));
+    // (a) recognition: a one-row TBullets stand-in naming v/00525, the scope node's body id at the build's offset
+    constexpr std::uint32_t pbc_body = 525u;
+    static wc::Table table{}; // zero-initialised, this case's alone
+    table.rows = 1;
+    table.bits[0] = wc::row_present;
+    table.body_hash[0] = table.bullet_body_hash[0] = 0x00525u;
+    table.bullet_bodies = 1;
+    std::vector<unsigned char> tbullets(wc::layout::type_stride, 0);
+    const std::uint16_t row_id = std::uint16_t(pbc_body);
+    std::memcpy(&tbullets[rs::tbullets_body], &row_id, 2);
+    const std::uint32_t table_slot = std::uint32_t(reinterpret_cast<std::uintptr_t>(tbullets.data())), count_slot = 1;
+    const auto reader = [](std::uintptr_t a, void* out, std::size_t n) { return x3m::engine_memory::read(a, out, n); };
+    x3m::engine_memory::next_frame();
+    rs::BodyMap map;
+    const bool built = rs::build_body_map(map, &table, reinterpret_cast<std::uintptr_t>(&table_slot),
+                                          reinterpret_cast<std::uintptr_t>(&count_slot), reader) &&
+                       map.state == 1 && map.count == 1;
+    std::vector<std::uint32_t> node(0x160 / 4, 0u);
+    node[rs::node_body_offset / 4] = pbc_body;
+    const auto verdict = [&](std::uint64_t ps, DWORD src, DWORD dst, unsigned pair, unsigned* why) {
+        const rs::ClassicMatch m = rs::classic_match(
+            rs::classic_vertex_shader, true, src, dst, D3DBLENDOP_ADD, ps, true,
+            [&](std::uint32_t* out) {
+                return x3m::engine_memory::read(reinterpret_cast<std::uintptr_t>(node.data()) + rs::node_body_offset, out,
+                                                sizeof *out);
+            },
+            [&](std::uint32_t b) { return rs::body_layout(map, &table, b) != nullptr; }, pair);
+        *why = m.why;
+        return m.blend;
+    };
+    constexpr unsigned none = rs::classic_refused_count;
+    const struct {
+        const char* name;
+        std::uint64_t ps;
+        DWORD src, dst;
+        unsigned pair, want, why;
+    } rows[] = {
+        {"ap_one_sided_one_one", ap[0], D3DBLEND_ONE, D3DBLEND_ONE, rs::pair_ap, rs::lone_additive, none},
+        {"ap_two_sided_one_one", ap[1], D3DBLEND_ONE, D3DBLEND_ONE, rs::pair_ap, rs::lone_additive, none},
+        {"fl_ps_under_ap", fl[0], D3DBLEND_ONE, D3DBLEND_ONE, rs::pair_ap, rs::lone_none, rs::classic_program},
+        {"ap_ps_under_fl", ap[1], D3DBLEND_ONE, D3DBLEND_ONE, rs::pair_fl, rs::lone_none, rs::classic_program},
+        {"ap_alphablend", ap[0], D3DBLEND_SRCALPHA, D3DBLEND_INVSRCALPHA, rs::pair_ap, rs::lone_none, rs::classic_blend},
+    };
+    bool recognition = built && rs::node_body_offset == 0x140u && rs::build_pair == rs::pair_ap;
+    for (const auto& r : rows) {
+        unsigned why = 0;
+        const unsigned got = verdict(r.ps, r.src, r.dst, r.pair, &why);
+        const bool ok = got == r.want && why == r.why;
+        recognition = recognition && ok;
+        std::printf("RESHADE case=lone_classic_ap_recognition row=%s class=%u want=%u why=%s ok=%u\n", r.name, got, r.want,
+                    why < none ? rs::classic_refused_names[why] : "none", unsigned(ok));
+    }
+
+    // (b) the AP pair behind the VS (vanilla) and our program in its place against the model
+    const auto tune = x3m::weapon_effects::projectile_family::baked;
+    float constants[4];
+    rs::constants(tune, constants);
+    const unsigned char two[8] = {99, 77, 17, 200, 200, 150, 40, 120};
+    const unsigned char light_px[4] = {0, 0, 0, 64};
+    Com<IDirect3DTexture9> tex2, light, rt16;
+    Com<IDirect3DSurface9> rt16_s, sys16;
+    bool ok = created;
+    if (ok) {
+        tex2.p = cf::texels(dev, two, 2);
+        light.p = cf::texels(dev, light_px, 1);
+        ok = tex2.p && light.p &&
+             SUCCEEDED(dev->CreateTexture(16, 16, 1, D3DUSAGE_RENDERTARGET, D3DFMT_A16B16G16R16F, D3DPOOL_DEFAULT, &rt16.p,
+                                          nullptr)) &&
+             SUCCEEDED(rt16.p->GetSurfaceLevel(0, &rt16_s.p)) &&
+             SUCCEEDED(dev->CreateOffscreenPlainSurface(16, 16, D3DFMT_A16B16G16R16F, D3DPOOL_SYSTEMMEM, &sys16.p, nullptr));
+    }
+    IDirect3DSurface9* old_rt = nullptr;
+    dev->GetRenderTarget(0, &old_rt);
+    float identity_clip[16]{};
+    identity_clip[0] = identity_clip[5] = identity_clip[10] = identity_clip[15] = 1.f;
+    const float tex_identity[8] = {1, 0, 0, 0, 0, 1, 0, 0}, tex_shift[8] = {1, 0, 0.5f, 0, 0, 1, 0, 0};
+    const cf::Vertex quad[6] = {{-1, -1, 0.5f, 0.25f, 0.5f, 0, 0, -1}, {-1, 1, 0.5f, 0.25f, 0.5f, 0, 0, -1},
+                                {1, 1, 0.5f, 0.25f, 0.5f, 0, 0, -1},   {-1, -1, 0.5f, 0.25f, 0.5f, 0, 0, -1},
+                                {1, 1, 0.5f, 0.25f, 0.5f, 0, 0, -1},   {1, -1, 0.5f, 0.25f, 0.5f, 0, 0, -1}};
+    struct ModelCase {
+        const float* tex_matrix;
+        unsigned texel;
+        float fade;
+        IDirect3DPixelShader9* game;
+    };
+    const ModelCase cases[2] = {{tex_identity, 0, 0.8f, ps1.p}, {tex_shift, 1, 0.35f, ps2s.p}};
+    float worst_model = 0.f;
+    bool vanilla_finite = true, vanilla_lit = true;
+    if (ok) dev->SetRenderTarget(0, rt16_s.p);
+    for (unsigned c = 0; c < 2 && ok; ++c) {
+        const ModelCase& k = cases[c];
+        for (unsigned which = 0; which < 2 && ok; ++which) { // 0 the AP program, 1 ours
+            dev->Clear(0, nullptr, D3DCLEAR_TARGET, 0, 1.f, 0);
+            dev->BeginScene();
+            dev->SetVertexShader(vs.p);
+            dev->SetVertexDeclaration(decl.p);
+            dev->SetPixelShader(which ? ours.p : k.game);
+            for (DWORD s = 0; s < 4; ++s) {
+                dev->SetSamplerState(s, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+                dev->SetSamplerState(s, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+                dev->SetSamplerState(s, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+                dev->SetSamplerState(s, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+                dev->SetSamplerState(s, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+                dev->SetSamplerState(s, D3DSAMP_SRGBTEXTURE, FALSE);
+            }
+            dev->SetTexture(0, tex2.p);
+            dev->SetTexture(1, nullptr);
+            dev->SetTexture(2, light.p);
+            dev->SetTexture(3, nullptr);
+            dev->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
+            dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+            dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+            dev->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+            dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE); // the program's output itself
+            dev->SetRenderState(D3DRS_COLORWRITEENABLE, 15);
+            dev->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+            cf::bind_constants(dev, identity_clip, k.tex_matrix, k.fade, 0.f);
+            float block[12];
+            for (unsigned i = 0; i < 8; ++i) block[i] = rs::identity_layout[i];
+            for (unsigned i = 0; i < 4; ++i) block[8 + i] = constants[i];
+            if (which) dev->SetPixelShaderConstantF(rs::block_register, block, rs::block_count);
+            ok = SUCCEEDED(dev->DrawPrimitiveUP(D3DPT_TRIANGLELIST, 2, quad, sizeof(cf::Vertex)));
+            dev->EndScene();
+            ok = ok && SUCCEEDED(dev->GetRenderTargetData(rt16_s.p, sys16.p));
+            D3DLOCKED_RECT o{};
+            ok = ok && SUCCEEDED(sys16.p->LockRect(&o, nullptr, D3DLOCK_READONLY));
+            if (!ok) break;
+            const auto* px = reinterpret_cast<const std::uint16_t*>(static_cast<const unsigned char*>(o.pBits) + 8 * o.Pitch) + 8 * 4;
+            const float got[4] = {half_to_float(px[0]), half_to_float(px[1]), half_to_float(px[2]), half_to_float(px[3])};
+            sys16.p->UnlockRect();
+            if (!which) {
+                for (unsigned i = 0; i < 4; ++i) vanilla_finite = vanilla_finite && std::isfinite(got[i]);
+                vanilla_lit = vanilla_lit && got[0] + got[1] + got[2] > 0.f; // informational: AP's lighting terms
+                std::printf("RESHADE case=lone_classic_ap_vanilla index=%u program=%s got=%.4f,%.4f,%.4f,%.4f\n", c,
+                            c ? "standard_lighting2s" : "standard_lighting", double(got[0]), double(got[1]),
+                            double(got[2]), double(got[3]));
+                continue;
+            }
+            const unsigned char* tb = two + 4 * k.texel;
+            const float t[3] = {tb[0] / 255.f, tb[1] / 255.f, tb[2] / 255.f};
+            float want[3];
+            rs::model(constants, t, k.fade, want);
+            for (unsigned i = 0; i < 3; ++i)
+                worst_model = std::max(worst_model, std::fabs(got[i] - want[i]) / (0.004f + 0.004f * std::fabs(want[i])));
+            std::printf("RESHADE case=lone_classic_ap_texel index=%u texel=%u fade=%.2f got=%.4f,%.4f,%.4f model=%.4f,%.4f,"
+                        "%.4f\n",
+                        c, k.texel, double(k.fade), double(got[0]), double(got[1]), double(got[2]), double(want[0]),
+                        double(want[1]), double(want[2]));
+        }
+    }
+    dev->SetPixelShader(nullptr);
+    dev->SetVertexShader(nullptr);
+    for (DWORD s = 0; s < 4; ++s) dev->SetTexture(s, nullptr);
+    dev->SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+    dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
+    dev->SetRenderTarget(0, old_rt);
+    if (old_rt) old_rt->Release();
+    std::printf("RESHADE case=lone_classic_ap loaded=%u game_hashes=%u ps_dwords=%u ps2s_dwords=%u created=%u "
+                "node_body=0x%x recognition=%u vanilla_finite=%u vanilla_lit=%u worst_rel=%.3f\n",
+                unsigned(loaded), unsigned(hashes), unsigned(ps_code.size()), unsigned(ps2s_code.size()), unsigned(created),
+                unsigned(rs::node_body_offset), unsigned(recognition), unsigned(vanilla_finite), unsigned(vanilla_lit),
+                double(worst_model));
+    report("reshade_lone_classic_ap_pair", ok && recognition && vanilla_finite && worst_model <= 1.f, "");
 }

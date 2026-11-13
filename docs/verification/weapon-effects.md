@@ -4555,3 +4555,107 @@ prefix `f9f0fe9dc83c7695`, `check_no_x87 --edition fl` 0 violations (1086 functi
 [`lone_classic_rows.py`](../../verification/results/native-windows/weapon-effects/lone_classic_rows.py). Not flown:
 the classic bodies' real meshes and textures, their TBullets body words and the far look rest on the fixture's
 stand-in bolt.
+
+## Re-shade on AP (2026-11-13)
+
+`X3M_WEAPON_EFFECTS=reshade` is now compiled for both editions. That covers the batch INSTANCE_BULLETS swap, the effects
+lone route, the lone classic route and the muzzle re-shade. Before, AP ran the mode as shields.
+
+- **Batch site.** AP's batch scope is the twin site `0x0046d0a7 → 0x004bfd40`
+  ([ap-bullet-batch-site.md](../reverse-engineering/ap-bullet-batch-site.md);
+  [weapon-effects.md](../architecture/weapon-effects.md) 2.9.1). It has its own stub,
+  `x3m_weapon_effects_stub_batch_scope`, which reads the body id from `[[esp+8]+0x0c]` and re-pushes four words under a
+  12-byte pad. The site is a plain copy claimed before the impact, in reshade mode only.
+- **Edition values.** The node body id is `core::layout::node_body` (AP `+0x140`, FL `+0x144`). The classic pixel pair
+  is a per-edition table: AP `7c83ed50c9894e44` / `e70adc744a38ca59`, FL `ced7edef…` / `0d5848c8…`.
+- **Rows.** `weapon_effects_reshade edition=ap runs=reshade|native reason=… muzzle=reshade|vanilla` and AP's
+  `bullet_reshade_site … edition=ap` (the same shape as FL's row).
+- **Open (review):** the stub does not restore `x3m_bullet_body` after the callee returns; a nested submit would
+  leave the inner batch's id for the outer submit's later draws (the depth counter stays correct); the RE note
+  traced one level deep and found no re-entry.
+
+**Native run** (`run_weapon_effects.py --host native`, 07:09:22-07:10:33, 71 s, on `060013e6d`-dirty). The first run
+failed one new AP case. The fixture expected the entry EAX/ECX/EDX at the loop's second submit, but the callee correctly
+sees the first callee's returns. The second run, after the fix:
+
+| Fixture | Checks | New |
+| --- | --- | --- |
+| AP hook | 153 PASS | 8 |
+| FL hook | 62 PASS | none |
+| D3D | 115 PASS | 1 |
+
+The AP hook fixture runs the engine's own 19 window bytes around the stub against a fake submit, once for one submit
+and once for the loop's two [m]:
+
+- The callee sees EAX/ECX/EDX/EBX/ESI/EDI/EBP and EFLAGS with DF set as the call left them.
+- Its four words are where the original call put them, and its ESP is the original call's minus 32.
+- The scope is 1 inside the call, and the body id is the batch's `+0x0c`.
+- Afterwards the window's own `mov esi,[esi]`, `add esp,0x10` and `cmp`/`jne` ran on the preserved registers and the
+  stack balanced. EAX/ECX/EDX are the callee's. DF, MXCSR, the x87 control word, both x87 stack values and LastError
+  are kept. Three scope calls in total.
+
+The other new AP cases [m]:
+
+- Each of the 19 window bytes flipped is refused (`bytes_mismatch_batch`, LastError kept).
+- A read-back fault at the batch site leaves the impact `not_attempted`; one at the impact rolls the batch back.
+- Shutdown disarms, and shields mode leaves the site `not_used`.
+- A late claim is refused (`late_claim`).
+- The mode rows are written.
+
+The build audit checks the stub's shape and finds the window identical to `/mnt/c/X3/X3AP.exe` [m].
+
+The D3D case `reshade_lone_classic_ap_pair` uses the AP pair extracted at run time from `/mnt/c/X3` (untracked;
+1298 / 1324 dwords, the VS the same `494fe349…`) [m]:
+
+- Recognition 5 of 5 under the AP row: AP one-sided and two-sided admitted, FL PS refused `program`, AP PS refused
+  under the FL row, alpha-blend refused `blend`.
+- The node body id is `0x140`.
+- The vanilla AP PS draws finite and lit.
+- Our classic program in its place matches the model, worst 0.026 of the tolerance.
+
+**FL unchanged** ([`fl_unchanged.py`](../../verification/results/ap-reshade/fl_unchanged.py) →
+[`_out.txt`](../../verification/results/ap-reshade/fl_unchanged_out.txt), against the committed records) [m]:
+
+- The FL hook's 62 checks are the same names and verdicts, and its muzzle row is equal.
+- The AP hook's 145 earlier checks and the D3D fixture's 114 are unchanged.
+- All 64 earlier RESHADE row keys are identical, timing fields excluded.
+- Of the 16 MUZZLE_RESHADE keys, 15 are identical. The cost row differs only in `bodies` 7 → 13.
+- The FL muzzle body rows reproduce `muzzle_bodies_out.txt` byte for byte.
+
+**Cost** [m]:
+
+- The muzzle match over 13 bodies costs 0.126 µs per draw for the last-listed body (0.085 with 7 on the committed
+  record) and 0.011 µs for a miss (0.010).
+- The AP stub is 20 instructions per submit against FL's 17 (two more pushes, one more load) [i: not timed].
+
+**Tables** ([`table_coverage.py`](../../verification/results/ap-reshade/table_coverage.py) →
+[`_out.txt`](../../verification/results/ap-reshade/table_coverage_out.txt); generated with `weapon_effects_table.py
+--edition ap [--stock-only]`, untracked) [m]. No generator change was needed.
+
+| View | Rows | Bodies | Body entries | Body gaps | Textures | Textured rows | Texture gaps | Untextured |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Mayhem | 38 | 32 | 32 | 0 | 19 | 37 | 0 | row 25 PBC v/00525 (lone classic) |
+| AP stock | 45 | 30 | 30 | 0 | 9 | 26 | 0 | 19 classic rows (FL's) |
+
+**Muzzle bodies.** Six Mayhem bodies were added to `bodies[]` after FL's seven
+([`muzzle_bodies_ap_out.txt`](../../verification/results/muzzle-reshade/muzzle_bodies_ap_out.txt), `muzzle_bodies.py
+--edition ap`, 445 first):
+
+- 445's row reproduces the FL run's, so the normalisation is FL's (t445 0.2547, ray 9.14).
+- Lit radius, hue and mean are measured; the overlap is inferred.
+- 12013 and 12014 have grey cells (a white flash).
+- 12011, MATERIAL6 `effects.fx`, stays vanilla.
+
+**Builds** (RelWithDebInfo, mingw-i686 GCC 16, `X3M_GNU_PE_NO_SAFESEH`, `X3M_DEV_TUNING`; fresh directories, then
+incremental for comment-only edits) [m]:
+
+| Edition | Directory | Steps | Warnings | Size | sha256 prefix | `check_no_x87` |
+| --- | --- | --- | --- | --- | --- | --- |
+| AP | `build-ap-reshade` | 156 | 0 | 64,621,490 B | `28a24e11d3add81d` | 0 violations, 1189 functions, the new stub a root |
+| FL | `build-fl-reshade` | 144 | 0 | 60,985,246 B | `d859fbbc0c1198b4` | 0 violations, 1086 functions |
+
+**Not flown on AP.** Open:
+
+- whether the live AP device receives the scanned program bytes;
+- how often bullets take the batch path against the lone path;
+- the Mayhem flashes' look.

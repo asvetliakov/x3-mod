@@ -11,9 +11,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'verification/results/muzzle-reshade/muzzle_bodies_out.txt'
+OUT_AP = ROOT / 'verification/results/muzzle-reshade/muzzle_bodies_ap_out.txt'
 # The census's classic standard_lighting flash bodies and their atlases (fl_muzzle_flash_census_out.txt); 12009 (PRG)
 # draws with effects.fx and stays unlisted.
-ATLAS = {445: 384, 446: 383, 444: 376, 450: 384, 447: 383, 314: 384, 10463: 380}
+ATLAS_FL = {445: 384, 446: 383, 444: 376, 450: 384, 447: 383, 314: 384, 10463: 380}
+# AP Mayhem's (ap-bullet-batch-site.md section 3; muzzle_bodies.py --edition ap, 445 first as the reference); 12011 is
+# MATERIAL6 effects.fx like 12009 and stays unlisted.
+ATLAS_AP = {12012: 924, 12013: 925, 12014: 926, 12016: 931, 12017: 932, 12018: 933}
+ATLAS = {**ATLAS_FL, **ATLAS_AP}
 
 HARNESS = r'''
 #include "muzzle_reshade_core.h"
@@ -77,15 +82,26 @@ class MuzzleBodies(unittest.TestCase):
             self.assertEqual(b['drawn'], 1, b)
             self.assertGreater(b['c192w'], 0.0)
 
-    def test_rows_are_the_producing_scripts_and_atlases_resolved(self):
-        text = OUT.read_text()
+    @staticmethod
+    def parse(path):
+        text = path.read_text()
         resolved = {int(m.group(1)): int(m.group(2)) for m in
                     re.finditer(r'^=== body (\d+) \(\S+\), atlas tex/true/(\d+) \(\2-[0-9a-f]{8}\.png\)$', text, re.M)}
-        self.assertEqual(resolved, ATLAS)
         rows = {}
         for m in re.finditer(r'^    \{(\d+)u, ([\d.]+)\.f, ([\d.]+)f, \{([\d.]+)f, ([\d.]+)f\}, '
                              r'\{([\d.]+)f, ([\d.]+)f, ([\d.]+)f\}\}, // tex/true/(\d+)$', text, re.M):
             rows[int(m.group(1))] = ([float(m.group(k)) for k in range(2, 9)], int(m.group(9)))
+        return resolved, rows
+
+    def test_rows_are_the_producing_scripts_and_atlases_resolved(self):
+        resolved, rows = self.parse(OUT)
+        self.assertEqual(resolved, ATLAS_FL)
+        self.assertEqual(set(rows), set(ATLAS_FL))
+        # the AP run measures 445 first, its reference: that row must equal the FL run's
+        resolved_ap, rows_ap = self.parse(OUT_AP)
+        self.assertEqual(resolved_ap, {445: 384, **ATLAS_AP})
+        self.assertEqual(rows_ap.pop(445), rows[445])
+        rows.update(rows_ap)
         self.assertEqual(set(rows), set(ATLAS))
         for b in self.table['bodies']:
             want, tex = rows[b['id']]

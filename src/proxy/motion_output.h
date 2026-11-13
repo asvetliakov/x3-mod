@@ -70,8 +70,8 @@
 #include "sun_light_poll.h"
 #include "../renderer/own_sun_pass.h" // the own sun (both editions, docs/architecture/own-sun-pass.md)
 #include "../renderer/weapon_effects_pass.h" // weapon effects step 1 (docs/architecture/weapon-effects.md)
-#include "weapon_projectile_family.h"       // the re-shades' tuning keys (FL reshade mode)
-#include "muzzle_reshade_core.h"            // the muzzle flash re-shade's bodies and constants (FL reshade mode)
+#include "weapon_projectile_family.h"       // the re-shades' tuning keys (reshade mode)
+#include "muzzle_reshade_core.h"            // the muzzle flash re-shade's bodies and constants (reshade mode)
 #include "../renderer/sky_stars_pass.h" // sky stars (both editions, docs/architecture/sector-background-modern.md)
 #include "../renderer/sky_nebula_pass.h" // sky nebula deband (both editions, sector-background-modern.md Decision C1)
 #include "sky_nebula_core.h"
@@ -277,7 +277,7 @@ struct MotionRoute {
     // Additive option: DESTBLEND ONE applied for this draw (restored to the
     // shadowed INVSRCCOLOR after it) and, with gain != 1, the gained PS bound.
     bool screen_additive = false, screen_additive_ps = false, screen_additive_alpha = false;
-    // Bullet re-shade (FL reshade mode, motion_output_bullet_reshade_inc.h): our program and c31 bound for this draw
+    // Bullet re-shade (reshade mode, motion_output_bullet_reshade_inc.h): our program and c31 bound for this draw
     // (put back after it); timed: the sequence is QPC-timed (sampled frames); convert: the additive route's draw
     // (DESTBLEND ONE applied by the sequence, put back to INVSRCCOLOR); flag: the flag variant (the route's far flag).
     bool bullet_reshade = false, bullet_reshade_timed = false, bullet_reshade_convert = false, bullet_reshade_flag = false;
@@ -296,7 +296,7 @@ struct MotionRoute {
     bool bullet_lone_native_flag = false;
     std::uint32_t bullet_body = 0;
     DWORD bullet_lone_app[4] = {};
-    // Muzzle flash re-shade (FL reshade mode, motion_output_muzzle_reshade_inc.h): muzzle_body the matched body's row;
+    // Muzzle flash re-shade (reshade mode, motion_output_muzzle_reshade_inc.h): muzzle_body the matched body's row;
     // reshade: our program and c192..c195 bound for this draw (put back after it); timed: the sequence is QPC-timed;
     // hull: the hull-emission route would have taken the draw (the re-shade bypasses it).
     bool muzzle_reshade = false, muzzle_timed = false, muzzle_hull = false;
@@ -1232,7 +1232,6 @@ public:
     // call, for weapon_effects::present.
     void configure_weapon_effects(bool requested) noexcept;
     bool weapon_effects_owned() const noexcept { return weapon_requested_ && weapon_owned_; }
-#if X3M_EDITION_FL
     // The bullet re-shade's texture map (capture.cpp texture_created / texture_released): a created texture whose bytes
     // are tables.bullet_textures entry `key` (reshade mode; false when not stored), and the final release of any texture.
     bool bullet_texture_insert(IDirect3DBaseTexture9* texture, std::uint64_t identity, unsigned key) noexcept;
@@ -1262,7 +1261,6 @@ public:
     void muzzle_reshade_take_frame(unsigned* draws, unsigned* matched, unsigned* hull, unsigned* failures,
                                    unsigned* timed, float* us) noexcept;
     bool muzzle_reshade_requested() const noexcept { return muzzle_reshade_requested_; }
-#endif
     static constexpr unsigned weapon_drop_count = 16;
     void weapon_effects_take_frame(unsigned* patches, unsigned* decals, unsigned* retired, float* stage_us, bool* drew,
                                    unsigned drops[weapon_drop_count]) noexcept; // dropped, cells_dropped, hits_dropped,
@@ -2338,7 +2336,6 @@ private:
     void note_weapon_state(bool armed, const char* reason) noexcept;
     static HRESULT weapon_effects_stage_callback(void* context, IDirect3DDevice9*) noexcept;
     HRESULT run_weapon_effects() noexcept;
-#if X3M_EDITION_FL
     // The re-shades' keys (weapon_projectile_family.h): the baked values, or the dev tuning file's (X3M_DEV_TUNING).
     weapon_effects::projectile_family::Tune reshade_tune_{};
     // The bullet re-shade (reshade mode; motion_output_bullet_reshade_inc.h, bullet-draw-batch.md section 6): requested
@@ -2418,7 +2415,6 @@ private:
     bool muzzle_reshade_ready() const noexcept;
     bool begin_muzzle_reshade(MotionRoute& route) noexcept;
     void finish_muzzle_reshade(MotionRoute& route) noexcept;
-#endif
     // Engine heat shimmer (motion_output_engine_shimmer_inc.h): requested with the plumes and the option on, the
     // pass (attached at the first frame with rects; refused at attach or failed: off until
     // Reset with one engine_shimmer_failed row), the frame's rects and report for the engine_shimmer row.
