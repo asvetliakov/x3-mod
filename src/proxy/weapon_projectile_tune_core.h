@@ -3,8 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
-// The dev-only in-flight tuning file's parser and reload rule (docs/architecture/projectile-look.md "Calibration in
-// flight"): <game>\x3m\projectile_tune.json, at most the nine re-shade numbers (weapon_projectile_family.h
+// The dev-only in-flight tuning file's parser and reload rule (docs/architecture/projectile-look.md "Dev tuning
+// file"): <game>\x3m\projectile_tune.json, at most the nine re-shade numbers (weapon_projectile_family.h
 // tune_key_names). Portable and allocation-free (the host test
 // verification/analysis/test_weapon_effects_projectile_tune.py compiles it); the file reader around it
 // (weapon_projectile_tune.cpp) exists only in an X3M_DEV_TUNING build.

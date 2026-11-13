@@ -14,8 +14,10 @@ for name, r in (('ap_hook', hook), ('fl_hook', fl), ('d3d', d3d)):
     print(name, r['passed'], r['run']['result'], r['source']['commit'])
 print('fl_batch', [(c['name'], c['passed']) for c in fl['checks'] if 'batch' in c['name'] or 'projectile' in c['name']
                    or c['name'].startswith('object_tap_registers')])
-print('fl_stub_ok', fl['build']['audit']['stub_ok'].get('_x3m_weapon_effects_stub_batch_fl'),
+# the batch skip stub was removed on 2026-11-13 (docs/archive/effects-look-2026-11-13-custom-projectile/index.md):
+# records since then carry the scope stub only, so the key is optional
+print('fl_stub_ok', fl['build']['audit']['stub_ok'].get('_x3m_weapon_effects_stub_batch_fl', 'removed'),
       'windows', fl['build']['audit']['windows_match_exe'].get('batch'), 'stack', fl['stack_depth'])
 print('d3d_projectile_checks', [(n, ok) for n, ok in d3d['checks'] if n.startswith('projectile')])
-for row in d3d['metrics']['projectile']:
+for row in d3d['metrics'].get('projectile', []):  # no PROJECTILE rows since 2026-11-13
     print(row)
