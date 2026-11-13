@@ -234,7 +234,11 @@ it matches only 445, 444, 446 and 314. The flashes of IRE, PAC, MD, HEPT, PBE (1
 EBC/FAA/AKE/BKE/GC (12016), PBG/ISR (12017), PALC/PAA (12012), PPC/IBL (12014 + 12013) and ID (12011, effects.fx,
 like 12009) are absent from it. MAML, SSC and GRC (row 118) have no CUT element at all, only lens flares and a light.
 
-## Consequences for an AP port (inferred, nothing implemented)
+## Consequences for an AP port (inferred when written; implemented 2026-11-13)
+
+Implemented as listed: `src/proxy/weapon_effects_batch_site.h`, `x3m_weapon_effects_stub_batch_scope`, the per-edition
+classic pixel pair in `bullet_reshade_core.h` and six Mayhem muzzle bodies (12012, 12013, 12014, 12016, 12017, 12018)
+([weapon-effects.md](../verification/weapon-effects.md), "Re-shade on AP"). Not flown.
 
 - The scope stub on AP needs: a VA site record with the window above and no fixup; the plain-copy claim inside the
   install window; a stub that reads the batch from `[esp+8]` and re-pushes four words; and the AP node body id

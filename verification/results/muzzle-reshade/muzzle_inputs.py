@@ -26,6 +26,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / 'tools/analysis'))
 sys.path.insert(0, str(ROOT / 'verification/results/fl-muzzle-flash-draw'))
 W = (0.2126, 0.7152, 0.0722)
+EDITION = 'fl'  # the catalogue view body_mesh mounts (muzzle_bodies.py --edition ap: every catalogue an AP tree mounts)
 
 
 def pairs(game):
@@ -60,7 +61,7 @@ def body_mesh(game, body):
     the untextured `-9` faces and the parts' dummies drop out), and the MATERIAL3/5 texture id. Returns (source,
     vertices, faces, texture id)."""
     import fl_muzzle_flash_census as census
-    a = census.mount(game, 'fl')
+    a = census.mount(game, EDITION)
     text, src = census.text(a, 'objects/v/%05d.bod' % body)
     coords, rest = re.split(r'^\s*-1;\s*-1;\s*-1;', text, maxsplit=1, flags=re.M)
     verts = [tuple(int(x) for x in m) for m in

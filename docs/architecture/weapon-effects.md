@@ -232,6 +232,32 @@ read-back after every write; a family's sites are claimed in atomic-first order 
 sites that still hold this module's call. `weapon_effects = native` is the user's rollback; an installed DLL without
 the key behaves as native until a family is accepted. Instances created before a stub arms are untouched (arm once).
 
+### 2.9.1 AP bullet batch scope `0x0046d0a7` → `0x004bfd40(scene, batch, material, view)` (reshade mode)
+
+The bullet re-shade's scope site on AP (2026-11-13), the twin of FL's `0x097af8`
+([ap-bullet-batch-site.md](../reverse-engineering/ap-bullet-batch-site.md) section 1; table
+[weapon_effects_batch_site.h](../../src/proxy/weapon_effects_batch_site.h), site 8 of `install_at`). The site is a
+cdecl call with four stack words and no register input. The caller pops `0x10`. EBX, ESI, EDI and EBP are live after
+it and the callee saves them. EAX, ECX, EDX and EFLAGS are dead. The callee has no SEH frame and uses x87 and
+`rep movsd`.
+
+- **Window.** 19 bytes `0x0046d0a3..0x0046d0b6` (FNV-1a 32 `0x949efb9a`, pinned by `static_assert`, and compared with
+  the installed EXE by the hook fixture's build audit). It is compared whole before any write; a mismatch is
+  `bytes_mismatch_batch`.
+- **Claim.** The call straddles the qword `0x0046d0a8`, so the claim is the plain copy inside the install window. In
+  reshade mode the batch is claimed before the impact, all or none. `x3m_bullet_reshade_armed` is set once both sites
+  are live. Shields mode leaves the site `not_used`.
+- **Stub** (`x3m_weapon_effects_stub_batch_scope`). It publishes the batch's body id `[[esp+8]+0x0c]` through a saved
+  EAX, then raises `x3m_bullet_scope` and the call count under `pushfd`/`popfd`. It re-pushes the four words under a
+  12-byte pad, so the callee's ESP is the original call's minus 32 (the same alignment modulo 16). It calls
+  `x3m_weapon_effects_continue_batch`, drops the pad with `lea`, lowers the scope and returns. There is no handler, no
+  XMM, no x87 and no string instruction. EFLAGS, DF, the x87 stack and LastError pass untouched.
+- **Rows.** `weapon_effects_patch site=batch va=0046d0a7 …`, `bullet_reshade_site … edition=ap` and
+  `weapon_effects_reshade edition=ap runs=reshade|native reason=… muzzle=reshade|vanilla`.
+- **Fixture.** The AP hook fixture runs the engine's own window bytes around the stub against a fake submit (one submit,
+  then the loop's two). It also flips each of the 19 bytes, faults the read-back at either site, and covers shutdown,
+  shields and the late claim ([weapon-effects.md](../verification/weapon-effects.md), "Re-shade on AP").
+
 ### 2.10 FL
 
 X3FL.exe (SHA-256 `e7f3aad8…401dfbb8`, relocatable, `C:\X3FL`) runs the same families through the same installer at its

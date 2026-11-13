@@ -127,6 +127,12 @@ PROGRAMS = {
 CLASSIC_PROGRAMS = {('standard_lighting', 'vs'): ('classic_vs.bin', '494fe349b8bc12ec'),
                     ('standard_lighting', 'ps'): ('classic_ps.bin', 'ced7edef48059e84'),
                     ('standard_lighting2s', 'ps'): ('classic_ps2s.bin', '0d5848c8489b6630')}
+# The AP edition's pair (docs/reverse-engineering/ap-bullet-batch-site.md section 2: the same VS bytes, its own
+# standard_lighting / 2s DEFAULT PS), from the AP catalogues (--ap-game, every catalogue it mounts; Mayhem overrides no
+# shader entry) for the fixture's lone_classic_ap case.
+CLASSIC_PROGRAMS_AP = {('standard_lighting', 'vs'): ('ap_classic_vs.bin', '494fe349b8bc12ec'),
+                       ('standard_lighting', 'ps'): ('ap_classic_ps.bin', '7c83ed50c9894e44'),
+                       ('standard_lighting2s', 'ps'): ('ap_classic_ps2s.bin', 'e70adc744a38ca59')}
 # The full-shell record this patch replaces (docs/verification/weapon-effects.md, native, commit bc30d8cf1): two shells
 # and the full-screen shell, fenced (us); the patch's timing cases are reported against them, not gated.
 SHELL_PINS = {'two_shells_1080_us': 61.3, 'two_shells_5120_us': 201.8, 'fullscreen_1080_us': 43.7,
@@ -138,7 +144,7 @@ HOOK_SOURCES = ('verification/probe/weapon_effects_hook_fixture.cpp', 'verificat
                 'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
                 'src/proxy/weapon_effects_sites.h', 'src/proxy/weapon_effects_bolt.h', 'src/proxy/weapon_effects_bolt_sites.h',
                 'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
-                'src/proxy/weapon_effects_death_sites.h')
+                'src/proxy/weapon_effects_death_sites.h', 'src/proxy/weapon_effects_batch_site.h')
 # The FL hook fixture's inputs (docs/architecture/weapon-effects.md 2.10): the FL fixture, the shared module/handler
 # compiled with X3M_EDITION_FL, the FL site table and the build script.
 HOOK_FL_SOURCES = ('verification/probe/weapon_effects_hook_fixture_fl.cpp', 'verification/probe/weapon_effects_hook_fixture_shim.h',
@@ -146,7 +152,7 @@ HOOK_FL_SOURCES = ('verification/probe/weapon_effects_hook_fixture_fl.cpp', 'ver
                    'src/proxy/weapon_effects_patch.h', 'src/proxy/weapon_effects_hook.cpp', 'src/proxy/weapon_effects_core.h',
                    'src/engine/fl/weapon_effects_sites_fl.h', 'src/proxy/weapon_effects_bolt.h',
                    'src/proxy/weapon_effects_table.h', 'src/proxy/engine_patch.cpp', 'src/proxy/engine_patch.h',
-                   'src/engine/fl/executable_identity_fl.h')
+                   'src/engine/fl/executable_identity_fl.h', 'src/proxy/weapon_effects_batch_site.h')
 
 
 def sha(path):
@@ -176,11 +182,12 @@ def programs_current():
     return out
 
 
-def classic_programs(game):
-    """Write CLASSIC_PROGRAMS' bytes from the FL archive at `game` into BUILD (the fixture's working directory); the
-    record: per file its hash, dwords and whether it was written (absent: the fixture's lone classic cases fail)."""
+def classic_programs(game, edition='fl', programs=CLASSIC_PROGRAMS):
+    """Write the programs' bytes (CLASSIC_PROGRAMS from the FL archive, CLASSIC_PROGRAMS_AP from the AP one) at `game`
+    into BUILD (the fixture's working directory); the record: per file its hash, dwords and whether it was written
+    (absent: the fixture's lone classic cases of that edition fail)."""
     out = {}
-    for _, (name, _) in CLASSIC_PROGRAMS.items():
+    for _, (name, _) in programs.items():
         (BUILD / name).unlink(missing_ok=True)
     if not Path(game).is_dir():
         return {'game': str(game), 'found': False}
@@ -188,7 +195,7 @@ def classic_programs(game):
     from effect_passes import _archive_effects, parse_container, VERTEX_SHADER_STATE, PIXEL_SHADER_STATE
     from shader_coverage_offline import _program
     BUILD.mkdir(parents=True, exist_ok=True)
-    for _, path, data in _archive_effects(str(game), edition='fl'):
+    for _, path, data in _archive_effects(str(game), edition=edition):
         p = Path(path)
         if p.parent.as_posix() != 'shader/3_0' or p.stem not in ('standard_lighting', 'standard_lighting2s'):
             continue
@@ -198,7 +205,7 @@ def classic_programs(game):
                 continue
             for si, st in enumerate(tps[0][1]):
                 stage = 'vs' if st[0] == VERTEX_SHADER_STATE else 'ps' if st[0] == PIXEL_SHADER_STATE else None
-                want = CLASSIC_PROGRAMS.get((p.stem, stage))
+                want = programs.get((p.stem, stage))
                 prog = _program(data, c, ti, 0, si) if want else None
                 if not prog:
                     continue
@@ -573,6 +580,9 @@ def main():
                         help='the FL installation whose catalogues give the lone classic cases\' standard_lighting '
                              'DEFAULT programs (untracked copies in the build directory) and, with --dump-case muzzle, '
                              'body 445')
+    parser.add_argument('--ap-game', default='/mnt/c/X3',
+                        help='the AP installation whose catalogues give the lone classic AP case\'s standard_lighting '
+                             'DEFAULT programs (untracked copies in the build directory)')
     parser.add_argument('--reshade-edge', type=float, default=None,
                         help='with --dump-case reshade: an rs_edge override; only the re-shaded frames, suffixed -eNNN')
     parser.add_argument('--lab-assets', default=str(ROOT / 'verification/results/weapon-effects-lab/fl'),
@@ -604,6 +614,7 @@ def main():
     d3dx = native_host.GAME_DIR / 'd3dx9_37.dll' if native else bottle.game_dir() / 'd3dx9_37.dll'
     record['d3dx9_37_sha256'] = sha(d3dx) if Path(d3dx).is_file() else None
     record['classic_programs'] = classic_programs(args.game)
+    record['classic_programs_ap'] = classic_programs(args.ap_game, 'ap', CLASSIC_PROGRAMS_AP)
     returncode, text = run_fixture(args)
     report = parse(text)
     if native:

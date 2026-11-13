@@ -1,6 +1,7 @@
-// Weapon effects, step 1: the shield hit (included by motion_output.cpp inside namespace x3m; AP only;
-// weapon_effects_patch.h, weapon_effects_stage.h, renderer/weapon_effects_pass.h; docs/architecture/weapon-effects.md
-// 2.6, 5.1 and 5.1.1). X3M_WEAPON_EFFECTS=shields: the impact hook records every hit into the proxy ring and marks a
+// Weapon effects, step 1: the shield hit (included by motion_output.cpp inside namespace x3m; both editions, the hooks'
+// sites per edition: weapon_effects_patch.h, weapon_effects_stage.h, renderer/weapon_effects_pass.h;
+// docs/architecture/weapon-effects.md 2.6, 5.1 and 5.1.1), and the re-shades' request (reshade mode, both editions:
+// motion_output_bullet_reshade_inc.h, motion_output_muzzle_reshade_inc.h). X3M_WEAPON_EFFECTS=shields: the impact hook records every hit into the proxy ring and marks a
 // shield hit stage-owned (flag_stage) while the stage owned the previous frame and skips the engine's own impact for it
 // (core::suppress_native_shield_hit, coordinator decision 2026-11-06: the patch alone). This
 // stage draws the hex patches and flat decals of the ring's
@@ -21,7 +22,6 @@
 // armed state or its reason; one weapon_effects_device row per attach; weapon_effects_failed per failed stage frame.
 void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     weapon_requested_ = requested;
-#if X3M_EDITION_FL
     // The re-shades' keys start at their baked values (the dev tuning file, when compiled in, polls over them).
     reshade_tune_ = weapon_effects::projectile_family::baked;
     // The bullet re-shade rides the weapon stage's request when the batch scope stub is live (reshade mode).
@@ -32,7 +32,6 @@ void MotionOutput::configure_weapon_effects(bool requested) noexcept {
     // gives the node at the draw; without that scope no draw matches).
     muzzle_reshade_requested_ = requested && weapon_effects::core::reshade_mode(weapon_effects::mode());
     muzzle_reshade_refresh_constants();
-#endif
     weapon_armed_ = false;
     weapon_callback_set_ = weapon_callback_ok_ = weapon_owned_ = false;
     weapon_failures_ = 0;

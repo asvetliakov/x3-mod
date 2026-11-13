@@ -17,8 +17,9 @@ constexpr std::uint64_t vertex_shader = 0x494fe349b8bc12ecull;
 constexpr unsigned world_register = 28, view_inverse_register = 34; // the VS's g_mWorld rows and g_mViewInverse rows
 constexpr unsigned vs_rows_first = 28, vs_rows_count = 9;            // c28..c36: the block the shadow keeps
 constexpr std::uint16_t vs_rows_read = 0x1c7u; // the shadow's known bits draw_constants needs: c28..c30 and c34..c36
-// FL node +0x144: the body id the object-trace scope's node carries at the material submit (muzzle-flash-draw.md 1).
-constexpr std::uint32_t node_body_offset = 0x144;
+// The body id the object-trace scope's node carries at the material submit: FL node +0x144 (muzzle-flash-draw.md 1),
+// AP +0x140 (ap-bullet-batch-site.md section 3: the scope 0x004c5228 -> 0x004c0150's node argument, read at 0x004c5008).
+constexpr std::uint32_t node_body_offset = core::layout::node_body;
 // The muzzle bodies: every classic standard_lighting muzzle flash body of the FL census (MATERIAL3/5, Materials flags
 // DESTINATIONBLEND|2SIDED; verification/results/fl-muzzle-flash-draw/fl_muzzle_flash_census_out.txt): 445 (scene 04251:
 // IRE, PD, PSG, PBC, flak, frags, the secondary of PPC/PSP/MAM/CIG), 446 (04253: EMP, Mining, IPG, IonC, IBL, SSC, the
@@ -65,6 +66,18 @@ constexpr Body bodies[] = {
     {447u, 44959.f, 0.3804f, {89.4113f, 13.1842f}, {1.1154f, 0.9597f, 1.0595f}},  // tex/true/383
     {314u, 51481.f, 0.9699f, {30.9032f, 4.5568f}, {0.8720f, 1.0313f, 1.0672f}},   // tex/true/384, bottom cell
     {10463u, 63918.f, 0.0385f, {19.5086f, 2.8766f}, {1.3042f, 0.9372f, 0.7269f}}, // tex/true/380
+    // AP Mayhem's flash bodies (addon/06.cat; docs/reverse-engineering/ap-bullet-batch-site.md section 3: scenes 08311,
+    // 08002, 04437's override, 08004, 08005, 08006; DESTINATIONBLEND without 2SIDED, so the one-sided standard_lighting
+    // DEFAULT pair), measured as the six above (muzzle_bodies.py --edition ap, muzzle_bodies_ap_out.txt: 445 first, its
+    // row equal to the FL run's, so the overlap is normalised to it; overlap inferred). 12013 and 12014 have grey cells
+    // (hue 1, 1, 1: a white flash). 12011 is MATERIAL6 effects.fx (like 12009): not this pair, not listed. Absent from the
+    // FL and stock AP catalogues: there a miss costs one compare each, after the seven.
+    {12012u, 35503.f, 0.0449f, {28.5714f, 4.2130f}, {1.1945f, 0.9475f, 0.9477f}}, // tex/true/924 (PALC, PAA)
+    {12013u, 59040.f, 0.2072f, {15.2693f, 2.2515f}, {1.0000f, 1.0000f, 1.0000f}}, // tex/true/925 (PBE, PPC/IBL)
+    {12014u, 63923.f, 0.0396f, {19.5086f, 2.8766f}, {1.0000f, 1.0000f, 1.0000f}}, // tex/true/926 (PPC/IBL)
+    {12016u, 59102.f, 0.2178f, {15.2693f, 2.2515f}, {0.8801f, 1.1015f, 0.3481f}}, // tex/true/931 (EBC, FAA, AKE, BKE, GC)
+    {12017u, 51167.f, 0.0373f, {37.5131f, 5.5315f}, {2.5455f, 0.5790f, 0.6198f}}, // tex/true/932 (PBG, ISR)
+    {12018u, 49429.f, 0.0349f, {36.7517f, 5.4192f}, {1.0673f, 0.8098f, 2.6859f}}, // tex/true/933 (PRG, CFA, RL)
 };
 constexpr unsigned body_count = sizeof bodies / sizeof bodies[0];
 static_assert(body_count < 256, "MotionRoute::muzzle_body is a byte");

@@ -49,7 +49,11 @@
 // classes census and forwarded byte-exact; the rule-(b) missile and bullet area deaths forwarded unrecorded); rows
 // `weapon_death` (the run's first 64, then 16 per period, every death of a capture frame) and `weapon_boom_frame` every
 // 300 frames.
-// Rows: `weapon_effects_patch site=impact|tap1|tap2|bolt_tap|muzzle|flight|death_area|death_other va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
+// Reshade (X3M_WEAPON_EFFECTS=reshade; weapon_effects_batch_site.h, docs/reverse-engineering/ap-bullet-batch-site.md):
+// the impact (shields) and the bullet batch submit call 0x0046d0a7 -> 0x004bfd40 (plain write: it straddles a qword),
+// claimed with the re-shade's scope stub, which forwards every submit with x3m_bullet_scope raised around it; batch
+// before the impact, all or none; x3m_bullet_reshade_armed once both are live.
+// Rows: `weapon_effects_patch site=impact|tap1|tap2|bolt_tap|muzzle|flight|death_area|death_other|batch va=<site> state=<site> reason=<overall> mode=<mode> setting=<value>
 // write=none|atomic|plain` per site at initialize; `weapon_effects_table event= reason= rows= entries= textures=
 // overrides= dropped= bytes= path=` once; the frame rows of present() below and `weapon_effects_scope frame= cleared=
 // loading= sector_key= load_epoch= clears=` when a scope change clears stage-owned records. The FL edition writes one
@@ -65,6 +69,8 @@ struct Addresses {
                    flight_target = 0;
     // Step 3 (the explosions modes; weapon_effects_death_sites.h): the area and other death windows and their callee.
     std::uintptr_t death_area_window = 0, death_other_window = 0, death_target = 0;
+    // The reshade mode (weapon_effects_batch_site.h): the bullet batch submit's window and callee (zero outside it).
+    std::uintptr_t batch_window = 0, batch_target = 0;
 };
 bool initialize();
 bool shutdown();
@@ -79,7 +85,6 @@ bool install_at(const Addresses& a, core::Mode mode);
 #endif
 bool installed();
 core::Mode mode();
-#if X3M_EDITION_FL
 // The bullet re-shade's per-texture normaliser (bullet_reshade_core.h; weapon_effects.json tables.bullet_textures,
 // loaded at install): the entry the bytes the engine handed D3DXCreateTextureFromFileInMemoryEx are (-1: none, no
 // table, or the scope stub is not live), the entries kept, and an entry's p99 x 65535 (0 past the count; c31.w is
@@ -88,17 +93,18 @@ int bullet_texture_key(const void* data, std::size_t size) noexcept;
 unsigned bullet_texture_count() noexcept;
 std::uint16_t bullet_texture_p99_q(unsigned key) noexcept;
 // The geometric size (bullet_reshade_core.h layout_constants): the 16.16 layout words of the tables.bullet_bodies entry
-// of an engine body id (the batch's [EDX+0x0c], x3m_bullet_body), nullptr when it has none. *final false: the engine's
-// TBullets was not readable yet, so a caller must not cache the miss. One bullet_reshade_layout row when the map is
-// built (the first lookup that can read TBullets); then a compare per mapped body.
+// of an engine body id (the batch's [EDX+0x0c] on FL, [[esp+8]+0x0c] on AP: x3m_bullet_body), nullptr when it has
+// none. *final false: the engine's TBullets was not readable yet, so a caller must not cache the miss. One
+// bullet_reshade_layout row when the map is built (the first lookup that can read TBullets); then a compare per mapped
+// body.
 const std::int32_t* bullet_body_layout(std::uint32_t body, bool* final) noexcept;
-#endif
 // The ship profiles of weapon_effects.json (schema 3 ship_profiles; the lathe bubble, weapon_effects_lathe.h), loaded
 // with the table into one heap block, read-only afterwards; nullptr when the file carries none (or none was kept).
 const core::ShipProfiles* ship_profiles() noexcept;
 const char* state();
-// 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3); FL: 6 death
-// (the one FL call), 7 batch (the bullet batch submit 0x097af8: the re-shade's scope stub, reshade mode)
+// 0 impact, 1 tap1, 2 tap2, 3 bolt_tap, 4 muzzle, 5 flight (step 4), 6 death_area, 7 death_other (step 3), 8 batch (the
+// bullet batch submit 0x0046d0a7: the re-shade's scope stub, reshade mode); FL: 6 death (the one FL call), 7 batch (the
+// bullet batch submit 0x097af8: the re-shade's scope stub, reshade mode)
 const char* site_state(unsigned site);
 const char* write_path(unsigned site);
 core::HookState& hook_state(); // the game thread's state (ring, latch, counters): the stage and Present read it
@@ -172,17 +178,20 @@ std::uint32_t game_ms(); // cfg+0x718 (FL +0x708) through engine_memory (0 when 
 // The engine's game-time step of the frame, cfg +0x714 (FL +0x704), ms with SETA (0 when unreadable).
 std::uint32_t game_step_ms();
 }
+// The bullet re-shade (mode_reshade), both editions: the batch call's scope stub (FL x3m_weapon_effects_stub_batch_scope_fl,
+// AP x3m_weapon_effects_stub_batch_scope), its depth counter (non-zero inside the game's bullet submit) and its call
+// count; x3m_bullet_reshade_armed is set once that stub is live.
+extern "C" {
+extern volatile std::uint32_t x3m_bullet_scope;
+extern volatile std::uint32_t x3m_bullet_scope_calls;
+extern volatile std::uint32_t x3m_bullet_body; // the submitted batch's body id (FL [EDX+0x0c], AP [[esp+8]+0x0c])
+extern volatile std::uint32_t x3m_bullet_reshade_armed;
+extern std::uintptr_t x3m_weapon_effects_continue_batch;
+}
 #if X3M_EDITION_FL
 extern "C" {
 void x3m_weapon_effects_stub_impact_fl();
-// The bullet re-shade (mode_reshade): the batch call's scope stub, its depth counter (non-zero inside the game's bullet
-// submit) and its call count; x3m_bullet_reshade_armed is set once that stub is live.
 void x3m_weapon_effects_stub_batch_scope_fl();
-extern volatile std::uint32_t x3m_bullet_scope;
-extern volatile std::uint32_t x3m_bullet_scope_calls;
-extern volatile std::uint32_t x3m_bullet_body; // the submitted batch's body id [EDX+0x0c] (the geometric size)
-extern volatile std::uint32_t x3m_bullet_reshade_armed;
-extern std::uintptr_t x3m_weapon_effects_continue_batch;
 void x3m_weapon_effects_stub_tap_fl();
 void x3m_weapon_effects_stub_bolt_tap_fl();
 void x3m_weapon_effects_stub_muzzle_fl();
@@ -225,5 +234,7 @@ void x3m_weapon_effects_stub_death_other();
 int __cdecl x3m_weapon_death_area(const std::uint32_t* entry, std::uint32_t ebp);
 int __cdecl x3m_weapon_death_other(const std::uint32_t* entry, std::uint32_t ebp);
 extern std::uintptr_t x3m_weapon_effects_continue_death;
+// The reshade mode: the bullet batch submit's scope stub (no handler).
+void x3m_weapon_effects_stub_batch_scope();
 }
 #endif

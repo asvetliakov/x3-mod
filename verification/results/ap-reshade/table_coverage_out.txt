@@ -1,0 +1,22 @@
+mayhem.json: tbullets 38 rows, 32 distinct bodies, 32 bullet_bodies entries, bodies without an entry []; 20 distinct row textures, 19 bullet_textures entries, 37 rows with a texture, textured rows without an entry [], rows without a texture [25]
+  untextured row 25 SS_BULLET_PBC body objects/v/00525 shape slug
+stock.json: tbullets 45 rows, 30 distinct bodies, 30 bullet_bodies entries, bodies without an entry []; 6 distinct row textures, 9 bullet_textures entries, 26 rows with a texture, textured rows without an entry [], rows without a texture [2, 7, 8, 15, 16, 17, 18, 19, 26, 27, 29, 30, 31, 32, 33, 34, 40, 43, 44]
+  untextured row 2 SS_BULLET_MASS body objects/v/10436 shape tracer
+  untextured row 7 SS_BULLET_IOND body objects/v/00300 shape slug
+  untextured row 8 SS_BULLET_PBE body objects/v/10458 shape tracer
+  untextured row 15 SS_BULLET_FLAK_ALPHA body objects/v/10458 shape tracer
+  untextured row 16 SS_BULLET_FLAK_CLUSTER body objects/v/10458 shape tracer
+  untextured row 17 SS_BULLET_PAL body objects/v/10385 shape tracer
+  untextured row 18 SS_BULLET_PSG body objects/v/00225 shape orb
+  untextured row 19 SS_BULLET_TERANTIFIGHTER body objects/v/00300 shape slug
+  untextured row 26 SS_BULLET_TRIBEAM body objects/v/10385 shape tracer
+  untextured row 27 SS_BULLET_FUSIONBEAM body objects/v/10385 shape tracer
+  untextured row 29 SS_BULLET_TUG body objects/v/00525 shape slug
+  untextured row 30 SS_BULLET_DUMMY1 body objects/v/10459 shape slug
+  untextured row 31 SS_BULLET_DUMMY2 body objects/v/00525 shape slug
+  untextured row 32 SS_BULLET_KH_ALPHA body objects/v/00525 shape slug
+  untextured row 33 SS_BULLET_KH_BETA body objects/v/00526 shape slug
+  untextured row 34 SS_BULLET_KH_GAMMA body objects/v/00527 shape orb
+  untextured row 40 SS_BULLET_TERRANANTIFIGHTER_FRAG body objects/v/00225 shape orb
+  untextured row 43 SS_BULLET_TERRANANTIFIGHTER_1 body objects/v/00300 shape slug
+  untextured row 44 SS_BULLET_IPG_FRAG body objects/v/10459 shape slug

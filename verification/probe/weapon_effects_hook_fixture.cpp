@@ -22,6 +22,7 @@
 #include "../../src/proxy/weapon_effects_sites.h"
 #include "../../src/proxy/weapon_effects_bolt_sites.h"
 #include "../../src/proxy/weapon_effects_death_sites.h"
+#include "../../src/proxy/weapon_effects_batch_site.h"
 #include "../../src/proxy/weapon_effects_table.h"
 #include "../../src/proxy/engine_patch.h"
 #include <windows.h>
@@ -1699,6 +1700,295 @@ void death_checks() {
 }
 }
 
+// ---------------------------------------------------------------------------- the reshade mode's batch scope site
+// The bullet batch submit 0x0046d0a7 -> 0x004bfd40 (weapon_effects_batch_site.h; docs/reverse-engineering/
+// ap-bullet-batch-site.md section 1): the window copied into the fixture's engine pages, a planted jmp at its end
+// (0x0046d0b6) to we_batch_back and one at the callee to we_batch_callee. we_batch_enter loads a hostile MXCSR, x87
+// control word and two x87 stack values, EBX = view, ESI = &material, EDI = &batch, EBP = scene, sentinels in
+// EAX/ECX/EDX and the entry EFLAGS (DF set), then jumps to the window's first push on its own stack, so the engine's
+// own bytes run: the four pushes, the call (the scope stub), `mov esi,[esi]` (ESI must survive the call), the
+// caller's add esp,0x10 and the loop's cmp / jne (a two-entry material list submits twice).
+extern "C" {
+std::uint32_t we_batch_in[8];   // ebx, esi, edi, ebp, eflags, mxcsr, fcw, window
+std::uint32_t we_batch_out[13]; // eax, ebx, ecx, edx, esi, edi, ebp, eflags, esp, mxcsr, fcw, st0 (8 bytes)
+std::uint32_t we_batch_st1[2];
+std::uint32_t we_batch_ca[16];  // the callee: eax ecx edx ebx esi edi ebp eflags esp, [esp+4..+0x10], scope, body, calls
+std::uint32_t we_batch_saved_esp, we_batch_saved_mxcsr, we_batch_saved_fcw, we_batch_s0;
+void we_batch_enter();
+void we_batch_back();
+void we_batch_callee();
+}
+asm(R"(
+    .intel_syntax noprefix
+    .text
+    .p2align 4
+    .globl _we_batch_enter
+_we_batch_enter:
+    push ebp
+    push ebx
+    push esi
+    push edi
+    mov dword ptr [_we_batch_saved_esp], esp
+    stmxcsr dword ptr [_we_batch_saved_mxcsr]
+    fnstcw word ptr [_we_batch_saved_fcw]
+    ldmxcsr dword ptr [_we_batch_in+20]
+    fldcw word ptr [_we_batch_in+24]
+    fld qword ptr [_we_batch_x87_a]
+    fld qword ptr [_we_batch_x87_b]
+    mov ebx, dword ptr [_we_batch_in+0]
+    mov esi, dword ptr [_we_batch_in+4]
+    mov edi, dword ptr [_we_batch_in+8]
+    mov ebp, dword ptr [_we_batch_in+12]
+    mov eax, 0xa1a1a1a1
+    mov ecx, 0xc1c1c1c1
+    mov edx, 0xd1d1d1d1
+    mov esp, dword ptr [_we_batch_s0]
+    push dword ptr [_we_batch_in+16]
+    popfd
+    jmp dword ptr [_we_batch_in+28]
+
+    .p2align 4
+    .globl _we_batch_back
+_we_batch_back:                                 # the window's end (planted jmp at 0x0046d0b6)
+    pushfd
+    pop dword ptr [_we_batch_out+28]
+    cld
+    mov dword ptr [_we_batch_out+0], eax
+    mov dword ptr [_we_batch_out+4], ebx
+    mov dword ptr [_we_batch_out+8], ecx
+    mov dword ptr [_we_batch_out+12], edx
+    mov dword ptr [_we_batch_out+16], esi
+    mov dword ptr [_we_batch_out+20], edi
+    mov dword ptr [_we_batch_out+24], ebp
+    mov dword ptr [_we_batch_out+32], esp
+    stmxcsr dword ptr [_we_batch_out+36]
+    fnstcw word ptr [_we_batch_out+40]
+    fstp qword ptr [_we_batch_out+44]
+    fstp qword ptr [_we_batch_st1]
+    ldmxcsr dword ptr [_we_batch_saved_mxcsr]
+    fldcw word ptr [_we_batch_saved_fcw]
+    mov esp, dword ptr [_we_batch_saved_esp]
+    pop edi
+    pop esi
+    pop ebx
+    pop ebp
+    ret
+
+    .p2align 4
+    .globl _we_batch_callee
+_we_batch_callee:                               # 0x004bfd40 stand-in: cdecl 4, records, plain ret, clobbers EAX/ECX/EDX
+    mov dword ptr [_we_batch_ca+0], eax
+    mov dword ptr [_we_batch_ca+4], ecx
+    mov dword ptr [_we_batch_ca+8], edx
+    mov dword ptr [_we_batch_ca+12], ebx
+    mov dword ptr [_we_batch_ca+16], esi
+    mov dword ptr [_we_batch_ca+20], edi
+    mov dword ptr [_we_batch_ca+24], ebp
+    pushfd
+    pop dword ptr [_we_batch_ca+28]
+    mov dword ptr [_we_batch_ca+32], esp
+    mov eax, dword ptr [esp+4]
+    mov dword ptr [_we_batch_ca+36], eax
+    mov eax, dword ptr [esp+8]
+    mov dword ptr [_we_batch_ca+40], eax
+    mov eax, dword ptr [esp+12]
+    mov dword ptr [_we_batch_ca+44], eax
+    mov eax, dword ptr [esp+16]
+    mov dword ptr [_we_batch_ca+48], eax
+    mov eax, dword ptr [_x3m_bullet_scope]
+    mov dword ptr [_we_batch_ca+52], eax
+    mov eax, dword ptr [_x3m_bullet_body]
+    mov dword ptr [_we_batch_ca+56], eax
+    inc dword ptr [_we_batch_ca+60]
+    mov eax, 0xca11ee00
+    mov ecx, 0xc1c1c1c2
+    mov edx, 0xd1d1d1d2
+    ret
+
+    .section .rodata
+    .balign 8
+_we_batch_x87_a:
+    .double 1.25
+_we_batch_x87_b:
+    .double -3.5e10
+    .text
+    .att_syntax
+)");
+namespace {
+namespace batch_site = x3m::weapon_effects::batch_site;
+alignas(16) unsigned char batch_stack[0x400];
+alignas(16) unsigned char batch_record[2][0x40];
+alignas(16) std::uint32_t batch_material[3]; // the material list: [0] -> .. -> [n] = 0 (n submits)
+we::Addresses batch_addresses() {
+    we::Addresses a = addresses();
+    a.batch_window = at(batch_site::window_va);
+    a.batch_target = at(batch_site::target_va);
+    return a;
+}
+bool batch_window_original() {
+    return window_is(batch_site::window_va, batch_site::expected_window, batch_site::window_length);
+}
+bool batch_redirected() {
+    return call_target(at(batch_site::site_va)) == u32(reinterpret_cast<void*>(&x3m_weapon_effects_stub_batch_scope));
+}
+// One pass of the flush's inner loop over an n-entry material list (n 1 or 2) for batch b; false when a gate failed.
+// The callee's record is the last submit's: with n 2 its arithmetic flags are the loop's cmp, so only DF is compared.
+bool batch_run(unsigned b, unsigned n, std::uint32_t* callee_esp_offset) {
+    std::memset(we_batch_out, 0, sizeof we_batch_out);
+    std::memset(we_batch_st1, 0, sizeof we_batch_st1);
+    const std::uint32_t calls_before = we_batch_ca[15], scope_calls = x3m_bullet_scope_calls;
+    for (unsigned i = 0; i < 3; ++i) batch_material[i] = i < n ? u32(&batch_material[i + 1]) : 0u;
+    we_batch_in[0] = 0x5b5b5b5bu;                    // EBX = view
+    we_batch_in[1] = u32(&batch_material[0]);        // ESI = the first material
+    we_batch_in[2] = u32(batch_record[b]);           // EDI = the batch
+    we_batch_in[3] = 0xeb9eb9ebu;                    // EBP = scene
+    we_batch_in[4] = entry_flags | 0x400u;           // CF PF ZF SF OF and DF
+    we_batch_in[5] = hostile_mxcsr;
+    we_batch_in[6] = hostile_fcw;
+    we_batch_in[7] = std::uint32_t(at(batch_site::window_va));
+    we_batch_s0 = u32(batch_stack + 0x3c0);
+    SetLastError(sentinel_error);
+    we_batch_enter();
+    const DWORD error = GetLastError();
+    std::uint32_t body = 0;
+    std::memcpy(&body, batch_record[b] + batch_site::batch_body, 4);
+    double st0 = 0, st1 = 0;
+    std::memcpy(&st0, we_batch_out + 11, 8);
+    std::memcpy(&st1, we_batch_st1, 8);
+    // the original call's ESP at its callee: the window start's minus the four words and the return address
+    const std::uint32_t original = we_batch_s0 - 0x14u;
+    *callee_esp_offset = original - we_batch_ca[8];
+    // EAX/ECX/EDX at the last submit: the entry sentinels for one submit; for the loop's second the first callee's
+    // returns (nothing in the window reloads them, and the stub passes them through both ways)
+    const std::uint32_t flags_mask = n == 1 ? flag_mask : 0x400u;
+    const std::uint32_t eax_in = n == 1 ? 0xa1a1a1a1u : 0xca11ee00u, ecx_in = n == 1 ? 0xc1c1c1c1u : 0xc1c1c1c2u,
+                        edx_in = n == 1 ? 0xd1d1d1d1u : 0xd1d1d1d2u;
+    const bool callee = we_batch_ca[15] == calls_before + n && we_batch_ca[0] == eax_in && we_batch_ca[1] == ecx_in &&
+                        we_batch_ca[2] == edx_in && we_batch_ca[3] == 0x5b5b5b5bu &&
+                        we_batch_ca[5] == u32(batch_record[b]) && we_batch_ca[6] == 0xeb9eb9ebu &&
+                        we_batch_ca[4] == u32(&batch_material[n - 1]) && // the last submit's material register
+                        (we_batch_ca[7] & flags_mask) == ((entry_flags | 0x400u) & flags_mask) &&
+                        *callee_esp_offset == 32u && ((original - we_batch_ca[8]) & 15u) == 0 &&
+                        we_batch_ca[9] == 0xeb9eb9ebu && we_batch_ca[10] == u32(batch_record[b]) &&
+                        we_batch_ca[11] == u32(&batch_material[n - 1]) && we_batch_ca[12] == 0x5b5b5b5bu &&
+                        we_batch_ca[13] == 1u && we_batch_ca[14] == body;
+    const bool returned = we_batch_out[0] == 0xca11ee00u && we_batch_out[1] == 0x5b5b5b5bu &&
+                          we_batch_out[2] == 0xc1c1c1c2u && we_batch_out[3] == 0xd1d1d1d2u &&
+                          we_batch_out[4] == u32(&batch_material[n]) && we_batch_out[5] == u32(batch_record[b]) &&
+                          we_batch_out[6] == 0xeb9eb9ebu && (we_batch_out[7] & 0x400u) && we_batch_out[8] == we_batch_s0 &&
+                          we_batch_out[9] == hostile_mxcsr && (we_batch_out[10] & 0xffffu) == hostile_fcw &&
+                          st0 == -3.5e10 && st1 == 1.25 && error == sentinel_error && x3m_bullet_scope == 0 &&
+                          x3m_bullet_body == body && x3m_bullet_scope_calls == scope_calls + n;
+    if (!callee || !returned)
+        std::printf("BATCH_RUN batch=%u callee=%u returned=%u ca=%08lx,%08lx,%08lx,%08lx,%08lx,%08lx,%08lx flags=%08lx "
+                    "esp_off=%lu args=%08lx,%08lx,%08lx,%08lx scope=%lu body=%lu out=%08lx,%08lx,%08lx,%08lx,%08lx,%08lx,"
+                    "%08lx flags=%08lx esp=%08lx/%08lx\n",
+                    b, unsigned(callee), unsigned(returned), (unsigned long)we_batch_ca[0], (unsigned long)we_batch_ca[1],
+                    (unsigned long)we_batch_ca[2], (unsigned long)we_batch_ca[3], (unsigned long)we_batch_ca[4],
+                    (unsigned long)we_batch_ca[5], (unsigned long)we_batch_ca[6], (unsigned long)we_batch_ca[7],
+                    (unsigned long)*callee_esp_offset, (unsigned long)we_batch_ca[9], (unsigned long)we_batch_ca[10],
+                    (unsigned long)we_batch_ca[11], (unsigned long)we_batch_ca[12], (unsigned long)we_batch_ca[13],
+                    (unsigned long)we_batch_ca[14], (unsigned long)we_batch_out[0], (unsigned long)we_batch_out[1],
+                    (unsigned long)we_batch_out[2], (unsigned long)we_batch_out[3], (unsigned long)we_batch_out[4],
+                    (unsigned long)we_batch_out[5], (unsigned long)we_batch_out[6], (unsigned long)we_batch_out[7],
+                    (unsigned long)we_batch_out[8], (unsigned long)we_batch_s0);
+    return callee && returned;
+}
+void batch_checks() {
+    // The window in the fixture's engine pages (the engine's bytes), the callee stand-in and the window end's return.
+    std::memcpy(reinterpret_cast<void*>(at(batch_site::window_va)), batch_site::expected_window, batch_site::window_length);
+    write_jmp(at(batch_site::target_va), we_batch_callee);
+    write_jmp(at(batch_site::window_end_va), we_batch_back);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(at(0x00413000)), 0x00608000 - 0x00413000);
+    const std::uint32_t bodies[2] = {0x0000048fu, 0x00002ee4u}; // two engine body ids (any values)
+    for (unsigned b = 0; b < 2; ++b) {
+        std::memset(batch_record[b], 0x77, sizeof batch_record[b]);
+        std::memcpy(batch_record[b] + batch_site::batch_body, &bodies[b], 4);
+    }
+    build_world(7, 0, 4, 0x0, 123456);
+
+    // reshade_installs_impact_and_batch_scope_only: the impact (shields) and the batch call claimed, the batch with the
+    // scope stub through the plain copy (it straddles a qword), every other site not used, the stub's continue the
+    // callee, armed once both are live.
+    set_setting(L"reshade");
+    SetLastError(sentinel_error);
+    const bool installed = install_profiled(batch_addresses(), core::mode_reshade);
+    bool others_unused = true;
+    for (unsigned i = 1; i < 8; ++i) others_unused = others_unused && !std::strcmp(we::site_state(i), "not_used");
+    check(installed && we::installed() && we::mode() == core::mode_reshade && impact_redirected() && batch_redirected() &&
+              !std::strcmp(we::site_state(0), "active") && !std::strcmp(we::site_state(8), "active") && others_unused &&
+              !std::strcmp(we::write_path(8), "plain") && x3m_bullet_reshade_armed == 1u && x3m_bullet_scope == 0u &&
+              x3m_weapon_effects_continue_batch == at(batch_site::target_va) && GetLastError() == sentinel_error &&
+              we::hook_state().armed == core::family_shields && death_windows_original(),
+          "reshade_installs_impact_and_batch_scope_only", we::state());
+    // reshade_scope_stub_forwards_and_scopes_the_submit: the engine's own window bytes around the stub, two batches (one
+    // submit, then the loop's two): the callee sees EAX/ECX/EDX/EBX/ESI/EDI/EBP and EFLAGS (DF set; all of it on the
+    // first) as the call left them, its four stack words where the original call put them and ESP at the original
+    // call's minus 32 (its alignment modulo 16), the scope raised to 1 and x3m_bullet_body the batch's [+0x0c]; after it
+    // the window's own mov esi,[esi] / add esp / cmp / jne ran on the preserved registers (the stack balanced), EAX the
+    // callee's, ECX/EDX the callee's, DF, MXCSR, the x87 control word, both x87 stack values and LastError kept, the scope
+    // 0 and the call count up by the submits.
+    std::uint32_t offset[2] = {};
+    const bool run0 = batch_run(0, 1, &offset[0]), run1 = batch_run(1, 2, &offset[1]);
+    check(run0 && run1, "reshade_scope_stub_forwards_and_scopes_the_submit");
+    std::printf("BATCH_SCOPE scope_calls=%lu callee_esp_offset=%lu,%lu bodies=%lu,%lu\n",
+                static_cast<unsigned long>(x3m_bullet_scope_calls), static_cast<unsigned long>(offset[0]),
+                static_cast<unsigned long>(offset[1]), static_cast<unsigned long>(bodies[0]),
+                static_cast<unsigned long>(bodies[1]));
+    // reshade_shutdown_disarms: both windows back to the engine's bytes, the re-shade disarmed.
+    we::shutdown();
+    check(!we::installed() && all_windows_original() && batch_window_original() && x3m_bullet_reshade_armed == 0u,
+          "reshade_shutdown_disarms");
+    // shields_leaves_batch_site: the production shields mode never touches the batch call.
+    const bool shields = install_profiled(batch_addresses(), core::mode_shields);
+    check(shields && batch_window_original() && !std::strcmp(we::site_state(8), "not_used") && x3m_bullet_reshade_armed == 0u,
+          "shields_leaves_batch_site");
+    we::shutdown();
+    // reshade_batch_every_window_byte_refused: each of the window's 19 bytes flipped refuses before any write
+    // (bytes_mismatch_batch, LastError kept, the impact untouched).
+    bool every = true;
+    for (unsigned k = 0; k < batch_site::window_length; ++k) {
+        flip(batch_site::window_va + k);
+        SetLastError(sentinel_error);
+        const bool refused = !install_profiled(batch_addresses(), core::mode_reshade) &&
+                             !std::strcmp(we::state(), "bytes_mismatch_batch") && GetLastError() == sentinel_error &&
+                             !std::strcmp(we::site_state(8), "bytes_mismatch") && !we::installed() && all_windows_original() &&
+                             x3m_bullet_reshade_armed == 0u;
+        flip(batch_site::window_va + k);
+        every = every && refused && batch_window_original();
+    }
+    check(every, "reshade_batch_every_window_byte_refused", we::state());
+    // reshade_batch_rollback_restores_all: a faulted read-back at the batch site (claimed before the impact) leaves
+    // nothing claimed and the impact not attempted; one at the impact restores the batch claimed before it.
+    fault_read_at = at(batch_site::site_va);
+    SetLastError(sentinel_error);
+    bool rolled = !install_profiled(batch_addresses(), core::mode_reshade);
+    const bool batch_rolled = rolled && fault_read_at == 0 && !we::installed() && all_windows_original() &&
+                              batch_window_original() && GetLastError() == sentinel_error &&
+                              !std::strcmp(we::site_state(8), "readback_rolled_back") &&
+                              !std::strcmp(we::site_state(0), "not_attempted") && x3m_bullet_reshade_armed == 0u;
+    fault_read_at = impact_site();
+    rolled = !install_profiled(batch_addresses(), core::mode_reshade);
+    const bool impact_rolled = rolled && fault_read_at == 0 && !we::installed() && all_windows_original() &&
+                               batch_window_original() && !std::strcmp(we::site_state(0), "readback_rolled_back") &&
+                               !std::strcmp(we::site_state(8), "rolled_back") && x3m_bullet_reshade_armed == 0u;
+    fault_read_at = 0;
+    check(batch_rolled && impact_rolled, "reshade_batch_rollback_restores_all", we::site_state(8));
+    // reshade_mode_rows: initialize() on the production VAs is refused here (executable_verified false), but its rows
+    // name the batch site and the mode; the claimed path's rows come from a flight.
+    log_lines.clear();
+    executable_ok = false;
+    we::initialize();
+    executable_ok = true;
+    bool site_row = false, mode_row = false;
+    for (const std::string& l : log_lines) {
+        site_row = site_row || l.find("weapon_effects_patch site=batch va=0046d0a7 state=executable_mismatch") == 0;
+        mode_row = mode_row || l.find("weapon_effects_reshade edition=ap runs=native reason=executable_mismatch") == 0;
+    }
+    check(site_row && mode_row && !we::installed(), "reshade_mode_rows");
+}
+}
+
 int main() {
     setvbuf(stdout, nullptr, _IONBF, 0);
     check(build_pages(), "engine_pages_reserved");
@@ -2410,7 +2700,7 @@ int main() {
                               !std::strcmp(core::mode_name(core::mode_shields_hull), "shields,hull") &&
                               !std::strcmp(core::ignored_name(0), "hull") && !std::strcmp(core::ignored_name(2), "explosions");
         check(parse_ok, "mode_parse_ignores_scratched_families");
-        // reshade (FL's bullet re-shade; AP runs it as shields): one word, never with a family or another mode
+        // reshade (the bullet and muzzle re-shades, both editions): one word, never with a family or another mode
         const bool reshade_ok = parses("reshade", core::mode_reshade, 0) && parses(" reshade ", core::mode_reshade, 0) &&
                                 refused("reshade,hull") && refused("hull,reshade") && refused("shields,reshade") &&
                                 refused("reshade,reshade") && refused("Reshade") && refused("reshade,") &&
@@ -2745,12 +3035,19 @@ int main() {
 
     bolt_checks(); // step 4: the per-bullet tap, the muzzle and the flight-effect skip (while the window is still open)
     death_checks(); // step 3: the two death sites (while the window is still open)
+    batch_checks(); // the reshade mode's bullet batch scope site (while the window is still open)
 
     engine_patch::close_install_window("fixture");
     SetLastError(sentinel_error);
     const bool late = install_profiled(addresses(), core::mode_shields);
     check(!late && !std::strcmp(we::state(), "late_claim") && GetLastError() == sentinel_error && !we::installed(),
           "late_claim_refused");
+    // The reshade mode after the window closed: refused before any write, the batch site late too, nothing armed.
+    SetLastError(sentinel_error);
+    const bool late_reshade = install_profiled(batch_addresses(), core::mode_reshade);
+    check(!late_reshade && !std::strcmp(we::state(), "late_claim") && !std::strcmp(we::site_state(8), "late_claim") &&
+              GetLastError() == sentinel_error && !we::installed() && batch_window_original() && x3m_bullet_reshade_armed == 0u,
+          "reshade_late_claim_refused");
 
     // The fixture's own stack margin: the stub and the handler stayed inside the 0x600 bytes below the frame (a deeper
     // write would corrupt the fixture's .bss, not the engine's: production runs on the game thread's stack).

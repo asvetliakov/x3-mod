@@ -5466,6 +5466,8 @@ int main(int argc, char** argv) {
     lone_reshade_cases();
     guard_next_section("reshade_lone_classic");
     lone_classic_cases();
+    guard_next_section("reshade_lone_classic_ap");
+    lone_classic_ap_case();
     guard_next_section("muzzle_reshade");
     muzzle_reshade_cases();
     guard_next_section("end");

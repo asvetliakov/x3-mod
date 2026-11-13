@@ -27,6 +27,12 @@ relative to it, at s 0 1.48x brighter. The last block prints the muzzle_reshade_
 
   python3 -I verification/results/muzzle-reshade/muzzle_bodies.py [--game /mnt/c/X3FL] [--lab DIR] \
     > verification/results/muzzle-reshade/muzzle_bodies_out.txt
+The AP Mayhem flash bodies (docs/reverse-engineering/ap-bullet-batch-site.md section 3: scenes 08002 / 08004 / 08005 /
+08006 / 08311 and the 04437 override; 12011 is MATERIAL6 effects.fx like 12009, not this pair: out), the same way, 445
+first so the normalisation is 445's (its row must equal the FL run's):
+  python3 -I verification/results/muzzle-reshade/muzzle_bodies.py --game /mnt/c/X3 --edition ap \
+    --lab <checkout>/verification/results/weapon-effects-lab/mayhem3 --bodies 445,12012,12013,12014,12016,12017,12018 \
+    > verification/results/muzzle-reshade/muzzle_bodies_ap_out.txt
 Prints derived numbers only; no game bytes are written; nothing launches.
 """
 import argparse
@@ -98,8 +104,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     parser.add_argument('--game', default='/mnt/c/X3FL')
     parser.add_argument('--lab', default=str(mi.ROOT / 'verification/results/weapon-effects-lab/fl'))
+    parser.add_argument('--edition', choices=('fl', 'ap'), default='fl')
+    parser.add_argument('--bodies', default=','.join(str(b) for b in BODIES),
+                        help='comma-separated body ids, 445 first (its ray sum and modulator normalise the others)')
     args = parser.parse_args()
-    rows = [measure(args.game, args.lab, b) for b in BODIES]
+    mi.EDITION = args.edition
+    bodies = [int(b) for b in args.bodies.split(',')]
+    if bodies[0] != 445:
+        raise SystemExit('--bodies must start with 445')
+    rows = [measure(args.game, args.lab, b) for b in bodies]
     for r in rows:
         print(f'=== body {r["body"]} ({r["src"]}), atlas tex/true/{r["tex"]} ({r["png"]})')
         print('\n'.join('  ' + line for line in r['log'].splitlines()))

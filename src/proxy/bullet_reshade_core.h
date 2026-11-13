@@ -43,11 +43,19 @@ constexpr bool lone_vertex_shader(std::uint64_t hash) noexcept {
 // classic `objects/v/NNNNN` bodies included). No muzzle flash body (muzzle_reshade_core.h's seven) is in a TBullets row
 // (verification/results/weapon-coverage-census/); MotionOutput runs this route first, leaves a listed muzzle body to the
 // muzzle route even if a row named it, and the muzzle route skips a draw this one re-shaded: one draw, one claimant.
+// The pixel programs differ by edition (docs/reverse-engineering/ap-bullet-batch-site.md section 2: the VS is the same
+// bytes in AP stock, AP Mayhem and FL; AP's standard_lighting / 2s DEFAULT PS are 1298 / 1324 dwords, FL's 1418 / 1450,
+// neither pair present in the other edition's catalogues), so the table holds both pairs and each edition's decision
+// reads its own row (`build_pair`, the build's edition; the native fixture passes either explicitly).
 constexpr std::uint64_t classic_vertex_shader = 0x494fe349b8bc12ecull;
-constexpr std::uint64_t classic_pixel_shaders[2] = {0xced7edef48059e84ull /* standard_lighting */,
-                                                    0x0d5848c8489b6630ull /* standard_lighting2s */};
-constexpr bool classic_pixel_shader(std::uint64_t hash) noexcept {
-    return hash && (hash == classic_pixel_shaders[0] || hash == classic_pixel_shaders[1]);
+constexpr unsigned pair_ap = 0, pair_fl = 1;
+constexpr unsigned build_pair = core::edition_fl ? pair_fl : pair_ap;
+constexpr std::uint64_t classic_pixel_shader_pairs[2][2] = {
+    {0x7c83ed50c9894e44ull /* AP standard_lighting */, 0xe70adc744a38ca59ull /* AP standard_lighting2s */},
+    {0xced7edef48059e84ull /* FL standard_lighting */, 0x0d5848c8489b6630ull /* FL standard_lighting2s */}};
+inline constexpr const std::uint64_t (&classic_pixel_shaders)[2] = classic_pixel_shader_pairs[build_pair]; // the build's
+constexpr bool classic_pixel_shader(std::uint64_t hash, unsigned e = build_pair) noexcept {
+    return hash && e < 2 && (hash == classic_pixel_shader_pairs[e][0] || hash == classic_pixel_shader_pairs[e][1]);
 }
 // Why a blended lone classic draw of a mapped bullet body stayed vanilla (bullet_reshade_frame
 // lone_classic_refused_why=): blend: not ADD ONE / ONE (an MPF_ALPHABLEND material, SRCALPHA / INVSRCALPHA, e.g. the
@@ -59,17 +67,20 @@ enum ClassicRefused : unsigned { classic_blend = 0, classic_program, classic_unr
 constexpr const char* classic_refused_names[classic_refused_count] = {"blend", "program", "unready", "failed"};
 // The verdict on a blended lone classic draw of a mapped body (classic_match below): blend the lone_blend class (only
 // lone_additive, ONE / ONE, is admitted), ps the bound pixel program's hash, ready our classic program created and the
-// re-shade not stopped. classic_refused_count admits; anything else is the refusal's reason.
-constexpr unsigned classic_verdict(unsigned blend, std::uint64_t ps, bool ready) noexcept {
+// re-shade not stopped; e the edition whose pixel pair admits. classic_refused_count admits; anything else is the
+// refusal's reason.
+constexpr unsigned classic_verdict(unsigned blend, std::uint64_t ps, bool ready, unsigned e = build_pair) noexcept {
     return blend != 2u /* lone_additive */ ? classic_blend
-           : !classic_pixel_shader(ps) ? classic_program
-           : !ready                    ? classic_unready
-                                       : classic_refused_count;
+           : !classic_pixel_shader(ps, e) ? classic_program
+           : !ready                       ? classic_unready
+                                          : classic_refused_count;
 }
-// FL node +0x144: the body (model) id every FL scene node carries (bullet-draw-batch.md section 4), not a bullet
+// The node's body (model) id, FL node +0x144 (bullet-draw-batch.md section 4), AP +0x140 (ap-bullet-batch-site.md
+// section 3: the body bind 0x00487e30 stores it, the batch lookup and the material-submit scope read it), not a bullet
 // mark: a non-bullet node drawing a body a TBullets row also names, with the effects VS and blend, would match too (no
 // census of bodies shared outside TBullets was made).
-constexpr std::uint32_t node_body_offset = 0x144;
+constexpr std::uint32_t node_body_offset = core::layout::node_body;
+static_assert(node_body_offset == (core::edition_fl ? 0x144u : 0x140u), "the edition's node body id");
 // The lone draw's blend (the material's g_SrcBlend / g_DestBlend; every effects-material bullet body of the FL table is
 // ONE / INVSRCCOLOR but bullet_push and tol_bullet, ONE / ONE): lone_screen is the batch pass's own law (the additive
 // route converts it), lone_additive draws plain under the game's ONE / ONE, anything else is not a bullet draw.
@@ -93,13 +104,14 @@ struct ClassicMatch {
 };
 template <class BodyId, class Mapped>
 inline ClassicMatch classic_match(std::uint64_t vs, bool blend_on, std::uint32_t src, std::uint32_t dst, std::uint32_t op,
-                                  std::uint64_t ps, bool ready, BodyId body_id, Mapped mapped) noexcept {
+                                  std::uint64_t ps, bool ready, BodyId body_id, Mapped mapped,
+                                  unsigned e = build_pair) noexcept {
     ClassicMatch m;
     if (vs != classic_vertex_shader || !blend_on) return m;
     m.raw = lone_blend(blend_on, src, dst, op);
     if (!body_id(&m.id) || !mapped(m.id)) return m;
     if (muzzle_reshade::body_index(m.id) < muzzle_reshade::body_count) return m;
-    m.why = classic_verdict(m.raw, ps, ready);
+    m.why = classic_verdict(m.raw, ps, ready, e);
     if (m.why == classic_refused_count) m.blend = m.raw;
     return m;
 }
@@ -209,7 +221,7 @@ inline void layout_constants(const std::int32_t* w, const projectile_family::Tun
 // caller's row naming both counts). A final map is state 1 (built) or 2 (off: no table, no entries, or the retries
 // spent). The caller attempts at most one build per frame (weapon_effects_patch.cpp bullet_body_layout), so the
 // retries span 64 frames however many draws ask. read(address, out, bytes) -> bool is the validated engine reader.
-constexpr unsigned tbullets_body = 0x0;  // TBullets +0x0: the row's body id (word; = node +0x144)
+constexpr unsigned tbullets_body = 0x0;  // TBullets +0x0: the row's body id (word; = node +0x144, AP +0x140)
 constexpr std::uint32_t body_map_retries = 64;
 struct BodyMap {
     std::uint8_t state = 0;    // 0 not final, 1 built, 2 off

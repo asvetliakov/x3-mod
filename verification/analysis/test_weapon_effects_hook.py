@@ -56,6 +56,10 @@ class WeaponEffectsHookRecord(unittest.TestCase):
                 # the 1024-record ring (2026-11-07): the hidden owner's records first, the handler's cost when full
                 'overflow_1024_hidden_owner_first_then_oldest', 'event_cost_50_full_ring_1024',
                 'overflow_counts_evicted_visible',
+                # the reshade mode's bullet batch scope site 0x0046d0a7 (weapon_effects_batch_site.h)
+                'reshade_installs_impact_and_batch_scope_only', 'reshade_scope_stub_forwards_and_scopes_the_submit',
+                'reshade_shutdown_disarms', 'shields_leaves_batch_site', 'reshade_batch_every_window_byte_refused',
+                'reshade_batch_rollback_restores_all', 'reshade_mode_rows', 'reshade_late_claim_refused',
                 # step 3, the death sites (reached through install_at)
                 'death_decision_seam', 'death_installed', 'death_forwards_when_not_owned',
                 'death_skips_fighter_when_owned', 'death_skips_missile_when_owned', 'death_forwards_big_tier_census',
@@ -103,6 +107,9 @@ class WeaponEffectsHookRecord(unittest.TestCase):
         # both windows are the installed EXE's bytes
         self.assertEqual(a['stub_death_ok'], {'area': True, 'other': True})
         self.assertEqual(a['death_windows_exe'], {'area': True, 'other': True})
+        # the reshade mode's batch scope stub: its shape (the body id [[esp+8]+0x0c], the four re-pushed words under the
+        # 12-byte pad, the plain ret) and its window, the installed EXE's bytes
+        self.assertTrue(a['stub_batch_scope_ok'] and a['batch_window_exe'])
         self.assertGreaterEqual(a['engine_patch_lock_cmpxchg8b'], 1)
         # the stub (0x20 + the return address) and the handler's frame stayed inside the fixture's margin; the deepest
         # written byte lies in the frame's lowest dword (a sub-dword store there reads up to 3 bytes shallower; measured
@@ -331,6 +338,24 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
         for name in ('weapon_bullet_reshade_classic_ps', 'weapon_bullet_reshade_classic_flag_ps'):
             self.assertEqual(self.record['programs'][name]['target'], 'ps_3_0', name)
 
+    def test_reshade_lone_classic_ap_pair(self):
+        # ap-bullet-batch-site.md section 2: AP's standard_lighting / 2s DEFAULT PS (from the AP catalogues) behind the
+        # shared VS: admitted under the AP row of the per-edition table and only there, the node body id +0x140, our
+        # classic program on the model in their place
+        self.assertTrue(dict(self.record['checks']).get('reshade_lone_classic_ap_pair'))
+        programs = self.record['classic_programs_ap']['programs']
+        self.assertEqual({k: v['hash'] for k, v in programs.items()},
+                         {'ap_classic_vs.bin': '494fe349b8bc12ec', 'ap_classic_ps.bin': '7c83ed50c9894e44',
+                          'ap_classic_ps2s.bin': 'e70adc744a38ca59'})
+        rows = self.record['metrics']['reshade']
+        case = next(x for x in rows if x.get('case') == 'lone_classic_ap')
+        self.assertEqual((case['loaded'], case['game_hashes'], case['created'], case['node_body'], case['recognition'],
+                          case['vanilla_finite']), (1, 1, 1, '0x140', 1, 1))
+        self.assertLessEqual(case['worst_rel'], 1.0)
+        recognition = [x for x in rows if x.get('case') == 'lone_classic_ap_recognition']
+        self.assertEqual(len(recognition), 5)
+        self.assertTrue(all(x['ok'] == 1 for x in recognition))
+
     def test_muzzle_reshade_gates(self):
         # docs/architecture/muzzle-flash-look.md (the re-shade): the ps_3_0 program created, the readback on the model,
         # the sequence bound and restored, energy <= mz_gain x vanilla's, the flash lit (peak >= mz_gain / 4), the extent
@@ -358,7 +383,7 @@ class WeaponEffectsD3DRecord(unittest.TestCase):
             self.assertLess(rows[f'{prefix}_tilt']['overlap'], rows[f'{prefix}_axis']['overlap'])
         self.assertNotEqual(rows['flash_tilt']['overlap'], rows['flash444_tilt']['overlap'])
         self.assertEqual(rows['cost']['fenced'], 1)
-        self.assertEqual(rows['cost']['bodies'], 7)
+        self.assertEqual(rows['cost']['bodies'], 13)  # FL's seven and AP Mayhem's six (2026-11-13)
         self.assertLess(max(rows['cost']['match_last_us_per_draw'], rows['cost']['match_miss_us_per_draw']), 1.0)
 
     def test_passed_with_the_step_gates(self):
