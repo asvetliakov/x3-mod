@@ -20,12 +20,9 @@
     "src/proxy/weapon_effects_batch_site.h"
   ],
   "source": {
-    "commit": "5613593e24a58ded55b37f12b733f4d08bcb9344-dirty",
-    "production_sources_dirty": true,
-    "dirty_paths": [
-      "src/proxy/weapon_effects_patch.cpp",
-      "src/proxy/weapon_effects_patch.h"
-    ],
+    "commit": "df4ee8899d7ae6d6ee98ddac2feda7d72077dd98",
+    "production_sources_dirty": false,
+    "dirty_paths": [],
     "sha256": {
       "verification/probe/weapon_effects_hook_fixture_fl.cpp": "9e82a15567d452693e4e169db045cb9d5d54737aa0d4aef3aacf528df1c4c5aa",
       "verification/probe/weapon_effects_hook_fixture_shim.h": "4057d2eebf18a846adf8d69cec05a9c4e905d8b6085fdb6aba0e7b370006c589",
@@ -233,7 +230,7 @@
       "module_imports_own_protect": [],
       "engine_patch_lock_cmpxchg8b": 1
     },
-    "executable_sha256": "3f91e5efdc25e049277469cb4656c1aeb9a3c86a2075dad5af82c483b2f300d8"
+    "executable_sha256": "00174d49731590384487fa11522e6754cbc94bd8b103fa9ed3199907197910cb"
   },
   "host": {
     "name": "native-windows",

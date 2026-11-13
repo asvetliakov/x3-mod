@@ -4884,3 +4884,14 @@ and `test_weapon_hull_reshade` pass. `generate_muzzle_reshade_program.py --check
 - **S2, the pairing.** That 12009 draws with the effects DEFAULT VS `d5e1c753…` is inferred from the material
   submit's technique rule, not seen at run time. If a PRG fires and the flight shows `muzzle_reshade_frame
   effects_candidates=0`, the INSTANCE variant (VS `89193868…`) is bound instead, and the route never sees the draw.
+
+**Weapon-effects records after the fix** [M]:
+
+- Run on the clean `df4ee8899`, 15:05–15:07: `RESULT PASS`, 134 checks, 0 failures; the AP and FL hook fixtures pass.
+  All three records name `df4ee8899`, not dirty.
+- The frames came out byte-identical.
+- Builds: FL and AP 0 warnings; `check_no_x87 --edition fl` PASS over 1099 functions.
+- Host tests: `test_weapon_effects_hook`, `test_motion_output_program_references`, `test_weapon_effects_muzzle_bodies`,
+  `test_weapon_hull_reshade`, `test_engine_effects`, `test_capture_bloom_lifetime`, `test_logging_tiers`: all OK.
+- The engine-effects record binds `motion_output.h` and `capture.cpp`, not `motion_output.cpp`; neither changed, so
+  it stays at 93e5f2ea7's run.
