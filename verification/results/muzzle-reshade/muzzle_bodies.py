@@ -25,6 +25,11 @@ luminance at the gun, equals 445's at the baked mz_smooth. At another mz_smooth 
 1 / (1 + (lum_glow_445 / 0.166 - 1)(1 - s)) against the baked 3.92: at s 1 the added bodies draw 3.92x dimmer than 445
 relative to it, at s 0 1.48x brighter. The last block prints the muzzle_reshade_core.h rows.
 
+Body 12009 (scene 08001, PRG) is an effects.fx (MATERIAL6) body drawn with the effects DEFAULT pair: the same
+functions on its own mesh (the text record; the binary entry FL loads is checked to be the same record normalised) and
+its material's diffuse texture (fx_bullets2_diff, the lab's decode), whose blend, cull and Z write the run prints from
+the entry the engine loads (effect_material); its row carries pair_effects and that DESTBLEND.
+
   python3 -I verification/results/muzzle-reshade/muzzle_bodies.py [--game /mnt/c/X3FL] [--lab DIR] \
     > verification/results/muzzle-reshade/muzzle_bodies_out.txt
 The AP Mayhem flash bodies (docs/reverse-engineering/ap-bullet-batch-site.md section 3: scenes 08002 / 08004 / 08005 /
@@ -45,7 +50,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import muzzle_inputs as mi  # noqa: E402
 
-BODIES = (445, 444, 446, 447, 450, 314, 10463)  # the classic standard_lighting flash bodies (12009 is effects.fx: out)
+BODIES = (445, 444, 446, 447, 450, 314, 10463, 12009)  # the classic flash bodies, then 12009 (PRG, effects.fx)
 OVERLAP_445 = (8.8915, 1.3111)  # bodies[0].overlap, measured (overlap_by_angle_out.txt)
 SIZE, SMOOTH = 0.2, 0.1         # the baked mz_size and mz_smooth (muzzle-flash-look.md section 3)
 
@@ -83,11 +88,47 @@ def glow_luminance(png, tris, radius):
     return (num / den if den else 0.0), top
 
 
+def effect_material(game, body):
+    """An effects.fx (MATERIAL6) body's material as the engine loads it (tools/analysis/bob1.py resolve_body: the
+    catalogue entry the 0x004863c0 search order picks; FL root + addon2): the entry, its diffuse texture's stem, the
+    blend, cull and Z write parameters, and that entry's LOD 0 against the text record body_mesh reads (a binary entry
+    stores the text's positions normalised to max |coordinate| 65536: the scale back and the worst triangle-centroid
+    mismatch after it, model units). None for a body without effect parameters."""
+    import numpy as np
+    sys.path.insert(0, str(mi.ROOT / 'tools/analysis'))
+    sys.path.insert(0, str(mi.ROOT / 'tools/effects'))
+    from sector_fog_census import Assets
+    import bob1
+    import weapon_effects_census as wec
+    a = Assets(pathlib.Path(game), edition=mi.EDITION)
+    entry = bob1.resolve_body(a, 'v\\%05d' % body)
+    tree = bob1.parse(a.read_entry(entry))
+    mats = [m for m in bob1.materials(tree) if 'params' in m]
+    if not mats:
+        return None
+    params = {wec._str(n): v for n, _, v in mats[0]['params']}
+    word = {k: params[k][0] for k in ('g_AlphaBlendEnable', 'g_BlendOp', 'g_SrcBlend', 'g_DestBlend', 'g_CullMode',
+                                      'g_ZWriteEnable')}
+    stem = pathlib.PureWindowsPath(wec._str(params['t_DiffuseTexture'])).stem.lower()
+    lod = bob1.lods(tree)[0]
+    P = np.array([q[1:4] for q in lod['points']], float)
+    with contextlib.redirect_stdout(io.StringIO()):
+        _, tris = mi.body445(game, body)
+    T = np.array([[t[0] for t in tri] for tri in tris], float)
+    scale = float(np.abs(T).max()) / float(np.abs(P).max())
+    B = np.array([[P[f[k]] for k in range(3)] for part in lod['parts'] for g in part['groups'] for f in g['faces']])
+    worst = float(np.linalg.norm(B.mean(1)[None] * scale - T.mean(1)[:, None], axis=2).min(1).max())
+    return dict(entry=f'{entry["source"]}:{entry["path"]}', effect=wec._str(mats[0]['effect']), texture=stem,
+                scale=scale, centroid_worst=worst, faces=len(B), **word)
+
+
 def measure(game, lab, body):
     src, verts, faces, tex = mi.body_mesh(game, body)
-    hits = sorted((pathlib.Path(lab) / 'tex').glob(f'{tex}-*.png'))
+    fx = effect_material(game, body) if tex is None else None
+    stem = fx['texture'] if fx else tex
+    hits = sorted((pathlib.Path(lab) / 'tex').glob(f'{stem}-*.png'))
     if not hits:
-        raise SystemExit(f'body {body}: atlas tex/true/{tex} not in {lab}/tex')
+        raise SystemExit(f'body {body}: texture {stem} not in {lab}/tex')
     png = str(hits[0])
     log = io.StringIO()
     with contextlib.redirect_stdout(log):
@@ -96,7 +137,7 @@ def measure(game, lab, body):
         radii = mi.lit_extent(png, tris)
         ray = mi.overlap(tris, radii[0.9])
     lum_glow, glow_max = glow_luminance(png, tris, radii[0.9])
-    return dict(lum_glow=lum_glow, glow_max=glow_max, body=body, src=src, tex=tex, png=pathlib.Path(png).name, faces=len(faces), quads=len(tris) // 2,
+    return dict(fx=fx, lum_glow=lum_glow, glow_max=glow_max, body=body, src=src, tex=tex or 0, png=pathlib.Path(png).name, faces=len(faces), quads=len(tris) // 2,
                 rect=rect, radius=radii[0.9], r50=radii[0.5], ray=ray, log=log.getvalue(), **c)
 
 
@@ -114,7 +155,15 @@ def main():
         raise SystemExit('--bodies must start with 445')
     rows = [measure(args.game, args.lab, b) for b in bodies]
     for r in rows:
-        print(f'=== body {r["body"]} ({r["src"]}), atlas tex/true/{r["tex"]} ({r["png"]})')
+        f = r['fx']
+        print(f'=== body {r["body"]} ({r["src"]}), effect texture {f["texture"]} ({r["png"]})' if f else
+              f'=== body {r["body"]} ({r["src"]}), atlas tex/true/{r["tex"]} ({r["png"]})')
+        if f:
+            print(f'  material as loaded: {f["entry"]} {f["effect"]}; g_AlphaBlendEnable {f["g_AlphaBlendEnable"]} '
+                  f'g_BlendOp {f["g_BlendOp"]} g_SrcBlend {f["g_SrcBlend"]} g_DestBlend {f["g_DestBlend"]} '
+                  f'(2 ONE, 4 INVSRCCOLOR) g_CullMode {f["g_CullMode"]} g_ZWriteEnable {f["g_ZWriteEnable"]}; '
+                  f'its LOD 0 ({f["faces"]} faces) is the text record x {1 / f["scale"]:.5f} (worst triangle centroid '
+                  f'{f["centroid_worst"]:.2f} model units after the scale back)')
         print('\n'.join('  ' + line for line in r['log'].splitlines()))
     base = rows[0]['ray']
 
@@ -130,7 +179,7 @@ def main():
         k = r['ray'] / base * (t_gun(r['lum_glow'], r['mean']) / t445)
         r['overlap'] = OVERLAP_445 if r['body'] == 445 else (OVERLAP_445[0] * k, OVERLAP_445[1] * k)
         u0, u1, v0, v1 = r['rect']
-        print(f'{r["body"]:5d} {r["tex"]:4d} {r["quads"]:5d}  {u0:6.3f} {u1:6.3f} {v0:6.3f} {v1:6.3f}  '
+        print(f'{r["body"]:5d} {r["tex"] or "fx":>4} {r["quads"]:5d}  {u0:6.3f} {u1:6.3f} {v0:6.3f} {v1:6.3f}  '
               f'{r["radius"]:8.0f}  {r["r50"]:6.0f}  {r["mean_fit"]:.3f}  {r["centre"]:.4f}  {r["lum_glow"]:.4f}  '
               f'{t_gun(r["lum_glow"], r["mean_fit"]):7.3f}  {r["mean"]:.4f}  {t_gun(r["lum_glow"], r["mean"]):.3f}  '
               f'({r["hue"][0]:.4f}, {r["hue"][1]:.4f}, {r["hue"][2]:.4f})  {r["ray"]:7.2f}  {k:6.3f}  '
@@ -141,8 +190,11 @@ def main():
           f'brightest texel / the brightest glow-region sample')
     print('\nmuzzle_reshade_core.h rows:')
     for r in rows:
+        f = r['fx']
+        pair = f', pair_effects, {f["g_DestBlend"]}u' if f else ''
         print(f'    {{{r["body"]}u, {r["radius"]:.0f}.f, {r["mean"]:.4f}f, {{{r["overlap"][0]:.4f}f, {r["overlap"][1]:.4f}f}}, '
-              f'{{{r["hue"][0]:.4f}f, {r["hue"][1]:.4f}f, {r["hue"][2]:.4f}f}}}}, // tex/true/{r["tex"]}')
+              f'{{{r["hue"][0]:.4f}f, {r["hue"][1]:.4f}f, {r["hue"][2]:.4f}f}}{pair}}}, // '
+              + (f['texture'] if f else f'tex/true/{r["tex"]}'))
 
 
 if __name__ == '__main__':

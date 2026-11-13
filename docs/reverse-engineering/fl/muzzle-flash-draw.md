@@ -132,6 +132,34 @@ Same path: AP `0x00446268` → `0x00413c00` → `0x004148a0`(kind 4) → element
 384, flags `0x8012` (census AP block) [s data; i: code by the twin addresses of
 [weapon-effect-spawn.md](../weapon-effect-spawn.md) section 10].
 
+## 6. Body 12009 (PRG) and the effects DEFAULT vertex shader (2026-11-13)
+
+Scene 08001 (Effects row 183, TBullets row 3 PRG, three CUT elements) has one part, body **12009**. FL loads
+`addon2/01.cat` `objects/v/12009.pbb`; 01.cat's text record has the same geometry, scaled to max |coordinate| 65536
+[s data, `verification/results/muzzle-reshade/muzzle_bodies.py` `effect_material`]. It is MATERIAL6 `effects.fx`:
+`t_DiffuseTexture fx_bullets2_diff`, `g_AlphaBlendEnable 1`, `g_BlendOp 1`, `g_SrcBlend 2`, `g_DestBlend 4` (ADD ONE /
+INVSRCCOLOR), `g_CullMode 1`, `g_ZWriteEnable 0`, `g_AlphaValue 1` [s data]. Its 50 textured quads all map
+fx_bullets2_diff's cell u 0.406..0.570, v 0.241..0.447 (the gun edge at v 0.447). They form three cones: 8 quads along
+the axis, 98,800 units long; 18 tilted 41.6°, 54,390 long; 24 tilted 77.9°, 40,640 long. Each quad's gun edge lies 2
+to 10 thousand units from the body origin [s data].
+
+The engine binds the effects DEFAULT pair for it: VS `d5e1c75351ed3f04`, PS `8360f422de08b5bd`. Both come from
+`shader/3_0/effects.fb` DEFAULT, the same as 2_0 [s]. The bind itself is [i]: the material submit's technique rule. The
+VS, read token by token [s, `verification/results/muzzle-reshade/effects_vs_read.py`; the listing stays local]:
+
+- **Constants (CTAB):** `g_mWorldViewProjection` c0..c3, `g_mWorld` c4..c6, `g_mViewInverse` c7..c9, `g_TexMatrix`
+  c10..c11, `g_AlphaValue` c12, `g_FogClip` c13, `g_EnableFog` b0. Inputs `dcl_position v0`, `dcl_texcoord v1`.
+- **oPos** = four dp4 of (v0.xyz, 1) with c0..c3.
+- **oT0.xy** = dp3 of (u, v, 1) with c10 and c11.
+- **oD0.xyz** = (f, 0, 0), oD0.w not written. f = c12.x without fog. With b0 set, f =
+  saturate(c13.x − c13.y · |cam − P|) · c12.x, where P is (v0.xyz, 1) through c4..c6, cam = (c7.w, c8.w, c9.w), and the
+  distance is computed as dp3, rsq, rcp, per vertex.
+- **No other output.** The pixel program sees no position, so a re-shade that needs the distance from the gun must
+  also bind its own VS.
+
+The PS: texld s0 with t0, then the colour matrix c0..c2 applied to (rgb, 1) (dp4 per channel), then × v0.x; alpha is
+the texel's. The CTAB names only `DiffuseTexSampler`; c0..c2 are filled by the effect's preshader [s].
+
 ## Unknown
 
 - Immediate or deferred submit for this blended classic (`0x097035` vs `0x097702`), and the draw order against other

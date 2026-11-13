@@ -1,0 +1,35 @@
+game: version fffe0200, 253 words, 29 instructions; inputs ['v0', 'v1']; outputs ['oD0', 'oPos', 'oT0']
+  CTAB g_AlphaValue s12, g_EnableFog b0, g_FogClip s13, g_TexMatrix s10..s11, g_mViewInverse s7..s9, g_mWorld s4..s6, g_mWorldViewProjection s0..s3
+ours: version fffe0200, 218 words, 28 instructions; inputs ['v0', 'v1']; outputs ['oD0', 'oPos', 'oT0', 'oT1']
+  CTAB g_AlphaValue s12, g_EnableFog b0, g_FogClip s13, g_TexMatrix s10..s11, g_mViewInverse s7..s9, g_mWorld s4..s6, g_mWorldViewProjection s0..s3
+instructions in ours, not in the game's (temporaries erased):
+  1 x add r.x -r.wwww, c7.wwww
+  1 x add r.y -r.xxxx, c8.wwww
+  1 x add r.z -r.xxxx, c9.wwww
+  1 x dp4 r.w r, c4
+  1 x dp4 r.x r, c5
+  1 x dp4 r.x r, c6
+  1 x mad r.x c13.yyyy, -r.xxxx, c13.xxxx
+  1 x max r.x r.xxxx, c14.yyyy
+  1 x min r.x r.xxxx, c14.xxxx
+  1 x mov oD0 r.xyyy
+  1 x mov oT1.xyz v0
+  1 x mul r.x r.xxxx, c12.xxxx
+  1 x rcp r.x r.xxxx
+  1 x rsq r.x r.xxxx
+instructions in the game's, not in ours (temporaries erased):
+  1 x add r.xyz -r, r
+  1 x dp4 r.x r, c4
+  1 x dp4 r.y r, c5
+  1 x dp4 r.z r, c6
+  1 x mad r v0.xyzx, c14.xxxy, c14.yyyx
+  1 x mad r.w c13.yyyy, -r.wwww, c13.xxxx
+  1 x max r.w r.wwww, c14.yyyy
+  1 x min r.w r.wwww, c14.xxxx
+  1 x mov oD0.xyz r.xyyw
+  1 x mov r.x c7.wwww
+  1 x mov r.y c8.wwww
+  1 x mov r.z c9.wwww
+  1 x mul r.x r.wwww, c12.xxxx
+  1 x rcp r.w r.wwww
+  1 x rsq r.w r.xxxx

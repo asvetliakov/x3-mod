@@ -2112,7 +2112,9 @@ HRESULT WINAPI present(IDirect3DDevice9* d, const RECT* a, const RECT* b, HWND w
                                                         &stage.reshade_lone_us, stage.reshade_lone_counts);
         if (ctx.motion_output.muzzle_reshade_requested())
             ctx.motion_output.muzzle_reshade_take_frame(&stage.muzzle_draws, &stage.muzzle_matched, &stage.muzzle_hull,
-                                                        &stage.muzzle_failures, &stage.muzzle_timed, &stage.muzzle_us);
+                                                        &stage.muzzle_failures, &stage.muzzle_timed, &stage.muzzle_us,
+                                                        &stage.muzzle_effects_candidates, &stage.muzzle_effects_matched,
+                                                        &stage.muzzle_effects_draws);
         if (ctx.motion_output.hull_reshade_requested()) { // the hull hit re-shade (hull-hit-look.md section 5)
             weapon_effects::hull_reshade::Frame hull;
             ctx.motion_output.hull_reshade_take_frame(&hull);

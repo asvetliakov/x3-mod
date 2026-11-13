@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "source": "src/effects/weapon_muzzle_reshade_ps.hlsl",
-  "source_sha256": "766797ab6e3cd93484b593f7d7d0c2738f604d82a95e52ed7236d58ef4800158",
+  "source_sha256": "a4735bf2b6c921cab52a968cbbd088c370ab284d13dd8ecbcefe183ed00f1460",
   "compiler": "native d3dx9_37.dll D3DXCompileShader",
   "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
   "entry": "main",
@@ -9,7 +9,9 @@
   "flags": 32768,
   "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
   "defines": null,
-  "includes": null,
+  "includes": {
+    "src/effects/weapon_muzzle_reshade.hlsl": "9767a6d3c65fa3a61116cb098f2a5055571c9c2ab2fe683d3b90e13e46d06fb4"
+  },
   "word_count": 208,
   "bytecode_sha256": "d1f7d54557043eca5dd6b9ea9e4065465cc005df11fa95f2fae61cf212516472",
   "header_sha256": "3c51dede22fb5dc55eb8c9796cde85085b119f798a5708097047b7518353f460",
@@ -17,7 +19,7 @@
     "tools/shaders/compile_rigid_motion_pixel.cpp": "acff68e2c8ebbd580f090baabc8df213aafa3200a1be10c4b3e4cc824cd600c8",
     "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
     "tools/shaders/generate_weapon_effects_programs.py": "905e3add7fc393ce41fb9039cd11ceea8c5460f281386c3f20ba45804d0ebdfd",
-    "tools/shaders/generate_muzzle_reshade_program.py": "fa96c88906ae5f774b8a657c30fccff2b265e6efae6857edb63062c9cbc14089"
+    "tools/shaders/generate_muzzle_reshade_program.py": "d425508f140e113560575ba324b2a2344b36119951bf341bdcf026a40a4e1753"
   },
   "copyright_scope": "Original authored project shader; no game shader bytes",
   "creates_d3d_device": false

@@ -2268,7 +2268,7 @@ void reshade_texture_cases() {
 // alone, the 100-triangle
 // draw loop with and without them (best of 7 runs of 2000), the match (TLS lookup, the 4-byte validated node read
 // through the production engine_memory::read, the body list) and the per-draw c192 (draw_constants): for the first
-// listed body (445), the last (every compare) and an unlisted id (12009: every compare, no c192).
+// listed body (445), the last (every compare) and an unlisted id (12011, AP Mayhem's PRG body: every compare, no c192).
 // MUZZLE_RESHADE rows; never the game's bytes.
 void muzzle_reshade_cases() {
     namespace mf = muzzle_fx;
@@ -2591,8 +2591,8 @@ void muzzle_reshade_cases() {
         TlsSetValue(slot, node.data());
         x3m::engine_memory::next_frame();
         float block[16];
-        // the first listed id (445), the last (every compare) and an unlisted one (12009, PRG: every compare, no c192)
-        const std::uint32_t ids[3] = {mz::bodies[0].id, mz::bodies[mz::body_count - 1].id, 12009u};
+        // the first listed id (445), the last (every compare) and an unlisted one (12011: every compare, no c192)
+        const std::uint32_t ids[3] = {mz::bodies[0].id, mz::bodies[mz::body_count - 1].id, 12011u};
         double* best[3] = {&best_match, &best_match_last, &best_match_miss};
         for (unsigned which = 0; which < 3; ++which) {
             node[mz::node_body_offset / 4] = ids[which];
@@ -2632,6 +2632,7 @@ void muzzle_reshade_cases() {
 }
 #include "weapon_lone_classic_cases.h" // the bullet re-shade's lone classic path (lone_classic_cases)
 #include "weapon_hull_reshade_cases.h" // the hull hit re-shade (hull_reshade_cases)
+#include "weapon_muzzle_effects_cases.h" // the muzzle re-shade's effects pair, body 12009 (muzzle_effects_cases)
 
 int main(int argc, char** argv) {
     setvbuf(stdout, nullptr, _IONBF, 0);
@@ -5473,6 +5474,8 @@ int main(int argc, char** argv) {
     muzzle_reshade_cases();
     guard_next_section("hull_reshade");
     hull_reshade_cases();
+    guard_next_section("muzzle_effects");
+    muzzle_effects_cases();
     guard_next_section("end");
     std::printf("RESULT %s checks=%u failures=%u\n", failures ? "FAIL" : "PASS", checks, failures);
     return failures ? 1 : 0;

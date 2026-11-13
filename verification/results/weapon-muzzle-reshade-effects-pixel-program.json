@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "source": "src/effects/weapon_muzzle_reshade_effects_ps.hlsl",
+  "source_sha256": "264014f9247a476583d9e80ecc351fcbcd9bcd8cb6154f613e435dd87017d37c",
+  "compiler": "native d3dx9_37.dll D3DXCompileShader",
+  "compiler_sha256": "c2ccb84c672a9d8966e82a28005a4269886ee304972ac3590c0b8a9c1622a3d8",
+  "entry": "main",
+  "target": "ps_2_0",
+  "flags": 32768,
+  "flags_name": "D3DXSHADER_OPTIMIZATION_LEVEL3",
+  "defines": null,
+  "includes": {
+    "src/effects/weapon_muzzle_reshade.hlsl": "9767a6d3c65fa3a61116cb098f2a5055571c9c2ab2fe683d3b90e13e46d06fb4"
+  },
+  "word_count": 172,
+  "bytecode_sha256": "d6050562183e8331220bee1f8470d38b01ca6eb44cbe6571531a48a8f78700eb",
+  "header_sha256": "a2f731ccb5b422e0cd5ab74ebd598f9a4e1e155edf8a09934c128c7e1c7e647e",
+  "tool_sources": {
+    "tools/shaders/compile_ps2_program.cpp": "6328969d31cd70fa33cc2c8007379d419990bec7e89e1cbea86123ca783a34b7",
+    "tools/shaders/generate_rigid_motion_pixel.py": "6aea9b9be7b84a31791ada750a00cfdf38a3eabed5fe56ef9970b7d199a16ab8",
+    "tools/shaders/generate_weapon_effects_programs.py": "905e3add7fc393ce41fb9039cd11ceea8c5460f281386c3f20ba45804d0ebdfd",
+    "tools/shaders/generate_muzzle_reshade_program.py": "d425508f140e113560575ba324b2a2344b36119951bf341bdcf026a40a4e1753"
+  },
+  "copyright_scope": "Original authored project shader; no game shader bytes",
+  "creates_d3d_device": false
+}

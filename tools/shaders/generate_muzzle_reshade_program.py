@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Compile the muzzle flash re-shade's ps_3_0 program (docs/architecture/muzzle-flash-look.md):
-src/effects/weapon_muzzle_reshade_ps.hlsl -> src/renderer/weapon_muzzle_reshade_pixel_program_inc.h (provenance
-verification/results/weapon-muzzle-reshade-pixel-program.json).
+"""Compile the muzzle flash re-shade's programs (docs/architecture/muzzle-flash-look.md):
+src/effects/weapon_muzzle_reshade_ps.hlsl (ps_3_0) -> src/renderer/weapon_muzzle_reshade_pixel_program_inc.h, and for the
+effects-pair body weapon_muzzle_reshade_effects_ps.hlsl (ps_2_0) and weapon_muzzle_reshade_effects_vs.hlsl (vs_2_0) ->
+src/renderer/weapon_muzzle_reshade_effects_{pixel,vertex}_program_inc.h (provenance verification/results/
+weapon-muzzle-reshade[-effects]-{pixel,vertex}-program.json); both pixel programs include weapon_muzzle_reshade.hlsl
+(expanded here, generate_rigid_motion_pixel.expand_includes).
 
-ps_3_0 because the program replaces the game's standard_lighting(2s) DEFAULT pixel shader beside the game's vs_3_0
-vertex shader 494fe349b8bc12ec. The helpers are tools/shaders/generate_rigid_motion_pixel.py's and
-generate_weapon_effects_programs.py's (imported, so their digests and every record they check stay unchanged); the
-compiler is tools/shaders/compile_rigid_motion_pixel.cpp (ps_3_0), the native d3dx9_37.dll D3DXCompileShader with
-D3DXSHADER_OPTIMIZATION_LEVEL3, entry main. --check recompiles and compares the checked-in header and record without
-changing them. No D3D device is created; X3AP / X3FL must be stopped.
+ps_3_0 because that program replaces the game's standard_lighting(2s) DEFAULT pixel shader beside the game's vs_3_0
+vertex shader 494fe349b8bc12ec; the effects pair's two are SM 2.0 as the game's effects DEFAULT pair they replace. The
+helpers are tools/shaders/generate_rigid_motion_pixel.py's and generate_weapon_effects_programs.py's (imported, so their
+digests and every record they check stay unchanged); the compilers are tools/shaders/compile_rigid_motion_pixel.cpp
+(ps_3_0), compile_ps2_program.cpp (ps_2_0) and compile_vs2_program.cpp (vs_2_0), the native d3dx9_37.dll
+D3DXCompileShader with D3DXSHADER_OPTIMIZATION_LEVEL3, entry main. --check recompiles and compares the checked-in
+headers and records without changing them. No D3D device is created; X3AP / X3FL must be stopped.
 """
 import argparse
 import json
@@ -26,14 +30,20 @@ ROOT = base.ROOT
 PROGRAMS = {
     'weapon_muzzle_reshade_ps': (ROOT / 'src/effects/weapon_muzzle_reshade_ps.hlsl',
                                  ROOT / 'src/renderer/weapon_muzzle_reshade_pixel_program_inc.h',
-                                 ROOT / 'verification/results/weapon-muzzle-reshade-pixel-program.json'),
+                                 ROOT / 'verification/results/weapon-muzzle-reshade-pixel-program.json',
+                                 'ps_3_0', 0xffff0300, ROOT / 'tools/shaders/compile_rigid_motion_pixel.cpp'),
+    'weapon_muzzle_reshade_effects_ps': (ROOT / 'src/effects/weapon_muzzle_reshade_effects_ps.hlsl',
+                                         ROOT / 'src/renderer/weapon_muzzle_reshade_effects_pixel_program_inc.h',
+                                         ROOT / 'verification/results/weapon-muzzle-reshade-effects-pixel-program.json',
+                                         'ps_2_0', 0xffff0200, ROOT / 'tools/shaders/compile_ps2_program.cpp'),
+    'weapon_muzzle_reshade_effects_vs': (ROOT / 'src/effects/weapon_muzzle_reshade_effects_vs.hlsl',
+                                         ROOT / 'src/renderer/weapon_muzzle_reshade_effects_vertex_program_inc.h',
+                                         ROOT / 'verification/results/weapon-muzzle-reshade-effects-vertex-program.json',
+                                         'vs_2_0', 0xfffe0200, ROOT / 'tools/shaders/compile_vs2_program.cpp'),
 }
-COMPILER_SOURCE = ROOT / 'tools/shaders/compile_rigid_motion_pixel.cpp'
-TARGET = 'ps_3_0'
-VERSION = 0xffff0300
 
 
-def validate(data):
+def validate(data, TARGET, VERSION):
     if len(data) % 4 or not 8 <= len(data) <= 4096:
         raise ValueError('Unexpected compiled program extent')
     words = struct.unpack('<' + 'I' * (len(data) // 4), data)
@@ -52,7 +62,7 @@ def validate(data):
 
 
 def compile_program(name, args):
-    SOURCE, HEADER, PROVENANCE = PROGRAMS[name]
+    SOURCE, HEADER, PROVENANCE, TARGET, VERSION, COMPILER_SOURCE = PROGRAMS[name]
     expanded, included = base.expand_includes(SOURCE)
     compiler_path = args.d3dx.resolve()
     tools = (COMPILER_SOURCE, Path(base.__file__).resolve(), Path(weapons.__file__).resolve(), Path(__file__).resolve())
@@ -70,7 +80,7 @@ def compile_program(name, args):
         data = binary.read_bytes()
     if before != {path: base.sha(path.read_bytes()) for path in inputs}:
         raise RuntimeError('Compilation inputs changed')
-    words = validate(data)
+    words = validate(data, TARGET, VERSION)
     text = '// Generated from our original %s. Do not edit.\n' % SOURCE.relative_to(ROOT)
     text += '// Reproduce: python3 tools/shaders/generate_muzzle_reshade_program.py --check (native host)\n'
     text += ''.join('    ' + ', '.join(f'0x{v:08x}u' for v in words[i:i + 6]) + ',\n' for i in range(0, len(words), 6))

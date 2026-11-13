@@ -76,6 +76,7 @@ struct Period {
     // the muzzle flash re-shade (reshade mode): draws re-shaded, matched, kept off the hull-emission route, failed,
     // timed, and the sequence's CPU time (sum and the frame's worst)
     std::uint32_t muzzle_draws = 0, muzzle_matched = 0, muzzle_hull = 0, muzzle_failures = 0, muzzle_timed = 0;
+    std::uint32_t muzzle_effects_candidates = 0, muzzle_effects_matched = 0, muzzle_effects_draws = 0; // its effects pair
     float muzzle_us_sum = 0.f, muzzle_us_max = 0.f;
     // the hull hit re-shade (reshade mode with an edition table): StageFrame::hull_counts summed, its CPU time
     std::uint32_t hull_counts[x3m::weapon_effects::StageFrame::hull_count_slots] = {};
@@ -931,6 +932,9 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
         period_.muzzle_hull += stage.muzzle_hull;
         period_.muzzle_failures += stage.muzzle_failures;
         period_.muzzle_timed += stage.muzzle_timed;
+        period_.muzzle_effects_candidates += stage.muzzle_effects_candidates;
+        period_.muzzle_effects_matched += stage.muzzle_effects_matched;
+        period_.muzzle_effects_draws += stage.muzzle_effects_draws;
         period_.muzzle_us_sum += stage.muzzle_us;
         if (stage.muzzle_us > period_.muzzle_us_max) period_.muzzle_us_max = stage.muzzle_us;
         for (unsigned i = 0; i < StageFrame::hull_count_slots; ++i) period_.hull_counts[i] += stage.hull_counts[i];
@@ -1102,16 +1106,20 @@ void present(unsigned long long frame, bool capture, bool owned, const StageFram
     }
     // The muzzle flash re-shade's period row (muzzle-flash-look.md): muzzle draws matched (a listed body id under ONE /
     // ONE), re-shaded, of them kept off the hull-emission route, failed substitutions (left vanilla), and the
-    // sequence's CPU time over the timed draws (every 60th frame and capture frames).
+    // sequence's CPU time over the timed draws (every 60th frame and capture frames), both pairs; then the effects pair's
+    // own (body 12009): its blended ONE / listed-DESTBLEND draws that reached the node read, matched and re-shaded.
     if (core::reshade_mode(mode_))
         log("muzzle_reshade_frame frame=%llu frames=%lu matched=%lu draws=%lu hull=%lu failures=%lu timed=%lu "
-            "us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f",
+            "us_timed=%.1f us_per_draw=%.3f us_frame_max=%.1f effects_candidates=%lu effects_matched=%lu "
+            "effects_draws=%lu",
             frame, static_cast<unsigned long>(period_.frames), static_cast<unsigned long>(period_.muzzle_matched),
             static_cast<unsigned long>(period_.muzzle_draws), static_cast<unsigned long>(period_.muzzle_hull),
             static_cast<unsigned long>(period_.muzzle_failures), static_cast<unsigned long>(period_.muzzle_timed),
             double(period_.muzzle_us_sum),
             period_.muzzle_timed ? double(period_.muzzle_us_sum) / double(period_.muzzle_timed) : 0.0,
-            double(period_.muzzle_us_max));
+            double(period_.muzzle_us_max), static_cast<unsigned long>(period_.muzzle_effects_candidates),
+            static_cast<unsigned long>(period_.muzzle_effects_matched),
+            static_cast<unsigned long>(period_.muzzle_effects_draws));
     // The hull hit re-shade's period row (hull-hit-look.md section 5): the blended draws of the two impact pairs that
     // reached the node read, those matched (a listed body of the pair and blend), substituted per pair, failed (left
     // vanilla), drawn with Z write on, with g_AlphaValue below 1 (fade and cooling active), of a shared body, and the
